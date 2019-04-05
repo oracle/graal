@@ -701,7 +701,8 @@ mx_sdk.register_graalvm_component(mx_sdk.GraalVmLanguage(
             destination='bin/<exe:lli>',
             jar_distributions=['sulong:SULONG_LAUNCHER'],
             main_class='com.oracle.truffle.llvm.launcher.LLVMLauncher',
-            build_args=['--language:llvm']
+            build_args=[],
+            language='llvm',
         )
     ],
 ))

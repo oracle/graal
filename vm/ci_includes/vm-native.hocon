@@ -2,7 +2,6 @@ builds += [
   ${svm-common-linux-amd64} ${custom_vm_linux} ${gate_vm_linux} {
     run: [
       [export, "SVM_SUITE="${svm_suite}]
-      [export, "NATIVE_IMAGE_TESTING=True"]
       [mx, --dynamicimports, "$SVM_SUITE", --disable-polyglot, --disable-libpolyglot, gate, --no-warning-as-error, --tags, "build,substratevm"]
     ]
     timelimit: "15:00"
@@ -12,7 +11,6 @@ builds += [
     run: [
       [git, clone, --depth, "1", [mx, urlrewrite, "https://github.com/oracle/truffleruby.git"], "../../truffleruby"]
       [export, "SVM_SUITE="${svm_suite}]
-      [export, "NATIVE_IMAGE_TESTING=True"]
       [export, "EXTRA_IMAGE_BUILDER_ARGUMENTS=-H:GreyToBlackObjectVisitorDiagnosticHistory=16"] # GR-9912
       [mx, --dynamicimports, "$SVM_SUITE,truffleruby", --disable-polyglot, --disable-libpolyglot, "--force-bash-launchers=lli,native-image", gate, --no-warning-as-error, --tags, "build,ruby"]
     ]
@@ -23,7 +21,6 @@ builds += [
     targets: [daily]
     run: [
       [export, "SVM_SUITE="${svm_suite}]
-      [export, "NATIVE_IMAGE_TESTING=True"]
       [export, "EXTRA_IMAGE_BUILDER_ARGUMENTS=-H:GreyToBlackObjectVisitorDiagnosticHistory=16"] # GR-9912
       [mx, --dynamicimports, "$SVM_SUITE,truffleruby", --disable-polyglot, --disable-libpolyglot, "--force-bash-launchers=lli,native-image", gate, --no-warning-as-error, --tags, "build,ruby"]
     ]
@@ -34,7 +31,6 @@ builds += [
     run: [
       [git, clone, --depth, "1", [mx, urlrewrite, "https://github.com/oracle/graalpython.git"], "../../graalpython"]
       [export, "SVM_SUITE="${svm_suite}]
-      [export, "NATIVE_IMAGE_TESTING=True"]
       [mx, --dynamicimports, "$SVM_SUITE,graalpython", --disable-polyglot, --disable-libpolyglot, "--force-bash-launchers=lli,native-image", gate, --no-warning-as-error, --tags, "build,python"]
     ]
     timelimit: "35:00"
@@ -44,7 +40,6 @@ builds += [
     targets: [daily]
     run: [
       [export, "SVM_SUITE="${svm_suite}]
-      [export, "NATIVE_IMAGE_TESTING=True"]
       [mx, --dynamicimports, "$SVM_SUITE,graalpython", --disable-polyglot, --disable-libpolyglot, "--force-bash-launchers=lli,native-image", gate, --no-warning-as-error, --tags, "build,python"]
     ]
     timelimit: "35:00"

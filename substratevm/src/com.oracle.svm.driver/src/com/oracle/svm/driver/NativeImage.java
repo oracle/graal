@@ -56,17 +56,13 @@ import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.ListIterator;
 import java.util.Map;
-import java.util.Objects;
 import java.util.Properties;
 import java.util.Queue;
-import java.util.StringJoiner;
 import java.util.function.BiFunction;
 import java.util.function.Consumer;
 import java.util.function.Function;
 import java.util.function.Supplier;
-import java.util.regex.Pattern;
 import java.util.stream.Collectors;
-import java.util.stream.Stream;
 
 import org.graalvm.compiler.options.OptionKey;
 import org.graalvm.nativeimage.ProcessProperties;
@@ -101,7 +97,7 @@ public class NativeImage {
         return (OS.getCurrent().className + "-" + SubstrateUtil.getArchitectureName()).toLowerCase();
     }
 
-    static final String graalvmVersion = System.getProperty("org.graalvm.version", System.getProperty("graalvm.version", "dev"));
+    static final String graalvmVersion = System.getProperty("org.graalvm.version", "dev");
     static final String graalvmConfig = System.getProperty("org.graalvm.config", "");
 
     private static Map<String, String[]> getCompilerFlags() {
@@ -165,8 +161,6 @@ public class NativeImage {
 
     final String oHMaxRuntimeCompileMethods = oH(GraalFeature.Options.MaxRuntimeCompileMethods);
     final String oHInspectServerContentPath = oH(PointstoOptions.InspectServerContentPath);
-    final String oDPolyglotLauncherClasses = "-Dcom.oracle.graalvm.launcher.launcherclasses=";
-    final String oDLauncherClasspath = "-Dorg.graalvm.launcher.classpath=";
 
     static final String oXmx = "-Xmx";
     static final String oXms = "-Xms";
@@ -322,32 +316,6 @@ public class NativeImage {
         default List<String> getBuildArgs() {
             throw VMError.unimplemented();
         }
-
-        /**
-         * TODO Remove GraalVM Lanucher specific code.
-         *
-         * @return extra classpath entries for common GraalVM launcher components
-         *         (launcher-common.jar)
-         */
-        default List<Path> getLauncherCommonClasspath() {
-            return Collections.emptyList();
-        }
-
-        /**
-         * TODO Remove GraalVM Lanucher specific code.
-         *
-         * @return launcher classpath system property argument for image builder
-         */
-        default String getLauncherClasspathPropertyValue(@SuppressWarnings("unused") LinkedHashSet<Path> imageClasspath) {
-            return null;
-        }
-
-        /**
-         * TODO Remove GraalVM Lanucher specific code.
-         */
-        default Stream<Path> getAbsoluteLauncherClassPath(@SuppressWarnings("unused") Stream<String> relativeLauncherClassPath) {
-            return Stream.empty();
-        }
     }
 
     private static class DefaultBuildConfiguration implements BuildConfiguration {
@@ -476,31 +444,9 @@ public class NativeImage {
             }
             List<String> buildArgs = new ArrayList<>();
             buildArgs.addAll(Arrays.asList("--configurations-path", rootDir.toString()));
+            buildArgs.addAll(Arrays.asList("--configurations-path", rootDir.resolve(Paths.get("lib", "svm")).toString()));
             buildArgs.addAll(Arrays.asList(args));
             return buildArgs;
-        }
-
-        @Override
-        public List<Path> getLauncherCommonClasspath() {
-            return Collections.singletonList(rootDir.resolve(Paths.get("lib", "graalvm", "launcher-common.jar")));
-        }
-
-        @Override
-        public String getLauncherClasspathPropertyValue(LinkedHashSet<Path> imageClasspath) {
-            StringJoiner sj = new StringJoiner(File.pathSeparator);
-            for (Path path : imageClasspath) {
-                if (!path.startsWith(rootDir)) {
-                    System.err.println(String.format("WARNING: ignoring '%s' while building launcher classpath: it does not live under the GraalVM root (%s)", path, rootDir));
-                    continue;
-                }
-                sj.add(Paths.get("jre").resolve(rootDir.relativize(path)).toString());
-            }
-            return sj.toString();
-        }
-
-        @Override
-        public Stream<Path> getAbsoluteLauncherClassPath(Stream<String> relativeLauncherClassPath) {
-            return relativeLauncherClassPath.map(s -> Paths.get(s.replace('/', File.separatorChar))).map(p -> rootDir.resolve(p));
         }
     }
 
@@ -615,7 +561,6 @@ public class NativeImage {
         addImageBuilderJavaArgs(oXms + getXmsValue());
         addImageBuilderJavaArgs(oXmx + getXmxValue(1));
         addImageBuilderJavaArgs("-Duser.country=US", "-Duser.language=en");
-        addImageBuilderJavaArgs("-Dgraalvm.version=" + graalvmVersion);
         addImageBuilderJavaArgs("-Dorg.graalvm.version=" + graalvmVersion);
         addImageBuilderJavaArgs("-Dorg.graalvm.config=" + graalvmConfig);
         addImageBuilderJavaArgs("-Dcom.oracle.graalvm.isaot=true");
@@ -664,24 +609,6 @@ public class NativeImage {
 
         /* Determine if truffle is needed- any MacroOption of kind Language counts */
         enabledLanguages = optionRegistry.getEnabledOptions(MacroOptionKind.Language);
-        for (EnabledOption enabledOption : enabledOptions) {
-            if (!MacroOptionKind.Language.equals(enabledOption.getOption().kind) && enabledOption.getProperty("LauncherClass") != null) {
-                /* Also identify non-Language MacroOptions as Language if LauncherClass is set */
-                enabledLanguages.add(enabledOption);
-            }
-        }
-
-        /* Create a polyglot image if we have more than one LauncherClass. */
-        if (getLauncherClasses().limit(2).count() > 1) {
-            /* Use polyglot as image name if not defined on command line */
-            if (customImageBuilderArgs.stream().noneMatch(arg -> arg.startsWith(oHName))) {
-                replaceArg(imageBuilderArgs, oHName, "polyglot");
-            }
-            if (customImageBuilderArgs.stream().noneMatch(arg -> arg.startsWith(oHClass))) {
-                /* and the PolyglotLauncher as main class if not defined on command line */
-                replaceArg(imageBuilderArgs, oHClass, "org.graalvm.launcher.PolyglotLauncher");
-            }
-        }
 
         /* Provide more memory for image building if we have more than one language. */
         if (enabledLanguages.size() > 1) {
@@ -692,24 +619,6 @@ public class NativeImage {
         }
 
         consolidateListArgs(imageBuilderJavaArgs, "-Dpolyglot.engine.PreinitializeContexts=", ",", Function.identity());
-    }
-
-    private Stream<String> getLanguageLauncherClasses() {
-        return optionRegistry.getEnabledOptionsStream(MacroOptionKind.Language)
-                        .map(lang -> lang.getProperty("LauncherClass"))
-                        .filter(Objects::nonNull).distinct();
-    }
-
-    private Stream<String> getLauncherClasses() {
-        return optionRegistry.getEnabledOptionsStream(MacroOptionKind.Language, MacroOptionKind.Tool)
-                        .map(lang -> lang.getProperty("LauncherClass"))
-                        .filter(Objects::nonNull).distinct();
-    }
-
-    private Stream<String> getRelativeLauncherClassPath() {
-        return optionRegistry.getEnabledOptionsStream(MacroOptionKind.Language, MacroOptionKind.Tool)
-                        .map(lang -> lang.getProperty("LauncherClassPath"))
-                        .filter(Objects::nonNull).flatMap(Pattern.compile(":", Pattern.LITERAL)::splitAsStream);
     }
 
     protected static String consolidateSingleValueArg(Collection<String> args, String argPrefix) {
@@ -949,39 +858,9 @@ public class NativeImage {
             }
         }
 
-        boolean isGraalVMLauncher = false;
-        if ("org.graalvm.launcher.PolyglotLauncher".equals(mainClass) && consolidateSingleValueArg(imageBuilderJavaArgs, oDPolyglotLauncherClasses) == null) {
-            /* Collect the launcherClasses for enabledLanguages. */
-            addImageBuilderJavaArgs(oDPolyglotLauncherClasses + getLanguageLauncherClasses().collect(Collectors.joining(",")));
-            isGraalVMLauncher = true;
-        }
-
-        if (!isGraalVMLauncher && mainClass != null) {
-            isGraalVMLauncher = getLauncherClasses().anyMatch(mainClass::equals);
-        }
-
-        if (isGraalVMLauncher) {
-            showVerboseMessage(isVerbose() || dryRun, "Automatically appending LauncherClassPath");
-            config.getAbsoluteLauncherClassPath(getRelativeLauncherClassPath()).forEach(p -> {
-                if (!Files.isRegularFile(p)) {
-                    showWarning(String.format("Ignoring '%s' from LauncherClassPath: it does not exist or is not a regular file", p));
-                } else {
-                    addImageClasspath(p);
-                }
-            });
-            config.getLauncherCommonClasspath().forEach(this::addImageClasspath);
-        }
-
         if (!leftoverArgs.isEmpty()) {
             String prefix = "Unrecognized option" + (leftoverArgs.size() == 1 ? ": " : "s: ");
             showError(leftoverArgs.stream().collect(Collectors.joining(", ", prefix, "")));
-        }
-
-        if (isGraalVMLauncher && collectListArgs(imageBuilderJavaArgs, oDLauncherClasspath, File.pathSeparator).isEmpty()) {
-            String classpathPropertyValue = config.getLauncherClasspathPropertyValue(imageClasspath);
-            if (classpathPropertyValue != null) {
-                addImageBuilderJavaArgs(oDLauncherClasspath + classpathPropertyValue);
-            }
         }
 
         effectiveMainClass = consolidateSingleValueArg(imageBuilderArgs, oHClass);
@@ -1326,23 +1205,7 @@ public class NativeImage {
         if (defaultNativeImageArgs != null && !defaultNativeImageArgs.isEmpty()) {
             arguments.addAll(Arrays.asList(defaultNativeImageArgs.split(" ")));
         }
-        for (String arg : config.getBuildArgs()) {
-            switch (arg) {
-                case "--language:all":
-                    for (String lang : optionRegistry.getAvailableOptions(MacroOptionKind.Language)) {
-                        arguments.add("--language:" + lang);
-                    }
-                    break;
-                case "--tool:all":
-                    for (String lang : optionRegistry.getAvailableOptions(MacroOptionKind.Tool)) {
-                        arguments.add("--tool:" + lang);
-                    }
-                    break;
-                default:
-                    arguments.add(arg);
-                    break;
-            }
-        }
+        arguments.addAll(config.getBuildArgs());
         while (!arguments.isEmpty()) {
             boolean consumed = false;
             for (int index = optionHandlers.size() - 1; index >= 0; --index) {
@@ -1406,8 +1269,12 @@ public class NativeImage {
     }
 
     static boolean forEachPropertyValue(String propertyValue, Consumer<String> target, Function<String, String> resolver) {
+        return forEachPropertyValue(propertyValue, target, resolver, " ");
+    }
+
+    static boolean forEachPropertyValue(String propertyValue, Consumer<String> target, Function<String, String> resolver, String separatorRegex) {
         if (propertyValue != null) {
-            for (String propertyValuePart : propertyValue.split(" ")) {
+            for (String propertyValuePart : propertyValue.split(separatorRegex)) {
                 target.accept(resolver.apply(propertyValuePart));
             }
             return true;

@@ -37,7 +37,7 @@ matrix:
           - clang-format-3.8
           - libc++1
           - libc++-dev
-  - env: JDK="jdk8" GATE="build,sulong" PRIMARY="vm" DYNAMIC_IMPORTS="/sulong,/substratevm" LLVM_VERSION="6.0" DISABLE_POLYGLOT=true DISABLE_LIBPOLYGLOT=true NATIVE_IMAGE_TESTING=true
+  - env: JDK="jdk8" GATE="build,sulong" PRIMARY="vm" DYNAMIC_IMPORTS="/sulong,/substratevm" LLVM_VERSION="6.0" DISABLE_POLYGLOT=true DISABLE_LIBPOLYGLOT=true
     addons:
       apt:
         sources:

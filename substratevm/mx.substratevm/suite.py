@@ -939,19 +939,11 @@ suite = {
             },
         },
 
-        "NATIVE_IMAGE_CONFIGURE_SUPPORT" : {
-            "native" : True,
-            "description" : "SubstrateVM native-image configuration tool",
-            "layout" : {
-                "native-image.properties" : "file:mx.substratevm/tools-native-image-configure.properties",
-            },
-        },
-
         "NATIVE_IMAGE_JUNIT_SUPPORT" : {
             "native" : True,
             "description" : "Native-image based junit testing support",
             "layout" : {
-                "native-image.properties" : "file:mx.substratevm/tools-junit.properties",
+                "native-image.properties" : "file:mx.substratevm/macro-junit.properties",
             },
         },
 

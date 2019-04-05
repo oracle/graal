@@ -703,19 +703,18 @@ class LibffiBuildTask(mx.AbstractNativeBuildTask):
         mx.rmtree(self.subject.out_dir, ignore_errors=True)
 
 
-mx_sdk.register_graalvm_component(mx_sdk.GraalVmTool(
+mx_sdk.register_graalvm_component(mx_sdk.GraalVMSvmMacro(
     suite=_suite,
     name='Truffle',
     short_name='tfl',
     dir_name='truffle',
     license_files=[],
     third_party_license_files=[],
-    truffle_jars=[],
     support_distributions=['truffle:TRUFFLE_GRAALVM_SUPPORT']
 ))
 
 
-mx_sdk.register_graalvm_component(mx_sdk.GraalVmTool(
+mx_sdk.register_graalvm_component(mx_sdk.GraalVmLanguage(
     suite=_suite,
     name='Truffle NFI',
     short_name='nfi',
