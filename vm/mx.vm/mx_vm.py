@@ -501,15 +501,16 @@ class GraalVmLayoutDistributionTask(mx.LayoutArchiveTask):
         sup = super(GraalVmLayoutDistributionTask, self).needsBuild(newestInput)
         if sup[0]:
             return sup
-        for link_path, link_target in [(self._root_link_path, self._root_link_target()), (self._home_link_path, self._home_link_target())]:
-            if not os.path.lexists(link_path):
-                return True, '{} does not exist'.format(link_path)
-            link_file = mx.TimeStampFile(link_path, False)
-            if link_file.isOlderThan(self.subject.output):
-                return True, '{} is older than {}'.format(link_file, newestInput)
-            if self.subject == get_final_graalvm_distribution():
-                if link_target != os.readlink(link_path):
-                    return True, '{} is pointing to the wrong directory'.format(link_file)
+        if mx.get_os() != 'windows':
+            for link_path, link_target in [(self._root_link_path, self._root_link_target()), (self._home_link_path, self._home_link_target())]:
+                if not os.path.lexists(link_path):
+                    return True, '{} does not exist'.format(link_path)
+                link_file = mx.TimeStampFile(link_path, False)
+                if link_file.isOlderThan(self.subject.output):
+                    return True, '{} is older than {}'.format(link_file, newestInput)
+                if self.subject == get_final_graalvm_distribution():
+                    if link_target != os.readlink(link_path):
+                        return True, '{} is pointing to the wrong directory'.format(link_file)
         return False, None
 
     def build(self):
@@ -743,7 +744,7 @@ class NativePropertiesBuildTask(mx.ProjectBuildTask):
                 properties = {
                     'ImageName': basename(launcher_config.destination)[:-len(mx.exe_suffix(""))],
                     'LauncherClass': basename(launcher_config.main_class),
-                    'LauncherClassPath': graalvm_home_relative_classpath(launcher_config.jar_distributions, _get_graalvm_archive_path('jre')).replace(os.pathsep, ':'),
+                    'LauncherClassPath': graalvm_home_relative_classpath(launcher_config.jar_distributions, _get_graalvm_archive_path('jre')).replace(os.pathsep, ':').replace(os.sep, '/'),
                     'Args': ' '.join(launcher_config.build_args),
                 }
                 for p in ('ImageName', 'LauncherClass'):
@@ -1938,6 +1939,8 @@ def _force_bash_launchers(launcher, forced=None):
         forced = forced.split(',')
     if isinstance(launcher, mx_sdk.AbstractNativeImageConfig):
         launcher = launcher.destination
+    assert launcher.endswith(mx.exe_suffix(''))
+    launcher = launcher[:-len(mx.exe_suffix(''))]
     launcher_name = basename(launcher)
     return launcher_name in forced
 
