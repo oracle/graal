@@ -150,6 +150,9 @@ public final class NativeLibrarySupport {
                 if (libraryInitializer != null) {
                     libraryInitializer.initialize(lib);
                 }
+            } catch (UnsatisfiedLinkError e) {
+                // Allow caller to try the next path:
+                return false;
             } finally {
                 NativeLibrary top = currentLoadContext.pop();
                 assert top == lib;
