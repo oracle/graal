@@ -87,6 +87,7 @@ import org.graalvm.options.OptionDescriptor;
 import org.graalvm.options.OptionDescriptors;
 import org.graalvm.options.OptionStability;
 import org.graalvm.options.OptionType;
+import org.graalvm.polyglot.Context;
 import org.graalvm.polyglot.Engine;
 import org.graalvm.polyglot.Instrument;
 import org.graalvm.polyglot.Language;
@@ -143,8 +144,14 @@ public abstract class Launcher {
         seenPolyglot = polyglot;
     }
 
-    final Path getLogFile() {
-        return logFile;
+    final void setupLogHandler(Context.Builder builder) {
+        if (logFile != null) {
+            try {
+                builder.logHandler(newLogStream(logFile));
+            } catch (IOException ioe) {
+                throw abort(ioe);
+            }
+        }
     }
 
     private Engine getTempEngine() {
@@ -321,6 +328,16 @@ public abstract class Launcher {
             }
         }
         throw abort((Throwable) e, exitCode);
+    }
+
+    /**
+     * This is called to abort execution when an argument can neither be recognized by the launcher
+     * or as an option for the polyglot engine.
+     *
+     * @param argument the argument that was not recognized.
+     */
+    protected AbortException abortUnrecognizedArgument(String argument) {
+        throw abortInvalidArgument(argument, "Unrecognized argument: '" + argument + "'. Use --help for usage instructions.");
     }
 
     /**
@@ -667,63 +684,69 @@ public abstract class Launcher {
                                         descriptor.getCategory().ordinal() == OptionCategory.DEBUG.ordinal());
     }
 
-    boolean parsePolyglotOption(String defaultOptionPrefix, Map<String, String> options, String arg) {
+    void parsePolyglotOptions(String defaultOptionPrefix, Map<String, String> polyglotOptions, List<String> unrecognizedArgs) {
+        for (String arg : unrecognizedArgs) {
+            parsePolyglotOption(defaultOptionPrefix, polyglotOptions, arg);
+        }
+    }
+
+    private void parsePolyglotOption(String defaultOptionPrefix, Map<String, String> polyglotOptions, String arg) {
         switch (arg) {
             case "--help":
                 help = true;
-                return true;
+                break;
             case "--help:debug":
                 warn("--help:debug is deprecated, use --help:internal instead.");
                 helpInternal = true;
-                return true;
+                break;
             case "--help:internal":
                 helpInternal = true;
-                return true;
+                break;
             case "--help:expert":
                 helpExpert = true;
-                return true;
+                break;
             case "--help:tools":
                 helpTools = true;
-                return true;
+                break;
             case "--help:languages":
                 helpLanguages = true;
-                return true;
+                break;
             case "--help:vm":
                 helpVM = true;
-                return true;
+                break;
             case "--version:graalvm":
                 versionAction = VersionAction.PrintAndExit;
-                return true;
+                break;
             case "--show-version:graalvm":
                 versionAction = VersionAction.PrintAndContinue;
-                return true;
+                break;
             case "--polyglot":
                 seenPolyglot = true;
-                return true;
+                break;
             case "--experimental-options":
             case "--experimental-options=true":
                 experimentalOptions = true;
-                return true;
+                break;
             case "--experimental-options=false":
                 experimentalOptions = false;
-                return true;
+                break;
             default:
                 if ((arg.startsWith("--jvm.") && arg.length() > "--jvm.".length()) || arg.equals("--jvm")) {
                     if (isAOT()) {
                         throw abort("should not reach here: jvm option failed to switch to JVM");
                     }
-                    return true;
+                    return;
                 } else if ((arg.startsWith("--native.") && arg.length() > "--native.".length()) || arg.equals("--native")) {
                     if (!isAOT()) {
                         throw abort("native options are not supported on the JVM");
                     }
-                    return true;
+                    return;
                 } else if (arg.startsWith("--vm.") && arg.length() > "--vm.".length()) {
-                    return true;
+                    return;
                 }
                 // getLanguageId() or null?
                 if (arg.length() <= 2 || !arg.startsWith("--")) {
-                    return false;
+                    throw abortUnrecognizedArgument(arg);
                 }
                 int eqIdx = arg.indexOf('=');
                 String key;
@@ -748,14 +771,14 @@ public abstract class Launcher {
                     if (key.endsWith(".level")) {
                         try {
                             Level.parse(value);
-                            options.put(key, value);
-                            return true;
+                            polyglotOptions.put(key, value);
                         } catch (IllegalArgumentException e) {
                             throw abort(String.format("Invalid log level %s specified. %s'", arg, e.getMessage()));
                         }
+                        return;
                     } else if (key.equals("log.file")) {
                         logFile = Paths.get(value);
-                        return true;
+                        return;
                     }
                 }
                 OptionDescriptor descriptor = findPolyglotOptionDescriptor(group, key);
@@ -764,7 +787,7 @@ public abstract class Launcher {
                         descriptor = findPolyglotOptionDescriptor(defaultOptionPrefix, defaultOptionPrefix + "." + key);
                     }
                     if (descriptor == null) {
-                        return false;
+                        throw abortUnrecognizedArgument(arg);
                     }
                 }
                 try {
@@ -780,8 +803,8 @@ public abstract class Launcher {
                                     "Do not use experimental options in production environments.", arg));
                 }
                 // use the full name of the found descriptor
-                options.put(descriptor.getName(), value);
-                return true;
+                polyglotOptions.put(descriptor.getName(), value);
+                break;
         }
     }
 
@@ -1474,9 +1497,9 @@ public abstract class Launcher {
             List<String> command = new ArrayList<>(args.size() + (polyglotOptions == null ? 0 : polyglotOptions.size()) + 3);
             Path executable = getGraalVMBinaryPath("polyglot");
             command.add("--native");
-            serializePolyglotOptions(polyglotOptions, command);
             command.add("--use-launcher");
             command.add(getMainClass());
+            serializePolyglotOptions(polyglotOptions, command);
             command.addAll(args);
             exec(executable, command);
         }
