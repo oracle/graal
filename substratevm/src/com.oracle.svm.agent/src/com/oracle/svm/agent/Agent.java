@@ -194,18 +194,21 @@ public final class Agent {
             }
             String[] classpathEntries = SubstrateUtil.split(classpath, File.pathSeparator);
             Path workDir = Paths.get(".").toAbsolutePath().normalize();
-            AddURI addURI = (uris, classpathEntry, resourceLocation) -> {
-                URI resourceURI = null;
+            AddURI addURI = (target, classpathEntry, resourceLocation) -> {
                 boolean added = false;
                 if (Files.isDirectory(classpathEntry)) {
-                    resourceURI = classpathEntry.resolve(Paths.get(resourceLocation)).toUri();
-                    added = uris.add(resourceURI);
+                    Path resourcePath = classpathEntry.resolve(Paths.get(resourceLocation));
+                    if (Files.isReadable(resourcePath)) {
+                        added = target.add(resourcePath.toUri());
+                    }
                 } else {
                     URI jarFileURI = URI.create("jar:" + classpathEntry.toUri());
                     try {
                         FileSystem jarFS = FileSystems.newFileSystem(jarFileURI, Collections.emptyMap());
-                        resourceURI = jarFS.getPath("/" + resourceLocation).toUri();
-                        added = uris.add(resourceURI);
+                        Path resourcePath = jarFS.getPath("/" + resourceLocation);
+                        if (Files.isReadable(resourcePath)) {
+                            added = target.add(resourcePath.toUri());
+                        }
                         if (added) {
                             temporaryFileSystems.add(jarFS);
                         } else {
@@ -213,11 +216,10 @@ public final class Agent {
                         }
                     } catch (IOException e) {
                         System.err.println(MESSAGE_PREFIX + "auto-restrict could not access " + classpathEntry + " as a jar file");
-                        e.printStackTrace();
                     }
                 }
                 if (added) {
-                    System.err.println(MESSAGE_PREFIX + "auto-restrict added " + resourceURI);
+                    System.err.println(MESSAGE_PREFIX + "auto-restrict added " + resourceLocation + " from " + workDir.relativize(classpathEntry));
                 }
             };
             try {

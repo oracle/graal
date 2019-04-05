@@ -34,7 +34,6 @@ public class Configuration {
 
     public void add(ConfigurationType type) {
         if (types.containsKey(type.getName())) {
-            System.err.println(Agent.MESSAGE_PREFIX + "duplicate registration of type " + type.getName());
             return;
         }
         types.put(type.getName(), type);
