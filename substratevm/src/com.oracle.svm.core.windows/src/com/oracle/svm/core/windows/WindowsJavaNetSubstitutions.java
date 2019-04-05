@@ -24,18 +24,19 @@
  */
 package com.oracle.svm.core.windows;
 
-import com.oracle.svm.core.util.VMError;
-import com.oracle.svm.hosted.jni.JNIRuntimeAccess;
+import java.net.InetAddress;
+
 import org.graalvm.nativeimage.Feature;
 import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.Platforms;
 import org.graalvm.nativeimage.RuntimeClassInitialization;
 import org.graalvm.nativeimage.RuntimeReflection;
 import org.graalvm.nativeimage.c.function.CLibrary;
-import com.oracle.svm.core.annotate.AutomaticFeature;
-import com.oracle.svm.core.windows.headers.WinSock;
 
-import java.net.InetAddress;
+import com.oracle.svm.core.annotate.AutomaticFeature;
+import com.oracle.svm.core.util.VMError;
+import com.oracle.svm.core.windows.headers.WinSock;
+import com.oracle.svm.hosted.jni.JNIRuntimeAccess;
 
 @Platforms(Platform.WINDOWS.class)
 @AutomaticFeature
@@ -120,10 +121,14 @@ class WindowsJavaNetSubstitutionsFeature implements Feature {
             JNIRuntimeAccess.register(access.findClassByName("java.net.InetSocketAddress"));
             JNIRuntimeAccess.register(access.findClassByName("java.net.InetSocketAddress").getDeclaredConstructor(InetAddress.class, int.class));
 
-            JNIRuntimeAccess.register(access.findClassByName("java.net.SocketException"));
             JNIRuntimeAccess.register(access.findClassByName("java.net.SocketException").getDeclaredConstructor(String.class));
-            JNIRuntimeAccess.register(access.findClassByName("java.net.ConnectException"));
             JNIRuntimeAccess.register(access.findClassByName("java.net.ConnectException").getDeclaredConstructor(String.class));
+            JNIRuntimeAccess.register(access.findClassByName("java.net.BindException").getDeclaredConstructor(String.class));
+            JNIRuntimeAccess.register(access.findClassByName("java.net.UnknownHostException").getDeclaredConstructor(String.class));
+
+            /* Required for `initializeEncoding` function in jni_util.c */
+            JNIRuntimeAccess.register(String.class.getDeclaredConstructor(byte[].class, String.class));
+            JNIRuntimeAccess.register(String.class.getDeclaredMethod("getBytes", String.class));
 
             /* Windows specific classes */
             JNIRuntimeAccess.register(access.findClassByName("java.net.SocketInputStream"));
