@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2019, 2019, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2019, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -33,13 +33,13 @@ public final class SynchronizedParserInlineTest extends JTTTest {
 
     private static SynchronizedParserInlineTest object = new SynchronizedParserInlineTest();
 
-    public Integer test(boolean b) {
+    public static Integer test(boolean b) {
         foo(object);
         return b ? 42 : 1337;
     }
 
     @BytecodeParserForceInline
-    public synchronized void foo(SynchronizedParserInlineTest o) {
+    public static synchronized void foo(SynchronizedParserInlineTest o) {
         o.notifyAll();
     }
 
@@ -48,12 +48,12 @@ public final class SynchronizedParserInlineTest extends JTTTest {
         runTest("test", false);
     }
 
-    public Integer test1(int b) {
+    public static Integer test1(int b) {
         return foo1(b);
     }
 
     @BytecodeParserForceInline
-    public synchronized int foo1(int b) {
+    public static synchronized int foo1(int b) {
         if (b < 0) {
             return 7777;
         } else if (b > 100) {

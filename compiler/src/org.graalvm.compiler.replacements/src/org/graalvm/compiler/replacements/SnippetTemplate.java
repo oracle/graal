@@ -1610,7 +1610,7 @@ public class SnippetTemplate {
             FixedNode firstCFGNodeDuplicate = (FixedNode) duplicates.get(firstCFGNode);
             replaceeGraph.addAfterFixed(lastFixedNode, firstCFGNodeDuplicate);
 
-            // floating nodes are not state-split not need to re-wire frame states
+            // floating nodes are not state-splits not need to re-wire frame states
             assert !(replacee instanceof StateSplit);
             updateStamps(replacee, duplicates);
 
@@ -1665,7 +1665,7 @@ public class SnippetTemplate {
             }
             UnmodifiableEconomicMap<Node, Node> duplicates = inlineSnippet(replacee, debug, replaceeGraph, replacements);
 
-            // floating nodes are not state-split not need to re-wire frame states
+            // floating nodes are not state-splits not need to re-wire frame states
             assert !(replacee instanceof StateSplit);
             updateStamps(replacee, duplicates);
 
@@ -1712,6 +1712,11 @@ public class SnippetTemplate {
                         ((DeoptimizingNode.DeoptBefore) deoptDup).setStateBefore(stateBefore);
                     }
                     if (deoptDup instanceof DeoptimizingNode.DeoptDuring) {
+                        // compute a state "during" for a DeoptDuring inside the snippet depending
+                        // on what kind of states we had on the node we are replacing.
+                        // If the original node had a state "during" already, we just use that,
+                        // otherwise we need to find a strategy to compute a state during based on
+                        // some other state (before or after).
                         DeoptimizingNode.DeoptDuring deoptDupDuring = (DeoptimizingNode.DeoptDuring) deoptDup;
                         if (stateDuring != null) {
                             deoptDupDuring.setStateDuring(stateDuring);
