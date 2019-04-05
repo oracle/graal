@@ -42,10 +42,11 @@ package org.graalvm.launcher;
 
 import java.io.File;
 import java.io.IOException;
-import java.nio.file.Path;
+import java.util.ArrayDeque;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
+import java.util.Deque;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -67,7 +68,9 @@ import org.graalvm.polyglot.Value;
 public final class PolyglotLauncher extends Launcher {
 
     private String mainLanguage = null;
-    private boolean verbose;
+    private boolean verbose = false;
+    private boolean version = false;
+    private boolean shell = false;
 
     @Override
     protected void printHelp(OptionCategory maxCategory) {
@@ -116,54 +119,31 @@ public final class PolyglotLauncher extends Launcher {
         System.out.println(String.format("%s polyglot launcher %s", engineImplementationName, engine.getVersion()));
     }
 
-    private void launch(String[] args) {
-        List<String> arguments = new ArrayList<>(Arrays.asList(args));
-        if (isAOT()) {
-            nativeAccess.maybeExec(arguments, true, Collections.emptyMap(), VMType.Native);
-        }
+    /**
+     * Parse arguments when running the bin/polyglot launcher directly.
+     */
+    private List<String> parsePolyglotLauncherOptions(Deque<String> arguments, List<Script> scripts) {
+        List<String> unrecognizedArgs = new ArrayList<>();
 
-        Map<String, String> options = new HashMap<>();
+        while (!arguments.isEmpty()) {
+            String arg = arguments.removeFirst();
 
-        List<Script> scripts = new ArrayList<>();
-        int i = 0;
-        boolean version = false;
-        boolean shell = false;
-        boolean eval = false;
-        boolean file = false;
-        String invalidArgument = null;
-        while (i < arguments.size()) {
-            String arg = arguments.get(i++);
-            if (eval) {
-                int index = arg.indexOf(":");
+            if (arg.equals("--eval") || arg.equals("--file")) {
+                String value = getNextArgument(arguments, arg);
+                int index = value.indexOf(":");
                 String languageId = null;
                 String script;
                 if (index != -1) {
-                    languageId = arg.substring(0, index);
-                    script = arg.substring(index + 1, arg.length());
+                    languageId = value.substring(0, index);
+                    script = value.substring(index + 1);
                 } else {
-                    script = arg;
+                    script = value;
                 }
-                scripts.add(new EvalScript(languageId, script));
-                eval = false;
-            } else if (file) {
-                int index = arg.indexOf(":");
-                String languageId = null;
-                String fileName;
-                if (index != -1) {
-                    languageId = arg.substring(0, index);
-                    fileName = arg.substring(index + 1, arg.length());
+                if (arg.equals("--eval")) {
+                    scripts.add(new EvalScript(languageId, script));
                 } else {
-                    fileName = arg;
+                    scripts.add(new FileScript(languageId, script, false));
                 }
-                scripts.add(new FileScript(languageId, fileName, false));
-                file = false;
-            } else if (arg.equals("--use-launcher")) {
-                if (i >= arguments.size()) {
-                    throw abort("--use-launcher expects an argument");
-                }
-                String launcherName = arguments.get(i++);
-                switchToLauncher(launcherName, options, arguments.subList(i, arguments.size()));
-                return;
             } else if (arg.equals("--")) {
                 break;
             } else if (!arg.startsWith("-")) {
@@ -175,44 +155,57 @@ public final class PolyglotLauncher extends Launcher {
                 shell = true;
             } else if (arg.equals("--verbose")) {
                 verbose = true;
-            } else if (arg.equals("--eval")) {
-                eval = true;
-            } else if (arg.equals("--file")) {
-                file = true;
             } else if (arg.equals("--language")) {
-                if (i >= arguments.size()) {
-                    throw abort("--language expects an argument");
-                }
-                mainLanguage = arguments.get(i++);
-            } else if (parsePolyglotOption(null, options, arg)) {
-                // nothing to do
-            } else if (invalidArgument == null) {
-                // delay the error because in case some language is missing from polyglot and
-                // `--use-launcher` is passed, we would rather fail in `switchToLauncher` than on an
-                // argument for this (unknown) language.
-                invalidArgument = arg;
+                mainLanguage = getNextArgument(arguments, arg);
+            } else {
+                unrecognizedArgs.add(arg);
             }
         }
-        if (invalidArgument != null) {
-            throw abortInvalidArgument(invalidArgument, "Unrecognized argument: " + invalidArgument + ". Use --help for usage instructions.");
+
+        return unrecognizedArgs;
+    }
+
+    private String getNextArgument(Deque<String> arguments, String option) {
+        if (arguments.isEmpty()) {
+            throw abort(option + " expects an argument");
         }
-        String[] programArgs = arguments.subList(i, arguments.size()).toArray(new String[arguments.size() - i]);
+        return arguments.removeFirst();
+    }
+
+    private void launch(String[] args) {
+        List<String> argumentsList = new ArrayList<>(Arrays.asList(args));
+        if (isAOT()) {
+            nativeAccess.maybeExec(argumentsList, true, Collections.emptyMap(), VMType.Native);
+        }
+
+        final Deque<String> arguments = new ArrayDeque<>(argumentsList);
+        if (!arguments.isEmpty() && arguments.getFirst().equals("--use-launcher")) {
+            // We are called from another launcher which used --polyglot
+            String launcherName = getNextArgument(arguments, "--use-launcher");
+            switchToLauncher(launcherName, new HashMap<>(), new ArrayList<>(arguments));
+            return;
+        }
+
+        List<Script> scripts = new ArrayList<>();
+        List<String> unrecognizedArgs = parsePolyglotLauncherOptions(arguments, scripts);
+
+        Map<String, String> polyglotOptions = new HashMap<>();
+        parsePolyglotOptions(null, polyglotOptions, unrecognizedArgs);
+
+        String[] programArgs = arguments.toArray(new String[0]);
+
         if (runPolyglotAction()) {
             return;
         }
         argumentsProcessingDone();
-        Context.Builder contextBuilder = Context.newBuilder().options(options).in(System.in).out(System.out).err(System.err);
+
+        final Context.Builder contextBuilder = Context.newBuilder().options(polyglotOptions);
+
         contextBuilder.allowAllAccess(true);
-        final Path logFile = getLogFile();
-        if (logFile != null) {
-            try {
-                contextBuilder.logHandler(newLogStream(logFile));
-            } catch (IOException ioe) {
-                throw abort(ioe);
-            }
-        }
+        setupLogHandler(contextBuilder);
+
         if (version) {
-            printVersion(Engine.newBuilder().options(options).build());
+            printVersion(Engine.newBuilder().options(polyglotOptions).build());
             throw exit();
         }
 
