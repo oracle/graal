@@ -116,7 +116,6 @@ public abstract class Launcher {
     private boolean helpLanguages;
     private boolean helpVM;
     private boolean seenPolyglot;
-    private boolean experimentalOptions = false;
     private Path logFile;
 
     private VersionAction versionAction = VersionAction.None;
@@ -685,12 +684,27 @@ public abstract class Launcher {
     }
 
     void parsePolyglotOptions(String defaultOptionPrefix, Map<String, String> polyglotOptions, List<String> unrecognizedArgs) {
+        boolean experimentalOptions = false;
+        // First, check if --experimental-options is passed
         for (String arg : unrecognizedArgs) {
-            parsePolyglotOption(defaultOptionPrefix, polyglotOptions, arg);
+            switch (arg) {
+                case "--experimental-options":
+                case "--experimental-options=true":
+                    experimentalOptions = true;
+                    break;
+                case "--experimental-options=false":
+                    experimentalOptions = false;
+                    break;
+            }
+        }
+
+        // Parse the arguments, now that we know whether experimental options are allowed
+        for (String arg : unrecognizedArgs) {
+            parsePolyglotOption(defaultOptionPrefix, polyglotOptions, experimentalOptions, arg);
         }
     }
 
-    private void parsePolyglotOption(String defaultOptionPrefix, Map<String, String> polyglotOptions, String arg) {
+    private void parsePolyglotOption(String defaultOptionPrefix, Map<String, String> polyglotOptions, boolean experimentalOptions, String arg) {
         switch (arg) {
             case "--help":
                 help = true;
@@ -725,10 +739,8 @@ public abstract class Launcher {
                 break;
             case "--experimental-options":
             case "--experimental-options=true":
-                experimentalOptions = true;
-                break;
             case "--experimental-options=false":
-                experimentalOptions = false;
+                // Ignore, these were already parsed before
                 break;
             default:
                 if ((arg.startsWith("--jvm.") && arg.length() > "--jvm.".length()) || arg.equals("--jvm")) {
