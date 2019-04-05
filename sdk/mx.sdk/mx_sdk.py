@@ -95,7 +95,7 @@ def add_graalvm_hostvm_config(name, java_args=None, launcher_args=None, priority
 class AbstractNativeImageConfig(object):
     __metaclass__ = ABCMeta
 
-    def __init__(self, destination, jar_distributions, build_args, links=None):
+    def __init__(self, destination, jar_distributions, build_args, links=None, is_polyglot=False):
         """
         :type destination: str
         :type jar_distributions: list[str]
@@ -106,6 +106,7 @@ class AbstractNativeImageConfig(object):
         self.jar_distributions = jar_distributions
         self.build_args = build_args
         self.links = [mx_subst.path_substitutions.substitute(link) for link in links] if links else []
+        self.is_polyglot = is_polyglot
 
         assert isinstance(self.jar_distributions, list)
         assert isinstance(self.build_args, list)
@@ -119,27 +120,32 @@ class AbstractNativeImageConfig(object):
 
 class LauncherConfig(AbstractNativeImageConfig):
     def __init__(self, destination, jar_distributions, main_class, build_args, links=None, is_main_launcher=True,
-                 default_symlinks=True):
+                 default_symlinks=True, is_sdk_launcher=False, is_polyglot=False):
         """
         :type main_class: str
         :type default_symlinks: bool
         """
-        super(LauncherConfig, self).__init__(destination, jar_distributions, build_args, links=links)
+        super(LauncherConfig, self).__init__(destination, jar_distributions, build_args, links, is_polyglot)
         self.main_class = main_class
         self.is_main_launcher = is_main_launcher
         self.default_symlinks = default_symlinks
+        self.is_sdk_launcher = is_sdk_launcher
 
 
 class LanguageLauncherConfig(LauncherConfig):
-    pass
+    def __init__(self, destination, jar_distributions, main_class, build_args, language, links=None, is_main_launcher=True,
+                 default_symlinks=True, is_sdk_launcher=True):
+        super(LanguageLauncherConfig, self).__init__(destination, jar_distributions, main_class, build_args, links,
+                                                     is_main_launcher, default_symlinks, is_sdk_launcher)
+        self.language = language
 
 
 class LibraryConfig(AbstractNativeImageConfig):
-    def __init__(self, destination, jar_distributions, build_args, links=None, jvm_library=False):
+    def __init__(self, destination, jar_distributions, build_args, links=None, jvm_library=False, is_polyglot=False):
         """
         :type jvm_library: bool
         """
-        super(LibraryConfig, self).__init__(destination, jar_distributions, build_args, links=links)
+        super(LibraryConfig, self).__init__(destination, jar_distributions, build_args, links, is_polyglot)
         self.jvm_library = jvm_library
 
 
@@ -269,6 +275,10 @@ class GraalVmTool(GraalVmTruffleComponent):
                                           priority,
                                           installable)
         self.include_by_default = include_by_default
+
+
+class GraalVMSvmMacro(GraalVmComponent):
+    pass
 
 
 class GraalVmJdkComponent(GraalVmComponent):

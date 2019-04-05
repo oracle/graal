@@ -28,7 +28,7 @@
 # ----------------------------------------------------------------------------------------------------
 
 source="${BASH_SOURCE[0]}"
-while [ -h "$source" ] ; do
+while [[ -h "$source" ]] ; do
     prev_source="$source"
     source="$(readlink "$source")";
     if [[ "$source" != /* ]]; then
@@ -41,19 +41,6 @@ location="$( cd -P "$( dirname "$source" )" && pwd )"
 
 # we assume we are in `jre/lib/svm/bin`
 graalvm_home="${location}/../../../.."
-
-supported_tools=(
-    "agent"
-    "chromeinspector"
-    "profiler"
-)
-
-supported_languages=(
-    "js"
-    "llvm"
-    "python"
-    "ruby"
-)
 
 function usage_and_exit() {
     echo "Usage: $0 [--verbose] polyglot|libpolyglot|js|llvm|python|ruby... [custom native-image args]..."
@@ -100,112 +87,40 @@ function common() {
         cmd_line+=("-g")
     fi
 
-    for tool in "${supported_tools[@]}"; do
-        if [[ -d "${graalvm_home}/jre/tools/${tool}" ]]; then
-            cmd_line+=("--tool:${tool}")
-        fi
-    done
-}
-
-function polyglot_common() {
-    common
-
-    for language in "${supported_languages[@]}"; do
-        if [[ -d "${graalvm_home}/jre/languages/${language}" ]]; then
-            cmd_line+=("--language:${language}")
-        fi
-    done
-}
-
-function launcher_common() {
-    cmd_line+=("-H:-ParseRuntimeOptions")
-}
-
-function polyglot() {
-    polyglot_common
-    launcher_common
-    cmd_line+=(
-        "-H:Features=org.graalvm.launcher.PolyglotLauncherFeature"
-        "-Dorg.graalvm.launcher.relative.home=jre/bin/polyglot"
-        "-H:Name=polyglot"
-        "--tool:truffle"
-    )
-    set_path "${graalvm_home}/jre/bin"
-    cmd_line+=(
-        "org.graalvm.launcher.PolyglotLauncher"
-    )
+    cmd_line+=("--tool:all")
 }
 
 function libpolyglot() {
-    polyglot_common
-    cp="${graalvm_home}/jre/lib/polyglot/polyglot-native-api.jar"
-    if [ -f "${graalvm_home}/jre/languages/js/trufflenode.jar" ]; then
-      cp="${cp}:${graalvm_home}/jre/languages/js/trufflenode.jar"
-      cmd_line+=(
-        "-H:JNIConfigurationResources=svmnodejs.jniconfig"
-      )
-    fi
-    cmd_line+=(
-        "-cp"
-        "${cp}"
-        "--tool:truffle"
-        "-Dgraalvm.libpolyglot=true"
-        "-H:Features=org.graalvm.polyglot.nativeapi.PolyglotNativeAPIFeature"
-        "-Dorg.graalvm.polyglot.nativeapi.libraryPath=${graalvm_home}/jre/lib/polyglot"
-        "-H:CStandard=C11"
-        "-H:+IncludeAllTimeZones"
-        "-H:+SpawnIsolates"
-        "-H:Name=libpolyglot"
-        "-H:Kind=SHARED_LIBRARY"
-    )
-    set_path "${graalvm_home}/jre/lib/polyglot"
-}
-
-function language() {
     common
-    launcher_common
-    local lang="$1"
-    local relative_path="$2"
-    local launcher_class="$3"
-    if [[ "${lang}" = "ruby" || "${lang}" = "python" ]]; then
-        cmd_line+=("--language:llvm")
-    fi
-    cmd_line+=(
-        "--language:${lang}"
-        "-Dorg.graalvm.launcher.relative.language.home=${relative_path}"
-        "-Dorg.graalvm.launcher.standalone=false"
-        "-H:Name=$(basename ${relative_path})"
-    )
-    set_path "${graalvm_home}/jre/languages/${lang}/$(dirname ${relative_path})"
-    cmd_line+=(
-        "${launcher_class}"
-    )
+    cmd_line+=("--macro:polyglot-library")
 }
 
-function set_path() {
-    cmd_line+=("-H:Path=$1")
+function launcher() {
+    common
+    local launcher="$1"
+    cmd_line+=("--macro:${launcher}-launcher")
 }
 
 for binary in "${to_build[@]}"; do
     cmd_line=()
     case "${binary}" in
         polyglot)
-            polyglot
+            launcher polyglot
             ;;
         libpolyglot)
             libpolyglot
             ;;
         js)
-            language js "bin/js" "com.oracle.truffle.js.shell.JSLauncher"
+            launcher js
             ;;
         llvm)
-            language llvm "bin/lli" "com.oracle.truffle.llvm.launcher.LLVMLauncher"
+            launcher lli
             ;;
         python)
-            language python "bin/graalpython" "com.oracle.graal.python.shell.GraalPythonMain"
+            launcher graalpython
             ;;
         ruby)
-            language ruby "bin/truffleruby" "org.truffleruby.launcher.RubyLauncher"
+            launcher truffleruby
             ;;
         *)
             echo "shouldNotReachHere()"

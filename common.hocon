@@ -17,7 +17,7 @@ jdks: {
 # to another branch/commit in a Graal PR when mx changes are required for the PR.
 mx : {
   packages : {
-    mx: "HEAD"
+    mx: "25445328cef415431eac018cd9df6e01d49e2b11"
   }
 }
 

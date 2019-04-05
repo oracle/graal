@@ -35,6 +35,7 @@ import java.util.jar.Manifest;
 
 import org.graalvm.compiler.options.OptionType;
 
+import com.oracle.svm.driver.MacroOption.MacroOptionKind;
 import com.oracle.svm.core.util.ClasspathUtils;
 
 class DefaultOptionHandler extends NativeImage.OptionHandler<NativeImage> {
@@ -76,6 +77,7 @@ class DefaultOptionHandler extends NativeImage.OptionHandler<NativeImage> {
             case "--help-extra":
                 args.poll();
                 nativeImage.showMessage(helpExtraText);
+                nativeImage.optionRegistry.showOptions(MacroOptionKind.Macro, true, nativeImage::showMessage);
                 System.exit(0);
                 return true;
             case "-cp":
