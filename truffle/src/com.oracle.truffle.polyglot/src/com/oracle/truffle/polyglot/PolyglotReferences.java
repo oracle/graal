@@ -93,7 +93,7 @@ final class PolyglotReferences {
         return new MultiLanguageSupplier(language);
     }
 
-    private static AssertionError invalidSharingError(PolyglotEngineImpl usedEngine, String message) throws AssertionError {
+    private static AssertionError invalidSharingError(PolyglotEngineImpl usedEngine) throws AssertionError {
         Exception e = new Exception();
         StringBuilder stack = new StringBuilder();
         Exception exceptionCreating = null;
@@ -127,7 +127,7 @@ final class PolyglotReferences {
         } catch (Exception ex) {
             exceptionCreating = ex;
         }
-        AssertionError error = new AssertionError(String.format("Invalid sharing of runtime values in AST nodes detected.%s Stack trace: %n%s", message, stack.toString()));
+        AssertionError error = new AssertionError(String.format("Invalid sharing of runtime values in AST nodes detected.Stack trace: %n%s", stack.toString()));
         if (exceptionCreating != null) {
             error.addSuppressed(exceptionCreating);
         }
@@ -177,7 +177,7 @@ final class PolyglotReferences {
         private static boolean assertDirectLanguageAccess(PolyglotLanguage language, TruffleLanguage<Object> seenLanguage) {
             TruffleLanguage<?> conservativeLanguage = language.getConservativeLanguageReference().get();
             if (conservativeLanguage != seenLanguage) {
-                throw invalidSharingError(language.getEngine(), "Invalid single language assumption.");
+                throw invalidSharingError(language.getEngine());
             }
             return true;
         }
@@ -215,20 +215,20 @@ final class PolyglotReferences {
         private static boolean assertDirectContextAccess(Object seenContext, WeakReference<PolyglotLanguageContext> contextRef) {
             PolyglotLanguageContext context = contextRef.get();
             if (context == null) {
-                throw invalidSharingError(null, "Detected by language context got garbage collected.");
+                throw invalidSharingError(null);
             }
             PolyglotContextImpl otherContext = PolyglotContextImpl.requireContext();
             PolyglotLanguageContext otherLanguageContext = otherContext.getContext(context.language);
             boolean valid = otherLanguageContext.getContextImpl() == seenContext;
             if (!valid) {
-                throw invalidSharingError(context.getEngine(), "Detected by invalid context assumptions.");
+                throw invalidSharingError(context.getEngine());
             }
             return true;
         }
 
         private static boolean checkContextCollected(Object context) {
             if (context == null) {
-                throw invalidSharingError(null, "Detected by language context impl got garbage collected.");
+                throw invalidSharingError(null);
             }
             return true;
         }
