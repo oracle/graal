@@ -63,8 +63,6 @@ import com.oracle.truffle.api.utilities.NeverValidAssumption;
 
 final class PolyglotLanguage extends AbstractLanguageImpl implements com.oracle.truffle.polyglot.PolyglotImpl.VMObject {
 
-    static final boolean CONSERVATIVE_REFERENCES = false;
-
     final PolyglotEngineImpl engine;
     final LanguageCache cache;
     final LanguageInfo info;
@@ -149,6 +147,11 @@ final class PolyglotLanguage extends AbstractLanguageImpl implements com.oracle.
 
     private PolyglotLanguageInstance createInstance() {
         assert Thread.holdsLock(engine);
+        if (firstInstance) {
+            firstInstance = false;
+        } else if (singleInstance.isValid()) {
+            singleInstance.invalidate();
+        }
         PolyglotLanguageInstance instance = null;
         if (initLanguage != null) {
             // reuse init language
@@ -185,11 +188,6 @@ final class PolyglotLanguage extends AbstractLanguageImpl implements com.oracle.
     PolyglotLanguageInstance allocateInstance(OptionValuesImpl newOptions) {
         PolyglotLanguageInstance instance;
         synchronized (engine) {
-            if (firstInstance) {
-                firstInstance = false;
-            } else if (singleInstance.isValid()) {
-                singleInstance.invalidate();
-            }
             switch (cache.getPolicy()) {
                 case EXCLUSIVE:
                     instance = createInstance();
