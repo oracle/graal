@@ -28,7 +28,6 @@ import java.lang.reflect.Proxy;
 
 import org.graalvm.compiler.options.OptionKey;
 
-import com.oracle.svm.core.util.UserError;
 import com.oracle.svm.hosted.NativeImageGenerator;
 
 import jdk.vm.ci.meta.MetaAccessProvider;
@@ -46,34 +45,6 @@ public class ConservativeClassInitialization extends CommonClassInitializationSu
     @Override
     public void forceInitializeHosted(Class<?> clazz) {
         ensureClassInitialized(clazz);
-    }
-
-    @Override
-    public void forceInitializeHierarchy(Class<?> clazz) {
-        if (clazz == null) {
-            return;
-        }
-        InitKind kind = ensureClassInitialized(clazz);
-        if (kind != InitKind.EAGER) {
-            throw UserError.abort("Class " + clazz.getTypeName() + " marked for eager initialization, but it could not get initialized eagerly.");
-        }
-        classInitKinds.put(clazz, InitKind.EAGER);
-
-        forceInitializeHierarchy(clazz.getSuperclass());
-        forceInitializeInterfaces(clazz.getInterfaces());
-    }
-
-    private void forceInitializeInterfaces(Class<?>[] interfaces) {
-        for (Class<?> iface : interfaces) {
-            if (ClassInitializationFeature.declaresDefaultMethods(metaAccess.lookupJavaType(iface))) {
-                InitKind kind = ensureClassInitialized(iface);
-                if (kind != InitKind.EAGER) {
-                    throw UserError.abort("Interface " + iface.getTypeName() + " requires eager initialization, but it could not get initialized eagerly.");
-                }
-                classInitKinds.put(iface, kind);
-            }
-            forceInitializeInterfaces(iface.getInterfaces());
-        }
     }
 
     @Override
@@ -112,7 +83,7 @@ public class ConservativeClassInitialization extends CommonClassInitializationSu
         result = result.max(processInterfaces(clazz, memoize));
 
         if (memoize) {
-            if (result != InitKind.DELAY) {
+            if (!result.isDelayed()) {
                 result = result.max(ensureClassInitialized(clazz));
             }
             InitKind previous = classInitKinds.put(clazz, result);

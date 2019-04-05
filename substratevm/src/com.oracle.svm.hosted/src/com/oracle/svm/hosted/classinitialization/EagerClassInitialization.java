@@ -62,7 +62,7 @@ public class EagerClassInitialization extends CommonClassInitializationSupport {
         result = result.max(processInterfaces(clazz, memoizeEager));
 
         if (result != InitKind.EAGER || memoizeEager) {
-            if (result != InitKind.DELAY) {
+            if (!result.isDelayed()) {
                 result = result.max(ensureClassInitialized(clazz));
             }
 
@@ -95,15 +95,9 @@ public class EagerClassInitialization extends CommonClassInitializationSupport {
     }
 
     @Override
-    public void forceInitializeHierarchy(Class<?> clazz) {
-        ensureClassInitialized(clazz);
-        computeInitKindAndMaybeInitializeClass(clazz, true);
-    }
-
-    @Override
     public void forceInitializeHosted(Class<?> clazz) {
         InitKind initKind = computeInitKindAndMaybeInitializeClass(clazz);
-        if (initKind == InitKind.DELAY) {
+        if (initKind.isDelayed()) {
             throw UserError.abort("Cannot delay running the class initializer because class must be initialized for internal purposes: " + clazz.getTypeName());
         }
     }

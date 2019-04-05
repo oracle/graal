@@ -50,9 +50,8 @@ public abstract class CommonClassInitializationSupport implements ClassInitializ
      * The initialization kind for all classes seen during image building. Classes are inserted into
      * this map when 1) they are registered explicitly by the user as
      * {@link ClassInitializationSupport.InitKind#RERUN} or
-     * {@link ClassInitializationSupport.InitKind#DELAY}, or 2) the first time the information was
-     * queried and used during image building (fixing the state to
-     * {@link ClassInitializationSupport.InitKind#EAGER}).
+     * {@link ClassInitializationSupport.InitKind#MUST_DELAY}, or 2) the first time the information
+     * was queried and used during image building.
      */
     final Map<Class<?>, InitKind> classInitKinds = new ConcurrentHashMap<>();
 
@@ -83,6 +82,12 @@ public abstract class CommonClassInitializationSupport implements ClassInitializ
 
     InitKind computeInitKindAndMaybeInitializeClass(Class<?> clazz) {
         return computeInitKindAndMaybeInitializeClass(clazz, true);
+    }
+
+    @Override
+    public InitKind initKindFor(Class<?> clazz) {
+        assert classInitKinds.containsKey(clazz);
+        return classInitKinds.get(clazz);
     }
 
     @Override
@@ -145,7 +150,7 @@ public abstract class CommonClassInitializationSupport implements ClassInitializ
                     throw UserError.abort(msg, ex);
                 }
             }
-            return InitKind.DELAY;
+            return InitKind.MUST_DELAY;
         }
     }
 
@@ -156,6 +161,8 @@ public abstract class CommonClassInitializationSupport implements ClassInitializ
     @Override
     public void delayClassInitialization(Class<?>[] classes) {
         for (Class<?> clazz : classes) {
+            /* make the type available */
+            metaAccess.lookupJavaType(clazz);
             checkEagerInitialization(clazz);
 
             if (!UNSAFE.shouldBeInitialized(clazz)) {
@@ -172,7 +179,7 @@ public abstract class CommonClassInitializationSupport implements ClassInitializ
              */
             computeInitKindAndMaybeInitializeClass(clazz, false);
 
-            InitKind previousKind = classInitKinds.put(clazz, InitKind.DELAY);
+            InitKind previousKind = classInitKinds.put(clazz, InitKind.MUST_DELAY);
 
             if (previousKind == InitKind.EAGER) {
                 throw UserError.abort("Class is already initialized, so it is too late to register delaying class initialization: " + clazz.getTypeName());
@@ -185,6 +192,8 @@ public abstract class CommonClassInitializationSupport implements ClassInitializ
     @Override
     public void rerunClassInitialization(Class<?>[] classes) {
         for (Class<?> clazz : classes) {
+            /* make the type available */
+            metaAccess.lookupJavaType(clazz);
             checkEagerInitialization(clazz);
 
             try {
@@ -201,28 +210,62 @@ public abstract class CommonClassInitializationSupport implements ClassInitializ
 
             InitKind previousKind = classInitKinds.put(clazz, InitKind.RERUN);
 
-            if (previousKind == InitKind.EAGER) {
-                throw UserError.abort("The information that the class should be initialized during image building has already been used, " +
-                                "so it is too late to register re-running the class initializer: " + clazz.getTypeName());
-            } else if (previousKind == InitKind.DELAY) {
-                throw UserError.abort("Class or a superclass is already registered for delaying the class initializer, " +
-                                "so it is too late to register re-running the class initializer: " + clazz.getTypeName());
+            if (previousKind != null) {
+                if (previousKind == InitKind.EAGER) {
+                    throw UserError.abort("The information that the class should be initialized during image building has already been used, " +
+                                    "so it is too late to register re-running the class initializer: " + clazz.getTypeName());
+                } else if (previousKind.isDelayed()) {
+                    throw UserError.abort("Class or a superclass is already registered for delaying the class initializer, " +
+                                    "so it is too late to register re-running the class initializer: " + clazz.getTypeName());
+                }
             }
         }
     }
 
     @Override
-    public void checkDelayedInitialization() {
+    public void forceInitializeHierarchy(Class<?> clazz) {
+        if (clazz == null) {
+            return;
+        }
+        if (classInitKinds.containsKey(clazz) && classInitKinds.get(clazz) == InitKind.MUST_DELAY) {
+            throw UserError.abort("Class " + clazz.getTypeName() + " is being force initialized, but it is already delayed to runtime.");
+        }
+
+        ensureClassInitialized(clazz);
+
+        classInitKinds.put(clazz, InitKind.EAGER);
+
+        forceInitializeHierarchy(clazz.getSuperclass());
+        forceInitializeInterfaces(clazz.getInterfaces());
+    }
+
+    private void forceInitializeInterfaces(Class<?>[] interfaces) {
+        for (Class<?> iface : interfaces) {
+            if (ClassInitializationFeature.declaresDefaultMethods(metaAccess.lookupJavaType(iface))) {
+                if (classInitKinds.containsKey(iface) && classInitKinds.get(iface) == InitKind.MUST_DELAY) {
+                    throw UserError.abort("Class " + iface.getTypeName() + " is being force initialized, but it is must be delayed to runtime.");
+                }
+                ensureClassInitialized(iface);
+
+                classInitKinds.put(iface, InitKind.EAGER);
+            }
+            forceInitializeInterfaces(iface.getInterfaces());
+        }
+    }
+
+    @Override
+    public boolean checkDelayedInitialization() {
         /*
          * We check all registered classes here, regardless if the AnalysisType got actually marked
          * as used. Class initialization can have side effects on other classes without the class
          * being used itself, e.g., a class initializer can write a static field in another class.
          */
         for (Map.Entry<Class<?>, InitKind> entry : classInitKinds.entrySet()) {
-            if (entry.getValue() == InitKind.DELAY && !UNSAFE.shouldBeInitialized(entry.getKey())) {
+            if (entry.getValue().isDelayed() && !UNSAFE.shouldBeInitialized(entry.getKey())) {
                 throw UserError.abort("Class that is marked for delaying initialization to run time got initialized during image building: " + entry.getKey().getTypeName());
             }
         }
+        return true;
     }
 
     private static void checkEagerInitialization(Class<?> clazz) {
@@ -235,6 +278,8 @@ public abstract class CommonClassInitializationSupport implements ClassInitializ
     @Override
     public void eagerClassInitialization(Class<?>[] classes) {
         for (Class<?> clazz : classes) {
+            /* make the type available */
+            metaAccess.lookupJavaType(clazz);
             forceInitializeHierarchy(clazz);
         }
     }
