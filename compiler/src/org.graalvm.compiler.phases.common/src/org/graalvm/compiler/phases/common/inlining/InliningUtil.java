@@ -822,7 +822,7 @@ public class InliningUtil extends ValueMergeUtil {
 
         // Return value does no longer need to be limited by the monitor exit.
         for (MonitorExitNode n : frameState.usages().filter(MonitorExitNode.class)) {
-            n.clearEscapedReturnValue();
+            n.clearEscapedValue();
         }
 
         frameState.replaceAndDelete(stateAfterReturn);

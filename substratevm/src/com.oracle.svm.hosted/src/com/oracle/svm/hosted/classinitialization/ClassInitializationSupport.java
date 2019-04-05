@@ -46,14 +46,28 @@ public interface ClassInitializationSupport extends RuntimeClassInitializationSu
         EAGER,
         /** Class is initialized both at runtime and during image building. */
         RERUN,
-        /** Class is initialized at runtime and not during image building. */
-        DELAY;
+        /** Class should be initialized at runtime and not during image building. */
+        DELAY,
+        /** Class must be initialized at runtime and not during image building. */
+        MUST_DELAY;
 
         InitKind max(InitKind other) {
             return this.ordinal() > other.ordinal() ? this : other;
         }
+
+        boolean isDelayed() {
+            return ordinal() >= DELAY.ordinal();
+        }
     }
 
+    /**
+     * Returns an init kind for {@code clazz}.
+     */
+    InitKind initKindFor(Class<?> clazz);
+
+    /**
+     * Returns all classes of a single {@link InitKind}.
+     */
     Set<Class<?>> classesWithKind(InitKind kind);
 
     /**
@@ -95,7 +109,7 @@ public interface ClassInitializationSupport extends RuntimeClassInitializationSu
      * marked as used. Class initialization can have side effects on other classes without the class
      * being used itself, e.g., a class initializer can write a static field in another class.
      */
-    void checkDelayedInitialization();
+    boolean checkDelayedInitialization();
 
     void setUnsupportedFeatures(UnsupportedFeatures o);
 }

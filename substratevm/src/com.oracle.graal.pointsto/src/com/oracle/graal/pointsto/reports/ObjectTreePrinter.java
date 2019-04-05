@@ -31,6 +31,7 @@ import static com.oracle.graal.pointsto.reports.ReportUtils.LAST_CHILD;
 import static com.oracle.graal.pointsto.reports.ReportUtils.fieldComparator;
 import static com.oracle.graal.pointsto.reports.ReportUtils.methodComparator;
 
+import java.io.File;
 import java.io.PrintWriter;
 import java.util.ArrayDeque;
 import java.util.Collection;
@@ -57,7 +58,7 @@ import jdk.vm.ci.meta.ResolvedJavaMethod;
 public final class ObjectTreePrinter extends ObjectScanner {
 
     public static void print(BigBang bigbang, String path, String reportName) {
-        ReportUtils.report("object tree", path + "/reports", "object_tree_" + reportName, "txt",
+        ReportUtils.report("object tree", path + File.separatorChar + "reports", "object_tree_" + reportName, "txt",
                         writer -> ObjectTreePrinter.doPrint(writer, bigbang));
     }
 
