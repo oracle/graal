@@ -139,7 +139,7 @@ public class NativeImage {
     final APIOptionHandler apiOptionHandler;
     final DefaultOptionHandler defaultOptionHandler;
 
-    static final String oH = "-H:";
+    public static final String oH = "-H:";
     static final String oR = "-R:";
 
     final String enablePrintFlags = SubstrateOptions.PrintFlags.getName() + "=";

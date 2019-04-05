@@ -27,14 +27,17 @@ package com.oracle.svm.agent.restrict;
 import java.util.HashMap;
 import java.util.Map;
 
+import com.oracle.svm.agent.Agent;
+
 public class Configuration {
     private final Map<String, ConfigurationType> types = new HashMap<>();
 
     public void add(ConfigurationType type) {
         if (types.containsKey(type.getName())) {
-            throw new RuntimeException("Type must be registered exactly once");
+            System.err.println(Agent.MESSAGE_PREFIX + "duplicate registration of type " + type.getName());
+            return;
         }
-        types.putIfAbsent(type.getName(), type);
+        types.put(type.getName(), type);
     }
 
     public ConfigurationType get(String name) {
