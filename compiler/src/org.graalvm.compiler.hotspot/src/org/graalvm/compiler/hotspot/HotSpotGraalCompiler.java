@@ -187,7 +187,7 @@ public class HotSpotGraalCompiler implements GraalJVMCICompiler {
 
     public CompilationResult compileHelper(CompilationResultBuilderFactory crbf, CompilationResult result, StructuredGraph graph, ResolvedJavaMethod method, int entryBCI, boolean useProfilingInfo,
                     boolean shouldRetainLocalVariables, OptionValues options) {
-
+        assert options == graph.getOptions();
         HotSpotBackend backend = graalRuntime.getHostBackend();
         HotSpotProviders providers = backend.getProviders();
         final boolean isOSR = entryBCI != JVMCICompiler.INVOCATION_ENTRY_BCI;

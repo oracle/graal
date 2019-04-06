@@ -34,6 +34,7 @@ import org.graalvm.compiler.nodes.StructuredGraph;
 import org.graalvm.compiler.nodes.graphbuilderconf.InlineInvokePlugin;
 import org.graalvm.compiler.nodes.graphbuilderconf.InvocationPlugins;
 import org.graalvm.compiler.nodes.graphbuilderconf.LoopExplosionPlugin;
+import org.graalvm.compiler.nodes.graphbuilderconf.MethodSubstitutionPlugin;
 import org.graalvm.compiler.nodes.graphbuilderconf.NodePlugin;
 import org.graalvm.compiler.nodes.graphbuilderconf.ParameterPlugin;
 import org.graalvm.compiler.nodes.spi.CoreProviders;
@@ -57,8 +58,8 @@ public class SubstratePEGraphDecoder extends PEGraphDecoder {
     }
 
     @Override
-    protected EncodedGraph lookupEncodedGraph(ResolvedJavaMethod method, ResolvedJavaMethod originalMethod, BytecodeProvider intrinsicBytecodeProvider,
-                    boolean isSubstitution, boolean trackNodeSourcePosition) {
+    protected EncodedGraph lookupEncodedGraph(ResolvedJavaMethod method, MethodSubstitutionPlugin plugin, BytecodeProvider intrinsicBytecodeProvider, boolean isSubstitution,
+                    boolean trackNodeSourcePosition) {
         /*
          * The EncodedGraph instance also serves as a cache for some information during decoding,
          * e.g., the start offsets of encoded nodes. So it is beneficial to have a cache of the

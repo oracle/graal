@@ -66,6 +66,11 @@ public class SubstrateForeignCallsProvider implements ArrayCopyForeignCalls {
     }
 
     @Override
+    public boolean isAvailable(ForeignCallDescriptor descriptor) {
+        return foreignCalls.containsKey(descriptor);
+    }
+
+    @Override
     public boolean isReexecutable(ForeignCallDescriptor descriptor) {
         return lookupForeignCall(descriptor).getDescriptor().isReexecutable();
     }
