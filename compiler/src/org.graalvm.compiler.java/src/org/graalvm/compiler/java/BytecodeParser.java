@@ -2342,6 +2342,7 @@ public class BytecodeParser implements GraphBuilderContext {
             receiver.get();
         }
 
+        InvokeWithExceptionNode withException = null;
         FixedWithNextNode replacee = lastInstr;
         try (DebugContext.Scope a = debug.scope("instantiate", substituteGraph)) {
             // Inline the snippet nodes, replacing parameters with the given args in the process
@@ -2376,8 +2377,9 @@ public class BytecodeParser implements GraphBuilderContext {
                             // exceptions
                             // must be dispatched. If the calling context doesn't want exception
                             // then
-                            // convert back into a normal InvokeNOde.
-                            InvokeWithExceptionNode withException = (InvokeWithExceptionNode) node;
+                            // convert back into a normal InvokeNode.
+                            assert withException == null : "only one invoke expected";
+                            withException = (InvokeWithExceptionNode) node;
                             BytecodeParser intrinsicCallSiteParser = getNonIntrinsicAncestor();
                             if (intrinsicCallSiteParser != null && intrinsicCallSiteParser.getActionForInvokeExceptionEdge(null) == ExceptionEdgeAction.OMIT) {
                                 InvokeNode newInvoke = graph.add(new InvokeNode(withException));
@@ -2391,10 +2393,8 @@ public class BytecodeParser implements GraphBuilderContext {
                                 newInvoke.setNext(next);
                                 withException.replaceAndDelete(newInvoke);
                             } else {
-                                // Connect exception edge into main graph
-                                AbstractBeginNode exceptionEdge = handleException(null, bci(), false);
+                                // Disconnnect exception edge
                                 withException.killExceptionEdge();
-                                withException.setExceptionEdge(exceptionEdge);
                             }
                         }
                     } else if (node instanceof ForeignCallNode) {
@@ -2419,6 +2419,14 @@ public class BytecodeParser implements GraphBuilderContext {
 
                 // Merge multiple returns
                 processCalleeReturn(targetMethod, inlineScope, calleeReturnDataList);
+
+                // Exiting this scope causes processing of the placeholder frame states.
+            }
+
+            if (withException != null && withException.isAlive()) {
+                // Connect exception edge into main graph
+                AbstractBeginNode exceptionEdge = handleException(null, bci(), false);
+                withException.setExceptionEdge(exceptionEdge);
             }
 
             debug.dump(DebugContext.DETAILED_LEVEL, replaceeGraph, "After lowering %s with %s", replacee, this);
