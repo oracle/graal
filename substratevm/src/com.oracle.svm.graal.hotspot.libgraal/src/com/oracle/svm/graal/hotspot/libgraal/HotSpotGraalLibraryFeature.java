@@ -66,8 +66,10 @@ import org.graalvm.compiler.options.OptionsParser;
 import org.graalvm.compiler.phases.util.Providers;
 import org.graalvm.compiler.serviceprovider.GraalServices;
 import org.graalvm.compiler.truffle.common.TruffleCompilerRuntime;
+import org.graalvm.compiler.truffle.compiler.TruffleCompilerImpl;
 import org.graalvm.compiler.truffle.compiler.hotspot.TruffleCallBoundaryInstrumentationFactory;
 import org.graalvm.compiler.truffle.compiler.substitutions.TruffleInvocationPluginProvider;
+import org.graalvm.compiler.truffle.runtime.GraalTruffleRuntime;
 import org.graalvm.nativeimage.Feature;
 import org.graalvm.nativeimage.ImageSingletons;
 import org.graalvm.nativeimage.Platform;
@@ -311,6 +313,56 @@ public final class HotSpotGraalLibraryFeature implements com.oracle.svm.core.gra
         hotSpotSubstrateReplacements = getReplacements();
     }
 
+    private void registerMethodSubstitutions(DebugContext debug, InvocationPlugins invocationPlugins, MetaAccessProvider metaAccess) {
+        RuntimeReflectionSupport reflectionSupport = ImageSingletons.lookup(RuntimeReflectionSupport.class);
+        MapCursor<String, List<InvocationPlugins.Binding>> cursor = invocationPlugins.getBindings(true).getEntries();
+        while (cursor.advance()) {
+            String className = cursor.getKey();
+            ResolvedJavaType type = null;
+            try {
+                String typeName = className.substring(1, className.length() - 1).replace('/', '.');
+                ClassLoader cl = ClassLoader.getSystemClassLoader();
+                Class<?> clazz = Class.forName(typeName, true, cl);
+                type = metaAccess.lookupJavaType(clazz);
+            } catch (ClassNotFoundException e) {
+                debug.log("Can't find original type for %s%n", className);
+                // throw new GraalError(e);
+            }
+
+            for (InvocationPlugins.Binding binding : cursor.getValue()) {
+                if (binding.plugin instanceof MethodSubstitutionPlugin) {
+                    MethodSubstitutionPlugin plugin = (MethodSubstitutionPlugin) binding.plugin;
+
+                    ResolvedJavaMethod original = null;
+                    for (ResolvedJavaMethod declared : type.getDeclaredMethods()) {
+                        if (declared.getName().equals(binding.name)) {
+                            if (declared.isStatic() == binding.isStatic) {
+                                if (declared.getSignature().toMethodDescriptor().startsWith(binding.argumentsDescriptor)) {
+                                    original = declared;
+                                    break;
+                                }
+                            }
+                        }
+                    }
+                    if (original != null) {
+                        ResolvedJavaMethod method = plugin.getSubstitute(metaAccess);
+                        debug.log("Method substitution %s %s", method, original);
+
+                        // Make the substitute method available in the image
+                        reflectionSupport.register(plugin.getJavaSubstitute());
+
+                        hotSpotSubstrateReplacements.registerMethodSubstitution(plugin, original, INLINE_AFTER_PARSING, debug.getOptions());
+                        if (!original.isNative()) {
+                            hotSpotSubstrateReplacements.registerMethodSubstitution(plugin, original, ROOT_COMPILATION, debug.getOptions());
+                        }
+                    } else {
+                        throw new GraalError("Can't find original method for " + plugin);
+                    }
+                }
+            }
+        }
+    }
+
     @SuppressWarnings("try")
     @Override
     public void beforeAnalysis(BeforeAnalysisAccess access) {
@@ -324,56 +376,14 @@ public final class HotSpotGraalLibraryFeature implements com.oracle.svm.core.gra
         FeatureImpl.BeforeAnalysisAccessImpl impl = (FeatureImpl.BeforeAnalysisAccessImpl) access;
         DebugContext debug = impl.getBigBang().getDebug();
         try (DebugContext.Scope scope = debug.scope("SnippetSupportEncode")) {
-            RuntimeReflectionSupport reflectionSupport = ImageSingletons.lookup(RuntimeReflectionSupport.class);
+            InvocationPlugins compilerPlugins = hotSpotSubstrateReplacements.getGraphBuilderPlugins().getInvocationPlugins();
+            MetaAccessProvider metaAccess = hotSpotSubstrateReplacements.getProviders().getMetaAccess();
+            registerMethodSubstitutions(debug, compilerPlugins, metaAccess);
 
-            MapCursor<String, List<InvocationPlugins.Binding>> cursor = hotSpotSubstrateReplacements.getGraphBuilderPlugins().getInvocationPlugins().getBindings(true).getEntries();
-            Providers providers = hotSpotSubstrateReplacements.getProviders();
-            MetaAccessProvider metaAccess = providers.getMetaAccess();
-            while (cursor.advance()) {
-                String className = cursor.getKey();
-                ResolvedJavaType type = null;
-                try {
-                    String typeName = className.substring(1, className.length() - 1).replace('/', '.');
-                    ClassLoader cl = ClassLoader.getSystemClassLoader();
-                    Class<?> clazz = Class.forName(typeName, true, cl);
-                    type = metaAccess.lookupJavaType(clazz);
-                } catch (ClassNotFoundException e) {
-                    debug.log("Can't find original type for %s%n", className);
-                    // throw new GraalError(e);
-                }
-
-                for (InvocationPlugins.Binding binding : cursor.getValue()) {
-                    if (binding.plugin instanceof MethodSubstitutionPlugin) {
-                        MethodSubstitutionPlugin plugin = (MethodSubstitutionPlugin) binding.plugin;
-
-                        ResolvedJavaMethod original = null;
-                        for (ResolvedJavaMethod declared : type.getDeclaredMethods()) {
-                            if (declared.getName().equals(binding.name)) {
-                                if (declared.isStatic() == binding.isStatic) {
-                                    if (declared.getSignature().toMethodDescriptor().startsWith(binding.argumentsDescriptor)) {
-                                        original = declared;
-                                        break;
-                                    }
-                                }
-                            }
-                        }
-                        if (original != null) {
-                            ResolvedJavaMethod method = plugin.getSubstitute(metaAccess);
-                            debug.log("Method substitution %s %s", method, original);
-
-                            // Make the substitute method available in the image
-                            reflectionSupport.register(plugin.getJavaSubstitute());
-
-                            hotSpotSubstrateReplacements.registerMethodSubstitution(plugin, original, INLINE_AFTER_PARSING, debug.getOptions());
-                            if (!original.isNative()) {
-                                hotSpotSubstrateReplacements.registerMethodSubstitution(plugin, original, ROOT_COMPILATION, debug.getOptions());
-                            }
-                        } else {
-                            throw new GraalError("Can't find original method for " + plugin);
-                        }
-                    }
-                }
-            }
+            // Also register Truffle plugins
+            TruffleCompilerImpl truffleCompiler = (TruffleCompilerImpl) GraalTruffleRuntime.getRuntime().newTruffleCompiler();
+            InvocationPlugins trufflePlugins = truffleCompiler.getPartialEvaluator().getConfigForParsing().getPlugins().getInvocationPlugins();
+            registerMethodSubstitutions(debug, trufflePlugins, metaAccess);
         } catch (Throwable t) {
             throw debug.handle(t);
         }
