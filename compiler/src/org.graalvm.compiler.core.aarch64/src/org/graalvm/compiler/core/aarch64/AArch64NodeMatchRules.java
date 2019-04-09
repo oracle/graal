@@ -212,16 +212,15 @@ public class AArch64NodeMatchRules extends NodeMatchRules {
     }
 
     /**
-     * if !(n < 0) <=> tbz n, sizeOfBits(n) - 1, label.
+     * if x < 0 <=> tbz x, sizeOfBits(x) - 1, label.
      */
-    @MatchRule("(If (IntegerLessThan=lessNode value Constant))")
-    public ComplexMatchResult checkNegativeAndBranch(IfNode root, IntegerLessThanNode lessNode) {
-        JavaKind xKind = lessNode.getX().getStackKind();
+    @MatchRule("(If (IntegerLessThan=lessNode x Constant=y))")
+    public ComplexMatchResult checkNegativeAndBranch(IfNode root, IntegerLessThanNode lessNode, ValueNode x, ConstantNode y) {
+        JavaKind xKind = x.getStackKind();
         assert xKind.isNumericInteger();
-        ValueNode y = lessNode.getY();
         if (y.isJavaConstant() && (0 == y.asJavaConstant().asLong()) && lessNode.condition().equals(CanonicalCondition.LT)) {
-            return emitBitTestAndBranch(root.falseSuccessor(), root.trueSuccessor(), lessNode.getX(),
-                            root.getTrueSuccessorProbability(), xKind.getBitCount() - 1);
+            return emitBitTestAndBranch(root.falseSuccessor(), root.trueSuccessor(), x,
+                            1.0 - root.getTrueSuccessorProbability(), xKind.getBitCount() - 1);
         }
         return null;
     }
