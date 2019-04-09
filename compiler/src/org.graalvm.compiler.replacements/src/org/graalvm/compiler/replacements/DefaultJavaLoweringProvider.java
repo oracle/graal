@@ -822,10 +822,10 @@ public abstract class DefaultJavaLoweringProvider implements LoweringProvider {
                                 if (virtual instanceof VirtualInstanceNode) {
                                     VirtualInstanceNode virtualInstance = (VirtualInstanceNode) virtual;
                                     address = createFieldAddress(graph, newObject, virtualInstance.field(i));
-                                    barrierType = BarrierType.IMPRECISE;
+                                    barrierType = BarrierType.FIELD;
                                 } else {
                                     address = createArrayAddress(graph, newObject, virtual.entryKind(i), ConstantNode.forInt(i, graph));
-                                    barrierType = BarrierType.PRECISE;
+                                    barrierType = BarrierType.ARRAY;
                                 }
                                 if (address != null) {
                                     WriteNode write = new WriteNode(address, LocationIdentity.init(), implicitStoreConvert(graph, JavaKind.Object, allocValue), barrierType);
@@ -940,24 +940,24 @@ public abstract class DefaultJavaLoweringProvider implements LoweringProvider {
 
     protected BarrierType fieldStoreBarrierType(ResolvedJavaField field) {
         if (field.getJavaKind() == JavaKind.Object) {
-            return BarrierType.IMPRECISE;
+            return BarrierType.FIELD;
         }
         return BarrierType.NONE;
     }
 
     protected BarrierType arrayStoreBarrierType(JavaKind elementKind) {
         if (elementKind == JavaKind.Object) {
-            return BarrierType.PRECISE;
+            return BarrierType.ARRAY;
         }
         return BarrierType.NONE;
     }
 
     public BarrierType fieldInitializationBarrier(JavaKind entryKind) {
-        return entryKind == JavaKind.Object ? BarrierType.IMPRECISE : BarrierType.NONE;
+        return entryKind == JavaKind.Object ? BarrierType.FIELD : BarrierType.NONE;
     }
 
     public BarrierType arrayInitializationBarrier(JavaKind entryKind) {
-        return entryKind == JavaKind.Object ? BarrierType.PRECISE : BarrierType.NONE;
+        return entryKind == JavaKind.Object ? BarrierType.ARRAY : BarrierType.NONE;
     }
 
     private BarrierType unsafeStoreBarrierType(RawStoreNode store) {
@@ -972,10 +972,12 @@ public abstract class DefaultJavaLoweringProvider implements LoweringProvider {
             ResolvedJavaType type = StampTool.typeOrNull(object);
             // Array types must use a precise barrier, so if the type is unknown or is a supertype
             // of Object[] then treat it as an array.
-            if (type == null || type.isArray() || type.isAssignableFrom(objectArrayType)) {
-                return BarrierType.PRECISE;
+            if (type != null && type.isArray()) {
+                return BarrierType.ARRAY;
+            } else if (type == null || type.isAssignableFrom(objectArrayType)) {
+                return BarrierType.UNKNOWN;
             } else {
-                return BarrierType.IMPRECISE;
+                return BarrierType.FIELD;
             }
         }
         return BarrierType.NONE;
