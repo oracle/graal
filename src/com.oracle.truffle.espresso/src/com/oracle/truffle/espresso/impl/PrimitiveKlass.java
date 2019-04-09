@@ -26,6 +26,7 @@ package com.oracle.truffle.espresso.impl;
 import java.lang.reflect.Modifier;
 
 import com.oracle.truffle.espresso.classfile.ConstantPool;
+import com.oracle.truffle.espresso.descriptors.Symbol;
 import com.oracle.truffle.espresso.meta.EspressoError;
 import com.oracle.truffle.espresso.meta.JavaKind;
 import com.oracle.truffle.espresso.runtime.EspressoContext;
@@ -143,6 +144,11 @@ public final class PrimitiveKlass extends Klass {
     @Override
     public Method[] getDeclaredMethods() {
         return Method.EMPTY_ARRAY;
+    }
+
+    @Override
+    public final Method lookupMethod(Symbol<Symbol.Name> methodName, Symbol<Symbol.Signature> signature) {
+        return null;
     }
 
     @Override

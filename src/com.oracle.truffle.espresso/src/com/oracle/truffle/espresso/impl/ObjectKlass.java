@@ -35,6 +35,8 @@ import com.oracle.truffle.espresso.classfile.InnerClassesAttribute;
 import com.oracle.truffle.espresso.classfile.RuntimeConstantPool;
 import com.oracle.truffle.espresso.descriptors.Symbol;
 import com.oracle.truffle.espresso.descriptors.Symbol.Name;
+import com.oracle.truffle.espresso.descriptors.Symbol.Type;
+import com.oracle.truffle.espresso.descriptors.Symbol.Signature;
 import com.oracle.truffle.espresso.meta.EspressoError;
 import com.oracle.truffle.espresso.runtime.Attribute;
 import com.oracle.truffle.espresso.runtime.EspressoContext;
@@ -72,6 +74,9 @@ public final class ObjectKlass extends Klass {
 
     @CompilationFinal(dimensions = 1) //
     private Method[] declaredMethods;
+
+    @CompilationFinal(dimensions = 1)
+    private Method[] mirandaMethods;
 
     @CompilationFinal int mirandasStartIndex;
 
@@ -297,6 +302,10 @@ public final class ObjectKlass extends Klass {
         return constructors.toArray(Method.EMPTY_ARRAY);
     }
 
+    Method[] getMirandaMethods() {
+        return mirandaMethods;
+    }
+
     @Override
     public Method[] getDeclaredMethods() {
         return declaredMethods;
@@ -419,6 +428,22 @@ public final class ObjectKlass extends Klass {
         return null;
     }
 
+    @Override
+    public final Method lookupMethod(Symbol<Name> methodName, Symbol<Signature> signature) {
+        methodLookupCount.inc();
+        Method method = lookupDeclaredMethod(methodName, signature);
+        if (method == null) {
+            method = lookupMirandas(methodName, signature);
+        }
+        if (method == null && getType() == Type.MethodHandle) {
+            method = lookupPolysigMethod(methodName, signature);
+        }
+        if (method == null && getSuperKlass() != null) {
+            method = getSuperKlass().lookupMethod(methodName, signature);
+        }
+        return method;
+    }
+
     public final Field[] getFieldTable() {
         return fieldTable;
     }
@@ -427,15 +452,37 @@ public final class ObjectKlass extends Klass {
         return staticFieldTable;
     }
 
+//    final void setMirandas(ArrayList<InterfaceTables.Miranda> mirandas) {
+//        this.mirandasStartIndex = declaredMethods.length;
+//        Method[] declaredAndMirandaMethods = new Method[declaredMethods.length + mirandas.size()];
+//        System.arraycopy(declaredMethods, 0, declaredAndMirandaMethods, 0, declaredMethods.length);
+//        int pos = declaredMethods.length;
+//        for (InterfaceTables.Miranda miranda : mirandas) {
+//            miranda.setDeclaredMethodPos(pos);
+//            declaredAndMirandaMethods[pos++] = new Method(miranda.method);
+//        }
+//        this.declaredMethods = declaredAndMirandaMethods;
+//    }
+
     final void setMirandas(ArrayList<InterfaceTables.Miranda> mirandas) {
-        this.mirandasStartIndex = declaredMethods.length;
-        Method[] declaredAndMirandaMethods = new Method[declaredMethods.length + mirandas.size()];
-        System.arraycopy(declaredMethods, 0, declaredAndMirandaMethods, 0, declaredMethods.length);
-        int pos = declaredMethods.length;
+        Method[] declaredAndMirandaMethods = new Method[mirandas.size()];
+        int pos = 0;
         for (InterfaceTables.Miranda miranda : mirandas) {
             miranda.setDeclaredMethodPos(pos);
             declaredAndMirandaMethods[pos++] = new Method(miranda.method);
         }
-        this.declaredMethods = declaredAndMirandaMethods;
+        this.mirandaMethods = declaredAndMirandaMethods;
+    }
+
+    private Method lookupMirandas(Symbol<Name> methodName, Symbol<Signature> signature) {
+        if (mirandaMethods == null) {
+            return null;
+        }
+        for (Method miranda: mirandaMethods) {
+            if (miranda.getName() == methodName && miranda.getRawSignature() == signature) {
+                return miranda;
+            }
+        }
+        return null;
     }
 }

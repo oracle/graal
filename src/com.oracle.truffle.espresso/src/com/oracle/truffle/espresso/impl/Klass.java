@@ -478,7 +478,7 @@ public abstract class Klass implements ModifiersProvider, ContextAccess {
         return null;
     }
 
-    public final Method lookupMethod(Symbol<Name> methodName, Symbol<Signature> signature) {
+    public abstract Method lookupMethod(Symbol<Name> methodName, Symbol<Signature> signature); /*{
         methodLookupCount.inc();
         // TODO(peterssen): Improve lookup performance.
         Method method = lookupDeclaredMethod(methodName, signature);
@@ -489,7 +489,7 @@ public abstract class Klass implements ModifiersProvider, ContextAccess {
             method = getSuperKlass().lookupMethod(methodName, signature);
         }
         return method;
-    }
+    }*/
 
     public abstract Method vtableLookup(int vtableIndex);
 

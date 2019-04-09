@@ -26,6 +26,7 @@ package com.oracle.truffle.espresso.impl;
 import java.lang.reflect.Modifier;
 
 import com.oracle.truffle.espresso.classfile.ConstantPool;
+import com.oracle.truffle.espresso.descriptors.Symbol;
 import com.oracle.truffle.espresso.meta.EspressoError;
 import com.oracle.truffle.espresso.runtime.StaticObject;
 import com.oracle.truffle.espresso.substitutions.Host;
@@ -128,6 +129,12 @@ public final class ArrayKlass extends Klass {
     @Override
     public Field[] getDeclaredFields() {
         return Field.EMPTY_ARRAY;
+    }
+
+    @Override
+    public final Method lookupMethod(Symbol<Symbol.Name> methodName, Symbol<Symbol.Signature> signature) {
+        methodLookupCount.inc();
+        return getSuperKlass().lookupMethod(methodName, signature);
     }
 
     @Override

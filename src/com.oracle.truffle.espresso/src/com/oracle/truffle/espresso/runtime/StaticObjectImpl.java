@@ -50,13 +50,19 @@ public class StaticObjectImpl extends StaticObject {
         }
     }
 
+    // Only non-primitive fields are stored in this
     private final Object[] fields;
-    private final byte[] wordFields;
 
-    public StaticObjectImpl(ObjectKlass klass, Object[] fields, byte[] wordFields) {
+    /**
+     * Stores all primitive types contiguously in a single byte array, without any unused bits between prims (except for 7 bits with booleans).
+     * In order to quickly reconstruct a long (for example), which would require reading 8 bytes and concatenating them, call Unsafe which can directly read a long.
+     */
+    private final byte[] primitiveFields;
+
+    public StaticObjectImpl(ObjectKlass klass, Object[] fields, byte[] primitiveFields) {
         super(klass);
         this.fields = fields;
-        this.wordFields = wordFields;
+        this.primitiveFields = primitiveFields;
     }
 
     // FIXME(peterssen): Klass does not need to be initialized, just prepared?.
@@ -66,7 +72,7 @@ public class StaticObjectImpl extends StaticObject {
 
     // Shallow copy.
     public StaticObject copy() {
-        return new StaticObjectImpl((ObjectKlass) getKlass(), fields == null ? null : fields.clone(), wordFields == null ? null : wordFields.clone());
+        return new StaticObjectImpl((ObjectKlass) getKlass(), fields == null ? null : fields.clone(), primitiveFields == null ? null : primitiveFields.clone());
     }
 
     public StaticObjectImpl(ObjectKlass klass) {
@@ -78,10 +84,10 @@ public class StaticObjectImpl extends StaticObject {
         // assert !isStatic || klass.isInitialized();
         if (isStatic) {
             this.fields = klass.getStaticObjectFieldsCount() > 0 ? new Object[klass.getStaticObjectFieldsCount()] : null;
-            this.wordFields = klass.getStaticWordFieldsCount() > 0 ? new byte[klass.getStaticWordFieldsCount()] : null;
+            this.primitiveFields = klass.getStaticWordFieldsCount() > 0 ? new byte[klass.getStaticWordFieldsCount()] : null;
         } else {
             this.fields = klass.getObjectFieldsCount() > 0 ? new Object[klass.getObjectFieldsCount()] : null;
-            this.wordFields = klass.getWordFieldsCount() > 0 ? new byte[klass.getWordFieldsCount()] : null;
+            this.primitiveFields = klass.getWordFieldsCount() > 0 ? new byte[klass.getWordFieldsCount()] : null;
         }
         initFields(klass, isStatic);
     }
@@ -118,6 +124,8 @@ public class StaticObjectImpl extends StaticObject {
         }
     }
 
+    // Start non primitive field handling.
+
     public final Object getFieldVolatile(Field field) {
         assert field.getDeclaringKlass().isAssignableFrom(getKlass());
         return U.getObjectVolatile(fields, Unsafe.ARRAY_OBJECT_BASE_OFFSET + Unsafe.ARRAY_OBJECT_INDEX_SCALE * field.getFieldIndex());
@@ -140,6 +148,24 @@ public class StaticObjectImpl extends StaticObject {
         return fields[fieldIndex];
     }
 
+    public final void setFieldVolatile(Field field, Object value) {
+        assert field.getDeclaringKlass().isAssignableFrom(getKlass());
+        U.putObjectVolatile(fields, Unsafe.ARRAY_OBJECT_BASE_OFFSET + Unsafe.ARRAY_OBJECT_INDEX_SCALE * field.getFieldIndex(), value);
+    }
+
+    public final void setField(Field field, Object value) {
+        assert field.getDeclaringKlass().isAssignableFrom(getKlass());
+        assert !field.getKind().isSubWord();
+        if (field.isVolatile()) {
+            setFieldVolatile(field, value);
+        } else {
+            fields[field.getFieldIndex()] = value;
+        }
+    }
+
+    // End non-primitive field handling
+    // Start subword field handling
+
     public final int getWordField(Field field) {
         assert field.getDeclaringKlass().isAssignableFrom(getKlass());
         assert field.getKind().isSubWord();
@@ -156,14 +182,14 @@ public class StaticObjectImpl extends StaticObject {
         switch(field.getKind()) {
             case Boolean:
             case Byte:
-                return U.getByte(wordFields, (long) Unsafe.ARRAY_BYTE_BASE_OFFSET + Unsafe.ARRAY_BYTE_INDEX_SCALE * field.getFieldIndex());
+                return U.getByte(primitiveFields, (long) Unsafe.ARRAY_BYTE_BASE_OFFSET + Unsafe.ARRAY_BYTE_INDEX_SCALE * field.getFieldIndex());
             case Char:
-                return U.getChar(wordFields, (long) Unsafe.ARRAY_BYTE_BASE_OFFSET + Unsafe.ARRAY_BYTE_INDEX_SCALE * field.getFieldIndex());
+                return U.getChar(primitiveFields, (long) Unsafe.ARRAY_BYTE_BASE_OFFSET + Unsafe.ARRAY_BYTE_INDEX_SCALE * field.getFieldIndex());
             case Short:
-                return U.getShort(wordFields, (long) Unsafe.ARRAY_BYTE_BASE_OFFSET + Unsafe.ARRAY_BYTE_INDEX_SCALE * field.getFieldIndex());
+                return U.getShort(primitiveFields, (long) Unsafe.ARRAY_BYTE_BASE_OFFSET + Unsafe.ARRAY_BYTE_INDEX_SCALE * field.getFieldIndex());
             case Int:
             case Float:
-                return U.getInt(wordFields, (long) Unsafe.ARRAY_BYTE_BASE_OFFSET + Unsafe.ARRAY_BYTE_INDEX_SCALE * field.getFieldIndex());
+                return U.getInt(primitiveFields, (long) Unsafe.ARRAY_BYTE_BASE_OFFSET + Unsafe.ARRAY_BYTE_INDEX_SCALE * field.getFieldIndex());
             default:
                 throw EspressoError.shouldNotReachHere();
         }
@@ -173,57 +199,16 @@ public class StaticObjectImpl extends StaticObject {
         switch(field.getKind()) {
             case Boolean:
             case Byte:
-                return U.getByteVolatile(wordFields, (long) Unsafe.ARRAY_BYTE_BASE_OFFSET + Unsafe.ARRAY_BYTE_INDEX_SCALE * field.getFieldIndex());
+                return U.getByteVolatile(primitiveFields, (long) Unsafe.ARRAY_BYTE_BASE_OFFSET + Unsafe.ARRAY_BYTE_INDEX_SCALE * field.getFieldIndex());
             case Char:
-                return U.getCharVolatile(wordFields, (long) Unsafe.ARRAY_BYTE_BASE_OFFSET + Unsafe.ARRAY_BYTE_INDEX_SCALE * field.getFieldIndex());
+                return U.getCharVolatile(primitiveFields, (long) Unsafe.ARRAY_BYTE_BASE_OFFSET + Unsafe.ARRAY_BYTE_INDEX_SCALE * field.getFieldIndex());
             case Short:
-                return U.getShortVolatile(wordFields, (long) Unsafe.ARRAY_BYTE_BASE_OFFSET + Unsafe.ARRAY_BYTE_INDEX_SCALE * field.getFieldIndex());
+                return U.getShortVolatile(primitiveFields, (long) Unsafe.ARRAY_BYTE_BASE_OFFSET + Unsafe.ARRAY_BYTE_INDEX_SCALE * field.getFieldIndex());
             case Int:
             case Float:
-                return U.getIntVolatile(wordFields, (long) Unsafe.ARRAY_BYTE_BASE_OFFSET + Unsafe.ARRAY_BYTE_INDEX_SCALE * field.getFieldIndex());
+                return U.getIntVolatile(primitiveFields, (long) Unsafe.ARRAY_BYTE_BASE_OFFSET + Unsafe.ARRAY_BYTE_INDEX_SCALE * field.getFieldIndex());
             default:
                 throw EspressoError.shouldNotReachHere();
-        }
-    }
-
-    public final long getLongFieldVolatile(Field field) {
-        return U.getLongVolatile(wordFields, (long) Unsafe.ARRAY_BYTE_BASE_OFFSET + Unsafe.ARRAY_BYTE_INDEX_SCALE * field.getFieldIndex());
-    }
-
-    public final long getLongField(Field field) {
-        assert field.getKind().needsTwoSlots();
-        if (field.isVolatile()) {
-            return getLongFieldVolatile(field);
-        } else {
-            return U.getLong(wordFields, (long) Unsafe.ARRAY_BYTE_BASE_OFFSET + Unsafe.ARRAY_BYTE_INDEX_SCALE * field.getFieldIndex());
-        }
-    }
-
-    public final void setLongFieldVolatile(Field field, long value) {
-        U.putLongVolatile(wordFields, (long) Unsafe.ARRAY_BYTE_BASE_OFFSET + Unsafe.ARRAY_BYTE_INDEX_SCALE * field.getFieldIndex(), value);
-    }
-
-    public final void setLongField(Field field, long value) {
-        assert field.getKind().needsTwoSlots();
-        if (field.isVolatile()) {
-            setLongFieldVolatile(field, value);
-        } else {
-            U.putLong(wordFields, (long) Unsafe.ARRAY_BYTE_BASE_OFFSET + Unsafe.ARRAY_BYTE_INDEX_SCALE * field.getFieldIndex(), value);
-        }
-    }
-
-    public final void setFieldVolatile(Field field, Object value) {
-        assert field.getDeclaringKlass().isAssignableFrom(getKlass());
-        U.putObjectVolatile(fields, Unsafe.ARRAY_OBJECT_BASE_OFFSET + Unsafe.ARRAY_OBJECT_INDEX_SCALE * field.getFieldIndex(), value);
-    }
-
-    public final void setField(Field field, Object value) {
-        assert field.getDeclaringKlass().isAssignableFrom(getKlass());
-        assert !field.getKind().isSubWord();
-        if (field.isVolatile()) {
-            setFieldVolatile(field, value);
-        } else {
-            fields[field.getFieldIndex()] = value;
         }
     }
 
@@ -231,17 +216,17 @@ public class StaticObjectImpl extends StaticObject {
         switch(field.getKind()) {
             case Boolean:
             case Byte:
-                U.putByteVolatile(wordFields, (long) Unsafe.ARRAY_BYTE_BASE_OFFSET + Unsafe.ARRAY_BYTE_INDEX_SCALE * field.getFieldIndex(), (byte) value);
+                U.putByteVolatile(primitiveFields, (long) Unsafe.ARRAY_BYTE_BASE_OFFSET + Unsafe.ARRAY_BYTE_INDEX_SCALE * field.getFieldIndex(), (byte) value);
                 break;
             case Char:
-                U.putCharVolatile(wordFields, (long) Unsafe.ARRAY_BYTE_BASE_OFFSET + Unsafe.ARRAY_BYTE_INDEX_SCALE * field.getFieldIndex(), (char) value);
+                U.putCharVolatile(primitiveFields, (long) Unsafe.ARRAY_BYTE_BASE_OFFSET + Unsafe.ARRAY_BYTE_INDEX_SCALE * field.getFieldIndex(), (char) value);
                 break;
             case Short:
-                U.putShortVolatile(wordFields, (long) Unsafe.ARRAY_BYTE_BASE_OFFSET + Unsafe.ARRAY_BYTE_INDEX_SCALE * field.getFieldIndex(), (short) value);
+                U.putShortVolatile(primitiveFields, (long) Unsafe.ARRAY_BYTE_BASE_OFFSET + Unsafe.ARRAY_BYTE_INDEX_SCALE * field.getFieldIndex(), (short) value);
                 break;
             case Int:
             case Float:
-                U.putIntVolatile(wordFields, (long) Unsafe.ARRAY_BYTE_BASE_OFFSET + Unsafe.ARRAY_BYTE_INDEX_SCALE * field.getFieldIndex(), value);
+                U.putIntVolatile(primitiveFields, (long) Unsafe.ARRAY_BYTE_BASE_OFFSET + Unsafe.ARRAY_BYTE_INDEX_SCALE * field.getFieldIndex(), value);
                 break;
             default:
                 throw EspressoError.shouldNotReachHere();
@@ -262,23 +247,55 @@ public class StaticObjectImpl extends StaticObject {
         switch(field.getKind()) {
             case Boolean:
             case Byte:
-                U.putByte(wordFields, (long) Unsafe.ARRAY_BYTE_BASE_OFFSET + Unsafe.ARRAY_BYTE_INDEX_SCALE * field.getFieldIndex(), (byte) value);
+                U.putByte(primitiveFields, (long) Unsafe.ARRAY_BYTE_BASE_OFFSET + Unsafe.ARRAY_BYTE_INDEX_SCALE * field.getFieldIndex(), (byte) value);
                 break;
             case Char:
-                U.putChar(wordFields, (long) Unsafe.ARRAY_BYTE_BASE_OFFSET + Unsafe.ARRAY_BYTE_INDEX_SCALE * field.getFieldIndex(), (char) value);
+                U.putChar(primitiveFields, (long) Unsafe.ARRAY_BYTE_BASE_OFFSET + Unsafe.ARRAY_BYTE_INDEX_SCALE * field.getFieldIndex(), (char) value);
                 break;
             case Short:
-                U.putShort(wordFields, (long) Unsafe.ARRAY_BYTE_BASE_OFFSET + Unsafe.ARRAY_BYTE_INDEX_SCALE * field.getFieldIndex(), (short) value);
+                U.putShort(primitiveFields, (long) Unsafe.ARRAY_BYTE_BASE_OFFSET + Unsafe.ARRAY_BYTE_INDEX_SCALE * field.getFieldIndex(), (short) value);
                 break;
             case Int:
             case Float:
-                U.putInt(wordFields, (long) Unsafe.ARRAY_BYTE_BASE_OFFSET + Unsafe.ARRAY_BYTE_INDEX_SCALE * field.getFieldIndex(), value);
+                U.putInt(primitiveFields, (long) Unsafe.ARRAY_BYTE_BASE_OFFSET + Unsafe.ARRAY_BYTE_INDEX_SCALE * field.getFieldIndex(), value);
                 break;
             default:
                 throw EspressoError.shouldNotReachHere();
         }
     }
 
+    // End subword field handling
+    // start big words field handling
+
+    public final long getLongFieldVolatile(Field field) {
+        return U.getLongVolatile(primitiveFields, (long) Unsafe.ARRAY_BYTE_BASE_OFFSET + Unsafe.ARRAY_BYTE_INDEX_SCALE * field.getFieldIndex());
+    }
+
+    public final long getLongField(Field field) {
+        assert field.getKind().needsTwoSlots();
+        if (field.isVolatile()) {
+            return getLongFieldVolatile(field);
+        } else {
+            return U.getLong(primitiveFields, (long) Unsafe.ARRAY_BYTE_BASE_OFFSET + Unsafe.ARRAY_BYTE_INDEX_SCALE * field.getFieldIndex());
+        }
+    }
+
+    public final void setLongFieldVolatile(Field field, long value) {
+        U.putLongVolatile(primitiveFields, (long) Unsafe.ARRAY_BYTE_BASE_OFFSET + Unsafe.ARRAY_BYTE_INDEX_SCALE * field.getFieldIndex(), value);
+    }
+
+    public final void setLongField(Field field, long value) {
+        assert field.getKind().needsTwoSlots();
+        if (field.isVolatile()) {
+            setLongFieldVolatile(field, value);
+        } else {
+            U.putLong(primitiveFields, (long) Unsafe.ARRAY_BYTE_BASE_OFFSET + Unsafe.ARRAY_BYTE_INDEX_SCALE * field.getFieldIndex(), value);
+        }
+    }
+
+    // End big words field handling.
+
+    // Given a guest Class, get the corresponding Klass.
     public final Klass getMirrorKlass() {
         assert getKlass().getType() == Symbol.Type.Class;
         return (Klass) getHiddenField(getKlass().getMeta().HIDDEN_MIRROR_KLASS);

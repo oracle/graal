@@ -34,7 +34,6 @@ import com.oracle.truffle.espresso.descriptors.Symbol.Name;
 import com.oracle.truffle.espresso.descriptors.Symbol.Signature;
 import com.oracle.truffle.espresso.impl.Klass;
 import com.oracle.truffle.espresso.impl.Method;
-import com.oracle.truffle.espresso.impl.ObjectKlass;
 import com.oracle.truffle.espresso.meta.EspressoError;
 import com.oracle.truffle.espresso.meta.Meta;
 import com.oracle.truffle.espresso.runtime.EspressoContext;
@@ -161,56 +160,7 @@ public interface ClassMethodRefConstant extends MethodRefConstant {
          * the invoked object has a concrete implementation of the method.
          */
         private static Method lookupMethod(Klass klass, Symbol<Name> name, Symbol<Signature> signature) {
-            Method method = lookupClassMethod(klass, name, signature);
-            if (method != null) {
-                return method;
-            }
-            if (klass.getType() == Symbol.Type.MethodHandle) {
-                return lookupPolysigMethod(klass, name, signature);
-            }
-            // FIXME(peterssen): Not implemented: If the maximally-specific superinterface methods
-            // of C for the name and descriptor specified by the method reference include exactly
-            // one method that does not have its ACC_ABSTRACT flag set, then this method is chosen
-            // and method lookup succeeds.
-            for (Klass curKlass = klass; klass != null; curKlass = curKlass.getSuperKlass()) {
-                for (ObjectKlass i : curKlass.getSuperInterfaces()) {
-                    method = lookupInterfaceMethod(i, name, signature);
-                    if (method != null) {
-                        return method;
-                    }
-                }
-            }
-            return null;
-        }
-
-        private static Method lookupPolysigMethod(Klass klass, Symbol<Name> name, Symbol<Signature> signature) {
-            return klass.lookupPolysigMethod(name, signature);
-        }
-
-        private static Method lookupInterfaceMethod(ObjectKlass interf, Symbol<Name> name, Symbol<Signature> signature) {
-            for (Method m : interf.getDeclaredMethods()) {
-                if (!m.isStatic() && !m.isPrivate() && name.equals(m.getName()) && signature.equals(m.getRawSignature())) {
-                    return m;
-                }
-            }
-            for (ObjectKlass i : interf.getSuperInterfaces()) {
-                Method m = lookupInterfaceMethod(i, name, signature);
-                if (m != null) {
-                    return m;
-                }
-            }
-            return null;
-        }
-
-        private static Method lookupClassMethod(Klass seed, Symbol<Name> name, Symbol<Signature> signature) {
-            Method m = seed.lookupDeclaredMethod(name, signature);
-            if (m != null) {
-                return m;
-            }
-            if (seed.getSuperKlass() != null) {
-                return lookupClassMethod(seed.getSuperKlass(), name, signature);
-            }
-            return null;
+            return klass.lookupMethod(name, signature);
         }
 
         @Override

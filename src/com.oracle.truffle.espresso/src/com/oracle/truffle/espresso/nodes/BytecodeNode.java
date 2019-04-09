@@ -1131,7 +1131,7 @@ public class BytecodeNode extends EspressoBaseNode implements CustomNodeCount {
                     if (DEBUG_GENERAL) {
                         reportVMError(e, curBCI, this);
                     }
-                    throw getMeta().throwEx(VirtualMachineError.class);
+                    throw getMeta().throwEx(InternalError.class);
                 }
             } catch (EspressoException e) {
                 CompilerDirectives.transferToInterpreter();

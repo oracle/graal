@@ -41,28 +41,30 @@ public class VirtualTable {
         } else {
             tmp = new ArrayList<>();
         }
-        Method override;
-        int pos;
-        int n_method = 0;
         for (Method m : declaredMethods) {
-            if (m.isVirtualCall() || !(n_method < thisKlass.mirandasStartIndex)) {
-                if (superKlass != null) {
-                    override = superKlass.lookupVirtualMethod(m.getName(), m.getRawSignature());
-                } else {
-                    override = null;
-                }
-                if (override != null) {
-                    pos = override.getVTableIndex();
-                    m.setVTableIndex(pos);
-                    tmp.set(pos, m);
-                } else {
-                    pos = tmp.size();
-                    m.setVTableIndex(pos);
-                    tmp.add(m);
-                }
-            }
-            n_method++;
+            checkOverride(superKlass, m, tmp);
+        }
+        for (Method m: thisKlass.getMirandaMethods()) {
+            checkOverride(superKlass, m, tmp);
         }
         return tmp.toArray(Method.EMPTY_ARRAY);
+    }
+
+    private static void checkOverride(ObjectKlass superKlass, Method m, ArrayList<Method> tmp) {
+        Method override;
+        if (superKlass != null) {
+            override = superKlass.lookupVirtualMethod(m.getName(), m.getRawSignature());
+        } else {
+            override = null;
+        }
+        if (override != null) {
+            int pos = override.getVTableIndex();
+            m.setVTableIndex(pos);
+            tmp.set(pos, m);
+        } else {
+            int pos = tmp.size();
+            m.setVTableIndex(pos);
+            tmp.add(m);
+        }
     }
 }
