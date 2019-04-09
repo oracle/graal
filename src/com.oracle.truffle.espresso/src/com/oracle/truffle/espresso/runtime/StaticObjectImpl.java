@@ -54,8 +54,10 @@ public class StaticObjectImpl extends StaticObject {
     private final Object[] fields;
 
     /**
-     * Stores all primitive types contiguously in a single byte array, without any unused bits between prims (except for 7 bits with booleans).
-     * In order to quickly reconstruct a long (for example), which would require reading 8 bytes and concatenating them, call Unsafe which can directly read a long.
+     * Stores all primitive types contiguously in a single byte array, without any unused bits
+     * between prims (except for 7 bits with booleans). In order to quickly reconstruct a long (for
+     * example), which would require reading 8 bytes and concatenating them, call Unsafe which can
+     * directly read a long.
      */
     private final byte[] primitiveFields;
 
@@ -179,7 +181,7 @@ public class StaticObjectImpl extends StaticObject {
     }
 
     private int applyGetWordField(Field field) {
-        switch(field.getKind()) {
+        switch (field.getKind()) {
             case Boolean:
             case Byte:
                 return U.getByte(primitiveFields, (long) Unsafe.ARRAY_BYTE_BASE_OFFSET + Unsafe.ARRAY_BYTE_INDEX_SCALE * field.getFieldIndex());
@@ -196,7 +198,7 @@ public class StaticObjectImpl extends StaticObject {
     }
 
     public final int getWordFieldVolatile(Field field) {
-        switch(field.getKind()) {
+        switch (field.getKind()) {
             case Boolean:
             case Byte:
                 return U.getByteVolatile(primitiveFields, (long) Unsafe.ARRAY_BYTE_BASE_OFFSET + Unsafe.ARRAY_BYTE_INDEX_SCALE * field.getFieldIndex());
@@ -213,7 +215,7 @@ public class StaticObjectImpl extends StaticObject {
     }
 
     public final void setWordFieldVolatile(Field field, int value) {
-        switch(field.getKind()) {
+        switch (field.getKind()) {
             case Boolean:
             case Byte:
                 U.putByteVolatile(primitiveFields, (long) Unsafe.ARRAY_BYTE_BASE_OFFSET + Unsafe.ARRAY_BYTE_INDEX_SCALE * field.getFieldIndex(), (byte) value);
@@ -244,7 +246,7 @@ public class StaticObjectImpl extends StaticObject {
     }
 
     private void applySetWordField(Field field, int value) {
-        switch(field.getKind()) {
+        switch (field.getKind()) {
             case Boolean:
             case Byte:
                 U.putByte(primitiveFields, (long) Unsafe.ARRAY_BYTE_BASE_OFFSET + Unsafe.ARRAY_BYTE_INDEX_SCALE * field.getFieldIndex(), (byte) value);

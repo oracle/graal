@@ -422,7 +422,7 @@ public final class InterpreterToVM implements ContextAccess {
 
     public static StaticObject newObject(Klass klass) {
         // TODO(peterssen): Accept only ObjectKlass.
-        assert klass != null && !klass.isArray() && !klass.isPrimitive() && !klass.isAbstract(): klass;
+        assert klass != null && !klass.isArray() && !klass.isPrimitive() && !klass.isAbstract() : klass;
         klass.safeInitialize();
         return new StaticObjectImpl((ObjectKlass) klass);
     }

@@ -208,8 +208,8 @@ class InterfaceTables {
     }
 
     /**
-     * Should be called before copying superKlass' superInterfaces. Given one of our interfaces, inherit all its
-     * itables. Merge the dupe ones.
+     * Should be called before copying superKlass' superInterfaces. Given one of our interfaces,
+     * inherit all its itables. Merge the dupe ones.
      */
     private static void fillSuperInterfaceTables(ObjectKlass superInterface, ObjectKlass thisKlass, ArrayList<Miranda> mirandas, ArrayList<Method[]> tmpTables, ArrayList<Klass> tmpKlassTable) {
         Method[][] superTable = superInterface.getItable();

@@ -44,7 +44,7 @@ public class VirtualTable {
         for (Method m : declaredMethods) {
             checkOverride(superKlass, m, tmp);
         }
-        for (Method m: thisKlass.getMirandaMethods()) {
+        for (Method m : thisKlass.getMirandaMethods()) {
             checkOverride(superKlass, m, tmp);
         }
         return tmp.toArray(Method.EMPTY_ARRAY);

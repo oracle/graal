@@ -58,7 +58,7 @@ public final class Target_java_lang_Thread {
 
     @SuppressWarnings("unused")
     @Substitution(hasReceiver = true)
-    public static boolean  isAlive(@Host(Thread.class) StaticObject self) {
+    public static boolean isAlive(@Host(Thread.class) StaticObject self) {
         Thread hostThread = (Thread) ((StaticObjectImpl) self).getHiddenField(self.getKlass().getMeta().HIDDEN_HOST_THREAD);
         if (hostThread == null) {
             return false;

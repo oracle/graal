@@ -229,13 +229,13 @@ public final class JniEnv extends NativeEnv implements ContextAccess {
             if (m == null) {
                 // System.err.println("Fetching unknown/unimplemented JNI method: " + methodName);
                 return (TruffleObject) ForeignAccess.sendExecute(Message.EXECUTE.createNode(), dupClosureRefAndCast("(pointer): void"),
-                        new Callback(1, new Callback.Function() {
-                            @Override
-                            public Object call(Object... args) {
-                                System.err.println("Calling unimplemented JNI method: " + methodName);
-                                throw EspressoError.unimplemented("JNI method: " + methodName);
-                            }
-                        }));
+                                new Callback(1, new Callback.Function() {
+                                    @Override
+                                    public Object call(Object... args) {
+                                        System.err.println("Calling unimplemented JNI method: " + methodName);
+                                        throw EspressoError.unimplemented("JNI method: " + methodName);
+                                    }
+                                }));
             }
 
             String signature = jniNativeSignature(m);
@@ -252,8 +252,7 @@ public final class JniEnv extends NativeEnv implements ContextAccess {
 
     private class VarArgsImpl implements VarArgs {
 
-        @Child
-        Node execute = Message.EXECUTE.createNode();
+        @Child Node execute = Message.EXECUTE.createNode();
         private final long nativePointer;
 
         public VarArgsImpl(long nativePointer) {
@@ -399,10 +398,10 @@ public final class JniEnv extends NativeEnv implements ContextAccess {
             dupClosureRef = NativeLibrary.lookup(nespressoLibrary, "dupClosureRef");
 
             initializeNativeContext = NativeLibrary.lookupAndBind(nespressoLibrary,
-                    "initializeNativeContext", "(env, (string): pointer): sint64");
+                            "initializeNativeContext", "(env, (string): pointer): sint64");
 
             disposeNativeContext = NativeLibrary.lookupAndBind(nespressoLibrary, "disposeNativeContext",
-                    "(env, sint64): void");
+                            "(env, sint64): void");
 
             // Varargs native bindings.
             popBoolean = NativeLibrary.lookupAndBind(nespressoLibrary, "pop_boolean", "(sint64): uint8");
@@ -472,14 +471,14 @@ public final class JniEnv extends NativeEnv implements ContextAccess {
      * Returns the version of the native method interface.
      *
      * @return the major version number in the higher 16 bits and the minor version number in the
-     * lower 16 bits.
+     *         lower 16 bits.
      *
-     * <p>
-     * <b>Error codes</b>
-     * <ul>
-     * <li>#define JNI_EDETACHED (-2) // thread detached from the VM
-     * <li>#define JNI_EVERSION (-3) // JNI version error
-     * </ul>
+     *         <p>
+     *         <b>Error codes</b>
+     *         <ul>
+     *         <li>#define JNI_EDETACHED (-2) // thread detached from the VM
+     *         <li>#define JNI_EVERSION (-3) // JNI version error
+     *         </ul>
      */
     @JniImpl
     public static int GetVersion() {
@@ -527,12 +526,12 @@ public final class JniEnv extends NativeEnv implements ContextAccess {
      * GetArrayLength() instead.
      *
      * @param clazz a Java class object.
-     * @param name  the field name in a 0-terminated modified UTF-8 string.
-     * @param type  the field signature in a 0-terminated modified UTF-8 string.
+     * @param name the field name in a 0-terminated modified UTF-8 string.
+     * @param type the field signature in a 0-terminated modified UTF-8 string.
      * @return a field ID, or NULL if the operation fails.
-     * @throws NoSuchFieldError:            if the specified field cannot be found.
+     * @throws NoSuchFieldError: if the specified field cannot be found.
      * @throws ExceptionInInitializerError: if the class initializer fails due to an exception.
-     * @throws OutOfMemoryError:            if the system runs out of memory.
+     * @throws OutOfMemoryError: if the system runs out of memory.
      */
     @JniImpl
     public long GetFieldID(@Host(Class.class) StaticObject clazz, String name, String type) {
@@ -566,12 +565,12 @@ public final class JniEnv extends NativeEnv implements ContextAccess {
      * GetStaticFieldID() causes an uninitialized class to be initialized.
      *
      * @param clazz a Java class object.
-     * @param name  the static field name in a 0-terminated modified UTF-8 string.
-     * @param type  the field signature in a 0-terminated modified UTF-8 string.
+     * @param name the static field name in a 0-terminated modified UTF-8 string.
+     * @param type the field signature in a 0-terminated modified UTF-8 string.
      * @return a field ID, or NULL if the specified static field cannot be found.
-     * @throws NoSuchFieldError            if the specified static field cannot be found.
+     * @throws NoSuchFieldError if the specified static field cannot be found.
      * @throws ExceptionInInitializerError if the class initializer fails due to an exception.
-     * @throws OutOfMemoryError            if the system runs out of memory.
+     * @throws OutOfMemoryError if the system runs out of memory.
      */
     @JniImpl
     public long GetStaticFieldID(@Host(Class.class) StaticObject clazz, String name, String type) {
@@ -605,13 +604,13 @@ public final class JniEnv extends NativeEnv implements ContextAccess {
      * To obtain the method ID of a constructor, supply <init> as the method name and void (V) as
      * the return type.
      *
-     * @param clazz     a Java class object.
-     * @param name      the method name in a 0-terminated modified UTF-8 string.
+     * @param clazz a Java class object.
+     * @param name the method name in a 0-terminated modified UTF-8 string.
      * @param signature the method signature in 0-terminated modified UTF-8 string.
      * @return a method ID, or NULL if the specified method cannot be found.
-     * @throws NoSuchMethodError           if the specified method cannot be found.
+     * @throws NoSuchMethodError if the specified method cannot be found.
      * @throws ExceptionInInitializerError if the class initializer fails due to an exception.
-     * @throws OutOfMemoryError            if the system runs out of memory.
+     * @throws OutOfMemoryError if the system runs out of memory.
      */
     @JniImpl
     public long GetMethodID(@Host(Class.class) StaticObject clazz, String name, String signature) {
@@ -641,13 +640,13 @@ public final class JniEnv extends NativeEnv implements ContextAccess {
      * <p>
      * GetStaticMethodID() causes an uninitialized class to be initialized.
      *
-     * @param clazz     a Java class object.
-     * @param name      the static method name in a 0-terminated modified UTF-8 string.
+     * @param clazz a Java class object.
+     * @param name the static method name in a 0-terminated modified UTF-8 string.
      * @param signature the method signature in a 0-terminated modified UTF-8 string.
      * @return a method ID, or NULL if the operation fails.
-     * @throws NoSuchMethodError           if the specified static method cannot be found. *
+     * @throws NoSuchMethodError if the specified static method cannot be found. *
      * @throws ExceptionInInitializerError if the class initializer fails due to an exception.
-     * @throws OutOfMemoryError            if the system runs out of memory.
+     * @throws OutOfMemoryError if the system runs out of memory.
      */
     @JniImpl
     public long GetStaticMethodID(@Host(Class.class) StaticObject clazz, String name, String signature) {
@@ -1077,7 +1076,7 @@ public final class JniEnv extends NativeEnv implements ContextAccess {
 
     @JniImpl
     public @Host(Object.class) StaticObject CallNonvirtualtualObjectMethodVarargs(@Host(Object.class) StaticObject receiver, @Host(Class.class) StaticObject clazz, long methodHandle,
-                                                                                  long varargsPtr) {
+                    long varargsPtr) {
         Method method = methodIds.getObject(methodHandle);
         assert !method.isStatic();
         assert (((StaticObjectImpl) clazz).getMirrorKlass()) == method.getDeclaringKlass();
@@ -1186,7 +1185,7 @@ public final class JniEnv extends NativeEnv implements ContextAccess {
     @JniImpl
     public static void GetCharArrayRegion(@Host(char[].class) StaticObject array, int start, int len, long bufPtr) {
         CharBuffer buf = directByteBuffer(bufPtr, len, JavaKind.Char).asCharBuffer();
-        buf.put(((StaticObjectArray) array).<char[]>unwrap(), start, len);
+        buf.put(((StaticObjectArray) array).<char[]> unwrap(), start, len);
     }
 
     @JniImpl
@@ -1241,7 +1240,7 @@ public final class JniEnv extends NativeEnv implements ContextAccess {
     @JniImpl
     public static void SetCharArrayRegion(@Host(char[].class) StaticObject array, int start, int len, long bufPtr) {
         CharBuffer buf = directByteBuffer(bufPtr, len, JavaKind.Char).asCharBuffer();
-        buf.get(((StaticObjectArray) array).<char[]>unwrap(), start, len);
+        buf.get(((StaticObjectArray) array).<char[]> unwrap(), start, len);
     }
 
     @JniImpl
@@ -1476,16 +1475,16 @@ public final class JniEnv extends NativeEnv implements ContextAccess {
      * </pre>
      *
      * @param name a fully-qualified class name (that is, a package name, delimited by "/", followed
-     *             by the class name). If the name begins with "[" (the array signature character),
-     *             it returns an array class. The string is encoded in modified UTF-8.
+     *            by the class name). If the name begins with "[" (the array signature character),
+     *            it returns an array class. The string is encoded in modified UTF-8.
      * @return Returns a class object from a fully-qualified name, or NULL if the class cannot be
-     * found.
-     * @throws ClassFormatError      if the class data does not specify a valid class.
+     *         found.
+     * @throws ClassFormatError if the class data does not specify a valid class.
      * @throws ClassCircularityError if a class or interface would be its own superclass or
-     *                               superinterface.
-     * @throws NoClassDefFoundError  if no definition for a requested class or interface can be
-     *                               found.
-     * @throws OutOfMemoryError      if the system runs out of memory.
+     *             superinterface.
+     * @throws NoClassDefFoundError if no definition for a requested class or interface can be
+     *             found.
+     * @throws OutOfMemoryError if the system runs out of memory.
      */
     @JniImpl
     public StaticObject FindClass(String name) {
@@ -1569,7 +1568,7 @@ public final class JniEnv extends NativeEnv implements ContextAccess {
 
     private ByteBuffer allocateDirect(int capacity) {
         ByteBuffer bb = ByteBuffer.allocateDirect(capacity) //
-                .order(ByteOrder.nativeOrder());
+                        .order(ByteOrder.nativeOrder());
         long address = byteBufferAddress(bb);
         nativeBuffers.put(address, bb);
         return bb;
@@ -1631,9 +1630,9 @@ public final class JniEnv extends NativeEnv implements ContextAccess {
      * Constructs an exception object from the specified class with the message specified by message
      * and causes that exception to be thrown.
      *
-     * @param clazz   a subclass of java.lang.Throwable.
+     * @param clazz a subclass of java.lang.Throwable.
      * @param message the message used to construct the {@link java.lang.Throwable} object. The
-     *                string is encoded in modified UTF-8.
+     *            string is encoded in modified UTF-8.
      * @return 0 on success; a negative value on failure.
      * @throws EspressoException the newly constructed {@link java.lang.Throwable} object.
      */
@@ -1651,7 +1650,7 @@ public final class JniEnv extends NativeEnv implements ContextAccess {
      * native code calls {@link #ExceptionClear}, or the Java code handles the exception.
      *
      * @return the exception object that is currently in the process of being thrown, or NULL if no
-     * exception is currently being thrown.
+     *         exception is currently being thrown.
      */
     @JniImpl
     public StaticObject ExceptionOccurred() {
@@ -1704,7 +1703,7 @@ public final class JniEnv extends NativeEnv implements ContextAccess {
     public void GetStringRegion(@Host(String.class) StaticObject str, int start, int len, long bufPtr) {
         StaticObjectArray chars = (StaticObjectArray) getMeta().String_value.get(str);
         CharBuffer buf = directByteBuffer(bufPtr, len, JavaKind.Char).asCharBuffer();
-        buf.put(chars.<char[]>unwrap(), start, len);
+        buf.put(chars.<char[]> unwrap(), start, len);
     }
 
     private static String nfiSignature(final Symbol<Type>[] signature, boolean isJni) {
@@ -1769,8 +1768,8 @@ public final class JniEnv extends NativeEnv implements ContextAccess {
      * not referenced by the VM after the DefineClass call returns, and it may be discarded if
      * desired.
      *
-     * @param name   the name of the class or interface to be defined. The string is encoded in
-     *               modified UTF-8.
+     * @param name the name of the class or interface to be defined. The string is encoded in
+     *            modified UTF-8.
      * @param loader a class loader assigned to the defined class.
      * @param bufPtr buffer containing the .class file data.
      * @param bufLen buffer length.
@@ -1799,11 +1798,11 @@ public final class JniEnv extends NativeEnv implements ContextAccess {
      * @param clazz1 the first class argument.
      * @param clazz2 the second class argument.
      * @return Returns JNI_TRUE if either of the following is true:
-     * <ul>
-     * <li>The first and second class arguments refer to the same Java class.
-     * <li>The first class is a subclass of the second class.
-     * <li>The first class has the second class as one of its interfaces.
-     * </ul>
+     *         <ul>
+     *         <li>The first and second class arguments refer to the same Java class.
+     *         <li>The first class is a subclass of the second class.
+     *         <li>The first class has the second class as one of its interfaces.
+     *         </ul>
      */
     @JniImpl
     public static boolean IsAssignableFrom(@Host(Class.class) StaticObject clazz1, @Host(Class.class) StaticObject clazz2) {
@@ -1816,10 +1815,10 @@ public final class JniEnv extends NativeEnv implements ContextAccess {
      * <p>
      * Tests whether an object is an instance of a class.
      *
-     * @param obj   a Java object.
+     * @param obj a Java object.
      * @param clazz a Java class object.
      * @return Returns {@code JNI_TRUE} if obj can be cast to clazz; otherwise, returns
-     * {@code JNI_FALSE}. <b>A NULL object can be cast to any class.</b>
+     *         {@code JNI_FALSE}. <b>A NULL object can be cast to any class.</b>
      */
     @JniImpl
     public static boolean IsInstanceOf(@Host(Object.class) StaticObject obj, @Host(Class.class) StaticObjectImpl clazz) {

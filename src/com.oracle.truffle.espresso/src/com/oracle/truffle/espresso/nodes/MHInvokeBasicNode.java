@@ -69,8 +69,8 @@ abstract class BasicNode extends Node {
     abstract Object executeBasic(StaticObjectImpl lform, Object[] args);
 
     /**
-     * Cache on the lambdaForm, since we need to extract it anyway.
-     * With some luck, perhaps two different MH will have the same LF.
+     * Cache on the lambdaForm, since we need to extract it anyway. With some luck, perhaps two
+     * different MH will have the same LF.
      */
     @SuppressWarnings("unused")
     @Specialization(limit = "INLINE_CACHE_SIZE_LIMIT", guards = {"lform == cachedlform", "getBooleanField(lform, isCompiled)"})

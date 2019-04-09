@@ -53,7 +53,6 @@ import java.util.Arrays;
 import java.util.function.IntFunction;
 import java.util.function.Predicate;
 
-
 @EspressoSubstitutions
 public final class Target_java_lang_Class {
     @Substitution
