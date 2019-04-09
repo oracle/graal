@@ -74,7 +74,6 @@ import org.graalvm.nativeimage.Feature;
 import org.graalvm.nativeimage.ImageSingletons;
 import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.Platforms;
-import org.graalvm.nativeimage.impl.RuntimeReflectionSupport;
 
 import com.oracle.graal.pointsto.meta.AnalysisType;
 import com.oracle.graal.pointsto.meta.AnalysisUniverse;
@@ -314,7 +313,6 @@ public final class HotSpotGraalLibraryFeature implements com.oracle.svm.core.gra
     }
 
     private void registerMethodSubstitutions(DebugContext debug, InvocationPlugins invocationPlugins, MetaAccessProvider metaAccess) {
-        RuntimeReflectionSupport reflectionSupport = ImageSingletons.lookup(RuntimeReflectionSupport.class);
         MapCursor<String, List<InvocationPlugins.Binding>> cursor = invocationPlugins.getBindings(true).getEntries();
         while (cursor.advance()) {
             String className = cursor.getKey();
@@ -347,9 +345,6 @@ public final class HotSpotGraalLibraryFeature implements com.oracle.svm.core.gra
                     if (original != null) {
                         ResolvedJavaMethod method = plugin.getSubstitute(metaAccess);
                         debug.log("Method substitution %s %s", method, original);
-
-                        // Make the substitute method available in the image
-                        reflectionSupport.register(plugin.getJavaSubstitute());
 
                         hotSpotSubstrateReplacements.registerMethodSubstitution(plugin, original, INLINE_AFTER_PARSING, debug.getOptions());
                         if (!original.isNative()) {
