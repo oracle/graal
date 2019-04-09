@@ -1092,7 +1092,9 @@ public class NativeImage {
             if (buildStatus == 2) {
                 /* Perform fallback build */
                 build(FallbackBuildConfiguration.create(nativeImage));
-                nativeImage.showWarning("Image '" + nativeImage.effectiveImageName + "' is a fallback-image");
+                nativeImage.showWarning("Image '" + nativeImage.effectiveImageName +
+                                "' is a fallback image that requires a JDK for execution " +
+                                "(use --no-fallback to suppress fallback image generation).");
             } else if (buildStatus != 0) {
                 throw showError("Image build request failed with exit status " + buildStatus);
             }
