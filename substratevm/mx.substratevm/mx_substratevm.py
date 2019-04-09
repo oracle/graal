@@ -1044,7 +1044,8 @@ if os.environ.has_key('LIBGRAAL'):
                     '--features=com.oracle.svm.graal.hotspot.libgraal.HotSpotGraalLibraryFeature',
                     '-H:-UseServiceLoaderFeature',
                     '-H:+AllowFoldMethods',
-                    '-Djdk.vm.ci.services.aot=true'
+                    '-Djdk.vm.ci.services.aot=true',
+                    '-Dtruffle.TruffleRuntime='
                 ],
             ),
         ],
