@@ -22,22 +22,29 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.svm.agent.jvmti;
+package com.oracle.svm.agent.restrict;
 
-import org.graalvm.nativeimage.c.CContext;
-import org.graalvm.nativeimage.c.struct.CBitfield;
-import org.graalvm.nativeimage.c.struct.CStruct;
-import org.graalvm.word.PointerBase;
+import java.util.HashSet;
+import java.util.Set;
 
-@CStruct("jvmtiCapabilities")
-@CContext(JvmtiDirectives.class)
-public interface JvmtiCapabilities extends PointerBase {
-    @CBitfield("can_generate_breakpoint_events")
-    void setCanGenerateBreakpointEvents(int value);
+import jdk.vm.ci.meta.MetaUtil;
 
-    @CBitfield("can_access_local_variables")
-    void setCanAccessLocalVariables(int value);
+public class ProxyConfiguration {
+    private Set<String> proxies = new HashSet<>();
 
-    @CBitfield("can_force_early_return")
-    void setCanForceEarlyReturn(int value);
+    public void add(String[] types) {
+        proxies.add(toTypesString(types));
+    }
+
+    public boolean contains(Object[] types) {
+        return proxies.contains(toTypesString(types));
+    }
+
+    private static String toTypesString(Object[] types) {
+        StringBuilder sb = new StringBuilder();
+        for (Object type : types) {
+            sb.append(MetaUtil.toInternalName(type.toString()));
+        }
+        return sb.toString();
+    }
 }

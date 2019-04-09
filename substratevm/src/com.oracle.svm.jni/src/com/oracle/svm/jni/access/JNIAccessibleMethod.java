@@ -112,6 +112,10 @@ public final class JNIAccessibleMethod {
         return declaringClass;
     }
 
+    public boolean isPublic() {
+        return Modifier.isPublic(modifiers);
+    }
+
     public boolean isStatic() {
         return Modifier.isStatic(modifiers);
     }

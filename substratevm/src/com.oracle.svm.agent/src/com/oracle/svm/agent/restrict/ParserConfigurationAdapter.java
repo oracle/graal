@@ -24,13 +24,57 @@
  */
 package com.oracle.svm.agent.restrict;
 
+import java.util.List;
+
 import com.oracle.svm.hosted.config.ReflectionConfigurationParserDelegate;
 
-public abstract class ParserConfigurationAdapter implements ReflectionConfigurationParserDelegate<ConfigurationType> {
+import jdk.vm.ci.meta.MetaUtil;
+
+public class ParserConfigurationAdapter implements ReflectionConfigurationParserDelegate<ConfigurationType> {
+
     Configuration configuration;
 
-    ParserConfigurationAdapter(Configuration configuration) {
+    public ParserConfigurationAdapter(Configuration configuration) {
         this.configuration = configuration;
+    }
+
+    @Override
+    public ConfigurationType resolveType(String typeName) {
+        String internalName = MetaUtil.toInternalName(typeName);
+        ConfigurationType type = configuration.get(internalName);
+        return (type != null) ? type : new ConfigurationType(internalName);
+    }
+
+    @Override
+    public void registerType(ConfigurationType type) {
+        configuration.add(type);
+    }
+
+    @Override
+    public void registerField(ConfigurationType type, String fieldName, boolean allowWrite) {
+        type.addField(fieldName);
+    }
+
+    @Override
+    public boolean registerAllMethodsWithName(ConfigurationType type, String methodName) {
+        type.addMethod(new ConfigurationMethod(methodName));
+        return true;
+    }
+
+    @Override
+    public boolean registerAllConstructors(ConfigurationType type) {
+        type.addMethod(new ConfigurationMethod(ConfigurationMethod.CONSTRUCTOR_NAME));
+        return true;
+    }
+
+    @Override
+    public void registerMethod(ConfigurationType type, String methodName, List<ConfigurationType> methodParameterTypes) {
+        type.addMethod(new ConfigurationMethod(methodName, methodParameterTypes));
+    }
+
+    @Override
+    public void registerConstructor(ConfigurationType type, List<ConfigurationType> methodParameterTypes) {
+        type.addMethod(new ConfigurationMethod(ConfigurationMethod.CONSTRUCTOR_NAME, methodParameterTypes));
     }
 
     @Override
