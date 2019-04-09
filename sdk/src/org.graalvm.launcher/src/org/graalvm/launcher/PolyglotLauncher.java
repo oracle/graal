@@ -336,8 +336,8 @@ public final class PolyglotLauncher extends Launcher {
 
     private void runShell(Context.Builder contextBuilder) {
         try (Context context = contextBuilder.build()) {
-            MultiLanguageShell shell = new MultiLanguageShell(context, System.in, System.out, mainLanguage);
-            throw exit(shell.readEvalPrint());
+            MultiLanguageShell polyglotShell = new MultiLanguageShell(context, System.in, System.out, mainLanguage);
+            throw exit(polyglotShell.readEvalPrint());
         } catch (IOException e) {
             throw abort(e);
         }
