@@ -40,6 +40,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.TimerTask;
 import java.util.concurrent.ForkJoinPool;
+import java.util.function.Consumer;
 import java.util.stream.Stream;
 
 import org.graalvm.compiler.debug.DebugContext;
@@ -297,7 +298,7 @@ public class NativeImageGeneratorRunner implements ImageBuildTask {
             e.getReason().ifPresent(NativeImageGeneratorRunner::info);
             return 0;
         } catch (FallbackFeature.FallbackImageRequest e) {
-            warn(e.getMessage());
+            reportUserException(e, parsedHostedOptions, NativeImageGeneratorRunner::warn);
             return 2;
         } catch (UserException e) {
             reportUserError(e, parsedHostedOptions);
@@ -383,18 +384,22 @@ public class NativeImageGeneratorRunner implements ImageBuildTask {
      * @param parsedHostedOptions
      */
     public static void reportUserError(Throwable e, OptionValues parsedHostedOptions) {
+        reportUserException(e, parsedHostedOptions, NativeImageGeneratorRunner::reportUserError);
+    }
+
+    private static void reportUserException(Throwable e, OptionValues parsedHostedOptions, Consumer<String> report) {
         if (e instanceof UserException) {
             UserException ue = (UserException) e;
             for (String message : ue.getMessages()) {
-                reportUserError(message);
+                report.accept(message);
             }
         } else {
-            reportUserError(e.getMessage());
+            report.accept(e.getMessage());
         }
         if (parsedHostedOptions != null && NativeImageOptions.ReportExceptionStackTraces.getValue(parsedHostedOptions)) {
             e.printStackTrace();
         } else {
-            reportUserError("Use " + SubstrateOptionsParser.commandArgument(NativeImageOptions.ReportExceptionStackTraces, "+") +
+            report.accept("Use " + SubstrateOptionsParser.commandArgument(NativeImageOptions.ReportExceptionStackTraces, "+") +
                             " to print stacktrace of underlying exception");
         }
     }
