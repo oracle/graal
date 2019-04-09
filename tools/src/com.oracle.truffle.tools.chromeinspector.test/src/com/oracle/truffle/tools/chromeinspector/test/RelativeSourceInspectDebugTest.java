@@ -191,7 +191,7 @@ public class RelativeSourceInspectDebugTest {
                         "{\"result\":{},\"id\":3}\n" +
                         "{\"method\":\"Runtime.executionContextCreated\",\"params\":{\"context\":{\"origin\":\"\",\"name\":\"test\",\"id\":1}}}\n"));
         tester.eval(source);
-        assertTrue(tester.compareReceivedMessages("{\"method\":\"Debugger.scriptParsed\",\"params\":{\"endLine\":3,\"scriptId\":\"0\",\"endColumn\":0,\"startColumn\":0,\"startLine\":0,\"length\":168,\"executionContextId\":1,\"url\":\":relative/path\",\"hash\":\"ea519706da04092af2f9afd9f84696c2fe44bc91\"}}\n"));
+        assertTrue(tester.compareReceivedMessages("{\"method\":\"Debugger.scriptParsed\",\"params\":{\"endLine\":3,\"scriptId\":\"0\",\"endColumn\":0,\"startColumn\":0,\"startLine\":0,\"length\":168,\"executionContextId\":1,\"url\":\"relative/path\",\"hash\":\"ea519706da04092af2f9afd9f84696c2fe44bc91\"}}\n"));
         // Suspend at the beginning of the script:
         assertTrue(tester.compareReceivedMessages(
                         "{\"method\":\"Debugger.paused\",\"params\":{\"reason\":\"other\",\"hitBreakpoints\":[]," +
@@ -200,7 +200,7 @@ public class RelativeSourceInspectDebugTest {
                                                  "\"this\":{\"subtype\":\"null\",\"description\":\"null\",\"type\":\"object\",\"objectId\":\"2\"}," +
                                                  "\"functionLocation\":{\"scriptId\":\"0\",\"columnNumber\":0,\"lineNumber\":0}," +
                                                  "\"location\":{\"scriptId\":\"0\",\"columnNumber\":0,\"lineNumber\":0}," +
-                                                 "\"url\":\":relative/path\"}]}}\n"));
+                                                 "\"url\":\"relative/path\"}]}}\n"));
         tester.sendMessage("{\"id\":1,\"method\":\"Debugger.resume\"}");
         assertTrue(tester.compareReceivedMessages(
                         "{\"result\":{},\"id\":1}\n" +

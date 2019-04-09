@@ -66,6 +66,7 @@ import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.InstrumentInfo;
 import com.oracle.truffle.api.Option;
 import com.oracle.truffle.api.Scope;
+import com.oracle.truffle.api.TruffleFile;
 import com.oracle.truffle.api.TruffleLanguage;
 import com.oracle.truffle.api.TruffleLogger;
 import com.oracle.truffle.api.TruffleRuntime;
@@ -436,6 +437,30 @@ public abstract class TruffleInstrument {
                 fragment = new GuardedExecutableNode(languageSPI, fragment, frame);
             }
             return fragment;
+        }
+
+        /**
+         * Returns a {@link TruffleFile} for given path. This must be called on a context thread
+         * only.
+         *
+         * @param path the absolute or relative path to create {@link TruffleFile} for
+         * @return {@link TruffleFile}
+         * @since 1.0
+         */
+        public TruffleFile getTruffleFile(String path) {
+            return AccessorInstrumentHandler.engineAccess().getTruffleFile(path);
+        }
+
+        /**
+         * Returns a {@link TruffleFile} for given {@link URI}. This must be called on a context
+         * thread only.
+         *
+         * @param uri the {@link URI} to create {@link TruffleFile} for
+         * @return {@link TruffleFile}
+         * @since 1.0
+         */
+        public TruffleFile getTruffleFile(URI uri) {
+            return AccessorInstrumentHandler.engineAccess().getTruffleFile(uri);
         }
 
         private static class GuardedExecutableNode extends ExecutableNode {

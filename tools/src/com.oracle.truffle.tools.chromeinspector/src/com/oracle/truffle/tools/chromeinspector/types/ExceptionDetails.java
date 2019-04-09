@@ -76,7 +76,12 @@ public final class ExceptionDetails {
             if (scriptId >= 0) {
                 json.put("scriptId", Integer.toString(scriptId));
             } else {
-                json.put("url", ScriptsHandler.getNiceStringFromURI(throwLocation.getSource().getURI()));
+                ScriptsHandler scriptsHandler = context.acquireScriptsHandler();
+                try {
+                    json.put("url", scriptsHandler.getSourceURL(throwLocation.getSource()));
+                } finally {
+                    context.releaseScriptsHandler();
+                }
             }
         }
         if (debugException != null) {

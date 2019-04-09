@@ -90,6 +90,11 @@ public final class InspectServerSession implements MessageEndpoint {
         processThread = null;
     }
 
+    // For tests only
+    public DebuggerDomain getDebugger() {
+        return debugger;
+    }
+
     public void setMessageListener(MessageEndpoint messageListener) {
         this.messageEndpoint = messageListener;
         if (messageListener != null && processThread == null) {

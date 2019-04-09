@@ -2777,6 +2777,18 @@ public abstract class TruffleLanguage<C> {
         }
 
         @Override
+        public TruffleFile getTruffleFile(String path, FileSystem fileSystem, Supplier<Map<String, Collection<? extends TruffleFile.FileTypeDetector>>> fileTypeDetectorsSupplier) {
+            TruffleFile.FileSystemContext ctx = new TruffleFile.FileSystemContext(fileSystem, fileTypeDetectorsSupplier);
+            return getTruffleFile(path, ctx);
+        }
+
+        @Override
+        public TruffleFile getTruffleFile(URI uri, FileSystem fileSystem, Supplier<Map<String, Collection<? extends TruffleFile.FileTypeDetector>>> fileTypeDetectorsSupplier) {
+            TruffleFile.FileSystemContext ctx = new TruffleFile.FileSystemContext(fileSystem, fileTypeDetectorsSupplier);
+            return getTruffleFile(uri, ctx);
+        }
+
+        @Override
         public Object getDefaultLoggers() {
             return TruffleLogger.LoggerCache.getInstance();
         }
