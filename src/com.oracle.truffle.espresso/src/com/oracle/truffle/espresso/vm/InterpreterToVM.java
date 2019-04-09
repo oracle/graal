@@ -248,7 +248,7 @@ public final class InterpreterToVM implements ContextAccess {
 
     public static long getFieldLong(StaticObject obj, Field field) {
         assert field.getKind() == JavaKind.Long && field.getDeclaringKlass().isAssignableFrom(obj.getKlass());
-        return (long) ((StaticObjectImpl) obj).getField(field);
+        return ((StaticObjectImpl) obj).getLongField(field);
     }
 
     public static byte getFieldByte(StaticObject obj, Field field) {
@@ -268,7 +268,7 @@ public final class InterpreterToVM implements ContextAccess {
 
     public static double getFieldDouble(StaticObject obj, Field field) {
         assert field.getKind() == JavaKind.Double && field.getDeclaringKlass().isAssignableFrom(obj.getKlass());
-        return (double) ((StaticObjectImpl) obj).getField(field);
+        return Double.longBitsToDouble(((StaticObjectImpl) obj).getLongField(field));
     }
 
     public static StaticObject getFieldObject(StaticObject obj, Field field) {
@@ -308,7 +308,7 @@ public final class InterpreterToVM implements ContextAccess {
 
     public static void setFieldLong(long value, StaticObject obj, Field field) {
         assert field.getKind() == JavaKind.Long && field.getDeclaringKlass().isAssignableFrom(obj.getKlass());
-        ((StaticObjectImpl) obj).setField(field, value);
+        ((StaticObjectImpl) obj).setLongField(field, value);
     }
 
     public static void setFieldFloat(float value, StaticObject obj, Field field) {
@@ -318,7 +318,7 @@ public final class InterpreterToVM implements ContextAccess {
 
     public static void setFieldDouble(double value, StaticObject obj, Field field) {
         assert field.getKind() == JavaKind.Double && field.getDeclaringKlass().isAssignableFrom(obj.getKlass());
-        ((StaticObjectImpl) obj).setField(field, value);
+        ((StaticObjectImpl) obj).setLongField(field, Double.doubleToRawLongBits(value));
     }
 
     public static void setFieldObject(StaticObject value, StaticObject obj, Field field) {

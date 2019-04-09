@@ -349,7 +349,8 @@ public class BytecodeNode extends EspressoBaseNode implements CustomNodeCount {
 
         int n = 0;
         if (hasReceiver) {
-            setLocalObject(frame, n, (StaticObject) frameArguments[0]);
+            assert frameArguments[0] != StaticObject.NULL: "null receiver in init arguments !";
+            setLocalObject(frame, n, (StaticObjectImpl) frameArguments[0]);
             n += JavaKind.Object.getSlotCount();
         }
         for (int i = 0; i < argCount; ++i) {

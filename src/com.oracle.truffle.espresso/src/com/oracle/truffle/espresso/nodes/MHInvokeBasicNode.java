@@ -28,6 +28,7 @@ import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.api.nodes.DirectCallNode;
 import com.oracle.truffle.api.nodes.IndirectCallNode;
 import com.oracle.truffle.api.nodes.Node;
+import com.oracle.truffle.espresso.impl.Field;
 import com.oracle.truffle.espresso.impl.Method;
 import com.oracle.truffle.espresso.meta.Meta;
 import com.oracle.truffle.espresso.runtime.StaticObjectImpl;
@@ -54,14 +55,14 @@ public class MHInvokeBasicNode extends EspressoBaseNode {
 abstract class BasicNode extends Node {
 
     final int vmentry;
-    final int isCompiled;
+    final Field isCompiled;
     final int hidden_vmtarget;
 
     static final int INLINE_CACHE_SIZE_LIMIT = 3;
 
     BasicNode(Meta meta) {
         this.vmentry = meta.vmentry.getFieldIndex();
-        this.isCompiled = meta.isCompiled.getFieldIndex();
+        this.isCompiled = meta.isCompiled;
         this.hidden_vmtarget = meta.HIDDEN_VMTARGET.getFieldIndex();
     }
 
@@ -96,7 +97,7 @@ abstract class BasicNode extends Node {
         return (Method) object.getUnsafeField(HIDDEN_VMTARGET);
     }
 
-    static boolean getBooleanField(StaticObjectImpl object, int field) {
-        return object.getUnsafeWordField(field) != 0;
+    static boolean getBooleanField(StaticObjectImpl object, Field field) {
+        return object.getWordField(field) != 0;
     }
 }

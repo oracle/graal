@@ -469,7 +469,7 @@ public final class Target_sun_misc_Unsafe {
             return U.getLongVolatile(((StaticObjectArray) holder).unwrap(), offset);
         }
         Field f = getInstanceFieldFromIndex(holder, Math.toIntExact(offset) - SAFETY_FIELD_OFFSET);
-        return (long) ((StaticObjectImpl) holder).getFieldVolatile(f);
+        return ((StaticObjectImpl) holder).getLongFieldVolatile(f);
     }
 
     @Substitution(hasReceiver = true)
@@ -478,7 +478,7 @@ public final class Target_sun_misc_Unsafe {
             return U.getDoubleVolatile(((StaticObjectArray) holder).unwrap(), offset);
         }
         Field f = getInstanceFieldFromIndex(holder, Math.toIntExact(offset) - SAFETY_FIELD_OFFSET);
-        return (double) ((StaticObjectImpl) holder).getFieldVolatile(f);
+        return Double.longBitsToDouble(((StaticObjectImpl) holder).getLongFieldVolatile(f));
     }
 
     @Substitution(hasReceiver = true)
