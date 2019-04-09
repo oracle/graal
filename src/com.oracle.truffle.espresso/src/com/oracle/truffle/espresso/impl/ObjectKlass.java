@@ -73,7 +73,7 @@ public final class ObjectKlass extends Klass {
     @CompilationFinal(dimensions = 1) //
     private Method[] declaredMethods;
 
-    @CompilationFinal int trueDeclaredMethods;
+    @CompilationFinal int mirandasStartIndex;
 
     private final InnerClassesAttribute innerClasses;
 
@@ -369,13 +369,23 @@ public final class ObjectKlass extends Klass {
         return staticFieldTable[slot];
     }
 
+    public final Field lookupHiddenField(Symbol<Name> name) {
+        for (Field f: fieldTable) {
+            if (f.getName() == name && f.isHidden()) {
+                return f;
+            }
+        }
+        return null;
+    }
+
     Method[] getVTable() {
         return vtable;
     }
 
     @Override
     public final Method vtableLookup(int index) {
-        return (index == -1) ? null : vtable[index];
+        assert (index >= 0) : "Undeclared virtual method";
+        return vtable[index];
     }
 
     @Override
@@ -418,7 +428,7 @@ public final class ObjectKlass extends Klass {
     }
 
     final void setMirandas(ArrayList<InterfaceTables.Miranda> mirandas) {
-        this.trueDeclaredMethods = declaredMethods.length;
+        this.mirandasStartIndex = declaredMethods.length;
         Method[] declaredAndMirandaMethods = new Method[declaredMethods.length + mirandas.size()];
         System.arraycopy(declaredMethods, 0, declaredAndMirandaMethods, 0, declaredMethods.length);
         int pos = declaredMethods.length;

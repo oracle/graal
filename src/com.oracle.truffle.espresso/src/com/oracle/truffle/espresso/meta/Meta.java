@@ -67,12 +67,13 @@ public final class Meta implements ContextAccess {
         Serializable = knownKlass(Type.Serializable);
         ARRAY_SUPERINTERFACES = new ObjectKlass[]{Cloneable, Serializable};
 
-        Object_array = Object.array();
-
-        String = knownKlass(Type.String);
         Class = knownKlass(Type.Class);
+        HIDDEN_MIRROR_KLASS = Class.lookupHiddenField(Name.HIDDEN_MIRROR_KLASS);
+        String = knownKlass(Type.String);
         Class_Array = Class.array();
         Class_forName_String = Class.lookupDeclaredMethod(Name.forName, Signature.Class_String);
+
+        Object_array = Object.array();
 
         // Primitives.
         _boolean = knownPrimitive(Type._boolean);
@@ -129,6 +130,7 @@ public final class Meta implements ContextAccess {
         String_length = String.lookupDeclaredMethod(Name.length, Signature._int);
 
         Throwable = knownKlass(Type.Throwable);
+        HIDDEN_FRAMES = Throwable.lookupHiddenField(Name.HIDDEN_FRAMES);
         Throwable_backtrace = Throwable.lookupField(Name.backtrace, Type.Object);
 
         StackTraceElement = knownKlass(Type.StackTraceElement);
@@ -159,6 +161,8 @@ public final class Meta implements ContextAccess {
 
         // Guest reflection.
         Constructor = knownKlass(Type.Constructor);
+        HIDDEN_CONSTRUCTOR_KEY = Constructor.lookupHiddenField(Name.HIDDEN_CONSTRUCTOR_KEY);
+        HIDDEN_CONSTRUCTOR_RUNTIME_VISIBLE_TYPE_ANNOTATIONS = Constructor.lookupHiddenField(Name.HIDDEN_CONSTRUCTOR_RUNTIME_VISIBLE_TYPE_ANNOTATIONS);
         Constructor_clazz = Constructor.lookupDeclaredField(Name.clazz, Type.Class);
         Constructor_root = Constructor.lookupDeclaredField(Name.root, Type.Constructor);
         Constructor_parameterTypes = Constructor.lookupDeclaredField(Name.parameterTypes, Type.Class_array);
@@ -166,6 +170,8 @@ public final class Meta implements ContextAccess {
         MagicAccessorImpl = knownKlass(Type.MagicAccessorImpl);
 
         Method = knownKlass(Type.Method);
+        HIDDEN_METHOD_KEY = Method.lookupHiddenField(Name.HIDDEN_METHOD_KEY);
+        HIDDEN_METHOD_RUNTIME_VISIBLE_TYPE_ANNOTATIONS = Method.lookupHiddenField(Name.HIDDEN_METHOD_RUNTIME_VISIBLE_TYPE_ANNOTATIONS);
         Method_root = Method.lookupDeclaredField(Name.root, Type.Method);
         Method_clazz = Method.lookupDeclaredField(Name.clazz, Type.Class);
         Method_override = Method.lookupDeclaredField(Name.override, Type._boolean);
@@ -174,6 +180,8 @@ public final class Meta implements ContextAccess {
         Parameter = knownKlass(Type.Parameter);
 
         Field = knownKlass(Type.Field);
+        HIDDEN_FIELD_KEY = Field.lookupHiddenField(Name.HIDDEN_FIELD_KEY);
+        HIDDEN_FIELD_RUNTIME_VISIBLE_TYPE_ANNOTATIONS = Field.lookupHiddenField(Name.HIDDEN_FIELD_RUNTIME_VISIBLE_TYPE_ANNOTATIONS);
         Field_root = Field.lookupDeclaredField(Name.root, Field.getType());
         Field_class = Field.lookupDeclaredField(Name.clazz, Type.Class);
         Field_name = Field.lookupDeclaredField(Name.name, Type.String);
@@ -186,6 +194,7 @@ public final class Meta implements ContextAccess {
         ByteBuffer_wrap = ByteBuffer.lookupDeclaredMethod(Name.wrap, Signature.ByteBuffer_byte_array);
 
         Thread = knownKlass(Type.Thread);
+        HIDDEN_HOST_THREAD = Thread.lookupHiddenField(Name.HIDDEN_HOST_THREAD);
         ThreadGroup = knownKlass(Type.ThreadGroup);
         ThreadGroup_maxPriority = ThreadGroup.lookupDeclaredField(Name.maxPriority, Type._int);
 
@@ -204,6 +213,8 @@ public final class Meta implements ContextAccess {
         fromMethodDescriptorString = MethodType.lookupDeclaredMethod(Name.fromMethodDescriptorString, Signature.fromMethodDescriptorString_signature);
 
         MemberName = knownKlass(Type.MemberName);
+        HIDDEN_VMINDEX = MemberName.lookupHiddenField(Name.HIDDEN_VMINDEX);
+        HIDDEN_VMTARGET = MemberName.lookupHiddenField(Name.HIDDEN_VMTARGET);
         getSignature = MemberName.lookupDeclaredMethod(Name.getSignature, Signature.String);
         MNclazz = MemberName.lookupDeclaredField(Name.clazz, Type.Class);
         MNname = MemberName.lookupDeclaredField(Name.name, Type.String);
@@ -245,6 +256,7 @@ public final class Meta implements ContextAccess {
 
     public final ObjectKlass String;
     public final ObjectKlass Class;
+    public final Field HIDDEN_MIRROR_KLASS;
     public final ArrayKlass Class_Array;
     public final Method Class_forName_String;
 
@@ -309,6 +321,8 @@ public final class Meta implements ContextAccess {
     public final Method ClassLoader_getSystemClassLoader;
 
     public final ObjectKlass Constructor;
+    public final Field HIDDEN_CONSTRUCTOR_RUNTIME_VISIBLE_TYPE_ANNOTATIONS;
+    public final Field HIDDEN_CONSTRUCTOR_KEY;
     public final Field Constructor_clazz;
     public final Field Constructor_root;
     public final Field Constructor_parameterTypes;
@@ -317,6 +331,8 @@ public final class Meta implements ContextAccess {
     public final ObjectKlass MagicAccessorImpl;
 
     public final ObjectKlass Method;
+    public final Field HIDDEN_METHOD_RUNTIME_VISIBLE_TYPE_ANNOTATIONS;
+    public final Field HIDDEN_METHOD_KEY;
     public final Field Method_root;
     public final Field Method_clazz;
     public final Field Method_override;
@@ -325,6 +341,8 @@ public final class Meta implements ContextAccess {
     public final ObjectKlass Parameter;
 
     public final ObjectKlass Field;
+    public final Field HIDDEN_FIELD_RUNTIME_VISIBLE_TYPE_ANNOTATIONS;
+    public final Field HIDDEN_FIELD_KEY;
     public final Field Field_root;
     public final Field Field_class;
     public final Field Field_name;
@@ -345,6 +363,7 @@ public final class Meta implements ContextAccess {
     public final ObjectKlass InternalError;
 
     public final ObjectKlass Throwable;
+    public final Field HIDDEN_FRAMES;
     public final Field Throwable_backtrace;
 
     public final ObjectKlass NoSuchFieldError;
@@ -368,6 +387,7 @@ public final class Meta implements ContextAccess {
     public final ObjectKlass ThreadGroup;
     public final Field ThreadGroup_maxPriority;
     public final ObjectKlass Thread;
+    public final Field HIDDEN_HOST_THREAD;
     public final Field Thread_group;
     public final Field Thread_name;
     public final Field Thread_priority;
@@ -384,6 +404,8 @@ public final class Meta implements ContextAccess {
     public final ObjectKlass MemberName;
     public final Method getSignature;
     public final Method fromMethodDescriptorString;
+    public final Field HIDDEN_VMTARGET;
+    public final Field HIDDEN_VMINDEX;
     public final Field MNclazz;
     public final Field MNname;
     public final Field MNtype;

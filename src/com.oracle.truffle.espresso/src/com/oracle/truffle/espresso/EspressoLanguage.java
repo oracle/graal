@@ -22,6 +22,7 @@
  */
 package com.oracle.truffle.espresso;
 
+import com.oracle.truffle.espresso.runtime.StaticObjectImpl;
 import org.graalvm.options.OptionDescriptors;
 import org.graalvm.options.OptionValues;
 
@@ -48,7 +49,6 @@ import com.oracle.truffle.espresso.meta.Meta;
 import com.oracle.truffle.espresso.nodes.MainLauncherRootNode;
 import com.oracle.truffle.espresso.runtime.EspressoContext;
 import com.oracle.truffle.espresso.runtime.StaticObject;
-import com.oracle.truffle.espresso.runtime.StaticObjectClass;
 import com.oracle.truffle.espresso.substitutions.Substitutions;
 
 @ProvidedTags(StandardTags.RootTag.class)
@@ -69,6 +69,8 @@ public final class EspressoLanguage extends TruffleLanguage<EspressoContext> {
     private final Names names;
     private final Types types;
     private final Signatures signatures;
+
+    private long startupClock = 0;
 
     public EspressoLanguage() {
         Name.init();
@@ -117,11 +119,18 @@ public final class EspressoLanguage extends TruffleLanguage<EspressoContext> {
 
     @Override
     protected void initializeContext(final EspressoContext context) throws Exception {
+        startupClock = System.currentTimeMillis();
         context.initializeContext();
     }
 
     @Override
     protected void finalizeContext(EspressoContext context) {
+        long totalTime = System.currentTimeMillis() - startupClock;
+        if (totalTime > 5000) {
+            System.out.println("Time spent in Epresso: " + (totalTime / 1000) + "s");
+        } else {
+            System.out.println("Time spent in Epresso: " + (totalTime) + "ms");
+        }
         context.getMeta().Shutdown_shutdown.invokeDirect(null);
     }
 
@@ -158,12 +167,12 @@ public final class EspressoLanguage extends TruffleLanguage<EspressoContext> {
      * Loads a class and verifies that the main class is present and it is ok to call it for more
      * details refer to the java implementation.
      */
-    private static StaticObjectClass loadMainClass(EspressoContext context, LaunchMode mode, String name) {
+    private static StaticObjectImpl loadMainClass(EspressoContext context, LaunchMode mode, String name) {
         assert context.isInitialized();
         Meta meta = context.getMeta();
         Klass launcherHelperKlass = meta.loadKlass(Type.sun_launcher_LauncherHelper, StaticObject.NULL);
         Method checkAndLoadMain = launcherHelperKlass.lookupDeclaredMethod(Name.checkAndLoadMain, Signature.Class_boolean_int_String);
-        return (StaticObjectClass) checkAndLoadMain.invokeDirect(null, true, mode.ordinal(), meta.toGuestString(name));
+        return (StaticObjectImpl) checkAndLoadMain.invokeDirect(null, true, mode.ordinal(), meta.toGuestString(name));
     }
 
     @Override

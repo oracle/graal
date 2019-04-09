@@ -22,9 +22,6 @@
  */
 package com.oracle.truffle.espresso.impl;
 
-import java.lang.reflect.Modifier;
-import java.util.function.Function;
-
 import com.oracle.truffle.api.CallTarget;
 import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.CompilerDirectives.CompilationFinal;
@@ -62,11 +59,13 @@ import com.oracle.truffle.espresso.runtime.StaticObject;
 import com.oracle.truffle.espresso.runtime.StaticObjectImpl;
 import com.oracle.truffle.nfi.types.NativeSimpleType;
 
+import java.lang.reflect.Modifier;
+import java.util.function.Function;
+
 import static com.oracle.truffle.espresso.classfile.Constants.REF_invokeInterface;
 import static com.oracle.truffle.espresso.classfile.Constants.REF_invokeSpecial;
 import static com.oracle.truffle.espresso.classfile.Constants.REF_invokeStatic;
 import static com.oracle.truffle.espresso.classfile.Constants.REF_invokeVirtual;
-import static com.oracle.truffle.espresso.impl.HiddenFields.HIDDEN_METHOD_KEY;
 
 public final class Method implements ModifiersProvider, ContextAccess {
     public static final Method[] EMPTY_ARRAY = new Method[0];
@@ -494,7 +493,7 @@ public final class Method implements ModifiersProvider, ContextAccess {
         StaticObject curMethod = seed;
         Method target = null;
         while (target == null) {
-            target = (Method) ((StaticObjectImpl) curMethod).getHiddenField(HIDDEN_METHOD_KEY);
+            target = (Method) ((StaticObjectImpl) curMethod).getHiddenField(meta.HIDDEN_METHOD_KEY);
             if (target == null) {
                 curMethod = (StaticObject) meta.Method_root.get(curMethod);
             }

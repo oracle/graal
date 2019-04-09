@@ -45,7 +45,7 @@ public class VirtualTable {
         int pos;
         int n_method = 0;
         for (Method m : declaredMethods) {
-            if (m.isVirtualCall() || !(n_method < thisKlass.trueDeclaredMethods)) {
+            if (m.isVirtualCall() || !(n_method < thisKlass.mirandasStartIndex)) {
                 if (superKlass != null) {
                     override = superKlass.lookupVirtualMethod(m.getName(), m.getRawSignature());
                 } else {

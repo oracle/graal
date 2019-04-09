@@ -32,8 +32,6 @@ import com.oracle.truffle.espresso.impl.Method;
 import com.oracle.truffle.espresso.meta.Meta;
 import com.oracle.truffle.espresso.runtime.StaticObjectImpl;
 
-import static com.oracle.truffle.espresso.impl.HiddenFields.HIDDEN_VMTARGET;
-
 public class MHInvokeBasicNode extends EspressoBaseNode {
 
     final int form;
@@ -57,12 +55,14 @@ abstract class BasicNode extends Node {
 
     final int vmentry;
     final int isCompiled;
+    final int hidden_vmtarget;
 
     static final int INLINE_CACHE_SIZE_LIMIT = 3;
 
     BasicNode(Meta meta) {
         this.vmentry = meta.vmentry.getFieldIndex();
         this.isCompiled = meta.isCompiled.getFieldIndex();
+        this.hidden_vmtarget = meta.HIDDEN_VMTARGET.getFieldIndex();
     }
 
     abstract Object executeBasic(StaticObjectImpl lform, Object[] args);
@@ -75,7 +75,7 @@ abstract class BasicNode extends Node {
     @Specialization(limit = "INLINE_CACHE_SIZE_LIMIT", guards = {"lform == cachedlform", "getBooleanField(lform, isCompiled)"})
     Object directBasic(StaticObjectImpl lform, Object[] args,
                     @Cached("lform") StaticObjectImpl cachedlform,
-                    @Cached("getMethodHiddenField(getSOIField(lform, vmentry))") Method target,
+                    @Cached("getMethodHiddenField(getSOIField(lform, vmentry), hidden_vmtarget)") Method target,
                     @Cached("create(target.getCallTarget())") DirectCallNode callNode) {
         return callNode.call(args);
     }
@@ -84,7 +84,7 @@ abstract class BasicNode extends Node {
     Object normalBasic(StaticObjectImpl lform, Object[] args,
                     @Cached("create()") IndirectCallNode callNode) {
         StaticObjectImpl mname = (StaticObjectImpl) lform.getUnsafeField(vmentry);
-        Method target = (Method) mname.getHiddenField(HIDDEN_VMTARGET);
+        Method target = (Method) mname.getUnsafeField(hidden_vmtarget);
         return callNode.call(target.getCallTarget(), args);
     }
 
@@ -92,8 +92,8 @@ abstract class BasicNode extends Node {
         return (StaticObjectImpl) object.getUnsafeField(field);
     }
 
-    static Method getMethodHiddenField(StaticObjectImpl object) {
-        return (Method) object.getHiddenField(HIDDEN_VMTARGET);
+    static Method getMethodHiddenField(StaticObjectImpl object, int HIDDEN_VMTARGET) {
+        return (Method) object.getUnsafeField(HIDDEN_VMTARGET);
     }
 
     static boolean getBooleanField(StaticObjectImpl object, int field) {

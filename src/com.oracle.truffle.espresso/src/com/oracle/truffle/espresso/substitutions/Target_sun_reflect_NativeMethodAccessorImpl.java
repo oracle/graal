@@ -35,10 +35,7 @@ import com.oracle.truffle.espresso.meta.Meta;
 import com.oracle.truffle.espresso.runtime.EspressoException;
 import com.oracle.truffle.espresso.runtime.StaticObject;
 import com.oracle.truffle.espresso.runtime.StaticObjectArray;
-import com.oracle.truffle.espresso.runtime.StaticObjectClass;
 import com.oracle.truffle.espresso.runtime.StaticObjectImpl;
-
-import static com.oracle.truffle.espresso.impl.HiddenFields.HIDDEN_METHOD_KEY;
 
 /**
  * This substitution is merely for performance reasons, to avoid the deep-dive to native. libjava
@@ -233,13 +230,13 @@ public final class Target_sun_reflect_NativeMethodAccessorImpl {
 
         Method reflectedMethod = null;
         while (reflectedMethod == null) {
-            reflectedMethod = (Method) ((StaticObjectImpl) curMethod).getHiddenField(HIDDEN_METHOD_KEY);
+            reflectedMethod = (Method) ((StaticObjectImpl) curMethod).getHiddenField(meta.HIDDEN_METHOD_KEY);
             if (reflectedMethod == null) {
                 curMethod = (StaticObject) meta.Method_root.get(curMethod);
             }
         }
 
-        Klass klass = ((StaticObjectClass) meta.Method_clazz.get(guestMethod)).getMirrorKlass();
+        Klass klass = ((StaticObjectImpl) meta.Method_clazz.get(guestMethod)).getMirrorKlass();
         StaticObjectArray parameterTypes = (StaticObjectArray) meta.Method_parameterTypes.get(guestMethod);
         // System.err.println(EspressoOptions.INCEPTION_NAME + " Reflective method for " +
         // reflectedMethod.getName());
@@ -326,7 +323,7 @@ public final class Target_sun_reflect_NativeMethodAccessorImpl {
         for (int i = 0; i < argsLen; ++i) {
             StaticObject arg = ((StaticObjectArray) args).get(i);
             StaticObject paramTypeMirror = parameterTypes.get(i);
-            Klass paramKlass = ((StaticObjectClass) paramTypeMirror).getMirrorKlass();
+            Klass paramKlass = ((StaticObjectImpl) paramTypeMirror).getMirrorKlass();
             // Throws guest IllegallArgumentException if the parameter cannot be casted or widened.
             adjustedArgs[i] = checkAndWiden(meta, arg, paramKlass);
         }

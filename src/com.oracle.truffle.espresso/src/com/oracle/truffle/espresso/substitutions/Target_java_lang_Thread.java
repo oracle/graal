@@ -31,8 +31,6 @@ import com.oracle.truffle.espresso.meta.Meta;
 import com.oracle.truffle.espresso.runtime.StaticObject;
 import com.oracle.truffle.espresso.runtime.StaticObjectImpl;
 
-import static com.oracle.truffle.espresso.impl.HiddenFields.HIDDEN_HOST_THREAD;
-
 @EspressoSubstitutions
 public final class Target_java_lang_Thread {
 
@@ -61,7 +59,7 @@ public final class Target_java_lang_Thread {
     @SuppressWarnings("unused")
     @Substitution(hasReceiver = true)
     public static boolean  isAlive(@Host(Thread.class) StaticObject self) {
-        Thread hostThread = (Thread) ((StaticObjectImpl) self).getHiddenField(HIDDEN_HOST_THREAD);
+        Thread hostThread = (Thread) ((StaticObjectImpl) self).getHiddenField(self.getKlass().getMeta().HIDDEN_HOST_THREAD);
         if (hostThread == null) {
             return false;
         }
@@ -84,7 +82,7 @@ public final class Target_java_lang_Thread {
                 }
             });
 
-            ((StaticObjectImpl) self).setHiddenField(HIDDEN_HOST_THREAD, hostThread);
+            ((StaticObjectImpl) self).setHiddenField(self.getKlass().getMeta().HIDDEN_HOST_THREAD, hostThread);
             EspressoLanguage.getCurrentContext().host2guest.put(hostThread, self);
 
             System.err.println("Starting thread: " + self.getKlass());
@@ -123,7 +121,7 @@ public final class Target_java_lang_Thread {
 
     @Substitution
     public static void interrupt0(@Host(Object.class) StaticObject self) {
-        Thread hostThread = (Thread) ((StaticObjectImpl) self).getHiddenField(HIDDEN_HOST_THREAD);
+        Thread hostThread = (Thread) ((StaticObjectImpl) self).getHiddenField(self.getKlass().getMeta().HIDDEN_HOST_THREAD);
         if (hostThread == null) {
             return;
         }

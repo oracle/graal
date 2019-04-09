@@ -30,10 +30,9 @@ import com.oracle.truffle.espresso.descriptors.Symbol;
 import com.oracle.truffle.espresso.descriptors.Symbol.Type;
 import com.oracle.truffle.espresso.impl.Method;
 import com.oracle.truffle.espresso.meta.JavaKind;
+import com.oracle.truffle.espresso.meta.Meta;
 import com.oracle.truffle.espresso.runtime.StaticObject;
 import com.oracle.truffle.espresso.runtime.StaticObjectImpl;
-
-import static com.oracle.truffle.espresso.impl.HiddenFields.HIDDEN_VMTARGET;
 
 
 // Non-constant call site. His target can change, but hopefully, the signature never changes.
@@ -47,8 +46,8 @@ public final class InvokeDynamicCallSiteNode extends QuickNode {
 
     @CompilerDirectives.CompilationFinal(dimensions = 1) private Symbol<Symbol.Type>[] parsedSignature;
 
-    InvokeDynamicCallSiteNode(StaticObjectImpl memberName, StaticObject appendix, Symbol<Type>[] parsedSignature) {
-        Method target = (Method) memberName.getHiddenField(HIDDEN_VMTARGET);
+    InvokeDynamicCallSiteNode(StaticObjectImpl memberName, StaticObject appendix, Symbol<Type>[] parsedSignature, Meta meta) {
+        Method target = (Method) memberName.getHiddenField(meta.HIDDEN_VMTARGET);
         this.appendix = appendix;
         this.parsedSignature = parsedSignature;
         this.returnType = Signatures.returnType(parsedSignature);

@@ -1,24 +1,21 @@
 package com.oracle.truffle.espresso.substitutions;
 
-import java.lang.reflect.Constructor;
-
 import com.oracle.truffle.espresso.EspressoLanguage;
 import com.oracle.truffle.espresso.impl.Klass;
 import com.oracle.truffle.espresso.impl.Method;
 import com.oracle.truffle.espresso.meta.Meta;
 import com.oracle.truffle.espresso.runtime.StaticObject;
 import com.oracle.truffle.espresso.runtime.StaticObjectArray;
-import com.oracle.truffle.espresso.runtime.StaticObjectClass;
 import com.oracle.truffle.espresso.runtime.StaticObjectImpl;
 
-import static com.oracle.truffle.espresso.impl.HiddenFields.HIDDEN_CONSTRUCTOR_KEY;
+import java.lang.reflect.Constructor;
 
 @EspressoSubstitutions
 public class Target_sun_reflect_NativeConstructorAccessorImpl {
     @Substitution
     public static @Host(Object.class) StaticObject newInstance0(@Host(Constructor.class) StaticObject constructor, @Host(Object[].class) StaticObject args0) {
         Meta meta = EspressoLanguage.getCurrentContext().getMeta();
-        Klass klass = ((StaticObjectClass) meta.Constructor_clazz.get(constructor)).getMirrorKlass();
+        Klass klass = ((StaticObjectImpl) meta.Constructor_clazz.get(constructor)).getMirrorKlass();
         klass.initialize();
         if (klass.isArray() || klass.isPrimitive() || klass.isInterface() || klass.isAbstract()) {
             throw meta.throwEx(InstantiationException.class);
@@ -27,7 +24,7 @@ public class Target_sun_reflect_NativeConstructorAccessorImpl {
 
         Method reflectedMethod = null;
         while (reflectedMethod == null) {
-            reflectedMethod = (Method) ((StaticObjectImpl) curMethod).getHiddenField(HIDDEN_CONSTRUCTOR_KEY);
+            reflectedMethod = (Method) ((StaticObjectImpl) curMethod).getHiddenField(meta.HIDDEN_CONSTRUCTOR_KEY);
             if (reflectedMethod == null) {
                 curMethod = (StaticObject) meta.Constructor_root.get(curMethod);
             }

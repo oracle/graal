@@ -1123,14 +1123,13 @@ public class BytecodeNode extends EspressoBaseNode implements CustomNodeCount {
                     }
                     // @formatter:on
                     // Checkstyle: resume
+                } catch (EspressoException e) {
+                    throw e;
                 } catch (RuntimeException e) {
-                    if (e instanceof EspressoException) {
-                        throw e;
-                    }
+                    CompilerDirectives.transferToInterpreter();
                     if (DEBUG_GENERAL) {
                         reportVMError(e, curBCI, this);
                     }
-                    CompilerDirectives.transferToInterpreter();
                     throw getMeta().throwEx(VirtualMachineError.class);
                 }
             } catch (EspressoException e) {
@@ -1551,7 +1550,7 @@ public class BytecodeNode extends EspressoBaseNode implements CustomNodeCount {
 
         StaticObjectImpl unboxedAppendix = appendix.get(0);
 
-        return injectAndCall(frame, top, curBCI, new InvokeDynamicCallSiteNode(memberName, unboxedAppendix, parsedInvokeSignature), opCode);
+        return injectAndCall(frame, top, curBCI, new InvokeDynamicCallSiteNode(memberName, unboxedAppendix, parsedInvokeSignature, meta), opCode);
     }
 
     public static StaticObject signatureToMethodType(Symbol<Type>[] signature, Klass declaringKlass, Meta meta) {

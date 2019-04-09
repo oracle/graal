@@ -30,8 +30,6 @@ import com.oracle.truffle.espresso.impl.Method;
 import com.oracle.truffle.espresso.runtime.StaticObject;
 import com.oracle.truffle.espresso.runtime.StaticObjectImpl;
 
-import static com.oracle.truffle.espresso.impl.HiddenFields.HIDDEN_VMTARGET;
-
 public class MHInvokeGenericNode extends EspressoBaseNode {
     private final int argCount;
     private final StaticObject appendix;
@@ -41,7 +39,7 @@ public class MHInvokeGenericNode extends EspressoBaseNode {
         super(method);
         this.argCount = Signatures.parameterCount(getMethod().getParsedSignature(), false);
         this.appendix = appendix;
-        Method target = (Method) memberName.getHiddenField(HIDDEN_VMTARGET);
+        Method target = (Method) memberName.getHiddenField(method.getMeta().HIDDEN_VMTARGET);
         this.callNode = DirectCallNode.create(target.getCallTarget());
     }
 

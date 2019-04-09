@@ -26,12 +26,13 @@ import com.oracle.truffle.api.CompilerAsserts;
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.interop.ForeignAccess;
 import com.oracle.truffle.api.nodes.ExplodeLoop;
+import com.oracle.truffle.espresso.descriptors.Symbol;
 import com.oracle.truffle.espresso.impl.Field;
+import com.oracle.truffle.espresso.impl.Klass;
 import com.oracle.truffle.espresso.impl.ObjectKlass;
 import com.oracle.truffle.espresso.meta.EspressoError;
 import com.oracle.truffle.espresso.meta.Meta;
 import com.oracle.truffle.espresso.meta.MetaUtil;
-
 import sun.misc.Unsafe;
 
 public class StaticObjectImpl extends StaticObject {
@@ -65,7 +66,7 @@ public class StaticObjectImpl extends StaticObject {
 
     // Shallow copy.
     public StaticObject copy() {
-        return new StaticObjectImpl((ObjectKlass) getKlass(), fields.clone(), wordFields.clone());
+        return new StaticObjectImpl((ObjectKlass) getKlass(), fields == null ? null : fields.clone(), wordFields == null ? null : wordFields.clone());
     }
 
     public StaticObjectImpl(ObjectKlass klass) {
@@ -75,8 +76,13 @@ public class StaticObjectImpl extends StaticObject {
     public StaticObjectImpl(ObjectKlass klass, boolean isStatic) {
         super(klass);
         // assert !isStatic || klass.isInitialized();
-        this.fields = isStatic ? new Object[klass.getStaticObjectFieldsCount()] : new Object[klass.getObjectFieldsCount()];
-        this.wordFields = isStatic ? new int[klass.getStaticWordFieldsCount()] : new int[klass.getWordFieldsCount()];
+        if (isStatic) {
+            this.fields = klass.getStaticObjectFieldsCount() > 0 ? new Object[klass.getStaticObjectFieldsCount()] : null;
+            this.wordFields = klass.getStaticWordFieldsCount() > 0 ? new int[klass.getStaticWordFieldsCount()] : null;
+        } else {
+            this.fields = klass.getObjectFieldsCount() > 0 ? new Object[klass.getObjectFieldsCount()] : null;
+            this.wordFields = klass.getWordFieldsCount() > 0 ? new int[klass.getWordFieldsCount()] : null;
+        }
         initFields(klass, isStatic);
     }
 
@@ -124,10 +130,6 @@ public class StaticObjectImpl extends StaticObject {
         }
         assert result != null;
         return result;
-    }
-
-    public final Object[] getFields() {
-        return fields;
     }
 
     public final Object getUnsafeField(int fieldIndex) {
@@ -185,6 +187,11 @@ public class StaticObjectImpl extends StaticObject {
         }
     }
 
+    public final Klass getMirrorKlass() {
+        assert getKlass().getType() == Symbol.Type.Class;
+        return (Klass) getHiddenField(getKlass().getMeta().HIDDEN_MIRROR_KLASS);
+    }
+
     @TruffleBoundary
     @Override
     public String toString() {
@@ -194,12 +201,14 @@ public class StaticObjectImpl extends StaticObject {
         return getKlass().getType().toString();
     }
 
-    public void setHiddenField(int pos, Object value) {
-            fields[pos] = value;
+    public void setHiddenField(Field hiddenField, Object value) {
+        assert hiddenField.isHidden();
+        fields[hiddenField.getFieldIndex()] = value;
     }
 
-    public Object getHiddenField(int pos) {
-        return fields[pos];
+    public Object getHiddenField(Field hiddenField) {
+        assert hiddenField.isHidden();
+        return fields[hiddenField.getFieldIndex()];
     }
 
     @Override

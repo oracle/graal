@@ -32,7 +32,7 @@ import com.oracle.truffle.espresso.meta.EspressoError;
 import com.oracle.truffle.espresso.meta.Meta;
 import com.oracle.truffle.espresso.runtime.StaticObject;
 import com.oracle.truffle.espresso.runtime.StaticObjectArray;
-import com.oracle.truffle.espresso.runtime.StaticObjectClass;
+import com.oracle.truffle.espresso.runtime.StaticObjectImpl;
 import com.oracle.truffle.espresso.vm.InterpreterToVM;
 
 @EspressoSubstitutions
@@ -67,7 +67,7 @@ public final class Target_java_lang_reflect_Array {
         if (StaticObject.isNull(componentType)) {
             throw meta.throwEx(meta.NullPointerException);
         }
-        Klass component = ((StaticObjectClass) componentType).getMirrorKlass();
+        Klass component = ((StaticObjectImpl) componentType).getMirrorKlass();
         if (component == meta._void || Types.getArrayDimensions(component.getType()) >= 255) {
             throw meta.throwEx(meta.IllegalArgumentException);
         }
@@ -113,7 +113,7 @@ public final class Target_java_lang_reflect_Array {
         if (StaticObject.isNull(componentType)) {
             throw meta.throwEx(meta.NullPointerException);
         }
-        Klass component = ((StaticObjectClass) componentType).getMirrorKlass();
+        Klass component = ((StaticObjectImpl) componentType).getMirrorKlass();
         if (component == meta._void || StaticObject.isNull(dimensionsArray)) {
             throw meta.throwEx(meta.IllegalArgumentException);
         }

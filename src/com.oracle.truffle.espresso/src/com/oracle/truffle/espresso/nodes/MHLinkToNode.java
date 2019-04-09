@@ -33,18 +33,18 @@ import com.oracle.truffle.espresso.meta.EspressoError;
 import com.oracle.truffle.espresso.runtime.MethodHandleIntrinsics;
 import com.oracle.truffle.espresso.runtime.StaticObjectImpl;
 
-import static com.oracle.truffle.espresso.impl.HiddenFields.HIDDEN_VMTARGET;
-
 public abstract class MHLinkToNode extends EspressoBaseNode {
     final int argCount;
     final MethodHandleIntrinsics.PolySigIntrinsics id;
     @Child IndirectCallNode callNode;
+    private final int hidden_vmtarget;
 
     MHLinkToNode(Method method, MethodHandleIntrinsics.PolySigIntrinsics id) {
         super(method);
         this.id = id;
         this.argCount = Signatures.parameterCount(getMethod().getParsedSignature(), false);
         this.callNode = IndirectCallNode.create();
+        this.hidden_vmtarget = getMeta().HIDDEN_VMTARGET.getFieldIndex();
     }
 
     @Override
@@ -99,11 +99,11 @@ public abstract class MHLinkToNode extends EspressoBaseNode {
         }
     }
 
-    static Method getTarget(Object[] args) {
+    final Method getTarget(Object[] args) {
         assert args.length >= 1;
         StaticObjectImpl memberName = (StaticObjectImpl) args[args.length - 1];
         assert (memberName.getKlass().getType() == Symbol.Type.MemberName);
-        Method target = (Method) memberName.getHiddenField(HIDDEN_VMTARGET);
+        Method target = (Method) memberName.getUnsafeField(hidden_vmtarget);
         return target;
     }
 }

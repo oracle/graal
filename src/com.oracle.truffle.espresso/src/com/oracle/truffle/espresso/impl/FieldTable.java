@@ -1,5 +1,7 @@
 package com.oracle.truffle.espresso.impl;
 
+import com.oracle.truffle.espresso.descriptors.Symbol;
+
 import java.util.ArrayList;
 import java.util.Arrays;
 
@@ -68,9 +70,40 @@ class FieldTable {
             }
         }
 
-        objectFields += HiddenFields.setHiddenFields(thisKlass.getType(), tmpFields, thisKlass, objectFields);
+        objectFields += setHiddenFields(thisKlass.getType(), tmpFields, thisKlass, objectFields);
 
         return new CreationResult(tmpFields.toArray(Field.EMPTY_ARRAY), tmpStatics.toArray(Field.EMPTY_ARRAY), fields,
                         wordFields, staticWordFields, objectFields, staticObjectFields);
+    }
+
+    private static int setHiddenFields(Symbol<Symbol.Type> type, ArrayList<Field> tmpTable, ObjectKlass thisKlass, int fieldIndex) {
+        if (type == Symbol.Type.MemberName) {
+            tmpTable.add(new Field(thisKlass, tmpTable.size(), fieldIndex, Symbol.Name.HIDDEN_VMTARGET));
+            tmpTable.add(new Field(thisKlass, tmpTable.size(), fieldIndex+1, Symbol.Name.HIDDEN_VMINDEX));
+            return 2;
+        } else if (type == Symbol.Type.Method) {
+            tmpTable.add(new Field(thisKlass, tmpTable.size(), fieldIndex, Symbol.Name.HIDDEN_METHOD_RUNTIME_VISIBLE_TYPE_ANNOTATIONS));
+            tmpTable.add(new Field(thisKlass, tmpTable.size(), fieldIndex+1, Symbol.Name.HIDDEN_METHOD_KEY));
+            return 2;
+        } else if (type == Symbol.Type.Constructor) {
+            tmpTable.add(new Field(thisKlass, tmpTable.size(), fieldIndex, Symbol.Name.HIDDEN_CONSTRUCTOR_RUNTIME_VISIBLE_TYPE_ANNOTATIONS));
+            tmpTable.add(new Field(thisKlass, tmpTable.size(), fieldIndex+1, Symbol.Name.HIDDEN_CONSTRUCTOR_KEY));
+            return 2;
+        } else if (type == Symbol.Type.Field) {
+            tmpTable.add(new Field(thisKlass, tmpTable.size(), fieldIndex, Symbol.Name.HIDDEN_FIELD_RUNTIME_VISIBLE_TYPE_ANNOTATIONS));
+            tmpTable.add(new Field(thisKlass, tmpTable.size(), fieldIndex+1, Symbol.Name.HIDDEN_FIELD_KEY));
+            return 2;
+        } else if (type == Symbol.Type.Throwable) {
+            tmpTable.add(new Field(thisKlass, tmpTable.size(), fieldIndex, Symbol.Name.HIDDEN_FRAMES));
+            return 1;
+        } else if (type == Symbol.Type.Thread) {
+            tmpTable.add(new Field(thisKlass, tmpTable.size(), fieldIndex, Symbol.Name.HIDDEN_HOST_THREAD));
+            return 1;
+        } else if (type == Symbol.Type.Class) {
+            tmpTable.add(new Field(thisKlass, tmpTable.size(), fieldIndex, Symbol.Name.HIDDEN_MIRROR_KLASS));
+            return 1;
+        } else {
+            return 0;
+        }
     }
 }
