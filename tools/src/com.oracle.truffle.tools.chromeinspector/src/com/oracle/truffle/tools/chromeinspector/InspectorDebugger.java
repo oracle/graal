@@ -730,8 +730,8 @@ public final class InspectorDebugger extends DebuggerDomain {
         }
     }
 
-    public static boolean sourceMatchesBlackboxPatterns(Source source, Pattern[] patterns) {
-        String uri = ScriptsHandler.getNiceStringFromURI(source.getURI());
+    public boolean sourceMatchesBlackboxPatterns(Source source, Pattern[] patterns) {
+        String uri = slh.getSourceURL(source);
         for (Pattern pattern : patterns) {
             // Check whether pattern corresponds to:
             // 1) the name of a file

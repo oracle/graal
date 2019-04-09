@@ -46,6 +46,7 @@ import static com.oracle.truffle.polyglot.VMAccessor.NODES;
 
 import java.io.InputStream;
 import java.io.OutputStream;
+import java.net.URI;
 import java.nio.file.Path;
 import java.util.Collection;
 import java.util.Collections;
@@ -64,6 +65,8 @@ import java.util.logging.LogRecord;
 import org.graalvm.options.OptionValues;
 import org.graalvm.polyglot.Context;
 import org.graalvm.polyglot.Engine;
+import org.graalvm.polyglot.HostAccess;
+import org.graalvm.polyglot.PolyglotAccess;
 import org.graalvm.polyglot.PolyglotException;
 import org.graalvm.polyglot.Value;
 import org.graalvm.polyglot.impl.AbstractPolyglotImpl;
@@ -101,8 +104,6 @@ import com.oracle.truffle.api.nodes.RootNode;
 import com.oracle.truffle.api.source.Source;
 import com.oracle.truffle.api.source.SourceSection;
 import com.oracle.truffle.polyglot.HostLanguage.HostContext;
-import org.graalvm.polyglot.HostAccess;
-import org.graalvm.polyglot.PolyglotAccess;
 
 /*
  * This class is exported to the GraalVM SDK. Keep that in mind when changing its class or package name.
@@ -511,6 +512,22 @@ public final class PolyglotImpl extends AbstractPolyglotImpl {
                 polyglotSource = ((VMObject) vmObject).getAPIAccess().newSource(sourceImpl.getLanguage(), sourceImpl);
             }
             return ((VMObject) vmObject).getAPIAccess().newSourceSection(polyglotSource, sectionImpl);
+        }
+
+        @Override
+        public TruffleFile getTruffleFile(String path) {
+            PolyglotContextImpl context = PolyglotContextImpl.requireContext();
+            FileSystem fileSystem = context.config.fileSystem;
+            Supplier<Map<String, Collection<? extends TruffleFile.FileTypeDetector>>> fileTypeDetectorsSupplier = context.engine.getFileTypeDetectorsSupplier();
+            return VMAccessor.LANGUAGE.getTruffleFile(path, fileSystem, fileTypeDetectorsSupplier);
+        }
+
+        @Override
+        public TruffleFile getTruffleFile(URI uri) {
+            PolyglotContextImpl context = PolyglotContextImpl.requireContext();
+            FileSystem fileSystem = context.config.fileSystem;
+            Supplier<Map<String, Collection<? extends TruffleFile.FileTypeDetector>>> fileTypeDetectorsSupplier = context.engine.getFileTypeDetectorsSupplier();
+            return VMAccessor.LANGUAGE.getTruffleFile(uri, fileSystem, fileTypeDetectorsSupplier);
         }
 
         @Override
