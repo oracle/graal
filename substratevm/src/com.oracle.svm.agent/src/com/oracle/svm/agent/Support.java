@@ -30,6 +30,8 @@ import static org.graalvm.nativeimage.c.type.CTypeConversion.CCharPointerHolder;
 import static org.graalvm.word.WordFactory.nullPointer;
 
 import java.nio.charset.StandardCharsets;
+import java.util.Arrays;
+import java.util.concurrent.locks.ReentrantLock;
 
 import org.graalvm.nativeimage.StackValue;
 import org.graalvm.nativeimage.c.type.CCharPointer;
@@ -99,6 +101,9 @@ public final class Support {
     }
 
     public static final class JavaHandles {
+        private final ReentrantLock globalRefsLock = new ReentrantLock();
+        private JNIObjectHandle[] globalRefs = new JNIObjectHandle[16];
+        private int globalRefCount = 0;
 
         public final JNIMethodId javaLangClassGetName;
         public final JNIMethodId javaLangClassForName3;
@@ -121,164 +126,107 @@ public final class Support {
         private JNIMethodId javaUtilCollectionsEmptyEnumeration;
 
         private JavaHandles(JNIEnvironment env) {
-            JNIObjectHandle javaLangClass;
-            try (CCharPointerHolder name = toCString("java/lang/Class")) {
-                javaLangClass = jniFunctions.getFindClass().invoke(env, name.get());
-                guarantee(javaLangClass.notEqual(nullHandle()));
-            }
+            JNIObjectHandle javaLangClass = findClass(env, "java/lang/Class");
             try (CCharPointerHolder name = toCString("getName"); CCharPointerHolder signature = toCString("()Ljava/lang/String;")) {
                 javaLangClassGetName = jniFunctions.getGetMethodID().invoke(env, javaLangClass, name.get(), signature.get());
                 guarantee(javaLangClassGetName.isNonNull());
             }
-            try (CCharPointerHolder name = toCString("forName"); CCharPointerHolder signature = toCString("(Ljava/lang/String;ZLjava/lang/ClassLoader;)Ljava/lang/Class;")) {
-                javaLangClassForName3 = jniFunctions.getGetStaticMethodID().invoke(env, javaLangClass, name.get(), signature.get());
-                guarantee(javaLangClassForName3.isNonNull());
-            }
+            javaLangClassForName3 = getMethodId(env, javaLangClass, "forName", "(Ljava/lang/String;ZLjava/lang/ClassLoader;)Ljava/lang/Class;", true);
 
-            JNIObjectHandle javaLangReflectMember;
-            try (CCharPointerHolder name = toCString("java/lang/reflect/Member")) {
-                javaLangReflectMember = jniFunctions.getFindClass().invoke(env, name.get());
-                guarantee(javaLangReflectMember.notEqual(nullHandle()));
-            }
-            try (CCharPointerHolder name = toCString("getDeclaringClass"); CCharPointerHolder signature = toCString("()Ljava/lang/Class;")) {
-                javaLangReflectMemberGetDeclaringClass = jniFunctions.getGetMethodID().invoke(env, javaLangReflectMember, name.get(), signature.get());
-                guarantee(javaLangReflectMemberGetDeclaringClass.isNonNull());
-            }
+            JNIObjectHandle javaLangReflectMember = findClass(env, "java/lang/reflect/Member");
+            javaLangReflectMemberGetDeclaringClass = getMethodId(env, javaLangReflectMember, "getDeclaringClass", "()Ljava/lang/Class;", false);
 
-            JNIObjectHandle javaUtilEnumeration;
-            try (CCharPointerHolder name = toCString("java/util/Enumeration")) {
-                javaUtilEnumeration = jniFunctions.getFindClass().invoke(env, name.get());
-                guarantee(javaUtilEnumeration.notEqual(nullHandle()));
-            }
-            try (CCharPointerHolder name = toCString("hasMoreElements"); CCharPointerHolder signature = toCString("()Z")) {
-                javaUtilEnumerationHasMoreElements = jniFunctions.getGetMethodID().invoke(env, javaUtilEnumeration, name.get(), signature.get());
-                guarantee(javaUtilEnumerationHasMoreElements.isNonNull());
-            }
+            JNIObjectHandle javaUtilEnumeration = findClass(env, "java/util/Enumeration");
+            javaUtilEnumerationHasMoreElements = getMethodId(env, javaUtilEnumeration, "hasMoreElements", "()Z", false);
 
-            try (CCharPointerHolder name = toCString("java/lang/SecurityException")) {
+            javaLangSecurityException = newClassGlobalRef(env, "java/lang/SecurityException");
+            javaLangNoClassDefFoundError = newClassGlobalRef(env, "java/lang/NoClassDefFoundError");
+            javaLangNoSuchMethodError = newClassGlobalRef(env, "java/lang/NoSuchMethodError");
+            javaLangNoSuchMethodException = newClassGlobalRef(env, "java/lang/NoSuchMethodException");
+            javaLangNoSuchFieldError = newClassGlobalRef(env, "java/lang/NoSuchFieldError");
+            javaLangNoSuchFieldException = newClassGlobalRef(env, "java/lang/NoSuchFieldException");
+            javaLangClassNotFoundException = newClassGlobalRef(env, "java/lang/ClassNotFoundException");
+        }
+
+        private static JNIObjectHandle findClass(JNIEnvironment env, String className) {
+            try (CCharPointerHolder name = toCString(className)) {
                 JNIObjectHandle h = jniFunctions.getFindClass().invoke(env, name.get());
                 guarantee(h.notEqual(nullHandle()));
-                javaLangSecurityException = jniFunctions.getNewGlobalRef().invoke(env, h);
-                guarantee(javaLangSecurityException.notEqual(nullHandle()));
+                return h;
             }
-            try (CCharPointerHolder name = toCString("java/lang/NoClassDefFoundError")) {
-                JNIObjectHandle h = jniFunctions.getFindClass().invoke(env, name.get());
-                guarantee(h.notEqual(nullHandle()));
-                javaLangNoClassDefFoundError = jniFunctions.getNewGlobalRef().invoke(env, h);
-                guarantee(javaLangNoClassDefFoundError.notEqual(nullHandle()));
+        }
+
+        private JNIObjectHandle newClassGlobalRef(JNIEnvironment env, String className) {
+            return newGlobalRef(env, findClass(env, className));
+        }
+
+        private static JNIMethodId getMethodId(JNIEnvironment env, JNIObjectHandle clazz, String name, String signature, boolean isStatic) {
+            try (CCharPointerHolder cname = toCString(name); CCharPointerHolder csignature = toCString(signature)) {
+                JNIMethodId id;
+                if (isStatic) {
+                    id = jniFunctions.getGetStaticMethodID().invoke(env, clazz, cname.get(), csignature.get());
+                } else {
+                    id = jniFunctions.getGetMethodID().invoke(env, clazz, cname.get(), csignature.get());
+                }
+                guarantee(id.isNonNull());
+                return id;
             }
-            try (CCharPointerHolder name = toCString("java/lang/NoSuchMethodError")) {
-                JNIObjectHandle h = jniFunctions.getFindClass().invoke(env, name.get());
-                guarantee(h.notEqual(nullHandle()));
-                javaLangNoSuchMethodError = jniFunctions.getNewGlobalRef().invoke(env, h);
-                guarantee(javaLangNoSuchMethodError.notEqual(nullHandle()));
+        }
+
+        private JNIObjectHandle newGlobalRef(JNIEnvironment env, JNIObjectHandle ref) {
+            JNIObjectHandle global = jniFunctions.getNewGlobalRef().invoke(env, ref);
+            guarantee(global.notEqual(nullHandle()));
+            globalRefsLock.lock();
+            try {
+                if (globalRefCount == globalRefs.length) {
+                    globalRefs = Arrays.copyOf(globalRefs, globalRefs.length * 2);
+                }
+                globalRefs[globalRefCount] = global;
+                globalRefCount++;
+            } finally {
+                globalRefsLock.unlock();
             }
-            try (CCharPointerHolder name = toCString("java/lang/NoSuchMethodException")) {
-                JNIObjectHandle h = jniFunctions.getFindClass().invoke(env, name.get());
-                guarantee(h.notEqual(nullHandle()));
-                javaLangNoSuchMethodException = jniFunctions.getNewGlobalRef().invoke(env, h);
-                guarantee(javaLangNoSuchMethodException.notEqual(nullHandle()));
-            }
-            try (CCharPointerHolder name = toCString("java/lang/NoSuchFieldError")) {
-                JNIObjectHandle h = jniFunctions.getFindClass().invoke(env, name.get());
-                guarantee(h.notEqual(nullHandle()));
-                javaLangNoSuchFieldError = jniFunctions.getNewGlobalRef().invoke(env, h);
-                guarantee(javaLangNoSuchFieldError.notEqual(nullHandle()));
-            }
-            try (CCharPointerHolder name = toCString("java/lang/NoSuchFieldException")) {
-                JNIObjectHandle h = jniFunctions.getFindClass().invoke(env, name.get());
-                guarantee(h.notEqual(nullHandle()));
-                javaLangNoSuchFieldException = jniFunctions.getNewGlobalRef().invoke(env, h);
-                guarantee(javaLangNoSuchFieldException.notEqual(nullHandle()));
-            }
-            try (CCharPointerHolder name = toCString("java/lang/ClassNotFoundException")) {
-                JNIObjectHandle h = jniFunctions.getFindClass().invoke(env, name.get());
-                guarantee(h.notEqual(nullHandle()));
-                javaLangClassNotFoundException = jniFunctions.getNewGlobalRef().invoke(env, h);
-                guarantee(javaLangClassNotFoundException.notEqual(nullHandle()));
-            }
+            return global;
         }
 
         public JNIObjectHandle getJavaLangReflectField(JNIEnvironment env) {
             if (javaLangReflectField.equal(nullHandle())) {
-                try (CCharPointerHolder name = toCString("java/lang/reflect/Field")) {
-                    JNIObjectHandle h = jniFunctions.getFindClass().invoke(env, name.get());
-                    guarantee(h.notEqual(nullHandle()));
-                    javaLangReflectField = jniFunctions.getNewGlobalRef().invoke(env, h);
-                    guarantee(javaLangReflectField.notEqual(nullHandle()));
-                }
+                javaLangReflectField = newClassGlobalRef(env, "java/lang/reflect/Field");
             }
             return javaLangReflectField;
         }
 
         public JNIObjectHandle getJavaLangReflectMethod(JNIEnvironment env) {
             if (javaLangReflectMethod.equal(nullHandle())) {
-                try (CCharPointerHolder name = toCString("java/lang/reflect/Method")) {
-                    JNIObjectHandle h = jniFunctions.getFindClass().invoke(env, name.get());
-                    guarantee(h.notEqual(nullHandle()));
-                    javaLangReflectMethod = jniFunctions.getNewGlobalRef().invoke(env, h);
-                    guarantee(javaLangReflectMethod.notEqual(nullHandle()));
-                }
+                javaLangReflectMethod = newClassGlobalRef(env, "java/lang/reflect/Method");
             }
             return javaLangReflectMethod;
         }
 
         public JNIObjectHandle getJavaLangReflectConstructor(JNIEnvironment env) {
             if (javaLangReflectConstructor.equal(nullHandle())) {
-                try (CCharPointerHolder name = toCString("java/lang/reflect/Constructor")) {
-                    JNIObjectHandle h = jniFunctions.getFindClass().invoke(env, name.get());
-                    guarantee(h.notEqual(nullHandle()));
-                    javaLangReflectConstructor = jniFunctions.getNewGlobalRef().invoke(env, h);
-                    guarantee(javaLangReflectConstructor.notEqual(nullHandle()));
-                }
+                javaLangReflectConstructor = newClassGlobalRef(env, "java/lang/reflect/Constructor");
             }
             return javaLangReflectConstructor;
         }
 
         public JNIObjectHandle getJavaUtilCollections(JNIEnvironment env) {
             if (javaUtilCollections.equal(nullHandle())) {
-                try (CCharPointerHolder name = toCString("java/util/Collections")) {
-                    JNIObjectHandle h = jniFunctions.getFindClass().invoke(env, name.get());
-                    guarantee(h.notEqual(nullHandle()));
-                    javaUtilCollections = jniFunctions.getNewGlobalRef().invoke(env, h);
-                    guarantee(javaUtilCollections.notEqual(nullHandle()));
-                }
+                javaUtilCollections = newClassGlobalRef(env, "java/util/Collections");
             }
             return javaUtilCollections;
         }
 
         public JNIMethodId getJavaUtilCollectionsEmptyEnumeration(JNIEnvironment env) {
             if (javaUtilCollectionsEmptyEnumeration.isNull()) {
-                JNIObjectHandle collections = getJavaUtilCollections(env);
-                try (CCharPointerHolder name = toCString("emptyEnumeration"); CCharPointerHolder signature = toCString("()Ljava/util/Enumeration;")) {
-                    javaUtilCollectionsEmptyEnumeration = jniFunctions.getGetStaticMethodID().invoke(env, collections, name.get(), signature.get());
-                    guarantee(javaUtilCollectionsEmptyEnumeration.isNonNull());
-                }
+                javaUtilCollectionsEmptyEnumeration = getMethodId(env, getJavaUtilCollections(env), "emptyEnumeration", "()Ljava/util/Enumeration;", true);
             }
             return javaUtilCollectionsEmptyEnumeration;
         }
 
         public void destroy(JNIEnvironment env) {
-            jniFunctions().getDeleteGlobalRef().invoke(env, javaLangSecurityException);
-            jniFunctions().getDeleteGlobalRef().invoke(env, javaLangNoClassDefFoundError);
-            jniFunctions().getDeleteGlobalRef().invoke(env, javaLangNoSuchMethodError);
-            jniFunctions().getDeleteGlobalRef().invoke(env, javaLangNoSuchMethodException);
-            jniFunctions().getDeleteGlobalRef().invoke(env, javaLangNoSuchFieldError);
-            jniFunctions().getDeleteGlobalRef().invoke(env, javaLangNoSuchFieldException);
-            jniFunctions().getDeleteGlobalRef().invoke(env, javaLangClassNotFoundException);
-
-            if (javaLangReflectField.notEqual(nullHandle())) {
-                jniFunctions().getDeleteGlobalRef().invoke(env, javaLangReflectField);
-            }
-            if (javaLangReflectMethod.notEqual(nullHandle())) {
-                jniFunctions().getDeleteGlobalRef().invoke(env, javaLangReflectMethod);
-            }
-            if (javaLangReflectConstructor.notEqual(nullHandle())) {
-                jniFunctions().getDeleteGlobalRef().invoke(env, javaLangReflectConstructor);
-            }
-
-            if (javaUtilCollections.notEqual(nullHandle())) {
-                jniFunctions().getDeleteGlobalRef().invoke(env, javaUtilCollections);
+            for (int i = 0; i < globalRefCount; i++) {
+                jniFunctions().getDeleteGlobalRef().invoke(env, globalRefs[i]);
             }
         }
     }
