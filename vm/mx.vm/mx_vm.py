@@ -51,6 +51,9 @@ from mx import StringIO
 _suite = mx.suite('vm')
 """:type: mx.SourceSuite | mx.Suite"""
 
+_exe_suffix = mx.exe_suffix('')
+""":type: str"""
+
 _vm_configs = {}
 
 mx_sdk.register_graalvm_component(mx_sdk.GraalVmJreComponent(
@@ -548,6 +551,11 @@ def get_graalvm_os():
     return os
 
 
+def remove_exe_suffix(name):
+    assert name.endswith(_exe_suffix)
+    return name[:-len(_exe_suffix)] if _exe_suffix else name
+
+
 class SvmSupport(object):
     def __init__(self):
         self._svm_supported = 'svm' in (c.short_name for c in registered_graalvm_components())
@@ -566,7 +574,7 @@ class SvmSupport(object):
         if "-H:Kind=SHARED_LIBRARY" in build_args:
             suffix = mx.add_lib_suffix("")
         else:
-            suffix = mx.exe_suffix("")
+            suffix = _exe_suffix
         name = basename(output_file)
         if suffix:
             name = name[:-len(suffix)]
@@ -742,7 +750,7 @@ class NativePropertiesBuildTask(mx.ProjectBuildTask):
                 if any((' ' in arg for arg in launcher_config.build_args)):
                     mx.abort("Unsupported space in launcher build argument: {} in main launcher for {}".format(launcher_config.build_args, dir_name))
                 properties = {
-                    'ImageName': basename(launcher_config.destination)[:-len(mx.exe_suffix(""))],
+                    'ImageName': remove_exe_suffix(basename(launcher_config.destination)),
                     'LauncherClass': basename(launcher_config.main_class),
                     'LauncherClassPath': graalvm_home_relative_classpath(launcher_config.jar_distributions, _get_graalvm_archive_path('jre')).replace(os.pathsep, ':').replace(os.sep, '/'),
                     'Args': ' '.join(launcher_config.build_args),
@@ -1939,8 +1947,7 @@ def _force_bash_launchers(launcher, forced=None):
         forced = forced.split(',')
     if isinstance(launcher, mx_sdk.AbstractNativeImageConfig):
         launcher = launcher.destination
-    assert launcher.endswith(mx.exe_suffix(''))
-    launcher = launcher[:-len(mx.exe_suffix(''))]
+    launcher = remove_exe_suffix(launcher)
     launcher_name = basename(launcher)
     return launcher_name in forced
 
