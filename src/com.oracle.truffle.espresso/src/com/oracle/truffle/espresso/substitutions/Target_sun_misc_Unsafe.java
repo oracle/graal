@@ -413,7 +413,7 @@ public final class Target_sun_misc_Unsafe {
             return U.getBooleanVolatile(((StaticObjectArray) holder).unwrap(), offset);
         }
         Field f = getInstanceFieldFromIndex(holder, Math.toIntExact(offset) - SAFETY_FIELD_OFFSET);
-        return ((StaticObjectImpl) holder).getWordFieldVolatile(f) != 0;
+        return ((StaticObjectImpl) holder).getByteFieldVolatile(f) != 0;
     }
 
     @Substitution(hasReceiver = true)
@@ -422,7 +422,7 @@ public final class Target_sun_misc_Unsafe {
             return U.getByteVolatile(((StaticObjectArray) holder).unwrap(), offset);
         }
         Field f = getInstanceFieldFromIndex(holder, Math.toIntExact(offset) - SAFETY_FIELD_OFFSET);
-        return (byte) ((StaticObjectImpl) holder).getWordFieldVolatile(f);
+        return ((StaticObjectImpl) holder).getByteFieldVolatile(f);
     }
 
     @Substitution(hasReceiver = true)
@@ -431,7 +431,7 @@ public final class Target_sun_misc_Unsafe {
             return U.getShortVolatile(((StaticObjectArray) holder).unwrap(), offset);
         }
         Field f = getInstanceFieldFromIndex(holder, Math.toIntExact(offset) - SAFETY_FIELD_OFFSET);
-        return (short) ((StaticObjectImpl) holder).getWordFieldVolatile(f);
+        return ((StaticObjectImpl) holder).getShortFieldVolatile(f);
     }
 
     @Substitution(hasReceiver = true)
@@ -440,7 +440,7 @@ public final class Target_sun_misc_Unsafe {
             return U.getCharVolatile(((StaticObjectArray) holder).unwrap(), offset);
         }
         Field f = getInstanceFieldFromIndex(holder, Math.toIntExact(offset) - SAFETY_FIELD_OFFSET);
-        return (char) ((StaticObjectImpl) holder).getWordFieldVolatile(f);
+        return ((StaticObjectImpl) holder).getCharFieldVolatile(f);
     }
 
     @Substitution(hasReceiver = true)
@@ -449,7 +449,7 @@ public final class Target_sun_misc_Unsafe {
             return U.getFloatVolatile(((StaticObjectArray) holder).unwrap(), offset);
         }
         Field f = getInstanceFieldFromIndex(holder, Math.toIntExact(offset) - SAFETY_FIELD_OFFSET);
-        return Float.intBitsToFloat(((StaticObjectImpl) holder).getWordFieldVolatile(f));
+        return Float.intBitsToFloat(((StaticObjectImpl) holder).getIntFieldVolatile(f));
     }
 
     @Substitution(hasReceiver = true)
@@ -458,7 +458,7 @@ public final class Target_sun_misc_Unsafe {
             return U.getIntVolatile(((StaticObjectArray) holder).unwrap(), offset);
         }
         Field f = getInstanceFieldFromIndex(holder, Math.toIntExact(offset) - SAFETY_FIELD_OFFSET);
-        return ((StaticObjectImpl) holder).getWordFieldVolatile(f);
+        return ((StaticObjectImpl) holder).getIntFieldVolatile(f);
     }
 
     @Substitution(hasReceiver = true)

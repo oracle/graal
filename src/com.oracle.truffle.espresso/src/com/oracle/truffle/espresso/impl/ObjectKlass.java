@@ -63,14 +63,14 @@ public final class ObjectKlass extends Klass {
     @CompilationFinal(dimensions = 1) //
     private Field[] declaredFields;
 
-    @CompilationFinal(dimensions = 1) private Field[] fieldTable;
+    @CompilationFinal(dimensions = 1) private final Field[] fieldTable;
 
     private final int wordFields;
     private final int staticWordFields;
     private final int objectFields;
     private final int staticObjectFields;
 
-    @CompilationFinal(dimensions = 1) private Field[] staticFieldTable;
+    @CompilationFinal(dimensions = 1) private final Field[] staticFieldTable;
 
     @CompilationFinal(dimensions = 1) //
     private Method[] declaredMethods;
@@ -180,8 +180,6 @@ public final class ObjectKlass extends Klass {
                 getSuperKlass().initialize();
             }
             initState = INITIALIZED;
-
-            // TODO(peterssen): Initialize superinterfaces with default methods.
 
             /**
              * Spec fragment: Then, initialize each final static field of C with the constant value

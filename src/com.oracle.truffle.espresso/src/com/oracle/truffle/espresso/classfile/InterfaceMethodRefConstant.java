@@ -119,7 +119,7 @@ public interface InterfaceMethodRefConstant extends MethodRefConstant {
 
             Symbol<Signature> signature = getSignature(pool);
 
-            Method method = ((ObjectKlass)holderInterface).lookupInterfaceMethod(name, signature);
+            Method method = ((ObjectKlass) holderInterface).lookupInterfaceMethod(name, signature);
 
             if (method == null) {
                 throw meta.throwExWithMessage(meta.NoSuchMethodError, meta.toGuestString(name));

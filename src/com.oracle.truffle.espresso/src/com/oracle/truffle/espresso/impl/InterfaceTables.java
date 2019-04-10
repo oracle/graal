@@ -185,7 +185,8 @@ class InterfaceTables {
                     tmpTables.add(lookupOverride(superinterf.getItable()[pos], interfKlass, null));
                     tmpKlass.add(curIKlass);
                 }
-                // We know our table is either more specific, or the same, than our superinterfaces'.
+                // We know our table is either more specific, or the same, than our
+                // superinterfaces'.
                 pos++;
             }
         }
