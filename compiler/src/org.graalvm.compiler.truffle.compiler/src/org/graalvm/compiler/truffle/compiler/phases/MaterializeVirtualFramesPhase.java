@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2013, 2019 Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2013, 2019, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -37,11 +37,11 @@ public class MaterializeVirtualFramesPhase extends Phase {
     @Override
     protected void run(StructuredGraph graph) {
         for (InvokeWithExceptionNode node : graph.getNodes(InvokeWithExceptionNode.TYPE)) {
-            checkInvokeForVirutalFrame(graph, node);
+            checkInvokeForVirtualFrame(graph, node);
         }
     }
 
-    private void checkInvokeForVirutalFrame(StructuredGraph graph, InvokeWithExceptionNode invoke) {
+    private static void checkInvokeForVirtualFrame(StructuredGraph graph, InvokeWithExceptionNode invoke) {
         final CallTargetNode callTargetNode = invoke.callTarget();
         for (ValueNode argument : callTargetNode.arguments()) {
             if (argument instanceof NewFrameNode) {
