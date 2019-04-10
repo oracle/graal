@@ -56,19 +56,20 @@ public final class Version implements Comparable<Version> {
     Version(String versionString) throws IllegalArgumentException {
         this.versionString = versionString;
 
+        String normalized = SystemUtils.normalizeOldVersions(versionString);
         List<String> vp;
-        int releaseDash = versionString.indexOf('-');
+        int releaseDash = normalized.indexOf('-');
         if (releaseDash == -1) {
             releaseParts = Collections.emptyList();
-            vp = parseParts(versionString);
+            vp = parseParts(normalized);
         } else {
-            String vS = versionString.substring(0, releaseDash);
-            String rS = versionString.substring(releaseDash + 1);
+            String vS = normalized.substring(0, releaseDash);
+            String rS = normalized.substring(releaseDash + 1);
             vp = parseParts(vS);
             releaseParts = parseParts(rS);
         }
-        if (vp.size() < 2) {
-            throw new IllegalArgumentException("At least Year.Update is required. Got: " + versionString);
+        if (vp.size() < 2 || vp.size() > 4 || !Character.isDigit(vp.get(0).charAt(0)) || !Character.isDigit(vp.get(1).charAt(0))) {
+            throw new IllegalArgumentException("A format Year.Release[.Update[.Patch]] is required. Got: " + versionString);
         }
         if (releaseParts.isEmpty() && vp.size() < 4 && !isOldStyleVersion(vp.get(0))) {
             vp = new ArrayList<>(vp);
@@ -77,7 +78,7 @@ public final class Version implements Comparable<Version> {
             }
             this.normalizedString = print(vp, releaseParts);
         } else {
-            normalizedString = versionString;
+            normalizedString = normalized;
         }
         versionParts = vp;
     }
@@ -186,7 +187,13 @@ public final class Version implements Comparable<Version> {
     }
 
     private static List<String> parseParts(String s) throws IllegalArgumentException {
-        return Arrays.asList(s.split("[^\\p{Alnum}]", -1)); // NOI18N
+        List<String> parts = Arrays.asList(s.split("[^\\p{Alnum}]", -1)); // NOI18N
+        for (String p : parts) {
+            if (p.isEmpty()) {
+                throw new IllegalArgumentException();
+            }
+        }
+        return parts;
     }
 
     @Override

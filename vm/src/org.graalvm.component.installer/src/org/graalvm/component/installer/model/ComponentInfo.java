@@ -111,7 +111,7 @@ public final class ComponentInfo {
 
     public ComponentInfo(String id, String name, Version v) {
         this.id = id;
-        this.versionString = v == null ? null : v.toString();
+        this.versionString = v == null ? null : v.originalString();
         this.name = name;
         this.version = v == null ? Version.NO_VERSION : v;
     }

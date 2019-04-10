@@ -93,7 +93,7 @@ public class UpgradeCommand implements InstallerCommand {
     ComponentInfo configureProcess() throws IOException {
         Version min = input.getLocalRegistry().getGraalVersion();
 
-        String s = input.nextParameter();
+        String s = input.peekParameter();
         Version v = min;
         Version.Match filter = min.match(allowDistUpgrades() ? Version.Match.Type.MOSTRECENT : Version.Match.Type.COMPATIBLE);
         if (s != null) {
@@ -108,9 +108,10 @@ public class UpgradeCommand implements InstallerCommand {
                 }
                 v = Version.fromString(s);
                 if (min.compareTo(v) > 0) {
-                    throw feedback.failure("UPGRADE_CannotDowngrade", null, v.toString());
+                    throw feedback.failure("UPGRADE_CannotDowngrade", null, v.originalString());
                 }
                 filter = v.match(mt);
+                input.nextParameter();
             } catch (IllegalArgumentException ex) {
                 // not a version, continue with component upgrade
             }

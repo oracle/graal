@@ -35,7 +35,6 @@ import org.graalvm.component.installer.ComponentInstaller;
 import org.graalvm.component.installer.DependencyException;
 import org.graalvm.component.installer.Feedback;
 import org.graalvm.component.installer.SuppressFBWarnings;
-import org.graalvm.component.installer.SystemUtils;
 import org.graalvm.component.installer.Version;
 
 public class Verifier {
@@ -211,7 +210,7 @@ public class Verifier {
             if (BundleConstants.GRAAL_VERSION.equals(s)) {
                 if (versionMatch != null) {
                     Version cv = Version.fromString(
-                                    SystemUtils.normalizeOldVersions(reqVal.toLowerCase()));
+                                    reqVal.toLowerCase());
                     matches = versionMatch.test(cv);
                 } else {
                     matches = matches(reqVal, graalVal);
@@ -225,7 +224,7 @@ public class Verifier {
                                         GRAALVM_CAPABILITY,
                                         s, reqVal, graalVal,
                                         feedback.l10n("VERIFY_ObsoleteGraalVM",
-                                                        componentInfo.getName(), reqVal, gv.toString())));
+                                                        componentInfo.getName(), reqVal, gv.originalString())));
                     } else if (collectVersion) {
                         minVersion = rq;
                     } else {
@@ -233,7 +232,7 @@ public class Verifier {
                                         GRAALVM_CAPABILITY,
                                         s, reqVal, graalVal,
                                         feedback.l10n("VERIFY_UpdateGraalVM",
-                                                        componentInfo.getName(), reqVal, gv.toString())));
+                                                        componentInfo.getName(), reqVal, gv.originalString())));
                     }
                 }
                 continue;

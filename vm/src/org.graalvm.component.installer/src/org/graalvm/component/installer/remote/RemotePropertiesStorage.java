@@ -58,7 +58,7 @@ public class RemotePropertiesStorage extends AbstractCatalogStorage {
         flavourPrefix = MessageFormat.format(FORMAT_FLAVOUR, graalSelector);
         graalVersion = gVersion != null ? gVersion : localReg.getGraalVersion();
         singleVersionPrefix = MessageFormat.format(FORMAT_SINGLE_VERSION,
-                        graalVersion.toString(), graalSelector);
+                        graalVersion.originalString(), graalSelector);
     }
 
     /**
@@ -122,6 +122,7 @@ public class RemotePropertiesStorage extends AbstractCatalogStorage {
                 }
                 // versionless component
                 l = singleVersionPrefix.length();
+                // normalized version
                 pn = graalVersion.toString() + "/" + s.substring(l);
             }
             int dashPos = s.indexOf("-", l);

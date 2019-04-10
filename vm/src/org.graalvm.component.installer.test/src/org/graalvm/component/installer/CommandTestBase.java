@@ -184,6 +184,14 @@ public class CommandTestBase extends TestBase implements CommandInput, SoftwareC
     }
 
     @Override
+    public String peekParameter() {
+        if (!textParams.isEmpty()) {
+            return textParams.get(0);
+        }
+        return files.isEmpty() ? null : files.get(0).toString();
+    }
+
+    @Override
     public boolean hasParameter() {
         return (!textParams.isEmpty() || !files.isEmpty());
     }

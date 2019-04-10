@@ -198,7 +198,7 @@ public class ComponentPackageLoader implements Closeable, MetadataLoader {
         parse(
                         () -> id = parseHeader(BundleConstants.BUNDLE_ID).parseSymbolicName(),
                         () -> name = parseHeader(BundleConstants.BUNDLE_NAME).getContents(id),
-                        () -> version = parseHeader2(BundleConstants.BUNDLE_VERSION, SystemUtils::normalizeOldVersions).version(),
+                        () -> version = parseHeader(BundleConstants.BUNDLE_VERSION).version(),
                         () -> {
                             info = new ComponentInfo(id, name, version);
                             info.addRequiredValues(parseHeader(BundleConstants.BUNDLE_REQUIRED).parseRequiredCapabilities());
