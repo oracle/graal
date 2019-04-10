@@ -72,6 +72,7 @@ public final class ICU4JFeature implements Feature {
     public void beforeAnalysis(BeforeAnalysisAccess access) {
         registerShimClass(access, "com.ibm.icu.text.NumberFormatServiceShim");
         registerShimClass(access, "com.ibm.icu.text.CollatorServiceShim");
+        registerShimClass(access, "com.ibm.icu.text.BreakIteratorFactory");
     }
 
     private static void registerShimClass(BeforeAnalysisAccess access, String shimClassName) {
