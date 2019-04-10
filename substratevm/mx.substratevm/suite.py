@@ -678,6 +678,7 @@ suite = {
             "dependencies": [
                 "com.oracle.svm.jni",
                 "com.oracle.svm.configure",
+                "com.oracle.svm.driver",
             ],
             "checkstyle": "com.oracle.svm.driver",
             "workingSets": "SVM",
@@ -858,6 +859,7 @@ suite = {
             ],
             "distDependencies": [
                 "LIBRARY_SUPPORT",
+                "SVM_DRIVER",
             ],
             "overlaps" : [
                 "SVM_CONFIGURE",

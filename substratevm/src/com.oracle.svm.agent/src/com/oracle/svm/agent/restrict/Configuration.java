@@ -32,9 +32,9 @@ public class Configuration {
 
     public void add(ConfigurationType type) {
         if (types.containsKey(type.getName())) {
-            throw new RuntimeException("Type must be registered exactly once");
+            return;
         }
-        types.putIfAbsent(type.getName(), type);
+        types.put(type.getName(), type);
     }
 
     public ConfigurationType get(String name) {
