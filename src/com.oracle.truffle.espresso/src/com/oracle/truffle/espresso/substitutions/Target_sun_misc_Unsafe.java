@@ -205,8 +205,6 @@ public final class Target_sun_misc_Unsafe {
         return SAFETY_FIELD_OFFSET + target.getSlot();
     }
 
-    // FIXME(peterssen): This abomination must go, once the object model land.
-
     private static Field getInstanceFieldFromIndex(StaticObject holder, int slot) {
         if (!(0 <= slot && slot < (1 << 16))) {
             throw EspressoError.shouldNotReachHere("the field offset is not normalized");

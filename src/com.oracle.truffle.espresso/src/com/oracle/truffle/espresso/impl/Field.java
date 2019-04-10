@@ -51,9 +51,7 @@ public final class Field implements ModifiersProvider {
     private volatile Klass typeKlassCache;
 
     @CompilerDirectives.CompilationFinal private int fieldIndex = -1;
-
     @CompilerDirectives.CompilationFinal private String genericSignature = null;
-
     @CompilerDirectives.CompilationFinal private int slot = -1;
 
     public Symbol<Type> getType() {
@@ -121,6 +119,10 @@ public final class Field implements ModifiersProvider {
      */
     public int getFieldIndex() {
         return fieldIndex;
+    }
+
+    void setFieldIndex(int index) {
+        this.fieldIndex = index;
     }
 
     @Override
@@ -202,10 +204,6 @@ public final class Field implements ModifiersProvider {
             }
         }
         return target;
-    }
-
-    void setFieldIndex(int index) {
-        this.fieldIndex = index;
     }
 
 }

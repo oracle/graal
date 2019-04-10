@@ -104,33 +104,6 @@ public interface InterfaceMethodRefConstant extends MethodRefConstant {
          * Object; such results were not consistent with the inheritance model of the Java
          * programming language, and are disallowed in Java SE 8 and above.)
          */
-        private static Method lookupInterfaceMethod(ObjectKlass seed, Symbol<Name> name, Symbol<Signature> signature) {
-            for (Method m : seed.getDeclaredMethods()) {
-                if (!m.isStatic() && !m.isPrivate() && name.equals(m.getName()) && signature.equals(m.getRawSignature())) {
-                    return m;
-                }
-            }
-            // FIXME(peterssen): Not implemented: If the maximally-specific superinterface methods
-            // of C for the name and descriptor specified by the method reference include exactly
-            // one method that does not have its ACC_ABSTRACT flag set, then this method is chosen
-            // and method lookup succeeds.
-            for (ObjectKlass i : seed.getInterfaces()) {
-                Method method = lookupInterfaceMethod(i, name, signature);
-                if (method != null) {
-                    return method;
-                }
-            }
-            if (seed.getType() == Symbol.Type.MethodHandle) {
-                return lookupPolysigMethod(seed, name, signature);
-            }
-            return null;
-        }
-
-        private static Method lookupPolysigMethod(Klass klass, Symbol<Name> name, Symbol<Signature> signature) {
-            assert (klass.getType() == Symbol.Type.MethodHandle);
-            return klass.lookupPolysigMethod(name, signature);
-        }
-
         @Override
         public ResolvedConstant resolve(RuntimeConstantPool pool, int thisIndex, Klass accessingKlass) {
             resolveMethodCount.inc();
@@ -146,18 +119,7 @@ public interface InterfaceMethodRefConstant extends MethodRefConstant {
 
             Symbol<Signature> signature = getSignature(pool);
 
-            Method method = holderInterface.lookupDeclaredMethod(name, signature);
-            if (method == null) {
-                Method m = meta.Object.lookupDeclaredMethod(name, signature);
-                if (m != null && m.isPublic() && !m.isStatic()) {
-                    method = m;
-                }
-            }
-
-            if (method == null) {
-                // Interfaces are always ObjectKlass(es).
-                method = lookupInterfaceMethod((ObjectKlass) holderInterface, name, signature);
-            }
+            Method method = ((ObjectKlass)holderInterface).lookupInterfaceMethod(name, signature);
 
             if (method == null) {
                 throw meta.throwExWithMessage(meta.NoSuchMethodError, meta.toGuestString(name));

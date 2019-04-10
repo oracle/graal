@@ -33,7 +33,7 @@ public class VirtualTable {
     private VirtualTable() {
     }
 
-    // Mirandas are already present in declaredMethods
+    // Mirandas are already in the Klass, there is not much left to do.
     public static Method[] create(ObjectKlass superKlass, Method[] declaredMethods, ObjectKlass thisKlass) {
         ArrayList<Method> tmp;
         if (superKlass != null) {

@@ -56,7 +56,7 @@ public class StaticObjectImpl extends StaticObject {
     /**
      * Stores all primitive types contiguously in a single byte array, without any unused bits
      * between prims (except for 7 bits with booleans). In order to quickly reconstruct a long (for
-     * example), which would require reading 8 bytes and concatenating them, call Unsafe which can
+     * example), which would require reading 16 bytes and concatenating them, call Unsafe which can
      * directly read a long.
      */
     private final byte[] primitiveFields;

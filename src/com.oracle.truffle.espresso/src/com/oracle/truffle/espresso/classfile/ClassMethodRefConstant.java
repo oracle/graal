@@ -159,9 +159,6 @@ public interface ClassMethodRefConstant extends MethodRefConstant {
          * choice of superinterface methods. Instead, resolution assumes that the run time class of
          * the invoked object has a concrete implementation of the method.
          */
-        private static Method lookupMethod(Klass klass, Symbol<Name> name, Symbol<Signature> signature) {
-            return klass.lookupMethod(name, signature);
-        }
 
         @Override
         public ResolvedConstant resolve(RuntimeConstantPool pool, int thisIndex, Klass accessingKlass) {
@@ -178,7 +175,7 @@ public interface ClassMethodRefConstant extends MethodRefConstant {
             Symbol<Name> name = getName(pool);
             Symbol<Signature> signature = getSignature(pool);
 
-            Method method = lookupMethod(holderKlass, name, signature);
+            Method method = holderKlass.lookupMethod(name, signature);
             if (method == null) {
                 throw meta.throwExWithMessage(meta.NoSuchMethodError, meta.toGuestString(getName(pool)));
             }
