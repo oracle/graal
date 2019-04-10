@@ -117,6 +117,14 @@ public final class PolyglotImpl extends AbstractPolyglotImpl {
 
     static final String OPTION_GROUP_ENGINE = "engine";
 
+    @SuppressWarnings("serial") private static final HostException STACKOVERFLOW_ERROR = new HostException(new StackOverflowError() {
+        @SuppressWarnings("sync-override")
+        @Override
+        public Throwable fillInStackTrace() {
+            return this;
+        }
+    });
+
     private final PolyglotSource sourceImpl = new PolyglotSource(this);
     private final PolyglotSourceSection sourceSectionImpl = new PolyglotSourceSection(this);
     private final PolyglotExecutionListener executionListenerImpl = new PolyglotExecutionListener(this);
@@ -369,7 +377,14 @@ public final class PolyglotImpl extends AbstractPolyglotImpl {
         } else if (e instanceof InteropException) {
             throw ((InteropException) e).raise();
         }
-        return new HostException(e);
+        try {
+            return new HostException(e);
+        } catch (StackOverflowError stack) {
+            /*
+             * Cannot create a new host exception. Use a readily prepared instance.
+             */
+            return STACKOVERFLOW_ERROR;
+        }
     }
 
     @TruffleBoundary
