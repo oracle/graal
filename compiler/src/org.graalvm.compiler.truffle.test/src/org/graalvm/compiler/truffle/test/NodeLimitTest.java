@@ -29,8 +29,6 @@ import java.util.function.Function;
 import org.graalvm.compiler.core.common.CompilationIdentifier;
 import org.graalvm.compiler.core.common.GraalBailoutException;
 import org.graalvm.compiler.nodes.StructuredGraph;
-import org.graalvm.compiler.truffle.compiler.SharedTruffleCompilerOptions;
-import org.graalvm.compiler.truffle.compiler.TruffleCompilerOptions;
 import org.graalvm.compiler.truffle.runtime.OptimizedCallTarget;
 import org.graalvm.compiler.truffle.runtime.OptimizedDirectCallNode;
 import org.graalvm.compiler.truffle.runtime.SharedTruffleRuntimeOptions;
@@ -59,12 +57,12 @@ public class NodeLimitTest extends PartialEvaluationTest {
         runtime = Truffle.getRuntime();
     }
 
-    static TruffleCompilerOptions.TruffleOptionsOverrideScope performanceWarningsAreFatalScope;
+    static TruffleRuntimeOptions.TruffleRuntimeOptionsOverrideScope performanceWarningsAreFatalScope;
 
     @BeforeClass
     public static void beforeClass() {
         Assume.assumeFalse(TruffleRuntimeOptions.getValue(SharedTruffleRuntimeOptions.TruffleCompileImmediately));
-        performanceWarningsAreFatalScope = TruffleCompilerOptions.overrideOptions(SharedTruffleCompilerOptions.TrufflePerformanceWarningsAreFatal, false);
+        performanceWarningsAreFatalScope = TruffleRuntimeOptions.overrideOptions(SharedTruffleRuntimeOptions.TrufflePerformanceWarningsAreFatal, false);
     }
 
     @AfterClass
@@ -245,7 +243,7 @@ public class NodeLimitTest extends PartialEvaluationTest {
 
     @SuppressWarnings("try")
     private void peRootNodeWithFillerAndTest(int nodeLimit, RootNode rootNode) {
-        try (TruffleCompilerOptions.TruffleOptionsOverrideScope scope = TruffleCompilerOptions.overrideOptions(TruffleCompilerOptions.TruffleMaximumGraalNodeCount, nodeLimit)) {
+        try (TruffleRuntimeOptions.TruffleRuntimeOptionsOverrideScope scope = TruffleRuntimeOptions.overrideOptions(SharedTruffleRuntimeOptions.TruffleMaximumGraalNodeCount, nodeLimit)) {
             RootCallTarget target = runtime.createCallTarget(rootNode);
             final Object[] arguments = {1};
             globalI = 0;

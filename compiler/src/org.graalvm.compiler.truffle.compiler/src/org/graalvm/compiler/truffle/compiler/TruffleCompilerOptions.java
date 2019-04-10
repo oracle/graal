@@ -84,9 +84,6 @@ public final class TruffleCompilerOptions {
 
     @Option(help = "Maximum number of instrumentation counters available.")
     public static final OptionKey<Integer> TruffleInstrumentationTableSize = new OptionKey<>(10000);
-
-    @Option(help = "Stop partial evaluation when the graph exceeded this many nodes.")
-    public static final OptionKey<Integer> TruffleMaximumGraalNodeCount = new OptionKey<>(300000);
     // @formatter:on
 
     private TruffleCompilerOptions() {

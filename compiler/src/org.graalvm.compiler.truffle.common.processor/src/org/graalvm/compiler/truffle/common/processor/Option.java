@@ -322,7 +322,13 @@ public class Option {
             .type("Boolean")
             .category("USER")
             .def("false")
-            .help("Whether to use multiple Truffle compilation tiers by default.")
+            .help("Whether to use multiple Truffle compilation tiers by default."),
+
+        option("TruffleMaximumGraalNodeCount")
+            .type("Integer")
+            .category("INTERNAL")
+            .def("300000")
+            .help("Stop partial evaluation when the graph exceeded this many nodes.")
     };
     // @formatter:on
 

@@ -27,6 +27,7 @@ package org.graalvm.compiler.truffle.compiler;
 import static org.graalvm.compiler.nodes.graphbuilderconf.InlineInvokePlugin.InlineInfo.createStandardInlineInfo;
 import static org.graalvm.compiler.truffle.compiler.SharedTruffleCompilerOptions.TraceTruffleStackTraceLimit;
 import static org.graalvm.compiler.truffle.compiler.SharedTruffleCompilerOptions.TruffleFunctionInlining;
+import static org.graalvm.compiler.truffle.compiler.SharedTruffleCompilerOptions.TruffleMaximumGraalNodeCount;
 import static org.graalvm.compiler.truffle.compiler.SharedTruffleCompilerOptions.TrufflePerformanceWarningsAreFatal;
 import static org.graalvm.compiler.truffle.compiler.TruffleCompilerOptions.PrintTruffleExpansionHistogram;
 import static org.graalvm.compiler.truffle.compiler.TruffleCompilerOptions.TraceTrufflePerformanceWarnings;
@@ -34,7 +35,6 @@ import static org.graalvm.compiler.truffle.compiler.TruffleCompilerOptions.Truff
 import static org.graalvm.compiler.truffle.compiler.TruffleCompilerOptions.TruffleInstrumentBoundaries;
 import static org.graalvm.compiler.truffle.compiler.TruffleCompilerOptions.TruffleInstrumentBranches;
 import static org.graalvm.compiler.truffle.compiler.TruffleCompilerOptions.TruffleIterativePartialEscape;
-import static org.graalvm.compiler.truffle.compiler.TruffleCompilerOptions.TruffleMaximumGraalNodeCount;
 
 import java.io.Closeable;
 import java.net.URI;
@@ -488,7 +488,6 @@ public abstract class PartialEvaluator {
 
         ReplacementsImpl replacements = (ReplacementsImpl) providers.getReplacements();
         InlineInvokePlugin[] inlineInvokePlugins;
-        assert 40 == TruffleCompilerOptions.getValue(TruffleCompilerOptions.TruffleMaximumGraalNodeCount);
         InlineInvokePlugin inlineInvokePlugin = new PEInlineInvokePlugin(inliningDecision, graph, TruffleCompilerOptions.getValue(TruffleMaximumGraalNodeCount));
 
         HistogramInlineInvokePlugin histogramPlugin = null;

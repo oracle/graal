@@ -24,8 +24,6 @@
  */
 package org.graalvm.compiler.truffle.test;
 
-import org.graalvm.compiler.truffle.compiler.SharedTruffleCompilerOptions;
-import org.graalvm.compiler.truffle.compiler.TruffleCompilerOptions;
 import org.graalvm.compiler.truffle.runtime.SharedTruffleRuntimeOptions;
 import org.graalvm.compiler.truffle.runtime.TruffleRuntimeOptions;
 import org.junit.AfterClass;
@@ -45,14 +43,14 @@ import com.oracle.truffle.api.nodes.RootNode;
 public class MaterializeVirtualFramesTest extends TestWithSynchronousCompiling {
 
     private static int blackHole = 100;
-    private static TruffleCompilerOptions.TruffleOptionsOverrideScope scope;
-    private static TruffleCompilerOptions.TruffleOptionsOverrideScope performanceWarningsAreFatalScope;
+    private static TruffleRuntimeOptions.TruffleRuntimeOptionsOverrideScope scope;
+    private static TruffleRuntimeOptions.TruffleRuntimeOptionsOverrideScope performanceWarningsAreFatalScope;
 
     @BeforeClass
     public static void setUp() {
         Assume.assumeFalse(TruffleRuntimeOptions.getValue(SharedTruffleRuntimeOptions.TruffleCompileImmediately));
-        performanceWarningsAreFatalScope = TruffleCompilerOptions.overrideOptions(SharedTruffleCompilerOptions.TrufflePerformanceWarningsAreFatal, false);
-        scope = TruffleCompilerOptions.overrideOptions(TruffleCompilerOptions.TruffleMaximumGraalNodeCount, 40);
+        performanceWarningsAreFatalScope = TruffleRuntimeOptions.overrideOptions(SharedTruffleRuntimeOptions.TrufflePerformanceWarningsAreFatal, false);
+        scope = TruffleRuntimeOptions.overrideOptions(SharedTruffleRuntimeOptions.TruffleMaximumGraalNodeCount, 40);
     }
 
     @AfterClass
@@ -67,7 +65,6 @@ public class MaterializeVirtualFramesTest extends TestWithSynchronousCompiling {
         final FrameSlot slot = frameDescriptor.addFrameSlot("test");
         final int compilationThreshold = TruffleRuntimeOptions.getValue(SharedTruffleRuntimeOptions.TruffleCompilationThreshold);
         int[] execCount = {0};
-        assert 40 == TruffleCompilerOptions.getValue(TruffleCompilerOptions.TruffleMaximumGraalNodeCount);
         final RootCallTarget callTarget = Truffle.getRuntime().createCallTarget(new RootNode(null, frameDescriptor) {
             @Override
             public Object execute(VirtualFrame frame) {
