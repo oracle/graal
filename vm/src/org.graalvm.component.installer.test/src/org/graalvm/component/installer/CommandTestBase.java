@@ -212,8 +212,4 @@ public class CommandTestBase extends TestBase implements CommandInput, SoftwareC
         return new JarMetaLoader(new JarFile(localFile.toFile(), verify), this);
     }
 
-    @Override
-    public MetadataLoader completeMetadata(MetadataLoader ldr, ComponentInfo ci) {
-        return ldr;
-    }
 }

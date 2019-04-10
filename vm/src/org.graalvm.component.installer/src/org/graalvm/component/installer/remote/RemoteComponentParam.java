@@ -187,6 +187,11 @@ public abstract class RemoteComponentParam implements ComponentParam, MetadataLo
         public void setNoVerifySymlinks(boolean noVerifySymlinks) {
             delegate.setNoVerifySymlinks(noVerifySymlinks);
         }
+
+        @Override
+        public ComponentInfo completeMetadata() throws IOException {
+            return delegate.completeMetadata();
+        }
     }
 
     /**

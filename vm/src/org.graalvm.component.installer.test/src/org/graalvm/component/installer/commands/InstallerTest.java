@@ -78,10 +78,11 @@ public class InstallerTest extends TestBase {
     private void setupComponentInstall(String relativePath) throws IOException {
         File f = dataFile(relativePath).toFile();
         JarFile jf = new JarFile(f);
-        componentJarFile = new JarArchive(jf);
 
         loader = new JarMetaLoader(jf, this);
         componentInfo = loader.createComponentInfo();
+
+        componentJarFile = new JarArchive(jf);
 
         loader.loadPaths();
         installer = new Installer(fb(), componentInfo, registry, componentJarFile);

@@ -174,7 +174,7 @@ public class ComponentPackageLoader implements Closeable, MetadataLoader {
         return errors;
     }
 
-    private void loadWorkingDirectories() {
+    private void loadWorkingDirectories(ComponentInfo nfo) {
         String val = parseHeader(BundleConstants.BUNDLE_WORKDIRS, null).getContents("");
         Set<String> workDirs = new LinkedHashSet<>();
         for (String s : val.split(":")) { // NOI18N
@@ -183,10 +183,10 @@ public class ComponentPackageLoader implements Closeable, MetadataLoader {
                 workDirs.add(p);
             }
         }
-        info.addWorkingDirectories(workDirs);
+        nfo.addWorkingDirectories(workDirs);
     }
 
-    public ComponentInfo createComponentInfo() {
+    protected ComponentInfo createBaseComponentInfo() {
         parse(
                         () -> id = parseHeader(BundleConstants.BUNDLE_ID).parseSymbolicName(),
                         () -> name = parseHeader(BundleConstants.BUNDLE_NAME).getContents(id),
@@ -194,18 +194,27 @@ public class ComponentPackageLoader implements Closeable, MetadataLoader {
                         () -> {
                             info = new ComponentInfo(id, name, version);
                             info.addRequiredValues(parseHeader(BundleConstants.BUNDLE_REQUIRED).parseRequiredCapabilities());
-                        },
-                        () -> info.setPolyglotRebuild(parseHeader(BundleConstants.BUNDLE_POLYGLOT_PART, null).getBoolean(Boolean.FALSE)),
-                        () -> loadWorkingDirectories(),
-                        () -> loadMessages(),
-                        () -> loadLicenseType()
-
-        );
+                        });
         return info;
     }
 
-    private void loadLicenseType() {
+    protected ComponentInfo loadExtendedMetadata(ComponentInfo base) {
+        parse(
+                        () -> base.setPolyglotRebuild(parseHeader(BundleConstants.BUNDLE_POLYGLOT_PART, null).getBoolean(Boolean.FALSE)),
+                        () -> loadWorkingDirectories(base),
+                        () -> loadMessages(base),
+                        () -> loadLicenseType(base));
+        return base;
+    }
+
+    public ComponentInfo createComponentInfo() {
+        ComponentInfo nfo = createBaseComponentInfo();
+        return loadExtendedMetadata(nfo);
+    }
+
+    private void loadLicenseType(ComponentInfo nfo) {
         licenseType = parseHeader(BundleConstants.BUNDLE_LICENSE_TYPE, null).getContents(null);
+        nfo.setLicenseType(licenseType);
     }
 
     @Override
@@ -317,11 +326,11 @@ public class ComponentPackageLoader implements Closeable, MetadataLoader {
     public void close() throws IOException {
     }
 
-    private void loadMessages() {
+    private void loadMessages(ComponentInfo nfo) {
         String val = parseHeader(BundleConstants.BUNDLE_MESSAGE_POSTINST, null).getContents(null);
         if (val != null) {
             String text = val.replace("\\n", "\n").replace("\\\\", "\\"); // NOI18N
-            info.setPostinstMessage(text);
+            nfo.setPostinstMessage(text);
         }
     }
 
@@ -332,5 +341,10 @@ public class ComponentPackageLoader implements Closeable, MetadataLoader {
 
     protected void addFiles(List<String> files) {
         fileList.addAll(files);
+    }
+
+    @Override
+    public ComponentInfo completeMetadata() throws IOException {
+        return getComponentInfo();
     }
 }

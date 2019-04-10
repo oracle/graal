@@ -48,7 +48,6 @@ import org.graalvm.component.installer.remote.FileDownloader;
 import org.graalvm.component.installer.persist.MetadataLoader;
 import org.graalvm.component.installer.remote.RemotePropertiesStorage;
 import org.graalvm.component.installer.SoftwareChannel;
-import org.graalvm.component.installer.model.ComponentInfo;
 
 /**
  *
@@ -160,10 +159,5 @@ public class WebCatalog implements SoftwareChannel {
     @Override
     public FileDownloader configureDownloader(FileDownloader dn) {
         return dn;
-    }
-
-    @Override
-    public MetadataLoader completeMetadata(MetadataLoader ldr, ComponentInfo info) {
-        return ldr;
     }
 }
