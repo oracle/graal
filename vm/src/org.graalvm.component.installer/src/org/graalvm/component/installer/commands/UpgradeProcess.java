@@ -74,6 +74,7 @@ public class UpgradeProcess {
     private MetadataLoader metaLoader;
     private boolean allowMissing;
     private ComponentRegistry newGraalRegistry;
+    private Version minVersion = Version.NO_VERSION;
 
     public UpgradeProcess(CommandInput input, Feedback feedback, ComponentCollection catalog) {
         this.input = input;
@@ -180,7 +181,7 @@ public class UpgradeProcess {
         String ed = graal.getProvidedValue(CommonConstants.CAP_EDITION, String.class);
         String dirName = feedback.l10n(
                         ed == null ? "UPGRADE_GraalVMDirName@" : "UPGRADE_GraalVMDirNameEdition@",
-                        graal.getVersion().toString(),
+                        graal.getVersion().originalString(),
                         ed);
         return base.resolve(dirName);
     }
@@ -257,6 +258,9 @@ public class UpgradeProcess {
             Version cv = Version.fromString(vs);
             if (!satisfies.test(cv)) {
                 broken.add(in);
+                if (minVersion.compareTo(cv) < 0) {
+                    minVersion = cv;
+                }
             }
         }
         return broken;
@@ -306,10 +310,7 @@ public class UpgradeProcess {
             }
         }
         if (versions.isEmpty()) {
-            if (minimum.getType() == Version.Match.Type.MOSTRECENT) {
-                return null;
-            }
-            throw feedback.failure("UPGRADE_NoVersionSatisfiesComponents", null);
+            throw feedback.failure("UPGRADE_NoVersionSatisfiesComponents", null, minVersion.toString());
         }
 
         Set<ComponentInfo> installables = null;
@@ -356,7 +357,7 @@ public class UpgradeProcess {
 
     public void migrateLicenses() {
         feedback.output("UPGRADE_MigratingLicenses", input.getLocalRegistry().getGraalVersion(),
-                        targetInfo.getVersion().toString());
+                        targetInfo.getVersion().originalString());
         for (Map.Entry<String, Collection<String>> e : input.getLocalRegistry().getAcceptedLicenses().entrySet()) {
             String compId = e.getKey();
 
@@ -464,6 +465,14 @@ public class UpgradeProcess {
                 return null;
             }
             return params.get(index++).getSpecification();
+        }
+
+        @Override
+        public String peekParameter() {
+            if (!hasParameter()) {
+                return null;
+            }
+            return params.get(index).getSpecification();
         }
 
         @Override

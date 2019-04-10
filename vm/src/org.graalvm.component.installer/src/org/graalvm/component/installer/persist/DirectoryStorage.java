@@ -162,7 +162,7 @@ public class DirectoryStorage implements ManagementStorage {
     }
 
     public Version getGraalVMVersion() {
-        String s = SystemUtils.normalizeOldVersions(loadGraalVersionInfo().get(CommonConstants.CAP_GRAALVM_VERSION));
+        String s = loadGraalVersionInfo().get(CommonConstants.CAP_GRAALVM_VERSION);
         return Version.fromString(s);
     }
 
@@ -322,7 +322,7 @@ public class DirectoryStorage implements ManagementStorage {
         }
         Version v = getGraalVMVersion();
         ComponentInfo ci = new ComponentInfo(BundleConstants.GRAAL_COMPONENT_ID, feedback.l10n("NAME_GraalCoreComponent"),
-                        v.toString());
+                        v.originalString());
         graalCore = ci;
         return graalCore;
     }
@@ -494,6 +494,7 @@ public class DirectoryStorage implements ManagementStorage {
                 t = '"'; // NOI18N
             } else if (o instanceof Version) {
                 t = 'V';
+                o = ((Version) o).originalString();
             } else {
                 continue;
             }

@@ -55,6 +55,12 @@ public interface CommandInput {
     String nextParameter();
 
     /**
+     * Peeks onto the next parameter. Does not consume it. A call to {@link #nextParameter} is
+     * required to advance.
+     */
+    String peekParameter();
+
+    /**
      * Has some parameters ?
      */
     boolean hasParameter();

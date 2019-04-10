@@ -41,7 +41,6 @@ import org.graalvm.component.installer.CommonConstants;
 import org.graalvm.component.installer.ComponentCollection;
 import org.graalvm.component.installer.FailedOperationException;
 import org.graalvm.component.installer.Feedback;
-import org.graalvm.component.installer.SystemUtils;
 import org.graalvm.component.installer.Version;
 
 /**
@@ -439,7 +438,7 @@ public final class ComponentRegistry implements ComponentCollection {
 
     public Version getGraalVersion() {
         if (graalVer == null) {
-            graalVer = Version.fromString(SystemUtils.normalizeOldVersions(getGraalCapabilities().get(CommonConstants.CAP_GRAALVM_VERSION)));
+            graalVer = Version.fromString(getGraalCapabilities().get(CommonConstants.CAP_GRAALVM_VERSION));
         }
         return graalVer;
     }

@@ -408,6 +408,11 @@ public final class Environment implements Feedback, CommandInput {
     }
 
     @Override
+    public String peekParameter() {
+        return parameters.peek();
+    }
+
+    @Override
     public String requiredParameter() {
         if (parameters.isEmpty()) {
             throw new FailedOperationException(

@@ -147,7 +147,7 @@ public class CatalogIterable implements ComponentIterable {
                             throw feedback.failure("REMOTE_UpgradeGraalVMCore", null, id, rvs);
                         }
                         if (m[0].getType() == Version.Match.Type.EXACT) {
-                            throw feedback.failure("REMOTE_NoSpecificVersion", null, id, m[0].getVersion().toString());
+                            throw feedback.failure("REMOTE_NoSpecificVersion", null, id, m[0].getVersion().originalString());
                         }
                     }
                     // last try, catch obsolete components:
