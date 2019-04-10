@@ -67,6 +67,7 @@ public class MaterializeVirtualFramesTest extends TestWithSynchronousCompiling {
         final FrameSlot slot = frameDescriptor.addFrameSlot("test");
         final int compilationThreshold = TruffleRuntimeOptions.getValue(SharedTruffleRuntimeOptions.TruffleCompilationThreshold);
         int[] execCount = {0};
+        assert 40 == TruffleCompilerOptions.getValue(TruffleCompilerOptions.TruffleMaximumGraalNodeCount);
         final RootCallTarget callTarget = Truffle.getRuntime().createCallTarget(new RootNode(null, frameDescriptor) {
             @Override
             public Object execute(VirtualFrame frame) {

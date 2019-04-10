@@ -488,6 +488,7 @@ public abstract class PartialEvaluator {
 
         ReplacementsImpl replacements = (ReplacementsImpl) providers.getReplacements();
         InlineInvokePlugin[] inlineInvokePlugins;
+        assert 40 == TruffleCompilerOptions.getValue(TruffleCompilerOptions.TruffleMaximumGraalNodeCount);
         InlineInvokePlugin inlineInvokePlugin = new PEInlineInvokePlugin(inliningDecision, graph, TruffleCompilerOptions.getValue(TruffleMaximumGraalNodeCount));
 
         HistogramInlineInvokePlugin histogramPlugin = null;
