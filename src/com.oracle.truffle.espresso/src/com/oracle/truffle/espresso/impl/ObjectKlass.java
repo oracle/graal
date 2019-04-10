@@ -374,12 +374,14 @@ public final class ObjectKlass extends Klass {
     }
 
     public final Field lookupHiddenField(Symbol<Name> name) {
-        for (Field f : fieldTable) {
+        // Hidden fields are located at the end of the field table.
+        for (int i = fieldTable.length - 1; i > 0; i--) {
+            Field f = fieldTable[i];
             if (f.getName() == name && f.isHidden()) {
                 return f;
             }
         }
-        return null;
+        throw EspressoError.shouldNotReachHere();
     }
 
     Method[] getVTable() {

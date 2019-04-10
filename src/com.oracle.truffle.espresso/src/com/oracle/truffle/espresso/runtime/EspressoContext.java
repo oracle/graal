@@ -194,7 +194,7 @@ public final class EspressoContext {
         initializeKnownClass(Type.java_lang_ref_Finalizer);
 
         // Call System.initializeSystemClass
-        meta.System.lookupDeclaredMethod(Name.initializeSystemClass, Signature._void).invokeDirect(null);
+        meta.System_initializeSystemClass.invokeDirect(null);
 
         // System exceptions.
         for (Symbol<Type> type : Arrays.asList(
@@ -208,6 +208,7 @@ public final class EspressoContext {
                         Type.IllegalArgumentException)) {
             initializeKnownClass(type);
         }
+
 
         System.err.println("spawnVM: " + (System.currentTimeMillis() - ticks) + " ms");
     }
