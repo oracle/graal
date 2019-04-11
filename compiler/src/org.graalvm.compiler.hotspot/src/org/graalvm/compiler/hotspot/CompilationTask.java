@@ -40,7 +40,6 @@ import org.graalvm.compiler.code.CompilationResult;
 import org.graalvm.compiler.core.CompilationPrinter;
 import org.graalvm.compiler.core.CompilationWrapper;
 import org.graalvm.compiler.core.common.CompilationIdentifier;
-import org.graalvm.compiler.debug.Assertions;
 import org.graalvm.compiler.debug.CounterKey;
 import org.graalvm.compiler.debug.DebugCloseable;
 import org.graalvm.compiler.debug.DebugContext;
@@ -150,9 +149,8 @@ public class CompilationTask {
                 if (bailout.isPermanent()) {
                     // Respect current action if it has been explicitly set.
                     if (!CompilationBailoutAsFailure.hasBeenSet(values)) {
-                        // Get more info for permanent bailouts during bootstrap
-                        // or when assertions are enabled.
-                        if (Assertions.assertionsEnabled() || compiler.getGraalRuntime().isBootstrapping()) {
+                        // Get more info for permanent bailouts during bootstrap.
+                        if (compiler.getGraalRuntime().isBootstrapping()) {
                             return Diagnose;
                         }
 
@@ -165,9 +163,8 @@ public class CompilationTask {
 
             // Respect current action if it has been explicitly set.
             if (!CompilationFailureAction.hasBeenSet(values)) {
-                // Automatically exit on failure during bootstrap
-                // or when assertions are enabled.
-                if (Assertions.assertionsEnabled() || compiler.getGraalRuntime().isBootstrapping()) {
+                // Automatically exit on failure during bootstrap.
+                if (compiler.getGraalRuntime().isBootstrapping()) {
                     return ExitVM;
                 }
             }
