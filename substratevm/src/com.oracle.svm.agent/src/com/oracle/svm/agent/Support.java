@@ -276,11 +276,11 @@ public final class Support {
         return handlePtr.read();
     }
 
-    public static Object getClassNameOr(JNIEnvironment env, JNIObjectHandle clazz, Object forNullHandle, Object forNullNameOrException) {
+    public static String getClassNameOr(JNIEnvironment env, JNIObjectHandle clazz, String forNullHandle, String forNullNameOrException) {
         if (clazz.notEqual(nullHandle())) {
             JNIObjectHandle clazzName = Support.jniFunctions().<JNIFunctionPointerTypes.CallObjectMethod0FunctionPointer> getCallObjectMethod()
                             .invoke(env, clazz, Support.handles().javaLangClassGetName);
-            Object result = Support.fromJniString(env, clazzName);
+            String result = Support.fromJniString(env, clazzName);
             if (result == null || clearException(env)) {
                 result = forNullNameOrException;
             }
@@ -289,7 +289,7 @@ public final class Support {
         return forNullHandle;
     }
 
-    public static Object getClassNameOrNull(JNIEnvironment env, JNIObjectHandle clazz) {
+    public static String getClassNameOrNull(JNIEnvironment env, JNIObjectHandle clazz) {
         return getClassNameOr(env, clazz, null, null);
     }
 

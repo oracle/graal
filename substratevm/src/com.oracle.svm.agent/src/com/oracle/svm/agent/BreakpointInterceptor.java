@@ -306,7 +306,7 @@ final class BreakpointInterceptor {
                 WordPointer holderPtr = StackValue.get(WordPointer.class);
                 if (jvmtiFunctions().GetMethodDeclaringClass().invoke(jvmtiEnv(), enclosingID, holderPtr) == JvmtiError.JVMTI_ERROR_NONE) {
                     holder = holderPtr.read();
-                    String holderName = (String) getClassNameOrNull(jni, holderPtr.read());
+                    String holderName = getClassNameOrNull(jni, holderPtr.read());
                     if (holderName != null) {
                         CCharPointerPointer namePtr = StackValue.get(CCharPointerPointer.class);
                         CCharPointerPointer signaturePtr = StackValue.get(CCharPointerPointer.class);
@@ -467,7 +467,7 @@ final class BreakpointInterceptor {
             classNames = TraceWriter.UNKNOWN_VALUE;
             int length = jniFunctions().getGetArrayLength().invoke(jni, classArray);
             if (!clearException(jni) && length >= 0) {
-                List<Object> list = new ArrayList<>();
+                List<String> list = new ArrayList<>();
                 for (int i = 0; i < length; i++) {
                     JNIObjectHandle clazz = jniFunctions().getGetObjectArrayElement().invoke(jni, classArray, i);
                     if (!clearException(jni)) {
@@ -476,7 +476,7 @@ final class BreakpointInterceptor {
                         list.add(TraceWriter.UNKNOWN_VALUE);
                     }
                 }
-                classNames = list.toArray();
+                classNames = list.toArray(new String[0]);
             }
         }
         return classNames;

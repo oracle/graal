@@ -30,10 +30,10 @@ import java.util.Map;
 
 public abstract class TraceWriter implements Closeable {
     /** Value to explicitly express {@code null} in a trace, instead of omitting the value. */
-    public static final Object EXPLICIT_NULL = new Object();
+    public static final String EXPLICIT_NULL = new String("null");
 
     /** Value to express an unknown value, for example on failure to retrieve the value. */
-    public static final Object UNKNOWN_VALUE = new String("\0");
+    public static final String UNKNOWN_VALUE = new String("\0");
 
     static Object handleSpecialValue(Object obj) {
         return (obj == EXPLICIT_NULL) ? null : obj;

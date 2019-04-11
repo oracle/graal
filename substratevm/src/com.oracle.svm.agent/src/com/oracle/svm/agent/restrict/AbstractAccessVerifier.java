@@ -57,7 +57,7 @@ class AbstractAccessVerifier {
     }
 
     protected boolean shouldApproveWithoutChecks(JNIEnvironment env, JNIObjectHandle callerClass) {
-        return accessAdvisor.shouldIgnore(() -> (String) getClassNameOrNull(env, callerClass));
+        return accessAdvisor.shouldIgnore(() -> getClassNameOrNull(env, callerClass));
     }
 
     protected boolean isFieldAccessible(JNIEnvironment env, JNIObjectHandle clazz, Supplier<String> name, JNIFieldId field, JNIObjectHandle declaring) {

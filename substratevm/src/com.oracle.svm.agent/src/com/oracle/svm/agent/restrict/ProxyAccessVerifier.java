@@ -59,11 +59,11 @@ public class ProxyAccessVerifier extends AbstractAccessVerifier {
             return true;
         }
         String interfaceString = "(unknown)";
-        if (interfaceNames instanceof Object[]) {
-            if (configuration.contains((Object[]) interfaceNames)) {
+        if (interfaceNames instanceof String[]) {
+            if (configuration.contains((String[]) interfaceNames)) {
                 return true;
             }
-            interfaceString = Arrays.toString((Object[]) interfaceNames);
+            interfaceString = Arrays.toString((String[]) interfaceNames);
         }
         try (CCharPointerHolder message = toCString(Agent.MESSAGE_PREFIX + "configuration does not permit proxy class for interfaces: " + interfaceString)) {
             beforeThrow(message);

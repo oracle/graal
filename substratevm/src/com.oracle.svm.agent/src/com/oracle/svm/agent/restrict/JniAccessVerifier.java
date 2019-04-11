@@ -88,7 +88,7 @@ public class JniAccessVerifier extends AbstractAccessVerifier {
     public boolean verifyGetMethodID(JNIEnvironment env, JNIObjectHandle clazz, CCharPointer cname, CCharPointer csignature, JNIMethodId result, JNIObjectHandle callerClass) {
         assert result.isNonNull();
         String name = fromCString(cname);
-        if (accessAdvisor.shouldIgnoreJniMethodLookup(() -> (String) getClassNameOrNull(env, clazz), () -> name, () -> fromCString(csignature), () -> (String) getClassNameOrNull(env, callerClass))) {
+        if (accessAdvisor.shouldIgnoreJniMethodLookup(() -> getClassNameOrNull(env, clazz), () -> name, () -> fromCString(csignature), () -> getClassNameOrNull(env, callerClass))) {
             return true;
         }
         WordPointer declaringPtr = StackValue.get(WordPointer.class);
