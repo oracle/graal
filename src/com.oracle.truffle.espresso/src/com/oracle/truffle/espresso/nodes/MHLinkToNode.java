@@ -31,7 +31,7 @@ import com.oracle.truffle.espresso.descriptors.Symbol.Type;
 import com.oracle.truffle.espresso.impl.Method;
 import com.oracle.truffle.espresso.meta.EspressoError;
 import com.oracle.truffle.espresso.runtime.MethodHandleIntrinsics;
-import com.oracle.truffle.espresso.runtime.StaticObjectImpl;
+import com.oracle.truffle.espresso.runtime.StaticObject;
 
 public abstract class MHLinkToNode extends EspressoBaseNode {
     final int argCount;
@@ -101,7 +101,7 @@ public abstract class MHLinkToNode extends EspressoBaseNode {
 
     final Method getTarget(Object[] args) {
         assert args.length >= 1;
-        StaticObjectImpl memberName = (StaticObjectImpl) args[args.length - 1];
+        StaticObject memberName = (StaticObject) args[args.length - 1];
         assert (memberName.getKlass().getType() == Symbol.Type.MemberName);
         Method target = (Method) memberName.getUnsafeField(hidden_vmtarget);
         return target;

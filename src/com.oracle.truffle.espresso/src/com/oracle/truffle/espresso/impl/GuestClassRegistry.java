@@ -30,7 +30,6 @@ import com.oracle.truffle.espresso.descriptors.Symbol.Type;
 import com.oracle.truffle.espresso.descriptors.Types;
 import com.oracle.truffle.espresso.runtime.EspressoContext;
 import com.oracle.truffle.espresso.runtime.StaticObject;
-import com.oracle.truffle.espresso.runtime.StaticObjectImpl;
 import com.oracle.truffle.espresso.substitutions.Host;
 import com.oracle.truffle.object.DebugCounter;
 
@@ -79,7 +78,7 @@ public final class GuestClassRegistry extends ClassRegistry {
             return klass;
         }
         assert StaticObject.notNull(classLoader);
-        StaticObjectImpl guestClass = (StaticObjectImpl) ClassLoader_loadClass.invokeDirect(classLoader, getMeta().toGuestString(Types.binaryName(type)), false);
+        StaticObject guestClass = (StaticObject) ClassLoader_loadClass.invokeDirect(classLoader, getMeta().toGuestString(Types.binaryName(type)), false);
         klass = guestClass.getMirrorKlass();
         Klass previous = classes.putIfAbsent(type, klass);
         assert previous == null || previous == klass;

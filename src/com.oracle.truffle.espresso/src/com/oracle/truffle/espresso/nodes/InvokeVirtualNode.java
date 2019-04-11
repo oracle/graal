@@ -31,7 +31,6 @@ import com.oracle.truffle.espresso.descriptors.Signatures;
 import com.oracle.truffle.espresso.impl.Klass;
 import com.oracle.truffle.espresso.impl.Method;
 import com.oracle.truffle.espresso.runtime.StaticObject;
-import com.oracle.truffle.espresso.runtime.StaticObjectImpl;
 
 public abstract class InvokeVirtualNode extends QuickNode {
 
@@ -44,7 +43,7 @@ public abstract class InvokeVirtualNode extends QuickNode {
 
     @SuppressWarnings("unused")
     @Specialization(limit = "INLINE_CACHE_SIZE_LIMIT", guards = "receiver.getKlass() == cachedKlass")
-    Object callVirtualDirect(StaticObjectImpl receiver, Object[] args,
+    Object callVirtualDirect(StaticObject receiver, Object[] args,
                     @Cached("receiver.getKlass()") Klass cachedKlass,
                     @Cached("methodLookup(receiver, vtableIndex)") Method resolvedMethod,
                     @Cached("create(resolvedMethod.getCallTarget())") DirectCallNode directCallNode) {
@@ -81,7 +80,8 @@ public abstract class InvokeVirtualNode extends QuickNode {
         // TODO(peterssen): Maybe refrain from exposing the whole root node?.
         BytecodeNode root = (BytecodeNode) getParent();
         // TODO(peterssen): IsNull Node?.
-        StaticObject receiver = nullCheck(root.peekReceiver(frame, top, resolutionSeed));
+        StaticObject receiver = root.peekReceiver(frame, top, resolutionSeed);
+        nullCheck(receiver);
         Object[] args = root.peekArguments(frame, top, true, resolutionSeed.getParsedSignature());
         assert receiver != null;
         assert receiver == args[0] : "receiver must be the first argument";

@@ -194,7 +194,8 @@ public final class EspressoContext {
         initializeKnownClass(Type.java_lang_ref_Finalizer);
 
         // Call System.initializeSystemClass
-        meta.System_initializeSystemClass.invokeDirect(null);
+        // meta.System_initializeSystemClass.invokeDirect(null);
+        meta.System.lookupDeclaredMethod(Name.initializeSystemClass, Signature._void).invokeDirect(null);
 
         // System exceptions.
         for (Symbol<Type> type : Arrays.asList(
@@ -209,12 +210,11 @@ public final class EspressoContext {
             initializeKnownClass(type);
         }
 
-
         System.err.println("spawnVM: " + (System.currentTimeMillis() - ticks) + " ms");
     }
 
     private void createMainThread() {
-        StaticObjectImpl mainThread = (StaticObjectImpl) meta.Thread.allocateInstance();
+        StaticObject mainThread = meta.Thread.allocateInstance();
         StaticObject threadGroup = meta.ThreadGroup.allocateInstance();
         meta.ThreadGroup_maxPriority.set(threadGroup, Thread.MAX_PRIORITY);
         meta.Thread_group.set(mainThread, threadGroup);

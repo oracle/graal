@@ -28,7 +28,6 @@ import java.nio.ByteBuffer;
 import com.oracle.truffle.espresso.EspressoLanguage;
 import com.oracle.truffle.espresso.runtime.EspressoContext;
 import com.oracle.truffle.espresso.runtime.StaticObject;
-import com.oracle.truffle.espresso.runtime.StaticObjectArray;
 
 import sun.misc.Perf;
 
@@ -66,7 +65,7 @@ public final class Target_sun_misc_Perf {
     @Substitution(hasReceiver = true)
     public static @Host(ByteBuffer.class) StaticObject createLong(Object self, @Host(String.class) StaticObject name, int variability, int units, long value) {
         EspressoContext context = EspressoLanguage.getCurrentContext();
-        return (StaticObject) context.getMeta().ByteBuffer_wrap.invokeDirect(null, StaticObjectArray.wrap(ByteUtils.longToBytes(value)));
+        return (StaticObject) context.getMeta().ByteBuffer_wrap.invokeDirect(null, StaticObject.wrap(ByteUtils.longToBytes(value)));
     }
 
     @Substitution

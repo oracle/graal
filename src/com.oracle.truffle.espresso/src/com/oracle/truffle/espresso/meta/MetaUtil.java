@@ -24,7 +24,6 @@ package com.oracle.truffle.espresso.meta;
 
 import com.oracle.truffle.api.CompilerAsserts;
 import com.oracle.truffle.espresso.runtime.StaticObject;
-import com.oracle.truffle.espresso.runtime.StaticObjectArray;
 
 /**
  * Miscellaneous collection of utility methods used by {@code jdk.vm.ci.meta} and its clients.
@@ -171,8 +170,8 @@ public class MetaUtil {
         if (StaticObject.isNull(object)) {
             return null;
         }
-        if (object instanceof StaticObjectArray) {
-            return ((StaticObjectArray) object).unwrap();
+        if (object.isArray()) {
+            return object.unwrap();
         }
         return object;
     }

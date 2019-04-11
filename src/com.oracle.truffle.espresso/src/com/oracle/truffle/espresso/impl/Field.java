@@ -34,7 +34,6 @@ import com.oracle.truffle.espresso.meta.Meta;
 import com.oracle.truffle.espresso.meta.ModifiersProvider;
 import com.oracle.truffle.espresso.runtime.Attribute;
 import com.oracle.truffle.espresso.runtime.StaticObject;
-import com.oracle.truffle.espresso.runtime.StaticObjectImpl;
 import com.oracle.truffle.espresso.vm.InterpreterToVM;
 
 /**
@@ -198,7 +197,7 @@ public final class Field implements ModifiersProvider {
         StaticObject curField = seed;
         Field target = null;
         while (target == null) {
-            target = (Field) ((StaticObjectImpl) curField).getHiddenField(meta.HIDDEN_FIELD_KEY);
+            target = (Field) curField.getHiddenField(meta.HIDDEN_FIELD_KEY);
             if (target == null) {
                 curField = (StaticObject) meta.Field_root.get(curField);
             }

@@ -56,7 +56,6 @@ import com.oracle.truffle.espresso.runtime.BootstrapMethodsAttribute;
 import com.oracle.truffle.espresso.runtime.EspressoContext;
 import com.oracle.truffle.espresso.runtime.MethodHandleIntrinsics;
 import com.oracle.truffle.espresso.runtime.StaticObject;
-import com.oracle.truffle.espresso.runtime.StaticObjectImpl;
 import com.oracle.truffle.nfi.types.NativeSimpleType;
 
 import java.lang.reflect.Modifier;
@@ -407,7 +406,7 @@ public final class Method implements ModifiersProvider, ContextAccess {
     public Object invokeWithConversions(Object self, Object... args) {
         getContext().getJNI().clearPendingException();
         assert args.length == Signatures.parameterCount(getParsedSignature(), false);
-        // assert !isStatic() || ((StaticObjectImpl) self).isStatic();
+        // assert !isStatic() || ((StaticObject) self).isStatic();
         getDeclaringKlass().safeInitialize();
 
         final Object[] filteredArgs;
@@ -493,7 +492,7 @@ public final class Method implements ModifiersProvider, ContextAccess {
         StaticObject curMethod = seed;
         Method target = null;
         while (target == null) {
-            target = (Method) ((StaticObjectImpl) curMethod).getHiddenField(meta.HIDDEN_METHOD_KEY);
+            target = (Method) curMethod.getHiddenField(meta.HIDDEN_METHOD_KEY);
             if (target == null) {
                 curMethod = (StaticObject) meta.Method_root.get(curMethod);
             }

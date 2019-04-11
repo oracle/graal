@@ -43,7 +43,6 @@ import com.oracle.truffle.espresso.impl.PrimitiveKlass;
 import com.oracle.truffle.espresso.runtime.EspressoContext;
 import com.oracle.truffle.espresso.runtime.EspressoException;
 import com.oracle.truffle.espresso.runtime.StaticObject;
-import com.oracle.truffle.espresso.runtime.StaticObjectArray;
 import com.oracle.truffle.espresso.substitutions.Host;
 
 /**
@@ -615,7 +614,7 @@ public final class Meta implements ContextAccess {
             return null;
         }
         Meta meta = str.getKlass().getMeta();
-        char[] value = ((StaticObjectArray) meta.String_value.get(str)).unwrap();
+        char[] value = ((StaticObject) meta.String_value.get(str)).unwrap();
         return HostJava.createString(value);
     }
 
@@ -627,7 +626,7 @@ public final class Meta implements ContextAccess {
         final char[] value = HostJava.getStringValue(hostString);
         final int hash = HostJava.getStringHash(hostString);
         StaticObject guestString = String.allocateInstance();
-        String_value.set(guestString, StaticObjectArray.wrap(value));
+        String_value.set(guestString, StaticObject.wrap(value));
         String_hash.set(guestString, hash);
         // String.hashCode must be equivalent for host and guest.
         assert hostString.hashCode() == (int) String_hashCode.invokeDirect(guestString);
@@ -677,8 +676,8 @@ public final class Meta implements ContextAccess {
             if (guestObject == StaticObject.VOID) {
                 return null;
             }
-            if (guestObject instanceof StaticObjectArray) {
-                return ((StaticObjectArray) guestObject).unwrap();
+            if (guestObject.isArray()) {
+                return guestObject.unwrap();
             }
             if (guestObject.getKlass() == String) {
                 return toHostString(guestObject);

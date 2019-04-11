@@ -5,8 +5,6 @@ import com.oracle.truffle.espresso.impl.Klass;
 import com.oracle.truffle.espresso.impl.Method;
 import com.oracle.truffle.espresso.meta.Meta;
 import com.oracle.truffle.espresso.runtime.StaticObject;
-import com.oracle.truffle.espresso.runtime.StaticObjectArray;
-import com.oracle.truffle.espresso.runtime.StaticObjectImpl;
 
 import java.lang.reflect.Constructor;
 
@@ -15,7 +13,7 @@ public class Target_sun_reflect_NativeConstructorAccessorImpl {
     @Substitution
     public static @Host(Object.class) StaticObject newInstance0(@Host(Constructor.class) StaticObject constructor, @Host(Object[].class) StaticObject args0) {
         Meta meta = EspressoLanguage.getCurrentContext().getMeta();
-        Klass klass = ((StaticObjectImpl) meta.Constructor_clazz.get(constructor)).getMirrorKlass();
+        Klass klass = ((StaticObject) meta.Constructor_clazz.get(constructor)).getMirrorKlass();
         klass.initialize();
         if (klass.isArray() || klass.isPrimitive() || klass.isInterface() || klass.isAbstract()) {
             throw meta.throwEx(InstantiationException.class);
@@ -24,14 +22,14 @@ public class Target_sun_reflect_NativeConstructorAccessorImpl {
 
         Method reflectedMethod = null;
         while (reflectedMethod == null) {
-            reflectedMethod = (Method) ((StaticObjectImpl) curMethod).getHiddenField(meta.HIDDEN_CONSTRUCTOR_KEY);
+            reflectedMethod = (Method) curMethod.getHiddenField(meta.HIDDEN_CONSTRUCTOR_KEY);
             if (reflectedMethod == null) {
                 curMethod = (StaticObject) meta.Constructor_root.get(curMethod);
             }
         }
 
         StaticObject instance = klass.allocateInstance();
-        StaticObjectArray parameterTypes = (StaticObjectArray) meta.Constructor_parameterTypes.get(constructor);
+        StaticObject parameterTypes = (StaticObject) meta.Constructor_parameterTypes.get(constructor);
         Target_sun_reflect_NativeMethodAccessorImpl.callMethodReflectively(meta, instance, args0, reflectedMethod, klass, parameterTypes);
         return instance;
     }

@@ -140,11 +140,11 @@ public final class NativeRootNode extends EspressoBaseNode {
             case Boolean:
                 return ((byte) result != 0);
             case Byte:
-                return (byte) result;
+                return result;
             case Char:
-                return (char) result;
+                return result;
             case Short:
-                return (short) result;
+                return result;
             case Object:
                 if (result instanceof TruffleObject) {
                     if (ForeignAccess.sendIsNull(isNullNode, (TruffleObject) result)) {

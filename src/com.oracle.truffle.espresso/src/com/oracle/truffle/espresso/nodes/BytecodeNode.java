@@ -22,6 +22,56 @@
  */
 package com.oracle.truffle.espresso.nodes;
 
+import com.oracle.truffle.api.CompilerAsserts;
+import com.oracle.truffle.api.CompilerDirectives;
+import com.oracle.truffle.api.CompilerDirectives.CompilationFinal;
+import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
+import com.oracle.truffle.api.frame.FrameDescriptor;
+import com.oracle.truffle.api.frame.FrameSlot;
+import com.oracle.truffle.api.frame.FrameUtil;
+import com.oracle.truffle.api.frame.VirtualFrame;
+import com.oracle.truffle.api.nodes.CustomNodeCount;
+import com.oracle.truffle.api.nodes.ExplodeLoop;
+import com.oracle.truffle.api.nodes.LoopNode;
+import com.oracle.truffle.espresso.EspressoLanguage;
+import com.oracle.truffle.espresso.bytecode.BytecodeLookupSwitch;
+import com.oracle.truffle.espresso.bytecode.BytecodeStream;
+import com.oracle.truffle.espresso.bytecode.BytecodeTableSwitch;
+import com.oracle.truffle.espresso.bytecode.Bytecodes;
+import com.oracle.truffle.espresso.classfile.ClassConstant;
+import com.oracle.truffle.espresso.classfile.ConstantPool;
+import com.oracle.truffle.espresso.classfile.DoubleConstant;
+import com.oracle.truffle.espresso.classfile.FloatConstant;
+import com.oracle.truffle.espresso.classfile.IntegerConstant;
+import com.oracle.truffle.espresso.classfile.InvokeDynamicConstant;
+import com.oracle.truffle.espresso.classfile.LongConstant;
+import com.oracle.truffle.espresso.classfile.MethodHandleConstant;
+import com.oracle.truffle.espresso.classfile.MethodTypeConstant;
+import com.oracle.truffle.espresso.classfile.NameAndTypeConstant;
+import com.oracle.truffle.espresso.classfile.PoolConstant;
+import com.oracle.truffle.espresso.classfile.RuntimeConstantPool;
+import com.oracle.truffle.espresso.classfile.StringConstant;
+import com.oracle.truffle.espresso.descriptors.Signatures;
+import com.oracle.truffle.espresso.descriptors.Symbol;
+import com.oracle.truffle.espresso.descriptors.Symbol.Type;
+import com.oracle.truffle.espresso.impl.Field;
+import com.oracle.truffle.espresso.impl.Klass;
+import com.oracle.truffle.espresso.impl.Method;
+import com.oracle.truffle.espresso.impl.ObjectKlass;
+import com.oracle.truffle.espresso.meta.EspressoError;
+import com.oracle.truffle.espresso.meta.ExceptionHandler;
+import com.oracle.truffle.espresso.meta.JavaKind;
+import com.oracle.truffle.espresso.meta.Meta;
+import com.oracle.truffle.espresso.runtime.BootstrapMethodsAttribute;
+import com.oracle.truffle.espresso.runtime.EspressoException;
+import com.oracle.truffle.espresso.runtime.ReturnAddress;
+import com.oracle.truffle.espresso.runtime.StaticObject;
+import com.oracle.truffle.espresso.vm.InterpreterToVM;
+import com.oracle.truffle.object.DebugCounter;
+
+import java.util.Arrays;
+import java.util.Objects;
+
 import static com.oracle.truffle.espresso.bytecode.Bytecodes.AALOAD;
 import static com.oracle.truffle.espresso.bytecode.Bytecodes.AASTORE;
 import static com.oracle.truffle.espresso.bytecode.Bytecodes.ACONST_NULL;
@@ -227,58 +277,6 @@ import static com.oracle.truffle.espresso.bytecode.Bytecodes.SWAP;
 import static com.oracle.truffle.espresso.bytecode.Bytecodes.TABLESWITCH;
 import static com.oracle.truffle.espresso.bytecode.Bytecodes.WIDE;
 
-import java.util.Arrays;
-import java.util.Objects;
-
-import com.oracle.truffle.api.CompilerAsserts;
-import com.oracle.truffle.api.CompilerDirectives;
-import com.oracle.truffle.api.CompilerDirectives.CompilationFinal;
-import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
-import com.oracle.truffle.api.frame.FrameDescriptor;
-import com.oracle.truffle.api.frame.FrameSlot;
-import com.oracle.truffle.api.frame.FrameUtil;
-import com.oracle.truffle.api.frame.VirtualFrame;
-import com.oracle.truffle.api.nodes.CustomNodeCount;
-import com.oracle.truffle.api.nodes.ExplodeLoop;
-import com.oracle.truffle.api.nodes.LoopNode;
-import com.oracle.truffle.espresso.EspressoLanguage;
-import com.oracle.truffle.espresso.bytecode.BytecodeLookupSwitch;
-import com.oracle.truffle.espresso.bytecode.BytecodeStream;
-import com.oracle.truffle.espresso.bytecode.BytecodeTableSwitch;
-import com.oracle.truffle.espresso.bytecode.Bytecodes;
-import com.oracle.truffle.espresso.classfile.ClassConstant;
-import com.oracle.truffle.espresso.classfile.ConstantPool;
-import com.oracle.truffle.espresso.classfile.DoubleConstant;
-import com.oracle.truffle.espresso.classfile.FloatConstant;
-import com.oracle.truffle.espresso.classfile.IntegerConstant;
-import com.oracle.truffle.espresso.classfile.InvokeDynamicConstant;
-import com.oracle.truffle.espresso.classfile.LongConstant;
-import com.oracle.truffle.espresso.classfile.MethodHandleConstant;
-import com.oracle.truffle.espresso.classfile.MethodTypeConstant;
-import com.oracle.truffle.espresso.classfile.NameAndTypeConstant;
-import com.oracle.truffle.espresso.classfile.PoolConstant;
-import com.oracle.truffle.espresso.classfile.RuntimeConstantPool;
-import com.oracle.truffle.espresso.classfile.StringConstant;
-import com.oracle.truffle.espresso.descriptors.Signatures;
-import com.oracle.truffle.espresso.descriptors.Symbol;
-import com.oracle.truffle.espresso.descriptors.Symbol.Type;
-import com.oracle.truffle.espresso.impl.Field;
-import com.oracle.truffle.espresso.impl.Klass;
-import com.oracle.truffle.espresso.impl.Method;
-import com.oracle.truffle.espresso.impl.ObjectKlass;
-import com.oracle.truffle.espresso.meta.EspressoError;
-import com.oracle.truffle.espresso.meta.ExceptionHandler;
-import com.oracle.truffle.espresso.meta.JavaKind;
-import com.oracle.truffle.espresso.meta.Meta;
-import com.oracle.truffle.espresso.runtime.BootstrapMethodsAttribute;
-import com.oracle.truffle.espresso.runtime.EspressoException;
-import com.oracle.truffle.espresso.runtime.ReturnAddress;
-import com.oracle.truffle.espresso.runtime.StaticObject;
-import com.oracle.truffle.espresso.runtime.StaticObjectArray;
-import com.oracle.truffle.espresso.runtime.StaticObjectImpl;
-import com.oracle.truffle.espresso.vm.InterpreterToVM;
-import com.oracle.truffle.object.DebugCounter;
-
 /**
  * Bytecode interpreter loop.
  *
@@ -350,7 +348,7 @@ public class BytecodeNode extends EspressoBaseNode implements CustomNodeCount {
         int n = 0;
         if (hasReceiver) {
             assert frameArguments[0] != StaticObject.NULL : "null receiver in init arguments !";
-            setLocalObject(frame, n, (StaticObjectImpl) frameArguments[0]);
+            setLocalObject(frame, n, (StaticObject) frameArguments[0]);
             n += JavaKind.Object.getSlotCount();
         }
         for (int i = 0; i < argCount; ++i) {
@@ -690,7 +688,7 @@ public class BytecodeNode extends EspressoBaseNode implements CustomNodeCount {
                             getInterpreterToVM().setArrayDouble(peekDouble(frame, top - 1), peekInt(frame, top - 3), nullCheck(peekObject(frame, top - 4)));
                             break;
                         case AASTORE:
-                            getInterpreterToVM().setArrayObject(peekObject(frame, top - 1), peekInt(frame, top - 2), (StaticObjectArray) nullCheck(peekObject(frame, top - 3)));
+                            getInterpreterToVM().setArrayObject(peekObject(frame, top - 1), peekInt(frame, top - 2), nullCheck(peekObject(frame, top - 3)));
                             break;
                         case BASTORE:
                             getInterpreterToVM().setArrayByte((byte) peekInt(frame, top - 1), peekInt(frame, top - 2), nullCheck(peekObject(frame, top - 3)));
@@ -1539,17 +1537,17 @@ public class BytecodeNode extends EspressoBaseNode implements CustomNodeCount {
         Symbol<Symbol.Signature> invokeSignature = specifier.getSignature(pool);
         Symbol<Type>[] parsedInvokeSignature = getSignatures().parsed(invokeSignature);
         StaticObject methodType = signatureToMethodType(parsedInvokeSignature, declaringKlass, getMeta());
-        StaticObjectArray appendix = new StaticObjectArray(meta.Object_array, new StaticObject[1]);
+        StaticObject appendix = new StaticObject(meta.Object_array, new StaticObject[1]);
 
-        StaticObjectImpl memberName = (StaticObjectImpl) getMeta().linkCallSite.invokeDirect(
+        StaticObject memberName = (StaticObject) getMeta().linkCallSite.invokeDirect(
                         null,
                         declaringKlass.mirror(),
                         bsmMH,
                         name, methodType,
-                        new StaticObjectArray(meta.Object_array, args),
+                        new StaticObject(meta.Object_array, args),
                         appendix);
 
-        StaticObjectImpl unboxedAppendix = appendix.get(0);
+        StaticObject unboxedAppendix = appendix.get(0);
 
         return injectAndCall(frame, top, curBCI, new InvokeDynamicCallSiteNode(memberName, unboxedAppendix, parsedInvokeSignature, meta), opCode);
     }
@@ -1567,7 +1565,7 @@ public class BytecodeNode extends EspressoBaseNode implements CustomNodeCount {
 
         return (StaticObject) meta.findMethodHandleType.invokeDirect(
                         null,
-                        rtype, new StaticObjectArray(meta.Class_Array, ptypes));
+                        rtype, new StaticObject(meta.Class_Array, ptypes));
     }
     // endregion Bytecode quickening
 
@@ -1593,7 +1591,7 @@ public class BytecodeNode extends EspressoBaseNode implements CustomNodeCount {
     // region Instance/array allocation
 
     @TruffleBoundary
-    private static StaticObjectArray allocateArray(Klass componentType, int length) {
+    private static StaticObject allocateArray(Klass componentType, int length) {
         assert !componentType.isPrimitive();
         return InterpreterToVM.newArray(componentType, length);
     }
@@ -1934,7 +1932,7 @@ public class BytecodeNode extends EspressoBaseNode implements CustomNodeCount {
             case Float   : putFloat(frame, top, (float) value);           break;
             case Long    : putLong(frame, top, (long) value);             break;
             case Double  : putDouble(frame, top, (double) value);         break;
-            case Object  : putObject(frame, top, (StaticObject) value);   break;
+            case Object  : putObject(frame, top, value == StaticObject.NULL ? StaticObject.NULL : (StaticObject)value);   break;
             case Void    : /* ignore */                                   break;
             default      : throw EspressoError.shouldNotReachHere();
         }

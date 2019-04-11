@@ -29,14 +29,13 @@ import java.util.function.IntFunction;
 
 import com.oracle.truffle.espresso.meta.Meta;
 import com.oracle.truffle.espresso.runtime.StaticObject;
-import com.oracle.truffle.espresso.runtime.StaticObjectArray;
 
 @EspressoSubstitutions
 public final class Target_java_lang_Runtime {
     // TODO(peterssen): This a hack to be able to spawn processes without going down to UNIXProcess.
     @Substitution(hasReceiver = true)
     public static @Host(Process.class) Object exec(@SuppressWarnings("unused") StaticObject self, @Host(String[].class) StaticObject cmdarray) {
-        StaticObject[] wrapped = ((StaticObjectArray) cmdarray).unwrap();
+        StaticObject[] wrapped = cmdarray.unwrap();
         String[] hostArgs = new String[wrapped.length];
         Arrays.setAll(hostArgs, new IntFunction<String>() {
             @Override

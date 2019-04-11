@@ -22,7 +22,7 @@
  */
 package com.oracle.truffle.espresso;
 
-import com.oracle.truffle.espresso.runtime.StaticObjectImpl;
+import com.oracle.truffle.espresso.runtime.StaticObject;
 import org.graalvm.options.OptionDescriptors;
 import org.graalvm.options.OptionValues;
 
@@ -48,7 +48,6 @@ import com.oracle.truffle.espresso.meta.EspressoError;
 import com.oracle.truffle.espresso.meta.Meta;
 import com.oracle.truffle.espresso.nodes.MainLauncherRootNode;
 import com.oracle.truffle.espresso.runtime.EspressoContext;
-import com.oracle.truffle.espresso.runtime.StaticObject;
 import com.oracle.truffle.espresso.substitutions.Substitutions;
 
 @ProvidedTags(StandardTags.RootTag.class)
@@ -167,12 +166,12 @@ public final class EspressoLanguage extends TruffleLanguage<EspressoContext> {
      * Loads a class and verifies that the main class is present and it is ok to call it for more
      * details refer to the java implementation.
      */
-    private static StaticObjectImpl loadMainClass(EspressoContext context, LaunchMode mode, String name) {
+    private static StaticObject loadMainClass(EspressoContext context, LaunchMode mode, String name) {
         assert context.isInitialized();
         Meta meta = context.getMeta();
         Klass launcherHelperKlass = meta.loadKlass(Type.sun_launcher_LauncherHelper, StaticObject.NULL);
         Method checkAndLoadMain = launcherHelperKlass.lookupDeclaredMethod(Name.checkAndLoadMain, Signature.Class_boolean_int_String);
-        return (StaticObjectImpl) checkAndLoadMain.invokeDirect(null, true, mode.ordinal(), meta.toGuestString(name));
+        return (StaticObject) checkAndLoadMain.invokeDirect(null, true, mode.ordinal(), meta.toGuestString(name));
     }
 
     @Override
