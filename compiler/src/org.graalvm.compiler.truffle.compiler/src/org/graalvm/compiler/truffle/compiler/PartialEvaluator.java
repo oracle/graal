@@ -303,6 +303,7 @@ public abstract class PartialEvaluator {
         private final Deque<TruffleInliningPlan> inlining;
         private final int nodeLimit;
         private final StructuredGraph graph;
+        private boolean graphTooBigReported;
 
         PEInlineInvokePlugin(TruffleInliningPlan inlining, StructuredGraph graph, int nodeLimit) {
             this.inlining = new ArrayDeque<>();
@@ -314,7 +315,10 @@ public abstract class PartialEvaluator {
         @Override
         public InlineInfo shouldInlineInvoke(GraphBuilderContext builder, ResolvedJavaMethod original, ValueNode[] arguments) {
             if (graph.getNodeCount() > nodeLimit) {
-                logGraphTooBig();
+                if (!graphTooBigReported) {
+                    graphTooBigReported = true;
+                    PerformanceInformationHandler.reportGraphIsTooBig(graph, nodeLimit);
+                }
                 return InlineInfo.DO_NOT_INLINE_WITH_EXCEPTION;
             }
             TruffleCompilerRuntime rt = TruffleCompilerRuntime.getRuntime();
@@ -341,18 +345,6 @@ public abstract class PartialEvaluator {
             }
 
             return inlineInfo;
-        }
-
-        private boolean graphTooBigReported;
-
-        private void logGraphTooBig() {
-            if (!graphTooBigReported) {
-                graphTooBigReported = true;
-                final HashMap<String, Object> properties = new HashMap<>();
-                properties.put("graph node count", graph.getNodeCount());
-                properties.put("graph node limit", nodeLimit);
-                PerformanceInformationHandler.logPerformanceWarning(graph.name, null, "Graal graph node count too big during partial evaluation.", properties);
-            }
         }
 
         @Override
@@ -803,6 +795,13 @@ public abstract class PartialEvaluator {
             Map<String, Object> properties = new LinkedHashMap<>();
             properties.put("callNode", callNode.toValueString());
             logPerformanceWarning(target.toValueString(), null, "A direct call within the Truffle AST is not reachable anymore. Call node could not be inlined.", properties);
+        }
+
+        static void reportGraphIsTooBig(StructuredGraph graph, int nodeLimit) {
+            final HashMap<String, Object> properties = new HashMap<>();
+            properties.put("graph node count", graph.getNodeCount());
+            properties.put("graph node limit", nodeLimit);
+            logPerformanceWarning(graph.name, null, "Graal graph node count too big during partial evaluation.", properties);
         }
 
         static void reportCallTargetChanged(JavaConstant target, JavaConstant callNode, TruffleInliningPlan.Decision decision) {
