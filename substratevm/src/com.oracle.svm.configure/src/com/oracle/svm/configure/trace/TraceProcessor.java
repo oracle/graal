@@ -82,7 +82,7 @@ public class TraceProcessor extends AbstractProcessor {
     }
 
     @Override
-    void processEntry(Map<String, ?> entry) {
+    public void processEntry(Map<String, ?> entry) {
         String tracer = (String) entry.get("tracer");
         switch (tracer) {
             case "meta": {

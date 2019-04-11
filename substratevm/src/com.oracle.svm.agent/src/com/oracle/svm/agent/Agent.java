@@ -32,6 +32,7 @@ import static com.oracle.svm.agent.jvmti.JvmtiEvent.JVMTI_EVENT_THREAD_END;
 import static com.oracle.svm.agent.jvmti.JvmtiEvent.JVMTI_EVENT_VM_INIT;
 import static com.oracle.svm.agent.jvmti.JvmtiEvent.JVMTI_EVENT_VM_START;
 import static com.oracle.svm.agent.jvmti.JvmtiEventMode.JVMTI_ENABLE;
+import static com.oracle.svm.hosted.config.ConfigurationDirectories.FileNames;
 import static com.oracle.svm.jni.JNIObjectHandles.nullHandle;
 import static org.graalvm.word.WordFactory.nullPointer;
 
@@ -52,6 +53,7 @@ import java.util.Date;
 import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Map;
+import java.util.TimeZone;
 
 import org.graalvm.compiler.options.OptionKey;
 import org.graalvm.nativeimage.CurrentIsolate;
@@ -80,7 +82,9 @@ import com.oracle.svm.agent.restrict.ProxyConfiguration;
 import com.oracle.svm.agent.restrict.ReflectAccessVerifier;
 import com.oracle.svm.agent.restrict.ResourceAccessVerifier;
 import com.oracle.svm.agent.restrict.ResourceConfiguration;
+import com.oracle.svm.configure.json.JsonWriter;
 import com.oracle.svm.configure.trace.AccessAdvisor;
+import com.oracle.svm.configure.trace.TraceProcessor;
 import com.oracle.svm.core.SubstrateOptions;
 import com.oracle.svm.core.SubstrateUtil;
 import com.oracle.svm.core.c.function.CEntryPointOptions;
@@ -100,9 +104,13 @@ import com.oracle.svm.reflect.hosted.ReflectionFeature;
 import com.oracle.svm.reflect.proxy.hosted.DynamicProxyFeature;
 
 public final class Agent {
-    public static final String MESSAGE_PREFIX = "native-image-agent: ";
+    public static final String AGENT_NAME = "native-image-agent";
+    public static final String MESSAGE_PREFIX = AGENT_NAME + ": ";
+    public static final TimeZone UTC_TIMEZONE = TimeZone.getTimeZone("UTC");
 
     private static TraceWriter traceWriter;
+
+    private static Path configOutputDirPath;
 
     private static AccessAdvisor accessAdvisor;
 
@@ -125,7 +133,8 @@ public final class Agent {
     public static int onLoad(JNIJavaVM vm, CCharPointer options, @SuppressWarnings("unused") PointerBase reserved) {
         AgentIsolate.setGlobalIsolate(CurrentIsolate.getIsolate());
 
-        String outputPath = null;
+        String traceOutputFile = null;
+        String configOutputDir = null;
         LinkedHashSet<URI> jniConfigPaths = new LinkedHashSet<>();
         LinkedHashSet<URI> reflectConfigPaths = new LinkedHashSet<>();
         LinkedHashSet<URI> proxyConfigPaths = new LinkedHashSet<>();
@@ -139,7 +148,17 @@ public final class Agent {
             }
             for (String token : optionTokens) {
                 if (token.startsWith("trace-output=")) {
-                    outputPath = token.substring("trace-output=".length());
+                    if (traceOutputFile != null) {
+                        System.err.println(MESSAGE_PREFIX + "cannot specify trace-output= more than once.");
+                        return 1;
+                    }
+                    traceOutputFile = token.substring("trace-output=".length());
+                } else if (token.startsWith("config-output-dir=")) {
+                    if (configOutputDir != null) {
+                        System.err.println(MESSAGE_PREFIX + "cannot specify config-output-dir= more than once.");
+                        return 1;
+                    }
+                    configOutputDir = token.substring("config-output-dir=".length());
                 } else if (token.startsWith("restrict-jni=")) {
                     jniConfigPaths.add(Paths.get(token.substring("restrict-jni=".length())).toUri());
                 } else if (token.startsWith("restrict-reflect=")) {
@@ -150,10 +169,10 @@ public final class Agent {
                     resourceConfigPaths.add(Paths.get(token.substring("restrict-resource=".length())).toUri());
                 } else if (token.startsWith("restrict-all-dir")) {
                     Path directory = Paths.get(token.substring("restrict-all-dir=".length()));
-                    jniConfigPaths.add(Paths.get(directory.resolve("jni-config.json").toString()).toUri());
-                    reflectConfigPaths.add(Paths.get(directory.resolve("reflect-config.json").toString()).toUri());
-                    proxyConfigPaths.add(Paths.get(directory.resolve("proxy-config.json").toString()).toUri());
-                    resourceConfigPaths.add(Paths.get(directory.resolve("resource-config.json").toString()).toUri());
+                    jniConfigPaths.add(directory.resolve(FileNames.JNI_NAME).toUri());
+                    reflectConfigPaths.add(directory.resolve(FileNames.REFLECTION_NAME).toUri());
+                    proxyConfigPaths.add(directory.resolve(FileNames.DYNAMIC_PROXY_NAME).toUri());
+                    resourceConfigPaths.add(directory.resolve(FileNames.RESOURCES_NAME).toUri());
                 } else if (token.startsWith("auto-restrict")) {
                     autoRestrict = "true".equals(token.substring("auto-restrict=".length()));
                 } else {
@@ -162,14 +181,29 @@ public final class Agent {
                 }
             }
         } else {
-            outputPath = transformPath("native-image-agent_trace-pid{pid}-{datetime}.json");
-            System.err.println(MESSAGE_PREFIX + "no options provided, writing to file: " + outputPath);
+            traceOutputFile = transformPath(AGENT_NAME + "_trace-pid{pid}-{datetime}.json");
+            System.err.println(MESSAGE_PREFIX + "no options provided, writing to file: " + traceOutputFile);
         }
 
-        if (outputPath != null) {
+        if (configOutputDir != null) {
+            if (traceOutputFile != null) {
+                System.err.println(MESSAGE_PREFIX + "cannot specify both trace-output= and config-output-dir=.");
+                return 1;
+            }
             try {
-                Path path = Paths.get(transformPath(outputPath));
-                traceWriter = new TraceWriter(path);
+                configOutputDirPath = Paths.get(transformPath(configOutputDir));
+                if (!Files.isDirectory(configOutputDirPath)) {
+                    Files.createDirectory(configOutputDirPath);
+                }
+                traceWriter = new TraceProcessorWriterAdapter(new TraceProcessor());
+            } catch (Throwable t) {
+                System.err.println(MESSAGE_PREFIX + t);
+                return 2;
+            }
+        } else if (traceOutputFile != null) {
+            try {
+                Path path = Paths.get(transformPath(traceOutputFile));
+                traceWriter = new TraceFileWriter(path);
             } catch (Throwable t) {
                 System.err.println(MESSAGE_PREFIX + t);
                 return 2;
@@ -238,10 +272,10 @@ public final class Agent {
                             addURI.add(resourceConfigPaths, cpEntry, optionParts[1]);
                         } else if (oHConfigurationResourceRoots.equals(argName)) {
                             String resourceLocation = optionParts[1];
-                            addURI.add(jniConfigPaths, cpEntry, resourceLocation + "/" + "jni-config.json");
-                            addURI.add(reflectConfigPaths, cpEntry, resourceLocation + "/" + "reflect-config.json");
-                            addURI.add(proxyConfigPaths, cpEntry, resourceLocation + "/" + "proxy-config.json");
-                            addURI.add(resourceConfigPaths, cpEntry, resourceLocation + "/" + "resource-config.json");
+                            addURI.add(jniConfigPaths, cpEntry, resourceLocation + "/" + FileNames.JNI_NAME);
+                            addURI.add(reflectConfigPaths, cpEntry, resourceLocation + "/" + FileNames.REFLECTION_NAME);
+                            addURI.add(proxyConfigPaths, cpEntry, resourceLocation + "/" + FileNames.DYNAMIC_PROXY_NAME);
+                            addURI.add(resourceConfigPaths, cpEntry, resourceLocation + "/" + FileNames.RESOURCES_NAME);
                         }
                     }
                 });
@@ -342,7 +376,7 @@ public final class Agent {
         }
         if (result.contains("{datetime}")) {
             DateFormat fmt = new SimpleDateFormat("yyyyMMdd'T'HHmmss'Z'");
-            fmt.setTimeZone(TraceWriter.UTC_TIMEZONE);
+            fmt.setTimeZone(UTC_TIMEZONE);
             result = result.replace("{datetime}", fmt.format(new Date()));
         }
         return result;
@@ -374,6 +408,28 @@ public final class Agent {
         if (traceWriter != null) {
             traceWriter.tracePhaseChange("unload");
             traceWriter.close();
+
+            if (configOutputDirPath != null) {
+                TraceProcessor p = ((TraceProcessorWriterAdapter) traceWriter).getProcessor();
+                try {
+                    try (JsonWriter writer = new JsonWriter(configOutputDirPath.resolve(FileNames.REFLECTION_NAME))) {
+                        p.getReflectionConfiguration().printJson(writer);
+                    }
+                    try (JsonWriter writer = new JsonWriter(configOutputDirPath.resolve(FileNames.JNI_NAME))) {
+                        p.getJniConfiguration().printJson(writer);
+                    }
+                    try (JsonWriter writer = new JsonWriter(configOutputDirPath.resolve(FileNames.DYNAMIC_PROXY_NAME))) {
+                        p.getProxyConfiguration().printJson(writer);
+                    }
+                    try (JsonWriter writer = new JsonWriter(configOutputDirPath.resolve(FileNames.RESOURCES_NAME))) {
+                        p.getResourceConfiguration().printJson(writer);
+                    }
+                } catch (IOException e) {
+                    System.err.println(MESSAGE_PREFIX + "error when writing configuration files: " + e.toString());
+                }
+                configOutputDirPath = null;
+            }
+            traceWriter = null;
         }
 
         /*

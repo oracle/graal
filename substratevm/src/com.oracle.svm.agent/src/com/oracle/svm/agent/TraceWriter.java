@@ -24,56 +24,35 @@
  */
 package com.oracle.svm.agent;
 
-import java.io.BufferedWriter;
 import java.io.Closeable;
-import java.io.IOException;
-import java.io.StringWriter;
-import java.nio.file.Files;
-import java.nio.file.Path;
-import java.util.TimeZone;
+import java.util.HashMap;
+import java.util.Map;
 
-import com.oracle.svm.configure.json.JsonWriter;
-import com.oracle.svm.core.util.VMError;
-
-class TraceWriter implements Closeable {
-    public static final TimeZone UTC_TIMEZONE = TimeZone.getTimeZone("UTC");
-
+public abstract class TraceWriter implements Closeable {
     /** Value to explicitly express {@code null} in a trace, instead of omitting the value. */
     public static final Object EXPLICIT_NULL = new Object();
 
     /** Value to express an unknown value, for example on failure to retrieve the value. */
     public static final Object UNKNOWN_VALUE = new String("\0");
 
-    private final Object lock = new Object();
-    private final BufferedWriter writer;
-    private boolean open = true;
+    static Object handleSpecialValue(Object obj) {
+        return (obj == EXPLICIT_NULL) ? null : obj;
+    }
 
-    TraceWriter(Path path) throws IOException {
-        writer = Files.newBufferedWriter(path);
-        JsonWriter json = new JsonWriter(writer);
-        json.append('[').newline();
-        json.append('{');
-        json.quote("tracer").append(':').quote("meta").append(", ");
-        json.quote("event").append(':').quote("initialization").append(", ");
-        json.quote("version").append(':').quote("1");
-        json.append('}');
-        json.flush(); // avoid closing underlying stream
+    void traceInitialization() {
+        Map<String, Object> entry = new HashMap<>();
+        entry.put("tracer", "meta");
+        entry.put("event", "initialization");
+        entry.put("version", "1");
+        traceEntry(entry);
     }
 
     public void tracePhaseChange(String phase) {
-        try {
-            StringWriter strwriter = new StringWriter();
-            try (JsonWriter json = new JsonWriter(strwriter)) {
-                json.append('{');
-                json.quote("tracer").append(':').quote("meta").append(", ");
-                json.quote("event").append(':').quote("phase_change").append(", ");
-                json.quote("phase").append(':').quote(phase);
-                json.append('}');
-            }
-            traceEntry(strwriter.toString());
-        } catch (IOException e) {
-            throw VMError.shouldNotReachHere(e);
-        }
+        Map<String, Object> entry = new HashMap<>();
+        entry.put("tracer", "meta");
+        entry.put("event", "phase_change");
+        entry.put("phase", phase);
+        traceEntry(entry);
     }
 
     /**
@@ -89,77 +68,32 @@ class TraceWriter implements Closeable {
      *            specified to provide the (super)class which actually declares that member.
      * @param callerClass The class on the call stack which performed the call.
      * @param result The result of the call.
-     * @param args Arguments to the call, which may contain arrays (which can further contain
+     * @param args Arguments to the call, which may contain arrays (which can contain more arrays)
      */
     public void traceCall(String tracer, String function, Object clazz, Object declaringClass, Object callerClass, Object result, Object... args) {
-        try {
-            StringWriter strwriter = new StringWriter();
-            try (JsonWriter json = new JsonWriter(strwriter)) {
-                json.append('{').quote("tracer").append(':').quote(tracer);
-                json.append(", ").quote("function").append(':').quote(function);
-                if (clazz != null) {
-                    json.append(", ").quote("class").append(':').quote(handleSpecialValue(clazz));
-                }
-                if (declaringClass != null) {
-                    json.append(", ").quote("declaring_class").append(':').quote(handleSpecialValue(declaringClass));
-                }
-                if (callerClass != null) {
-                    json.append(", ").quote("caller_class").append(':').quote(handleSpecialValue(callerClass));
-                }
-                if (result != null) {
-                    json.append(", ").quote("result").append(':').quote(handleSpecialValue(result));
-                }
-                if (args != null && args.length > 0) {
-                    json.append(", ").quote("args").append(":");
-                    printArray(json, args);
-                }
-                json.append("}");
-            }
-
-            traceEntry(strwriter.toString());
-        } catch (IOException e) {
-            throw VMError.shouldNotReachHere(e);
+        Map<String, Object> entry = new HashMap<>();
+        entry.put("tracer", tracer);
+        entry.put("function", function);
+        if (clazz != null) {
+            entry.put("class", handleSpecialValue(clazz));
         }
-    }
-
-    private void printArray(JsonWriter json, Object[] array) throws IOException {
-        json.append('[');
-        for (int i = 0; i < array.length; i++) {
-            if (i > 0) {
-                json.append(',');
-            }
-            Object obj = array[i];
-            if (obj instanceof Object[]) {
-                printArray(json, (Object[]) obj);
-            } else {
-                json.quote(array[i]);
-            }
+        if (declaringClass != null) {
+            entry.put("declaring_class", handleSpecialValue(declaringClass));
         }
-        json.append(']');
-    }
-
-    private static Object handleSpecialValue(Object obj) {
-        return (obj == EXPLICIT_NULL) ? null : obj;
-    }
-
-    private void traceEntry(String s) throws IOException {
-        synchronized (lock) {
-            if (open) { // late events on exit
-                writer.write(",\n");
-                writer.write(s);
-            }
+        if (callerClass != null) {
+            entry.put("caller_class", handleSpecialValue(callerClass));
         }
+        if (result != null) {
+            entry.put("result", handleSpecialValue(result));
+        }
+        if (args != null && args.length > 0) {
+            entry.put("args", args);
+        }
+        traceEntry(entry);
     }
+
+    abstract void traceEntry(Map<String, Object> entry);
 
     @Override
-    public void close() {
-        synchronized (lock) {
-            try {
-                writer.write("\n]\n");
-                writer.close();
-            } catch (IOException ignored) {
-            }
-            open = false;
-        }
-    }
+    public abstract void close();
 }
