@@ -235,7 +235,7 @@ builds += [
   },
   ${svm-common-windows} ${common_vm} {
     run: [
-      [mx, --dynamicimports, "${svm_suite},/tools,/graal-js", --disable-polyglot, --disable-libpolyglot, gate, --tags, "build"]
+      [mx, --dynamicimports, ${svm_suite}",/tools,/graal-js", --disable-polyglot, --disable-libpolyglot, gate, --tags, "build"]
     ]
     timelimit: "45:00"
     targets: [gate]
