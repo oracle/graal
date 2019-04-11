@@ -24,7 +24,6 @@
  */
 package com.oracle.svm.configure.trace;
 
-import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 
@@ -183,8 +182,8 @@ class ReflectionProcessor extends AbstractProcessor {
     }
 
     @SuppressWarnings("unchecked")
-    private void addDynamicProxy(List<?> interfaceSet) {
-        proxyConfiguration.add(new HashSet<>((List<String>) interfaceSet));
+    private void addDynamicProxy(List<?> interfaceList) {
+        proxyConfiguration.add((List<String>) interfaceList);
     }
 
     private ReflectionMemberSet getMemberSet(String clazz, boolean declared) {

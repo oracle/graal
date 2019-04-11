@@ -26,7 +26,6 @@ package com.oracle.svm.configure.config;
 
 import java.io.IOException;
 import java.util.ArrayList;
-import java.util.Arrays;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
@@ -35,21 +34,19 @@ import com.oracle.svm.configure.json.JsonPrintable;
 import com.oracle.svm.configure.json.JsonWriter;
 
 public class ProxyConfiguration implements JsonPrintable {
-    private final Set<Set<String>> interfaceSets = new HashSet<>();
+    private final Set<List<String>> interfaceLists = new HashSet<>();
 
-    public void add(Set<String> interfaceSet) {
-        interfaceSets.add(interfaceSet);
+    public void add(List<String> interfaceList) {
+        interfaceLists.add(interfaceList);
     }
 
     @Override
     public void printJson(JsonWriter writer) throws IOException {
-        List<String[]> sets = new ArrayList<>(interfaceSets.size());
-        for (Set<String> set : interfaceSets) {
-            String[] array = set.toArray(new String[0]);
-            Arrays.sort(array);
-            sets.add(array);
+        List<String[]> lists = new ArrayList<>(interfaceLists.size());
+        for (List<String> list : interfaceLists) {
+            lists.add(list.toArray(new String[0]));
         }
-        sets.sort((a, b) -> {
+        lists.sort((a, b) -> {
             int c = 0;
             for (int i = 0; c == 0 && i < a.length && i < b.length; i++) {
                 c = a[i].compareTo(b[i]);
@@ -60,10 +57,10 @@ public class ProxyConfiguration implements JsonPrintable {
         writer.append('[');
         writer.indent();
         String prefix = "";
-        for (String[] set : sets) {
+        for (String[] list : lists) {
             writer.append(prefix).newline();
             char typePrefix = '[';
-            for (String type : set) {
+            for (String type : list) {
                 writer.append(typePrefix).quote(type);
                 typePrefix = ',';
             }
