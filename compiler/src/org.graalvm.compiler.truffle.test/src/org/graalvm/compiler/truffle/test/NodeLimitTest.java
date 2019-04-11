@@ -50,6 +50,8 @@ import com.oracle.truffle.api.frame.FrameUtil;
 import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.api.nodes.ExplodeLoop;
 import com.oracle.truffle.api.nodes.RootNode;
+import org.graalvm.compiler.truffle.compiler.SharedTruffleCompilerOptions;
+import org.graalvm.compiler.truffle.compiler.TruffleCompilerOptions;
 
 public class NodeLimitTest extends PartialEvaluationTest {
 
@@ -57,12 +59,12 @@ public class NodeLimitTest extends PartialEvaluationTest {
         runtime = Truffle.getRuntime();
     }
 
-    static TruffleRuntimeOptions.TruffleRuntimeOptionsOverrideScope performanceWarningsAreFatalScope;
+    static TruffleCompilerOptions.TruffleOptionsOverrideScope performanceWarningsAreFatalScope;
 
     @BeforeClass
     public static void beforeClass() {
         Assume.assumeFalse(TruffleRuntimeOptions.getValue(SharedTruffleRuntimeOptions.TruffleCompileImmediately));
-        performanceWarningsAreFatalScope = TruffleRuntimeOptions.overrideOptions(SharedTruffleRuntimeOptions.TrufflePerformanceWarningsAreFatal, false);
+        performanceWarningsAreFatalScope = TruffleCompilerOptions.overrideOptions(SharedTruffleCompilerOptions.TrufflePerformanceWarningsAreFatal, false);
     }
 
     @AfterClass
@@ -243,7 +245,7 @@ public class NodeLimitTest extends PartialEvaluationTest {
 
     @SuppressWarnings("try")
     private void peRootNodeWithFillerAndTest(int nodeLimit, RootNode rootNode) {
-        try (TruffleRuntimeOptions.TruffleRuntimeOptionsOverrideScope scope = TruffleRuntimeOptions.overrideOptions(SharedTruffleRuntimeOptions.TruffleMaximumGraalNodeCount, nodeLimit)) {
+        try (TruffleCompilerOptions.TruffleOptionsOverrideScope scope = TruffleCompilerOptions.overrideOptions(SharedTruffleCompilerOptions.TruffleMaximumGraalNodeCount, nodeLimit)) {
             RootCallTarget target = runtime.createCallTarget(rootNode);
             final Object[] arguments = {1};
             globalI = 0;
