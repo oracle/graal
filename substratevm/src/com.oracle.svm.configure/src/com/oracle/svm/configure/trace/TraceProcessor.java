@@ -29,10 +29,9 @@ import java.io.Reader;
 import java.util.List;
 import java.util.Map;
 
-import com.oracle.svm.configure.config.JniConfiguration;
 import com.oracle.svm.configure.config.ProxyConfiguration;
-import com.oracle.svm.configure.config.ReflectionConfiguration;
 import com.oracle.svm.configure.config.ResourceConfiguration;
+import com.oracle.svm.configure.config.TypeConfiguration;
 import com.oracle.svm.core.util.json.JSONParser;
 
 public class TraceProcessor extends AbstractProcessor {
@@ -47,11 +46,11 @@ public class TraceProcessor extends AbstractProcessor {
         advisor.setIgnoreInternalAccesses(enabled);
     }
 
-    public JniConfiguration getJniConfiguration() {
+    public TypeConfiguration getJniConfiguration() {
         return jniProcessor.getConfiguration();
     }
 
-    public ReflectionConfiguration getReflectionConfiguration() {
+    public TypeConfiguration getReflectionConfiguration() {
         return reflectionProcessor.getConfiguration();
     }
 

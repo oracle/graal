@@ -26,23 +26,24 @@ package com.oracle.svm.agent.restrict;
 
 import java.util.List;
 
+import com.oracle.svm.configure.config.ConfigurationMemberKind;
+import com.oracle.svm.configure.config.ConfigurationMethod;
+import com.oracle.svm.configure.config.ConfigurationType;
+import com.oracle.svm.configure.config.TypeConfiguration;
 import com.oracle.svm.hosted.config.ReflectionConfigurationParserDelegate;
-
-import jdk.vm.ci.meta.MetaUtil;
 
 public class ParserConfigurationAdapter implements ReflectionConfigurationParserDelegate<ConfigurationType> {
 
-    Configuration configuration;
+    private final TypeConfiguration configuration;
 
-    public ParserConfigurationAdapter(Configuration configuration) {
+    public ParserConfigurationAdapter(TypeConfiguration configuration) {
         this.configuration = configuration;
     }
 
     @Override
     public ConfigurationType resolveType(String typeName) {
-        String internalName = MetaUtil.toInternalName(typeName);
-        ConfigurationType type = configuration.get(internalName);
-        return (type != null) ? type : new ConfigurationType(internalName);
+        ConfigurationType type = configuration.get(typeName);
+        return (type != null) ? type : new ConfigurationType(typeName);
     }
 
     @Override
@@ -52,29 +53,29 @@ public class ParserConfigurationAdapter implements ReflectionConfigurationParser
 
     @Override
     public void registerField(ConfigurationType type, String fieldName, boolean allowWrite) {
-        type.addField(fieldName);
+        type.addField(fieldName, ConfigurationMemberKind.PRESENT);
     }
 
     @Override
     public boolean registerAllMethodsWithName(ConfigurationType type, String methodName) {
-        type.addMethod(new ConfigurationMethod(methodName));
+        type.addMethodsWithName(methodName, ConfigurationMemberKind.PRESENT);
         return true;
     }
 
     @Override
     public boolean registerAllConstructors(ConfigurationType type) {
-        type.addMethod(new ConfigurationMethod(ConfigurationMethod.CONSTRUCTOR_NAME));
+        type.addMethodsWithName(ConfigurationMethod.CONSTRUCTOR_NAME, ConfigurationMemberKind.PRESENT);
         return true;
     }
 
     @Override
     public void registerMethod(ConfigurationType type, String methodName, List<ConfigurationType> methodParameterTypes) {
-        type.addMethod(new ConfigurationMethod(methodName, methodParameterTypes));
+        type.addMethod(methodName, ConfigurationMethod.toInternalParamsSignature(methodParameterTypes), ConfigurationMemberKind.PRESENT);
     }
 
     @Override
     public void registerConstructor(ConfigurationType type, List<ConfigurationType> methodParameterTypes) {
-        type.addMethod(new ConfigurationMethod(ConfigurationMethod.CONSTRUCTOR_NAME, methodParameterTypes));
+        type.addMethod(ConfigurationMethod.CONSTRUCTOR_NAME, ConfigurationMethod.toInternalParamsSignature(methodParameterTypes), ConfigurationMemberKind.PRESENT);
     }
 
     @Override
@@ -119,7 +120,7 @@ public class ParserConfigurationAdapter implements ReflectionConfigurationParser
 
     @Override
     public String getTypeName(ConfigurationType type) {
-        return type.getName();
+        return type.getQualifiedJavaName();
     }
 
     @Override

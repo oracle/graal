@@ -24,34 +24,41 @@
  */
 package com.oracle.svm.configure.config;
 
-import java.io.IOException;
-import java.util.ArrayList;
-import java.util.Comparator;
-import java.util.HashMap;
-import java.util.List;
-import java.util.Map;
+public enum ConfigurationMemberKind {
+    /** The member is public and declared in the type in question. */
+    DECLARED_AND_PUBLIC,
 
-import com.oracle.svm.configure.json.JsonPrintable;
-import com.oracle.svm.configure.json.JsonWriter;
+    /** The member is declared in the type in question. */
+    DECLARED,
 
-public class JniConfiguration implements JsonPrintable {
-    private final Map<String, JniType> jniTypes = new HashMap<>();
+    /** The member is public and is either declared or inherited in the type in question. */
+    PUBLIC,
 
-    public JniType getOrCreateType(String clazz) {
-        return jniTypes.computeIfAbsent(clazz, JniType::new);
+    /** The member is either declared or inherited in the type in question. */
+    PRESENT;
+
+    private boolean isMoreSpecificThan(ConfigurationMemberKind other) {
+        return other == null || ordinal() < other.ordinal();
     }
 
-    @Override
-    public void printJson(JsonWriter writer) throws IOException {
-        writer.append('[');
-        String prefix = "\n";
-        List<JniType> list = new ArrayList<>(jniTypes.values());
-        list.sort(Comparator.comparing(JniType::getQualifiedName));
-        for (JniType value : list) {
-            writer.append(prefix);
-            value.printJson(writer);
-            prefix = ",\n";
+    public ConfigurationMemberKind intersect(ConfigurationMemberKind other) {
+        if (equals(DECLARED) && PUBLIC.equals(other) || equals(PUBLIC) && DECLARED.equals(other)) {
+            return DECLARED_AND_PUBLIC;
         }
-        writer.newline().append(']').newline();
+        return this.isMoreSpecificThan(other) ? this : other;
+    }
+
+    public ConfigurationMemberKind union(ConfigurationMemberKind other) {
+        return equals(other) ? this : PRESENT;
+    }
+
+    public boolean includes(ConfigurationMemberKind other) {
+        if (equals(DECLARED_AND_PUBLIC)) {
+            return DECLARED.equals(other) || PUBLIC.equals(other);
+        }
+        if (equals(PRESENT)) {
+            return true;
+        }
+        return equals(other);
     }
 }

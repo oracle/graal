@@ -74,15 +74,15 @@ import org.graalvm.word.PointerBase;
 import com.oracle.svm.agent.jvmti.JvmtiEnv;
 import com.oracle.svm.agent.jvmti.JvmtiEventCallbacks;
 import com.oracle.svm.agent.jvmti.JvmtiInterface;
-import com.oracle.svm.agent.restrict.Configuration;
-import com.oracle.svm.agent.restrict.ConfigurationType;
 import com.oracle.svm.agent.restrict.JniAccessVerifier;
 import com.oracle.svm.agent.restrict.ParserConfigurationAdapter;
 import com.oracle.svm.agent.restrict.ProxyAccessVerifier;
 import com.oracle.svm.agent.restrict.ReflectAccessVerifier;
 import com.oracle.svm.agent.restrict.ResourceAccessVerifier;
+import com.oracle.svm.configure.config.ConfigurationType;
 import com.oracle.svm.configure.config.ProxyConfiguration;
 import com.oracle.svm.configure.config.ResourceConfiguration;
+import com.oracle.svm.configure.config.TypeConfiguration;
 import com.oracle.svm.configure.json.JsonWriter;
 import com.oracle.svm.configure.trace.AccessAdvisor;
 import com.oracle.svm.configure.trace.TraceProcessor;
@@ -296,7 +296,7 @@ public final class Agent {
         try {
             ReflectAccessVerifier verifier = null;
             if (!reflectConfigPaths.isEmpty()) {
-                Configuration configuration = new Configuration();
+                TypeConfiguration configuration = new TypeConfiguration();
                 ParserConfigurationAdapter adapter = new ParserConfigurationAdapter(configuration);
                 ReflectionConfigurationParser<ConfigurationType> parser = new ReflectionConfigurationParser<>(adapter);
                 for (URI reflectConfigPath : reflectConfigPaths) {
@@ -336,7 +336,7 @@ public final class Agent {
         try {
             JniAccessVerifier verifier = null;
             if (!jniConfigPaths.isEmpty()) {
-                Configuration configuration = new Configuration();
+                TypeConfiguration configuration = new TypeConfiguration();
                 ParserConfigurationAdapter adapter = new ParserConfigurationAdapter(configuration);
                 ReflectionConfigurationParser<ConfigurationType> parser = new ReflectionConfigurationParser<>(adapter);
                 for (URI jniConfigPath : jniConfigPaths) {

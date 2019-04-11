@@ -33,25 +33,41 @@ import java.util.Map;
 
 import com.oracle.svm.configure.json.JsonPrintable;
 import com.oracle.svm.configure.json.JsonWriter;
+import com.oracle.svm.core.util.UserError;
 
-public class ReflectionConfiguration implements JsonPrintable {
-    private Map<String, ReflectionType> reflectTypes = new HashMap<>();
+import jdk.vm.ci.meta.MetaUtil;
 
-    public ReflectionType getOrCreateType(String clazz) {
-        return reflectTypes.computeIfAbsent(clazz, ReflectionType::new);
+public class TypeConfiguration implements JsonPrintable {
+    private final Map<String, ConfigurationType> types = new HashMap<>();
+
+    public ConfigurationType get(String qualifiedJavaName) {
+        return types.get(qualifiedJavaName);
+    }
+
+    public ConfigurationType getByInternalName(String name) {
+        return types.get(MetaUtil.internalNameToJava(name, true, false));
+    }
+
+    public void add(ConfigurationType type) {
+        ConfigurationType previous = types.putIfAbsent(type.getQualifiedJavaName(), type);
+        UserError.guarantee(previous == null || previous == type, "Cannot replace existing type");
+    }
+
+    public ConfigurationType getOrCreateType(String qualifiedJavaName) {
+        return types.computeIfAbsent(qualifiedJavaName, ConfigurationType::new);
     }
 
     @Override
     public void printJson(JsonWriter writer) throws IOException {
-        writer.append('[').indent().newline();
-        String prefix = "";
-        List<ReflectionType> list = new ArrayList<>(reflectTypes.values());
-        list.sort(Comparator.comparing(ReflectionType::getQualifiedName));
-        for (ReflectionType value : list) {
-            writer.append(prefix).newline();
+        writer.append('[');
+        String prefix = "\n";
+        List<ConfigurationType> list = new ArrayList<>(types.values());
+        list.sort(Comparator.comparing(ConfigurationType::getQualifiedJavaName));
+        for (ConfigurationType value : list) {
+            writer.append(prefix);
             value.printJson(writer);
-            prefix = ",";
+            prefix = ",\n";
         }
-        writer.unindent().newline().append(']').newline();
+        writer.newline().append(']').newline();
     }
 }

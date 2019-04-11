@@ -31,6 +31,7 @@ import java.util.Map;
 import java.util.regex.Pattern;
 
 import com.oracle.svm.configure.json.JsonPrintable;
+import com.oracle.svm.configure.json.JsonPrinter;
 import com.oracle.svm.configure.json.JsonWriter;
 import com.oracle.svm.hosted.ResourcesFeature;
 
@@ -76,9 +77,7 @@ public class ResourceConfiguration implements JsonPrintable {
     public void printJson(JsonWriter writer) throws IOException {
         writer.append('{').indent().newline();
         writer.quote("resources").append(':');
-        MatchSet<String> set = MatchSet.create(Comparator.naturalOrder(), (String p, JsonWriter w) -> w.append('{').quote("pattern").append(':').quote(p).append('}'));
-        set.addAll(resources.keySet());
-        set.printJson(writer);
+        JsonPrinter.printCollection(writer, resources.keySet(), Comparator.naturalOrder(), (String p, JsonWriter w) -> w.append('{').quote("pattern").append(':').quote(p).append('}'));
         writer.unindent().newline().append('}').newline();
     }
 }

@@ -30,8 +30,8 @@ import java.util.List;
 import jdk.vm.ci.meta.JavaKind;
 import jdk.vm.ci.meta.MetaUtil;
 
-class SignatureParser {
-    public static String[] getParameterTypes(String signature) {
+public class SignatureUtil {
+    public static String[] toParameterTypes(String signature) {
         List<String> list = new ArrayList<>();
         int position = 1;
         int arrayDimensions = 0;
@@ -60,5 +60,13 @@ class SignatureParser {
             throw new IllegalArgumentException("Invalid array in signature: " + signature);
         }
         return list.toArray(new String[0]);
+    }
+
+    public static String toInternalSignature(List<?> parameterTypes) {
+        StringBuilder sb = new StringBuilder("(");
+        for (Object type : parameterTypes) {
+            sb.append(MetaUtil.toInternalName(type.toString()));
+        }
+        return sb.append(')').toString();
     }
 }

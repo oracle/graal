@@ -40,6 +40,7 @@ import org.graalvm.nativeimage.c.type.WordPointer;
 
 import com.oracle.svm.agent.Agent;
 import com.oracle.svm.agent.jvmti.JvmtiError;
+import com.oracle.svm.configure.config.TypeConfiguration;
 import com.oracle.svm.configure.trace.AccessAdvisor;
 import com.oracle.svm.jni.nativeapi.JNIEnvironment;
 import com.oracle.svm.jni.nativeapi.JNIFieldId;
@@ -48,7 +49,7 @@ import com.oracle.svm.jni.nativeapi.JNIObjectHandle;
 
 public class JniAccessVerifier extends AbstractAccessVerifier {
 
-    public JniAccessVerifier(Configuration configuration, AccessAdvisor advisor) {
+    public JniAccessVerifier(TypeConfiguration configuration, AccessAdvisor advisor) {
         super(configuration, advisor);
     }
 
@@ -74,7 +75,7 @@ public class JniAccessVerifier extends AbstractAccessVerifier {
             if (!name.startsWith("[") && name.length() > 1) {
                 name = "L" + name + ";"; // FindClass doesn't require those
             }
-            if (configuration.get(name) != null) {
+            if (configuration.getByInternalName(name) != null) {
                 return true;
             }
         }
