@@ -26,8 +26,11 @@ package com.oracle.svm.configure.config;
 
 import java.io.IOException;
 import java.util.ArrayList;
+import java.util.Collection;
+import java.util.Collections;
 import java.util.Comparator;
 import java.util.HashSet;
+import java.util.Iterator;
 import java.util.List;
 import java.util.Set;
 
@@ -35,7 +38,7 @@ import com.oracle.svm.configure.json.JsonPrintable;
 import com.oracle.svm.configure.json.JsonPrinter;
 import com.oracle.svm.configure.json.JsonWriter;
 
-public class MatchSet<T> implements JsonPrintable {
+public class MatchSet<T> implements Iterable<T>, JsonPrintable {
     private final Comparator<T> comparator;
     private final JsonPrinter<T> printer;
     private boolean all;
@@ -68,6 +71,16 @@ public class MatchSet<T> implements JsonPrintable {
         }
     }
 
+    public void addAll(Collection<? extends T> t) {
+        if (!all) {
+            if (set == null) {
+                set = new HashSet<>(t);
+            } else {
+                set.addAll(t);
+            }
+        }
+    }
+
     public boolean matchesAll() {
         return all;
     }
@@ -92,6 +105,14 @@ public class MatchSet<T> implements JsonPrintable {
             u.set.addAll(b.set);
         }
         return u;
+    }
+
+    @Override
+    public Iterator<T> iterator() {
+        if (all) {
+            throw new UnsupportedOperationException("matches all");
+        }
+        return (set != null) ? Collections.unmodifiableSet(set).iterator() : Collections.emptyIterator();
     }
 
     @Override

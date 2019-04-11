@@ -26,6 +26,7 @@ package com.oracle.svm.agent.restrict;
 
 import static com.oracle.svm.agent.Support.fromJniString;
 
+import com.oracle.svm.configure.config.ResourceConfiguration;
 import com.oracle.svm.configure.trace.AccessAdvisor;
 import com.oracle.svm.jni.nativeapi.JNIEnvironment;
 import com.oracle.svm.jni.nativeapi.JNIObjectHandle;

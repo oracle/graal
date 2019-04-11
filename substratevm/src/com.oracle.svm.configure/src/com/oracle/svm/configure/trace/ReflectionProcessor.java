@@ -77,7 +77,7 @@ class ReflectionProcessor extends AbstractProcessor {
 
             case "getResources":
             case "getSystemResources":
-                resourceConfiguration.addLocationIndependent(singleElement(args));
+                resourceConfiguration.add(singleElement(args));
                 return;
         }
         String clazz = (String) entry.get("class");
