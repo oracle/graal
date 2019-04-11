@@ -257,7 +257,7 @@ import static org.graalvm.compiler.java.BytecodeParserOptions.TraceBytecodeParse
 import static org.graalvm.compiler.java.BytecodeParserOptions.TraceInlineDuringParsing;
 import static org.graalvm.compiler.java.BytecodeParserOptions.TraceParserPlugins;
 import static org.graalvm.compiler.java.BytecodeParserOptions.UseGuardedIntrinsics;
-import static org.graalvm.compiler.nodes.extended.BranchProbabilityNode.FAST_PATH_PROBABILITY;
+import static org.graalvm.compiler.nodes.extended.BranchProbabilityNode.LIKELY_PROBABILITY;
 import static org.graalvm.compiler.nodes.extended.BranchProbabilityNode.LUDICROUSLY_FAST_PATH_PROBABILITY;
 import static org.graalvm.compiler.nodes.extended.BranchProbabilityNode.LUDICROUSLY_SLOW_PATH_PROBABILITY;
 import static org.graalvm.compiler.nodes.graphbuilderconf.IntrinsicContext.CompilationContext.INLINE_DURING_PARSING;
@@ -2118,7 +2118,14 @@ public class BytecodeParser implements GraphBuilderContext {
 
             AbstractBeginNode intrinsicBranch = graph.add(new BeginNode());
             AbstractBeginNode nonIntrinsicBranch = graph.add(new BeginNode());
-            append(new IfNode(compare, intrinsicBranch, nonIntrinsicBranch, FAST_PATH_PROBABILITY));
+            // In the adjustment above, we filter out receiver types that select the intrinsic as
+            // virtual call target. This means the recorded types in the adjusted profile will
+            // definitely not call into the intrinsic. Note that the following branch probability is
+            // still not precise -- the previously-not-recorded receiver types in the original
+            // profile might or might not call into the intrinsic. Yet we accumulate them into the
+            // probability of the intrinsic branch, assuming that the not-recorded types will only
+            // be a small fraction.
+            append(new IfNode(compare, intrinsicBranch, nonIntrinsicBranch, profile != null ? profile.getNotRecordedProbability() : LIKELY_PROBABILITY));
             lastInstr = intrinsicBranch;
             return new IntrinsicGuard(currentLastInstr, intrinsicReceiver, mark, nonIntrinsicBranch, profile);
         } else {
