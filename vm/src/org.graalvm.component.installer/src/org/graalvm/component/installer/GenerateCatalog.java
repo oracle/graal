@@ -73,22 +73,37 @@ public final class GenerateCatalog {
     private final StringBuilder catalogHeader = new StringBuilder();
     private Environment env;
     private String graalNameFormatString = "GraalVM %1s %2s/%3s";
-    private String graalVersionFormatString = "%s_%s_%s";
+    private String graalVersionFormatString;
 
     private static final Map<String, String> OPTIONS = new HashMap<>();
 
+    private static final String OPT_FORMAT_1 = "1"; // NOI18N
+    private static final String OPT_FORMAT_2 = "2"; // NOI18N
+    private static final String OPT_VERBOSE = "v"; // NOI18N
+    private static final String OPT_GRAAL_PREFIX = "g"; // NOI18N
+    private static final String OPT_GRAAL_NAME = "n"; // NOI18N
+    private static final String OPT_GRAAL_NAME_FORMAT = "f"; // NOI18N
+    private static final String OPT_URL_BASE = "b"; // NOI18N
+    private static final String OPT_PATH_BASE = "p"; // NOI18N
+    private static final String OPT_FORCE_VERSION = "e"; // NO18N
+    private static final String OPT_FORCE_OS = "o"; // NO18N
+    private static final String OPT_FORCE_ARCH = "a"; // NO18N
+    private static final String OPT_SEARCH_LOCATION = "l"; // NOI18N
+
     static {
-        OPTIONS.put("v", "");  // verbose
-        OPTIONS.put("g", "s");
-        OPTIONS.put("e", "s");
-        OPTIONS.put("o", "s");
-        OPTIONS.put("f", "s");
-        OPTIONS.put("n", "s");
-        OPTIONS.put("a", "s");
-        OPTIONS.put("n", "");   // GraalVM release name
-        OPTIONS.put("b", "s");  // URL Base
-        OPTIONS.put("p", "s");  // fileName base
-        OPTIONS.put("l", "s");   // list files
+        OPTIONS.put(OPT_FORMAT_1, "");  // format v1 < GraalVM 1.0.0-rc16+
+        OPTIONS.put(OPT_FORMAT_2, "");  // format v2 = GraalVM 1.0.0-rc16+
+        OPTIONS.put(OPT_VERBOSE, "");  // verbose
+        OPTIONS.put(OPT_GRAAL_PREFIX, "s");
+        OPTIONS.put(OPT_FORCE_VERSION, "s");
+        OPTIONS.put(OPT_FORCE_OS, "s");
+        OPTIONS.put(OPT_GRAAL_NAME_FORMAT, "s");
+        OPTIONS.put(OPT_GRAAL_NAME, "s");
+        OPTIONS.put(OPT_FORCE_ARCH, "s");
+        OPTIONS.put(OPT_GRAAL_NAME, "");   // GraalVM release name
+        OPTIONS.put(OPT_URL_BASE, "s");  // URL Base
+        OPTIONS.put(OPT_PATH_BASE, "s");  // fileName base
+        OPTIONS.put(OPT_SEARCH_LOCATION, "s");   // list files
     }
 
     private Map<String, GraalVersion> graalVMReleases = new LinkedHashMap<>();
@@ -193,31 +208,43 @@ public final class GenerateCatalog {
         this.env = new Environment(null, getopt.getPositionalParameters(), getopt.getOptValues());
         this.env.setAllOutputToErr(true);
 
-        String pb = env.optValue("p");
+        String pb = env.optValue(OPT_PATH_BASE);
         if (pb != null) {
             pathBase = SystemUtils.fromUserString(pb).toAbsolutePath();
         }
-        urlPrefix = env.optValue("b");
-        graalVersionPrefix = env.optValue("g");
+        urlPrefix = env.optValue(OPT_URL_BASE);
+        graalVersionPrefix = env.optValue(OPT_GRAAL_PREFIX);
         if (graalVersionPrefix != null) {
-            graalVersionName = env.optValue("n");
+            graalVersionName = env.optValue(OPT_GRAAL_NAME);
             if (graalVersionName == null) {
                 throw new IOException("Graal prefix specified, but no human-readable name");
             }
         }
-        forceVersion = env.optValue("e");
-        forceOS = env.optValue("o");
-        forceArch = env.optValue("a");
-        String s = env.optValue("f");
+        forceVersion = env.optValue(OPT_FORCE_VERSION);
+        forceOS = env.optValue(OPT_FORCE_OS);
+        forceArch = env.optValue(OPT_FORCE_ARCH);
+        if (env.hasOption(OPT_FORMAT_1)) {
+            formatVer = 1;
+        } else if (env.hasOption(OPT_FORMAT_2)) {
+            formatVer = 2;
+        }
+        String s = env.optValue(OPT_GRAAL_NAME_FORMAT);
         if (s != null) {
             graalNameFormatString = s;
         }
 
-        // catalogContents.append(MessageFormat.format(
-        // "{2}.{0}={1}\n", graalVersionPrefix, label, GRAALVM_CAPABILITY
-        // ));
+        switch (formatVer) {
+            case 1:
+                graalVersionFormatString = "%s_%s_%s";
+                break;
+            case 2:
+                graalVersionFormatString = "%2$s_%3$s/%1$s";
+                break;
+            default:
+                throw new IllegalStateException();
+        }
 
-        if (env.hasOption("l")) {
+        if (env.hasOption(OPT_SEARCH_LOCATION)) {
             Path listFrom = Paths.get(env.optValue("l"));
             Files.walk(listFrom).filter((p) -> p.toString().endsWith(".jar")).forEach(
                             (p) -> locations.add(p.toString()));
@@ -227,12 +254,6 @@ public final class GenerateCatalog {
             }
         }
 
-        /*
-         * try (BufferedReader rr = new BufferedReader(new InputStreamReader(System.in))) { String
-         * l;
-         * 
-         * while ((l = rr.readLine()) != null) { locations.add(l); } }
-         */
         for (String spec : locations) {
             File f = null;
             String u = null;
@@ -288,6 +309,7 @@ public final class GenerateCatalog {
     private String os;
     private String arch;
     private String version;
+    private int formatVer = 1;
 
     private String findComponentPrefix(ComponentInfo info) {
         Map<String, String> m = info.getRequiredGraalValues();
@@ -296,14 +318,21 @@ public final class GenerateCatalog {
             version = graalVersionPrefix;
             return graalVersionPrefix;
         }
-        version = forceVersion != null ? forceVersion : SystemUtils.normalizeOldVersions(info.getVersionString());
-        if (version == null && info.getId().equals(BundleConstants.GRAAL_COMPONENT_ID)) {
-            version = SystemUtils.normalizeOldVersions(info.getVersionString());
+        if (forceVersion != null) {
+            version = forceVersion;
+        } else {
+            switch (formatVer) {
+                case 1:
+                    version = info.getVersionString();
+                    break;
+                case 2:
+                    version = SystemUtils.normalizeOldVersions(info.getVersionString());
+            }
         }
-        return String.format("%s_%s/%s",
+        return String.format(graalVersionFormatString,
+                        version,
                         os = forceOS != null ? forceOS : m.get(CommonConstants.CAP_OS_NAME),
-                        arch = forceArch != null ? forceArch : m.get(CommonConstants.CAP_OS_ARCH),
-                        version);
+                        arch = forceArch != null ? forceArch : m.get(CommonConstants.CAP_OS_ARCH));
     }
 
     private void generateReleases() {
@@ -390,10 +419,23 @@ public final class GenerateCatalog {
                     name = name.replace(toReplace, repl);
                 }
                 String url = (urlPrefix == null || urlPrefix.isEmpty()) ? name : urlPrefix + "/" + name;
+                String sel;
+
+                switch (formatVer) {
+                    case 1:
+                        sel = "Component.{0}_{1}";
+                        break;
+                    case 2:
+                        sel = "Component.{0}/{1}";
+                        break;
+                    default:
+                        throw new IllegalStateException();
+                }
                 catalogContents.append(MessageFormat.format(
-                                "Component.{0}/{1}={2}\n", prefix, bid, url));
+                                sel + "={2}\n", prefix, bid, url));
                 catalogContents.append(MessageFormat.format(
-                                "Component.{0}/{1}-hash={2}\n", prefix, bid, digest2String(hash)));
+                                sel + "={2}\n", prefix, bid, digest2String(hash)));
+
                 for (Object a : atts.keySet()) {
                     String key = a.toString();
                     String val = atts.getValue(key);
@@ -401,7 +443,7 @@ public final class GenerateCatalog {
                         continue;
                     }
                     catalogContents.append(MessageFormat.format(
-                                    "Component.{0}/{1}-{2}={3}\n", prefix, bid, key, val));
+                                    sel + "-{2}={3}\n", prefix, bid, key, val));
                 }
             }
         }
