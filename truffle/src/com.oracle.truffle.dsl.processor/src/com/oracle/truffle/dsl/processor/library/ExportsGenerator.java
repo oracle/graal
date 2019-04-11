@@ -96,6 +96,7 @@ import com.oracle.truffle.dsl.processor.java.model.CodeTreeBuilder;
 import com.oracle.truffle.dsl.processor.java.model.CodeTypeElement;
 import com.oracle.truffle.dsl.processor.java.model.CodeTypeMirror;
 import com.oracle.truffle.dsl.processor.java.model.CodeVariableElement;
+import com.oracle.truffle.dsl.processor.java.model.GeneratedTypeMirror;
 import com.oracle.truffle.dsl.processor.model.CacheExpression;
 import com.oracle.truffle.dsl.processor.model.NodeData;
 import com.oracle.truffle.dsl.processor.model.SpecializationData;
@@ -242,9 +243,10 @@ public class ExportsGenerator extends CodeTypeElementFactory<ExportsData> {
 
         CodeVariableElement uncachedSingleton = null;
         if (useSingleton(library, false)) {
-            uncachedSingleton = exportsClass.add(new CodeVariableElement(modifiers(PRIVATE, STATIC, FINAL), uncachedClass.asType(), "UNCACHED"));
+            GeneratedTypeMirror uncachedType = new GeneratedTypeMirror("", uncachedClass.getSimpleName().toString());
+            uncachedSingleton = exportsClass.add(new CodeVariableElement(modifiers(PRIVATE, STATIC, FINAL), uncachedType, "UNCACHED"));
             builder = uncachedSingleton.createInitBuilder();
-            builder.startNew(uncachedClass.asType()).end();
+            builder.startNew(uncachedType).end();
         }
 
         CodeExecutableElement createUncached = CodeExecutableElement.clone(ElementUtils.findExecutableElement(context.getDeclaredType(LibraryExport.class), "createUncached"));
@@ -275,9 +277,10 @@ public class ExportsGenerator extends CodeTypeElementFactory<ExportsData> {
 
         CodeVariableElement cacheSingleton = null;
         if (useSingleton(library, true)) {
-            cacheSingleton = exportsClass.add(new CodeVariableElement(modifiers(PRIVATE, STATIC, FINAL), cacheClass.asType(), "CACHE"));
+            GeneratedTypeMirror cachedType = new GeneratedTypeMirror("", cacheClass.getSimpleName().toString());
+            cacheSingleton = exportsClass.add(new CodeVariableElement(modifiers(PRIVATE, STATIC, FINAL), cachedType, "CACHE"));
             builder = cacheSingleton.createInitBuilder();
-            builder.startNew(cacheClass.asType()).end();
+            builder.startNew(cachedType).end();
         }
 
         CodeExecutableElement createCached = CodeExecutableElement.clone(ElementUtils.findExecutableElement(context.getDeclaredType(LibraryExport.class), "createCached"));
