@@ -36,6 +36,8 @@ import java.io.IOException;
 import java.io.OutputStream;
 import java.nio.file.Files;
 import java.nio.file.Path;
+import java.nio.file.Paths;
+import java.nio.file.StandardCopyOption;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
@@ -100,8 +102,8 @@ public class LLVMNativeImageCodeCache extends NativeImageCodeCache {
     private LLVMStackMapInfo info;
     private HostedMethod firstMethod;
 
-    public LLVMNativeImageCodeCache(Map<HostedMethod, CompilationResult> compilations, NativeImageHeap imageHeap) {
-        super(compilations, imageHeap);
+    public LLVMNativeImageCodeCache(Map<HostedMethod, CompilationResult> compilations, NativeImageHeap imageHeap, Platform targetPlatform) {
+        super(compilations, imageHeap, targetPlatform);
     }
 
     @Override
@@ -401,7 +403,7 @@ public class LLVMNativeImageCodeCache extends NativeImageCodeCache {
         return outputPath;
     }
 
-    private static void llvmOptimize(DebugContext debug, String outputPath, String inputPath) {
+    private void llvmOptimize(DebugContext debug, String outputPath, String inputPath) {
         try {
             List<String> cmd = new ArrayList<>();
             cmd.add("opt");
@@ -409,13 +411,15 @@ public class LLVMNativeImageCodeCache extends NativeImageCodeCache {
              * Mem2reg has to be run before rewriting statepoints as it promotes allocas, which are
              * not supported for statepoints.
              */
-            cmd.add("-mem2reg");
-            cmd.add("-rewrite-statepoints-for-gc");
-            cmd.add("-always-inline");
+            if (Platform.AMD64.class.isInstance(targetPlatform)) {
+                cmd.add("-mem2reg");
+                cmd.add("-rewrite-statepoints-for-gc");
+                cmd.add("-always-inline");
+            }
             cmd.add("-o");
             cmd.add(outputPath);
             cmd.add(inputPath);
-
+            System.err.println("LLVMOPT called with cmd "+cmd);
             ProcessBuilder pb = new ProcessBuilder(cmd);
             pb.redirectErrorStream(true);
             Process p = pb.start();
@@ -433,20 +437,25 @@ public class LLVMNativeImageCodeCache extends NativeImageCodeCache {
         }
     }
 
-    private static void llvmCompile(DebugContext debug, String outputPath, String inputPath) {
+    private void llvmCompile(DebugContext debug, String outputPath, String inputPath) {
         try {
             List<String> cmd = new ArrayList<>();
             cmd.add("llc");
             cmd.add("-relocation-model=pic");
 
             /* X86 call frame optimization causes variable sized stack frames */
-            cmd.add("-no-x86-call-frame-opt");
+            if (Platform.AMD64.class.isInstance(targetPlatform)) {
+                cmd.add("-no-x86-call-frame-opt");
+            }
+            if (Platform.AArch64.class.isInstance(targetPlatform)) {
+                cmd.add("-march=arm64");
+            }
             cmd.add("-O2");
             cmd.add("-filetype=obj");
             cmd.add("-o");
             cmd.add(outputPath);
             cmd.add(inputPath);
-
+            System.err.println("LLVMCOMP called with cmd = "+cmd);
             ProcessBuilder pb = new ProcessBuilder(cmd);
             pb.redirectErrorStream(true);
             Process p = pb.start();
@@ -503,6 +512,13 @@ public class LLVMNativeImageCodeCache extends NativeImageCodeCache {
     @Override
     public String[] getCCInputFiles(Path tempDirectory, String imageName) {
         String relocatableFileName = tempDirectory.resolve(imageName + ObjectFile.getFilenameSuffix()).toString();
+        try {
+            Path src = Paths.get(bitcodeFileName);
+            Path dst = Paths.get(relocatableFileName).getParent().resolve(src.getFileName());
+            Files.copy(src, dst, StandardCopyOption.REPLACE_EXISTING);
+        } catch (IOException e) {
+            throw new GraalError("Error copying "+bitcodeFileName+": " +e);
+        }
         return new String[]{relocatableFileName, bitcodeFileName};
     }
 }

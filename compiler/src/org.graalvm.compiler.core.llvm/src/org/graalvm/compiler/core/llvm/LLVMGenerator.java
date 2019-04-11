@@ -41,6 +41,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.function.BiFunction;
 
+import jdk.vm.ci.aarch64.AArch64Kind;
 import org.bytedeco.javacpp.LLVM.LLVMBasicBlockRef;
 import org.bytedeco.javacpp.LLVM.LLVMTypeRef;
 import org.bytedeco.javacpp.LLVM.LLVMValueRef;
@@ -71,6 +72,7 @@ import org.graalvm.compiler.lir.StandardOp;
 import org.graalvm.compiler.lir.SwitchStrategy;
 import org.graalvm.compiler.lir.Variable;
 import org.graalvm.compiler.lir.VirtualStackSlot;
+import org.graalvm.compiler.lir.aarch64.AArch64ArithmeticLIRGeneratorTool;
 import org.graalvm.compiler.lir.gen.ArithmeticLIRGeneratorTool;
 import org.graalvm.compiler.lir.gen.LIRGenerationResult;
 import org.graalvm.compiler.lir.gen.LIRGeneratorTool;
@@ -946,7 +948,7 @@ public class LLVMGenerator implements LIRGeneratorTool {
 
     @Override
     public void emitPause() {
-        throw unimplemented();
+//        throw unimplemented();
     }
 
     @Override
@@ -1038,7 +1040,7 @@ public class LLVMGenerator implements LIRGeneratorTool {
         return debugLevel;
     }
 
-    public static class ArithmeticLLVMGenerator implements ArithmeticLIRGeneratorTool {
+    public static class ArithmeticLLVMGenerator implements ArithmeticLIRGeneratorTool, AArch64ArithmeticLIRGeneratorTool {
         private final LLVMIRBuilder builder;
 
         ArithmeticLLVMGenerator(LLVMIRBuilder builder) {
@@ -1287,7 +1289,10 @@ public class LLVMGenerator implements LIRGeneratorTool {
 
         @Override
         public Value emitBitCount(Value operand) {
-            throw unimplemented();
+            LLVMValueRef op = getVal(operand);
+            LLVMValueRef answer = builder.buildCtpop(op);
+            answer = builder.buildIntegerConvert(answer, 32);
+            return new LLVMVariable(answer);
         }
 
         @Override
@@ -1332,6 +1337,32 @@ public class LLVMGenerator implements LIRGeneratorTool {
         @Override
         public void emitStore(ValueKind<?> kind, Value address, Value input, LIRFrameState state) {
             builder.buildStore(getVal(input), getVal(address));
+        }
+
+        @Override
+        public Value emitCountLeadingZeros(Value value) {
+            LLVMValueRef op = getVal(value);
+            LLVMValueRef answer = builder.buildCtlz(op);
+            answer = builder.buildIntegerConvert(answer, 32);
+            return new LLVMVariable(answer);
+        }
+
+        @Override
+        public Value emitCountTrailingZeros(Value value) {
+            LLVMValueRef op = getVal(value);
+            LLVMValueRef answer = builder.buildCttz(op);
+            answer = builder.buildIntegerConvert(answer, 32);
+            return new LLVMVariable(answer);
+        }
+
+        @Override
+        public Value emitRound(Value value, RoundingMode mode) {
+            return null;
+        }
+
+        @Override
+        public void emitCompareOp(AArch64Kind cmpKind, Variable left, Value right) {
+
         }
     }
 }

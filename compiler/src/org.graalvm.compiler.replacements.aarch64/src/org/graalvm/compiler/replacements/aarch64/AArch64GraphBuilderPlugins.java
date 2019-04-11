@@ -69,8 +69,8 @@ public class AArch64GraphBuilderPlugins {
                 if (registerMathPlugins) {
                     registerMathPlugins(invocationPlugins);
                 }
-                registerStringLatin1Plugins(invocationPlugins, bytecodeProvider);
-                registerStringUTF16Plugins(invocationPlugins, bytecodeProvider);
+                // registerStringLatin1Plugins(invocationPlugins, bytecodeProvider);
+                // registerStringUTF16Plugins(invocationPlugins, bytecodeProvider);
                 registerUnsafePlugins(invocationPlugins, bytecodeProvider);
                 // This is temporarily disabled until we implement correct emitting of the CAS
                 // instructions of the proper width.

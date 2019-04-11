@@ -186,7 +186,22 @@ public interface Platform {
          */
         public DARWIN_AMD64() {
         }
+    }
 
+    /**
+     * Supported leaf platform: Darwin (MacOS) on x86 64-bit.
+     *
+     * @since 2.0
+     */
+    final class DARWIN_AArch64 implements DARWIN, InternalPlatform.DARWIN_AND_JNI, AArch64 {
+
+        /**
+         * Instantiates a marker instance of this platform.
+         *
+         * @since 2.0
+         */
+        public DARWIN_AArch64() {
+        }
     }
 
     /**

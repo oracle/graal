@@ -35,6 +35,7 @@ import com.oracle.svm.hosted.image.LIRNativeImageCodeCache;
 import com.oracle.svm.hosted.image.NativeImageCodeCache;
 import com.oracle.svm.hosted.image.NativeImageCodeCacheFactory;
 import com.oracle.svm.hosted.image.NativeImageHeap;
+import org.graalvm.nativeimage.Platform;
 
 @AutomaticFeature
 class SubstrateLIRBackendFeature implements Feature {
@@ -47,7 +48,7 @@ class SubstrateLIRBackendFeature implements Feature {
     public void afterRegistration(AfterRegistrationAccess access) {
         ImageSingletons.add(NativeImageCodeCacheFactory.class, new NativeImageCodeCacheFactory() {
             @Override
-            public NativeImageCodeCache newCodeCache(CompileQueue compileQueue, NativeImageHeap heap) {
+            public NativeImageCodeCache newCodeCache(CompileQueue compileQueue, NativeImageHeap heap, Platform targetPlatform) {
                 return new LIRNativeImageCodeCache(compileQueue.getCompilations(), heap);
             }
         });
