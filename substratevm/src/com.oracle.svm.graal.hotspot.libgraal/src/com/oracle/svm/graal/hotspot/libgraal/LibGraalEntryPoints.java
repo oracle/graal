@@ -144,8 +144,8 @@ public final class LibGraalEntryPoints {
             HotSpotCompilationRequest request = new HotSpotCompilationRequest(method, entryBCI, 0L);
             HotSpotGraalCompiler compiler = (HotSpotGraalCompiler) runtime.getCompiler();
             OptionValues options = decodeOptions(optionsAddress, optionsSize, optionsHash);
-            CompilationTask task = new CompilationTask(runtime, compiler, request, useProfilingInfo, installAsDefault, options);
-            task.runCompilation();
+            CompilationTask task = new CompilationTask(runtime, compiler, request, useProfilingInfo, installAsDefault);
+            task.runCompilation(options);
             HotSpotInstalledCode installedCode = task.getInstalledCode();
             return LibGraal.translate(runtime, installedCode);
         } catch (Throwable t) {
