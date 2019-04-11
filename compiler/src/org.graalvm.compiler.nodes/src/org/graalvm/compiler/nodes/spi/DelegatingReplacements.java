@@ -25,7 +25,6 @@
 package org.graalvm.compiler.nodes.spi;
 
 import org.graalvm.compiler.api.replacements.SnippetTemplateCache;
-import org.graalvm.compiler.bytecode.Bytecode;
 import org.graalvm.compiler.bytecode.BytecodeProvider;
 import org.graalvm.compiler.core.common.CompilationIdentifier;
 import org.graalvm.compiler.debug.DebugContext;
@@ -33,6 +32,8 @@ import org.graalvm.compiler.graph.NodeSourcePosition;
 import org.graalvm.compiler.nodes.StructuredGraph;
 import org.graalvm.compiler.nodes.graphbuilderconf.GraphBuilderConfiguration;
 import org.graalvm.compiler.nodes.graphbuilderconf.GraphBuilderPlugin;
+import org.graalvm.compiler.nodes.graphbuilderconf.IntrinsicContext;
+import org.graalvm.compiler.nodes.graphbuilderconf.MethodSubstitutionPlugin;
 import org.graalvm.compiler.options.OptionValues;
 
 import jdk.vm.ci.meta.ResolvedJavaMethod;
@@ -45,6 +46,11 @@ public class DelegatingReplacements implements Replacements {
 
     public DelegatingReplacements(Replacements delegate) {
         this.delegate = delegate;
+    }
+
+    @Override
+    public CoreProviders getProviders() {
+        return delegate.getProviders();
     }
 
     @Override
@@ -69,13 +75,19 @@ public class DelegatingReplacements implements Replacements {
     }
 
     @Override
-    public StructuredGraph getSubstitution(ResolvedJavaMethod method, int invokeBci, boolean trackNodeSourcePosition, NodeSourcePosition replaceePosition, OptionValues options) {
-        return delegate.getSubstitution(method, invokeBci, trackNodeSourcePosition, replaceePosition, options);
+    public StructuredGraph getMethodSubstitution(MethodSubstitutionPlugin plugin, ResolvedJavaMethod original, IntrinsicContext.CompilationContext context,
+                    StructuredGraph.AllowAssumptions allowAssumptions, OptionValues options) {
+        return delegate.getMethodSubstitution(plugin, original, context, allowAssumptions, options);
     }
 
     @Override
-    public Bytecode getSubstitutionBytecode(ResolvedJavaMethod method) {
-        return delegate.getSubstitutionBytecode(method);
+    public void registerMethodSubstitution(MethodSubstitutionPlugin plugin, ResolvedJavaMethod original, IntrinsicContext.CompilationContext context, OptionValues options) {
+        delegate.registerMethodSubstitution(plugin, original, context, options);
+    }
+
+    @Override
+    public StructuredGraph getSubstitution(ResolvedJavaMethod method, int invokeBci, boolean trackNodeSourcePosition, NodeSourcePosition replaceePosition, OptionValues options) {
+        return delegate.getSubstitution(method, invokeBci, trackNodeSourcePosition, replaceePosition, options);
     }
 
     @Override

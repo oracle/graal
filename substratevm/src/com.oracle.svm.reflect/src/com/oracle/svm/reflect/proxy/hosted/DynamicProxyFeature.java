@@ -26,6 +26,7 @@ package com.oracle.svm.reflect.proxy.hosted;
 
 import java.util.Collections;
 import java.util.List;
+import java.util.function.Consumer;
 
 import org.graalvm.compiler.options.Option;
 import org.graalvm.compiler.options.OptionType;
@@ -36,6 +37,7 @@ import com.oracle.svm.core.annotate.AutomaticFeature;
 import com.oracle.svm.core.jdk.proxy.DynamicProxyRegistry;
 import com.oracle.svm.core.option.HostedOptionKey;
 import com.oracle.svm.hosted.FeatureImpl.DuringSetupAccessImpl;
+import com.oracle.svm.hosted.ImageClassLoader;
 import com.oracle.svm.hosted.config.ConfigurationDirectories;
 import com.oracle.svm.hosted.config.ConfigurationParser;
 import com.oracle.svm.hosted.config.ProxyConfigurationParser;
@@ -63,11 +65,28 @@ public final class DynamicProxyFeature implements Feature {
     public void duringSetup(DuringSetupAccess a) {
         DuringSetupAccessImpl access = (DuringSetupAccessImpl) a;
 
-        DynamicProxySupport dynamicProxySupport = new DynamicProxySupport(access.getImageClassLoader().getClassLoader());
+        ImageClassLoader imageClassLoader = access.getImageClassLoader();
+        DynamicProxySupport dynamicProxySupport = new DynamicProxySupport(imageClassLoader.getClassLoader());
         ImageSingletons.add(DynamicProxyRegistry.class, dynamicProxySupport);
 
-        ProxyConfigurationParser parser = new ProxyConfigurationParser(access.getImageClassLoader(), dynamicProxySupport);
-        ConfigurationParser.parseAndRegisterConfigurations(parser, access.getImageClassLoader(), "dynamic proxy",
+        Consumer<String[]> adapter = interfaceNames -> {
+            Class<?>[] interfaces = new Class<?>[interfaceNames.length];
+            for (int i = 0; i < interfaceNames.length; i++) {
+                String className = interfaceNames[i];
+                Class<?> clazz = imageClassLoader.findClassByName(className, false);
+                if (clazz == null) {
+                    throw new RuntimeException("Class " + className + " not found");
+                }
+                if (!clazz.isInterface()) {
+                    throw new RuntimeException("The class \"" + className + "\" is not an interface.");
+                }
+                interfaces[i] = clazz;
+            }
+            /* The interfaces array can be empty. The java.lang.reflect.Proxy API allows it. */
+            dynamicProxySupport.addProxyClass(interfaces);
+        };
+        ProxyConfigurationParser parser = new ProxyConfigurationParser(adapter);
+        ConfigurationParser.parseAndRegisterConfigurations(parser, imageClassLoader, "dynamic proxy",
                         Options.DynamicProxyConfigurationFiles, Options.DynamicProxyConfigurationResources, ConfigurationDirectories.FileNames.DYNAMIC_PROXY_NAME);
     }
 }

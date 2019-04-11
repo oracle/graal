@@ -1063,6 +1063,7 @@ public class NativeImageGenerator {
         }
     }
 
+    @Platforms(Platform.HOSTED_ONLY.class)
     static class SubstitutionInvocationPlugins extends InvocationPlugins {
 
         private AnnotationSubstitutionProcessor annotationSubstitutionProcessor;

@@ -1126,7 +1126,9 @@ public abstract class Source {
                 throw new OutOfMemoryError("Too many bytes.");
             }
         }
-        return readBytes(connection.getInputStream(), (int) size);
+        try (InputStream inputStream = connection.getInputStream()) {
+            return readBytes(inputStream, (int) size);
+        }
     }
 
     /*

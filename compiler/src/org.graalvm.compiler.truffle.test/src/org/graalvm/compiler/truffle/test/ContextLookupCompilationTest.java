@@ -35,17 +35,25 @@ import org.junit.BeforeClass;
 import org.junit.Test;
 
 import com.oracle.truffle.api.CompilerAsserts;
+import com.oracle.truffle.api.CompilerDirectives;
+import com.oracle.truffle.api.CompilerDirectives.CompilationFinal;
+import com.oracle.truffle.api.TruffleContext;
+import com.oracle.truffle.api.TruffleLanguage;
+import com.oracle.truffle.api.TruffleLanguage.ContextPolicy;
 import com.oracle.truffle.api.TruffleLanguage.ContextReference;
+import com.oracle.truffle.api.TruffleLanguage.Env;
+import com.oracle.truffle.api.TruffleLanguage.LanguageReference;
+import com.oracle.truffle.api.TruffleLanguage.Registration;
 import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.api.nodes.RootNode;
-import com.oracle.truffle.api.test.polyglot.ProxyLanguage;
-import com.oracle.truffle.api.test.polyglot.ProxyLanguage.LanguageContext;
 
 import jdk.vm.ci.code.BailoutException;
 
 public class ContextLookupCompilationTest extends PartialEvaluationTest {
 
     private static TruffleRuntimeOptions.TruffleRuntimeOptionsOverrideScope immediateCompilationScope;
+    static final String EXCLUSIVE_LANGUAGE = "ContextLookupCompilationTestExclusive";
+    static final String SHARED_LANGUAGE = "ContextLookupCompilationTestShared";
 
     @BeforeClass
     public static void classSetup() {
@@ -66,9 +74,32 @@ public class ContextLookupCompilationTest extends PartialEvaluationTest {
     }
 
     private static Context enter(Context context) {
-        context.initialize(ProxyLanguage.ID);
+        context.initialize(EXCLUSIVE_LANGUAGE);
+        context.initialize(SHARED_LANGUAGE);
         context.enter();
         return context;
+    }
+
+    @Test
+    public void testInnerContexts() {
+        Context context;
+
+        context = enter(Context.create());
+        assertCompiling(createAssertConstantFromRef());
+        assertLookupsNoSharing();
+
+        TruffleContext innerContext = Shared.getCurrentContext().newContextBuilder().build();
+        Object prev = innerContext.enter();
+        try {
+            Context.getCurrent().initialize(EXCLUSIVE_LANGUAGE);
+            Context.getCurrent().initialize(SHARED_LANGUAGE);
+            assertLookupsInnerContext();
+        } finally {
+            innerContext.leave(prev);
+        }
+        assertLookupsInnerContext();
+        context.leave();
+        context.close();
     }
 
     @Test
@@ -77,23 +108,44 @@ public class ContextLookupCompilationTest extends PartialEvaluationTest {
 
         context = enter(Context.create());
         assertCompiling(createAssertConstantFromRef());
+        assertLookupsNoSharing();
+
         context.leave();
         context.close();
 
         context = enter(Context.create());
         assertCompiling(createAssertConstantFromRef());
+        assertLookupsNoSharing();
         context.leave();
         context.close();
+    }
+
+    private void assertLookupsNoSharing() {
+        assertCompiling(createAssertConstantContextFromLookup(Exclusive.get(), Exclusive.get()));
+        assertCompiling(createAssertConstantContextFromLookup(Shared.get(), Exclusive.get()));
+        assertCompiling(createAssertConstantContextFromLookup(Exclusive.get(), Shared.get()));
+        assertCompiling(createAssertConstantContextFromLookup(Shared.get(), Shared.get()));
+        assertCompiling(createAssertConstantContextFromLookup(null, Exclusive.get()));
+        assertCompiling(createAssertConstantContextFromLookup(null, Shared.get()));
+
+        assertCompiling(createAssertConstantLanguageFromLookup(Exclusive.get(), Exclusive.get()));
+        assertCompiling(createAssertConstantLanguageFromLookup(Shared.get(), Exclusive.get()));
+        assertCompiling(createAssertConstantLanguageFromLookup(Exclusive.get(), Shared.get()));
+        assertCompiling(createAssertConstantLanguageFromLookup(Shared.get(), Shared.get()));
+        assertCompiling(createAssertConstantLanguageFromLookup(null, Exclusive.get()));
+        assertCompiling(createAssertConstantLanguageFromLookup(null, Shared.get()));
     }
 
     @Test
     public void testRefTwoContextsAtTheSameTime() {
         Context context1 = enter(Context.create());
         assertCompiling(createAssertConstantFromRef());
+        assertLookupsNoSharing();
         context1.leave();
 
         Context context2 = enter(Context.create());
         assertCompiling(createAssertConstantFromRef());
+        assertLookupsNoSharing();
         context2.leave();
 
         context1.close();
@@ -106,6 +158,7 @@ public class ContextLookupCompilationTest extends PartialEvaluationTest {
         Context context1 = enter(Context.newBuilder().engine(engine).build());
         // context must not be constant
         assertBailout(createAssertConstantFromRef());
+        assertLookupsSharedEngine(false);
 
         OptimizedCallTarget target = assertCompiling(createGetFromRef());
         assertTrue("is valid", target.isValid());
@@ -115,11 +168,52 @@ public class ContextLookupCompilationTest extends PartialEvaluationTest {
 
         Context context2 = enter(Context.newBuilder().engine(engine).build());
         assertTrue("still valid in second Context", target.isValid());
+        assertLookupsSharedEngine(true);
         context2.leave();
 
         context1.close();
         context2.close();
         engine.close();
+    }
+
+    private void assertLookupsInnerContext() {
+        /*
+         * We currently have all optimizations disabled with inner contexts.
+         */
+        assertBailout(createAssertConstantContextFromLookup(Exclusive.get(), Exclusive.get()));
+        assertBailout(createAssertConstantContextFromLookup(Exclusive.get(), Shared.get()));
+        assertBailout(createAssertConstantContextFromLookup(Shared.get(), Exclusive.get()));
+        assertBailout(createAssertConstantContextFromLookup(Shared.get(), Shared.get()));
+        assertBailout(createAssertConstantContextFromLookup(null, Exclusive.get()));
+        assertBailout(createAssertConstantContextFromLookup(null, Shared.get()));
+
+        assertCompiling(createAssertConstantLanguageFromLookup(Exclusive.get(), Exclusive.get()));
+        assertCompiling(createAssertConstantLanguageFromLookup(Exclusive.get(), Shared.get()));
+        assertBailout(createAssertConstantLanguageFromLookup(Shared.get(), Exclusive.get()));
+        assertBailout(createAssertConstantLanguageFromLookup(null, Exclusive.get()));
+        assertCompiling(createAssertConstantLanguageFromLookup(Shared.get(), Shared.get()));
+        assertCompiling(createAssertConstantLanguageFromLookup(null, Shared.get()));
+    }
+
+    private void assertLookupsSharedEngine(boolean secondContext) {
+        assertCompiling(createAssertConstantContextFromLookup(Exclusive.get(), Exclusive.get()));
+        assertCompiling(createAssertConstantContextFromLookup(Exclusive.get(), Shared.get()));
+        assertBailout(createAssertConstantContextFromLookup(Shared.get(), Exclusive.get()));
+        assertBailout(createAssertConstantContextFromLookup(Shared.get(), Shared.get()));
+        assertBailout(createAssertConstantContextFromLookup(null, Exclusive.get()));
+        assertBailout(createAssertConstantContextFromLookup(null, Shared.get()));
+
+        assertCompiling(createAssertConstantLanguageFromLookup(Exclusive.get(), Exclusive.get()));
+        assertCompiling(createAssertConstantLanguageFromLookup(Exclusive.get(), Shared.get()));
+        if (secondContext) {
+            assertBailout(createAssertConstantLanguageFromLookup(Shared.get(), Exclusive.get()));
+            assertBailout(createAssertConstantLanguageFromLookup(null, Exclusive.get()));
+        } else {
+            assertCompiling(createAssertConstantLanguageFromLookup(Shared.get(), Exclusive.get()));
+            assertCompiling(createAssertConstantLanguageFromLookup(null, Exclusive.get()));
+        }
+        assertCompiling(createAssertConstantLanguageFromLookup(Shared.get(), Shared.get()));
+        assertCompiling(createAssertConstantLanguageFromLookup(null, Shared.get()));
     }
 
     @Test
@@ -128,11 +222,13 @@ public class ContextLookupCompilationTest extends PartialEvaluationTest {
 
         context = enter(Context.create());
         assertCompiling(createAssertConstantFromStatic());
+        assertLookupsNoSharing();
         context.leave();
         context.close();
 
         context = enter(Context.create());
         assertCompiling(createAssertConstantFromStatic());
+        assertLookupsNoSharing();
         context.leave();
         context.close();
     }
@@ -141,10 +237,12 @@ public class ContextLookupCompilationTest extends PartialEvaluationTest {
     public void testStaticTwoContextsAtTheSameTime() {
         Context context1 = enter(Context.create());
         assertCompiling(createAssertConstantFromStatic());
+        assertLookupsNoSharing();
         context1.leave();
 
         Context context2 = enter(Context.create());
         assertBailout(createAssertConstantFromStatic());
+        assertLookupsNoSharing();
         context2.leave();
 
         context1.close();
@@ -157,6 +255,7 @@ public class ContextLookupCompilationTest extends PartialEvaluationTest {
         Context context1 = enter(Context.newBuilder().engine(engine).build());
         // context must not be constant
         assertBailout(createAssertConstantFromStatic());
+        assertLookupsSharedEngine(false);
 
         OptimizedCallTarget target = assertCompiling(createGetFromStatic());
         assertTrue("is valid", target.isValid());
@@ -166,16 +265,54 @@ public class ContextLookupCompilationTest extends PartialEvaluationTest {
 
         Context context2 = enter(Context.newBuilder().engine(engine).build());
         assertTrue("still valid in second Context", target.isValid());
+        assertLookupsSharedEngine(true);
         context2.leave();
-
         context1.close();
         context2.close();
         engine.close();
     }
 
+    private static RootNode createAssertConstantContextFromLookup(TruffleLanguage<?> sourceLanguage, TruffleLanguage<?> accessLanguage) {
+        RootNode root = new RootNode(sourceLanguage) {
+            @CompilationFinal ContextReference<?> ref;
+
+            @SuppressWarnings("unchecked")
+            @Override
+            public Object execute(VirtualFrame frame) {
+                if (ref == null) {
+                    CompilerDirectives.transferToInterpreterAndInvalidate();
+                    ref = lookupContextReference(accessLanguage.getClass());
+                }
+                Object ctx = ref.get();
+                CompilerAsserts.partialEvaluationConstant(ctx);
+                return ctx;
+            }
+        };
+        return root;
+    }
+
+    private static RootNode createAssertConstantLanguageFromLookup(TruffleLanguage<?> sourceLanguage, TruffleLanguage<?> accessLanguage) {
+        RootNode root = new RootNode(sourceLanguage) {
+            @CompilationFinal LanguageReference<?> ref;
+
+            @SuppressWarnings("unchecked")
+            @Override
+            public Object execute(VirtualFrame frame) {
+                if (ref == null) {
+                    CompilerDirectives.transferToInterpreterAndInvalidate();
+                    ref = lookupLanguageReference(accessLanguage.getClass());
+                }
+                Object ctx = ref.get();
+                CompilerAsserts.partialEvaluationConstant(ctx);
+                return ctx;
+            }
+        };
+        return root;
+    }
+
     private static RootNode createAssertConstantFromRef() {
         RootNode root = new RootNode(null) {
-            final ContextReference<LanguageContext> ref = ProxyLanguage.getCurrentContextReference();
+            final ContextReference<Env> ref = Shared.getCurrentContextReference();
 
             @Override
             public Object execute(VirtualFrame frame) {
@@ -191,7 +328,9 @@ public class ContextLookupCompilationTest extends PartialEvaluationTest {
         RootNode root = new RootNode(null) {
             @Override
             public Object execute(VirtualFrame frame) {
-                Object ctx = ProxyLanguage.getCurrentContext();
+                Object ctx = Exclusive.getCurrentContext();
+                CompilerAsserts.partialEvaluationConstant(ctx);
+                ctx = Shared.getCurrentContext();
                 CompilerAsserts.partialEvaluationConstant(ctx);
                 return ctx;
             }
@@ -201,7 +340,7 @@ public class ContextLookupCompilationTest extends PartialEvaluationTest {
 
     private static RootNode createGetFromRef() {
         RootNode root = new RootNode(null) {
-            final ContextReference<LanguageContext> ref = ProxyLanguage.getCurrentContextReference();
+            final ContextReference<Env> ref = Shared.getCurrentContextReference();
 
             @Override
             public Object execute(VirtualFrame frame) {
@@ -215,7 +354,8 @@ public class ContextLookupCompilationTest extends PartialEvaluationTest {
         RootNode root = new RootNode(null) {
             @Override
             public Object execute(VirtualFrame frame) {
-                return ProxyLanguage.getCurrentContext();
+                Object ctx = Exclusive.getCurrentContext();
+                return ctx;
             }
         };
         return root;
@@ -247,6 +387,60 @@ public class ContextLookupCompilationTest extends PartialEvaluationTest {
         } catch (Exception e) {
             throw new AssertionError(e);
         }
+    }
+
+    @Registration(id = EXCLUSIVE_LANGUAGE, name = EXCLUSIVE_LANGUAGE, contextPolicy = ContextPolicy.EXCLUSIVE)
+    public static class Exclusive extends TruffleLanguage<Env> {
+
+        @Override
+        protected Env createContext(Env env) {
+            return env;
+        }
+
+        @Override
+        protected boolean isObjectOfLanguage(Object object) {
+            return false;
+        }
+
+        public static ContextReference<Env> getCurrentContextReference() {
+            return getCurrentLanguage(Exclusive.class).getContextReference();
+        }
+
+        public static Env getCurrentContext() {
+            return getCurrentContext(Exclusive.class);
+        }
+
+        public static TruffleLanguage<?> get() {
+            return getCurrentLanguage(Exclusive.class);
+        }
+
+    }
+
+    @Registration(id = SHARED_LANGUAGE, name = SHARED_LANGUAGE, contextPolicy = ContextPolicy.SHARED)
+    public static class Shared extends TruffleLanguage<Env> {
+
+        @Override
+        protected Env createContext(Env env) {
+            return env;
+        }
+
+        @Override
+        protected boolean isObjectOfLanguage(Object object) {
+            return false;
+        }
+
+        public static ContextReference<Env> getCurrentContextReference() {
+            return getCurrentLanguage(Shared.class).getContextReference();
+        }
+
+        public static Env getCurrentContext() {
+            return getCurrentContext(Shared.class);
+        }
+
+        public static TruffleLanguage<?> get() {
+            return getCurrentLanguage(Shared.class);
+        }
+
     }
 
 }

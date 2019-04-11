@@ -111,6 +111,7 @@ public class SPARCHotSpotBackendFactory implements HotSpotBackendFactory {
         HotSpotProviders providers = new HotSpotProviders(metaAccess, codeCache, constantReflection, constantFieldProvider, foreignCalls, lowerer, replacements, suites, registers,
                         snippetReflection,
                         wordTypes, plugins);
+        replacements.setProviders(providers);
 
         return createBackend(config, runtime, providers);
     }

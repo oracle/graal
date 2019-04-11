@@ -123,9 +123,19 @@ public final class JNIFunctionPointerTypes {
         int invoke(JNIEnvironment env, JNIObjectHandle array);
     }
 
+    public interface NewObjectArrayFunctionPointer extends CFunctionPointer {
+        @InvokeCFunctionPointer
+        JNIObjectHandle invoke(JNIEnvironment env, int length, JNIObjectHandle elementClass, JNIObjectHandle initialElement);
+    }
+
     public interface GetObjectArrayElementFunctionPointer extends CFunctionPointer {
         @InvokeCFunctionPointer
         JNIObjectHandle invoke(JNIEnvironment env, JNIObjectHandle array, int index);
+    }
+
+    public interface SetObjectArrayElementFunctionPointer extends CFunctionPointer {
+        @InvokeCFunctionPointer
+        void invoke(JNIEnvironment env, JNIObjectHandle array, int index, JNIObjectHandle value);
     }
 
     public interface FromReflectedMethodFunctionPointer extends CFunctionPointer {
@@ -161,6 +171,11 @@ public final class JNIFunctionPointerTypes {
     public interface IsAssignableFromFunctionPointer extends CFunctionPointer {
         @InvokeCFunctionPointer
         boolean invoke(JNIEnvironment env, JNIObjectHandle clazz, JNIObjectHandle toClazz);
+    }
+
+    public interface FromReflectedFieldFunctionPointer extends CFunctionPointer {
+        @InvokeCFunctionPointer
+        JNIFieldId invoke(JNIEnvironment env, JNIObjectHandle field);
     }
 
     private JNIFunctionPointerTypes() {
