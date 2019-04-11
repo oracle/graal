@@ -33,6 +33,7 @@ import java.util.Arrays;
 import org.graalvm.nativeimage.c.type.CTypeConversion.CCharPointerHolder;
 
 import com.oracle.svm.agent.Agent;
+import com.oracle.svm.configure.config.ProxyConfiguration;
 import com.oracle.svm.configure.trace.AccessAdvisor;
 import com.oracle.svm.jni.nativeapi.JNIEnvironment;
 import com.oracle.svm.jni.nativeapi.JNIObjectHandle;
@@ -60,7 +61,7 @@ public class ProxyAccessVerifier extends AbstractAccessVerifier {
         }
         String interfaceString = "(unknown)";
         if (interfaceNames instanceof String[]) {
-            if (configuration.contains((String[]) interfaceNames)) {
+            if (configuration.contains(Arrays.asList((String[]) interfaceNames))) {
                 return true;
             }
             interfaceString = Arrays.toString((String[]) interfaceNames);

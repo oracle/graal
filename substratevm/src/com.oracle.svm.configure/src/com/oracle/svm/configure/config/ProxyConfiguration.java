@@ -40,6 +40,10 @@ public class ProxyConfiguration implements JsonPrintable {
         interfaceLists.add(interfaceList);
     }
 
+    public boolean contains(List<String> interfaceList) {
+        return interfaceLists.contains(interfaceList);
+    }
+
     @Override
     public void printJson(JsonWriter writer) throws IOException {
         List<String[]> lists = new ArrayList<>(interfaceLists.size());
@@ -58,11 +62,11 @@ public class ProxyConfiguration implements JsonPrintable {
         writer.indent();
         String prefix = "";
         for (String[] list : lists) {
-            writer.append(prefix).newline();
-            char typePrefix = '[';
+            writer.append(prefix).newline().append('[');
+            String typePrefix = "";
             for (String type : list) {
                 writer.append(typePrefix).quote(type);
-                typePrefix = ',';
+                typePrefix = ",";
             }
             writer.append(']');
             prefix = ",";

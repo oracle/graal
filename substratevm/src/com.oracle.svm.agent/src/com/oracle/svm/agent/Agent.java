@@ -48,6 +48,7 @@ import java.nio.file.Paths;
 import java.text.DateFormat;
 import java.text.SimpleDateFormat;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.Collections;
 import java.util.Date;
 import java.util.LinkedHashSet;
@@ -78,10 +79,10 @@ import com.oracle.svm.agent.restrict.ConfigurationType;
 import com.oracle.svm.agent.restrict.JniAccessVerifier;
 import com.oracle.svm.agent.restrict.ParserConfigurationAdapter;
 import com.oracle.svm.agent.restrict.ProxyAccessVerifier;
-import com.oracle.svm.agent.restrict.ProxyConfiguration;
 import com.oracle.svm.agent.restrict.ReflectAccessVerifier;
 import com.oracle.svm.agent.restrict.ResourceAccessVerifier;
 import com.oracle.svm.agent.restrict.ResourceConfiguration;
+import com.oracle.svm.configure.config.ProxyConfiguration;
 import com.oracle.svm.configure.json.JsonWriter;
 import com.oracle.svm.configure.trace.AccessAdvisor;
 import com.oracle.svm.configure.trace.TraceProcessor;
@@ -308,7 +309,7 @@ public final class Agent {
             ProxyAccessVerifier proxyVerifier = null;
             if (!proxyConfigPaths.isEmpty()) {
                 ProxyConfiguration proxyConfiguration = new ProxyConfiguration();
-                ProxyConfigurationParser parser = new ProxyConfigurationParser(proxyConfiguration::add);
+                ProxyConfigurationParser parser = new ProxyConfigurationParser(types -> proxyConfiguration.add(Arrays.asList(types)));
                 for (URI proxyConfigPath : proxyConfigPaths) {
                     try (Reader reader = Files.newBufferedReader(Paths.get(proxyConfigPath))) {
                         parser.parseAndRegister(reader);
