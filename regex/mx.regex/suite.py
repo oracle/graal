@@ -85,6 +85,7 @@ suite = {
         "com.oracle.truffle.regex",
         "mx:JUNIT",
       ],
+      "annotationProcessors" : ["truffle:TRUFFLE_DSL_PROCESSOR"],
       "checkstyle" : "com.oracle.truffle.regex",
       "javaCompliance" : "8+",
       "workingSets" : "Truffle,Regex",
