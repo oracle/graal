@@ -32,7 +32,7 @@
 #include <pthread.h>
 
 #include "unsupported.h"
-// deleted create, join, exit, mutex_lock, mutex_unlock
+// deleted create, join, exit, mutex_lock, mutex_unlock, self, cond_wait, cond_signal
 int pthread_attr_destroy(pthread_attr_t *attr) {
   ERR_UNSUPPORTED(pthread_attr_destroy);
 }
@@ -101,14 +101,8 @@ int pthread_cond_destroy(pthread_cond_t *cond) {
 int pthread_cond_init(pthread_cond_t *restrict cond, const pthread_condattr_t *restrict attr) {
   ERR_UNSUPPORTED(pthread_cond_init);
 }
-int pthread_cond_signal(pthread_cond_t *cond) {
-  ERR_UNSUPPORTED(pthread_cond_signal);
-}
 int pthread_cond_timedwait(pthread_cond_t *restrict cond, pthread_mutex_t *restrict mutex, const struct timespec *restrict abstime) {
   ERR_UNSUPPORTED(pthread_cond_timedwait);
-}
-int pthread_cond_wait(pthread_cond_t *restrict cond, pthread_mutex_t *restrict mutex) {
-  ERR_UNSUPPORTED(pthread_cond_wait);
 }
 int pthread_condattr_destroy(pthread_condattr_t *attr) {
   ERR_UNSUPPORTED(pthread_condattr_destroy);
@@ -226,9 +220,6 @@ int pthread_rwlockattr_init(pthread_rwlockattr_t *attr) {
 }
 int pthread_rwlockattr_setpshared(pthread_rwlockattr_t *attr, int pshared) {
   ERR_UNSUPPORTED(pthread_rwlockattr_setpshared);
-}
-pthread_t pthread_self(void) {
-  ERR_UNSUPPORTED(pthread_self);
 }
 int pthread_setcancelstate(int state, int *oldstate) {
   ERR_UNSUPPORTED(pthread_setcancelstate);

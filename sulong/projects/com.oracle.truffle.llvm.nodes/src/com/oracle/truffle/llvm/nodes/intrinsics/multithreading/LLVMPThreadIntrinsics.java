@@ -192,6 +192,13 @@ public class LLVMPThreadIntrinsics {
         }
     }
 
+    public abstract static class LLVMPThreadSelf extends LLVMBuiltin {
+        @Specialization
+        protected long doIntrinsic(VirtualFrame frame) {
+            return Thread.currentThread().getId();
+        }
+    }
+
     public abstract static class LLVMPThreadMyTest extends LLVMBuiltin {
         @Specialization
         protected int doIntrinsic(VirtualFrame frame) {
