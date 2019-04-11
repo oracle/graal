@@ -43,20 +43,20 @@ import com.oracle.truffle.api.nodes.RootNode;
 public class MaterializeVirtualFramesTest extends TestWithSynchronousCompiling {
 
     private static int blackHole = 100;
-    private static TruffleRuntimeOptions.TruffleRuntimeOptionsOverrideScope scope;
+    private static TruffleRuntimeOptions.TruffleRuntimeOptionsOverrideScope maxGraalNodeCountScope;
     private static TruffleRuntimeOptions.TruffleRuntimeOptionsOverrideScope performanceWarningsAreFatalScope;
 
     @BeforeClass
     public static void setUp() {
         Assume.assumeFalse(TruffleRuntimeOptions.getValue(SharedTruffleRuntimeOptions.TruffleCompileImmediately));
         performanceWarningsAreFatalScope = TruffleRuntimeOptions.overrideOptions(SharedTruffleRuntimeOptions.TrufflePerformanceWarningsAreFatal, false);
-        scope = TruffleRuntimeOptions.overrideOptions(SharedTruffleRuntimeOptions.TruffleMaximumGraalNodeCount, 40);
+        maxGraalNodeCountScope = TruffleRuntimeOptions.overrideOptions(SharedTruffleRuntimeOptions.TruffleMaximumGraalNodeCount, 40);
     }
 
     @AfterClass
     public static void tearDown() {
+        maxGraalNodeCountScope.close();
         performanceWarningsAreFatalScope.close();
-        scope.close();
     }
 
     @Test
