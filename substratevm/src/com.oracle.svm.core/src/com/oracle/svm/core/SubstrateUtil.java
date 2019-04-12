@@ -222,6 +222,7 @@ public class SubstrateUtil {
      */
     @RestrictHeapAccess(access = RestrictHeapAccess.Access.NO_ALLOCATION, reason = "Must not allocate during printing diagnostics.")
     public static void printDiagnostics(Log log, Pointer sp, CodePointer ip) {
+        /*
         if (diagnosticsInProgress) {
             log.string("Error: printDiagnostics already in progress.").newline();
             BreakpointNode.breakpoint();
@@ -319,6 +320,7 @@ public class SubstrateUtil {
         }
 
         diagnosticsInProgress = false;
+        */
     }
 
     private static void dumpException(Log log, String context, Exception e) {

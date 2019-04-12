@@ -233,10 +233,9 @@ class BaseGraalVmLayoutDistribution(mx.LayoutDistribution):
                 _add(layout, "<jdk_base>/lib/<arch>/server/vm.properties", "string:name=" + vm_name)
 
             # Add Polyglot launcher
-            #if with_polyglot_launcher:
-                #polyglot_launcher_project = get_polyglot_launcher_project()
-                #_add(layout, "<jdk_base>/bin/polyglot", "dependency:" + polyglot_launcher_project.name)
-                #_add(layout, "<jdk_base>/bin/polyglot", "link:../bin/polyglot")
+            if with_polyglot_launcher:
+                polyglot_launcher_project = get_polyglot_launcher_project()
+                _add(layout, "<jdk_base>/bin/polyglot", "dependency:" + polyglot_launcher_project.name)
 
             # Add libpolyglot library
             if with_lib_polyglot:
@@ -580,6 +579,11 @@ class SvmSupport(object):
             '-H:Name=' + name,
             '-J--module-path=' + graal_sdk_jar + ':' + truffle_api_jar,
             '-J--upgrade-module-path=' + graal_jar + ':' + graal_management_jar,
+            '-J--add-opens=org.graalvm.truffle/com.oracle.truffle.polyglot=ALL-UNNAMED',
+            '-J--add-opens=org.graalvm.truffle/com.oracle.truffle.api.impl=ALL-UNNAMED',
+            '-J--add-opens=jdk.internal.vm.compiler/org.graalvm.compiler.debug=ALL-UNNAMED',
+            '-J--add-opens=org.graalvm.sdk/org.graalvm.polyglot=ALL-UNNAMED',
+
         ]
         return mx.run(native_image_command, nonZeroIsFatal=nonZeroIsFatal, out=out, err=err)
 
@@ -906,10 +910,16 @@ class GraalVmPolyglotLauncher(GraalVmLauncher):
         graalvm_destination = relpath(graalvm_destination, _get_graalvm_archive_path(""))
         return super(GraalVmPolyglotLauncher, self).build_args() + [
             '-H:-ParseRuntimeOptions',
+            '-H:+ReportExceptionStackTraces',
             '-Dorg.graalvm.launcher.classpath=' + graalvm_home_relative_classpath(self.native_image_jar_distributions),
-            '-Dorg.graalvm.launcher.relative.home=' + graalvm_destination
+            '-Dorg.graalvm.launcher.relative.home=' + graalvm_destination,
+            '-J--add-opens=org.graalvm.truffle/com.oracle.truffle.polyglot=ALL-UNNAMED',
+            '-J--add-opens=org.graalvm.truffle/com.oracle.truffle.api.impl=ALL-UNNAMED',
+            '-J--add-opens=jdk.internal.vm.compiler/org.graalvm.compiler.debug=ALL-UNNAMED',
+            '-J--add-opens=org.graalvm.sdk/org.graalvm.polyglot=ALL-UNNAMED'
         ] + GraalVmLanguageLauncher.default_tool_options()
 
+            #'--vm.cp=/Users/bob/repos/graal/sdk/mxbuild/dists/jdk11/graal-sdk.jar:/Users/bob/repos/graal/sdk/mxbuild/dists/jdk11/launcher-common.jar',
 
 class GraalVmLibrary(GraalVmNativeImage):
     def __init__(self, suite, name, deps, workingSets, native_image_config, **kw_args):
