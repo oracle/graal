@@ -24,20 +24,15 @@
  */
 package org.graalvm.compiler.replacements.nodes;
 
-import org.graalvm.compiler.core.common.type.Stamp;
-import org.graalvm.compiler.debug.GraalError;
+import org.graalvm.compiler.core.common.type.IntegerStamp;
 import org.graalvm.compiler.graph.NodeClass;
 import org.graalvm.compiler.nodeinfo.NodeInfo;
-import org.graalvm.compiler.nodes.ConstantNode;
-import org.graalvm.compiler.nodes.NodeView;
 import org.graalvm.compiler.nodes.ValueNode;
-import org.graalvm.compiler.nodes.memory.AbstractWriteNode;
-import org.graalvm.compiler.nodes.memory.LIRLowerableAccess;
+import org.graalvm.compiler.nodes.memory.FixedAccessNode;
 import org.graalvm.compiler.nodes.memory.address.AddressNode;
 import org.graalvm.compiler.nodes.memory.address.OffsetAddressNode;
+import org.graalvm.compiler.nodes.spi.LIRLowerable;
 import org.graalvm.compiler.nodes.spi.NodeLIRBuilderTool;
-import org.graalvm.compiler.nodes.spi.Virtualizable;
-import org.graalvm.compiler.nodes.spi.VirtualizerTool;
 import org.graalvm.compiler.word.Word;
 import org.graalvm.word.LocationIdentity;
 
@@ -45,7 +40,7 @@ import org.graalvm.word.LocationIdentity;
  * Zeros a chunk of memory.
  */
 @NodeInfo(nameTemplate = "ZeroMemory#{p#location/s}")
-public class ZeroMemoryNode extends AbstractWriteNode implements LIRLowerableAccess, Virtualizable {
+public class ZeroMemoryNode extends FixedAccessNode implements LIRLowerable {
     public static final NodeClass<ZeroMemoryNode> TYPE = NodeClass.create(ZeroMemoryNode.class);
 
     @Input ValueNode length;
@@ -55,7 +50,7 @@ public class ZeroMemoryNode extends AbstractWriteNode implements LIRLowerableAcc
     }
 
     public ZeroMemoryNode(AddressNode address, ValueNode length, LocationIdentity locationIdentity, BarrierType type) {
-        super(TYPE, address, locationIdentity, ConstantNode.forLong(0L), type);
+        super(TYPE, address, locationIdentity, IntegerStamp.create(8, 0, 0), type);
         this.length = length;
     }
 
@@ -65,18 +60,8 @@ public class ZeroMemoryNode extends AbstractWriteNode implements LIRLowerableAcc
     }
 
     @Override
-    public void virtualize(VirtualizerTool tool) {
-        throw GraalError.shouldNotReachHere("unexpected ZeroMemoryNode before PEA");
-    }
-
-    @Override
     public boolean canNullCheck() {
         return false;
-    }
-
-    @Override
-    public Stamp getAccessStamp() {
-        return value().stamp(NodeView.DEFAULT);
     }
 
     @NodeIntrinsic
