@@ -73,6 +73,7 @@ public class NodeLimitTest extends PartialEvaluationTest {
 
     @AfterClass
     public static void afterClass() {
+        Assume.assumeFalse(TruffleRuntimeOptions.getValue(SharedTruffleRuntimeOptions.TruffleCompileImmediately));
         performanceWarningsAreFatalScope.close();
         // Reset the 'warningsSeen' flag to not influence other tests.
         try {
