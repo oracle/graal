@@ -38,6 +38,7 @@ import org.graalvm.compiler.truffle.runtime.TruffleRuntimeOptions;
 import org.junit.AfterClass;
 import org.junit.Assert;
 import org.junit.Assume;
+import org.junit.Before;
 import org.junit.BeforeClass;
 import org.junit.Test;
 
@@ -67,13 +68,11 @@ public class NodeLimitTest extends PartialEvaluationTest {
 
     @BeforeClass
     public static void beforeClass() {
-        Assume.assumeFalse(TruffleRuntimeOptions.getValue(SharedTruffleRuntimeOptions.TruffleCompileImmediately));
         performanceWarningsAreFatalScope = TruffleCompilerOptions.overrideOptions(SharedTruffleCompilerOptions.TrufflePerformanceWarningsAreFatal, false);
     }
 
     @AfterClass
     public static void afterClass() {
-        Assume.assumeFalse(TruffleRuntimeOptions.getValue(SharedTruffleRuntimeOptions.TruffleCompileImmediately));
         performanceWarningsAreFatalScope.close();
         // Reset the 'warningsSeen' flag to not influence other tests.
         try {
@@ -83,6 +82,11 @@ public class NodeLimitTest extends PartialEvaluationTest {
         } catch (Exception e) {
             throw new AssertionError(e);
         }
+    }
+
+    @Before
+    public void setUp() throws Exception {
+        Assume.assumeFalse(TruffleRuntimeOptions.getValue(SharedTruffleRuntimeOptions.TruffleCompileImmediately));
     }
 
     @Test
