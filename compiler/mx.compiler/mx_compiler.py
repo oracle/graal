@@ -799,7 +799,7 @@ def _parseVmArgs(args, addDefaultArgs=True):
     if not any(a.startswith('-Dgraal.CompilationFailureAction=') for a in args):
         argsPrefix.append('-Dgraal.CompilationFailureAction=Diagnose')
 
-    # It is safe to assume that Network printing can be default when running using mx.
+    # It is safe to assume that Network dumping is the desired default when using mx.
     # Mx is never used in production environments.
     if not any(a.startswith('-Dgraal.PrintGraph=') for a in args):
         argsPrefix.append('-Dgraal.PrintGraph=Network')
