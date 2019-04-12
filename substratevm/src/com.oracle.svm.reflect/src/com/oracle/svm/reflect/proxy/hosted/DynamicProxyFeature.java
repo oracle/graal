@@ -36,6 +36,7 @@ import org.graalvm.nativeimage.ImageSingletons;
 import com.oracle.svm.core.annotate.AutomaticFeature;
 import com.oracle.svm.core.jdk.proxy.DynamicProxyRegistry;
 import com.oracle.svm.core.option.HostedOptionKey;
+import com.oracle.svm.hosted.FallbackFeature;
 import com.oracle.svm.hosted.FeatureImpl.DuringSetupAccessImpl;
 import com.oracle.svm.hosted.ImageClassLoader;
 import com.oracle.svm.hosted.config.ConfigurationDirectories;
@@ -88,5 +89,13 @@ public final class DynamicProxyFeature implements Feature {
         ProxyConfigurationParser parser = new ProxyConfigurationParser(adapter);
         ConfigurationParser.parseAndRegisterConfigurations(parser, imageClassLoader, "dynamic proxy",
                         Options.DynamicProxyConfigurationFiles, Options.DynamicProxyConfigurationResources, ConfigurationDirectories.FileNames.DYNAMIC_PROXY_NAME);
+    }
+
+    @Override
+    public void beforeCompilation(BeforeCompilationAccess access) {
+        FallbackFeature.FallbackImageRequest proxyFallback = ImageSingletons.lookup(FallbackFeature.class).proxyFallback;
+        if (proxyFallback != null && Options.DynamicProxyConfigurationFiles.getValue() == null && Options.DynamicProxyConfigurationResources.getValue() == null) {
+            throw proxyFallback;
+        }
     }
 }

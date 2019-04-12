@@ -33,6 +33,7 @@ import java.lang.reflect.Modifier;
 import java.lang.reflect.Type;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ConcurrentMap;
 
@@ -41,8 +42,8 @@ import org.graalvm.compiler.debug.GraalError;
 import org.graalvm.compiler.java.BytecodeParser.BytecodeParserError;
 import org.graalvm.compiler.nodes.StructuredGraph;
 import org.graalvm.compiler.nodes.graphbuilderconf.InvocationPlugin;
-
 import org.graalvm.util.GuardedAnnotationAccess;
+
 import com.oracle.graal.pointsto.api.PointstoOptions;
 import com.oracle.graal.pointsto.constraints.UnsupportedFeatureException;
 import com.oracle.graal.pointsto.flow.InvokeTypeFlow;
@@ -172,7 +173,7 @@ public class AnalysisMethod implements WrappedJavaMethod, GraphProvider {
         implementationInvokedBy = null;
     }
 
-    private void startTrackInvocations() {
+    public void startTrackInvocations() {
         if (invokedBy == null) {
             invokedBy = new ConcurrentHashMap<>();
         }
@@ -235,6 +236,10 @@ public class AnalysisMethod implements WrappedJavaMethod, GraphProvider {
             result.add((AnalysisMethod) invoke.getSource().graph().method());
         }
         return result;
+    }
+
+    public Set<InvokeTypeFlow> getInvokeTypeFlows() {
+        return implementationInvokedBy.keySet();
     }
 
     public boolean isEntryPoint() {
