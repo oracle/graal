@@ -24,11 +24,13 @@
  */
 package org.graalvm.compiler.truffle.test;
 
+import java.lang.reflect.Field;
 import java.util.function.Function;
 
 import org.graalvm.compiler.core.common.CompilationIdentifier;
 import org.graalvm.compiler.core.common.GraalBailoutException;
 import org.graalvm.compiler.nodes.StructuredGraph;
+import org.graalvm.compiler.truffle.compiler.PartialEvaluator;
 import org.graalvm.compiler.truffle.runtime.OptimizedCallTarget;
 import org.graalvm.compiler.truffle.runtime.OptimizedDirectCallNode;
 import org.graalvm.compiler.truffle.runtime.SharedTruffleRuntimeOptions;
@@ -50,6 +52,8 @@ import com.oracle.truffle.api.frame.FrameUtil;
 import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.api.nodes.ExplodeLoop;
 import com.oracle.truffle.api.nodes.RootNode;
+import com.oracle.truffle.api.test.ReflectionUtils;
+
 import org.graalvm.compiler.truffle.compiler.SharedTruffleCompilerOptions;
 import org.graalvm.compiler.truffle.compiler.TruffleCompilerOptions;
 
@@ -70,6 +74,14 @@ public class NodeLimitTest extends PartialEvaluationTest {
     @AfterClass
     public static void afterClass() {
         performanceWarningsAreFatalScope.close();
+        // Reset the 'warningsSeen' flag to not influence other tests.
+        try {
+            Field f = PartialEvaluator.PerformanceInformationHandler.class.getDeclaredField("warningSeen");
+            ReflectionUtils.setAccessible(f, true);
+            f.setBoolean(f, false);
+        } catch (Exception e) {
+            throw new AssertionError(e);
+        }
     }
 
     @Test

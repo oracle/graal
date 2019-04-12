@@ -24,6 +24,9 @@
  */
 package org.graalvm.compiler.truffle.test;
 
+import java.lang.reflect.Field;
+
+import org.graalvm.compiler.truffle.compiler.PartialEvaluator;
 import org.graalvm.compiler.truffle.runtime.SharedTruffleRuntimeOptions;
 import org.graalvm.compiler.truffle.runtime.TruffleRuntimeOptions;
 import org.junit.AfterClass;
@@ -39,6 +42,7 @@ import com.oracle.truffle.api.frame.FrameDescriptor;
 import com.oracle.truffle.api.frame.FrameSlot;
 import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.api.nodes.RootNode;
+import com.oracle.truffle.api.test.ReflectionUtils;
 
 public class MaterializeVirtualFramesTest extends TestWithSynchronousCompiling {
 
@@ -57,6 +61,14 @@ public class MaterializeVirtualFramesTest extends TestWithSynchronousCompiling {
     public static void tearDown() {
         maxGraalNodeCountScope.close();
         performanceWarningsAreFatalScope.close();
+        // Reset the 'warningsSeen' flag to not influence other tests.
+        try {
+            Field f = PartialEvaluator.PerformanceInformationHandler.class.getDeclaredField("warningSeen");
+            ReflectionUtils.setAccessible(f, true);
+            f.setBoolean(f, false);
+        } catch (Exception e) {
+            throw new AssertionError(e);
+        }
     }
 
     @Test
