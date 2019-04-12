@@ -1437,7 +1437,7 @@ public class AArch64MacroAssembler extends AArch64Assembler {
             int offset = label.position() - position();
             super.adr(dst, offset);
         } else {
-            label.addPatchAt(position());
+            label.addPatchAt(position(), this);
             // Encode condition flag so that we know how to patch the instruction later
             emitInt(PatchLabelKind.ADR.encoding | dst.encoding << PatchLabelKind.INFORMATION_OFFSET);
         }
@@ -1456,7 +1456,7 @@ public class AArch64MacroAssembler extends AArch64Assembler {
             int offset = label.position() - position();
             super.cbnz(size, cmp, offset);
         } else {
-            label.addPatchAt(position());
+            label.addPatchAt(position(), this);
             int regEncoding = cmp.encoding << (PatchLabelKind.INFORMATION_OFFSET + 1);
             int sizeEncoding = (size == 64 ? 1 : 0) << PatchLabelKind.INFORMATION_OFFSET;
             // Encode condition flag so that we know how to patch the instruction later
@@ -1477,7 +1477,7 @@ public class AArch64MacroAssembler extends AArch64Assembler {
             int offset = label.position() - position();
             super.cbz(size, cmp, offset);
         } else {
-            label.addPatchAt(position());
+            label.addPatchAt(position(), this);
             int regEncoding = cmp.encoding << (PatchLabelKind.INFORMATION_OFFSET + 1);
             int sizeEncoding = (size == 64 ? 1 : 0) << PatchLabelKind.INFORMATION_OFFSET;
             // Encode condition flag so that we know how to patch the instruction later
@@ -1498,7 +1498,7 @@ public class AArch64MacroAssembler extends AArch64Assembler {
             int offset = label.position() - position();
             super.tbnz(cmp, uimm6, offset);
         } else {
-            label.addPatchAt(position());
+            label.addPatchAt(position(), this);
             int indexEncoding = uimm6 << PatchLabelKind.INFORMATION_OFFSET;
             int regEncoding = cmp.encoding << (PatchLabelKind.INFORMATION_OFFSET + 6);
             emitInt(PatchLabelKind.BRANCH_BIT_NONZERO.encoding | indexEncoding | regEncoding);
@@ -1518,7 +1518,7 @@ public class AArch64MacroAssembler extends AArch64Assembler {
             int offset = label.position() - position();
             super.tbz(cmp, uimm6, offset);
         } else {
-            label.addPatchAt(position());
+            label.addPatchAt(position(), this);
             int indexEncoding = uimm6 << PatchLabelKind.INFORMATION_OFFSET;
             int regEncoding = cmp.encoding << (PatchLabelKind.INFORMATION_OFFSET + 6);
             emitInt(PatchLabelKind.BRANCH_BIT_ZERO.encoding | indexEncoding | regEncoding);
@@ -1537,7 +1537,7 @@ public class AArch64MacroAssembler extends AArch64Assembler {
             int offset = label.position() - position();
             super.b(condition, offset);
         } else {
-            label.addPatchAt(position());
+            label.addPatchAt(position(), this);
             // Encode condition flag so that we know how to patch the instruction later
             emitInt(PatchLabelKind.BRANCH_CONDITIONALLY.encoding | condition.encoding << PatchLabelKind.INFORMATION_OFFSET);
         }
@@ -1565,7 +1565,7 @@ public class AArch64MacroAssembler extends AArch64Assembler {
             int offset = label.position() - position();
             super.b(offset);
         } else {
-            label.addPatchAt(position());
+            label.addPatchAt(position(), this);
             emitInt(PatchLabelKind.BRANCH_UNCONDITIONALLY.encoding);
         }
     }
