@@ -39,7 +39,9 @@ import org.graalvm.collections.Equivalence;
 
 import com.oracle.truffle.api.CompilerDirectives.CompilationFinal;
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
+import com.oracle.truffle.api.interop.InteropLibrary;
 import com.oracle.truffle.api.interop.TruffleObject;
+import com.oracle.truffle.api.library.ExportLibrary;
 import com.oracle.truffle.llvm.runtime.debug.type.LLVMSourceArrayLikeType;
 import com.oracle.truffle.llvm.runtime.debug.type.LLVMSourceBasicType;
 import com.oracle.truffle.llvm.runtime.debug.type.LLVMSourceFunctionType;
@@ -52,6 +54,7 @@ import com.oracle.truffle.llvm.runtime.interop.convert.ForeignToLLVM.ForeignToLL
 /**
  * Describes how foreign interop should interpret values.
  */
+@ExportLibrary(InteropLibrary.class)
 public abstract class LLVMInteropType implements TruffleObject {
 
     public static final LLVMInteropType.Value UNKNOWN = Value.primitive(null, 0);
