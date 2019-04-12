@@ -799,6 +799,11 @@ def _parseVmArgs(args, addDefaultArgs=True):
     if not any(a.startswith('-Dgraal.CompilationFailureAction=') for a in args):
         argsPrefix.append('-Dgraal.CompilationFailureAction=Diagnose')
 
+    # It is safe to assume that Network printing can be default when running using mx.
+    # Mx is never used in production environments.
+    if not any(a.startswith('-Dgraal.PrintGraph=') for a in args):
+        argsPrefix.append('-Dgraal.PrintGraph=Network')
+
     return jdk.processArgs(argsPrefix + args, addDefaultArgs=addDefaultArgs)
 
 def _check_bootstrap_config(args):
