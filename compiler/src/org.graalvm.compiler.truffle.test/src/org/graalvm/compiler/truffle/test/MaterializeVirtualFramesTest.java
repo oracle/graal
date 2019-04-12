@@ -72,7 +72,7 @@ public class MaterializeVirtualFramesTest extends TestWithSynchronousCompiling {
     }
 
     @Test
-    public void test() {
+    public void testMaterializeWorks() {
         FrameDescriptor frameDescriptor = new FrameDescriptor();
         final FrameSlot slot = frameDescriptor.addFrameSlot("test");
         final int compilationThreshold = TruffleRuntimeOptions.getValue(SharedTruffleRuntimeOptions.TruffleCompilationThreshold);

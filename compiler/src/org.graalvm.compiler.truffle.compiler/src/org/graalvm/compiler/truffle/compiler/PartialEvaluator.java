@@ -499,6 +499,9 @@ public abstract class PartialEvaluator {
         if (printTruffleExpansionHistogram) {
             histogramPlugin.print(compilable);
         }
+        if (graph.getNodeCount() > TruffleCompilerOptions.getValue(TruffleMaximumGraalNodeCount)) {
+            new MaterializeVirtualFramesPhase().apply(graph);
+        }
     }
 
     protected GraphBuilderConfiguration createGraphBuilderConfig(GraphBuilderConfiguration config, boolean canDelayIntrinsification) {
@@ -554,8 +557,6 @@ public abstract class PartialEvaluator {
         new ConditionalEliminationPhase(false).apply(graph, tierContext);
 
         canonicalizer.apply(graph, tierContext);
-
-        new MaterializeVirtualFramesPhase().apply(graph);
 
         // Do single partial escape and canonicalization pass.
         try (DebugContext.Scope pe = debug.scope("TrufflePartialEscape", graph)) {
