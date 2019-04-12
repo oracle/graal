@@ -50,6 +50,7 @@ import org.graalvm.nativeimage.ImageSingletons;
 
 import com.oracle.svm.core.CPUFeatureAccess;
 import com.oracle.svm.core.SubstrateUtil;
+import com.oracle.svm.core.aarch64.AArch64CPUFeatureAccess;
 import com.oracle.svm.core.amd64.AMD64CPUFeatureAccess;
 import com.oracle.svm.core.graal.code.SubstrateCompilationIdentifier;
 import com.oracle.svm.core.graal.code.SubstrateCompilationResult;
@@ -61,6 +62,8 @@ import com.oracle.svm.core.option.RuntimeOptionKey;
 import com.oracle.svm.graal.meta.SubstrateInstalledCodeImpl;
 import com.oracle.svm.graal.meta.SubstrateMethod;
 
+import jdk.vm.ci.code.Architecture;
+import jdk.vm.ci.aarch64.AArch64;
 import jdk.vm.ci.amd64.AMD64;
 import jdk.vm.ci.code.InstalledCode;
 
@@ -189,9 +192,8 @@ public class SubstrateGraalUtils {
                 cpuFeatureAccess.verifyHostSupportsArchitecture(graalBackend.getCodeCache().getTarget().arch);
             }
 
-            AMD64 architecture = (AMD64) graalBackend.getCodeCache().getTarget().arch;
-            EnumSet<AMD64.CPUFeature> features = AMD64CPUFeatureAccess.determineHostCPUFeatures();
-            architecture.getFeatures().addAll(features);
+            Architecture architecture = graalBackend.getCodeCache().getTarget().arch;
+            cpuFeatureAccess.enableFeatures(architecture);
         }
     }
 

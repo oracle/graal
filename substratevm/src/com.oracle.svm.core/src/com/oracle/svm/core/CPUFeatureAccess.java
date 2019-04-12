@@ -28,4 +28,5 @@ import jdk.vm.ci.code.Architecture;
 
 public interface CPUFeatureAccess {
     void verifyHostSupportsArchitecture(Architecture imageArchitecture);
+    void enableFeatures(Architecture runtimeArchitecture);
 }

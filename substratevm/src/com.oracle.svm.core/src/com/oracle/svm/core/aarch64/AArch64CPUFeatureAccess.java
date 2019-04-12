@@ -57,4 +57,10 @@ public class AArch64CPUFeatureAccess implements CPUFeatureAccess {
     public void verifyHostSupportsArchitecture(Architecture imageArchitecture) {
 
     }
+    @Override
+    public void enableFeatures(Architecture runtimeArchitecture) {
+        AArch64 architecture = (AArch64) runtimeArchitecture;
+        EnumSet<AArch64.CPUFeature> features = determineHostCPUFeatures();
+        architecture.getFeatures().addAll(features);
+    }
 }
