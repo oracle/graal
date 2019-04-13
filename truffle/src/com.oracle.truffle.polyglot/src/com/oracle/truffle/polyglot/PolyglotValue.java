@@ -1165,7 +1165,7 @@ abstract class PolyglotValue extends AbstractValueImpl {
                     value = Boolean.TRUE;
                 } catch (UnsupportedMessageException e) {
                     unsupported.enter();
-                    if (objects.isMemberExisting(receiver, key)) {
+                    if (!objects.hasMembers(receiver) || objects.isMemberExisting(receiver, key)) {
                         throw removeMemberUnsupported(context, receiver);
                     } else {
                         value = Boolean.FALSE;

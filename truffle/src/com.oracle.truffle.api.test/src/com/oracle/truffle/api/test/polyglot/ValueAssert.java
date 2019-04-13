@@ -369,6 +369,8 @@ public class ValueAssert {
                     assertFalse(value.hasMember("asdf"));
                     assertFails(() -> value.getMember("asdf"), UnsupportedOperationException.class);
                     assertFails(() -> value.putMember("", ""), UnsupportedOperationException.class);
+                    assertFails(() -> value.removeMember(""), UnsupportedOperationException.class);
+                    assertFails(() -> value.invokeMember(""), UnsupportedOperationException.class);
                     assertTrue(value.getMemberKeys().isEmpty());
 
                     if (value.isNull()) {
