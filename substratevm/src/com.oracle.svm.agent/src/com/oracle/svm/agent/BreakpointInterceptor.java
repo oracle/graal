@@ -314,14 +314,15 @@ final class BreakpointInterceptor {
                             name = fromCString(namePtr.read());
                             signature = fromCString(signaturePtr.read());
                             result = holderName + "." + name + signature;
-                            jvmtiFunctions().Deallocate().invoke(jvmtiEnv(), namePtr);
-                            jvmtiFunctions().Deallocate().invoke(jvmtiEnv(), signaturePtr);
+                            jvmtiFunctions().Deallocate().invoke(jvmtiEnv(), namePtr.read());
+                            jvmtiFunctions().Deallocate().invoke(jvmtiEnv(), signaturePtr.read());
                         }
                     }
                 }
             }
         }
         if (enclosing.notEqual(nullHandle()) && accessVerifier != null && !accessVerifier.verifyGetEnclosingMethod(jni, holder, name, signature, enclosing, callerClass)) {
+            jvmtiFunctions().ForceEarlyReturnObject().invoke(jvmtiEnv(), nullHandle(), nullHandle());
             return false;
         }
         traceBreakpoint(jni, nullHandle(), nullHandle(), callerClass, bp.specification.methodName, result);

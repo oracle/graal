@@ -119,7 +119,7 @@ public class ReflectAccessVerifier extends AbstractAccessVerifier {
             return true;
         }
         JNIMethodId method = jniFunctions().getFromReflectedMethod().invoke(env, result);
-        return verifyGetMethod0(env, clazz, name, () -> signature, method, clazz);
+        return method.isNonNull() && isMethodAccessible(env, clazz, name, () -> signature, method, clazz);
     }
 
     private boolean verifyGetMethod0(JNIEnvironment env, JNIObjectHandle clazz, String name, Supplier<String> signature, JNIMethodId method, JNIObjectHandle declaring) {
