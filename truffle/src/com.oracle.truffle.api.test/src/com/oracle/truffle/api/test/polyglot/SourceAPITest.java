@@ -75,7 +75,6 @@ import org.graalvm.polyglot.io.ByteSequence;
 import org.junit.Assert;
 import org.junit.Test;
 
-import com.oracle.truffle.api.TruffleLanguage.Registration;
 import com.oracle.truffle.api.test.ReflectionUtils;
 
 public class SourceAPITest {
@@ -683,15 +682,4 @@ public class SourceAPITest {
         assertTrue(section.hasColumns());
         assertEquals("", section.getCharacters());
     }
-
-    @Registration(id = "TestJava", name = "", characterMimeTypes = "text/x-java")
-    public static class TestJavaLanguage extends ProxyLanguage {
-
-    }
-
-    @Registration(id = "TestJS", name = "", byteMimeTypes = "application/test-js")
-    public static class TestJSLanguage extends ProxyLanguage {
-
-    }
-
 }
