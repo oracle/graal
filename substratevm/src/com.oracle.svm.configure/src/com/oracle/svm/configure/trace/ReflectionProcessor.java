@@ -35,13 +35,20 @@ import com.oracle.svm.configure.config.SignatureUtil;
 import com.oracle.svm.configure.config.TypeConfiguration;
 
 class ReflectionProcessor extends AbstractProcessor {
-    private final TypeConfiguration configuration = new TypeConfiguration();
-    private final ProxyConfiguration proxyConfiguration = new ProxyConfiguration();
-    private final ResourceConfiguration resourceConfiguration = new ResourceConfiguration();
     private final AccessAdvisor advisor;
+    private final TypeConfiguration configuration;
+    private final ProxyConfiguration proxyConfiguration;
+    private final ResourceConfiguration resourceConfiguration;
 
     ReflectionProcessor(AccessAdvisor advisor) {
+        this(advisor, new TypeConfiguration(), new ProxyConfiguration(), new ResourceConfiguration());
+    }
+
+    ReflectionProcessor(AccessAdvisor advisor, TypeConfiguration typeConfiguration, ProxyConfiguration proxyConfiguration, ResourceConfiguration resourceConfiguration) {
         this.advisor = advisor;
+        this.configuration = typeConfiguration;
+        this.proxyConfiguration = proxyConfiguration;
+        this.resourceConfiguration = resourceConfiguration;
     }
 
     public TypeConfiguration getConfiguration() {

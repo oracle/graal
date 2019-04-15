@@ -33,11 +33,16 @@ import com.oracle.svm.configure.config.TypeConfiguration;
 import jdk.vm.ci.meta.MetaUtil;
 
 class JniProcessor extends AbstractProcessor {
-    private final TypeConfiguration configuration = new TypeConfiguration();
+    private final TypeConfiguration configuration;
     private final AccessAdvisor advisor;
 
     JniProcessor(AccessAdvisor advisor) {
+        this(advisor, new TypeConfiguration());
+    }
+
+    JniProcessor(AccessAdvisor advisor, TypeConfiguration configuration) {
         this.advisor = advisor;
+        this.configuration = configuration;
     }
 
     public TypeConfiguration getConfiguration() {

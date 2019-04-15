@@ -36,10 +36,18 @@ import com.oracle.svm.core.util.json.JSONParser;
 
 public class TraceProcessor extends AbstractProcessor {
     private final AccessAdvisor advisor = new AccessAdvisor();
-    private final JniProcessor jniProcessor = new JniProcessor(advisor);
-    private final ReflectionProcessor reflectionProcessor = new ReflectionProcessor(advisor);
+    private final JniProcessor jniProcessor;
+    private final ReflectionProcessor reflectionProcessor;
 
     public TraceProcessor() {
+        jniProcessor = new JniProcessor(advisor);
+        reflectionProcessor = new ReflectionProcessor(advisor);
+    }
+
+    public TraceProcessor(TypeConfiguration jniConfiguration, TypeConfiguration reflectionConfiguration,
+                    ProxyConfiguration proxyConfiguration, ResourceConfiguration resourceConfiguration) {
+        jniProcessor = new JniProcessor(advisor, jniConfiguration);
+        reflectionProcessor = new ReflectionProcessor(advisor, reflectionConfiguration, proxyConfiguration, resourceConfiguration);
     }
 
     public void setFilterEnabled(boolean enabled) {
