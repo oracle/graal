@@ -77,6 +77,8 @@ public class UninstallCommand implements InstallerCommand {
 
     @Override
     public int execute() throws IOException {
+        input.getLocalRegistry().verifyAdministratorAccess();
+
         this.registry = input.getLocalRegistry();
 
         ignoreFailures = input.optValue(Commands.OPTION_FORCE) != null;

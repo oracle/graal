@@ -25,8 +25,11 @@
 package org.graalvm.component.installer;
 
 import java.io.File;
+import java.io.IOException;
 import java.nio.file.Path;
 import java.nio.file.Paths;
+import java.nio.file.attribute.AclFileAttributeView;
+import java.nio.file.attribute.PosixFileAttributeView;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 import org.graalvm.component.installer.model.ComponentRegistry;
@@ -228,6 +231,25 @@ public class SystemUtils {
         } else {
             return Paths.get("");
         }
+    }
+
+    /**
+     * Finds a file owner. On POSIX systems, returns owner of the file. On Windows (ACL fs view)
+     * returns the owner principal's name.
+     * 
+     * @param file the file to test
+     * @return owner name
+     */
+    public static String findFileOwner(Path file) throws IOException {
+        PosixFileAttributeView posix = file.getFileSystem().provider().getFileAttributeView(file, PosixFileAttributeView.class);
+        if (posix != null) {
+            return posix.getOwner().getName();
+        }
+        AclFileAttributeView acl = file.getFileSystem().provider().getFileAttributeView(file, AclFileAttributeView.class);
+        if (acl != null) {
+            return acl.getOwner().getName();
+        }
+        return null;
     }
 
 }

@@ -391,10 +391,26 @@ public class InstallTest extends CommandTestBase {
      * 
      * @throws Exception
      */
+    @Test
     public void testInstallMissingComponent() throws Exception {
         ComponentInfo fakeInfo = new ComponentInfo("ruby", "Fake ruby", "1.0");
         storage.installed.add(fakeInfo);
 
+    }
+
+    @Test
+    public void testRefuseNonAdminInstall() throws Exception {
+        options.put(Commands.OPTION_DRY_RUN, "");
+
+        storage.writableUser = "hero"; // NOI18N
+
+        inst = new InstallCommand();
+        inst.init(this, withBundle(InstallCommand.class));
+
+        exception.expect(FailedOperationException.class);
+        exception.expectMessage("ADMIN");
+
+        inst.execute();
     }
 
 }

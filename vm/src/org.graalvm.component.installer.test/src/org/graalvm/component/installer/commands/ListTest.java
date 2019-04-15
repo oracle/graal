@@ -25,17 +25,25 @@
 package org.graalvm.component.installer.commands;
 
 import java.io.BufferedReader;
+import java.io.FileInputStream;
 import java.io.InputStream;
 import java.io.InputStreamReader;
 import java.net.MalformedURLException;
 import java.net.URL;
+import java.nio.file.Path;
+import java.util.HashSet;
 import java.util.Objects;
 import java.util.Properties;
+import java.util.Set;
+import org.graalvm.component.installer.BundleConstants;
 import org.graalvm.component.installer.CommandTestBase;
 import org.graalvm.component.installer.Version;
 import org.graalvm.component.installer.model.CatalogContents;
+import org.graalvm.component.installer.model.ComponentInfo;
 import org.graalvm.component.installer.remote.RemotePropertiesStorage;
 import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertFalse;
+import static org.junit.Assert.assertTrue;
 import org.junit.Rule;
 import org.junit.Test;
 import org.junit.rules.TestName;
@@ -127,5 +135,100 @@ public class ListTest extends CommandTestBase {
             }
         }
         assertEquals(msg, check.toString(), outb.toString());
+    }
+
+    /**
+     * Tests that 'list' will print matching components.
+     */
+    @Test
+    public void testListSpecifiedComponents() throws Exception {
+        storage.installed.add(
+                        new ComponentInfo("org.graalvm.R", "FastR", Version.fromString("1.0.0")));
+        storage.installed.add(
+                        new ComponentInfo("org.graalvm.ruby", "Ruby", Version.fromString("1.0.0")));
+        storage.installed.add(
+                        new ComponentInfo("org.graalvm.python", "Python", Version.fromString("1.0.0")));
+
+        ListInstalledCommand inst = new ListInstalledCommand() {
+            boolean process() {
+                super.process();
+                // block the actual print
+                return false;
+            }
+        };
+        textParams.add("r");
+        textParams.add("pyth");
+        inst.init(this, this);
+
+        inst.execute();
+
+        Set<String> found = new HashSet<>();
+        assertEquals(3, inst.getComponents().size());
+        for (ComponentInfo ci : inst.getComponents()) {
+            assertTrue(found.add(ci.getId().toLowerCase()));
+        }
+        assertTrue(found.contains("org.graalvm.r"));
+        assertTrue(found.contains("org.graalvm.ruby"));
+        assertTrue(found.contains("org.graalvm.python"));
+    }
+
+    /**
+     * Tests that 'list' will print components but just those newer than us.
+     */
+    @Test
+    public void testListSpecifiedNewerComponents() throws Exception {
+        Version v = Version.fromString("1.1.0");
+        storage.graalInfo.put(BundleConstants.GRAAL_VERSION, v.originalString());
+        assert110Components(v, v);
+    }
+
+    /**
+     * Checks that compatible components will be listed if 1st parameter is the version.
+     */
+    @Test
+    public void testListSpecifiedNewerComponentsExplicit() throws Exception {
+        Version v = Version.fromString("1.0.0");
+        storage.graalInfo.put(BundleConstants.GRAAL_VERSION, v.originalString());
+        textParams.add("+1.1.0");
+        assert110Components(v, Version.fromString("1.1.0"));
+    }
+
+    private void assert110Components(Version v, Version min) throws Exception {
+        Path p = dataFile("../repo/catalog.properties");
+        try (InputStream is = new FileInputStream(p.toFile())) {
+            catalogContents.load(is);
+        }
+        this.remoteStorage = new RemotePropertiesStorage(
+                        this, getLocalRegistry(), catalogContents,
+                        "linux_amd64",
+                        v,
+                        new URL("http://go.to/graalvm"));
+        this.registry = new CatalogContents(this, remoteStorage, localRegistry);
+
+        AvailableCommand inst = new AvailableCommand() {
+            boolean process() {
+                super.process();
+                // block the actual print
+                return false;
+            }
+        };
+        textParams.add("r");
+        textParams.add("pyth");
+        inst.init(this, this.withBundle(ListInstalledCommand.class));
+
+        inst.execute();
+
+        Set<String> found = new HashSet<>();
+        for (ComponentInfo ci : inst.getComponents()) {
+            if (ci.getId().equals(BundleConstants.GRAAL_COMPONENT_ID)) {
+                continue;
+            }
+            assertTrue(found.add(ci.getId().toLowerCase()));
+            assertTrue(min.compareTo(ci.getVersion()) <= 0);
+        }
+        // ruby not present
+        assertFalse(found.contains("org.graalvm.ruby"));
+        assertTrue(found.contains("org.graalvm.r"));
+        assertTrue(found.contains("org.graalvm.python"));
     }
 }

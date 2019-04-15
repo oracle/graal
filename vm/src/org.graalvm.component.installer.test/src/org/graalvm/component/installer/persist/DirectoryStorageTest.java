@@ -34,6 +34,7 @@ import java.io.InputStream;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.StandardCopyOption;
+import java.nio.file.attribute.PosixFileAttributeView;
 import java.nio.file.attribute.PosixFilePermissions;
 import java.util.ArrayList;
 import java.util.Arrays;
@@ -57,6 +58,7 @@ import org.graalvm.component.installer.model.ComponentInfo;
 import org.junit.After;
 import org.junit.AfterClass;
 import static org.junit.Assert.assertNotNull;
+import org.junit.Assume;
 import org.junit.Before;
 import org.junit.BeforeClass;
 import org.junit.Rule;
@@ -526,5 +528,21 @@ public class DirectoryStorageTest extends TestBase {
         assertEquals(1, cis.size());
         ComponentInfo ci = cis.iterator().next();
         assertTrue(ci.isNativeComponent());
+    }
+
+    @Test
+    public void testRefuseInstallationForROPosix() throws Exception {
+        PosixFileAttributeView posix = registryPath.getFileSystem().provider().getFileAttributeView(registryPath, PosixFileAttributeView.class);
+        Assume.assumeTrue("Not a POSIX system", posix != null);
+        try {
+            // simulate an unreadable directory:
+            posix.setPermissions(PosixFilePermissions.fromString("r-xr-xr-x"));
+
+            exception.expect(FailedOperationException.class);
+            exception.expectMessage("ERROR_MustBecomeUser");
+            storage.saveComponent(null);
+        } finally {
+            posix.setPermissions(PosixFilePermissions.fromString("rwxrwxr-x"));
+        }
     }
 }

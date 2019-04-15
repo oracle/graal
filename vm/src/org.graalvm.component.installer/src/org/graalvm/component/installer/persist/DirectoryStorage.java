@@ -457,7 +457,12 @@ public class DirectoryStorage implements ManagementStorage {
      */
     @Override
     public void saveComponent(ComponentInfo info) throws IOException {
-        assert info != null;
+        // hack: if the component is null, just verify that the user has access to the registry's
+        // data
+        verifyUserAccess();
+        if (info == null) {
+            return;
+        }
         if (info.isNativeComponent()) {
             return;
         }
@@ -629,5 +634,20 @@ public class DirectoryStorage implements ManagementStorage {
         } catch (IOException ex) {
             throw feedback.failure("ERR_CannotReadAcceptance", ex, licID);
         }
+    }
+
+    void verifyUserAccess() {
+        if (Files.isWritable(registryPath)) {
+            return;
+        }
+        try {
+            String owner = SystemUtils.findFileOwner(registryPath);
+            if (owner != null) {
+                throw feedback.failure("ERROR_MustBecomeUser", null, owner);
+            }
+        } catch (IOException ex) {
+            // ignore, use generic message
+        }
+        throw feedback.failure("ERROR_MustBecomeAdmin", null);
     }
 }

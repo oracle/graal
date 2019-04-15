@@ -39,6 +39,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.Set;
 import java.util.stream.Collectors;
+import org.graalvm.component.installer.FailedOperationException;
 
 import org.graalvm.component.installer.model.ComponentInfo;
 import org.graalvm.component.installer.model.ManagementStorage;
@@ -62,6 +63,7 @@ public class MockStorage implements ManagementStorage {
     public Map<String, Collection<String>> replacedFiles = new HashMap<>();
     public Map<String, Collection<String>> updatedReplacedFiles = new HashMap<>();
     public List<ComponentInfo> savedInfos = new ArrayList<>();
+    public String writableUser;
 
     @Override
     public void deleteComponent(String id) throws IOException {
@@ -102,6 +104,10 @@ public class MockStorage implements ManagementStorage {
 
     @Override
     public void saveComponent(ComponentInfo info) throws IOException {
+        // simulate DiretoryStorage verification
+        if (writableUser != null) {
+            throw new FailedOperationException("ADMIN");
+        }
         savedInfos.add(info);
     }
 

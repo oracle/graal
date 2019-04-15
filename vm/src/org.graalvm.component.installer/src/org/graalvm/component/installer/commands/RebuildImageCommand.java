@@ -100,6 +100,8 @@ public class RebuildImageCommand implements InstallerCommand {
 
     @Override
     public int execute() throws IOException {
+        input.getLocalRegistry().verifyAdministratorAccess();
+
         ProcessBuilder pb = new ProcessBuilder();
         List<String> commandLine = new ArrayList<>();
         // enforce relative path

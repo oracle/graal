@@ -105,7 +105,7 @@ public class ListInstalledCommand extends QueryCommandBase {
             }
             String accepted = acceptExpression(s);
             if (accepted != null) {
-                expressions.add(input.nextParameter());
+                expressions.add(accepted);
             }
         }
         if (process()) {

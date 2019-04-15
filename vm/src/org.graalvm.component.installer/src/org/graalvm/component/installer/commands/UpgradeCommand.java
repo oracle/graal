@@ -126,6 +126,8 @@ public class UpgradeCommand implements InstallerCommand {
 
     @Override
     public int execute() throws IOException {
+        input.getLocalRegistry().verifyAdministratorAccess();
+
         if (input.optValue(Commands.OPTION_HELP) != null) {
             feedback.output(allowDistUpgrades ? "UPGRADE_Help" : "UPDATE_Help");
             return 0;
