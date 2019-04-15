@@ -122,6 +122,8 @@ public class InstallCommand implements InstallerCommand {
 
     @Override
     public int execute() throws IOException {
+        input.getLocalRegistry().verifyAdministratorAccess();
+
         minRequiredGraalVersion = input.getLocalRegistry().getGraalVersion();
         if (input.optValue(Commands.OPTION_HELP) != null) {
             feedback.output("INSTALL_Help");

@@ -454,4 +454,8 @@ public final class ComponentRegistry implements ComponentCollection {
     public boolean isMacOsX() {
         return storage.loadGraalVersionInfo().get("os_name").toLowerCase().contains("macos");
     }
+
+    public void verifyAdministratorAccess() throws IOException {
+        storage.saveComponent(null);
+    }
 }

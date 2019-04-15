@@ -266,4 +266,22 @@ public class UpgradeTest extends CommandTestBase {
         ComponentInfo info = cmd.configureProcess();
         assertNull(info);
     }
+
+    @Test
+    public void testRefuseNonAdminUpgrade() throws Exception {
+        initVersion("1.0.0.0");
+        storage.writableUser = "hero"; // NOI18N
+
+        textParams.add("1.0.1");
+        ComponentInfo ci = new ComponentInfo("org.graalvm.ruby", "Installed Ruby", "1.0.0.0");
+        storage.installed.add(ci);
+        UpgradeCommand cmd = new UpgradeCommand();
+        cmd.init(this, this);
+
+        exception.expect(FailedOperationException.class);
+        exception.expectMessage("ADMIN");
+
+        cmd.execute();
+    }
+
 }
