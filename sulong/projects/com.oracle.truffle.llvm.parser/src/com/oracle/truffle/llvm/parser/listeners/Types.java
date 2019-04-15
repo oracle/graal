@@ -315,11 +315,6 @@ public final class Types implements ParserListener, Iterable<Type> {
         }
 
         @Override
-        public Type shallowCopy() {
-            return this;
-        }
-
-        @Override
         public boolean equals(Object obj) {
             return obj == this;
         }

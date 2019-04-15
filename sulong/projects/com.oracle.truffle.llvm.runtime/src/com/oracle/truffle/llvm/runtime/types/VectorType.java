@@ -105,12 +105,6 @@ public final class VectorType extends AggregateType {
     }
 
     @Override
-    public Type shallowCopy() {
-        final VectorType copy = new VectorType(getElementType(), length);
-        return copy;
-    }
-
-    @Override
     public long getOffsetOf(long index, DataLayout targetDataLayout) {
         return getElementType().getSize(targetDataLayout) * index;
     }

@@ -102,12 +102,6 @@ public final class FunctionType extends Type {
     }
 
     @Override
-    public Type shallowCopy() {
-        final FunctionType copy = new FunctionType(getReturnType(), argumentTypes, isVarargs);
-        return copy;
-    }
-
-    @Override
     @TruffleBoundary
     public String toString() {
         StringBuilder sb = new StringBuilder();

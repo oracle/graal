@@ -117,12 +117,6 @@ public final class StructureType extends AggregateType {
     }
 
     @Override
-    public Type shallowCopy() {
-        final StructureType copy = new StructureType(name, isPacked, types);
-        return copy;
-    }
-
-    @Override
     public long getOffsetOf(long index, DataLayout targetDataLayout) {
         int offset = 0;
         for (int i = 0; i < index; i++) {

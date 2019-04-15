@@ -79,12 +79,6 @@ public final class PointerType extends AggregateType {
     }
 
     @Override
-    public Type shallowCopy() {
-        final PointerType copy = new PointerType(getPointeeType());
-        return copy;
-    }
-
-    @Override
     public long getOffsetOf(long index, DataLayout targetDataLayout) {
         return getPointeeType().getSize(targetDataLayout) * index;
     }

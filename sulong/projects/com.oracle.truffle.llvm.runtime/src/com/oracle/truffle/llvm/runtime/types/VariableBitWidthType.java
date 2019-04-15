@@ -124,12 +124,6 @@ public final class VariableBitWidthType extends Type {
     }
 
     @Override
-    public Type shallowCopy() {
-        final VariableBitWidthType copy = new VariableBitWidthType(bitWidth, constant);
-        return copy;
-    }
-
-    @Override
     @TruffleBoundary
     public String toString() {
         if (getConstant() != null) {

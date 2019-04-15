@@ -46,8 +46,6 @@ public abstract class Type {
 
     public abstract int getSize(DataLayout targetDataLayout);
 
-    public abstract Type shallowCopy();
-
     @Override
     public abstract boolean equals(Object obj);
 
