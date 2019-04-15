@@ -367,7 +367,11 @@ public final class HotSpotGraalRuntime implements HotSpotGraalRuntimeProvider {
     }
 
     private long runtimeStartTime;
-    private boolean shutdown;
+
+    /**
+     * Called from compiler threads to check whether to bail out of a compilation.
+     */
+    private volatile boolean shutdown;
 
     /**
      * Take action related to entering a new execution phase.
