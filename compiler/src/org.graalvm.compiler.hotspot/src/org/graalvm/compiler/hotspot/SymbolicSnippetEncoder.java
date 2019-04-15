@@ -66,6 +66,7 @@ import org.graalvm.compiler.java.BytecodeParser;
 import org.graalvm.compiler.java.GraphBuilderPhase;
 import org.graalvm.compiler.nodeinfo.Verbosity;
 import org.graalvm.compiler.nodes.CallTargetNode;
+import org.graalvm.compiler.nodes.Cancellable;
 import org.graalvm.compiler.nodes.ConstantNode;
 import org.graalvm.compiler.nodes.EncodedGraph;
 import org.graalvm.compiler.nodes.FrameState;
@@ -283,24 +284,30 @@ public class SymbolicSnippetEncoder {
         }
 
         StructuredGraph getMethodSubstitutionGraph(MethodSubstitutionPlugin plugin, ResolvedJavaMethod original, ReplacementsImpl replacements, IntrinsicContext.CompilationContext context,
-                        StructuredGraph.AllowAssumptions allowAssumptions, OptionValues options) {
+                        StructuredGraph.AllowAssumptions allowAssumptions, Cancellable cancellable, OptionValues options) {
             Integer startOffset = snippetStartOffsets.get(plugin.toString() + context);
             if (startOffset == null) {
                 throw GraalError.shouldNotReachHere("plugin graph not found: " + plugin + " with " + context);
             }
 
             ResolvedJavaType accessingClass = replacements.getProviders().getMetaAccess().lookupJavaType(plugin.getDeclaringClass());
-            return decodeGraph(original, accessingClass, startOffset, replacements, context, allowAssumptions, options);
+            return decodeGraph(original, accessingClass, startOffset, replacements, context, allowAssumptions, cancellable, options);
         }
 
         @SuppressWarnings("try")
-        private StructuredGraph decodeGraph(ResolvedJavaMethod method, ResolvedJavaType accessingClass, int startOffset, ReplacementsImpl replacements,
-                        IntrinsicContext.CompilationContext context, StructuredGraph.AllowAssumptions allowAssumptions, OptionValues options) {
+        private StructuredGraph decodeGraph(ResolvedJavaMethod method,
+                        ResolvedJavaType accessingClass,
+                        int startOffset,
+                        ReplacementsImpl replacements,
+                        IntrinsicContext.CompilationContext context,
+                        StructuredGraph.AllowAssumptions allowAssumptions,
+                        Cancellable cancellable,
+                        OptionValues options) {
             Providers providers = replacements.getProviders();
             EncodedGraph encodedGraph = new SymbolicEncodedGraph(snippetEncoding, startOffset, snippetObjects, snippetNodeClasses,
                             methodKey(method), accessingClass, method.getDeclaringClass());
             try (DebugContext debug = replacements.openDebugContext("SVMSnippet_", method, options)) {
-                StructuredGraph result = new StructuredGraph.Builder(options, debug, allowAssumptions).method(method).setIsSubstitution(true).build();
+                StructuredGraph result = new StructuredGraph.Builder(options, debug, allowAssumptions).cancellable(cancellable).method(method).setIsSubstitution(true).build();
                 PEGraphDecoder graphDecoder = new SubstitutionGraphDecoder(providers, result, replacements, null, method, context, encodedGraph);
 
                 graphDecoder.decode(method, result.isSubstitution(), encodedGraph.trackNodeSourcePosition());

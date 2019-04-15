@@ -114,7 +114,7 @@ public final class StringCompressInflateTest extends MethodSubstitutionTest {
         Class<?> javaclass = Class.forName("java.lang.StringLatin1");
 
         ResolvedJavaMethod caller = getResolvedJavaMethod(javaclass, "inflate", byte[].class, int.class, byte[].class, int.class, int.class);
-        StructuredGraph graph = getReplacements().getIntrinsicGraph(caller, CompilationIdentifier.INVALID_COMPILATION_ID, getDebugContext());
+        StructuredGraph graph = getReplacements().getIntrinsicGraph(caller, CompilationIdentifier.INVALID_COMPILATION_ID, getDebugContext(), null);
         assertInGraph(graph, AMD64StringLatin1InflateNode.class);
 
         InstalledCode code = getCode(caller, graph);
@@ -152,7 +152,7 @@ public final class StringCompressInflateTest extends MethodSubstitutionTest {
         Class<?> javaclass = Class.forName("java.lang.StringLatin1");
 
         ResolvedJavaMethod caller = getResolvedJavaMethod(javaclass, "inflate", byte[].class, int.class, char[].class, int.class, int.class);
-        StructuredGraph graph = getReplacements().getIntrinsicGraph(caller, CompilationIdentifier.INVALID_COMPILATION_ID, getDebugContext());
+        StructuredGraph graph = getReplacements().getIntrinsicGraph(caller, CompilationIdentifier.INVALID_COMPILATION_ID, getDebugContext(), null);
         assertInGraph(graph, AMD64StringLatin1InflateNode.class);
 
         InstalledCode code = getCode(caller, graph);
@@ -217,7 +217,7 @@ public final class StringCompressInflateTest extends MethodSubstitutionTest {
         Class<?> javaclass = Class.forName("java.lang.StringUTF16");
 
         ResolvedJavaMethod caller = getResolvedJavaMethod(javaclass, "compress", byte[].class, int.class, byte[].class, int.class, int.class);
-        StructuredGraph graph = getReplacements().getIntrinsicGraph(caller, CompilationIdentifier.INVALID_COMPILATION_ID, getDebugContext());
+        StructuredGraph graph = getReplacements().getIntrinsicGraph(caller, CompilationIdentifier.INVALID_COMPILATION_ID, getDebugContext(), null);
         assertInGraph(graph, AMD64StringUTF16CompressNode.class);
 
         InstalledCode code = getCode(caller, graph);
@@ -253,7 +253,7 @@ public final class StringCompressInflateTest extends MethodSubstitutionTest {
         Class<?> javaclass = Class.forName("java.lang.StringUTF16");
 
         ResolvedJavaMethod caller = getResolvedJavaMethod(javaclass, "compress", char[].class, int.class, byte[].class, int.class, int.class);
-        StructuredGraph graph = getReplacements().getIntrinsicGraph(caller, CompilationIdentifier.INVALID_COMPILATION_ID, getDebugContext());
+        StructuredGraph graph = getReplacements().getIntrinsicGraph(caller, CompilationIdentifier.INVALID_COMPILATION_ID, getDebugContext(), null);
         assertInGraph(graph, AMD64StringUTF16CompressNode.class);
 
         InstalledCode code = getCode(caller, graph);
@@ -299,7 +299,7 @@ public final class StringCompressInflateTest extends MethodSubstitutionTest {
         TestMethods(String testmname, Class<?> javaclass, Class<?> intrinsicClass, String javamname, Class<?>... params) {
             javamethod = getResolvedJavaMethod(javaclass, javamname, params);
             testmethod = getResolvedJavaMethod(testmname);
-            testgraph = getReplacements().getIntrinsicGraph(javamethod, CompilationIdentifier.INVALID_COMPILATION_ID, getDebugContext());
+            testgraph = getReplacements().getIntrinsicGraph(javamethod, CompilationIdentifier.INVALID_COMPILATION_ID, getDebugContext(), null);
             assertInGraph(testgraph, intrinsicClass);
 
             assert javamethod != null;

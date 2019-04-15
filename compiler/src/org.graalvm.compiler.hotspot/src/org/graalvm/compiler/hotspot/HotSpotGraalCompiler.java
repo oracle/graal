@@ -174,7 +174,7 @@ public class HotSpotGraalCompiler implements GraalJVMCICompiler, Cancellable {
         HotSpotBackend backend = graalRuntime.getHostBackend();
         HotSpotProviders providers = backend.getProviders();
         final boolean isOSR = entryBCI != JVMCICompiler.INVOCATION_ENTRY_BCI;
-        StructuredGraph graph = method.isNative() || isOSR ? null : providers.getReplacements().getIntrinsicGraph(method, compilationId, debug);
+        StructuredGraph graph = method.isNative() || isOSR ? null : providers.getReplacements().getIntrinsicGraph(method, compilationId, debug, this);
 
         if (graph == null) {
             SpeculationLog speculationLog = method.getSpeculationLog();

@@ -44,6 +44,7 @@ import org.graalvm.compiler.core.common.CompilationIdentifier;
 import org.graalvm.compiler.debug.DebugContext;
 import org.graalvm.compiler.graph.NodeClass;
 import org.graalvm.compiler.graph.NodeSourcePosition;
+import org.graalvm.compiler.nodes.Cancellable;
 import org.graalvm.compiler.nodes.EncodedGraph;
 import org.graalvm.compiler.nodes.GraphEncoder;
 import org.graalvm.compiler.nodes.StructuredGraph;
@@ -309,7 +310,7 @@ public class SubstrateReplacements extends ReplacementsImpl {
     }
 
     @Override
-    public StructuredGraph getIntrinsicGraph(ResolvedJavaMethod method, CompilationIdentifier compilationId, DebugContext debug) {
+    public StructuredGraph getIntrinsicGraph(ResolvedJavaMethod method, CompilationIdentifier compilationId, DebugContext debug, Cancellable cancellable) {
         // This override keeps graphBuilderPlugins from being reached during image generation.
         return null;
     }

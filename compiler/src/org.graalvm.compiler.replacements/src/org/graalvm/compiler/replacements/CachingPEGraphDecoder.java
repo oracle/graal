@@ -89,7 +89,7 @@ public class CachingPEGraphDecoder extends PEGraphDecoder {
         if (isSubstitution && (UseEncodedGraphs.getValue(options) || IS_IN_NATIVE_IMAGE)) {
             // These must go through Replacements to find the graph to use.
             graphToEncode = providers.getReplacements().getMethodSubstitution(plugin, method, INLINE_AFTER_PARSING, allowAssumptions,
-                            options);
+                            null, options);
         } else {
             graphToEncode = buildGraph(method, plugin, intrinsicBytecodeProvider, isSubstitution);
         }
@@ -123,7 +123,8 @@ public class CachingPEGraphDecoder extends PEGraphDecoder {
         // @formatter:on
         try (DebugContext.Scope scope = debug.scope("createGraph", graphToEncode)) {
             IntrinsicContext initialIntrinsicContext = intrinsicBytecodeProvider != null
-                            ? new IntrinsicContext(method, plugin.getSubstitute(providers.getMetaAccess()), intrinsicBytecodeProvider, INLINE_AFTER_PARSING) : null;
+                            ? new IntrinsicContext(method, plugin.getSubstitute(providers.getMetaAccess()), intrinsicBytecodeProvider, INLINE_AFTER_PARSING)
+                            : null;
             GraphBuilderPhase.Instance graphBuilderPhaseInstance = createGraphBuilderPhaseInstance(initialIntrinsicContext);
             graphBuilderPhaseInstance.apply(graphToEncode);
             new CanonicalizerPhase().apply(graphToEncode, providers);
