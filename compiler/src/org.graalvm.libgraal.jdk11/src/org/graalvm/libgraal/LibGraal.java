@@ -43,12 +43,8 @@ public class LibGraal {
         throw unavailable();
     }
 
-    public static long getIsolateThread() {
-        throw unavailable();
-    }
-
     @SuppressWarnings("unused")
-    public static long[] registerNativeMethods(HotSpotJVMCIRuntime runtime, Class<?> clazz) {
+    public static void registerNativeMethods(HotSpotJVMCIRuntime runtime, Class<?> clazz) {
         throw unavailable();
     }
 

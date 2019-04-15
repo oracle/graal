@@ -423,6 +423,7 @@ suite = {
       "subDir" : "src",
       "sourceDirs" : ["src"],
       "dependencies" : [
+          "org.graalvm.libgraal",
           "sdk:GRAAL_SDK",
           "JVMCI_HOTSPOT",
       ],

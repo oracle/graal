@@ -33,37 +33,23 @@ import jdk.vm.ci.services.Services;
 public class LibGraal {
 
     public static boolean isAvailable() {
-        return isCurrentRuntime() || libgraalIsolate != 0L;
+        return inLibGraal() || isolate != 0L;
     }
 
-    public static boolean isCurrentRuntime() {
+    public static boolean inLibGraal() {
         return Services.IS_IN_NATIVE_IMAGE;
     }
 
-    public static long getIsolate() {
-        if (isCurrentRuntime() || !isAvailable()) {
-            throw new IllegalStateException();
-        }
-        return libgraalIsolate;
-    }
-
-    public static long getIsolateThread() {
-        if (isCurrentRuntime()) {
-            throw new IllegalStateException();
-        }
-        return CURRENT_ISOLATE_THREAD.get();
-    }
-
     @SuppressWarnings("unused")
-    public static long[] registerNativeMethods(HotSpotJVMCIRuntime runtime, Class<?> clazz) {
+    public static void registerNativeMethods(HotSpotJVMCIRuntime runtime, Class<?> clazz) {
         if (clazz.isPrimitive()) {
             throw new IllegalArgumentException();
         }
-        if (isCurrentRuntime() || !isAvailable()) {
+        if (inLibGraal() || !isAvailable()) {
             throw new IllegalStateException();
         }
         // Waiting for https://bugs.openjdk.java.net/browse/JDK-8220623
-        // return runtime.registerNativeMethods(clazz);
+        // runtime.registerNativeMethods(clazz);
         throw new IllegalStateException("Requires JDK-8220623");
     }
 
@@ -85,15 +71,6 @@ public class LibGraal {
         throw new IllegalStateException("Requires JDK-8220623");
     }
 
-    private static final ThreadLocal<Long> CURRENT_ISOLATE_THREAD = new ThreadLocal<>() {
-        @Override
-        protected Long initialValue() {
-            return attachThread(libgraalIsolate);
-        }
-    };
-
-    private static final long libgraalIsolate = Services.IS_BUILDING_NATIVE_IMAGE ? 0L : initializeLibgraal();
-
     private static long initializeLibgraal() {
         try {
             // Initialize JVMCI to ensure JVMCI opens its packages to
@@ -111,10 +88,28 @@ public class LibGraal {
         }
     }
 
-    /**
-     * Attaches the current thread to a thread in {@code isolate}.
-     *
-     * @param isolate
-     */
-    private static native long attachThread(long isolate);
+    static final long isolate = Services.IS_BUILDING_NATIVE_IMAGE ? 0L : initializeLibgraal();
+
+    @SuppressWarnings("unused")
+    static boolean isCurrentThreadAttached(HotSpotJVMCIRuntime runtime) {
+        // Waiting for https://bugs.openjdk.java.net/browse/JDK-8220623
+        // return runtime.isCurrentThreadAttached();
+        throw new IllegalStateException("Requires JDK-8220623");
+    }
+
+    @SuppressWarnings("unused")
+    static boolean attachCurrentThread(HotSpotJVMCIRuntime runtime) {
+        // Waiting for https://bugs.openjdk.java.net/browse/JDK-8220623
+        // runtime.attachCurrentThread();
+        throw new IllegalStateException("Requires JDK-8220623");
+    }
+
+    @SuppressWarnings("unused")
+    static void detachCurrentThread(HotSpotJVMCIRuntime runtime) {
+        // Waiting for https://bugs.openjdk.java.net/browse/JDK-8220623
+        // runtime.detachCurrentThread();
+        throw new IllegalStateException("Requires JDK-8220623");
+    }
+
+    static native long getCurrentIsolateThread(long iso);
 }
