@@ -125,8 +125,11 @@ public class ExportsGenerator extends CodeTypeElementFactory<ExportsData> {
                 public DSLExpression visitVariable(Variable binary) {
                     if (binary.getReceiver() == null) {
                         Variable newVar = new Variable(null, "receiver");
-                        newVar.setResolvedTargetType(binary.getResolvedType());
-                        newVar.setResolvedVariable(new CodeVariableElement(binary.getResolvedType(), "receiver"));
+                        // we don't use the binary.getResolvedType() receiver type in order to group
+                        // also between base and subclasses.
+                        TypeMirror newReceiverType = ProcessorContext.getInstance().getType(Object.class);
+                        newVar.setResolvedTargetType(newReceiverType);
+                        newVar.setResolvedVariable(new CodeVariableElement(newReceiverType, "receiver"));
                         return newVar;
                     }
                     return binary;
