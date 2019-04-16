@@ -32,16 +32,17 @@ import static com.oracle.svm.agent.jvmti.JvmtiEvent.JVMTI_EVENT_THREAD_END;
 import static com.oracle.svm.agent.jvmti.JvmtiEvent.JVMTI_EVENT_VM_INIT;
 import static com.oracle.svm.agent.jvmti.JvmtiEvent.JVMTI_EVENT_VM_START;
 import static com.oracle.svm.agent.jvmti.JvmtiEventMode.JVMTI_ENABLE;
+import static com.oracle.svm.hosted.config.ConfigurationDirectories.FileNames;
 import static com.oracle.svm.jni.JNIObjectHandles.nullHandle;
 import static org.graalvm.word.WordFactory.nullPointer;
 
 import java.io.File;
 import java.io.IOException;
-import java.io.Reader;
 import java.net.URI;
 import java.nio.file.FileSystem;
 import java.nio.file.FileSystems;
 import java.nio.file.Files;
+import java.nio.file.NoSuchFileException;
 import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.text.DateFormat;
@@ -49,9 +50,11 @@ import java.text.SimpleDateFormat;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.Date;
-import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
+import java.util.TimeZone;
+import java.util.function.Function;
 
 import org.graalvm.compiler.options.OptionKey;
 import org.graalvm.nativeimage.CurrentIsolate;
@@ -64,23 +67,21 @@ import org.graalvm.nativeimage.c.function.CFunctionPointer;
 import org.graalvm.nativeimage.c.struct.SizeOf;
 import org.graalvm.nativeimage.c.type.CCharPointer;
 import org.graalvm.nativeimage.c.type.CCharPointerPointer;
-import org.graalvm.nativeimage.c.type.CTypeConversion;
+import org.graalvm.nativeimage.c.type.CTypeConversion.CCharPointerHolder;
 import org.graalvm.nativeimage.c.type.WordPointer;
 import org.graalvm.word.PointerBase;
 
 import com.oracle.svm.agent.jvmti.JvmtiEnv;
 import com.oracle.svm.agent.jvmti.JvmtiEventCallbacks;
 import com.oracle.svm.agent.jvmti.JvmtiInterface;
-import com.oracle.svm.agent.restrict.Configuration;
-import com.oracle.svm.agent.restrict.ConfigurationType;
 import com.oracle.svm.agent.restrict.JniAccessVerifier;
-import com.oracle.svm.agent.restrict.ParserConfigurationAdapter;
 import com.oracle.svm.agent.restrict.ProxyAccessVerifier;
-import com.oracle.svm.agent.restrict.ProxyConfiguration;
 import com.oracle.svm.agent.restrict.ReflectAccessVerifier;
 import com.oracle.svm.agent.restrict.ResourceAccessVerifier;
-import com.oracle.svm.agent.restrict.ResourceConfiguration;
+import com.oracle.svm.configure.config.ConfigurationSet;
+import com.oracle.svm.configure.json.JsonWriter;
 import com.oracle.svm.configure.trace.AccessAdvisor;
+import com.oracle.svm.configure.trace.TraceProcessor;
 import com.oracle.svm.core.SubstrateOptions;
 import com.oracle.svm.core.SubstrateUtil;
 import com.oracle.svm.core.c.function.CEntryPointOptions;
@@ -88,9 +89,6 @@ import com.oracle.svm.core.c.function.CEntryPointSetup;
 import com.oracle.svm.driver.NativeImage;
 import com.oracle.svm.hosted.ResourcesFeature;
 import com.oracle.svm.hosted.config.ConfigurationDirectories;
-import com.oracle.svm.hosted.config.ProxyConfigurationParser;
-import com.oracle.svm.hosted.config.ReflectionConfigurationParser;
-import com.oracle.svm.hosted.config.ResourceConfigurationParser;
 import com.oracle.svm.jni.nativeapi.JNIEnvironment;
 import com.oracle.svm.jni.nativeapi.JNIErrors;
 import com.oracle.svm.jni.nativeapi.JNIJavaVM;
@@ -100,11 +98,9 @@ import com.oracle.svm.reflect.hosted.ReflectionFeature;
 import com.oracle.svm.reflect.proxy.hosted.DynamicProxyFeature;
 
 public final class Agent {
-    public static final String MESSAGE_PREFIX = "native-image-agent: ";
-
-    private static TraceWriter traceWriter;
-
-    private static AccessAdvisor accessAdvisor;
+    public static final String AGENT_NAME = "native-image-agent";
+    public static final String MESSAGE_PREFIX = AGENT_NAME + ": ";
+    public static final TimeZone UTC_TIMEZONE = TimeZone.getTimeZone("UTC");
 
     private static <T> String oH(OptionKey<T> option) {
         return NativeImage.oH + option.getName();
@@ -116,8 +112,14 @@ public final class Agent {
     private static final String oHResourceConfigurationResources = oH(ResourcesFeature.Options.ResourceConfigurationResources);
     private static final String oHConfigurationResourceRoots = oH(ConfigurationDirectories.Options.ConfigurationResourceRoots);
 
-    private interface AddURI {
-        void add(LinkedHashSet<URI> uris, Path classpathEntry, String resourceLocation);
+    private static TraceWriter traceWriter;
+
+    private static Path configOutputDirPath;
+
+    private static AccessAdvisor accessAdvisor;
+
+    private static String getTokenValue(String token) {
+        return token.substring(token.indexOf('=') + 1);
     }
 
     @CEntryPoint(name = "Agent_OnLoad")
@@ -125,12 +127,12 @@ public final class Agent {
     public static int onLoad(JNIJavaVM vm, CCharPointer options, @SuppressWarnings("unused") PointerBase reserved) {
         AgentIsolate.setGlobalIsolate(CurrentIsolate.getIsolate());
 
-        String outputPath = null;
-        LinkedHashSet<URI> jniConfigPaths = new LinkedHashSet<>();
-        LinkedHashSet<URI> reflectConfigPaths = new LinkedHashSet<>();
-        LinkedHashSet<URI> proxyConfigPaths = new LinkedHashSet<>();
-        LinkedHashSet<URI> resourceConfigPaths = new LinkedHashSet<>();
+        String traceOutputFile = null;
+        String configOutputDir = null;
+        ConfigurationSet restrictConfigs = new ConfigurationSet();
+        ConfigurationSet mergeConfigs = new ConfigurationSet();
         boolean autoRestrict = false;
+        boolean noFilter = false;
         if (options.isNonNull() && SubstrateUtil.strlen(options).aboveThan(0)) {
             String[] optionTokens = fromCString(options).split(",");
             if (optionTokens.length == 0) {
@@ -139,37 +141,77 @@ public final class Agent {
             }
             for (String token : optionTokens) {
                 if (token.startsWith("trace-output=")) {
-                    outputPath = token.substring("trace-output=".length());
+                    if (traceOutputFile != null) {
+                        System.err.println(MESSAGE_PREFIX + "cannot specify trace-output= more than once.");
+                        return 1;
+                    }
+                    traceOutputFile = getTokenValue(token);
+                } else if (token.startsWith("config-output-dir=") || token.startsWith("config-merge-dir=")) {
+                    if (configOutputDir != null) {
+                        System.err.println(MESSAGE_PREFIX + "cannot specify more than one of config-output-dir= or config-merge-dir=.");
+                        return 1;
+                    }
+                    configOutputDir = transformPath(getTokenValue(token));
+                    if (token.startsWith("config-merge-dir=")) {
+                        mergeConfigs.addDirectory(Paths.get(configOutputDir));
+                    }
                 } else if (token.startsWith("restrict-jni=")) {
-                    jniConfigPaths.add(Paths.get(token.substring("restrict-jni=".length())).toUri());
+                    restrictConfigs.getJniConfigPaths().add(Paths.get(getTokenValue(token)).toUri());
                 } else if (token.startsWith("restrict-reflect=")) {
-                    reflectConfigPaths.add(Paths.get(token.substring("restrict-reflect=".length())).toUri());
+                    restrictConfigs.getReflectConfigPaths().add(Paths.get(getTokenValue(token)).toUri());
                 } else if (token.startsWith("restrict-proxy=")) {
-                    proxyConfigPaths.add(Paths.get(token.substring("restrict-proxy=".length())).toUri());
+                    restrictConfigs.getProxyConfigPaths().add(Paths.get(getTokenValue(token)).toUri());
                 } else if (token.startsWith("restrict-resource")) {
-                    resourceConfigPaths.add(Paths.get(token.substring("restrict-resource=".length())).toUri());
+                    restrictConfigs.getResourceConfigPaths().add(Paths.get(getTokenValue(token)).toUri());
                 } else if (token.startsWith("restrict-all-dir")) {
-                    Path directory = Paths.get(token.substring("restrict-all-dir=".length()));
-                    jniConfigPaths.add(Paths.get(directory.resolve("jni-config.json").toString()).toUri());
-                    reflectConfigPaths.add(Paths.get(directory.resolve("reflect-config.json").toString()).toUri());
-                    proxyConfigPaths.add(Paths.get(directory.resolve("proxy-config.json").toString()).toUri());
-                    resourceConfigPaths.add(Paths.get(directory.resolve("resource-config.json").toString()).toUri());
-                } else if (token.startsWith("auto-restrict")) {
-                    autoRestrict = "true".equals(token.substring("auto-restrict=".length()));
+                    restrictConfigs.addDirectory(Paths.get(getTokenValue(token)));
+                } else if (token.equals("auto-restrict")) {
+                    autoRestrict = true;
+                } else if (token.startsWith("auto-restrict=")) {
+                    autoRestrict = Boolean.parseBoolean(getTokenValue(token));
+                } else if (token.equals("no-filter")) {
+                    noFilter = true;
+                } else if (token.startsWith("no-filter=")) {
+                    noFilter = Boolean.parseBoolean(getTokenValue(token));
                 } else {
                     System.err.println(MESSAGE_PREFIX + "unsupported option: '" + token + "'. Please read CONFIGURE.md.");
                     return 1;
                 }
             }
         } else {
-            outputPath = transformPath("native-image-agent_trace-pid{pid}-{datetime}.json");
-            System.err.println(MESSAGE_PREFIX + "no options provided, writing to file: " + outputPath);
+            configOutputDir = transformPath(AGENT_NAME + "_config-pid{pid}-{datetime}/");
+            System.err.println(MESSAGE_PREFIX + "no options provided, writing to directory: " + configOutputDir);
         }
 
-        if (outputPath != null) {
+        if (configOutputDir != null) {
+            if (traceOutputFile != null) {
+                System.err.println(MESSAGE_PREFIX + "can only once specify exactly one of trace-output=, config-output-dir= or config-merge-dir=.");
+                return 1;
+            }
             try {
-                Path path = Paths.get(transformPath(outputPath));
-                traceWriter = new TraceWriter(path);
+                configOutputDirPath = Paths.get(configOutputDir);
+                if (!Files.isDirectory(configOutputDirPath)) {
+                    Files.createDirectory(configOutputDirPath);
+                }
+                Function<IOException, Exception> handler = e -> {
+                    if (e instanceof NoSuchFileException) {
+                        System.err.println(Agent.MESSAGE_PREFIX + "warning: file " + ((NoSuchFileException) e).getFile() + " for merging could not be found, skipping");
+                        return null;
+                    }
+                    return e; // rethrow
+                };
+                TraceProcessor processor = new TraceProcessor(mergeConfigs.loadJniConfig(handler), mergeConfigs.loadReflectConfig(handler),
+                                mergeConfigs.loadProxyConfig(handler), mergeConfigs.loadResourceConfig(handler));
+                processor.setFilterEnabled(!noFilter);
+                traceWriter = new TraceProcessorWriterAdapter(processor);
+            } catch (Throwable t) {
+                System.err.println(MESSAGE_PREFIX + t);
+                return 2;
+            }
+        } else if (traceOutputFile != null) {
+            try {
+                Path path = Paths.get(transformPath(traceOutputFile));
+                traceWriter = new TraceFileWriter(path);
             } catch (Throwable t) {
                 System.err.println(MESSAGE_PREFIX + t);
                 return 2;
@@ -181,75 +223,8 @@ public final class Agent {
         JvmtiEnv jvmti = jvmtiPtr.read();
 
         List<FileSystem> temporaryFileSystems = new ArrayList<>();
-        if (autoRestrict) {
-            String classpath;
-            try (CTypeConversion.CCharPointerHolder propertyKey = toCString("java.class.path")) {
-                CCharPointerPointer propertyValuePtr = StackValue.get(CCharPointerPointer.class);
-                check(jvmti.getFunctions().GetSystemProperty().invoke(jvmti, propertyKey.get(), propertyValuePtr));
-                classpath = fromCString(propertyValuePtr.read());
-            } catch (Throwable t) {
-                System.err.println(MESSAGE_PREFIX + "auto-restrict could not determine classpath");
-                t.printStackTrace();
-                return 2;
-            }
-            String[] classpathEntries = SubstrateUtil.split(classpath, File.pathSeparator);
-            Path workDir = Paths.get(".").toAbsolutePath().normalize();
-            AddURI addURI = (target, classpathEntry, resourceLocation) -> {
-                boolean added = false;
-                if (Files.isDirectory(classpathEntry)) {
-                    Path resourcePath = classpathEntry.resolve(Paths.get(resourceLocation));
-                    if (Files.isReadable(resourcePath)) {
-                        added = target.add(resourcePath.toUri());
-                    }
-                } else {
-                    URI jarFileURI = URI.create("jar:" + classpathEntry.toUri());
-                    try {
-                        FileSystem jarFS = FileSystems.newFileSystem(jarFileURI, Collections.emptyMap());
-                        Path resourcePath = jarFS.getPath("/" + resourceLocation);
-                        if (Files.isReadable(resourcePath)) {
-                            added = target.add(resourcePath.toUri());
-                        }
-                        if (added) {
-                            temporaryFileSystems.add(jarFS);
-                        } else {
-                            jarFS.close();
-                        }
-                    } catch (IOException e) {
-                        System.err.println(MESSAGE_PREFIX + "auto-restrict could not access " + classpathEntry + " as a jar file");
-                    }
-                }
-                if (added) {
-                    System.err.println(MESSAGE_PREFIX + "auto-restrict added " + resourceLocation + " from " + workDir.relativize(classpathEntry));
-                }
-            };
-            try {
-                Map<Path, List<String>> extractionResults = NativeImage.extractEmbeddedImageArgs(workDir, classpathEntries);
-                extractionResults.forEach((cpEntry, imageArgs) -> {
-                    for (String imageArg : imageArgs) {
-                        String[] optionParts = SubstrateUtil.split(imageArg, "=");
-                        String argName = optionParts[0];
-                        if (oHJNIConfigurationResources.equals(argName)) {
-                            addURI.add(jniConfigPaths, cpEntry, optionParts[1]);
-                        } else if (oHReflectionConfigurationResources.equals(argName)) {
-                            addURI.add(reflectConfigPaths, cpEntry, optionParts[1]);
-                        } else if (oHDynamicProxyConfigurationResources.equals(argName)) {
-                            addURI.add(proxyConfigPaths, cpEntry, optionParts[1]);
-                        } else if (oHResourceConfigurationResources.equals(argName)) {
-                            addURI.add(resourceConfigPaths, cpEntry, optionParts[1]);
-                        } else if (oHConfigurationResourceRoots.equals(argName)) {
-                            String resourceLocation = optionParts[1];
-                            addURI.add(jniConfigPaths, cpEntry, resourceLocation + "/" + "jni-config.json");
-                            addURI.add(reflectConfigPaths, cpEntry, resourceLocation + "/" + "reflect-config.json");
-                            addURI.add(proxyConfigPaths, cpEntry, resourceLocation + "/" + "proxy-config.json");
-                            addURI.add(resourceConfigPaths, cpEntry, resourceLocation + "/" + "resource-config.json");
-                        }
-                    }
-                });
-            } catch (NativeImage.NativeImageError err) {
-                System.err.println(MESSAGE_PREFIX + "auto-restrict could not extract restrict configuration from classpath");
-                err.printStackTrace();
-                return 2;
-            }
+        if (autoRestrict && !addAutoRestrictConfigs(jvmti, restrictConfigs, temporaryFileSystems)) {
+            return 2;
         }
 
         JvmtiEventCallbacks callbacks = UnmanagedMemory.calloc(SizeOf.get(JvmtiEventCallbacks.class));
@@ -260,38 +235,16 @@ public final class Agent {
         accessAdvisor = new AccessAdvisor();
         try {
             ReflectAccessVerifier verifier = null;
-            if (!reflectConfigPaths.isEmpty()) {
-                Configuration configuration = new Configuration();
-                ParserConfigurationAdapter adapter = new ParserConfigurationAdapter(configuration);
-                ReflectionConfigurationParser<ConfigurationType> parser = new ReflectionConfigurationParser<>(adapter);
-                for (URI reflectConfigPath : reflectConfigPaths) {
-                    try (Reader reader = Files.newBufferedReader(Paths.get(reflectConfigPath))) {
-                        parser.parseAndRegister(reader);
-                    }
-                }
-                verifier = new ReflectAccessVerifier(configuration, accessAdvisor);
+            if (!restrictConfigs.getReflectConfigPaths().isEmpty()) {
+                verifier = new ReflectAccessVerifier(restrictConfigs.loadReflectConfig(ConfigurationSet.FAIL_ON_EXCEPTION), accessAdvisor);
             }
             ProxyAccessVerifier proxyVerifier = null;
-            if (!proxyConfigPaths.isEmpty()) {
-                ProxyConfiguration proxyConfiguration = new ProxyConfiguration();
-                ProxyConfigurationParser parser = new ProxyConfigurationParser(proxyConfiguration::add);
-                for (URI proxyConfigPath : proxyConfigPaths) {
-                    try (Reader reader = Files.newBufferedReader(Paths.get(proxyConfigPath))) {
-                        parser.parseAndRegister(reader);
-                    }
-                }
-                proxyVerifier = new ProxyAccessVerifier(proxyConfiguration, accessAdvisor);
+            if (!restrictConfigs.getProxyConfigPaths().isEmpty()) {
+                proxyVerifier = new ProxyAccessVerifier(restrictConfigs.loadProxyConfig(ConfigurationSet.FAIL_ON_EXCEPTION), accessAdvisor);
             }
             ResourceAccessVerifier resourceVerifier = null;
-            if (!resourceConfigPaths.isEmpty()) {
-                ResourceConfiguration resourceConfiguration = new ResourceConfiguration();
-                ResourceConfigurationParser parser = new ResourceConfigurationParser(new ResourceConfiguration.ParserAdapter(resourceConfiguration));
-                for (URI resourceConfigPath : resourceConfigPaths) {
-                    try (Reader reader = Files.newBufferedReader(Paths.get(resourceConfigPath))) {
-                        parser.parseAndRegister(reader);
-                    }
-                }
-                resourceVerifier = new ResourceAccessVerifier(resourceConfiguration, accessAdvisor);
+            if (!restrictConfigs.getResourceConfigPaths().isEmpty()) {
+                resourceVerifier = new ResourceAccessVerifier(restrictConfigs.loadResourceConfig(ConfigurationSet.FAIL_ON_EXCEPTION), accessAdvisor);
             }
             BreakpointInterceptor.onLoad(jvmti, callbacks, traceWriter, verifier, proxyVerifier, resourceVerifier);
         } catch (Throwable t) {
@@ -300,16 +253,8 @@ public final class Agent {
         }
         try {
             JniAccessVerifier verifier = null;
-            if (!jniConfigPaths.isEmpty()) {
-                Configuration configuration = new Configuration();
-                ParserConfigurationAdapter adapter = new ParserConfigurationAdapter(configuration);
-                ReflectionConfigurationParser<ConfigurationType> parser = new ReflectionConfigurationParser<>(adapter);
-                for (URI jniConfigPath : jniConfigPaths) {
-                    try (Reader reader = Files.newBufferedReader(Paths.get(jniConfigPath))) {
-                        parser.parseAndRegister(reader);
-                    }
-                }
-                verifier = new JniAccessVerifier(configuration, accessAdvisor);
+            if (!restrictConfigs.getJniConfigPaths().isEmpty()) {
+                verifier = new JniAccessVerifier(restrictConfigs.loadJniConfig(ConfigurationSet.FAIL_ON_EXCEPTION), accessAdvisor);
             }
             JniCallInterceptor.onLoad(traceWriter, verifier);
         } catch (Throwable t) {
@@ -321,7 +266,7 @@ public final class Agent {
             try {
                 fileSystem.close();
             } catch (IOException e) {
-                System.err.println(MESSAGE_PREFIX + "auto-restrict could not close jar-filesystem  " + fileSystem);
+                System.err.println(MESSAGE_PREFIX + "auto-restrict could not close jar filesystem " + fileSystem);
                 e.printStackTrace();
             }
         }
@@ -335,6 +280,83 @@ public final class Agent {
         return 0;
     }
 
+    interface AddURI {
+        void add(Set<URI> uris, Path classpathEntry, String resourceLocation);
+    }
+
+    private static boolean addAutoRestrictConfigs(JvmtiEnv jvmti, ConfigurationSet restrictConfigs, List<FileSystem> temporaryFileSystems) {
+        String classpath;
+        try (CCharPointerHolder propertyKey = toCString("java.class.path")) {
+            CCharPointerPointer propertyValuePtr = StackValue.get(CCharPointerPointer.class);
+            check(jvmti.getFunctions().GetSystemProperty().invoke(jvmti, propertyKey.get(), propertyValuePtr));
+            classpath = fromCString(propertyValuePtr.read());
+            check(jvmti.getFunctions().Deallocate().invoke(jvmti, propertyValuePtr.read()));
+        } catch (Throwable t) {
+            System.err.println(MESSAGE_PREFIX + "auto-restrict could not determine classpath");
+            t.printStackTrace();
+            return false;
+        }
+        String[] classpathEntries = SubstrateUtil.split(classpath, File.pathSeparator);
+        Path workDir = Paths.get(".").toAbsolutePath().normalize();
+        AddURI addURI = (target, classpathEntry, resourceLocation) -> {
+            boolean added = false;
+            if (Files.isDirectory(classpathEntry)) {
+                Path resourcePath = classpathEntry.resolve(Paths.get(resourceLocation));
+                if (Files.isReadable(resourcePath)) {
+                    added = target.add(resourcePath.toUri());
+                }
+            } else {
+                URI jarFileURI = URI.create("jar:" + classpathEntry.toUri());
+                try {
+                    FileSystem jarFS = FileSystems.newFileSystem(jarFileURI, Collections.emptyMap());
+                    Path resourcePath = jarFS.getPath("/" + resourceLocation);
+                    if (Files.isReadable(resourcePath)) {
+                        added = target.add(resourcePath.toUri());
+                    }
+                    if (added) {
+                        temporaryFileSystems.add(jarFS);
+                    } else {
+                        jarFS.close();
+                    }
+                } catch (IOException e) {
+                    System.err.println(MESSAGE_PREFIX + "auto-restrict could not access " + classpathEntry + " as a jar file");
+                }
+            }
+            if (added) {
+                System.err.println(MESSAGE_PREFIX + "auto-restrict added " + resourceLocation + " from " + workDir.relativize(classpathEntry));
+            }
+        };
+        try {
+            Map<Path, List<String>> extractionResults = NativeImage.extractEmbeddedImageArgs(workDir, classpathEntries);
+            extractionResults.forEach((cpEntry, imageArgs) -> {
+                for (String imageArg : imageArgs) {
+                    String[] optionParts = SubstrateUtil.split(imageArg, "=");
+                    String argName = optionParts[0];
+                    if (oHJNIConfigurationResources.equals(argName)) {
+                        addURI.add(restrictConfigs.getJniConfigPaths(), cpEntry, optionParts[1]);
+                    } else if (oHReflectionConfigurationResources.equals(argName)) {
+                        addURI.add(restrictConfigs.getReflectConfigPaths(), cpEntry, optionParts[1]);
+                    } else if (oHDynamicProxyConfigurationResources.equals(argName)) {
+                        addURI.add(restrictConfigs.getProxyConfigPaths(), cpEntry, optionParts[1]);
+                    } else if (oHResourceConfigurationResources.equals(argName)) {
+                        addURI.add(restrictConfigs.getResourceConfigPaths(), cpEntry, optionParts[1]);
+                    } else if (oHConfigurationResourceRoots.equals(argName)) {
+                        String resourceLocation = optionParts[1];
+                        addURI.add(restrictConfigs.getJniConfigPaths(), cpEntry, resourceLocation + "/" + FileNames.JNI_NAME);
+                        addURI.add(restrictConfigs.getReflectConfigPaths(), cpEntry, resourceLocation + "/" + FileNames.REFLECTION_NAME);
+                        addURI.add(restrictConfigs.getProxyConfigPaths(), cpEntry, resourceLocation + "/" + FileNames.DYNAMIC_PROXY_NAME);
+                        addURI.add(restrictConfigs.getResourceConfigPaths(), cpEntry, resourceLocation + "/" + FileNames.RESOURCES_NAME);
+                    }
+                }
+            });
+        } catch (NativeImage.NativeImageError err) {
+            System.err.println(MESSAGE_PREFIX + "auto-restrict could not extract restrict configuration from classpath");
+            err.printStackTrace();
+            return false;
+        }
+        return true;
+    }
+
     private static String transformPath(String path) {
         String result = path;
         if (result.contains("{pid}")) {
@@ -342,7 +364,7 @@ public final class Agent {
         }
         if (result.contains("{datetime}")) {
             DateFormat fmt = new SimpleDateFormat("yyyyMMdd'T'HHmmss'Z'");
-            fmt.setTimeZone(TraceWriter.UTC_TIMEZONE);
+            fmt.setTimeZone(UTC_TIMEZONE);
             result = result.replace("{datetime}", fmt.format(new Date()));
         }
         return result;
@@ -374,6 +396,28 @@ public final class Agent {
         if (traceWriter != null) {
             traceWriter.tracePhaseChange("unload");
             traceWriter.close();
+
+            if (configOutputDirPath != null) {
+                TraceProcessor p = ((TraceProcessorWriterAdapter) traceWriter).getProcessor();
+                try {
+                    try (JsonWriter writer = new JsonWriter(configOutputDirPath.resolve(FileNames.REFLECTION_NAME))) {
+                        p.getReflectionConfiguration().printJson(writer);
+                    }
+                    try (JsonWriter writer = new JsonWriter(configOutputDirPath.resolve(FileNames.JNI_NAME))) {
+                        p.getJniConfiguration().printJson(writer);
+                    }
+                    try (JsonWriter writer = new JsonWriter(configOutputDirPath.resolve(FileNames.DYNAMIC_PROXY_NAME))) {
+                        p.getProxyConfiguration().printJson(writer);
+                    }
+                    try (JsonWriter writer = new JsonWriter(configOutputDirPath.resolve(FileNames.RESOURCES_NAME))) {
+                        p.getResourceConfiguration().printJson(writer);
+                    }
+                } catch (IOException e) {
+                    System.err.println(MESSAGE_PREFIX + "error when writing configuration files: " + e.toString());
+                }
+                configOutputDirPath = null;
+            }
+            traceWriter = null;
         }
 
         /*

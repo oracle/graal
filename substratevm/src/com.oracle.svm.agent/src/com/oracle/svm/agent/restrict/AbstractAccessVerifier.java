@@ -41,6 +41,9 @@ import org.graalvm.nativeimage.c.type.CIntPointer;
 import org.graalvm.nativeimage.c.type.WordPointer;
 
 import com.oracle.svm.agent.jvmti.JvmtiError;
+import com.oracle.svm.configure.config.ConfigurationMethod;
+import com.oracle.svm.configure.config.ConfigurationType;
+import com.oracle.svm.configure.config.TypeConfiguration;
 import com.oracle.svm.configure.trace.AccessAdvisor;
 import com.oracle.svm.jni.nativeapi.JNIEnvironment;
 import com.oracle.svm.jni.nativeapi.JNIFieldId;
@@ -48,16 +51,16 @@ import com.oracle.svm.jni.nativeapi.JNIMethodId;
 import com.oracle.svm.jni.nativeapi.JNIObjectHandle;
 
 class AbstractAccessVerifier {
-    protected final Configuration configuration;
+    protected final TypeConfiguration configuration;
     protected final AccessAdvisor accessAdvisor;
 
-    AbstractAccessVerifier(Configuration configuration, AccessAdvisor advisor) {
+    AbstractAccessVerifier(TypeConfiguration configuration, AccessAdvisor advisor) {
         this.configuration = configuration;
         this.accessAdvisor = advisor;
     }
 
     protected boolean shouldApproveWithoutChecks(JNIEnvironment env, JNIObjectHandle callerClass) {
-        return accessAdvisor.shouldIgnore(() -> (String) getClassNameOrNull(env, callerClass));
+        return accessAdvisor.shouldIgnore(() -> getClassNameOrNull(env, callerClass));
     }
 
     protected boolean isFieldAccessible(JNIEnvironment env, JNIObjectHandle clazz, Supplier<String> name, JNIFieldId field, JNIObjectHandle declaring) {
@@ -145,7 +148,7 @@ class AbstractAccessVerifier {
         if (jvmtiFunctions().GetClassSignature().invoke(jvmtiEnv(), clazz, signaturePtr, nullPointer()) == JvmtiError.JVMTI_ERROR_NONE) {
             String className = fromCString(signaturePtr.read());
             jvmtiFunctions().Deallocate().invoke(jvmtiEnv(), signaturePtr.read());
-            return configuration.get(className);
+            return configuration.getByInternalName(className);
         }
         return null;
     }

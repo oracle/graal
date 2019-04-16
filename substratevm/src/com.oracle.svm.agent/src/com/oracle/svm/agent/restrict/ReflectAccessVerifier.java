@@ -48,6 +48,8 @@ import com.oracle.svm.agent.Agent;
 import com.oracle.svm.agent.Support.WordPredicate;
 import com.oracle.svm.agent.Support.WordSupplier;
 import com.oracle.svm.agent.jvmti.JvmtiError;
+import com.oracle.svm.configure.config.ConfigurationMethod;
+import com.oracle.svm.configure.config.TypeConfiguration;
 import com.oracle.svm.configure.trace.AccessAdvisor;
 import com.oracle.svm.jni.nativeapi.JNIEnvironment;
 import com.oracle.svm.jni.nativeapi.JNIFieldId;
@@ -58,7 +60,7 @@ import jdk.vm.ci.meta.MetaUtil;
 
 public class ReflectAccessVerifier extends AbstractAccessVerifier {
 
-    public ReflectAccessVerifier(Configuration configuration, AccessAdvisor advisor) {
+    public ReflectAccessVerifier(TypeConfiguration configuration, AccessAdvisor advisor) {
         super(configuration, advisor);
     }
 
@@ -67,7 +69,7 @@ public class ReflectAccessVerifier extends AbstractAccessVerifier {
             return true;
         }
         String className = fromJniString(env, name);
-        if (className != null && configuration.get(MetaUtil.toInternalName(className)) != null) {
+        if (className != null && configuration.get(className) != null) {
             return true;
         }
         try (CCharPointerHolder message = toCString(Agent.MESSAGE_PREFIX + "configuration does not permit access to class: " + className)) {
@@ -117,7 +119,7 @@ public class ReflectAccessVerifier extends AbstractAccessVerifier {
             return true;
         }
         JNIMethodId method = jniFunctions().getFromReflectedMethod().invoke(env, result);
-        return verifyGetMethod0(env, clazz, name, () -> signature, method, clazz);
+        return method.isNonNull() && isMethodAccessible(env, clazz, name, () -> signature, method, clazz);
     }
 
     private boolean verifyGetMethod0(JNIEnvironment env, JNIObjectHandle clazz, String name, Supplier<String> signature, JNIMethodId method, JNIObjectHandle declaring) {

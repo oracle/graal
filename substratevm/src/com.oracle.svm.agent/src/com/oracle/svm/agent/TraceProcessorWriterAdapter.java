@@ -22,22 +22,50 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.svm.agent.restrict;
+package com.oracle.svm.agent;
 
-import java.util.HashMap;
+import java.util.Arrays;
+import java.util.List;
 import java.util.Map;
 
-public class Configuration {
-    private final Map<String, ConfigurationType> types = new HashMap<>();
+import com.oracle.svm.configure.trace.TraceProcessor;
 
-    public void add(ConfigurationType type) {
-        if (types.containsKey(type.getName())) {
-            return;
-        }
-        types.put(type.getName(), type);
+public class TraceProcessorWriterAdapter extends TraceWriter {
+    private final TraceProcessor processor;
+
+    TraceProcessorWriterAdapter(TraceProcessor processor) {
+        this.processor = processor;
     }
 
-    public ConfigurationType get(String name) {
-        return types.get(name);
+    TraceProcessor getProcessor() {
+        return processor;
+    }
+
+    @Override
+    void traceEntry(Map<String, Object> entry) {
+        processor.processEntry(arraysToLists(entry));
+    }
+
+    /** {@link TraceProcessor} expects {@link List} objects instead of plain arrays. */
+    private Map<String, Object> arraysToLists(Map<String, Object> map) {
+        for (Map.Entry<String, Object> mapEntry : map.entrySet()) {
+            if (mapEntry.getValue() instanceof Object[]) {
+                mapEntry.setValue(arraysToLists((Object[]) mapEntry.getValue()));
+            }
+        }
+        return map;
+    }
+
+    private List<?> arraysToLists(Object[] array) {
+        for (int i = 0; i < array.length; i++) {
+            if (array[i] instanceof Object[]) {
+                array[i] = arraysToLists((Object[]) array[i]);
+            }
+        }
+        return Arrays.asList(array);
+    }
+
+    @Override
+    public void close() {
     }
 }

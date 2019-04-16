@@ -29,29 +29,36 @@ import java.io.Reader;
 import java.util.List;
 import java.util.Map;
 
-import com.oracle.svm.configure.config.JniConfiguration;
 import com.oracle.svm.configure.config.ProxyConfiguration;
-import com.oracle.svm.configure.config.ReflectionConfiguration;
 import com.oracle.svm.configure.config.ResourceConfiguration;
+import com.oracle.svm.configure.config.TypeConfiguration;
 import com.oracle.svm.core.util.json.JSONParser;
 
 public class TraceProcessor extends AbstractProcessor {
     private final AccessAdvisor advisor = new AccessAdvisor();
-    private final JniProcessor jniProcessor = new JniProcessor(advisor);
-    private final ReflectionProcessor reflectionProcessor = new ReflectionProcessor(advisor);
+    private final JniProcessor jniProcessor;
+    private final ReflectionProcessor reflectionProcessor;
 
     public TraceProcessor() {
+        jniProcessor = new JniProcessor(advisor);
+        reflectionProcessor = new ReflectionProcessor(advisor);
+    }
+
+    public TraceProcessor(TypeConfiguration jniConfiguration, TypeConfiguration reflectionConfiguration,
+                    ProxyConfiguration proxyConfiguration, ResourceConfiguration resourceConfiguration) {
+        jniProcessor = new JniProcessor(advisor, jniConfiguration);
+        reflectionProcessor = new ReflectionProcessor(advisor, reflectionConfiguration, proxyConfiguration, resourceConfiguration);
     }
 
     public void setFilterEnabled(boolean enabled) {
         advisor.setIgnoreInternalAccesses(enabled);
     }
 
-    public JniConfiguration getJniConfiguration() {
+    public TypeConfiguration getJniConfiguration() {
         return jniProcessor.getConfiguration();
     }
 
-    public ReflectionConfiguration getReflectionConfiguration() {
+    public TypeConfiguration getReflectionConfiguration() {
         return reflectionProcessor.getConfiguration();
     }
 
@@ -82,7 +89,7 @@ public class TraceProcessor extends AbstractProcessor {
     }
 
     @Override
-    void processEntry(Map<String, ?> entry) {
+    public void processEntry(Map<String, ?> entry) {
         String tracer = (String) entry.get("tracer");
         switch (tracer) {
             case "meta": {

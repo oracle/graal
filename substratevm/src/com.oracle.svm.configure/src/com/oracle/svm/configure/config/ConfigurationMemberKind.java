@@ -22,48 +22,43 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.svm.agent.restrict;
+package com.oracle.svm.configure.config;
 
-import java.util.ArrayList;
-import java.util.List;
-import java.util.regex.Pattern;
+public enum ConfigurationMemberKind {
+    /** The member is public and declared in the type in question. */
+    DECLARED_AND_PUBLIC,
 
-import com.oracle.svm.hosted.ResourcesFeature.ResourcesRegistry;
+    /** The member is declared in the type in question. */
+    DECLARED,
 
-public class ResourceConfiguration {
-    public static class ParserAdapter implements ResourcesRegistry {
-        private final ResourceConfiguration configuration;
+    /** The member is public and is either declared or inherited in the type in question. */
+    PUBLIC,
 
-        public ParserAdapter(ResourceConfiguration configuration) {
-            this.configuration = configuration;
-        }
+    /** The member is either declared or inherited in the type in question. */
+    PRESENT;
 
-        @Override
-        public void addResources(String pattern) {
-            configuration.add(Pattern.compile(pattern));
-        }
-
-        @Override
-        public void addResourceBundles(String name) {
-        }
+    private boolean isMoreSpecificThan(ConfigurationMemberKind other) {
+        return other == null || ordinal() < other.ordinal();
     }
 
-    private List<Pattern> patterns = new ArrayList<>();
-
-    public void add(Pattern p) {
-        patterns.add(p);
+    public ConfigurationMemberKind intersect(ConfigurationMemberKind other) {
+        if (equals(DECLARED) && PUBLIC.equals(other) || equals(PUBLIC) && DECLARED.equals(other)) {
+            return DECLARED_AND_PUBLIC;
+        }
+        return this.isMoreSpecificThan(other) ? this : other;
     }
 
-    public boolean anyMatches(String s) {
-        /*
-         * Naive -- if the need arises, we could match in the order of most frequently matched
-         * patterns, or somehow merge the patterns into a single big pattern.
-         */
-        for (Pattern pattern : patterns) {
-            if (pattern.matcher(s).matches()) {
-                return true;
-            }
+    public ConfigurationMemberKind union(ConfigurationMemberKind other) {
+        return equals(other) ? this : PRESENT;
+    }
+
+    public boolean includes(ConfigurationMemberKind other) {
+        if (equals(DECLARED_AND_PUBLIC)) {
+            return DECLARED.equals(other) || PUBLIC.equals(other);
         }
-        return false;
+        if (equals(PRESENT)) {
+            return true;
+        }
+        return equals(other);
     }
 }
