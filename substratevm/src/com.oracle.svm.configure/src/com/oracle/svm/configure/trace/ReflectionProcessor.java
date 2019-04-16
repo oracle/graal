@@ -187,7 +187,7 @@ class ReflectionProcessor extends AbstractProcessor {
         int classend = descriptor.lastIndexOf('.', sigbegin - 1);
         String qualifiedClass = descriptor.substring(0, classend);
         String methodName = descriptor.substring(classend + 1, sigbegin);
-        String signature = descriptor.substring(sigbegin + 1);
+        String signature = descriptor.substring(sigbegin);
         configuration.getOrCreateType(qualifiedClass).addMethod(methodName, signature, ConfigurationMemberKind.DECLARED);
     }
 
