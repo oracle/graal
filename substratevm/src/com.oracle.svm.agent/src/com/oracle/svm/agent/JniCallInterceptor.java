@@ -48,11 +48,13 @@ import com.oracle.svm.agent.jvmti.JvmtiEnv;
 import com.oracle.svm.agent.restrict.JniAccessVerifier;
 import com.oracle.svm.core.c.function.CEntryPointOptions;
 import com.oracle.svm.jni.nativeapi.JNIEnvironment;
+import com.oracle.svm.jni.nativeapi.JNIErrors;
 import com.oracle.svm.jni.nativeapi.JNIFieldId;
 import com.oracle.svm.jni.nativeapi.JNIFunctionPointerTypes.DefineClassFunctionPointer;
 import com.oracle.svm.jni.nativeapi.JNIFunctionPointerTypes.FindClassFunctionPointer;
 import com.oracle.svm.jni.nativeapi.JNIFunctionPointerTypes.GetFieldIDFunctionPointer;
 import com.oracle.svm.jni.nativeapi.JNIFunctionPointerTypes.GetMemberIDFunctionPointer;
+import com.oracle.svm.jni.nativeapi.JNIFunctionPointerTypes.ThrowNewFunctionPointer;
 import com.oracle.svm.jni.nativeapi.JNIMethodId;
 import com.oracle.svm.jni.nativeapi.JNINativeInterface;
 import com.oracle.svm.jni.nativeapi.JNIObjectHandle;
@@ -180,6 +182,20 @@ final class JniCallInterceptor {
         return result;
     }
 
+    @CEntryPoint(name = "ThrowNew")
+    @CEntryPointOptions(prologue = AgentIsolate.Prologue.class, epilogue = AgentIsolate.Epilogue.class)
+    private static int throwNew(JNIEnvironment env, JNIObjectHandle clazz, CCharPointer message) {
+        JNIObjectHandle callerClass = getCallerClass(env);
+        if (accessVerifier != null && !accessVerifier.verifyThrowNew(env, clazz, callerClass)) {
+            return JNIErrors.JNI_EINVAL();
+        }
+        int result = jniFunctions().getThrowNew().invoke(env, clazz, message);
+        if (shouldTrace()) {
+            traceCall(env, "ThrowNew", clazz, nullHandle(), callerClass, (result == JNIErrors.JNI_OK()), TraceWriter.UNKNOWN_VALUE);
+        }
+        return result;
+    }
+
     public static void onLoad(TraceWriter writer, JniAccessVerifier verifier) {
         accessVerifier = verifier;
         traceWriter = writer;
@@ -195,6 +211,7 @@ final class JniCallInterceptor {
         functions.setGetStaticMethodID(getStaticMethodIDLiteral.getFunctionPointer());
         functions.setGetFieldID(getFieldIDLiteral.getFunctionPointer());
         functions.setGetStaticFieldID(getStaticFieldIDLiteral.getFunctionPointer());
+        functions.setThrowNew(throwNewLiteral.getFunctionPointer());
         check(jvmti.getFunctions().SetJNIFunctionTable().invoke(jvmti, functions));
         check(jvmti.getFunctions().Deallocate().invoke(jvmti, functions));
     }
@@ -223,4 +240,7 @@ final class JniCallInterceptor {
 
     private static final CEntryPointLiteral<GetFieldIDFunctionPointer> getStaticFieldIDLiteral = CEntryPointLiteral.create(JniCallInterceptor.class,
                     "getStaticFieldID", JNIEnvironment.class, JNIObjectHandle.class, CCharPointer.class, CCharPointer.class);
+
+    private static final CEntryPointLiteral<ThrowNewFunctionPointer> throwNewLiteral = CEntryPointLiteral.create(JniCallInterceptor.class,
+                    "throwNew", JNIEnvironment.class, JNIObjectHandle.class, CCharPointer.class);
 }

@@ -28,6 +28,7 @@ import java.util.List;
 import java.util.Map;
 
 import com.oracle.svm.configure.config.ConfigurationMemberKind;
+import com.oracle.svm.configure.config.ConfigurationMethod;
 import com.oracle.svm.configure.config.TypeConfiguration;
 
 import jdk.vm.ci.meta.MetaUtil;
@@ -98,6 +99,15 @@ class JniProcessor extends AbstractProcessor {
                 expectSize(args, 2);
                 String name = (String) args.get(0);
                 configuration.getOrCreateType(declaringClassOrClazz).addField(name, memberKind);
+                break;
+            }
+            case "ThrowNew": {
+                expectSize(args, 1); // exception message, ignore
+                String name = ConfigurationMethod.CONSTRUCTOR_NAME;
+                String signature = "(Ljava/lang/String;)V";
+                if (!advisor.shouldIgnoreJniMethodLookup(() -> clazz, () -> name, () -> signature, () -> callerClass)) {
+                    configuration.getOrCreateType(declaringClassOrClazz).addMethod(name, signature, memberKind);
+                }
                 break;
             }
         }
