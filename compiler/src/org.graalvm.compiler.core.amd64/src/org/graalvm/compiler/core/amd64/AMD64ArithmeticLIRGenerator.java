@@ -57,6 +57,8 @@ import static org.graalvm.compiler.asm.amd64.AMD64Assembler.VexRVMOp.VADDSD;
 import static org.graalvm.compiler.asm.amd64.AMD64Assembler.VexRVMOp.VADDSS;
 import static org.graalvm.compiler.asm.amd64.AMD64Assembler.VexRVMOp.VDIVSD;
 import static org.graalvm.compiler.asm.amd64.AMD64Assembler.VexRVMOp.VDIVSS;
+import static org.graalvm.compiler.asm.amd64.AMD64Assembler.VexRVMOp.VFMADD231SD;
+import static org.graalvm.compiler.asm.amd64.AMD64Assembler.VexRVMOp.VFMADD231SS;
 import static org.graalvm.compiler.asm.amd64.AMD64Assembler.VexRVMOp.VMULSD;
 import static org.graalvm.compiler.asm.amd64.AMD64Assembler.VexRVMOp.VMULSS;
 import static org.graalvm.compiler.asm.amd64.AMD64Assembler.VexRVMOp.VORPD;
@@ -120,6 +122,7 @@ import org.graalvm.compiler.lir.amd64.AMD64Move;
 import org.graalvm.compiler.lir.amd64.AMD64MulDivOp;
 import org.graalvm.compiler.lir.amd64.AMD64ShiftOp;
 import org.graalvm.compiler.lir.amd64.AMD64SignExtendOp;
+import org.graalvm.compiler.lir.amd64.AMD64Ternary;
 import org.graalvm.compiler.lir.amd64.AMD64Unary;
 import org.graalvm.compiler.lir.amd64.vector.AMD64VectorBinary;
 import org.graalvm.compiler.lir.amd64.vector.AMD64VectorBinary.AVXBinaryOp;
@@ -957,6 +960,21 @@ public class AMD64ArithmeticLIRGenerator extends ArithmeticLIRGenerator implemen
             getLIRGen().append(new AMD64Unary.RMOp(BSR, QWORD, result, asAllocatable(value)));
         } else {
             getLIRGen().append(new AMD64Unary.RMOp(BSR, DWORD, result, asAllocatable(value)));
+        }
+        return result;
+    }
+
+    @Override
+    public Variable emitFusedMultiplyAdd(Value a, Value b, Value c) {
+        Variable result = getLIRGen().newVariable(LIRKind.combine(a, b, c));
+        assert a.getPlatformKind().equals(b.getPlatformKind());
+        assert b.getPlatformKind().equals(c.getPlatformKind());
+
+        if (a.getPlatformKind() == AMD64Kind.DOUBLE) {
+            getLIRGen().append(new AMD64Ternary.ThreeOp(VFMADD231SD, AVXSize.XMM, result, asAllocatable(a), asAllocatable(b), asAllocatable(c)));
+        } else {
+            assert a.getPlatformKind() == AMD64Kind.SINGLE;
+            getLIRGen().append(new AMD64Ternary.ThreeOp(VFMADD231SS, AVXSize.XMM, result, asAllocatable(a), asAllocatable(b), asAllocatable(c)));
         }
         return result;
     }
