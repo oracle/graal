@@ -56,7 +56,7 @@ _exe_suffix = mx.exe_suffix('')
 
 _vm_configs = {}
 
-mx_sdk.register_graalvm_component(mx_sdk.GraalVmJreComponent(
+mx_sdk.register_graalvm_component(mx_sdk.GraalVmJdkComponent(
     suite=_suite,
     name='Component installer',
     short_name='gu',
