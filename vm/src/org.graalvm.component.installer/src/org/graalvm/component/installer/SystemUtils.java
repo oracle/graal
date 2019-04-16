@@ -252,4 +252,9 @@ public class SystemUtils {
         return null;
     }
 
+    static boolean licenseTracking = false;
+
+    public static boolean isLicenseTrackingEnabled() {
+        return licenseTracking;
+    }
 }

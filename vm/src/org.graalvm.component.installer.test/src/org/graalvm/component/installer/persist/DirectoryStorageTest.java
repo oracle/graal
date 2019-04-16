@@ -488,7 +488,7 @@ public class DirectoryStorageTest extends TestBase {
     public void testAcceptLicense() throws Exception {
         copyDir("list1", registryPath);
         ComponentInfo info = loadLastComponent("fastr");
-
+        enableLicensesForTesting();
         storage.recordLicenseAccepted(info, "cafebabe", "This is a dummy license", null);
         Path p = registryPath.resolve(SystemUtils.fromCommonString("licenses/cafebabe.accepted/org.graalvm.fastr"));
         Path p2 = registryPath.resolve(SystemUtils.fromCommonString("licenses/cafebabe"));
@@ -505,8 +505,40 @@ public class DirectoryStorageTest extends TestBase {
         Path p = registryPath.resolve(SystemUtils.fromCommonString("licenses/cafebabe.accepted/org.graalvm.fastr"));
         Files.createDirectories(p.getParent());
         Files.write(p, Arrays.asList("ahoj"));
+
+        enableLicensesForTesting();
         assertNotNull(storage.licenseAccepted(info, "cafebabe"));
         assertNull(storage.licenseAccepted(info2, "cafebabe"));
+    }
+
+    /**
+     * Checks that license management is disabled, that is no license is reported as accepted even
+     * if the data (by some miracle) exist.
+     */
+    @Test
+    public void testLicensesDecativated() throws Exception {
+        copyDir("list1", registryPath);
+        ComponentInfo info = loadLastComponent("fastr");
+
+        Path p = registryPath.resolve(SystemUtils.fromCommonString("licenses/cafebabe.accepted/org.graalvm.fastr"));
+        Files.createDirectories(p.getParent());
+        Files.write(p, Arrays.asList("ahoj"));
+        assertNull(storage.licenseAccepted(info, "cafebabe"));
+    }
+
+    /**
+     * Checks that no license is recorded, as the feature must be disabled.
+     */
+    @Test
+    public void testLicensesNotRecorded() throws Exception {
+        copyDir("list1", registryPath);
+        ComponentInfo info = loadLastComponent("fastr");
+
+        Path p = registryPath.resolve(SystemUtils.fromCommonString("licenses/cafebabe.accepted/org.graalvm.fastr"));
+        Files.createDirectories(p.getParent());
+        Files.write(p, Arrays.asList("ahoj"));
+
+        assertNull(storage.licenseAccepted(info, "cafebabe"));
     }
 
     /**

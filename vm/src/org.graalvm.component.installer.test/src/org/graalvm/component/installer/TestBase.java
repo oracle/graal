@@ -44,6 +44,7 @@ import java.util.Enumeration;
 import java.util.ResourceBundle;
 import java.util.jar.JarEntry;
 import java.util.jar.JarFile;
+import org.junit.After;
 
 import org.junit.AfterClass;
 import org.junit.ClassRule;
@@ -643,5 +644,14 @@ public class TestBase implements Feedback {
     @Override
     public Path getLocalCache(URL location) {
         return null;
+    }
+
+    @After
+    public void disableLicenseAfterTest() {
+        SystemUtils.licenseTracking = false;
+    }
+
+    public static void enableLicensesForTesting() {
+        SystemUtils.licenseTracking = true;
     }
 }

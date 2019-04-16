@@ -134,7 +134,7 @@ public class UpgradeCommand implements InstallerCommand {
         }
         ComponentInfo info = configureProcess();
         boolean workDone;
-        
+
         if (allowDistUpgrades) {
             workDone = helper.installGraalCore(info);
         } else {

@@ -535,6 +535,9 @@ public class DirectoryStorage implements ManagementStorage {
 
     @Override
     public Date licenseAccepted(ComponentInfo info, String licenseID) {
+        if (!SystemUtils.isLicenseTrackingEnabled()) {
+            return null;
+        }
         checkLicenseID(licenseID);
         try {
             String fn = MessageFormat.format(LICENSE_FILE_TEMPLATE, licenseID, info.getId());
@@ -550,6 +553,9 @@ public class DirectoryStorage implements ManagementStorage {
 
     @Override
     public Map<String, Collection<String>> findAcceptedLicenses() {
+        if (!SystemUtils.isLicenseTrackingEnabled()) {
+            return Collections.emptyMap();
+        }
         Path licDir = registryPath.resolve(LICENSE_DIR);
         Map<String, Collection<String>> result = new HashMap<>();
         try {
@@ -580,6 +586,9 @@ public class DirectoryStorage implements ManagementStorage {
 
     @Override
     public void recordLicenseAccepted(ComponentInfo info, String licenseID, String licenseText, Date d) throws IOException {
+        if (!SystemUtils.isLicenseTrackingEnabled()) {
+            return;
+        }
         if (licenseID == null) {
             clearRecordedLicenses();
             return;
