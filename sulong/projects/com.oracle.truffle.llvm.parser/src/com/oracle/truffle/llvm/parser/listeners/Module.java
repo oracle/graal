@@ -29,7 +29,7 @@
  */
 package com.oracle.truffle.llvm.parser.listeners;
 
-import java.util.LinkedList;
+import java.util.ArrayDeque;
 
 import com.oracle.truffle.llvm.parser.model.IRScope;
 import com.oracle.truffle.llvm.parser.model.ModelModule;
@@ -67,7 +67,7 @@ public final class Module implements ParserListener {
 
     private final IRScope scope;
 
-    private final LinkedList<FunctionDefinition> functionQueue;
+    private final ArrayDeque<FunctionDefinition> functionQueue;
 
     private final LLSourceBuilder llSource;
 
@@ -77,7 +77,7 @@ public final class Module implements ParserListener {
         types = new Types(module);
         this.scope = scope;
         this.llSource = llSource;
-        functionQueue = new LinkedList<>();
+        functionQueue = new ArrayDeque<>();
     }
 
     private static final int STRTAB_RECORD_OFFSET = 2;

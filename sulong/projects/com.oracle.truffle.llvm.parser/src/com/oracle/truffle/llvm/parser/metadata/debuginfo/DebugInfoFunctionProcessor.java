@@ -29,7 +29,9 @@
  */
 package com.oracle.truffle.llvm.parser.metadata.debuginfo;
 
-import java.util.LinkedList;
+import static com.oracle.truffle.llvm.parser.metadata.debuginfo.DebugInfoCache.getDebugInfo;
+
+import java.util.ArrayDeque;
 
 import com.oracle.truffle.api.source.Source;
 import com.oracle.truffle.api.source.SourceSection;
@@ -56,13 +58,11 @@ import com.oracle.truffle.llvm.parser.model.visitors.FunctionVisitor;
 import com.oracle.truffle.llvm.parser.model.visitors.InstructionVisitorAdapter;
 import com.oracle.truffle.llvm.parser.nodes.LLVMSymbolReadResolver;
 import com.oracle.truffle.llvm.runtime.LLVMContext;
-import com.oracle.truffle.llvm.runtime.debug.type.LLVMSourceFunctionType;
-import com.oracle.truffle.llvm.runtime.debug.scope.LLVMSourceSymbol;
-import com.oracle.truffle.llvm.runtime.debug.type.LLVMSourceType;
 import com.oracle.truffle.llvm.runtime.debug.scope.LLVMSourceLocation;
+import com.oracle.truffle.llvm.runtime.debug.scope.LLVMSourceSymbol;
+import com.oracle.truffle.llvm.runtime.debug.type.LLVMSourceFunctionType;
+import com.oracle.truffle.llvm.runtime.debug.type.LLVMSourceType;
 import com.oracle.truffle.llvm.runtime.types.MetaType;
-
-import static com.oracle.truffle.llvm.parser.metadata.debuginfo.DebugInfoCache.getDebugInfo;
 
 public final class DebugInfoFunctionProcessor {
 
@@ -145,7 +145,7 @@ public final class DebugInfoFunctionProcessor {
     private final class SymbolProcessor implements FunctionVisitor, InstructionVisitorAdapter {
 
         private final SourceFunction function;
-        private final LinkedList<Integer> removeFromBlock = new LinkedList<>();
+        private final ArrayDeque<Integer> removeFromBlock = new ArrayDeque<>();
 
         private int blockInstIndex = 0;
         private DbgValueInstruction lastDbgValue = null;
