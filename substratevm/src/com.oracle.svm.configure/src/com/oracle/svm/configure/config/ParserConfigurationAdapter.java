@@ -22,14 +22,10 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.svm.agent.restrict;
+package com.oracle.svm.configure.config;
 
 import java.util.List;
 
-import com.oracle.svm.configure.config.ConfigurationMemberKind;
-import com.oracle.svm.configure.config.ConfigurationMethod;
-import com.oracle.svm.configure.config.ConfigurationType;
-import com.oracle.svm.configure.config.TypeConfiguration;
 import com.oracle.svm.hosted.config.ReflectionConfigurationParserDelegate;
 
 public class ParserConfigurationAdapter implements ReflectionConfigurationParserDelegate<ConfigurationType> {

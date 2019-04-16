@@ -22,31 +22,29 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.svm.agent;
+package com.oracle.svm.configure.config;
 
 import java.io.IOException;
 import java.io.Reader;
 import java.net.URI;
 import java.nio.file.Files;
-import java.nio.file.NoSuchFileException;
 import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.util.Arrays;
 import java.util.Collection;
 import java.util.LinkedHashSet;
 import java.util.Set;
+import java.util.function.Function;
 
-import com.oracle.svm.agent.restrict.ParserConfigurationAdapter;
-import com.oracle.svm.configure.config.ProxyConfiguration;
-import com.oracle.svm.configure.config.ResourceConfiguration;
-import com.oracle.svm.configure.config.TypeConfiguration;
 import com.oracle.svm.hosted.config.ConfigurationDirectories;
 import com.oracle.svm.hosted.config.ConfigurationParser;
 import com.oracle.svm.hosted.config.ProxyConfigurationParser;
 import com.oracle.svm.hosted.config.ReflectionConfigurationParser;
 import com.oracle.svm.hosted.config.ResourceConfigurationParser;
 
-class ConfigurationSet {
+public class ConfigurationSet {
+    public static final Function<IOException, Exception> FAIL_ON_EXCEPTION = e -> e;
+
     private final Set<URI> jniConfigPaths = new LinkedHashSet<>();
     private final Set<URI> reflectConfigPaths = new LinkedHashSet<>();
     private final Set<URI> proxyConfigPaths = new LinkedHashSet<>();
@@ -57,6 +55,10 @@ class ConfigurationSet {
         reflectConfigPaths.add(path.resolve(ConfigurationDirectories.FileNames.REFLECTION_NAME).toUri());
         proxyConfigPaths.add(path.resolve(ConfigurationDirectories.FileNames.DYNAMIC_PROXY_NAME).toUri());
         resourceConfigPaths.add(path.resolve(ConfigurationDirectories.FileNames.RESOURCES_NAME).toUri());
+    }
+
+    public boolean isEmpty() {
+        return jniConfigPaths.isEmpty() && reflectConfigPaths.isEmpty() && proxyConfigPaths.isEmpty() && resourceConfigPaths.isEmpty();
     }
 
     public Set<URI> getJniConfigPaths() {
@@ -75,41 +77,44 @@ class ConfigurationSet {
         return resourceConfigPaths;
     }
 
-    public TypeConfiguration loadJniConfig(boolean skipMissing) throws IOException {
-        return loadTypeConfig(jniConfigPaths, skipMissing);
+    public TypeConfiguration loadJniConfig(Function<IOException, Exception> exceptionHandler) throws Exception {
+        return loadTypeConfig(jniConfigPaths, exceptionHandler);
     }
 
-    public TypeConfiguration loadReflectConfig(boolean skipMissing) throws IOException {
-        return loadTypeConfig(reflectConfigPaths, skipMissing);
+    public TypeConfiguration loadReflectConfig(Function<IOException, Exception> exceptionHandler) throws Exception {
+        return loadTypeConfig(reflectConfigPaths, exceptionHandler);
     }
 
-    public ProxyConfiguration loadProxyConfig(boolean skipMissing) throws IOException {
+    public ProxyConfiguration loadProxyConfig(Function<IOException, Exception> exceptionHandler) throws Exception {
         ProxyConfiguration proxyConfiguration = new ProxyConfiguration();
-        loadConfig(proxyConfigPaths, new ProxyConfigurationParser(types -> proxyConfiguration.add(Arrays.asList(types))), skipMissing);
+        loadConfig(proxyConfigPaths, new ProxyConfigurationParser(types -> proxyConfiguration.add(Arrays.asList(types))), exceptionHandler);
         return proxyConfiguration;
     }
 
-    public ResourceConfiguration loadResourceConfig(boolean skipMissing) throws IOException {
+    public ResourceConfiguration loadResourceConfig(Function<IOException, Exception> exceptionHandler) throws Exception {
         ResourceConfiguration resourceConfiguration = new ResourceConfiguration();
-        loadConfig(resourceConfigPaths, new ResourceConfigurationParser(new ResourceConfiguration.ParserAdapter(resourceConfiguration)), skipMissing);
+        loadConfig(resourceConfigPaths, new ResourceConfigurationParser(new ResourceConfiguration.ParserAdapter(resourceConfiguration)), exceptionHandler);
         return resourceConfiguration;
     }
 
-    private static TypeConfiguration loadTypeConfig(Collection<URI> uris, boolean skipMissing) throws IOException {
+    private static TypeConfiguration loadTypeConfig(Collection<URI> uris, Function<IOException, Exception> exceptionHandler) throws Exception {
         TypeConfiguration configuration = new TypeConfiguration();
-        loadConfig(uris, new ReflectionConfigurationParser<>(new ParserConfigurationAdapter(configuration)), skipMissing);
+        loadConfig(uris, new ReflectionConfigurationParser<>(new ParserConfigurationAdapter(configuration)), exceptionHandler);
         return configuration;
     }
 
-    private static void loadConfig(Collection<URI> configPaths, ConfigurationParser reflectParser, boolean skipMissing) throws IOException {
+    private static void loadConfig(Collection<URI> configPaths, ConfigurationParser reflectParser, Function<IOException, Exception> exceptionHandler) throws Exception {
         for (URI path : configPaths) {
             try (Reader reader = Files.newBufferedReader(Paths.get(path))) {
                 reflectParser.parseAndRegister(reader);
-            } catch (NoSuchFileException e) {
-                if (!skipMissing) {
+            } catch (IOException ioe) {
+                Exception e = ioe;
+                if (exceptionHandler != null) {
+                    e = exceptionHandler.apply(ioe);
+                }
+                if (e != null) {
                     throw e;
                 }
-                System.err.println(Agent.MESSAGE_PREFIX + "warning: configuration " + path + " could not be found, skipping");
             }
         }
     }
