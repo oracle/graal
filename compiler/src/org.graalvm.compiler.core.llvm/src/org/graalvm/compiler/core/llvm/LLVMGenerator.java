@@ -948,7 +948,8 @@ public class LLVMGenerator implements LIRGeneratorTool {
 
     @Override
     public void emitPause() {
-//        throw unimplemented();
+        // this will be implemented as part of issue #1126. For now, we just do nothing.
+        // throw unimplemented();
     }
 
     @Override
@@ -1291,7 +1292,7 @@ public class LLVMGenerator implements LIRGeneratorTool {
         public Value emitBitCount(Value operand) {
             LLVMValueRef op = getVal(operand);
             LLVMValueRef answer = builder.buildCtpop(op);
-            answer = builder.buildIntegerConvert(answer, 32);
+            answer = builder.buildIntegerConvert(answer, LLVMIRBuilder.integerTypeWidth(builder.intType()));
             return new LLVMVariable(answer);
         }
 
@@ -1343,7 +1344,7 @@ public class LLVMGenerator implements LIRGeneratorTool {
         public Value emitCountLeadingZeros(Value value) {
             LLVMValueRef op = getVal(value);
             LLVMValueRef answer = builder.buildCtlz(op);
-            answer = builder.buildIntegerConvert(answer, 32);
+            answer = builder.buildIntegerConvert(answer, LLVMIRBuilder.integerTypeWidth(builder.intType()));
             return new LLVMVariable(answer);
         }
 
@@ -1351,18 +1352,19 @@ public class LLVMGenerator implements LIRGeneratorTool {
         public Value emitCountTrailingZeros(Value value) {
             LLVMValueRef op = getVal(value);
             LLVMValueRef answer = builder.buildCttz(op);
-            answer = builder.buildIntegerConvert(answer, 32);
+            answer = builder.buildIntegerConvert(answer, LLVMIRBuilder.integerTypeWidth(builder.intType()));
             return new LLVMVariable(answer);
         }
 
         @Override
         public Value emitRound(Value value, RoundingMode mode) {
+            // This should be implemented, see #1168
             return null;
         }
 
         @Override
         public void emitCompareOp(AArch64Kind cmpKind, Variable left, Value right) {
-
+            // This should be implemented, see #1168
         }
     }
 }

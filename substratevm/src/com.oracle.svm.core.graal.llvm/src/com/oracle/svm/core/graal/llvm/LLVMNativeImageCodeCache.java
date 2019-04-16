@@ -419,7 +419,6 @@ public class LLVMNativeImageCodeCache extends NativeImageCodeCache {
             cmd.add("-o");
             cmd.add(outputPath);
             cmd.add(inputPath);
-            System.err.println("LLVMOPT called with cmd "+cmd);
             ProcessBuilder pb = new ProcessBuilder(cmd);
             pb.redirectErrorStream(true);
             Process p = pb.start();
@@ -455,7 +454,6 @@ public class LLVMNativeImageCodeCache extends NativeImageCodeCache {
             cmd.add("-o");
             cmd.add(outputPath);
             cmd.add(inputPath);
-            System.err.println("LLVMCOMP called with cmd = "+cmd);
             ProcessBuilder pb = new ProcessBuilder(cmd);
             pb.redirectErrorStream(true);
             Process p = pb.start();
