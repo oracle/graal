@@ -60,12 +60,12 @@ import sun.misc.Unsafe;
 public class AArch64GraphBuilderPlugins {
 
     public static void register(Plugins plugins, BytecodeProvider bytecodeProvider, boolean explicitUnsafeNullChecks,
-                                boolean registerMathPlugins) {
-        register(plugins, bytecodeProvider,explicitUnsafeNullChecks,true);
+                    boolean registerMathPlugins) {
+        register(plugins, bytecodeProvider, explicitUnsafeNullChecks, true);
     }
 
     public static void register(Plugins plugins, BytecodeProvider bytecodeProvider, boolean explicitUnsafeNullChecks,
-                                boolean registerMathPlugins, boolean emitJDK9StringSubstitutions) {
+                    boolean registerMathPlugins, boolean emitJDK9StringSubstitutions) {
         InvocationPlugins invocationPlugins = plugins.getInvocationPlugins();
         invocationPlugins.defer(new Runnable() {
             @Override
@@ -76,8 +76,8 @@ public class AArch64GraphBuilderPlugins {
                     registerMathPlugins(invocationPlugins);
                 }
                 if (emitJDK9StringSubstitutions) {
-                     registerStringLatin1Plugins(invocationPlugins, bytecodeProvider);
-                     registerStringUTF16Plugins(invocationPlugins, bytecodeProvider);
+                    registerStringLatin1Plugins(invocationPlugins, bytecodeProvider);
+                    registerStringUTF16Plugins(invocationPlugins, bytecodeProvider);
                 }
                 registerUnsafePlugins(invocationPlugins, bytecodeProvider);
                 // This is temporarily disabled until we implement correct emitting of the CAS

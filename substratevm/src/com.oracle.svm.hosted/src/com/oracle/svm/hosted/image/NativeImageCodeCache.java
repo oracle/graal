@@ -96,9 +96,8 @@ public abstract class NativeImageCodeCache {
 
     private final Map<JavaConstant, String> constantReasons = new HashMap<>();
 
-
     public NativeImageCodeCache(Map<HostedMethod, CompilationResult> compilations, NativeImageHeap imageHeap) {
-        this (compilations, imageHeap, ImageSingletons.lookup(Platform.class));
+        this(compilations, imageHeap, ImageSingletons.lookup(Platform.class));
     }
 
     public NativeImageCodeCache(Map<HostedMethod, CompilationResult> compilations, NativeImageHeap imageHeap, Platform targetPlatform) {

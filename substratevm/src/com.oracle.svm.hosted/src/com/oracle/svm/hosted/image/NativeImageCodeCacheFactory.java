@@ -30,8 +30,7 @@ import org.graalvm.nativeimage.Platform;
 
 public abstract class NativeImageCodeCacheFactory {
 
-
-    public  NativeImageCodeCache newCodeCache(CompileQueue compileQueue, NativeImageHeap heap) {
+    public NativeImageCodeCache newCodeCache(CompileQueue compileQueue, NativeImageHeap heap) {
         return newCodeCache(compileQueue, heap, ImageSingletons.lookup(Platform.class));
     }
 
