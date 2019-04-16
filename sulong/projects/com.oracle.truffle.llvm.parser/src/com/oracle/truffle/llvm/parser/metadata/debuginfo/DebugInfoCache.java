@@ -65,8 +65,9 @@ final class DebugInfoCache {
     }
 
     LLVMSourceSymbol getSourceSymbol(MDBaseNode mdVariable, boolean isStatic) {
-        if (parsedVariables.containsKey(mdVariable)) {
-            return parsedVariables.get(mdVariable);
+        LLVMSourceSymbol lookup = parsedVariables.get(mdVariable);
+        if (lookup != null) {
+            return lookup;
         }
 
         LLVMSourceLocation location = scopeBuilder.buildLocation(mdVariable);
