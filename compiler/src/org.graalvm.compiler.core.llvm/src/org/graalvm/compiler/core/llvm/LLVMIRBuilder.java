@@ -59,13 +59,13 @@ public class LLVMIRBuilder {
     private LLVMBuilderRef builder;
 
     private String functionName;
-    private final boolean trackPointers = false;
+    private final boolean trackPointers;
     private LLVMValueRef gcRegisterFunction;
 
-    protected LLVMIRBuilder(String functionName, LLVMContextRef context, boolean notrackPointers) {
+    protected LLVMIRBuilder(String functionName, LLVMContextRef context, boolean trackPointers) {
         this.context = context;
         this.functionName = functionName;
-     //   this.trackPointers = trackPointers;
+        this.trackPointers = trackPointers;
 
         this.module = LLVM.LLVMModuleCreateWithNameInContext(functionName, context);
         this.builder = LLVM.LLVMCreateBuilderInContext(context);
@@ -544,42 +544,30 @@ public class LLVMIRBuilder {
 
     LLVMValueRef buildCall(LLVMValueRef callee, long statepointId, LLVMValueRef... args) {
         LLVMValueRef result;
-        if (false) {
-            //if (trackPointers) {
+        if (trackPointers) {
             result = buildCall(callee, args);
             addCallSiteAttribute(result, "statepoint-id", Long.toString(statepointId));
         } else {
-            LLVMTypeRef returnType = LLVM.LLVMGetReturnType(LLVM.LLVMGetElementType(LLVM.LLVMTypeOf(callee)));
-            LLVMTypeRef patchpointType = functionType(returnType, true, longType(), intType(), rawPointerType(), intType());
-            LLVMValueRef[] patchpointArgs = new LLVMValueRef[4 + args.length];
-            patchpointArgs[0] = constantLong(statepointId);
-            patchpointArgs[1] = constantInt(0); /* Patch bytes */
-            patchpointArgs[2] = buildBitcast(callee, rawPointerType());
-            patchpointArgs[3] = constantInt(args.length);
-            System.arraycopy(args, 0, patchpointArgs, 4, args.length);
-
-            result = buildIntrinsicCall("llvm.experimental.patchpoint." + intrinsicType(returnType), patchpointType, patchpointArgs);
-/*
 
             LLVMTypeRef calleeType = typeOf(callee);
             LLVMTypeRef statepointType = functionType(tokenType(), true, longType(), intType(), calleeType, intType(), intType());
 
             LLVMValueRef[] statepointArgs = new LLVMValueRef[args.length + 7];
             statepointArgs[0] = constantLong(statepointId);
-            statepointArgs[1] = constantInt(0);
+            statepointArgs[1] = constantInt(0); /* numPatchBytes */
             statepointArgs[2] = callee;
             statepointArgs[3] = constantInt(args.length);
-            statepointArgs[4] = constantInt(0);
+            statepointArgs[4] = constantInt(0); /* flags */
             System.arraycopy(args, 0, statepointArgs, 5, args.length);
-            statepointArgs[5 + args.length] = constantLong(0L);
-            statepointArgs[6 + args.length] = constantLong(0L);
+            statepointArgs[5 + args.length] = constantLong(0L); /* numTransitionArgs */
+            statepointArgs[6 + args.length] = constantLong(0L); /* numDeoptArgs */
 
             LLVMValueRef token = buildIntrinsicCall("llvm.experimental.gc.statepoint." + intrinsicType(calleeType), statepointType, statepointArgs);
 
             LLVMTypeRef resultType = getReturnType(LLVM.LLVMGetElementType(calleeType));
             LLVMTypeRef gcResultType = functionType(resultType, tokenType());
             result = buildIntrinsicCall("llvm.experimental.gc.result." + intrinsicType(resultType), gcResultType, token);
-            */
+
         }
         return result;
     }
