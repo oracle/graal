@@ -68,6 +68,7 @@ public final class Meta implements ContextAccess {
 
         Class = knownKlass(Type.Class);
         HIDDEN_MIRROR_KLASS = Class.lookupHiddenField(Name.HIDDEN_MIRROR_KLASS);
+        HIDDEN_SIGNERS = Class.lookupHiddenField(Name.HIDDEN_SIGNERS);
         String = knownKlass(Type.String);
         Class_Array = Class.array();
         Class_forName_String = Class.lookupDeclaredMethod(Name.forName, Signature.Class_String);
@@ -256,6 +257,7 @@ public final class Meta implements ContextAccess {
     public final ObjectKlass String;
     public final ObjectKlass Class;
     public final Field HIDDEN_MIRROR_KLASS;
+    public final Field HIDDEN_SIGNERS;
     public final ArrayKlass Class_Array;
     public final Method Class_forName_String;
 

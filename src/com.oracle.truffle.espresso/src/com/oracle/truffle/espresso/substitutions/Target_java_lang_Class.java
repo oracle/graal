@@ -596,4 +596,28 @@ public final class Target_java_lang_Class {
 
         throw EspressoError.unimplemented();
     }
+
+    @Substitution(hasReceiver = true)
+    public static @Host(Object[].class) StaticObject getSigners(StaticObject self) {
+        Klass klass = self.getMirrorKlass();
+        if (klass.isPrimitive()) {
+            return StaticObject.NULL;
+        }
+        Meta meta = self.getKlass().getMeta();
+        StaticObject signersArray = (StaticObject) self.getHiddenField(meta.HIDDEN_SIGNERS);
+        if (signersArray == null || signersArray == StaticObject.NULL) {
+            return StaticObject.NULL;
+        }
+        return signersArray.copy();
+    }
+
+    @Substitution(hasReceiver = true)
+    public static void setSigners(StaticObject self, @Host(Object[].class) StaticObject signers) {
+        Klass klass = self.getMirrorKlass();
+        if (!klass.isPrimitive() && !klass.isArray()) {
+            Meta meta = self.getKlass().getMeta();
+            self.setHiddenField(meta.HIDDEN_SIGNERS, signers);
+        }
+    }
+
 }

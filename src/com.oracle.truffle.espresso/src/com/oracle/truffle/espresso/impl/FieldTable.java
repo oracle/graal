@@ -101,33 +101,37 @@ class FieldTable {
     }
 
     private static int setHiddenFields(Symbol<Symbol.Type> type, ArrayList<Field> tmpTable, ObjectKlass thisKlass, int fieldIndex) {
+        // Gimmick to not forget to return correct increment. Forgetting results in dramatic JVM crashes.
+        int c = 0;
+
         if (type == Symbol.Type.MemberName) {
-            tmpTable.add(new Field(thisKlass, tmpTable.size(), fieldIndex, Symbol.Name.HIDDEN_VMTARGET));
-            tmpTable.add(new Field(thisKlass, tmpTable.size(), fieldIndex + 1, Symbol.Name.HIDDEN_VMINDEX));
-            return 2;
+            tmpTable.add(new Field(thisKlass, tmpTable.size(), fieldIndex + c++, Symbol.Name.HIDDEN_VMTARGET));
+            tmpTable.add(new Field(thisKlass, tmpTable.size(), fieldIndex + c++, Symbol.Name.HIDDEN_VMINDEX));
+            return c;
         } else if (type == Symbol.Type.Method) {
-            tmpTable.add(new Field(thisKlass, tmpTable.size(), fieldIndex, Symbol.Name.HIDDEN_METHOD_RUNTIME_VISIBLE_TYPE_ANNOTATIONS));
-            tmpTable.add(new Field(thisKlass, tmpTable.size(), fieldIndex + 1, Symbol.Name.HIDDEN_METHOD_KEY));
-            return 2;
+            tmpTable.add(new Field(thisKlass, tmpTable.size(), fieldIndex + c++, Symbol.Name.HIDDEN_METHOD_RUNTIME_VISIBLE_TYPE_ANNOTATIONS));
+            tmpTable.add(new Field(thisKlass, tmpTable.size(), fieldIndex + c++, Symbol.Name.HIDDEN_METHOD_KEY));
+            return c;
         } else if (type == Symbol.Type.Constructor) {
-            tmpTable.add(new Field(thisKlass, tmpTable.size(), fieldIndex, Symbol.Name.HIDDEN_CONSTRUCTOR_RUNTIME_VISIBLE_TYPE_ANNOTATIONS));
-            tmpTable.add(new Field(thisKlass, tmpTable.size(), fieldIndex + 1, Symbol.Name.HIDDEN_CONSTRUCTOR_KEY));
-            return 2;
+            tmpTable.add(new Field(thisKlass, tmpTable.size(), fieldIndex + c++, Symbol.Name.HIDDEN_CONSTRUCTOR_RUNTIME_VISIBLE_TYPE_ANNOTATIONS));
+            tmpTable.add(new Field(thisKlass, tmpTable.size(), fieldIndex + c++, Symbol.Name.HIDDEN_CONSTRUCTOR_KEY));
+            return c;
         } else if (type == Symbol.Type.Field) {
-            tmpTable.add(new Field(thisKlass, tmpTable.size(), fieldIndex, Symbol.Name.HIDDEN_FIELD_RUNTIME_VISIBLE_TYPE_ANNOTATIONS));
-            tmpTable.add(new Field(thisKlass, tmpTable.size(), fieldIndex + 1, Symbol.Name.HIDDEN_FIELD_KEY));
-            return 2;
+            tmpTable.add(new Field(thisKlass, tmpTable.size(), fieldIndex + c++, Symbol.Name.HIDDEN_FIELD_RUNTIME_VISIBLE_TYPE_ANNOTATIONS));
+            tmpTable.add(new Field(thisKlass, tmpTable.size(), fieldIndex + c++, Symbol.Name.HIDDEN_FIELD_KEY));
+            return c;
         } else if (type == Symbol.Type.Throwable) {
-            tmpTable.add(new Field(thisKlass, tmpTable.size(), fieldIndex, Symbol.Name.HIDDEN_FRAMES));
-            return 1;
+            tmpTable.add(new Field(thisKlass, tmpTable.size(), fieldIndex + c++, Symbol.Name.HIDDEN_FRAMES));
+            return c;
         } else if (type == Symbol.Type.Thread) {
-            tmpTable.add(new Field(thisKlass, tmpTable.size(), fieldIndex, Symbol.Name.HIDDEN_HOST_THREAD));
-            return 1;
+            tmpTable.add(new Field(thisKlass, tmpTable.size(), fieldIndex + c++, Symbol.Name.HIDDEN_HOST_THREAD));
+            return c;
         } else if (type == Symbol.Type.Class) {
-            tmpTable.add(new Field(thisKlass, tmpTable.size(), fieldIndex, Symbol.Name.HIDDEN_MIRROR_KLASS));
-            return 1;
+            tmpTable.add(new Field(thisKlass, tmpTable.size(), fieldIndex + c++, Symbol.Name.HIDDEN_MIRROR_KLASS));
+            tmpTable.add(new Field(thisKlass, tmpTable.size(), fieldIndex + c++, Symbol.Name.HIDDEN_SIGNERS));
+            return c;
         } else {
-            return 0;
+            return c;
         }
     }
 }

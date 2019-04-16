@@ -255,58 +255,63 @@ public final class Method implements ModifiersProvider, ContextAccess {
             if (poisonPill) {
                 getMeta().throwExWithMessage(IncompatibleClassChangeError.class, "Conflicting default methods: " + this.getName());
             }
-            if (proxy != null) {
-                this.callTarget = proxy.getCallTarget();
-                return callTarget;
-            }
-            CompilerDirectives.transferToInterpreterAndInvalidate();
+            synchronized (this) {
+                if (callTarget != null) {
+                    return callTarget;
+                }
+                if (proxy != null) {
+                    this.callTarget = proxy.getCallTarget();
+                    return callTarget;
+                }
+                CompilerDirectives.transferToInterpreterAndInvalidate();
 
-            EspressoRootNode redirectedMethod = getSubstitutions().get(this);
-            if (redirectedMethod != null) {
-                callTarget = Truffle.getRuntime().createCallTarget(redirectedMethod);
-            } else {
-                if (this.isNative()) {
-                    // Bind native method.
-                    // System.err.println("Linking native method: " +
-                    // meta(this).getDeclaringClass().getName() + "#" + getName() + " " +
-                    // getSignature());
+                EspressoRootNode redirectedMethod = getSubstitutions().get(this);
+                if (redirectedMethod != null) {
+                    callTarget = Truffle.getRuntime().createCallTarget(redirectedMethod);
+                } else {
+                    if (this.isNative()) {
+                        // Bind native method.
+                        // System.err.println("Linking native method: " +
+                        // meta(this).getDeclaringClass().getName() + "#" + getName() + " " +
+                        // getSignature());
 
-                    // If the loader is null we have a system class, so we attempt a lookup in
-                    // the native Java library.
-                    if (StaticObject.isNull(getDeclaringKlass().getDefiningClassLoader())) {
-                        // Look in libjava
-                        for (boolean withSignature : new boolean[]{false, true}) {
-                            String mangledName = Mangle.mangleMethod(this, withSignature);
+                        // If the loader is null we have a system class, so we attempt a lookup in
+                        // the native Java library.
+                        if (StaticObject.isNull(getDeclaringKlass().getDefiningClassLoader())) {
+                            // Look in libjava
+                            for (boolean withSignature : new boolean[]{false, true}) {
+                                String mangledName = Mangle.mangleMethod(this, withSignature);
 
-                            try {
-                                TruffleObject nativeMethod = bind(getVM().getJavaLibrary(), this, mangledName);
-                                callTarget = Truffle.getRuntime().createCallTarget(new EspressoRootNode(this, new NativeRootNode(nativeMethod, this, true)));
-                                return callTarget;
-                            } catch (UnknownIdentifierException e) {
-                                // native method not found in libjava, safe to ignore
+                                try {
+                                    TruffleObject nativeMethod = bind(getVM().getJavaLibrary(), this, mangledName);
+                                    callTarget = Truffle.getRuntime().createCallTarget(new EspressoRootNode(this, new NativeRootNode(nativeMethod, this, true)));
+                                    return callTarget;
+                                } catch (UnknownIdentifierException e) {
+                                    // native method not found in libjava, safe to ignore
+                                }
                             }
                         }
+
+                        Method findNative = getMeta().ClassLoader_findNative;
+
+                        // Lookup the short name first, otherwise lookup the long name (with signature).
+                        callTarget = lookupJniCallTarget(findNative, false);
+                        if (callTarget == null) {
+                            callTarget = lookupJniCallTarget(findNative, true);
+                        }
+
+                        // TODO(peterssen): Search JNI methods with OS prefix/suffix
+                        // (print_jni_name_suffix_on ...)
+
+                        if (callTarget == null) {
+                            System.err.println("Failed to link native method: " + getDeclaringKlass().getType() + "." + getName() + " -> " + getRawSignature());
+                            throw getMeta().throwEx(UnsatisfiedLinkError.class);
+                        }
+                    } else {
+                        FrameDescriptor frameDescriptor = initFrameDescriptor(getMaxLocals() + getMaxStackSize());
+                        EspressoRootNode rootNode = new EspressoRootNode(this, frameDescriptor, new BytecodeNode(this, frameDescriptor));
+                        callTarget = Truffle.getRuntime().createCallTarget(rootNode);
                     }
-
-                    Method findNative = getMeta().ClassLoader_findNative;
-
-                    // Lookup the short name first, otherwise lookup the long name (with signature).
-                    callTarget = lookupJniCallTarget(findNative, false);
-                    if (callTarget == null) {
-                        callTarget = lookupJniCallTarget(findNative, true);
-                    }
-
-                    // TODO(peterssen): Search JNI methods with OS prefix/suffix
-                    // (print_jni_name_suffix_on ...)
-
-                    if (callTarget == null) {
-                        System.err.println("Failed to link native method: " + getDeclaringKlass().getType() + "." + getName() + " -> " + getRawSignature());
-                        throw getMeta().throwEx(UnsatisfiedLinkError.class);
-                    }
-                } else {
-                    FrameDescriptor frameDescriptor = initFrameDescriptor(getMaxLocals() + getMaxStackSize());
-                    EspressoRootNode rootNode = new EspressoRootNode(this, frameDescriptor, new BytecodeNode(this, frameDescriptor));
-                    callTarget = Truffle.getRuntime().createCallTarget(rootNode);
                 }
             }
         }

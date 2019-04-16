@@ -55,9 +55,7 @@ public final class StaticObject implements TruffleObject {
     private static final Unsafe U;
 
     public static final StaticObject VOID = new StaticObject();
-
     public static final StaticObject NULL = new StaticObject();
-
     static {
         try {
             java.lang.reflect.Field f = Unsafe.class.getDeclaredField("theUnsafe");
