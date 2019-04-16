@@ -2034,17 +2034,21 @@ class AsmFactory {
             Argument info = argInfo.get(op.getIndex());
             if (info.isMemory()) {
                 LLVMExpressionNode address = info.getAddress();
-                switch (((PrimitiveType) type).getPrimitiveKind()) {
-                    case I8:
-                        return LLVMI8StoreNodeGen.create(address, from);
-                    case I16:
-                        return LLVMI16StoreNodeGen.create(address, from);
-                    case I32:
-                        return LLVMI32StoreNodeGen.create(address, from);
-                    case I64:
-                        return LLVMI64StoreNodeGen.create(address, from);
-                    default:
-                        throw unsupportedOperandType(type);
+                if (type instanceof PrimitiveType) {
+                    switch (((PrimitiveType) type).getPrimitiveKind()) {
+                        case I8:
+                            return LLVMI8StoreNodeGen.create(address, from);
+                        case I16:
+                            return LLVMI16StoreNodeGen.create(address, from);
+                        case I32:
+                            return LLVMI32StoreNodeGen.create(address, from);
+                        case I64:
+                            return LLVMI64StoreNodeGen.create(address, from);
+                        default:
+                            throw unsupportedOperandType(type);
+                    }
+                } else {
+                    throw unsupportedOperandType(type);
                 }
             } else if (info.isRegister()) {
                 FrameSlot frame = getRegisterSlot(info.getRegister());
