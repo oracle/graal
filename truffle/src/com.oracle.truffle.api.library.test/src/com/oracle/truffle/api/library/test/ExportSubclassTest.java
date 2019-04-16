@@ -238,7 +238,7 @@ public class ExportSubclassTest extends AbstractLibraryTest {
         ExportSubclassLibrary firstLib;
 
         @ExportMessage
-        final String m1(@SuppressWarnings("unused") @CachedLibrary("this.member") ExportSubclassLibrary lib) {
+        final String m1(@CachedLibrary("this.member") ExportSubclassLibrary lib) {
             if (firstLib == null) {
                 firstLib = lib;
             }
@@ -252,7 +252,7 @@ public class ExportSubclassTest extends AbstractLibraryTest {
     static class MergedLibrarySub extends MergedLibraryBase {
 
         @ExportMessage
-        final String m0(@SuppressWarnings("unused") @CachedLibrary("this.member") ExportSubclassLibrary lib) {
+        final String m0(@CachedLibrary("this.member") ExportSubclassLibrary lib) {
             if (firstLib == null) {
                 firstLib = lib;
             }
