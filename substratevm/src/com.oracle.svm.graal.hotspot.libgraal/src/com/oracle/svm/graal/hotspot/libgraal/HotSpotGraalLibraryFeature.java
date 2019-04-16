@@ -75,6 +75,7 @@ import org.graalvm.compiler.truffle.runtime.GraalTruffleRuntime;
 import org.graalvm.nativeimage.ImageSingletons;
 import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.Platforms;
+import org.graalvm.nativeimage.VMRuntime;
 import org.graalvm.nativeimage.hosted.Feature;
 import org.graalvm.nativeimage.hosted.RuntimeReflection;
 
@@ -526,6 +527,14 @@ final class Target_jdk_vm_ci_hotspot_SharedLibraryJVMCIReflection {
     @Substitute
     static Object convertUnknownValue(Object object) {
         return KnownIntrinsics.convertUnknownValue(object, Object.class);
+    }
+}
+
+@TargetClass(className = "org.graalvm.compiler.hotspot.HotSpotGraalRuntime", onlyWith = HotSpotGraalLibraryFeature.IsEnabled.class)
+final class Target_org_graalvm_compiler_hotspot_HotSpotGraalRuntime {
+    @Substitute
+    private static void shutdownLibGraal() {
+        VMRuntime.shutdown();
     }
 }
 

@@ -398,6 +398,16 @@ public final class HotSpotGraalRuntime implements HotSpotGraalRuntimeProvider {
         BenchmarkCounters.shutdown(runtime(), optionsRef.get(), runtimeStartTime);
 
         outputDirectory.close();
+
+        shutdownLibGraal();
+    }
+
+    /**
+     * Substituted by
+     * {@code com.oracle.svm.graal.hotspot.libgraal.Target_org_graalvm_compiler_hotspot_HotSpotGraalRuntime}
+     * to call {@code org.graalvm.nativeimage.VMRuntime.shutdown()}.
+     */
+    private static void shutdownLibGraal() {
     }
 
     void clearMetrics() {
