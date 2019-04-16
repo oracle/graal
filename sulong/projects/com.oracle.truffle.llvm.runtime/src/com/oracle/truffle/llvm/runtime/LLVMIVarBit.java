@@ -35,6 +35,7 @@ import java.nio.ByteOrder;
 import java.util.Arrays;
 import java.util.BitSet;
 
+import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.CompilerDirectives.CompilationFinal;
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.CompilerDirectives.ValueType;
@@ -42,6 +43,8 @@ import com.oracle.truffle.api.CompilerDirectives.ValueType;
 // see https://bugs.chromium.org/p/nativeclient/issues/detail?id=3360 for use cases where variable ints arise
 @ValueType
 public final class LLVMIVarBit {
+
+    private static final LLVMIVarBit NULL = new LLVMIVarBit();
 
     private final int bits;
 
@@ -95,7 +98,11 @@ public final class LLVMIVarBit {
     }
 
     public static LLVMIVarBit createNull() {
-        return new LLVMIVarBit();
+        if (CompilerDirectives.inCompiledCode()) {
+            return new LLVMIVarBit();
+        } else {
+            return NULL;
+        }
     }
 
     public static LLVMIVarBit createZeroExt(int bits, byte from) {
@@ -145,15 +152,12 @@ public final class LLVMIVarBit {
 
     @TruffleBoundary
     private static BigInteger asBigInteger(LLVMIVarBit right) {
-        if (right.getBytes() == null) {
-            return BigInteger.ZERO;
-        }
         return new BigInteger(right.getBytes());
     }
 
     @TruffleBoundary
     public BigInteger asUnsignedBigInteger() {
-        if (array == null || array.length == 0) {
+        if (array.length == 0) {
             return BigInteger.ZERO;
         }
         byte[] newArr = new byte[array.length + 1];
@@ -163,7 +167,7 @@ public final class LLVMIVarBit {
 
     @TruffleBoundary
     public BigInteger asBigInteger() {
-        if (array != null && array.length != 0) {
+        if (array.length != 0) {
             return new BigInteger(array);
         } else {
             return BigInteger.ZERO;
@@ -432,7 +436,7 @@ public final class LLVMIVarBit {
 
     @TruffleBoundary
     public boolean isZero() {
-        return array == null || array.length == 0 || BigInteger.ZERO.equals(asBigInteger());
+        return array.length == 0 || BigInteger.ZERO.equals(asBigInteger());
     }
 
     @Override
