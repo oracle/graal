@@ -30,6 +30,7 @@
 package com.oracle.truffle.llvm.parser.factories;
 
 import java.math.BigInteger;
+import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
 import java.util.regex.Matcher;
@@ -41,6 +42,7 @@ import com.oracle.truffle.api.frame.FrameSlot;
 import com.oracle.truffle.api.interop.TruffleObject;
 import com.oracle.truffle.api.nodes.RootNode;
 import com.oracle.truffle.api.source.Source;
+import com.oracle.truffle.llvm.asm.amd64.AsmParseException;
 import com.oracle.truffle.llvm.asm.amd64.InlineAssemblyParser;
 import com.oracle.truffle.llvm.nodes.base.LLVMBasicBlockNode;
 import com.oracle.truffle.llvm.nodes.base.LLVMFrameNuller;
@@ -314,6 +316,7 @@ import com.oracle.truffle.llvm.nodes.others.LLVMSelectNodeFactory.LLVMI32SelectN
 import com.oracle.truffle.llvm.nodes.others.LLVMSelectNodeFactory.LLVMI64SelectNodeGen;
 import com.oracle.truffle.llvm.nodes.others.LLVMSelectNodeFactory.LLVMI8SelectNodeGen;
 import com.oracle.truffle.llvm.nodes.others.LLVMUnreachableNode;
+import com.oracle.truffle.llvm.nodes.others.LLVMUnsupportedInlineAssemblerNode;
 import com.oracle.truffle.llvm.nodes.others.LLVMValueProfilingNode;
 import com.oracle.truffle.llvm.nodes.others.LLVMVectorSelectNodeFactory.LLVMDoubleVectorSelectNodeGen;
 import com.oracle.truffle.llvm.nodes.others.LLVMVectorSelectNodeFactory.LLVMFloatVectorSelectNodeGen;
@@ -1712,13 +1715,25 @@ public class BasicNodeFactory implements NodeFactory {
             retOffsets = getStackSpace.getOffsets();
         }
 
-        LLVMInlineAssemblyRootNode assemblyRoot = InlineAssemblyParser.parseInlineAssembly(context, sourceSection, asmExpression, asmFlags, argTypes, retType, retTypes,
-                        retOffsets);
+        LLVMInlineAssemblyRootNode assemblyRoot;
+        try {
+            assemblyRoot = InlineAssemblyParser.parseInlineAssembly(context, sourceSection, asmExpression, asmFlags, argTypes, retType, retTypes, retOffsets);
+        } catch (AsmParseException e) {
+            assemblyRoot = getLazyUnsupportedInlineRootNode(sourceSection, asmExpression, e);
+        }
         LLVMFunctionDescriptor asm = LLVMFunctionDescriptor.createDescriptor(context, "<asm>", new FunctionType(MetaType.UNKNOWN, Type.EMPTY_ARRAY, false), -1);
         asm.define(library, new LLVMIRFunction(Truffle.getRuntime().createCallTarget(assemblyRoot), null));
         LLVMManagedPointerLiteralNode asmFunction = new LLVMManagedPointerLiteralNode(LLVMManagedPointer.create(asm));
 
         return new LLVMCallNode(new FunctionType(MetaType.UNKNOWN, argTypes, false), asmFunction, args, sourceSection);
+    }
+
+    private LLVMInlineAssemblyRootNode getLazyUnsupportedInlineRootNode(LLVMSourceLocation sourceSection, String asmExpression, AsmParseException e) {
+        LLVMInlineAssemblyRootNode assemblyRoot;
+        String message = asmExpression + ": " + e.getMessage();
+        assemblyRoot = new LLVMInlineAssemblyRootNode(context.getLanguage(), sourceSection, new FrameDescriptor(),
+                        new LLVMStatementNode[]{new LLVMUnsupportedInlineAssemblerNode(sourceSection, message)}, new ArrayList<>(), null);
+        return assemblyRoot;
     }
 
     @Override
