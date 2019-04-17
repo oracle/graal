@@ -168,6 +168,16 @@ public final class ResourcesFeature implements Feature {
         sealed = true;
     }
 
+    @Override
+    public void beforeCompilation(BeforeCompilationAccess access) {
+        FallbackFeature.FallbackImageRequest resourceFallback = ImageSingletons.lookup(FallbackFeature.class).resourceFallback;
+        if (resourceFallback != null && Options.IncludeResources.getValue().length == 0 &&
+                        Options.ResourceConfigurationFiles.getValue().length == 0 &&
+                        Options.ResourceConfigurationResources.getValue().length == 0) {
+            throw resourceFallback;
+        }
+    }
+
     @SuppressWarnings("try")
     private void scanDirectory(DebugContext debugContext, File f, String relativePath, Pattern... patterns) throws IOException {
         if (f.isDirectory()) {

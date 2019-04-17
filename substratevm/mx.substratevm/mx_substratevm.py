@@ -577,7 +577,6 @@ def svm_gate_body(args, tasks):
                 helloworld(['--output-path', svmbuild_dir(), '--javac-command', javac_command])
                 helloworld(['--output-path', svmbuild_dir(), '--shared'])  # Build and run helloworld as shared library
                 cinterfacetutorial([])
-                fallbacktest([])
                 clinittest([])
 
         with Task('native unittests', tasks, tags=[GraalTags.test]) as t:
@@ -1078,25 +1077,6 @@ def cinterfacetutorial(args):
     runs all tutorials for the C interface.
     """
     native_image_context_run(_cinterfacetutorial, args)
-
-
-@mx.command(suite.name, 'fallbacktest', 'Runs the ')
-def fallbacktest(args):
-    def build_and_test_fallbackimage(native_image, args=None):
-        args = [] if args is None else args
-        test_cp = classpath('com.oracle.svm.test')
-        build_dir = join(svmbuild_dir(), 'fallbacktest')
-
-        # clean / create output directory
-        if exists(build_dir):
-            remove_tree(build_dir)
-        mkpath(build_dir)
-
-        # Build the shared library from Java code
-        native_image(['--force-fallback', '-H:Path=' + build_dir, '-cp', test_cp, '-H:Class=com.oracle.svm.test.FallbackMainTest', '-H:Name=fallbacktest'] + args)
-        mx.run([join(build_dir, 'fallbacktest')])
-
-    native_image_context_run(build_and_test_fallbackimage, args)
 
 
 @mx.command(suite.name, 'clinittest', 'Runs the ')
