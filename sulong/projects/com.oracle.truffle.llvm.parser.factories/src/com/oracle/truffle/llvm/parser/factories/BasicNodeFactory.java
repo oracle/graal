@@ -316,7 +316,7 @@ import com.oracle.truffle.llvm.nodes.others.LLVMSelectNodeFactory.LLVMI32SelectN
 import com.oracle.truffle.llvm.nodes.others.LLVMSelectNodeFactory.LLVMI64SelectNodeGen;
 import com.oracle.truffle.llvm.nodes.others.LLVMSelectNodeFactory.LLVMI8SelectNodeGen;
 import com.oracle.truffle.llvm.nodes.others.LLVMUnreachableNode;
-import com.oracle.truffle.llvm.nodes.others.LLVMUnsupportedInlineAssemblerNode;
+import com.oracle.truffle.llvm.nodes.others.LLVMUnsupportedInstructionNode;
 import com.oracle.truffle.llvm.nodes.others.LLVMValueProfilingNode;
 import com.oracle.truffle.llvm.nodes.others.LLVMVectorSelectNodeFactory.LLVMDoubleVectorSelectNodeGen;
 import com.oracle.truffle.llvm.nodes.others.LLVMVectorSelectNodeFactory.LLVMFloatVectorSelectNodeGen;
@@ -389,7 +389,6 @@ import com.oracle.truffle.llvm.runtime.LLVMContext.ExternalLibrary;
 import com.oracle.truffle.llvm.runtime.LLVMFunctionDescriptor;
 import com.oracle.truffle.llvm.runtime.LLVMFunctionDescriptor.LLVMIRFunction;
 import com.oracle.truffle.llvm.runtime.LLVMIVarBit;
-import com.oracle.truffle.llvm.runtime.LLVMUnsupportedException;
 import com.oracle.truffle.llvm.runtime.LLVMUnsupportedException.UnsupportedReason;
 import com.oracle.truffle.llvm.runtime.NodeFactory;
 import com.oracle.truffle.llvm.runtime.debug.scope.LLVMDebugGlobalVariable;
@@ -917,7 +916,7 @@ public class BasicNodeFactory implements NodeFactory {
         } else if (llvmType instanceof StructureType || llvmType instanceof ArrayType) {
             return LLVMAddressReadNodeGen.create(frameSlot);
         } else if (llvmType instanceof VoidType) {
-            throw new LLVMUnsupportedException(UnsupportedReason.PARSER_ERROR_VOID_SLOT);
+            return LLVMUnsupportedInstructionNode.createExpression(UnsupportedReason.PARSER_ERROR_VOID_SLOT);
         } else if (llvmType == MetaType.DEBUG) {
             return LLVMReadNodeFactory.LLVMDebugReadNodeGen.create(frameSlot);
         }
@@ -1732,7 +1731,7 @@ public class BasicNodeFactory implements NodeFactory {
         LLVMInlineAssemblyRootNode assemblyRoot;
         String message = asmExpression + ": " + e.getMessage();
         assemblyRoot = new LLVMInlineAssemblyRootNode(context.getLanguage(), sourceSection, new FrameDescriptor(),
-                        new LLVMStatementNode[]{new LLVMUnsupportedInlineAssemblerNode(sourceSection, message)}, new ArrayList<>(), null);
+                        new LLVMStatementNode[]{LLVMUnsupportedInstructionNode.create(sourceSection, UnsupportedReason.INLINE_ASSEMBLER, message)}, new ArrayList<>(), null);
         return assemblyRoot;
     }
 
@@ -1967,7 +1966,7 @@ public class BasicNodeFactory implements NodeFactory {
                 return LLVMX86_64BitVACopyNodeGen.create(args[1], args[2], sourceSection, callerArgumentCount);
             case "@llvm.eh.sjlj.longjmp":
             case "@llvm.eh.sjlj.setjmp":
-                throw new LLVMUnsupportedException(UnsupportedReason.SET_JMP_LONG_JMP);
+                return LLVMUnsupportedInstructionNode.createExpression(sourceSection, UnsupportedReason.SET_JMP_LONG_JMP);
             case "@llvm.dbg.declare":
             case "@llvm.dbg.addr":
             case "@llvm.dbg.value":
