@@ -378,6 +378,23 @@ suite = {
       "testProject" : True,
       "defaultBuild" : False,
     },
+    "com.oracle.truffle.llvm.tests.other" : {
+      "subDir" : "tests",
+      "class" : "SulongTestSuite",
+      "variants" : ["O0_MEM2REG"],
+      "buildRef" : False,
+      "buildEnv" : {
+        "SUITE_CPPFLAGS" : "-I<sulong_include> -I<path:SULONG_LIBS>",
+      },
+      "dependencies" : [
+        "SULONG_TEST",
+      ],
+      "buildDependencies" : [
+        "SULONG_LIBS",
+      ],
+      "testProject" : True,
+      "defaultBuild" : False,
+    },
     "com.oracle.truffle.llvm.tests.sulong" : {
       "subDir" : "tests",
       "class" : "SulongTestSuite",
@@ -781,6 +798,7 @@ suite = {
         "com.oracle.truffle.llvm.tests.debug",
         "com.oracle.truffle.llvm.tests.irdebug",
         "com.oracle.truffle.llvm.tests.interop",
+        "com.oracle.truffle.llvm.tests.other",
         "com.oracle.truffle.llvm.tests.sulong",
         "com.oracle.truffle.llvm.tests.sulongavx",
         "com.oracle.truffle.llvm.tests.sulongcpp",
