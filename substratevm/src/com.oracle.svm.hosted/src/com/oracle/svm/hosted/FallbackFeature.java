@@ -54,9 +54,6 @@ import jdk.vm.ci.meta.ResolvedJavaMethod;
 
 @AutomaticFeature
 public class FallbackFeature implements Feature {
-    private static final int ForceFallback = 10;
-    private static final int Automatic = 5;
-    private static final int NoFallback = 0;
     private static final String ABORT_MSG_PREFIX = "Abort stand-alone image build";
 
     private final List<ReflectionInvocationCheck> reflectionInvocationChecks = new ArrayList<>();
@@ -217,13 +214,17 @@ public class FallbackFeature implements Feature {
     }
 
     static UserError.UserException reportAsFallback(RuntimeException original) {
-        if (Options.FallbackThreshold.getValue() == NoFallback) {
+        if (Options.FallbackThreshold.getValue() == Options.NoFallback) {
             throw UserError.abort(original.getMessage(), original);
         }
         throw reportFallback(ABORT_MSG_PREFIX + ". " + original.getMessage(), original);
     }
 
     public static class Options {
+        public static final int ForceFallback = 10;
+        public static final int Automatic = 5;
+        public static final int NoFallback = 0;
+
         @APIOption(name = "force-fallback", fixedValue = "" + ForceFallback, customHelp = "force building of fallback image") //
         @APIOption(name = "auto-fallback", fixedValue = "" + Automatic, customHelp = "build stand-alone image if possible") //
         @APIOption(name = "no-fallback", fixedValue = "" + NoFallback, customHelp = "build stand-alone image or report failure") //
@@ -244,7 +245,7 @@ public class FallbackFeature implements Feature {
 
     @Override
     public void afterRegistration(AfterRegistrationAccess a) {
-        if (Options.FallbackThreshold.getValue() == ForceFallback) {
+        if (Options.FallbackThreshold.getValue() == Options.ForceFallback) {
             String fallbackArgument = SubstrateOptionsParser.commandArgument(Options.FallbackThreshold, "" + Options.FallbackThreshold.getValue());
             reportFallback(ABORT_MSG_PREFIX + " due to native-image option " + fallbackArgument);
         }
@@ -265,7 +266,7 @@ public class FallbackFeature implements Feature {
 
     @Override
     public void afterAnalysis(AfterAnalysisAccess a) {
-        if (Options.FallbackThreshold.getValue() == NoFallback ||
+        if (Options.FallbackThreshold.getValue() == Options.NoFallback ||
                         NativeImageOptions.ReportUnsupportedElementsAtRuntime.getValue() ||
                         NativeImageOptions.AllowIncompleteClasspath.getValue() ||
                         !AbstractBootImage.NativeImageKind.EXECUTABLE.name().equals(NativeImageOptions.Kind.getValue())) {
