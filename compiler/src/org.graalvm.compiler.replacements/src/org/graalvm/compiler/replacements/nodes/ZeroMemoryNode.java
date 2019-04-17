@@ -27,7 +27,7 @@ package org.graalvm.compiler.replacements.nodes;
 import static org.graalvm.compiler.nodeinfo.NodeCycles.CYCLES_8;
 import static org.graalvm.compiler.nodeinfo.NodeSize.SIZE_8;
 
-import org.graalvm.compiler.core.common.type.IntegerStamp;
+import org.graalvm.compiler.core.common.type.StampFactory;
 import org.graalvm.compiler.graph.NodeClass;
 import org.graalvm.compiler.nodeinfo.InputType;
 import org.graalvm.compiler.nodeinfo.NodeInfo;
@@ -54,7 +54,7 @@ public class ZeroMemoryNode extends FixedAccessNode implements LIRLowerable {
     }
 
     public ZeroMemoryNode(AddressNode address, ValueNode length, LocationIdentity locationIdentity, BarrierType type) {
-        super(TYPE, address, locationIdentity, IntegerStamp.create(8, 0, 0), type);
+        super(TYPE, address, locationIdentity, StampFactory.forVoid(), type);
         this.length = length;
     }
 
