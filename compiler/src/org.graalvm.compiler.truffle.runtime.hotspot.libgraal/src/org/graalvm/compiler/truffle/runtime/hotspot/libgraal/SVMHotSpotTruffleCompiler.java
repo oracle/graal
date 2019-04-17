@@ -28,6 +28,7 @@ import static org.graalvm.libgraal.LibGraal.getIsolateThread;
 
 import java.lang.ref.Reference;
 import java.lang.ref.WeakReference;
+import java.util.Collections;
 import java.util.Map;
 import java.util.WeakHashMap;
 
@@ -45,7 +46,7 @@ import org.graalvm.libgraal.OptionsEncoder;
  */
 final class SVMHotSpotTruffleCompiler extends SVMObject implements HotSpotTruffleCompiler {
 
-    private final Map<CompilableTruffleAST, Reference<SVMTruffleCompilation>> activeCompilations = new WeakHashMap<>();
+    private final Map<CompilableTruffleAST, Reference<SVMTruffleCompilation>> activeCompilations = Collections.synchronizedMap(new WeakHashMap<>());
 
     SVMHotSpotTruffleCompiler(long handle) {
         super(handle);
