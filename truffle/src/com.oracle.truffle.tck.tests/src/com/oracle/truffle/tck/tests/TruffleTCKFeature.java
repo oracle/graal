@@ -100,6 +100,7 @@ public class TruffleTCKFeature implements Feature {
     private static void registerJavaHostLanguageProvider() throws NoSuchMethodException {
         RuntimeReflection.register(Supplier.class.getDeclaredMethod("get"));
         RuntimeReflection.register(Function.class.getDeclaredMethod("apply", Object.class));
+        RuntimeReflection.register(Object.class.getDeclaredConstructor());
     }
 
     private static void registerTCKTest(BeforeAnalysisAccess access, String testClassFqn) {
