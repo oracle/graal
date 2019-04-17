@@ -25,6 +25,7 @@
 package com.oracle.svm.core.aarch64;
 
 import org.graalvm.nativeimage.hosted.Feature;
+import org.graalvm.compiler.api.replacements.Fold;
 import org.graalvm.nativeimage.ImageSingletons;
 import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.Platforms;
@@ -56,6 +57,7 @@ public class AArch64FrameAccess extends FrameAccess {
         sourceSp.writeWord(-returnAddressSize() - wordSize(), newReturnAddress);
     }
 
+    @Fold
     @Override
     public int savedBasePointerSize() {
         if (SubstrateOptions.UseStackBasePointer.getValue()) {
