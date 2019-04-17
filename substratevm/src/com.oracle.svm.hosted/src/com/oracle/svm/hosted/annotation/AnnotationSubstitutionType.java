@@ -26,6 +26,7 @@ package com.oracle.svm.hosted.annotation;
 
 import java.lang.annotation.Annotation;
 import java.lang.reflect.Proxy;
+import java.util.Arrays;
 
 import jdk.vm.ci.meta.MetaAccessProvider;
 import jdk.vm.ci.meta.ResolvedJavaType;
@@ -33,20 +34,33 @@ import jdk.vm.ci.meta.ResolvedJavaType;
 public class AnnotationSubstitutionType extends CustomSubstitutionType<AnnotationSubstitutionField, AnnotationSubstitutionMethod> {
 
     private final String name;
+    private final MetaAccessProvider metaAccess;
 
     public AnnotationSubstitutionType(MetaAccessProvider metaAccess, ResolvedJavaType original) {
         super(original);
+        this.metaAccess = metaAccess;
 
         assert original.getSuperclass().equals(metaAccess.lookupJavaType(Proxy.class));
         assert metaAccess.lookupJavaType(Annotation.class).isAssignableFrom(original);
 
-        ResolvedJavaType annotationInterfaceType = AnnotationSupport.findAnnotationInterfaceType(original);
+        ResolvedJavaType annotationInterfaceType = AnnotationSupport.findAnnotationInterfaceTypeForMarkedAnnotationType(original, metaAccess);
         assert annotationInterfaceType.isAssignableFrom(original);
         assert metaAccess.lookupJavaType(Annotation.class).isAssignableFrom(annotationInterfaceType);
 
         String n = annotationInterfaceType.getName();
         assert n.endsWith(";");
         name = n.substring(0, n.length() - 1) + "$$ProxyImpl;";
+    }
+
+    @Override
+    public ResolvedJavaType[] getInterfaces() {
+        /* Filter out the ConstantAnnotationMarker interface. */
+        ResolvedJavaType[] interfaces = super.getInterfaces();
+        return Arrays.stream(interfaces).filter(this::isNotAnnotationMarkerInterface).toArray(ResolvedJavaType[]::new);
+    }
+
+    private boolean isNotAnnotationMarkerInterface(ResolvedJavaType type) {
+        return !type.equals(metaAccess.lookupJavaType(ConstantAnnotationMarker.class));
     }
 
     @Override

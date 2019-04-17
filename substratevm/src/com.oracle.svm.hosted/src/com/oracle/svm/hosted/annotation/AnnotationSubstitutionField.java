@@ -110,9 +110,7 @@ public class AnnotationSubstitutionField extends CustomSubstitutionField {
                  * i.e., `jdk.proxy1`, cannot be open to all-unnamed-modules like we do with other
                  * modules.
                  */
-                Class<?>[] interfaces = proxy.getClass().getInterfaces();
-                assert interfaces.length == 1 : "Unexpected number of interfaces for annotation proxy class.";
-                Class<?> annotationInterface = interfaces[0];
+                Class<?> annotationInterface = AnnotationSupport.findAnnotationInterfaceTypeForMarkedAnnotationType(proxy.getClass());
                 Method reflectionMethod = annotationInterface.getDeclaredMethod(accessorMethod.getName());
                 reflectionMethod.setAccessible(true);
 

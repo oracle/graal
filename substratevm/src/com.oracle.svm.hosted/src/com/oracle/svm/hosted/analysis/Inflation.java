@@ -75,6 +75,7 @@ import com.oracle.svm.core.util.UserError;
 import com.oracle.svm.hosted.NativeImageClassLoader;
 import com.oracle.svm.hosted.SVMHost;
 import com.oracle.svm.hosted.analysis.flow.SVMMethodTypeFlowBuilder;
+import com.oracle.svm.hosted.meta.HostedType;
 import com.oracle.svm.hosted.substitute.AnnotationSubstitutionProcessor;
 
 import jdk.vm.ci.common.JVMCIError;
@@ -610,6 +611,16 @@ public class Inflation extends BigBang {
 
         AnalysisType annotationInterfaceType = annotationType.getInterfaces()[0];
         return annotationInterfaceType.isInstantiated() || annotationInterfaceType.isInTypeCheck();
+    }
+
+    public static ResolvedJavaType toWrappedType(ResolvedJavaType type) {
+        if (type instanceof AnalysisType) {
+            return ((AnalysisType) type).getWrappedWithoutResolve();
+        } else if (type instanceof HostedType) {
+            return ((HostedType) type).getWrapped().getWrappedWithoutResolve();
+        } else {
+            return type;
+        }
     }
 
     @Override
