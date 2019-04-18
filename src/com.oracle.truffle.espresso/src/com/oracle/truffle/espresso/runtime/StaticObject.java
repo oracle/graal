@@ -243,6 +243,11 @@ public final class StaticObject implements TruffleObject {
         U.putObject(fields, (long) Unsafe.ARRAY_OBJECT_BASE_OFFSET + Unsafe.ARRAY_OBJECT_INDEX_SCALE * index, value);
     }
 
+    public boolean compareAndSwapField(Field field, Object before, Object after) {
+        assert field.getDeclaringKlass().isAssignableFrom(getKlass());
+        return U.compareAndSwapObject(fields, (long) Unsafe.ARRAY_OBJECT_BASE_OFFSET + Unsafe.ARRAY_OBJECT_INDEX_SCALE * field.getFieldIndex(), before, after);
+    }
+
     // End non-primitive field handling
     // Start subword field handling
 
@@ -260,6 +265,7 @@ public final class StaticObject implements TruffleObject {
     }
 
     public byte getByteFieldVolatile(Field field) {
+        assert field.getDeclaringKlass().isAssignableFrom(getKlass());
         return U.getByteVolatile(primitiveFields, (long) Unsafe.ARRAY_BYTE_BASE_OFFSET + Unsafe.ARRAY_BYTE_INDEX_SCALE * field.getFieldIndex());
     }
 
@@ -284,6 +290,7 @@ public final class StaticObject implements TruffleObject {
     }
 
     public char getCharFieldVolatile(Field field) {
+        assert field.getDeclaringKlass().isAssignableFrom(getKlass());
         return U.getCharVolatile(primitiveFields, (long) Unsafe.ARRAY_BYTE_BASE_OFFSET + Unsafe.ARRAY_BYTE_INDEX_SCALE * field.getFieldIndex());
     }
 
@@ -298,6 +305,7 @@ public final class StaticObject implements TruffleObject {
     }
 
     public short getShortFieldVolatile(Field field) {
+        assert field.getDeclaringKlass().isAssignableFrom(getKlass());
         return U.getShortVolatile(primitiveFields, (long) Unsafe.ARRAY_BYTE_BASE_OFFSET + Unsafe.ARRAY_BYTE_INDEX_SCALE * field.getFieldIndex());
     }
 
@@ -312,6 +320,7 @@ public final class StaticObject implements TruffleObject {
     }
 
     public int getIntFieldVolatile(Field field) {
+        assert field.getDeclaringKlass().isAssignableFrom(getKlass());
         return U.getIntVolatile(primitiveFields, (long) Unsafe.ARRAY_BYTE_BASE_OFFSET + Unsafe.ARRAY_BYTE_INDEX_SCALE * field.getFieldIndex());
     }
 
@@ -365,6 +374,11 @@ public final class StaticObject implements TruffleObject {
         }
     }
 
+    public boolean compareAndSwapIntField(Field field, int before, int after) {
+        assert field.getDeclaringKlass().isAssignableFrom(getKlass());
+        return U.compareAndSwapInt(primitiveFields, (long) Unsafe.ARRAY_BYTE_BASE_OFFSET + Unsafe.ARRAY_BYTE_INDEX_SCALE * field.getFieldIndex(), before, after);
+    }
+
     // This multi-kind setter sticks around for object initialization.
     private void setWordField(Field field, int value) {
         assert field.getDeclaringKlass().isAssignableFrom(getKlass());
@@ -377,6 +391,7 @@ public final class StaticObject implements TruffleObject {
     }
 
     public void setWordFieldVolatile(Field field, int value) {
+        assert field.getDeclaringKlass().isAssignableFrom(getKlass());
         switch (field.getKind()) {
             case Boolean:
             case Byte:
@@ -398,6 +413,7 @@ public final class StaticObject implements TruffleObject {
     }
 
     private void applySetWordField(Field field, int value) {
+        assert field.getDeclaringKlass().isAssignableFrom(getKlass());
         switch (field.getKind()) {
             case Boolean:
             case Byte:
@@ -422,10 +438,12 @@ public final class StaticObject implements TruffleObject {
     // start big words field handling
 
     public final long getLongFieldVolatile(Field field) {
+        assert field.getDeclaringKlass().isAssignableFrom(getKlass());
         return U.getLongVolatile(primitiveFields, (long) Unsafe.ARRAY_BYTE_BASE_OFFSET + Unsafe.ARRAY_BYTE_INDEX_SCALE * field.getFieldIndex());
     }
 
     public final long getLongField(Field field) {
+        assert field.getDeclaringKlass().isAssignableFrom(getKlass());
         assert field.getKind().needsTwoSlots();
         if (field.isVolatile()) {
             return getLongFieldVolatile(field);
@@ -435,16 +453,23 @@ public final class StaticObject implements TruffleObject {
     }
 
     public final void setLongFieldVolatile(Field field, long value) {
+        assert field.getDeclaringKlass().isAssignableFrom(getKlass());
         U.putLongVolatile(primitiveFields, (long) Unsafe.ARRAY_BYTE_BASE_OFFSET + Unsafe.ARRAY_BYTE_INDEX_SCALE * field.getFieldIndex(), value);
     }
 
     public final void setLongField(Field field, long value) {
+        assert field.getDeclaringKlass().isAssignableFrom(getKlass());
         assert field.getKind().needsTwoSlots();
         if (field.isVolatile()) {
             setLongFieldVolatile(field, value);
         } else {
             U.putLong(primitiveFields, (long) Unsafe.ARRAY_BYTE_BASE_OFFSET + Unsafe.ARRAY_BYTE_INDEX_SCALE * field.getFieldIndex(), value);
         }
+    }
+
+    public boolean compareAndSwapLongField(Field field, long before, long after) {
+        assert field.getDeclaringKlass().isAssignableFrom(getKlass());
+        return U.compareAndSwapLong(primitiveFields, (long) Unsafe.ARRAY_BYTE_BASE_OFFSET + Unsafe.ARRAY_BYTE_INDEX_SCALE * field.getFieldIndex(), before, after);
     }
 
     // End big words field handling.

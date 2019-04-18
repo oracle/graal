@@ -293,7 +293,7 @@ import static com.oracle.truffle.espresso.bytecode.Bytecodes.WIDE;
  */
 public class BytecodeNode extends EspressoBaseNode implements CustomNodeCount {
 
-    public static final boolean DEBUG_GENERAL = false;
+    public static final boolean DEBUG_GENERAL = true;
 
     public static final DebugCounter bcCount = DebugCounter.create("Bytecodes executed");
 
