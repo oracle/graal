@@ -57,12 +57,6 @@ public final class MDValue implements MDBaseNode {
         return String.format("Value (%s)", value);
     }
 
-    private static final int VALUE_ARGINDEX_VALUE = 1;
-
-    public static MDBaseNode create(long[] args, IRScope scope) {
-        return create(args[VALUE_ARGINDEX_VALUE], scope);
-    }
-
     public static MDBaseNode create(long arg, IRScope scope) {
         final MDValue value = new MDValue();
         scope.getSymbols().onParse((int) arg, s -> value.value = s);

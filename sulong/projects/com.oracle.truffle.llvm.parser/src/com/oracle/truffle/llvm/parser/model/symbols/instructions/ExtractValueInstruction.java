@@ -65,6 +65,12 @@ public final class ExtractValueInstruction extends ValueInstruction {
         }
     }
 
+    public static ExtractValueInstruction create(SymbolImpl aggreggate, Type type, int index) {
+        final ExtractValueInstruction inst = new ExtractValueInstruction(type, index);
+        inst.aggregate = aggreggate;
+        return inst;
+    }
+
     public static ExtractValueInstruction fromSymbols(SymbolTable symbols, Type type, int aggregate, int index) {
         final ExtractValueInstruction inst = new ExtractValueInstruction(type, index);
         inst.aggregate = symbols.getForwardReferenced(aggregate, inst);

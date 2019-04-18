@@ -36,7 +36,7 @@ import java.util.HashSet;
 import java.util.List;
 import java.util.function.Consumer;
 
-public class ValueList<V extends ValueList.Value<V, C>, C extends ValueList.ValueVisitor<V>> {
+public abstract class ValueList<V extends ValueList.Value<V, C>, C extends ValueList.ValueVisitor<V>> {
 
     public static void dropLocalScope(int localScopeStart, List<?> valueList) {
         if (localScopeStart >= 0 && valueList.size() - localScopeStart > 0) {
@@ -81,7 +81,7 @@ public class ValueList<V extends ValueList.Value<V, C>, C extends ValueList.Valu
 
     private final ArrayList<V> valueList;
 
-    public ValueList(PlaceholderFactory<V, C> placeholderFactory) {
+    protected ValueList(PlaceholderFactory<V, C> placeholderFactory) {
         this.placeholderFactory = placeholderFactory;
         this.valueList = new ArrayList<>();
         this.forwardReferences = new HashMap<>();

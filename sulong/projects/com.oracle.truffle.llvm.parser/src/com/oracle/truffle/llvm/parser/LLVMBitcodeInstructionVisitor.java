@@ -290,7 +290,7 @@ final class LLVMBitcodeInstructionVisitor implements SymbolVisitor {
         final LLVMExpressionNode newNode = symbols.resolve(cmpxchg.getReplace());
         final Type elementType = cmpxchg.getCmp().getType();
 
-        createFrameWrite(nodeFactory.createCompareExchangeInstruction(cmpxchg.getType(), elementType, ptrNode, cmpNode, newNode), cmpxchg);
+        createFrameWrite(nodeFactory.createCompareExchangeInstruction(cmpxchg.getAggregateType(), elementType, ptrNode, cmpNode, newNode), cmpxchg);
     }
 
     private void visitDebugIntrinsic(SymbolImpl value, SourceVariable variable, MDExpression expression, long index, boolean isDeclaration) {

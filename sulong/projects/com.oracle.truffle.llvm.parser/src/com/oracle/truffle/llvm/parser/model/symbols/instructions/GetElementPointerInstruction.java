@@ -81,11 +81,11 @@ public final class GetElementPointerInstruction extends ValueInstruction {
         }
     }
 
-    public static GetElementPointerInstruction fromSymbols(SymbolTable symbols, Type type, int pointer, List<Integer> indices, boolean isInbounds) {
-        final GetElementPointerInstruction inst = new GetElementPointerInstruction(type, isInbounds, indices.size());
+    public static GetElementPointerInstruction fromSymbols(SymbolTable symbols, Type type, int pointer, int[] indices, boolean isInbounds) {
+        final GetElementPointerInstruction inst = new GetElementPointerInstruction(type, isInbounds, indices.length);
         inst.base = symbols.getForwardReferenced(pointer, inst);
-        for (int i = 0; i < indices.size(); i++) {
-            inst.indices[i] = symbols.getForwardReferenced(indices.get(i), inst);
+        for (int i = 0; i < indices.length; i++) {
+            inst.indices[i] = symbols.getForwardReferenced(indices[i], inst);
         }
         return inst;
     }

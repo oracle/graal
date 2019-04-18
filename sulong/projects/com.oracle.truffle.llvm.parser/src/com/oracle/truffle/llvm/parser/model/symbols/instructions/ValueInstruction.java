@@ -43,17 +43,17 @@ public abstract class ValueInstruction extends Instruction implements ValueSymbo
     }
 
     @Override
-    public String getName() {
-        return name;
-    }
-
-    @Override
-    public Type getType() {
+    public final Type getType() {
         return type;
     }
 
     @Override
-    public void setName(String name) {
+    public final String getName() {
+        return name;
+    }
+
+    @Override
+    public final void setName(String name) {
         this.name = name;
     }
 }

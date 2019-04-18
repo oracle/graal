@@ -509,14 +509,14 @@ public final class LLVMScanner {
                 }
 
                 @Override
-                public void record(long id, long[] args) {
-                    if (id == 1) {
+                public void record(RecordBuffer buffer) {
+                    if (buffer.getId() == 1) {
                         // SETBID tells us which blocks is currently being described
                         // we simply ignore SETRECORDNAME since we do not need it
                         setDefaultAbbreviations();
-                        currentBlockId = (int) args[0];
+                        currentBlockId = (int) buffer.getAt(0);
                     }
-                    parentListener.record(id, args);
+                    parentListener.record(buffer);
                 }
 
                 private void setDefaultAbbreviations() {
@@ -552,7 +552,7 @@ public final class LLVMScanner {
     }
 
     private void passRecordToParser() {
-        parser.record(recordBuffer.getId(), recordBuffer.getOps());
+        parser.record(recordBuffer);
         recordBuffer.invalidate();
     }
 

@@ -37,6 +37,7 @@ import com.oracle.truffle.llvm.parser.model.IRScope;
 import com.oracle.truffle.llvm.parser.model.ModelModule;
 import com.oracle.truffle.llvm.parser.model.symbols.globals.GlobalValueSymbol;
 import com.oracle.truffle.llvm.parser.scanner.Block;
+import com.oracle.truffle.llvm.parser.scanner.RecordBuffer;
 import com.oracle.truffle.llvm.parser.text.LLSourceBuilder;
 import com.oracle.truffle.llvm.parser.util.SymbolNameMangling;
 import com.oracle.truffle.llvm.runtime.LLVMContext;
@@ -88,6 +89,6 @@ public final class BCFileRoot implements ParserListener {
     }
 
     @Override
-    public void record(long id, long[] args) {
+    public void record(RecordBuffer buffer) {
     }
 }

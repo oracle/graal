@@ -60,12 +60,7 @@ public final class AllocateInstruction extends ValueInstruction {
     }
 
     public Type getPointeeType() {
-        return getType().getPointeeType();
-    }
-
-    @Override
-    public PointerType getType() {
-        return (PointerType) super.getType();
+        return ((PointerType) super.getType()).getPointeeType();
     }
 
     @Override

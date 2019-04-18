@@ -71,8 +71,7 @@ public final class CompareExchangeInstruction extends ValueInstruction {
         return replace;
     }
 
-    @Override
-    public AggregateType getType() {
+    public AggregateType getAggregateType() {
         return (AggregateType) super.getType();
     }
 
