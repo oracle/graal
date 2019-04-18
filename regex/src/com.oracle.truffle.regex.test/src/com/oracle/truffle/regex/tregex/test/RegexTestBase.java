@@ -69,12 +69,16 @@ public abstract class RegexTestBase {
     }
 
     void test(String pattern, String flags, Object input, int fromIndex, boolean isMatch, int... captureGroupBounds) {
-        Value result = execRegex(compileRegex(pattern, flags), input, fromIndex);
-        assertEquals(isMatch, result.getMember("isMatch").asBoolean());
         assert captureGroupBounds.length % 2 == 0;
-        for (int i = 0; i < captureGroupBounds.length / 2; i++) {
-            assertEquals(captureGroupBounds[i * 2], result.invokeMember("getStart", i).asInt());
-            assertEquals(captureGroupBounds[i * 2 + 1], result.invokeMember("getEnd", i).asInt());
+        Value compiledRegex = compileRegex(pattern, flags);
+        Value result = execRegex(compiledRegex, input, fromIndex);
+        assertEquals(isMatch, result.getMember("isMatch").asBoolean());
+        if (isMatch) {
+            assertEquals(captureGroupBounds.length / 2, compiledRegex.getMember("groupCount").asInt());
+            for (int i = 0; i < captureGroupBounds.length / 2; i++) {
+                assertEquals(captureGroupBounds[i * 2], result.invokeMember("getStart", i).asInt());
+                assertEquals(captureGroupBounds[i * 2 + 1], result.invokeMember("getEnd", i).asInt());
+            }
         }
     }
 }

@@ -1117,7 +1117,6 @@ public final class PythonFlavorProcessor implements RegexFlavorProcessor {
             } else if (match(",}")) {
                 // Python interprets A{,} as A*, whereas ECMAScript does not accept such a range
                 // quantifier.
-                quantifier('*');
                 emitSnippet("*");
             } else {
                 Optional<BigInteger> lowerBound = Optional.empty();
@@ -1144,7 +1143,15 @@ public final class PythonFlavorProcessor implements RegexFlavorProcessor {
                 if (lowerBound.isPresent() && upperBound.isPresent() && lowerBound.get().compareTo(upperBound.get()) > 0) {
                     throw syntaxErrorAtAbs("min repeat greater than max repeat", start);
                 }
-                emitSnippet(inPattern.substring(start, position));
+                if (lowerBound.isPresent()) {
+                    emitSnippet(inPattern.substring(start, position));
+                } else {
+                    // {,upperBound} is invalid in JS in unicode mode, but always valid in Python,
+                    // so we insert an explicit lower bound 0
+                    emitSnippet("{0,");
+                    assert inPattern.charAt(start) == '{' && inPattern.charAt(start + 1) == ',';
+                    emitSnippet(inPattern.substring(start + 2, position));
+                }
             }
         } else {
             emitRawCodepoint(ch);
