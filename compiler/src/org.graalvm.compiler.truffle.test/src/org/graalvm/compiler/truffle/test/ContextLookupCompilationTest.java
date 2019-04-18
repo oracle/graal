@@ -24,12 +24,19 @@
  */
 package org.graalvm.compiler.truffle.test;
 
+import java.lang.reflect.Field;
+
+import org.graalvm.compiler.nodes.FieldLocationIdentity;
+import org.graalvm.compiler.nodes.StructuredGraph;
+import org.graalvm.compiler.nodes.memory.ReadNode;
 import org.graalvm.compiler.truffle.runtime.OptimizedCallTarget;
 import org.graalvm.compiler.truffle.runtime.SharedTruffleRuntimeOptions;
 import org.graalvm.compiler.truffle.runtime.TruffleRuntimeOptions;
 import org.graalvm.polyglot.Context;
 import org.graalvm.polyglot.Engine;
+import org.graalvm.word.LocationIdentity;
 import org.junit.AfterClass;
+import org.junit.Assert;
 import org.junit.Before;
 import org.junit.BeforeClass;
 import org.junit.Test;
@@ -45,9 +52,11 @@ import com.oracle.truffle.api.TruffleLanguage.Env;
 import com.oracle.truffle.api.TruffleLanguage.LanguageReference;
 import com.oracle.truffle.api.TruffleLanguage.Registration;
 import com.oracle.truffle.api.frame.VirtualFrame;
+import com.oracle.truffle.api.nodes.ExplodeLoop;
 import com.oracle.truffle.api.nodes.RootNode;
 
 import jdk.vm.ci.code.BailoutException;
+import jdk.vm.ci.meta.ResolvedJavaField;
 
 public class ContextLookupCompilationTest extends PartialEvaluationTest {
 
@@ -81,6 +90,57 @@ public class ContextLookupCompilationTest extends PartialEvaluationTest {
     }
 
     @Test
+    public void testNoSharingContextMultiThreading() {
+        Context context;
+
+        context = enter(Context.create());
+        touchOnThread(context);
+        assertLookupsNoSharing();
+        context.leave();
+        context.close();
+
+        context = enter(Context.create());
+        touchOnThread(context);
+        assertLookupsNoSharing();
+        context.leave();
+        context.close();
+    }
+
+    @Test
+    public void testTwoContextMultiThreading() {
+        Context context;
+
+        Engine engine = Engine.create();
+
+        context = enter(Context.newBuilder().engine(engine).build());
+        touchOnThread(context);
+        assertLookupsSharedMultipleThreads(false);
+        context.leave();
+        context.close();
+
+        context = enter(Context.newBuilder().engine(engine).build());
+        touchOnThread(context);
+        assertLookupsSharedMultipleThreads(true);
+        context.leave();
+        context.close();
+    }
+
+    /*
+     * This triggers single threading assumptions to invalidate.
+     */
+    private static void touchOnThread(Context context) {
+        Thread thread = new Thread((Runnable) () -> {
+            context.enter();
+            context.leave();
+        }, "test");
+        thread.start();
+        try {
+            thread.join();
+        } catch (InterruptedException e) {
+        }
+    }
+
+    @Test
     public void testInnerContexts() {
         Context context;
 
@@ -88,7 +148,7 @@ public class ContextLookupCompilationTest extends PartialEvaluationTest {
         assertCompiling(createAssertConstantFromRef());
         assertLookupsNoSharing();
 
-        TruffleContext innerContext = Shared.getCurrentContext().newContextBuilder().build();
+        TruffleContext innerContext = Shared.getCurrentContext().env.newContextBuilder().build();
         Object prev = innerContext.enter();
         try {
             Context.getCurrent().initialize(EXCLUSIVE_LANGUAGE);
@@ -134,6 +194,13 @@ public class ContextLookupCompilationTest extends PartialEvaluationTest {
         assertCompiling(createAssertConstantLanguageFromLookup(Shared.get(), Shared.get()));
         assertCompiling(createAssertConstantLanguageFromLookup(null, Exclusive.get()));
         assertCompiling(createAssertConstantLanguageFromLookup(null, Shared.get()));
+
+        assertMagicNumberReads(0, Exclusive.get(), Exclusive.get());
+        assertMagicNumberReads(0, Exclusive.get(), Shared.get());
+        assertMagicNumberReads(0, Shared.get(), Exclusive.get());
+        assertMagicNumberReads(0, Shared.get(), Shared.get());
+        assertMagicNumberReads(0, null, Exclusive.get());
+        assertMagicNumberReads(0, null, Shared.get());
     }
 
     @Test
@@ -193,6 +260,13 @@ public class ContextLookupCompilationTest extends PartialEvaluationTest {
         assertBailout(createAssertConstantLanguageFromLookup(null, Exclusive.get()));
         assertCompiling(createAssertConstantLanguageFromLookup(Shared.get(), Shared.get()));
         assertCompiling(createAssertConstantLanguageFromLookup(null, Shared.get()));
+
+        assertMagicNumberReads(1, Exclusive.get(), Exclusive.get());
+        assertMagicNumberReads(1, Exclusive.get(), Shared.get());
+        assertMagicNumberReads(1, Shared.get(), Exclusive.get());
+        assertMagicNumberReads(1, Shared.get(), Shared.get());
+        assertMagicNumberReads(1, null, Exclusive.get());
+        assertMagicNumberReads(1, null, Shared.get());
     }
 
     private void assertLookupsSharedEngine(boolean secondContext) {
@@ -214,6 +288,70 @@ public class ContextLookupCompilationTest extends PartialEvaluationTest {
         }
         assertCompiling(createAssertConstantLanguageFromLookup(Shared.get(), Shared.get()));
         assertCompiling(createAssertConstantLanguageFromLookup(null, Shared.get()));
+
+        assertMagicNumberReads(0, Exclusive.get(), Exclusive.get());
+        assertMagicNumberReads(0, Exclusive.get(), Shared.get());
+        assertMagicNumberReads(1, Shared.get(), Exclusive.get());
+        assertMagicNumberReads(1, Shared.get(), Shared.get());
+        assertMagicNumberReads(1, null, Exclusive.get());
+        assertMagicNumberReads(1, null, Shared.get());
+    }
+
+    private void assertLookupsSharedMultipleThreads(boolean secondContext) {
+        assertCompiling(createAssertConstantContextFromLookup(Exclusive.get(), Exclusive.get()));
+        assertCompiling(createAssertConstantContextFromLookup(Exclusive.get(), Shared.get()));
+        assertBailout(createAssertConstantContextFromLookup(Shared.get(), Exclusive.get()));
+        assertBailout(createAssertConstantContextFromLookup(Shared.get(), Shared.get()));
+        assertBailout(createAssertConstantContextFromLookup(null, Exclusive.get()));
+        assertBailout(createAssertConstantContextFromLookup(null, Shared.get()));
+
+        assertCompiling(createAssertConstantLanguageFromLookup(Exclusive.get(), Exclusive.get()));
+        assertCompiling(createAssertConstantLanguageFromLookup(Exclusive.get(), Shared.get()));
+        if (secondContext) {
+            assertBailout(createAssertConstantLanguageFromLookup(Shared.get(), Exclusive.get()));
+            assertBailout(createAssertConstantLanguageFromLookup(null, Exclusive.get()));
+        } else {
+            assertCompiling(createAssertConstantLanguageFromLookup(Shared.get(), Exclusive.get()));
+            assertCompiling(createAssertConstantLanguageFromLookup(null, Exclusive.get()));
+        }
+        assertCompiling(createAssertConstantLanguageFromLookup(Shared.get(), Shared.get()));
+        assertCompiling(createAssertConstantLanguageFromLookup(null, Shared.get()));
+
+        assertMagicNumberReads(0, Exclusive.get(), Exclusive.get());
+        assertMagicNumberReads(0, Exclusive.get(), Shared.get());
+        /*
+         * Unfortunately we cannot fold reads with multiple threads yet. GR-8222
+         */
+        assertMagicNumberReads(50, Shared.get(), Exclusive.get());
+        assertMagicNumberReads(50, Shared.get(), Shared.get());
+        assertMagicNumberReads(50, null, Exclusive.get());
+        assertMagicNumberReads(50, null, Shared.get());
+    }
+
+    private void assertMagicNumberReads(int expected, TruffleLanguage<?> sourceLanguage, TruffleLanguage<LanguageContext> accessLanguage) {
+        assertCompiling(createContextFromLookup(sourceLanguage, accessLanguage, 50));
+        Assert.assertEquals("Invalid number of magic number reads.", expected, countFieldReads(lastCompiledGraph, LanguageContext.class, "magicNumber"));
+    }
+
+    private int countFieldReads(StructuredGraph graph, Class<?> clazz, String fieldName) {
+        Field field;
+        try {
+            field = clazz.getDeclaredField(fieldName);
+        } catch (NoSuchFieldException | SecurityException e) {
+            throw new AssertionError(e);
+        }
+        ResolvedJavaField resolvedField = getMetaAccess().lookupJavaField(field);
+
+        int count = 0;
+        for (ReadNode readNode : graph.getNodes(ReadNode.TYPE)) {
+            LocationIdentity location = readNode.getLocationIdentity();
+            if (location instanceof FieldLocationIdentity) {
+                if (((FieldLocationIdentity) location).getField().equals(resolvedField)) {
+                    count++;
+                }
+            }
+        }
+        return count;
     }
 
     @Test
@@ -291,6 +429,29 @@ public class ContextLookupCompilationTest extends PartialEvaluationTest {
         return root;
     }
 
+    private static RootNode createContextFromLookup(TruffleLanguage<?> sourceLanguage, TruffleLanguage<LanguageContext> accessLanguage, int lookups) {
+        RootNode root = new RootNode(sourceLanguage) {
+            @CompilationFinal ContextReference<LanguageContext> ref;
+
+            @SuppressWarnings("unchecked")
+            @Override
+            @ExplodeLoop
+            public Object execute(VirtualFrame frame) {
+                if (ref == null) {
+                    CompilerDirectives.transferToInterpreterAndInvalidate();
+                    ref = lookupContextReference(accessLanguage.getClass());
+                }
+                int sum = 0;
+                for (int i = 0; i < lookups; i++) {
+                    LanguageContext ctx = ref.get();
+                    sum += ctx.magicNumber;
+                }
+                return sum;
+            }
+        };
+        return root;
+    }
+
     private static RootNode createAssertConstantLanguageFromLookup(TruffleLanguage<?> sourceLanguage, TruffleLanguage<?> accessLanguage) {
         RootNode root = new RootNode(sourceLanguage) {
             @CompilationFinal LanguageReference<?> ref;
@@ -312,7 +473,7 @@ public class ContextLookupCompilationTest extends PartialEvaluationTest {
 
     private static RootNode createAssertConstantFromRef() {
         RootNode root = new RootNode(null) {
-            final ContextReference<Env> ref = Shared.getCurrentContextReference();
+            final ContextReference<LanguageContext> ref = Shared.getCurrentContextReference();
 
             @Override
             public Object execute(VirtualFrame frame) {
@@ -340,7 +501,7 @@ public class ContextLookupCompilationTest extends PartialEvaluationTest {
 
     private static RootNode createGetFromRef() {
         RootNode root = new RootNode(null) {
-            final ContextReference<Env> ref = Shared.getCurrentContextReference();
+            final ContextReference<LanguageContext> ref = Shared.getCurrentContextReference();
 
             @Override
             public Object execute(VirtualFrame frame) {
@@ -390,11 +551,16 @@ public class ContextLookupCompilationTest extends PartialEvaluationTest {
     }
 
     @Registration(id = EXCLUSIVE_LANGUAGE, name = EXCLUSIVE_LANGUAGE, contextPolicy = ContextPolicy.EXCLUSIVE)
-    public static class Exclusive extends TruffleLanguage<Env> {
+    public static class Exclusive extends TruffleLanguage<LanguageContext> {
 
         @Override
-        protected Env createContext(Env env) {
-            return env;
+        protected LanguageContext createContext(Env env) {
+            return new LanguageContext(env, 42);
+        }
+
+        @Override
+        protected boolean isThreadAccessAllowed(Thread thread, boolean singleThreaded) {
+            return true;
         }
 
         @Override
@@ -402,26 +568,43 @@ public class ContextLookupCompilationTest extends PartialEvaluationTest {
             return false;
         }
 
-        public static ContextReference<Env> getCurrentContextReference() {
+        public static ContextReference<LanguageContext> getCurrentContextReference() {
             return getCurrentLanguage(Exclusive.class).getContextReference();
         }
 
-        public static Env getCurrentContext() {
+        public static LanguageContext getCurrentContext() {
             return getCurrentContext(Exclusive.class);
         }
 
-        public static TruffleLanguage<?> get() {
+        public static TruffleLanguage<LanguageContext> get() {
             return getCurrentLanguage(Exclusive.class);
         }
 
     }
 
+    static class LanguageContext {
+
+        final Env env;
+        final int magicNumber;
+
+        LanguageContext(Env env, int number) {
+            this.env = env;
+            this.magicNumber = number;
+        }
+
+    }
+
     @Registration(id = SHARED_LANGUAGE, name = SHARED_LANGUAGE, contextPolicy = ContextPolicy.SHARED)
-    public static class Shared extends TruffleLanguage<Env> {
+    public static class Shared extends TruffleLanguage<LanguageContext> {
 
         @Override
-        protected Env createContext(Env env) {
-            return env;
+        protected LanguageContext createContext(Env env) {
+            return new LanguageContext(env, 42);
+        }
+
+        @Override
+        protected boolean isThreadAccessAllowed(Thread thread, boolean singleThreaded) {
+            return true;
         }
 
         @Override
@@ -429,15 +612,15 @@ public class ContextLookupCompilationTest extends PartialEvaluationTest {
             return false;
         }
 
-        public static ContextReference<Env> getCurrentContextReference() {
+        public static ContextReference<LanguageContext> getCurrentContextReference() {
             return getCurrentLanguage(Shared.class).getContextReference();
         }
 
-        public static Env getCurrentContext() {
+        public static LanguageContext getCurrentContext() {
             return getCurrentContext(Shared.class);
         }
 
-        public static TruffleLanguage<?> get() {
+        public static TruffleLanguage<LanguageContext> get() {
             return getCurrentLanguage(Shared.class);
         }
 

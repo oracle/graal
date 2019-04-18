@@ -778,6 +778,18 @@ public abstract class Accessor {
 
     }
 
+    public abstract static class CastUnsafe {
+
+        public abstract Object[] castArrayFixedLength(Object[] args, int length);
+
+        @SuppressWarnings({"unchecked"})
+        public abstract <T> T unsafeCast(Object value, Class<T> type, boolean condition, boolean nonNull, boolean exact);
+    }
+
+    protected CastUnsafe getCastUnsafe() {
+        return SUPPORT.getCastUnsafe();
+    }
+
     protected CallInlined getCallInlined() {
         return SUPPORT.getCallInlined();
     }

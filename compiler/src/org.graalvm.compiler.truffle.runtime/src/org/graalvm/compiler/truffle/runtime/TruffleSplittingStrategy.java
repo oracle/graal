@@ -155,7 +155,7 @@ final class TruffleSplittingStrategy {
         }
         // disable recursive splitting for now
         OptimizedCallTarget root = (OptimizedCallTarget) rootNode.getCallTarget();
-        if (root == callTarget || root.getSourceCallTarget() == callTarget) {
+        if (root == callTarget || (root != null && root.getSourceCallTarget() == callTarget)) {
             // recursive call found
             return false;
         }
@@ -179,6 +179,9 @@ final class TruffleSplittingStrategy {
             return false;
         }
         OptimizedCallTarget callRootTarget = (OptimizedCallTarget) rootNode.getCallTarget();
+        if (callRootTarget == null) {
+            return false;
+        }
         OptimizedCallTarget callSourceTarget = callRootTarget.getSourceCallTarget();
         int depth = 0;
         while (callSourceTarget != null) {
