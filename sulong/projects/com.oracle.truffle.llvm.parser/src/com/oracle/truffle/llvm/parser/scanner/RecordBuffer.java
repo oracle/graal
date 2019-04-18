@@ -35,13 +35,14 @@ import com.oracle.truffle.llvm.runtime.except.LLVMParserException;
 
 final class RecordBuffer {
 
-    private static final int INITIAL_BUFFER_SIZE = 256;
+    private static final int INITIAL_BUFFER_SIZE = 8;
 
     private long[] opBuffer = new long[INITIAL_BUFFER_SIZE];
 
     private int size = 0;
 
     void addOpNoCheck(long op) {
+        assert size < opBuffer.length;
         opBuffer[size++] = op;
     }
 
@@ -52,7 +53,11 @@ final class RecordBuffer {
 
     void ensureFits(long numOfAdditionalOps) {
         if (size >= opBuffer.length - numOfAdditionalOps) {
-            opBuffer = Arrays.copyOf(opBuffer, opBuffer.length + ((int) numOfAdditionalOps * 2));
+            int newLength = opBuffer.length;
+            while (size >= newLength - numOfAdditionalOps) {
+                newLength *= 2;
+            }
+            opBuffer = Arrays.copyOf(opBuffer, newLength);
         }
     }
 

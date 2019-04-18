@@ -32,6 +32,6 @@ package com.oracle.truffle.llvm.parser.scanner;
 @FunctionalInterface
 interface AbbreviatedRecord {
 
-    void scan();
+    void scan(LLVMScanner scanner);
 
 }
