@@ -54,6 +54,7 @@ import com.oracle.svm.hosted.meta.HostedMethod;
 import com.oracle.svm.hosted.meta.HostedUniverse;
 
 import jdk.vm.ci.meta.ResolvedJavaMethod;
+import org.graalvm.nativeimage.impl.InternalPlatform;
 
 public abstract class NativeBootImageViaCC extends NativeBootImage {
 
@@ -114,7 +115,7 @@ public abstract class NativeBootImageViaCC extends NativeBootImage {
                     throw UserError.abort(OS.getCurrent().name() + " does not support building static executable images.");
                 case SHARED_LIBRARY:
                     cmd.add("-shared");
-                    if (Platform.includedIn(Platform.DARWIN_AND_JNI.class)) {
+                    if (Platform.includedIn(InternalPlatform.DARWIN_AND_JNI.class)) {
                         cmd.add("-undefined");
                         cmd.add("dynamic_lookup");
                     }

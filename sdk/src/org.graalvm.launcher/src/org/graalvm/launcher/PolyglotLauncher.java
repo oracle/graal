@@ -181,6 +181,7 @@ public final class PolyglotLauncher extends Launcher {
         final Deque<String> arguments = new ArrayDeque<>(argumentsList);
         if (!arguments.isEmpty() && arguments.getFirst().equals("--use-launcher")) {
             // We are called from another launcher which used --polyglot
+            arguments.removeFirst();
             String launcherName = getNextArgument(arguments, "--use-launcher");
             switchToLauncher(launcherName, new HashMap<>(), new ArrayList<>(arguments));
             return;

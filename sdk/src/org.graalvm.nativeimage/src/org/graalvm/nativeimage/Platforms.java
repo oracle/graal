@@ -58,7 +58,7 @@ public @interface Platforms {
     /**
      * Restricts the annotated element (type, method, or field) to the specified {@link Platform}
      * groups.
-     * 
+     *
      * @since 1.0
      */
     Class<? extends Platform>[] value();

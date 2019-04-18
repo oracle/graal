@@ -24,7 +24,7 @@
  */
 package com.oracle.svm.core.handles;
 
-import org.graalvm.nativeimage.Feature;
+import org.graalvm.nativeimage.hosted.Feature;
 import org.graalvm.nativeimage.ImageSingletons;
 import org.graalvm.nativeimage.ObjectHandles;
 import org.graalvm.nativeimage.impl.ObjectHandlesSupport;

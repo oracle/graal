@@ -49,13 +49,13 @@ import java.util.HashMap;
 import java.util.LinkedHashMap;
 
 import org.graalvm.compiler.serviceprovider.JavaVersionUtil;
-import org.graalvm.nativeimage.Feature;
+import org.graalvm.nativeimage.hosted.Feature;
 import org.graalvm.nativeimage.ImageSingletons;
 import org.graalvm.nativeimage.PinnedObject;
 import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.Platforms;
-import org.graalvm.nativeimage.RuntimeClassInitialization;
-import org.graalvm.nativeimage.RuntimeReflection;
+import org.graalvm.nativeimage.hosted.RuntimeClassInitialization;
+import org.graalvm.nativeimage.hosted.RuntimeReflection;
 import org.graalvm.nativeimage.StackValue;
 import org.graalvm.nativeimage.c.function.CLibrary;
 import org.graalvm.nativeimage.c.struct.SizeOf;
@@ -64,6 +64,7 @@ import org.graalvm.nativeimage.c.type.CIntPointer;
 import org.graalvm.nativeimage.c.type.CTypeConversion;
 import org.graalvm.nativeimage.c.type.CTypeConversion.CCharPointerHolder;
 import org.graalvm.nativeimage.c.type.WordPointer;
+import org.graalvm.nativeimage.impl.InternalPlatform;
 import org.graalvm.word.PointerBase;
 import org.graalvm.word.WordFactory;
 
@@ -94,7 +95,7 @@ import com.oracle.svm.core.util.Utf8;
 import com.oracle.svm.core.util.VMError;
 import com.oracle.svm.hosted.jni.JNIRuntimeAccess;
 
-@Platforms({Platform.LINUX_JNI.class, Platform.DARWIN_JNI.class})
+@Platforms({InternalPlatform.LINUX_JNI.class, InternalPlatform.DARWIN_JNI.class})
 @AutomaticFeature
 @CLibrary("net")
 class PosixJavaNetSubstitutionsFeature implements Feature {
@@ -250,21 +251,21 @@ class PosixJavaNetSubstitutionsFeature implements Feature {
 }
 
 @TargetClass(className = "java.net.NetworkInterface")
-@Platforms({Platform.LINUX_JNI.class, Platform.DARWIN_JNI.class})
+@Platforms({InternalPlatform.LINUX_JNI.class, InternalPlatform.DARWIN_JNI.class})
 final class Target_java_net_NetworkInterface_jni {
 
     @Alias
     static native void init();
 }
 
-@Platforms({Platform.LINUX_AND_JNI.class, Platform.DARWIN_AND_JNI.class})
+@Platforms({InternalPlatform.LINUX_AND_JNI.class, InternalPlatform.DARWIN_AND_JNI.class})
 public final class PosixJavaNetSubstitutions {
 
     /** Private constructor: No instances. */
     private PosixJavaNetSubstitutions() {
     }
 
-    @Platforms({Platform.LINUX_JNI.class, Platform.DARWIN_JNI.class})
+    @Platforms({InternalPlatform.LINUX_JNI.class, InternalPlatform.DARWIN_JNI.class})
     public static boolean initIDs() {
         try {
             System.loadLibrary("net");

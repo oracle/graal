@@ -34,7 +34,7 @@ import java.util.Objects;
 import java.util.Set;
 
 import org.graalvm.compiler.options.Option;
-import org.graalvm.nativeimage.Feature;
+import org.graalvm.nativeimage.hosted.Feature;
 
 import com.oracle.graal.pointsto.api.PointstoOptions;
 import com.oracle.graal.pointsto.flow.InvokeTypeFlow;

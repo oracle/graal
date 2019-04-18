@@ -40,13 +40,6 @@
  */
 package org.graalvm.nativeimage;
 
-import java.lang.reflect.Field;
-import java.nio.file.Path;
-import java.util.Collections;
-import java.util.List;
-import java.util.function.Function;
-import java.util.function.Predicate;
-
 /**
  * Features allow clients to intercept the native image generation and run custom initialization
  * code at various stages. All code within feature classes is executed during native image
@@ -75,10 +68,12 @@ import java.util.function.Predicate;
  * (unless the feature dependencies are cyclic).
  * </ul>
  *
+ * @deprecated Replaced by {@link org.graalvm.nativeimage.hosted.Feature}.
  * @since 1.0
  */
 @Platforms(Platform.HOSTED_ONLY.class)
-public interface Feature {
+@Deprecated
+public interface Feature extends org.graalvm.nativeimage.hosted.Feature {
 
     /**
      * Access methods that are available for all feature methods.
@@ -86,14 +81,8 @@ public interface Feature {
      * @since 1.0
      */
     @Platforms(Platform.HOSTED_ONLY.class)
-    interface FeatureAccess {
-
-        /**
-         * Returns a class if it is present on the classpath.
-         *
-         * @since 1.0
-         */
-        Class<?> findClassByName(String className);
+    @Deprecated
+    interface FeatureAccess extends org.graalvm.nativeimage.hosted.Feature.FeatureAccess {
     }
 
     /**
@@ -102,7 +91,8 @@ public interface Feature {
      * @since 1.0
      */
     @Platforms(Platform.HOSTED_ONLY.class)
-    interface IsInConfigurationAccess extends FeatureAccess {
+    @Deprecated
+    interface IsInConfigurationAccess extends org.graalvm.nativeimage.hosted.Feature.IsInConfigurationAccess {
     }
 
     /**
@@ -111,7 +101,8 @@ public interface Feature {
      * @since 1.0
      */
     @Platforms(Platform.HOSTED_ONLY.class)
-    interface AfterRegistrationAccess extends FeatureAccess {
+    @Deprecated
+    interface AfterRegistrationAccess extends org.graalvm.nativeimage.hosted.Feature.AfterRegistrationAccess {
     }
 
     /**
@@ -120,18 +111,8 @@ public interface Feature {
      * @since 1.0
      */
     @Platforms(Platform.HOSTED_ONLY.class)
-    interface DuringSetupAccess extends FeatureAccess {
-
-        /**
-         * Registers the provided function to replace objects.
-         * <p>
-         * The function checks if an object should be replaced. In such a case, the function creates
-         * the new object and returns it. The function must return the original object if the object
-         * should not be replaced.
-         *
-         * @since 1.0
-         */
-        void registerObjectReplacer(Function<Object, Object> replacer);
+    @Deprecated
+    interface DuringSetupAccess extends org.graalvm.nativeimage.hosted.Feature.DuringSetupAccess {
     }
 
     /**
@@ -140,59 +121,8 @@ public interface Feature {
      * @since 1.0
      */
     @Platforms(Platform.HOSTED_ONLY.class)
-    interface BeforeAnalysisAccess extends FeatureAccess {
-
-        /**
-         * Registers the provided type a used, i.e., metadata for the type is put into the native
-         * image.
-         *
-         * @since 1.0
-         */
-        void registerAsUsed(Class<?> type);
-
-        /**
-         * Registers the provided type as instantiated, i.e., the static analysis assumes that
-         * instances of this type exist at run time even if there is no explicit instantiation in
-         * the bytecodes.
-         * <p>
-         * This implies that the type is also marked as {@link #registerAsUsed used}.
-         *
-         * @since 1.0
-         */
-        void registerAsInHeap(Class<?> type);
-
-        /**
-         * Registers the provided field as accesses, i.e., the static analysis assumes the field is
-         * used even if there are no explicit reads or writes in the bytecodes.
-         *
-         * @since 1.0
-         */
-        void registerAsAccessed(Field field);
-
-        /**
-         * This method is now @Deprecated. Please use registerAsUnsafeAccessed instead.
-         *
-         * Registers the provided field as written by {@link sun.misc.Unsafe}, i.e., the static
-         * analysis merges together all values of unsafe accessed fields of a specific type.
-         * <p>
-         * This implies that the field is also marked as {@link #registerAsAccessed accessed}.
-         *
-         * @since 1.0
-         */
-        @Deprecated
-        default void registerAsUnsafeWritten(Field field) {
-            registerAsUnsafeAccessed(field);
-        }
-
-        /**
-         * Registers the provided field as written or read by {@link sun.misc.Unsafe}, i.e., the
-         * static analysis merges together all values of unsafe accessed fields of a specific type.
-         * <p>
-         * This implies that the field is also marked as {@link #registerAsAccessed accessed}.
-         *
-         * @since 1.0
-         */
-        void registerAsUnsafeAccessed(Field field);
+    @Deprecated
+    interface BeforeAnalysisAccess extends org.graalvm.nativeimage.hosted.Feature.BeforeAnalysisAccess {
     }
 
     /**
@@ -201,15 +131,8 @@ public interface Feature {
      * @since 1.0
      */
     @Platforms(Platform.HOSTED_ONLY.class)
-    interface DuringAnalysisAccess extends BeforeAnalysisAccess {
-
-        /**
-         * Notifies the static analysis that changes are made that enforce a new iteration of the
-         * analysis.
-         *
-         * @since 1.0
-         */
-        void requireAnalysisIteration();
+    @Deprecated
+    interface DuringAnalysisAccess extends org.graalvm.nativeimage.hosted.Feature.DuringAnalysisAccess {
     }
 
     /**
@@ -218,7 +141,8 @@ public interface Feature {
      * @since 1.0
      */
     @Platforms(Platform.HOSTED_ONLY.class)
-    interface AfterAnalysisAccess extends FeatureAccess {
+    @Deprecated
+    interface AfterAnalysisAccess extends org.graalvm.nativeimage.hosted.Feature.AfterAnalysisAccess {
 
     }
 
@@ -228,7 +152,8 @@ public interface Feature {
      * @since 1.0
      */
     @Platforms(Platform.HOSTED_ONLY.class)
-    interface OnAnalysisExitAccess extends FeatureAccess {
+    @Deprecated
+    interface OnAnalysisExitAccess extends org.graalvm.nativeimage.hosted.Feature.OnAnalysisExitAccess {
 
     }
 
@@ -239,31 +164,8 @@ public interface Feature {
      * @since 1.0
      */
     @Platforms(Platform.HOSTED_ONLY.class)
-    interface CompilationAccess extends FeatureAccess {
-
-        /**
-         * Returns the field offset of the provided instance field.
-         *
-         * @since 1.0
-         */
-        long objectFieldOffset(Field field);
-
-        /**
-         * Hint to the native image generator that the given object is immutable at runtime, i.e.,
-         * can be placed in a read-only section of the native image heap.
-         *
-         * @since 1.0
-         */
-        void registerAsImmutable(Object object);
-
-        /**
-         * Register the object, and everything it transitively references, as immutable. When the
-         * provided predicate returns false for an object, the object is not marked as immutable and
-         * the transitive iteration is stopped.
-         *
-         * @since 1.0
-         */
-        void registerAsImmutable(Object root, Predicate<Object> includeObject);
+    @Deprecated
+    interface CompilationAccess extends org.graalvm.nativeimage.hosted.Feature.CompilationAccess {
     }
 
     /**
@@ -272,7 +174,8 @@ public interface Feature {
      * @since 1.0
      */
     @Platforms(Platform.HOSTED_ONLY.class)
-    interface BeforeCompilationAccess extends CompilationAccess {
+    @Deprecated
+    interface BeforeCompilationAccess extends org.graalvm.nativeimage.hosted.Feature.BeforeCompilationAccess {
     }
 
     /**
@@ -281,7 +184,8 @@ public interface Feature {
      * @since 1.0
      */
     @Platforms(Platform.HOSTED_ONLY.class)
-    interface AfterCompilationAccess extends CompilationAccess {
+    @Deprecated
+    interface AfterCompilationAccess extends org.graalvm.nativeimage.hosted.Feature.AfterCompilationAccess {
     }
 
     /**
@@ -290,7 +194,8 @@ public interface Feature {
      * @since 1.0
      */
     @Platforms(Platform.HOSTED_ONLY.class)
-    interface AfterHeapLayoutAccess extends FeatureAccess {
+    @Deprecated
+    interface AfterHeapLayoutAccess extends org.graalvm.nativeimage.hosted.Feature.AfterHeapLayoutAccess {
     }
 
     /**
@@ -299,7 +204,8 @@ public interface Feature {
      * @since 1.0
      */
     @Platforms(Platform.HOSTED_ONLY.class)
-    interface BeforeImageWriteAccess extends FeatureAccess {
+    @Deprecated
+    interface BeforeImageWriteAccess extends org.graalvm.nativeimage.hosted.Feature.BeforeImageWriteAccess {
     }
 
     /**
@@ -308,13 +214,8 @@ public interface Feature {
      * @since 1.0
      */
     @Platforms(Platform.HOSTED_ONLY.class)
-    interface AfterImageWriteAccess extends FeatureAccess {
-        /**
-         * Returns the path to the created native-image file (includes the native-image file name).
-         *
-         * @since 1.0
-         */
-        Path getImagePath();
+    @Deprecated
+    interface AfterImageWriteAccess extends org.graalvm.nativeimage.hosted.Feature.AfterImageWriteAccess {
     }
 
     /**
@@ -329,16 +230,6 @@ public interface Feature {
      */
     default boolean isInConfiguration(IsInConfigurationAccess access) {
         return true;
-    }
-
-    /**
-     * Returns the list of features that this feature depends on. As long as the dependency chain is
-     * non-cyclic, all required features are processed before this feature.
-     *
-     * @since 1.0
-     */
-    default List<Class<? extends Feature>> getRequiredFeatures() {
-        return Collections.emptyList();
     }
 
     /**
@@ -462,15 +353,4 @@ public interface Feature {
     default void afterImageWrite(AfterImageWriteAccess access) {
     }
 
-    /**
-     * Handler for cleanup. Can be used to cleanup static data. This can avoid memory leaks if
-     * native image generation is done many times, e.g. during unit tests.
-     * <p>
-     * Usually, overriding this method can be avoided by putting a configuration object into the
-     * {@link ImageSingletons}.
-     *
-     * @since 1.0
-     */
-    default void cleanup() {
-    }
 }

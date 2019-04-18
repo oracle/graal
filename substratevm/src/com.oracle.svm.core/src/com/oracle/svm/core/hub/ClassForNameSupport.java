@@ -27,7 +27,7 @@ package com.oracle.svm.core.hub;
 import java.util.HashMap;
 import java.util.Map;
 
-import org.graalvm.nativeimage.Feature;
+import org.graalvm.nativeimage.hosted.Feature;
 import org.graalvm.nativeimage.ImageSingletons;
 import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.Platforms;

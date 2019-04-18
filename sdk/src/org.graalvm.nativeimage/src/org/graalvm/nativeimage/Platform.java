@@ -40,6 +40,8 @@
  */
 package org.graalvm.nativeimage;
 
+import org.graalvm.nativeimage.impl.InternalPlatform;
+
 /**
  * Root of the interface hierarchy for architectures, OS, and supported combinations of them.
  * <p>
@@ -59,16 +61,39 @@ package org.graalvm.nativeimage;
  */
 public interface Platform {
 
-    /*
-     * The standard architectures that we support.
+    /**
+     * The system property name that specifies the fully qualified name of the {@link Platform}
+     * implementation class that should be used. If the property is not specified, the platform
+     * class is inferred from the standard architectures and operating systems specified in this
+     * file, i.e., in most cases it is not necessary to use this property.
+     *
+     * @since 1.0
      */
+    String PLATFORM_PROPERTY_NAME = "svm.platform";
 
+    /**
+     * Returns true if the current platform (the platform that the native image is built for) is
+     * included in the provided platform group.
+     * <p>
+     * The platformGroup must be a compile-time constant, so that the call to this method can be
+     * replaced with the constant boolean result.
+     *
+     * @since 1.0
+     */
+    static boolean includedIn(Class<? extends Platform> platformGroup) {
+        return platformGroup.isInstance(ImageSingletons.lookup(Platform.class));
+    }
+
+    /*
+     * The standard architectures that are supported.
+     */
     /**
      * Supported architecture: x86 64-bit.
      *
      * @since 1.0
      */
     interface AMD64 extends Platform {
+
     }
 
     /**
@@ -77,18 +102,19 @@ public interface Platform {
      * @since 1.0
      */
     interface AArch64 extends Platform {
+
     }
 
     /*
-     * The standard operating systems that we support.
+     * The standard operating systems that are supported.
      */
-
     /**
      * Supported operating system: Linux.
      *
      * @since 1.0
      */
     interface LINUX extends Platform {
+
     }
 
     /**
@@ -97,40 +123,7 @@ public interface Platform {
      * @since 1.0
      */
     interface DARWIN extends Platform {
-    }
 
-    /**
-     * Supported operating system: Linux platform that uses JNI based native JDK libraries.
-     *
-     * @since 1.0
-     */
-    interface LINUX_JNI extends Platform {
-    }
-
-    /**
-     * Supported operating system: Darwin (MacOS) platform that uses JNI based native JDK libraries.
-     *
-     * @since 1.0
-     */
-    interface DARWIN_JNI extends Platform {
-    }
-
-    /**
-     * Temporary platform used to mark classes or methods that are used for LINUX and LINUX_JNI
-     * platforms.
-     *
-     * @since 1.0
-     */
-    interface LINUX_AND_JNI extends Platform {
-    }
-
-    /**
-     * Temporary platform used to mark classes or methods that are used for DARWIN (MacOS) and
-     * DARWIN_JNI platforms.
-     *
-     * @since 1.0
-     */
-    interface DARWIN_AND_JNI extends Platform {
     }
 
     /**
@@ -139,18 +132,18 @@ public interface Platform {
      * @since 1.0
      */
     interface WINDOWS extends Platform {
+
     }
 
     /*
-     * Standard leaf platforms, i.e., OS-architecture combinations that we support.
+     * The standard leaf platforms, i.e., OS-architecture combinations that we support.
      */
-
     /**
      * Supported leaf platform: Linux on x86 64-bit.
      *
      * @since 1.0
      */
-    class LINUX_AMD64 implements LINUX, LINUX_AND_JNI, AMD64 {
+    class LINUX_AMD64 implements LINUX, InternalPlatform.LINUX_AND_JNI, AMD64 {
 
         /**
          * Instantiates a marker instance of this platform.
@@ -159,6 +152,7 @@ public interface Platform {
          */
         public LINUX_AMD64() {
         }
+
     }
 
     /**
@@ -166,7 +160,7 @@ public interface Platform {
      *
      * @since 1.0
      */
-    final class LINUX_AArch64 implements LINUX, LINUX_AND_JNI, AArch64 {
+    final class LINUX_AArch64 implements LINUX, InternalPlatform.LINUX_AND_JNI, AArch64 {
 
         /**
          * Instantiates a marker instance of this platform.
@@ -175,6 +169,7 @@ public interface Platform {
          */
         public LINUX_AArch64() {
         }
+
     }
 
     /**
@@ -182,7 +177,7 @@ public interface Platform {
      *
      * @since 1.0
      */
-    class DARWIN_AMD64 implements DARWIN, DARWIN_AND_JNI, AMD64 {
+    class DARWIN_AMD64 implements DARWIN, InternalPlatform.DARWIN_AND_JNI, AMD64 {
 
         /**
          * Instantiates a marker instance of this platform.
@@ -191,40 +186,7 @@ public interface Platform {
          */
         public DARWIN_AMD64() {
         }
-    }
 
-    /**
-     * Temporary leaf platform that is used to mark classes or methods that are used for LINUX_JNI
-     * platforms.
-     *
-     * @since 1.0
-     */
-    class LINUX_JNI_AMD64 implements LINUX_JNI, LINUX_AND_JNI, AMD64 {
-
-        /**
-         * Instantiates a marker instance of this platform.
-         *
-         * @since 1.0
-         */
-        public LINUX_JNI_AMD64() {
-        }
-    }
-
-    /**
-     * Temporary leaf platform that is used to mark classes or methods that are used for DARWIN_JNI
-     * platforms.
-     *
-     * @since 1.0
-     */
-    class DARWIN_JNI_AMD64 implements DARWIN_JNI, DARWIN_AND_JNI, AMD64 {
-
-        /**
-         * Instantiates a marker instance of this platform.
-         *
-         * @since 1.0
-         */
-        public DARWIN_JNI_AMD64() {
-        }
     }
 
     /**
@@ -241,6 +203,7 @@ public interface Platform {
          */
         public WINDOWS_AMD64() {
         }
+
     }
 
     /**
@@ -254,26 +217,4 @@ public interface Platform {
         }
     }
 
-    /**
-     * Returns true if the current platform (the platform that the native image is built for) is
-     * included in the provided platform group.
-     * <p>
-     * The platformGroup must be a compile time constant, so that the call to this method can be
-     * replaced with the constant boolean result.
-     *
-     * @since 1.0
-     */
-    static boolean includedIn(Class<? extends Platform> platformGroup) {
-        return platformGroup.isInstance(ImageSingletons.lookup(Platform.class));
-    }
-
-    /**
-     * The system property name that specifies the fully qualified name of the {@link Platform}
-     * implementation class that should be used. If the property is not specified, the platform
-     * class is inferred from the standard architectures and operating systems specified in this
-     * file, i.e., in most cases it is not necessary to use this property.
-     *
-     * @since 1.0
-     */
-    String PLATFORM_PROPERTY_NAME = "svm.platform";
 }

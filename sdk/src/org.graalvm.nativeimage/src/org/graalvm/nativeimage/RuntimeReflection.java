@@ -41,22 +41,23 @@
 package org.graalvm.nativeimage;
 
 import java.lang.reflect.Constructor;
-
-//Checkstyle: allow reflection
-
 import java.lang.reflect.Executable;
 import java.lang.reflect.Field;
 import java.lang.reflect.Modifier;
 
 import org.graalvm.nativeimage.impl.RuntimeReflectionSupport;
 
+//Checkstyle: allow reflection
+
 /**
  * This class provides methods that can be called during native image generation to register
  * classes, methods, and fields for reflection at run time.
  *
+ * @deprecated Replaced by {@link org.graalvm.nativeimage.hosted.RuntimeReflection}.
  * @since 1.0
  */
 @Platforms(Platform.HOSTED_ONLY.class)
+@Deprecated
 public final class RuntimeReflection {
 
     /**

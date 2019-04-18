@@ -40,6 +40,7 @@ import org.graalvm.nativeimage.StackValue;
 import org.graalvm.nativeimage.c.type.CCharPointer;
 import org.graalvm.nativeimage.c.type.CCharPointerPointer;
 import org.graalvm.nativeimage.c.type.CTypeConversion;
+import org.graalvm.nativeimage.impl.InternalPlatform;
 import org.graalvm.word.WordFactory;
 
 import com.oracle.svm.core.LibCHelper;
@@ -59,10 +60,10 @@ import com.oracle.svm.core.posix.headers.Time.timeval;
 import com.oracle.svm.core.posix.headers.Time.timezone;
 import com.oracle.svm.core.snippets.KnownIntrinsics;
 import com.oracle.svm.core.util.PointerUtils;
-import org.graalvm.nativeimage.Feature;
-import org.graalvm.nativeimage.RuntimeClassInitialization;
+import org.graalvm.nativeimage.hosted.Feature;
+import org.graalvm.nativeimage.hosted.RuntimeClassInitialization;
 
-@Platforms({Platform.LINUX_JNI.class, Platform.DARWIN_JNI.class})
+@Platforms({InternalPlatform.LINUX_JNI.class, InternalPlatform.DARWIN_JNI.class})
 @AutomaticFeature
 class PosixJavaLangSubstituteFeature implements Feature {
 
@@ -193,7 +194,7 @@ final class Target_java_lang_ProcessEnvironment_Value {
 }
 
 @TargetClass(className = "java.lang.UNIXProcess", onlyWith = JDK8OrEarlier.class)
-@Platforms({Platform.LINUX_AND_JNI.class, Platform.DARWIN_AND_JNI.class})
+@Platforms({InternalPlatform.LINUX_AND_JNI.class, InternalPlatform.DARWIN_AND_JNI.class})
 final class Target_java_lang_UNIXProcess {
 
     // The reaper thread pool and thread groups (currently) confuse the analysis, so we launch
@@ -328,7 +329,7 @@ final class Target_java_lang_ProcessBuilder_NullOutputStream {
 }
 
 @TargetClass(java.lang.System.class)
-@Platforms({Platform.LINUX.class, Platform.LINUX_JNI.class, Platform.DARWIN.class, Platform.DARWIN_JNI.class})
+@Platforms({Platform.LINUX.class, InternalPlatform.LINUX_JNI.class, Platform.DARWIN.class, InternalPlatform.DARWIN_JNI.class})
 final class Target_java_lang_System {
 
     @Alias @RecomputeFieldValue(kind = RecomputeFieldValue.Kind.Reset)//
@@ -370,14 +371,14 @@ final class Target_java_lang_Runtime {
 }
 
 /** Dummy class to have a class with the file's name. */
-@Platforms({Platform.LINUX_AND_JNI.class, Platform.DARWIN_AND_JNI.class})
+@Platforms({InternalPlatform.LINUX_AND_JNI.class, InternalPlatform.DARWIN_AND_JNI.class})
 public final class PosixJavaLangSubstitutions {
 
     /** Private constructor: No instances. */
     private PosixJavaLangSubstitutions() {
     }
 
-    @Platforms({Platform.LINUX_JNI.class, Platform.DARWIN_JNI.class})
+    @Platforms({InternalPlatform.LINUX_JNI.class, InternalPlatform.DARWIN_JNI.class})
     public static boolean initIDs() {
         // The JDK uses posix_spawn on the Mac to launch executables.
         // This requires a separate process "jspawnhelper" which we

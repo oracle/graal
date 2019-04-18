@@ -45,7 +45,10 @@ class VmGateTasks:
     compiler = 'compiler'
     substratevm = 'substratevm'
     sulong = 'sulong'
-    graal_js = 'graal-js'
+    graal_js_all = 'graal-js'
+    graal_js_smoke = 'graal-js-smoke'
+    graal_js_tests = 'graal-js-tests'
+    graal_js_tests_compiled = 'graal-js-tests-compiled'
     graal_nodejs = 'graal-nodejs'
     truffleruby = 'truffleruby'
     ruby = 'ruby'
@@ -70,7 +73,7 @@ def gate_body(args, tasks):
         if t and mx_vm.has_component('Sulong', fatalIfMissing=True):
             pass
 
-    with Task('Vm: Graal.js tests', tasks, tags=[VmGateTasks.graal_js]) as t:
+    with Task('Vm: Graal.js tests', tasks, tags=[VmGateTasks.graal_js_all]) as t:
         if t and mx_vm.has_component('Graal.js', fatalIfMissing=True):
             pass
 

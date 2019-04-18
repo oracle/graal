@@ -33,7 +33,7 @@ import java.util.List;
 import java.util.Map;
 
 import org.graalvm.compiler.nodes.Invoke;
-import org.graalvm.nativeimage.Feature;
+import org.graalvm.nativeimage.hosted.Feature;
 import org.graalvm.nativeimage.ImageSingletons;
 
 import com.oracle.graal.pointsto.meta.AnalysisMethod;
