@@ -35,6 +35,7 @@ import com.oracle.truffle.api.frame.Frame;
 import com.oracle.truffle.api.frame.FrameDescriptor;
 import com.oracle.truffle.api.impl.Accessor.CallInlined;
 import com.oracle.truffle.api.impl.Accessor.CallProfiled;
+import com.oracle.truffle.api.impl.Accessor.CastUnsafe;
 import com.oracle.truffle.api.impl.TVMCI;
 import com.oracle.truffle.api.nodes.IndirectCallNode;
 import com.oracle.truffle.api.nodes.Node;
@@ -164,6 +165,26 @@ final class GraalTVMCI extends TVMCI {
     @Override
     protected CallProfiled getCallProfiled() {
         return new OptimizedCallTarget.OptimizedCallProfiled();
+    }
+
+    @Override
+    protected CastUnsafe getCastUnsafe() {
+        return CAST_UNSAFE;
+    }
+
+    private static final GraalCastUnsafe CAST_UNSAFE = new GraalCastUnsafe();
+
+    private static final class GraalCastUnsafe extends CastUnsafe {
+        @Override
+        public Object[] castArrayFixedLength(Object[] args, int length) {
+            return OptimizedCallTarget.castArrayFixedLength(args, length);
+        }
+
+        @Override
+        @SuppressWarnings("unchecked")
+        public <T> T unsafeCast(Object value, Class<T> type, boolean condition, boolean nonNull, boolean exact) {
+            return OptimizedCallTarget.unsafeCast(value, type, condition, nonNull, exact);
+        }
     }
 
 }

@@ -57,7 +57,7 @@ import com.oracle.truffle.api.profiles.BranchProfile;
 @SuppressWarnings("static-method")
 final class LibFFILibrary implements TruffleObject {
 
-    private static EmptyKeysArray KEYS = new EmptyKeysArray();
+    private static final EmptyKeysArray KEYS = new EmptyKeysArray();
 
     protected final long handle;
 

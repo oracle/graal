@@ -27,7 +27,7 @@ package com.oracle.svm.jni.hosted;
 import java.util.Arrays;
 import java.util.List;
 
-import org.graalvm.nativeimage.Feature;
+import org.graalvm.nativeimage.hosted.Feature;
 
 import com.oracle.svm.jni.JNILibraryLoadFeature;
 import com.oracle.svm.jni.functions.JNIFunctionTablesFeature;

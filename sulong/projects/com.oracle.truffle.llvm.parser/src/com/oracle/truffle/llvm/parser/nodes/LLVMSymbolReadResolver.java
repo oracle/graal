@@ -47,6 +47,7 @@ import com.oracle.truffle.llvm.parser.model.symbols.constants.CompareConstant;
 import com.oracle.truffle.llvm.parser.model.symbols.constants.GetElementPointerConstant;
 import com.oracle.truffle.llvm.parser.model.symbols.constants.InlineAsmConstant;
 import com.oracle.truffle.llvm.parser.model.symbols.constants.NullConstant;
+import com.oracle.truffle.llvm.parser.model.symbols.constants.SelectConstant;
 import com.oracle.truffle.llvm.parser.model.symbols.constants.StringConstant;
 import com.oracle.truffle.llvm.parser.model.symbols.constants.UndefinedConstant;
 import com.oracle.truffle.llvm.parser.model.symbols.constants.aggregate.ArrayConstant;
@@ -359,6 +360,14 @@ public final class LLVMSymbolReadResolver {
         @Override
         public void visit(UndefinedConstant undefinedConstant) {
             undefinedConstant.getType().accept(nullValueVisitor);
+        }
+
+        @Override
+        public void visit(SelectConstant constant) {
+            final LLVMExpressionNode conditionNode = resolve(constant.getCondition());
+            final LLVMExpressionNode trueValueNode = resolve(constant.getTrueValue());
+            final LLVMExpressionNode falseValueNode = resolve(constant.getFalseValue());
+            resolvedNode = nodeFactory.createSelect(constant.getType(), conditionNode, trueValueNode, falseValueNode);
         }
 
         @Override

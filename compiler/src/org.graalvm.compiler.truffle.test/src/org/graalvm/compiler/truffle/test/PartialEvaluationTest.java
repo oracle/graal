@@ -28,6 +28,7 @@ import static org.graalvm.compiler.core.common.CompilationIdentifier.INVALID_COM
 import static org.graalvm.compiler.core.common.CompilationRequestIdentifier.asCompilationRequest;
 import static org.graalvm.compiler.debug.DebugOptions.DumpOnError;
 
+import org.graalvm.compiler.code.CompilationResult;
 import org.graalvm.compiler.core.common.CompilationIdentifier;
 import org.graalvm.compiler.debug.DebugContext;
 import org.graalvm.compiler.debug.DebugDumpScope;
@@ -76,11 +77,15 @@ public abstract class PartialEvaluationTest extends TruffleCompilerImplTest {
         return compileHelper(methodName, root, arguments, true);
     }
 
+    protected CompilationResult lastCompilationResult;
+
     protected OptimizedCallTarget compileHelper(String methodName, RootNode root, Object[] arguments, boolean lastTierCompilation) {
         final OptimizedCallTarget compilable = (OptimizedCallTarget) (Truffle.getRuntime()).createCallTarget(root);
         CompilationIdentifier compilationId = getCompilationId(compilable);
-        StructuredGraph actual = partialEval(compilable, arguments, AllowAssumptions.YES, compilationId);
-        truffleCompiler.compilePEGraph(actual, methodName, null, compilable, asCompilationRequest(compilationId), null, new CancellableCompileTask(lastTierCompilation));
+        StructuredGraph graph = partialEval(compilable, arguments, AllowAssumptions.YES, compilationId);
+        this.lastCompilationResult = truffleCompiler.compilePEGraph(graph, methodName, null, compilable, asCompilationRequest(compilationId), null,
+                        new CancellableCompileTask(lastTierCompilation));
+        this.lastCompiledGraph = graph;
         return compilable;
     }
 

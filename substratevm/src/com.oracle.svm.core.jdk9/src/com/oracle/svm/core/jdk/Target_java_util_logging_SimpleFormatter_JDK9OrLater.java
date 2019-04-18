@@ -22,36 +22,43 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.svm.configure.config;
+package com.oracle.svm.core.jdk;
 
-import java.io.IOException;
-import java.util.ArrayList;
-import java.util.Comparator;
-import java.util.HashMap;
-import java.util.List;
-import java.util.Map;
+//Checkstyle: allow reflection
 
-import com.oracle.svm.configure.json.JsonPrintable;
-import com.oracle.svm.configure.json.JsonWriter;
+import java.util.logging.LogManager;
 
-public class ReflectionConfiguration implements JsonPrintable {
-    private Map<String, ReflectionType> reflectTypes = new HashMap<>();
+import com.oracle.svm.core.annotate.Alias;
+import com.oracle.svm.core.annotate.InjectAccessors;
+import com.oracle.svm.core.annotate.TargetClass;
 
-    public ReflectionType getOrCreateType(String clazz) {
-        return reflectTypes.computeIfAbsent(clazz, ReflectionType::new);
+import jdk.internal.logger.SurrogateLogger;
+
+class FormatAccessors {
+
+    // format string for printing the log record
+    private static String getLoggingProperty(String name) {
+        return LogManager.getLogManager().getProperty(name);
     }
 
-    @Override
-    public void printJson(JsonWriter writer) throws IOException {
-        writer.append('[').indent().newline();
-        String prefix = "";
-        List<ReflectionType> list = new ArrayList<>(reflectTypes.values());
-        list.sort(Comparator.comparing(ReflectionType::getQualifiedName));
-        for (ReflectionType value : list) {
-            writer.append(prefix).newline();
-            value.printJson(writer);
-            prefix = ",";
+    private static String format = null;
+
+    public static String getFormat() {
+        if (format == null) {
+            /*
+             * If multiple threads are doing the initialization at the same time it is not a problem
+             * because they will all get to the same result in the end.
+             */
+            format = SurrogateLogger.getSimpleFormat(FormatAccessors::getLoggingProperty);
+
         }
-        writer.unindent().newline().append(']').newline();
+        return format;
     }
+}
+
+@TargetClass(value = java.util.logging.SimpleFormatter.class, onlyWith = JDK9OrLater.class)
+public final class Target_java_util_logging_SimpleFormatter_JDK9OrLater {
+
+    @Alias @InjectAccessors(FormatAccessors.class)//
+    private String format;
 }

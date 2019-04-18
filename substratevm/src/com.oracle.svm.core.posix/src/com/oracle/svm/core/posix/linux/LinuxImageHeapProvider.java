@@ -46,14 +46,14 @@ import static org.graalvm.word.WordFactory.unsigned;
 import com.oracle.svm.core.posix.PosixUtils;
 import org.graalvm.compiler.nodes.extended.MembarNode;
 import org.graalvm.compiler.word.Word;
-import org.graalvm.nativeimage.Feature;
+import org.graalvm.nativeimage.hosted.Feature;
 import org.graalvm.nativeimage.ImageSingletons;
-import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.Platforms;
 import org.graalvm.nativeimage.StackValue;
 import org.graalvm.nativeimage.c.type.CCharPointer;
 import org.graalvm.nativeimage.c.type.CLongPointer;
 import org.graalvm.nativeimage.c.type.WordPointer;
+import org.graalvm.nativeimage.impl.InternalPlatform;
 import org.graalvm.word.ComparableWord;
 import org.graalvm.word.LocationIdentity;
 import org.graalvm.word.Pointer;
@@ -79,7 +79,7 @@ import com.oracle.svm.core.posix.headers.UnistdNoTransitions;
 import jdk.vm.ci.code.MemoryBarriers;
 
 @AutomaticFeature
-@Platforms(Platform.LINUX_AND_JNI.class)
+@Platforms(InternalPlatform.LINUX_AND_JNI.class)
 class LinuxImageHeapProviderFeature implements Feature {
     @Override
     public void duringSetup(DuringSetupAccess access) {

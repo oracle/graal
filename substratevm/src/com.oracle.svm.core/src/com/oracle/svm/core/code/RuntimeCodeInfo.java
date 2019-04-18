@@ -27,7 +27,7 @@ package com.oracle.svm.core.code;
 import java.util.Arrays;
 
 import org.graalvm.compiler.options.Option;
-import org.graalvm.nativeimage.Feature;
+import org.graalvm.nativeimage.hosted.Feature;
 import org.graalvm.nativeimage.ImageSingletons;
 import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.Platforms;
@@ -335,12 +335,11 @@ public class RuntimeCodeInfo {
         log.string(methodInfo.name);
         log.string("  ip: ").hex(methodInfo.getCodeStart()).string(" - ").hex(methodInfo.getCodeEnd());
         log.string("  size: ").unsigned(methodInfo.getCodeSize());
-        SubstrateInstalledCode installedCode = methodInfo.installedCode.get();
-        if (installedCode != null) {
-            log.string("  installedCode: ").object(installedCode).string(" at ").hex(installedCode.getAddress());
-        } else {
-            log.string("  (invalidated)");
-        }
+        /*
+         * Note that we are not trying to output methodInfo.installedCode. It is not a pinned
+         * object, so when log printing (for, e.g., a fatal error) occurs during a GC, then the VM
+         * could segfault.
+         */
     }
 
     long logMethodOperation(RuntimeMethodInfo methodInfo, String kind) {

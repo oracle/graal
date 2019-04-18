@@ -28,7 +28,7 @@ import java.util.Collections;
 import java.util.List;
 
 import com.oracle.svm.core.SubstrateOptions;
-import org.graalvm.nativeimage.Feature;
+import org.graalvm.nativeimage.hosted.Feature;
 
 import com.oracle.svm.core.annotate.AutomaticFeature;
 

@@ -352,7 +352,7 @@ public class DirectoryStorageTest extends TestBase {
         ComponentInfo info = new ComponentInfo("x", "y", "2.0");
         info.addRequiredValue("a", "b");
 
-        Properties props = storage.metaToProperties(info);
+        Properties props = DirectoryStorage.metaToProperties(info);
         assertEquals("x", props.getProperty(BundleConstants.BUNDLE_ID));
         assertEquals("y", props.getProperty(BundleConstants.BUNDLE_NAME));
         assertEquals("2.0", props.getProperty(BundleConstants.BUNDLE_VERSION));

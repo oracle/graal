@@ -685,8 +685,8 @@ public final class CompileTheWorld {
                 int entryBCI = JVMCICompiler.INVOCATION_ENTRY_BCI;
                 boolean useProfilingInfo = false;
                 boolean installAsDefault = false;
-                CompilationTask task = new CompilationTask(jvmciRuntime, compiler, new HotSpotCompilationRequest(dummyMethod, entryBCI, 0L), useProfilingInfo, installAsDefault, compilerOptions);
-                task.runCompilation();
+                CompilationTask task = new CompilationTask(jvmciRuntime, compiler, new HotSpotCompilationRequest(dummyMethod, entryBCI, 0L), useProfilingInfo, installAsDefault);
+                task.runCompilation(compilerOptions);
             } catch (NoSuchMethodException | SecurityException e1) {
                 printStackTrace(e1);
             }
@@ -710,7 +710,7 @@ public final class CompileTheWorld {
 
         int compileStartAt = startAt;
         int compileStopAt = stopAt;
-        int compielStep = 1;
+        int compileStep = 1;
         if (maxClasses != Integer.MAX_VALUE) {
             int totalClassFileCount = 0;
             for (String entry : entries) {
@@ -726,7 +726,7 @@ public final class CompileTheWorld {
             compileStopAt = Math.min(stopAt, lastClassFile);
             int range = compileStopAt - compileStartAt + 1;
             if (maxClasses < range) {
-                compielStep = range / maxClasses;
+                compileStep = range / maxClasses;
             }
         }
 
@@ -762,7 +762,7 @@ public final class CompileTheWorld {
 
                     classFileCounter++;
 
-                    if (compielStep > 1 && ((classFileCounter - compileStartAt) % compielStep) != 0) {
+                    if (compileStep > 1 && ((classFileCounter - compileStartAt) % compileStep) != 0) {
                         continue;
                     }
 
@@ -854,11 +854,12 @@ public final class CompileTheWorld {
         long elapsedTime = System.currentTimeMillis() - start;
 
         println();
+        int compiledClasses = classFileCounter > compileStartAt ? classFileCounter - compileStartAt : 0;
         if (Options.MultiThreaded.getValue(harnessOptions)) {
-            TTY.println("CompileTheWorld : Done (%d classes, %d methods, %d ms elapsed, %d ms compile time, %d bytes of memory used)", classFileCounter, compiledMethodsCounter.get(), elapsedTime,
+            TTY.println("CompileTheWorld : Done (%d classes, %d methods, %d ms elapsed, %d ms compile time, %d bytes of memory used)", compiledClasses, compiledMethodsCounter.get(), elapsedTime,
                             compileTime.get(), memoryUsed.get());
         } else {
-            TTY.println("CompileTheWorld : Done (%d classes, %d methods, %d ms, %d bytes of memory used)", classFileCounter, compiledMethodsCounter.get(), compileTime.get(), memoryUsed.get());
+            TTY.println("CompileTheWorld : Done (%d classes, %d methods, %d ms, %d bytes of memory used)", compiledClasses, compiledMethodsCounter.get(), compileTime.get(), memoryUsed.get());
         }
 
         // Apart from the main thread, there should be only be daemon threads
@@ -978,8 +979,8 @@ public final class CompileTheWorld {
             } else {
                 int entryBCI = JVMCICompiler.INVOCATION_ENTRY_BCI;
                 HotSpotCompilationRequest request = new HotSpotCompilationRequest(method, entryBCI, 0L);
-                CompilationTask task = new CompilationTask(jvmciRuntime, compiler, request, useProfilingInfo, installAsDefault, compilerOptions);
-                task.runCompilation();
+                CompilationTask task = new CompilationTask(jvmciRuntime, compiler, request, useProfilingInfo, installAsDefault);
+                task.runCompilation(compilerOptions);
                 installedCode = task.getInstalledCode();
             }
 

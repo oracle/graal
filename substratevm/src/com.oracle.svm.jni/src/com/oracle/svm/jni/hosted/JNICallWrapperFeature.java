@@ -27,7 +27,7 @@ package com.oracle.svm.jni.hosted;
 import java.util.Arrays;
 import java.util.List;
 
-import org.graalvm.nativeimage.Feature;
+import org.graalvm.nativeimage.hosted.Feature;
 import org.graalvm.nativeimage.c.function.CFunctionPointer;
 
 import com.oracle.svm.hosted.FeatureImpl.DuringSetupAccessImpl;

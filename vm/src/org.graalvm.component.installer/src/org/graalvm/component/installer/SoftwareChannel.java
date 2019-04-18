@@ -28,7 +28,6 @@ import java.io.IOException;
 import java.nio.file.Path;
 import java.util.Collections;
 import java.util.Map;
-import org.graalvm.component.installer.model.ComponentInfo;
 import org.graalvm.component.installer.model.ComponentRegistry;
 import org.graalvm.component.installer.remote.FileDownloader;
 import org.graalvm.component.installer.persist.MetadataLoader;
@@ -65,16 +64,6 @@ public interface SoftwareChannel {
      * @return registry instance
      */
     ComponentRegistry getRegistry();
-
-    /**
-     * Creates a MetadataLoader with full metadata. This may require download of the actual
-     * component
-     * 
-     * @param info ComponentInfo to complete
-     * @param ldr metadata loader for the component
-     * @return MetadataLoader that provides full component info.
-     */
-    MetadataLoader completeMetadata(MetadataLoader ldr, ComponentInfo info) throws IOException;
 
     /**
      * Configures the downloader with specific options. The downloader may be even replaced with a

@@ -22,33 +22,34 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.svm.test;
+package com.oracle.svm.core.jdk;
 
-// Checkstyle: stop
+//Checkstyle: allow reflection
 
-import java.lang.reflect.Method;
-import java.time.Instant;
-import java.util.Date;
+import com.oracle.svm.core.annotate.Alias;
+import com.oracle.svm.core.annotate.InjectAccessors;
+import com.oracle.svm.core.annotate.TargetClass;
 
-/**
- * This application can only run and pass as fallback image.
- */
-public class FallbackMainTest {
-    static Object referenceResult = Date.from(Instant.EPOCH);
+import sun.util.logging.LoggingSupport;
 
-    public static void main(String[] args) throws Exception {
-        Class<?> clazz = ClassLoader.getSystemClassLoader().loadClass(System.getProperty("hello.fallback.class", "java.util.Date"));
-        String methodName = System.getProperty("hello.fallback.method", "from");
-        for (Method method : clazz.getDeclaredMethods()) {
-            if (method.getName().equals(methodName)) {
-                Object result = method.invoke(null, Instant.EPOCH);
-                if (referenceResult.equals(result)) {
-                    System.out.println(FallbackMainTest.class.getName() + " test passed");
-                    System.exit(0);
-                }
-            }
+class FormatAccessors {
+    private static String format = null;
+
+    public static String getFormat() {
+        if (format == null) {
+            /*
+             * If multiple threads are doing the initialization at the same time it is not a problem
+             * because they will all get to the same result in the end.
+             */
+            format = LoggingSupport.getSimpleFormat();
         }
-        System.out.println(FallbackMainTest.class.getName() + " test failed");
-        System.exit(1);
+        return format;
     }
+}
+
+@TargetClass(value = java.util.logging.SimpleFormatter.class, onlyWith = JDK8OrEarlier.class)
+public final class Target_java_util_logging_SimpleFormatter_JDK8OrEarlier {
+
+    @Alias @InjectAccessors(FormatAccessors.class)//
+    private static String format;
 }

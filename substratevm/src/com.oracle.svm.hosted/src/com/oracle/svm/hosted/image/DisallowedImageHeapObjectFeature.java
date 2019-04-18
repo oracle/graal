@@ -28,7 +28,7 @@ import java.io.FileDescriptor;
 import java.lang.reflect.Field;
 import java.nio.MappedByteBuffer;
 
-import org.graalvm.nativeimage.Feature;
+import org.graalvm.nativeimage.hosted.Feature;
 
 import com.oracle.graal.pointsto.constraints.UnsupportedFeatureException;
 import com.oracle.svm.core.annotate.AutomaticFeature;

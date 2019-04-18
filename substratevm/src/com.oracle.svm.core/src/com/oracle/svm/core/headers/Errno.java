@@ -31,6 +31,7 @@ import org.graalvm.nativeimage.c.CContext;
 import org.graalvm.nativeimage.c.constant.CConstant;
 import org.graalvm.nativeimage.c.function.CFunction;
 import org.graalvm.nativeimage.c.type.CCharPointer;
+import org.graalvm.nativeimage.impl.InternalPlatform;
 import org.graalvm.word.UnsignedWord;
 
 import com.oracle.svm.core.annotate.Uninterruptible;
@@ -105,7 +106,7 @@ public class Errno {
 
     /** Block device required. */
     @CConstant
-    @Platforms({Platform.LINUX.class, Platform.DARWIN.class, Platform.LINUX_JNI.class, Platform.DARWIN_JNI.class})
+    @Platforms({Platform.LINUX.class, Platform.DARWIN.class, InternalPlatform.LINUX_JNI.class, InternalPlatform.DARWIN_JNI.class})
     public static native int ENOTBLK();
 
     /** Device or resource busy. */
@@ -150,7 +151,7 @@ public class Errno {
 
     /** Text file busy. */
     @CConstant
-    @Platforms({Platform.LINUX.class, Platform.DARWIN.class, Platform.LINUX_JNI.class, Platform.DARWIN_JNI.class})
+    @Platforms({Platform.LINUX.class, Platform.DARWIN.class, InternalPlatform.LINUX_JNI.class, InternalPlatform.DARWIN_JNI.class})
     public static native int ETXTBSY();
 
     /** File too large. */
@@ -187,7 +188,7 @@ public class Errno {
 
     /** Linux has no ENOTSUP error code. */
     @CConstant
-    @Platforms({Platform.LINUX.class, Platform.DARWIN.class, Platform.LINUX_JNI.class, Platform.DARWIN_JNI.class})
+    @Platforms({Platform.LINUX.class, Platform.DARWIN.class, InternalPlatform.LINUX_JNI.class, InternalPlatform.DARWIN_JNI.class})
     public static native int ENOTSUP();
 
     /** Resource deadlock would occur */
@@ -212,22 +213,22 @@ public class Errno {
 
     /** Too many symbolic links encountered */
     @CConstant
-    @Platforms({Platform.LINUX.class, Platform.DARWIN.class, Platform.LINUX_JNI.class, Platform.DARWIN_JNI.class})
+    @Platforms({Platform.LINUX.class, Platform.DARWIN.class, InternalPlatform.LINUX_JNI.class, InternalPlatform.DARWIN_JNI.class})
     public static native int ELOOP();
 
     /** Operation would block */
     @CConstant
-    @Platforms({Platform.LINUX.class, Platform.DARWIN.class, Platform.LINUX_JNI.class, Platform.DARWIN_JNI.class})
+    @Platforms({Platform.LINUX.class, Platform.DARWIN.class, InternalPlatform.LINUX_JNI.class, InternalPlatform.DARWIN_JNI.class})
     public static native int EWOULDBLOCK();
 
     /** No message of desired type */
     @CConstant
-    @Platforms({Platform.LINUX.class, Platform.DARWIN.class, Platform.LINUX_JNI.class, Platform.DARWIN_JNI.class})
+    @Platforms({Platform.LINUX.class, Platform.DARWIN.class, InternalPlatform.LINUX_JNI.class, InternalPlatform.DARWIN_JNI.class})
     public static native int ENOMSG();
 
     /** Identifier removed */
     @CConstant
-    @Platforms({Platform.LINUX.class, Platform.DARWIN.class, Platform.LINUX_JNI.class, Platform.DARWIN_JNI.class})
+    @Platforms({Platform.LINUX.class, Platform.DARWIN.class, InternalPlatform.LINUX_JNI.class, InternalPlatform.DARWIN_JNI.class})
     public static native int EIDRM();
 
     /** Channel number out of range */
@@ -339,7 +340,7 @@ public class Errno {
 
     /** Object is remote */
     @CConstant
-    @Platforms({Platform.LINUX.class, Platform.DARWIN.class, Platform.LINUX_JNI.class, Platform.DARWIN_JNI.class})
+    @Platforms({Platform.LINUX.class, Platform.DARWIN.class, InternalPlatform.LINUX_JNI.class, InternalPlatform.DARWIN_JNI.class})
     public static native int EREMOTE();
 
     /** Link has been severed */
@@ -364,12 +365,12 @@ public class Errno {
 
     /** Protocol error */
     @CConstant
-    @Platforms({Platform.LINUX.class, Platform.DARWIN.class, Platform.LINUX_JNI.class, Platform.DARWIN_JNI.class})
+    @Platforms({Platform.LINUX.class, Platform.DARWIN.class, InternalPlatform.LINUX_JNI.class, InternalPlatform.DARWIN_JNI.class})
     public static native int EPROTO();
 
     /** Multihop attempted */
     @CConstant
-    @Platforms({Platform.LINUX.class, Platform.DARWIN.class, Platform.LINUX_JNI.class, Platform.DARWIN_JNI.class})
+    @Platforms({Platform.LINUX.class, Platform.DARWIN.class, InternalPlatform.LINUX_JNI.class, InternalPlatform.DARWIN_JNI.class})
     public static native int EMULTIHOP();
 
     /** RFS specific error */
@@ -379,12 +380,12 @@ public class Errno {
 
     /** Not a data message */
     @CConstant
-    @Platforms({Platform.LINUX.class, Platform.DARWIN.class, Platform.LINUX_JNI.class, Platform.DARWIN_JNI.class})
+    @Platforms({Platform.LINUX.class, Platform.DARWIN.class, InternalPlatform.LINUX_JNI.class, InternalPlatform.DARWIN_JNI.class})
     public static native int EBADMSG();
 
     /** Value too large for defined data type */
     @CConstant
-    @Platforms({Platform.LINUX.class, Platform.DARWIN.class, Platform.LINUX_JNI.class, Platform.DARWIN_JNI.class})
+    @Platforms({Platform.LINUX.class, Platform.DARWIN.class, InternalPlatform.LINUX_JNI.class, InternalPlatform.DARWIN_JNI.class})
     public static native int EOVERFLOW();
 
     /** Name not unique on network */
@@ -443,152 +444,152 @@ public class Errno {
 
     /** Too many users */
     @CConstant
-    @Platforms({Platform.LINUX.class, Platform.DARWIN.class, Platform.LINUX_JNI.class, Platform.DARWIN_JNI.class})
+    @Platforms({Platform.LINUX.class, Platform.DARWIN.class, InternalPlatform.LINUX_JNI.class, InternalPlatform.DARWIN_JNI.class})
     public static native int EUSERS();
 
     /** Socket operation on non-socket */
     @CConstant
-    @Platforms({Platform.LINUX.class, Platform.DARWIN.class, Platform.LINUX_JNI.class, Platform.DARWIN_JNI.class})
+    @Platforms({Platform.LINUX.class, Platform.DARWIN.class, InternalPlatform.LINUX_JNI.class, InternalPlatform.DARWIN_JNI.class})
     public static native int ENOTSOCK();
 
     /** Destination address required */
     @CConstant
-    @Platforms({Platform.LINUX.class, Platform.DARWIN.class, Platform.LINUX_JNI.class, Platform.DARWIN_JNI.class})
+    @Platforms({Platform.LINUX.class, Platform.DARWIN.class, InternalPlatform.LINUX_JNI.class, InternalPlatform.DARWIN_JNI.class})
     public static native int EDESTADDRREQ();
 
     /** Message too long */
     @CConstant
-    @Platforms({Platform.LINUX.class, Platform.DARWIN.class, Platform.LINUX_JNI.class, Platform.DARWIN_JNI.class})
+    @Platforms({Platform.LINUX.class, Platform.DARWIN.class, InternalPlatform.LINUX_JNI.class, InternalPlatform.DARWIN_JNI.class})
     public static native int EMSGSIZE();
 
     /** Protocol wrong type for socket */
     @CConstant
-    @Platforms({Platform.LINUX.class, Platform.DARWIN.class, Platform.LINUX_JNI.class, Platform.DARWIN_JNI.class})
+    @Platforms({Platform.LINUX.class, Platform.DARWIN.class, InternalPlatform.LINUX_JNI.class, InternalPlatform.DARWIN_JNI.class})
     public static native int EPROTOTYPE();
 
     /** Protocol not available */
     @CConstant
-    @Platforms({Platform.LINUX.class, Platform.DARWIN.class, Platform.LINUX_JNI.class, Platform.DARWIN_JNI.class})
+    @Platforms({Platform.LINUX.class, Platform.DARWIN.class, InternalPlatform.LINUX_JNI.class, InternalPlatform.DARWIN_JNI.class})
     public static native int ENOPROTOOPT();
 
     /** Protocol not supported */
     @CConstant
-    @Platforms({Platform.LINUX.class, Platform.DARWIN.class, Platform.LINUX_JNI.class, Platform.DARWIN_JNI.class})
+    @Platforms({Platform.LINUX.class, Platform.DARWIN.class, InternalPlatform.LINUX_JNI.class, InternalPlatform.DARWIN_JNI.class})
     public static native int EPROTONOSUPPORT();
 
     /** Socket type not supported */
     @CConstant
-    @Platforms({Platform.LINUX.class, Platform.DARWIN.class, Platform.LINUX_JNI.class, Platform.DARWIN_JNI.class})
+    @Platforms({Platform.LINUX.class, Platform.DARWIN.class, InternalPlatform.LINUX_JNI.class, InternalPlatform.DARWIN_JNI.class})
     public static native int ESOCKTNOSUPPORT();
 
     /** Operation not supported on transport endpoint */
     @CConstant
-    @Platforms({Platform.LINUX.class, Platform.DARWIN.class, Platform.LINUX_JNI.class, Platform.DARWIN_JNI.class})
+    @Platforms({Platform.LINUX.class, Platform.DARWIN.class, InternalPlatform.LINUX_JNI.class, InternalPlatform.DARWIN_JNI.class})
     public static native int EOPNOTSUPP();
 
     /** Protocol family not supported */
     @CConstant
-    @Platforms({Platform.LINUX.class, Platform.DARWIN.class, Platform.LINUX_JNI.class, Platform.DARWIN_JNI.class})
+    @Platforms({Platform.LINUX.class, Platform.DARWIN.class, InternalPlatform.LINUX_JNI.class, InternalPlatform.DARWIN_JNI.class})
     public static native int EPFNOSUPPORT();
 
     /** Address family not supported by protocol */
     @CConstant
-    @Platforms({Platform.LINUX.class, Platform.DARWIN.class, Platform.LINUX_JNI.class, Platform.DARWIN_JNI.class})
+    @Platforms({Platform.LINUX.class, Platform.DARWIN.class, InternalPlatform.LINUX_JNI.class, InternalPlatform.DARWIN_JNI.class})
     public static native int EAFNOSUPPORT();
 
     /** Address already in use */
     @CConstant
-    @Platforms({Platform.LINUX.class, Platform.DARWIN.class, Platform.LINUX_JNI.class, Platform.DARWIN_JNI.class})
+    @Platforms({Platform.LINUX.class, Platform.DARWIN.class, InternalPlatform.LINUX_JNI.class, InternalPlatform.DARWIN_JNI.class})
     public static native int EADDRINUSE();
 
     /** Cannot assign requested address */
     @CConstant
-    @Platforms({Platform.LINUX.class, Platform.DARWIN.class, Platform.LINUX_JNI.class, Platform.DARWIN_JNI.class})
+    @Platforms({Platform.LINUX.class, Platform.DARWIN.class, InternalPlatform.LINUX_JNI.class, InternalPlatform.DARWIN_JNI.class})
     public static native int EADDRNOTAVAIL();
 
     /** Network is down */
     @CConstant
-    @Platforms({Platform.LINUX.class, Platform.DARWIN.class, Platform.LINUX_JNI.class, Platform.DARWIN_JNI.class})
+    @Platforms({Platform.LINUX.class, Platform.DARWIN.class, InternalPlatform.LINUX_JNI.class, InternalPlatform.DARWIN_JNI.class})
     public static native int ENETDOWN();
 
     /** Network is unreachable */
     @CConstant
-    @Platforms({Platform.LINUX.class, Platform.DARWIN.class, Platform.LINUX_JNI.class, Platform.DARWIN_JNI.class})
+    @Platforms({Platform.LINUX.class, Platform.DARWIN.class, InternalPlatform.LINUX_JNI.class, InternalPlatform.DARWIN_JNI.class})
     public static native int ENETUNREACH();
 
     /** Network dropped connection because of reset */
     @CConstant
-    @Platforms({Platform.LINUX.class, Platform.DARWIN.class, Platform.LINUX_JNI.class, Platform.DARWIN_JNI.class})
+    @Platforms({Platform.LINUX.class, Platform.DARWIN.class, InternalPlatform.LINUX_JNI.class, InternalPlatform.DARWIN_JNI.class})
     public static native int ENETRESET();
 
     /** Software caused connection abort */
     @CConstant
-    @Platforms({Platform.LINUX.class, Platform.DARWIN.class, Platform.LINUX_JNI.class, Platform.DARWIN_JNI.class})
+    @Platforms({Platform.LINUX.class, Platform.DARWIN.class, InternalPlatform.LINUX_JNI.class, InternalPlatform.DARWIN_JNI.class})
     public static native int ECONNABORTED();
 
     /** Connection reset by peer */
     @CConstant
-    @Platforms({Platform.LINUX.class, Platform.DARWIN.class, Platform.LINUX_JNI.class, Platform.DARWIN_JNI.class})
+    @Platforms({Platform.LINUX.class, Platform.DARWIN.class, InternalPlatform.LINUX_JNI.class, InternalPlatform.DARWIN_JNI.class})
     public static native int ECONNRESET();
 
     /** No buffer space available */
     @CConstant
-    @Platforms({Platform.LINUX.class, Platform.DARWIN.class, Platform.LINUX_JNI.class, Platform.DARWIN_JNI.class})
+    @Platforms({Platform.LINUX.class, Platform.DARWIN.class, InternalPlatform.LINUX_JNI.class, InternalPlatform.DARWIN_JNI.class})
     public static native int ENOBUFS();
 
     /** Transport endpoint is already connected */
     @CConstant
-    @Platforms({Platform.LINUX.class, Platform.DARWIN.class, Platform.LINUX_JNI.class, Platform.DARWIN_JNI.class})
+    @Platforms({Platform.LINUX.class, Platform.DARWIN.class, InternalPlatform.LINUX_JNI.class, InternalPlatform.DARWIN_JNI.class})
     public static native int EISCONN();
 
     /** Transport endpoint is not connected */
     @CConstant
-    @Platforms({Platform.LINUX.class, Platform.DARWIN.class, Platform.LINUX_JNI.class, Platform.DARWIN_JNI.class})
+    @Platforms({Platform.LINUX.class, Platform.DARWIN.class, InternalPlatform.LINUX_JNI.class, InternalPlatform.DARWIN_JNI.class})
     public static native int ENOTCONN();
 
     /** Cannot send after transport endpoint shutdown */
     @CConstant
-    @Platforms({Platform.LINUX.class, Platform.DARWIN.class, Platform.LINUX_JNI.class, Platform.DARWIN_JNI.class})
+    @Platforms({Platform.LINUX.class, Platform.DARWIN.class, InternalPlatform.LINUX_JNI.class, InternalPlatform.DARWIN_JNI.class})
     public static native int ESHUTDOWN();
 
     /** Too many references: cannot splice */
     @CConstant
-    @Platforms({Platform.LINUX.class, Platform.DARWIN.class, Platform.LINUX_JNI.class, Platform.DARWIN_JNI.class})
+    @Platforms({Platform.LINUX.class, Platform.DARWIN.class, InternalPlatform.LINUX_JNI.class, InternalPlatform.DARWIN_JNI.class})
     public static native int ETOOMANYREFS();
 
     /** Connection timed out */
     @CConstant
-    @Platforms({Platform.LINUX.class, Platform.DARWIN.class, Platform.LINUX_JNI.class, Platform.DARWIN_JNI.class})
+    @Platforms({Platform.LINUX.class, Platform.DARWIN.class, InternalPlatform.LINUX_JNI.class, InternalPlatform.DARWIN_JNI.class})
     public static native int ETIMEDOUT();
 
     /** Connection refused */
     @CConstant
-    @Platforms({Platform.LINUX.class, Platform.DARWIN.class, Platform.LINUX_JNI.class, Platform.DARWIN_JNI.class})
+    @Platforms({Platform.LINUX.class, Platform.DARWIN.class, InternalPlatform.LINUX_JNI.class, InternalPlatform.DARWIN_JNI.class})
     public static native int ECONNREFUSED();
 
     /** Host is down */
     @CConstant
-    @Platforms({Platform.LINUX.class, Platform.DARWIN.class, Platform.LINUX_JNI.class, Platform.DARWIN_JNI.class})
+    @Platforms({Platform.LINUX.class, Platform.DARWIN.class, InternalPlatform.LINUX_JNI.class, InternalPlatform.DARWIN_JNI.class})
     public static native int EHOSTDOWN();
 
     /** No route to host */
     @CConstant
-    @Platforms({Platform.LINUX.class, Platform.DARWIN.class, Platform.LINUX_JNI.class, Platform.DARWIN_JNI.class})
+    @Platforms({Platform.LINUX.class, Platform.DARWIN.class, InternalPlatform.LINUX_JNI.class, InternalPlatform.DARWIN_JNI.class})
     public static native int EHOSTUNREACH();
 
     /** Operation already in progress */
     @CConstant
-    @Platforms({Platform.LINUX.class, Platform.DARWIN.class, Platform.LINUX_JNI.class, Platform.DARWIN_JNI.class})
+    @Platforms({Platform.LINUX.class, Platform.DARWIN.class, InternalPlatform.LINUX_JNI.class, InternalPlatform.DARWIN_JNI.class})
     public static native int EALREADY();
 
     /** Operation now in progress */
     @CConstant
-    @Platforms({Platform.LINUX.class, Platform.DARWIN.class, Platform.LINUX_JNI.class, Platform.DARWIN_JNI.class})
+    @Platforms({Platform.LINUX.class, Platform.DARWIN.class, InternalPlatform.LINUX_JNI.class, InternalPlatform.DARWIN_JNI.class})
     public static native int EINPROGRESS();
 
     /** Stale NFS file handle */
     @CConstant
-    @Platforms({Platform.LINUX.class, Platform.DARWIN.class, Platform.LINUX_JNI.class, Platform.DARWIN_JNI.class})
+    @Platforms({Platform.LINUX.class, Platform.DARWIN.class, InternalPlatform.LINUX_JNI.class, InternalPlatform.DARWIN_JNI.class})
     public static native int ESTALE();
 
     /** Structure needs cleaning */
@@ -618,7 +619,7 @@ public class Errno {
 
     /** Quota exceeded */
     @CConstant
-    @Platforms({Platform.LINUX.class, Platform.DARWIN.class, Platform.LINUX_JNI.class, Platform.DARWIN_JNI.class})
+    @Platforms({Platform.LINUX.class, Platform.DARWIN.class, InternalPlatform.LINUX_JNI.class, InternalPlatform.DARWIN_JNI.class})
     public static native int EDQUOT();
 
     /** No medium found */
@@ -633,7 +634,7 @@ public class Errno {
 
     /** Operation Canceled */
     @CConstant
-    @Platforms({Platform.LINUX.class, Platform.DARWIN.class, Platform.LINUX_JNI.class, Platform.DARWIN_JNI.class})
+    @Platforms({Platform.LINUX.class, Platform.DARWIN.class, InternalPlatform.LINUX_JNI.class, InternalPlatform.DARWIN_JNI.class})
     public static native int ECANCELED();
 
     /** Required key not available */
@@ -659,12 +660,12 @@ public class Errno {
     /* for robust mutexes */
     /** Owner died */
     @CConstant
-    @Platforms({Platform.LINUX.class, Platform.DARWIN.class, Platform.LINUX_JNI.class, Platform.DARWIN_JNI.class})
+    @Platforms({Platform.LINUX.class, Platform.DARWIN.class, InternalPlatform.LINUX_JNI.class, InternalPlatform.DARWIN_JNI.class})
     public static native int EOWNERDEAD();
 
     /** State not recoverable */
     @CConstant
-    @Platforms({Platform.LINUX.class, Platform.DARWIN.class, Platform.LINUX_JNI.class, Platform.DARWIN_JNI.class})
+    @Platforms({Platform.LINUX.class, Platform.DARWIN.class, InternalPlatform.LINUX_JNI.class, InternalPlatform.DARWIN_JNI.class})
     public static native int ENOTRECOVERABLE();
 
     /** Operation not possible due to RF-kill */
@@ -698,7 +699,7 @@ public class Errno {
     public static native CCharPointer strerror(int errnum);
 
     @CFunction
-    @Platforms({Platform.LINUX.class, Platform.DARWIN.class, Platform.LINUX_JNI.class, Platform.DARWIN_JNI.class})
+    @Platforms({Platform.LINUX.class, Platform.DARWIN.class, InternalPlatform.LINUX_JNI.class, InternalPlatform.DARWIN_JNI.class})
     public static native CCharPointer strerror_r(int errnum, CCharPointer buf, UnsignedWord buflen);
 
     @CFunction

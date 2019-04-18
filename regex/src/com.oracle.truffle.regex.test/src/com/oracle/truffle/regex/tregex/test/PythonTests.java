@@ -22,36 +22,24 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.svm.configure.config;
+package com.oracle.truffle.regex.tregex.test;
 
-import java.io.IOException;
-import java.util.ArrayList;
-import java.util.Comparator;
-import java.util.HashMap;
-import java.util.List;
-import java.util.Map;
+import org.junit.Test;
 
-import com.oracle.svm.configure.json.JsonPrintable;
-import com.oracle.svm.configure.json.JsonWriter;
-
-public class JniConfiguration implements JsonPrintable {
-    private final Map<String, JniType> jniTypes = new HashMap<>();
-
-    public JniType getOrCreateType(String clazz) {
-        return jniTypes.computeIfAbsent(clazz, JniType::new);
-    }
+public class PythonTests extends RegexTestBase {
 
     @Override
-    public void printJson(JsonWriter writer) throws IOException {
-        writer.append('[');
-        String prefix = "\n";
-        List<JniType> list = new ArrayList<>(jniTypes.values());
-        list.sort(Comparator.comparing(JniType::getQualifiedName));
-        for (JniType value : list) {
-            writer.append(prefix);
-            value.printJson(writer);
-            prefix = ",\n";
-        }
-        writer.newline().append(']').newline();
+    String getEngineOptions() {
+        return "Flavor=PythonStr";
+    }
+
+    @Test
+    public void gr14950() {
+        test("[\\^\\\\\\]]", "", "p", 0, false);
+    }
+
+    @Test
+    public void gr15012() {
+        test("(-*[A-]*)", "", "A", 0, true, 0, 1, 0, 1);
     }
 }

@@ -74,6 +74,14 @@ final class ContextThreadLocal extends ThreadLocal<Object> {
         }
     }
 
+    public Object getNoThreadCheck() {
+        if (singleThread.isValid()) {
+            return firstContext;
+        } else {
+            return getTL();
+        }
+    }
+
     @Override
     public Object get() {
         Object context;

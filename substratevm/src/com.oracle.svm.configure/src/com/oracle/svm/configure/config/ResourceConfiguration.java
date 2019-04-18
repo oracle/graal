@@ -26,26 +26,58 @@ package com.oracle.svm.configure.config;
 
 import java.io.IOException;
 import java.util.Comparator;
+import java.util.HashMap;
+import java.util.Map;
+import java.util.regex.Pattern;
 
 import com.oracle.svm.configure.json.JsonPrintable;
+import com.oracle.svm.configure.json.JsonPrinter;
 import com.oracle.svm.configure.json.JsonWriter;
+import com.oracle.svm.hosted.ResourcesFeature;
 
 public class ResourceConfiguration implements JsonPrintable {
-    private final MatchSet<String> resources = MatchSet.create(Comparator.naturalOrder(), (String s, JsonWriter w) -> w.append('{').quote("pattern").append(':').quote(s).append('}'));
 
-    public void add(String resource) {
-        resources.add(resource);
+    public static class ParserAdapter implements ResourcesFeature.ResourcesRegistry {
+        private final ResourceConfiguration configuration;
+
+        public ParserAdapter(ResourceConfiguration configuration) {
+            this.configuration = configuration;
+        }
+
+        @Override
+        public void addResources(String pattern) {
+            configuration.add(pattern);
+        }
+
+        @Override
+        public void addResourceBundles(String name) {
+        }
     }
 
-    public void addLocationIndependent(String resource) {
-        add(resource);
+    private final Map<String, Pattern> resources = new HashMap<>();
+
+    public void add(String pattern) {
+        resources.computeIfAbsent(pattern, Pattern::compile);
+    }
+
+    public boolean anyMatches(String s) {
+        /*
+         * Naive -- if the need arises, we could match in the order of most frequently matched
+         * patterns, or somehow merge the patterns into a single big pattern.
+         */
+        for (Pattern pattern : resources.values()) {
+            if (pattern.matcher(s).matches()) {
+                return true;
+            }
+        }
+        return false;
     }
 
     @Override
     public void printJson(JsonWriter writer) throws IOException {
         writer.append('{').indent().newline();
         writer.quote("resources").append(':');
-        resources.printJson(writer);
+        JsonPrinter.printCollection(writer, resources.keySet(), Comparator.naturalOrder(), (String p, JsonWriter w) -> w.append('{').quote("pattern").append(':').quote(p).append('}'));
         writer.unindent().newline().append('}').newline();
     }
 }

@@ -1,8 +1,8 @@
 suite = {
     "mxversion": "5.210.5",
     "name": "substratevm",
-    "version" : "1.0.0-rc15",
-    "release" : True,
+    "version" : "1.0.0-rc16",
+    "release" : False,
     "url" : "https://github.com/oracle/graal/tree/master/substratevm",
 
     "developer" : {
@@ -640,6 +640,7 @@ suite = {
             "sourceDirs": ["src"],
             "dependencies": [
                 "com.oracle.svm.jni",
+                "com.oracle.svm.reflect",
                 "com.oracle.svm.graal",
                 "compiler:GRAAL"
             ],
@@ -678,6 +679,7 @@ suite = {
             "dependencies": [
                 "com.oracle.svm.jni",
                 "com.oracle.svm.configure",
+                "com.oracle.svm.driver",
             ],
             "checkstyle": "com.oracle.svm.driver",
             "workingSets": "SVM",
@@ -858,6 +860,7 @@ suite = {
             ],
             "distDependencies": [
                 "LIBRARY_SUPPORT",
+                "SVM_DRIVER",
             ],
             "overlaps" : [
                 "SVM_CONFIGURE",

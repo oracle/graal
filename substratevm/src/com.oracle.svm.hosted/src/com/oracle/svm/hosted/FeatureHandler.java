@@ -28,12 +28,13 @@ import java.lang.reflect.Constructor;
 import java.lang.reflect.InvocationTargetException;
 import java.util.ArrayList;
 import java.util.HashSet;
+import java.util.List;
 import java.util.function.Consumer;
 
 import org.graalvm.compiler.debug.DebugContext;
 import org.graalvm.compiler.options.Option;
-import org.graalvm.nativeimage.Feature;
 import org.graalvm.nativeimage.ImageSingletons;
+import org.graalvm.nativeimage.hosted.Feature;
 
 import com.oracle.svm.core.annotate.AutomaticFeature;
 import com.oracle.svm.core.graal.GraalFeature;
@@ -47,6 +48,7 @@ import com.oracle.svm.hosted.FeatureImpl.IsInConfigurationAccessImpl;
 /**
  * Handles the registration and iterations of {@link Feature features}.
  */
+@SuppressWarnings("deprecation")
 public class FeatureHandler {
 
     public static class Options {
@@ -133,6 +135,79 @@ public class FeatureHandler {
             registerFeature(requiredFeatureClass, access);
         }
 
-        featureInstances.add(feature);
+        featureInstances.add(feature instanceof org.graalvm.nativeimage.Feature ? new WrappedDeprecatedFeature((org.graalvm.nativeimage.Feature) feature) : feature);
+    }
+
+    private class WrappedDeprecatedFeature implements Feature {
+        private org.graalvm.nativeimage.Feature feature;
+
+        WrappedDeprecatedFeature(org.graalvm.nativeimage.Feature feature) {
+            this.feature = feature;
+        }
+
+        @Override
+        public boolean isInConfiguration(Feature.IsInConfigurationAccess access) {
+            return feature.isInConfiguration((org.graalvm.nativeimage.Feature.IsInConfigurationAccess) access);
+        }
+
+        @Override
+        public List<Class<? extends Feature>> getRequiredFeatures() {
+            return feature.getRequiredFeatures();
+        }
+
+        @Override
+        public void afterRegistration(Feature.AfterRegistrationAccess access) {
+            feature.afterRegistration(((org.graalvm.nativeimage.Feature.AfterRegistrationAccess) access));
+        }
+
+        @Override
+        public void duringSetup(Feature.DuringSetupAccess access) {
+            feature.duringSetup(((org.graalvm.nativeimage.Feature.DuringSetupAccess) access));
+        }
+
+        @Override
+        public void beforeAnalysis(Feature.BeforeAnalysisAccess access) {
+            feature.beforeAnalysis(((org.graalvm.nativeimage.Feature.BeforeAnalysisAccess) access));
+        }
+
+        @Override
+        public void duringAnalysis(Feature.DuringAnalysisAccess access) {
+            feature.duringAnalysis(((org.graalvm.nativeimage.Feature.DuringAnalysisAccess) access));
+        }
+
+        @Override
+        public void afterAnalysis(Feature.AfterAnalysisAccess access) {
+            feature.afterAnalysis(((org.graalvm.nativeimage.Feature.AfterAnalysisAccess) access));
+        }
+
+        @Override
+        public void onAnalysisExit(Feature.OnAnalysisExitAccess access) {
+            feature.onAnalysisExit(((org.graalvm.nativeimage.Feature.OnAnalysisExitAccess) access));
+        }
+
+        @Override
+        public void beforeCompilation(Feature.BeforeCompilationAccess access) {
+            feature.beforeCompilation(((org.graalvm.nativeimage.Feature.BeforeCompilationAccess) access));
+        }
+
+        @Override
+        public void afterCompilation(Feature.AfterCompilationAccess access) {
+            feature.afterCompilation(((org.graalvm.nativeimage.Feature.AfterCompilationAccess) access));
+        }
+
+        @Override
+        public void afterHeapLayout(Feature.AfterHeapLayoutAccess access) {
+            feature.afterHeapLayout(((org.graalvm.nativeimage.Feature.AfterHeapLayoutAccess) access));
+        }
+
+        @Override
+        public void beforeImageWrite(Feature.BeforeImageWriteAccess access) {
+            feature.beforeImageWrite(((org.graalvm.nativeimage.Feature.BeforeImageWriteAccess) access));
+        }
+
+        @Override
+        public void afterImageWrite(Feature.AfterImageWriteAccess access) {
+            feature.afterImageWrite(((org.graalvm.nativeimage.Feature.AfterImageWriteAccess) access));
+        }
     }
 }

@@ -58,7 +58,7 @@ public final class ConfigurationDirectories {
         static final HostedOptionKey<String[]> ConfigurationFileDirectories = new HostedOptionKey<>(null);
 
         @Option(help = "Resource path above configuration resources for dynamic features at runtime.", type = OptionType.User)//
-        static final HostedOptionKey<String[]> ConfigurationResourceRoots = new HostedOptionKey<>(null);
+        public static final HostedOptionKey<String[]> ConfigurationResourceRoots = new HostedOptionKey<>(null);
     }
 
     static List<String> findConfigurationFiles(String fileName) {

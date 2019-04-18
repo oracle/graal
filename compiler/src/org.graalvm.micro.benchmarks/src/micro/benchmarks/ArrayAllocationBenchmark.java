@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2019, 2019, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2019, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -22,33 +22,30 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.svm.test;
+package micro.benchmarks;
 
-// Checkstyle: stop
+import org.openjdk.jmh.annotations.Benchmark;
+import org.openjdk.jmh.annotations.Param;
+import org.openjdk.jmh.annotations.Scope;
+import org.openjdk.jmh.annotations.State;
+import org.openjdk.jmh.annotations.Threads;
+import org.openjdk.jmh.annotations.Warmup;
 
-import java.awt.event.WindowEvent;
+/**
+ * Benchmarks cost of ArrayList.
+ */
+public class ArrayAllocationBenchmark extends BenchmarkBase {
 
-import javax.swing.*;
-
-public class FallbackSwingTest {
-    private static JFrame frame = new JFrame();
-
-    private static void showFrame() {
-        frame.getContentPane().add(new JButton(FallbackSwingTest.class.getSimpleName()));
-        frame.setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
-        frame.pack();
-        frame.setLocationRelativeTo(null);
-        frame.setVisible(true);
+    @State(Scope.Benchmark)
+    public static class ThreadState {
+        @Param({"128", "256", "512", "1024", "2048", "4096", "8192", "16384", "32768", "65536", "131072"}) int size;
+        byte[] result;
     }
 
-    private static void closeFrame() {
-        WindowEvent windowCloseEvent = new WindowEvent(frame, WindowEvent.WINDOW_CLOSING);
-        frame.dispatchEvent(windowCloseEvent);
-    }
-
-    public static void main(String[] args) throws InterruptedException {
-        javax.swing.SwingUtilities.invokeLater(FallbackSwingTest::showFrame);
-        Thread.sleep(3_000);
-        javax.swing.SwingUtilities.invokeLater(FallbackSwingTest::closeFrame);
+    @Benchmark
+    @Threads(8)
+    @Warmup(iterations = 10)
+    public void arrayAllocate(ThreadState state) {
+        state.result = new byte[state.size];
     }
 }

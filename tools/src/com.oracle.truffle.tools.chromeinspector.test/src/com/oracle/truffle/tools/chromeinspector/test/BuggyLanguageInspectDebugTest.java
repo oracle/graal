@@ -48,7 +48,6 @@ import com.oracle.truffle.api.source.SourceSection;
 import com.oracle.truffle.api.test.polyglot.ProxyInteropObject;
 import com.oracle.truffle.api.test.polyglot.ProxyLanguage;
 import com.oracle.truffle.tck.DebuggerTester;
-import com.oracle.truffle.tools.chromeinspector.ScriptsHandler;
 import com.oracle.truffle.tools.chromeinspector.types.Script;
 
 /**
@@ -208,7 +207,7 @@ public class BuggyLanguageInspectDebugTest {
                         "{\"method\":\"Runtime.executionContextCreated\",\"params\":{\"context\":{\"origin\":\"\",\"name\":\"test\",\"id\":1}}}\n"));
         ProxyLanguage.setDelegate(language);
         Source source = Source.newBuilder(ProxyLanguage.ID, prefix + "1", "BuggyCall1.bug").build();
-        String sourceURI = ScriptsHandler.getNiceStringFromURI(source.getURI());
+        String sourceURI = InspectorTester.getStringURI(source.getURI());
         String hash = new Script(0, null, DebuggerTester.getSourceImpl(source)).getHash();
         tester.eval(source);
         long id = tester.getContextId();
@@ -230,7 +229,7 @@ public class BuggyLanguageInspectDebugTest {
                         "{\"result\":{},\"id\":8}\n"));
 
         source = Source.newBuilder(ProxyLanguage.ID, prefix + "2", "BuggyCall2.bug").build();
-        sourceURI = ScriptsHandler.getNiceStringFromURI(source.getURI());
+        sourceURI = InspectorTester.getStringURI(source.getURI());
         hash = new Script(0, null, DebuggerTester.getSourceImpl(source)).getHash();
         tester.eval(source);
         assertTrue(tester.compareReceivedMessages(
@@ -248,7 +247,7 @@ public class BuggyLanguageInspectDebugTest {
                         "{\"result\":{},\"id\":11}\n"));
 
         source = Source.newBuilder(ProxyLanguage.ID, prefix + "3", "BuggyCall3.bug").build();
-        sourceURI = ScriptsHandler.getNiceStringFromURI(source.getURI());
+        sourceURI = InspectorTester.getStringURI(source.getURI());
         hash = new Script(0, null, DebuggerTester.getSourceImpl(source)).getHash();
         tester.eval(source);
         assertTrue(tester.compareReceivedMessages(

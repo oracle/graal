@@ -170,7 +170,8 @@ public class TruffleInlining implements Iterable<TruffleInliningDecision>, Truff
         OptimizedCallTarget top = stack.get(stack.size() - 1);
         for (int i = 0; i < stack.size() - 1; i++) {
             final OptimizedCallTarget frameTarget = stack.get(i);
-            if (frameTarget == top || frameTarget.getSourceCallTarget() == top) {
+            if (frameTarget == top || frameTarget == top.getSourceCallTarget() || top == frameTarget.getSourceCallTarget() ||
+                            (frameTarget.getSourceCallTarget() != null && top.getSourceCallTarget() != null && frameTarget.getSourceCallTarget() == top.getSourceCallTarget())) {
                 count++;
             }
         }

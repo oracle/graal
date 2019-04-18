@@ -30,9 +30,9 @@ import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.function.BooleanSupplier;
 
-import org.graalvm.nativeimage.Feature;
+import org.graalvm.nativeimage.hosted.Feature;
 import org.graalvm.nativeimage.ImageSingletons;
-import org.graalvm.nativeimage.RuntimeReflection;
+import org.graalvm.nativeimage.hosted.RuntimeReflection;
 
 import com.oracle.svm.core.annotate.Alias;
 import com.oracle.svm.core.annotate.AutomaticFeature;
@@ -72,6 +72,7 @@ public final class ICU4JFeature implements Feature {
     public void beforeAnalysis(BeforeAnalysisAccess access) {
         registerShimClass(access, "com.ibm.icu.text.NumberFormatServiceShim");
         registerShimClass(access, "com.ibm.icu.text.CollatorServiceShim");
+        registerShimClass(access, "com.ibm.icu.text.BreakIteratorFactory");
     }
 
     private static void registerShimClass(BeforeAnalysisAccess access, String shimClassName) {

@@ -51,7 +51,7 @@ import java.util.function.Predicate;
  * <p>
  * The implementation strives to be as close as possible to the behavior of the regex parser that
  * ships with Python 3.7, down to the wording of the error messages.
- * 
+ *
  * @see RegexFlavorProcessor
  */
 public final class PythonFlavorProcessor implements RegexFlavorProcessor {
@@ -64,7 +64,7 @@ public final class PythonFlavorProcessor implements RegexFlavorProcessor {
     /**
      * Characters that are considered special in ECMAScript regex character classes.
      */
-    private static final CompilationFinalBitSet CHAR_CLASS_SYNTAX_CHARACTERS = CompilationFinalBitSet.valueOf('\\', ']', '-');
+    private static final CompilationFinalBitSet CHAR_CLASS_SYNTAX_CHARACTERS = CompilationFinalBitSet.valueOf('\\', ']', '-', '^');
 
     /**
      * Maps Python's predefined Unicode character classes (d, D, s, S, w, W) to equivalent
@@ -450,7 +450,7 @@ public final class PythonFlavorProcessor implements RegexFlavorProcessor {
     /**
      * Emits the argument into the output pattern <em>verbatim</em>. This is useful for syntax
      * characters or for prebaked snippets.
-     * 
+     *
      * @param snippet
      */
     private void emitSnippet(String snippet) {
@@ -463,7 +463,7 @@ public final class PythonFlavorProcessor implements RegexFlavorProcessor {
      * Emits the codepoint into the output pattern <em>verbatim</em>. This is a special case of
      * {@link #emitSnippet} that avoids going through the trouble of converting a code point to a
      * {@link String} in Java (i.e. no need for new String(Character.toChars(codepoint))).
-     * 
+     *
      * @param codepoint
      */
     private void emitRawCodepoint(int codepoint) {
@@ -791,7 +791,7 @@ public final class PythonFlavorProcessor implements RegexFlavorProcessor {
      * <li>\b (word boundary)</li>
      * <li>\B (word non-boundary)</li>
      * </ul>
-     * 
+     *
      * @return {@code true} iff an assertion escape was found
      */
     private boolean assertionEscape() {
@@ -836,7 +836,7 @@ public final class PythonFlavorProcessor implements RegexFlavorProcessor {
      * <li>\w (word characters)</li>
      * <li>\W (non-word characters)</li>
      * </ul>
-     * 
+     *
      * @param inCharClass whether or not this escape was found in (and is being emitted as part of)
      *            a character class
      * @return {@code true} iff a category escape was found
@@ -882,7 +882,7 @@ public final class PythonFlavorProcessor implements RegexFlavorProcessor {
 
     /**
      * Tries to parse a backreference.
-     * 
+     *
      * @return {@code true} if a backreference was found
      */
     private boolean backreference() {
@@ -906,7 +906,7 @@ public final class PythonFlavorProcessor implements RegexFlavorProcessor {
 
     /**
      * Verifies that making a backreference to a certain group is legal in the current context.
-     * 
+     *
      * @param groupNumber the index of the referred group
      * @param groupName the name of the group, for error reporting purposes
      * @throws RegexSyntaxException if the backreference is not valid
@@ -933,7 +933,7 @@ public final class PythonFlavorProcessor implements RegexFlavorProcessor {
      * <li>a hexadecimal escape sequence</li>
      * <li>a unicode escape sequence</li>
      * </ul>
-     * 
+     *
      * @param inCharClass whether the character escaped occurred in (and is being emitted as part
      *            of) a character class
      */
@@ -1064,6 +1064,9 @@ public final class PythonFlavorProcessor implements RegexFlavorProcessor {
                 ch = consumeChar();
                 switch (ch) {
                     case ']':
+                        if (lowerBound.isPresent()) {
+                            emitChar(lowerBound.get(), true);
+                        }
                         emitChar('-', true);
                         emitSnippet("]");
                         break classBody;
@@ -1087,7 +1090,7 @@ public final class PythonFlavorProcessor implements RegexFlavorProcessor {
      * Like {@link #escape}, but restricted to the forms of escapes usable in character classes.
      * This includes character escapes and character class escapes, but not assertion escapes or
      * backreferences.
-     * 
+     *
      * @return {@code Optional.of(ch)} if the escape sequence was a character escape sequence for
      *         some character {@code ch}; {@code Optional.empty()} if it was a character class
      *         escape sequence
@@ -1269,7 +1272,7 @@ public final class PythonFlavorProcessor implements RegexFlavorProcessor {
 
     /**
      * Parses a group name terminated by the given character.
-     * 
+     *
      * @return the group name
      */
     private String parseGroupName(char terminator) {
@@ -1288,7 +1291,7 @@ public final class PythonFlavorProcessor implements RegexFlavorProcessor {
 
     /**
      * Determines whether the given {@link String} is a valid name for a group.
-     * 
+     *
      * @return {@code true} if the argument is a valid group name
      */
     private static boolean checkGroupName(String groupName) {
@@ -1337,7 +1340,7 @@ public final class PythonFlavorProcessor implements RegexFlavorProcessor {
      * Parses a group, assuming that its opening parenthesis has already been parsed. Note that this
      * is used not only for ordinary capture groups, but also for named capture groups,
      * non-capturing groups or the contents of a local flags block.
-     * 
+     *
      * @param capturing whether or not we should emit a capturing group
      * @param optName the name of the group, if there is any, to be registered by the parser
      * @param start the position in the input pattern where the group starts, used for error
@@ -1375,7 +1378,7 @@ public final class PythonFlavorProcessor implements RegexFlavorProcessor {
     /**
      * Parses a lookahead assertion, assuming that the opening parantheses and special characters
      * (either '(?=' or '(?!') have already been parsed.
-     * 
+     *
      * @param positive {@code true} if the assertion to be emitted is a positive lookahead assertion
      */
     private void lookahead(boolean positive) {
@@ -1539,7 +1542,7 @@ public final class PythonFlavorProcessor implements RegexFlavorProcessor {
     /**
      * Parses a block with local flags, assuming that the opening parenthesis, the flags and the ':'
      * have been parsed.
-     * 
+     *
      * @param positiveFlags - the flags to be turned on in the block
      * @param negativeFlags - the flags to be turned off in the block
      * @param start - the position in {@link #inPattern} where the block started, for error

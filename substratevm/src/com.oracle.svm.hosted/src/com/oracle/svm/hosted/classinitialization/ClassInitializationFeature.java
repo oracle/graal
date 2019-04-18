@@ -25,16 +25,22 @@
 package com.oracle.svm.hosted.classinitialization;
 
 import java.lang.reflect.Modifier;
+import java.nio.file.Paths;
+import java.util.HashSet;
+import java.util.Set;
 import java.util.function.Consumer;
 
 import org.graalvm.compiler.options.Option;
 import org.graalvm.compiler.options.OptionType;
-import org.graalvm.nativeimage.Feature;
+import org.graalvm.nativeimage.hosted.Feature;
 
 import com.oracle.graal.pointsto.constraints.UnsupportedFeatureException;
+import com.oracle.graal.pointsto.meta.AnalysisMetaAccess;
 import com.oracle.graal.pointsto.meta.AnalysisMethod;
 import com.oracle.graal.pointsto.meta.AnalysisType;
+import com.oracle.graal.pointsto.meta.AnalysisUniverse;
 import com.oracle.graal.pointsto.reports.ReportUtils;
+import com.oracle.svm.core.SubstrateOptions;
 import com.oracle.svm.core.annotate.AutomaticFeature;
 import com.oracle.svm.core.hub.ClassInitializationInfo;
 import com.oracle.svm.core.hub.DynamicHub;
@@ -44,8 +50,10 @@ import com.oracle.svm.core.option.OptionUtils;
 import com.oracle.svm.core.option.SubstrateOptionsParser;
 import com.oracle.svm.core.util.UserError;
 import com.oracle.svm.hosted.FeatureImpl;
+import com.oracle.svm.hosted.NativeImageOptions;
 import com.oracle.svm.hosted.meta.HostedType;
 import com.oracle.svm.hosted.meta.MethodPointer;
+import com.oracle.svm.hosted.phases.SubstrateClassInitializationPlugin;
 
 import jdk.vm.ci.meta.ResolvedJavaMethod;
 import jdk.vm.ci.meta.ResolvedJavaType;
@@ -54,6 +62,9 @@ import jdk.vm.ci.meta.ResolvedJavaType;
 public class ClassInitializationFeature implements Feature {
 
     private ClassInitializationSupport classInitializationSupport;
+    private AnalysisMethod ensureInitializedMethod;
+    private AnalysisUniverse universe;
+    private AnalysisMetaAccess metaAccess;
 
     public static class Options {
         @APIOption(name = "delay-class-initialization-to-runtime")//
@@ -96,6 +107,8 @@ public class ClassInitializationFeature implements Feature {
         classInitializationSupport = access.getHostVM().getClassInitializationSupport();
         classInitializationSupport.setUnsupportedFeatures(access.getBigBang().getUnsupportedFeatures());
         access.registerObjectReplacer(this::checkImageHeapInstance);
+        universe = ((FeatureImpl.DuringSetupAccessImpl) a).getBigBang().getUniverse();
+        metaAccess = ((FeatureImpl.DuringSetupAccessImpl) a).getBigBang().getMetaAccess();
     }
 
     private Object checkImageHeapInstance(Object obj) {
@@ -132,20 +145,90 @@ public class ClassInitializationFeature implements Feature {
     }
 
     @Override
-    public void afterAnalysis(AfterAnalysisAccess access) {
+    public void beforeAnalysis(BeforeAnalysisAccess access) {
+        ensureInitializedMethod = ((FeatureImpl.BeforeAnalysisAccessImpl) access).getBigBang().getMetaAccess().lookupJavaMethod(SubstrateClassInitializationPlugin.ENSURE_INITIALIZED_METHOD);
+    }
+
+    /**
+     * Initializes classes that can be proven safe and prints class initialization statistics.
+     */
+    @Override
+    public void beforeCompilation(BeforeCompilationAccess access) {
         classInitializationSupport.setUnsupportedFeatures(null);
 
-        if (Options.PrintClassInitialization.getValue()) {
-            for (ClassInitializationSupport.InitKind kind : ClassInitializationSupport.InitKind.values()) {
-                ReportUtils.report("Classes of type " + kind, "./reports", kind.toString().toLowerCase() + "_classes", "txt",
-                                writer -> classInitializationSupport.classesWithKind(kind)
-                                                .stream()
-                                                .map(Class::getTypeName)
-                                                .sorted()
-                                                .forEach(writer::println));
+        String path = Paths.get(Paths.get(SubstrateOptions.Path.getValue()).toString(), "reports").toAbsolutePath().toString();
+        if (!NativeImageOptions.EagerlyInitializeClasses.getValue()) {
+            assert ensureInitializedMethod != null;
+            assert classInitializationSupport.checkDelayedInitialization();
 
-            }
+            TypeInitializerGraph initGraph = new TypeInitializerGraph(universe, ensureInitializedMethod);
+            initGraph.computeInitializerSafety();
+
+            Set<AnalysisType> provenSafe = initializeSafeDelayedClasses(initGraph);
+
+            reportSafeTypeInitiazliation(universe, initGraph, path, provenSafe);
         }
+
+        if (Options.PrintClassInitialization.getValue()) {
+            reportMethodInitializationInfo(path);
+        }
+    }
+
+    private static void reportSafeTypeInitiazliation(AnalysisUniverse universe, TypeInitializerGraph initGraph, String path, Set<AnalysisType> provenSafe) {
+        ReportUtils.report("initializer dependencies", path, "initializer_dependencies", "dot", writer -> {
+            writer.println("digraph initializer_dependencies {");
+            universe.getTypes().stream()
+                            .filter(ClassInitializationFeature::isRelevantForPrinting)
+                            .forEach(t -> writer.println(quote(t.toClassName()) + "[fillcolor=" + (initGraph.isUnsafe(t) ? "red" : "green") + "]"));
+            universe.getTypes().stream()
+                            .filter(ClassInitializationFeature::isRelevantForPrinting)
+                            .forEach(t -> initGraph.getDependencies(t)
+                                            .forEach(t1 -> writer.println(quote(t.toClassName()) + " -> " + quote(t1.toClassName()))));
+            writer.println("}");
+        });
+
+        ReportUtils.report(provenSafe.size() + " classes of type SAFE", path, "safe_classes", "txt", printWriter -> provenSafe.forEach(t -> printWriter.println(t.toClassName())));
+    }
+
+    /**
+     * Prints a file for every type of class initialization. Each file contains a list of classes
+     * that belong to it.
+     */
+    private void reportMethodInitializationInfo(String path) {
+        for (ClassInitializationSupport.InitKind kind : ClassInitializationSupport.InitKind.values()) {
+            Set<Class<?>> classes = classInitializationSupport.classesWithKind(kind);
+            ReportUtils.report(classes.size() + " classes of type " + kind, path, kind.toString().toLowerCase() + "_classes", "txt",
+                            writer -> classes.stream()
+                                            .map(Class::getTypeName)
+                                            .sorted()
+                                            .forEach(writer::println));
+        }
+    }
+
+    private static boolean isRelevantForPrinting(AnalysisType type) {
+        return !type.isPrimitive() && !type.isArray() && type.isInTypeCheck();
+    }
+
+    private static String quote(String className) {
+        return "\"" + className + "\"";
+    }
+
+    /**
+     * Initializes all classes that are considered delayed by the system. Classes specified by the
+     * user will not be delayed.
+     */
+    private Set<AnalysisType> initializeSafeDelayedClasses(TypeInitializerGraph initGraph) {
+        Set<AnalysisType> provenSafe = new HashSet<>();
+        classInitializationSupport.classesWithKind(ClassInitializationSupport.InitKind.DELAY).stream()
+                        .filter(t -> metaAccess.lookupJavaType(t).isInTypeCheck())
+                        .forEach(c -> {
+                            AnalysisType type = metaAccess.lookupJavaType(c);
+                            if (!initGraph.isUnsafe(type)) {
+                                provenSafe.add(type);
+                                classInitializationSupport.forceInitializeHierarchy(c);
+                            }
+                        });
+        return provenSafe;
     }
 
     @Override

@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2019, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -42,8 +42,10 @@ package com.oracle.truffle.api.debug;
 
 import java.io.IOException;
 import java.io.InputStreamReader;
+import java.net.MalformedURLException;
 import java.net.URI;
 import java.net.URISyntaxException;
+import java.net.URL;
 import java.net.URLConnection;
 import java.util.ArrayList;
 import java.util.Collection;
@@ -51,6 +53,8 @@ import java.util.List;
 import java.util.Map;
 import java.util.WeakHashMap;
 
+import com.oracle.truffle.api.TruffleFile;
+import com.oracle.truffle.api.instrumentation.TruffleInstrument.Env;
 import com.oracle.truffle.api.source.Source;
 import com.oracle.truffle.api.source.SourceSection;
 
@@ -60,8 +64,13 @@ import com.oracle.truffle.api.source.SourceSection;
  */
 final class DebugSourcesResolver {
 
+    private final Env env;
     private volatile URI[] sourcePath = new URI[0];
     private final Map<Source, Source> resolvedMap = new WeakHashMap<>();
+
+    DebugSourcesResolver(Env env) {
+        this.env = env;
+    }
 
     void setSourcePath(Iterable<URI> uris) {
         Collection<URI> collection;
@@ -129,10 +138,25 @@ final class DebugSourcesResolver {
         if (connection == null) {
             return null;
         }
-        String name = uri.getPath() != null ? uri.getPath() : uri.getSchemeSpecificPart();
+        Source.SourceBuilder builder = null;
+        if ("file".equals(uri.getScheme())) {
+            TruffleFile file = env.getTruffleFile(uri);
+            builder = Source.newBuilder(source.getLanguage(), file);
+        } else {
+            URL url;
+            try {
+                url = uri.toURL();
+                builder = Source.newBuilder(source.getLanguage(), url);
+            } catch (MalformedURLException | IllegalArgumentException ex) {
+                // fallback to a general Source
+            }
+        }
         try {
-            return Source.newBuilder(source.getLanguage(), new InputStreamReader(connection.getInputStream()), name).uri(uri).cached(false).interactive(source.isInteractive()).internal(
-                            source.isInternal()).mimeType(source.getMimeType()).build();
+            if (builder == null) {
+                String name = uri.getPath() != null ? uri.getPath() : uri.getSchemeSpecificPart();
+                builder = Source.newBuilder(source.getLanguage(), new InputStreamReader(connection.getInputStream()), name).uri(uri).mimeType(source.getMimeType());
+            }
+            return builder.cached(false).interactive(source.isInteractive()).internal(source.isInternal()).build();
         } catch (IOException ex) {
             return null;
         }
