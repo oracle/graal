@@ -46,13 +46,11 @@ import com.oracle.truffle.llvm.parser.model.SymbolImpl;
 import com.oracle.truffle.llvm.parser.model.blocks.InstructionBlock;
 import com.oracle.truffle.llvm.parser.model.functions.FunctionDeclaration;
 import com.oracle.truffle.llvm.parser.model.functions.FunctionDefinition;
-import com.oracle.truffle.llvm.parser.model.functions.FunctionParameter;
 import com.oracle.truffle.llvm.parser.model.symbols.constants.NullConstant;
 import com.oracle.truffle.llvm.parser.model.symbols.instructions.DbgDeclareInstruction;
 import com.oracle.truffle.llvm.parser.model.symbols.instructions.DbgValueInstruction;
 import com.oracle.truffle.llvm.parser.model.symbols.instructions.DebugTrapInstruction;
 import com.oracle.truffle.llvm.parser.model.symbols.instructions.Instruction;
-import com.oracle.truffle.llvm.parser.model.symbols.instructions.ValueInstruction;
 import com.oracle.truffle.llvm.parser.model.symbols.instructions.VoidCallInstruction;
 import com.oracle.truffle.llvm.parser.model.visitors.FunctionVisitor;
 import com.oracle.truffle.llvm.parser.model.visitors.InstructionVisitorAdapter;
@@ -236,12 +234,6 @@ public final class DebugInfoFunctionProcessor {
             if (value == null) {
                 // this may happen if llvm optimizations removed a variable
                 value = new NullConstant(MetaType.DEBUG);
-
-            } else if (value instanceof ValueInstruction) {
-                ((ValueInstruction) value).setSourceVariable(true);
-
-            } else if (value instanceof FunctionParameter) {
-                ((FunctionParameter) value).setSourceVariable(true);
             }
 
             int mdLocalArgIndex;
