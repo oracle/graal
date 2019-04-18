@@ -1125,26 +1125,6 @@ public abstract class TruffleLanguage<C> {
     }
 
     /**
-     * Looks an additional language service up. By default it checks if the language itself is
-     * implementing the requested class and if so, it returns <code>this</code>.
-     * <p>
-     * In future this method can be made protected and overridable by language implementors to
-     * create more dynamic service system.
-     *
-     * @param <T> the type to request
-     * @param clazz
-     * @return
-     */
-    final /* protected */ <T> T lookup(Class<T> clazz) {
-        if (clazz.isInterface()) {
-            if (clazz.isInstance(this)) {
-                return clazz.cast(this);
-            }
-        }
-        return null;
-    }
-
-    /**
      * Find a meta-object of a value, if any. The meta-object represents a description of the
      * object, reveals it's kind and it's features. Some information that a meta-object might define
      * includes the base object's type, interface, class, methods, attributes, etc.
@@ -1913,13 +1893,7 @@ public abstract class TruffleLanguage<C> {
                 throw new IllegalArgumentException("Cannot request services from the current language.");
             }
             Objects.requireNonNull(language);
-            S result = AccessAPI.engineAccess().lookupService(vmObject, language, this.getSpi().languageInfo, type);
-            if (result != null) {
-                return result;
-            }
-            // Legacy behaviour - deprecate and remove
-            Env otherEnv = AccessAPI.engineAccess().getLanguageEnv(vmObject, language);
-            return otherEnv == null ? null : otherEnv.getSpi().lookup(type);
+            return AccessAPI.engineAccess().lookupService(vmObject, language, this.getSpi().languageInfo, type);
         }
 
         /**
@@ -2662,11 +2636,6 @@ public abstract class TruffleLanguage<C> {
         @Override
         public boolean isObjectOfLanguage(Env env, Object value) {
             return env.isObjectOfLanguage(value);
-        }
-
-        @Override
-        public <S> S lookup(TruffleLanguage<?> language, Class<S> type) {
-            return language.lookup(type);
         }
 
         @Override

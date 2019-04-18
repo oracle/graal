@@ -554,8 +554,12 @@ public final class PolyglotImpl extends AbstractPolyglotImpl {
         @Override
         public <S> S lookup(LanguageInfo info, Class<S> serviceClass) {
             PolyglotLanguage language = (PolyglotLanguage) NODES.getEngineObject(info);
-            PolyglotLanguageContext languageContext = PolyglotContextImpl.requireContext().getContextInitialized(language, language);
-            return LANGUAGE.lookup(LANGUAGE.getLanguage(languageContext.env), serviceClass);
+            if (!language.cache.supportsService(serviceClass)) {
+                return null;
+            }
+            PolyglotLanguageContext languageContext = PolyglotContextImpl.requireContext().getContext(language);
+            languageContext.ensureCreated(language);
+            return languageContext.lookupService(serviceClass);
         }
 
         @SuppressWarnings("unchecked")
@@ -991,13 +995,6 @@ public final class PolyglotImpl extends AbstractPolyglotImpl {
         @Override
         public Class<? extends TruffleLanguage<?>> getLanguageClass(LanguageInfo language) {
             return ((PolyglotLanguage) NODES.getEngineObject(language)).cache.getLanguageClass();
-        }
-
-        @Override
-        public TruffleLanguage.Env getLanguageEnv(Object languageVMObject, LanguageInfo language) {
-            PolyglotLanguage lang = (PolyglotLanguage) NODES.getEngineObject(language);
-            PolyglotLanguageContext context = ((PolyglotLanguageContext) languageVMObject);
-            return context.context.getContext(lang).env;
         }
 
         @Override

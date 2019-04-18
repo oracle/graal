@@ -150,12 +150,11 @@ import com.oracle.truffle.api.source.SourceSection;
  * </ul>
  * </p>
  */
-@Registration(id = InstrumentationTestLanguage.ID, name = InstrumentationTestLanguage.NAME, version = "2.0")
+@Registration(id = InstrumentationTestLanguage.ID, name = InstrumentationTestLanguage.NAME, version = "2.0", services = {SpecialService.class})
 @ProvidedTags({StandardTags.ExpressionTag.class, DefineTag.class, LoopTag.class,
                 StandardTags.StatementTag.class, StandardTags.CallTag.class, StandardTags.RootTag.class,
                 StandardTags.TryBlockTag.class, BlockTag.class, ConstantTag.class})
-public class InstrumentationTestLanguage extends TruffleLanguage<InstrumentContext>
-                implements SpecialService {
+public class InstrumentationTestLanguage extends TruffleLanguage<InstrumentContext> {
 
     public static final String ID = "instrumentation-test-language";
     public static final String NAME = "Instrumentation Test Language";
@@ -203,11 +202,6 @@ public class InstrumentationTestLanguage extends TruffleLanguage<InstrumentConte
     public InstrumentationTestLanguage() {
     }
 
-    @Override
-    public String fileExtension() {
-        return FILENAME_EXTENSION;
-    }
-
     /**
      * Set configuration data to the language. Possible values are:
      * <ul>
@@ -229,6 +223,7 @@ public class InstrumentationTestLanguage extends TruffleLanguage<InstrumentConte
             }
             runInitAfterExec = (Boolean) envConfig.get("runInitAfterExec");
         }
+        env.registerService(new SpecialServiceImpl());
         return new InstrumentContext(env, initSource, runInitAfterExec);
     }
 
@@ -1970,6 +1965,13 @@ public class InstrumentationTestLanguage extends TruffleLanguage<InstrumentConte
 
     static class FunctionMetaObject implements TruffleObject {
 
+    }
+
+    public static final class SpecialServiceImpl implements SpecialService {
+        @Override
+        public String fileExtension() {
+            return FILENAME_EXTENSION;
+        }
     }
 }
 

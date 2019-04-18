@@ -337,8 +337,6 @@ public abstract class Accessor {
 
         public abstract Object getCurrentOuterContext();
 
-        public abstract Env getLanguageEnv(Object languageContextVMObject, LanguageInfo otherLanguage);
-
         public abstract boolean isCharacterBasedSource(String language, String mimeType);
 
         public abstract Set<String> getValidMimeTypes(String language);
@@ -422,8 +420,6 @@ public abstract class Accessor {
         public abstract InstrumentInfo createInstrument(Object vmObject, String id, String name, String version);
 
         public abstract Object getVMObject(InstrumentInfo info);
-
-        public abstract <S> S lookup(TruffleLanguage<?> languageEnsureInitialized, Class<S> type);
 
         public abstract boolean isContextInitialized(Env env);
 

@@ -13,6 +13,8 @@ This changelog summarizes major changes between Truffle versions relevant to lan
 
 ## Version 19.0.0
 * Renamed version 1.0.0 to 19.0.0
+##Version 1.0.0
+* Removed deprecated automatic registration of the language class as a service.
 
 ## Version 1.0.0 RC15
 * This version includes a major revision of the Truffle Interoperability APIs. Most existing APIs for Truffle Interoperability were deprecated. The compatiblity layer may cause significant performance reduction for interoperability calls. 
