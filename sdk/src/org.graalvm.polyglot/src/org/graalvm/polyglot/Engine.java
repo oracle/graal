@@ -788,7 +788,7 @@ public final class Engine implements AutoCloseable {
         private static RuntimeException noPolyglotImplementationFound() {
             String suggestion;
             if (AOT) {
-                suggestion = "Make sure a language is added to the classpath (e.g., native-image --js).";
+                suggestion = "Make sure a language is added to the classpath (e.g., native-image --language:js).";
             } else {
                 suggestion = "Make sure the truffle-api.jar is on the classpath.";
             }
