@@ -52,11 +52,6 @@ public final class CastInstruction extends ValueInstruction {
         visitor.visit(this);
     }
 
-    @Override
-    public int getAlign() {
-        return ((ValueSymbol) value).getAlign();
-    }
-
     public CastOperator getOperator() {
         return operator;
     }

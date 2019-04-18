@@ -48,8 +48,6 @@ public abstract class GlobalValueSymbol implements ValueSymbol, MetadataAttachme
 
     private final PointerType type;
 
-    private final int align;
-
     private String name = LLVMIdentifier.UNKNOWN;
 
     private SymbolImpl value = null;
@@ -62,9 +60,8 @@ public abstract class GlobalValueSymbol implements ValueSymbol, MetadataAttachme
 
     private LLVMSourceSymbol sourceSymbol;
 
-    GlobalValueSymbol(PointerType type, int align, Linkage linkage, Visibility visibility, SymbolTable symbolTable, int value) {
+    GlobalValueSymbol(PointerType type, Linkage linkage, Visibility visibility, SymbolTable symbolTable, int value) {
         this.type = type;
-        this.align = align;
         this.linkage = linkage;
         this.visibility = visibility;
         this.value = value > 0 ? symbolTable.getForwardReferenced(value - 1, this) : null;
@@ -72,11 +69,6 @@ public abstract class GlobalValueSymbol implements ValueSymbol, MetadataAttachme
     }
 
     public abstract void accept(ModelVisitor visitor);
-
-    @Override
-    public int getAlign() {
-        return align;
-    }
 
     public boolean isInitialized() {
         return value != null;

@@ -51,7 +51,6 @@ public final class AllocateInstruction extends ValueInstruction {
         visitor.visit(this);
     }
 
-    @Override
     public int getAlign() {
         return align;
     }

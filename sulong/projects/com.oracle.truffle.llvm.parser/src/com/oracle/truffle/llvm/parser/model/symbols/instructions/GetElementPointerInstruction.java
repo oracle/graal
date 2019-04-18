@@ -33,12 +33,10 @@ import java.util.Arrays;
 import java.util.Collections;
 import java.util.List;
 
+import com.oracle.truffle.llvm.parser.model.SymbolImpl;
 import com.oracle.truffle.llvm.parser.model.SymbolTable;
-import com.oracle.truffle.llvm.parser.model.symbols.constants.GetElementPointerConstant;
 import com.oracle.truffle.llvm.parser.model.visitors.SymbolVisitor;
 import com.oracle.truffle.llvm.runtime.types.Type;
-import com.oracle.truffle.llvm.parser.model.SymbolImpl;
-import com.oracle.truffle.llvm.parser.model.ValueSymbol;
 
 public final class GetElementPointerInstruction extends ValueInstruction {
 
@@ -57,17 +55,6 @@ public final class GetElementPointerInstruction extends ValueInstruction {
     @Override
     public void accept(SymbolVisitor visitor) {
         visitor.visit(this);
-    }
-
-    @Override
-    public int getAlign() {
-        if (base instanceof ValueSymbol) {
-            return ((ValueSymbol) base).getAlign();
-        } else if (base instanceof GetElementPointerConstant) {
-            return ((ValueSymbol) ((GetElementPointerConstant) base).getBasePointer()).getAlign();
-        } else {
-            throw new IllegalStateException("Unknown Source of Alignment: " + base.getClass());
-        }
     }
 
     public SymbolImpl getBasePointer() {

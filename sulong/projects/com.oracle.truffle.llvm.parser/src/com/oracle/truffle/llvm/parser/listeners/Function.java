@@ -629,10 +629,10 @@ public final class Function implements ParserListener {
             opType = Types.castToPointer(srcType).getPointeeType();
         }
 
-        final int align = getAlign(args[i++]);
+        i++; // skip alignment
         final boolean isVolatile = args[i] != 0;
 
-        emit(LoadInstruction.fromSymbols(scope.getSymbols(), opType, src, align, isVolatile));
+        emit(LoadInstruction.fromSymbols(scope.getSymbols(), opType, src, isVolatile));
     }
 
     private static final int LOADATOMIC_ARGS_EXPECTED_AFTER_TYPE = 5;
@@ -655,12 +655,12 @@ public final class Function implements ParserListener {
             opType = Types.castToPointer(srcType).getPointeeType();
         }
 
-        final int align = getAlign(args[i++]);
+        i++; // skip alignment
         final boolean isVolatile = args[i++] != 0;
         final long atomicOrdering = args[i++];
         final long synchronizationScope = args[i];
 
-        emit(LoadInstruction.fromSymbols(scope.getSymbols(), opType, src, align, isVolatile, atomicOrdering, synchronizationScope));
+        emit(LoadInstruction.fromSymbols(scope.getSymbols(), opType, src, isVolatile, atomicOrdering, synchronizationScope));
     }
 
     private void createCompareExchange(long[] args, int record) {

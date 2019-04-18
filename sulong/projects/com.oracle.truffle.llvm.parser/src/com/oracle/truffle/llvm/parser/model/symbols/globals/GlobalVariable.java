@@ -40,9 +40,12 @@ public final class GlobalVariable extends GlobalValueSymbol {
 
     private final boolean isReadOnly;
 
+    private final int align;
+
     private GlobalVariable(boolean isReadOnly, PointerType type, int align, Linkage linkage, Visibility visibility, SymbolTable symbolTable, int value) {
-        super(type, align, linkage, visibility, symbolTable, value);
+        super(type, linkage, visibility, symbolTable, value);
         this.isReadOnly = isReadOnly;
+        this.align = align;
     }
 
     @Override
@@ -53,6 +56,10 @@ public final class GlobalVariable extends GlobalValueSymbol {
     @Override
     public void accept(SymbolVisitor visitor) {
         visitor.visit(this);
+    }
+
+    public int getAlign() {
+        return align;
     }
 
     public boolean isReadOnly() {

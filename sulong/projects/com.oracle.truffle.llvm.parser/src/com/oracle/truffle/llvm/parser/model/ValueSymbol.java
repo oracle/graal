@@ -33,10 +33,6 @@ import com.oracle.truffle.llvm.runtime.types.symbols.LLVMIdentifier;
 
 public interface ValueSymbol extends SymbolImpl {
 
-    default int getAlign() {
-        return 0;
-    }
-
     default String getName() {
         return LLVMIdentifier.UNKNOWN;
     }
