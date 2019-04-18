@@ -123,6 +123,8 @@ public final class Symbol<T> extends ByteSequence {
         public static final Symbol<Name> CLINIT = StaticSymbols.putName("<clinit>");
 
         public static final Symbol<Name> backtrace = StaticSymbols.putName("backtrace");
+        public static final Symbol<Name> fillInStackTrace = StaticSymbols.putName("fillInStackTrace");
+        public static final Symbol<Name> fillInStackTrace0 = StaticSymbols.putName("fillInStackTrace0");
         public static final Symbol<Name> clazz = StaticSymbols.putName("clazz");
         public static final Symbol<Name> type = StaticSymbols.putName("type");
         public static final Symbol<Name> slot = StaticSymbols.putName("slot");

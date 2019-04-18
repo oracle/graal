@@ -213,7 +213,6 @@ public final class Target_sun_misc_Unsafe {
         } else {
             return holder.getKlass().lookupFieldTable(slot);
         }
-
     }
 
     @Substitution(hasReceiver = true)
@@ -228,7 +227,7 @@ public final class Target_sun_misc_Unsafe {
 
     // region compareAndSwap*
 
-    // FIXME(peterssen): None of the CAS operations is actually atomic.
+    // CAS ops should be atomic.
     @Substitution(hasReceiver = true)
     public static synchronized boolean compareAndSwapObject(@SuppressWarnings("unused") @Host(Unsafe.class) StaticObject self, @Host(Object.class) StaticObject holder, long offset,
                     Object before, Object after) {
@@ -237,39 +236,24 @@ public final class Target_sun_misc_Unsafe {
         }
         // TODO(peterssen): Current workaround assumes it's a field access, offset <-> field index.
         Field f = getInstanceFieldFromIndex(holder, Math.toIntExact(offset) - SAFETY_FIELD_OFFSET);
-        Object inTheField = f.get(holder);
-        if (inTheField == before) {
-            f.set(holder, after);
-            return true;
-        } else {
-            return false;
-        }
+        assert f != null;
+        return holder.compareAndSwapField(f, before, after);
     }
 
     @Substitution(hasReceiver = true)
     public static synchronized boolean compareAndSwapInt(@SuppressWarnings("unused") @Host(Unsafe.class) StaticObject self, @Host(Object.class) StaticObject holder, long offset, int before,
                     int after) {
         Field f = getInstanceFieldFromIndex(holder, Math.toIntExact(offset) - SAFETY_FIELD_OFFSET);
-        int inTheField = (int) f.get(holder);
-        if (inTheField == before) {
-            f.set(holder, after);
-            return true;
-        } else {
-            return false;
-        }
+        assert f != null;
+        return holder.compareAndSwapIntField(f, before, after);
     }
 
     @Substitution(hasReceiver = true)
     public static synchronized boolean compareAndSwapLong(@SuppressWarnings("unused") @Host(Unsafe.class) StaticObject self, @Host(Object.class) StaticObject holder, long offset, long before,
                     long after) {
         Field f = getInstanceFieldFromIndex(holder, Math.toIntExact(offset) - SAFETY_FIELD_OFFSET);
-        long inTheField = (long) f.get(holder);
-        if (inTheField == before) {
-            f.set(holder, after);
-            return true;
-        } else {
-            return false;
-        }
+        assert f != null;
+        return holder.compareAndSwapLongField(f, before, after);
     }
 
     // endregion compareAndSwap*
@@ -324,6 +308,7 @@ public final class Target_sun_misc_Unsafe {
             return U.getByte((holder).unwrap(), offset);
         }
         Field f = getInstanceFieldFromIndex(holder, Math.toIntExact(offset) - SAFETY_FIELD_OFFSET);
+        assert f != null;
         return (byte) f.get(holder);
     }
 
@@ -335,6 +320,7 @@ public final class Target_sun_misc_Unsafe {
         // TODO(peterssen): Current workaround assumes it's a field access, encoding is offset <->
         // field index.
         Field f = getInstanceFieldFromIndex(holder, Math.toIntExact(offset) - SAFETY_FIELD_OFFSET);
+        assert f != null;
         return (StaticObject) f.get(holder);
     }
 
@@ -344,6 +330,7 @@ public final class Target_sun_misc_Unsafe {
             return U.getBoolean((holder).unwrap(), offset);
         }
         Field f = getInstanceFieldFromIndex(holder, Math.toIntExact(offset) - SAFETY_FIELD_OFFSET);
+        assert f != null;
         return (boolean) f.get(holder);
     }
 
@@ -353,6 +340,7 @@ public final class Target_sun_misc_Unsafe {
             return U.getChar((holder).unwrap(), offset);
         }
         Field f = getInstanceFieldFromIndex(holder, Math.toIntExact(offset) - SAFETY_FIELD_OFFSET);
+        assert f != null;
         return (char) f.get(holder);
     }
 
@@ -362,6 +350,7 @@ public final class Target_sun_misc_Unsafe {
             return U.getShort((holder).unwrap(), offset);
         }
         Field f = getInstanceFieldFromIndex(holder, Math.toIntExact(offset) - SAFETY_FIELD_OFFSET);
+        assert f != null;
         return (short) f.get(holder);
     }
 
@@ -371,6 +360,7 @@ public final class Target_sun_misc_Unsafe {
             return U.getInt((holder).unwrap(), offset);
         }
         Field f = getInstanceFieldFromIndex(holder, Math.toIntExact(offset) - SAFETY_FIELD_OFFSET);
+        assert f != null;
         return (int) f.get(holder);
     }
 
@@ -380,6 +370,7 @@ public final class Target_sun_misc_Unsafe {
             return U.getFloat((holder).unwrap(), offset);
         }
         Field f = getInstanceFieldFromIndex(holder, Math.toIntExact(offset) - SAFETY_FIELD_OFFSET);
+        assert f != null;
         return (float) f.get(holder);
     }
 
@@ -389,6 +380,7 @@ public final class Target_sun_misc_Unsafe {
             return U.getDouble((holder).unwrap(), offset);
         }
         Field f = getInstanceFieldFromIndex(holder, Math.toIntExact(offset) - SAFETY_FIELD_OFFSET);
+        assert f != null;
         return (double) f.get(holder);
     }
 
@@ -398,6 +390,7 @@ public final class Target_sun_misc_Unsafe {
             return U.getLong((holder).unwrap(), offset);
         }
         Field f = getInstanceFieldFromIndex(holder, Math.toIntExact(offset) - SAFETY_FIELD_OFFSET);
+        assert f != null;
         return (long) f.get(holder);
     }
 
@@ -411,6 +404,7 @@ public final class Target_sun_misc_Unsafe {
             return U.getBooleanVolatile((holder).unwrap(), offset);
         }
         Field f = getInstanceFieldFromIndex(holder, Math.toIntExact(offset) - SAFETY_FIELD_OFFSET);
+        assert f != null;
         return holder.getByteFieldVolatile(f) != 0;
     }
 
@@ -420,6 +414,7 @@ public final class Target_sun_misc_Unsafe {
             return U.getByteVolatile((holder).unwrap(), offset);
         }
         Field f = getInstanceFieldFromIndex(holder, Math.toIntExact(offset) - SAFETY_FIELD_OFFSET);
+        assert f != null;
         return holder.getByteFieldVolatile(f);
     }
 
@@ -429,6 +424,7 @@ public final class Target_sun_misc_Unsafe {
             return U.getShortVolatile((holder).unwrap(), offset);
         }
         Field f = getInstanceFieldFromIndex(holder, Math.toIntExact(offset) - SAFETY_FIELD_OFFSET);
+        assert f != null;
         return holder.getShortFieldVolatile(f);
     }
 
@@ -438,6 +434,7 @@ public final class Target_sun_misc_Unsafe {
             return U.getCharVolatile((holder).unwrap(), offset);
         }
         Field f = getInstanceFieldFromIndex(holder, Math.toIntExact(offset) - SAFETY_FIELD_OFFSET);
+        assert f != null;
         return holder.getCharFieldVolatile(f);
     }
 
@@ -447,6 +444,7 @@ public final class Target_sun_misc_Unsafe {
             return U.getFloatVolatile((holder).unwrap(), offset);
         }
         Field f = getInstanceFieldFromIndex(holder, Math.toIntExact(offset) - SAFETY_FIELD_OFFSET);
+        assert f != null;
         return Float.intBitsToFloat((holder).getIntFieldVolatile(f));
     }
 
@@ -456,6 +454,7 @@ public final class Target_sun_misc_Unsafe {
             return U.getIntVolatile((holder).unwrap(), offset);
         }
         Field f = getInstanceFieldFromIndex(holder, Math.toIntExact(offset) - SAFETY_FIELD_OFFSET);
+        assert f != null;
         return holder.getIntFieldVolatile(f);
     }
 
@@ -465,6 +464,7 @@ public final class Target_sun_misc_Unsafe {
             return U.getLongVolatile((holder).unwrap(), offset);
         }
         Field f = getInstanceFieldFromIndex(holder, Math.toIntExact(offset) - SAFETY_FIELD_OFFSET);
+        assert f != null;
         return holder.getLongFieldVolatile(f);
     }
 
@@ -474,6 +474,7 @@ public final class Target_sun_misc_Unsafe {
             return U.getDoubleVolatile((holder).unwrap(), offset);
         }
         Field f = getInstanceFieldFromIndex(holder, Math.toIntExact(offset) - SAFETY_FIELD_OFFSET);
+        assert f != null;
         return Double.longBitsToDouble((holder).getLongFieldVolatile(f));
     }
 
@@ -483,6 +484,7 @@ public final class Target_sun_misc_Unsafe {
             return U.getObjectVolatile((holder).unwrap(), offset);
         }
         Field f = getInstanceFieldFromIndex(holder, Math.toIntExact(offset) - SAFETY_FIELD_OFFSET);
+        assert f != null;
         return holder.getFieldVolatile(f);
     }
 
@@ -536,6 +538,7 @@ public final class Target_sun_misc_Unsafe {
         // TODO(peterssen): Current workaround assumes it's a field access, encoding is offset <->
         // field index.
         Field f = getInstanceFieldFromIndex(holder, Math.toIntExact(offset) - SAFETY_FIELD_OFFSET);
+        assert f != null;
         assert !f.getKind().isSubWord();
         holder.setFieldVolatile(f, value);
     }
@@ -549,6 +552,7 @@ public final class Target_sun_misc_Unsafe {
         // TODO(peterssen): Current workaround assumes it's a field access, encoding is offset <->
         // field index.
         Field f = getInstanceFieldFromIndex(holder, Math.toIntExact(offset) - SAFETY_FIELD_OFFSET);
+        assert f != null;
         assert f.getKind().isSubWord();
         holder.setWordFieldVolatile(f, value);
     }
@@ -635,6 +639,7 @@ public final class Target_sun_misc_Unsafe {
         // TODO(peterssen): Current workaround assumes it's a field access, encoding is offset <->
         // field index.
         Field f = getInstanceFieldFromIndex(holder, Math.toIntExact(offset) - SAFETY_FIELD_OFFSET);
+        assert f != null;
         f.set(holder, value);
     }
 
@@ -647,6 +652,7 @@ public final class Target_sun_misc_Unsafe {
         // TODO(peterssen): Current workaround assumes it's a field access, encoding is offset <->
         // field index.
         Field f = getInstanceFieldFromIndex(holder, Math.toIntExact(offset) - SAFETY_FIELD_OFFSET);
+        assert f != null;
         f.set(holder, value);
     }
 
@@ -659,6 +665,7 @@ public final class Target_sun_misc_Unsafe {
         // TODO(peterssen): Current workaround assumes it's a field access, encoding is offset <->
         // field index.
         Field f = getInstanceFieldFromIndex(holder, Math.toIntExact(offset) - SAFETY_FIELD_OFFSET);
+        assert f != null;
         f.set(holder, value);
     }
 
@@ -671,6 +678,7 @@ public final class Target_sun_misc_Unsafe {
         // TODO(peterssen): Current workaround assumes it's a field access, encoding is offset <->
         // field index.
         Field f = getInstanceFieldFromIndex(holder, Math.toIntExact(offset) - SAFETY_FIELD_OFFSET);
+        assert f != null;
         f.set(holder, value);
     }
 
@@ -683,6 +691,7 @@ public final class Target_sun_misc_Unsafe {
         // TODO(peterssen): Current workaround assumes it's a field access, encoding is offset <->
         // field index.
         Field f = getInstanceFieldFromIndex(holder, Math.toIntExact(offset) - SAFETY_FIELD_OFFSET);
+        assert f != null;
         f.set(holder, value);
     }
 
@@ -695,6 +704,7 @@ public final class Target_sun_misc_Unsafe {
         // TODO(peterssen): Current workaround assumes it's a field access, encoding is offset <->
         // field index.
         Field f = getInstanceFieldFromIndex(holder, Math.toIntExact(offset) - SAFETY_FIELD_OFFSET);
+        assert f != null;
         f.set(holder, value);
     }
 
@@ -707,6 +717,7 @@ public final class Target_sun_misc_Unsafe {
         // TODO(peterssen): Current workaround assumes it's a field access, encoding is offset <->
         // field index.
         Field f = getInstanceFieldFromIndex(holder, Math.toIntExact(offset) - SAFETY_FIELD_OFFSET);
+        assert f != null;
         f.set(holder, value);
     }
 
@@ -719,6 +730,7 @@ public final class Target_sun_misc_Unsafe {
         // TODO(peterssen): Current workaround assumes it's a field access, encoding is offset <->
         // field index.
         Field f = getInstanceFieldFromIndex(holder, Math.toIntExact(offset) - SAFETY_FIELD_OFFSET);
+        assert f != null;
         f.set(holder, value);
     }
 
@@ -731,6 +743,7 @@ public final class Target_sun_misc_Unsafe {
         // TODO(peterssen): Current workaround assumes it's a field access, encoding is offset <->
         // field index.
         Field f = getInstanceFieldFromIndex(holder, Math.toIntExact(offset) - SAFETY_FIELD_OFFSET);
+        assert f != null;
         f.set(holder, value);
     }
 
@@ -743,6 +756,7 @@ public final class Target_sun_misc_Unsafe {
         // TODO(peterssen): Current workaround assumes it's a field access, encoding is offset <->
         // field index.
         Field f = getInstanceFieldFromIndex(holder, Math.toIntExact(offset) - SAFETY_FIELD_OFFSET);
+        assert f != null;
         f.set(holder, value);
     }
 
@@ -755,6 +769,7 @@ public final class Target_sun_misc_Unsafe {
         // TODO(peterssen): Current workaround assumes it's a field access, encoding is offset <->
         // field index.
         Field f = getInstanceFieldFromIndex(holder, Math.toIntExact(offset) - SAFETY_FIELD_OFFSET);
+        assert f != null;
         f.set(holder, value);
     }
 
@@ -767,6 +782,7 @@ public final class Target_sun_misc_Unsafe {
         // TODO(peterssen): Current workaround assumes it's a field access, encoding is offset <->
         // field index.
         Field f = getInstanceFieldFromIndex(holder, Math.toIntExact(offset) - SAFETY_FIELD_OFFSET);
+        assert f != null;
         f.set(holder, value);
     }
 

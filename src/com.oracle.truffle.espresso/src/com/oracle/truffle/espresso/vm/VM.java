@@ -55,6 +55,7 @@ import com.oracle.truffle.espresso.meta.EspressoError;
 import com.oracle.truffle.espresso.meta.JavaKind;
 import com.oracle.truffle.espresso.meta.Meta;
 import com.oracle.truffle.espresso.meta.MetaUtil;
+import com.oracle.truffle.espresso.nodes.EspressoBaseNode;
 import com.oracle.truffle.espresso.nodes.EspressoRootNode;
 import com.oracle.truffle.espresso.runtime.EspressoContext;
 import com.oracle.truffle.espresso.runtime.EspressoException;
@@ -510,7 +511,26 @@ public final class VM extends NativeEnv implements ContextAccess {
                 return null;
             }
         });
-        self.setHiddenField(getMeta().HIDDEN_FRAMES, frames.toArray(new FrameInstance[0]));
+        // Avoid printing the Throwable initialization
+        int nonThrowableInitStartIndex = 0;
+        boolean skipFillInStackTrace = true;
+        boolean skipThrowableInit = true;
+        for (FrameInstance fi: frames) {
+            Method m = ((EspressoRootNode)((RootCallTarget)fi.getCallTarget()).getRootNode()).getMethod();
+            if (skipFillInStackTrace) {
+                if (!((m.getName() == Name.fillInStackTrace) || (m.getName() == Name.fillInStackTrace0))) {
+                    skipFillInStackTrace = false;
+                }
+            } else if (skipThrowableInit) {
+                if (!(m.getName() == Name.INIT) || !m.getMeta().Throwable.isAssignableFrom(m.getDeclaringKlass())) {
+                    skipThrowableInit = false;
+                    break;
+                }
+            }
+            nonThrowableInitStartIndex++;
+        }
+        self.setHiddenField(getMeta().HIDDEN_FRAMES, frames.subList(nonThrowableInitStartIndex, frames.size()).toArray(new FrameInstance[0]));
+
         getMeta().Throwable_backtrace.set(self, self);
         return self;
     }
@@ -536,6 +556,7 @@ public final class VM extends NativeEnv implements ContextAccess {
         FrameInstance frame = frames[index];
 
         EspressoRootNode rootNode = (EspressoRootNode) ((RootCallTarget) frame.getCallTarget()).getRootNode();
+
 
         meta.StackTraceElement_init.invokeDirect(
                         /* this */ ste,
