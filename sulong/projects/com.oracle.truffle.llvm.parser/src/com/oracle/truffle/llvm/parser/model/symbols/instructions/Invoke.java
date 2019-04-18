@@ -31,7 +31,7 @@ package com.oracle.truffle.llvm.parser.model.symbols.instructions;
 
 import com.oracle.truffle.llvm.parser.model.blocks.InstructionBlock;
 
-public interface Invoke extends TerminatingInstruction, FunctionStart {
+public interface Invoke extends TerminatingInstruction, Call {
 
     InstructionBlock normalSuccessor();
 

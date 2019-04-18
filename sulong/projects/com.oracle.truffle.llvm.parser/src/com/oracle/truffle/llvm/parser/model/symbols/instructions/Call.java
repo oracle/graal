@@ -39,7 +39,7 @@ import com.oracle.truffle.llvm.parser.model.functions.FunctionDefinition;
 import com.oracle.truffle.llvm.runtime.types.MetaType;
 import com.oracle.truffle.llvm.runtime.types.Type;
 
-public interface FunctionStart extends SymbolImpl {
+public interface Call extends SymbolImpl {
 
     SymbolImpl[] NO_ARGS = new SymbolImpl[0];
 
