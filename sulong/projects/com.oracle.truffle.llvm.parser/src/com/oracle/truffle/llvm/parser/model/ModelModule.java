@@ -82,16 +82,24 @@ public final class ModelModule {
 
     public void accept(ModelVisitor visitor) {
         visitor.visit(targetDataLayout);
-        targetInfo.forEach(visitor::visit);
-        types.forEach(visitor::visit);
+        for (TargetInformation t : targetInfo) {
+            visitor.visit(t);
+        }
+        for (Type t : types) {
+            visitor.visit(t);
+        }
         for (GlobalValueSymbol variable : globalVariables) {
             variable.accept(visitor);
         }
         for (GlobalValueSymbol alias : aliases) {
             alias.accept(visitor);
         }
-        defines.forEach(visitor::visit);
-        declares.forEach(visitor::visit);
+        for (FunctionDefinition d : defines) {
+            visitor.visit(d);
+        }
+        for (FunctionDeclaration d : declares) {
+            visitor.visit(d);
+        }
     }
 
     public void addFunctionDeclaration(FunctionDeclaration declaration) {

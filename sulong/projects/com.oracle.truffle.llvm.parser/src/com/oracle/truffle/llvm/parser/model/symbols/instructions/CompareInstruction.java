@@ -52,15 +52,12 @@ public final class CompareInstruction extends ValueInstruction {
 
     private final CompareOperator operator;
 
-    private Type baseType;
-
     private SymbolImpl lhs;
 
     private SymbolImpl rhs;
 
     private CompareInstruction(Type type, CompareOperator operator) {
         super(calculateResultType(type));
-        this.baseType = type;
         this.operator = operator;
     }
 
@@ -75,10 +72,6 @@ public final class CompareInstruction extends ValueInstruction {
     @Override
     public void accept(SymbolVisitor visitor) {
         visitor.visit(this);
-    }
-
-    public Type getBaseType() {
-        return baseType;
     }
 
     public SymbolImpl getLHS() {

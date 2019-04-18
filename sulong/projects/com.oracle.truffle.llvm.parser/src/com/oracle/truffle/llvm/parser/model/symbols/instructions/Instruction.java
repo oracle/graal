@@ -52,21 +52,21 @@ public abstract class Instruction implements SymbolImpl, MetadataAttachmentHolde
         this.debugLocation = debugLocation;
     }
 
-    public LLVMSourceLocation getSourceLocation() {
+    public final LLVMSourceLocation getSourceLocation() {
         return sourceLocation;
     }
 
-    public void setSourceLocation(LLVMSourceLocation sourceLocation) {
+    public final void setSourceLocation(LLVMSourceLocation sourceLocation) {
         this.sourceLocation = sourceLocation;
     }
 
     @Override
-    public boolean hasAttachedMetadata() {
+    public final boolean hasAttachedMetadata() {
         return mdAttachments != null;
     }
 
     @Override
-    public List<MDAttachment> getAttachedMetadata() {
+    public final List<MDAttachment> getAttachedMetadata() {
         if (mdAttachments == null) {
             mdAttachments = new ArrayList<>(1);
         }

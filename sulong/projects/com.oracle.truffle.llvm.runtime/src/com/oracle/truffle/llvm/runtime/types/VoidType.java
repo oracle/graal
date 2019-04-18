@@ -66,21 +66,12 @@ public final class VoidType extends Type {
     }
 
     @Override
-    public int hashCode() {
-        return 31 * 127;
+    public boolean equals(Object obj) {
+        return obj == this;
     }
 
     @Override
-    public boolean equals(Object obj) {
-        if (this == obj) {
-            return true;
-        }
-        if (obj == null) {
-            return false;
-        }
-        if (getClass() != obj.getClass()) {
-            return false;
-        }
-        return true;
+    public int hashCode() {
+        return 123;
     }
 }
