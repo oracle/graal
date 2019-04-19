@@ -38,6 +38,15 @@ class ReflectionHelper {
         return holder;
     }
 
+    static Target_java_lang_reflect_Method getHolder(Target_java_lang_reflect_Method method) {
+        Target_java_lang_reflect_Method holder = asMethod(getRoot(asExecutable(method)));
+        if (holder == null) {
+            holder = method;
+        }
+
+        return holder;
+    }
+
     static Target_java_lang_reflect_Constructor getHolder(Target_java_lang_reflect_Constructor constructor) {
         Target_java_lang_reflect_Constructor holder = asConstructor(getRoot(asExecutable(constructor)));
         if (holder == null) {
@@ -61,6 +70,10 @@ class ReflectionHelper {
             throw VMError.shouldNotReachHere(errorMessage);
         }
         return object;
+    }
+
+    private static Target_java_lang_reflect_Method asMethod(Target_java_lang_reflect_Executable executable) {
+        return KnownIntrinsics.unsafeCast(executable, Target_java_lang_reflect_Method.class);
     }
 
     private static Target_java_lang_reflect_Constructor asConstructor(Target_java_lang_reflect_Executable executable) {
