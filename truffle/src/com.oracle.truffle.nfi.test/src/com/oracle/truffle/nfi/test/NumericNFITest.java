@@ -183,6 +183,25 @@ public class NumericNFITest extends NFITest {
         Assert.assertThat("return", ret, is(number(43)));
     }
 
+    private long fixSign(long nr) {
+        switch (type) {
+            case UINT8:
+                return nr & 0xFFL;
+            case UINT16:
+                return nr & 0xFFFFL;
+            case UINT32:
+                return nr & 0xFFFF_FFFFL;
+            default:
+                return nr;
+        }
+    }
+
+    @Test
+    public void testIncrementNeg(@Inject(TestIncrementNode.class) CallTarget callTarget) {
+        Object ret = callTarget.call(fixSign(-5));
+        Assert.assertThat("return", ret, is(number(fixSign(-4))));
+    }
+
     /**
      * Test boxed primitive types as argument to native functions.
      *
@@ -214,6 +233,17 @@ public class NumericNFITest extends NFITest {
     public void testCallback(@Inject(TestCallbackNode.class) CallTarget callTarget) {
         Object ret = callTarget.call(callback, 42);
         Assert.assertThat("return", ret, is(number((42 + 6) * 2)));
+    }
+
+    private final TruffleObject negCallback = new TestCallback(1, (args) -> {
+        Assert.assertThat("argument", args[0], is(number(fixSign(-42 + 1))));
+        return unboxNumber(args[0]) + 5;
+    });
+
+    @Test
+    public void testCallbackNeg(@Inject(TestCallbackNode.class) CallTarget callTarget) {
+        Object ret = callTarget.call(negCallback, fixSign(-42));
+        Assert.assertThat("return", ret, is(number(fixSign((-42 + 6) * 2))));
     }
 
     /**
