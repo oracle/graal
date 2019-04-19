@@ -186,7 +186,7 @@ def testLLVMImage(image, imageArgs=None, testFilter=None, libPath=True, test=Non
     args = ['-Dsulongtest.testAOTImage=' + image]
     aotArgs = []
     if libPath:
-        aotArgs += [mx_subst.path_substitutions.substitute('-Dllvm.home=<path:SULONG_HOME>')]
+        aotArgs += [mx_subst.path_substitutions.substitute('<sulong_home>')]
     if imageArgs is not None:
         aotArgs += imageArgs
     if aotArgs:
@@ -617,6 +617,21 @@ def ensureLLVMBinariesExist():
     for llvmBinary in basicLLVMDependencies:
         if findLLVMProgram(llvmBinary) is None:
             raise Exception(llvmBinary + ' not found')
+
+
+def _get_sulong_home():
+    return mx_subst.path_substitutions.substitute('<path:SULONG_HOME>')
+
+_the_get_sulong_home = _get_sulong_home
+
+def get_sulong_home():
+    return _the_get_sulong_home()
+
+def update_sulong_home(new_home):
+    global _the_get_sulong_home
+    _the_get_sulong_home = new_home
+
+mx_subst.path_substitutions.register_no_arg('sulong_home', get_sulong_home)
 
 
 def runLLVM(args=None, out=None, get_classpath_options=getClasspathOptions):

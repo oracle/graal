@@ -689,7 +689,7 @@ suite = {
         "SULONG_HOME",
       ],
       "javaProperties" : {
-        "llvm.home": "<path:SULONG_HOME>",
+        "llvm.home": "<sulong_home>",
       },
       "license" : "BSD-new",
     },
