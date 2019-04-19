@@ -227,7 +227,7 @@ class BaseGraalVmLayoutDistribution(mx.LayoutDistribution):
         if is_graalvm:
             if stage1:
                 # 1. we do not want a GraalVM to be used as base-JDK
-                # 2. we don't need to check if the base JDK is JVMCI-enabled, since JVMCIVersionCheck takes care of that when the Graal compiler is a registered component
+                # 2. we don't need to check if the base JDK is JVMCI-enabled, since JVMCIVersionCheck takes care of that when the GraalVM compiler is a registered component
                 check_versions(join(_jdk_dir, _src_jdk_base), anyjdk_version_regex, graalvm_version_regex=graalvm_version_regex, expect_graalvm=False, check_jvmci=False)
 
             # Add base JDK

@@ -126,7 +126,7 @@ suite = {
       ],
       "exports" : [
         "<package-info>", # exports all packages containing package-info.java
-        "com.oracle.truffle.api.impl", # exported to the Graal compiler
+        "com.oracle.truffle.api.impl", # exported to the GraalVM compiler
       ],
       # We need to force javac as JDT has a bug that JDT ignores SuppressWarnings
       # if warnings as errors is enabled. See GR-14683.

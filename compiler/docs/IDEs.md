@@ -37,9 +37,9 @@ To make IntelliJ work the same way as Eclipse with respect to Problems View and 
 
 
 ### Eclipse
-This section describes how to set up Eclipse for Graal development. For convenience, `$GRAAL` denotes your local Graal repository.
+This section describes how to set up Eclipse for development. For convenience, `$GRAAL` denotes your local repository.
 
-Eclipse can be downloaded [here](http://download.eclipse.org/eclipse/downloads/). The currently recommended version for Graal development is 4.7.3a ("Oxygen").
+Eclipse can be downloaded [here](http://download.eclipse.org/eclipse/downloads/). The currently recommended version for development is 4.7.3a ("Oxygen").
 
 Once you have installed Eclipse, if you have multiple Java versions on your computer, you should edit [eclipse.ini](http://wiki.eclipse.org/Eclipse.ini) to [specify the JVM](http://wiki.eclipse.org/Eclipse.ini#Specifying_the_JVM) that Eclipse will be run with. It must be run with a JDK 9 or later VM. For example:
 ```
@@ -47,7 +47,7 @@ Once you have installed Eclipse, if you have multiple Java versions on your comp
 /usr/lib/jvm/jdk-9.0.4/bin/java
 ```
 
-When first launching Eclipse, you should create a new workspace for Graal development. Select the parent of  `$GRAAL` as the workspace as you will also be importing projects from the suites that Graal depends on.
+When first launching Eclipse, you should create a new workspace for development. Select the parent of  `$GRAAL` as the workspace as you will also be importing projects from the suites that the compiler depends on.
 
 The configurations created by the `mx eclipseinit` command binds projects to Execution Environments or JREs corresponding to the Java compliance level of the projects. You need to configure these Execution Environments and JREs as follows:
 
@@ -65,8 +65,8 @@ Run `mx eclipseinit` to create the Eclipse project configurations for all the Ja
 4. Under **Projects** select all the projects.
 5. Click **Finish** to complete the import.
 
-Any time Eclipse updates a class file needed by the Graal runtime, the updated classes are automatically deployed to the right place so that the next execution of the VM will see the changes.
+Any time Eclipse updates a class file used by the compiler, the updated classes are automatically deployed to the right place so that the next execution of the VM will see the changes.
 
-> After updating your Graal sources and re-running `mx eclipseint`, a new Eclipse projects made be created and old ones removed. This usually results in an Eclipse error message indicating that a project is missing another required Java project. To handle this, you simply need repeat the steps above for importing projects.
+> After updating your sources and re-running `mx eclipseint`, new Eclipse projects made be created and old ones removed. This usually results in an Eclipse error message indicating that a project is missing another required Java project. To handle this, you simply need repeat the steps above for importing projects.
 
-In order to debug Graal with Eclipse, you should launch Graal using the `-d` global option as described [Debugging](Debugging.md).
+In order to debug with Eclipse, you should launch using the `-d` global option as described in [Debugging](Debugging.md).

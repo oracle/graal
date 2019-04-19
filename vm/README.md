@@ -19,7 +19,7 @@ A common requirement is that the `JAVA_HOME` environment variable must point to 
 ### Example: build the base GraalVM CE image
 The base GraalVM CE image includes:
 - SubstrateVM (with the `native-image` tool)
-- Graal compiler & the Truffle-Graal accelerator (imported as a dependency of `substratevm`)
+- GraalVM compiler & the Truffle-Graal accelerator (imported as a dependency of `substratevm`)
 - The inspector, profiler, and VisualVM tools
 - Sulong
 - Graal.nodejs
