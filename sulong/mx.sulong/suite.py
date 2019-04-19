@@ -734,6 +734,15 @@ suite = {
           "dependency:com.oracle.truffle.llvm.libraries.native/bin/*",
           "dependency:com.oracle.truffle.llvm.libraries.bitcode/include/*"
           ],
+        "./native/lib/" : [
+          "dependency:com.oracle.truffle.llvm.libraries.bitcode/bin/libsulong.bc",
+          "dependency:com.oracle.truffle.llvm.libraries.bitcode/bin/libsulong++.bc",
+          "dependency:com.oracle.truffle.llvm.libraries.bitcode/bin/<lib:polyglot-mock>",
+          "dependency:com.oracle.truffle.llvm.libraries.native/bin/*",
+        ],
+        "./include/" : [
+          "dependency:com.oracle.truffle.llvm.libraries.bitcode/include/*"
+        ],
       },
       "dependencies" : [
         "com.oracle.truffle.llvm.libraries.bitcode",
