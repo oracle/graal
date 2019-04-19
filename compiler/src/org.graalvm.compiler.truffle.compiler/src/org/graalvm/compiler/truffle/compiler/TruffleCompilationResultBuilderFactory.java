@@ -47,7 +47,7 @@ import org.graalvm.compiler.truffle.compiler.nodes.TruffleAssumption;
 
 /**
  * A mechanism for Truffle to update a {@link CompilationResult} before it is
- * {@linkplain CompilationResult#close() closed} by the Graal compiler.
+ * {@linkplain CompilationResult#close() closed} by the compiler.
  */
 class TruffleCompilationResultBuilderFactory implements CompilationResultBuilderFactory {
 

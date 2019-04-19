@@ -49,7 +49,7 @@ GraalVM native image.
 - `--vm.<option>` passes VM options to GraalVM.
 List available JVM options with `--help:vm`.
 
-- `--vm.Dgraal.<property>=<value>` passes settings to the Graal compiler.
+- `--vm.Dgraal.<property>=<value>` passes settings to the GraalVM compiler.
 For example, `--vm.Dgraal.DumpOnError=true` sends the compiler intermediate
 representation (IR) to dump handlers if errors occur.
 
@@ -186,7 +186,7 @@ multiple arguments separated by `:`.
 
     mx lli -Dpolyglot.llvm.libraryPath=lib -Dpolyglot.llvm.libraries=liba.so test.bc
 
-#### Running with the Graal compiler
+#### Running with the GraalVM compiler
 
 In contrast to GraalVM, `mx lli` will by default  *not* optimize your program.
 If you are interested in high performance, you might want to import the Graal

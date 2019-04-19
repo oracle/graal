@@ -29,7 +29,7 @@ import org.graalvm.compiler.options.OptionKey;
 import org.graalvm.compiler.options.OptionType;
 
 /**
- * This class encapsulates options that control the behavior of the Graal compiler.
+ * This class encapsulates options that control the behavior of the GraalVM compiler.
  */
 // @formatter:off
 public final class GraalOptions {

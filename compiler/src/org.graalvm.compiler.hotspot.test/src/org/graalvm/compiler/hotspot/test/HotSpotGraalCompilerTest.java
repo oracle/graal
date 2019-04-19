@@ -43,7 +43,7 @@ import jdk.vm.ci.hotspot.HotSpotVMConfigStore;
 import jdk.vm.ci.meta.ResolvedJavaMethod;
 
 /**
- * A Graal compiler test that needs access to the {@link HotSpotGraalRuntimeProvider}.
+ * A compiler test that needs access to the {@link HotSpotGraalRuntimeProvider}.
  */
 public abstract class HotSpotGraalCompilerTest extends GraalCompilerTest {
 
