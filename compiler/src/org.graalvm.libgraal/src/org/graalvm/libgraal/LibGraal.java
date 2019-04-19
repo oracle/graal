@@ -48,11 +48,10 @@ import jdk.vm.ci.hotspot.HotSpotJVMCIRuntime;
  * <li>{@link #unhand(HotSpotJVMCIRuntime, Class, long)}</li>
  * </ul>
  *
- * The typical usage of this class is to
- * {@linkplain #registerNativeMethods(HotSpotJVMCIRuntime, Class) link} and call
+ * The typical usage of this class is to {@linkplain #registerNativeMethods link} and call
  * {@link CEntryPoint}s in libgraal. Each call to a {@link CEntryPoint} requires an
- * {@link IsolateThread} argument which can be {@linkplain LibGraalScope#getIsolateThread()
- * obtained} from a {@link LibGraalScope}.
+ * {@link IsolateThread} argument which can be {@linkplain LibGraalScope#getIsolateThread obtained}
+ * from a {@link LibGraalScope}.
  */
 public class LibGraal {
 
