@@ -793,6 +793,7 @@ suite = {
         "truffle:TRUFFLE_TCK",
         "sulong:SULONG",
         "sulong:SULONG_NFI",
+        "sulong:SULONG_LEGACY",
         "SULONG_TEST_NATIVE",
       ],
       "javaProperties" : {
