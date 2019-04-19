@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2016, 2019, Oracle and/or its affiliates.
+ * Copyright (c) 2019, Oracle and/or its affiliates.
  *
  * All rights reserved.
  *
@@ -27,14 +27,17 @@
  * NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED
  * OF THE POSSIBILITY OF SUCH DAMAGE.
  */
-package com.oracle.truffle.llvm.asm.amd64;
 
-import com.oracle.truffle.llvm.runtime.except.LLVMParserException;
+static void store_a(volatile int *p, int x) {
+  __asm__ __volatile__("mov %1, %0" : "=m"(*p) : "r"(x) : "memory" );
+}
 
-public class AsmParseException extends LLVMParserException {
-    private static final long serialVersionUID = 1L;
-
-    AsmParseException(String msg) {
-        super(msg);
-    }
+int run(int b) {
+  if (b > 1) {
+    int x = 0xA0000000;
+    volatile int *p = alloca(sizeof(int));
+    store_a(p, x);
+    return 1;
+  }
+  return 2;
 }

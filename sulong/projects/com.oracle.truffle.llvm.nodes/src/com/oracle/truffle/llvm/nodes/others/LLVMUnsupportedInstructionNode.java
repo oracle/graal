@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2016, 2018, Oracle and/or its affiliates.
+ * Copyright (c) 2019, Oracle and/or its affiliates.
  *
  * All rights reserved.
  *
@@ -34,16 +34,43 @@ import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.llvm.runtime.LLVMUnsupportedException;
 import com.oracle.truffle.llvm.runtime.LLVMUnsupportedException.UnsupportedReason;
 import com.oracle.truffle.llvm.runtime.debug.scope.LLVMSourceLocation;
+import com.oracle.truffle.llvm.runtime.nodes.api.LLVMExpressionNode;
 import com.oracle.truffle.llvm.runtime.nodes.api.LLVMStatementNode;
 
-public class LLVMUnsupportedInlineAssemblerNode extends LLVMStatementNode {
+public final class LLVMUnsupportedInstructionNode extends LLVMStatementNode {
+
+    public static LLVMUnsupportedInstructionNode create(UnsupportedReason reason) {
+        return new LLVMUnsupportedInstructionNode(null, reason, null);
+    }
+
+    public static LLVMUnsupportedInstructionNode create(LLVMSourceLocation location, UnsupportedReason reason) {
+        return new LLVMUnsupportedInstructionNode(location, reason, null);
+    }
+
+    public static LLVMUnsupportedInstructionNode create(LLVMSourceLocation location, UnsupportedReason reason, String message) {
+        return new LLVMUnsupportedInstructionNode(location, reason, message);
+    }
+
+    public static LLVMUnsupportedExpressionNode createExpression(UnsupportedReason reason) {
+        return new LLVMUnsupportedExpressionNode(create(reason));
+    }
+
+    public static LLVMUnsupportedExpressionNode createExpression(LLVMSourceLocation location, UnsupportedReason reason) {
+        return new LLVMUnsupportedExpressionNode(create(location, reason));
+    }
+
+    public static LLVMUnsupportedExpressionNode createExpression(LLVMSourceLocation location, UnsupportedReason reason, String message) {
+        return new LLVMUnsupportedExpressionNode(create(location, reason, message));
+    }
 
     private final LLVMSourceLocation source;
-    protected final String message;
+    private final String message;
+    private final UnsupportedReason reason;
 
-    public LLVMUnsupportedInlineAssemblerNode(LLVMSourceLocation location, String message) {
+    private LLVMUnsupportedInstructionNode(LLVMSourceLocation location, UnsupportedReason reason, String message) {
         this.source = location;
         this.message = message;
+        this.reason = reason;
     }
 
     @Override
@@ -54,6 +81,24 @@ public class LLVMUnsupportedInlineAssemblerNode extends LLVMStatementNode {
     @Override
     public void execute(VirtualFrame frame) {
         CompilerDirectives.transferToInterpreter();
-        throw new LLVMUnsupportedException(UnsupportedReason.INLINE_ASSEMBLER, "Unsupported operation: " + message);
+        if (message == null) {
+            throw new LLVMUnsupportedException(this, reason);
+        }
+        throw new LLVMUnsupportedException(this, reason, "Unsupported operation: " + message);
+    }
+
+    public static final class LLVMUnsupportedExpressionNode extends LLVMExpressionNode {
+
+        @Child private LLVMUnsupportedInstructionNode instruction;
+
+        private LLVMUnsupportedExpressionNode(LLVMUnsupportedInstructionNode instruction) {
+            this.instruction = instruction;
+        }
+
+        @Override
+        public Object executeGeneric(VirtualFrame frame) {
+            instruction.execute(frame);
+            return null;
+        }
     }
 }

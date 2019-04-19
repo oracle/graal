@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, Oracle and/or its affiliates.
+ * Copyright (c) 2018, 2019, Oracle and/or its affiliates.
  *
  * All rights reserved.
  *
@@ -32,7 +32,7 @@ package com.oracle.truffle.llvm.runtime.except;
 /**
  * Exception during parsing of LLVM bitcode.
  */
-public final class LLVMParserException extends LLVMException {
+public class LLVMParserException extends LLVMException {
 
     private static final long serialVersionUID = 1L;
 
