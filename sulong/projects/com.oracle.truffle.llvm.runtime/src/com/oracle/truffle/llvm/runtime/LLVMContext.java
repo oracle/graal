@@ -94,6 +94,7 @@ public final class LLVMContext {
     // allocations used to store non-pointer globals (need to be freed when context is disposed)
     private final ArrayList<LLVMPointer> globalsNonPointerStore = new ArrayList<>();
     private final ArrayList<LLVMPointer> globalsReadOnlyStore = new ArrayList<>();
+    private final String languageHome;
 
     private DataLayout dataLayout;
 
@@ -195,11 +196,9 @@ public final class LLVMContext {
         Object mainArgs = env.getConfig().get(LLVMLanguage.MAIN_ARGS_KEY);
         this.mainArguments = mainArgs == null ? env.getApplicationArguments() : (Object[]) mainArgs;
         this.environment = System.getenv();
+        this.languageHome = languageHome;
 
         addLibraryPaths(SulongEngineOption.getPolyglotOptionSearchPaths(env));
-        if (languageHome != null) {
-            addLibraryPath(languageHome);
-        }
 
         final String traceOption = env.getOptions().get(SulongEngineOption.TRACE_IR);
         if (!"".equalsIgnoreCase(traceOption)) {
@@ -249,6 +248,10 @@ public final class LLVMContext {
         this.threadingStack = new LLVMThreadingStack(Thread.currentThread(), parseStackSize(env.getOptions().get(SulongEngineOption.STACK_SIZE)));
         for (ContextExtension ext : contextExtensions) {
             ext.initialize();
+        }
+        SystemContextExtension sysContextExt = getContextExtension(SystemContextExtension.class);
+        if (languageHome != null) {
+            addLibraryPath(Paths.get(languageHome).resolve(sysContextExt.getSulongLibrariesPath()).toString());
         }
     }
 

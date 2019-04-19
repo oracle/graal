@@ -31,8 +31,11 @@ package com.oracle.truffle.llvm.runtime;
 
 import com.oracle.truffle.llvm.runtime.memory.LLVMSyscallOperationNode;
 
+import java.nio.file.Path;
+
 public abstract class SystemContextExtension implements ContextExtension {
 
+    public abstract Path getSulongLibrariesPath();
     public abstract String[] getSulongDefaultLibraries();
 
     public abstract LLVMSyscallOperationNode createSyscallNode(long index);
