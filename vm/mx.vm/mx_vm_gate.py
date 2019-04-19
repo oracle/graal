@@ -185,11 +185,11 @@ def gate_sulong(tasks):
             sulong = mx.suite('sulong')
             native_image_context, svm = graalvm_svm()
             with native_image_context(svm.IMAGE_ASSERTION_FLAGS) as native_image:
-                # TODO Use mx_vm.get_final_graalvm_distribution().find_single_source_location to rewire SULONG_LIBS
+                # TODO Use mx_vm.get_final_graalvm_distribution().find_single_source_location to rewire SULONG_HOME
                 sulong_libs = join(mx_vm.graalvm_output(), 'jre', 'languages', 'llvm')
                 def distribution_paths(dname):
                     path_substitutions = {
-                        'SULONG_LIBS': sulong_libs
+                        'SULONG_HOME': sulong_libs
                     }
                     return path_substitutions.get(dname, mx._get_dependency_path(dname))
                 mx_subst.path_substitutions.register_with_arg('path', distribution_paths)

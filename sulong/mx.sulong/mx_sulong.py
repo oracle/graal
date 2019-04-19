@@ -186,7 +186,7 @@ def testLLVMImage(image, imageArgs=None, testFilter=None, libPath=True, test=Non
     args = ['-Dsulongtest.testAOTImage=' + image]
     aotArgs = []
     if libPath:
-        aotArgs += [mx_subst.path_substitutions.substitute('-Dllvm.home=<path:SULONG_LIBS>')]
+        aotArgs += [mx_subst.path_substitutions.substitute('-Dllvm.home=<path:SULONG_HOME>')]
     if imageArgs is not None:
         aotArgs += imageArgs
     if aotArgs:
@@ -677,7 +677,7 @@ mx_sdk.register_graalvm_component(mx_sdk.GraalVmLanguage(
     third_party_license_files=[],
     truffle_jars=['sulong:SULONG'],
     support_distributions=[
-        'sulong:SULONG_LIBS',
+        'sulong:SULONG_HOME',
         'sulong:SULONG_GRAALVM_DOCS',
     ],
     launcher_configs=[

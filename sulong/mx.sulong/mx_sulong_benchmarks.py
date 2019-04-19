@@ -301,8 +301,7 @@ class SulongVm(CExecutionEnvironmentMixin, GuestVm):
         ]
 
     def launcher_vm_args(self):
-        return mx_sulong.getClasspathOptions() + \
-               [mx_subst.path_substitutions.substitute('-Dpolyglot.llvm.libraryPath=<path:SULONG_LIBS>')]
+        return mx_sulong.getClasspathOptions()
 
     def launcher_args(self, args):
         launcher_args = [
