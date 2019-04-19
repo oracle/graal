@@ -32,7 +32,6 @@ import shutil
 
 import mx, mx_benchmark, mx_sulong, mx_buildtools
 import os
-import mx_subst
 from os.path import join, exists
 from mx_benchmark import VmRegistry, java_vm_registry, Vm, GuestVm, VmBenchmarkSuite
 
