@@ -122,7 +122,13 @@ def gate_body(args, tasks):
                 if t:
                     def _unittest_config_participant(config):
                         vmArgs, mainClass, mainClassArgs = config
-                        newVmArgs = [arg for arg in vmArgs if arg != "-Dtruffle.TruffleRuntime=com.oracle.truffle.api.impl.DefaultTruffleRuntime"]
+                        def is_truffle_fallback(arg):
+                            fallback_args = [
+                                "-Dtruffle.TruffleRuntime=com.oracle.truffle.api.impl.DefaultTruffleRuntime",
+                                "-Dgraalvm.ForcePolyglotInvalid=true"
+                            ]
+                            return arg in fallback_args
+                        newVmArgs = [arg for arg in vmArgs if not is_truffle_fallback(arg)]
                         return (newVmArgs, mainClass, mainClassArgs)
                     mx_unittest.add_config_participant(_unittest_config_participant)
                     excluded_tests = environ.get("TEST_LIBGRAAL_EXCLUDE")
