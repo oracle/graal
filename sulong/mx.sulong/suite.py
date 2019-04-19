@@ -721,6 +721,9 @@ suite = {
       "native" : True,
       "relpath" : False,
       "platformDependent" : True,
+      "overlaps" : [
+        "SULONG_HOME"
+      ],
       "layout" : {
         "./" : [
           "dependency:com.oracle.truffle.llvm.libraries.bitcode/bin/libsulong.bc",
