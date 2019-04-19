@@ -73,7 +73,11 @@ abstract class FunctionExecuteNode extends Node {
     protected Object cachedSignature(NativePointer receiver, @SuppressWarnings("unused") LibFFISignature signature, Object[] args,
                     @Cached("signature") @SuppressWarnings("unused") LibFFISignature cachedSignature,
                     @Cached("createCachedSignatureCall(cachedSignature)") DirectCallNode execute) {
-        return execute.call(receiver.asPointer(), args);
+        try {
+            return execute.call(receiver.asPointer(), args);
+        } finally {
+            assert keepAlive(args);
+        }
     }
 
     static class SignatureExecuteNode extends RootNode {
@@ -170,7 +174,11 @@ abstract class FunctionExecuteNode extends Node {
             throw ArityException.create(argIdx, args.length);
         }
 
-        return slowPathCall.call(receiver, signature, buffer);
+        try {
+            return slowPathCall.call(receiver, signature, buffer);
+        } finally {
+            assert keepAlive(args);
+        }
     }
 
     DirectCallNode createSlowPathCall() {
@@ -222,7 +230,11 @@ abstract class FunctionExecuteNode extends Node {
             throw ArityException.create(argIdx, args.length);
         }
 
-        return IndirectCallNode.getUncached().call(language.getSlowPathCall(), receiver, signature, buffer);
+        try {
+            return IndirectCallNode.getUncached().call(language.getSlowPathCall(), receiver, signature, buffer);
+        } finally {
+            assert keepAlive(args);
+        }
     }
 
     static class SlowPathExecuteNode extends RootNode {
@@ -247,5 +259,15 @@ abstract class FunctionExecuteNode extends Node {
         static Object slowPathExecute(NFIContext ctx, LibFFISignature signature, long functionPointer, NativeArgumentBuffer.Array buffer) {
             return signature.execute(ctx, functionPointer, buffer);
         }
+    }
+
+    /**
+     * Helper method to keep the argument array alive. The method itself does nothing, but it keeps
+     * the value alive in a FrameState. That way, the GC can not free the objects as long as they
+     * might still be in use by the native code (maybe indirectly via an embedded native pointer),
+     * but the escape analysis can still virtualize the objects if the allocation is visible.
+     */
+    private static boolean keepAlive(@SuppressWarnings("unused") Object args) {
+        return true;
     }
 }
