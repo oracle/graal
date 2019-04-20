@@ -77,7 +77,7 @@ import org.graalvm.nativeimage.impl.RuntimeClassInitializationSupport;
 @Platforms(Platform.HOSTED_ONLY.class)
 public final class ClassInitialization {
 
-    public static final String MESSAGE = "from feature ";
+    private static final String MESSAGE = "from feature ";
 
     /**
      * Registers the provided classes, and all of their subclasses, for class initialization at

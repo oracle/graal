@@ -583,12 +583,13 @@ def svm_gate_body(args, tasks):
 
         with Task('native unittests', tasks, tags=[GraalTags.test]) as t:
             if t:
-                native_unittest([])
+                native_unittest(['--build-args', '--eager-class-initialization'])
 
         with Task('Run Truffle NFI unittests with SVM image', tasks, tags=["svmjunit"]) as t:
             if t:
                 testlib = mx_subst.path_substitutions.substitute('-Dnative.test.lib=<path:truffle:TRUFFLE_TEST_NATIVE>/<lib:nativetest>')
-                native_unittest_args = ['com.oracle.truffle.nfi.test', '--build-args', '--tool:nfi', '-H:MaxRuntimeCompileMethods=1500', '--run-args', testlib, '--very-verbose', '--enable-timing']
+                native_unittest_args = ['com.oracle.truffle.nfi.test', '--build-args', '--eager-class-initialization', '--tool:nfi',
+                                        '-H:MaxRuntimeCompileMethods=1500', '--run-args', testlib, '--very-verbose', '--enable-timing']
                 native_unittest(native_unittest_args)
 
         with Task('JavaScript', tasks, tags=[GraalTags.js]) as t:
@@ -610,7 +611,10 @@ def svm_gate_body(args, tasks):
                         mx.abort('TCK tests not found.')
                     unittest_deps.append(mx.dependency('truffle:TRUFFLE_SL_TCK'))
                     vm_image_args = mx.get_runtime_jvm_args(unittest_deps, jdk=mx_compiler.jdk)
-                    tests_image = native_image(vm_image_args + ['--tool:truffle', '--features=com.oracle.truffle.tck.tests.TruffleTCKFeature', '-H:Class=org.junit.runner.JUnitCore', '-H:IncludeResources=com/oracle/truffle/sl/tck/resources/.*', '-H:MaxRuntimeCompileMethods=3000'])
+                    tests_image = native_image(vm_image_args + ['--tool:truffle', '--eager-class-initialization',
+                                                                '--features=com.oracle.truffle.tck.tests.TruffleTCKFeature',
+                                                                '-H:Class=org.junit.runner.JUnitCore', '-H:IncludeResources=com/oracle/truffle/sl/tck/resources/.*',
+                                                                '-H:MaxRuntimeCompileMethods=3000'])
                     with open(unittest_file) as f:
                         test_classes = [l.rstrip() for l in f.readlines()]
                     mx.run([tests_image, '-Dtck.inlineVerifierInstrument=false'] + test_classes)
@@ -741,7 +745,7 @@ def js_image_test(binary, bench_location, name, warmup_iterations, iterations, t
 
 def build_js(native_image):
     truffle_language_ensure('js')
-    return native_image(['--language:js'])
+    return native_image(['--language:js', '--eager-class-initialization'])
 
 def test_js(js, benchmarks, bin_args=None):
     bench_location = join(suite.dir, '..', '..', 'js-benchmarks')
@@ -848,7 +852,7 @@ def _javac_image(native_image, path, args=None):
 
     # Build an image for the javac compiler, so that we test and gate-check javac all the time.
     # Dynamic class loading code is reachable (used by the annotation processor), so -H:+ReportUnsupportedElementsAtRuntime is a necessary option
-    native_image(["-H:Path=" + path, '-cp', mx_compiler.jdk.toolsjar, "com.sun.tools.javac.Main", "javac",
+    native_image(['--eager-class-initialization', "-H:Path=" + path, '-cp', mx_compiler.jdk.toolsjar, "com.sun.tools.javac.Main", "javac",
                   "-H:+ReportUnsupportedElementsAtRuntime", "-H:+AllowIncompleteClasspath",
                   "-H:IncludeResourceBundles=com.sun.tools.javac.resources.compiler,com.sun.tools.javac.resources.javac,com.sun.tools.javac.resources.version"] + args)
 
@@ -1044,6 +1048,7 @@ if os.environ.has_key('LIBGRAAL'):
                 ],
                 build_args=[
                     '--features=com.oracle.svm.graal.hotspot.libgraal.HotSpotGraalLibraryFeature',
+                    '--eager-class-initialization',
                     '-H:-UseServiceLoaderFeature',
                     '-H:+AllowFoldMethods',
                     '-Djdk.vm.ci.services.aot=true',
@@ -1097,8 +1102,7 @@ def clinittest(args):
         # Build and run the example
         native_image(
             ['-H:Path=' + build_dir, '-cp', test_cp, '-H:Class=com.oracle.svm.test.TestClassInitializationMustBeSafe',
-             '-H:-EagerlyInitializeClasses', '-H:+PrintClassInitialization', '-H:Name=clinittest',
-             '-H:+ReportExceptionStackTraces'] + args)
+             '-H:+PrintClassInitialization', '-H:Name=clinittest', '-H:+ReportExceptionStackTraces'] + args)
         mx.run([join(build_dir, 'clinittest')])
 
         # Check the reports for initialized classes

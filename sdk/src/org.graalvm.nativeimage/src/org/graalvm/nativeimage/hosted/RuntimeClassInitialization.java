@@ -74,7 +74,6 @@ import org.graalvm.nativeimage.impl.RuntimeClassInitializationSupport;
  * <ul>
  *
  * @since 1.0
- * @deprected Use ClassInitialization instead
  */
 @Platforms(Platform.HOSTED_ONLY.class)
 @Deprecated
