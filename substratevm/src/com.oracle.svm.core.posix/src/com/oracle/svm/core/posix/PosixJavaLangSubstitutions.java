@@ -40,6 +40,7 @@ import org.graalvm.nativeimage.StackValue;
 import org.graalvm.nativeimage.c.type.CCharPointer;
 import org.graalvm.nativeimage.c.type.CCharPointerPointer;
 import org.graalvm.nativeimage.c.type.CTypeConversion;
+import org.graalvm.nativeimage.hosted.ClassInitialization;
 import org.graalvm.nativeimage.impl.InternalPlatform;
 import org.graalvm.word.WordFactory;
 
@@ -61,7 +62,6 @@ import com.oracle.svm.core.posix.headers.Time.timezone;
 import com.oracle.svm.core.snippets.KnownIntrinsics;
 import com.oracle.svm.core.util.PointerUtils;
 import org.graalvm.nativeimage.hosted.Feature;
-import org.graalvm.nativeimage.hosted.RuntimeClassInitialization;
 
 @Platforms({InternalPlatform.LINUX_JNI.class, InternalPlatform.DARWIN_JNI.class})
 @AutomaticFeature
@@ -69,7 +69,7 @@ class PosixJavaLangSubstituteFeature implements Feature {
 
     @Override
     public void duringSetup(DuringSetupAccess access) {
-        RuntimeClassInitialization.rerunClassInitialization(access.findClassByName("java.lang.UNIXProcess"));
+        ClassInitialization.rerun(access.findClassByName("java.lang.UNIXProcess"));
     }
 }
 

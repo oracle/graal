@@ -34,8 +34,8 @@ import java.io.PrintStream;
 import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.Platforms;
 import org.graalvm.nativeimage.c.function.CLibrary;
+import org.graalvm.nativeimage.hosted.ClassInitialization;
 import org.graalvm.nativeimage.hosted.Feature;
-import org.graalvm.nativeimage.hosted.RuntimeClassInitialization;
 
 import com.oracle.svm.core.annotate.Alias;
 import com.oracle.svm.core.annotate.AutomaticFeature;
@@ -61,10 +61,10 @@ class WindowsJavaIOSubstituteFeature implements Feature {
         // RuntimeClassInitialization.rerunClassInitialization(access.findClassByName("java.io.FileOutputStream"));
         // RuntimeClassInitialization.rerunClassInitialization(access.findClassByName("java.io.WinNTFileSystem"));
 
-        RuntimeClassInitialization.rerunClassInitialization(access.findClassByName("java.io.RandomAccessFile"));
-        RuntimeClassInitialization.rerunClassInitialization(access.findClassByName("java.util.zip.ZipFile"));
-        RuntimeClassInitialization.rerunClassInitialization(access.findClassByName("java.util.zip.Inflater"));
-        RuntimeClassInitialization.rerunClassInitialization(access.findClassByName("java.util.zip.Deflater"));
+        ClassInitialization.rerun(access.findClassByName("java.io.RandomAccessFile"));
+        ClassInitialization.rerun(access.findClassByName("java.util.zip.ZipFile"));
+        ClassInitialization.rerun(access.findClassByName("java.util.zip.Inflater"));
+        ClassInitialization.rerun(access.findClassByName("java.util.zip.Deflater"));
     }
 
     @Override

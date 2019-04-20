@@ -110,13 +110,10 @@ import org.graalvm.compiler.replacements.aarch64.AArch64GraphBuilderPlugins;
 import org.graalvm.compiler.replacements.amd64.AMD64GraphBuilderPlugins;
 import org.graalvm.compiler.word.WordOperationPlugin;
 import org.graalvm.compiler.word.WordTypes;
-import org.graalvm.nativeimage.hosted.Feature;
-import org.graalvm.nativeimage.hosted.Feature.OnAnalysisExitAccess;
 import org.graalvm.nativeimage.ImageInfo;
 import org.graalvm.nativeimage.ImageSingletons;
 import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.Platforms;
-import org.graalvm.nativeimage.hosted.RuntimeClassInitialization;
 import org.graalvm.nativeimage.c.CContext;
 import org.graalvm.nativeimage.c.constant.CConstant;
 import org.graalvm.nativeimage.c.constant.CEnum;
@@ -127,6 +124,9 @@ import org.graalvm.nativeimage.c.function.CLibrary;
 import org.graalvm.nativeimage.c.struct.CPointerTo;
 import org.graalvm.nativeimage.c.struct.CStruct;
 import org.graalvm.nativeimage.c.struct.RawStructure;
+import org.graalvm.nativeimage.hosted.ClassInitialization;
+import org.graalvm.nativeimage.hosted.Feature;
+import org.graalvm.nativeimage.hosted.Feature.OnAnalysisExitAccess;
 import org.graalvm.nativeimage.impl.CConstantValueSupport;
 import org.graalvm.nativeimage.impl.SizeOfSupport;
 import org.graalvm.word.PointerBase;
@@ -993,7 +993,7 @@ public class NativeImageGenerator {
     private NativeLibraries setupNativeLibraries(String imageName, ConstantReflectionProvider aConstantReflection, MetaAccessProvider aMetaAccess,
                     SnippetReflectionProvider aSnippetReflection, CEnumCallWrapperSubstitutionProcessor cEnumProcessor, ClassInitializationSupport classInitializationSupport) {
         try (StopTimer ignored = new Timer(imageName, "(cap)").start()) {
-            NativeLibraries nativeLibs = new NativeLibraries(aConstantReflection, aMetaAccess, aSnippetReflection, ConfigurationValues.getTarget());
+            NativeLibraries nativeLibs = new NativeLibraries(aConstantReflection, aMetaAccess, aSnippetReflection, ConfigurationValues.getTarget(), classInitializationSupport);
             cEnumProcessor.setNativeLibraries(nativeLibs);
             processNativeLibraryImports(nativeLibs, aMetaAccess, classInitializationSupport);
 
@@ -1491,32 +1491,32 @@ public class NativeImageGenerator {
     @SuppressWarnings("try")
     private void processNativeLibraryImports(NativeLibraries nativeLibs, MetaAccessProvider metaAccess, ClassInitializationSupport classInitializationSupport) {
         for (Method method : loader.findAnnotatedMethods(CConstant.class)) {
-            RuntimeClassInitialization.eagerClassInitialization(method.getDeclaringClass());
+            ClassInitialization.eager(method.getDeclaringClass());
             nativeLibs.loadJavaMethod(metaAccess.lookupJavaMethod(method));
         }
         for (Method method : loader.findAnnotatedMethods(CFunction.class)) {
             nativeLibs.loadJavaMethod(metaAccess.lookupJavaMethod(method));
         }
         for (Class<?> clazz : loader.findAnnotatedClasses(CStruct.class)) {
-            RuntimeClassInitialization.eagerClassInitialization(clazz);
+            ClassInitialization.eager(clazz);
             nativeLibs.loadJavaType(metaAccess.lookupJavaType(clazz));
         }
         for (Class<?> clazz : loader.findAnnotatedClasses(RawStructure.class)) {
-            RuntimeClassInitialization.eagerClassInitialization(clazz);
+            ClassInitialization.eager(clazz);
             nativeLibs.loadJavaType(metaAccess.lookupJavaType(clazz));
         }
         for (Class<?> clazz : loader.findAnnotatedClasses(CPointerTo.class)) {
-            RuntimeClassInitialization.eagerClassInitialization(clazz);
+            ClassInitialization.eager(clazz);
             nativeLibs.loadJavaType(metaAccess.lookupJavaType(clazz));
         }
         for (Class<?> clazz : loader.findAnnotatedClasses(CEnum.class)) {
-            RuntimeClassInitialization.eagerClassInitialization(clazz);
+            ClassInitialization.eager(clazz);
             ResolvedJavaType type = metaAccess.lookupJavaType(clazz);
             classInitializationSupport.forceInitializeHosted(clazz, "classes annotated with CEnum are always initialized");
             nativeLibs.loadJavaType(type);
         }
         for (Class<?> clazz : loader.findAnnotatedClasses(CContext.class)) {
-            RuntimeClassInitialization.eagerClassInitialization(clazz);
+            ClassInitialization.eager(clazz);
         }
         for (CLibrary library : loader.findAnnotations(CLibrary.class)) {
             nativeLibs.addLibrary(library.value());

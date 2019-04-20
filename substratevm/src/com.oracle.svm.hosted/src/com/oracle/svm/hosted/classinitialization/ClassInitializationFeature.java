@@ -147,13 +147,16 @@ public class ClassInitializationFeature implements Feature {
                 if (elementType.getLeft().isEmpty()) {
                     elementType.getRight().stringConsumer(initializationSupport).accept(elementType.getLeft());
                 } else {
+                    /* check if class exists */
                     String classOrPackageName = elementType.getLeft();
                     Class<?> clazz = access.findClassByName(classOrPackageName);
                     if (clazz != null) {
                         elementType.getRight().classConsumer(initializationSupport).accept(clazz);
                     }
 
-                    boolean pkgFound = Arrays.stream(pkgs).anyMatch(p -> p.getName().startsWith(classOrPackageName));
+                    /* check if package with prefix exists */
+                    boolean pkgFound = Arrays.stream(pkgs).anyMatch(
+                                    p -> p.getName().startsWith(classOrPackageName) && (p.getName().length() == classOrPackageName.length() || p.getName().charAt(classOrPackageName.length()) == '.'));
                     if (pkgFound) {
                         elementType.getRight().stringConsumer(initializationSupport).accept(classOrPackageName);
                     }

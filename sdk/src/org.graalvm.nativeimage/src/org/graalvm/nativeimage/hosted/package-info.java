@@ -49,8 +49,8 @@
  * <ul>
  * <li>{@link org.graalvm.nativeimage.hosted.Feature}s allow clients to intercept the native image
  * generation and run custom initialization code at various stages.</li>
- * <li>{@link org.graalvm.nativeimage.hosted.RuntimeClassInitialization} is used to configure when
- * classes are initialized.</li>
+ * <li>{@link org.graalvm.nativeimage.hosted.ClassInitialization} is used to configure when classes
+ * are initialized.</li>
  * <li>{@link org.graalvm.nativeimage.hosted.RuntimeReflection} to register classes, methods, and
  * fields for reflection at run time.</li>
  * </ul>

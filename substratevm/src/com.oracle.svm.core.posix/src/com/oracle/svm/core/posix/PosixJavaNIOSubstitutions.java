@@ -116,10 +116,10 @@ import java.nio.file.FileSystems;
 import java.nio.file.spi.FileSystemProvider;
 import java.util.function.Predicate;
 
+import org.graalvm.nativeimage.hosted.ClassInitialization;
 import org.graalvm.nativeimage.hosted.Feature;
 import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.Platforms;
-import org.graalvm.nativeimage.hosted.RuntimeClassInitialization;
 import org.graalvm.nativeimage.StackValue;
 import org.graalvm.nativeimage.c.function.CFunctionPointer;
 import org.graalvm.nativeimage.c.function.CLibrary;
@@ -198,12 +198,12 @@ class PosixJavaNIOSubstituteFeature implements Feature {
 
     @Override
     public void duringSetup(DuringSetupAccess access) {
-        RuntimeClassInitialization.rerunClassInitialization(access.findClassByName("sun.nio.ch.FileKey"));
-        RuntimeClassInitialization.rerunClassInitialization(access.findClassByName("sun.nio.fs.UnixNativeDispatcher"));
-        RuntimeClassInitialization.rerunClassInitialization(access.findClassByName("sun.nio.ch.ServerSocketChannelImpl"));
-        RuntimeClassInitialization.rerunClassInitialization(access.findClassByName("sun.nio.ch.IOUtil"));
-        RuntimeClassInitialization.rerunClassInitialization(access.findClassByName("sun.nio.ch.FileChannelImpl"));
-        RuntimeClassInitialization.rerunClassInitialization(access.findClassByName("java.nio.file.FileSystems"));
+        ClassInitialization.rerun(access.findClassByName("sun.nio.ch.FileKey"));
+        ClassInitialization.rerun(access.findClassByName("sun.nio.fs.UnixNativeDispatcher"));
+        ClassInitialization.rerun(access.findClassByName("sun.nio.ch.ServerSocketChannelImpl"));
+        ClassInitialization.rerun(access.findClassByName("sun.nio.ch.IOUtil"));
+        ClassInitialization.rerun(access.findClassByName("sun.nio.ch.FileChannelImpl"));
+        ClassInitialization.rerun(access.findClassByName("java.nio.file.FileSystems"));
     }
 
     @Override
@@ -3982,6 +3982,6 @@ final class SunNioChNativeThreadFeature implements Feature {
 
     @Override
     public void duringSetup(DuringSetupAccess access) {
-        RuntimeClassInitialization.rerunClassInitialization(access.findClassByName("sun.nio.ch.NativeThread"));
+        ClassInitialization.rerun(access.findClassByName("sun.nio.ch.NativeThread"));
     }
 }

@@ -40,8 +40,8 @@ import java.util.function.Function;
 
 import org.graalvm.compiler.options.Option;
 import org.graalvm.compiler.serviceprovider.JavaVersionUtil;
+import org.graalvm.nativeimage.hosted.ClassInitialization;
 import org.graalvm.nativeimage.hosted.Feature;
-import org.graalvm.nativeimage.hosted.RuntimeClassInitialization;
 import org.graalvm.nativeimage.hosted.RuntimeReflection;
 
 import com.oracle.svm.core.SubstrateOptions;
@@ -97,29 +97,29 @@ public class SecurityServicesFeature implements Feature {
          * initializers execution to runtime because the SecureRandom classes are needed by the
          * native image generator too, e.g., by Files.createTempDirectory().
          */
-        RuntimeClassInitialization.rerunClassInitialization(NativePRNG.class);
-        RuntimeClassInitialization.rerunClassInitialization(NativePRNG.Blocking.class);
-        RuntimeClassInitialization.rerunClassInitialization(NativePRNG.NonBlocking.class);
+        ClassInitialization.rerun(NativePRNG.class);
+        ClassInitialization.rerun(NativePRNG.Blocking.class);
+        ClassInitialization.rerun(NativePRNG.NonBlocking.class);
 
-        RuntimeClassInitialization.rerunClassInitialization(access.findClassByName("sun.security.provider.SeedGenerator"));
-        RuntimeClassInitialization.rerunClassInitialization(access.findClassByName("sun.security.provider.SecureRandom$SeederHolder"));
+        ClassInitialization.rerun(access.findClassByName("sun.security.provider.SeedGenerator"));
+        ClassInitialization.rerun(access.findClassByName("sun.security.provider.SecureRandom$SeederHolder"));
 
         if (!JavaVersionUtil.Java8OrEarlier) {
-            RuntimeClassInitialization.rerunClassInitialization(access.findClassByName("sun.security.provider.FileInputStreamPool"));
+            ClassInitialization.rerun(access.findClassByName("sun.security.provider.FileInputStreamPool"));
         }
 
         /* java.util.UUID$Holder has a static final SecureRandom field. */
-        RuntimeClassInitialization.rerunClassInitialization(access.findClassByName("java.util.UUID$Holder"));
+        ClassInitialization.rerun(access.findClassByName("java.util.UUID$Holder"));
 
         /*
          * The classes bellow have a static final SecureRandom field. Note that if the classes are
          * not found as reachable by the analysis registering them form class initialization rerun
          * doesn't have any effect.
          */
-        RuntimeClassInitialization.rerunClassInitialization(access.findClassByName("sun.security.jca.JCAUtil$CachedSecureRandomHolder"));
-        RuntimeClassInitialization.rerunClassInitialization(access.findClassByName("com.sun.crypto.provider.SunJCE$SecureRandomHolder"));
-        RuntimeClassInitialization.rerunClassInitialization(access.findClassByName("sun.security.krb5.Confounder"));
-        RuntimeClassInitialization.rerunClassInitialization(javax.net.ssl.SSLContext.class);
+        ClassInitialization.rerun(access.findClassByName("sun.security.jca.JCAUtil$CachedSecureRandomHolder"));
+        ClassInitialization.rerun(access.findClassByName("com.sun.crypto.provider.SunJCE$SecureRandomHolder"));
+        ClassInitialization.rerun(access.findClassByName("sun.security.krb5.Confounder"));
+        ClassInitialization.rerun(javax.net.ssl.SSLContext.class);
 
         if (SubstrateOptions.EnableAllSecurityServices.getValue()) {
             /* Prepare SunEC native library access. */

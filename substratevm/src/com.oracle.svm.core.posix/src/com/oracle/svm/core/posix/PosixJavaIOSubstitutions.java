@@ -102,6 +102,7 @@ import org.graalvm.nativeimage.c.type.CCharPointer;
 import org.graalvm.nativeimage.c.type.CIntPointer;
 import org.graalvm.nativeimage.c.type.CTypeConversion;
 import org.graalvm.nativeimage.c.type.CTypeConversion.CCharPointerHolder;
+import org.graalvm.nativeimage.hosted.ClassInitialization;
 import org.graalvm.nativeimage.impl.InternalPlatform;
 import org.graalvm.word.SignedWord;
 import org.graalvm.word.WordFactory;
@@ -129,7 +130,6 @@ import com.oracle.svm.core.snippets.KnownIntrinsics;
 import com.oracle.svm.core.log.Log;
 import com.oracle.svm.core.util.VMError;
 import com.oracle.svm.hosted.jni.JNIRuntimeAccess;
-import org.graalvm.nativeimage.hosted.RuntimeClassInitialization;
 import org.graalvm.nativeimage.c.function.CLibrary;
 import org.graalvm.nativeimage.hosted.Feature;
 
@@ -145,15 +145,15 @@ class PosixJavaIOSubstituteFeature implements Feature {
         // are allowed in the image heap for a class
         // that is initialized or reinitialized at image runtime: java.io.XXX.
         //
-        // RuntimeClassInitialization.rerunClassInitialization(access.findClassByName("java.io.FileDescriptor"));
-        // RuntimeClassInitialization.rerunClassInitialization(access.findClassByName("java.io.FileInputStream"));
-        // RuntimeClassInitialization.rerunClassInitialization(access.findClassByName("java.io.FileOutputStream"));
-        // RuntimeClassInitialization.rerunClassInitialization(access.findClassByName("java.io.UnixFileSystem"));
+        // ClassInitialization.rerun(access.findClassByName("java.io.FileDescriptor"));
+        // ClassInitialization.rerun(access.findClassByName("java.io.FileInputStream"));
+        // ClassInitialization.rerun(access.findClassByName("java.io.FileOutputStream"));
+        // ClassInitialization.rerun(access.findClassByName("java.io.UnixFileSystem"));
 
-        RuntimeClassInitialization.rerunClassInitialization(access.findClassByName("java.io.RandomAccessFile"));
-        RuntimeClassInitialization.rerunClassInitialization(access.findClassByName("java.util.zip.ZipFile"));
-        RuntimeClassInitialization.rerunClassInitialization(access.findClassByName("java.util.zip.Inflater"));
-        RuntimeClassInitialization.rerunClassInitialization(access.findClassByName("java.util.zip.Deflater"));
+        ClassInitialization.rerun(access.findClassByName("java.io.RandomAccessFile"));
+        ClassInitialization.rerun(access.findClassByName("java.util.zip.ZipFile"));
+        ClassInitialization.rerun(access.findClassByName("java.util.zip.Inflater"));
+        ClassInitialization.rerun(access.findClassByName("java.util.zip.Deflater"));
     }
 
     @Override
