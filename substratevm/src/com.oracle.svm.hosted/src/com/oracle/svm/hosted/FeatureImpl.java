@@ -81,7 +81,7 @@ import jdk.vm.ci.meta.MetaAccessProvider;
 @SuppressWarnings("deprecation")
 public class FeatureImpl {
 
-    public abstract static class FeatureAccessImpl implements org.graalvm.nativeimage.Feature.FeatureAccess {
+    public abstract static class FeatureAccessImpl implements Feature.FeatureAccess {
 
         protected final FeatureHandler featureHandler;
         protected final ImageClassLoader imageClassLoader;
@@ -127,13 +127,13 @@ public class FeatureImpl {
         }
     }
 
-    public static class IsInConfigurationAccessImpl extends FeatureAccessImpl implements org.graalvm.nativeimage.Feature.IsInConfigurationAccess {
+    public static class IsInConfigurationAccessImpl extends FeatureAccessImpl implements Feature.IsInConfigurationAccess {
         IsInConfigurationAccessImpl(FeatureHandler featureHandler, ImageClassLoader imageClassLoader, DebugContext debugContext) {
             super(featureHandler, imageClassLoader, debugContext);
         }
     }
 
-    public static class AfterRegistrationAccessImpl extends FeatureAccessImpl implements org.graalvm.nativeimage.Feature.AfterRegistrationAccess {
+    public static class AfterRegistrationAccessImpl extends FeatureAccessImpl implements Feature.AfterRegistrationAccess {
         private final MetaAccessProvider metaAccess;
 
         AfterRegistrationAccessImpl(FeatureHandler featureHandler, ImageClassLoader imageClassLoader, MetaAccessProvider metaAccess, DebugContext debugContext) {
@@ -168,7 +168,7 @@ public class FeatureImpl {
         }
     }
 
-    public static class DuringSetupAccessImpl extends AnalysisAccessBase implements org.graalvm.nativeimage.Feature.DuringSetupAccess {
+    public static class DuringSetupAccessImpl extends AnalysisAccessBase implements Feature.DuringSetupAccess {
 
         DuringSetupAccessImpl(FeatureHandler featureHandler, ImageClassLoader imageClassLoader, Inflation bb, DebugContext debugContext) {
             super(featureHandler, imageClassLoader, bb, debugContext);
@@ -209,7 +209,7 @@ public class FeatureImpl {
         }
     }
 
-    public static class BeforeAnalysisAccessImpl extends AnalysisAccessBase implements org.graalvm.nativeimage.Feature.BeforeAnalysisAccess {
+    public static class BeforeAnalysisAccessImpl extends AnalysisAccessBase implements Feature.BeforeAnalysisAccess {
 
         private final NativeLibraries nativeLibraries;
 
@@ -323,7 +323,7 @@ public class FeatureImpl {
         }
     }
 
-    public static class DuringAnalysisAccessImpl extends BeforeAnalysisAccessImpl implements org.graalvm.nativeimage.Feature.DuringAnalysisAccess {
+    public static class DuringAnalysisAccessImpl extends BeforeAnalysisAccessImpl implements Feature.DuringAnalysisAccess {
 
         private boolean requireAnalysisIteration;
 
@@ -343,19 +343,19 @@ public class FeatureImpl {
         }
     }
 
-    public static class AfterAnalysisAccessImpl extends AnalysisAccessBase implements org.graalvm.nativeimage.Feature.AfterAnalysisAccess {
+    public static class AfterAnalysisAccessImpl extends AnalysisAccessBase implements Feature.AfterAnalysisAccess {
         AfterAnalysisAccessImpl(FeatureHandler featureHandler, ImageClassLoader imageClassLoader, Inflation bb, DebugContext debugContext) {
             super(featureHandler, imageClassLoader, bb, debugContext);
         }
     }
 
-    public static class OnAnalysisExitAccessImpl extends AnalysisAccessBase implements org.graalvm.nativeimage.Feature.OnAnalysisExitAccess {
+    public static class OnAnalysisExitAccessImpl extends AnalysisAccessBase implements Feature.OnAnalysisExitAccess {
         OnAnalysisExitAccessImpl(FeatureHandler featureHandler, ImageClassLoader imageClassLoader, Inflation bb, DebugContext debugContext) {
             super(featureHandler, imageClassLoader, bb, debugContext);
         }
     }
 
-    public static class CompilationAccessImpl extends FeatureAccessImpl implements org.graalvm.nativeimage.Feature.CompilationAccess {
+    public static class CompilationAccessImpl extends FeatureAccessImpl implements Feature.CompilationAccess {
 
         protected final AnalysisUniverse aUniverse;
         protected final HostedUniverse hUniverse;
@@ -453,7 +453,7 @@ public class FeatureImpl {
         }
     }
 
-    public static class BeforeCompilationAccessImpl extends CompilationAccessImpl implements org.graalvm.nativeimage.Feature.BeforeCompilationAccess {
+    public static class BeforeCompilationAccessImpl extends CompilationAccessImpl implements Feature.BeforeCompilationAccess {
         SharedRuntimeConfigurationBuilder runtimeBuilder;
 
         BeforeCompilationAccessImpl(FeatureHandler featureHandler, ImageClassLoader imageClassLoader, AnalysisUniverse aUniverse, HostedUniverse hUniverse, HostedMetaAccess hMetaAccess,
@@ -467,14 +467,14 @@ public class FeatureImpl {
         }
     }
 
-    public static class AfterCompilationAccessImpl extends CompilationAccessImpl implements org.graalvm.nativeimage.Feature.AfterCompilationAccess {
+    public static class AfterCompilationAccessImpl extends CompilationAccessImpl implements Feature.AfterCompilationAccess {
         AfterCompilationAccessImpl(FeatureHandler featureHandler, ImageClassLoader imageClassLoader, AnalysisUniverse aUniverse, HostedUniverse hUniverse, HostedMetaAccess hMetaAccess,
                         NativeImageHeap heap, DebugContext debugContext) {
             super(featureHandler, imageClassLoader, aUniverse, hUniverse, hMetaAccess, heap, debugContext);
         }
     }
 
-    public static class AfterHeapLayoutAccessImpl extends FeatureAccessImpl implements org.graalvm.nativeimage.Feature.AfterHeapLayoutAccess {
+    public static class AfterHeapLayoutAccessImpl extends FeatureAccessImpl implements Feature.AfterHeapLayoutAccess {
         protected final HostedMetaAccess hMetaAccess;
 
         AfterHeapLayoutAccessImpl(FeatureHandler featureHandler, ImageClassLoader imageClassLoader, HostedMetaAccess hMetaAccess, DebugContext debugContext) {
@@ -487,7 +487,7 @@ public class FeatureImpl {
         }
     }
 
-    public static class BeforeImageWriteAccessImpl extends FeatureAccessImpl implements org.graalvm.nativeimage.Feature.BeforeImageWriteAccess {
+    public static class BeforeImageWriteAccessImpl extends FeatureAccessImpl implements Feature.BeforeImageWriteAccess {
         private List<Function<LinkerInvocation, LinkerInvocation>> linkerInvocationTransformers = null;
 
         protected final String imageName;
@@ -549,7 +549,7 @@ public class FeatureImpl {
         }
     }
 
-    public static class AfterImageWriteAccessImpl extends FeatureAccessImpl implements org.graalvm.nativeimage.Feature.AfterImageWriteAccess {
+    public static class AfterImageWriteAccessImpl extends FeatureAccessImpl implements Feature.AfterImageWriteAccess {
         private final HostedUniverse hUniverse;
         protected final Path imagePath;
         protected final Path tempDirectory;
