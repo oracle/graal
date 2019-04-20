@@ -45,9 +45,6 @@ import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.Platforms;
 import org.graalvm.nativeimage.impl.RuntimeClassInitializationSupport;
 
-import sun.reflect.CallerSensitive;
-import sun.reflect.Reflection;
-
 /**
  * This class provides methods that can be called during native image building to configure class
  * initialization behavior. By default, all classes that are seen as reachable for a native image
@@ -95,11 +92,10 @@ public final class ClassInitialization {
      *
      * @since 1.0
      */
-    @CallerSensitive
     public static void delay(Class<?>... classes) {
-        Class<?> callerClass = Reflection.getCallerClass();
+        StackTraceElement[] stacktrace = Thread.currentThread().getStackTrace();
         for (Class<?> aClass : classes) {
-            ImageSingletons.lookup(RuntimeClassInitializationSupport.class).delay(aClass, MESSAGE + callerClass.getTypeName());
+            ImageSingletons.lookup(RuntimeClassInitializationSupport.class).delay(aClass, MESSAGE + getCaller(stacktrace));
         }
     }
 
@@ -118,11 +114,10 @@ public final class ClassInitialization {
      *
      * @since 1.0
      */
-    @CallerSensitive
     public static void rerun(Class<?>... classes) {
-        Class<?> callerClass = Reflection.getCallerClass();
+        StackTraceElement[] stacktrace = Thread.currentThread().getStackTrace();
         for (Class<?> aClass : classes) {
-            ImageSingletons.lookup(RuntimeClassInitializationSupport.class).rerun(aClass, MESSAGE + callerClass.getTypeName());
+            ImageSingletons.lookup(RuntimeClassInitializationSupport.class).rerun(aClass, MESSAGE + getCaller(stacktrace));
         }
     }
 
@@ -139,11 +134,10 @@ public final class ClassInitialization {
      *
      * @since 1.0
      */
-    @CallerSensitive
     public static void eager(Class<?>... classes) {
-        Class<?> callerClass = Reflection.getCallerClass();
+        StackTraceElement[] stacktrace = Thread.currentThread().getStackTrace();
         for (Class<?> aClass : classes) {
-            ImageSingletons.lookup(RuntimeClassInitializationSupport.class).eager(aClass, MESSAGE + callerClass.getTypeName());
+            ImageSingletons.lookup(RuntimeClassInitializationSupport.class).eager(aClass, MESSAGE + getCaller(stacktrace));
         }
     }
 
@@ -160,11 +154,10 @@ public final class ClassInitialization {
      *
      * @since 1.0
      */
-    @CallerSensitive
     public static void delay(Package[] packages) {
-        Class<?> callerClass = Reflection.getCallerClass();
+        StackTraceElement[] stacktrace = Thread.currentThread().getStackTrace();
         for (Package aPackage : packages) {
-            ImageSingletons.lookup(RuntimeClassInitializationSupport.class).delay(aPackage.getName(), MESSAGE + callerClass.getTypeName());
+            ImageSingletons.lookup(RuntimeClassInitializationSupport.class).delay(aPackage.getName(), MESSAGE + getCaller(stacktrace));
         }
     }
 
@@ -182,11 +175,10 @@ public final class ClassInitialization {
      *
      * @since 1.0
      */
-    @CallerSensitive
     public static void rerun(Package... packages) {
-        Class<?> callerClass = Reflection.getCallerClass();
+        StackTraceElement[] stacktrace = Thread.currentThread().getStackTrace();
         for (Package aPackage : packages) {
-            ImageSingletons.lookup(RuntimeClassInitializationSupport.class).rerun(aPackage.getName(), MESSAGE + callerClass.getTypeName());
+            ImageSingletons.lookup(RuntimeClassInitializationSupport.class).rerun(aPackage.getName(), MESSAGE + getCaller(stacktrace));
         }
     }
 
@@ -203,12 +195,16 @@ public final class ClassInitialization {
      *
      * @since 1.0
      */
-    @CallerSensitive
     public static void eager(Package... packages) {
-        Class<?> callerClass = Reflection.getCallerClass();
+        StackTraceElement[] stacktrace = Thread.currentThread().getStackTrace();
         for (Package aPackage : packages) {
-            ImageSingletons.lookup(RuntimeClassInitializationSupport.class).eager(aPackage.getName(), MESSAGE + callerClass.getTypeName());
+            ImageSingletons.lookup(RuntimeClassInitializationSupport.class).eager(aPackage.getName(), MESSAGE + getCaller(stacktrace));
         }
+    }
+
+    private static String getCaller(StackTraceElement[] stackTrace) {
+        StackTraceElement e = stackTrace[2];
+        return e.getClassName() + "." + e.getMethodName();
     }
 
     private ClassInitialization() {
