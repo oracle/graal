@@ -24,10 +24,10 @@
  */
 package com.oracle.svm.hosted.classinitialization;
 
-import static com.oracle.svm.hosted.classinitialization.ClassInitializationSupport.InitKind.DELAY;
-import static com.oracle.svm.hosted.classinitialization.ClassInitializationSupport.InitKind.EAGER;
-import static com.oracle.svm.hosted.classinitialization.ClassInitializationSupport.InitKind.RERUN;
-import static com.oracle.svm.hosted.classinitialization.ClassInitializationSupport.InitKind.SEPARATOR;
+import static com.oracle.svm.hosted.classinitialization.InitKind.DELAY;
+import static com.oracle.svm.hosted.classinitialization.InitKind.EAGER;
+import static com.oracle.svm.hosted.classinitialization.InitKind.RERUN;
+import static com.oracle.svm.hosted.classinitialization.InitKind.SEPARATOR;
 
 import java.lang.reflect.Modifier;
 import java.nio.file.Paths;
@@ -136,12 +136,12 @@ public class ClassInitializationFeature implements Feature {
         Package[] pkgs = access.getImageClassLoader().getPackages();
         for (String infos : initializationInfo) {
             for (String info : infos.split(",")) {
-                boolean noMatches = Arrays.stream(ClassInitializationSupport.InitKind.values()).noneMatch(v -> info.endsWith(v.suffix()));
+                boolean noMatches = Arrays.stream(InitKind.values()).noneMatch(v -> info.endsWith(v.suffix()));
                 if (noMatches) {
                     throw UserError.abort("Element in class initialization configuration must end in " + DELAY.suffix() + ", " + RERUN.suffix() + ", or " + EAGER.suffix() + ". Found: " + info);
                 }
 
-                Pair<String, ClassInitializationSupport.InitKind> elementType = ClassInitializationSupport.InitKind.strip(info);
+                Pair<String, InitKind> elementType = InitKind.strip(info);
 
                 /* check for setting the whole hierarchy */
                 if (elementType.getLeft().isEmpty()) {
@@ -223,7 +223,7 @@ public class ClassInitializationFeature implements Feature {
     @SuppressWarnings("try")
     public void beforeCompilation(BeforeCompilationAccess access) {
         String imageName = ((FeatureImpl.BeforeCompilationAccessImpl) access).getUniverse().getBigBang().getHostVM().getImageName();
-        try (Timer.StopTimer t = new Timer(imageName, "(class-initialization)").start()) {
+        try (Timer.StopTimer t = new Timer(imageName, "(clinit)").start()) {
             classInitializationSupport.setUnsupportedFeatures(null);
 
             String path = Paths.get(Paths.get(SubstrateOptions.Path.getValue()).toString(), "reports").toAbsolutePath().toString();
@@ -236,10 +236,10 @@ public class ClassInitializationFeature implements Feature {
             Set<AnalysisType> provenSafe = initializeSafeDelayedClasses(initGraph);
 
             if (Options.PrintClassInitialization.getValue()) {
-                List<ClassInitializationSupport.ClassOrPackageConfig> allConfigs = classInitializationSupport.getClassInitializationConfiguration();
-                allConfigs.sort(Comparator.comparing(ClassInitializationSupport.ClassOrPackageConfig::getName));
+                List<ClassOrPackageConfig> allConfigs = classInitializationSupport.getClassInitializationConfiguration();
+                allConfigs.sort(Comparator.comparing(ClassOrPackageConfig::getName));
                 ReportUtils.report("initializer configuration", path, "initializer_configuration", "txt", writer -> {
-                    for (ClassInitializationSupport.ClassOrPackageConfig config : allConfigs) {
+                    for (ClassOrPackageConfig config : allConfigs) {
                         writer.append(config.getName()).append(" -> ").append(config.getKind().toString()).append(" reasons: ")
                                         .append(String.join(" and ", config.getReasons())).append(System.lineSeparator());
                     }
@@ -272,7 +272,7 @@ public class ClassInitializationFeature implements Feature {
      * that belong to it.
      */
     private void reportMethodInitializationInfo(String path) {
-        for (ClassInitializationSupport.InitKind kind : ClassInitializationSupport.InitKind.values()) {
+        for (InitKind kind : InitKind.values()) {
             Set<Class<?>> classes = classInitializationSupport.classesWithKind(kind);
             ReportUtils.report(classes.size() + " classes of type " + kind, path, kind.toString().toLowerCase() + "_classes", "txt",
                             writer -> classes.stream()

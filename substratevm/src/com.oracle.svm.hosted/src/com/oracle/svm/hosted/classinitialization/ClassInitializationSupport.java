@@ -24,14 +24,9 @@
  */
 package com.oracle.svm.hosted.classinitialization;
 
-import java.util.Arrays;
 import java.util.List;
-import java.util.Optional;
 import java.util.Set;
-import java.util.function.Consumer;
 
-import org.graalvm.collections.EconomicSet;
-import org.graalvm.collections.Pair;
 import org.graalvm.nativeimage.impl.RuntimeClassInitializationSupport;
 
 import com.oracle.graal.pointsto.constraints.UnsupportedFeatures;
@@ -42,60 +37,6 @@ import jdk.vm.ci.meta.ResolvedJavaType;
  * Interface for the class initialization required by the native-image.
  */
 public interface ClassInitializationSupport extends RuntimeClassInitializationSupport {
-
-    /**
-     * The initialization kind for a class. The order of the enum values matters, {@link #max}
-     * depends on it.
-     */
-    enum InitKind {
-        /** Class is initialized during image building, so it is already initialized at runtime. */
-        EAGER,
-        /** Class is initialized both at runtime and during image building. */
-        RERUN,
-        /** Class should be initialized at runtime and not during image building. */
-        DELAY;
-
-        InitKind max(InitKind other) {
-            return this.ordinal() > other.ordinal() ? this : other;
-        }
-
-        boolean isDelayed() {
-            return this.equals(DELAY);
-        }
-
-        public static final String SEPARATOR = ":";
-
-        String suffix() {
-            return SEPARATOR + name().toLowerCase();
-        }
-
-        Consumer<Class<?>> classConsumer(ClassInitializationSupport support) {
-            if (this == DELAY) {
-                return cls -> support.delay(cls, "from command line");
-            } else if (this == RERUN) {
-                return cls -> support.rerun(cls, "from command line");
-            } else {
-                return cls -> support.eager(cls, "from command line");
-            }
-        }
-
-        Consumer<String> stringConsumer(ClassInitializationSupport support) {
-            if (this == DELAY) {
-                return name -> support.delay(name, "from command line");
-            } else if (this == RERUN) {
-                return name -> support.rerun(name, "from command line");
-            } else {
-                return name -> support.eager(name, "from command line");
-            }
-        }
-
-        static Pair<String, InitKind> strip(String input) {
-            Optional<InitKind> it = Arrays.stream(values()).filter(x -> input.endsWith(x.suffix())).findAny();
-            assert it.isPresent();
-            return Pair.create(input.substring(0, input.length() - it.get().suffix().length()), it.get());
-        }
-
-    }
 
     /**
      * Returns an init kind for {@code clazz}.
@@ -137,30 +78,6 @@ public interface ClassInitializationSupport extends RuntimeClassInitializationSu
     boolean checkDelayedInitialization();
 
     void setUnsupportedFeatures(UnsupportedFeatures o);
-
-    class ClassOrPackageConfig {
-        private final String name;
-        private final EconomicSet<String> reasons;
-        private final InitKind kind;
-
-        ClassOrPackageConfig(String name, EconomicSet<String> reasons, InitKind kind) {
-            this.name = name;
-            this.reasons = reasons;
-            this.kind = kind;
-        }
-
-        public String getName() {
-            return name;
-        }
-
-        public EconomicSet<String> getReasons() {
-            return reasons;
-        }
-
-        public InitKind getKind() {
-            return kind;
-        }
-    }
 
     List<ClassOrPackageConfig> getClassInitializationConfiguration();
 }

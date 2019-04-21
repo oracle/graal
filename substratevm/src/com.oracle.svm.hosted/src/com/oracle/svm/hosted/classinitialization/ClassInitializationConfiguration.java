@@ -40,12 +40,12 @@ public class ClassInitializationConfiguration {
     private static final int MAX_NUMBER_OF_REASONS = 3;
     private InitializationNode root = new InitializationNode("", null, null);
 
-    public synchronized void insert(String classOrPackage, ClassInitializationSupport.InitKind kind, String reason) {
+    public synchronized void insert(String classOrPackage, InitKind kind, String reason) {
         assert kind != null;
         insertRec(root, qualifierList(classOrPackage), kind, reason);
     }
 
-    synchronized ClassInitializationSupport.InitKind lookupKind(String classOrPackage) {
+    synchronized InitKind lookupKind(String classOrPackage) {
         return lookupKindRec(root, qualifierList(classOrPackage), null);
     }
 
@@ -56,7 +56,7 @@ public class ClassInitializationConfiguration {
         return prefixed;
     }
 
-    private void insertRec(InitializationNode node, List<String> classOrPackage, ClassInitializationSupport.InitKind kind, String reason) {
+    private void insertRec(InitializationNode node, List<String> classOrPackage, InitKind kind, String reason) {
         assert !classOrPackage.isEmpty();
         assert node.qualifier.equals(classOrPackage.get(0));
         if (classOrPackage.size() == 1) {
@@ -84,7 +84,7 @@ public class ClassInitializationConfiguration {
         }
     }
 
-    private ClassInitializationSupport.InitKind lookupKindRec(InitializationNode node, List<String> classOrPackage, ClassInitializationSupport.InitKind lastNonNullKind) {
+    private InitKind lookupKindRec(InitializationNode node, List<String> classOrPackage, InitKind lastNonNullKind) {
         List<String> tail = new ArrayList<>(classOrPackage);
         tail.remove(0);
         if (!tail.isEmpty() && node.children.containsKey(tail.get(0))) {
@@ -109,15 +109,15 @@ public class ClassInitializationConfiguration {
         return String.join(".", name);
     }
 
-    synchronized List<ClassInitializationSupport.ClassOrPackageConfig> allConfigs() {
+    synchronized List<ClassOrPackageConfig> allConfigs() {
         LinkedList<InitializationNode> printingQueue = new LinkedList<>();
         printingQueue.add(root);
-        ArrayList<ClassInitializationSupport.ClassOrPackageConfig> allClasses = new ArrayList<>();
+        ArrayList<ClassOrPackageConfig> allClasses = new ArrayList<>();
         while (!printingQueue.isEmpty()) {
             InitializationNode node = printingQueue.remove();
             if (node.kind != null) {
                 String name = node.qualifier.isEmpty() ? "whole type hierarchy" : qualifiedName(node);
-                allClasses.add(new ClassInitializationSupport.ClassOrPackageConfig(name, node.reasons, node.kind));
+                allClasses.add(new ClassOrPackageConfig(name, node.reasons, node.kind));
             }
 
             node.children.getValues().forEach(printingQueue::push);
@@ -128,13 +128,13 @@ public class ClassInitializationConfiguration {
 
 final class InitializationNode {
     final String qualifier;
-    ClassInitializationSupport.InitKind kind;
+    InitKind kind;
     final EconomicSet<String> reasons = EconomicSet.create();
 
     final InitializationNode parent;
     final EconomicMap<String, InitializationNode> children = EconomicMap.create();
 
-    InitializationNode(String qualifier, InitializationNode parent, ClassInitializationSupport.InitKind kind, String... reasons) {
+    InitializationNode(String qualifier, InitializationNode parent, InitKind kind, String... reasons) {
         this.parent = parent;
         this.qualifier = qualifier;
         this.kind = kind;
