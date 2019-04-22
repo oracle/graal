@@ -1,3 +1,9 @@
+# Version 1.0.0 RC17
+
+Changes:
+
+* Moved `polyglot.h` into the `include` subdirectory
+
 # Version 1.0.0 RC15
 
 New features:

@@ -37,7 +37,7 @@ suite = {
             },
             {
                 "name": "truffleruby",
-                "version": "4dc2402a6b1bf1b0291a86ff8789dc7e362519e3",
+                "version": "0c753adfe34465610ad08a3c35820d0ec49d176a",
                 "dynamic": True,
                 "urls": [
                     {"url": "https://github.com/oracle/truffleruby.git", "kind": "git"},

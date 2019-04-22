@@ -186,7 +186,7 @@ def testLLVMImage(image, imageArgs=None, testFilter=None, libPath=True, test=Non
     args = ['-Dsulongtest.testAOTImage=' + image]
     aotArgs = []
     if libPath:
-        aotArgs += [mx_subst.path_substitutions.substitute('-Dllvm.home=<path:SULONG_LIBS>')]
+        aotArgs += [mx_subst.path_substitutions.substitute('<sulong_home>')]
     if imageArgs is not None:
         aotArgs += imageArgs
     if aotArgs:
@@ -619,6 +619,21 @@ def ensureLLVMBinariesExist():
             raise Exception(llvmBinary + ' not found')
 
 
+def _get_sulong_home():
+    return mx_subst.path_substitutions.substitute('<path:SULONG_HOME>')
+
+_the_get_sulong_home = _get_sulong_home
+
+def get_sulong_home():
+    return _the_get_sulong_home()
+
+def update_sulong_home(new_home):
+    global _the_get_sulong_home
+    _the_get_sulong_home = new_home
+
+mx_subst.path_substitutions.register_no_arg('sulong_home', get_sulong_home)
+
+
 def runLLVM(args=None, out=None, get_classpath_options=getClasspathOptions):
     """uses Sulong to execute a LLVM IR file"""
     vmArgs, sulongArgs = truffle_extract_VM_args(args)
@@ -677,7 +692,7 @@ mx_sdk.register_graalvm_component(mx_sdk.GraalVmLanguage(
     third_party_license_files=[],
     truffle_jars=['sulong:SULONG'],
     support_distributions=[
-        'sulong:SULONG_LIBS',
+        'sulong:SULONG_HOME',
         'sulong:SULONG_GRAALVM_DOCS',
     ],
     launcher_configs=[
