@@ -921,6 +921,7 @@ mx_sdk.register_graalvm_component(mx_sdk.GraalVmJreComponent(
             ]
         )
     ],
+    provided_executables=['bin/rebuild-images'],
 ))
 
 
