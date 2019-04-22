@@ -26,6 +26,7 @@ package com.oracle.svm.core.hub;
 
 //Checkstyle: allow reflection
 
+import java.lang.annotation.Annotation;
 import java.lang.reflect.GenericDeclaration;
 import java.lang.reflect.MalformedParameterizedTypeException;
 import java.lang.reflect.Type;
@@ -35,7 +36,9 @@ import org.graalvm.compiler.serviceprovider.JavaVersionUtil;
 
 import com.oracle.svm.core.annotate.Alias;
 import com.oracle.svm.core.annotate.Delete;
+import com.oracle.svm.core.annotate.Inject;
 import com.oracle.svm.core.annotate.RecomputeFieldValue;
+import com.oracle.svm.core.annotate.RecomputeFieldValue.CustomFieldValueComputer;
 import com.oracle.svm.core.annotate.RecomputeFieldValue.Kind;
 import com.oracle.svm.core.annotate.Substitute;
 import com.oracle.svm.core.annotate.TargetClass;
@@ -79,6 +82,9 @@ final class Target_sun_reflect_generics_reflectiveObjects_TypeVariableImpl {
 
     @Alias GenericDeclaration genericDeclaration;
 
+    @Inject @RecomputeFieldValue(kind = Kind.Custom, declClass = TypeVariableAnnotationsComputer.class) //
+    Annotation[] annotations;
+
     @Substitute
     @SuppressWarnings("unused")
     private Target_sun_reflect_generics_reflectiveObjects_TypeVariableImpl(GenericDeclaration decl, String n, FieldTypeSignature[] bs, GenericsFactory f) {
@@ -109,6 +115,11 @@ final class Target_sun_reflect_generics_reflectiveObjects_TypeVariableImpl {
     public GenericDeclaration getGenericDeclaration() {
         return genericDeclaration;
     }
+
+    @Substitute
+    public Annotation[] getAnnotations() {
+        return annotations;
+    }
 }
 
 final class Util_sun_reflect_generics_reflectiveObjects_TypeVariableImpl {
@@ -138,6 +149,14 @@ class TypeVariableBoundsComputer implements RecomputeFieldValue.CustomFieldValue
     @Override
     public Object compute(MetaAccessProvider metaAccess, ResolvedJavaField original, ResolvedJavaField annotated, Object receiver) {
         return GuardedBoundsAccess.getBounds((TypeVariableImpl<?>) receiver);
+    }
+}
+
+class TypeVariableAnnotationsComputer implements CustomFieldValueComputer {
+
+    @Override
+    public Object compute(MetaAccessProvider metaAccess, ResolvedJavaField original, ResolvedJavaField annotated, Object receiver) {
+        return ((TypeVariableImpl<?>) receiver).getAnnotations();
     }
 }
 
