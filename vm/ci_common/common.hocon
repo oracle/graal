@@ -180,7 +180,7 @@ builds += [
       [mx, gate, "-B=--force-deprecation-as-warning", --tags, "style,fullbuild"]
     ]
     name: gate-vm-style-linux-amd64
-  },
+  }
   ${scan_malware} ${malware_definition_archived} ${full_vm_build_linux} ${linux-deploy} ${deploy_vm_linux} {
     run: [
       ${mx_vm_installables} [--dynamicimports, ${vm_extra_suites}, build]
@@ -193,7 +193,7 @@ builds += [
     logs: ${common_vm.logs} ${scan_malware.logs}
     timelimit: "1:30:00"
     name: deploy-vm-linux-amd64
-  },
+  }
   ${full_vm_build_darwin} ${darwin-deploy} ${deploy_daily_vm_darwin} {
     run: [
       ${mx_vm_installables} [--dynamicimports, ${vm_extra_suites}, build]
@@ -202,7 +202,7 @@ builds += [
     ]
     timelimit: "1:30:00"
     name: deploy-vm-installable-darwin-amd64
-  },
+  }
   ${full_vm_build_darwin} ${darwin-deploy} ${deploy_daily_vm_darwin} {
     run: [
       ${mx_vm_common} [build]
@@ -211,7 +211,7 @@ builds += [
     ]
     timelimit: "1:30:00"
     name: deploy-vm-base-darwin-amd64
-  },
+  }
   ${svm-common-linux-amd64} ${custom_vm_linux} ${vm_linux} {
     run: [
       # enable asserts in the JVM building the image and enable asserts in the resulting native image
@@ -221,7 +221,7 @@ builds += [
     timelimit: "45:00"
     targets: [gate]
     name: gate-vm-libgraal-compiler
-  },
+  }
   ${svm-common-linux-amd64} ${custom_vm_linux} ${vm_linux} {
     run: [
       # enable asserts in the JVM building the image and enable asserts in the resulting native image
@@ -231,65 +231,14 @@ builds += [
     timelimit: "45:00"
     targets: [gate]
     name: gate-vm-libgraal-truffle
-  },
-  ${svm-common-linux-amd64} ${custom_vm_linux} ${gate_vm_linux} {
-    run: [
-      [export, "SVM_SUITE="${svm_suite}]
-      [export, "NATIVE_IMAGE_TESTING=True"]
-      [mx, --dynamicimports, "$SVM_SUITE", --disable-polyglot, --disable-libpolyglot, gate, --no-warning-as-error, --tags, "build,substratevm"]
-    ]
-    timelimit: "15:00"
-    name: gate-vm-native-substratevm-truffle
-  },
+  }
   ${svm-common-linux-amd64} ${sulong_linux} ${custom_vm_linux} ${gate_vm_linux} {
     run: [
       [export, "SVM_SUITE="${svm_suite}]
       [export, "NATIVE_IMAGE_TESTING=True"]
       [mx, --dynamicimports, "$SVM_SUITE,/sulong", --disable-polyglot, --disable-libpolyglot, gate, --no-warning-as-error, --tags, "build,sulong"]
     ]
-    timelimit: "35:00"
+    timelimit: "1:00:00"
     name: gate-vm-native-sulong
-  },
-  ${svm-common-linux-amd64} ${sulong_linux} ${truffleruby_linux} ${custom_vm_linux} ${gate_vm_linux} {
-    run: [
-      [git, clone, --depth, "1", [mx, urlrewrite, "https://github.com/oracle/truffleruby.git"], "../../truffleruby"]
-      [export, "SVM_SUITE="${svm_suite}]
-      [export, "NATIVE_IMAGE_TESTING=True"]
-      [export, "EXTRA_IMAGE_BUILDER_ARGUMENTS=-H:GreyToBlackObjectVisitorDiagnosticHistory=16"] # GR-9912
-      [mx, --dynamicimports, "$SVM_SUITE,truffleruby", --disable-polyglot, --disable-libpolyglot, "--force-bash-launchers=lli,native-image", gate, --no-warning-as-error, --tags, "build,ruby"]
-    ]
-    timelimit: "35:00"
-    name: gate-vm-native-truffleruby-tip
-  },
-  ${svm-common-linux-amd64} ${sulong_linux} ${truffleruby_linux} ${custom_vm_linux} ${vm_linux} {
-    targets: [daily]
-    run: [
-      [export, "SVM_SUITE="${svm_suite}]
-      [export, "NATIVE_IMAGE_TESTING=True"]
-      [export, "EXTRA_IMAGE_BUILDER_ARGUMENTS=-H:GreyToBlackObjectVisitorDiagnosticHistory=16"] # GR-9912
-      [mx, --dynamicimports, "$SVM_SUITE,truffleruby", --disable-polyglot, --disable-libpolyglot, "--force-bash-launchers=lli,native-image", gate, --no-warning-as-error, --tags, "build,ruby"]
-    ]
-    timelimit: "35:00"
-    name: daily-vm-native-truffleruby
-  },
-  ${svm-common-linux-amd64} ${sulong_linux} ${graalpython_linux} ${custom_vm_linux} ${gate_vm_linux} {
-    run: [
-      [git, clone, --depth, "1", [mx, urlrewrite, "https://github.com/oracle/graalpython.git"], "../../graalpython"]
-      [export, "SVM_SUITE="${svm_suite}]
-      [export, "NATIVE_IMAGE_TESTING=True"]
-      [mx, --dynamicimports, "$SVM_SUITE,graalpython", --disable-polyglot, --disable-libpolyglot, "--force-bash-launchers=lli,native-image", gate, --no-warning-as-error, --tags, "build,python"]
-    ]
-    timelimit: "35:00"
-    name: gate-vm-native-graalpython-tip
-  },
-  ${svm-common-linux-amd64} ${sulong_linux} ${graalpython_linux} ${custom_vm_linux} ${vm_linux} {
-    targets: [daily]
-    run: [
-      [export, "SVM_SUITE="${svm_suite}]
-      [export, "NATIVE_IMAGE_TESTING=True"]
-      [mx, --dynamicimports, "$SVM_SUITE,graalpython", --disable-polyglot, --disable-libpolyglot, "--force-bash-launchers=lli,native-image", gate, --no-warning-as-error, --tags, "build,python"]
-    ]
-    timelimit: "35:00"
-    name: daily-vm-native-graalpython
-  },
+  }
 ]
