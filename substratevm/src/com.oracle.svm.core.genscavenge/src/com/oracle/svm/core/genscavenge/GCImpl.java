@@ -32,17 +32,21 @@ import java.lang.management.ManagementFactory;
 import java.util.ArrayList;
 import java.util.List;
 
+import javax.management.MBeanNotificationInfo;
+import javax.management.NotificationEmitter;
+import javax.management.NotificationFilter;
+import javax.management.NotificationListener;
 import javax.management.ObjectName;
 
 import org.graalvm.compiler.api.replacements.Fold;
 import org.graalvm.compiler.options.Option;
 import org.graalvm.compiler.word.Word;
 import org.graalvm.nativeimage.CurrentIsolate;
-import org.graalvm.nativeimage.hosted.Feature.FeatureAccess;
 import org.graalvm.nativeimage.IsolateThread;
 import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.Platforms;
 import org.graalvm.nativeimage.c.function.CodePointer;
+import org.graalvm.nativeimage.hosted.Feature.FeatureAccess;
 import org.graalvm.word.Pointer;
 import org.graalvm.word.UnsignedWord;
 import org.graalvm.word.WordFactory;
@@ -1738,7 +1742,7 @@ final class GarbageCollectorManagementFactory {
     }
 
     /** A GarbageCollectorMXBean for the incremental collector. */
-    private static final class IncrementalGarbageCollectorMXBean implements GarbageCollectorMXBean {
+    private static final class IncrementalGarbageCollectorMXBean implements GarbageCollectorMXBean, NotificationEmitter {
 
         private IncrementalGarbageCollectorMXBean() {
             /* Nothing to do. */
@@ -1776,10 +1780,28 @@ final class GarbageCollectorManagementFactory {
         public ObjectName getObjectName() {
             return Util.newObjectName(ManagementFactory.GARBAGE_COLLECTOR_MXBEAN_DOMAIN_TYPE, getName());
         }
+
+        @Override
+        public void removeNotificationListener(NotificationListener listener, NotificationFilter filter, Object handback) {
+        }
+
+        @Override
+        public void addNotificationListener(NotificationListener listener, NotificationFilter filter, Object handback) {
+        }
+
+        @Override
+        public void removeNotificationListener(NotificationListener listener) {
+        }
+
+        @Override
+        public MBeanNotificationInfo[] getNotificationInfo() {
+            return new MBeanNotificationInfo[0];
+        }
+
     }
 
     /** A GarbageCollectorMXBean for the complete collector. */
-    private static final class CompleteGarbageCollectorMXBean implements GarbageCollectorMXBean {
+    private static final class CompleteGarbageCollectorMXBean implements GarbageCollectorMXBean, NotificationEmitter {
 
         private CompleteGarbageCollectorMXBean() {
             /* Nothing to do. */
@@ -1817,5 +1839,23 @@ final class GarbageCollectorManagementFactory {
         public ObjectName getObjectName() {
             return Util.newObjectName(ManagementFactory.GARBAGE_COLLECTOR_MXBEAN_DOMAIN_TYPE, getName());
         }
+
+        @Override
+        public void removeNotificationListener(NotificationListener listener, NotificationFilter filter, Object handback) {
+        }
+
+        @Override
+        public void addNotificationListener(NotificationListener listener, NotificationFilter filter, Object handback) {
+        }
+
+        @Override
+        public void removeNotificationListener(NotificationListener listener) {
+        }
+
+        @Override
+        public MBeanNotificationInfo[] getNotificationInfo() {
+            return new MBeanNotificationInfo[0];
+        }
+
     }
 }
