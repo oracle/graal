@@ -1226,9 +1226,7 @@ final class InstrumentationHandler {
                      * is especially problematic for long or infinite loops in combination with
                      * cancel events.
                      */
-                    for (Node oldNodeChild : oldNode.getChildren()) {
-                        oldNodeChild.accept(this);
-                    }
+                    NodeUtil.forEachChild(oldNode, this);
                 }
                 visitInstrumentable(this.savedParent, this.savedParentSourceSection, node, sourceSection);
                 previousParent = this.savedParent;
