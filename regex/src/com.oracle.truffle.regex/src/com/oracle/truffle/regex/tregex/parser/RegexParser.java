@@ -114,6 +114,8 @@ public final class RegexParser {
     private Group curGroup;
     private Term curTerm;
 
+    private RegexFeatures features;
+
     @TruffleBoundary
     public RegexParser(RegexSource source, RegexOptions options) throws RegexSyntaxException {
         this.source = source;
@@ -162,6 +164,7 @@ public final class RegexParser {
 
     @TruffleBoundary
     public void validate() throws RegexSyntaxException {
+        features = new RegexFeatures();
         parseDryRun();
     }
 
@@ -177,6 +180,16 @@ public final class RegexParser {
 
     public RegexFlags getFlags() {
         return flags;
+    }
+
+    /**
+     * Returns the features used by the regular expression that was just validated. This property is
+     * only populated after a call to {@link #validate()} and should therefore only be accessed
+     * then.
+     */
+    public RegexFeatures getFeatures() {
+        assert features != null;
+        return features;
     }
 
     /* AST manipulation */
@@ -655,6 +668,15 @@ public final class RegexParser {
         Other
     }
 
+    private static boolean inLookBehind(List<RegexStackElem> syntaxStack) {
+        for (RegexStackElem stackElem : syntaxStack) {
+            if (stackElem == RegexStackElem.LookBehindAssertion) {
+                return true;
+            }
+        }
+        return false;
+    }
+
     /**
      * Like {@link #parse(boolean)}, but does not construct any AST, only checks for syntax errors.
      * <p>
@@ -673,12 +695,33 @@ public final class RegexParser {
         CurTermState curTermState = CurTermState.Null;
         while (lexer.hasNext()) {
             Token token = lexer.next();
+            if (inLookBehind(syntaxStack) && token.kind != Token.Kind.charClass && token.kind != Token.Kind.groupEnd) {
+                features.setNonLiteralLookBehindAssertions();
+            }
             switch (token.kind) {
                 case caret:
+                    curTermState = CurTermState.Other;
+                    break;
                 case dollar:
+                    if (inLookBehind(syntaxStack) && !flags.isMultiline()) {
+                        features.setEndOfStringAssertionsInLookBehind();
+                    }
+                    curTermState = CurTermState.Other;
+                    break;
                 case wordBoundary:
                 case nonWordBoundary:
+                    if (inLookBehind(syntaxStack)) {
+                        features.setWordBoundaryAssertionsInLookBehind();
+                    }
+                    curTermState = CurTermState.Other;
+                    break;
                 case backReference:
+                    features.setBackReferences();
+                    if (inLookBehind(syntaxStack)) {
+                        features.setBackReferencesInLookBehind();
+                    }
+                    curTermState = CurTermState.Other;
+                    break;
                 case charClass:
                     curTermState = CurTermState.Other;
                     break;
@@ -693,6 +736,15 @@ public final class RegexParser {
                             break;
                         case LookBehindAssertion:
                             throw syntaxError(ErrorMessages.QUANTIFIER_ON_LOOKBEHIND_ASSERTION);
+                        case Other:
+                            Token.Quantifier quantifier = (Token.Quantifier) token;
+                            if (inLookBehind(syntaxStack) && quantifier.getMin() != quantifier.getMax()) {
+                                features.setNonTrivialQuantifiersInLookBehind();
+                            }
+                            if (quantifier.getMin() > TRegexOptions.TRegexMaxCountedRepetition || quantifier.getMax() > TRegexOptions.TRegexMaxCountedRepetition) {
+                                features.setLargeCountedRepetitions();
+                            }
+                            break;
                     }
                     curTermState = CurTermState.Other;
                     break;
@@ -705,10 +757,22 @@ public final class RegexParser {
                     curTermState = CurTermState.Null;
                     break;
                 case lookAheadAssertionBegin:
+                    if (((Token.LookAheadAssertionBegin) token).isNegated()) {
+                        features.setNegativeLookAheadAssertions();
+                    }
+                    if (inLookBehind(syntaxStack)) {
+                        features.setLookAheadAssertionsInLookBehind();
+                    }
                     syntaxStack.add(RegexStackElem.LookAheadAssertion);
                     curTermState = CurTermState.Null;
                     break;
                 case lookBehindAssertionBegin:
+                    if (((Token.LookBehindAssertionBegin) token).isNegated()) {
+                        features.setNegativeLookBehindAssertions();
+                        if (inLookBehind(syntaxStack)) {
+                            features.setNegativeLookBehindAssertionsInLookBehind();
+                        }
+                    }
                     syntaxStack.add(RegexStackElem.LookBehindAssertion);
                     curTermState = CurTermState.Null;
                     break;
