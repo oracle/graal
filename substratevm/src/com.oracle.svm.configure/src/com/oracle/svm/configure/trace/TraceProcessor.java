@@ -80,38 +80,38 @@ public class TraceProcessor extends AbstractProcessor {
 
     private void processTrace(List<Map<String, ?>> trace) {
         for (Map<String, ?> entry : trace) {
-            try {
-                processEntry(entry);
-            } catch (Exception e) {
-                logWarning("Error processing log entry: " + e.toString() + ": " + entry.toString());
-            }
+            processEntry(entry);
         }
     }
 
     @Override
     public void processEntry(Map<String, ?> entry) {
-        String tracer = (String) entry.get("tracer");
-        switch (tracer) {
-            case "meta": {
-                String event = (String) entry.get("event");
-                if (event.equals("phase_change")) {
-                    setInLivePhase(entry.get("phase").equals("live"));
-                } else if (event.equals("initialization")) {
-                    // not needed for now, but contains version for breaking changes
-                } else {
-                    logWarning("Unknown meta event, ignoring: " + event);
+        try {
+            String tracer = (String) entry.get("tracer");
+            switch (tracer) {
+                case "meta": {
+                    String event = (String) entry.get("event");
+                    if (event.equals("phase_change")) {
+                        setInLivePhase(entry.get("phase").equals("live"));
+                    } else if (event.equals("initialization")) {
+                        // not needed for now, but contains version for breaking changes
+                    } else {
+                        logWarning("Unknown meta event, ignoring: " + event);
+                    }
+                    break;
                 }
-                break;
+                case "jni":
+                    jniProcessor.processEntry(entry);
+                    break;
+                case "reflect":
+                    reflectionProcessor.processEntry(entry);
+                    break;
+                default:
+                    logWarning("Unknown tracer, ignoring: " + tracer);
+                    break;
             }
-            case "jni":
-                jniProcessor.processEntry(entry);
-                break;
-            case "reflect":
-                reflectionProcessor.processEntry(entry);
-                break;
-            default:
-                logWarning("Unknown tracer, ignoring: " + tracer);
-                break;
+        } catch (Exception e) {
+            logWarning("Error processing trace entry: " + e.toString() + ": " + entry.toString());
         }
     }
 
