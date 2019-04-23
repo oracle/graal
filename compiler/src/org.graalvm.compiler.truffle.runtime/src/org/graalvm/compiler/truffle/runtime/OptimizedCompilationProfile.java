@@ -40,6 +40,7 @@ import com.oracle.truffle.api.Truffle;
 import com.oracle.truffle.api.nodes.ExplodeLoop;
 
 public final class OptimizedCompilationProfile {
+    private static final int MAX_PROFILED_ARGUMENTS = 256;
     private static final String ARGUMENT_TYPES_ASSUMPTION_NAME = "Profiled Argument Types";
     private static final String RETURN_TYPE_ASSUMPTION_NAME = "Profiled Return Type";
 
@@ -331,7 +332,7 @@ public final class OptimizedCompilationProfile {
 
     private void initializeProfiledArgumentTypes(Object[] args) {
         CompilerAsserts.neverPartOfCompilation();
-        if (TruffleRuntimeOptions.getValue(SharedTruffleRuntimeOptions.TruffleArgumentTypeSpeculation)) {
+        if (args.length <= MAX_PROFILED_ARGUMENTS && TruffleRuntimeOptions.getValue(SharedTruffleRuntimeOptions.TruffleArgumentTypeSpeculation)) {
             Class<?>[] result = new Class<?>[args.length];
             for (int i = 0; i < args.length; i++) {
                 result[i] = classOf(args[i]);
