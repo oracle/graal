@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2016, 2018, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2016, 2019, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -126,9 +126,9 @@ final class InstrumentationHandler {
     private final Collection<EventBinding.Source<?>> executionBindings = new EventBindingList<>(8);
     private final Collection<EventBinding.Source<?>> sourceSectionBindings = new EventBindingList<>(8);
     private final Collection<EventBinding.Source<?>> sourceBindings = new EventBindingList<>(8);
-    private final FindSourcesVisitor findSourcesVisitor = new FindSourcesVisitor(sources, sourcesListRef);
+    private final ThreadLocal<FindSourcesVisitor> findSourcesVisitor = new ThreadLocalSourcesVisitor();
     private final Collection<EventBinding.Source<?>> sourceExecutedBindings = new EventBindingList<>(8);
-    private final FindSourcesVisitor findSourcesExecutedVisitor = new FindSourcesVisitor(sourcesExecuted, sourcesExecutedListRef);
+    private final ThreadLocal<FindSourcesVisitor> findSourcesExecutedVisitor = new ThreadLocalExecutedSourcesVisitor();
     private final Collection<EventBinding<? extends OutputStream>> outputStdBindings = new EventBindingList<>(1);
     private final Collection<EventBinding<? extends OutputStream>> outputErrBindings = new EventBindingList<>(1);
     private final Collection<EventBinding.Allocation<? extends AllocationListener>> allocationBindings = new EventBindingList<>(2);
@@ -172,12 +172,21 @@ final class InstrumentationHandler {
                 // we'll add to the sourcesList, so it needs to be initialized
                 lazyInitializeSourcesList();
 
+                FindSourcesVisitor visitor = findSourcesVisitor.get();
                 SourceSection sourceSection = root.getSourceSection();
                 if (sourceSection != null) {
-                    findSourcesVisitor.adoptSource(sourceSection.getSource());
+                    visitor.adoptSource(sourceSection.getSource());
                 }
-                visitRoot(root, root, findSourcesVisitor, false);
-                rootSources = findSourcesVisitor.getSources();
+                RootNode previousRoot = visitor.root;
+                Set<Class<?>> previousProvidedTags = visitor.providedTags;
+                SourceSection previousRootSourceSection = visitor.rootSourceSection;
+                int previousRootBits = visitor.rootBits;
+                visitRoot(root, root, visitor, false);
+                rootSources = visitor.getSources();
+                visitor.root = previousRoot;
+                visitor.providedTags = previousProvidedTags;
+                visitor.rootSourceSection = previousRootSourceSection;
+                visitor.rootBits = previousRootBits;
             } else {
                 hasSourceBindings = false;
                 sources.clear();
@@ -209,7 +218,7 @@ final class InstrumentationHandler {
 
         private final Map<Source, Void> sources;
         private final AtomicReference<SourceList> sourcesListRef;
-        private final List<Source> rootSources = Collections.synchronizedList(new ArrayList<>(5));
+        private final List<Source> rootSources = new ArrayList<>(5);
 
         FindSourcesVisitor(Map<Source, Void> sources, AtomicReference<SourceList> sourcesListRef) {
             this.sources = sources;
@@ -239,15 +248,30 @@ final class InstrumentationHandler {
         }
 
         Source[] getSources() {
-            Source[] sourcesArray;
-            synchronized (rootSources) {
-                if (rootSources.isEmpty()) {
-                    return null;
-                }
-                sourcesArray = rootSources.toArray(new Source[rootSources.size()]);
-                rootSources.clear();
+            if (rootSources.isEmpty()) {
+                return null;
             }
+            Source[] sourcesArray = rootSources.toArray(new Source[rootSources.size()]);
+            rootSources.clear();
             return sourcesArray;
+        }
+
+    }
+
+    private class ThreadLocalSourcesVisitor extends ThreadLocal<FindSourcesVisitor> {
+
+        @Override
+        protected FindSourcesVisitor initialValue() {
+            return new FindSourcesVisitor(sources, sourcesListRef);
+        }
+
+    }
+
+    private class ThreadLocalExecutedSourcesVisitor extends ThreadLocal<FindSourcesVisitor> {
+
+        @Override
+        protected FindSourcesVisitor initialValue() {
+            return new FindSourcesVisitor(sourcesExecuted, sourcesExecutedListRef);
         }
 
     }
@@ -267,18 +291,26 @@ final class InstrumentationHandler {
                 if (RootNodeBits.isNoSourceSection(rootBits)) {
                     rootSources = null;
                 } else {
+                    FindSourcesVisitor visitor = findSourcesExecutedVisitor.get();
                     SourceSection sourceSection = root.getSourceSection();
                     if (RootNodeBits.isSameSource(rootBits) && sourceSection != null) {
                         Source source = sourceSection.getSource();
-                        findSourcesExecutedVisitor.adoptSource(source);
-                        rootSources = new Source[]{source};
+                        visitor.adoptSource(source);
                     } else {
                         if (sourceSection != null) {
-                            findSourcesExecutedVisitor.adoptSource(sourceSection.getSource());
+                            visitor.adoptSource(sourceSection.getSource());
                         }
-                        visitRoot(root, root, findSourcesExecutedVisitor, false);
-                        rootSources = findSourcesExecutedVisitor.getSources();
+                        RootNode previousRoot = visitor.root;
+                        Set<Class<?>> previousProvidedTags = visitor.providedTags;
+                        SourceSection previousRootSourceSection = visitor.rootSourceSection;
+                        int previousRootBits = visitor.rootBits;
+                        visitRoot(root, root, visitor, false);
+                        visitor.root = previousRoot;
+                        visitor.providedTags = previousProvidedTags;
+                        visitor.rootSourceSection = previousRootSourceSection;
+                        visitor.rootBits = previousRootBits;
                     }
+                    rootSources = visitor.getSources();
                 }
             } else {
                 hasSourceExecutedBindings = false;
@@ -574,11 +606,12 @@ final class InstrumentationHandler {
                                     sourceList.add(source);
                                 }
                             } else {
+                                FindSourcesVisitor visitor = findSourcesVisitor.get();
                                 if (sourceSection != null) {
-                                    findSourcesVisitor.adoptSource(sourceSection.getSource());
+                                    visitor.adoptSource(sourceSection.getSource());
                                 }
-                                visitRoot(root, root, findSourcesVisitor, false);
-                                Source[] visitedSources = findSourcesVisitor.getSources();
+                                visitRoot(root, root, visitor, false);
+                                Source[] visitedSources = visitor.getSources();
                                 if (visitedSources != null) {
                                     for (Source source : visitedSources) {
                                         if (!sources.containsKey(source)) {
@@ -619,11 +652,12 @@ final class InstrumentationHandler {
                                     sourcesExecutedList.add(source);
                                 }
                             } else {
+                                FindSourcesVisitor visitor = findSourcesExecutedVisitor.get();
                                 if (sourceSection != null) {
-                                    findSourcesExecutedVisitor.adoptSource(sourceSection.getSource());
+                                    visitor.adoptSource(sourceSection.getSource());
                                 }
-                                visitRoot(root, root, findSourcesExecutedVisitor, false);
-                                Source[] visitedSources = findSourcesExecutedVisitor.getSources();
+                                visitRoot(root, root, visitor, false);
+                                Source[] visitedSources = visitor.getSources();
                                 if (visitedSources != null) {
                                     for (Source source : visitedSources) {
                                         if (!sourcesExecuted.containsKey(source)) {
