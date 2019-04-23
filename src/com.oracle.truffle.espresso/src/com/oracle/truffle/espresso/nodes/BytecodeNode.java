@@ -64,6 +64,7 @@ import com.oracle.truffle.espresso.meta.JavaKind;
 import com.oracle.truffle.espresso.meta.Meta;
 import com.oracle.truffle.espresso.runtime.BootstrapMethodsAttribute;
 import com.oracle.truffle.espresso.runtime.EspressoException;
+import com.oracle.truffle.espresso.runtime.EspressoExitException;
 import com.oracle.truffle.espresso.runtime.ReturnAddress;
 import com.oracle.truffle.espresso.runtime.StaticObject;
 import com.oracle.truffle.espresso.vm.InterpreterToVM;
@@ -294,6 +295,7 @@ import static com.oracle.truffle.espresso.bytecode.Bytecodes.WIDE;
 public class BytecodeNode extends EspressoBaseNode implements CustomNodeCount {
 
     public static final boolean DEBUG_GENERAL = true;
+    public static final boolean DEBUG_CATCH = false;
 
     public static final DebugCounter bcCount = DebugCounter.create("Bytecodes executed");
 
@@ -498,6 +500,10 @@ public class BytecodeNode extends EspressoBaseNode implements CustomNodeCount {
         int top = 0;
 
         initArguments(frame);
+
+        if (getMethod().getDeclaringKlass() == getMeta().Class && getMethod().getName().toString().equals("getMethod") && Meta.toHostString((StaticObject)frame.getArguments()[1]).contains("invoke")) {
+            int dood = 1;
+        }
 
         loop: while (true) {
             int curOpcode;
@@ -1059,7 +1065,11 @@ public class BytecodeNode extends EspressoBaseNode implements CustomNodeCount {
                         case INVOKESPECIAL: // fall through
                         case INVOKESTATIC: // fall through
                         case INVOKEINTERFACE:
-                            top += quickenInvoke(frame, top, curBCI, resolveMethod(curOpcode, bs.readCPI(curBCI)), curOpcode);
+                            // TODO(garcia): Render this thread-safe.
+                            /* Current issue: two thread are there, seeing an invokeInterface.
+                             * One completes the quickening before the other enters method resolution. The other then obtains the CPI of the quicknode.
+                             */
+                            top += quickenInvoke(frame, top, curBCI, curOpcode);
                             break;
 
                         case NEW:
@@ -1083,10 +1093,10 @@ public class BytecodeNode extends EspressoBaseNode implements CustomNodeCount {
                             throw new EspressoException(nullCheck(peekObject(frame, top - 1)));
 
                         case CHECKCAST:
-                            top += quickenCheckCast(frame, top, curBCI, resolveType(curOpcode, bs.readCPI(curBCI)), curOpcode);
+                            top += quickenCheckCast(frame, top, curBCI, curOpcode);
                             break;
                         case INSTANCEOF:
-                            top += quickenInstanceOf(frame, top, curBCI, resolveType(curOpcode, bs.readCPI(curBCI)), curOpcode);
+                            top += quickenInstanceOf(frame, top, curBCI, curOpcode);
                             break;
 
                         case MONITORENTER:
@@ -1121,7 +1131,7 @@ public class BytecodeNode extends EspressoBaseNode implements CustomNodeCount {
                     }
                     // @formatter:on
                     // Checkstyle: resume
-                } catch (EspressoException e) {
+                } catch (EspressoException | EspressoExitException e) {
                     throw e;
                 } catch (RuntimeException e) {
                     CompilerDirectives.transferToInterpreter();
@@ -1138,6 +1148,9 @@ public class BytecodeNode extends EspressoBaseNode implements CustomNodeCount {
                     putObject(frame, 0, e.getException());
                     top++;
                     curBCI = handler.getHandlerBCI();
+                    if (DEBUG_CATCH) {
+                        reportCatch(e, curBCI, this);
+                    }
                     continue loop; // skip bs.next()
                 } else {
                     throw e;
@@ -1232,6 +1245,17 @@ public class BytecodeNode extends EspressoBaseNode implements CustomNodeCount {
     @TruffleBoundary
     static private void reportError(EspressoException e) {
         System.err.println("\tError thrown: " + e.getException().getKlass().toString() + ": " + e.getMessage());
+    }
+
+    @TruffleBoundary
+    static private void reportCatch(EspressoException e, int curBCI, BytecodeNode thisNode) {
+        if (    thisNode.getMethod().getName().toString().contains("refill") ||
+                thisNode.getMethod().getName().toString().contains("loadClass") ||
+                thisNode.getMethod().getName().toString().contains("findClass") ) {
+            return;
+        }
+        System.err.println("Caught: " + e.getException().getKlass().toString() + ": " + e.getMessage() +
+                "\n\t In: " + thisNode + " at BCI: " + curBCI);
     }
 
     private JavaKind peekKind(VirtualFrame frame, int slot) {
@@ -1416,13 +1440,10 @@ public class BytecodeNode extends EspressoBaseNode implements CustomNodeCount {
     private char addQuickNode(QuickNode node) {
         CompilerAsserts.neverPartOfCompilation();
         Objects.requireNonNull(node);
-        // TODO(garcia) Prevent creation of multiple nodes for same instruction (concurrency)
-        synchronized (this) {
-            nodes = Arrays.copyOf(nodes, nodes.length + 1);
-            int nodeIndex = nodes.length - 1; // latest empty slot
-            nodes[nodeIndex] = insert(node);
-            return (char) nodeIndex;
-        }
+        nodes = Arrays.copyOf(nodes, nodes.length + 1);
+        int nodeIndex = nodes.length - 1; // latest empty slot
+        nodes[nodeIndex] = insert(node);
+        return (char) nodeIndex;
     }
 
     private void patchBci(int bci, byte opcode, char nodeIndex) {
@@ -1432,16 +1453,13 @@ public class BytecodeNode extends EspressoBaseNode implements CustomNodeCount {
 
         int oldBC = code[bci];
         assert Bytecodes.lengthOf(oldBC) >= 3 : "cannot patch slim bc";
+        code[bci] = opcode;
+        code[bci + 1] = (byte) ((nodeIndex >> 8) & 0xFF);
+        code[bci + 2] = (byte) ((nodeIndex) & 0xFF);
 
-        synchronized (this) {
-            code[bci] = opcode;
-            code[bci + 1] = (byte) ((nodeIndex >> 8) & 0xFF);
-            code[bci + 2] = (byte) ((nodeIndex) & 0xFF);
-
-            // NOP-padding.
-            for (int i = 3; i < Bytecodes.lengthOf(oldBC); ++i) {
-                code[bci + i] = (byte) NOP;
-            }
+        // NOP-padding.
+        for (int i = 3; i < Bytecodes.lengthOf(oldBC); ++i) {
+            code[bci + i] = (byte) NOP;
         }
     }
 
@@ -1453,111 +1471,134 @@ public class BytecodeNode extends EspressoBaseNode implements CustomNodeCount {
         return quick.invoke(frame, top) - Bytecodes.stackEffectOf(opCode);
     }
 
-    private int quickenCheckCast(final VirtualFrame frame, int top, int curBCI, Klass typeToCheck, int opCode) {
+    private int quickenCheckCast(final VirtualFrame frame, int top, int curBCI, int opCode) {
         CompilerDirectives.transferToInterpreterAndInvalidate();
         assert opCode == CHECKCAST;
-        return injectAndCall(frame, top, curBCI, CheckCastNodeGen.create(typeToCheck), opCode);
+        synchronized (this) {
+            if (bs.currentBC(curBCI) == QUICK) {
+                return nodes[bs.readCPI(curBCI)].invoke(frame, top) - Bytecodes.stackEffectOf(opCode);
+            }
+            Klass typeToCheck = resolveType(opCode, bs.readCPI(curBCI));
+            return injectAndCall(frame, top, curBCI, CheckCastNodeGen.create(typeToCheck), opCode);
+        }
     }
 
-    private int quickenInstanceOf(final VirtualFrame frame, int top, int curBCI, Klass typeToCheck, int opCode) {
+    private int quickenInstanceOf(final VirtualFrame frame, int top, int curBCI, int opCode) {
         CompilerDirectives.transferToInterpreterAndInvalidate();
         assert opCode == INSTANCEOF;
-        return injectAndCall(frame, top, curBCI, InstanceOfNodeGen.create(typeToCheck), opCode);
+        synchronized (this) {
+            if (bs.currentBC(curBCI) == QUICK) {
+                return nodes[bs.readCPI(curBCI)].invoke(frame, top) - Bytecodes.stackEffectOf(opCode);
+            }
+            Klass typeToCheck = resolveType(opCode, bs.readCPI(curBCI));
+            return injectAndCall(frame, top, curBCI, InstanceOfNodeGen.create(typeToCheck), opCode);
+        }
+
     }
 
-    private int quickenInvoke(final VirtualFrame frame, int top, int curBCI, Method resolutionSeed, int opCode) {
+    private int quickenInvoke(final VirtualFrame frame, int top, int curBCI, int opCode) {
         CompilerDirectives.transferToInterpreterAndInvalidate();
         assert Bytecodes.isInvoke(opCode);
-        // assert opCode != INVOKEDYNAMIC : "not supported";
+        synchronized (this) {
+            if (bs.currentBC(curBCI) == QUICK) {
+                return nodes[bs.readCPI(curBCI)].invoke(frame, top) - Bytecodes.stackEffectOf(opCode);
+            }
+            Method resolutionSeed = resolveMethod(opCode, bs.readCPI(curBCI));
 
-        if (opCode == INVOKEVIRTUAL && (resolutionSeed.isFinal() || resolutionSeed.getDeclaringKlass().isFinalFlagSet())) {
-            return quickenInvoke(frame, top, curBCI, resolutionSeed, INVOKESPECIAL);
+            if (opCode == INVOKEVIRTUAL && (resolutionSeed.isFinal() || resolutionSeed.getDeclaringKlass().isFinalFlagSet())) {
+                return quickenInvoke(frame, top, curBCI, INVOKESPECIAL);
+            }
+            QuickNode invoke = null;
+            // @formatter:off
+            // Checkstyle: stop
+            switch (opCode) {
+                case INVOKESTATIC    : invoke = new InvokeStaticNode(resolutionSeed);          break;
+                case INVOKEINTERFACE : invoke = InvokeInterfaceNodeGen.create(resolutionSeed); break;
+                case INVOKEVIRTUAL   : invoke = InvokeVirtualNodeGen.create(resolutionSeed);   break;
+                case INVOKESPECIAL   : invoke = new InvokeSpecialNode(resolutionSeed);         break;
+                default              :
+                    throw EspressoError.unimplemented("Quickening for " + Bytecodes.nameOf(opCode));
+            }
+            // @formatter:on
+            // Checkstyle: resume
+            return injectAndCall(frame, top, curBCI, invoke, opCode);
         }
-        QuickNode invoke = null;
-        // @formatter:off
-        // Checkstyle: stop
-        switch (opCode) {
-            case INVOKESTATIC    : invoke = new InvokeStaticNode(resolutionSeed);          break;
-            case INVOKEINTERFACE : invoke = InvokeInterfaceNodeGen.create(resolutionSeed); break;
-            case INVOKEVIRTUAL   : invoke = InvokeVirtualNodeGen.create(resolutionSeed);   break;
-            case INVOKESPECIAL   : invoke = new InvokeSpecialNode(resolutionSeed);         break;
-            default              :
-                throw EspressoError.unimplemented("Quickening for " + Bytecodes.nameOf(opCode));
-        }
-        // @formatter:on
-        // Checkstyle: resume
-        return injectAndCall(frame, top, curBCI, invoke, opCode);
     }
 
     private int quickenInvokeDynamic(final VirtualFrame frame, int top, int curBCI, int opCode) {
         CompilerDirectives.transferToInterpreterAndInvalidate();
         assert (Bytecodes.INVOKEDYNAMIC == opCode);
-
-        Meta meta = getMeta();
-        // InvokeDynamicConstant resolving.
-        RuntimeConstantPool pool = getConstantPool();
-        InvokeDynamicConstant inDy = ((InvokeDynamicConstant) pool.at(bs.readCPI(curBCI)));
-        BootstrapMethodsAttribute bms = getBootstrapMethods();
-        NameAndTypeConstant specifier = pool.nameAndTypeAt(inDy.getNameAndTypeIndex());
-
-        assert (bms != null);
-        // Bootstrap method resolution
-        BootstrapMethodsAttribute.Entry bsEntry = bms.at(inDy.getBootstrapMethodAttrIndex());
-
-        Klass declaringKlass = getMethod().getDeclaringKlass();
-        StaticObject bsmMH = pool.resolvedMethodHandleAt(declaringKlass, bsEntry.getBootstrapMethodRef());
-
-        StaticObject[] args = new StaticObject[bsEntry.numBootstrapArguments()];
-        for (int i = 0; i < bsEntry.numBootstrapArguments(); i++) {
-            PoolConstant pc = pool.at(bsEntry.argAt(i));
-            switch (pc.tag()) {
-                case METHODHANDLE:
-                    args[i] = pool.resolvedMethodHandleAt(declaringKlass, bsEntry.argAt(i));
-                    break;
-                case METHODTYPE:
-                    args[i] = pool.resolvedMethodTypeAt(declaringKlass, bsEntry.argAt(i));
-                    break;
-                case CLASS:
-                    args[i] = pool.resolvedKlassAt(declaringKlass, bsEntry.argAt(i)).mirror();
-                    break;
-                case STRING:
-                    args[i] = pool.resolvedStringAt(bsEntry.argAt(i));
-                    break;
-                case INTEGER:
-                    args[i] = meta.boxInteger(pool.intAt(bsEntry.argAt(i)));
-                    break;
-                case LONG:
-                    args[i] = meta.boxLong(pool.longAt(bsEntry.argAt(i)));
-                    break;
-                case DOUBLE:
-                    args[i] = meta.boxDouble(pool.doubleAt(bsEntry.argAt(i)));
-                    break;
-                case FLOAT:
-                    args[i] = meta.boxFloat(pool.floatAt(bsEntry.argAt(i)));
-                    break;
-                default:
-                    throw EspressoError.shouldNotReachHere();
+        // TODO(garcia) Do something more elegant than code copy-paste for all quickenings.
+        synchronized (this) {
+            if (bs.currentBC(curBCI) == QUICK) {
+                return nodes[bs.readCPI(curBCI)].invoke(frame, top) - Bytecodes.stackEffectOf(opCode);
             }
+            Meta meta = getMeta();
+            // InvokeDynamicConstant resolving.
+            RuntimeConstantPool pool = getConstantPool();
+            InvokeDynamicConstant inDy = ((InvokeDynamicConstant) pool.at(bs.readCPI(curBCI)));
+            BootstrapMethodsAttribute bms = getBootstrapMethods();
+            NameAndTypeConstant specifier = pool.nameAndTypeAt(inDy.getNameAndTypeIndex());
+
+            assert (bms != null);
+            // Bootstrap method resolution
+            BootstrapMethodsAttribute.Entry bsEntry = bms.at(inDy.getBootstrapMethodAttrIndex());
+
+            Klass declaringKlass = getMethod().getDeclaringKlass();
+            StaticObject bsmMH = pool.resolvedMethodHandleAt(declaringKlass, bsEntry.getBootstrapMethodRef());
+
+            StaticObject[] args = new StaticObject[bsEntry.numBootstrapArguments()];
+            for (int i = 0; i < bsEntry.numBootstrapArguments(); i++) {
+                PoolConstant pc = pool.at(bsEntry.argAt(i));
+                switch (pc.tag()) {
+                    case METHODHANDLE:
+                        args[i] = pool.resolvedMethodHandleAt(declaringKlass, bsEntry.argAt(i));
+                        break;
+                    case METHODTYPE:
+                        args[i] = pool.resolvedMethodTypeAt(declaringKlass, bsEntry.argAt(i));
+                        break;
+                    case CLASS:
+                        args[i] = pool.resolvedKlassAt(declaringKlass, bsEntry.argAt(i)).mirror();
+                        break;
+                    case STRING:
+                        args[i] = pool.resolvedStringAt(bsEntry.argAt(i));
+                        break;
+                    case INTEGER:
+                        args[i] = meta.boxInteger(pool.intAt(bsEntry.argAt(i)));
+                        break;
+                    case LONG:
+                        args[i] = meta.boxLong(pool.longAt(bsEntry.argAt(i)));
+                        break;
+                    case DOUBLE:
+                        args[i] = meta.boxDouble(pool.doubleAt(bsEntry.argAt(i)));
+                        break;
+                    case FLOAT:
+                        args[i] = meta.boxFloat(pool.floatAt(bsEntry.argAt(i)));
+                        break;
+                    default:
+                        throw EspressoError.shouldNotReachHere();
+                }
+            }
+
+            // Preparing Bootstrap call.
+            StaticObject name = meta.toGuestString(specifier.getName(pool));
+            Symbol<Symbol.Signature> invokeSignature = specifier.getSignature(pool);
+            Symbol<Type>[] parsedInvokeSignature = getSignatures().parsed(invokeSignature);
+            StaticObject methodType = signatureToMethodType(parsedInvokeSignature, declaringKlass, getMeta());
+            StaticObject appendix = new StaticObject(meta.Object_array, new StaticObject[1]);
+
+            StaticObject memberName = (StaticObject) getMeta().linkCallSite.invokeDirect(
+                    null,
+                    declaringKlass.mirror(),
+                    bsmMH,
+                    name, methodType,
+                    new StaticObject(meta.Object_array, args),
+                    appendix);
+
+            StaticObject unboxedAppendix = appendix.get(0);
+
+            return injectAndCall(frame, top, curBCI, new InvokeDynamicCallSiteNode(memberName, unboxedAppendix, parsedInvokeSignature, meta), opCode);
         }
-
-        // Preparing Bootstrap call.
-        StaticObject name = meta.toGuestString(specifier.getName(pool));
-        Symbol<Symbol.Signature> invokeSignature = specifier.getSignature(pool);
-        Symbol<Type>[] parsedInvokeSignature = getSignatures().parsed(invokeSignature);
-        StaticObject methodType = signatureToMethodType(parsedInvokeSignature, declaringKlass, getMeta());
-        StaticObject appendix = new StaticObject(meta.Object_array, new StaticObject[1]);
-
-        StaticObject memberName = (StaticObject) getMeta().linkCallSite.invokeDirect(
-                        null,
-                        declaringKlass.mirror(),
-                        bsmMH,
-                        name, methodType,
-                        new StaticObject(meta.Object_array, args),
-                        appendix);
-
-        StaticObject unboxedAppendix = appendix.get(0);
-
-        return injectAndCall(frame, top, curBCI, new InvokeDynamicCallSiteNode(memberName, unboxedAppendix, parsedInvokeSignature, meta), opCode);
     }
 
     public static StaticObject signatureToMethodType(Symbol<Type>[] signature, Klass declaringKlass, Meta meta) {
