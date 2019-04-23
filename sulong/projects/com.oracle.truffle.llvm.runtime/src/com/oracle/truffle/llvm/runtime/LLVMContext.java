@@ -87,6 +87,7 @@ import com.oracle.truffle.llvm.runtime.types.Type;
 
 public final class LLVMContext {
     private final List<Path> libraryPaths = new ArrayList<>();
+    @CompilationFinal private Path internalLibraryPath;
     private final List<ExternalLibrary> externalLibraries = new ArrayList<>();
 
     // map that contains all non-native globals, needed for pointer->global lookups
@@ -249,9 +250,11 @@ public final class LLVMContext {
         for (ContextExtension ext : contextExtensions) {
             ext.initialize();
         }
-        SystemContextExtension sysContextExt = getContextExtension(SystemContextExtension.class);
         if (languageHome != null) {
-            addLibraryPath(Paths.get(languageHome).resolve(sysContextExt.getSulongLibrariesPath()).toString());
+            SystemContextExtension sysContextExt = getContextExtension(SystemContextExtension.class);
+            internalLibraryPath = Paths.get(languageHome).resolve(sysContextExt.getSulongLibrariesPath());
+            // add internal library location also to the external library lookup path
+            addLibraryPath(internalLibraryPath.toString());
         }
     }
 
@@ -457,8 +460,20 @@ public final class LLVMContext {
 
     public ExternalLibrary addInternalLibrary(String lib, boolean isNative) {
         CompilerAsserts.neverPartOfCompilation();
-        Path path = locateExternalLibrary(lib);
+        Path path = locateInternalLibrary(lib);
         return addExternalLibrary(ExternalLibrary.internal(path, isNative));
+    }
+
+    @TruffleBoundary
+    private Path locateInternalLibrary(String lib) {
+        if (internalLibraryPath == null) {
+            throw new LLVMLinkerException(String.format("Cannot load \"%s\". Internal library path not set.", lib));
+        }
+        Path absPath = internalLibraryPath.resolve(lib);
+        if (absPath.toFile().exists()) {
+            return absPath;
+        }
+        return Paths.get(lib);
     }
 
     /**
