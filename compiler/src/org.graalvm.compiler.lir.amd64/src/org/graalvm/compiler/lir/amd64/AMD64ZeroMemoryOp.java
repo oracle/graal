@@ -51,6 +51,7 @@ public final class AMD64ZeroMemoryOp extends AMD64LIRInstruction {
 
     @Temp protected Value pointerTemp;
     @Temp protected Value valueTemp;
+    @Temp protected Value lengthTemp;
 
     public AMD64ZeroMemoryOp(AMD64AddressValue pointer, RegisterValue length) {
         super(TYPE);
@@ -59,6 +60,7 @@ public final class AMD64ZeroMemoryOp extends AMD64LIRInstruction {
 
         this.pointerTemp = AMD64.rdi.asValue(LIRKind.value(AMD64Kind.QWORD));
         this.valueTemp = AMD64.rax.asValue(LIRKind.value(AMD64Kind.QWORD));
+        this.lengthTemp = AMD64.rcx.asValue(LIRKind.value(AMD64Kind.QWORD));
     }
 
     @Override
