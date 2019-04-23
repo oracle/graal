@@ -1263,7 +1263,19 @@ final class InstrumentationHandler {
             SourceSection previousParentSourceSection = null;
             if (instrumentable) {
                 computeRootBits(sourceSection);
+                Node oldNode = node;
                 node = materializeSyntaxNodes(node, sourceSection);
+                if (node != oldNode) {
+                    /*
+                     * We also need to traverse all old children on materialization. This is
+                     * necessary if the old node is still currently executing and does not yet see
+                     * the new node. Unfortunately we don't know reliably whether we are currently
+                     * executing that is why we always need to instrument the old node as well. This
+                     * is especially problematic for long or infinite loops in combination with
+                     * cancel events.
+                     */
+                    NodeUtil.forEachChild(oldNode, this);
+                }
                 visitInstrumentable(this.savedParent, this.savedParentSourceSection, node, sourceSection);
                 previousParent = this.savedParent;
                 previousParentSourceSection = this.savedParentSourceSection;
@@ -1333,12 +1345,12 @@ final class InstrumentationHandler {
             if (binding.isInstrumentedLeaf(providedTags, instrumentableNode, sourceSection) ||
                             binding.isChildInstrumentedLeaf(providedTags, root, parentInstrumentable, parentSourceSection, instrumentableNode, sourceSection)) {
                 if (TRACE) {
-                    traceFilterCheck("hit", sourceSection);
+                    traceFilterCheck("hit", instrumentableNode, sourceSection);
                 }
                 visitInstrumented(instrumentableNode, sourceSection);
             } else {
                 if (TRACE) {
-                    traceFilterCheck("miss", sourceSection);
+                    traceFilterCheck("miss", instrumentableNode, sourceSection);
                 }
             }
         }
@@ -1347,8 +1359,8 @@ final class InstrumentationHandler {
     }
 
     @SuppressWarnings("deprecation")
-    private static void traceFilterCheck(String result, SourceSection sourceSection) {
-        trace("  Filter %4s section:%s %n", result, sourceSection);
+    private static void traceFilterCheck(String result, Node instrumentableNode, SourceSection sourceSection) {
+        trace("  Filter %4s node:%s section:%s %n", result, instrumentableNode, sourceSection);
     }
 
     private abstract class AbstractBindingsVisitor extends AbstractNodeVisitor {
@@ -1400,7 +1412,7 @@ final class InstrumentationHandler {
                 if (binding.isInstrumentedFull(providedTags, root, instrumentableNode, sourceSection) ||
                                 binding.isChildInstrumentedFull(providedTags, root, parentInstrumentable, parentSourceSection, instrumentableNode, sourceSection)) {
                     if (TRACE) {
-                        traceFilterCheck("hit", sourceSection);
+                        traceFilterCheck("hit", instrumentableNode, sourceSection);
                     }
                     visitInstrumented(binding, instrumentableNode, sourceSection);
                     if (!visitForEachBinding) {
@@ -1408,7 +1420,7 @@ final class InstrumentationHandler {
                     }
                 } else {
                     if (TRACE) {
-                        traceFilterCheck("miss", sourceSection);
+                        traceFilterCheck("miss", instrumentableNode, sourceSection);
                     }
                 }
             }

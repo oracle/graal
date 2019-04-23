@@ -192,7 +192,7 @@ public class SuspensionFilterTest extends AbstractDebugTest {
             });
             expectSuspended((SuspendedEvent event) -> {
                 Assert.assertFalse(event.isLanguageContextInitialized());
-                checkState(event, 8, true, "STATEMENT(CONSTANT(1))").prepareContinue();
+                checkState(event, 8, true, "STATEMENT(CONSTANT(1))", "loopIndex0", String.valueOf(0), "loopResult0", "Null").prepareContinue();
             });
             expectDone();
         }
@@ -292,12 +292,12 @@ public class SuspensionFilterTest extends AbstractDebugTest {
             session.suspendNextExecution();
             startEval(source);
             expectSuspended((SuspendedEvent event) -> {
-                checkState(event, 3, true, "STATEMENT(CALL(intern))");
+                checkState(event, 3, true, "STATEMENT(CALL(intern))", "loopIndex0", String.valueOf(0), "loopResult0", "Null");
                 event.prepareStepInto(1);
             });
             // Step into does not go into the internal source:
             expectSuspended((SuspendedEvent event) -> {
-                checkState(event, 3, true, "STATEMENT(CALL(intern))");
+                checkState(event, 3, true, "STATEMENT(CALL(intern))", "loopIndex0", String.valueOf(1), "loopResult0", "42");
                 // do not ignore instenal sources again
                 session.setSteppingFilter(SuspensionFilter.newBuilder().includeInternal(true).build());
                 event.prepareStepInto(1);

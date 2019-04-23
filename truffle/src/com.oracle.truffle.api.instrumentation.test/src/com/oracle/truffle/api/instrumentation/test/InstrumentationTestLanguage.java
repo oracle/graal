@@ -72,6 +72,7 @@ import com.oracle.truffle.api.TruffleLanguage.Registration;
 import com.oracle.truffle.api.frame.Frame;
 import com.oracle.truffle.api.frame.FrameDescriptor;
 import com.oracle.truffle.api.frame.FrameSlot;
+import com.oracle.truffle.api.frame.FrameSlotTypeException;
 import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.api.instrumentation.AllocationReporter;
 import com.oracle.truffle.api.instrumentation.GenerateWrapper;
@@ -99,7 +100,9 @@ import com.oracle.truffle.api.library.ExportMessage.Ignore;
 import com.oracle.truffle.api.nodes.DirectCallNode;
 import com.oracle.truffle.api.nodes.ExecutableNode;
 import com.oracle.truffle.api.nodes.ExplodeLoop;
+import com.oracle.truffle.api.nodes.LoopNode;
 import com.oracle.truffle.api.nodes.Node;
+import com.oracle.truffle.api.nodes.RepeatingNode;
 import com.oracle.truffle.api.nodes.RootNode;
 import com.oracle.truffle.api.nodes.UnexpectedResultException;
 import com.oracle.truffle.api.source.Source;
@@ -469,7 +472,7 @@ public class InstrumentationTestLanguage extends TruffleLanguage<InstrumentConte
                 case "CALL_WITH":
                     return new CallWithNode(idents[0], parseIdent(idents[1]), childArray);
                 case "LOOP":
-                    return new LoopNode(parseIdent(idents[0]), childArray);
+                    return new WhileLoopNode(parseIdent(idents[0]), childArray);
                 case "BLOCK":
                     return new BlockNode(childArray);
                 case "BLOCK_NO_SOURCE_SECTION":
@@ -748,7 +751,7 @@ public class InstrumentationTestLanguage extends TruffleLanguage<InstrumentConte
             } else if (tag == StandardTags.TryBlockTag.class) {
                 return this instanceof TryNode;
             } else if (tag == LOOP) {
-                return this instanceof LoopNode;
+                return this instanceof WhileLoopNode;
             } else if (tag == BLOCK) {
                 return this instanceof BlockNode;
             } else if (tag == DEFINE) {
@@ -1553,34 +1556,103 @@ public class InstrumentationTestLanguage extends TruffleLanguage<InstrumentConte
 
     }
 
-    static class LoopNode extends InstrumentedNode {
+    static final class WhileLoopNode extends InstrumentedNode {
 
-        private final int loopCount;
-        private final boolean infinite;
+        @Child private LoopNode loop;
 
-        LoopNode(Object loopCount, BaseNode[] children) {
-            super(children);
-            boolean inf = false;
-            if (loopCount instanceof Double) {
-                if (((Double) loopCount).isInfinite()) {
-                    inf = true;
-                }
-                this.loopCount = ((Double) loopCount).intValue();
-            } else if (loopCount instanceof Integer) {
-                this.loopCount = (int) loopCount;
-            } else {
-                throw new LanguageError("Invalid loop count " + loopCount);
+        @CompilationFinal FrameSlot loopIndexSlot;
+        @CompilationFinal FrameSlot loopResultSlot;
+
+        WhileLoopNode(Object loopCount, BaseNode[] children) {
+            this.loop = Truffle.getRuntime().createLoopNode(new LoopConditionNode(loopCount, children));
+        }
+
+        FrameSlot getLoopIndex() {
+            if (loopIndexSlot == null) {
+                CompilerDirectives.transferToInterpreterAndInvalidate();
+                loopIndexSlot = getRootNode().getFrameDescriptor().findOrAddFrameSlot("loopIndex" + getLoopDepth());
             }
-            this.infinite = inf;
+            return loopIndexSlot;
+        }
+
+        FrameSlot getResult() {
+            if (loopResultSlot == null) {
+                CompilerDirectives.transferToInterpreterAndInvalidate();
+                loopResultSlot = getRootNode().getFrameDescriptor().findOrAddFrameSlot("loopResult" + getLoopDepth());
+            }
+            return loopResultSlot;
+        }
+
+        private int getLoopDepth() {
+            Node node = getParent();
+            int count = 0;
+            while (node != null) {
+                if (node instanceof WhileLoopNode) {
+                    count++;
+                }
+                node = node.getParent();
+            }
+            return count;
         }
 
         @Override
         public Object execute(VirtualFrame frame) {
-            Object returnValue = Null.INSTANCE;
-            for (int i = 0; infinite || i < loopCount; i++) {
-                returnValue = super.execute(frame);
+            frame.setObject(getResult(), Null.INSTANCE);
+            frame.setInt(getLoopIndex(), 0);
+            loop.executeLoop(frame);
+            try {
+                return frame.getObject(loopResultSlot);
+            } catch (FrameSlotTypeException e) {
+                CompilerDirectives.transferToInterpreter();
+                throw new AssertionError(e);
             }
-            return returnValue;
+        }
+
+        final class LoopConditionNode extends InstrumentedNode implements RepeatingNode {
+
+            private final int loopCount;
+            private final boolean infinite;
+
+            @Children BaseNode[] children;
+
+            LoopConditionNode(Object loopCount, BaseNode[] children) {
+                super(children);
+                boolean inf = false;
+                if (loopCount instanceof Double) {
+                    if (((Double) loopCount).isInfinite()) {
+                        inf = true;
+                    }
+                    this.loopCount = ((Double) loopCount).intValue();
+                } else if (loopCount instanceof Integer) {
+                    this.loopCount = (int) loopCount;
+                } else {
+                    throw new LanguageError("Invalid loop count " + loopCount);
+                }
+                this.infinite = inf;
+            }
+
+            @Override
+            public boolean isInstrumentable() {
+                return false;
+            }
+
+            public boolean executeRepeating(VirtualFrame frame) {
+                int i;
+                try {
+                    i = frame.getInt(loopIndexSlot);
+                } catch (FrameSlotTypeException e) {
+                    CompilerDirectives.transferToInterpreter();
+                    throw new AssertionError(e);
+                }
+                if (infinite || i < loopCount) {
+                    Object resultValue = super.execute(frame);
+                    frame.setInt(loopIndexSlot, i + 1);
+                    frame.setObject(loopResultSlot, resultValue);
+                    return true;
+                } else {
+                    return false;
+                }
+            }
         }
     }
 
@@ -1791,9 +1863,9 @@ public class InstrumentationTestLanguage extends TruffleLanguage<InstrumentConte
     }
 
     @ExportLibrary(InteropLibrary.class)
-    static final class Null implements TruffleObject {
+    public static final class Null implements TruffleObject {
 
-        static final Null INSTANCE = new Null();
+        public static final Null INSTANCE = new Null();
 
         private Null() {
         }
