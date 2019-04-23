@@ -35,6 +35,7 @@ import java.nio.file.attribute.PosixFilePermission;
 import java.nio.file.attribute.PosixFilePermissions;
 import java.util.ArrayList;
 import java.util.Comparator;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
 import java.util.stream.Stream;
@@ -58,21 +59,11 @@ public class PreRemoveProcess {
 
     private boolean dryRun;
     private boolean ignoreFailedDeletions;
-    private boolean removeBaseDir;
+    private Set<String> knownPaths;
 
     public PreRemoveProcess(Path instPath, Feedback fb) {
-        this.feedback = fb;
-
+        this.feedback = fb.withBundle(PreRemoveProcess.class);
         installPath = instPath;
-    }
-
-    public boolean isRemoveBaseDir() {
-        return removeBaseDir;
-    }
-
-    public PreRemoveProcess setRemoveBaseDir(boolean removeBaseDir) {
-        this.removeBaseDir = removeBaseDir;
-        return this;
     }
 
     public boolean isDryRun() {
@@ -102,7 +93,7 @@ public class PreRemoveProcess {
      * 
      * @throws IOException if deletion fails
      */
-    void run() throws IOException {
+    public void run() throws IOException {
         for (ComponentInfo ci : infos) {
             processComponent(ci);
         }
@@ -193,7 +184,9 @@ public class PreRemoveProcess {
         try (Stream<Path> paths = Files.walk(rootPath)) {
             paths.sorted(Comparator.reverseOrder()).forEach((p) -> {
                 try {
-                    deleteOneFile(p);
+                    if (shouldDeletePath(p)) {
+                        deleteOneFile(p);
+                    }
                 } catch (IOException ex) {
                     throw new UncheckedIOException(ex);
                 }
@@ -203,19 +196,28 @@ public class PreRemoveProcess {
         }
     }
 
+    private boolean shouldDeletePath(Path toDelete) {
+        Path rel;
+        try {
+            rel = installPath.relativize(toDelete);
+        } catch (IllegalArgumentException ex) {
+            // cannot relativize; avoid to delete such thing.
+            return false;
+        }
+        String relString = SystemUtils.toCommonPath(rel);
+        if (Files.isDirectory(toDelete)) {
+            relString += "/"; // NOI18N
+        }
+        return !knownPaths.contains(relString);
+    }
+
     void processComponent(ComponentInfo ci) throws IOException {
-        Path langParentPath = SystemUtils.fromCommonRelative(CommonConstants.LANGUAGE_PARENT);
         rebuildPolyglot |= ci.isPolyglotRebuild();
         for (String s : ci.getWorkingDirectories()) {
-            Path relPath = SystemUtils.fromCommonRelative(s);
-            if (langParentPath.equals(relPath.getParent()) && !removeBaseDir) {
-                return;
-            }
             Path p = installPath.resolve(SystemUtils.fromCommonRelative(s));
             feedback.verboseOutput("UNINSTALL_DeletingDirectoryRecursively", p);
-            if (ci.getWorkingDirectories().contains(s)) {
-                deleteContentsRecursively(p);
-            }
+            this.knownPaths = new HashSet<>(ci.getPaths());
+            deleteContentsRecursively(p);
         }
     }
 }
