@@ -205,7 +205,7 @@ public class ConfigurableClassInitialization implements ClassInitializationSuppo
 
     @Override
     public void rerun(Class<?> clazz, String reason) {
-        setKindForSubclasses(clazz, InitKind.RERUN, reason);
+        classInitializationConfiguration.insert(clazz.getTypeName(), InitKind.RERUN, reason);
         checkEagerInitialization(clazz);
 
         try {
