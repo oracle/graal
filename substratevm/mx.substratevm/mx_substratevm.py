@@ -64,6 +64,7 @@ GRAAL_COMPILER_FLAGS_BASE = [
     '-XX:-UseJVMCICompiler', # GR-8656: Do not run with Graal as JIT compiler until libgraal is available.
     '-Dtruffle.TrustAllTruffleRuntimeProviders=true', # GR-7046
     '-Dtruffle.TruffleRuntime=com.oracle.truffle.api.impl.DefaultTruffleRuntime', # use truffle interpreter as fallback
+    '-Dgraalvm.ForcePolyglotInvalid=true', # use PolyglotInvalid PolyglotImpl fallback (when --tool:truffle is not used)
     '-Dgraalvm.locatorDisabled=true',
 ]
 
@@ -161,14 +162,15 @@ clibraryDists = ['SVM_HOSTED_NATIVE']
 def _host_os_supported():
     return mx.get_os() == 'linux' or mx.get_os() == 'darwin' or mx.get_os() == 'windows'
 
-def _unittest_config_participant(config):
+def svm_unittest_config_participant(config):
     vmArgs, mainClass, mainClassArgs = config
     # Run the VM in a mode where application/test classes can
     # access JVMCI loaded classes.
     vmArgs = GRAAL_COMPILER_FLAGS + vmArgs
     return (vmArgs, mainClass, mainClassArgs)
 
-mx_unittest.add_config_participant(_unittest_config_participant)
+if mx.primary_suite() == suite:
+    mx_unittest.add_config_participant(svm_unittest_config_participant)
 
 def classpath(args):
     if not args:

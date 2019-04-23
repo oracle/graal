@@ -643,18 +643,22 @@ public final class Engine implements AutoCloseable {
                 Class<?> servicesClass = null;
                 boolean useContextClassLoader = false;
 
-                if (JDK8_OR_EARLIER) {
-                    try {
-                        servicesClass = Class.forName("jdk.vm.ci.services.Services");
-                    } catch (ClassNotFoundException e) {
-                    }
-                    if (servicesClass != null) {
+                if (Boolean.getBoolean("graalvm.ForcePolyglotInvalid")) {
+                    engine = createInvalidPolyglotImpl();
+                } else {
+                    if (JDK8_OR_EARLIER) {
                         try {
-                            Method m = servicesClass.getDeclaredMethod("loadSingle", Class.class, boolean.class);
-                            engine = (AbstractPolyglotImpl) m.invoke(null, AbstractPolyglotImpl.class, false);
-                        } catch (Throwable e) {
-                            // Fail fast for other errors
-                            throw new InternalError(e);
+                            servicesClass = Class.forName("jdk.vm.ci.services.Services");
+                        } catch (ClassNotFoundException e) {
+                        }
+                        if (servicesClass != null) {
+                            try {
+                                Method m = servicesClass.getDeclaredMethod("loadSingle", Class.class, boolean.class);
+                                engine = (AbstractPolyglotImpl) m.invoke(null, AbstractPolyglotImpl.class, false);
+                            } catch (Throwable e) {
+                                // Fail fast for other errors
+                                throw new InternalError(e);
+                            }
                         }
                     }
                 }
@@ -784,7 +788,7 @@ public final class Engine implements AutoCloseable {
         private static RuntimeException noPolyglotImplementationFound() {
             String suggestion;
             if (AOT) {
-                suggestion = "Make sure a language is added to the classpath (e.g., native-image --js).";
+                suggestion = "Make sure a language is added to the classpath (e.g., native-image --language:js).";
             } else {
                 suggestion = "Make sure the truffle-api.jar is on the classpath.";
             }
