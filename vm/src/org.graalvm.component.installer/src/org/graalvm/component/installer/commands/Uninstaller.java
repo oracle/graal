@@ -150,8 +150,7 @@ public class Uninstaller {
     void uninstallContent() throws IOException {
         preRemove = new PreRemoveProcess(installPath, feedback)
                         .setDryRun(isDryRun())
-                        .setIgnoreFailedDeletions(isIgnoreFailedDeletions())
-                        .setRemoveBaseDir(true);
+                        .setIgnoreFailedDeletions(isIgnoreFailedDeletions());
         // remove all the files occupied by the component
         O: for (String p : componentInfo.getPaths()) {
             if (preservePaths.contains(p)) {

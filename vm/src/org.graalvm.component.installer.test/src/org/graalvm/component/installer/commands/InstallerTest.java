@@ -956,11 +956,24 @@ public class InstallerTest extends TestBase {
         installer.validateSymlinks();
     }
 
-    public void testVerifyCatalogMatchingComponent() throws Exception {
-        fail("TBD");
-    }
+    /**
+     * Checks that installer blocks files in component storage directory, but not in subdirs.
+     */
+    @Test
+    public void testComponentRegistryNotWrittenTo() throws Exception {
+        setupComponentInstall("trufflerubyWork.jar");
+        installer.setSymlinks(loader.loadSymlinks());
+        installer.setPermissions(loader.loadPermissions());
+        installer.install();
 
-    public void testVerifyCatalogInvalidComponent() throws Exception {
-        fail("TBD");
+        Path p = targetPath.resolve(SystemUtils.fromCommonString(CommonConstants.PATH_COMPONENT_STORAGE));
+        Path rubyMeta = p.resolve("org.graalvm.ruby.meta");
+        Path other = p.resolve("other");
+        Path pythonList = p.resolve("python.list");
+
+        assertFalse(Files.exists(rubyMeta));
+        assertFalse(Files.exists(pythonList));
+
+        assertTrue(Files.exists(other));
     }
 }

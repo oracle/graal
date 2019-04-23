@@ -150,6 +150,7 @@ public class ListTest extends CommandTestBase {
                         new ComponentInfo("org.graalvm.python", "Python", Version.fromString("1.0.0")));
 
         ListInstalledCommand inst = new ListInstalledCommand() {
+            @Override
             boolean process() {
                 super.process();
                 // block the actual print
@@ -206,6 +207,7 @@ public class ListTest extends CommandTestBase {
         this.registry = new CatalogContents(this, remoteStorage, localRegistry);
 
         AvailableCommand inst = new AvailableCommand() {
+            @Override
             boolean process() {
                 super.process();
                 // block the actual print

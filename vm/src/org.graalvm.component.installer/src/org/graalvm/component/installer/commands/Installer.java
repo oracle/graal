@@ -238,7 +238,17 @@ public class Installer extends AbstractInstaller {
     }
 
     void unpackFiles() throws IOException {
+        final String storagePrefix = CommonConstants.PATH_COMPONENT_STORAGE + "/"; // NOI18N
         for (Archive.FileEntry entry : archive) {
+            String path = entry.getName();
+            if (path.startsWith(storagePrefix) && path.length() > storagePrefix.length()) {
+                // disallow to unpack files in the component database (but permit subdirs). Some
+                // tools may write there, but
+                // GU will manage the storage itself.
+                if (path.indexOf('/', storagePrefix.length()) == -1) {
+                    continue;
+                }
+            }
             installOneEntry(entry);
         }
     }
