@@ -57,12 +57,13 @@ public class TraceProcessorWriterAdapter extends TraceWriter {
     }
 
     private List<?> arraysToLists(Object[] array) {
-        for (int i = 0; i < array.length; i++) {
-            if (array[i] instanceof Object[]) {
-                array[i] = arraysToLists((Object[]) array[i]);
+        Object[] newArray = Arrays.copyOf(array, array.length);
+        for (int i = 0; i < newArray.length; i++) {
+            if (newArray[i] instanceof Object[]) {
+                newArray[i] = arraysToLists((Object[]) newArray[i]);
             }
         }
-        return Arrays.asList(array);
+        return Arrays.asList(newArray);
     }
 
     @Override
