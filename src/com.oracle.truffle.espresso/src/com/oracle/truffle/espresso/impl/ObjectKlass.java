@@ -171,14 +171,16 @@ public final class ObjectKlass extends Klass {
         return initState == INITIALIZED;
     }
 
-    @Override
-    public void initialize() {
-        if (!isInitialized()) {
+    private boolean isPrepared() {
+        return initState == PREPARED;
+    }
+
+    private synchronized void actualInit() {
+        if (!isInitialized()) { // Check under lock
             CompilerDirectives.transferToInterpreterAndInvalidate();
             if (getSuperKlass() != null) {
                 getSuperKlass().initialize();
             }
-            initState = INITIALIZED;
 
             /**
              * Spec fragment: Then, initialize each final static field of C with the constant value
@@ -246,12 +248,23 @@ public final class ObjectKlass extends Klass {
                     }
                 }
             }
-
+            initState = PREPARED;
             Method clinit = getClassInitializer();
             if (clinit != null) {
                 clinit.getCallTarget().call();
             }
+            initState = INITIALIZED;
             assert isInitialized();
+        }
+    }
+
+    @Override
+    public void initialize() {
+        if (isPrepared()) {
+            CompilerDirectives.transferToInterpreterAndInvalidate();
+            synchronized (this) {}
+        } else if (!isInitialized()) { // Skip synchronization in this case
+            actualInit();
         }
     }
 

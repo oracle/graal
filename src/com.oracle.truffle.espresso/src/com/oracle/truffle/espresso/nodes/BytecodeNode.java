@@ -1065,10 +1065,6 @@ public class BytecodeNode extends EspressoBaseNode implements CustomNodeCount {
                         case INVOKESPECIAL: // fall through
                         case INVOKESTATIC: // fall through
                         case INVOKEINTERFACE:
-                            // TODO(garcia): Render this thread-safe.
-                            /* Current issue: two thread are there, seeing an invokeInterface.
-                             * One completes the quickening before the other enters method resolution. The other then obtains the CPI of the quicknode.
-                             */
                             top += quickenInvoke(frame, top, curBCI, curOpcode);
                             break;
 
@@ -1783,6 +1779,9 @@ public class BytecodeNode extends EspressoBaseNode implements CustomNodeCount {
             CompilerDirectives.transferToInterpreter();
             // TODO(peterssen): Profile whether null was hit or not.
             Meta meta = getMethod().getContext().getMeta();
+            if (DEBUG_GENERAL) {
+                System.err.println("null appeared in: " + this);
+            }
             throw meta.throwEx(meta.NullPointerException);
         }
         return value;

@@ -128,7 +128,7 @@ public final class Method implements ModifiersProvider, ContextAccess {
     Method(Method method) {
         this.declaringKlass = method.declaringKlass;
         // TODO(peterssen): Custom constant pool for methods is not supported.
-        this.pool = declaringKlass.getConstantPool();
+        this.pool = (RuntimeConstantPool)method.getConstantPool();
 
         this.name = method.linkedMethod.getName();
         this.linkedMethod = method.linkedMethod;
