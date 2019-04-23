@@ -193,12 +193,15 @@ abstract class LibFFIType {
                 case VOID:
                     return null;
                 case UINT8:
+                    return buffer.getInt8() & (short) 0xFF;
                 case SINT8:
                     return buffer.getInt8();
                 case UINT16:
+                    return buffer.getInt16() & 0xFFFF;
                 case SINT16:
                     return buffer.getInt16();
                 case UINT32:
+                    return buffer.getInt32() & 0xFFFF_FFFFL;
                 case SINT32:
                     return buffer.getInt32();
                 case UINT64:
@@ -242,12 +245,15 @@ abstract class LibFFIType {
                 case VOID:
                     return NativePointer.create(ctx.language, 0);
                 case UINT8:
+                    return primitive & (short) 0xFF;
                 case SINT8:
                     return (byte) primitive;
                 case UINT16:
+                    return primitive & 0xFFFF;
                 case SINT16:
                     return (short) primitive;
                 case UINT32:
+                    return primitive & 0xFFFF_FFFFL;
                 case SINT32:
                     return (int) primitive;
                 case UINT64:
