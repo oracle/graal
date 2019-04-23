@@ -126,9 +126,9 @@ final class InstrumentationHandler {
     private final Collection<EventBinding.Source<?>> executionBindings = new EventBindingList<>(8);
     private final Collection<EventBinding.Source<?>> sourceSectionBindings = new EventBindingList<>(8);
     private final Collection<EventBinding.Source<?>> sourceBindings = new EventBindingList<>(8);
-    private final ThreadLocal<FindSourcesVisitor> findSourcesVisitor = new ThreadLocal<>();
+    private final ThreadLocal<FindSourcesVisitor> findSourcesVisitor = new ThreadLocalSourcesVisitor();
     private final Collection<EventBinding.Source<?>> sourceExecutedBindings = new EventBindingList<>(8);
-    private final ThreadLocal<FindSourcesVisitor> findSourcesExecutedVisitor = new ThreadLocal<>();
+    private final ThreadLocal<FindSourcesVisitor> findSourcesExecutedVisitor = new ThreadLocalExecutedSourcesVisitor();
     private final Collection<EventBinding<? extends OutputStream>> outputStdBindings = new EventBindingList<>(1);
     private final Collection<EventBinding<? extends OutputStream>> outputErrBindings = new EventBindingList<>(1);
     private final Collection<EventBinding.Allocation<? extends AllocationListener>> allocationBindings = new EventBindingList<>(2);
@@ -161,24 +161,6 @@ final class InstrumentationHandler {
         return sourceVM;
     }
 
-    private FindSourcesVisitor getFindSourcesVisitor() {
-        FindSourcesVisitor visitor = findSourcesVisitor.get();
-        if (visitor == null) {
-            visitor = new FindSourcesVisitor(sources, sourcesListRef);
-            findSourcesVisitor.set(visitor);
-        }
-        return visitor;
-    }
-
-    private FindSourcesVisitor getFindSourcesExecutedVisitor() {
-        FindSourcesVisitor visitor = findSourcesExecutedVisitor.get();
-        if (visitor == null) {
-            visitor = new FindSourcesVisitor(sourcesExecuted, sourcesExecutedListRef);
-            findSourcesExecutedVisitor.set(visitor);
-        }
-        return visitor;
-    }
-
     void onLoad(RootNode root) {
         if (!AccessorInstrumentHandler.nodesAccess().isInstrumentable(root)) {
             return;
@@ -190,7 +172,7 @@ final class InstrumentationHandler {
                 // we'll add to the sourcesList, so it needs to be initialized
                 lazyInitializeSourcesList();
 
-                FindSourcesVisitor visitor = getFindSourcesVisitor();
+                FindSourcesVisitor visitor = findSourcesVisitor.get();
                 SourceSection sourceSection = root.getSourceSection();
                 if (sourceSection != null) {
                     visitor.adoptSource(sourceSection.getSource());
@@ -276,6 +258,24 @@ final class InstrumentationHandler {
 
     }
 
+    private class ThreadLocalSourcesVisitor extends ThreadLocal<FindSourcesVisitor> {
+
+        @Override
+        protected FindSourcesVisitor initialValue() {
+            return new FindSourcesVisitor(sources, sourcesListRef);
+        }
+
+    }
+
+    private class ThreadLocalExecutedSourcesVisitor extends ThreadLocal<FindSourcesVisitor> {
+
+        @Override
+        protected FindSourcesVisitor initialValue() {
+            return new FindSourcesVisitor(sourcesExecuted, sourcesExecutedListRef);
+        }
+
+    }
+
     void onFirstExecution(RootNode root) {
         if (!AccessorInstrumentHandler.nodesAccess().isInstrumentable(root)) {
             return;
@@ -291,7 +291,7 @@ final class InstrumentationHandler {
                 if (RootNodeBits.isNoSourceSection(rootBits)) {
                     rootSources = null;
                 } else {
-                    FindSourcesVisitor visitor = getFindSourcesExecutedVisitor();
+                    FindSourcesVisitor visitor = findSourcesExecutedVisitor.get();
                     SourceSection sourceSection = root.getSourceSection();
                     if (RootNodeBits.isSameSource(rootBits) && sourceSection != null) {
                         Source source = sourceSection.getSource();
@@ -606,7 +606,7 @@ final class InstrumentationHandler {
                                     sourceList.add(source);
                                 }
                             } else {
-                                FindSourcesVisitor visitor = getFindSourcesVisitor();
+                                FindSourcesVisitor visitor = findSourcesVisitor.get();
                                 if (sourceSection != null) {
                                     visitor.adoptSource(sourceSection.getSource());
                                 }
@@ -652,7 +652,7 @@ final class InstrumentationHandler {
                                     sourcesExecutedList.add(source);
                                 }
                             } else {
-                                FindSourcesVisitor visitor = getFindSourcesExecutedVisitor();
+                                FindSourcesVisitor visitor = findSourcesExecutedVisitor.get();
                                 if (sourceSection != null) {
                                     visitor.adoptSource(sourceSection.getSource());
                                 }
