@@ -40,19 +40,29 @@
  */
 package com.oracle.truffle.api.test.polyglot;
 
+import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertFalse;
+import static org.junit.Assert.assertTrue;
+import static org.junit.Assert.fail;
+
 import java.lang.annotation.ElementType;
 import java.lang.annotation.Retention;
 import java.lang.annotation.RetentionPolicy;
 import java.lang.annotation.Target;
 import java.util.Arrays;
+
 import org.graalvm.polyglot.Context;
 import org.graalvm.polyglot.HostAccess;
+import org.graalvm.polyglot.HostAccess.Export;
 import org.graalvm.polyglot.PolyglotException;
 import org.graalvm.polyglot.Value;
 import org.junit.Assert;
-import static org.junit.Assert.assertEquals;
-import static org.junit.Assert.fail;
 import org.junit.Test;
+
+import com.oracle.truffle.api.interop.InteropException;
+import com.oracle.truffle.api.interop.InteropLibrary;
+import com.oracle.truffle.api.interop.UnknownIdentifierException;
+import com.oracle.truffle.api.interop.UnsupportedMessageException;
 
 public class ExposeToGuestTest {
     @Test
@@ -270,6 +280,68 @@ public class ExposeToGuestTest {
             }
         };
         return foo;
+    }
+
+    public static class FieldAccess {
+
+        public static Object staticField = "42";
+        public static final Object finalField = "42";
+
+        @Export public static Object exportedStaticField = "42";
+        @Export public static final Object exportedField = "42";
+    }
+
+    @Test
+    public void staticFieldAccessIsForbidden() throws InteropException {
+        Context.Builder builder = Context.newBuilder();
+        builder.allowHostClassLookup((c) -> c.endsWith("FieldAccess"));
+        Context c = builder.build();
+        c.initialize(ProxyLanguage.ID);
+        c.enter();
+        try {
+            Object hostLookup = ProxyLanguage.getCurrentContext().getEnv().lookupHostSymbol(FieldAccess.class.getName());
+            assertMember(hostLookup, "staticField", false, false);
+            assertMember(hostLookup, "finalField", false, false);
+            assertMember(hostLookup, "exportedStaticField", true, true);
+            assertMember(hostLookup, "exportedField", true, false);
+        } finally {
+            c.leave();
+            c.close();
+        }
+
+    }
+
+    private static void assertMember(Object object, String member, boolean readable, boolean modifiable) throws InteropException {
+        InteropLibrary interop = InteropLibrary.getFactory().getUncached();
+        assertTrue(interop.hasMembers(object));
+        assertEquals(readable, interop.isMemberReadable(object, member));
+        assertEquals(modifiable, interop.isMemberModifiable(object, member));
+        assertFalse(interop.isMemberInsertable(object, member));
+        assertFalse(interop.isMemberRemovable(object, member));
+
+        if (readable) {
+            assertEquals("42", interop.readMember(object, member));
+        } else {
+            try {
+                interop.readMember(object, member);
+                fail();
+            } catch (UnknownIdentifierException e) {
+            }
+        }
+        if (modifiable) {
+            interop.writeMember(object, member, "42");
+        } else {
+            try {
+                interop.writeMember(object, member, "43");
+                fail();
+            } catch (UnknownIdentifierException e) {
+            }
+        }
+        try {
+            interop.removeMember(object, member);
+            fail();
+        } catch (UnsupportedMessageException e) {
+        }
     }
 
 }
