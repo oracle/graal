@@ -165,7 +165,7 @@ public class ConfigurableClassInitialization implements ClassInitializationSuppo
         classInitializationConfiguration.insert(name, InitKind.DELAY, reason);
         Class<?> clazz = loader.findClassByName(name, false);
         if (clazz != null) {
-            initializeAtBuildTime(name, reason);
+            initializeAtRunTime(clazz, reason);
         }
     }
 
