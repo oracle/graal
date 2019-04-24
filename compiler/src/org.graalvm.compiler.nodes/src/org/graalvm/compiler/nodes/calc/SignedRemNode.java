@@ -84,7 +84,7 @@ public class SignedRemNode extends IntegerDivRemNode implements LIRLowerable {
             IntegerStamp yStamp = (IntegerStamp) forY.stamp(view);
             if (constY < 0 && constY != CodeUtil.minValue(yStamp.getBits())) {
                 Stamp newStamp = IntegerStamp.OPS.getRem().foldStamp(forX.stamp(view), forY.stamp(view));
-                return canonical(null, forX, ConstantNode.forIntegerStamp(yStamp, -constY), zeroCheck, newStamp, view, tool);
+                return canonical(self, forX, ConstantNode.forIntegerStamp(yStamp, -constY), zeroCheck, newStamp, view, tool);
             }
 
             if (constY == 1) {
@@ -104,7 +104,11 @@ public class SignedRemNode extends IntegerDivRemNode implements LIRLowerable {
                 }
             }
         }
-        return self != null ? self : new SignedRemNode(forX, forY, zeroCheck);
+        if (self != null && self.x == forX && self.y == forY) {
+            return self;
+        } else {
+            return new SignedRemNode(forX, forY, zeroCheck);
+        }
     }
 
     private static boolean allUsagesCompareAgainstZero(SignedRemNode self) {
