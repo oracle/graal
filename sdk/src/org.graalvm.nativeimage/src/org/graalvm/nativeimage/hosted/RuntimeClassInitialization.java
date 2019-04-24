@@ -46,21 +46,26 @@ import org.graalvm.nativeimage.Platforms;
 import org.graalvm.nativeimage.impl.RuntimeClassInitializationSupport;
 
 /**
- * This class provides methods that can be called during native image building to configure class
- * initialization behavior. By default, all classes that are seen as reachable for a native image
- * are initialized during image building, i.e., the class initialization method is executed during
- * image building and is not seen as a reachable method at runtime. But for some classes, it is
- * necessary to execute the class initialization method at runtime, e.g., when the class
- * initialization method loads shared libraries ({@code System.loadLibrary}), allocates native
- * memory ({@code ByteBuffer.allocateDirect}), or starts threads.
+ * This class provides methods that can be called during native-image building to configure class
+ * initialization behavior. By default, all JDK classes that are seen as reachable for a native
+ * image are initialized during image building, i.e. the class initialization method is executed
+ * during image building and is not seen as a reachable method at runtime. Application classes, on
+ * the other hand, are initialized during image building if they can be proven safe. Unsafe classes,
+ * e.g. ones that create threads, will be initialized at image run time.
+ *
+ * For classes that can't be proven safe, it is sometimes beneficial to ensure initialization during
+ * image building, and for some that are safe, it is still necessary to initialize at runtime (e.g.,
+ * the order of initializer execution matters).
  * <p>
  * This class provides two different registration methods: Classes registered via
  * {@link #initializeAtRunTime} are not initialized at all during image generation, and only
- * initialized at runtime, i.e., the class initializer is executed once at runtime.
- * <p>
- * Registering a class automatically registers all subclasses too. It would violate the class
- * initialization specification to have an uninitialized class that has an initialized subclass.
- * <p>
+ * initialized at runtime, i.e., the class initializer is executed once at runtime. Classes
+ * registered via {@link #initializeAtBuildTime} will be initialized during image building.
+ *
+ * It is also possible define initialization for whole packages with
+ * {@link #initializeAtRunTime(String[])} and {@link #initializeAtBuildTime(String[])}. The rules
+ * for packages can be further refined by using methods for individual classes.
+ *
  * Initializing classes at runtime comes with some costs and restrictions:
  * <ul>
  * <li>The class initialization status must be checked before a static field access, static method
