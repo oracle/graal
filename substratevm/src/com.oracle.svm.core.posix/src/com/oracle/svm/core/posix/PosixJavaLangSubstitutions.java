@@ -35,6 +35,7 @@ import java.util.concurrent.Executor;
 import com.oracle.svm.core.SubstrateOptions;
 import com.oracle.svm.core.posix.headers.Unistd;
 import org.graalvm.nativeimage.ImageSingletons;
+import org.graalvm.compiler.serviceprovider.JavaVersionUtil;
 import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.Platforms;
 import org.graalvm.nativeimage.StackValue;
@@ -70,7 +71,9 @@ class PosixJavaLangSubstituteFeature implements Feature {
 
     @Override
     public void duringSetup(DuringSetupAccess access) {
-        ImageSingletons.lookup(RuntimeClassInitializationSupport.class).rerunInitialization(access.findClassByName("java.lang.UNIXProcess"), "required for substitutions");
+        if (JavaVersionUtil.Java8OrEarlier) {
+            ImageSingletons.lookup(RuntimeClassInitializationSupport.class).rerunInitialization(access.findClassByName("java.lang.UNIXProcess"), "required for substitutions");
+        }
     }
 }
 
