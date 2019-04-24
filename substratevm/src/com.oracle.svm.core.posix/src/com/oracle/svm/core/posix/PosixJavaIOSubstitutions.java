@@ -102,6 +102,7 @@ import org.graalvm.nativeimage.c.type.CCharPointer;
 import org.graalvm.nativeimage.c.type.CIntPointer;
 import org.graalvm.nativeimage.c.type.CTypeConversion;
 import org.graalvm.nativeimage.c.type.CTypeConversion.CCharPointerHolder;
+import org.graalvm.nativeimage.impl.InternalPlatform;
 import org.graalvm.word.SignedWord;
 import org.graalvm.word.WordFactory;
 
@@ -128,11 +129,11 @@ import com.oracle.svm.core.snippets.KnownIntrinsics;
 import com.oracle.svm.core.log.Log;
 import com.oracle.svm.core.util.VMError;
 import com.oracle.svm.hosted.jni.JNIRuntimeAccess;
-import org.graalvm.nativeimage.RuntimeClassInitialization;
+import org.graalvm.nativeimage.hosted.RuntimeClassInitialization;
 import org.graalvm.nativeimage.c.function.CLibrary;
-import org.graalvm.nativeimage.Feature;
+import org.graalvm.nativeimage.hosted.Feature;
 
-@Platforms({Platform.LINUX_JNI.class, Platform.DARWIN_JNI.class})
+@Platforms({InternalPlatform.LINUX_JNI.class, InternalPlatform.DARWIN_JNI.class})
 @AutomaticFeature
 @CLibrary("java")
 class PosixJavaIOSubstituteFeature implements Feature {
@@ -876,7 +877,7 @@ class Util_java_io_Console_JDK8OrEarlier {
 }
 
 @TargetClass(java.io.FileInputStream.class)
-@Platforms({Platform.LINUX_JNI.class, Platform.DARWIN_JNI.class})
+@Platforms({InternalPlatform.LINUX_JNI.class, InternalPlatform.DARWIN_JNI.class})
 final class Target_java_io_FileInputStream_jni {
 
     @Alias
@@ -884,7 +885,7 @@ final class Target_java_io_FileInputStream_jni {
 }
 
 @TargetClass(java.io.RandomAccessFile.class)
-@Platforms({Platform.LINUX_JNI.class, Platform.DARWIN_JNI.class})
+@Platforms({InternalPlatform.LINUX_JNI.class, InternalPlatform.DARWIN_JNI.class})
 final class Target_java_io_RandomAccessFile_jni {
 
     @Alias
@@ -892,7 +893,7 @@ final class Target_java_io_RandomAccessFile_jni {
 }
 
 @TargetClass(java.io.FileDescriptor.class)
-@Platforms({Platform.LINUX_JNI.class, Platform.DARWIN_JNI.class})
+@Platforms({InternalPlatform.LINUX_JNI.class, InternalPlatform.DARWIN_JNI.class})
 final class Target_java_io_FileDescriptor_jni {
 
     @Alias
@@ -905,7 +906,7 @@ final class Target_java_io_FileDescriptor_jni {
 }
 
 @TargetClass(java.io.FileOutputStream.class)
-@Platforms({Platform.LINUX_JNI.class, Platform.DARWIN_JNI.class})
+@Platforms({InternalPlatform.LINUX_JNI.class, InternalPlatform.DARWIN_JNI.class})
 final class Target_java_io_FileOutputStream_jni {
 
     @Alias
@@ -913,21 +914,21 @@ final class Target_java_io_FileOutputStream_jni {
 }
 
 @TargetClass(className = "java.io.UnixFileSystem")
-@Platforms({Platform.LINUX_JNI.class, Platform.DARWIN_JNI.class})
+@Platforms({InternalPlatform.LINUX_JNI.class, InternalPlatform.DARWIN_JNI.class})
 final class Target_java_io_UnixFileSystem_jni {
 
     @Alias
     static native void initIDs();
 }
 
-@Platforms({Platform.LINUX.class, Platform.LINUX_JNI.class, Platform.DARWIN.class, Platform.DARWIN_JNI.class})
+@Platforms({Platform.LINUX.class, InternalPlatform.LINUX_JNI.class, Platform.DARWIN.class, InternalPlatform.DARWIN_JNI.class})
 public final class PosixJavaIOSubstitutions {
 
     /** Private constructor: No instances. */
     private PosixJavaIOSubstitutions() {
     }
 
-    @Platforms({Platform.LINUX_JNI.class, Platform.DARWIN_JNI.class})
+    @Platforms({InternalPlatform.LINUX_JNI.class, InternalPlatform.DARWIN_JNI.class})
     public static boolean initIDs() {
         try {
             /*

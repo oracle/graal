@@ -52,6 +52,7 @@ import org.graalvm.polyglot.Language;
 import org.graalvm.polyglot.impl.AbstractPolyglotImpl.AbstractLanguageImpl;
 
 import com.oracle.truffle.api.Assumption;
+import com.oracle.truffle.api.CompilerAsserts;
 import com.oracle.truffle.api.CompilerDirectives.CompilationFinal;
 import com.oracle.truffle.api.Truffle;
 import com.oracle.truffle.api.TruffleLanguage;
@@ -87,6 +88,8 @@ final class PolyglotLanguage extends AbstractLanguageImpl implements com.oracle.
     final Assumption singleInstance = Truffle.getRuntime().createAssumption("Single language instance per engine.");
     private boolean firstInstance = true;
 
+    @CompilationFinal volatile Class<?> contextClass;
+
     PolyglotLanguage(PolyglotEngineImpl engine, LanguageCache cache, int index, boolean host, RuntimeException initError) {
         super(engine.impl);
         this.engine = engine;
@@ -104,6 +107,17 @@ final class PolyglotLanguage extends AbstractLanguageImpl implements com.oracle.
 
     PolyglotLanguageContext getCurrentLanguageContext() {
         return PolyglotContextImpl.requireContext().contexts[index];
+    }
+
+    void initializeContextClass(Object contextImpl) {
+        CompilerAsserts.neverPartOfCompilation();
+        Class<?> newClass = contextImpl == null ? Void.class : contextImpl.getClass();
+        Class<?> currentClass = contextClass;
+        if (currentClass == null) {
+            contextClass = newClass;
+        } else if (currentClass != newClass) {
+            throw new IllegalStateException(String.format("Unstable context class expected %s got %s.", newClass, currentClass));
+        }
     }
 
     boolean dependsOn(PolyglotLanguage otherLanguage) {

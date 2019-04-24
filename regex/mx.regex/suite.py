@@ -29,7 +29,7 @@ suite = {
 
   "name" : "regex",
 
-  "version" : "1.0.0-rc16",
+  "version" : "1.0.0-rc17",
   "release" : False,
   "groupId" : "org.graalvm.regex",
   "url" : "http://www.graalvm.org/",
@@ -85,6 +85,7 @@ suite = {
         "com.oracle.truffle.regex",
         "mx:JUNIT",
       ],
+      "annotationProcessors" : ["truffle:TRUFFLE_DSL_PROCESSOR"],
       "checkstyle" : "com.oracle.truffle.regex",
       "javaCompliance" : "8+",
       "workingSets" : "Truffle,Regex",

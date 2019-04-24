@@ -32,7 +32,7 @@ import java.util.function.Consumer;
 
 import org.graalvm.compiler.options.Option;
 import org.graalvm.compiler.options.OptionType;
-import org.graalvm.nativeimage.Feature;
+import org.graalvm.nativeimage.hosted.Feature;
 
 import com.oracle.graal.pointsto.constraints.UnsupportedFeatureException;
 import com.oracle.graal.pointsto.meta.AnalysisMetaAccess;
@@ -51,7 +51,7 @@ import com.oracle.svm.core.option.SubstrateOptionsParser;
 import com.oracle.svm.core.util.UserError;
 import com.oracle.svm.hosted.FeatureImpl;
 import com.oracle.svm.hosted.NativeImageOptions;
-import com.oracle.svm.hosted.meta.HostedType;
+import com.oracle.svm.hosted.analysis.Inflation;
 import com.oracle.svm.hosted.meta.MethodPointer;
 import com.oracle.svm.hosted.phases.SubstrateClassInitializationPlugin;
 
@@ -281,7 +281,7 @@ public class ClassInitializationFeature implements Feature {
          * We call getDeclaredMethods() directly on the wrapped type. We avoid calling it on the
          * AnalysisType because it resolves all the methods in the AnalysisUniverse.
          */
-        for (ResolvedJavaMethod method : toWrappedType(type).getDeclaredMethods()) {
+        for (ResolvedJavaMethod method : Inflation.toWrappedType(type).getDeclaredMethods()) {
             if (method.isDefault()) {
                 assert !Modifier.isStatic(method.getModifiers()) : "Default method that is static?";
                 return true;
@@ -289,15 +289,4 @@ public class ClassInitializationFeature implements Feature {
         }
         return false;
     }
-
-    private static ResolvedJavaType toWrappedType(ResolvedJavaType type) {
-        if (type instanceof AnalysisType) {
-            return ((AnalysisType) type).getWrappedWithoutResolve();
-        } else if (type instanceof HostedType) {
-            return ((HostedType) type).getWrapped().getWrappedWithoutResolve();
-        } else {
-            return type;
-        }
-    }
-
 }

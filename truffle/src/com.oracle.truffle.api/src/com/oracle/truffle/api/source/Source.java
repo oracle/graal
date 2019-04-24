@@ -188,8 +188,10 @@ public abstract class Source {
     public abstract String getName();
 
     /**
-     * The fully qualified name of the source. In case this source originates from a {@link File},
-     * then the default path is the normalized, {@link File#getCanonicalPath() canonical path}.
+     * The fully qualified name of the source. In case this source originates from a {@link File} or
+     * {@link TruffleFile}, then the path is the normalized, {@link File#getCanonicalPath()
+     * canonical path} for absolute files, or the relative path otherwise. If the source originates
+     * from an {@link URL}, then it's the path component of the URL.
      *
      * @since 0.8 or earlier
      */
@@ -766,8 +768,11 @@ public abstract class Source {
     }
 
     /**
-     * Creates a new character based source from a character sequence. The given characters must not
-     * mutate after they were accessed for the first time.
+     * Creates a new character based literal source from a character sequence. The given characters
+     * must not mutate after they were accessed for the first time.
+     * <p>
+     * Use this method for sources that do originate from a literal. For file or URL sources use the
+     * appropriate builder constructor and {@link SourceBuilder#content(CharSequence)}.
      * <p>
      * Example usage: {@link SourceSnippets#fromAString}
      *
@@ -782,8 +787,11 @@ public abstract class Source {
     }
 
     /**
-     * Creates a new byte based source from a byte sequence. The given bytes must not mutate after
-     * they were accessed for the first time.
+     * Creates a new byte based literal source from a byte sequence. The given bytes must not mutate
+     * after they were accessed for the first time.
+     * <p>
+     * Use this method for sources that do originate from a literal. For file or URL sources use the
+     * appropriate builder constructor and {@link SourceBuilder#content(CharSequence)}.
      * <p>
      * Example usage: {@link SourceSnippets#fromBytes}
      *
@@ -841,8 +849,10 @@ public abstract class Source {
     }
 
     /**
-     * Creates new character based source from a reader.
-     *
+     * Creates new character based literal source from a reader.
+     * <p>
+     * Use this method for sources that do originate from a literal. For file or URL sources use the
+     * appropriate builder constructor and {@link SourceBuilder#content(CharSequence)}.
      * <p>
      * Example usage: {@link SourceSnippets#fromReader}
      *
@@ -1052,18 +1062,18 @@ public abstract class Source {
                 }
             }
         } else if (useOrigin instanceof URL) {
-            final URL url = (URL) useOrigin;
-            String urlPath = url.getPath();
+            useUrl = (URL) useOrigin;
+            String urlPath = useUrl.getPath();
             int lastIndex = urlPath.lastIndexOf('/');
-            useName = useName == null && lastIndex != -1 ? url.getPath().substring(lastIndex + 1) : useName;
+            useName = useName == null && lastIndex != -1 ? useUrl.getPath().substring(lastIndex + 1) : useName;
             URI tmpUri;
             try {
-                tmpUri = url.toURI();
+                tmpUri = useUrl.toURI();
             } catch (URISyntaxException ex) {
-                throw new IOException("Bad URL: " + url, ex);
+                throw new IOException("Bad URL: " + useUrl, ex);
             }
             useUri = useUri == null ? tmpUri : useUri;
-            usePath = usePath == null ? url.toExternalForm() : usePath;
+            usePath = usePath == null ? useUrl.getPath() : usePath;
             try {
                 TruffleFile truffleFile = SourceAccessor.getTruffleFile(tmpUri, fileSystemContext.get());
                 if (legacy) {
@@ -1083,10 +1093,10 @@ public abstract class Source {
                 }
             } catch (FileSystemNotFoundException fsnf) {
                 // Not a recognized by FileSystem, fall back to URLConnection
-                URLConnection connection = url.openConnection();
+                URLConnection connection = useUrl.openConnection();
                 useEncoding = useEncoding == null ? StandardCharsets.UTF_8 : useEncoding;
                 if (legacy) {
-                    useMimeType = useMimeType == null ? findMimeType(url, connection, getValidMimeTypes(language), fileSystemContext.get()) : useMimeType;
+                    useMimeType = useMimeType == null ? findMimeType(useUrl, connection, getValidMimeTypes(language), fileSystemContext.get()) : useMimeType;
                     useMimeType = useMimeType == null ? UNKNOWN_MIME_TYPE : useMimeType;
                     useContent = useContent == CONTENT_UNSET ? read(new InputStreamReader(connection.getInputStream(), useEncoding)) : useContent;
                 } else {
@@ -1126,7 +1136,9 @@ public abstract class Source {
                 throw new OutOfMemoryError("Too many bytes.");
             }
         }
-        return readBytes(connection.getInputStream(), (int) size);
+        try (InputStream inputStream = connection.getInputStream()) {
+            return readBytes(inputStream, (int) size);
+        }
     }
 
     /*

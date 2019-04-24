@@ -92,6 +92,11 @@ class VMAccessor extends Accessor {
     }
 
     @Override
+    protected CastUnsafe getCastUnsafe() {
+        return super.getCastUnsafe();
+    }
+
+    @Override
     protected CallProfiled getCallProfiled() {
         return super.getCallProfiled();
     }

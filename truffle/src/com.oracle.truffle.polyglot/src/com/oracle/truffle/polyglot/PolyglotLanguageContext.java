@@ -387,7 +387,10 @@ final class PolyglotLanguageContext implements PolyglotImpl.VMObject {
 
                         try {
                             List<Object> languageServicesCollector = new ArrayList<>();
-                            LANGUAGE.createEnvContext(localEnv, languageServicesCollector);
+                            Object contextImpl = LANGUAGE.createEnvContext(localEnv, languageServicesCollector);
+                            language.initializeContextClass(contextImpl);
+                            context.contextImpls[lang.language.index] = contextImpl;
+
                             String errorMessage = verifyServices(language.info, languageServicesCollector, language.cache.getServices());
                             if (errorMessage != null) {
                                 throw new IllegalStateException(errorMessage);
@@ -462,7 +465,6 @@ final class PolyglotLanguageContext implements PolyglotImpl.VMObject {
                         if (!context.inContextPreInitialization) {
                             LANGUAGE.initializeThread(env, Thread.currentThread());
                         }
-
                         LANGUAGE.postInitEnv(env);
 
                         if (!context.isSingleThreaded()) {

@@ -56,6 +56,7 @@ import org.graalvm.nativeimage.Platforms;
 import org.graalvm.nativeimage.c.function.CFunction;
 import org.graalvm.nativeimage.c.function.CLibrary;
 import org.graalvm.nativeimage.c.function.CodePointer;
+import org.graalvm.nativeimage.impl.InternalPlatform;
 import org.graalvm.word.Pointer;
 import org.graalvm.word.UnsignedWord;
 import org.graalvm.word.WordFactory;
@@ -82,6 +83,12 @@ import jdk.vm.ci.meta.ResolvedJavaField;
 
 @TargetClass(java.lang.Object.class)
 final class Target_java_lang_Object {
+
+    @Substitute
+    @TargetElement(name = "registerNatives")
+    private static void registerNativesSubst() {
+        /* We reimplemented all native methods, so nothing to do. */
+    }
 
     @Substitute
     @TargetElement(name = "getClass")
@@ -244,7 +251,7 @@ final class Target_java_lang_Runtime {
     }
 
     @Substitute
-    @Platforms({Platform.LINUX_JNI.class, Platform.DARWIN_JNI.class, Platform.WINDOWS.class})
+    @Platforms({InternalPlatform.LINUX_JNI.class, InternalPlatform.DARWIN_JNI.class, Platform.WINDOWS.class})
     private int availableProcessors() {
         if (SubstrateOptions.MultiThreaded.getValue()) {
             return Jvm.JVM_ActiveProcessorCount();

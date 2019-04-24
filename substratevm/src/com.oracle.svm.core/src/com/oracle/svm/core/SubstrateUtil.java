@@ -34,7 +34,6 @@ import java.lang.reflect.Executable;
 import java.lang.reflect.Field;
 import java.lang.reflect.Member;
 import java.lang.reflect.Method;
-import java.nio.ByteBuffer;
 import java.security.MessageDigest;
 import java.security.NoSuchAlgorithmException;
 import java.util.ArrayList;
@@ -53,7 +52,6 @@ import org.graalvm.nativeimage.c.type.CCharPointer;
 import org.graalvm.nativeimage.c.type.CCharPointerPointer;
 import org.graalvm.nativeimage.c.type.CTypeConversion;
 import org.graalvm.word.Pointer;
-import org.graalvm.word.PointerBase;
 import org.graalvm.word.UnsignedWord;
 import org.graalvm.word.WordFactory;
 
@@ -173,12 +171,6 @@ public class SubstrateUtil {
             n = n.add(1);
         }
         return n;
-    }
-
-    /** @deprecated replaced by {@link CTypeConversion#asByteBuffer(PointerBase, int)} */
-    @Deprecated
-    public static ByteBuffer wrapAsByteBuffer(PointerBase pointer, int size) {
-        return CTypeConversion.asByteBuffer(pointer, size);
     }
 
     /**

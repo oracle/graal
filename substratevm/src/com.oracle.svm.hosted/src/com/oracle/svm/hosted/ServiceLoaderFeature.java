@@ -42,8 +42,8 @@ import java.util.concurrent.ConcurrentHashMap;
 import org.graalvm.compiler.debug.DebugContext;
 import org.graalvm.compiler.options.Option;
 import org.graalvm.compiler.options.OptionType;
-import org.graalvm.nativeimage.Feature;
-import org.graalvm.nativeimage.RuntimeReflection;
+import org.graalvm.nativeimage.hosted.Feature;
+import org.graalvm.nativeimage.hosted.RuntimeReflection;
 
 import com.oracle.graal.pointsto.constraints.UnsupportedFeatureException;
 import com.oracle.graal.pointsto.meta.AnalysisType;
@@ -69,9 +69,8 @@ import com.oracle.svm.hosted.analysis.Inflation;
  * analysis.
  *
  * Each used service implementation class is added for reflection (using
- * {@link org.graalvm.nativeimage.RuntimeReflection#register(Class[])}) and for reflective
- * instantiation (using
- * {@link org.graalvm.nativeimage.RuntimeReflection#registerForReflectiveInstantiation(Class[])}).
+ * {@link org.graalvm.nativeimage.hosted.RuntimeReflection#register(Class[])}) and for reflective
+ * instantiation (using {@link RuntimeReflection#registerForReflectiveInstantiation(Class[])}).
  *
  * For each service interface, a single service loader file is added as a resource to the image. The
  * single file combines all the individual files that can come from different .jar files.

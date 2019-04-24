@@ -51,9 +51,12 @@ from mx import StringIO
 _suite = mx.suite('vm')
 """:type: mx.SourceSuite | mx.Suite"""
 
+_exe_suffix = mx.exe_suffix('')
+""":type: str"""
+
 _vm_configs = {}
 
-mx_sdk.register_graalvm_component(mx_sdk.GraalVmJreComponent(
+mx_sdk.register_graalvm_component(mx_sdk.GraalVmJdkComponent(
     suite=_suite,
     name='Component installer',
     short_name='gu',
@@ -501,15 +504,16 @@ class GraalVmLayoutDistributionTask(mx.LayoutArchiveTask):
         sup = super(GraalVmLayoutDistributionTask, self).needsBuild(newestInput)
         if sup[0]:
             return sup
-        for link_path, link_target in [(self._root_link_path, self._root_link_target()), (self._home_link_path, self._home_link_target())]:
-            if not os.path.lexists(link_path):
-                return True, '{} does not exist'.format(link_path)
-            link_file = mx.TimeStampFile(link_path, False)
-            if link_file.isOlderThan(self.subject.output):
-                return True, '{} is older than {}'.format(link_file, newestInput)
-            if self.subject == get_final_graalvm_distribution():
-                if link_target != os.readlink(link_path):
-                    return True, '{} is pointing to the wrong directory'.format(link_file)
+        if mx.get_os() != 'windows':
+            for link_path, link_target in [(self._root_link_path, self._root_link_target()), (self._home_link_path, self._home_link_target())]:
+                if not os.path.lexists(link_path):
+                    return True, '{} does not exist'.format(link_path)
+                link_file = mx.TimeStampFile(link_path, False)
+                if link_file.isOlderThan(self.subject.output):
+                    return True, '{} is older than {}'.format(link_file, newestInput)
+                if self.subject == get_final_graalvm_distribution():
+                    if link_target != os.readlink(link_path):
+                        return True, '{} is pointing to the wrong directory'.format(link_file)
         return False, None
 
     def build(self):
@@ -547,6 +551,11 @@ def get_graalvm_os():
     return os
 
 
+def remove_exe_suffix(name):
+    assert name.endswith(_exe_suffix)
+    return name[:-len(_exe_suffix)] if _exe_suffix else name
+
+
 class SvmSupport(object):
     def __init__(self):
         self._svm_supported = 'svm' in (c.short_name for c in registered_graalvm_components())
@@ -565,7 +574,7 @@ class SvmSupport(object):
         if "-H:Kind=SHARED_LIBRARY" in build_args:
             suffix = mx.add_lib_suffix("")
         else:
-            suffix = mx.exe_suffix("")
+            suffix = _exe_suffix
         name = basename(output_file)
         if suffix:
             name = name[:-len(suffix)]
@@ -741,15 +750,15 @@ class NativePropertiesBuildTask(mx.ProjectBuildTask):
                 if any((' ' in arg for arg in launcher_config.build_args)):
                     mx.abort("Unsupported space in launcher build argument: {} in main launcher for {}".format(launcher_config.build_args, dir_name))
                 properties = {
-                    'ImageName': basename(launcher_config.destination),
+                    'ImageName': remove_exe_suffix(basename(launcher_config.destination)),
                     'LauncherClass': basename(launcher_config.main_class),
-                    'LauncherClassPath': graalvm_home_relative_classpath(launcher_config.jar_distributions, _get_graalvm_archive_path('jre')),
+                    'LauncherClassPath': graalvm_home_relative_classpath(launcher_config.jar_distributions, _get_graalvm_archive_path('jre')).replace(os.pathsep, ':').replace(os.sep, '/'),
                     'Args': ' '.join(launcher_config.build_args),
                 }
                 for p in ('ImageName', 'LauncherClass'):
                     if provided_properties[p] != properties[p]:
                         mx.abort("Inconsistent property '{}':\n - native-image.properties: {}\n - LauncherConfig: {}".format(p, provided_properties[p], properties[p]))
-                if set(provided_properties['LauncherClassPath'].split(os.pathsep)) != set(properties['LauncherClassPath'].split(os.pathsep)):
+                if set(provided_properties['LauncherClassPath'].split(':')) != set(properties['LauncherClassPath'].split(':')):
                     mx.abort("Inconsistent property 'LauncherClassPath':\n - native-image.properties: {}\n - LauncherConfig: {}".format(provided_properties['LauncherClassPath'], properties['LauncherClassPath']))
 
     def clean(self, forBuild=False):
@@ -1900,8 +1909,8 @@ mx.add_argument('--snapshot-catalog', action='store', help='Change the default U
 mx.add_argument('--extra-image-builder-argument', action='append', help='Add extra arguments to the image builder.', default=[])
 
 register_vm_config('ce', ['cmp', 'gu', 'gvm', 'ins', 'js', 'lg', 'nfi', 'njs', 'polynative', 'pro', 'rgx', 'slg', 'svm', 'svmag', 'svmcf', 'svml', 'tfl', 'libpoly', 'poly', 'vvm'])
-register_vm_config('ce-no_native', ['bjs', 'blli', 'bnative-image', 'bpolyglot', 'cmp', 'gu', 'gvm', 'ins', 'js', 'nfi', 'njs', 'polynative', 'pro', 'rgx', 'slg', 'svm', 'svmag', 'svmcf', 'svml', 'tfl', 'poly', 'vvm'])
-register_vm_config('libgraal', ['cmp', 'gu', 'gvm', 'lg', 'nfi', 'poly', 'polynative', 'rgx', 'svm', 'svmag', 'svmcf', 'svml', 'tfl', 'bnative-image', 'bpolyglot'])
+register_vm_config('ce-no_native', ['bjs', 'blli', 'bnative-image', 'bpolyglot', 'cmp', 'gu', 'gvm', 'ins', 'js', 'nfi', 'njs', 'polynative', 'pro', 'rgx', 'slg', 'svm', 'svmcf', 'svml', 'tfl', 'poly', 'vvm'])
+register_vm_config('libgraal', ['cmp', 'gu', 'gvm', 'lg', 'nfi', 'poly', 'polynative', 'rgx', 'svm', 'svmcf', 'svml', 'tfl', 'bnative-image', 'bpolyglot'])
 
 
 def _debug_images():
@@ -1938,6 +1947,7 @@ def _force_bash_launchers(launcher, forced=None):
         forced = forced.split(',')
     if isinstance(launcher, mx_sdk.AbstractNativeImageConfig):
         launcher = launcher.destination
+    launcher = remove_exe_suffix(launcher)
     launcher_name = basename(launcher)
     return launcher_name in forced
 

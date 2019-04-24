@@ -154,7 +154,7 @@ final class HostInteropReflect {
     static boolean isModifiable(HostObject object, Class<?> clazz, String name, boolean onlyStatic) {
         HostClassDesc classDesc = HostClassDesc.forClass(object.getEngine(), clazz);
         HostFieldDesc foundField = classDesc.lookupField(name, onlyStatic);
-        if (foundField != null) {
+        if (foundField != null && !foundField.isFinal()) {
             return true;
         }
         return false;

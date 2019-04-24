@@ -4,7 +4,7 @@ suite = {
   "sourceinprojectwhitelist" : [],
 
   "groupId" : "org.graalvm.compiler",
-  "version" : "1.0.0-rc16",
+  "version" : "1.0.0-rc17",
   "release" : False,
   "url" : "http://www.graalvm.org/",
   "developer" : {
@@ -727,6 +727,7 @@ suite = {
       "dependencies" : [
         "org.graalvm.compiler.asm.aarch64",
         "org.graalvm.compiler.hotspot.test",
+        "org.graalvm.compiler.hotspot.aarch64",
       ],
       "annotationProcessors" : ["GRAAL_NODEINFO_PROCESSOR"],
       "checkstyle" : "org.graalvm.compiler.graph",

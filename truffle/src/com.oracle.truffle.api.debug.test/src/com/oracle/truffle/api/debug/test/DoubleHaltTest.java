@@ -128,8 +128,9 @@ public class DoubleHaltTest extends AbstractDebugTest {
 
             for (int i = 0; i < 3; i++) {
                 final int modI = i % 3;
+                int finalIndex = i;
                 expectSuspended((SuspendedEvent event) -> {
-                    SuspendedEvent e = checkState(event, 4, true, "STATEMENT");
+                    SuspendedEvent e = checkState(event, 4, true, "STATEMENT", "loopIndex0", String.valueOf(finalIndex), "loopResult0", "Null");
                     assertEquals(1, e.getBreakpoints().size());
                     assertSame(breakpoint4, e.getBreakpoints().iterator().next());
                     switch (modI) {

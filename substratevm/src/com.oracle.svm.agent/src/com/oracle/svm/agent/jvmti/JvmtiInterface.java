@@ -29,6 +29,7 @@ import org.graalvm.nativeimage.c.function.CFunctionPointer;
 import org.graalvm.nativeimage.c.function.InvokeCFunctionPointer;
 import org.graalvm.nativeimage.c.struct.CField;
 import org.graalvm.nativeimage.c.struct.CStruct;
+import org.graalvm.nativeimage.c.type.CCharPointer;
 import org.graalvm.nativeimage.c.type.CCharPointerPointer;
 import org.graalvm.nativeimage.c.type.CIntPointer;
 import org.graalvm.nativeimage.c.type.WordPointer;
@@ -180,19 +181,35 @@ public interface JvmtiInterface extends PointerBase {
         JvmtiError invoke(JvmtiEnv jvmtiEnv, JNIObjectHandle klass, JNIFieldId field, CIntPointer modifiersPtr);
     }
 
-    @CField("IsInterface")
-    IsInterfaceFunctionPointer IsInterface();
-
-    interface IsInterfaceFunctionPointer extends CFunctionPointer {
-        @InvokeCFunctionPointer
-        JvmtiError invoke(JvmtiEnv jvmtiEnv, JNIObjectHandle klass, CIntPointer isInterfacePtr);
-    }
-
     @CField("GetImplementedInterfaces")
     GetImplementedInterfacesFunctionPointer GetImplementedInterfaces();
 
     interface GetImplementedInterfacesFunctionPointer extends CFunctionPointer {
         @InvokeCFunctionPointer
         JvmtiError invoke(JvmtiEnv jvmtiEnv, JNIObjectHandle klass, CIntPointer interfaceCountPtr, WordPointer interfacesPtr);
+    }
+
+    @CField("GetFieldName")
+    GetFieldNameFunctionPointer GetFieldName();
+
+    interface GetFieldNameFunctionPointer extends CFunctionPointer {
+        @InvokeCFunctionPointer
+        JvmtiError invoke(JvmtiEnv jvmtiEnv, JNIObjectHandle klass, JNIFieldId field, CCharPointerPointer namePtr, CCharPointerPointer signaturePTr, CCharPointerPointer genericPtr);
+    }
+
+    @CField("ForceEarlyReturnObject")
+    ForceEarlyReturnObjectFunctionPointer ForceEarlyReturnObject();
+
+    interface ForceEarlyReturnObjectFunctionPointer extends CFunctionPointer {
+        @InvokeCFunctionPointer
+        JvmtiError invoke(JvmtiEnv jvmtiEnv, JNIObjectHandle thread, JNIObjectHandle value);
+    }
+
+    @CField("GetSystemProperty")
+    GetSystemPropertyFunctionPointer GetSystemProperty();
+
+    interface GetSystemPropertyFunctionPointer extends CFunctionPointer {
+        @InvokeCFunctionPointer
+        JvmtiError invoke(JvmtiEnv jvmtiEnv, CCharPointer property, CCharPointerPointer valuePtr);
     }
 }

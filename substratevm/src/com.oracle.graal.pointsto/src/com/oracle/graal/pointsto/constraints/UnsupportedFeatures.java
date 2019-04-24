@@ -129,7 +129,7 @@ public class UnsupportedFeatures {
                 unsupportedFeaturesMessage = entries.get(0).message + "\nDetailed message:\n" + outputStream.toString();
                 throw new UnsupportedFeatureException(unsupportedFeaturesMessage, entries.get(0).originalException);
             } else {
-                unsupportedFeaturesMessage = "unsupported features in " + entries.size() + " methods" + "\nDetailed message:\n" + outputStream.toString();
+                unsupportedFeaturesMessage = "Unsupported features in " + entries.size() + " methods" + "\nDetailed message:\n" + outputStream.toString();
                 throw new UnsupportedFeatureException(unsupportedFeaturesMessage);
             }
 

@@ -40,8 +40,8 @@
  */
 package org.graalvm.launcher;
 
-import org.graalvm.nativeimage.Feature;
-import org.graalvm.nativeimage.RuntimeReflection;
+import org.graalvm.nativeimage.hosted.Feature;
+import org.graalvm.nativeimage.hosted.RuntimeReflection;
 
 class PolyglotLauncherFeature implements Feature {
     @Override

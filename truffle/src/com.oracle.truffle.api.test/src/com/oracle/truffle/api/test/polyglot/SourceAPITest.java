@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2017, 2018, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2017, 2019, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -56,12 +56,16 @@ import java.io.IOException;
 import java.io.Reader;
 import java.io.StringReader;
 import java.net.MalformedURLException;
+import java.net.URISyntaxException;
 import java.net.URL;
 import java.nio.CharBuffer;
+import java.nio.file.Files;
+import java.nio.file.Path;
 import java.util.concurrent.Callable;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.jar.JarOutputStream;
 import java.util.zip.ZipEntry;
+import java.util.zip.ZipOutputStream;
 
 import org.graalvm.polyglot.Context;
 import org.graalvm.polyglot.Source;
@@ -71,11 +75,7 @@ import org.graalvm.polyglot.io.ByteSequence;
 import org.junit.Assert;
 import org.junit.Test;
 
-import com.oracle.truffle.api.TruffleLanguage.Registration;
 import com.oracle.truffle.api.test.ReflectionUtils;
-import java.nio.file.Files;
-import java.nio.file.Path;
-import java.util.zip.ZipOutputStream;
 
 public class SourceAPITest {
 
@@ -515,10 +515,21 @@ public class SourceAPITest {
         assertNotNull("Resource found", resource);
         assertEquals("JAR protocol", "jar", resource.getProtocol());
         Source s = Source.newBuilder("TestJS", resource).build();
+        assertEquals(resource, s.getURL());
         Assert.assertArrayEquals(bytes, s.getBytes().toByteArray());
         assertEquals("x.tjs", s.getName());
 
         sample.delete();
+    }
+
+    @Test
+    public void testHttpURL() throws IOException, URISyntaxException {
+        URL resource = new URL("http://example.org/test/File.html");
+        Source s = Source.newBuilder("TestJS", resource).content("Empty").build();
+        assertEquals(resource, s.getURL());
+        assertEquals(resource.toURI(), s.getURI());
+        assertEquals("File.html", s.getName());
+        assertEquals("/test/File.html", s.getPath());
     }
 
     @Test
@@ -671,15 +682,4 @@ public class SourceAPITest {
         assertTrue(section.hasColumns());
         assertEquals("", section.getCharacters());
     }
-
-    @Registration(id = "TestJava", name = "", characterMimeTypes = "text/x-java")
-    public static class TestJavaLanguage extends ProxyLanguage {
-
-    }
-
-    @Registration(id = "TestJS", name = "", byteMimeTypes = "application/test-js")
-    public static class TestJSLanguage extends ProxyLanguage {
-
-    }
-
 }

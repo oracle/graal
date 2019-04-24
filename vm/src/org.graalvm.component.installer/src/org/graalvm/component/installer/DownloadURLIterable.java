@@ -31,6 +31,7 @@ import java.net.URL;
 import java.nio.file.Path;
 import java.util.Iterator;
 import org.graalvm.component.installer.FileIterable.FileComponent;
+import org.graalvm.component.installer.model.ComponentInfo;
 import org.graalvm.component.installer.persist.MetadataLoader;
 
 public class DownloadURLIterable implements ComponentIterable {
@@ -91,8 +92,8 @@ public class DownloadURLIterable implements ComponentIterable {
         }
 
         @Override
-        public MetadataLoader completeMetadata() throws IOException {
-            return createFileLoader();
+        public ComponentInfo completeMetadata() throws IOException {
+            return createFileLoader().completeMetadata();
         }
     }
 

@@ -67,7 +67,7 @@ import org.graalvm.component.installer.remote.RemoteCatalogDownloader;
 public final class ComponentInstaller {
     private static final Logger LOG = Logger.getLogger(ComponentInstaller.class.getName());
 
-    public static final String GRAAL_DEFAULT_RELATIVE_PATH = "../../.."; // NOI18N
+    public static final String GRAAL_DEFAULT_RELATIVE_PATH = "../.."; // NOI18N
 
     private static final Environment SIMPLE_ENV = new Environment("help", Collections.emptyList(), Collections.emptyMap()).enableStacktraces(); // NOI18N
 

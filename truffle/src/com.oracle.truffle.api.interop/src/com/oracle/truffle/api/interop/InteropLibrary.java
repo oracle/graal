@@ -971,7 +971,7 @@ public abstract class InteropLibrary extends Library {
             node = node.getParent();
         } while (node != null);
 
-        assert false : "Invalid libray usage. Cached library must be adopted by a RootNode before it is executed.";
+        assert false : "Invalid library usage. Cached library must be adopted by a RootNode before it is executed.";
         return true;
     }
 

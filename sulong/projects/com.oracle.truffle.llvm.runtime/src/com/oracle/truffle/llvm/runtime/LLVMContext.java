@@ -87,6 +87,7 @@ import com.oracle.truffle.llvm.runtime.types.Type;
 
 public final class LLVMContext {
     private final List<Path> libraryPaths = new ArrayList<>();
+    @CompilationFinal private Path internalLibraryPath;
     private final List<ExternalLibrary> externalLibraries = new ArrayList<>();
 
     // map that contains all non-native globals, needed for pointer->global lookups
@@ -94,6 +95,7 @@ public final class LLVMContext {
     // allocations used to store non-pointer globals (need to be freed when context is disposed)
     private final ArrayList<LLVMPointer> globalsNonPointerStore = new ArrayList<>();
     private final ArrayList<LLVMPointer> globalsReadOnlyStore = new ArrayList<>();
+    private final String languageHome;
 
     private DataLayout dataLayout;
 
@@ -195,11 +197,9 @@ public final class LLVMContext {
         Object mainArgs = env.getConfig().get(LLVMLanguage.MAIN_ARGS_KEY);
         this.mainArguments = mainArgs == null ? env.getApplicationArguments() : (Object[]) mainArgs;
         this.environment = System.getenv();
+        this.languageHome = languageHome;
 
         addLibraryPaths(SulongEngineOption.getPolyglotOptionSearchPaths(env));
-        if (languageHome != null) {
-            addLibraryPath(languageHome);
-        }
 
         final String traceOption = env.getOptions().get(SulongEngineOption.TRACE_IR);
         if (!"".equalsIgnoreCase(traceOption)) {
@@ -249,6 +249,12 @@ public final class LLVMContext {
         this.threadingStack = new LLVMThreadingStack(Thread.currentThread(), parseStackSize(env.getOptions().get(SulongEngineOption.STACK_SIZE)));
         for (ContextExtension ext : contextExtensions) {
             ext.initialize();
+        }
+        if (languageHome != null) {
+            SystemContextExtension sysContextExt = getContextExtension(SystemContextExtension.class);
+            internalLibraryPath = Paths.get(languageHome).resolve(sysContextExt.getSulongLibrariesPath());
+            // add internal library location also to the external library lookup path
+            addLibraryPath(internalLibraryPath.toString());
         }
     }
 
@@ -454,8 +460,20 @@ public final class LLVMContext {
 
     public ExternalLibrary addInternalLibrary(String lib, boolean isNative) {
         CompilerAsserts.neverPartOfCompilation();
-        Path path = locateExternalLibrary(lib);
+        Path path = locateInternalLibrary(lib);
         return addExternalLibrary(ExternalLibrary.internal(path, isNative));
+    }
+
+    @TruffleBoundary
+    private Path locateInternalLibrary(String lib) {
+        if (internalLibraryPath == null) {
+            throw new LLVMLinkerException(String.format("Cannot load \"%s\". Internal library path not set.", lib));
+        }
+        Path absPath = internalLibraryPath.resolve(lib);
+        if (absPath.toFile().exists()) {
+            return absPath;
+        }
+        return Paths.get(lib);
     }
 
     /**

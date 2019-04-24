@@ -31,7 +31,7 @@ import com.oracle.svm.core.windows.headers.LibC;
 import com.oracle.svm.core.windows.headers.WinBase;
 import com.oracle.svm.truffle.nfi.Target_com_oracle_truffle_nfi_impl_NFIUnsatisfiedLinkError;
 import com.oracle.truffle.api.CompilerDirectives;
-import org.graalvm.nativeimage.Feature;
+import org.graalvm.nativeimage.hosted.Feature;
 import org.graalvm.nativeimage.ImageSingletons;
 import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.Platforms;

@@ -212,6 +212,7 @@ public class Installer extends AbstractInstaller {
         }
         // unpack files
         unpackFiles();
+        archive.completeMetadata(componentInfo);
         processPermissions();
         createSymlinks();
 

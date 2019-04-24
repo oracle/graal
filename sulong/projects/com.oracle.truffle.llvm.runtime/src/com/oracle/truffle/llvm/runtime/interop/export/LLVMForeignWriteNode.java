@@ -30,6 +30,7 @@
 package com.oracle.truffle.llvm.runtime.interop.export;
 
 import com.oracle.truffle.api.CompilerAsserts;
+import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.TruffleLanguage.ContextReference;
 import com.oracle.truffle.api.dsl.Cached;
 import com.oracle.truffle.api.dsl.GenerateUncached;
@@ -53,11 +54,18 @@ public abstract class LLVMForeignWriteNode extends LLVMNode {
 
     @Specialization(guards = "type.getKind() == cachedKind", limit = "VALUE_KIND_COUNT")
     static void doValue(LLVMPointer ptr, LLVMInteropType.Value type, Object value,
-                    @Cached(value = "type.getKind()", allowUncached = true) @SuppressWarnings("unused") LLVMInteropType.ValueKind cachedKind,
-                    @Cached(value = "createStoreNode(cachedKind)", allowUncached = true /* FIXME */) LLVMStoreNode store,
+                    @Cached("type.getKind()") @SuppressWarnings("unused") LLVMInteropType.ValueKind cachedKind,
+                    @Cached("createStoreNode(cachedKind)") LLVMStoreNode store,
                     @Cached("createForeignToLLVM(type)") ForeignToLLVM toLLVM) {
         Object llvmValue = toLLVM.executeWithForeignToLLVMType(value, type.getBaseType(), cachedKind.foreignToLLVMType);
         store.executeWithTarget(ptr, llvmValue);
+    }
+
+    @Specialization(replaces = "doValue")
+    @TruffleBoundary
+    void doValueUncached(LLVMPointer ptr, LLVMInteropType.Value type, Object value) {
+        LLVMInteropType.ValueKind kind = type.getKind();
+        doValue(ptr, type, value, kind, createStoreNode(kind), ForeignToLLVM.getUncached());
     }
 
     @Specialization
@@ -68,7 +76,7 @@ public abstract class LLVMForeignWriteNode extends LLVMNode {
 
     LLVMStoreNode createStoreNode(LLVMInteropType.ValueKind kind) {
         CompilerAsserts.neverPartOfCompilation();
-        ContextReference<LLVMContext> ctxRef = LLVMLanguage.getLLVMContextReference();
+        ContextReference<LLVMContext> ctxRef = lookupContextReference(LLVMLanguage.class);
         return ctxRef.get().getNodeFactory().createStoreNode(kind);
     }
 

@@ -234,7 +234,7 @@ public final class DebuggerSession implements Closeable {
         if (Debugger.TRACE) {
             trace("open with callback %s", callback);
         }
-        sources = new DebugSourcesResolver();
+        sources = new DebugSourcesResolver(debugger.getEnv());
         addBindings(includeInternal, sourceFilter);
         executionLifecycle = new DebuggerExecutionLifecycle(this);
     }
@@ -1222,7 +1222,7 @@ public final class DebuggerSession implements Closeable {
             throw new IllegalStateException("Can not evaluate in a non-interactive language.");
         }
 
-        final Source source = Source.newBuilder(info.getId(), code, "eval in context").build();
+        final Source source = Source.newBuilder(info.getId(), code, "eval in context").internal(true).build();
         ExecutableNode fragment = ev.getSession().getDebugger().getEnv().parseInline(source, node, frame);
         if (fragment != null) {
             ev.getInsertableNode().setParentOf(fragment);

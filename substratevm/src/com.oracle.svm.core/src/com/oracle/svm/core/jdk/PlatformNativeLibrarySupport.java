@@ -30,6 +30,7 @@ import java.util.List;
 
 import org.graalvm.nativeimage.ImageSingletons;
 import org.graalvm.nativeimage.Platform;
+import org.graalvm.nativeimage.impl.InternalPlatform;
 import org.graalvm.word.PointerBase;
 
 public interface PlatformNativeLibrarySupport {
@@ -94,8 +95,8 @@ public interface PlatformNativeLibrarySupport {
     };
 
     default boolean isBuiltinPkgNative(String name) {
-        if (Platform.includedIn(Platform.LINUX_JNI.class) ||
-                        Platform.includedIn(Platform.DARWIN_JNI.class) ||
+        if (Platform.includedIn(InternalPlatform.LINUX_JNI.class) ||
+                        Platform.includedIn(InternalPlatform.DARWIN_JNI.class) ||
                         Platform.includedIn(Platform.WINDOWS.class)) {
             // Do a quick check first
             if (name.startsWith("Java_")) {

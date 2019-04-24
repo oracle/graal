@@ -45,7 +45,10 @@ class VmGateTasks:
     compiler = 'compiler'
     substratevm = 'substratevm'
     sulong = 'sulong'
-    graal_js = 'graal-js'
+    graal_js_all = 'graal-js'
+    graal_js_smoke = 'graal-js-smoke'
+    graal_js_tests = 'graal-js-tests'
+    graal_js_tests_compiled = 'graal-js-tests-compiled'
     graal_nodejs = 'graal-nodejs'
     truffleruby = 'truffleruby'
     ruby = 'ruby'
@@ -70,7 +73,7 @@ def gate_body(args, tasks):
         if t and mx_vm.has_component('Sulong', fatalIfMissing=True):
             pass
 
-    with Task('Vm: Graal.js tests', tasks, tags=[VmGateTasks.graal_js]) as t:
+    with Task('Vm: Graal.js tests', tasks, tags=[VmGateTasks.graal_js_all]) as t:
         if t and mx_vm.has_component('Graal.js', fatalIfMissing=True):
             pass
 
@@ -100,25 +103,32 @@ def gate_body(args, tasks):
                 extra_vm_arguments += args.extra_vm_argument
             import mx_compiler
 
-            with Task('LibGraal:DaCapo-avrora', tasks, tags=[VmGateTasks.libgraal]) as t:
+            # run avrora on the GraalVM binary itself
+            with Task('LibGraal Compiler:GraalVM DaCapo-avrora', tasks, tags=[VmGateTasks.libgraal]) as t:
                 if t:
                     mx.run([join(mx_vm.graalvm_home(), 'bin', 'java'), '-XX:+UseJVMCICompiler', '-XX:+UseJVMCINativeLibrary', '-jar', mx.library('DACAPO').get_path(True), 'avrora'])
 
-            with Task('LibGraal:CTW', tasks, tags=[VmGateTasks.libgraal]) as t:
+            with Task('LibGraal Compiler:CTW', tasks, tags=[VmGateTasks.libgraal]) as t:
                 if t:
                     mx_compiler.ctw([
                             '-DCompileTheWorld.Config=Inline=false CompilationFailureAction=ExitVM', '-esa', '-XX:+EnableJVMCI',
                             '-DCompileTheWorld.MultiThreaded=true', '-Dgraal.InlineDuringParsing=false', '-Dgraal.TrackNodeSourcePosition=true',
-                            '-DCompileTheWorld.Verbose=false', '-DCompileTheWorld.MaxClasses=2000', '-XX:ReservedCodeCacheSize=300m',
+                            '-DCompileTheWorld.Verbose=false', '-XX:ReservedCodeCacheSize=300m',
                         ], extra_vm_arguments)
 
-            mx_compiler.compiler_gate_benchmark_runner(tasks, extra_vm_arguments, prefix='LibGraal: ')
+            mx_compiler.compiler_gate_benchmark_runner(tasks, extra_vm_arguments, prefix='LibGraal Compiler:')
 
-            with Task('LibGraal:unittest-truffle', tasks, tags=[VmGateTasks.libgraal]) as t:
+            with Task('LibGraal Truffle:unittest', tasks, tags=[VmGateTasks.libgraal]) as t:
                 if t:
                     def _unittest_config_participant(config):
                         vmArgs, mainClass, mainClassArgs = config
-                        newVmArgs = [arg for arg in vmArgs if arg != "-Dtruffle.TruffleRuntime=com.oracle.truffle.api.impl.DefaultTruffleRuntime"]
+                        def is_truffle_fallback(arg):
+                            fallback_args = [
+                                "-Dtruffle.TruffleRuntime=com.oracle.truffle.api.impl.DefaultTruffleRuntime",
+                                "-Dgraalvm.ForcePolyglotInvalid=true"
+                            ]
+                            return arg in fallback_args
+                        newVmArgs = [arg for arg in vmArgs if not is_truffle_fallback(arg)]
                         return (newVmArgs, mainClass, mainClassArgs)
                     mx_unittest.add_config_participant(_unittest_config_participant)
                     excluded_tests = environ.get("TEST_LIBGRAAL_EXCLUDE")
@@ -181,11 +191,11 @@ def gate_sulong(tasks):
             sulong = mx.suite('sulong')
             native_image_context, svm = graalvm_svm()
             with native_image_context(svm.IMAGE_ASSERTION_FLAGS) as native_image:
-                # TODO Use mx_vm.get_final_graalvm_distribution().find_single_source_location to rewire SULONG_LIBS
+                # TODO Use mx_vm.get_final_graalvm_distribution().find_single_source_location to rewire SULONG_HOME
                 sulong_libs = join(mx_vm.graalvm_output(), 'jre', 'languages', 'llvm')
                 def distribution_paths(dname):
                     path_substitutions = {
-                        'SULONG_LIBS': sulong_libs
+                        'SULONG_HOME': sulong_libs
                     }
                     return path_substitutions.get(dname, mx._get_dependency_path(dname))
                 mx_subst.path_substitutions.register_with_arg('path', distribution_paths)

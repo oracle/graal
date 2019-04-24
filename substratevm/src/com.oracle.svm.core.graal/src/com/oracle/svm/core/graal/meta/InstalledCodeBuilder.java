@@ -193,7 +193,7 @@ public class InstalledCodeBuilder {
             int tmpMemorySize = tmpConstantsOffset + constantsSize;
 
             // Allocate executable memory. It contains the compiled code and the constants
-            code = allocateOSMemory(WordFactory.unsigned(tmpMemorySize), true);
+            code = allocateOSMemory(WordFactory.unsigned(tmpMemorySize));
 
             /*
              * Check if we there are some direct calls where the PC displacement is out of the 32
@@ -237,7 +237,7 @@ public class InstalledCodeBuilder {
                 }
                 tmpMemorySize = tmpConstantsOffset + constantsSize;
 
-                code = allocateOSMemory(WordFactory.unsigned(tmpMemorySize), true);
+                code = allocateOSMemory(WordFactory.unsigned(tmpMemorySize));
             }
             constantsOffset = tmpConstantsOffset;
 
@@ -514,12 +514,11 @@ public class InstalledCodeBuilder {
         return callTargetStart;
     }
 
-    private static Pointer allocateOSMemory(final UnsignedWord size, final boolean executable) {
+    private static Pointer allocateOSMemory(final UnsignedWord size) {
         final Log trace = Log.noopLog();
         trace.string("[SubstrateInstalledCode.allocateAlignedMemory:");
         trace.string("  size: ").unsigned(size);
-        trace.string("  executable: ").bool(executable);
-        final Pointer result = CommittedMemoryProvider.get().allocate(size, CommittedMemoryProvider.UNALIGNED, executable);
+        final Pointer result = CommittedMemoryProvider.get().allocate(size, CommittedMemoryProvider.UNALIGNED, true);
         trace.string("  returns: ").hex(result);
         trace.string("]").newline();
         if (result.isNull()) {
@@ -533,7 +532,7 @@ public class InstalledCodeBuilder {
         trace.string("[SubstrateInstalledCode.freeOSMemory:");
         trace.string("  start: ").hex(start);
         trace.string("  size: ").unsigned(size);
-        CommittedMemoryProvider.get().free(start, size, CommittedMemoryProvider.UNALIGNED, false);
+        CommittedMemoryProvider.get().free(start, size, CommittedMemoryProvider.UNALIGNED, true);
         trace.string("]").newline();
     }
 }

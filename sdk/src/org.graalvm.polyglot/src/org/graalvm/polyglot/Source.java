@@ -177,7 +177,9 @@ public final class Source {
 
     /**
      * The fully qualified name of the source. In case this source originates from a {@link File},
-     * then the default path is the normalized, {@link File#getCanonicalPath() canonical path}.
+     * then the path is the normalized, {@link File#getCanonicalPath() canonical path} for absolute
+     * files, or the relative path otherwise. If the source originates from an {@link URL}, then
+     * it's the path component of the URL.
      *
      * @since 1.0
      */
@@ -473,8 +475,11 @@ public final class Source {
     }
 
     /**
-     * Creates a new character based source from a character sequence. The given characters must not
-     * mutate after they were accessed for the first time.
+     * Creates a new character based literal source from a character sequence. The given characters
+     * must not mutate after they were accessed for the first time.
+     * <p>
+     * Use this method for sources that do originate from a literal. For file or URL sources use the
+     * appropriate builder constructor and {@link Builder#content(CharSequence)}.
      * <p>
      * Example usage: {@link SourceSnippets#fromAString}
      *
@@ -489,8 +494,11 @@ public final class Source {
     }
 
     /**
-     * Creates a new byte based source from a byte sequence. The given bytes must not mutate after
-     * they were accessed for the first time.
+     * Creates a new byte based literal source from a byte sequence. The given bytes must not mutate
+     * after they were accessed for the first time.
+     * <p>
+     * Use this method for sources that do originate from a literal. For file or URL sources use the
+     * appropriate builder constructor and {@link Builder#content(CharSequence)}.
      * <p>
      * Example usage: {@link SourceSnippets#fromBytes}
      *
@@ -541,7 +549,10 @@ public final class Source {
     }
 
     /**
-     * Creates new character based source from a reader.
+     * Creates new character based literal source from a reader.
+     * <p>
+     * Use this method for sources that do originate from a literal. For file or URL sources use the
+     * appropriate builder constructor and {@link Builder#content(CharSequence)}.
      * <p>
      * Example usage: {@link SourceSnippets#fromReader}
      *
@@ -554,6 +565,9 @@ public final class Source {
     /**
      * Shortcut for creating a source object from a language and char sequence. The given characters
      * must not mutate after they were accessed for the first time.
+     * <p>
+     * Use for sources that do not come from a file, or URL. If they do, use the appropriate builder
+     * and {@link Builder#content(CharSequence)}.
      *
      * @since 1.0
      */

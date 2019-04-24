@@ -35,6 +35,7 @@ import org.graalvm.nativeimage.impl.RuntimeReflectionSupport;
 import com.oracle.svm.core.annotate.AutomaticFeature;
 import com.oracle.svm.core.graal.GraalFeature;
 import com.oracle.svm.core.option.HostedOptionKey;
+import com.oracle.svm.hosted.FallbackFeature;
 import com.oracle.svm.hosted.FeatureImpl.DuringSetupAccessImpl;
 import com.oracle.svm.hosted.ImageClassLoader;
 import com.oracle.svm.hosted.analysis.Inflation;
@@ -87,6 +88,14 @@ public final class ReflectionFeature implements GraalFeature {
     @Override
     public void afterAnalysis(AfterAnalysisAccess access) {
         reflectionData.afterAnalysis();
+    }
+
+    @Override
+    public void beforeCompilation(BeforeCompilationAccess access) {
+        FallbackFeature.FallbackImageRequest reflectionFallback = ImageSingletons.lookup(FallbackFeature.class).reflectionFallback;
+        if (reflectionFallback != null && Options.ReflectionConfigurationFiles.getValue() == null && Options.ReflectionConfigurationResources.getValue() == null) {
+            throw reflectionFallback;
+        }
     }
 
     @Override
