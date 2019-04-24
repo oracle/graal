@@ -108,6 +108,11 @@ public class SignedRemNode extends IntegerDivRemNode implements LIRLowerable {
     }
 
     private static boolean allUsagesCompareAgainstZero(SignedRemNode self) {
+        if (self == null) {
+            // If the node was not yet created, then we do not know its usages yet.
+            return false;
+        }
+
         int compareAgainstZero = 0;
         int usageCount = self.getUsageCount();
         for (int i = 0; i < usageCount; i++) {
