@@ -195,6 +195,19 @@ public final class RuntimeClassInitialization {
         }
     }
 
+    /**
+     * Use {@link #initializeAtBuildTime} instead.
+     *
+     * @since 1.0
+     */
+    @Deprecated
+    public static void eagerClassInitialization(Class<?>... classes) {
+        StackTraceElement[] stacktrace = Thread.currentThread().getStackTrace();
+        for (Class<?> aClass : classes) {
+            ImageSingletons.lookup(RuntimeClassInitializationSupport.class).initializeAtBuildTime(aClass, MESSAGE + getCaller(stacktrace));
+        }
+    }
+
     private static String getCaller(StackTraceElement[] stackTrace) {
         StackTraceElement e = stackTrace[2];
         return e.getClassName() + "." + e.getMethodName();

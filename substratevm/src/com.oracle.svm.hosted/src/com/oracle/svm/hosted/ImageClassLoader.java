@@ -466,7 +466,4 @@ public final class ImageClassLoader {
         return classLoader;
     }
 
-    public Package[] getPackages() {
-        return classLoader.getPackages();
-    }
 }

@@ -33,8 +33,4 @@ public class NativeImageClassLoader extends URLClassLoader {
         super(urls, parent);
     }
 
-    @Override
-    protected Package[] getPackages() {
-        return super.getPackages();
-    }
 }

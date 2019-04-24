@@ -120,7 +120,7 @@ public class ClassInitializationFeature implements Feature {
                         customHelp = "A comma-separated list of packages and classes  (and implicitly all of their superclasses) that are initialized during image generation. An empty string designates all packages.")//
         @APIOption(name = "delay-class-initialization-to-runtime", valueTransformer = InitializationValueDelay.class, deprecated = "Use --initialize-at-run-time.", //
                         defaultValue = "", customHelp = "A comma-separated list of classes (and implicitly all of their subclasses) that are initialized at runtime and not during image building")//
-        @APIOption(name = "rerun-class-initialization-at-runtime", valueTransformer = InitializationValueRerun.class, deprecated = "Currently there is no replacement for this option. Use --delay-class-initialization.", //
+        @APIOption(name = "rerun-class-initialization-at-runtime", valueTransformer = InitializationValueRerun.class, deprecated = "Currently there is no replacement for this option. Try using --initialize-at-run-time.", //
                         defaultValue = "", customHelp = "A comma-separated list of classes (and implicitly all of their subclasses) that are initialized both at runtime and during image building")//
         @Option(help = "A comma-separated list of classes appended with their initialization strategy (':delay', ':rerun', or ':eager')", type = OptionType.User)//
         public static final HostedOptionKey<String[]> ClassInitialization = new HostedOptionKey<>(new String[0]);
