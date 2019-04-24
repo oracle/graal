@@ -108,21 +108,20 @@ class WindowsNativeLibrarySupport implements PlatformNativeLibrarySupport {
         }
 
         @Override
-        public void load() {
-            if (!builtin) {
-                assert dlhandle.isNull();
-                String dllPath = canonicalIdentifier;
-                CCharPointerHolder dllpathPin = CTypeConversion.toCString(dllPath);
-                CCharPointer dllPathPtr = dllpathPin.get();
+        public boolean load() {
+            if (builtin) {
+                return true;
+            }
+            assert dlhandle.isNull();
+            try (CCharPointerHolder dllPathPin = CTypeConversion.toCString(canonicalIdentifier)) {
+                CCharPointer dllPathPtr = dllPathPin.get();
                 /*
                  * WinBase.SetDllDirectoryA(dllpathPtr); CCharPointerHolder pathPin =
                  * CTypeConversion.toCString(path); CCharPointer pathPtr = pathPin.get();
                  */
                 dlhandle = WinBase.LoadLibraryA(dllPathPtr);
-                if (this.dlhandle.isNull()) {
-                    throw new UnsatisfiedLinkError(dllPath + ": " + WinBase.GetLastError());
-                }
             }
+            return dlhandle.isNonNull();
         }
 
         @Override

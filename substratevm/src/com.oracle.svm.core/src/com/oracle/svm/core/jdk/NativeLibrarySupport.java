@@ -146,13 +146,12 @@ public final class NativeLibrarySupport {
             NativeLibrary lib = PlatformNativeLibrarySupport.singleton().createLibrary(canonical, asBuiltin);
             currentLoadContext.push(lib);
             try {
-                lib.load();
+                if (!lib.load()) {
+                    return false;
+                }
                 if (libraryInitializer != null) {
                     libraryInitializer.initialize(lib);
                 }
-            } catch (UnsatisfiedLinkError e) {
-                // Allow caller to try the next path:
-                return false;
             } finally {
                 NativeLibrary top = currentLoadContext.pop();
                 assert top == lib;
