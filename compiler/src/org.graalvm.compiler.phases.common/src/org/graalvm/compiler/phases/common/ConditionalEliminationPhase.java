@@ -370,11 +370,16 @@ public class ConditionalEliminationPhase extends BasePhase<PhaseContext> {
                     LogicNode newCondition = ((DeoptimizingGuard) guard.asNode()).getCondition();
                     if (newCondition instanceof InstanceOfNode) {
                         InstanceOfNode inst = (InstanceOfNode) newCondition;
+                        ValueNode originalValue = GraphUtil.skipPi(inst.getValue());
                         PiNode pi = null;
                         // Ensure that any Pi that's weaker than what the instanceof proves is
                         // replaced by one derived from the instanceof itself.
                         for (PiNode existing : guard.asNode().usages().filter(PiNode.class).snapshot()) {
                             if (!existing.isAlive()) {
+                                continue;
+                            }
+                            if (originalValue != GraphUtil.skipPi(existing.object())) {
+                                // Somehow these are unrelated values so leave it alone
                                 continue;
                             }
                             // If the pi has a weaker stamp or the same stamp but a different input
