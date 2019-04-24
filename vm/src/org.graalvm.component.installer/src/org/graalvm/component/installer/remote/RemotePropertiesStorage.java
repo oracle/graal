@@ -172,14 +172,17 @@ public class RemotePropertiesStorage extends AbstractCatalogStorage {
                 continue;
             }
             ComponentInfo ci = createVersionedComponent(compProps, id, v);
-            infos.put(vS, ci);
+            // just in case the catalog info is broken
+            if (ci != null) {
+                infos.put(vS, ci);
+            }
         }
 
         return new HashSet<>(infos.values());
     }
 
     private ComponentInfo createVersionedComponent(Properties filtered, String id, Version v) throws IOException {
-        String versoPrefix = v.toString() + "/"; // NOI18N
+        String versoPrefix = v.originalString() + "/"; // NOI18N
         URL downloadURL;
         String s = filtered.getProperty(versoPrefix + id.toLowerCase());
         if (s == null) {
