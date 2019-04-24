@@ -195,7 +195,7 @@ class APIOptionHandler extends NativeImage.OptionHandler<NativeImage> {
         OptionInfo option = apiOptions.get(optionParts[0]);
         if (option != null) {
             if (!option.deprecationWarning.isEmpty()) {
-                NativeImage.showWarning("Using a deprecated option " + optionParts[0] + ": " + option.deprecationWarning);
+                NativeImage.showWarning("Using a deprecated option " + optionParts[0] + ". " + option.deprecationWarning);
             }
             String builderOption = option.builderOption;
             String optionValue = option.defaultValue;

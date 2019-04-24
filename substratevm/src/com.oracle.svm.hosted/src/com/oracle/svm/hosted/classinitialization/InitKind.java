@@ -58,11 +58,11 @@ public enum InitKind {
 
     Consumer<String> stringConsumer(ClassInitializationSupport support) {
         if (this == DELAY) {
-            return name -> support.initializeAtRunTime(name, "from command line");
+            return name -> support.initializeAtRunTime(name, "from the command line");
         } else if (this == RERUN) {
-            return name -> support.rerunInitialization(name, "from command line");
+            return name -> support.rerunInitialization(name, "from the command line");
         } else {
-            return name -> support.initializeAtBuildTime(name, "from command line");
+            return name -> support.initializeAtBuildTime(name, "from the command line");
         }
     }
 

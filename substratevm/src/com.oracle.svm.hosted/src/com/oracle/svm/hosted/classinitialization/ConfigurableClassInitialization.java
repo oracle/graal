@@ -134,7 +134,7 @@ public class ConfigurableClassInitialization implements ClassInitializationSuppo
                                 ex.getClass().getTypeName() + (ex.getMessage() == null ? "" : ": " + ex.getMessage()) + ". This class will be initialized at run time because either option " +
                                 SubstrateOptionsParser.commandArgument(NativeImageOptions.ReportUnsupportedElementsAtRuntime, "+") + " or option " +
                                 SubstrateOptionsParser.commandArgument(NativeImageOptions.AllowIncompleteClasspath, "+") + " is used for image building. " +
-                                "Use the option " + SubstrateOptionsParser.commandArgument(ClassInitializationFeature.Options.ClassInitialization, clazz.getTypeName(), "delay-class-initialization") +
+                                "Use the option " + SubstrateOptionsParser.commandArgument(ClassInitializationFeature.Options.ClassInitialization, clazz.getTypeName(), "initialize-at-run-time") +
                                 " to explicitly request delayed initialization of this class.");
 
             } else {
@@ -152,13 +152,6 @@ public class ConfigurableClassInitialization implements ClassInitializationSuppo
                     throw UserError.abort(msg, ex);
                 }
             }
-
-            /*
-             * Mark the whole hierarchy as user specified. Otherwise we will prove these classes
-             * safe and try to initialize them again.
-             */
-            classInitializationConfiguration.insert(clazz.getTypeName(), InitKind.DELAY, "can't be initialized because of " + ex.getMessage());
-            setKindForSubclasses(clazz, InitKind.DELAY);
 
             return InitKind.DELAY;
         }
@@ -202,7 +195,7 @@ public class ConfigurableClassInitialization implements ClassInitializationSuppo
         checkEagerInitialization(clazz);
 
         if (!UNSAFE.shouldBeInitialized(clazz)) {
-            throw UserError.abort("Class is already initialized, so it is too late to register delaying class initialization: " + clazz.getTypeName());
+            throw UserError.abort("Class is already initialized, so it is too late to register delaying class initialization: " + clazz.getTypeName() + " for reason: " + reason);
         }
         /*
          * Propagate possible existing DELAY registration from a superclass, so that we can check
@@ -212,9 +205,9 @@ public class ConfigurableClassInitialization implements ClassInitializationSuppo
 
         InitKind previousKind = classInitKinds.put(clazz, InitKind.DELAY);
         if (previousKind == InitKind.EAGER) {
-            throw UserError.abort("Class is already initialized, so it is too late to register delaying class initialization: " + clazz.getTypeName());
+            throw UserError.abort("Class is already initialized, so it is too late to register delaying class initialization: " + clazz.getTypeName() + " for reason: " + reason);
         } else if (previousKind == InitKind.RERUN) {
-            throw UserError.abort("Class is registered both for delaying and rerunning the class initializer: " + clazz.getTypeName());
+            throw UserError.abort("Class is registered both for delaying and rerunning the class initializer: " + clazz.getTypeName() + " for reason: " + reason);
         }
     }
 
@@ -239,10 +232,10 @@ public class ConfigurableClassInitialization implements ClassInitializationSuppo
         if (previousKind != null) {
             if (previousKind == InitKind.EAGER) {
                 throw UserError.abort("The information that the class should be initialized during image building has already been used, " +
-                                "so it is too late to register re-running the class initializer: " + clazz.getTypeName());
+                                "so it is too late to register re-running the class initializer: " + clazz.getTypeName() + " for reason: " + reason);
             } else if (previousKind.isDelayed()) {
                 throw UserError.abort("Class or a superclass is already registered for delaying the class initializer, " +
-                                "so it is too late to register re-running the class initializer: " + clazz.getTypeName());
+                                "so it is too late to register re-running the class initializer: " + clazz.getTypeName() + " for reason: " + reason);
             }
         }
     }
@@ -256,6 +249,7 @@ public class ConfigurableClassInitialization implements ClassInitializationSuppo
     private void setKindForSubclasses(Class<?> clazz, InitKind kind) {
         loader.findSubclasses(clazz).stream()
                         .filter(c -> !c.equals(clazz))
+                        .filter(c -> !(c.isInterface() && !ClassInitializationFeature.declaresDefaultMethods(metaAccess.lookupJavaType(c))))
                         .forEach(c -> classInitializationConfiguration.insert(c.getTypeName(), kind, "subtype of " + clazz.getTypeName()));
     }
 
@@ -266,8 +260,8 @@ public class ConfigurableClassInitialization implements ClassInitializationSuppo
         }
         classInitializationConfiguration.insert(clazz.getTypeName(), InitKind.EAGER, reason);
 
-        ensureClassInitialized(clazz);
-        classInitKinds.put(clazz, InitKind.EAGER);
+        InitKind initKind = ensureClassInitialized(clazz);
+        classInitKinds.put(clazz, initKind);
 
         forceInitializeHosted(clazz.getSuperclass(), "super type of " + clazz.getTypeName());
         forceInitializeInterfaces(clazz.getInterfaces(), "super type of " + clazz.getTypeName());

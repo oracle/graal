@@ -383,7 +383,10 @@ public class AnalysisMethod implements WrappedJavaMethod, GraphProvider {
 
     @Override
     public boolean canBeStaticallyBound() {
-        return wrapped.canBeStaticallyBound();
+        boolean result = wrapped.canBeStaticallyBound();
+        assert !isStatic() || result : "static methods must always be statically bindable: " + format("%H.%n");
+        return result;
+
     }
 
     public AnalysisMethod[] getImplementations() {

@@ -554,6 +554,7 @@ public class SubstrateOptionsParser {
                     }
                 }
             }
+            assert apiOptionName == null : "invalid API option name " + apiOptionName;
             return HOSTED_OPTION_PREFIX + option.getName() + "=" + value;
         }
     }
