@@ -113,7 +113,9 @@ class PosixJavaNetSubstitutionsFeature implements Feature {
             ImageSingletons.lookup(RuntimeClassInitializationSupport.class).rerunInitialization(access.findClassByName("java.net.AbstractPlainDatagramSocketImpl"), "required for substitutions");
             ImageSingletons.lookup(RuntimeClassInitializationSupport.class).rerunInitialization(access.findClassByName("java.net.PlainSocketImpl"), "required for substitutions");
             ImageSingletons.lookup(RuntimeClassInitializationSupport.class).rerunInitialization(access.findClassByName("java.net.PlainDatagramSocketImpl"), "required for substitutions");
-            ImageSingletons.lookup(RuntimeClassInitializationSupport.class).rerunInitialization(access.findClassByName("sun.net.ExtendedOptionsImpl"), "required for substitutions");
+            if (JavaVersionUtil.Java8OrEarlier) {
+                ImageSingletons.lookup(RuntimeClassInitializationSupport.class).rerunInitialization(access.findClassByName("sun.net.ExtendedOptionsImpl"), "required for substitutions");
+            }
         } catch (Exception e) {
             VMError.shouldNotReachHere("PosixJavaNetSubstitutionsFeature: Error registering rerunClassInitialization: ", e);
         }
