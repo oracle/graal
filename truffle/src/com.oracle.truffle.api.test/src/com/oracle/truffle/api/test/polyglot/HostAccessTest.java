@@ -680,8 +680,10 @@ public class HostAccessTest {
 
     public interface ConverterProxy {
 
+        @Export
         TargetClass1 f0();
 
+        @Export
         TargetClass1 f1();
 
     }

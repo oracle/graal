@@ -45,6 +45,7 @@ import java.io.IOException;
 import java.io.InputStream;
 import java.io.OutputStream;
 import java.io.Reader;
+import java.lang.annotation.Annotation;
 import java.lang.reflect.AnnotatedElement;
 import java.lang.reflect.Method;
 import java.net.URI;
@@ -68,6 +69,7 @@ import java.util.function.Predicate;
 import java.util.logging.Handler;
 import java.util.logging.Level;
 
+import org.graalvm.collections.EconomicSet;
 import org.graalvm.options.OptionDescriptor;
 import org.graalvm.options.OptionDescriptors;
 import org.graalvm.polyglot.PolyglotException.StackFrame;
@@ -630,6 +632,11 @@ public final class Engine implements AutoCloseable {
         @Override
         public void setHostAccessImpl(HostAccess conf, Object impl) {
             conf.impl = impl;
+        }
+
+        @Override
+        public EconomicSet<Class<? extends Annotation>> getExportAnnotations(HostAccess hostAccess) {
+            return hostAccess.getExportAnnotations();
         }
 
     }

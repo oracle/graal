@@ -47,6 +47,7 @@ import java.io.OutputStream;
 import java.io.PrintStream;
 import java.io.PrintWriter;
 import java.io.Reader;
+import java.lang.annotation.Annotation;
 import java.lang.reflect.AnnotatedElement;
 import java.net.URI;
 import java.net.URL;
@@ -63,6 +64,7 @@ import java.util.function.Consumer;
 import java.util.function.Function;
 import java.util.function.Predicate;
 
+import org.graalvm.collections.EconomicSet;
 import org.graalvm.options.OptionDescriptors;
 import org.graalvm.polyglot.Context;
 import org.graalvm.polyglot.Engine;
@@ -153,6 +155,9 @@ public abstract class AbstractPolyglotImpl {
         public abstract Object getHostAccessImpl(HostAccess conf);
 
         public abstract void setHostAccessImpl(HostAccess conf, Object impl);
+
+        public abstract EconomicSet<Class<? extends Annotation>> getExportAnnotations(HostAccess hostAccess);
+
     }
 
     // shared SPI
