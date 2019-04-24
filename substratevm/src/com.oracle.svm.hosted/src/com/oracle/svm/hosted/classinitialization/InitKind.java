@@ -56,23 +56,13 @@ public enum InitKind {
         return SEPARATOR + name().toLowerCase();
     }
 
-    Consumer<Class<?>> classConsumer(ClassInitializationSupport support) {
-        if (this == DELAY) {
-            return cls -> support.delay(cls, "from command line");
-        } else if (this == RERUN) {
-            return cls -> support.rerun(cls, "from command line");
-        } else {
-            return cls -> support.eager(cls, "from command line");
-        }
-    }
-
     Consumer<String> stringConsumer(ClassInitializationSupport support) {
         if (this == DELAY) {
-            return name -> support.delay(name, "from command line");
+            return name -> support.initializeAtRunTime(name, "from command line");
         } else if (this == RERUN) {
-            return name -> support.rerun(name, "from command line");
+            return name -> support.rerunInitialization(name, "from command line");
         } else {
-            return name -> support.eager(name, "from command line");
+            return name -> support.initializeAtBuildTime(name, "from command line");
         }
     }
 

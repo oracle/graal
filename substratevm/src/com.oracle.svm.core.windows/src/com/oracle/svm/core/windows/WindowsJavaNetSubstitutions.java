@@ -26,12 +26,13 @@ package com.oracle.svm.core.windows;
 
 import java.net.InetAddress;
 
+import org.graalvm.nativeimage.ImageSingletons;
 import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.Platforms;
 import org.graalvm.nativeimage.c.function.CLibrary;
-import org.graalvm.nativeimage.hosted.ClassInitialization;
 import org.graalvm.nativeimage.hosted.Feature;
 import org.graalvm.nativeimage.hosted.RuntimeReflection;
+import org.graalvm.nativeimage.impl.RuntimeClassInitializationSupport;
 
 import com.oracle.svm.core.annotate.AutomaticFeature;
 import com.oracle.svm.core.util.VMError;
@@ -46,19 +47,19 @@ class WindowsJavaNetSubstitutionsFeature implements Feature {
     @Override
     public void duringSetup(DuringSetupAccess access) {
         try {
-            ClassInitialization.rerun(access.findClassByName("java.net.InetAddress"));
-            ClassInitialization.rerun(access.findClassByName("java.net.Inet4AddressImpl"));
-            ClassInitialization.rerun(access.findClassByName("java.net.Inet6AddressImpl"));
-            ClassInitialization.rerun(access.findClassByName("java.net.SocketInputStream"));
-            ClassInitialization.rerun(access.findClassByName("java.net.SocketOutputStream"));
-            ClassInitialization.rerun(access.findClassByName("java.net.NetworkInterface"));
-            ClassInitialization.rerun(access.findClassByName("java.net.DatagramPacket"));
-            ClassInitialization.rerun(access.findClassByName("java.net.AbstractPlainSocketImpl"));
-            ClassInitialization.rerun(access.findClassByName("java.net.AbstractPlainDatagramSocketImpl"));
-            ClassInitialization.rerun(access.findClassByName("java.net.DualStackPlainSocketImpl"));
-            ClassInitialization.rerun(access.findClassByName("java.net.TwoStacksPlainSocketImpl"));
-            ClassInitialization.rerun(access.findClassByName("java.net.DualStackPlainDatagramSocketImpl"));
-            ClassInitialization.rerun(access.findClassByName("java.net.TwoStacksPlainDatagramSocketImpl"));
+            ImageSingletons.lookup(RuntimeClassInitializationSupport.class).rerunInitialization(access.findClassByName("java.net.InetAddress"), "required for substitutions");
+            ImageSingletons.lookup(RuntimeClassInitializationSupport.class).rerunInitialization(access.findClassByName("java.net.Inet4AddressImpl"), "required for substitutions");
+            ImageSingletons.lookup(RuntimeClassInitializationSupport.class).rerunInitialization(access.findClassByName("java.net.Inet6AddressImpl"), "required for substitutions");
+            ImageSingletons.lookup(RuntimeClassInitializationSupport.class).rerunInitialization(access.findClassByName("java.net.SocketInputStream"), "required for substitutions");
+            ImageSingletons.lookup(RuntimeClassInitializationSupport.class).rerunInitialization(access.findClassByName("java.net.SocketOutputStream"), "required for substitutions");
+            ImageSingletons.lookup(RuntimeClassInitializationSupport.class).rerunInitialization(access.findClassByName("java.net.NetworkInterface"), "required for substitutions");
+            ImageSingletons.lookup(RuntimeClassInitializationSupport.class).rerunInitialization(access.findClassByName("java.net.DatagramPacket"), "required for substitutions");
+            ImageSingletons.lookup(RuntimeClassInitializationSupport.class).rerunInitialization(access.findClassByName("java.net.AbstractPlainSocketImpl"), "required for substitutions");
+            ImageSingletons.lookup(RuntimeClassInitializationSupport.class).rerunInitialization(access.findClassByName("java.net.AbstractPlainDatagramSocketImpl"), "required for substitutions");
+            ImageSingletons.lookup(RuntimeClassInitializationSupport.class).rerunInitialization(access.findClassByName("java.net.DualStackPlainSocketImpl"), "required for substitutions");
+            ImageSingletons.lookup(RuntimeClassInitializationSupport.class).rerunInitialization(access.findClassByName("java.net.TwoStacksPlainSocketImpl"), "required for substitutions");
+            ImageSingletons.lookup(RuntimeClassInitializationSupport.class).rerunInitialization(access.findClassByName("java.net.DualStackPlainDatagramSocketImpl"), "required for substitutions");
+            ImageSingletons.lookup(RuntimeClassInitializationSupport.class).rerunInitialization(access.findClassByName("java.net.TwoStacksPlainDatagramSocketImpl"), "required for substitutions");
         } catch (Exception e) {
             VMError.shouldNotReachHere("WindowsJavaNetSubstitutionsFeature: Error registering rerunClassInitialization: ", e);
         }

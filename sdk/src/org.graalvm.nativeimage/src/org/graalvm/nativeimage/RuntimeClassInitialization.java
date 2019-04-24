@@ -91,7 +91,7 @@ public final class RuntimeClassInitialization {
      */
     public static void delayClassInitialization(Class<?>... classes) {
         for (Class<?> aClass : classes) {
-            ImageSingletons.lookup(RuntimeClassInitializationSupport.class).delay(aClass, "");
+            ImageSingletons.lookup(RuntimeClassInitializationSupport.class).initializeAtRunTime(aClass, "");
         }
     }
 
@@ -112,7 +112,7 @@ public final class RuntimeClassInitialization {
      */
     public static void rerunClassInitialization(Class<?>... classes) {
         for (Class<?> aClass : classes) {
-            ImageSingletons.lookup(RuntimeClassInitializationSupport.class).rerun(aClass, "");
+            ImageSingletons.lookup(RuntimeClassInitializationSupport.class).rerunInitialization(aClass, "");
         }
     }
 
@@ -131,7 +131,7 @@ public final class RuntimeClassInitialization {
      */
     public static void eagerClassInitialization(Class<?>... classes) {
         for (Class<?> aClass : classes) {
-            ImageSingletons.lookup(RuntimeClassInitializationSupport.class).eager(aClass, "");
+            ImageSingletons.lookup(RuntimeClassInitializationSupport.class).initializeAtBuildTime(aClass, "");
         }
     }
 

@@ -149,7 +149,8 @@ public class ConfigurableClassInitialization implements ClassInitializationSuppo
              * Mark the whole hierarchy as user specified. Otherwise we will prove these classes
              * safe and try to initialize them again.
              */
-            setKindForSubclasses(clazz, InitKind.DELAY, "can't be initialized because of " + ex.getMessage());
+            classInitializationConfiguration.insert(clazz.getTypeName(), InitKind.DELAY, "can't be initialized because of " + ex.getMessage());
+            setKindForSubclasses(clazz, InitKind.DELAY);
 
             return InitKind.DELAY;
         }
@@ -160,23 +161,36 @@ public class ConfigurableClassInitialization implements ClassInitializationSuppo
     }
 
     @Override
-    public void delay(String name, String reason) {
+    public void initializeAtRunTime(String name, String reason) {
         classInitializationConfiguration.insert(name, InitKind.DELAY, reason);
+        Class<?> clazz = loader.findClassByName(name);
+        if (clazz != null) {
+            initializeAtBuildTime(name, reason);
+        }
     }
 
     @Override
-    public void eager(String name, String reason) {
+    public void initializeAtBuildTime(String name, String reason) {
         classInitializationConfiguration.insert(name, InitKind.EAGER, reason);
+        Class<?> clazz = loader.findClassByName(name);
+        if (clazz != null) {
+            initializeAtBuildTime(clazz, reason);
+        }
     }
 
     @Override
-    public void rerun(String name, String reason) {
+    public void rerunInitialization(String name, String reason) {
         classInitializationConfiguration.insert(name, InitKind.RERUN, reason);
+        Class<?> clazz = loader.findClassByName(name);
+        if (clazz != null) {
+            rerunInitialization(clazz, reason);
+        }
     }
 
     @Override
-    public void delay(Class<?> clazz, String reason) {
-        setKindForSubclasses(clazz, InitKind.DELAY, reason);
+    public void initializeAtRunTime(Class<?> clazz, String reason) {
+        classInitializationConfiguration.insert(clazz.getTypeName(), InitKind.DELAY, reason);
+        setKindForSubclasses(clazz, InitKind.DELAY);
         checkEagerInitialization(clazz);
 
         if (!UNSAFE.shouldBeInitialized(clazz)) {
@@ -196,15 +210,8 @@ public class ConfigurableClassInitialization implements ClassInitializationSuppo
         }
     }
 
-    private void setKindForSubclasses(Class<?> clazz, InitKind kind, String reason) {
-        classInitializationConfiguration.insert(clazz.getTypeName(), kind, reason);
-        loader.findSubclasses(clazz).stream()
-                        .filter(c -> !c.equals(clazz))
-                        .forEach(c -> classInitializationConfiguration.insert(c.getTypeName(), kind, "subtype of " + clazz.getTypeName()));
-    }
-
     @Override
-    public void rerun(Class<?> clazz, String reason) {
+    public void rerunInitialization(Class<?> clazz, String reason) {
         classInitializationConfiguration.insert(clazz.getTypeName(), InitKind.RERUN, reason);
         checkEagerInitialization(clazz);
 
@@ -233,9 +240,15 @@ public class ConfigurableClassInitialization implements ClassInitializationSuppo
     }
 
     @Override
-    public void eager(Class<?> aClass, String reason) {
-        eager(aClass.getTypeName(), reason);
+    public void initializeAtBuildTime(Class<?> aClass, String reason) {
+        classInitializationConfiguration.insert(aClass.getTypeName(), InitKind.EAGER, reason);
         forceInitializeHosted(aClass, reason);
+    }
+
+    private void setKindForSubclasses(Class<?> clazz, InitKind kind) {
+        loader.findSubclasses(clazz).stream()
+                        .filter(c -> !c.equals(clazz))
+                        .forEach(c -> classInitializationConfiguration.insert(c.getTypeName(), kind, "subtype of " + clazz.getTypeName()));
     }
 
     @Override

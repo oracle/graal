@@ -245,7 +245,7 @@ public final class NativeLibraries {
                 constructor.setAccessible(true);
                 CContext.Directives unit = constructor.newInstance();
                 if (classInitializationSupport != null) {
-                    classInitializationSupport.eager(unit.getClass(), "CContext.Directives must be eagerly initialized");
+                    classInitializationSupport.initializeAtBuildTime(unit.getClass(), "CContext.Directives must be eagerly initialized");
                 }
                 result = new NativeCodeContext(unit);
                 compilationUnitToContext.put(compilationUnit, result);

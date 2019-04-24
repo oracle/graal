@@ -31,11 +31,12 @@ import java.io.FileInputStream;
 import java.io.FileOutputStream;
 import java.io.PrintStream;
 
+import org.graalvm.nativeimage.ImageSingletons;
 import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.Platforms;
 import org.graalvm.nativeimage.c.function.CLibrary;
-import org.graalvm.nativeimage.hosted.ClassInitialization;
 import org.graalvm.nativeimage.hosted.Feature;
+import org.graalvm.nativeimage.impl.RuntimeClassInitializationSupport;
 
 import com.oracle.svm.core.annotate.Alias;
 import com.oracle.svm.core.annotate.AutomaticFeature;
@@ -61,10 +62,10 @@ class WindowsJavaIOSubstituteFeature implements Feature {
         // RuntimeClassInitialization.rerunClassInitialization(access.findClassByName("java.io.FileOutputStream"));
         // RuntimeClassInitialization.rerunClassInitialization(access.findClassByName("java.io.WinNTFileSystem"));
 
-        ClassInitialization.rerun(access.findClassByName("java.io.RandomAccessFile"));
-        ClassInitialization.rerun(access.findClassByName("java.util.zip.ZipFile"));
-        ClassInitialization.rerun(access.findClassByName("java.util.zip.Inflater"));
-        ClassInitialization.rerun(access.findClassByName("java.util.zip.Deflater"));
+        ImageSingletons.lookup(RuntimeClassInitializationSupport.class).rerunInitialization(access.findClassByName("java.io.RandomAccessFile"), "required for substitutions");
+        ImageSingletons.lookup(RuntimeClassInitializationSupport.class).rerunInitialization(access.findClassByName("java.util.zip.ZipFile"), "required for substitutions");
+        ImageSingletons.lookup(RuntimeClassInitializationSupport.class).rerunInitialization(access.findClassByName("java.util.zip.Inflater"), "required for substitutions");
+        ImageSingletons.lookup(RuntimeClassInitializationSupport.class).rerunInitialization(access.findClassByName("java.util.zip.Deflater"), "required for substitutions");
     }
 
     @Override

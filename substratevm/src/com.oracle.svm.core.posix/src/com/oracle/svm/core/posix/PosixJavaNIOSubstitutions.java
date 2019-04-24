@@ -24,9 +24,6 @@
  */
 package com.oracle.svm.core.posix;
 
-import static com.oracle.svm.core.posix.headers.Dirent.opendir;
-import static com.oracle.svm.core.posix.headers.Dirent.readdir_r;
-import static com.oracle.svm.core.posix.headers.Dlfcn.RTLD_DEFAULT;
 import static com.oracle.svm.core.headers.Errno.EACCES;
 import static com.oracle.svm.core.headers.Errno.EAGAIN;
 import static com.oracle.svm.core.headers.Errno.ECANCELED;
@@ -41,6 +38,9 @@ import static com.oracle.svm.core.headers.Errno.EOPNOTSUPP;
 import static com.oracle.svm.core.headers.Errno.ERANGE;
 import static com.oracle.svm.core.headers.Errno.ESRCH;
 import static com.oracle.svm.core.headers.Errno.errno;
+import static com.oracle.svm.core.posix.headers.Dirent.opendir;
+import static com.oracle.svm.core.posix.headers.Dirent.readdir_r;
+import static com.oracle.svm.core.posix.headers.Dlfcn.RTLD_DEFAULT;
 import static com.oracle.svm.core.posix.headers.Fcntl.F_GETFL;
 import static com.oracle.svm.core.posix.headers.Fcntl.F_RDLCK;
 import static com.oracle.svm.core.posix.headers.Fcntl.F_SETFL;
@@ -116,8 +116,7 @@ import java.nio.file.FileSystems;
 import java.nio.file.spi.FileSystemProvider;
 import java.util.function.Predicate;
 
-import org.graalvm.nativeimage.hosted.ClassInitialization;
-import org.graalvm.nativeimage.hosted.Feature;
+import org.graalvm.nativeimage.ImageSingletons;
 import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.Platforms;
 import org.graalvm.nativeimage.StackValue;
@@ -132,7 +131,9 @@ import org.graalvm.nativeimage.c.type.CTypeConversion;
 import org.graalvm.nativeimage.c.type.CTypeConversion.CCharPointerHolder;
 import org.graalvm.nativeimage.c.type.VoidPointer;
 import org.graalvm.nativeimage.c.type.WordPointer;
+import org.graalvm.nativeimage.hosted.Feature;
 import org.graalvm.nativeimage.impl.InternalPlatform;
+import org.graalvm.nativeimage.impl.RuntimeClassInitializationSupport;
 import org.graalvm.word.PointerBase;
 import org.graalvm.word.SignedWord;
 import org.graalvm.word.UnsignedWord;
@@ -151,6 +152,7 @@ import com.oracle.svm.core.annotate.RecomputeFieldValue;
 import com.oracle.svm.core.annotate.Substitute;
 import com.oracle.svm.core.annotate.TargetClass;
 import com.oracle.svm.core.annotate.TargetElement;
+import com.oracle.svm.core.headers.Errno;
 import com.oracle.svm.core.jdk.JDK8OrEarlier;
 import com.oracle.svm.core.jdk.JDK9OrLater;
 import com.oracle.svm.core.log.Log;
@@ -161,7 +163,6 @@ import com.oracle.svm.core.posix.headers.Dirent.DIR;
 import com.oracle.svm.core.posix.headers.Dirent.dirent;
 import com.oracle.svm.core.posix.headers.Dirent.direntPointer;
 import com.oracle.svm.core.posix.headers.Dlfcn;
-import com.oracle.svm.core.headers.Errno;
 import com.oracle.svm.core.posix.headers.Fcntl;
 import com.oracle.svm.core.posix.headers.Fcntl.flock;
 import com.oracle.svm.core.posix.headers.Grp.group;
@@ -198,12 +199,12 @@ class PosixJavaNIOSubstituteFeature implements Feature {
 
     @Override
     public void duringSetup(DuringSetupAccess access) {
-        ClassInitialization.rerun(access.findClassByName("sun.nio.ch.FileKey"));
-        ClassInitialization.rerun(access.findClassByName("sun.nio.fs.UnixNativeDispatcher"));
-        ClassInitialization.rerun(access.findClassByName("sun.nio.ch.ServerSocketChannelImpl"));
-        ClassInitialization.rerun(access.findClassByName("sun.nio.ch.IOUtil"));
-        ClassInitialization.rerun(access.findClassByName("sun.nio.ch.FileChannelImpl"));
-        ClassInitialization.rerun(access.findClassByName("java.nio.file.FileSystems"));
+        ImageSingletons.lookup(RuntimeClassInitializationSupport.class).rerunInitialization(access.findClassByName("sun.nio.ch.FileKey"), "required for substitutions");
+        ImageSingletons.lookup(RuntimeClassInitializationSupport.class).rerunInitialization(access.findClassByName("sun.nio.fs.UnixNativeDispatcher"), "required for substitutions");
+        ImageSingletons.lookup(RuntimeClassInitializationSupport.class).rerunInitialization(access.findClassByName("sun.nio.ch.ServerSocketChannelImpl"), "required for substitutions");
+        ImageSingletons.lookup(RuntimeClassInitializationSupport.class).rerunInitialization(access.findClassByName("sun.nio.ch.IOUtil"), "required for substitutions");
+        ImageSingletons.lookup(RuntimeClassInitializationSupport.class).rerunInitialization(access.findClassByName("sun.nio.ch.FileChannelImpl"), "required for substitutions");
+        ImageSingletons.lookup(RuntimeClassInitializationSupport.class).rerunInitialization(access.findClassByName("java.nio.file.FileSystems"), "required for substitutions");
     }
 
     @Override
@@ -3982,6 +3983,6 @@ final class SunNioChNativeThreadFeature implements Feature {
 
     @Override
     public void duringSetup(DuringSetupAccess access) {
-        ClassInitialization.rerun(access.findClassByName("sun.nio.ch.NativeThread"));
+        ImageSingletons.lookup(RuntimeClassInitializationSupport.class).rerunInitialization(access.findClassByName("sun.nio.ch.NativeThread"), "required for substitutions");
     }
 }

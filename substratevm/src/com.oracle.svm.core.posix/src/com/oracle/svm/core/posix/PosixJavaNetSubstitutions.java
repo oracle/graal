@@ -49,13 +49,10 @@ import java.util.HashMap;
 import java.util.LinkedHashMap;
 
 import org.graalvm.compiler.serviceprovider.JavaVersionUtil;
-import org.graalvm.nativeimage.hosted.ClassInitialization;
-import org.graalvm.nativeimage.hosted.Feature;
 import org.graalvm.nativeimage.ImageSingletons;
 import org.graalvm.nativeimage.PinnedObject;
 import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.Platforms;
-import org.graalvm.nativeimage.hosted.RuntimeReflection;
 import org.graalvm.nativeimage.StackValue;
 import org.graalvm.nativeimage.c.function.CLibrary;
 import org.graalvm.nativeimage.c.struct.SizeOf;
@@ -64,7 +61,10 @@ import org.graalvm.nativeimage.c.type.CIntPointer;
 import org.graalvm.nativeimage.c.type.CTypeConversion;
 import org.graalvm.nativeimage.c.type.CTypeConversion.CCharPointerHolder;
 import org.graalvm.nativeimage.c.type.WordPointer;
+import org.graalvm.nativeimage.hosted.Feature;
+import org.graalvm.nativeimage.hosted.RuntimeReflection;
 import org.graalvm.nativeimage.impl.InternalPlatform;
+import org.graalvm.nativeimage.impl.RuntimeClassInitializationSupport;
 import org.graalvm.word.PointerBase;
 import org.graalvm.word.WordFactory;
 
@@ -103,17 +103,17 @@ class PosixJavaNetSubstitutionsFeature implements Feature {
     @Override
     public void duringSetup(DuringSetupAccess access) {
         try {
-            ClassInitialization.rerun(access.findClassByName("java.net.InetAddress"));
-            ClassInitialization.rerun(access.findClassByName("java.net.Inet4AddressImpl"));
-            ClassInitialization.rerun(access.findClassByName("java.net.Inet6AddressImpl"));
-            ClassInitialization.rerun(access.findClassByName("java.net.SocketInputStream"));
-            ClassInitialization.rerun(access.findClassByName("java.net.SocketOutputStream"));
-            ClassInitialization.rerun(access.findClassByName("java.net.DatagramPacket"));
-            ClassInitialization.rerun(access.findClassByName("java.net.AbstractPlainSocketImpl"));
-            ClassInitialization.rerun(access.findClassByName("java.net.AbstractPlainDatagramSocketImpl"));
-            ClassInitialization.rerun(access.findClassByName("java.net.PlainSocketImpl"));
-            ClassInitialization.rerun(access.findClassByName("java.net.PlainDatagramSocketImpl"));
-            ClassInitialization.rerun(access.findClassByName("sun.net.ExtendedOptionsImpl"));
+            ImageSingletons.lookup(RuntimeClassInitializationSupport.class).rerunInitialization(access.findClassByName("java.net.InetAddress"), "required for substitutions");
+            ImageSingletons.lookup(RuntimeClassInitializationSupport.class).rerunInitialization(access.findClassByName("java.net.Inet4AddressImpl"), "required for substitutions");
+            ImageSingletons.lookup(RuntimeClassInitializationSupport.class).rerunInitialization(access.findClassByName("java.net.Inet6AddressImpl"), "required for substitutions");
+            ImageSingletons.lookup(RuntimeClassInitializationSupport.class).rerunInitialization(access.findClassByName("java.net.SocketInputStream"), "required for substitutions");
+            ImageSingletons.lookup(RuntimeClassInitializationSupport.class).rerunInitialization(access.findClassByName("java.net.SocketOutputStream"), "required for substitutions");
+            ImageSingletons.lookup(RuntimeClassInitializationSupport.class).rerunInitialization(access.findClassByName("java.net.DatagramPacket"), "required for substitutions");
+            ImageSingletons.lookup(RuntimeClassInitializationSupport.class).rerunInitialization(access.findClassByName("java.net.AbstractPlainSocketImpl"), "required for substitutions");
+            ImageSingletons.lookup(RuntimeClassInitializationSupport.class).rerunInitialization(access.findClassByName("java.net.AbstractPlainDatagramSocketImpl"), "required for substitutions");
+            ImageSingletons.lookup(RuntimeClassInitializationSupport.class).rerunInitialization(access.findClassByName("java.net.PlainSocketImpl"), "required for substitutions");
+            ImageSingletons.lookup(RuntimeClassInitializationSupport.class).rerunInitialization(access.findClassByName("java.net.PlainDatagramSocketImpl"), "required for substitutions");
+            ImageSingletons.lookup(RuntimeClassInitializationSupport.class).rerunInitialization(access.findClassByName("sun.net.ExtendedOptionsImpl"), "required for substitutions");
         } catch (Exception e) {
             VMError.shouldNotReachHere("PosixJavaNetSubstitutionsFeature: Error registering rerunClassInitialization: ", e);
         }
@@ -5975,7 +5975,7 @@ final class JavaNetPlainSocketImplFeature implements Feature {
 
     @Override
     public void duringSetup(DuringSetupAccess access) {
-        ClassInitialization.rerun(access.findClassByName("java.net.PlainSocketImpl"));
+        ImageSingletons.lookup(RuntimeClassInitializationSupport.class).rerunInitialization(access.findClassByName("java.net.PlainSocketImpl"), "Required for substitutions");
     }
 }
 

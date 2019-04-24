@@ -133,7 +133,6 @@ public class ClassInitializationFeature implements Feature {
 
     public static void processClassInitializationOptions(FeatureImpl.AfterRegistrationAccessImpl access, ClassInitializationSupport initializationSupport) {
         String[] initializationInfo = Options.ClassInitialization.getValue();
-        Package[] pkgs = access.getImageClassLoader().getPackages();
         for (String infos : initializationInfo) {
             for (String info : infos.split(",")) {
                 boolean noMatches = Arrays.stream(InitKind.values()).noneMatch(v -> info.endsWith(v.suffix()));
@@ -142,28 +141,7 @@ public class ClassInitializationFeature implements Feature {
                 }
 
                 Pair<String, InitKind> elementType = InitKind.strip(info);
-
-                /* check for setting the whole hierarchy */
-                if (elementType.getLeft().isEmpty()) {
-                    elementType.getRight().stringConsumer(initializationSupport).accept(elementType.getLeft());
-                } else {
-                    /* check if class exists */
-                    String classOrPackageName = elementType.getLeft();
-                    Class<?> clazz = access.findClassByName(classOrPackageName);
-                    if (clazz != null) {
-                        elementType.getRight().classConsumer(initializationSupport).accept(clazz);
-                    }
-
-                    /* check if package with prefix exists */
-                    boolean pkgFound = Arrays.stream(pkgs).anyMatch(
-                                    p -> p.getName().startsWith(classOrPackageName) && (p.getName().length() == classOrPackageName.length() || p.getName().charAt(classOrPackageName.length()) == '.'));
-                    if (pkgFound) {
-                        elementType.getRight().stringConsumer(initializationSupport).accept(classOrPackageName);
-                    }
-                    if (!pkgFound && clazz == null) {
-                        throw UserError.abort("Could not find class or package called " + classOrPackageName + " that is configured for " + elementType.getRight() + " class initialization.");
-                    }
-                }
+                elementType.getRight().stringConsumer(initializationSupport).accept(elementType.getLeft());
             }
         }
     }
