@@ -88,6 +88,7 @@ import org.graalvm.compiler.nodes.extended.GuardingNode;
 import org.graalvm.compiler.nodes.extended.IntegerSwitchNode;
 import org.graalvm.compiler.nodes.extended.LoadHubNode;
 import org.graalvm.compiler.nodes.extended.ValueAnchorNode;
+import org.graalvm.compiler.nodes.java.InstanceOfNode;
 import org.graalvm.compiler.nodes.java.TypeSwitchNode;
 import org.graalvm.compiler.nodes.spi.NodeWithState;
 import org.graalvm.compiler.nodes.spi.StampInverter;
@@ -364,7 +365,33 @@ public class ConditionalEliminationPhase extends BasePhase<PhaseContext> {
                     node.setCondition(LogicConstantNode.forBoolean(result, node.graph()), node.isNegated());
                     // Don't kill this branch immediately, see `processGuard`.
                 }
-                debug.log("Kill fixed guard guard");
+
+                if (guard instanceof DeoptimizingGuard && !node.isNegated() && !((DeoptimizingGuard) guard).isNegated()) {
+                    LogicNode newCondition = ((DeoptimizingGuard) guard.asNode()).getCondition();
+                    if (newCondition instanceof InstanceOfNode) {
+                        InstanceOfNode inst = (InstanceOfNode) newCondition;
+                        PiNode pi = null;
+                        // Ensure that any Pi that's weaker than what the instanceof proves is
+                        // replaced by one derived from the instanceof itself.
+                        for (PiNode existing : guard.asNode().usages().filter(PiNode.class).snapshot()) {
+                            if (!existing.isAlive()) {
+                                continue;
+                            }
+                            // If the pi has a weaker stamp or the same stamp but a different input
+                            // then replace it.
+                            boolean strongerStamp = !existing.piStamp().join(inst.getCheckedStamp()).equals(inst.getCheckedStamp());
+                            boolean differentStamp = !existing.piStamp().equals(inst.getCheckedStamp());
+                            boolean differentObject = existing.object() != inst.getValue();
+                            if (!strongerStamp && (differentStamp || differentObject)) {
+                                if (pi == null) {
+                                    pi = graph.unique(new PiNode(inst.getValue(), inst.getCheckedStamp(), (ValueNode) guard));
+                                }
+                                existing.replaceAndDelete(pi);
+                            }
+                        }
+                    }
+                }
+                debug.log("Kill fixed guard %s", node);
                 return true;
             })) {
                 registerNewCondition(node.condition(), node.isNegated(), node);
