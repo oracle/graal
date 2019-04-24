@@ -171,6 +171,9 @@ class PosixJavaIOSubstituteFeature implements Feature {
             JNIRuntimeAccess.register(java.io.FileInputStream.class.getDeclaredField("fd"));
             JNIRuntimeAccess.register(java.io.FileDescriptor.class);
             JNIRuntimeAccess.register(java.io.FileDescriptor.class.getDeclaredField("fd"));
+            if (!JavaVersionUtil.Java8OrEarlier) {
+                JNIRuntimeAccess.register(java.io.FileDescriptor.class.getDeclaredField("append"));
+            }
             JNIRuntimeAccess.register(java.io.RandomAccessFile.class);
             JNIRuntimeAccess.register(java.io.RandomAccessFile.class.getDeclaredField("fd"));
             JNIRuntimeAccess.register(java.io.IOException.class);
