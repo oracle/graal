@@ -1188,16 +1188,26 @@ public class Breakpoint {
     private abstract static class AbstractBreakpointNode extends DebuggerNode {
 
         private final Breakpoint breakpoint;
+        private final boolean inInternalCode;
+        private final Source inSource;
         protected final BranchProfile breakBranch = BranchProfile.create();
 
         @Child private ConditionalBreakNode breakCondition;
         @CompilationFinal private Assumption conditionExistsUnchanged;
         @CompilationFinal(dimensions = 1) private DebuggerSession[] sessions;
+        @CompilationFinal(dimensions = 1) private Assumption[] sessionSuspensionFilterUnchanged;
         @CompilationFinal private Assumption sessionsUnchanged;
 
         AbstractBreakpointNode(Breakpoint breakpoint, EventContext context) {
             super(context);
             this.breakpoint = breakpoint;
+            inInternalCode = context.getInstrumentedNode().getRootNode().isInternal();
+            SourceSection sourceSection = context.getInstrumentedSourceSection();
+            if (sourceSection != null) {
+                inSource = sourceSection.getSource();
+            } else {
+                inSource = null;
+            }
             initializeSessions();
             this.conditionExistsUnchanged = breakpoint.getConditionExistsUnchanged();
             if (breakpoint.condition != null) {
@@ -1209,6 +1219,27 @@ public class Breakpoint {
             CompilerAsserts.neverPartOfCompilation();
             synchronized (breakpoint) {
                 this.sessions = breakpoint.sessions.toArray(new DebuggerSession[]{});
+                this.sessionSuspensionFilterUnchanged = new Assumption[sessions.length];
+                for (int i = 0; i < sessions.length; i++) {
+                    sessionSuspensionFilterUnchanged[i] = sessions[i].getSuspensionFilterUnchangedAssumption();
+                }
+                int i = 0;
+                while (i < sessions.length) {
+                    DebuggerSession session = sessions[i];
+                    if (inInternalCode && !session.isIncludeInternal() ||
+                                    inSource != null && session.isSourceFilteredOut(inSource)) {
+                        DebuggerSession[] newSessions = new DebuggerSession[sessions.length - 1];
+                        if (i > 0) {
+                            System.arraycopy(sessions, 0, newSessions, 0, i);
+                        }
+                        if (i < (sessions.length - 1)) {
+                            System.arraycopy(sessions, i + 1, newSessions, i, sessions.length - 1 - i);
+                        }
+                        sessions = newSessions;
+                    } else {
+                        i++;
+                    }
+                }
                 sessionsUnchanged = Truffle.getRuntime().createAssumption("Breakpoint sessions unchanged.");
                 breakpoint.sessionsUnchanged = sessionsUnchanged;
             }
@@ -1234,6 +1265,19 @@ public class Breakpoint {
             if (!sessionsUnchanged.isValid()) {
                 CompilerDirectives.transferToInterpreterAndInvalidate();
                 initializeSessions();
+            } else {
+                Assumption[] filterUnchanged = sessionSuspensionFilterUnchanged;
+                boolean validSessionSuspensions = true;
+                for (Assumption a : filterUnchanged) {
+                    if (!a.isValid()) {
+                        validSessionSuspensions = false;
+                        break;
+                    }
+                }
+                if (!validSessionSuspensions) {
+                    CompilerDirectives.transferToInterpreterAndInvalidate();
+                    initializeSessions();
+                }
             }
             DebuggerSession[] debuggerSessions = sessions;
             boolean active = false;
