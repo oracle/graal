@@ -40,6 +40,7 @@
  */
 package com.oracle.truffle.polyglot;
 
+import java.lang.reflect.Constructor;
 import java.lang.reflect.Field;
 import java.lang.reflect.Method;
 import java.util.ArrayList;
@@ -175,6 +176,10 @@ final class HostClassCache {
     }
 
     boolean allowsAccess(Method m) {
+        return apiAccess.allowsAccess(hostAccess, m);
+    }
+
+    boolean allowsAccess(Constructor<?> m) {
         return apiAccess.allowsAccess(hostAccess, m);
     }
 
