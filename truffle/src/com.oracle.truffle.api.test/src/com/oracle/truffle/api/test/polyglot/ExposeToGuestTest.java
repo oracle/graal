@@ -44,6 +44,7 @@ import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertTrue;
 import static org.junit.Assert.fail;
+import static org.junit.Assert.assertNotNull;
 
 import java.lang.annotation.ElementType;
 import java.lang.annotation.Retention;
@@ -59,10 +60,12 @@ import org.graalvm.polyglot.Value;
 import org.junit.Assert;
 import org.junit.Test;
 
+import com.oracle.truffle.api.interop.ArityException;
 import com.oracle.truffle.api.interop.InteropException;
 import com.oracle.truffle.api.interop.InteropLibrary;
 import com.oracle.truffle.api.interop.UnknownIdentifierException;
 import com.oracle.truffle.api.interop.UnsupportedMessageException;
+import com.oracle.truffle.api.interop.UnsupportedTypeException;
 
 public class ExposeToGuestTest {
     @Test
@@ -341,6 +344,64 @@ public class ExposeToGuestTest {
             interop.removeMember(object, member);
             fail();
         } catch (UnsupportedMessageException e) {
+        }
+    }
+
+    @SuppressWarnings("unused")
+    public static class AllowedConstructorAccess {
+
+        @HostAccess.Export
+        public AllowedConstructorAccess(String s) {
+        }
+
+        public AllowedConstructorAccess() {
+        }
+
+        AllowedConstructorAccess(int c) {
+        }
+
+    }
+
+    public static class DeniedConstructorAccess {
+
+        public DeniedConstructorAccess() {
+        }
+
+    }
+
+    @Test
+    public void staticConstructorAccessIsForbidden() throws InteropException {
+        Context.Builder builder = Context.newBuilder();
+        builder.allowHostClassLookup((c) -> c.endsWith("ConstructorAccess"));
+        Context c = builder.build();
+        c.initialize(ProxyLanguage.ID);
+        c.enter();
+        try {
+            Object allowed = ProxyLanguage.getCurrentContext().getEnv().lookupHostSymbol(AllowedConstructorAccess.class.getName());
+            InteropLibrary library = InteropLibrary.getFactory().getUncached();
+            assertTrue(library.isInstantiable(allowed));
+            try {
+                library.instantiate(allowed);
+                fail();
+            } catch (ArityException e) {
+            }
+            try {
+                library.instantiate(allowed, 42);
+                fail();
+            } catch (UnsupportedTypeException e) {
+            }
+            assertNotNull(library.instantiate(allowed, "asdf"));
+
+            Object denied = ProxyLanguage.getCurrentContext().getEnv().lookupHostSymbol(DeniedConstructorAccess.class.getName());
+            assertFalse(library.isInstantiable(denied));
+            try {
+                library.instantiate(denied);
+                fail();
+            } catch (UnsupportedMessageException e) {
+            }
+        } finally {
+            c.leave();
+            c.close();
         }
     }
 
