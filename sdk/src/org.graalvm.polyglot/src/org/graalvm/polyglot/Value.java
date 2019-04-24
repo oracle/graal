@@ -801,10 +801,12 @@ public final class Value {
      * functional interface like {@link Function} is used, it is recommended to use
      * {@link #as(TypeLiteral) type literals} to specify the expected generic method parameter and
      * return type.
-     * <li>Any interface if the value {@link #hasMembers()}. Each method or field name maps to one
-     * {@link #getMember(String) member} of the value. Whenever a method of the interface is
-     * executed a member with the method or field name must exist otherwise a
-     * {@link UnsupportedOperationException} is thrown when the method is executed. If one of the
+     * <li>Any interface if the value {@link #hasMembers() has members}. Each {@link HostAccess
+     * accessible} interface method maps to one {@link #getMember(String) member} of the value.
+     * Whenever a method of the interface is executed a member with the method or field name must
+     * exist otherwise a {@link UnsupportedOperationException} is thrown when the method is
+     * executed. If the interface method is accessible with the current set {@link HostAccess host
+     * access} policy an {@link UnsupportedOperationException} is thrown. A member If one of the
      * parameters cannot be mapped to the target type a {@link ClassCastException} or a
      * {@link NullPointerException} is thrown.
      * </ul>

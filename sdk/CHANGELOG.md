@@ -5,6 +5,7 @@ This changelog summarizes major changes between GraalVM SDK versions. The main f
 ## Version 1.0.0 RC16
 * `--experimental-options` can now also be passed after polyglot options on the command line.
 * `--version` changed default message to `IMPLEMENTATION-NAME (ENGINE-NAME GRAALVM-VERSION)`
+* `Value.as(Interface.class)` now requires interface methods to be exported in `EXPLICIT` host access mode.
 
 ## Version 1.0.0 RC15
 * Renamed 'Graal SDK' to 'GraalVM SDK'

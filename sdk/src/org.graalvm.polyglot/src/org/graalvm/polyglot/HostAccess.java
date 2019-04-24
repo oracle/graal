@@ -184,6 +184,10 @@ public final class HostAccess {
         return targetMappings;
     }
 
+    EconomicSet<Class<? extends Annotation>> getExportAnnotations() {
+        return annotations;
+    }
+
     boolean allowsAccess(AnnotatedElement member) {
         if (excludeTypes != null) {
             Class<?> owner = getDeclaringClass(member);

@@ -42,9 +42,9 @@ package com.oracle.truffle.api.test.polyglot;
 
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertFalse;
+import static org.junit.Assert.assertNotNull;
 import static org.junit.Assert.assertTrue;
 import static org.junit.Assert.fail;
-import static org.junit.Assert.assertNotNull;
 
 import java.lang.annotation.ElementType;
 import java.lang.annotation.Retention;
@@ -398,6 +398,63 @@ public class ExposeToGuestTest {
                 library.instantiate(denied);
                 fail();
             } catch (UnsupportedMessageException e) {
+            }
+        } finally {
+            c.leave();
+            c.close();
+        }
+    }
+
+    interface EmptyInterface {
+
+    }
+
+    interface NotExported {
+
+        Object notExported();
+
+    }
+
+    interface Exported {
+
+        @Export
+        Object exported();
+
+    }
+
+    public static class Impl {
+
+        @Export
+        public Object exported() {
+            return "42";
+        }
+
+        @Export
+        public Object notExported() {
+            return "43";
+        }
+
+    }
+
+    @Test
+    public void staticInterfaceProxyNotAllowed() {
+        Context.Builder builder = Context.newBuilder();
+        Context c = builder.build();
+        c.initialize(ProxyLanguage.ID);
+        c.enter();
+        try {
+            Value v = c.asValue(new Impl());
+            assertNotNull(v.as(EmptyInterface.class));
+            assertEquals("42", v.as(Exported.class).exported());
+
+            NotExported notExported = v.as(NotExported.class);
+            try {
+                notExported.notExported();
+                fail();
+            } catch (UnsupportedOperationException e) {
+                assertEquals("Method 'public abstract java.lang.Object " + NotExported.class.getName() +
+                                ".notExported()' is not accessible to guest languages with the configured HostAccess policy. " +
+                                "Annotate the method with @org.graalvm.polyglot.HostAccess.Export to resolve this.", e.getMessage());
             }
         } finally {
             c.leave();
