@@ -63,6 +63,7 @@ import com.oracle.truffle.api.nodes.ControlFlowException;
 import com.oracle.truffle.api.nodes.DirectCallNode;
 import com.oracle.truffle.api.nodes.RootNode;
 import com.oracle.truffle.llvm.instruments.trace.LLVMTracerInstrument;
+import com.oracle.truffle.llvm.runtime.LLVMArgumentBuffer.LLVMArgumentArray;
 import com.oracle.truffle.llvm.runtime.datalayout.DataLayout;
 import com.oracle.truffle.llvm.runtime.debug.LLVMSourceContext;
 import com.oracle.truffle.llvm.runtime.debug.type.LLVMSourceType;
@@ -237,7 +238,7 @@ public final class LLVMContext {
                 ctx.initialized = true;
                 ctx.cleanupNecessary = true;
                 try (StackPointer sp = ((StackPointer) FrameUtil.getObjectSafe(frame, stackPointer)).newFrame()) {
-                    Object[] args = new Object[]{sp, ctx.getApplicationArguments(), ctx.getEnvironmentVariables(), ctx.getRandomValues()};
+                    Object[] args = new Object[]{sp, ctx.getApplicationArguments(), ctx.getEnvironmentVariables(), getRandomValues()};
                     initContext.call(args);
                 }
             }
@@ -314,26 +315,22 @@ public final class LLVMContext {
     }
 
     @TruffleBoundary
-    private LLVMManagedPointer getRandomValues() {
+    private static LLVMManagedPointer getRandomValues() {
         byte[] result = new byte[16];
         secureRandom().nextBytes(result);
-        return toManagedPointer(toTruffleObject(result));
+        return toManagedPointer(new LLVMArgumentBuffer(result));
     }
 
     private static SecureRandom secureRandom() {
         return new SecureRandom();
     }
 
-    private LLVMManagedPointer toTruffleObjects(String[] values) {
-        TruffleObject[] result = new TruffleObject[values.length];
+    private static LLVMManagedPointer toTruffleObjects(String[] values) {
+        LLVMArgumentBuffer[] result = new LLVMArgumentBuffer[values.length];
         for (int i = 0; i < values.length; i++) {
-            result[i] = toTruffleObject(values[i].getBytes());
+            result[i] = new LLVMArgumentBuffer(values[i]);
         }
-        return toManagedPointer(toTruffleObject(result));
-    }
-
-    private TruffleObject toTruffleObject(Object value) {
-        return (TruffleObject) env.asGuestValue(value);
+        return toManagedPointer(new LLVMArgumentArray(result));
     }
 
     private static LLVMManagedPointer toManagedPointer(TruffleObject value) {
