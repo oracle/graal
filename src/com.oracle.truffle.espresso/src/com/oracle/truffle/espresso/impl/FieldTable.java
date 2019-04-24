@@ -101,7 +101,8 @@ class FieldTable {
     }
 
     private static int setHiddenFields(Symbol<Symbol.Type> type, ArrayList<Field> tmpTable, ObjectKlass thisKlass, int fieldIndex) {
-        // Gimmick to not forget to return correct increment. Forgetting results in dramatic JVM crashes.
+        // Gimmick to not forget to return correct increment. Forgetting results in dramatic JVM
+        // crashes.
         int c = 0;
 
         if (type == Symbol.Type.MemberName) {
@@ -127,8 +128,8 @@ class FieldTable {
             tmpTable.add(new Field(thisKlass, tmpTable.size(), fieldIndex + c++, Symbol.Name.HIDDEN_HOST_THREAD));
             return c;
         } else if (type == Symbol.Type.Class) {
-            tmpTable.add(new Field(thisKlass, tmpTable.size(), fieldIndex + c++, Symbol.Name.HIDDEN_MIRROR_KLASS));
             tmpTable.add(new Field(thisKlass, tmpTable.size(), fieldIndex + c++, Symbol.Name.HIDDEN_SIGNERS));
+            tmpTable.add(new Field(thisKlass, tmpTable.size(), fieldIndex + c++, Symbol.Name.HIDDEN_MIRROR_KLASS));
             return c;
         } else {
             return c;

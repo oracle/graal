@@ -45,8 +45,8 @@ import java.lang.reflect.Array;
 import static com.oracle.truffle.espresso.vm.InterpreterToVM.instanceOf;
 
 /**
- * Jumbo class that does everything for any type of object, while maintaining same performance, whether they be arrays,
- * classes or regular objects. This allows for leaf type-checks.
+ * Jumbo class that does everything for any type of object, while maintaining same performance,
+ * whether they be arrays, classes or regular objects. This allows for leaf type-checks.
  *
  * This does not come for free, however, as the implementation is pretty ugly.
  */
@@ -97,7 +97,20 @@ public final class StaticObject implements TruffleObject {
         this(klass, false);
     }
 
+    // Constructor for Class objects
+    public StaticObject(ObjectKlass guestClass, Klass thisKlass) {
+        assert thisKlass != null;
+        assert guestClass == guestClass.getMeta().Class;
+        this.klass = guestClass;
+        // assert !isStatic || klass.isInitialized(); else {
+        this.fields = guestClass.getObjectFieldsCount() > 0 ? new Object[guestClass.getObjectFieldsCount()] : null;
+        this.primitiveFields = guestClass.getWordFieldsCount() > 0 ? new byte[guestClass.getWordFieldsCount()] : null;
+        initFields(guestClass, false);
+        setHiddenField(thisKlass.getMeta().HIDDEN_MIRROR_KLASS, thisKlass);
+    }
+
     public StaticObject(ObjectKlass klass, boolean isStatic) {
+        assert klass != klass.getMeta().Class || isStatic;
         this.klass = klass;
         // assert !isStatic || klass.isInitialized();
         if (isStatic) {
@@ -113,10 +126,13 @@ public final class StaticObject implements TruffleObject {
     /**
      * Constructor for Array objects.
      *
-     * Current implementation stores the array in lieu of fields. fields being an Object, a char array can be stored under it without any boxing happening.
-     * The array could have been stored in fields[0], but getting to the array would then require an additional indirection.
+     * Current implementation stores the array in lieu of fields. fields being an Object, a char
+     * array can be stored under it without any boxing happening. The array could have been stored
+     * in fields[0], but getting to the array would then require an additional indirection.
      *
-     * Regular objects still always have an Object[] hiding under fields. In order to preserve the behavior and avoid casting to Object[] (a non-leaf cast), we perform field accesses with Unsafe operations.
+     * Regular objects still always have an Object[] hiding under fields. In order to preserve the
+     * behavior and avoid casting to Object[] (a non-leaf cast), we perform field accesses with
+     * Unsafe operations.
      */
     public StaticObject(ArrayKlass klass, Object array) {
         this.klass = klass;
@@ -160,7 +176,7 @@ public final class StaticObject implements TruffleObject {
             return new StaticObject((ArrayKlass) getKlass(), cloneWrapped());
         } else {
             CompilerAsserts.neverPartOfCompilation();
-            return new StaticObject((ObjectKlass) getKlass(), fields == null ? null : ((Object[])fields).clone(), primitiveFields == null ? null : primitiveFields.clone());
+            return new StaticObject((ObjectKlass) getKlass(), fields == null ? null : ((Object[]) fields).clone(), primitiveFields == null ? null : primitiveFields.clone());
         }
     }
 
@@ -182,9 +198,7 @@ public final class StaticObject implements TruffleObject {
         } else {
             for (Field f : thisKlass.getFieldTable()) {
                 assert !f.isStatic();
-                if (f.isHidden()) {
-                    setUnsafeField(f.getFieldIndex(), null);
-                } else {
+                if (!f.isHidden()) {
                     if (f.getKind().isSubWord()) {
                         setWordField(f, MetaUtil.defaultWordFieldValue(f.getKind()));
                     } else if (f.getKind().isPrimitive()) {
@@ -220,12 +234,12 @@ public final class StaticObject implements TruffleObject {
 
     // Use with caution.
     public final Object getUnsafeField(int fieldIndex) {
-        return U.getObject(fields, (long)Unsafe.ARRAY_OBJECT_BASE_OFFSET + Unsafe.ARRAY_OBJECT_INDEX_SCALE * fieldIndex);
+        return U.getObject(fields, (long) Unsafe.ARRAY_OBJECT_BASE_OFFSET + Unsafe.ARRAY_OBJECT_INDEX_SCALE * fieldIndex);
     }
 
     public final void setFieldVolatile(Field field, Object value) {
         assert field.getDeclaringKlass().isAssignableFrom(getKlass());
-        U.putObjectVolatile(fields, (long)Unsafe.ARRAY_OBJECT_BASE_OFFSET + Unsafe.ARRAY_OBJECT_INDEX_SCALE * field.getFieldIndex(), value);
+        U.putObjectVolatile(fields, (long) Unsafe.ARRAY_OBJECT_BASE_OFFSET + Unsafe.ARRAY_OBJECT_INDEX_SCALE * field.getFieldIndex(), value);
     }
 
     public final void setField(Field field, Object value) {
@@ -476,6 +490,11 @@ public final class StaticObject implements TruffleObject {
     // Given a guest Class, get the corresponding Klass.
     public final Klass getMirrorKlass() {
         assert getKlass().getType() == Symbol.Type.Class;
+        Klass result = (Klass) getHiddenField(getKlass().getMeta().HIDDEN_MIRROR_KLASS);
+        if (result == null) {
+            CompilerDirectives.transferToInterpreterAndInvalidate();
+            throw EspressoError.shouldNotReachHere("Uninitialized mirror class");
+        }
         return (Klass) getHiddenField(getKlass().getMeta().HIDDEN_MIRROR_KLASS);
     }
 
@@ -547,7 +566,7 @@ public final class StaticObject implements TruffleObject {
     public int length() {
         assert isArray();
         return Array.getLength(fields);
-        //return U.getInt(primitiveFields, (long) Unsafe.ARRAY_BYTE_BASE_OFFSET);
+        // return U.getInt(primitiveFields, (long) Unsafe.ARRAY_BYTE_BASE_OFFSET);
     }
 
     private Object cloneWrapped() {

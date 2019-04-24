@@ -500,10 +500,12 @@ public class BytecodeNode extends EspressoBaseNode implements CustomNodeCount {
         int top = 0;
 
         initArguments(frame);
-
-        if (getMethod().getDeclaringKlass() == getMeta().Class && getMethod().getName().toString().equals("getMethod") && Meta.toHostString((StaticObject)frame.getArguments()[1]).contains("invoke")) {
-            int dood = 1;
-        }
+        //
+        // if (getMethod().getDeclaringKlass() == getMeta().Class &&
+        // getMethod().getName().toString().equals("getMethod") &&
+        // Meta.toHostString((StaticObject)frame.getArguments()[1]).contains("invoke")) {
+        // int dood = 1;
+        // }
 
         loop: while (true) {
             int curOpcode;
@@ -1223,8 +1225,8 @@ public class BytecodeNode extends EspressoBaseNode implements CustomNodeCount {
     @TruffleBoundary
     static private void reportThrow(int curBCI, Method method, StaticObject e) {
         if (method.getName().toString().contains("refill") ||
-            method.getName().toString().contains("loadClass") ||
-            method.getName().toString().contains("findClass") ) {
+                        method.getName().toString().contains("loadClass") ||
+                        method.getName().toString().contains("findClass")) {
             return;
         }
         System.err.println("Throwing at " + curBCI + " in " + method);
@@ -1245,13 +1247,13 @@ public class BytecodeNode extends EspressoBaseNode implements CustomNodeCount {
 
     @TruffleBoundary
     static private void reportCatch(EspressoException e, int curBCI, BytecodeNode thisNode) {
-        if (    thisNode.getMethod().getName().toString().contains("refill") ||
-                thisNode.getMethod().getName().toString().contains("loadClass") ||
-                thisNode.getMethod().getName().toString().contains("findClass") ) {
+        if (thisNode.getMethod().getName().toString().contains("refill") ||
+                        thisNode.getMethod().getName().toString().contains("loadClass") ||
+                        thisNode.getMethod().getName().toString().contains("findClass")) {
             return;
         }
         System.err.println("Caught: " + e.getException().getKlass().toString() + ": " + e.getMessage() +
-                "\n\t In: " + thisNode + " at BCI: " + curBCI);
+                        "\n\t In: " + thisNode + " at BCI: " + curBCI);
     }
 
     private JavaKind peekKind(VirtualFrame frame, int slot) {
@@ -1584,12 +1586,12 @@ public class BytecodeNode extends EspressoBaseNode implements CustomNodeCount {
             StaticObject appendix = new StaticObject(meta.Object_array, new StaticObject[1]);
 
             StaticObject memberName = (StaticObject) getMeta().linkCallSite.invokeDirect(
-                    null,
-                    declaringKlass.mirror(),
-                    bsmMH,
-                    name, methodType,
-                    new StaticObject(meta.Object_array, args),
-                    appendix);
+                            null,
+                            declaringKlass.mirror(),
+                            bsmMH,
+                            name, methodType,
+                            new StaticObject(meta.Object_array, args),
+                            appendix);
 
             StaticObject unboxedAppendix = appendix.get(0);
 

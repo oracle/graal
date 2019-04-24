@@ -269,7 +269,7 @@ public final class VM extends NativeEnv implements ContextAccess {
     public void JVM_ArrayCopy(@SuppressWarnings("unused") Object ignored, @Host(Object.class) StaticObject src, int srcPos, @Host(Object.class) StaticObject dest, int destPos, int length) {
         try {
             if (src.isArray() && dest.isArray()) {
-                System.arraycopy((src).unwrap(), srcPos,dest.unwrap(), destPos, length);
+                System.arraycopy((src).unwrap(), srcPos, dest.unwrap(), destPos, length);
             } else {
                 assert src.getClass().isArray();
                 assert dest.getClass().isArray();
@@ -514,8 +514,8 @@ public final class VM extends NativeEnv implements ContextAccess {
         int nonThrowableInitStartIndex = 0;
         boolean skipFillInStackTrace = true;
         boolean skipThrowableInit = true;
-        for (FrameInstance fi: frames) {
-            Method m = ((EspressoRootNode)((RootCallTarget)fi.getCallTarget()).getRootNode()).getMethod();
+        for (FrameInstance fi : frames) {
+            Method m = ((EspressoRootNode) ((RootCallTarget) fi.getCallTarget()).getRootNode()).getMethod();
             if (skipFillInStackTrace) {
                 if (!((m.getName() == Name.fillInStackTrace) || (m.getName() == Name.fillInStackTrace0))) {
                     skipFillInStackTrace = false;
@@ -555,7 +555,6 @@ public final class VM extends NativeEnv implements ContextAccess {
         FrameInstance frame = frames[index];
 
         EspressoRootNode rootNode = (EspressoRootNode) ((RootCallTarget) frame.getCallTarget()).getRootNode();
-
 
         meta.StackTraceElement_init.invokeDirect(
                         /* this */ ste,

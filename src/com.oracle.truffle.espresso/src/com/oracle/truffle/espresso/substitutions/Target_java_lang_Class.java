@@ -268,6 +268,7 @@ public final class Target_java_lang_Class {
 
     @Substitution(hasReceiver = true)
     public static @Host(java.lang.reflect.Method[].class) StaticObject getDeclaredMethods0(@Host(Class.class) StaticObject self, boolean publicOnly) {
+
         final Method[] methods = Arrays.stream(self.getMirrorKlass().getDeclaredMethods()).filter(new Predicate<Method>() {
             @Override
             public boolean test(Method m) {
@@ -282,7 +283,6 @@ public final class Target_java_lang_Class {
                                 return new Method[value];
                             }
                         });
-
         EspressoContext context = self.getKlass().getContext();
         Meta meta = context.getMeta();
 
@@ -306,7 +306,6 @@ public final class Target_java_lang_Class {
             @Override
             public StaticObject apply(int i) {
                 Method m = methods[i];
-
                 Attribute rawRuntimeVisibleAnnotations = m.getAttribute(Name.RuntimeVisibleAnnotations);
                 StaticObject runtimeVisibleAnnotations = rawRuntimeVisibleAnnotations != null
                                 ? StaticObject.wrap(rawRuntimeVisibleAnnotations.getData())
@@ -326,7 +325,6 @@ public final class Target_java_lang_Class {
                 StaticObject annotationDefault = rawAnnotationDefault != null
                                 ? StaticObject.wrap(rawAnnotationDefault.getData())
                                 : StaticObject.NULL;
-
                 final Klass[] rawParameterKlasses = m.resolveParameterKlasses();
                 StaticObject parameterTypes = meta.Class.allocateArray(
                                 m.getParameterCount(),
@@ -364,12 +362,12 @@ public final class Target_java_lang_Class {
 
                 instance.setHiddenField(meta.HIDDEN_METHOD_KEY, m);
                 instance.setHiddenField(meta.HIDDEN_METHOD_RUNTIME_VISIBLE_TYPE_ANNOTATIONS, runtimeVisibleTypeAnnotations);
-
                 return instance;
             }
         });
 
         return arr;
+
     }
 
     @Substitution(hasReceiver = true)

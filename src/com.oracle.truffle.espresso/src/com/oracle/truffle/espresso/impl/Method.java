@@ -128,7 +128,7 @@ public final class Method implements ModifiersProvider, ContextAccess {
     Method(Method method) {
         this.declaringKlass = method.declaringKlass;
         // TODO(peterssen): Custom constant pool for methods is not supported.
-        this.pool = (RuntimeConstantPool)method.getConstantPool();
+        this.pool = (RuntimeConstantPool) method.getConstantPool();
 
         this.name = method.linkedMethod.getName();
         this.linkedMethod = method.linkedMethod;
@@ -294,7 +294,8 @@ public final class Method implements ModifiersProvider, ContextAccess {
 
                         Method findNative = getMeta().ClassLoader_findNative;
 
-                        // Lookup the short name first, otherwise lookup the long name (with signature).
+                        // Lookup the short name first, otherwise lookup the long name (with
+                        // signature).
                         callTarget = lookupJniCallTarget(findNative, false);
                         if (callTarget == null) {
                             callTarget = lookupJniCallTarget(findNative, true);
@@ -353,10 +354,17 @@ public final class Method implements ModifiersProvider, ContextAccess {
 
     public ObjectKlass[] getCheckedExceptions() {
         if (checkedExceptions == null) {
+            createCheckedExceptions();
+        }
+        return checkedExceptions;
+    }
+
+    private synchronized void createCheckedExceptions() {
+        if (checkedExceptions == null) {
             CompilerDirectives.transferToInterpreterAndInvalidate();
             if (exceptionsAttribute == null) {
                 checkedExceptions = ObjectKlass.EMPTY_ARRAY;
-                return checkedExceptions;
+                return;
             }
             final int[] entries = exceptionsAttribute.getCheckedExceptionsCPI();
             checkedExceptions = new ObjectKlass[entries.length];
@@ -366,7 +374,6 @@ public final class Method implements ModifiersProvider, ContextAccess {
                 checkedExceptions[i] = (ObjectKlass) ((RuntimeConstantPool) getDeclaringKlass().getConstantPool()).resolvedKlassAt(getDeclaringKlass(), entries[i]);
             }
         }
-        return checkedExceptions;
     }
 
     public boolean isFinal() {
