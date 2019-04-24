@@ -144,7 +144,7 @@ def gate_substratevm(tasks):
     with Task('Run Truffle host interop tests on SVM', tasks, tags=[VmGateTasks.substratevm]) as t:
         if t:
             tests = ['ValueHostInteropTest', 'ValueHostConversionTest']
-            truffle_no_compilation = ['--eager-class-initialization', '--tool:truffle',
+            truffle_no_compilation = ['--initialize-at-build-time', '--tool:truffle',
                                       '-Dtruffle.TruffleRuntime=com.oracle.truffle.api.impl.DefaultTruffleRuntime']
             truffle_dir = mx.suite('truffle').dir
             args = ['--build-args'] + truffle_no_compilation + [

@@ -68,7 +68,7 @@ public class HostedConfiguration {
             ClassInitializationSupport classInitializationSupport = new ConfigurableClassInitialization(access.getMetaAccess(), access.getImageClassLoader());
             ImageSingletons.add(RuntimeClassInitializationSupport.class, classInitializationSupport);
             ImageSingletons.add(HostedConfiguration.class, new HostedConfiguration(classInitializationSupport));
-            ClassInitializationFeature.processClassInitializationOptions(access, classInitializationSupport);
+            ClassInitializationFeature.processClassInitializationOptions(classInitializationSupport);
 
             CompressEncoding compressEncoding = new CompressEncoding(SubstrateOptions.SpawnIsolates.getValue() ? 1 : 0, 0);
             ImageSingletons.add(CompressEncoding.class, compressEncoding);

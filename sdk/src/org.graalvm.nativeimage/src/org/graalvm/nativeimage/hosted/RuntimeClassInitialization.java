@@ -179,6 +179,8 @@ public final class RuntimeClassInitialization {
     /**
      * Use <code>ImageSingletons.lookup(RuntimeClassInitializationSupport.class).rerun</code>
      * instead.
+     *
+     * @since 1.0
      */
     @Deprecated
     public static void rerunClassInitialization(Class<?>... classes) {

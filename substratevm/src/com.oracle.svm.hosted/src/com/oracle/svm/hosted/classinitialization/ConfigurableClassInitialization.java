@@ -163,7 +163,7 @@ public class ConfigurableClassInitialization implements ClassInitializationSuppo
     @Override
     public void initializeAtRunTime(String name, String reason) {
         classInitializationConfiguration.insert(name, InitKind.DELAY, reason);
-        Class<?> clazz = loader.findClassByName(name);
+        Class<?> clazz = loader.findClassByName(name, false);
         if (clazz != null) {
             initializeAtBuildTime(name, reason);
         }
@@ -172,7 +172,7 @@ public class ConfigurableClassInitialization implements ClassInitializationSuppo
     @Override
     public void initializeAtBuildTime(String name, String reason) {
         classInitializationConfiguration.insert(name, InitKind.EAGER, reason);
-        Class<?> clazz = loader.findClassByName(name);
+        Class<?> clazz = loader.findClassByName(name, false);
         if (clazz != null) {
             initializeAtBuildTime(clazz, reason);
         }
@@ -181,7 +181,7 @@ public class ConfigurableClassInitialization implements ClassInitializationSuppo
     @Override
     public void rerunInitialization(String name, String reason) {
         classInitializationConfiguration.insert(name, InitKind.RERUN, reason);
-        Class<?> clazz = loader.findClassByName(name);
+        Class<?> clazz = loader.findClassByName(name, false);
         if (clazz != null) {
             rerunInitialization(clazz, reason);
         }

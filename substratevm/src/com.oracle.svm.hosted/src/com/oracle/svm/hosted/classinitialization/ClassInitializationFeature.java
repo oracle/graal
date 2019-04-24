@@ -114,15 +114,13 @@ public class ClassInitializationFeature implements Feature {
             }
         }
 
-        @APIOption(name = "delay-class-initialization", valueTransformer = InitializationValueDelay.class, defaultValue = "", //
+        @APIOption(name = "initialize-at-run-time", valueTransformer = InitializationValueDelay.class, defaultValue = "", //
                         customHelp = "A comma-separated list of packages and classes (and implicitly all of their subclasses) that are initialized at runtime and not during image building. An empty string designates all packages.")//
-        @APIOption(name = "rerun-class-initialization", valueTransformer = InitializationValueRerun.class, defaultValue = "", //
-                        customHelp = "A comma-separated list of packages and classes (and implicitly all of their subclasses) that are initialized both at runtime and during image building. An empty string designates all packages.")//
-        @APIOption(name = "eager-class-initialization", valueTransformer = InitializationValueEager.class, defaultValue = "", //
+        @APIOption(name = "initialize-at-build-time", valueTransformer = InitializationValueEager.class, defaultValue = "", //
                         customHelp = "A comma-separated list of packages and classes  (and implicitly all of their superclasses) that are initialized during image generation. An empty string designates all packages.")//
-        @APIOption(name = "delay-class-initialization-to-runtime", valueTransformer = InitializationValueDelay.class, deprecated = "Use --delay-class-initialization.", //
+        @APIOption(name = "delay-class-initialization-to-runtime", valueTransformer = InitializationValueDelay.class, deprecated = "Use --initialize-at-run-time.", //
                         defaultValue = "", customHelp = "A comma-separated list of classes (and implicitly all of their subclasses) that are initialized at runtime and not during image building")//
-        @APIOption(name = "rerun-class-initialization-at-runtime", valueTransformer = InitializationValueRerun.class, deprecated = "Use --rerun-class-initialization.", //
+        @APIOption(name = "rerun-class-initialization-at-runtime", valueTransformer = InitializationValueRerun.class, deprecated = "Currently there is no replacement for this option. Use --delay-class-initialization.", //
                         defaultValue = "", customHelp = "A comma-separated list of classes (and implicitly all of their subclasses) that are initialized both at runtime and during image building")//
         @Option(help = "A comma-separated list of classes appended with their initialization strategy (':delay', ':rerun', or ':eager')", type = OptionType.User)//
         public static final HostedOptionKey<String[]> ClassInitialization = new HostedOptionKey<>(new String[0]);
@@ -131,7 +129,7 @@ public class ClassInitializationFeature implements Feature {
         public static final HostedOptionKey<Boolean> PrintClassInitialization = new HostedOptionKey<>(false);
     }
 
-    public static void processClassInitializationOptions(FeatureImpl.AfterRegistrationAccessImpl access, ClassInitializationSupport initializationSupport) {
+    public static void processClassInitializationOptions(ClassInitializationSupport initializationSupport) {
         String[] initializationInfo = Options.ClassInitialization.getValue();
         for (String infos : initializationInfo) {
             for (String info : infos.split(",")) {
