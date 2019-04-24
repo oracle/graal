@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2017, 2018, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2017, 2019, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -40,15 +40,6 @@
  */
 package com.oracle.truffle.tck.tests;
 
-import static org.graalvm.polyglot.tck.TypeDescriptor.ARRAY;
-import static org.graalvm.polyglot.tck.TypeDescriptor.BOOLEAN;
-import static org.graalvm.polyglot.tck.TypeDescriptor.HOST_OBJECT;
-import static org.graalvm.polyglot.tck.TypeDescriptor.NATIVE_POINTER;
-import static org.graalvm.polyglot.tck.TypeDescriptor.NULL;
-import static org.graalvm.polyglot.tck.TypeDescriptor.NUMBER;
-import static org.graalvm.polyglot.tck.TypeDescriptor.OBJECT;
-import static org.graalvm.polyglot.tck.TypeDescriptor.STRING;
-
 import java.io.IOException;
 import java.util.AbstractMap;
 import java.util.Arrays;
@@ -59,9 +50,7 @@ import java.util.function.Function;
 import org.graalvm.polyglot.PolyglotException;
 import org.graalvm.polyglot.Value;
 import org.graalvm.polyglot.tck.LanguageProvider;
-import org.graalvm.polyglot.tck.ResultVerifier;
 import org.graalvm.polyglot.tck.Snippet;
-import org.graalvm.polyglot.tck.TypeDescriptor;
 import org.junit.AfterClass;
 import org.junit.Assume;
 import org.junit.Test;
@@ -96,34 +85,9 @@ public class IdentityFunctionTest {
         return testRuns;
     }
 
-    private static final TypeDescriptor ANY = TypeDescriptor.union(NULL, BOOLEAN, NUMBER, STRING, HOST_OBJECT, NATIVE_POINTER, OBJECT, ARRAY);
-
     static Snippet createIdentitySnippet(String lang) {
         LanguageProvider tli = context.getInstalledProviders().get(lang);
-
-        Value value = tli.createIdentityFunction(context.getContext());
-        if (!value.canExecute()) {
-            throw new AssertionError(String.format("Result of createIdentityFunction for tck provider %s did not return an executable value. Returned value '%s'.", lang, value));
-        }
-
-        return (Snippet.newBuilder("identity", tli.createIdentityFunction(context.getContext()), ANY).parameterTypes(ANY).resultVerifier(new ResultVerifier() {
-            public void accept(SnippetRun snippetRun) throws PolyglotException {
-                final PolyglotException exception = snippetRun.getException();
-                if (exception != null) {
-                    throw exception;
-                }
-
-                Value parameter = snippetRun.getParameters().get(0);
-                TypeDescriptor parameterType = TypeDescriptor.forValue(parameter);
-                TypeDescriptor resultType = TypeDescriptor.forValue(snippetRun.getResult());
-                if (!parameterType.isAssignable(resultType) || !resultType.isAssignable(resultType)) {
-                    throw new AssertionError(String.format(
-                                    "Identity function result type must contain the parameter type. Parameter type: %s Result type: %s.",
-                                    parameterType,
-                                    resultType));
-                }
-            }
-        }).build());
+        return tli.createIdentityFunctionSnippet(context.getContext());
     }
 
     @AfterClass
