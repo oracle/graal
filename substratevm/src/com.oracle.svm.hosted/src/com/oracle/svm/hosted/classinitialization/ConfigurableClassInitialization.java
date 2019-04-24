@@ -47,20 +47,28 @@ import jdk.vm.ci.meta.MetaAccessProvider;
 import jdk.vm.ci.meta.ResolvedJavaType;
 import sun.misc.Unsafe;
 
+/**
+ * The core class for deciding whether a class should be initialized during image building or class
+ * initialization should be delayed to runtime.
+ */
 public class ConfigurableClassInitialization implements ClassInitializationSupport {
 
     private static final Unsafe UNSAFE = GraalUnsafeAccess.getUnsafe();
 
     /**
-     * Setup for class initialization: configured through features and command line input.
+     * Setup for class initialization: configured through features and command line input. It
+     * represents the user desires about class initialization and helps in finding configuration
+     * issues.
      */
     private final ClassInitializationConfiguration classInitializationConfiguration = new ClassInitializationConfiguration();
 
     /**
      * The initialization kind for all classes seen during image building. Classes are inserted into
-     * this map the first time information was queried and used during image building.
+     * this map the first time information was queried and used during image building. This is the
+     * ground truth about what got initialized during image building.
      */
     private final Map<Class<?>, InitKind> classInitKinds = new ConcurrentHashMap<>();
+
     private final ImageClassLoader loader;
 
     /**

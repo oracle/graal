@@ -35,6 +35,23 @@ import org.graalvm.collections.EconomicSet;
 
 import com.oracle.svm.core.util.UserError;
 
+/**
+ * Maintains user and system configuration for class initialization in Native Image.
+ *
+ * The configuration is maintained in a tree, where the root (
+ * {@link ClassInitializationConfiguration#root}) represents the whole package hierarchy. Every
+ * non-leaf node in the tree represents a package and leafs can represent either packages or
+ * classes. The {@link InitKind} of a class is determined by looking at the longest path from the
+ * root that * matches the qualified name of the class and has a non-null kind.
+ *
+ * The kind ({@link InitializationNode#kind}) of tree nodes can be either: <code>null</code> which
+ * denotes there is no initialization config or one of the {@link InitKind}s that are set over the
+ * command line or programmatically through features. Once defined, a node can not be changed,
+ * however, the node children can override the value for nested packages or classes.
+ *
+ * Every node tracks a list of reasons for the set configuration. This list helps the users debug
+ * conflicts in the configuration.
+ */
 public class ClassInitializationConfiguration {
     private static final String ROOT_QUALIFIER = "";
     private static final int MAX_NUMBER_OF_REASONS = 3;
