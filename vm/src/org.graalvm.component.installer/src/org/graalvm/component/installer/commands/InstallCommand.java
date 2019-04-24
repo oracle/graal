@@ -47,7 +47,7 @@ import org.graalvm.component.installer.model.Verifier;
 import org.graalvm.component.installer.persist.MetadataLoader;
 
 /**
- * Implementation of 'install' command.
+ * Implementation of 'add' command.
  */
 public class InstallCommand implements InstallerCommand {
     private static final Map<String, String> OPTIONS = new HashMap<>();

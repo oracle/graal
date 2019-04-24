@@ -55,7 +55,7 @@ import org.graalvm.component.installer.model.ComponentInfo;
 import org.graalvm.component.installer.model.Verifier;
 
 /**
- * The working internals of the 'install' command.
+ * The working internals of the 'add' command.
  */
 public class Installer extends AbstractInstaller {
     private static final Logger LOG = Logger.getLogger(Installer.class.getName());
