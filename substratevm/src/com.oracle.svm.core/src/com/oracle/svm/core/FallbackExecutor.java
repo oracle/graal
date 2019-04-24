@@ -96,9 +96,17 @@ public class FallbackExecutor {
         ProcessProperties.exec(javaExecutable, command.toArray(new String[0]));
     }
 
+    private static final Path buildTimeJavaHome = Paths.get(System.getProperty("java.home"));
+
     private static Path getJavaExecutable() {
         Path binJava = Paths.get("bin", OS.getCurrent() == OS.WINDOWS ? "java.exe" : "java");
-        Path javaCandidate = Paths.get(".").resolve(binJava);
+
+        Path javaCandidate = buildTimeJavaHome.resolve(binJava);
+        if (Files.isExecutable(javaCandidate)) {
+            return javaCandidate;
+        }
+
+        javaCandidate = Paths.get(".").resolve(binJava);
         if (Files.isExecutable(javaCandidate)) {
             return javaCandidate;
         }
