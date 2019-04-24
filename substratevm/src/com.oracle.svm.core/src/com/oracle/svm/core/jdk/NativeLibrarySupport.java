@@ -146,7 +146,9 @@ public final class NativeLibrarySupport {
             NativeLibrary lib = PlatformNativeLibrarySupport.singleton().createLibrary(canonical, asBuiltin);
             currentLoadContext.push(lib);
             try {
-                lib.load();
+                if (!lib.load()) {
+                    return false;
+                }
                 if (libraryInitializer != null) {
                     libraryInitializer.initialize(lib);
                 }

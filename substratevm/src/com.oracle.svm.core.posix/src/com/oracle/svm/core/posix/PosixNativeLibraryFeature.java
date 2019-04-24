@@ -112,16 +112,13 @@ class PosixNativeLibrarySupport implements PlatformNativeLibrarySupport {
         }
 
         @Override
-        public void load() {
-            if (!builtin) {
-                assert dlhandle.isNull();
-                String path = canonicalIdentifier;
-                dlhandle = PosixUtils.dlopen(path, Dlfcn.RTLD_LAZY());
-                if (this.dlhandle.isNull()) {
-                    String error = CTypeConversion.toJavaString(Dlfcn.dlerror());
-                    throw new UnsatisfiedLinkError(path + ": " + error);
-                }
+        public boolean load() {
+            if (builtin) {
+                return true;
             }
+            assert dlhandle.isNull();
+            dlhandle = PosixUtils.dlopen(canonicalIdentifier, Dlfcn.RTLD_LAZY());
+            return dlhandle.isNonNull();
         }
 
         @Override
