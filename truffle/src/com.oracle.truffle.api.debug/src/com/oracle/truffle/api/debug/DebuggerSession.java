@@ -203,6 +203,7 @@ public final class DebuggerSession implements Closeable {
     private final StableBoolean ignoreLanguageContextInitialization = new StableBoolean(false);
     private boolean includeInternal = false;
     private Predicate<Source> sourceFilter;
+    @CompilationFinal private volatile Assumption suspensionFilterUnchanged = Truffle.getRuntime().createAssumption("Unchanged suspension filter");
     private final StableBoolean alwaysHaltBreakpointsActive = new StableBoolean(true);
     private final StableBoolean locationBreakpointsActive = new StableBoolean(true);
     private final StableBoolean exceptionBreakpointsActive = new StableBoolean(true);
@@ -333,11 +334,30 @@ public final class DebuggerSession implements Closeable {
             this.includeInternal = steppingFilter.isInternalIncluded();
             Predicate<Source> oldSourceFilter = this.sourceFilter;
             this.sourceFilter = steppingFilter.getSourcePredicate();
+            this.suspensionFilterUnchanged.invalidate();
+            this.suspensionFilterUnchanged = Truffle.getRuntime().createAssumption("Unchanged suspension filter");
             if (oldIncludeInternal != this.includeInternal || oldSourceFilter != this.sourceFilter) {
                 removeBindings();
                 addBindings(this.includeInternal, this.sourceFilter);
             }
         }
+    }
+
+    boolean isIncludeInternal() {
+        return includeInternal;
+    }
+
+    boolean isSourceFilteredOut(Source source) {
+        Predicate<Source> filter = sourceFilter;
+        if (filter != null) {
+            return !filter.test(source);
+        } else {
+            return false;
+        }
+    }
+
+    Assumption getSuspensionFilterUnchangedAssumption() {
+        return suspensionFilterUnchanged;
     }
 
     /**
