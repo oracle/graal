@@ -153,7 +153,7 @@ public class RemoteCatalogDownloaderTest extends NetworkTestBase {
 
     private static ComponentInfo findComponent(ComponentCollection col, String id) {
         Collection<ComponentInfo> infos = col.loadComponents(id, Version.NO_VERSION.match(Version.Match.Type.GREATER), false);
-        return infos == null ? null : infos.iterator().next();
+        return infos == null || infos.isEmpty() ? null : infos.iterator().next();
     }
 
     /**
