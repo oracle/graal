@@ -41,7 +41,6 @@ import org.graalvm.nativeimage.c.type.WordPointer;
 import com.oracle.svm.agent.Agent;
 import com.oracle.svm.agent.jvmti.JvmtiError;
 import com.oracle.svm.configure.config.ConfigurationMethod;
-import com.oracle.svm.configure.config.TypeConfiguration;
 import com.oracle.svm.configure.trace.AccessAdvisor;
 import com.oracle.svm.jni.nativeapi.JNIEnvironment;
 import com.oracle.svm.jni.nativeapi.JNIFieldId;
@@ -49,9 +48,13 @@ import com.oracle.svm.jni.nativeapi.JNIMethodId;
 import com.oracle.svm.jni.nativeapi.JNIObjectHandle;
 
 public class JniAccessVerifier extends AbstractAccessVerifier {
+    private final TypeAccessChecker typeAccessChecker;
+    private final TypeAccessChecker reflectTypeAccessChecker;
 
-    public JniAccessVerifier(TypeConfiguration configuration, AccessAdvisor advisor) {
-        super(configuration, advisor);
+    public JniAccessVerifier(TypeAccessChecker typeAccessChecker, TypeAccessChecker reflectTypeAccessChecker, AccessAdvisor advisor) {
+        super(advisor);
+        this.typeAccessChecker = typeAccessChecker;
+        this.reflectTypeAccessChecker = reflectTypeAccessChecker;
     }
 
     @SuppressWarnings("unused")
@@ -76,7 +79,7 @@ public class JniAccessVerifier extends AbstractAccessVerifier {
             if (!name.startsWith("[") && name.length() > 1) {
                 name = "L" + name + ";"; // FindClass doesn't require those
             }
-            if (configuration.getByInternalName(name) != null) {
+            if (typeAccessChecker.getConfiguration().getByInternalName(name) != null) {
                 return true;
             }
         }
@@ -96,7 +99,7 @@ public class JniAccessVerifier extends AbstractAccessVerifier {
         WordPointer declaringPtr = StackValue.get(WordPointer.class);
         if (jvmtiFunctions().GetMethodDeclaringClass().invoke(jvmtiEnv(), result, declaringPtr) == JvmtiError.JVMTI_ERROR_NONE) {
             JNIObjectHandle declaring = declaringPtr.read();
-            if (isMethodAccessible(env, clazz, name, () -> fromCString(csignature), result, declaring)) {
+            if (typeAccessChecker.isMethodAccessible(env, clazz, name, () -> fromCString(csignature), result, declaring)) {
                 return true;
             }
         }
@@ -120,7 +123,7 @@ public class JniAccessVerifier extends AbstractAccessVerifier {
         WordPointer declaringPtr = StackValue.get(WordPointer.class);
         if (jvmtiFunctions().GetFieldDeclaringClass().invoke(jvmtiEnv(), clazz, result, declaringPtr) == JvmtiError.JVMTI_ERROR_NONE) {
             JNIObjectHandle declaring = declaringPtr.read();
-            if (isFieldAccessible(env, clazz, () -> fromCString(cname), result, declaring)) {
+            if (typeAccessChecker.isFieldAccessible(env, clazz, () -> fromCString(cname), result, declaring)) {
                 return true;
             }
         }
@@ -143,7 +146,45 @@ public class JniAccessVerifier extends AbstractAccessVerifier {
             result = jniFunctions().getGetMethodID().invoke(env, clazz, cname.get(), csignature.get());
             // NOTE: GetMethodID() can have initialized `clazz` as a side effect
         }
-        return result.isNull() || isMethodAccessible(env, clazz, name, () -> signature, result, clazz);
+        return result.isNull() || typeAccessChecker.isMethodAccessible(env, clazz, name, () -> signature, result, clazz);
+    }
+
+    public boolean verifyFromReflectedMethod(JNIEnvironment env, JNIObjectHandle declaring, String name, String signature, JNIMethodId result, JNIObjectHandle callerClass) {
+        assert result.isNonNull();
+        if (shouldApproveWithoutChecks(env, callerClass)) {
+            return true;
+        }
+        return typeAccessChecker.isMethodAccessible(env, declaring, name, () -> signature, result, declaring);
+    }
+
+    public boolean verifyFromReflectedField(JNIEnvironment env, JNIObjectHandle declaring, String name, JNIFieldId result, JNIObjectHandle callerClass) {
+        assert result.isNonNull();
+        if (shouldApproveWithoutChecks(env, callerClass)) {
+            return true;
+        }
+        return typeAccessChecker.isFieldAccessible(env, declaring, () -> name, result, declaring);
+    }
+
+    public boolean verifyToReflectedMethod(JNIEnvironment env, JNIObjectHandle clazz, JNIObjectHandle declaring, JNIMethodId methodId, String name, String signature, JNIObjectHandle callerClass) {
+        assert methodId.isNonNull();
+        if (reflectTypeAccessChecker == null) {
+            return true;
+        }
+        if (shouldApproveWithoutChecks(env, callerClass)) {
+            return true;
+        }
+        return reflectTypeAccessChecker.isMethodAccessible(env, clazz, name, () -> signature, methodId, declaring);
+    }
+
+    public boolean verifyToReflectedField(JNIEnvironment env, JNIObjectHandle clazz, JNIObjectHandle declaring, String name, JNIFieldId fieldId, JNIObjectHandle callerClass) {
+        assert fieldId.isNonNull();
+        if (reflectTypeAccessChecker == null) {
+            return true;
+        }
+        if (shouldApproveWithoutChecks(env, callerClass)) {
+            return true;
+        }
+        return reflectTypeAccessChecker.isFieldAccessible(env, clazz, () -> name, fieldId, declaring);
     }
 
     private static void beforeThrow(@SuppressWarnings("unused") CCharPointerHolder message) {

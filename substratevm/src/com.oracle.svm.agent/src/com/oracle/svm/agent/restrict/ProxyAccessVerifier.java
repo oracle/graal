@@ -39,11 +39,10 @@ import com.oracle.svm.jni.nativeapi.JNIEnvironment;
 import com.oracle.svm.jni.nativeapi.JNIObjectHandle;
 
 public class ProxyAccessVerifier extends AbstractAccessVerifier {
-
     private final ProxyConfiguration configuration;
 
     public ProxyAccessVerifier(ProxyConfiguration configuration, AccessAdvisor advisor) {
-        super(null, advisor);
+        super(advisor);
         this.configuration = configuration;
     }
 
