@@ -27,13 +27,11 @@ package com.oracle.svm.agent.restrict;
 import static com.oracle.svm.agent.Support.clearException;
 import static com.oracle.svm.agent.Support.fromCString;
 import static com.oracle.svm.agent.Support.fromJniString;
-import static com.oracle.svm.agent.Support.getClassNameOr;
 import static com.oracle.svm.agent.Support.getClassNameOrNull;
 import static com.oracle.svm.agent.Support.handles;
 import static com.oracle.svm.agent.Support.jniFunctions;
 import static com.oracle.svm.agent.Support.jvmtiEnv;
 import static com.oracle.svm.agent.Support.jvmtiFunctions;
-import static com.oracle.svm.agent.Support.toCString;
 import static com.oracle.svm.jni.JNIObjectHandles.nullHandle;
 import static org.graalvm.word.WordFactory.nullPointer;
 
@@ -41,10 +39,8 @@ import java.util.function.Supplier;
 
 import org.graalvm.nativeimage.StackValue;
 import org.graalvm.nativeimage.c.type.CCharPointerPointer;
-import org.graalvm.nativeimage.c.type.CTypeConversion.CCharPointerHolder;
 import org.graalvm.nativeimage.c.type.WordPointer;
 
-import com.oracle.svm.agent.Agent;
 import com.oracle.svm.agent.Support;
 import com.oracle.svm.agent.Support.WordPredicate;
 import com.oracle.svm.agent.Support.WordSupplier;
@@ -56,8 +52,6 @@ import com.oracle.svm.jni.nativeapi.JNIFieldId;
 import com.oracle.svm.jni.nativeapi.JNIMethodId;
 import com.oracle.svm.jni.nativeapi.JNIObjectHandle;
 
-import jdk.vm.ci.meta.MetaUtil;
-
 public class ReflectAccessVerifier extends AbstractAccessVerifier {
     private final TypeAccessChecker typeAccessChecker;
 
@@ -66,19 +60,11 @@ public class ReflectAccessVerifier extends AbstractAccessVerifier {
         this.typeAccessChecker = typeAccessChecker;
     }
 
-    public boolean verifyForName(JNIEnvironment env, JNIObjectHandle callerClass, JNIObjectHandle name) {
+    public boolean verifyForName(JNIEnvironment env, JNIObjectHandle callerClass, String className) {
         if (shouldApproveWithoutChecks(env, callerClass)) {
             return true;
         }
-        String className = fromJniString(env, name);
-        if (className != null && typeAccessChecker.getConfiguration().get(className) != null) {
-            return true;
-        }
-        try (CCharPointerHolder message = toCString(Agent.MESSAGE_PREFIX + "configuration does not permit access to class: " + className)) {
-            beforeThrow(message);
-            jniFunctions().getThrowNew().invoke(env, handles().javaLangClassNotFoundException, message.get());
-        }
-        return false;
+        return className == null || typeAccessChecker.getConfiguration().get(className) != null;
     }
 
     public boolean verifyGetField(JNIEnvironment env, JNIObjectHandle clazz, JNIObjectHandle name, JNIObjectHandle result, JNIObjectHandle declaring, JNIObjectHandle callerClass) {
@@ -86,27 +72,19 @@ public class ReflectAccessVerifier extends AbstractAccessVerifier {
             return true;
         }
         JNIFieldId field = jniFunctions().getFromReflectedField().invoke(env, result);
-        if (field.isNonNull() && typeAccessChecker.isFieldAccessible(env, clazz, () -> fromJniString(env, name), field, declaring)) {
-            return true;
-        }
-        try (CCharPointerHolder message = toCString(Agent.MESSAGE_PREFIX + "configuration does not permit access to field: " +
-                        getClassNameOr(env, clazz, "(null)", "(?)") + "." + fromJniString(env, name))) {
-            beforeThrow(message);
-            jniFunctions().getThrowNew().invoke(env, handles().javaLangNoSuchFieldException, message.get());
-        }
-        return false;
+        return field.isNull() || typeAccessChecker.isFieldAccessible(env, clazz, () -> fromJniString(env, name), field, declaring);
     }
 
-    public boolean verifyGetMethod(JNIEnvironment env, JNIObjectHandle clazz, String name, Object paramTypesArray, JNIObjectHandle result, JNIObjectHandle declaring, JNIObjectHandle callerClass) {
+    public boolean verifyGetMethod(JNIEnvironment env, JNIObjectHandle clazz, String name, Supplier<String> signature, JNIObjectHandle result, JNIObjectHandle declaring, JNIObjectHandle callerClass) {
         if (shouldApproveWithoutChecks(env, callerClass)) {
             return true;
         }
         JNIMethodId method = jniFunctions().getFromReflectedMethod().invoke(env, result);
-        return verifyGetMethod0(env, clazz, name, () -> asInternalSignature(paramTypesArray), method, declaring);
+        return verifyGetMethod0(env, clazz, name, signature, method, declaring);
     }
 
-    public boolean verifyGetConstructor(JNIEnvironment env, JNIObjectHandle clazz, Object paramTypesArray, JNIObjectHandle result, JNIObjectHandle callerClass) {
-        return verifyGetMethod(env, clazz, ConfigurationMethod.CONSTRUCTOR_NAME, paramTypesArray, result, clazz, callerClass);
+    public boolean verifyGetConstructor(JNIEnvironment env, JNIObjectHandle clazz, Supplier<String> signature, JNIObjectHandle result, JNIObjectHandle callerClass) {
+        return verifyGetMethod(env, clazz, ConfigurationMethod.CONSTRUCTOR_NAME, signature, result, clazz, callerClass);
     }
 
     public boolean verifyNewInstance(JNIEnvironment env, JNIObjectHandle clazz, String name, String signature, JNIMethodId result, JNIObjectHandle callerClass) {
@@ -121,35 +99,11 @@ public class ReflectAccessVerifier extends AbstractAccessVerifier {
             return true;
         }
         JNIMethodId method = jniFunctions().getFromReflectedMethod().invoke(env, result);
-        return method.isNonNull() && typeAccessChecker.isMethodAccessible(env, clazz, name, () -> signature, method, clazz);
+        return method.isNull() || typeAccessChecker.isMethodAccessible(env, clazz, name, () -> signature, method, clazz);
     }
 
     private boolean verifyGetMethod0(JNIEnvironment env, JNIObjectHandle clazz, String name, Supplier<String> signature, JNIMethodId method, JNIObjectHandle declaring) {
-        if (method.isNonNull() && typeAccessChecker.isMethodAccessible(env, clazz, name, signature, method, declaring)) {
-            return true;
-        }
-        try (CCharPointerHolder message = toCString(Agent.MESSAGE_PREFIX + "configuration does not permit access to method: " +
-                        getClassNameOr(env, clazz, "(null)", "(?)") + "." + name + signature.get())) {
-
-            beforeThrow(message);
-            jniFunctions().getThrowNew().invoke(env, handles().javaLangNoSuchMethodException, message.get());
-        }
-        return false;
-    }
-
-    private static String asInternalSignature(Object paramTypesArray) {
-        if (paramTypesArray instanceof Object[]) {
-            StringBuilder sb = new StringBuilder("(");
-            for (Object paramType : (Object[]) paramTypesArray) {
-                sb.append(MetaUtil.toInternalName(paramType.toString()));
-            }
-            return sb.append(')').toString();
-        }
-        return null;
-    }
-
-    private static void beforeThrow(@SuppressWarnings("unused") CCharPointerHolder message) {
-        // System.err.println(fromCString(message.get()));
+        return method.isNull() || typeAccessChecker.isMethodAccessible(env, clazz, name, signature, method, declaring);
     }
 
     private static void beforeFilter(@SuppressWarnings("unused") Supplier<String> message) {
@@ -160,7 +114,7 @@ public class ReflectAccessVerifier extends AbstractAccessVerifier {
         if (shouldApproveWithoutChecks(env, callerClass)) {
             return array;
         }
-        WordPredicate<JNIObjectHandle> predicate = f -> shouldFilterField(env, clazz, f, declaredOnly);
+        WordPredicate<JNIObjectHandle> predicate = f -> shouldRetainField(env, clazz, f, declaredOnly);
         return filterArray(env, array, () -> handles().getJavaLangReflectField(env), predicate);
     }
 
@@ -170,11 +124,11 @@ public class ReflectAccessVerifier extends AbstractAccessVerifier {
         if (shouldApproveWithoutChecks(env, callerClass)) {
             return array;
         }
-        WordPredicate<JNIObjectHandle> predicate = m -> shouldFilterMethod(env, clazz, m, declaredOnly);
+        WordPredicate<JNIObjectHandle> predicate = m -> shouldRetainMethod(env, clazz, m, declaredOnly);
         return filterArray(env, array, elementClass, predicate);
     }
 
-    private boolean shouldFilterMethod(JNIEnvironment env, JNIObjectHandle clazz, JNIObjectHandle methodObj, boolean declaredOnly) {
+    private boolean shouldRetainMethod(JNIEnvironment env, JNIObjectHandle clazz, JNIObjectHandle methodObj, boolean declaredOnly) {
         JNIMethodId method = jniFunctions().getFromReflectedMethod().invoke(env, methodObj);
         if (method.isNonNull() && !clearException(env)) {
             JNIObjectHandle declaring = nullHandle();
@@ -236,7 +190,7 @@ public class ReflectAccessVerifier extends AbstractAccessVerifier {
         return result;
     }
 
-    private boolean shouldFilterField(JNIEnvironment env, JNIObjectHandle clazz, JNIObjectHandle fieldObj, boolean declaredOnly) {
+    private boolean shouldRetainField(JNIEnvironment env, JNIObjectHandle clazz, JNIObjectHandle fieldObj, boolean declaredOnly) {
         JNIFieldId field = jniFunctions().getFromReflectedField().invoke(env, fieldObj);
         if (field.isNonNull() && !clearException(env)) {
             JNIObjectHandle declaring = nullHandle();
