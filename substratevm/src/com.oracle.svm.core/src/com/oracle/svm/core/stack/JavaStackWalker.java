@@ -25,6 +25,7 @@
 package com.oracle.svm.core.stack;
 
 import org.graalvm.nativeimage.IsolateThread;
+import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.StackValue;
 import org.graalvm.nativeimage.c.function.CodePointer;
 import org.graalvm.word.Pointer;
@@ -135,7 +136,11 @@ public final class JavaStackWalker {
 
         } else if (totalFrameSize != CodeInfoQueryResult.ENTRY_POINT_FRAME_SIZE) {
             /* Bump sp *up* over my frame. */
-            sp = sp.add(WordFactory.unsigned(totalFrameSize));
+            if (Platform.includedIn(Platform.AArch64.class)) {
+                sp = sp.<Pointer>readWord(-16).add(16);
+            } else {
+                sp = sp.add(WordFactory.unsigned(totalFrameSize));
+            }
             /* Read the return address to my caller. */
             ip = FrameAccess.singleton().readReturnAddress(sp);
 

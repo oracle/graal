@@ -32,8 +32,10 @@ import org.graalvm.compiler.graph.NodeClass;
 import org.graalvm.compiler.nodeinfo.NodeInfo;
 import org.graalvm.compiler.nodes.FixedWithNextNode;
 import org.graalvm.compiler.nodes.ValueNode;
+import org.graalvm.compiler.nodes.spi.LIRLowerable;
 import org.graalvm.compiler.nodes.spi.Lowerable;
 import org.graalvm.compiler.nodes.spi.LoweringTool;
+import org.graalvm.compiler.nodes.spi.NodeLIRBuilderTool;
 
 import jdk.vm.ci.meta.JavaKind;
 
@@ -42,7 +44,7 @@ import jdk.vm.ci.meta.JavaKind;
  * structure so that the argument is consumed.
  */
 @NodeInfo(size = SIZE_8, cycles = CYCLES_8)
-public final class VaListNextArgNode extends FixedWithNextNode implements Lowerable {
+public final class VaListNextArgNode extends FixedWithNextNode implements Lowerable, LIRLowerable {
     public static final NodeClass<VaListNextArgNode> TYPE = NodeClass.create(VaListNextArgNode.class);
 
     @Input protected ValueNode vaList;
@@ -60,5 +62,10 @@ public final class VaListNextArgNode extends FixedWithNextNode implements Lowera
     @Override
     public void lower(LoweringTool tool) {
         tool.getLowerer().lower(this, tool);
+    }
+
+    @Override
+    public void generate(NodeLIRBuilderTool generator) {
+        generator.setResult(this, generator.getLIRGeneratorTool().emitNextVaArg(generator.operand(vaList), getStackKind()));
     }
 }

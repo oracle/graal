@@ -54,6 +54,7 @@ public class LLVMUtils {
     static final int UNTRACKED_POINTER_ADDRESS_SPACE = 0;
     static final int TRACKED_POINTER_ADDRESS_SPACE = 1;
     public static final long DEFAULT_PATCHPOINT_ID = 0xABCDEF00L;
+    public static final int LLVM_GRAAL_CC = 97;
 
     public static final class DebugLevel {
         public static final int NONE = 0;
@@ -359,6 +360,13 @@ public class LLVMUtils {
 
         String subRegisterSnippet(String registerName);
 
+        String jumpSnippet();
+
         String pauseSnippet();
+    }
+
+    public enum Target {
+        AMD64,
+        AArch64
     }
 }

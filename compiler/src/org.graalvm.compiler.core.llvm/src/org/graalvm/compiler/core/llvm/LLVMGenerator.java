@@ -80,6 +80,7 @@ import org.graalvm.compiler.nodes.cfg.Block;
 import org.graalvm.compiler.phases.util.Providers;
 
 import jdk.vm.ci.aarch64.AArch64Kind;
+import jdk.vm.ci.code.CallingConvention;
 import jdk.vm.ci.code.CodeCacheProvider;
 import jdk.vm.ci.code.Register;
 import jdk.vm.ci.code.RegisterAttributes;
@@ -159,7 +160,7 @@ public class LLVMGenerator implements LIRGeneratorTool {
         return basicBlockMap.get(begin);
     }
 
-    LLVMBasicBlockRef getBlockEnd(Block block) {
+    public LLVMBasicBlockRef getBlockEnd(Block block) {
         return (splitBlockEndMap.containsKey(block)) ? splitBlockEndMap.get(block) : getBlock(block);
     }
 
@@ -214,7 +215,15 @@ public class LLVMGenerator implements LIRGeneratorTool {
         return builder.getExternalObject(symbolName);
     }
 
-    protected void emitPrintf(String base) {
+    protected void emitFunctionPrologue() {
+        throw unimplemented();
+    }
+
+    protected void emitFunctionEpilogue() {
+        throw unimplemented();
+    }
+
+    public void emitPrintf(String base) {
         emitPrintf(base, new JavaKind[0], new LLVMValueRef[0]);
     }
 
@@ -446,11 +455,15 @@ public class LLVMGenerator implements LIRGeneratorTool {
         LLVMValueRef callee = getFunction(targetMethod);
         LLVMValueRef[] arguments = Arrays.stream(args).map(LLVMUtils::getVal).toArray(LLVMValueRef[]::new);
 
-        LLVMValueRef call = builder.buildCall(callee, patchpointId, arguments);
+        LLVMValueRef call = builder.buildCall(callee, patchpointId, getForeignCallCallingConvention(linkage), arguments);
         return new LLVMVariable(call);
     }
 
     protected ResolvedJavaMethod findForeignCallTarget(@SuppressWarnings("unused") ForeignCallDescriptor descriptor) {
+        throw unimplemented();
+    }
+
+    protected CallingConvention.Type getForeignCallCallingConvention(@SuppressWarnings("unused") ForeignCallLinkage linkage) {
         throw unimplemented();
     }
 
@@ -545,6 +558,7 @@ public class LLVMGenerator implements LIRGeneratorTool {
                 emitPrintf("Return");
                 deindent();
             }
+            emitFunctionEpilogue();
             builder.buildRetVoid();
         } else {
             if (debugLevel >= DebugLevel.FUNCTION) {
@@ -572,6 +586,7 @@ public class LLVMGenerator implements LIRGeneratorTool {
                 retVal = builder.buildIntToPtr(retVal, builder.rawPointerType());
                 retVal = builder.buildRegisterObject(retVal);
             }
+            emitFunctionEpilogue();
             builder.buildRet(retVal);
         }
     }
@@ -1035,6 +1050,13 @@ public class LLVMGenerator implements LIRGeneratorTool {
     public Value emitReadReturnAddress(Stamp wordStamp, int returnAddressSize) {
         LLVMValueRef returnAddress = builder.buildReturnAddress(builder.constantInt(0));
         return new LLVMVariable(builder.buildPtrToInt(returnAddress, builder.longType()));
+    }
+
+    @Override
+    public Value emitNextVaArg(Value vaList, JavaKind kind) {  /* TODO probably not the right list */
+        LLVMValueRef list = builder.buildIntToPtr(getVal(vaList), builder.rawPointerType());
+        LLVMValueRef arg = builder.buildVaArg(list, builder.getLLVMType(kind));
+        return new LLVMVariable(arg);
     }
 
     public LLVMGenerationResult getLLVMResult() {

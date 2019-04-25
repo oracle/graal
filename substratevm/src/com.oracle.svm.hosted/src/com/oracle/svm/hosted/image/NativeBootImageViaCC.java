@@ -209,6 +209,10 @@ public abstract class NativeBootImageViaCC extends NativeBootImage {
         inv.setOutputFile(outputFile);
         inv.setOutputKind(getOutputKind());
 
+        if (Platform.includedIn(Platform.DARWIN_AArch64.class)) {
+            inv.addAdditionalPreOption("--sysroot=/Applications/Xcode.app/Contents/Developer/Platforms/iPhoneOS.platform/Developer/SDKs/iPhoneOS12.2.sdk/");
+        }
+
         inv.addLibPath(tempDirectory.toString());
         for (String libraryPath : nativeLibs.getLibraryPaths()) {
             inv.addLibPath(libraryPath);

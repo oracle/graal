@@ -35,4 +35,7 @@ public class LLVMOptions {
     @Option(help = "Dump contents of the generated stackmap to the specified file")//
     public static final HostedOptionKey<String> DumpLLVMStackMap = new HostedOptionKey<>(null);
 
+    @Option(help = "Compile LLVM modules in parallel")//
+    public static final HostedOptionKey<Boolean> CompileLLVMParallel = new HostedOptionKey<>(false);
+
 }

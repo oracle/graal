@@ -169,6 +169,11 @@ public abstract class CCLinkerInvocation implements LinkerInvocation {
         cmd.add("-o");
         cmd.add(outputFile.toString());
 
+        if ("arm".equals(System.getProperty("svm.targetArch"))) {
+            cmd.add("-arch");
+            cmd.add("arm64");
+        }
+
         for (String opt : additionalPreOptions) {
             cmd.add(opt);
         }

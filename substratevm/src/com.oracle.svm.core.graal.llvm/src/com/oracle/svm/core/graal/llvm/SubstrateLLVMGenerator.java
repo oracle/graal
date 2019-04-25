@@ -27,9 +27,14 @@ package com.oracle.svm.core.graal.llvm;
 import static com.oracle.svm.core.util.VMError.unimplemented;
 import static org.graalvm.compiler.core.llvm.LLVMUtils.getVal;
 
+import com.oracle.svm.core.SubstrateOptions;
+import com.oracle.svm.core.graal.code.SubstrateCallingConvention;
+import com.oracle.svm.core.meta.SharedMethod;
+import jdk.vm.ci.code.CallingConvention;
 import org.bytedeco.javacpp.LLVM.LLVMContextRef;
 import org.bytedeco.javacpp.LLVM.LLVMValueRef;
 import org.graalvm.compiler.core.common.spi.ForeignCallDescriptor;
+import org.graalvm.compiler.core.common.spi.ForeignCallLinkage;
 import org.graalvm.compiler.core.llvm.LLVMGenerationResult;
 import org.graalvm.compiler.core.llvm.LLVMGenerator;
 import org.graalvm.compiler.core.llvm.LLVMUtils.LLVMKindTool;
@@ -50,9 +55,14 @@ import jdk.vm.ci.meta.ResolvedJavaType;
 import jdk.vm.ci.meta.Value;
 
 public class SubstrateLLVMGenerator extends LLVMGenerator implements SubstrateLIRGenerator {
+    private final boolean isEntryPoint;
+    private LLVMValueRef savedThreadPointer;
+
     SubstrateLLVMGenerator(Providers providers, LLVMGenerationResult generationResult, ResolvedJavaMethod method, LLVMContextRef context, int debugLevel) {
         super(providers, generationResult, method, new SubstrateLLVMIRBuilder(SubstrateUtil.uniqueShortName(method), context, shouldTrackPointers(method)),
                         new LLVMKindTool(context), debugLevel);
+
+        this.isEntryPoint = ((SharedMethod) method).isEntryPoint();
     }
 
     private static boolean shouldTrackPointers(ResolvedJavaMethod method) {
@@ -98,6 +108,11 @@ public class SubstrateLLVMGenerator extends LLVMGenerator implements SubstrateLI
     }
 
     @Override
+    protected CallingConvention.Type getForeignCallCallingConvention(ForeignCallLinkage linkage) {
+        return ((SubstrateCallingConvention) linkage.getOutgoingCallingConvention()).getType();
+    }
+
+    @Override
     public String getFunctionName(ResolvedJavaMethod method) {
         return SubstrateUtil.uniqueShortName(method);
     }
@@ -110,5 +125,19 @@ public class SubstrateLLVMGenerator extends LLVMGenerator implements SubstrateLI
     @Override
     public SubstrateRegisterConfig getRegisterConfig() {
         return (SubstrateRegisterConfig) super.getRegisterConfig();
+    }
+
+    @Override
+    protected void emitFunctionPrologue() {
+        if (SubstrateOptions.MultiThreaded.getValue() && isEntryPoint) {
+            savedThreadPointer = builder.buildInlineGetRegister(getRegisterConfig().getThreadRegister().name);
+        }
+    }
+
+    @Override
+    protected void emitFunctionEpilogue() {
+        if (SubstrateOptions.MultiThreaded.getValue() && isEntryPoint) {
+            builder.buildInlineSetRegister(getRegisterConfig().getThreadRegister().name, savedThreadPointer);
+        }
     }
 }

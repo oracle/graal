@@ -38,10 +38,28 @@ import org.graalvm.compiler.core.common.NumUtil;
 import com.oracle.svm.core.FrameAccess;
 import com.oracle.svm.core.util.VMError;
 import org.graalvm.compiler.core.llvm.LLVMUtils;
+import org.graalvm.nativeimage.Platform;
 
 public class LLVMStackMapInfo {
     private static final int AMD64_RSP_IDX = 7;
     private static final int AMD64_RBP_IDX = 6;
+    private static final int AARCH64_FP_IDX = 29;
+    private static final int AARCH64_SP_IDX = 31;
+    private static final int STACK_POINTER_IDX;
+    private static final int FRAME_POINTER_IDX;
+
+    static {
+        if (Platform.includedIn(Platform.AMD64.class)) {
+            STACK_POINTER_IDX = AMD64_RSP_IDX;
+            FRAME_POINTER_IDX = AMD64_RBP_IDX;
+        } else if (Platform.includedIn(Platform.AArch64.class)) {
+            STACK_POINTER_IDX = AARCH64_SP_IDX;
+            FRAME_POINTER_IDX = AARCH64_FP_IDX;
+        } else {
+            throw shouldNotReachHere("Unsupported architecture");
+        }
+    }
+
     private StackMap stackMap;
 
     static class StackMap {
@@ -243,6 +261,10 @@ public class LLVMStackMapInfo {
     private static final int STATEPOINT_DEOPT_COUNT_LOCATION_INDEX = 2;
 
     public void forEachStatepointOffset(long patchpointID, int instructionOffset, BiConsumer<Integer, Integer> callback) {
+        if (!Platform.includedIn(Platform.AMD64.class)) {
+            return;
+        }
+
         Location[] locations = patchpointsByID.get(patchpointID).stream().filter(r -> r.instructionOffset == instructionOffset)
                         .findFirst().orElseThrow(VMError::shouldNotReachHere).locations;
         assert locations.length >= STATEPOINT_HEADER_LOCATION_COUNT;
@@ -297,9 +319,9 @@ public class LLVMStackMapInfo {
         assert location.size == 8;
 
         int offset;
-        if (location.regNum == AMD64_RSP_IDX) {
+        if (location.regNum == STACK_POINTER_IDX) {
             offset = location.offset;
-        } else if (location.regNum == AMD64_RBP_IDX) {
+        } else if (location.regNum == FRAME_POINTER_IDX) {
             /*
              * Convert frame-relative offset (negative) to a stack-relative offset (positive).
              */

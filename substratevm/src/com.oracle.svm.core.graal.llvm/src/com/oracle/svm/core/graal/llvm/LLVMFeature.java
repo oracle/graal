@@ -36,12 +36,12 @@ import java.util.List;
 import org.graalvm.compiler.core.llvm.LLVMUtils;
 import org.graalvm.compiler.phases.util.Providers;
 import org.graalvm.compiler.replacements.Snippets;
-import org.graalvm.nativeimage.hosted.Feature;
 import org.graalvm.nativeimage.ImageSingletons;
 import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.Platforms;
 import org.graalvm.nativeimage.c.function.CLibrary;
 import org.graalvm.nativeimage.c.function.CodePointer;
+import org.graalvm.nativeimage.hosted.Feature;
 import org.graalvm.word.Pointer;
 import org.graalvm.word.WordFactory;
 
@@ -162,8 +162,57 @@ class LLVMAMD64Feature implements Feature {
             }
 
             @Override
+            public String jumpSnippet() {
+                return "jmpq *($0)";
+            }
+
+            @Override
             public String pauseSnippet() {
                 return "pause";
+            }
+        });
+    }
+}
+
+@AutomaticFeature
+@Platforms(Platform.AArch64.class)
+class LLVMAArch64Feature implements Feature {
+    @Override
+    public boolean isInConfiguration(IsInConfigurationAccess access) {
+        return CompilerBackend.getValue().equals("llvm") && Platform.includedIn(Platform.AArch64.class);
+    }
+
+    @Override
+    public void afterRegistration(AfterRegistrationAccess access) {
+        ImageSingletons.add(LLVMUtils.LLVMInlineAsmSnippets.class, new LLVMUtils.LLVMInlineAsmSnippets() {
+            @Override
+            public String getRegisterSnippet(String registerName) {
+                return "MOV $0, " + registerName.replace("r", "x");
+            }
+
+            @Override
+            public String setRegisterSnippet(String registerName) {
+                return "MOV " + registerName.replace("r", "x") + ", $0";
+            }
+
+            @Override
+            public String addRegisterSnippet(String registerName) {
+                return "ADD $0, " + registerName.replace("r", "x") + ", $0";
+            }
+
+            @Override
+            public String subRegisterSnippet(String registerName) {
+                return "SUB $0, " + registerName.replace("r", "x") + ", $0";
+            }
+
+            @Override
+            public String jumpSnippet() {
+                return "BR $0";
+            }
+
+            @Override
+            public String pauseSnippet() {
+                return "NOP";
             }
         });
     }

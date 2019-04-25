@@ -49,7 +49,7 @@ public class AArch64FrameAccess extends FrameAccess {
     @Override
     public CodePointer readReturnAddress(Pointer sourceSp) {
         /* Read the return address, which is stored one word below the stack pointer. */
-        return (CodePointer) sourceSp.readWord(-returnAddressSize() - wordSize());
+        return (CodePointer) sourceSp.readWord(-wordSize());
     }
 
     @Override

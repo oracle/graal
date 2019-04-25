@@ -24,6 +24,8 @@
  */
 package com.oracle.svm.core.graal.llvm;
 
+import com.oracle.svm.core.graal.code.SubstrateCallingConventionType;
+import jdk.vm.ci.code.CallingConvention;
 import org.bytedeco.javacpp.LLVM;
 import org.bytedeco.javacpp.LLVM.LLVMContextRef;
 import org.bytedeco.javacpp.LLVM.LLVMTypeRef;
@@ -37,8 +39,14 @@ public class SubstrateLLVMIRBuilder extends LLVMIRBuilder {
     }
 
     @Override
-    public void addMainFunction(LLVMTypeRef type) {
-        super.addMainFunction(type);
+    public void addMainFunction(LLVMTypeRef type, boolean isEntryPoint) {
+        super.addMainFunction(type, isEntryPoint);
         LLVM.LLVMAddAlias(getModule(), LLVM.LLVMTypeOf(getMainFunction()), getMainFunction(), SubstrateUtil.mangleName(getFunctionName()));
+    }
+
+    @Override
+    protected String callingConvention(CallingConvention.Type callType) {
+        assert ((SubstrateCallingConventionType) callType).outgoing;
+        return ((SubstrateCallingConventionType) callType).nativeABI ? super.callingConvention(callType) : "graal";
     }
 }
