@@ -551,39 +551,50 @@ public final class Safepoint {
                 for (IsolateThread vmThread = VMThreads.firstThread(); VMThreads.isNonNullThread(vmThread); vmThread = VMThreads.nextThread(vmThread)) {
                     if (isMyself(vmThread)) {
                         /* Don't wait for myself. */
-
                     } else if (VMThreads.StatusSupport.isStatusIgnoreSafepoints(vmThread)) {
                         /*
                          * If the thread has exited or safepoints are disabled for another reason,
                          * then I do not need to worry about bringing it to a safepoint.
                          */
                         ignoreSafepoints += 1;
-
-                    } else if (VMThreads.StatusSupport.isStatusSafepoint(vmThread)) {
-                        /*
-                         * If the thread is *already* at a safepoint, e.g., from a previous loop,
-                         * then I do not have to think about it further.
-                         */
-                        atSafepoint += 1;
-
-                    } else if (VMThreads.StatusSupport.compareAndSetNativeToSafepoint(vmThread)) {
-                        /*
-                         * Check if the thread is in native code, and if so atomically change it to
-                         * be at a safepoint. The compareAndSet could fail if the thread is still
-                         * (or again) in Java code, which is why there is the surrounding
-                         * "loopCount" for-loop.
-                         */
-                        inNative += 1;
-                        Statistics.incInstalled();
-
                     } else {
-                        if (getSafepointRequested(vmThread) != SafepointRequestValues.ENTER && !VMThreads.StatusSupport.isStatusIgnoreSafepoints(vmThread)) {
-                            /* Re-request the safepoint in case of a lost update of the variable */
-                            setSafepointRequested(vmThread, SafepointRequestValues.ENTER);
-                            Statistics.incRequested();
+                        int status = VMThreads.StatusSupport.getStatusVolatile(vmThread);
+                        switch (status) {
+                            case VMThreads.StatusSupport.STATUS_IN_JAVA: {
+                                /*
+                                 * Re-request the safepoint in case of a lost update of the variable
+                                 */
+                                if (getSafepointRequested(vmThread) != SafepointRequestValues.ENTER && !VMThreads.StatusSupport.isStatusIgnoreSafepoints(vmThread)) {
+                                    setSafepointRequested(vmThread, SafepointRequestValues.ENTER);
+                                    Statistics.incRequested();
+                                }
+                                notAtSafepoint += 1;
+                                break;
+                            }
+                            case VMThreads.StatusSupport.STATUS_IN_SAFEPOINT: {
+                                atSafepoint += 1;
+                                break;
+                            }
+                            case VMThreads.StatusSupport.STATUS_IN_NATIVE: {
+                                /*
+                                 * Check if the thread is in native code, and if so atomically
+                                 * change it to be at a safepoint. The compareAndSet could fail if
+                                 * the thread is still (or again) in Java code, which is why there
+                                 * is the surrounding "loopCount" for-loop.
+                                 */
+                                if (VMThreads.StatusSupport.compareAndSetNativeToSafepoint(vmThread)) {
+                                    inNative += 1;
+                                    Statistics.incInstalled();
+                                } else {
+                                    notAtSafepoint += 1;
+                                }
+                                break;
+                            }
+                            case VMThreads.StatusSupport.STATUS_CREATED:
+                            default: {
+                                throw VMError.shouldNotReachHere("Unexpected thread status");
+                            }
                         }
-
-                        notAtSafepoint += 1;
                     }
                 }
                 if (notAtSafepoint == 0) {
