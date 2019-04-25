@@ -44,7 +44,7 @@ import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertNotNull;
 
 import org.graalvm.polyglot.Context;
-import org.graalvm.polyglot.HostAccess.Export;
+import org.graalvm.polyglot.HostAccess.Implementable;
 import org.junit.Assume;
 import org.junit.BeforeClass;
 import org.junit.ClassRule;
@@ -80,19 +80,17 @@ public class StringAsInterfaceNFITest {
         stdlib = runWithPolyglot.getPolyglotContext().asValue(rawStdLib).as(StdLib.class);
     }
 
+    @Implementable
     interface StdLib {
-        @Export
         Object malloc(int size);
 
-        @Export
         void free(Object pointer);
 
-        @Export
         String strdup(String orig);
     }
 
+    @Implementable
     interface Strndup {
-        @Export
         String strndup(String orig, int len);
     }
 

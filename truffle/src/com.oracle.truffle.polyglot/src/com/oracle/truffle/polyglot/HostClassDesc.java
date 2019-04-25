@@ -70,10 +70,20 @@ final class HostClassDesc {
     private final Class<?> type;
     private volatile Object members;
     private volatile JNIMembers jniMembers;
+    private final boolean allowsImplementation;
 
     HostClassDesc(HostClassCache cache, Class<?> type) {
         this.members = cache;
         this.type = type;
+        if (type.isInterface()) {
+            this.allowsImplementation = cache.allowsImplementation(type);
+        } else {
+            this.allowsImplementation = false;
+        }
+    }
+
+    public boolean isAllowsImplementation() {
+        return allowsImplementation;
     }
 
     public Class<?> getType() {

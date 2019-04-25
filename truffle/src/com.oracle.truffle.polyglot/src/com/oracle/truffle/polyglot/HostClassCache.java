@@ -40,7 +40,6 @@
  */
 package com.oracle.truffle.polyglot;
 
-import java.lang.annotation.Annotation;
 import java.lang.reflect.Constructor;
 import java.lang.reflect.Field;
 import java.lang.reflect.Method;
@@ -50,7 +49,6 @@ import java.util.List;
 import java.util.Map;
 import java.util.Map.Entry;
 
-import org.graalvm.collections.EconomicSet;
 import org.graalvm.polyglot.HostAccess;
 import org.graalvm.polyglot.impl.AbstractPolyglotImpl;
 import org.graalvm.polyglot.impl.AbstractPolyglotImpl.APIAccess;
@@ -200,8 +198,8 @@ final class HostClassCache {
         return listAccess;
     }
 
-    EconomicSet<Class<? extends Annotation>> getExportAnnotations() {
-        return apiAccess.getExportAnnotations(hostAccess);
+    boolean allowsImplementation(Class<?> type) {
+        return apiAccess.allowsImplementation(hostAccess, type);
     }
 
 }
