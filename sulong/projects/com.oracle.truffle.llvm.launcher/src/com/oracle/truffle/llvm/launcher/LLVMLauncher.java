@@ -210,7 +210,7 @@ public class LLVMLauncher extends AbstractLanguageLauncher {
             return library.execute().asInt();
         } catch (PolyglotException e) {
             if (e.isExit()) {
-                return e.getExitStatus();
+                throw e;
             } else if (!e.isInternalError()) {
                 printStackTraceSkipTrailingHost(e);
                 return -1;
