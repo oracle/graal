@@ -99,10 +99,10 @@ final class JniCallInterceptor {
     @CEntryPointOptions(prologue = AgentIsolate.Prologue.class, epilogue = AgentIsolate.Epilogue.class)
     private static JNIObjectHandle defineClass(JNIEnvironment env, CCharPointer name, JNIObjectHandle loader, CCharPointer buf, int bufLen) {
         JNIObjectHandle callerClass = getCallerClass(env);
-        if (accessVerifier != null && !accessVerifier.verifyDefineClass(env, name, loader, buf, bufLen, callerClass)) {
-            return nullHandle();
+        JNIObjectHandle result = nullHandle();
+        if (accessVerifier == null || accessVerifier.verifyDefineClass(env, name, loader, buf, bufLen, callerClass)) {
+            result = jniFunctions().getDefineClass().invoke(env, name, loader, buf, bufLen);
         }
-        JNIObjectHandle result = jniFunctions().getDefineClass().invoke(env, name, loader, buf, bufLen);
         if (shouldTrace()) {
             traceCall(env, "DefineClass", nullHandle(), nullHandle(), callerClass, result.notEqual(nullHandle()), fromCString(name));
         }
@@ -121,10 +121,10 @@ final class JniCallInterceptor {
     @CEntryPointOptions(prologue = AgentIsolate.Prologue.class, epilogue = AgentIsolate.Epilogue.class)
     private static JNIObjectHandle findClass(JNIEnvironment env, CCharPointer name) {
         JNIObjectHandle callerClass = getCallerClass(env);
-        if (accessVerifier != null && !accessVerifier.verifyFindClass(env, name, callerClass)) {
-            return nullHandle();
+        JNIObjectHandle result = nullHandle();
+        if (accessVerifier == null || accessVerifier.verifyFindClass(env, name, callerClass)) {
+            result = jniFunctions().getFindClass().invoke(env, name);
         }
-        JNIObjectHandle result = jniFunctions().getFindClass().invoke(env, name);
         if (shouldTrace()) {
             traceCall(env, "FindClass", nullHandle(), nullHandle(), callerClass, result.notEqual(nullHandle()), fromCString(name));
         }
@@ -138,7 +138,7 @@ final class JniCallInterceptor {
         JNIMethodId result = jniFunctions().getGetMethodID().invoke(env, clazz, name, signature);
         if (result.isNonNull() && accessVerifier != null && !accessVerifier.verifyGetMethodID(env, clazz, name, signature, result, callerClass)) {
             // NOTE: GetMethodID() above can have initialized `clazz` as a side effect
-            return nullPointer();
+            result = nullPointer();
         }
         if (shouldTrace()) {
             traceCall(env, "GetMethodID", clazz, getMethodDeclaringClass(result), callerClass, result.isNonNull(), fromCString(name), fromCString(signature));
@@ -153,7 +153,7 @@ final class JniCallInterceptor {
         JNIMethodId result = jniFunctions().getGetStaticMethodID().invoke(env, clazz, name, signature);
         if (result.isNonNull() && accessVerifier != null && !accessVerifier.verifyGetMethodID(env, clazz, name, signature, result, callerClass)) {
             // NOTE: GetStaticMethodID() above can have initialized `clazz` as a side effect
-            return nullPointer();
+            result = nullPointer();
         }
         if (shouldTrace()) {
             traceCall(env, "GetStaticMethodID", clazz, getMethodDeclaringClass(result), callerClass, result.isNonNull(), fromCString(name), fromCString(signature));
@@ -168,7 +168,7 @@ final class JniCallInterceptor {
         JNIFieldId result = jniFunctions().getGetFieldID().invoke(env, clazz, name, signature);
         if (result.isNonNull() && accessVerifier != null && !accessVerifier.verifyGetFieldID(env, clazz, name, signature, result, callerClass)) {
             // NOTE: GetFieldID() above can have initialized `clazz` as a side effect
-            return nullPointer();
+            result = nullPointer();
         }
         if (shouldTrace()) {
             traceCall(env, "GetFieldID", clazz, getFieldDeclaringClass(clazz, result), callerClass, result.isNonNull(), fromCString(name), fromCString(signature));
@@ -183,7 +183,7 @@ final class JniCallInterceptor {
         JNIFieldId result = jniFunctions().getGetStaticFieldID().invoke(env, clazz, name, signature);
         if (result.isNonNull() && accessVerifier != null && !accessVerifier.verifyGetFieldID(env, clazz, name, signature, result, callerClass)) {
             // NOTE: GetStaticFieldID() above can have initialized `clazz` as a side effect
-            return nullPointer();
+            result = nullPointer();
         }
         if (shouldTrace()) {
             traceCall(env, "GetStaticFieldID", clazz, getFieldDeclaringClass(clazz, result), callerClass, result.isNonNull(), fromCString(name), fromCString(signature));
@@ -195,10 +195,12 @@ final class JniCallInterceptor {
     @CEntryPointOptions(prologue = AgentIsolate.Prologue.class, epilogue = AgentIsolate.Epilogue.class)
     private static int throwNew(JNIEnvironment env, JNIObjectHandle clazz, CCharPointer message) {
         JNIObjectHandle callerClass = getCallerClass(env);
-        if (accessVerifier != null && !accessVerifier.verifyThrowNew(env, clazz, callerClass)) {
-            return JNIErrors.JNI_EINVAL();
+        int result;
+        if (accessVerifier == null || accessVerifier.verifyThrowNew(env, clazz, callerClass)) {
+            result = jniFunctions().getThrowNew().invoke(env, clazz, message);
+        } else {
+            result = JNIErrors.JNI_EINVAL();
         }
-        int result = jniFunctions().getThrowNew().invoke(env, clazz, message);
         if (shouldTrace()) {
             traceCall(env, "ThrowNew", clazz, nullHandle(), callerClass, (result == JNIErrors.JNI_OK()), TraceWriter.UNKNOWN_VALUE);
         }
