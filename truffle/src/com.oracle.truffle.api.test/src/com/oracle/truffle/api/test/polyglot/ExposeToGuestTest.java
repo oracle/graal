@@ -419,28 +419,33 @@ public class ExposeToGuestTest {
     @Implementable
     interface MarkedInterface {
 
-        Object exported(String arg);
+        String exported(String arg);
 
     }
 
     @FunctionalInterface
     interface MarkedFunctional {
 
-        Object f(String arg);
+        int f();
 
     }
 
     interface UnmarkedFunctional {
 
-        Object f(String arg);
+        int f();
 
     }
 
     public static class Impl {
 
         @Export
-        public Object exported(String arg) {
+        public Object exported(Object arg) {
             return arg;
+        }
+
+        @Export
+        public Object noArg() {
+            return 42;
         }
 
     }
@@ -504,7 +509,7 @@ public class ExposeToGuestTest {
             c.initialize(ProxyLanguage.ID);
             Value v = c.asValue(new Overloaded());
             Value arg = c.asValue(new Impl());
-            assertEquals("MarkedFunctional", v.invokeMember("overloaded", arg.getMember("exported")).asString());
+            assertEquals("MarkedFunctional", v.invokeMember("overloaded", arg.getMember("noArg")).asString());
             assertEquals("42", v.invokeMember("overloaded", "42").asString());
         }
 
@@ -526,7 +531,7 @@ public class ExposeToGuestTest {
         try (Context c = Context.newBuilder().allowHostAccess(access).build()) {
             c.initialize(ProxyLanguage.ID);
             Value v = c.asValue(new Impl());
-            Value f = v.getMember("exported");
+            Value f = v.getMember("noArg");
             assertEquals("42", v.as(MarkedInterface.class).exported("42"));
             try {
                 v.as(EmptyInterface.class);
@@ -539,13 +544,13 @@ public class ExposeToGuestTest {
             } catch (ClassCastException e) {
             }
 
-            assertEquals("42", f.as(MarkedFunctional.class).f("42"));
+            assertEquals(42, f.as(MarkedFunctional.class).f());
             try {
                 f.as(UnmarkedFunctional.class);
                 fail();
             } catch (ClassCastException e) {
             }
-            assertEquals("42", f.as(Function.class).apply("42"));
+            assertEquals(42, f.as(Function.class).apply(null));
         }
     }
 
@@ -557,7 +562,7 @@ public class ExposeToGuestTest {
         try (Context c = Context.newBuilder().allowHostAccess(access).build()) {
             c.initialize(ProxyLanguage.ID);
             Value v = c.asValue(new Impl());
-            Value f = v.getMember("exported");
+            Value f = v.getMember("noArg");
             assertEquals("42", v.as(UnmarkedInterface.class).exported("42"));
             try {
                 v.as(EmptyInterface.class);
@@ -570,13 +575,13 @@ public class ExposeToGuestTest {
             } catch (ClassCastException e) {
             }
 
-            assertEquals("42", f.as(UnmarkedFunctional.class).f("42"));
+            assertEquals(42, f.as(UnmarkedFunctional.class).f());
             try {
                 f.as(MarkedFunctional.class);
                 fail();
             } catch (ClassCastException e) {
             }
-            assertEquals("42", f.as(Function.class).apply("42"));
+            assertEquals(42, f.as(Function.class).apply(null));
         }
     }
 
@@ -624,14 +629,14 @@ public class ExposeToGuestTest {
         try (Context c = Context.newBuilder().allowHostAccess(access).build()) {
             c.initialize(ProxyLanguage.ID);
             Value v = c.asValue(new Impl());
-            Value f = v.getMember("exported");
+            Value f = v.getMember("noArg");
             assertEquals("42", v.as(MarkedInterface.class).exported("42"));
             assertEquals("42", v.as(UnmarkedInterface.class).exported("42"));
             assertNotNull(v.as(EmptyInterface.class));
 
-            assertEquals("42", f.as(MarkedFunctional.class).f("42"));
-            assertEquals("42", f.as(UnmarkedFunctional.class).f("42"));
-            assertEquals("42", f.as(Function.class).apply("42"));
+            assertEquals(42, f.as(MarkedFunctional.class).f());
+            assertEquals(42, f.as(UnmarkedFunctional.class).f());
+            assertEquals(42, f.as(Function.class).apply(null));
         }
     }
 
@@ -642,14 +647,14 @@ public class ExposeToGuestTest {
         try (Context c = Context.newBuilder().allowHostAccess(access).build()) {
             c.initialize(ProxyLanguage.ID);
             Value v = c.asValue(new Impl());
-            Value f = v.getMember("exported");
+            Value f = v.getMember("noArg");
             assertEquals("42", v.as(MarkedInterface.class).exported("42"));
             assertEquals("42", v.as(UnmarkedInterface.class).exported("42"));
             assertNotNull(v.as(EmptyInterface.class));
 
-            assertEquals("42", f.as(MarkedFunctional.class).f("42"));
-            assertEquals("42", f.as(UnmarkedFunctional.class).f("42"));
-            assertEquals("42", f.as(Function.class).apply("42"));
+            assertEquals(42, f.as(MarkedFunctional.class).f());
+            assertEquals(42, f.as(UnmarkedFunctional.class).f());
+            assertEquals(42, f.as(Function.class).apply(null));
         }
     }
 
