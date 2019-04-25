@@ -93,7 +93,7 @@ public class DisallowedImageHeapObjectFeature implements Feature {
                         "The object was probably created by a class initializer and is reachable from a static field. " +
                         "By default, all class initialization is done during native image building." +
                         "You can manually delay class initialization to image run time by using the option " +
-                        SubstrateOptionsParser.commandArgument(ClassInitializationFeature.Options.DelayClassInitialization, "<class-name>") + ". " +
+                        SubstrateOptionsParser.commandArgument(ClassInitializationFeature.Options.ClassInitialization, "<class-name>") + ". " +
                         "Or you can write your own initialization methods and call them explicitly from your main entry point.");
     }
 

@@ -40,9 +40,10 @@ import java.util.function.Function;
 
 import org.graalvm.compiler.options.Option;
 import org.graalvm.compiler.serviceprovider.JavaVersionUtil;
+import org.graalvm.nativeimage.ImageSingletons;
 import org.graalvm.nativeimage.hosted.Feature;
-import org.graalvm.nativeimage.hosted.RuntimeClassInitialization;
 import org.graalvm.nativeimage.hosted.RuntimeReflection;
+import org.graalvm.nativeimage.impl.RuntimeClassInitializationSupport;
 
 import com.oracle.svm.core.SubstrateOptions;
 import com.oracle.svm.core.annotate.AutomaticFeature;
@@ -97,29 +98,29 @@ public class SecurityServicesFeature implements Feature {
          * initializers execution to runtime because the SecureRandom classes are needed by the
          * native image generator too, e.g., by Files.createTempDirectory().
          */
-        RuntimeClassInitialization.rerunClassInitialization(NativePRNG.class);
-        RuntimeClassInitialization.rerunClassInitialization(NativePRNG.Blocking.class);
-        RuntimeClassInitialization.rerunClassInitialization(NativePRNG.NonBlocking.class);
+        ImageSingletons.lookup(RuntimeClassInitializationSupport.class).rerunInitialization(NativePRNG.class, "for substitutions");
+        ImageSingletons.lookup(RuntimeClassInitializationSupport.class).rerunInitialization(NativePRNG.Blocking.class, "for substitutions");
+        ImageSingletons.lookup(RuntimeClassInitializationSupport.class).rerunInitialization(NativePRNG.NonBlocking.class, "for substitutions");
 
-        RuntimeClassInitialization.rerunClassInitialization(access.findClassByName("sun.security.provider.SeedGenerator"));
-        RuntimeClassInitialization.rerunClassInitialization(access.findClassByName("sun.security.provider.SecureRandom$SeederHolder"));
+        ImageSingletons.lookup(RuntimeClassInitializationSupport.class).rerunInitialization(access.findClassByName("sun.security.provider.SeedGenerator"), "for substitutions");
+        ImageSingletons.lookup(RuntimeClassInitializationSupport.class).rerunInitialization(access.findClassByName("sun.security.provider.SecureRandom$SeederHolder"), "for substitutions");
 
         if (!JavaVersionUtil.Java8OrEarlier) {
-            RuntimeClassInitialization.rerunClassInitialization(access.findClassByName("sun.security.provider.FileInputStreamPool"));
+            ImageSingletons.lookup(RuntimeClassInitializationSupport.class).rerunInitialization(access.findClassByName("sun.security.provider.FileInputStreamPool"), "for substitutions");
         }
 
         /* java.util.UUID$Holder has a static final SecureRandom field. */
-        RuntimeClassInitialization.rerunClassInitialization(access.findClassByName("java.util.UUID$Holder"));
+        ImageSingletons.lookup(RuntimeClassInitializationSupport.class).rerunInitialization(access.findClassByName("java.util.UUID$Holder"), "for substitutions");
 
         /*
          * The classes bellow have a static final SecureRandom field. Note that if the classes are
          * not found as reachable by the analysis registering them form class initialization rerun
          * doesn't have any effect.
          */
-        RuntimeClassInitialization.rerunClassInitialization(access.findClassByName("sun.security.jca.JCAUtil$CachedSecureRandomHolder"));
-        RuntimeClassInitialization.rerunClassInitialization(access.findClassByName("com.sun.crypto.provider.SunJCE$SecureRandomHolder"));
-        RuntimeClassInitialization.rerunClassInitialization(access.findClassByName("sun.security.krb5.Confounder"));
-        RuntimeClassInitialization.rerunClassInitialization(javax.net.ssl.SSLContext.class);
+        ImageSingletons.lookup(RuntimeClassInitializationSupport.class).rerunInitialization(access.findClassByName("sun.security.jca.JCAUtil$CachedSecureRandomHolder"), "for substitutions");
+        ImageSingletons.lookup(RuntimeClassInitializationSupport.class).rerunInitialization(access.findClassByName("com.sun.crypto.provider.SunJCE$SecureRandomHolder"), "for substitutions");
+        ImageSingletons.lookup(RuntimeClassInitializationSupport.class).rerunInitialization(access.findClassByName("sun.security.krb5.Confounder"), "for substitutions");
+        ImageSingletons.lookup(RuntimeClassInitializationSupport.class).rerunInitialization(javax.net.ssl.SSLContext.class, "for substitutions");
 
         if (SubstrateOptions.EnableAllSecurityServices.getValue()) {
             /* Prepare SunEC native library access. */

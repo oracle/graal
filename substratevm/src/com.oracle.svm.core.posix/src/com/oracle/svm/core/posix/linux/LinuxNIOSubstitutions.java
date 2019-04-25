@@ -27,14 +27,15 @@ package com.oracle.svm.core.posix.linux;
 import java.io.IOException;
 
 import org.graalvm.compiler.serviceprovider.JavaVersionUtil;
+import org.graalvm.nativeimage.ImageSingletons;
 import org.graalvm.nativeimage.hosted.Feature;
 import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.Platforms;
-import org.graalvm.nativeimage.hosted.RuntimeClassInitialization;
 import org.graalvm.nativeimage.StackValue;
 import org.graalvm.nativeimage.c.struct.SizeOf;
 import org.graalvm.nativeimage.c.type.CCharPointer;
 import org.graalvm.nativeimage.c.type.CIntPointer;
+import org.graalvm.nativeimage.impl.RuntimeClassInitializationSupport;
 import org.graalvm.word.WordFactory;
 
 import com.oracle.svm.core.annotate.AutomaticFeature;
@@ -431,7 +432,7 @@ public final class LinuxNIOSubstitutions {
         public void duringSetup(DuringSetupAccess access) {
             if (JavaVersionUtil.Java8OrEarlier) {
                 /* This class only exists on JDK-8 and earlier platforms. */
-                RuntimeClassInitialization.rerunClassInitialization(access.findClassByName("sun.nio.ch.EPollArrayWrapper"));
+                ImageSingletons.lookup(RuntimeClassInitializationSupport.class).rerunInitialization(access.findClassByName("sun.nio.ch.EPollArrayWrapper"), "required for substitutions");
             }
         }
     }

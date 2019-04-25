@@ -1,5 +1,5 @@
 #Signature file v4.1
-#Version 
+#Version
 
 CLSS public final com.oracle.truffle.api.instrumentation.AllocationEvent
 meth public com.oracle.truffle.api.nodes.LanguageInfo getLanguage()

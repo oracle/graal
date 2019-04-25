@@ -32,6 +32,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.Optional;
 import java.util.Set;
+import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.stream.Collectors;
 
 import org.graalvm.compiler.nodes.ConstantNode;
@@ -102,11 +103,14 @@ public class TypeInitializerGraph {
     void computeInitializerSafety() {
         boolean newPromotions;
         do {
-            boolean methodSafetyChanged = methods.stream()
-                            .filter(m -> methodSafety.get(m) == Safety.SAFE)
-                            .anyMatch(this::updateMethodSafety);
-
-            newPromotions = methodSafetyChanged || updateTypeInitializerSafety();
+            AtomicBoolean methodSafetyChanged = new AtomicBoolean(false);
+            methods.stream().filter(m -> methodSafety.get(m) == Safety.SAFE)
+                            .forEach(m -> {
+                                if (updateMethodSafety(m)) {
+                                    methodSafetyChanged.set(true);
+                                }
+                            });
+            newPromotions = methodSafetyChanged.get() || updateTypeInitializerSafety();
         } while (newPromotions);
     }
 
@@ -114,7 +118,7 @@ public class TypeInitializerGraph {
      * A type initializer is initially unsafe only if it was marked by the user as such.
      */
     private Safety initialTypeInitializerSafety(AnalysisType t) {
-        return classInitializationSupport.initKindFor(t.getJavaClass()) == ClassInitializationSupport.InitKind.MUST_DELAY ? Safety.UNSAFE
+        return classInitializationSupport.specifiedInitKindFor(t.getJavaClass()) == InitKind.DELAY ? Safety.UNSAFE
                         : Safety.SAFE;
     }
 
@@ -128,7 +132,6 @@ public class TypeInitializerGraph {
 
     private boolean updateTypeInitializerSafety() {
         List<AnalysisType> newUnsafeTypes = types.keySet().stream().filter(type -> shouldPromoteToUnsafe(type, methodSafety)).collect(Collectors.toList());
-        System.out.println(newUnsafeTypes.size());
         newUnsafeTypes.forEach(this::setUnsafe);
         return !newUnsafeTypes.isEmpty();
     }

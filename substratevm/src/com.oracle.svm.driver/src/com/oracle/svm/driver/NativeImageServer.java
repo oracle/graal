@@ -669,7 +669,7 @@ final class NativeImageServer extends NativeImage {
         }
     }
 
-    private FileLock lockFileChannel(FileChannel channel) throws IOException {
+    private static FileLock lockFileChannel(FileChannel channel) throws IOException {
         Thread lockWatcher = new Thread(() -> {
             try {
                 Thread.sleep(TimeUnit.MINUTES.toMillis(10));

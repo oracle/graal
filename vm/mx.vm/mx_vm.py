@@ -568,7 +568,7 @@ class SvmSupport(object):
         stage1 = get_stage1_graalvm_distribution()
         native_image_project_name = GraalVmLauncher.launcher_project_name(mx_sdk.LauncherConfig(mx.exe_suffix('native-image'), [], "", []), stage1=True)
         native_image_bin = join(stage1.output, stage1.find_single_source_location('dependency:' + native_image_project_name))
-        native_image_command = [native_image_bin, '--no-fallback', '-H:+EnforceMaxRuntimeCompileMethods'] + build_args
+        native_image_command = [native_image_bin, '--no-fallback', '--initialize-at-build-time', '-H:+EnforceMaxRuntimeCompileMethods'] + build_args
         # currently, when building with the bash version of native-image, --no-server is implied (and can not be passed)
         output_directory = dirname(output_file)
         if "-H:Kind=SHARED_LIBRARY" in build_args:
@@ -824,7 +824,7 @@ class GraalVmNativeImage(mx.Project):
         return join(self.get_output_base(), self.name, "sources")
 
     def build_args(self):
-        return [mx_subst.string_substitutions.substitute(arg) for arg in self.native_image_config.build_args]
+        return [mx_subst.string_substitutions.substitute(arg) for arg in self.native_image_config.build_args] + ['--initialize-at-build-time']
 
     def isPlatformDependent(self):
         return True

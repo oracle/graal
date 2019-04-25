@@ -122,9 +122,6 @@ public class NativeImageOptions {
         }
     };
 
-    @Option(help = "Initialize side-effectful application class initializers at image build time.", type = OptionType.User)//
-    public static final HostedOptionKey<Boolean> EagerlyInitializeClasses = new HostedOptionKey<>(true);
-
     @SuppressWarnings("all")
     private static boolean areAssertionsEnabled() {
         boolean assertsEnabled = false;
