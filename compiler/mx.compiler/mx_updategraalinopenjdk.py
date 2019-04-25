@@ -61,6 +61,9 @@ def _find_version_base_project(versioned_project):
         mx.abort('Multi-release jar versioned project {} must extend package(s) from another project'.format(versioned_project))
     return base_project
 
+def _is_git_repo(jdkrepo):
+    git_dir = join(jdkrepo, '.git')
+    return True if exists(git_dir) else False
 
 SuiteJDKInfo = namedtuple('SuiteJDKInfo', 'name includes excludes')
 GraalJDKModule = namedtuple('GraalJDKModule', 'name suites')
@@ -113,6 +116,7 @@ def updategraalinopenjdk(args):
     blacklist = ['"Classpath" exception']
 
     jdkrepo = args.jdkrepo
+    git_repo = _is_git_repo(jdkrepo)
 
     for m in graal_modules:
         m_src_dir = join(jdkrepo, 'src', m.name)
@@ -127,9 +131,12 @@ def updategraalinopenjdk(args):
     for m in graal_modules:
         m_src_dir = join('src', m.name)
         mx.log('Checking ' + m_src_dir)
-        out = run_output(['hg', 'status', m_src_dir], cwd=jdkrepo)
+        if git_repo:
+            out = run_output(['git', 'status', '-s', m_src_dir], cwd=jdkrepo)
+        else:
+            out = run_output(['hg', 'status', m_src_dir], cwd=jdkrepo)
         if out:
-            mx.abort(jdkrepo + ' is not "hg clean":' + '\n' + out[:min(200, len(out))] + '...')
+            mx.abort(jdkrepo + ' is not "clean":' + '\n' + out[:min(200, len(out))] + '...')
 
     for dirpath, _, filenames in os.walk(join(jdkrepo, 'make')):
         for filename in filenames:
@@ -255,7 +262,7 @@ def updategraalinopenjdk(args):
                         with open(dst_file, 'w') as fp:
                             fp.write(contents)
 
-    def replace_lines(filename, begin_lines, end_line, replace_lines, old_line_check, preserve_indent=False):
+    def replace_lines(filename, begin_lines, end_line, replace_lines, old_line_check, preserve_indent=False, append_mode=False):
         mx.log('Updating ' + filename + '...')
         old_lines = []
         new_lines = []
@@ -280,8 +287,9 @@ def updategraalinopenjdk(args):
                 lstripped_line = line.lstrip()
                 indent = len(line) - len(lstripped_line)
 
-            for replace in replace_lines:
-                new_lines.append(' ' * indent + replace)
+            if not append_mode:
+                for replace in replace_lines:
+                    new_lines.append(' ' * indent + replace)
 
             for line in lines:
                 stripped_line = line.strip()
@@ -291,6 +299,12 @@ def updategraalinopenjdk(args):
                         new_lines.append(line)
                     else:
                         old_line_check(line)
+                        if append_mode:
+                            new_lines.append(line)
+                    if append_mode and not line_in_def:
+                        # reach end line and append new lines
+                        for replace in replace_lines:
+                            new_lines.append(replace)
                 else:
                     new_lines.append(line)
         with open(filename, 'w') as fp:
@@ -313,6 +327,20 @@ def updategraalinopenjdk(args):
     old_line_check = single_column_with_continuation
     replace_lines(CompileJavaModules_gmk, begin_lines, end_line, new_lines, old_line_check, preserve_indent=True)
 
+    if args.version == 11:
+        # add aot exclude
+        out = run_output(['grep', 'jdk.aot_EXCLUDES', CompileJavaModules_gmk], cwd=jdkrepo)
+        if out:
+            # replace existing exclude setting
+            begin_lines = ['jdk.aot_EXCLUDES += \\']
+            end_line = '#'
+            new_lines = ['jdk.tools.jaotc.test \\\n']
+            replace_lines(CompileJavaModules_gmk, begin_lines, end_line, new_lines, old_line_check, preserve_indent=True)
+        else:
+            # append exclude setting after jdk.internal.vm.compiler_EXCLUDES
+            new_lines = ['\n','jdk.aot_EXCLUDES += \\\n','    jdk.tools.jaotc.test \\\n','    #\n','\n']  # indent is inlined
+            replace_lines(CompileJavaModules_gmk, begin_lines, end_line, new_lines, old_line_check, preserve_indent=True, append_mode=True)
+
     # Update 'SRC' in the 'Compile graalunit tests' section of make/test/JtregGraalUnit.gmk
     # to include all test packages.
     JtregGraalUnit_gmk = join(jdkrepo, 'make', 'test', 'JtregGraalUnit.gmk') # pylint: disable=invalid-name
@@ -323,26 +351,30 @@ def updategraalinopenjdk(args):
     jdk_internal_vm_compiler_test_SRC.discard('org.graalvm.micro.benchmarks')
     for pkg in sorted(jdk_internal_vm_compiler_test_SRC):
         new_lines.append('$(SRC_DIR)/' + pkg + '/src \\\n')
-    begin_lines = ['### Compile graalunit tests', 'SRC := \\']
+    if args.version == 11:
+        begin_lines = ['### Compile and build graalunit tests', 'SRC := \\']
+    else:
+        begin_lines = ['### Compile graalunit tests', 'SRC := \\']
     end_line = ', \\'
     old_line_check = single_column_with_continuation
     replace_lines(JtregGraalUnit_gmk, begin_lines, end_line, new_lines, old_line_check, preserve_indent=True)
 
-    mx.log('Adding new files to HG...')
     overwritten = ''
-    for m in graal_modules:
-        m_src_dir = join('src', m.name)
-        out = run_output(['hg', 'log', '-r', 'last(keyword("Update Graal"))', '--template', '{rev}', m_src_dir], cwd=jdkrepo)
-        last_graal_update = out.strip()
-        if last_graal_update:
-            overwritten += run_output(['hg', 'diff', '-r', last_graal_update, '-r', 'tip', m_src_dir], cwd=jdkrepo)
-        mx.run(['hg', 'add', m_src_dir], cwd=jdkrepo)
-    mx.log('Removing old files from HG...')
-    for m in graal_modules:
-        m_src_dir = join('src', m.name)
-        out = run_output(['hg', 'status', '-dn', m_src_dir], cwd=jdkrepo)
-        if out:
-            mx.run(['hg', 'rm'] + out.split(), cwd=jdkrepo)
+    if not git_repo:
+        mx.log('Adding new files to HG...')
+        for m in graal_modules:
+            m_src_dir = join('src', m.name)
+            out = run_output(['hg', 'log', '-r', 'last(keyword("Update Graal"))', '--template', '{rev}', m_src_dir], cwd=jdkrepo)
+            last_graal_update = out.strip()
+            if last_graal_update:
+                overwritten += run_output(['hg', 'diff', '-r', last_graal_update, '-r', 'tip', m_src_dir], cwd=jdkrepo)
+            mx.run(['hg', 'add', m_src_dir], cwd=jdkrepo)
+        mx.log('Removing old files from HG...')
+        for m in graal_modules:
+            m_src_dir = join('src', m.name)
+            out = run_output(['hg', 'status', '-dn', m_src_dir], cwd=jdkrepo)
+            if out:
+                mx.run(['hg', 'rm'] + out.split(), cwd=jdkrepo)
 
     out = run_output(['git', 'tag', '-l', 'JDK-*'], cwd=mx_compiler._suite.vc_dir)
     last_jdk_tag = sorted(out.split(), reverse=True)[0]
