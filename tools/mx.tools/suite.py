@@ -142,27 +142,27 @@ suite = {
             }
         },
         "VISUALVM_COMMON" : {
-            "urls" : ["https://lafo.ssw.uni-linz.ac.at/pub/graal-external-deps/visualvm-670.tar.gz"],
-            "sha1" : "aee7dd2a9663701df57a96e501b9219a7c90cbc3",
+            "urls" : ["https://lafo.ssw.uni-linz.ac.at/pub/graal-external-deps/visualvm/visualvm-19_0_0-7.tar.gz"],
+            "sha1" : "9fd58729b9af2e783a504d51c693f9277b0c3175",
         },
         "VISUALVM_PLATFORM_SPECIFIC" : {
             "os_arch" : {
                 "linux" : {
                     "amd64" : {
-                        "urls" : ["https://lafo.ssw.uni-linz.ac.at/pub/graal-external-deps/visualvm-670-linux-amd64.tar.gz"],
-                        "sha1" : "e607a0c40716f4a232de3726ab101f5c54798cfa",
+                        "urls" : ["https://lafo.ssw.uni-linz.ac.at/pub/graal-external-deps/visualvm/visualvm-19_0_0-7-linux-amd64.tar.gz"],
+                        "sha1" : "a832fb361cdb3837a931fd82b7728bd9b1905c85",
                     }
                 },
                 "darwin" : {
                     "amd64" : {
-                        "urls" : ["https://lafo.ssw.uni-linz.ac.at/pub/graal-external-deps/visualvm-670-macosx-x86_64.tar.gz"],
-                        "sha1" : "ea45e21c35f24d05e74d46bbdc068bf48865aa8f",
+                        "urls" : ["https://lafo.ssw.uni-linz.ac.at/pub/graal-external-deps/visualvm/visualvm-19_0_0-7-macosx-x86_64.tar.gz"],
+                        "sha1" : "a49149b02242cab7e1617a2a6c3ad7ed059d2c42",
                     }
                 },
                 "windows" : {
                     "amd64" : {
-                        "urls" : ["https://lafo.ssw.uni-linz.ac.at/pub/graal-external-deps/visualvm-670-windows-amd64.tar.gz"],
-                        "sha1" : "6a4fa4b6a0c1fceeee63567af9f70d63a5ad6334",
+                        "urls" : ["https://lafo.ssw.uni-linz.ac.at/pub/graal-external-deps/visualvm/visualvm-19_0_0-7-windows-amd64.tar.gz"],
+                        "sha1" : "10a248d858bb17fc40f696cf8ff5338592fa6748",
                     }
                 },
             }
