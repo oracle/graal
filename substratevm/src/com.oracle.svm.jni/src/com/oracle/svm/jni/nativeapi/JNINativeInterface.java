@@ -55,6 +55,8 @@ import com.oracle.svm.jni.nativeapi.JNIFunctionPointerTypes.ReleaseStringUTFChar
 import com.oracle.svm.jni.nativeapi.JNIFunctionPointerTypes.SetObjectArrayElementFunctionPointer;
 import com.oracle.svm.jni.nativeapi.JNIFunctionPointerTypes.ThrowFunctionPointer;
 import com.oracle.svm.jni.nativeapi.JNIFunctionPointerTypes.ThrowNewFunctionPointer;
+import com.oracle.svm.jni.nativeapi.JNIFunctionPointerTypes.ToReflectedFieldFunctionPointer;
+import com.oracle.svm.jni.nativeapi.JNIFunctionPointerTypes.ToReflectedMethodFunctionPointer;
 
 @CContext(JNIHeaderDirectives.class)
 @CStruct(value = "JNINativeInterface_", addStructKeyword = true)
@@ -103,10 +105,10 @@ public interface JNINativeInterface extends PointerBase {
     void setFromReflectedField(FromReflectedFieldFunctionPointer p);
 
     @CField
-    CFunctionPointer getToReflectedMethod();
+    ToReflectedMethodFunctionPointer getToReflectedMethod();
 
     @CField
-    void setToReflectedMethod(CFunctionPointer p);
+    void setToReflectedMethod(ToReflectedMethodFunctionPointer p);
 
     @CField
     GetSuperclassFunctionPointer getGetSuperclass();
@@ -121,10 +123,10 @@ public interface JNINativeInterface extends PointerBase {
     void setIsAssignableFrom(IsAssignableFromFunctionPointer p);
 
     @CField
-    CFunctionPointer getToReflectedField();
+    ToReflectedFieldFunctionPointer getToReflectedField();
 
     @CField
-    void setToReflectedField(CFunctionPointer p);
+    void setToReflectedField(ToReflectedFieldFunctionPointer p);
 
     @CField
     ThrowFunctionPointer getThrow();

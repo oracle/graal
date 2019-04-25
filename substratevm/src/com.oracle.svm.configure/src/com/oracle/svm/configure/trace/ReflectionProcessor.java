@@ -41,10 +41,6 @@ class ReflectionProcessor extends AbstractProcessor {
     private final ProxyConfiguration proxyConfiguration;
     private final ResourceConfiguration resourceConfiguration;
 
-    ReflectionProcessor(AccessAdvisor advisor) {
-        this(advisor, new TypeConfiguration(), new ProxyConfiguration(), new ResourceConfiguration());
-    }
-
     ReflectionProcessor(AccessAdvisor advisor, TypeConfiguration typeConfiguration, ProxyConfiguration proxyConfiguration, ResourceConfiguration resourceConfiguration) {
         this.advisor = advisor;
         this.configuration = typeConfiguration;

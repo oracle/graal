@@ -78,6 +78,7 @@ import com.oracle.svm.agent.restrict.JniAccessVerifier;
 import com.oracle.svm.agent.restrict.ProxyAccessVerifier;
 import com.oracle.svm.agent.restrict.ReflectAccessVerifier;
 import com.oracle.svm.agent.restrict.ResourceAccessVerifier;
+import com.oracle.svm.agent.restrict.TypeAccessChecker;
 import com.oracle.svm.configure.config.ConfigurationSet;
 import com.oracle.svm.configure.json.JsonWriter;
 import com.oracle.svm.configure.trace.AccessAdvisor;
@@ -233,10 +234,12 @@ public final class Agent {
         callbacks.setThreadEnd(onThreadEndLiteral.getFunctionPointer());
 
         accessAdvisor = new AccessAdvisor();
+        TypeAccessChecker reflectAccessChecker = null;
         try {
             ReflectAccessVerifier verifier = null;
             if (!restrictConfigs.getReflectConfigPaths().isEmpty()) {
-                verifier = new ReflectAccessVerifier(restrictConfigs.loadReflectConfig(ConfigurationSet.FAIL_ON_EXCEPTION), accessAdvisor);
+                reflectAccessChecker = new TypeAccessChecker(restrictConfigs.loadReflectConfig(ConfigurationSet.FAIL_ON_EXCEPTION));
+                verifier = new ReflectAccessVerifier(reflectAccessChecker, accessAdvisor);
             }
             ProxyAccessVerifier proxyVerifier = null;
             if (!restrictConfigs.getProxyConfigPaths().isEmpty()) {
@@ -254,7 +257,8 @@ public final class Agent {
         try {
             JniAccessVerifier verifier = null;
             if (!restrictConfigs.getJniConfigPaths().isEmpty()) {
-                verifier = new JniAccessVerifier(restrictConfigs.loadJniConfig(ConfigurationSet.FAIL_ON_EXCEPTION), accessAdvisor);
+                TypeAccessChecker accessChecker = new TypeAccessChecker(restrictConfigs.loadJniConfig(ConfigurationSet.FAIL_ON_EXCEPTION));
+                verifier = new JniAccessVerifier(accessChecker, reflectAccessChecker, accessAdvisor);
             }
             JniCallInterceptor.onLoad(traceWriter, verifier);
         } catch (Throwable t) {

@@ -35,7 +35,7 @@ public class ResourceAccessVerifier extends AbstractAccessVerifier {
     private final ResourceConfiguration configuration;
 
     public ResourceAccessVerifier(ResourceConfiguration configuration, AccessAdvisor advisor) {
-        super(null, advisor);
+        super(advisor);
         this.configuration = configuration;
     }
 

@@ -39,14 +39,9 @@ public class TraceProcessor extends AbstractProcessor {
     private final JniProcessor jniProcessor;
     private final ReflectionProcessor reflectionProcessor;
 
-    public TraceProcessor() {
-        jniProcessor = new JniProcessor(advisor);
-        reflectionProcessor = new ReflectionProcessor(advisor);
-    }
-
     public TraceProcessor(TypeConfiguration jniConfiguration, TypeConfiguration reflectionConfiguration,
                     ProxyConfiguration proxyConfiguration, ResourceConfiguration resourceConfiguration) {
-        jniProcessor = new JniProcessor(advisor, jniConfiguration);
+        jniProcessor = new JniProcessor(advisor, jniConfiguration, reflectionConfiguration);
         reflectionProcessor = new ReflectionProcessor(advisor, reflectionConfiguration, proxyConfiguration, resourceConfiguration);
     }
 
