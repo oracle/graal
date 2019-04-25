@@ -92,8 +92,20 @@ abstract class ToHostNode extends Node {
                     @CachedLibrary("operand") InteropLibrary interop,
                     @Cached("targetType") Class<?> cachedTargetType,
                     @Cached("isPrimitiveTarget(cachedTargetType)") boolean primitiveTarget,
+                    @Cached("allowsImplementation(languageContext, targetType)") boolean allowsImplementation,
                     @Cached TargetMappingNode targetMapping) {
-        return convertImpl(operand, cachedTargetType, genericType, primitiveTarget, languageContext, interop, useCustomTargetTypes, targetMapping);
+        return convertImpl(operand, cachedTargetType, genericType, allowsImplementation, primitiveTarget, languageContext, interop, useCustomTargetTypes, targetMapping);
+    }
+
+    @TruffleBoundary
+    static boolean allowsImplementation(PolyglotLanguageContext languagecontext, Class<?> type) {
+        if (languagecontext == null) {
+            return false;
+        }
+        if (!type.isInterface()) {
+            return false;
+        }
+        return languagecontext.getEngine().getHostClassCache().forClass(type).isAllowsImplementation();
     }
 
     @Specialization(replaces = "doCached")
@@ -104,7 +116,7 @@ abstract class ToHostNode extends Node {
                     boolean useTargetMapping,
                     @Cached TargetMappingNode targetMapping,
                     @CachedLibrary(limit = "0") InteropLibrary interop) {
-        return convertImpl(operand, targetType, genericType,
+        return convertImpl(operand, targetType, genericType, allowsImplementation(languageContext, targetType),
                         isPrimitiveTarget(targetType), languageContext, interop, useTargetMapping, targetMapping);
     }
 
@@ -168,7 +180,7 @@ abstract class ToHostNode extends Node {
         return null;
     }
 
-    private static Object convertImpl(Object value, Class<?> targetType, Type genericType, boolean primitiveTargetType,
+    private static Object convertImpl(Object value, Class<?> targetType, Type genericType, boolean allowsImplementation, boolean primitiveTargetType,
                     PolyglotLanguageContext languageContext, InteropLibrary interop, boolean useCustomTargetTypes, TargetMappingNode targetMapping) {
         if (useCustomTargetTypes) {
             Object result = targetMapping.execute(value, targetType, languageContext, interop, false);
@@ -186,7 +198,7 @@ abstract class ToHostNode extends Node {
         if (targetType == Value.class && languageContext != null) {
             convertedValue = value instanceof Value ? value : languageContext.asValue(value);
         } else if (value instanceof TruffleObject) {
-            convertedValue = asJavaObject((TruffleObject) value, targetType, genericType, languageContext);
+            convertedValue = asJavaObject((TruffleObject) value, targetType, genericType, allowsImplementation, languageContext);
         } else if (targetType.isAssignableFrom(value.getClass())) {
             convertedValue = value;
         } else {
@@ -211,7 +223,7 @@ abstract class ToHostNode extends Node {
     }
 
     @SuppressWarnings({"unused"})
-    static boolean canConvert(Object value, Class<?> targetType, Type genericType,
+    static boolean canConvert(Object value, Class<?> targetType, Type genericType, Boolean allowsImplementation,
                     PolyglotLanguageContext languageContext, int priority,
                     InteropLibrary interop,
                     TargetMappingNode targetMapping) {
@@ -258,9 +270,11 @@ abstract class ToHostNode extends Node {
             } else if (priority < HOST_PROXY && HostObject.isInstance(value)) {
                 return false;
             } else {
-                if (priority >= FUNCTION_PROXY && HostInteropReflect.isFunctionalInterface(targetType) && (interop.isExecutable(value) || interop.isInstantiable(value))) {
+                if (priority >= FUNCTION_PROXY && HostInteropReflect.isFunctionalInterface(targetType) &&
+                                (interop.isExecutable(value) || interop.isInstantiable(value)) && checkAllowsImplementation(targetType, allowsImplementation, languageContext)) {
                     return true;
-                } else if (priority >= OBJECT_PROXY && targetType.isInterface() && interop.hasMembers(value)) {
+                } else if (priority >= OBJECT_PROXY && targetType.isInterface() && interop.hasMembers(value) &&
+                                checkAllowsImplementation(targetType, allowsImplementation, languageContext)) {
                     return true;
                 } else {
                     return false;
@@ -270,6 +284,16 @@ abstract class ToHostNode extends Node {
             assert !(value instanceof TruffleObject);
             return targetType.isInstance(value);
         }
+    }
+
+    private static boolean checkAllowsImplementation(Class<?> targetType, Boolean allowsImplementation, PolyglotLanguageContext languageContext) {
+        boolean implementations;
+        if (allowsImplementation == null) {
+            implementations = allowsImplementation(languageContext, targetType);
+        } else {
+            implementations = allowsImplementation;
+        }
+        return implementations;
     }
 
     static boolean isPrimitiveTarget(Class<?> clazz) {
@@ -303,11 +327,11 @@ abstract class ToHostNode extends Node {
                 }
                 // fallthrough
             } else if (interop.hasMembers(value)) {
-                return asJavaObject(value, Map.class, null, languageContext);
+                return asJavaObject(value, Map.class, null, false, languageContext);
             } else if (interop.hasArrayElements(value)) {
-                return asJavaObject(value, List.class, null, languageContext);
+                return asJavaObject(value, List.class, null, false, languageContext);
             } else if (interop.isExecutable(value) || interop.isInstantiable(value)) {
-                return asJavaObject(value, Function.class, null, languageContext);
+                return asJavaObject(value, Function.class, null, false, languageContext);
             }
             return languageContext.asValue(value);
         } catch (UnsupportedMessageException e) {
@@ -338,7 +362,7 @@ abstract class ToHostNode extends Node {
     }
 
     @TruffleBoundary
-    private static <T> T asJavaObject(Object value, Class<T> targetType, Type genericType, PolyglotLanguageContext languageContext) {
+    private static <T> T asJavaObject(Object value, Class<T> targetType, Type genericType, boolean allowsImplementation, PolyglotLanguageContext languageContext) {
         Objects.requireNonNull(value);
         InteropLibrary interop = InteropLibrary.getFactory().getUncached(value);
         Object obj;
@@ -388,7 +412,7 @@ abstract class ToHostNode extends Node {
             } else {
                 throw HostInteropErrors.cannotConvert(languageContext, value, targetType, "Value must have array elements.");
             }
-        } else if (targetType.isInterface()) {
+        } else if (allowsImplementation && targetType.isInterface()) {
             if (HostInteropReflect.isFunctionalInterface(targetType) && (interop.isExecutable(value) || interop.isInstantiable(value))) {
                 obj = HostInteropReflect.asJavaFunction(targetType, value, languageContext);
             } else if (interop.hasMembers(value)) {

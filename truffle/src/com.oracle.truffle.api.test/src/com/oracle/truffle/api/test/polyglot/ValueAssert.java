@@ -74,6 +74,7 @@ import java.util.function.Function;
 
 import org.graalvm.polyglot.TypeLiteral;
 import org.graalvm.polyglot.Value;
+import org.graalvm.polyglot.HostAccess.Implementable;
 import org.graalvm.polyglot.proxy.Proxy;
 
 public class ValueAssert {
@@ -619,10 +620,12 @@ public class ValueAssert {
         }
     }
 
+    @Implementable
     public interface EmptyInterface {
 
     }
 
+    @Implementable
     public interface NonFunctionalInterface {
         void foobarbaz();
 

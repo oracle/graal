@@ -40,7 +40,6 @@
  */
 package com.oracle.truffle.polyglot;
 
-import java.lang.annotation.Annotation;
 import java.lang.invoke.MethodHandle;
 import java.lang.invoke.MethodHandles;
 import java.lang.invoke.MethodType;
@@ -52,7 +51,6 @@ import java.lang.reflect.Type;
 import java.util.Objects;
 
 import org.graalvm.collections.EconomicSet;
-import org.graalvm.polyglot.HostAccess;
 
 import com.oracle.truffle.api.CallTarget;
 import com.oracle.truffle.api.CompilerAsserts;
@@ -510,26 +508,13 @@ class ObjectProxyNode extends HostToGuestRootNode {
 
     final Class<?> receiverClass;
     final Class<?> interfaceType;
-    final boolean allMethodAccess;
-    final HostClassCache cache;
 
     @Child private ProxyInvokeNode proxyInvoke = ProxyInvokeNodeGen.create();
     @CompilationFinal private ToGuestValuesNode toGuests = ToGuestValuesNode.create();
 
-    ObjectProxyNode(PolyglotEngineImpl engine, Class<?> receiverType, Class<?> interfaceType) {
+    ObjectProxyNode(Class<?> receiverType, Class<?> interfaceType) {
         this.receiverClass = receiverType;
         this.interfaceType = interfaceType;
-        this.cache = engine.getHostClassCache();
-        boolean allAccess = true;
-        if (cache.hostAccess != HostAccess.ALL) {
-            for (Method method : interfaceType.getMethods()) {
-                if (!cache.allowsAccess(method)) {
-                    allAccess = false;
-                    break;
-                }
-            }
-        }
-        this.allMethodAccess = allAccess;
     }
 
     @SuppressWarnings("unchecked")
@@ -546,31 +531,6 @@ class ObjectProxyNode extends HostToGuestRootNode {
     @Override
     protected Object executeImpl(PolyglotLanguageContext languageContext, Object receiver, Object[] args) {
         Method method = (Method) args[ARGUMENT_OFFSET];
-        if (!allMethodAccess && !cache.allowsAccess(method)) {
-            CompilerDirectives.transferToInterpreter();
-            EconomicSet<Class<? extends Annotation>> exportAnnotations = cache.getExportAnnotations();
-            StringBuilder annotations = new StringBuilder();
-            String sep = "";
-            for (Class<? extends Annotation> annotation : exportAnnotations) {
-                annotations.append(sep);
-                annotations.append("@");
-                String name = annotation.getCanonicalName();
-                if (name == null) {
-                    name = annotation.getName();
-                }
-                annotations.append(name);
-                sep = ", ";
-            }
-            String howToFix;
-            if (annotations.length() == 0) {
-                howToFix = String.format("Enable access for this method in the HostAccess policy.", annotations.toString());
-            } else {
-                howToFix = String.format("Annotate the method with %s to resolve this.", annotations.toString());
-            }
-            throw new PolyglotUnsupportedException(
-                            String.format("Method '%s' is not accessible to guest languages with the configured HostAccess policy. %s",
-                                            method.toString(), howToFix));
-        }
         Object[] arguments = toGuests.apply(languageContext, (Object[]) args[ARGUMENT_OFFSET + 1]);
         return proxyInvoke.execute(languageContext, receiver, method, arguments);
     }
@@ -593,7 +553,7 @@ class ObjectProxyNode extends HostToGuestRootNode {
     }
 
     static CallTarget lookup(PolyglotLanguageContext languageContext, Class<?> receiverClass, Class<?> interfaceClass) {
-        ObjectProxyNode node = new ObjectProxyNode(languageContext.getEngine(), receiverClass, interfaceClass);
+        ObjectProxyNode node = new ObjectProxyNode(receiverClass, interfaceClass);
         CallTarget target = lookupHostCodeCache(languageContext, node, CallTarget.class);
         if (target == null) {
             target = installHostCodeCache(languageContext, node, createTarget(node), CallTarget.class);

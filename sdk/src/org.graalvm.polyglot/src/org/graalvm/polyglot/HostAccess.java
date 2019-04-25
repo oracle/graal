@@ -84,16 +84,20 @@ import org.graalvm.collections.MapCursor;
 public final class HostAccess {
 
     private final String name;
-    private final EconomicSet<Class<? extends Annotation>> annotations;
+    private final EconomicSet<Class<? extends Annotation>> accessAnnotations;
+    private final EconomicSet<Class<? extends Annotation>> implementableAnnotations;
     private final EconomicMap<Class<?>, Boolean> excludeTypes;
     private final EconomicSet<AnnotatedElement> members;
+    private final EconomicSet<Class<?>> implementableTypes;
     private final List<Object> targetMappings;
     private final boolean allowPublic;
+    private final boolean allowAllImplementations;
     final boolean allowArrayAccess;
     final boolean allowListAccess;
     volatile Object impl;
 
-    private static final HostAccess EMPTY = new HostAccess(null, null, null, null, null, false, false, false);
+    private static final HostAccess EMPTY = new HostAccess(null, null, null, null, null, null, null, false, false, false, false);
+
     /**
      * Predefined host access policy that allows access to public host methods or fields that were
      * annotated with {@linkplain Export @Export} and were declared in public class. This is the
@@ -103,15 +107,19 @@ public final class HostAccess {
      * Equivalent of using the following builder configuration:
      *
      * <pre>
-     * HostAccess.newBuilder().allowAccessAnnotatedBy(HostAccess.Export.class).build();
+     * HostAccess.newBuilder().allowAccessAnnotatedBy(HostAccess.Export.class).//
+     *                 allowImplementationsAnnotatedBy(HostAccess.Implementable.class).build();
      * </pre>
      *
      * @since 1.0
      */
-    public static final HostAccess EXPLICIT = newBuilder().allowAccessAnnotatedBy(HostAccess.Export.class).name("HostAccess.EXPLICIT").build();
+    public static final HostAccess EXPLICIT = newBuilder().//
+                    allowAccessAnnotatedBy(HostAccess.Export.class).//
+                    allowImplementationsAnnotatedBy(HostAccess.Implementable.class).//
+                    allowImplementationsAnnotatedBy(FunctionalInterface.class).//
+                    name("HostAccess.EXPLICIT").build();
 
     /**
-     *
      * Predefined host access policy that allows full unrestricted access to public methods or
      * fields of public host classes. Note that this policy allows unrestricted access to
      * reflection. It is highly discouraged from using this policy in environments where the guest
@@ -121,12 +129,13 @@ public final class HostAccess {
      * Equivalent of using the following builder configuration:
      *
      * <pre>
-     * HostAccess.newBuilder().allowPublicAccess(true).allowArrayAccess(true).allowListAccess(true).build();
+     * HostAccess.newBuilder().allowPublicAccess(true).allowAllImplementations(true).//
+     *                 allowArrayAccess(true).allowListAccess(true).build();
      * </pre>
      *
      * @since 1.0
      */
-    public static final HostAccess ALL = newBuilder().allowPublicAccess(true).allowArrayAccess(true).allowListAccess(true).name("HostAccess.ALL").build();
+    public static final HostAccess ALL = newBuilder().allowPublicAccess(true).allowAllImplementations(true).allowArrayAccess(true).allowListAccess(true).name("HostAccess.ALL").build();
 
     /**
      * Predefined host access policy that disallows any access to public host methods or fields.
@@ -141,17 +150,21 @@ public final class HostAccess {
      */
     public static final HostAccess NONE = newBuilder().name("HostAccess.NONE").build();
 
-    HostAccess(EconomicSet<Class<? extends Annotation>> annotations, EconomicMap<Class<?>, Boolean> excludeTypes, EconomicSet<AnnotatedElement> members, List<Object> targetMappings,
-                    String name, boolean allowPublic,
-                    boolean allowArrayAccess,
-                    boolean allowListAccess) {
+    HostAccess(EconomicSet<Class<? extends Annotation>> annotations, EconomicMap<Class<?>, Boolean> excludeTypes, EconomicSet<AnnotatedElement> members,
+                    EconomicSet<Class<? extends Annotation>> implementableAnnotations,
+                    EconomicSet<Class<?>> implementableTypes, List<Object> targetMappings,
+                    String name,
+                    boolean allowPublic, boolean allowAllImplementations, boolean allowArrayAccess, boolean allowListAccess) {
         // create defensive copies
-        this.annotations = copySet(annotations, Equivalence.IDENTITY);
+        this.accessAnnotations = copySet(annotations, Equivalence.IDENTITY);
         this.excludeTypes = copyMap(excludeTypes, Equivalence.IDENTITY);
         this.members = copySet(members, Equivalence.DEFAULT);
+        this.implementableAnnotations = copySet(implementableAnnotations, Equivalence.IDENTITY);
+        this.implementableTypes = copySet(implementableTypes, Equivalence.IDENTITY);
         this.targetMappings = targetMappings != null ? new ArrayList<>(targetMappings) : null;
         this.name = name;
         this.allowPublic = allowPublic;
+        this.allowAllImplementations = allowAllImplementations;
         this.allowArrayAccess = allowArrayAccess;
         this.allowListAccess = allowListAccess;
     }
@@ -180,12 +193,38 @@ public final class HostAccess {
         return EMPTY.new Builder();
     }
 
+    /**
+     * Creates a new builder that allows to create a custom host access policy based of a preset
+     * configuration. The preset configuration is copied and used as a template for the returned
+     * buidler. The builder configuration needs to be completed using the {@link Builder#build()
+     * method}.
+     *
+     * @since 1.0
+     */
+    public static Builder newBuilder(HostAccess conf) {
+        Objects.requireNonNull(conf);
+        return EMPTY.new Builder(conf);
+    }
+
     List<Object> getTargetMappings() {
         return targetMappings;
     }
 
-    EconomicSet<Class<? extends Annotation>> getExportAnnotations() {
-        return annotations;
+    boolean allowsImplementation(Class<?> type) {
+        if (allowAllImplementations) {
+            return true;
+        }
+        if (implementableTypes != null && implementableTypes.contains(type)) {
+            return true;
+        }
+        if (implementableAnnotations != null) {
+            for (Class<? extends Annotation> ann : implementableAnnotations) {
+                if (type.getAnnotation(ann) != null) {
+                    return true;
+                }
+            }
+        }
+        return false;
     }
 
     boolean allowsAccess(AnnotatedElement member) {
@@ -212,8 +251,8 @@ public final class HostAccess {
         if (members != null && members.contains(member)) {
             return true;
         }
-        if (annotations != null) {
-            for (Class<? extends Annotation> ann : annotations) {
+        if (accessAnnotations != null) {
+            for (Class<? extends Annotation> ann : accessAnnotations) {
                 if (hasAnnotation(member, ann)) {
                     return true;
                 }
@@ -298,21 +337,57 @@ public final class HostAccess {
     }
 
     /**
+     * Allows guest language to implement a Java type. Implementable is required if the
+     * {@link HostAccess#EXPLICIT explicit} host access policy is set. The annotation to use for
+     * this purpose can be customized with {@link Builder#allowImplementationsAnnotatedBy(Class)}.
+     * Allowing implementations for all Java interfaces can be enabled with
+     * {@link Builder#allowAllImplementations(boolean)}.
+     *
+     * @see Context.Builder#allowHostAccess(HostAccess)
+     * @see Value#as(Class)
+     * @see HostAccess#EXPLICIT
+     * @since 1.0
+     */
+    @Retention(RetentionPolicy.RUNTIME)
+    @Target({ElementType.TYPE})
+    public @interface Implementable {
+    }
+
+    /**
      * Builder to create a custom {@link HostAccess host access policy}.
      *
      * @since 1.0
      */
     public final class Builder {
-        private EconomicSet<Class<? extends Annotation>> annotations;
+        private EconomicSet<Class<? extends Annotation>> accessAnnotations;
+        private EconomicSet<Class<? extends Annotation>> implementationAnnotations;
         private EconomicMap<Class<?>, Boolean> excludeTypes;
+        private EconomicSet<Class<?>> implementableTypes;
         private EconomicSet<AnnotatedElement> members;
         private List<Object> targetMappings;
         private boolean allowPublic;
         private boolean allowListAccess;
         private boolean allowArrayAccess;
+        private boolean allowAllImplementations;
         private String name;
 
         Builder() {
+        }
+
+        Builder(HostAccess access) {
+            this.accessAnnotations = copySet(access.accessAnnotations, Equivalence.IDENTITY);
+            this.excludeTypes = copyMap(access.excludeTypes, Equivalence.IDENTITY);
+            this.members = copySet(access.members, Equivalence.DEFAULT);
+            this.implementationAnnotations = copySet(access.implementableAnnotations, Equivalence.IDENTITY);
+            this.implementableTypes = copySet(implementableTypes, Equivalence.IDENTITY);
+            this.targetMappings = access.targetMappings != null ? new ArrayList<>(access.targetMappings) : null;
+            this.excludeTypes = access.excludeTypes;
+            this.members = access.members;
+            this.targetMappings = access.targetMappings;
+            this.allowPublic = access.allowPublic;
+            this.allowListAccess = access.allowListAccess;
+            this.allowArrayAccess = access.allowArrayAccess;
+            this.allowAllImplementations = access.allowAllImplementations;
         }
 
         /**
@@ -323,10 +398,10 @@ public final class HostAccess {
          */
         public Builder allowAccessAnnotatedBy(Class<? extends Annotation> annotation) {
             Objects.requireNonNull(annotation);
-            if (annotations == null) {
-                annotations = EconomicSet.create(Equivalence.IDENTITY);
+            if (accessAnnotations == null) {
+                accessAnnotations = EconomicSet.create(Equivalence.IDENTITY);
             }
-            annotations.add(annotation);
+            accessAnnotations.add(annotation);
             return this;
         }
 
@@ -398,6 +473,48 @@ public final class HostAccess {
                 excludeTypes = EconomicMap.create(Equivalence.IDENTITY);
             }
             excludeTypes.put(clazz, includeSubclasses);
+            return this;
+        }
+
+        /**
+         * Allow guest languages to implement any Java interface.
+         *
+         * @see HostAccess#ALL
+         * @since 1.0
+         */
+        public Builder allowAllImplementations(boolean allow) {
+            this.allowAllImplementations = allow;
+            return this;
+        }
+
+        /**
+         * Allow implementations of types annotated with the given annotation. For the
+         * {@link HostAccess#EXPLICIT explicit} host access present the {@link Implementable}
+         * annotation is configured for this purpose.
+         *
+         * @see HostAccess.Implementable
+         * @since 1.0
+         */
+        public Builder allowImplementationsAnnotatedBy(Class<? extends Annotation> annotation) {
+            Objects.requireNonNull(annotation);
+            if (implementationAnnotations == null) {
+                implementationAnnotations = EconomicSet.create(Equivalence.IDENTITY);
+            }
+            implementationAnnotations.add(annotation);
+            return this;
+        }
+
+        /**
+         * Allow implementations of this type by the guest language.
+         *
+         * @since 1.0
+         */
+        public Builder allowImplementations(Class<?> interfaceClass) {
+            Objects.requireNonNull(interfaceClass);
+            if (implementableTypes == null) {
+                implementableTypes = EconomicSet.create(Equivalence.IDENTITY);
+            }
+            implementableTypes.add(interfaceClass);
             return this;
         }
 
@@ -553,7 +670,8 @@ public final class HostAccess {
          * @since 1.0
          */
         public HostAccess build() {
-            return new HostAccess(annotations, excludeTypes, members, targetMappings, name, allowPublic, allowArrayAccess, allowListAccess);
+            return new HostAccess(accessAnnotations, excludeTypes, members, implementationAnnotations, implementableTypes, targetMappings, name, allowPublic, allowAllImplementations, allowArrayAccess,
+                            allowListAccess);
         }
     }
 

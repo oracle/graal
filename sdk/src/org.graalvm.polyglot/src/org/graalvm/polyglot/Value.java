@@ -794,20 +794,21 @@ public final class Value {
      * might be an expensive operation it is recommended to use the `List` or `Collection` target
      * type if possible.
      * <li>Any {@link FunctionalInterface functional} interface if the value can be
-     * {@link #canExecute() executed} or {@link #canInstantiate() instantiated}. In case a value can
-     * be executed and instantiated then the returned implementation of the interface will be
-     * {@link #execute(Object...) executed}. The coercion to the parameter types of functional
-     * interface method is converted using the semantics of {@link #as(Class)}. If a standard
-     * functional interface like {@link Function} is used, it is recommended to use
+     * {@link #canExecute() executed} or {@link #canInstantiate() instantiated} and the interface
+     * type is {@link HostAccess implementable}. Note that {@link FunctionalInterface} are
+     * implementable by default in with the {@link HostAccess#EXPLICIT explicit} host access policy.
+     * In case a value can be executed and instantiated then the returned implementation of the
+     * interface will be {@link #execute(Object...) executed}. The coercion to the parameter types
+     * of functional interface method is converted using the semantics of {@link #as(Class)}. If a
+     * standard functional interface like {@link Function} is used, it is recommended to use
      * {@link #as(TypeLiteral) type literals} to specify the expected generic method parameter and
      * return type.
-     * <li>Any interface if the value {@link #hasMembers() has members}. Each {@link HostAccess
-     * accessible} interface method maps to one {@link #getMember(String) member} of the value.
-     * Whenever a method of the interface is executed a member with the method or field name must
-     * exist otherwise a {@link UnsupportedOperationException} is thrown when the method is
-     * executed. If the interface method is accessible with the current set {@link HostAccess host
-     * access} policy an {@link UnsupportedOperationException} is thrown. A member If one of the
-     * parameters cannot be mapped to the target type a {@link ClassCastException} or a
+     * <li>Any interface if the value {@link #hasMembers() has members} and the interface type is
+     * {@link HostAccess.Implementable implementable}. Each interface method maps to one
+     * {@link #getMember(String) member} of the value. Whenever a method of the interface is
+     * executed a member with the method or field name must exist otherwise a
+     * {@link UnsupportedOperationException} is thrown when the method is executed. A member If one
+     * of the parameters cannot be mapped to the target type a {@link ClassCastException} or a
      * {@link NullPointerException} is thrown.
      * </ul>
      * A {@link ClassCastException} is thrown for other unsupported target types.

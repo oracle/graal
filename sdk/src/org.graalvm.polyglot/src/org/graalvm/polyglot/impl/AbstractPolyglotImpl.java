@@ -148,6 +148,8 @@ public abstract class AbstractPolyglotImpl {
 
         public abstract boolean allowsAccess(HostAccess access, AnnotatedElement element);
 
+        public abstract boolean allowsImplementation(HostAccess access, Class<?> type);
+
         public abstract boolean isArrayAccessible(HostAccess access);
 
         public abstract boolean isListAccessible(HostAccess access);
@@ -155,8 +157,6 @@ public abstract class AbstractPolyglotImpl {
         public abstract Object getHostAccessImpl(HostAccess conf);
 
         public abstract void setHostAccessImpl(HostAccess conf, Object impl);
-
-        public abstract EconomicSet<Class<? extends Annotation>> getExportAnnotations(HostAccess hostAccess);
 
     }
 
