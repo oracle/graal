@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2017, 2018, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2017, 2018, 2019, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -33,6 +33,7 @@ import java.util.function.BooleanSupplier;
 import org.graalvm.nativeimage.hosted.Feature;
 import org.graalvm.nativeimage.ImageSingletons;
 import org.graalvm.nativeimage.hosted.RuntimeReflection;
+import org.graalvm.nativeimage.hosted.RuntimeClassInitialization;
 
 import com.oracle.svm.core.annotate.Alias;
 import com.oracle.svm.core.annotate.AutomaticFeature;
@@ -82,6 +83,63 @@ public final class ICU4JFeature implements Feature {
         } else {
             throw VMError.shouldNotReachHere(shimClassName + " not found");
         }
+    }
+
+    @Override
+    public void duringSetup(DuringSetupAccess access) {
+        RuntimeClassInitialization.delayClassInitialization(access.findClassByName("com.ibm.icu.impl.CalendarUtil$CalendarPreferences"));
+        RuntimeClassInitialization.delayClassInitialization(access.findClassByName("com.ibm.icu.impl.CaseMapImpl"));
+        RuntimeClassInitialization.delayClassInitialization(access.findClassByName("com.ibm.icu.impl.DayPeriodRules"));
+        RuntimeClassInitialization.delayClassInitialization(access.findClassByName("com.ibm.icu.impl.LocaleDisplayNamesImpl"));
+        RuntimeClassInitialization.delayClassInitialization(access.findClassByName("com.ibm.icu.impl.Norm2AllModes$NFCSingleton"));
+        RuntimeClassInitialization.delayClassInitialization(access.findClassByName("com.ibm.icu.impl.Norm2AllModes$NFKCSingleton"));
+        RuntimeClassInitialization.delayClassInitialization(access.findClassByName("com.ibm.icu.impl.Norm2AllModes$NFKC_CFSingleton"));
+        RuntimeClassInitialization.delayClassInitialization(access.findClassByName("com.ibm.icu.impl.Norm2AllModes$NFKCSingleton"));
+        RuntimeClassInitialization.delayClassInitialization(access.findClassByName("com.ibm.icu.impl.StaticUnicodeSets"));
+        RuntimeClassInitialization.delayClassInitialization(access.findClassByName("com.ibm.icu.impl.UBiDiProps"));
+        RuntimeClassInitialization.delayClassInitialization(access.findClassByName("com.ibm.icu.impl.UCaseProps"));
+        RuntimeClassInitialization.delayClassInitialization(access.findClassByName("com.ibm.icu.impl.UCharacterName"));
+        RuntimeClassInitialization.delayClassInitialization(access.findClassByName("com.ibm.icu.impl.UCharacterProperty"));
+        RuntimeClassInitialization.delayClassInitialization(access.findClassByName("com.ibm.icu.impl.UPropertyAliases"));
+        RuntimeClassInitialization.delayClassInitialization(access.findClassByName("com.ibm.icu.impl.UBiDiProps"));
+        RuntimeClassInitialization.delayClassInitialization(access.findClassByName("com.ibm.icu.impl.ZoneMeta"));
+
+        RuntimeClassInitialization.delayClassInitialization(access.findClassByName("com.ibm.icu.impl.coll.CollationRoot"));
+
+        RuntimeClassInitialization.delayClassInitialization(access.findClassByName("com.ibm.icu.impl.locale.KeyTypeData"));
+
+        RuntimeClassInitialization.delayClassInitialization(access.findClassByName("com.ibm.icu.impl.number.CurrencySpacingEnabledModifier"));
+        RuntimeClassInitialization.delayClassInitialization(access.findClassByName("com.ibm.icu.impl.number.parse.IgnorablesMatcher"));
+        RuntimeClassInitialization.delayClassInitialization(access.findClassByName("com.ibm.icu.impl.number.parse.InfinityMatcher"));
+        RuntimeClassInitialization.delayClassInitialization(access.findClassByName("com.ibm.icu.impl.number.parse.MinusSignMatcher"));
+        RuntimeClassInitialization.delayClassInitialization(access.findClassByName("com.ibm.icu.impl.number.parse.PercentMatcher"));
+        RuntimeClassInitialization.delayClassInitialization(access.findClassByName("com.ibm.icu.impl.number.parse.PermilleMatcher"));
+        RuntimeClassInitialization.delayClassInitialization(access.findClassByName("com.ibm.icu.impl.number.parse.PlusSignMatcher"));
+
+        RuntimeClassInitialization.delayClassInitialization(access.findClassByName("com.ibm.icu.text.BurmeseBreakEngine"));
+        RuntimeClassInitialization.delayClassInitialization(access.findClassByName("com.ibm.icu.text.CjkBreakEngine"));
+        RuntimeClassInitialization.delayClassInitialization(access.findClassByName("com.ibm.icu.text.CurrencyMetaInfo"));
+        RuntimeClassInitialization.delayClassInitialization(access.findClassByName("com.ibm.icu.text.DateFormat$Field"));
+        RuntimeClassInitialization.delayClassInitialization(access.findClassByName("com.ibm.icu.text.DateTimePatternGenerator"));
+        RuntimeClassInitialization.delayClassInitialization(access.findClassByName("com.ibm.icu.text.DateTimePatternGenerator$FormatParser"));
+        RuntimeClassInitialization.delayClassInitialization(access.findClassByName("com.ibm.icu.text.DecimalFormatSymbols"));
+        RuntimeClassInitialization.delayClassInitialization(access.findClassByName("com.ibm.icu.text.LaoBreakEngine"));
+        RuntimeClassInitialization.delayClassInitialization(access.findClassByName("com.ibm.icu.text.LocaleDisplayNames"));
+        RuntimeClassInitialization.delayClassInitialization(access.findClassByName("com.ibm.icu.text.KhmerBreakEngine"));
+        RuntimeClassInitialization.delayClassInitialization(access.findClassByName("com.ibm.icu.text.Normalizer$FCDModeImpl"));
+        RuntimeClassInitialization.delayClassInitialization(access.findClassByName("com.ibm.icu.text.Normalizer$FCD32ModeImpl"));
+        RuntimeClassInitialization.delayClassInitialization(access.findClassByName("com.ibm.icu.text.Normalizer$NFDModeImpl"));
+        RuntimeClassInitialization.delayClassInitialization(access.findClassByName("com.ibm.icu.text.Normalizer$NFKDModeImpl"));
+        RuntimeClassInitialization.delayClassInitialization(access.findClassByName("com.ibm.icu.text.Normalizer$NFCModeImpl"));
+        RuntimeClassInitialization.delayClassInitialization(access.findClassByName("com.ibm.icu.text.Normalizer$NFKCModeImpl"));
+        RuntimeClassInitialization.delayClassInitialization(access.findClassByName("com.ibm.icu.text.Normalizer$NFD32ModeImpl"));
+        RuntimeClassInitialization.delayClassInitialization(access.findClassByName("com.ibm.icu.text.Normalizer$NFKD32ModeImpl"));
+        RuntimeClassInitialization.delayClassInitialization(access.findClassByName("com.ibm.icu.text.Normalizer$NFC32ModeImpl"));
+        RuntimeClassInitialization.delayClassInitialization(access.findClassByName("com.ibm.icu.text.Normalizer$NFKC32ModeImpl"));
+        RuntimeClassInitialization.delayClassInitialization(access.findClassByName("com.ibm.icu.text.Normalizer$Unicode32"));
+        RuntimeClassInitialization.delayClassInitialization(access.findClassByName("com.ibm.icu.text.NumberingSystem"));
+        RuntimeClassInitialization.delayClassInitialization(access.findClassByName("com.ibm.icu.text.SimpleDateFormat"));
+        RuntimeClassInitialization.delayClassInitialization(access.findClassByName("com.ibm.icu.text.ThaiBreakEngine"));
     }
 
     static class Helper {
@@ -175,23 +233,10 @@ final class Target_com_ibm_icu_impl_ICUResourceBundle_WholeBundle {
     // Checkstyle: resume
 }
 
-@TargetClass(className = "com.ibm.icu.impl.SoftCache", onlyWith = ICU4JFeature.IsEnabled.class)
-final class Target_com_ibm_icu_impl_SoftCache {
-    // Checkstyle: stop
-    @Alias @RecomputeFieldValue(kind = Kind.NewInstance, declClass = ConcurrentHashMap.class) private ConcurrentHashMap<?, ?> map;
-    // Checkstyle: resume
-}
-
 @TargetClass(className = "com.ibm.icu.impl.ICUResourceBundle$AvailEntry", onlyWith = ICU4JFeature.IsEnabled.class)
 final class Target_com_ibm_icu_impl_ICUResourceBundle_AvailEntry {
     @Alias @RecomputeFieldValue(kind = Kind.Reset)
     // Checkstyle: stop
     ClassLoader loader;
     // Checkstyle: resume
-}
-
-@TargetClass(className = "com.ibm.icu.util.TimeZone", onlyWith = ICU4JFeature.IsEnabled.class)
-final class Target_com_ibm_icu_util_TimeZone {
-    // clear default time zone to force reinitialization at run time
-    @Alias @RecomputeFieldValue(kind = Kind.Reset) private static Target_com_ibm_icu_util_TimeZone defaultZone;
 }
