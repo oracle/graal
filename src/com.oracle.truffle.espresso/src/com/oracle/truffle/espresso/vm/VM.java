@@ -413,11 +413,6 @@ public final class VM extends NativeEnv implements ContextAccess {
     }
 
     @VmImpl
-    public static void JVM_Halt(int code) {
-        throw new EspressoExitException(code);
-    }
-
-    @VmImpl
     public static boolean JVM_IsNaN(double d) {
         return Double.isNaN(d);
     }
@@ -444,7 +439,6 @@ public final class VM extends NativeEnv implements ContextAccess {
     // endregion VM methods
 
     // region JNI Invocation Interface
-
     @VmImpl
     public static int DestroyJavaVM() {
         return JniEnv.JNI_OK;
@@ -492,7 +486,6 @@ public final class VM extends NativeEnv implements ContextAccess {
     }
 
     // endregion JNI Invocation Interface
-
     @VmImpl
     @JniImpl
     public @Host(Throwable.class) StaticObject JVM_FillInStackTrace(@Host(Throwable.class) StaticObject self, @SuppressWarnings("unused") int dummy) {
@@ -626,10 +619,10 @@ public final class VM extends NativeEnv implements ContextAccess {
     }
 
     private final ConcurrentHashMap<Long, TruffleObject> handle2Lib = new ConcurrentHashMap<>();
+
     private final ConcurrentHashMap<Long, TruffleObject> handle2Sym = new ConcurrentHashMap<>();
 
     // region Library support
-
     @VmImpl
     public long JVM_LoadLibrary(String name) {
         try {
@@ -669,7 +662,6 @@ public final class VM extends NativeEnv implements ContextAccess {
     }
 
     // endregion Library support
-
     @VmImpl
     public static boolean JVM_IsSupportedJNIVersion(int version) {
         return version == JNI_VERSION_1_1 ||
@@ -704,6 +696,11 @@ public final class VM extends NativeEnv implements ContextAccess {
     @VmImpl
     public static void JVM_GC() {
         System.gc();
+    }
+
+    @VmImpl
+    public static void JVM_Halt(int code) {
+        throw new EspressoExitException(code);
     }
 
     @VmImpl

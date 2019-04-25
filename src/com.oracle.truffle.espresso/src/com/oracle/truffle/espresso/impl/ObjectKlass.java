@@ -150,10 +150,16 @@ public final class ObjectKlass extends Klass {
     @Override
     public StaticObject getStatics() {
         if (statics == null) {
+            obtainStatics();
+        }
+        return statics;
+    }
+
+    private synchronized void obtainStatics() {
+        if (statics == null) {
             CompilerDirectives.transferToInterpreterAndInvalidate();
             statics = new StaticObject(this, true);
         }
-        return statics;
     }
 
     @Override

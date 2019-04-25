@@ -23,12 +23,6 @@
 
 package com.oracle.truffle.espresso.classfile;
 
-import static com.oracle.truffle.espresso.classfile.Constants.ACC_ABSTRACT;
-import static com.oracle.truffle.espresso.classfile.Constants.ACC_INTERFACE;
-import static com.oracle.truffle.espresso.classfile.Constants.JVM_RECOGNIZED_CLASS_MODIFIERS;
-
-import java.util.Objects;
-
 import com.oracle.truffle.espresso.classfile.ConstantPool.Tag;
 import com.oracle.truffle.espresso.descriptors.Symbol;
 import com.oracle.truffle.espresso.descriptors.Symbol.Name;
@@ -43,6 +37,12 @@ import com.oracle.truffle.espresso.runtime.BootstrapMethodsAttribute;
 import com.oracle.truffle.espresso.runtime.ClasspathFile;
 import com.oracle.truffle.espresso.runtime.EspressoContext;
 import com.oracle.truffle.espresso.runtime.StaticObject;
+
+import java.util.Objects;
+
+import static com.oracle.truffle.espresso.classfile.Constants.ACC_ABSTRACT;
+import static com.oracle.truffle.espresso.classfile.Constants.ACC_INTERFACE;
+import static com.oracle.truffle.espresso.classfile.Constants.JVM_RECOGNIZED_CLASS_MODIFIERS;
 
 public final class ClassfileParser {
 
@@ -294,9 +294,38 @@ public final class ClassfileParser {
         if (SignatureAttribute.NAME.equals(name)) {
             return parseSignatureAttribute(name);
         }
+        if (LineNumberTable.NAME.equals(name)) {
+            return parseLineNumberTable(name);
+        }
+        if (SourceFileAttribute.NAME.equals(name)) {
+            return parseSourceFileAttribute(name);
+        }
         int length = stream.readS4();
         byte[] data = stream.readByteArray(length);
         return new Attribute(name, data);
+    }
+
+    private SourceFileAttribute parseSourceFileAttribute(Symbol<Name> name) {
+        assert Name.SourceFile.equals(name);
+        /* int length = */ stream.readS4();
+        int sourceFileIndex = stream.readU2();
+        return new SourceFileAttribute(name, sourceFileIndex);
+    }
+
+    private LineNumberTable parseLineNumberTable(Symbol<Name> name) {
+        assert Name.LineNumberTable.equals(name);
+        /* int length = */ stream.readS4();
+        int entryCount = stream.readU2();
+        if (entryCount == 0) {
+            return LineNumberTable.EMPTY;
+        }
+        LineNumberTable.Entry[] entries = new LineNumberTable.Entry[entryCount];
+        for (int i = 0; i < entryCount; i++) {
+            int bci = stream.readU2();
+            int lineNumber = stream.readU2();
+            entries[i] = new LineNumberTable.Entry(bci, lineNumber);
+        }
+        return new LineNumberTable(name, entries);
     }
 
     private SignatureAttribute parseSignatureAttribute(Symbol<Name> name) {

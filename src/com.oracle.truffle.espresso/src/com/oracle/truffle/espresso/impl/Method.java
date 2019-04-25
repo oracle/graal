@@ -36,6 +36,7 @@ import com.oracle.truffle.espresso.classfile.ConstantPool;
 import com.oracle.truffle.espresso.classfile.Constants;
 import com.oracle.truffle.espresso.classfile.ExceptionsAttribute;
 import com.oracle.truffle.espresso.classfile.RuntimeConstantPool;
+import com.oracle.truffle.espresso.classfile.SourceFileAttribute;
 import com.oracle.truffle.espresso.descriptors.Signatures;
 import com.oracle.truffle.espresso.descriptors.Symbol;
 import com.oracle.truffle.espresso.descriptors.Symbol.Name;
@@ -46,6 +47,7 @@ import com.oracle.truffle.espresso.jni.NativeLibrary;
 import com.oracle.truffle.espresso.meta.ExceptionHandler;
 import com.oracle.truffle.espresso.meta.JavaKind;
 import com.oracle.truffle.espresso.meta.Meta;
+import com.oracle.truffle.espresso.meta.MetaUtil;
 import com.oracle.truffle.espresso.meta.ModifiersProvider;
 import com.oracle.truffle.espresso.nodes.BytecodeNode;
 import com.oracle.truffle.espresso.nodes.EspressoBaseNode;
@@ -189,6 +191,11 @@ public final class Method implements ModifiersProvider, ContextAccess {
 
     public final Attribute getAttribute(Symbol<Name> attrName) {
         return linkedMethod.getAttribute(attrName);
+    }
+
+    @TruffleBoundary
+    public final int BCItoLineNumber(int atBCI) {
+        return codeAttribute.BCItoLineNumber(atBCI);
     }
 
     @Override
@@ -367,12 +374,13 @@ public final class Method implements ModifiersProvider, ContextAccess {
                 return;
             }
             final int[] entries = exceptionsAttribute.getCheckedExceptionsCPI();
-            checkedExceptions = new ObjectKlass[entries.length];
+            ObjectKlass[] tmpchecked = new ObjectKlass[entries.length];
             for (int i = 0; i < entries.length; ++i) {
                 // getConstantPool().classAt(entries[i]).
                 // TODO(peterssen): Resolve and cache CP entries.
-                checkedExceptions[i] = (ObjectKlass) ((RuntimeConstantPool) getDeclaringKlass().getConstantPool()).resolvedKlassAt(getDeclaringKlass(), entries[i]);
+                tmpchecked[i] = (ObjectKlass) ((RuntimeConstantPool) getDeclaringKlass().getConstantPool()).resolvedKlassAt(getDeclaringKlass(), entries[i]);
             }
+            checkedExceptions = tmpchecked;
         }
     }
 
@@ -554,5 +562,21 @@ public final class Method implements ModifiersProvider, ContextAccess {
 
     public void setPoisonPill() {
         this.poisonPill = true;
+    }
+
+    private String getSourceFile() {
+        SourceFileAttribute sfa = (SourceFileAttribute) declaringKlass.getAttribute(Name.SourceFile);
+        if (sfa == null) {
+            return "unknown source";
+        }
+        return declaringKlass.getConstantPool().utf8At(sfa.getSourceFileIndex()).toString();
+    }
+
+    public final String report(int curBCI) {
+        return "at " + MetaUtil.internalNameToJava(getDeclaringKlass().getType().toString(), true, false) + "." + getName() + "(" + getSourceFile() + ":" + BCItoLineNumber(curBCI) + ")";
+    }
+
+    public final String report() {
+        return "at " + MetaUtil.internalNameToJava(getDeclaringKlass().getType().toString(), true, false) + "." + getName() + "(unknown source)";
     }
 }

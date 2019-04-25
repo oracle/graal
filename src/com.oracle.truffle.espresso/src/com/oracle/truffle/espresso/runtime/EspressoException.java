@@ -43,7 +43,11 @@ public final class EspressoException extends RuntimeException implements Truffle
 
     @Override
     public String getMessage() {
-        return Meta.toHostString((StaticObject) exception.getKlass().lookupMethod(Name.getMessage, Signature.String).invokeDirect(exception));
+        return getMessage(exception);
+    }
+
+    public static String getMessage(StaticObject e) {
+        return Meta.toHostString((StaticObject) e.getKlass().lookupMethod(Name.getMessage, Signature.String).invokeDirect(e));
     }
 
     public StaticObject getException() {

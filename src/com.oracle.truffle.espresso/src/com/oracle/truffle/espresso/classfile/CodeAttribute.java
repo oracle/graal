@@ -77,4 +77,21 @@ public final class CodeAttribute extends Attribute {
     public final CodeAttribute dupe() {
         return new CodeAttribute(getName(), maxStack, maxLocals, code.clone(), exceptionHandlerEntries, attributes);
     }
+
+    private LineNumberTable getLineNumberTableAttribute() {
+        for (Attribute attr : attributes) {
+            if (attr.getName() == Name.LineNumberTable) {
+                return (LineNumberTable) attr;
+            }
+        }
+        return null;
+    }
+
+    public final int BCItoLineNumber(int BCI) {
+        LineNumberTable lnt = getLineNumberTableAttribute();
+        if (lnt == null) {
+            return -1;
+        }
+        return lnt.getLineNumber(BCI);
+    }
 }

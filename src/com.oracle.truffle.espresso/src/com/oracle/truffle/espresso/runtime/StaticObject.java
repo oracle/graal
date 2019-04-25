@@ -326,6 +326,7 @@ public final class StaticObject implements TruffleObject {
         assert field.getDeclaringKlass().isAssignableFrom(getKlass());
         assert field.getKind() == JavaKind.Int || field.getKind() == JavaKind.Float;
         if (field.isVolatile()) {
+            CompilerDirectives.transferToInterpreter();
             return getIntFieldVolatile(field);
         } else {
             return U.getInt(primitiveFields, (long) Unsafe.ARRAY_BYTE_BASE_OFFSET + Unsafe.ARRAY_BYTE_INDEX_SCALE * field.getFieldIndex());

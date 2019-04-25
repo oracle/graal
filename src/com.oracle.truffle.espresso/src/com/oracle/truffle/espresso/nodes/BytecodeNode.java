@@ -1128,7 +1128,7 @@ public class BytecodeNode extends EspressoBaseNode implements CustomNodeCount {
                 } catch (RuntimeException e) {
                     CompilerDirectives.transferToInterpreter();
                     if (DEBUG_GENERAL) {
-                        reportVMError(e, curBCI, this);
+                        reportRuntimeException(e, curBCI, this);
                     }
                     throw getMeta().throwEx(InternalError.class);
                 }
@@ -1160,6 +1160,7 @@ public class BytecodeNode extends EspressoBaseNode implements CustomNodeCount {
                     curBCI = handler.getHandlerBCI();
                     continue loop; // skip bs.next()
                 } else {
+                    reportVMError(e, curBCI, this);
                     throw new EspressoException(ex);
                 }
             }
@@ -1223,20 +1224,21 @@ public class BytecodeNode extends EspressoBaseNode implements CustomNodeCount {
                         method.getName().toString().contains("findClass")) {
             return;
         }
-        System.err.println("Throwing at " + curBCI + " in " + method);
-        reportError(new EspressoException(e));
+        System.err.println(e.getKlass().getType() + ": " + EspressoException.getMessage(e) + "\n\t" + method.report(curBCI));
     }
 
     @TruffleBoundary
-    static private void reportVMError(RuntimeException e, int curBCI, BytecodeNode thisNode) {
-        System.err.println("Internal error (caught in invocation): " + thisNode +
-                        "\n\tBCI:" + curBCI);
+    static private void reportRuntimeException(RuntimeException e, int curBCI, BytecodeNode thisNode) {
+        Method m = thisNode.getMethod();
+        System.err.println("Internal error (caught in invocation): " + m.report(curBCI));
         e.printStackTrace();
     }
 
     @TruffleBoundary
-    static private void reportError(EspressoException e) {
-        System.err.println("\tError thrown: " + e.getException().getKlass().toString() + ": " + e.getMessage());
+    static private void reportVMError(VirtualMachineError e, int curBCI, BytecodeNode thisNode) {
+        Method m = thisNode.getMethod();
+        System.err.println("Internal error (caught in invocation): " + m.report(curBCI));
+        e.printStackTrace();
     }
 
     @TruffleBoundary
@@ -1246,8 +1248,8 @@ public class BytecodeNode extends EspressoBaseNode implements CustomNodeCount {
                         thisNode.getMethod().getName().toString().contains("findClass")) {
             return;
         }
-        System.err.println("Caught: " + e.getException().getKlass().toString() + ": " + e.getMessage() +
-                        "\n\t In: " + thisNode + " at BCI: " + curBCI);
+        System.err.println("Caught: " + e.getException().getKlass().getType() + ": " + e.getMessage() +
+                        "\n\t In: " + thisNode + " at BCI: " + thisNode.getMethod().BCItoLineNumber(curBCI));
     }
 
     private JavaKind peekKind(VirtualFrame frame, int slot) {
@@ -1976,7 +1978,7 @@ public class BytecodeNode extends EspressoBaseNode implements CustomNodeCount {
             case Float   : putFloat(frame, top, (float) value);           break;
             case Long    : putLong(frame, top, (long) value);             break;
             case Double  : putDouble(frame, top, (double) value);         break;
-            case Object  : putObject(frame, top, value == StaticObject.NULL ? StaticObject.NULL : (StaticObject)value);   break;
+            case Object  : putObject(frame, top, (StaticObject)value);    break;
             case Void    : /* ignore */                                   break;
             default      : throw EspressoError.shouldNotReachHere();
         }
