@@ -379,7 +379,7 @@ public final class HostAccess {
             this.excludeTypes = copyMap(access.excludeTypes, Equivalence.IDENTITY);
             this.members = copySet(access.members, Equivalence.DEFAULT);
             this.implementationAnnotations = copySet(access.implementableAnnotations, Equivalence.IDENTITY);
-            this.implementableTypes = copySet(implementableTypes, Equivalence.IDENTITY);
+            this.implementableTypes = copySet(access.implementableTypes, Equivalence.IDENTITY);
             this.targetMappings = access.targetMappings != null ? new ArrayList<>(access.targetMappings) : null;
             this.excludeTypes = access.excludeTypes;
             this.members = access.members;
