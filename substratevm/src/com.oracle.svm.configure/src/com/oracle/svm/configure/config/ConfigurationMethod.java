@@ -56,7 +56,12 @@ public class ConfigurationMethod implements JsonPrintable {
 
     public ConfigurationMethod(String name, String internalSignature) {
         this.name = name;
-        this.internalSignature = internalSignature;
+        String paramsOnlySignature = internalSignature;
+        if (paramsOnlySignature != null) { // omit return type to avoid duplicates
+            int paramsEnd = internalSignature.lastIndexOf(')');
+            paramsOnlySignature = paramsOnlySignature.substring(0, paramsEnd + 1);
+        }
+        this.internalSignature = paramsOnlySignature;
     }
 
     public String getName() {
@@ -68,7 +73,7 @@ public class ConfigurationMethod implements JsonPrintable {
     }
 
     public boolean matches(String methodName, String methodInternalSignature) {
-        // NOTE: we use startsWith which matches also if internalSignature is missing a return type
+        // NOTE: we use startsWith which matches if methodInternalSignature includes the return type
         return getName().equals(methodName) && (internalSignature == null || methodInternalSignature.startsWith(internalSignature));
     }
 
