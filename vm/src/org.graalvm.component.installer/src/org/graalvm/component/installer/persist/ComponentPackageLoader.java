@@ -47,6 +47,7 @@ import java.util.Set;
 import java.util.function.Function;
 import org.graalvm.component.installer.Archive;
 import org.graalvm.component.installer.BundleConstants;
+import org.graalvm.component.installer.CommonConstants;
 import org.graalvm.component.installer.Feedback;
 import org.graalvm.component.installer.SystemUtils;
 import org.graalvm.component.installer.model.ComponentInfo;
@@ -55,7 +56,7 @@ import org.graalvm.component.installer.model.ComponentInfo;
  * Loads information from the component's bundle.
  */
 public class ComponentPackageLoader implements Closeable, MetadataLoader {
-    private final Feedback feedback;
+    protected final Feedback feedback;
 
     /**
      * Default value producer.
@@ -122,7 +123,14 @@ public class ComponentPackageLoader implements Closeable, MetadataLoader {
     }
 
     private HeaderParser parseHeader(String header) throws MetadataException {
+        return parseHeader2(header, null);
+    }
+
+    private HeaderParser parseHeader2(String header, Function<String, String> fn) throws MetadataException {
         String s = valueSupplier.apply(header);
+        if (fn != null) {
+            s = fn.apply(s);
+        }
         return new HeaderParser(header, s, feedback).mustExist();
     }
 
@@ -194,8 +202,17 @@ public class ComponentPackageLoader implements Closeable, MetadataLoader {
                         () -> {
                             info = new ComponentInfo(id, name, version);
                             info.addRequiredValues(parseHeader(BundleConstants.BUNDLE_REQUIRED).parseRequiredCapabilities());
+                            info.addProvidedValues(parseHeader(BundleConstants.BUNDLE_PROVIDED, "").parseProvidedCapabilities());
+                            defaultProvidedValues();
                         });
         return info;
+    }
+
+    private void defaultProvidedValues() {
+        String ed = info.getProvidedValue(CommonConstants.CAP_EDITION, String.class);
+        if (ed == null) {
+            info.provideValue(CommonConstants.CAP_EDITION, CommonConstants.EDITION_CE);
+        }
     }
 
     protected ComponentInfo loadExtendedMetadata(ComponentInfo base) {

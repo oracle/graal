@@ -100,7 +100,7 @@ public class SimpleGetoptTest extends TestBase {
 
     @Test
     public void testUnknownOption() {
-        setParams("install -s  -h");
+        setParams("add -s  -h");
         exception.expect(FailedOperationException.class);
         exception.expectMessage("ERROR_UnsupportedOption");
         getopt.process();
@@ -108,7 +108,7 @@ public class SimpleGetoptTest extends TestBase {
 
     @Test
     public void testUnknownOptionIgnoredBecauseOfHelp() {
-        setParams("install -h -s");
+        setParams("add -h -s");
         getopt.process();
 
         assertNotNull(getopt.getOptValues().get("h"));
@@ -118,7 +118,7 @@ public class SimpleGetoptTest extends TestBase {
 
     @Test
     public void testCommandWithSeparateOptions() {
-        setParams("-e -v install -h");
+        setParams("-e -v add -h");
 
         getopt.process();
 
@@ -128,12 +128,12 @@ public class SimpleGetoptTest extends TestBase {
         assertNotNull(opts.get("e"));
         assertNotNull(opts.get("v"));
         assertNotNull(opts.get("h"));
-        assertEquals("install", cmd);
+        assertEquals("add", cmd);
     }
 
     @Test
     public void testGlobalOptionAfterCommand() {
-        setParams("-e install -v -h");
+        setParams("-e add -v -h");
 
         getopt.process();
 
@@ -143,12 +143,12 @@ public class SimpleGetoptTest extends TestBase {
         assertNotNull(opts.get("e"));
         assertNotNull(opts.get("v"));
         assertNotNull(opts.get("h"));
-        assertEquals("install", cmd);
+        assertEquals("add", cmd);
     }
 
     @Test
     public void testPositonalParamsMixedWithOptions() {
-        setParams("-e -v install param1 -f param2 -r param3");
+        setParams("-e -v add param1 -f param2 -r param3");
 
         getopt.process();
 
@@ -163,7 +163,7 @@ public class SimpleGetoptTest extends TestBase {
 
     @Test
     public void testParametrizedOption() {
-        setParams("-C catalog -v install -h");
+        setParams("-C catalog -v add -h");
         getopt.process();
 
         String cmd = getopt.getCommand();
@@ -172,13 +172,13 @@ public class SimpleGetoptTest extends TestBase {
         assertNotNull(opts.get("C"));
         assertNotNull(opts.get("v"));
         assertNotNull(opts.get("h"));
-        assertEquals("install", cmd);
+        assertEquals("add", cmd);
         assertEquals("catalog", opts.get("C"));
     }
 
     @Test
     public void testInterleavedParametrizedOptions() {
-        setParams("-e install param1 -C catalog param2 -r param3");
+        setParams("-e add param1 -C catalog param2 -r param3");
         getopt.process();
 
         Map<String, String> opts = getopt.getOptValues();
@@ -233,7 +233,7 @@ public class SimpleGetoptTest extends TestBase {
 
     @Test
     public void testOptionsTerminated() {
-        setParams("-e install param1 -C catalog -- param2 -r param3");
+        setParams("-e add param1 -C catalog -- param2 -r param3");
         getopt.process();
 
         Map<String, String> opts = getopt.getOptValues();
@@ -263,14 +263,14 @@ public class SimpleGetoptTest extends TestBase {
 
     @Test
     public void testEmptyParameter() {
-        getopt.setParameters(new LinkedList<>(Arrays.asList("install", "")));
+        getopt.setParameters(new LinkedList<>(Arrays.asList("add", "")));
         getopt.process();
         assertEquals(Arrays.asList(""), getopt.getPositionalParameters());
     }
 
     @Test
     public void testDoubleDashOption() {
-        setParams("--e --v install --x param1");
+        setParams("--e --v add --x param1");
 
         getopt.process();
 
@@ -280,13 +280,13 @@ public class SimpleGetoptTest extends TestBase {
         assertNotNull(opts.get("e"));
         assertNotNull(opts.get("v"));
         assertNotNull(opts.get("x"));
-        assertEquals("install", cmd);
+        assertEquals("add", cmd);
         assertEquals(Arrays.asList("param1"), getopt.getPositionalParameters());
     }
 
     @Test
     public void testDoubleDashParamOption() {
-        setParams("--e --v install --C catalog --x param1");
+        setParams("--e --v add --C catalog --x param1");
 
         getopt.process();
 
@@ -299,7 +299,7 @@ public class SimpleGetoptTest extends TestBase {
         assertNotNull(opts.get("C"));
         assertEquals("catalog", opts.get("C"));
 
-        assertEquals("install", cmd);
+        assertEquals("add", cmd);
         assertEquals(Arrays.asList("param1"), getopt.getPositionalParameters());
     }
 
@@ -328,7 +328,7 @@ public class SimpleGetoptTest extends TestBase {
 
     @Test
     public void testLongOptionWithParameterBeforeCommand() {
-        setParams("--custom-catalog bubu install");
+        setParams("--custom-catalog bubu add");
 
         getopt.process();
 
@@ -338,7 +338,7 @@ public class SimpleGetoptTest extends TestBase {
 
     @Test
     public void testLongOptionWithParameterAfterCommand() {
-        setParams("install --custom-catalog bubu ");
+        setParams("add --custom-catalog bubu ");
 
         getopt.process();
         Map<String, String> opts = getopt.getOptValues();
@@ -347,7 +347,7 @@ public class SimpleGetoptTest extends TestBase {
 
     @Test
     public void testComputeAbbreviations() {
-        setParams("install --user bubu");
+        setParams("add --user bubu");
         Map<String, String> abbrevs = getopt.computeAbbreviations(Arrays.asList("list", "list-files", "file-list", "force", "replace", "rewrite", "verify", "signature"));
 
         assertEquals(null, abbrevs.get("list"));
@@ -363,7 +363,7 @@ public class SimpleGetoptTest extends TestBase {
 
     @Test
     public void testLongOptionAbbreviation() {
-        setParams("install --long-user bubu");
+        setParams("add --long-user bubu");
 
         getopt.process();
         Map<String, String> opts = getopt.getOptValues();
@@ -372,7 +372,7 @@ public class SimpleGetoptTest extends TestBase {
 
     @Test
     public void testOptionAliasesNoParam() {
-        setParams("install -F bubu");
+        setParams("add -F bubu");
         getopt.process();
         Map<String, String> opts = getopt.getOptValues();
         assertEquals("", opts.get("L"));
@@ -380,8 +380,8 @@ public class SimpleGetoptTest extends TestBase {
 
     @Test
     public void testOptionAliasesParamsCommand() {
-        setParams("install -9 bubu");
-        getopt.addCommandOption("install", "9", "=C");
+        setParams("add -9 bubu");
+        getopt.addCommandOption("add", "9", "=C");
         getopt.process();
         Map<String, String> opts = getopt.getOptValues();
         assertEquals("bubu", opts.get("C"));
@@ -389,7 +389,7 @@ public class SimpleGetoptTest extends TestBase {
 
     @Test
     public void testOptionAliasesParamsGlobal() {
-        setParams("install -8 bubu");
+        setParams("add -8 bubu");
         getopt.process();
         Map<String, String> opts = getopt.getOptValues();
         assertEquals("bubu", opts.get("C"));

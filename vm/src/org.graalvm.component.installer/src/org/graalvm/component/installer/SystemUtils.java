@@ -25,9 +25,14 @@
 package org.graalvm.component.installer;
 
 import java.io.File;
+import java.io.IOException;
 import java.nio.file.Path;
 import java.nio.file.Paths;
+import java.nio.file.attribute.AclFileAttributeView;
+import java.nio.file.attribute.PosixFileAttributeView;
+import java.util.regex.Matcher;
 import java.util.regex.Pattern;
+import org.graalvm.component.installer.model.ComponentRegistry;
 
 /**
  *
@@ -197,5 +202,59 @@ public class SystemUtils {
             }
         }
         return comps;
+    }
+
+    private static final Pattern OLD_VERSION_PATTERN = Pattern.compile("([0-9]+\\.[0-9]+\\.[0-9]+)(-([a-z]+)([0-9]+))?");
+
+    public static String normalizeOldVersions(String v) {
+        if (v == null) {
+            return null;
+        }
+        Matcher m = OLD_VERSION_PATTERN.matcher(v);
+        if (!m.matches()) {
+            return v;
+        }
+        String numbers = m.group(1);
+        String rel = m.group(3);
+        String relNo = m.group(4);
+
+        if (rel == null) {
+            return numbers + ".0";
+        } else {
+            return numbers + "-0." + rel + "." + relNo;
+        }
+    }
+
+    public static Path getGraalVMJDKRoot(ComponentRegistry reg) {
+        if ("macos".equals(reg.getGraalCapabilities().get(CommonConstants.CAP_OS_ARCH))) {
+            return Paths.get("Contents", "Home");
+        } else {
+            return Paths.get("");
+        }
+    }
+
+    /**
+     * Finds a file owner. On POSIX systems, returns owner of the file. On Windows (ACL fs view)
+     * returns the owner principal's name.
+     * 
+     * @param file the file to test
+     * @return owner name
+     */
+    public static String findFileOwner(Path file) throws IOException {
+        PosixFileAttributeView posix = file.getFileSystem().provider().getFileAttributeView(file, PosixFileAttributeView.class);
+        if (posix != null) {
+            return posix.getOwner().getName();
+        }
+        AclFileAttributeView acl = file.getFileSystem().provider().getFileAttributeView(file, AclFileAttributeView.class);
+        if (acl != null) {
+            return acl.getOwner().getName();
+        }
+        return null;
+    }
+
+    static boolean licenseTracking = false;
+
+    public static boolean isLicenseTrackingEnabled() {
+        return licenseTracking;
     }
 }

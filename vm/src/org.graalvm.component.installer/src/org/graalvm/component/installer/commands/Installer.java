@@ -47,13 +47,15 @@ import java.util.logging.Logger;
 import org.graalvm.component.installer.Archive;
 import org.graalvm.component.installer.BundleConstants;
 import org.graalvm.component.installer.CommonConstants;
+import org.graalvm.component.installer.ComponentCollection;
 import org.graalvm.component.installer.model.ComponentRegistry;
 import org.graalvm.component.installer.Feedback;
 import org.graalvm.component.installer.SystemUtils;
 import org.graalvm.component.installer.model.ComponentInfo;
+import org.graalvm.component.installer.model.Verifier;
 
 /**
- * The working internals of the 'install' command.
+ * The working internals of the 'add' command.
  */
 public class Installer extends AbstractInstaller {
     private static final Logger LOG = Logger.getLogger(Installer.class.getName());
@@ -75,8 +77,8 @@ public class Installer extends AbstractInstaller {
      */
     private final Set<Path> visitedPaths = new HashSet<>();
 
-    public Installer(Feedback feedback, ComponentInfo componentInfo, ComponentRegistry registry, Archive a) {
-        super(feedback, componentInfo, registry, a);
+    public Installer(Feedback feedback, ComponentInfo componentInfo, ComponentRegistry registry, ComponentCollection collection, Archive a) {
+        super(feedback, componentInfo, registry, collection, a);
     }
 
     @Override
@@ -144,10 +146,12 @@ public class Installer extends AbstractInstaller {
      */
     @Override
     public boolean validateAll() throws IOException {
-        validateRequirements();
+        Verifier veri = validateRequirements();
         ComponentInfo existing = registry.findComponent(componentInfo.getId());
         if (existing != null) {
-            return false;
+            if (!veri.shouldInstall(componentInfo)) {
+                return false;
+            }
         }
         validateFiles();
         validateSymlinks();
@@ -234,7 +238,17 @@ public class Installer extends AbstractInstaller {
     }
 
     void unpackFiles() throws IOException {
+        final String storagePrefix = CommonConstants.PATH_COMPONENT_STORAGE + "/"; // NOI18N
         for (Archive.FileEntry entry : archive) {
+            String path = entry.getName();
+            if (path.startsWith(storagePrefix) && path.length() > storagePrefix.length()) {
+                // disallow to unpack files in the component database (but permit subdirs). Some
+                // tools may write there, but
+                // GU will manage the storage itself.
+                if (path.indexOf('/', storagePrefix.length()) == -1) {
+                    continue;
+                }
+            }
             installOneEntry(entry);
         }
     }

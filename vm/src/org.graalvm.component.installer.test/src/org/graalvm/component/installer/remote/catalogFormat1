@@ -1,0 +1,103 @@
+org.graalvm.1.0.0-rc15_linux_amd64=GraalVM 1.0.0-rc15 linux/amd64
+org.graalvm.1.0.0-rc15_macos_amd64=GraalVM 1.0.0-rc15 macos/amd64
+
+Component.1.0.0-rc15_linux_amd64.org.graalvm.python=https://acme.org/graalvm/graalpython/1.0.0-rc15/python-linux-amd64.jar
+Component.1.0.0-rc15_linux_amd64.org.graalvm.python-Bundle-Symbolic-Name=org.graalvm.python
+Component.1.0.0-rc15_linux_amd64.org.graalvm.python-Bundle-RequireCapability=org.graalvm; filter:="(&(graalvm_version=1.0.0-rc15)(os_name=linux)(os_arch=amd64))"
+Component.1.0.0-rc15_linux_amd64.org.graalvm.python-Bundle-Name=Graal.Python
+Component.1.0.0-rc15_linux_amd64.org.graalvm.python-Bundle-Version=1.0.0-rc15
+Component.1.0.0-rc15_linux_amd64.org.graalvm.python-x-GraalVM-Polyglot-Part=True
+Component.1.0.0-rc15_linux_amd64.org.graalvm.python-x-GraalVM-Working-Directories=jre/languages/python
+
+Component.1.0.0-rc15_macos_amd64.org.graalvm.python=https://acme.org/graalvm/graalpython/1.0.0-rc15/python-macos-amd64.jar
+Component.1.0.0-rc15_macos_amd64.org.graalvm.python-Bundle-Symbolic-Name=org.graalvm.python
+Component.1.0.0-rc15_macos_amd64.org.graalvm.python-Bundle-RequireCapability=org.graalvm; filter:="(&(graalvm_version=1.0.0-rc15)(os_name=macos)(os_arch=amd64))"
+Component.1.0.0-rc15_macos_amd64.org.graalvm.python-Bundle-Name=Graal.Python
+Component.1.0.0-rc15_macos_amd64.org.graalvm.python-Bundle-Version=1.0.0-rc15
+Component.1.0.0-rc15_macos_amd64.org.graalvm.python-x-GraalVM-Polyglot-Part=True
+Component.1.0.0-rc15_macos_amd64.org.graalvm.python-x-GraalVM-Working-Directories=jre/languages/python
+
+Component.1.0.0-rc15_linux_amd64.org.graalvm.r=https://acme.org/graalvm/fastr/1.0.0-rc15/r-linux-amd64.jar
+Component.1.0.0-rc15_linux_amd64.org.graalvm.r-Bundle-Symbolic-Name=org.graalvm.R
+Component.1.0.0-rc15_linux_amd64.org.graalvm.r-Bundle-RequireCapability=org.graalvm; filter:="(&(graalvm_version=1.0.0-rc15)(os_name=linux)(os_arch=amd64))"
+Component.1.0.0-rc15_linux_amd64.org.graalvm.r-Bundle-Name=FastR
+Component.1.0.0-rc15_linux_amd64.org.graalvm.r-Bundle-Version=1.0.0-rc15
+Component.1.0.0-rc15_linux_amd64.org.graalvm.r-x-GraalVM-Polyglot-Part=False
+Component.1.0.0-rc15_linux_amd64.org.graalvm.r-x-GraalVM-Working-Directories=jre/languages/R
+
+Component.1.0.0-rc15_macos_amd64.org.graalvm.r=https://acme.org/graalvm/fastr/1.0.0-rc15/r-macos-amd64.jar
+Component.1.0.0-rc15_macos_amd64.org.graalvm.r-Bundle-Symbolic-Name=org.graalvm.R
+Component.1.0.0-rc15_macos_amd64.org.graalvm.r-Bundle-RequireCapability=org.graalvm; filter:="(&(graalvm_version=1.0.0-rc15)(os_name=macos)(os_arch=amd64))"
+Component.1.0.0-rc15_macos_amd64.org.graalvm.r-Bundle-Name=FastR
+Component.1.0.0-rc15_macos_amd64.org.graalvm.r-Bundle-Version=1.0.0-rc15
+Component.1.0.0-rc15_macos_amd64.org.graalvm.r-x-GraalVM-Polyglot-Part=False
+Component.1.0.0-rc15_macos_amd64.org.graalvm.r-x-GraalVM-Working-Directories=jre/languages/R
+
+Component.1.0.0-rc15_linux_amd64.org.graalvm.ruby=https://acme.org/graalvm/truffleruby/1.0.0-rc15/ruby-linux-amd64.jar
+Component.1.0.0-rc15_linux_amd64.org.graalvm.ruby-Bundle-Symbolic-Name=org.graalvm.ruby
+Component.1.0.0-rc15_linux_amd64.org.graalvm.ruby-Bundle-RequireCapability=org.graalvm; filter:="(&(graalvm_version=1.0.0-rc15)(os_name=linux)(os_arch=amd64))"
+Component.1.0.0-rc15_linux_amd64.org.graalvm.ruby-Bundle-Name=TruffleRuby
+Component.1.0.0-rc15_linux_amd64.org.graalvm.ruby-Bundle-Version=1.0.0-rc15
+Component.1.0.0-rc15_linux_amd64.org.graalvm.ruby-x-GraalVM-Polyglot-Part=True
+Component.1.0.0-rc15_linux_amd64.org.graalvm.ruby-x-GraalVM-Working-Directories=jre/languages/ruby
+
+Component.1.0.0-rc15_macos_amd64.org.graalvm.ruby=https://acme.org/graalvm/truffleruby/1.0.0-rc15/ruby-macos-amd64.jar
+Component.1.0.0-rc15_macos_amd64.org.graalvm.ruby-Bundle-Symbolic-Name=org.graalvm.ruby
+Component.1.0.0-rc15_macos_amd64.org.graalvm.ruby-Bundle-RequireCapability=org.graalvm; filter:="(&(graalvm_version=1.0.0-rc15)(os_name=macos)(os_arch=amd64))"
+Component.1.0.0-rc15_macos_amd64.org.graalvm.ruby-Bundle-Name=TruffleRuby
+Component.1.0.0-rc15_macos_amd64.org.graalvm.ruby-Bundle-Version=1.0.0-rc15
+Component.1.0.0-rc15_macos_amd64.org.graalvm.ruby-x-GraalVM-Polyglot-Part=True
+Component.1.0.0-rc15_macos_amd64.org.graalvm.ruby-x-GraalVM-Working-Directories=jre/languages/ruby
+
+
+org.graalvm.1.0.0_linux_amd64=GraalVM 1.0.0 linux/amd64
+org.graalvm.1.0.0_macos_amd64=GraalVM 1.0.0 macos/amd64
+
+Component.1.0.0_linux_amd64.org.graalvm.python=https://acme.org/graalvm/graalpython/1.0.0/python-linux-amd64.jar
+Component.1.0.0_linux_amd64.org.graalvm.python-Bundle-Symbolic-Name=org.graalvm.python
+Component.1.0.0_linux_amd64.org.graalvm.python-Bundle-RequireCapability=org.graalvm; filter:="(&(graalvm_version=1.0.0)(os_name=linux)(os_arch=amd64))"
+Component.1.0.0_linux_amd64.org.graalvm.python-Bundle-Name=Graal.Python
+Component.1.0.0_linux_amd64.org.graalvm.python-Bundle-Version=1.0.0
+Component.1.0.0_linux_amd64.org.graalvm.python-x-GraalVM-Polyglot-Part=True
+Component.1.0.0_linux_amd64.org.graalvm.python-x-GraalVM-Working-Directories=jre/languages/python
+
+Component.1.0.0_macos_amd64.org.graalvm.python=https://acme.org/graalvm/graalpython/1.0.0/python-macos-amd64.jar
+Component.1.0.0_macos_amd64.org.graalvm.python-Bundle-Symbolic-Name=org.graalvm.python
+Component.1.0.0_macos_amd64.org.graalvm.python-Bundle-RequireCapability=org.graalvm; filter:="(&(graalvm_version=1.0.0)(os_name=macos)(os_arch=amd64))"
+Component.1.0.0_macos_amd64.org.graalvm.python-Bundle-Name=Graal.Python
+Component.1.0.0_macos_amd64.org.graalvm.python-Bundle-Version=1.0.0
+Component.1.0.0_macos_amd64.org.graalvm.python-x-GraalVM-Polyglot-Part=True
+Component.1.0.0_macos_amd64.org.graalvm.python-x-GraalVM-Working-Directories=jre/languages/python
+
+Component.1.0.0_linux_amd64.org.graalvm.r=https://acme.org/graalvm/fastr/1.0.0/r-linux-amd64.jar
+Component.1.0.0_linux_amd64.org.graalvm.r-Bundle-Symbolic-Name=org.graalvm.R
+Component.1.0.0_linux_amd64.org.graalvm.r-Bundle-RequireCapability=org.graalvm; filter:="(&(graalvm_version=1.0.0)(os_name=linux)(os_arch=amd64))"
+Component.1.0.0_linux_amd64.org.graalvm.r-Bundle-Name=FastR
+Component.1.0.0_linux_amd64.org.graalvm.r-Bundle-Version=1.0.0
+Component.1.0.0_linux_amd64.org.graalvm.r-x-GraalVM-Polyglot-Part=False
+Component.1.0.0_linux_amd64.org.graalvm.r-x-GraalVM-Working-Directories=jre/languages/R
+
+Component.1.0.0_macos_amd64.org.graalvm.r=https://acme.org/graalvm/fastr/1.0.0/r-macos-amd64.jar
+Component.1.0.0_macos_amd64.org.graalvm.r-Bundle-Symbolic-Name=org.graalvm.R
+Component.1.0.0_macos_amd64.org.graalvm.r-Bundle-RequireCapability=org.graalvm; filter:="(&(graalvm_version=1.0.0)(os_name=macos)(os_arch=amd64))"
+Component.1.0.0_macos_amd64.org.graalvm.r-Bundle-Name=FastR
+Component.1.0.0_macos_amd64.org.graalvm.r-Bundle-Version=1.0.0
+Component.1.0.0_macos_amd64.org.graalvm.r-x-GraalVM-Polyglot-Part=False
+Component.1.0.0_macos_amd64.org.graalvm.r-x-GraalVM-Working-Directories=jre/languages/R
+
+Component.1.0.0_linux_amd64.org.graalvm.ruby=https://acme.org/graalvm/truffleruby/1.0.0/ruby-linux-amd64.jar
+Component.1.0.0_linux_amd64.org.graalvm.ruby-Bundle-Symbolic-Name=org.graalvm.ruby
+Component.1.0.0_linux_amd64.org.graalvm.ruby-Bundle-RequireCapability=org.graalvm; filter:="(&(graalvm_version=1.0.0)(os_name=linux)(os_arch=amd64))"
+Component.1.0.0_linux_amd64.org.graalvm.ruby-Bundle-Name=TruffleRuby
+Component.1.0.0_linux_amd64.org.graalvm.ruby-Bundle-Version=1.0.0
+Component.1.0.0_linux_amd64.org.graalvm.ruby-x-GraalVM-Polyglot-Part=True
+Component.1.0.0_linux_amd64.org.graalvm.ruby-x-GraalVM-Working-Directories=jre/languages/ruby
+
+Component.1.0.0_macos_amd64.org.graalvm.ruby=https://acme.org/graalvm/truffleruby/1.0.0/ruby-macos-amd64.jar
+Component.1.0.0_macos_amd64.org.graalvm.ruby-Bundle-Symbolic-Name=org.graalvm.ruby
+Component.1.0.0_macos_amd64.org.graalvm.ruby-Bundle-RequireCapability=org.graalvm; filter:="(&(graalvm_version=1.0.0)(os_name=macos)(os_arch=amd64))"
+Component.1.0.0_macos_amd64.org.graalvm.ruby-Bundle-Name=TruffleRuby
+Component.1.0.0_macos_amd64.org.graalvm.ruby-Bundle-Version=1.0.0
+Component.1.0.0_macos_amd64.org.graalvm.ruby-x-GraalVM-Polyglot-Part=True
+Component.1.0.0_macos_amd64.org.graalvm.ruby-x-GraalVM-Working-Directories=jre/languages/ruby
+
