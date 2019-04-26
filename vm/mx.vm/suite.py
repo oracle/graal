@@ -19,7 +19,7 @@ suite = {
                 "name": "graal-nodejs",
                 "subdir": True,
                 "dynamic": True,
-                "version": "4eba0c0dac2a1a4f810f46154fa9390ebb2d952f",
+                "version": "eefdd1069518c39788401e25afe52a6748cb7a04",
                 "urls" : [
                     {"url" : "https://github.com/graalvm/graaljs.git", "kind" : "git"},
                     {"url": "https://curio.ssw.jku.at/nexus/content/repositories/snapshots", "kind": "binary"},
@@ -29,7 +29,7 @@ suite = {
                 "name": "graal-js",
                 "subdir": True,
                 "dynamic": True,
-                "version": "4eba0c0dac2a1a4f810f46154fa9390ebb2d952f",
+                "version": "eefdd1069518c39788401e25afe52a6748cb7a04",
                 "urls": [
                     {"url": "https://github.com/graalvm/graaljs.git", "kind" : "git"},
                     {"url": "https://curio.ssw.jku.at/nexus/content/repositories/snapshots", "kind": "binary"},
@@ -37,7 +37,7 @@ suite = {
             },
             {
                 "name": "truffleruby",
-                "version": "044a12062532b7b0761e5b6c84e85717f1b7669a",
+                "version": "22c6a1c1cc8defdae1cacebe95633537b82bfc84",
                 "dynamic": True,
                 "urls": [
                     {"url": "https://github.com/oracle/truffleruby.git", "kind": "git"},
@@ -70,7 +70,7 @@ suite = {
             },
             {
                 "name": "graalpython",
-                "version": "e84902f1898fb0ad7dd44a1dcb809a7148c1148f",
+                "version": "8c2e8d693a02ea4df24d0e7e90e77b5faa40b784",
                 "dynamic": True,
                 "urls": [
                     {"url": "https://github.com/graalvm/graalpython.git", "kind": "git"},
