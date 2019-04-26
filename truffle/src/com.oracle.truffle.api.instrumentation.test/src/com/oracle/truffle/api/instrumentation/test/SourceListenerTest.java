@@ -58,7 +58,6 @@ import org.graalvm.polyglot.Source;
 import org.junit.Assert;
 import org.junit.Assume;
 import org.junit.BeforeClass;
-import org.junit.Ignore;
 import org.junit.Test;
 
 import com.oracle.truffle.api.Truffle;
@@ -484,8 +483,16 @@ public class SourceListenerTest extends AbstractInstrumentationTest {
     }
 
     @Test
-    @Ignore
     public void testMultiThreadedLoadSource() throws InterruptedException {
+        testMultiThreadedSourceBindings(true);
+    }
+
+    @Test
+    public void testMultiThreadedExecuteSource() throws InterruptedException {
+        testMultiThreadedSourceBindings(false);
+    }
+
+    private void testMultiThreadedSourceBindings(boolean load) throws InterruptedException {
         Engine testEngine = Engine.create();
         int numInstrumentationThreads = 10;
         int numExecutionThreads = 20;
@@ -493,7 +500,7 @@ public class SourceListenerTest extends AbstractInstrumentationTest {
         TestSourceListenerInstrument testInstrument = instrument.lookup(TestSourceListenerInstrument.class);
         InstrumentationThread[] instrumentationThreads = new InstrumentationThread[numInstrumentationThreads];
         for (int i = 0; i < numInstrumentationThreads; i++) {
-            instrumentationThreads[i] = new InstrumentationThread(testInstrument.instrumentEnv, i);
+            instrumentationThreads[i] = new InstrumentationThread(testInstrument.instrumentEnv, load, i);
         }
 
         Thread[] executionThreads = new Thread[numExecutionThreads];
@@ -574,21 +581,32 @@ public class SourceListenerTest extends AbstractInstrumentationTest {
     private class InstrumentationThread extends Thread {
 
         private final TruffleInstrument.Env env;
+        private final boolean load;
         private final List<com.oracle.truffle.api.source.Source> sources = Collections.synchronizedList(new ArrayList<>());
 
-        InstrumentationThread(TruffleInstrument.Env env, int n) {
+        InstrumentationThread(TruffleInstrument.Env env, boolean load, int n) {
             super("Instrumentation Thread " + n);
             this.env = env;
+            this.load = load;
         }
 
         @Override
         public void run() {
-            env.getInstrumenter().attachLoadSourceListener(SourceFilter.ANY, new LoadSourceListener() {
-                @Override
-                public void onLoad(LoadSourceEvent event) {
-                    sources.add(event.getSource());
-                }
-            }, true);
+            if (load) {
+                env.getInstrumenter().attachLoadSourceListener(SourceFilter.ANY, new LoadSourceListener() {
+                    @Override
+                    public void onLoad(LoadSourceEvent event) {
+                        sources.add(event.getSource());
+                    }
+                }, true);
+            } else {
+                env.getInstrumenter().attachExecuteSourceListener(SourceFilter.ANY, new ExecuteSourceListener() {
+                    @Override
+                    public void onExecute(ExecuteSourceEvent event) {
+                        sources.add(event.getSource());
+                    }
+                }, true);
+            }
         }
     }
 
