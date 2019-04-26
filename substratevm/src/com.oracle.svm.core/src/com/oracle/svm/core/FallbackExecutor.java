@@ -60,12 +60,20 @@ public class FallbackExecutor {
         public static final HostedOptionKey<String> FallbackExecutorMainClass = new HostedOptionKey<>(null);
         @Option(help = "Internal option used to specify Classpath for FallbackExecutor.")//
         public static final HostedOptionKey<String> FallbackExecutorClasspath = new HostedOptionKey<>(null);
+        @Option(help = "Internal option used to specify java arguments for FallbackExecutor.")//
+        public static final HostedOptionKey<String[]> FallbackExecutorJavaArg = new HostedOptionKey<>(null);
     }
 
     public static void main(String[] args) {
         List<String> command = new ArrayList<>();
         Path javaExecutable = getJavaExecutable().toAbsolutePath().normalize();
         command.add(javaExecutable.toString());
+        String[] javaArgValues = Options.FallbackExecutorJavaArg.getValue();
+        if (javaArgValues != null) {
+            for (String arg : javaArgValues) {
+                command.add(arg);
+            }
+        }
         String[] properties = Options.FallbackExecutorSystemProperty.getValue();
         if (properties != null) {
             for (String p : properties) {

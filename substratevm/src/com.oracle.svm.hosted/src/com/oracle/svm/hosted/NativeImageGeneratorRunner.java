@@ -41,7 +41,6 @@ import java.util.Map;
 import java.util.TimerTask;
 import java.util.concurrent.ForkJoinPool;
 import java.util.function.Consumer;
-import java.util.stream.Stream;
 
 import org.graalvm.compiler.debug.DebugContext;
 import org.graalvm.compiler.options.OptionValues;
@@ -88,10 +87,15 @@ public class NativeImageGeneratorRunner implements ImageBuildTask {
         if (watchPID >= 0) {
             VMError.guarantee(OS.getCurrent().hasProcFS, WATCHPID_PREFIX + " <pid> requires system with /proc");
             timerTask = new TimerTask() {
+                int cmdlineHashCode = 0;
+
                 @Override
                 public void run() {
-                    try (Stream<String> stream = Files.lines(Paths.get("/proc/" + watchPID + "/comm"))) {
-                        if (stream.noneMatch(line -> line.contains("native-image"))) {
+                    try {
+                        int currentCmdlineHashCode = Arrays.hashCode(Files.readAllBytes(Paths.get("/proc/" + watchPID + "/cmdline")));
+                        if (cmdlineHashCode == 0) {
+                            cmdlineHashCode = currentCmdlineHashCode;
+                        } else if (currentCmdlineHashCode != cmdlineHashCode) {
                             System.exit(1);
                         }
                     } catch (IOException e) {
@@ -101,7 +105,6 @@ public class NativeImageGeneratorRunner implements ImageBuildTask {
             };
             java.util.Timer timer = new java.util.Timer("native-image pid watcher");
             timer.scheduleAtFixedRate(timerTask, 0, 1000);
-
         }
         int exitStatus = 1;
         try {

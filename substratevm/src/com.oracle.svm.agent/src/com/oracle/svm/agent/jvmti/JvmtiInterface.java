@@ -212,4 +212,12 @@ public interface JvmtiInterface extends PointerBase {
         @InvokeCFunctionPointer
         JvmtiError invoke(JvmtiEnv jvmtiEnv, CCharPointer property, CCharPointerPointer valuePtr);
     }
+
+    @CField("GetSystemProperties")
+    GetSystemPropertiesFunctionPointer GetSystemProperties();
+
+    interface GetSystemPropertiesFunctionPointer extends CFunctionPointer {
+        @InvokeCFunctionPointer
+        JvmtiError invoke(JvmtiEnv jvmtiEnv, CIntPointer countPtr, WordPointer propertyPtr);
+    }
 }
