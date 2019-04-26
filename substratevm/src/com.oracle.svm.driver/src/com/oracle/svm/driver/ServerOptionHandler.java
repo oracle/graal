@@ -24,6 +24,8 @@
  */
 package com.oracle.svm.driver;
 
+import com.oracle.svm.driver.MacroOption.MacroOptionKind;
+
 import java.util.List;
 import java.util.Queue;
 
@@ -45,6 +47,7 @@ class ServerOptionHandler extends NativeImage.OptionHandler<NativeImageServer> {
             case "--help-extra":
                 args.poll();
                 nativeImage.showMessage(DefaultOptionHandler.helpExtraText);
+                nativeImage.optionRegistry.showOptions(MacroOptionKind.Macro, true, nativeImage::showMessage);
                 nativeImage.showMessage(helpTextServer);
                 System.exit(0);
                 return true;
