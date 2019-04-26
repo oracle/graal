@@ -32,6 +32,7 @@ package com.oracle.truffle.llvm.runtime;
 import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.util.*;
+import java.util.concurrent.atomic.AtomicInteger;
 import java.security.SecureRandom;
 import java.util.ArrayList;
 import java.util.Collections;
@@ -89,6 +90,7 @@ import com.oracle.truffle.llvm.runtime.types.Type;
 
 public final class LLVMContext {
     // my code start
+    public final Map<Long, AtomicInteger> mutexStorage;
     public final Map<Long, Object> retValStorage;
     public final Map<Long, Object> threadStorage;
     // my code end
@@ -218,8 +220,9 @@ public final class LLVMContext {
         } else {
             tracer = null;
         }
-        retValStorage = new HashMap<>();
-        threadStorage = new HashMap<>();
+        this.mutexStorage = new HashMap<>();
+        this.retValStorage = new HashMap<>();
+        this.threadStorage = new HashMap<>();
     }
 
     private static final class InitializeContextNode extends LLVMStatementNode {

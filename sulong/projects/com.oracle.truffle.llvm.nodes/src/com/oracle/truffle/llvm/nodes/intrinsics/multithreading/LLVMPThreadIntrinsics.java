@@ -4,6 +4,7 @@ import java.io.FileWriter;
 import java.io.IOException;
 import java.io.PrintWriter;
 import java.util.Random;
+import java.util.concurrent.atomic.AtomicInteger;
 
 import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.RootCallTarget;
@@ -13,6 +14,7 @@ import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.frame.FrameSlot;
 import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.api.interop.TruffleObject;
+import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.api.nodes.RootNode;
 import com.oracle.truffle.llvm.nodes.func.LLVMCallNode;
 import com.oracle.truffle.llvm.nodes.intrinsics.llvm.LLVMBuiltin;
@@ -32,7 +34,6 @@ import com.oracle.truffle.llvm.runtime.types.PointerType;
 import com.oracle.truffle.llvm.runtime.types.Type;
 
 public class LLVMPThreadIntrinsics {
-
     public static PrintWriter debugOut = null;
 
     @CompilerDirectives.TruffleBoundary
@@ -55,8 +56,8 @@ public class LLVMPThreadIntrinsics {
     @NodeChild(type = LLVMExpressionNode.class)
     @NodeChild(type = LLVMExpressionNode.class)
     public abstract static class LLVMPThreadCreate extends LLVMBuiltin {
-
-        @Child LLVMStoreNode store = null;
+        @Child
+        LLVMStoreNode store = null;
 
         @Specialization
         protected int doIntrinsic(VirtualFrame frame, Object thread, Object attr, Object startRoutine, Object arg) {
@@ -147,8 +148,6 @@ public class LLVMPThreadIntrinsics {
         }
     }
 
-
-
     @NodeChild(type = LLVMExpressionNode.class)
     public abstract static class LLVMPThreadExit extends LLVMBuiltin {
         @Specialization
@@ -165,7 +164,6 @@ public class LLVMPThreadIntrinsics {
     @NodeChild(type = LLVMExpressionNode.class)
     @NodeChild(type = LLVMExpressionNode.class)
     public abstract static class LLVMPThreadJoin extends LLVMBuiltin {
-
         @Child LLVMStoreNode storeNode;
 
         @Specialization
@@ -201,25 +199,47 @@ public class LLVMPThreadIntrinsics {
         }
     }
 
+    class Mutex {
+        private AtomicInteger lockCount;
+        private long threadId; // id of the locking / owning thread
+
+        protected Mutex(int initVal) {
+            lockCount = new AtomicInteger(initVal);
+            // ...
+        }
+
+        // do stuff here
+        // ...
+    }
+
     @NodeChild(type = LLVMExpressionNode.class)
     public abstract static class LLVMPThreadMutexattrInit extends LLVMBuiltin {
         @Specialization
         protected int doIntrinsic(VirtualFrame frame, Object attr) {
-            // do stuff here
-            return 25;
+            // TODO: how to handle pthread_mutexattr_t?
+            return 0;
         }
     }
 
     @NodeChild(type = LLVMExpressionNode.class)
     @NodeChild(type = LLVMExpressionNode.class)
     public abstract static class LLVMPThreadMutexattrSettype extends LLVMBuiltin {
+        @Child LLVMStoreNode store = null;
+
         @Specialization
         protected int doIntrinsic(VirtualFrame frame, Object attr, Object type) {
-            // do stuff here
-            int i = 5;
-            if (attr == null)
-                return 25;
-            return 35;
+            // TODO: how to handle pthread_mutexattr_t? how to save type info to it?
+            // create store node
+            if (store == null) {
+                CompilerDirectives.transferToInterpreterAndInvalidate();
+                store = getContextReference().get().getNodeFactory().createStoreNode(LLVMInteropType.ValueKind.POINTER);
+            }
+            // store type in attr var
+            if (type == null)
+                type = new Integer(0);
+            // cannot convert int to nativepointer or so...
+            // store.executeWithTarget(attr, typePtr);
+            return 0;
         }
     }
 
@@ -228,8 +248,16 @@ public class LLVMPThreadIntrinsics {
     public abstract static class LLVMPThreadMutexInit extends LLVMBuiltin {
         @Specialization
         protected int doIntrinsic(VirtualFrame frame, Object mutex, Object attr) {
-            // do stuff here
-            return 45;
+            // TODO: change from "AtomicInteger" to "Mutex" bc we need both lock count and owner thread id
+            // we can use the address of the native pointer here, bc a mutex
+            // must only work when using the original variable, not a copy
+            // so the address may never change
+            long mutexAddr = ((LLVMNativePointer) mutex).asNative();
+            Object mutObj = getContextReference().get().mutexStorage.get(mutexAddr);
+            if (mutObj == null) {
+                getContextReference().get().mutexStorage.put(mutexAddr, new AtomicInteger(0));
+            }
+            return 0;
         }
     }
 
@@ -237,8 +265,29 @@ public class LLVMPThreadIntrinsics {
     public abstract static class LLVMPThreadMutexLock extends LLVMBuiltin {
         @Specialization
         protected int doIntrinsic(VirtualFrame frame, Object mutex) {
-            // do stuff here
-            return 55;
+            // TODO: change from "AtomicInteger" to "Mutex" bc we need both lock count and owner thread id
+            // TODO: add stuff for recursive mutexes
+            long mutexAddr = ((LLVMNativePointer) mutex).asNative();
+            AtomicInteger lockCount = getContextReference().get().mutexStorage.get(mutexAddr);
+            if (lockCount == null) {
+                // mutex is not initialized
+                // but it works anyway on most implementations
+                // so we will make it work here too, just using default type
+                // set the lock counter to 1
+                lockCount = new AtomicInteger(1);
+                getContextReference().get().mutexStorage.put(mutexAddr, lockCount);
+                return 0;
+            }
+            // add stuff for recursive mutexes
+            while (!lockCount.compareAndSet(0, 1)) {
+                try {
+                    Thread.currentThread().sleep(75);
+                } catch (InterruptedException e) {
+                    // i do not care about being interrupted here, but let's just print stack trace
+                    e.printStackTrace();
+                }
+            }
+            return 0;
         }
     }
 
@@ -246,8 +295,13 @@ public class LLVMPThreadIntrinsics {
     public abstract static class LLVMPThreadMutexUnlock extends LLVMBuiltin {
         @Specialization
         protected int doIntrinsic(VirtualFrame frame, Object mutex) {
-            // do stuff here
-            return 65;
+            // TODO: change from "AtomicInteger" to "Mutex" bc we need both lock count and owner thread id
+            // TODO: add stuff for recursive mutexes
+            long mutexAddr = ((LLVMNativePointer) mutex).asNative();
+            AtomicInteger lockCount = getContextReference().get().mutexStorage.get(mutexAddr);
+            // add stuff for recursive mutexes
+            lockCount.set(0);
+            return 0;
         }
     }
 
