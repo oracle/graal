@@ -23,6 +23,7 @@
 
 package com.oracle.truffle.espresso.impl;
 
+import com.oracle.truffle.api.CompilerAsserts;
 import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.CompilerDirectives.CompilationFinal;
 import com.oracle.truffle.api.nodes.ExplodeLoop;
@@ -85,6 +86,7 @@ public final class ObjectKlass extends Klass {
     @CompilationFinal(dimensions = 1) private final Method[] vtable;
     @CompilationFinal(dimensions = 2) private final Method[][] itable;
     @CompilationFinal(dimensions = 1) private final Klass[] iKlassTable;
+    @CompilationFinal                 private final int itableLength;
 
     private int initState = LINKED;
 
@@ -145,6 +147,7 @@ public final class ObjectKlass extends Klass {
             this.iKlassTable = methodCR.getiKlass();
             this.vtable = VirtualTable.create(superKlass, declaredMethods, this);
         }
+        this.itableLength = iKlassTable.length;
     }
 
     @Override
@@ -393,7 +396,7 @@ public final class ObjectKlass extends Klass {
     }
 
     public final Field lookupHiddenField(Symbol<Name> name) {
-        // Hidden fields are located at the end of the field table.
+        // Hidden fields are (usually) located at the end of the field table.
         for (int i = fieldTable.length - 1; i > 0; i--) {
             Field f = fieldTable[i];
             if (f.getName() == name && f.isHidden()) {
@@ -417,12 +420,11 @@ public final class ObjectKlass extends Klass {
     @ExplodeLoop
     public final Method itableLookup(Klass interfKlass, int index) {
         assert (index >= 0) : "Undeclared interface method";
-        int i = 0;
-        for (Klass k : iKlassTable) {
-            if (k == interfKlass) {
+        CompilerAsserts.compilationConstant(itableLength);
+        for (int i = 0; i < itableLength; i++) {
+            if (iKlassTable[i] == interfKlass) {
                 return itable[i][index];
             }
-            i++;
         }
         return null;
     }

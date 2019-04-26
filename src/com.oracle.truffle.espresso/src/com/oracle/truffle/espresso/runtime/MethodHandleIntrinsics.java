@@ -63,12 +63,12 @@ public final class MethodHandleIntrinsics implements ContextAccess {
 
     MethodHandleIntrinsics(EspressoContext context) {
         this.context = context;
-        invokeGenericIntrinsics = new ConcurrentHashMap<>();
-        invokeBasicIntrinsics = new ConcurrentHashMap<>();
-        linkToStaticIntrinsics = new ConcurrentHashMap<>();
-        linkToVirtualIntrinsics = new ConcurrentHashMap<>();
-        linkToSpecialIntrinsics = new ConcurrentHashMap<>();
-        linkToInterfaceIntrinsics = new ConcurrentHashMap<>();
+        this.invokeGenericIntrinsics = new ConcurrentHashMap<>();
+        this.invokeBasicIntrinsics = new ConcurrentHashMap<>();
+        this.linkToStaticIntrinsics = new ConcurrentHashMap<>();
+        this.linkToVirtualIntrinsics = new ConcurrentHashMap<>();
+        this.linkToSpecialIntrinsics = new ConcurrentHashMap<>();
+        this.linkToInterfaceIntrinsics = new ConcurrentHashMap<>();
     }
 
     @Override

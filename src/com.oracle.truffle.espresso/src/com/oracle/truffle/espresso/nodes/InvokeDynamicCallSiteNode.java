@@ -42,7 +42,7 @@ public final class InvokeDynamicCallSiteNode extends QuickNode {
     private final JavaKind returnKind;
     @Child private DirectCallNode callNode;
 
-    @CompilerDirectives.CompilationFinal(dimensions = 1) private Symbol<Symbol.Type>[] parsedSignature;
+    @CompilerDirectives.CompilationFinal(dimensions = 1) private Symbol<Type>[] parsedSignature;
 
     InvokeDynamicCallSiteNode(StaticObject memberName, StaticObject appendix, Symbol<Type>[] parsedSignature, Meta meta) {
         Method target = (Method) memberName.getHiddenField(meta.HIDDEN_VMTARGET);
