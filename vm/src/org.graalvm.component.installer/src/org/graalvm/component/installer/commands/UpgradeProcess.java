@@ -317,14 +317,15 @@ public class UpgradeProcess {
         Set<ComponentInfo> installables = null;
         Set<ComponentInfo> first = null;
         ComponentInfo result = null;
-
+        Set<String> toMigrate = new HashSet<>(existingComponents);
+        toMigrate.removeAll(explicitIds);
         for (Iterator<ComponentInfo> it = versions.iterator(); it.hasNext();) {
             ComponentInfo candidate = it.next();
             Set<ComponentInfo> instCandidates = findInstallables(candidate);
             if (first == null) {
                 first = instCandidates;
             }
-            if (allowMissing || instCandidates.size() == existingComponents.size()) {
+            if (allowMissing || instCandidates.size() == toMigrate.size()) {
                 installables = instCandidates;
                 result = candidate;
                 break;

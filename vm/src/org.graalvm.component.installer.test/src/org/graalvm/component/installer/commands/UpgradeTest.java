@@ -316,4 +316,23 @@ public class UpgradeTest extends CommandTestBase {
         cmd.execute();
     }
 
+    /**
+     * Checks that the 'components can migrate' check succeed, if an existing
+     * component is specified for upgrade
+     */
+    @Test
+    public void testUpgradeExistingComponent() throws Exception {
+        initVersion("1.0.0.0");
+        ComponentInfo ci = new ComponentInfo("org.graalvm.ruby", "Installed Ruby", "1.0.0.0");
+        storage.installed.add(ci);
+        textParams.add("ruby");
+
+        UpgradeCommand cmd = new UpgradeCommand();
+        cmd.init(this, this);
+        helper = cmd.getProcess();
+
+        ComponentInfo info = cmd.configureProcess();
+        assertNotNull(info);
+        assertEquals(Version.fromString("1.0.1"), info.getVersion());
+    }
 }
