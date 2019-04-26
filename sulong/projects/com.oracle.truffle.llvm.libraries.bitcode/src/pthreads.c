@@ -32,7 +32,7 @@
 #include <pthread.h>
 
 #include "unsupported.h"
-// deleted create, join, exit, mutex_lock, mutex_unlock, self, cond_wait, cond_signal
+// deleted create, join, exit, mutex_init, mutex_lock, mutex_unlock, self, cond_wait, cond_signal, mutexattr_init, mutexattr_settype
 int pthread_attr_destroy(pthread_attr_t *attr) {
   ERR_UNSUPPORTED(pthread_attr_destroy);
 }
@@ -146,9 +146,6 @@ int pthread_mutex_destroy(pthread_mutex_t *mutex) {
 int pthread_mutex_getprioceiling(const pthread_mutex_t *restrict mutex, int *restrict prioceiling) {
   ERR_UNSUPPORTED(pthread_mutex_getprioceiling);
 }
-int pthread_mutex_init(pthread_mutex_t *restrict mutex, const pthread_mutexattr_t *restrict attr) {
-  ERR_UNSUPPORTED(pthread_mutex_init);
-}
 int pthread_mutex_setprioceiling(pthread_mutex_t *restrict mutex, int prioceiling, int *restrict old_ceiling) {
   ERR_UNSUPPORTED(pthread_mutex_setprioceiling);
 }
@@ -170,9 +167,6 @@ int pthread_mutexattr_getpshared(const pthread_mutexattr_t *restrict attr, int *
 int pthread_mutexattr_gettype(const pthread_mutexattr_t *restrict attr, int *restrict type) {
   ERR_UNSUPPORTED(pthread_mutexattr_gettype);
 }
-int pthread_mutexattr_init(pthread_mutexattr_t *attr) {
-  ERR_UNSUPPORTED(pthread_mutexattr_init);
-}
 int pthread_mutexattr_setprioceiling(pthread_mutexattr_t *attr, int protocol) {
   ERR_UNSUPPORTED(pthread_mutexattr_setprioceiling);
 }
@@ -181,9 +175,6 @@ int pthread_mutexattr_setprotocol(pthread_mutexattr_t *attr, int protocol) {
 }
 int pthread_mutexattr_setpshared(pthread_mutexattr_t *attr, int pshared) {
   ERR_UNSUPPORTED(pthread_mutexattr_setpshared);
-}
-int pthread_mutexattr_settype(pthread_mutexattr_t *attr, int type) {
-  ERR_UNSUPPORTED(pthread_mutexattr_settype);
 }
 int pthread_once(pthread_once_t *once_control, void (*init_routine)(void)) {
   ERR_UNSUPPORTED(pthread_once);

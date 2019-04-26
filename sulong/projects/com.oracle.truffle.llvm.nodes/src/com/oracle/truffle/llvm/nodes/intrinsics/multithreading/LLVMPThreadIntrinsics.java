@@ -155,7 +155,9 @@ public class LLVMPThreadIntrinsics {
         protected int doIntrinsic(VirtualFrame frame, Object retval) {
             getContextReference().get().retValStorage.put(Thread.currentThread().getId(), retval);
             // stop this thread, does not work yet
-            Thread.currentThread().interrupt();
+            // Thread.currentThread().interrupt();
+            // Thread.currentThread().stop();
+            int i = 5;
             return 0;
         }
     }
@@ -196,6 +198,56 @@ public class LLVMPThreadIntrinsics {
         @Specialization
         protected long doIntrinsic(VirtualFrame frame) {
             return Thread.currentThread().getId();
+        }
+    }
+
+    @NodeChild(type = LLVMExpressionNode.class)
+    public abstract static class LLVMPThreadMutexattrInit extends LLVMBuiltin {
+        @Specialization
+        protected int doIntrinsic(VirtualFrame frame, Object attr) {
+            // do stuff here
+            return 25;
+        }
+    }
+
+    @NodeChild(type = LLVMExpressionNode.class)
+    @NodeChild(type = LLVMExpressionNode.class)
+    public abstract static class LLVMPThreadMutexattrSettype extends LLVMBuiltin {
+        @Specialization
+        protected int doIntrinsic(VirtualFrame frame, Object attr, Object type) {
+            // do stuff here
+            int i = 5;
+            if (attr == null)
+                return 25;
+            return 35;
+        }
+    }
+
+    @NodeChild(type = LLVMExpressionNode.class)
+    @NodeChild(type = LLVMExpressionNode.class)
+    public abstract static class LLVMPThreadMutexInit extends LLVMBuiltin {
+        @Specialization
+        protected int doIntrinsic(VirtualFrame frame, Object mutex, Object attr) {
+            // do stuff here
+            return 45;
+        }
+    }
+
+    @NodeChild(type = LLVMExpressionNode.class)
+    public abstract static class LLVMPThreadMutexLock extends LLVMBuiltin {
+        @Specialization
+        protected int doIntrinsic(VirtualFrame frame, Object mutex) {
+            // do stuff here
+            return 55;
+        }
+    }
+
+    @NodeChild(type = LLVMExpressionNode.class)
+    public abstract static class LLVMPThreadMutexUnlock extends LLVMBuiltin {
+        @Specialization
+        protected int doIntrinsic(VirtualFrame frame, Object mutex) {
+            // do stuff here
+            return 65;
         }
     }
 
