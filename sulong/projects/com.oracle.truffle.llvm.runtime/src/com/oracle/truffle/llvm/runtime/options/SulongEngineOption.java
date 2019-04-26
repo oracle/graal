@@ -101,7 +101,7 @@ public final class SulongEngineOption {
 
     public static final String LIBRARIES_NAME = "llvm.libraries";
     @Option(name = LIBRARIES_NAME, category = OptionCategory.USER, stability = OptionStability.STABLE, //
-            help = "List of libraries (precompiled libraires *.dylib/*.so as well as bitcode libraries *.bc). " + //
+            help = "List of libraries (precompiled libraries *.dylib/*.so as well as bitcode libraries *.bc). " + //
                    "Files with a relative path will be looked up relative to llvm.libraryPath. Libraries are delimited by " + OPTION_ARRAY_SEPARATOR + " .") //
     public static final OptionKey<String> LIBRARIES = new OptionKey<>("");
     // @formatter:on
