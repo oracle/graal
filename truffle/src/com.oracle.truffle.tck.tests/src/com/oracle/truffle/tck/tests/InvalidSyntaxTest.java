@@ -51,9 +51,7 @@ import org.junit.AfterClass;
 import org.junit.Test;
 import org.junit.runner.RunWith;
 import org.junit.runners.Parameterized;
-import org.graalvm.polyglot.Engine;
 import org.junit.Assume;
-import org.junit.Before;
 
 @RunWith(Parameterized.class)
 public class InvalidSyntaxTest {
@@ -80,14 +78,6 @@ public class InvalidSyntaxTest {
     public static void afterClass() throws IOException {
         context.close();
         context = null;
-    }
-
-    @Before
-    public void setUp() {
-        // JUnit mixes test executions from different classes. There are still tests using the
-        // deprecated PolyglotEngine. For tests executed by Parametrized runner
-        // creating Context as a test parameter we need to ensure that correct SPI is used.
-        Engine.create().close();
     }
 
     public InvalidSyntaxTest(final String testName, final Source source) {
