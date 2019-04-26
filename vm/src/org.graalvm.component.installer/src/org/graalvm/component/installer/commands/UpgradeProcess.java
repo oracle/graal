@@ -147,7 +147,7 @@ public class UpgradeProcess {
      * @return installation root for the core package.
      */
     Path findGraalVMParentPath() {
-        Path parent = input.getGraalHomePath().getParent();
+        Path parent = input.getGraalHomePath().normalize().getParent();
         if (parent == null) {
             return null;
         }
