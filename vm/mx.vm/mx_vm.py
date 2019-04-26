@@ -294,8 +294,9 @@ class BaseGraalVmLayoutDistribution(mx.LayoutDistribution):
                 lib_polyglot_project = get_lib_polyglot_project()
                 # Note that `jre/lib/polyglot` is synchronized with `org.graalvm.polyglot.install_name_id` in `get_lib_polyglot_project`
                 if not stage1:
+                    source_type = 'skip' if _skip_libraries(lib_polyglot_project.native_image_config) else 'dependency'
                     libpolyglot_dest = "<jre_base>/lib/polyglot/" + lib_polyglot_project.native_image_name
-                    _add(layout, libpolyglot_dest, "dependency:" + lib_polyglot_project.name)
+                    _add(layout, libpolyglot_dest, source_type + ":" + lib_polyglot_project.name)
                     _add(layout, "<jre_base>/lib/polyglot/", "dependency:" + lib_polyglot_project.name + "/*.h")
                 _add_native_image_macro(lib_polyglot_project.native_image_config)
 
@@ -828,7 +829,7 @@ class NativePropertiesBuildTask(mx.ProjectBuildTask):
             elif isinstance(image_config, mx_sdk.LauncherConfig) and 'PolyglotLauncher' in image_config.main_class:
                 build_args += ['-Dcom.oracle.graalvm.launcher.macrospaths=${.}/..']
 
-            source_type = 'skip' if _skip_libraries(image_config) else 'dependency'
+            source_type = 'skip' if isinstance(image_config, mx_sdk.LibraryConfig) and _skip_libraries(image_config) else 'dependency'
             graalvm_image_destination = graalvm_dist.find_single_source_location(source_type + ':' + project_name_f(image_config))
 
             if isinstance(image_config, mx_sdk.LauncherConfig) and image_config.is_sdk_launcher:
