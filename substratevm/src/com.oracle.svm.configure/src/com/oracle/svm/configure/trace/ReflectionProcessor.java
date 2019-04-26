@@ -86,8 +86,8 @@ class ReflectionProcessor extends AbstractProcessor {
         if (advisor.shouldIgnore(() -> callerClass)) {
             return;
         }
-        String declaringClass = (String) entry.get("declaring_class");
         ConfigurationMemberKind memberKind = ConfigurationMemberKind.PUBLIC;
+        String clazzOrDeclaringClass = entry.containsKey("declaring_class") ? (String) entry.get("declaring_class") : clazz;
         switch (function) {
             case "forName": {
                 assert clazz.equals("java.lang.Class");
@@ -126,16 +126,14 @@ class ReflectionProcessor extends AbstractProcessor {
 
             case "getDeclaredField":
                 memberKind = ConfigurationMemberKind.DECLARED;
-                clazz = (declaringClass != null) ? declaringClass : clazz;
                 // fall through
             case "getField": {
-                configuration.getOrCreateType(clazz).addField(singleElement(args), memberKind);
+                configuration.getOrCreateType(clazzOrDeclaringClass).addField(singleElement(args), memberKind);
                 break;
             }
 
             case "getDeclaredMethod":
                 memberKind = ConfigurationMemberKind.DECLARED;
-                clazz = (declaringClass != null) ? declaringClass : clazz;
                 // fall through
             case "getMethod": {
                 expectSize(args, 2);
@@ -144,7 +142,7 @@ class ReflectionProcessor extends AbstractProcessor {
                 if (parameterTypes == null) { // tolerated and equivalent to no parameter types
                     parameterTypes = Collections.emptyList();
                 }
-                configuration.getOrCreateType(clazz).addMethod(name, SignatureUtil.toInternalSignature(parameterTypes), memberKind);
+                configuration.getOrCreateType(clazzOrDeclaringClass).addMethod(name, SignatureUtil.toInternalSignature(parameterTypes), memberKind);
                 break;
             }
 
@@ -156,7 +154,7 @@ class ReflectionProcessor extends AbstractProcessor {
                     parameterTypes = Collections.emptyList();
                 }
                 String signature = SignatureUtil.toInternalSignature(parameterTypes);
-                configuration.getOrCreateType(clazz).addMethod(ConfigurationMethod.CONSTRUCTOR_NAME, signature, memberKind);
+                configuration.getOrCreateType(clazzOrDeclaringClass).addMethod(ConfigurationMethod.CONSTRUCTOR_NAME, signature, memberKind);
                 break;
             }
 
