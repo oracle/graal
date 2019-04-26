@@ -43,7 +43,7 @@ class FormatAccessors {
 
     private static String format = null;
 
-    public static String getFormat() {
+    public static String getFormat(java.util.logging.SimpleFormatter parent) {
         if (format == null) {
             /*
              * If multiple threads are doing the initialization at the same time it is not a problem
@@ -53,6 +53,10 @@ class FormatAccessors {
 
         }
         return format;
+    }
+
+    public static void setFormat(java.util.logging.SimpleFormatter parent, String f) {
+        format = f;
     }
 }
 
