@@ -489,7 +489,7 @@ final class JNIFunctions {
     @CEntryPoint(exceptionHandler = JNIExceptionHandlerReturnNullWord.class)
     @CEntryPointOptions(prologue = JNIEnvironmentEnterPrologue.class, publishAs = Publish.NotPublished, include = CEntryPointOptions.NotIncludedAutomatically.class)
     static CShortPointer GetStringChars(JNIEnvironment env, JNIObjectHandle hstr, CCharPointer isCopy) {
-        return Support.pinStringAndGetChars(hstr, isCopy);
+        return Support.getNulTerminatedStringCharsAndPin(hstr, isCopy);
     }
 
     @CEntryPoint(exceptionHandler = JNIExceptionHandlerVoid.class)
@@ -533,7 +533,7 @@ final class JNIFunctions {
     @CEntryPoint(exceptionHandler = JNIExceptionHandlerReturnNullWord.class)
     @CEntryPointOptions(prologue = JNIEnvironmentEnterPrologue.class, publishAs = Publish.NotPublished, include = CEntryPointOptions.NotIncludedAutomatically.class)
     static CShortPointer GetStringCritical(JNIEnvironment env, JNIObjectHandle hstr, CCharPointer isCopy) {
-        return Support.pinStringAndGetChars(hstr, isCopy);
+        return Support.getNulTerminatedStringCharsAndPin(hstr, isCopy);
     }
 
     @CEntryPoint(exceptionHandler = JNIExceptionHandlerVoid.class)
@@ -1032,7 +1032,7 @@ final class JNIFunctions {
             return fieldID;
         }
 
-        static CShortPointer pinStringAndGetChars(JNIObjectHandle hstr, CCharPointer isCopy) {
+        static CShortPointer getNulTerminatedStringCharsAndPin(JNIObjectHandle hstr, CCharPointer isCopy) {
             String str = JNIObjectHandles.getObject(hstr);
             if (str == null) {
                 return WordFactory.nullPointer();
@@ -1046,7 +1046,8 @@ final class JNIFunctions {
              * a JDK 9 UTF16 encoded String, we could avoid the copying. But it would require us to
              * know internals of the String implementation, so we do not do it for now.
              */
-            char[] chars = str.toCharArray();
+            char[] chars = new char[str.length() + 1];
+            str.getChars(0, str.length(), chars, 0);
             return JNIThreadLocalPinnedObjects.pinArrayAndGetAddress(chars);
         }
 
