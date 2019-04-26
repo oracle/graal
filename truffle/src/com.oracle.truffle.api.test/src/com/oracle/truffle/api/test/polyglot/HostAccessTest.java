@@ -65,6 +65,7 @@ import org.graalvm.polyglot.Context;
 import org.graalvm.polyglot.Engine;
 import org.graalvm.polyglot.HostAccess;
 import org.graalvm.polyglot.HostAccess.Export;
+import org.graalvm.polyglot.HostAccess.Implementable;
 import org.graalvm.polyglot.PolyglotException;
 import org.graalvm.polyglot.TypeLiteral;
 import org.graalvm.polyglot.Value;
@@ -399,6 +400,8 @@ public class HostAccessTest {
     private void setupEnv(HostAccess.Builder builder) {
         tearDown();
         if (builder != null) {
+            builder.allowImplementationsAnnotatedBy(FunctionalInterface.class);
+            builder.allowImplementationsAnnotatedBy(HostAccess.Implementable.class);
             builder.allowAccessAnnotatedBy(HostAccess.Export.class);
             setupEnv(builder.build());
         }
@@ -678,6 +681,7 @@ public class HostAccessTest {
         assertEquals("422", map.get("f1").o);
     }
 
+    @Implementable
     public interface ConverterProxy {
 
         TargetClass1 f0();

@@ -608,6 +608,11 @@ public final class Engine implements AutoCloseable {
         }
 
         @Override
+        public boolean allowsImplementation(HostAccess access, Class<?> type) {
+            return access.allowsImplementation(type);
+        }
+
+        @Override
         public List<Object> getTargetMappings(HostAccess access) {
             return access.getTargetMappings();
         }

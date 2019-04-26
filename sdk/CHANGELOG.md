@@ -2,6 +2,9 @@
 
 This changelog summarizes major changes between GraalVM SDK versions. The main focus is on APIs exported by GraalVM SDK.
 
+## Version 1.0.0 RC17
+* `Value.as(Interface.class)` now requires interface classes to be annotated with `HostAccess.Implementable` in `EXPLICIT` host access mode. Added new APIs to configure implementable behavior in HostAccess.
+
 ## Version 1.0.0 RC16
 * `--experimental-options` can now also be passed after polyglot options on the command line.
 * `--version` changed default message to `IMPLEMENTATION-NAME (ENGINE-NAME GRAALVM-VERSION)`

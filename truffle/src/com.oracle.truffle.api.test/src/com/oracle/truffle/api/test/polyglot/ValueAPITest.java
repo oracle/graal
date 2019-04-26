@@ -106,6 +106,7 @@ import com.oracle.truffle.api.nodes.RootNode;
 import com.oracle.truffle.api.test.CompileImmediatelyCheck;
 import com.oracle.truffle.api.test.polyglot.ValueAssert.Trait;
 import org.graalvm.polyglot.HostAccess;
+import org.graalvm.polyglot.HostAccess.Implementable;
 
 public class ValueAPITest {
 
@@ -1431,6 +1432,7 @@ public class ValueAPITest {
         ValueAssert.assertValue(v2);
     }
 
+    @Implementable
     public interface EmptyInterface {
 
         void foo();
