@@ -14,4 +14,27 @@ suite = {
       },
     ],
   },
+
+  "projects" : {
+    "com.oracle.truffle.wasm" : {
+      "subDir" : "src",
+      "sourceDirs" : ["src"],
+      "dependencies" : [],
+      "checkstyle" : "com.oracle.truffle.wasm",
+      "javaCompliance" : "1.8",
+      "annotationProcessors" : ["truffle:TRUFFLE_DSL_PROCESSOR"],
+      "workingSets" : "Truffle, WebAssembly",
+      "license" : "BSD-new",
+    },
+    "com.oracle.truffle.wasm.parser" : {
+      "subDir" : "src",
+      "sourceDirs" : ["src"],
+      "dependencies" : [],
+      "checkstyle" : "com.oracle.truffle.wasm",
+      "javaCompliance" : "1.8",
+      "annotationProcessors" : ["truffle:TRUFFLE_DSL_PROCESSOR"],
+      "workingSets" : "Truffle, WebAssembly",
+      "license" : "BSD-new",
+    }
+  }
 }
