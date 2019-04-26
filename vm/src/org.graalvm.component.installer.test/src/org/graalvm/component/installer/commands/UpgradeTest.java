@@ -27,6 +27,7 @@ package org.graalvm.component.installer.commands;
 import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
+import java.util.Arrays;
 import java.util.List;
 import org.graalvm.component.installer.BundleConstants;
 import org.graalvm.component.installer.CommandTestBase;
@@ -43,6 +44,7 @@ import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertNotNull;
 import static org.junit.Assert.assertNull;
+import static org.junit.Assert.assertTrue;
 import org.junit.Test;
 
 /**
@@ -317,8 +319,8 @@ public class UpgradeTest extends CommandTestBase {
     }
 
     /**
-     * Checks that the 'components can migrate' check succeed, if an existing
-     * component is specified for upgrade
+     * Checks that the 'components can migrate' check succeed, if an existing component is specified
+     * for upgrade.
      */
     @Test
     public void testUpgradeExistingComponent() throws Exception {
@@ -334,5 +336,79 @@ public class UpgradeTest extends CommandTestBase {
         ComponentInfo info = cmd.configureProcess();
         assertNotNull(info);
         assertEquals(Version.fromString("1.0.1"), info.getVersion());
+    }
+
+    /**
+     * Fails on non-empty directory.
+     */
+    @Test
+    public void testInstallIntoExistingNonempty() throws Exception {
+        initVersion("1.0.0.0");
+        ComponentInfo ci = new ComponentInfo("org.graalvm.ruby", "Installed Ruby", "1.0.0.0");
+        storage.installed.add(ci);
+        textParams.add("ruby");
+
+        UpgradeCommand cmd = new UpgradeCommand();
+        cmd.init(this, this);
+        helper = cmd.getProcess();
+
+        ComponentInfo info = cmd.configureProcess();
+        Path p = getGraalHomePath().normalize();
+        Path ndir = p.resolveSibling("graalvm-ce-1.0.1.0");
+        Files.createDirectories(ndir);
+        Files.write(ndir.resolve("some-content"), Arrays.asList("Fail"));
+
+        exception.expect(FailedOperationException.class);
+        exception.expectMessage("UPGRADE_TargetExistsNotEmpty");
+        helper.prepareInstall(info);
+    }
+
+    /**
+     * Fails on non-empty directory.
+     */
+    @Test
+    public void testInstallIntoExistingRelease() throws Exception {
+        initVersion("1.0.0.0");
+        ComponentInfo ci = new ComponentInfo("org.graalvm.ruby", "Installed Ruby", "1.0.0.0");
+        storage.installed.add(ci);
+        textParams.add("ruby");
+
+        UpgradeCommand cmd = new UpgradeCommand();
+        cmd.init(this, this);
+        helper = cmd.getProcess();
+
+        ComponentInfo info = cmd.configureProcess();
+        Path p = getGraalHomePath().normalize();
+        Path ndir = p.resolveSibling("graalvm-ce-1.0.1.0");
+        Files.createDirectories(ndir);
+        Files.write(ndir.resolve("some-content"), Arrays.asList("Fail"));
+        Path toCopy = dataFile("../persist/release_simple.properties");
+        Files.copy(toCopy, ndir.resolve("release"));
+
+        exception.expect(FailedOperationException.class);
+        exception.expectMessage("UPGRADE_TargetExistsContainsGraalVM");
+        helper.prepareInstall(info);
+    }
+
+    /**
+     * Allows to install to an empty location.
+     */
+    @Test
+    public void testInstallIntoExistingEmpty() throws Exception {
+        initVersion("1.0.0.0");
+        ComponentInfo ci = new ComponentInfo("org.graalvm.ruby", "Installed Ruby", "1.0.0.0");
+        storage.installed.add(ci);
+        textParams.add("ruby");
+
+        UpgradeCommand cmd = new UpgradeCommand();
+        cmd.init(this, this);
+        helper = cmd.getProcess();
+
+        ComponentInfo info = cmd.configureProcess();
+        Path p = getGraalHomePath().normalize();
+        Path ndir = p.resolveSibling("graalvm-ce-1.0.1.0");
+        Files.createDirectories(ndir);
+
+        assertTrue(helper.prepareInstall(info));
     }
 }

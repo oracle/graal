@@ -54,7 +54,7 @@ public class VersionTest {
         assertTrue(Version.NO_VERSION.compareTo(Version.NO_VERSION) == 0);
         assertTrue(Version.NO_VERSION.equals(Version.NO_VERSION));
     }
-    
+
     @Test
     public void testNormalizeTo4Numbers() throws Exception {
         assertEquals("1.0.0.0-r", Version.fromString("1.0-r").toString());
@@ -73,31 +73,31 @@ public class VersionTest {
         exception.expect(IllegalArgumentException.class);
         assertEquals("1-r", Version.fromString("1.0.0.0.0-r").toString());
     }
-    
+
     private static void assertOlder(String older, String newer) {
-        assertTrue("Versions didn't compare " + older + " < " + newer, 
-                Version.fromString(older).compareTo(Version.fromString(newer)) < 0);
+        assertTrue("Versions didn't compare " + older + " < " + newer,
+                        Version.fromString(older).compareTo(Version.fromString(newer)) < 0);
         assertFalse(older.equals(newer));
     }
 
     @Test
     public void testVersionOrder() throws Exception {
         String[] versionSequence = {
-            "1.0",
-            "1.0.1",
-            "1.1.0",
-            "1.1.0-0.dev.1",
-            "1.1.0-0.dev.2",
-            "1.1.0-0.dev.10",
-            "1.1.0-1.beta.9",
-            "1.1.0-1.beta.10",
-            "1.1.0-1.beta.13",
-            "1.1.0-2",
-            "1.1.0.2-0.rc.1",
-            "1.1.0.2-1",
-            "1.1.0.3",
+                        "1.0",
+                        "1.0.1",
+                        "1.1.0",
+                        "1.1.0-0.dev.1",
+                        "1.1.0-0.dev.2",
+                        "1.1.0-0.dev.10",
+                        "1.1.0-1.beta.9",
+                        "1.1.0-1.beta.10",
+                        "1.1.0-1.beta.13",
+                        "1.1.0-2",
+                        "1.1.0.2-0.rc.1",
+                        "1.1.0.2-1",
+                        "1.1.0.3",
         };
-        
+
         for (int i = 0; i < versionSequence.length; i++) {
             for (int j = i + 1; j < versionSequence.length; j++) {
                 assertOlder(versionSequence[i], versionSequence[j]);
