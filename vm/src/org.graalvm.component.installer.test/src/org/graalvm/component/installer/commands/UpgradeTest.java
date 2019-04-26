@@ -27,9 +27,11 @@ package org.graalvm.component.installer.commands;
 import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
+import java.util.List;
 import org.graalvm.component.installer.BundleConstants;
 import org.graalvm.component.installer.CommandTestBase;
 import org.graalvm.component.installer.Commands;
+import org.graalvm.component.installer.ComponentParam;
 import org.graalvm.component.installer.FailedOperationException;
 import org.graalvm.component.installer.Version;
 import org.graalvm.component.installer.model.CatalogContents;
@@ -248,6 +250,36 @@ public class UpgradeTest extends CommandTestBase {
         assertNotNull(info);
         boolean inst = helper.installGraalCore(info);
         assertFalse(inst);
+    }
+
+    /**
+     * Upgrade command is used to install a new component, but the core is most recent one and need
+     * not to be upgraded. Component must go to the existing install.
+     * 
+     * @throws Exception
+     */
+    @Test
+    public void testInstallNewWithoutCoreUpgrade() throws Exception {
+        initVersion("1.0.1.0");
+        textParams.add("ruby");
+
+        UpgradeCommand cmd = new UpgradeCommand();
+        cmd.init(this, this);
+        helper = cmd.getProcess();
+
+        ComponentInfo info = cmd.configureProcess();
+        assertNotNull(info);
+        // will not install core
+        assertFalse(helper.installGraalCore(info));
+        assertNull(helper.getTargetInfo());
+
+        // found the current graalvm:
+        assertEquals(getLocalRegistry().getGraalVersion(), info.getVersion());
+        List<ComponentParam> toDownload = helper.allComponents();
+
+        // no component (e.g. migration) was added, requested ruby is in there
+        assertEquals(1, toDownload.size());
+        assertEquals("org.graalvm.ruby", toDownload.get(0).getShortName());
     }
 
     /**

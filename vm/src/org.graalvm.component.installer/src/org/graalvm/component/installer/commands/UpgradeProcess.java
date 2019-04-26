@@ -202,6 +202,7 @@ public class UpgradeProcess {
         }
         if (min.compareTo(info.getVersion()) >= 0) {
             feedback.message("UPGRADE_NoUpdateLatestVersion", min);
+            migrated.clear();
             return false;
         }
 
@@ -297,7 +298,7 @@ public class UpgradeProcess {
         }
         Collection<ComponentInfo> graals = catalog.loadComponents(BundleConstants.GRAAL_COMPONENT_ID,
                         filter, false);
-        if (graals.isEmpty()) {
+        if (graals == null || graals.isEmpty()) {
             return null;
         }
         List<ComponentInfo> versions = new ArrayList<>(graals);
@@ -340,8 +341,12 @@ public class UpgradeProcess {
             installables = first;
         }
         migrated.clear();
-        migrated.addAll(installables);
-        return targetInfo = result;
+        // if the result GraalVM is identical to current, do not migrate anything.
+        if (result != null && !input.getLocalRegistry().getGraalVersion().equals(result.getVersion())) {
+            migrated.addAll(installables);
+            targetInfo = result;
+        }
+        return result;
     }
 
     public boolean didUpgrade() {
