@@ -32,6 +32,7 @@ import java.util.Collections;
 import java.util.HashMap;
 import java.util.Iterator;
 import java.util.List;
+import java.util.Locale;
 import java.util.Map;
 import java.util.Set;
 import org.graalvm.component.installer.CommonConstants;
@@ -201,12 +202,14 @@ public class CatalogContents implements ComponentCollection {
 
     private String findAbbreviatedId(String id) {
         String candidate = null;
-        String end = "." + id.toLowerCase(); // NOI18N
+        String lcid = id.toLowerCase(Locale.ENGLISH);
+        String end = "." + lcid; // NOI18N
         for (String s : getComponentIDs()) {
-            if (s.equals(id)) {
-                return id;
+            String lcs = s.toLowerCase();
+            if (lcs.equals(lcid)) {
+                return s;
             }
-            if (s.toLowerCase().endsWith(end)) {
+            if (lcs.toLowerCase().endsWith(end)) {
                 if (candidate != null) {
                     throw env.failure("COMPONENT_AmbiguousIdFound", null, candidate, s);
                 }

@@ -108,6 +108,9 @@ public class ComponentRegistryTest extends TestBase {
         tmp = new ComponentInfo("org.github.clash", "Test component 3", "0.32");
         mockStorage.installed.add(tmp);
         tmp2 = tmp;
+
+        tmp = new ComponentInfo("org.graalvm.Uppercase", "Test component 4", "0.32");
+        mockStorage.installed.add(tmp);
     }
 
     @After
@@ -280,4 +283,17 @@ public class ComponentRegistryTest extends TestBase {
         assertFalse(registry.isReplacedFilesChanged());
     }
 
+    @Test
+    public void testFindUppercaseIDComponent() throws Exception {
+        registerAdditionalComponents();
+        ComponentInfo ci = registry.findComponent("org.graalvm.Uppercase");
+        assertNotNull(ci);
+    }
+
+    @Test
+    public void testFindUppercaseIDComponentWithLowercaseExor() throws Exception {
+        registerAdditionalComponents();
+        ComponentInfo ci = registry.findComponent("org.graalvm.uppercase");
+        assertNotNull(ci);
+    }
 }
