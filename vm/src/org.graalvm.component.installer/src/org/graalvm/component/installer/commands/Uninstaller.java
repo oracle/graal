@@ -117,7 +117,7 @@ public class Uninstaller {
             Set<PosixFilePermission> restoreDirPermissions = null;
             if (attrs != null) {
                 Files.setPosixFilePermissions(p, ALL_WRITE_PERMS);
-                Path d = p.getParent();
+                Path d = p.normalize().getParent();
                 // set the parent directory's permissions, but do not
                 // alter permissions outside the to-be-deleted tree:
                 if (d == null) {
