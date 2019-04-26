@@ -230,7 +230,7 @@ public class UpgradeTest extends CommandTestBase {
         cmd.execute();
 
         Version installedGraalVMVersion = cmd.getProcess().getNewGraalRegistry().getGraalVersion();
-        assertEquals("1.1.1-0.rc.1", installedGraalVMVersion.toString());
+        assertEquals("1.1.1-0.rc.1", installedGraalVMVersion.originalString());
         assertNull("Ruby should not be migrated", cmd.getProcess().getNewGraalRegistry().findComponent("ruby"));
     }
 

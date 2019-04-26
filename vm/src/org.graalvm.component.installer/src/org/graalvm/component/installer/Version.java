@@ -71,7 +71,8 @@ public final class Version implements Comparable<Version> {
         if (vp.size() < 2 || vp.size() > 4 || !Character.isDigit(vp.get(0).charAt(0)) || !Character.isDigit(vp.get(1).charAt(0))) {
             throw new IllegalArgumentException("A format Year.Release[.Update[.Patch]] is required. Got: " + versionString);
         }
-        if (releaseParts.isEmpty() && vp.size() < 4 && !isOldStyleVersion(vp.get(0))) {
+        // normalize all, not just releases, as releases are now "-1".
+        if (vp.size() < 4 && !isOldStyleVersion(vp.get(0))) {
             vp = new ArrayList<>(vp);
             while (vp.size() < 4) {
                 vp.add("0");
@@ -85,7 +86,8 @@ public final class Version implements Comparable<Version> {
 
     static boolean isOldStyleVersion(String s) {
         try {
-            return Integer.parseInt(s) < 19;
+            // now mainly for ancient test data. PEDNING: update test data.
+            return Integer.parseInt(s) < 1;
         } catch (NumberFormatException ex) {
             // expected
             return false;
@@ -102,11 +104,13 @@ public final class Version implements Comparable<Version> {
         }
         if (!rParts.isEmpty()) {
             sb.append('-');
+            boolean n = false;
             for (String rp : rParts) {
-                if (sb.length() > 0) {
+                if (n) {
                     sb.append('.');
                 }
                 sb.append(rp);
+                n = true;
             }
         }
         return sb.toString();
@@ -116,7 +120,7 @@ public final class Version implements Comparable<Version> {
         this.versionParts = new ArrayList<>(vParts);
         this.releaseParts = new ArrayList<>(rParts);
         this.versionString = print(vParts, rParts);
-        if (releaseParts.isEmpty() && vParts.size() < 4 && isOldStyleVersion(vParts.get(0))) {
+        if (vParts.size() < 4 && isOldStyleVersion(vParts.get(0))) {
             while (versionParts.size() < 4) {
                 versionParts.add("0");
             }
