@@ -36,6 +36,7 @@ CLANG?=clang
 
 ifeq ($(OS), darwin)
 LDFLAGS=-dynamiclib -g
+bin/${LIBSULONG}: LDFLAGS+=-install_name ${LIBSULONG}
 else
 LDFLAGS=-shared -g
 endif

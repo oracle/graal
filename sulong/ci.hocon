@@ -31,6 +31,9 @@ sulong-gateTest38-linux: ${sulong-gateTest-linux} {
     packages: {
         llvm: "==3.8"
     }
+    environment: {
+        NO_FEMBED_BITCODE: "true"
+    }
 }
 
 sulong-gateTest40-linux: ${sulong-gateTest-linux} {

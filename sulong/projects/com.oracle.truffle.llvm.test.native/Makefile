@@ -1,5 +1,5 @@
 #
-# Copyright (c) 2017, 2018, Oracle and/or its affiliates.
+# Copyright (c) 2017, 2019, Oracle and/or its affiliates.
 #
 # All rights reserved.
 #
@@ -39,9 +39,12 @@ SOURCES=${SOURCE_FILES:${VPATH}/%=%}
 OBJECTS=${SOURCES:src/%.c=bin/%.o}
 
 default: bin/$(LIBSULONGTEST)
+ifeq ($(OS), darwin)
+bin/${LIBSULONGTEST}: LDFLAGS+=-install_name ${LIBSULONGTEST}
+endif
 
 bin/$(LIBSULONGTEST): $(OBJECTS)
-	$(QUIETLY) $(CLANG) -shared -fPIC -o $@ $+
+	$(QUIETLY) $(CLANG) -shared -fPIC ${LDFLAGS} -o $@ $+
 
 bin/%.o: src/%.c
 	@mkdir -p bin

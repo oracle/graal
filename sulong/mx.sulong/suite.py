@@ -68,6 +68,7 @@ suite = {
       "javaCompliance" : "1.8",
       "javaProperties" : {
         "test.sulongtest.lib" : "<path:SULONG_TEST_NATIVE>/<lib:sulongtest>",
+        "test.sulongtest.lib.path" : "<path:SULONG_TEST_NATIVE>",
       },
       "workingSets" : "Truffle, LLVM",
       "license" : "BSD-new",
@@ -83,6 +84,7 @@ suite = {
       ],
       "buildEnv" : {
         "LIBSULONGTEST" : "<lib:sulongtest>",
+        "OS" : "<os>",
       },
       "license" : "BSD-new",
       "testProject" : True,
@@ -301,6 +303,7 @@ suite = {
       "buildEnv" : {
         "CFLAGS" : "<clangImplicitArgs>",
         "LIB_POLYGLOT" : "<lib:polyglot-mock>",
+        "OS" : "<os>",
       },
       "license" : "BSD-new",
     },
@@ -368,14 +371,33 @@ suite = {
       "class" : "SulongTestSuite",
       "variants" : ["O0_MEM2REG"],
       "buildRef" : False,
+      "buildSharedObject" : True,
       "buildEnv" : {
         "SUITE_CPPFLAGS" : "-I<path:SULONG_LEGACY>/include -I<path:SULONG_HOME>/include -g",
+        "OS" : "<os>",
+      },
+      "os_arch" : {
+        "darwin": {
+          "<others>" : {
+            "buildEnv" : {
+              "SUITE_LDFLAGS" : "-lpolyglot-mock -L<path:SULONG_HOME>/native/lib -lsulongtest -L<path:SULONG_TEST_NATIVE>",
+            },
+          },
+        },
+        "<others>": {
+          "<others>": {
+            "buildEnv" : {
+              "SUITE_LDFLAGS" : "--no-undefined -lpolyglot-mock -L<path:SULONG_HOME>/native/lib -Wl,--undefined=callbackPointerArgTest -lsulongtest -L<path:SULONG_TEST_NATIVE>",
+            },
+          },
+        },
       },
       "dependencies" : [
         "SULONG_TEST",
       ],
       "buildDependencies" : [
         "SULONG_HOME",
+        "SULONG_TEST_NATIVE",
       ],
       "testProject" : True,
       "defaultBuild" : False,
