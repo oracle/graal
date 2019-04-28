@@ -3,7 +3,6 @@ package com.oracle.truffle.llvm.nodes.intrinsics.multithreading;
 import java.io.FileWriter;
 import java.io.IOException;
 import java.io.PrintWriter;
-import java.util.Random;
 import java.util.concurrent.atomic.AtomicInteger;
 
 import com.oracle.truffle.api.CompilerDirectives;
@@ -13,20 +12,14 @@ import com.oracle.truffle.api.dsl.NodeChild;
 import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.frame.FrameSlot;
 import com.oracle.truffle.api.frame.VirtualFrame;
-import com.oracle.truffle.api.interop.TruffleObject;
-import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.api.nodes.RootNode;
-import com.oracle.truffle.llvm.nodes.func.LLVMCallNode;
 import com.oracle.truffle.llvm.nodes.intrinsics.llvm.LLVMBuiltin;
-import com.oracle.truffle.llvm.nodes.memory.store.LLVMPointerStoreNode;
-import com.oracle.truffle.llvm.nodes.memory.store.LLVMPointerStoreNodeGen;
-import com.oracle.truffle.llvm.runtime.LLVMFunctionDescriptor;
 import com.oracle.truffle.llvm.runtime.LLVMLanguage;
 import com.oracle.truffle.llvm.runtime.interop.access.LLVMInteropType;
 import com.oracle.truffle.llvm.runtime.memory.LLVMStack;
 import com.oracle.truffle.llvm.runtime.nodes.api.LLVMExpressionNode;
+import com.oracle.truffle.llvm.runtime.nodes.api.LLVMLoadNode;
 import com.oracle.truffle.llvm.runtime.nodes.api.LLVMStoreNode;
-import com.oracle.truffle.llvm.runtime.pointer.LLVMManagedPointer;
 import com.oracle.truffle.llvm.runtime.pointer.LLVMNativePointer;
 import com.oracle.truffle.llvm.runtime.pointer.LLVMPointer;
 import com.oracle.truffle.llvm.runtime.types.FunctionType;
@@ -64,7 +57,7 @@ public class LLVMPThreadIntrinsics {
             // create store node
             if (store == null) {
                 CompilerDirectives.transferToInterpreterAndInvalidate();
-                store = getContextReference().get().getNodeFactory().createStoreNode(LLVMInteropType.ValueKind.POINTER);
+                store = getContextReference().get().getNodeFactory().createStoreNode(LLVMInteropType.ValueKind.I64);
             }
 
             // create thread for execution of function
@@ -73,7 +66,6 @@ public class LLVMPThreadIntrinsics {
                 RootCallTarget callTarget = Truffle.getRuntime().createCallTarget(new RunNewThreadNode(getLLVMLanguage()));
                 callTarget.call(startRoutine, arg);
             });
-
             // store cur id in thread var
             store.executeWithTarget(thread, t.getId());
 
@@ -217,6 +209,8 @@ public class LLVMPThreadIntrinsics {
         @Specialization
         protected int doIntrinsic(VirtualFrame frame, Object attr) {
             // TODO: how to handle pthread_mutexattr_t?
+            // seems like pthread_mutexattr_t is just an int in the header / lib sulong uses
+            // so no need to init here
             return 0;
         }
     }
@@ -229,16 +223,19 @@ public class LLVMPThreadIntrinsics {
         @Specialization
         protected int doIntrinsic(VirtualFrame frame, Object attr, Object type) {
             // TODO: how to handle pthread_mutexattr_t? how to save type info to it?
+            // seems like pthread_mutexattr_t is just an int in the header / lib sulong uses
+            // so we just write the int-value type to the address attr points to
             // create store node
             if (store == null) {
                 CompilerDirectives.transferToInterpreterAndInvalidate();
-                store = getContextReference().get().getNodeFactory().createStoreNode(LLVMInteropType.ValueKind.POINTER);
+                store = getContextReference().get().getNodeFactory().createStoreNode(LLVMInteropType.ValueKind.I32);
             }
             // store type in attr var
             if (type == null)
-                type = new Integer(0);
-            // cannot convert int to nativepointer or so...
-            // store.executeWithTarget(attr, typePtr);
+                type = new Integer(512);
+            store.executeWithTarget(attr, type);
+            // TODO: return with error if type not in {512, 1, 2}
+            // look up fitting error code
             return 0;
         }
     }
@@ -246,8 +243,15 @@ public class LLVMPThreadIntrinsics {
     @NodeChild(type = LLVMExpressionNode.class)
     @NodeChild(type = LLVMExpressionNode.class)
     public abstract static class LLVMPThreadMutexInit extends LLVMBuiltin {
+        @Child
+        LLVMLoadNode read = null;
+
         @Specialization
         protected int doIntrinsic(VirtualFrame frame, Object mutex, Object attr) {
+            if (read == null) {
+                CompilerDirectives.transferToInterpreterAndInvalidate();
+                read = getContextReference().get().getNodeFactory().createLoadNode(LLVMInteropType.ValueKind.I32);
+            }
             // TODO: change from "AtomicInteger" to "Mutex" bc we need both lock count and owner thread id
             // we can use the address of the native pointer here, bc a mutex
             // must only work when using the original variable, not a copy
@@ -257,6 +261,11 @@ public class LLVMPThreadIntrinsics {
             if (mutObj == null) {
                 getContextReference().get().mutexStorage.put(mutexAddr, new AtomicInteger(0));
             }
+            Object attrObj = read.executeWithTarget(attr);
+            // already works, attrObj now has type code
+            // so now save this type info for the mutex
+            // and later use it in mutex lock (ERRORCHECK, RECURSIVE, DEFAULT, NORMAL)
+            // ...
             return 0;
         }
     }
@@ -305,9 +314,11 @@ public class LLVMPThreadIntrinsics {
         }
     }
 
+    @NodeChild(type = LLVMExpressionNode.class)
     public abstract static class LLVMPThreadMyTest extends LLVMBuiltin {
         @Specialization
-        protected int doIntrinsic(VirtualFrame frame) {
+        protected int doIntrinsic(VirtualFrame frame, Object arg) {
+            int i = 5;
             return 35; // just to test return 35
         }
     }
