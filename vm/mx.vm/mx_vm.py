@@ -219,7 +219,7 @@ class BaseGraalVmLayoutDistribution(mx.LayoutDistribution):
         def _add_native_image_macro(image_config, component=None):
             if svm_component:
                 # create macro to build this launcher
-                _macro_dir = _get_component_type_base(svm_component) + '/' + svm_component.dir_name + '/macros/' + GraalVmNativeProperties.macro_name(image_config) + '/'
+                _macro_dir = _get_component_type_base(svm_component) + svm_component.dir_name + '/macros/' + GraalVmNativeProperties.macro_name(image_config) + '/'
                 _project_name = GraalVmNativeProperties.project_name(image_config)
                 _add(layout, _macro_dir, 'dependency:{}'.format(_project_name), component)  # native-image.properties is the main output
                 if isinstance(image_config, mx_sdk.LanguageLauncherConfig):
