@@ -39,6 +39,7 @@ import org.graalvm.component.installer.ComponentCollection;
 import org.graalvm.component.installer.ComponentParam;
 import org.graalvm.component.installer.Feedback;
 import org.graalvm.component.installer.InstallerCommand;
+import org.graalvm.component.installer.Version;
 import org.graalvm.component.installer.model.ComponentInfo;
 import org.graalvm.component.installer.model.ComponentRegistry;
 
@@ -157,18 +158,23 @@ public abstract class QueryCommandBase implements InstallerCommand {
     void printDetails(ComponentParam param, ComponentInfo info) {
         if (printTable) {
             String line = String.format(feedback.l10n("LIST_ComponentShortList"),
-                            shortenComponentId(info), info.getVersionString(), info.getName());
+                            shortenComponentId(info), info.getVersion().displayString(), info.getName());
             feedback.verbatimOut(line, false);
             return;
         } else {
             feedback.output("LIST_ComponentBasicInfo",
-                            shortenComponentId(info), info.getVersionString(), info.getName(),
+                            shortenComponentId(info), info.getVersion().displayString(), info.getName(),
                             findRequiredGraalVMVersion(info));
         }
     }
 
     protected String findRequiredGraalVMVersion(ComponentInfo info) {
-        return val(info.getRequiredGraalValues().get(CAP_GRAALVM_VERSION));
+        String s = info.getRequiredGraalValues().get(CAP_GRAALVM_VERSION);
+        if (s == null) {
+            return val(s);
+        }
+        Version v = Version.fromString(s);
+        return v.displayString();
     }
 
     void printFileList(ComponentInfo info) {

@@ -43,6 +43,7 @@ import org.graalvm.component.installer.Feedback;
 import org.graalvm.component.installer.FileIterable;
 import org.graalvm.component.installer.FileIterable.FileComponent;
 import org.graalvm.component.installer.SoftwareChannel;
+import org.graalvm.component.installer.UnknownVersionException;
 import org.graalvm.component.installer.Version;
 import org.graalvm.component.installer.model.ComponentInfo;
 import org.graalvm.component.installer.persist.MetadataLoader;
@@ -131,7 +132,16 @@ public class CatalogIterable implements ComponentIterable {
                 if (m[0].getType() == Version.Match.Type.MOSTRECENT && versionFilter != null) {
                     m[0] = versionFilter;
                 }
-                info = getRegistry().findComponent(id, m[0]);
+                try {
+                    info = getRegistry().findComponent(id, m[0]);
+                } catch (UnknownVersionException ex) {
+                    // could not find anything to match the user version against
+                    if (ex.getCandidate() == null) {
+                        throw feedback.failure("REMOTE_NoSpecificVersion", ex, id, m[0].getVersion().displayString());
+                    } else {
+                        throw feedback.failure("REMOTE_NoSpecificVersion2", ex, id, m[0].getVersion().displayString(), ex.getCandidate().displayString());
+                    }
+                }
                 if (info == null) {
                     // must be already initialized
                     Version gv = input.getLocalRegistry().getGraalVersion();
@@ -147,7 +157,7 @@ public class CatalogIterable implements ComponentIterable {
                             throw feedback.failure("REMOTE_UpgradeGraalVMCore", null, id, rvs);
                         }
                         if (m[0].getType() == Version.Match.Type.EXACT) {
-                            throw feedback.failure("REMOTE_NoSpecificVersion", null, id, m[0].getVersion().originalString());
+                            throw feedback.failure("REMOTE_NoSpecificVersion", null, id, m[0].getVersion().displayString());
                         }
                     }
                     // last try, catch obsolete components:

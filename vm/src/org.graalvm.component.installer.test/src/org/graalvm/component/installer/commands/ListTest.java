@@ -157,8 +157,9 @@ public class ListTest extends CommandTestBase {
                 return false;
             }
         };
+        textParams.add("ruby");
         textParams.add("r");
-        textParams.add("pyth");
+        textParams.add("python");
         inst.init(this, this);
 
         inst.execute();
@@ -215,7 +216,8 @@ public class ListTest extends CommandTestBase {
             }
         };
         textParams.add("r");
-        textParams.add("pyth");
+        textParams.add("ruby");
+        textParams.add("python");
         inst.init(this, this.withBundle(ListInstalledCommand.class));
 
         inst.execute();

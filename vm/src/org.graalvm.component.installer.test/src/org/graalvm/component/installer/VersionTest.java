@@ -57,9 +57,9 @@ public class VersionTest {
 
     @Test
     public void testNormalizeTo4Numbers() throws Exception {
-        assertEquals("1.0.0.0-r", Version.fromString("1.0-r").toString());
-        assertEquals("1.0.0.0-r", Version.fromString("1.0.0-r").toString());
-        assertEquals("1.0.0.0-r", Version.fromString("1.0.0.0-r").toString());
+        assertEquals("1.0.0.0-0.r", Version.fromString("1.0-r").toString());
+        assertEquals("1.0.0.0-0.r", Version.fromString("1.0.0-r").toString());
+        assertEquals("1.0.0.0-0.r", Version.fromString("1.0.0.0-r").toString());
     }
 
     @Test
@@ -88,10 +88,15 @@ public class VersionTest {
                         "1.1.0",
                         "1.1.0-0.dev.1",
                         "1.1.0-0.dev.2",
+                        "1.1.0-0.dev8",
                         "1.1.0-0.dev.10",
+                        "1.1.0-0.dev13",
+                        "1.1.0-1.beta1",
+                        "1.1.0-1.beta-3",
                         "1.1.0-1.beta.9",
                         "1.1.0-1.beta.10",
                         "1.1.0-1.beta.13",
+                        "1.1.0-1.beta15",
                         "1.1.0-2",
                         "1.1.0.2-0.rc.1",
                         "1.1.0.2-1",
@@ -103,5 +108,33 @@ public class VersionTest {
                 assertOlder(versionSequence[i], versionSequence[j]);
             }
         }
+    }
+
+    @Test
+    public void testComponentizeVersion() {
+        assertEquals("1.0.0.0-0.rc.1", Version.fromString("1.0.0-rc1").toString());
+    }
+
+    @Test
+    public void testDisplayReleaseVersions() {
+        assertEquals("1.0.0", Version.fromString("1.0.0.0").displayString());
+        assertEquals("1.0.0", Version.fromString("1.0.0.0-1").displayString());
+    }
+
+    @Test
+    public void testDisplayPreReleases() {
+        assertEquals("1.0.0-rc1", Version.fromString("1.0.0.0-1.rc.1").displayString());
+        assertEquals("1.0.0-rc9", Version.fromString("1.0.0.0-1.rc.9").displayString());
+    }
+
+    @Test
+    public void testDisplayPreReleaseBuilds() {
+        assertEquals("1.0.0-beta1.1", Version.fromString("1.0.0.0-1.beta.1.1").displayString());
+        assertEquals("1.0.0-beta1.b2", Version.fromString("1.0.0.0-1.beta.1.b.2").displayString());
+    }
+
+    @Test
+    public void testDisplayWildardVersions() {
+        assertEquals("1.0.0-beta1.1", Version.fromString("1.0.0.0-*.beta.1.1").displayString());
     }
 }
