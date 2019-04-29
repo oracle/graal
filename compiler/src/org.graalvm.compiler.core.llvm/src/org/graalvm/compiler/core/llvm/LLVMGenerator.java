@@ -850,9 +850,9 @@ public class LLVMGenerator implements LIRGeneratorTool {
     }
 
     @Override
-    public Variable emitArrayIndexOf(JavaKind kind, boolean findTwoConsecutive, Value sourcePointer, Value sourceCount, Value... searchValues) {
+    public Variable emitArrayIndexOf(JavaKind arrayKind, JavaKind valueKind, boolean findTwoConsecutive, Value arrayPointer, Value arrayCount, Value fromIndexVal, Value... searchValues) {
         JavaKind comparisonKind;
-        switch (kind) {
+        switch (valueKind) {
             case Byte:
                 comparisonKind = findTwoConsecutive ? JavaKind.Short : JavaKind.Byte;
                 break;
@@ -861,16 +861,18 @@ public class LLVMGenerator implements LIRGeneratorTool {
                 comparisonKind = findTwoConsecutive ? JavaKind.Int : JavaKind.Short;
                 break;
             default:
-                throw shouldNotReachHere("invalid array index of kind " + kind.toString());
+                throw shouldNotReachHere("invalid array index of kind " + valueKind.toString());
         }
         LLVMTypeRef comparisonType = builder.getLLVMType(comparisonKind);
-        LLVMTypeRef elemType = builder.getLLVMType(kind);
+        LLVMTypeRef elemType = builder.getLLVMType(valueKind);
 
-        LLVMValueRef array = getVal(sourcePointer);
-        assert LLVMIRBuilder.isIntegerType(typeOf(array)) && LLVMIRBuilder.integerTypeWidth(typeOf(array)) == 64;
-        array = builder.buildIntToPtr(array, builder.pointerType(elemType, false));
+        LLVMValueRef array = builder.buildAddrSpaceCast(getVal(arrayPointer), builder.rawPointerType());
+        array = builder.buildGEP(array, builder.constantInt(getProviders().getMetaAccess().getArrayBaseOffset(arrayKind)));
+        array = builder.buildBitcast(array, builder.pointerType(elemType, false));
 
-        LLVMValueRef count = getVal(sourceCount);
+        LLVMValueRef fromIndex = getVal(fromIndexVal);
+
+        LLVMValueRef count = getVal(arrayCount);
         assert LLVMIRBuilder.isIntegerType(typeOf(count)) && LLVMIRBuilder.integerTypeWidth(typeOf(count)) == 32;
         if (findTwoConsecutive) {
             count = builder.buildSub(count, builder.constantInt(1));
@@ -896,7 +898,7 @@ public class LLVMGenerator implements LIRGeneratorTool {
         builder.positionAtEnd(loopBlock);
 
         LLVMBasicBlockRef[] incomingBlocks = {startBlock};
-        LLVMValueRef[] incomingIValues = {builder.constantInt(0)};
+        LLVMValueRef[] incomingIValues = {fromIndex};
         LLVMValueRef i = builder.buildPhi(builder.intType(), incomingIValues, incomingBlocks);
         LLVMValueRef[] incomingIndexValues = {builder.constantInt(-1)};
         LLVMValueRef index = builder.buildPhi(builder.intType(), incomingIndexValues, incomingBlocks);
