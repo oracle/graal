@@ -31,7 +31,7 @@ public class CommonConstants {
     /**
      * The installer's version. Printed as part of the help message.
      */
-    public static final String INSTALLER_VERSION = "1.0.0"; // NOI18N
+    public static final String INSTALLER_VERSION = "2.0.0"; // NOI18N
 
     public static final String CAP_GRAALVM_VERSION = "graalvm_version";
     public static final String CAP_OS_ARCH = "os_arch";
