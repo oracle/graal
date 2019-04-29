@@ -41,6 +41,7 @@
 package com.oracle.truffle.api.debug;
 
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
+import com.oracle.truffle.api.debug.Breakpoint.SessionList;
 import com.oracle.truffle.api.debug.DebuggerSession.ThreadSuspension;
 import com.oracle.truffle.api.dsl.Cached;
 import com.oracle.truffle.api.dsl.Specialization;
@@ -55,15 +56,15 @@ abstract class SetThreadSuspensionEnabledNode extends Node {
 
     static final int CACHE_LIMIT = 10;
 
-    public final void execute(boolean suspensionEnabled, DebuggerSession[] sessions) {
+    public final void execute(boolean suspensionEnabled, SessionList sessions) {
         execute(suspensionEnabled, sessions, Thread.currentThread().getId());
     }
 
-    protected abstract void execute(boolean suspensionEnabled, DebuggerSession[] sessions, long threadId);
+    protected abstract void execute(boolean suspensionEnabled, SessionList sessions, long threadId);
 
-    @Specialization(guards = {"sessions.length == 1", "threadId == currentThreadId"}, limit = "CACHE_LIMIT")
+    @Specialization(guards = {"sessions.next == null", "threadId == currentThreadId"}, limit = "CACHE_LIMIT")
     protected void executeCached(boolean suspensionEnabled,
-                    @SuppressWarnings("unused") DebuggerSession[] sessions,
+                    @SuppressWarnings("unused") SessionList sessions,
                     @SuppressWarnings("unused") long threadId,
                     @SuppressWarnings("unused") @Cached("currentThreadId()") long currentThreadId,
                     @Cached("getThreadSuspension(sessions)") ThreadSuspension threadSuspension) {
@@ -73,11 +74,14 @@ abstract class SetThreadSuspensionEnabledNode extends Node {
     @ExplodeLoop
     @Specialization(replaces = "executeCached")
     protected void executeGeneric(boolean suspensionEnabled,
-                    DebuggerSession[] sessions,
+                    SessionList sessions,
                     @SuppressWarnings("unused") long threadId) {
-        for (DebuggerSession session : sessions) {
-            session.setThreadSuspendEnabled(suspensionEnabled);
+        SessionList current = sessions;
+        while (current != null) {
+            current.session.setThreadSuspendEnabled(suspensionEnabled);
+            current = current.next;
         }
+
     }
 
     static long currentThreadId() {
@@ -85,10 +89,10 @@ abstract class SetThreadSuspensionEnabledNode extends Node {
     }
 
     @TruffleBoundary
-    protected ThreadSuspension getThreadSuspension(DebuggerSession[] sessions) {
-        assert sessions.length == 1;
+    protected ThreadSuspension getThreadSuspension(SessionList sessions) {
+        assert sessions.next == null;
         ThreadSuspension threadSuspension = new ThreadSuspension(true);
-        sessions[0].threadSuspensions.set(threadSuspension);
+        sessions.session.threadSuspensions.set(threadSuspension);
         return threadSuspension;
     }
 
