@@ -179,6 +179,9 @@ public class UpgradeProcess {
     Path createInstallName(ComponentInfo graal) {
         Path base = findGraalVMParentPath();
         String ed = graal.getProvidedValue(CommonConstants.CAP_EDITION, String.class);
+        if (ed == null) {
+            ed = input.getLocalRegistry().getGraalCapabilities().get(CommonConstants.CAP_EDITION);
+        }
         String dirName = feedback.l10n(
                         ed == null ? "UPGRADE_GraalVMDirName@" : "UPGRADE_GraalVMDirNameEdition@",
                         graal.getVersion().originalString(),
@@ -205,12 +208,21 @@ public class UpgradeProcess {
             migrated.clear();
             return false;
         }
+        
+        Path reported = createInstallName(info);
+        // there's a slight chance this will be different from the final name ...
+        feedback.output("UPGRADE_PreparingInstall", info.getVersion().originalString(), reported);
 
         // force download
         ComponentParam param = input.existingFiles().createParam("core", info);
         metaLoader = param.createFileLoader();
         ComponentInfo completeInfo = metaLoader.completeMetadata();
         newInstallPath = createInstallName(completeInfo);
+        
+        if (!reported.equals(newInstallPath)) {
+            feedback.error("UPGRADE_WarningEditionDifferent", null, info.getVersion().originalString(), newInstallPath);
+        }
+        
         existingComponents.addAll(input.getLocalRegistry().getComponentIDs());
         existingComponents.remove(BundleConstants.GRAAL_COMPONENT_ID);
         return true;
@@ -228,7 +240,7 @@ public class UpgradeProcess {
         gvmInstaller.setCurrentInstallPath(input.getGraalHomePath());
         gvmInstaller.setInstallPath(newInstallPath);
 
-        feedback.output("UPGRADE_InstallingCore", info.getVersion().toString(), newInstallPath.toString());
+        feedback.output("UPGRADE_InstallingCore", info.getVersion().originalString(), newInstallPath.toString());
 
         gvmInstaller.install();
 
