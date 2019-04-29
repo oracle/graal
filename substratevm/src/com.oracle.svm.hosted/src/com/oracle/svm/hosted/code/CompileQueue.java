@@ -519,6 +519,7 @@ public class CompileQueue {
                 if (method.compilationInfo.getGraph() != null) {
                     HostedProviders providers = (HostedProviders) runtimeConfig.lookupBackend(method).getProviders();
                     if (!universe.isPostParseCanonicalized()) {
+                        method.compilationInfo.getGraph().resetDebug(debug);
                         afterParseSuite.apply(method.compilationInfo.getGraph(), new HighTierContext(providers, afterParseSuite, getOptimisticOpts()));
 
                         /* Check that graph is in good shape after parsing. */
@@ -636,8 +637,16 @@ public class CompileQueue {
     }
 
     private static boolean mustNotAllocate(HostedMethod method) {
+        /*
+         * GR-15580: This check is suspicious. The no-allocation restriction is propagated through
+         * the call graph, so checking explicitly for annotated methods means that either not enough
+         * methods are excluded from inlining, or the inlining restriction is not necessary at all.
+         * We should elevate all methods that really need an inlining restriction
+         * to @Uninterruptible or mark them as @NeverInline, so that no-allocation does not need any
+         * more inlining restrictions and this code can be removed.
+         */
         RestrictHeapAccess annotation = method.getAnnotation(RestrictHeapAccess.class);
-        return annotation != null && annotation.access() == RestrictHeapAccess.Access.NO_ALLOCATION;
+        return annotation != null && annotation.access() == RestrictHeapAccess.Access.NO_ALLOCATION && !annotation.mayBeInlined();
     }
 
     public static boolean callerAnnotatedWith(Invoke invoke, Class<? extends Annotation> annotationClass) {
