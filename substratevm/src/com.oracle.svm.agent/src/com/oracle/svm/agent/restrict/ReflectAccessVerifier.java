@@ -27,7 +27,6 @@ package com.oracle.svm.agent.restrict;
 import static com.oracle.svm.agent.Support.clearException;
 import static com.oracle.svm.agent.Support.fromCString;
 import static com.oracle.svm.agent.Support.fromJniString;
-import static com.oracle.svm.agent.Support.getClassNameOrNull;
 import static com.oracle.svm.agent.Support.handles;
 import static com.oracle.svm.agent.Support.jniFunctions;
 import static com.oracle.svm.agent.Support.jvmtiEnv;
@@ -106,10 +105,6 @@ public class ReflectAccessVerifier extends AbstractAccessVerifier {
         return method.isNull() || typeAccessChecker.isMethodAccessible(env, clazz, name, signature, method, declaring);
     }
 
-    private static void beforeFilter(@SuppressWarnings("unused") Supplier<String> message) {
-        // System.err.println("Filtering: " + message.get());
-    }
-
     public JNIObjectHandle filterGetFields(JNIEnvironment env, JNIObjectHandle clazz, JNIObjectHandle array, boolean declaredOnly, JNIObjectHandle callerClass) {
         if (shouldApproveWithoutChecks(env, callerClass)) {
             return array;
@@ -145,9 +140,6 @@ public class ReflectAccessVerifier extends AbstractAccessVerifier {
                 CCharPointerPointer signaturePtr = StackValue.get(CCharPointerPointer.class);
                 if (jvmtiFunctions().GetMethodName().invoke(jvmtiEnv(), method, namePtr, signaturePtr, nullPointer()) == JvmtiError.JVMTI_ERROR_NONE) {
                     boolean accessible = typeAccessChecker.isMethodAccessible(env, clazz, fromCString(namePtr.read()), () -> fromCString(signaturePtr.read()), method, declaring);
-                    if (!accessible) {
-                        beforeFilter(() -> "Method " + getClassNameOrNull(env, clazz) + "." + fromCString(namePtr.read()) + fromCString(signaturePtr.read()));
-                    }
                     jvmtiFunctions().Deallocate().invoke(jvmtiEnv(), namePtr.read());
                     jvmtiFunctions().Deallocate().invoke(jvmtiEnv(), signaturePtr.read());
                     if (accessible) {
@@ -207,7 +199,6 @@ public class ReflectAccessVerifier extends AbstractAccessVerifier {
                 if (typeAccessChecker.isFieldAccessible(env, clazz, nameSupplier, field, declaring)) {
                     return true;
                 }
-                beforeFilter(() -> "Method " + getClassNameOrNull(env, clazz) + "." + nameSupplier.get());
             }
         }
         return false;

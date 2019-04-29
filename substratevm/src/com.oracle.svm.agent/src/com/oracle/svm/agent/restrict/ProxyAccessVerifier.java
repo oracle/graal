@@ -26,8 +26,6 @@ package com.oracle.svm.agent.restrict;
 
 import java.util.Arrays;
 
-import org.graalvm.nativeimage.c.type.CTypeConversion.CCharPointerHolder;
-
 import com.oracle.svm.configure.config.ProxyConfiguration;
 import com.oracle.svm.configure.trace.AccessAdvisor;
 import com.oracle.svm.jni.nativeapi.JNIEnvironment;
@@ -54,9 +52,5 @@ public class ProxyAccessVerifier extends AbstractAccessVerifier {
             return true;
         }
         return (interfaceNames instanceof String[]) && configuration.contains(Arrays.asList((String[]) interfaceNames));
-    }
-
-    private static void beforeThrow(@SuppressWarnings("unused") CCharPointerHolder message) {
-        // System.err.println(Agent.MESSAGE_PREFIX + fromCString(message.get()));
     }
 }
