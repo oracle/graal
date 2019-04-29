@@ -24,6 +24,7 @@
  */
 package org.graalvm.component.installer.commands;
 
+import java.net.URL;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.HashMap;
@@ -156,15 +157,23 @@ public abstract class QueryCommandBase implements InstallerCommand {
 
     @SuppressWarnings("unused")
     void printDetails(ComponentParam param, ComponentInfo info) {
+        final String org;
+        URL u = info.getRemoteURL();
+        if (u == null) {
+            org = ""; // NOI18N
+        } else if (u.getProtocol().equals("file")) { // NOI18N
+            org = u.getFile();
+        } else {
+            org = u.getHost();
+        }
         if (printTable) {
             String line = String.format(feedback.l10n("LIST_ComponentShortList"),
-                            shortenComponentId(info), info.getVersion().displayString(), info.getName());
+                            shortenComponentId(info), info.getVersion().displayString(), info.getName(), org);
             feedback.verbatimOut(line, false);
-            return;
         } else {
             feedback.output("LIST_ComponentBasicInfo",
                             shortenComponentId(info), info.getVersion().displayString(), info.getName(),
-                            findRequiredGraalVMVersion(info));
+                            findRequiredGraalVMVersion(info), u);
         }
     }
 
