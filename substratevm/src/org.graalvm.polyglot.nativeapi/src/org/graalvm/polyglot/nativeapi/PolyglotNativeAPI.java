@@ -1438,7 +1438,7 @@ public final class PolyglotNativeAPI {
         return poly_ok;
     }
 
-        @CEntryPoint(name = "poly_create_function", documentation = {
+    @CEntryPoint(name = "poly_create_function", documentation = {
                     "Creates a polyglot function that calls back into native code.",
                     "",
                     " @param data user defined data to be passed into the function.",
@@ -1741,8 +1741,13 @@ public final class PolyglotNativeAPI {
 
         PolyglotStatus errorCode = t instanceof PolyglotNativeAPIError ? ((PolyglotNativeAPIError) t).getCode() : poly_generic_failure;
         if (t instanceof PolyglotException) {
+            /*
+             * We should never have both a PolyglotException and an error happening at the same
+             * time.
+             */
             current.polyglotException = (PolyglotException) t;
-            errorCode = poly_pending_exception; // We should never have both a PolyglotException and an error happening at the same time
+            errorCode = poly_pending_exception;
+
         }
         PolyglotExtendedErrorInfo unmanagedErrorInfo = UnmanagedMemory.malloc(SizeOf.get(PolyglotExtendedErrorInfo.class));
         unmanagedErrorInfo.setErrorCode(errorCode.getCValue());
