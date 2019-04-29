@@ -142,27 +142,27 @@ suite = {
             }
         },
         "VISUALVM_COMMON" : {
-            "urls" : ["https://lafo.ssw.uni-linz.ac.at/pub/graal-external-deps/visualvm/visualvm-19_0_0-7.tar.gz"],
-            "sha1" : "9fd58729b9af2e783a504d51c693f9277b0c3175",
+            "urls" : ["https://lafo.ssw.uni-linz.ac.at/pub/graal-external-deps/visualvm/visualvm-19_0_0-8.tar.gz"],
+            "sha1" : "d8fa9c04a7c3095b1a8013efd70d6b813fba51db",
         },
         "VISUALVM_PLATFORM_SPECIFIC" : {
             "os_arch" : {
                 "linux" : {
                     "amd64" : {
-                        "urls" : ["https://lafo.ssw.uni-linz.ac.at/pub/graal-external-deps/visualvm/visualvm-19_0_0-7-linux-amd64.tar.gz"],
-                        "sha1" : "a832fb361cdb3837a931fd82b7728bd9b1905c85",
+                        "urls" : ["https://lafo.ssw.uni-linz.ac.at/pub/graal-external-deps/visualvm/visualvm-19_0_0-8-linux-amd64.tar.gz"],
+                        "sha1" : "8510f966695ec4221f83e9ff3fc1e303172f8740",
                     }
                 },
                 "darwin" : {
                     "amd64" : {
-                        "urls" : ["https://lafo.ssw.uni-linz.ac.at/pub/graal-external-deps/visualvm/visualvm-19_0_0-7-macosx-x86_64.tar.gz"],
-                        "sha1" : "a49149b02242cab7e1617a2a6c3ad7ed059d2c42",
+                        "urls" : ["https://lafo.ssw.uni-linz.ac.at/pub/graal-external-deps/visualvm/visualvm-19_0_0-8-macosx-x86_64.tar.gz"],
+                        "sha1" : "20ec803651ae8e5facaa8248197a255eadfcca36",
                     }
                 },
                 "windows" : {
                     "amd64" : {
-                        "urls" : ["https://lafo.ssw.uni-linz.ac.at/pub/graal-external-deps/visualvm/visualvm-19_0_0-7-windows-amd64.tar.gz"],
-                        "sha1" : "10a248d858bb17fc40f696cf8ff5338592fa6748",
+                        "urls" : ["https://lafo.ssw.uni-linz.ac.at/pub/graal-external-deps/visualvm/visualvm-19_0_0-8-windows-amd64.tar.gz"],
+                        "sha1" : "bf799f3de2fd47f3cff76c89e6dc8af9c1eb6c31",
                     }
                 },
             }
