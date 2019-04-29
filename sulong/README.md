@@ -118,14 +118,32 @@ appending the bin path to the `PATH`.
 To install Clang and LLVM 4 on MacOS using `homebrew`, you can use the
 following commands:
 
-    brew install llvm@4
-    export PATH="/usr/local/opt/llvm@4/bin:$PATH"
+```bash
+brew install llvm@4
+export PATH="/usr/local/opt/llvm@4/bin:$PATH"
+```
 
-On macOS Mojave, please ensure that the macOS SDK headers are installed:
+On macOS Mojave 10.14 and later, you may run into a build error like
+this:
+```
+Building com.oracle.truffle.llvm.libraries.bitcode with GNU Make... [rebuild needed by GNU Make]
+../graal/sulong/projects/com.oracle.truffle.llvm.libraries.bitcode/src/abort.c:30:10: fatal error: 'stdio.h' file not found
+#include <stdio.h>
+         ^~~~~~~~~
+1 error generated.
+make: *** [bin/abort.noopt.bc] Error 1
 
-    xcode-select --install
-    open /Library/Developer/CommandLineTools/Packages/macOS_SDK_headers_for_macOS_10.14.pkg
+Building com.oracle.truffle.llvm.libraries.bitcode with GNU Make failed
+1 build tasks failed
+```
 
+In this case, please install the macOS SDK headers with the following
+commands:
+
+```bash
+xcode-select --install
+open /Library/Developer/CommandLineTools/Packages/macOS_SDK_headers_for_macOS_10.14.pkg
+```
 
 Runtime Dependencies
 --------------------
