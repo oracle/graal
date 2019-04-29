@@ -254,7 +254,6 @@ import com.oracle.svm.hosted.phases.IntrinsifyMethodHandlesInvocationPlugin;
 import com.oracle.svm.hosted.phases.SubstrateClassInitializationPlugin;
 import com.oracle.svm.hosted.phases.VerifyDeoptFrameStatesLIRPhase;
 import com.oracle.svm.hosted.phases.VerifyNoGuardsPhase;
-import com.oracle.svm.hosted.snippets.AssertSnippets;
 import com.oracle.svm.hosted.snippets.DeoptHostedSnippets;
 import com.oracle.svm.hosted.snippets.SubstrateGraphBuilderPlugins;
 import com.oracle.svm.hosted.substitute.AnnotationSubstitutionProcessor;
@@ -1213,7 +1212,6 @@ public class NativeImageGenerator {
             ExceptionSnippets.registerLowerings(options, factories, providers, snippetReflection, lowerings);
 
             if (hosted) {
-                AssertSnippets.registerLowerings(options, factories, providers, snippetReflection, lowerings);
                 DeoptHostedSnippets.registerLowerings(options, factories, providers, snippetReflection, lowerings);
             } else {
                 DeoptRuntimeSnippets.registerLowerings(options, factories, providers, snippetReflection, lowerings);
