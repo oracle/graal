@@ -46,4 +46,20 @@ public class StaticObjectMessageResolution {
         }
     }
 
+    @Resolve(message = "IS_BOXED")
+    abstract static class IsBoxedNode extends Node {
+        @SuppressWarnings("unused")
+        boolean access(StaticObject object) {
+            return true;
+        }
+    }
+
+    @Resolve(message = "UNBOX")
+    abstract static class UnboxNode extends Node {
+        @SuppressWarnings("unused")
+        Object access(StaticObject object) {
+            return object.getKlass().getMeta().toHostBoxed(object);
+        }
+    }
+
 }

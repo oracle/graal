@@ -160,6 +160,7 @@ public final class Symbol<T> extends ByteSequence {
         public static final Symbol<Name> clone = StaticSymbols.putName("clone");
         public static final Symbol<Name> printStackTrace = StaticSymbols.putName("printStackTrace");
         public static final Symbol<Name> maxPriority = StaticSymbols.putName("maxPriority");
+        public static final Symbol<Name> interrupt = StaticSymbols.putName("interrupt");
         public static final Symbol<Name> daemon = StaticSymbols.putName("daemon");
         public static final Symbol<Name> form = StaticSymbols.putName("form");
         public static final Symbol<Name> vmentry = StaticSymbols.putName("vmentry");

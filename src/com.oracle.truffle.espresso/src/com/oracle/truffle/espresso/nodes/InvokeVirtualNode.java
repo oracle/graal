@@ -72,7 +72,7 @@ public abstract class InvokeVirtualNode extends QuickNode {
         if (receiverKlass.isArray()) {
             return receiverKlass.getSuperKlass().vtableLookup(vtableIndex);
         }
-        return ((ObjectKlass)receiverKlass).vtableLookup(vtableIndex);
+        return ((ObjectKlass) receiverKlass).vtableLookup(vtableIndex);
     }
 
     @Override

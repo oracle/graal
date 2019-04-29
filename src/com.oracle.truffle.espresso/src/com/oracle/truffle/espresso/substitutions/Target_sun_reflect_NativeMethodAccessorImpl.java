@@ -29,6 +29,7 @@ import com.oracle.truffle.espresso.descriptors.Symbol.Name;
 import com.oracle.truffle.espresso.descriptors.Symbol.Type;
 import com.oracle.truffle.espresso.impl.Klass;
 import com.oracle.truffle.espresso.impl.Method;
+import com.oracle.truffle.espresso.impl.ObjectKlass;
 import com.oracle.truffle.espresso.meta.EspressoError;
 import com.oracle.truffle.espresso.meta.JavaKind;
 import com.oracle.truffle.espresso.meta.Meta;
@@ -278,7 +279,8 @@ public final class Target_sun_reflect_NativeMethodAccessorImpl {
                     // Match resolution errors with those thrown due to reflection inlining
                     // Linktime resolution & IllegalAccessCheck already done by Class.getMethod()
                     method = reflectedMethod;
-                    method = targetKlass.itableLookup(method.getDeclaringKlass(), method.getITableIndex());
+                    assert targetKlass instanceof ObjectKlass;
+                    method = ((ObjectKlass) targetKlass).itableLookup(method.getDeclaringKlass(), method.getITableIndex());
                     if (method != null) {
                         // Check for abstract methods as well
                         if (!method.hasCode()) {

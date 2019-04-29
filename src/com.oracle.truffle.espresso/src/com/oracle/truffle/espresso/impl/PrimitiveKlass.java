@@ -77,11 +77,6 @@ public final class PrimitiveKlass extends Klass {
     }
 
     @Override
-    public Method itableLookup(Klass interfKlass, int itableIndex) {
-        return null;
-    }
-
-    @Override
     public boolean isInitialized() {
         return true;
     }

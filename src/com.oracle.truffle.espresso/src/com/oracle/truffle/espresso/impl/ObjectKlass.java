@@ -23,10 +23,8 @@
 
 package com.oracle.truffle.espresso.impl;
 
-import com.oracle.truffle.api.CompilerAsserts;
 import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.CompilerDirectives.CompilationFinal;
-import com.oracle.truffle.api.nodes.ExplodeLoop;
 import com.oracle.truffle.espresso.classfile.ConstantValueAttribute;
 import com.oracle.truffle.espresso.classfile.EnclosingMethodAttribute;
 import com.oracle.truffle.espresso.classfile.InnerClassesAttribute;
@@ -86,7 +84,7 @@ public final class ObjectKlass extends Klass {
     @CompilationFinal(dimensions = 1) private final Method[] vtable;
     @CompilationFinal(dimensions = 2) private final Method[][] itable;
     @CompilationFinal(dimensions = 1) private final Klass[] iKlassTable;
-    @CompilationFinal                 private final int itableLength;
+    @CompilationFinal private final int itableLength;
 
     private int initState = LINKED;
 
@@ -416,11 +414,8 @@ public final class ObjectKlass extends Klass {
         return vtable[index];
     }
 
-    @Override
-    @ExplodeLoop
     public final Method itableLookup(Klass interfKlass, int index) {
         assert (index >= 0) : "Undeclared interface method";
-        CompilerAsserts.compilationConstant(itableLength);
         for (int i = 0; i < itableLength; i++) {
             if (iKlassTable[i] == interfKlass) {
                 return itable[i][index];

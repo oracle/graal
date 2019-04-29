@@ -197,6 +197,7 @@ public final class Meta implements ContextAccess {
         HIDDEN_HOST_THREAD = Thread.lookupHiddenField(Name.HIDDEN_HOST_THREAD);
         ThreadGroup = knownKlass(Type.ThreadGroup);
         ThreadGroup_maxPriority = ThreadGroup.lookupDeclaredField(Name.maxPriority, Type._int);
+        Thread_exit = Thread.lookupDeclaredMethod(Name.exit, Signature._void);
 
         Thread_group = Thread.lookupDeclaredField(Name.group, ThreadGroup.getType());
         Thread_name = Thread.lookupDeclaredField(Name.name, String.getType());
@@ -388,6 +389,7 @@ public final class Meta implements ContextAccess {
     public final ObjectKlass ThreadGroup;
     public final Field ThreadGroup_maxPriority;
     public final ObjectKlass Thread;
+    public final Method Thread_exit;
     public final Field HIDDEN_HOST_THREAD;
     public final Field Thread_group;
     public final Field Thread_name;
@@ -684,6 +686,7 @@ public final class Meta implements ContextAccess {
             if (guestObject.getKlass() == String) {
                 return toHostString(guestObject);
             }
+            return unboxGuest((StaticObject) object);
         }
         return object;
     }
@@ -743,6 +746,29 @@ public final class Meta implements ContextAccess {
 
     // region Guest Unboxing
 
+    public Object unboxGuest(StaticObject boxed) {
+        Klass klass = boxed.getKlass();
+        if (klass == Boolean) {
+            return unboxBoolean(boxed);
+        } else if (klass == Byte) {
+            return unboxByte(boxed);
+        } else if (klass == Character) {
+            return unboxCharacter(boxed);
+        } else if (klass == Short) {
+            return unboxShort(boxed);
+        } else if (klass == Float) {
+            return unboxFloat(boxed);
+        } else if (klass == Integer) {
+            return unboxInteger(boxed);
+        } else if (klass == Double) {
+            return unboxDouble(boxed);
+        } else if (klass == Long) {
+            return unboxLong(boxed);
+        } else {
+            return boxed;
+        }
+    }
+
     public boolean unboxBoolean(@Host(Boolean.class) StaticObject boxed) {
         if (StaticObject.isNull(boxed) || boxed.getKlass() != Boolean) {
             throw throwEx(IllegalArgumentException);
@@ -801,7 +827,7 @@ public final class Meta implements ContextAccess {
 
     // endregion Guest Unboxing
 
-    // region Guest boxing
+    // region Guest
 
     public @Host(Boolean.class) StaticObject boxBoolean(boolean value) {
         return (StaticObject) Boolean_valueOf.invokeDirect(null, value);

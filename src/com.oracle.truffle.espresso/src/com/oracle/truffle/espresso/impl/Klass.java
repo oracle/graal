@@ -88,6 +88,8 @@ public abstract class Klass implements ModifiersProvider, ContextAccess {
     @CompilationFinal //
     private volatile StaticObject mirrorCache;
 
+    private final boolean isArray;
+
     public final ObjectKlass[] getSuperInterfaces() {
         return superInterfaces;
     }
@@ -99,6 +101,7 @@ public abstract class Klass implements ModifiersProvider, ContextAccess {
         this.kind = Types.getJavaKind(type);
         this.superKlass = superKlass;
         this.superInterfaces = superInterfaces;
+        this.isArray = Types.isArray(type);
     }
 
     public abstract @Host(ClassLoader.class) StaticObject getDefiningClassLoader();
@@ -110,7 +113,7 @@ public abstract class Klass implements ModifiersProvider, ContextAccess {
     }
 
     public final boolean isArray() {
-        return Types.isArray(getType());
+        return isArray;
     }
 
     public StaticObject mirror() {
@@ -483,8 +486,6 @@ public abstract class Klass implements ModifiersProvider, ContextAccess {
     public abstract Method lookupMethod(Symbol<Name> methodName, Symbol<Signature> signature);
 
     public abstract Method vtableLookup(int vtableIndex);
-
-    public abstract Method itableLookup(Klass interfKlass, int itableIndex);
 
     public Method lookupPolysigMethod(Symbol<Name> methodName, Symbol<Signature> signature) {
         if (methodName == Name.invoke || methodName == Name.invokeExact) {

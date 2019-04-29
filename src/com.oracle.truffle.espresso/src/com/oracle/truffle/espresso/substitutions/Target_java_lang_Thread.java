@@ -108,7 +108,7 @@ public final class Target_java_lang_Thread {
         return Thread.holdsLock(object);
     }
 
-    @Substitution
+    @Substitution(hasReceiver = true)
     public static void sleep(long millis) {
         try {
             Thread.sleep(millis);
@@ -118,7 +118,7 @@ public final class Target_java_lang_Thread {
         }
     }
 
-    @Substitution
+    @Substitution(hasReceiver = true)
     public static void interrupt0(@Host(Object.class) StaticObject self) {
         Thread hostThread = (Thread) self.getHiddenField(self.getKlass().getMeta().HIDDEN_HOST_THREAD);
         if (hostThread == null) {

@@ -22,23 +22,6 @@
  */
 package com.oracle.truffle.espresso.jni;
 
-import java.io.File;
-import java.lang.reflect.InvocationTargetException;
-import java.lang.reflect.Parameter;
-import java.nio.ByteBuffer;
-import java.nio.ByteOrder;
-import java.nio.CharBuffer;
-import java.nio.DoubleBuffer;
-import java.nio.FloatBuffer;
-import java.nio.IntBuffer;
-import java.nio.LongBuffer;
-import java.nio.ShortBuffer;
-import java.util.Arrays;
-import java.util.Collections;
-import java.util.HashMap;
-import java.util.Map;
-import java.util.concurrent.ConcurrentHashMap;
-
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.interop.ArityException;
 import com.oracle.truffle.api.interop.ForeignAccess;
@@ -73,6 +56,23 @@ import com.oracle.truffle.espresso.substitutions.Host;
 import com.oracle.truffle.espresso.substitutions.Substitutions;
 import com.oracle.truffle.espresso.vm.InterpreterToVM;
 import com.oracle.truffle.nfi.types.NativeSimpleType;
+
+import java.io.File;
+import java.lang.reflect.InvocationTargetException;
+import java.lang.reflect.Parameter;
+import java.nio.ByteBuffer;
+import java.nio.ByteOrder;
+import java.nio.CharBuffer;
+import java.nio.DoubleBuffer;
+import java.nio.FloatBuffer;
+import java.nio.IntBuffer;
+import java.nio.LongBuffer;
+import java.nio.ShortBuffer;
+import java.util.Arrays;
+import java.util.Collections;
+import java.util.HashMap;
+import java.util.Map;
+import java.util.concurrent.ConcurrentHashMap;
 
 public final class JniEnv extends NativeEnv implements ContextAccess {
 
@@ -251,6 +251,7 @@ public final class JniEnv extends NativeEnv implements ContextAccess {
     private class VarArgsImpl implements VarArgs {
 
         @Child Node execute = Message.EXECUTE.createNode();
+
         private final long nativePointer;
 
         public VarArgsImpl(long nativePointer) {
@@ -330,10 +331,20 @@ public final class JniEnv extends NativeEnv implements ContextAccess {
         }
 
         @Override
-        public StaticObject popObject() {
+        public Object popObject() {
             try {
-                return (StaticObject) ForeignAccess.sendExecute(execute, popObject, nativePointer);
+                TruffleObject result = (TruffleObject) ForeignAccess.sendExecute(execute, popObject, nativePointer);
+                if (result instanceof StaticObject) {
+                    return result;
+                } else {
+                    // TODO(garcia) understand the weird stuff happening here.
+                    // DaCapo batik gives us a NativePointer to 0 here. This is a workaround until I
+                    // figure out just what is happening here.
+                    return StaticObject.NULL;
+                }
             } catch (UnsupportedTypeException | ArityException | UnsupportedMessageException e) {
+                throw EspressoError.shouldNotReachHere(e);
+            } catch (ClassCastException e) {
                 throw EspressoError.shouldNotReachHere(e);
             }
         }
@@ -348,33 +359,15 @@ public final class JniEnv extends NativeEnv implements ContextAccess {
             // @formatter:off
             // Checkstyle: stop
             switch (kind) {
-                case Boolean:
-                    args[i] = varargs.popBoolean();
-                    break;
-                case Byte:
-                    args[i] = varargs.popByte();
-                    break;
-                case Short:
-                    args[i] = varargs.popShort();
-                    break;
-                case Char:
-                    args[i] = varargs.popChar();
-                    break;
-                case Int:
-                    args[i] = varargs.popInt();
-                    break;
-                case Float:
-                    args[i] = varargs.popFloat();
-                    break;
-                case Long:
-                    args[i] = varargs.popLong();
-                    break;
-                case Double:
-                    args[i] = varargs.popDouble();
-                    break;
-                case Object:
-                    args[i] = varargs.popObject();
-                    break;
+                case Boolean: args[i] = varargs.popBoolean();   break;
+                case Byte: args[i] = varargs.popByte();         break;
+                case Short: args[i] = varargs.popShort();       break;
+                case Char: args[i] = varargs.popChar();         break;
+                case Int: args[i] = varargs.popInt();           break;
+                case Float: args[i] = varargs.popFloat();       break;
+                case Long: args[i] = varargs.popLong();         break;
+                case Double: args[i] = varargs.popDouble();     break;
+                case Object: args[i] = varargs.popObject();     break;
                 default:
                     throw EspressoError.shouldNotReachHere("invalid parameter kind: " + kind);
             }
