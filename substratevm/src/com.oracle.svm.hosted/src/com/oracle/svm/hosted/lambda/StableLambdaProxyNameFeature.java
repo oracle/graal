@@ -64,12 +64,15 @@ final class StableLambdaProxyNameFeature implements GraalFeature {
 
         /* Lambda names should be unique. */
         Set<String> lambdaNames = new HashSet<>();
-        types.forEach(t -> {
-            if (lambdaNames.contains(t.getName())) {
-                throw new AssertionError("Duplicate lambda name: " + t.getName());
-            }
-            lambdaNames.add(t.getName());
-        });
+        types.stream()
+                        .map(AnalysisType::getName)
+                        .filter(x -> x.contains("$$Lambda$"))
+                        .forEach(name -> {
+                            if (lambdaNames.contains(name)) {
+                                throw new AssertionError("Duplicate lambda name: " + name);
+                            }
+                            lambdaNames.add(name);
+                        });
         return true;
     }
 }
