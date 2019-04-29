@@ -83,6 +83,7 @@ import com.oracle.svm.jni.functions.JNIFunctions.Support.JNIExceptionHandlerRetu
 import com.oracle.svm.jni.functions.JNIFunctions.Support.JNIExceptionHandlerReturnMinusOne;
 import com.oracle.svm.jni.functions.JNIFunctions.Support.JNIExceptionHandlerReturnNullHandle;
 import com.oracle.svm.jni.functions.JNIFunctions.Support.JNIExceptionHandlerReturnNullWord;
+import com.oracle.svm.jni.functions.JNIFunctions.Support.JNIExceptionHandlerReturnZero;
 import com.oracle.svm.jni.functions.JNIFunctions.Support.JNIExceptionHandlerVoid;
 import com.oracle.svm.jni.functions.JNIFunctions.Support.JNIJavaVMEnterAttachThreadPrologue;
 import com.oracle.svm.jni.nativeapi.JNIEnvironment;
@@ -767,9 +768,9 @@ final class JNIFunctions {
     /*
      * jint Throw(JNIEnv *env, jthrowable obj);
      */
-    @CEntryPoint(exceptionHandler = JNIExceptionHandlerVoid.class)
+    @CEntryPoint(exceptionHandler = JNIExceptionHandlerReturnZero.class)
     @CEntryPointOptions(prologue = JNIEnvironmentEnterPrologue.class, publishAs = Publish.NotPublished, include = CEntryPointOptions.NotIncludedAutomatically.class)
-    static void Throw(JNIEnvironment env, JNIObjectHandle handle) throws Throwable {
+    static int Throw(JNIEnvironment env, JNIObjectHandle handle) throws Throwable {
         throw (Throwable) JNIObjectHandles.getObject(handle);
     }
 
@@ -781,11 +782,11 @@ final class JNIFunctions {
     /*
      * jint ThrowNew(JNIEnv *env, jclass clazz, const char *message);
      */
-    @CEntryPoint(exceptionHandler = JNIExceptionHandlerVoid.class)
+    @CEntryPoint(exceptionHandler = JNIExceptionHandlerReturnZero.class)
     @CEntryPointOptions(prologue = JNIEnvironmentEnterPrologue.class, publishAs = Publish.NotPublished, include = CEntryPointOptions.NotIncludedAutomatically.class)
-    static void ThrowNew(JNIEnvironment env, JNIObjectHandle clazzHandle, CCharPointer message) throws Throwable {
+    static int ThrowNew(JNIEnvironment env, JNIObjectHandle clazzHandle, CCharPointer message) throws Throwable {
         Class<?> clazz = JNIObjectHandles.getObject(clazzHandle);
-        JNIMethodId ctor = JNIReflectionDictionary.singleton().getMethodID(clazz, "<init>", "(Ljava/lang/String;)V", false);
+        JNIMethodId ctor = Support.getMethodID(clazz, "<init>", "(Ljava/lang/String;)V", false);
         JNIObjectHandle messageHandle = NewStringUTF(env, message);
         NewObjectWithObjectArgFunctionPointer newObject = (NewObjectWithObjectArgFunctionPointer) env.getFunctions().getNewObject();
         JNIObjectHandle exception = newObject.invoke(env, clazzHandle, ctor, messageHandle);
@@ -994,6 +995,13 @@ final class JNIFunctions {
             }
         }
 
+        static class JNIExceptionHandlerReturnZero {
+            static int handle(Throwable t) {
+                Support.handleException(t);
+                return 0;
+            }
+        }
+
         static class JNIExceptionHandlerReturnJniErr {
             static int handle(Throwable t) {
                 Support.handleException(t);
@@ -1005,6 +1013,10 @@ final class JNIFunctions {
             Class<?> clazz = JNIObjectHandles.getObject(hclazz);
             String name = CTypeConversion.toJavaString(cname);
             String signature = CTypeConversion.toJavaString(csig);
+            return getMethodID(clazz, name, signature, isStatic);
+        }
+
+        private static JNIMethodId getMethodID(Class<?> clazz, String name, String signature, boolean isStatic) {
             JNIMethodId methodID = JNIReflectionDictionary.singleton().getMethodID(clazz, name, signature, isStatic);
             if (methodID.isNull()) {
                 String message = clazz.getName() + "." + name + signature;
