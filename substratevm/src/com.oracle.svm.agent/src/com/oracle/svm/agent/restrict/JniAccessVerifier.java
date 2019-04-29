@@ -64,7 +64,6 @@ public class JniAccessVerifier extends AbstractAccessVerifier {
         }
         try (CCharPointerHolder message = toCString(Agent.MESSAGE_PREFIX + "defining classes is not permitted.")) {
             // SecurityException seems most fitting from the exceptions allowed by the JNI spec
-            beforeThrow(message);
             jniFunctions().getThrowNew().invoke(env, handles().javaLangSecurityException, message.get());
         }
         return false;
@@ -84,7 +83,6 @@ public class JniAccessVerifier extends AbstractAccessVerifier {
             }
         }
         try (CCharPointerHolder message = toCString(Agent.MESSAGE_PREFIX + "configuration does not permit access to class: " + name)) {
-            beforeThrow(message);
             jniFunctions().getThrowNew().invoke(env, handles().javaLangNoClassDefFoundError, message.get());
         }
         return false;
@@ -106,7 +104,6 @@ public class JniAccessVerifier extends AbstractAccessVerifier {
         try (CCharPointerHolder message = toCString(Agent.MESSAGE_PREFIX + "configuration does not permit access to method: " +
                         getClassNameOr(env, clazz, "(null)", "(?)") + "." + name + fromCString(csignature))) {
 
-            beforeThrow(message);
             jniFunctions().getThrowNew().invoke(env, handles().javaLangNoSuchMethodError, message.get());
         }
         return false;
@@ -129,7 +126,6 @@ public class JniAccessVerifier extends AbstractAccessVerifier {
         }
         try (CCharPointerHolder message = toCString(Agent.MESSAGE_PREFIX + "configuration does not permit access to field: " +
                         getClassNameOr(env, clazz, "(null)", "(?)") + "." + fromCString(cname))) {
-            beforeThrow(message);
             jniFunctions().getThrowNew().invoke(env, handles().javaLangNoSuchFieldError, message.get());
         }
         return false;
@@ -185,9 +181,5 @@ public class JniAccessVerifier extends AbstractAccessVerifier {
             return true;
         }
         return reflectTypeAccessChecker.isFieldAccessible(env, clazz, () -> name, fieldId, declaring);
-    }
-
-    private static void beforeThrow(@SuppressWarnings("unused") CCharPointerHolder message) {
-        // System.err.println(fromCString(message.get()));
     }
 }
