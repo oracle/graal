@@ -160,7 +160,7 @@ public final class SVMHost implements HostVM {
 
     @Override
     public String getImageName() {
-        return NativeImageOptions.Name.getValue(options);
+        return SubstrateOptions.Name.getValue(options);
     }
 
     @Override

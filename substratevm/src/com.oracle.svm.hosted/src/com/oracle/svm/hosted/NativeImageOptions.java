@@ -32,7 +32,6 @@ import java.util.Arrays;
 import org.graalvm.collections.EconomicMap;
 import org.graalvm.compiler.options.Option;
 import org.graalvm.compiler.options.OptionKey;
-import org.graalvm.compiler.options.OptionType;
 import org.graalvm.compiler.options.OptionValues;
 
 import com.oracle.graal.pointsto.api.PointstoOptions;
@@ -40,25 +39,10 @@ import com.oracle.graal.pointsto.util.CompletionExecutor;
 import com.oracle.svm.core.option.APIOption;
 import com.oracle.svm.core.option.HostedOptionKey;
 import com.oracle.svm.core.util.UserError;
-import com.oracle.svm.hosted.image.AbstractBootImage;
 
 public class NativeImageOptions {
 
     public static final int DEFAULT_MAX_ANALYSIS_SCALING = 16;
-
-    @Option(help = "Class containing the default entry point method. Optional if --shared is used.", type = OptionType.User)//
-    public static final HostedOptionKey<String> Class = new HostedOptionKey<>("");
-
-    @Option(help = "Name of the main entry point method. Optional if --shared is used.")//
-    public static final HostedOptionKey<String> Method = new HostedOptionKey<>("main");
-
-    @Option(help = "Name of the output file to be generated", type = OptionType.User)//
-    public static final HostedOptionKey<String> Name = new HostedOptionKey<>("");
-
-    @APIOption(name = "shared", fixedValue = {"SHARED_LIBRARY"}, customHelp = "build shared library")//
-    @APIOption(name = "static", fixedValue = {"STATIC_EXECUTABLE"}, customHelp = "build statically linked executable (requires static libc and zlib)")//
-    @Option(help = "Generate a SHARED_LIBRARY, EXECUTABLE or STATIC_EXECUTABLE image")//
-    public static final HostedOptionKey<String> Kind = new HostedOptionKey<>(AbstractBootImage.NativeImageKind.EXECUTABLE.name());
 
     @Option(help = "Comma separated list of CPU features that will be used for image generation on the AMD64 platform. " +
                     "Features SSE and SSE2 are enabled by default. Other available features are: " +

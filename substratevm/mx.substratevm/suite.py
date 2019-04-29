@@ -407,8 +407,7 @@ suite = {
                 "resources"
             ],
             "dependencies": [
-                "com.oracle.svm.graal",
-                "com.oracle.svm.reflect",
+                "com.oracle.svm.hosted",
             ],
             "checkstyle": "com.oracle.svm.driver",
             "checkstyleVersion" : "8.8",
@@ -696,7 +695,7 @@ suite = {
                 "resources",
             ],
             "dependencies": [
-                "com.oracle.svm.hosted",
+                "com.oracle.svm.core",
             ],
             "checkstyle": "com.oracle.svm.driver",
             "workingSets": "SVM",

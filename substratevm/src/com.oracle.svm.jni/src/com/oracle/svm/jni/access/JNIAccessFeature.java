@@ -38,8 +38,8 @@ import java.util.stream.Stream;
 
 import org.graalvm.compiler.api.replacements.Fold;
 import org.graalvm.compiler.options.Option;
-import org.graalvm.nativeimage.hosted.Feature;
 import org.graalvm.nativeimage.ImageSingletons;
+import org.graalvm.nativeimage.hosted.Feature;
 import org.graalvm.nativeimage.impl.ReflectionRegistry;
 import org.graalvm.nativeimage.impl.RuntimeReflectionSupport;
 
@@ -49,7 +49,8 @@ import com.oracle.graal.pointsto.flow.TypeFlow;
 import com.oracle.graal.pointsto.meta.AnalysisField;
 import com.oracle.graal.pointsto.meta.AnalysisMethod;
 import com.oracle.graal.pointsto.meta.AnalysisType;
-import com.oracle.svm.core.SubstrateOptions;
+import com.oracle.svm.core.configure.ConfigurationFiles;
+import com.oracle.svm.core.configure.ReflectionConfigurationParser;
 import com.oracle.svm.core.option.HostedOptionKey;
 import com.oracle.svm.core.util.UserError;
 import com.oracle.svm.hosted.FeatureImpl.AfterRegistrationAccessImpl;
@@ -57,9 +58,7 @@ import com.oracle.svm.hosted.FeatureImpl.BeforeAnalysisAccessImpl;
 import com.oracle.svm.hosted.FeatureImpl.CompilationAccessImpl;
 import com.oracle.svm.hosted.FeatureImpl.DuringAnalysisAccessImpl;
 import com.oracle.svm.hosted.c.NativeLibraries;
-import com.oracle.svm.hosted.config.ConfigurationDirectories;
-import com.oracle.svm.hosted.config.ConfigurationParser;
-import com.oracle.svm.hosted.config.ReflectionConfigurationParser;
+import com.oracle.svm.hosted.config.ConfigurationParserUtils;
 import com.oracle.svm.hosted.jni.JNIRuntimeAccess.JNIRuntimeAccessibilitySupport;
 import com.oracle.svm.hosted.meta.MaterializedConstantFields;
 import com.oracle.svm.hosted.substitute.SubstitutionReflectivityFilter;
@@ -119,9 +118,9 @@ public class JNIAccessFeature implements Feature {
         JNIRuntimeAccessibilitySupportImpl registry = new JNIRuntimeAccessibilitySupportImpl();
         ImageSingletons.add(JNIRuntimeAccessibilitySupport.class, registry);
 
-        ReflectionConfigurationParser<Class<?>> parser = ReflectionConfigurationParser.create(registry, access.getImageClassLoader());
-        ConfigurationParser.parseAndRegisterConfigurations(parser, access.getImageClassLoader(), "JNI",
-                        SubstrateOptions.JNIConfigurationFiles, SubstrateOptions.JNIConfigurationResources, ConfigurationDirectories.FileNames.JNI_NAME);
+        ReflectionConfigurationParser<Class<?>> parser = ConfigurationParserUtils.create(registry, access.getImageClassLoader());
+        ConfigurationParserUtils.parseAndRegisterConfigurations(parser, access.getImageClassLoader(), "JNI",
+                        ConfigurationFiles.Options.JNIConfigurationFiles, ConfigurationFiles.Options.JNIConfigurationResources, ConfigurationFiles.JNI_NAME);
     }
 
     private class JNIRuntimeAccessibilitySupportImpl implements JNIRuntimeAccessibilitySupport, ReflectionRegistry {

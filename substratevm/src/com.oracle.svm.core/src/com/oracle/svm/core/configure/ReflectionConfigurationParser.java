@@ -22,7 +22,7 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.svm.hosted.config;
+package com.oracle.svm.core.configure;
 
 import java.io.IOException;
 import java.io.Reader;
@@ -31,11 +31,8 @@ import java.util.List;
 import java.util.Map;
 import java.util.stream.Collectors;
 
-import org.graalvm.nativeimage.impl.ReflectionRegistry;
-
 import com.oracle.svm.core.util.json.JSONParser;
 import com.oracle.svm.core.util.json.JSONParserException;
-import com.oracle.svm.hosted.ImageClassLoader;
 
 // Checkstyle: allow reflection
 
@@ -45,10 +42,6 @@ import com.oracle.svm.hosted.ImageClassLoader;
  */
 public final class ReflectionConfigurationParser<T> extends ConfigurationParser {
     private static final String CONSTRUCTOR_NAME = "<init>";
-
-    public static ReflectionConfigurationParser<Class<?>> create(ReflectionRegistry registry, ImageClassLoader imageClassLoader) {
-        return new ReflectionConfigurationParser<>(new ReflectionRegistryAdapter(registry, imageClassLoader));
-    }
 
     private final ReflectionConfigurationParserDelegate<T> delegate;
 
@@ -250,7 +243,9 @@ public final class ReflectionConfigurationParser<T> extends ConfigurationParser 
     }
 
     private static void showWarning(String message) {
+        // Checkstyle: stop
         System.out.println("WARNING: " + message);
+        // Checkstyle: resume
     }
 
 }

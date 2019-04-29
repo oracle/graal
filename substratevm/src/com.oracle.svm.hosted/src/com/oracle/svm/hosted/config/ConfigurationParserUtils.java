@@ -32,10 +32,13 @@ import java.io.IOException;
 import java.io.InputStreamReader;
 import java.io.Reader;
 import java.net.URL;
-import java.util.List;
-import java.util.Map;
 import java.util.stream.Stream;
 
+import org.graalvm.nativeimage.impl.ReflectionRegistry;
+
+import com.oracle.svm.core.configure.ConfigurationFiles;
+import com.oracle.svm.core.configure.ConfigurationParser;
+import com.oracle.svm.core.configure.ReflectionConfigurationParser;
 import com.oracle.svm.core.option.HostedOptionKey;
 import com.oracle.svm.core.option.OptionUtils;
 import com.oracle.svm.core.option.SubstrateOptionsParser;
@@ -43,21 +46,25 @@ import com.oracle.svm.core.util.UserError;
 import com.oracle.svm.core.util.json.JSONParserException;
 import com.oracle.svm.hosted.ImageClassLoader;
 
-public abstract class ConfigurationParser {
+public final class ConfigurationParserUtils {
+
+    public static ReflectionConfigurationParser<Class<?>> create(ReflectionRegistry registry, ImageClassLoader imageClassLoader) {
+        return new ReflectionConfigurationParser<>(new ReflectionRegistryAdapter(registry, imageClassLoader));
+    }
 
     /**
      * Parses configurations in files specified by {@code configFilesOption} and resources specified
      * by {@code configResourcesOption} and registers the parsed elements using
-     * {@link #parseAndRegister(Reader)} .
+     * {@link ConfigurationParser#parseAndRegister(Reader)} .
      *
      * @param featureName name of the feature using the configuration (e.g., "JNI")
-     * @param directoryFileName file name for searches via {@link ConfigurationDirectories}.
+     * @param directoryFileName file name for searches via {@link ConfigurationFiles}.
      */
     public static void parseAndRegisterConfigurations(ConfigurationParser parser, ImageClassLoader classLoader, String featureName,
                     HostedOptionKey<String[]> configFilesOption, HostedOptionKey<String[]> configResourcesOption, String directoryFileName) {
 
         Stream<String> files = Stream.concat(OptionUtils.flatten(",", configFilesOption.getValue()).stream(),
-                        ConfigurationDirectories.findConfigurationFiles(directoryFileName).stream());
+                        ConfigurationFiles.findConfigurationFiles(directoryFileName).stream());
         files.forEach(path -> {
             File file = new File(path).getAbsoluteFile();
             if (!file.exists()) {
@@ -71,7 +78,7 @@ public abstract class ConfigurationParser {
         });
 
         Stream<String> resources = Stream.concat(OptionUtils.flatten(",", configResourcesOption.getValue()).stream(),
-                        ConfigurationDirectories.findConfigurationResources(directoryFileName, classLoader).stream());
+                        ConfigurationFiles.findConfigurationResources(directoryFileName, classLoader.getClassLoader()).stream());
         resources.forEach(resource -> {
             URL url = classLoader.findResourceByName(resource);
             if (url == null) {
@@ -97,44 +104,5 @@ public abstract class ConfigurationParser {
                             "\nVerify that the configuration matches the schema described in the " +
                             SubstrateOptionsParser.commandArgument(PrintFlags, "+") + " output for option " + option.getName() + ".");
         }
-    }
-
-    public abstract void parseAndRegister(Reader reader) throws IOException;
-
-    @SuppressWarnings("unchecked")
-    static List<Object> asList(Object data, String errorMessage) {
-        if (data instanceof List) {
-            return (List<Object>) data;
-        }
-        throw new JSONParserException(errorMessage);
-    }
-
-    @SuppressWarnings("unchecked")
-    static Map<String, Object> asMap(Object data, String errorMessage) {
-        if (data instanceof Map) {
-            return (Map<String, Object>) data;
-        }
-        throw new JSONParserException(errorMessage);
-    }
-
-    static String asString(Object value) {
-        if (value instanceof String) {
-            return (String) value;
-        }
-        throw new JSONParserException("Invalid string value \"" + value + "\".");
-    }
-
-    static String asString(Object value, String propertyName) {
-        if (value instanceof String) {
-            return (String) value;
-        }
-        throw new JSONParserException("Invalid string value \"" + value + "\" for element '" + propertyName + "'");
-    }
-
-    static boolean asBoolean(Object value, String propertyName) {
-        if (value instanceof Boolean) {
-            return (boolean) value;
-        }
-        throw new JSONParserException("Invalid boolean value '" + value + "' for element '" + propertyName + "'");
     }
 }

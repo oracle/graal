@@ -237,7 +237,7 @@ public class AnnotationSubstitutionProcessor extends SubstitutionProcessor {
     }
 
     protected List<Class<?>> findTargetClasses() {
-        return imageClassLoader.findAnnotatedClasses(TargetClass.class);
+        return imageClassLoader.findAnnotatedClasses(TargetClass.class, false);
     }
 
     private void handleClass(Class<?> annotatedClass) {

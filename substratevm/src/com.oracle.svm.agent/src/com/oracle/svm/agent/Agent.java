@@ -31,7 +31,6 @@ import static com.oracle.svm.agent.jvmti.JvmtiEvent.JVMTI_EVENT_THREAD_END;
 import static com.oracle.svm.agent.jvmti.JvmtiEvent.JVMTI_EVENT_VM_INIT;
 import static com.oracle.svm.agent.jvmti.JvmtiEvent.JVMTI_EVENT_VM_START;
 import static com.oracle.svm.agent.jvmti.JvmtiEventMode.JVMTI_ENABLE;
-import static com.oracle.svm.hosted.config.ConfigurationDirectories.FileNames;
 import static com.oracle.svm.jni.JNIObjectHandles.nullHandle;
 import static org.graalvm.word.WordFactory.nullPointer;
 
@@ -83,20 +82,16 @@ import com.oracle.svm.configure.json.JsonWriter;
 import com.oracle.svm.configure.trace.AccessAdvisor;
 import com.oracle.svm.configure.trace.TraceProcessor;
 import com.oracle.svm.core.FallbackExecutor;
-import com.oracle.svm.core.SubstrateOptions;
 import com.oracle.svm.core.SubstrateUtil;
 import com.oracle.svm.core.c.function.CEntryPointOptions;
 import com.oracle.svm.core.c.function.CEntryPointSetup;
+import com.oracle.svm.core.configure.ConfigurationFiles;
 import com.oracle.svm.driver.NativeImage;
-import com.oracle.svm.hosted.ResourcesFeature;
-import com.oracle.svm.hosted.config.ConfigurationDirectories;
 import com.oracle.svm.jni.nativeapi.JNIEnvironment;
 import com.oracle.svm.jni.nativeapi.JNIErrors;
 import com.oracle.svm.jni.nativeapi.JNIJavaVM;
 import com.oracle.svm.jni.nativeapi.JNIObjectHandle;
 import com.oracle.svm.jni.nativeapi.JNIVersion;
-import com.oracle.svm.reflect.hosted.ReflectionFeature;
-import com.oracle.svm.reflect.proxy.hosted.DynamicProxyFeature;
 
 public final class Agent {
     public static final String AGENT_NAME = "native-image-agent";
@@ -107,11 +102,11 @@ public final class Agent {
         return NativeImage.oH + option.getName();
     }
 
-    private static final String oHJNIConfigurationResources = oH(SubstrateOptions.JNIConfigurationResources);
-    private static final String oHReflectionConfigurationResources = oH(ReflectionFeature.Options.ReflectionConfigurationResources);
-    private static final String oHDynamicProxyConfigurationResources = oH(DynamicProxyFeature.Options.DynamicProxyConfigurationResources);
-    private static final String oHResourceConfigurationResources = oH(ResourcesFeature.Options.ResourceConfigurationResources);
-    private static final String oHConfigurationResourceRoots = oH(ConfigurationDirectories.Options.ConfigurationResourceRoots);
+    private static final String oHJNIConfigurationResources = oH(ConfigurationFiles.Options.JNIConfigurationResources);
+    private static final String oHReflectionConfigurationResources = oH(ConfigurationFiles.Options.ReflectionConfigurationResources);
+    private static final String oHDynamicProxyConfigurationResources = oH(ConfigurationFiles.Options.DynamicProxyConfigurationResources);
+    private static final String oHResourceConfigurationResources = oH(ConfigurationFiles.Options.ResourceConfigurationResources);
+    private static final String oHConfigurationResourceRoots = oH(ConfigurationFiles.Options.ConfigurationResourceRoots);
 
     private static TraceWriter traceWriter;
 
@@ -342,10 +337,10 @@ public final class Agent {
                         addURI.add(restrictConfigs.getResourceConfigPaths(), cpEntry, optionParts[1]);
                     } else if (oHConfigurationResourceRoots.equals(argName)) {
                         String resourceLocation = optionParts[1];
-                        addURI.add(restrictConfigs.getJniConfigPaths(), cpEntry, resourceLocation + "/" + FileNames.JNI_NAME);
-                        addURI.add(restrictConfigs.getReflectConfigPaths(), cpEntry, resourceLocation + "/" + FileNames.REFLECTION_NAME);
-                        addURI.add(restrictConfigs.getProxyConfigPaths(), cpEntry, resourceLocation + "/" + FileNames.DYNAMIC_PROXY_NAME);
-                        addURI.add(restrictConfigs.getResourceConfigPaths(), cpEntry, resourceLocation + "/" + FileNames.RESOURCES_NAME);
+                        addURI.add(restrictConfigs.getJniConfigPaths(), cpEntry, resourceLocation + "/" + ConfigurationFiles.JNI_NAME);
+                        addURI.add(restrictConfigs.getReflectConfigPaths(), cpEntry, resourceLocation + "/" + ConfigurationFiles.REFLECTION_NAME);
+                        addURI.add(restrictConfigs.getProxyConfigPaths(), cpEntry, resourceLocation + "/" + ConfigurationFiles.DYNAMIC_PROXY_NAME);
+                        addURI.add(restrictConfigs.getResourceConfigPaths(), cpEntry, resourceLocation + "/" + ConfigurationFiles.RESOURCES_NAME);
                     }
                 }
             });
@@ -448,16 +443,16 @@ public final class Agent {
             if (configOutputDirPath != null) {
                 TraceProcessor p = ((TraceProcessorWriterAdapter) traceWriter).getProcessor();
                 try {
-                    try (JsonWriter writer = new JsonWriter(configOutputDirPath.resolve(FileNames.REFLECTION_NAME))) {
+                    try (JsonWriter writer = new JsonWriter(configOutputDirPath.resolve(ConfigurationFiles.REFLECTION_NAME))) {
                         p.getReflectionConfiguration().printJson(writer);
                     }
-                    try (JsonWriter writer = new JsonWriter(configOutputDirPath.resolve(FileNames.JNI_NAME))) {
+                    try (JsonWriter writer = new JsonWriter(configOutputDirPath.resolve(ConfigurationFiles.JNI_NAME))) {
                         p.getJniConfiguration().printJson(writer);
                     }
-                    try (JsonWriter writer = new JsonWriter(configOutputDirPath.resolve(FileNames.DYNAMIC_PROXY_NAME))) {
+                    try (JsonWriter writer = new JsonWriter(configOutputDirPath.resolve(ConfigurationFiles.DYNAMIC_PROXY_NAME))) {
                         p.getProxyConfiguration().printJson(writer);
                     }
-                    try (JsonWriter writer = new JsonWriter(configOutputDirPath.resolve(FileNames.RESOURCES_NAME))) {
+                    try (JsonWriter writer = new JsonWriter(configOutputDirPath.resolve(ConfigurationFiles.RESOURCES_NAME))) {
                         p.getResourceConfiguration().printJson(writer);
                     }
                 } catch (IOException e) {

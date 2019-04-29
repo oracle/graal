@@ -39,6 +39,7 @@ import java.lang.reflect.Modifier;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
+import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.HashMap;
 import java.util.List;
@@ -95,6 +96,7 @@ import com.oracle.svm.core.option.XOptions;
 import com.oracle.svm.core.snippets.KnownIntrinsics;
 import com.oracle.svm.core.util.UserError;
 import com.oracle.svm.core.util.UserError.UserException;
+import com.oracle.svm.core.util.VMError;
 import com.oracle.svm.graal.hosted.GraalFeature;
 import com.oracle.svm.hosted.FeatureImpl;
 import com.oracle.svm.hosted.FeatureImpl.DuringAnalysisAccessImpl;
@@ -139,7 +141,20 @@ public final class HotSpotGraalLibraryFeature implements com.oracle.svm.core.gra
         ImageSingletons.add(MethodAnnotationSupport.class, new MethodAnnotationSupport());
 
         JNIRuntimeAccessibilitySupport registry = ImageSingletons.lookup(JNIRuntimeAccessibilitySupport.class);
-        registerJNIConfiguration(registry, ((DuringSetupAccessImpl) access).getImageClassLoader());
+        ImageClassLoader imageClassLoader = ((DuringSetupAccessImpl) access).getImageClassLoader();
+        registerJNIConfiguration(registry, imageClassLoader);
+
+        List<OptionDescriptors> descriptors = new ArrayList<>();
+        for (Class<? extends OptionDescriptors> optionsClass : imageClassLoader.findSubclasses(OptionDescriptors.class, false)) {
+            if (!Modifier.isAbstract(optionsClass.getModifiers())) {
+                try {
+                    descriptors.add(optionsClass.getDeclaredConstructor().newInstance());
+                } catch (ReflectiveOperationException ex) {
+                    throw VMError.shouldNotReachHere(ex);
+                }
+            }
+        }
+        OptionsParser.setCachedOptionDescriptors(descriptors);
     }
 
     /**

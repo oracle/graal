@@ -35,7 +35,7 @@ import java.util.jar.Manifest;
 
 import org.graalvm.compiler.options.OptionType;
 
-import com.oracle.svm.hosted.ImageClassLoader;
+import com.oracle.svm.core.util.ClasspathUtils;
 
 class DefaultOptionHandler extends NativeImage.OptionHandler<NativeImage> {
 
@@ -220,7 +220,7 @@ class DefaultOptionHandler extends NativeImage.OptionHandler<NativeImage> {
             /* Missing Class-Path Attribute is tolerable */
             if (classPath != null) {
                 for (String cp : classPath.split(" +")) {
-                    Path manifestClassPath = ImageClassLoader.stringToClasspath(cp);
+                    Path manifestClassPath = ClasspathUtils.stringToClasspath(cp);
                     if (!manifestClassPath.isAbsolute()) {
                         /* Resolve relative manifestClassPath against directory containing jar */
                         manifestClassPath = filePath.getParent().resolve(manifestClassPath);

@@ -45,6 +45,40 @@ import com.oracle.svm.core.option.RuntimeOptionKey;
 
 public class SubstrateOptions {
 
+    @Option(help = "Class containing the default entry point method. Optional if --shared is used.", type = OptionType.User)//
+    public static final HostedOptionKey<String> Class = new HostedOptionKey<>("");
+
+    @Option(help = "Name of the main entry point method. Optional if --shared is used.")//
+    public static final HostedOptionKey<String> Method = new HostedOptionKey<>("main");
+
+    @Option(help = "Name of the output file to be generated", type = OptionType.User)//
+    public static final HostedOptionKey<String> Name = new HostedOptionKey<>("");
+
+    @APIOption(name = "shared")//
+    @Option(help = "Build shared library")//
+    public static final HostedOptionKey<Boolean> SharedLibrary = new HostedOptionKey<>(false);
+
+    @APIOption(name = "static")//
+    @Option(help = "Build statically linked executable (requires static libc and zlib)")//
+    public static final HostedOptionKey<Boolean> StaticExecutable = new HostedOptionKey<>(false);
+
+    public static final int ForceFallback = 10;
+    public static final int Automatic = 5;
+    public static final int NoFallback = 0;
+
+    public static final String OptionNameForceFallback = "force-fallback";
+    public static final String OptionNameAutoFallback = "auto-fallback";
+    public static final String OptionNameNoFallback = "no-fallback";
+
+    @APIOption(name = OptionNameForceFallback, fixedValue = "" + ForceFallback, customHelp = "force building of fallback image") //
+    @APIOption(name = OptionNameAutoFallback, fixedValue = "" + Automatic, customHelp = "build stand-alone image if possible") //
+    @APIOption(name = OptionNameNoFallback, fixedValue = "" + NoFallback, customHelp = "build stand-alone image or report failure") //
+    @Option(help = "Define when fallback-image generation should be used.")//
+    public static final HostedOptionKey<Integer> FallbackThreshold = new HostedOptionKey<>(Automatic);
+
+    public static final String IMAGE_CLASSPATH_PREFIX = "-imagecp";
+    public static final String WATCHPID_PREFIX = "-watchpid";
+
     private static ValueUpdateHandler optimizeValueUpdateHandler;
 
     @Option(help = "Show available options based on comma-separated option-types (allowed categories: User, Expert, Debug).")//
@@ -164,12 +198,6 @@ public class SubstrateOptions {
 
     @Option(help = "Enable Java Native Interface (JNI) support.")//
     public static final HostedOptionKey<Boolean> JNI = new HostedOptionKey<>(true);
-
-    @Option(help = "Files describing program elements to be made accessible via JNI (for syntax, see ReflectionConfigurationFiles)", type = OptionType.User)//
-    public static final HostedOptionKey<String[]> JNIConfigurationFiles = new HostedOptionKey<>(null);
-
-    @Option(help = "Resources describing program elements to be made accessible via JNI (see JNIConfigurationFiles).", type = OptionType.User)//
-    public static final HostedOptionKey<String[]> JNIConfigurationResources = new HostedOptionKey<>(null);
 
     @Option(help = "Report information about known JNI elements when lookup fails", type = OptionType.User)//
     public static final HostedOptionKey<Boolean> JNIVerboseLookupErrors = new HostedOptionKey<>(false);
