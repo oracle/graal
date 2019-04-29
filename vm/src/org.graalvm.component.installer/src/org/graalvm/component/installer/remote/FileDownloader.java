@@ -304,9 +304,10 @@ public final class FileDownloader {
     }
 
     public void download() throws IOException {
+        boolean fromFile = sourceURL.getProtocol().equals("file");
         if (fileDescription != null) {
             if (!feedback.verboseOutput("MSG_DownloadingVerbose", getFileDescription(), getSourceURL())) {
-                feedback.output("MSG_Downloading", getFileDescription());
+                feedback.output(fromFile ? "MSG_UsingFile" : "MSG_Downloading", getFileDescription(), getSourceURL().getHost());
             }
         } else {
             feedback.output("MSG_DownloadingFrom", getSourceURL());
@@ -318,7 +319,7 @@ public final class FileDownloader {
             return;
         }
 
-        if (sourceURL.getProtocol().equals("file")) {
+        if (fromFile) {
             try {
                 Path p = Paths.get(sourceURL.toURI());
                 if (Files.isDirectory(p)) {
