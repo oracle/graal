@@ -54,7 +54,7 @@ import jdk.vm.ci.meta.ResolvedJavaMethod;
 
 @AutomaticFeature
 public class FallbackFeature implements Feature {
-    private static final String ABORT_MSG_PREFIX = "Abort stand-alone image build";
+    private static final String ABORT_MSG_PREFIX = "Aborting stand-alone image build";
 
     private final List<ReflectionInvocationCheck> reflectionInvocationChecks = new ArrayList<>();
 
