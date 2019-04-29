@@ -90,8 +90,13 @@ function common() {
     cmd_line+=("--tool:all")
 }
 
+function polyglot_common() {
+    cmd_line+=("--language:all")
+}
+
 function libpolyglot() {
     common
+    polyglot_common
     cmd_line+=("--macro:polyglot-library")
 }
 
@@ -99,6 +104,9 @@ function launcher() {
     common
     local launcher="$1"
     cmd_line+=("--macro:${launcher}-launcher")
+    if [[ "$launcher" == "polyglot" ]]; then
+        polyglot_common
+    fi
 }
 
 for binary in "${to_build[@]}"; do
