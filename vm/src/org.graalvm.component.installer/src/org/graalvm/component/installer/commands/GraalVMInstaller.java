@@ -74,7 +74,7 @@ public class GraalVMInstaller extends Installer {
     }
 
     public void setCurrentInstallPath(Path currentInstallPath) {
-        this.currentInstallPath = currentInstallPath;
+        this.currentInstallPath = currentInstallPath.normalize();
     }
 
     public boolean isCreateSymlink() {

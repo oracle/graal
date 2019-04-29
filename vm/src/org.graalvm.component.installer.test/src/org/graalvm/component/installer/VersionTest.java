@@ -24,15 +24,20 @@
  */
 package org.graalvm.component.installer;
 
+import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertTrue;
+import org.junit.Rule;
 import org.junit.Test;
+import org.junit.rules.ExpectedException;
 
 /**
  *
  * @author sdedic
  */
 public class VersionTest {
+    @Rule public ExpectedException exception = ExpectedException.none();
+
     @Test
     public void testNoVersionInfimum() throws Exception {
         Version otherNullVersion = Version.fromString(Version.NO_VERSION.toString());
@@ -48,5 +53,55 @@ public class VersionTest {
     public void testNoVersionEqualToSelf() throws Exception {
         assertTrue(Version.NO_VERSION.compareTo(Version.NO_VERSION) == 0);
         assertTrue(Version.NO_VERSION.equals(Version.NO_VERSION));
+    }
+
+    @Test
+    public void testNormalizeTo4Numbers() throws Exception {
+        assertEquals("1.0.0.0-r", Version.fromString("1.0-r").toString());
+        assertEquals("1.0.0.0-r", Version.fromString("1.0.0-r").toString());
+        assertEquals("1.0.0.0-r", Version.fromString("1.0.0.0-r").toString());
+    }
+
+    @Test
+    public void testFailOnTooManyVersions() throws Exception {
+        exception.expect(IllegalArgumentException.class);
+        assertEquals("1.0.0.0.0-r", Version.fromString("1.0.0.0.0-r").toString());
+    }
+
+    @Test
+    public void testFailOnTooFewVersions() throws Exception {
+        exception.expect(IllegalArgumentException.class);
+        assertEquals("1-r", Version.fromString("1.0.0.0.0-r").toString());
+    }
+
+    private static void assertOlder(String older, String newer) {
+        assertTrue("Versions didn't compare " + older + " < " + newer,
+                        Version.fromString(older).compareTo(Version.fromString(newer)) < 0);
+        assertFalse(older.equals(newer));
+    }
+
+    @Test
+    public void testVersionOrder() throws Exception {
+        String[] versionSequence = {
+                        "1.0",
+                        "1.0.1",
+                        "1.1.0",
+                        "1.1.0-0.dev.1",
+                        "1.1.0-0.dev.2",
+                        "1.1.0-0.dev.10",
+                        "1.1.0-1.beta.9",
+                        "1.1.0-1.beta.10",
+                        "1.1.0-1.beta.13",
+                        "1.1.0-2",
+                        "1.1.0.2-0.rc.1",
+                        "1.1.0.2-1",
+                        "1.1.0.3",
+        };
+
+        for (int i = 0; i < versionSequence.length; i++) {
+            for (int j = i + 1; j < versionSequence.length; j++) {
+                assertOlder(versionSequence[i], versionSequence[j]);
+            }
+        }
     }
 }

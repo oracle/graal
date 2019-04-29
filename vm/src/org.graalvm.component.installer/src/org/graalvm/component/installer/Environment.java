@@ -161,7 +161,7 @@ public final class Environment implements Feedback, CommandInput {
     }
 
     public void setGraalHome(Path f) {
-        this.graalHome = f;
+        this.graalHome = f.normalize();
 
     }
 

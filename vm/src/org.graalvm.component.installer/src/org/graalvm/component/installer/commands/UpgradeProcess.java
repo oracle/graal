@@ -147,7 +147,7 @@ public class UpgradeProcess {
      * @return installation root for the core package.
      */
     Path findGraalVMParentPath() {
-        Path parent = input.getGraalHomePath().getParent();
+        Path parent = input.getGraalHomePath().normalize().getParent();
         if (parent == null) {
             return null;
         }
@@ -179,6 +179,9 @@ public class UpgradeProcess {
     Path createInstallName(ComponentInfo graal) {
         Path base = findGraalVMParentPath();
         String ed = graal.getProvidedValue(CommonConstants.CAP_EDITION, String.class);
+        if (ed == null) {
+            ed = input.getLocalRegistry().getGraalCapabilities().get(CommonConstants.CAP_EDITION);
+        }
         String dirName = feedback.l10n(
                         ed == null ? "UPGRADE_GraalVMDirName@" : "UPGRADE_GraalVMDirNameEdition@",
                         graal.getVersion().originalString(),
@@ -206,14 +209,50 @@ public class UpgradeProcess {
             return false;
         }
 
+        Path reported = createInstallName(info);
+        // there's a slight chance this will be different from the final name ...
+        feedback.output("UPGRADE_PreparingInstall", info.getVersion().originalString(), reported);
+        failIfDirectotyExistsNotEmpty(reported);
+
         // force download
         ComponentParam param = input.existingFiles().createParam("core", info);
         metaLoader = param.createFileLoader();
         ComponentInfo completeInfo = metaLoader.completeMetadata();
         newInstallPath = createInstallName(completeInfo);
+        failIfDirectotyExistsNotEmpty(newInstallPath);
+
+        if (!reported.equals(newInstallPath)) {
+            feedback.error("UPGRADE_WarningEditionDifferent", null, info.getVersion().originalString(), newInstallPath);
+        }
+
         existingComponents.addAll(input.getLocalRegistry().getComponentIDs());
         existingComponents.remove(BundleConstants.GRAAL_COMPONENT_ID);
         return true;
+    }
+
+    void failIfDirectotyExistsNotEmpty(Path target) throws IOException {
+        if (!Files.exists(target)) {
+            return;
+        }
+        if (!Files.isDirectory(target)) {
+            throw feedback.failure("UPGRADE_TargetExistsNotDirectory", null, target);
+        }
+        Path relFile = target.resolve("release");
+        if (Files.isReadable(relFile)) {
+            Version targetVersion = null;
+            try {
+                ComponentRegistry reg = createRegistryFor(target);
+                targetVersion = reg.getGraalVersion();
+            } catch (FailedOperationException ex) {
+                // ignore
+            }
+            if (targetVersion != null) {
+                throw feedback.failure("UPGRADE_TargetExistsContainsGraalVM", null, target, targetVersion.originalString());
+            }
+        }
+        if (Files.list(target).findFirst().isPresent()) {
+            throw feedback.failure("UPGRADE_TargetExistsNotEmpty", null, target);
+        }
     }
 
     public boolean installGraalCore(ComponentInfo info) throws IOException {
@@ -228,18 +267,22 @@ public class UpgradeProcess {
         gvmInstaller.setCurrentInstallPath(input.getGraalHomePath());
         gvmInstaller.setInstallPath(newInstallPath);
 
-        feedback.output("UPGRADE_InstallingCore", info.getVersion().toString(), newInstallPath.toString());
+        feedback.output("UPGRADE_InstallingCore", info.getVersion().originalString(), newInstallPath.toString());
 
         gvmInstaller.install();
 
         Path installed = gvmInstaller.getInstalledPath();
-        DirectoryStorage dst = new DirectoryStorage(
-                        feedback.withBundle(ComponentInstaller.class),
-                        installed.resolve(SystemUtils.fromCommonRelative(CommonConstants.PATH_COMPONENT_STORAGE)),
-                        installed);
-        newGraalRegistry = new ComponentRegistry(feedback, dst);
+        newGraalRegistry = createRegistryFor(installed);
         migrateLicenses();
         return true;
+    }
+
+    private ComponentRegistry createRegistryFor(Path home) {
+        DirectoryStorage dst = new DirectoryStorage(
+                        feedback.withBundle(ComponentInstaller.class),
+                        home.resolve(SystemUtils.fromCommonRelative(CommonConstants.PATH_COMPONENT_STORAGE)),
+                        home);
+        return new ComponentRegistry(feedback, dst);
     }
 
     /**
@@ -317,14 +360,15 @@ public class UpgradeProcess {
         Set<ComponentInfo> installables = null;
         Set<ComponentInfo> first = null;
         ComponentInfo result = null;
-
+        Set<String> toMigrate = new HashSet<>(existingComponents);
+        toMigrate.removeAll(explicitIds);
         for (Iterator<ComponentInfo> it = versions.iterator(); it.hasNext();) {
             ComponentInfo candidate = it.next();
             Set<ComponentInfo> instCandidates = findInstallables(candidate);
             if (first == null) {
                 first = instCandidates;
             }
-            if (allowMissing || instCandidates.size() == existingComponents.size()) {
+            if (allowMissing || instCandidates.size() == toMigrate.size()) {
                 installables = instCandidates;
                 result = candidate;
                 break;
@@ -361,7 +405,10 @@ public class UpgradeProcess {
      */
 
     public void migrateLicenses() {
-        feedback.output("UPGRADE_MigratingLicenses", input.getLocalRegistry().getGraalVersion(),
+        if (!SystemUtils.isLicenseTrackingEnabled()) {
+            return;
+        }
+        feedback.output("UPGRADE_MigratingLicenses", input.getLocalRegistry().getGraalVersion().originalString(),
                         targetInfo.getVersion().originalString());
         for (Map.Entry<String, Collection<String>> e : input.getLocalRegistry().getAcceptedLicenses().entrySet()) {
             String compId = e.getKey();
