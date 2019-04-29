@@ -86,7 +86,7 @@ final class IOHelper {
             }
         }
         if (copyOptions.contains(StandardCopyOption.ATOMIC_MOVE)) {
-            throw new AtomicMoveNotSupportedException(source.getFileName().toString(), target.getFileName().toString(), "Atomic move not supported");
+            throw new AtomicMoveNotSupportedException(source.toString(), target.toString(), "Atomic move not supported");
         }
         final Map<String, Object> sourceAttributes = sourceFileSystem.readAttributes(
                         sourceReal,
@@ -153,7 +153,7 @@ final class IOHelper {
     static void move(final Path source, final Path target, final FileSystem fileSystem, CopyOption... options) throws IOException {
         for (CopyOption option : options) {
             if (StandardCopyOption.ATOMIC_MOVE.equals(option)) {
-                throw new AtomicMoveNotSupportedException(source.getFileName().toString(), target.getFileName().toString(), "Atomic move not supported");
+                throw new AtomicMoveNotSupportedException(source.toString(), target.toString(), "Atomic move not supported");
             }
         }
         fileSystem.copy(source, target, options);
@@ -163,7 +163,7 @@ final class IOHelper {
     static void move(final Path source, final Path target, final FileSystem sourceFileSystem, final FileSystem targetFileSystem, CopyOption... options) throws IOException {
         for (CopyOption option : options) {
             if (StandardCopyOption.ATOMIC_MOVE.equals(option)) {
-                throw new AtomicMoveNotSupportedException(source.getFileName().toString(), target.getFileName().toString(), "Atomic move not supported");
+                throw new AtomicMoveNotSupportedException(source.toString(), target.toString(), "Atomic move not supported");
             }
         }
         copy(source, target, sourceFileSystem, targetFileSystem, options);

@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2016, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2016, 2018, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -108,12 +108,13 @@ public final class ClassfileBytecodeProvider implements BytecodeProvider {
         if (classfile == null) {
             try {
                 ResolvedJavaType type = metaAccess.lookupJavaType(c);
-                InputStream in = GraalServices.getClassfileAsStream(c);
-                if (in != null) {
-                    DataInputStream stream = new DataInputStream(in);
-                    classfile = new Classfile(type, stream, this);
-                    classfiles.put(c, classfile);
-                    return classfile;
+                try (InputStream in = GraalServices.getClassfileAsStream(c)) {
+                    if (in != null) {
+                        DataInputStream stream = new DataInputStream(in);
+                        classfile = new Classfile(type, stream, this);
+                        classfiles.put(c, classfile);
+                        return classfile;
+                    }
                 }
                 throw new NoClassDefFoundError(c.getName());
             } catch (IOException e) {

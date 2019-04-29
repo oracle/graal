@@ -50,19 +50,17 @@ import org.graalvm.polyglot.Value;
 import org.junit.Assert;
 import org.junit.Test;
 
-import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.InstrumentInfo;
 import com.oracle.truffle.api.Scope;
 import com.oracle.truffle.api.TruffleLanguage;
 import com.oracle.truffle.api.debug.Debugger;
 import com.oracle.truffle.api.instrumentation.TruffleInstrument;
-import com.oracle.truffle.api.interop.ForeignAccess;
-import com.oracle.truffle.api.interop.KeyInfo;
-import com.oracle.truffle.api.interop.MessageResolution;
-import com.oracle.truffle.api.interop.Resolve;
+import com.oracle.truffle.api.interop.InteropLibrary;
 import com.oracle.truffle.api.interop.TruffleObject;
 import com.oracle.truffle.api.interop.UnknownIdentifierException;
-import com.oracle.truffle.api.nodes.Node;
+import com.oracle.truffle.api.interop.UnsupportedMessageException;
+import com.oracle.truffle.api.library.ExportLibrary;
+import com.oracle.truffle.api.library.ExportMessage;
 
 /**
  * Test that languages and other instruments are able to retrieve the Debugger instance.
@@ -78,7 +76,7 @@ public class DebuggerRetrievalTest {
     @Test
     public void testFromInstrument() {
         InstrumentThatNeedsDebugger.haveDebugger = false;
-        Context.newBuilder().option(InstrumentThatNeedsDebugger.ID + ".dbg", "").build();
+        Context.newBuilder().allowExperimentalOptions(true).option(InstrumentThatNeedsDebugger.ID + ".dbg", "").build();
         Assert.assertTrue(InstrumentThatNeedsDebugger.haveDebugger);
     }
 
@@ -100,6 +98,8 @@ public class DebuggerRetrievalTest {
             return Collections.singleton(Scope.newBuilder("Debugger top scope", new TopScopeObject(context)).build());
         }
 
+        @ExportLibrary(InteropLibrary.class)
+        @SuppressWarnings({"unused", "static-method"})
         static final class TopScopeObject implements TruffleObject {
 
             private final Debugger context;
@@ -108,51 +108,27 @@ public class DebuggerRetrievalTest {
                 this.context = context;
             }
 
-            @Override
-            public ForeignAccess getForeignAccess() {
-                return TopScopeObjectMessageResolutionForeign.ACCESS;
+            @ExportMessage
+            boolean hasMembers() {
+                return true;
             }
 
-            public static boolean isInstance(TruffleObject obj) {
-                return obj instanceof TopScopeObject;
+            @ExportMessage
+            boolean isMemberReadable(String member) {
+                return "debugger".equals(member);
             }
 
-            @MessageResolution(receiverType = TopScopeObject.class)
-            static class TopScopeObjectMessageResolution {
+            @ExportMessage
+            Object getMembers(boolean includeInternal) throws UnsupportedMessageException {
+                throw UnsupportedMessageException.create();
+            }
 
-                @Resolve(message = "KEY_INFO")
-                abstract static class VarsMapInfoNode extends Node {
-
-                    @SuppressWarnings("unused")
-                    public Object access(TopScopeObject ts, String name) {
-                        if ("debugger".equals(name)) {
-                            return KeyInfo.READABLE;
-                        } else {
-                            return 0;
-                        }
-                    }
-                }
-
-                @Resolve(message = "HAS_KEYS")
-                abstract static class HasKeysNode extends Node {
-
-                    @SuppressWarnings("unused")
-                    public Object access(TopScopeObject ts) {
-                        return true;
-                    }
-                }
-
-                @Resolve(message = "READ")
-                abstract static class VarsMapReadNode extends Node {
-
-                    @CompilerDirectives.TruffleBoundary
-                    public Object access(TopScopeObject ts, String name) {
-                        if ("debugger".equals(name)) {
-                            return ts.context != null;
-                        } else {
-                            throw UnknownIdentifierException.raise(name);
-                        }
-                    }
+            @ExportMessage
+            Object readMember(@SuppressWarnings("unused") String member) throws UnknownIdentifierException {
+                if ("debugger".equals(member)) {
+                    return context != null;
+                } else {
+                    throw UnknownIdentifierException.create(member);
                 }
             }
         }

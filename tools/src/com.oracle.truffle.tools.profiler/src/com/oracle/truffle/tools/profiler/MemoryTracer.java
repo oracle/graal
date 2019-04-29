@@ -311,6 +311,12 @@ public final class MemoryTracer implements Closeable {
 
     private final class Listener implements AllocationListener {
 
+        /**
+         * Used to prevent infinite recursions in case a language does an allocation during meta
+         * object lookup or toString call.
+         */
+        ThreadLocal<Boolean> gettingMetaObject = ThreadLocal.withInitial(() -> false);
+
         @Override
         public void onEnter(AllocationEvent event) {
         }
@@ -318,6 +324,9 @@ public final class MemoryTracer implements Closeable {
         @Override
         @TruffleBoundary
         public void onReturnValue(AllocationEvent event) {
+            if (gettingMetaObject.get()) {
+                return;
+            }
             ShadowStack.ThreadLocalStack stack = shadowStack.getStack(Thread.currentThread());
             if (stack == null || stack.getStackIndex() == -1) {
                 // nothing on the stack
@@ -329,12 +338,14 @@ public final class MemoryTracer implements Closeable {
             }
             LanguageInfo languageInfo = event.getLanguage();
             String metaObjectString;
+            gettingMetaObject.set(true);
             Object metaObject = env.findMetaObject(languageInfo, event.getValue());
             if (metaObject != null) {
                 metaObjectString = env.toString(languageInfo, metaObject);
             } else {
                 metaObjectString = "null";
             }
+            gettingMetaObject.set(false);
             AllocationEventInfo info = new AllocationEventInfo(languageInfo, event.getNewSize() - event.getOldSize(), event.getOldSize() != 0, metaObjectString);
             handleEvent(stack, info);
         }

@@ -140,7 +140,14 @@ public final class ThreadLocalAllocation {
         final Object result = slowPathNewInstanceWithoutAllocating(hub);
         /* Allow the collector to do stuff now that allocation, etc., is allowed. */
         HeapImpl.getHeapImpl().getGCImpl().possibleCollectionEpilogue(gcEpoch);
+        runSlowPathHooks();
         return result;
+    }
+
+    /** Use the end of slow-path allocation as a place to run periodic hook code. */
+    private static void runSlowPathHooks() {
+        /* Check if the physical memory size has changed. */
+        HeapPolicy.samplePhysicalMemorySize();
     }
 
     @RestrictHeapAccess(access = RestrictHeapAccess.Access.NO_ALLOCATION, reason = "Must not allocate in the implementation of allocation.")
@@ -207,6 +214,7 @@ public final class ThreadLocalAllocation {
         final Object result = slowPathNewArrayWithoutAllocating(hub, length);
         /* Allow the collector to do stuff now that allocation, etc., is allowed. */
         HeapImpl.getHeapImpl().getGCImpl().possibleCollectionEpilogue(gcEpoch);
+        runSlowPathHooks();
         return result;
     }
 

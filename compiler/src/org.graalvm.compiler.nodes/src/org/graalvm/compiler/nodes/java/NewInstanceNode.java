@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2009, 2015, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2009, 2018, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -60,7 +60,7 @@ public class NewInstanceNode extends AbstractNewObjectNode implements Virtualiza
 
     protected NewInstanceNode(NodeClass<? extends NewInstanceNode> c, ResolvedJavaType type, boolean fillContents, FrameState stateBefore) {
         super(c, StampFactory.objectNonNull(TypeReference.createExactTrusted(type)), fillContents, stateBefore);
-        assert !type.isArray() && !type.isInterface() && !type.isPrimitive() && !type.isAbstract();
+        assert !type.isArray() && !type.isInterface() && !type.isPrimitive() && !type.isAbstract() : type;
         this.instanceClass = type;
     }
 

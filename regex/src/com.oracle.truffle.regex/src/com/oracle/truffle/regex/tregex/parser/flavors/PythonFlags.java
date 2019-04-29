@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2018, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2019, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -24,14 +24,18 @@
  */
 package com.oracle.truffle.regex.tregex.parser.flavors;
 
-import com.oracle.truffle.api.interop.ForeignAccess;
-import com.oracle.truffle.api.interop.TruffleObject;
+import com.oracle.truffle.api.CompilerDirectives;
+import com.oracle.truffle.api.interop.UnknownIdentifierException;
+import com.oracle.truffle.regex.AbstractConstantKeysObject;
 import com.oracle.truffle.regex.RegexSyntaxException;
+import com.oracle.truffle.regex.util.TruffleReadOnlyKeysArray;
 
 /**
  * An immutable representation of a set of Python regular expression flags.
  */
-public final class PythonFlags implements TruffleObject {
+public final class PythonFlags extends AbstractConstantKeysObject {
+
+    private static final TruffleReadOnlyKeysArray KEYS = new TruffleReadOnlyKeysArray("ASCII", "DOTALL", "IGNORECASE", "LOCALE", "MULTILINE", "TEMPLATE", "UNICODE", "VERBOSE");
 
     private final int value;
 
@@ -199,11 +203,32 @@ public final class PythonFlags implements TruffleObject {
     }
 
     @Override
-    public ForeignAccess getForeignAccess() {
-        return null;
+    public TruffleReadOnlyKeysArray getKeys() {
+        return KEYS;
     }
 
-    public static boolean isInstance(TruffleObject object) {
-        return object instanceof PythonFlags;
+    @Override
+    public Object readMemberImpl(String symbol) throws UnknownIdentifierException {
+        switch (symbol) {
+            case "ASCII":
+                return isAscii();
+            case "DOTALL":
+                return isDotAll();
+            case "IGNORECASE":
+                return isIgnoreCase();
+            case "LOCALE":
+                return isLocale();
+            case "MULTILINE":
+                return isMultiLine();
+            case "TEMPLATE":
+                return isTemplate();
+            case "UNICODE":
+                return isUnicode();
+            case "VERBOSE":
+                return isVerbose();
+            default:
+                CompilerDirectives.transferToInterpreter();
+                throw UnknownIdentifierException.create(symbol);
+        }
     }
 }

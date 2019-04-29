@@ -35,7 +35,7 @@ import org.graalvm.compiler.nodes.StartNode;
 import org.graalvm.compiler.nodes.StructuredGraph;
 import org.graalvm.compiler.nodes.java.MethodCallTargetNode;
 import org.graalvm.compiler.nodes.spi.ValueProxy;
-import org.graalvm.compiler.serviceprovider.GraalServices;
+import org.graalvm.compiler.serviceprovider.JavaVersionUtil;
 
 import com.oracle.svm.core.SubstrateOptions;
 import com.oracle.svm.core.util.VMError;
@@ -50,7 +50,7 @@ public class InliningUtilities {
     @SuppressWarnings("unchecked")
     private static Class<? extends Annotation> lookupForceInlineAnnotation() {
         try {
-            if (GraalServices.Java8OrEarlier) {
+            if (JavaVersionUtil.Java8OrEarlier) {
                 return (Class<? extends Annotation>) Class.forName("java.lang.invoke.ForceInline");
             } else {
                 return (Class<? extends Annotation>) Class.forName("jdk.internal.vm.annotation.ForceInline");

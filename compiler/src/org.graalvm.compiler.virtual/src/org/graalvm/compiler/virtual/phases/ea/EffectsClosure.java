@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2011, 2017, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2011, 2018, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -295,7 +295,7 @@ public abstract class EffectsClosure<BlockT extends EffectsBlockState<BlockT>> e
     protected final List<BlockT> processLoop(Loop<Block> loop, BlockT initialState) {
         if (initialState.isDead()) {
             ArrayList<BlockT> states = new ArrayList<>();
-            for (int i = 0; i < loop.getExits().size(); i++) {
+            for (int i = 0; i < loop.getLoopExits().size(); i++) {
                 states.add(initialState);
             }
             return states;
@@ -347,7 +347,7 @@ public abstract class EffectsClosure<BlockT extends EffectsBlockState<BlockT>> e
                     blockEffects.get(loop.getHeader()).insertAll(mergeProcessor.mergeEffects, 0);
                     loopMergeEffects.put(loop, mergeProcessor.afterMergeEffects);
 
-                    assert info.exitStates.size() == loop.getExits().size();
+                    assert info.exitStates.size() == loop.getLoopExits().size();
                     loopEntryStates.put((LoopBeginNode) loop.getHeader().getBeginNode(), loopEntryState);
                     assert assertExitStatesNonEmpty(loop, info);
 
@@ -412,8 +412,8 @@ public abstract class EffectsClosure<BlockT extends EffectsBlockState<BlockT>> e
     }
 
     private boolean assertExitStatesNonEmpty(Loop<Block> loop, LoopInfo<BlockT> info) {
-        for (int i = 0; i < loop.getExits().size(); i++) {
-            assert info.exitStates.get(i) != null : "no loop exit state at " + loop.getExits().get(i) + " / " + loop.getHeader();
+        for (int i = 0; i < loop.getLoopExits().size(); i++) {
+            assert info.exitStates.get(i) != null : "no loop exit state at " + loop.getLoopExits().get(i) + " / " + loop.getHeader();
         }
         return true;
     }
@@ -428,7 +428,7 @@ public abstract class EffectsClosure<BlockT extends EffectsBlockState<BlockT>> e
     protected abstract class MergeProcessor {
 
         private final Block mergeBlock;
-        private final AbstractMergeNode merge;
+        protected final AbstractMergeNode merge;
 
         protected final GraphEffectList mergeEffects;
         protected final GraphEffectList afterMergeEffects;

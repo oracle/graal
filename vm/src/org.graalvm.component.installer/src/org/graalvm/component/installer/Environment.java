@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2019, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -24,8 +24,13 @@
  */
 package org.graalvm.component.installer;
 
+import java.io.Console;
+import java.io.EOFException;
+import java.io.IOException;
+import java.io.InputStream;
 import org.graalvm.component.installer.model.ComponentRegistry;
 import java.io.PrintStream;
+import java.net.URL;
 import java.nio.file.Path;
 import java.text.MessageFormat;
 import java.util.HashMap;
@@ -38,7 +43,7 @@ import java.util.function.Supplier;
 /**
  * Implementation of feedback and input for commands.
  */
-final class Environment implements Feedback, CommandInput {
+public final class Environment implements Feedback, CommandInput {
     private static final ResourceBundle BUNDLE = ResourceBundle.getBundle(
                     "org.graalvm.component.installer.Bundle");
 
@@ -47,32 +52,74 @@ final class Environment implements Feedback, CommandInput {
     private final Map<String, String> options;
     private final boolean verbose;
     private final ResourceBundle bundle;
+    private InputStream in = System.in;
     private PrintStream err = System.err;
     private PrintStream out = System.out;
-    private Supplier<ComponentRegistry> registrySupplier;
+    private Supplier<ComponentCollection> registrySupplier;
     private ComponentRegistry localRegistry;
     private boolean stacktraces;
-    private Iterable<ComponentParam> fileIterable;
-    private Map<Path, String> fileMap = new HashMap<>();
+    private ComponentIterable fileIterable;
+    private Map<URL, Path> fileMap = new HashMap<>();
     private boolean allOutputToErr;
-
+    private boolean autoYesEnabled;
+    private boolean nonInteractive;
     private Path graalHome;
 
+    Environment(String commandName, List<String> parameters, Map<String, String> options) {
+        this(commandName, (String) null, parameters, options);
+    }
+
     Environment(String commandName, InstallerCommand cmdInstance, List<String> parameters, Map<String, String> options) {
+        this(commandName, makeBundle(cmdInstance), parameters, options);
+    }
+
+    public void setIn(InputStream input) {
+        this.in = input;
+    }
+
+    private static String makeBundle(InstallerCommand cmdInstance) {
+        if (cmdInstance == null) {
+            return null;
+        }
+        String s = cmdInstance.getClass().getName();
+        s = s.substring(0, s.lastIndexOf('.'));
+        return s;
+    }
+
+    public Environment(String commandName, String bundlePackage, List<String> parameters, Map<String, String> options) {
         this.commandName = commandName;
         this.parameters = new LinkedList<>(parameters);
         this.options = options;
         this.verbose = options.containsKey(Commands.OPTION_VERBOSE);
         this.stacktraces = options.containsKey(Commands.OPTION_DEBUG);
-        if (cmdInstance != null) {
-            String s = cmdInstance.getClass().getName();
-            s = s.substring(0, s.lastIndexOf('.'));
-            bundle = ResourceBundle.getBundle(s + ".Bundle"); // NOI18N
+        if (bundlePackage != null) {
+            bundle = ResourceBundle.getBundle(bundlePackage + ".Bundle"); // NOI18N
         } else {
             bundle = BUNDLE;
         }
 
         this.fileIterable = new FileIterable(this, this);
+    }
+
+    Environment enableStacktraces() {
+        this.stacktraces = true;
+        return this;
+    }
+
+    public boolean isAutoYesEnabled() {
+        return autoYesEnabled;
+    }
+
+    public void setAutoYesEnabled(boolean autoYesEnabled) {
+        this.autoYesEnabled = autoYesEnabled;
+    }
+
+    public boolean isNonInteractive() {
+        return nonInteractive;
+    }
+
+    public void setNonInteractive(boolean nonInteractive) {
+        this.nonInteractive = nonInteractive;
     }
 
     public boolean isAllOutputToErr() {
@@ -88,12 +135,12 @@ final class Environment implements Feedback, CommandInput {
         }
     }
 
-    public void setFileIterable(Iterable<ComponentParam> fileIterable) {
+    public void setFileIterable(ComponentIterable fileIterable) {
         this.fileIterable = fileIterable;
     }
 
     @Override
-    public ComponentRegistry getRegistry() {
+    public ComponentCollection getRegistry() {
         return registrySupplier.get();
     }
 
@@ -109,7 +156,7 @@ final class Environment implements Feedback, CommandInput {
         }
     }
 
-    public void setComponentRegistry(Supplier<ComponentRegistry> registrySupplier) {
+    public void setComponentRegistry(Supplier<ComponentCollection> registrySupplier) {
         this.registrySupplier = registrySupplier;
     }
 
@@ -287,13 +334,23 @@ final class Environment implements Feedback, CommandInput {
             }
 
             @Override
-            public String translateFilename(Path f) {
-                return Environment.this.translateFilename(f);
+            public String acceptLine(boolean autoYes) {
+                return Environment.this.acceptLine(autoYes);
             }
 
             @Override
-            public void bindFilename(Path file, String label) {
-                Environment.this.bindFilename(file, label);
+            public char[] acceptPassword() {
+                return Environment.this.acceptPassword();
+            }
+
+            @Override
+            public void addLocalFileCache(URL location, Path local) {
+                Environment.this.addLocalFileCache(location, local);
+            }
+
+            @Override
+            public Path getLocalCache(URL location) {
+                return Environment.this.getLocalCache(location);
             }
         };
     }
@@ -351,6 +408,11 @@ final class Environment implements Feedback, CommandInput {
     }
 
     @Override
+    public String peekParameter() {
+        return parameters.peek();
+    }
+
+    @Override
     public String requiredParameter() {
         if (parameters.isEmpty()) {
             throw new FailedOperationException(
@@ -365,7 +427,7 @@ final class Environment implements Feedback, CommandInput {
     }
 
     @Override
-    public Iterable<ComponentParam> existingFiles() {
+    public ComponentIterable existingFiles() {
         return fileIterable;
     }
 
@@ -374,13 +436,65 @@ final class Environment implements Feedback, CommandInput {
         return options.get(optName);
     }
 
-    @Override
-    public String translateFilename(Path f) {
-        return fileMap.getOrDefault(f, f.toString());
+    public boolean hasOption(String optName) {
+        return optValue(optName) != null;
+    }
+
+    public char acceptCharacter() {
+        try {
+            int input = in.read();
+            if (input == -1) {
+                throw new UserAbortException();
+            }
+            return (char) input;
+        } catch (EOFException ex) {
+            throw new UserAbortException(ex);
+        } catch (IOException ex) {
+            throw withBundle(Environment.class).failure("ERROR_UserInput", ex, ex.getMessage());
+        }
     }
 
     @Override
-    public void bindFilename(Path file, String label) {
-        fileMap.put(file, label);
+    public String acceptLine(boolean autoYes) {
+        if (autoYes && isAutoYesEnabled()) {
+            return AUTO_YES;
+        }
+        if (isNonInteractive()) {
+            throw new NonInteractiveException(withBundle(Environment.class).l10n("ERROR_NoninteractiveInput"));
+        }
+        StringBuilder sb = new StringBuilder();
+        char c;
+        while ((c = acceptCharacter()) != '\n') {
+            if (c == 0x08) {
+                sb.delete(sb.length() - 1, sb.length());
+            } else {
+                sb.append(c);
+            }
+        }
+        return sb.toString();
+    }
+
+    @Override
+    public char[] acceptPassword() {
+        if (isNonInteractive()) {
+            throw new NonInteractiveException(withBundle(Environment.class).l10n("ERROR_NoninteractiveInput"));
+        }
+        Console console = System.console();
+        if (console != null) {
+            console.flush();
+            return console.readPassword();
+        } else {
+            return acceptLine(false).toCharArray();
+        }
+    }
+
+    @Override
+    public void addLocalFileCache(URL location, Path local) {
+        fileMap.put(location, local);
+    }
+
+    @Override
+    public Path getLocalCache(URL location) {
+        return fileMap.get(location);
     }
 }

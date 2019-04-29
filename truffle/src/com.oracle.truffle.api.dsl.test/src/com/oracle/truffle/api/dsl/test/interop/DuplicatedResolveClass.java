@@ -42,19 +42,16 @@ package com.oracle.truffle.api.dsl.test.interop;
 
 import com.oracle.truffle.api.dsl.test.ExpectError;
 import com.oracle.truffle.api.frame.VirtualFrame;
-import com.oracle.truffle.api.interop.CanResolve;
-import com.oracle.truffle.api.interop.MessageResolution;
-import com.oracle.truffle.api.interop.Resolve;
 import com.oracle.truffle.api.interop.TruffleObject;
 import com.oracle.truffle.api.nodes.Node;
 
-@SuppressWarnings("unused")
+@SuppressWarnings({"unused", "deprecation"})
 public class DuplicatedResolveClass {
 
-    @MessageResolution(receiverType = ValidTruffleObject12.class)
+    @com.oracle.truffle.api.interop.MessageResolution(receiverType = ValidTruffleObject12.class)
     public static class TruffleObjectMR1 {
-        @Resolve(message = "READ")
-        @ExpectError("Message resolution class with same name already exists")
+        @com.oracle.truffle.api.interop.Resolve(message = "READ")
+        @ExpectError("com.oracle.truffle.api.interop.Message resolution class with same name already exists")
         public abstract static class ReadNodeDuplicated extends Node {
 
             protected Object access(VirtualFrame frame, ValidTruffleObject1 receiver, Object name) {
@@ -62,7 +59,7 @@ public class DuplicatedResolveClass {
             }
         }
 
-        @CanResolve
+        @com.oracle.truffle.api.interop.CanResolve
         public abstract static class LanguageCheck3 extends Node {
 
             protected boolean test(VirtualFrame frame, TruffleObject receiver) {
@@ -71,10 +68,10 @@ public class DuplicatedResolveClass {
         }
     }
 
-    @MessageResolution(receiverType = ValidTruffleObject12.class)
+    @com.oracle.truffle.api.interop.MessageResolution(receiverType = ValidTruffleObject12.class)
     public static class TruffleObjectMR2 {
-        @Resolve(message = "READ")
-        @ExpectError("Message resolution class with same name already exists")
+        @com.oracle.truffle.api.interop.Resolve(message = "READ")
+        @ExpectError("com.oracle.truffle.api.interop.Message resolution class with same name already exists")
         public abstract static class ReadNodeDuplicated extends Node {
 
             protected Object access(VirtualFrame frame, ValidTruffleObject1 receiver, Object name) {
@@ -82,7 +79,7 @@ public class DuplicatedResolveClass {
             }
         }
 
-        @CanResolve
+        @com.oracle.truffle.api.interop.CanResolve
         public abstract static class LanguageCheck4 extends Node {
 
             protected boolean test(VirtualFrame frame, TruffleObject receiver) {

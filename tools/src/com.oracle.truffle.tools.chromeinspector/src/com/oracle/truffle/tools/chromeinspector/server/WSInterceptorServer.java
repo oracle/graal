@@ -72,6 +72,11 @@ public final class WSInterceptorServer implements InspectorWSConnection, Message
     }
 
     @Override
+    public void consoleAPICall(String wsspath, String type, Object text) {
+        iss.consoleAPICall(type, text);
+    }
+
+    @Override
     public void sendText(String message) throws IOException {
         connectionWatcher.waitForOpen();
         inspectEndpoint.sendText(message);

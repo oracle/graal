@@ -55,6 +55,7 @@ import java.util.Objects;
 
 import com.oracle.truffle.api.CompilerAsserts;
 import com.oracle.truffle.api.TruffleOptions;
+import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.source.SourceSection;
 
 /**
@@ -63,13 +64,11 @@ import com.oracle.truffle.api.source.SourceSection;
  * @since 0.8 or earlier
  */
 public final class NodeUtil {
-    /**
-     * @deprecated accidentally public - don't use
-     * @since 0.8 or earlier
-     */
-    @Deprecated
-    public NodeUtil() {
+
+    private NodeUtil() {
     }
+
+    static final ThreadLocal<Object> CURRENT_ENCAPSULATING_NODE = Node.ACCESSOR.createFastThreadLocal();
 
     static Iterator<Node> makeIterator(Node node) {
         return node.getNodeClass().makeIterator(node);
@@ -234,6 +233,42 @@ public final class NodeUtil {
         return replaceChild(parent, oldChild, newChild, false);
     }
 
+    /**
+     * Returns the current encapsulating node for non {@link Node#isAdoptable() adoptable} nodes.
+     *
+     * @since 1.0
+     */
+    @TruffleBoundary
+    public static Node getCurrentEncapsulatingNode() {
+        return (Node) CURRENT_ENCAPSULATING_NODE.get();
+    }
+
+    /**
+     * Utility to push the current encapsulating Node for nodes that are not
+     * {@link Node#isAdoptable() adoptable}.
+     *
+     * @since 1.0
+     */
+    @TruffleBoundary
+    public static Node pushEncapsulatingNode(Node node) {
+        assert node == null || node.isAdoptable() : "Node must be adoptable to be pushed as encapsulating node.";
+        assert node == null || node.getRootNode() != null : "Node must be adopted by a RootNode to be pushed as encapsulating node.";
+        Object prev = CURRENT_ENCAPSULATING_NODE.get();
+        CURRENT_ENCAPSULATING_NODE.set(node);
+        return (Node) prev;
+    }
+
+    /**
+     * Utility to push the pop encapsulating Node for nodes that are not {@link Node#isAdoptable()
+     * adoptable}.
+     *
+     * @since 1.0
+     */
+    @TruffleBoundary
+    public static void popEncapsulatingNode(Node prev) {
+        CURRENT_ENCAPSULATING_NODE.set(prev);
+    }
+
     /*
      * Fast version of child adoption.
      */
@@ -385,8 +420,10 @@ public final class NodeUtil {
      * @since 0.8 or earlier
      */
     public static boolean isReplacementSafe(Node parent, Node oldChild, Node newChild) {
-        Objects.requireNonNull(oldChild);
         if (parent != null) {
+            if (!parent.isAdoptable()) {
+                return false;
+            }
             NodeClass nodeClass = parent.getNodeClass();
             for (Object field : nodeClass.getNodeFields()) {
                 if (nodeClass.isChildField(field)) {
@@ -407,9 +444,10 @@ public final class NodeUtil {
                     break;
                 }
             }
+            return true;
         }
         // if a child was not found the replacement can be considered safe.
-        return true;
+        return false;
     }
 
     /**

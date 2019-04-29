@@ -24,63 +24,164 @@
  */
 package com.oracle.svm.core.windows;
 
-import com.oracle.svm.core.SubstrateUtil;
-import com.oracle.svm.core.annotate.Alias;
-import com.oracle.svm.core.annotate.Substitute;
-import com.oracle.svm.core.annotate.TargetClass;
-import com.oracle.svm.core.snippets.KnownIntrinsics;
-import org.graalvm.nativeimage.Platform.WINDOWS;
-import org.graalvm.nativeimage.Platforms;
-
-import com.oracle.svm.core.windows.headers.FileAPI;
-
-import java.io.FileOutputStream;
+import java.io.BufferedInputStream;
+import java.io.BufferedOutputStream;
 import java.io.FileDescriptor;
-import java.io.IOException;
+import java.io.FileInputStream;
+import java.io.FileOutputStream;
+import java.io.PrintStream;
 
-@TargetClass(java.io.FileDescriptor.class)
-@Platforms(WINDOWS.class)
-final class Target_java_io_FileDescriptor {
+import org.graalvm.nativeimage.ImageSingletons;
+import org.graalvm.nativeimage.Platform;
+import org.graalvm.nativeimage.Platforms;
+import org.graalvm.nativeimage.c.function.CLibrary;
+import org.graalvm.nativeimage.hosted.Feature;
+import org.graalvm.nativeimage.impl.RuntimeClassInitializationSupport;
 
-    @Alias private long handle;
+import com.oracle.svm.core.annotate.Alias;
+import com.oracle.svm.core.annotate.AutomaticFeature;
+import com.oracle.svm.core.annotate.TargetClass;
+import com.oracle.svm.core.log.Log;
+import com.oracle.svm.core.util.VMError;
+import com.oracle.svm.hosted.jni.JNIRuntimeAccess;
 
-    @Substitute
-    private static long set(int handle) {
-        if (handle == 0) {
-            return FileAPI.GetStdHandle(FileAPI.STD_INPUT_HANDLE());
-        } else if (handle == 1) {
-            return FileAPI.GetStdHandle(FileAPI.STD_OUTPUT_HANDLE());
-        } else if (handle == 2) {
-            return FileAPI.GetStdHandle(FileAPI.STD_ERROR_HANDLE());
-        } else {
-            return -1;
+@Platforms(Platform.WINDOWS.class)
+@AutomaticFeature
+@CLibrary("java")
+class WindowsJavaIOSubstituteFeature implements Feature {
+
+    @Override
+    public void duringSetup(DuringSetupAccess access) {
+        // Can't re-initialize the classes list below:
+        // Error: com.oracle.graal.pointsto.constraints.UnsupportedFeatureException: No instances
+        // are allowed in the image heap for a class
+        // that is initialized or reinitialized at image runtime: java.io.XXX.
+        //
+        // RuntimeClassInitialization.rerunClassInitialization(access.findClassByName("java.io.FileDescriptor"));
+        // RuntimeClassInitialization.rerunClassInitialization(access.findClassByName("java.io.FileInputStream"));
+        // RuntimeClassInitialization.rerunClassInitialization(access.findClassByName("java.io.FileOutputStream"));
+        // RuntimeClassInitialization.rerunClassInitialization(access.findClassByName("java.io.WinNTFileSystem"));
+
+        ImageSingletons.lookup(RuntimeClassInitializationSupport.class).rerunInitialization(access.findClassByName("java.io.RandomAccessFile"), "required for substitutions");
+        ImageSingletons.lookup(RuntimeClassInitializationSupport.class).rerunInitialization(access.findClassByName("java.util.zip.ZipFile"), "required for substitutions");
+        ImageSingletons.lookup(RuntimeClassInitializationSupport.class).rerunInitialization(access.findClassByName("java.util.zip.Inflater"), "required for substitutions");
+        ImageSingletons.lookup(RuntimeClassInitializationSupport.class).rerunInitialization(access.findClassByName("java.util.zip.Deflater"), "required for substitutions");
+    }
+
+    @Override
+    public void beforeAnalysis(BeforeAnalysisAccess access) {
+        try {
+            JNIRuntimeAccess.register(java.lang.String.class);
+            JNIRuntimeAccess.register(access.findClassByName("java.io.WinNTFileSystem"));
+
+            JNIRuntimeAccess.register(java.io.IOException.class.getDeclaredConstructor(String.class));
+
+            JNIRuntimeAccess.register(java.io.File.class.getDeclaredField("path"));
+            JNIRuntimeAccess.register(java.io.FileOutputStream.class.getDeclaredField("fd"));
+            JNIRuntimeAccess.register(java.io.FileInputStream.class.getDeclaredField("fd"));
+            JNIRuntimeAccess.register(java.io.FileDescriptor.class.getDeclaredField("fd"));
+            JNIRuntimeAccess.register(java.io.FileDescriptor.class.getDeclaredField("handle"));
+            JNIRuntimeAccess.register(java.io.RandomAccessFile.class.getDeclaredField("fd"));
+
+            JNIRuntimeAccess.register(java.util.zip.Inflater.class.getDeclaredField("needDict"));
+            JNIRuntimeAccess.register(java.util.zip.Inflater.class.getDeclaredField("finished"));
+            JNIRuntimeAccess.register(java.util.zip.Inflater.class.getDeclaredField("buf"));
+            JNIRuntimeAccess.register(java.util.zip.Inflater.class.getDeclaredField("off"));
+            JNIRuntimeAccess.register(java.util.zip.Inflater.class.getDeclaredField("len"));
+
+            JNIRuntimeAccess.register(java.util.zip.Deflater.class.getDeclaredField("level"));
+            JNIRuntimeAccess.register(java.util.zip.Deflater.class.getDeclaredField("strategy"));
+            JNIRuntimeAccess.register(java.util.zip.Deflater.class.getDeclaredField("setParams"));
+            JNIRuntimeAccess.register(java.util.zip.Deflater.class.getDeclaredField("finish"));
+            JNIRuntimeAccess.register(java.util.zip.Deflater.class.getDeclaredField("finished"));
+            JNIRuntimeAccess.register(java.util.zip.Deflater.class.getDeclaredField("buf"));
+            JNIRuntimeAccess.register(java.util.zip.Deflater.class.getDeclaredField("off"));
+            JNIRuntimeAccess.register(java.util.zip.Deflater.class.getDeclaredField("len"));
+        } catch (NoSuchFieldException | NoSuchMethodException e) {
+            VMError.shouldNotReachHere("WindowsJavaIOSubstitutionFeature: Error registering class or method: ", e);
         }
     }
+}
 
-    @Substitute
-    public static FileDescriptor standardStream(int handle) {
-        FileDescriptor desc = new FileDescriptor();
-        KnownIntrinsics.unsafeCast(desc, Target_java_io_FileDescriptor.class).handle = set(handle);
-        return (desc);
-    }
+@TargetClass(java.io.FileInputStream.class)
+@Platforms(Platform.WINDOWS.class)
+final class Target_java_io_FileInputStream {
+
+    @Alias
+    static native void initIDs();
+}
+
+@TargetClass(java.io.FileDescriptor.class)
+@Platforms(Platform.WINDOWS.class)
+final class Target_java_io_FileDescriptor {
+
+    @Alias
+    static native void initIDs();
+
+    @Alias
+    static native FileDescriptor standardStream(int fd);
+
+    @Alias static FileDescriptor in;
+    @Alias static FileDescriptor out;
+    @Alias static FileDescriptor err;
+
 }
 
 @TargetClass(java.io.FileOutputStream.class)
-@Platforms(WINDOWS.class)
+@Platforms(Platform.WINDOWS.class)
 final class Target_java_io_FileOutputStream {
 
-    /** Temp fix to enable running tests. */
-    @Substitute
-    protected void writeBytes(byte[] bytes, int off, int len, boolean append) throws IOException {
-        WindowsUtils.writeBytes(SubstrateUtil.getFileDescriptor(KnownIntrinsics.unsafeCast(this, FileOutputStream.class)), bytes, off, len, append);
-    }
+    @Alias
+    static native void initIDs();
+}
+
+@TargetClass(className = "java.io.WinNTFileSystem")
+@Platforms(Platform.WINDOWS.class)
+final class Target_java_io_WinNTFileSystem {
+
+    @Alias
+    static native void initIDs();
 }
 
 /** Dummy class to have a class with the file's name. */
-@Platforms(WINDOWS.class)
+@Platforms(Platform.WINDOWS.class)
 public final class WindowsJavaIOSubstitutions {
 
     /** Private constructor: No instances. */
     private WindowsJavaIOSubstitutions() {
+    }
+
+    public static boolean initIDs() {
+        try {
+            /*
+             * java.dll is normally loaded by the VM. After loading java.dll, the VM then calls
+             * initializeSystemClasses which loads zip.dll.
+             *
+             * We might want to consider calling System.initializeSystemClasses instead of
+             * explicitly loading the builtin zip library.
+             */
+            System.loadLibrary("java");
+
+            Target_java_io_FileDescriptor.initIDs();
+            Target_java_io_FileInputStream.initIDs();
+            Target_java_io_FileOutputStream.initIDs();
+            Target_java_io_WinNTFileSystem.initIDs();
+
+            Target_java_io_FileDescriptor.in = Target_java_io_FileDescriptor.standardStream(0);
+            Target_java_io_FileDescriptor.out = Target_java_io_FileDescriptor.standardStream(1);
+            Target_java_io_FileDescriptor.err = Target_java_io_FileDescriptor.standardStream(2);
+
+            System.setIn(new BufferedInputStream(new FileInputStream(FileDescriptor.in)));
+            System.setOut(new PrintStream(new BufferedOutputStream(new FileOutputStream(FileDescriptor.out), 128), true));
+            System.setErr(new PrintStream(new BufferedOutputStream(new FileOutputStream(FileDescriptor.err), 128), true));
+
+            System.loadLibrary("zip");
+            Target_java_util_zip_Inflater.initIDs();
+            Target_java_util_zip_Deflater.initIDs();
+            return true;
+        } catch (UnsatisfiedLinkError e) {
+            Log.log().string("System.loadLibrary failed, " + e).newline();
+            return false;
+        }
     }
 }

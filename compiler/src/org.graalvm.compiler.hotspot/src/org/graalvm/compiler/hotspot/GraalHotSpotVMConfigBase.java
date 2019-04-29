@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2011, 2018, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2011, 2019, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -29,14 +29,17 @@ import java.lang.reflect.Modifier;
 
 import org.graalvm.compiler.api.replacements.Fold;
 import org.graalvm.compiler.api.replacements.Fold.InjectedParameter;
+import org.graalvm.compiler.nodes.graphbuilderconf.IntrinsicContext;
+import org.graalvm.compiler.options.OptionValues;
 
 import jdk.vm.ci.common.JVMCIError;
 import jdk.vm.ci.hotspot.HotSpotVMConfigAccess;
 import jdk.vm.ci.hotspot.HotSpotVMConfigStore;
 import jdk.vm.ci.meta.MetaAccessProvider;
+import jdk.vm.ci.services.Services;
 
 /**
- * This is a source with different versions for various JDKs.
+ * Base class of class hierarchy for accessing HotSpot VM configuration.
  */
 public abstract class GraalHotSpotVMConfigBase extends HotSpotVMConfigAccess {
 
@@ -60,6 +63,18 @@ public abstract class GraalHotSpotVMConfigBase extends HotSpotVMConfigAccess {
         return true;
     }
 
+    private static String getProperty(String name, String def) {
+        String value = Services.getSavedProperties().get(name);
+        if (value == null) {
+            return def;
+        }
+        return value;
+    }
+
+    private static String getProperty(String name) {
+        return getProperty(name, null);
+    }
+
     /**
      * Contains values that are different between JDK versions.
      */
@@ -71,17 +86,19 @@ public abstract class GraalHotSpotVMConfigBase extends HotSpotVMConfigAccess {
      */
     public static final GraalHotSpotVMConfig INJECTED_VMCONFIG = null;
     public static final MetaAccessProvider INJECTED_METAACCESS = null;
+    public static final OptionValues INJECTED_OPTIONVALUES = null;
+    public static final IntrinsicContext INJECTED_INTRINSIC_CONTEXT = null;
 
     public final String osName = getHostOSName();
     public final String osArch = getHostArchitectureName();
-    public final boolean windowsOs = System.getProperty("os.name", "").startsWith("Windows");
-    public final boolean linuxOs = System.getProperty("os.name", "").startsWith("Linux");
+    public final boolean windowsOs = getProperty("os.name", "").startsWith("Windows");
+    public final boolean linuxOs = getProperty("os.name", "").startsWith("Linux");
 
     /**
      * Gets the host operating system name.
      */
     private static String getHostOSName() {
-        String osName = System.getProperty("os.name");
+        String osName = getProperty("os.name");
         switch (osName) {
             case "Linux":
                 osName = "linux";
@@ -104,7 +121,7 @@ public abstract class GraalHotSpotVMConfigBase extends HotSpotVMConfigAccess {
     }
 
     private static String getHostArchitectureName() {
-        String arch = System.getProperty("os.arch");
+        String arch = getProperty("os.arch");
         switch (arch) {
             case "x86_64":
                 arch = "amd64";

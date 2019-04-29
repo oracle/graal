@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, Oracle and/or its affiliates.
+ * Copyright (c) 2018, 2019, Oracle and/or its affiliates.
  *
  * All rights reserved.
  *
@@ -29,18 +29,18 @@
  */
 package com.oracle.truffle.llvm.nodes.intrinsics.interop;
 
-import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.dsl.Cached;
 import com.oracle.truffle.api.dsl.Fallback;
 import com.oracle.truffle.api.dsl.NodeChild;
 import com.oracle.truffle.api.dsl.Specialization;
-import com.oracle.truffle.api.interop.ForeignAccess;
-import com.oracle.truffle.api.interop.Message;
+import com.oracle.truffle.api.interop.InteropLibrary;
+import com.oracle.truffle.api.interop.InvalidArrayIndexException;
 import com.oracle.truffle.api.interop.TruffleObject;
 import com.oracle.truffle.api.interop.UnknownIdentifierException;
 import com.oracle.truffle.api.interop.UnsupportedMessageException;
-import com.oracle.truffle.api.nodes.Node;
+import com.oracle.truffle.api.library.CachedLibrary;
+import com.oracle.truffle.api.profiles.BranchProfile;
 import com.oracle.truffle.llvm.nodes.intrinsics.llvm.LLVMIntrinsic;
 import com.oracle.truffle.llvm.runtime.except.LLVMPolyglotException;
 import com.oracle.truffle.llvm.runtime.interop.LLVMAsForeignNode;
@@ -53,20 +53,22 @@ public final class LLVMPolyglotRemove {
     @NodeChild(type = LLVMExpressionNode.class)
     public abstract static class LLVMPolyglotRemoveMember extends LLVMIntrinsic {
 
-        @Child private Node foreignRemove = Message.REMOVE.createNode();
-        @Child private LLVMAsForeignNode asForeign = LLVMAsForeignNode.create();
-
         @Specialization
         protected boolean doRemove(LLVMManagedPointer value, Object id,
-                        @Cached("createReadString()") LLVMReadStringNode readStr) {
+                        @Cached LLVMAsForeignNode asForeign,
+                        @Cached LLVMReadStringNode readStr,
+                        @CachedLibrary(limit = "3") InteropLibrary interop,
+                        @Cached BranchProfile notFound,
+                        @Cached BranchProfile exception) {
             TruffleObject foreign = asForeign.execute(value);
             try {
-                return ForeignAccess.sendRemove(foreignRemove, foreign, readStr.executeWithTarget(id));
+                interop.removeMember(foreign, readStr.executeWithTarget(id));
+                return true;
             } catch (UnknownIdentifierException ex) {
-                CompilerDirectives.transferToInterpreter();
-                throw new LLVMPolyglotException(this, "Member '%s' does not exist.", ex.getUnknownIdentifier());
+                notFound.enter();
+                return false;
             } catch (UnsupportedMessageException ex) {
-                CompilerDirectives.transferToInterpreter();
+                exception.enter();
                 throw new LLVMPolyglotException(this, "Can not remove member '%s' from polyglot value.", id);
             }
         }
@@ -83,17 +85,21 @@ public final class LLVMPolyglotRemove {
     @NodeChild(type = LLVMExpressionNode.class)
     public abstract static class LLVMPolyglotRemoveArrayElement extends LLVMIntrinsic {
 
-        @Child private Node foreignRemove = Message.REMOVE.createNode();
-        @Child private LLVMAsForeignNode asForeign = LLVMAsForeignNode.create();
-
         @Specialization
-        protected boolean doRemove(LLVMManagedPointer value, int idx) {
+        protected boolean doRemove(LLVMManagedPointer value, int idx,
+                        @Cached LLVMAsForeignNode asForeign,
+                        @CachedLibrary(limit = "3") InteropLibrary interop,
+                        @Cached BranchProfile notFound,
+                        @Cached BranchProfile exception) {
             TruffleObject foreign = asForeign.execute(value);
             try {
-                return ForeignAccess.sendRemove(foreignRemove, foreign, idx);
-            } catch (UnknownIdentifierException ex) {
-                throw new LLVMPolyglotException(this, "Index %d does not exist.", idx);
+                interop.removeArrayElement(foreign, idx);
+                return true;
+            } catch (InvalidArrayIndexException ex) {
+                notFound.enter();
+                return false;
             } catch (UnsupportedMessageException ex) {
+                exception.enter();
                 throw new LLVMPolyglotException(this, "Can not remove index %d from polyglot value.", idx);
             }
         }

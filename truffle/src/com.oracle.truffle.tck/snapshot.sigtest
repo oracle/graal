@@ -15,14 +15,12 @@ meth public java.lang.Thread getEvalThread()
 meth public java.lang.Throwable expectThrowable()
 meth public static com.oracle.truffle.api.source.Source getSourceImpl(org.graalvm.polyglot.Source)
 meth public void assertBreakpointsBreakEverywhere(org.graalvm.polyglot.Source)
-meth public void assertColumnBreakpointsResolution(java.lang.String,java.lang.String,java.lang.String,java.lang.String) throws java.io.IOException
-meth public void assertLineBreakpointsResolution(java.lang.String,java.lang.String,java.lang.String) throws java.io.IOException
+meth public void assertColumnBreakpointsResolution(java.lang.String,java.lang.String,java.lang.String,java.lang.String)
+meth public void assertLineBreakpointsResolution(java.lang.String,java.lang.String,java.lang.String)
 meth public void close()
 meth public void closeEngine()
 meth public void expectKilled()
 meth public void expectSuspended(com.oracle.truffle.api.debug.SuspendedCallback)
-meth public void startEval(com.oracle.truffle.api.source.Source)
- anno 0 java.lang.Deprecated()
 meth public void startEval(org.graalvm.polyglot.Source)
 supr java.lang.Object
 hfds Java8OrEarlier,TRACE,closed,engine,err,evalThread,executing,executingLoop,executingSource,handler,initialized,newEvent,out
@@ -72,8 +70,6 @@ CLSS public abstract interface static !annotation com.oracle.truffle.tck.Truffle
  anno 0 java.lang.annotation.Target(java.lang.annotation.ElementType[] value=[METHOD])
 intf java.lang.annotation.Annotation
 meth public abstract int value()
-
-CLSS abstract interface com.oracle.truffle.tck.package-info
 
 CLSS public abstract interface java.lang.AutoCloseable
 meth public abstract void close() throws java.lang.Exception

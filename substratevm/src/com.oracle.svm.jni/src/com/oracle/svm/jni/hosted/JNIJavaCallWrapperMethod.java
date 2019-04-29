@@ -31,6 +31,7 @@ import java.lang.reflect.Modifier;
 import java.util.ArrayList;
 import java.util.List;
 
+import com.oracle.svm.core.OS;
 import org.graalvm.collections.Pair;
 import org.graalvm.compiler.core.common.calc.FloatConvert;
 import org.graalvm.compiler.core.common.type.Stamp;
@@ -78,6 +79,7 @@ import com.oracle.svm.hosted.c.NativeLibraries;
 import com.oracle.svm.hosted.c.info.ElementInfo;
 import com.oracle.svm.hosted.c.info.StructFieldInfo;
 import com.oracle.svm.hosted.c.info.StructInfo;
+import com.oracle.svm.hosted.code.SimpleSignature;
 import com.oracle.svm.jni.JNIJavaCallWrappers;
 import com.oracle.svm.jni.access.JNINativeLinkage;
 import com.oracle.svm.jni.nativeapi.JNIEnvironment;
@@ -139,7 +141,7 @@ public final class JNIJavaCallWrapperMethod extends JNIGeneratedMethod {
         this.signature = createSignature(metaAccess);
     }
 
-    private JNISignature createSignature(MetaAccessProvider metaAccess) {
+    private SimpleSignature createSignature(MetaAccessProvider metaAccess) {
         ResolvedJavaType objectHandle = metaAccess.lookupJavaType(JNIObjectHandle.class);
         List<JavaType> args = new ArrayList<>();
         args.add(metaAccess.lookupJavaType(JNIEnvironment.class));
@@ -172,7 +174,7 @@ public final class JNIJavaCallWrapperMethod extends JNIGeneratedMethod {
             // Constructor: returns `this` to implement NewObject
             returnType = objectHandle;
         }
-        return new JNISignature(args, returnType);
+        return new SimpleSignature(args, returnType);
     }
 
     @Override
@@ -309,6 +311,7 @@ public final class JNIJavaCallWrapperMethod extends JNIGeneratedMethod {
                 ValueNode created = kit.append(new NewInstanceNode(receiverClass, true));
                 AbstractMergeNode merge = kit.endIf();
                 receiver = kit.unique(new ValuePhiNode(StampFactory.object(), merge, new ValueNode[]{created, unboxed}));
+                merge.setStateAfter(kit.getFrameState().create(kit.bci(), merge));
             } else {
                 receiver = unboxed;
             }
@@ -337,7 +340,8 @@ public final class JNIJavaCallWrapperMethod extends JNIGeneratedMethod {
                 args.add(Pair.create(value, type));
                 javaIndex += loadKind.getSlotCount();
             }
-        } else if (callVariant == CallVariant.ARRAY) {
+            // Windows CallVariant.VA_LIST is identical to CallVariant.ARRAY
+        } else if ((OS.getCurrent() == OS.WINDOWS && callVariant == CallVariant.VA_LIST) || callVariant == CallVariant.ARRAY) {
             ResolvedJavaType elementType = metaAccess.lookupJavaType(JNIValue.class);
             int elementSize = SizeOf.get(JNIValue.class);
             ValueNode array = kit.loadLocal(javaIndex, elementType.getJavaKind());

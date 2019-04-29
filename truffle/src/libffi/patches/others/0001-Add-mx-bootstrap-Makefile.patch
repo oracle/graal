@@ -1,0 +1,33 @@
+From ec047d2d865f64582f7ad3528e0a5061b49e14f5 Mon Sep 17 00:00:00 2001
+From: =?UTF-8?q?Aleksandar=20Pejovi=C4=87?= <aleksandar.pejovic@oracle.com>
+Date: Tue, 15 Jan 2019 00:40:01 +0100
+Subject: [PATCH] Add mx bootstrap Makefile
+
+---
+ Makefile | 14 ++++++++++++++
+ 1 file changed, 14 insertions(+)
+ create mode 100644 Makefile
+
+diff --git a/Makefile b/Makefile
+new file mode 100644
+index 0000000..da887c1
+--- /dev/null
++++ b/Makefile
+@@ -0,0 +1,14 @@
++# This Makefile is used by mx to bootstrap libffi build.
++
++# `make MX_VERBOSE=y` will report all lines executed. The actual value doesn't
++# matter as long as it's not empty.
++QUIETLY$(MX_VERBOSE) = @
++
++.PHONY: default
++
++default:
++	$(QUIETLY) echo CONFIGURE libffi
++	$(QUIETLY) mkdir ../$(OUTPUT)
++	$(QUIETLY) cd ../$(OUTPUT) && ../$(SOURCES)/configure $(CONFIGURE_ARGS) > ../libffi.configure.log
++	$(QUIETLY) echo MAKE libffi
++	$(QUIETLY) $(MAKE) -C ../$(OUTPUT) > ../libffi.build.log
+-- 
+2.7.4
+

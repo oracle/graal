@@ -15,10 +15,4 @@ builds += [
 
   # Linux SPARC
   ${gateBootstrap}           ${labsjdk8}   ${gateLinuxSPARCBootstrap} {name: "weekly-test-compiler-bootstrap-labsjdk8-linux-sparcv9", timelimit: "1:00:00"} ${graalWeekly}
-
-  # Linux AMD64 TraceRA
-  ${gateBootstrapFullVerify} ${labsjdk8}   ${gateLinuxAMD64TraceRABootstrap} {name: "weekly-test-compiler-bootstrapfullverify-8-linux-amd64-tracera"} ${graalWeekly}
-
-  # Linux AMD64 TraceRA-BU
-  ${gateBootstrap}           ${labsjdk8}   ${gateLinuxAMD64TraceRABUBootstrap} {name: "weekly-test-compiler-bootstrap-8-linux-amd64-tracera-bu"} ${graalWeekly}
 ]

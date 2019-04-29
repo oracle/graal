@@ -39,6 +39,7 @@ public class WindowsDirectives implements CContext.Directives {
 
     private static final String[] windowsLibs = new String[]{
                     "<windows.h>",
+                    "<winsock.h>",
                     "<process.h>",
                     "<stdio.h>",
                     "<stdlib.h>",

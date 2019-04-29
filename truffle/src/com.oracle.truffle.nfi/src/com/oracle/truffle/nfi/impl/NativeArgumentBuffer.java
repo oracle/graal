@@ -124,7 +124,7 @@ abstract class NativeArgumentBuffer {
         return objIdx;
     }
 
-    private NativeArgumentBuffer(int objCount) {
+    protected NativeArgumentBuffer(int objCount) {
         if (objCount > 0) {
             patches = new int[objCount];
             objects = new Object[objCount];

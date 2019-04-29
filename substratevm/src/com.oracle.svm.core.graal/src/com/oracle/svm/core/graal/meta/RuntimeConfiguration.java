@@ -29,7 +29,6 @@ import java.util.Collections;
 import java.util.EnumMap;
 
 import org.graalvm.compiler.api.replacements.SnippetReflectionProvider;
-import org.graalvm.compiler.core.target.Backend;
 import org.graalvm.compiler.debug.DebugHandlersFactory;
 import org.graalvm.compiler.phases.util.Providers;
 import org.graalvm.compiler.printer.GraalDebugHandlersFactory;
@@ -37,16 +36,22 @@ import org.graalvm.compiler.word.WordTypes;
 import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.Platforms;
 
+import com.oracle.svm.core.SubstrateOptions;
+import com.oracle.svm.core.graal.code.SubstrateBackend;
 import com.oracle.svm.core.graal.meta.SubstrateRegisterConfig.ConfigKind;
 import com.oracle.svm.core.meta.SharedMethod;
 
+import jdk.vm.ci.code.Register;
 import jdk.vm.ci.meta.ResolvedJavaMethod;
 
-public class RuntimeConfiguration {
+/**
+ * Configuration used by Graal at runtime to compile and install code in the same runtime.
+ */
+public final class RuntimeConfiguration {
 
     private final Providers providers;
     private final SnippetReflectionProvider snippetReflection;
-    private final EnumMap<ConfigKind, Backend> backends;
+    private final EnumMap<ConfigKind, SubstrateBackend> backends;
     private final Iterable<DebugHandlersFactory> debugHandlersFactories;
     private final WordTypes wordTypes;
 
@@ -54,24 +59,36 @@ public class RuntimeConfiguration {
     private int vtableEntrySize;
     private int instanceOfBitsOffset;
     private int componentHubOffset;
+    private int javaFrameAnchorLastSPOffset;
+    private int javaFrameAnchorLastIPOffset;
+    private int vmThreadStatusOffset;
 
     @Platforms(Platform.HOSTED_ONLY.class)
-    public RuntimeConfiguration(Providers providers, SnippetReflectionProvider snippetReflection, EnumMap<ConfigKind, Backend> backends, WordTypes wordTypes) {
+    public RuntimeConfiguration(Providers providers, SnippetReflectionProvider snippetReflection, EnumMap<ConfigKind, SubstrateBackend> backends, WordTypes wordTypes) {
         this.providers = providers;
         this.snippetReflection = snippetReflection;
         this.backends = backends;
         this.debugHandlersFactories = Collections.singletonList(new GraalDebugHandlersFactory(snippetReflection));
         this.wordTypes = wordTypes;
+
+        for (SubstrateBackend backend : backends.values()) {
+            backend.setRuntimeConfiguration(this);
+        }
     }
 
     @Platforms(Platform.HOSTED_ONLY.class)
-    public void setLazyState(int vtableBaseOffset, int vtableEntrySize, int instanceOfBitsOffset, int componentHubOffset) {
+    public void setLazyState(int vtableBaseOffset, int vtableEntrySize, int instanceOfBitsOffset, int componentHubOffset,
+                    int javaFrameAnchorLastSPOffset, int javaFrameAnchorLastIPOffset,
+                    int vmThreadStatusOffset) {
         assert !isFullyInitialized();
 
         this.vtableBaseOffset = vtableBaseOffset;
         this.vtableEntrySize = vtableEntrySize;
         this.instanceOfBitsOffset = instanceOfBitsOffset;
         this.componentHubOffset = componentHubOffset;
+        this.javaFrameAnchorLastSPOffset = javaFrameAnchorLastSPOffset;
+        this.javaFrameAnchorLastIPOffset = javaFrameAnchorLastIPOffset;
+        this.vmThreadStatusOffset = vmThreadStatusOffset;
 
         assert isFullyInitialized();
     }
@@ -88,11 +105,11 @@ public class RuntimeConfiguration {
         return providers;
     }
 
-    public Collection<Backend> getBackends() {
+    public Collection<SubstrateBackend> getBackends() {
         return backends.values();
     }
 
-    public Backend lookupBackend(ResolvedJavaMethod method) {
+    public SubstrateBackend lookupBackend(ResolvedJavaMethod method) {
         if (((SharedMethod) method).isEntryPoint()) {
             return backends.get(ConfigKind.NATIVE_TO_JAVA);
         } else {
@@ -100,7 +117,7 @@ public class RuntimeConfiguration {
         }
     }
 
-    public Backend getBackendForNormalMethod() {
+    public SubstrateBackend getBackendForNormalMethod() {
         return backends.get(ConfigKind.NORMAL);
     }
 
@@ -117,6 +134,31 @@ public class RuntimeConfiguration {
     public int getComponentHubOffset() {
         assert isFullyInitialized();
         return componentHubOffset;
+    }
+
+    public int getJavaFrameAnchorLastSPOffset() {
+        assert isFullyInitialized();
+        return javaFrameAnchorLastSPOffset;
+    }
+
+    public int getJavaFrameAnchorLastIPOffset() {
+        assert isFullyInitialized();
+        return javaFrameAnchorLastIPOffset;
+    }
+
+    public int getVMThreadStatusOffset() {
+        assert SubstrateOptions.MultiThreaded.getValue() && vmThreadStatusOffset != -1;
+        return vmThreadStatusOffset;
+    }
+
+    public Register getThreadRegister() {
+        Register result = getThreadRegister(ConfigKind.NORMAL);
+        assert result.equals(getThreadRegister(ConfigKind.NATIVE_TO_JAVA));
+        return result;
+    }
+
+    private Register getThreadRegister(ConfigKind config) {
+        return ((SubstrateRegisterConfig) backends.get(config).getCodeCache().getRegisterConfig()).getThreadRegister();
     }
 
     public SnippetReflectionProvider getSnippetReflection() {

@@ -33,6 +33,7 @@ import java.lang.reflect.Modifier;
 import java.lang.reflect.Type;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ConcurrentMap;
 
@@ -41,6 +42,7 @@ import org.graalvm.compiler.debug.GraalError;
 import org.graalvm.compiler.java.BytecodeParser.BytecodeParserError;
 import org.graalvm.compiler.nodes.StructuredGraph;
 import org.graalvm.compiler.nodes.graphbuilderconf.InvocationPlugin;
+import org.graalvm.util.GuardedAnnotationAccess;
 
 import com.oracle.graal.pointsto.api.PointstoOptions;
 import com.oracle.graal.pointsto.constraints.UnsupportedFeatureException;
@@ -54,6 +56,7 @@ import com.oracle.graal.pointsto.results.StaticAnalysisResults;
 import jdk.vm.ci.meta.Constant;
 import jdk.vm.ci.meta.ConstantPool;
 import jdk.vm.ci.meta.ExceptionHandler;
+import jdk.vm.ci.meta.JavaType;
 import jdk.vm.ci.meta.LineNumberTable;
 import jdk.vm.ci.meta.Local;
 import jdk.vm.ci.meta.LocalVariableTable;
@@ -92,7 +95,7 @@ public class AnalysisMethod implements WrappedJavaMethod, GraphProvider {
         this.wrapped = wrapped;
         this.id = universe.nextMethodId.getAndIncrement();
 
-        if (PointstoOptions.TrackAccessChain.getValue(universe.getHostVM().options())) {
+        if (PointstoOptions.TrackAccessChain.getValue(universe.hostVM().options())) {
             startTrackInvocations();
         }
 
@@ -100,7 +103,7 @@ public class AnalysisMethod implements WrappedJavaMethod, GraphProvider {
         exceptionHandlers = new ExceptionHandler[original.length];
         for (int i = 0; i < original.length; i++) {
             ExceptionHandler h = original[i];
-            AnalysisType catchType = h.getCatchType() == null ? null : universe.lookup(h.getCatchType().resolve(wrapped.getDeclaringClass()));
+            JavaType catchType = getCatchType(h);
             exceptionHandlers[i] = new ExceptionHandler(h.getStartBCI(), h.getEndBCI(), h.getHandlerBCI(), h.catchTypeCPI(), catchType);
         }
 
@@ -124,7 +127,7 @@ public class AnalysisMethod implements WrappedJavaMethod, GraphProvider {
         }
         localVariableTable = newLocalVariableTable;
 
-        typeFlow = new MethodTypeFlow(universe.getHostVM().options(), this);
+        typeFlow = new MethodTypeFlow(universe.hostVM().options(), this);
 
         if (getName().startsWith("$SWITCH_TABLE$")) {
             /*
@@ -145,13 +148,32 @@ public class AnalysisMethod implements WrappedJavaMethod, GraphProvider {
         }
     }
 
+    private JavaType getCatchType(ExceptionHandler handler) {
+        JavaType catchType = handler.getCatchType();
+        if (catchType == null) {
+            return null;
+        }
+        ResolvedJavaType resolvedCatchType;
+        try {
+            resolvedCatchType = catchType.resolve(wrapped.getDeclaringClass());
+        } catch (NoClassDefFoundError e) {
+            /*
+             * Type resolution fails if the catch type is missing. Just return the unresolved type.
+             * The analysis doesn't model unresolved types, but we can reuse the JVMCI type; the
+             * UniverseBuilder and the BytecodeParser know how to deal with that.
+             */
+            return catchType;
+        }
+        return universe.lookup(resolvedCatchType);
+    }
+
     public void cleanupAfterAnalysis() {
         typeFlow = null;
         invokedBy = null;
         implementationInvokedBy = null;
     }
 
-    private void startTrackInvocations() {
+    public void startTrackInvocations() {
         if (invokedBy == null) {
             invokedBy = new ConcurrentHashMap<>();
         }
@@ -200,6 +222,12 @@ public class AnalysisMethod implements WrappedJavaMethod, GraphProvider {
         if (implementationInvokedBy != null && invoke != null) {
             implementationInvokedBy.put(invoke, Boolean.TRUE);
         }
+
+        /*
+         * The class constant of the declaring class is used for exception metadata, so marking a
+         * method as invoked also makes the declaring class reachable.
+         */
+        getDeclaringClass().registerAsInTypeCheck();
     }
 
     public List<AnalysisMethod> getJavaInvocations() {
@@ -208,6 +236,10 @@ public class AnalysisMethod implements WrappedJavaMethod, GraphProvider {
             result.add((AnalysisMethod) invoke.getSource().graph().method());
         }
         return result;
+    }
+
+    public Set<InvokeTypeFlow> getInvokeTypeFlows() {
+        return implementationInvokedBy.keySet();
     }
 
     public boolean isEntryPoint() {
@@ -224,6 +256,12 @@ public class AnalysisMethod implements WrappedJavaMethod, GraphProvider {
 
     public void registerAsRootMethod() {
         isRootMethod = true;
+
+        /*
+         * The class constant of the declaring class is used for exception metadata, so marking a
+         * method as invoked also makes the declaring class reachable.
+         */
+        getDeclaringClass().registerAsInTypeCheck();
     }
 
     public boolean isRootMethod() {
@@ -276,6 +314,14 @@ public class AnalysisMethod implements WrappedJavaMethod, GraphProvider {
     }
 
     @Override
+    public boolean allowRuntimeCompilation() {
+        if (wrapped instanceof GraphProvider) {
+            return ((GraphProvider) wrapped).allowRuntimeCompilation();
+        }
+        return true;
+    }
+
+    @Override
     public byte[] getCode() {
         return wrapped.getCode();
     }
@@ -292,18 +338,11 @@ public class AnalysisMethod implements WrappedJavaMethod, GraphProvider {
 
     @Override
     public int getMaxLocals() {
-        if (isNative()) {
-            return getSignature().getParameterCount(!Modifier.isStatic(getModifiers())) * 2;
-        }
         return wrapped.getMaxLocals();
     }
 
     @Override
     public int getMaxStackSize() {
-        if (isNative()) {
-            // At most we have a double-slot return value.
-            return 2;
-        }
         return wrapped.getMaxStackSize();
     }
 
@@ -344,7 +383,10 @@ public class AnalysisMethod implements WrappedJavaMethod, GraphProvider {
 
     @Override
     public boolean canBeStaticallyBound() {
-        return wrapped.canBeStaticallyBound();
+        boolean result = wrapped.canBeStaticallyBound();
+        assert !isStatic() || result : "static methods must always be statically bindable: " + format("%H.%n");
+        return result;
+
     }
 
     public AnalysisMethod[] getImplementations() {
@@ -381,17 +423,17 @@ public class AnalysisMethod implements WrappedJavaMethod, GraphProvider {
 
     @Override
     public Annotation[] getAnnotations() {
-        return wrapped.getAnnotations();
+        return GuardedAnnotationAccess.getAnnotations(wrapped);
     }
 
     @Override
     public Annotation[] getDeclaredAnnotations() {
-        return wrapped.getDeclaredAnnotations();
+        return GuardedAnnotationAccess.getDeclaredAnnotations(wrapped);
     }
 
     @Override
     public <T extends Annotation> T getAnnotation(Class<T> annotationClass) {
-        return wrapped.getAnnotation(annotationClass);
+        return GuardedAnnotationAccess.getAnnotation(wrapped, annotationClass);
     }
 
     @Override

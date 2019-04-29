@@ -29,11 +29,12 @@ import java.util.List;
 import java.util.concurrent.locks.ReentrantLock;
 import java.util.function.Function;
 
-import org.graalvm.compiler.serviceprovider.GraalServices;
-import org.graalvm.nativeimage.Feature;
+import org.graalvm.compiler.serviceprovider.JavaVersionUtil;
+import org.graalvm.nativeimage.hosted.Feature;
 import org.graalvm.nativeimage.ImageInfo;
 import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.Platforms;
+import org.graalvm.nativeimage.StackValue;
 import org.graalvm.word.WordFactory;
 
 import com.oracle.svm.core.annotate.Alias;
@@ -47,16 +48,17 @@ import com.oracle.svm.core.jdk.RuntimeSupport;
 import com.oracle.svm.core.log.Log;
 import com.oracle.svm.core.os.IsDefined;
 import com.oracle.svm.core.posix.headers.CSunMiscSignal;
-import com.oracle.svm.core.posix.headers.Errno;
+import com.oracle.svm.core.headers.Errno;
 import com.oracle.svm.core.posix.headers.Signal;
 import com.oracle.svm.core.posix.headers.Signal.SignalDispatcher;
+import com.oracle.svm.core.posix.headers.Time;
 import com.oracle.svm.core.util.VMError;
 
 @Platforms(Platform.HOSTED_ONLY.class)
 class Package_jdk_internal_misc implements Function<TargetClass, String> {
     @Override
     public String apply(TargetClass annotation) {
-        if (GraalServices.Java8OrEarlier) {
+        if (JavaVersionUtil.Java8OrEarlier) {
             return "sun.misc." + annotation.className();
         } else {
             return "jdk.internal.misc." + annotation.className();
@@ -103,6 +105,7 @@ final class Target_jdk_internal_misc_Signal {
 }
 
 /** Support for Target_sun_misc_Signal. */
+@Platforms({Platform.LINUX.class, Platform.DARWIN.class})
 final class Util_jdk_internal_misc_Signal {
 
     /** A thread to dispatch signals as they are raised. */
@@ -408,6 +411,7 @@ final class Target_sun_misc_NativeSignalHandler {
     }
 }
 
+@Platforms({Platform.LINUX.class, Platform.DARWIN.class})
 @AutomaticFeature
 class IgnoreSIGPIPEFeature implements Feature {
 
@@ -432,6 +436,30 @@ class IgnoreSIGPIPEFeature implements Feature {
                 VMError.guarantee(signalResult != Signal.SIG_ERR(), "IgnoreSIGPIPEFeature.run: Could not ignore SIGPIPE");
             }
         });
+    }
+}
+
+@Platforms({Platform.LINUX.class, Platform.DARWIN.class})
+@TargetClass(className = "jdk.internal.misc.VM", onlyWith = JDK9OrLater.class)
+final class Target_jdk_internal_misc_VM {
+
+    /* Implementation from src/hotspot/share/prims/jvm.cpp#L286 translated to Java. */
+    @Substitute
+    public static long getNanoTimeAdjustment(long offsetInSeconds) {
+        final long maxDiffSecs = 0x0100000000L;
+        final long minDiffSecs = -maxDiffSecs;
+
+        Time.timeval tv = StackValue.get(Time.timeval.class);
+        int status = Time.gettimeofday(tv, WordFactory.nullPointer());
+        assert status != -1 : "linux error";
+        long seconds = tv.tv_sec();
+        long nanos = tv.tv_usec() * 1000;
+
+        long diff = seconds - offsetInSeconds;
+        if (diff >= maxDiffSecs || diff <= minDiffSecs) {
+            return -1;
+        }
+        return diff * 1000000000 + nanos;
     }
 }
 

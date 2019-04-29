@@ -46,16 +46,22 @@ import java.lang.annotation.RetentionPolicy;
 import java.lang.annotation.Target;
 
 import org.graalvm.nativeimage.c.CContext;
+import org.graalvm.nativeimage.c.constant.CEnum;
+import org.graalvm.word.WordBase;
 
 /**
- * Denotes a {@code static native} method that calls directly from Java to C, without following the
- * JNI protocol. This means that there are no artificial additional parameters such as the JNI
+ * Denotes a {@code native} method that calls directly from Java to C, without following the JNI
+ * protocol. This means that there are no artificial additional parameters such as the JNI
  * environment passed, and no marshaling or processing of arguments (such as creating handles for
- * objects) is performed.
+ * objects) is performed. If the method is non-static, the receiver will be ignored.
  * <p>
- * Parameter and return types must not be Java reference types; only primitive Java values and Word
- * values are allowed. If a Word value is passed that points to a Java object, no guarantees are
- * taken regarding its integrity as a pointer.
+ * Parameter types and return types must not be Java reference types, only
+ * {@linkplain Class#isPrimitive() primitive} Java types, {@linkplain WordBase word types} and
+ * {@link CEnum} types are allowed. The representation of passed primitive values matches exactly
+ * how they are specified in the Java language, for example, {@code int} as a 32-bit signed integer
+ * or {@code char} as a 16-bit unsigned integer. {@code boolean} is specified as a single byte that
+ * corresponds to {@code true} if non-zero, and to {@code false} if zero. If a Word value is passed
+ * that points to a Java object, no guarantees are taken regarding its integrity as a pointer.
  * <p>
  * The class containing the annotated method must be annotated with {@link CContext}.
  *

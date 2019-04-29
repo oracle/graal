@@ -25,7 +25,7 @@
 package com.oracle.svm.core.windows;
 
 import com.oracle.svm.core.windows.headers.WinBase;
-import org.graalvm.nativeimage.Feature;
+import org.graalvm.nativeimage.hosted.Feature;
 import org.graalvm.nativeimage.ImageSingletons;
 import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.Platforms;
@@ -45,6 +45,12 @@ import static org.graalvm.word.WordFactory.nullPointer;
 class WindowsPhysicalMemory extends PhysicalMemory {
 
     static class WindowsPhysicalMemorySupportImpl implements PhysicalMemorySupport {
+
+        @Override
+        public boolean hasSize() {
+            return true;
+        }
+
         @Override
         public UnsignedWord size() {
             WinBase.MEMORYSTATUSEX memStatusEx = StackValue.get(WinBase.MEMORYSTATUSEX.class);

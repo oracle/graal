@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2011, 2012, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2011, 2018, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -31,7 +31,7 @@ import jdk.vm.ci.meta.ResolvedJavaMethod;
 
 public abstract class UnaryMath extends JTTTest {
 
-    private static final long STEP = Long.MAX_VALUE / 1_000_000;
+    private static final long STEP = Long.MAX_VALUE / 100_000;
 
     /**
      * Tests a unary {@link Math} method on a wide range of values.

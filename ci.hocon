@@ -27,6 +27,8 @@ include "sulong/ci.hocon"
 #include "examples/ci.hocon"
 
 jvm-config.default = "graal-core"
+libgraal_env = "libgraal"
+vm_subdir = "vm"
 
 include "compiler/ci_common/common.hocon"
 include "compiler/ci_common/gate.hocon"
@@ -39,7 +41,6 @@ include "compiler/ci_common/bench-hwloc.hocon"
 include "compiler/ci_common/bench-weekly.hocon"
 include "compiler/ci_common/x52.hocon"
 include "compiler/ci_common/x52-jfr.hocon"
-include "compiler/ci_common/x52-tracera.hocon"
 include "compiler/ci_common/m7_eighth.hocon"
 # C1 & C2 configs
 include "compiler/ci_includes/x52-c1.hocon"
@@ -52,8 +53,7 @@ include "compiler/ci_includes/m7_eighth-c2.hocon"
 include "compiler/ci_includes/gate_tasks.hocon"
 
 # ------------------ SVM ----------------------
-include "substratevm/ci_includes/svm-gate.hocon"
-include "substratevm/ci_includes/svm-gate-tasks.hocon"
+include "substratevm/ci_includes/gate.hocon"
 
 # Maven deploy dry-run
 include "substratevm/ci_includes/deploy.hocon"
@@ -63,6 +63,8 @@ include "ci_includes/publish-javadoc.hocon"
 
 # ------------------- VM ----------------------
 include "vm/ci_common/common.hocon"
+include "vm/ci_common/common-bench.hocon"
 include "vm/ci_includes/vm.hocon"
+include "vm/ci_includes/vm-native.hocon"
 include "vm/ci_includes/vm-bench.hocon"
 include "vm/ci_includes/vm-bench-sulong.hocon"

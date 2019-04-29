@@ -40,8 +40,6 @@
  */
 package org.graalvm.launcher;
 
-import java.io.IOException;
-import java.nio.file.Path;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.HashMap;
@@ -57,13 +55,13 @@ public abstract class AbstractLanguageLauncher extends Launcher {
 
     /**
      * This starts the launcher. it should be called from the main method:
-     * 
+     *
      * <pre>
      * public static void main(String[] args) {
      *     new MyLauncher().launch(args);
      * }
      * </pre>
-     * 
+     *
      * @param args the command line arguments.
      */
     protected final void launch(String[] args) {
@@ -101,17 +99,14 @@ public abstract class AbstractLanguageLauncher extends Launcher {
             nativeAccess.maybeExec(args, false, polyglotOptions, getDefaultVMType());
         }
 
-        for (String arg : unrecognizedArgs) {
-            if (!parsePolyglotOption(getLanguageId(), polyglotOptions, arg)) {
-                throw abortUnrecognizedArgument(arg);
-            }
-        }
+        parsePolyglotOptions(getLanguageId(), polyglotOptions, unrecognizedArgs);
 
         if (runPolyglotAction()) {
             return;
         }
 
         validateArguments(polyglotOptions);
+        argumentsProcessingDone();
 
         Context.Builder builder;
         if (isPolyglot()) {
@@ -119,27 +114,11 @@ public abstract class AbstractLanguageLauncher extends Launcher {
         } else {
             builder = Context.newBuilder(getDefaultLanguages()).options(polyglotOptions);
         }
+
         builder.allowAllAccess(true);
-        final Path logFile = getLogFile();
-        if (logFile != null) {
-            try {
-                builder.logHandler(newLogStream(logFile));
-            } catch (IOException ioe) {
-                throw abort(ioe);
-            }
-        }
+        setupLogHandler(builder);
 
         launch(builder);
-    }
-
-    /**
-     * This is called to abort execution when an argument can neither be recognized by the launcher
-     * or as an option for the polyglot engine.
-     * 
-     * @param argument the argument that was not recognized.
-     */
-    protected AbortException abortUnrecognizedArgument(String argument) {
-        throw abortInvalidArgument(argument, "Unrecognized argument: '" + argument + "'. Use --help for usage instructions.");
     }
 
     /**
@@ -149,7 +128,12 @@ public abstract class AbstractLanguageLauncher extends Launcher {
      *
      * Arguments that are translated to polyglot options should be removed from the list. Other
      * arguments should not be removed.
-     * 
+     *
+     * The {@code preprocessArguments} implementations can use {@link Engine} to inspect the the
+     * installed {@link Engine#getLanguages() guest languages} and {@link Engine#getInstruments()
+     * instruments}. But creating a {@link Context} or inspecting {@link Engine#getOptions() engine
+     * options} is forbidden.
+     *
      * @param arguments the command line arguments that were passed to the launcher.
      * @param polyglotOptions a map where polyglot options can be set. These will be uses when
      *            creating the {@link org.graalvm.polyglot.Engine Engine}.
@@ -159,7 +143,7 @@ public abstract class AbstractLanguageLauncher extends Launcher {
 
     /**
      * Validates arguments after all arguments have been parsed.
-     * 
+     *
      * @param polyglotOptions the options that will be used to create engine.
      */
     protected void validateArguments(Map<String, String> polyglotOptions) {
@@ -169,7 +153,7 @@ public abstract class AbstractLanguageLauncher extends Launcher {
     /**
      * Launch the scripts as required by the arguments received during the previous call to
      * {@link #preprocessArguments(List, Map)}.
-     * 
+     *
      * @param contextBuilder a {@linkplain Context.Builder context builder} configured with the
      *            proper language and polyglot options.
      */
@@ -198,13 +182,21 @@ public abstract class AbstractLanguageLauncher extends Launcher {
             if (languageName == null || languageName.length() == 0) {
                 languageName = languageId;
             }
-            languageImplementationName = "Graal " + languageName;
+            languageImplementationName = languageName;
         }
         String engineImplementationName = engine.getImplementationName();
         if (isAOT()) {
             engineImplementationName += " Native";
+        } else {
+            engineImplementationName += " JVM";
         }
-        System.out.println(String.format("%s %s (%s %s)", languageImplementationName, language.getVersion(), engineImplementationName, engine.getVersion()));
+        String languageVersion = language.getVersion();
+        if (languageVersion.equals(engine.getVersion())) {
+            languageVersion = "";
+        } else {
+            languageVersion += " ";
+        }
+        System.out.println(String.format("%s %s(%s %s)", languageImplementationName, languageVersion, engineImplementationName, engine.getVersion()));
     }
 
     protected void runVersionAction(VersionAction action, Engine engine) {

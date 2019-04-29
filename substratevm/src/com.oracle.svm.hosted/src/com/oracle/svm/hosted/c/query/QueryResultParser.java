@@ -36,10 +36,10 @@ import java.util.List;
 import java.util.Map;
 
 import com.oracle.svm.hosted.c.NativeLibraries;
+import com.oracle.svm.hosted.c.info.AccessorInfo;
 import com.oracle.svm.hosted.c.info.ConstantInfo;
 import com.oracle.svm.hosted.c.info.ElementInfo;
 import com.oracle.svm.hosted.c.info.EnumConstantInfo;
-import com.oracle.svm.hosted.c.info.InfoTreeVisitor;
 import com.oracle.svm.hosted.c.info.NativeCodeInfo;
 import com.oracle.svm.hosted.c.info.PointerToInfo;
 import com.oracle.svm.hosted.c.info.PropertyInfo;
@@ -52,21 +52,17 @@ import com.oracle.svm.hosted.c.info.SizableInfo.ElementKind;
 import com.oracle.svm.hosted.c.info.SizableInfo.SignednessValue;
 import com.oracle.svm.hosted.c.util.FileUtils;
 
-import jdk.vm.ci.code.TargetDescription;
 import jdk.vm.ci.meta.JavaKind;
-import jdk.vm.ci.meta.ResolvedJavaMethod;
-import jdk.vm.ci.meta.ResolvedJavaType;
 
 /**
  * Parses query result described in {@link QueryResultFormat}.
  */
-public final class QueryResultParser extends InfoTreeVisitor {
+public final class QueryResultParser extends NativeInfoTreeVisitor {
 
-    private final NativeLibraries nativeLibs;
     private final Map<String, String> idToResult;
 
     private QueryResultParser(NativeLibraries nativeLibs) {
-        this.nativeLibs = nativeLibs;
+        super(nativeLibs);
         this.idToResult = new HashMap<>();
     }
 
@@ -85,7 +81,6 @@ public final class QueryResultParser extends InfoTreeVisitor {
 
     @Override
     protected void visitConstantInfo(ConstantInfo constantInfo) {
-        TargetDescription target = nativeLibs.getTarget();
         switch (constantInfo.getKind()) {
             case INTEGER:
                 parseIntegerProperty(constantInfo.getSizeInfo());
@@ -98,13 +93,11 @@ public final class QueryResultParser extends InfoTreeVisitor {
                  * byte to avoid casts. Check the actual value of the constant, and if it fits the
                  * declared type of the constant, then change the actual size to the declared size.
                  */
-                ResolvedJavaMethod method = (ResolvedJavaMethod) constantInfo.getAnnotatedElement();
-                ResolvedJavaType returnType = (ResolvedJavaType) method.getSignature().getReturnType(method.getDeclaringClass());
-                JavaKind returnKind = returnType.getJavaKind();
+                JavaKind returnKind = AccessorInfo.getReturnType(constantInfo.getAnnotatedElement()).getJavaKind();
                 if (returnKind == JavaKind.Object) {
-                    returnKind = target.wordJavaKind;
+                    returnKind = nativeLibs.getTarget().wordJavaKind;
                 }
-                int declaredSize = target.arch.getPlatformKind(returnKind).getSizeInBytes();
+                int declaredSize = getSizeInBytes(returnKind);
                 int actualSize = constantInfo.getSizeInfo().getProperty();
                 if (declaredSize != actualSize) {
                     long value = (long) constantInfo.getValueInfo().getProperty();
@@ -217,7 +210,7 @@ public final class QueryResultParser extends InfoTreeVisitor {
         if (str.startsWith(QueryResultFormat.STRING_MARKER) && str.endsWith(QueryResultFormat.STRING_MARKER)) {
             return str.substring(QueryResultFormat.STRING_MARKER.length(), str.length() - QueryResultFormat.STRING_MARKER.length());
         } else {
-            nativeLibs.addError("String constant not deliminated correctly", info);
+            addError("String constant not deliminated correctly", info);
             return "";
         }
     }

@@ -48,7 +48,7 @@ import java.util.concurrent.atomic.AtomicLong;
 import org.graalvm.compiler.api.replacements.Fold;
 import org.graalvm.compiler.core.common.SuppressFBWarnings;
 import org.graalvm.nativeimage.CurrentIsolate;
-import org.graalvm.nativeimage.Feature;
+import org.graalvm.nativeimage.hosted.Feature;
 import org.graalvm.nativeimage.ImageSingletons;
 import org.graalvm.nativeimage.Isolate;
 import org.graalvm.nativeimage.IsolateThread;
@@ -84,6 +84,7 @@ import com.oracle.svm.core.log.Log;
 import com.oracle.svm.core.option.XOptions;
 import com.oracle.svm.core.snippets.KnownIntrinsics;
 import com.oracle.svm.core.stack.JavaStackWalker;
+import com.oracle.svm.core.stack.StackOverflowCheck;
 import com.oracle.svm.core.thread.ParkEvent.WaitResult;
 import com.oracle.svm.core.threadlocal.FastThreadLocalFactory;
 import com.oracle.svm.core.threadlocal.FastThreadLocalObject;
@@ -307,14 +308,6 @@ public abstract class JavaThreads {
         return tearDownIsolateThreads();
     }
 
-    private static void detachParkEvent(AtomicReference<ParkEvent> ref) {
-        ParkEvent event = ref.get();
-        if (event != null) {
-            ref.set(null);
-            ParkEvent.release(event);
-        }
-    }
-
     /**
      * Detach the provided Java thread. Note that the Java thread might not have been created, in
      * which case it is null and we have nothing to do.
@@ -335,8 +328,8 @@ public abstract class JavaThreads {
             return;
         }
 
-        detachParkEvent(getUnsafeParkEvent(thread));
-        detachParkEvent(getSleepParkEvent(thread));
+        ParkEvent.detach(getUnsafeParkEvent(thread));
+        ParkEvent.detach(getSleepParkEvent(thread));
         if (!thread.isDaemon()) {
             singleton().nonDaemonThreads.decrementAndGet();
         }
@@ -807,6 +800,17 @@ final class Target_java_lang_Thread {
                 chosenStackSize = defaultThreadStackSize;
             }
         }
+
+        if (chosenStackSize != 0) {
+            /*
+             * Add the yellow+red zone size: This area of the stack is not accessible to the user's
+             * Java code, so it would be surprising if we gave the user less stack space to use than
+             * explicitly requested. In particular, a size less than the yellow+red size would lead
+             * to an immediate StackOverflowError.
+             */
+            chosenStackSize += StackOverflowCheck.singleton().yellowAndRedZoneSize();
+        }
+
         /*
          * The threadStatus must be set to RUNNABLE by the parent thread and before the child thread
          * starts because we are creating child threads asynchronously (there is no coordination
@@ -1136,7 +1140,7 @@ final class SleepSupport {
 
 @TargetClass(classNameProvider = Package_jdk_internal_misc.class, className = "Unsafe")
 @SuppressWarnings({"static-method"})
-final class Target_jdk_internal_misc_Unsafe {
+final class Target_Unsafe_JavaThreads {
 
     /**
      * Block current thread, returning when a balancing <tt>unpark</tt> occurs, or a balancing

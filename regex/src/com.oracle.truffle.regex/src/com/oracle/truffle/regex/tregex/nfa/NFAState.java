@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2016, 2016, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2016, 2019, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -24,8 +24,8 @@
  */
 package com.oracle.truffle.regex.tregex.nfa;
 
+import com.oracle.truffle.regex.charset.CharSet;
 import com.oracle.truffle.regex.tregex.automaton.IndexedState;
-import com.oracle.truffle.regex.tregex.matchers.MatcherBuilder;
 import com.oracle.truffle.regex.tregex.parser.ast.LookBehindAssertion;
 import com.oracle.truffle.regex.tregex.parser.ast.RegexASTNode;
 import com.oracle.truffle.regex.tregex.util.json.Json;
@@ -72,12 +72,12 @@ public class NFAState implements IndexedState, JsonConvertible {
     private List<NFAStateTransition> next;
     private List<NFAStateTransition> prev;
     private List<Integer> possibleResults;
-    private final MatcherBuilder matcherBuilder;
+    private final CharSet matcherBuilder;
     private final Set<LookBehindAssertion> finishedLookBehinds;
 
     public NFAState(short id,
                     ASTNodeSet<? extends RegexASTNode> stateSet,
-                    MatcherBuilder matcherBuilder,
+                    CharSet matcherBuilder,
                     Set<LookBehindAssertion> finishedLookBehinds,
                     boolean hasPrefixStates) {
         this(id, stateSet, hasPrefixStates ? FLAG_HAS_PREFIX_STATES : FLAGS_NONE,
@@ -87,7 +87,7 @@ public class NFAState implements IndexedState, JsonConvertible {
     private NFAState(short id,
                     ASTNodeSet<? extends RegexASTNode> stateSet,
                     byte flags,
-                    MatcherBuilder matcherBuilder,
+                    CharSet matcherBuilder,
                     Set<LookBehindAssertion> finishedLookBehinds) {
         this(id, stateSet, flags, new ArrayList<>(), new ArrayList<>(), null, matcherBuilder, finishedLookBehinds);
     }
@@ -98,7 +98,7 @@ public class NFAState implements IndexedState, JsonConvertible {
                     List<NFAStateTransition> next,
                     List<NFAStateTransition> prev,
                     List<Integer> possibleResults,
-                    MatcherBuilder matcherBuilder,
+                    CharSet matcherBuilder,
                     Set<LookBehindAssertion> finishedLookBehinds) {
         this.id = id;
         this.stateSet = stateSet;
@@ -114,7 +114,7 @@ public class NFAState implements IndexedState, JsonConvertible {
         return new NFAState(copyID, getStateSet(), getFlags(), matcherBuilder, finishedLookBehinds);
     }
 
-    public MatcherBuilder getMatcherBuilder() {
+    public CharSet getMatcherBuilder() {
         return matcherBuilder;
     }
 
@@ -343,6 +343,16 @@ public class NFAState implements IndexedState, JsonConvertible {
     @Override
     public String toString() {
         return idToString();
+    }
+
+    @Override
+    public boolean equals(Object o) {
+        return o instanceof NFAState && id == ((NFAState) o).id;
+    }
+
+    @Override
+    public int hashCode() {
+        return id;
     }
 
     @TruffleBoundary

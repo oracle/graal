@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2014, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2014, 2018, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -33,7 +33,11 @@ import com.oracle.truffle.api.CallTarget;
 import com.oracle.truffle.api.RootCallTarget;
 import com.oracle.truffle.api.frame.Frame;
 import com.oracle.truffle.api.frame.FrameDescriptor;
+import com.oracle.truffle.api.impl.Accessor.CallInlined;
+import com.oracle.truffle.api.impl.Accessor.CallProfiled;
+import com.oracle.truffle.api.impl.Accessor.CastUnsafe;
 import com.oracle.truffle.api.impl.TVMCI;
+import com.oracle.truffle.api.nodes.IndirectCallNode;
 import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.api.nodes.RootNode;
 
@@ -66,23 +70,12 @@ final class GraalTVMCI extends TVMCI {
     /**
      * Initializes the argument profile with a custom profile without calling it. A call target must
      * never be called prior initialization of argument types. Also the argument types must be final
-     * if used in combination with {@link #callProfiled(CallTarget, Object...)}.
+     * if used in combination with
+     * {@link OptimizedCallTarget.OptimizedCallProfiled#call(CallTarget, Object...)}.
      */
     @Override
     protected void initializeProfile(CallTarget target, Class<?>[] argumentTypes) {
         ((OptimizedCallTarget) target).getCompilationProfile().initializeArgumentTypes(argumentTypes);
-    }
-
-    /**
-     * Call without verifying the argument profile. Needs to be initialized by
-     * {@link #initializeProfile(CallTarget, Class[])}. Potentially crashes the VM if the argument
-     * profile is incompatible with the actual arguments. Use with caution.
-     */
-    @Override
-    protected Object callProfiled(CallTarget target, Object... args) {
-        OptimizedCallTarget castTarget = (OptimizedCallTarget) target;
-        assert castTarget.compilationProfile != null && castTarget.compilationProfile.isValidArgumentProfile(args) : "Invalid argument profile. UnsafeCalls need to explicity initialize the profile.";
-        return castTarget.doInvoke(args);
     }
 
     @Override
@@ -102,6 +95,11 @@ final class GraalTVMCI extends TVMCI {
     @Override
     protected void onLoad(RootNode rootNode) {
         super.onLoad(rootNode);
+    }
+
+    @Override
+    protected void setCallTarget(RootNode root, RootCallTarget callTarget) {
+        super.setCallTarget(root, callTarget);
     }
 
     @Override
@@ -135,39 +133,58 @@ final class GraalTVMCI extends TVMCI {
     }
 
     @Override
+    protected IndirectCallNode createUncachedIndirectCall() {
+        return OptimizedIndirectCallNode.createUncached();
+    }
+
+    @Override
     protected <T> T getOrCreateRuntimeData(RootNode rootNode, Supplier<T> constructor) {
         return super.getOrCreateRuntimeData(rootNode, constructor);
     }
 
-    /**
-     * Class used to store data used by the compiler in the Engine. Enables "global" compiler state
-     * per engine.
-     */
-    static class EngineData {
-        int splitLimit;
-        int splitCount;
-    }
-
-    private static final Supplier<EngineData> engineDataConstructor = new Supplier<EngineData>() {
-        @Override
-        public EngineData get() {
-            return new EngineData();
-        }
-    };
-
     EngineData getEngineData(RootNode rootNode) {
-        return getOrCreateRuntimeData(rootNode, engineDataConstructor);
+        return getOrCreateRuntimeData(rootNode, EngineData.ENGINE_DATA_SUPPLIER);
     }
 
     @Override
     protected void reportPolymorphicSpecialize(Node source) {
-        if (TruffleRuntimeOptions.getValue(SharedTruffleRuntimeOptions.TruffleExperimentalSplitting)) {
-            TruffleSplittingStrategy.newPolymorphicSpecialize(source);
-            final RootNode rootNode = source.getRootNode();
-            final OptimizedCallTarget callTarget = rootNode == null ? null : (OptimizedCallTarget) rootNode.getCallTarget();
-            if (callTarget != null) {
-                callTarget.polymorphicSpecialize(source);
-            }
+        final RootNode rootNode = source.getRootNode();
+        final OptimizedCallTarget callTarget = rootNode == null ? null : (OptimizedCallTarget) rootNode.getCallTarget();
+        if (callTarget == null || callTarget.engineData.options.isLegacySplitting()) {
+            return;
+        }
+        TruffleSplittingStrategy.newPolymorphicSpecialize(source, callTarget.engineData);
+        callTarget.polymorphicSpecialize(source);
+    }
+
+    @Override
+    protected CallInlined getCallInlined() {
+        return new OptimizedCallTarget.OptimizedCallInlined();
+    }
+
+    @Override
+    protected CallProfiled getCallProfiled() {
+        return new OptimizedCallTarget.OptimizedCallProfiled();
+    }
+
+    @Override
+    protected CastUnsafe getCastUnsafe() {
+        return CAST_UNSAFE;
+    }
+
+    private static final GraalCastUnsafe CAST_UNSAFE = new GraalCastUnsafe();
+
+    private static final class GraalCastUnsafe extends CastUnsafe {
+        @Override
+        public Object[] castArrayFixedLength(Object[] args, int length) {
+            return OptimizedCallTarget.castArrayFixedLength(args, length);
+        }
+
+        @Override
+        @SuppressWarnings("unchecked")
+        public <T> T unsafeCast(Object value, Class<T> type, boolean condition, boolean nonNull, boolean exact) {
+            return OptimizedCallTarget.unsafeCast(value, type, condition, nonNull, exact);
         }
     }
+
 }

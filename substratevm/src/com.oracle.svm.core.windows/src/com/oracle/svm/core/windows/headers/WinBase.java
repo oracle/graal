@@ -35,6 +35,7 @@ import org.graalvm.nativeimage.c.struct.CField;
 import org.graalvm.nativeimage.c.struct.CStruct;
 import org.graalvm.nativeimage.c.type.CIntPointer;
 import org.graalvm.nativeimage.c.type.CLongPointer;
+import org.graalvm.nativeimage.c.type.CCharPointer;
 import org.graalvm.word.Pointer;
 import org.graalvm.word.PointerBase;
 import org.graalvm.word.UnsignedWord;
@@ -46,10 +47,18 @@ import org.graalvm.word.WordBase;
 @Platforms(Platform.WINDOWS.class)
 public class WinBase {
 
+    public static final int MAX_PATH = 260;
+
     /**
      * Windows opaque Handle type
      */
     public interface HANDLE extends WordBase {
+    }
+
+    /**
+     * Windows Module Handle type
+     */
+    public interface HMODULE extends PointerBase {
     }
 
     /**
@@ -284,4 +293,78 @@ public class WinBase {
     @CFunction(transition = Transition.NO_TRANSITION)
     public static native int CloseHandle(HANDLE hFile);
 
+    /**
+     * GetModuleHandle
+     */
+    @CFunction(transition = Transition.NO_TRANSITION)
+    public static native Pointer GetModuleHandleA(PointerBase lpModuleName);
+
+    /**
+     * GetModuleFileNameA
+     */
+    @CFunction(transition = Transition.NO_TRANSITION)
+    public static native int GetModuleFileNameA(Pointer hModule, CCharPointer lpFilename, int nSize);
+
+    /**
+     * GetProcAddress
+     */
+    @CFunction(transition = Transition.NO_TRANSITION)
+    public static native PointerBase GetProcAddress(Pointer hModule, PointerBase lpProcName);
+
+    /**
+     * LoadLibraryA
+     */
+    @CFunction(transition = Transition.NO_TRANSITION)
+    public static native Pointer LoadLibraryA(PointerBase lpFileName);
+
+    /**
+     * LoadLibraryExA
+     */
+    @CFunction(transition = Transition.NO_TRANSITION)
+    public static native Pointer LoadLibraryExA(PointerBase lpFileName, int dummy, int flags);
+
+    /**
+     * FreeLibrary
+     */
+    @CFunction(transition = Transition.NO_TRANSITION)
+    public static native void FreeLibrary(PointerBase pointer);
+
+    /**
+     * SetDllDirectoryA
+     */
+    @CFunction(transition = Transition.NO_TRANSITION)
+    public static native boolean SetDllDirectoryA(PointerBase lpPathName);
+
+    @CStruct(addStructKeyword = false)
+    public interface MEMORY_BASIC_INFORMATION extends PointerBase {
+        @CField
+        Pointer BaseAddress();
+
+        @CField
+        Pointer AllocationBase();
+
+        @CField
+        int AllocationProtect();
+
+        @CField
+        UnsignedWord RegionSize();
+
+        @CField
+        int State();
+
+        @CField
+        int Protect();
+
+        @CField
+        int Type();
+    }
+
+    @CFunction(transition = Transition.NO_TRANSITION)
+    public static native UnsignedWord VirtualQuery(PointerBase lpAddress, MEMORY_BASIC_INFORMATION lpBuffer, UnsignedWord dwLength);
+
+    @CFunction(transition = Transition.NO_TRANSITION)
+    public static native int GetVersion();
+
+    @CFunction(transition = Transition.NO_TRANSITION)
+    public static native int GetCurrentDirectoryA(long nBufferLength, CCharPointer lpBuffer);
 }

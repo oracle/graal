@@ -44,10 +44,11 @@ import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertNotNull;
 import static org.junit.Assert.assertNull;
-import static org.junit.Assert.assertTrue;
 import static org.junit.Assert.assertSame;
+import static org.junit.Assert.assertTrue;
 import static org.junit.Assert.fail;
 
+import java.lang.reflect.Method;
 import java.util.HashMap;
 import java.util.Map;
 import java.util.concurrent.Callable;
@@ -56,6 +57,7 @@ import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 
 import org.graalvm.options.OptionDescriptor;
+import org.graalvm.options.OptionValues;
 import org.graalvm.polyglot.Context;
 import org.graalvm.polyglot.Engine;
 import org.graalvm.polyglot.Language;
@@ -64,6 +66,7 @@ import org.junit.Test;
 
 import com.oracle.truffle.api.Truffle;
 import com.oracle.truffle.api.nodes.RootNode;
+import com.oracle.truffle.api.test.option.OptionProcessorTest.OptionTestInstrument1;
 
 public class EngineAPITest {
 
@@ -174,6 +177,42 @@ public class EngineAPITest {
     }
 
     @Test
+    public void testStableOption() {
+        try (Engine engine = Engine.newBuilder().option("optiontestinstr1.StringOption1", "Hello").build()) {
+            try (Context context = Context.newBuilder().engine(engine).build()) {
+                context.enter();
+                try {
+                    assertEquals("Hello", engine.getInstruments().get("optiontestinstr1").lookup(OptionValues.class).get(OptionTestInstrument1.StringOption1));
+                } finally {
+                    context.leave();
+                }
+            }
+        }
+    }
+
+    @Test
+    public void testExperimentalOption() {
+        try (Engine engine = Engine.newBuilder().allowExperimentalOptions(true).option("optiontestinstr1.StringOption2", "Allow").build()) {
+            try (Context context = Context.newBuilder().engine(engine).build()) {
+                context.enter();
+                try {
+                    assertEquals("Allow", engine.getInstruments().get("optiontestinstr1").lookup(OptionValues.class).get(OptionTestInstrument1.StringOption2));
+                } finally {
+                    context.leave();
+                }
+            }
+        }
+    }
+
+    @Test
+    public void testExperimentalOptionException() {
+        ValueAssert.assertFails(() -> Engine.newBuilder().option("optiontestinstr1.StringOption2", "Hello").build(), IllegalArgumentException.class, e -> {
+            assertEquals("Option 'optiontestinstr1.StringOption2' is experimental and must be enabled with allowExperimentalOptions(). Do not use experimental options in production environments.",
+                            e.getMessage());
+        });
+    }
+
+    @Test
     public void testEngineCloseAsnyc() throws InterruptedException, ExecutionException {
         Engine engine = Engine.create();
         ExecutorService executor = Executors.newFixedThreadPool(1);
@@ -230,4 +269,98 @@ public class EngineAPITest {
         }
     }
 
+    @Test
+    @SuppressWarnings("try")
+    public void testListLanguagesDoesNotInvalidateSingleContext() {
+        Object prev = resetSingleContextState();
+        try {
+            try (Engine engine = Engine.create()) {
+                engine.getLanguages();
+            }
+            assertTrue(isSingleContextAssumptionValid());
+            try (Engine engine = Engine.create()) {
+                try (Context ctx = Context.newBuilder().engine(engine).build()) {
+                    assertFalse(isSingleContextAssumptionValid());
+                }
+            }
+        } finally {
+            restoreSingleContextState(prev);
+        }
+    }
+
+    @Test
+    public void testListInstrumentsDoesNotInvalidateSingleContext() {
+        Object prev = resetSingleContextState();
+        try {
+            try (Engine engine = Engine.create()) {
+                engine.getInstruments();
+            }
+            assertTrue(isSingleContextAssumptionValid());
+        } finally {
+            restoreSingleContextState(prev);
+        }
+    }
+
+    @Test
+    public void testContextWithBoundEngineDoesNotInvalidateSingleContext() {
+        Object prev = resetSingleContextState();
+        try {
+            try (Context ctx = Context.create()) {
+                ctx.initialize(EngineAPITestLanguage.ID);
+            }
+            assertTrue(isSingleContextAssumptionValid());
+        } finally {
+            restoreSingleContextState(prev);
+        }
+    }
+
+    @Test
+    @SuppressWarnings("try")
+    public void testListLanguagesAndCreateBoundContextDoNotInvalidateSingleContext() {
+        Object prev = resetSingleContextState();
+        try {
+            try (Engine engine = Engine.create()) {
+                engine.getLanguages();
+            }
+            assertTrue(isSingleContextAssumptionValid());
+            try (Context ctx = Context.create()) {
+                assertTrue(isSingleContextAssumptionValid());
+            }
+        } finally {
+            restoreSingleContextState(prev);
+        }
+    }
+
+    private static Object resetSingleContextState() {
+        try {
+            Class<?> c = Class.forName("com.oracle.truffle.polyglot.PolyglotContextImpl");
+            Method m = c.getDeclaredMethod("resetSingleContextState");
+            m.setAccessible(true);
+            return m.invoke(null);
+        } catch (Exception e) {
+            throw new AssertionError(e);
+        }
+    }
+
+    private static void restoreSingleContextState(Object state) {
+        try {
+            Class<?> c = Class.forName("com.oracle.truffle.polyglot.PolyglotContextImpl");
+            Method m = c.getDeclaredMethod("restoreSingleContextState", Object.class);
+            m.setAccessible(true);
+            m.invoke(null, state);
+        } catch (Exception e) {
+            throw new AssertionError(e);
+        }
+    }
+
+    private static boolean isSingleContextAssumptionValid() {
+        try {
+            Class<?> c = Class.forName("com.oracle.truffle.polyglot.PolyglotContextImpl");
+            Method m = c.getDeclaredMethod("isSingleContextAssumptionValid");
+            m.setAccessible(true);
+            return (Boolean) m.invoke(null);
+        } catch (Exception e) {
+            throw new AssertionError(e);
+        }
+    }
 }

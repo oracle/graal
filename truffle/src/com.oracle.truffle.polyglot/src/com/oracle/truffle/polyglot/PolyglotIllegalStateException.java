@@ -40,6 +40,9 @@
  */
 package com.oracle.truffle.polyglot;
 
+/**
+ * Specialized {@link IllegalStateException} which is thrown directly to embedder.
+ */
 @SuppressWarnings("serial")
 class PolyglotIllegalStateException extends IllegalStateException {
 

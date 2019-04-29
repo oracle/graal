@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2013, 2015, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2013, 2018, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -220,8 +220,7 @@ public abstract class TruffleInliningTest {
                     OptimizedDirectCallNode callNode = new OptimizedDirectCallNode(target);
                     callSites.add(callNode);
                     for (int i = 0; i < instruction.count; i++) {
-                        Integer[] args = {0};
-                        callNode.call(args);
+                        callNode.call(0);
                     }
                 }
                 InlineTestRootNode rootNode = (InlineTestRootNode) caller.getRootNode();

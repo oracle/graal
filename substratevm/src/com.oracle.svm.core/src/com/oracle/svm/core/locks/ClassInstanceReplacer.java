@@ -42,7 +42,7 @@ public abstract class ClassInstanceReplacer<S, T> implements Function<Object, Ob
     private final Map<S, T> replacements = Collections.synchronizedMap(new IdentityHashMap<>());
     private boolean sealed;
 
-    public ClassInstanceReplacer(Class<S> sourceClass) {
+    protected ClassInstanceReplacer(Class<S> sourceClass) {
         this.sourceClass = sourceClass;
     }
 
@@ -51,20 +51,12 @@ public abstract class ClassInstanceReplacer<S, T> implements Function<Object, Ob
         if (object == null || object.getClass() != sourceClass) {
             return object;
         }
-        return doReplace(object);
+        return replacements.computeIfAbsent(sourceClass.cast(object), this::doReplace);
     }
 
-    private Object doReplace(Object object) {
-        @SuppressWarnings("unchecked")
-        S source = (S) object;
-        T replacement = replacements.get(object);
-        if (replacement == null) {
-            VMError.guarantee(!sealed, "new object introduced after static analysis");
-
-            T newValue = createReplacement(source);
-            T oldValue = replacements.putIfAbsent(source, newValue);
-            replacement = oldValue != null ? oldValue : newValue;
-        }
+    private T doReplace(S object) {
+        VMError.guarantee(!sealed, "new object introduced after static analysis");
+        T replacement = createReplacement(object);
         assert replacement.getClass() != sourceClass : "leads to recursive replacement";
         return replacement;
     }

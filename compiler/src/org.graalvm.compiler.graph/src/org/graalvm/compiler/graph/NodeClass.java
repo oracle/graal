@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2011, 2014, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2011, 2018, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -30,7 +30,7 @@ import static org.graalvm.compiler.graph.Edges.translateInto;
 import static org.graalvm.compiler.graph.Graph.isModificationCountsEnabled;
 import static org.graalvm.compiler.graph.InputEdges.translateInto;
 import static org.graalvm.compiler.graph.Node.WithAllEdges;
-import static org.graalvm.compiler.graph.UnsafeAccess.UNSAFE;
+import static org.graalvm.compiler.serviceprovider.GraalUnsafeAccess.getUnsafe;
 
 import java.lang.annotation.Annotation;
 import java.lang.reflect.AnnotatedElement;
@@ -71,6 +71,8 @@ import org.graalvm.compiler.nodeinfo.NodeInfo;
 import org.graalvm.compiler.nodeinfo.NodeSize;
 import org.graalvm.compiler.nodeinfo.Verbosity;
 
+import sun.misc.Unsafe;
+
 /**
  * Metadata for every {@link Node} type. The metadata includes:
  * <ul>
@@ -81,6 +83,7 @@ import org.graalvm.compiler.nodeinfo.Verbosity;
  */
 public final class NodeClass<T> extends FieldIntrospection<T> {
 
+    private static final Unsafe UNSAFE = getUnsafe();
     // Timers for creation of a NodeClass instance
     private static final TimerKey Init_FieldScanning = DebugContext.timer("NodeClass.Init.FieldScanning");
     private static final TimerKey Init_FieldScanningInner = DebugContext.timer("NodeClass.Init.FieldScanning.Inner");
@@ -130,7 +133,7 @@ public final class NodeClass<T> extends FieldIntrospection<T> {
     public static <T> NodeClass<T> get(Class<T> clazz) {
         int numTries = 0;
         while (true) {
-            boolean shouldBeInitializedBefore = UnsafeAccess.UNSAFE.shouldBeInitialized(clazz);
+            boolean shouldBeInitializedBefore = UNSAFE.shouldBeInitialized(clazz);
 
             NodeClass<T> result = getUnchecked(clazz);
             if (result != null || clazz == NODE_CLASS) {
@@ -143,13 +146,13 @@ public final class NodeClass<T> extends FieldIntrospection<T> {
              * information without failing gates.
              */
             numTries++;
-            boolean shouldBeInitializedAfter = UnsafeAccess.UNSAFE.shouldBeInitialized(clazz);
+            boolean shouldBeInitializedAfter = UNSAFE.shouldBeInitialized(clazz);
             String msg = "GR-9537 Reflective field access of TYPE field returned null. This is probably a bug in HotSpot class initialization. " +
                             " clazz: " + clazz.getTypeName() + ", numTries: " + numTries +
                             ", shouldBeInitializedBefore: " + shouldBeInitializedBefore + ", shouldBeInitializedAfter: " + shouldBeInitializedAfter;
             if (numTries <= 100) {
                 TTY.println(msg);
-                UnsafeAccess.UNSAFE.ensureClassInitialized(clazz);
+                UNSAFE.ensureClassInitialized(clazz);
             } else {
                 throw GraalError.shouldNotReachHere(msg);
             }

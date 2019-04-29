@@ -46,8 +46,9 @@ import com.oracle.svm.core.config.ObjectLayout;
 import com.oracle.svm.core.deopt.DeoptEntryInfopoint;
 import com.oracle.svm.core.heap.ObjectReferenceVisitor;
 import com.oracle.svm.core.heap.PinnedAllocator;
-import com.oracle.svm.core.heap.ReferenceMapDecoder;
 import com.oracle.svm.core.heap.ReferenceMapEncoder;
+import com.oracle.svm.core.heap.CodeReferenceMapDecoder;
+import com.oracle.svm.core.heap.CodeReferenceMapEncoder;
 import com.oracle.svm.core.heap.SubstrateReferenceMap;
 import com.oracle.svm.core.hub.DynamicHub;
 import com.oracle.svm.core.hub.LayoutEncoding;
@@ -136,7 +137,7 @@ public class CodeInfoEncoder {
 
         /* Register the frame size for all entries that are starting points for the index. */
         long entryIP = CodeInfoDecoder.lookupEntryIP(CodeInfoDecoder.indexGranularity() + compilationOffset);
-        while (entryIP <= CodeInfoDecoder.lookupEntryIP(compilation.getTargetCodeSize() + compilationOffset)) {
+        while (entryIP <= CodeInfoDecoder.lookupEntryIP(compilation.getTargetCodeSize() + compilationOffset - 1)) {
             IPData entry = makeEntry(entryIP);
             entry.frameSizeEncoding = encodeFrameSize(encodedFrameSize, false);
             entryIP += CodeInfoDecoder.indexGranularity();
@@ -185,8 +186,7 @@ public class CodeInfoEncoder {
 
     public void install(CodeInfoDecoder installTarget) {
         installTarget.setData(codeInfoIndex, codeInfoEncodings, referenceMapEncoding, frameInfoEncoder.frameInfoEncodings, frameInfoEncoder.frameInfoObjectConstants,
-                        frameInfoEncoder.frameInfoSourceClassNames, frameInfoEncoder.frameInfoSourceMethodNames, frameInfoEncoder.frameInfoSourceFileNames,
-                        frameInfoEncoder.frameInfoNames);
+                        frameInfoEncoder.frameInfoSourceClasses, frameInfoEncoder.frameInfoSourceMethodNames, frameInfoEncoder.frameInfoNames);
 
         ImageSingletons.lookup(Counters.class).frameInfoSize.add(
                         ConfigurationValues.getObjectLayout().getArrayElementOffset(JavaKind.Byte, frameInfoEncoder.frameInfoEncodings.length) +
@@ -194,7 +194,7 @@ public class CodeInfoEncoder {
     }
 
     private void encodeReferenceMaps() {
-        ReferenceMapEncoder referenceMapEncoder = new ReferenceMapEncoder();
+        CodeReferenceMapEncoder referenceMapEncoder = new CodeReferenceMapEncoder();
         for (IPData data : entries.values()) {
             referenceMapEncoder.add(data.referenceMap);
         }
@@ -416,8 +416,9 @@ class CodeInfoVerifier extends CodeInfoDecoder {
                     lookupCodeInfo(offset + compilationOffset, codeInfo);
 
                     CollectingObjectReferenceVisitor visitor = new CollectingObjectReferenceVisitor();
-                    ReferenceMapDecoder.walkOffsetsFromPointer(WordFactory.zero(), codeInfo.getReferenceMapEncoding(), codeInfo.getReferenceMapIndex(), visitor);
+                    CodeReferenceMapDecoder.walkOffsetsFromPointer(WordFactory.zero(), codeInfo.getReferenceMapEncoding(), codeInfo.getReferenceMapIndex(), visitor);
                     ReferenceMapEncoder.Input expected = (ReferenceMapEncoder.Input) infopoint.debugInfo.getReferenceMap();
+                    visitor.result.verify();
                     assert expected.equals(visitor.result);
 
                     if (codeInfo.frameInfo != CodeInfoQueryResult.NO_FRAME_INFO) {
@@ -588,9 +589,13 @@ class CollectingObjectReferenceVisitor implements ObjectReferenceVisitor {
 
     @Override
     public boolean visitObjectReference(Pointer objRef, boolean compressed) {
-        int offset = NumUtil.safeToInt(objRef.rawValue());
-        assert !result.isOffsetMarked(offset);
-        result.markReferenceAtOffset(offset, compressed);
+        return visitObjectReferenceInline(objRef, 0, compressed);
+    }
+
+    @Override
+    public boolean visitObjectReferenceInline(Pointer objRef, int innerOffset, boolean compressed) {
+        int derivedOffset = NumUtil.safeToInt(objRef.rawValue());
+        result.markReferenceAtOffset(derivedOffset, derivedOffset - innerOffset, compressed);
         return true;
     }
 }

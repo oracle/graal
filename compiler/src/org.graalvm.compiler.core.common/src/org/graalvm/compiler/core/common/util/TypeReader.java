@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2015, 2015, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2015, 2018, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -60,21 +60,7 @@ public interface TypeReader {
      * Reads a signed value that has been written using {@link TypeWriter#putSV variable byte size
      * encoding}.
      */
-    default long getSV() {
-        long result = 0;
-        int shift = 0;
-        long b;
-        do {
-            b = getU1();
-            result |= (b & 0x7f) << shift;
-            shift += 7;
-        } while ((b & 0x80) != 0);
-
-        if ((b & 0x40) != 0 && shift < 64) {
-            result |= -1L << shift;
-        }
-        return result;
-    }
+    long getSV();
 
     /**
      * Reads a signed variable byte size encoded value that is known to fit into the range of int.
@@ -87,18 +73,7 @@ public interface TypeReader {
      * Reads an unsigned value that has been written using {@link TypeWriter#putSV variable byte
      * size encoding}.
      */
-    default long getUV() {
-        long result = 0;
-        int shift = 0;
-        long b;
-        do {
-            b = getU1();
-            result |= (b & 0x7f) << shift;
-            shift += 7;
-        } while ((b & 0x80) != 0);
-
-        return result;
-    }
+    long getUV();
 
     /**
      * Reads an unsigned variable byte size encoded value that is known to fit into the range of

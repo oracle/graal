@@ -51,12 +51,14 @@ import java.util.Arrays;
 
 import org.junit.Test;
 
-import com.oracle.truffle.api.interop.KeyInfo;
-import com.oracle.truffle.api.interop.Message;
+import com.oracle.truffle.api.interop.InteropException;
+import com.oracle.truffle.api.interop.InteropLibrary;
 import com.oracle.truffle.api.interop.TruffleObject;
 import com.oracle.truffle.api.interop.UnknownIdentifierException;
 
 public class ClassInteropTest extends ProxyLanguageEnvTest {
+    private static final InteropLibrary INTEROP = InteropLibrary.getFactory().getUncached();
+
     private TruffleObject obj;
     private XYPlus xyp;
 
@@ -96,32 +98,32 @@ public class ClassInteropTest extends ProxyLanguageEnvTest {
 
     @Test
     public void canReadValueAfterCreatingNewInstance() throws Exception {
-        Object objInst = HostInteropTest.message(Message.NEW, obj);
+        Object objInst = INTEROP.instantiate(obj);
         assertTrue("It is truffle object", objInst instanceof TruffleObject);
         XYPlus inst = asJavaObject(XYPlus.class, (TruffleObject) objInst);
         assertEquals("Field read", 42, inst.value());
     }
 
     @Test(expected = UnknownIdentifierException.class)
-    public void noNonStaticMethods() {
-        Object res = HostInteropTest.message(Message.READ, obj, "readCONST");
+    public void noNonStaticMethods() throws InteropException {
+        Object res = INTEROP.readMember(obj, "readCONST");
         assertNull("not found", res);
     }
 
     @Test
-    public void canAccessStaticMemberTypes() {
-        Object res = HostInteropTest.message(Message.READ, obj, "XYPlus");
+    public void canAccessStaticMemberTypes() throws InteropException {
+        Object res = INTEROP.readMember(obj, "XYPlus");
         assertTrue("It is truffle object", res instanceof TruffleObject);
         Class<?> c = asJavaObject(Class.class, (TruffleObject) res);
         assertSame(XYPlus.class, c);
     }
 
     @Test
-    public void canCreateMemberTypeInstances() {
-        Object type = HostInteropTest.message(Message.READ, obj, "Zed");
+    public void canCreateMemberTypeInstances() throws InteropException {
+        Object type = INTEROP.readMember(obj, "Zed");
         assertTrue("Type is a truffle object", type instanceof TruffleObject);
         TruffleObject truffleType = (TruffleObject) type;
-        Object objInst = HostInteropTest.message(Message.NEW, truffleType, 22);
+        Object objInst = INTEROP.instantiate(truffleType, 22);
         assertTrue("Created instance is a truffle object", objInst instanceof TruffleObject);
         Object res = asJavaObject(Object.class, (TruffleObject) objInst);
         assertTrue("Instance is of correct type", res instanceof Zed);
@@ -129,8 +131,8 @@ public class ClassInteropTest extends ProxyLanguageEnvTest {
     }
 
     @Test
-    public void canListStaticTypes() {
-        Object type = HostInteropTest.message(Message.KEYS, obj);
+    public void canListStaticTypes() throws InteropException {
+        Object type = INTEROP.getMembers(obj);
         assertTrue("Type is a truffle object", type instanceof TruffleObject);
         String[] names = asJavaObject(String[].class, (TruffleObject) type);
         int zed = 0;
@@ -161,30 +163,26 @@ public class ClassInteropTest extends ProxyLanguageEnvTest {
 
     @Test
     public void nonstaticTypeDoesNotExist() {
-        Object type = HostInteropTest.message(Message.KEY_INFO, obj, "Nonstatic");
-        assertEquals(0, type);
+        assertFalse(INTEROP.isMemberExisting(obj, "Nonstatic"));
     }
 
     @Test
     public void staticInnerTypeIsNotWritable() {
-        Object type = HostInteropTest.message(Message.KEY_INFO, obj, "Zed");
-        int keyInfo = (int) type;
-        assertTrue("Key exists", KeyInfo.isExisting(keyInfo));
-        assertTrue("Key readable", KeyInfo.isReadable(keyInfo));
-        assertFalse("Key NOT writable", KeyInfo.isModifiable(keyInfo));
+        assertTrue("Key exists", INTEROP.isMemberExisting(obj, "Zed"));
+        assertTrue("Key readable", INTEROP.isMemberReadable(obj, "Zed"));
+        assertFalse("Key NOT writable", INTEROP.isMemberModifiable(obj, "Zed"));
     }
 
     @Test(expected = com.oracle.truffle.api.interop.UnknownIdentifierException.class)
-    public void nonpublicTypeNotvisible() {
-        Object type = HostInteropTest.message(Message.KEY_INFO, obj, "NonStaticInterface");
-        assertEquals("Non-public member type not visible", 0, type);
+    public void nonpublicTypeNotvisible() throws InteropException {
+        assertFalse("Non-public member type not visible", INTEROP.isMemberReadable(obj, "NonStaticInterface"));
 
-        type = HostInteropTest.message(Message.KEYS, obj);
+        Object type = INTEROP.getMembers(obj);
         assertTrue("Type is a truffle object", type instanceof TruffleObject);
         String[] names = asJavaObject(String[].class, (TruffleObject) type);
         assertEquals("Non-public member type not enumerated", -1, Arrays.asList(names).indexOf("NonStaticInterface"));
 
-        HostInteropTest.message(Message.READ, obj, "NonStaticInterface");
+        INTEROP.readMember(obj, "NonStaticInterface");
         fail("Cannot read non-static member type");
     }
 

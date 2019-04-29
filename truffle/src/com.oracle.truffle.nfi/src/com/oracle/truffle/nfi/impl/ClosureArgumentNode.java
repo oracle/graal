@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2017, 2018, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2017, 2019, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -40,7 +40,9 @@
  */
 package com.oracle.truffle.nfi.impl;
 
-import com.oracle.truffle.api.dsl.Specialization;
+import com.oracle.truffle.api.CompilerDirectives;
+import com.oracle.truffle.api.CompilerDirectives.CompilationFinal;
+import com.oracle.truffle.api.TruffleLanguage.LanguageReference;
 import com.oracle.truffle.api.nodes.Node;
 import java.nio.ByteBuffer;
 
@@ -48,27 +50,35 @@ abstract class ClosureArgumentNode extends Node {
 
     public abstract Object execute(Object arg);
 
-    abstract static class BufferClosureArgumentNode extends ClosureArgumentNode {
+    static class BufferClosureArgumentNode extends ClosureArgumentNode {
 
         private final LibFFIType type;
+        @Child NativeArgumentLibrary nativeArguments;
 
         BufferClosureArgumentNode(LibFFIType type) {
             this.type = type;
+            this.nativeArguments = NativeArgumentLibrary.getFactory().create(type);
         }
 
-        @Specialization
-        public Object deserialize(ByteBuffer arg) {
-            NativeArgumentBuffer buffer = new NativeArgumentBuffer.Direct(arg, 0);
-            return type.deserialize(buffer);
+        @Override
+        public Object execute(Object arg) {
+            NativeArgumentBuffer buffer = new NativeArgumentBuffer.Direct((ByteBuffer) arg, 0);
+            return nativeArguments.deserialize(type, buffer);
         }
     }
 
     static class ObjectClosureArgumentNode extends ClosureArgumentNode {
 
+        @CompilationFinal LanguageReference<NFILanguageImpl> langRef;
+
         @Override
         public Object execute(Object arg) {
             if (arg == null) {
-                return new NativePointer(0);
+                if (langRef == null) {
+                    CompilerDirectives.transferToInterpreterAndInvalidate();
+                    langRef = lookupLanguageReference(NFILanguageImpl.class);
+                }
+                return NativePointer.create(langRef.get(), 0);
             } else {
                 return arg;
             }

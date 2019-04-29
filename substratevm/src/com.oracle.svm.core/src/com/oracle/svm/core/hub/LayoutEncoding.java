@@ -24,13 +24,16 @@
  */
 package com.oracle.svm.core.hub;
 
+import org.graalvm.compiler.api.replacements.Fold;
 import org.graalvm.compiler.core.common.calc.UnsignedMath;
 import org.graalvm.compiler.word.Word;
+import org.graalvm.nativeimage.ImageSingletons;
 import org.graalvm.word.Pointer;
 import org.graalvm.word.UnsignedWord;
 import org.graalvm.word.WordFactory;
 
 import com.oracle.svm.core.annotate.Uninterruptible;
+import com.oracle.svm.core.config.ObjectLayout;
 import com.oracle.svm.core.snippets.KnownIntrinsics;
 
 public class LayoutEncoding {
@@ -43,9 +46,7 @@ public class LayoutEncoding {
 
     private static final int ARRAY_INDEX_SHIFT_SHIFT = 0;
     private static final int ARRAY_INDEX_SHIFT_MASK = 255;
-    private static final int ALIGNMENT_MASK_SHIFT = 8 + ARRAY_INDEX_SHIFT_SHIFT;
-    private static final int ALIGNMENT_MASK_MASK = 255;
-    private static final int ARRAY_BASE_SHIFT = 8 + ALIGNMENT_MASK_SHIFT;
+    private static final int ARRAY_BASE_SHIFT = 8 + ARRAY_INDEX_SHIFT_SHIFT;
     private static final int ARRAY_BASE_MASK = 255;
     private static final int ARRAY_TAG_BITS = 2;
     private static final int ARRAY_TAG_SHIFT = Integer.SIZE - ARRAY_TAG_BITS;
@@ -65,7 +66,7 @@ public class LayoutEncoding {
     }
 
     public static int forInstance(int size) {
-        assert size > 0 && size <= Integer.MAX_VALUE;
+        assert size > LAST_SPECIAL_VALUE && size <= Integer.MAX_VALUE;
         int encoding = size;
 
         assert isInstance(encoding) && !isArray(encoding) && !isObjectArray(encoding) && !isPrimitiveArray(encoding);
@@ -73,16 +74,13 @@ public class LayoutEncoding {
         return encoding;
     }
 
-    public static int forArray(boolean isObject, int arrayBaseOffset, int arrayIndexShift, int alignment) {
-        int alignmentMask = alignment - 1;
-        assert alignment > 0 && (alignment & alignmentMask) == 0;
+    public static int forArray(boolean isObject, int arrayBaseOffset, int arrayIndexShift) {
         int tag = isObject ? ARRAY_TAG_OBJECT_VALUE : ARRAY_TAG_PRIMITIVE_VALUE;
-        int encoding = (tag << ARRAY_TAG_SHIFT) | (arrayBaseOffset << ARRAY_BASE_SHIFT) | (alignmentMask << ALIGNMENT_MASK_SHIFT) | (arrayIndexShift << ARRAY_INDEX_SHIFT_SHIFT);
+        int encoding = (tag << ARRAY_TAG_SHIFT) | (arrayBaseOffset << ARRAY_BASE_SHIFT) | (arrayIndexShift << ARRAY_INDEX_SHIFT_SHIFT);
 
         assert !isInstance(encoding) && isArray(encoding);
         assert isObjectArray(encoding) == isObject;
         assert isPrimitiveArray(encoding) != isObject;
-        assert getAlignmentMask(encoding) == alignmentMask;
         assert getArrayBaseOffset(encoding).equal(WordFactory.unsigned(arrayBaseOffset));
         assert getArrayIndexShift(encoding) == arrayIndexShift;
         return encoding;
@@ -105,7 +103,6 @@ public class LayoutEncoding {
     }
 
     public static UnsignedWord getInstanceSize(int encoding) {
-        assert isInstance(encoding);
         return WordFactory.unsigned(encoding);
     }
 
@@ -123,20 +120,13 @@ public class LayoutEncoding {
         return encoding < (ARRAY_TAG_PRIMITIVE_VALUE << ARRAY_TAG_SHIFT);
     }
 
-    private static int getAlignmentMask(int encoding) {
-        assert isArray(encoding);
-        return (encoding >> ALIGNMENT_MASK_SHIFT) & ALIGNMENT_MASK_MASK;
-    }
-
     // May be inlined because it does not deal in Pointers.
     @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
     public static UnsignedWord getArrayBaseOffset(int encoding) {
-        assert isArray(encoding);
         return WordFactory.unsigned((encoding >> ARRAY_BASE_SHIFT) & ARRAY_BASE_MASK);
     }
 
     public static int getArrayIndexShift(int encoding) {
-        assert isArray(encoding);
         return (encoding >> ARRAY_INDEX_SHIFT_SHIFT) & ARRAY_INDEX_SHIFT_MASK;
     }
 
@@ -149,7 +139,7 @@ public class LayoutEncoding {
     }
 
     public static UnsignedWord getArraySize(int encoding, int length) {
-        int alignmentMask = getAlignmentMask(encoding);
+        int alignmentMask = getAlignmentMask();
         return getArrayElementOffset(encoding, length).add(alignmentMask).and(~alignmentMask);
     }
 
@@ -180,5 +170,10 @@ public class LayoutEncoding {
     public static boolean isInstance(Object obj) {
         final int encoding = KnownIntrinsics.readHub(obj).getLayoutEncoding();
         return isInstance(encoding);
+    }
+
+    @Fold
+    protected static int getAlignmentMask() {
+        return ImageSingletons.lookup(ObjectLayout.class).getAlignment() - 1;
     }
 }

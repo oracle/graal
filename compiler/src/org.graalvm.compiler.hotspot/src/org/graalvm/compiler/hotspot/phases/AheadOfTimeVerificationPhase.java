@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2013, 2015, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2013, 2018, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -44,17 +44,21 @@ import jdk.vm.ci.meta.JavaKind;
 public class AheadOfTimeVerificationPhase extends VerifyPhase<PhaseContext> {
 
     @Override
-    protected boolean verify(StructuredGraph graph, PhaseContext context) {
+    protected void verify(StructuredGraph graph, PhaseContext context) {
         for (ConstantNode node : getConstantNodes(graph)) {
             if (isIllegalObjectConstant(node)) {
                 throw new VerificationError("illegal object constant: " + node);
             }
         }
-        return true;
     }
 
     public static boolean isIllegalObjectConstant(ConstantNode node) {
-        return isObject(node) && !isNullReference(node) && !isInternedString(node) && !isDirectMethodHandle(node) && !isBoundMethodHandle(node);
+        return isObject(node) &&
+                        !isNullReference(node) &&
+                        !isInternedString(node) &&
+                        !isDirectMethodHandle(node) &&
+                        !isBoundMethodHandle(node) &&
+                        !isVarHandle(node);
     }
 
     private static boolean isObject(ConstantNode node) {
@@ -77,6 +81,14 @@ public class AheadOfTimeVerificationPhase extends VerifyPhase<PhaseContext> {
             return false;
         }
         return StampTool.typeOrNull(node).getName().startsWith("Ljava/lang/invoke/BoundMethodHandle");
+    }
+
+    private static boolean isVarHandle(ConstantNode node) {
+        if (!isObject(node)) {
+            return false;
+        }
+        String name = StampTool.typeOrNull(node).getName();
+        return name.equals("Ljava/lang/invoke/VarHandle$AccessDescriptor;");
     }
 
     private static boolean isInternedString(ConstantNode node) {

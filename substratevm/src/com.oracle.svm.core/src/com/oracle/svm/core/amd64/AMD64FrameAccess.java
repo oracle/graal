@@ -25,7 +25,7 @@
 package com.oracle.svm.core.amd64;
 
 import org.graalvm.compiler.api.replacements.Fold;
-import org.graalvm.nativeimage.Feature;
+import org.graalvm.nativeimage.hosted.Feature;
 import org.graalvm.nativeimage.ImageSingletons;
 import org.graalvm.nativeimage.Platform.AMD64;
 import org.graalvm.nativeimage.Platforms;

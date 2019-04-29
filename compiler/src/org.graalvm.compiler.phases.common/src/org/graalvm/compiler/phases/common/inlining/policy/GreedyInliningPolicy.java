@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2011, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2011, 2018, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -64,10 +64,10 @@ public class GreedyInliningPolicy extends AbstractInliningPolicy {
     }
 
     @Override
-    public Decision isWorthInlining(Replacements replacements, MethodInvocation invocation, int inliningDepth, boolean fullyProcessed) {
-        final boolean isTracing = TraceInlining.getValue(replacements.getOptions());
+    public Decision isWorthInlining(Replacements replacements, MethodInvocation invocation, InlineInfo calleeInfo, int inliningDepth, boolean fullyProcessed) {
+        OptionValues options = calleeInfo.graph().getOptions();
+        final boolean isTracing = TraceInlining.getValue(options);
         final InlineInfo info = invocation.callee();
-        OptionValues options = info.graph().getOptions();
         final double probability = invocation.probability();
         final double relevance = invocation.relevance();
 

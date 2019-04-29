@@ -24,7 +24,6 @@
  */
 package com.oracle.truffle.tools.chromeinspector;
 
-import java.io.PrintWriter;
 import java.util.HashMap;
 import java.util.Map;
 
@@ -32,22 +31,24 @@ import com.oracle.truffle.api.debug.DebugValue;
 
 import com.oracle.truffle.tools.chromeinspector.types.RemoteObject;
 
-final class RemoteObjectsHandler {
+public final class RemoteObjectsHandler {
 
     private final Map<String, RemoteObject> remotesByIDs = new HashMap<>(100);
     private final Map<DebugValue, RemoteObject> remotesByValue = new HashMap<>(100);
-    private final PrintWriter err;
+    private final Map<String, DebugValue> customPreviewBodies = new HashMap<>();
+    private final Map<String, DebugValue> customPreviewConfigs = new HashMap<>();
+    private final InspectorExecutionContext context;
 
-    RemoteObjectsHandler(PrintWriter err) {
-        this.err = err;
+    RemoteObjectsHandler(InspectorExecutionContext context) {
+        this.context = context;
     }
 
-    RemoteObject getRemote(DebugValue value) {
+    public RemoteObject getRemote(DebugValue value) {
         RemoteObject remote;
         synchronized (remotesByIDs) {
             remote = remotesByValue.get(value);
             if (remote == null) {
-                remote = new RemoteObject(value, err);
+                remote = new RemoteObject(value, false, context);
                 remotesByValue.put(value, remote);
                 remotesByIDs.put(remote.getId(), remote);
             }
@@ -71,6 +72,32 @@ final class RemoteObjectsHandler {
         synchronized (remotesByIDs) {
             remotesByIDs.clear();
             remotesByValue.clear();
+            customPreviewBodies.clear();
+            customPreviewConfigs.clear();
+        }
+    }
+
+    public void registerCustomPreviewBody(String id, DebugValue body) {
+        synchronized (remotesByIDs) {
+            customPreviewBodies.put(id, body);
+        }
+    }
+
+    DebugValue getCustomPreviewBody(String id) {
+        synchronized (remotesByIDs) {
+            return customPreviewBodies.get(id);
+        }
+    }
+
+    public void registerCustomPreviewConfig(String objectId, DebugValue config) {
+        synchronized (remotesByIDs) {
+            customPreviewConfigs.put(objectId, config);
+        }
+    }
+
+    DebugValue getCustomPreviewConfig(String id) {
+        synchronized (remotesByIDs) {
+            return customPreviewConfigs.get(id);
         }
     }
 }

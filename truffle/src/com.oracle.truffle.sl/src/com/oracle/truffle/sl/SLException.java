@@ -42,13 +42,11 @@ package com.oracle.truffle.sl;
 
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.TruffleException;
+import com.oracle.truffle.api.interop.InteropLibrary;
 import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.api.nodes.NodeInfo;
 import com.oracle.truffle.api.source.SourceSection;
-import com.oracle.truffle.sl.runtime.SLBigNumber;
 import com.oracle.truffle.sl.runtime.SLContext;
-import com.oracle.truffle.sl.runtime.SLFunction;
-import com.oracle.truffle.sl.runtime.SLNull;
 
 /**
  * SL does not need a sophisticated error checking and reporting mechanism, so all unexpected
@@ -69,8 +67,8 @@ public class SLException extends RuntimeException implements TruffleException {
 
     @SuppressWarnings("sync-override")
     @Override
-    public Throwable fillInStackTrace() {
-        return null;
+    public final Throwable fillInStackTrace() {
+        return this;
     }
 
     public Node getLocation() {
@@ -108,21 +106,18 @@ public class SLException extends RuntimeException implements TruffleException {
             Object value = values[i];
             result.append(sep);
             sep = ", ";
-            if (value instanceof Long || value instanceof SLBigNumber) {
-                result.append("Number ").append(value);
-            } else if (value instanceof Boolean) {
-                result.append("Boolean ").append(value);
-            } else if (value instanceof String) {
-                result.append("String \"").append(value).append("\"");
-            } else if (value instanceof SLFunction) {
-                result.append("Function ").append(value);
-            } else if (value == SLNull.SINGLETON) {
-                result.append("NULL");
-            } else if (value == null) {
-                // value is not evaluated because of short circuit evaluation
-                result.append("ANY");
+            if (value == null || InteropLibrary.getFactory().getUncached().isNull(value)) {
+                result.append(SLLanguage.toString(value));
             } else {
-                result.append(value);
+                result.append(SLLanguage.getMetaObject(value));
+                result.append(" ");
+                if (InteropLibrary.getFactory().getUncached().isString(value)) {
+                    result.append("\"");
+                }
+                result.append(SLLanguage.toString(value));
+                if (InteropLibrary.getFactory().getUncached().isString(value)) {
+                    result.append("\"");
+                }
             }
         }
         return new SLException(result.toString(), operation);

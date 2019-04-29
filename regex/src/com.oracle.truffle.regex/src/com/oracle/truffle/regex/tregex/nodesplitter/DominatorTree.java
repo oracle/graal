@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2018, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2019, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -81,7 +81,7 @@ final class DominatorTree {
 
     private boolean graphIsConsistent() {
         for (GraphNode n : graph.getNodes()) {
-            for (GraphNode s : n.successors(graph)) {
+            for (GraphNode s : n.getSuccessors(graph)) {
                 if (!s.hasPredecessor(n)) {
                     return false;
                 }
@@ -101,7 +101,7 @@ final class DominatorTree {
 
     private void traversePostOrder(GraphNode cur) {
         setTraversed(cur);
-        for (GraphNode n : cur.successors(graph)) {
+        for (GraphNode n : cur.getSuccessors(graph)) {
             if (!isTraversed(n)) {
                 traversePostOrder(n);
             }
@@ -140,7 +140,7 @@ final class DominatorTree {
                 }
                 // find a predecessor that was already processed
                 GraphNode selectedPredecessor = null;
-                for (GraphNode p : b.predecessors()) {
+                for (GraphNode p : b.getPredecessors()) {
                     if (p.getPostOrderIndex() > i) {
                         selectedPredecessor = p;
                         break;
@@ -150,7 +150,7 @@ final class DominatorTree {
                     throw new IllegalStateException();
                 }
                 int newIDom = selectedPredecessor.getPostOrderIndex();
-                for (GraphNode p : b.predecessors()) {
+                for (GraphNode p : b.getPredecessors()) {
                     if (p == selectedPredecessor) {
                         continue;
                     }
@@ -192,7 +192,7 @@ final class DominatorTree {
 
     private void initDomTreeDepth(GraphNode curNode, int depth) {
         curNode.setDomTreeDepth(depth);
-        for (GraphNode child : curNode.domChildren(graph)) {
+        for (GraphNode child : curNode.getDomChildren(graph)) {
             initDomTreeDepth(child, depth + 1);
         }
     }

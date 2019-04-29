@@ -30,6 +30,7 @@
 package com.oracle.truffle.llvm.runtime.interop.convert;
 
 import com.oracle.truffle.api.dsl.Cached;
+import com.oracle.truffle.api.dsl.GenerateUncached;
 import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.llvm.runtime.interop.access.LLVMInteropType;
 import com.oracle.truffle.llvm.runtime.interop.convert.ForeignToLLVM.ForeignToLLVMType;
@@ -40,86 +41,88 @@ import com.oracle.truffle.llvm.runtime.nodes.api.LLVMTypesGen;
  * Converts value to the target type. For fast path code, targetType will typically be constant in
  * which case this node has zero overhead.
  */
+@GenerateUncached
 public abstract class ToLLVM extends LLVMNode {
+
     public abstract Object executeWithType(Object value, LLVMInteropType.Structured type, ForeignToLLVMType targetType);
 
     @Specialization(guards = "isI1(targetType)")
-    protected boolean toI1(Object value, LLVMInteropType.Structured type, @SuppressWarnings("unused") ForeignToLLVMType targetType,
+    static boolean toI1(Object value, LLVMInteropType.Structured type, ForeignToLLVMType targetType,
                     @Cached("createToI1()") ForeignToLLVM toI1) {
-        return LLVMTypesGen.asBoolean(toI1.executeWithType(value, type));
+        return LLVMTypesGen.asBoolean(toI1.executeWithForeignToLLVMType(value, type, targetType));
     }
 
     @Specialization(guards = "isI8(targetType)")
-    protected byte toI8(Object value, LLVMInteropType.Structured type, @SuppressWarnings("unused") ForeignToLLVMType targetType,
+    static byte toI8(Object value, LLVMInteropType.Structured type, @SuppressWarnings("unused") ForeignToLLVMType targetType,
                     @Cached("createToI8()") ForeignToLLVM toI8) {
-        return LLVMTypesGen.asByte(toI8.executeWithType(value, type));
+        return LLVMTypesGen.asByte(toI8.executeWithForeignToLLVMType(value, type, targetType));
     }
 
     @Specialization(guards = "isI16(targetType)")
-    protected short toI16(Object value, LLVMInteropType.Structured type, @SuppressWarnings("unused") ForeignToLLVMType targetType,
+    static short toI16(Object value, LLVMInteropType.Structured type, @SuppressWarnings("unused") ForeignToLLVMType targetType,
                     @Cached("createToI16()") ForeignToLLVM toI16) {
-        return LLVMTypesGen.asShort(toI16.executeWithType(value, type));
+        return LLVMTypesGen.asShort(toI16.executeWithForeignToLLVMType(value, type, targetType));
     }
 
     @Specialization(guards = "isI32(targetType)")
-    protected int toI32(Object value, LLVMInteropType.Structured type, @SuppressWarnings("unused") ForeignToLLVMType targetType,
+    static int toI32(Object value, LLVMInteropType.Structured type, @SuppressWarnings("unused") ForeignToLLVMType targetType,
                     @Cached("createToI32()") ForeignToLLVM toI32) {
-        return LLVMTypesGen.asInteger(toI32.executeWithType(value, type));
+        return LLVMTypesGen.asInteger(toI32.executeWithForeignToLLVMType(value, type, targetType));
     }
 
     @Specialization(guards = "isI64(targetType)")
-    protected Object toI64(Object value, LLVMInteropType.Structured type, @SuppressWarnings("unused") ForeignToLLVMType targetType,
+    static Object toI64(Object value, LLVMInteropType.Structured type, @SuppressWarnings("unused") ForeignToLLVMType targetType,
                     @Cached("createToI64()") ForeignToLLVM toI64) {
-        return toI64.executeWithType(value, type);
+        return toI64.executeWithForeignToLLVMType(value, type, targetType);
     }
 
     @Specialization(guards = "isFloat(targetType)")
-    protected float toFloat(Object value, LLVMInteropType.Structured type, @SuppressWarnings("unused") ForeignToLLVMType targetType,
+    static float toFloat(Object value, LLVMInteropType.Structured type, @SuppressWarnings("unused") ForeignToLLVMType targetType,
                     @Cached("createToFloat()") ForeignToLLVM toFloat) {
-        return LLVMTypesGen.asFloat(toFloat.executeWithType(value, type));
+        return LLVMTypesGen.asFloat(toFloat.executeWithForeignToLLVMType(value, type, targetType));
     }
 
     @Specialization(guards = "isDouble(targetType)")
-    protected double toDouble(Object value, LLVMInteropType.Structured type, @SuppressWarnings("unused") ForeignToLLVMType targetType,
+    static double toDouble(Object value, LLVMInteropType.Structured type, @SuppressWarnings("unused") ForeignToLLVMType targetType,
                     @Cached("createToDouble()") ForeignToLLVM toDouble) {
-        return LLVMTypesGen.asDouble(toDouble.executeWithType(value, type));
+        return LLVMTypesGen.asDouble(toDouble.executeWithForeignToLLVMType(value, type, targetType));
     }
 
     @Specialization(guards = "isPointer(targetType)")
-    protected Object toPointer(Object value, LLVMInteropType.Structured type, @SuppressWarnings("unused") ForeignToLLVMType targetType,
+    static Object toPointer(Object value, LLVMInteropType.Structured type, @SuppressWarnings("unused") ForeignToLLVMType targetType,
                     @Cached("createToPointer()") ForeignToLLVM toPointer) {
-        return toPointer.executeWithType(value, type);
+        return toPointer.executeWithForeignToLLVMType(value, type, targetType);
     }
 
-    protected boolean isI1(ForeignToLLVMType targetType) {
+    static boolean isI1(ForeignToLLVMType targetType) {
         return targetType == ForeignToLLVMType.I1;
     }
 
-    protected boolean isI8(ForeignToLLVMType targetType) {
+    static boolean isI8(ForeignToLLVMType targetType) {
         return targetType == ForeignToLLVMType.I8;
     }
 
-    protected boolean isI16(ForeignToLLVMType targetType) {
+    static boolean isI16(ForeignToLLVMType targetType) {
         return targetType == ForeignToLLVMType.I16;
     }
 
-    protected boolean isI32(ForeignToLLVMType targetType) {
+    static boolean isI32(ForeignToLLVMType targetType) {
         return targetType == ForeignToLLVMType.I32;
     }
 
-    protected boolean isI64(ForeignToLLVMType targetType) {
+    static boolean isI64(ForeignToLLVMType targetType) {
         return targetType == ForeignToLLVMType.I64;
     }
 
-    protected boolean isFloat(ForeignToLLVMType targetType) {
+    static boolean isFloat(ForeignToLLVMType targetType) {
         return targetType == ForeignToLLVMType.FLOAT;
     }
 
-    protected boolean isDouble(ForeignToLLVMType targetType) {
+    static boolean isDouble(ForeignToLLVMType targetType) {
         return targetType == ForeignToLLVMType.DOUBLE;
     }
 
-    protected boolean isPointer(ForeignToLLVMType targetType) {
+    static boolean isPointer(ForeignToLLVMType targetType) {
         return targetType == ForeignToLLVMType.POINTER;
     }
 

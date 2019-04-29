@@ -73,10 +73,12 @@ public class AssumptionInvalidationTest {
         thread.start();
 
         // Give a chance for CountingNode.execute to OSR compile
-        Thread.sleep(100);
+        while (countingNode.count < 100) {
+            Thread.sleep(100);
+        }
 
         assumption.invalidate();
-        thread.join(100);
+        thread.join(5_000);
         assertEquals("Thread ought to be notified of invalidation in reasonable time.", false, thread.isAlive());
     }
 
@@ -99,7 +101,7 @@ public class AssumptionInvalidationTest {
     }
 
     static class CountingNode extends ValueNode {
-        long count = 0;
+        volatile long count = 0;
         final Assumption assumption;
 
         CountingNode(Assumption assumption) {

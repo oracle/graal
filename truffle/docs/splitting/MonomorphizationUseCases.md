@@ -1,11 +1,10 @@
 # Monomorphization Use Cases
 
-This document illustrates through examples how monomorphization has improve
+This document illustrates through examples how monomorphization can improve
 performance of dynamic languages without going into any detail on how
-monomorphization is implemented (described in ["Experimental
-Splitting"](ExperimentalSplitting.md)) or how to leverage monomorphization in
-your language implementation (described in ["Reporting
-Polymorphism"](ReportingPolymorphism.md))
+monomorphization is implemented (described in ["Splitting"](Splitting.md)) or
+how to leverage monomorphization in your language implementation (described in
+["Reporting Polymorphism"](ReportingPolymorphism.md))
 
 ## Monomorphization in a Nutshell
 

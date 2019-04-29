@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2017, 2017, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2017, 2019, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -24,21 +24,23 @@
  */
 package com.oracle.svm.core.posix;
 
-import org.graalvm.nativeimage.Feature;
+import org.graalvm.nativeimage.hosted.Feature;
 import org.graalvm.nativeimage.ImageSingletons;
 import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.Platforms;
 import org.graalvm.nativeimage.c.type.CTypeConversion;
 import org.graalvm.nativeimage.c.type.CTypeConversion.CCharPointerHolder;
+import org.graalvm.nativeimage.impl.InternalPlatform;
 import org.graalvm.word.PointerBase;
 import org.graalvm.word.WordFactory;
 
 import com.oracle.svm.core.annotate.AutomaticFeature;
+import com.oracle.svm.core.jdk.Jvm;
 import com.oracle.svm.core.jdk.PlatformNativeLibrarySupport;
 import com.oracle.svm.core.posix.headers.Dlfcn;
 
 @AutomaticFeature
-@Platforms({Platform.LINUX.class, Platform.DARWIN.class})
+@Platforms({InternalPlatform.LINUX_AND_JNI.class, InternalPlatform.DARWIN_AND_JNI.class})
 class PosixNativeLibraryFeature implements Feature {
     @Override
     public void afterRegistration(AfterRegistrationAccess access) {
@@ -50,6 +52,23 @@ class PosixNativeLibrarySupport implements PlatformNativeLibrarySupport {
 
     static void initialize() {
         ImageSingletons.add(PlatformNativeLibrarySupport.class, new PosixNativeLibrarySupport());
+    }
+
+    @Override
+    public boolean initializeBuiltinLibraries() {
+        if (Platform.includedIn(InternalPlatform.LINUX_JNI.class) ||
+                        Platform.includedIn(InternalPlatform.DARWIN_JNI.class)) {
+            if (!PosixJavaIOSubstitutions.initIDs()) {
+                return false;
+            }
+            if (!PosixJavaLangSubstitutions.initIDs()) {
+                return false;
+            }
+            if (!PosixJavaNetSubstitutions.initIDs()) {
+                return false;
+            }
+        }
+        return true;
     }
 
     @Override
@@ -71,6 +90,13 @@ class PosixNativeLibrarySupport implements PlatformNativeLibrarySupport {
         private PointerBase dlhandle = WordFactory.nullPointer();
 
         PosixNativeLibrary(String canonicalIdentifier, boolean builtin) {
+            // Make sure the jvm.lib is available for linking
+            // Need a better place to put this.
+            if (Platform.includedIn(InternalPlatform.LINUX_JNI.class) ||
+                            Platform.includedIn(InternalPlatform.DARWIN_JNI.class)) {
+                Jvm.initialize();
+            }
+
             this.canonicalIdentifier = canonicalIdentifier;
             this.builtin = builtin;
         }
@@ -86,16 +112,13 @@ class PosixNativeLibrarySupport implements PlatformNativeLibrarySupport {
         }
 
         @Override
-        public void load() {
-            if (!builtin) {
-                assert dlhandle.isNull();
-                String path = canonicalIdentifier;
-                dlhandle = PosixUtils.dlopen(path, Dlfcn.RTLD_LAZY());
-                if (this.dlhandle.isNull()) {
-                    String error = CTypeConversion.toJavaString(Dlfcn.dlerror());
-                    throw new UnsatisfiedLinkError(path + ": " + error);
-                }
+        public boolean load() {
+            if (builtin) {
+                return true;
             }
+            assert dlhandle.isNull();
+            dlhandle = PosixUtils.dlopen(canonicalIdentifier, Dlfcn.RTLD_LAZY());
+            return dlhandle.isNonNull();
         }
 
         @Override

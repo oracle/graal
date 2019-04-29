@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2016, 2016, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2016, 2019, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -24,40 +24,41 @@
  */
 package com.oracle.truffle.regex.tregex.matchers;
 
-import com.oracle.truffle.regex.chardata.CodePointRange;
-import com.oracle.truffle.regex.chardata.CodePointSet;
-import com.oracle.truffle.regex.chardata.Constants;
-import org.junit.Assert;
-import org.junit.Test;
-
 import java.util.ArrayList;
 import java.util.List;
 
+import org.junit.Assert;
+import org.junit.Test;
+
+import com.oracle.truffle.regex.charset.CodePointRange;
+import com.oracle.truffle.regex.charset.CodePointSetBuilder;
+import com.oracle.truffle.regex.charset.Constants;
+
 public class CodePointSetTest {
 
-    public CodePointSet single(int i) {
+    public CodePointSetBuilder single(int i) {
         return range(i, i);
     }
 
-    public CodePointSet range(int i, int j) {
-        return CodePointSet.create(new CodePointRange(i, j));
+    public CodePointSetBuilder range(int i, int j) {
+        return CodePointSetBuilder.create(new CodePointRange(i, j));
     }
 
-    public CodePointSet range(int[] i) {
+    public CodePointSetBuilder range(int[] i) {
         Assert.assertEquals(i.length, 2);
         return range(i[0], i[1]);
     }
 
-    public CodePointSet multi(int... values) {
+    public CodePointSetBuilder multi(int... values) {
         assert (values.length & 1) == 0;
         List<CodePointRange> ts = new ArrayList<>();
         for (int i = 0; i < values.length; i += 2) {
             ts.add(new CodePointRange(values[i], values[i + 1]));
         }
-        return CodePointSet.create(ts.toArray(new CodePointRange[ts.size()]));
+        return CodePointSetBuilder.create(ts.toArray(new CodePointRange[ts.size()]));
     }
 
-    public void checkMatch(String errorMsg, CodePointSet m, int... values) {
+    public void checkMatch(String errorMsg, CodePointSetBuilder m, int... values) {
         List<CodePointRange> ranges = m.getRanges();
         int[] chk = new int[ranges.size() * 2];
         int i = 0;
@@ -68,7 +69,7 @@ public class CodePointSetTest {
         Assert.assertArrayEquals(matchError(errorMsg, m, values), values, chk);
     }
 
-    private static String matchError(String errorMsg, CodePointSet m, int[] values) {
+    private static String matchError(String errorMsg, CodePointSetBuilder m, int[] values) {
         StringBuilder sb = new StringBuilder(errorMsg).append(": got ").append(m.toString()).append(", expected [ ");
         for (int i = 0; i < values.length; i += 2) {
             sb.append("[").append(values[i]).append("-").append(values[i + 1]).append("] ");
@@ -76,18 +77,18 @@ public class CodePointSetTest {
         return sb.append("]").toString();
     }
 
-    public void checkAddRange(CodePointSet a, CodePointRange r, int... values) {
-        CodePointSet orig = a.copy();
+    public void checkAddRange(CodePointSetBuilder a, CodePointRange r, int... values) {
+        CodePointSetBuilder orig = a.copy();
         a.addRange(r);
         checkMatch("addRange(" + orig + ", " + r + ")", a, values);
     }
 
-    public void checkInverse(CodePointSet a, int... values) {
+    public void checkInverse(CodePointSetBuilder a, int... values) {
         checkMatch("inverse(" + a + ")", a.createInverse(), values);
     }
 
-    public void checkIntersection(CodePointSet a, CodePointSet b, int... values) {
-        checkMatch("intersection(" + a + "," + b + ")", a.createIntersection(b), values);
+    public void checkIntersection(CodePointSetBuilder a, CodePointSetBuilder b, int... values) {
+        checkMatch("intersection(" + a + "," + b + ")", a.createIntersection(b.toCodePointSet()), values);
     }
 
     @Test

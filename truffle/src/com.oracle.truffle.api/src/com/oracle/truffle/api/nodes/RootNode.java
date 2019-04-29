@@ -45,19 +45,17 @@ import java.util.concurrent.locks.ReentrantLock;
 import com.oracle.truffle.api.CallTarget;
 import com.oracle.truffle.api.CompilerAsserts;
 import com.oracle.truffle.api.CompilerDirectives.CompilationFinal;
+import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.CompilerOptions;
 import com.oracle.truffle.api.RootCallTarget;
 import com.oracle.truffle.api.TruffleLanguage;
-import com.oracle.truffle.api.TruffleLanguage.ContextReference;
 import com.oracle.truffle.api.TruffleLanguage.Env;
 import com.oracle.truffle.api.TruffleLanguage.ParsingRequest;
 import com.oracle.truffle.api.TruffleRuntime;
 import com.oracle.truffle.api.TruffleStackTraceElement;
 import com.oracle.truffle.api.frame.Frame;
 import com.oracle.truffle.api.frame.FrameDescriptor;
-import com.oracle.truffle.api.frame.FrameInstance;
 import com.oracle.truffle.api.frame.VirtualFrame;
-import com.oracle.truffle.api.impl.Accessor.EngineSupport;
 import com.oracle.truffle.api.impl.DefaultCompilerOptions;
 import com.oracle.truffle.api.source.Source;
 import com.oracle.truffle.api.source.SourceSection;
@@ -76,9 +74,8 @@ import com.oracle.truffle.api.source.SourceSection;
  * available. The language implementation instance is obtainable while
  * {@link TruffleLanguage#createContext(Env)} or {@link TruffleLanguage#parse(ParsingRequest)} is
  * executed. If no language environment is available, then <code>null</code> can be passed. Please
- * note that root nodes with <code>null</code> language are considered not instrumentable and have
- * no access to the {@link #getLanguage(Class) language} or its public {@link #getLanguageInfo()
- * information}.
+ * note that root nodes with <code>null</code> language are considered not instrumentable and don't
+ * have access to its public {@link #getLanguageInfo() language information}.
  *
  * <h4>Execution</h4>
  *
@@ -125,13 +122,7 @@ import com.oracle.truffle.api.source.SourceSection;
  */
 public abstract class RootNode extends ExecutableNode {
 
-    /*
-     * Since languages were singletons in the past, we cannot use the Env instance stored in
-     * TruffleLanguage for languages that are not yet migrated. We use this sourceVM reference
-     * instead for compatibility.
-     */
-    final Object sourceVM;
-    private RootCallTarget callTarget;
+    private volatile RootCallTarget callTarget;
     @CompilationFinal private FrameDescriptor frameDescriptor;
     final ReentrantLock lock = new ReentrantLock();
 
@@ -142,8 +133,8 @@ public abstract class RootNode extends ExecutableNode {
      * while {@link TruffleLanguage#createContext(Env)} or
      * {@link TruffleLanguage#parse(ParsingRequest)} is executed. If no language environment is
      * available, then <code>null</code> can be passed. Please note that root nodes with
-     * <code>null</code> language are considered not instrumentable and have no access to the
-     * {@link #getLanguage(Class) language} or its public {@link #getLanguageInfo() information}.
+     * <code>null</code> language are considered not instrumentable and don't have access to its
+     * public {@link #getLanguageInfo() language information}.
      *
      * @param language the language this root node is associated with
      * @since 0.25
@@ -157,8 +148,8 @@ public abstract class RootNode extends ExecutableNode {
      * instance is obtainable while {@link TruffleLanguage#createContext(Env)} or
      * {@link TruffleLanguage#parse(ParsingRequest)} is executed. If no language environment is
      * available, then <code>null</code> can be passed. Please note that root nodes with
-     * <code>null</code> language are considered not instrumentable and have no access to the
-     * {@link #getLanguage(Class) language} or its public {@link #getLanguageInfo() information}.
+     * <code>null</code> language are considered not instrumentable and don't have access to its
+     * public {@link #getLanguageInfo() language information}.
      *
      * @param language the language this root node is associated with
      * @since 0.25
@@ -166,37 +157,16 @@ public abstract class RootNode extends ExecutableNode {
     protected RootNode(TruffleLanguage<?> language, FrameDescriptor frameDescriptor) {
         super(language);
         CompilerAsserts.neverPartOfCompilation();
-        if (this.language != null) {
-            this.sourceVM = Node.ACCESSOR.engineSupport().getVMFromLanguageObject(Node.ACCESSOR.languageSupport().getLanguageInfo(this.language).getEngineObject());
-        } else {
-            this.sourceVM = getCurrentVM();
-        }
-
         this.frameDescriptor = frameDescriptor == null ? new FrameDescriptor() : frameDescriptor;
     }
 
-    private static Object getCurrentVM() {
-        EngineSupport engine = Node.ACCESSOR.engineSupport();
-        if (engine != null) {
-            return engine.getCurrentVM();
-        } else {
-            return null;
-        }
-    }
-
     /**
-     * Returns the current context associated with the root node {@link #getLanguage(Class)
-     * language} and {@link Thread thread}. The current context is <code>null</code> if the root
-     * node is associated with a <code>null</code> language. This is a short-cut for
-     * <code>this</code>. {@link #getLanguage(Class) getLanguage(languageClass)}.
-     * {@link TruffleLanguage#getContextReference() getContextReference()}.
-     * {@link ContextReference#get() get()}. If invoked on the fast-path then
-     * <code>languageClass</code> must be a compilation final value.
-     *
-     * @see #getLanguage(Class)
      * @see TruffleLanguage#getContextReference()
      * @since 0.27
+     * @deprecated use {@link #getContextSupplier(Class)} instead.
      */
+    @SuppressWarnings("deprecation")
+    @Deprecated
     public final <C, T extends TruffleLanguage<C>> C getCurrentContext(Class<T> languageClass) {
         if (language == null) {
             return null;
@@ -245,6 +215,9 @@ public abstract class RootNode extends ExecutableNode {
      * This method is intended to be overwritten by guest languages, when the node's source is
      * internal, the implementation should respect that. Can be called on any thread and without a
      * language context.
+     * <p>
+     * This method may be invoked on compiled code paths. It is recommended to implement this method
+     * such that it returns a compilation final constant.
      *
      * @since 0.27
      */
@@ -252,11 +225,16 @@ public abstract class RootNode extends ExecutableNode {
         if (getLanguageInfo() == null) {
             return true;
         }
-        SourceSection sc = getSourceSection();
+        SourceSection sc = materializeSourceSection();
         if (sc != null) {
             return sc.getSource().isInternal();
         }
         return false;
+    }
+
+    @TruffleBoundary
+    private SourceSection materializeSourceSection() {
+        return getSourceSection();
     }
 
     /**
@@ -334,15 +312,6 @@ public abstract class RootNode extends ExecutableNode {
     }
 
     /**
-     * @since 0.8 or earlier
-     * @deprecated use {@link LoopNode#reportLoopCount(Node,int)} instead
-     */
-    @Deprecated
-    public final void reportLoopCount(int iterations) {
-        LoopNode.reportLoopCount(this, iterations);
-    }
-
-    /**
      * Executes this function using the specified frame and returns the result value.
      *
      * @param frame the frame of the currently executing guest language method
@@ -362,34 +331,9 @@ public abstract class RootNode extends ExecutableNode {
         return frameDescriptor;
     }
 
-    /**
-     * @since 0.8 or earlier
-     * @deprecated No replacement. Changing {@link CallTarget} of an existing {@link RootNode} isn't
-     *             a supported operation
-     */
-    @Deprecated
-    public final void setCallTarget(RootCallTarget callTarget) {
+    /** @since 1.0.0 */
+    protected final void setCallTarget(RootCallTarget callTarget) {
         this.callTarget = callTarget;
-    }
-
-    /**
-     * Returns the {@link com.oracle.truffle.api.ExecutionContext} associated with this
-     * <code>RootNode</code>. This allows the correct <code>ExecutionContext</code> to be determined
-     * for a <code>RootNode</code> (and so also for a {@link RootCallTarget} and a
-     * {@link FrameInstance} obtained from the call stack) without prior knowledge of the language
-     * it has come from.
-     *
-     * Returns <code>null</code> by default.
-     *
-     * @since 0.8 or earlier
-     * @deprecated in 0.25 use {@link #getLanguage(Class) getLanguage(Language.class)}.
-     *             {@link TruffleLanguage#getCurrentContext(Class) getCurrentContext()} instead, and
-     *             {@link RootNode#getCompilerOptions()}.
-     */
-    @SuppressWarnings("deprecation")
-    @Deprecated
-    public com.oracle.truffle.api.ExecutionContext getExecutionContext() {
-        return null;
     }
 
     /**
@@ -397,15 +341,8 @@ public abstract class RootNode extends ExecutableNode {
      *
      * @since 0.8 or earlier
      */
-    @SuppressWarnings("deprecation")
     public CompilerOptions getCompilerOptions() {
-        final com.oracle.truffle.api.ExecutionContext context = getExecutionContext();
-
-        if (context == null) {
-            return DefaultCompilerOptions.INSTANCE;
-        } else {
-            return context.getCompilerOptions();
-        }
+        return DefaultCompilerOptions.INSTANCE;
     }
 
     /**

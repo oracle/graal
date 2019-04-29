@@ -29,10 +29,10 @@
  */
 package com.oracle.truffle.llvm.test;
 
-import java.io.File;
 import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
+import java.nio.file.Paths;
 import java.util.Collection;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
@@ -47,7 +47,7 @@ import com.oracle.truffle.llvm.test.options.TestOptions;
 @RunWith(Parameterized.class)
 public final class InlineAssemblyTest extends BaseSuiteHarness {
 
-    private static final Path ASSEMBLY_SUITE_DIR = new File(TestOptions.TEST_SUITE_PATH).toPath();
+    private static final Path ASSEMBLY_SUITE_DIR = Paths.get(TestOptions.TEST_SUITE_PATH, "..", "tests", "inlineassemblytests");
 
     @Parameter(value = 0) public Path path;
     @Parameter(value = 1) public String testName;

@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2016, 2018, Oracle and/or its affiliates.
+ * Copyright (c) 2016, 2019, Oracle and/or its affiliates.
  *
  * All rights reserved.
  *
@@ -35,6 +35,7 @@ import com.oracle.truffle.api.dsl.NodeChild;
 import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.llvm.runtime.memory.LLVMMemSetNode;
 import com.oracle.truffle.llvm.runtime.memory.LLVMMemory;
+import com.oracle.truffle.llvm.runtime.memory.LLVMMemoryOpNode;
 import com.oracle.truffle.llvm.runtime.nodes.api.LLVMExpressionNode;
 import com.oracle.truffle.llvm.runtime.pointer.LLVMNativePointer;
 
@@ -130,7 +131,7 @@ public abstract class LLVMMemoryIntrinsic extends LLVMExpressionNode {
     }
 
     @NodeChild(type = LLVMExpressionNode.class)
-    public abstract static class LLVMFree extends LLVMMemoryIntrinsic {
+    public abstract static class LLVMFree extends LLVMMemoryIntrinsic implements LLVMMemoryOpNode {
 
         @Specialization
         protected Object doVoid(LLVMNativePointer address,

@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2017, 2017, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2017, 2019, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -41,11 +41,11 @@ public class CGTrackingDFAStateNode extends DFAStateNode {
     @Child private DFACaptureGroupPartialTransitionDispatchNode transitionDispatchNode;
 
     public CGTrackingDFAStateNode(short id, byte flags, LoopOptimizationNode loopOptimizationNode, short[] successors, CharMatcher[] matchers,
-                    short[] captureGroupTransitions,
+                    AllTransitionsInOneTreeMatcher allTransitionsInOneTreeMatcher, short[] captureGroupTransitions,
                     short[] precedingCaptureGroupTransitions,
                     DFACaptureGroupPartialTransitionNode anchoredFinalStateTransition,
                     DFACaptureGroupPartialTransitionNode unAnchoredFinalStateTransition) {
-        super(id, flags, loopOptimizationNode, successors, matchers);
+        super(id, flags, loopOptimizationNode, successors, matchers, allTransitionsInOneTreeMatcher);
         this.captureGroupTransitions = captureGroupTransitions;
         this.precedingCaptureGroupTransitions = precedingCaptureGroupTransitions;
         transitionDispatchNode = precedingCaptureGroupTransitions.length > 1 ? DFACaptureGroupPartialTransitionDispatchNode.create(precedingCaptureGroupTransitions) : null;

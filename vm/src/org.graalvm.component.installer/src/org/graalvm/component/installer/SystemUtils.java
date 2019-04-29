@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2019, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -25,9 +25,14 @@
 package org.graalvm.component.installer;
 
 import java.io.File;
+import java.io.IOException;
 import java.nio.file.Path;
 import java.nio.file.Paths;
+import java.nio.file.attribute.AclFileAttributeView;
+import java.nio.file.attribute.PosixFileAttributeView;
+import java.util.regex.Matcher;
 import java.util.regex.Pattern;
+import org.graalvm.component.installer.model.ComponentRegistry;
 
 /**
  *
@@ -43,6 +48,8 @@ public class SystemUtils {
      * Path component delimiter.
      */
     public static final String DELIMITER = "/"; // NOI18N
+
+    private static final String DOTDOT = ".."; // NOI18N
 
     private static final String SPLIT_DELIMITER = Pattern.quote(DELIMITER);
 
@@ -123,5 +130,131 @@ public class SystemUtils {
     public static boolean isWindows() {
         String osName = System.getProperty("os.name"); // NOI18N
         return osName != null && osName.toLowerCase().contains("windows");
+    }
+
+    /**
+     * Checks if the path is relative and does not go above its root. The path may contain
+     * {@code ..} components, but they must not traverse outside the relative subtree.
+     * 
+     * @param p the path, in common notation (slashes)
+     * @return the path
+     * @trows IllegalArgumentException if the path is invalid
+     */
+    public static Path fromCommonRelative(String p) {
+        if (p == null) {
+            return null;
+        }
+        return fromArray(checkRelativePath(null, p));
+    }
+
+    private static Path fromArray(String[] comps) {
+        if (comps.length == 1) {
+            return Paths.get(comps[0]);
+        }
+        int l = comps.length - 1;
+        String s = comps[0];
+        System.arraycopy(comps, 1, comps, 0, l);
+        comps[l] = ""; // NOI18N
+        return Paths.get(s, comps);
+    }
+
+    public static Path fromCommonRelative(Path base, String p) {
+        if (p == null) {
+            return null;
+        } else if (base == null) {
+            return fromCommonRelative(p);
+        }
+        String[] comps = checkRelativePath(base, p);
+        return base.resolveSibling(fromArray(comps));
+    }
+
+    /**
+     * Resolves a relative path against a base, does not allow the path to go above the base root.
+     * 
+     * @param base base Path
+     * @param p path string
+     * @throws IllegalArgumentException on invalid path
+     */
+    public static void checkCommonRelative(Path base, String p) {
+        if (p == null) {
+            return;
+        }
+        checkRelativePath(base, p);
+    }
+
+    private static String[] checkRelativePath(Path base, String p) {
+        if (p.startsWith(DELIMITER)) {
+            throw new IllegalArgumentException("Absolute path");
+        }
+        String[] comps = p.split(SPLIT_DELIMITER);
+        int d = base == null ? 0 : base.getNameCount();
+        for (String s : comps) {
+            if (s.isEmpty()) {
+                throw new IllegalArgumentException("Empty path component");
+            }
+            if (DOTDOT.equals(s)) {
+                d--;
+                if (d < 0) {
+                    throw new IllegalArgumentException("Relative path reaches above root");
+                }
+            } else {
+                d++;
+            }
+        }
+        return comps;
+    }
+
+    private static final Pattern OLD_VERSION_PATTERN = Pattern.compile("([0-9]+\\.[0-9]+\\.[0-9]+)(-([a-z]+)([0-9]+))?");
+
+    public static String normalizeOldVersions(String v) {
+        if (v == null) {
+            return null;
+        }
+        Matcher m = OLD_VERSION_PATTERN.matcher(v);
+        if (!m.matches()) {
+            return v;
+        }
+        String numbers = m.group(1);
+        String rel = m.group(3);
+        String relNo = m.group(4);
+
+        if (rel == null) {
+            return numbers + ".0";
+        } else {
+            return numbers + "-0." + rel + "." + relNo;
+        }
+    }
+
+    public static Path getGraalVMJDKRoot(ComponentRegistry reg) {
+        if ("macos".equals(reg.getGraalCapabilities().get(CommonConstants.CAP_OS_ARCH))) {
+            return Paths.get("Contents", "Home");
+        } else {
+            return Paths.get("");
+        }
+    }
+
+    /**
+     * Finds a file owner. On POSIX systems, returns owner of the file. On Windows (ACL fs view)
+     * returns the owner principal's name.
+     * 
+     * @param file the file to test
+     * @return owner name
+     */
+    public static String findFileOwner(Path file) throws IOException {
+        PosixFileAttributeView posix = file.getFileSystem().provider().getFileAttributeView(file, PosixFileAttributeView.class);
+        if (posix != null) {
+            return posix.getOwner().getName();
+        }
+        AclFileAttributeView acl = file.getFileSystem().provider().getFileAttributeView(file, AclFileAttributeView.class);
+        if (acl != null) {
+            return acl.getOwner().getName();
+        }
+        return null;
+    }
+
+    static boolean licenseTracking = false;
+
+    public static boolean isLicenseTrackingEnabled() {
+        return licenseTracking;
     }
 }

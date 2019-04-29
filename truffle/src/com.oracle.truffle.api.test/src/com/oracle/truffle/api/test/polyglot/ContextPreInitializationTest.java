@@ -44,6 +44,7 @@ import com.oracle.truffle.api.CallTarget;
 import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.Option;
 import com.oracle.truffle.api.Truffle;
+import com.oracle.truffle.api.TruffleFile;
 import com.oracle.truffle.api.TruffleLanguage;
 import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.api.nodes.RootNode;
@@ -52,7 +53,11 @@ import java.io.IOException;
 import java.io.OutputStream;
 import java.io.PrintStream;
 import java.lang.reflect.Method;
+import java.nio.file.DirectoryStream;
+import java.nio.file.Files;
+import java.nio.file.Path;
 import java.nio.file.Paths;
+import java.nio.file.StandardOpenOption;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collection;
@@ -63,11 +68,13 @@ import java.util.List;
 import java.util.Map;
 import java.util.Set;
 import java.util.concurrent.atomic.AtomicInteger;
+import java.util.function.Consumer;
 import java.util.logging.Handler;
 import java.util.logging.LogRecord;
 import org.graalvm.options.OptionCategory;
 import org.graalvm.options.OptionDescriptors;
 import org.graalvm.options.OptionKey;
+import org.graalvm.options.OptionStability;
 import org.graalvm.polyglot.Context;
 import org.graalvm.polyglot.Engine;
 import org.graalvm.polyglot.PolyglotException;
@@ -105,9 +112,12 @@ public class ContextPreInitializationTest {
         ContextPreInitializationTestFirstLanguage.callDependentLanguage = false;
         ContextPreInitializationTestSecondLanguage.callDependentLanguage = false;
         ContextPreInitializationTestFirstLanguage.patchException = false;
+        ContextPreInitializationTestFirstLanguage.onPreInitAction = null;
+        ContextPreInitializationTestFirstLanguage.onPatchAction = null;
         BaseLanguage.parseStdOutOutput.clear();
         BaseLanguage.parseStdErrOutput.clear();
         resetSystemPropertiesOptions();
+        resetLanguageHomes();
         patchableLanguages.clear();
         emittedContexts.clear();
     }
@@ -451,7 +461,7 @@ public class ContextPreInitializationTest {
         assertTrue(firstLangCtx.optionValues.get(ContextPreInitializationTestFirstLanguage.Option1));
         assertFalse(firstLangCtx.optionValues.get(ContextPreInitializationTestFirstLanguage.Option2));
         firstLangCtx.optionValues.clear();
-        System.getProperties().remove(SYS_OPTION1_KEY);
+        System.clearProperty(SYS_OPTION1_KEY);
         System.setProperty(SYS_OPTION2_KEY, "true");
         Context ctx = Context.create();
         Value res = ctx.eval(Source.create(FIRST, "test"));
@@ -478,7 +488,7 @@ public class ContextPreInitializationTest {
         assertTrue(firstLangCtx.optionValues.get(ContextPreInitializationTestFirstLanguage.Option1));
         assertFalse(firstLangCtx.optionValues.get(ContextPreInitializationTestFirstLanguage.Option2));
         firstLangCtx.optionValues.clear();
-        System.getProperties().remove(SYS_OPTION1_KEY);
+        System.clearProperty(SYS_OPTION1_KEY);
         System.setProperty(SYS_OPTION2_KEY, "true");
         final Context ctx = Context.create();
         Value res = ctx.eval(Source.create(FIRST, "test"));
@@ -884,7 +894,7 @@ public class ContextPreInitializationTest {
             doContextPreinitialize(FIRST);
         } finally {
             System.setErr(origErr);
-            System.getProperties().remove("polyglot.log.engine.level");
+            System.clearProperty("polyglot.log.engine.level");
         }
         final String preInitLog = preInitErr.toString("UTF-8");
         assertTrue(preInitLog.contains("Pre-initialized context for language: ContextPreInitializationFirst"));
@@ -924,10 +934,92 @@ public class ContextPreInitializationTest {
         assertEquals(1, firstLangCtx.disposeThreadCount);
     }
 
+    @Test
+    public void testFileSystemSwitch() throws Exception {
+        setPatchable(FIRST);
+        Path tmpDir = Files.createTempDirectory("testFileSystemSwitch");
+        Path buildHome = tmpDir.resolve("build");
+        Path execHome = tmpDir.resolve("exec");
+        Files.createDirectories(buildHome);
+        Files.createDirectories(execHome);
+        Path buildFile = write(buildHome.resolve("test"), "build");
+        Path execFile = write(execHome.resolve("test"), "exec");
+        Path noLangHomeFile = write(tmpDir.resolve("test"), "abs");
+
+        try {
+            List<TruffleFile> files = new ArrayList<>();
+            ContextPreInitializationTestFirstLanguage.onPreInitAction = new Consumer<TruffleLanguage.Env>() {
+                @Override
+                public void accept(TruffleLanguage.Env env) {
+                    TruffleFile f = env.getTruffleFile(buildFile.toString());
+                    files.add(f);
+                    f = env.getTruffleFile(noLangHomeFile.toString());
+                    files.add(f);
+                    f = env.getTruffleFile("relative_file");
+                    files.add(f);
+                }
+            };
+            ContextPreInitializationTestFirstLanguage.onPatchAction = new Consumer<TruffleLanguage.Env>() {
+                @Override
+                public void accept(TruffleLanguage.Env t) {
+                    try {
+                        assertTrue(files.get(0).isAbsolute());
+                        assertEquals(execFile.toString(), files.get(0).getPath());
+                        assertEquals("exec", read(files.get(0)).trim());
+                        assertTrue(files.get(1).isAbsolute());
+                        assertEquals(noLangHomeFile.toString(), files.get(1).getPath());
+                        assertEquals("abs", read(files.get(1)).trim());
+                        assertFalse(files.get(2).isAbsolute());
+                        assertEquals("relative_file", files.get(2).getPath());
+                    } catch (IOException ioe) {
+                        throw new RuntimeException(ioe);
+                    }
+                }
+            };
+            System.setProperty(String.format("%s.home", FIRST), buildHome.toString());
+            doContextPreinitialize(FIRST);
+            assertFalse(files.isEmpty());
+            System.setProperty(String.format("%s.home", FIRST), execHome.toString());
+            try (Context ctx = Context.newBuilder().allowIO(true).build()) {
+                Value res = ctx.eval(Source.create(FIRST, "test"));
+                assertEquals("test", res.asString());
+            }
+        } finally {
+            delete(tmpDir);
+        }
+    }
+
+    private static void delete(Path file) throws IOException {
+        if (Files.isDirectory(file)) {
+            try (DirectoryStream<Path> stream = Files.newDirectoryStream(file)) {
+                for (Path child : stream) {
+                    delete(child);
+                }
+            }
+        }
+        Files.delete(file);
+    }
+
+    private static Path write(Path path, CharSequence... lines) throws IOException {
+        Files.write(path, Arrays.asList(lines), StandardOpenOption.WRITE, StandardOpenOption.CREATE);
+        return path;
+    }
+
+    private static String read(TruffleFile file) throws IOException {
+        return new String(file.readAllBytes());
+    }
+
     private static void resetSystemPropertiesOptions() {
-        System.getProperties().remove("polyglot.engine.PreinitializeContexts");
-        System.getProperties().remove(SYS_OPTION1_KEY);
-        System.getProperties().remove(SYS_OPTION2_KEY);
+        System.clearProperty("polyglot.engine.PreinitializeContexts");
+        System.clearProperty(SYS_OPTION1_KEY);
+        System.clearProperty(SYS_OPTION2_KEY);
+    }
+
+    private static void resetLanguageHomes() throws ReflectiveOperationException {
+        Class<?> languageCache = Class.forName("com.oracle.truffle.polyglot.LanguageCache");
+        Method reset = languageCache.getDeclaredMethod("resetNativeImageCacheLanguageHomes");
+        reset.setAccessible(true);
+        reset.invoke(null);
     }
 
     private static void doContextPreinitialize(String... languages) throws ReflectiveOperationException {
@@ -938,13 +1030,16 @@ public class ContextPreInitializationTest {
         }
         if (languagesOptionValue.length() > 0) {
             languagesOptionValue.replace(languagesOptionValue.length() - 1, languagesOptionValue.length(), "");
-            System.setProperty(
-                            "polyglot.engine.PreinitializeContexts",
-                            languagesOptionValue.toString());
+            System.setProperty("polyglot.engine.PreinitializeContexts", languagesOptionValue.toString());
         }
         final Method preInitMethod = holderClz.getDeclaredMethod("preInitializeEngine");
         preInitMethod.setAccessible(true);
-        preInitMethod.invoke(null);
+        try {
+            preInitMethod.invoke(null);
+        } finally {
+            // PreinitializeContexts should only be set during pre-initialization, not at runtime
+            System.clearProperty("polyglot.engine.PreinitializeContexts");
+        }
     }
 
     private static Collection<? extends CountingContext> findContexts(
@@ -1085,16 +1180,17 @@ public class ContextPreInitializationTest {
         @Override
         protected CallTarget parse(TruffleLanguage.ParsingRequest request) throws Exception {
             final CharSequence result = request.getSource().getCharacters();
+            Class<? extends TruffleLanguage<CountingContext>> languageClass = getClass();
             return Truffle.getRuntime().createCallTarget(new RootNode(this) {
                 @Override
                 public Object execute(VirtualFrame frame) {
                     String msg = parseStdOutOutput.get(getLanguageInfo().getId());
                     if (msg != null) {
-                        write(getContextReference().get().environment().out(), msg);
+                        write(lookupContextReference(languageClass).get().environment().out(), msg);
                     }
                     msg = parseStdErrOutput.get(getLanguageInfo().getId());
                     if (msg != null) {
-                        write(getContextReference().get().environment().err(), msg);
+                        write(lookupContextReference(languageClass).get().environment().err(), msg);
                     }
                     return result;
                 }
@@ -1119,10 +1215,16 @@ public class ContextPreInitializationTest {
 
     @TruffleLanguage.Registration(id = FIRST, name = FIRST, version = "1.0", dependentLanguages = INTERNAL)
     public static final class ContextPreInitializationTestFirstLanguage extends BaseLanguage {
-        @Option(category = OptionCategory.USER, help = "Option 1") public static final OptionKey<Boolean> Option1 = new OptionKey<>(false);
-        @Option(category = OptionCategory.USER, help = "Option 2") public static final OptionKey<Boolean> Option2 = new OptionKey<>(false);
+        @Option(category = OptionCategory.USER, stability = OptionStability.STABLE, help = "Option 1") //
+        public static final OptionKey<Boolean> Option1 = new OptionKey<>(false);
+        @Option(category = OptionCategory.USER, stability = OptionStability.STABLE, help = "Option 2") //
+        public static final OptionKey<Boolean> Option2 = new OptionKey<>(false);
+
         private static boolean callDependentLanguage;
         private static boolean patchException = false;
+
+        static Consumer<TruffleLanguage.Env> onPreInitAction;
+        static Consumer<TruffleLanguage.Env> onPatchAction;
 
         @Override
         protected CountingContext createContext(Env env) {
@@ -1138,6 +1240,9 @@ public class ContextPreInitializationTest {
             if (callDependentLanguage) {
                 useLanguage(context, INTERNAL);
             }
+            if (onPreInitAction != null) {
+                onPreInitAction.accept(context.env);
+            }
         }
 
         @Override
@@ -1147,6 +1252,9 @@ public class ContextPreInitializationTest {
             final boolean result = super.patchContext(context, newEnv);
             if (patchException) {
                 throw new RuntimeException("patchContext() exception");
+            }
+            if (onPatchAction != null) {
+                onPatchAction.accept(newEnv);
             }
             return result;
         }

@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2014, 2017, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2014, 2019, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -34,6 +34,9 @@ import org.graalvm.nativeimage.c.struct.CPointerTo;
 import org.graalvm.nativeimage.c.struct.CStruct;
 import org.graalvm.nativeimage.c.type.CIntPointer;
 import org.graalvm.nativeimage.c.type.WordPointer;
+import org.graalvm.nativeimage.Platforms;
+import org.graalvm.nativeimage.impl.InternalPlatform.DARWIN_AND_JNI;
+import org.graalvm.nativeimage.impl.InternalPlatform.LINUX_AND_JNI;
 import org.graalvm.word.ComparableWord;
 import org.graalvm.word.PointerBase;
 import org.graalvm.word.UnsignedWord;
@@ -47,6 +50,7 @@ import com.oracle.svm.core.posix.headers.Time.timespec;
  * Definitions manually translated from the C header file pthread.h.
  */
 @CContext(PosixDirectives.class)
+@Platforms({DARWIN_AND_JNI.class, LINUX_AND_JNI.class})
 @CLibrary("pthread")
 public class Pthread {
 
@@ -311,7 +315,7 @@ public class Pthread {
     public static native int pthread_attr_init(pthread_attr_t attr);
 
     /** Destroy thread attribute *ATTR. */
-    @CFunction
+    @CFunction(transition = Transition.NO_TRANSITION)
     public static native int pthread_attr_destroy(pthread_attr_t attr);
 
     /** Get detach state attribute. */
@@ -326,7 +330,7 @@ public class Pthread {
     public static native int pthread_attr_setdetachstate(pthread_attr_t attr, int detachstate);
 
     /** Get the size of the guard area created for stack overflow protection. */
-    @CFunction
+    @CFunction(transition = Transition.NO_TRANSITION)
     public static native int pthread_attr_getguardsize(pthread_attr_t attr, WordPointer guardsize);
 
     /** Set the size of the guard area created for stack overflow protection. */
@@ -389,7 +393,7 @@ public class Pthread {
     public static native int pthread_attr_setstacksize(pthread_attr_t attr, UnsignedWord stacksize);
 
     /** Return the previously set address for the stack. */
-    @CFunction
+    @CFunction(transition = Transition.NO_TRANSITION)
     public static native int pthread_attr_getstack(pthread_attr_t attr, WordPointer stackaddr, WordPointer stacksize);
 
     /**
@@ -428,7 +432,7 @@ public class Pthread {
      * TH. It shall be called on uninitialized ATTR and destroyed with pthread_attr_destroy when no
      * longer needed.
      */
-    @CFunction
+    @CFunction(transition = Transition.NO_TRANSITION)
     public static native int pthread_getattr_np(pthread_t th, pthread_attr_t attr);
 
     /* Functions for scheduling control. */

@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2017, 2018, Oracle and/or its affiliates.
+ * Copyright (c) 2017, 2019, Oracle and/or its affiliates.
  *
  * All rights reserved.
  *
@@ -29,12 +29,13 @@
  */
 package com.oracle.truffle.llvm.nodes.intrinsics.interop;
 
-import com.oracle.truffle.api.TruffleLanguage.ContextReference;
 import com.oracle.truffle.api.dsl.Cached;
+import com.oracle.truffle.api.dsl.CachedContext;
 import com.oracle.truffle.api.dsl.NodeChild;
 import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.llvm.nodes.intrinsics.llvm.LLVMIntrinsic;
 import com.oracle.truffle.llvm.runtime.LLVMContext;
+import com.oracle.truffle.llvm.runtime.LLVMLanguage;
 import com.oracle.truffle.llvm.runtime.memory.LLVMMemory;
 import com.oracle.truffle.llvm.runtime.nodes.api.LLVMExpressionNode;
 import com.oracle.truffle.llvm.runtime.pointer.LLVMManagedPointer;
@@ -45,9 +46,9 @@ public abstract class LLVMTruffleDerefHandleToManaged extends LLVMIntrinsic {
 
     @Specialization
     protected LLVMNativePointer doIntrinsic(LLVMManagedPointer value,
-                    @Cached("getContextReference()") ContextReference<LLVMContext> context,
+                    @CachedContext(LLVMLanguage.class) LLVMContext context,
                     @Cached("getLLVMMemory()") LLVMMemory memory) {
-        LLVMNativePointer handle = context.get().getDerefHandleForManagedObject(memory, value.getObject());
+        LLVMNativePointer handle = context.getDerefHandleForManagedObject(memory, value.getObject());
         if (value.getOffset() != 0) {
             return handle.increment(value.getOffset());
         }

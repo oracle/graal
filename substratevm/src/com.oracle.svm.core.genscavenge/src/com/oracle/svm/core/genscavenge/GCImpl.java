@@ -28,21 +28,25 @@ import static com.oracle.svm.core.snippets.KnownIntrinsics.readCallerStackPointe
 import static com.oracle.svm.core.snippets.KnownIntrinsics.readReturnAddress;
 
 import java.lang.management.GarbageCollectorMXBean;
+import java.lang.management.ManagementFactory;
 import java.util.ArrayList;
 import java.util.List;
 
-import javax.management.MalformedObjectNameException;
+import javax.management.MBeanNotificationInfo;
+import javax.management.NotificationEmitter;
+import javax.management.NotificationFilter;
+import javax.management.NotificationListener;
 import javax.management.ObjectName;
 
 import org.graalvm.compiler.api.replacements.Fold;
 import org.graalvm.compiler.options.Option;
 import org.graalvm.compiler.word.Word;
 import org.graalvm.nativeimage.CurrentIsolate;
-import org.graalvm.nativeimage.Feature.FeatureAccess;
 import org.graalvm.nativeimage.IsolateThread;
 import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.Platforms;
 import org.graalvm.nativeimage.c.function.CodePointer;
+import org.graalvm.nativeimage.hosted.Feature.FeatureAccess;
 import org.graalvm.word.Pointer;
 import org.graalvm.word.UnsignedWord;
 import org.graalvm.word.WordFactory;
@@ -66,12 +70,17 @@ import com.oracle.svm.core.jdk.SunMiscSupport;
 import com.oracle.svm.core.log.Log;
 import com.oracle.svm.core.option.HostedOptionKey;
 import com.oracle.svm.core.os.CommittedMemoryProvider;
+import com.oracle.svm.core.snippets.ImplicitExceptions;
 import com.oracle.svm.core.stack.JavaStackWalker;
 import com.oracle.svm.core.stack.ThreadStackPrinter;
 import com.oracle.svm.core.thread.VMOperation;
 import com.oracle.svm.core.thread.VMThreads;
 import com.oracle.svm.core.util.TimeUtils;
 import com.oracle.svm.core.util.VMError;
+
+//Checkstyle: stop
+import sun.management.Util;
+//Checkstyle: resume
 
 public class GCImpl implements GC {
 
@@ -243,12 +252,7 @@ public class GCImpl implements GC {
         visitWatchersBefore();
 
         /* Collect. */
-        try {
-            collectImpl(cause);
-        } catch (Throwable t) {
-            /* Exceptions during collections are fatal. */
-            throw VMError.shouldNotReachHere(t);
-        }
+        collectImpl(cause);
 
         /* Check if out of memory. */
         final OutOfMemoryError result = checkIfOutOfMemory();
@@ -501,7 +505,7 @@ public class GCImpl implements GC {
 
     @Fold
     static boolean runtimeAssertions() {
-        return SubstrateOptions.RuntimeAssertions.getValue() && SubstrateOptions.getRuntimeAssertionsFilter().test(GCImpl.class.getName());
+        return SubstrateOptions.getRuntimeAssertionsForClass(GCImpl.class.getName());
     }
 
     @Override
@@ -1622,7 +1626,22 @@ public class GCImpl implements GC {
         @Override
         @RestrictHeapAccess(access = RestrictHeapAccess.Access.NO_ALLOCATION, reason = "Must not allocate while collecting")
         public void operate() {
-            result = HeapImpl.getHeapImpl().getGCImpl().collectOperation(cause, requestingEpoch);
+            /*
+             * Exceptions during collections are fatal. The heap is likely in an inconsistent state.
+             * The GC must also be allocation free, i.e., we cannot allocate exception stack traces
+             * while in the GC. This is bad for diagnosing errors in the GC. To improve the
+             * situation a bit, we switch on the flag to make implicit exceptions such as
+             * NullPointerExceptions fatal errors. This ensures that we fail early at the place
+             * where the fatal error reporting can still dump the full stack trace.
+             */
+            ImplicitExceptions.activateImplicitExceptionsAreFatal();
+            try {
+                result = HeapImpl.getHeapImpl().getGCImpl().collectOperation(cause, requestingEpoch);
+            } catch (Throwable t) {
+                throw VMError.shouldNotReachHere(t);
+            } finally {
+                ImplicitExceptions.deactivateImplicitExceptionsAreFatal();
+            }
         }
 
         OutOfMemoryError getResult() {
@@ -1723,7 +1742,7 @@ final class GarbageCollectorManagementFactory {
     }
 
     /** A GarbageCollectorMXBean for the incremental collector. */
-    private static final class IncrementalGarbageCollectorMXBean implements GarbageCollectorMXBean {
+    private static final class IncrementalGarbageCollectorMXBean implements GarbageCollectorMXBean, NotificationEmitter {
 
         private IncrementalGarbageCollectorMXBean() {
             /* Nothing to do. */
@@ -1759,16 +1778,30 @@ final class GarbageCollectorManagementFactory {
 
         @Override
         public ObjectName getObjectName() {
-            try {
-                return new ObjectName("java.lang:type=GarbageCollector,name=young generation scavenger");
-            } catch (MalformedObjectNameException mone) {
-                return null;
-            }
+            return Util.newObjectName(ManagementFactory.GARBAGE_COLLECTOR_MXBEAN_DOMAIN_TYPE, getName());
         }
+
+        @Override
+        public void removeNotificationListener(NotificationListener listener, NotificationFilter filter, Object handback) {
+        }
+
+        @Override
+        public void addNotificationListener(NotificationListener listener, NotificationFilter filter, Object handback) {
+        }
+
+        @Override
+        public void removeNotificationListener(NotificationListener listener) {
+        }
+
+        @Override
+        public MBeanNotificationInfo[] getNotificationInfo() {
+            return new MBeanNotificationInfo[0];
+        }
+
     }
 
     /** A GarbageCollectorMXBean for the complete collector. */
-    private static final class CompleteGarbageCollectorMXBean implements GarbageCollectorMXBean {
+    private static final class CompleteGarbageCollectorMXBean implements GarbageCollectorMXBean, NotificationEmitter {
 
         private CompleteGarbageCollectorMXBean() {
             /* Nothing to do. */
@@ -1804,11 +1837,25 @@ final class GarbageCollectorManagementFactory {
 
         @Override
         public ObjectName getObjectName() {
-            try {
-                return new ObjectName("java.lang:type=GarbageCollector,name=complete scavenger");
-            } catch (MalformedObjectNameException mone) {
-                return null;
-            }
+            return Util.newObjectName(ManagementFactory.GARBAGE_COLLECTOR_MXBEAN_DOMAIN_TYPE, getName());
         }
+
+        @Override
+        public void removeNotificationListener(NotificationListener listener, NotificationFilter filter, Object handback) {
+        }
+
+        @Override
+        public void addNotificationListener(NotificationListener listener, NotificationFilter filter, Object handback) {
+        }
+
+        @Override
+        public void removeNotificationListener(NotificationListener listener) {
+        }
+
+        @Override
+        public MBeanNotificationInfo[] getNotificationInfo() {
+            return new MBeanNotificationInfo[0];
+        }
+
     }
 }

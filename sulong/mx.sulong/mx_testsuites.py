@@ -1,5 +1,5 @@
 #
-# Copyright (c) 2016, 2018, Oracle and/or its affiliates.
+# Copyright (c) 2016, 2019, Oracle and/or its affiliates.
 #
 # All rights reserved.
 #
@@ -52,8 +52,6 @@ def run(vmArgs, unittests, extraOption=None, extraLibs=None):
     else:
         command = mx_sulong.getCommonOptions(True, extraLibs) + extraOption + vmArgs + unittests
         return mx_unittest.unittest(command)
-
-mx_subst.path_substitutions.register_no_arg('sulong_include', lambda: os.path.join(mx.suite('sulong').dir, 'include'))
 
 
 def compileTestSuite(testsuiteproject, extra_build_args):
@@ -163,7 +161,7 @@ class SulongTestSuite(mx.NativeProject):
         return super(SulongTestSuite, self).getResults(replaceVar=replaceVar)
 
 
-class ExternalTestSuite(SulongTestSuite):
+class ExternalTestSuite(SulongTestSuite):  # pylint: disable=too-many-ancestors
     def __init__(self, *args, **kwargs):
         super(ExternalTestSuite, self).__init__(*args, **kwargs)
         if hasattr(self, 'testDir'):

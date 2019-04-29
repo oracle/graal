@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2017, 2018, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2017, 2019, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -56,21 +56,26 @@ import java.io.IOException;
 import java.io.Reader;
 import java.io.StringReader;
 import java.net.MalformedURLException;
+import java.net.URISyntaxException;
 import java.net.URL;
 import java.nio.CharBuffer;
+import java.nio.file.Files;
+import java.nio.file.Path;
 import java.util.concurrent.Callable;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.jar.JarOutputStream;
 import java.util.zip.ZipEntry;
+import java.util.zip.ZipOutputStream;
 
 import org.graalvm.polyglot.Context;
 import org.graalvm.polyglot.Source;
 import org.graalvm.polyglot.Source.Builder;
+import org.graalvm.polyglot.SourceSection;
 import org.graalvm.polyglot.io.ByteSequence;
 import org.junit.Assert;
 import org.junit.Test;
 
-import com.oracle.truffle.api.TruffleLanguage.Registration;
+import com.oracle.truffle.api.test.ReflectionUtils;
 
 public class SourceAPITest {
 
@@ -421,6 +426,31 @@ public class SourceAPITest {
     }
 
     @Test
+    public void unassignedMimeTypeForURL() throws IOException {
+        File file = File.createTempFile("Hello", ".java");
+        file.deleteOnExit();
+        Path path = file.toPath();
+        byte[] content = "// Test".getBytes("UTF-8");
+        Files.write(path, content);
+        URL url = path.toUri().toURL();
+        assertEquals("text/x-java", Source.findMimeType(url));
+        Source.Builder builder = Source.newBuilder("TestJava", url);
+        Source source = builder.build();
+        assertNull("MIME type should be null if not specified", source.getMimeType());
+
+        File archive = File.createTempFile("hello", ".jar");
+        archive.deleteOnExit();
+        try (ZipOutputStream out = new ZipOutputStream(new FileOutputStream(archive))) {
+            out.putNextEntry(new ZipEntry("Hello.java"));
+            out.write(content);
+        }
+        url = new URL("jar:" + archive.toURI().toURL().toExternalForm() + "!/Hello.java");
+        builder = Source.newBuilder("TestJava", url);
+        source = builder.build();
+        assertNull("MIME type should be null if not specified", source.getMimeType());
+    }
+
+    @Test
     public void literalSources() throws IOException {
         final String code = "test code";
         final String description = "test description";
@@ -485,10 +515,21 @@ public class SourceAPITest {
         assertNotNull("Resource found", resource);
         assertEquals("JAR protocol", "jar", resource.getProtocol());
         Source s = Source.newBuilder("TestJS", resource).build();
+        assertEquals(resource, s.getURL());
         Assert.assertArrayEquals(bytes, s.getBytes().toByteArray());
         assertEquals("x.tjs", s.getName());
 
         sample.delete();
+    }
+
+    @Test
+    public void testHttpURL() throws IOException, URISyntaxException {
+        URL resource = new URL("http://example.org/test/File.html");
+        Source s = Source.newBuilder("TestJS", resource).content("Empty").build();
+        assertEquals(resource, s.getURL());
+        assertEquals(resource.toURI(), s.getURI());
+        assertEquals("File.html", s.getName());
+        assertEquals("/test/File.html", s.getPath());
     }
 
     @Test
@@ -612,14 +653,33 @@ public class SourceAPITest {
         }
     }
 
-    @Registration(id = "TestJava", name = "", characterMimeTypes = "text/x-java")
-    public static class TestJavaLanguage extends ProxyLanguage {
-
+    @Test
+    @SuppressWarnings("rawtypes")
+    public void testNoContentSource() {
+        com.oracle.truffle.api.source.Source truffleSource = com.oracle.truffle.api.source.Source.newBuilder(ProxyLanguage.ID, "x", "name").content(
+                        com.oracle.truffle.api.source.Source.CONTENT_NONE).build();
+        Class<?>[] sourceConstructorTypes = new Class[]{String.class, Object.class};
+        Source source = ReflectionUtils.newInstance(Source.class, sourceConstructorTypes, ProxyLanguage.ID, truffleSource);
+        assertFalse(source.hasCharacters());
+        assertFalse(source.hasBytes());
+        try {
+            source.getCharacters();
+            fail();
+        } catch (UnsupportedOperationException ex) {
+            // O.K.
+        }
+        try {
+            Context.create().eval(source);
+            fail();
+        } catch (IllegalArgumentException ex) {
+            // O.K.
+        }
+        com.oracle.truffle.api.source.SourceSection truffleSection = truffleSource.createSection(1, 2, 3, 4);
+        Class<?>[] sectionConstructorTypes = new Class[]{Source.class, Object.class};
+        SourceSection section = ReflectionUtils.newInstance(SourceSection.class, sectionConstructorTypes, source, truffleSection);
+        assertFalse(section.hasCharIndex());
+        assertTrue(section.hasLines());
+        assertTrue(section.hasColumns());
+        assertEquals("", section.getCharacters());
     }
-
-    @Registration(id = "TestJS", name = "", byteMimeTypes = "application/test-js")
-    public static class TestJSLanguage extends ProxyLanguage {
-
-    }
-
 }

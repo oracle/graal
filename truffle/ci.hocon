@@ -19,11 +19,11 @@ benchCommon: ${linux-amd64} ${labsjdk8} {
   targets: [bench, weekly],
   timelimit: "1:00:00",
   setup : [
-    ["cd", "./compiler"],
+    ["cd", ${compiler-suite-root}],
     ["mx", "build" ]
-  ],
+  ] ${download-hsdis.setup}
   teardown : [
-    ["bench-uploader.py", "--url", "${BENCH_SERVER_URL}", "${BENCH_RESULTS_FILE_PATH}"]
+    ["bench-uploader.py", "${BENCH_RESULTS_FILE_PATH}"]
   ]
 }
 
@@ -53,6 +53,19 @@ builds += [
   }
   ${darwin-amd64} ${oraclejdk11} ${gateLite} ${truffleWeekly} {
     name: "gate-truffle-mac-lite-11"
+  }
+  ${windows-amd64} ${labsjdk8} ${truffleCommon} {
+    # TODO make that a full gate run
+    # currently, some truffle unittests fail on windows
+    run : [
+      ["mx", "build" ],
+      ["mx", "unittest", "truffle.nfi.test", "--verbose" ]
+    ]
+    packages : {
+      msvc : "==10.0"
+    }
+    targets : [gate],
+    name: "gate-truffle-nfi-windows-8",
   }
   # BENCHMARKS
   ${benchCommon} ${truffle-bench-notifications} {

@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2013, 2016, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2013, 2018, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -25,66 +25,55 @@
 package org.graalvm.compiler.phases.tiers;
 
 import org.graalvm.compiler.core.common.spi.ConstantFieldProvider;
+import org.graalvm.compiler.core.common.spi.ForeignCallsProvider;
+import org.graalvm.compiler.nodes.spi.CoreProviders;
 import org.graalvm.compiler.nodes.spi.LoweringProvider;
 import org.graalvm.compiler.nodes.spi.Replacements;
 import org.graalvm.compiler.nodes.spi.StampProvider;
-import org.graalvm.compiler.phases.util.Providers;
 
 import jdk.vm.ci.meta.ConstantReflectionProvider;
 import jdk.vm.ci.meta.MetaAccessProvider;
-import org.graalvm.compiler.core.common.spi.ForeignCallsProvider;
 
-public class PhaseContext {
+public class PhaseContext implements CoreProviders {
 
-    private final MetaAccessProvider metaAccess;
-    private final ConstantReflectionProvider constantReflection;
-    private final ConstantFieldProvider constantFieldProvider;
-    private final LoweringProvider lowerer;
-    private final Replacements replacements;
-    private final StampProvider stampProvider;
-    private final ForeignCallsProvider foreignCalls;
+    private final CoreProviders providers;
 
-    public PhaseContext(MetaAccessProvider metaAccess, ConstantReflectionProvider constantReflection, ConstantFieldProvider constantFieldProvider, LoweringProvider lowerer, Replacements replacements,
-                    StampProvider stampProvider, ForeignCallsProvider foreignCalls) {
-        this.metaAccess = metaAccess;
-        this.constantReflection = constantReflection;
-        this.constantFieldProvider = constantFieldProvider;
-        this.lowerer = lowerer;
-        this.replacements = replacements;
-        this.stampProvider = stampProvider;
-        this.foreignCalls = foreignCalls;
+    public PhaseContext(CoreProviders providers) {
+        this.providers = providers;
     }
 
-    public PhaseContext(Providers providers) {
-        this(providers.getMetaAccess(), providers.getConstantReflection(), providers.getConstantFieldProvider(), providers.getLowerer(), providers.getReplacements(), providers.getStampProvider(),
-                        providers.getForeignCalls());
-    }
-
+    @Override
     public MetaAccessProvider getMetaAccess() {
-        return metaAccess;
+        return providers.getMetaAccess();
     }
 
+    @Override
     public ConstantReflectionProvider getConstantReflection() {
-        return constantReflection;
+        return providers.getConstantReflection();
     }
 
+    @Override
     public ConstantFieldProvider getConstantFieldProvider() {
-        return constantFieldProvider;
+        return providers.getConstantFieldProvider();
     }
 
+    @Override
     public LoweringProvider getLowerer() {
-        return lowerer;
+        return providers.getLowerer();
     }
 
+    @Override
     public Replacements getReplacements() {
-        return replacements;
+        return providers.getReplacements();
     }
 
+    @Override
     public StampProvider getStampProvider() {
-        return stampProvider;
+        return providers.getStampProvider();
     }
 
+    @Override
     public ForeignCallsProvider getForeignCalls() {
-        return foreignCalls;
+        return providers.getForeignCalls();
     }
 }

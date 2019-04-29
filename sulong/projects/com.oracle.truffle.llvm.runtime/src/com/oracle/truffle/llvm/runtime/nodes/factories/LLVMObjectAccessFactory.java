@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2017, 2018, Oracle and/or its affiliates.
+ * Copyright (c) 2017, 2019, Oracle and/or its affiliates.
  *
  * All rights reserved.
  *
@@ -33,13 +33,12 @@ import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.dsl.Cached;
 import com.oracle.truffle.api.dsl.Fallback;
 import com.oracle.truffle.api.dsl.Specialization;
-import com.oracle.truffle.api.interop.ForeignAccess;
 import com.oracle.truffle.api.interop.InteropException;
-import com.oracle.truffle.api.interop.Message;
+import com.oracle.truffle.api.interop.InteropLibrary;
 import com.oracle.truffle.api.interop.TruffleObject;
-import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.api.object.DynamicObject;
 import com.oracle.truffle.api.object.ObjectType;
+import com.oracle.truffle.llvm.runtime.except.LLVMPolyglotException;
 import com.oracle.truffle.llvm.runtime.interop.LLVMDataEscapeNode;
 import com.oracle.truffle.llvm.runtime.interop.convert.ForeignToLLVM.ForeignToLLVMType;
 import com.oracle.truffle.llvm.runtime.interop.convert.ToLLVM;
@@ -95,23 +94,23 @@ public abstract class LLVMObjectAccessFactory {
 
     static class FallbackReadNode extends LLVMNode implements LLVMObjectReadNode {
 
-        @Child private Node read = Message.READ.createNode();
+        @Child private InteropLibrary interop = InteropLibrary.getFactory().createDispatched(5);
         @Child private ToLLVM toLLVM = ToLLVMNodeGen.create();
         @Child private UseLLVMObjectAccessNode useLLVMObjectAccess = UseLLVMObjectAccessNodeGen.create();
 
         @Override
         public boolean canAccess(Object obj) {
-            return !useLLVMObjectAccess.executeWithTarget(obj);
+            return !useLLVMObjectAccess.executeWithTarget(obj) && interop.accepts(obj);
         }
 
         @Override
         public Object executeRead(Object obj, long offset, ForeignToLLVMType type) {
             try {
-                Object foreign = ForeignAccess.sendRead(read, (TruffleObject) obj, offset / type.getSizeInBytes());
+                Object foreign = interop.readArrayElement(obj, offset / type.getSizeInBytes());
                 return toLLVM.executeWithType(foreign, null, type);
             } catch (InteropException e) {
                 CompilerDirectives.transferToInterpreter();
-                throw e.raise();
+                throw new LLVMPolyglotException(this, "Error reading from foreign array.");
             }
         }
     }
@@ -172,14 +171,15 @@ public abstract class LLVMObjectAccessFactory {
     }
 
     static class FallbackWriteNode extends LLVMNode implements LLVMObjectWriteNode {
-        @Child private Node write = Message.WRITE.createNode();
+
+        @Child private InteropLibrary interop = InteropLibrary.getFactory().createDispatched(5);
         @Child private GetWriteIdentifierNode getWriteIdentifier = GetWriteIdentifierNodeGen.create();
         @Child private LLVMDataEscapeNode dataEscape = LLVMDataEscapeNode.create();
         @Child private UseLLVMObjectAccessNode useLLVMObjectAccess = UseLLVMObjectAccessNodeGen.create();
 
         @Override
         public boolean canAccess(Object obj) {
-            return !useLLVMObjectAccess.executeWithTarget(obj);
+            return !useLLVMObjectAccess.executeWithTarget(obj) && interop.accepts(obj);
         }
 
         @Override
@@ -187,10 +187,10 @@ public abstract class LLVMObjectAccessFactory {
             long identifier = getWriteIdentifier.execute(offset, value);
             Object escaped = dataEscape.executeWithTarget(value);
             try {
-                ForeignAccess.sendWrite(write, (TruffleObject) obj, identifier, escaped);
+                interop.writeArrayElement(obj, identifier, escaped);
             } catch (InteropException e) {
                 CompilerDirectives.transferToInterpreter();
-                throw e.raise();
+                throw new LLVMPolyglotException(this, "Error writing to foreign array.");
             }
         }
     }

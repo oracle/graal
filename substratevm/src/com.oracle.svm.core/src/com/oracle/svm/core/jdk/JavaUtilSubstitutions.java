@@ -296,7 +296,7 @@ class SplittableRandomAccessors {
 final class Target_java_util_Currency {
     @Alias//
     @RecomputeFieldValue(kind = Kind.NewInstance, declClass = ConcurrentHashMap.class)//
-    private static ConcurrentMap<String, Currency> instances = new ConcurrentHashMap<>();
+    private static ConcurrentMap<String, Currency> instances;
 }
 
 /** Dummy class to have a class with the file's name. */

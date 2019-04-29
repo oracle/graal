@@ -28,7 +28,7 @@ import static org.graalvm.word.WordFactory.nullPointer;
 import static org.graalvm.word.WordFactory.zero;
 
 import org.graalvm.nativeimage.CurrentIsolate;
-import org.graalvm.nativeimage.Feature;
+import org.graalvm.nativeimage.hosted.Feature;
 import org.graalvm.nativeimage.ImageSingletons;
 import org.graalvm.nativeimage.c.type.WordPointer;
 import org.graalvm.word.Pointer;
@@ -55,7 +55,6 @@ class OSCommittedMemoryProviderFeature implements Feature {
     @Override
     public void beforeAnalysis(BeforeAnalysisAccess access) {
         if (!ImageSingletons.contains(CommittedMemoryProvider.class)) {
-            ImageSingletons.add(ImageHeapProvider.class, new CopyingImageHeapProvider());
             ImageSingletons.add(CommittedMemoryProvider.class, new OSCommittedMemoryProvider());
         }
     }

@@ -46,7 +46,6 @@ import javax.lang.model.type.TypeMirror;
 public final class Parameter {
 
     private final ParameterSpec specification;
-    private TemplateMethod method;
     private String localName;
     private final int specificationVarArgsIndex;
     private final int typeVarArgsIndex;
@@ -105,16 +104,8 @@ public final class Parameter {
         return localName;
     }
 
-    void setMethod(TemplateMethod method) {
-        this.method = method;
-    }
-
     public ParameterSpec getSpecification() {
         return specification;
-    }
-
-    public TemplateMethod getMethod() {
-        return method;
     }
 
     public TypeMirror getType() {
@@ -123,10 +114,6 @@ public final class Parameter {
 
     public boolean isTypeVarArgs() {
         return typeVarArgsIndex >= 0;
-    }
-
-    public Parameter getPreviousParameter() {
-        return method.getPreviousParam(this);
     }
 
     @Override

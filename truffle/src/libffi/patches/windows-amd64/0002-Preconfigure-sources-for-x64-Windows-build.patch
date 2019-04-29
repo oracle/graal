@@ -1,0 +1,389 @@
+From fb39feb5e053cd0482576c4d58880f509f76ad61 Mon Sep 17 00:00:00 2001
+From: =?UTF-8?q?Aleksandar=20Pejovi=C4=87?= <aleksandar.pejovic@oracle.com>
+Date: Fri, 25 Jan 2019 22:11:34 +0100
+Subject: [PATCH 2/3] Preconfigure sources for x64 Windows build
+
+The configuration was done using Git for Windows to run
+`configure` from Developer Command Prompt:
+
+> sh configure ^
+    --disable-builddir ^
+    --disable-dependency-tracking ^
+    --disable-shared ^
+    CC="./msvcc.sh -m64" ^
+    CXX="./msvcc.sh -m64" ^
+    LD=link ^
+    CPP="cl -nologo -EP" ^
+    CXXCPP="cl -nologo -EP" ^
+    --build=amd64-mingw64
+---
+ fficonfig.h.in => fficonfig.h    | 119 ++++++++++++++++---------------
+ include/{ffi.h.in => ffi.h}      |  20 +++---
+ {src/x86 => include}/ffitarget.h |   0
+ 3 files changed, 70 insertions(+), 69 deletions(-)
+ rename fficonfig.h.in => fficonfig.h (70%)
+ rename include/{ffi.h.in => ffi.h} (97%)
+ rename {src/x86 => include}/ffitarget.h (100%)
+
+diff --git a/fficonfig.h.in b/fficonfig.h
+similarity index 70%
+rename from fficonfig.h.in
+rename to fficonfig.h
+index 8aec513..00f09db 100644
+--- a/fficonfig.h.in
++++ b/fficonfig.h
+@@ -1,165 +1,166 @@
++/* fficonfig.h.  Generated from fficonfig.h.in by configure.  */
+ /* fficonfig.h.in.  Generated from configure.ac by autoheader.  */
+ 
+ /* Define if building universal (internal helper macro) */
+-#undef AC_APPLE_UNIVERSAL_BUILD
++/* #undef AC_APPLE_UNIVERSAL_BUILD */
+ 
+ /* Define to one of `_getb67', `GETB67', `getb67' for Cray-2 and Cray-YMP
+    systems. This function is required for `alloca.c' support on those systems.
+    */
+-#undef CRAY_STACKSEG_END
++/* #undef CRAY_STACKSEG_END */
+ 
+ /* Define to 1 if using `alloca.c'. */
+-#undef C_ALLOCA
++/* #undef C_ALLOCA */
+ 
+ /* Define to the flags needed for the .section .eh_frame directive. */
+-#undef EH_FRAME_FLAGS
++/* #undef EH_FRAME_FLAGS */
+ 
+ /* Define this if you want extra debugging. */
+-#undef FFI_DEBUG
++/* #undef FFI_DEBUG */
+ 
+ /* Cannot use PROT_EXEC on this target, so, we revert to alternative means */
+-#undef FFI_EXEC_TRAMPOLINE_TABLE
++/* #undef FFI_EXEC_TRAMPOLINE_TABLE */
+ 
+ /* Define this if you want to enable pax emulated trampolines */
+-#undef FFI_MMAP_EXEC_EMUTRAMP_PAX
++/* #undef FFI_MMAP_EXEC_EMUTRAMP_PAX */
+ 
+ /* Cannot use malloc on this target, so, we revert to alternative means */
+-#undef FFI_MMAP_EXEC_WRIT
++/* #undef FFI_MMAP_EXEC_WRIT */
+ 
+ /* Define this if you do not want support for the raw API. */
+-#undef FFI_NO_RAW_API
++/* #undef FFI_NO_RAW_API */
+ 
+ /* Define this if you do not want support for aggregate types. */
+-#undef FFI_NO_STRUCTS
++/* #undef FFI_NO_STRUCTS */
+ 
+ /* Define to 1 if you have `alloca', as a function or macro. */
+-#undef HAVE_ALLOCA
++#define HAVE_ALLOCA 1
+ 
+ /* Define to 1 if you have <alloca.h> and it should be used (not on Ultrix).
+    */
+-#undef HAVE_ALLOCA_H
++/* #undef HAVE_ALLOCA_H */
+ 
+ /* Define if your assembler supports .ascii. */
+-#undef HAVE_AS_ASCII_PSEUDO_OP
++/* #undef HAVE_AS_ASCII_PSEUDO_OP */
+ 
+ /* Define if your assembler supports .cfi_* directives. */
+-#undef HAVE_AS_CFI_PSEUDO_OP
++/* #undef HAVE_AS_CFI_PSEUDO_OP */
+ 
+ /* Define if your assembler supports .register. */
+-#undef HAVE_AS_REGISTER_PSEUDO_OP
++/* #undef HAVE_AS_REGISTER_PSEUDO_OP */
+ 
+ /* Define if your assembler and linker support unaligned PC relative relocs.
+    */
+-#undef HAVE_AS_SPARC_UA_PCREL
++/* #undef HAVE_AS_SPARC_UA_PCREL */
+ 
+ /* Define if your assembler supports .string. */
+-#undef HAVE_AS_STRING_PSEUDO_OP
++/* #undef HAVE_AS_STRING_PSEUDO_OP */
+ 
+ /* Define if your assembler supports unwind section type. */
+-#undef HAVE_AS_X86_64_UNWIND_SECTION_TYPE
++/* #undef HAVE_AS_X86_64_UNWIND_SECTION_TYPE */
+ 
+ /* Define if your assembler supports PC relative relocs. */
+-#undef HAVE_AS_X86_PCREL
++/* #undef HAVE_AS_X86_PCREL */
+ 
+ /* Define to 1 if you have the <dlfcn.h> header file. */
+-#undef HAVE_DLFCN_H
++/* #undef HAVE_DLFCN_H */
+ 
+ /* Define if __attribute__((visibility("hidden"))) is supported. */
+-#undef HAVE_HIDDEN_VISIBILITY_ATTRIBUTE
++/* #undef HAVE_HIDDEN_VISIBILITY_ATTRIBUTE */
+ 
+ /* Define to 1 if you have the <inttypes.h> header file. */
+-#undef HAVE_INTTYPES_H
++/* #undef HAVE_INTTYPES_H */
+ 
+ /* Define if you have the long double type and it is bigger than a double */
+-#undef HAVE_LONG_DOUBLE
++/* #undef HAVE_LONG_DOUBLE */
+ 
+ /* Define if you support more than one size of the long double type */
+-#undef HAVE_LONG_DOUBLE_VARIANT
++/* #undef HAVE_LONG_DOUBLE_VARIANT */
+ 
+ /* Define to 1 if you have the `memcpy' function. */
+-#undef HAVE_MEMCPY
++/* #undef HAVE_MEMCPY */
+ 
+ /* Define to 1 if you have the <memory.h> header file. */
+-#undef HAVE_MEMORY_H
++#define HAVE_MEMORY_H 1
+ 
+ /* Define to 1 if you have the `mkostemp' function. */
+-#undef HAVE_MKOSTEMP
++/* #undef HAVE_MKOSTEMP */
+ 
+ /* Define to 1 if you have the `mmap' function. */
+-#undef HAVE_MMAP
++/* #undef HAVE_MMAP */
+ 
+ /* Define if mmap with MAP_ANON(YMOUS) works. */
+-#undef HAVE_MMAP_ANON
++/* #undef HAVE_MMAP_ANON */
+ 
+ /* Define if mmap of /dev/zero works. */
+-#undef HAVE_MMAP_DEV_ZERO
++/* #undef HAVE_MMAP_DEV_ZERO */
+ 
+ /* Define if read-only mmap of a plain file works. */
+-#undef HAVE_MMAP_FILE
++/* #undef HAVE_MMAP_FILE */
+ 
+ /* Define if .eh_frame sections should be read-only. */
+-#undef HAVE_RO_EH_FRAME
++/* #undef HAVE_RO_EH_FRAME */
+ 
+ /* Define to 1 if you have the <stdint.h> header file. */
+-#undef HAVE_STDINT_H
++#define HAVE_STDINT_H 1
+ 
+ /* Define to 1 if you have the <stdlib.h> header file. */
+-#undef HAVE_STDLIB_H
++#define HAVE_STDLIB_H 1
+ 
+ /* Define to 1 if you have the <strings.h> header file. */
+-#undef HAVE_STRINGS_H
++/* #undef HAVE_STRINGS_H */
+ 
+ /* Define to 1 if you have the <string.h> header file. */
+-#undef HAVE_STRING_H
++#define HAVE_STRING_H 1
+ 
+ /* Define to 1 if you have the <sys/mman.h> header file. */
+-#undef HAVE_SYS_MMAN_H
++/* #undef HAVE_SYS_MMAN_H */
+ 
+ /* Define to 1 if you have the <sys/stat.h> header file. */
+-#undef HAVE_SYS_STAT_H
++#define HAVE_SYS_STAT_H 1
+ 
+ /* Define to 1 if you have the <sys/types.h> header file. */
+-#undef HAVE_SYS_TYPES_H
++#define HAVE_SYS_TYPES_H 1
+ 
+ /* Define to 1 if you have the <unistd.h> header file. */
+-#undef HAVE_UNISTD_H
++/* #undef HAVE_UNISTD_H */
+ 
+ /* Define to the sub-directory in which libtool stores uninstalled libraries.
+    */
+-#undef LT_OBJDIR
++#define LT_OBJDIR ".libs/"
+ 
+ /* Define to 1 if your C compiler doesn't accept -c and -o together. */
+-#undef NO_MINUS_C_MINUS_O
++/* #undef NO_MINUS_C_MINUS_O */
+ 
+ /* Name of package */
+-#undef PACKAGE
++#define PACKAGE "libffi"
+ 
+ /* Define to the address where bug reports for this package should be sent. */
+-#undef PACKAGE_BUGREPORT
++#define PACKAGE_BUGREPORT "http://github.com/atgreen/libffi/issues"
+ 
+ /* Define to the full name of this package. */
+-#undef PACKAGE_NAME
++#define PACKAGE_NAME "libffi"
+ 
+ /* Define to the full name and version of this package. */
+-#undef PACKAGE_STRING
++#define PACKAGE_STRING "libffi 3.2.1"
+ 
+ /* Define to the one symbol short name of this package. */
+-#undef PACKAGE_TARNAME
++#define PACKAGE_TARNAME "libffi"
+ 
+ /* Define to the home page for this package. */
+-#undef PACKAGE_URL
++#define PACKAGE_URL ""
+ 
+ /* Define to the version of this package. */
+-#undef PACKAGE_VERSION
++#define PACKAGE_VERSION "3.2.1"
+ 
+ /* The size of `double', as computed by sizeof. */
+-#undef SIZEOF_DOUBLE
++#define SIZEOF_DOUBLE 8
+ 
+ /* The size of `long double', as computed by sizeof. */
+-#undef SIZEOF_LONG_DOUBLE
++#define SIZEOF_LONG_DOUBLE 8
+ 
+ /* The size of `size_t', as computed by sizeof. */
+-#undef SIZEOF_SIZE_T
++#define SIZEOF_SIZE_T 8
+ 
+ /* If using the C implementation of alloca, define if you know the
+    direction of stack growth for your system; otherwise it will be
+@@ -167,20 +168,20 @@
+ 	STACK_DIRECTION > 0 => grows toward higher addresses
+ 	STACK_DIRECTION < 0 => grows toward lower addresses
+ 	STACK_DIRECTION = 0 => direction of growth unknown */
+-#undef STACK_DIRECTION
++/* #undef STACK_DIRECTION */
+ 
+ /* Define to 1 if you have the ANSI C header files. */
+-#undef STDC_HEADERS
++#define STDC_HEADERS 1
+ 
+ /* Define if symbols are underscored. */
+-#undef SYMBOL_UNDERSCORE
++/* #undef SYMBOL_UNDERSCORE */
+ 
+ /* Define this if you are using Purify and want to suppress spurious messages.
+    */
+-#undef USING_PURIFY
++/* #undef USING_PURIFY */
+ 
+ /* Version number of package */
+-#undef VERSION
++#define VERSION "3.2.1"
+ 
+ /* Define WORDS_BIGENDIAN to 1 if your processor stores words with the most
+    significant byte first (like Motorola and SPARC, unlike Intel). */
+@@ -190,12 +191,12 @@
+ # endif
+ #else
+ # ifndef WORDS_BIGENDIAN
+-#  undef WORDS_BIGENDIAN
++/* #  undef WORDS_BIGENDIAN */
+ # endif
+ #endif
+ 
+ /* Define to `unsigned int' if <sys/types.h> does not define. */
+-#undef size_t
++/* #undef size_t */
+ 
+ 
+ #ifdef HAVE_HIDDEN_VISIBILITY_ATTRIBUTE
+diff --git a/include/ffi.h.in b/include/ffi.h
+similarity index 97%
+rename from include/ffi.h.in
+rename to include/ffi.h
+index f403ae0..37ba0e7 100644
+--- a/include/ffi.h.in
++++ b/include/ffi.h
+@@ -1,5 +1,5 @@
+ /* -----------------------------------------------------------------*-C-*-
+-   libffi @VERSION@ - Copyright (c) 2011, 2014 Anthony Green
++   libffi 3.2.1 - Copyright (c) 2011, 2014 Anthony Green
+                     - Copyright (c) 1996-2003, 2007, 2008 Red Hat, Inc.
+ 
+    Permission is hereby granted, free of charge, to any person
+@@ -58,8 +58,8 @@ extern "C" {
+ #endif
+ 
+ /* Specify which architecture libffi is configured for. */
+-#ifndef @TARGET@
+-#define @TARGET@
++#ifndef X86_WIN64
++#define X86_WIN64
+ #endif
+ 
+ /* ---- System configuration information --------------------------------- */
+@@ -194,7 +194,7 @@ FFI_EXTERN ffi_type ffi_type_float;
+ FFI_EXTERN ffi_type ffi_type_double;
+ FFI_EXTERN ffi_type ffi_type_pointer;
+ 
+-#if @HAVE_LONG_DOUBLE@
++#if 0
+ FFI_EXTERN ffi_type ffi_type_longdouble;
+ #else
+ #define ffi_type_longdouble ffi_type_double
+@@ -203,7 +203,7 @@ FFI_EXTERN ffi_type ffi_type_longdouble;
+ #ifdef FFI_TARGET_HAS_COMPLEX_TYPE
+ FFI_EXTERN ffi_type ffi_type_complex_float;
+ FFI_EXTERN ffi_type ffi_type_complex_double;
+-#if @HAVE_LONG_DOUBLE@
++#if 0
+ FFI_EXTERN ffi_type ffi_type_complex_longdouble;
+ #else
+ #define ffi_type_complex_longdouble ffi_type_complex_double
+@@ -231,7 +231,7 @@ typedef struct {
+ #endif
+ } ffi_cif;
+ 
+-#if @HAVE_LONG_DOUBLE_VARIANT@
++#if 0
+ /* Used to adjust size/alignment of ffi types.  */
+ void ffi_prep_types (ffi_abi abi);
+ #endif
+@@ -312,7 +312,7 @@ size_t ffi_java_raw_size (ffi_cif *cif);
+ __declspec(align(8))
+ #endif
+ typedef struct {
+-#if @FFI_EXEC_TRAMPOLINE_TABLE@
++#if 0
+   void *trampoline_table;
+   void *trampoline_table_entry;
+ #else
+@@ -350,7 +350,7 @@ ffi_prep_closure_loc (ffi_closure*,
+ # pragma pack 8
+ #endif
+ typedef struct {
+-#if @FFI_EXEC_TRAMPOLINE_TABLE@
++#if 0
+   void *trampoline_table;
+   void *trampoline_table_entry;
+ #else
+@@ -375,7 +375,7 @@ typedef struct {
+ } ffi_raw_closure;
+ 
+ typedef struct {
+-#if @FFI_EXEC_TRAMPOLINE_TABLE@
++#if 0
+   void *trampoline_table;
+   void *trampoline_table_entry;
+ #else
+@@ -460,7 +460,7 @@ void ffi_call(ffi_cif *cif,
+ #define FFI_TYPE_INT        1
+ #define FFI_TYPE_FLOAT      2    
+ #define FFI_TYPE_DOUBLE     3
+-#if @HAVE_LONG_DOUBLE@
++#if 0
+ #define FFI_TYPE_LONGDOUBLE 4
+ #else
+ #define FFI_TYPE_LONGDOUBLE FFI_TYPE_DOUBLE
+diff --git a/src/x86/ffitarget.h b/include/ffitarget.h
+similarity index 100%
+rename from src/x86/ffitarget.h
+rename to include/ffitarget.h
+-- 
+2.17.0.windows.1
+

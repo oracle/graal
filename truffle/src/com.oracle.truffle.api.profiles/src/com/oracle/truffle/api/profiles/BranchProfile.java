@@ -68,21 +68,14 @@ public abstract class BranchProfile extends Profile {
 
     /**
      * Call when an unlikely branch is entered.
-     * 
+     *
      * @since 0.10
      */
     public abstract void enter();
 
     /**
-     * @deprecated it is not reliable when profiling is turned off.
-     * @since 0.10
-     */
-    @Deprecated
-    public abstract boolean isVisited();
-
-    /**
      * Call to create a new instance of a branch profile.
-     * 
+     *
      * @since 0.10
      */
     public static BranchProfile create() {
@@ -91,6 +84,15 @@ public abstract class BranchProfile extends Profile {
         } else {
             return Disabled.INSTANCE;
         }
+    }
+
+    /**
+     * Returns the uncached version of the profile. The uncached version of a profile does nothing.
+     *
+     * @since 1.0
+     */
+    public static BranchProfile getUncached() {
+        return Disabled.INSTANCE;
     }
 
     static final class Enabled extends BranchProfile {
@@ -103,12 +105,6 @@ public abstract class BranchProfile extends Profile {
                 CompilerDirectives.transferToInterpreterAndInvalidate();
                 visited = true;
             }
-        }
-
-        @SuppressWarnings("deprecation")
-        @Override
-        public boolean isVisited() {
-            return visited;
         }
 
         @Override
@@ -133,12 +129,6 @@ public abstract class BranchProfile extends Profile {
 
         @Override
         public void enter() {
-        }
-
-        @SuppressWarnings("deprecation")
-        @Override
-        public boolean isVisited() {
-            return true;
         }
 
         @Override

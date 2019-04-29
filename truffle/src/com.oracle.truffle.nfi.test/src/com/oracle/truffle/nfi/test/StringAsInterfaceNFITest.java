@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2017, 2018, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2017, 2019, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -44,6 +44,7 @@ import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertNotNull;
 
 import org.graalvm.polyglot.Context;
+import org.graalvm.polyglot.HostAccess.Implementable;
 import org.junit.Assume;
 import org.junit.BeforeClass;
 import org.junit.ClassRule;
@@ -51,16 +52,10 @@ import org.junit.Test;
 
 import com.oracle.truffle.api.CallTarget;
 import com.oracle.truffle.api.TruffleOptions;
-import com.oracle.truffle.api.interop.ForeignAccess;
-import com.oracle.truffle.api.interop.Message;
 import com.oracle.truffle.api.interop.TruffleObject;
 import com.oracle.truffle.api.source.Source;
 import com.oracle.truffle.tck.TruffleRunner;
 
-/**
- * This test is to be removed with the PolyglotEngine. Truffle NFI is currently no longer accessible
- * from the embedder API.
- */
 public class StringAsInterfaceNFITest {
     private static StdLib stdlib;
     private static TruffleObject rawStdLib;
@@ -69,8 +64,9 @@ public class StringAsInterfaceNFITest {
 
     @BeforeClass
     public static void loadLibraries() {
-        if (TruffleOptions.AOT) {
+        if (TruffleOptions.AOT || NFITest.IS_WINDOWS) {
             // skip these tests on AOT, since JavaInterop is not yet supported
+            // skip these tests on Windows, since the default library is different
             return;
         }
 
@@ -84,43 +80,53 @@ public class StringAsInterfaceNFITest {
         stdlib = runWithPolyglot.getPolyglotContext().asValue(rawStdLib).as(StdLib.class);
     }
 
+    @Implementable
     interface StdLib {
-        long malloc(int size);
+        Object malloc(int size);
 
-        void free(long pointer);
+        void free(Object pointer);
 
         String strdup(String orig);
     }
 
+    @Implementable
     interface Strndup {
         String strndup(String orig, int len);
     }
 
+    private static void assumptions() {
+        // host interop is not fully functional on SVM
+        Assume.assumeFalse("disable test on AOT", TruffleOptions.AOT);
+
+        // the default posix string functions don't exist on Windows
+        Assume.assumeFalse("disable test on Windows", NFITest.IS_WINDOWS);
+    }
+
     @Test
     public void testDuplicateAString() {
-        Assume.assumeFalse("disable test on AOT", TruffleOptions.AOT);
+        assumptions();
         String copy = stdlib.strdup("Ahoj");
         assertEquals("Ahoj", copy);
     }
 
     @Test
     public void testAllocAndRelease() {
-        Assume.assumeFalse("disable test on AOT", TruffleOptions.AOT);
-        long mem = stdlib.malloc(512);
+        assumptions();
+        Object mem = stdlib.malloc(512);
         stdlib.free(mem);
     }
 
     @Test
     public void testAllocAndReleaseWithInvoke() throws Exception {
-        Assume.assumeFalse("disable test on AOT", TruffleOptions.AOT);
-        Object mem = ForeignAccess.sendInvoke(Message.INVOKE.createNode(), rawStdLib, "malloc", 512);
+        assumptions();
+        Object mem = NFITest.UNCACHED_INTEROP.invokeMember(rawStdLib, "malloc", 512);
         assertNotNull("some memory allocated", mem);
-        ForeignAccess.sendInvoke(Message.INVOKE.createNode(), rawStdLib, "free", mem);
+        NFITest.UNCACHED_INTEROP.invokeMember(rawStdLib, "free", mem);
     }
 
     @Test
     public void canViewDefaultLibraryAsAnotherInterface() {
-        Assume.assumeFalse("disable test on AOT", TruffleOptions.AOT);
+        assumptions();
         CallTarget load = runWithPolyglot.getTruffleTestEnv().parse(Source.newBuilder("nfi", "default {\n" + //
                         "  strndup(string, UINT32):string;\n" + //
                         "}", "(load default)" //

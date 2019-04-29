@@ -40,6 +40,7 @@
  */
 package org.graalvm.nativeimage;
 
+import org.graalvm.nativeimage.hosted.Feature;
 import org.graalvm.nativeimage.impl.ImageSingletonsSupport;
 
 /**

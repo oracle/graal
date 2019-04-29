@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2018, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -50,16 +50,13 @@ public class ArrayUtilsTest extends GraalCompilerTest {
     private static final String[] searchValues = {
                     "L",
                     "0",
-                    " ",
                     "\u0000",
                     "\uffff",
                     "X",
-                    "ip",
                     "X0",
                     "LX",
                     "LXY",
                     "LXYZ",
-                    "VXYZ",
                     "VXY0",
     };
 
@@ -68,11 +65,23 @@ public class ArrayUtilsTest extends GraalCompilerTest {
         for (String str : strings) {
             for (String sv : searchValues) {
                 char[] needle = sv.toCharArray();
-                for (int maxIndex : new int[]{-1, 0, str.length() - 1, str.length(), str.length() + 1}) {
-                    for (int fromIndex : new int[]{-1, 0, 1, 15, 16, 17, 31, 32, 33, str.length() - 1, str.length(), str.length() + 1}) {
+                for (int maxIndex : new int[]{str.length() - 1, str.length()}) {
+                    for (int fromIndex : new int[]{0, 15, 16, 17, 31, 32, 33, str.length() - 1, str.length()}) {
                         doTestIndexOf(str, fromIndex, maxIndex, needle);
                     }
                 }
+            }
+        }
+    }
+
+    @Test
+    public void testIndexOfOutOfBounds() {
+        String str = strings[1];
+        String sv = searchValues[0];
+        char[] needle = sv.toCharArray();
+        for (int maxIndex : new int[]{-1, 0, str.length() + 1}) {
+            for (int fromIndex : new int[]{-1, 0, str.length(), str.length() + 1}) {
+                doTestIndexOf(str, fromIndex, maxIndex, needle);
             }
         }
     }

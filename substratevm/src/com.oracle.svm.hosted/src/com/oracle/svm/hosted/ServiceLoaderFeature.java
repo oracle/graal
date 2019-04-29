@@ -42,9 +42,10 @@ import java.util.concurrent.ConcurrentHashMap;
 import org.graalvm.compiler.debug.DebugContext;
 import org.graalvm.compiler.options.Option;
 import org.graalvm.compiler.options.OptionType;
-import org.graalvm.nativeimage.Feature;
-import org.graalvm.nativeimage.RuntimeReflection;
+import org.graalvm.nativeimage.hosted.Feature;
+import org.graalvm.nativeimage.hosted.RuntimeReflection;
 
+import com.oracle.graal.pointsto.constraints.UnsupportedFeatureException;
 import com.oracle.graal.pointsto.meta.AnalysisType;
 import com.oracle.svm.core.annotate.AutomaticFeature;
 import com.oracle.svm.core.jdk.Resources;
@@ -52,6 +53,7 @@ import com.oracle.svm.core.option.HostedOptionKey;
 import com.oracle.svm.core.option.SubstrateOptionsParser;
 import com.oracle.svm.core.util.UserError;
 import com.oracle.svm.hosted.FeatureImpl.DuringAnalysisAccessImpl;
+import com.oracle.svm.hosted.analysis.Inflation;
 
 /**
  * Support for {@link ServiceLoader} on Substrate VM.
@@ -67,9 +69,8 @@ import com.oracle.svm.hosted.FeatureImpl.DuringAnalysisAccessImpl;
  * analysis.
  *
  * Each used service implementation class is added for reflection (using
- * {@link org.graalvm.nativeimage.RuntimeReflection#register(Class[])}) and for reflective
- * instantiation (using
- * {@link org.graalvm.nativeimage.RuntimeReflection#registerForReflectiveInstantiation(Class[])}).
+ * {@link org.graalvm.nativeimage.hosted.RuntimeReflection#register(Class[])}) and for reflective
+ * instantiation (using {@link RuntimeReflection#registerForReflectiveInstantiation(Class[])}).
  *
  * For each service interface, a single service loader file is added as a resource to the image. The
  * single file combines all the individual files that can come from different .jar files.
@@ -200,6 +201,19 @@ public class ServiceLoaderFeature implements Feature {
             Class<?> implementationClass = access.findClassByName(implementationClassName);
             if (implementationClass == null) {
                 throw UserError.abort("Could not find registered service implementation class `" + implementationClassName + "` for service `" + serviceClassName + "`");
+            }
+            try {
+                access.getMetaAccess().lookupJavaType(implementationClass);
+            } catch (UnsupportedFeatureException ex) {
+                if (trace) {
+                    System.out.println("  cannot resolve: " + ex.getMessage());
+                }
+                continue;
+            }
+
+            if (((Inflation) access.getBigBang()).getAnnotationSubstitutionProcessor().isDeleted(implementationClass)) {
+                /* Disallow services with implementation classes that are marked as @Deleted */
+                continue;
             }
 
             /* Allow Class.forName at run time for the service implementation. */

@@ -72,4 +72,40 @@ public class SLParseErrorTest {
             Assert.assertNotNull("Should have source section.", e.getSourceLocation());
         }
     }
+
+    @Test
+    public void testParseErrorEmpty() {
+        try {
+            final Source src = Source.newBuilder("sl", "", "testSyntaxErrorEmpty.sl").buildLiteral();
+            context.eval(src);
+            Assert.assertTrue("Should not reach here.", false);
+        } catch (PolyglotException e) {
+            Assert.assertTrue("Should be a syntax error.", e.isSyntaxError());
+            Assert.assertNotNull("Should have source section.", e.getSourceLocation());
+        }
+    }
+
+    @Test
+    public void testParseErrorEOF1() {
+        try {
+            final Source src = Source.newBuilder("sl", "function main", "testSyntaxErrorEOF1.sl").buildLiteral();
+            context.eval(src);
+            Assert.assertTrue("Should not reach here.", false);
+        } catch (PolyglotException e) {
+            Assert.assertTrue("Should be a syntax error.", e.isSyntaxError());
+            Assert.assertNotNull("Should have source section.", e.getSourceLocation());
+        }
+    }
+
+    @Test
+    public void testParseErrorEOF2() {
+        try {
+            final Source src = Source.newBuilder("sl", "function\n", "testSyntaxErrorEOF2.sl").buildLiteral();
+            context.eval(src);
+            Assert.assertTrue("Should not reach here.", false);
+        } catch (PolyglotException e) {
+            Assert.assertTrue("Should be a syntax error.", e.isSyntaxError());
+            Assert.assertNotNull("Should have source section.", e.getSourceLocation());
+        }
+    }
 }

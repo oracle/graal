@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2009, 2015, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2009, 2019, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -52,6 +52,11 @@ public abstract class Assembler {
 
     public final TargetDescription target;
     private List<LabelHint> jumpDisplacementHints;
+
+    /**
+     * Labels with instructions to be patched when it is {@linkplain Label#bind bound}.
+     */
+    Label labelsWithPatches;
 
     /**
      * Backing code buffer.
@@ -123,7 +128,7 @@ public abstract class Assembler {
         return codeBuffer.getInt(pos);
     }
 
-    private static final String NEWLINE = System.getProperty("line.separator");
+    private static final String NEWLINE = System.lineSeparator();
 
     /**
      * Some GPU architectures have a text based encoding.
@@ -151,13 +156,26 @@ public abstract class Assembler {
      * @return the data in this buffer or a trimmed copy if {@code trimmedCopy} is {@code true}
      */
     public byte[] close(boolean trimmedCopy) {
+        checkAndClearLabelsWithPatches();
         return codeBuffer.close(trimmedCopy);
+    }
+
+    private void checkAndClearLabelsWithPatches() throws InternalError {
+        Label label = labelsWithPatches;
+        while (label != null) {
+            if (label.patchPositions != null) {
+                throw new InternalError("Label used by instructions at following offsets has not been bound: " + label.patchPositions);
+            }
+            Label next = label.nextWithPatches;
+            label.nextWithPatches = null;
+            label = next;
+        }
+        labelsWithPatches = null;
     }
 
     public void bind(Label l) {
         assert !l.isBound() : "can bind label only once";
-        l.bind(position());
-        l.patchInstructions(this);
+        l.bind(position(), this);
     }
 
     public abstract void align(int modulus);

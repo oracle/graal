@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2013, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2013, 2018, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -26,14 +26,16 @@ package org.graalvm.compiler.nodes.spi;
 
 import org.graalvm.compiler.api.replacements.MethodSubstitution;
 import org.graalvm.compiler.api.replacements.SnippetTemplateCache;
-import org.graalvm.compiler.bytecode.Bytecode;
 import org.graalvm.compiler.bytecode.BytecodeProvider;
 import org.graalvm.compiler.core.common.CompilationIdentifier;
 import org.graalvm.compiler.debug.DebugContext;
 import org.graalvm.compiler.graph.NodeSourcePosition;
 import org.graalvm.compiler.nodes.StructuredGraph;
 import org.graalvm.compiler.nodes.graphbuilderconf.GraphBuilderConfiguration;
+import org.graalvm.compiler.nodes.graphbuilderconf.GraphBuilderPlugin;
+import org.graalvm.compiler.nodes.graphbuilderconf.IntrinsicContext;
 import org.graalvm.compiler.nodes.graphbuilderconf.InvocationPlugin;
+import org.graalvm.compiler.nodes.graphbuilderconf.MethodSubstitutionPlugin;
 import org.graalvm.compiler.options.OptionValues;
 
 import jdk.vm.ci.meta.ResolvedJavaMethod;
@@ -43,7 +45,7 @@ import jdk.vm.ci.meta.ResolvedJavaMethod;
  */
 public interface Replacements {
 
-    OptionValues getOptions();
+    CoreProviders getProviders();
 
     /**
      * Gets the object managing the various graph builder plugins used by this object when parsing
@@ -52,13 +54,9 @@ public interface Replacements {
     GraphBuilderConfiguration.Plugins getGraphBuilderPlugins();
 
     /**
-     * Gets the snippet graph derived from a given method.
-     *
-     * @param args arguments to the snippet if available, otherwise {@code null}
-     * @param trackNodeSourcePosition
-     * @return the snippet graph, if any, that is derived from {@code method}
+     * Gets the plugin type that intrinsifies calls to {@code method}.
      */
-    StructuredGraph getSnippet(ResolvedJavaMethod method, Object[] args, boolean trackNodeSourcePosition, NodeSourcePosition replaceePosition);
+    Class<? extends GraphBuilderPlugin> getIntrinsifyingPlugin(ResolvedJavaMethod method);
 
     /**
      * Gets the snippet graph derived from a given method.
@@ -68,14 +66,36 @@ public interface Replacements {
      *            substitutions}.
      * @param args arguments to the snippet if available, otherwise {@code null}
      * @param trackNodeSourcePosition
+     * @param options
      * @return the snippet graph, if any, that is derived from {@code method}
      */
-    StructuredGraph getSnippet(ResolvedJavaMethod method, ResolvedJavaMethod recursiveEntry, Object[] args, boolean trackNodeSourcePosition, NodeSourcePosition replaceePosition);
+    StructuredGraph getSnippet(ResolvedJavaMethod method, ResolvedJavaMethod recursiveEntry, Object[] args, boolean trackNodeSourcePosition, NodeSourcePosition replaceePosition,
+                    OptionValues options);
 
     /**
      * Registers a method as snippet.
      */
-    void registerSnippet(ResolvedJavaMethod method, boolean trackNodeSourcePosition);
+    void registerSnippet(ResolvedJavaMethod method, ResolvedJavaMethod original, Object receiver, boolean trackNodeSourcePosition, OptionValues options);
+
+    /**
+     * Gets a graph that is a substitution for a given {@link MethodSubstitutionPlugin plugin} in
+     * the {@link org.graalvm.compiler.nodes.graphbuilderconf.IntrinsicContext.CompilationContext
+     * context}.
+     *
+     * @param plugin the plugin being substituted
+     * @param original the method being substituted
+     * @param context the kind of inlining to be performed for the substitution
+     * @param allowAssumptions
+     * @param options
+     * @return the method substitution graph, if any, that is derived from {@code method}
+     */
+    StructuredGraph getMethodSubstitution(MethodSubstitutionPlugin plugin, ResolvedJavaMethod original, IntrinsicContext.CompilationContext context,
+                    StructuredGraph.AllowAssumptions allowAssumptions, OptionValues options);
+
+    /**
+     * Registers a plugin as a substitution.
+     */
+    void registerMethodSubstitution(MethodSubstitutionPlugin plugin, ResolvedJavaMethod original, IntrinsicContext.CompilationContext context, OptionValues options);
 
     /**
      * Gets a graph that is a substitution for a given method.
@@ -83,17 +103,10 @@ public interface Replacements {
      * @param invokeBci the call site BCI if this request is made for inlining a substitute
      *            otherwise {@code -1}
      * @param trackNodeSourcePosition
+     * @param options
      * @return the graph, if any, that is a substitution for {@code method}
      */
-    StructuredGraph getSubstitution(ResolvedJavaMethod method, int invokeBci, boolean trackNodeSourcePosition, NodeSourcePosition replaceePosition);
-
-    /**
-     * Gets the substitute bytecode for a given method.
-     *
-     * @return the bytecode to substitute for {@code method} or {@code null} if there is no
-     *         substitute bytecode for {@code method}
-     */
-    Bytecode getSubstitutionBytecode(ResolvedJavaMethod method);
+    StructuredGraph getSubstitution(ResolvedJavaMethod method, int invokeBci, boolean trackNodeSourcePosition, NodeSourcePosition replaceePosition, OptionValues options);
 
     /**
      * Gets a graph produced from the intrinsic for a given method that can be compiled and
@@ -108,7 +121,7 @@ public interface Replacements {
 
     /**
      * Determines if there may be a
-     * {@linkplain #getSubstitution(ResolvedJavaMethod, int, boolean, NodeSourcePosition)
+     * {@linkplain #getSubstitution(ResolvedJavaMethod, int, boolean, NodeSourcePosition, OptionValues)
      * substitution graph} for a given method.
      *
      * A call to {@link #getSubstitution} may still return {@code null} for {@code method} and
@@ -138,4 +151,13 @@ public interface Replacements {
      * {@link Replacements#registerSnippetTemplateCache(SnippetTemplateCache)}.
      */
     <T extends SnippetTemplateCache> T getSnippetTemplateCache(Class<T> templatesClass);
+
+    /**
+     * Notifies this method that no further snippets will be registered via {@link #registerSnippet}
+     * or {@link #registerSnippetTemplateCache}.
+     *
+     * This is a hook for an implementation to check for or forbid late registration.
+     */
+    default void closeSnippetRegistration() {
+    }
 }

@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2016, 2018, Oracle and/or its affiliates.
+ * Copyright (c) 2016, 2019, Oracle and/or its affiliates.
  *
  * All rights reserved.
  *
@@ -31,14 +31,14 @@ package com.oracle.truffle.llvm.runtime.interop;
 
 import com.oracle.truffle.api.CallTarget;
 import com.oracle.truffle.api.CompilerDirectives;
-import com.oracle.truffle.api.CompilerDirectives.CompilationFinal;
 import com.oracle.truffle.api.dsl.Cached;
+import com.oracle.truffle.api.dsl.GenerateUncached;
 import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.interop.ArityException;
+import com.oracle.truffle.api.interop.UnsupportedTypeException;
 import com.oracle.truffle.api.nodes.DirectCallNode;
 import com.oracle.truffle.api.nodes.ExplodeLoop;
 import com.oracle.truffle.api.nodes.IndirectCallNode;
-import com.oracle.truffle.llvm.runtime.LLVMContext;
 import com.oracle.truffle.llvm.runtime.LLVMFunctionDescriptor;
 import com.oracle.truffle.llvm.runtime.LLVMGetStackNode;
 import com.oracle.truffle.llvm.runtime.NodeFactory;
@@ -56,9 +56,8 @@ import com.oracle.truffle.llvm.runtime.types.Type;
 /**
  * Used when an LLVM bitcode method is called from another language.
  */
+@GenerateUncached
 public abstract class LLVMForeignCallNode extends LLVMNode {
-
-    @Child protected LLVMDataEscapeNode prepareValueForEscape = LLVMDataEscapeNode.create();
 
     static class PackForeignArgumentsNode extends LLVMNode {
         @Children private final ForeignToLLVM[] toLLVM;
@@ -104,97 +103,90 @@ public abstract class LLVMForeignCallNode extends LLVMNode {
         return LLVMForeignCallNodeGen.create();
     }
 
-    protected PackForeignArgumentsNode createFastPackArguments(LLVMFunctionDescriptor descriptor, int length) {
+    protected PackForeignArgumentsNode createFastPackArguments(LLVMFunctionDescriptor descriptor, int length) throws ArityException {
         checkArgLength(descriptor.getType().getArgumentTypes().length, length);
         return new PackForeignArgumentsNode(getNodeFactory(), descriptor.getType().getArgumentTypes(), descriptor.getInteropType(), length);
     }
 
-    protected static class SlowPackForeignArgumentsNode extends LLVMNode {
-        @Child private SlowPathForeignToLLVM slowConvert = ForeignToLLVM.createSlowPathNode();
-
-        Object[] pack(LLVMFunctionDescriptor function, Object[] arguments, StackPointer stackPointer) {
-            Type[] argumentTypes = function.getType().getArgumentTypes();
-            int actualArgumentsLength = Math.max(arguments.length, argumentTypes.length);
-            final Object[] packedArguments = new Object[1 + actualArgumentsLength];
-            packedArguments[0] = stackPointer;
-            LLVMInteropType interopType = function.getInteropType();
-            if (interopType instanceof LLVMInteropType.Function) {
-                LLVMInteropType.Function interopFunctionType = (LLVMInteropType.Function) interopType;
-                assert interopFunctionType.getParameterLength() == argumentTypes.length;
-                for (int i = 0; i < argumentTypes.length; i++) {
-                    LLVMInteropType interopParameterType = interopFunctionType.getParameter(i);
-                    if (interopParameterType instanceof LLVMInteropType.Value) {
-                        packedArguments[i + 1] = slowConvert.convert(argumentTypes[i], arguments[i], (LLVMInteropType.Value) interopParameterType);
-                    } else {
-                        // interop only supported for value types
-                        packedArguments[i + 1] = slowConvert.convert(argumentTypes[i], arguments[i], null);
-                    }
-                }
-            } else {
-                for (int i = 0; i < argumentTypes.length; i++) {
+    static Object[] slowPathPack(LLVMFunctionDescriptor function, Object[] arguments, StackPointer stackPointer) throws UnsupportedTypeException {
+        SlowPathForeignToLLVM slowConvert = ForeignToLLVM.getUncached();
+        Type[] argumentTypes = function.getType().getArgumentTypes();
+        int actualArgumentsLength = Math.max(arguments.length, argumentTypes.length);
+        final Object[] packedArguments = new Object[1 + actualArgumentsLength];
+        packedArguments[0] = stackPointer;
+        LLVMInteropType interopType = function.getInteropType();
+        if (interopType instanceof LLVMInteropType.Function) {
+            LLVMInteropType.Function interopFunctionType = (LLVMInteropType.Function) interopType;
+            assert interopFunctionType.getParameterLength() == argumentTypes.length;
+            for (int i = 0; i < argumentTypes.length; i++) {
+                LLVMInteropType interopParameterType = interopFunctionType.getParameter(i);
+                if (interopParameterType instanceof LLVMInteropType.Value) {
+                    LLVMInteropType.Value interopValueType = (LLVMInteropType.Value) interopParameterType;
+                    LLVMInteropType.Structured interopPointerType = interopValueType.getKind() == LLVMInteropType.ValueKind.POINTER ? interopValueType.getBaseType() : null;
+                    packedArguments[i + 1] = slowConvert.convert(argumentTypes[i], arguments[i], interopPointerType);
+                } else {
+                    // interop only supported for value types
                     packedArguments[i + 1] = slowConvert.convert(argumentTypes[i], arguments[i], null);
                 }
             }
-            for (int i = argumentTypes.length; i < arguments.length; i++) {
-                packedArguments[i + 1] = slowConvert.convert(ForeignToLLVMType.ANY, arguments[i], null);
+        } else {
+            for (int i = 0; i < argumentTypes.length; i++) {
+                packedArguments[i + 1] = slowConvert.convert(argumentTypes[i], arguments[i], null);
             }
-            return packedArguments;
         }
-    }
-
-    public static SlowPackForeignArgumentsNode createSlowPackArguments() {
-        return new SlowPackForeignArgumentsNode();
-    }
-
-    public abstract Object executeCall(LLVMFunctionDescriptor function, Object[] arguments);
-
-    @CompilationFinal private LLVMThreadingStack threadingStack = null;
-
-    private LLVMThreadingStack getThreadingStack(LLVMContext context) {
-        if (threadingStack == null) {
-            CompilerDirectives.transferToInterpreterAndInvalidate();
-            threadingStack = context.getThreadingStack();
+        for (int i = argumentTypes.length; i < arguments.length; i++) {
+            packedArguments[i + 1] = slowConvert.convert(ForeignToLLVMType.ANY, arguments[i], null);
         }
-        return threadingStack;
+        return packedArguments;
     }
+
+    public abstract Object executeCall(LLVMFunctionDescriptor function, Object[] arguments) throws ArityException, UnsupportedTypeException;
 
     @SuppressWarnings("unused")
     @Specialization(limit = "3", guards = {"function == cachedFunction", "cachedLength == arguments.length"})
-    protected Object callDirectCached(LLVMFunctionDescriptor function, Object[] arguments,
+    Object callDirectCached(LLVMFunctionDescriptor function, Object[] arguments,
                     @Cached("function") LLVMFunctionDescriptor cachedFunction,
                     @Cached("create(getCallTarget(cachedFunction))") DirectCallNode callNode,
                     @Cached("createFastPackArguments(cachedFunction, arguments.length)") PackForeignArgumentsNode packNode,
                     @Cached("arguments.length") int cachedLength,
-                    @Cached("cachedFunction.getContext()") LLVMContext context,
-                    @Cached("create()") LLVMGetStackNode getStack) {
+                    @Cached LLVMDataEscapeNode prepareValueForEscape,
+                    @Cached("cachedFunction.getContext().getThreadingStack()") LLVMThreadingStack threadingStack,
+                    @Cached LLVMGetStackNode getStack) {
         assert !(cachedFunction.getType().getReturnType() instanceof StructureType);
-        return directCall(arguments, callNode, packNode, getStack, context);
-    }
-
-    private Object directCall(Object[] arguments, DirectCallNode callNode, PackForeignArgumentsNode packNode, LLVMGetStackNode getStack, LLVMContext context) {
         Object result;
-        LLVMStack stack = getStack.executeWithTarget(getThreadingStack(context), Thread.currentThread());
+        LLVMStack stack = getStack.executeWithTarget(threadingStack, Thread.currentThread());
         try (StackPointer stackPointer = stack.newFrame()) {
             result = callNode.call(packNode.pack(arguments, stackPointer));
         }
-        return prepareValueForEscape.executeWithTarget(result);
+        return prepareReturnValue(cachedFunction, prepareValueForEscape, result);
     }
 
     @Specialization(replaces = "callDirectCached")
-    protected Object callIndirect(LLVMFunctionDescriptor function, Object[] arguments,
+    static Object callIndirect(LLVMFunctionDescriptor function, Object[] arguments,
                     @Cached("create()") IndirectCallNode callNode,
-                    @Cached("createSlowPackArguments()") SlowPackForeignArgumentsNode slowPack,
-                    @Cached("create()") LLVMGetStackNode getStack) {
+                    @Cached LLVMDataEscapeNode prepareValueForEscape,
+                    @Cached LLVMGetStackNode getStack) throws UnsupportedTypeException {
         assert !(function.getType().getReturnType() instanceof StructureType);
         LLVMStack stack = getStack.executeWithTarget(function.getContext().getThreadingStack(), Thread.currentThread());
         Object result;
         try (StackPointer stackPointer = stack.newFrame()) {
-            result = callNode.call(getCallTarget(function), slowPack.pack(function, arguments, stackPointer));
+            result = callNode.call(getCallTarget(function), slowPathPack(function, arguments, stackPointer));
+        }
+        return prepareReturnValue(function, prepareValueForEscape, result);
+    }
+
+    private static Object prepareReturnValue(LLVMFunctionDescriptor function, LLVMDataEscapeNode prepareValueForEscape, Object result) {
+        LLVMInteropType functionType = function.getInteropType();
+        if (functionType instanceof LLVMInteropType.Function) {
+            LLVMInteropType returnType = ((LLVMInteropType.Function) functionType).getReturnType();
+            if (returnType instanceof LLVMInteropType.Value) {
+                return prepareValueForEscape.executeWithType(result, ((LLVMInteropType.Value) returnType).getBaseType());
+            }
         }
         return prepareValueForEscape.executeWithTarget(result);
     }
 
-    protected CallTarget getCallTarget(LLVMFunctionDescriptor function) {
+    static CallTarget getCallTarget(LLVMFunctionDescriptor function) {
         if (function.isLLVMIRFunction()) {
             return function.getLLVMIRFunction();
         } else if (function.isIntrinsicFunction()) {
@@ -205,14 +197,10 @@ public abstract class LLVMForeignCallNode extends LLVMNode {
         }
     }
 
-    private static void checkArgLength(int minLength, int actualLength) {
+    private static void checkArgLength(int minLength, int actualLength) throws ArityException {
         if (actualLength < minLength) {
             CompilerDirectives.transferToInterpreterAndInvalidate();
-            throwArgLengthException(minLength, actualLength);
+            throw ArityException.create(minLength, actualLength);
         }
-    }
-
-    private static void throwArgLengthException(int minLength, int actualLength) {
-        throw ArityException.raise(minLength, actualLength);
     }
 }

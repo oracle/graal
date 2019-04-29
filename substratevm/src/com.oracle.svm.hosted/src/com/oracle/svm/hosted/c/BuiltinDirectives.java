@@ -24,16 +24,7 @@
  */
 package com.oracle.svm.hosted.c;
 
-import java.util.List;
-
 import org.graalvm.nativeimage.c.CContext;
 
-import com.oracle.svm.core.util.VMError;
-
 public class BuiltinDirectives implements CContext.Directives {
-
-    @Override
-    public List<String> getHeaderFiles() {
-        throw VMError.shouldNotReachHere();
-    }
 }

@@ -45,7 +45,6 @@ import java.lang.reflect.Array;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.HashMap;
-import java.util.List;
 import java.util.Map;
 import java.util.Objects;
 import java.util.Set;
@@ -62,12 +61,11 @@ import com.oracle.truffle.api.TruffleFile;
 import com.oracle.truffle.api.TruffleLanguage;
 import com.oracle.truffle.api.TruffleOptions;
 import com.oracle.truffle.api.frame.VirtualFrame;
-import com.oracle.truffle.api.interop.ForeignAccess;
-import com.oracle.truffle.api.interop.KeyInfo;
-import com.oracle.truffle.api.interop.MessageResolution;
-import com.oracle.truffle.api.interop.Resolve;
+import com.oracle.truffle.api.interop.InteropLibrary;
+import com.oracle.truffle.api.interop.InvalidArrayIndexException;
 import com.oracle.truffle.api.interop.TruffleObject;
-import com.oracle.truffle.api.interop.UnknownIdentifierException;
+import com.oracle.truffle.api.library.ExportLibrary;
+import com.oracle.truffle.api.library.ExportMessage;
 import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.api.nodes.RootNode;
 import com.oracle.truffle.polyglot.HostLanguage.HostContext;
@@ -90,9 +88,6 @@ class HostLanguage extends TruffleLanguage<HostContext> {
         @TruffleBoundary
         Class<?> findClass(String className) {
             checkHostAccessAllowed();
-            if (TruffleOptions.AOT) {
-                throw new HostLanguageException(String.format("The host class %s is not accessible in native mode.", className));
-            }
 
             Class<?> loadedClass = classCache.get(className);
             if (loadedClass == null) {
@@ -104,7 +99,7 @@ class HostLanguage extends TruffleLanguage<HostContext> {
         }
 
         private void checkHostAccessAllowed() {
-            if (!internalContext.context.config.hostAccessAllowed) {
+            if (!internalContext.context.config.hostLookupAllowed) {
                 throw new HostLanguageException(String.format("Host class access is not allowed."));
             }
         }
@@ -201,9 +196,6 @@ class HostLanguage extends TruffleLanguage<HostContext> {
     }
 
     private static boolean isHostFunction(Object object) {
-        if (TruffleOptions.AOT) {
-            return false;
-        }
         return HostFunction.isInstance(object);
     }
 
@@ -314,9 +306,6 @@ class HostLanguage extends TruffleLanguage<HostContext> {
                     throw PolyglotImpl.wrapHostException(context.internalContext, t);
                 }
             } else if (isHostFunction(value)) {
-                if (TruffleOptions.AOT) {
-                    return "";
-                }
                 return ((HostFunction) value).getDescription();
             } else {
                 return "Foreign Object";
@@ -352,6 +341,7 @@ class HostLanguage extends TruffleLanguage<HostContext> {
         }
     }
 
+    @ExportLibrary(InteropLibrary.class)
     static final class TopScopeObject implements TruffleObject {
 
         private final HostContext context;
@@ -360,111 +350,69 @@ class HostLanguage extends TruffleLanguage<HostContext> {
             this.context = context;
         }
 
-        @Override
-        public ForeignAccess getForeignAccess() {
-            return TopScopeObjectMessageResolutionForeign.ACCESS;
+        @SuppressWarnings("static-method")
+        @ExportMessage
+        boolean hasMembers() {
+            return true;
         }
 
-        public static boolean isInstance(TruffleObject obj) {
-            return obj instanceof TopScopeObject;
+        @ExportMessage
+        @TruffleBoundary
+        Object getMembers(@SuppressWarnings("unused") boolean includeInternal) {
+            return new ClassNamesObject(context.classCache.keySet());
         }
 
-        @MessageResolution(receiverType = TopScopeObject.class)
-        static class TopScopeObjectMessageResolution {
-
-            @Resolve(message = "HAS_KEYS")
-            abstract static class VarsMapHasKeysNode extends Node {
-
-                @SuppressWarnings("unused")
-                public Object access(TopScopeObject ts) {
-                    return true;
-                }
-            }
-
-            @Resolve(message = "KEYS")
-            abstract static class VarsMapKeysNode extends Node {
-
-                @TruffleBoundary
-                public Object access(TopScopeObject ts) {
-                    return new ClassNamesObject(ts.context.classCache.keySet());
-                }
-            }
-
-            @Resolve(message = "KEY_INFO")
-            abstract static class VarsMapInfoNode extends Node {
-
-                @TruffleBoundary
-                public Object access(TopScopeObject ts, String name) {
-                    Class<?> clazz = ts.context.findClass(name);
-                    if (clazz != null) {
-                        return KeyInfo.READABLE;
-                    } else {
-                        return 0;
-                    }
-                }
-            }
-
-            @Resolve(message = "READ")
-            abstract static class VarsMapReadNode extends Node {
-
-                @TruffleBoundary
-                public Object access(TopScopeObject ts, String name) {
-                    return HostObject.forStaticClass(ts.context.findClass(name), ts.context.internalContext);
-                }
-            }
+        @ExportMessage
+        @TruffleBoundary
+        boolean isMemberReadable(String member) {
+            return context.findClass(member) != null;
         }
+
+        @ExportMessage
+        @TruffleBoundary
+        Object readMember(String member) {
+            return HostObject.forStaticClass(context.findClass(member), context.internalContext);
+        }
+
     }
 
+    @ExportLibrary(InteropLibrary.class)
     static final class ClassNamesObject implements TruffleObject {
 
-        final List<String> names;
+        final ArrayList<String> names;
 
         private ClassNamesObject(Set<String> names) {
             this.names = new ArrayList<>(names);
         }
 
-        @Override
-        public ForeignAccess getForeignAccess() {
-            return ClassNamesMessageResolutionForeign.ACCESS;
+        @SuppressWarnings("static-method")
+        @ExportMessage
+        boolean hasArrayElements() {
+            return true;
         }
 
-        public static boolean isInstance(TruffleObject obj) {
-            return obj instanceof ClassNamesObject;
+        @ExportMessage
+        @TruffleBoundary
+        Object readArrayElement(long index) throws InvalidArrayIndexException {
+            if (index < 0L || index > Integer.MAX_VALUE) {
+                throw InvalidArrayIndexException.create(index);
+            }
+            try {
+                return names.get((int) index);
+            } catch (IndexOutOfBoundsException ioob) {
+                throw InvalidArrayIndexException.create(index);
+            }
         }
 
-        @MessageResolution(receiverType = ClassNamesObject.class)
-        static final class ClassNamesMessageResolution {
+        @ExportMessage
+        @TruffleBoundary
+        long getArraySize() {
+            return names.size();
+        }
 
-            @Resolve(message = "HAS_SIZE")
-            abstract static class ClassNamesHasSizeNode extends Node {
-
-                @SuppressWarnings("unused")
-                public Object access(ClassNamesObject varNames) {
-                    return true;
-                }
-            }
-
-            @Resolve(message = "GET_SIZE")
-            abstract static class ClassNamesGetSizeNode extends Node {
-
-                public Object access(ClassNamesObject varNames) {
-                    return varNames.names.size();
-                }
-            }
-
-            @Resolve(message = "READ")
-            abstract static class ClassNamesReadNode extends Node {
-
-                @TruffleBoundary
-                public Object access(ClassNamesObject varNames, int index) {
-                    try {
-                        return varNames.names.get(index);
-                    } catch (IndexOutOfBoundsException ioob) {
-                        throw UnknownIdentifierException.raise(Integer.toString(index));
-                    }
-                }
-            }
-
+        @ExportMessage
+        boolean isArrayElementReadable(long index) {
+            return index >= 0 && index < getArraySize();
         }
     }
 

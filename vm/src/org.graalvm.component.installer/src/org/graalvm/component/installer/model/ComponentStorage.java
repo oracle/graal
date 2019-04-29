@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2019, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -25,7 +25,6 @@
 package org.graalvm.component.installer.model;
 
 import java.io.IOException;
-import java.util.Collection;
 import java.util.Map;
 import java.util.Set;
 
@@ -33,15 +32,6 @@ import java.util.Set;
  * Serialization of {@link ComponentRegistry}.
  */
 public interface ComponentStorage {
-
-    /**
-     * Deletes component's files.
-     * 
-     * @param id component ID
-     * @throws IOException on load error
-     */
-    void deleteComponent(String id) throws IOException;
-
     /**
      * Loads list of components.
      * 
@@ -63,17 +53,10 @@ public interface ComponentStorage {
      * Deserializes Component's metadata.
      * 
      * @param id component ID
-     * @return ComponentInfo instance
+     * @return matching ComponentInfo instances
      * @throws IOException on I/O errors
      */
-    ComponentInfo loadComponentMetadata(String id) throws IOException;
+    Set<ComponentInfo> loadComponentMetadata(String id) throws IOException;
 
     Map<String, String> loadGraalVersionInfo();
-
-    Map<String, Collection<String>> readReplacedFiles() throws IOException;
-
-    void saveComponent(ComponentInfo info) throws IOException;
-
-    void updateReplacedFiles(Map<String, Collection<String>> replacedFiles) throws IOException;
-
 }

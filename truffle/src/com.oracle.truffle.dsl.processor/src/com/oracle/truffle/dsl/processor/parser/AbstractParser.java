@@ -43,23 +43,19 @@ package com.oracle.truffle.dsl.processor.parser;
 import java.lang.annotation.Annotation;
 import java.util.ArrayList;
 import java.util.Collections;
-import java.util.HashSet;
 import java.util.List;
-import java.util.Set;
 
 import javax.annotation.processing.ProcessingEnvironment;
 import javax.lang.model.element.AnnotationMirror;
 import javax.lang.model.element.Element;
-import javax.lang.model.element.ElementKind;
-import javax.lang.model.element.ExecutableElement;
 import javax.tools.Diagnostic.Kind;
 
 import com.oracle.truffle.dsl.processor.CompileErrorException;
 import com.oracle.truffle.dsl.processor.Log;
 import com.oracle.truffle.dsl.processor.ProcessorContext;
 import com.oracle.truffle.dsl.processor.java.ElementUtils;
+import com.oracle.truffle.dsl.processor.library.LibraryData;
 import com.oracle.truffle.dsl.processor.model.MessageContainer;
-import com.oracle.truffle.dsl.processor.model.MessageContainer.Message;
 import com.oracle.truffle.dsl.processor.model.NodeData;
 
 /**
@@ -78,28 +74,29 @@ public abstract class AbstractParser<M extends MessageContainer> {
         this.log = context.getLog();
     }
 
-    public final M parse(Element element) {
+    public final M parse(Element element, boolean emitErrors) {
         M model = null;
         try {
-            AnnotationMirror mirror = null;
+            List<AnnotationMirror> mirrors = null;
             if (getAnnotationType() != null) {
-                mirror = ElementUtils.findAnnotationMirror(processingEnv, element.getAnnotationMirrors(), getAnnotationType());
+                mirrors = ElementUtils.getRepeatedAnnotation(element.getAnnotationMirrors(), getAnnotationType());
             }
 
-            if (!context.getTruffleTypes().verify(context, element, mirror)) {
+            if (!context.getTruffleTypes().verify(context, element, null)) {
                 return null;
             }
-            model = parse(element, mirror);
+            model = parse(element, mirrors);
             if (model == null) {
                 return null;
             }
 
-            redirectMessages(new HashSet<MessageContainer>(), model, model);
-            model.emitMessages(context, log);
-            if (model instanceof NodeData) {
+            if (emitErrors) {
+                model.emitMessages(context, log);
+            }
+            if (model instanceof NodeData || model instanceof LibraryData) {
                 return model;
             } else {
-                return filterErrorElements(model);
+                return emitErrors ? filterErrorElements(model) : model;
             }
         } catch (CompileErrorException e) {
             log.message(Kind.WARNING, element, null, null, "The truffle processor could not parse class due to error: %s", e.getMessage());
@@ -107,62 +104,21 @@ public abstract class AbstractParser<M extends MessageContainer> {
         }
     }
 
-    private void redirectMessages(Set<MessageContainer> visitedSinks, MessageContainer model, MessageContainer baseContainer) {
-        List<Message> messages = model.getMessages();
-        for (int i = messages.size() - 1; i >= 0; i--) {
-            Message message = messages.get(i);
-            if (!ElementUtils.isEnclosedIn(baseContainer.getMessageElement(), message.getOriginalContainer().getMessageElement())) {
-                // redirect message
-                MessageContainer original = message.getOriginalContainer();
-                String text = wrapText(original.getMessageElement(), original.getMessageAnnotation(), message.getText());
-                Message redirectedMessage = new Message(null, null, baseContainer, text, message.getKind());
-                model.getMessages().remove(i);
-                baseContainer.getMessages().add(redirectedMessage);
-            }
-        }
-
-        for (MessageContainer childContainer : model) {
-            if (visitedSinks.contains(childContainer)) {
-                continue;
-            }
-            visitedSinks.add(childContainer);
-
-            MessageContainer newBase = baseContainer;
-            if (childContainer.getBaseContainer() != null) {
-                newBase = childContainer.getBaseContainer();
-            }
-            redirectMessages(visitedSinks, childContainer, newBase);
-        }
-    }
-
-    private static String wrapText(Element element, AnnotationMirror mirror, String text) {
-        StringBuilder b = new StringBuilder();
-        if (element != null) {
-            if (element.getKind() == ElementKind.METHOD) {
-                b.append("Method " + ElementUtils.createReferenceName((ExecutableElement) element));
-            } else {
-                b.append("Element " + element.getSimpleName());
-            }
-        }
-        if (mirror != null) {
-            b.append(" at annotation @" + ElementUtils.getSimpleName(mirror.getAnnotationType()).trim());
-        }
-
-        if (b.length() > 0) {
-            b.append(" is erroneous: ").append(text);
-            return b.toString();
-        } else {
-            return text;
-        }
+    public final M parse(Element element) {
+        return parse(element, true);
     }
 
     protected M filterErrorElements(M model) {
         return model.hasErrors() ? null : model;
     }
 
-    protected abstract M parse(Element element, AnnotationMirror mirror);
+    protected abstract M parse(Element element, List<AnnotationMirror> mirror);
 
     public abstract Class<? extends Annotation> getAnnotationType();
+
+    public Class<? extends Annotation> getRepeatAnnotationType() {
+        return null;
+    }
 
     public boolean isDelegateToRootDeclaredType() {
         return false;

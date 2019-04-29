@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2017, 2017, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2017, 2019, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -26,10 +26,11 @@ package com.oracle.svm.truffle.nfi;
 
 import com.oracle.svm.core.annotate.Alias;
 import com.oracle.svm.core.annotate.TargetClass;
+import com.oracle.truffle.nfi.impl.NFILanguageImpl;
 
 @TargetClass(className = "com.oracle.truffle.nfi.impl.LibFFISymbol", onlyWith = TruffleNFIFeature.IsEnabled.class)
 final class Target_com_oracle_truffle_nfi_impl_LibFFISymbol {
 
     @Alias
-    static native Target_com_oracle_truffle_nfi_impl_LibFFISymbol create(Target_com_oracle_truffle_nfi_impl_LibFFILibrary library, long address);
+    static native Target_com_oracle_truffle_nfi_impl_LibFFISymbol create(NFILanguageImpl language, Target_com_oracle_truffle_nfi_impl_LibFFILibrary library, long address);
 }

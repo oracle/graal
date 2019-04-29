@@ -43,6 +43,8 @@ package com.oracle.truffle.api;
 import java.lang.reflect.Method;
 import java.security.AccessController;
 import java.security.PrivilegedAction;
+import java.util.Iterator;
+import java.util.ServiceConfigurationError;
 import java.util.ServiceLoader;
 
 import com.oracle.truffle.api.impl.DefaultTruffleRuntime;
@@ -52,13 +54,9 @@ import com.oracle.truffle.api.impl.DefaultTruffleRuntime;
  *
  * @since 0.8 or earlier
  */
-public class Truffle {
-    /**
-     * @deprecated Accidentally public - don't use.
-     * @since 0.8 or earlier
-     */
-    @Deprecated
-    public Truffle() {
+public final class Truffle {
+
+    private Truffle() {
     }
 
     private static final TruffleRuntime RUNTIME = initRuntime();
@@ -77,7 +75,14 @@ public class Truffle {
         TruffleRuntimeAccess selectedAccess = null;
         for (Iterable<TruffleRuntimeAccess> lookup : lookups) {
             if (lookup != null) {
-                for (TruffleRuntimeAccess access : lookup) {
+                Iterator<TruffleRuntimeAccess> it = lookup.iterator();
+                while (it.hasNext()) {
+                    TruffleRuntimeAccess access;
+                    try {
+                        access = it.next();
+                    } catch (ServiceConfigurationError err) {
+                        continue;
+                    }
                     if (selectedAccess == null) {
                         selectedAccess = access;
                     } else {
@@ -150,7 +155,7 @@ public class Truffle {
         return AccessController.doPrivileged(new PrivilegedAction<TruffleRuntime>() {
             public TruffleRuntime run() {
                 String runtimeClassName = System.getProperty("truffle.TruffleRuntime");
-                if (runtimeClassName != null) {
+                if (runtimeClassName != null && runtimeClassName.length() > 0) {
                     try {
                         ClassLoader cl = Thread.currentThread().getContextClassLoader();
                         Class<?> runtimeClass = Class.forName(runtimeClassName, false, cl);

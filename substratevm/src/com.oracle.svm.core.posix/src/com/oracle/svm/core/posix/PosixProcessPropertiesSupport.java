@@ -27,6 +27,9 @@ package com.oracle.svm.core.posix;
 import static com.oracle.svm.core.posix.headers.Signal.SignalEnum.SIGKILL;
 import static com.oracle.svm.core.posix.headers.Signal.SignalEnum.SIGTERM;
 
+import java.nio.file.Files;
+import java.nio.file.Path;
+
 import org.graalvm.nativeimage.StackValue;
 import org.graalvm.nativeimage.c.function.CEntryPointLiteral;
 import org.graalvm.nativeimage.c.type.CCharPointer;
@@ -40,6 +43,7 @@ import com.oracle.svm.core.posix.headers.Dlfcn;
 import com.oracle.svm.core.posix.headers.LibC;
 import com.oracle.svm.core.posix.headers.Signal;
 import com.oracle.svm.core.posix.headers.Stdlib;
+import com.oracle.svm.core.posix.headers.Unistd;
 
 public abstract class PosixProcessPropertiesSupport implements ProcessPropertiesSupport {
 
@@ -54,18 +58,23 @@ public abstract class PosixProcessPropertiesSupport implements ProcessProperties
     }
 
     @Override
-    public void destroy(long processID) {
-        Signal.kill(Math.toIntExact(processID), SIGTERM.getCValue());
+    public boolean destroy(long processID) {
+        return Signal.kill(Math.toIntExact(processID), SIGTERM.getCValue()) == 0;
     }
 
     @Override
-    public void destroyForcibly(long processID) {
-        Signal.kill(Math.toIntExact(processID), SIGKILL.getCValue());
+    public boolean destroyForcibly(long processID) {
+        return Signal.kill(Math.toIntExact(processID), SIGKILL.getCValue()) == 0;
     }
 
     @Override
     public boolean isAlive(long processID) {
         return Signal.kill(Math.toIntExact(processID), 0) == 0;
+    }
+
+    @Override
+    public int waitForProcessExit(long processID) {
+        return PosixUtils.waitForProcessExit(Math.toIntExact(processID));
     }
 
     @Override
@@ -81,6 +90,21 @@ public abstract class PosixProcessPropertiesSupport implements ProcessProperties
     @Override
     public String setLocale(String category, String locale) {
         return PosixUtils.setLocale(category, locale);
+    }
+
+    @Override
+    public void exec(Path executable, String[] args) {
+        if (!Files.isExecutable(executable)) {
+            throw new RuntimeException("Path " + executable + " does not point to executable file");
+        }
+
+        try (CTypeConversion.CCharPointerHolder pathHolder = CTypeConversion.toCString(executable.toString());
+                        CTypeConversion.CCharPointerPointerHolder argvHolder = CTypeConversion.toCStrings(args)) {
+            if (Unistd.execv(pathHolder.get(), argvHolder.get()) != 0) {
+                String msg = PosixUtils.lastErrorString("Executing " + executable + " with arguments " + String.join(" ", args) + " failed");
+                throw new RuntimeException(msg);
+            }
+        }
     }
 
     static String getObjectPathDefiningSymbol(String symbol) {

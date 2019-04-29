@@ -65,28 +65,6 @@ public abstract class Instrumenter {
     }
 
     /**
-     * @since 0.12
-     * @deprecated in 0.32 use
-     *             {@link #attachExecutionEventFactory(SourceSectionFilter, ExecutionEventNodeFactory)
-     *             instead (rename only)
-     */
-    @Deprecated
-    public final <T extends ExecutionEventNodeFactory> EventBinding<T> attachFactory(SourceSectionFilter eventFilter, T factory) {
-        return attachExecutionEventFactory(eventFilter, null, factory);
-    }
-
-    /**
-     * @since 0.12
-     * @deprecated in 0.32 use
-     *             {@link #attachExecutionEventFactory(SourceSectionFilter, ExecutionEventNodeFactory)}
-     *             instead (rename only)
-     */
-    @Deprecated
-    public final <T extends ExecutionEventListener> EventBinding<T> attachListener(SourceSectionFilter eventFilter, T listener) {
-        return attachExecutionEventListener(eventFilter, null, listener);
-    }
-
-    /**
      * Starts execution event notification for a given {@link SourceSectionFilter event filter} and
      * {@link ExecutionEventListener listener}. The execution events are delivered to the
      * {@link ExecutionEventListener}.

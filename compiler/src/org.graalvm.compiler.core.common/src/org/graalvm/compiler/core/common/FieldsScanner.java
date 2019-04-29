@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2014, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2014, 2018, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -24,7 +24,7 @@
  */
 package org.graalvm.compiler.core.common;
 
-import static org.graalvm.compiler.core.common.UnsafeAccess.UNSAFE;
+import static org.graalvm.compiler.serviceprovider.GraalUnsafeAccess.getUnsafe;
 
 import java.lang.reflect.Field;
 import java.lang.reflect.Modifier;
@@ -49,6 +49,8 @@ public class FieldsScanner {
      * Determines the offset (in bytes) of a field using {@link Unsafe#objectFieldOffset(Field)}.
      */
     public static class DefaultCalcOffset implements CalcOffset {
+
+        private static final Unsafe UNSAFE = getUnsafe();
 
         @Override
         public long getOffset(Field field) {

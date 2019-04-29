@@ -28,13 +28,13 @@ import java.io.FileDescriptor;
 import java.lang.reflect.Field;
 import java.nio.MappedByteBuffer;
 
-import org.graalvm.nativeimage.Feature;
+import org.graalvm.nativeimage.hosted.Feature;
 
 import com.oracle.graal.pointsto.constraints.UnsupportedFeatureException;
 import com.oracle.svm.core.annotate.AutomaticFeature;
 import com.oracle.svm.core.option.SubstrateOptionsParser;
 import com.oracle.svm.core.util.VMError;
-import com.oracle.svm.hosted.ClassInitializationFeature;
+import com.oracle.svm.hosted.classinitialization.ClassInitializationFeature;
 
 /**
  * Complain if there are types that can not move from the image generator heap to the image heap.
@@ -93,7 +93,7 @@ public class DisallowedImageHeapObjectFeature implements Feature {
                         "The object was probably created by a class initializer and is reachable from a static field. " +
                         "By default, all class initialization is done during native image building." +
                         "You can manually delay class initialization to image run time by using the option " +
-                        SubstrateOptionsParser.commandArgument(ClassInitializationFeature.Options.DelayClassInitialization, "<class-name>") + ". " +
+                        SubstrateOptionsParser.commandArgument(ClassInitializationFeature.Options.ClassInitialization, "<class-name>") + ". " +
                         "Or you can write your own initialization methods and call them explicitly from your main entry point.");
     }
 

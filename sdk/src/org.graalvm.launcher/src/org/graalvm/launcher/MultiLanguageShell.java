@@ -88,7 +88,7 @@ class MultiLanguageShell {
         console.setCopyPasteDetection(true);
 
         console.println("GraalVM MultiLanguage Shell " + context.getEngine().getVersion());
-        console.println("Copyright (c) 2013-2018, Oracle and/or its affiliates");
+        console.println("Copyright (c) 2013-2019, Oracle and/or its affiliates");
 
         List<Language> languages = new ArrayList<>();
         Set<Language> uniqueValues = new HashSet<>();
@@ -142,11 +142,6 @@ class MultiLanguageShell {
                 throw new ChangeLanguageException(null);
             }
         });
-        console.getKeys().bind(String.valueOf((char) 10), new ActionListener() {
-            public void actionPerformed(ActionEvent e) {
-                throw new RuntimeIncompleteSourceException();
-            }
-        });
 
         // initializes the language
         context.initialize(currentLanguage.getId());
@@ -182,10 +177,12 @@ class MultiLanguageShell {
                 } else if (prompts.containsKey(trimmedInput)) {
                     switchedLanguage = prompts.get(input);
                     input = "";
+                } else if (bufferSource != null) {
+                    input = bufferSource.getCharacters() + "\n" + input;
                 }
 
                 NonBlockingInputStream nonBlockIn = ((NonBlockingInputStream) console.getInput());
-                while (nonBlockIn.isNonBlockingEnabled() && nonBlockIn.peek(10) != -2 && switchedLanguage == null) {
+                while (nonBlockIn.isNonBlockingEnabled() && nonBlockIn.peek(10) >= 0 && switchedLanguage == null) {
                     String line = console.readLine(createBufferPrompt(prompt));
                     String trimmedLine = line.trim();
                     if (prompts.containsKey(trimmedLine)) {
@@ -233,7 +230,6 @@ class MultiLanguageShell {
                 } else if (e.isCancelled()) {
                     console.println("Execution got cancelled.");
                 } else if (e.isIncompleteSource()) {
-                    console.println();
                     bufferSource = source;
                 } else if (e.isSyntaxError()) {
                     console.println(e.getMessage());
@@ -289,14 +285,6 @@ class MultiLanguageShell {
     }
 
     @SuppressWarnings("serial")
-    private static class RuntimeIncompleteSourceException extends RuntimeException {
-        @Override
-        public synchronized Throwable fillInStackTrace() {
-            return this;
-        }
-    }
-
-    @SuppressWarnings("serial")
     private static class ChangeLanguageException extends RuntimeException {
 
         private final Language language;
@@ -309,8 +297,9 @@ class MultiLanguageShell {
             return language;
         }
 
+        @SuppressWarnings("sync-override")
         @Override
-        public synchronized Throwable fillInStackTrace() {
+        public final Throwable fillInStackTrace() {
             return this;
         }
     }

@@ -54,6 +54,7 @@ import java.util.Set;
 import java.util.TreeSet;
 import java.util.concurrent.ForkJoinPool;
 import java.util.concurrent.TimeUnit;
+import java.util.regex.Pattern;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
 import java.util.stream.StreamSupport;
@@ -63,6 +64,7 @@ import org.graalvm.compiler.word.Word;
 import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.Platforms;
 
+import com.oracle.svm.core.OS;
 import com.oracle.svm.core.util.InterruptImageBuilding;
 import com.oracle.svm.core.util.VMError;
 
@@ -71,6 +73,7 @@ public final class ImageClassLoader {
     private static final String CLASS_EXTENSION = ".class";
     private static final int CLASS_EXTENSION_LENGTH = CLASS_EXTENSION.length();
     private static final int CLASS_LOADING_TIMEOUT_IN_MINUTES = 10;
+    public static final String cpWildcardSubstitute = "$JavaCla$$pathWildcard$ubstitute$";
 
     static {
         /*
@@ -81,23 +84,23 @@ public final class ImageClassLoader {
     }
 
     private final Platform platform;
-    private final ClassLoader classLoader;
+    private final NativeImageClassLoader classLoader;
     private final String[] classpath;
     private final EconomicSet<Class<?>> systemClasses = EconomicSet.create();
     private final EconomicSet<Method> systemMethods = EconomicSet.create();
     private final EconomicSet<Field> systemFields = EconomicSet.create();
 
-    private ImageClassLoader(Platform platform, String[] classpath, ClassLoader classLoader) {
+    private ImageClassLoader(Platform platform, String[] classpath, NativeImageClassLoader classLoader) {
         this.platform = platform;
         this.classpath = classpath;
         this.classLoader = classLoader;
     }
 
-    public static ImageClassLoader create(Platform platform, String[] classpathAll, ClassLoader classLoader) {
+    public static ImageClassLoader create(Platform platform, String[] classpathAll, NativeImageClassLoader classLoader) {
         ArrayList<String> classpathFiltered = new ArrayList<>(classpathAll.length);
         classpathFiltered.addAll(Arrays.asList(classpathAll));
 
-        /* If the Graal SDK is on the boot class path, and it contains annotated types. */
+        /* If the GraalVM SDK is on the boot class path, and it contains annotated types. */
         final String sunBootClassPath = System.getProperty("sun.boot.class.path");
         if (sunBootClassPath != null) {
             for (String s : sunBootClassPath.split(File.pathSeparator)) {
@@ -120,6 +123,30 @@ public final class ImageClassLoader {
         }
     }
 
+    public static Path stringToClasspath(String cp) {
+        String separators = Pattern.quote(File.separator);
+        if (OS.getCurrent().equals(OS.WINDOWS)) {
+            separators += "/"; /* on Windows also / is accepted as valid separator */
+        }
+        String[] components = cp.split("[" + separators + "]", Integer.MAX_VALUE);
+        for (int i = 0; i < components.length; i++) {
+            if (components[i].equals("*")) {
+                components[i] = cpWildcardSubstitute;
+            }
+        }
+        return Paths.get(String.join(File.separator, components));
+    }
+
+    public static String classpathToString(Path cp) {
+        String[] components = cp.toString().split(Pattern.quote(File.separator), Integer.MAX_VALUE);
+        for (int i = 0; i < components.length; i++) {
+            if (components[i].equals(cpWildcardSubstitute)) {
+                components[i] = "*";
+            }
+        }
+        return String.join(File.separator, components);
+    }
+
     private void initAllClasses() {
         final ForkJoinPool executor = new ForkJoinPool(Runtime.getRuntime().availableProcessors());
 
@@ -134,11 +161,18 @@ public final class ImageClassLoader {
     }
 
     static Stream<Path> toClassPathEntries(String classPathEntry) {
-        Path entry = Paths.get(classPathEntry);
-        if (entry.getFileName() != null && entry.getFileName().toString().endsWith("*")) {
-            return Arrays.stream(entry.getParent().toFile().listFiles()).filter(File::isFile).map(File::toPath);
+        Path entry = stringToClasspath(classPathEntry);
+        if (entry.endsWith(cpWildcardSubstitute)) {
+            try {
+                return Files.list(entry.getParent()).filter(Files::isRegularFile);
+            } catch (IOException e) {
+                return Stream.empty();
+            }
         }
-        return Stream.of(entry);
+        if (Files.isReadable(entry)) {
+            return Stream.of(entry);
+        }
+        return Stream.empty();
     }
 
     private static Set<Path> excludeDirectories = getExcludeDirectories();
@@ -202,6 +236,8 @@ public final class ImageClassLoader {
 
     private void initAllClasses(final Path root, Set<Path> excludes, ForkJoinPool executor) {
         FileVisitor<Path> visitor = new SimpleFileVisitor<Path>() {
+            private final char fileSystemSeparatorChar = root.getFileSystem().getSeparator().charAt(0);
+
             @Override
             public FileVisitResult preVisitDirectory(Path dir, BasicFileAttributes attrs) throws IOException {
                 if (excludes.contains(dir)) {
@@ -219,7 +255,7 @@ public final class ImageClassLoader {
                     String fileName = root.relativize(file).toString();
                     if (fileName.endsWith(CLASS_EXTENSION)) {
                         String unversionedClassName = unversionedFileName(fileName);
-                        String className = curtail(unversionedClassName, CLASS_EXTENSION_LENGTH).replace('/', '.');
+                        String className = curtail(unversionedClassName, CLASS_EXTENSION_LENGTH).replace(fileSystemSeparatorChar, '.');
                         try {
                             Class<?> systemClass = forName(className);
                             if (includedInPlatform(systemClass)) {
@@ -327,7 +363,7 @@ public final class ImageClassLoader {
                 }
             }
             return forName(name);
-        } catch (ClassNotFoundException ex) {
+        } catch (ClassNotFoundException | NoClassDefFoundError ex) {
             if (failIfClassMissing) {
                 throw shouldNotReachHere("class " + name + " not found");
             }
@@ -336,17 +372,7 @@ public final class ImageClassLoader {
     }
 
     private Class<?> forName(String name) throws ClassNotFoundException {
-        Class<?> clazz = Class.forName(name, false, classLoader);
-        if (NativeImageClassLoader.classIsMissing(clazz)) {
-            /*
-             * This is a ghost interface. Although Class.forName() doesn't trigger the creation of
-             * ghost interfaces it is possible that the class was referenced in the bytecode, loaded
-             * at an earlier stage and replaced with a ghost interface. Throw a
-             * ClassNotFoundException to maintain the contract of findClassByName().
-             */
-            throw new ClassNotFoundException(name);
-        }
-        return clazz;
+        return Class.forName(name, false, classLoader);
     }
 
     public List<String> getClasspath() {
@@ -440,7 +466,4 @@ public final class ImageClassLoader {
         return classLoader;
     }
 
-    public static boolean isHostedClass(Class<?> clazz) {
-        return clazz.getName().contains("hosted") || clazz.getName().contains("hotspot");
-    }
 }

@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2015, 2015, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2015, 2018, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -67,7 +67,11 @@ public class LIRGenerationPhase extends LIRPhase<LIRGenerationPhase.LIRGeneratio
         NodeLIRBuilderTool nodeLirBuilder = context.nodeLirBuilder;
         StructuredGraph graph = context.graph;
         ScheduleResult schedule = context.schedule;
-        for (AbstractBlockBase<?> b : lirGenRes.getLIR().getControlFlowGraph().getBlocks()) {
+        AbstractBlockBase<?>[] blocks = lirGenRes.getLIR().getControlFlowGraph().getBlocks();
+        for (AbstractBlockBase<?> b : blocks) {
+            matchBlock(nodeLirBuilder, (Block) b, graph, schedule);
+        }
+        for (AbstractBlockBase<?> b : blocks) {
             emitBlock(nodeLirBuilder, lirGenRes, (Block) b, graph, schedule.getBlockToNodesMap());
         }
         context.lirGen.beforeRegisterAllocation();
@@ -82,6 +86,10 @@ public class LIRGenerationPhase extends LIRPhase<LIRGenerationPhase.LIRGeneratio
         LIR lir = lirGenRes.getLIR();
         DebugContext debug = lir.getDebug();
         instructionCounter.add(debug, lir.getLIRforBlock(b).size());
+    }
+
+    private static void matchBlock(NodeLIRBuilderTool nodeLirGen, Block b, StructuredGraph graph, ScheduleResult schedule) {
+        nodeLirGen.matchBlock(b, graph, schedule);
     }
 
     private static boolean verifyPredecessors(LIRGenerationResult lirGenRes, Block block) {

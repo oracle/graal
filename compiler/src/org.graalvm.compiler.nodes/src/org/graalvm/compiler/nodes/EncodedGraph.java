@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2015, 2015, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2015, 2018, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -38,11 +38,11 @@ import jdk.vm.ci.meta.ResolvedJavaMethod;
  * {@link GraphEncoder} for a description of the encoding format. Use {@link GraphDecoder} for
  * decoding.
  */
-public final class EncodedGraph {
+public class EncodedGraph {
 
     private final byte[] encoding;
     private final int startOffset;
-    private final Object[] objects;
+    protected final Object[] objects;
     private final NodeClass<?>[] types;
     private final Assumptions assumptions;
     private final List<ResolvedJavaMethod> inlinedMethods;
@@ -86,6 +86,14 @@ public final class EncodedGraph {
         return objects;
     }
 
+    public int getNumObjects() {
+        return objects.length;
+    }
+
+    public Object getObject(int i) {
+        return objects[i];
+    }
+
     public NodeClass<?>[] getNodeClasses() {
         return types;
     }
@@ -108,5 +116,10 @@ public final class EncodedGraph {
 
     public boolean hasUnsafeAccess() {
         return hasUnsafeAccess;
+    }
+
+    @SuppressWarnings("unused")
+    public boolean isCallToOriginal(ResolvedJavaMethod callTarget) {
+        return false;
     }
 }

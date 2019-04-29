@@ -36,6 +36,7 @@ import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
+import java.util.Optional;
 import java.util.Set;
 import java.util.concurrent.ForkJoinTask;
 
@@ -44,6 +45,7 @@ import org.graalvm.compiler.core.common.NumUtil;
 import org.graalvm.compiler.debug.DebugContext;
 import org.graalvm.compiler.debug.Indent;
 import org.graalvm.nativeimage.ImageSingletons;
+import org.graalvm.nativeimage.c.function.CEntryPointLiteral;
 import org.graalvm.nativeimage.c.function.CFunction;
 import org.graalvm.nativeimage.c.function.CFunctionPointer;
 
@@ -63,11 +65,14 @@ import com.oracle.svm.core.StaticFieldsSupport;
 import com.oracle.svm.core.SubstrateOptions;
 import com.oracle.svm.core.SubstrateUtil;
 import com.oracle.svm.core.annotate.ExcludeFromReferenceMap;
+import com.oracle.svm.core.c.BoxedRelocatedPointer;
 import com.oracle.svm.core.config.ConfigurationValues;
 import com.oracle.svm.core.config.ObjectLayout;
 import com.oracle.svm.core.deopt.DeoptimizedFrame;
+import com.oracle.svm.core.heap.InstanceReferenceMapEncoder;
 import com.oracle.svm.core.heap.ReferenceMapEncoder;
 import com.oracle.svm.core.heap.SubstrateReferenceMap;
+import com.oracle.svm.core.hub.ClassInitializationInfo.ClassInitializerFunctionPointerHolder;
 import com.oracle.svm.core.hub.DynamicHub;
 import com.oracle.svm.core.hub.DynamicHubSupport;
 import com.oracle.svm.core.hub.LayoutEncoding;
@@ -81,8 +86,9 @@ import com.oracle.svm.hosted.substitute.DeletedMethod;
 import jdk.vm.ci.meta.ConstantPool;
 import jdk.vm.ci.meta.ExceptionHandler;
 import jdk.vm.ci.meta.JavaKind;
-import jdk.vm.ci.meta.ResolvedJavaType;
+import jdk.vm.ci.meta.JavaType;
 import jdk.vm.ci.meta.Signature;
+import jdk.vm.ci.meta.UnresolvedJavaType;
 
 public class UniverseBuilder {
 
@@ -167,7 +173,7 @@ public class UniverseBuilder {
 
         String typeName = aType.getName();
 
-        assert !typeName.contains("/hotspot/") || typeName.contains("/jtt/hotspot/") : "HotSpot object in image " + typeName;
+        assert SubstrateUtil.isBuildingLibgraal() || !typeName.contains("/hotspot/") || typeName.contains("/jtt/hotspot/") : "HotSpot object in image " + typeName;
         assert !typeName.contains("/analysis/meta/") : "Analysis meta object in image " + typeName;
         assert !typeName.contains("/hosted/meta/") : "Hosted meta object in image " + typeName;
 
@@ -243,7 +249,12 @@ public class UniverseBuilder {
         ExceptionHandler[] sHandlers = new ExceptionHandler[aHandlers.length];
         for (int i = 0; i < aHandlers.length; i++) {
             ExceptionHandler h = aHandlers[i];
-            ResolvedJavaType catchType = makeType((AnalysisType) h.getCatchType());
+            JavaType catchType = h.getCatchType();
+            if (h.getCatchType() instanceof AnalysisType) {
+                catchType = makeType((AnalysisType) catchType);
+            } else {
+                assert catchType == null || catchType instanceof UnresolvedJavaType;
+            }
             sHandlers[i] = new ExceptionHandler(h.getStartBCI(), h.getEndBCI(), h.getHandlerBCI(), h.catchTypeCPI(), catchType);
         }
 
@@ -581,34 +592,47 @@ public class UniverseBuilder {
 //    }
     // @formatter:on
 
+    /**
+     * We want these types to be immutable so that they can be in the read-only part of the image
+     * heap. Moreover, all of them except for String *must* be read-only because they contain
+     * relocatable pointers.
+     */
+    private static final Set<Class<?>> IMMUTABLE_TYPES = new HashSet<>(Arrays.asList(
+                    String.class,
+                    DynamicHub.class,
+                    CEntryPointLiteral.class,
+                    BoxedRelocatedPointer.class,
+                    ClassInitializerFunctionPointerHolder.class));
+
     private void collectMonitorFieldInfo(BigBang bb) {
         if (!SubstrateOptions.MultiThreaded.getValue()) {
             /* No locking information needed in single-threaded mode. */
             return;
         }
 
+        Set<AnalysisType> immutableTypes = new HashSet<>();
+        for (Class<?> immutableType : IMMUTABLE_TYPES) {
+            Optional<AnalysisType> aType = aMetaAccess.optionalLookupJavaType(immutableType);
+            if (aType.isPresent()) {
+                immutableTypes.add(aType.get());
+            }
+        }
+
         TypeState allSynchronizedTypeState = bb.getAllSynchronizedTypeState();
         for (AnalysisType aType : allSynchronizedTypeState.types()) {
-            if (canHaveMonitorFields(aType)) {
+            if (!aType.isArray() && !immutableTypes.contains(aType)) {
+                /*
+                 * Monitor fields on arrays would increase the array header too much. Also, types
+                 * that must be immutable cannot have a monitor field.
+                 */
                 final HostedInstanceClass hostedInstanceClass = (HostedInstanceClass) hUniverse.lookup(aType);
                 hostedInstanceClass.setNeedMonitorField();
             }
         }
     }
 
-    private boolean canHaveMonitorFields(AnalysisType aType) {
-        if (aType.isArray()) {
-            /* Monitor fields on arrays would increase the array header too much. */
-            return false;
-        }
-        if (aType.equals(aMetaAccess.lookupJavaType(String.class)) || aType.equals(aMetaAccess.lookupJavaType(DynamicHub.class))) {
-            /*
-             * We want String and DynamicHub instances to be immutable so that they can be in the
-             * read-only part of the image heap.
-             */
-            return false;
-        }
-        return true;
+    public static boolean isKnownImmutableType(Class<?> clazz) {
+        return IMMUTABLE_TYPES.contains(clazz);
     }
 
     @SuppressWarnings("try")
@@ -1115,10 +1139,11 @@ public class UniverseBuilder {
     }
 
     private void buildHubs() {
-        ReferenceMapEncoder referenceMapEncoder = new ReferenceMapEncoder();
+        InstanceReferenceMapEncoder referenceMapEncoder = new InstanceReferenceMapEncoder();
         Map<HostedType, ReferenceMapEncoder.Input> referenceMaps = new HashMap<>();
         for (HostedType type : hUniverse.orderedTypes) {
             ReferenceMapEncoder.Input referenceMap = createReferenceMap(type);
+            assert ((SubstrateReferenceMap) referenceMap).hasNoDerivedOffsets();
             referenceMaps.put(type, referenceMap);
             referenceMapEncoder.add(referenceMap);
         }
@@ -1137,7 +1162,7 @@ public class UniverseBuilder {
                     HybridLayout<?> hybridLayout = new HybridLayout<>(instanceClass, ol);
                     JavaKind storageKind = hybridLayout.getArrayElementStorageKind();
                     boolean isObject = (storageKind == JavaKind.Object);
-                    layoutHelper = LayoutEncoding.forArray(isObject, hybridLayout.getArrayBaseOffset(), ol.getArrayIndexShift(storageKind), ol.getAlignment());
+                    layoutHelper = LayoutEncoding.forArray(isObject, hybridLayout.getArrayBaseOffset(), ol.getArrayIndexShift(storageKind));
                 } else {
                     layoutHelper = LayoutEncoding.forInstance(ConfigurationValues.getObjectLayout().alignUp(instanceClass.getInstanceSize()));
                 }
@@ -1146,7 +1171,7 @@ public class UniverseBuilder {
             } else if (type.isArray()) {
                 JavaKind storageKind = type.getComponentType().getStorageKind();
                 boolean isObject = (storageKind == JavaKind.Object);
-                layoutHelper = LayoutEncoding.forArray(isObject, ol.getArrayBaseOffset(storageKind), ol.getArrayIndexShift(storageKind), ol.getAlignment());
+                layoutHelper = LayoutEncoding.forArray(isObject, ol.getArrayBaseOffset(storageKind), ol.getArrayIndexShift(storageKind));
                 hashCodeOffset = ol.getArrayHashCodeOffset();
             } else if (type.isInterface()) {
                 layoutHelper = LayoutEncoding.forInterface();
@@ -1172,6 +1197,7 @@ public class UniverseBuilder {
             // pointer maps in Dynamic Hub
             ReferenceMapEncoder.Input referenceMap = referenceMaps.get(type);
             assert referenceMap != null;
+            assert ((SubstrateReferenceMap) referenceMap).hasNoDerivedOffsets();
             long referenceMapIndex = referenceMapEncoder.lookupEncoding(referenceMap);
 
             DynamicHub hub = type.getHub();

@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2017, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2017, 2019, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -25,6 +25,8 @@
 #include <trufflenfi.h>
 #include <stdlib.h>
 
+#include "common.h"
+
 class NativeAPI {
 public:
     TruffleObject (*createNewObject)();
@@ -32,7 +34,7 @@ public:
     void (*writeIntField)(TruffleObject object, const char *field, int value);
 };
 
-extern "C" NativeAPI *initialize_api(
+EXPORT NativeAPI *initialize_api(
         TruffleEnv *env,
         TruffleObject (*createNewObject)(),
         int (*readIntField)(TruffleObject, const char *),
@@ -44,14 +46,14 @@ extern "C" NativeAPI *initialize_api(
     return ret;
 }
 
-extern "C" void delete_api(TruffleEnv *env, NativeAPI *api) {
+EXPORT void delete_api(TruffleEnv *env, NativeAPI *api) {
     env->releaseClosureRef(api->createNewObject);
     env->releaseClosureRef(api->readIntField);
     env->releaseClosureRef(api->writeIntField);
     delete api;
 }
 
-extern "C" TruffleObject copy_and_increment(TruffleEnv *env, NativeAPI *api, TruffleObject original) {
+EXPORT TruffleObject copy_and_increment(TruffleEnv *env, NativeAPI *api, TruffleObject original) {
     TruffleObject copy = api->createNewObject();
     int value = api->readIntField(original, "intField");
     api->writeIntField(copy, "intField", value + 1);
@@ -64,37 +66,37 @@ public:
     TruffleObject obj;
 };
 
-extern "C" NativeStorage *keep_new_object(NativeAPI *api) {
+EXPORT NativeStorage *keep_new_object(NativeAPI *api) {
     NativeStorage *ret = new NativeStorage();
     ret->obj = api->createNewObject();
     api->writeIntField(ret->obj, "intField", 8472);
     return ret;
 }
 
-extern "C" NativeStorage *keep_existing_object(TruffleEnv *env, TruffleObject object) {
+EXPORT NativeStorage *keep_existing_object(TruffleEnv *env, TruffleObject object) {
     NativeStorage *ret = new NativeStorage();
     ret->obj = env->newObjectRef(object);
     return ret;
 }
 
-extern "C" TruffleObject free_and_get_object(TruffleEnv *env, NativeStorage *storage) {
+EXPORT TruffleObject free_and_get_object(TruffleEnv *env, NativeStorage *storage) {
     TruffleObject ret = storage->obj;
     delete storage;
     return env->releaseAndReturn(ret);
 }
 
-extern "C" int free_and_get_content(TruffleEnv *env, NativeAPI *api, NativeStorage *storage) {
+EXPORT int free_and_get_content(TruffleEnv *env, NativeAPI *api, NativeStorage *storage) {
     int ret = api->readIntField(storage->obj, "intField");
     env->releaseObjectRef(storage->obj);
     delete storage;
     return ret;
 }
 
-extern "C" TruffleObject pass_object(TruffleObject objArg, TruffleObject (*getObject)(), TruffleObject (*verifyObject)(TruffleObject, TruffleObject)) {
+EXPORT TruffleObject pass_object(TruffleObject objArg, TruffleObject (*getObject)(), TruffleObject (*verifyObject)(TruffleObject, TruffleObject)) {
     TruffleObject objLocal = getObject();
     return verifyObject(objArg, objLocal);
 }
 
-extern "C" int compare_existing_object(TruffleEnv *env, NativeStorage *storage1, NativeStorage *storage2) {
+EXPORT int compare_existing_object(TruffleEnv *env, NativeStorage *storage1, NativeStorage *storage2) {
     return env->isSameObject(storage1->obj, storage2->obj);
 }

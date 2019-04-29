@@ -24,12 +24,10 @@
  */
 package org.graalvm.component.installer;
 
-import java.io.Closeable;
 import java.io.IOException;
-import java.util.jar.JarFile;
 import org.graalvm.component.installer.persist.MetadataLoader;
 
-public interface ComponentParam extends Closeable {
+public interface ComponentParam {
     String getSpecification();
 
     String getDisplayName();
@@ -38,11 +36,8 @@ public interface ComponentParam extends Closeable {
 
     MetadataLoader createFileLoader() throws IOException;
 
-    JarFile getFile() throws IOException;
-
     boolean isComplete();
 
-    @Override
     void close() throws IOException;
 
     String getFullPath();

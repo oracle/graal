@@ -6,6 +6,8 @@ meth public abstract boolean isValid()
 meth public abstract java.lang.String getName()
 meth public abstract void check() throws com.oracle.truffle.api.nodes.InvalidAssumptionException
 meth public abstract void invalidate()
+meth public static boolean isValidAssumption(com.oracle.truffle.api.Assumption)
+meth public static boolean isValidAssumption(com.oracle.truffle.api.Assumption[])
 meth public void invalidate(java.lang.String)
 
 CLSS public final com.oracle.truffle.api.utilities.AlwaysValidAssumption
@@ -34,9 +36,7 @@ meth public void invalidate(java.lang.String)
 supr java.lang.Object
 hfds ASSUMPTION_UPDATER,assumption,name
 
-CLSS public com.oracle.truffle.api.utilities.JSONHelper
-cons public init()
- anno 0 java.lang.Deprecated()
+CLSS public final com.oracle.truffle.api.utilities.JSONHelper
 innr public abstract static JSONStringBuilder
 innr public final static JSONArrayBuilder
 innr public final static JSONObjectBuilder
@@ -78,8 +78,6 @@ hfds contents
 
 CLSS public abstract static com.oracle.truffle.api.utilities.JSONHelper$JSONStringBuilder
  outer com.oracle.truffle.api.utilities.JSONHelper
-cons protected init()
- anno 0 java.lang.Deprecated()
 meth protected abstract void appendTo(java.lang.StringBuilder)
 meth protected static void appendValue(java.lang.StringBuilder,java.lang.Object)
 meth public final java.lang.String toString()
@@ -106,8 +104,6 @@ meth public void invalidate()
 meth public void invalidate(java.lang.String)
 supr java.lang.Object
 hfds first,name,second
-
-CLSS abstract interface com.oracle.truffle.api.utilities.package-info
 
 CLSS public java.lang.Object
 cons public init()

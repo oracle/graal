@@ -43,7 +43,7 @@ package com.oracle.truffle.api.nodes;
 /**
  * An exception thrown to model control flow in a Truffle interpreter. The Truffle optimizer has
  * special knowledge of this exception class for performance optimizations.
- * 
+ *
  * @since 0.8 or earlier
  */
 public class ControlFlowException extends RuntimeException {
@@ -52,7 +52,7 @@ public class ControlFlowException extends RuntimeException {
 
     /**
      * Creates an exception thrown to model control flow.
-     * 
+     *
      * @since 0.8 or earlier
      */
     public ControlFlowException() {
@@ -67,12 +67,12 @@ public class ControlFlowException extends RuntimeException {
 
     /**
      * For performance reasons, this exception does not record any stack trace information.
-     * 
+     *
      * @since 0.8 or earlier
      */
     @SuppressWarnings("sync-override")
     @Override
     public final Throwable fillInStackTrace() {
-        return null;
+        return this;
     }
 }

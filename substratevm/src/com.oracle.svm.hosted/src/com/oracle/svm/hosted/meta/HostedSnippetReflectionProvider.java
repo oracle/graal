@@ -24,6 +24,7 @@
  */
 package com.oracle.svm.hosted.meta;
 
+import org.graalvm.compiler.word.WordTypes;
 import org.graalvm.word.WordBase;
 
 import com.oracle.graal.pointsto.meta.AnalysisType;
@@ -41,7 +42,8 @@ public class HostedSnippetReflectionProvider extends SubstrateSnippetReflectionP
 
     private final SVMHost hostVM;
 
-    public HostedSnippetReflectionProvider(SVMHost hostVM) {
+    public HostedSnippetReflectionProvider(SVMHost hostVM, WordTypes wordTypes) {
+        super(wordTypes);
         this.hostVM = hostVM;
     }
 

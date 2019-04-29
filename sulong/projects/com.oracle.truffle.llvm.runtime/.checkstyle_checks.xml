@@ -11,6 +11,16 @@
 <module name="Checker">
   <property name="severity" value="error"/>
   <module name="TreeWalker">
+    <module name="RegexpSinglelineJava">
+      <property name="format" value="instanceof\s+(LLVMPointer|LLVMNativePointer|LLVMManagedPointer)\b"/>
+      <property name="message" value="Found instanceof check for LLVM(Native|Managed)Pointer. Use LLVM(Native|Managed)Pointer.isInstance instead."/>
+      <property name="ignoreComments" value="true"/>
+    </module>
+    <module name="RegexpSinglelineJava">
+      <property name="format" value="\((LLVMPointer|LLVMNativePointer|LLVMManagedPointer)\)"/>
+      <property name="message" value="Found typecast to LLVM(Native|Managed)Pointer. Use LLVM(Native|Managed)Pointer.cast instead."/>
+      <property name="ignoreComments" value="true"/>
+    </module>
     <module name="AvoidStarImport">
       <property name="allowClassImports" value="false"/>
       <property name="allowStaticMemberImports" value="false"/>

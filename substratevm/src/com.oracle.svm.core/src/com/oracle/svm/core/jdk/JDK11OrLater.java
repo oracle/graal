@@ -26,11 +26,11 @@ package com.oracle.svm.core.jdk;
 
 import java.util.function.BooleanSupplier;
 
-import org.graalvm.compiler.serviceprovider.GraalServices;
+import org.graalvm.compiler.serviceprovider.JavaVersionUtil;
 
 public class JDK11OrLater implements BooleanSupplier {
     @Override
     public boolean getAsBoolean() {
-        return GraalServices.JAVA_SPECIFICATION_VERSION >= 11;
+        return JavaVersionUtil.JAVA_SPECIFICATION_VERSION >= 11;
     }
 }

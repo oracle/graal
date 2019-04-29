@@ -3,8 +3,6 @@
 m7_eighth.default : ${solaris-sparcv9} {
   capabilities: ${solaris-sparcv9.capabilities} [m7_eighth]
   environment : {
-    XMX         : "16g"
-    XMS         : "16g"
     JVM_CONFIG  : ${jvm-config.default}
     JVM         : "server"
     MACHINE_NAME: "m7_eighth"
@@ -17,14 +15,13 @@ m7_eighth.default-g1gc : ${m7_eighth.default} {
   }
 }
 
-
 builds += [
   ${m7_eighth.default} ${bench-dacapo}              ${labsjdk8} { name: "bench-compiler-dacapo-solaris-m7_eighth", timelimit: "1:00:00" }
   ${m7_eighth.default} ${bench-dacapo-timing}       ${labsjdk8} { name: "bench-compiler-dacapo-timing-solaris-m7_eighth", timelimit: "1:00:00" }
   ${m7_eighth.default} ${bench-scala-dacapo}        ${labsjdk8} { name: "bench-compiler-scala-dacapo-solaris-m7_eighth", timelimit: "1:00:00" }
   ${m7_eighth.default} ${bench-scala-dacapo-timing} ${labsjdk8} { name: "bench-compiler-scala-dacapo-timing-solaris-m7_eighth", timelimit: "1:00:00" }
-  ${m7_eighth.default} ${bench-specjvm2008-Single}  ${labsjdk8} { name: "bench-compiler-specjvm2008-Single-solaris-m7_eighth" }
-  ${m7_eighth.default} ${bench-specjvm2008-OneVM}   ${labsjdk8} { name: "bench-compiler-specjvm2008-OneVM-solaris-m7_eighth" }
+  ${m7_eighth.default} ${bench-specjvm2008-Single}  ${labsjdk8} { name: "bench-compiler-specjvm2008-Single-solaris-m7_eighth", timelimit: "3:10:00" }
+  ${m7_eighth.default} ${bench-specjvm2008-OneVM}   ${labsjdk8} { name: "bench-compiler-specjvm2008-OneVM-solaris-m7_eighth", timelimit: "3:10:00" }
   # GR-11609 ${m7_eighth.default} ${bench-specjbb2015}         ${labsjdk8} { name: "bench-compiler-specjbb2015-solaris-m7_eighth" }
   ${m7_eighth.default} ${bench-micros-graal-whitebox} ${labsjdk8} { name: "bench-compiler-jmh-micros-graal-whitebox-solaris-m7_eighth" }
   ${m7_eighth.default} ${bench-micros-graal-dist}   ${labsjdk8} { name: "bench-compiler-jmh-micros-graal-dist-solaris-m7_eighth" }

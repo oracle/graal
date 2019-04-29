@@ -56,6 +56,7 @@ import org.junit.runners.Parameterized.Parameters;
 
 import com.oracle.truffle.api.CallTarget;
 import com.oracle.truffle.api.interop.TruffleObject;
+import com.oracle.truffle.api.interop.UnsupportedMessageException;
 import com.oracle.truffle.nfi.test.interop.NullObject;
 import com.oracle.truffle.nfi.test.interop.TestCallback;
 import com.oracle.truffle.tck.TruffleRunner;
@@ -97,7 +98,7 @@ public class NullNFITest extends NFITest {
         Assert.assertThat("return value", ret, is(instanceOf(TruffleObject.class)));
 
         TruffleObject obj = (TruffleObject) ret;
-        Assert.assertTrue("isNull", isNull(obj));
+        Assert.assertTrue("isNull", UNCACHED_INTEROP.isNull(obj));
     }
 
     private String getExpected() {
@@ -123,15 +124,15 @@ public class NullNFITest extends NFITest {
     }
 
     @Test
-    public void testNullArg(@Inject(TestNullArgNode.class) CallTarget callTarget) {
+    public void testNullArg(@Inject(TestNullArgNode.class) CallTarget callTarget) throws UnsupportedMessageException {
         String expected = getExpected();
 
         Object ret = callTarget.call(new NullObject());
         Assert.assertThat("return value", ret, is(instanceOf(TruffleObject.class)));
 
         TruffleObject obj = (TruffleObject) ret;
-        Assert.assertTrue("isBoxed", isBoxed(obj));
-        Assert.assertEquals("return value", expected, unbox(obj));
+        Assert.assertTrue("isString", UNCACHED_INTEROP.isString(obj));
+        Assert.assertEquals("return value", expected, UNCACHED_INTEROP.asString(obj));
     }
 
     public class TestNullCallbackArgNode extends SendExecuteNode {
@@ -141,15 +142,15 @@ public class NullNFITest extends NFITest {
         }
     }
 
+    private static final TruffleObject NULL_ARG_CALLBACK = new TestCallback(1, (args) -> {
+        Assert.assertThat("callback argument", args[0], is(instanceOf(TruffleObject.class)));
+        Assert.assertTrue("isNull", UNCACHED_INTEROP.isNull(args[0]));
+        return null;
+    });
+
     @Test
     public void testNullCallbackArg(@Inject(TestNullCallbackArgNode.class) CallTarget callTarget) {
-        TruffleObject nullCallback = new TestCallback(1, (args) -> {
-            Assert.assertThat("callback argument", args[0], is(instanceOf(TruffleObject.class)));
-            Assert.assertTrue("isNull", isNull((TruffleObject) args[0]));
-            return null;
-        });
-
-        callTarget.call(nullCallback);
+        callTarget.call(NULL_ARG_CALLBACK);
     }
 
     public class TestNullCallbackRetNode extends SendExecuteNode {
@@ -159,19 +160,19 @@ public class NullNFITest extends NFITest {
         }
     }
 
+    private static final TruffleObject NULL_RET_CALLBACK = new TestCallback(0, (args) -> {
+        return new NullObject();
+    });
+
     @Test
-    public void testNullCallbackRet(@Inject(TestNullCallbackRetNode.class) CallTarget callTarget) {
+    public void testNullCallbackRet(@Inject(TestNullCallbackRetNode.class) CallTarget callTarget) throws UnsupportedMessageException {
         String expected = getExpected();
 
-        TruffleObject nullCallback = new TestCallback(0, (args) -> {
-            return new NullObject();
-        });
-
-        Object ret = callTarget.call(nullCallback);
+        Object ret = callTarget.call(NULL_RET_CALLBACK);
         Assert.assertThat("return value", ret, is(instanceOf(TruffleObject.class)));
 
         TruffleObject obj = (TruffleObject) ret;
-        Assert.assertTrue("isBoxed", isBoxed(obj));
-        Assert.assertEquals("return value", expected, unbox(obj));
+        Assert.assertTrue("isString", UNCACHED_INTEROP.isString(obj));
+        Assert.assertEquals("return value", expected, UNCACHED_INTEROP.asString(obj));
     }
 }

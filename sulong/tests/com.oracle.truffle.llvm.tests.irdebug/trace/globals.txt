@@ -31,14 +31,14 @@
 BREAK 30 STEP_OVER "@test"
     OPEN_SCOPE partial
     OPEN_SCOPE partial
-        MEMBER any "i64" "@A"
-        MEMBER any "i32" "@B"
-        MEMBER any "i16" "@C"
-        MEMBER any "i8" "@D"
-        MEMBER any "x86_fp80" "@E"
-        MEMBER any "double" "@F"
-        MEMBER any "float" "@G"
-        MEMBER any "i128" "@H"
-        MEMBER any "i64*" "@I"
+        MEMBER any "i64*" "@A"
+        MEMBER any "i32*" "@B"
+        MEMBER any "i16*" "@C"
+        MEMBER any "i8*" "@D"
+        MEMBER any "x86_fp80*" "@E"
+        MEMBER any "double*" "@F"
+        MEMBER any "float*" "@G"
+        MEMBER any "i128*" "@H"
+        MEMBER any "i64**" "@I"
 
 

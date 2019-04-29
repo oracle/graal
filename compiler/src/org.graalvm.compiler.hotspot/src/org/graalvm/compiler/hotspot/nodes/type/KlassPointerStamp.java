@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2014, 2015, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2014, 2018, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -69,6 +69,13 @@ public final class KlassPointerStamp extends MetaspacePointerStamp {
     private KlassPointerStamp(boolean nonNull, boolean alwaysNull, CompressEncoding encoding) {
         super(nonNull, alwaysNull);
         this.encoding = encoding;
+    }
+
+    @Override
+    public void accept(Visitor v) {
+        super.accept(v);
+        v.visitLong(encoding.getBase());
+        v.visitInt(encoding.getShift());
     }
 
     @Override

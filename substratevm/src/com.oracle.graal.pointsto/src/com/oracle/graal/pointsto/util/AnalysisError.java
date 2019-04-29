@@ -24,13 +24,12 @@
  */
 package com.oracle.graal.pointsto.util;
 
-import java.io.PrintWriter;
-import java.io.StringWriter;
-
 import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.Platforms;
 
+import com.oracle.graal.pointsto.meta.AnalysisField;
 import com.oracle.graal.pointsto.meta.AnalysisMethod;
+import com.oracle.graal.pointsto.meta.AnalysisType;
 
 import jdk.vm.ci.meta.ResolvedJavaType;
 
@@ -85,7 +84,7 @@ public class AnalysisError extends Error {
         private final AnalysisMethod method;
 
         ParsingError(AnalysisMethod method, Throwable cause) {
-            super(message(method, cause));
+            super(message(method), cause);
             this.method = method;
         }
 
@@ -93,28 +92,42 @@ public class AnalysisError extends Error {
             return method;
         }
 
-        private static String message(AnalysisMethod method, Throwable original) {
-
+        private static String message(AnalysisMethod method) {
             String msg = String.format("Error encountered while parsing %s %n", method.format("%H.%n(%P)"));
-            msg += String.format("Parsing context:");
-            if (method.getTypeFlow().getParsingContext().length > 0) {
-                for (StackTraceElement e : method.getTypeFlow().getParsingContext()) {
-                    msg += String.format("%n\tparsing %s", e);
-                }
-                msg += String.format("%n");
-            } else {
-                msg += String.format(" <no parsing context available> %n");
-            }
-
-            StringWriter sw = new StringWriter();
-            PrintWriter pw = new PrintWriter(sw);
-            original.printStackTrace(pw);
-
-            msg += String.format("Original error: %s", sw.toString()); // no need for trailing %n
-
+            msg += parsingContext(method);
             return msg;
         }
 
+    }
+
+    public static class FieldNotPresentError extends AnalysisError {
+        private static final long serialVersionUID = -7167507945764369928L;
+
+        FieldNotPresentError(AnalysisMethod context, AnalysisField field, AnalysisType type) {
+            super(message(context, field, type));
+        }
+
+        private static String message(AnalysisMethod context, AnalysisField field, AnalysisType type) {
+            String msg = String.format("Field %s is not present on type %s. ", field.format("%H.%n"), type.toJavaName());
+            if (context != null) {
+                msg += String.format("Error encountered while analysing %s %n", context.format("%H.%n(%P)"));
+                msg += parsingContext(context);
+            }
+            return msg;
+        }
+    }
+
+    private static String parsingContext(AnalysisMethod method) {
+        StringBuilder msg = new StringBuilder("Parsing context:");
+        if (method.getTypeFlow().getParsingContext().length > 0) {
+            for (StackTraceElement e : method.getTypeFlow().getParsingContext()) {
+                msg.append(String.format("%n\tparsing %s", e));
+            }
+            msg.append(String.format("%n"));
+        } else {
+            msg.append(String.format(" <no parsing context available> %n"));
+        }
+        return msg.toString();
     }
 
     public static TypeNotFoundError typeNotFound(ResolvedJavaType type) {
@@ -123,6 +136,10 @@ public class AnalysisError extends Error {
 
     public static ParsingError parsingError(AnalysisMethod method, Throwable original) {
         throw new ParsingError(method, original);
+    }
+
+    public static FieldNotPresentError fieldNotPresentError(AnalysisMethod context, AnalysisField field, AnalysisType type) {
+        throw new FieldNotPresentError(context, field, type);
     }
 
     public static RuntimeException shouldNotReachHere() {

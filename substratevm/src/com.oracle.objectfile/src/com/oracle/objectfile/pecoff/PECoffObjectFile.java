@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2018, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2019, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -66,6 +66,7 @@ public class PECoffObjectFile extends ObjectFile {
     private PECoffHeader header;
     private SectionHeaderTable sht;
     private PECoffSymtab symtab;
+    private PECoffDirectiveSection directives;
     private boolean runtimeDebugInfoGeneration;
     private String mainEntryPoint;
 
@@ -78,6 +79,8 @@ public class PECoffObjectFile extends ObjectFile {
         sht = new SectionHeaderTable();
         // 3. create symbol table
         symtab = createSymbolTable();
+        // 4. create the linker directive section
+        directives = new PECoffDirectiveSection(".drectve", 1);
     }
 
     public PECoffObjectFile() {
@@ -384,7 +387,8 @@ public class PECoffObjectFile extends ObjectFile {
         UNINITIALIZED_DATA(IMAGE_SECTION_HEADER.IMAGE_SCN_CNT_UNINITIALIZED_DATA),
         READ(IMAGE_SECTION_HEADER.IMAGE_SCN_MEM_READ),
         WRITE(IMAGE_SECTION_HEADER.IMAGE_SCN_MEM_WRITE),
-        EXECUTE(IMAGE_SECTION_HEADER.IMAGE_SCN_MEM_EXECUTE);
+        EXECUTE(IMAGE_SECTION_HEADER.IMAGE_SCN_MEM_EXECUTE),
+        LINKER(IMAGE_SECTION_HEADER.IMAGE_SCN_LNK_INFO | IMAGE_SECTION_HEADER.IMAGE_SCN_LNK_REMOVE);
 
         private final int value;
 
@@ -451,10 +455,9 @@ public class PECoffObjectFile extends ObjectFile {
              * here and ensure that the Sections don't change order. This is needed since the symbol
              * table entries refer to Section indexes.
              *
-             * Note: Only Data and Code are contained in "Sections". Everything else such as the
-             * symbol table, string table, relocation table and even this Section Header Table are
-             * "Elements" and not "Sections".
-             *
+             * Note: Only Data, Code and Directives are contained in "Sections". Everything else
+             * such as the symbol table, string table, relocation table and even this Section Header
+             * Table are "Elements" and not "Sections".
              *
              */
             HashSet<BuildDependency> deps = ObjectFile.defaultDependencies(decisions, this);
@@ -510,7 +513,6 @@ public class PECoffObjectFile extends ObjectFile {
             deps.add(BuildDependency.createOrGet(symtabOffset, relocSize));
 
             return deps;
-
         }
 
         @Override
@@ -527,10 +529,13 @@ public class PECoffObjectFile extends ObjectFile {
             for (Section s : getSections()) {
                 PECoffSection es = (PECoffSection) s;
 
+                /* TODO: alignment is 1024?? */
+                int align = es.getAlignment() >= 1024 ? 16 : es.getAlignment();
+
                 PECoffSectionStruct ent = new PECoffSectionStruct(
                                 nameForElement(s),
                                 (int) ObjectFile.flagSetAsLong(es.getFlags()),
-                                /* TODO: alignment is 1024?? es.getAlignment() */ 16,
+                                align,
                                 sectionIndex + 1);
 
                 // Set offset and size of section
@@ -583,6 +588,49 @@ public class PECoffObjectFile extends ObjectFile {
             return defaultGetOrDecideVaddr(alreadyDecided, this, vaddrHint);
         }
 
+    }
+
+    public class PECoffDirectiveSection extends PECoffObjectFile.PECoffSection {
+
+        public PECoffDirectiveSection(String name, int alignment) {
+            super(name, alignment, EnumSet.of(PECoffSectionFlag.LINKER), -1);
+        }
+
+        @Override
+        public ElementImpl getImpl() {
+            return directives;
+        }
+
+        @Override
+        public int getOrDecideOffset(Map<Element, LayoutDecisionMap> alreadyDecided, int offsetHint) {
+            // Put the directives immediately after the section header table.
+            return IMAGE_FILE_HEADER.totalsize + ((elements.sectionsCount()) * IMAGE_SECTION_HEADER.totalsize);
+        }
+
+        @Override
+        public int getOrDecideVaddr(Map<Element, LayoutDecisionMap> alreadyDecided, int vaddrHint) {
+            return ObjectFile.defaultGetOrDecideVaddr(alreadyDecided, this, vaddrHint);
+        }
+
+        @Override
+        public LayoutDecisionMap getDecisions(LayoutDecisionMap copyingIn) {
+            return ObjectFile.defaultDecisions(this, copyingIn);
+        }
+
+        @Override
+        public Iterable<BuildDependency> getDependencies(Map<Element, LayoutDecisionMap> decisions) {
+            return ObjectFile.defaultDependencies(decisions, this);
+        }
+
+        @Override
+        public byte[] getOrDecideContent(Map<Element, LayoutDecisionMap> alreadyDecided, byte[] contentHint) {
+            return symtab.getDirectiveArray();
+        }
+
+        @Override
+        public int getOrDecideSize(Map<Element, LayoutDecisionMap> alreadyDecided, int sizeHint) {
+            return symtab.getDirectiveSize();
+        }
     }
 
     @Override

@@ -53,14 +53,20 @@ public final class Params {
         return new Params(params);
     }
 
-    public static Params createConsoleAPICalled(String type, String str, long contextId) {
+    public static Params createConsoleAPICalled(String type, Object text, long contextId) {
         JSONObject params = new JSONObject();
         params.put("type", type);
         JSONArray args = new JSONArray();
-        JSONObject outObject = new JSONObject();
-        outObject.put("type", "string");
-        outObject.put("value", str);
-        args.put(outObject);
+        if (text != null) {
+            JSONObject outObject = new JSONObject();
+            if (text instanceof String) {
+                outObject.put("type", "string");
+            } else if (text instanceof Number) {
+                outObject.put("type", "number");
+            }
+            outObject.put("value", text);
+            args.put(outObject);
+        }
         params.put("args", args);
         params.put("executionContextId", contextId);
         params.put("timestamp", System.nanoTime() / 1000_000.0);

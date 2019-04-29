@@ -114,7 +114,7 @@ public final class SubstrateTruffleRuntime extends GraalTruffleRuntime {
         }
         if (TruffleRuntimeOptions.getValue(SharedTruffleRuntimeOptions.TraceTruffleTransferToInterpreter)) {
             if (!SubstrateOptions.IncludeNodeSourcePositions.getValue()) {
-                System.out.println("Warning: TraceTruffleTransferToInterpreter cannot print stack traces. Build image with -H:+IncludeNodeSourcePositions to enable stack traces.");
+                Log.log().string("Warning: TraceTruffleTransferToInterpreter cannot print stack traces. Build image with -H:+IncludeNodeSourcePositions to enable stack traces.").newline();
             }
             RuntimeOptionValues.singleton().update(Deoptimizer.Options.TraceDeoptimization, true);
         }
@@ -128,9 +128,14 @@ public final class SubstrateTruffleRuntime extends GraalTruffleRuntime {
         assert truffleCompiler == null : "Cannot re-initialize Substrate TruffleCompiler";
         GraalFeature graalFeature = ImageSingletons.lookup(GraalFeature.class);
         SnippetReflectionProvider snippetReflection = graalFeature.getHostedProviders().getSnippetReflection();
-        SubstrateTruffleCompiler compiler = new SubstrateTruffleCompiler(this, graalFeature.getHostedProviders().getGraphBuilderPlugins(), GraalSupport.getSuites(),
+        SubstrateTruffleCompiler compiler = new SubstrateTruffleCompiler(this, graalFeature.getHostedProviders().getGraphBuilderPlugins(),
+                        GraalSupport.getSuites(),
                         GraalSupport.getLIRSuites(),
-                        GraalSupport.getRuntimeConfig().getBackendForNormalMethod(), snippetReflection);
+                        GraalSupport.getRuntimeConfig().getBackendForNormalMethod(),
+                        GraalSupport.getFirstTierSuites(),
+                        GraalSupport.getFirstTierLirSuites(),
+                        GraalSupport.getFirstTierProviders(),
+                        snippetReflection);
         truffleCompiler = compiler;
 
         return compiler;
@@ -154,9 +159,14 @@ public final class SubstrateTruffleRuntime extends GraalTruffleRuntime {
     public SubstrateTruffleCompiler newTruffleCompiler() {
         GraalFeature graalFeature = ImageSingletons.lookup(GraalFeature.class);
         SnippetReflectionProvider snippetReflectionProvider = graalFeature.getHostedProviders().getSnippetReflection();
-        return new SubstrateTruffleCompiler(this, graalFeature.getHostedProviders().getGraphBuilderPlugins(), GraalSupport.getSuites(),
+        return new SubstrateTruffleCompiler(this, graalFeature.getHostedProviders().getGraphBuilderPlugins(),
+                        GraalSupport.getSuites(),
                         GraalSupport.getLIRSuites(),
-                        GraalSupport.getRuntimeConfig().getBackendForNormalMethod(), snippetReflectionProvider);
+                        GraalSupport.getRuntimeConfig().getBackendForNormalMethod(),
+                        GraalSupport.getFirstTierSuites(),
+                        GraalSupport.getFirstTierLirSuites(),
+                        GraalSupport.getFirstTierProviders(),
+                        snippetReflectionProvider);
     }
 
     private void tearDown() {
@@ -254,8 +264,6 @@ public final class SubstrateTruffleRuntime extends GraalTruffleRuntime {
             if (TruffleRuntimeOptions.getValue(SharedTruffleRuntimeOptions.TruffleCompilationExceptionsArePrinted)) {
                 Log.log().string(printStackTraceToString(e));
             }
-        } finally {
-            optimizedCallTarget.resetCompilationTask();
         }
 
         return null;
@@ -340,9 +348,6 @@ public final class SubstrateTruffleRuntime extends GraalTruffleRuntime {
         while (optionValues.advance()) {
             final OptionKey<?> key = optionValues.getKey();
             Object value = optionValues.getValue();
-            if (value == null) {
-                value = key.getDefaultValue();
-            }
             res.put(key.getName(), value);
         }
         return res;

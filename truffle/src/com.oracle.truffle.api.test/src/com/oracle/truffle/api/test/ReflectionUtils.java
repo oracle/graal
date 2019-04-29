@@ -58,7 +58,7 @@ public class ReflectionUtils {
         }
     }
 
-    public static Object newInstance(Class<?> clazz, Object... args) {
+    public static <T> T newInstance(Class<T> clazz, Object... args) {
         return newInstance(clazz, inferTypes(args), args);
     }
 
@@ -82,9 +82,9 @@ public class ReflectionUtils {
         }
     }
 
-    public static Object newInstance(Class<?> clazz, Class<?>[] argTypes, Object... args) {
+    public static <T> T newInstance(Class<T> clazz, Class<?>[] argTypes, Object... args) {
         try {
-            Constructor<?> m = clazz.getDeclaredConstructor(argTypes);
+            Constructor<T> m = clazz.getDeclaredConstructor(argTypes);
             setAccessible(m, true);
             return m.newInstance(args);
         } catch (Exception e) {

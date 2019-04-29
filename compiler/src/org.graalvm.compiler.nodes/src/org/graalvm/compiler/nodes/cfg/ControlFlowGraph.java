@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2011, 2017, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2011, 2018, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -23,6 +23,8 @@
  * questions.
  */
 package org.graalvm.compiler.nodes.cfg;
+
+import static org.graalvm.compiler.core.common.cfg.AbstractBlockBase.BLOCK_ID_COMPARATOR;
 
 import java.util.ArrayList;
 import java.util.Arrays;
@@ -49,7 +51,6 @@ import org.graalvm.compiler.nodes.LoopEndNode;
 import org.graalvm.compiler.nodes.LoopExitNode;
 import org.graalvm.compiler.nodes.MergeNode;
 import org.graalvm.compiler.nodes.StructuredGraph;
-import org.graalvm.compiler.nodes.StructuredGraph.GuardsStage;
 
 public final class ControlFlowGraph implements AbstractControlFlowGraph<Block> {
     /**
@@ -316,6 +317,9 @@ public final class ControlFlowGraph implements AbstractControlFlowGraph<Block> {
                     dominator = ((dominator == null) ? pred : commonDominatorRaw(dominator, pred));
                 }
             }
+            // Fortify: Suppress Null Dereference false positive (every block apart from the first
+            // is guaranteed to have a predecessor)
+            assert dominator != null;
 
             // Set dominator.
             block.setDominator(dominator);
@@ -614,13 +618,26 @@ public final class ControlFlowGraph implements AbstractControlFlowGraph<Block> {
                         computeLoopBlocks(endBlock, loop, stack, true);
                     }
 
-                    if (graph.getGuardsStage() != GuardsStage.AFTER_FSA) {
+                    // Note that at this point, due to traversal order, child loops of `loop` have
+                    // not been discovered yet.
+                    for (Block b : loop.getBlocks()) {
+                        for (Block sux : b.getSuccessors()) {
+                            if (sux.getLoop() != loop) {
+                                assert sux.getLoopDepth() < loop.getDepth();
+                                loop.getNaturalExits().add(sux);
+                            }
+                        }
+                    }
+                    loop.getNaturalExits().sort(BLOCK_ID_COMPARATOR);
+
+                    if (!graph.getGuardsStage().areFrameStatesAtDeopts()) {
                         for (LoopExitNode exit : loopBegin.loopExits()) {
                             Block exitBlock = nodeToBlock.get(exit);
                             assert exitBlock.getPredecessorCount() == 1;
                             computeLoopBlocks(exitBlock.getFirstPredecessor(), loop, stack, true);
-                            loop.addExit(exitBlock);
+                            loop.getLoopExits().add(exitBlock);
                         }
+                        loop.getLoopExits().sort(BLOCK_ID_COMPARATOR);
 
                         // The following loop can add new blocks to the end of the loop's block
                         // list.
@@ -630,65 +647,21 @@ public final class ControlFlowGraph implements AbstractControlFlowGraph<Block> {
                             for (Block sux : b.getSuccessors()) {
                                 if (sux.getLoop() != loop) {
                                     AbstractBeginNode begin = sux.getBeginNode();
-                                    if (!(begin instanceof LoopExitNode && ((LoopExitNode) begin).loopBegin() == loopBegin)) {
+                                    if (!loopBegin.isLoopExit(begin)) {
+                                        assert !(begin instanceof LoopBeginNode);
+                                        assert sux.getLoopDepth() < loop.getDepth();
                                         graph.getDebug().log(DebugContext.VERBOSE_LEVEL, "Unexpected loop exit with %s, including whole branch in the loop", sux);
                                         computeLoopBlocks(sux, loop, stack, false);
                                     }
                                 }
                             }
                         }
+                    } else {
+                        loop.getLoopExits().addAll(loop.getNaturalExits());
                     }
                 }
             }
         }
-
-        /*
-         * Compute the loop exit blocks after FSA.
-         */
-        if (graph.getGuardsStage() == GuardsStage.AFTER_FSA) {
-            for (Block b : reversePostOrder) {
-                if (b.getLoop() != null) {
-                    for (Block succ : b.getSuccessors()) {
-                        // if the loop of the succ is a different one (or none)
-                        if (b.getLoop() != succ.getLoop()) {
-                            // and the succ loop is not a child loop of the curr one
-                            if (succ.getLoop() == null) {
-                                // we might exit multiple loops if b.loops is not a loop at depth 0
-                                Loop<Block> curr = b.getLoop();
-                                while (curr != null) {
-                                    curr.addExit(succ);
-                                    curr = curr.getParent();
-                                }
-                            } else {
-                                /*
-                                 * succ also has a loop, might be a child loop
-                                 *
-                                 * if it is a child loop we do not exit a loop. if it is a loop
-                                 * different than b.loop and not a child loop it must be a parent
-                                 * loop, thus we exit all loops between b.loop and succ.loop
-                                 *
-                                 * if we exit multiple loops immediately after each other the
-                                 * bytecode parser might generate loop exit nodes after another and
-                                 * the CFG will identify them as separate blocks, we just take the
-                                 * first one and exit all loops at this one
-                                 */
-                                if (succ.getLoop().getParent() != b.getLoop()) {
-                                    assert succ.getLoop().getDepth() < b.getLoop().getDepth();
-                                    // b.loop must not be a transitive parent of succ.loop
-                                    assert !Loop.transitiveParentLoop(succ.getLoop(), b.getLoop());
-                                    Loop<Block> curr = b.getLoop();
-                                    while (curr != null && curr != succ.getLoop()) {
-                                        curr.addExit(succ);
-                                        curr = curr.getParent();
-                                    }
-                                }
-                            }
-                        }
-                    }
-                }
-            }
-        }
-
     }
 
     private static void computeLoopBlocks(Block start, Loop<Block> loop, Block[] stack, boolean usePred) {

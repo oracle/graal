@@ -135,7 +135,7 @@ public class ImplicitCastTest {
         public abstract Object execute(int value);
 
         // TODO: this should not be an error
-        @ExpectError("Method signature (boolean) does not match to the expected signature: \n    Object op1(int arg0)")
+        @ExpectError("Method signature (boolean) does not match to the expected signature: %")
         @Specialization
         public boolean op1(boolean value) {
             return value;

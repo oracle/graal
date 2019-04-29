@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2018, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2019, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -28,6 +28,7 @@ package com.oracle.objectfile.pecoff;
 import java.nio.ByteBuffer;
 import java.nio.ByteOrder;
 import java.util.ArrayList;
+import java.nio.charset.StandardCharsets;
 
 import com.oracle.objectfile.pecoff.PECoff.IMAGE_SYMBOL;
 
@@ -94,7 +95,8 @@ final class PECoffSymtabStruct {
 
             sym = new PECoffSymbolStruct(index, type, storageclass, secHdrIndex, offset);
             symbols.add(sym);
-            if (storageclass == IMAGE_SYMBOL.IMAGE_SYM_CLASS_EXTERNAL) {
+            // Only add exports for external class symbols that are defined
+            if (storageclass == IMAGE_SYMBOL.IMAGE_SYM_CLASS_EXTERNAL && secHdrIndex != -1) {
                 addDirective(name, type);
             }
         }
@@ -134,7 +136,7 @@ final class PECoffSymtabStruct {
 
     // Return the string table array
     byte[] getStrtabArray() {
-        byte[] strs = strTabContent.toString().getBytes();
+        byte[] strs = strTabContent.toString().getBytes(StandardCharsets.UTF_8);
 
         // Update the size of the string table
         ByteBuffer buff = ByteBuffer.wrap(strs);
@@ -144,7 +146,11 @@ final class PECoffSymtabStruct {
         return (strs);
     }
 
+    int getDirectiveSize() {
+        return (directives.length());
+    }
+
     byte[] getDirectiveArray() {
-        return (directives.toString().getBytes());
+        return (directives.toString().getBytes(StandardCharsets.UTF_8));
     }
 }

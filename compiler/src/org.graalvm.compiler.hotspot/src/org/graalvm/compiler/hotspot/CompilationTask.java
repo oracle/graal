@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2012, 2016, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2012, 2018, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -26,13 +26,12 @@ package org.graalvm.compiler.hotspot;
 
 import static org.graalvm.compiler.core.CompilationWrapper.ExceptionAction.Diagnose;
 import static org.graalvm.compiler.core.CompilationWrapper.ExceptionAction.ExitVM;
-import static org.graalvm.compiler.core.GraalCompilerOptions.CompilationBailoutAction;
+import static org.graalvm.compiler.core.GraalCompilerOptions.CompilationBailoutAsFailure;
 import static org.graalvm.compiler.core.GraalCompilerOptions.CompilationFailureAction;
 import static org.graalvm.compiler.core.phases.HighTier.Options.Inline;
 import static org.graalvm.compiler.java.BytecodeParserOptions.InlineDuringParsing;
 
 import java.io.PrintStream;
-import java.util.List;
 
 import org.graalvm.collections.EconomicMap;
 import org.graalvm.compiler.api.replacements.SnippetReflectionProvider;
@@ -40,45 +39,26 @@ import org.graalvm.compiler.code.CompilationResult;
 import org.graalvm.compiler.core.CompilationPrinter;
 import org.graalvm.compiler.core.CompilationWrapper;
 import org.graalvm.compiler.core.common.CompilationIdentifier;
-import org.graalvm.compiler.debug.Assertions;
 import org.graalvm.compiler.debug.CounterKey;
 import org.graalvm.compiler.debug.DebugCloseable;
 import org.graalvm.compiler.debug.DebugContext;
 import org.graalvm.compiler.debug.DebugDumpScope;
-import org.graalvm.compiler.debug.GraalError;
 import org.graalvm.compiler.debug.TimerKey;
-import org.graalvm.compiler.options.EnumOptionKey;
 import org.graalvm.compiler.options.OptionKey;
 import org.graalvm.compiler.options.OptionValues;
 import org.graalvm.compiler.printer.GraalDebugHandlersFactory;
 
 import jdk.vm.ci.code.BailoutException;
 import jdk.vm.ci.code.CodeCacheProvider;
-import jdk.vm.ci.hotspot.EventProvider;
 import jdk.vm.ci.hotspot.HotSpotCompilationRequest;
 import jdk.vm.ci.hotspot.HotSpotCompilationRequestResult;
 import jdk.vm.ci.hotspot.HotSpotInstalledCode;
-import jdk.vm.ci.hotspot.HotSpotJVMCICompilerFactory;
 import jdk.vm.ci.hotspot.HotSpotJVMCIRuntime;
 import jdk.vm.ci.hotspot.HotSpotNmethod;
 import jdk.vm.ci.hotspot.HotSpotResolvedJavaMethod;
 import jdk.vm.ci.runtime.JVMCICompiler;
-import jdk.vm.ci.services.JVMCIServiceLocator;
 
 public class CompilationTask {
-
-    private static final EventProvider eventProvider;
-
-    static {
-        List<EventProvider> providers = JVMCIServiceLocator.getProviders(EventProvider.class);
-        if (providers.size() > 1) {
-            throw new GraalError("Multiple %s providers found: %s", EventProvider.class.getName(), providers);
-        } else if (providers.isEmpty()) {
-            eventProvider = EventProvider.createEmptyEventProvider();
-        } else {
-            eventProvider = providers.get(0);
-        }
-    }
 
     private final HotSpotJVMCIRuntime jvmciRuntime;
 
@@ -94,15 +74,13 @@ public class CompilationTask {
     private final boolean installAsDefault;
 
     private final boolean useProfilingInfo;
-    private final OptionValues options;
+    private final boolean shouldRetainLocalVariables;
 
     final class HotSpotCompilationWrapper extends CompilationWrapper<HotSpotCompilationRequestResult> {
-        private final EventProvider.CompilationEvent compilationEvent;
         CompilationResult result;
 
-        HotSpotCompilationWrapper(EventProvider.CompilationEvent compilationEvent) {
+        HotSpotCompilationWrapper() {
             super(compiler.getGraalRuntime().getOutputDirectory(), compiler.getGraalRuntime().getCompilationProblemsPerAction());
-            this.compilationEvent = compilationEvent;
         }
 
         @Override
@@ -128,13 +106,6 @@ public class CompilationTask {
                  */
                 return HotSpotCompilationRequestResult.failure(bailout.getMessage(), !bailout.isPermanent());
             }
-            // Log a failure event.
-            EventProvider.CompilerFailureEvent event = eventProvider.newCompilerFailureEvent();
-            if (event.shouldWrite()) {
-                event.setCompileId(getId());
-                event.setMessage(t.getMessage());
-                event.commit();
-            }
 
             /*
              * Treat random exceptions from the compiler as indicating a problem compiling this
@@ -145,25 +116,32 @@ public class CompilationTask {
         }
 
         @Override
-        protected ExceptionAction lookupAction(OptionValues values, EnumOptionKey<ExceptionAction> actionKey, Throwable cause) {
-            // Respect current action if it has been explicitly set.
-            if (!actionKey.hasBeenSet(values)) {
-                if (actionKey == CompilationFailureAction) {
-                    // Automatically exit on non-bailout during bootstrap
-                    // or when assertions are enabled.
-                    if (Assertions.assertionsEnabled() || compiler.getGraalRuntime().isBootstrapping()) {
-                        return ExitVM;
-                    }
-                } else if (actionKey == CompilationBailoutAction && ((BailoutException) cause).isPermanent()) {
-                    // Get more info for permanent bailouts during bootstrap
-                    // or when assertions are enabled.
-                    assert CompilationBailoutAction.getDefaultValue() == ExceptionAction.Silent;
-                    if (Assertions.assertionsEnabled() || compiler.getGraalRuntime().isBootstrapping()) {
-                        return Diagnose;
+        protected ExceptionAction lookupAction(OptionValues values, Throwable cause) {
+            if (cause instanceof BailoutException) {
+                BailoutException bailout = (BailoutException) cause;
+                if (bailout.isPermanent()) {
+                    // Respect current action if it has been explicitly set.
+                    if (!CompilationBailoutAsFailure.hasBeenSet(values)) {
+                        // Get more info for permanent bailouts during bootstrap.
+                        if (compiler.getGraalRuntime().isBootstrapping()) {
+                            return Diagnose;
+                        }
+
                     }
                 }
+                if (!CompilationBailoutAsFailure.getValue(values)) {
+                    return super.lookupAction(values, cause);
+                }
             }
-            return super.lookupAction(values, actionKey, cause);
+
+            // Respect current action if it has been explicitly set.
+            if (!CompilationFailureAction.hasBeenSet(values)) {
+                // Automatically exit on failure during bootstrap.
+                if (compiler.getGraalRuntime().isBootstrapping()) {
+                    return ExitVM;
+                }
+            }
+            return super.lookupAction(values, cause);
         }
 
         @SuppressWarnings("try")
@@ -172,19 +150,14 @@ public class CompilationTask {
             HotSpotResolvedJavaMethod method = getMethod();
             int entryBCI = getEntryBCI();
             final boolean isOSR = entryBCI != JVMCICompiler.INVOCATION_ENTRY_BCI;
-            CompilationStatistics stats = CompilationStatistics.create(options, method, isOSR);
+            CompilationStatistics stats = CompilationStatistics.create(debug.getOptions(), method, isOSR);
 
-            final CompilationPrinter printer = CompilationPrinter.begin(options, compilationId, method, entryBCI);
+            final CompilationPrinter printer = CompilationPrinter.begin(debug.getOptions(), compilationId, method, entryBCI);
 
             try (DebugContext.Scope s = debug.scope("Compiling", new DebugDumpScope(getIdString(), true))) {
-                // Begin the compilation event.
-                compilationEvent.begin();
-                result = compiler.compile(method, entryBCI, useProfilingInfo, compilationId, options, debug);
+                result = compiler.compile(method, entryBCI, useProfilingInfo, shouldRetainLocalVariables, compilationId, debug);
             } catch (Throwable e) {
                 throw debug.handle(e);
-            } finally {
-                // End the compilation event.
-                compilationEvent.end();
             }
 
             if (result != null) {
@@ -203,14 +176,21 @@ public class CompilationTask {
 
     }
 
-    public CompilationTask(HotSpotJVMCIRuntime jvmciRuntime, HotSpotGraalCompiler compiler, HotSpotCompilationRequest request, boolean useProfilingInfo, boolean installAsDefault,
-                    OptionValues options) {
+    public CompilationTask(HotSpotJVMCIRuntime jvmciRuntime, HotSpotGraalCompiler compiler, HotSpotCompilationRequest request, boolean useProfilingInfo, boolean installAsDefault) {
+        this(jvmciRuntime, compiler, request, useProfilingInfo, false, installAsDefault);
+    }
+
+    public CompilationTask(HotSpotJVMCIRuntime jvmciRuntime, HotSpotGraalCompiler compiler, HotSpotCompilationRequest request, boolean useProfilingInfo, boolean shouldRetainLocalVariables,
+                    boolean installAsDefault) {
         this.jvmciRuntime = jvmciRuntime;
         this.compiler = compiler;
         this.compilationId = new HotSpotCompilationIdentifier(request);
         this.useProfilingInfo = useProfilingInfo;
+        this.shouldRetainLocalVariables = shouldRetainLocalVariables;
         this.installAsDefault = installAsDefault;
+    }
 
+    public OptionValues filterOptions(OptionValues options) {
         /*
          * Disable inlining if HotSpot has it disabled unless it's been explicitly set in Graal.
          */
@@ -229,7 +209,7 @@ public class CompilationTask {
                 newOptions = new OptionValues(options, m);
             }
         }
-        this.options = newOptions;
+        return newOptions;
     }
 
     public HotSpotResolvedJavaMethod getMethod() {
@@ -295,7 +275,8 @@ public class CompilationTask {
      */
     public static final TimerKey CodeInstallationTime = DebugContext.timer("CodeInstallation");
 
-    public HotSpotCompilationRequestResult runCompilation() {
+    public HotSpotCompilationRequestResult runCompilation(OptionValues initialOptions) {
+        OptionValues options = filterOptions(initialOptions);
         SnippetReflectionProvider snippetReflection = compiler.getGraalRuntime().getHostProviders().getSnippetReflection();
         try (DebugContext debug = DebugContext.create(options, new GraalDebugHandlersFactory(snippetReflection))) {
             return runCompilation(debug);
@@ -310,23 +291,19 @@ public class CompilationTask {
         boolean isOSR = entryBCI != JVMCICompiler.INVOCATION_ENTRY_BCI;
         HotSpotResolvedJavaMethod method = getMethod();
 
-        // Log a compilation event.
-        EventProvider.CompilationEvent compilationEvent = eventProvider.newCompilationEvent();
-
-        if (installAsDefault) {
+        if (installAsDefault || isOSR) {
             // If there is already compiled code for this method on our level we simply return.
             // JVMCI compiles are always at the highest compile level, even in non-tiered mode so we
             // only need to check for that value.
             if (method.hasCodeAtLevel(entryBCI, config.compilationLevelFullOptimization)) {
                 return HotSpotCompilationRequestResult.failure("Already compiled", false);
             }
-            if (HotSpotGraalCompilerFactory.checkGraalCompileOnlyFilter(method.getDeclaringClass().toJavaName(), method.getName(), method.getSignature().toString(),
-                            HotSpotJVMCICompilerFactory.CompilationLevel.FullOptimization) != HotSpotJVMCICompilerFactory.CompilationLevel.FullOptimization) {
+            if (HotSpotGraalCompilerFactory.shouldExclude(method)) {
                 return HotSpotCompilationRequestResult.failure("GraalCompileOnly excluded", false);
             }
         }
 
-        HotSpotCompilationWrapper compilation = new HotSpotCompilationWrapper(compilationEvent);
+        HotSpotCompilationWrapper compilation = new HotSpotCompilationWrapper();
         try (DebugCloseable a = CompilationTime.start(debug)) {
             return compilation.run(debug);
         } finally {
@@ -343,18 +320,6 @@ public class CompilationTask {
                         InstalledCodeSize.add(debug, codeSize);
                     }
                 }
-
-                // Log a compilation event.
-                if (compilationEvent.shouldWrite()) {
-                    compilationEvent.setMethod(method.format("%H.%n(%p)"));
-                    compilationEvent.setCompileId(getId());
-                    compilationEvent.setCompileLevel(config.compilationLevelFullOptimization);
-                    compilationEvent.setSucceeded(compilation.result != null && installedCode != null);
-                    compilationEvent.setIsOsr(isOSR);
-                    compilationEvent.setCodeSize(codeSize);
-                    compilationEvent.setInlinedBytes(compiledBytecodes);
-                    compilationEvent.commit();
-                }
             } catch (Throwable t) {
                 return compilation.handleException(t);
             }
@@ -368,8 +333,14 @@ public class CompilationTask {
         installedCode = null;
         Object[] context = {new DebugDumpScope(getIdString(), true), codeCache, getMethod(), compResult};
         try (DebugContext.Scope s = debug.scope("CodeInstall", context)) {
-            installedCode = (HotSpotInstalledCode) backend.createInstalledCode(debug, getRequest().getMethod(), getRequest(), compResult,
-                            getRequest().getMethod().getSpeculationLog(), null, installAsDefault, context);
+            HotSpotCompilationRequest request = getRequest();
+            installedCode = (HotSpotInstalledCode) backend.createInstalledCode(debug,
+                            request.getMethod(),
+                            request,
+                            compResult,
+                            null,
+                            installAsDefault,
+                            context);
         } catch (Throwable e) {
             throw debug.handle(e);
         }

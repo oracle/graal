@@ -38,11 +38,13 @@ import org.graalvm.compiler.replacements.nodes.UnaryMathIntrinsicNode.UnaryOpera
 import org.graalvm.nativeimage.ImageSingletons;
 import org.graalvm.nativeimage.LogHandler;
 import org.graalvm.nativeimage.c.function.CodePointer;
+import org.graalvm.util.DirectAnnotationAccess;
 import org.graalvm.word.LocationIdentity;
 import org.graalvm.word.Pointer;
 import org.graalvm.word.UnsignedWord;
 import org.graalvm.word.WordFactory;
 
+import com.oracle.svm.core.SubstrateOptions;
 import com.oracle.svm.core.annotate.RestrictHeapAccess;
 import com.oracle.svm.core.annotate.Uninterruptible;
 import com.oracle.svm.core.code.CodeInfoTable;
@@ -51,6 +53,8 @@ import com.oracle.svm.core.jdk.JDKUtils;
 import com.oracle.svm.core.log.Log;
 import com.oracle.svm.core.stack.JavaStackWalker;
 import com.oracle.svm.core.stack.StackFrameVisitor;
+import com.oracle.svm.core.stack.StackOverflowCheck;
+import com.oracle.svm.core.thread.VMThreads;
 import com.oracle.svm.core.threadlocal.FastThreadLocalFactory;
 import com.oracle.svm.core.threadlocal.FastThreadLocalObject;
 import com.oracle.svm.core.util.VMError;
@@ -69,14 +73,6 @@ public class SnippetRuntime {
     /* Implementation of runtime calls defined in a VM-independent way by Graal. */
     public static final SubstrateForeignCallDescriptor REGISTER_FINALIZER = findForeignCall(SnippetRuntime.class, "registerFinalizer", true);
 
-    public static final SubstrateForeignCallDescriptor FATAL_RUNTIME_ASSERTION = findForeignCall(SnippetRuntime.class, "reportRuntimeAssertionFatal", true);
-    public static final SubstrateForeignCallDescriptor FATAL_RUNTIME_ASSERTION_OBJ = findForeignCall(SnippetRuntime.class, "reportRuntimeAssertionFatalObj", true);
-    public static final SubstrateForeignCallDescriptor FATAL_RUNTIME_ASSERTION_OBJ_OBJ = findForeignCall(SnippetRuntime.class, "reportRuntimeAssertionFatalObjObj", true);
-    public static final SubstrateForeignCallDescriptor FATAL_RUNTIME_ASSERTION_INT = findForeignCall(SnippetRuntime.class, "reportRuntimeAssertionFatalInt", true);
-    public static final SubstrateForeignCallDescriptor FATAL_RUNTIME_ASSERTION_LONG = findForeignCall(SnippetRuntime.class, "reportRuntimeAssertionFatalLong", true);
-    public static final SubstrateForeignCallDescriptor FATAL_RUNTIME_ASSERTION_FLOAT = findForeignCall(SnippetRuntime.class, "reportRuntimeAssertionFatalFloat", true);
-    public static final SubstrateForeignCallDescriptor FATAL_RUNTIME_ASSERTION_DOUBLE = findForeignCall(SnippetRuntime.class, "reportRuntimeAssertionFatalDouble", true);
-
     /*
      * Graal-defined math functions where we have optimized machine code sequences: We just register
      * the original Math function as the foreign call. The backend will emit the machine code
@@ -87,12 +83,8 @@ public class SnippetRuntime {
     public static final SubstrateForeignCallDescriptor ARITHMETIC_TAN = findForeignCall(UnaryOperation.TAN.foreignCallDescriptor.getName(), Math.class, "tan", true);
     public static final SubstrateForeignCallDescriptor ARITHMETIC_LOG = findForeignCall(UnaryOperation.LOG.foreignCallDescriptor.getName(), Math.class, "log", true);
     public static final SubstrateForeignCallDescriptor ARITHMETIC_LOG10 = findForeignCall(UnaryOperation.LOG10.foreignCallDescriptor.getName(), Math.class, "log10", true);
-    /*
-     * Graal-defined math functions where we do not have optimized code sequences: StrictMath is the
-     * always-available fall-back.
-     */
-    public static final SubstrateForeignCallDescriptor ARITHMETIC_EXP = findForeignCall(UnaryOperation.EXP.foreignCallDescriptor.getName(), StrictMath.class, "exp", true);
-    public static final SubstrateForeignCallDescriptor ARITHMETIC_POW = findForeignCall(BinaryOperation.POW.foreignCallDescriptor.getName(), StrictMath.class, "pow", true);
+    public static final SubstrateForeignCallDescriptor ARITHMETIC_EXP = findForeignCall(UnaryOperation.EXP.foreignCallDescriptor.getName(), Math.class, "exp", true);
+    public static final SubstrateForeignCallDescriptor ARITHMETIC_POW = findForeignCall(BinaryOperation.POW.foreignCallDescriptor.getName(), Math.class, "pow", true);
 
     /*
      * These methods are intrinsified as nodes at first, but can then lowered back to a call. Ensure
@@ -132,7 +124,7 @@ public class SnippetRuntime {
          * We cannot annotate methods from the JDK, but all other foreign call targets we want to be
          * annotated for documentation, and to avoid stripping.
          */
-        VMError.guarantee(declaringClass.getName().startsWith("java.lang") || foundMethod.getAnnotation(SubstrateForeignCallTarget.class) != null,
+        VMError.guarantee(declaringClass.getName().startsWith("java.lang") || DirectAnnotationAccess.isAnnotationPresent(foundMethod, SubstrateForeignCallTarget.class),
                         "Add missing @SubstrateForeignCallTarget to " + declaringClass.getName() + "." + methodName);
 
         return new SubstrateForeignCallDescriptor(descriptorName, foundMethod, isReexecutable, killedLocations);
@@ -194,16 +186,20 @@ public class SnippetRuntime {
         throw VMError.unsupportedFeature("Unresolved element found " + (sourcePosition != null ? sourcePosition : ""));
     }
 
-    static class ExceptionStackFrameVisitor implements StackFrameVisitor {
+    /*
+     * The stack walking objects must be stateless (no instance fields), because multiple threads
+     * can use them simultaneously. All state must be in separate VMThreadLocals.
+     */
+    public static class ExceptionStackFrameVisitor implements StackFrameVisitor {
         @Uninterruptible(reason = "Set currentException atomically with regard to the safepoint mechanism", calleeMustBe = false)
         @RestrictHeapAccess(access = RestrictHeapAccess.Access.NO_ALLOCATION, reason = "Must not allocate when unwinding the stack.")
         @Override
         public boolean visitFrame(Pointer sp, CodePointer ip, DeoptimizedFrame deoptFrame) {
-            CodePointer continueIP;
+            CodePointer handlerPointer;
             if (deoptFrame != null) {
                 /* Deoptimization entry points always have an exception handler. */
                 deoptFrame.takeException();
-                continueIP = ip;
+                handlerPointer = ip;
 
             } else {
                 long handler = CodeInfoTable.lookupExceptionOffset(ip);
@@ -211,26 +207,27 @@ public class SnippetRuntime {
                     /* No handler found in this frame, walk to caller frame. */
                     return true;
                 }
-                continueIP = (CodePointer) ((UnsignedWord) ip).add(WordFactory.signed(handler));
+
+                handlerPointer = getExceptionHandlerPointer(ip, sp, handler);
             }
 
             Throwable exception = currentException.get();
             currentException.set(null);
 
-            KnownIntrinsics.farReturn(exception, sp, continueIP);
+            StackOverflowCheck.singleton().protectYellowZone();
+
+            KnownIntrinsics.farReturn(exception, sp, handlerPointer);
             /*
              * The intrinsic performs a jump to the specified instruction pointer, so this code is
              * unreachable.
              */
             return false;
         }
-    }
 
-    /*
-     * The stack walking objects must be stateless (no instance fields), because multiple threads
-     * can use them simultaneously. All state must be in separate VMThreadLocals.
-     */
-    private static final ExceptionStackFrameVisitor exceptionStackFrameVisitor = new ExceptionStackFrameVisitor();
+        public CodePointer getExceptionHandlerPointer(CodePointer ip, @SuppressWarnings("unused") Pointer sp, long handlerOffset) {
+            return (CodePointer) ((UnsignedWord) ip).add(WordFactory.signed(handlerOffset));
+        }
+    }
 
     protected static final FastThreadLocalObject<Throwable> currentException = FastThreadLocalFactory.createObject(Throwable.class);
 
@@ -239,11 +236,23 @@ public class SnippetRuntime {
         return currentException.get() != null;
     }
 
+    @Uninterruptible(reason = "Called from uninterruptible callers.", mayBeInlined = true)
+    static boolean exceptionsAreFatal() {
+        /*
+         * If an exception is thrown while the thread is not in the Java state, most likely
+         * something went wrong in our state transition code. We cannot reliably unwind the stack,
+         * so exiting quickly is better.
+         */
+        return SubstrateOptions.MultiThreaded.getValue() && !VMThreads.StatusSupport.isStatusJava();
+    }
+
     /** Foreign call: {@link #UNWIND_EXCEPTION}. */
     @SubstrateForeignCallTarget
     @Uninterruptible(reason = "Set currentException atomically with regard to the safepoint mechanism", calleeMustBe = false)
     @RestrictHeapAccess(access = RestrictHeapAccess.Access.NO_ALLOCATION, reason = "Must not allocate when unwinding the stack.")
     private static void unwindException(Throwable exception, Pointer callerSP, CodePointer callerIP) {
+        StackOverflowCheck.singleton().makeYellowZoneAvailable();
+
         if (currentException.get() != null) {
             /*
              * Exception unwinding cannot be called recursively. The most likely reason to end up
@@ -257,12 +266,17 @@ public class SnippetRuntime {
         }
         currentException.set(exception);
 
+        if (exceptionsAreFatal()) {
+            Log.log().string("Fatal error: exception unwind while thread is not in Java state: ").string(exception.getClass().getName());
+            ImageSingletons.lookup(LogHandler.class).fatalError();
+            return;
+        }
         /*
          * callerSP and callerIP identify already the caller of the frame that wants to unwind an
          * exception. So we can start looking for the exception handler immediately in that frame,
          * without skipping any frames in between.
          */
-        JavaStackWalker.walkCurrentThread(callerSP, callerIP, exceptionStackFrameVisitor);
+        JavaStackWalker.walkCurrentThread(callerSP, callerIP, ImageSingletons.lookup(ExceptionStackFrameVisitor.class));
 
         /*
          * The stack walker does not return if an exception handler is found, but instead performs a
@@ -272,7 +286,7 @@ public class SnippetRuntime {
         reportUnhandledExceptionRaw(exception);
     }
 
-    public static void reportUnhandledExceptionRaw(Throwable exception) {
+    private static void reportUnhandledExceptionRaw(Throwable exception) {
         Log.log().string(exception.getClass().getName());
         String detail = JDKUtils.getRawMessage(exception);
         if (detail != null) {
@@ -286,68 +300,5 @@ public class SnippetRuntime {
     @SubstrateForeignCallTarget
     private static void registerFinalizer(@SuppressWarnings("unused") Object obj) {
         // We do not support finalizers, so nothing to do.
-    }
-
-    private static String assertionErrorName() {
-        return AssertionError.class.getName();
-    }
-
-    private static Log runtimeAssertionPrefix() {
-        return Log.log().string(assertionErrorName()).string(": ");
-    }
-
-    /** Foreign call: {@link #FATAL_RUNTIME_ASSERTION}. */
-    @SubstrateForeignCallTarget
-    private static void reportRuntimeAssertionFatal(@SuppressWarnings("unused") Object obj) {
-        throw VMError.shouldNotReachHere(assertionErrorName());
-    }
-
-    /** Foreign call: {@link #FATAL_RUNTIME_ASSERTION_OBJ}. */
-    @SubstrateForeignCallTarget
-    private static void reportRuntimeAssertionFatalObj(@SuppressWarnings("unused") Object obj, Object detailMessage) {
-        if (detailMessage instanceof String) {
-            runtimeAssertionPrefix().string((String) detailMessage).newline();
-        } else {
-            /*
-             * We do not want to convert detailMessage to a string, since that requires allocation.
-             */
-            runtimeAssertionPrefix().string(detailMessage.getClass().getName()).newline();
-        }
-        throw VMError.shouldNotReachHere(assertionErrorName());
-    }
-
-    /** Foreign call: {@link #FATAL_RUNTIME_ASSERTION_OBJ_OBJ}. */
-    @SubstrateForeignCallTarget
-    private static void reportRuntimeAssertionFatalObjObj(@SuppressWarnings("unused") Object obj, String detailMessage, @SuppressWarnings("unused") Throwable cause) {
-        runtimeAssertionPrefix().string(detailMessage).newline();
-        throw VMError.shouldNotReachHere(assertionErrorName());
-    }
-
-    /** Foreign call: {@link #FATAL_RUNTIME_ASSERTION_INT}. */
-    @SubstrateForeignCallTarget
-    private static void reportRuntimeAssertionFatalInt(@SuppressWarnings("unused") Object obj, int val) {
-        runtimeAssertionPrefix().signed(val).newline();
-        throw VMError.shouldNotReachHere(assertionErrorName());
-    }
-
-    /** Foreign call: {@link #FATAL_RUNTIME_ASSERTION_LONG}. */
-    @SubstrateForeignCallTarget
-    private static void reportRuntimeAssertionFatalLong(@SuppressWarnings("unused") Object obj, long val) {
-        runtimeAssertionPrefix().signed(val).newline();
-        throw VMError.shouldNotReachHere(assertionErrorName());
-    }
-
-    /** Foreign call: {@link #FATAL_RUNTIME_ASSERTION_FLOAT}. */
-    @SubstrateForeignCallTarget
-    private static void reportRuntimeAssertionFatalFloat(@SuppressWarnings("unused") Object obj, @SuppressWarnings("unused") float val) {
-        runtimeAssertionPrefix().string("[float number supressed]").newline();
-        throw VMError.shouldNotReachHere(assertionErrorName());
-    }
-
-    /** Foreign call: {@link #FATAL_RUNTIME_ASSERTION_DOUBLE}. */
-    @SubstrateForeignCallTarget
-    private static void reportRuntimeAssertionFatalDouble(@SuppressWarnings("unused") Object obj, @SuppressWarnings("unused") double val) {
-        runtimeAssertionPrefix().string("[double number supressed]").newline();
-        throw VMError.shouldNotReachHere(assertionErrorName());
     }
 }

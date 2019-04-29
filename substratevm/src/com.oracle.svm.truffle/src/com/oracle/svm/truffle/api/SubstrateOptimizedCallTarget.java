@@ -24,8 +24,11 @@
  */
 package com.oracle.svm.truffle.api;
 
+import com.oracle.svm.core.code.AbstractCodeInfo;
+import com.oracle.svm.core.code.RuntimeMethodInfo;
 import org.graalvm.compiler.truffle.common.CompilableTruffleAST;
 import org.graalvm.compiler.truffle.common.OptimizedAssumptionDependency;
+import org.graalvm.compiler.truffle.common.TruffleCompiler;
 import org.graalvm.compiler.truffle.runtime.OptimizedCallTarget;
 import org.graalvm.nativeimage.c.function.CFunctionPointer;
 import org.graalvm.word.WordFactory;
@@ -38,6 +41,7 @@ import com.oracle.svm.core.snippets.KnownIntrinsics;
 import com.oracle.truffle.api.nodes.RootNode;
 
 import jdk.vm.ci.meta.ResolvedJavaMethod;
+import jdk.vm.ci.meta.SpeculationLog;
 
 public class SubstrateOptimizedCallTarget extends OptimizedCallTarget implements SubstrateInstalledCode, OptimizedAssumptionDependency {
 
@@ -51,6 +55,11 @@ public class SubstrateOptimizedCallTarget extends OptimizedCallTarget implements
     @Override
     public SubstrateSpeculationLog getSpeculationLog() {
         return (SubstrateSpeculationLog) super.getSpeculationLog();
+    }
+
+    @Override
+    public SpeculationLog getCompilationSpeculationLog() {
+        return getSpeculationLog();
     }
 
     @Override
@@ -75,8 +84,16 @@ public class SubstrateOptimizedCallTarget extends OptimizedCallTarget implements
 
     @Override
     public boolean isValidLastTier() {
-        // TODO: GR-11926 Support multi-tier compilation in SVM.
-        return true;
+        long address0 = getAddress();
+        if (address0 == 0) {
+            return false;
+        }
+        AbstractCodeInfo codeInfo = CodeInfoTable.lookupCodeInfo(WordFactory.pointer(address0));
+        if (!(codeInfo instanceof RuntimeMethodInfo)) {
+            return false;
+        }
+        RuntimeMethodInfo runtimeCodeInfo = (RuntimeMethodInfo) codeInfo;
+        return runtimeCodeInfo.getTier() == TruffleCompiler.LAST_TIER_INDEX;
     }
 
     @Override

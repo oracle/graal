@@ -24,9 +24,11 @@
  */
 package com.oracle.svm.core.jdk;
 
-import org.graalvm.nativeimage.Feature;
+import org.graalvm.nativeimage.hosted.Feature;
 
 import com.oracle.svm.core.annotate.AutomaticFeature;
+import org.graalvm.nativeimage.ImageSingletons;
+import org.graalvm.nativeimage.impl.VMRuntimeSupport;
 
 @AutomaticFeature
 public class RuntimeFeature implements Feature {
@@ -34,6 +36,7 @@ public class RuntimeFeature implements Feature {
     @Override
     public void afterRegistration(AfterRegistrationAccess access) {
         RuntimeSupport.initializeRuntimeSupport();
+        ImageSingletons.add(VMRuntimeSupport.class, RuntimeSupport.getRuntimeSupport());
     }
 
     @Override

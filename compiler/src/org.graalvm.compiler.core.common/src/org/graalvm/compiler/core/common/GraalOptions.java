@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2009, 2016, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2009, 2019, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -83,8 +83,8 @@ public final class GraalOptions {
     @Option(help = "", type = OptionType.Debug)
     public static final OptionKey<String> EscapeAnalyzeOnly = new OptionKey<>(null);
 
-    @Option(help = "", type = OptionType.Expert)
-    public static final OptionKey<Integer> MaximumEscapeAnalysisArrayLength = new OptionKey<>(32);
+    @Option(help = "The maximum length of an array that will be escape analyzed.", type = OptionType.Expert)
+    public static final OptionKey<Integer> MaximumEscapeAnalysisArrayLength = new OptionKey<>(128);
 
     @Option(help = "", type = OptionType.Debug)
     public static final OptionKey<Boolean> PEAInliningHints = new OptionKey<>(false);
@@ -142,7 +142,7 @@ public final class GraalOptions {
     public static final OptionKey<Boolean> VerifyPhases = new OptionKey<>(false);
 
     // Debug settings:
-    @Option(help = "", type = OptionType.Debug)
+    @Option(help = "Start tracing compiled GC barriers after N garbage collections (disabled if N <= 0).", type = OptionType.Debug)
     public static final OptionKey<Integer> GCDebugStartCycle = new OptionKey<>(-1);
 
     @Option(help = "Perform platform dependent validation of the Java heap at returns", type = OptionType.Debug)
@@ -197,9 +197,6 @@ public final class GraalOptions {
     public static final OptionKey<Boolean> AlwaysInlineVTableStubs = new OptionKey<>(false);
 
     @Option(help = "", type = OptionType.Debug)
-    public static final OptionKey<Boolean> ResolveClassBeforeStaticInvoke = new OptionKey<>(false);
-
-    @Option(help = "", type = OptionType.Debug)
     public static final OptionKey<Boolean> CanOmitFrame = new OptionKey<>(true);
 
     // Ahead of time compilation
@@ -208,9 +205,6 @@ public final class GraalOptions {
 
     @Option(help = "Generate position independent code", type = OptionType.Expert)
     public static final OptionKey<Boolean> GeneratePIC = new OptionKey<>(false);
-
-    @Option(help = "", type = OptionType.Expert)
-    public static final OptionKey<Boolean> CallArrayCopy = new OptionKey<>(true);
 
     // Runtime settings
     @Option(help = "", type = OptionType.Expert)
@@ -279,12 +273,19 @@ public final class GraalOptions {
     @Option(help = "Use a cache for snippet graphs.", type = OptionType.Debug)
     public static final OptionKey<Boolean> UseSnippetGraphCache = new OptionKey<>(true);
 
-    @Option(help = "Enable experimental Trace Register Allocation.", type = OptionType.Debug)
-    public static final OptionKey<Boolean> TraceRA = new OptionKey<>(false);
-
     @Option(help = "file:doc-files/TraceInliningHelp.txt", type = OptionType.Debug)
     public static final OptionKey<Boolean> TraceInlining = new OptionKey<>(false);
 
     @Option(help = "Enable inlining decision tracing in stubs and snippets.", type = OptionType.Debug)
     public static final OptionKey<Boolean> TraceInliningForStubsAndSnippets = new OptionKey<>(false);
+
+    @Option(help = "Use Graal-generated stubs for complicated LIR operations instead of embedding all the emitted code.", type = OptionType.Expert)
+    public static final OptionKey<Boolean> UseGraalStubs = new OptionKey<>(true);
+
+    @Option(help = "Encode and decode snippets and substitutions before parsing to test libgraal code path. This option is ignored in the context of libgraal.")
+    public static final OptionKey<Boolean> UseEncodedGraphs = new OptionKey<>(false);
+
+    @Option(help = "If applicable, use bulk zeroing instructions when the zeroing size in bytes exceeds this threshold.", type = OptionType.Expert)
+    public static final OptionKey<Integer> MinimalBulkZeroingSize = new OptionKey<>(2048);
+
 }

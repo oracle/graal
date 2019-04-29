@@ -122,9 +122,8 @@ public abstract class TypeLiteral<T> {
         return rawType;
     }
 
-    @SuppressWarnings("unchecked")
-    private static <T> Class<T[]> arrayTypeFromComponentType(Class<T> componentType) {
-        return (Class<T[]>) Array.newInstance(componentType, 0).getClass();
+    private static Class<?> arrayTypeFromComponentType(Class<?> componentType) {
+        return Array.newInstance(componentType, 0).getClass();
     }
 
     /**

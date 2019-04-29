@@ -36,6 +36,7 @@ import org.graalvm.component.installer.CommonConstants;
 import org.graalvm.component.installer.FailedOperationException;
 import org.graalvm.component.installer.TestBase;
 import org.graalvm.component.installer.commands.MockStorage;
+import org.graalvm.component.installer.jar.JarMetaLoader;
 import org.graalvm.component.installer.persist.ComponentPackageLoader;
 import org.junit.After;
 import org.junit.AfterClass;
@@ -83,14 +84,14 @@ public class ComponentRegistryTest extends TestBase {
         registry = new ComponentRegistry(this, mockStorage);
 
         try (JarFile jf = new JarFile(dataFile("truffleruby2.jar").toFile())) {
-            ComponentPackageLoader ldr = new ComponentPackageLoader(jf, this);
+            ComponentPackageLoader ldr = new JarMetaLoader(jf, this);
 
             rubyInfo = ldr.createComponentInfo();
             ldr.loadPaths();
             ldr.loadSymlinks();
         }
 
-        fakeInfo = new ComponentInfo("org.graalvm.fake", "Fake component", "1.0");
+        fakeInfo = new ComponentInfo("org.graalvm.fake", "Fake component", "0.32");
         fakeInfo.addPaths(Arrays.asList(
                         "jre/bin/ruby",
                         "jre/languages/fake/nothing"));
@@ -98,13 +99,13 @@ public class ComponentRegistryTest extends TestBase {
     }
 
     private void registerAdditionalComponents() {
-        ComponentInfo tmp = new ComponentInfo("org.graalvm.foobar", "Test component 1", "1.0");
+        ComponentInfo tmp = new ComponentInfo("org.graalvm.foobar", "Test component 1", "0.32");
         mockStorage.installed.add(tmp);
 
-        tmp = new ComponentInfo("org.graalvm.clash", "Test component 2", "1.0");
+        tmp = new ComponentInfo("org.graalvm.clash", "Test component 2", "0.32");
         mockStorage.installed.add(tmp);
         tmp1 = tmp;
-        tmp = new ComponentInfo("org.github.clash", "Test component 3", "1.0");
+        tmp = new ComponentInfo("org.github.clash", "Test component 3", "0.32");
         mockStorage.installed.add(tmp);
         tmp2 = tmp;
     }

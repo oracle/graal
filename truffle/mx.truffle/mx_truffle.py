@@ -39,25 +39,25 @@
 # SOFTWARE.
 #
 import os
-from os.path import exists
 import re
-import zipfile
-from collections import OrderedDict
-from argparse import ArgumentParser, RawDescriptionHelpFormatter
 import tempfile
+import zipfile
+from argparse import ArgumentParser, RawDescriptionHelpFormatter
+from collections import OrderedDict
+from os.path import exists
+from urlparse import urljoin
 
 import mx
-
-from mx_unittest import unittest
-from mx_sigtest import sigtest
-from mx_jackpot import jackpot
-from mx_gate import Task
-from mx_javamodules import as_java_module, get_java_module_info
-from urlparse import urljoin
-import mx_gate
-import mx_unittest
 import mx_benchmark
+import mx_gate
+import mx_native
 import mx_sdk
+import mx_unittest
+from mx_gate import Task
+from mx_jackpot import jackpot
+from mx_javamodules import as_java_module, get_java_module_info
+from mx_sigtest import sigtest
+from mx_unittest import unittest
 
 _suite = mx.suite('truffle')
 
@@ -80,7 +80,8 @@ mx_benchmark.add_bm_suite(JMHRunnerTruffleBenchmarkSuite())
 
 def javadoc(args, vm=None):
     """build the Javadoc for all API packages"""
-    mx.javadoc(['--unified', '--exclude-packages', 'com.oracle.truffle.tck,com.oracle.truffle.tck.impl'] + args)
+    extraArgs = mx_sdk.build_oracle_compliant_javadoc_args(_suite, 'GraalVM', 'Truffle')
+    mx.javadoc(['--unified', '--exclude-packages', 'com.oracle.truffle.tck,com.oracle.truffle.tck.impl'] + extraArgs + args)
     javadoc_dir = os.sep.join([_suite.dir, 'javadoc'])
     checkLinks(javadoc_dir)
 
@@ -122,7 +123,7 @@ def checkLinks(javadocDir):
         else:
             content = open(referencedfile, 'r').read()
             for path, s in sections:
-                if not s == None:
+                if not s is None:
                     whereName = content.find('name="' + s + '"')
                     whereId = content.find('id="' + s + '"')
                     if whereName == -1 and whereId == -1:
@@ -262,7 +263,7 @@ def _unittest_config_participant_tck(config):
     suite_collector(mx.primary_suite(), create_filter("META-INF/services/org.graalvm.polyglot.tck.LanguageProvider"), providers, javaPropertiesToAdd, set())
     languages = OrderedDict()
     suite_collector(mx.primary_suite(), create_filter("META-INF/truffle/language"), languages, javaPropertiesToAdd, set())
-    suite_collector(mx.primary_suite(), lambda dist: dist.isJARDistribution() and "TRUFFLE_TCK_INSTRUMENTATION" == dist.name and exists(dist.path), languages, javaPropertiesToAdd, set())
+    suite_collector(mx.primary_suite(), lambda dist: dist.isJARDistribution() and  dist.name == "TRUFFLE_TCK_INSTRUMENTATION" and exists(dist.path), languages, javaPropertiesToAdd, set())
     vmArgs, mainClass, mainClassArgs = config
     cpIndex, cpValue = mx.find_classpath_arg(vmArgs)
     cpBuilder = OrderedDict()
@@ -274,7 +275,7 @@ def _unittest_config_participant_tck(config):
 
     if _is_graalvm(mx.get_jdk()):
         common = OrderedDict()
-        suite_collector(mx.primary_suite(), lambda dist: dist.isJARDistribution() and "TRUFFLE_TCK_COMMON" == dist.name and exists(dist.path), common, javaPropertiesToAdd, set())
+        suite_collector(mx.primary_suite(), lambda dist: dist.isJARDistribution() and dist.name == "TRUFFLE_TCK_COMMON" and exists(dist.path), common, javaPropertiesToAdd, set())
         tpIndex, tpValue = find_path_arg(vmArgs, '-Dtruffle.class.path.append=')
         tpBuilder = OrderedDict()
         if tpValue:
@@ -339,7 +340,7 @@ class TruffleArchiveParticipant:
         self.settings = {}
         self.arc = arc
 
-    def __add__(self, arcname, contents):
+    def __add__(self, arcname, contents): # pylint: disable=unexpected-special-method-signature
         metainfFile = self._truffle_metainf_file(arcname)
         if metainfFile:
             propertyRe = TruffleArchiveParticipant.PROPERTY_RE
@@ -563,19 +564,168 @@ def create_parser(grammar_project, grammar_package, grammar_name, copyright_temp
         with open(filename, 'w') as content_file:
             content_file.write(content)
 
+
+class LibffiBuilderProject(mx.AbstractNativeProject, mx_native.NativeDependency):
+    """Project for building libffi from source.
+
+    The build is performed by:
+        1. Extracting the sources,
+        2. Applying the platform dependent patches, and
+        3. Invoking the platform dependent builder that we delegate to.
+    """
+
+    def __init__(self, suite, name, deps, workingSets, **kwargs):
+        subDir = 'src'
+        srcDirs = ['patches']
+        d = mx.join(suite.dir, subDir, name)
+        super(LibffiBuilderProject, self).__init__(suite, name, subDir, srcDirs, deps, workingSets, d, **kwargs)
+
+        self.out_dir = self.get_output_root()
+        if mx.get_os() == 'windows':
+            self.delegate = mx_native.DefaultNativeProject(suite, name, subDir, [], [], None,
+                                                           mx.join(self.out_dir, 'libffi-3.2.1'),
+                                                           'static_lib',
+                                                           deliverable='ffi',
+                                                           cflags=['-MD', '-O2'])
+            self.delegate._source = dict(tree=['include',
+                                               'src',
+                                               mx.join('src', 'x86')],
+                                         files={'.h': [mx.join('include', 'ffi.h'),
+                                                       mx.join('include', 'ffitarget.h'),
+                                                       mx.join('src', 'fficonfig.h'),
+                                                       mx.join('src', 'ffi_common.h')],
+                                                '.c': [mx.join('src', 'closures.c'),
+                                                       mx.join('src', 'java_raw_api.c'),
+                                                       mx.join('src', 'prep_cif.c'),
+                                                       mx.join('src', 'raw_api.c'),
+                                                       mx.join('src', 'types.c'),
+                                                       mx.join('src', 'x86', 'ffi.c')],
+                                                '.S': [mx.join('src', 'x86', 'win64.S')]})
+        else:
+            class LibtoolNativeProject(mx.NativeProject,  # pylint: disable=too-many-ancestors
+                                       mx_native.NativeDependency):
+                include_dirs = property(lambda self: [mx.join(self.getOutput(), 'include')])
+                libs = property(lambda self: [next(self.getArchivableResults(single=True))[0]])
+
+                def getArchivableResults(self, use_relpath=True, single=False):
+                    for file_path, archive_path in super(LibtoolNativeProject, self).getArchivableResults(use_relpath):
+                        path_in_lt_objdir = mx.basename(mx.dirname(file_path)) == '.libs'
+                        yield file_path, mx.basename(archive_path) if path_in_lt_objdir else archive_path
+                        if single:
+                            assert path_in_lt_objdir, 'the first build result must be from LT_OBJDIR'
+                            break
+
+            self.delegate = LibtoolNativeProject(suite, name, subDir, [], [], None,
+                                                 ['.libs/libffi.a',
+                                                  'include/ffi.h',
+                                                  'include/ffitarget.h'],
+                                                 mx.join(self.out_dir, 'libffi-build'),
+                                                 mx.join(self.out_dir, 'libffi-3.2.1'))
+            self.delegate.buildEnv = dict(
+                SOURCES=mx.basename(self.delegate.dir),
+                OUTPUT=mx.basename(self.delegate.getOutput()),
+                CONFIGURE_ARGS=' '.join([
+                    '--disable-dependency-tracking',
+                    '--disable-shared',
+                    '--with-pic',
+                    'CFLAGS="{}"'.format(' '.join(
+                        ['-g', '-O3'] + (['-m64'] if mx.get_os() == 'solaris' else [])
+                    )),
+                ])
+            )
+
+        self.buildDependencies = self.delegate.buildDependencies
+        self.include_dirs = self.delegate.include_dirs
+        self.libs = self.delegate.libs
+
+    @property
+    def sources(self):
+        assert len(self.deps) == 1, '{} must depend only on its sources'.format(self.name)
+        return self.deps[0]
+
+    @property
+    def patches(self):
+        """A list of patches that will be applied during a build."""
+        os_arch_dir = mx.join(self.source_dirs()[0], '{}-{}'.format(mx.get_os(), mx.get_arch()))
+        if mx.exists(os_arch_dir):
+            return [mx.join(os_arch_dir, patch) for patch in os.listdir(os_arch_dir)]
+
+        others_dir = mx.join(self.source_dirs()[0], 'others')
+        return [mx.join(others_dir, patch) for patch in os.listdir(others_dir)]
+
+    def getBuildTask(self, args):
+        return LibffiBuildTask(args, self)
+
+    def getArchivableResults(self, use_relpath=True, single=False):
+        return self.delegate.getArchivableResults(use_relpath, single)
+
+
+class LibffiBuildTask(mx.AbstractNativeBuildTask):
+    def __init__(self, args, project):
+        super(LibffiBuildTask, self).__init__(args, project)
+        self.delegate = project.delegate.getBuildTask(args)
+
+    def __str__(self):
+        return 'Building {}'.format(self.subject.name)
+
+    def needsBuild(self, newestInput):
+        is_needed, reason = super(LibffiBuildTask, self).needsBuild(newestInput)
+        if is_needed:
+            return True, reason
+
+        output = self.newestOutput()
+        newest_patch = mx.TimeStampFile.newest(self.subject.patches)
+        if newest_patch and output.isOlderThan(newest_patch):
+            return True, '{} is older than {}'.format(output, newest_patch)
+
+        return False, 'all files are up to date'
+
+    def newestOutput(self):
+        output = self.delegate.newestOutput()
+        return None if output and not output.exists() else output
+
+    def build(self):
+        assert not mx.exists(self.subject.out_dir), '{} must be cleaned before build'.format(self.subject.name)
+
+        mx.log('Extracting {}...'.format(self.subject.sources))
+        mx.Extractor.create(self.subject.sources.get_path(False)).extract(self.subject.out_dir)
+
+        mx.log('Applying patches...')
+        git_apply = ['git', 'apply', '--whitespace=nowarn', '--directory',
+                     os.path.relpath(self.subject.delegate.dir, self.subject.suite.vc_dir)]
+        for patch in self.subject.patches:
+            mx.run(git_apply + [patch], cwd=self.subject.suite.vc_dir)
+
+        self.delegate.logBuild()
+        self.delegate.build()
+
+    def clean(self, forBuild=False):
+        mx.rmtree(self.subject.out_dir, ignore_errors=True)
+
+
 mx_sdk.register_graalvm_component(mx_sdk.GraalVmTool(
     suite=_suite,
-    name='Truffle NFI',
+    name='Truffle',
     short_name='tfl',
     dir_name='truffle',
     license_files=[],
     third_party_license_files=[],
     truffle_jars=[],
-    support_distributions=[
-        'truffle:TRUFFLE_GRAALVM_SUPPORT',
-        'truffle:TRUFFLE_NFI_NATIVE',
-    ]
+    support_distributions=['truffle:TRUFFLE_GRAALVM_SUPPORT']
 ))
+
+
+mx_sdk.register_graalvm_component(mx_sdk.GraalVmTool(
+    suite=_suite,
+    name='Truffle NFI',
+    short_name='nfi',
+    dir_name='nfi',
+    license_files=[],
+    third_party_license_files=[],
+    truffle_jars=['truffle:TRUFFLE_NFI'],
+    support_distributions=['truffle:TRUFFLE_NFI_GRAALVM_SUPPORT']
+))
+
 
 mx.update_commands(_suite, {
     'check-filename-length' : [check_filename_length, ""],

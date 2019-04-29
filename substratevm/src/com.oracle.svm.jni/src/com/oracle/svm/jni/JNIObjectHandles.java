@@ -25,26 +25,26 @@
 package com.oracle.svm.jni;
 
 import org.graalvm.word.SignedWord;
-import org.graalvm.word.WordFactory;
 
+import com.oracle.svm.core.handles.ThreadLocalHandles;
 import com.oracle.svm.jni.nativeapi.JNIObjectHandle;
 import com.oracle.svm.jni.nativeapi.JNIObjectRefType;
 
 /**
- * Manages accesses to both {@link JNIThreadLocalHandles local} and {@link JNIGlobalHandles global}
- * JNI object handles.
+ * Manages accesses to both {@link ThreadLocalHandles local} and {@link JNIGlobalHandles global} JNI
+ * object handles.
  */
 public final class JNIObjectHandles {
 
     public static <T extends SignedWord> T nullHandle() {
-        return WordFactory.signed(0);
+        return ThreadLocalHandles.nullHandle();
     }
 
     public static <T> T getObject(JNIObjectHandle handle) {
         if (handle.equal(nullHandle())) {
             return null;
         }
-        if (JNIThreadLocalHandles.isInRange(handle)) {
+        if (ThreadLocalHandles.isInRange(handle)) {
             return JNIThreadLocalHandles.get().getObject(handle);
         }
         if (JNIGlobalHandles.singleton().isInRange(handle)) {
@@ -54,7 +54,7 @@ public final class JNIObjectHandles {
     }
 
     public static JNIObjectRefType getHandleType(JNIObjectHandle handle) {
-        if (JNIThreadLocalHandles.isInRange(handle)) {
+        if (ThreadLocalHandles.isInRange(handle)) {
             return JNIObjectRefType.Local;
         }
         if (JNIGlobalHandles.singleton().isInRange(handle)) {

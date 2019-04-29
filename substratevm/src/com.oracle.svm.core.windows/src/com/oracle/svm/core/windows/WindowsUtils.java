@@ -50,15 +50,24 @@ public class WindowsUtils {
 
     @TargetClass(java.io.FileDescriptor.class)
     private static final class Target_java_io_FileDescriptor {
+        @Alias int fd;
         @Alias long handle;
     }
 
-    public static int getHandle(FileDescriptor descriptor) {
-        return (int) KnownIntrinsics.unsafeCast(descriptor, Target_java_io_FileDescriptor.class).handle;
+    public static long getHandle(FileDescriptor descriptor) {
+        return KnownIntrinsics.unsafeCast(descriptor, Target_java_io_FileDescriptor.class).handle;
     }
 
-    public static void setHandle(FileDescriptor descriptor, int handle) {
+    public static void setHandle(FileDescriptor descriptor, long handle) {
         KnownIntrinsics.unsafeCast(descriptor, Target_java_io_FileDescriptor.class).handle = handle;
+    }
+
+    public static int getFD(FileDescriptor descriptor) {
+        return KnownIntrinsics.unsafeCast(descriptor, Target_java_io_FileDescriptor.class).fd;
+    }
+
+    public static void setFD(FileDescriptor descriptor, int fd) {
+        KnownIntrinsics.unsafeCast(descriptor, Target_java_io_FileDescriptor.class).fd = fd;
     }
 
     static boolean outOfBounds(int off, int len, byte[] array) {

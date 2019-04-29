@@ -28,6 +28,8 @@ import java.nio.file.Path;
 import java.util.List;
 import java.util.Map;
 
+import jdk.vm.ci.meta.ResolvedJavaMethod;
+
 public interface LinkerInvocation {
 
     List<String> getInputFiles();
@@ -36,9 +38,9 @@ public interface LinkerInvocation {
 
     void addInputFile(int index, String filename);
 
-    Map<String, String> getSymbolAliases();
+    Map<ResolvedJavaMethod, String> getSymbolAliases();
 
-    void addSymbolAlias(String alias, String definition);
+    void addSymbolAlias(ResolvedJavaMethod definition, String alias);
 
     List<String> getLibPaths();
 

@@ -1,5 +1,5 @@
 #
-# Copyright (c) 2017, 2018, Oracle and/or its affiliates.
+# Copyright (c) 2017, 2019, Oracle and/or its affiliates.
 #
 # All rights reserved.
 #
@@ -42,7 +42,7 @@ endif
 
 CFLAGS=-g -fPIC -DPIC -O3
 
-bin/${LIBSULONG}: bin/misc.o bin/posix.o bin/fp80.o
+bin/${LIBSULONG}: bin/misc.o bin/posix.o bin/fp80.o bin/globals.o
 	$(QUIETLY) $(CLANG) ${LDFLAGS} -lm -o $@ $+
 
 bin/%.o: src/%.c

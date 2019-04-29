@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2017, 2018, Oracle and/or its affiliates.
+ * Copyright (c) 2017, 2019, Oracle and/or its affiliates.
  *
  * All rights reserved.
  *
@@ -33,6 +33,7 @@ import com.oracle.truffle.llvm.parser.ValueList;
 import com.oracle.truffle.llvm.parser.metadata.MDAttachment;
 import com.oracle.truffle.llvm.parser.metadata.MetadataAttachmentHolder;
 import com.oracle.truffle.llvm.parser.model.visitors.SymbolVisitor;
+import com.oracle.truffle.llvm.runtime.except.LLVMParserException;
 import com.oracle.truffle.llvm.runtime.types.Type;
 import com.oracle.truffle.llvm.runtime.types.VoidType;
 
@@ -47,12 +48,12 @@ public final class SymbolTable extends ValueList<SymbolImpl, SymbolVisitor> {
 
         @Override
         public void accept(SymbolVisitor visitor) {
-            throw new IllegalStateException("Unresolved Forward Reference!");
+            throw new LLVMParserException("Unresolved Forward Reference!");
         }
 
         @Override
         public void replace(SymbolImpl oldValue, SymbolImpl newValue) {
-            throw new IllegalStateException("Cannot replace Symbol in Forward Reference!");
+            throw new LLVMParserException("Cannot replace Symbol in Forward Reference!");
         }
 
         @Override

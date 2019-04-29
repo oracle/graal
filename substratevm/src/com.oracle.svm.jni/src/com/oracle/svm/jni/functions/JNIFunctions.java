@@ -37,6 +37,7 @@ import java.nio.Buffer;
 import java.nio.ByteBuffer;
 import java.util.Arrays;
 
+import org.graalvm.compiler.serviceprovider.GraalUnsafeAccess;
 import org.graalvm.nativeimage.ImageSingletons;
 import org.graalvm.nativeimage.IsolateThread;
 import org.graalvm.nativeimage.LogHandler;
@@ -55,7 +56,6 @@ import org.graalvm.word.WordFactory;
 
 import com.oracle.svm.core.MonitorSupport;
 import com.oracle.svm.core.SubstrateUtil;
-import com.oracle.svm.core.UnsafeAccess;
 import com.oracle.svm.core.annotate.Alias;
 import com.oracle.svm.core.annotate.TargetClass;
 import com.oracle.svm.core.c.function.CEntryPointActions;
@@ -97,6 +97,7 @@ import com.oracle.svm.jni.nativeapi.JNIObjectRefType;
 import com.oracle.svm.jni.nativeapi.JNIVersion;
 
 import jdk.vm.ci.meta.MetaUtil;
+import sun.misc.Unsafe;
 
 /**
  * Implementations of the functions defined by the Java Native Interface. Not all functions are
@@ -113,6 +114,8 @@ final class JNIFunctions {
     /*
      * jint GetVersion(JNIEnv *env);
      */
+
+    private static final Unsafe UNSAFE = GraalUnsafeAccess.getUnsafe();
 
     @CEntryPoint
     @CEntryPointOptions(prologue = JNIEnvironmentEnterPrologue.class, publishAs = Publish.NotPublished, include = CEntryPointOptions.NotIncludedAutomatically.class)
@@ -319,6 +322,9 @@ final class JNIFunctions {
             name = "L" + name + ";";
         }
         Class<?> clazz = JNIReflectionDictionary.singleton().getClassObjectByName(name);
+        if (clazz == null) {
+            throw new NoClassDefFoundError(name);
+        }
         return JNIThreadLocalHandles.get().create(clazz);
     }
 
@@ -391,13 +397,13 @@ final class JNIFunctions {
     @CEntryPoint(exceptionHandler = JNIExceptionHandlerReturnNullWord.class)
     @CEntryPointOptions(prologue = JNIEnvironmentEnterPrologue.class, publishAs = Publish.NotPublished, include = CEntryPointOptions.NotIncludedAutomatically.class)
     static JNIFieldId GetFieldID(JNIEnvironment env, JNIObjectHandle hclazz, CCharPointer cname, CCharPointer csig) {
-        return Support.getFieldID(hclazz, cname, csig);
+        return Support.getFieldID(hclazz, cname, csig, false);
     }
 
     @CEntryPoint(exceptionHandler = JNIExceptionHandlerReturnNullWord.class)
     @CEntryPointOptions(prologue = JNIEnvironmentEnterPrologue.class, publishAs = Publish.NotPublished, include = CEntryPointOptions.NotIncludedAutomatically.class)
     static JNIFieldId GetStaticFieldID(JNIEnvironment env, JNIObjectHandle hclazz, CCharPointer cname, CCharPointer csig) {
-        return Support.getFieldID(hclazz, cname, csig);
+        return Support.getFieldID(hclazz, cname, csig, true);
     }
 
     /*
@@ -410,7 +416,7 @@ final class JNIFunctions {
         Class<?> clazz = JNIObjectHandles.getObject(classHandle);
         Object instance;
         try {
-            instance = UnsafeAccess.UNSAFE.allocateInstance(clazz);
+            instance = UNSAFE.allocateInstance(clazz);
         } catch (InstantiationException e) {
             instance = null;
         }
@@ -483,7 +489,7 @@ final class JNIFunctions {
     @CEntryPoint(exceptionHandler = JNIExceptionHandlerReturnNullWord.class)
     @CEntryPointOptions(prologue = JNIEnvironmentEnterPrologue.class, publishAs = Publish.NotPublished, include = CEntryPointOptions.NotIncludedAutomatically.class)
     static CShortPointer GetStringChars(JNIEnvironment env, JNIObjectHandle hstr, CCharPointer isCopy) {
-        return Support.pinStringAndGetChars(hstr, isCopy);
+        return Support.getNulTerminatedStringCharsAndPin(hstr, isCopy);
     }
 
     @CEntryPoint(exceptionHandler = JNIExceptionHandlerVoid.class)
@@ -527,7 +533,7 @@ final class JNIFunctions {
     @CEntryPoint(exceptionHandler = JNIExceptionHandlerReturnNullWord.class)
     @CEntryPointOptions(prologue = JNIEnvironmentEnterPrologue.class, publishAs = Publish.NotPublished, include = CEntryPointOptions.NotIncludedAutomatically.class)
     static CShortPointer GetStringCritical(JNIEnvironment env, JNIObjectHandle hstr, CCharPointer isCopy) {
-        return Support.pinStringAndGetChars(hstr, isCopy);
+        return Support.getNulTerminatedStringCharsAndPin(hstr, isCopy);
     }
 
     @CEntryPoint(exceptionHandler = JNIExceptionHandlerVoid.class)
@@ -820,7 +826,7 @@ final class JNIFunctions {
             Field obj = JNIObjectHandles.getObject(fieldHandle);
             if (obj != null) {
                 boolean isStatic = Modifier.isStatic(obj.getModifiers());
-                fieldId = JNIReflectionDictionary.singleton().getFieldID(obj.getDeclaringClass(), obj.getName());
+                fieldId = JNIReflectionDictionary.singleton().getDeclaredFieldID(obj.getDeclaringClass(), obj.getName(), isStatic);
             }
         }
         return fieldId;
@@ -861,7 +867,7 @@ final class JNIFunctions {
             if (method != null) {
                 boolean isStatic = Modifier.isStatic(method.getModifiers());
                 JNIAccessibleMethodDescriptor descriptor = JNIAccessibleMethodDescriptor.of(method);
-                methodId = JNIReflectionDictionary.singleton().getMethodID(method.getDeclaringClass(), descriptor, isStatic);
+                methodId = JNIReflectionDictionary.singleton().getDeclaredMethodID(method.getDeclaringClass(), descriptor, isStatic);
             }
         }
         return methodId;
@@ -999,17 +1005,34 @@ final class JNIFunctions {
             Class<?> clazz = JNIObjectHandles.getObject(hclazz);
             String name = CTypeConversion.toJavaString(cname);
             String signature = CTypeConversion.toJavaString(csig);
-            return JNIReflectionDictionary.singleton().getMethodID(clazz, name, signature, isStatic);
+            JNIMethodId methodID = JNIReflectionDictionary.singleton().getMethodID(clazz, name, signature, isStatic);
+            if (methodID.isNull()) {
+                String message = clazz.getName() + "." + name + signature;
+                JNIMethodId candidate = JNIReflectionDictionary.singleton().getMethodID(clazz, name, signature, !isStatic);
+                if (candidate.isNonNull()) {
+                    if (isStatic) {
+                        message += " (found matching non-static method that would be returned by GetMethodID)";
+                    } else {
+                        message += " (found matching static method that would be returned by GetStaticMethodID)";
+                    }
+                }
+                throw new NoSuchMethodError(message);
+            }
+            return methodID;
         }
 
-        static JNIFieldId getFieldID(JNIObjectHandle hclazz, CCharPointer cname, CCharPointer csig) {
+        static JNIFieldId getFieldID(JNIObjectHandle hclazz, CCharPointer cname, CCharPointer csig, boolean isStatic) {
             // TODO: check signature
             Class<?> clazz = JNIObjectHandles.getObject(hclazz);
             String name = CTypeConversion.toJavaString(cname);
-            return JNIReflectionDictionary.singleton().getFieldID(clazz, name);
+            JNIFieldId fieldID = JNIReflectionDictionary.singleton().getFieldID(clazz, name, isStatic);
+            if (fieldID.isNull()) {
+                throw new NoSuchFieldError(clazz.getName() + '.' + name);
+            }
+            return fieldID;
         }
 
-        static CShortPointer pinStringAndGetChars(JNIObjectHandle hstr, CCharPointer isCopy) {
+        static CShortPointer getNulTerminatedStringCharsAndPin(JNIObjectHandle hstr, CCharPointer isCopy) {
             String str = JNIObjectHandles.getObject(hstr);
             if (str == null) {
                 return WordFactory.nullPointer();
@@ -1023,7 +1046,8 @@ final class JNIFunctions {
              * a JDK 9 UTF16 encoded String, we could avoid the copying. But it would require us to
              * know internals of the String implementation, so we do not do it for now.
              */
-            char[] chars = str.toCharArray();
+            char[] chars = new char[str.length() + 1];
+            str.getChars(0, str.length(), chars, 0);
             return JNIThreadLocalPinnedObjects.pinArrayAndGetAddress(chars);
         }
 

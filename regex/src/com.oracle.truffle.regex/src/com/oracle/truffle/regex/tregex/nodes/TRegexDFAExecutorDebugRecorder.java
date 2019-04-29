@@ -26,7 +26,9 @@ package com.oracle.truffle.regex.tregex.nodes;
 
 import com.oracle.truffle.api.CompilerAsserts;
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
+import com.oracle.truffle.api.TruffleFile;
 import com.oracle.truffle.api.frame.VirtualFrame;
+import com.oracle.truffle.regex.RegexLanguage;
 import com.oracle.truffle.regex.tregex.dfa.DFAGenerator;
 import com.oracle.truffle.regex.tregex.util.json.Json;
 import com.oracle.truffle.regex.tregex.util.json.JsonConvertible;
@@ -37,10 +39,10 @@ import java.util.List;
 
 /**
  * This class is used to store a trace of the execution of a
- * {@link TRegexDFAExecutorNode#execute(VirtualFrame)}. A trace contains the arguments received by
- * {@link TRegexDFAExecutorNode#execute(VirtualFrame)}, and the ID of the DFA transition taken for
- * all characters of the input string that have been traversed. After execution, the recorded trace
- * can be dumped to disk as JSON with {@link #finishRecording()}.
+ * {@link TRegexDFAExecutorNode#execute(VirtualFrame, boolean)}. A trace contains the arguments
+ * received by {@link TRegexDFAExecutorNode#execute(VirtualFrame, boolean)}, and the ID of the DFA
+ * transition taken for all characters of the input string that have been traversed. After
+ * execution, the recorded trace can be dumped to disk as JSON with {@link #finishRecording()}.
  */
 public class TRegexDFAExecutorDebugRecorder implements JsonConvertible {
 
@@ -162,8 +164,9 @@ public class TRegexDFAExecutorDebugRecorder implements JsonConvertible {
     @TruffleBoundary
     public void finishRecording() {
         CompilerAsserts.neverPartOfCompilation();
-        Json.obj(Json.prop("dfa", dfa), Json.prop("recording", curRecording())).dump(
+        TruffleFile file = RegexLanguage.getCurrentContext().getEnv().getTruffleFile(
                         "tregex_" + dfa.getDebugDumpName() + "_" + dfa.getNfa().getAst().getSource().toFileName() + "_recording" + recordings.size() + ".json");
+        Json.obj(Json.prop("dfa", dfa), Json.prop("recording", curRecording())).dump(file);
     }
 
     @TruffleBoundary

@@ -26,7 +26,7 @@ package com.oracle.svm.core.jdk;
 
 import java.util.function.Function;
 
-import org.graalvm.compiler.serviceprovider.GraalServices;
+import org.graalvm.compiler.serviceprovider.JavaVersionUtil;
 import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.Platforms;
 
@@ -37,7 +37,7 @@ public class Package_jdk_internal_misc implements Function<TargetClass, String> 
 
     @Override
     public String apply(TargetClass annotation) {
-        if (GraalServices.Java8OrEarlier) {
+        if (JavaVersionUtil.Java8OrEarlier) {
             return "sun.misc." + annotation.className();
         } else {
             return "jdk.internal.misc." + annotation.className();

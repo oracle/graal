@@ -1,0 +1,62 @@
+
+GraalVM native-image-configure tool
+
+This tool can be used to prepare a configuration of JNI, reflection and
+resources for a native-image build.
+
+Usage: native-image-configure generate [options]
+       native-image-configure help
+
+generate                  generates configuration file(s) from all inputs.
+    --trace-input=<path>
+                          reads and processes a trace file at the given path.
+    --input-dir=<path>
+                          reads a set of configuration files from the directory
+                          at the given path. This is equivalent to all of:
+                           --reflect-input=<path>/reflect-config.json
+                           --jni-input=<path>/jni-config.json
+                           --proxy-input=<path>/proxy-config.json
+                           --resource-input=<path>/resource-config.json
+    --reflect-input=<path>
+                          reads a reflection configuration file at <path>.
+    --jni-input=<path>
+                          reads a JNI configuration file at <path>.
+    --proxy-input=<path>
+                          reads a dynamic proxy configuration file at <path>.
+    --resource-input=<path>
+                          reads a resource configuration file at <path>.
+    --output-dir=<path>
+                          writes a set of configuration files to the directory
+                          at the given path. Existing files are replaced. This
+                          option is equivalent to all of:
+                           --reflect-output=<path>/reflect-config.json
+                           --jni-output=<path>/jni-config.json
+                           --proxy-output=<path>/proxy-config.json
+                           --resource-output=<path>/resource-config.json
+    --reflect-output=<path>
+                          write a reflection configuration file to <path>. This
+                          file can be later provided to native-image with
+                          -H:ReflectionConfigurationFiles=<path>.
+    --jni-output=<path>
+                          write a JNI configuration file to <path>. This file
+                          can be later provided to native-image with
+                          -H:JNIConfigurationFiles=<path>.
+    --proxy-output=<path>
+                          write a dynamic proxy configuration file to <path>.
+                          This file can be later provided to native-image with
+                          -H:DynamicProxyConfigurationFiles=<path>.
+    --resource-output=<path>
+                          write a configuration file containing used resources
+                          (getResource) to <path>. This file can later be
+                          provided to native-image with
+                          -H:ResourceConfigurationFiles=<path>.
+                          The paths in the configuration file might need to be
+                          adjusted for the build directories/classpath.
+    --no-filter
+                          usage of JNI, reflection and resources in internal
+                          classes does not need to be configured for builds
+                          with native-image and by default, is excluded from
+                          the generated configurations. This option disables
+                          this filter.
+
+help                      prints this help message.

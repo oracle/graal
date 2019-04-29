@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2013, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2013, 2018, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -72,15 +72,6 @@ public final class TruffleCompilerOptions {
 
     @Option(help = "Instrument branches by considering different inlining sites as different branches.")
     public static final OptionKey<Boolean> TruffleInstrumentBranchesPerInlineSite = new OptionKey<>(false);
-
-    @Option(help = "Method filter for methods in which to add branch instrumentation.")
-    public static final OptionKey<String> TruffleInstrumentBranchesFilter = new OptionKey<>(null);
-
-    @Option(help = "Prettify stack traces for branch-instrumented callsites.")
-    public static final OptionKey<Boolean> TruffleInstrumentBranchesPretty = new OptionKey<>(true);
-
-    @Option(help = "Maximum number of instrumentation counters available.")
-    public static final OptionKey<Integer> TruffleInstrumentBranchesCount = new OptionKey<>(10000);
 
     @Option(help = "Instrument Truffle boundaries and output profiling information to the standard output.")
     public static final OptionKey<Boolean> TruffleInstrumentBoundaries = new OptionKey<>(false);

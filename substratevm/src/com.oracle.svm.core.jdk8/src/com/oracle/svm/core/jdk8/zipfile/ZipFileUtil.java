@@ -26,9 +26,11 @@ package com.oracle.svm.core.jdk8.zipfile;
 
 import com.oracle.svm.core.snippets.KnownIntrinsics;
 
+// Checkstyle: stop
 import sun.misc.JavaUtilZipFileAccess;
 import sun.misc.PerfCounter;
 import sun.misc.SharedSecrets;
+// Checkstyle: resume
 
 final class ZipFileUtil {
 

@@ -34,8 +34,10 @@ import com.oracle.svm.core.annotate.Substitute;
 import com.oracle.svm.core.annotate.TargetClass;
 import com.oracle.svm.core.util.VMError;
 
+// Checkstyle: stop
 import sun.util.locale.provider.LocaleProviderAdapter;
 import sun.util.locale.provider.LocaleProviderAdapter.Type;
+// Checkstyle: resume
 
 /** The JDK-8 or earlier substitution for sun.util.locale.provider.LocaleProviderAdapter. */
 @TargetClass(value = sun.util.locale.provider.LocaleProviderAdapter.class, onlyWith = JDK8OrEarlier.class)

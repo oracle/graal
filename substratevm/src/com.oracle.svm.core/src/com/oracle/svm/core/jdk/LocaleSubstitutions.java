@@ -223,21 +223,21 @@ final class Target_java_text_BreakIterator {
 final class Target_sun_util_locale_provider_LocaleResources {
     @RecomputeFieldValue(kind = Kind.NewInstance, declClass = ConcurrentHashMap.class)//
     @Alias//
-    private ConcurrentMap<?, ?> cache = new ConcurrentHashMap<>();
+    private ConcurrentMap<?, ?> cache;
     @RecomputeFieldValue(kind = Kind.NewInstance, declClass = ReferenceQueue.class)//
     @Alias//
-    private ReferenceQueue<Object> referenceQueue = new ReferenceQueue<>();
+    private ReferenceQueue<Object> referenceQueue;
 }
 
 @TargetClass(JRELocaleProviderAdapter.class)
 final class Target_sun_util_locale_provider_JRELocaleProviderAdapter {
     @RecomputeFieldValue(kind = Kind.NewInstance, declClass = ConcurrentHashMap.class)//
     @Alias//
-    private final ConcurrentMap<String, Set<String>> langtagSets = new ConcurrentHashMap<>();
+    private ConcurrentMap<String, Set<String>> langtagSets;
 
     @RecomputeFieldValue(kind = Kind.NewInstance, declClass = ConcurrentHashMap.class)//
     @Alias//
-    private final ConcurrentMap<Locale, LocaleResources> localeResourcesMap = new ConcurrentHashMap<>();
+    private ConcurrentMap<Locale, LocaleResources> localeResourcesMap;
 
     @Alias //
     @TargetElement(onlyWith = JDK8OrEarlier.class) //

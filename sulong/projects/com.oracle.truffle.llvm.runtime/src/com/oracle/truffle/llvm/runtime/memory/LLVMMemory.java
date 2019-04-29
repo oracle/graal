@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, Oracle and/or its affiliates.
+ * Copyright (c) 2018, 2019, Oracle and/or its affiliates.
  *
  * All rights reserved.
  *
@@ -29,7 +29,6 @@
  */
 package com.oracle.truffle.llvm.runtime.memory;
 
-import java.util.function.BinaryOperator;
 import java.util.function.IntBinaryOperator;
 import java.util.function.LongBinaryOperator;
 
@@ -208,11 +207,29 @@ public abstract class LLVMMemory {
 
     public abstract int getAndOpI32(LLVMNativePointer address, int value, IntBinaryOperator f);
 
-    public abstract short getAndOpI16(LLVMNativePointer address, short value, BinaryOperator<Short> f);
+    @FunctionalInterface
+    public interface ShortBinaryOperator {
 
-    public abstract byte getAndOpI8(LLVMNativePointer address, byte value, BinaryOperator<Byte> f);
+        short apply(short a, short b);
+    }
 
-    public abstract boolean getAndOpI1(LLVMNativePointer address, boolean value, BinaryOperator<Boolean> f);
+    public abstract short getAndOpI16(LLVMNativePointer address, short value, ShortBinaryOperator f);
+
+    @FunctionalInterface
+    public interface ByteBinaryOperator {
+
+        byte apply(byte a, byte b);
+    }
+
+    public abstract byte getAndOpI8(LLVMNativePointer address, byte value, ByteBinaryOperator f);
+
+    @FunctionalInterface
+    public interface BooleanBinaryOperator {
+
+        boolean apply(boolean a, boolean b);
+    }
+
+    public abstract boolean getAndOpI1(LLVMNativePointer address, boolean value, BooleanBinaryOperator f);
 
     public abstract void fullFence();
 

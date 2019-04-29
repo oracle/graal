@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2017, 2017, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2017, 2019, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -66,7 +66,7 @@ public class ASTTransition implements JsonConvertible {
 
     @Override
     public boolean equals(Object obj) {
-        return obj instanceof ASTTransition && target.equals(((ASTTransition) obj).target);
+        return obj instanceof ASTTransition && target == ((ASTTransition) obj).target;
     }
 
     @TruffleBoundary

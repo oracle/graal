@@ -62,7 +62,7 @@ public class DimensionsNode extends FixedWithNextNode implements LIRLowerable {
         int size = rank.asJavaConstant().asInt() * 4;
         int wordSize = gen.getLIRGeneratorTool().target().wordSize;
         int slots = roundUp(size, wordSize) / wordSize;
-        VirtualStackSlot array = gen.getLIRGeneratorTool().getResult().getFrameMapBuilder().allocateStackSlots(slots, new BitSet(0), null);
+        VirtualStackSlot array = gen.getLIRGeneratorTool().allocateStackSlots(slots, new BitSet(0), null);
         Value result = gen.getLIRGeneratorTool().emitAddress(array);
         gen.setResult(this, result);
     }

@@ -130,9 +130,9 @@ public final class PolyglotException extends RuntimeException {
      *
      * @since 1.0
      */
+    @SuppressWarnings("sync-override")
     @Override
-    public synchronized Throwable fillInStackTrace() {
-        // nothing to do
+    public Throwable fillInStackTrace() {
         return this;
     }
 

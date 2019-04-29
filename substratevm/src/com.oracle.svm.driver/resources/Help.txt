@@ -3,9 +3,9 @@ GraalVM native-image building tool
 
 This tool can be used to generate an image that contains ahead-of-time compiled Java code.
 
-Usage: native-image [options] class
+Usage: native-image [options] class [imagename]
            (to build an image for a class)
-   or  native-image [options] -jar jarfile
+   or  native-image [options] -jar jarfile [imagename]
            (to build an image for a jar file)
 where options include:
     -cp <class search path of directories and zip/jar files>

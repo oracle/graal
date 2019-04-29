@@ -30,5 +30,7 @@ import org.graalvm.word.PointerBase;
 @CPointerTo(JNIEnvironment.class)
 public interface JNIEnvironmentPointer extends PointerBase {
 
+    JNIEnvironment read();
+
     void write(JNIEnvironment value);
 }

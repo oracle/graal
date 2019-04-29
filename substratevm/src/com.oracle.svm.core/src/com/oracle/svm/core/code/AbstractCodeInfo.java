@@ -93,8 +93,8 @@ public abstract class AbstractCodeInfo extends CodeInfoDecoder {
                     boolean fetchFirstFrame) {
         int entryFlags = loadEntryFlags(entryOffset);
         boolean isDeoptEntry = extractFI(entryFlags) == FI_DEOPT_ENTRY_INDEX_S4;
-        return FrameInfoDecoder.decodeFrameInfo(isDeoptEntry, frameInfoReader, frameInfoObjectConstants, frameInfoSourceClassNames,
-                        frameInfoSourceMethodNames, frameInfoSourceFileNames, frameInfoNames, resultAllocator, valueInfoAllocator, fetchFirstFrame);
+        return FrameInfoDecoder.decodeFrameInfo(isDeoptEntry, frameInfoReader, frameInfoObjectConstants, frameInfoSourceClasses,
+                        frameInfoSourceMethodNames, frameInfoNames, resultAllocator, valueInfoAllocator, fetchFirstFrame);
     }
 
     public abstract String getName();

@@ -72,7 +72,7 @@ abstract class DebuggerNode extends ExecutionEventNode implements InsertableNode
      * thread and the same session should be marked as duplicates.
      */
     private volatile boolean singleThreadSession = true;
-    private volatile Thread cachedThread;
+    private volatile long cachedThreadId;
     private DebuggerSession cachedSessionDuplicate;
     // A map of threads and sessions in which this node is a duplicate to others
     private volatile EconomicMap<Thread, Object> duplicateInThreads;
@@ -114,15 +114,15 @@ abstract class DebuggerNode extends ExecutionEventNode implements InsertableNode
         noDuplicateAssumption.invalidate();
         if (singleThreadSession) {
             Thread thread = Thread.currentThread();
-            if (cachedThread == thread && cachedSessionDuplicate == null) {
+            if (cachedThreadId == thread.getId() && cachedSessionDuplicate == null) {
                 cachedSessionDuplicate = session;
                 return;
-            } else if (cachedThread == null) {
+            } else if (cachedThreadId == 0) {
                 Boolean marked = atomic(new Callable<Boolean>() {
                     @Override
                     public Boolean call() {
-                        if (cachedThread == null) {
-                            cachedThread = thread;
+                        if (cachedThreadId == 0) {
+                            cachedThreadId = thread.getId();
                             cachedSessionDuplicate = session;
                             return true;
                         }
@@ -167,7 +167,7 @@ abstract class DebuggerNode extends ExecutionEventNode implements InsertableNode
         if (noDuplicateAssumption.isValid()) {
             return false;
         }
-        if (cachedThread == Thread.currentThread()) {
+        if (cachedThreadId == Thread.currentThread().getId()) {
             // optimized version for single thread only
             if (cachedSessionDuplicate == session) {
                 cachedSessionDuplicate = null;
@@ -213,7 +213,7 @@ abstract class DebuggerNode extends ExecutionEventNode implements InsertableNode
                             duplicateInThreads = null;
                             singleThreadSession = true;
                             if (cachedSessionDuplicate == null) {
-                                cachedThread = null;
+                                cachedThreadId = 0;
                                 noDuplicateAssumption = Truffle.getRuntime().createAssumption("No duplicate node assumption");
                             }
                         }

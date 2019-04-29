@@ -41,11 +41,9 @@
 package com.oracle.truffle.api.debug;
 
 import java.util.Iterator;
-import java.util.List;
 
 import com.oracle.truffle.api.Scope;
 import com.oracle.truffle.api.frame.MaterializedFrame;
-import com.oracle.truffle.api.interop.TruffleObject;
 import com.oracle.truffle.api.nodes.LanguageInfo;
 import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.api.nodes.RootNode;
@@ -63,7 +61,7 @@ public final class DebugScope {
 
     private final Scope scope;
     private final Iterator<Scope> iterator;
-    private final Debugger debugger;
+    private final DebuggerSession session;
     private final SuspendedEvent event;
     private final MaterializedFrame frame;
     private final RootNode root;
@@ -71,22 +69,22 @@ public final class DebugScope {
     private DebugScope parent;
     private ValuePropertiesCollection variables;
 
-    DebugScope(Scope scope, Iterator<Scope> iterator, Debugger debugger,
+    DebugScope(Scope scope, Iterator<Scope> iterator, DebuggerSession session,
                     SuspendedEvent event, MaterializedFrame frame, RootNode root) {
-        this(scope, iterator, debugger, event, frame, root, null);
+        this(scope, iterator, session, event, frame, root, null);
     }
 
-    DebugScope(Scope scope, Iterator<Scope> iterator, Debugger debugger,
+    DebugScope(Scope scope, Iterator<Scope> iterator, DebuggerSession session,
                     LanguageInfo language) {
-        this(scope, iterator, debugger, null, null, null, language);
+        this(scope, iterator, session, null, null, null, language);
     }
 
-    private DebugScope(Scope scope, Iterator<Scope> iterator, Debugger debugger,
+    private DebugScope(Scope scope, Iterator<Scope> iterator, DebuggerSession session,
                     SuspendedEvent event, MaterializedFrame frame, RootNode root,
                     LanguageInfo language) {
         this.scope = scope;
         this.iterator = iterator;
-        this.debugger = debugger;
+        this.session = session;
         this.event = event;
         this.frame = frame;
         this.root = root;
@@ -113,12 +111,12 @@ public final class DebugScope {
         verifyValidState();
         try {
             if (parent == null && iterator.hasNext()) {
-                parent = new DebugScope(iterator.next(), iterator, debugger, event, frame, root, language);
+                parent = new DebugScope(iterator.next(), iterator, session, event, frame, root, language);
             }
         } catch (ThreadDeath td) {
             throw td;
         } catch (Throwable ex) {
-            throw new DebugException(debugger, ex, language, null, true, null);
+            throw new DebugException(session, ex, language, null, true, null);
         }
         return parent;
     }
@@ -147,14 +145,14 @@ public final class DebugScope {
         try {
             Node node = scope.getNode();
             if (node != null) {
-                return node.getEncapsulatingSourceSection();
+                return session.resolveSection(node.getEncapsulatingSourceSection());
             } else {
                 return null;
             }
         } catch (ThreadDeath td) {
             throw td;
         } catch (Throwable ex) {
-            throw new DebugException(debugger, ex, language, null, true, null);
+            throw new DebugException(session, ex, language, null, true, null);
         }
     }
 
@@ -172,23 +170,52 @@ public final class DebugScope {
      */
     public Iterable<DebugValue> getArguments() throws DebugException {
         verifyValidState();
-        Iterable<DebugValue> arguments = null;
         try {
             Object argumentsObj = scope.getArguments();
-            if (argumentsObj != null && argumentsObj instanceof TruffleObject) {
-                TruffleObject argsTO = (TruffleObject) argumentsObj;
-                arguments = DebugValue.getProperties(argumentsObj, debugger, getLanguage(), this);
-                if (arguments == null && ObjectStructures.isArray(debugger.getMessageNodes(), argsTO)) {
-                    List<Object> array = ObjectStructures.asList(debugger.getMessageNodes(), argsTO);
-                    arguments = new ValueInteropList(debugger, getLanguage(), array);
+            if (argumentsObj != null) {
+                ValuePropertiesCollection properties = DebugValue.getProperties(argumentsObj, session, getLanguage(), this);
+                if (properties != null) {
+                    return properties;
+                }
+                if (ValueInteropList.INTEROP.hasArrayElements(argumentsObj)) {
+                    return new ValueInteropList(session, getLanguage(), argumentsObj);
                 }
             }
         } catch (ThreadDeath td) {
             throw td;
         } catch (Throwable ex) {
-            throw new DebugException(debugger, ex, language, null, true, null);
+            throw new DebugException(session, ex, language, null, true, null);
         }
-        return arguments;
+        return null;
+    }
+
+    /**
+     * Get value that represents the receiver object of this scope. The receiver object is
+     * represented as <code>this</code> in Java or JavaScript and <code>self</code> in Ruby, for
+     * instance.
+     * <p>
+     * The returned value has a name that represents the receiver in the guest language. The scope
+     * that {@link #isFunctionScope() represents the function} provide receiver object, if there is
+     * one, other scopes do not provide it, unless they override it.
+     *
+     * @return value that represents the receiver, or <code>null</code> when there is no receiver
+     *         object
+     * @since 1.0
+     */
+    public DebugValue getReceiver() {
+        verifyValidState();
+        DebugValue receiverValue = null;
+        try {
+            Object receiver = scope.getReceiver();
+            if (receiver != null) {
+                receiverValue = new DebugValue.HeapValue(session, getLanguage(), scope.getReceiverName(), receiver);
+            }
+        } catch (ThreadDeath td) {
+            throw td;
+        } catch (Throwable ex) {
+            throw new DebugException(session, ex, language, null, true, null);
+        }
+        return receiverValue;
     }
 
     /**
@@ -226,12 +253,12 @@ public final class DebugScope {
         try {
             if (variables == null) {
                 Object variablesObj = scope.getVariables();
-                variables = DebugValue.getProperties(variablesObj, debugger, getLanguage(), this);
+                variables = DebugValue.getProperties(variablesObj, session, getLanguage(), this);
             }
         } catch (ThreadDeath td) {
             throw td;
         } catch (Throwable ex) {
-            throw new DebugException(debugger, ex, language, null, true, null);
+            throw new DebugException(session, ex, language, null, true, null);
         }
         return variables;
     }

@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2013, 2018, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2013, 2019, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -40,6 +40,8 @@
  */
 package org.graalvm.nativeimage;
 
+import org.graalvm.nativeimage.impl.InternalPlatform;
+
 /**
  * Root of the interface hierarchy for architectures, OS, and supported combinations of them.
  * <p>
@@ -59,28 +61,60 @@ package org.graalvm.nativeimage;
  */
 public interface Platform {
 
-    /*
-     * The standard architectures that we support.
+    /**
+     * The system property name that specifies the fully qualified name of the {@link Platform}
+     * implementation class that should be used. If the property is not specified, the platform
+     * class is inferred from the standard architectures and operating systems specified in this
+     * file, i.e., in most cases it is not necessary to use this property.
+     *
+     * @since 1.0
      */
+    String PLATFORM_PROPERTY_NAME = "svm.platform";
 
+    /**
+     * Returns true if the current platform (the platform that the native image is built for) is
+     * included in the provided platform group.
+     * <p>
+     * The platformGroup must be a compile-time constant, so that the call to this method can be
+     * replaced with the constant boolean result.
+     *
+     * @since 1.0
+     */
+    static boolean includedIn(Class<? extends Platform> platformGroup) {
+        return platformGroup.isInstance(ImageSingletons.lookup(Platform.class));
+    }
+
+    /*
+     * The standard architectures that are supported.
+     */
     /**
      * Supported architecture: x86 64-bit.
      *
      * @since 1.0
      */
     interface AMD64 extends Platform {
+
+    }
+
+    /**
+     * Supported architecture: ARMv8 64-bit.
+     *
+     * @since 1.0
+     */
+    interface AArch64 extends Platform {
+
     }
 
     /*
-     * The standard operating systems that we support.
+     * The standard operating systems that are supported.
      */
-
     /**
      * Supported operating system: Linux.
      *
      * @since 1.0
      */
     interface LINUX extends Platform {
+
     }
 
     /**
@@ -89,6 +123,7 @@ public interface Platform {
      * @since 1.0
      */
     interface DARWIN extends Platform {
+
     }
 
     /**
@@ -97,18 +132,18 @@ public interface Platform {
      * @since 1.0
      */
     interface WINDOWS extends Platform {
+
     }
 
     /*
-     * Standard leaf platforms, i.e., OS-architecture combinations that we support.
+     * The standard leaf platforms, i.e., OS-architecture combinations that we support.
      */
-
     /**
      * Supported leaf platform: Linux on x86 64-bit.
      *
      * @since 1.0
      */
-    final class LINUX_AMD64 implements LINUX, AMD64 {
+    class LINUX_AMD64 implements LINUX, InternalPlatform.LINUX_AND_JNI, AMD64 {
 
         /**
          * Instantiates a marker instance of this platform.
@@ -117,6 +152,24 @@ public interface Platform {
          */
         public LINUX_AMD64() {
         }
+
+    }
+
+    /**
+     * Supported leaf platform: Linux on AArch64 64-bit.
+     *
+     * @since 1.0
+     */
+    final class LINUX_AArch64 implements LINUX, InternalPlatform.LINUX_AND_JNI, AArch64 {
+
+        /**
+         * Instantiates a marker instance of this platform.
+         *
+         * @since 1.0
+         */
+        public LINUX_AArch64() {
+        }
+
     }
 
     /**
@@ -124,7 +177,7 @@ public interface Platform {
      *
      * @since 1.0
      */
-    final class DARWIN_AMD64 implements DARWIN, AMD64 {
+    class DARWIN_AMD64 implements DARWIN, InternalPlatform.DARWIN_AND_JNI, AMD64 {
 
         /**
          * Instantiates a marker instance of this platform.
@@ -133,6 +186,7 @@ public interface Platform {
          */
         public DARWIN_AMD64() {
         }
+
     }
 
     /**
@@ -140,7 +194,7 @@ public interface Platform {
      *
      * @since 1.0
      */
-    final class WINDOWS_AMD64 implements WINDOWS, AMD64 {
+    class WINDOWS_AMD64 implements WINDOWS, AMD64 {
 
         /**
          * Instantiates a marker instance of this platform.
@@ -149,6 +203,7 @@ public interface Platform {
          */
         public WINDOWS_AMD64() {
         }
+
     }
 
     /**
@@ -162,26 +217,4 @@ public interface Platform {
         }
     }
 
-    /**
-     * Returns true if the current platform (the platform that the native image is built for) is
-     * included in the provided platform group.
-     * <p>
-     * The platformGroup must be a compile time constant, so that the call to this method can be
-     * replaced with the constant boolean result.
-     *
-     * @since 1.0
-     */
-    static boolean includedIn(Class<? extends Platform> platformGroup) {
-        return platformGroup.isInstance(ImageSingletons.lookup(Platform.class));
-    }
-
-    /**
-     * The system property name that specifies the fully qualified name of the {@link Platform}
-     * implementation class that should be used. If the property is not specified, the platform
-     * class is inferred from the standard architectures and operating systems specified in this
-     * file, i.e., in most cases it is not necessary to use this property.
-     *
-     * @since 1.0
-     */
-    String PLATFORM_PROPERTY_NAME = "svm.platform";
 }

@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2014, 2017, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2014, 2018, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -137,7 +137,8 @@ public class UseTrappingNullChecksPhase extends BasePhase<LowTierContext> {
             int index = 0;
             for (AbstractEndNode end : merge.cfgPredecessors().snapshot()) {
                 ValueNode thisReason = reasons != null ? reasons.get(index) : reason;
-                ValueNode thisSpeculation = speculations != null ? speculations.get(index++) : speculation;
+                ValueNode thisSpeculation = speculations != null ? speculations.get(index) : speculation;
+                index++;
                 if (!thisReason.isConstant() || !thisSpeculation.isConstant()) {
                     continue;
                 }

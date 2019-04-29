@@ -27,6 +27,8 @@ package com.oracle.truffle.tools.profiler.test;
 import java.util.Collection;
 import java.util.Iterator;
 import java.util.Map;
+import java.util.concurrent.atomic.AtomicBoolean;
+import java.util.concurrent.atomic.AtomicInteger;
 
 import org.graalvm.polyglot.Source;
 import org.junit.Assert;
@@ -561,35 +563,40 @@ public class CPUSamplerTest extends AbstractProfilerTest {
     public void testThreadSafe() throws InterruptedException {
         sampler.setFilter(NO_INTERNAL_ROOT_TAG_FILTER);
         sampler.setCollecting(true);
+        AtomicBoolean cancelled = new AtomicBoolean();
+        AtomicInteger iterations = new AtomicInteger();
         Runnable runnable = new Runnable() {
             @Override
             public void run() {
-                while (true) {
+                while (!cancelled.get()) {
+                    iterations.incrementAndGet();
                     eval(defaultSourceForSampling);
-                    if (Thread.interrupted()) {
-                        break;
-                    }
                 }
             }
         };
         Thread execThread = new Thread(runnable);
         execThread.start();
+        ensureIterations(iterations, 2);
         Collection<ProfilerNode<CPUSampler.Payload>> oldNodes = sampler.getRootNodes();
         try {
             // NOTE: Execution is still running in a separate thread.
-            for (int i = 0; i < 30; i++) {
+            for (int i = 0; i < 5; i++) {
                 Collection<ProfilerNode<CPUSampler.Payload>> newNodes = sampler.getRootNodes();
                 isSuperset(oldNodes, newNodes);
                 oldNodes = newNodes;
-                Thread.sleep(100);
+                ensureIterations(iterations, 1);
             }
-        } catch (InterruptedException e) {
-            Assert.fail("Thread interrupted");
         } finally {
-            execThread.interrupt();
+            cancelled.set(true);
         }
-        execThread.join(1000);
+        execThread.join(10000);
+    }
 
+    private static void ensureIterations(AtomicInteger iterations, int numberIterations) throws InterruptedException {
+        iterations.set(0);
+        while (iterations.get() < numberIterations) {
+            Thread.sleep(5);
+        }
     }
 
     private static void isSuperset(Collection<ProfilerNode<CPUSampler.Payload>> firstRootNodes, Collection<ProfilerNode<CPUSampler.Payload>> secondRootNodes) {

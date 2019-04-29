@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2013, 2016, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2013, 2018, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -24,13 +24,6 @@
  */
 package org.graalvm.compiler.lir.aarch64;
 
-import static org.graalvm.compiler.lir.LIRInstruction.OperandFlag.COMPOSITE;
-import static org.graalvm.compiler.lir.LIRInstruction.OperandFlag.HINT;
-import static org.graalvm.compiler.lir.LIRInstruction.OperandFlag.REG;
-import static org.graalvm.compiler.lir.LIRInstruction.OperandFlag.STACK;
-import static org.graalvm.compiler.lir.LIRInstruction.OperandFlag.UNINITIALIZED;
-import static org.graalvm.compiler.lir.LIRValueUtil.asJavaConstant;
-import static org.graalvm.compiler.lir.LIRValueUtil.isJavaConstant;
 import static jdk.vm.ci.aarch64.AArch64.sp;
 import static jdk.vm.ci.aarch64.AArch64.zr;
 import static jdk.vm.ci.code.ValueUtil.asAllocatableValue;
@@ -38,11 +31,25 @@ import static jdk.vm.ci.code.ValueUtil.asRegister;
 import static jdk.vm.ci.code.ValueUtil.asStackSlot;
 import static jdk.vm.ci.code.ValueUtil.isRegister;
 import static jdk.vm.ci.code.ValueUtil.isStackSlot;
+import static org.graalvm.compiler.core.common.GraalOptions.GeneratePIC;
+import static org.graalvm.compiler.lir.LIRInstruction.OperandFlag.COMPOSITE;
+import static org.graalvm.compiler.lir.LIRInstruction.OperandFlag.CONST;
+import static org.graalvm.compiler.lir.LIRInstruction.OperandFlag.HINT;
+import static org.graalvm.compiler.lir.LIRInstruction.OperandFlag.ILLEGAL;
+import static org.graalvm.compiler.lir.LIRInstruction.OperandFlag.REG;
+import static org.graalvm.compiler.lir.LIRInstruction.OperandFlag.STACK;
+import static org.graalvm.compiler.lir.LIRInstruction.OperandFlag.UNINITIALIZED;
+import static org.graalvm.compiler.lir.LIRValueUtil.asJavaConstant;
+import static org.graalvm.compiler.lir.LIRValueUtil.isJavaConstant;
 
+import org.graalvm.compiler.asm.Label;
 import org.graalvm.compiler.asm.aarch64.AArch64Address;
+import org.graalvm.compiler.asm.aarch64.AArch64Assembler;
 import org.graalvm.compiler.asm.aarch64.AArch64MacroAssembler;
 import org.graalvm.compiler.asm.aarch64.AArch64MacroAssembler.ScratchRegister;
+import org.graalvm.compiler.core.common.CompressEncoding;
 import org.graalvm.compiler.core.common.LIRKind;
+import org.graalvm.compiler.core.common.spi.LIRKindTool;
 import org.graalvm.compiler.core.common.type.DataPointerConstant;
 import org.graalvm.compiler.debug.GraalError;
 import org.graalvm.compiler.lir.LIRFrameState;
@@ -54,8 +61,10 @@ import org.graalvm.compiler.lir.StandardOp.NullCheck;
 import org.graalvm.compiler.lir.StandardOp.ValueMoveOp;
 import org.graalvm.compiler.lir.VirtualStackSlot;
 import org.graalvm.compiler.lir.asm.CompilationResultBuilder;
+import org.graalvm.compiler.options.OptionValues;
 
 import jdk.vm.ci.aarch64.AArch64Kind;
+import jdk.vm.ci.code.MemoryBarriers;
 import jdk.vm.ci.code.Register;
 import jdk.vm.ci.code.StackSlot;
 import jdk.vm.ci.meta.AllocatableValue;
@@ -212,14 +221,20 @@ public class AArch64Move {
         // a compiler bug which warns that crb is unused, and also
         // warns that @SuppressWarnings("unused") is unnecessary.
         public void emitCode(@SuppressWarnings("all") CompilationResultBuilder crb, AArch64MacroAssembler masm) {
-            // As I understand it load acquire/store release have the same semantics as on IA64
-            // and allow us to handle LoadStore, LoadLoad and StoreStore without an explicit
-            // barrier.
-            // But Graal support to figure out if a load/store is volatile is non-existant so for
-            // now just use memory barriers everywhere.
-            // if ((barrier & MemoryBarriers.STORE_LOAD) != 0) {
-            masm.dmb(AArch64MacroAssembler.BarrierKind.ANY_ANY);
-            // }
+            assert barriers >= MemoryBarriers.LOAD_LOAD && barriers <= (MemoryBarriers.STORE_STORE | MemoryBarriers.STORE_LOAD | MemoryBarriers.LOAD_STORE | MemoryBarriers.LOAD_LOAD);
+            switch (barriers) {
+                case MemoryBarriers.STORE_STORE:
+                    masm.dmb(AArch64MacroAssembler.BarrierKind.STORE_STORE);
+                    break;
+                case MemoryBarriers.LOAD_LOAD:
+                case MemoryBarriers.LOAD_STORE:
+                case MemoryBarriers.LOAD_LOAD | MemoryBarriers.LOAD_STORE:
+                    masm.dmb(AArch64MacroAssembler.BarrierKind.LOAD_LOAD);
+                    break;
+                default:
+                    masm.dmb(AArch64MacroAssembler.BarrierKind.ANY_ANY);
+                    break;
+            }
         }
     }
 
@@ -482,7 +497,12 @@ public class AArch64Move {
                         masm.fmov(32, dst, scratch);
                     }
                 } else {
-                    masm.fldr(32, dst, (AArch64Address) crb.asFloatConstRef(input));
+                    try (ScratchRegister scr = masm.getScratchRegister()) {
+                        Register scratch = scr.getRegister();
+                        crb.asFloatConstRef(input);
+                        masm.addressOf(scratch);
+                        masm.fldr(32, dst, AArch64Address.createBaseRegisterOnlyAddress(scratch));
+                    }
                 }
                 break;
             case Double:
@@ -495,15 +515,24 @@ public class AArch64Move {
                         masm.fmov(64, dst, scratch);
                     }
                 } else {
-                    masm.fldr(64, dst, (AArch64Address) crb.asDoubleConstRef(input));
+                    try (ScratchRegister scr = masm.getScratchRegister()) {
+                        Register scratch = scr.getRegister();
+                        crb.asDoubleConstRef(input);
+                        masm.addressOf(scratch);
+                        masm.fldr(64, dst, AArch64Address.createBaseRegisterOnlyAddress(scratch));
+                    }
                 }
                 break;
             case Object:
                 if (input.isNull()) {
-                    masm.mov(dst, 0);
+                    if (crb.mustReplaceWithNullRegister(input)) {
+                        masm.mov(64, dst, crb.nullRegister);
+                    } else {
+                        masm.mov(dst, 0);
+                    }
                 } else if (crb.target.inlineObjects) {
                     crb.recordInlineDataInCode(input);
-                    masm.movNativeAddress(dst, 0xDEADDEADDEADDEADL);
+                    masm.mov(dst, 0xDEADDEADDEADDEADL, true);
                 } else {
                     masm.ldr(64, dst, (AArch64Address) crb.recordDataReferenceInCode(input, 8));
                 }
@@ -552,6 +581,133 @@ public class AArch64Move {
         int displacement = crb.frameMap.offsetForStackSlot(slot);
         int transferSize = slot.getPlatformKind().getSizeInBytes();
         return masm.makeAddress(sp, displacement, scratchReg, transferSize, /* allowOverwrite */false);
+    }
+
+    public abstract static class PointerCompressionOp extends AArch64LIRInstruction {
+
+        @Def({REG, HINT}) private AllocatableValue result;
+        @Use({REG, CONST}) private Value input;
+        @Alive({REG, ILLEGAL, UNINITIALIZED}) private AllocatableValue baseRegister;
+
+        protected final CompressEncoding encoding;
+        protected final boolean nonNull;
+        protected final LIRKindTool lirKindTool;
+
+        protected PointerCompressionOp(LIRInstructionClass<? extends PointerCompressionOp> type, AllocatableValue result, Value input,
+                        AllocatableValue baseRegister, CompressEncoding encoding, boolean nonNull, LIRKindTool lirKindTool) {
+
+            super(type);
+            this.result = result;
+            this.input = input;
+            this.baseRegister = baseRegister;
+            this.encoding = encoding;
+            this.nonNull = nonNull;
+            this.lirKindTool = lirKindTool;
+        }
+
+        public static boolean hasBase(OptionValues options, CompressEncoding encoding) {
+            return GeneratePIC.getValue(options) || encoding.hasBase();
+        }
+
+        public final Value getInput() {
+            return input;
+        }
+
+        public final AllocatableValue getResult() {
+            return result;
+        }
+
+        protected final Register getResultRegister() {
+            return asRegister(result);
+        }
+
+        protected final Register getBaseRegister(CompilationResultBuilder crb) {
+            return hasBase(crb.getOptions(), encoding) ? asRegister(baseRegister) : Register.None;
+        }
+
+        protected final int getShift() {
+            return encoding.getShift();
+        }
+
+        protected final void move(CompilationResultBuilder crb, AArch64MacroAssembler masm) {
+            AArch64Move.move(crb, masm, result, input);
+        }
+    }
+
+    public static class CompressPointerOp extends PointerCompressionOp {
+        public static final LIRInstructionClass<CompressPointerOp> TYPE = LIRInstructionClass.create(CompressPointerOp.class);
+
+        public CompressPointerOp(AllocatableValue result, Value input, AllocatableValue baseRegister, CompressEncoding encoding, boolean nonNull, LIRKindTool lirKindTool) {
+            this(TYPE, result, input, baseRegister, encoding, nonNull, lirKindTool);
+        }
+
+        private CompressPointerOp(LIRInstructionClass<? extends PointerCompressionOp> type, AllocatableValue result, Value input,
+                        AllocatableValue baseRegister, CompressEncoding encoding, boolean nonNull, LIRKindTool lirKindTool) {
+
+            super(type, result, input, baseRegister, encoding, nonNull, lirKindTool);
+        }
+
+        @Override
+        protected void emitCode(CompilationResultBuilder crb, AArch64MacroAssembler masm) {
+            Register resultRegister = getResultRegister();
+            Register ptr = asRegister(getInput());
+            Register base = getBaseRegister(crb);
+            // result = (ptr - base) >> shift
+            if (!encoding.hasBase()) {
+                if (encoding.hasShift()) {
+                    masm.lshr(64, resultRegister, ptr, encoding.getShift());
+                } else {
+                    masm.movx(resultRegister, ptr);
+                }
+            } else if (nonNull) {
+                masm.sub(64, resultRegister, ptr, base);
+                if (encoding.hasShift()) {
+                    masm.lshr(64, resultRegister, resultRegister, encoding.getShift());
+                }
+            } else {
+                // if ptr is null it still has to be null after compression
+                masm.cmp(64, ptr, 0);
+                masm.cmov(64, resultRegister, ptr, base, AArch64Assembler.ConditionFlag.NE);
+                masm.sub(64, resultRegister, resultRegister, base);
+                if (encoding.hasShift()) {
+                    masm.lshr(64, resultRegister, resultRegister, encoding.getShift());
+                }
+            }
+        }
+    }
+
+    public static class UncompressPointerOp extends PointerCompressionOp {
+        public static final LIRInstructionClass<UncompressPointerOp> TYPE = LIRInstructionClass.create(UncompressPointerOp.class);
+
+        public UncompressPointerOp(AllocatableValue result, Value input, AllocatableValue baseRegister, CompressEncoding encoding, boolean nonNull, LIRKindTool lirKindTool) {
+            this(TYPE, result, input, baseRegister, encoding, nonNull, lirKindTool);
+        }
+
+        private UncompressPointerOp(LIRInstructionClass<? extends PointerCompressionOp> type, AllocatableValue result, Value input,
+                        AllocatableValue baseRegister, CompressEncoding encoding, boolean nonNull, LIRKindTool lirKindTool) {
+            super(type, result, input, baseRegister, encoding, nonNull, lirKindTool);
+        }
+
+        @Override
+        protected void emitCode(CompilationResultBuilder crb, AArch64MacroAssembler masm) {
+            Register inputRegister = asRegister(getInput());
+            Register resultRegister = getResultRegister();
+            Register base = encoding.hasBase() ? getBaseRegister(crb) : null;
+
+            // result = base + (ptr << shift)
+            if (nonNull || base == null) {
+                masm.add(64, resultRegister, base == null ? zr : base, inputRegister, AArch64Assembler.ShiftType.LSL, encoding.getShift());
+            } else {
+                // if ptr is null it has to be null after decompression
+                Label done = new Label();
+                if (!resultRegister.equals(inputRegister)) {
+                    masm.mov(32, resultRegister, inputRegister);
+                }
+                masm.cbz(32, resultRegister, done);
+                masm.add(64, resultRegister, base, resultRegister, AArch64Assembler.ShiftType.LSL, encoding.getShift());
+                masm.bind(done);
+            }
+        }
     }
 
 }

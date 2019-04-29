@@ -55,6 +55,17 @@ public abstract class CustomSubstitutionMethod implements ResolvedJavaMethod, Gr
     }
 
     @Override
+    public boolean allowRuntimeCompilation() {
+        /*
+         * The safe default for all methods with manually generated graphs is that such methods are
+         * not available for runtime compilation. Note that a manually generated graph must be able
+         * to provide the proper deoptimization entry points and deoptimization frame states. If a
+         * subclass provides that, it can override this method and return true.
+         */
+        return false;
+    }
+
+    @Override
     public String getName() {
         return original.getName();
     }
@@ -81,7 +92,7 @@ public abstract class CustomSubstitutionMethod implements ResolvedJavaMethod, Gr
 
     @Override
     public int getMaxLocals() {
-        return getSignature().getParameterCount(true) + 2;
+        return getSignature().getParameterCount(!isStatic()) * 2;
     }
 
     @Override
@@ -171,6 +182,11 @@ public abstract class CustomSubstitutionMethod implements ResolvedJavaMethod, Gr
     @Override
     public <T extends Annotation> T getAnnotation(Class<T> annotationClass) {
         return original.getAnnotation(annotationClass);
+    }
+
+    @Override
+    public Parameter[] getParameters() {
+        return original.getParameters();
     }
 
     @Override

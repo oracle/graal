@@ -24,8 +24,11 @@
  */
 #include <stdio.h>
 #include <stdlib.h>
+#ifndef _WIN64
 #include <dlfcn.h>
-#include <stdbool.h>
+#else
+#include <windows.h>
+#endif
 #include "mydata.h"
 #include "libcinterfacetutorial.h"
 
@@ -35,8 +38,8 @@ void c_print(void *thread, char* cstr) {
 }
 
 void fill(my_data* data) {
-    data->f_primitive = 42;
     int i;
+    data->f_primitive = 42;
     for (i = 0; i < DATA_ARRAY_LENGTH; i++) {
       data->f_array[i] = i * 2;
     }
@@ -46,10 +49,10 @@ void fill(my_data* data) {
 }
 
 void dump(void *thread, my_data* data) {
+    int i;
     printf("**** In C ****\n");
     printf("primitive: %d\n", data->f_primitive);
     printf("length: %d\n", DATA_ARRAY_LENGTH);
-    int i;
     for (i = 0; i < DATA_ARRAY_LENGTH; i++) {
         printf("%d ", data->f_array[i]);
     }
@@ -64,8 +67,8 @@ day_of_the_week_t day_of_the_week_add(day_of_the_week_t day, int offset) {
 }
 
 du_t* makeUnion(unsigned char type) {
-	printf("**** In C ****\n");
 	du_t* result;
+	printf("**** In C ****\n");
 	switch(type) {
 	case 1:
 		result = (du_t*) malloc(sizeof(d1_t));
@@ -79,9 +82,9 @@ du_t* makeUnion(unsigned char type) {
 		break;
 	}
 	result->h.type = type;
-	result->h.typename[0] = 'd';
-	result->h.typename[0] = '0' + type;
-	result->h.typename[2] = '\0';
+	result->h.name[0] = 'd';
+	result->h.name[0] = '0' + type;
+	result->h.name[2] = '\0';
 	return result;
 }
 
@@ -89,18 +92,23 @@ long long getUB1(sudata_t *sudata) {
 	return sudata->f_ub1;
 }
 
-#ifndef RTLD_DEFAULT
-#define RTLD_DEFAULT 0
-#endif
+typedef void (*java_release_data_fn_t)(void *thread, my_data* data);
 
 int main(void) {
+  my_data data;
+  java_release_data_fn_t java_release_data;
+  day_of_the_week_t day;
+  subdata_t *subdata;
+  du_t *du1, *du2;
+  sudata_t *sudata;
+  long long u1, u2, u3, u4;
+
   graal_isolatethread_t *thread = NULL;
   if (graal_create_isolate(NULL, NULL, &thread) != 0) {
     fprintf(stderr, "error on isolate creation or attach\n");
     return 1;
   }
 
-  my_data data;
   fill(&data);
 
   /* Call a Java function directly. */
@@ -109,44 +117,51 @@ int main(void) {
   dump(thread, &data);
 
   /* Call a Java function indirectly by looking it up dynamically. */
-  void (*java_release_data)(void *thread, my_data* data) = dlsym(RTLD_DEFAULT, "java_release_data");
+#ifndef _WIN64
+#ifndef RTLD_DEFAULT
+#define RTLD_DEFAULT 0
+#endif
+  java_release_data = dlsym(RTLD_DEFAULT, "java_release_data");
+#else
+  java_release_data = (java_release_data_fn_t) GetProcAddress(GetModuleHandleA("libcinterfacetutorial"), "java_release_data");
+#endif
   java_release_data(thread, &data);
 
   /* Enum demo */
-  day_of_the_week_t day = SUNDAY;
+  day = SUNDAY;
   java_print_day(thread, day);
 
   /* Using inheritance in Java to model structural extension, e.g.,
    * header_t is represented by a top @CStruct interface Header, and subdata_t
    * can be represented by a sub-interface of the Header interface.
    */
-  subdata_t *subdata = (subdata_t *) malloc(sizeof(subdata_t));
+  subdata = (subdata_t *) malloc(sizeof(subdata_t));
   subdata->header.type = 7;
-  subdata->header.typename[0] = 's';
-  subdata->header.typename[1] = '1';
-  subdata->header.typename[2] = 0;
+  subdata->header.name[0] = 's';
+  subdata->header.name[1] = '1';
+  subdata->header.name[2] = 0;
   subdata->f1 = 0x800000f;
   java_entry_point2(thread, subdata, subdata);
   free(subdata);
 
   /* Union demo */
-  du_t *du1 = makeUnion(1);
-  du_t *du2 = makeUnion(2);
+  du1 = makeUnion(1);
+  du2 = makeUnion(2);
 
   java_entry_point3(thread, du1, du2, &du1->d1, &du2->d2);
 
   free(du1);
   free(du2);
 
-  sudata_t *sudata = (sudata_t *) malloc(sizeof(sudata_t));
+  sudata = (sudata_t *) malloc(sizeof(sudata_t));
   sudata->f_ub1 = 0xF0;
   sudata->f_sb1 = 0xF0;
   java_entry_point4(thread, sudata);
 
-  long long u1 = getUB1_raw_value(thread, sudata);
-  long long u2 = getUB1_masked_raw_value(thread, sudata);
-  long long u3 = getUB1_as_Unsigned_raw_value(thread, sudata);
-  long long u4 = getUB1(sudata);
+  u1 = getUB1_raw_value(thread, sudata);
+  u2 = getUB1_masked_raw_value(thread, sudata);
+  u3 = getUB1_as_Unsigned_raw_value(thread, sudata);
+  u4 = getUB1(sudata);
 
   printf("getUB1_raw_value              %lld = 0x%llx   (ub1) %d = 0x%x\n", u1, u1, (ub1) u1, (ub1) u1);
   printf("getUB1_masked_raw_value       %lld = 0x%llx   (ub1) %d = 0x%x\n", u2, u2, (ub1) u1, (ub1) u1);

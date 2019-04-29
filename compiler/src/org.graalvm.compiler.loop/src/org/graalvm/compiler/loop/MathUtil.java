@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2015, 2016, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2015, 2018, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -88,7 +88,7 @@ public class MathUtil {
         if (isConstantOne(divisor)) {
             return dividend;
         }
-        ValueNode div = graph.addOrUniqueWithInputs(createDiv.apply(dividend, divisor));
+        ValueNode div = createDiv.apply(dividend, divisor);
         if (div instanceof FixedBinaryNode) {
             FixedBinaryNode fixedDiv = (FixedBinaryNode) div;
             if (before.predecessor() instanceof FixedBinaryNode) {
@@ -98,7 +98,7 @@ public class MathUtil {
                     return binaryPredecessor;
                 }
             }
-            graph.addBeforeFixed(before, fixedDiv);
+            graph.addBeforeFixed(before, graph.addOrUniqueWithInputs(fixedDiv));
         }
         return div;
     }

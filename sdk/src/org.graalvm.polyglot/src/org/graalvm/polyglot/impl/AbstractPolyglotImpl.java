@@ -40,7 +40,6 @@
  */
 package org.graalvm.polyglot.impl;
 
-import java.io.Closeable;
 import java.io.File;
 import java.io.IOException;
 import java.io.InputStream;
@@ -48,8 +47,11 @@ import java.io.OutputStream;
 import java.io.PrintStream;
 import java.io.PrintWriter;
 import java.io.Reader;
+import java.lang.annotation.Annotation;
+import java.lang.reflect.AnnotatedElement;
 import java.net.URI;
 import java.net.URL;
+import java.nio.charset.Charset;
 import java.nio.file.Path;
 import java.util.Collection;
 import java.util.Collections;
@@ -59,14 +61,17 @@ import java.util.Objects;
 import java.util.Set;
 import java.util.concurrent.TimeUnit;
 import java.util.function.Consumer;
+import java.util.function.Function;
 import java.util.function.Predicate;
-import java.util.logging.Handler;
 
+import org.graalvm.collections.EconomicSet;
 import org.graalvm.options.OptionDescriptors;
 import org.graalvm.polyglot.Context;
 import org.graalvm.polyglot.Engine;
+import org.graalvm.polyglot.HostAccess;
 import org.graalvm.polyglot.Instrument;
 import org.graalvm.polyglot.Language;
+import org.graalvm.polyglot.PolyglotAccess;
 import org.graalvm.polyglot.PolyglotException;
 import org.graalvm.polyglot.PolyglotException.StackFrame;
 import org.graalvm.polyglot.Source;
@@ -77,7 +82,6 @@ import org.graalvm.polyglot.io.ByteSequence;
 import org.graalvm.polyglot.io.FileSystem;
 import org.graalvm.polyglot.io.MessageTransport;
 import org.graalvm.polyglot.management.ExecutionEvent;
-import org.graalvm.polyglot.management.ExecutionListener;
 
 @SuppressWarnings("unused")
 public abstract class AbstractPolyglotImpl {
@@ -105,6 +109,8 @@ public abstract class AbstractPolyglotImpl {
                 throw new AssertionError("Only one implementation of APIAccess allowed. " + getClass().getCanonicalName());
             }
         }
+
+        public abstract boolean useContextClassLoader();
 
         public abstract Engine newEngine(AbstractEngineImpl impl);
 
@@ -138,6 +144,20 @@ public abstract class AbstractPolyglotImpl {
 
         public abstract StackFrame newPolyglotStackTraceElement(PolyglotException e, AbstractStackFrameImpl impl);
 
+        public abstract List<Object> getTargetMappings(HostAccess access);
+
+        public abstract boolean allowsAccess(HostAccess access, AnnotatedElement element);
+
+        public abstract boolean allowsImplementation(HostAccess access, Class<?> type);
+
+        public abstract boolean isArrayAccessible(HostAccess access);
+
+        public abstract boolean isListAccessible(HostAccess access);
+
+        public abstract Object getHostAccessImpl(HostAccess conf);
+
+        public abstract void setHostAccessImpl(HostAccess conf, Object impl);
+
     }
 
     // shared SPI
@@ -166,7 +186,9 @@ public abstract class AbstractPolyglotImpl {
     }
 
     public abstract Engine buildEngine(OutputStream out, OutputStream err, InputStream in, Map<String, String> arguments, long timeout, TimeUnit timeoutUnit, boolean sandbox,
-                    long maximumAllowedAllocationBytes, boolean useSystemProperties, boolean boundEngine, MessageTransport messageInterceptor, Object logHandlerOrStream);
+                    long maximumAllowedAllocationBytes, boolean useSystemProperties, boolean allowExperimentalOptions, boolean boundEngine, MessageTransport messageInterceptor,
+                    Object logHandlerOrStream,
+                    HostAccess conf);
 
     public abstract void preInitializeEngine();
 
@@ -222,7 +244,8 @@ public abstract class AbstractPolyglotImpl {
             this.engineImpl = engineImpl;
         }
 
-        public abstract Source build(String language, Object origin, URI uri, String name, String mimeType, Object content, boolean interactive, boolean internal, boolean cached) throws IOException;
+        public abstract Source build(String language, Object origin, URI uri, String name, String mimeType, Object content, boolean interactive, boolean internal, boolean cached, Charset encoding)
+                        throws IOException;
 
         public abstract String getName(Object impl);
 
@@ -289,6 +312,12 @@ public abstract class AbstractPolyglotImpl {
         }
 
         public abstract boolean isAvailable(Object impl);
+
+        public abstract boolean hasLines(Object impl);
+
+        public abstract boolean hasColumns(Object impl);
+
+        public abstract boolean hasCharIndex(Object impl);
 
         public abstract int getStartLine(Object impl);
 
@@ -363,9 +392,12 @@ public abstract class AbstractPolyglotImpl {
 
         public abstract OptionDescriptors getOptions();
 
-        public abstract Context createContext(OutputStream out, OutputStream err, InputStream in, boolean allowHostAccess, boolean allowNativeAccess,
-                        boolean allowCreateThread, boolean allowHostIO, boolean allowHostClassLoading, Predicate<String> classFilter, Map<String, String> options, Map<String, String[]> arguments,
-                        String[] onlyLanguages, FileSystem fileSystem, Object logHandlerOrStream);
+        public abstract Context createContext(OutputStream out, OutputStream err, InputStream in, boolean allowHostAccess,
+                        HostAccess hostAccess,
+                        PolyglotAccess polyglotAccess,
+                        boolean allowNativeAccess, boolean allowCreateThread, boolean allowHostIO, boolean allowHostClassLoading, boolean allowExperimentalOptions, Predicate<String> classFilter,
+                        Map<String, String> options,
+                        Map<String, String[]> arguments, String[] onlyLanguages, FileSystem fileSystem, Object logHandlerOrStream);
 
         public abstract String getImplementationName();
 
@@ -628,5 +660,7 @@ public abstract class AbstractPolyglotImpl {
     public abstract Collection<Engine> findActiveEngines();
 
     public abstract Value asValue(Object o);
+
+    public abstract <S, T> Object newTargetTypeMapping(Class<S> sourceType, Class<T> targetType, Predicate<S> acceptsValue, Function<S, T> convertValue);
 
 }

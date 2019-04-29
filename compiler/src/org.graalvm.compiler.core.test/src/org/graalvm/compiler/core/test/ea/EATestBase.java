@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2011, 2014, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2011, 2018, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -152,11 +152,15 @@ public class EATestBase extends GraalCompilerTest {
                 Assert.assertEquals(expectedConstantResult, returnNode.result().asConstant());
             }
         }
-        int newInstanceCount = graph.getNodes().filter(isA(NewInstanceNode.class).or(NewArrayNode.class).or(AllocatedObjectNode.class)).count();
+        int newInstanceCount = getAllocationCount();
         Assert.assertEquals("Expected allocation count does not match", expectedAllocationCount, newInstanceCount);
         if (expectedAllocationCount == 0) {
             Assert.assertTrue("Unexpected CommitAllocationNode", graph.getNodes().filter(CommitAllocationNode.class).isEmpty());
         }
+    }
+
+    protected int getAllocationCount() {
+        return graph.getNodes().filter(isA(NewInstanceNode.class).or(NewArrayNode.class).or(AllocatedObjectNode.class)).count();
     }
 
     @SuppressWarnings("try")

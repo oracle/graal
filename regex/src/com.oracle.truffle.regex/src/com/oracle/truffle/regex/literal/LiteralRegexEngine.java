@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2014, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2014, 2019, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -25,12 +25,19 @@
 package com.oracle.truffle.regex.literal;
 
 import com.oracle.truffle.regex.RegexLanguage;
-import com.oracle.truffle.regex.RegexSource;
+import com.oracle.truffle.regex.literal.LiteralRegexExecRootNode.EmptyEndsWith;
+import com.oracle.truffle.regex.literal.LiteralRegexExecRootNode.EmptyEquals;
+import com.oracle.truffle.regex.literal.LiteralRegexExecRootNode.EmptyIndexOf;
+import com.oracle.truffle.regex.literal.LiteralRegexExecRootNode.EmptyStartsWith;
+import com.oracle.truffle.regex.literal.LiteralRegexExecRootNode.EndsWith;
+import com.oracle.truffle.regex.literal.LiteralRegexExecRootNode.Equals;
+import com.oracle.truffle.regex.literal.LiteralRegexExecRootNode.IndexOfChar;
+import com.oracle.truffle.regex.literal.LiteralRegexExecRootNode.IndexOfString;
+import com.oracle.truffle.regex.literal.LiteralRegexExecRootNode.RegionMatches;
+import com.oracle.truffle.regex.literal.LiteralRegexExecRootNode.StartsWith;
 import com.oracle.truffle.regex.tregex.parser.RegexProperties;
 import com.oracle.truffle.regex.tregex.parser.ast.RegexAST;
 import com.oracle.truffle.regex.tregex.parser.ast.visitors.PreCalcResultVisitor;
-
-import static com.oracle.truffle.regex.literal.LiteralRegexExecRootNode.*;
 
 /**
  * This regex engine is designed for very simple cases, where the regular expression can be directly
@@ -61,37 +68,36 @@ public final class LiteralRegexEngine {
     }
 
     private static LiteralRegexExecRootNode createLiteralNode(RegexLanguage language, RegexAST ast, boolean caret, boolean dollar) {
-        RegexSource source = ast.getSource();
         PreCalcResultVisitor preCalcResultVisitor = PreCalcResultVisitor.run(ast, true);
         if (preCalcResultVisitor.getLiteral().length() == 0) {
             if (caret) {
                 if (dollar) {
-                    return new EmptyEquals(language, source, preCalcResultVisitor);
+                    return new EmptyEquals(language, ast, preCalcResultVisitor);
                 }
-                return new EmptyStartsWith(language, source, preCalcResultVisitor);
+                return new EmptyStartsWith(language, ast, preCalcResultVisitor);
             }
             if (dollar) {
-                return new EmptyEndsWith(language, source, preCalcResultVisitor);
+                return new EmptyEndsWith(language, ast, preCalcResultVisitor);
             }
-            return new EmptyIndexOf(language, source, preCalcResultVisitor);
+            return new EmptyIndexOf(language, ast, preCalcResultVisitor);
         }
         if (caret) {
             if (dollar) {
-                return new Equals(language, source, preCalcResultVisitor);
+                return new Equals(language, ast, preCalcResultVisitor);
             }
-            return new StartsWith(language, source, preCalcResultVisitor);
+            return new StartsWith(language, ast, preCalcResultVisitor);
         }
         if (dollar) {
-            return new EndsWith(language, source, preCalcResultVisitor);
+            return new EndsWith(language, ast, preCalcResultVisitor);
         }
         if (ast.getFlags().isSticky()) {
-            return new RegionMatches(language, source, preCalcResultVisitor);
+            return new RegionMatches(language, ast, preCalcResultVisitor);
         }
         if (preCalcResultVisitor.getLiteral().length() == 1) {
-            return new IndexOfChar(language, source, preCalcResultVisitor);
+            return new IndexOfChar(language, ast, preCalcResultVisitor);
         }
         if (preCalcResultVisitor.getLiteral().length() <= 64) {
-            return new IndexOfString(language, source, preCalcResultVisitor);
+            return new IndexOfString(language, ast, preCalcResultVisitor);
         }
         return null;
     }

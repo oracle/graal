@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2016, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2016, 2019, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -81,7 +81,7 @@ public final class DFANodeSplit implements StateIndex<GraphNode> {
         flagDone = new CompilationFinalBitSet(graph.size() + EXTRA_INITIAL_CAPACITY);
         flagActive = new CompilationFinalBitSet(graph.size() + EXTRA_INITIAL_CAPACITY);
         for (GraphNode graphNode : graph.getNodes()) {
-            for (GraphNode successor : graphNode.successors(this)) {
+            for (GraphNode successor : graphNode.getSuccessors(this)) {
                 successor.addPredecessorUnsorted(graphNode);
             }
         }
@@ -169,7 +169,7 @@ public final class DFANodeSplit implements StateIndex<GraphNode> {
 
     private boolean splitLoops(GraphNode topNode, Set<GraphNode> set) throws DFANodeSplitBailoutException {
         boolean crossEdge = false;
-        for (GraphNode child : topNode.domChildren(this)) {
+        for (GraphNode child : topNode.getDomChildren(this)) {
             if (set.isEmpty() || set.contains(child)) {
                 if (splitLoops(child, set)) {
                     crossEdge = true;
@@ -179,7 +179,7 @@ public final class DFANodeSplit implements StateIndex<GraphNode> {
         if (crossEdge) {
             handleIrChildren(topNode, set);
         }
-        for (GraphNode pred : topNode.predecessors()) {
+        for (GraphNode pred : topNode.getPredecessors()) {
             if (pred.isBackEdge(topNode) && !domTree.dom(topNode, pred)) {
                 return true;
             }
@@ -190,7 +190,7 @@ public final class DFANodeSplit implements StateIndex<GraphNode> {
     private void handleIrChildren(GraphNode topNode, Set<GraphNode> set) throws DFANodeSplitBailoutException {
         ArrayDeque<GraphNode> dfsList = new ArrayDeque<>();
         ArrayList<Set<GraphNode>> sccList = new ArrayList<>();
-        for (GraphNode child : topNode.domChildren(this)) {
+        for (GraphNode child : topNode.getDomChildren(this)) {
             if (!isDone(child) && (set.isEmpty() || set.contains(child))) {
                 scc1(dfsList, child, set, topNode.getDomTreeDepth());
             }
@@ -211,7 +211,7 @@ public final class DFANodeSplit implements StateIndex<GraphNode> {
 
     private void scc1(ArrayDeque<GraphNode> dfsList, GraphNode curNode, Set<GraphNode> set, int level) {
         setDone(curNode);
-        for (GraphNode child : curNode.successors(this)) {
+        for (GraphNode child : curNode.getSuccessors(this)) {
             if (!isDone(child) && child.getDomTreeDepth() > level && (set.isEmpty() || set.contains(child))) {
                 scc1(dfsList, child, set, level);
             }
@@ -221,7 +221,7 @@ public final class DFANodeSplit implements StateIndex<GraphNode> {
 
     private void scc2(Set<GraphNode> scc, GraphNode curNode, int level) {
         clearDone(curNode);
-        for (GraphNode pred : curNode.predecessors()) {
+        for (GraphNode pred : curNode.getPredecessors()) {
             if (isDone(pred) && pred.getDomTreeDepth() > level) {
                 scc2(scc, pred, level);
             }
@@ -263,7 +263,7 @@ public final class DFANodeSplit implements StateIndex<GraphNode> {
         }
         for (GraphNode cur : scc) {
             if (cur.getHeader() != headerNode) {
-                for (GraphNode suc : cur.successors(this)) {
+                for (GraphNode suc : cur.getSuccessors(this)) {
                     if (suc.getCopy() == null) {
                         suc.addPredecessor(cur.getCopy());
                     } else {
@@ -271,7 +271,7 @@ public final class DFANodeSplit implements StateIndex<GraphNode> {
                         suc.getCopy().replacePredecessor(cur);
                     }
                 }
-                Iterator<GraphNode> curPredecessors = cur.predecessors().iterator();
+                Iterator<GraphNode> curPredecessors = cur.getPredecessors().iterator();
                 while (curPredecessors.hasNext()) {
                     GraphNode pred = curPredecessors.next();
                     if (pred.getCopy() == null) {
@@ -321,7 +321,7 @@ public final class DFANodeSplit implements StateIndex<GraphNode> {
         setDone(cnode);
         setActive(cnode);
         cnode.clearBackEdges();
-        for (GraphNode child : cnode.successors(this)) {
+        for (GraphNode child : cnode.getSuccessors(this)) {
             if (isActive(child)) {
                 cnode.markBackEdge(child);
             } else if (!isDone(child)) {

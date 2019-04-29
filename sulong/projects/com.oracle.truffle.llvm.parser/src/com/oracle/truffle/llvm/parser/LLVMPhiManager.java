@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2016, 2018, Oracle and/or its affiliates.
+ * Copyright (c) 2016, 2019, Oracle and/or its affiliates.
  *
  * All rights reserved.
  *
@@ -38,6 +38,7 @@ import com.oracle.truffle.llvm.parser.model.symbols.instructions.TerminatingInst
 import com.oracle.truffle.llvm.parser.model.visitors.FunctionVisitor;
 import com.oracle.truffle.llvm.parser.model.visitors.InstructionVisitorAdapter;
 import com.oracle.truffle.llvm.parser.model.visitors.ModelVisitor;
+import com.oracle.truffle.llvm.runtime.except.LLVMParserException;
 
 import java.util.ArrayList;
 import java.util.HashMap;
@@ -136,7 +137,7 @@ public final class LLVMPhiManager implements ModelVisitor {
                 }
             }
         }
-        throw new RuntimeException("Could not find a matching successor for a phi.");
+        throw new LLVMParserException("Could not find a matching successor for a phi.");
     }
 
     private static boolean hasMatchingPhi(ArrayList<Phi> possiblePhiList, Phi phi) {

@@ -43,8 +43,10 @@ package com.oracle.truffle.sl.builtins;
 import java.io.PrintWriter;
 
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
+import com.oracle.truffle.api.dsl.CachedContext;
 import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.nodes.NodeInfo;
+import com.oracle.truffle.sl.SLLanguage;
 import com.oracle.truffle.sl.runtime.SLContext;
 
 /**
@@ -60,8 +62,8 @@ import com.oracle.truffle.sl.runtime.SLContext;
 public abstract class SLPrintlnBuiltin extends SLBuiltinNode {
 
     @Specialization
-    public long println(long value) {
-        doPrint(getContext().getOutput(), value);
+    public long println(long value, @CachedContext(SLLanguage.class) SLContext context) {
+        doPrint(context.getOutput(), value);
         return value;
     }
 
@@ -71,8 +73,8 @@ public abstract class SLPrintlnBuiltin extends SLBuiltinNode {
     }
 
     @Specialization
-    public boolean println(boolean value) {
-        doPrint(getContext().getOutput(), value);
+    public boolean println(boolean value, @CachedContext(SLLanguage.class) SLContext context) {
+        doPrint(context.getOutput(), value);
         return value;
     }
 
@@ -82,8 +84,8 @@ public abstract class SLPrintlnBuiltin extends SLBuiltinNode {
     }
 
     @Specialization
-    public String println(String value) {
-        doPrint(getContext().getOutput(), value);
+    public String println(String value, @CachedContext(SLLanguage.class) SLContext context) {
+        doPrint(context.getOutput(), value);
         return value;
     }
 
@@ -93,8 +95,8 @@ public abstract class SLPrintlnBuiltin extends SLBuiltinNode {
     }
 
     @Specialization
-    public Object println(Object value) {
-        doPrint(getContext().getOutput(), value);
+    public Object println(Object value, @CachedContext(SLLanguage.class) SLContext context) {
+        doPrint(context.getOutput(), value);
         return value;
     }
 

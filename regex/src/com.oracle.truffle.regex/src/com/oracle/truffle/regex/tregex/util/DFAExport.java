@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2016, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2016, 2019, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -25,6 +25,7 @@
 package com.oracle.truffle.regex.tregex.util;
 
 import com.oracle.truffle.api.CompilerDirectives;
+import com.oracle.truffle.api.TruffleFile;
 import com.oracle.truffle.regex.tregex.dfa.DFAGenerator;
 import com.oracle.truffle.regex.tregex.dfa.DFAStateNodeBuilder;
 import com.oracle.truffle.regex.tregex.dfa.DFAStateTransitionBuilder;
@@ -38,8 +39,7 @@ import com.oracle.truffle.regex.tregex.nodes.DFAStateNode;
 
 import java.io.BufferedWriter;
 import java.io.IOException;
-import java.nio.file.Files;
-import java.nio.file.Paths;
+import java.nio.file.StandardOpenOption;
 import java.util.Map;
 import java.util.TreeSet;
 import java.util.stream.Collectors;
@@ -47,7 +47,7 @@ import java.util.stream.Collectors;
 public class DFAExport {
 
     @CompilerDirectives.TruffleBoundary
-    public static void exportDot(DFAGenerator dfaGenerator, String path, boolean shortLabels) {
+    public static void exportDot(DFAGenerator dfaGenerator, TruffleFile path, boolean shortLabels) {
         DFAStateNodeBuilder[] entryStates = dfaGenerator.getEntryStates();
         Map<DFAStateNodeBuilder, DFAStateNodeBuilder> stateMap = dfaGenerator.getStateMap();
         TreeSet<Short> entryIDs = new TreeSet<>();
@@ -56,7 +56,7 @@ public class DFAExport {
                 entryIDs.add(s.getId());
             }
         }
-        try (BufferedWriter writer = Files.newBufferedWriter(Paths.get(path))) {
+        try (BufferedWriter writer = path.newBufferedWriter(StandardOpenOption.CREATE, StandardOpenOption.WRITE, StandardOpenOption.TRUNCATE_EXISTING)) {
             writer.write("digraph finite_state_machine {");
             writer.newLine();
             String finalStates = stateMap.values().stream().filter(DFAStateNodeBuilder::isFinalState).map(

@@ -40,6 +40,34 @@
  */
 package org.graalvm.polyglot;
 
+import java.io.File;
+import java.io.IOException;
+import java.io.InputStream;
+import java.io.OutputStream;
+import java.io.Reader;
+import java.lang.reflect.AnnotatedElement;
+import java.lang.reflect.Method;
+import java.net.URI;
+import java.net.URL;
+import java.nio.charset.Charset;
+import java.nio.file.Path;
+import java.security.AccessController;
+import java.security.PrivilegedAction;
+import java.util.Collection;
+import java.util.Collections;
+import java.util.HashMap;
+import java.util.Iterator;
+import java.util.List;
+import java.util.Map;
+import java.util.Objects;
+import java.util.ServiceLoader;
+import java.util.concurrent.TimeUnit;
+import java.util.function.Consumer;
+import java.util.function.Function;
+import java.util.function.Predicate;
+import java.util.logging.Handler;
+import java.util.logging.Level;
+
 import org.graalvm.options.OptionDescriptor;
 import org.graalvm.options.OptionDescriptors;
 import org.graalvm.polyglot.PolyglotException.StackFrame;
@@ -54,32 +82,6 @@ import org.graalvm.polyglot.impl.AbstractPolyglotImpl.AbstractValueImpl;
 import org.graalvm.polyglot.io.ByteSequence;
 import org.graalvm.polyglot.io.MessageTransport;
 import org.graalvm.polyglot.management.ExecutionEvent;
-
-import java.io.File;
-import java.io.IOException;
-import java.io.InputStream;
-import java.io.OutputStream;
-import java.io.Reader;
-import java.lang.reflect.Constructor;
-import java.lang.reflect.Method;
-import java.net.URI;
-import java.net.URL;
-import java.nio.file.Path;
-import java.security.AccessController;
-import java.security.PrivilegedAction;
-import java.util.Collection;
-import java.util.Collections;
-import java.util.HashMap;
-import java.util.Iterator;
-import java.util.List;
-import java.util.Map;
-import java.util.Objects;
-import java.util.ServiceLoader;
-import java.util.concurrent.TimeUnit;
-import java.util.function.Consumer;
-import java.util.function.Predicate;
-import java.util.logging.Handler;
-import java.util.logging.Level;
 
 /**
  * An execution engine for Graal {@linkplain Language guest languages} that allows to inspect the
@@ -289,6 +291,7 @@ public final class Engine implements AutoCloseable {
         private OutputStream err = System.err;
         private InputStream in = System.in;
         private Map<String, String> options = new HashMap<>();
+        private boolean allowExperimentalOptions = false;
         private boolean useSystemProperties = true;
         private boolean boundEngine;
         private MessageTransport messageTransport;
@@ -338,6 +341,19 @@ public final class Engine implements AutoCloseable {
         public Builder in(InputStream in) {
             Objects.requireNonNull(in);
             this.in = in;
+            return this;
+        }
+
+        /**
+         * Allow experimental options to be used for instruments and engine options. Do not use
+         * experimental options in production environments. If set to {@code false} (the default),
+         * then passing an experimental option results in an {@link IllegalArgumentException} when
+         * the context is built.
+         *
+         * @since 1.0
+         */
+        public Builder allowExperimentalOptions(boolean enabled) {
+            this.allowExperimentalOptions = enabled;
             return this;
         }
 
@@ -476,7 +492,8 @@ public final class Engine implements AutoCloseable {
         }
 
         /**
-         *
+         * Creates a new engine instance from the configuration provided in the builder. The same
+         * engine builder can be used to create multiple engine instances.
          *
          * @since 1.0
          */
@@ -486,12 +503,24 @@ public final class Engine implements AutoCloseable {
                 throw new IllegalStateException("The Polyglot API implementation failed to load.");
             }
             return loadedImpl.buildEngine(out, err, in, options, 0, null,
-                            false, 0, useSystemProperties, boundEngine, messageTransport, customLogHandler);
+                            false, 0, useSystemProperties, allowExperimentalOptions, boundEngine, messageTransport, customLogHandler,
+                            null);
         }
 
     }
 
     static class APIAccessImpl extends AbstractPolyglotImpl.APIAccess {
+
+        private final boolean useContextClassLoader;
+
+        APIAccessImpl(boolean useContextClassLoader) {
+            this.useContextClassLoader = useContextClassLoader;
+        }
+
+        @Override
+        public boolean useContextClassLoader() {
+            return useContextClassLoader;
+        }
 
         @Override
         public Engine newEngine(AbstractEngineImpl impl) {
@@ -572,6 +601,42 @@ public final class Engine implements AutoCloseable {
         public StackFrame newPolyglotStackTraceElement(PolyglotException e, AbstractStackFrameImpl impl) {
             return e.new StackFrame(impl);
         }
+
+        @Override
+        public boolean allowsAccess(HostAccess access, AnnotatedElement element) {
+            return access.allowsAccess(element);
+        }
+
+        @Override
+        public boolean allowsImplementation(HostAccess access, Class<?> type) {
+            return access.allowsImplementation(type);
+        }
+
+        @Override
+        public List<Object> getTargetMappings(HostAccess access) {
+            return access.getTargetMappings();
+        }
+
+        @Override
+        public boolean isArrayAccessible(HostAccess access) {
+            return access.allowArrayAccess;
+        }
+
+        @Override
+        public boolean isListAccessible(HostAccess access) {
+            return access.allowListAccess;
+        }
+
+        @Override
+        public Object getHostAccessImpl(HostAccess conf) {
+            return conf.impl;
+        }
+
+        @Override
+        public void setHostAccessImpl(HostAccess conf, Object impl) {
+            conf.impl = impl;
+        }
+
     }
 
     private static final boolean JDK8_OR_EARLIER = System.getProperty("java.specification.version").compareTo("1.9") < 0;
@@ -581,55 +646,52 @@ public final class Engine implements AutoCloseable {
             public AbstractPolyglotImpl run() {
                 AbstractPolyglotImpl engine = null;
                 Class<?> servicesClass = null;
+                boolean useContextClassLoader = false;
 
-                if (JDK8_OR_EARLIER) {
-                    try {
-                        servicesClass = Class.forName("jdk.vm.ci.services.Services");
-                    } catch (ClassNotFoundException e) {
-                    }
-                    if (servicesClass != null) {
-                        try {
-                            Method m = servicesClass.getDeclaredMethod("loadSingle", Class.class, boolean.class);
-                            engine = (AbstractPolyglotImpl) m.invoke(null, AbstractPolyglotImpl.class, false);
-                        } catch (Throwable e) {
-                            // Fail fast for other errors
-                            throw new InternalError(e);
-                        }
-                    }
+                if (Boolean.getBoolean("graalvm.ForcePolyglotInvalid")) {
+                    engine = createInvalidPolyglotImpl();
                 } else {
-                    // As of JDK9, the JVMCI Services class should only be used for service
-                    // types
-                    // defined by JVMCI. Other services types should use ServiceLoader directly.
-                    Iterator<AbstractPolyglotImpl> providers = ServiceLoader.load(AbstractPolyglotImpl.class).iterator();
-                    if (providers.hasNext()) {
-                        engine = providers.next();
-                        if (providers.hasNext()) {
-
-                            throw new InternalError(String.format("Multiple %s providers found", AbstractPolyglotImpl.class.getName()));
+                    if (JDK8_OR_EARLIER) {
+                        try {
+                            servicesClass = Class.forName("jdk.vm.ci.services.Services");
+                        } catch (ClassNotFoundException e) {
+                        }
+                        if (servicesClass != null) {
+                            try {
+                                Method m = servicesClass.getDeclaredMethod("loadSingle", Class.class, boolean.class);
+                                engine = (AbstractPolyglotImpl) m.invoke(null, AbstractPolyglotImpl.class, false);
+                            } catch (Throwable e) {
+                                // Fail fast for other errors
+                                throw new InternalError(e);
+                            }
                         }
                     }
                 }
 
                 if (engine == null) {
-                    try {
-                        Class<? extends AbstractPolyglotImpl> polyglotClass = Class.forName("com.oracle.truffle.polyglot.PolyglotImpl").asSubclass(AbstractPolyglotImpl.class);
-                        Constructor<? extends AbstractPolyglotImpl> constructor = polyglotClass.getDeclaredConstructor();
-                        constructor.setAccessible(true);
-                        engine = constructor.newInstance();
-                    } catch (ClassNotFoundException e) {
-                    } catch (Exception e1) {
-                        throw new InternalError(e1);
-                    }
+                    engine = searchServiceLoader();
+                    useContextClassLoader = true;
                 }
-
                 if (engine == null) {
                     engine = createInvalidPolyglotImpl();
                 }
 
                 if (engine != null) {
-                    engine.setConstructors(new APIAccessImpl());
+                    engine.setConstructors(new APIAccessImpl(useContextClassLoader));
                 }
                 return engine;
+            }
+
+            private AbstractPolyglotImpl searchServiceLoader() throws InternalError {
+                Iterator<AbstractPolyglotImpl> providers = ServiceLoader.load(AbstractPolyglotImpl.class).iterator();
+                if (providers.hasNext()) {
+                    AbstractPolyglotImpl found = providers.next();
+                    if (providers.hasNext()) {
+                        throw new InternalError(String.format("Multiple %s providers found", AbstractPolyglotImpl.class.getName()));
+                    }
+                    return found;
+                }
+                return null;
             }
         });
     }
@@ -664,7 +726,9 @@ public final class Engine implements AutoCloseable {
 
         @Override
         public Engine buildEngine(OutputStream out, OutputStream err, InputStream in, Map<String, String> arguments, long timeout, TimeUnit timeoutUnit, boolean sandbox,
-                        long maximumAllowedAllocationBytes, boolean useSystemProperties, boolean boundEngine, MessageTransport messageInterceptor, Object logHandlerOrStream) {
+                        long maximumAllowedAllocationBytes, boolean useSystemProperties, boolean allowExperimentalOptions, boolean boundEngine, MessageTransport messageInterceptor,
+                        Object logHandlerOrStream,
+                        HostAccess conf) {
             throw noPolyglotImplementationFound();
         }
 
@@ -729,7 +793,7 @@ public final class Engine implements AutoCloseable {
         private static RuntimeException noPolyglotImplementationFound() {
             String suggestion;
             if (AOT) {
-                suggestion = "Make sure a language is added to the classpath (e.g., native-image --js).";
+                suggestion = "Make sure a language is added to the classpath (e.g., native-image --language:js).";
             } else {
                 suggestion = "Make sure the truffle-api.jar is on the classpath.";
             }
@@ -781,7 +845,8 @@ public final class Engine implements AutoCloseable {
             }
 
             @Override
-            public Source build(String language, Object origin, URI uri, String name, String mimeType, Object content, boolean interactive, boolean internal, boolean cached) throws IOException {
+            public Source build(String language, Object origin, URI uri, String name, String mimeType, Object content, boolean interactive, boolean internal, boolean cached, Charset encoding)
+                            throws IOException {
                 throw noPolyglotImplementationFound();
             }
 
@@ -925,6 +990,11 @@ public final class Engine implements AutoCloseable {
                 throw new UnsupportedOperationException();
             }
 
+        }
+
+        @Override
+        public <S, T> Object newTargetTypeMapping(Class<S> sourceType, Class<T> targetType, Predicate<S> acceptsValue, Function<S, T> convertValue) {
+            return new Object();
         }
 
     }

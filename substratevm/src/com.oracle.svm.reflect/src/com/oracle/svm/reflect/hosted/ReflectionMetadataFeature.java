@@ -32,8 +32,9 @@ import java.lang.reflect.Field;
 import java.lang.reflect.Method;
 import java.lang.reflect.Parameter;
 
-import org.graalvm.nativeimage.Feature;
+import org.graalvm.nativeimage.hosted.Feature;
 
+import org.graalvm.util.GuardedAnnotationAccess;
 import com.oracle.svm.core.annotate.AutomaticFeature;
 
 /** Pre-load reflection metadata. */
@@ -73,7 +74,7 @@ public class ReflectionMetadataFeature implements Feature {
 
         if (original instanceof AccessibleObject) {
             AccessibleObject accessibleObject = (AccessibleObject) original;
-            accessibleObject.getDeclaredAnnotations();
+            GuardedAnnotationAccess.getDeclaredAnnotations(accessibleObject);
         }
 
         if (original instanceof Parameter) {

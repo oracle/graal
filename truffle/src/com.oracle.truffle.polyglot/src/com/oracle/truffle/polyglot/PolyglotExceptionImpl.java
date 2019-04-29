@@ -63,6 +63,7 @@ import org.graalvm.polyglot.impl.AbstractPolyglotImpl.AbstractExceptionImpl;
 import org.graalvm.polyglot.proxy.Proxy;
 
 import com.oracle.truffle.api.TruffleException;
+import com.oracle.truffle.api.TruffleStackTrace;
 import com.oracle.truffle.api.TruffleStackTraceElement;
 
 final class PolyglotExceptionImpl extends AbstractExceptionImpl implements com.oracle.truffle.polyglot.PolyglotImpl.VMObject {
@@ -90,6 +91,7 @@ final class PolyglotExceptionImpl extends AbstractExceptionImpl implements com.o
     private final int exitStatus;
     private final Value guestObject;
     private final String message;
+    private Object fileSystemContext;
 
     // Exception coming from a language
     PolyglotExceptionImpl(PolyglotLanguageContext languageContext, Throwable original) {
@@ -107,7 +109,7 @@ final class PolyglotExceptionImpl extends AbstractExceptionImpl implements com.o
         this.engine = engine;
         this.context = (languageContext != null) ? languageContext.context : null;
         this.exception = original;
-        this.guestFrames = TruffleStackTraceElement.getStackTrace(original);
+        this.guestFrames = TruffleStackTrace.getStackTrace(original);
 
         if (exception instanceof TruffleException) {
             TruffleException truffleException = (TruffleException) exception;
@@ -134,8 +136,8 @@ final class PolyglotExceptionImpl extends AbstractExceptionImpl implements com.o
             } else {
                 this.sourceLocation = null;
             }
-            Object exceptionObject = ((TruffleException) exception).getExceptionObject();
-            if (exceptionObject != null && languageContext != null) {
+            Object exceptionObject;
+            if (languageContext != null && !(exception instanceof HostException) && (exceptionObject = ((TruffleException) exception).getExceptionObject()) != null) {
                 /*
                  * Allow proxies in guest language objects. This is for legacy support. Ideally we
                  * should get rid of this if it is no longer relied upon.
@@ -340,6 +342,16 @@ final class PolyglotExceptionImpl extends AbstractExceptionImpl implements com.o
         return guestObject;
     }
 
+    Object getFileSystemContext() {
+        if (fileSystemContext != null) {
+            return fileSystemContext;
+        }
+        if (context == null) {
+            return null;
+        }
+        return VMAccessor.LANGUAGE.createFileSystemContext(context.config.fileSystem, context.engine.getFileTypeDetectorsSupplier());
+    }
+
     /**
      * Wrapper class for PrintStream and PrintWriter to enable a single implementation of
      * printStackTrace.
@@ -403,7 +415,6 @@ final class PolyglotExceptionImpl extends AbstractExceptionImpl implements com.o
     private static class StackFrameIterator implements Iterator<StackFrame> {
 
         private static final String POLYGLOT_PACKAGE = Engine.class.getName().substring(0, Engine.class.getName().lastIndexOf('.') + 1);
-        private static final String PROXY_PACKAGE = PolyglotProxy.class.getName();
         private static final String HOST_INTEROP_PACKAGE = "com.oracle.truffle.polyglot.";
         private static final String[] JAVA_INTEROP_HOST_TO_GUEST = {
                         HOST_INTEROP_PACKAGE + "PolyglotMap",
@@ -415,6 +426,7 @@ final class PolyglotExceptionImpl extends AbstractExceptionImpl implements com.o
 
         final PolyglotExceptionImpl impl;
         final Iterator<TruffleStackTraceElement> guestFrames;
+        final StackTraceElement[] hostStack;
         final ListIterator<StackTraceElement> hostFrames;
         /*
          * Initial host frames are skipped if the error is a regular non-internal guest language
@@ -438,18 +450,23 @@ final class PolyglotExceptionImpl extends AbstractExceptionImpl implements com.o
                     cause = cause.getCause();
                 }
             }
-            StackTraceElement[] hostStack;
             if (VMAccessor.LANGUAGE.isTruffleStackTrace(cause)) {
-                hostStack = VMAccessor.LANGUAGE.getInternalStackTraceElements(cause);
-            } else if (cause.getStackTrace().length == 0) {
-                hostStack = impl.exception.getStackTrace();
+                this.hostStack = VMAccessor.LANGUAGE.getInternalStackTraceElements(cause);
+            } else if (cause.getStackTrace() == null || cause.getStackTrace().length == 0) {
+                this.hostStack = impl.exception.getStackTrace();
             } else {
-                hostStack = cause.getStackTrace();
+                this.hostStack = cause.getStackTrace();
             }
             this.guestFrames = impl.guestFrames == null ? Collections.<TruffleStackTraceElement> emptyList().iterator() : impl.guestFrames.iterator();
             this.hostFrames = Arrays.asList(hostStack).listIterator();
             // we always start in some host stack frame
             this.inHostLanguage = impl.isHostException() || impl.isInternalError();
+
+            if (TRACE_STACK_TRACE_WALKING) {
+                // To mark the beginning of the stack trace and separate from the previous one
+                PrintStream out = System.out;
+                out.println();
+            }
         }
 
         public boolean hasNext() {
@@ -472,12 +489,22 @@ final class PolyglotExceptionImpl extends AbstractExceptionImpl implements com.o
 
             while (hostFrames.hasNext()) {
                 StackTraceElement element = hostFrames.next();
+                traceStackTraceElement(element);
                 // we need to flip inHostLanguage state in opposite order as the stack is top to
                 // bottom.
                 if (inHostLanguage) {
-                    if (isGuestToHost(element)) {
+                    int guestToHost = isGuestToHost(element, hostStack, hostFrames.nextIndex());
+                    if (guestToHost >= 0) {
                         assert !isHostToGuest(element);
                         inHostLanguage = false;
+
+                        for (int i = 0; i < guestToHost; i++) {
+                            assert isGuestToHostReflectiveCall(element);
+                            element = hostFrames.next();
+                            traceStackTraceElement(element);
+                        }
+
+                        assert isGuestToHostCallFromHostInterop(element);
                     }
                 } else {
                     if (isHostToGuest(element)) {
@@ -486,10 +513,9 @@ final class PolyglotExceptionImpl extends AbstractExceptionImpl implements com.o
                         // skip extra host-to-guest frames
                         while (hostFrames.hasNext()) {
                             StackTraceElement next = hostFrames.next();
+                            traceStackTraceElement(next);
                             if (isHostToGuest(next)) {
-                                traceStackTraceElement(element);
                                 element = next;
-                                continue;
                             } else {
                                 hostFrames.previous();
                                 break;
@@ -497,8 +523,6 @@ final class PolyglotExceptionImpl extends AbstractExceptionImpl implements com.o
                         }
                     }
                 }
-
-                traceStackTraceElement(element);
 
                 if (isGuestCall(element)) {
                     inHostLanguage = false;
@@ -560,17 +584,66 @@ final class PolyglotExceptionImpl extends AbstractExceptionImpl implements com.o
             return false;
         }
 
-        static boolean isGuestToHost(StackTraceElement element) {
-            if (isLazyStackTraceElement(element)) {
-                return false;
+        // Return the number of frames with reflective calls to skip
+        static int isGuestToHost(StackTraceElement firstElement, StackTraceElement[] hostStack, int nextElementIndex) {
+            if (isLazyStackTraceElement(firstElement)) {
+                return -1;
             }
-            return element.getClassName().startsWith(PROXY_PACKAGE) || element.getClassName().startsWith(HOST_INTEROP_PACKAGE);
+
+            StackTraceElement element = firstElement;
+            int index = nextElementIndex;
+            while (isGuestToHostReflectiveCall(element) && nextElementIndex < hostStack.length) {
+                element = hostStack[index++];
+            }
+            if (isGuestToHostCallFromHostInterop(element)) {
+                return index - nextElementIndex;
+            } else {
+                return -1;
+            }
+        }
+
+        private static boolean isGuestToHostCallFromHostInterop(StackTraceElement element) {
+            switch (element.getClassName()) {
+                case "com.oracle.truffle.polyglot.HostMethodDesc$SingleMethod$MHBase":
+                    return element.getMethodName().equals("invokeHandle");
+                case "com.oracle.truffle.polyglot.HostMethodDesc$SingleMethod$MethodReflectImpl":
+                    return element.getMethodName().equals("reflectInvoke");
+                case "com.oracle.truffle.polyglot.PolyglotProxy$ExecuteNode":
+                case "com.oracle.truffle.polyglot.PolyglotProxy$InstantiateNode":
+                case "com.oracle.truffle.polyglot.PolyglotProxy$AsPointerNode":
+                case "com.oracle.truffle.polyglot.PolyglotProxy$ArrayGetNode":
+                case "com.oracle.truffle.polyglot.PolyglotProxy$ArraySetNode":
+                case "com.oracle.truffle.polyglot.PolyglotProxy$ArrayRemoveNode":
+                case "com.oracle.truffle.polyglot.PolyglotProxy$ArraySizeNode":
+                case "com.oracle.truffle.polyglot.PolyglotProxy$GetMemberKeysNode":
+                case "com.oracle.truffle.polyglot.PolyglotProxy$PutMemberNode":
+                case "com.oracle.truffle.polyglot.PolyglotProxy$RemoveMemberNode":
+                case "com.oracle.truffle.polyglot.PolyglotProxy$HasMemberNode":
+                    return element.getMethodName().equals("executeImpl");
+                default:
+                    return false;
+            }
+        }
+
+        private static boolean isGuestToHostReflectiveCall(StackTraceElement element) {
+            switch (element.getClassName()) {
+                case "sun.reflect.NativeMethodAccessorImpl":
+                case "sun.reflect.DelegatingMethodAccessorImpl":
+                case "jdk.internal.reflect.NativeMethodAccessorImpl":
+                case "jdk.internal.reflect.DelegatingMethodAccessorImpl":
+                case "java.lang.reflect.Method":
+                    return element.getMethodName().startsWith("invoke");
+                default:
+                    return false;
+            }
         }
 
         private void traceStackTraceElement(StackTraceElement element) {
             if (TRACE_STACK_TRACE_WALKING) {
                 PrintStream out = System.out;
-                out.printf("host: %5s, guestToHost: %5s, hostToGuest: %5s, guestCall: %5s, -- %s %n", inHostLanguage, isGuestToHost(element), isHostToGuest(element), isGuestCall(element), element);
+                out.printf("host: %5s, guestToHost: %2s, hostToGuest: %5s, guestCall: %5s, -- %s %n", inHostLanguage,
+                                isGuestToHost(element, hostStack, hostFrames.nextIndex()), isHostToGuest(element),
+                                isGuestCall(element), element);
             }
         }
     }

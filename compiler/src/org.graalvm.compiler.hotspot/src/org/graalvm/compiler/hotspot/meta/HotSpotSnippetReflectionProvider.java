@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2014, 2015, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2014, 2018, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -55,21 +55,15 @@ public class HotSpotSnippetReflectionProvider implements SnippetReflectionProvid
     }
 
     @Override
-    public Object asObject(ResolvedJavaType type, JavaConstant constant) {
-        if (constant.isNull()) {
-            return null;
-        }
-        HotSpotObjectConstant hsConstant = (HotSpotObjectConstant) constant;
-        return hsConstant.asObject(type);
-    }
-
-    @Override
     public <T> T asObject(Class<T> type, JavaConstant constant) {
         if (constant.isNull()) {
             return null;
         }
-        HotSpotObjectConstant hsConstant = (HotSpotObjectConstant) constant;
-        return hsConstant.asObject(type);
+        if (constant instanceof HotSpotObjectConstant) {
+            HotSpotObjectConstant hsConstant = (HotSpotObjectConstant) constant;
+            return hsConstant.asObject(type);
+        }
+        return null;
     }
 
     @Override

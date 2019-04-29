@@ -48,23 +48,20 @@ import javax.lang.model.type.TypeMirror;
 public class SpecializationThrowsData extends MessageContainer {
 
     private final AnnotationValue annotationValue;
+    private final Element element;
     private final AnnotationMirror annotationMirror;
     private final TypeMirror javaClass;
-    private SpecializationData specialization;
 
-    public SpecializationThrowsData(AnnotationMirror annotationMirror, AnnotationValue value, TypeMirror javaClass) {
+    public SpecializationThrowsData(Element element, AnnotationMirror annotationMirror, AnnotationValue value, TypeMirror javaClass) {
+        this.element = element;
         this.annotationMirror = annotationMirror;
         this.annotationValue = value;
         this.javaClass = javaClass;
     }
 
-    void setSpecialization(SpecializationData specialization) {
-        this.specialization = specialization;
-    }
-
     @Override
     public Element getMessageElement() {
-        return specialization.getMessageElement();
+        return element;
     }
 
     @Override
@@ -81,15 +78,8 @@ public class SpecializationThrowsData extends MessageContainer {
         return javaClass;
     }
 
-    public SpecializationData getSpecialization() {
-        return specialization;
-    }
-
     public AnnotationMirror getAnnotationMirror() {
         return annotationMirror;
     }
 
-    public SpecializationData getTransitionTo() {
-        return specialization.findNextSpecialization();
-    }
 }

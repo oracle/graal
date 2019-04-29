@@ -1,10 +1,10 @@
 suite = {
-    "mxversion": "5.176.0",
+    "mxversion": "5.210.2",
     "name": "tools",
     "defaultLicense" : "GPLv2-CPE",
 
     "groupId" : "org.graalvm.tools",
-    "version": "1.0.0-rc10",
+    "version" : "1.0.0-rc18",
     "release" : False,
     "url" : "http://openjdk.java.net/projects/graal",
     "developer" : {
@@ -64,7 +64,6 @@ suite = {
             ],
             "javaCompliance" : "8+",
             "checkstyle" : "com.oracle.truffle.tools.chromeinspector",
-            "checkstyleVersion" : "8.8",
             "annotationProcessors" : ["truffle:TRUFFLE_DSL_PROCESSOR"],
             "workingSets" : "Tools",
         },
@@ -80,7 +79,6 @@ suite = {
               "com.oracle.truffle.tools.profiler.impl to org.graalvm.truffle",
             ],
             "annotationProcessors" : ["truffle:TRUFFLE_DSL_PROCESSOR"],
-            "checkstyleVersion" : "8.8",
             "checkstyle" : "com.oracle.truffle.tools.chromeinspector",
             "javaCompliance" : "8+",
             "workingSets" : "Tools",
@@ -94,7 +92,6 @@ suite = {
                 "mx:JUNIT"
             ],
             "annotationProcessors" : ["truffle:TRUFFLE_DSL_PROCESSOR"],
-            "checkstyleVersion" : "8.8",
             "checkstyle" : "com.oracle.truffle.tools.chromeinspector",
             "javaCompliance" : "8+",
             "workingSets" : "Tools",
@@ -145,21 +142,27 @@ suite = {
             }
         },
         "VISUALVM_COMMON" : {
-            "urls" : ["https://lafo.ssw.uni-linz.ac.at/pub/graal-external-deps/visualvm-615.tar.gz"],
-            "sha1" : "c8d5efde5a21cc46ce61cc0f0dd53c55baf0fcbd",
+            "urls" : ["https://lafo.ssw.uni-linz.ac.at/pub/graal-external-deps/visualvm-670.tar.gz"],
+            "sha1" : "aee7dd2a9663701df57a96e501b9219a7c90cbc3",
         },
         "VISUALVM_PLATFORM_SPECIFIC" : {
             "os_arch" : {
                 "linux" : {
                     "amd64" : {
-                        "urls" : ["https://lafo.ssw.uni-linz.ac.at/pub/graal-external-deps/visualvm-615-linux-amd64.tar.gz"],
-                        "sha1" : "bd7b07ab872a4fc672c237abc52e3ef8905c3ff9",
+                        "urls" : ["https://lafo.ssw.uni-linz.ac.at/pub/graal-external-deps/visualvm-670-linux-amd64.tar.gz"],
+                        "sha1" : "e607a0c40716f4a232de3726ab101f5c54798cfa",
                     }
                 },
                 "darwin" : {
                     "amd64" : {
-                        "urls" : ["https://lafo.ssw.uni-linz.ac.at/pub/graal-external-deps/visualvm-615-macosx-x86_64.tar.gz"],
-                        "sha1" : "956899a5cddd9abe837b338aa4946463f26aad50",
+                        "urls" : ["https://lafo.ssw.uni-linz.ac.at/pub/graal-external-deps/visualvm-670-macosx-x86_64.tar.gz"],
+                        "sha1" : "ea45e21c35f24d05e74d46bbdc068bf48865aa8f",
+                    }
+                },
+                "windows" : {
+                    "amd64" : {
+                        "urls" : ["https://lafo.ssw.uni-linz.ac.at/pub/graal-external-deps/visualvm-670-windows-amd64.tar.gz"],
+                        "sha1" : "6a4fa4b6a0c1fceeee63567af9f70d63a5ad6334",
                     }
                 },
             }

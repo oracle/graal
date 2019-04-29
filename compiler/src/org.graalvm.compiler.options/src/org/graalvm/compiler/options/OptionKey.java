@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2013, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2013, 2018, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -138,6 +138,18 @@ public class OptionKey<T> {
     public T getValue(OptionValues values) {
         assert checkDescriptorExists();
         return values.get(this);
+    }
+
+    /**
+     * Gets the value of this option in {@code values} if it is present, otherwise
+     * {@link #getDefaultValue()}.
+     */
+    @SuppressWarnings("unchecked")
+    public T getValueOrDefault(EconomicMap<OptionKey<?>, Object> values) {
+        if (!values.containsKey(this)) {
+            return defaultValue;
+        }
+        return (T) values.get(this);
     }
 
     /**

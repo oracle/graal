@@ -40,18 +40,15 @@
  */
 package com.oracle.truffle.api.test.host;
 
-import com.oracle.truffle.api.interop.ForeignAccess;
-import com.oracle.truffle.api.interop.Message;
-import com.oracle.truffle.api.interop.MessageResolution;
-import com.oracle.truffle.api.interop.Resolve;
 import com.oracle.truffle.api.interop.TruffleObject;
 import com.oracle.truffle.api.nodes.Node;
 
-@MessageResolution(receiverType = OwnMessageResolutionTest.JObj.class)
+@SuppressWarnings("deprecation")
+@com.oracle.truffle.api.interop.MessageResolution(receiverType = OwnMessageResolutionTest.JObj.class)
 public class OwnMessageResolutionTest {
     public static final class JObj implements TruffleObject {
         @Override
-        public ForeignAccess getForeignAccess() {
+        public com.oracle.truffle.api.interop.ForeignAccess getForeignAccess() {
             return OwnMessageResolutionTestForeign.ACCESS;
         }
 
@@ -60,7 +57,7 @@ public class OwnMessageResolutionTest {
         }
     }
 
-    public static final class MyMsg extends Message {
+    public static final class MyMsg extends com.oracle.truffle.api.interop.Message {
         @Override
         public boolean equals(Object message) {
             return message != null && message.getClass() == getClass();
@@ -72,7 +69,7 @@ public class OwnMessageResolutionTest {
         }
     }
 
-    @Resolve(message = "com.oracle.truffle.api.test.host.OwnMessageResolutionTest.MyMsg")
+    @com.oracle.truffle.api.interop.Resolve(message = "com.oracle.truffle.api.test.host.OwnMessageResolutionTest.MyMsg")
     abstract static class MessageWithoutFrameNode extends Node {
         protected Object access(JObj receiver) {
             return receiver.toString();

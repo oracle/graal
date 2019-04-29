@@ -33,13 +33,17 @@ import java.security.Provider;
 import java.security.Provider.Service;
 import java.security.cert.CertificateException;
 import java.util.Arrays;
+import java.util.Collections;
+import java.util.List;
 import java.util.Map;
+import java.util.function.Function;
 
 import org.graalvm.compiler.options.Option;
-import org.graalvm.compiler.serviceprovider.GraalServices;
-import org.graalvm.nativeimage.Feature;
-import org.graalvm.nativeimage.RuntimeClassInitialization;
-import org.graalvm.nativeimage.RuntimeReflection;
+import org.graalvm.compiler.serviceprovider.JavaVersionUtil;
+import org.graalvm.nativeimage.ImageSingletons;
+import org.graalvm.nativeimage.hosted.Feature;
+import org.graalvm.nativeimage.hosted.RuntimeReflection;
+import org.graalvm.nativeimage.impl.RuntimeClassInitializationSupport;
 
 import com.oracle.svm.core.SubstrateOptions;
 import com.oracle.svm.core.annotate.AutomaticFeature;
@@ -55,6 +59,9 @@ import sun.security.x509.OIDMap;
 public class SecurityServicesFeature implements Feature {
 
     static class Options {
+        @Option(help = "Enable the feature that provides support for security services.")//
+        public static final HostedOptionKey<Boolean> EnableSecurityServicesFeature = new HostedOptionKey<>(true);
+
         @Option(help = "Enable trace logging for the security services feature.")//
         static final HostedOptionKey<Boolean> TraceSecurityServices = new HostedOptionKey<>(false);
     }
@@ -79,11 +86,7 @@ public class SecurityServicesFeature implements Feature {
 
     @Override
     public boolean isInConfiguration(IsInConfigurationAccess access) {
-        /*
-         * Currently known to work on Java8 or earlier. One known difference on later Java versions
-         * is javax.crypto.JceSecurity (see Target_javax_crypto_JceSecurity).
-         */
-        return GraalServices.Java8OrEarlier;
+        return Options.EnableSecurityServicesFeature.getValue();
     }
 
     @Override
@@ -95,25 +98,29 @@ public class SecurityServicesFeature implements Feature {
          * initializers execution to runtime because the SecureRandom classes are needed by the
          * native image generator too, e.g., by Files.createTempDirectory().
          */
-        RuntimeClassInitialization.rerunClassInitialization(NativePRNG.class);
-        RuntimeClassInitialization.rerunClassInitialization(NativePRNG.Blocking.class);
-        RuntimeClassInitialization.rerunClassInitialization(NativePRNG.NonBlocking.class);
+        ImageSingletons.lookup(RuntimeClassInitializationSupport.class).rerunInitialization(NativePRNG.class, "for substitutions");
+        ImageSingletons.lookup(RuntimeClassInitializationSupport.class).rerunInitialization(NativePRNG.Blocking.class, "for substitutions");
+        ImageSingletons.lookup(RuntimeClassInitializationSupport.class).rerunInitialization(NativePRNG.NonBlocking.class, "for substitutions");
 
-        RuntimeClassInitialization.rerunClassInitialization(access.findClassByName("sun.security.provider.SeedGenerator"));
-        RuntimeClassInitialization.rerunClassInitialization(access.findClassByName("sun.security.provider.SecureRandom$SeederHolder"));
+        ImageSingletons.lookup(RuntimeClassInitializationSupport.class).rerunInitialization(access.findClassByName("sun.security.provider.SeedGenerator"), "for substitutions");
+        ImageSingletons.lookup(RuntimeClassInitializationSupport.class).rerunInitialization(access.findClassByName("sun.security.provider.SecureRandom$SeederHolder"), "for substitutions");
+
+        if (!JavaVersionUtil.Java8OrEarlier) {
+            ImageSingletons.lookup(RuntimeClassInitializationSupport.class).rerunInitialization(access.findClassByName("sun.security.provider.FileInputStreamPool"), "for substitutions");
+        }
 
         /* java.util.UUID$Holder has a static final SecureRandom field. */
-        RuntimeClassInitialization.rerunClassInitialization(access.findClassByName("java.util.UUID$Holder"));
+        ImageSingletons.lookup(RuntimeClassInitializationSupport.class).rerunInitialization(access.findClassByName("java.util.UUID$Holder"), "for substitutions");
 
         /*
          * The classes bellow have a static final SecureRandom field. Note that if the classes are
-         * not found as reachable by the analaysis registering them form class initialization rerun
+         * not found as reachable by the analysis registering them form class initialization rerun
          * doesn't have any effect.
          */
-        RuntimeClassInitialization.rerunClassInitialization(access.findClassByName("sun.security.jca.JCAUtil$CachedSecureRandomHolder"));
-        RuntimeClassInitialization.rerunClassInitialization(access.findClassByName("com.sun.crypto.provider.SunJCE$SecureRandomHolder"));
-        RuntimeClassInitialization.rerunClassInitialization(access.findClassByName("sun.security.krb5.Confounder"));
-        RuntimeClassInitialization.rerunClassInitialization(javax.net.ssl.SSLContext.class);
+        ImageSingletons.lookup(RuntimeClassInitializationSupport.class).rerunInitialization(access.findClassByName("sun.security.jca.JCAUtil$CachedSecureRandomHolder"), "for substitutions");
+        ImageSingletons.lookup(RuntimeClassInitializationSupport.class).rerunInitialization(access.findClassByName("com.sun.crypto.provider.SunJCE$SecureRandomHolder"), "for substitutions");
+        ImageSingletons.lookup(RuntimeClassInitializationSupport.class).rerunInitialization(access.findClassByName("sun.security.krb5.Confounder"), "for substitutions");
+        ImageSingletons.lookup(RuntimeClassInitializationSupport.class).rerunInitialization(javax.net.ssl.SSLContext.class, "for substitutions");
 
         if (SubstrateOptions.EnableAllSecurityServices.getValue()) {
             /* Prepare SunEC native library access. */
@@ -133,11 +140,21 @@ public class SecurityServicesFeature implements Feature {
          */
         // @formatter:on
         JNIRuntimeAccess.register(byte[].class);
+    }
 
-        try {
-            JNIRuntimeAccess.register(sun.security.ec.ECKeyPairGenerator.class.getDeclaredMethod("generateECKeyPair", int.class, byte[].class, byte[].class));
-        } catch (NoSuchMethodException e) {
-            VMError.shouldNotReachHere(e);
+    /** Get the list of configured providers. The SUN provider is returned by default. */
+    private static List<Provider> getProviders(boolean enableAllSecurityServices) {
+        if (enableAllSecurityServices) {
+            /* Parse and instantiate all providers. */
+            return Providers.getProviderList().providers();
+        } else {
+            /*
+             * Get only the SUN provider. Avoids parsing the entire providers list and instantiating
+             * unused providers.
+             */
+            Provider sunProvider = Providers.getSunProvider();
+            assert isSunProvider(sunProvider);
+            return Collections.singletonList(sunProvider);
         }
     }
 
@@ -147,48 +164,20 @@ public class SecurityServicesFeature implements Feature {
 
         boolean enableAllSecurityServices = SubstrateOptions.EnableAllSecurityServices.getValue();
 
+        Function<String, Class<?>> consParamClassAccessor = getConsParamClassAccessor(access);
+
         trace("Registering security services...");
-        for (Provider provider : Providers.getProviderList().providers()) {
-            if (enableAllSecurityServices || isSunProvider(provider)) {
-                /* The SUN provider class is registered by default. */
-                register(provider);
-                for (Service service : provider.getServices()) {
-                    if (enableAllSecurityServices || isMessageDigest(service) || isSecureRandom(service)) {
-                        /* SecureRandom and MessageDigest SUN services are registered by default. */
-                        register(access, service);
-                    }
+        for (Provider provider : getProviders(enableAllSecurityServices)) {
+            register(provider);
+            for (Service service : provider.getServices()) {
+                if (enableAllSecurityServices || isMessageDigest(service) || isSecureRandom(service)) {
+                    /* SecureRandom and MessageDigest SUN services are registered by default. */
+                    register(access, service, consParamClassAccessor);
                 }
             }
         }
 
         if (enableAllSecurityServices) {
-            try {
-                /* Register the parameter classes that are registered via Provider.knownEngines. */
-                trace("Registering engine constructor parameter classes...");
-
-                /*
-                 * Since the Provider.knownEngines field and the EngineDescription class are tightly
-                 * encapsulated they are accessed via reflection.
-                 */
-                Field knownEnginesField = Provider.class.getDeclaredField("knownEngines");
-                knownEnginesField.setAccessible(true);
-                Class<?> engineDescriptionClass = access.findClassByName("java.security.Provider$EngineDescription");
-                Field constructorParameterClassNameField = engineDescriptionClass.getDeclaredField("constructorParameterClassName");
-                constructorParameterClassNameField.setAccessible(true);
-
-                Map<String, Object> knownEngines = (Map<String, Object>) knownEnginesField.get(null);
-                for (Object engineDescription : knownEngines.values()) {
-                    String constructorParameterClassName = (String) constructorParameterClassNameField.get(engineDescription);
-                    if (constructorParameterClassName != null) {
-                        Class<?> constructorParameterClass = access.findClassByName(constructorParameterClassName);
-                        registerForReflection(constructorParameterClass);
-                        trace("Class registered for reflection: " + constructorParameterClass);
-                    }
-                }
-            } catch (NoSuchFieldException | IllegalAccessException e) {
-                VMError.shouldNotReachHere(e);
-            }
-
             /*
              * Register the default JavaKeyStore, JKS. It is not returned by the
              * provider.getServices() enumeration.
@@ -220,6 +209,49 @@ public class SecurityServicesFeature implements Feature {
         }
     }
 
+    /**
+     * Return a Function which given the serviceType as a String will return the corresponding
+     * constructor parameter Class, or null.
+     */
+    @SuppressWarnings("unchecked")
+    private static Function<String, Class<?>> getConsParamClassAccessor(BeforeAnalysisAccess access) {
+        try {
+            Field knownEnginesField = Provider.class.getDeclaredField("knownEngines");
+            knownEnginesField.setAccessible(true);
+
+            Class<?> engineDescriptionClass = access.findClassByName("java.security.Provider$EngineDescription");
+            Field consParamClassNameField = engineDescriptionClass.getDeclaredField("constructorParameterClassName");
+            consParamClassNameField.setAccessible(true);
+            Map<String, /* EngineDescription */ Object> knownEngines = (Map<String, Object>) knownEnginesField.get(null);
+
+            /*
+             * The returned lambda captures the value of the Provider.knownEngines map retrieved
+             * above and it uses it to find the parameterClass corresponding to the serviceType
+             * parameter.
+             */
+            return (serviceType) -> {
+                try {
+                    /*
+                     * Access the Provider.knownEngines map and extract the EngineDescription
+                     * corresponding to the serviceType. From the EngineDescription object extract
+                     * the value of the constructorParameterClassName field then, if the class name
+                     * is not null, get the corresponding Class<?> object and return it.
+                     */
+                    /* EngineDescription */Object engineDescription = knownEngines.get(serviceType);
+                    String constrParamClassName = (String) consParamClassNameField.get(engineDescription);
+                    if (constrParamClassName != null) {
+                        return access.findClassByName(constrParamClassName);
+                    }
+                } catch (IllegalAccessException e) {
+                    VMError.shouldNotReachHere(e);
+                }
+                return null;
+            };
+        } catch (NoSuchFieldException | IllegalAccessException e) {
+            throw VMError.shouldNotReachHere(e);
+        }
+    }
+
     private static void register(Provider provider) {
         registerForReflection(provider.getClass());
 
@@ -241,10 +273,17 @@ public class SecurityServicesFeature implements Feature {
 
     }
 
-    private static void register(BeforeAnalysisAccess access, Service service) {
+    private static void register(BeforeAnalysisAccess access, Service service, Function<String, Class<?>> consParamClassAccessor) {
         Class<?> serviceClass = access.findClassByName(service.getClassName());
         if (serviceClass != null) {
             registerForReflection(serviceClass);
+
+            Class<?> consParamClass = consParamClassAccessor.apply(service.getType());
+            if (consParamClass != null) {
+                registerForReflection(consParamClass);
+                trace("Parameter class registered: " + consParamClass);
+            }
+
             if (isSignature(service) || isCipher(service) || isKeyAgreement(service)) {
                 for (String keyClassName : getSupportedKeyClasses(service)) {
                     Class<?> keyClass = access.findClassByName(keyClassName);

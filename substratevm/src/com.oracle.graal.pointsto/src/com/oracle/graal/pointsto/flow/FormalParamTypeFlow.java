@@ -25,6 +25,7 @@
 package com.oracle.graal.pointsto.flow;
 
 import org.graalvm.compiler.nodes.ParameterNode;
+
 import com.oracle.graal.pointsto.BigBang;
 import com.oracle.graal.pointsto.meta.AnalysisMethod;
 import com.oracle.graal.pointsto.meta.AnalysisType;
@@ -53,6 +54,7 @@ public class FormalParamTypeFlow extends TypeFlow<ParameterNode> {
         return new FormalParamTypeFlow(this, methodFlows);
     }
 
+    @Override
     public AnalysisMethod method() {
         return method;
     }

@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2018, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2019, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -24,13 +24,13 @@
  */
 package com.oracle.truffle.regex.tregex.nodes;
 
-import com.oracle.truffle.api.frame.VirtualFrame;
-import com.oracle.truffle.regex.tregex.util.json.Json;
-import com.oracle.truffle.regex.tregex.util.json.JsonValue;
+import static com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 
 import java.util.Arrays;
 
-import static com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
+import com.oracle.truffle.api.frame.VirtualFrame;
+import com.oracle.truffle.regex.tregex.util.json.Json;
+import com.oracle.truffle.regex.tregex.util.json.JsonValue;
 
 /**
  * This state node is responsible for selecting a DFA's initial state based on the index the search
@@ -66,7 +66,7 @@ public class DFAInitialStateNode extends DFAAbstractStateNode {
      * Creates a node split copy of this initial state as described in {@link DFAAbstractStateNode},
      * but ignores copyID, since having two initial states in a DFA is not supported. Therefore,
      * this method should be used for replacing the original initial state with the copy.
-     * 
+     *
      * @param copyID new ID for the copy.
      * @return a node split copy of this initial state as described in {@link DFAAbstractStateNode},
      *         ignoring copyID.
@@ -82,7 +82,7 @@ public class DFAInitialStateNode extends DFAAbstractStateNode {
     }
 
     @Override
-    public void executeFindSuccessor(VirtualFrame frame, TRegexDFAExecutorNode executor) {
+    public void executeFindSuccessor(VirtualFrame frame, TRegexDFAExecutorNode executor, boolean compactString) {
         if (searching) {
             executor.setSuccessorIndex(frame, executor.rewindUpTo(frame, getPrefixLength()));
         } else {

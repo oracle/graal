@@ -27,8 +27,23 @@ package com.oracle.svm.core.thread;
 import org.graalvm.nativeimage.ImageSingletons;
 
 import com.oracle.svm.core.jdk.UninterruptibleUtils.AtomicReference;
+import com.oracle.svm.core.util.VMError;
 
-/** Each VMThread will have one of these on which to wait. */
+/**
+ * Each thread has several of these on which to wait. Instances are usually expensive objects
+ * because they encapsulate native resources. Therefore, lazy initialization is supported using
+ * {@link #initializeOnce} and {@link #detach} with three states and {@link AtomicReference atomic
+ * transitions}:
+ * <ol>
+ * <li>uninitialized: the {@link AtomicReference} is null.
+ * <li>used: A concrete platform-specific subclass of {@link ParkEvent} that allows wait and unpark
+ * operations.
+ * <li>detached: The thread has exited (or was manually detached from the VM). The
+ * {@link DetachedParkEvent} singleton.
+ * </ol>
+ * The allowed transitions are uninitialized->used (wait or park is called on an active thread);
+ * used->detached; and uninitialized->detached.
+ */
 public abstract class ParkEvent {
 
     public interface ParkEventFactory {
@@ -113,6 +128,7 @@ public abstract class ParkEvent {
                  */
                 ParkEvent.release(newEvent);
                 result = ref.get();
+                VMError.guarantee(result != null, "ParkEvent must never be reset to null once it has been initialized.");
             }
         }
         return result;
@@ -127,8 +143,48 @@ public abstract class ParkEvent {
         return result;
     }
 
-    protected static void release(ParkEvent event) {
+    static void detach(AtomicReference<ParkEvent> ref) {
+        /*
+         * We must not reset the AtomicReference back to null, because a racing thread could
+         * interpret that as "uninitialized" and immediately re-initialize the park event, or even
+         * return the null value in some race conditions.
+         */
+        ParkEvent event = ref.getAndSet(DetachedParkEvent.SINGLETON);
+        if (event != null && event != DetachedParkEvent.SINGLETON) {
+            ParkEvent.release(event);
+        }
+    }
+
+    private static void release(ParkEvent event) {
         ParkEventList.getSingleton().push(event);
+    }
+}
+
+/**
+ * The {@link ParkEvent} used for threads that are detached, i.e., no longer executing Java code.
+ * Such threads cannot wait (because waiting can only be initiated by the thread itself), but they
+ * can be unparked (because {@link #unpark} can be called for any thread in any state).
+ */
+final class DetachedParkEvent extends ParkEvent {
+
+    static final ParkEvent SINGLETON = new DetachedParkEvent();
+
+    private DetachedParkEvent() {
+    }
+
+    @Override
+    protected WaitResult condWait() {
+        throw VMError.shouldNotReachHere("Cannot wait on a DetachedParkEvent");
+    }
+
+    @Override
+    protected WaitResult condTimedWait(long delayNanos) {
+        throw VMError.shouldNotReachHere("Cannot wait on a DetachedParkEvent");
+    }
+
+    @Override
+    protected void unpark() {
+        /* It is an allowed no-op to unpark an already detached thread. */
     }
 }
 

@@ -31,6 +31,7 @@ import com.oracle.truffle.tools.utils.json.JSONArray;
 import com.oracle.truffle.tools.utils.json.JSONObject;
 import org.graalvm.options.OptionCategory;
 import org.graalvm.options.OptionKey;
+import org.graalvm.options.OptionStability;
 import org.graalvm.options.OptionType;
 
 import java.io.PrintStream;
@@ -49,7 +50,6 @@ class CPUTracerCLI extends ProfilerCLI {
     }
 
     static final OptionType<Output> CLI_OUTPUT_TYPE = new OptionType<>("Output",
-                    Output.HISTOGRAM,
                     new Function<String, Output>() {
                         @Override
                         public Output apply(String s) {
@@ -61,28 +61,35 @@ class CPUTracerCLI extends ProfilerCLI {
                         }
                     });
 
-    @Option(name = "", help = "Enable the CPU tracer (default: false).", category = OptionCategory.USER) static final OptionKey<Boolean> ENABLED = new OptionKey<>(false);
+    @Option(name = "", help = "Enable the CPU tracer (default: false).", category = OptionCategory.USER, stability = OptionStability.STABLE) //
+    static final OptionKey<Boolean> ENABLED = new OptionKey<>(false);
 
-    @Option(name = "TraceRoots", help = "Capture roots when tracing (default:true).", category = OptionCategory.USER) static final OptionKey<Boolean> TRACE_ROOTS = new OptionKey<>(true);
+    @Option(name = "TraceRoots", help = "Capture roots when tracing (default:true).", category = OptionCategory.USER, stability = OptionStability.STABLE) //
+    static final OptionKey<Boolean> TRACE_ROOTS = new OptionKey<>(true);
 
-    @Option(name = "TraceStatements", help = "Capture statements when tracing (default:false).", category = OptionCategory.USER) static final OptionKey<Boolean> TRACE_STATEMENTS = new OptionKey<>(
-                    false);
+    @Option(name = "TraceStatements", help = "Capture statements when tracing (default:false).", category = OptionCategory.USER, stability = OptionStability.STABLE) //
+    static final OptionKey<Boolean> TRACE_STATEMENTS = new OptionKey<>(false);
 
-    @Option(name = "TraceCalls", help = "Capture calls when tracing (default:false).", category = OptionCategory.USER) static final OptionKey<Boolean> TRACE_CALLS = new OptionKey<>(false);
+    @Option(name = "TraceCalls", help = "Capture calls when tracing (default:false).", category = OptionCategory.USER, stability = OptionStability.STABLE) //
+    static final OptionKey<Boolean> TRACE_CALLS = new OptionKey<>(false);
 
-    @Option(name = "TraceInternal", help = "Trace internal elements (default:false).", category = OptionCategory.USER) static final OptionKey<Boolean> TRACE_INTERNAL = new OptionKey<>(false);
+    @Option(name = "TraceInternal", help = "Trace internal elements (default:false).", category = OptionCategory.INTERNAL) //
+    static final OptionKey<Boolean> TRACE_INTERNAL = new OptionKey<>(false);
 
-    @Option(name = "FilterRootName", help = "Wildcard filter for program roots. (eg. Math.*, default:*).", category = OptionCategory.USER) static final OptionKey<Object[]> FILTER_ROOT = new OptionKey<>(
-                    new Object[0], WILDCARD_FILTER_TYPE);
+    @Option(name = "FilterRootName", help = "Wildcard filter for program roots. (eg. Math.*, default:*).", category = OptionCategory.USER, stability = OptionStability.STABLE) //
+    static final OptionKey<Object[]> FILTER_ROOT = new OptionKey<>(new Object[0], WILDCARD_FILTER_TYPE);
 
-    @Option(name = "FilterFile", help = "Wildcard filter for source file paths. (eg. *program*.sl, default:*).", category = OptionCategory.USER) static final OptionKey<Object[]> FILTER_FILE = new OptionKey<>(
-                    new Object[0], WILDCARD_FILTER_TYPE);
+    @Option(name = "FilterFile", help = "Wildcard filter for source file paths. (eg. *program*.sl, default:*).", category = OptionCategory.USER, stability = OptionStability.STABLE) //
+    static final OptionKey<Object[]> FILTER_FILE = new OptionKey<>(new Object[0], WILDCARD_FILTER_TYPE);
 
-    @Option(name = "FilterLanguage", help = "Only profile languages with mime-type. (eg. +, default:no filter).", category = OptionCategory.USER) static final OptionKey<String> FILTER_LANGUAGE = new OptionKey<>(
-                    "");
+    @Option(name = "FilterMimeType", help = "Only profile languages with mime-type. (eg. +, default:no filter).", category = OptionCategory.USER, stability = OptionStability.STABLE) //
+    static final OptionKey<String> FILTER_MIME_TYPE = new OptionKey<>("");
 
-    @Option(name = "Output", help = "Print a 'histogram' or 'json' as output (default:HISTOGRAM).", category = OptionCategory.USER) static final OptionKey<Output> OUTPUT = new OptionKey<>(
-                    Output.HISTOGRAM, CLI_OUTPUT_TYPE);
+    @Option(name = "FilterLanguage", help = "Only profile languages with given ID. (eg. js, default:no filter).", category = OptionCategory.USER, stability = OptionStability.STABLE) //
+    static final OptionKey<String> FILTER_LANGUAGE = new OptionKey<>("");
+
+    @Option(name = "Output", help = "Print a 'histogram' or 'json' as output (default:HISTOGRAM).", category = OptionCategory.USER, stability = OptionStability.STABLE) //
+    static final OptionKey<Output> OUTPUT = new OptionKey<>(Output.HISTOGRAM, CLI_OUTPUT_TYPE);
 
     public static void handleOutput(TruffleInstrument.Env env, CPUTracer tracer) {
         PrintStream out = new PrintStream(env.out());

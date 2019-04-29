@@ -28,8 +28,8 @@ import org.graalvm.compiler.nodes.StructuredGraph;
 import org.junit.Assert;
 import org.junit.Assume;
 
-import jdk.vm.ci.amd64.AMD64;
 import jdk.vm.ci.aarch64.AArch64;
+import jdk.vm.ci.amd64.AMD64;
 import jdk.vm.ci.code.InstalledCode;
 import jdk.vm.ci.meta.ResolvedJavaMethod;
 
@@ -38,9 +38,9 @@ import jdk.vm.ci.meta.ResolvedJavaMethod;
  */
 public class StringSubstitutionTestBase extends MethodSubstitutionTest {
 
-    private ResolvedJavaMethod realMethod = null;
-    private ResolvedJavaMethod testMethod = null;
-    private InstalledCode testCode = null;
+    protected ResolvedJavaMethod realMethod = null;
+    protected ResolvedJavaMethod testMethod = null;
+    protected InstalledCode testCode = null;
 
     protected final String[] testData = new String[]{
                     "A", "\uFF21", "AB", "A", "a", "Ab", "AA", "\uFF21",
@@ -71,7 +71,7 @@ public class StringSubstitutionTestBase extends MethodSubstitutionTest {
         StructuredGraph graph = testGraph(testMethod.getName());
 
         // Check to see if the resulting graph contains the expected node
-        StructuredGraph replacement = getReplacements().getSubstitution(realMethod, -1, false, null);
+        StructuredGraph replacement = getReplacements().getSubstitution(realMethod, -1, false, null, graph.getOptions());
         if (replacement == null) {
             assertInGraph(graph, expectedNode);
         }

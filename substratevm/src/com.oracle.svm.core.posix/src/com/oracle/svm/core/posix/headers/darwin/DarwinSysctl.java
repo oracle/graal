@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2016, 2017, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2016, 2019, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -24,15 +24,15 @@
  */
 package com.oracle.svm.core.posix.headers.darwin;
 
-import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.Platforms;
 import org.graalvm.nativeimage.c.CContext;
 import org.graalvm.nativeimage.c.constant.CConstant;
 
 import com.oracle.svm.core.posix.headers.PosixDirectives;
+import org.graalvm.nativeimage.impl.InternalPlatform;
 
 /** Declarations of method from <sys/sysctl.h>. */
-@Platforms(Platform.DARWIN.class)
+@Platforms(InternalPlatform.DARWIN_AND_JNI.class)
 @CContext(PosixDirectives.class)
 public class DarwinSysctl {
     // { Allow names with underscores: Checkstyle: stop

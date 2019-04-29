@@ -81,9 +81,10 @@ public class TruffleExceptionPartialEvaluationTest extends PartialEvaluationTest
             this.property = property;
         }
 
+        @SuppressWarnings("sync-override")
         @Override
-        public synchronized Throwable fillInStackTrace() {
-            return null;
+        public Throwable fillInStackTrace() {
+            return this;
         }
 
         @Override

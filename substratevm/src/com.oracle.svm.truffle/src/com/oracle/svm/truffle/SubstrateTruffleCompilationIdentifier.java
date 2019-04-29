@@ -24,11 +24,13 @@
  */
 package com.oracle.svm.truffle;
 
+import org.graalvm.compiler.truffle.common.CompilableTruffleAST;
+import org.graalvm.compiler.truffle.compiler.TruffleCompilationIdentifier;
 import org.graalvm.compiler.truffle.runtime.OptimizedCallTarget;
 
 import com.oracle.svm.core.graal.code.SubstrateCompilationIdentifier;
 
-public class SubstrateTruffleCompilationIdentifier extends SubstrateCompilationIdentifier {
+public class SubstrateTruffleCompilationIdentifier extends SubstrateCompilationIdentifier implements TruffleCompilationIdentifier {
 
     private final OptimizedCallTarget optimizedCallTarget;
 
@@ -39,5 +41,14 @@ public class SubstrateTruffleCompilationIdentifier extends SubstrateCompilationI
     @Override
     protected StringBuilder buildName(StringBuilder sb) {
         return sb.append(optimizedCallTarget.toString());
+    }
+
+    @Override
+    public CompilableTruffleAST getCompilable() {
+        return optimizedCallTarget;
+    }
+
+    @Override
+    public void close() {
     }
 }

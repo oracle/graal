@@ -78,6 +78,11 @@ public final class JNIAccessibleField {
         return (JNIFieldId) id;
     }
 
+    public boolean isStatic() {
+        assert !id.equal(0);
+        return id.and(ID_STATIC_FLAG).notEqual(0);
+    }
+
     void fillOffset(CompilationAccessImpl access) {
         assert id.equal(0);
         try {

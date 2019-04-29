@@ -34,7 +34,6 @@ import java.util.Map;
 import org.graalvm.compiler.api.replacements.SnippetReflectionProvider;
 
 import com.oracle.svm.core.util.VMError;
-import com.oracle.svm.hosted.NativeImageClassLoader;
 
 import jdk.vm.ci.meta.JavaConstant;
 import jdk.vm.ci.meta.JavaType;
@@ -103,8 +102,18 @@ public class AnnotationSubstitutionField extends CustomSubstitutionField {
                  * Class.getAnnotation(Platforms.class).
                  */
                 Proxy proxy = snippetReflection.asObject(Proxy.class, receiver);
-                Method reflectionMethod = proxy.getClass().getDeclaredMethod(accessorMethod.getName());
+
+                /*
+                 * Reflect on the proxy interface, i.e., the annotation class, instead of the
+                 * generated proxy class to avoid module access issues with dynamically generated
+                 * modules. The dynamically generated module that the generated proxies belong to,
+                 * i.e., `jdk.proxy1`, cannot be open to all-unnamed-modules like we do with other
+                 * modules.
+                 */
+                Class<?> annotationInterface = AnnotationSupport.findAnnotationInterfaceTypeForMarkedAnnotationType(proxy.getClass());
+                Method reflectionMethod = annotationInterface.getDeclaredMethod(accessorMethod.getName());
                 reflectionMethod.setAccessible(true);
+
                 annotationFieldValue = reflectionMethod.invoke(proxy);
             } catch (IllegalAccessException | IllegalArgumentException | NoSuchMethodException ex) {
                 throw VMError.shouldNotReachHere(ex);
@@ -112,47 +121,17 @@ public class AnnotationSubstitutionField extends CustomSubstitutionField {
                 Throwable cause = ex.getCause();
                 if (cause instanceof TypeNotPresentException) {
                     /*
-                     * Depending on the class loading order the ghost interface for the missing
-                     * class may not have been created yet when the annotation signature was parsed.
-                     * Thus a TypeNotPresentException was cached. We catch and repackage it here.
+                     * When an annotation has a Class<?> parameter but is referencing a missing
+                     * class a TypeNotPresentException is thrown. The TypeNotPresentException is
+                     * usually created when the annotation is first parsed, i.e., one some other
+                     * parameter is queried, and cached as an TypeNotPresentExceptionProxy. We catch
+                     * and repackage it here, then rely on the runtime mechanism to unpack and
+                     * rethrow it.
                      */
                     TypeNotPresentException tnpe = (TypeNotPresentException) cause;
                     annotationFieldValue = new TypeNotPresentExceptionProxy(tnpe.typeName(), new NoClassDefFoundError(tnpe.typeName()));
                 } else {
                     throw VMError.shouldNotReachHere(ex);
-                }
-            }
-
-            if (annotationFieldValue instanceof Class) {
-                Class<?> classValue = (Class<?>) annotationFieldValue;
-                if (NativeImageClassLoader.classIsMissing(classValue)) {
-                    /*
-                     * The annotation field references a missing type. This situation would normally
-                     * produce a NoClassDefFoundError during annotation parsing, which would be
-                     * caught and packed as a TypeNotPresentExceptionProxy, then cached in
-                     * AnnotationInvocationHandler.memberValues. The original
-                     * TypeNotPresentException would then be generated and thrown when the accessor
-                     * method is invoked via AnnotationInvocationHandler.invoke(). However, the
-                     * NativeImageClassLoader.loadClass() replaces missing classes with ghost
-                     * interfaces, a marker for the missing types. We check for the presence of a
-                     * ghost interface here and and create a TypeNotPresentExceptionProxy which we
-                     * then use to generate the TypeNotPresentException at runtime.
-                     */
-                    annotationFieldValue = new TypeNotPresentExceptionProxy(classValue.getName(), new NoClassDefFoundError(classValue.getName()));
-                }
-            } else if (annotationFieldValue instanceof Class[]) {
-                for (Class<?> classValue : (Class[]) annotationFieldValue) {
-                    if (NativeImageClassLoader.classIsMissing(classValue)) {
-                        /*
-                         * If at least one type is missing in a Class[] return a
-                         * TypeNotPresentExceptionProxy. In JDK8 this situation wrongfully results
-                         * in an ArrayStoreException, however it was fixed in JDK11+ (and
-                         * back-ported) to result in a TypeNotPresentException of the first missing
-                         * class. See: https://bugs.openjdk.java.net/browse/JDK-7183985
-                         */
-                        annotationFieldValue = new TypeNotPresentExceptionProxy(classValue.getName(), new NoClassDefFoundError(classValue.getName()));
-                        break;
-                    }
                 }
             }
 

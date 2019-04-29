@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2015, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2015, 2018, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -24,10 +24,11 @@
  */
 package org.graalvm.compiler.hotspot.meta;
 
+import java.util.function.Supplier;
+
 import org.graalvm.compiler.core.common.type.ObjectStamp;
 import org.graalvm.compiler.core.common.type.Stamp;
 import org.graalvm.compiler.core.common.type.StampFactory;
-import org.graalvm.compiler.debug.GraalError;
 import org.graalvm.compiler.hotspot.nodes.aot.InitializeKlassNode;
 import org.graalvm.compiler.hotspot.nodes.aot.ResolveConstantNode;
 import org.graalvm.compiler.nodes.ConstantNode;
@@ -37,18 +38,14 @@ import org.graalvm.compiler.nodes.ValueNode;
 import org.graalvm.compiler.nodes.graphbuilderconf.ClassInitializationPlugin;
 import org.graalvm.compiler.nodes.graphbuilderconf.GraphBuilderContext;
 
+import jdk.vm.ci.hotspot.HotSpotConstantPool;
 import jdk.vm.ci.hotspot.HotSpotResolvedObjectType;
+import jdk.vm.ci.meta.ConstantPool;
 import jdk.vm.ci.meta.ResolvedJavaMethod;
 import jdk.vm.ci.meta.ResolvedJavaType;
-import jdk.vm.ci.meta.ConstantPool;
-
-import java.lang.invoke.MethodHandle;
-import java.lang.invoke.MethodHandles;
-import java.lang.invoke.MethodType;
 
 public final class HotSpotClassInitializationPlugin implements ClassInitializationPlugin {
-    @Override
-    public boolean shouldApply(GraphBuilderContext builder, ResolvedJavaType type) {
+    private static boolean shouldApply(GraphBuilderContext builder, ResolvedJavaType type) {
         if (!builder.parsingIntrinsic()) {
             if (!type.isArray()) {
                 ResolvedJavaMethod method = builder.getGraph().method();
@@ -73,52 +70,31 @@ public final class HotSpotClassInitializationPlugin implements ClassInitializati
     }
 
     @Override
-    public ValueNode apply(GraphBuilderContext builder, ResolvedJavaType type, FrameState frameState) {
-        assert shouldApply(builder, type);
-        Stamp hubStamp = builder.getStampProvider().createHubStamp((ObjectStamp) StampFactory.objectNonNull());
-        ConstantNode hub = builder.append(ConstantNode.forConstant(hubStamp, ((HotSpotResolvedObjectType) type).klass(), builder.getMetaAccess(), builder.getGraph()));
-        DeoptimizingFixedWithNextNode result = builder.append(type.isArray() ? new ResolveConstantNode(hub) : new InitializeKlassNode(hub));
-        result.setStateBefore(frameState);
-        return result;
-    }
-
-    private static final Class<? extends ConstantPool> hscp;
-    private static final MethodHandle loadReferencedTypeIIZMH;
-
-    static {
-        MethodHandle m = null;
-        Class<? extends ConstantPool> c = null;
-        try {
-            c = Class.forName("jdk.vm.ci.hotspot.HotSpotConstantPool").asSubclass(ConstantPool.class);
-            m = MethodHandles.lookup().findVirtual(c, "loadReferencedType", MethodType.methodType(void.class, int.class, int.class, boolean.class));
-        } catch (Exception e) {
-        }
-        loadReferencedTypeIIZMH = m;
-        hscp = c;
-    }
-
-    private static boolean isHotSpotConstantPool(ConstantPool cp) {
-        // jdk.vm.ci.hotspot.HotSpotConstantPool is final, so we can
-        // directly compare Classes.
-        return cp.getClass() == hscp;
-    }
-
-    @Override
-    public boolean supportsLazyInitialization(ConstantPool cp) {
-        if (loadReferencedTypeIIZMH != null && isHotSpotConstantPool(cp)) {
+    public boolean apply(GraphBuilderContext builder, ResolvedJavaType type, Supplier<FrameState> frameState, ValueNode[] classInit) {
+        if (shouldApply(builder, type)) {
+            Stamp hubStamp = builder.getStampProvider().createHubStamp((ObjectStamp) StampFactory.objectNonNull());
+            ConstantNode hub = builder.append(ConstantNode.forConstant(hubStamp, ((HotSpotResolvedObjectType) type).klass(), builder.getMetaAccess(), builder.getGraph()));
+            DeoptimizingFixedWithNextNode result = builder.append(type.isArray() ? new ResolveConstantNode(hub) : new InitializeKlassNode(hub));
+            result.setStateBefore(frameState.get());
+            if (classInit != null) {
+                classInit[0] = result;
+            }
             return true;
         }
         return false;
     }
 
     @Override
+    public boolean supportsLazyInitialization(ConstantPool cp) {
+        // jdk.vm.ci.hotspot.HotSpotConstantPool is final, so we can
+        // directly compare Classes.
+        return (cp instanceof HotSpotConstantPool);
+    }
+
+    @Override
     public void loadReferencedType(GraphBuilderContext builder, ConstantPool cp, int cpi, int opcode) {
-        if (loadReferencedTypeIIZMH != null && isHotSpotConstantPool(cp)) {
-            try {
-                loadReferencedTypeIIZMH.invoke(cp, cpi, opcode, false);
-            } catch (Throwable t) {
-                throw GraalError.shouldNotReachHere(t);
-            }
+        if (cp instanceof HotSpotConstantPool) {
+            ((HotSpotConstantPool) cp).loadReferencedType(cpi, opcode, false);
         } else {
             cp.loadReferencedType(cpi, opcode);
         }

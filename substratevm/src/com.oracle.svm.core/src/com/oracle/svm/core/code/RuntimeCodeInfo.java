@@ -27,7 +27,7 @@ package com.oracle.svm.core.code;
 import java.util.Arrays;
 
 import org.graalvm.compiler.options.Option;
-import org.graalvm.nativeimage.Feature;
+import org.graalvm.nativeimage.hosted.Feature;
 import org.graalvm.nativeimage.ImageSingletons;
 import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.Platforms;
@@ -269,14 +269,11 @@ public class RuntimeCodeInfo {
          * objects in the regular unpinned heap alive.
          */
         Arrays.fill(methodInfo.frameInfoObjectConstants, null);
-        if (methodInfo.frameInfoSourceClassNames != null) {
-            Arrays.fill(methodInfo.frameInfoSourceClassNames, null);
+        if (methodInfo.frameInfoSourceClasses != null) {
+            Arrays.fill(methodInfo.frameInfoSourceClasses, null);
         }
         if (methodInfo.frameInfoSourceMethodNames != null) {
             Arrays.fill(methodInfo.frameInfoSourceMethodNames, null);
-        }
-        if (methodInfo.frameInfoSourceFileNames != null) {
-            Arrays.fill(methodInfo.frameInfoSourceFileNames, null);
         }
         if (methodInfo.frameInfoNames != null) {
             Arrays.fill(methodInfo.frameInfoNames, null);
@@ -338,12 +335,11 @@ public class RuntimeCodeInfo {
         log.string(methodInfo.name);
         log.string("  ip: ").hex(methodInfo.getCodeStart()).string(" - ").hex(methodInfo.getCodeEnd());
         log.string("  size: ").unsigned(methodInfo.getCodeSize());
-        SubstrateInstalledCode installedCode = methodInfo.installedCode.get();
-        if (installedCode != null) {
-            log.string("  installedCode: ").object(installedCode).string(" at ").hex(installedCode.getAddress());
-        } else {
-            log.string("  (invalidated)");
-        }
+        /*
+         * Note that we are not trying to output methodInfo.installedCode. It is not a pinned
+         * object, so when log printing (for, e.g., a fatal error) occurs during a GC, then the VM
+         * could segfault.
+         */
     }
 
     long logMethodOperation(RuntimeMethodInfo methodInfo, String kind) {

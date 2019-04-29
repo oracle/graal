@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2017, 2018, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2017, 2019, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -50,11 +50,10 @@ import org.junit.runner.RunWith;
 import com.oracle.truffle.api.CallTarget;
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.frame.VirtualFrame;
-import com.oracle.truffle.api.interop.ForeignAccess;
 import com.oracle.truffle.api.interop.InteropException;
-import com.oracle.truffle.api.interop.Message;
+import com.oracle.truffle.api.interop.InteropLibrary;
 import com.oracle.truffle.api.interop.TruffleObject;
-import com.oracle.truffle.api.nodes.Node;
+import com.oracle.truffle.api.interop.UnsupportedMessageException;
 import com.oracle.truffle.nfi.test.interop.BoxedPrimitive;
 import com.oracle.truffle.nfi.test.interop.TestCallback;
 import com.oracle.truffle.tck.TruffleRunner;
@@ -87,18 +86,18 @@ public class StringNFITest extends NFITest {
     public static class NativeStringArgNode extends NFITestRootNode {
 
         final TruffleObject function = lookupAndBind("string_arg", "(string):sint32");
-        final TruffleObject strdup = lookupAndBind(defaultLibrary, "strdup", "(string):string");
-        final TruffleObject free = lookupAndBind(defaultLibrary, "free", "(pointer):void");
+        final TruffleObject strdup = lookupAndBindDefault("strdup", "(string):string");
+        final TruffleObject free = lookupAndBindDefault("free", "(pointer):void");
 
-        @Child Node executeFunction = Message.EXECUTE.createNode();
-        @Child Node executeStrdup = Message.EXECUTE.createNode();
-        @Child Node executeFree = Message.EXECUTE.createNode();
+        @Child InteropLibrary functionInterop = getInterop(function);
+        @Child InteropLibrary strdupInterop = getInterop(strdup);
+        @Child InteropLibrary freeInterop = getInterop(free);
 
         @Override
         public Object executeTest(VirtualFrame frame) throws InteropException {
-            Object nativeString = ForeignAccess.sendExecute(executeStrdup, strdup, frame.getArguments()[0]);
-            Object ret = ForeignAccess.sendExecute(executeFunction, function, nativeString);
-            ForeignAccess.sendExecute(executeFree, free, nativeString);
+            Object nativeString = strdupInterop.execute(strdup, frame.getArguments()[0]);
+            Object ret = functionInterop.execute(function, nativeString);
+            freeInterop.execute(free, nativeString);
             return ret;
         }
     }
@@ -118,14 +117,14 @@ public class StringNFITest extends NFITest {
     }
 
     @Test
-    public void testStringRetConst(@Inject(StringRetConstNode.class) CallTarget callTarget) {
+    public void testStringRetConst(@Inject(StringRetConstNode.class) CallTarget callTarget) throws UnsupportedMessageException {
         Object ret = callTarget.call();
 
         Assert.assertThat("return value", ret, is(instanceOf(TruffleObject.class)));
         TruffleObject obj = (TruffleObject) ret;
 
-        Assert.assertTrue("isBoxed", isBoxed(obj));
-        Assert.assertEquals("return value", "Hello, World!", unbox(obj));
+        Assert.assertTrue("isString", UNCACHED_INTEROP.isString(obj));
+        Assert.assertEquals("return value", "Hello, World!", UNCACHED_INTEROP.asString(obj));
     }
 
     public static class StringRetDynamicNode extends NFITestRootNode {
@@ -133,12 +132,12 @@ public class StringNFITest extends NFITest {
         final TruffleObject function = lookupAndBind("string_ret_dynamic", "(sint32):string");
         final TruffleObject free = lookupAndBind("free_dynamic_string", "(pointer):sint32");
 
-        @Child Node executeFunction = Message.EXECUTE.createNode();
-        @Child Node executeFree = Message.EXECUTE.createNode();
+        @Child InteropLibrary functionInterop = getInterop(function);
+        @Child InteropLibrary freeInterop = getInterop(free);
 
         @Override
         public Object executeTest(VirtualFrame frame) throws InteropException {
-            Object ret = ForeignAccess.sendExecute(executeFunction, function, frame.getArguments()[0]);
+            Object ret = functionInterop.execute(function, frame.getArguments()[0]);
 
             checkRet(ret);
 
@@ -146,19 +145,19 @@ public class StringNFITest extends NFITest {
              * Normally here we'd just call "free" from libc. We're using a wrapper to be able to
              * reliably test whether it was called with the correct argument.
              */
-            Object magic = ForeignAccess.sendExecute(executeFree, free, ret);
+            Object magic = freeInterop.execute(free, ret);
             assertEquals(42, magic);
 
             return null;
         }
 
         @TruffleBoundary
-        private static void checkRet(Object ret) {
+        private static void checkRet(Object ret) throws UnsupportedMessageException {
             Assert.assertThat("return value", ret, is(instanceOf(TruffleObject.class)));
             TruffleObject obj = (TruffleObject) ret;
 
-            Assert.assertTrue("isBoxed", isBoxed(obj));
-            Assert.assertEquals("return value", "42", unbox(obj));
+            Assert.assertTrue("isString", UNCACHED_INTEROP.isString(obj));
+            Assert.assertEquals("return value", "42", UNCACHED_INTEROP.asString(obj));
         }
 
     }
@@ -175,14 +174,21 @@ public class StringNFITest extends NFITest {
         }
     }
 
-    private static void testStringCallback(CallTarget target, Object callbackRet, String expected) {
-        TruffleObject strArgCallback = new TestCallback(1, (args) -> {
-            Assert.assertEquals("string argument", expected, args[0]);
-            return 42;
-        });
-        TruffleObject strRetCallback = new TestCallback(0, (args) -> {
-            return callbackRet;
-        });
+    private String expectedArg;
+    private Object callbackRet;
+
+    private final TruffleObject strArgCallback = new TestCallback(1, (args) -> {
+        Assert.assertEquals("string argument", expectedArg, args[0]);
+        return 42;
+    });
+
+    private final TruffleObject strRetCallback = new TestCallback(0, (args) -> {
+        return callbackRet;
+    });
+
+    private void testStringCallback(CallTarget target, Object cbRet, String expected) {
+        expectedArg = expected;
+        callbackRet = cbRet;
 
         Object ret = target.call(strArgCallback, strRetCallback);
 
@@ -205,37 +211,29 @@ public class StringNFITest extends NFITest {
         testStringCallback(target, new BoxedPrimitive("Hello, Native!"), "Hello, Truffle!");
     }
 
-    public static class NativeStringCallbackNode extends NFITestRootNode {
+    public class NativeStringCallbackNode extends NFITestRootNode {
 
         final TruffleObject stringRetConst = lookupAndBind("string_ret_const", "():string");
         final TruffleObject nativeStringCallback = lookupAndBind("native_string_callback", "(():string) : string");
 
-        @Child Node executeStringRetConst = Message.EXECUTE.createNode();
-        @Child Node executeNativeStringCallback = Message.EXECUTE.createNode();
+        @Child InteropLibrary stringRetConstInterop = getInterop(stringRetConst);
+        @Child InteropLibrary nativeStringCallbackInterop = getInterop(nativeStringCallback);
 
         @Override
         public Object executeTest(VirtualFrame frame) throws InteropException {
-            Object string = ForeignAccess.sendExecute(executeStringRetConst, stringRetConst);
-            TruffleObject callback = createCallback(string);
-            return ForeignAccess.sendExecute(executeNativeStringCallback, nativeStringCallback, callback);
-        }
-
-        @TruffleBoundary
-        private static TruffleObject createCallback(Object obj) {
-            return new TestCallback(0, (args) -> {
-                return obj;
-            });
+            callbackRet = stringRetConstInterop.execute(stringRetConst);
+            return nativeStringCallbackInterop.execute(nativeStringCallback, strRetCallback);
         }
     }
 
     @Test
-    public void testNativeStringCallback(@Inject(NativeStringCallbackNode.class) CallTarget target) {
+    public void testNativeStringCallback(@Inject(NativeStringCallbackNode.class) CallTarget target) throws UnsupportedMessageException {
         Object ret = target.call();
 
         Assert.assertThat("return value", ret, is(instanceOf(TruffleObject.class)));
         TruffleObject obj = (TruffleObject) ret;
 
-        Assert.assertTrue("isBoxed", isBoxed(obj));
-        Assert.assertEquals("return value", "same", unbox(obj));
+        Assert.assertTrue("isString", UNCACHED_INTEROP.isString(obj));
+        Assert.assertEquals("return value", "same", UNCACHED_INTEROP.asString(obj));
     }
 }

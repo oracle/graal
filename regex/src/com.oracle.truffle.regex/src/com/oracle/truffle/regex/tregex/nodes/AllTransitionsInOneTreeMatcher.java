@@ -24,23 +24,21 @@
  */
 package com.oracle.truffle.regex.tregex.nodes;
 
+import static com.oracle.truffle.api.CompilerDirectives.CompilationFinal;
+import static com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
+
 import com.oracle.truffle.api.CompilerAsserts;
-import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.frame.VirtualFrame;
-import com.oracle.truffle.regex.tregex.matchers.CharMatcher;
-import com.oracle.truffle.regex.tregex.util.MathUtil;
 
 /**
- * This class is not really a {@link CharMatcher}, but implements the interface anyway in order to
- * avoid extra pointers in {@link com.oracle.truffle.regex.tregex.nodes.DFAStateNode}. It provides
- * an alternative way of calculating the next transition - instead of checking all transitions in
- * sequential manner, all ranges of all transitions are merged into one sorted array, which is then
- * searched in tree-recursive fashion.
+ * This class provides an alternative way of calculating the next transition - instead of checking
+ * all transitions in sequential manner, all ranges of all transitions are merged into one sorted
+ * array, which is then searched in tree-recursive fashion.
  */
-public final class AllTransitionsInOneTreeMatcher implements CharMatcher {
+public final class AllTransitionsInOneTreeMatcher {
 
-    @CompilerDirectives.CompilationFinal(dimensions = 1) private final char[] sortedRanges;
-    @CompilerDirectives.CompilationFinal(dimensions = 1) private final short[] rangeTreeSuccessors;
+    @CompilationFinal(dimensions = 1) private final char[] sortedRanges;
+    @CompilationFinal(dimensions = 1) private final short[] rangeTreeSuccessors;
 
     /**
      * Constructs a new {@link AllTransitionsInOneTreeMatcher}.
@@ -142,17 +140,7 @@ public final class AllTransitionsInOneTreeMatcher implements CharMatcher {
         }
     }
 
-    @Override
-    public boolean match(char c) {
-        throw new UnsupportedOperationException();
-    }
-
-    @Override
-    public int estimatedCost() {
-        return MathUtil.log2ceil(sortedRanges.length);
-    }
-
-    @CompilerDirectives.TruffleBoundary
+    @TruffleBoundary
     @Override
     public String toString() {
         StringBuilder sb = new StringBuilder("AllTransitionsInOneTreeMatcher: [");

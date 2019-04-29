@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2014, 2014, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2014, 2018, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -37,6 +37,11 @@ public abstract class PrimitiveStamp extends ArithmeticStamp {
     protected PrimitiveStamp(int bits, ArithmeticOpTable ops) {
         super(ops);
         this.bits = bits;
+    }
+
+    @Override
+    public void accept(Visitor v) {
+        v.visitInt(bits);
     }
 
     /**

@@ -34,7 +34,6 @@ import org.graalvm.compiler.nodes.spi.NodeLIRBuilderTool;
 
 import com.oracle.svm.core.FrameAccess;
 
-import jdk.vm.ci.code.StackSlot;
 import jdk.vm.ci.meta.Value;
 
 @NodeInfo(cycles = NodeCycles.CYCLES_1, size = NodeSize.SIZE_1)
@@ -47,12 +46,7 @@ public final class ReadCallerStackPointerNode extends FixedWithNextNode implemen
 
     @Override
     public void generate(NodeLIRBuilderTool gen) {
-        /*
-         * We do not know the frame size yet. So we load the address of the first spill slot
-         * relative to the beginning of the frame, which is equivalent to the stack pointer of the
-         * caller.
-         */
-        Value result = gen.getLIRGeneratorTool().emitAddress(StackSlot.get(gen.getLIRGeneratorTool().getLIRKind(FrameAccess.getWordStamp()), 0, true));
+        Value result = gen.getLIRGeneratorTool().emitReadCallerStackPointer(FrameAccess.getWordStamp());
         gen.setResult(this, result);
     }
 }

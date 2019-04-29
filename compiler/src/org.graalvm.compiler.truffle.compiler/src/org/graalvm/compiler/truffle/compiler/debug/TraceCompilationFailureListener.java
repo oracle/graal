@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2014, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2014, 2018, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -24,7 +24,8 @@
  */
 package org.graalvm.compiler.truffle.compiler.debug;
 
-import static org.graalvm.compiler.core.GraalCompilerOptions.CompilationBailoutAction;
+import static org.graalvm.compiler.core.GraalCompilerOptions.CompilationBailoutAsFailure;
+import static org.graalvm.compiler.core.GraalCompilerOptions.CompilationFailureAction;
 
 import java.util.LinkedHashMap;
 import java.util.Map;
@@ -75,7 +76,7 @@ public final class TraceCompilationFailureListener implements TruffleCompilerLis
 
     private static boolean bailoutActionIsPrintOrGreater() {
         OptionValues options = TruffleCompilerOptions.getOptions();
-        return CompilationBailoutAction.getValue(options).ordinal() >= ExceptionAction.Print.ordinal();
+        return CompilationBailoutAsFailure.getValue(options) && CompilationFailureAction.getValue(options).ordinal() >= ExceptionAction.Print.ordinal();
     }
 
 }

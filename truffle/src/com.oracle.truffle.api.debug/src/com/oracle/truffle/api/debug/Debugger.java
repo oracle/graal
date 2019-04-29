@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2015, 2018, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2015, 2019, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -95,14 +95,12 @@ public final class Debugger {
     final List<Object> propSupport = new CopyOnWriteArrayList<>();
     private final List<Consumer<Breakpoint>> breakpointAddedListeners = new CopyOnWriteArrayList<>();
     private final List<Consumer<Breakpoint>> breakpointRemovedListeners = new CopyOnWriteArrayList<>();
-    final ObjectStructures.MessageNodes msgNodes;
     private final Set<DebuggerSession> sessions = new HashSet<>();
     private final List<Breakpoint> breakpoints = new ArrayList<>();
     final Breakpoint alwaysHaltBreakpoint;
 
     Debugger(Env env) {
         this.env = env;
-        this.msgNodes = new ObjectStructures.MessageNodes();
         this.alwaysHaltBreakpoint = new Breakpoint(BreakpointLocation.ANY, SuspendAnchor.BEFORE);
         this.alwaysHaltBreakpoint.setEnabled(true);
     }
@@ -151,6 +149,16 @@ public final class Debugger {
         }
         session.install(alwaysHaltBreakpoint, true);
         return session;
+    }
+
+    /**
+     * Returns the number of active debugger sessions. This is useful, for instance, in deciding
+     * whether to open a new debugger session, depending on whether there is an existing one or not.
+     *
+     * @since 1.0
+     */
+    public synchronized int getSessionCount() {
+        return sessions.size();
     }
 
     void disposedSession(DebuggerSession session) {
@@ -294,10 +302,6 @@ public final class Debugger {
         return env.getInstrumenter();
     }
 
-    ObjectStructures.MessageNodes getMessageNodes() {
-        return msgNodes;
-    }
-
     static void trace(String message, Object... parameters) {
         if (TRACE) {
             PrintStream out = System.out;
@@ -346,6 +350,11 @@ public final class Debugger {
         @Override
         protected Nodes nodes() {
             return super.nodes();
+        }
+
+        @Override
+        protected EngineSupport engineSupport() {
+            return super.engineSupport();
         }
 
         /*

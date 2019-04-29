@@ -320,7 +320,7 @@ public class SubstrateMethod implements SharedRuntimeMethod, Replaced {
 
     @Override
     public Annotation[] getAnnotations() {
-        return AnnotationsEncoding.getAnnotations(annotationsEncoding);
+        return AnnotationsEncoding.decodeAnnotations(annotationsEncoding);
     }
 
     @Override
@@ -330,7 +330,7 @@ public class SubstrateMethod implements SharedRuntimeMethod, Replaced {
 
     @Override
     public <T extends Annotation> T getAnnotation(Class<T> annotationClass) {
-        return AnnotationsEncoding.getAnnotation(annotationsEncoding, annotationClass);
+        return AnnotationsEncoding.decodeAnnotation(annotationsEncoding, annotationClass);
     }
 
     @Override

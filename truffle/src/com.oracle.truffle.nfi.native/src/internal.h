@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2017, 2018, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2017, 2019, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -45,6 +45,18 @@
 #include <ffi.h>
 #include <jni.h>
 
+#ifdef _WIN32
+
+#include <malloc.h>
+
+#define __thread __declspec(thread)
+
+#else
+
+#include <alloca.h>
+
+#endif
+
 struct __TruffleContextInternal {
     const struct __TruffleThreadAPI *functions;
     JavaVM *javaVM;
@@ -80,7 +92,9 @@ struct __TruffleContextInternal {
 
 
     void *__libc_errno_location;
+#if !defined(_WIN32)
     void *__pthreads_errno_location;
+#endif
 };
 
 struct __TruffleEnvInternal {

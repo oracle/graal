@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2013, 2014, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2013, 2018, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -31,7 +31,6 @@ import com.oracle.truffle.api.CompilerDirectives.CompilationFinal;
 import com.oracle.truffle.api.CompilerOptions;
 import com.oracle.truffle.api.impl.DefaultCompilerOptions;
 import com.oracle.truffle.api.nodes.DirectCallNode;
-import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.api.nodes.NodeInfo;
 import com.oracle.truffle.api.nodes.RootNode;
 import com.oracle.truffle.api.profiles.ValueProfile;
@@ -48,24 +47,20 @@ public final class OptimizedDirectCallNode extends DirectCallNode {
     private boolean inliningForced;
     @CompilationFinal private ValueProfile exceptionProfile;
 
-    private final boolean experimentalSplitting;
-    private final boolean traceSplittingSummary;
     @CompilationFinal private OptimizedCallTarget splitCallTarget;
 
     public OptimizedDirectCallNode(OptimizedCallTarget target) {
         super(target);
         assert target.getSourceCallTarget() == null;
-        this.experimentalSplitting = TruffleRuntimeOptions.getValue(SharedTruffleRuntimeOptions.TruffleExperimentalSplitting);
-        this.traceSplittingSummary = TruffleRuntimeOptions.getValue(SharedTruffleRuntimeOptions.TruffleTraceSplittingSummary);
     }
 
     @Override
-    public Object call(Object[] arguments) {
+    public Object call(Object... arguments) {
         if (CompilerDirectives.inInterpreter()) {
             onInterpreterCall();
         }
         try {
-            return callProxy(this, getCurrentCallTarget(), arguments, true);
+            return getCurrentCallTarget().callDirect(this, arguments);
         } catch (Throwable t) {
             if (exceptionProfile == null) {
                 CompilerDirectives.transferToInterpreterAndInvalidate();
@@ -74,20 +69,6 @@ public final class OptimizedDirectCallNode extends DirectCallNode {
             Throwable profiledT = exceptionProfile.profile(t);
             OptimizedCallTarget.runtime().getTvmci().onThrowable(this, null, profiledT, null);
             throw OptimizedCallTarget.rethrow(profiledT);
-        }
-    }
-
-    // Note: {@code PartialEvaluator} looks up this method by name and signature.
-    public static Object callProxy(Node callNode, CallTarget callTarget, Object[] arguments, boolean direct) {
-        try {
-            if (direct) {
-                return ((OptimizedCallTarget) callTarget).callDirect(arguments);
-            } else {
-                return callTarget.call(arguments);
-            }
-        } finally {
-            // this assertion is needed to keep the values from being cleared as non-live locals
-            assert callNode != null & callTarget != null;
         }
     }
 
@@ -144,7 +125,7 @@ public final class OptimizedDirectCallNode extends DirectCallNode {
         if (calls == 1) {
             getCurrentCallTarget().incrementKnownCallSites();
         }
-        TruffleSplittingStrategy.beforeCall(this, OptimizedCallTarget.runtime().getTvmci(), traceSplittingSummary, experimentalSplitting);
+        TruffleSplittingStrategy.beforeCall(this, OptimizedCallTarget.runtime().getTvmci());
     }
 
     /** Used by the splitting strategy to install new targets. */
@@ -166,12 +147,12 @@ public final class OptimizedDirectCallNode extends DirectCallNode {
 
             if (callCount >= 1) {
                 currentTarget.decrementKnownCallSites();
-                if (TruffleRuntimeOptions.getValue(SharedTruffleRuntimeOptions.TruffleExperimentalSplitting)) {
+                if (!TruffleRuntimeOptions.getValue(SharedTruffleRuntimeOptions.TruffleLegacySplitting)) {
                     currentTarget.removeKnownCallSite(this);
                 }
+                splitTarget.incrementKnownCallSites();
             }
-            splitTarget.incrementKnownCallSites();
-            if (TruffleRuntimeOptions.getValue(SharedTruffleRuntimeOptions.TruffleExperimentalSplitting)) {
+            if (!TruffleRuntimeOptions.getValue(SharedTruffleRuntimeOptions.TruffleLegacySplitting)) {
                 splitTarget.addKnownCallNode(this);
             }
 
@@ -186,7 +167,7 @@ public final class OptimizedDirectCallNode extends DirectCallNode {
 
     @Override
     public boolean cloneCallTarget() {
-        TruffleSplittingStrategy.forceSplitting(this, OptimizedCallTarget.runtime().getTvmci(), traceSplittingSummary);
+        TruffleSplittingStrategy.forceSplitting(this, OptimizedCallTarget.runtime().getTvmci());
         return true;
     }
 }

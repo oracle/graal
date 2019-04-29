@@ -40,36 +40,27 @@
  */
 package com.oracle.truffle.polyglot;
 
-import static com.oracle.truffle.api.interop.ForeignAccess.sendExecute;
-import static com.oracle.truffle.api.interop.ForeignAccess.sendIsExecutable;
-import static com.oracle.truffle.api.interop.ForeignAccess.sendIsInstantiable;
-import static com.oracle.truffle.api.interop.ForeignAccess.sendNew;
-
 import java.lang.reflect.Type;
 
-import com.oracle.truffle.api.CompilerDirectives;
+import com.oracle.truffle.api.dsl.Cached;
+import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.interop.ArityException;
-import com.oracle.truffle.api.interop.Message;
-import com.oracle.truffle.api.interop.TruffleObject;
+import com.oracle.truffle.api.interop.InteropLibrary;
 import com.oracle.truffle.api.interop.UnsupportedMessageException;
 import com.oracle.truffle.api.interop.UnsupportedTypeException;
+import com.oracle.truffle.api.library.CachedLibrary;
 import com.oracle.truffle.api.nodes.Node;
+import com.oracle.truffle.api.profiles.BranchProfile;
 import com.oracle.truffle.api.profiles.ConditionProfile;
 import com.oracle.truffle.polyglot.PolyglotLanguageContext.ToGuestValuesNode;
 
-final class PolyglotExecuteNode extends Node {
+abstract class PolyglotExecuteNode extends Node {
 
     private static final Object[] EMPTY = new Object[0];
 
-    @Child private Node isExecutable = Message.IS_EXECUTABLE.createNode();
-    @Child private Node isInstantiable = Message.IS_INSTANTIABLE.createNode();
-    @Child private Node execute = Message.EXECUTE.createNode();
-    @Child private Node instantiate = Message.NEW.createNode();
     private final ToGuestValuesNode toGuests = ToGuestValuesNode.create();
-    private final ConditionProfile condition = ConditionProfile.createBinaryProfile();
-    @Child private ToHostNode toHost = ToHostNode.create();
 
-    public Object execute(PolyglotLanguageContext languageContext, TruffleObject function, Object functionArgsObject,
+    public final Object execute(PolyglotLanguageContext languageContext, Object function, Object functionArgsObject,
                     Class<?> resultClass, Type resultType) {
         Object[] argsArray;
         if (functionArgsObject instanceof Object[]) {
@@ -82,36 +73,52 @@ final class PolyglotExecuteNode extends Node {
             }
         }
         Object[] functionArgs = toGuests.apply(languageContext, argsArray);
+        return executeImpl(languageContext, function, functionArgs, resultClass, resultType);
+    }
+
+    protected abstract Object executeImpl(PolyglotLanguageContext languageContext, Object function, Object[] functionArgsObject,
+                    Class<?> resultClass, Type resultType);
+
+    @Specialization(limit = "5")
+    Object doCached(PolyglotLanguageContext languageContext, Object function, Object[] functionArgs,
+                    Class<?> resultClass, Type resultType,
+                    @CachedLibrary("function") InteropLibrary interop,
+                    @Cached ToHostNode toHost,
+                    @Cached("createBinaryProfile()") ConditionProfile executableCondition,
+                    @Cached("createBinaryProfile()") ConditionProfile instantiableCondition,
+                    @Cached BranchProfile unsupportedError,
+                    @Cached BranchProfile arityError,
+                    @Cached BranchProfile unsupportedArgumentError) {
+
         Object result;
-        boolean executable = condition.profile(sendIsExecutable(isExecutable, function));
+        boolean executable = executableCondition.profile(interop.isExecutable(function));
         try {
             if (executable) {
-                result = sendExecute(execute, function, functionArgs);
-            } else if (sendIsInstantiable(isInstantiable, function)) {
-                result = sendNew(instantiate, function, functionArgs);
+                result = interop.execute(function, functionArgs);
+            } else if (instantiableCondition.profile(interop.isInstantiable(function))) {
+                result = interop.instantiate(function, functionArgs);
             } else {
-                CompilerDirectives.transferToInterpreter();
                 throw HostInteropErrors.executeUnsupported(languageContext, function);
             }
         } catch (UnsupportedTypeException e) {
-            CompilerDirectives.transferToInterpreter();
+            unsupportedArgumentError.enter();
             if (executable) {
                 throw HostInteropErrors.invalidExecuteArgumentType(languageContext, function, functionArgs);
             } else {
                 throw HostInteropErrors.invalidInstantiateArgumentType(languageContext, function, functionArgs);
             }
         } catch (ArityException e) {
-            CompilerDirectives.transferToInterpreter();
+            arityError.enter();
             if (executable) {
                 throw HostInteropErrors.invalidExecuteArity(languageContext, function, functionArgs, e.getExpectedArity(), e.getActualArity());
             } else {
                 throw HostInteropErrors.invalidInstantiateArity(languageContext, function, functionArgs, e.getExpectedArity(), e.getActualArity());
             }
         } catch (UnsupportedMessageException e) {
-            CompilerDirectives.transferToInterpreter();
+            unsupportedError.enter();
             throw HostInteropErrors.executeUnsupported(languageContext, function);
         }
-        return toHost.execute(result, resultClass, resultType, languageContext);
+        return toHost.execute(result, resultClass, resultType, languageContext, true);
     }
 
 }

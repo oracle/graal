@@ -39,4 +39,11 @@ public interface GraphProvider {
     }
 
     StructuredGraph buildGraph(DebugContext debug, ResolvedJavaMethod method, HostedProviders providers, Purpose purpose);
+
+    /**
+     * Returns true if a graph can be provided for {@link Purpose#PREPARE_RUNTIME_COMPILATION}. Note
+     * that a manually generated graph must be able to provide the proper deoptimization entry
+     * points and deoptimization frame states.
+     */
+    boolean allowRuntimeCompilation();
 }

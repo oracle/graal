@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2016, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2016, 2018, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -35,6 +35,7 @@ import org.graalvm.compiler.options.OptionType;
 import org.graalvm.compiler.options.OptionValues;
 
 import jdk.vm.ci.meta.ResolvedJavaMethod;
+import jdk.vm.ci.services.Services;
 
 /**
  * A watch dog for reporting long running compilations. This is designed to be an always on
@@ -166,7 +167,7 @@ class CompilationWatchDog extends Thread implements AutoCloseable {
     /**
      * Set to true to debug the watch dog.
      */
-    private static final boolean DEBUG = Boolean.getBoolean("debug.graal.CompilationWatchDog");
+    private static final boolean DEBUG = Boolean.parseBoolean(Services.getSavedProperties().get("debug.graal.CompilationWatchDog"));
 
     private void trace(String format, Object... args) {
         if (DEBUG) {

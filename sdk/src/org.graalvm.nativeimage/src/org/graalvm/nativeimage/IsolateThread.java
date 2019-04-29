@@ -46,6 +46,9 @@ import org.graalvm.word.PointerBase;
 /**
  * Pointer to the runtime data structure for a thread. The size and actual layout of the data
  * structure is unspecified, client code must not make any assumptions about it.
+ * <p>
+ * The {@link IsolateThread} points to a thread-local data structure. Therefore, the pointer must
+ * not be shared between threads.
  *
  * @since 1.0
  */

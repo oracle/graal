@@ -49,6 +49,7 @@ import java.util.function.Predicate;
 import java.util.logging.Handler;
 import java.util.logging.Level;
 
+import org.graalvm.polyglot.PolyglotAccess;
 import org.graalvm.polyglot.io.FileSystem;
 
 import com.oracle.truffle.api.CompilerDirectives.CompilationFinal;
@@ -59,7 +60,7 @@ final class PolyglotContextConfig {
     final OutputStream out;
     final OutputStream err;
     final InputStream in;
-    final boolean hostAccessAllowed;
+    final boolean hostLookupAllowed;
     final boolean nativeAccessAllowed;
     final boolean createThreadAllowed;
     final boolean hostClassLoadingAllowed;
@@ -70,19 +71,21 @@ final class PolyglotContextConfig {
     @CompilationFinal FileSystem fileSystem;
     final Map<String, Level> logLevels;    // effectively final
     final Handler logHandler;
+    final PolyglotAccess polyglotAccess;
 
     PolyglotContextConfig(PolyglotEngineImpl engine, OutputStream out, OutputStream err, InputStream in,
-                    boolean hostAccessAllowed, boolean nativeAccessAllowed, boolean createThreadAllowed,
-                    boolean hostClassLoadingAllowed, Predicate<String> classFilter,
-                    Map<String, String[]> applicationArguments, Set<String> allowedPublicLanguages,
-                    Map<String, String> options, FileSystem fileSystem, Handler logHandler) {
+                    boolean hostLookupAllowed, PolyglotAccess polyglotAccess, boolean nativeAccessAllowed, boolean createThreadAllowed,
+                    boolean hostClassLoadingAllowed, boolean allowExperimentalOptions,
+                    Predicate<String> classFilter, Map<String, String[]> applicationArguments,
+                    Set<String> allowedPublicLanguages, Map<String, String> options, FileSystem fileSystem, Handler logHandler) {
         assert out != null;
         assert err != null;
         assert in != null;
         this.out = out;
         this.err = err;
         this.in = in;
-        this.hostAccessAllowed = hostAccessAllowed;
+        this.hostLookupAllowed = hostLookupAllowed;
+        this.polyglotAccess = polyglotAccess;
         this.nativeAccessAllowed = nativeAccessAllowed;
         this.createThreadAllowed = createThreadAllowed;
         this.hostClassLoadingAllowed = hostClassLoadingAllowed;
@@ -94,19 +97,48 @@ final class PolyglotContextConfig {
         this.logHandler = logHandler;
         this.logLevels = new HashMap<>(engine.logLevels);
         for (String optionKey : options.keySet()) {
-            String group = PolyglotEngineImpl.parseOptionGroup(optionKey);
+            final String group = PolyglotEngineImpl.parseOptionGroup(optionKey);
             if (group.equals(PolyglotEngineOptions.OPTION_GROUP_LOG)) {
                 logLevels.put(PolyglotEngineImpl.parseLoggerName(optionKey), Level.parse(options.get(optionKey)));
                 continue;
             }
+
             final PolyglotLanguage language = findLanguageForOption(engine, optionKey, group);
             OptionValuesImpl languageOptions = optionsByLanguage.get(language.getId());
             if (languageOptions == null) {
                 languageOptions = language.getOptionValues().copy();
                 optionsByLanguage.put(language.getId(), languageOptions);
             }
-            languageOptions.put(optionKey, options.get(optionKey));
+            languageOptions.put(optionKey, options.get(optionKey), allowExperimentalOptions);
         }
+    }
+
+    boolean isAccessPermitted(PolyglotLanguage from, PolyglotLanguage to) {
+        if (to.isHost() || to.cache.isInternal()) {
+            // everyone has access to host or internal languages
+            return true;
+        }
+        if (from == null) {
+            // embedder access
+            if (allowedPublicLanguages.contains(to.info.getId())) {
+                return true;
+            }
+        } else {
+            // language access
+            if (polyglotAccess == PolyglotAccess.ALL) {
+                if (allowedPublicLanguages.contains(to.info.getId())) {
+                    return true;
+                }
+            } else {
+                if (from == to) {
+                    return true;
+                }
+            }
+            if (from.dependsOn(to)) {
+                return true;
+            }
+        }
+        return false;
     }
 
     String[] getApplicationArguments(PolyglotLanguage lang) {

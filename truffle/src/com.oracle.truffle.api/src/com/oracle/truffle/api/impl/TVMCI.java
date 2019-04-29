@@ -40,6 +40,7 @@
  */
 package com.oracle.truffle.api.impl;
 
+import java.io.Closeable;
 import java.util.Objects;
 import java.util.function.Supplier;
 
@@ -48,14 +49,16 @@ import org.graalvm.options.OptionValues;
 
 import com.oracle.truffle.api.CallTarget;
 import com.oracle.truffle.api.RootCallTarget;
-import com.oracle.truffle.api.TruffleLanguage;
 import com.oracle.truffle.api.frame.Frame;
 import com.oracle.truffle.api.frame.FrameDescriptor;
+import com.oracle.truffle.api.impl.Accessor.CallInlined;
+import com.oracle.truffle.api.impl.Accessor.CallProfiled;
+import com.oracle.truffle.api.impl.Accessor.CastUnsafe;
 import com.oracle.truffle.api.impl.Accessor.EngineSupport;
 import com.oracle.truffle.api.impl.Accessor.InstrumentSupport;
+import com.oracle.truffle.api.nodes.IndirectCallNode;
 import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.api.nodes.RootNode;
-import java.io.Closeable;
 
 /**
  * An interface between Truffle API and hosting virtual machine. Not interesting for regular Truffle
@@ -150,6 +153,10 @@ public abstract class TVMCI {
         }
     }
 
+    protected void setCallTarget(RootNode root, RootCallTarget callTarget) {
+        Accessor.nodesAccess().setCallTarget(root, callTarget);
+    }
+
     /**
      * Makes sure the <code>rootNode</code> is initialized.
      *
@@ -161,20 +168,6 @@ public abstract class TVMCI {
         if (accessor != null) {
             accessor.onFirstExecution(rootNode);
         }
-    }
-
-    /**
-     * Finds the language associated with given root node.
-     *
-     * @param root the node
-     * @return the language of the node
-     * @since 0.12
-     * @deprecated no replacement
-     */
-    @SuppressWarnings({"rawtypes"})
-    @Deprecated
-    protected Class<? extends TruffleLanguage> findLanguageClass(RootNode root) {
-        return root.getLanguage(TruffleLanguage.class).getClass();
     }
 
     /**
@@ -259,10 +252,6 @@ public abstract class TVMCI {
     protected void initializeProfile(CallTarget target, Class<?>[] argumentTypes) {
     }
 
-    protected Object callProfiled(CallTarget target, Object... args) {
-        return target.call(args);
-    }
-
     /**
      * Accessor for {@link TVMCI#Test} class.
      *
@@ -325,4 +314,25 @@ public abstract class TVMCI {
     @SuppressWarnings("unused")
     protected void reportPolymorphicSpecialize(Node node) {
     }
+
+    protected ThreadLocal<Object> createFastThreadLocal() {
+        return new ThreadLocal<>();
+    }
+
+    protected IndirectCallNode createUncachedIndirectCall() {
+        return null;
+    }
+
+    protected CallInlined getCallInlined() {
+        return null;
+    }
+
+    protected CallProfiled getCallProfiled() {
+        return null;
+    }
+
+    protected CastUnsafe getCastUnsafe() {
+        return null;
+    }
+
 }

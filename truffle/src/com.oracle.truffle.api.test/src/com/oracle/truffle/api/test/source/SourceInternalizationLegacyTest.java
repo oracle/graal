@@ -67,13 +67,15 @@ import org.junit.Assert;
 import org.junit.Test;
 
 import com.oracle.truffle.api.source.Source;
-import com.oracle.truffle.api.test.polyglot.PolyglotCachingTest;
+import com.oracle.truffle.api.test.GCUtils;
+import com.oracle.truffle.api.test.polyglot.AbstractPolyglotTest;
 
 @SuppressWarnings("deprecation")
-public class SourceInternalizationLegacyTest {
+public class SourceInternalizationLegacyTest extends AbstractPolyglotTest {
 
     @Test
     public void testSourceIdentity() throws RuntimeException, URISyntaxException, IOException {
+        setupEnv();
         assertNotSame(Source.newBuilder("1").mimeType("").language("").name("").build(),
                         Source.newBuilder("2").mimeType("").language("").name("").build());
         assertSame(Source.newBuilder("1").mimeType("").language("").name("").build(),
@@ -198,7 +200,7 @@ public class SourceInternalizationLegacyTest {
 
         ReferenceQueue<Object> queue = new ReferenceQueue<>();
         List<WeakReference<Object>> sources = new ArrayList<>();
-        for (int i = 0; i < PolyglotCachingTest.GC_TEST_ITERATIONS; i++) {
+        for (int i = 0; i < GCUtils.GC_TEST_ITERATIONS; i++) {
             sources.add(new WeakReference<>(createTestSource(testString, i), queue));
             System.gc();
         }

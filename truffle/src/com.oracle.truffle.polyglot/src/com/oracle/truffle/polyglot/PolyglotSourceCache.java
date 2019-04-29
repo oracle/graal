@@ -97,6 +97,9 @@ final class PolyglotSourceCache {
     }
 
     private static void validateSource(PolyglotLanguageContext context, Source source) {
+        if (!source.hasBytes() && !source.hasCharacters()) {
+            throw new PolyglotIllegalArgumentException(String.format("Error evaluating the source. The source does not specify characters nor bytes."));
+        }
         String mimeType = source.getMimeType();
         Set<String> mimeTypes = context.language.cache.getMimeTypes();
         if (mimeType != null && !mimeTypes.contains(mimeType)) {

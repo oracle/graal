@@ -37,8 +37,9 @@ import org.graalvm.compiler.phases.util.Providers;
 
 import com.oracle.graal.pointsto.meta.HostedProviders;
 import com.oracle.svm.core.config.ConfigurationValues;
-import com.oracle.svm.core.graal.code.amd64.SubstrateAMD64Backend;
+import com.oracle.svm.core.graal.code.SubstrateBackendFactory;
 import com.oracle.svm.hosted.SVMHost;
+import com.oracle.svm.hosted.c.NativeLibraries;
 import com.oracle.svm.hosted.meta.HostedConstantFieldProvider;
 import com.oracle.svm.hosted.meta.HostedConstantReflectionProvider;
 import com.oracle.svm.hosted.meta.HostedMemoryAccessProvider;
@@ -54,17 +55,11 @@ public class HostedRuntimeConfigurationBuilder extends SharedRuntimeConfiguratio
     private final HostedUniverse universe;
     private final HostedProviders analysisProviders;
 
-    public HostedRuntimeConfigurationBuilder(OptionValues options, SVMHost hostVM, HostedUniverse universe, HostedMetaAccess metaAccess, HostedProviders analysisProviders) {
-        super(options, hostVM, metaAccess, (providers) -> new SubstrateAMD64Backend(providers));
+    public HostedRuntimeConfigurationBuilder(OptionValues options, SVMHost hostVM, HostedUniverse universe, HostedMetaAccess metaAccess, HostedProviders analysisProviders,
+                    NativeLibraries nativeLibraries) {
+        super(options, hostVM, metaAccess, SubstrateBackendFactory.get()::newBackend, nativeLibraries);
         this.universe = universe;
         this.analysisProviders = analysisProviders;
-    }
-
-    @Override
-    public HostedRuntimeConfigurationBuilder build() {
-        super.build();
-        updateLazyState((HostedMetaAccess) metaAccess);
-        return this;
     }
 
     @Override
@@ -81,13 +76,13 @@ public class HostedRuntimeConfigurationBuilder extends SharedRuntimeConfiguratio
 
     @Override
     protected SnippetReflectionProvider createSnippetReflectionProvider() {
-        return new HostedSnippetReflectionProvider(hostVM);
+        return new HostedSnippetReflectionProvider(hostVM, getWordTypes());
     }
 
     @Override
     protected Replacements createReplacements(Providers p, SnippetReflectionProvider reflectionProvider) {
         BytecodeProvider bytecodeProvider = new ResolvedJavaMethodBytecodeProvider();
-        return new HostedReplacements(universe, p, reflectionProvider, ConfigurationValues.getTarget(), analysisProviders, bytecodeProvider, options);
+        return new HostedReplacements(universe, p, reflectionProvider, ConfigurationValues.getTarget(), analysisProviders, bytecodeProvider);
     }
 
     @Override

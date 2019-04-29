@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2016, 2018, Oracle and/or its affiliates.
+ * Copyright (c) 2016, 2019, Oracle and/or its affiliates.
  *
  * All rights reserved.
  *
@@ -89,6 +89,7 @@ import com.oracle.truffle.llvm.runtime.LLVMContext;
 import com.oracle.truffle.llvm.runtime.LLVMContext.ExternalLibrary;
 import com.oracle.truffle.llvm.runtime.NodeFactory;
 import com.oracle.truffle.llvm.runtime.debug.scope.LLVMSourceLocation;
+import com.oracle.truffle.llvm.runtime.except.LLVMParserException;
 import com.oracle.truffle.llvm.runtime.except.LLVMUserException;
 import com.oracle.truffle.llvm.runtime.memory.LLVMStack;
 import com.oracle.truffle.llvm.runtime.memory.LLVMStack.UniquesRegion;
@@ -159,7 +160,7 @@ final class LLVMBitcodeInstructionVisitor implements SymbolVisitor {
 
     @Override
     public void defaultAction(SymbolImpl symbol) {
-        throw new IllegalStateException("Instruction not implemented: " + symbol.getClass().getSimpleName());
+        throw new LLVMParserException("Instruction not implemented: " + symbol.getClass().getSimpleName());
     }
 
     @Override
@@ -540,7 +541,7 @@ final class LLVMBitcodeInstructionVisitor implements SymbolVisitor {
     @Override
     public void visit(ExtractValueInstruction extract) {
         if (!(extract.getAggregate().getType() instanceof ArrayType || extract.getAggregate().getType() instanceof StructureType || extract.getAggregate().getType() instanceof PointerType)) {
-            throw new IllegalStateException("\'extractvalue\' can only extract elements of arrays and structs!");
+            throw new LLVMParserException("\'extractvalue\' can only extract elements of arrays and structs!");
         }
         final LLVMExpressionNode baseAddress = symbols.resolve(extract.getAggregate());
         final Type baseType = extract.getAggregate().getType();
@@ -605,7 +606,7 @@ final class LLVMBitcodeInstructionVisitor implements SymbolVisitor {
     @Override
     public void visit(InsertValueInstruction insert) {
         if (!(insert.getAggregate().getType() instanceof StructureType || insert.getAggregate().getType() instanceof ArrayType)) {
-            throw new IllegalStateException("\'insertvalue\' can only insert values into arrays and structs!");
+            throw new LLVMParserException("\'insertvalue\' can only insert values into arrays and structs!");
         }
         final AggregateType sourceType = (AggregateType) insert.getAggregate().getType();
         final LLVMExpressionNode sourceAggregate = symbols.resolve(insert.getAggregate());
@@ -724,7 +725,7 @@ final class LLVMBitcodeInstructionVisitor implements SymbolVisitor {
             case UMIN:
             case UMAX:
             default:
-                throw new IllegalStateException("Unsupported read-modify-write operation: " + op);
+                throw new LLVMParserException("Unsupported read-modify-write operation: " + op);
         }
     }
 
@@ -832,10 +833,10 @@ final class LLVMBitcodeInstructionVisitor implements SymbolVisitor {
 
     private LLVMExpressionNode createInlineAssemblerNode(InlineAsmConstant inlineAsmConstant, LLVMExpressionNode[] argNodes, Type[] argsType, Type retType, LLVMSourceLocation sourceLocation) {
         if (inlineAsmConstant.needsAlignedStack()) {
-            throw new UnsupportedOperationException("Assembly Expressions that require an aligned Stack are not supported yet!");
+            throw new LLVMParserException("Assembly Expressions that require an aligned Stack are not supported yet!");
         }
         if (inlineAsmConstant.getDialect() != AsmDialect.AT_T) {
-            throw new UnsupportedOperationException("Unsupported Assembly Dialect: " + inlineAsmConstant.getDialect());
+            throw new LLVMParserException("Unsupported Assembly Dialect: " + inlineAsmConstant.getDialect());
         }
         return nodeFactory.createInlineAssemblerExpression(library, inlineAsmConstant.getAsmExpression(), inlineAsmConstant.getAsmFlags(), argNodes, argsType, retType, sourceLocation);
     }

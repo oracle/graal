@@ -45,7 +45,7 @@ for e in "${relative_cp[@]}"; do
     absolute_cp+=("${location}/${e}")
 done
 
-jvm_args=()
+jvm_args=("-Dorg.graalvm.launcher.shell=true")
 launcher_args=()
 
 # Unfortunately, parsing of `--jvm.*` arguments has to be done blind:
@@ -53,13 +53,14 @@ launcher_args=()
 
 for o in "$@"; do
     if [[ "$o" == --jvm.* ]]; then
+        >&2 echo "'--jvm.*' options are deprecated, use '--vm.*' instead."
         jvm_arg="${o#--jvm.}"
         if [[ "$jvm_arg" == "cp" ]]; then
-            >&2 echo "--jvm.cp argument must be of the form --jvm.cp=<classpath>, not two separate arguments"
+            >&2 echo "'--jvm.cp' argument must be of the form '--jvm.cp=<classpath>', not two separate arguments"
             exit 1
         fi
         if [[ "$jvm_arg" == "classpath" ]]; then
-            >&2 echo "--jvm.classpath argument must be of the form --jvm.classpath=<classpath>, not two separate arguments"
+            >&2 echo "'--jvm.classpath' argument must be of the form '--jvm.classpath=<classpath>', not two separate arguments"
             exit 1
         fi
         if [[ "$jvm_arg" == "cp="* ]]; then
@@ -75,11 +76,38 @@ for o in "$@"; do
                 absolute_cp+=("${e}")
             done
         fi
+    elif [[ "$o" == --vm.* ]]; then
+        vm_arg="${o#--vm.}"
+        if [[ "$vm_arg" == "cp" ]]; then
+            >&2 echo "'--vm.cp' argument must be of the form '--vm.cp=<classpath>', not two separate arguments"
+            exit 1
+        fi
+        if [[ "$vm_arg" == "classpath" ]]; then
+            >&2 echo "'--vm.classpath' argument must be of the form '--vm.classpath=<classpath>', not two separate arguments"
+            exit 1
+        fi
+        if [[ "$vm_arg" == "cp="* ]]; then
+            custom_cp=${vm_arg#cp=}
+        elif [[ "$vm_arg" == "classpath="* ]]; then
+            custom_cp=${vm_arg#classpath=}
+        fi
+        if [[ -z "${custom_cp+x}" ]]; then
+            jvm_args+=("-${vm_arg}")
+        else
+            IFS=: read -ra custom_cp_a <<< "${custom_cp}"
+            for e in "${custom_cp_a[@]}"; do
+                absolute_cp+=("${e}")
+            done
+        fi
     else
         launcher_args+=("$o")
     fi
 done
 
 cp="$(IFS=: ; echo "${absolute_cp[*]}")"
+
+if [[ "${VERBOSE_GRAALVM_LAUNCHERS}" == "true" ]]; then
+    set -x
+fi
 
 exec "${location}/<jre_bin>/java" "${jvm_args[@]}" -cp "${cp}" "<main_class>" "${launcher_args[@]}"

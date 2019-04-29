@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2015, 2015, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2015, 2018, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -24,20 +24,36 @@
  */
 package org.graalvm.compiler.truffle.test;
 
-import jdk.vm.ci.code.BailoutException;
-
+import org.graalvm.compiler.truffle.runtime.SharedTruffleRuntimeOptions;
+import org.graalvm.compiler.truffle.runtime.TruffleRuntimeOptions;
 import org.graalvm.compiler.truffle.test.nodes.AbstractTestNode;
 import org.graalvm.compiler.truffle.test.nodes.ConstantTestNode;
 import org.graalvm.compiler.truffle.test.nodes.NonConstantTestNode;
 import org.graalvm.compiler.truffle.test.nodes.RootTestNode;
+import org.junit.AfterClass;
 import org.junit.Assert;
+import org.junit.BeforeClass;
 import org.junit.Test;
 
 import com.oracle.truffle.api.CompilerAsserts;
 import com.oracle.truffle.api.frame.FrameDescriptor;
 import com.oracle.truffle.api.frame.VirtualFrame;
 
+import jdk.vm.ci.code.BailoutException;
+
 public class CompilerAssertsTest extends PartialEvaluationTest {
+
+    private static TruffleRuntimeOptions.TruffleRuntimeOptionsOverrideScope immediateCompilationScope;
+
+    @BeforeClass
+    public static void setup() {
+        immediateCompilationScope = TruffleRuntimeOptions.overrideOptions(SharedTruffleRuntimeOptions.TruffleCompileImmediately, false);
+    }
+
+    @AfterClass
+    public static void tearDown() {
+        immediateCompilationScope.close();
+    }
 
     public static class NeverPartOfCompilationTestNode extends AbstractTestNode {
 
@@ -65,10 +81,11 @@ public class CompilerAssertsTest extends PartialEvaluationTest {
     }
 
     @Test
+    @SuppressWarnings("try")
     public void neverPartOfCompilationTest() {
         NeverPartOfCompilationTestNode result = new NeverPartOfCompilationTestNode();
         RootTestNode rootNode = new RootTestNode(new FrameDescriptor(), "neverPartOfCompilation", result);
-        try {
+        try (PreventDumping noDump = new PreventDumping()) {
             compileHelper("neverPartOfCompilation", rootNode, new Object[0]);
             Assert.fail("Expected bailout exception due to never part of compilation");
         } catch (BailoutException e) {
@@ -77,11 +94,12 @@ public class CompilerAssertsTest extends PartialEvaluationTest {
     }
 
     @Test
+    @SuppressWarnings("try")
     public void compilationNonConstantTest() {
         FrameDescriptor descriptor = new FrameDescriptor();
         CompilationConstantTestNode result = new CompilationConstantTestNode(new NonConstantTestNode(5));
         RootTestNode rootNode = new RootTestNode(descriptor, "compilationConstant", result);
-        try {
+        try (PreventDumping noDump = new PreventDumping()) {
             compileHelper("compilationConstant", rootNode, new Object[0]);
             Assert.fail("Expected bailout exception because expression is not compilation constant");
         } catch (BailoutException e) {

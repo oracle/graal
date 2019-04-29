@@ -48,15 +48,14 @@ import java.util.List;
 import org.junit.Before;
 import org.junit.Test;
 
-import com.oracle.truffle.api.interop.ForeignAccess;
-import com.oracle.truffle.api.interop.KeyInfo;
-import com.oracle.truffle.api.interop.MessageResolution;
-import com.oracle.truffle.api.interop.Resolve;
+import com.oracle.truffle.api.interop.InteropLibrary;
 import com.oracle.truffle.api.interop.TruffleObject;
-import com.oracle.truffle.api.nodes.Node;
+import com.oracle.truffle.api.library.ExportLibrary;
+import com.oracle.truffle.api.library.ExportMessage;
 
-@MessageResolution(receiverType = BoxedStringTest.class)
-public class BoxedStringTest extends ProxyLanguageEnvTest implements TruffleObject, ForeignAccess.StandardFactory {
+@SuppressWarnings("static-method")
+@ExportLibrary(InteropLibrary.class)
+public class BoxedStringTest extends ProxyLanguageEnvTest implements TruffleObject {
     public interface ExactMatchInterop {
         String stringValue();
 
@@ -89,38 +88,35 @@ public class BoxedStringTest extends ProxyLanguageEnvTest implements TruffleObje
         return object instanceof BoxedStringTest;
     }
 
-    @Override
-    public ForeignAccess getForeignAccess() {
-        return BoxedStringTestForeign.ACCESS;
+    @ExportMessage
+    boolean isString() {
+        return true;
     }
 
-    @Resolve(message = "UNBOX")
-    public abstract static class UnboxNode extends Node {
-        public Object access(BoxedStringTest obj) {
-            return obj.value;
-        }
+    @ExportMessage
+    String asString() {
+        return value;
     }
 
-    @Resolve(message = "READ")
-    public abstract static class ReadNode extends Node {
-        public Object access(BoxedStringTest obj, String key) {
-            assert KEYS.contains(key);
-            return obj;
-        }
+    @ExportMessage
+    final boolean hasMembers() {
+        return true;
     }
 
-    @Resolve(message = "KEYS")
-    public abstract static class KeysNode extends Node {
-        public Object access(BoxedStringTest obj) {
-            return obj.asTruffleObject(KEYS);
-        }
+    @ExportMessage
+    Object readMember(String member) {
+        assert KEYS.contains(member);
+        return this;
     }
 
-    @Resolve(message = "KEY_INFO")
-    public abstract static class KeyInfoNode extends Node {
-        @SuppressWarnings("unused")
-        public Object access(BoxedStringTest obj, String key) {
-            return KEYS.contains(key) ? KeyInfo.READABLE : KeyInfo.NONE;
-        }
+    @ExportMessage
+    final Object getMembers(@SuppressWarnings("unused") boolean includeInternal) {
+        return asTruffleObject(KEYS);
     }
+
+    @ExportMessage
+    final boolean isMemberReadable(String member) {
+        return KEYS.contains(member);
+    }
+
 }

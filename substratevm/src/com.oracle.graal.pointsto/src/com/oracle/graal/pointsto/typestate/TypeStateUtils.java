@@ -36,7 +36,6 @@ import java.util.List;
 import com.oracle.graal.pointsto.BigBang;
 import com.oracle.graal.pointsto.api.PointstoOptions;
 import com.oracle.graal.pointsto.flow.context.object.AnalysisObject;
-import com.oracle.graal.pointsto.meta.AnalysisType;
 
 import jdk.vm.ci.common.JVMCIError;
 
@@ -340,9 +339,9 @@ public class TypeStateUtils {
     @SuppressWarnings("RedundantIfStatement")
     static boolean holdsSingleTypeState(AnalysisObject[] objects, int size) {
         assert size > 0;
-        AnalysisType firstType = objects[0].type();
-        AnalysisType lastType = objects[size - 1].type();
-        if (firstType.equals(lastType)) {
+        int firstType = objects[0].getTypeId();
+        int lastType = objects[size - 1].getTypeId();
+        if (firstType == lastType) {
             /* Objects are sorted, first and last have the same type, must be single type. */
             return true;
         }

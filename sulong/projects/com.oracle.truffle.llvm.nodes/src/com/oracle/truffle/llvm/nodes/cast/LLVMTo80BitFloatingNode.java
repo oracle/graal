@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2016, 2018, Oracle and/or its affiliates.
+ * Copyright (c) 2016, 2019, Oracle and/or its affiliates.
  *
  * All rights reserved.
  *
@@ -29,20 +29,45 @@
  */
 package com.oracle.truffle.llvm.nodes.cast;
 
+import com.oracle.truffle.api.dsl.Cached;
 import com.oracle.truffle.api.dsl.NodeChild;
 import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.nodes.ExplodeLoop;
+import com.oracle.truffle.llvm.nodes.cast.LLVMTo80BitFloatingNodeGen.LLVMBitcastToLLVM80BitFloatNodeGen;
+import com.oracle.truffle.llvm.nodes.cast.LLVMTo80BitFloatingNodeGen.LLVMSignedCastToLLVM80BitFloatNodeGen;
+import com.oracle.truffle.llvm.nodes.cast.LLVMTo80BitFloatingNodeGen.LLVMUnsignedCastToLLVM80BitFloatNodeGen;
 import com.oracle.truffle.llvm.runtime.LLVMIVarBit;
 import com.oracle.truffle.llvm.runtime.floating.LLVM80BitFloat;
 import com.oracle.truffle.llvm.runtime.nodes.api.LLVMExpressionNode;
+import com.oracle.truffle.llvm.runtime.nodes.api.LLVMToNativeNode;
+import com.oracle.truffle.llvm.runtime.pointer.LLVMPointer;
 import com.oracle.truffle.llvm.runtime.vector.LLVMI16Vector;
 import com.oracle.truffle.llvm.runtime.vector.LLVMI1Vector;
 import com.oracle.truffle.llvm.runtime.vector.LLVMI8Vector;
 
+@NodeChild(value = "fromNode", type = LLVMExpressionNode.class)
 public abstract class LLVMTo80BitFloatingNode extends LLVMExpressionNode {
 
-    @NodeChild(value = "fromNode", type = LLVMExpressionNode.class)
+    protected abstract LLVM80BitFloat executeWith(long value);
+
+    protected LLVMTo80BitFloatingNode createRecursive() {
+        throw new IllegalStateException("abstract node LLVMTo80BitFloatingNode used");
+    }
+
+    @Specialization
+    protected LLVM80BitFloat doPointer(LLVMPointer from,
+                    @Cached("createToNativeWithTarget()") LLVMToNativeNode toNative,
+                    @Cached("createRecursive()") LLVMTo80BitFloatingNode recursive) {
+        long ptr = toNative.executeWithTarget(from).asNative();
+        return recursive.executeWith(ptr);
+    }
+
     public abstract static class LLVMSignedCastToLLVM80BitFloatNode extends LLVMTo80BitFloatingNode {
+
+        @Override
+        protected LLVMTo80BitFloatingNode createRecursive() {
+            return LLVMSignedCastToLLVM80BitFloatNodeGen.create(null);
+        }
 
         @Specialization
         protected LLVM80BitFloat do80BitFloat(byte from) {
@@ -88,6 +113,11 @@ public abstract class LLVMTo80BitFloatingNode extends LLVMExpressionNode {
     @NodeChild(value = "fromNode", type = LLVMExpressionNode.class)
     public abstract static class LLVMUnsignedCastToLLVM80BitFloatNode extends LLVMTo80BitFloatingNode {
 
+        @Override
+        protected LLVMTo80BitFloatingNode createRecursive() {
+            return LLVMUnsignedCastToLLVM80BitFloatNodeGen.create(null);
+        }
+
         @Specialization
         protected LLVM80BitFloat do80BitFloat(byte from) {
             return LLVM80BitFloat.fromUnsignedByte(from);
@@ -126,6 +156,11 @@ public abstract class LLVMTo80BitFloatingNode extends LLVMExpressionNode {
 
     @NodeChild(value = "fromNode", type = LLVMExpressionNode.class)
     public abstract static class LLVMBitcastToLLVM80BitFloatNode extends LLVMTo80BitFloatingNode {
+
+        @Override
+        protected LLVMTo80BitFloatingNode createRecursive() {
+            return LLVMBitcastToLLVM80BitFloatNodeGen.create(null);
+        }
 
         @Specialization
         protected LLVM80BitFloat doLLVM80BitFloatNode(LLVM80BitFloat from) {

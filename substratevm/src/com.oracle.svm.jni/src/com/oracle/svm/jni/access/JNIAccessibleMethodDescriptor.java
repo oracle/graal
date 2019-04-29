@@ -41,10 +41,7 @@ import jdk.vm.ci.meta.MetaUtil;
 public final class JNIAccessibleMethodDescriptor {
 
     private static final String CONSTRUCTOR_NAME = "<init>";
-
-    public static boolean isConstructorName(String name) {
-        return CONSTRUCTOR_NAME.equals(name);
-    }
+    private static final String INITIALIZER_NAME = "<clinit>";
 
     public static JNIAccessibleMethodDescriptor of(JavaMethod method) {
         return new JNIAccessibleMethodDescriptor(method.getName(), method.getSignature().toMethodDescriptor());
@@ -80,6 +77,10 @@ public final class JNIAccessibleMethodDescriptor {
 
     public boolean isConstructor() {
         return name.equals(CONSTRUCTOR_NAME);
+    }
+
+    public boolean isClassInitializer() {
+        return name.equals(INITIALIZER_NAME);
     }
 
     public String getName() {

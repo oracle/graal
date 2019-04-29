@@ -11,7 +11,7 @@ The project website at [https://www.graalvm.org](https://www.graalvm.org) descri
 
 The GraalVM main source repository includes the following components:
 
-* [Graal SDK](sdk/README.md) contains long term supported APIs of GraalVM.
+* [GraalVM SDK](sdk/README.md) contains long term supported APIs of GraalVM.
 
 * [Graal compiler](compiler/README.md) written in Java that supports both dynamic and static compilation and can integrate with
 the Java HotSpot VM or run standalone.
@@ -32,19 +32,25 @@ images or shared objects.
 * [VM](vm/README.md) includes the components to build a modular GraalVM image.
 
 
+## Reporting Vulnerabilities
+
+Please report security vulnerabilities not via GitHub issues or the public mailing lists, but via the process outlined at [Reporting Vulnerabilities guide](https://www.oracle.com/corporate/security-practices/assurance/vulnerability/reporting.html).
+
+
 ## Related Repositories
+
 GraalVM allows running of following languages which are being developed and tested in related repositories with GraalVM core to run on top of it using Truffle and Graal compiler. These are:
-* [Graal.JS](https://github.com/graalvm/graaljs) - JavaScript (ECMAScript 2017 compatible) and node.js 8.11.1
-* [FastR](https://github.com/oracle/fastr) - R Language 3.4.0
+* [Graal JavaScript](https://github.com/graalvm/graaljs) - JavaScript (ECMAScript 2019 compatible) and Node.js 10.15.2
+* [FastR](https://github.com/oracle/fastr) - R Language 3.5.1
 * [GraalPython](https://github.com/graalvm/graalpython) - Python 3.7
-* [TruffleRuby](https://github.com/oracle/truffleruby/) - Ruby Programming Language 2.3.7
+* [TruffleRuby](https://github.com/oracle/truffleruby/) - Ruby Programming Language 2.6.2
 * [SimpleLanguage](https://github.com/graalvm/simplelanguage) - A simple demonstration language for the GraalVM.
 
 
 ## License
 
 Each GraalVM component is licensed:
-* [Truffle](/truffle/) and its dependency [Graal SDK](/sdk/) are licensed under the [Universal Permissive License](truffle/LICENSE.md).
+* [Truffle](/truffle/) and its dependency [GraalVM SDK](/sdk/) are licensed under the [Universal Permissive License](truffle/LICENSE.md).
 * [Tools](/tools/) project is licensed under the [GPL 2 with Classpath exception](tools/LICENSE.GPL.md).
 * [TRegex](/regex/) project is licensed under the [GPL 2 with Classpath exception](regex/LICENSE.GPL.md).
 * The [Graal compiler](/compiler/) is licensed under the [GPL 2 with Classpath exception](compiler/LICENSE.md).

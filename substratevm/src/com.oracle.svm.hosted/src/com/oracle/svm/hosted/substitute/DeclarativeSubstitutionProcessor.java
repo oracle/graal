@@ -69,9 +69,10 @@ import com.oracle.svm.core.option.HostedOptionKey;
 import com.oracle.svm.core.option.OptionUtils;
 import com.oracle.svm.core.util.UserError;
 import com.oracle.svm.core.util.VMError;
+import com.oracle.svm.core.util.json.JSONParser;
+import com.oracle.svm.core.util.json.JSONParserException;
 import com.oracle.svm.hosted.ImageClassLoader;
-import com.oracle.svm.hosted.json.JSONParser;
-import com.oracle.svm.hosted.json.JSONParserException;
+import com.oracle.svm.hosted.classinitialization.ClassInitializationSupport;
 
 import jdk.vm.ci.meta.MetaAccessProvider;
 
@@ -93,8 +94,8 @@ public class DeclarativeSubstitutionProcessor extends AnnotationSubstitutionProc
     private final Map<Executable, MethodDescriptor> methodDescriptors;
     private final Map<Field, FieldDescriptor> fieldDescriptors;
 
-    public DeclarativeSubstitutionProcessor(ImageClassLoader imageClassLoader, MetaAccessProvider metaAccess) {
-        super(imageClassLoader, metaAccess);
+    public DeclarativeSubstitutionProcessor(ImageClassLoader imageClassLoader, MetaAccessProvider metaAccess, ClassInitializationSupport classInitializationSupport) {
+        super(imageClassLoader, metaAccess, classInitializationSupport);
 
         classDescriptors = new HashMap<>();
         methodDescriptors = new HashMap<>();
@@ -444,8 +445,8 @@ class ClassDescriptor extends PlatformsDescriptor {
         }
 
         @Override
-        public String innerClass() {
-            return "";
+        public String[] innerClass() {
+            return new String[0];
         }
 
         /*

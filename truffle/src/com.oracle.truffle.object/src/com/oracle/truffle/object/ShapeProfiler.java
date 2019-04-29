@@ -52,6 +52,7 @@ import java.util.concurrent.ConcurrentLinkedQueue;
 import com.oracle.truffle.api.object.DynamicObject;
 import com.oracle.truffle.api.object.Shape;
 
+@SuppressWarnings("deprecation")
 class ShapeProfiler {
     private static final String LINE_SEPARATOR = "***********************************************";
     private static final String BULLET = "* ";

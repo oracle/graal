@@ -1,7 +1,7 @@
 #!/usr/bin/env python2
 #
 # ------------------------------------------------------------------------------
-# Copyright (c) 2018, Oracle and/or its affiliates. All rights reserved.
+# Copyright (c) 2018, 2019, Oracle and/or its affiliates. All rights reserved.
 # DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
 #
 # This code is free software; you can redistribute it and/or modify it
@@ -256,12 +256,9 @@ def property_to_java_array_init(prop):
 
     encoding = []
     for (range_start, range_end) in ranges:
-        if range_start == range_end:
-            encoding.append(-1 * range_start - 1)
-        else:
-            encoding.append(range_start)
-            encoding.append(range_end)
-    return 'new int[]{%s}' % ', '.join(map(int_to_java_hex_literal, encoding))
+        encoding.append(range_start)
+        encoding.append(range_end)
+    return 'CodePointSet.createNoDedup(%s)' % ', '.join(map(int_to_java_hex_literal, encoding))
 
 def aliases_to_java_initializer(map_name, aliases):
     return '\n'.join(['%s.put("%s", "%s");' % (map_name, long_name, short_name)
@@ -285,7 +282,7 @@ POPULATE_DEFS = '\n\n'.join(['''private static void populate%s() {
                            for (name, prop) in sorted(prop_contents.items())])
 
 print '''/*
- * Copyright (c) 2018, 2018, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2019, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -313,39 +310,22 @@ print '''/*
  * For terms of use, see http://www.unicode.org/terms_of_use.html
  */
 
-package com.oracle.truffle.regex.chardata;
+package com.oracle.truffle.regex.charset;
 
-import java.util.ArrayList;
-import java.util.HashMap;
-import java.util.List;
-import java.util.Map;
+import org.graalvm.collections.EconomicMap;
 
-class UnicodeCharacterPropertyData {
+class UnicodePropertyData {
 
-    public static final Map<String, String> PROPERTY_ALIASES = new HashMap<>(%d);
-    public static final Map<String, String> GENERAL_CATEGORY_ALIASES = new HashMap<>(%d);
-    public static final Map<String, String> SCRIPT_ALIASES = new HashMap<>(%d);
-    private static final Map<String, int[]> SET_ENCODINGS = new HashMap<>(%d);
-
+    static final EconomicMap<String, String> PROPERTY_ALIASES = EconomicMap.create(%d);
+    static final EconomicMap<String, String> GENERAL_CATEGORY_ALIASES = EconomicMap.create(%d);
+    static final EconomicMap<String, String> SCRIPT_ALIASES = EconomicMap.create(%d);
+    private static final EconomicMap<String, CodePointSet> SET_ENCODINGS = EconomicMap.create(%d);
+    
     public static CodePointSet retrieveProperty(String propertySpec) {
         if (!SET_ENCODINGS.containsKey(propertySpec)) {
             throw new IllegalArgumentException("Unsupported Unicode character property escape");
         }
-        int[] encoding = SET_ENCODINGS.get(propertySpec);
-
-        List<CodePointRange> ranges = new ArrayList<>(encoding.length);
-        int i = 0;
-        while (i < encoding.length) {
-            if (encoding[i] >= 0) {
-                ranges.add(new CodePointRange(encoding[i], encoding[i + 1]));
-                i = i + 2;
-            } else {
-                ranges.add(new CodePointRange(-1 * encoding[i] - 1));
-                i = i + 1;
-            }
-        }
-
-        return CodePointSet.create(ranges);
+        return SET_ENCODINGS.get(propertySpec);
     }
 
     static {
@@ -359,6 +339,6 @@ class UnicodeCharacterPropertyData {
     }
 
 %s
-}''' % (len(prop_aliases) * 1.5, len(gc_aliases) * 1.5, len(sc_aliases) * 1.5, len(prop_contents) * 1.5,
+}''' % (len(prop_aliases), len(gc_aliases), len(sc_aliases), len(prop_contents),
         indent(PROPERTY_ALIASES, 8), indent(GENERAL_CATEGORY_ALIASES, 8), indent(SCRIPT_ALIASES, 8), indent(POPULATE_CALLS, 8),
         indent(POPULATE_DEFS, 4))

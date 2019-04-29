@@ -42,41 +42,33 @@ package com.oracle.truffle.polyglot;
 
 import java.lang.reflect.Array;
 import java.util.List;
-import java.util.Map;
 
 import com.oracle.truffle.api.CompilerDirectives;
+import com.oracle.truffle.api.CompilerDirectives.CompilationFinal;
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
-import com.oracle.truffle.api.TruffleOptions;
 import com.oracle.truffle.api.dsl.Cached;
+import com.oracle.truffle.api.dsl.Cached.Shared;
+import com.oracle.truffle.api.dsl.GenerateUncached;
 import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.interop.ArityException;
-import com.oracle.truffle.api.interop.ForeignAccess;
-import com.oracle.truffle.api.interop.KeyInfo;
-import com.oracle.truffle.api.interop.Message;
-import com.oracle.truffle.api.interop.MessageResolution;
-import com.oracle.truffle.api.interop.Resolve;
+import com.oracle.truffle.api.interop.InteropLibrary;
+import com.oracle.truffle.api.interop.InvalidArrayIndexException;
 import com.oracle.truffle.api.interop.TruffleObject;
 import com.oracle.truffle.api.interop.UnknownIdentifierException;
 import com.oracle.truffle.api.interop.UnsupportedMessageException;
 import com.oracle.truffle.api.interop.UnsupportedTypeException;
+import com.oracle.truffle.api.library.CachedLibrary;
+import com.oracle.truffle.api.library.ExportLibrary;
+import com.oracle.truffle.api.library.ExportMessage;
 import com.oracle.truffle.api.nodes.Node;
-import com.oracle.truffle.polyglot.HostObjectMRFactory.ArrayReadNodeGen;
-import com.oracle.truffle.polyglot.HostObjectMRFactory.ArrayReadNodeGen.ArrayGetNodeGen;
-import com.oracle.truffle.polyglot.HostObjectMRFactory.ArrayRemoveNodeGen;
-import com.oracle.truffle.polyglot.HostObjectMRFactory.ArrayWriteNodeGen;
-import com.oracle.truffle.polyglot.HostObjectMRFactory.ArrayWriteNodeGen.ArraySetNodeGen;
-import com.oracle.truffle.polyglot.HostObjectMRFactory.KeyInfoCacheNodeGen;
-import com.oracle.truffle.polyglot.HostObjectMRFactory.LookupConstructorNodeGen;
-import com.oracle.truffle.polyglot.HostObjectMRFactory.LookupFieldNodeGen;
-import com.oracle.truffle.polyglot.HostObjectMRFactory.LookupFunctionalMethodNodeGen;
-import com.oracle.truffle.polyglot.HostObjectMRFactory.LookupInnerClassNodeGen;
-import com.oracle.truffle.polyglot.HostObjectMRFactory.LookupMethodNodeGen;
-import com.oracle.truffle.polyglot.HostObjectMRFactory.MapRemoveNodeGen;
-import com.oracle.truffle.polyglot.HostObjectMRFactory.ReadFieldNodeGen;
-import com.oracle.truffle.polyglot.HostObjectMRFactory.WriteFieldNodeGen;
+import com.oracle.truffle.api.profiles.BranchProfile;
 import com.oracle.truffle.polyglot.PolyglotLanguageContext.ToGuestValueNode;
 
+@ExportLibrary(InteropLibrary.class)
+@SuppressWarnings("unused")
 final class HostObject implements TruffleObject {
+
+    static final int LIMIT = 5;
 
     static final HostObject NULL = new HostObject(null, null, false);
 
@@ -113,17 +105,13 @@ final class HostObject implements TruffleObject {
         return obj instanceof HostObject;
     }
 
-    static boolean isStaticClass(Object object) {
-        return object instanceof HostObject && ((HostObject) object).isStaticClass();
-    }
-
     HostObject withContext(PolyglotLanguageContext context) {
         return new HostObject(this.obj, context, this.staticClass);
     }
 
     static boolean isJavaInstance(Class<?> targetType, Object javaObject) {
         if (javaObject instanceof HostObject) {
-            final Object value = valueOf((HostObject) javaObject);
+            final Object value = valueOf(javaObject);
             return targetType.isInstance(value);
         } else {
             return false;
@@ -134,14 +122,9 @@ final class HostObject implements TruffleObject {
         return PolyglotImpl.isGuestPrimitive(obj);
     }
 
-    static Object valueOf(TruffleObject value) {
+    static Object valueOf(Object value) {
         final HostObject obj = (HostObject) value;
         return obj.obj;
-    }
-
-    @Override
-    public ForeignAccess getForeignAccess() {
-        return HostObjectMRForeign.ACCESS;
     }
 
     @Override
@@ -153,12 +136,707 @@ final class HostObject implements TruffleObject {
         return obj instanceof Class<?>;
     }
 
-    boolean isArray() {
-        return obj != null && obj.getClass().isArray();
+    boolean isArrayClass() {
+        if (isClass() && asClass().isArray()) {
+            return true;
+        }
+        return false;
     }
 
+    boolean isDefaultClass() {
+        if (isClass() && !asClass().isArray()) {
+            return true;
+        }
+        return false;
+    }
+
+    @ExportMessage
+    boolean hasMembers() {
+        return !isNull();
+    }
+
+    @ExportMessage
+    static class IsMemberReadable {
+
+        @Specialization(guards = {"receiver.isStaticClass()", "receiver.isStaticClass() == cachedStatic", "receiver.getLookupClass() == cachedClazz", "cachedName.equals(name)"}, limit = "LIMIT")
+        static boolean doCached(HostObject receiver, String name,
+                        @Cached("receiver.isStaticClass()") boolean cachedStatic,
+                        @Cached("receiver.getLookupClass()") Class<?> cachedClazz,
+                        @Cached("name") String cachedName,
+                        @Cached("doUncached(receiver, name)") boolean cachedReadable) {
+            assert cachedReadable == doUncached(receiver, name);
+            return cachedReadable;
+        }
+
+        @Specialization(replaces = "doCached")
+        static boolean doUncached(HostObject receiver, String name) {
+            if (receiver.isNull()) {
+                return false;
+            }
+            return HostInteropReflect.isReadable(receiver, receiver.getLookupClass(), name, receiver.isStaticClass(), receiver.isClass());
+        }
+
+    }
+
+    @ExportLibrary(InteropLibrary.class)
+    final class KeysArray implements TruffleObject {
+
+        @CompilationFinal(dimensions = 1) private final String[] keys;
+
+        KeysArray(String[] keys) {
+            this.keys = keys;
+        }
+
+        @SuppressWarnings("static-method")
+        @ExportMessage
+        boolean hasArrayElements() {
+            return true;
+        }
+
+        @ExportMessage
+        long getArraySize() {
+            return keys.length;
+        }
+
+        @ExportMessage
+        boolean isArrayElementReadable(long idx) {
+            return 0 <= idx && idx < keys.length;
+        }
+
+        @ExportMessage
+        String readArrayElement(long idx,
+                        @Cached BranchProfile exception) throws InvalidArrayIndexException {
+            if (!isArrayElementReadable(idx)) {
+                exception.enter();
+                throw InvalidArrayIndexException.create(idx);
+            }
+            return keys[(int) idx];
+        }
+    }
+
+    @ExportMessage
+    Object getMembers(boolean includeInternal) throws UnsupportedMessageException {
+        if (isNull()) {
+            throw UnsupportedMessageException.create();
+        }
+        String[] fields = HostInteropReflect.findUniquePublicMemberNames(getEngine(), getLookupClass(), isStaticClass(), isClass(), includeInternal);
+        return new KeysArray(fields);
+    }
+
+    @ExportMessage
+    Object readMember(String name,
+                    @Shared("lookupField") @Cached LookupFieldNode lookupField,
+                    @Shared("readField") @Cached ReadFieldNode readField,
+                    @Shared("lookupMethod") @Cached LookupMethodNode lookupMethod,
+                    @Cached LookupInnerClassNode lookupInnerClass) throws UnsupportedMessageException, UnknownIdentifierException {
+        if (isNull()) {
+            throw UnsupportedMessageException.create();
+        }
+        boolean isStatic = isStaticClass();
+        Class<?> lookupClass = getLookupClass();
+        HostFieldDesc foundField = lookupField.execute(this, lookupClass, name, isStatic);
+        if (foundField != null) {
+            return readField.execute(foundField, this);
+        }
+        HostMethodDesc foundMethod = lookupMethod.execute(this, lookupClass, name, isStatic);
+        if (foundMethod != null) {
+            return new HostFunction(foundMethod, this.obj, this.languageContext);
+        }
+
+        if (isStatic) {
+            LookupInnerClassNode lookupInnerClassNode = lookupInnerClass;
+            if (HostInteropReflect.STATIC_TO_CLASS.equals(name)) {
+                return HostObject.forClass(lookupClass, languageContext);
+            }
+            Class<?> innerclass = lookupInnerClassNode.execute(lookupClass, name);
+            if (innerclass != null) {
+                return HostObject.forStaticClass(innerclass, languageContext);
+            }
+        } else if (isClass() && HostInteropReflect.CLASS_TO_STATIC.equals(name)) {
+            return HostObject.forStaticClass(asClass(), languageContext);
+        }
+        throw UnknownIdentifierException.create(name);
+    }
+
+    @ExportMessage
+    static class IsMemberModifiable {
+
+        @Specialization(guards = {"receiver.isStaticClass()", "receiver.isStaticClass() == cachedStatic", "receiver.getLookupClass() == cachedClazz", "cachedName.equals(name)"}, limit = "LIMIT")
+        static boolean doCached(HostObject receiver, String name,
+                        @Cached("receiver.isStaticClass()") boolean cachedStatic,
+                        @Cached("receiver.getLookupClass()") Class<?> cachedClazz,
+                        @Cached("name") String cachedName,
+                        @Cached("doUncached(receiver, name)") boolean cachedModifiable) {
+            assert cachedModifiable == doUncached(receiver, name);
+            return cachedModifiable;
+        }
+
+        @Specialization(replaces = "doCached")
+        static boolean doUncached(HostObject receiver, String name) {
+            if (receiver.isNull()) {
+                return false;
+            }
+            return HostInteropReflect.isModifiable(receiver, receiver.getLookupClass(), name, receiver.isStaticClass());
+        }
+
+    }
+
+    @ExportMessage
+    static class IsMemberInternal {
+
+        @Specialization(guards = {"receiver.isStaticClass()", "receiver.isStaticClass() == cachedStatic", "receiver.getLookupClass() == cachedClazz", "cachedName.equals(name)"}, limit = "LIMIT")
+        static boolean doCached(HostObject receiver, String name,
+                        @Cached("receiver.isStaticClass()") boolean cachedStatic,
+                        @Cached("receiver.getLookupClass()") Class<?> cachedClazz,
+                        @Cached("name") String cachedName,
+                        @Cached("doUncached(receiver, name)") boolean cachedInternal) {
+            assert cachedInternal == doUncached(receiver, name);
+            return cachedInternal;
+        }
+
+        @Specialization(replaces = "doCached")
+        static boolean doUncached(HostObject receiver, String name) {
+            if (receiver.isNull()) {
+                return false;
+            }
+            return HostInteropReflect.isInternal(receiver, receiver.getLookupClass(), name, receiver.isStaticClass());
+        }
+    }
+
+    @SuppressWarnings("static-method")
+    @ExportMessage
+    boolean isMemberInsertable(String member) {
+        return false;
+    }
+
+    @ExportMessage
+    void writeMember(String member, Object value,
+                    @Shared("lookupField") @Cached LookupFieldNode lookupField,
+                    @Cached WriteFieldNode writeField)
+                    throws UnsupportedMessageException, UnknownIdentifierException, UnsupportedTypeException {
+        if (isNull()) {
+            throw UnsupportedMessageException.create();
+        }
+        HostFieldDesc f = lookupField.execute(this, getLookupClass(), member, isStaticClass());
+        if (f == null) {
+            throw UnknownIdentifierException.create(member);
+        }
+        try {
+            writeField.execute(f, this, value);
+        } catch (ClassCastException | NullPointerException e) {
+            // conversion failed by ToJavaNode
+            throw UnsupportedTypeException.create(new Object[]{value});
+        }
+    }
+
+    @ExportMessage
+    static class IsMemberInvocable {
+
+        @Specialization(guards = {"receiver.isStaticClass()", "receiver.isStaticClass() == cachedStatic", "receiver.getLookupClass() == cachedClazz", "cachedName.equals(name)"}, limit = "LIMIT")
+        static boolean doCached(HostObject receiver, String name,
+                        @Cached("receiver.isStaticClass()") boolean cachedStatic,
+                        @Cached("receiver.getLookupClass()") Class<?> cachedClazz,
+                        @Cached("name") String cachedName,
+                        @Cached("doUncached(receiver, name)") boolean cachedInvokable) {
+            assert cachedInvokable == doUncached(receiver, name);
+            return cachedInvokable;
+        }
+
+        @Specialization(replaces = "doCached")
+        static boolean doUncached(HostObject receiver, String name) {
+            if (receiver.isNull()) {
+                return false;
+            }
+            return HostInteropReflect.isInvokable(receiver, receiver.getLookupClass(), name, receiver.isStaticClass());
+        }
+    }
+
+    @ExportMessage
+    Object invokeMember(String name, Object[] args,
+                    @Shared("lookupMethod") @Cached LookupMethodNode lookupMethod,
+                    @Shared("hostExecute") @Cached HostExecuteNode executeMethod,
+                    @Shared("lookupField") @Cached LookupFieldNode lookupField,
+                    @Shared("readField") @Cached ReadFieldNode readField,
+                    @CachedLibrary(limit = "5") InteropLibrary fieldValues) throws UnsupportedTypeException, ArityException, UnsupportedMessageException, UnknownIdentifierException {
+        if (isNull()) {
+            throw UnsupportedMessageException.create();
+        }
+
+        boolean isStatic = isStaticClass();
+        Class<?> lookupClass = getLookupClass();
+
+        // (1) look for a method; if found, invoke it on obj.
+        HostMethodDesc foundMethod = lookupMethod.execute(this, lookupClass, name, isStatic);
+        if (foundMethod != null) {
+            return executeMethod.execute(foundMethod, obj, args, languageContext);
+        }
+
+        // (2) look for a field; if found, read its value and if that IsExecutable, Execute it.
+        HostFieldDesc foundField = lookupField.execute(this, lookupClass, name, isStatic);
+        if (foundField != null) {
+            Object fieldValue = readField.execute(foundField, this);
+            if (fieldValues.isExecutable(fieldValue)) {
+                return fieldValues.execute(fieldValue, args);
+            }
+        }
+        throw UnknownIdentifierException.create(name);
+    }
+
+    @ExportMessage(name = "isArrayElementReadable")
+    @ExportMessage(name = "isArrayElementModifiable")
+    static class IsArrayElementExisting {
+
+        @Specialization(guards = "isArray.execute(receiver)", limit = "1")
+        static boolean doArray(HostObject receiver, long index,
+                        @Shared("isArray") @Cached IsArrayNode isArray) {
+            long size = Array.getLength(receiver.obj);
+            return index >= 0 && index < size;
+        }
+
+        @Specialization(guards = "isList.execute(receiver)", limit = "1")
+        static boolean doList(HostObject receiver, long index,
+                        @Shared("isList") @Cached IsListNode isList) {
+            long size = receiver.getListSize();
+            return index >= 0 && index < size;
+        }
+
+        @Specialization(guards = {"!isList.execute(receiver)", "!isArray.execute(receiver)"}, limit = "1")
+        static boolean doNotArrayOrList(HostObject receiver, long index,
+                        @Shared("isList") @Cached IsListNode isList,
+                        @Shared("isArray") @Cached IsArrayNode isArray) {
+            return false;
+        }
+    }
+
+    @ExportMessage
+    boolean isArrayElementInsertable(long index, @Shared("isList") @Cached IsListNode isList) {
+        return isList.execute(this) && getListSize() == index;
+    }
+
+    @ExportMessage
+    static class WriteArrayElement {
+
+        @Specialization(guards = {"isArray.execute(receiver)"}, limit = "1")
+        @SuppressWarnings("unchecked")
+        static void doArray(HostObject receiver, long index, Object value,
+                        @Shared("toHost") @Cached ToHostNode toHostNode,
+                        @Shared("isArray") @Cached IsArrayNode isArray,
+                        @Cached ArraySet arraySet) throws InvalidArrayIndexException, UnsupportedTypeException {
+            if (index > Integer.MAX_VALUE) {
+                throw InvalidArrayIndexException.create(index);
+            }
+            Object obj = receiver.obj;
+            Object javaValue;
+            try {
+                javaValue = toHostNode.execute(value, obj.getClass().getComponentType(), null, receiver.languageContext, true);
+            } catch (ClassCastException | NullPointerException e) {
+                CompilerDirectives.transferToInterpreter();
+                throw UnsupportedTypeException.create(new Object[]{value}, e.getMessage());
+            }
+            try {
+                arraySet.execute(obj, (int) index, javaValue);
+            } catch (ArrayIndexOutOfBoundsException e) {
+                throw InvalidArrayIndexException.create(index);
+            }
+        }
+
+        @Specialization(guards = {"isList.execute(receiver)"}, limit = "1")
+        @SuppressWarnings("unchecked")
+        static void doList(HostObject receiver, long index, Object value,
+                        @Shared("isList") @Cached IsListNode isList,
+                        @Shared("toHost") @Cached ToHostNode toHostNode) throws InvalidArrayIndexException, UnsupportedTypeException {
+            if (index > Integer.MAX_VALUE) {
+                throw InvalidArrayIndexException.create(index);
+            }
+            Object javaValue;
+            try {
+                javaValue = toHostNode.execute(value, Object.class, null, receiver.languageContext, true);
+            } catch (ClassCastException | NullPointerException e) {
+                CompilerDirectives.transferToInterpreter();
+                throw UnsupportedTypeException.create(new Object[]{value}, e.getMessage());
+            }
+            try {
+                List<Object> list = ((List<Object>) receiver.obj);
+                setList(list, index, javaValue);
+            } catch (IndexOutOfBoundsException e) {
+                throw InvalidArrayIndexException.create(index);
+            }
+        }
+
+        @TruffleBoundary
+        private static void setList(List<Object> list, long index, final Object hostValue) {
+            if (index == list.size()) {
+                list.add(hostValue);
+            } else {
+                list.set((int) index, hostValue);
+            }
+        }
+
+        @SuppressWarnings("unused")
+        @Specialization(guards = {"!isList.execute(receiver)", "!isArray.execute(receiver)"}, limit = "1")
+        static void doNotArrayOrList(HostObject receiver, long index, Object value,
+                        @Shared("isList") @Cached IsListNode isList,
+                        @Shared("isArray") @Cached IsArrayNode isArray) throws UnsupportedMessageException {
+            throw UnsupportedMessageException.create();
+        }
+
+    }
+
+    @ExportMessage
+    static class IsArrayElementRemovable {
+
+        @Specialization(guards = "isList.execute(receiver)", limit = "1")
+        static boolean doList(HostObject receiver, long index,
+                        @Shared("isList") @Cached IsListNode isList) {
+            return index >= 0 && index < callSize(receiver);
+        }
+
+        @TruffleBoundary
+        private static int callSize(HostObject receiver) {
+            return ((List<?>) receiver.obj).size();
+        }
+
+        @Specialization(guards = "!isList.execute(receiver)", limit = "1")
+        static boolean doOther(HostObject receiver, long index,
+                        @Shared("isList") @Cached IsListNode isList) {
+            return false;
+        }
+
+    }
+
+    @ExportMessage
+    static class RemoveArrayElement {
+        @Specialization(guards = "isList.execute(receiver)", limit = "1")
+        static void doList(HostObject receiver, long index,
+                        @Shared("isList") @Cached IsListNode isList) throws InvalidArrayIndexException {
+            if (index > Integer.MAX_VALUE) {
+                throw InvalidArrayIndexException.create(index);
+            }
+            try {
+                boundaryRemove(receiver, index);
+            } catch (IndexOutOfBoundsException outOfBounds) {
+                throw InvalidArrayIndexException.create(index);
+            }
+        }
+
+        @TruffleBoundary
+        @SuppressWarnings("unchecked")
+        private static Object boundaryRemove(HostObject receiver, long index) throws IndexOutOfBoundsException {
+            return ((List<Object>) receiver.obj).remove((int) index);
+        }
+
+        @Specialization(guards = "!isList.execute(receiver)", limit = "1")
+        static void doOther(HostObject receiver, long index,
+                        @Shared("isList") @Cached IsListNode isList) throws UnsupportedMessageException {
+            throw UnsupportedMessageException.create();
+        }
+    }
+
+    @ExportMessage
+    boolean hasArrayElements(@Shared("isList") @Cached IsListNode isList,
+                    @Shared("isArray") @Cached IsArrayNode isArray) {
+        return isList.execute(this) || isArray.execute(this);
+    }
+
+    @ExportMessage
+    abstract static class ReadArrayElement {
+
+        @Specialization(guards = {"isArray.execute(receiver)"}, limit = "1")
+        protected static Object doArray(HostObject receiver, long index,
+                        @Cached ArrayGet arrayGet,
+                        @Shared("isArray") @Cached IsArrayNode isArray,
+                        @Shared("toGuest") @Cached ToGuestValueNode toGuest) throws InvalidArrayIndexException {
+            if (index > Integer.MAX_VALUE) {
+                throw InvalidArrayIndexException.create(index);
+            }
+            Object obj = receiver.obj;
+            Object val = null;
+            try {
+                val = arrayGet.execute(obj, (int) index);
+            } catch (ArrayIndexOutOfBoundsException outOfBounds) {
+                CompilerDirectives.transferToInterpreter();
+                throw InvalidArrayIndexException.create(index);
+            }
+            return toGuest.execute(receiver.languageContext, val);
+        }
+
+        @TruffleBoundary
+        @Specialization(guards = {"isList.execute(receiver)"}, limit = "1")
+        protected static Object doList(HostObject receiver, long index,
+                        @Shared("isList") @Cached IsListNode isList,
+                        @Shared("toGuest") @Cached ToGuestValueNode toGuest) throws InvalidArrayIndexException {
+            try {
+                if (index > Integer.MAX_VALUE) {
+                    throw InvalidArrayIndexException.create(index);
+                }
+                return toGuest.execute(receiver.languageContext, ((List<?>) receiver.obj).get((int) index));
+            } catch (IndexOutOfBoundsException e) {
+                throw InvalidArrayIndexException.create(index);
+            }
+        }
+
+        @SuppressWarnings("unused")
+        @Specialization(guards = {"!isArray.execute(receiver)", "!isList.execute(receiver)"}, limit = "1")
+        protected static Object doNotArrayOrList(HostObject receiver, long index,
+                        @Shared("isArray") @Cached IsArrayNode isArray,
+                        @Shared("isList") @Cached IsListNode isList) throws UnsupportedMessageException {
+            throw UnsupportedMessageException.create();
+        }
+
+    }
+
+    @ExportMessage
+    long getArraySize(@Shared("isArray") @Cached IsArrayNode isArray,
+                    @Shared("isList") @Cached IsListNode isList) throws UnsupportedMessageException {
+        if (isArray.execute(this)) {
+            return Array.getLength(obj);
+        } else if (isList.execute(this)) {
+            return getListSize();
+        }
+        throw UnsupportedMessageException.create();
+    }
+
+    @TruffleBoundary(allowInlining = true)
+    int getListSize() {
+        return ((List<?>) obj).size();
+    }
+
+    @ExportMessage
     boolean isNull() {
         return obj == null;
+    }
+
+    @ExportMessage
+    static class IsInstantiable {
+
+        @Specialization(guards = "!receiver.isClass()")
+        @SuppressWarnings("unused")
+        static boolean doUnsupported(HostObject receiver) {
+            return false;
+        }
+
+        @Specialization(guards = "receiver.isArrayClass()")
+        static boolean doArrayCached(@SuppressWarnings("unused") HostObject receiver) {
+            return true;
+        }
+
+        @Specialization(guards = "receiver.isDefaultClass()")
+        static boolean doObjectCached(HostObject receiver,
+                        @Shared("lookupConstructor") @Cached LookupConstructorNode lookupConstructor) {
+            return lookupConstructor.execute(receiver, receiver.asClass()) != null;
+        }
+    }
+
+    @ExportMessage
+    boolean isExecutable(@Shared("lookupFunctionalMethod") @Cached LookupFunctionalMethodNode lookupMethod) {
+        return !isNull() && !isClass() && lookupMethod.execute(this, getLookupClass()) != null;
+    }
+
+    @ExportMessage
+    Object execute(Object[] args,
+                    @Shared("hostExecute") @Cached HostExecuteNode doExecute,
+                    @Shared("lookupFunctionalMethod") @Cached LookupFunctionalMethodNode lookupMethod) throws UnsupportedMessageException, UnsupportedTypeException, ArityException {
+        if (!isNull() && !isClass()) {
+            HostMethodDesc method = lookupMethod.execute(this, getLookupClass());
+            if (method != null) {
+                return doExecute.execute(method, obj, args, languageContext);
+            }
+        }
+        throw UnsupportedMessageException.create();
+    }
+
+    @ExportMessage
+    static class Instantiate {
+
+        @Specialization(guards = "!receiver.isClass()")
+        @SuppressWarnings("unused")
+        static Object doUnsupported(HostObject receiver, Object[] args) throws UnsupportedMessageException {
+            throw UnsupportedMessageException.create();
+        }
+
+        @Specialization(guards = "receiver.isArrayClass()")
+        static Object doArrayCached(HostObject receiver, Object[] args,
+                        @CachedLibrary(limit = "1") InteropLibrary indexes) throws UnsupportedMessageException, UnsupportedTypeException, ArityException {
+            if (args.length != 1) {
+                throw ArityException.create(1, args.length);
+            }
+            Object arg0 = args[0];
+            int length;
+            if (indexes.fitsInInt(arg0)) {
+                length = indexes.asInt(arg0);
+            } else {
+                throw UnsupportedTypeException.create(args);
+            }
+            Object array = Array.newInstance(receiver.asClass().getComponentType(), length);
+            return HostObject.forObject(array, receiver.languageContext);
+        }
+
+        @Specialization(guards = "receiver.isDefaultClass()")
+        static Object doObjectCached(HostObject receiver, Object[] arguments,
+                        @Shared("lookupConstructor") @Cached LookupConstructorNode lookupConstructor,
+                        @Shared("hostExecute") @Cached HostExecuteNode executeMethod) throws UnsupportedMessageException, UnsupportedTypeException, ArityException {
+            assert !receiver.isArrayClass();
+            if (receiver.isClass()) {
+                HostMethodDesc constructor = lookupConstructor.execute(receiver, receiver.asClass());
+                if (constructor != null) {
+                    return executeMethod.execute(constructor, null, arguments, receiver.languageContext);
+                }
+            }
+            throw UnsupportedMessageException.create();
+        }
+
+    }
+
+    @ExportMessage
+    boolean isNumber() {
+        if (isNull()) {
+            return false;
+        }
+        Class<?> c = obj.getClass();
+        return c == Byte.class || c == Short.class || c == Integer.class || c == Long.class || c == Float.class || c == Double.class;
+    }
+
+    @ExportMessage
+    boolean fitsInByte(@Shared("numbers") @CachedLibrary(limit = "LIMIT") InteropLibrary numbers) {
+        if (isNumber()) {
+            return numbers.fitsInByte(obj);
+        } else {
+            return false;
+        }
+    }
+
+    @ExportMessage
+    boolean fitsInShort(@Shared("numbers") @CachedLibrary(limit = "LIMIT") InteropLibrary numbers) {
+        if (isNumber()) {
+            return numbers.fitsInShort(obj);
+        } else {
+            return false;
+        }
+    }
+
+    @ExportMessage
+    boolean fitsInInt(@Shared("numbers") @CachedLibrary(limit = "LIMIT") InteropLibrary numbers) {
+        if (isNumber()) {
+            return numbers.fitsInInt(obj);
+        } else {
+            return false;
+        }
+    }
+
+    @ExportMessage
+    boolean fitsInLong(@Shared("numbers") @CachedLibrary(limit = "LIMIT") InteropLibrary numbers) {
+        if (isNumber()) {
+            return numbers.fitsInLong(obj);
+        } else {
+            return false;
+        }
+    }
+
+    @ExportMessage
+    boolean fitsInFloat(@Shared("numbers") @CachedLibrary(limit = "LIMIT") InteropLibrary numbers) {
+        if (isNumber()) {
+            return numbers.fitsInFloat(obj);
+        } else {
+            return false;
+        }
+    }
+
+    @ExportMessage
+    boolean fitsInDouble(@Shared("numbers") @CachedLibrary(limit = "LIMIT") InteropLibrary numbers) {
+        if (isNumber()) {
+            return numbers.fitsInDouble(obj);
+        } else {
+            return false;
+        }
+    }
+
+    @ExportMessage
+    byte asByte(@Shared("numbers") @CachedLibrary(limit = "LIMIT") InteropLibrary numbers) throws UnsupportedMessageException {
+        if (isNumber()) {
+            return numbers.asByte(obj);
+        } else {
+            throw UnsupportedMessageException.create();
+        }
+    }
+
+    @ExportMessage
+    short asShort(@Shared("numbers") @CachedLibrary(limit = "LIMIT") InteropLibrary numbers) throws UnsupportedMessageException {
+        if (isNumber()) {
+            return numbers.asShort(obj);
+        } else {
+            throw UnsupportedMessageException.create();
+        }
+    }
+
+    @ExportMessage
+    int asInt(@Shared("numbers") @CachedLibrary(limit = "LIMIT") InteropLibrary numbers) throws UnsupportedMessageException {
+        if (isNumber()) {
+            return numbers.asInt(obj);
+        } else {
+            throw UnsupportedMessageException.create();
+        }
+    }
+
+    @ExportMessage
+    long asLong(@Shared("numbers") @CachedLibrary(limit = "LIMIT") InteropLibrary numbers) throws UnsupportedMessageException {
+        if (isNumber()) {
+            return numbers.asLong(obj);
+        } else {
+            throw UnsupportedMessageException.create();
+        }
+    }
+
+    @ExportMessage
+    float asFloat(@Shared("numbers") @CachedLibrary(limit = "LIMIT") InteropLibrary numbers) throws UnsupportedMessageException {
+        if (isNumber()) {
+            return numbers.asFloat(obj);
+        } else {
+            throw UnsupportedMessageException.create();
+        }
+    }
+
+    @ExportMessage
+    double asDouble(@Shared("numbers") @CachedLibrary(limit = "LIMIT") InteropLibrary numbers) throws UnsupportedMessageException {
+        if (isNumber()) {
+            return numbers.asDouble(obj);
+        } else {
+            throw UnsupportedMessageException.create();
+        }
+    }
+
+    @ExportMessage
+    boolean isString() {
+        if (isNull()) {
+            return false;
+        }
+        Class<?> c = obj.getClass();
+        return c == String.class || c == Character.class;
+    }
+
+    @ExportMessage
+    String asString(@Shared("numbers") @CachedLibrary(limit = "LIMIT") InteropLibrary strings) throws UnsupportedMessageException {
+        if (isString()) {
+            return strings.asString(obj);
+        } else {
+            throw UnsupportedMessageException.create();
+        }
+    }
+
+    @ExportMessage
+    boolean isBoolean() {
+        if (isNull()) {
+            return false;
+        }
+        return obj.getClass() == Boolean.class;
+    }
+
+    @ExportMessage
+    boolean asBoolean() throws UnsupportedMessageException {
+        if (isBoolean()) {
+            return (boolean) obj;
+        } else {
+            throw UnsupportedMessageException.create();
+        }
     }
 
     boolean isStaticClass() {
@@ -192,6 +870,18 @@ final class HostObject implements TruffleObject {
         }
     }
 
+    PolyglotEngineImpl getEngine() {
+        PolyglotContextImpl context = languageContext != null ? languageContext.context : null;
+        if (context == null) {
+            context = PolyglotContextImpl.requireContext();
+        }
+        return context.engine;
+    }
+
+    HostClassCache getHostClassCache() {
+        return HostClassCache.forInstance(this);
+    }
+
     @Override
     public boolean equals(Object o) {
         if (o instanceof HostObject) {
@@ -212,934 +902,186 @@ final class HostObject implements TruffleObject {
         return "JavaObject[" + obj + " (" + getObjectClass().getTypeName() + ")" + "]";
     }
 
-}
+    @GenerateUncached
+    abstract static class ArraySet extends Node {
 
-@MessageResolution(receiverType = HostObject.class)
-class HostObjectMR {
+        protected abstract void execute(Object array, int index, Object value);
 
-    @Resolve(message = "GET_SIZE")
-    abstract static class ArrayGetSizeNode extends Node {
-
-        public Object access(HostObject receiver) {
-            Object obj = receiver.obj;
-            if (obj != null) {
-                if (obj.getClass().isArray()) {
-                    return Array.getLength(obj);
-                } else if (obj instanceof List<?>) {
-                    return ((List<?>) obj).size();
-                }
-            }
-            CompilerDirectives.transferToInterpreter();
-            throw UnsupportedMessageException.raise(Message.GET_SIZE);
+        @Specialization
+        static void doBoolean(boolean[] array, int index, boolean value) {
+            array[index] = value;
         }
 
-    }
-
-    @Resolve(message = "HAS_SIZE")
-    abstract static class ArrayHasSizeNode extends Node {
-
-        public Object access(HostObject receiver) {
-            Object obj = receiver.obj;
-            if (obj == null) {
-                return false;
-            }
-            return obj.getClass().isArray() || obj instanceof List<?>;
+        @Specialization
+        static void doByte(byte[] array, int index, byte value) {
+            array[index] = value;
         }
 
-    }
-
-    @Resolve(message = "INVOKE")
-    abstract static class InvokeNode extends Node {
-        private static final Message INVOKE = Message.INVOKE;
-        @Child private LookupMethodNode lookupMethod;
-        @Child private HostExecuteNode executeMethod;
-        @Child private LookupFieldNode lookupField;
-        @Child private ReadFieldNode readField;
-        @Child private Node sendIsExecutableNode;
-        @Child private Node sendExecuteNode;
-
-        public Object access(HostObject object, String name, Object[] args) {
-            if (TruffleOptions.AOT || object.isNull()) {
-                throw UnsupportedMessageException.raise(INVOKE);
-            }
-
-            boolean isStatic = object.isStaticClass();
-            Class<?> lookupClass = object.getLookupClass();
-
-            // (1) look for a method; if found, invoke it on obj.
-            HostMethodDesc foundMethod = lookupMethod().execute(lookupClass, name, isStatic);
-            if (foundMethod != null) {
-                return executeMethod().execute(foundMethod, object.obj, args, object.languageContext);
-            }
-
-            // (2) look for a field; if found, read its value and if that IsExecutable, Execute it.
-            HostFieldDesc foundField = lookupField().execute(lookupClass, name, isStatic);
-            if (foundField != null) {
-                Object fieldValue = readField().execute(foundField, object);
-                if (fieldValue instanceof TruffleObject) {
-                    TruffleObject fieldObject = (TruffleObject) fieldValue;
-                    if (sendIsExecutableNode == null) {
-                        CompilerDirectives.transferToInterpreterAndInvalidate();
-                        sendIsExecutableNode = insert(Message.IS_EXECUTABLE.createNode());
-                    }
-                    boolean isExecutable = ForeignAccess.sendIsExecutable(sendIsExecutableNode, fieldObject);
-                    if (isExecutable) {
-                        if (sendExecuteNode == null) {
-                            CompilerDirectives.transferToInterpreterAndInvalidate();
-                            sendExecuteNode = insert(Message.EXECUTE.createNode());
-                        }
-                        try {
-                            return ForeignAccess.sendExecute(sendExecuteNode, fieldObject, args);
-                        } catch (UnsupportedTypeException | ArityException | UnsupportedMessageException e) {
-                            throw e.raise();
-                        }
-                    }
-                }
-            }
-
-            throw UnknownIdentifierException.raise(name);
+        @Specialization
+        static void doShort(short[] array, int index, short value) {
+            array[index] = value;
         }
 
-        private LookupMethodNode lookupMethod() {
-            if (lookupMethod == null) {
-                CompilerDirectives.transferToInterpreterAndInvalidate();
-                lookupMethod = insert(LookupMethodNodeGen.create());
-            }
-            return lookupMethod;
+        @Specialization
+        static void doChar(char[] array, int index, char value) {
+            array[index] = value;
         }
 
-        private HostExecuteNode executeMethod() {
-            if (executeMethod == null) {
-                CompilerDirectives.transferToInterpreterAndInvalidate();
-                executeMethod = insert(HostExecuteNode.create());
-            }
-            return executeMethod;
+        @Specialization
+        static void doInt(int[] array, int index, int value) {
+            array[index] = value;
         }
 
-        private LookupFieldNode lookupField() {
-            if (lookupField == null) {
-                CompilerDirectives.transferToInterpreterAndInvalidate();
-                lookupField = insert(LookupFieldNodeGen.create());
-            }
-            return lookupField;
+        @Specialization
+        static void doLong(long[] array, int index, long value) {
+            array[index] = value;
         }
 
-        private ReadFieldNode readField() {
-            if (readField == null) {
-                CompilerDirectives.transferToInterpreterAndInvalidate();
-                readField = insert(ReadFieldNodeGen.create());
-            }
-            return readField;
+        @Specialization
+        static void doFloat(float[] array, int index, float value) {
+            array[index] = value;
+        }
+
+        @Specialization
+        static void doDouble(double[] array, int index, double value) {
+            array[index] = value;
+        }
+
+        @Specialization
+        static void doObject(Object[] array, int index, Object value) {
+            array[index] = value;
         }
     }
 
-    @Resolve(message = "IS_INSTANTIABLE")
-    abstract static class IsInstantiableObjectNode extends Node {
-        @Child private LookupConstructorNode lookupConstructor;
+    @GenerateUncached
+    abstract static class ArrayGet extends Node {
 
-        public Object access(HostObject receiver) {
-            if (TruffleOptions.AOT) {
-                return false;
-            }
-            if (receiver.isClass()) {
-                Class<?> javaClass = receiver.asClass();
-                if (javaClass.isArray()) {
-                    return true;
-                }
-                return lookupConstructor().execute(javaClass) != null;
-            }
-            return false;
+        protected abstract Object execute(Object array, int index);
+
+        @Specialization
+        static boolean doBoolean(boolean[] array, int index) {
+            return array[index];
         }
 
-        private LookupConstructorNode lookupConstructor() {
-            if (lookupConstructor == null) {
-                CompilerDirectives.transferToInterpreterAndInvalidate();
-                lookupConstructor = insert(LookupConstructorNodeGen.create());
-            }
-            return lookupConstructor;
-        }
-    }
-
-    @Resolve(message = "NEW")
-    abstract static class NewNode extends Node {
-        private static final Message NEW = Message.NEW;
-        @Child private LookupConstructorNode lookupConstructor;
-        @Child private HostExecuteNode executeMethod;
-        @Child private ToHostNode toJava;
-
-        public Object access(HostObject receiver, Object[] args) {
-            if (TruffleOptions.AOT) {
-                throw UnsupportedMessageException.raise(NEW);
-            }
-
-            if (receiver.isClass()) {
-                Class<?> javaClass = receiver.asClass();
-                if (javaClass.isArray()) {
-                    return newArray(receiver, args);
-                }
-
-                HostMethodDesc constructor = lookupConstructor().execute(javaClass);
-                if (constructor != null) {
-                    return executeMethod().execute(constructor, null, args, receiver.languageContext);
-                }
-            }
-            throw UnsupportedMessageException.raise(NEW);
+        @Specialization
+        static byte doByte(byte[] array, int index) {
+            return array[index];
         }
 
-        private Object newArray(HostObject receiver, Object[] args) {
-            if (args.length != 1) {
-                throw ArityException.raise(1, args.length);
-            }
-            if (toJava == null) {
-                CompilerDirectives.transferToInterpreterAndInvalidate();
-                toJava = insert(ToHostNode.create());
-            }
-            int length;
-            try {
-                length = (int) toJava.execute(args[0], int.class, null, receiver.languageContext);
-            } catch (ClassCastException | NullPointerException e) {
-                // conversion failed by ToJavaNode
-                throw UnsupportedTypeException.raise(e, args);
-            }
-            Object array = Array.newInstance(receiver.asClass().getComponentType(), length);
-            return HostObject.forObject(array, receiver.languageContext);
+        @Specialization
+        static short doShort(short[] array, int index) {
+            return array[index];
         }
 
-        private LookupConstructorNode lookupConstructor() {
-            if (lookupConstructor == null) {
-                CompilerDirectives.transferToInterpreterAndInvalidate();
-                lookupConstructor = insert(LookupConstructorNodeGen.create());
-            }
-            return lookupConstructor;
+        @Specialization
+        static char doChar(char[] array, int index) {
+            return array[index];
         }
 
-        private HostExecuteNode executeMethod() {
-            if (executeMethod == null) {
-                CompilerDirectives.transferToInterpreterAndInvalidate();
-                executeMethod = insert(HostExecuteNode.create());
-            }
-            return executeMethod;
+        @Specialization
+        static int doInt(int[] array, int index) {
+            return array[index];
+        }
+
+        @Specialization
+        static long doLong(long[] array, int index) {
+            return array[index];
+        }
+
+        @Specialization
+        static float doFloat(float[] array, int index) {
+            return array[index];
+        }
+
+        @Specialization
+        static double doDouble(double[] array, int index) {
+            return array[index];
+        }
+
+        @Specialization
+        static Object doObject(Object[] array, int index) {
+            return array[index];
         }
     }
 
-    @Resolve(message = "IS_NULL")
-    abstract static class NullCheckNode extends Node {
-
-        public Object access(HostObject object) {
-            return object.isNull();
-        }
-
-    }
-
-    @Resolve(message = "IS_BOXED")
-    abstract static class BoxedCheckNode extends Node {
-        @Child private ToHostPrimitiveNode primitive = ToHostPrimitiveNode.create();
-
-        public Object access(HostObject object) {
-            return object.isPrimitive();
-        }
-
-    }
-
-    @Resolve(message = "UNBOX")
-    abstract static class UnboxNode extends Node {
-        @Child private ToHostPrimitiveNode primitive = ToHostPrimitiveNode.create();
-
-        public Object access(HostObject object) {
-            if (object.isPrimitive()) {
-                return object.obj;
-            } else {
-                return UnsupportedMessageException.raise(Message.UNBOX);
-            }
-        }
-
-    }
-
-    @Resolve(message = "READ")
-    abstract static class ReadNode extends Node {
-        @Child private ArrayReadNode arrayRead;
-        @Child private LookupFieldNode lookupField;
-        @Child private ReadFieldNode readField;
-        @Child private LookupMethodNode lookupMethod;
-        @Child private LookupInnerClassNode lookupInnerClass;
-
-        public Object access(HostObject object, Number index) {
-            if (arrayRead == null) {
-                CompilerDirectives.transferToInterpreterAndInvalidate();
-                arrayRead = insert(ArrayReadNodeGen.create());
-            }
-            return arrayRead.executeWithTarget(object, index);
-        }
-
-        public Object access(HostObject object, String name) {
-            if (TruffleOptions.AOT || object.isNull()) {
-                throw UnsupportedMessageException.raise(Message.READ);
-            }
-            boolean isStatic = object.isStaticClass();
-            Class<?> lookupClass = object.getLookupClass();
-            HostFieldDesc foundField = lookupField().execute(lookupClass, name, isStatic);
-            if (foundField != null) {
-                return readField().execute(foundField, object);
-            }
-            HostMethodDesc foundMethod = lookupMethod().execute(lookupClass, name, isStatic);
-            if (foundMethod != null) {
-                return new HostFunction(foundMethod, object.obj, object.languageContext);
-            }
-            if (isStatic) {
-                LookupInnerClassNode lookupInnerClassNode = lookupInnerClass();
-                if ("class".equals(name)) {
-                    return HostObject.forClass(lookupClass, object.languageContext);
-                }
-                Class<?> innerclass = lookupInnerClassNode.execute(lookupClass, name);
-                if (innerclass != null) {
-                    return HostObject.forStaticClass(innerclass, object.languageContext);
-                }
-            }
-            throw UnknownIdentifierException.raise(name);
-        }
-
-        private ReadFieldNode readField() {
-            if (readField == null) {
-                CompilerDirectives.transferToInterpreterAndInvalidate();
-                readField = insert(ReadFieldNodeGen.create());
-            }
-            return readField;
-        }
-
-        private LookupFieldNode lookupField() {
-            if (lookupField == null) {
-                CompilerDirectives.transferToInterpreterAndInvalidate();
-                lookupField = insert(LookupFieldNodeGen.create());
-            }
-            return lookupField;
-        }
-
-        private LookupMethodNode lookupMethod() {
-            if (lookupMethod == null) {
-                CompilerDirectives.transferToInterpreterAndInvalidate();
-                lookupMethod = insert(LookupMethodNodeGen.create());
-            }
-            return lookupMethod;
-        }
-
-        private LookupInnerClassNode lookupInnerClass() {
-            if (lookupInnerClass == null) {
-                CompilerDirectives.transferToInterpreterAndInvalidate();
-                lookupInnerClass = insert(LookupInnerClassNodeGen.create());
-            }
-            return lookupInnerClass;
-        }
-    }
-
-    abstract static class ArrayReadNode extends Node {
-
-        abstract static class ArrayGet extends Node {
-
-            protected abstract Object execute(Object array, int index);
-
-            @Specialization
-            boolean doBoolean(boolean[] array, int index) {
-                return array[index];
-            }
-
-            @Specialization
-            byte doByte(byte[] array, int index) {
-                return array[index];
-            }
-
-            @Specialization
-            short doShort(short[] array, int index) {
-                return array[index];
-            }
-
-            @Specialization
-            char doChar(char[] array, int index) {
-                return array[index];
-            }
-
-            @Specialization
-            int doInt(int[] array, int index) {
-                return array[index];
-            }
-
-            @Specialization
-            long doLong(long[] array, int index) {
-                return array[index];
-            }
-
-            @Specialization
-            float doFloat(float[] array, int index) {
-                return array[index];
-            }
-
-            @Specialization
-            double doDouble(double[] array, int index) {
-                return array[index];
-            }
-
-            @Specialization
-            Object doObject(Object[] array, int index) {
-                return array[index];
-            }
-        }
-
-        @Child private ArrayGet arrayGet = ArrayGetNodeGen.create();
-        private final ToGuestValueNode toGuest = ToGuestValueNode.create();
-
-        protected abstract Object executeWithTarget(HostObject receiver, Object index);
-
-        @Specialization(guards = {"receiver.isArray()"})
-        protected Object doArrayIntIndex(HostObject receiver, int index) {
-            return doArrayAccess(receiver, index);
-        }
-
-        @Specialization(guards = {"receiver.isArray()", "index.getClass() == clazz"}, replaces = "doArrayIntIndex")
-        protected Object doArrayCached(HostObject receiver, Number index,
-                        @Cached("index.getClass()") Class<? extends Number> clazz) {
-            return doArrayAccess(receiver, clazz.cast(index).intValue());
-        }
-
-        @Specialization(guards = {"receiver.isArray()"}, replaces = "doArrayCached")
-        protected Object doArrayGeneric(HostObject receiver, Number index) {
-            return doArrayAccess(receiver, index.intValue());
-        }
-
-        @TruffleBoundary
-        @Specialization(guards = {"isList(receiver)"})
-        protected Object doListIntIndex(HostObject receiver, int index) {
-            try {
-                return toGuest.apply(receiver.languageContext, ((List<?>) receiver.obj).get(index));
-            } catch (IndexOutOfBoundsException e) {
-                CompilerDirectives.transferToInterpreter();
-                throw UnknownIdentifierException.raise(String.valueOf(index));
-            }
-        }
-
-        @TruffleBoundary
-        @Specialization(guards = {"isList(receiver)"}, replaces = "doListIntIndex")
-        protected Object doListGeneric(HostObject receiver, Number index) {
-            return doListIntIndex(receiver, index.intValue());
-        }
-
-        @SuppressWarnings("unused")
-        @TruffleBoundary
-        @Specialization(guards = {"!receiver.isArray()", "!isList(receiver)"})
-        protected static Object notArray(HostObject receiver, Number index) {
-            throw UnsupportedMessageException.raise(Message.READ);
-        }
-
-        private Object doArrayAccess(HostObject object, int index) {
-            Object obj = object.obj;
-            assert object.isArray();
-            Object val = null;
-            try {
-                val = arrayGet.execute(obj, index);
-            } catch (ArrayIndexOutOfBoundsException outOfBounds) {
-                CompilerDirectives.transferToInterpreter();
-                throw UnknownIdentifierException.raise(String.valueOf(index));
-            }
-
-            return toGuest.apply(object.languageContext, val);
-        }
-
-        static boolean isList(HostObject receiver) {
-            return receiver.obj instanceof List;
-        }
-    }
-
-    @Resolve(message = "WRITE")
-    abstract static class WriteNode extends Node {
-        @Child private ArrayWriteNode arrayWrite;
-        @Child private LookupFieldNode lookupField;
-        @Child private WriteFieldNode writeField;
-
-        public Object access(HostObject receiver, Number index, Object value) {
-            if (arrayWrite == null) {
-                CompilerDirectives.transferToInterpreterAndInvalidate();
-                arrayWrite = insert(ArrayWriteNode.create());
-            }
-            try {
-                return arrayWrite.executeWithTarget(receiver, index, value);
-            } catch (ClassCastException | NullPointerException e) {
-                // conversion failed by ToJavaNode
-                throw UnsupportedTypeException.raise(e, new Object[]{value});
-            }
-        }
-
-        public Object access(HostObject receiver, String name, Object value) {
-            if (TruffleOptions.AOT || receiver.isNull()) {
-                throw UnsupportedMessageException.raise(Message.WRITE);
-            }
-            HostFieldDesc f = lookupField().execute(receiver.getLookupClass(), name, receiver.isStaticClass());
-            if (f == null) {
-                throw UnknownIdentifierException.raise(name);
-            }
-            try {
-                writeField().execute(f, receiver, value);
-            } catch (ClassCastException | NullPointerException e) {
-                // conversion failed by ToJavaNode
-                throw UnsupportedTypeException.raise(e, new Object[]{value});
-            }
-            return HostObject.NULL;
-        }
-
-        private LookupFieldNode lookupField() {
-            if (lookupField == null) {
-                CompilerDirectives.transferToInterpreterAndInvalidate();
-                lookupField = insert(LookupFieldNodeGen.create());
-            }
-            return lookupField;
-        }
-
-        private WriteFieldNode writeField() {
-            if (writeField == null) {
-                CompilerDirectives.transferToInterpreterAndInvalidate();
-                writeField = insert(WriteFieldNodeGen.create());
-            }
-            return writeField;
-        }
-    }
-
-    abstract static class ArrayWriteNode extends Node {
-
-        abstract static class ArraySet extends Node {
-
-            protected abstract void execute(Object array, int index, Object value);
-
-            @Specialization
-            void doBoolean(boolean[] array, int index, boolean value) {
-                array[index] = value;
-            }
-
-            @Specialization
-            void doByte(byte[] array, int index, byte value) {
-                array[index] = value;
-            }
-
-            @Specialization
-            void doShort(short[] array, int index, short value) {
-                array[index] = value;
-            }
-
-            @Specialization
-            void doChar(char[] array, int index, char value) {
-                array[index] = value;
-            }
-
-            @Specialization
-            void doInt(int[] array, int index, int value) {
-                array[index] = value;
-            }
-
-            @Specialization
-            void doLong(long[] array, int index, long value) {
-                array[index] = value;
-            }
-
-            @Specialization
-            void doFloat(float[] array, int index, float value) {
-                array[index] = value;
-            }
-
-            @Specialization
-            void doDouble(double[] array, int index, double value) {
-                array[index] = value;
-            }
-
-            @Specialization
-            void doObject(Object[] array, int index, Object value) {
-                array[index] = value;
-            }
-        }
-
-        @Child private ToHostNode toJavaNode = ToHostNode.create();
-        @Child private ArraySet arraySet = ArraySetNodeGen.create();
-
-        protected abstract Object executeWithTarget(HostObject receiver, Object index, Object value);
-
-        @Specialization(guards = {"receiver.isArray()"})
-        protected final Object doArrayIntIndex(HostObject receiver, int index, Object value) {
-            return doArrayAccess(receiver, index, value);
-        }
-
-        @Specialization(guards = {"receiver.isArray()", "index.getClass() == clazz"})
-        protected final Object doArrayCached(HostObject receiver, Number index, Object value,
-                        @Cached("index.getClass()") Class<? extends Number> clazz) {
-            return doArrayAccess(receiver, clazz.cast(index).intValue(), value);
-        }
-
-        @Specialization(guards = {"receiver.isArray()"}, replaces = "doArrayCached")
-        protected final Object doArrayGeneric(HostObject receiver, Number index, Object value) {
-            return doArrayAccess(receiver, index.intValue(), value);
-        }
-
-        @SuppressWarnings("unchecked")
-        @TruffleBoundary
-        @Specialization(guards = {"isList(receiver)"})
-        protected Object doListIntIndex(HostObject receiver, int index, Object value) {
-            final Object javaValue = toJavaNode.execute(value, Object.class, null, receiver.languageContext);
-            try {
-                List<Object> list = ((List<Object>) receiver.obj);
-                if (index == list.size()) {
-                    list.add(javaValue);
-                } else {
-                    list.set(index, javaValue);
-                }
-                return value;
-            } catch (IndexOutOfBoundsException e) {
-                CompilerDirectives.transferToInterpreter();
-                throw UnknownIdentifierException.raise(String.valueOf(index));
-            }
-        }
-
-        @TruffleBoundary
-        @Specialization(guards = {"isList(receiver)"}, replaces = "doListIntIndex")
-        protected Object doListGeneric(HostObject receiver, Number index, Object value) {
-            return doListIntIndex(receiver, index.intValue(), value);
-        }
-
-        @SuppressWarnings("unused")
-        @TruffleBoundary
-        @Specialization(guards = {"!receiver.isArray()", "!isList(receiver)"})
-        protected static Object notArray(HostObject receiver, Number index, Object value) {
-            throw UnsupportedMessageException.raise(Message.WRITE);
-        }
-
-        private Object doArrayAccess(HostObject receiver, int index, Object value) {
-            Object obj = receiver.obj;
-            assert receiver.isArray();
-            final Object javaValue = toJavaNode.execute(value, obj.getClass().getComponentType(), null, receiver.languageContext);
-            try {
-                arraySet.execute(obj, index, javaValue);
-            } catch (ArrayIndexOutOfBoundsException outOfBounds) {
-                CompilerDirectives.transferToInterpreter();
-                throw UnknownIdentifierException.raise(String.valueOf(index));
-            }
-            return HostObject.NULL;
-        }
-
-        static boolean isList(HostObject receiver) {
-            return receiver.obj instanceof List;
-        }
-
-        static ArrayWriteNode create() {
-            return ArrayWriteNodeGen.create();
-        }
-    }
-
-    abstract static class MapRemoveNode extends Node {
-
-        protected abstract Object executeWithTarget(HostObject receiver, String name);
-
-        @SuppressWarnings("unchecked")
-        @TruffleBoundary
-        @Specialization(guards = {"isMap(receiver)"})
-        protected Object doMapGeneric(HostObject receiver, String name) {
-            Map<String, Object> map = (Map<String, Object>) receiver.obj;
-            if (!map.containsKey(name)) {
-                throw UnknownIdentifierException.raise(name);
-            }
-            map.remove(name);
-            return true;
-        }
-
-        @SuppressWarnings("unused")
-        @TruffleBoundary
-        @Specialization(guards = {"!isMap(receiver)"})
-        protected static Object notMap(HostObject receiver, String name) {
-            throw UnsupportedMessageException.raise(Message.REMOVE);
-        }
-
-        static boolean isMap(HostObject receiver) {
-            return receiver.obj instanceof Map;
-        }
-
-    }
-
-    @Resolve(message = "REMOVE")
-    abstract static class RemoveNode extends Node {
-        @Child private ArrayRemoveNode arrayRemove;
-        @Child private MapRemoveNode mapRemove;
-
-        public Object access(HostObject receiver, Number index) {
-            if (arrayRemove == null) {
-                CompilerDirectives.transferToInterpreterAndInvalidate();
-                arrayRemove = insert(ArrayRemoveNodeGen.create());
-            }
-            return arrayRemove.executeWithTarget(receiver, index);
-        }
-
-        public Object access(HostObject receiver, String name) {
-            if (mapRemove == null) {
-                CompilerDirectives.transferToInterpreterAndInvalidate();
-                mapRemove = insert(MapRemoveNodeGen.create());
-            }
-            return mapRemove.executeWithTarget(receiver, name);
-        }
-    }
-
-    abstract static class ArrayRemoveNode extends Node {
-
-        protected abstract boolean executeWithTarget(HostObject receiver, Object index);
-
-        @SuppressWarnings("unchecked")
-        @TruffleBoundary
-        @Specialization(guards = {"isList(receiver)"})
-        protected boolean doListIntIndex(HostObject receiver, int index) {
-            try {
-                ((List<Object>) receiver.obj).remove(index);
-            } catch (IndexOutOfBoundsException outOfBounds) {
-                throw UnknownIdentifierException.raise(String.valueOf(index));
-            }
-            return true;
-        }
-
-        @TruffleBoundary
-        @Specialization(guards = {"isList(receiver)"}, replaces = "doListIntIndex")
-        protected boolean doListGeneric(HostObject receiver, Number index) {
-            return doListIntIndex(receiver, index.intValue());
-        }
-
-        @SuppressWarnings("unused")
-        @TruffleBoundary
-        @Specialization(guards = {"!isList(receiver)"})
-        protected static boolean notArray(HostObject receiver, Number index) {
-            throw UnsupportedMessageException.raise(Message.REMOVE);
-        }
-
-        static boolean isList(HostObject receiver) {
-            return receiver.obj instanceof List;
-        }
-
-    }
-
-    @Resolve(message = "HAS_KEYS")
-    abstract static class HasKeysNode extends Node {
-
-        public Object access(HostObject receiver) {
-            return !receiver.isNull();
-        }
-    }
-
-    @Resolve(message = "KEYS")
-    abstract static class KeysNode extends Node {
-        @TruffleBoundary
-        public Object access(HostObject receiver, boolean includeInternal) {
-            if (receiver.isNull()) {
-                throw UnsupportedMessageException.raise(Message.KEYS);
-            }
-            String[] fields = TruffleOptions.AOT ? new String[0] : HostInteropReflect.findUniquePublicMemberNames(receiver.getLookupClass(), receiver.isStaticClass(), includeInternal);
-            return HostObject.forObject(fields, receiver.languageContext);
-        }
-    }
-
-    abstract static class KeyInfoCacheNode extends Node {
-        static final int LIMIT = 3;
-
-        KeyInfoCacheNode() {
-        }
-
-        public abstract int execute(Class<?> clazz, String name, boolean onlyStatic);
-
-        @SuppressWarnings("unused")
-        @Specialization(guards = {"onlyStatic == cachedStatic", "clazz == cachedClazz", "cachedName.equals(name)"}, limit = "LIMIT")
-        static int doCached(Class<?> clazz, String name, boolean onlyStatic,
-                        @Cached("onlyStatic") boolean cachedStatic,
-                        @Cached("clazz") Class<?> cachedClazz,
-                        @Cached("name") String cachedName,
-                        @Cached("doUncached(clazz, name, onlyStatic)") int cachedKeyInfo) {
-            assert cachedKeyInfo == doUncached(clazz, name, onlyStatic);
-            return cachedKeyInfo;
-        }
-
-        @Specialization(replaces = "doCached")
-        static int doUncached(Class<?> clazz, String name, boolean onlyStatic) {
-            return HostInteropReflect.findKeyInfo(clazz, name, onlyStatic);
-        }
-    }
-
-    @Resolve(message = "KEY_INFO")
-    abstract static class KeyInfoNode extends Node {
-
-        @Child private KeyInfoCacheNode keyInfoCache;
-
-        public int access(HostObject receiver, int index) {
-            if (index < 0) {
-                return 0;
-            }
-            if (receiver.isArray()) {
-                int length = Array.getLength(receiver.obj);
-                if (index < length) {
-                    return KeyInfo.READABLE | KeyInfo.MODIFIABLE;
-                }
-            } else if (receiver.obj instanceof List) {
-                int length = listSize((List<?>) receiver.obj);
-                if (index < length) {
-                    return KeyInfo.READABLE | KeyInfo.MODIFIABLE | KeyInfo.REMOVABLE;
-                } else if (index == length) {
-                    return KeyInfo.INSERTABLE;
-                }
-            }
-            return KeyInfo.NONE;
-        }
-
-        @TruffleBoundary
-        public int access(HostObject receiver, Number index) {
-            int i = index.intValue();
-            if (i != index.doubleValue()) {
-                // No non-integer indexes
-                return 0;
-            }
-            return access(receiver, i);
-        }
-
-        @TruffleBoundary
-        private static int listSize(List<?> list) {
-            return list.size();
-        }
-
-        public int access(HostObject receiver, String name) {
-            if (receiver.isNull()) {
-                throw UnsupportedMessageException.raise(Message.KEY_INFO);
-            }
-            if (TruffleOptions.AOT) {
-                return 0;
-            }
-            return keyInfoCache().execute(receiver.getLookupClass(), name, receiver.isStaticClass());
-        }
-
-        private KeyInfoCacheNode keyInfoCache() {
-            if (keyInfoCache == null) {
-                CompilerDirectives.transferToInterpreterAndInvalidate();
-                keyInfoCache = insert(KeyInfoCacheNodeGen.create());
-            }
-            return keyInfoCache;
-        }
-    }
-
-    @Resolve(message = "IS_EXECUTABLE")
-    abstract static class IsExecutableObjectNode extends Node {
-        @Child private LookupFunctionalMethodNode lookupMethod;
-
-        public Object access(HostObject receiver) {
-            if (TruffleOptions.AOT) {
-                return false;
-            }
-            return receiver.obj != null && !receiver.isClass() && lookupFunctionalInterfaceMethod(receiver) != null;
-        }
-
-        private HostMethodDesc lookupFunctionalInterfaceMethod(HostObject receiver) {
-            if (lookupMethod == null) {
-                CompilerDirectives.transferToInterpreterAndInvalidate();
-                lookupMethod = insert(LookupFunctionalMethodNodeGen.create());
-            }
-            return lookupMethod.execute(receiver.getLookupClass());
-        }
-    }
-
-    @Resolve(message = "EXECUTE")
-    abstract static class ExecuteObjectNode extends Node {
-        private static final Message EXECUTE = Message.EXECUTE;
-        @Child private LookupFunctionalMethodNode lookupMethod;
-        @Child private HostExecuteNode doExecute;
-
-        public Object access(HostObject receiver, Object[] args) {
-            if (TruffleOptions.AOT) {
-                throw UnsupportedMessageException.raise(EXECUTE);
-            }
-            if (receiver.obj != null && !receiver.isClass()) {
-                HostMethodDesc method = lookupFunctionalInterfaceMethod(receiver);
-                if (method != null) {
-                    if (doExecute == null) {
-                        CompilerDirectives.transferToInterpreterAndInvalidate();
-                        doExecute = insert(HostExecuteNode.create());
-                    }
-                    return doExecute.execute(method, receiver.obj, args, receiver.languageContext);
-                }
-            }
-            throw UnsupportedMessageException.raise(EXECUTE);
-        }
-
-        private HostMethodDesc lookupFunctionalInterfaceMethod(HostObject receiver) {
-            if (lookupMethod == null) {
-                CompilerDirectives.transferToInterpreterAndInvalidate();
-                lookupMethod = insert(LookupFunctionalMethodNodeGen.create());
-            }
-            return lookupMethod.execute(receiver.getLookupClass());
-        }
-    }
-
+    @GenerateUncached
     abstract static class LookupConstructorNode extends Node {
         static final int LIMIT = 3;
 
         LookupConstructorNode() {
         }
 
-        public abstract HostMethodDesc execute(Class<?> clazz);
+        public abstract HostMethodDesc execute(HostObject receiver, Class<?> clazz);
 
         @SuppressWarnings("unused")
         @Specialization(guards = {"clazz == cachedClazz"}, limit = "LIMIT")
-        static HostMethodDesc doCached(Class<?> clazz,
+        HostMethodDesc doCached(HostObject receiver, Class<?> clazz,
                         @Cached("clazz") Class<?> cachedClazz,
-                        @Cached("doUncached(clazz)") HostMethodDesc cachedMethod) {
-            assert cachedMethod == doUncached(clazz);
+                        @Cached("doUncached(receiver, clazz)") HostMethodDesc cachedMethod) {
+            assert cachedMethod == doUncached(receiver, clazz);
             return cachedMethod;
         }
 
         @Specialization(replaces = "doCached")
-        static HostMethodDesc doUncached(Class<?> clazz) {
-            return HostClassDesc.forClass(clazz).lookupConstructor();
+        @TruffleBoundary
+        HostMethodDesc doUncached(HostObject receiver, Class<?> clazz) {
+            return HostClassDesc.forClass(receiver.getEngine(), clazz).lookupConstructor();
         }
     }
 
+    @GenerateUncached
     abstract static class LookupFieldNode extends Node {
         static final int LIMIT = 3;
 
         LookupFieldNode() {
         }
 
-        public abstract HostFieldDesc execute(Class<?> clazz, String name, boolean onlyStatic);
+        public abstract HostFieldDesc execute(HostObject receiver, Class<?> clazz, String name, boolean onlyStatic);
 
         @SuppressWarnings("unused")
         @Specialization(guards = {"onlyStatic == cachedStatic", "clazz == cachedClazz", "cachedName.equals(name)"}, limit = "LIMIT")
-        static HostFieldDesc doCached(Class<?> clazz, String name, boolean onlyStatic,
+        HostFieldDesc doCached(HostObject receiver, Class<?> clazz, String name, boolean onlyStatic,
                         @Cached("onlyStatic") boolean cachedStatic,
                         @Cached("clazz") Class<?> cachedClazz,
                         @Cached("name") String cachedName,
-                        @Cached("doUncached(clazz, name, onlyStatic)") HostFieldDesc cachedField) {
-            assert cachedField == HostInteropReflect.findField(clazz, name, onlyStatic);
+                        @Cached("doUncached(receiver, clazz, name, onlyStatic)") HostFieldDesc cachedField) {
+            assert cachedField == doUncached(receiver, clazz, name, onlyStatic);
             return cachedField;
         }
 
         @Specialization(replaces = "doCached")
-        static HostFieldDesc doUncached(Class<?> clazz, String name, boolean onlyStatic) {
-            return HostInteropReflect.findField(clazz, name, onlyStatic);
+        @TruffleBoundary
+        HostFieldDesc doUncached(HostObject receiver, Class<?> clazz, String name, boolean onlyStatic) {
+            return HostInteropReflect.findField(receiver.getEngine(), clazz, name, onlyStatic);
         }
     }
 
+    @GenerateUncached
     abstract static class LookupFunctionalMethodNode extends Node {
         static final int LIMIT = 3;
 
         LookupFunctionalMethodNode() {
         }
 
-        public abstract HostMethodDesc execute(Class<?> clazz);
+        public abstract HostMethodDesc execute(HostObject object, Class<?> clazz);
 
         @SuppressWarnings("unused")
         @Specialization(guards = {"clazz == cachedClazz"}, limit = "LIMIT")
-        static HostMethodDesc doCached(Class<?> clazz,
+        HostMethodDesc doCached(HostObject object, Class<?> clazz,
                         @Cached("clazz") Class<?> cachedClazz,
-                        @Cached("doUncached(clazz)") HostMethodDesc cachedMethod) {
-            assert cachedMethod == doUncached(clazz);
+                        @Cached("doUncached(object, clazz)") HostMethodDesc cachedMethod) {
+            assert cachedMethod == doUncached(object, clazz);
             return cachedMethod;
         }
 
         @Specialization(replaces = "doCached")
-        static HostMethodDesc doUncached(Class<?> clazz) {
-            return HostClassDesc.forClass(clazz).getFunctionalMethod();
+        @TruffleBoundary
+        static HostMethodDesc doUncached(HostObject object, Class<?> clazz) {
+            return HostClassDesc.forClass(object.getEngine(), clazz).getFunctionalMethod();
         }
     }
 
+    @GenerateUncached
     abstract static class LookupInnerClassNode extends Node {
         static final int LIMIT = 3;
 
@@ -1150,45 +1092,49 @@ class HostObjectMR {
 
         @SuppressWarnings("unused")
         @Specialization(guards = {"clazz == cachedClazz", "cachedName.equals(name)"}, limit = "LIMIT")
-        static Class<?> doCached(Class<?> clazz, String name,
+        Class<?> doCached(Class<?> clazz, String name,
                         @Cached("clazz") Class<?> cachedClazz,
                         @Cached("name") String cachedName,
                         @Cached("doUncached(clazz, name)") Class<?> cachedInnerClass) {
-            assert cachedInnerClass == HostInteropReflect.findInnerClass(clazz, name);
+            assert cachedInnerClass == doUncached(clazz, name);
             return cachedInnerClass;
         }
 
         @Specialization(replaces = "doCached")
-        static Class<?> doUncached(Class<?> clazz, String name) {
+        @TruffleBoundary
+        Class<?> doUncached(Class<?> clazz, String name) {
             return HostInteropReflect.findInnerClass(clazz, name);
         }
     }
 
+    @GenerateUncached
     abstract static class LookupMethodNode extends Node {
         static final int LIMIT = 3;
 
         LookupMethodNode() {
         }
 
-        public abstract HostMethodDesc execute(Class<?> clazz, String name, boolean onlyStatic);
+        public abstract HostMethodDesc execute(HostObject receiver, Class<?> clazz, String name, boolean onlyStatic);
 
         @SuppressWarnings("unused")
         @Specialization(guards = {"onlyStatic == cachedStatic", "clazz == cachedClazz", "cachedName.equals(name)"}, limit = "LIMIT")
-        static HostMethodDesc doCached(Class<?> clazz, String name, boolean onlyStatic,
+        HostMethodDesc doCached(HostObject receiver, Class<?> clazz, String name, boolean onlyStatic,
                         @Cached("onlyStatic") boolean cachedStatic,
                         @Cached("clazz") Class<?> cachedClazz,
                         @Cached("name") String cachedName,
-                        @Cached("doUncached(clazz, name, onlyStatic)") HostMethodDesc cachedMethod) {
-            assert cachedMethod == HostInteropReflect.findMethod(clazz, name, onlyStatic);
+                        @Cached("doUncached(receiver, clazz, name, onlyStatic)") HostMethodDesc cachedMethod) {
+            assert cachedMethod == doUncached(receiver, clazz, name, onlyStatic);
             return cachedMethod;
         }
 
         @Specialization(replaces = "doCached")
-        static HostMethodDesc doUncached(Class<?> clazz, String name, boolean onlyStatic) {
-            return HostInteropReflect.findMethod(clazz, name, onlyStatic);
+        @TruffleBoundary
+        HostMethodDesc doUncached(HostObject receiver, Class<?> clazz, String name, boolean onlyStatic) {
+            return HostInteropReflect.findMethod(receiver.getEngine(), clazz, name, onlyStatic);
         }
     }
 
+    @GenerateUncached
     abstract static class ReadFieldNode extends Node {
         static final int LIMIT = 3;
 
@@ -1201,42 +1147,78 @@ class HostObjectMR {
         @Specialization(guards = {"field == cachedField"}, limit = "LIMIT")
         static Object doCached(HostFieldDesc field, HostObject object,
                         @Cached("field") HostFieldDesc cachedField,
-                        @Cached("create()") ToGuestValueNode toGuest) {
+                        @Cached ToGuestValueNode toGuest) {
             Object val = cachedField.get(object.obj);
-            return toGuest.apply(object.languageContext, val);
+            return toGuest.execute(object.languageContext, val);
         }
 
         @Specialization(replaces = "doCached")
+        @TruffleBoundary
         static Object doUncached(HostFieldDesc field, HostObject object,
-                        @Cached("create()") ToGuestValueNode toGuest) {
+                        @Cached ToGuestValueNode toGuest) {
             Object val = field.get(object.obj);
-            return toGuest.apply(object.languageContext, val);
+            return toGuest.execute(object.languageContext, val);
         }
     }
 
+    @GenerateUncached
     abstract static class WriteFieldNode extends Node {
         static final int LIMIT = 3;
-
-        @Child private ToHostNode toHost = ToHostNode.create();
 
         WriteFieldNode() {
         }
 
-        public abstract void execute(HostFieldDesc field, HostObject object, Object value);
+        public abstract void execute(HostFieldDesc field, HostObject object, Object value) throws UnsupportedTypeException, UnknownIdentifierException;
 
         @SuppressWarnings("unused")
         @Specialization(guards = {"field == cachedField"}, limit = "LIMIT")
-        void doCached(HostFieldDesc field, HostObject object, Object rawValue,
-                        @Cached("field") HostFieldDesc cachedField) {
-            Object val = toHost.execute(rawValue, cachedField.getType(), cachedField.getGenericType(), object.languageContext);
-            cachedField.set(object.obj, val);
+        static void doCached(HostFieldDesc field, HostObject object, Object rawValue,
+                        @Cached("field") HostFieldDesc cachedField,
+                        @Cached ToHostNode toHost) throws UnsupportedTypeException, UnknownIdentifierException {
+            Object value;
+            try {
+                value = toHost.execute(rawValue, cachedField.getType(), cachedField.getGenericType(), object.languageContext, true);
+            } catch (ClassCastException | NullPointerException e) {
+                CompilerDirectives.transferToInterpreter();
+                throw UnsupportedTypeException.create(new Object[]{rawValue}, e.getMessage());
+            }
+            cachedField.set(object.obj, value);
         }
 
         @Specialization(replaces = "doCached")
-        void doUncached(HostFieldDesc field, HostObject object, Object rawValue) {
-            Object val = toHost.execute(rawValue, field.getType(), field.getGenericType(), object.languageContext);
+        @TruffleBoundary
+        static void doUncached(HostFieldDesc field, HostObject object, Object rawValue,
+                        @Cached ToHostNode toHost) throws UnsupportedTypeException, UnknownIdentifierException {
+            Object val = toHost.execute(rawValue, field.getType(), field.getGenericType(), object.languageContext, true);
             field.set(object.obj, val);
         }
     }
 
+    @GenerateUncached
+    abstract static class IsListNode extends Node {
+
+        public abstract boolean execute(HostObject receiver);
+
+        @Specialization
+        public boolean doDefault(HostObject receiver,
+                        @Cached(value = "receiver.getHostClassCache().isListAccess()", allowUncached = true) boolean isListAccess) {
+            assert receiver.getHostClassCache().isListAccess() == isListAccess;
+            return isListAccess && receiver.obj instanceof List;
+        }
+
+    }
+
+    @GenerateUncached
+    abstract static class IsArrayNode extends Node {
+
+        public abstract boolean execute(HostObject receiver);
+
+        @Specialization
+        public boolean doDefault(HostObject receiver,
+                        @Cached(value = "receiver.getHostClassCache().isArrayAccess()", allowUncached = true) boolean isArrayAccess) {
+            assert receiver.getHostClassCache().isArrayAccess() == isArrayAccess;
+            return isArrayAccess && receiver.obj != null && receiver.obj.getClass().isArray();
+        }
+
+    }
 }

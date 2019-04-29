@@ -41,10 +41,8 @@
 package com.oracle.truffle.sl.builtins;
 
 import com.oracle.truffle.api.dsl.Specialization;
-import com.oracle.truffle.api.interop.ForeignAccess;
-import com.oracle.truffle.api.interop.Message;
-import com.oracle.truffle.api.interop.TruffleObject;
-import com.oracle.truffle.api.nodes.Node;
+import com.oracle.truffle.api.interop.InteropLibrary;
+import com.oracle.truffle.api.library.CachedLibrary;
 import com.oracle.truffle.api.nodes.NodeInfo;
 
 /**
@@ -54,10 +52,8 @@ import com.oracle.truffle.api.nodes.NodeInfo;
 @NodeInfo(shortName = "hasSize")
 public abstract class SLHasSizeBuiltin extends SLBuiltinNode {
 
-    @Child private Node hasSize = Message.HAS_SIZE.createNode();
-
-    @Specialization
-    public Object hasSize(TruffleObject obj) {
-        return ForeignAccess.sendHasSize(hasSize, obj);
+    @Specialization(limit = "3")
+    public boolean hasSize(Object obj, @CachedLibrary("obj") InteropLibrary arrays) {
+        return arrays.hasArrayElements(obj);
     }
 }

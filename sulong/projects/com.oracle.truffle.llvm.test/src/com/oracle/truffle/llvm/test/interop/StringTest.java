@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, Oracle and/or its affiliates.
+ * Copyright (c) 2018, 2019, Oracle and/or its affiliates.
  *
  * All rights reserved.
  *
@@ -29,7 +29,6 @@
  */
 package com.oracle.truffle.llvm.test.interop;
 
-import com.oracle.truffle.llvm.test.interop.values.BoxedTestValue;
 import org.junit.Assert;
 import org.junit.BeforeClass;
 import org.junit.Test;
@@ -37,6 +36,7 @@ import org.junit.runner.RunWith;
 
 import com.oracle.truffle.api.CallTarget;
 import com.oracle.truffle.api.interop.TruffleObject;
+import com.oracle.truffle.llvm.test.interop.values.BoxedStringValue;
 import com.oracle.truffle.tck.TruffleRunner;
 import com.oracle.truffle.tck.TruffleRunner.Inject;
 import java.nio.charset.Charset;
@@ -83,7 +83,7 @@ public class StringTest extends InteropTestBase {
 
     @Test
     public void testStringSizeBoxed(@Inject(TestStringSizeNode.class) CallTarget getSize) {
-        Object ret = getSize.call(new BoxedTestValue(ASCII_STRING));
+        Object ret = getSize.call(new BoxedStringValue(ASCII_STRING));
         Assert.assertEquals((long) ASCII_STRING.length(), ret);
     }
 
@@ -102,7 +102,7 @@ public class StringTest extends InteropTestBase {
 
     @Test
     public void testAsStringBoxed(@Inject(TestAsStringAsciiNode.class) CallTarget asString) {
-        Object ret = asString.call(new BoxedTestValue(ASCII_STRING));
+        Object ret = asString.call(new BoxedStringValue(ASCII_STRING));
         Assert.assertEquals(ASCII_LENGTH, ret);
     }
 

@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2018, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2019, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -24,6 +24,8 @@
  */
 package com.oracle.truffle.regex.tregex.nodes;
 
+import java.lang.reflect.Field;
+
 import com.oracle.truffle.api.dsl.Cached;
 import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.frame.VirtualFrame;
@@ -31,8 +33,6 @@ import com.oracle.truffle.api.interop.TruffleObject;
 import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.api.profiles.ValueProfile;
 import sun.misc.Unsafe;
-
-import java.lang.reflect.Field;
 
 /**
  * This class wraps {@link TRegexDFAExecutorNode} and specializes on the type of the input strings
@@ -45,7 +45,8 @@ public abstract class TRegexDFAExecutorEntryNode extends Node {
     private static final long coderFieldOffset;
 
     static {
-        if (System.getProperty("java.specification.version").compareTo("1.9") < 0) {
+        String javaVersion = System.getProperty("java.specification.version");
+        if (javaVersion != null && javaVersion.compareTo("1.9") < 0) {
             // UNSAFE is needed for detecting compact strings, which are not implemented prior to
             // java9
             UNSAFE = null;
@@ -71,14 +72,14 @@ public abstract class TRegexDFAExecutorEntryNode extends Node {
     private static Unsafe getUnsafe() {
         try {
             return Unsafe.getUnsafe();
-        } catch (SecurityException e) {
-        }
-        try {
-            Field theUnsafeInstance = Unsafe.class.getDeclaredField("theUnsafe");
-            theUnsafeInstance.setAccessible(true);
-            return (Unsafe) theUnsafeInstance.get(Unsafe.class);
-        } catch (Exception e) {
-            throw new RuntimeException("exception while trying to get Unsafe.theUnsafe via reflection:", e);
+        } catch (SecurityException e1) {
+            try {
+                Field theUnsafeInstance = Unsafe.class.getDeclaredField("theUnsafe");
+                theUnsafeInstance.setAccessible(true);
+                return (Unsafe) theUnsafeInstance.get(Unsafe.class);
+            } catch (Exception e2) {
+                throw new RuntimeException("exception while trying to get Unsafe.theUnsafe via reflection:", e2);
+            }
         }
     }
 
@@ -103,36 +104,33 @@ public abstract class TRegexDFAExecutorEntryNode extends Node {
 
     @Specialization(guards = "isCompactString(input)")
     void doStringCompact(VirtualFrame frame, String input, int fromIndex, int index, int maxIndex) {
-        executor.setInputIsCompactString(frame, true);
         executor.setInput(frame, input);
         executor.setFromIndex(frame, fromIndex);
         executor.setIndex(frame, index);
         executor.setMaxIndex(frame, maxIndex);
-        executor.execute(frame);
+        executor.execute(frame, true);
     }
 
     @Specialization(guards = "!isCompactString(input)")
     void doStringNonCompact(VirtualFrame frame, String input, int fromIndex, int index, int maxIndex) {
-        executor.setInputIsCompactString(frame, false);
         executor.setInput(frame, input);
         executor.setFromIndex(frame, fromIndex);
         executor.setIndex(frame, index);
         executor.setMaxIndex(frame, maxIndex);
-        executor.execute(frame);
+        executor.execute(frame, false);
     }
 
     @Specialization
     void doTruffleObject(VirtualFrame frame, TruffleObject input, int fromIndex, int index, int maxIndex,
                     @Cached("createClassProfile()") ValueProfile inputClassProfile) {
-        // conservatively disable compact string optimizations.
-        // TODO: maybe add an interface for TruffleObjects to announce if they are compact / ascii
-        // strings?
-        executor.setInputIsCompactString(frame, false);
         executor.setInput(frame, inputClassProfile.profile(input));
         executor.setFromIndex(frame, fromIndex);
         executor.setIndex(frame, index);
         executor.setMaxIndex(frame, maxIndex);
-        executor.execute(frame);
+        // conservatively disable compact string optimizations.
+        // TODO: maybe add an interface for TruffleObjects to announce if they are compact / ascii
+        // strings?
+        executor.execute(frame, false);
     }
 
     static boolean isCompactString(String str) {

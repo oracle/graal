@@ -35,6 +35,7 @@ import org.graalvm.nativeimage.c.function.CFunctionPointer;
 import org.graalvm.nativeimage.c.function.InvokeCFunctionPointer;
 import org.graalvm.nativeimage.c.struct.CField;
 import org.graalvm.nativeimage.c.struct.CFieldAddress;
+import org.graalvm.nativeimage.c.struct.CFieldOffset;
 import org.graalvm.nativeimage.c.struct.CPointerTo;
 import org.graalvm.nativeimage.c.struct.CStruct;
 import org.graalvm.nativeimage.c.type.WordPointer;
@@ -129,11 +130,11 @@ public class Signal {
         public native int getCValue();
     }
 
-    @Platforms(Platform.LINUX.class)
+    @Platforms({Platform.LINUX.class, Platform.DARWIN.class})
     @CStruct
     public interface ucontext_t extends PointerBase {
         /*-
-            // Userlevel context.
+            // AMD64 userlevel context.
             typedef struct ucontext
               {
                 unsigned long int uc_flags;
@@ -156,6 +157,115 @@ public class Signal {
         @CFieldAddress("uc_mcontext.gregs")
         @Platforms(Platform.LINUX_AMD64.class)
         GregsPointer uc_mcontext_gregs();
+
+        /*-
+        // AArch64 userlevel context.
+        typedef struct ucontext
+        {
+            unsigned long uc_flags;
+            struct ucontext *uc_link;
+            stack_t uc_stack;
+            __sigset_t uc_sigmask;
+            mcontext_t uc_mcontext;
+        } ucontext_t;
+        typedef struct sigcontext mcontext_t;
+        struct sigcontext {
+                __u64 fault_address;
+                // AArch64 registers
+                __u64 regs[31];
+                __u64 sp;
+                __u64 pc;
+                __u64 pstate;
+                // 4K reserved for FP/SIMD state and future expansion
+                __u8 __reserved[4096] __attribute__((__aligned__(16)));
+        };
+        */
+        @CFieldAddress("uc_mcontext")
+        @Platforms(Platform.LINUX_AArch64.class)
+        mcontext_t uc_mcontext();
+
+        @CField("uc_mcontext")
+        @Platforms(Platform.DARWIN_AMD64.class)
+        MContext64 uc_mcontext64();
+
+    }
+
+    @Platforms({Platform.DARWIN_AMD64.class})
+    @CStruct(value = "__darwin_mcontext64", addStructKeyword = true)
+    public interface MContext64 extends PointerBase {
+
+        @CFieldOffset("__ss.__rax")
+        int rax_offset();
+
+        @CFieldOffset("__ss.__rbx")
+        int rbx_offset();
+
+        @CFieldOffset("__ss.__rip")
+        int rip_offset();
+
+        @CFieldOffset("__ss.__rsp")
+        int rsp_offset();
+
+        @CFieldOffset("__ss.__rcx")
+        int rcx_offset();
+
+        @CFieldOffset("__ss.__rdx")
+        int rdx_offset();
+
+        @CFieldOffset("__ss.__rbp")
+        int rbp_offset();
+
+        @CFieldOffset("__ss.__rsi")
+        int rsi_offset();
+
+        @CFieldOffset("__ss.__rdi")
+        int rdi_offset();
+
+        @CFieldOffset("__ss.__r8")
+        int r8_offset();
+
+        @CFieldOffset("__ss.__r9")
+        int r9_offset();
+
+        @CFieldOffset("__ss.__r10")
+        int r10_offset();
+
+        @CFieldOffset("__ss.__r11")
+        int r11_offset();
+
+        @CFieldOffset("__ss.__r12")
+        int r12_offset();
+
+        @CFieldOffset("__ss.__r13")
+        int r13_offset();
+
+        @CFieldOffset("__ss.__r14")
+        int r14_offset();
+
+        @CFieldOffset("__ss.__r15")
+        int r15_offset();
+
+        @CFieldOffset("__ss.__rflags")
+        int efl_offset();
+    }
+
+    @CStruct
+    @Platforms(Platform.LINUX_AArch64.class)
+    public interface mcontext_t extends PointerBase {
+        @CField
+        long fault_address();
+
+        @CFieldAddress
+        GregsPointer regs();
+
+        @CField
+        long sp();
+
+        @CField
+        long pc();
+
+        @CField
+        long pstate();
     }
 
     /** Advanced interface to a C signal handler. */
@@ -166,7 +276,7 @@ public class Signal {
         void dispatch(int signum, siginfo_t siginfo, WordPointer opaque);
     }
 
-    @Platforms(Platform.LINUX.class)
+    @Platforms({Platform.LINUX.class, Platform.DARWIN.class})
     @CConstant
     public static native int SA_SIGINFO();
 

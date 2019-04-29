@@ -27,7 +27,6 @@ package com.oracle.svm.hosted.phases;
 import java.util.function.Predicate;
 
 import org.graalvm.compiler.api.replacements.Fold;
-import org.graalvm.compiler.core.common.spi.ConstantFieldProvider;
 import org.graalvm.compiler.graph.Node;
 import org.graalvm.compiler.graph.Node.NodeIntrinsic;
 import org.graalvm.compiler.java.BytecodeParser;
@@ -46,8 +45,8 @@ import org.graalvm.compiler.nodes.graphbuilderconf.GraphBuilderConfiguration;
 import org.graalvm.compiler.nodes.graphbuilderconf.IntrinsicContext;
 import org.graalvm.compiler.nodes.java.NewArrayNode;
 import org.graalvm.compiler.nodes.java.NewInstanceNode;
-import org.graalvm.compiler.nodes.spi.StampProvider;
 import org.graalvm.compiler.phases.OptimisticOptimizations;
+import org.graalvm.compiler.phases.util.Providers;
 import org.graalvm.compiler.replacements.SnippetTemplate;
 import org.graalvm.compiler.word.WordTypes;
 import org.graalvm.word.LocationIdentity;
@@ -57,11 +56,9 @@ import com.oracle.svm.core.graal.nodes.SubstrateNewArrayNode;
 import com.oracle.svm.core.graal.nodes.SubstrateNewInstanceNode;
 import com.oracle.svm.core.util.VMError;
 
-import jdk.vm.ci.meta.ConstantReflectionProvider;
 import jdk.vm.ci.meta.DeoptimizationAction;
 import jdk.vm.ci.meta.DeoptimizationReason;
 import jdk.vm.ci.meta.JavaKind;
-import jdk.vm.ci.meta.MetaAccessProvider;
 import jdk.vm.ci.meta.ResolvedJavaMethod;
 import jdk.vm.ci.meta.ResolvedJavaType;
 
@@ -69,10 +66,10 @@ public class SubstrateGraphBuilderPhase extends SharedGraphBuilderPhase {
 
     private final Predicate<ResolvedJavaMethod> deoptimizeOnExceptionPredicate;
 
-    public SubstrateGraphBuilderPhase(MetaAccessProvider metaAccess, StampProvider stampProvider, ConstantReflectionProvider constantReflection, ConstantFieldProvider constantFieldProvider,
+    public SubstrateGraphBuilderPhase(Providers providers,
                     GraphBuilderConfiguration graphBuilderConfig, OptimisticOptimizations optimisticOpts, IntrinsicContext initialIntrinsicContext, WordTypes wordTypes,
                     Predicate<ResolvedJavaMethod> deoptimizeOnExceptionPredicate) {
-        super(metaAccess, stampProvider, constantReflection, constantFieldProvider, graphBuilderConfig, optimisticOpts, initialIntrinsicContext, wordTypes);
+        super(providers, graphBuilderConfig, optimisticOpts, initialIntrinsicContext, wordTypes);
         this.deoptimizeOnExceptionPredicate = deoptimizeOnExceptionPredicate != null ? deoptimizeOnExceptionPredicate : (method -> false);
     }
 
@@ -115,14 +112,14 @@ public class SubstrateGraphBuilderPhase extends SharedGraphBuilderPhase {
         private boolean curDeoptimizeOnException;
 
         @Override
-        protected void createHandleExceptionTarget(FixedWithNextNode finishedDispatch, int bci, FrameStateBuilder dispatchState) {
+        protected void createHandleExceptionTarget(FixedWithNextNode afterExceptionLoaded, int bci, FrameStateBuilder dispatchState) {
             if (curDeoptimizeOnException) {
                 DeoptimizeNode deoptimize = graph.add(new DeoptimizeNode(DeoptimizationAction.None, DeoptimizationReason.NotCompiledExceptionHandler));
-                VMError.guarantee(finishedDispatch.next() == null);
-                finishedDispatch.setNext(deoptimize);
+                VMError.guarantee(afterExceptionLoaded.next() == null);
+                afterExceptionLoaded.setNext(deoptimize);
 
             } else {
-                super.createHandleExceptionTarget(finishedDispatch, bci, dispatchState);
+                super.createHandleExceptionTarget(afterExceptionLoaded, bci, dispatchState);
             }
         }
 

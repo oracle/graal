@@ -50,6 +50,11 @@ abstract class JNIGeneratedMethod implements GraphProvider, ResolvedJavaMethod {
     private StackTraceElement stackTraceElement;
 
     @Override
+    public boolean allowRuntimeCompilation() {
+        return false;
+    }
+
+    @Override
     public byte[] getCode() {
         return null;
     }

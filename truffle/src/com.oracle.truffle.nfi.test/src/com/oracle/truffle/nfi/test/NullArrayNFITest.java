@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2017, 2018, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2017, 2019, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -40,9 +40,6 @@
  */
 package com.oracle.truffle.nfi.test;
 
-import static org.hamcrest.CoreMatchers.instanceOf;
-import static org.hamcrest.CoreMatchers.is;
-
 import java.util.ArrayList;
 import java.util.Collection;
 
@@ -54,9 +51,9 @@ import org.junit.runners.Parameterized.Parameter;
 import org.junit.runners.Parameterized.Parameters;
 
 import com.oracle.truffle.api.CallTarget;
-import com.oracle.truffle.api.interop.TruffleObject;
+import com.oracle.truffle.api.interop.UnsupportedMessageException;
+import com.oracle.truffle.nfi.spi.types.NativeSimpleType;
 import com.oracle.truffle.nfi.test.interop.NullObject;
-import com.oracle.truffle.nfi.types.NativeSimpleType;
 import com.oracle.truffle.tck.TruffleRunner;
 import com.oracle.truffle.tck.TruffleRunner.Inject;
 
@@ -90,12 +87,19 @@ public class NullArrayNFITest extends NFITest {
     }
 
     @Test
-    public void testNullArray(@Inject(NullArrayNode.class) CallTarget target) {
+    public void testNullArray(@Inject(NullArrayNode.class) CallTarget target) throws UnsupportedMessageException {
         Object ret = target.call(new NullObject());
-        Assert.assertThat("return value", ret, is(instanceOf(TruffleObject.class)));
 
-        TruffleObject obj = (TruffleObject) ret;
-        Assert.assertTrue("isBoxed", isBoxed(obj));
-        Assert.assertEquals("return value", "null", unbox(obj));
+        Assert.assertTrue("isBoxed", UNCACHED_INTEROP.isString(ret));
+        Assert.assertEquals("return value", "null", UNCACHED_INTEROP.asString(ret));
+    }
+
+    @Test
+    public void testHostNullArray(@Inject(NullArrayNode.class) CallTarget target) throws UnsupportedMessageException {
+        Object hostNull = runWithPolyglot.getTruffleTestEnv().asGuestValue(null);
+        Object ret = target.call(hostNull);
+
+        Assert.assertTrue("isBoxed", UNCACHED_INTEROP.isString(ret));
+        Assert.assertEquals("return value", "null", UNCACHED_INTEROP.asString(ret));
     }
 }

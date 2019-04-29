@@ -138,10 +138,10 @@ public class CloneTypeFlow extends TypeFlow<ValueNode> {
                 for (AnalysisObject originalObject : inputState.objects(type)) {
                     /* Link all the field flows of the original to the clone. */
                     for (AnalysisField field : type.getInstanceFields(true)) {
-                        FieldTypeFlow originalObjectFieldFlow = originalObject.getInstanceFieldFlow(bb, field, false);
+                        FieldTypeFlow originalObjectFieldFlow = originalObject.getInstanceFieldFlow(bb, this.method(), field, false);
 
                         for (AnalysisObject cloneObject : cloneState.objects(type)) {
-                            FieldTypeFlow cloneObjectFieldFlow = cloneObject.getInstanceFieldFlow(bb, field, true);
+                            FieldTypeFlow cloneObjectFieldFlow = cloneObject.getInstanceFieldFlow(bb, this.method(), field, true);
                             originalObjectFieldFlow.addUse(bb, cloneObjectFieldFlow);
                         }
                     }

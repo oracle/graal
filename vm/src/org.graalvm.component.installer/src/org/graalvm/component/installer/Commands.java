@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2019, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -143,7 +143,7 @@ public interface Commands {
      * Interpret parameters as remote component IDs, uses user-defined catalog URL.
      */
     String OPTION_FOREIGN_CATALOG = "C";
-    String LONG_OPTION_FOREIGN_CATALOG = "user-catalog";
+    String LONG_OPTION_FOREIGN_CATALOG = "custom-catalog";
 
     /**
      * Interpret parameters as URLs.
@@ -160,7 +160,33 @@ public interface Commands {
     /**
      * Fails if a component which already exists is to be installed.
      */
-    String OPTION_FAIL_EXISTING = "e"; // NOI18N
+    String OPTION_FAIL_EXISTING = "i"; // NOI18N
     String LONG_OPTION_FAIL_EXISTING = "fail-existing"; // NOI18N
 
+    /**
+     * Automatic YES to all questions.
+     */
+    String OPTION_AUTO_YES = "A";
+    String LONG_OPTION_AUTO_YES = "auto-yes";
+
+    /**
+     * Abort on all prompts except YES/NO.
+     */
+    String OPTION_NON_INTERACTIVE = "N";
+    String LONG_OPTION_NON_INTERACTIVE = "non-interactive";
+
+    /**
+     * Operate on all components, irrespective of version.
+     */
+    String OPTION_ALL = "a";
+    String LONG_OPTION_ALL = "all-versions";
+
+    /**
+     * Ignores missing components on upgrade.
+     */
+    String OPTION_IGNORE_MISSING_COMPONENTS = "x"; // NOI18N
+    String LONG_OPTION_IGNORE_MISSING_COMPONENTS = "ignore-missing"; // NOI18N
+
+    String OPTION_VERSION = "V";
+    String LONG_OPTION_VERSION = "use-version";
 }

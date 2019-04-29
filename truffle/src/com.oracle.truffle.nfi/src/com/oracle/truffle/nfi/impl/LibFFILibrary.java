@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2017, 2018, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2017, 2019, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -40,10 +40,24 @@
  */
 package com.oracle.truffle.nfi.impl;
 
-import com.oracle.truffle.api.interop.ForeignAccess;
+import com.oracle.truffle.api.TruffleLanguage.ContextReference;
+import com.oracle.truffle.api.dsl.Cached;
+import com.oracle.truffle.api.dsl.CachedContext;
+import com.oracle.truffle.api.dsl.ImportStatic;
+import com.oracle.truffle.api.dsl.Specialization;
+import com.oracle.truffle.api.interop.InteropLibrary;
+import com.oracle.truffle.api.interop.InvalidArrayIndexException;
 import com.oracle.truffle.api.interop.TruffleObject;
+import com.oracle.truffle.api.interop.UnknownIdentifierException;
+import com.oracle.truffle.api.library.ExportLibrary;
+import com.oracle.truffle.api.library.ExportMessage;
+import com.oracle.truffle.api.profiles.BranchProfile;
 
+@ExportLibrary(InteropLibrary.class)
+@SuppressWarnings("static-method")
 final class LibFFILibrary implements TruffleObject {
+
+    private static final EmptyKeysArray KEYS = new EmptyKeysArray();
 
     protected final long handle;
 
@@ -62,9 +76,50 @@ final class LibFFILibrary implements TruffleObject {
         this.handle = handle;
     }
 
-    @Override
-    public ForeignAccess getForeignAccess() {
-        return LibFFILibraryMessageResolutionForeign.ACCESS;
+    @ExportMessage
+    boolean hasMembers() {
+        return true;
+    }
+
+    @ExportMessage
+    Object getMembers(@SuppressWarnings("unused") boolean includeInternal) {
+        return KEYS;
+    }
+
+    @ExportMessage
+    boolean isMemberReadable(@SuppressWarnings("unused") String member) {
+        return true;
+    }
+
+    @ExportMessage
+    @ImportStatic(NFILanguageImpl.class)
+    abstract static class ReadMember {
+
+        @Specialization(limit = "3", guards = {"receiver == cachedReceiver", "symbol.equals(cachedSymbol)"})
+        @SuppressWarnings("unused")
+        static Object doCached(LibFFILibrary receiver, String symbol,
+                        @Cached("receiver") LibFFILibrary cachedReceiver,
+                        @Cached("symbol") String cachedSymbol,
+                        @CachedContext(NFILanguageImpl.class) ContextReference<NFIContext> ctxRef,
+                        @Cached("lookupCached(cachedReceiver, cachedSymbol, ctxRef)") Object cachedRet) {
+            return cachedRet;
+        }
+
+        static Object lookupCached(LibFFILibrary receiver, String symbol, ContextReference<NFIContext> ctxRef) throws UnknownIdentifierException {
+            return doGeneric(receiver, symbol, BranchProfile.getUncached(), ctxRef.get());
+        }
+
+        @Specialization(replaces = "doCached")
+        static Object doGeneric(LibFFILibrary receiver, String symbol,
+                        @Cached BranchProfile exception,
+                        @CachedContext(NFILanguageImpl.class) NFIContext ctx) throws UnknownIdentifierException {
+            try {
+                return ctx.lookupSymbol(receiver, symbol);
+            } catch (UnsatisfiedLinkError ex) {
+                exception.enter();
+                throw UnknownIdentifierException.create(symbol);
+            }
+        }
     }
 
     private static final class Destructor extends NativeAllocation.Destructor {
@@ -78,6 +133,30 @@ final class LibFFILibrary implements TruffleObject {
         @Override
         protected void destroy() {
             NFIContext.freeLibrary(handle);
+        }
+    }
+
+    @ExportLibrary(InteropLibrary.class)
+    static final class EmptyKeysArray implements TruffleObject {
+
+        @ExportMessage
+        boolean hasArrayElements() {
+            return true;
+        }
+
+        @ExportMessage
+        long getArraySize() {
+            return 0;
+        }
+
+        @ExportMessage
+        boolean isArrayElementReadable(@SuppressWarnings("unused") long index) {
+            return false;
+        }
+
+        @ExportMessage
+        Object readArrayElement(long index) throws InvalidArrayIndexException {
+            throw InvalidArrayIndexException.create(index);
         }
     }
 }

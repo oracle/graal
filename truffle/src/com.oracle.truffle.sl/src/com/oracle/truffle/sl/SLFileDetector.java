@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2014, 2018, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2014, 2019, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -40,16 +40,23 @@
  */
 package com.oracle.truffle.sl;
 
+import com.oracle.truffle.api.TruffleFile;
 import java.io.IOException;
-import java.nio.file.Path;
-import java.nio.file.spi.FileTypeDetector;
+import java.nio.charset.Charset;
 
-public final class SLFileDetector extends FileTypeDetector {
+public final class SLFileDetector implements TruffleFile.FileTypeDetector {
+
     @Override
-    public String probeContentType(Path path) throws IOException {
-        if (path.getFileName().toString().endsWith(".sl")) {
+    public String findMimeType(TruffleFile file) throws IOException {
+        String name = file.getName();
+        if (name != null && name.endsWith(".sl")) {
             return SLLanguage.MIME_TYPE;
         }
+        return null;
+    }
+
+    @Override
+    public Charset findEncoding(TruffleFile file) throws IOException {
         return null;
     }
 }

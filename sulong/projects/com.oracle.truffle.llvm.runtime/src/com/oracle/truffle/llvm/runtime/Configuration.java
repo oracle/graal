@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2016, 2018, Oracle and/or its affiliates.
+ * Copyright (c) 2016, 2019, Oracle and/or its affiliates.
  *
  * All rights reserved.
  *
@@ -30,6 +30,7 @@
 package com.oracle.truffle.llvm.runtime;
 
 import com.oracle.truffle.api.TruffleLanguage.Env;
+import com.oracle.truffle.llvm.runtime.LLVMLanguage.Loader;
 import java.util.List;
 
 import org.graalvm.options.OptionDescriptor;
@@ -38,9 +39,16 @@ public interface Configuration {
 
     boolean isActive(Env env);
 
+    /**
+     * If two configurations say they are active, the one with the higher priority wins.
+     */
+    int getPriority();
+
     List<OptionDescriptor> getOptionDescriptors();
 
     NodeFactory createNodeFactory(LLVMContext context);
+
+    Loader createLoader();
 
     /**
      * Context extensions encapsulate optional functionality that has a state and which therefore

@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2018, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -42,7 +42,15 @@ package org.graalvm.nativeimage.impl;
 
 public interface RuntimeClassInitializationSupport {
 
-    void delayClassInitialization(Class<?>[] classes);
+    void initializeAtRunTime(String name, String reason);
 
-    void rerunClassInitialization(Class<?>[] classes);
+    void initializeAtBuildTime(String name, String reason);
+
+    void rerunInitialization(String name, String reason);
+
+    void initializeAtRunTime(Class<?> aClass, String reason);
+
+    void rerunInitialization(Class<?> aClass, String reason);
+
+    void initializeAtBuildTime(Class<?> aClass, String reason);
 }

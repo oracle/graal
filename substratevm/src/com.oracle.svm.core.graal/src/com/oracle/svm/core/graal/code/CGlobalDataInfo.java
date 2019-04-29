@@ -76,4 +76,9 @@ public final class CGlobalDataInfo {
     public byte[] getBytes() {
         return bytes;
     }
+
+    @Override
+    public String toString() {
+        return data.toString();
+    }
 }

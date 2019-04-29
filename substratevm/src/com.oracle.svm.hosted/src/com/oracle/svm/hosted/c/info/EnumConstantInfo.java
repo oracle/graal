@@ -46,7 +46,7 @@ public class EnumConstantInfo extends SizableInfo {
     }
 
     @Override
-    public Object getAnnotatedElement() {
+    public ResolvedJavaField getAnnotatedElement() {
         return annotatedField;
     }
 

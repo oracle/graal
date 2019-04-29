@@ -24,9 +24,14 @@
  */
 package com.oracle.svm.hosted;
 
-import java.lang.reflect.Modifier;
+import java.util.ArrayList;
+import java.util.EnumSet;
+import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
 import java.util.Optional;
 import java.util.concurrent.ConcurrentHashMap;
+import java.util.function.BiConsumer;
 
 import org.graalvm.compiler.core.common.spi.ForeignCallDescriptor;
 import org.graalvm.compiler.core.common.spi.ForeignCallsProvider;
@@ -35,19 +40,18 @@ import org.graalvm.compiler.nodes.graphbuilderconf.GraphBuilderConfiguration;
 import org.graalvm.compiler.nodes.graphbuilderconf.IntrinsicContext;
 import org.graalvm.compiler.options.OptionValues;
 import org.graalvm.compiler.phases.OptimisticOptimizations;
-import org.graalvm.nativeimage.ImageSingletons;
-import org.graalvm.nativeimage.Platform;
-import org.graalvm.nativeimage.Platforms;
-import org.graalvm.nativeimage.c.function.CFunction;
+import org.graalvm.nativeimage.hosted.Feature.DuringAnalysisAccess;
 import org.graalvm.nativeimage.c.function.RelocatedPointer;
 
-import com.oracle.graal.pointsto.AnalysisPolicy;
 import com.oracle.graal.pointsto.api.HostVM;
 import com.oracle.graal.pointsto.api.PointstoOptions;
+import com.oracle.graal.pointsto.constraints.UnsupportedFeatureException;
 import com.oracle.graal.pointsto.meta.AnalysisField;
 import com.oracle.graal.pointsto.meta.AnalysisMethod;
 import com.oracle.graal.pointsto.meta.AnalysisType;
+import com.oracle.graal.pointsto.meta.AnalysisUniverse;
 import com.oracle.graal.pointsto.meta.HostedProviders;
+import com.oracle.svm.core.SubstrateOptions;
 import com.oracle.svm.core.annotate.UnknownClass;
 import com.oracle.svm.core.annotate.UnknownObjectField;
 import com.oracle.svm.core.annotate.UnknownPrimitiveField;
@@ -59,32 +63,68 @@ import com.oracle.svm.core.jdk.Target_java_lang_ClassLoader;
 import com.oracle.svm.core.util.HostedStringDeduplication;
 import com.oracle.svm.core.util.VMError;
 import com.oracle.svm.hosted.c.GraalAccess;
+import com.oracle.svm.hosted.classinitialization.ClassInitializationSupport;
 import com.oracle.svm.hosted.meta.HostedType;
 import com.oracle.svm.hosted.phases.AnalysisGraphBuilderPhase;
 import com.oracle.svm.hosted.substitute.UnsafeAutomaticSubstitutionProcessor;
 
 import jdk.vm.ci.meta.ResolvedJavaField;
-import jdk.vm.ci.meta.ResolvedJavaMethod;
 import jdk.vm.ci.meta.ResolvedJavaType;
 
 public final class SVMHost implements HostVM {
     private final ConcurrentHashMap<AnalysisType, DynamicHub> typeToHub = new ConcurrentHashMap<>();
     private final ConcurrentHashMap<DynamicHub, AnalysisType> hubToType = new ConcurrentHashMap<>();
 
-    private final OptionValues options;
-    private final Platform platform;
-    private final AnalysisPolicy analysisPolicy;
-    private final ClassLoader classLoader;
-    private final ClassInitializationFeature classInitializationFeature;
-    private final HostedStringDeduplication stringTable;
+    private final Map<String, EnumSet<AnalysisType.UsageKind>> forbiddenTypes;
 
-    public SVMHost(OptionValues options, Platform platform, AnalysisPolicy analysisPolicy, ClassLoader classLoader) {
+    private final OptionValues options;
+    private final ClassLoader classLoader;
+    private final ClassInitializationSupport classInitializationSupport;
+    private final HostedStringDeduplication stringTable;
+    private final UnsafeAutomaticSubstitutionProcessor automaticSubstitutions;
+    private final List<BiConsumer<DuringAnalysisAccess, Class<?>>> classReachabilityListeners;
+
+    public SVMHost(OptionValues options, ClassLoader classLoader, ClassInitializationSupport classInitializationSupport, UnsafeAutomaticSubstitutionProcessor automaticSubstitutions) {
         this.options = options;
-        this.platform = platform;
-        this.analysisPolicy = analysisPolicy;
         this.classLoader = classLoader;
-        this.classInitializationFeature = ClassInitializationFeature.singleton();
+        this.classInitializationSupport = classInitializationSupport;
         this.stringTable = HostedStringDeduplication.singleton();
+        this.classReachabilityListeners = new ArrayList<>();
+        this.forbiddenTypes = setupForbiddenTypes(options);
+        this.automaticSubstitutions = automaticSubstitutions;
+    }
+
+    private static Map<String, EnumSet<AnalysisType.UsageKind>> setupForbiddenTypes(OptionValues options) {
+        String[] forbiddenTypesOptionValues = SubstrateOptions.ReportAnalysisForbiddenType.getValue(options);
+        Map<String, EnumSet<AnalysisType.UsageKind>> forbiddenTypes = new HashMap<>();
+        for (String forbiddenTypesOptionValue : forbiddenTypesOptionValues) {
+            String[] typeNameUsageKind = forbiddenTypesOptionValue.split(":", 2);
+            EnumSet<AnalysisType.UsageKind> usageKinds;
+            if (typeNameUsageKind.length == 1) {
+                usageKinds = EnumSet.allOf(AnalysisType.UsageKind.class);
+            } else {
+                usageKinds = EnumSet.noneOf(AnalysisType.UsageKind.class);
+                String[] usageKindValues = typeNameUsageKind[1].split(",");
+                for (String usageKindValue : usageKindValues) {
+                    usageKinds.add(AnalysisType.UsageKind.valueOf(usageKindValue));
+                }
+
+            }
+            forbiddenTypes.put(typeNameUsageKind[0], usageKinds);
+        }
+        return forbiddenTypes.isEmpty() ? null : forbiddenTypes;
+    }
+
+    @Override
+    public void checkForbidden(AnalysisType type, AnalysisType.UsageKind kind) {
+        if (forbiddenTypes == null) {
+            return;
+        }
+
+        EnumSet<AnalysisType.UsageKind> forbiddenType = forbiddenTypes.get(type.getWrapped().toJavaName());
+        if (forbiddenType != null && forbiddenType.contains(kind)) {
+            throw new UnsupportedFeatureException("Forbidden type " + type.getWrapped().toJavaName() + " UsageKind: " + kind);
+        }
     }
 
     @Override
@@ -93,14 +133,8 @@ public final class SVMHost implements HostVM {
     }
 
     @Override
-    public AnalysisPolicy analysisPolicy() {
-        return analysisPolicy;
-    }
-
-    @Override
     public Instance createGraphBuilderPhase(HostedProviders providers, GraphBuilderConfiguration graphBuilderConfig, OptimisticOptimizations optimisticOpts, IntrinsicContext initialIntrinsicContext) {
-        return new AnalysisGraphBuilderPhase(providers.getMetaAccess(), providers.getStampProvider(), providers.getConstantReflection(), providers.getConstantFieldProvider(), graphBuilderConfig,
-                        optimisticOpts, initialIntrinsicContext, providers.getWordTypes());
+        return new AnalysisGraphBuilderPhase(providers, graphBuilderConfig, optimisticOpts, initialIntrinsicContext, providers.getWordTypes());
     }
 
     @Override
@@ -124,11 +158,6 @@ public final class SVMHost implements HostVM {
     }
 
     @Override
-    public boolean isCFunction(AnalysisMethod result) {
-        return result.getAnnotation(CFunction.class) != null;
-    }
-
-    @Override
     public void clearInThread() {
         Thread.currentThread().setContextClassLoader(SVMHost.class.getClassLoader());
         ImageSingletonsSupportImpl.HostedManagement.clearInThread();
@@ -146,23 +175,8 @@ public final class SVMHost implements HostVM {
     }
 
     @Override
-    public boolean platformSupported(ResolvedJavaField field) {
-        return NativeImageGenerator.includedIn(platform, field.getAnnotation(Platforms.class));
-    }
-
-    @Override
-    public boolean platformSupported(ResolvedJavaMethod method) {
-        return NativeImageGenerator.includedIn(platform, method.getAnnotation(Platforms.class));
-    }
-
-    @Override
-    public boolean platformSupported(ResolvedJavaType type) {
-        return NativeImageGenerator.includedIn(platform, type.getAnnotation(Platforms.class));
-    }
-
-    @Override
     public void registerType(AnalysisType analysisType) {
-        classInitializationFeature.maybeInitializeHosted(analysisType);
+        classInitializationSupport.maybeInitializeHosted(analysisType);
 
         DynamicHub hub = createHub(analysisType);
         Object existing = typeToHub.put(analysisType, hub);
@@ -171,14 +185,13 @@ public final class SVMHost implements HostVM {
         assert existing == null;
 
         /* Compute the automatic substitutions. */
-        UnsafeAutomaticSubstitutionProcessor automaticSubstitutions = ImageSingletons.lookup(UnsafeAutomaticSubstitutionProcessor.class);
         automaticSubstitutions.computeSubstitutions(GraalAccess.getOriginalProviders().getMetaAccess().lookupJavaType(analysisType.getJavaClass()), options);
     }
 
     @Override
     public boolean isInitialized(AnalysisType type) {
-        boolean shouldInitializeAtRuntime = classInitializationFeature.shouldInitializeAtRuntime(type);
-        assert shouldInitializeAtRuntime || type.getWrapped().isInitialized() : "Types that are not marked for runtime initializations must have been initialized";
+        boolean shouldInitializeAtRuntime = classInitializationSupport.shouldInitializeAtRuntime(type);
+        assert shouldInitializeAtRuntime || type.getWrapped().isInitialized() : "Types that are not marked for runtime initializations must have been initialized: " + type;
 
         return !shouldInitializeAtRuntime;
     }
@@ -202,12 +215,13 @@ public final class SVMHost implements HostVM {
         } else if (type instanceof HostedType) {
             aType = ((HostedType) type).getWrapped();
         } else {
-            throw VMError.shouldNotReachHere();
+            throw VMError.shouldNotReachHere("Found unsupported type: " + type);
         }
         return typeToHub.get(aType);
     }
 
     public AnalysisType lookupType(DynamicHub hub) {
+        assert hub != null : "Hub must not be null";
         return hubToType.get(hub);
     }
 
@@ -221,8 +235,7 @@ public final class SVMHost implements HostVM {
             componentHub = dynamicHub(type.getComponentType());
         }
         Class<?> javaClass = type.getJavaClass();
-        boolean isStatic = Modifier.isStatic(javaClass.getModifiers());
-        boolean isSynthetic = javaClass.isSynthetic();
+        int modifiers = javaClass.getModifiers();
 
         Target_java_lang_ClassLoader hubClassLoader = ClassLoaderSupport.getInstance().getOrCreate(javaClass.getClassLoader());
 
@@ -234,7 +247,7 @@ public final class SVMHost implements HostVM {
          */
         String sourceFileName = stringTable.deduplicate(type.getSourceFileName(), true);
 
-        return new DynamicHub(className, type.isLocal(), superHub, componentHub, sourceFileName, isStatic, isSynthetic, hubClassLoader);
+        return new DynamicHub(className, type.isLocal(), superHub, componentHub, sourceFileName, modifiers, hubClassLoader);
     }
 
     public static boolean isUnknownClass(ResolvedJavaType resolvedJavaType) {
@@ -247,5 +260,29 @@ public final class SVMHost implements HostVM {
 
     public static boolean isUnknownPrimitiveField(AnalysisField field) {
         return field.getAnnotation(UnknownPrimitiveField.class) != null;
+    }
+
+    public void registerClassReachabilityListener(BiConsumer<DuringAnalysisAccess, Class<?>> listener) {
+        classReachabilityListeners.add(listener);
+    }
+
+    void notifyClassReachabilityListener(AnalysisUniverse universe, DuringAnalysisAccess access) {
+        for (AnalysisType type : universe.getTypes()) {
+            if ((type.isInTypeCheck() || type.isInstantiated()) && !type.getReachabilityListenerNotified()) {
+                type.setReachabilityListenerNotified(true);
+
+                for (BiConsumer<DuringAnalysisAccess, Class<?>> listener : classReachabilityListeners) {
+                    listener.accept(access, type.getJavaClass());
+                }
+            }
+        }
+    }
+
+    public ClassInitializationSupport getClassInitializationSupport() {
+        return classInitializationSupport;
+    }
+
+    public UnsafeAutomaticSubstitutionProcessor getAutomaticSubstitutionProcessor() {
+        return automaticSubstitutions;
     }
 }

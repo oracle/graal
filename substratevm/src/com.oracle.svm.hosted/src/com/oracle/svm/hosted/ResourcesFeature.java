@@ -32,9 +32,12 @@ import java.io.InputStream;
 import java.net.URISyntaxException;
 import java.net.URL;
 import java.net.URLClassLoader;
+import java.util.Arrays;
+import java.util.Collections;
 import java.util.Enumeration;
 import java.util.HashSet;
 import java.util.Set;
+import java.util.concurrent.ConcurrentHashMap;
 import java.util.jar.JarEntry;
 import java.util.jar.JarFile;
 import java.util.regex.Pattern;
@@ -42,12 +45,19 @@ import java.util.regex.Pattern;
 import org.graalvm.compiler.debug.DebugContext;
 import org.graalvm.compiler.options.Option;
 import org.graalvm.compiler.options.OptionType;
-import org.graalvm.nativeimage.Feature;
+import org.graalvm.nativeimage.hosted.Feature;
+import org.graalvm.nativeimage.ImageSingletons;
 
 import com.oracle.svm.core.annotate.AutomaticFeature;
+import com.oracle.svm.core.jdk.LocalizationSupport;
 import com.oracle.svm.core.jdk.Resources;
 import com.oracle.svm.core.option.HostedOptionKey;
 import com.oracle.svm.core.util.UserError;
+import com.oracle.svm.hosted.FeatureImpl.BeforeAnalysisAccessImpl;
+import com.oracle.svm.hosted.FeatureImpl.DuringAnalysisAccessImpl;
+import com.oracle.svm.hosted.config.ConfigurationDirectories;
+import com.oracle.svm.hosted.config.ConfigurationParser;
+import com.oracle.svm.hosted.config.ResourceConfigurationParser;
 
 @AutomaticFeature
 public final class ResourcesFeature implements Feature {
@@ -55,11 +65,58 @@ public final class ResourcesFeature implements Feature {
     public static class Options {
         @Option(help = "Regexp to match names of resources to be included in the image.", type = OptionType.User)//
         public static final HostedOptionKey<String[]> IncludeResources = new HostedOptionKey<>(new String[0]);
+
+        @Option(help = "Files describing Java resources to be included in the image.", type = OptionType.User)//
+        public static final HostedOptionKey<String[]> ResourceConfigurationFiles = new HostedOptionKey<>(new String[0]);
+
+        @Option(help = "Resources describing Java resources to be included in the image.", type = OptionType.User)//
+        public static final HostedOptionKey<String[]> ResourceConfigurationResources = new HostedOptionKey<>(new String[0]);
+    }
+
+    private boolean sealed = false;
+    private Set<String> newResources = Collections.newSetFromMap(new ConcurrentHashMap<>());
+
+    public interface ResourcesRegistry {
+        void addResources(String pattern);
+
+        void addResourceBundles(String name);
+    }
+
+    private class ResourcesRegistryImpl implements ResourcesRegistry {
+        @Override
+        public void addResources(String pattern) {
+            UserError.guarantee(!sealed, "Resources added too late");
+            newResources.add(pattern);
+        }
+
+        @Override
+        public void addResourceBundles(String name) {
+            ImageSingletons.lookup(LocalizationSupport.class).addBundleToCache(name);
+        }
+    }
+
+    @Override
+    public void afterRegistration(AfterRegistrationAccess access) {
+        ImageSingletons.add(ResourcesRegistry.class, new ResourcesRegistryImpl());
     }
 
     @Override
     public void beforeAnalysis(BeforeAnalysisAccess access) {
-        for (String regExp : Options.IncludeResources.getValue()) {
+        ImageClassLoader imageClassLoader = ((BeforeAnalysisAccessImpl) access).getImageClassLoader();
+        ResourceConfigurationParser parser = new ResourceConfigurationParser(ImageSingletons.lookup(ResourcesRegistry.class));
+        ConfigurationParser.parseAndRegisterConfigurations(parser, imageClassLoader, "resource",
+                        Options.ResourceConfigurationFiles, Options.ResourceConfigurationResources, ConfigurationDirectories.FileNames.RESOURCES_NAME);
+
+        newResources.addAll(Arrays.asList(Options.IncludeResources.getValue()));
+    }
+
+    @Override
+    public void duringAnalysis(DuringAnalysisAccess access) {
+        if (newResources.isEmpty()) {
+            return;
+        }
+        access.requireAnalysisIteration();
+        for (String regExp : newResources) {
             if (regExp.length() == 0) {
                 continue;
             }
@@ -92,7 +149,7 @@ public final class ResourcesFeature implements Feature {
             // Checkstyle: resume
             for (File element : todo) {
                 try {
-                    DebugContext debugContext = ((FeatureImpl.BeforeAnalysisAccessImpl) access).getDebugContext();
+                    DebugContext debugContext = ((DuringAnalysisAccessImpl) access).getDebugContext();
                     if (element.isDirectory()) {
                         scanDirectory(debugContext, element, "", pattern);
                     } else {
@@ -103,19 +160,40 @@ public final class ResourcesFeature implements Feature {
                 }
             }
         }
+        newResources.clear();
+    }
+
+    @Override
+    public void afterAnalysis(AfterAnalysisAccess access) {
+        sealed = true;
+    }
+
+    @Override
+    public void beforeCompilation(BeforeCompilationAccess access) {
+        FallbackFeature.FallbackImageRequest resourceFallback = ImageSingletons.lookup(FallbackFeature.class).resourceFallback;
+        if (resourceFallback != null && Options.IncludeResources.getValue().length == 0 &&
+                        Options.ResourceConfigurationFiles.getValue().length == 0 &&
+                        Options.ResourceConfigurationResources.getValue().length == 0) {
+            throw resourceFallback;
+        }
     }
 
     @SuppressWarnings("try")
     private void scanDirectory(DebugContext debugContext, File f, String relativePath, Pattern... patterns) throws IOException {
         if (f.isDirectory()) {
-            for (File ch : f.listFiles()) {
-                scanDirectory(debugContext, ch, relativePath.isEmpty() ? ch.getName() : relativePath + "/" + ch.getName(), patterns);
+            File[] files = f.listFiles();
+            if (files == null) {
+                throw UserError.abort("Cannot scan directory " + f);
+            } else {
+                for (File ch : files) {
+                    scanDirectory(debugContext, ch, relativePath.isEmpty() ? ch.getName() : relativePath + "/" + ch.getName(), patterns);
+                }
             }
         } else {
             if (matches(patterns, relativePath)) {
                 try (FileInputStream is = new FileInputStream(f)) {
                     try (DebugContext.Scope s = debugContext.scope("registerResource")) {
-                        debugContext.log("ResourcesFeature: registerResource: " + relativePath.substring(1));
+                        debugContext.log("ResourcesFeature: registerResource: " + relativePath);
                     }
                     Resources.registerResource(relativePath, is);
                 }

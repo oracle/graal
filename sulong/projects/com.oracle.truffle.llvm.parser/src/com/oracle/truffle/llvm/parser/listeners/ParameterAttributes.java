@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2017, 2018, Oracle and/or its affiliates.
+ * Copyright (c) 2017, 2019, Oracle and/or its affiliates.
  *
  * All rights reserved.
  *
@@ -35,6 +35,7 @@ import java.util.List;
 import com.oracle.truffle.llvm.parser.model.attributes.Attribute;
 import com.oracle.truffle.llvm.parser.model.attributes.AttributesCodeEntry;
 import com.oracle.truffle.llvm.parser.model.attributes.AttributesGroup;
+import com.oracle.truffle.llvm.runtime.except.LLVMParserException;
 
 public class ParameterAttributes implements ParserListener {
 
@@ -190,7 +191,7 @@ public class ParameterAttributes implements ParserListener {
         }
 
         if (attrGroup.size() != args.length) {
-            throw new AssertionError("there is a mismatch between defined and found group id's");
+            throw new LLVMParserException("Mismatching number of defined and found attributes in AttributesGroup");
         }
 
         parameterCodeEntry.add(new AttributesCodeEntry(attrGroup));
@@ -237,7 +238,7 @@ public class ParameterAttributes implements ParserListener {
                 }
 
                 default:
-                    throw new RuntimeException("unexpected type: " + type);
+                    throw new LLVMParserException("Unexpected code of attribute group: " + type);
             }
         }
     }

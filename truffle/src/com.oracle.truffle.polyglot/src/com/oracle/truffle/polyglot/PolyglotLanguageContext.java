@@ -43,15 +43,21 @@ package com.oracle.truffle.polyglot;
 import static com.oracle.truffle.polyglot.VMAccessor.LANGUAGE;
 
 import java.io.PrintStream;
+import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.Collection;
 import java.util.Collections;
 import java.util.HashSet;
+import java.util.LinkedHashMap;
+import java.util.List;
 import java.util.Map;
+import java.util.Map.Entry;
 import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.function.Function;
 import java.util.logging.Level;
 
+import org.graalvm.polyglot.PolyglotAccess;
 import org.graalvm.polyglot.Value;
 import org.graalvm.polyglot.impl.AbstractPolyglotImpl.APIAccess;
 import org.graalvm.polyglot.proxy.Proxy;
@@ -63,10 +69,15 @@ import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.Scope;
 import com.oracle.truffle.api.TruffleLanguage.Env;
 import com.oracle.truffle.api.TruffleLogger;
-import com.oracle.truffle.api.TruffleOptions;
+import com.oracle.truffle.api.dsl.Cached;
+import com.oracle.truffle.api.dsl.GenerateUncached;
+import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.interop.TruffleObject;
 import com.oracle.truffle.api.nodes.ExplodeLoop;
+import com.oracle.truffle.api.nodes.LanguageInfo;
+import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.api.source.Source;
+import com.oracle.truffle.polyglot.PolyglotLanguageContextFactory.ToGuestValueNodeGen;
 
 final class PolyglotLanguageContext implements PolyglotImpl.VMObject {
 
@@ -83,14 +94,80 @@ final class PolyglotLanguageContext implements PolyglotImpl.VMObject {
         final Map<Class<?>, PolyglotValue> valueCache;
         final Thread.UncaughtExceptionHandler uncaughtExceptionHandler;
         final PolyglotLanguageInstance languageInstance;
+        final Map<String, LanguageInfo> accessibleLanguages;
 
-        Lazy(PolyglotLanguageInstance languageInstance) {
+        Lazy(PolyglotLanguageInstance languageInstance, PolyglotContextConfig config) {
             this.languageInstance = languageInstance;
             this.sourceCache = languageInstance.getSourceCache();
             this.activePolyglotThreads = new HashSet<>();
             this.polyglotGuestBindings = new PolyglotBindings(PolyglotLanguageContext.this, context.polyglotBindings);
             this.uncaughtExceptionHandler = new PolyglotUncaughtExceptionHandler();
             this.valueCache = new ConcurrentHashMap<>();
+            this.accessibleLanguages = computeAccessibleLanguages(config);
+        }
+
+        private Map<String, LanguageInfo> computeAccessibleLanguages(PolyglotContextConfig config) {
+            PolyglotLanguage thisLanguage = languageInstance.language;
+            if (thisLanguage.isHost()) {
+                return languageInstance.getEngine().idToInternalLanguageInfo;
+            }
+            boolean embedderAllAccess = config.allowedPublicLanguages.size() == 0;
+            boolean polyglotAllAccess = config.polyglotAccess == PolyglotAccess.ALL;
+            PolyglotEngineImpl engine = languageInstance.getEngine();
+            Set<String> resolveLanguages;
+            if (embedderAllAccess) {
+                if (polyglotAllAccess) {
+                    return languageInstance.getEngine().idToInternalLanguageInfo;
+                } else {
+                    resolveLanguages = Collections.singleton(thisLanguage.getId());
+                }
+            } else {
+                if (polyglotAllAccess) {
+                    resolveLanguages = config.allowedPublicLanguages;
+                } else {
+                    resolveLanguages = Collections.singleton(thisLanguage.getId());
+                }
+            }
+            Map<String, LanguageInfo> resolvedLanguages = new LinkedHashMap<>();
+            for (String id : resolveLanguages) {
+                PolyglotLanguage resolvedLanguage = engine.idToLanguage.get(id);
+                if (resolvedLanguage != null) { // resolved languages might not be on the
+                                                // class-path.
+                    resolvedLanguages.put(id, resolvedLanguage.info);
+                }
+            }
+            addDependentLanguages(engine, resolvedLanguages, thisLanguage);
+
+            // all internal languages are accessible by default
+            for (Entry<String, PolyglotLanguage> entry : languageInstance.getEngine().idToLanguage.entrySet()) {
+                if (entry.getValue().cache.isInternal()) {
+                    resolvedLanguages.put(entry.getKey(), entry.getValue().info);
+                }
+            }
+            assert assertPermissionsConsistent(resolvedLanguages, languageInstance.language, config);
+            return resolvedLanguages;
+        }
+
+        private boolean assertPermissionsConsistent(Map<String, LanguageInfo> resolvedLanguages, PolyglotLanguage thisLanguage, PolyglotContextConfig config) {
+            for (Entry<String, PolyglotLanguage> entry : languageInstance.getEngine().idToLanguage.entrySet()) {
+                boolean permitted = config.isAccessPermitted(thisLanguage, entry.getValue());
+                assert permitted == resolvedLanguages.containsKey(entry.getKey()) : "inconsistent access permissions";
+            }
+            return true;
+        }
+
+        private void addDependentLanguages(PolyglotEngineImpl engine, Map<String, LanguageInfo> resolvedLanguages, PolyglotLanguage currentLanguage) {
+            for (String dependentLanguage : currentLanguage.cache.getDependentLanguages()) {
+                PolyglotLanguage dependent = engine.idToLanguage.get(dependentLanguage);
+                if (dependent == null) { // dependent languages might not exist.
+                    continue;
+                }
+                if (resolvedLanguages.containsKey(dependentLanguage)) {
+                    continue; // cycle or duplicate detection
+                }
+                resolvedLanguages.put(dependentLanguage, dependent.info);
+                addDependentLanguages(engine, resolvedLanguages, dependent);
+            }
         }
     }
 
@@ -103,8 +180,8 @@ final class PolyglotLanguageContext implements PolyglotImpl.VMObject {
     volatile boolean finalized;
     @CompilationFinal private volatile Value hostBindings;
     @CompilationFinal private volatile Lazy lazy;
-
     @CompilationFinal volatile Env env; // effectively final
+    @CompilationFinal private volatile List<Object> languageServices = Collections.emptyList();
 
     PolyglotLanguageContext(PolyglotContextImpl context, PolyglotLanguage language) {
         this.context = context;
@@ -120,6 +197,10 @@ final class PolyglotLanguageContext implements PolyglotImpl.VMObject {
     Map<Class<?>, PolyglotValue> getValueCache() {
         assert env != null;
         return lazy.valueCache;
+    }
+
+    Map<String, LanguageInfo> getAccessibleLanguages() {
+        return lazy.accessibleLanguages;
     }
 
     PolyglotLanguageInstance getLanguageInstance() {
@@ -146,6 +227,7 @@ final class PolyglotLanguageContext implements PolyglotImpl.VMObject {
         if (env != null) {
             return LANGUAGE.getContext(env);
         } else {
+            CompilerDirectives.transferToInterpreter();
             return null;
         }
     }
@@ -158,7 +240,7 @@ final class PolyglotLanguageContext implements PolyglotImpl.VMObject {
                     Object prev = context.enterIfNeeded();
                     try {
                         Iterable<Scope> scopes = LANGUAGE.findTopScopes(env);
-                        this.hostBindings = this.asValue(new PolyglotLanguageBindings(scopes));
+                        this.hostBindings = this.asValue(PolyglotLanguageBindings.create(scopes));
                     } catch (Throwable t) {
                         throw PolyglotImpl.wrapGuestException(this, t);
                     } finally {
@@ -224,7 +306,6 @@ final class PolyglotLanguageContext implements PolyglotImpl.VMObject {
                 LANGUAGE.disposeThread(localEnv, threadInfo.thread);
             }
             LANGUAGE.dispose(localEnv);
-            language.freeInstance(lazy.languageInstance);
             return true;
         }
         return false;
@@ -234,6 +315,7 @@ final class PolyglotLanguageContext implements PolyglotImpl.VMObject {
         if (eventsEnabled) {
             VMAccessor.INSTRUMENT.notifyLanguageContextDisposed(context.engine, context.truffleContext, language.info);
         }
+        language.freeInstance(lazy.languageInstance);
     }
 
     Object enterThread(PolyglotThread thread) {
@@ -267,7 +349,11 @@ final class PolyglotLanguageContext implements PolyglotImpl.VMObject {
         VMAccessor.INSTRUMENT.notifyThreadFinished(context.engine, context.truffleContext, thread);
     }
 
-    private void ensureCreated(PolyglotLanguage accessingLanguage) {
+    boolean isCreated() {
+        return lazy != null;
+    }
+
+    void ensureCreated(PolyglotLanguage accessingLanguage) {
         if (creating) {
             throw new PolyglotIllegalStateException(String.format("Cyclic access to language context for language %s. " +
                             "The context is currently being created.", language.getId()));
@@ -287,8 +373,9 @@ final class PolyglotLanguageContext implements PolyglotImpl.VMObject {
                                         creatorConfig,
                                         envConfig.getOptionValues(language),
                                         envConfig.getApplicationArguments(language),
-                                        envConfig.fileSystem);
-                        Lazy localLazy = new Lazy(lang);
+                                        envConfig.fileSystem,
+                                        context.engine.getFileTypeDetectorsSupplier());
+                        Lazy localLazy = new Lazy(lang, envConfig);
                         PolyglotValue.createDefaultValues(getImpl(), PolyglotLanguageContext.this, localLazy.valueCache);
                         checkThreadAccess(localEnv);
 
@@ -299,7 +386,16 @@ final class PolyglotLanguageContext implements PolyglotImpl.VMObject {
                         assert VMAccessor.LANGUAGE.getLanguage(env) != null;
 
                         try {
-                            LANGUAGE.createEnvContext(localEnv);
+                            List<Object> languageServicesCollector = new ArrayList<>();
+                            Object contextImpl = LANGUAGE.createEnvContext(localEnv, languageServicesCollector);
+                            language.initializeContextClass(contextImpl);
+                            context.contextImpls[lang.language.index] = contextImpl;
+
+                            String errorMessage = verifyServices(language.info, languageServicesCollector, language.cache.getServices());
+                            if (errorMessage != null) {
+                                throw new IllegalStateException(errorMessage);
+                            }
+                            this.languageServices = languageServicesCollector;
                             lang.language.profile.notifyContextCreate(this, localEnv);
                             if (eventsEnabled) {
                                 VMAccessor.INSTRUMENT.notifyLanguageContextCreated(context.engine, context.truffleContext, language.info);
@@ -324,6 +420,40 @@ final class PolyglotLanguageContext implements PolyglotImpl.VMObject {
         }
     }
 
+    private static String verifyServices(LanguageInfo info, List<Object> registeredServices, Collection<String> expectedServices) {
+        for (String expectedService : expectedServices) {
+            boolean found = false;
+            for (Object registeredService : registeredServices) {
+                if (isSubType(registeredService.getClass(), expectedService)) {
+                    found = true;
+                    break;
+                }
+            }
+            if (!found) {
+                return String.format("Language %s declares service %s but doesn't register it", info.getName(), expectedService);
+            }
+        }
+        return null;
+    }
+
+    private static boolean isSubType(Class<?> clazz, String serviceClass) {
+        if (clazz == null) {
+            return false;
+        }
+        if (serviceClass.equals(clazz.getName()) || serviceClass.equals(clazz.getCanonicalName())) {
+            return true;
+        }
+        if (isSubType(clazz.getSuperclass(), serviceClass)) {
+            return true;
+        }
+        for (Class<?> implementedInterface : clazz.getInterfaces()) {
+            if (isSubType(implementedInterface, serviceClass)) {
+                return true;
+            }
+        }
+        return false;
+    }
+
     boolean ensureInitialized(PolyglotLanguage accessingLanguage) {
         ensureCreated(accessingLanguage);
         boolean wasInitialized = false;
@@ -335,7 +465,6 @@ final class PolyglotLanguageContext implements PolyglotImpl.VMObject {
                         if (!context.inContextPreInitialization) {
                             LANGUAGE.initializeThread(env, Thread.currentThread());
                         }
-
                         LANGUAGE.postInitEnv(env);
 
                         if (!context.isSingleThreaded()) {
@@ -367,13 +496,10 @@ final class PolyglotLanguageContext implements PolyglotImpl.VMObject {
 
     void checkAccess(PolyglotLanguage accessingLanguage) {
         context.engine.checkState();
-        if (context.closed) {
+        if (context.closed || context.disposing) {
             throw new PolyglotIllegalStateException("The Context is already closed.");
         }
-        boolean accessPermitted = language.isHost() || language.cache.isInternal() || context.config.allowedPublicLanguages.contains(language.info.getId()) ||
-                        (accessingLanguage != null && accessingLanguage.dependsOn(language));
-
-        if (!accessPermitted) {
+        if (!context.config.isAccessPermitted(accessingLanguage, language)) {
             throw new PolyglotIllegalArgumentException(String.format("Access to language '%s' is not permitted. ", language.getId()));
         }
         RuntimeException initError = language.initError;
@@ -397,7 +523,7 @@ final class PolyglotLanguageContext implements PolyglotImpl.VMObject {
             try {
                 final Env newEnv = LANGUAGE.patchEnvContext(env, newConfig.out, newConfig.err, newConfig.in,
                                 Collections.emptyMap(), newConfig.getOptionValues(language), newConfig.getApplicationArguments(language),
-                                newConfig.fileSystem);
+                                newConfig.fileSystem, context.engine.getFileTypeDetectorsSupplier());
                 if (newEnv != null) {
                     env = newEnv;
                     LOG.log(Level.FINE, "Successfully patched context of language: {0}", this.language.getId());
@@ -417,9 +543,18 @@ final class PolyglotLanguageContext implements PolyglotImpl.VMObject {
         }
     }
 
-    static final class ToGuestValuesNode {
+    <S> S lookupService(Class<S> type) {
+        for (Object languageService : languageServices) {
+            if (type.isInstance(languageService)) {
+                return type.cast(languageService);
+            }
+        }
+        return null;
+    }
 
-        @CompilationFinal(dimensions = 1) private volatile ToGuestValueNode[] toGuestValue;
+    static final class ToGuestValuesNode extends Node {
+
+        @Children private volatile ToGuestValueNode[] toGuestValue;
         @CompilationFinal private volatile boolean needsCopy = false;
         @CompilationFinal private volatile boolean generic = false;
 
@@ -432,9 +567,9 @@ final class PolyglotLanguageContext implements PolyglotImpl.VMObject {
                 CompilerDirectives.transferToInterpreterAndInvalidate();
                 nodes = new ToGuestValueNode[args.length];
                 for (int i = 0; i < nodes.length; i++) {
-                    nodes[i] = createToGuestValue();
+                    nodes[i] = ToGuestValueNodeGen.create();
                 }
-                toGuestValue = nodes;
+                toGuestValue = insert(nodes);
             }
             if (args.length == nodes.length) {
                 // fast path
@@ -449,9 +584,9 @@ final class PolyglotLanguageContext implements PolyglotImpl.VMObject {
                     CompilerDirectives.transferToInterpreterAndInvalidate();
                     nodes = Arrays.copyOf(nodes, 1);
                     if (nodes[0] == null) {
-                        nodes[0] = createToGuestValue();
+                        nodes[0] = ToGuestValueNodeGen.create();
                     }
-                    this.toGuestValue = nodes;
+                    this.toGuestValue = insert(nodes);
                     this.generic = true;
                 }
                 if (args.length == 0) {
@@ -469,7 +604,7 @@ final class PolyglotLanguageContext implements PolyglotImpl.VMObject {
             Object[] newArgs = needsCopy ? new Object[nodes.length] : args;
             for (int i = 0; i < nodes.length; i++) {
                 Object arg = args[i];
-                Object newArg = nodes[i].apply(languageContext, arg);
+                Object newArg = nodes[i].execute(languageContext, arg);
                 if (needsCopy) {
                     newArgs[i] = newArg;
                 } else if (arg != newArg) {
@@ -492,7 +627,7 @@ final class PolyglotLanguageContext implements PolyglotImpl.VMObject {
             Object[] newArgs = needsCopy ? new Object[args.length] : args;
             for (int i = 0; i < args.length; i++) {
                 Object arg = args[i];
-                Object newArg = node.apply(languageContext, arg);
+                Object newArg = node.execute(languageContext, arg);
                 if (needsCopy) {
                     newArgs[i] = newArg;
                 } else if (arg != newArg) {
@@ -518,49 +653,26 @@ final class PolyglotLanguageContext implements PolyglotImpl.VMObject {
         }
     }
 
-    static final class ToGuestValueNode {
+    @GenerateUncached
+    abstract static class ToGuestValueNode extends Node {
 
-        @CompilationFinal private volatile Class<?> cachedClass;
+        abstract Object execute(PolyglotLanguageContext context, Object receiver);
 
-        private ToGuestValueNode() {
-
+        @Specialization(guards = "receiver == null")
+        static Object doNull(PolyglotLanguageContext context, @SuppressWarnings("unused") Object receiver) {
+            return context.toGuestValue(receiver);
         }
 
-        public Object apply(PolyglotLanguageContext languageContext, Object receiver) {
-            Class<?> cachedClassLocal = this.cachedClass;
-            if (cachedClassLocal == null) {
-                CompilerDirectives.transferToInterpreterAndInvalidate();
-                if (receiver == null) {
-                    // directly go to slow path for null
-                    cachedClass = cachedClassLocal = Generic.class;
-                } else {
-                    cachedClass = cachedClassLocal = receiver.getClass();
-                }
-            }
-            if (cachedClassLocal != Generic.class) {
-                assert cachedClassLocal != null;
-                if (receiver != null && cachedClassLocal == receiver.getClass()) {
-                    return languageContext.toGuestValue(cachedClassLocal.cast(receiver));
-                } else {
-                    CompilerDirectives.transferToInterpreterAndInvalidate();
-                    cachedClass = cachedClassLocal = Generic.class; // switch to generic
-                }
-            }
-            return slowPath(languageContext, receiver);
+        @Specialization(guards = {"receiver != null", "receiver.getClass() == cachedReceiver"}, limit = "3")
+        static Object doCached(PolyglotLanguageContext context, Object receiver, @Cached("receiver.getClass()") Class<?> cachedReceiver) {
+            return context.toGuestValue(cachedReceiver.cast(receiver));
         }
 
+        @Specialization(replaces = "doCached")
         @TruffleBoundary
-        private static Object slowPath(PolyglotLanguageContext languageContext, Object receiver) {
-            return languageContext.toGuestValue(receiver);
+        static Object doUncached(PolyglotLanguageContext context, Object receiver) {
+            return context.toGuestValue(receiver);
         }
-
-        public static ToGuestValueNode create() {
-            return new ToGuestValueNode();
-        }
-    }
-
-    static ToGuestValueNode createToGuestValue() {
-        return new ToGuestValueNode();
     }
 
     @TruffleBoundary
@@ -634,7 +746,7 @@ final class PolyglotLanguageContext implements PolyglotImpl.VMObject {
             return languageContext.asValue(value);
         }
 
-        static ToHostValueNode create(PolyglotImpl polyglot) {
+        public static ToHostValueNode create(PolyglotImpl polyglot) {
             return new ToHostValueNode(polyglot);
         }
     }
@@ -668,8 +780,6 @@ final class PolyglotLanguageContext implements PolyglotImpl.VMObject {
             return HostObject.forObject(hostValue, this);
         } else if (HostWrapper.isInstance(hostValue)) {
             return migrateHostWrapper(HostWrapper.asInstance(hostValue));
-        } else if (TruffleOptions.AOT) {
-            return HostObject.forObject(hostValue, this);
         } else {
             return HostInteropReflect.asTruffleViaReflection(hostValue, this);
         }

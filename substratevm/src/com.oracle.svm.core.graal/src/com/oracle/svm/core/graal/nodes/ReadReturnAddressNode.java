@@ -34,7 +34,6 @@ import org.graalvm.compiler.nodes.spi.NodeLIRBuilderTool;
 
 import com.oracle.svm.core.FrameAccess;
 
-import jdk.vm.ci.code.StackSlot;
 import jdk.vm.ci.meta.Value;
 
 @NodeInfo(cycles = NodeCycles.CYCLES_1, size = NodeSize.SIZE_1)
@@ -48,7 +47,7 @@ public final class ReadReturnAddressNode extends FixedWithNextNode implements LI
     @Override
     public void generate(NodeLIRBuilderTool gen) {
         assert FrameAccess.returnAddressSize() > 0;
-        Value result = gen.getLIRGeneratorTool().emitMove(StackSlot.get(gen.getLIRGeneratorTool().getLIRKind(FrameAccess.getWordStamp()), -FrameAccess.returnAddressSize(), true));
+        Value result = gen.getLIRGeneratorTool().emitReadReturnAddress(FrameAccess.getWordStamp(), FrameAccess.returnAddressSize());
         gen.setResult(this, result);
     }
 }

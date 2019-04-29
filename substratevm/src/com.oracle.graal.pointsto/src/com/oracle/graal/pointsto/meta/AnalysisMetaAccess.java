@@ -35,7 +35,6 @@ import com.oracle.graal.pointsto.infrastructure.UniverseMetaAccess;
 import jdk.vm.ci.meta.JavaConstant;
 import jdk.vm.ci.meta.JavaKind;
 import jdk.vm.ci.meta.MetaAccessProvider;
-import jdk.vm.ci.meta.ResolvedJavaType;
 
 public class AnalysisMetaAccess extends UniverseMetaAccess {
 
@@ -48,8 +47,8 @@ public class AnalysisMetaAccess extends UniverseMetaAccess {
         return (AnalysisType) super.lookupJavaType(clazz);
     }
 
-    public Optional<? extends ResolvedJavaType> optionalLookupJavaType(Class<?> clazz) {
-        ResolvedJavaType result = getTypeCacheEntry(clazz);
+    public Optional<AnalysisType> optionalLookupJavaType(Class<?> clazz) {
+        AnalysisType result = (AnalysisType) getTypeCacheEntry(clazz);
         if (result != null) {
             return Optional.of(result);
         }

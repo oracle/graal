@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2015, 2016, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2015, 2018, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -26,6 +26,7 @@ package org.graalvm.compiler.hotspot;
 
 import org.graalvm.compiler.serviceprovider.ServiceProvider;
 
+import jdk.vm.ci.common.NativeImageReinitialize;
 import jdk.vm.ci.hotspot.HotSpotVMEventListener;
 import jdk.vm.ci.runtime.JVMCICompilerFactory;
 import jdk.vm.ci.services.JVMCIServiceLocator;
@@ -51,7 +52,7 @@ public final class HotSpotGraalJVMCIServiceLocator extends JVMCIServiceLocator {
             return null;
         }
 
-        private HotSpotGraalRuntime graalRuntime;
+        @NativeImageReinitialize private HotSpotGraalRuntime graalRuntime;
 
         /**
          * Notifies this object of the compiler created via {@link HotSpotGraalJVMCIServiceLocator}.

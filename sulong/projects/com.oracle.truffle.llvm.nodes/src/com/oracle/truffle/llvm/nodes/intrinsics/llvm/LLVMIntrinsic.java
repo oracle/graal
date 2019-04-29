@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2016, 2018, Oracle and/or its affiliates.
+ * Copyright (c) 2016, 2019, Oracle and/or its affiliates.
  *
  * All rights reserved.
  *
@@ -29,25 +29,13 @@
  */
 package com.oracle.truffle.llvm.nodes.intrinsics.llvm;
 
-import com.oracle.truffle.api.interop.Message;
-import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.llvm.nodes.intrinsics.interop.LLVMReadStringNode;
 import com.oracle.truffle.llvm.nodes.intrinsics.interop.LLVMReadStringNodeGen;
-import com.oracle.truffle.llvm.runtime.interop.convert.ForeignToLLVM;
-import com.oracle.truffle.llvm.runtime.interop.convert.ForeignToLLVM.ForeignToLLVMType;
 import com.oracle.truffle.llvm.runtime.nodes.api.LLVMExpressionNode;
 
 public abstract class LLVMIntrinsic extends LLVMExpressionNode {
 
     public LLVMReadStringNode createReadString() {
         return LLVMReadStringNodeGen.create();
-    }
-
-    protected ForeignToLLVM createToByteNode() {
-        return getNodeFactory().createForeignToLLVM(ForeignToLLVMType.I8);
-    }
-
-    protected Node createForeignReadNode() {
-        return Message.READ.createNode();
     }
 }

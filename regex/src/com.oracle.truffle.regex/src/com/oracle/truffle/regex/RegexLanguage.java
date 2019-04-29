@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2017, 2017, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2017, 2019, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -25,8 +25,7 @@
 package com.oracle.truffle.regex;
 
 import com.oracle.truffle.api.CallTarget;
-import com.oracle.truffle.api.CompilerAsserts;
-import com.oracle.truffle.api.CompilerDirectives.CompilationFinal;
+import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.Scope;
 import com.oracle.truffle.api.Truffle;
 import com.oracle.truffle.api.TruffleLanguage;
@@ -34,16 +33,14 @@ import com.oracle.truffle.api.instrumentation.ProvidedTags;
 import com.oracle.truffle.api.instrumentation.StandardTags;
 import com.oracle.truffle.api.nodes.RootNode;
 import com.oracle.truffle.regex.tregex.parser.RegexParser;
-import org.graalvm.options.OptionDescriptors;
 
 import java.util.Collections;
 
 /**
  * Truffle Regular Expression Language
  * <p>
- * This language represents classic regular expressions, currently in JavaScript flavor only. By
- * evaluating any source, or by importing the T_REGEX_ENGINE_BUILDER, you get access to the
- * {@link RegexEngineBuilder}. By calling this builder, you can build your custom
+ * This language represents classic regular expressions. By evaluating any source, you get access to
+ * the {@link RegexEngineBuilder}. By calling this builder, you can build your custom
  * {@link RegexEngine} which implements your flavor of regular expressions and uses your fallback
  * compiler for expressions not covered. The {@link RegexEngine} accepts regular expression patterns
  * and flags and compiles them to {@link RegexObject}s, which you can use to match the regular
@@ -51,31 +48,32 @@ import java.util.Collections;
  * <p>
  *
  * <pre>
- * Usage example in JavaScript:
+ * Usage example in pseudocode:
  * {@code
- * var engineBuilder = Polyglot.eval("application/tregex", "");
- * // or var engineBuilder = Polyglot.import("T_REGEX_ENGINE_BUILDER"); after initializing the language
- * var engine = engineBuilder();
- * var pattern = engine("(a|(b))c", "i");
- * var result = pattern.exec("xacy", 0);
- * print(result.isMatch);    // true
- * print(result.input);      // "xacy"
- * print(result.groupCount); // 3
- * print(result.start[0] + ", " + result.end[0]); // "1, 3"
- * print(result.start[1] + ", " + result.end[1]); // "1, 2"
- * print(result.start[2] + ", " + result.end[2]); // "-1, -1"
- * var result2 = pattern.exec("xxx", 0);
- * print(result.isMatch);    // false
- * print(result.input);      // null
- * print(result.groupCount); // 0
- * print(result.start[0] + ", " + result.end[0]); // throws IndexOutOfBoundsException
+ * engineBuilder = <eval any source in the "regex" language>
+ * engine = engineBuilder("Flavor=ECMAScript", optionalFallbackCompiler)
+ *
+ * regex = engine("(a|(b))c", "i")
+ * assert(regex.pattern == "(a|(b))c")
+ * assert(regex.flags.ignoreCase == true)
+ * assert(regex.groupCount == 3)
+ *
+ * result = regex.exec("xacy", 0)
+ * assert(result.isMatch == true)
+ * assertEquals([result.getStart(0), result.getEnd(0)], [ 1,  3])
+ * assertEquals([result.getStart(1), result.getEnd(1)], [ 1,  2])
+ * assertEquals([result.getStart(2), result.getEnd(2)], [-1, -1])
+ *
+ * result2 = regex.exec("xxx", 0)
+ * assert(result2.isMatch == false)
+ * // result2.getStart(...) and result2.getEnd(...) are undefined
  * }
  * </pre>
  */
 
-@TruffleLanguage.Registration(name = RegexLanguage.NAME, id = RegexLanguage.ID, characterMimeTypes = RegexLanguage.MIME_TYPE, version = "0.1", contextPolicy = TruffleLanguage.ContextPolicy.EXCLUSIVE)
+@TruffleLanguage.Registration(name = RegexLanguage.NAME, id = RegexLanguage.ID, characterMimeTypes = RegexLanguage.MIME_TYPE, version = "0.1", contextPolicy = TruffleLanguage.ContextPolicy.SHARED, internal = true, interactive = false)
 @ProvidedTags(StandardTags.RootTag.class)
-public final class RegexLanguage extends TruffleLanguage<Void> {
+public final class RegexLanguage extends TruffleLanguage<RegexLanguage.RegexContext> {
 
     public static final String NAME = "REGEX";
     public static final String ID = "regex";
@@ -85,10 +83,12 @@ public final class RegexLanguage extends TruffleLanguage<Void> {
 
     private final CallTarget getEngineBuilderCT = Truffle.getRuntime().createCallTarget(RootNode.createConstantNode(engineBuilder));
 
-    @CompilationFinal private RegexLanguageOptions languageOptions = RegexLanguageOptions.DEFAULT;
-
     public static void validateRegex(String pattern, String flags) throws RegexSyntaxException {
         RegexParser.validate(new RegexSource(pattern, flags));
+    }
+
+    public static void validateRegex(RegexSource source) throws RegexSyntaxException {
+        RegexParser.validate(source);
     }
 
     @Override
@@ -97,26 +97,18 @@ public final class RegexLanguage extends TruffleLanguage<Void> {
     }
 
     @Override
-    protected Void createContext(Env env) {
-        CompilerAsserts.neverPartOfCompilation();
-        this.languageOptions = new RegexLanguageOptions(env.getOptions());
-        return null;
+    protected RegexContext createContext(Env env) {
+        return new RegexContext(env);
     }
 
     @Override
-    protected boolean patchContext(Void context, Env newEnv) {
-        CompilerAsserts.neverPartOfCompilation();
-        this.languageOptions = new RegexLanguageOptions(newEnv.getOptions());
+    protected boolean patchContext(RegexContext context, Env newEnv) {
+        context.patchContext(newEnv);
         return true;
     }
 
     @Override
-    protected OptionDescriptors getOptionDescriptors() {
-        return RegexLanguageOptions.OPTION_DESCRIPTORS;
-    }
-
-    @Override
-    protected Iterable<Scope> findTopScopes(Void context) {
+    protected Iterable<Scope> findTopScopes(RegexContext context) {
         return Collections.emptySet();
     }
 
@@ -141,8 +133,23 @@ public final class RegexLanguage extends TruffleLanguage<Void> {
         return true;
     }
 
-    public RegexLanguageOptions getLanguageOptions() {
-        return languageOptions;
+    public static RegexContext getCurrentContext() {
+        return getCurrentContext(RegexLanguage.class);
     }
 
+    public static final class RegexContext {
+        @CompilerDirectives.CompilationFinal private Env env;
+
+        RegexContext(Env env) {
+            this.env = env;
+        }
+
+        void patchContext(Env patchedEnv) {
+            this.env = patchedEnv;
+        }
+
+        public Env getEnv() {
+            return env;
+        }
+    }
 }

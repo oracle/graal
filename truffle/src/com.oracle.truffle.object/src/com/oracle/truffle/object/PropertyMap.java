@@ -50,6 +50,7 @@ import com.oracle.truffle.api.object.Property;
  *
  * @since 0.17 or earlier
  */
+@SuppressWarnings("deprecation")
 public abstract class PropertyMap implements ImmutableMap<Object, Property> {
     /**
      * @since 0.17 or earlier

@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2012, 2017, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2012, 2019, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -26,8 +26,10 @@ package com.oracle.svm.core.config;
 
 import org.graalvm.compiler.core.common.NumUtil;
 import org.graalvm.nativeimage.c.constant.CEnum;
+import org.graalvm.util.GuardedAnnotationAccess;
 import org.graalvm.word.WordBase;
 
+import com.oracle.svm.core.SubstrateTargetDescription;
 import com.oracle.svm.core.annotate.Uninterruptible;
 import com.oracle.svm.core.deopt.DeoptimizedFrame;
 
@@ -61,17 +63,15 @@ import jdk.vm.ci.meta.ResolvedJavaType;
  */
 public class ObjectLayout {
 
-    private final TargetDescription target;
+    private final SubstrateTargetDescription target;
 
     private final int referenceSize;
     private final int alignmentMask;
-    private final int deoptScratchSpace;
 
-    public ObjectLayout(TargetDescription target, int deoptScratchSpace) {
+    public ObjectLayout(SubstrateTargetDescription target) {
         this.target = target;
         this.referenceSize = target.arch.getPlatformKind(JavaKind.Object).getSizeInBytes();
         this.alignmentMask = target.wordSize - 1;
-        this.deoptScratchSpace = deoptScratchSpace;
     }
 
     /** The minimum alignment of objects (instances and arrays). */
@@ -94,7 +94,7 @@ public class ObjectLayout {
      * {@link DeoptimizedFrame}.
      */
     public int getDeoptScratchSpace() {
-        return deoptScratchSpace;
+        return target.getDeoptScratchSpace();
     }
 
     /**
@@ -183,7 +183,7 @@ public class ObjectLayout {
         if (metaAccess.lookupJavaType(WordBase.class).isAssignableFrom(type)) {
             return target.wordJavaKind;
         }
-        if (isEntryPoint && type.getAnnotation(CEnum.class) != null) {
+        if (isEntryPoint && GuardedAnnotationAccess.isAnnotationPresent(type, CEnum.class)) {
             return JavaKind.Int;
         }
         return type.getJavaKind();

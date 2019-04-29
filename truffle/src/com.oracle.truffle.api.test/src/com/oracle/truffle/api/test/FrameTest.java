@@ -44,6 +44,7 @@ import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertNull;
 import static org.junit.Assert.assertTrue;
 
+import org.junit.Assume;
 import org.junit.Test;
 
 import com.oracle.truffle.api.CallTarget;
@@ -172,6 +173,7 @@ public class FrameTest {
 
     @Test
     public void framesCanBeMaterialized() {
+        Assume.assumeFalse(CompileImmediatelyCheck.isCompileImmediately());
         final TruffleRuntime runtime = Truffle.getRuntime();
 
         class FrameRootNode extends RootNode {

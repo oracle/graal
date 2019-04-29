@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2011, 2017, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2011, 2018, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -75,14 +75,19 @@ abstract class GraphProtocol<Graph, Node, NodeClass, Edges, Block, ResolvedJavaM
 
     private static final byte[] MAGIC_BYTES = {'B', 'I', 'G', 'V'};
 
+    private static final int MAJOR_VERSION = 6;
+    private static final int MINOR_VERSION = 1;
+
     private final ConstantPool constantPool;
     private final ByteBuffer buffer;
     private final WritableByteChannel channel;
+    private final boolean embedded;
     final int versionMajor;
     final int versionMinor;
+    private boolean printing;
 
-    GraphProtocol(WritableByteChannel channel, int major, int minor) throws IOException {
-        if (major > 6 || (major == 6 && minor > 0)) {
+    GraphProtocol(WritableByteChannel channel, int major, int minor, boolean embedded) throws IOException {
+        if (major > MAJOR_VERSION || (major == MAJOR_VERSION && minor > MINOR_VERSION)) {
             throw new IllegalArgumentException("Unrecognized version " + major + "." + minor);
         }
         this.versionMajor = major;
@@ -90,7 +95,11 @@ abstract class GraphProtocol<Graph, Node, NodeClass, Edges, Block, ResolvedJavaM
         this.constantPool = new ConstantPool();
         this.buffer = ByteBuffer.allocateDirect(256 * 1024);
         this.channel = channel;
-        writeVersion();
+        this.embedded = embedded;
+        if (!embedded) {
+            writeVersion();
+            flushEmbedded();
+        }
     }
 
     GraphProtocol(GraphProtocol<?, ?, ?, ?, ?, ?, ?, ?, ?, ?> parent) {
@@ -99,36 +108,67 @@ abstract class GraphProtocol<Graph, Node, NodeClass, Edges, Block, ResolvedJavaM
         this.constantPool = parent.constantPool;
         this.buffer = parent.buffer;
         this.channel = parent.channel;
+        this.embedded = parent.embedded;
     }
 
     @SuppressWarnings("all")
     public final void print(Graph graph, Map<? extends Object, ? extends Object> properties, int id, String format, Object... args) throws IOException {
-        writeByte(BEGIN_GRAPH);
-        if (versionMajor >= 3) {
-            writeInt(id);
-            writeString(format);
-            writeInt(args.length);
-            for (Object a : args) {
-                writePropertyObject(graph, a);
+        printing = true;
+        try {
+            writeByte(BEGIN_GRAPH);
+            if (versionMajor >= 3) {
+                writeInt(id);
+                writeString(format);
+                writeInt(args.length);
+                for (Object a : args) {
+                    writePropertyObject(graph, a);
+                }
+            } else {
+                writePoolObject(formatTitle(graph, id, format, args));
             }
-        } else {
-            writePoolObject(formatTitle(graph, id, format, args));
+            writeGraph(graph, properties);
+            flushEmbedded();
+            flush();
+        } finally {
+            printing = false;
         }
-        writeGraph(graph, properties);
-        flush();
     }
 
     public final void beginGroup(Graph noGraph, String name, String shortName, ResolvedJavaMethod method, int bci, Map<? extends Object, ? extends Object> properties) throws IOException {
-        writeByte(BEGIN_GROUP);
-        writePoolObject(name);
-        writePoolObject(shortName);
-        writePoolObject(method);
-        writeInt(bci);
-        writeProperties(noGraph, properties);
+        printing = true;
+        try {
+            writeByte(BEGIN_GROUP);
+            writePoolObject(name);
+            writePoolObject(shortName);
+            writePoolObject(method);
+            writeInt(bci);
+            writeProperties(noGraph, properties);
+            flushEmbedded();
+        } finally {
+            printing = false;
+        }
     }
 
     public final void endGroup() throws IOException {
-        writeByte(CLOSE_GROUP);
+        printing = true;
+        try {
+            writeByte(CLOSE_GROUP);
+            flushEmbedded();
+        } finally {
+            printing = false;
+        }
+    }
+
+    final int write(ByteBuffer src) throws IOException {
+        if (printing) {
+            throw new IllegalStateException("Trying to write during graph print.");
+        }
+        constantPool.reset();
+        return writeBytesRaw(src);
+    }
+
+    final boolean isOpen() {
+        return channel.isOpen();
     }
 
     @Override
@@ -280,6 +320,13 @@ abstract class GraphProtocol<Graph, Node, NodeClass, Edges, Block, ResolvedJavaM
         writeByte(versionMinor);
     }
 
+    private void flushEmbedded() throws IOException {
+        if (embedded) {
+            flush();
+            constantPool.reset();
+        }
+    }
+
     private void flush() throws IOException {
         buffer.flip();
         /*
@@ -356,6 +403,23 @@ abstract class GraphProtocol<Graph, Node, NodeClass, Edges, Block, ResolvedJavaM
             buffer.put(b, bytesWritten, toWrite);
             bytesWritten += toWrite;
         }
+    }
+
+    private int writeBytesRaw(ByteBuffer b) throws IOException {
+        int limit = b.limit();
+        int written = 0;
+        while (b.position() < limit) {
+            int toWrite = Math.min(limit - b.position(), buffer.capacity());
+            ensureAvailable(toWrite);
+            b.limit(b.position() + toWrite);
+            try {
+                buffer.put(b);
+                written += toWrite;
+            } finally {
+                b.limit(limit);
+            }
+        }
+        return written;
     }
 
     private void writeInts(int[] b) throws IOException {
@@ -573,7 +637,7 @@ abstract class GraphProtocol<Graph, Node, NodeClass, Edges, Block, ResolvedJavaM
         switch (type) {
             case POOL_FIELD: {
                 ResolvedJavaField field = (ResolvedJavaField) found[0];
-                Objects.nonNull(field);
+                Objects.requireNonNull(field);
                 writePoolObject(findFieldDeclaringClass(field));
                 writePoolObject(findFieldName(field));
                 writePoolObject(findFieldTypeName(field));
@@ -592,7 +656,7 @@ abstract class GraphProtocol<Graph, Node, NodeClass, Edges, Block, ResolvedJavaM
             }
             case POOL_NODE_SOURCE_POSITION: {
                 NodeSourcePosition pos = (NodeSourcePosition) found[0];
-                Objects.nonNull(pos);
+                Objects.requireNonNull(pos);
                 ResolvedJavaMethod method = findNodeSourcePositionMethod(pos);
                 writePoolObject(method);
                 final int bci = findNodeSourcePositionBCI(pos);
@@ -636,7 +700,7 @@ abstract class GraphProtocol<Graph, Node, NodeClass, Edges, Block, ResolvedJavaM
             }
             case POOL_NODE: {
                 Node node = (Node) found[0];
-                Objects.nonNull(node);
+                Objects.requireNonNull(node);
                 writeInt(findNodeId(node));
                 writePoolObject(classForNode(node));
                 break;
@@ -658,7 +722,7 @@ abstract class GraphProtocol<Graph, Node, NodeClass, Edges, Block, ResolvedJavaM
             }
             case POOL_CLASS: {
                 String typeName = (String) found[0];
-                Objects.nonNull(typeName);
+                Objects.requireNonNull(typeName);
                 writeString(typeName);
                 String[] enumValueNames = findEnumTypeValues(object);
                 if (enumValueNames != null) {
@@ -674,7 +738,7 @@ abstract class GraphProtocol<Graph, Node, NodeClass, Edges, Block, ResolvedJavaM
             }
             case POOL_METHOD: {
                 ResolvedJavaMethod method = (ResolvedJavaMethod) found[0];
-                Objects.nonNull(method);
+                Objects.requireNonNull(method);
                 writePoolObject(findMethodDeclaringClass(method));
                 writePoolObject(findMethodName(method));
                 final Signature methodSignature = findMethodSignature(method);
@@ -817,6 +881,12 @@ abstract class GraphProtocol<Graph, Node, NodeClass, Edges, Block, ResolvedJavaM
             Character id = nextAvailableId();
             put(obj, id);
             return id;
+        }
+
+        void reset() {
+            clear();
+            availableIds.clear();
+            nextId = 0;
         }
     }
 

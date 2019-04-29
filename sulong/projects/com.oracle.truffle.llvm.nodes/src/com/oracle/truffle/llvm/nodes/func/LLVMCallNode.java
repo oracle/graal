@@ -41,6 +41,7 @@ import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.llvm.nodes.func.LLVMCallNodeFactory.ArgumentNodeGen;
 import com.oracle.truffle.llvm.runtime.LLVMFunctionDescriptor;
 import com.oracle.truffle.llvm.runtime.debug.scope.LLVMSourceLocation;
+import com.oracle.truffle.llvm.runtime.except.LLVMPolyglotException;
 import com.oracle.truffle.llvm.runtime.nodes.api.LLVMExpressionNode;
 import com.oracle.truffle.llvm.runtime.nodes.api.LLVMNode;
 import com.oracle.truffle.llvm.runtime.pointer.LLVMPointer;
@@ -98,7 +99,12 @@ public final class LLVMCallNode extends LLVMExpressionNode {
             if (function instanceof LLVMFunctionDescriptor) {
                 LLVMFunctionDescriptor descriptor = (LLVMFunctionDescriptor) function;
                 if (descriptor.isIntrinsicFunction()) {
-                    intrinsicDispatch = insert(new IntrinsicDispatch(descriptor, argumentNodes));
+                    try {
+                        intrinsicDispatch = insert(new IntrinsicDispatch(descriptor, argumentNodes));
+                    } catch (LLVMPolyglotException e) {
+                        // re-throw with this node to generate correct stack trace
+                        throw new LLVMPolyglotException(this, e.getMessage(), e);
+                    }
                 }
             }
         }

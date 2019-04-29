@@ -34,6 +34,8 @@ import java.util.jar.Manifest;
 
 import org.graalvm.compiler.options.OptionType;
 
+import com.oracle.svm.hosted.ImageClassLoader;
+
 class DefaultOptionHandler extends NativeImage.OptionHandler<NativeImage> {
 
     static final String helpText = NativeImage.getResource("/Help.txt");
@@ -42,6 +44,8 @@ class DefaultOptionHandler extends NativeImage.OptionHandler<NativeImage> {
     DefaultOptionHandler(NativeImage nativeImage) {
         super(nativeImage);
     }
+
+    boolean useDebugAttach = false;
 
     @Override
     public boolean consume(Queue<String> args) {
@@ -59,7 +63,11 @@ class DefaultOptionHandler extends NativeImage.OptionHandler<NativeImage> {
                 return true;
             case "--version":
                 args.poll();
-                nativeImage.showMessage("GraalVM Version " + NativeImage.graalvmVersion);
+                String message = "GraalVM Version " + NativeImage.graalvmVersion;
+                if (!NativeImage.graalvmConfig.isEmpty()) {
+                    message += " " + NativeImage.graalvmConfig;
+                }
+                nativeImage.showMessage(message);
                 System.exit(0);
                 return true;
             case "--help-extra":
@@ -75,8 +83,10 @@ class DefaultOptionHandler extends NativeImage.OptionHandler<NativeImage> {
                 if (cpArgs == null) {
                     NativeImage.showError(headArg + " requires class path specification");
                 }
-                for (String cp : cpArgs.split(File.pathSeparator)) {
-                    nativeImage.addCustomImageClasspath(Paths.get(cp));
+                for (String cp : cpArgs.split(File.pathSeparator, Integer.MAX_VALUE)) {
+                    /* Conform to `java` command empty cp entry handling. */
+                    String cpEntry = cp.isEmpty() ? "." : cp;
+                    nativeImage.addCustomImageClasspath(cpEntry);
                 }
                 return true;
             case "--configurations-path":
@@ -96,6 +106,7 @@ class DefaultOptionHandler extends NativeImage.OptionHandler<NativeImage> {
                     NativeImage.showError("-jar requires jar file specification");
                 }
                 handleJarFileArg(nativeImage.canonicalize(Paths.get(jarFilePathStr)));
+                nativeImage.setJarOptionMode(true);
                 return true;
             case "--verbose":
                 args.poll();
@@ -117,6 +128,10 @@ class DefaultOptionHandler extends NativeImage.OptionHandler<NativeImage> {
 
         String debugAttach = "--debug-attach";
         if (headArg.startsWith(debugAttach)) {
+            if (useDebugAttach) {
+                throw NativeImage.showError("The " + debugAttach + " option can only be used once.");
+            }
+            useDebugAttach = true;
             String debugAttachArg = args.poll();
             String portSuffix = debugAttachArg.substring(debugAttach.length());
             int debugPort = 8000;
@@ -124,7 +139,7 @@ class DefaultOptionHandler extends NativeImage.OptionHandler<NativeImage> {
                 try {
                     debugPort = Integer.parseInt(portSuffix.substring(1));
                 } catch (NumberFormatException e) {
-                    NativeImage.showError("Invalid --debug-attach option: " + debugAttachArg);
+                    NativeImage.showError("Invalid " + debugAttach + " option: " + debugAttachArg);
                 }
             }
             nativeImage.addImageBuilderJavaArgs("-Xdebug", "-Xrunjdwp:transport=dt_socket,server=y,address=" + debugPort + ",suspend=y");
@@ -178,6 +193,9 @@ class DefaultOptionHandler extends NativeImage.OptionHandler<NativeImage> {
     private void handleJarFileArg(Path filePath) {
         try (JarFile jarFile = new JarFile(filePath.toFile())) {
             Manifest manifest = jarFile.getManifest();
+            if (manifest == null) {
+                NativeImage.showError("No manifest in " + filePath);
+            }
             Attributes mainAttributes = manifest.getMainAttributes();
             String mainClass = mainAttributes.getValue("Main-Class");
             if (mainClass == null) {
@@ -199,7 +217,7 @@ class DefaultOptionHandler extends NativeImage.OptionHandler<NativeImage> {
             /* Missing Class-Path Attribute is tolerable */
             if (classPath != null) {
                 for (String cp : classPath.split(" +")) {
-                    Path manifestClassPath = Paths.get(cp);
+                    Path manifestClassPath = ImageClassLoader.stringToClasspath(cp);
                     if (!manifestClassPath.isAbsolute()) {
                         /* Resolve relative manifestClassPath against directory containing jar */
                         manifestClassPath = filePath.getParent().resolve(manifestClassPath);
@@ -207,7 +225,7 @@ class DefaultOptionHandler extends NativeImage.OptionHandler<NativeImage> {
                     nativeImage.addImageProvidedClasspath(manifestClassPath);
                 }
             }
-            nativeImage.addImageClasspath(filePath);
+            nativeImage.addCustomImageClasspath(filePath);
         } catch (NativeImage.NativeImageError ex) {
             throw ex;
         } catch (Throwable ex) {

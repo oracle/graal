@@ -44,7 +44,9 @@ import java.lang.annotation.Annotation;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.HashSet;
+import java.util.LinkedHashMap;
 import java.util.List;
+import java.util.Optional;
 import java.util.Set;
 
 import javax.annotation.processing.AbstractProcessor;
@@ -62,10 +64,17 @@ import com.oracle.truffle.api.dsl.NodeChildren;
 import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.dsl.TypeSystem;
 import com.oracle.truffle.api.dsl.TypeSystemReference;
+import com.oracle.truffle.api.library.ExportLibrary;
+import com.oracle.truffle.api.library.ExportMessage;
+import com.oracle.truffle.api.library.GenerateLibrary;
 import com.oracle.truffle.dsl.processor.ProcessorContext.ProcessCallback;
 import com.oracle.truffle.dsl.processor.generator.NodeCodeGenerator;
 import com.oracle.truffle.dsl.processor.generator.TypeSystemCodeGenerator;
 import com.oracle.truffle.dsl.processor.java.ElementUtils;
+import com.oracle.truffle.dsl.processor.library.ExportsGenerator;
+import com.oracle.truffle.dsl.processor.library.ExportsParser;
+import com.oracle.truffle.dsl.processor.library.LibraryGenerator;
+import com.oracle.truffle.dsl.processor.library.LibraryParser;
 import com.oracle.truffle.dsl.processor.parser.AbstractParser;
 import com.oracle.truffle.dsl.processor.parser.NodeParser;
 import com.oracle.truffle.dsl.processor.parser.TypeSystemParser;
@@ -101,17 +110,23 @@ public class TruffleProcessor extends AbstractProcessor implements ProcessCallba
                     for (Element e : env.getElementsAnnotatedWith(parser.getAnnotationType())) {
                         processElement(generator, e, false);
                     }
+                    Class<? extends Annotation> repeat = parser.getRepeatAnnotationType();
+                    if (repeat != null) {
+                        for (Element e : env.getElementsAnnotatedWith(repeat)) {
+                            processElement(generator, e, false);
+                        }
+                    }
                 }
 
                 for (Class<? extends Annotation> annotationType : parser.getTypeDelegatedAnnotationTypes()) {
                     for (Element e : env.getElementsAnnotatedWith(annotationType)) {
-                        TypeElement processedType;
+                        Optional<TypeElement> processedType;
                         if (parser.isDelegateToRootDeclaredType()) {
                             processedType = ElementUtils.findRootEnclosingType(e);
                         } else {
-                            processedType = ElementUtils.findNearestEnclosingType(e);
+                            processedType = ElementUtils.findParentEnclosingType(e);
                         }
-                        processElement(generator, processedType, false);
+                        processElement(generator, processedType.orElseThrow(AssertionError::new), false);
                     }
                 }
 
@@ -150,12 +165,15 @@ public class TruffleProcessor extends AbstractProcessor implements ProcessCallba
     @Override
     public Set<String> getSupportedAnnotationTypes() {
         Set<String> annotations = new HashSet<>();
+
         addAnnotations(annotations, Arrays.asList(Fallback.class, TypeSystemReference.class,
                         Specialization.class,
                         Executed.class,
                         NodeChild.class,
                         NodeChildren.class));
         addAnnotations(annotations, Arrays.asList(TypeSystem.class));
+        addAnnotations(annotations, Arrays.asList(GenerateLibrary.class));
+        addAnnotations(annotations, Arrays.asList(ExportLibrary.class, ExportMessage.class, ExportLibrary.Repeat.class));
         return annotations;
     }
 
@@ -171,7 +189,9 @@ public class TruffleProcessor extends AbstractProcessor implements ProcessCallba
         if (generators == null && processingEnv != null) {
             generators = new ArrayList<>();
             generators.add(new AnnotationProcessor<>(new TypeSystemParser(), new TypeSystemCodeGenerator()));
-            generators.add(new AnnotationProcessor<>(new NodeParser(), new NodeCodeGenerator()));
+            generators.add(new AnnotationProcessor<>(NodeParser.createDefaultParser(), new NodeCodeGenerator()));
+            generators.add(new AnnotationProcessor<>(new LibraryParser(), new LibraryGenerator()));
+            generators.add(new AnnotationProcessor<>(new ExportsParser(), new ExportsGenerator(new LinkedHashMap<>())));
         }
         return generators;
     }

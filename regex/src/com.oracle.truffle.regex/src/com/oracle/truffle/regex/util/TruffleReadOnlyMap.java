@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2018, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2019, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -24,121 +24,123 @@
  */
 package com.oracle.truffle.regex.util;
 
-import com.oracle.truffle.api.CompilerDirectives;
-import com.oracle.truffle.api.interop.ForeignAccess;
-import com.oracle.truffle.api.interop.KeyInfo;
-import com.oracle.truffle.api.interop.MessageResolution;
-import com.oracle.truffle.api.interop.Resolve;
-import com.oracle.truffle.api.interop.TruffleObject;
-import com.oracle.truffle.api.interop.UnknownIdentifierException;
-import com.oracle.truffle.api.nodes.Node;
-import com.oracle.truffle.regex.RegexLanguageObject;
+import static com.oracle.truffle.regex.util.Boundaries.mapKeySet;
+import static com.oracle.truffle.regex.util.Boundaries.setToArray;
 
 import java.util.Map;
 
-import static com.oracle.truffle.regex.util.Boundaries.*;
+import com.oracle.truffle.api.CompilerDirectives;
+import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
+import com.oracle.truffle.api.dsl.Cached;
+import com.oracle.truffle.api.dsl.GenerateUncached;
+import com.oracle.truffle.api.dsl.Specialization;
+import com.oracle.truffle.api.dsl.Cached.Shared;
+import com.oracle.truffle.api.interop.InteropLibrary;
+import com.oracle.truffle.api.interop.UnknownIdentifierException;
+import com.oracle.truffle.api.library.ExportLibrary;
+import com.oracle.truffle.api.library.ExportMessage;
+import com.oracle.truffle.api.nodes.Node;
+import com.oracle.truffle.api.profiles.ValueProfile;
+import com.oracle.truffle.regex.RegexLanguageObject;
 
+@ExportLibrary(InteropLibrary.class)
 public class TruffleReadOnlyMap implements RegexLanguageObject {
 
-    private final Map<String, ? extends Object> map;
+    private final Map<String, ?> map;
 
-    public TruffleReadOnlyMap(Map<String, ? extends Object> map) {
+    public TruffleReadOnlyMap(Map<String, ?> map) {
         this.map = map;
     }
 
-    @Override
-    public ForeignAccess getForeignAccess() {
-        return TruffleReadOnlyMapMessageResolutionForeign.ACCESS;
+    @ExportMessage
+    boolean hasMembers() {
+        return true;
     }
 
-    public static boolean isInstance(TruffleObject obj) {
-        return obj instanceof TruffleReadOnlyMap;
+    @ExportMessage
+    @TruffleBoundary
+    Object getMembers(@SuppressWarnings("unused") boolean includeInternal) {
+        return new TruffleReadOnlyKeysArray(setToArray(mapKeySet(map), new String[map.size()]));
     }
 
-    @MessageResolution(receiverType = TruffleReadOnlyMap.class)
-    static final class TruffleReadOnlyMapMessageResolution {
+    @ExportMessage
+    boolean isMemberReadable(String member,
+                    @Cached IsReadableCacheNode cache,
+                    @Shared("receiverProfile") @Cached("createIdentityProfile()") ValueProfile receiverProfile) {
+        return cache.execute(receiverProfile.profile(this), member);
+    }
 
-        @Resolve(message = "KEYS")
-        abstract static class TruffleReadOnlyMapKeysNode extends Node {
+    @ExportMessage
+    Object readMember(String member,
+                    @Cached ReadCacheNode readCache,
+                    @Shared("receiverProfile") @Cached("createIdentityProfile()") ValueProfile receiverProfile) throws UnknownIdentifierException {
+        return readCache.execute(receiverProfile.profile(this), member);
+    }
 
-            public Object access(TruffleReadOnlyMap o) {
-                return new TruffleReadOnlyMapKeysObject(setToArray(mapKeySet(o.map), new String[0]));
-            }
+    @GenerateUncached
+    abstract static class IsReadableCacheNode extends Node {
+
+        abstract boolean execute(TruffleReadOnlyMap receiver, String symbol);
+
+        @SuppressWarnings("unused")
+        @Specialization(guards = {"receiver == cachedReceiver", "symbol == cachedSymbol", "result"}, limit = "6")
+        static boolean cacheIdentity(TruffleReadOnlyMap receiver, String symbol,
+                        @Cached("receiver") TruffleReadOnlyMap cachedReceiver,
+                        @Cached("symbol") String cachedSymbol,
+                        @Cached("isReadable(cachedReceiver, cachedSymbol)") boolean result) {
+            return result;
         }
 
-        @Resolve(message = "KEY_INFO")
-        abstract static class TruffleReadOnlyMapKeyInfoNode extends Node {
-
-            public Object access(TruffleReadOnlyMap o, String name) {
-                if (mapContainsKey(o.map, name)) {
-                    return KeyInfo.READABLE;
-                } else {
-                    return KeyInfo.NONE;
-                }
-            }
+        @SuppressWarnings("unused")
+        @Specialization(guards = {"receiver == cachedReceiver", "symbol.equals(cachedSymbol)", "result"}, limit = "6", replaces = "cacheIdentity")
+        static boolean cacheEquals(TruffleReadOnlyMap receiver, String symbol,
+                        @Cached("receiver") TruffleReadOnlyMap cachedReceiver,
+                        @Cached("symbol") String cachedSymbol,
+                        @Cached("isReadable(cachedReceiver, cachedSymbol)") boolean result) {
+            return result;
         }
 
-        @Resolve(message = "READ")
-        abstract static class TruffleReadOnlyMapReadNode extends Node {
-
-            public Object access(TruffleReadOnlyMap o, String name) {
-                if (mapContainsKey(o.map, name)) {
-                    return mapGet(o.map, name);
-                }
-                CompilerDirectives.transferToInterpreter();
-                throw UnknownIdentifierException.raise(name);
-            }
+        @Specialization(replaces = "cacheEquals")
+        static boolean isReadable(TruffleReadOnlyMap receiver, String symbol) {
+            return Boundaries.mapContainsKey(receiver.map, symbol);
         }
     }
 
-    static class TruffleReadOnlyMapKeysObject implements RegexLanguageObject {
+    @GenerateUncached
+    abstract static class ReadCacheNode extends Node {
 
-        private final String[] keys;
+        abstract Object execute(TruffleReadOnlyMap receiver, String symbol) throws UnknownIdentifierException;
 
-        TruffleReadOnlyMapKeysObject(String[] keys) {
-            this.keys = keys;
+        @SuppressWarnings("unused")
+        @Specialization(guards = {"receiver == cachedReceiver", "symbol == cachedSymbol", "result != null"}, limit = "6")
+        static Object readIdentity(TruffleReadOnlyMap receiver, String symbol,
+                        @Cached("receiver") TruffleReadOnlyMap cachedReceiver,
+                        @Cached("symbol") String cachedSymbol,
+                        @Cached("readDirect(cachedReceiver, cachedSymbol)") Object result) {
+            return result;
         }
 
-        @Override
-        public ForeignAccess getForeignAccess() {
-            return TruffleReadOnlyMapKeysObjectMessageResolutionForeign.ACCESS;
+        @SuppressWarnings("unused")
+        @Specialization(guards = {"receiver == cachedReceiver", "symbol.equals(cachedSymbol)", "result != null"}, limit = "6", replaces = "readIdentity")
+        static Object readEquals(TruffleReadOnlyMap receiver, String symbol,
+                        @Cached("receiver") TruffleReadOnlyMap cachedReceiver,
+                        @Cached("symbol") String cachedSymbol,
+                        @Cached("readDirect(cachedReceiver, cachedSymbol)") Object result) {
+            return result;
         }
 
-        public static boolean isInstance(TruffleObject obj) {
-            return obj instanceof TruffleReadOnlyMapKeysObject;
+        @Specialization(replaces = "readEquals")
+        static Object read(TruffleReadOnlyMap receiver, String symbol) throws UnknownIdentifierException {
+            Object value = readDirect(receiver, symbol);
+            if (value != null) {
+                return value;
+            }
+            CompilerDirectives.transferToInterpreter();
+            throw UnknownIdentifierException.create(symbol);
         }
 
-        @MessageResolution(receiverType = TruffleReadOnlyMapKeysObject.class)
-        static final class TruffleReadOnlyMapKeysObjectMessageResolution {
-
-            @Resolve(message = "HAS_SIZE")
-            abstract static class TruffleReadOnlyMapKeysObjectHasSizeNode extends Node {
-
-                @SuppressWarnings("unused")
-                public Object access(TruffleReadOnlyMapKeysObject keysObject) {
-                    return true;
-                }
-            }
-
-            @Resolve(message = "GET_SIZE")
-            abstract static class TruffleReadOnlyMapKeysObjectGetSizeNode extends Node {
-
-                public Object access(TruffleReadOnlyMapKeysObject keysObject) {
-                    return keysObject.keys.length;
-                }
-            }
-
-            @Resolve(message = "READ")
-            abstract static class TruffleReadOnlyMapKeysObjectReadNode extends Node {
-
-                public Object access(TruffleReadOnlyMapKeysObject keysObject, int index) {
-                    if (index >= keysObject.keys.length) {
-                        CompilerDirectives.transferToInterpreter();
-                        throw UnknownIdentifierException.raise(Integer.toString(index));
-                    }
-                    return keysObject.keys[index];
-                }
-            }
+        static Object readDirect(TruffleReadOnlyMap receiver, String symbol) {
+            return Boundaries.mapGet(receiver.map, symbol);
         }
     }
 }

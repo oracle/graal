@@ -40,7 +40,6 @@ import java.net.ServerSocket;
 import java.net.Socket;
 import java.net.SocketException;
 import java.net.SocketTimeoutException;
-import java.net.URLClassLoader;
 import java.nio.ByteBuffer;
 import java.time.Duration;
 import java.time.Instant;
@@ -72,6 +71,7 @@ import org.graalvm.collections.EconomicSet;
 import com.oracle.svm.core.util.UserError;
 import com.oracle.svm.core.util.VMError;
 import com.oracle.svm.hosted.ImageBuildTask;
+import com.oracle.svm.hosted.NativeImageClassLoader;
 import com.oracle.svm.hosted.NativeImageGeneratorRunner;
 import com.oracle.svm.hosted.server.SubstrateServerMessage.ServerCommand;
 
@@ -81,11 +81,10 @@ import com.oracle.svm.hosted.server.SubstrateServerMessage.ServerCommand;
  */
 public final class NativeImageBuildServer {
 
-    public static final String IMAGE_CLASSPATH_PREFIX = "-imagecp";
     public static final String PORT_LOG_MESSAGE_PREFIX = "Started image build server on port: ";
-    private static final String TASK_PREFIX = "-task=";
-    static final String PORT_PREFIX = "-port=";
-    private static final String LOG_PREFIX = "-logFile=";
+    public static final String TASK_PREFIX = "-task=";
+    public static final String PORT_PREFIX = "-port=";
+    public static final String LOG_PREFIX = "-logFile=";
     private static final int TIMEOUT_MINUTES = 240;
     private static final String GRAALVM_VERSION_PROPERTY = "org.graalvm.version";
     private static final int SERVER_THREAD_POOL_SIZE = 4;
@@ -381,7 +380,7 @@ public final class NativeImageBuildServer {
 
     private static Integer executeCompilation(ArrayList<String> arguments) {
         final String[] classpath = NativeImageGeneratorRunner.extractImageClassPath(arguments);
-        URLClassLoader imageClassLoader;
+        NativeImageClassLoader imageClassLoader;
         ClassLoader applicationClassLoader = Thread.currentThread().getContextClassLoader();
         try {
             imageClassLoader = NativeImageGeneratorRunner.installNativeImageClassLoader(classpath);

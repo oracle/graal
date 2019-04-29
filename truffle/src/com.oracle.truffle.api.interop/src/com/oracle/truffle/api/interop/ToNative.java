@@ -40,6 +40,7 @@
  */
 package com.oracle.truffle.api.interop;
 
+@SuppressWarnings("deprecation")
 final class ToNative extends UnaryMessage {
     public static final int HASH = 423533;
     static final Message INSTANCE = new ToNative();

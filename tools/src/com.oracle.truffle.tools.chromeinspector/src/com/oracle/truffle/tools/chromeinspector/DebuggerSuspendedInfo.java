@@ -45,7 +45,7 @@ final class DebuggerSuspendedInfo {
      * Holder of the last evaluated value, if any. It's expected to be used for non
      * {@link RemoteObject#isReplicable() replicable} values, while assuming that
      * {@link DebuggerDomain#setVariableValue(int, String, CallArgument, String)} is called after
-     * {@link RuntimeDomain#evaluate(String, String, boolean, boolean, int, boolean, boolean)}
+     * {@link RuntimeDomain#evaluate(String, String, boolean, boolean, int, boolean, boolean, boolean)}
      */
     final AtomicReference<Pair<DebugValue, Object>> lastEvaluatedValue = new AtomicReference<>();
 

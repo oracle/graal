@@ -135,6 +135,17 @@ public final class LanguageRegistrationProcessor extends AbstractProcessor {
             }
             p.setProperty(prefix + "interactive", Boolean.toString(annotation.interactive()));
             p.setProperty(prefix + "internal", Boolean.toString(annotation.internal()));
+
+            AnnotationMirror registration = ElementUtils.findAnnotationMirror(l.getAnnotationMirrors(), ProcessorContext.getInstance().getType(Registration.class));
+            int serviceCounter = 0;
+            for (TypeMirror serviceTypeMirror : ElementUtils.getAnnotationValueList(TypeMirror.class, registration, "services")) {
+                p.setProperty(prefix + "service" + serviceCounter++, processingEnv.getElementUtils().getBinaryName(ElementUtils.fromTypeMirror(serviceTypeMirror)).toString());
+            }
+            int fileTypeDetectorCounter = 0;
+            for (TypeMirror fileTypeDetectorTypeMirror : ElementUtils.getAnnotationValueList(TypeMirror.class, registration, "fileTypeDetectors")) {
+                p.setProperty(prefix + "fileTypeDetector" + fileTypeDetectorCounter++,
+                                processingEnv.getElementUtils().getBinaryName(ElementUtils.fromTypeMirror(fileTypeDetectorTypeMirror)).toString());
+            }
         }
         if (cnt > 0) {
             try {
@@ -261,6 +272,10 @@ public final class LanguageRegistrationProcessor extends AbstractProcessor {
                         }
                     }
 
+                    if (!validateFileTypeDetectors(e, mirror)) {
+                        continue;
+                    }
+
                     if (valid) {
                         assertNoErrorExpected(e);
                     }
@@ -298,6 +313,37 @@ public final class LanguageRegistrationProcessor extends AbstractProcessor {
         if (mimeType.indexOf('/', index + 1) != -1) {
             emitError(String.format("Invalid MIME type '%s' provided. MIME types consist of a type and a subtype separated by '/'.", mimeType), type, mirror, value);
             return false;
+        }
+        return true;
+    }
+
+    private boolean validateFileTypeDetectors(Element annotatedElement, AnnotationMirror mirror) {
+        AnnotationValue value = ElementUtils.getAnnotationValue(mirror, "fileTypeDetectors", true);
+        for (TypeMirror fileTypeDetectorType : ElementUtils.getAnnotationValueList(TypeMirror.class, mirror, "fileTypeDetectors")) {
+            TypeElement fileTypeDetectorElement = ElementUtils.fromTypeMirror(fileTypeDetectorType);
+            if (!fileTypeDetectorElement.getModifiers().contains(Modifier.PUBLIC)) {
+                emitError("Registered FileTypeDetector class must be public.", annotatedElement, mirror, value);
+                return false;
+            }
+            if (fileTypeDetectorElement.getEnclosingElement().getKind() != ElementKind.PACKAGE && !fileTypeDetectorElement.getModifiers().contains(Modifier.STATIC)) {
+                emitError("Registered FileTypeDetector inner-class must be static.", annotatedElement, mirror, value);
+                return false;
+            }
+            boolean foundConstructor = false;
+            for (ExecutableElement constructor : ElementFilter.constructorsIn(fileTypeDetectorElement.getEnclosedElements())) {
+                if (!constructor.getModifiers().contains(Modifier.PUBLIC)) {
+                    continue;
+                }
+                if (!constructor.getParameters().isEmpty()) {
+                    continue;
+                }
+                foundConstructor = true;
+                break;
+            }
+            if (!foundConstructor) {
+                emitError("A FileTypeDetector subclass must have a public no argument constructor.", annotatedElement, mirror, value);
+                return false;
+            }
         }
         return true;
     }
@@ -341,5 +387,4 @@ public final class LanguageRegistrationProcessor extends AbstractProcessor {
             return Collections.enumeration(new TreeSet<>(super.keySet()));
         }
     }
-
 }

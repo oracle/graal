@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, Oracle and/or its affiliates.
+ * Copyright (c) 2018, 2019, Oracle and/or its affiliates.
  *
  * All rights reserved.
  *
@@ -29,9 +29,11 @@
  */
 package com.oracle.truffle.llvm.parser.elf;
 
+import com.oracle.truffle.llvm.parser.filereader.ObjectFileReader;
+import com.oracle.truffle.llvm.runtime.except.LLVMParserException;
 import org.graalvm.polyglot.io.ByteSequence;
 
-public final class ElfReader {
+public final class ElfReader extends ObjectFileReader {
 
     private static final int EI_NIDENT = 16;
     private static final int EI_CLASS = 4;
@@ -39,77 +41,21 @@ public final class ElfReader {
     private static final int ELFDATA2MSB = 2;
     private static final int ELFCLASS64 = 2;
 
-    private final ByteSequence byteSequence;
-    private final boolean bigEndian;
     private final boolean is64Bit;
 
-    private int position;
-
-    ElfReader(ByteSequence byteSequence) {
-        checkIdent(byteSequence);
-
-        this.byteSequence = byteSequence;
-        this.bigEndian = isBigEndian(byteSequence);
-        this.is64Bit = is64Bit(byteSequence);
-
+    private ElfReader(ByteSequence byteSequence, boolean littleEndian, boolean is64Bit) {
+        super(byteSequence, littleEndian);
+        this.is64Bit = is64Bit;
         setPosition(EI_NIDENT);
     }
 
-    public void setPosition(int position) {
-        this.position = position;
-    }
-
-    public void skip(int bytes) {
-        this.position += bytes;
+    static ElfReader create(ByteSequence byteSequence) {
+        checkIdent(byteSequence);
+        return new ElfReader(byteSequence, !isBigEndian(byteSequence), is64Bit(byteSequence));
     }
 
     public boolean is64Bit() {
         return is64Bit;
-    }
-
-    public byte getByte() {
-        return byteSequence.byteAt(position++);
-    }
-
-    public short getShort() {
-        int ret = getByte() & 0xff;
-        ret = (ret << 8) | (getByte() & 0xff);
-
-        if (bigEndian) {
-            return (short) ret;
-        } else {
-            return Short.reverseBytes((short) ret);
-        }
-    }
-
-    public int getInt() {
-        int ret = getByte() & 0xff;
-        ret = (ret << 8) | (getByte() & 0xff);
-        ret = (ret << 8) | (getByte() & 0xff);
-        ret = (ret << 8) | (getByte() & 0xff);
-
-        if (bigEndian) {
-            return ret;
-        } else {
-            return Integer.reverseBytes(ret);
-        }
-    }
-
-    public long getLong() {
-        long ret = getByte() & 0xff;
-        ret = (ret << 8) | (getByte() & 0xff);
-        ret = (ret << 8) | (getByte() & 0xff);
-        ret = (ret << 8) | (getByte() & 0xff);
-        ret = (ret << 8) | (getByte() & 0xff);
-        ret = (ret << 8) | (getByte() & 0xff);
-        ret = (ret << 8) | (getByte() & 0xff);
-        ret = (ret << 8) | (getByte() & 0xff);
-
-        if (bigEndian) {
-            return ret;
-        } else {
-            return Long.reverseBytes(ret);
-        }
     }
 
     public ByteSequence getStringTable(long offset, long size) {
@@ -133,7 +79,7 @@ public final class ElfReader {
 
     private static void checkIndentByte(ByteSequence ident, int ind, int val) {
         if (ident.byteAt(ind) != val) {
-            throw new IllegalArgumentException("Invalid ELF file!");
+            throw new LLVMParserException("Invalid ELF file!");
         }
     }
 }

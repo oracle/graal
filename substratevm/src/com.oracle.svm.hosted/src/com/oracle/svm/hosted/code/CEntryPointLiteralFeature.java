@@ -29,7 +29,7 @@ import static com.oracle.svm.core.util.VMError.shouldNotReachHere;
 import java.lang.reflect.Method;
 import java.util.function.Function;
 
-import org.graalvm.nativeimage.Feature;
+import org.graalvm.nativeimage.hosted.Feature;
 import org.graalvm.nativeimage.c.function.CEntryPoint;
 import org.graalvm.nativeimage.c.function.CEntryPointLiteral;
 import org.graalvm.nativeimage.c.function.CFunctionPointer;
@@ -80,7 +80,7 @@ public class CEntryPointLiteralFeature implements Feature {
                     AnalysisMethod aStub = CEntryPointCallStubSupport.singleton().getStubForMethod(aMethod);
                     HostedMethod hStub = (HostedMethod) metaAccess.getUniverse().lookup(aStub);
                     assert hStub.wrapped.isEntryPoint();
-                    assert hStub.isCodeAddressOffsetValid();
+                    assert hStub.isCompiled();
                     /*
                      * Only during compilation and native image writing, we do the actual
                      * replacement.

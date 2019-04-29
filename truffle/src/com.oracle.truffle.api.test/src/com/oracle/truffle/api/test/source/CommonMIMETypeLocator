@@ -1,1 +1,9 @@
-com.oracle.truffle.api.test.source.CommonMIMETypeLocator$Detector
+language1.byteMimeType.0=application/x-locator
+language1.className=com.oracle.truffle.api.test.source.CommonMIMETypeLocator$LocatorLanguage
+language1.fileTypeDetector0=com.oracle.truffle.api.test.source.CommonMIMETypeLocator$Detector
+language1.id=LocatorLanguage
+language1.implementationName=
+language1.interactive=true
+language1.internal=false
+language1.name=
+language1.version=inherit

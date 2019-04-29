@@ -24,24 +24,29 @@
  */
 package org.graalvm.component.installer.commands;
 
+import java.io.File;
 import org.graalvm.component.installer.CommandTestBase;
 import java.io.IOException;
 import java.net.URL;
 import java.nio.file.Files;
+import java.nio.file.LinkOption;
 import java.nio.file.Path;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.concurrent.atomic.AtomicBoolean;
-import org.graalvm.component.installer.CatalogIterable;
+import java.util.logging.Level;
+import java.util.logging.Logger;
+import org.graalvm.component.installer.remote.CatalogIterable;
 import org.graalvm.component.installer.Commands;
 import org.graalvm.component.installer.CommonConstants;
-import org.graalvm.component.installer.ComponentParam;
+import org.graalvm.component.installer.ComponentIterable;
 import org.graalvm.component.installer.DependencyException;
 import org.graalvm.component.installer.FailedOperationException;
 import org.graalvm.component.installer.SystemUtils;
+import org.graalvm.component.installer.model.CatalogContents;
 import org.graalvm.component.installer.model.ComponentInfo;
 import org.graalvm.component.installer.persist.ProxyResource;
-import org.graalvm.component.installer.persist.RemoteCatalogDownloader;
+import org.graalvm.component.installer.remote.RemoteCatalogDownloader;
 import org.graalvm.component.installer.persist.test.Handler;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertFalse;
@@ -191,16 +196,33 @@ public class InstallTest extends CommandTestBase {
 
         inst.execute();
 
+        File f = new File(folder.getRoot(), "inst");
+        File binRuby = new File(f, "bin/ruby");
+        assertTrue("Ruby must be installed", binRuby.exists());
+
+        Files.walk(f.toPath()).forEach((p) -> {
+            try {
+                if (!p.equals(f.toPath()) && Files.isRegularFile(p, LinkOption.NOFOLLOW_LINKS)) {
+                    Files.delete(p);
+                }
+            } catch (IOException ex) {
+                Logger.getLogger(InstallTest.class.getName()).log(Level.SEVERE, null, ex);
+            }
+        });
+
+        assertFalse("Ruby must be deleted", binRuby.exists());
+
         inst = new InstallCommand();
         inst.init(this, withBundle(InstallCommand.class));
         files.add(dataFile("truffleruby3.jar").toFile());
         inst.execute();
+        assertFalse("Component must not be processed", binRuby.exists());
     }
 
-    Iterable<ComponentParam> componentIterable;
+    ComponentIterable componentIterable;
 
     @Override
-    public Iterable<ComponentParam> existingFiles() throws FailedOperationException {
+    public ComponentIterable existingFiles() throws FailedOperationException {
         if (componentIterable != null) {
             return componentIterable;
         }
@@ -216,12 +238,8 @@ public class InstallTest extends CommandTestBase {
         URL u2 = new URL(u, "graalvm-ruby.zip");
 
         Handler.bind(u.toString(), getClass().getResource("catalog"));
-        componentIterable = new CatalogIterable(this, this,
-                        new RemoteCatalogDownloader(
-                                        this,
-                                        this.getLocalRegistry(),
-                                        u));
         storage.graalInfo.put(CommonConstants.CAP_GRAALVM_VERSION, "0.33-dev");
+        initCatalogIterable(u);
         textParams.add("ruby");
         options.put(Commands.OPTION_FAIL_EXISTING, "");
         files.clear();
@@ -235,6 +253,43 @@ public class InstallTest extends CommandTestBase {
         }
 
         assertFalse(Handler.isVisited(u2));
+    }
+
+    private void initCatalogIterable(URL u) {
+        RemoteCatalogDownloader rcd = new RemoteCatalogDownloader(
+                        this,
+                        this,
+                        u);
+
+        registry = new CatalogContents(this, rcd.getStorage(), localRegistry);
+        componentIterable = new CatalogIterable(this, this,
+                        getRegistry(), rcd);
+    }
+
+    @Test
+    public void testSkipExistingFromCatalog() throws Exception {
+        ComponentInfo fakeInfo = new ComponentInfo("ruby", "Fake ruby", "1.0");
+        storage.installed.add(fakeInfo);
+
+        URL u = new URL("test://graalvm.io/download/catalog");
+        URL u2 = new URL(u, "graalvm-ruby.zip");
+
+        Handler.bind(u.toString(), getClass().getResource("catalog"));
+        Handler.bind(u2.toString(), getClass().getResource("graalvm-ruby.zip"));
+        storage.graalInfo.put(CommonConstants.CAP_GRAALVM_VERSION, "0.33-dev");
+        initCatalogIterable(u);
+        textParams.add("ruby");
+        files.clear();
+        inst = new InstallCommand();
+        inst.init(this, withBundle(InstallCommand.class));
+
+        try {
+            inst.execute();
+        } catch (DependencyException.Conflict ex) {
+            fail("Should not raise an error");
+        }
+
+        assertFalse("Should not touch the remote file", Handler.isVisited(u2));
     }
 
     @Test
@@ -330,4 +385,32 @@ public class InstallTest extends CommandTestBase {
         String check = GOLDEN_MESSAGE.replace("${graalvm_home}", getGraalHomePath().toString());
         assertEquals(check, formatted[0]);
     }
+
+    /**
+     * Installs an a missing component from the same distribution.
+     * 
+     * @throws Exception
+     */
+    @Test
+    public void testInstallMissingComponent() throws Exception {
+        ComponentInfo fakeInfo = new ComponentInfo("ruby", "Fake ruby", "1.0");
+        storage.installed.add(fakeInfo);
+
+    }
+
+    @Test
+    public void testRefuseNonAdminInstall() throws Exception {
+        options.put(Commands.OPTION_DRY_RUN, "");
+
+        storage.writableUser = "hero"; // NOI18N
+
+        inst = new InstallCommand();
+        inst.init(this, withBundle(InstallCommand.class));
+
+        exception.expect(FailedOperationException.class);
+        exception.expectMessage("ADMIN");
+
+        inst.execute();
+    }
+
 }

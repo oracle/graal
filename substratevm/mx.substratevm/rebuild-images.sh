@@ -128,6 +128,7 @@ function polyglot() {
         "-H:Features=org.graalvm.launcher.PolyglotLauncherFeature"
         "-Dorg.graalvm.launcher.relative.home=jre/bin/polyglot"
         "-H:Name=polyglot"
+        "--tool:truffle"
     )
     set_path "${graalvm_home}/jre/bin"
     cmd_line+=(
@@ -147,10 +148,10 @@ function libpolyglot() {
     cmd_line+=(
         "-cp"
         "${cp}"
+        "--tool:truffle"
         "-Dgraalvm.libpolyglot=true"
         "-H:Features=org.graalvm.polyglot.nativeapi.PolyglotNativeAPIFeature"
         "-Dorg.graalvm.polyglot.nativeapi.libraryPath=${graalvm_home}/jre/lib/polyglot"
-        "-Dorg.graalvm.polyglot.nativeapi.nativeLibraryPath=${graalvm_home}/jre/lib/polyglot"
         "-H:CStandard=C11"
         "-H:+IncludeAllTimeZones"
         "-H:+SpawnIsolates"
@@ -204,7 +205,7 @@ for binary in "${to_build[@]}"; do
             language python "bin/graalpython" "com.oracle.graal.python.shell.GraalPythonMain"
             ;;
         ruby)
-            language ruby "bin/ruby" "org.truffleruby.launcher.RubyLauncher"
+            language ruby "bin/truffleruby" "org.truffleruby.launcher.RubyLauncher"
             ;;
         *)
             echo "shouldNotReachHere()"

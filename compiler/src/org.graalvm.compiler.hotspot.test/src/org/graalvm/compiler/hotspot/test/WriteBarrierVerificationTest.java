@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2013, 2016, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2013, 2018, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -32,12 +32,12 @@ import org.graalvm.compiler.debug.DebugContext;
 import org.graalvm.compiler.debug.DebugContext.Scope;
 import org.graalvm.compiler.debug.DebugDumpScope;
 import org.graalvm.compiler.hotspot.GraalHotSpotVMConfig;
-import org.graalvm.compiler.hotspot.nodes.G1ArrayRangePostWriteBarrier;
-import org.graalvm.compiler.hotspot.nodes.G1ArrayRangePreWriteBarrier;
-import org.graalvm.compiler.hotspot.nodes.G1PostWriteBarrier;
-import org.graalvm.compiler.hotspot.nodes.G1PreWriteBarrier;
-import org.graalvm.compiler.hotspot.nodes.SerialArrayRangeWriteBarrier;
-import org.graalvm.compiler.hotspot.nodes.SerialWriteBarrier;
+import org.graalvm.compiler.hotspot.gc.g1.G1ArrayRangePostWriteBarrier;
+import org.graalvm.compiler.hotspot.gc.g1.G1ArrayRangePreWriteBarrier;
+import org.graalvm.compiler.hotspot.gc.g1.G1PostWriteBarrier;
+import org.graalvm.compiler.hotspot.gc.g1.G1PreWriteBarrier;
+import org.graalvm.compiler.hotspot.gc.shared.SerialArrayRangeWriteBarrier;
+import org.graalvm.compiler.hotspot.gc.shared.SerialWriteBarrier;
 import org.graalvm.compiler.hotspot.phases.WriteBarrierAdditionPhase;
 import org.graalvm.compiler.hotspot.phases.WriteBarrierVerificationPhase;
 import org.graalvm.compiler.nodes.AbstractBeginNode;

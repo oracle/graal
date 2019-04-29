@@ -67,6 +67,8 @@ public class SLTCKLanguageProvider implements LanguageProvider {
                     "function %s(p1) {r = 0;\n%s\nreturn r;\n}",
     };
 
+    private static final TypeDescriptor NUMBER_RETURN = TypeDescriptor.union(TypeDescriptor.NUMBER, TypeDescriptor.intersection());
+
     @Override
     public String getId() {
         return ID;
@@ -80,9 +82,10 @@ public class SLTCKLanguageProvider implements LanguageProvider {
     @Override
     public Collection<? extends Snippet> createValueConstructors(Context context) {
         final Collection<Snippet> res = new ArrayList<>();
+
         res.add(createValueConstructor(context, "1 == 2", "boolean", "createBoolean", TypeDescriptor.BOOLEAN));
         res.add(createValueConstructor(context, "1", "number", "createNumber", TypeDescriptor.NUMBER));
-        res.add(createValueConstructor(context, "9223372036854775808", "bigNumber", "createBigNumber", TypeDescriptor.NUMBER));
+        res.add(createValueConstructor(context, "9223372036854775808", "bigNumber", "createBigNumber", TypeDescriptor.intersection()));
         res.add(createValueConstructor(context, "\"string\"", "string", "createString", TypeDescriptor.STRING));
         Snippet.Builder opb = Snippet.newBuilder(
                         "object",
@@ -107,6 +110,11 @@ public class SLTCKLanguageProvider implements LanguageProvider {
                                                         "}",
                                         "createFunction"),
                         TypeDescriptor.EXECUTABLE);
+
+        res.add(createValueConstructor(context, "wrapPrimitive(1 == 2)", "wrapped-boolean", "createWrappedBoolean", TypeDescriptor.BOOLEAN));
+        res.add(createValueConstructor(context, "wrapPrimitive(1)", "wrapped-number", "createWrappedNumber", TypeDescriptor.NUMBER));
+        res.add(createValueConstructor(context, "wrapPrimitive(\"string\")", "wrapped-string", "createWrappedString", TypeDescriptor.STRING));
+
         res.add(opb.build());
         return Collections.unmodifiableCollection(res);
     }
@@ -115,15 +123,15 @@ public class SLTCKLanguageProvider implements LanguageProvider {
     public Collection<? extends Snippet> createExpressions(Context context) {
         final Collection<Snippet> res = new ArrayList<>();
         final Value fnc = eval(context, String.format(PATTERN_BIN_OP_FNC, "add", "+"), "add");
-        Snippet.Builder opb = Snippet.newBuilder("+", fnc, TypeDescriptor.NUMBER).parameterTypes(TypeDescriptor.NUMBER, TypeDescriptor.NUMBER);
+        Snippet.Builder opb = Snippet.newBuilder("+", fnc, NUMBER_RETURN).parameterTypes(TypeDescriptor.NUMBER, TypeDescriptor.NUMBER);
         res.add(opb.build());
         opb = Snippet.newBuilder("+", fnc, TypeDescriptor.STRING).parameterTypes(TypeDescriptor.STRING, TypeDescriptor.ANY);
         res.add(opb.build());
         opb = Snippet.newBuilder("+", fnc, TypeDescriptor.STRING).parameterTypes(TypeDescriptor.ANY, TypeDescriptor.STRING);
         res.add(opb.build());
-        res.add(createBinaryOperator(context, "-", "sub", TypeDescriptor.NUMBER, TypeDescriptor.NUMBER, TypeDescriptor.NUMBER).build());
-        res.add(createBinaryOperator(context, "*", "mul", TypeDescriptor.NUMBER, TypeDescriptor.NUMBER, TypeDescriptor.NUMBER).build());
-        res.add(createBinaryOperator(context, "/", "div", TypeDescriptor.NUMBER, TypeDescriptor.NUMBER, TypeDescriptor.NUMBER).resultVerifier((snippetRun) -> {
+        res.add(createBinaryOperator(context, "-", "sub", NUMBER_RETURN, TypeDescriptor.NUMBER, TypeDescriptor.NUMBER).build());
+        res.add(createBinaryOperator(context, "*", "mul", NUMBER_RETURN, TypeDescriptor.NUMBER, TypeDescriptor.NUMBER).build());
+        res.add(createBinaryOperator(context, "/", "div", NUMBER_RETURN, TypeDescriptor.NUMBER, TypeDescriptor.NUMBER).resultVerifier((snippetRun) -> {
             final Value dividend = snippetRun.getParameters().get(0);
             final Value divider = snippetRun.getParameters().get(1);
             final PolyglotException exception = snippetRun.getException();

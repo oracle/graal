@@ -67,7 +67,7 @@ public class SynchronizationTest {
         @SuppressWarnings("deprecation")
         @Specialization
         Object doWait(Object monitor, CountDownLatch latch) {
-            Assert.assertEquals(false, Thread.holdsLock(getAtomicLock()));
+            Assert.assertEquals(false, Thread.holdsLock(getLock()));
             final boolean holdsLock = ((ReentrantLock) getLock()).isHeldByCurrentThread();
             Assert.assertEquals(false, holdsLock);
 
@@ -93,7 +93,7 @@ public class SynchronizationTest {
         @SuppressWarnings("deprecation")
         @Specialization
         Object doNotify(Object monitor) {
-            Assert.assertEquals(false, Thread.holdsLock(getAtomicLock()));
+            Assert.assertEquals(false, Thread.holdsLock(getLock()));
             final boolean holdsLock = ((ReentrantLock) getLock()).isHeldByCurrentThread();
             Assert.assertEquals(false, holdsLock);
 

@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2014, 2017, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2014, 2019, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -24,6 +24,7 @@
  */
 package com.oracle.svm.core.posix;
 
+import static com.oracle.svm.core.headers.Errno.errno;
 import static com.oracle.svm.core.posix.headers.Fcntl.O_WRONLY;
 import static com.oracle.svm.core.posix.headers.Fcntl.open;
 import static com.oracle.svm.core.posix.headers.Unistd.close;
@@ -36,80 +37,41 @@ import java.io.FileNotFoundException;
 import java.io.IOException;
 import java.io.SyncFailedException;
 import java.util.ArrayList;
-import java.util.Arrays;
 import java.util.List;
 
-import org.graalvm.nativeimage.Feature;
+import com.oracle.svm.core.posix.headers.Dlfcn;
+import com.oracle.svm.core.headers.Errno;
+import com.oracle.svm.core.posix.headers.Fcntl;
+import com.oracle.svm.core.posix.headers.LibC;
+import com.oracle.svm.core.posix.headers.Locale;
+import com.oracle.svm.core.posix.headers.Unistd;
+import com.oracle.svm.core.posix.headers.Wait;
+import org.graalvm.compiler.core.common.SuppressFBWarnings;
 import org.graalvm.nativeimage.PinnedObject;
 import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.Platforms;
 import org.graalvm.nativeimage.StackValue;
 import org.graalvm.nativeimage.c.type.CCharPointer;
+import org.graalvm.nativeimage.c.type.CIntPointer;
 import org.graalvm.nativeimage.c.type.CTypeConversion;
 import org.graalvm.nativeimage.c.type.CTypeConversion.CCharPointerHolder;
+import org.graalvm.nativeimage.impl.InternalPlatform;
 import org.graalvm.word.PointerBase;
 import org.graalvm.word.SignedWord;
 import org.graalvm.word.UnsignedWord;
 import org.graalvm.word.WordFactory;
 
-import com.oracle.svm.core.CompilerCommandPlugin;
 import com.oracle.svm.core.annotate.Alias;
-import com.oracle.svm.core.annotate.AutomaticFeature;
 import com.oracle.svm.core.annotate.Substitute;
 import com.oracle.svm.core.annotate.TargetClass;
 import com.oracle.svm.core.annotate.TargetElement;
 import com.oracle.svm.core.annotate.Uninterruptible;
 import com.oracle.svm.core.jdk.JDK9OrLater;
-import com.oracle.svm.core.jdk.RuntimeFeature;
-import com.oracle.svm.core.jdk.RuntimeSupport;
-import com.oracle.svm.core.posix.headers.Dlfcn;
-import com.oracle.svm.core.posix.headers.Errno;
-import com.oracle.svm.core.posix.headers.LibC;
-import com.oracle.svm.core.posix.headers.Locale;
-import com.oracle.svm.core.posix.headers.Unistd;
 import com.oracle.svm.core.snippets.KnownIntrinsics;
 import com.oracle.svm.core.util.VMError;
 
+@Platforms({InternalPlatform.LINUX_AND_JNI.class, InternalPlatform.DARWIN_AND_JNI.class})
 public class PosixUtils {
-
-    @AutomaticFeature
-    @Platforms({Platform.LINUX.class, Platform.DARWIN.class})
-    public static class ExposeSetLocaleFeature implements Feature {
-        @Override
-        public List<Class<? extends Feature>> getRequiredFeatures() {
-            return Arrays.asList(RuntimeFeature.class);
-        }
-
-        @Override
-        public void afterRegistration(AfterRegistrationAccess access) {
-            RuntimeSupport.getRuntimeSupport().addCommandPlugin(new SetLocaleCommand());
-            RuntimeSupport.getRuntimeSupport().addCommandPlugin(new GetProcessIDCommand());
-        }
-    }
-
-    private static class SetLocaleCommand implements CompilerCommandPlugin {
-        @Override
-        public String name() {
-            return "com.oracle.svm.core.posix.PosixUtils.setLocale(String, String)String";
-        }
-
-        @Override
-        public Object apply(Object[] args) {
-            return setLocale((String) args[0], (String) args[1]);
-        }
-    }
-
-    private static class GetProcessIDCommand implements CompilerCommandPlugin {
-        @Override
-        public String name() {
-            return "com.oracle.svm.core.posix.PosixUtils.getpid()int";
-        }
-
-        @Override
-        public Object apply(Object[] args) {
-            return getpid();
-        }
-    }
 
     static String setLocale(String category, String locale) {
         int intCategory = getCategory(category);
@@ -194,30 +156,64 @@ public class PosixUtils {
         @Substitute //
         @TargetElement(onlyWith = JDK9OrLater.class) //
         @SuppressWarnings({"unused"})
+        /* { Do not re-format commented out C code.  @formatter:off */
+        /* open-jdk11/src/java.base/unix/native/libjava/FileDescriptor_md.c */
+        // 72  JNIEXPORT jboolean JNICALL
+        // 73  Java_java_io_FileDescriptor_getAppend(JNIEnv *env, jclass fdClass, jint fd) {
         private static /* native */ boolean getAppend(int fd) {
-            throw VMError.unsupportedFeature("JDK9OrLater: Target_java_io_FileDescriptor.getAppend");
+            // 74      int flags = fcntl(fd, F_GETFL);
+            int flags = Fcntl.fcntl(fd, Fcntl.F_GETFL());
+            // 75      return ((flags & O_APPEND) == 0) ? JNI_FALSE : JNI_TRUE;
+            return ((flags & Fcntl.O_APPEND()) == 0) ? false : true;
         }
+        /* } Do not re-format commented out C code. @formatter:on */
 
         @Substitute //
         @TargetElement(onlyWith = JDK9OrLater.class) //
         @SuppressWarnings({"unused", "static-method"})
+        /* { Do not re-format commented out C code.  @formatter:off */
+        /* open-jdk11/src/java.base/unix/native/libjava/FileDescriptor_md.c */
+        // 78  // instance method close0 for FileDescriptor
+        // 79  JNIEXPORT void JNICALL
+        // 80  Java_java_io_FileDescriptor_close0(JNIEnv *env, jobject this) {
         private /* native */ void close0() throws IOException {
-            throw VMError.unsupportedFeature("JDK9OrLater: Target_java_io_FileDescriptor.close0");
+            // 81      fileDescriptorClose(env, this);
+            PosixUtils.fileClose(Util_java_io_FileDescriptor.fromTarget(this));
         }
     }
 
+    static final class Util_java_io_FileDescriptor {
+
+        /** Cast from Target class to Java class. */
+        @SuppressFBWarnings(value = "BC", justification = "Cast from @TargetClass")
+        static java.io.FileDescriptor fromTarget(Target_java_io_FileDescriptor tjifd) {
+            return java.io.FileDescriptor.class.cast(tjifd);
+        }
+
+        /** Cast from Java class to Target class. */
+        @SuppressFBWarnings(value = "BC", justification = "Cast to @TargetClass")
+        static Target_java_io_FileDescriptor toTarget(java.io.FileDescriptor jifd) {
+            return Target_java_io_FileDescriptor.class.cast(jifd);
+        }
+
+    }
+
     public static int getFD(FileDescriptor descriptor) {
-        return KnownIntrinsics.unsafeCast(descriptor, Target_java_io_FileDescriptor.class).fd;
+        return Util_java_io_FileDescriptor.toTarget(descriptor).fd;
     }
 
     static void setFD(FileDescriptor descriptor, int fd) {
-        KnownIntrinsics.unsafeCast(descriptor, Target_java_io_FileDescriptor.class).fd = fd;
+        Util_java_io_FileDescriptor.toTarget(descriptor).fd = fd;
     }
 
     /** Return the error string for the last error, or a default message. */
     public static String lastErrorString(String defaultMsg) {
         int errno = Errno.errno();
         return errorString(errno, defaultMsg);
+    }
+
+    public static IOException newIOExceptionWithLastError(String defaultMsg) {
+        return new IOException(PosixUtils.lastErrorString(defaultMsg));
     }
 
     /** Return the error string for the given error number, or a default message. */
@@ -258,13 +254,13 @@ public class PosixUtils {
             }
             if (devnull < 0) {
                 setFD(fd, handle);
-                throw new IOException(lastErrorString("open /dev/null failed"));
+                throw PosixUtils.newIOExceptionWithLastError("open /dev/null failed");
             } else {
                 dup2(devnull, handle);
                 close(devnull);
             }
         } else if (close(handle) == -1) {
-            throw new IOException(lastErrorString("close failed"));
+            throw PosixUtils.newIOExceptionWithLastError("close failed");
         }
     }
 
@@ -277,6 +273,28 @@ public class PosixUtils {
         return instance.pid;
     }
 
+    public static int waitForProcessExit(int ppid) {
+        CIntPointer statusptr = StackValue.get(CIntPointer.class);
+        while (Wait.waitpid(ppid, statusptr, 0) < 0) {
+            if (Errno.errno() == Errno.ECHILD()) {
+                return 0;
+            } else if (Errno.errno() == Errno.EINTR()) {
+                break;
+            } else {
+                return -1;
+            }
+        }
+
+        int status = statusptr.read();
+        if (Wait.WIFEXITED(status)) {
+            return Wait.WEXITSTATUS(status);
+        } else if (Wait.WIFSIGNALED(status)) {
+            // Exited because of signal: return 0x80 + signal number like shells do
+            return 0x80 + Wait.WTERMSIG(status);
+        }
+        return status;
+    }
+
     static int readSingle(FileDescriptor fd) throws IOException {
         CCharPointer retPtr = StackValue.get(CCharPointer.class);
         int handle = PosixUtils.getFDHandle(fd);
@@ -285,7 +303,7 @@ public class PosixUtils {
             // EOF
             return -1;
         } else if (nread.equal(-1)) {
-            throw new IOException(lastErrorString("Read error"));
+            throw PosixUtils.newIOExceptionWithLastError("Read error");
         }
         return retPtr.read() & 0xFF;
     }
@@ -318,7 +336,7 @@ public class PosixUtils {
                     LibC.memcpy(pin.addressOfArrayElement(off), buf, (UnsignedWord) nread);
                 }
             } else if (nread.equal(-1)) {
-                throw new IOException(lastErrorString("Read error"));
+                throw PosixUtils.newIOExceptionWithLastError("Read error");
             } else {
                 // EOF
                 nread = WordFactory.signed(-1);
@@ -344,7 +362,7 @@ public class PosixUtils {
         n = write(handle, bufPtr, WordFactory.unsigned(1));
 
         if (n.equal(-1)) {
-            throw new IOException(lastErrorString("Write error"));
+            throw PosixUtils.newIOExceptionWithLastError("Write error");
         }
     }
 
@@ -371,7 +389,7 @@ public class PosixUtils {
                 SignedWord n = write(fd, curBuf, curLen);
 
                 if (n.equal(-1)) {
-                    throw new IOException(lastErrorString("Write error"));
+                    throw PosixUtils.newIOExceptionWithLastError("Write error");
                 }
                 curBuf = curBuf.addressOf(n);
                 curLen = curLen.subtract((UnsignedWord) n);
@@ -478,5 +496,32 @@ public class PosixUtils {
     @Uninterruptible(reason = "Called from uninterruptible code.")
     public static void checkStatusIs0(int status, String message) {
         VMError.guarantee(status == 0, message);
+    }
+
+    @Uninterruptible(reason = "Called from uninterruptible code.")
+    public static boolean readEntirely(int fd, CCharPointer buffer, int bufferLen) {
+        int bufferOffset = 0;
+        for (;;) {
+            int readBytes = readBytes(fd, buffer, bufferLen - 1, bufferOffset);
+            if (readBytes < 0) { // NOTE: also when file does not fit in buffer
+                return false;
+            }
+            bufferOffset += readBytes;
+            if (readBytes == 0) { // EOF, terminate string
+                buffer.write(bufferOffset, (byte) 0);
+                return true;
+            }
+        }
+    }
+
+    @Uninterruptible(reason = "Called from uninterruptible code.")
+    public static int readBytes(int fd, CCharPointer buffer, int bufferLen, int readOffset) {
+        int readBytes = -1;
+        if (readOffset < bufferLen) {
+            do {
+                readBytes = (int) Unistd.NoTransitions.read(fd, buffer.addressOf(readOffset), WordFactory.unsigned(bufferLen - readOffset)).rawValue();
+            } while (readBytes == -1 && errno() == Errno.EINTR());
+        }
+        return readBytes;
     }
 }

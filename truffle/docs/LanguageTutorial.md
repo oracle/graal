@@ -13,6 +13,5 @@ Conference on Programming Language Design and Implementation [PLDI 2016](http://
 Next Steps:
 * Start to subclass [TruffleLanguage](http://www.graalvm.org/truffle/javadoc/com/oracle/truffle/api/TruffleLanguage.html) for your own language implementation.
 * Fork [SimpleLanguage](https://github.com/graalvm/simplelanguage), a toy language that demonstrates how to use many Truffle features.
-* Embed Truffle languages in Java host applications using the [Polyglot API](../../sdk/docs/PolyglotEmbedding.md).
+* Embed Truffle languages in Java host applications using the [Polyglot API](http://www.graalvm.org/docs/graalvm-as-a-platform/embed/).
 * Read The Graal/Truffle [publications](../../docs/Publications.md)
-

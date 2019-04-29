@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2017, 2018, Oracle and/or its affiliates.
+ * Copyright (c) 2017, 2019, Oracle and/or its affiliates.
  *
  * All rights reserved.
  *
@@ -31,13 +31,14 @@ package com.oracle.truffle.llvm.nodes.asm.syscall;
 
 import com.oracle.truffle.api.CompilerAsserts;
 import com.oracle.truffle.api.CompilerDirectives;
-import com.oracle.truffle.api.TruffleLanguage.ContextReference;
 import com.oracle.truffle.api.dsl.Cached;
+import com.oracle.truffle.api.dsl.CachedContext;
 import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.profiles.IntValueProfile;
 import com.oracle.truffle.llvm.nodes.memory.store.LLVMPointerStoreNode;
 import com.oracle.truffle.llvm.nodes.memory.store.LLVMPointerStoreNodeGen;
 import com.oracle.truffle.llvm.runtime.LLVMContext;
+import com.oracle.truffle.llvm.runtime.LLVMLanguage;
 import com.oracle.truffle.llvm.runtime.memory.LLVMSyscallOperationNode;
 import com.oracle.truffle.llvm.runtime.pointer.LLVMPointer;
 
@@ -51,14 +52,14 @@ public abstract class LLVMAMD64SyscallArchPrctlNode extends LLVMSyscallOperation
 
     @Specialization
     protected long doOp(long code, long addr,
-                    @Cached("getContextReference()") ContextReference<LLVMContext> context,
+                    @CachedContext(LLVMLanguage.class) LLVMContext context,
                     @Cached("createAddressStoreNode()") LLVMPointerStoreNode store) {
         return exec(code, addr, context, store);
     }
 
     @Specialization
     protected long doOp(long code, LLVMPointer addr,
-                    @Cached("getContextReference()") ContextReference<LLVMContext> context,
+                    @CachedContext(LLVMLanguage.class) LLVMContext context,
                     @Cached("createAddressStoreNode()") LLVMPointerStoreNode store) {
         return exec(code, addr, context, store);
     }
@@ -68,13 +69,13 @@ public abstract class LLVMAMD64SyscallArchPrctlNode extends LLVMSyscallOperation
         return LLVMPointerStoreNodeGen.create(null, null);
     }
 
-    private long exec(long code, Object addr, ContextReference<LLVMContext> context, LLVMPointerStoreNode store) throws AssertionError {
+    private long exec(long code, Object addr, LLVMContext context, LLVMPointerStoreNode store) throws AssertionError {
         switch (profile.profile((int) code)) {
             case LLVMAMD64ArchPrctl.ARCH_SET_FS:
-                context.get().setThreadLocalStorage(addr);
+                context.setThreadLocalStorage(addr);
                 break;
             case LLVMAMD64ArchPrctl.ARCH_GET_FS: {
-                Object tls = getContextReference().get().getThreadLocalStorage();
+                Object tls = context.getThreadLocalStorage();
                 store.executeWithTarget(addr, tls);
                 break;
             }

@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2017, 2017, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2017, 2019, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -25,7 +25,8 @@
 package com.oracle.svm.core.posix;
 
 import org.graalvm.compiler.options.Option;
-import org.graalvm.nativeimage.Feature;
+import org.graalvm.nativeimage.hosted.Feature;
+import org.graalvm.nativeimage.ImageInfo;
 import org.graalvm.nativeimage.ImageSingletons;
 import org.graalvm.nativeimage.LogHandler;
 import org.graalvm.nativeimage.Platform;
@@ -36,7 +37,6 @@ import org.graalvm.nativeimage.c.function.CEntryPointLiteral;
 import org.graalvm.nativeimage.c.struct.SizeOf;
 import org.graalvm.word.WordFactory;
 
-import com.oracle.svm.core.SubstrateUtil;
 import com.oracle.svm.core.annotate.AutomaticFeature;
 import com.oracle.svm.core.annotate.RestrictHeapAccess;
 import com.oracle.svm.core.annotate.Uninterruptible;
@@ -50,15 +50,15 @@ import com.oracle.svm.core.option.RuntimeOptionKey;
 import com.oracle.svm.core.posix.headers.LibC;
 import com.oracle.svm.core.posix.headers.Signal;
 import com.oracle.svm.core.posix.headers.Signal.AdvancedSignalDispatcher;
-import com.oracle.svm.core.posix.headers.Signal.GregsPointer;
 import com.oracle.svm.core.posix.headers.Signal.sigaction;
 import com.oracle.svm.core.posix.headers.Signal.siginfo_t;
 import com.oracle.svm.core.posix.headers.Signal.ucontext_t;
 import com.oracle.svm.core.thread.VMThreads;
 
-@Platforms(Platform.LINUX.class)
+@Platforms({Platform.LINUX_AMD64.class, Platform.DARWIN_AMD64.class})
 @AutomaticFeature
 public class SegfaultHandlerFeature implements Feature {
+
     @Override
     public void beforeAnalysis(BeforeAnalysisAccess access) {
         RuntimeSupport.getRuntimeSupport().addStartupHook(SubstrateSegfaultHandler::install);
@@ -68,8 +68,8 @@ public class SegfaultHandlerFeature implements Feature {
 class SubstrateSegfaultHandler {
 
     public static class Options {
-        @Option(help = "Install segfault handler that prints register contents and full Java stacktrace")//
-        static final RuntimeOptionKey<Boolean> InstallSegfaultHandler = new RuntimeOptionKey<>(true);
+        @Option(help = "Install segfault handler that prints register contents and full Java stacktrace. Default: enabled for an executable, disabled for a shared library.")//
+        static final RuntimeOptionKey<Boolean> InstallSegfaultHandler = new RuntimeOptionKey<>(null);
     }
 
     private static volatile boolean dispatchInProgress = false;
@@ -86,42 +86,12 @@ class SubstrateSegfaultHandler {
         dispatchInProgress = true;
 
         VMThreads.StatusSupport.setStatusIgnoreSafepoints();
-
         Log log = Log.log();
         log.autoflush(true);
         log.string("[ [ SubstrateSegfaultHandler caught signal ").signed(signalNumber).string(" ] ]").newline();
 
-        GregsPointer gregs = uContext.uc_mcontext_gregs();
-        long spValue = gregs.read(Signal.GregEnum.REG_RSP.getCValue());
-        long ipValue = gregs.read(Signal.GregEnum.REG_RIP.getCValue());
-
-        log.newline().string("General Purpose Register Set Values: ").newline();
-
-        log.indent(true);
-        log.string("RAX ").zhex(gregs.read(Signal.GregEnum.REG_RAX.getCValue())).newline();
-        log.string("RBX ").zhex(gregs.read(Signal.GregEnum.REG_RBX.getCValue())).newline();
-        log.string("RCX ").zhex(gregs.read(Signal.GregEnum.REG_RCX.getCValue())).newline();
-        log.string("RDX ").zhex(gregs.read(Signal.GregEnum.REG_RDX.getCValue())).newline();
-        log.string("RBP ").zhex(gregs.read(Signal.GregEnum.REG_RBP.getCValue())).newline();
-        log.string("RSI ").zhex(gregs.read(Signal.GregEnum.REG_RSI.getCValue())).newline();
-        log.string("RDI ").zhex(gregs.read(Signal.GregEnum.REG_RDI.getCValue())).newline();
-        log.string("RSP ").zhex(spValue).newline();
-        log.string("R8  ").zhex(gregs.read(Signal.GregEnum.REG_R8.getCValue())).newline();
-        log.string("R9  ").zhex(gregs.read(Signal.GregEnum.REG_R9.getCValue())).newline();
-        log.string("R10 ").zhex(gregs.read(Signal.GregEnum.REG_R10.getCValue())).newline();
-        log.string("R11 ").zhex(gregs.read(Signal.GregEnum.REG_R11.getCValue())).newline();
-        log.string("R12 ").zhex(gregs.read(Signal.GregEnum.REG_R12.getCValue())).newline();
-        log.string("R13 ").zhex(gregs.read(Signal.GregEnum.REG_R13.getCValue())).newline();
-        log.string("R14 ").zhex(gregs.read(Signal.GregEnum.REG_R14.getCValue())).newline();
-        log.string("R15 ").zhex(gregs.read(Signal.GregEnum.REG_R15.getCValue())).newline();
-        log.string("EFL ").zhex(gregs.read(Signal.GregEnum.REG_EFL.getCValue())).newline();
-        log.string("RIP ").zhex(ipValue).newline();
-        log.indent(false);
-
-        SubstrateUtil.printDiagnostics(log, WordFactory.pointer(spValue), WordFactory.pointer(ipValue));
-
+        ImageSingletons.lookup(UContextRegisterDumper.class).dumpRegisters(log, uContext);
         log.string("Use runtime option -R:-InstallSegfaultHandler if you don't want to use SubstrateSegfaultHandler.").newline();
-
         log.newline().string("Bye bye ...").newline().newline();
         ImageSingletons.lookup(LogHandler.class).fatalError();
     }
@@ -131,7 +101,8 @@ class SubstrateSegfaultHandler {
                     ucontext_t.class);
 
     static void install() {
-        if (Options.InstallSegfaultHandler.getValue()) {
+        Boolean optionValue = Options.InstallSegfaultHandler.getValue();
+        if (optionValue == Boolean.TRUE || (optionValue == null && ImageInfo.isExecutable())) {
             int structSigActionSize = SizeOf.get(sigaction.class);
             sigaction structSigAction = StackValue.get(structSigActionSize);
             LibC.memset(structSigAction, WordFactory.signed(0), WordFactory.unsigned(structSigActionSize));

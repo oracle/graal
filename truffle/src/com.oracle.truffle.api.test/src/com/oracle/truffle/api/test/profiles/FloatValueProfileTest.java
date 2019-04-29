@@ -44,6 +44,7 @@ import static com.oracle.truffle.api.test.ReflectionUtils.getStaticField;
 import static com.oracle.truffle.api.test.ReflectionUtils.invoke;
 import static com.oracle.truffle.api.test.ReflectionUtils.invokeStatic;
 import static com.oracle.truffle.api.test.ReflectionUtils.loadRelative;
+import static com.oracle.truffle.api.test.profiles.PrimitiveValueProfileTest.exactCompare;
 import static org.hamcrest.CoreMatchers.is;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertThat;
@@ -56,7 +57,6 @@ import org.junit.experimental.theories.Theory;
 import org.junit.runner.RunWith;
 
 import com.oracle.truffle.api.profiles.FloatValueProfile;
-import com.oracle.truffle.api.profiles.PrimitiveValueProfile;
 
 @RunWith(Theories.class)
 public class FloatValueProfileTest {
@@ -114,7 +114,7 @@ public class FloatValueProfileTest {
         assertEquals(result0, value0, FLOAT_DELTA);
         assertEquals(result1, value1, FLOAT_DELTA);
 
-        if (PrimitiveValueProfile.exactCompare(value0, value1)) {
+        if (exactCompare(value0, value1)) {
             assertEquals(getCachedValue(profile), value0, FLOAT_DELTA);
             assertThat(isGeneric(profile), is(false));
         } else {
@@ -135,7 +135,7 @@ public class FloatValueProfileTest {
         assertEquals(result1, value1, FLOAT_DELTA);
         assertEquals(result2, value2, FLOAT_DELTA);
 
-        if (PrimitiveValueProfile.exactCompare(value0, value1) && PrimitiveValueProfile.exactCompare(value1, value2)) {
+        if (exactCompare(value0, value1) && exactCompare(value1, value2)) {
             assertEquals(getCachedValue(profile), value0, FLOAT_DELTA);
             assertThat(isGeneric(profile), is(false));
         } else {

@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2017, 2017, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2017, 2019, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -24,7 +24,7 @@
  */
 package com.oracle.truffle.regex.tregex.automaton;
 
-import com.oracle.truffle.regex.tregex.matchers.MatcherBuilder;
+import com.oracle.truffle.regex.charset.CharSet;
 import com.oracle.truffle.regex.tregex.util.json.Json;
 import com.oracle.truffle.regex.tregex.util.json.JsonConvertible;
 import com.oracle.truffle.regex.tregex.util.json.JsonValue;
@@ -43,10 +43,10 @@ import static com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 public class TransitionBuilder<TS extends TransitionSet> implements JsonConvertible {
 
     private final TS transitionSet;
-    private MatcherBuilder matcherBuilder;
+    private CharSet matcherBuilder;
     private TransitionBuilder<TS> next;
 
-    public TransitionBuilder(TS transitionSet, MatcherBuilder matcherBuilder) {
+    public TransitionBuilder(TS transitionSet, CharSet matcherBuilder) {
         this.transitionSet = transitionSet;
         this.matcherBuilder = matcherBuilder;
     }
@@ -61,11 +61,11 @@ public class TransitionBuilder<TS extends TransitionSet> implements JsonConverti
     /**
      * Represents the character set matched by this transition fragment.
      */
-    public MatcherBuilder getMatcherBuilder() {
+    public CharSet getMatcherBuilder() {
         return matcherBuilder;
     }
 
-    public void setMatcherBuilder(MatcherBuilder matcherBuilder) {
+    public void setMatcherBuilder(CharSet matcherBuilder) {
         this.matcherBuilder = matcherBuilder;
     }
 
@@ -96,7 +96,7 @@ public class TransitionBuilder<TS extends TransitionSet> implements JsonConverti
      *         return an instance of their own type!
      */
     @SuppressWarnings("unchecked")
-    public TransitionBuilder<TS> createMerged(TransitionBuilder<TS> other, MatcherBuilder mergedMatcher) {
+    public TransitionBuilder<TS> createMerged(TransitionBuilder<TS> other, CharSet mergedMatcher) {
         return new TransitionBuilder<>((TS) transitionSet.createMerged(other.transitionSet), mergedMatcher);
     }
 

@@ -231,7 +231,6 @@ final class SourceImpl extends Source {
             } else if (!(obj instanceof Key)) {
                 return false;
             }
-            assert content != null;
             Key other = (Key) obj;
             /*
              * Compare characters last as it is likely the most expensive comparison in the worst
@@ -251,7 +250,9 @@ final class SourceImpl extends Source {
 
         private boolean compareContent(Key other) {
             Object otherContent = other.content;
-            if (content instanceof CharSequence && otherContent instanceof CharSequence) {
+            if (content == other.content) {
+                return true;
+            } else if (content instanceof CharSequence && otherContent instanceof CharSequence) {
                 return compareCharacters((CharSequence) content, (CharSequence) otherContent);
             } else if (content instanceof ByteSequence && otherContent instanceof ByteSequence) {
                 return compareBytes((ByteSequence) content, (ByteSequence) otherContent);
@@ -261,11 +262,7 @@ final class SourceImpl extends Source {
         }
 
         private static boolean compareBytes(ByteSequence bytes, ByteSequence other) {
-            if (bytes == other) {
-                return true;
-            } else if (bytes == null) {
-                return false;
-            } else if (bytes.length() != other.length()) {
+            if (bytes == null || bytes.length() != other.length()) {
                 return false;
             } else {
                 // trusted class
@@ -274,14 +271,9 @@ final class SourceImpl extends Source {
         }
 
         private static boolean compareCharacters(CharSequence characters, CharSequence other) {
-            if (characters == other) {
-                return true;
-            } else if (characters == null) {
-                return false;
-            } else if (characters.length() != other.length()) {
+            if (characters == null || characters.length() != other.length()) {
                 return false;
             } else {
-                assert other != null;
                 return Objects.equals(characters.toString(), other.toString());
             }
         }

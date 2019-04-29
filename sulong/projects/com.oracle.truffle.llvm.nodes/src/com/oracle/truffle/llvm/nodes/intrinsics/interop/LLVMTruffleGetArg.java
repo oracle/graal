@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2016, 2018, Oracle and/or its affiliates.
+ * Copyright (c) 2016, 2019, Oracle and/or its affiliates.
  *
  * All rights reserved.
  *
@@ -36,12 +36,14 @@ import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.llvm.nodes.func.LLVMCallNode;
 import com.oracle.truffle.llvm.nodes.intrinsics.llvm.LLVMIntrinsic;
 import com.oracle.truffle.llvm.runtime.except.LLVMPolyglotException;
+import com.oracle.truffle.llvm.runtime.interop.convert.ToPointer;
 import com.oracle.truffle.llvm.runtime.debug.scope.LLVMSourceLocation;
 import com.oracle.truffle.llvm.runtime.nodes.api.LLVMExpressionNode;
 
 @NodeChild(type = LLVMExpressionNode.class)
 @NodeField(name = "sourceLocation", type = LLVMSourceLocation.class)
 public abstract class LLVMTruffleGetArg extends LLVMIntrinsic {
+    @Child ToPointer toPointer = ToPointer.create();
 
     @Override
     public abstract LLVMSourceLocation getSourceLocation();
@@ -49,7 +51,7 @@ public abstract class LLVMTruffleGetArg extends LLVMIntrinsic {
     @Specialization(rewriteOn = ArrayIndexOutOfBoundsException.class)
     protected Object doIntrinsic(VirtualFrame frame, int index) {
         Object[] arguments = frame.getArguments();
-        return arguments[LLVMCallNode.USER_ARGUMENT_OFFSET + index];
+        return toPointer.executeWithTarget(arguments[LLVMCallNode.USER_ARGUMENT_OFFSET + index]);
     }
 
     @Specialization
@@ -58,6 +60,6 @@ public abstract class LLVMTruffleGetArg extends LLVMIntrinsic {
         if (index < 0 || index + LLVMCallNode.USER_ARGUMENT_OFFSET >= arguments.length) {
             throw new LLVMPolyglotException(this, "Argument index %d out of bounds.", index);
         }
-        return arguments[LLVMCallNode.USER_ARGUMENT_OFFSET + index];
+        return toPointer.executeWithTarget(arguments[LLVMCallNode.USER_ARGUMENT_OFFSET + index]);
     }
 }

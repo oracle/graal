@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2017, 2017, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2017, 2019, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -28,12 +28,12 @@ import java.nio.ByteBuffer;
 import java.nio.CharBuffer;
 import java.nio.charset.Charset;
 
+import com.oracle.svm.core.headers.Errno;
+import org.graalvm.nativeimage.ImageSingletons;
 import org.graalvm.nativeimage.ObjectHandle;
 import org.graalvm.nativeimage.ObjectHandles;
-import org.graalvm.nativeimage.Platform;
-import org.graalvm.nativeimage.Platform.DARWIN;
-import org.graalvm.nativeimage.Platform.LINUX;
 import org.graalvm.nativeimage.c.type.CCharPointer;
+import org.graalvm.nativeimage.c.type.CIntPointer;
 import org.graalvm.nativeimage.c.type.CTypeConversion;
 import org.graalvm.word.SignedWord;
 import org.graalvm.word.UnsignedWord;
@@ -42,11 +42,10 @@ import org.graalvm.word.WordFactory;
 import com.oracle.svm.core.SubstrateUtil;
 import com.oracle.svm.core.threadlocal.FastThreadLocalFactory;
 import com.oracle.svm.core.threadlocal.FastThreadLocalObject;
-import com.oracle.svm.core.util.VMError;
 import com.oracle.svm.truffle.nfi.NativeAPI.TruffleContextHandle;
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 
-public final class TruffleNFISupport {
+public abstract class TruffleNFISupport {
 
     static final Charset UTF8 = Charset.forName("utf8");
 
@@ -58,18 +57,11 @@ public final class TruffleNFISupport {
 
     public final String errnoGetterFunctionName;
 
-    TruffleNFISupport() {
+    protected TruffleNFISupport(String errnoLocation) {
+        errnoGetterFunctionName = errnoLocation;
         globalHandles = ObjectHandles.create();
         closureHandles = ObjectHandles.create();
         contextHandles = ObjectHandles.create();
-
-        if (Platform.includedIn(LINUX.class)) {
-            errnoGetterFunctionName = "__errno_location";
-        } else if (Platform.includedIn(DARWIN.class)) {
-            errnoGetterFunctionName = "__error";
-        } else {
-            throw VMError.unsupportedFeature("unsupported platform for TruffleNFIFeature");
-        }
     }
 
     public static LocalNativeScope createLocalScope(int pinCount) {
@@ -135,7 +127,7 @@ public final class TruffleNFISupport {
     }
 
     @TruffleBoundary
-    static String utf8ToJavaString(CCharPointer str) {
+    public static String utf8ToJavaString(CCharPointer str) {
         if (str.equal(WordFactory.zero())) {
             return null;
         } else {
@@ -178,12 +170,80 @@ public final class TruffleNFISupport {
     }
 
     @TruffleBoundary
-    static byte[] javaStringToUtf8(String str) {
+    public static byte[] javaStringToUtf8(String str) {
         CharBuffer input = CharBuffer.wrap(new ZeroTerminatedCharSequence(str));
         /*
          * No need to trim the result array. The string is zero terminated, and the array is only
          * accessed from native code, which ignores the array length anyway.
          */
         return UTF8.encode(input).array();
+    }
+
+    protected abstract CCharPointer strdupImpl(CCharPointer src);
+
+    protected abstract long loadLibraryImpl(long nativeContext, String name, int flags);
+
+    protected abstract void freeLibraryImpl(long library);
+
+    protected abstract long lookupImpl(long nativeContext, long library, String name);
+
+    public static CCharPointer strdup(CCharPointer src) {
+        TruffleNFISupport truffleNFISupport = ImageSingletons.lookup(TruffleNFISupport.class);
+        return truffleNFISupport.strdupImpl(src);
+    }
+
+    public static long loadLibrary(long nativeContext, String name, int flags) {
+        TruffleNFISupport truffleNFISupport = ImageSingletons.lookup(TruffleNFISupport.class);
+        return truffleNFISupport.loadLibraryImpl(nativeContext, name, flags);
+    }
+
+    public static void freeLibrary(long library) {
+        TruffleNFISupport truffleNFISupport = ImageSingletons.lookup(TruffleNFISupport.class);
+        truffleNFISupport.freeLibraryImpl(library);
+    }
+
+    public static long lookup(long nativeContext, long library, String name) {
+        TruffleNFISupport truffleNFISupport = ImageSingletons.lookup(TruffleNFISupport.class);
+        return truffleNFISupport.lookupImpl(nativeContext, library, name);
+    }
+
+    /**
+     * Context for calling from native code into Java code. On entry, the native {@code errno} value
+     * is stored in {@link ErrnoMirror}. When leaving the context, the {@link ErrnoMirror} value is
+     * written back to the native {@code errno} location.
+     */
+    public static class ErrnoMirrorContext implements AutoCloseable {
+
+        private final CIntPointer errnoMirror;
+
+        public ErrnoMirrorContext() {
+            errnoMirror = ErrnoMirror.getErrnoMirrorLocation();
+            errnoMirror.write(Errno.errno());
+        }
+
+        @Override
+        public void close() {
+            Errno.set_errno(errnoMirror.read());
+        }
+    }
+
+    /**
+     * Context for calling from Java code into native code. On entry, the {@link ErrnoMirror} mirror
+     * value is stored to the native {@code errno} location. When leaving the context, the native
+     * {@code errno} value is written back to the {@link ErrnoMirror}.
+     */
+    public static class NativeErrnoContext implements AutoCloseable {
+
+        private final CIntPointer errnoMirror;
+
+        public NativeErrnoContext() {
+            errnoMirror = ErrnoMirror.getErrnoMirrorLocation();
+            Errno.set_errno(errnoMirror.read());
+        }
+
+        @Override
+        public void close() {
+            errnoMirror.write(Errno.errno());
+        }
     }
 }

@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2016, 2017, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2016, 2019, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -24,32 +24,42 @@
  */
 package com.oracle.svm.core.posix.darwin;
 
-import org.graalvm.nativeimage.Feature;
+import org.graalvm.nativeimage.hosted.Feature;
 import org.graalvm.nativeimage.ImageSingletons;
-import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.Platforms;
 import org.graalvm.nativeimage.StackValue;
 import org.graalvm.nativeimage.c.struct.SizeOf;
 import org.graalvm.nativeimage.c.type.CIntPointer;
 import org.graalvm.nativeimage.c.type.CLongPointer;
 import org.graalvm.nativeimage.c.type.WordPointer;
+import org.graalvm.nativeimage.impl.InternalPlatform;
 import org.graalvm.word.UnsignedWord;
 import org.graalvm.word.WordFactory;
 
 import com.oracle.svm.core.annotate.AutomaticFeature;
 import com.oracle.svm.core.heap.PhysicalMemory;
 import com.oracle.svm.core.log.Log;
-import com.oracle.svm.core.posix.headers.Errno;
+import com.oracle.svm.core.headers.Errno;
 import com.oracle.svm.core.posix.headers.Sysctl;
 import com.oracle.svm.core.posix.headers.darwin.DarwinSysctl;
 import com.oracle.svm.core.util.VMError;
 
-@Platforms(Platform.DARWIN.class)
+@Platforms(InternalPlatform.DARWIN_AND_JNI.class)
 class DarwinPhysicalMemory extends PhysicalMemory {
 
     static class PhysicalMemorySupportImpl implements PhysicalMemorySupport {
+
+        /** A sentinel unset value. */
+        static final long UNSET_SENTINEL = Long.MIN_VALUE;
+
+        /** The cached size of physical memory, or an unset value. */
+        long cachedSize = UNSET_SENTINEL;
+
         @Override
         public UnsignedWord size() {
+            if (hasSize()) {
+                return getSize();
+            }
             final CIntPointer namePointer = StackValue.get(2, CIntPointer.class);
             namePointer.write(0, DarwinSysctl.CTL_HW());
             namePointer.write(1, DarwinSysctl.HW_MEMSIZE());
@@ -61,7 +71,26 @@ class DarwinPhysicalMemory extends PhysicalMemory {
                 Log.log().string("DarwinPhysicalMemory.PhysicalMemorySupportImpl.size(): sysctl() returns with errno: ").signed(Errno.errno()).newline();
                 VMError.shouldNotReachHere("DarwinPhysicalMemory.PhysicalMemorySupportImpl.size() failed.");
             }
-            return WordFactory.unsigned(physicalMemoryPointer.read());
+            /* Cache the value, races are idempotent. */
+            setSize(physicalMemoryPointer.read());
+            return getSize();
+        }
+
+        /** Check if the cache has a value. */
+        @Override
+        public boolean hasSize() {
+            return (cachedSize != UNSET_SENTINEL);
+        }
+
+        /** Update the cached size. */
+        void setSize(long value) {
+            cachedSize = value;
+        }
+
+        /** Get the cached size. */
+        UnsignedWord getSize() {
+            assert hasSize() : "DarwinPhysicalMemory.PhysicalMemorySupportImpl.getValue(): cachedSize has no value.";
+            return WordFactory.unsigned(cachedSize);
         }
     }
 

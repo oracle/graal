@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2016, 2018, Oracle and/or its affiliates.
+ * Copyright (c) 2016, 2019, Oracle and/or its affiliates.
  *
  * All rights reserved.
  *
@@ -44,11 +44,11 @@ import com.oracle.truffle.llvm.parser.model.symbols.globals.GlobalAlias;
 import com.oracle.truffle.llvm.parser.model.symbols.globals.GlobalVariable;
 import com.oracle.truffle.llvm.parser.model.target.TargetDataLayout;
 import com.oracle.truffle.llvm.parser.model.target.TargetTriple;
-import com.oracle.truffle.llvm.parser.records.ModuleRecord;
 import com.oracle.truffle.llvm.parser.records.Records;
 import com.oracle.truffle.llvm.parser.scanner.Block;
 import com.oracle.truffle.llvm.parser.scanner.LLVMScanner;
 import com.oracle.truffle.llvm.parser.text.LLSourceBuilder;
+import com.oracle.truffle.llvm.runtime.except.LLVMParserException;
 import com.oracle.truffle.llvm.runtime.types.FunctionType;
 import com.oracle.truffle.llvm.runtime.types.PointerType;
 import com.oracle.truffle.llvm.runtime.types.Type;
@@ -107,7 +107,7 @@ public final class Module implements ParserListener {
             type = ((PointerType) type).getPointeeType();
         }
 
-        final FunctionType functionType = (FunctionType) type;
+        final FunctionType functionType = Types.castToFunction(type);
         final boolean isPrototype = args[FUNCTION_ISPROTOTYPE + recordOffset] != 0;
         final Linkage linkage = Linkage.decode(args[FUNCTION_LINKAGE + recordOffset]);
 
@@ -198,7 +198,7 @@ public final class Module implements ParserListener {
 
     private void createGlobalAliasOld(long[] args) {
         final int recordOffset = useStrTab() ? STRTAB_RECORD_OFFSET : 0;
-        final PointerType type = (PointerType) types.get(args[GLOBALALIAS_TYPE + recordOffset]);
+        final PointerType type = Types.castToPointer(types.get(args[GLOBALALIAS_TYPE + recordOffset]));
         int value = (int) args[GLOBALALIAS_OLD_VALUE + recordOffset];
         long linkage = args[GLOBALALIAS_OLD_LINKAGE + recordOffset];
 
@@ -223,7 +223,7 @@ public final class Module implements ParserListener {
                 return new Constants(types, scope);
 
             case FUNCTION: {
-                throw new IllegalStateException("Functions must be parsed lazily!");
+                throw new LLVMParserException("Function is not parsed lazily!");
             }
 
             case TYPE:
@@ -248,7 +248,7 @@ public final class Module implements ParserListener {
     public void skip(Block block, LLVMScanner.LazyScanner lazyScanner) {
         if (block == Block.FUNCTION) {
             if (functionQueue.isEmpty()) {
-                throw new RuntimeException("Missing Function Prototype in Bitcode File!");
+                throw new LLVMParserException("Missing Function Prototype in Bitcode File!");
             }
             final FunctionDefinition definition = functionQueue.removeFirst();
             final Function parser = new Function(scope, types, definition, mode, paramAttributes);
@@ -259,35 +259,54 @@ public final class Module implements ParserListener {
         }
     }
 
+    private static final int MODULE_VERSION = 1;
+    private static final int MODULE_TARGET_TRIPLE = 2;
+    private static final int MODULE_TARGET_DATALAYOUT = 3;
+    // private static final int MODULE_ASM = 4;
+    // private static final int MODULE_SECTION_NAME = 5;
+    // private static final int MODULE_DEPLIB = 6;
+    private static final int MODULE_GLOBAL_VARIABLE = 7;
+    private static final int MODULE_FUNCTION = 8;
+    private static final int MODULE_ALIAS_OLD = 9;
+    // private static final int MODULE_PURGE_VALUES = 10;
+    // private static final int MODULE_GC_NAME = 11;
+    // private static final int MODULE_COMDAT = 12;
+    // private static final int MODULE_VSTOFFSET = 13;
+    private static final int MODULE_ALIAS = 14;
+    // private static final int MODULE_METADATA_VALUES = 15;
+    // private static final int MODULE_SOURCE_FILENAME = 16;
+    // private static final int MODULE_CODE_HASH = 17;
+    // private static final int MODULE_CODE_IFUNC = 18;
+
     @Override
     public void record(long id, long[] args) {
-        final ModuleRecord record = ModuleRecord.decode(id);
-        switch (record) {
-            case VERSION:
+        final int opCode = (int) id;
+        switch (opCode) {
+            case MODULE_VERSION:
                 mode = (int) args[0];
                 break;
 
-            case TARGET_TRIPLE:
+            case MODULE_TARGET_TRIPLE:
                 module.addTargetInformation(new TargetTriple(Records.toString(args)));
                 break;
 
-            case TARGET_DATALAYOUT:
+            case MODULE_TARGET_DATALAYOUT:
                 final TargetDataLayout layout = TargetDataLayout.fromString(Records.toString(args));
                 module.setTargetDataLayout(layout);
                 break;
 
-            case GLOBAL_VARIABLE:
+            case MODULE_GLOBAL_VARIABLE:
                 createGlobalVariable(args);
                 break;
 
-            case FUNCTION:
+            case MODULE_FUNCTION:
                 createFunction(args);
                 break;
 
-            case ALIAS:
+            case MODULE_ALIAS:
                 createGlobalAliasNew(args);
                 break;
-            case ALIAS_OLD:
+            case MODULE_ALIAS_OLD:
                 createGlobalAliasOld(args);
                 break;
 

@@ -24,10 +24,22 @@
  */
 package com.oracle.svm.core.snippets;
 
+import com.oracle.svm.core.annotate.RestrictHeapAccess;
+import com.oracle.svm.core.jdk.StackTraceBuilder;
 import com.oracle.svm.core.snippets.SnippetRuntime.SubstrateForeignCallDescriptor;
+import com.oracle.svm.core.threadlocal.FastThreadLocalFactory;
+import com.oracle.svm.core.threadlocal.FastThreadLocalInt;
+import com.oracle.svm.core.util.VMError;
 
+/**
+ * This class contains support methods to throw implicit exceptions of according to the
+ * specification of Java bytecode.
+ *
+ * All methods in this class are an implementation detail that should not be observable by users,
+ * therefore these methods are filtered in exception stack traces (see {@link StackTraceBuilder}).
+ */
 public class ImplicitExceptions {
-    private static final String NO_STACK_MSG = "[no exception stack trace available because exception is thrown from code that must be allocation free]";
+    public static final String NO_STACK_MSG = "[no exception stack trace available because exception is thrown from code that must be allocation free]";
 
     public static final NullPointerException CACHED_NULL_POINTER_EXCEPTION = new NullPointerException(NO_STACK_MSG);
     public static final ArrayIndexOutOfBoundsException CACHED_OUT_OF_BOUNDS_EXCEPTION = new ArrayIndexOutOfBoundsException(NO_STACK_MSG);
@@ -47,6 +59,12 @@ public class ImplicitExceptions {
     public static final SubstrateForeignCallDescriptor THROW_NEW_ARRAY_STORE_EXCEPTION = SnippetRuntime.findForeignCall(ImplicitExceptions.class, "throwNewArrayStoreException", true);
     public static final SubstrateForeignCallDescriptor THROW_NEW_ARITHMETIC_EXCEPTION = SnippetRuntime.findForeignCall(ImplicitExceptions.class, "throwNewArithmeticException", true);
 
+    public static final SubstrateForeignCallDescriptor GET_CACHED_NULL_POINTER_EXCEPTION = SnippetRuntime.findForeignCall(ImplicitExceptions.class, "getCachedNullPointerException", false);
+    public static final SubstrateForeignCallDescriptor GET_CACHED_OUT_OF_BOUNDS_EXCEPTION = SnippetRuntime.findForeignCall(ImplicitExceptions.class, "getCachedOutOfBoundsException", false);
+    public static final SubstrateForeignCallDescriptor GET_CACHED_CLASS_CAST_EXCEPTION = SnippetRuntime.findForeignCall(ImplicitExceptions.class, "getCachedClassCastException", false);
+    public static final SubstrateForeignCallDescriptor GET_CACHED_ARRAY_STORE_EXCEPTION = SnippetRuntime.findForeignCall(ImplicitExceptions.class, "getCachedArrayStoreException", false);
+    public static final SubstrateForeignCallDescriptor GET_CACHED_ARITHMETIC_EXCEPTION = SnippetRuntime.findForeignCall(ImplicitExceptions.class, "getCachedArithmeticException", false);
+
     public static final SubstrateForeignCallDescriptor THROW_CACHED_NULL_POINTER_EXCEPTION = SnippetRuntime.findForeignCall(ImplicitExceptions.class, "throwCachedNullPointerException", true);
     public static final SubstrateForeignCallDescriptor THROW_CACHED_OUT_OF_BOUNDS_EXCEPTION = SnippetRuntime.findForeignCall(ImplicitExceptions.class, "throwCachedOutOfBoundsException", true);
     public static final SubstrateForeignCallDescriptor THROW_CACHED_CLASS_CAST_EXCEPTION = SnippetRuntime.findForeignCall(ImplicitExceptions.class, "throwCachedClassCastException", true);
@@ -56,18 +74,46 @@ public class ImplicitExceptions {
     public static final SubstrateForeignCallDescriptor[] FOREIGN_CALLS = new SubstrateForeignCallDescriptor[]{
                     CREATE_NULL_POINTER_EXCEPTION, CREATE_OUT_OF_BOUNDS_EXCEPTION, CREATE_CLASS_CAST_EXCEPTION, CREATE_ARRAY_STORE_EXCEPTION, CREATE_DIVISION_BY_ZERO_EXCEPTION,
                     THROW_NEW_NULL_POINTER_EXCEPTION, THROW_NEW_OUT_OF_BOUNDS_EXCEPTION, THROW_NEW_CLASS_CAST_EXCEPTION, THROW_NEW_ARRAY_STORE_EXCEPTION, THROW_NEW_ARITHMETIC_EXCEPTION,
+                    GET_CACHED_NULL_POINTER_EXCEPTION, GET_CACHED_OUT_OF_BOUNDS_EXCEPTION, GET_CACHED_CLASS_CAST_EXCEPTION, GET_CACHED_ARRAY_STORE_EXCEPTION, GET_CACHED_ARITHMETIC_EXCEPTION,
                     THROW_CACHED_NULL_POINTER_EXCEPTION, THROW_CACHED_OUT_OF_BOUNDS_EXCEPTION, THROW_CACHED_CLASS_CAST_EXCEPTION, THROW_CACHED_ARRAY_STORE_EXCEPTION, THROW_CACHED_ARITHMETIC_EXCEPTION,
     };
+
+    private static final FastThreadLocalInt implicitExceptionsAreFatal = FastThreadLocalFactory.createInt();
+
+    /**
+     * Switch the current thread into a mode where implicit exceptions such as NullPointerException
+     * are fatal errors. This is useful to diagnose errors in code where such exceptions are fatal
+     * anyway, but allocation is not possible so no exception stack trace can be filled in - for
+     * example the GC.
+     */
+    public static void activateImplicitExceptionsAreFatal() {
+        implicitExceptionsAreFatal.set(implicitExceptionsAreFatal.get() + 1);
+    }
+
+    /**
+     * The reverse operation of {@link #activateImplicitExceptionsAreFatal()}.
+     */
+    public static void deactivateImplicitExceptionsAreFatal() {
+        implicitExceptionsAreFatal.set(implicitExceptionsAreFatal.get() - 1);
+    }
+
+    private static void vmErrorIfImplicitExceptionsAreFatal() {
+        if (implicitExceptionsAreFatal.get() > 0 || SnippetRuntime.exceptionsAreFatal()) {
+            throw VMError.shouldNotReachHere("Implicit exception thrown in code where such exceptions are fatal errors");
+        }
+    }
 
     /** Foreign call: {@link #CREATE_NULL_POINTER_EXCEPTION}. */
     @SubstrateForeignCallTarget
     private static NullPointerException createNullPointerException() {
+        vmErrorIfImplicitExceptionsAreFatal();
         return new NullPointerException();
     }
 
     /** Foreign call: {@link #CREATE_OUT_OF_BOUNDS_EXCEPTION}. */
     @SubstrateForeignCallTarget
     private static ArrayIndexOutOfBoundsException createOutOfBoundsException(int index, int length) {
+        vmErrorIfImplicitExceptionsAreFatal();
         /*
          * JDK 11 added the length to the error message, we can do that for all Java versions to be
          * consistent.
@@ -79,6 +125,7 @@ public class ImplicitExceptions {
     @SubstrateForeignCallTarget
     private static ClassCastException createClassCastException(Object object, Class<?> expectedClass) {
         assert object != null : "null can be cast to any type, so it cannot show up as a source of a ClassCastException";
+        vmErrorIfImplicitExceptionsAreFatal();
         return new ClassCastException(object.getClass().getTypeName() + " cannot be cast to " + expectedClass.getTypeName());
     }
 
@@ -86,72 +133,153 @@ public class ImplicitExceptions {
     @SubstrateForeignCallTarget
     private static ArrayStoreException createArrayStoreException(Object value) {
         assert value != null : "null can be stored into any array, so it cannot show up as a source of an ArrayStoreException";
+        vmErrorIfImplicitExceptionsAreFatal();
         return new ArrayStoreException(value.getClass().getTypeName());
     }
 
     /** Foreign call: {@link #CREATE_DIVISION_BY_ZERO_EXCEPTION}. */
     @SubstrateForeignCallTarget
     private static ArithmeticException createDivisionByZeroException() {
+        vmErrorIfImplicitExceptionsAreFatal();
         return new ArithmeticException("/ by zero");
     }
 
     /** Foreign call: {@link #THROW_NEW_NULL_POINTER_EXCEPTION}. */
     @SubstrateForeignCallTarget
     private static void throwNewNullPointerException() {
+        vmErrorIfImplicitExceptionsAreFatal();
         throw new NullPointerException();
     }
 
     /** Foreign call: {@link #THROW_NEW_OUT_OF_BOUNDS_EXCEPTION}. */
     @SubstrateForeignCallTarget
     private static void throwNewOutOfBoundsException() {
+        vmErrorIfImplicitExceptionsAreFatal();
         throw new ArrayIndexOutOfBoundsException();
     }
 
     /** Foreign call: {@link #THROW_NEW_CLASS_CAST_EXCEPTION}. */
     @SubstrateForeignCallTarget
     private static void throwNewClassCastException() {
+        vmErrorIfImplicitExceptionsAreFatal();
         throw new ClassCastException();
     }
 
     /** Foreign call: {@link #THROW_NEW_ARRAY_STORE_EXCEPTION}. */
     @SubstrateForeignCallTarget
     private static void throwNewArrayStoreException() {
+        vmErrorIfImplicitExceptionsAreFatal();
         throw new ArrayStoreException();
     }
 
     /** Foreign call: {@link #THROW_NEW_ARITHMETIC_EXCEPTION}. */
     @SubstrateForeignCallTarget
     private static void throwNewArithmeticException() {
+        vmErrorIfImplicitExceptionsAreFatal();
         throw new ArithmeticException();
     }
 
+    /** Foreign call: {@link #GET_CACHED_NULL_POINTER_EXCEPTION}. */
+    @RestrictHeapAccess(access = RestrictHeapAccess.Access.NO_ALLOCATION, reason = "Called to report an implict exception in code that must not allocate.")
+    @SubstrateForeignCallTarget
+    private static NullPointerException getCachedNullPointerException() {
+        vmErrorIfImplicitExceptionsAreFatal();
+        return CACHED_NULL_POINTER_EXCEPTION;
+    }
+
+    /** Foreign call: {@link #GET_CACHED_OUT_OF_BOUNDS_EXCEPTION}. */
+    @RestrictHeapAccess(access = RestrictHeapAccess.Access.NO_ALLOCATION, reason = "Called to report an implict exception in code that must not allocate.")
+    @SubstrateForeignCallTarget
+    private static ArrayIndexOutOfBoundsException getCachedOutOfBoundsException() {
+        vmErrorIfImplicitExceptionsAreFatal();
+        return CACHED_OUT_OF_BOUNDS_EXCEPTION;
+    }
+
+    /** Foreign call: {@link #GET_CACHED_CLASS_CAST_EXCEPTION}. */
+    @RestrictHeapAccess(access = RestrictHeapAccess.Access.NO_ALLOCATION, reason = "Called to report an implict exception in code that must not allocate.")
+    @SubstrateForeignCallTarget
+    private static ClassCastException getCachedClassCastException() {
+        vmErrorIfImplicitExceptionsAreFatal();
+        return CACHED_CLASS_CAST_EXCEPTION;
+    }
+
+    /** Foreign call: {@link #GET_CACHED_ARRAY_STORE_EXCEPTION}. */
+    @RestrictHeapAccess(access = RestrictHeapAccess.Access.NO_ALLOCATION, reason = "Called to report an implict exception in code that must not allocate.")
+    @SubstrateForeignCallTarget
+    private static ArrayStoreException getCachedArrayStoreException() {
+        vmErrorIfImplicitExceptionsAreFatal();
+        return CACHED_ARRAY_STORE_EXCEPTION;
+    }
+
+    /** Foreign call: {@link #GET_CACHED_ARITHMETIC_EXCEPTION}. */
+    @RestrictHeapAccess(access = RestrictHeapAccess.Access.NO_ALLOCATION, reason = "Called to report an implict exception in code that must not allocate.")
+    @SubstrateForeignCallTarget
+    private static ArithmeticException getCachedArithmeticException() {
+        vmErrorIfImplicitExceptionsAreFatal();
+        return CACHED_ARITHMETIC_EXCEPTION;
+    }
+
     /** Foreign call: {@link #THROW_CACHED_NULL_POINTER_EXCEPTION}. */
+    @RestrictHeapAccess(access = RestrictHeapAccess.Access.NO_ALLOCATION, reason = "Called to report an implict exception in code that must not allocate.")
     @SubstrateForeignCallTarget
     private static void throwCachedNullPointerException() {
+        vmErrorIfImplicitExceptionsAreFatal();
         throw CACHED_NULL_POINTER_EXCEPTION;
     }
 
     /** Foreign call: {@link #THROW_CACHED_OUT_OF_BOUNDS_EXCEPTION}. */
+    @RestrictHeapAccess(access = RestrictHeapAccess.Access.NO_ALLOCATION, reason = "Called to report an implict exception in code that must not allocate.")
     @SubstrateForeignCallTarget
     private static void throwCachedOutOfBoundsException() {
+        vmErrorIfImplicitExceptionsAreFatal();
         throw CACHED_OUT_OF_BOUNDS_EXCEPTION;
     }
 
     /** Foreign call: {@link #THROW_CACHED_CLASS_CAST_EXCEPTION}. */
+    @RestrictHeapAccess(access = RestrictHeapAccess.Access.NO_ALLOCATION, reason = "Called to report an implict exception in code that must not allocate.")
     @SubstrateForeignCallTarget
     private static void throwCachedClassCastException() {
+        vmErrorIfImplicitExceptionsAreFatal();
         throw CACHED_CLASS_CAST_EXCEPTION;
     }
 
     /** Foreign call: {@link #THROW_CACHED_ARRAY_STORE_EXCEPTION}. */
+    @RestrictHeapAccess(access = RestrictHeapAccess.Access.NO_ALLOCATION, reason = "Called to report an implict exception in code that must not allocate.")
     @SubstrateForeignCallTarget
     private static void throwCachedArrayStoreException() {
+        vmErrorIfImplicitExceptionsAreFatal();
         throw CACHED_ARRAY_STORE_EXCEPTION;
     }
 
     /** Foreign call: {@link #THROW_CACHED_ARITHMETIC_EXCEPTION}. */
+    @RestrictHeapAccess(access = RestrictHeapAccess.Access.NO_ALLOCATION, reason = "Called to report an implict exception in code that must not allocate.")
     @SubstrateForeignCallTarget
     private static void throwCachedArithmeticException() {
+        vmErrorIfImplicitExceptionsAreFatal();
         throw CACHED_ARITHMETIC_EXCEPTION;
+    }
+
+    public static void throwClassNotFoundException(String message) throws ClassNotFoundException {
+        throw new ClassNotFoundException(message);
+    }
+
+    public static void throwNoSuchFieldException(String message) throws NoSuchFieldException {
+        throw new NoSuchFieldException(message);
+    }
+
+    public static void throwNoSuchMethodException(String message) throws NoSuchMethodException {
+        throw new NoSuchMethodException(message);
+    }
+
+    public static void throwNoClassDefFoundError(String message) throws NoClassDefFoundError {
+        throw new NoClassDefFoundError(message);
+    }
+
+    public static void throwNoSuchFieldError(String message) throws NoSuchFieldError {
+        throw new NoSuchFieldError(message);
+    }
+
+    public static void throwNoSuchMethodError(String message) throws NoSuchMethodError {
+        throw new NoSuchMethodError(message);
     }
 }

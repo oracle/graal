@@ -41,15 +41,13 @@
 package com.oracle.truffle.api.dsl.test.interop;
 
 import com.oracle.truffle.api.frame.VirtualFrame;
-import com.oracle.truffle.api.interop.MessageResolution;
-import com.oracle.truffle.api.interop.Resolve;
 import com.oracle.truffle.api.nodes.Node;
 
-@SuppressWarnings("unused")
-@MessageResolution(receiverType = ValidTruffleObject0.class)
+@SuppressWarnings({"unused", "deprecation"})
+@com.oracle.truffle.api.interop.MessageResolution(receiverType = ValidTruffleObject0.class)
 public class MySuperMessageImplementations {
 
-    @Resolve(message = "UNBOX")
+    @com.oracle.truffle.api.interop.Resolve(message = "UNBOX")
     public abstract static class MyUnboxImpl extends Node {
 
         public static final Object access(VirtualFrame frame, ValidTruffleObject0 receiver) {
@@ -57,7 +55,7 @@ public class MySuperMessageImplementations {
         }
     }
 
-    @Resolve(message = "READ")
+    @com.oracle.truffle.api.interop.Resolve(message = "READ")
     public abstract static class MyRead2Impl extends Node {
 
         public static final Object access(VirtualFrame frame, ValidTruffleObject0 receiver, String id) {
@@ -65,7 +63,7 @@ public class MySuperMessageImplementations {
         }
     }
 
-    @Resolve(message = "WRITE")
+    @com.oracle.truffle.api.interop.Resolve(message = "WRITE")
     public abstract static class MyWrite2Impl extends Node {
 
         public static final Object access(VirtualFrame frame, ValidTruffleObject0 receiver, String id, Object value) {

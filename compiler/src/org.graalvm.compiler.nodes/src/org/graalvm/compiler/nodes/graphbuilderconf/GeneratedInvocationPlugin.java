@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2015, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2015, 2018, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -24,6 +24,9 @@
  */
 package org.graalvm.compiler.nodes.graphbuilderconf;
 
+import static jdk.vm.ci.services.Services.IS_BUILDING_NATIVE_IMAGE;
+import static jdk.vm.ci.services.Services.IS_IN_NATIVE_IMAGE;
+
 import java.lang.annotation.Annotation;
 import java.lang.reflect.Method;
 
@@ -41,6 +44,8 @@ import jdk.vm.ci.meta.ResolvedJavaType;
  * {@link Fold}.
  */
 public abstract class GeneratedInvocationPlugin implements InvocationPlugin {
+
+    private ResolvedJavaMethod executeMethod;
 
     /**
      * Gets the class of the annotation for which this plugin was generated.
@@ -66,16 +71,35 @@ public abstract class GeneratedInvocationPlugin implements InvocationPlugin {
             return true;
         }
 
-        MetaAccessProvider metaAccess = b.getMetaAccess();
-        ResolvedJavaMethod executeMethod = metaAccess.lookupJavaMethod(getExecuteMethod());
-        ResolvedJavaType thisClass = metaAccess.lookupJavaType(getClass());
-        ResolvedJavaMethod thisExecuteMethod = thisClass.resolveConcreteMethod(executeMethod, thisClass);
+        if (IS_IN_NATIVE_IMAGE) {
+            // The reflection here is problematic for SVM.
+            return true;
+        }
+
+        if (b.getMethod().equals(foldAnnotatedMethod)) {
+            return false;
+        }
+
+        ResolvedJavaMethod thisExecuteMethod = getExecutedMethod(b);
         if (b.getMethod().equals(thisExecuteMethod)) {
             // The "execute" method of this plugin is itself being compiled. In (only) this context,
             // the injected argument of the call to the @Fold annotated method will be non-null.
+            if (IS_BUILDING_NATIVE_IMAGE) {
+                return false;
+            }
             return true;
         }
         throw new AssertionError("must pass null to injected argument of " + foldAnnotatedMethod.format("%H.%n(%p)") + ", not " + arg);
+    }
+
+    private ResolvedJavaMethod getExecutedMethod(GraphBuilderContext b) {
+        if (executeMethod == null) {
+            MetaAccessProvider metaAccess = b.getMetaAccess();
+            ResolvedJavaMethod baseMethod = metaAccess.lookupJavaMethod(getExecuteMethod());
+            ResolvedJavaType thisClass = metaAccess.lookupJavaType(getClass());
+            executeMethod = thisClass.resolveConcreteMethod(baseMethod, thisClass);
+        }
+        return executeMethod;
     }
 
     private static Method getExecuteMethod() {

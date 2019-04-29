@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2017, 2018, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2017, 2019, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -38,8 +38,9 @@
  * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
  * SOFTWARE.
  */
+#include "common.h"
 
-double foldVector(double *vector, int size) {
+EXPORT double foldVector(double *vector, int size) {
     double ret = 0.0;
     int i;
     for (i = 0; i < size; i++) {
@@ -48,13 +49,13 @@ double foldVector(double *vector, int size) {
     return ret;
 }
 
-void incVector(double *vector, int size, double inc) {
+EXPORT void incVector(double *vector, int size, double inc) {
     int i;
     for (i = 0; i < size; i++) {
         vector[i] += inc;
     }
 }
 
-double getFirstElement(double *vector) {
+EXPORT double getFirstElement(double *vector) {
     return *vector;
 }

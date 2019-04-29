@@ -33,6 +33,7 @@ import com.oracle.svm.core.SubstrateOptions;
 import com.oracle.svm.core.SubstrateUtil.Thunk;
 import com.oracle.svm.core.annotate.RestrictHeapAccess;
 import com.oracle.svm.core.log.Log;
+import com.oracle.svm.core.stack.StackOverflowCheck;
 import com.oracle.svm.core.thread.Safepoint.SafepointException;
 import com.oracle.svm.core.util.VMError;
 
@@ -86,6 +87,8 @@ public abstract class VMOperation extends VMOperationControl.AllocationFreeStack
     /** Public interface: Queue the operation for execution. */
     public final void enqueue() {
         try {
+            StackOverflowCheck.singleton().makeYellowZoneAvailable();
+
             if (!SubstrateOptions.MultiThreaded.getValue()) {
                 // If I am single-threaded, I can just execute the operation.
                 execute();
@@ -98,6 +101,9 @@ public abstract class VMOperation extends VMOperationControl.AllocationFreeStack
         } catch (SafepointException se) {
             /* This exception is intended to be thrown from safepoint checks, at one's own risk */
             throw rethrow(se.inner);
+
+        } finally {
+            StackOverflowCheck.singleton().protectYellowZone();
         }
     }
 

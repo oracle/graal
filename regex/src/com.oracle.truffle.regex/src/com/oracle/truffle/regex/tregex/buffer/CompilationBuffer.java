@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2017, 2017, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2017, 2019, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -38,7 +38,7 @@ import com.oracle.truffle.regex.tregex.TRegexCompiler;
  * @see ObjectArrayBuffer
  * @see ByteArrayBuffer
  * @see ShortArrayBuffer
- * @see RangesArrayBuffer
+ * @see CharRangesBuffer
  */
 public class CompilationBuffer {
 
@@ -46,9 +46,12 @@ public class CompilationBuffer {
     private ObjectArrayBuffer objectBuffer2;
     private ByteArrayBuffer byteArrayBuffer;
     private ShortArrayBuffer shortArrayBuffer;
-    private RangesArrayBuffer rangesArrayBuffer1;
-    private RangesArrayBuffer rangesArrayBuffer2;
-    private RangesArrayBuffer rangesArrayBuffer3;
+    private CharRangesBuffer charRangesBuffer1;
+    private CharRangesBuffer charRangesBuffer2;
+    private CharRangesBuffer charRangesBuffer3;
+    private IntRangesBuffer intRangesBuffer1;
+    private IntRangesBuffer intRangesBuffer2;
+    private IntRangesBuffer intRangesBuffer3;
 
     public ObjectArrayBuffer getObjectBuffer1() {
         if (objectBuffer1 == null) {
@@ -82,27 +85,51 @@ public class CompilationBuffer {
         return shortArrayBuffer;
     }
 
-    public RangesArrayBuffer getRangesArrayBuffer1() {
-        if (rangesArrayBuffer1 == null) {
-            rangesArrayBuffer1 = new RangesArrayBuffer(64);
+    public CharRangesBuffer getCharRangesBuffer1() {
+        if (charRangesBuffer1 == null) {
+            charRangesBuffer1 = new CharRangesBuffer(64);
         }
-        rangesArrayBuffer1.clear();
-        return rangesArrayBuffer1;
+        charRangesBuffer1.clear();
+        return charRangesBuffer1;
     }
 
-    public RangesArrayBuffer getRangesArrayBuffer2() {
-        if (rangesArrayBuffer2 == null) {
-            rangesArrayBuffer2 = new RangesArrayBuffer(64);
+    public CharRangesBuffer getCharRangesBuffer2() {
+        if (charRangesBuffer2 == null) {
+            charRangesBuffer2 = new CharRangesBuffer(64);
         }
-        rangesArrayBuffer2.clear();
-        return rangesArrayBuffer2;
+        charRangesBuffer2.clear();
+        return charRangesBuffer2;
     }
 
-    public RangesArrayBuffer getRangesArrayBuffer3() {
-        if (rangesArrayBuffer3 == null) {
-            rangesArrayBuffer3 = new RangesArrayBuffer(64);
+    public CharRangesBuffer getCharRangesBuffer3() {
+        if (charRangesBuffer3 == null) {
+            charRangesBuffer3 = new CharRangesBuffer(64);
         }
-        rangesArrayBuffer3.clear();
-        return rangesArrayBuffer3;
+        charRangesBuffer3.clear();
+        return charRangesBuffer3;
+    }
+
+    public IntRangesBuffer getIntRangesBuffer1() {
+        if (intRangesBuffer1 == null) {
+            intRangesBuffer1 = new IntRangesBuffer(64);
+        }
+        intRangesBuffer1.clear();
+        return intRangesBuffer1;
+    }
+
+    public IntRangesBuffer getIntRangesBuffer2() {
+        if (intRangesBuffer2 == null) {
+            intRangesBuffer2 = new IntRangesBuffer(64);
+        }
+        intRangesBuffer2.clear();
+        return intRangesBuffer2;
+    }
+
+    public IntRangesBuffer getIntRangesBuffer3() {
+        if (intRangesBuffer3 == null) {
+            intRangesBuffer3 = new IntRangesBuffer(64);
+        }
+        intRangesBuffer3.clear();
+        return intRangesBuffer3;
     }
 }

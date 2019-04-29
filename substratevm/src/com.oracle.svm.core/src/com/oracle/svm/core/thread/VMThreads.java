@@ -25,6 +25,7 @@
 package com.oracle.svm.core.thread;
 
 import org.graalvm.compiler.api.replacements.Fold;
+import org.graalvm.nativeimage.CurrentIsolate;
 import org.graalvm.nativeimage.ImageSingletons;
 import org.graalvm.nativeimage.Isolate;
 import org.graalvm.nativeimage.IsolateThread;
@@ -211,16 +212,37 @@ public abstract class VMThreads {
      * method called in every thread.
      */
     @Uninterruptible(reason = "Manipulates the threads list; broadcasts on changes.")
-    public static void detachThread(IsolateThread vmThread) {
-        // Manipulating the VMThread list requires the lock for
-        // changing the status and for notification.
-        VMThreads.THREAD_MUTEX.guaranteeIsLocked("Must hold the VMThreads mutex.");
+    public static void detachThread(IsolateThread current) {
+        assert current.equal(CurrentIsolate.getCurrentThread()) : "Cannot detach different thread with this method";
+
+        /*
+         * Make me immune to safepoints (the safepoint mechanism ignores me). We are calling
+         * functions that are not marked as @Uninterruptible during the detach process. We hold the
+         * THREAD_MUTEX, so we know that we are not going to be interrupted by a safepoint. But a
+         * safepoint can already be requested, or our safepoint counter can reach 0 - so it is still
+         * possible that we enter the safepoint slow path.
+         */
+        StatusSupport.setStatusIgnoreSafepoints();
+
+        // try-finally because try-with-resources can call interruptible code
+        THREAD_MUTEX.lockNoTransition();
+        try {
+            detachThreadInSafeContext(current);
+        } finally {
+            THREAD_MUTEX.unlock();
+        }
+    }
+
+    @Uninterruptible(reason = "Manipulates the threads list; broadcasts on changes.")
+    private static void detachThreadInSafeContext(IsolateThread thread) {
+        detachJavaThread(thread);
+
         // Run down the current list and remove the given VMThread.
         IsolateThread previous = nullThread();
         IsolateThread current = head;
         while (isNonNullThread(current)) {
             IsolateThread next = nextTL.get(current);
-            if (current == vmThread) {
+            if (current == thread) {
                 // Splice the current element out of the list.
                 if (isNullThread(previous)) {
                     head = next;
@@ -234,7 +256,23 @@ public abstract class VMThreads {
             }
         }
         // Signal that the VMThreads list has changed.
-        VMThreads.THREAD_LIST_CONDITION.broadcast();
+        THREAD_LIST_CONDITION.broadcast();
+
+        singleton().freeIsolateThread(thread);
+    }
+
+    @Uninterruptible(reason = "For calling interruptible code from uninterruptible code.", calleeMustBe = false)
+    private static void detachJavaThread(IsolateThread thread) {
+        JavaThreads.detachThread(thread);
+    }
+
+    public static void detachThreads(IsolateThread[] threads) {
+        VMOperation.enqueueBlockingSafepoint("detachThreads", () -> {
+            for (IsolateThread thread : threads) {
+                assert !thread.equal(CurrentIsolate.getCurrentThread()) : "Cannot detach current thread with this method";
+                detachThreadInSafeContext(thread);
+            }
+        });
     }
 
     @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
@@ -257,7 +295,7 @@ public abstract class VMThreads {
     public static class StatusSupport {
 
         /** The status of a {@link IsolateThread}. */
-        private static final FastThreadLocalInt statusTL = FastThreadLocalFactory.createInt();
+        public static final FastThreadLocalInt statusTL = FastThreadLocalFactory.createInt();
 
         /**
          * Boolean flag whether safepoints are disabled. This is a separate thread local in addition
@@ -274,11 +312,11 @@ public abstract class VMThreads {
          */
         private static final int STATUS_CREATED = 0;
         /** The thread is running in Java code. */
-        private static final int STATUS_IN_JAVA = STATUS_CREATED + 1;
+        public static final int STATUS_IN_JAVA = STATUS_CREATED + 1;
         /** The thread has been requested to stop at a safepoint. */
-        private static final int STATUS_IN_SAFEPOINT = STATUS_IN_JAVA + 1;
+        public static final int STATUS_IN_SAFEPOINT = STATUS_IN_JAVA + 1;
         /** The thread is running in native code. */
-        private static final int STATUS_IN_NATIVE = STATUS_IN_SAFEPOINT + 1;
+        public static final int STATUS_IN_NATIVE = STATUS_IN_SAFEPOINT + 1;
 
         private static String statusToString(int status, boolean safepointsDisabled) {
             switch (status) {

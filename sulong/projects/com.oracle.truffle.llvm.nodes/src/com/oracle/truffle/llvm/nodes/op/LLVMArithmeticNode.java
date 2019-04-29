@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2016, 2018, Oracle and/or its affiliates.
+ * Copyright (c) 2016, 2019, Oracle and/or its affiliates.
  *
  * All rights reserved.
  *
@@ -29,12 +29,11 @@
  */
 package com.oracle.truffle.llvm.nodes.op;
 
+import com.oracle.truffle.api.CompilerAsserts;
 import com.oracle.truffle.api.CompilerDirectives;
-import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.dsl.Cached;
 import com.oracle.truffle.api.dsl.NodeChild;
 import com.oracle.truffle.api.dsl.Specialization;
-import com.oracle.truffle.api.interop.InteropException;
 import com.oracle.truffle.llvm.nodes.op.arith.floating.LLVMArithmeticFactory;
 import com.oracle.truffle.llvm.runtime.LLVMIVarBit;
 import com.oracle.truffle.llvm.runtime.floating.LLVM80BitFloat;
@@ -46,8 +45,8 @@ import com.oracle.truffle.llvm.runtime.nodes.api.LLVMExpressionNode;
 public abstract class LLVMArithmeticNode extends LLVMExpressionNode {
     public abstract Object executeWithTarget(Object left, Object right);
 
-    @TruffleBoundary
     protected static ToComparableValue createToComparable() {
+        CompilerAsserts.neverPartOfCompilation();
         return ToComparableValueNodeGen.create();
     }
 
@@ -99,12 +98,7 @@ public abstract class LLVMArithmeticNode extends LLVMExpressionNode {
         @Specialization
         protected LLVM80BitFloat add(LLVM80BitFloat left, LLVM80BitFloat right,
                         @Cached("createFP80AddNode()") LLVMArithmeticOpNode node) {
-            try {
-                return (LLVM80BitFloat) node.execute(left, right);
-            } catch (InteropException e) {
-                CompilerDirectives.transferToInterpreter();
-                throw e.raise();
-            }
+            return (LLVM80BitFloat) node.execute(left, right);
         }
     }
 
@@ -156,12 +150,7 @@ public abstract class LLVMArithmeticNode extends LLVMExpressionNode {
         @Specialization
         protected LLVM80BitFloat mul(LLVM80BitFloat left, LLVM80BitFloat right,
                         @Cached("createFP80MulNode()") LLVMArithmeticOpNode node) {
-            try {
-                return (LLVM80BitFloat) node.execute(left, right);
-            } catch (InteropException e) {
-                CompilerDirectives.transferToInterpreter();
-                throw e.raise();
-            }
+            return (LLVM80BitFloat) node.execute(left, right);
         }
     }
 
@@ -213,12 +202,7 @@ public abstract class LLVMArithmeticNode extends LLVMExpressionNode {
         @Specialization
         protected LLVM80BitFloat sub(LLVM80BitFloat left, LLVM80BitFloat right,
                         @Cached("createFP80SubNode()") LLVMArithmeticOpNode node) {
-            try {
-                return (LLVM80BitFloat) node.execute(left, right);
-            } catch (InteropException e) {
-                CompilerDirectives.transferToInterpreter();
-                throw e.raise();
-            }
+            return (LLVM80BitFloat) node.execute(left, right);
         }
     }
 
@@ -274,12 +258,7 @@ public abstract class LLVMArithmeticNode extends LLVMExpressionNode {
         @Specialization
         protected LLVM80BitFloat div(LLVM80BitFloat left, LLVM80BitFloat right,
                         @Cached("createFP80DivNode()") LLVMArithmeticOpNode node) {
-            try {
-                return (LLVM80BitFloat) node.execute(left, right);
-            } catch (InteropException e) {
-                CompilerDirectives.transferToInterpreter();
-                throw e.raise();
-            }
+            return (LLVM80BitFloat) node.execute(left, right);
         }
     }
 
@@ -372,12 +351,7 @@ public abstract class LLVMArithmeticNode extends LLVMExpressionNode {
         @Specialization
         protected LLVM80BitFloat rem(LLVM80BitFloat left, LLVM80BitFloat right,
                         @Cached("createFP80RemNode()") LLVMArithmeticOpNode node) {
-            try {
-                return (LLVM80BitFloat) node.execute(left, right);
-            } catch (InteropException e) {
-                CompilerDirectives.transferToInterpreter();
-                throw e.raise();
-            }
+            return (LLVM80BitFloat) node.execute(left, right);
         }
     }
 
@@ -544,27 +518,27 @@ public abstract class LLVMArithmeticNode extends LLVMExpressionNode {
 
     public abstract static class LLVMLshrNode extends LLVMArithmeticNode {
         @Specialization
-        protected short ashr(short left, short right) {
+        protected short lshr(short left, short right) {
             return (short) ((left & LLVMExpressionNode.I16_MASK) >>> right);
         }
 
         @Specialization
-        protected int ashr(int left, int right) {
+        protected int lshr(int left, int right) {
             return left >>> right;
         }
 
         @Specialization
-        protected long ashr(long left, long right) {
+        protected long lshr(long left, long right) {
             return left >>> right;
         }
 
         @Specialization
-        protected byte ashr(byte left, byte right) {
+        protected byte lshr(byte left, byte right) {
             return (byte) ((left & LLVMExpressionNode.I8_MASK) >>> right);
         }
 
         @Specialization
-        protected LLVMIVarBit ashr(LLVMIVarBit left, LLVMIVarBit right) {
+        protected LLVMIVarBit lshr(LLVMIVarBit left, LLVMIVarBit right) {
             return left.logicalRightShift(right);
         }
     }

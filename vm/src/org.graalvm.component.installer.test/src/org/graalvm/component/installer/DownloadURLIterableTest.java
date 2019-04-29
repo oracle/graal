@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2019, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -25,8 +25,7 @@
 package org.graalvm.component.installer;
 
 import java.util.Iterator;
-import java.util.jar.JarEntry;
-import java.util.jar.JarFile;
+import org.graalvm.component.installer.jar.JarArchive;
 import org.graalvm.component.installer.model.ComponentInfo;
 import org.graalvm.component.installer.persist.MetadataLoader;
 import org.graalvm.component.installer.persist.ProxyResource;
@@ -71,8 +70,8 @@ public class DownloadURLIterableTest extends CommandTestBase {
         assertEquals("ruby", ci.getId());
         assertEquals("0.33-dev", ci.getVersionString());
 
-        JarFile jf = ldr.getJarFile();
-        JarEntry je = jf.getJarEntry("META-INF/MANIFEST.MF");
+        JarArchive jf = (JarArchive) ldr.getArchive();
+        Archive.FileEntry je = jf.getJarEntry("META-INF/MANIFEST.MF");
         assertNotNull(je);
         jf.close();
     }

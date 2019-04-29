@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2014, 2015, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2014, 2018, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -44,7 +44,6 @@ import jdk.vm.ci.meta.JavaKind;
 
 @NodeInfo(cycles = CYCLES_0, size = SIZE_1)
 public final class IsCompilationConstantNode extends FloatingNode implements Lowerable, Canonicalizable {
-
     public static final NodeClass<IsCompilationConstantNode> TYPE = NodeClass.create(IsCompilationConstantNode.class);
 
     @Input ValueNode value;
@@ -56,17 +55,40 @@ public final class IsCompilationConstantNode extends FloatingNode implements Low
 
     @Override
     public void lower(LoweringTool tool) {
-        replaceAtUsagesAndDelete(ConstantNode.forBoolean(false, graph()));
+        ValueNode result;
+        ValueNode synonym = findSynonym(value);
+        if (synonym != null && synonym.isConstant()) {
+            result = synonym;
+        } else {
+            result = ConstantNode.forBoolean(false, graph());
+        }
+        assert result != null;
+        replaceAtUsagesAndDelete(result);
+    }
+
+    public static ValueNode create(ValueNode value) {
+        ValueNode synonym = findSynonym(value);
+        if (synonym != null) {
+            return synonym;
+        }
+        return new IsCompilationConstantNode(value);
+    }
+
+    public static ValueNode findSynonym(ValueNode value) {
+        if (value instanceof BoxNode) {
+            return create(((BoxNode) value).getValue());
+        }
+        if (value.isConstant()) {
+            return ConstantNode.forBoolean(true);
+        }
+        return null;
     }
 
     @Override
     public Node canonical(CanonicalizerTool tool) {
-        ValueNode arg0 = value;
-        if (arg0 instanceof BoxNode) {
-            arg0 = ((BoxNode) arg0).getValue();
-        }
-        if (arg0.isConstant()) {
-            return ConstantNode.forBoolean(true);
+        Node synonym = findSynonym(value);
+        if (synonym != null) {
+            return synonym;
         }
         return this;
     }

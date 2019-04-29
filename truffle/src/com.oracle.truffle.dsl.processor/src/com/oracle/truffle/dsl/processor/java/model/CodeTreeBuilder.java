@@ -49,7 +49,11 @@ import java.util.List;
 import javax.lang.model.element.Element;
 import javax.lang.model.element.ElementKind;
 import javax.lang.model.element.ExecutableElement;
+import javax.lang.model.element.Modifier;
+import javax.lang.model.element.TypeElement;
+import javax.lang.model.element.VariableElement;
 import javax.lang.model.type.ArrayType;
+import javax.lang.model.type.TypeKind;
 import javax.lang.model.type.TypeMirror;
 
 import com.oracle.truffle.dsl.processor.java.ElementUtils;
@@ -87,6 +91,43 @@ public class CodeTreeBuilder {
         return treeCount == 0;
     }
 
+    public CodeTreeBuilder startJavadoc() {
+        push(CodeTreeKind.JAVA_DOC);
+        return this;
+    }
+
+    public CodeTreeBuilder javadocLink(Element element, String title) {
+        string("{@link ");
+        if (element.getKind().isClass() || element.getKind().isInterface()) {
+            type(element.asType());
+        } else if (element.getKind() == ElementKind.METHOD) {
+            ExecutableElement e = (ExecutableElement) element;
+            type(e.getEnclosingElement().asType());
+            string("#");
+            string(e.getSimpleName().toString());
+            string("(");
+            String sep = "";
+            for (VariableElement var : e.getParameters()) {
+                string(sep);
+                type(var.asType());
+                sep = ", ";
+            }
+            string(")");
+        } else {
+            throw new UnsupportedOperationException();
+        }
+        if (title != null && !title.isEmpty()) {
+            string(" ", title);
+        }
+        string("}");
+        return this;
+    }
+
+    public CodeTreeBuilder startDoc() {
+        push(CodeTreeKind.DOC);
+        return this;
+    }
+
     public CodeTreeBuilder statement(String statement) {
         return startStatement().string(statement).end();
     }
@@ -115,8 +156,8 @@ public class CodeTreeBuilder {
         return push(new BuilderCodeTree(currentElement, CodeTreeKind.STRING, null, string), false);
     }
 
-    private CodeTreeBuilder push(TypeMirror type) {
-        return push(new BuilderCodeTree(currentElement, CodeTreeKind.TYPE, type, null), false);
+    private CodeTreeBuilder push(TypeMirror type, boolean literal) {
+        return push(new BuilderCodeTree(currentElement, literal ? CodeTreeKind.TYPE_LITERAL : CodeTreeKind.TYPE, type, null), false);
     }
 
     private CodeTreeBuilder push(CodeTreeKind kind, TypeMirror type, String string) {
@@ -133,6 +174,8 @@ public class CodeTreeBuilder {
         switch (tree.getCodeKind()) {
             case COMMA_GROUP:
             case GROUP:
+            case JAVA_DOC:
+            case DOC:
             case INDENT:
                 currentElement = tree;
                 break;
@@ -196,6 +239,14 @@ public class CodeTreeBuilder {
         return startCall((CodeTree) null, callSite);
     }
 
+    public CodeTreeBuilder startCall(String receiver, ExecutableElement method) {
+        if (receiver == null && method.getModifiers().contains(Modifier.STATIC)) {
+            return startStaticCall(method.getEnclosingElement().asType(), method.getSimpleName().toString());
+        }
+
+        return startCall(receiver, method.getSimpleName().toString());
+    }
+
     public CodeTreeBuilder startCall(String receiver, String callSite) {
         if (receiver != null) {
             return startCall(singleString(receiver), callSite);
@@ -217,11 +268,20 @@ public class CodeTreeBuilder {
     }
 
     public CodeTreeBuilder startStaticCall(ExecutableElement method) {
-        return startStaticCall(ElementUtils.findNearestEnclosingType(method).asType(), method.getSimpleName().toString());
+        TypeElement parentType = ElementUtils.findNearestEnclosingType(method).orElseThrow(AssertionError::new);
+        return startStaticCall(parentType.asType(), method.getSimpleName().toString());
     }
 
     public CodeTreeBuilder staticReference(TypeMirror type, String fieldName) {
         return push(CodeTreeKind.STATIC_FIELD_REFERENCE, type, fieldName);
+    }
+
+    public CodeTreeBuilder staticReference(VariableElement field) {
+        if (field.getEnclosingElement() == null) {
+            return string(field.getSimpleName().toString());
+        } else {
+            return staticReference(field.getEnclosingElement().asType(), field.getSimpleName().toString());
+        }
     }
 
     private CodeTreeBuilder endAndWhitespaceAfter() {
@@ -442,7 +502,7 @@ public class CodeTreeBuilder {
     }
 
     public CodeTreeBuilder startSwitch() {
-        return startGroup().string("switch ").startParanthesesCommaGroup().endAndWhitespaceAfter();
+        return startGroup().string("switch ").startParantheses().endAndWhitespaceAfter();
     }
 
     public CodeTreeBuilder startReturn() {
@@ -624,11 +684,11 @@ public class CodeTreeBuilder {
     }
 
     public CodeTreeBuilder type(TypeMirror type) {
-        return push(type);
+        return push(type, false);
     }
 
     public CodeTreeBuilder typeLiteral(TypeMirror type) {
-        return startGroup().type(ElementUtils.eraseGenericTypes(type)).string(".class").end();
+        return startGroup().push(type, true).end();
     }
 
     private void assertRoot() {
@@ -656,6 +716,24 @@ public class CodeTreeBuilder {
 
     public CodeTreeBuilder cast(TypeMirror type) {
         string("(").type(type).string(") ");
+        return this;
+    }
+
+    public CodeTreeBuilder maybeCast(TypeMirror sourceType, TypeMirror targetType) {
+        if (ElementUtils.needsCastTo(sourceType, targetType)) {
+            cast(targetType);
+        }
+        return this;
+    }
+
+    public CodeTreeBuilder maybeCast(TypeMirror sourceType, TypeMirror targetType, String receiver) {
+        if (ElementUtils.needsCastTo(sourceType, targetType)) {
+            string("(");
+            cast(targetType);
+            string(receiver, ") ");
+        } else {
+            string(receiver);
+        }
         return this;
     }
 
@@ -704,33 +782,7 @@ public class CodeTreeBuilder {
     }
 
     public CodeTreeBuilder defaultValue(TypeMirror mirror) {
-        switch (mirror.getKind()) {
-            case VOID:
-                return string("");
-            case ARRAY:
-            case DECLARED:
-            case PACKAGE:
-            case NULL:
-                return string("null");
-            case BOOLEAN:
-                return string("false");
-            case BYTE:
-                return string("(byte) 0");
-            case CHAR:
-                return string("(char) 0");
-            case DOUBLE:
-                return string("0.0D");
-            case LONG:
-                return string("0L");
-            case INT:
-                return string("0");
-            case FLOAT:
-                return string("0.0F");
-            case SHORT:
-                return string("(short) 0");
-            default:
-                throw new AssertionError();
-        }
+        return string(ElementUtils.defaultValue(mirror));
     }
 
     public CodeTreeBuilder startTryBlock() {
@@ -832,7 +884,7 @@ public class CodeTreeBuilder {
 
         private int indent;
         private boolean newLine;
-        private final String ln = "\n";
+        private final String ln = System.lineSeparator();
 
         private final StringBuilder b;
 
@@ -921,6 +973,25 @@ public class CodeTreeBuilder {
         }
         return this;
 
+    }
+
+    public CodeTreeBuilder startAssign(String receiver, VariableElement field) {
+        return startStatement().field(receiver, field).string(" = ");
+    }
+
+    public CodeTreeBuilder field(String receiver, VariableElement field) {
+        if (receiver == null && field.getModifiers().contains(Modifier.STATIC)) {
+            return staticReference(field);
+        } else {
+            return string(receiver, ".", field.getSimpleName().toString());
+        }
+    }
+
+    public CodeTreeBuilder constantLiteral(TypeMirror type, int index) {
+        if (type.getKind() == TypeKind.BYTE) {
+            return string("(byte) ", String.valueOf(index));
+        }
+        return null;
     }
 
 }

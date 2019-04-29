@@ -66,7 +66,9 @@ import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.InstrumentInfo;
 import com.oracle.truffle.api.Option;
 import com.oracle.truffle.api.Scope;
+import com.oracle.truffle.api.TruffleFile;
 import com.oracle.truffle.api.TruffleLanguage;
+import com.oracle.truffle.api.TruffleLogger;
 import com.oracle.truffle.api.TruffleRuntime;
 import com.oracle.truffle.api.frame.Frame;
 import com.oracle.truffle.api.frame.FrameDescriptor;
@@ -437,6 +439,30 @@ public abstract class TruffleInstrument {
             return fragment;
         }
 
+        /**
+         * Returns a {@link TruffleFile} for given path. This must be called on a context thread
+         * only.
+         *
+         * @param path the absolute or relative path to create {@link TruffleFile} for
+         * @return {@link TruffleFile}
+         * @since 1.0
+         */
+        public TruffleFile getTruffleFile(String path) {
+            return AccessorInstrumentHandler.engineAccess().getTruffleFile(path);
+        }
+
+        /**
+         * Returns a {@link TruffleFile} for given {@link URI}. This must be called on a context
+         * thread only.
+         *
+         * @param uri the {@link URI} to create {@link TruffleFile} for
+         * @return {@link TruffleFile}
+         * @since 1.0
+         */
+        public TruffleFile getTruffleFile(URI uri) {
+            return AccessorInstrumentHandler.engineAccess().getTruffleFile(uri);
+        }
+
         private static class GuardedExecutableNode extends ExecutableNode {
 
             private final FrameDescriptor frameDescriptor;
@@ -490,26 +516,6 @@ public abstract class TruffleInstrument {
         }
 
         /**
-         * Uses the original language of the node to print a string representation of this value.
-         * The behavior of this method is undefined if a type unknown to the language is passed as
-         * value.
-         *
-         * @param node a node
-         * @param value a known value of that language
-         * @return a human readable string representation of the value.
-         * @since 0.17
-         * @deprecated use
-         *             {@link #toString(com.oracle.truffle.api.nodes.LanguageInfo, java.lang.Object)}
-         *             and retrieve {@link LanguageInfo} from
-         *             <code>node.getRootNode().getLanguageInfo()</code>.
-         */
-        @Deprecated
-        public String toString(Node node, Object value) {
-            final TruffleLanguage.Env env = getLangEnv(node);
-            return AccessorInstrumentHandler.langAccess().toStringIfVisible(env, value, false);
-        }
-
-        /**
          * Uses the provided language to print a string representation of this value. The behavior
          * of this method is undefined if a type unknown to the language is passed as a value.
          *
@@ -524,27 +530,6 @@ public abstract class TruffleInstrument {
             AccessorInstrumentHandler.interopAccess().checkInteropType(value);
             final TruffleLanguage.Env env = AccessorInstrumentHandler.engineAccess().getEnvForInstrument(language);
             return AccessorInstrumentHandler.langAccess().toStringIfVisible(env, value, false);
-        }
-
-        /**
-         * Find a meta-object of a value, if any. The meta-object represents a description of the
-         * object, reveals it's kind and it's features. Some information that a meta-object might
-         * define includes the base object's type, interface, class, methods, attributes, etc. When
-         * no meta-object is known, <code>null</code> is returned.
-         *
-         * @param node a node
-         * @param value a value to find the meta-object of
-         * @return the meta-object, or <code>null</code>
-         * @since 0.22
-         * @deprecated use
-         *             {@link #findMetaObject(com.oracle.truffle.api.nodes.LanguageInfo, java.lang.Object)}
-         *             and retrieve {@link LanguageInfo} from
-         *             <code>node.getRootNode().getLanguageInfo()</code>.
-         */
-        @Deprecated
-        public Object findMetaObject(Node node, Object value) {
-            final TruffleLanguage.Env env = getLangEnv(node);
-            return AccessorInstrumentHandler.langAccess().findMetaObject(env, value);
         }
 
         /**
@@ -568,24 +553,6 @@ public abstract class TruffleInstrument {
             Object metaObject = AccessorInstrumentHandler.langAccess().findMetaObject(env, value);
             assert checkNullOrInterop(metaObject);
             return metaObject;
-        }
-
-        /**
-         * Find a source location where a value is declared, if any.
-         *
-         * @param node a node
-         * @param value a value to get the source location for
-         * @return a source location of the object, or <code>null</code>
-         * @since 0.22
-         * @deprecated use
-         *             {@link #findSourceLocation(com.oracle.truffle.api.nodes.LanguageInfo, java.lang.Object)}
-         *             and retrieve {@link LanguageInfo} from
-         *             <code>node.getRootNode().getLanguageInfo()</code>.
-         */
-        @Deprecated
-        public SourceSection findSourceLocation(Node node, Object value) {
-            final TruffleLanguage.Env env = getLangEnv(node);
-            return AccessorInstrumentHandler.langAccess().findSourceLocation(env, value);
         }
 
         /**
@@ -630,14 +597,6 @@ public abstract class TruffleInstrument {
                 return null;
             }
             return AccessorInstrumentHandler.engineAccess().getObjectLanguage(value, vmObject);
-        }
-
-        private static TruffleLanguage.Env getLangEnv(Node node) {
-            LanguageInfo languageInfo = node.getRootNode().getLanguageInfo();
-            if (languageInfo == null) {
-                throw new IllegalArgumentException("No language available for given node.");
-            }
-            return AccessorInstrumentHandler.engineAccess().getEnvForInstrument(languageInfo);
         }
 
         /**
@@ -703,6 +662,59 @@ public abstract class TruffleInstrument {
             }
             final TruffleLanguage.Env env = AccessorInstrumentHandler.engineAccess().getEnvForInstrument(languageInfo);
             return findTopScopes(env);
+        }
+
+        /**
+         * Find or create an engine bound logger for an instrument. When a logging is required from
+         * a thread which entered a context the context's logging handler and options are used.
+         * Otherwise the engine's logging handler and options are used.
+         * <p>
+         * If a logger with given name already exists it's returned, otherwise a new logger is
+         * created.
+         * <p>
+         * Unlike loggers created by
+         * {@link TruffleLogger#getLogger(java.lang.String, java.lang.String)
+         * TruffleLogger.getLogger} loggers created by this method are bound to engine, there may be
+         * more logger instances having the same name but each bound to different engine instance.
+         * Instruments should never store the returned logger into a static fields. A new logger
+         * must be always created in
+         * {@link TruffleInstrument#onCreate(com.oracle.truffle.api.instrumentation.TruffleInstrument.Env)
+         * onCreate} method.
+         *
+         * @param loggerName the the name of a {@link TruffleLogger}, if a {@code loggerName} is
+         *            null or empty a root logger for language or instrument is returned
+         * @return a {@link TruffleLogger}
+         * @since 1.0
+         */
+        public TruffleLogger getLogger(String loggerName) {
+            return AccessorInstrumentHandler.engineAccess().getLogger(vmObject, loggerName);
+        }
+
+        /**
+         * Find or create an engine bound logger for an instrument. The engine bound loggers can be
+         * used by threads executing without any current context. When a logging is required from a
+         * thread which entered a context the context's logging handler and options are used.
+         * Otherwise the engine's logging handler and options are used.
+         * <p>
+         * If a logger for the class already exists it's returned, otherwise a new logger is
+         * created.
+         * <p>
+         * Unlike loggers created by
+         * {@link TruffleLogger#getLogger(java.lang.String, java.lang.Class)
+         * TruffleLogger.getLogger} loggers created by this method are bound to engine, there may be
+         * more logger instances having the same name but each bound to different engine instance.
+         * Instruments should never store the returned logger into a static fields. A new logger
+         * must be always created in
+         * {@link TruffleInstrument#onCreate(com.oracle.truffle.api.instrumentation.TruffleInstrument.Env)
+         * onCreate} method.
+         *
+         * @param forClass the {@link Class} to create a logger for
+         * @return a {@link TruffleLogger}
+         * @throws NullPointerException if {@code forClass} is null
+         * @since 1.0
+         */
+        public TruffleLogger getLogger(Class<?> forClass) {
+            return getLogger(forClass.getName());
         }
 
         static Iterable<Scope> findTopScopes(TruffleLanguage.Env env) {

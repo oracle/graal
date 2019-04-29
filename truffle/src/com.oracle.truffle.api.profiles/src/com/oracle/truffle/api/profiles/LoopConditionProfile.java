@@ -145,6 +145,15 @@ public abstract class LoopConditionProfile extends ConditionProfile {
         }
     }
 
+    /**
+     * Returns the uncached version of the profile. The uncached version of a profile does nothing.
+     *
+     * @since 1.0
+     */
+    public static LoopConditionProfile getUncached() {
+        return Disabled.INSTANCE;
+    }
+
     static final class Enabled extends LoopConditionProfile {
 
         @CompilationFinal private long trueCount; // long for long running loops.

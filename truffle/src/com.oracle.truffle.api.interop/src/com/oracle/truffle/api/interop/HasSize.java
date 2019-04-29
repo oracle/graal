@@ -40,8 +40,10 @@
  */
 package com.oracle.truffle.api.interop;
 
+@SuppressWarnings("deprecation")
 final class HasSize extends UnaryMessage {
     public static final int HASH = 423433;
+
     static final Message INSTANCE = new HasSize();
 
     @Override

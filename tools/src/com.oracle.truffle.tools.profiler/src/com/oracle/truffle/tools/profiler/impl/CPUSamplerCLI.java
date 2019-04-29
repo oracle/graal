@@ -34,6 +34,7 @@ import com.oracle.truffle.tools.utils.json.JSONArray;
 import com.oracle.truffle.tools.utils.json.JSONObject;
 import org.graalvm.options.OptionCategory;
 import org.graalvm.options.OptionKey;
+import org.graalvm.options.OptionStability;
 import org.graalvm.options.OptionType;
 
 import java.io.PrintStream;
@@ -58,7 +59,6 @@ class CPUSamplerCLI extends ProfilerCLI {
     }
 
     static final OptionType<Output> CLI_OUTPUT_TYPE = new OptionType<>("Output",
-                    Output.HISTOGRAM,
                     new Function<String, Output>() {
                         @Override
                         public Output apply(String s) {
@@ -71,7 +71,6 @@ class CPUSamplerCLI extends ProfilerCLI {
                     });
 
     static final OptionType<CPUSampler.Mode> CLI_MODE_TYPE = new OptionType<>("Mode",
-                    CPUSampler.Mode.EXCLUDE_INLINED_ROOTS,
                     new Function<String, CPUSampler.Mode>() {
                         @Override
                         public CPUSampler.Mode apply(String s) {
@@ -83,37 +82,47 @@ class CPUSamplerCLI extends ProfilerCLI {
                         }
                     });
 
-    @Option(name = "", help = "Enable the CPU sampler.", category = OptionCategory.USER) static final OptionKey<Boolean> ENABLED = new OptionKey<>(false);
+    @Option(name = "", help = "Enable the CPU sampler.", category = OptionCategory.USER, stability = OptionStability.STABLE) //
+    static final OptionKey<Boolean> ENABLED = new OptionKey<>(false);
 
     // @formatter:off
     @Option(name = "Mode",
             help = "Describe level of sampling detail. NOTE: Increased detail can lead to reduced accuracy. Modes: 'exclude_inlined_roots' - sample roots excluding inlined functions (default), " +
-                    "'roots' - sample roots including inlined functions, 'statements' - sample all statements.", category = OptionCategory.USER)
+                    "'roots' - sample roots including inlined functions, 'statements' - sample all statements.", category = OptionCategory.USER, stability = OptionStability.STABLE)
     static final OptionKey<CPUSampler.Mode> MODE = new OptionKey<>(CPUSampler.Mode.EXCLUDE_INLINED_ROOTS, CLI_MODE_TYPE);
     // @formatter:om
-    @Option(name = "Period", help = "Period in milliseconds to sample the stack.", category = OptionCategory.USER) static final OptionKey<Long> SAMPLE_PERIOD = new OptionKey<>(1L);
+    @Option(name = "Period", help = "Period in milliseconds to sample the stack.", category = OptionCategory.USER, stability = OptionStability.STABLE) //
+    static final OptionKey<Long> SAMPLE_PERIOD = new OptionKey<>(1L);
 
-    @Option(name = "Delay", help = "Delay the sampling for this many milliseconds (default: 0).", category = OptionCategory.USER) static final OptionKey<Long> DELAY_PERIOD = new OptionKey<>(0L);
+    @Option(name = "Delay", help = "Delay the sampling for this many milliseconds (default: 0).", category = OptionCategory.USER, stability = OptionStability.STABLE) //
+    static final OptionKey<Long> DELAY_PERIOD = new OptionKey<>(0L);
 
-    @Option(name = "StackLimit", help = "Maximum number of maximum stack elements.", category = OptionCategory.USER) static final OptionKey<Integer> STACK_LIMIT = new OptionKey<>(10000);
+    @Option(name = "StackLimit", help = "Maximum number of maximum stack elements.", category = OptionCategory.USER, stability = OptionStability.STABLE) //
+    static final OptionKey<Integer> STACK_LIMIT = new OptionKey<>(10000);
 
-    @Option(name = "Output", help = "Print a 'histogram', 'calltree' or 'json' as output (default:HISTOGRAM).", category = OptionCategory.USER) static final OptionKey<Output> OUTPUT = new OptionKey<>(
-                    Output.HISTOGRAM, CLI_OUTPUT_TYPE);
+    @Option(name = "Output", help = "Print a 'histogram', 'calltree' or 'json' as output (default:HISTOGRAM).", category = OptionCategory.USER, stability = OptionStability.STABLE) //
+    static final OptionKey<Output> OUTPUT = new OptionKey<>(Output.HISTOGRAM, CLI_OUTPUT_TYPE);
 
-    @Option(name = "FilterRootName", help = "Wildcard filter for program roots. (eg. Math.*, default:*).", category = OptionCategory.USER) static final OptionKey<Object[]> FILTER_ROOT = new OptionKey<>(
-                    new Object[0], WILDCARD_FILTER_TYPE);
+    @Option(name = "FilterRootName", help = "Wildcard filter for program roots. (eg. Math.*, default:*).", category = OptionCategory.USER, stability = OptionStability.STABLE) //
+    static final OptionKey<Object[]> FILTER_ROOT = new OptionKey<>(new Object[0], WILDCARD_FILTER_TYPE);
 
-    @Option(name = "FilterFile", help = "Wildcard filter for source file paths. (eg. *program*.sl, default:*).", category = OptionCategory.USER) static final OptionKey<Object[]> FILTER_FILE = new OptionKey<>(
-                    new Object[0], WILDCARD_FILTER_TYPE);
+    @Option(name = "FilterFile", help = "Wildcard filter for source file paths. (eg. *program*.sl, default:*).", category = OptionCategory.USER, stability = OptionStability.STABLE) //
+    static final OptionKey<Object[]> FILTER_FILE = new OptionKey<>(new Object[0], WILDCARD_FILTER_TYPE);
 
-    @Option(name = "FilterLanguage", help = "Only profile languages with mime-type. (eg. +, default:no filter).", category = OptionCategory.USER) static final OptionKey<String> FILTER_LANGUAGE = new OptionKey<>(
-                    "");
+    @Option(name = "FilterMimeType", help = "Only profile languages with mime-type. (eg. +, default:no filter).", category = OptionCategory.USER, stability = OptionStability.STABLE) //
+    static final OptionKey<String> FILTER_MIME_TYPE = new OptionKey<>("");
 
-    @Option(name = "SampleInternal", help = "Capture internal elements (default:false).", category = OptionCategory.USER) static final OptionKey<Boolean> SAMPLE_INTERNAL = new OptionKey<>(false);
+    @Option(name = "FilterLanguage", help = "Only profile languages with given ID. (eg. js, default:no filter).", category = OptionCategory.USER, stability = OptionStability.STABLE) //
+    static final OptionKey<String> FILTER_LANGUAGE = new OptionKey<>("");
 
-    @Option(name = "SummariseThreads", help = "Print output as a summary of all 'per thread' profiles. (default: false)", category = OptionCategory.USER) static final OptionKey<Boolean> SUMMARISE_THREADS = new OptionKey<>(false);
+    @Option(name = "SampleInternal", help = "Capture internal elements (default:false).", category = OptionCategory.INTERNAL) //
+    static final OptionKey<Boolean> SAMPLE_INTERNAL = new OptionKey<>(false);
 
-    @Option(name = "GatherHitTimes", help = "Save a timestamp for each taken sample (default:false).", category = OptionCategory.USER) static final OptionKey<Boolean> GATHER_HIT_TIMES = new OptionKey<>(false);
+    @Option(name = "SummariseThreads", help = "Print output as a summary of all 'per thread' profiles. (default: false)", category = OptionCategory.USER, stability = OptionStability.STABLE) //
+    static final OptionKey<Boolean> SUMMARISE_THREADS = new OptionKey<>(false);
+
+    @Option(name = "GatherHitTimes", help = "Save a timestamp for each taken sample (default:false).", category = OptionCategory.USER, stability = OptionStability.STABLE) //
+    static final OptionKey<Boolean> GATHER_HIT_TIMES = new OptionKey<>(false);
 
     static void handleOutput(TruffleInstrument.Env env, CPUSampler sampler) {
         PrintStream out = new PrintStream(env.out());
@@ -229,10 +238,7 @@ class CPUSamplerCLI extends ProfilerCLI {
         long samples = sampler.getSampleCount();
         String sep = repeat("-", title.length());
         out.println(sep);
-        out.println(String.format("Sampling Histogram. Recorded %s samples with period %dms", samples, sampler.getPeriod()));
-        out.println("  Self Time: Time spent on the top of the stack.");
-        out.println("  Total Time: Time the location spent on the stack. ");
-        out.println("  Opt %: Percent of time spent in compiled and therfore non-interpreted code.");
+        printLegend(out, "Histogram", samples, sampler.getPeriod());
         out.println(sep);
         for (Map.Entry<Thread, List<List<ProfilerNode<CPUSampler.Payload>>>> entry : linesPerThread.entrySet()) {
             if (!summariseThreads) {
@@ -263,10 +269,7 @@ class CPUSamplerCLI extends ProfilerCLI {
         String title = String.format(" %-" + maxLength + "s |      Total Time     |  Opt %% ||       Self Time     |  Opt %% | Location             ", "Name");
         String sep = repeat("-", title.length());
         out.println(sep);
-        out.println(String.format("Sampling CallTree. Recorded %s samples with period %dms.", sampler.getSampleCount(), sampler.getPeriod()));
-        out.println("  Self Time: Time spent on the top of the stack.");
-        out.println("  Total Time: Time spent somewhere on the stack. ");
-        out.println("  Opt %: Percent of time spent in compiled and therfore non-interpreted code.");
+        printLegend(out, "CallTree", sampler.getSampleCount(), sampler.getPeriod());
         out.println(sep);
         for (Map.Entry<Thread, Collection<ProfilerNode<CPUSampler.Payload>>> node : threadToNodesMap.entrySet()) {
             if (!summariseThreads) {
@@ -296,6 +299,13 @@ class CPUSamplerCLI extends ProfilerCLI {
             printSamplingCallTreeRec(sampler, maxRootLength, printed ? prefix + " " : prefix, treeNode.getChildren(), out);
 
         }
+    }
+
+    private static void printLegend(PrintStream out, String type, long samples, long period) {
+        out.println(String.format("Sampling %s. Recorded %s samples with period %dms.", type, samples, period));
+        out.println("  Self Time: Time spent on the top of the stack.");
+        out.println("  Total Time: Time spent somewhere on the stack.");
+        out.println("  Opt %: Percent of time spent in compiled and therefore non-interpreted code.");
     }
 
     private static int computeTitleMaxLength(Collection<ProfilerNode<CPUSampler.Payload>> children, int baseLength) {

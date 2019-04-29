@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2017, 2018, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2017, 2019, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -51,15 +51,16 @@ import com.oracle.truffle.api.interop.TruffleObject;
 import com.oracle.truffle.nfi.impl.LibFFIType.ClosureType;
 import com.oracle.truffle.nfi.impl.LibFFIType.EnvType;
 import com.oracle.truffle.nfi.impl.NativeAllocation.FreeDestructor;
-import com.oracle.truffle.nfi.types.NativeArrayTypeMirror;
-import com.oracle.truffle.nfi.types.NativeFunctionTypeMirror;
-import com.oracle.truffle.nfi.types.NativeSimpleType;
-import com.oracle.truffle.nfi.types.NativeSimpleTypeMirror;
-import com.oracle.truffle.nfi.types.NativeTypeMirror;
-import com.oracle.truffle.nfi.types.NativeTypeMirror.Kind;
+import com.oracle.truffle.nfi.spi.types.NativeArrayTypeMirror;
+import com.oracle.truffle.nfi.spi.types.NativeFunctionTypeMirror;
+import com.oracle.truffle.nfi.spi.types.NativeSimpleType;
+import com.oracle.truffle.nfi.spi.types.NativeSimpleTypeMirror;
+import com.oracle.truffle.nfi.spi.types.NativeTypeMirror;
+import com.oracle.truffle.nfi.spi.types.NativeTypeMirror.Kind;
 
 class NFIContext {
 
+    final NFILanguageImpl language;
     Env env;
 
     private long nativeContext;
@@ -97,7 +98,8 @@ class NFIContext {
         }
     }
 
-    NFIContext(Env env) {
+    NFIContext(NFILanguageImpl language, Env env) {
+        this.language = language;
         this.env = env;
     }
 
@@ -118,10 +120,14 @@ class NFIContext {
     }
 
     void dispose() {
-        disposeNativeContext(nativeContext);
-        nativeContext = 0;
+        if (nativeContext != 0) {
+            disposeNativeContext(nativeContext);
+            nativeContext = 0;
+        }
         nativeEnv.set(null);
-        nativePointerMap.clear();
+        synchronized (nativePointerMap) {
+            nativePointerMap.clear();
+        }
     }
 
     private ClosureNativePointer getClosureNativePointer(long codePointer) {
@@ -164,8 +170,8 @@ class NFIContext {
         return LibFFILibrary.create(loadLibrary(nativeContext, name, flags));
     }
 
-    TruffleObject lookupSymbol(LibFFILibrary library, String name) {
-        return LibFFISymbol.create(library, lookup(nativeContext, library.handle, name));
+    Object lookupSymbol(LibFFILibrary library, String name) {
+        return LibFFISymbol.create(language, library, lookup(nativeContext, library.handle, name));
     }
 
     LibFFIType lookupArgType(NativeTypeMirror type) {

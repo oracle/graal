@@ -98,7 +98,8 @@ public class InstrumentationEventTest {
 
         @Override
         public void onEnter(VirtualFrame frame) {
-            events.add(new Event(EventKind.ENTER, c, frame, null, null, -1, null, createInputContexts(), null));
+            // Needs to be materialized because of running with immediate compilation
+            events.add(new Event(EventKind.ENTER, c, frame.materialize(), null, null, -1, null, createInputContexts(), null));
         }
 
         @Override

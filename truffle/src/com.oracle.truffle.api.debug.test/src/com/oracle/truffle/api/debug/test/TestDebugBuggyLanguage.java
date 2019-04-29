@@ -41,27 +41,28 @@
 package com.oracle.truffle.api.debug.test;
 
 import com.oracle.truffle.api.CallTarget;
+import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.Truffle;
 import com.oracle.truffle.api.TruffleException;
 import com.oracle.truffle.api.TruffleLanguage;
 import com.oracle.truffle.api.frame.FrameSlot;
 import com.oracle.truffle.api.frame.FrameSlotKind;
+import com.oracle.truffle.api.frame.MaterializedFrame;
 import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.api.instrumentation.GenerateWrapper;
 import com.oracle.truffle.api.instrumentation.InstrumentableNode;
 import com.oracle.truffle.api.instrumentation.ProbeNode;
 import com.oracle.truffle.api.instrumentation.StandardTags;
 import com.oracle.truffle.api.instrumentation.Tag;
-import com.oracle.truffle.api.interop.ArityException;
-import com.oracle.truffle.api.interop.KeyInfo;
+import com.oracle.truffle.api.interop.InteropLibrary;
+import com.oracle.truffle.api.interop.InvalidArrayIndexException;
 import com.oracle.truffle.api.interop.TruffleObject;
 import com.oracle.truffle.api.interop.UnknownIdentifierException;
-import com.oracle.truffle.api.interop.UnsupportedMessageException;
-import com.oracle.truffle.api.interop.UnsupportedTypeException;
+import com.oracle.truffle.api.library.ExportLibrary;
+import com.oracle.truffle.api.library.ExportMessage;
 import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.api.nodes.RootNode;
 import com.oracle.truffle.api.source.SourceSection;
-import com.oracle.truffle.api.test.polyglot.ProxyInteropObject;
 import com.oracle.truffle.api.test.polyglot.ProxyLanguage;
 
 /**
@@ -90,6 +91,8 @@ import com.oracle.truffle.api.test.polyglot.ProxyLanguage;
  * <code>o</code> variable</li>
  * </ul>
  */
+@SuppressWarnings("static-method")
+
 public class TestDebugBuggyLanguage extends ProxyLanguage {
 
     @Override
@@ -143,6 +146,12 @@ public class TestDebugBuggyLanguage extends ProxyLanguage {
 
         @Override
         public Object execute(VirtualFrame frame) {
+            boundary(frame.materialize());
+            return statement.execute(frame);
+        }
+
+        @CompilerDirectives.TruffleBoundary
+        private void boundary(MaterializedFrame frame) {
             FrameSlot slot = frame.getFrameDescriptor().findOrAddFrameSlot("a", FrameSlotKind.Int);
             String text = statementSection.getCharacters().toString();
             int index = 0;
@@ -154,7 +163,6 @@ public class TestDebugBuggyLanguage extends ProxyLanguage {
             TruffleObject obj = new ErrorObject(text.substring(0, index).trim(), errNum);
             slot = frame.getFrameDescriptor().findOrAddFrameSlot("o", FrameSlotKind.Object);
             frame.setObject(slot, obj);
-            return statement.execute(frame);
         }
 
         @Override
@@ -204,7 +212,8 @@ public class TestDebugBuggyLanguage extends ProxyLanguage {
 
     }
 
-    private static class ErrorObject extends ProxyInteropObject {
+    @ExportLibrary(InteropLibrary.class)
+    static final class ErrorObject implements TruffleObject {
 
         private final String error;
         private final int errNum;
@@ -214,28 +223,42 @@ public class TestDebugBuggyLanguage extends ProxyLanguage {
             this.errNum = errNum;
         }
 
-        @Override
-        public Object keys() throws UnsupportedMessageException {
+        @ExportMessage
+        boolean hasMembers() {
+            return true;
+        }
+
+        @ExportMessage
+        boolean isMemberInsertable(@SuppressWarnings("unused") String member) {
+            return false;
+        }
+
+        @ExportMessage
+        public Object getMembers(@SuppressWarnings("unused") boolean internal) {
             if ("KEYS".equals(error)) {
                 throwBug(errNum);
             }
             return new Keys();
         }
 
-        @Override
-        public int keyInfo(String key) {
-            if ("KEY_INFO".equals(error) && "A".equals(key)) {
+        @ExportMessage
+        boolean isMemberModifiable(String member) {
+            if ("KEY_INFO".equals(error) && "A".equals(member)) {
                 throwBug(errNum);
             }
-            if ("A".equals(key) || "B".equals(key)) {
-                return KeyInfo.READABLE | KeyInfo.MODIFIABLE;
-            } else {
-                return KeyInfo.NONE;
-            }
+            return "A".equals(member) || "B".equals(member);
         }
 
-        @Override
-        public Object read(String key) throws UnsupportedMessageException, UnknownIdentifierException {
+        @ExportMessage
+        boolean isMemberReadable(String member) {
+            if ("KEY_INFO".equals(error) && "A".equals(member)) {
+                throwBug(errNum);
+            }
+            return "A".equals(member) || "B".equals(member);
+        }
+
+        @ExportMessage
+        public Object readMember(String key) throws UnknownIdentifierException {
             if ("READ".equals(error) && "A".equals(key)) {
                 throwBug(errNum);
             }
@@ -244,23 +267,23 @@ public class TestDebugBuggyLanguage extends ProxyLanguage {
             } else if ("B".equals(key)) {
                 return 42;
             } else {
-                throw UnknownIdentifierException.raise(key);
+                throw UnknownIdentifierException.create(key);
             }
         }
 
-        @Override
-        public Object write(String key, Object value) throws UnsupportedMessageException, UnknownIdentifierException, UnsupportedTypeException {
+        @ExportMessage
+        public Object writeMember(String key, Object value) throws UnknownIdentifierException {
             if ("WRITE".equals(error) && "A".equals(key)) {
                 throwBug(errNum);
             }
             if ("A".equals(key) || "B".equals(key)) {
                 return value;
             } else {
-                throw UnknownIdentifierException.raise(key);
+                throw UnknownIdentifierException.create(key);
             }
         }
 
-        @Override
+        @ExportMessage
         public boolean isExecutable() {
             if ("CAN_EXECUTE".equals(error)) {
                 throwBug(errNum);
@@ -268,8 +291,8 @@ public class TestDebugBuggyLanguage extends ProxyLanguage {
             return true;
         }
 
-        @Override
-        public Object execute(Object[] args) throws UnsupportedTypeException, ArityException, UnsupportedMessageException {
+        @ExportMessage
+        public Object execute(@SuppressWarnings("unused") Object[] args) {
             if ("EXECUTE".equals(error)) {
                 throwBug(errNum);
             }
@@ -281,35 +304,32 @@ public class TestDebugBuggyLanguage extends ProxyLanguage {
             return "ErrorObject " + errNum + (error.isEmpty() ? "" : " " + error);
         }
 
-        private static class Keys extends ProxyInteropObject {
+        @ExportLibrary(InteropLibrary.class)
+        static class Keys implements TruffleObject {
 
-            @Override
-            public boolean hasSize() {
+            @ExportMessage
+            public boolean hasArrayElements() {
                 return true;
             }
 
-            @Override
-            public int getSize() {
-                return 2;
+            @ExportMessage
+            public long getArraySize() {
+                return 2L;
             }
 
-            @Override
-            public int keyInfo(Number key) {
-                if (key.intValue() == 0 || key.intValue() == 1) {
-                    return KeyInfo.READABLE;
-                } else {
-                    return KeyInfo.NONE;
-                }
+            @ExportMessage
+            public boolean isArrayElementReadable(long key) {
+                return key == 0 || key == 1;
             }
 
-            @Override
-            public Object read(Number key) throws UnsupportedMessageException, UnknownIdentifierException {
-                if (key.intValue() == 0) {
+            @ExportMessage
+            public Object readArrayElement(long key) throws InvalidArrayIndexException {
+                if (key == 0) {
                     return "A";
-                } else if (key.intValue() == 1) {
+                } else if (key == 1) {
                     return "B";
                 } else {
-                    throw UnknownIdentifierException.raise(key.toString());
+                    throw InvalidArrayIndexException.create(key);
                 }
             }
 

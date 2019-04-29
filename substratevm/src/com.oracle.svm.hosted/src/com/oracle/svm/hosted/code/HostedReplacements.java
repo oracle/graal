@@ -51,7 +51,7 @@ import jdk.vm.ci.meta.ResolvedJavaType;
  * Snippets are parsed before the static analysis using {@link SubstrateReplacements}. This ensures
  * that snippets do not use analysis-specific nodes - they are parsed using the same
  * {@link BytecodeParser} subclass also used for parsing the snippets we use for runtime
- * compilation. The parsing using the {@link AnalysisUniverse}.
+ * compilation. The parsing uses the {@link AnalysisUniverse}.
  *
  * We cannot parse snippets again before compilation with the {@link HostedUniverse}: the static
  * analysis does not see the individual methods that are inlined into snippets, only the final graph
@@ -70,16 +70,16 @@ public class HostedReplacements extends SubstrateReplacements {
     private final SubstrateReplacements aReplacements;
 
     public HostedReplacements(HostedUniverse hUniverse, Providers providers, SnippetReflectionProvider snippetReflection, TargetDescription target, HostedProviders anaylysisProviders,
-                    BytecodeProvider bytecodeProvider, OptionValues options) {
-        super(options, providers, snippetReflection, bytecodeProvider, target, null);
+                    BytecodeProvider bytecodeProvider) {
+        super(providers, snippetReflection, bytecodeProvider, target, null);
         this.hUniverse = hUniverse;
         this.aReplacements = (SubstrateReplacements) anaylysisProviders.getReplacements();
     }
 
     @Override
-    public void registerSnippet(ResolvedJavaMethod m, boolean trackNodeSourcePosition) {
+    public void registerSnippet(ResolvedJavaMethod method, ResolvedJavaMethod original, Object receiver, boolean trackNodeSourcePosition, OptionValues options) {
         /* We must have the snippet already available in the analysis replacements. */
-        assert aReplacements.getSnippet(((HostedMethod) m).wrapped, null, null, trackNodeSourcePosition, null) != null;
+        assert aReplacements.getSnippet(((HostedMethod) method).wrapped, null, null, trackNodeSourcePosition, null, options) != null;
     }
 
     @Override

@@ -1,6 +1,7 @@
 # Substrate VM C API
 
-Substrate VM provides an API for the C language for initializing isolates and attaching threads for use with the entry point feature that is demonstrated in the [README](README.md). The C API is available when Substrate VM is built as a shared library and its declarations are included in the header file that is generated during the build:
+Substrate VM provides an API for the C language for initializing isolates and attaching threads for use with the entry point feature that is demonstrated in the [README](README.md).
+The C API is available when Substrate VM is built as a shared library and its declarations are included in the header file that is generated during the build:
 
 ```c
 /*

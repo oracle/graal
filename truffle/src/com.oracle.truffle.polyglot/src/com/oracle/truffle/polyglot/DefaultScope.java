@@ -52,14 +52,13 @@ import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.Scope;
 import com.oracle.truffle.api.frame.Frame;
 import com.oracle.truffle.api.frame.FrameSlot;
-import com.oracle.truffle.api.interop.ForeignAccess;
-import com.oracle.truffle.api.interop.KeyInfo;
-import com.oracle.truffle.api.interop.Message;
-import com.oracle.truffle.api.interop.MessageResolution;
-import com.oracle.truffle.api.interop.Resolve;
+import com.oracle.truffle.api.interop.InteropLibrary;
+import com.oracle.truffle.api.interop.InvalidArrayIndexException;
 import com.oracle.truffle.api.interop.TruffleObject;
 import com.oracle.truffle.api.interop.UnknownIdentifierException;
 import com.oracle.truffle.api.interop.UnsupportedMessageException;
+import com.oracle.truffle.api.library.ExportLibrary;
+import com.oracle.truffle.api.library.ExportMessage;
 import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.api.nodes.RootNode;
 
@@ -69,9 +68,9 @@ import com.oracle.truffle.api.nodes.RootNode;
 final class DefaultScope {
 
     static Iterable<Scope> topScope(Object global) {
-        TruffleObject globalObject;
-        if (global instanceof TruffleObject && hasKeys((TruffleObject) global)) {
-            globalObject = (TruffleObject) global;
+        Object globalObject;
+        if (global != null && InteropLibrary.getFactory().getUncached().hasMembers(global)) {
+            globalObject = global;
         } else {
             globalObject = new EmptyGlobalBindings();
         }
@@ -85,18 +84,6 @@ final class DefaultScope {
             name = "local";
         }
         return Collections.singletonList(Scope.newBuilder(name, getVariables(root, frame)).node(root).arguments(getArguments(frame)).build());
-    }
-
-    private static boolean hasKeys(TruffleObject object) {
-        try {
-            TruffleObject keys = ForeignAccess.sendKeys(Message.KEYS.createNode(), object);
-            if (keys == null) {
-                return false;
-            }
-            return ForeignAccess.sendHasSize(Message.HAS_SIZE.createNode(), keys);
-        } catch (UnsupportedMessageException ex) {
-            return false;
-        }
     }
 
     private static boolean isInternal(FrameSlot slot) {
@@ -161,6 +148,7 @@ final class DefaultScope {
         return new ArgumentsArrayObject(args);
     }
 
+    @ExportLibrary(InteropLibrary.class)
     static final class VariablesMapObject implements TruffleObject {
 
         final Map<String, ? extends FrameSlot> slots;
@@ -171,92 +159,70 @@ final class DefaultScope {
             this.frame = frame;
         }
 
-        @Override
-        public ForeignAccess getForeignAccess() {
-            return VariablesMapMessageResolutionForeign.ACCESS;
-        }
-
         public static boolean isInstance(TruffleObject obj) {
             return obj instanceof VariablesMapObject;
         }
 
-        @MessageResolution(receiverType = VariablesMapObject.class)
-        static class VariablesMapMessageResolution {
+        @SuppressWarnings("static-method")
+        @ExportMessage
+        boolean hasMembers() {
+            return true;
+        }
 
-            @Resolve(message = "HAS_KEYS")
-            abstract static class VarsMapHasKeysNode extends Node {
-
-                @SuppressWarnings("unused")
-                public Object access(VariablesMapObject varMap) {
-                    return true;
-                }
+        @ExportMessage
+        @TruffleBoundary
+        Object readMember(String member) throws UnknownIdentifierException {
+            if (frame == null) {
+                return NullValue.INSTANCE;
             }
-
-            @Resolve(message = "KEYS")
-            abstract static class VarsMapKeysNode extends Node {
-
-                @TruffleBoundary
-                public Object access(VariablesMapObject varMap) {
-                    return new VariableNamesObject(varMap.slots.keySet());
-                }
+            FrameSlot slot = slots.get(member);
+            if (slot == null) {
+                throw UnknownIdentifierException.create(member);
+            } else {
+                return frame.getValue(slot);
             }
+        }
 
-            @Resolve(message = "KEY_INFO")
-            abstract static class VarsMapKeyInfoNode extends Node {
+        @ExportMessage
+        @TruffleBoundary
+        Object getMembers(@SuppressWarnings("unused") boolean includeInternal) {
+            return new VariableNamesObject(slots.keySet());
+        }
 
-                @TruffleBoundary
-                public Object access(VariablesMapObject varMap, String name) {
-                    if (varMap.slots.containsKey(name)) {
-                        if (varMap.frame == null) {
-                            return KeyInfo.READABLE;
-                        } else {
-                            return KeyInfo.READABLE | KeyInfo.MODIFIABLE;
-                        }
-                    } else {
-                        return 0;
-                    }
-                }
+        @ExportMessage
+        @TruffleBoundary
+        boolean isMemberReadable(String member) {
+            return slots.containsKey(member);
+        }
+
+        @ExportMessage
+        @TruffleBoundary
+        boolean isMemberModifiable(String member) {
+            return slots.containsKey(member) && frame != null;
+        }
+
+        @ExportMessage
+        @TruffleBoundary
+        void writeMember(String member, Object value) throws UnknownIdentifierException, UnsupportedMessageException {
+            if (frame == null) {
+                throw UnsupportedMessageException.create();
             }
-
-            @Resolve(message = "READ")
-            abstract static class VarsMapReadNode extends Node {
-
-                @TruffleBoundary
-                public Object access(VariablesMapObject varMap, String name) {
-                    if (varMap.frame == null) {
-                        return NullValue.INSTANCE;
-                    }
-                    FrameSlot slot = varMap.slots.get(name);
-                    if (slot == null) {
-                        throw UnknownIdentifierException.raise(name);
-                    } else {
-                        return varMap.frame.getValue(slot);
-                    }
-                }
+            FrameSlot slot = slots.get(member);
+            if (slot == null) {
+                throw UnknownIdentifierException.create(member);
+            } else {
+                frame.setObject(slot, value);
             }
+        }
 
-            @Resolve(message = "WRITE")
-            abstract static class VarsMapWriteNode extends Node {
-
-                @TruffleBoundary
-                public Object access(VariablesMapObject varMap, String name, Object value) {
-                    if (varMap.frame == null) {
-                        throw UnsupportedMessageException.raise(Message.WRITE);
-                    }
-                    FrameSlot slot = varMap.slots.get(name);
-                    if (slot == null) {
-                        throw UnknownIdentifierException.raise(name);
-                    } else {
-                        varMap.frame.setObject(slot, value);
-                        return value;
-                    }
-                }
-            }
-
+        @SuppressWarnings("static-method")
+        @ExportMessage
+        boolean isMemberInsertable(@SuppressWarnings("unused") String member) {
+            return false;
         }
     }
 
-    @MessageResolution(receiverType = NullValue.class)
+    @ExportLibrary(InteropLibrary.class)
     static final class NullValue implements TruffleObject {
 
         private static final NullValue INSTANCE = new NullValue();
@@ -264,25 +230,15 @@ final class DefaultScope {
         NullValue() {
         }
 
-        @Resolve(message = "IS_NULL")
-        abstract static class IsNull extends Node {
-
-            public Object access(@SuppressWarnings("unused") NullValue receiver) {
-                return true;
-            }
-        }
-
-        @Override
-        public ForeignAccess getForeignAccess() {
-            return NullValueForeign.ACCESS;
-        }
-
-        static boolean isInstance(TruffleObject array) {
-            return array instanceof NullValue;
+        @SuppressWarnings("static-method")
+        @ExportMessage
+        boolean isNull() {
+            return true;
         }
 
     }
 
+    @ExportLibrary(InteropLibrary.class)
     static final class VariableNamesObject implements TruffleObject {
 
         static final VariableNamesObject EMPTY = new VariableNamesObject(Collections.emptySet());
@@ -293,51 +249,35 @@ final class DefaultScope {
             this.names = new ArrayList<>(names);
         }
 
-        @Override
-        public ForeignAccess getForeignAccess() {
-            return VariableNamesMessageResolutionForeign.ACCESS;
+        @SuppressWarnings("static-method")
+        @ExportMessage
+        boolean hasArrayElements() {
+            return true;
         }
 
-        public static boolean isInstance(TruffleObject obj) {
-            return obj instanceof VariableNamesObject;
+        @ExportMessage
+        @TruffleBoundary
+        long getArraySize() {
+            return names.size();
         }
 
-        @MessageResolution(receiverType = VariableNamesObject.class)
-        static final class VariableNamesMessageResolution {
-
-            @Resolve(message = "HAS_SIZE")
-            abstract static class VarNamesHasSizeNode extends Node {
-
-                @SuppressWarnings("unused")
-                public Object access(VariableNamesObject varNames) {
-                    return true;
-                }
+        @ExportMessage
+        @TruffleBoundary
+        Object readArrayElement(long index) throws InvalidArrayIndexException {
+            if (!isArrayElementReadable(index)) {
+                throw InvalidArrayIndexException.create(index);
             }
+            return names.get((int) index);
+        }
 
-            @Resolve(message = "GET_SIZE")
-            abstract static class VarNamesGetSizeNode extends Node {
-
-                public Object access(VariableNamesObject varNames) {
-                    return varNames.names.size();
-                }
-            }
-
-            @Resolve(message = "READ")
-            abstract static class VarNamesReadNode extends Node {
-
-                @TruffleBoundary
-                public Object access(VariableNamesObject varNames, int index) {
-                    try {
-                        return varNames.names.get(index);
-                    } catch (IndexOutOfBoundsException ioob) {
-                        throw UnknownIdentifierException.raise(Integer.toString(index));
-                    }
-                }
-            }
-
+        @ExportMessage
+        @TruffleBoundary
+        boolean isArrayElementReadable(long index) {
+            return index >= 0 && index < names.size();
         }
     }
 
+    @ExportLibrary(InteropLibrary.class)
     static final class ArgumentsArrayObject implements TruffleObject {
 
         final Object[] args;
@@ -346,120 +286,78 @@ final class DefaultScope {
             this.args = args;
         }
 
-        @Override
-        public ForeignAccess getForeignAccess() {
-            return ArguentsArrayMessageResolutionForeign.ACCESS;
+        @SuppressWarnings("static-method")
+        @ExportMessage
+        boolean hasArrayElements() {
+            return true;
         }
 
-        public static boolean isInstance(TruffleObject obj) {
-            return obj instanceof ArgumentsArrayObject;
+        @ExportMessage
+        @TruffleBoundary
+        long getArraySize() {
+            return args.length;
         }
 
-        @MessageResolution(receiverType = ArgumentsArrayObject.class)
-        static final class ArguentsArrayMessageResolution {
-
-            @Resolve(message = "HAS_SIZE")
-            abstract static class ArgsArrHasSizeNode extends Node {
-
-                @SuppressWarnings("unused")
-                public Object access(ArgumentsArrayObject argsArr) {
-                    return true;
-                }
+        @ExportMessage
+        @TruffleBoundary
+        Object readArrayElement(long index) throws InvalidArrayIndexException {
+            if (!isArrayElementReadable(index)) {
+                throw InvalidArrayIndexException.create(index);
             }
+            return args[(int) index];
+        }
 
-            @Resolve(message = "GET_SIZE")
-            abstract static class ArgsArrGetSizeNode extends Node {
+        @ExportMessage(name = "isArrayElementReadable")
+        @ExportMessage(name = "isArrayElementModifiable")
+        boolean isArrayElementReadable(long index) {
+            return index >= 0 && index < args.length;
+        }
 
-                public Object access(ArgumentsArrayObject argsArr) {
-                    return argsArr.args.length;
-                }
+        @SuppressWarnings("static-method")
+        @ExportMessage
+        boolean isArrayElementInsertable(@SuppressWarnings("unused") long index) {
+            return false;
+        }
+
+        @ExportMessage
+        void writeArrayElement(long index, Object value) throws InvalidArrayIndexException {
+            if (!isArrayElementReadable(index)) {
+                throw InvalidArrayIndexException.create(index);
             }
-
-            @Resolve(message = "READ")
-            abstract static class ArgsArrReadNode extends Node {
-
-                @TruffleBoundary
-                public Object access(ArgumentsArrayObject argsArr, int index) {
-                    try {
-                        return argsArr.args[index];
-                    } catch (IndexOutOfBoundsException ioob) {
-                        throw UnknownIdentifierException.raise(Integer.toString(index));
-                    }
-                }
+            try {
+                args[(int) index] = value;
+            } catch (IndexOutOfBoundsException ioob) {
+                throw InvalidArrayIndexException.create(index);
             }
-
-            @Resolve(message = "WRITE")
-            abstract static class ArgsArrWriteNode extends Node {
-
-                @TruffleBoundary
-                public Object access(ArgumentsArrayObject argsArr, int index, Object value) {
-                    try {
-                        argsArr.args[index] = value;
-                        return value;
-                    } catch (IndexOutOfBoundsException ioob) {
-                        throw UnknownIdentifierException.raise(Integer.toString(index));
-                    }
-                }
-            }
-
         }
     }
 
-    static class EmptyGlobalBindings implements TruffleObject {
+    @ExportLibrary(InteropLibrary.class)
+    @SuppressWarnings("static-method")
+    static final class EmptyGlobalBindings implements TruffleObject {
 
         EmptyGlobalBindings() {
         }
 
-        @Override
-        public ForeignAccess getForeignAccess() {
-            return EmptyGlobalBindingsResolutionForeign.ACCESS;
+        @SuppressWarnings("static-method")
+        @ExportMessage
+        boolean hasMembers() {
+            return true;
         }
 
-        public static boolean isInstance(TruffleObject obj) {
-            return obj instanceof EmptyGlobalBindings;
+        @ExportMessage
+        Object readMember(String member) throws UnknownIdentifierException {
+            throw UnknownIdentifierException.create(member);
         }
 
-        @MessageResolution(receiverType = EmptyGlobalBindings.class)
-        static class EmptyGlobalBindingsResolution {
+        @ExportMessage
+        Object getMembers(@SuppressWarnings("unused") boolean includeInternal) {
+            return VariableNamesObject.EMPTY;
+        }
 
-            @Resolve(message = "HAS_KEYS")
-            abstract static class SymbolsHasKeysNode extends Node {
-
-                @SuppressWarnings("unused")
-                public Object access(EmptyGlobalBindings obj) {
-                    return true;
-                }
-            }
-
-            @Resolve(message = "KEYS")
-            abstract static class SymbolsKeysNode extends Node {
-
-                @SuppressWarnings("unused")
-                public Object access(EmptyGlobalBindings obj) {
-                    return VariableNamesObject.EMPTY;
-                }
-
-            }
-
-            @Resolve(message = "KEY_INFO")
-            abstract static class SymbolsKeyInfoNode extends Node {
-
-                @SuppressWarnings("unused")
-                public Object access(EmptyGlobalBindings obj, String name) {
-                    return KeyInfo.NONE;
-                }
-            }
-
-            @Resolve(message = "READ")
-            abstract static class ReadNode extends Node {
-
-                @TruffleBoundary
-                @SuppressWarnings("unused")
-                public Object access(EmptyGlobalBindings obj, String name) {
-                    throw UnknownIdentifierException.raise(name);
-                }
-            }
-
+        @ExportMessage
+        boolean isMemberReadable(@SuppressWarnings("unused") String member) {
+            return false;
         }
     }
 }

@@ -32,19 +32,19 @@ import org.graalvm.compiler.graph.NodeSourcePosition;
 
 public final class SubstrateCompilationResult extends CompilationResult {
 
-    private List<NodeSourcePosition> deoptimzationSourcePositions;
+    private List<NodeSourcePosition> deoptimizationSourcePositions;
 
     public SubstrateCompilationResult(CompilationIdentifier compilationId, String name) {
         super(compilationId, name);
     }
 
-    public List<NodeSourcePosition> getDeoptimzationSourcePositions() {
-        return deoptimzationSourcePositions;
+    public List<NodeSourcePosition> getDeoptimizationSourcePositions() {
+        return deoptimizationSourcePositions;
     }
 
-    public void setDeoptimzationSourcePositions(List<NodeSourcePosition> deoptimzationSourcePositions) {
-        assert this.deoptimzationSourcePositions == null;
-        assert deoptimzationSourcePositions.get(0) == null : "First index is reserved for unknown source positions";
-        this.deoptimzationSourcePositions = deoptimzationSourcePositions;
+    public void setDeoptimizationSourcePositions(List<NodeSourcePosition> deoptimizationSourcePositions) {
+        assert this.deoptimizationSourcePositions == null;
+        assert deoptimizationSourcePositions.get(0) == null : "First index is reserved for unknown source positions";
+        this.deoptimizationSourcePositions = deoptimizationSourcePositions;
     }
 }

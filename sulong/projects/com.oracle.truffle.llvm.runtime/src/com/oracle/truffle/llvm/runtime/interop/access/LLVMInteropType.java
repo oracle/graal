@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, Oracle and/or its affiliates.
+ * Copyright (c) 2018, 2019, Oracle and/or its affiliates.
  *
  * All rights reserved.
  *
@@ -39,11 +39,9 @@ import org.graalvm.collections.Equivalence;
 
 import com.oracle.truffle.api.CompilerDirectives.CompilationFinal;
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
-import com.oracle.truffle.api.interop.CanResolve;
-import com.oracle.truffle.api.interop.ForeignAccess;
-import com.oracle.truffle.api.interop.MessageResolution;
+import com.oracle.truffle.api.interop.InteropLibrary;
 import com.oracle.truffle.api.interop.TruffleObject;
-import com.oracle.truffle.api.nodes.Node;
+import com.oracle.truffle.api.library.ExportLibrary;
 import com.oracle.truffle.llvm.runtime.debug.type.LLVMSourceArrayLikeType;
 import com.oracle.truffle.llvm.runtime.debug.type.LLVMSourceBasicType;
 import com.oracle.truffle.llvm.runtime.debug.type.LLVMSourceFunctionType;
@@ -56,6 +54,7 @@ import com.oracle.truffle.llvm.runtime.interop.convert.ForeignToLLVM.ForeignToLL
 /**
  * Describes how foreign interop should interpret values.
  */
+@ExportLibrary(InteropLibrary.class)
 public abstract class LLVMInteropType implements TruffleObject {
 
     public static final LLVMInteropType.Value UNKNOWN = Value.primitive(null, 0);
@@ -451,21 +450,6 @@ public abstract class LLVMInteropType implements TruffleObject {
         private Value convertPointer(LLVMSourcePointerType type) {
             // TODO(je) does this really need to be getStructured?
             return Value.pointer(getStructured(type.getBaseType()), type.getSize() / 8);
-        }
-    }
-
-    @Override
-    public ForeignAccess getForeignAccess() {
-        return LLVMInteropTypeMRForeign.ACCESS;
-    }
-
-    @MessageResolution(receiverType = LLVMInteropType.class)
-    public static class LLVMInteropTypeMR {
-        @CanResolve
-        abstract static class CheckFunction extends Node {
-            protected static boolean test(TruffleObject receiver) {
-                return receiver instanceof LLVMInteropType;
-            }
         }
     }
 }

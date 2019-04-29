@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2017, 2018, Oracle and/or its affiliates.
+ * Copyright (c) 2017, 2019, Oracle and/or its affiliates.
  *
  * All rights reserved.
  *
@@ -29,8 +29,6 @@
  */
 package com.oracle.truffle.llvm.runtime.nodes.api;
 
-import com.oracle.truffle.api.interop.InteropException;
-
 public interface LLVMArithmetic {
     LLVMArithmeticOpNode createAddNode();
 
@@ -49,10 +47,10 @@ public interface LLVMArithmetic {
     }
 
     abstract class LLVMArithmeticOpNode extends LLVMArithmeticNode {
-        public abstract LLVMArithmetic execute(Object x, Object y) throws InteropException;
+        public abstract LLVMArithmetic execute(Object x, Object y);
     }
 
     abstract class LLVMArithmeticCompareNode extends LLVMArithmeticNode {
-        public abstract int execute(Object x, Object y) throws InteropException;
+        public abstract int execute(Object x, Object y);
     }
 }

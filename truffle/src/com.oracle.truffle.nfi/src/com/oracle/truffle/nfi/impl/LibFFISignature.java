@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2017, 2018, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2017, 2019, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -41,11 +41,12 @@
 package com.oracle.truffle.nfi.impl;
 
 import com.oracle.truffle.api.CompilerAsserts;
+import com.oracle.truffle.api.CompilerDirectives.CompilationFinal;
 import com.oracle.truffle.nfi.impl.LibFFIType.Direction;
-import com.oracle.truffle.nfi.types.NativeSignature;
 import com.oracle.truffle.nfi.impl.NativeAllocation.FreeDestructor;
-import com.oracle.truffle.nfi.types.NativeArrayTypeMirror;
-import com.oracle.truffle.nfi.types.NativeTypeMirror;
+import com.oracle.truffle.nfi.spi.types.NativeArrayTypeMirror;
+import com.oracle.truffle.nfi.spi.types.NativeSignature;
+import com.oracle.truffle.nfi.spi.types.NativeTypeMirror;
 import java.util.List;
 
 final class LibFFISignature {
@@ -57,7 +58,7 @@ final class LibFFISignature {
     }
 
     private final LibFFIType retType;
-    private final LibFFIType[] argTypes;
+    @CompilationFinal(dimensions = 1) private final LibFFIType[] argTypes;
 
     private final int primitiveSize;
     private final int objectCount;
@@ -176,7 +177,7 @@ final class LibFFISignature {
         if (retType instanceof LibFFIType.ObjectType) {
             Object ret = ctx.executeObject(cif, functionPointer, argBuffer.prim, argBuffer.getPatchCount(), argBuffer.patches, argBuffer.objects);
             if (ret == null) {
-                return new NativePointer(0);
+                return NativePointer.create(ctx.language, 0);
             } else {
                 return ret;
             }
@@ -187,7 +188,7 @@ final class LibFFISignature {
         } else {
             NativeArgumentBuffer.Array retBuffer = new NativeArgumentBuffer.Array(retType.size, retType.objectCount);
             ctx.executeNative(cif, functionPointer, argBuffer.prim, argBuffer.getPatchCount(), argBuffer.patches, argBuffer.objects, retBuffer.prim);
-            return retType.deserialize(retBuffer);
+            return retType.deserializeRet(retBuffer, ctx.language);
         }
     }
 }

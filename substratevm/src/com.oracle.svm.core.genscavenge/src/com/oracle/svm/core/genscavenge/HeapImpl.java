@@ -24,18 +24,22 @@
  */
 package com.oracle.svm.core.genscavenge;
 
+import java.lang.management.ManagementFactory;
 import java.lang.management.MemoryMXBean;
 import java.lang.management.MemoryUsage;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
 
-import javax.management.MalformedObjectNameException;
+import javax.management.MBeanNotificationInfo;
+import javax.management.NotificationEmitter;
+import javax.management.NotificationFilter;
+import javax.management.NotificationListener;
 import javax.management.ObjectName;
 
 import org.graalvm.compiler.api.replacements.Fold;
 import org.graalvm.compiler.word.Word;
-import org.graalvm.nativeimage.Feature.FeatureAccess;
+import org.graalvm.nativeimage.hosted.Feature.FeatureAccess;
 import org.graalvm.nativeimage.IsolateThread;
 import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.Platforms;
@@ -60,6 +64,7 @@ import com.oracle.svm.core.heap.NativeImageInfo;
 import com.oracle.svm.core.heap.NoAllocationVerifier;
 import com.oracle.svm.core.heap.ObjectHeader;
 import com.oracle.svm.core.heap.ObjectVisitor;
+import com.oracle.svm.core.heap.PhysicalMemory;
 import com.oracle.svm.core.heap.PinnedAllocator;
 import com.oracle.svm.core.hub.DynamicHub;
 import com.oracle.svm.core.hub.LayoutEncoding;
@@ -69,6 +74,10 @@ import com.oracle.svm.core.option.RuntimeOptionValues;
 import com.oracle.svm.core.snippets.KnownIntrinsics;
 import com.oracle.svm.core.thread.VMOperation;
 import com.oracle.svm.core.util.VMError;
+
+//Checkstyle: stop
+import sun.management.Util;
+//Checkstyle: resume
 
 /** An implementation of a card remembered set generational heap. */
 public class HeapImpl extends Heap {
@@ -269,12 +278,13 @@ public class HeapImpl extends Heap {
 
     /** Allocation is disallowed if ... */
     @Override
+    @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
     public boolean isAllocationDisallowed() {
         /*
          * This method exists because Heap is the place clients should ask this question, and to
-         * aggregate all the reasons allocation might be disallowed. Currently there is only ...
+         * aggregate all the reasons allocation might be disallowed.
          */
-        return NoAllocationVerifier.isActive() || getGCImpl().collectionInProgress.getState();
+        return NoAllocationVerifier.isActive() || gcImpl.collectionInProgress.getState();
     }
 
     /** A guard to place before an allocation, giving the call site and the allocation type. */
@@ -310,11 +320,11 @@ public class HeapImpl extends Heap {
         }
     }
 
-    public Object promoteObject(Object original) {
+    public Object promoteObject(Object original, Pointer objRef, int offset, boolean compressed) {
         final Log trace = Log.noopLog().string("[HeapImpl.promoteObject:").string("  original: ").object(original);
 
         final OldGeneration oldGen = getOldGeneration();
-        final Object result = oldGen.promoteObject(original);
+        final Object result = oldGen.promoteObject(original, objRef, offset, compressed);
 
         trace.string("  result: ").object(result).string("]").newline();
         return result;
@@ -686,6 +696,8 @@ public class HeapImpl extends Heap {
      *         in bytes
      */
     public UnsignedWord maxMemory() {
+        /* Get physical memory size, so it gets set correctly instead of being estimated. */
+        PhysicalMemory.size();
         /*
          * This only reports the memory that will be used for heap-allocated objects. For example,
          * it does not include memory in the chunk free list, or memory in the image heap.
@@ -703,30 +715,22 @@ public class HeapImpl extends Heap {
  * memory usage, the other kind of memory will still be walked. If someone asks for both the heap
  * memory usage <em>and</em> the non-heap memory usage, all the memory will be walked twice.
  */
-final class HeapImplMemoryMXBean implements MemoryMXBean {
+final class HeapImplMemoryMXBean implements MemoryMXBean, NotificationEmitter {
 
     /** Constant for the {@link MemoryUsage} constructor. */
     static final long UNDEFINED_MEMORY_USAGE = -1L;
 
     /** Instance fields. */
     private final MemoryMXBeanMemoryVisitor visitor;
-    private final ObjectName objectName;
 
     @Platforms(Platform.HOSTED_ONLY.class)
     HeapImplMemoryMXBean() {
         this.visitor = new MemoryMXBeanMemoryVisitor();
-        ObjectName name;
-        try {
-            name = new ObjectName("java.lang:type=Memory,name=HeapImpl");
-        } catch (MalformedObjectNameException mone) {
-            name = null;
-        }
-        this.objectName = name;
     }
 
     @Override
     public ObjectName getObjectName() {
-        return objectName;
+        return Util.newObjectName(ManagementFactory.MEMORY_MXBEAN_NAME);
     }
 
     @Override
@@ -766,6 +770,23 @@ final class HeapImplMemoryMXBean implements MemoryMXBean {
     @Override
     public void gc() {
         System.gc();
+    }
+
+    @Override
+    public void removeNotificationListener(NotificationListener listener, NotificationFilter filter, Object handback) {
+    }
+
+    @Override
+    public void addNotificationListener(NotificationListener listener, NotificationFilter filter, Object handback) {
+    }
+
+    @Override
+    public void removeNotificationListener(NotificationListener listener) {
+    }
+
+    @Override
+    public MBeanNotificationInfo[] getNotificationInfo() {
+        return new MBeanNotificationInfo[0];
     }
 }
 

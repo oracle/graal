@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2016, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2016, 2018, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -31,7 +31,6 @@ import org.graalvm.compiler.bytecode.Bytecode;
 import org.graalvm.compiler.bytecode.BytecodeDisassembler;
 import org.graalvm.compiler.bytecode.BytecodeStream;
 import org.graalvm.compiler.bytecode.ResolvedJavaMethodBytecode;
-import org.graalvm.compiler.core.CompilationWrapper.ExceptionAction;
 import org.graalvm.compiler.core.GraalCompilerOptions;
 import org.graalvm.compiler.core.target.Backend;
 import org.graalvm.compiler.core.test.GraalCompilerTest;
@@ -80,7 +79,7 @@ public abstract class GraalOSRTestBase extends GraalCompilerTest {
         long jvmciEnv = 0L;
         HotSpotCompilationRequest request = new HotSpotCompilationRequest((HotSpotResolvedJavaMethod) method, bci, jvmciEnv);
         HotSpotGraalCompiler compiler = (HotSpotGraalCompiler) runtime.getCompiler();
-        CompilationTask task = new CompilationTask(runtime, compiler, request, true, true, debug.getOptions());
+        CompilationTask task = new CompilationTask(runtime, compiler, request, true, true);
         if (method instanceof HotSpotResolvedJavaMethod) {
             HotSpotGraalRuntimeProvider graalRuntime = compiler.getGraalRuntime();
             GraalHotSpotVMConfig config = graalRuntime.getVMConfig();
@@ -134,8 +133,8 @@ public abstract class GraalOSRTestBase extends GraalCompilerTest {
         OptionValues goptions = options;
         // Silence diagnostics for permanent bailout errors as they
         // are expected for some OSR tests.
-        if (!GraalCompilerOptions.CompilationBailoutAction.hasBeenSet(options)) {
-            goptions = new OptionValues(options, GraalCompilerOptions.CompilationBailoutAction, ExceptionAction.Silent);
+        if (!GraalCompilerOptions.CompilationBailoutAsFailure.hasBeenSet(options)) {
+            goptions = new OptionValues(options, GraalCompilerOptions.CompilationBailoutAsFailure, false);
         }
         // ensure eager resolving
         StructuredGraph graph = parseEager(method, AllowAssumptions.YES, goptions);

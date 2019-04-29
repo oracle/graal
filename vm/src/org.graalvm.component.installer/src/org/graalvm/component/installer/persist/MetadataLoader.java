@@ -24,30 +24,55 @@
  */
 package org.graalvm.component.installer.persist;
 
+import java.io.Closeable;
 import java.io.IOException;
 import java.util.List;
 import java.util.Map;
-import java.util.jar.JarFile;
+import org.graalvm.component.installer.Archive;
 import org.graalvm.component.installer.InstallerStopException;
 import org.graalvm.component.installer.model.ComponentInfo;
 
-public interface MetadataLoader {
-
-    void close() throws IOException;
+/**
+ * Abstraction that loads metadata for a given component.
+ * 
+ * @author sdedic
+ */
+public interface MetadataLoader extends Closeable {
 
     ComponentInfo getComponentInfo();
 
     List<InstallerStopException> getErrors();
 
-    JarFile getJarFile();
+    Archive getArchive() throws IOException;
 
+    /**
+     * License name/type. Not the actual content, but general name, like "Oracle OTN license",
+     * "GPLv2" or so.
+     * 
+     * @return license type or {@code null}
+     */
+    String getLicenseType();
+
+    /**
+     * License ID. Usually a digest of the license file contents.
+     * 
+     * @return license ID
+     */
+    String getLicenseID();
+
+    /**
+     * Path to the license file. Should be to iterate through {@link #getArchive} to obtain the
+     * license contents.
+     * 
+     * @return path to the license or {@code null}
+     */
     String getLicensePath();
 
     MetadataLoader infoOnly(boolean only);
 
     boolean isNoVerifySymlinks();
 
-    void loadPaths();
+    void loadPaths() throws IOException;
 
     Map<String, String> loadPermissions() throws IOException;
 
@@ -55,4 +80,11 @@ public interface MetadataLoader {
 
     void setNoVerifySymlinks(boolean noVerifySymlinks);
 
+    /**
+     * Completes the metadata. The entire file may be loaded in order to load all the metadata.
+     * 
+     * @throws IOException if the metadata load fails.
+     * @return ComponentInfo with completed metadata
+     */
+    ComponentInfo completeMetadata() throws IOException;
 }

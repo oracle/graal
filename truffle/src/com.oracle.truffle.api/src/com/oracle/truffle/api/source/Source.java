@@ -52,14 +52,8 @@ import java.net.URL;
 import java.net.URLConnection;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.FileSystemNotFoundException;
-import java.nio.file.Files;
-import java.nio.file.Path;
-import java.nio.file.Paths;
-import java.nio.file.spi.FileTypeDetector;
 import java.util.Arrays;
-import java.util.Collection;
 import java.util.Objects;
-import java.util.ServiceLoader;
 import java.util.Set;
 
 import org.graalvm.polyglot.Context;
@@ -69,9 +63,11 @@ import org.graalvm.polyglot.io.ByteSequence;
 
 import com.oracle.truffle.api.CompilerAsserts;
 import com.oracle.truffle.api.TruffleFile;
-import com.oracle.truffle.api.TruffleOptions;
 import com.oracle.truffle.api.impl.Accessor.EngineSupport;
 import com.oracle.truffle.api.nodes.LanguageInfo;
+import java.nio.charset.Charset;
+import java.util.function.Supplier;
+import org.graalvm.polyglot.io.FileSystem;
 
 /**
  * Representation of a source code unit and its contents that can be evaluated in a language. Each
@@ -143,6 +139,15 @@ import com.oracle.truffle.api.nodes.LanguageInfo;
 @SuppressWarnings("deprecation")
 public abstract class Source {
 
+    /**
+     * Constant to be used as an argument to {@link SourceBuilder#content(CharSequence)} to set no
+     * content to the Source built.
+     *
+     * @since 1.0
+     */
+    public static final CharSequence CONTENT_NONE = null;
+    private static final CharSequence CONTENT_UNSET = new String();
+
     private static final String UNKNOWN_MIME_TYPE = "content/unknown";
     private static final Source EMPTY = new SourceImpl.Key(null, null, null, null, null, null, null, false, false, false, true).toSourceNotInterned();
 
@@ -183,8 +188,10 @@ public abstract class Source {
     public abstract String getName();
 
     /**
-     * The fully qualified name of the source. In case this source originates from a {@link File},
-     * then the default path is the normalized, {@link File#getCanonicalPath() canonical path}.
+     * The fully qualified name of the source. In case this source originates from a {@link File} or
+     * {@link TruffleFile}, then the path is the normalized, {@link File#getCanonicalPath()
+     * canonical path} for absolute files, or the relative path otherwise. If the source originates
+     * from an {@link URL}, then it's the path component of the URL.
      *
      * @since 0.8 or earlier
      */
@@ -415,10 +422,18 @@ public abstract class Source {
     /**
      * Gets the number of characters or bytes of the source.
      *
+     * @throws UnsupportedOperationException if this source does not contain {@link #hasCharacters()
+     *             characters}, nor {@link #hasBytes() bytes}.
      * @since 0.8
      */
     public final int getLength() {
-        return getTextMap().length();
+        if (hasCharacters()) {
+            return getTextMap().length();
+        } else if (hasBytes()) {
+            return getBytes().length();
+        } else {
+            throw new UnsupportedOperationException("Operation is only enabled for sources with character or byte content.");
+        }
     }
 
     /**
@@ -503,25 +518,89 @@ public abstract class Source {
      * Returns an unavailable source section indicating that the source location is not available.
      * Unavailable source sections have the same characteristics as empty source sections with
      * character index <code>0</code>, but returns <code>false</code> for
-     * {@link SourceSection#isAvailable()}. Unavailable source sections may be creatd for character
+     * {@link SourceSection#isAvailable()}. Unavailable source sections may be created for character
      * and byte based sources.
      *
      * @see SourceSection#isAvailable()
      * @since 0.18
      */
     public final SourceSection createUnavailableSection() {
-        return new SourceSection(this, 0, -1);
+        return new SourceSectionUnavailable(this);
+    }
+
+    /**
+     * Create representation of a contiguous region in the source that does not have the character
+     * content available.
+     *
+     * @param startLine 1-based line number of the first character in the section
+     * @param startColumn 1-based column number of the first character in the section, or
+     *            <code>-1</code> when the column is not defined
+     * @param endLine 1-based line number of the last character in the section
+     * @param endColumn 1-based column number of the last character in the section, or
+     *            <code>-1</code> when the column is not defined
+     * @throws UnsupportedOperationException if this source has {@link #hasBytes() bytes}.
+     * @since 1.0
+     */
+    public final SourceSection createSection(int startLine, int startColumn, int endLine, int endColumn) {
+        if (hasBytes()) {
+            throw new UnsupportedOperationException("Operation is only enabled for character based sources.");
+        }
+        if (startLine < 1) {
+            throw new IllegalArgumentException("lineNumber < 1");
+        }
+        if (startLine > endLine) {
+            throw new IllegalArgumentException("startLine " + startLine + " > endLine " + endLine);
+        }
+        if (startLine == endLine && startColumn > endColumn) {
+            throw new IllegalArgumentException("startColumn " + startColumn + " > endColumn " + endColumn);
+        }
+        if (hasCharacters()) {
+            if (startColumn < 1 || endColumn < 1) {
+                throw new IllegalArgumentException("columnNumber < 1");
+            }
+            final int charIndex = getTextMap().lineColumnToOffset(startLine, startColumn);
+            final int endIndex = getTextMap().lineColumnToOffset(endLine, endColumn);
+            assert charIndex <= endIndex : charIndex + " > " + endIndex;
+            int length = endIndex + 1 - charIndex;
+            int sourceLength = getTextMap().length();
+            if (length == 1 && charIndex + length > sourceLength) {
+                // When the start and end position is the same, reduce to zero-length section
+                // when on the very end of the source
+                length = 0;
+            }
+            if (charIndex + length > sourceLength) {
+                throw new IllegalArgumentException("end position out of range");
+            }
+            SourceSection section = new SourceSectionLoaded(this, charIndex, length);
+            assert assertValid(section);
+            return section;
+        } else {
+            if (startColumn == -1) {
+                if (endColumn != -1) {
+                    throw new IllegalArgumentException("endColumn can not be specified when startColumn is not.");
+                }
+                return new SourceSectionUnloaded.Lines(this, startLine, endLine);
+            } else {
+                if (startColumn < 1 || endColumn < 1) {
+                    throw new IllegalArgumentException("columnNumber < 1");
+                }
+                return new SourceSectionUnloaded.LinesAndColumns(this, startLine, startColumn, endLine, endColumn);
+            }
+        }
     }
 
     /**
      * Creates a representation of a line of text in the source identified only by line number, from
      * which the character information will be computed. Please note that calling this method does
-     * cause the {@link Source#getCharacters() code} of this source to be loaded.
+     * cause the {@link Source#getCharacters() code} of this source to be loaded, if there is any.
+     * If no {@link Source#getCharacters() code} is {@link Source#hasCharacters() available}, a
+     * SourceSection without {@link SourceSection#getCharacters() character content} is created with
+     * the {@link SourceSection#getStartLine() start line} and the same
+     * {@link SourceSection#getEndLine() end line} defined only.
      *
      * @param lineNumber 1-based line number of the first character in the section
      * @return newly created object representing the specified line
-     * @throws UnsupportedOperationException if this source cannot contain {@link #hasCharacters()
-     *             characters}.
+     * @throws UnsupportedOperationException if this source contains {@link #hasBytes() bytes}.
      * @throws IllegalArgumentException if the given lineNumber does not exist the source
      * @since 0.17
      */
@@ -532,10 +611,15 @@ public abstract class Source {
         if (lineNumber < 1) {
             throw new IllegalArgumentException("lineNumber < 1");
         }
-        final int charIndex = getTextMap().lineStartOffset(lineNumber);
-        final int length = getTextMap().lineLength(lineNumber);
-        SourceSection section = new SourceSection(this, charIndex, length);
-        assert assertValid(section);
+        SourceSection section;
+        if (hasCharacters()) {
+            final int charIndex = getTextMap().lineStartOffset(lineNumber);
+            final int length = getTextMap().lineLength(lineNumber);
+            section = new SourceSectionLoaded(this, charIndex, length);
+            assert assertValid(section);
+        } else {
+            section = new SourceSectionUnloaded.Lines(this, lineNumber, lineNumber);
+        }
         return section;
     }
 
@@ -564,55 +648,64 @@ public abstract class Source {
         } else if (length < 0) {
             throw new IllegalArgumentException("length < 0");
         }
-        SourceSection section = new SourceSection(this, charIndex, length);
-        assert assertValid(section);
+        SourceSection section;
+        if (hasCharacters()) {
+            section = new SourceSectionLoaded(this, charIndex, length);
+            assert assertValid(section);
+        } else {
+            section = new SourceSectionUnloaded.Indexed(this, charIndex, length);
+        }
         return section;
     }
 
     /**
-     * Creates a representation of a contiguous region of text in the source. Computes the
-     * {@code charIndex} value by building a text map of lines in the source. Please note that
-     * calling this method does cause the {@link Source#getCharacters() code} of this source to be
-     * loaded.
+     * Creates a representation of a contiguous region of text in the source. When character content
+     * is available, computes the {@code charIndex} value by building a text map of lines in the
+     * source. Please note that calling this method does cause the {@link Source#getCharacters()
+     * code} of this source to be loaded, if there is any. If no {@link Source#getCharacters() code}
+     * is {@link Source#hasCharacters() available}, {@link UnsupportedOperationException} is thrown.
+     * Use {@link #createSection(int, int, int, int)} to create a SourceSection without character
+     * content.
      *
      * @param startLine 1-based line number of the first character in the section
      * @param startColumn 1-based column number of the first character in the section
      * @param length the number of characters in the section
      * @return newly created object representing the specified region
-     * @throws UnsupportedOperationException if this source cannot contain {@link #hasCharacters()
+     * @throws UnsupportedOperationException if this source does not contain {@link #hasCharacters()
      *             characters}.
      * @throws IllegalArgumentException if arguments are outside the text of the source bounds
      * @see #createSection(int, int)
+     * @see #createSection(int, int, int, int)
      * @since 0.17
      */
     public final SourceSection createSection(int startLine, int startColumn, int length) {
-        if (hasBytes()) {
+        if (hasBytes() || !hasCharacters()) {
             throw new UnsupportedOperationException("Operation is only enabled for character based sources.");
         }
         if (startLine <= 0) {
             throw new IllegalArgumentException("startLine < 1");
         } else if (startColumn <= 0) {
             throw new IllegalArgumentException("startColumn < 1");
-        } else if (length < 0) {
+        } else if (hasCharacters() && length < 0) {
             throw new IllegalArgumentException("length < 0");
         }
-
         final int lineStartOffset = getTextMap().lineStartOffset(startLine);
-        if (startColumn > getTextMap().lineLength(startLine)) {
+        final int lineLength = getTextMap().lineLength(startLine);
+        if (startColumn > (lineLength + 1)) {
             throw new IllegalArgumentException("column out of range");
         }
         final int charIndex = lineStartOffset + startColumn - 1;
         if (charIndex + length > getCharacters().length()) {
             throw new IllegalArgumentException("charIndex out of range");
         }
-        SourceSection section = new SourceSection(this, charIndex, length);
+        SourceSection section = new SourceSectionLoaded(this, charIndex, length);
         assert assertValid(section);
         return section;
     }
 
     /**
      * {@inheritDoc}
-     * 
+     *
      * @since 1.0
      */
     @Override
@@ -675,8 +768,11 @@ public abstract class Source {
     }
 
     /**
-     * Creates a new character based source from a character sequence. The given characters must not
-     * mutate after they were accessed for the first time.
+     * Creates a new character based literal source from a character sequence. The given characters
+     * must not mutate after they were accessed for the first time.
+     * <p>
+     * Use this method for sources that do originate from a literal. For file or URL sources use the
+     * appropriate builder constructor and {@link SourceBuilder#content(CharSequence)}.
      * <p>
      * Example usage: {@link SourceSnippets#fromAString}
      *
@@ -691,8 +787,11 @@ public abstract class Source {
     }
 
     /**
-     * Creates a new byte based source from a byte sequence. The given bytes must not mutate after
-     * they were accessed for the first time.
+     * Creates a new byte based literal source from a byte sequence. The given bytes must not mutate
+     * after they were accessed for the first time.
+     * <p>
+     * Use this method for sources that do originate from a literal. For file or URL sources use the
+     * appropriate builder constructor and {@link SourceBuilder#content(CharSequence)}.
      * <p>
      * Example usage: {@link SourceSnippets#fromBytes}
      *
@@ -750,8 +849,10 @@ public abstract class Source {
     }
 
     /**
-     * Creates new character based source from a reader.
-     *
+     * Creates new character based literal source from a reader.
+     * <p>
+     * Use this method for sources that do originate from a literal. For file or URL sources use the
+     * appropriate builder constructor and {@link SourceBuilder#content(CharSequence)}.
      * <p>
      * Example usage: {@link SourceSnippets#fromReader}
      *
@@ -824,7 +925,8 @@ public abstract class Source {
      * @since 1.0
      */
     public static String findLanguage(TruffleFile file) throws IOException {
-        return findLanguage(findMimeType(file));
+        String mimeType = findMimeType(file);
+        return mimeType != null ? findLanguage(mimeType) : null;
     }
 
     /**
@@ -845,7 +947,8 @@ public abstract class Source {
      * @since 1.0
      */
     public static String findLanguage(URL url) throws IOException {
-        return findLanguage(findMimeType(url));
+        String mimeType = findMimeType(url);
+        return mimeType != null ? findLanguage(mimeType) : null;
     }
 
     /**
@@ -854,11 +957,12 @@ public abstract class Source {
      * contents. Probing the MIME type of an {@link TruffleFile} may require to opening the file.
      *
      * @throws IOException if an error opening the file occurred.
+     * @throws SecurityException if the used {@link FileSystem filesystem} denied file reading.
      * @see #findLanguage(TruffleFile)
      * @since 1.0
      */
     public static String findMimeType(TruffleFile file) throws IOException {
-        return findMimeType(SourceAccessor.getPath(file), null);
+        return file.getMimeType();
     }
 
     /**
@@ -869,11 +973,12 @@ public abstract class Source {
      * connection.
      *
      * @throws IOException if an error opening the url occurred.
+     * @throws SecurityException if the used {@link FileSystem filesystem} denied file reading.
      * @see #findLanguage(URL)
      * @since 1.0
      */
     public static String findMimeType(URL url) throws IOException {
-        return findMimeType(url, url.openConnection(), null);
+        return findMimeType(url, url.openConnection(), null, SourceAccessor.getCurrentFileSystemContext());
     }
 
     /**
@@ -910,83 +1015,108 @@ public abstract class Source {
                     0x31, 0x44, 0x50, 0xB4, 0x8F, 0xED, 0x1F, 0x1A, 0xDB, 0x99, 0x8D, 0x33, 0x9F, 0x11, 0x83, 0x14
     };
 
-    static Source buildSource(String language, Object origin, String name, String mimeType, Object content, URI uri,
-                    boolean internal, boolean interactive, boolean cached, boolean legacy) throws IOException {
+    static Source buildSource(String language, Object origin, String name, String mimeType, Object content, URI uri, Charset encoding,
+                    boolean internal, boolean interactive, boolean cached, boolean legacy, Supplier<Object> fileSystemContext) throws IOException {
         String useName = name;
         URI useUri = uri;
         Object useContent = content;
         String useMimeType = mimeType;
         String usePath = null;
         URL useUrl = null;
-        if (origin instanceof TruffleFile) {
-            TruffleFile file = (TruffleFile) origin;
-            TruffleFile absoluteFile = file.exists() ? file.getCanonicalFile() : file;
-            useName = useName == null ? file.getName() : useName;
-            usePath = usePath == null ? absoluteFile.getPath() : usePath;
-            useUri = useUri == null ? absoluteFile.toUri() : useUri;
-            useMimeType = useMimeType == null ? findMimeType(SourceAccessor.getPath(absoluteFile), getValidMimeTypes(language)) : useMimeType;
-            if (useContent == null) {
-                if (isCharacterBased(language, useMimeType)) {
-                    useContent = new String(file.readAllBytes(), StandardCharsets.UTF_8);
-                } else {
-                    useContent = ByteSequence.create(file.readAllBytes());
+        Object useOrigin = origin;
+        Charset useEncoding = encoding;
+
+        if (useOrigin instanceof File) {
+            final File file = (File) useOrigin;
+            TruffleFile truffleFile = SourceAccessor.getTruffleFile(file.toPath().toString(), fileSystemContext.get());
+            useOrigin = truffleFile;
+        }
+
+        if (useOrigin instanceof TruffleFile) {
+            TruffleFile file = (TruffleFile) useOrigin;
+            if (!file.isAbsolute() && useContent == CONTENT_NONE) {
+                if (useUri == null) {
+                    useUri = file.toRelativeUri();
+                }
+            } else {
+                file = file.exists() ? file.getCanonicalFile() : file;
+                if (useUri == null) {
+                    useUri = file.toUri();
                 }
             }
-        } else if (origin instanceof File) {
-            final File file = (File) origin;
-            File absoluteFile = file.exists() ? file.getCanonicalFile() : file;
             useName = useName == null ? file.getName() : useName;
-            usePath = usePath == null ? absoluteFile.getPath() : usePath;
-            useUri = useUri == null ? absoluteFile.toPath().toUri() : useUri;
-            useMimeType = useMimeType == null ? findMimeType(absoluteFile.toPath(), getValidMimeTypes(language)) : useMimeType;
+            usePath = usePath == null ? file.getPath() : usePath;
+            useMimeType = useMimeType == null ? SourceAccessor.getMimeType(file, getValidMimeTypes(language)) : useMimeType;
             if (legacy) {
                 useMimeType = useMimeType == null ? UNKNOWN_MIME_TYPE : useMimeType;
-                useContent = useContent == null ? read(file) : useContent;
+                useEncoding = useEncoding == null ? getEncoding(file, useMimeType) : useEncoding;
+                useContent = useContent == CONTENT_UNSET ? read(file, useEncoding) : useContent;
             } else {
-                if (useContent == null) {
+                if (useContent == CONTENT_UNSET) {
                     if (isCharacterBased(language, useMimeType)) {
-                        useContent = read(file);
+                        useEncoding = useEncoding == null ? getEncoding(file, useMimeType) : useEncoding;
+                        useContent = read(file, useEncoding);
                     } else {
-                        useContent = ByteSequence.create(readBytes(file));
+                        useContent = ByteSequence.create(file.readAllBytes());
                     }
                 }
             }
-        } else if (origin instanceof Reader) {
-            final Reader r = (Reader) origin;
-            useContent = useContent == null ? read(r) : useContent;
-        } else if (origin instanceof URL) {
-            final URL url = (URL) origin;
-            String urlPath = url.getPath();
+        } else if (useOrigin instanceof URL) {
+            useUrl = (URL) useOrigin;
+            String urlPath = useUrl.getPath();
             int lastIndex = urlPath.lastIndexOf('/');
-            useName = useName == null && lastIndex != -1 ? url.getPath().substring(lastIndex + 1) : useName;
-            // avoid opening connection twice for guessing the MIME type
-            if (useUri == null) {
-                try {
-                    useUri = url.toURI();
-                } catch (URISyntaxException ex) {
-                    throw new IOException("Bad URL: " + url, ex);
-                }
+            useName = useName == null && lastIndex != -1 ? useUrl.getPath().substring(lastIndex + 1) : useName;
+            URI tmpUri;
+            try {
+                tmpUri = useUrl.toURI();
+            } catch (URISyntaxException ex) {
+                throw new IOException("Bad URL: " + useUrl, ex);
             }
-            usePath = usePath == null ? url.toExternalForm() : usePath;
-            URLConnection connection = url.openConnection();
-            useMimeType = useMimeType == null ? findMimeType(url, connection, getValidMimeTypes(language)) : useMimeType;
-            if (legacy) {
-                useMimeType = useMimeType == null ? UNKNOWN_MIME_TYPE : useMimeType;
-                useContent = useContent == null ? read(new InputStreamReader(connection.getInputStream())) : useContent;
-            } else {
-                if (useContent == null) {
-                    if (isCharacterBased(language, useMimeType)) {
-                        useContent = read(new InputStreamReader(connection.getInputStream()));
-                    } else {
-                        useContent = ByteSequence.create(readBytes(connection));
+            useUri = useUri == null ? tmpUri : useUri;
+            usePath = usePath == null ? useUrl.getPath() : usePath;
+            try {
+                TruffleFile truffleFile = SourceAccessor.getTruffleFile(tmpUri, fileSystemContext.get());
+                if (legacy) {
+                    useMimeType = useMimeType == null ? SourceAccessor.getMimeType(truffleFile, getValidMimeTypes(language)) : useMimeType;
+                    useMimeType = useMimeType == null ? UNKNOWN_MIME_TYPE : useMimeType;
+                    useEncoding = useEncoding == null ? getEncoding(truffleFile, useMimeType) : useEncoding;
+                    useContent = useContent == CONTENT_UNSET ? read(truffleFile, useEncoding) : useContent;
+                } else {
+                    if (useContent == CONTENT_UNSET) {
+                        if (isCharacterBased(language, useMimeType)) {
+                            useEncoding = useEncoding == null ? getEncoding(truffleFile, useMimeType) : useEncoding;
+                            useContent = read(truffleFile, useEncoding);
+                        } else {
+                            useContent = ByteSequence.create(truffleFile.readAllBytes());
+                        }
+                    }
+                }
+            } catch (FileSystemNotFoundException fsnf) {
+                // Not a recognized by FileSystem, fall back to URLConnection
+                URLConnection connection = useUrl.openConnection();
+                useEncoding = useEncoding == null ? StandardCharsets.UTF_8 : useEncoding;
+                if (legacy) {
+                    useMimeType = useMimeType == null ? findMimeType(useUrl, connection, getValidMimeTypes(language), fileSystemContext.get()) : useMimeType;
+                    useMimeType = useMimeType == null ? UNKNOWN_MIME_TYPE : useMimeType;
+                    useContent = useContent == CONTENT_UNSET ? read(new InputStreamReader(connection.getInputStream(), useEncoding)) : useContent;
+                } else {
+                    if (useContent == CONTENT_UNSET) {
+                        if (isCharacterBased(language, useMimeType)) {
+                            useContent = read(new InputStreamReader(connection.getInputStream(), useEncoding));
+                        } else {
+                            useContent = ByteSequence.create(readBytes(connection));
+                        }
                     }
                 }
             }
-        } else if (origin instanceof ByteSequence) {
-            useContent = useContent == null ? origin : useContent;
+        } else if (useOrigin instanceof Reader) {
+            final Reader r = (Reader) useOrigin;
+            useContent = useContent == CONTENT_UNSET ? read(r) : useContent;
+        } else if (useOrigin instanceof ByteSequence) {
+            useContent = useContent == CONTENT_UNSET ? useOrigin : useContent;
         } else {
-            assert origin instanceof CharSequence;
-            useContent = useContent == null ? origin : useContent;
+            assert useOrigin instanceof CharSequence;
+            useContent = useContent == CONTENT_UNSET ? useOrigin : useContent;
         }
         if (!legacy && useName == null) {
             useName = "Unnamed";
@@ -995,10 +1125,6 @@ public abstract class Source {
         useContent = enforceInterfaceContracts(useContent);
         SourceImpl.Key key = new SourceImpl.Key(useContent, useMimeType, language, useUrl, useUri, useName, usePath, internal, interactive, cached, legacy);
         return SOURCES.intern(key);
-    }
-
-    static byte[] readBytes(File file) throws IOException {
-        return Files.readAllBytes(file.toPath());
     }
 
     static byte[] readBytes(URLConnection connection) throws IOException {
@@ -1010,7 +1136,9 @@ public abstract class Source {
                 throw new OutOfMemoryError("Too many bytes.");
             }
         }
-        return readBytes(connection.getInputStream(), (int) size);
+        try (InputStream inputStream = connection.getInputStream()) {
+            return readBytes(inputStream, (int) size);
+        }
     }
 
     /*
@@ -1049,8 +1177,8 @@ public abstract class Source {
         return (capacity == nread) ? buf : Arrays.copyOf(buf, nread);
     }
 
-    static String read(File file) throws IOException {
-        return new String(readBytes(file), StandardCharsets.UTF_8);
+    static String read(TruffleFile file, Charset encoding) throws IOException {
+        return new String(file.readAllBytes(), encoding);
     }
 
     static String read(Reader reader) throws IOException {
@@ -1193,7 +1321,7 @@ public abstract class Source {
         if (assertions) {
             if (sequence instanceof CharSequence) {
                 return enforceCharSequenceContracts((CharSequence) sequence);
-            } else {
+            } else if (sequence != null) {
                 assert sequence instanceof ByteSequence;
                 return enforceByteSequenceContracts((ByteSequence) sequence);
             }
@@ -1223,30 +1351,11 @@ public abstract class Source {
         }
     }
 
-    static String findMimeType(final Path filePath, Set<String> validMimeTypes) throws IOException {
-        if (!TruffleOptions.AOT) {
-            Collection<ClassLoader> loaders = SourceAccessor.allLoaders();
-            for (ClassLoader l : loaders) {
-                for (FileTypeDetector detector : ServiceLoader.load(FileTypeDetector.class, l)) {
-                    String mimeType = detector.probeContentType(filePath);
-                    if (mimeType != null && (validMimeTypes == null || validMimeTypes.contains(mimeType))) {
-                        return mimeType;
-                    }
-                }
-            }
-        }
-        String contentType = Files.probeContentType(filePath);
-        if (contentType != null && (validMimeTypes == null || validMimeTypes.contains(contentType))) {
-            return contentType;
-        }
-        return null;
-    }
-
-    static String findMimeType(final URL url, URLConnection connection, Set<String> validMimeTypes) throws IOException {
-        Path path;
+    static String findMimeType(final URL url, URLConnection connection, Set<String> validMimeTypes, Object fileSystemContext) throws IOException {
         try {
-            path = Paths.get(url.toURI());
-            String firstGuess = findMimeType(path, validMimeTypes);
+            URI uri = url.toURI();
+            TruffleFile file = SourceAccessor.getTruffleFile(uri, fileSystemContext);
+            String firstGuess = SourceAccessor.getMimeType(file, validMimeTypes);
             if (firstGuess != null) {
                 return firstGuess;
             }
@@ -1297,6 +1406,12 @@ public abstract class Source {
         throw (E) ex;
     }
 
+    private static Charset getEncoding(TruffleFile file, String mimeType) throws IOException {
+        Charset encoding = SourceAccessor.getEncoding(file, mimeType);
+        encoding = encoding == null ? StandardCharsets.UTF_8 : encoding;
+        return encoding;
+    }
+
     /**
      * Allows one to specify additional attribute before {@link #build() creating} new
      * {@link Source} instance.
@@ -1333,10 +1448,12 @@ public abstract class Source {
         private URI uri;
         private String name;
         private String mimeType;
-        private Object content;
+        private Object content = CONTENT_UNSET;
         private boolean internal;
         private boolean interactive;
         private boolean cached = true;
+        private Charset fileEncoding;
+        private Object embedderFileSystemContext;
 
         SourceBuilder(String language, Object origin) {
             Objects.requireNonNull(language);
@@ -1361,12 +1478,14 @@ public abstract class Source {
         /**
          * Specifies character based content of {@link #build() to-be-built} {@link Source}. Using
          * this method one can ignore the real content of a file or URL and use already read one, or
-         * completely different one. The given characters must not mutate after they were accessed
-         * for the first time. Example:
+         * completely different one. Use {@link #CONTENT_NONE} to set no content,
+         * {@link Source#hasCharacters()} will be <code>false</code> then. The given characters must
+         * not mutate after they were accessed for the first time. Example:
          *
          * {@link SourceSnippets#fromURLWithOwnContent}
          *
-         * @param characters the code to be available via {@link Source#getCharacters()}
+         * @param characters the code to be available via {@link Source#getCharacters()}, or
+         *            {@link #CONTENT_NONE}
          * @return instance of this builder - which's {@link #build()} method no longer throws an
          *         {@link IOException}
          * @since 1.0
@@ -1489,21 +1608,42 @@ public abstract class Source {
         }
 
         /**
+         * Explicitly assigns an encoding used to read the file content. If the encoding is
+         * {@code null} then the file contained encoding information is used. If the file doesn't
+         * provide an encoding information the default {@code UTF-8} encoding is used.
+         *
+         * @param encoding the new file encoding to be used for reading the content
+         * @return instance of <code>this</code> builder ready to {@link #build() create new source}
+         * @since 1.0
+         */
+        public SourceBuilder encoding(Charset encoding) {
+            this.fileEncoding = encoding;
+            return this;
+        }
+
+        SourceBuilder embedderFileSystemContext(Object fileSystemContext) {
+            this.embedderFileSystemContext = fileSystemContext;
+            return this;
+        }
+
+        /**
          * Uses configuration of this builder to create new {@link Source} object. The method throws
          * an {@link IOException} if an error loading the source occured.
          *
          * @return the source object
+         * @throws IOException if an error reading the content occurred
+         * @throws SecurityException if the used {@link FileSystem filesystem} denied file reading
          * @since 1.0
          */
         public Source build() throws IOException {
             assert this.language != null;
-            Source source = buildSource(this.language, this.origin, this.name, this.mimeType, this.content, this.uri, this.internal, this.interactive, this.cached, false);
+            Source source = buildSource(this.language, this.origin, this.name, this.mimeType, this.content, this.uri, this.fileEncoding, this.internal, this.interactive, this.cached, false,
+                            new FileSystemContextSupplier(embedderFileSystemContext));
 
             // make sure origin is not consumed again if builder is used twice
             if (source.hasBytes()) {
                 this.content = source.getBytes();
-            } else {
-                assert source.hasCharacters();
+            } else if (source.hasCharacters()) {
                 this.content = source.getCharacters();
             }
 
@@ -1591,9 +1731,20 @@ public abstract class Source {
         }
 
         /**
+         * {@inheritDoc}
+         *
+         * @since 1.0
+         */
+        @Override
+        public LiteralBuilder encoding(Charset encoding) {
+            return (LiteralBuilder) super.encoding(encoding);
+        }
+
+        /**
          * Uses configuration of this builder to create new {@link Source} object.
          *
          * @return the source object
+         * @throws SecurityException if the used {@link FileSystem filesystem} denied file reading
          * @since 1.0
          */
         @Override
@@ -1617,7 +1768,7 @@ public abstract class Source {
         private String name;
         private String mime;
         private String language;
-        private CharSequence characters;
+        private CharSequence characters = CONTENT_UNSET;
         private boolean internal;
         private boolean interactive;
         private boolean cached = true;
@@ -1731,13 +1882,15 @@ public abstract class Source {
 
         /**
          * @since 0.15
+         * @throws SecurityException if the used {@link FileSystem filesystem} denied file reading
          * @deprecated see {@link SourceBuilder#build()}
          */
         @SuppressWarnings("unused")
         @Deprecated
         public Source build() throws E1, E2, E3 {
             try {
-                Source source = buildSource(this.language, this.origin, this.name, this.mime, this.characters, this.uri, this.internal, this.interactive, this.cached, true);
+                Source source = buildSource(this.language, this.origin, this.name, this.mime, this.characters, this.uri, null, this.internal, this.interactive, this.cached, true,
+                                new FileSystemContextSupplier(null));
 
                 // legacy sources must have character sources
                 assert source.hasCharacters();
@@ -1755,6 +1908,20 @@ public abstract class Source {
             } catch (IOException ex) {
                 throw raise(RuntimeException.class, ex);
             }
+        }
+    }
+
+    private static final class FileSystemContextSupplier implements Supplier<Object> {
+
+        private Object fileSystemContext;
+
+        FileSystemContextSupplier(Object fileSystemContext) {
+            this.fileSystemContext = fileSystemContext;
+        }
+
+        @Override
+        public Object get() {
+            return fileSystemContext == null ? SourceAccessor.getCurrentFileSystemContext() : fileSystemContext;
         }
     }
 

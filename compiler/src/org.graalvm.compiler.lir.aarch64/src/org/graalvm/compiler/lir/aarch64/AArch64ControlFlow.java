@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2013, 2016, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2013, 2018, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -24,21 +24,24 @@
  */
 package org.graalvm.compiler.lir.aarch64;
 
+import static jdk.vm.ci.aarch64.AArch64.lr;
 import static jdk.vm.ci.code.ValueUtil.asAllocatableValue;
 import static jdk.vm.ci.code.ValueUtil.asRegister;
 import static org.graalvm.compiler.lir.LIRInstruction.OperandFlag.HINT;
+import static org.graalvm.compiler.lir.LIRInstruction.OperandFlag.ILLEGAL;
 import static org.graalvm.compiler.lir.LIRInstruction.OperandFlag.REG;
 
 import java.util.function.Function;
 
+import jdk.vm.ci.meta.AllocatableValue;
 import org.graalvm.compiler.asm.Label;
-import org.graalvm.compiler.core.common.NumUtil;
 import org.graalvm.compiler.asm.aarch64.AArch64Assembler;
 import org.graalvm.compiler.asm.aarch64.AArch64Assembler.ConditionFlag;
 import org.graalvm.compiler.asm.aarch64.AArch64Assembler.ExtendType;
 import org.graalvm.compiler.asm.aarch64.AArch64MacroAssembler;
 import org.graalvm.compiler.code.CompilationResult.JumpTable;
 import org.graalvm.compiler.core.common.LIRKind;
+import org.graalvm.compiler.core.common.NumUtil;
 import org.graalvm.compiler.core.common.calc.Condition;
 import org.graalvm.compiler.debug.GraalError;
 import org.graalvm.compiler.lir.ConstantValue;
@@ -46,6 +49,7 @@ import org.graalvm.compiler.lir.LIRInstructionClass;
 import org.graalvm.compiler.lir.LabelRef;
 import org.graalvm.compiler.lir.Opcode;
 import org.graalvm.compiler.lir.StandardOp;
+import org.graalvm.compiler.lir.StandardOp.BlockEndOp;
 import org.graalvm.compiler.lir.SwitchStrategy;
 import org.graalvm.compiler.lir.SwitchStrategy.BaseSwitchClosure;
 import org.graalvm.compiler.lir.Variable;
@@ -58,53 +62,36 @@ import jdk.vm.ci.meta.JavaConstant;
 import jdk.vm.ci.meta.Value;
 
 public class AArch64ControlFlow {
+    public static final class ReturnOp extends AArch64BlockEndOp implements BlockEndOp {
+        public static final LIRInstructionClass<ReturnOp> TYPE = LIRInstructionClass.create(ReturnOp.class);
+        @Use({REG, ILLEGAL}) protected Value x;
 
-    /**
-     * Compares integer register to 0 and branches if condition is true. Condition may only be equal
-     * or non-equal.
-     */
-    // TODO (das) where do we need this?
-    // public static class CompareAndBranchOp extends AArch64LIRInstruction implements
-    // StandardOp.BranchOp {
-    // private final ConditionFlag condition;
-    // private final LabelRef destination;
-    // @Use({REG}) private Value x;
-    //
-    // public CompareAndBranchOp(Condition condition, LabelRef destination, Value x) {
-    // assert condition == Condition.EQ || condition == Condition.NE;
-    // assert ARMv8.isGpKind(x.getKind());
-    // this.condition = condition == Condition.EQ ? ConditionFlag.EQ : ConditionFlag.NE;
-    // this.destination = destination;
-    // this.x = x;
-    // }
-    //
-    // @Override
-    // public void emitCode(CompilationResultBuilder crb, ARMv8MacroAssembler masm) {
-    // int size = ARMv8.bitsize(x.getKind());
-    // if (condition == ConditionFlag.EQ) {
-    // masm.cbz(size, asRegister(x), destination.label());
-    // } else {
-    // masm.cbnz(size, asRegister(x), destination.label());
-    // }
-    // }
-    // }
+        public ReturnOp(Value x) {
+            super(TYPE);
+            this.x = x;
+        }
 
-    public static class BranchOp extends AArch64BlockEndOp implements StandardOp.BranchOp {
-        public static final LIRInstructionClass<BranchOp> TYPE = LIRInstructionClass.create(BranchOp.class);
+        @Override
+        protected void emitCode(CompilationResultBuilder crb, AArch64MacroAssembler masm) {
+            crb.frameContext.leave(crb);
+            masm.ret(lr);
+        }
+    }
 
-        private final AArch64Assembler.ConditionFlag condition;
+    public abstract static class AbstractBranchOp extends AArch64BlockEndOp implements StandardOp.BranchOp {
         private final LabelRef trueDestination;
         private final LabelRef falseDestination;
 
         private final double trueDestinationProbability;
 
-        public BranchOp(AArch64Assembler.ConditionFlag condition, LabelRef trueDestination, LabelRef falseDestination, double trueDestinationProbability) {
-            super(TYPE);
-            this.condition = condition;
+        private AbstractBranchOp(LIRInstructionClass<? extends AbstractBranchOp> c, LabelRef trueDestination, LabelRef falseDestination, double trueDestinationProbability) {
+            super(c);
             this.trueDestination = trueDestination;
             this.falseDestination = falseDestination;
             this.trueDestinationProbability = trueDestinationProbability;
         }
+
+        protected abstract void emitBranch(CompilationResultBuilder crb, AArch64MacroAssembler masm, LabelRef target, boolean negate);
 
         @Override
         public void emitCode(CompilationResultBuilder crb, AArch64MacroAssembler masm) {
@@ -115,18 +102,107 @@ public class AArch64ControlFlow {
              * executing two instructions instead of one.
              */
             if (crb.isSuccessorEdge(trueDestination)) {
-                masm.branchConditionally(condition.negate(), falseDestination.label());
+                emitBranch(crb, masm, falseDestination, true);
             } else if (crb.isSuccessorEdge(falseDestination)) {
-                masm.branchConditionally(condition, trueDestination.label());
+                emitBranch(crb, masm, trueDestination, false);
             } else if (trueDestinationProbability < 0.5) {
-                masm.branchConditionally(condition.negate(), falseDestination.label());
+                emitBranch(crb, masm, falseDestination, true);
                 masm.jmp(trueDestination.label());
             } else {
-                masm.branchConditionally(condition, trueDestination.label());
+                emitBranch(crb, masm, trueDestination, false);
                 masm.jmp(falseDestination.label());
             }
         }
+    }
 
+    public static class BranchOp extends AbstractBranchOp implements StandardOp.BranchOp {
+        public static final LIRInstructionClass<BranchOp> TYPE = LIRInstructionClass.create(BranchOp.class);
+
+        private final AArch64Assembler.ConditionFlag condition;
+
+        public BranchOp(AArch64Assembler.ConditionFlag condition, LabelRef trueDestination, LabelRef falseDestination, double trueDestinationProbability) {
+            super(TYPE, trueDestination, falseDestination, trueDestinationProbability);
+            this.condition = condition;
+        }
+
+        @Override
+        protected void emitBranch(CompilationResultBuilder crb, AArch64MacroAssembler masm, LabelRef target, boolean negate) {
+            AArch64Assembler.ConditionFlag finalCond = negate ? condition.negate() : condition;
+            masm.branchConditionally(finalCond, target.label());
+        }
+    }
+
+    public static class CompareBranchZeroOp extends AbstractBranchOp implements StandardOp.BranchOp {
+        public static final LIRInstructionClass<CompareBranchZeroOp> TYPE = LIRInstructionClass.create(CompareBranchZeroOp.class);
+
+        @Use(REG) private AllocatableValue value;
+
+        public CompareBranchZeroOp(AllocatableValue value, LabelRef trueDestination, LabelRef falseDestination, double trueDestinationProbability) {
+            super(TYPE, trueDestination, falseDestination, trueDestinationProbability);
+            this.value = value;
+        }
+
+        @Override
+        protected void emitBranch(CompilationResultBuilder crb, AArch64MacroAssembler masm, LabelRef target, boolean negate) {
+            AArch64Kind kind = (AArch64Kind) this.value.getPlatformKind();
+            assert kind.isInteger();
+            int size = kind.getSizeInBytes() * Byte.SIZE;
+
+            if (negate) {
+                masm.cbnz(size, asRegister(this.value), target.label());
+            } else {
+                masm.cbz(size, asRegister(this.value), target.label());
+            }
+        }
+    }
+
+    public static class BitTestAndBranchOp extends AbstractBranchOp implements StandardOp.BranchOp {
+        public static final LIRInstructionClass<BitTestAndBranchOp> TYPE = LIRInstructionClass.create(BitTestAndBranchOp.class);
+
+        @Use protected AllocatableValue value;
+        private final int index;
+
+        public BitTestAndBranchOp(LabelRef trueDestination, LabelRef falseDestination, AllocatableValue value, double trueDestinationProbability, int index) {
+            super(TYPE, trueDestination, falseDestination, trueDestinationProbability);
+            this.value = value;
+            this.index = index;
+        }
+
+        @Override
+        protected void emitBranch(CompilationResultBuilder crb, AArch64MacroAssembler masm, LabelRef target, boolean negate) {
+            ConditionFlag cond = negate ? ConditionFlag.NE : ConditionFlag.EQ;
+            Label label = target.label();
+            boolean isFarBranch;
+
+            if (label.isBound()) {
+                // The label.position() is a byte based index. The TBZ instruction has 14 bits for
+                // the offset and AArch64 instruction is 4 bytes aligned. So TBZ can encode 16 bits
+                // signed offset.
+                isFarBranch = !NumUtil.isSignedNbit(16, masm.position() - label.position());
+            } else {
+                // Max range of tbz is +-2^13 instructions. We estimate that each LIR instruction
+                // emits 2 AArch64 instructions on average. Thus we test for maximum 2^12 LIR
+                // instruction offset.
+                int maxLIRDistance = (1 << 12);
+                isFarBranch = !crb.labelWithinRange(this, label, maxLIRDistance);
+            }
+
+            if (isFarBranch) {
+                cond = cond.negate();
+                label = new Label();
+            }
+
+            if (cond == ConditionFlag.EQ) {
+                masm.tbz(asRegister(value), index, label);
+            } else {
+                masm.tbnz(asRegister(value), index, label);
+            }
+
+            if (isFarBranch) {
+                masm.jmp(target.label());
+                masm.bind(label);
+            }
+        }
     }
 
     @Opcode("CMOVE")
@@ -156,6 +232,25 @@ public class AArch64ControlFlow {
             } else {
                 masm.fcmov(size, asRegister(result), asRegister(trueValue), asRegister(falseValue), condition);
             }
+        }
+    }
+
+    public static class CondSetOp extends AArch64LIRInstruction {
+        public static final LIRInstructionClass<CondSetOp> TYPE = LIRInstructionClass.create(CondSetOp.class);
+
+        @Def protected Value result;
+        private final AArch64Assembler.ConditionFlag condition;
+
+        public CondSetOp(Variable result, AArch64Assembler.ConditionFlag condition) {
+            super(TYPE);
+            this.result = result;
+            this.condition = condition;
+        }
+
+        @Override
+        public void emitCode(CompilationResultBuilder crb, AArch64MacroAssembler masm) {
+            int size = result.getPlatformKind().getSizeInBytes() * Byte.SIZE;
+            masm.cset(size, asRegister(result), condition);
         }
     }
 

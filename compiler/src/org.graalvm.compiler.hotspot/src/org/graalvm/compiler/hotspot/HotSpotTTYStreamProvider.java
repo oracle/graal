@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2015, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2015, 2019, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -25,7 +25,7 @@
 package org.graalvm.compiler.hotspot;
 
 import static org.graalvm.compiler.hotspot.HotSpotGraalOptionValues.GRAAL_OPTION_PROPERTY_PREFIX;
-import static org.graalvm.compiler.hotspot.HotSpotGraalOptionValues.HOTSPOT_OPTIONS;
+import static org.graalvm.compiler.hotspot.HotSpotGraalOptionValues.defaultOptions;
 
 import java.io.FileNotFoundException;
 import java.io.FileOutputStream;
@@ -44,6 +44,7 @@ import org.graalvm.compiler.serviceprovider.GraalServices;
 import org.graalvm.compiler.serviceprovider.ServiceProvider;
 
 import jdk.vm.ci.hotspot.HotSpotJVMCIRuntime;
+import jdk.vm.ci.services.Services;
 
 @ServiceProvider(TTYStreamProvider.class)
 public class HotSpotTTYStreamProvider implements TTYStreamProvider {
@@ -59,7 +60,7 @@ public class HotSpotTTYStreamProvider implements TTYStreamProvider {
 
     @Override
     public PrintStream getStream() {
-        return Options.LogFile.getStream(HOTSPOT_OPTIONS);
+        return Options.LogFile.getStream(defaultOptions());
     }
 
     /**
@@ -151,7 +152,7 @@ public class HotSpotTTYStreamProvider implements TTYStreamProvider {
                     if (inputArguments != null) {
                         ps.println("VM Arguments: " + String.join(" ", inputArguments));
                     }
-                    String cmd = System.getProperty("sun.java.command");
+                    String cmd = Services.getSavedProperties().get("sun.java.command");
                     if (cmd != null) {
                         ps.println("sun.java.command=" + cmd);
                     }

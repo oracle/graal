@@ -92,17 +92,6 @@ public class EventBinding<T> {
     }
 
     /**
-     * @return the filter being applied to the subscription's stream of notifications
-     *
-     * @since 0.12
-     * @deprecated
-     */
-    @Deprecated
-    public SourceSectionFilter getFilter() {
-        return null;
-    }
-
-    /**
      * @return whether the subscription has been permanently cancelled.
      *
      * @since 0.12
@@ -171,7 +160,6 @@ public class EventBinding<T> {
 
         }
 
-        @Override
         @SuppressWarnings("deprecation")
         public SourceSectionFilter getFilter() {
             return filterSourceSection;

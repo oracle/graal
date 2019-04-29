@@ -61,6 +61,17 @@ public class ImportGuardsTest {
         int f0(int a) {
             return a;
         }
+
+        @Specialization(guards = "protectedGuard(a)")
+        int f2(int a) {
+            return a;
+        }
+
+        @Specialization(guards = "packageGuard(a)")
+        int f3(int a) {
+            return a;
+        }
+
     }
 
     @NodeChild("a")
@@ -70,18 +81,6 @@ public class ImportGuardsTest {
         @ExpectError("Error parsing expression 'nonStaticGuard(a)': The method nonStaticGuard is undefined for the enclosing scope.")
         @Specialization(guards = "nonStaticGuard(a)")
         int f1(int a) {
-            return a;
-        }
-
-        @ExpectError("Error parsing expression 'protectedGuard(a)': The method protectedGuard is undefined for the enclosing scope.")
-        @Specialization(guards = "protectedGuard(a)")
-        int f2(int a) {
-            return a;
-        }
-
-        @ExpectError("Error parsing expression 'packageGuard(a)': The method packageGuard is undefined for the enclosing scope.")
-        @Specialization(guards = "packageGuard(a)")
-        int f3(int a) {
             return a;
         }
 

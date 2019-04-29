@@ -56,12 +56,22 @@ final class PolyglotLogHandler extends Handler {
 
     static final Handler INSTANCE = new PolyglotLogHandler();
 
+    private final Handler fallBackHandler;
+
     private PolyglotLogHandler() {
+        this.fallBackHandler = null;
+    }
+
+    PolyglotLogHandler(PolyglotEngineImpl engine) {
+        fallBackHandler = engine.logHandler;
     }
 
     @Override
     public void publish(final LogRecord record) {
-        final Handler handler = findDelegate();
+        Handler handler = findDelegate();
+        if (handler == null) {
+            handler = fallBackHandler;
+        }
         if (handler != null) {
             handler.publish(record);
         }
@@ -126,6 +136,16 @@ final class PolyglotLogHandler extends Handler {
             return createStreamHandler((OutputStream) logHandlerOrStream, true, true);
         }
         throw new IllegalArgumentException("Unexpected logHandlerOrStream parameter: " + logHandlerOrStream);
+    }
+
+    static boolean isSameLogSink(Handler h1, Handler h2) {
+        if (h1 == h2) {
+            return true;
+        }
+        if (h1 instanceof PolyglotStreamHandler && h2 instanceof PolyglotStreamHandler) {
+            return ((PolyglotStreamHandler) h1).sink == ((PolyglotStreamHandler) h2).sink;
+        }
+        return false;
     }
 
     /**
@@ -233,7 +253,7 @@ final class PolyglotLogHandler extends Handler {
             if (param == null || PolyglotImpl.EngineImpl.isPrimitive(param)) {
                 return param;
             }
-            if (param instanceof TruffleObject) {
+            if (context != null && param instanceof TruffleObject) {
                 final PolyglotLanguage resolvedLanguage = PolyglotImpl.EngineImpl.findObjectLanguage(context, null, param);
                 final PolyglotLanguageContext displayLanguageContext;
                 if (resolvedLanguage != null) {
@@ -249,12 +269,14 @@ final class PolyglotLogHandler extends Handler {
 
     private static final class PolyglotStreamHandler extends StreamHandler {
 
+        private final OutputStream sink;
         private final boolean closeStream;
         private final boolean flushOnPublish;
 
         PolyglotStreamHandler(final OutputStream out, final boolean closeStream, final boolean flushOnPublish) {
             super(out, FormatterImpl.INSTANCE);
             setLevel(Level.ALL);
+            this.sink = out;
             this.closeStream = closeStream;
             this.flushOnPublish = flushOnPublish;
         }

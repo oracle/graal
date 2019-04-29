@@ -40,15 +40,12 @@
  */
 package com.oracle.truffle.polyglot;
 
-import java.io.File;
-import java.nio.file.Path;
-import java.nio.file.Paths;
-
 import org.graalvm.polyglot.Language;
 import org.graalvm.polyglot.Source;
 import org.graalvm.polyglot.SourceSection;
 import org.graalvm.polyglot.impl.AbstractPolyglotImpl.AbstractStackFrameImpl;
 
+import com.oracle.truffle.api.TruffleFile;
 import com.oracle.truffle.api.TruffleStackTraceElement;
 import com.oracle.truffle.api.nodes.LanguageInfo;
 import com.oracle.truffle.api.nodes.Node;
@@ -60,9 +57,10 @@ final class PolyglotExceptionFrame extends AbstractStackFrameImpl {
     private final SourceSection sourceLocation;
     private final String rootName;
     private final boolean host;
+    private final PolyglotExceptionImpl source;
     private StackTraceElement stackTrace;
 
-    private PolyglotExceptionFrame(com.oracle.truffle.polyglot.PolyglotImpl.VMObject source, PolyglotLanguage language,
+    private PolyglotExceptionFrame(PolyglotExceptionImpl source, PolyglotLanguage language,
                     SourceSection sourceLocation, String rootName, boolean isHost, StackTraceElement stackTrace) {
         super(source.getImpl());
         this.language = language;
@@ -70,6 +68,7 @@ final class PolyglotExceptionFrame extends AbstractStackFrameImpl {
         this.rootName = rootName;
         this.host = isHost;
         this.stackTrace = stackTrace;
+        this.source = source;
     }
 
     @Override
@@ -119,7 +118,7 @@ final class PolyglotExceptionFrame extends AbstractStackFrameImpl {
         } else {
             b.append(rootName);
             b.append("(");
-            b.append(formatSource(sourceLocation));
+            b.append(formatSource(sourceLocation, source.getFileSystemContext()));
             b.append(")");
         }
         return b.toString();
@@ -156,7 +155,6 @@ final class PolyglotExceptionFrame extends AbstractStackFrameImpl {
         } else {
             location = first ? exception.getSourceLocation() : null;
         }
-
         return new PolyglotExceptionFrame(exception, language, location, rootName, false, null);
     }
 
@@ -180,7 +178,7 @@ final class PolyglotExceptionFrame extends AbstractStackFrameImpl {
         return b.toString();
     }
 
-    private static String formatSource(SourceSection sourceSection) {
+    private static String formatSource(SourceSection sourceSection, Object fileSystemContext) {
         if (sourceSection == null) {
             return "Unknown";
         }
@@ -194,13 +192,17 @@ final class PolyglotExceptionFrame extends AbstractStackFrameImpl {
         if (path == null) {
             b.append(source.getName());
         } else {
-            Path pathAbsolute = Paths.get(path);
-            Path pathBase = new File("").getAbsoluteFile().toPath();
-            try {
-                Path pathRelative = pathBase.relativize(pathAbsolute);
-                b.append(pathRelative.toFile());
-            } catch (IllegalArgumentException e) {
-                b.append(source.getName());
+            if (fileSystemContext != null) {
+                try {
+                    TruffleFile pathAbsolute = VMAccessor.LANGUAGE.getTruffleFile(path, fileSystemContext);
+                    TruffleFile pathBase = VMAccessor.LANGUAGE.getTruffleFile("", fileSystemContext).getAbsoluteFile();
+                    TruffleFile pathRelative = pathBase.relativize(pathAbsolute);
+                    b.append(pathRelative.getPath());
+                } catch (IllegalArgumentException | UnsupportedOperationException | SecurityException e) {
+                    b.append(path);
+                }
+            } else {
+                b.append(path);
             }
         }
 

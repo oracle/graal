@@ -29,30 +29,25 @@ import static com.oracle.svm.core.util.VMError.shouldNotReachHere;
 import java.util.ArrayList;
 import java.util.List;
 
+import com.oracle.svm.core.config.ConfigurationValues;
 import com.oracle.svm.core.util.UserError;
 import com.oracle.svm.hosted.c.NativeLibraries;
 import com.oracle.svm.hosted.c.CInterfaceError;
 import com.oracle.svm.hosted.c.info.AccessorInfo;
 import com.oracle.svm.hosted.c.info.ElementInfo;
-import com.oracle.svm.hosted.c.info.InfoTreeVisitor;
 import com.oracle.svm.hosted.c.info.NativeCodeInfo;
 import com.oracle.svm.hosted.c.info.RawStructureInfo;
 import com.oracle.svm.hosted.c.info.StructBitfieldInfo;
 import com.oracle.svm.hosted.c.info.StructFieldInfo;
-import com.oracle.svm.hosted.c.info.AccessorInfo.AccessorKind;
 import com.oracle.svm.hosted.c.info.SizableInfo.ElementKind;
 import com.oracle.svm.hosted.c.info.SizableInfo.SignednessValue;
 
-import jdk.vm.ci.code.TargetDescription;
-import jdk.vm.ci.meta.ResolvedJavaMethod;
 import jdk.vm.ci.meta.ResolvedJavaType;
 
-public final class RawStructureLayoutPlanner extends InfoTreeVisitor {
-
-    private final NativeLibraries nativeLibs;
+public final class RawStructureLayoutPlanner extends NativeInfoTreeVisitor {
 
     private RawStructureLayoutPlanner(NativeLibraries nativeLibs) {
-        this.nativeLibs = nativeLibs;
+        super(nativeLibs);
     }
 
     public static void plan(NativeLibraries nativeLibs, NativeCodeInfo nativeCodeInfo) {
@@ -74,7 +69,7 @@ public final class RawStructureLayoutPlanner extends InfoTreeVisitor {
             return;
         }
 
-        ResolvedJavaType type = (ResolvedJavaType) info.getAnnotatedElement();
+        ResolvedJavaType type = info.getAnnotatedElement();
         for (ResolvedJavaType t : type.getInterfaces()) {
             if (!nativeLibs.isPointerBase(t)) {
                 throw UserError.abort("Type " + type + " must not implement " + t);
@@ -115,29 +110,33 @@ public final class RawStructureLayoutPlanner extends InfoTreeVisitor {
     }
 
     private void computeSize(StructFieldInfo info) {
-        AccessorInfo ainfo = info.getAccessorInfo();
-
-        /**
-         * Resolve field size using the declared type in its accessors. Note that the field offsets
-         * are not calculated before visiting all StructFieldInfos and collecting all field types.
-         */
-        ResolvedJavaMethod accessor = (ResolvedJavaMethod) ainfo.getAnnotatedElement();
-        ResolvedJavaType fieldType;
-
-        if (ainfo.getAccessorKind() == AccessorKind.GETTER) {
-            fieldType = (ResolvedJavaType) accessor.getSignature().getReturnType(null);
-        } else if (ainfo.getAccessorKind() == AccessorKind.SETTER) {
-            fieldType = (ResolvedJavaType) accessor.getSignature().getParameterType(ainfo.valueParameterNumber(false), null);
+        final int declaredSize;
+        if (info.isObject()) {
+            declaredSize = ConfigurationValues.getObjectLayout().getReferenceSize();
         } else {
-            throw shouldNotReachHere("Unexpected accessor kind " + ainfo.getAccessorKind());
+            /**
+             * Resolve field size using the declared type in its accessors. Note that the field
+             * offsets are not calculated before visiting all StructFieldInfos and collecting all
+             * field types.
+             */
+            final ResolvedJavaType fieldType;
+            AccessorInfo accessor = info.getAccessorInfo();
+            switch (accessor.getAccessorKind()) {
+                case GETTER:
+                    fieldType = accessor.getReturnType();
+                    break;
+                case SETTER:
+                    fieldType = accessor.getValueParameterType();
+                    break;
+                default:
+                    throw shouldNotReachHere("Unexpected accessor kind " + accessor.getAccessorKind());
+            }
+            if (info.getKind() == ElementKind.INTEGER) {
+                info.getSignednessInfo().setProperty(isSigned(fieldType) ? SignednessValue.SIGNED : SignednessValue.UNSIGNED);
+            }
+            declaredSize = getSizeInBytes(fieldType);
         }
-
-        TargetDescription target = nativeLibs.getTarget();
-        int declaredSize = target.arch.getPlatformKind(fieldType.getJavaKind()).getSizeInBytes();
         info.getSizeInfo().setProperty(declaredSize);
-        if (info.getKind() == ElementKind.INTEGER) {
-            info.getSignednessInfo().setProperty(nativeLibs.isSigned(fieldType) ? SignednessValue.SIGNED : SignednessValue.UNSIGNED);
-        }
     }
 
     /**

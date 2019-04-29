@@ -174,7 +174,7 @@ public class OptionProcessor extends AbstractProcessor {
             }
             enclosing = enclosing.getEnclosingElement();
         }
-        if (enclosingPackage == null) {
+        if (enclosingPackage == null || enclosingPackage.isUnnamed()) {
             processingEnv.getMessager().printMessage(Kind.ERROR, "Option field cannot be declared in the unnamed package", element);
             return;
         }
@@ -375,7 +375,6 @@ public class OptionProcessor extends AbstractProcessor {
     private static Element topDeclaringType(Element element) {
         Element enclosing = element.getEnclosingElement();
         if (enclosing == null || enclosing.getKind() == ElementKind.PACKAGE) {
-            assert element.getKind() == ElementKind.CLASS || element.getKind() == ElementKind.INTERFACE;
             return element;
         }
         return topDeclaringType(enclosing);

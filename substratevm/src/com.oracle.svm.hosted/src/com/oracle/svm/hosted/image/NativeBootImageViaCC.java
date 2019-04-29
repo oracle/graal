@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2013, 2018, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2013, 2019, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -53,11 +53,17 @@ import com.oracle.svm.hosted.meta.HostedMetaAccess;
 import com.oracle.svm.hosted.meta.HostedMethod;
 import com.oracle.svm.hosted.meta.HostedUniverse;
 
+import jdk.vm.ci.meta.ResolvedJavaMethod;
+import org.graalvm.nativeimage.impl.InternalPlatform;
+
 public abstract class NativeBootImageViaCC extends NativeBootImage {
+
+    protected final HostedMethod mainEntryPoint;
 
     public NativeBootImageViaCC(NativeImageKind k, HostedUniverse universe, HostedMetaAccess metaAccess, NativeLibraries nativeLibs, NativeImageHeap heap, NativeImageCodeCache codeCache,
                     List<HostedMethod> entryPoints, HostedMethod mainEntryPoint, ClassLoader imageClassLoader) {
         super(k, universe, metaAccess, nativeLibs, heap, codeCache, entryPoints, mainEntryPoint, imageClassLoader);
+        this.mainEntryPoint = mainEntryPoint;
     }
 
     public NativeImageKind getOutputKind() {
@@ -66,10 +72,15 @@ public abstract class NativeBootImageViaCC extends NativeBootImage {
 
     class BinutilsCCLinkerInvocation extends CCLinkerInvocation {
 
+        BinutilsCCLinkerInvocation() {
+            additionalPreOptions.add("-z");
+            additionalPreOptions.add("noexecstack");
+        }
+
         @Override
-        protected void addOneSymbolAliasOption(List<String> cmd, Entry<String, String> ent) {
+        protected void addOneSymbolAliasOption(List<String> cmd, Entry<ResolvedJavaMethod, String> ent) {
             cmd.add("-Wl,--defsym");
-            cmd.add("-Wl," + ent.getKey() + "=" + ent.getValue());
+            cmd.add("-Wl," + ent.getValue() + "=" + NativeBootImage.globalSymbolNameForMethod(ent.getKey()));
         }
 
         @Override
@@ -93,8 +104,8 @@ public abstract class NativeBootImageViaCC extends NativeBootImage {
     class DarwinCCLinkerInvocation extends CCLinkerInvocation {
 
         @Override
-        protected void addOneSymbolAliasOption(List<String> cmd, Entry<String, String> ent) {
-            cmd.add("-Wl,-alias," + ent.getValue() + "," + ent.getKey());
+        protected void addOneSymbolAliasOption(List<String> cmd, Entry<ResolvedJavaMethod, String> ent) {
+            cmd.add("-Wl,-alias,_" + NativeBootImage.globalSymbolNameForMethod(ent.getKey()) + ",_" + ent.getValue());
         }
 
         @Override
@@ -104,7 +115,7 @@ public abstract class NativeBootImageViaCC extends NativeBootImage {
                     throw UserError.abort(OS.getCurrent().name() + " does not support building static executable images.");
                 case SHARED_LIBRARY:
                     cmd.add("-shared");
-                    if (Platform.includedIn(Platform.DARWIN.class)) {
+                    if (Platform.includedIn(InternalPlatform.DARWIN_AND_JNI.class)) {
                         cmd.add("-undefined");
                         cmd.add("dynamic_lookup");
                     }
@@ -120,7 +131,7 @@ public abstract class NativeBootImageViaCC extends NativeBootImage {
         }
 
         @Override
-        protected void addOneSymbolAliasOption(List<String> cmd, Entry<String, String> ent) {
+        protected void addOneSymbolAliasOption(List<String> cmd, Entry<ResolvedJavaMethod, String> ent) {
             // cmd.add("-Wl,-alias," + ent.getValue() + "," + ent.getKey());
         }
 
@@ -129,10 +140,13 @@ public abstract class NativeBootImageViaCC extends NativeBootImage {
             switch (kind) {
                 case EXECUTABLE:
                 case STATIC_EXECUTABLE:
-                    cmd.add("/MT");
+                    // cmd.add("/MT");
+                    // Must use /MD in order to link with JDK native libraries built that way
+                    cmd.add("/MD");
                     break;
                 case SHARED_LIBRARY:
                     cmd.add("/MD");
+                    cmd.add("/LD");
                     break;
                 default:
                     VMError.shouldNotReachHere();
@@ -144,6 +158,8 @@ public abstract class NativeBootImageViaCC extends NativeBootImage {
             ArrayList<String> cmd = new ArrayList<>();
             cmd.add(compilerCommand);
 
+            setOutputKind(cmd);
+
             // Add debugging info
             cmd.add("/Zi");
 
@@ -151,15 +167,28 @@ public abstract class NativeBootImageViaCC extends NativeBootImage {
 
             cmd.addAll(inputFilenames);
 
-            // We could add a .drectve section instead of doing this
-            cmd.add("/link /DEFAULTLIB:LIBCMT /DEFAULTLIB:OLDNAMES /INCREMENTAL:NO");
+            cmd.add("/link /INCREMENTAL:NO /NODEFAULTLIB:LIBCMT /NODEFAULTLIB:OLDNAMES");
+
+            // Add clibrary paths to command
+            for (String libraryPath : nativeLibs.getLibraryPaths()) {
+                cmd.add("/LIBPATH:" + libraryPath);
+            }
+
+            for (String library : nativeLibs.getLibraries()) {
+                cmd.add(library + ".lib");
+            }
+
+            // Add required Windows Libraries
+            cmd.add("advapi32.lib");
+            cmd.add("ws2_32.lib");
+            cmd.add("secur32.lib");
+            cmd.add("iphlpapi.lib");
+
             return cmd;
         }
     }
 
     LinkerInvocation getLinkerInvocation(Path outputDirectory, Path tempDirectory, String imageName) {
-        String relocatableFileName = tempDirectory.resolve(imageName + ObjectFile.getFilenameSuffix()).toString();
-
         CCLinkerInvocation inv;
 
         switch (ObjectFile.getNativeFormat()) {
@@ -184,6 +213,7 @@ public abstract class NativeBootImageViaCC extends NativeBootImage {
         for (String libraryPath : nativeLibs.getLibraryPaths()) {
             inv.addLibPath(libraryPath);
         }
+
         for (String rPath : OptionUtils.flatten(",", SubstrateOptions.LinkerRPath.getValue())) {
             inv.addRPath(rPath);
         }
@@ -192,14 +222,24 @@ public abstract class NativeBootImageViaCC extends NativeBootImage {
             inv.addLinkedLibrary(library);
         }
 
-        inv.addInputFile(relocatableFileName);
+        for (String filename : codeCache.getCCInputFiles(tempDirectory, imageName)) {
+            inv.addInputFile(filename);
+        }
+
+        addMainEntryPoint(inv);
 
         return inv;
     }
 
+    protected void addMainEntryPoint(CCLinkerInvocation inv) {
+        if (mainEntryPoint != null) {
+            inv.addSymbolAlias(mainEntryPoint, "main");
+        }
+    }
+
     @Override
     @SuppressWarnings("try")
-    public Path write(DebugContext debug, Path outputDirectory, Path tempDirectory, String imageName, BeforeImageWriteAccessImpl config) {
+    public LinkerInvocation write(DebugContext debug, Path outputDirectory, Path tempDirectory, String imageName, BeforeImageWriteAccessImpl config) {
         String cmdstr = "";
         String outputstr = "";
         try (Indent indent = debug.logAndIndent("Writing native image")) {
@@ -263,7 +303,7 @@ public abstract class NativeBootImageViaCC extends NativeBootImage {
                         }
                     }
                 }
-                return inv.getOutputFile();
+                return inv;
             } catch (Exception ex) {
                 throw new RuntimeException("host C compiler or linker does not seem to work: " + ex.toString() + "\n\n" + cmdstr + "\n\n" + outputstr);
             }

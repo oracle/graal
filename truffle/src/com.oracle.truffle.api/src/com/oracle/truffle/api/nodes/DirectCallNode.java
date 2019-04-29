@@ -41,12 +41,9 @@
 package com.oracle.truffle.api.nodes;
 
 import com.oracle.truffle.api.CallTarget;
-import com.oracle.truffle.api.CompilerDirectives.CompilationFinal;
 import com.oracle.truffle.api.RootCallTarget;
 import com.oracle.truffle.api.Truffle;
 import com.oracle.truffle.api.TruffleRuntime;
-import com.oracle.truffle.api.frame.FrameDescriptor;
-import com.oracle.truffle.api.frame.VirtualFrame;
 
 /**
  * Represents a direct call to a {@link CallTarget}. Direct calls are calls for which the
@@ -67,11 +64,9 @@ import com.oracle.truffle.api.frame.VirtualFrame;
  * @since 0.8 or earlier
  */
 public abstract class DirectCallNode extends Node {
-    static final VirtualFrame LEGACY_FRAME = Truffle.getRuntime().createVirtualFrame(new Object[0], new FrameDescriptor());
 
     /** @since 0.8 or earlier */
     protected final CallTarget callTarget;
-    @Deprecated @CompilationFinal private VirtualFrame legacyFrame;
 
     /** @since 0.8 or earlier */
     protected DirectCallNode(CallTarget callTarget) {
@@ -83,25 +78,9 @@ public abstract class DirectCallNode extends Node {
      *
      * @param arguments the arguments that should be passed to the callee
      * @return the return result of the call
-     * @since 0.8 or earlier
-     * @deprecated use call without frame instead
-     */
-    @Deprecated
-    public Object call(@SuppressWarnings("unused") VirtualFrame frame, Object[] arguments) {
-        return call(arguments);
-    }
-
-    /**
-     * Calls the inner {@link CallTarget} returned by {@link #getCurrentCallTarget()}.
-     *
-     * @param arguments the arguments that should be passed to the callee
-     * @return the return result of the call
      * @since 0.23
      */
-    public Object call(Object[] arguments) {
-        // TODO change to varargs as soon as #call(VirtualFrame, Object[] will removed.
-        return call(LEGACY_FRAME, arguments);
-    }
+    public abstract Object call(Object... arguments);
 
     /**
      * Returns the originally supplied {@link CallTarget} when this call node was created. Please

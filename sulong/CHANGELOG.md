@@ -1,3 +1,58 @@
+# Version 1.0.0 RC17
+
+Changes:
+
+* Moved `polyglot.h` into the `include` subdirectory
+
+# Version 1.0.0 RC15
+
+New features:
+
+* Preliminary support for bitcode produced by LLVM 8.
+
+# Version 1.0.0 RC14
+
+Changes:
+
+* Various bug fixes.
+
+# Version 1.0.0 RC13
+
+New features:
+
+* Support for embedded bitcode in Mach-O files.
+  We support bitcode in the `__bitcode` section of Mach-O object files,
+  as well as bitcode files in an embedded xar archive in the `__bundle` section of
+  executables or dylibs.
+
+Changes:
+
+* Update libc++/libc++abi imports to 5.0.2 (no actual code changes).
+
+# Version 1.0.0 RC12
+
+Removed:
+
+* Removed deprecated `truffle_*` builtin functions.
+* Dropped binary compatibility to bitcode compiled with very old `polyglot.h` versions (1.0.0-RC2 or older).
+
+Bugfixes:
+
+* Read-only globals are now allocated in read-only memory.
+
+# Version 1.0.0 RC11
+
+Changes:
+
+* Stack traces report line numbers even if the original source file can not
+  be found.
+* Don't allow `polyglot_eval` for internal languages.
+
+Deprecations:
+
+* Deprecate `--llvm.sourcePath` option in favour of the more general
+  `--inspect.SourcePath` option.
+
 # Version 1.0.0 RC10
 
 New features:

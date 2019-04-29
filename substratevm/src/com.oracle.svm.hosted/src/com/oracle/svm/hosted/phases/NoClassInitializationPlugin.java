@@ -24,13 +24,15 @@
  */
 package com.oracle.svm.hosted.phases;
 
+import java.util.function.Supplier;
+
 import org.graalvm.compiler.nodes.FrameState;
 import org.graalvm.compiler.nodes.ValueNode;
 import org.graalvm.compiler.nodes.graphbuilderconf.ClassInitializationPlugin;
 import org.graalvm.compiler.nodes.graphbuilderconf.GraphBuilderContext;
 
+import com.oracle.graal.pointsto.constraints.UnresolvedElementException;
 import com.oracle.graal.pointsto.infrastructure.WrappedConstantPool;
-import com.oracle.svm.core.util.VMError;
 
 import jdk.vm.ci.meta.ConstantPool;
 import jdk.vm.ci.meta.ResolvedJavaType;
@@ -49,17 +51,15 @@ public class NoClassInitializationPlugin implements ClassInitializationPlugin {
     @Override
     public void loadReferencedType(GraphBuilderContext builder, ConstantPool cp, int cpi, int bytecode) {
         /* Do not trigger class initialization. */
-        WrappedConstantPool.loadReferencedType(cp, cpi, bytecode, false);
+        try {
+            WrappedConstantPool.loadReferencedType(cp, cpi, bytecode, false);
+        } catch (UnresolvedElementException uee) {
+            /* Plugin should be non-intrusive. Therefore we ignore missing class-path failures. */
+        }
     }
 
     @Override
-    public boolean shouldApply(GraphBuilderContext builder, ResolvedJavaType type) {
-        /* Do not emit any class initialization checks. */
+    public boolean apply(GraphBuilderContext builder, ResolvedJavaType type, Supplier<FrameState> frameState, ValueNode[] classInit) {
         return false;
-    }
-
-    @Override
-    public ValueNode apply(GraphBuilderContext builder, ResolvedJavaType type, FrameState frameState) {
-        throw VMError.shouldNotReachHere("Not called since shouldApply returns false");
     }
 }

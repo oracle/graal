@@ -359,6 +359,7 @@ public class InstrumentablePositionsTestLanguage extends TruffleLanguage<Context
         }
 
         @Override
+        @ExplodeLoop
         public Object execute(VirtualFrame frame) {
             Object returnValue = contextRef.get().nul;
             for (TestNode child : children) {

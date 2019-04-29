@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2017, 2018, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2017, 2019, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -24,28 +24,9 @@
  */
 package com.oracle.svm.truffle.nfi;
 
-import com.oracle.svm.core.annotate.Alias;
-import com.oracle.svm.core.annotate.InjectAccessors;
-import com.oracle.svm.core.annotate.RecomputeFieldValue;
-import com.oracle.svm.core.annotate.RecomputeFieldValue.Kind;
-import com.oracle.svm.core.annotate.Substitute;
-import com.oracle.svm.core.annotate.TargetClass;
-import com.oracle.svm.core.posix.PosixUtils;
-import com.oracle.svm.core.posix.headers.Dlfcn;
+import static com.oracle.svm.truffle.nfi.NativeSignature.ExecuteHelper;
+
 import com.oracle.svm.core.snippets.KnownIntrinsics;
-import com.oracle.svm.truffle.nfi.NativeAPI.NativeTruffleContext;
-import com.oracle.svm.truffle.nfi.NativeAPI.NativeTruffleEnv;
-import com.oracle.svm.truffle.nfi.NativeSignature.CifData;
-import com.oracle.svm.truffle.nfi.NativeSignature.ExecuteHelper;
-import com.oracle.svm.truffle.nfi.NativeSignature.PrepareHelper;
-import com.oracle.svm.truffle.nfi.libffi.LibFFI;
-import com.oracle.svm.truffle.nfi.libffi.LibFFI.ffi_cif;
-import com.oracle.truffle.api.CallTarget;
-import com.oracle.truffle.api.CompilerDirectives;
-import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
-import com.oracle.truffle.api.interop.TruffleObject;
-import com.oracle.truffle.nfi.types.NativeSimpleType;
-import jdk.vm.ci.meta.MetaAccessProvider;
 import org.graalvm.nativeimage.ImageSingletons;
 import org.graalvm.nativeimage.PinnedObject;
 import org.graalvm.nativeimage.StackValue;
@@ -53,12 +34,32 @@ import org.graalvm.nativeimage.UnmanagedMemory;
 import org.graalvm.nativeimage.c.struct.SizeOf;
 import org.graalvm.nativeimage.c.type.CLongPointer;
 import org.graalvm.nativeimage.c.type.WordPointer;
-import org.graalvm.word.PointerBase;
 import org.graalvm.word.WordFactory;
+
+import com.oracle.svm.core.annotate.Alias;
+import com.oracle.svm.core.annotate.RecomputeFieldValue;
+import com.oracle.svm.core.annotate.RecomputeFieldValue.Kind;
+import com.oracle.svm.core.annotate.Substitute;
+import com.oracle.svm.core.annotate.TargetClass;
+import com.oracle.svm.truffle.nfi.NativeAPI.NativeTruffleContext;
+import com.oracle.svm.truffle.nfi.NativeAPI.NativeTruffleEnv;
+import com.oracle.svm.truffle.nfi.NativeSignature.CifData;
+import com.oracle.svm.truffle.nfi.NativeSignature.PrepareHelper;
+import com.oracle.svm.truffle.nfi.libffi.LibFFI;
+import com.oracle.svm.truffle.nfi.libffi.LibFFI.ffi_cif;
+import com.oracle.truffle.api.CallTarget;
+import com.oracle.truffle.api.interop.TruffleObject;
+import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
+import com.oracle.truffle.nfi.impl.NFILanguageImpl;
+import com.oracle.truffle.nfi.spi.types.NativeSimpleType;
+
+import jdk.vm.ci.meta.MetaAccessProvider;
 import jdk.vm.ci.meta.ResolvedJavaField;
 
 @TargetClass(className = "com.oracle.truffle.nfi.impl.NFIContext", onlyWith = TruffleNFIFeature.IsEnabled.class)
 final class Target_com_oracle_truffle_nfi_impl_NFIContext {
+
+    @Alias private NFILanguageImpl language;
 
     // clear these fields, they will be re-filled by patchContext
     @Alias @RecomputeFieldValue(kind = Kind.Reset) private long nativeContext;
@@ -91,32 +92,6 @@ final class Target_com_oracle_truffle_nfi_impl_NFIContext {
 
     @Alias
     protected native void initializeSimpleType(NativeSimpleType simpleType, int size, int alignment, long ffiType);
-
-    // Checkstyle: stop
-    static class RTLDAccessor {
-
-        static int getRTLD_GLOBAL(@SuppressWarnings("unused") Target_com_oracle_truffle_nfi_impl_NFIContext ctx) {
-            return Dlfcn.RTLD_GLOBAL();
-        }
-
-        static int getRTLD_LOCAL(@SuppressWarnings("unused") Target_com_oracle_truffle_nfi_impl_NFIContext ctx) {
-            return Dlfcn.RTLD_LOCAL();
-        }
-
-        static int getRTLD_LAZY(@SuppressWarnings("unused") Target_com_oracle_truffle_nfi_impl_NFIContext ctx) {
-            return Dlfcn.RTLD_LAZY();
-        }
-
-        static int getRTLD_NOW(@SuppressWarnings("unused") Target_com_oracle_truffle_nfi_impl_NFIContext ctx) {
-            return Dlfcn.RTLD_NOW();
-        }
-    }
-
-    @Alias @InjectAccessors(RTLDAccessor.class) int RTLD_GLOBAL;
-    @Alias @InjectAccessors(RTLDAccessor.class) int RTLD_LOCAL;
-    @Alias @InjectAccessors(RTLDAccessor.class) int RTLD_LAZY;
-    @Alias @InjectAccessors(RTLDAccessor.class) int RTLD_NOW;
-    // Checkstyle: resume
 
     @Substitute
     private long initializeNativeContext() {
@@ -188,7 +163,7 @@ final class Target_com_oracle_truffle_nfi_impl_NFIContext {
         try (LocalNativeScope scope = TruffleNFISupport.createLocalScope(patchCount);
                         PinnedObject retBuffer = PinnedObject.create(ret)) {
             NativeTruffleContext ctx = WordFactory.pointer(nativeContext);
-            ffi_cif ffiCif = WordFactory.pointer(cif);
+            LibFFI.ffi_cif ffiCif = WordFactory.pointer(cif);
             ExecuteHelper.execute(ctx, ffiCif, retBuffer.addressOfArrayElement(0), functionPointer, primArgs, patchCount, patchOffsets, objArgs, scope);
         }
     }
@@ -223,19 +198,13 @@ final class Target_com_oracle_truffle_nfi_impl_NFIContext {
     @Substitute
     @TruffleBoundary
     static long loadLibrary(@SuppressWarnings("unused") long nativeContext, String name, int flags) {
-        PointerBase ret = PosixUtils.dlopen(name, flags);
-        if (ret.equal(WordFactory.zero())) {
-            CompilerDirectives.transferToInterpreter();
-            String error = PosixUtils.dlerror();
-            throw new UnsatisfiedLinkError(error);
-        }
-        return ret.rawValue();
+        return TruffleNFISupport.loadLibrary(nativeContext, name, flags);
     }
 
     @Substitute
     @TruffleBoundary
     static void freeLibrary(long library) {
-        Dlfcn.dlclose(WordFactory.pointer(library));
+        TruffleNFISupport.freeLibrary(library);
     }
 
     @Substitute
@@ -244,7 +213,7 @@ final class Target_com_oracle_truffle_nfi_impl_NFIContext {
         if (ImageSingletons.lookup(TruffleNFISupport.class).errnoGetterFunctionName.equals(name)) {
             return new ErrnoMirror();
         } else {
-            Target_com_oracle_truffle_nfi_impl_LibFFISymbol ret = Target_com_oracle_truffle_nfi_impl_LibFFISymbol.create(library, lookup(nativeContext, library.handle, name));
+            Target_com_oracle_truffle_nfi_impl_LibFFISymbol ret = Target_com_oracle_truffle_nfi_impl_LibFFISymbol.create(language, library, lookup(nativeContext, library.handle, name));
             return KnownIntrinsics.convertUnknownValue(ret, TruffleObject.class);
         }
     }
@@ -252,23 +221,6 @@ final class Target_com_oracle_truffle_nfi_impl_NFIContext {
     @Substitute
     @TruffleBoundary
     static long lookup(@SuppressWarnings("unused") long nativeContext, long library, String name) {
-        // clear previous error
-        Dlfcn.dlerror();
-
-        PointerBase ret;
-        if (library == 0) {
-            ret = PosixUtils.dlsym(Dlfcn.RTLD_DEFAULT(), name);
-        } else {
-            ret = PosixUtils.dlsym(WordFactory.pointer(library), name);
-        }
-
-        if (ret.equal(WordFactory.zero())) {
-            CompilerDirectives.transferToInterpreter();
-            String error = PosixUtils.dlerror();
-            if (error != null) {
-                throw KnownIntrinsics.convertUnknownValue(new Target_com_oracle_truffle_nfi_impl_NFIUnsatisfiedLinkError(error), UnsatisfiedLinkError.class);
-            }
-        }
-        return ret.rawValue();
+        return TruffleNFISupport.lookup(nativeContext, library, name);
     }
 }

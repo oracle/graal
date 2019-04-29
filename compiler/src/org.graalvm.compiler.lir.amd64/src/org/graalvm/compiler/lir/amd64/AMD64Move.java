@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2011, 2016, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2011, 2018, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -698,7 +698,7 @@ public class AMD64Move {
                     if (crb.mustReplaceWithNullRegister(input)) {
                         masm.movq(result, crb.nullRegister);
                     } else {
-                        masm.movq(result, 0x0L);
+                        masm.movslq(result, 0);
                     }
                 } else if (crb.target.inlineObjects) {
                     crb.recordInlineDataInCode(input);

@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2016, 2018, Oracle and/or its affiliates.
+ * Copyright (c) 2016, 2019, Oracle and/or its affiliates.
  *
  * All rights reserved.
  *
@@ -31,9 +31,13 @@ package com.oracle.truffle.llvm.parser.listeners;
 
 import com.oracle.truffle.llvm.parser.model.IRScope;
 import com.oracle.truffle.llvm.parser.records.Records;
-import com.oracle.truffle.llvm.parser.records.ValueSymbolTableRecord;
 
 public final class ValueSymbolTable implements ParserListener {
+
+    private static final int VALUE_SYMTAB_ENTRY = 1;
+    private static final int VALUE_SYMTAB_BASIC_BLOCK_ENTRY = 2;
+    private static final int VALUE_SYMTAB_FUNCTION_ENTRY = 3;
+    // private static final int VALUE_SYMTAB_COMBINED_FNENTRY = 4;
 
     private final IRScope container;
 
@@ -43,19 +47,18 @@ public final class ValueSymbolTable implements ParserListener {
 
     @Override
     public void record(long id, long[] args) {
-        final ValueSymbolTableRecord record = ValueSymbolTableRecord.decode(id);
-        switch (record) {
-            case ENTRY:
+        switch ((int) id) {
+            case VALUE_SYMTAB_ENTRY:
                 final String entryName = Records.toString(args, 1);
                 container.nameSymbol((int) args[0], entryName);
                 break;
 
-            case BASIC_BLOCK_ENTRY:
+            case VALUE_SYMTAB_BASIC_BLOCK_ENTRY:
                 final String blockName = Records.toString(args, 1);
                 container.nameBlock((int) args[0], blockName);
                 break;
 
-            case FUNCTION_ENTRY:
+            case VALUE_SYMTAB_FUNCTION_ENTRY:
                 final String functionName = Records.toString(args, 2);
                 container.nameSymbol((int) args[0], functionName);
                 break;

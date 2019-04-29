@@ -30,6 +30,7 @@ import java.util.List;
 import org.graalvm.compiler.debug.DebugContext;
 
 import com.oracle.objectfile.ObjectFile;
+import com.oracle.svm.core.LinkerInvocation;
 import com.oracle.svm.hosted.FeatureImpl.BeforeImageWriteAccessImpl;
 import com.oracle.svm.hosted.c.NativeLibraries;
 import com.oracle.svm.hosted.meta.HostedMetaAccess;
@@ -130,7 +131,7 @@ public abstract class AbstractBootImage {
      * or a different file, as decided by the implementation of {@link #getOrCreateDebugObjectFile}.
      * If {@link #getOrCreateDebugObjectFile} is not called, no debug information is written.
      */
-    public abstract Path write(DebugContext debug, Path outputDirectory, Path tempDirectory, String imageName, BeforeImageWriteAccessImpl config);
+    public abstract LinkerInvocation write(DebugContext debug, Path outputDirectory, Path tempDirectory, String imageName, BeforeImageWriteAccessImpl config);
 
     /**
      * Returns the ObjectFile.Section within the image, if any, whose vaddr defines the image's base
@@ -139,7 +140,8 @@ public abstract class AbstractBootImage {
     public abstract ObjectFile.Section getTextSection();
 
     // factory method
-    public static AbstractBootImage create(NativeImageKind k, HostedUniverse universe, HostedMetaAccess metaAccess, NativeLibraries nativeLibs, NativeImageHeap heap, NativeImageCodeCache codeCache,
+    public static AbstractBootImage create(NativeImageKind k, HostedUniverse universe, HostedMetaAccess metaAccess, NativeLibraries nativeLibs, NativeImageHeap heap,
+                    NativeImageCodeCache codeCache,
                     List<HostedMethod> entryPoints, HostedMethod mainEntryPoint, ClassLoader classLoader) {
         switch (k) {
             case SHARED_LIBRARY:

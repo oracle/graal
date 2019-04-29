@@ -36,19 +36,20 @@ public class Option {
     static final Option[] options = {
         option("TruffleCompileOnly")
             .type("String")
-            .category("DEBUG")
+            .category("INTERNAL")
             .def("null")
             .help("Restrict compilation to comma-separated list of includes (or excludes prefixed with tilde).",
                   "EBNF format of argument value:  CompileOnly = Element, { ',', Element } ;"),
+
         option("TruffleCompilation")
             .type("Boolean")
-            .category("DEBUG")
+            .category("INTERNAL")
             .def("true")
             .help("Enable or disable truffle compilation."),
 
         option("TruffleCompileImmediately")
             .type("Boolean")
-            .category("DEBUG")
+            .category("INTERNAL")
             .def("false")
             .help("Compile immediately to test truffle compiler"),
 
@@ -57,6 +58,13 @@ public class Option {
             .category("USER")
             .def("1000")
             .help("Compile call target when call count exceeds this threshold.")
+            .javadocExtra("Deprecated: Use {@code PolyglotCompilerOptions.CompilationThreshold} instead."),
+
+        option("TruffleFirstTierCompilationThreshold")
+            .type("Integer")
+            .category("EXPERT")
+            .def("100")
+            .help("Compile call target in the first tier when call count exceeds this threshold.")
             .javadocExtra("Deprecated: Use {@code PolyglotCompilerOptions.CompilationThreshold} instead."),
 
         option("TruffleFirstTierMinInvokeThreshold")
@@ -92,9 +100,9 @@ public class Option {
 
         option("TruffleFunctionInlining")
             .type("Boolean")
-            .category("DEBUG")
+            .category("INTERNAL")
             .def("true")
-            .help("Enable automatic inlining of call targets"),
+            .help("Enable automatic inlining of call targets"), // COMPILER
 
         option("TruffleInliningMaxCallerSize")
             .type("Integer")
@@ -116,45 +124,45 @@ public class Option {
 
         option("TruffleOSR")
             .type("Boolean")
-            .category("DEBUG")
+            .category("INTERNAL")
             .def("true")
             .help("Enable on stack replacement for Truffle loops."),
 
         option("TruffleOSRCompilationThreshold")
             .type("Integer")
-            .category("DEBUG")
+            .category("INTERNAL")
             .def("100000")
             .help("Number of loop iterations until on-stack-replacement compilation is triggered."),
 
         option("TruffleSplittingMaxCalleeSize")
             .type("Integer")
-            .category("DEBUG")
+            .category("INTERNAL")
             .def("100")
             .help("Disable call target splitting if tree size exceeds this limit"),
 
         option("TruffleSplittingGrowthLimit")
             .type("Double")
-            .category("DEBUG")
+            .category("INTERNAL")
             .def("1.5")
             .help("Disable call target splitting if the number of nodes created by splitting exceeds this factor times node count"),
 
         option("TruffleSplittingMaxNumberOfSplitNodes")
             .type("Integer")
-            .category("DEBUG")
+            .category("INTERNAL")
             .def("500_000")
             .help("Disable call target splitting if number of nodes created by splitting exceeds this limit"),
 
-        option("TruffleExperimentalSplittingMaxPropagationDepth")
+        option("TruffleSplittingMaxPropagationDepth")
             .type("Integer")
-            .category("DEBUG")
+            .category("INTERNAL")
             .def("5")
             .help("Propagate info about a polymorphic specialize through maximum this many call targets"),
 
-        option("TruffleExperimentalSplitting")
+        option("TruffleLegacySplitting")
             .type("Boolean")
             .category("EXPERT")
             .def("false")
-            .help("Use the splitting strategy that relies on language implementations reporting polymorphic specializations. Disables forced splits."),
+            .help("Use legacy splitting heuristic. This option will be removed."),
 
         option("TruffleTraceSplittingSummary")
             .type("Boolean")
@@ -162,17 +170,23 @@ public class Option {
             .def("false")
             .help("Used for debugging the splitting implementation. Prints splitting summary directly to stdout on shutdown"),
 
-        option("TruffleExperimentalSplittingDumpDecisions")
+        option("TruffleSplittingTraceEvents")
+            .type("Boolean")
+            .category("EXPERT")
+            .def("false")
+            .help("Trace details of splitting events and decisions."),
+
+        option("TruffleSplittingDumpDecisions")
             .type("Boolean")
             .category("EXPERT")
             .def("false")
             .help("Dumps to IGV information on polymorphic events"),
 
-        option("TruffleExperimentalSplittingAllowForcedSplits")
+        option("TruffleSplittingAllowForcedSplits")
             .type("Boolean")
             .category("EXPERT")
             .def("true")
-            .help("Should forced splits be allowed (when using experimental splitting)"),
+            .help("Should forced splits be allowed."),
 
         option("TruffleBackgroundCompilation")
             .type("Boolean")
@@ -188,124 +202,124 @@ public class Option {
 
         option("TruffleReturnTypeSpeculation")
             .type("Boolean")
-            .category("DEBUG")
+            .category("INTERNAL")
             .def("true"),
 
         option("TruffleArgumentTypeSpeculation")
             .type("Boolean")
-            .category("DEBUG")
+            .category("INTERNAL")
             .def("true"),
 
         option("TruffleUseFrameWithoutBoxing")
             .type("Boolean")
-            .category("DEBUG")
-            .def("true"),
+            .category("INTERNAL")
+            .def("true"), // COMPILER
 
         option("TraceTruffleCompilation")
             .type("Boolean")
-            .category("DEBUG")
+            .category("INTERNAL")
             .def("false")
             .help("Print information for compilation results"),
 
         option("TraceTruffleCompilationDetails")
             .type("Boolean")
-            .category("DEBUG")
+            .category("INTERNAL")
             .def("false")
             .help("Print information for compilation queuing"),
 
         option("TraceTruffleCompilationPolymorphism")
             .type("Boolean")
-            .category("DEBUG")
+            .category("INTERNAL")
             .def("false")
             .help("Print all polymorphic and generic nodes after each compilation"),
 
         option("TraceTruffleCompilationAST")
             .type("Boolean")
-            .category("DEBUG")
+            .category("INTERNAL")
             .def("false")
             .help("Print the entire AST after each compilation"),
 
         option("TraceTruffleCompilationCallTree")
             .type("Boolean")
-            .category("DEBUG")
+            .category("INTERNAL")
             .def("false")
             .help("Print the inlined call tree for each compiled method"),
 
         option("TraceTruffleExpansionSource")
             .type("Boolean")
-            .category("DEBUG")
+            .category("INTERNAL")
             .def("false")
             .help("Print source sections for printed expansion trees"),
 
         option("TruffleCompilationExceptionsAreFatal")
             .type("Boolean")
-            .category("DEBUG")
+            .category("INTERNAL")
             .def("false")
-            .help("Treat compilation exceptions as fatal exceptions that will exit the application"),
+            .help("Treat compilation exceptions as fatal exceptions that will exit the application"), // COMPILER
 
         option("TrufflePerformanceWarningsAreFatal")
             .type("Boolean")
-            .category("DEBUG")
+            .category("INTERNAL")
             .def("false")
-            .help("Treat performance warnings as fatal occurrences that will exit the applications"),
+            .help("Treat performance warnings as fatal occurrences that will exit the applications"), // COMPILER
 
         option("TruffleCompilationExceptionsArePrinted")
             .type("Boolean")
-            .category("DEBUG")
+            .category("INTERNAL")
             .def("true")
             .help("Prints the exception stack trace for compilation exceptions"),
 
         option("TruffleCompilationExceptionsAreThrown")
             .type("Boolean")
-            .category("DEBUG")
+            .category("INTERNAL")
             .def("false")
             .help("Treat compilation exceptions as thrown runtime exceptions"),
 
         option("TraceTruffleInlining")
             .type("Boolean")
-            .category("DEBUG")
+            .category("INTERNAL")
             .def("false")
             .help("Print information for inlining for each compilation."),
 
         option("TraceTruffleSplitting")
             .type("Boolean")
-            .category("DEBUG")
+            .category("INTERNAL")
             .def("false")
             .help("Print information for each splitted call site."),
 
         option("TraceTruffleAssumptions")
             .type("Boolean")
-            .category("DEBUG")
+            .category("INTERNAL")
             .def("false")
             .help("Print stack trace on assumption invalidation"),
 
         option("TraceTruffleStackTraceLimit")
             .type("Integer")
-            .category("DEBUG")
+            .category("INTERNAL")
             .def("20")
-            .help("Number of stack trace elements printed by TraceTruffleTransferToInterpreter and TraceTruffleAssumptions"),
+            .help("Number of stack trace elements printed by TraceTruffleTransferToInterpreter and TraceTruffleAssumptions"), // COMPILER
 
         option("TruffleCompilationStatistics")
             .type("Boolean")
-            .category("DEBUG")
+            .category("INTERNAL")
             .def("false")
             .help("Print Truffle compilation statistics at the end of a run."),
 
         option("TruffleCompilationStatisticDetails")
             .type("Boolean")
-            .category("DEBUG")
+            .category("INTERNAL")
             .def("false")
             .help("Print additional more verbose Truffle compilation statistics at the end of a run."),
 
         option("TruffleProfilingEnabled")
             .type("Boolean")
-            .category("DEBUG")
+            .category("INTERNAL")
             .def("true")
             .help("Enable/disable builtin profiles in com.oracle.truffle.api.profiles."),
 
         option("TraceTruffleTransferToInterpreter")
             .type("Boolean")
-            .category("DEBUG")
+            .category("INTERNAL")
             .def("false")
             .help("Print stack trace on transfer to interpreter."),
 

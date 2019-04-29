@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2015, 2016, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2015, 2018, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -137,6 +137,11 @@ public class AMD64Binary {
                 opcode.emit(masm, size, asRegister(result), (AMD64Address) crb.asAddress(input));
             }
         }
+
+        public AMD64RMOp getOpcode() {
+            return opcode;
+        }
+
     }
 
     /**
@@ -263,6 +268,11 @@ public class AMD64Binary {
             }
             return false;
         }
+
+        public AMD64RMOp getOpcode() {
+            return opcode;
+        }
+
     }
 
     /**

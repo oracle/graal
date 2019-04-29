@@ -79,6 +79,7 @@ import com.oracle.truffle.sl.builtins.SLPrintlnBuiltinFactory;
 import com.oracle.truffle.sl.builtins.SLReadlnBuiltin;
 import com.oracle.truffle.sl.builtins.SLReadlnBuiltinFactory;
 import com.oracle.truffle.sl.builtins.SLStackTraceBuiltinFactory;
+import com.oracle.truffle.sl.builtins.SLWrapPrimitiveBuiltinFactory;
 import com.oracle.truffle.sl.nodes.SLExpressionNode;
 import com.oracle.truffle.sl.nodes.SLRootNode;
 import com.oracle.truffle.sl.nodes.local.SLReadArgumentNode;
@@ -94,7 +95,7 @@ import com.oracle.truffle.sl.nodes.local.SLReadArgumentNode;
 public final class SLContext {
 
     private static final Source BUILTIN_SOURCE = Source.newBuilder(SLLanguage.ID, "", "SL builtin").build();
-    private static final Layout LAYOUT = Layout.createLayout();
+    static final Layout LAYOUT = Layout.createLayout();
 
     private final Env env;
     private final BufferedReader input;
@@ -172,6 +173,7 @@ public final class SLContext {
         installBuiltin(SLHasSizeBuiltinFactory.getInstance());
         installBuiltin(SLIsExecutableBuiltinFactory.getInstance());
         installBuiltin(SLIsNullBuiltinFactory.getInstance());
+        installBuiltin(SLWrapPrimitiveBuiltinFactory.getInstance());
     }
 
     public void installBuiltin(NodeFactory<? extends SLBuiltinNode> factory) {
@@ -220,7 +222,6 @@ public final class SLContext {
     /*
      * Methods for object creation / object property access.
      */
-
     public AllocationReporter getAllocationReporter() {
         return allocationReporter;
     }
@@ -229,15 +230,15 @@ public final class SLContext {
      * Allocate an empty object. All new objects initially have no properties. Properties are added
      * when they are first stored, i.e., the store triggers a shape change of the object.
      */
-    public DynamicObject createObject() {
+    public DynamicObject createObject(AllocationReporter reporter) {
         DynamicObject object = null;
-        allocationReporter.onEnter(null, 0, AllocationReporter.SIZE_UNKNOWN);
+        reporter.onEnter(null, 0, AllocationReporter.SIZE_UNKNOWN);
         object = emptyShape.newInstance();
-        allocationReporter.onReturnValue(object, 0, AllocationReporter.SIZE_UNKNOWN);
+        reporter.onReturnValue(object, 0, AllocationReporter.SIZE_UNKNOWN);
         return object;
     }
 
-    public static boolean isSLObject(TruffleObject value) {
+    public static boolean isSLObject(Object value) {
         /*
          * LAYOUT.getType() returns a concrete implementation class, i.e., a class that is more
          * precise than the base class DynamicObject. This makes the type check faster.

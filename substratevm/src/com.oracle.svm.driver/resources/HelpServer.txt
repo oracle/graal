@@ -11,4 +11,6 @@ Server options help:
     --server-session=<custom-session-name>
                           use custom session name instead of system provided
                           session ID of the calling process
+
+    --verbose-server      enable verbose output for image-build server handling
  

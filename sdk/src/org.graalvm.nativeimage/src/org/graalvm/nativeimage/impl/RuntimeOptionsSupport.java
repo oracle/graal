@@ -40,6 +40,9 @@
  */
 package org.graalvm.nativeimage.impl;
 
+import java.util.EnumSet;
+
+import org.graalvm.nativeimage.RuntimeOptions.OptionClass;
 import org.graalvm.options.OptionDescriptors;
 
 public interface RuntimeOptionsSupport {
@@ -47,7 +50,5 @@ public interface RuntimeOptionsSupport {
 
     <T> T get(String optionName);
 
-    OptionDescriptors getOptions();
-
-    void runStartupHooks();
+    OptionDescriptors getOptions(EnumSet<OptionClass> classes);
 }

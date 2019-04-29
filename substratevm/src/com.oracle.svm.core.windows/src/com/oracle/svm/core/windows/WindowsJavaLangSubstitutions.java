@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2018, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2019, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -53,17 +53,7 @@ final class Target_java_lang_System {
 
     @Substitute
     public static String mapLibraryName(String libname) {
-        return "lib" + libname + ".dll";
-    }
-}
-
-@TargetClass(className = "java.lang.Shutdown")
-@Platforms(Platform.WINDOWS.class)
-final class Target_java_lang_Shutdown {
-
-    @SuppressWarnings("unused")
-    @Substitute
-    static void halt0(int status) {
+        return libname + ".dll";
     }
 }
 

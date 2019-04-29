@@ -80,6 +80,8 @@ public class VerifierInstrument extends TruffleInstrument implements InlineVerif
     private InlineScriptFactory inlineScriptFactory;
     private EventBinding<InlineScriptFactory> inlineBinding;
 
+    private static final ThreadLocal<Boolean> ENTERED = new ThreadLocal<>();
+
     @Override
     protected void onCreate(Env instrumentEnv) {
         this.env = instrumentEnv;
@@ -97,10 +99,28 @@ public class VerifierInstrument extends TruffleInstrument implements InlineVerif
                             SourceSectionFilter.newBuilder().tagIs(StatementTag.class, CallTag.class).build(),
                             inlineScriptFactory);
         } else if (inlineBinding != null) {
+            if (!inlineScriptFactory.snippetExecuted) {
+                Assert.fail("Inline snippet was not executed.");
+            }
             inlineBinding.dispose();
             inlineBinding = null;
             inlineScriptFactory = null;
         }
+    }
+
+    @TruffleBoundary
+    private static void leave() {
+        ENTERED.set(Boolean.FALSE);
+    }
+
+    @TruffleBoundary
+    private static void enter() {
+        ENTERED.set(Boolean.TRUE);
+    }
+
+    @TruffleBoundary
+    private static boolean isEntered() {
+        return Boolean.TRUE == ENTERED.get();
     }
 
     private class InlineScriptFactory implements ExecutionEventNodeFactory {
@@ -108,6 +128,7 @@ public class VerifierInstrument extends TruffleInstrument implements InlineVerif
         private final Source snippet;
         private final Predicate<SourceSection> predicate;
         private final InlineVerifier.ResultVerifier resultVerifier;
+        volatile boolean snippetExecuted = false;
 
         InlineScriptFactory(String languageId, InlineSnippet inlineSnippet, InlineVerifier.ResultVerifier verifier) {
             CharSequence code = inlineSnippet.getCode();
@@ -118,11 +139,12 @@ public class VerifierInstrument extends TruffleInstrument implements InlineVerif
 
         @Override
         public ExecutionEventNode create(EventContext context) {
-            if (predicate == null || canRunAt(context.getInstrumentedSourceSection())) {
-                return new InlineScriptNode(context);
-            } else {
-                return null;
+            if (!isEntered()) {
+                if (predicate == null || canRunAt(context.getInstrumentedSourceSection())) {
+                    return new InlineScriptNode(context);
+                }
             }
+            return null;
         }
 
         private boolean canRunAt(com.oracle.truffle.api.source.SourceSection ss) {
@@ -166,7 +188,9 @@ public class VerifierInstrument extends TruffleInstrument implements InlineVerif
                         throw t;
                     }
                     insert(inlineNode);
+                    snippetExecuted = true;
                 }
+                enter();
                 try {
                     Object ret = inlineNode.execute(frame);
                     if (resultVerifier != null) {
@@ -178,6 +202,8 @@ public class VerifierInstrument extends TruffleInstrument implements InlineVerif
                     CompilerDirectives.transferToInterpreter();
                     verify(t);
                     throw t;
+                } finally {
+                    leave();
                 }
             }
 

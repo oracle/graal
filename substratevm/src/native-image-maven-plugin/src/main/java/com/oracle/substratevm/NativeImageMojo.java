@@ -59,6 +59,7 @@ import org.codehaus.plexus.util.xml.Xpp3Dom;
 import org.graalvm.compiler.options.OptionDescriptor;
 import org.graalvm.compiler.options.OptionDescriptors;
 
+import com.oracle.svm.core.OS;
 import com.oracle.svm.driver.NativeImage;
 
 @Mojo(name = "native-image", defaultPhase = LifecyclePhase.PACKAGE)
@@ -77,8 +78,14 @@ public class NativeImageMojo extends AbstractMojo {
     @Parameter(property = "mainClass")//
     private String mainClass;
 
+    @Parameter(property = "imageName")//
+    private String imageName;
+
     @Parameter(property = "buildArgs")//
     private String buildArgs;
+
+    @Parameter(property = "skip", defaultValue = "false")//
+    private boolean skip;
 
     private Logger tarGzLogger = new AbstractLogger(Logger.LEVEL_WARN, "NativeImageMojo.tarGzLogger") {
         @Override
@@ -142,6 +149,11 @@ public class NativeImageMojo extends AbstractMojo {
     }
 
     public void execute() throws MojoExecutionException {
+        if (skip) {
+            getLog().info("Skipping native-image generation (parameter 'skip' is true).");
+            return;
+        }
+
         classpath.clear();
         List<String> imageClasspathScopes = Arrays.asList(Artifact.SCOPE_COMPILE, Artifact.SCOPE_RUNTIME);
         project.setArtifactFilter(artifact -> imageClasspathScopes.contains(artifact.getScope()));
@@ -151,7 +163,7 @@ public class NativeImageMojo extends AbstractMojo {
         addClasspath(project.getArtifact());
         String classpathStr = classpath.stream().map(Path::toString).collect(Collectors.joining(File.pathSeparator));
 
-        Path nativeImageExecutable = getJavaHome().resolve("bin/native-image");
+        Path nativeImageExecutable = getJavaHome().resolve("bin").resolve(withExeSuffix("native-image"));
         if (Files.isExecutable(nativeImageExecutable)) {
             String nativeImageExecutableVersion = "Unknown";
             Process versionCheckProcess = null;
@@ -241,7 +253,18 @@ public class NativeImageMojo extends AbstractMojo {
         }
     }
 
+    private String withExeSuffix(String basename) {
+        if (OS.getCurrent() == OS.WINDOWS) {
+            return basename + ".exe";
+        }
+        return basename;
+    }
+
     private void addClasspath(Artifact artifact) throws MojoExecutionException {
+        if (!"jar".equals(artifact.getType())) {
+            getLog().warn("Ignoring non-jar type ImageClasspath Entry " + artifact);
+            return;
+        }
         File artifactFile = artifact.getFile();
         if (artifactFile == null) {
             throw new MojoExecutionException("Missing jar-file for " + artifact + ". Ensure " + plugin.getArtifactId() + " runs in package phase.");
@@ -320,9 +343,6 @@ public class NativeImageMojo extends AbstractMojo {
     }
 
     private List<String> getBuildArgs() {
-        if (mainClass != null && mainClass.isEmpty()) {
-            mainClass = null;
-        }
         if (mainClass == null) {
             mainClass = consumeExecutionsNodeValue("org.apache.maven.plugins:maven-shade-plugin", "transformers", "transformer", "mainClass");
         }
@@ -334,11 +354,14 @@ public class NativeImageMojo extends AbstractMojo {
         }
 
         List<String> list = new ArrayList<>();
-        if (mainClass != null) {
+        if (buildArgs != null && !buildArgs.isEmpty()) {
+            list.addAll(Arrays.asList(buildArgs.split("\\s+")));
+        }
+        if (mainClass != null && !mainClass.equals(".")) {
             list.add("-H:Class=" + mainClass);
         }
-        if (buildArgs != null && !buildArgs.isEmpty()) {
-            list.addAll(Arrays.asList(buildArgs.split(" ")));
+        if (imageName != null) {
+            list.add("-H:Name=" + imageName);
         }
         return list;
     }
@@ -369,7 +392,7 @@ public class NativeImageMojo extends AbstractMojo {
 
         @Override
         public Path getJavaExecutable() {
-            return getJavaHome().resolve("bin/java");
+            return getJavaHome().resolve("bin").resolve(withExeSuffix("java"));
         }
 
         private List<Path> getSelectedArtifactPaths(String groupId, String... artifactIds) {

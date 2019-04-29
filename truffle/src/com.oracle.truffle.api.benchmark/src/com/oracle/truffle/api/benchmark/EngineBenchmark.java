@@ -40,10 +40,6 @@
  */
 package com.oracle.truffle.api.benchmark;
 
-import java.util.Collections;
-import java.util.function.Function;
-import java.util.function.Supplier;
-
 import org.graalvm.polyglot.Context;
 import org.graalvm.polyglot.Engine;
 import org.graalvm.polyglot.Source;
@@ -59,21 +55,18 @@ import org.openjdk.jmh.annotations.Warmup;
 
 import com.oracle.truffle.api.CallTarget;
 import com.oracle.truffle.api.CompilerDirectives;
-import com.oracle.truffle.api.CompilerDirectives.CompilationFinal;
-import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
-import com.oracle.truffle.api.Scope;
 import com.oracle.truffle.api.Truffle;
 import com.oracle.truffle.api.TruffleLanguage;
+import com.oracle.truffle.api.TruffleLanguage.ContextReference;
 import com.oracle.truffle.api.TruffleLanguage.Env;
-import com.oracle.truffle.api.frame.Frame;
+import com.oracle.truffle.api.dsl.Cached;
+import com.oracle.truffle.api.dsl.CachedContext;
 import com.oracle.truffle.api.frame.VirtualFrame;
-import com.oracle.truffle.api.interop.ForeignAccess;
-import com.oracle.truffle.api.interop.KeyInfo;
-import com.oracle.truffle.api.interop.Message;
-import com.oracle.truffle.api.interop.MessageResolution;
-import com.oracle.truffle.api.interop.Resolve;
+import com.oracle.truffle.api.interop.InteropLibrary;
 import com.oracle.truffle.api.interop.TruffleObject;
-import com.oracle.truffle.api.nodes.Node;
+import com.oracle.truffle.api.library.ExportLibrary;
+import com.oracle.truffle.api.library.ExportMessage;
+import com.oracle.truffle.api.nodes.ExplodeLoop;
 import com.oracle.truffle.api.nodes.RootNode;
 
 @Warmup(iterations = 10)
@@ -82,7 +75,7 @@ public class EngineBenchmark extends TruffleBenchmark {
 
     private static final String TEST_LANGUAGE = "benchmark-test-language";
 
-    private static final String CONTEXT_LOOKUP_SOURCE = "contextLookup";
+    private static final String CONTEXT_LOOKUP = "contextLookup";
 
     @Benchmark
     public Object createEngine() {
@@ -96,7 +89,7 @@ public class EngineBenchmark extends TruffleBenchmark {
 
     @State(org.openjdk.jmh.annotations.Scope.Thread)
     public static class ContextLookupSingleContext {
-        final Source source = Source.create(TEST_LANGUAGE, CONTEXT_LOOKUP_SOURCE);
+        final Source source = Source.newBuilder(TEST_LANGUAGE, "1", CONTEXT_LOOKUP).buildLiteral();
         final Context context = Context.create(TEST_LANGUAGE);
         final Value value = context.eval(source);
 
@@ -122,14 +115,16 @@ public class EngineBenchmark extends TruffleBenchmark {
 
     @State(org.openjdk.jmh.annotations.Scope.Thread)
     public static class ContextLookupMultiContext {
-        final Source source = Source.create(TEST_LANGUAGE, CONTEXT_LOOKUP_SOURCE);
+        final Source singleLookup = Source.newBuilder(TEST_LANGUAGE, "1", CONTEXT_LOOKUP).buildLiteral();
+        final Source multiLookup = Source.newBuilder(TEST_LANGUAGE, "50", CONTEXT_LOOKUP).buildLiteral();
         final Engine engine = Engine.create();
         final Context context1 = Context.newBuilder(TEST_LANGUAGE).engine(engine).build();
         final Context context2 = Context.newBuilder(TEST_LANGUAGE).engine(engine).build();
         final Context context3 = Context.newBuilder(TEST_LANGUAGE).engine(engine).build();
-        final Value value1 = context1.eval(source);
-        final Value value2 = context2.eval(source);
-        final Value value3 = context3.eval(source);
+        final Value value1 = context1.eval(singleLookup);
+        final Value value2 = context2.eval(singleLookup);
+        final Value value3 = context3.eval(singleLookup);
+        final Value multiLookup1 = context1.eval(multiLookup);
 
         public ContextLookupMultiContext() {
         }
@@ -140,6 +135,15 @@ public class EngineBenchmark extends TruffleBenchmark {
             context2.close();
             context3.close();
         }
+    }
+
+    @Benchmark
+    public void lookupContextMultiContextManyLookups(ContextLookupMultiContext state) {
+        state.context1.enter();
+        for (int i = 0; i < CONTEXT_LOOKUP_ITERATIONS; i++) {
+            state.multiLookup1.executeVoid();
+        }
+        state.context1.leave();
     }
 
     @Benchmark
@@ -154,7 +158,7 @@ public class EngineBenchmark extends TruffleBenchmark {
     @State(org.openjdk.jmh.annotations.Scope.Benchmark)
     public static class ContextLookupMultiThread {
 
-        final Source source = Source.create(TEST_LANGUAGE, CONTEXT_LOOKUP_SOURCE);
+        final Source source = Source.newBuilder(TEST_LANGUAGE, "1", CONTEXT_LOOKUP).buildLiteral();
         final Context context = Context.create(TEST_LANGUAGE);
         final Value value = context.eval(source);
 
@@ -180,7 +184,7 @@ public class EngineBenchmark extends TruffleBenchmark {
 
     @State(org.openjdk.jmh.annotations.Scope.Benchmark)
     public static class ContextLookupMultiThreadMultiContext {
-        final Source source = Source.create(TEST_LANGUAGE, CONTEXT_LOOKUP_SOURCE);
+        final Source source = Source.newBuilder(TEST_LANGUAGE, "1", CONTEXT_LOOKUP).buildLiteral();
         final Engine engine = Engine.create();
         final Context context1 = Context.newBuilder(TEST_LANGUAGE).engine(engine).build();
         final Context context2 = Context.newBuilder(TEST_LANGUAGE).engine(engine).build();
@@ -220,7 +224,7 @@ public class EngineBenchmark extends TruffleBenchmark {
         final Context context = Context.create(TEST_LANGUAGE);
         final Value value = context.eval(source);
         final Integer intValue = 42;
-        final Value hostValue = context.getPolyglotBindings().getMember("context");
+        final Value hostValue = context.asValue(new Object());
 
         @TearDown
         public void tearDown() {
@@ -282,9 +286,11 @@ public class EngineBenchmark extends TruffleBenchmark {
     public static class CallTargetCallState {
         final Source source = Source.create(TEST_LANGUAGE, "");
         final Context context = Context.create(TEST_LANGUAGE);
-        final Value hostValue = context.getBindings(TEST_LANGUAGE).getMember("context");
+        {
+            context.initialize(TEST_LANGUAGE);
+        }
+        final Value hostValue = context.asValue(new Object());
         final BenchmarkContext internalContext = hostValue.asHostObject();
-        final Node executeNode = Message.EXECUTE.createNode();
         final Integer intValue = 42;
         final CallTarget callTarget = Truffle.getRuntime().createCallTarget(new RootNode(null) {
 
@@ -376,18 +382,11 @@ public class EngineBenchmark extends TruffleBenchmark {
 
         @Override
         protected BenchmarkContext createContext(Env env) {
-            BenchmarkContext context = new BenchmarkContext(env, new Function<TruffleObject, Scope>() {
-                @Override
-                public Scope apply(TruffleObject obj) {
-                    return Scope.newBuilder("Benchmark top scope", obj).build();
-                }
-            });
-            return context;
+            return new BenchmarkContext(env);
         }
 
         @Override
         protected void initializeContext(BenchmarkContext context) throws Exception {
-            ForeignAccess.sendWrite(Message.WRITE.createNode(), (TruffleObject) context.env.getPolyglotBindings(), "context", context.env.asGuestValue(context));
         }
 
         @Override
@@ -397,205 +396,158 @@ public class EngineBenchmark extends TruffleBenchmark {
 
         @Override
         protected CallTarget parse(ParsingRequest request) throws Exception {
-            if (request.getSource().getCharacters().equals(CONTEXT_LOOKUP_SOURCE)) {
-                BenchmarkObject object = new BenchmarkObject();
-                object.runOnExecute = new Supplier<Object>() {
-                    final ContextReference<BenchmarkContext> context = getContextReference();
-
-                    public Object get() {
-                        return context.get();
-                    }
-
-                };
-                return Truffle.getRuntime().createCallTarget(RootNode.createConstantNode(object));
+            Object result;
+            if (request.getSource().getName().equals(CONTEXT_LOOKUP)) {
+                result = new BenchmarkObjectLookup(Integer.parseInt(request.getSource().getCharacters().toString()));
             } else {
-                return Truffle.getRuntime().createCallTarget(RootNode.createConstantNode(getCurrentContext(BenchmarkTestLanguage.class).object));
+                result = getCurrentContext(BenchmarkTestLanguage.class).object;
             }
-        }
-
-        @Override
-        protected Iterable<Scope> findLocalScopes(BenchmarkContext context, Node node, Frame frame) {
-            if (node != null) {
-                return super.findLocalScopes(context, node, frame);
-            } else {
-                return context.topScopes;
-            }
-        }
-
-        @Override
-        protected Iterable<Scope> findTopScopes(BenchmarkContext context) {
-            return context.topScopes;
+            return Truffle.getRuntime().createCallTarget(RootNode.createConstantNode(result));
         }
 
         @Override
         protected boolean isObjectOfLanguage(Object object) {
-            return object instanceof BenchmarkObject;
+            return object instanceof BenchmarkObjectConstant;
         }
 
     }
 
-    static class BenchmarkContext {
+    static final class BenchmarkContext {
 
         final Env env;
-        final BenchmarkObject object = new BenchmarkObject();
-        final Iterable<Scope> topScopes;
+        final BenchmarkObjectConstant object = new BenchmarkObjectConstant();
+        final int index = 0;
 
-        BenchmarkContext(Env env, Function<TruffleObject, Scope> scopeProvider) {
+        BenchmarkContext(Env env) {
             this.env = env;
-            topScopes = Collections.singleton(scopeProvider.apply(new TopScopeObject(this)));
+        }
+
+    }
+
+    @ExportLibrary(InteropLibrary.class)
+    @SuppressWarnings({"static-method", "unused", "hiding"})
+    public static class BenchmarkObjectLookup extends BenchmarkObjectConstant {
+
+        final int iterations;
+
+        BenchmarkObjectLookup(int iterations) {
+            this.iterations = iterations;
+        }
+
+        @ExportMessage
+        @ExplodeLoop
+        final Object execute(Object[] arguments,
+                        @Cached("this.iterations") int cachedIterations,
+                        @CachedContext(BenchmarkTestLanguage.class) ContextReference<BenchmarkContext> context) {
+            int sum = 0;
+            for (int i = 0; i < cachedIterations; i++) {
+                sum += context.get().index;
+            }
+            // usage value so it is not collected.
+            if (sum > 0) {
+                CompilerDirectives.transferToInterpreter();
+            }
+            return BenchmarkObjectConstant.constant;
         }
     }
 
-    public static class BenchmarkObject implements TruffleObject {
+    @ExportLibrary(InteropLibrary.class)
+    @SuppressWarnings({"static-method", "unused", "hiding"})
+    public static class BenchmarkObjectConstant implements TruffleObject {
 
         private static final Integer constant = 42;
 
         Object value = 42;
         long longValue = 42L;
-        Supplier<Object> runOnExecute = () -> {
+
+        @ExportMessage
+        protected final boolean hasMembers() {
+            return true;
+        }
+
+        @ExportMessage
+        protected final boolean hasArrayElements() {
+            return true;
+        }
+
+        @ExportMessage
+        protected final boolean isExecutable() {
+            return true;
+        }
+
+        @ExportMessage
+        protected final Object getMembers(boolean includeInternal) {
+            return null;
+        }
+
+        @ExportMessage
+        protected final Object readArrayElement(long index) {
+            return value;
+        }
+
+        @ExportMessage
+        protected final void writeArrayElement(long index, Object value) {
+            this.value = value;
+        }
+
+        @ExportMessage
+        protected final boolean isArrayElementInsertable(long index) {
+            return true;
+        }
+
+        @ExportMessage
+        protected final long getArraySize() {
+            return 0L;
+        }
+
+        @ExportMessage
+        protected final boolean isArrayElementReadable(long index) {
+            return true;
+        }
+
+        @ExportMessage
+        protected final boolean isArrayElementModifiable(long index) {
+            return true;
+        }
+
+        @ExportMessage
+        protected final Object execute(Object[] arguments) {
             return constant;
-        };
-
-        public ForeignAccess getForeignAccess() {
-            return BenchmarkObjectMRForeign.ACCESS;
         }
 
-        public static boolean isInstance(TruffleObject obj) {
-            return obj instanceof BenchmarkObject;
+        @ExportMessage
+        protected final boolean isMemberReadable(String member) {
+            return true;
         }
 
-    }
-
-    static final class TopScopeObject implements TruffleObject {
-
-        private final BenchmarkContext context;
-
-        private TopScopeObject(BenchmarkContext context) {
-            this.context = context;
+        @ExportMessage
+        protected final boolean isMemberModifiable(String member) {
+            return true;
         }
 
-        @Override
-        public ForeignAccess getForeignAccess() {
-            return TopScopeObjectMessageResolutionForeign.ACCESS;
+        @ExportMessage
+        protected final boolean isMemberInsertable(String member) {
+            return true;
         }
 
-        public static boolean isInstance(TruffleObject obj) {
-            return obj instanceof TopScopeObject;
+        @ExportMessage
+        protected final void writeMember(String member, Object value) {
+            this.value = value;
         }
 
-        @MessageResolution(receiverType = TopScopeObject.class)
-        static class TopScopeObjectMessageResolution {
-
-            @Resolve(message = "READ")
-            abstract static class VarsMapReadNode extends Node {
-
-                @TruffleBoundary
-                public Object access(TopScopeObject ts, String name) {
-                    if ("context".equals(name)) {
-                        return ts.context.env.asGuestValue(ts.context);
-                    } else {
-                        return ts.context.env.asGuestValue(ts.context.object);
-                    }
-                }
-            }
-
-            @Resolve(message = "KEY_INFO")
-            abstract static class VarsMapKeyInfoNode extends Node {
-
-                public int access(@SuppressWarnings("unused") TopScopeObject ts, String propertyName) {
-                    if ("context".equals(propertyName)) {
-                        return KeyInfo.READABLE;
-                    }
-                    return 0;
-                }
-            }
-
-            @Resolve(message = "KEYS")
-            abstract static class VarsMapKeysNode extends Node {
-
-                @TruffleBoundary
-                public Object access(TopScopeObject ts) {
-                    return ts.context.env.asGuestValue(new String[]{"context"});
-                }
-            }
-        }
-    }
-
-    @MessageResolution(receiverType = BenchmarkObject.class)
-    @SuppressWarnings("unused")
-    static class BenchmarkObjectMR {
-
-        @Resolve(message = "READ")
-        abstract static class ReadNode extends Node {
-
-            public Object access(BenchmarkObject obj, String name) {
-                return obj.value;
-            }
-
-            public Object access(BenchmarkObject obj, Number name) {
-                return obj.value;
-            }
+        @ExportMessage
+        protected final Object readMember(String member) {
+            return value;
         }
 
-        @Resolve(message = "EXECUTE")
-        abstract static class ExecuteNode extends Node {
-
-            @CompilationFinal private Supplier<Object> runOnExecute;
-
-            public Object access(Object obj, Object[] args) {
-                if (runOnExecute == null) {
-                    CompilerDirectives.transferToInterpreterAndInvalidate();
-                    runOnExecute = ((BenchmarkObject) obj).runOnExecute;
-                }
-                return runOnExecute.get();
-            }
+        @ExportMessage
+        protected final boolean isPointer() {
+            return true;
         }
 
-        @Resolve(message = "IS_EXECUTABLE")
-        abstract static class IsExecutableNode extends Node {
-
-            public boolean access(Object obj) {
-                return true;
-            }
-        }
-
-        @Resolve(message = "HAS_SIZE")
-        abstract static class HasSizeNode extends Node {
-
-            public boolean access(Object obj) {
-                return true;
-            }
-        }
-
-        @Resolve(message = "IS_POINTER")
-        abstract static class IsNativeNode extends Node {
-
-            public boolean access(Object obj) {
-                return true;
-            }
-        }
-
-        @Resolve(message = "AS_POINTER")
-        abstract static class AsPointerNode extends Node {
-
-            public long access(BenchmarkObject obj) {
-                return obj.longValue;
-            }
-        }
-
-        @Resolve(message = "WRITE")
-        abstract static class WriteNode extends Node {
-
-            public Object access(BenchmarkObject obj, String name, Object value) {
-                obj.value = value;
-                return value;
-            }
-
-            public Object access(BenchmarkObject obj, Number index, Object value) {
-                obj.value = value;
-                return value;
-            }
-
+        @ExportMessage
+        protected final long asPointer() {
+            return longValue;
         }
 
     }

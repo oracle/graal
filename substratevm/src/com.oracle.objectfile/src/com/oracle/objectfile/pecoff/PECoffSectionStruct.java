@@ -26,6 +26,7 @@
 package com.oracle.objectfile.pecoff;
 
 import java.nio.ByteBuffer;
+import java.nio.charset.StandardCharsets;
 
 import com.oracle.objectfile.pecoff.PECoff.IMAGE_SECTION_HEADER;
 
@@ -39,7 +40,7 @@ final class PECoffSectionStruct {
         section = PECoffByteBuffer.allocate(IMAGE_SECTION_HEADER.totalsize);
 
         // Copy only Max allowed bytes to Section Entry
-        byte[] sectionName = sectName.getBytes();
+        byte[] sectionName = sectName.getBytes(StandardCharsets.UTF_8);
         int max = sectionName.length <= IMAGE_SECTION_HEADER.Name.sz ? sectionName.length : IMAGE_SECTION_HEADER.Name.sz;
 
         assert !(sectAlign < 1 || sectAlign > 1024 || (sectAlign & (sectAlign - 1)) != 0) : "section alignment is not valid: " + sectAlign;

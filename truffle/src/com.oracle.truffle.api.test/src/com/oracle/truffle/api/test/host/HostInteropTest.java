@@ -76,12 +76,7 @@ import com.oracle.truffle.api.CallTarget;
 import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.Truffle;
 import com.oracle.truffle.api.frame.VirtualFrame;
-import com.oracle.truffle.api.interop.ForeignAccess;
 import com.oracle.truffle.api.interop.InteropException;
-import com.oracle.truffle.api.interop.KeyInfo;
-import com.oracle.truffle.api.interop.Message;
-import com.oracle.truffle.api.interop.MessageResolution;
-import com.oracle.truffle.api.interop.Resolve;
 import com.oracle.truffle.api.interop.TruffleObject;
 import com.oracle.truffle.api.interop.UnknownIdentifierException;
 import com.oracle.truffle.api.interop.UnsupportedMessageException;
@@ -91,12 +86,14 @@ import com.oracle.truffle.api.nodes.RootNode;
 import com.oracle.truffle.api.test.ReflectionUtils;
 import com.oracle.truffle.api.test.polyglot.LanguageSPIHostInteropTest;
 import com.oracle.truffle.api.test.polyglot.ProxyLanguage;
+import com.oracle.truffle.api.test.polyglot.ProxyLegacyInteropObject;
 import com.oracle.truffle.api.test.polyglot.ValueHostInteropTest;
 
 /**
  * Important: This test was migrated to {@link ValueHostInteropTest} and
  * {@link LanguageSPIHostInteropTest}. Please maintain new tests there.
  */
+@SuppressWarnings("deprecation")
 public class HostInteropTest extends ProxyLanguageEnvTest {
 
     public class Data {
@@ -136,7 +133,7 @@ public class HostInteropTest extends ProxyLanguageEnvTest {
     public void testRecursiveListMarshalling() throws UnknownIdentifierException, UnsupportedMessageException {
         List<GregorianCalendar> testList = Arrays.asList(new GregorianCalendar());
         TruffleObject list = asTruffleObject(testList);
-        Object firstElement = ForeignAccess.sendRead(Message.READ.createNode(), list, 0);
+        Object firstElement = com.oracle.truffle.api.interop.ForeignAccess.sendRead(com.oracle.truffle.api.interop.Message.READ.createNode(), list, 0);
         assertTrue(env.isHostObject(firstElement));
     }
 
@@ -152,6 +149,21 @@ public class HostInteropTest extends ProxyLanguageEnvTest {
         TruffleObject expected = asTruffleObject(Class.class);
         TruffleObject computed = toJavaClass(asTruffleHostSymbol(Class.class));
         assertEquals("Both class objects are the same", expected, computed);
+    }
+
+    @Test
+    public void classToStatic() {
+        TruffleObject expected = asTruffleHostSymbol(Class.class);
+        TruffleObject computed = toJavaSymbol(asTruffleObject(Class.class));
+        assertEquals("Both host symbol objects are the same", expected, computed);
+    }
+
+    private static TruffleObject toJavaSymbol(TruffleObject obj) {
+        try {
+            return (TruffleObject) com.oracle.truffle.api.interop.ForeignAccess.sendRead(com.oracle.truffle.api.interop.Message.READ.createNode(), obj, "static");
+        } catch (UnknownIdentifierException | UnsupportedMessageException e) {
+            throw new AssertionError(e);
+        }
     }
 
     @Test
@@ -219,13 +231,14 @@ public class HostInteropTest extends ProxyLanguageEnvTest {
     }
 
     private void assertReadMethod(final String name) throws UnsupportedMessageException, UnknownIdentifierException {
-        Object method = ForeignAccess.sendRead(Message.READ.createNode(), obj, name);
-        assertTrue("Expected executable", method instanceof TruffleObject && ForeignAccess.sendIsExecutable(Message.IS_EXECUTABLE.createNode(), (TruffleObject) method));
+        Object method = com.oracle.truffle.api.interop.ForeignAccess.sendRead(com.oracle.truffle.api.interop.Message.READ.createNode(), obj, name);
+        assertTrue("Expected executable", method instanceof TruffleObject &&
+                        com.oracle.truffle.api.interop.ForeignAccess.sendIsExecutable(com.oracle.truffle.api.interop.Message.IS_EXECUTABLE.createNode(), (TruffleObject) method));
     }
 
     private void assertNoRead(final String name) throws UnsupportedMessageException {
         try {
-            ForeignAccess.sendRead(Message.READ.createNode(), obj, name);
+            com.oracle.truffle.api.interop.ForeignAccess.sendRead(com.oracle.truffle.api.interop.Message.READ.createNode(), obj, name);
             fail("Expected exception when reading field: " + name);
         } catch (UnknownIdentifierException ex) {
             assertEquals(name, ex.getUnknownIdentifier());
@@ -245,15 +258,16 @@ public class HostInteropTest extends ProxyLanguageEnvTest {
 
     @Test
     public void invokeJavaLangObjectFields() throws InteropException {
-        Object string = ForeignAccess.sendInvoke(Message.INVOKE.createNode(), obj, "toString");
+        Object string = com.oracle.truffle.api.interop.ForeignAccess.sendInvoke(com.oracle.truffle.api.interop.Message.INVOKE.createNode(), obj, "toString");
         assertTrue(string instanceof String && ((String) string).startsWith(Data.class.getName() + "@"));
-        Object clazz = ForeignAccess.sendInvoke(Message.INVOKE.createNode(), obj, "getClass");
+        Object clazz = com.oracle.truffle.api.interop.ForeignAccess.sendInvoke(com.oracle.truffle.api.interop.Message.INVOKE.createNode(), obj, "getClass");
         assertTrue(clazz instanceof TruffleObject && env.asHostObject(clazz) == Data.class);
-        assertEquals(true, ForeignAccess.sendInvoke(Message.INVOKE.createNode(), obj, "equals", obj));
-        assertTrue(ForeignAccess.sendInvoke(Message.INVOKE.createNode(), obj, "hashCode") instanceof Integer);
+        assertEquals(true, com.oracle.truffle.api.interop.ForeignAccess.sendInvoke(com.oracle.truffle.api.interop.Message.INVOKE.createNode(), obj, "equals", obj));
+        assertTrue(com.oracle.truffle.api.interop.ForeignAccess.sendInvoke(com.oracle.truffle.api.interop.Message.INVOKE.createNode(), obj, "hashCode") instanceof Integer);
 
         for (String m : new String[]{"notify", "notifyAll", "wait"}) {
-            assertThrowsExceptionWithCause(() -> ForeignAccess.sendInvoke(Message.INVOKE.createNode(), obj, m), IllegalMonitorStateException.class);
+            assertThrowsExceptionWithCause(() -> com.oracle.truffle.api.interop.ForeignAccess.sendInvoke(com.oracle.truffle.api.interop.Message.INVOKE.createNode(), obj, m),
+                            IllegalMonitorStateException.class);
         }
     }
 
@@ -262,9 +276,9 @@ public class HostInteropTest extends ProxyLanguageEnvTest {
     }
 
     static TruffleObject sendKeys(TruffleObject receiver, boolean includeInternal) {
-        final Node keysNode = Message.KEYS.createNode();
+        final Node keysNode = com.oracle.truffle.api.interop.Message.KEYS.createNode();
         try {
-            return ForeignAccess.sendKeys(keysNode, receiver, includeInternal);
+            return com.oracle.truffle.api.interop.ForeignAccess.sendKeys(keysNode, receiver, includeInternal);
         } catch (InteropException ex) {
             throw ex.raise();
         }
@@ -333,12 +347,12 @@ public class HostInteropTest extends ProxyLanguageEnvTest {
         assertEquals("One field x", "x", propertyNames.get(0));
         assertEquals("One method to access x", "readX", propertyNames.get(1));
 
-        TruffleObject readX = (TruffleObject) message(Message.READ, pojo, "readX");
-        Boolean isExecutable = (Boolean) message(Message.IS_EXECUTABLE, readX);
+        TruffleObject readX = (TruffleObject) message(com.oracle.truffle.api.interop.Message.READ, pojo, "readX");
+        Boolean isExecutable = (Boolean) message(com.oracle.truffle.api.interop.Message.IS_EXECUTABLE, readX);
         assertTrue("Method can be executed " + readX, isExecutable);
 
         orig.writeX(10);
-        final Object value = message(Message.EXECUTE, readX);
+        final Object value = message(com.oracle.truffle.api.interop.Message.EXECUTE, readX);
         assertEquals(10, value);
     }
 
@@ -354,7 +368,7 @@ public class HostInteropTest extends ProxyLanguageEnvTest {
 
     @Test
     public void javaObjectsWrappedForTruffle() {
-        Object ret = message(Message.INVOKE, obj, "assertThis", obj);
+        Object ret = message(com.oracle.truffle.api.interop.Message.INVOKE, obj, "assertThis", obj);
         assertTrue("Expecting truffle wrapper: " + ret, ret instanceof TruffleObject);
         assertEquals("Same as this obj", ret, obj);
     }
@@ -362,24 +376,24 @@ public class HostInteropTest extends ProxyLanguageEnvTest {
     @Test
     public void arrayHasSize() {
         data.arr = new String[]{"Hello", "World", "!"};
-        Object arrObj = message(Message.READ, obj, "arr");
+        Object arrObj = message(com.oracle.truffle.api.interop.Message.READ, obj, "arr");
         assertTrue("It's obj: " + arrObj, arrObj instanceof TruffleObject);
         TruffleObject truffleArr = (TruffleObject) arrObj;
-        assertEquals("It has size", Boolean.TRUE, message(Message.HAS_SIZE, truffleArr));
-        assertEquals("Three elements", 3, message(Message.GET_SIZE, truffleArr));
-        assertEquals("Hello", message(Message.READ, truffleArr, 0));
-        assertEquals("World", message(Message.READ, truffleArr, 1));
-        assertEquals("!", message(Message.READ, truffleArr, 2));
+        assertEquals("It has size", Boolean.TRUE, message(com.oracle.truffle.api.interop.Message.HAS_SIZE, truffleArr));
+        assertEquals("Three elements", 3, message(com.oracle.truffle.api.interop.Message.GET_SIZE, truffleArr));
+        assertEquals("Hello", message(com.oracle.truffle.api.interop.Message.READ, truffleArr, 0));
+        assertEquals("World", message(com.oracle.truffle.api.interop.Message.READ, truffleArr, 1));
+        assertEquals("!", message(com.oracle.truffle.api.interop.Message.READ, truffleArr, 2));
     }
 
     @Test
     public void emptyArrayHasSize() {
         data.arr = new String[]{};
-        Object arrObj = message(Message.READ, obj, "arr");
+        Object arrObj = message(com.oracle.truffle.api.interop.Message.READ, obj, "arr");
         assertTrue("It's obj: " + arrObj, arrObj instanceof TruffleObject);
         TruffleObject truffleArr = (TruffleObject) arrObj;
-        assertEquals("It has size", Boolean.TRUE, message(Message.HAS_SIZE, truffleArr));
-        assertEquals("Zero elements", 0, message(Message.GET_SIZE, truffleArr));
+        assertEquals("It has size", Boolean.TRUE, message(com.oracle.truffle.api.interop.Message.HAS_SIZE, truffleArr));
+        assertEquals("Zero elements", 0, message(com.oracle.truffle.api.interop.Message.GET_SIZE, truffleArr));
     }
 
     @Test
@@ -443,17 +457,17 @@ public class HostInteropTest extends ProxyLanguageEnvTest {
         int[] a = new int[]{1, 2, 3};
         TruffleObject truffleObject = asTruffleObject(a);
 
-        assertEquals(2, ForeignAccess.sendRead(Message.READ.createNode(), truffleObject, 1));
-        assertEquals(2, ForeignAccess.sendRead(Message.READ.createNode(), truffleObject, 1.0));
-        assertEquals(2, ForeignAccess.sendRead(Message.READ.createNode(), truffleObject, 1L));
+        assertEquals(2, com.oracle.truffle.api.interop.ForeignAccess.sendRead(com.oracle.truffle.api.interop.Message.READ.createNode(), truffleObject, 1));
+        assertEquals(2, com.oracle.truffle.api.interop.ForeignAccess.sendRead(com.oracle.truffle.api.interop.Message.READ.createNode(), truffleObject, 1.0));
+        assertEquals(2, com.oracle.truffle.api.interop.ForeignAccess.sendRead(com.oracle.truffle.api.interop.Message.READ.createNode(), truffleObject, 1L));
 
-        ForeignAccess.sendWrite(Message.WRITE.createNode(), truffleObject, 1, 42);
-        ForeignAccess.sendWrite(Message.WRITE.createNode(), truffleObject, 1.0, 42);
-        ForeignAccess.sendWrite(Message.WRITE.createNode(), truffleObject, 1L, 42);
+        com.oracle.truffle.api.interop.ForeignAccess.sendWrite(com.oracle.truffle.api.interop.Message.WRITE.createNode(), truffleObject, 1, 42);
+        com.oracle.truffle.api.interop.ForeignAccess.sendWrite(com.oracle.truffle.api.interop.Message.WRITE.createNode(), truffleObject, 1.0, 42);
+        com.oracle.truffle.api.interop.ForeignAccess.sendWrite(com.oracle.truffle.api.interop.Message.WRITE.createNode(), truffleObject, 1L, 42);
 
-        assertEquals(42, ForeignAccess.sendRead(Message.READ.createNode(), truffleObject, 1));
-        assertEquals(42, ForeignAccess.sendRead(Message.READ.createNode(), truffleObject, 1.0));
-        assertEquals(42, ForeignAccess.sendRead(Message.READ.createNode(), truffleObject, 1L));
+        assertEquals(42, com.oracle.truffle.api.interop.ForeignAccess.sendRead(com.oracle.truffle.api.interop.Message.READ.createNode(), truffleObject, 1));
+        assertEquals(42, com.oracle.truffle.api.interop.ForeignAccess.sendRead(com.oracle.truffle.api.interop.Message.READ.createNode(), truffleObject, 1.0));
+        assertEquals(42, com.oracle.truffle.api.interop.ForeignAccess.sendRead(com.oracle.truffle.api.interop.Message.READ.createNode(), truffleObject, 1L));
 
     }
 
@@ -544,10 +558,10 @@ public class HostInteropTest extends ProxyLanguageEnvTest {
     public void functionalInterfaceOverridingObjectMethods() throws Exception {
         assertTrue("yes, it is", isJavaFunctionalInterface(FunctionalWithObjectMethodOverrides.class));
         TruffleObject object = asTruffleObject((FunctionalWithObjectMethodOverrides) (args) -> args.length >= 1 ? args[0] : null);
-        TruffleObject keysObject = ForeignAccess.sendKeys(Message.KEYS.createNode(), object);
+        TruffleObject keysObject = com.oracle.truffle.api.interop.ForeignAccess.sendKeys(com.oracle.truffle.api.interop.Message.KEYS.createNode(), object);
         List<?> keyList = asJavaObject(List.class, keysObject);
         assertArrayEquals(new Object[]{"call"}, keyList.toArray());
-        assertEquals(42, ForeignAccess.sendExecute(Message.EXECUTE.createNode(), object, 42));
+        assertEquals(42, com.oracle.truffle.api.interop.ForeignAccess.sendExecute(com.oracle.truffle.api.interop.Message.EXECUTE.createNode(), object, 42));
     }
 
     @FunctionalInterface
@@ -657,24 +671,24 @@ public class HostInteropTest extends ProxyLanguageEnvTest {
     public void unbox() {
         assertNull(unbox(null));
         assertNull(unbox(asTruffleObject(new Object())));
-        assertEquals(42, unbox(asTruffleObject(42)));
-        assertEquals((byte) 42, unbox(asTruffleObject((byte) 42)));
-        assertEquals((short) 42, unbox(asTruffleObject((short) 42)));
-        assertEquals(4242424242424242L, unbox(asTruffleObject(4242424242424242L)));
-        assertEquals(42.42f, unbox(asTruffleObject(42.42f)));
-        assertEquals(42.42, unbox(asTruffleObject(42.42)));
+        assertEquals(Integer.MAX_VALUE, unbox(asTruffleObject(Integer.MAX_VALUE)));
+        assertEquals(Byte.MAX_VALUE, unbox(asTruffleObject(Byte.MAX_VALUE)));
+        assertEquals(Short.MAX_VALUE, unbox(asTruffleObject(Short.MAX_VALUE)));
+        assertEquals(Long.MAX_VALUE, unbox(asTruffleObject(Long.MAX_VALUE)));
+        assertEquals(Float.MAX_VALUE, unbox(asTruffleObject(Float.MAX_VALUE)));
+        assertEquals(Double.MAX_VALUE, unbox(asTruffleObject(Double.MAX_VALUE)));
         assertEquals("42", unbox(asTruffleObject("42")));
-        assertEquals('4', unbox(asTruffleObject('4')));
+        assertEquals("4", unbox(asTruffleObject('4')));
         assertEquals(true, unbox(asTruffleObject(true)));
         assertEquals(false, unbox(asTruffleObject(false)));
     }
 
     @Test
     public void notUnboxable() {
-        Node unboxNode = Message.UNBOX.createNode();
-        assertThrowsExceptionWithCause(() -> ForeignAccess.sendUnbox(unboxNode, asTruffleObject(null)), UnsupportedMessageException.class);
-        assertThrowsExceptionWithCause(() -> ForeignAccess.sendUnbox(unboxNode, asTruffleObject(new Object())), UnsupportedMessageException.class);
-        assertThrowsExceptionWithCause(() -> ForeignAccess.sendUnbox(unboxNode, asTruffleObject(Object.class)), UnsupportedMessageException.class);
+        Node unboxNode = com.oracle.truffle.api.interop.Message.UNBOX.createNode();
+        assertThrowsExceptionWithCause(() -> com.oracle.truffle.api.interop.ForeignAccess.sendUnbox(unboxNode, asTruffleObject(null)), UnsupportedMessageException.class);
+        assertThrowsExceptionWithCause(() -> com.oracle.truffle.api.interop.ForeignAccess.sendUnbox(unboxNode, asTruffleObject(new Object())), UnsupportedMessageException.class);
+        assertThrowsExceptionWithCause(() -> com.oracle.truffle.api.interop.ForeignAccess.sendUnbox(unboxNode, asTruffleObject(Object.class)), UnsupportedMessageException.class);
     }
 
     @Test
@@ -685,77 +699,97 @@ public class HostInteropTest extends ProxyLanguageEnvTest {
 
         TruffleObject nkio = new NoKeyInfoObject();
         keyInfo = getKeyInfo(nkio, "p1");
-        assertEquals(0b111, keyInfo);
+        assertEquals(0b110, keyInfo);
         keyInfo = getKeyInfo(nkio, "p6");
-        assertEquals(0b111, keyInfo);
+        assertEquals(0b110, keyInfo);
         keyInfo = getKeyInfo(nkio, "p7");
         assertEquals(0, keyInfo);
     }
 
     @Test
     public void keyInfo() {
-        TruffleObject ipobj = new InternalPropertiesObject(-1, -1, -1, -1, 0, 0);
+        InternalPropertiesObject ipobj = new InternalPropertiesObject();
+        ipobj.keyInfo = com.oracle.truffle.api.interop.KeyInfo.READABLE | com.oracle.truffle.api.interop.KeyInfo.MODIFIABLE | com.oracle.truffle.api.interop.KeyInfo.READ_SIDE_EFFECTS |
+                        com.oracle.truffle.api.interop.KeyInfo.WRITE_SIDE_EFFECTS;
         int keyInfo = getKeyInfo(ipobj, "p1");
-        assertTrue(KeyInfo.isReadable(keyInfo));
-        assertTrue(KeyInfo.isWritable(keyInfo));
-        assertTrue(KeyInfo.hasReadSideEffects(keyInfo));
-        assertTrue(KeyInfo.hasWriteSideEffects(keyInfo));
-        assertFalse(KeyInfo.isInvocable(keyInfo));
-        assertFalse(KeyInfo.isInternal(keyInfo));
-        keyInfo = getKeyInfo(ipobj, "p6");
-        assertTrue(KeyInfo.isReadable(keyInfo));
-        assertTrue(KeyInfo.isWritable(keyInfo));
-        assertTrue(KeyInfo.hasReadSideEffects(keyInfo));
-        assertTrue(KeyInfo.hasWriteSideEffects(keyInfo));
-        assertFalse(KeyInfo.isInvocable(keyInfo));
-        assertFalse(KeyInfo.isInternal(keyInfo));
-        keyInfo = getKeyInfo(ipobj, "p7");
-        assertEquals(0, keyInfo);
-        assertFalse(KeyInfo.isReadable(keyInfo));
-        assertFalse(KeyInfo.isWritable(keyInfo));
-        assertFalse(KeyInfo.hasReadSideEffects(keyInfo));
-        assertFalse(KeyInfo.hasWriteSideEffects(keyInfo));
-        assertFalse(KeyInfo.isInvocable(keyInfo));
-        assertFalse(KeyInfo.isInternal(keyInfo));
-
-        ipobj = new InternalPropertiesObject(0b0100010, 0b0100100, 0b0110000, 0b0100010, 0b0011000, 0);
+        assertTrue(com.oracle.truffle.api.interop.KeyInfo.isReadable(keyInfo));
+        assertTrue(com.oracle.truffle.api.interop.KeyInfo.isWritable(keyInfo));
+        assertTrue(com.oracle.truffle.api.interop.KeyInfo.hasReadSideEffects(keyInfo));
+        assertTrue(com.oracle.truffle.api.interop.KeyInfo.hasWriteSideEffects(keyInfo));
+        assertFalse(com.oracle.truffle.api.interop.KeyInfo.isInvocable(keyInfo));
+        assertFalse(com.oracle.truffle.api.interop.KeyInfo.isInternal(keyInfo));
+        ipobj.keyInfo = com.oracle.truffle.api.interop.KeyInfo.READABLE | com.oracle.truffle.api.interop.KeyInfo.MODIFIABLE | com.oracle.truffle.api.interop.KeyInfo.READ_SIDE_EFFECTS |
+                        com.oracle.truffle.api.interop.KeyInfo.WRITE_SIDE_EFFECTS;
         keyInfo = getKeyInfo(ipobj, "p1");
-        assertTrue(KeyInfo.isReadable(keyInfo));
-        assertFalse(KeyInfo.isWritable(keyInfo));
-        assertFalse(KeyInfo.hasReadSideEffects(keyInfo));
-        assertTrue(KeyInfo.hasWriteSideEffects(keyInfo));
-        assertFalse(KeyInfo.isInvocable(keyInfo));
-        keyInfo = getKeyInfo(ipobj, "p2");
-        assertFalse(KeyInfo.isReadable(keyInfo));
-        assertTrue(KeyInfo.isWritable(keyInfo));
-        assertFalse(KeyInfo.hasReadSideEffects(keyInfo));
-        assertFalse(KeyInfo.hasWriteSideEffects(keyInfo));
-        assertFalse(KeyInfo.isInvocable(keyInfo));
-        keyInfo = getKeyInfo(ipobj, "p3");
-        assertFalse(KeyInfo.isReadable(keyInfo));
-        assertFalse(KeyInfo.isWritable(keyInfo));
-        assertFalse(KeyInfo.hasReadSideEffects(keyInfo));
-        assertFalse(KeyInfo.hasWriteSideEffects(keyInfo));
-        assertTrue(KeyInfo.isInvocable(keyInfo));
-        keyInfo = getKeyInfo(ipobj, "p4");
-        assertFalse(KeyInfo.isReadable(keyInfo));
-        assertFalse(KeyInfo.isWritable(keyInfo));
-        assertTrue(KeyInfo.hasReadSideEffects(keyInfo));
-        assertFalse(KeyInfo.hasWriteSideEffects(keyInfo));
-        assertTrue(KeyInfo.isInvocable(keyInfo));
-        keyInfo = getKeyInfo(ipobj, "p5");
-        assertTrue(KeyInfo.isReadable(keyInfo));
-        assertTrue(KeyInfo.isWritable(keyInfo));
-        assertTrue(KeyInfo.hasReadSideEffects(keyInfo));
-        assertTrue(KeyInfo.hasWriteSideEffects(keyInfo));
-        assertFalse(KeyInfo.isInvocable(keyInfo));
-        keyInfo = getKeyInfo(ipobj, "p6");
-        assertFalse(KeyInfo.isReadable(keyInfo));
-        assertFalse(KeyInfo.isWritable(keyInfo));
-        assertFalse(KeyInfo.hasReadSideEffects(keyInfo));
-        assertFalse(KeyInfo.hasWriteSideEffects(keyInfo));
-        assertFalse(KeyInfo.isInvocable(keyInfo));
-        keyInfo = getKeyInfo(ipobj, "p7");
+        assertTrue(com.oracle.truffle.api.interop.KeyInfo.isReadable(keyInfo));
+        assertTrue(com.oracle.truffle.api.interop.KeyInfo.isWritable(keyInfo));
+        assertTrue(com.oracle.truffle.api.interop.KeyInfo.hasReadSideEffects(keyInfo));
+        assertTrue(com.oracle.truffle.api.interop.KeyInfo.hasWriteSideEffects(keyInfo));
+        assertFalse(com.oracle.truffle.api.interop.KeyInfo.isInvocable(keyInfo));
+        assertFalse(com.oracle.truffle.api.interop.KeyInfo.isInternal(keyInfo));
+        ipobj.keyInfo = com.oracle.truffle.api.interop.KeyInfo.NONE;
+        keyInfo = getKeyInfo(ipobj, "p1");
+        assertEquals(0, keyInfo);
+        assertFalse(com.oracle.truffle.api.interop.KeyInfo.isReadable(keyInfo));
+        assertFalse(com.oracle.truffle.api.interop.KeyInfo.isWritable(keyInfo));
+        assertFalse(com.oracle.truffle.api.interop.KeyInfo.hasReadSideEffects(keyInfo));
+        assertFalse(com.oracle.truffle.api.interop.KeyInfo.hasWriteSideEffects(keyInfo));
+        assertFalse(com.oracle.truffle.api.interop.KeyInfo.isInvocable(keyInfo));
+        assertFalse(com.oracle.truffle.api.interop.KeyInfo.isInternal(keyInfo));
+
+        ipobj = new InternalPropertiesObject();
+
+        ipobj.keyInfo = com.oracle.truffle.api.interop.KeyInfo.READABLE | com.oracle.truffle.api.interop.KeyInfo.READ_SIDE_EFFECTS;
+        keyInfo = getKeyInfo(ipobj, "p1");
+        assertTrue(com.oracle.truffle.api.interop.KeyInfo.isReadable(keyInfo));
+        assertFalse(com.oracle.truffle.api.interop.KeyInfo.isWritable(keyInfo));
+        assertTrue(com.oracle.truffle.api.interop.KeyInfo.hasReadSideEffects(keyInfo));
+        assertFalse(com.oracle.truffle.api.interop.KeyInfo.hasWriteSideEffects(keyInfo));
+        assertFalse(com.oracle.truffle.api.interop.KeyInfo.isInvocable(keyInfo));
+
+        ipobj.keyInfo = com.oracle.truffle.api.interop.KeyInfo.MODIFIABLE;
+        keyInfo = getKeyInfo(ipobj, "p1");
+        assertFalse(com.oracle.truffle.api.interop.KeyInfo.isReadable(keyInfo));
+        assertTrue(com.oracle.truffle.api.interop.KeyInfo.isWritable(keyInfo));
+        assertFalse(com.oracle.truffle.api.interop.KeyInfo.hasReadSideEffects(keyInfo));
+        assertFalse(com.oracle.truffle.api.interop.KeyInfo.hasWriteSideEffects(keyInfo));
+        assertFalse(com.oracle.truffle.api.interop.KeyInfo.isInvocable(keyInfo));
+
+        ipobj.keyInfo = com.oracle.truffle.api.interop.KeyInfo.INVOCABLE;
+        keyInfo = getKeyInfo(ipobj, "p1");
+        assertFalse(com.oracle.truffle.api.interop.KeyInfo.isReadable(keyInfo));
+        assertFalse(com.oracle.truffle.api.interop.KeyInfo.isWritable(keyInfo));
+        assertFalse(com.oracle.truffle.api.interop.KeyInfo.hasReadSideEffects(keyInfo));
+        assertFalse(com.oracle.truffle.api.interop.KeyInfo.hasWriteSideEffects(keyInfo));
+        assertTrue(com.oracle.truffle.api.interop.KeyInfo.isInvocable(keyInfo));
+
+        ipobj.keyInfo = com.oracle.truffle.api.interop.KeyInfo.READABLE | com.oracle.truffle.api.interop.KeyInfo.READ_SIDE_EFFECTS | com.oracle.truffle.api.interop.KeyInfo.INVOCABLE;
+        keyInfo = getKeyInfo(ipobj, "p1");
+        assertTrue(com.oracle.truffle.api.interop.KeyInfo.isReadable(keyInfo));
+        assertFalse(com.oracle.truffle.api.interop.KeyInfo.isWritable(keyInfo));
+        assertTrue(com.oracle.truffle.api.interop.KeyInfo.hasReadSideEffects(keyInfo));
+        assertFalse(com.oracle.truffle.api.interop.KeyInfo.hasWriteSideEffects(keyInfo));
+        assertTrue(com.oracle.truffle.api.interop.KeyInfo.isInvocable(keyInfo));
+
+        ipobj.keyInfo = com.oracle.truffle.api.interop.KeyInfo.READABLE | com.oracle.truffle.api.interop.KeyInfo.READ_SIDE_EFFECTS | com.oracle.truffle.api.interop.KeyInfo.MODIFIABLE |
+                        com.oracle.truffle.api.interop.KeyInfo.WRITE_SIDE_EFFECTS;
+        keyInfo = getKeyInfo(ipobj, "p1");
+        assertTrue(com.oracle.truffle.api.interop.KeyInfo.isReadable(keyInfo));
+        assertTrue(com.oracle.truffle.api.interop.KeyInfo.isWritable(keyInfo));
+        assertTrue(com.oracle.truffle.api.interop.KeyInfo.hasReadSideEffects(keyInfo));
+        assertTrue(com.oracle.truffle.api.interop.KeyInfo.hasWriteSideEffects(keyInfo));
+        assertFalse(com.oracle.truffle.api.interop.KeyInfo.isInvocable(keyInfo));
+
+        ipobj.keyInfo = 0;
+        keyInfo = getKeyInfo(ipobj, "p1");
+        assertFalse(com.oracle.truffle.api.interop.KeyInfo.isReadable(keyInfo));
+        assertFalse(com.oracle.truffle.api.interop.KeyInfo.isWritable(keyInfo));
+        assertFalse(com.oracle.truffle.api.interop.KeyInfo.hasReadSideEffects(keyInfo));
+        assertFalse(com.oracle.truffle.api.interop.KeyInfo.hasWriteSideEffects(keyInfo));
+        assertFalse(com.oracle.truffle.api.interop.KeyInfo.isInvocable(keyInfo));
+
+        ipobj.keyInfo = 0;
+        keyInfo = getKeyInfo(ipobj, "p1");
         assertEquals(0, keyInfo);
 
         TruffleObject aobj = new ArrayTruffleObject(100);
@@ -784,16 +818,16 @@ public class HostInteropTest extends ProxyLanguageEnvTest {
         int keyInfo;
         for (int i = 0; i < length; i++) {
             keyInfo = getKeyInfo(array, i);
-            assertTrue(KeyInfo.isReadable(keyInfo));
-            assertTrue(KeyInfo.isWritable(keyInfo));
-            assertFalse(KeyInfo.hasReadSideEffects(keyInfo));
-            assertFalse(KeyInfo.hasWriteSideEffects(keyInfo));
-            assertFalse(KeyInfo.isInvocable(keyInfo));
-            assertFalse(KeyInfo.isInternal(keyInfo));
+            assertTrue(com.oracle.truffle.api.interop.KeyInfo.isReadable(keyInfo));
+            assertTrue(com.oracle.truffle.api.interop.KeyInfo.isWritable(keyInfo));
+            assertFalse(com.oracle.truffle.api.interop.KeyInfo.hasReadSideEffects(keyInfo));
+            assertFalse(com.oracle.truffle.api.interop.KeyInfo.hasWriteSideEffects(keyInfo));
+            assertFalse(com.oracle.truffle.api.interop.KeyInfo.isInvocable(keyInfo));
+            assertFalse(com.oracle.truffle.api.interop.KeyInfo.isInternal(keyInfo));
             keyInfo = getKeyInfo(array, (long) i);
-            assertTrue(KeyInfo.isReadable(keyInfo));
+            assertTrue(com.oracle.truffle.api.interop.KeyInfo.isReadable(keyInfo));
             keyInfo = getKeyInfo(array, (double) i);
-            assertTrue(KeyInfo.isReadable(keyInfo));
+            assertTrue(com.oracle.truffle.api.interop.KeyInfo.isReadable(keyInfo));
         }
         assertEquals(0, getKeyInfo(array, length));
         assertEquals(0, getKeyInfo(array, 1.12));
@@ -808,36 +842,36 @@ public class HostInteropTest extends ProxyLanguageEnvTest {
     public void keyInfoJavaObject() {
         TruffleObject d = asTruffleObject(new TestJavaObject());
         int keyInfo = getKeyInfo(d, "nnoonnee");
-        assertFalse(KeyInfo.isExisting(keyInfo));
+        assertFalse(com.oracle.truffle.api.interop.KeyInfo.isExisting(keyInfo));
         keyInfo = getKeyInfo(d, "aField");
-        assertTrue(KeyInfo.isExisting(keyInfo));
-        assertTrue(KeyInfo.isReadable(keyInfo));
-        assertTrue(KeyInfo.isWritable(keyInfo));
-        assertFalse(KeyInfo.hasReadSideEffects(keyInfo));
-        assertFalse(KeyInfo.hasWriteSideEffects(keyInfo));
-        assertFalse(KeyInfo.isInvocable(keyInfo));
-        assertFalse(KeyInfo.isRemovable(keyInfo));
+        assertTrue(com.oracle.truffle.api.interop.KeyInfo.isExisting(keyInfo));
+        assertTrue(com.oracle.truffle.api.interop.KeyInfo.isReadable(keyInfo));
+        assertTrue(com.oracle.truffle.api.interop.KeyInfo.isWritable(keyInfo));
+        assertFalse(com.oracle.truffle.api.interop.KeyInfo.hasReadSideEffects(keyInfo));
+        assertFalse(com.oracle.truffle.api.interop.KeyInfo.hasWriteSideEffects(keyInfo));
+        assertFalse(com.oracle.truffle.api.interop.KeyInfo.isInvocable(keyInfo));
+        assertFalse(com.oracle.truffle.api.interop.KeyInfo.isRemovable(keyInfo));
         keyInfo = getKeyInfo(d, "toString");
-        assertTrue(KeyInfo.isExisting(keyInfo));
-        assertTrue(KeyInfo.isReadable(keyInfo));
-        assertFalse(KeyInfo.isWritable(keyInfo));
-        assertFalse(KeyInfo.hasReadSideEffects(keyInfo));
-        assertFalse(KeyInfo.hasWriteSideEffects(keyInfo));
-        assertTrue(KeyInfo.isInvocable(keyInfo));
-        assertFalse(KeyInfo.isRemovable(keyInfo));
+        assertTrue(com.oracle.truffle.api.interop.KeyInfo.isExisting(keyInfo));
+        assertTrue(com.oracle.truffle.api.interop.KeyInfo.isReadable(keyInfo));
+        assertFalse(com.oracle.truffle.api.interop.KeyInfo.isWritable(keyInfo));
+        assertFalse(com.oracle.truffle.api.interop.KeyInfo.hasReadSideEffects(keyInfo));
+        assertFalse(com.oracle.truffle.api.interop.KeyInfo.hasWriteSideEffects(keyInfo));
+        assertTrue(com.oracle.truffle.api.interop.KeyInfo.isInvocable(keyInfo));
+        assertFalse(com.oracle.truffle.api.interop.KeyInfo.isRemovable(keyInfo));
     }
 
     @Test
     public void testSystemMethod() throws InteropException {
         TruffleObject system = asTruffleHostSymbol(System.class);
-        Object value = ForeignAccess.sendInvoke(Message.INVOKE.createNode(), system, "getProperty", "file.separator");
+        Object value = com.oracle.truffle.api.interop.ForeignAccess.sendInvoke(com.oracle.truffle.api.interop.Message.INVOKE.createNode(), system, "getProperty", "file.separator");
         assertThat(value, CoreMatchers.instanceOf(String.class));
         assertThat(value, CoreMatchers.anyOf(CoreMatchers.equalTo("/"), CoreMatchers.equalTo("\\")));
 
-        Object getProperty = ForeignAccess.sendRead(Message.READ.createNode(), system, "getProperty");
+        Object getProperty = com.oracle.truffle.api.interop.ForeignAccess.sendRead(com.oracle.truffle.api.interop.Message.READ.createNode(), system, "getProperty");
         assertThat(getProperty, CoreMatchers.instanceOf(TruffleObject.class));
-        assertTrue("IS_EXECUTABLE", ForeignAccess.sendIsExecutable(Message.IS_EXECUTABLE.createNode(), (TruffleObject) getProperty));
-        value = ForeignAccess.sendExecute(Message.EXECUTE.createNode(), (TruffleObject) getProperty, "file.separator");
+        assertTrue("IS_EXECUTABLE", com.oracle.truffle.api.interop.ForeignAccess.sendIsExecutable(com.oracle.truffle.api.interop.Message.IS_EXECUTABLE.createNode(), (TruffleObject) getProperty));
+        value = com.oracle.truffle.api.interop.ForeignAccess.sendExecute(com.oracle.truffle.api.interop.Message.EXECUTE.createNode(), (TruffleObject) getProperty, "file.separator");
         assertThat(value, CoreMatchers.instanceOf(String.class));
         assertThat(value, CoreMatchers.anyOf(CoreMatchers.equalTo("/"), CoreMatchers.equalTo("\\")));
     }
@@ -845,14 +879,15 @@ public class HostInteropTest extends ProxyLanguageEnvTest {
     @Test
     public void testExecuteClass() {
         TruffleObject hashMapClass = asTruffleHostSymbol(HashMap.class);
-        assertThrowsExceptionWithCause(() -> ForeignAccess.sendExecute(Message.EXECUTE.createNode(), hashMapClass), UnsupportedMessageException.class);
-        assertFalse("IS_EXECUTABLE", ForeignAccess.sendIsExecutable(Message.IS_EXECUTABLE.createNode(), hashMapClass));
+        assertThrowsExceptionWithCause(() -> com.oracle.truffle.api.interop.ForeignAccess.sendExecute(com.oracle.truffle.api.interop.Message.EXECUTE.createNode(), hashMapClass),
+                        UnsupportedMessageException.class);
+        assertFalse("IS_EXECUTABLE", com.oracle.truffle.api.interop.ForeignAccess.sendIsExecutable(com.oracle.truffle.api.interop.Message.IS_EXECUTABLE.createNode(), hashMapClass));
     }
 
     @Test
     public void testNewClass() throws InteropException {
         TruffleObject hashMapClass = asTruffleHostSymbol(HashMap.class);
-        Object hashMap = ForeignAccess.sendNew(Message.NEW.createNode(), hashMapClass);
+        Object hashMap = com.oracle.truffle.api.interop.ForeignAccess.sendNew(com.oracle.truffle.api.interop.Message.NEW.createNode(), hashMapClass);
         assertThat(hashMap, CoreMatchers.instanceOf(TruffleObject.class));
         assertTrue(isJavaObject(HashMap.class, (TruffleObject) hashMap));
     }
@@ -860,7 +895,7 @@ public class HostInteropTest extends ProxyLanguageEnvTest {
     @Test
     public void testNewObject() throws InteropException {
         TruffleObject objectClass = asTruffleHostSymbol(Object.class);
-        Object object = ForeignAccess.sendNew(Message.NEW.createNode(), objectClass);
+        Object object = com.oracle.truffle.api.interop.ForeignAccess.sendNew(com.oracle.truffle.api.interop.Message.NEW.createNode(), objectClass);
         assertThat(object, CoreMatchers.instanceOf(TruffleObject.class));
         assertTrue(isJavaObject(Object.class, (TruffleObject) object));
     }
@@ -868,17 +903,17 @@ public class HostInteropTest extends ProxyLanguageEnvTest {
     @Test
     public void testNewArray() throws InteropException {
         TruffleObject longArrayClass = asTruffleHostSymbol(long[].class);
-        Object longArray = ForeignAccess.sendNew(Message.NEW.createNode(), longArrayClass, 4);
+        Object longArray = com.oracle.truffle.api.interop.ForeignAccess.sendNew(com.oracle.truffle.api.interop.Message.NEW.createNode(), longArrayClass, 4);
         assertThat(longArray, CoreMatchers.instanceOf(TruffleObject.class));
         assertTrue(isJavaObject(long[].class, (TruffleObject) longArray));
-        assertEquals(4, message(Message.GET_SIZE, (TruffleObject) longArray));
+        assertEquals(4, message(com.oracle.truffle.api.interop.Message.GET_SIZE, (TruffleObject) longArray));
     }
 
     @Test
     public void testException() throws InteropException {
         TruffleObject iterator = asTruffleObject(Collections.emptyList().iterator());
         try {
-            ForeignAccess.sendInvoke(Message.INVOKE.createNode(), iterator, "next");
+            com.oracle.truffle.api.interop.ForeignAccess.sendInvoke(com.oracle.truffle.api.interop.Message.INVOKE.createNode(), iterator, "next");
             fail("expected an exception but none was thrown");
         } catch (InteropException ex) {
             throw ex;
@@ -892,7 +927,7 @@ public class HostInteropTest extends ProxyLanguageEnvTest {
     public void testException2() throws InteropException {
         TruffleObject hashMapClass = asTruffleHostSymbol(HashMap.class);
         try {
-            ForeignAccess.sendNew(Message.NEW.createNode(), hashMapClass, -1);
+            com.oracle.truffle.api.interop.ForeignAccess.sendNew(com.oracle.truffle.api.interop.Message.NEW.createNode(), hashMapClass, -1);
             fail("expected an exception but none was thrown");
         } catch (InteropException ex) {
             throw ex;
@@ -902,49 +937,35 @@ public class HostInteropTest extends ProxyLanguageEnvTest {
         }
 
         try {
-            ForeignAccess.sendNew(Message.NEW.createNode(), hashMapClass, "");
+            com.oracle.truffle.api.interop.ForeignAccess.sendNew(com.oracle.truffle.api.interop.Message.NEW.createNode(), hashMapClass, "");
             fail("expected an exception but none was thrown");
         } catch (UnsupportedTypeException ex) {
         }
     }
 
+    @SuppressWarnings("deprecation")
     @Test
     public void testRemoveMessage() {
         data.arr = new String[]{"Hello", "World", "!"};
         TruffleObject truffleList = asTruffleObject(new ArrayList<>(Arrays.asList(data.arr)));
-        assertEquals(3, message(Message.GET_SIZE, truffleList));
-        assertEquals(true, message(Message.REMOVE, truffleList, 1));
-        assertEquals(2, message(Message.GET_SIZE, truffleList));
+        assertEquals(3, message(com.oracle.truffle.api.interop.Message.GET_SIZE, truffleList));
+        assertEquals(true, message(com.oracle.truffle.api.interop.Message.REMOVE, truffleList, 1));
+        assertEquals(2, message(com.oracle.truffle.api.interop.Message.GET_SIZE, truffleList));
         try {
-            message(Message.REMOVE, truffleList, 10);
+            message(com.oracle.truffle.api.interop.Message.REMOVE, truffleList, 10);
             fail("Out of bounds.");
         } catch (Exception e) {
             assertTrue(e.toString(), e instanceof UnknownIdentifierException);
             assertEquals("10", ((UnknownIdentifierException) e).getUnknownIdentifier());
         }
 
-        Object arrObj = message(Message.READ, obj, "arr");
+        Object arrObj = message(com.oracle.truffle.api.interop.Message.READ, obj, "arr");
         TruffleObject truffleArr = (TruffleObject) arrObj;
         try {
-            message(Message.REMOVE, truffleArr, 0);
+            message(com.oracle.truffle.api.interop.Message.REMOVE, truffleArr, 0);
             fail("Remove of elements of an array is not supported.");
         } catch (Exception e) {
             assertTrue(e.toString(), e instanceof UnsupportedMessageException);
-            assertEquals(Message.REMOVE, ((UnsupportedMessageException) e).getUnsupportedMessage());
-        }
-
-        Map<String, String> map = new HashMap<>();
-        map.put("a", "aa");
-        map.put("b", "bb");
-        TruffleObject truffleMap = asTruffleObject(map);
-        assertEquals(true, message(Message.REMOVE, truffleMap, "a"));
-        assertEquals(1, map.size());
-        try {
-            message(Message.REMOVE, truffleMap, "a");
-            fail("UnknownIdentifierException");
-        } catch (Exception e) {
-            assertTrue(e.toString(), e instanceof UnknownIdentifierException);
-            assertEquals("a", ((UnknownIdentifierException) e).getUnknownIdentifier());
         }
     }
 
@@ -1107,11 +1128,11 @@ public class HostInteropTest extends ProxyLanguageEnvTest {
         TruffleObject bigIntegerStatic2 = (TruffleObject) env.lookupHostSymbol(BigInteger.class.getName());
         assertTrue(env.isHostSymbol(bigIntegerStatic2));
 
-        assertFalse(KeyInfo.isExisting(getKeyInfo(bigIntegerClass, "ZERO")));
-        assertTrue(KeyInfo.isExisting(getKeyInfo(bigIntegerClass, "getName")));
+        assertFalse(com.oracle.truffle.api.interop.KeyInfo.isExisting(getKeyInfo(bigIntegerClass, "ZERO")));
+        assertTrue(com.oracle.truffle.api.interop.KeyInfo.isExisting(getKeyInfo(bigIntegerClass, "getName")));
         for (TruffleObject bigIntegerStatic : Arrays.asList(bigIntegerStatic1, bigIntegerStatic2)) {
-            assertTrue(KeyInfo.isExisting(getKeyInfo(bigIntegerStatic, "ZERO")));
-            assertFalse(KeyInfo.isExisting(getKeyInfo(bigIntegerStatic, "getName")));
+            assertTrue(com.oracle.truffle.api.interop.KeyInfo.isExisting(getKeyInfo(bigIntegerStatic, "ZERO")));
+            assertFalse(com.oracle.truffle.api.interop.KeyInfo.isExisting(getKeyInfo(bigIntegerStatic, "getName")));
         }
     }
 
@@ -1139,39 +1160,39 @@ public class HostInteropTest extends ProxyLanguageEnvTest {
         List<Data> data();
     }
 
-    static Object message(final Message m, TruffleObject receiver, Object... arr) {
+    static Object message(final com.oracle.truffle.api.interop.Message m, TruffleObject receiver, Object... arr) {
         Node n = m.createNode();
         CallTarget callTarget = Truffle.getRuntime().createCallTarget(new TemporaryRoot(n, receiver));
         return callTarget.call(arr);
     }
 
     static boolean hasKeys(TruffleObject foreignObject) {
-        return ForeignAccess.sendHasKeys(Message.HAS_KEYS.createNode(), foreignObject);
+        return com.oracle.truffle.api.interop.ForeignAccess.sendHasKeys(com.oracle.truffle.api.interop.Message.HAS_KEYS.createNode(), foreignObject);
     }
 
     static int getKeyInfo(TruffleObject foreignObject, Object propertyName) {
-        return ForeignAccess.sendKeyInfo(Message.KEY_INFO.createNode(), foreignObject, propertyName);
+        return com.oracle.truffle.api.interop.ForeignAccess.sendKeyInfo(com.oracle.truffle.api.interop.Message.KEY_INFO.createNode(), foreignObject, propertyName);
     }
 
     static boolean isArray(TruffleObject foreignObject) {
         if (foreignObject == null) {
             return false;
         }
-        return ForeignAccess.sendHasSize(Message.HAS_SIZE.createNode(), foreignObject);
+        return com.oracle.truffle.api.interop.ForeignAccess.sendHasSize(com.oracle.truffle.api.interop.Message.HAS_SIZE.createNode(), foreignObject);
     }
 
     static boolean isNull(TruffleObject foreignObject) {
         if (foreignObject == null) {
             return true;
         }
-        return ForeignAccess.sendIsNull(Message.IS_NULL.createNode(), foreignObject);
+        return com.oracle.truffle.api.interop.ForeignAccess.sendIsNull(com.oracle.truffle.api.interop.Message.IS_NULL.createNode(), foreignObject);
     }
 
     static boolean isBoxed(TruffleObject foreignObject) {
         if (foreignObject == null) {
             return false;
         }
-        return ForeignAccess.sendIsBoxed(Message.IS_BOXED.createNode(), foreignObject);
+        return com.oracle.truffle.api.interop.ForeignAccess.sendIsBoxed(com.oracle.truffle.api.interop.Message.IS_BOXED.createNode(), foreignObject);
     }
 
     static Object unbox(TruffleObject foreignObject) {
@@ -1179,7 +1200,7 @@ public class HostInteropTest extends ProxyLanguageEnvTest {
             return null;
         }
         try {
-            return ForeignAccess.sendUnbox(Message.UNBOX.createNode(), foreignObject);
+            return com.oracle.truffle.api.interop.ForeignAccess.sendUnbox(com.oracle.truffle.api.interop.Message.UNBOX.createNode(), foreignObject);
         } catch (UnsupportedMessageException e) {
             return null;
         }
@@ -1198,7 +1219,7 @@ public class HostInteropTest extends ProxyLanguageEnvTest {
         @Override
         public Object execute(VirtualFrame frame) {
             try {
-                return ForeignAccess.send(foreignAccess, function, frame.getArguments());
+                return com.oracle.truffle.api.interop.ForeignAccess.send(foreignAccess, function, frame.getArguments());
             } catch (InteropException e) {
                 throw e.raise();
             }
@@ -1208,7 +1229,7 @@ public class HostInteropTest extends ProxyLanguageEnvTest {
     static final class NoKeysObject implements TruffleObject {
 
         @Override
-        public ForeignAccess getForeignAccess() {
+        public com.oracle.truffle.api.interop.ForeignAccess getForeignAccess() {
             return NoKeysObjectMessageResolutionForeign.ACCESS;
         }
 
@@ -1216,7 +1237,7 @@ public class HostInteropTest extends ProxyLanguageEnvTest {
             return obj instanceof NoKeysObject;
         }
 
-        @MessageResolution(receiverType = NoKeysObject.class)
+        @com.oracle.truffle.api.interop.MessageResolution(receiverType = NoKeysObject.class)
         static final class NoKeysObjectMessageResolution {
             // no messages defined, defaults only
         }
@@ -1225,7 +1246,7 @@ public class HostInteropTest extends ProxyLanguageEnvTest {
     static final class NoKeyInfoObject implements TruffleObject {
 
         @Override
-        public ForeignAccess getForeignAccess() {
+        public com.oracle.truffle.api.interop.ForeignAccess getForeignAccess() {
             return NoKeyInfoObjectMessageResolutionForeign.ACCESS;
         }
 
@@ -1233,10 +1254,10 @@ public class HostInteropTest extends ProxyLanguageEnvTest {
             return obj instanceof NoKeyInfoObject;
         }
 
-        @MessageResolution(receiverType = NoKeyInfoObject.class)
+        @com.oracle.truffle.api.interop.MessageResolution(receiverType = NoKeyInfoObject.class)
         static final class NoKeyInfoObjectMessageResolution {
             // KEYS defined only, using default KEY_INFO
-            @Resolve(message = "KEYS")
+            @com.oracle.truffle.api.interop.Resolve(message = "KEYS")
             public abstract static class PropertiesKeysOnlyNode extends Node {
 
                 public Object access(NoKeyInfoObject receiver) {
@@ -1250,19 +1271,19 @@ public class HostInteropTest extends ProxyLanguageEnvTest {
     static final class DefaultHasKeysObject implements TruffleObject {
 
         @Override
-        public ForeignAccess getForeignAccess() {
-            return ForeignAccess.create(new ForeignAccess.Factory() {
+        public com.oracle.truffle.api.interop.ForeignAccess getForeignAccess() {
+            return com.oracle.truffle.api.interop.ForeignAccess.create(new com.oracle.truffle.api.interop.ForeignAccess.Factory() {
                 @Override
                 public boolean canHandle(TruffleObject obj) {
                     return obj instanceof DefaultHasKeysObject;
                 }
 
                 @Override
-                public CallTarget accessMessage(Message message) {
-                    if (Message.HAS_KEYS.equals(message)) {
+                public CallTarget accessMessage(com.oracle.truffle.api.interop.Message message) {
+                    if (com.oracle.truffle.api.interop.Message.HAS_KEYS.equals(message)) {
                         return null;
                     }
-                    if (Message.KEYS.equals(message)) {
+                    if (com.oracle.truffle.api.interop.Message.KEYS.equals(message)) {
                         return Truffle.getRuntime().createCallTarget(RootNode.createConstantNode(new ArrayTruffleObject(1)));
                     }
                     return null;
@@ -1281,7 +1302,7 @@ public class HostInteropTest extends ProxyLanguageEnvTest {
         }
 
         @Override
-        public ForeignAccess getForeignAccess() {
+        public com.oracle.truffle.api.interop.ForeignAccess getForeignAccess() {
             return HasKeysObjectMessageResolutionForeign.ACCESS;
         }
 
@@ -1289,10 +1310,10 @@ public class HostInteropTest extends ProxyLanguageEnvTest {
             return obj instanceof HasKeysObject;
         }
 
-        @MessageResolution(receiverType = HasKeysObject.class)
+        @com.oracle.truffle.api.interop.MessageResolution(receiverType = HasKeysObject.class)
         static final class HasKeysObjectMessageResolution {
 
-            @Resolve(message = "HAS_KEYS")
+            @com.oracle.truffle.api.interop.Resolve(message = "HAS_KEYS")
             public abstract static class HasKeysNode extends Node {
 
                 public Object access(HasKeysObject receiver) {
@@ -1311,7 +1332,7 @@ public class HostInteropTest extends ProxyLanguageEnvTest {
         }
 
         @Override
-        public ForeignAccess getForeignAccess() {
+        public com.oracle.truffle.api.interop.ForeignAccess getForeignAccess() {
             return RemoveKeysObjectMessageResolutionForeign.ACCESS;
         }
 
@@ -1319,10 +1340,10 @@ public class HostInteropTest extends ProxyLanguageEnvTest {
             return obj instanceof RemoveKeysObject;
         }
 
-        @MessageResolution(receiverType = RemoveKeysObject.class)
+        @com.oracle.truffle.api.interop.MessageResolution(receiverType = RemoveKeysObject.class)
         static final class RemoveKeysObjectMessageResolution {
 
-            @Resolve(message = "KEYS")
+            @com.oracle.truffle.api.interop.Resolve(message = "KEYS")
             public abstract static class PropertiesKeysOnlyNode extends Node {
 
                 public Object access(RemoveKeysObject receiver) {
@@ -1358,7 +1379,7 @@ public class HostInteropTest extends ProxyLanguageEnvTest {
                 }
             }
 
-            @Resolve(message = "READ")
+            @com.oracle.truffle.api.interop.Resolve(message = "READ")
             public abstract static class ReadKeyNode extends Node {
 
                 public Object access(RemoveKeysObject receiver, String name) {
@@ -1370,7 +1391,7 @@ public class HostInteropTest extends ProxyLanguageEnvTest {
                 }
             }
 
-            @Resolve(message = "REMOVE")
+            @com.oracle.truffle.api.interop.Resolve(message = "REMOVE")
             public abstract static class RemoveKeyNode extends Node {
 
                 public Object access(RemoveKeysObject receiver, String name) {
@@ -1381,6 +1402,18 @@ public class HostInteropTest extends ProxyLanguageEnvTest {
                     return true;
                 }
             }
+
+            @com.oracle.truffle.api.interop.Resolve(message = "KEY_INFO")
+            public abstract static class KeyInfoNode extends Node {
+
+                public Object access(RemoveKeysObject receiver, String name) {
+                    if (receiver.keys.containsKey(name)) {
+                        return com.oracle.truffle.api.interop.KeyInfo.READABLE | com.oracle.truffle.api.interop.KeyInfo.MODIFIABLE | com.oracle.truffle.api.interop.KeyInfo.REMOVABLE;
+                    }
+                    return com.oracle.truffle.api.interop.KeyInfo.NONE;
+                }
+            }
+
         }
     }
 
@@ -1393,7 +1426,7 @@ public class HostInteropTest extends ProxyLanguageEnvTest {
         }
 
         @Override
-        public ForeignAccess getForeignAccess() {
+        public com.oracle.truffle.api.interop.ForeignAccess getForeignAccess() {
             return ArrayTruffleObjectMessageResolutionForeign.ACCESS;
         }
 
@@ -1401,10 +1434,10 @@ public class HostInteropTest extends ProxyLanguageEnvTest {
             return obj instanceof ArrayTruffleObject;
         }
 
-        @MessageResolution(receiverType = ArrayTruffleObject.class)
+        @com.oracle.truffle.api.interop.MessageResolution(receiverType = ArrayTruffleObject.class)
         static final class ArrayTruffleObjectMessageResolution {
 
-            @Resolve(message = "HAS_SIZE")
+            @com.oracle.truffle.api.interop.Resolve(message = "HAS_SIZE")
             public abstract static class ArrayHasSizeNode extends Node {
 
                 public Object access(ArrayTruffleObject receiver) {
@@ -1413,7 +1446,7 @@ public class HostInteropTest extends ProxyLanguageEnvTest {
                 }
             }
 
-            @Resolve(message = "GET_SIZE")
+            @com.oracle.truffle.api.interop.Resolve(message = "GET_SIZE")
             public abstract static class ArrayGetSizeNode extends Node {
 
                 public Object access(ArrayTruffleObject receiver) {
@@ -1421,142 +1454,75 @@ public class HostInteropTest extends ProxyLanguageEnvTest {
                 }
             }
 
-            @Resolve(message = "READ")
+            @com.oracle.truffle.api.interop.Resolve(message = "READ")
             public abstract static class ArrayReadSizeNode extends Node {
 
-                public Object access(ArrayTruffleObject receiver, int index) {
+                public Object access(ArrayTruffleObject receiver, Number number) {
+                    int index = number.intValue();
                     if (index < 0 || index >= receiver.size) {
                         throw new ArrayIndexOutOfBoundsException(index);
                     }
                     return receiver.size - index;
                 }
+
             }
 
-            @Resolve(message = "REMOVE")
+            @com.oracle.truffle.api.interop.Resolve(message = "REMOVE")
             public abstract static class ArrayRemoveNode extends Node {
 
-                public Object access(ArrayTruffleObject receiver, int index) {
+                public Object access(ArrayTruffleObject receiver, Number number) {
+                    int index = number.intValue();
                     if (index < 0 || index >= receiver.size) {
                         throw new ArrayIndexOutOfBoundsException(index);
                     }
                     receiver.size--;
                     return true;
                 }
+
             }
+
+            @com.oracle.truffle.api.interop.Resolve(message = "KEY_INFO")
+            public abstract static class KeyInfoNode extends Node {
+
+                public Object access(ArrayTruffleObject receiver, Number number) {
+                    int index = number.intValue();
+                    if (number.doubleValue() != index) {
+                        return com.oracle.truffle.api.interop.KeyInfo.NONE;
+                    }
+                    if (index < 0 || index >= receiver.size) {
+                        return com.oracle.truffle.api.interop.KeyInfo.NONE;
+                    }
+                    return com.oracle.truffle.api.interop.KeyInfo.READABLE | com.oracle.truffle.api.interop.KeyInfo.MODIFIABLE | com.oracle.truffle.api.interop.KeyInfo.REMOVABLE;
+                }
+
+            }
+
         }
     }
 
-    static final class InternalPropertiesObject implements TruffleObject {
+    static final class InternalPropertiesObject extends ProxyLegacyInteropObject {
 
-        private final int rBits;    // readable
-        private final int wBits;    // writable
-        private final int rsBits;   // read side-effects
-        private final int wsBits;   // write side-effects
-        private final int iBits;    // invocable
-        private final int nBits;    // internal
+        int keyInfo;
 
-        /**
-         * @param iBits bits at property number indexes, where '1' means internal, '0' means
-         *            non-internal.
-         */
-        InternalPropertiesObject(int iBits) {
-            this(-1, -1, -1, -1, -1, iBits);
-        }
-
-        InternalPropertiesObject(int rBits, int wBits, int rsBits, int wsBits, int iBits, int nBits) {
-            this.rBits = rBits;
-            this.wBits = wBits;
-            this.rsBits = rsBits;
-            this.wsBits = wsBits;
-            this.iBits = iBits;
-            this.nBits = nBits;
+        @Override
+        public boolean hasKeys() {
+            return true;
         }
 
         @Override
-        public ForeignAccess getForeignAccess() {
-            return PropertiesVisibilityObjectMessageResolutionForeign.ACCESS;
+        public Object keys() throws UnsupportedMessageException {
+            return ProxyLanguage.getCurrentContext().getEnv().asGuestValue(new String[]{"p1"});
         }
 
-        public static boolean isInstance(TruffleObject obj) {
-            return obj instanceof InternalPropertiesObject;
-        }
-
-        @MessageResolution(receiverType = InternalPropertiesObject.class)
-        static final class PropertiesVisibilityObjectMessageResolution {
-
-            @Resolve(message = "HAS_KEYS")
-            public abstract static class HasKeysNode extends Node {
-
-                public Object access(InternalPropertiesObject receiver) {
-                    assert receiver != null;
-                    return true;
-                }
-            }
-
-            @Resolve(message = "KEYS")
-            public abstract static class KeysNode extends Node {
-
-                public Object access(InternalPropertiesObject receiver, boolean includeInternal) {
-                    assert receiver != null;
-                    if (includeInternal) {
-                        return ProxyLanguage.getCurrentContext().getEnv().asGuestValue(new String[]{"p1", "p2", "p3", "p4", "p5", "p6"});
-                    } else {
-                        List<String> propertyNames = new ArrayList<>();
-                        for (int i = 1; i <= 6; i++) {
-                            if ((receiver.nBits & (1 << i)) == 0) {
-                                propertyNames.add("p" + i);
-                            }
-                        }
-                        return ProxyLanguage.getCurrentContext().getEnv().asGuestValue(propertyNames.toArray());
-                    }
-                }
-            }
-
-            @Resolve(message = "KEY_INFO")
-            public abstract static class KeyInfoNode extends Node {
-
-                public int access(InternalPropertiesObject receiver, String propertyName) {
-                    if (propertyName.length() != 2 || propertyName.charAt(0) != 'p' || !Character.isDigit(propertyName.charAt(1))) {
-                        return 0;
-                    }
-                    int d = Character.digit(propertyName.charAt(1), 10);
-                    if (d > 6) {
-                        return 0;
-                    }
-                    boolean readable = (receiver.rBits & (1 << d)) > 0;
-                    boolean writable = (receiver.wBits & (1 << d)) > 0;
-                    boolean readSideEffects = (receiver.rsBits & (1 << d)) > 0;
-                    boolean writeSideEffects = (receiver.wsBits & (1 << d)) > 0;
-                    boolean invocable = (receiver.iBits & (1 << d)) > 0;
-                    boolean internal = (receiver.nBits & (1 << d)) > 0;
-                    int info = KeyInfo.NONE;
-                    if (readable) {
-                        info |= KeyInfo.READABLE;
-                    }
-                    if (writable) {
-                        info |= KeyInfo.MODIFIABLE;
-                    }
-                    if (readSideEffects) {
-                        info |= KeyInfo.READ_SIDE_EFFECTS;
-                    }
-                    if (writeSideEffects) {
-                        info |= KeyInfo.WRITE_SIDE_EFFECTS;
-                    }
-                    if (invocable) {
-                        info |= KeyInfo.INVOCABLE;
-                    }
-                    if (internal) {
-                        info |= KeyInfo.INTERNAL;
-                    }
-                    return info;
-                }
-            }
+        @Override
+        public int keyInfo(String key) {
+            return key.equals("p1") ? keyInfo : 0;
         }
     }
 
-    @MessageResolution(receiverType = FunctionObject.class)
+    @com.oracle.truffle.api.interop.MessageResolution(receiverType = FunctionObject.class)
     static final class FunctionObject implements TruffleObject {
-        @Resolve(message = "IS_EXECUTABLE")
+        @com.oracle.truffle.api.interop.Resolve(message = "IS_EXECUTABLE")
         abstract static class IsExecutable extends Node {
             @SuppressWarnings("unused")
             protected Object access(FunctionObject obj) {
@@ -1564,7 +1530,7 @@ public class HostInteropTest extends ProxyLanguageEnvTest {
             }
         }
 
-        @Resolve(message = "EXECUTE")
+        @com.oracle.truffle.api.interop.Resolve(message = "EXECUTE")
         @SuppressWarnings("unused")
         abstract static class Execute extends Node {
             protected Object access(FunctionObject obj, Object[] args) {
@@ -1577,7 +1543,7 @@ public class HostInteropTest extends ProxyLanguageEnvTest {
         }
 
         @Override
-        public ForeignAccess getForeignAccess() {
+        public com.oracle.truffle.api.interop.ForeignAccess getForeignAccess() {
             return FunctionObjectForeign.ACCESS;
         }
     }

@@ -38,19 +38,19 @@ public final class Result {
 
     private final JSONObject resultJSON;
 
-    public static String emptyResultToJSONString(long id) {
+    public static JSONObject emptyResult(long id) {
         EMPTY.put(Command.ID, id);
-        return EMPTY.toString();
+        return EMPTY;
     }
 
     public Result(Params params) {
         this.resultJSON = params.getJSONObject();
     }
 
-    public String toJSONString(long id) {
+    public JSONObject toJSON(long id) {
         JSONObject json = new JSONObject();
         json.put("id", id);
         json.put("result", resultJSON);
-        return json.toString();
+        return json;
     }
 }

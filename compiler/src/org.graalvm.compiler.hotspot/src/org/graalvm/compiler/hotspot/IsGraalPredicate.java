@@ -24,49 +24,16 @@
  */
 package org.graalvm.compiler.hotspot;
 
+import org.graalvm.compiler.debug.GraalError;
+
 /**
  * Determines if a given class is a JVMCI or Graal class for the purpose of
  * {@link HotSpotGraalCompilerFactory.Options#CompileGraalWithC1Only}.
  */
-public final class IsGraalPredicate {
+class IsGraalPredicate extends IsGraalPredicateBase {
 
-    private final ClassLoader jvmciLoader = getClass().getClassLoader();
-
-    @SuppressWarnings("unused")
-    void onCompilerConfigurationFactorySelection(CompilerConfigurationFactory factory) {
-    }
-
+    @Override
     boolean apply(Class<?> declaringClass) {
-        if (jvmciLoader != null) {
-            // When running with +UseJVMCIClassLoader all classes loaded
-            // by the JVMCI loader are considered to be Graal classes.
-            try {
-                if (declaringClass.getClassLoader() == jvmciLoader) {
-                    return true;
-                }
-            } catch (SecurityException e) {
-                // This is definitely not a JVMCI or Graal class
-            }
-        } else {
-            // JVMCI and Graal are on the bootclasspath so match based on the package.
-            String declaringClassName = declaringClass.getName();
-            if (declaringClassName.startsWith("jdk.vm.ci")) {
-                return true;
-            }
-            if (declaringClassName.startsWith("org.graalvm.") &&
-                            (declaringClassName.startsWith("org.graalvm.compiler.") ||
-                                            declaringClassName.startsWith("org.graalvm.collections.") ||
-                                            declaringClassName.startsWith("org.graalvm.compiler.word.") ||
-                                            declaringClassName.startsWith("org.graalvm.graphio."))) {
-                return true;
-            }
-            if (declaringClassName.startsWith("com.oracle.graal") &&
-                            (declaringClassName.startsWith("com.oracle.graal.enterprise") ||
-                                            declaringClassName.startsWith("com.oracle.graal.vector") ||
-                                            declaringClassName.startsWith("com.oracle.graal.asm"))) {
-                return true;
-            }
-        }
-        return false;
+        throw GraalError.shouldNotReachHere("must have versioned implementation");
     }
 }

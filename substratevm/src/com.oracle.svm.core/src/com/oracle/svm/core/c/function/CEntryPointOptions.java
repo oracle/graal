@@ -138,12 +138,6 @@ public @interface CEntryPointOptions {
      */
     Class<?> epilogue() default LeaveEpilogue.class;
 
-    /**
-     * @deprecated Moved to {@link CEntryPoint#exceptionHandler()}
-     */
-    @Deprecated
-    Class<?> exceptionHandler() default CEntryPoint.FatalExceptionHandler.class;
-
     enum Publish {
         /**
          * Do not publish the entry point method.

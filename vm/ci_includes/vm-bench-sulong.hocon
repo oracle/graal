@@ -35,7 +35,7 @@ bench-llvm-linux: ${x52.default} ${labsjdk8} {
     RESULTS_FILE_SUFFIX: .json
     RESULTS_FILE: "${RESULTS_FILE_PREFIX}${BENCHMARK}${RESULTS_FILE_SUFFIX}"
   }
-  cmd: [mx, --dynamicimport, "/sulong", benchmark, --results-file, "${RESULTS_FILE}", "csuite:*"]
+  cmd: [mx, --dynamicimport, "/sulong,sulong-benchmarks", benchmark, --results-file, "${RESULTS_FILE}", "csuite:*"]
   setup: [
     [git, clone, --depth, "1", ${repoBase}"${BENCH_REPO_NAME}.git",  "../${BENCH_REPO_NAME}"]
   ]
@@ -47,7 +47,7 @@ bench-llvm-linux: ${x52.default} ${labsjdk8} {
 }
 
 bench-llvm-sulong-core: ${bench-llvm-sulong-common} ${bench-llvm-linux} {
-  targets: [bench, post-merge],
+  targets: [bench, daily],
   environment: {
     JVM_CONFIG: ${jvm-config.default}
   }
@@ -68,7 +68,7 @@ bench_vm_ce_linux_base: ${svm-common-linux-amd64} ${sulong_linux} ${custom_vm_li
     [mx, --no-sources, --env, ce, build]
   ]
   teardown: [
-    [bench-uploader.py, --url, "$BENCH_SERVER_URL", ${bench_vm_ce_linux_base.resultFile}]
+    [bench-uploader.py, ${bench_vm_ce_linux_base.resultFile}]
   ]
   logs: ${sulong_logs}
   capabilities: [no_frequency_scaling, tmpfs25g, x52, linux, amd64]
@@ -79,7 +79,7 @@ bench-llvm-sulong-graalvm-ce: ${bench_vm_ce_linux_base} ${bench-llvm-sulong-comm
     [git, clone, --depth, "1", ${repoBase}"${BENCH_REPO_NAME}.git", "../../${BENCH_REPO_NAME}"]
   ]
   run: [
-    [mx, --no-sources, --env, ce, benchmark, --results-file, ${bench_vm_ce_linux_base.resultFile}, "csuite:*", --, --native-vm, sulong, --native-vm-config, default, --jvm, graalvm-ce, --jvm-config, "${JVM_CONFIG}"]
+    [mx, --no-sources, --dynamicimport, sulong-benchmarks, --env, ce, benchmark, --results-file, ${bench_vm_ce_linux_base.resultFile}, "csuite:*", --, "--vm.Dgraal.CompilationExpirationPeriod=600", --native-vm, sulong, --native-vm-config, default, --jvm, graalvm-ce, --jvm-config, "${JVM_CONFIG}"]
   ]
   timelimit: "10:00:01"
 }
@@ -95,7 +95,7 @@ bench-llvm-native: ${bench-llvm-common} ${bench-llvm-linux} ${sulong-weekly-noti
 builds += [
   ${bench-llvm-sulong-graalvm-ce} {targets: [daily, bench], name: "daily-bench-sulong-graalvm-ce-jvm-csuite", environment: { JVM_CONFIG: jvm } }
   ${bench-llvm-sulong-graalvm-ce} {targets: [daily, bench], name: "daily-bench-sulong-graalvm-ce-native-csuite", environment: { JVM_CONFIG: native } }
-  ${bench-llvm-sulong-core} {name: bench-sulong-graal-core-csuite}
+  ${bench-llvm-sulong-core} {name: daily-bench-sulong-graal-core-csuite}
   # sulong reference benchmark
   ${bench-llvm-native} {name: "daily-bench-clangO3-csuite"}
 

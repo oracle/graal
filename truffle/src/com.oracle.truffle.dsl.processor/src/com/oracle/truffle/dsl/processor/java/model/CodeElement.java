@@ -50,12 +50,13 @@ import java.util.Iterator;
 import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.ListIterator;
+import java.util.Objects;
 import java.util.Set;
 
 import javax.lang.model.element.AnnotationMirror;
 import javax.lang.model.element.Element;
-import javax.lang.model.element.ElementKind;
 import javax.lang.model.element.Modifier;
+import javax.lang.model.element.TypeElement;
 
 import com.oracle.truffle.dsl.processor.java.transform.AbstractCodeWriter;
 
@@ -64,7 +65,6 @@ public abstract class CodeElement<E extends Element> implements Element, Generat
     private final Set<Modifier> modifiers;
     private List<AnnotationMirror> annotations;
     private List<E> enclosedElements;
-
     private Element enclosingElement;
 
     private Element generatorElement;
@@ -90,8 +90,30 @@ public abstract class CodeElement<E extends Element> implements Element, Generat
     }
 
     @Override
+    public boolean equals(Object obj) {
+        if (obj != null && this.getClass() == obj.getClass()) {
+            CodeElement<?> other = (CodeElement<?>) obj;
+            return Objects.equals(modifiers, other.modifiers) && //
+                            Objects.equals(annotations, other.annotations) && //
+                            Objects.equals(enclosedElements, other.enclosedElements);
+        }
+        return super.equals(obj);
+    }
+
+    @Override
+    public int hashCode() {
+        return Objects.hash(modifiers, annotations, enclosedElements);
+    }
+
+    @Override
     public Element getGeneratorElement() {
         return generatorElement;
+    }
+
+    public <T extends E> void addAll(Collection<? extends T> elements) {
+        for (T t : elements) {
+            add(t);
+        }
     }
 
     public <T extends E> T add(T element) {
@@ -173,12 +195,12 @@ public abstract class CodeElement<E extends Element> implements Element, Generat
         return enclosingElement;
     }
 
-    public CodeTypeElement getEnclosingClass() {
+    public TypeElement getEnclosingClass() {
         Element p = enclosingElement;
-        while (p != null && p.getKind() != ElementKind.CLASS && p.getKind() != ElementKind.ENUM) {
+        while (p != null && !p.getKind().isClass() && !p.getKind().isInterface()) {
             p = p.getEnclosingElement();
         }
-        return (CodeTypeElement) p;
+        return (TypeElement) p;
     }
 
     <T> List<T> parentableList(Element parent, List<T> list) {

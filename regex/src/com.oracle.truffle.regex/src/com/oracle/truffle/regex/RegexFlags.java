@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2014, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2014, 2019, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -24,15 +24,17 @@
  */
 package com.oracle.truffle.regex;
 
+import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
-import com.oracle.truffle.api.interop.ForeignAccess;
-import com.oracle.truffle.api.interop.TruffleObject;
-import com.oracle.truffle.regex.runtime.RegexFlagsMessageResolutionForeign;
+import com.oracle.truffle.api.interop.UnknownIdentifierException;
 import com.oracle.truffle.regex.tregex.util.json.Json;
 import com.oracle.truffle.regex.tregex.util.json.JsonConvertible;
 import com.oracle.truffle.regex.tregex.util.json.JsonValue;
+import com.oracle.truffle.regex.util.TruffleReadOnlyKeysArray;
 
-public final class RegexFlags implements RegexLanguageObject, JsonConvertible {
+public final class RegexFlags extends AbstractConstantKeysObject implements JsonConvertible {
+
+    private static final TruffleReadOnlyKeysArray KEYS = new TruffleReadOnlyKeysArray("source", "ignoreCase", "multiline", "sticky", "global", "unicode", "dotAll");
 
     private static final int NONE = 0;
     private static final int IGNORE_CASE = 1;
@@ -150,16 +152,7 @@ public final class RegexFlags implements RegexLanguageObject, JsonConvertible {
 
     @Override
     public boolean equals(Object obj) {
-        return obj == this || obj != null && obj instanceof RegexFlags && value == ((RegexFlags) obj).value;
-    }
-
-    public static boolean isInstance(TruffleObject object) {
-        return object instanceof RegexFlags;
-    }
-
-    @Override
-    public ForeignAccess getForeignAccess() {
-        return RegexFlagsMessageResolutionForeign.ACCESS;
+        return obj == this || obj instanceof RegexFlags && value == ((RegexFlags) obj).value;
     }
 
     @TruffleBoundary
@@ -171,5 +164,33 @@ public final class RegexFlags implements RegexLanguageObject, JsonConvertible {
                         Json.prop("sticky", isSticky()),
                         Json.prop("unicode", isUnicode()),
                         Json.prop("dotAll", isDotAll()));
+    }
+
+    @Override
+    public TruffleReadOnlyKeysArray getKeys() {
+        return KEYS;
+    }
+
+    @Override
+    public Object readMemberImpl(String symbol) throws UnknownIdentifierException {
+        switch (symbol) {
+            case "source":
+                return getSource();
+            case "ignoreCase":
+                return isIgnoreCase();
+            case "multiline":
+                return isMultiline();
+            case "sticky":
+                return isSticky();
+            case "global":
+                return isGlobal();
+            case "unicode":
+                return isUnicode();
+            case "dotAll":
+                return isDotAll();
+            default:
+                CompilerDirectives.transferToInterpreter();
+                throw UnknownIdentifierException.create(symbol);
+        }
     }
 }

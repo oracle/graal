@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2016, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2016, 2018, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -28,11 +28,12 @@ import org.graalvm.compiler.hotspot.HotSpotCompilationIdentifier;
 import org.graalvm.compiler.truffle.common.CompilableTruffleAST;
 
 import jdk.vm.ci.hotspot.HotSpotCompilationRequest;
+import org.graalvm.compiler.truffle.compiler.TruffleCompilationIdentifier;
 
 /**
  * A {@link HotSpotCompilationIdentifier} for Truffle compilations.
  */
-public class HotSpotTruffleCompilationIdentifier extends HotSpotCompilationIdentifier {
+public class HotSpotTruffleCompilationIdentifier extends HotSpotCompilationIdentifier implements TruffleCompilationIdentifier {
 
     private final CompilableTruffleAST compilable;
 
@@ -56,4 +57,12 @@ public class HotSpotTruffleCompilationIdentifier extends HotSpotCompilationIdent
         return super.buildID(sb.append("Truffle"));
     }
 
+    @Override
+    public CompilableTruffleAST getCompilable() {
+        return compilable;
+    }
+
+    @Override
+    public void close() {
+    }
 }

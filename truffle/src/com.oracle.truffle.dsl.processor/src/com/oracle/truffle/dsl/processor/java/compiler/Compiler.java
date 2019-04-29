@@ -48,4 +48,7 @@ import javax.lang.model.element.TypeElement;
 
 public interface Compiler {
     List<? extends Element> getAllMembersInDeclarationOrder(ProcessingEnvironment environment, TypeElement type);
+
+    List<? extends Element> getEnclosedElementsInDeclarationOrder(TypeElement type);
+
 }

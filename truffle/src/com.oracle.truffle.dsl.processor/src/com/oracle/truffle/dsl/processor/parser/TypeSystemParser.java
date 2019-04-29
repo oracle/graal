@@ -85,9 +85,9 @@ public class TypeSystemParser extends AbstractParser<TypeSystemData> {
     }
 
     @Override
-    protected TypeSystemData parse(Element element, AnnotationMirror mirror) {
+    protected TypeSystemData parse(Element element, List<AnnotationMirror> mirror) {
         TypeElement templateType = (TypeElement) element;
-        AnnotationMirror templateTypeAnnotation = mirror;
+        AnnotationMirror templateTypeAnnotation = mirror.iterator().next();
 
         TypeSystemData typeSystem = new TypeSystemData(context, templateType, templateTypeAnnotation, false);
 

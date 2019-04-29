@@ -166,6 +166,13 @@ final class Target_java_lang_ref_Reference {
         throw VMError.unimplemented();
     }
 
+    @Substitute
+    @TargetElement(onlyWith = JDK9OrLater.class)
+    @SuppressWarnings("unused")
+    private static boolean waitForReferenceProcessing() {
+        throw VMError.unimplemented();
+    }
+
     @Override
     @KeepOriginal //
     @TargetElement(onlyWith = JDK9OrLater.class) //

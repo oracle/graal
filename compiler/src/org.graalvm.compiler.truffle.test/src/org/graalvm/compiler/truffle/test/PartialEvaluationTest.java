@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2013, 2015, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2013, 2018, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -26,9 +26,10 @@ package org.graalvm.compiler.truffle.test;
 
 import static org.graalvm.compiler.core.common.CompilationIdentifier.INVALID_COMPILATION_ID;
 import static org.graalvm.compiler.core.common.CompilationRequestIdentifier.asCompilationRequest;
+import static org.graalvm.compiler.debug.DebugOptions.DumpOnError;
 
+import org.graalvm.compiler.code.CompilationResult;
 import org.graalvm.compiler.core.common.CompilationIdentifier;
-import org.graalvm.compiler.core.test.GraalCompilerTest;
 import org.graalvm.compiler.debug.DebugContext;
 import org.graalvm.compiler.debug.DebugDumpScope;
 import org.graalvm.compiler.nodes.FrameState;
@@ -41,17 +42,13 @@ import org.graalvm.compiler.phases.common.CanonicalizerPhase;
 import org.graalvm.compiler.phases.common.DeadCodeEliminationPhase;
 import org.graalvm.compiler.phases.tiers.HighTierContext;
 import org.graalvm.compiler.phases.tiers.PhaseContext;
-import org.graalvm.compiler.truffle.common.TruffleCompiler;
 import org.graalvm.compiler.truffle.common.TruffleDebugJavaMethod;
-import org.graalvm.compiler.truffle.compiler.TruffleCompilerImpl;
 import org.graalvm.compiler.truffle.compiler.TruffleCompilerOptions;
 import org.graalvm.compiler.truffle.runtime.CancellableCompileTask;
 import org.graalvm.compiler.truffle.runtime.DefaultInliningPolicy;
-import org.graalvm.compiler.truffle.runtime.GraalTruffleRuntime;
 import org.graalvm.compiler.truffle.runtime.OptimizedCallTarget;
 import org.graalvm.compiler.truffle.runtime.TruffleInlining;
 import org.junit.Assert;
-import org.junit.Assume;
 
 import com.oracle.truffle.api.CallTarget;
 import com.oracle.truffle.api.Truffle;
@@ -61,22 +58,11 @@ import com.oracle.truffle.api.nodes.RootNode;
 import jdk.vm.ci.code.BailoutException;
 import jdk.vm.ci.meta.SpeculationLog;
 
-public abstract class PartialEvaluationTest extends GraalCompilerTest {
-    protected final TruffleCompilerImpl truffleCompiler;
+public abstract class PartialEvaluationTest extends TruffleCompilerImplTest {
     private final PhaseSuite<HighTierContext> suite;
 
     public PartialEvaluationTest() {
-        beforeInitialization();
-        TruffleCompiler compiler = GraalTruffleRuntime.getRuntime().newTruffleCompiler();
-        Assume.assumeTrue("cannot get whitebox interface to Truffle compiler", compiler instanceof TruffleCompilerImpl);
-        this.truffleCompiler = (TruffleCompilerImpl) compiler;
         this.suite = truffleCompiler.createGraphBuilderSuite();
-    }
-
-    /**
-     * Executed before initialization. This hook can be used to override specific flags.
-     */
-    protected void beforeInitialization() {
     }
 
     protected OptimizedCallTarget assertPartialEvalEquals(String methodName, RootNode root) {
@@ -91,11 +77,15 @@ public abstract class PartialEvaluationTest extends GraalCompilerTest {
         return compileHelper(methodName, root, arguments, true);
     }
 
+    protected CompilationResult lastCompilationResult;
+
     protected OptimizedCallTarget compileHelper(String methodName, RootNode root, Object[] arguments, boolean lastTierCompilation) {
         final OptimizedCallTarget compilable = (OptimizedCallTarget) (Truffle.getRuntime()).createCallTarget(root);
         CompilationIdentifier compilationId = getCompilationId(compilable);
-        StructuredGraph actual = partialEval(compilable, arguments, AllowAssumptions.YES, compilationId);
-        truffleCompiler.compilePEGraph(actual, methodName, null, compilable, asCompilationRequest(compilationId), null, new CancellableCompileTask(lastTierCompilation));
+        StructuredGraph graph = partialEval(compilable, arguments, AllowAssumptions.YES, compilationId);
+        this.lastCompilationResult = truffleCompiler.compilePEGraph(graph, methodName, null, compilable, asCompilationRequest(compilationId), null,
+                        new CancellableCompileTask(lastTierCompilation));
+        this.lastCompiledGraph = graph;
         return compilable;
     }
 
@@ -160,14 +150,38 @@ public abstract class PartialEvaluationTest extends GraalCompilerTest {
         } catch (IgnoreError e) {
         }
 
-        OptionValues options = TruffleCompilerOptions.getOptions();
+        OptionValues options = getOptions();
         DebugContext debug = getDebugContext(options);
         try (DebugContext.Scope s = debug.scope("TruffleCompilation", new TruffleDebugJavaMethod(compilable))) {
             TruffleInlining inliningDecision = new TruffleInlining(compilable, new DefaultInliningPolicy());
-            SpeculationLog speculationLog = compilable.getSpeculationLog();
+            SpeculationLog speculationLog = compilable.getCompilationSpeculationLog();
             return truffleCompiler.getPartialEvaluator().createGraph(debug, compilable, inliningDecision, allowAssumptions, compilationId, speculationLog, null);
         } catch (Throwable e) {
             throw debug.handle(e);
+        }
+    }
+
+    protected OptionValues getOptions() {
+        OptionValues options = TruffleCompilerOptions.getOptions();
+        if (preventDumping) {
+            options = new OptionValues(options, DumpOnError, false);
+        }
+        return options;
+    }
+
+    private boolean preventDumping = false;
+
+    protected class PreventDumping implements AutoCloseable {
+        private final boolean previous;
+
+        protected PreventDumping() {
+            previous = preventDumping;
+            preventDumping = true;
+        }
+
+        @Override
+        public void close() {
+            preventDumping = previous;
         }
     }
 

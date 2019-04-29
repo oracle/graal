@@ -30,20 +30,15 @@ import java.lang.reflect.Modifier;
 import java.util.ArrayList;
 import java.util.List;
 
-import org.graalvm.compiler.asm.amd64.AMD64Address;
-import org.graalvm.compiler.asm.amd64.AMD64Assembler;
-import org.graalvm.compiler.code.CompilationResult;
-import org.graalvm.compiler.core.target.Backend;
 import org.graalvm.compiler.debug.DebugContext;
 import org.graalvm.compiler.nodes.StructuredGraph;
 
 import com.oracle.graal.pointsto.meta.AnalysisUniverse;
 import com.oracle.graal.pointsto.meta.HostedProviders;
-import com.oracle.svm.core.graal.code.amd64.SubstrateAMD64Backend;
-import com.oracle.svm.core.graal.code.amd64.SubstrateCallingConventionType;
+import com.oracle.svm.core.graal.code.SubstrateBackend;
+import com.oracle.svm.core.graal.code.SubstrateCallingConventionType;
 import com.oracle.svm.core.graal.nodes.DeadEndNode;
 import com.oracle.svm.core.graal.nodes.UnreachableNode;
-import com.oracle.svm.core.util.VMError;
 import com.oracle.svm.hosted.annotation.CustomSubstitutionMethod;
 import com.oracle.svm.hosted.code.CompileQueue.CompileFunction;
 import com.oracle.svm.hosted.code.CompileQueue.ParseFunction;
@@ -56,7 +51,6 @@ import com.oracle.svm.jni.nativeapi.JNIEnvironment;
 import com.oracle.svm.jni.nativeapi.JNIMethodId;
 import com.oracle.svm.jni.nativeapi.JNIObjectHandle;
 
-import jdk.vm.ci.amd64.AMD64;
 import jdk.vm.ci.code.CallingConvention;
 import jdk.vm.ci.code.RegisterValue;
 import jdk.vm.ci.meta.JavaType;
@@ -111,8 +105,7 @@ public class JNICallTrampolineMethod extends CustomSubstitutionMethod {
 
     public CompileFunction createCustomCompileFunction() {
         return (debug, method, identifier, reason, config) -> {
-            Backend backend = config.getBackendForNormalMethod();
-            VMError.guarantee(backend.getTarget().arch instanceof AMD64, "currently only implemented on AMD64");
+            SubstrateBackend backend = config.getBackendForNormalMethod();
 
             // Determine register for jmethodID argument
             HostedProviders providers = (HostedProviders) config.getProviders();
@@ -128,16 +121,7 @@ public class JNICallTrampolineMethod extends CustomSubstitutionMethod {
                             SubstrateCallingConventionType.NativeCall, returnType, parameters.toArray(new JavaType[0]), backend);
             RegisterValue methodIdArg = (RegisterValue) callingConvention.getArgument(parameters.size() - 1);
 
-            CompilationResult result = new CompilationResult(identifier);
-            AMD64Assembler asm = new AMD64Assembler(backend.getTarget());
-            int offset = getFieldOffset(providers);
-            asm.jmp(new AMD64Address(methodIdArg.getRegister(), offset));
-            result.recordMark(asm.position(), SubstrateAMD64Backend.MARK_PROLOGUE_DECD_RSP);
-            result.recordMark(asm.position(), SubstrateAMD64Backend.MARK_PROLOGUE_END);
-            byte[] instructions = asm.close(true);
-            result.setTargetCode(instructions, instructions.length);
-            result.setTotalFrameSize(backend.getTarget().wordSize); // not really, but 0 not allowed
-            return result;
+            return backend.createJNITrampolineMethod(method, identifier, methodIdArg, getFieldOffset(providers));
         };
     }
 

@@ -34,7 +34,6 @@ import java.lang.reflect.Executable;
 import java.lang.reflect.Field;
 import java.lang.reflect.Member;
 import java.lang.reflect.Method;
-import java.nio.ByteBuffer;
 import java.security.MessageDigest;
 import java.security.NoSuchAlgorithmException;
 import java.util.ArrayList;
@@ -53,7 +52,6 @@ import org.graalvm.nativeimage.c.type.CCharPointer;
 import org.graalvm.nativeimage.c.type.CCharPointerPointer;
 import org.graalvm.nativeimage.c.type.CTypeConversion;
 import org.graalvm.word.Pointer;
-import org.graalvm.word.PointerBase;
 import org.graalvm.word.UnsignedWord;
 import org.graalvm.word.WordFactory;
 
@@ -83,6 +81,7 @@ import com.oracle.svm.core.util.Counter;
 import com.oracle.svm.core.util.VMError;
 
 import jdk.vm.ci.meta.ResolvedJavaMethod;
+import jdk.vm.ci.services.Services;
 
 public class SubstrateUtil {
 
@@ -111,6 +110,20 @@ public class SubstrateUtil {
                 break;
         }
         return arch;
+    }
+
+    /**
+     * @return true if the standalone libgraal is being built instead of a normal SVM image.
+     */
+    public static boolean isBuildingLibgraal() {
+        return Services.IS_BUILDING_NATIVE_IMAGE;
+    }
+
+    /**
+     * @return true if running in the standalone libgraal image.
+     */
+    public static boolean isInLibgraal() {
+        return Services.IS_IN_NATIVE_IMAGE;
     }
 
     @TargetClass(com.oracle.svm.core.SubstrateUtil.class)
@@ -158,12 +171,6 @@ public class SubstrateUtil {
             n = n.add(1);
         }
         return n;
-    }
-
-    /** @deprecated replaced by {@link CTypeConversion#asByteBuffer(PointerBase, int)} */
-    @Deprecated
-    public static ByteBuffer wrapAsByteBuffer(PointerBase pointer, int size) {
-        return CTypeConversion.asByteBuffer(pointer, size);
     }
 
     /**
@@ -319,7 +326,7 @@ public class SubstrateUtil {
             log.string("No anchors").newline();
         }
         while (anchor.isNonNull()) {
-            log.string("Anchor ").zhex(anchor.rawValue()).string(" LastJavaSP ").zhex(anchor.getLastJavaSP().rawValue()).newline();
+            log.string("Anchor ").zhex(anchor.rawValue()).string(" LastJavaSP ").zhex(anchor.getLastJavaSP().rawValue()).string(" LastJavaIP ").zhex(anchor.getLastJavaIP().rawValue()).newline();
             anchor = anchor.getPreviousAnchor();
         }
         log.indent(false);
@@ -360,7 +367,7 @@ public class SubstrateUtil {
                     log.string("Found matching Anchor:").zhex(anchor.rawValue()).newline();
                     Pointer lastSp = anchor.getLastJavaSP();
                     log.string("LastJavaSP ").zhex(lastSp.rawValue()).newline();
-                    CodePointer lastIp = FrameAccess.singleton().readReturnAddress(lastSp);
+                    CodePointer lastIp = anchor.getLastJavaIP();
                     log.string("LastJavaIP ").zhex(lastIp.rawValue()).newline();
                 }
             }
@@ -636,5 +643,49 @@ public class SubstrateUtil {
 
     private static String stripPackage(String qualifiedClassName) {
         return qualifiedClassName.substring(qualifiedClassName.lastIndexOf(".") + 1);
+    }
+
+    /**
+     * Mangle the given method name according to our image's (default) mangling convention. A rough
+     * requirement is that symbol names are valid symbol name tokens for the assembler. (This is
+     * necessary to use them in linker command lines, which we currently do in
+     * NativeImageGenerator.) These are of the form '[a-zA-Z\._\$][a-zA-Z0-9\$_]*'. We use the
+     * underscore sign as an escape character. It is always followed by four hex digits representing
+     * the escaped character in natural (big-endian) order. We do not allow the dollar sign, even
+     * though it is legal, because it has special meaning in some shells and disturbs command lines.
+     *
+     * @param methodName a string to mangle
+     * @return a mangled version of methodName
+     */
+    @Platforms(Platform.HOSTED_ONLY.class)
+    public static String mangleName(String methodName) {
+        StringBuilder out = new StringBuilder();
+        for (int i = 0; i < methodName.length(); ++i) {
+            char c = methodName.charAt(i);
+            if ((c >= 'a' && c <= 'z') || (c >= 'A' && c <= 'Z') || (i == 0 && c == '.') || (i > 0 && c >= '0' && c <= '9')) {
+                // it's legal in this position
+                out.append(c);
+            } else if (c == '_') {
+                out.append("__");
+            } else {
+                out.append('_');
+                // Checkstyle: stop
+                out.append(String.format("%04x", (int) c));
+                // Checkstyle: resume
+            }
+        }
+        String mangled = out.toString();
+        assert mangled.matches("[a-zA-Z\\._][a-zA-Z0-9_]*");
+        //@formatter:off
+        /*
+         * To demangle, the following pipeline works for me (assuming no multi-byte characters):
+         *
+         * sed -r 's/\_([0-9a-f]{4})/\n\1\n/g' | sed -r 's#^[0-9a-f]{2}([0-9a-f]{2})#/usr/bin/printf "\\x\1"#e' | tr -d '\n'
+         *
+         * It's not strictly correct if the first characters after an escape sequence
+         * happen to match ^[0-9a-f]{2}, but hey....
+         */
+        //@formatter:on
+        return mangled;
     }
 }

@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2016, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2016, 2019, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -24,26 +24,24 @@
  */
 package com.oracle.truffle.regex.tregex.matchers;
 
+import com.oracle.truffle.api.dsl.Specialization;
+
 /**
  * A character matcher that never matches.
  */
-public final class EmptyMatcher implements CharMatcher {
-
-    private EmptyMatcher() {
-    }
-
-    private static final EmptyMatcher INSTANCE = new EmptyMatcher();
+public abstract class EmptyMatcher extends CharMatcher {
 
     public static EmptyMatcher create() {
-        return INSTANCE;
+        return EmptyMatcherNodeGen.create();
     }
 
     public static CharMatcher create(boolean invert) {
         return invert ? AnyMatcher.create() : create();
     }
 
-    @Override
-    public boolean match(char c) {
+    @Specialization
+    @SuppressWarnings("unused")
+    boolean match(char c, boolean compactString) {
         return false;
     }
 

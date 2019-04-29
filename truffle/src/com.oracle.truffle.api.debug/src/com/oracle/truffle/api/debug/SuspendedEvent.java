@@ -241,7 +241,7 @@ public final class SuspendedEvent {
      */
     public SourceSection getSourceSection() {
         verifyValidState(true);
-        return sourceSection;
+        return session.resolveSection(sourceSection);
     }
 
     /**

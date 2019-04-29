@@ -54,7 +54,7 @@ public enum NodeCost {
     /**
      * This node has literally no costs and should be ignored for heuristics. This is particularly
      * useful for wrapper and profiling nodes which should not influence the heuristics.
-     * 
+     *
      * @since 0.8 or earlier
      */
     NONE,
@@ -63,14 +63,14 @@ public enum NodeCost {
      * This node has a {@link CompilerDirectives#transferToInterpreter()} or
      * {@link CompilerDirectives#transferToInterpreterAndInvalidate()} as its first unconditional
      * statement.
-     * 
+     *
      * @since 0.8 or earlier
      */
     UNINITIALIZED,
 
     /**
      * This node represents a specialized monomorphic version of an operation.
-     * 
+     *
      * @since 0.8 or earlier
      */
     MONOMORPHIC,
@@ -79,7 +79,7 @@ public enum NodeCost {
      * This node represents a polymorphic version of an operation. For multiple chained polymorphic
      * nodes the first may return {@link #MONOMORPHIC} and all additional nodes should return
      * {@link #POLYMORPHIC}.
-     * 
+     *
      * @since 0.8 or earlier
      */
     POLYMORPHIC,
@@ -88,7 +88,7 @@ public enum NodeCost {
      * This node represents a megamorphic version of an operation. This value should only be used if
      * the operation implementation supports monomorphism and polymorphism otherwise
      * {@link #MONOMORPHIC} should be used instead.
-     * 
+     *
      * @since 0.8 or earlier
      */
     MEGAMORPHIC;
@@ -97,4 +97,22 @@ public enum NodeCost {
     public boolean isTrivial() {
         return this == NONE || this == UNINITIALIZED;
     }
+
+    /**
+     * Finds the node cost for an associated node count. Returns {@link NodeCost#UNINITIALIZED} for
+     * 0, {@link NodeCost#MONOMORPHIC} for 1 and {@link NodeCost#POLYMORPHIC} for any other value.
+     *
+     * @since 1.0
+     */
+    public static NodeCost fromCount(int nodeCount) {
+        switch (nodeCount) {
+            case 0:
+                return UNINITIALIZED;
+            case 1:
+                return MONOMORPHIC;
+            default:
+                return POLYMORPHIC;
+        }
+    }
+
 }

@@ -35,13 +35,20 @@ import org.graalvm.nativeimage.impl.RuntimeReflectionSupport;
 import com.oracle.svm.core.annotate.AutomaticFeature;
 import com.oracle.svm.core.graal.GraalFeature;
 import com.oracle.svm.core.option.HostedOptionKey;
+import com.oracle.svm.hosted.FallbackFeature;
 import com.oracle.svm.hosted.FeatureImpl.DuringSetupAccessImpl;
 import com.oracle.svm.hosted.ImageClassLoader;
+import com.oracle.svm.hosted.analysis.Inflation;
+import com.oracle.svm.hosted.config.ConfigurationDirectories;
+import com.oracle.svm.hosted.config.ConfigurationParser;
 import com.oracle.svm.hosted.config.ReflectionConfigurationParser;
 import com.oracle.svm.hosted.snippets.ReflectionPlugins;
+import com.oracle.svm.hosted.substitute.AnnotationSubstitutionProcessor;
 
 @AutomaticFeature
 public final class ReflectionFeature implements GraalFeature {
+
+    private AnnotationSubstitutionProcessor annotationSubstitutions;
 
     public static class Options {
         @Option(help = "file:doc-files/ReflectionConfigurationFilesHelp.txt", type = OptionType.User)//
@@ -58,17 +65,19 @@ public final class ReflectionFeature implements GraalFeature {
     public void duringSetup(DuringSetupAccess a) {
         DuringSetupAccessImpl access = (DuringSetupAccessImpl) a;
 
-        ReflectionSubstitution subst = new ReflectionSubstitution(access.getMetaAccess().getWrapped(), access.getImageClassLoader());
+        ReflectionSubstitution subst = new ReflectionSubstitution(access.getMetaAccess().getWrapped(), access.getHostVM().getClassInitializationSupport(), access.getImageClassLoader());
         access.registerSubstitutionProcessor(subst);
         ImageSingletons.add(ReflectionSubstitution.class, subst);
 
         reflectionData = new ReflectionDataBuilder();
         ImageSingletons.add(RuntimeReflectionSupport.class, reflectionData);
 
-        ReflectionConfigurationParser parser = new ReflectionConfigurationParser(reflectionData, access.getImageClassLoader());
-        parser.parseAndRegisterConfigurations("reflection", Options.ReflectionConfigurationFiles, Options.ReflectionConfigurationResources);
+        ReflectionConfigurationParser<Class<?>> parser = ReflectionConfigurationParser.create(reflectionData, access.getImageClassLoader());
+        ConfigurationParser.parseAndRegisterConfigurations(parser, access.getImageClassLoader(), "reflection",
+                        Options.ReflectionConfigurationFiles, Options.ReflectionConfigurationResources, ConfigurationDirectories.FileNames.REFLECTION_NAME);
 
         loader = access.getImageClassLoader();
+        annotationSubstitutions = ((Inflation) access.getBigBang()).getAnnotationSubstitutionProcessor();
     }
 
     @Override
@@ -82,11 +91,19 @@ public final class ReflectionFeature implements GraalFeature {
     }
 
     @Override
+    public void beforeCompilation(BeforeCompilationAccess access) {
+        FallbackFeature.FallbackImageRequest reflectionFallback = ImageSingletons.lookup(FallbackFeature.class).reflectionFallback;
+        if (reflectionFallback != null && Options.ReflectionConfigurationFiles.getValue() == null && Options.ReflectionConfigurationResources.getValue() == null) {
+            throw reflectionFallback;
+        }
+    }
+
+    @Override
     public void registerInvocationPlugins(Providers providers, SnippetReflectionProvider snippetReflection, InvocationPlugins invocationPlugins, boolean analysis, boolean hosted) {
         /*
          * The reflection invocation plugins need to be registered only when reflection is enabled
          * since it adds Field and Method objects to the image heap which otherwise are not allowed.
          */
-        ReflectionPlugins.registerInvocationPlugins(loader, snippetReflection, invocationPlugins, analysis, hosted);
+        ReflectionPlugins.registerInvocationPlugins(loader, snippetReflection, annotationSubstitutions, invocationPlugins, analysis, hosted);
     }
 }

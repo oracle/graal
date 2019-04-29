@@ -49,5 +49,8 @@ public enum CodeTreeKind {
     INDENT,
     STRING,
     NEW_LINE,
-    TYPE;
+    TYPE,
+    TYPE_LITERAL,
+    DOC,
+    JAVA_DOC;
 }

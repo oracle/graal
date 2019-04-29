@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2016, 2018, Oracle and/or its affiliates.
+ * Copyright (c) 2016, 2019, Oracle and/or its affiliates.
  *
  * All rights reserved.
  *
@@ -41,6 +41,11 @@ public abstract class LLVMException extends RuntimeException implements TruffleE
 
     private final Node location;
 
+    protected LLVMException(Node location, String message, Throwable cause) {
+        super(message, cause);
+        this.location = location;
+    }
+
     protected LLVMException(Node location, String message) {
         super(message);
         this.location = location;
@@ -55,9 +60,9 @@ public abstract class LLVMException extends RuntimeException implements TruffleE
         return location;
     }
 
-    @Override
     @SuppressWarnings("sync-override")
+    @Override
     public final Throwable fillInStackTrace() {
-        return null;
+        return this;
     }
 }

@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2015, 2015, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2015, 2018, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -37,8 +37,9 @@ import java.util.Map;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
-import org.graalvm.compiler.serviceprovider.GraalServices;
+import org.graalvm.compiler.serviceprovider.JavaVersionUtil;
 import org.graalvm.util.CollectionsUtil;
+import org.junit.Assume;
 
 /**
  * Utility methods for spawning a VM in a subprocess during unit tests.
@@ -61,6 +62,8 @@ public final class SubprocessUtil {
                 return Files.readAllLines(new File(processArgsFile).toPath());
             } catch (IOException e) {
             }
+        } else {
+            Assume.assumeTrue("Process command line unavailable", false);
         }
         return null;
     }
@@ -246,7 +249,7 @@ public final class SubprocessUtil {
         return new Subprocess(command, process.waitFor(), output);
     }
 
-    private static final boolean isJava8OrEarlier = GraalServices.Java8OrEarlier;
+    private static final boolean isJava8OrEarlier = JavaVersionUtil.Java8OrEarlier;
 
     private static boolean hasArg(String optionName) {
         if (optionName.equals("-cp") || optionName.equals("-classpath")) {

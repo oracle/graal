@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2019, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -34,6 +34,7 @@ import com.oracle.truffle.api.nodes.RootNode;
 
 import jdk.vm.ci.code.InstalledCode;
 import jdk.vm.ci.hotspot.HotSpotNmethod;
+import jdk.vm.ci.meta.SpeculationLog;
 
 /**
  * A HotSpot specific {@link OptimizedCallTarget} whose machine code (if any) is represented by an
@@ -115,5 +116,10 @@ public class HotSpotOptimizedCallTarget extends OptimizedCallTarget implements O
     @Override
     public void invalidate() {
         invalidate(null, null);
+    }
+
+    @Override
+    public SpeculationLog getCompilationSpeculationLog() {
+        return HotSpotTruffleRuntimeServices.getCompilationSpeculationLog(this);
     }
 }

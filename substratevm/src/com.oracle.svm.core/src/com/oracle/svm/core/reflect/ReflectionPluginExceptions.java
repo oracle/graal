@@ -31,6 +31,10 @@ import java.lang.reflect.Field;
 
 public class ReflectionPluginExceptions {
 
+    public static Class<?> throwNoClassDefFoundError(String message) {
+        throw new NoClassDefFoundError(message);
+    }
+
     public static Class<?> throwClassNotFoundException(String message) throws ClassNotFoundException {
         throw new ClassNotFoundException(message);
     }

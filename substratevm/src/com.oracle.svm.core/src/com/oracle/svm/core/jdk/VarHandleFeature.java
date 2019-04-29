@@ -36,12 +36,12 @@ import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ConcurrentMap;
 import java.util.function.Consumer;
 
-import org.graalvm.compiler.serviceprovider.GraalServices;
-import org.graalvm.nativeimage.Feature;
+import org.graalvm.compiler.serviceprovider.GraalUnsafeAccess;
+import org.graalvm.compiler.serviceprovider.JavaVersionUtil;
+import org.graalvm.nativeimage.hosted.Feature;
 import org.graalvm.nativeimage.ImageSingletons;
 
 import com.oracle.svm.core.StaticFieldsSupport;
-import com.oracle.svm.core.UnsafeAccess;
 import com.oracle.svm.core.annotate.Alias;
 import com.oracle.svm.core.annotate.AutomaticFeature;
 import com.oracle.svm.core.annotate.InjectAccessors;
@@ -53,6 +53,7 @@ import com.oracle.svm.core.util.VMError;
 
 import jdk.vm.ci.meta.MetaAccessProvider;
 import jdk.vm.ci.meta.ResolvedJavaField;
+import sun.misc.Unsafe;
 
 /**
  * This file contains most of the code necessary for supporting VarHandle in native images. The
@@ -94,6 +95,8 @@ import jdk.vm.ci.meta.ResolvedJavaField;
  */
 @AutomaticFeature
 public class VarHandleFeature implements Feature {
+    private static final Unsafe UNSAFE = GraalUnsafeAccess.getUnsafe();
+
     private final Map<Class<?>, VarHandleInfo> infos = new HashMap<>();
 
     private final ConcurrentMap<Object, Boolean> processedVarHandles = new ConcurrentHashMap<>();
@@ -101,7 +104,7 @@ public class VarHandleFeature implements Feature {
 
     @Override
     public boolean isInConfiguration(IsInConfigurationAccess access) {
-        return !GraalServices.Java8OrEarlier;
+        return !JavaVersionUtil.Java8OrEarlier;
     }
 
     @Override
@@ -149,7 +152,7 @@ public class VarHandleFeature implements Feature {
                 /* Search the declared fields for a field with a matching offset. */
                 for (Field field : cur.getDeclaredFields()) {
                     if (Modifier.isStatic(field.getModifiers()) == info.isStatic) {
-                        long fieldOffset = info.isStatic ? UnsafeAccess.UNSAFE.staticFieldOffset(field) : UnsafeAccess.UNSAFE.objectFieldOffset(field);
+                        long fieldOffset = info.isStatic ? UNSAFE.staticFieldOffset(field) : UNSAFE.objectFieldOffset(field);
                         if (fieldOffset == originalFieldOffset) {
                             return field;
                         }

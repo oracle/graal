@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2009, 2015, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2009, 2018, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -98,7 +98,7 @@ public class NewArrayNode extends AbstractNewArrayNode implements VirtualizableA
         ValueNode lengthAlias = tool.getAlias(length());
         if (lengthAlias.asConstant() != null) {
             int constantLength = lengthAlias.asJavaConstant().asInt();
-            if (constantLength >= 0 && constantLength < tool.getMaximumEntryCount()) {
+            if (constantLength >= 0 && constantLength <= tool.getMaximumEntryCount()) {
                 ValueNode[] state = new ValueNode[constantLength];
                 ConstantNode defaultForKind = constantLength == 0 ? null : defaultElementValue();
                 for (int i = 0; i < constantLength; i++) {

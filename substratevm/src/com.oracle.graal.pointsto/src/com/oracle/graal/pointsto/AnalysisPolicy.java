@@ -80,6 +80,9 @@ public abstract class AnalysisPolicy {
     /** Note analysis object state merge. */
     public abstract void noteMerge(BigBang bb, AnalysisObject... a);
 
+    /** Note analysis object state merge. */
+    public abstract void noteMerge(BigBang bb, AnalysisObject o);
+
     /** Specifies if an allocation site should be modeled context sensitively. */
     public abstract boolean isContextSensitiveAllocation(BigBang bb, AnalysisType type, AnalysisContext allocationContext);
 

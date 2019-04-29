@@ -26,17 +26,20 @@ package com.oracle.svm.core.jdk;
 
 // Checkstyle: allow reflection
 
+import java.io.ByteArrayInputStream;
+import java.io.IOException;
+import java.io.InputStream;
 import java.lang.reflect.InvocationTargetException;
 import java.lang.reflect.Method;
 import java.net.URL;
+import java.net.URLConnection;
 import java.net.URLStreamHandler;
 import java.util.Arrays;
-import java.util.Collections;
 import java.util.HashMap;
 import java.util.Hashtable;
 import java.util.List;
 
-import org.graalvm.nativeimage.Feature;
+import org.graalvm.nativeimage.hosted.Feature;
 import org.graalvm.nativeimage.ImageSingletons;
 import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.Platforms;
@@ -120,16 +123,22 @@ class URLProtocolsSupport {
 public final class JavaNetSubstitutions {
 
     public static final String FILE_PROTOCOL = "file";
+    public static final String RESOURCE_PROTOCOL = "resource";
     public static final String HTTP_PROTOCOL = "http";
     public static final String HTTPS_PROTOCOL = "https";
 
-    static final List<String> defaultProtocols = Collections.singletonList(FILE_PROTOCOL);
+    static final List<String> defaultProtocols = Arrays.asList(FILE_PROTOCOL, RESOURCE_PROTOCOL);
     static final List<String> onDemandProtocols = Arrays.asList(HTTP_PROTOCOL, HTTPS_PROTOCOL);
 
     static final String enableProtocolsOption = SubstrateOptionsParser.commandArgument(SubstrateOptions.EnableURLProtocols, "");
 
     @Platforms(Platform.HOSTED_ONLY.class)
     static boolean addURLStreamHandler(String protocol) {
+        if (RESOURCE_PROTOCOL.equals(protocol)) {
+            final URLStreamHandler resourcesURLStreamHandler = createResourcesURLStreamHandler();
+            URLProtocolsSupport.put(RESOURCE_PROTOCOL, resourcesURLStreamHandler);
+            return true;
+        }
         try {
             Method method = URL.class.getDeclaredMethod("getURLStreamHandler", String.class);
             method.setAccessible(true);
@@ -158,6 +167,32 @@ public final class JavaNetSubstitutions {
             }
         }
         return result;
+    }
+
+    static URLStreamHandler createResourcesURLStreamHandler() {
+        return new URLStreamHandler() {
+            @Override
+            protected URLConnection openConnection(URL url) throws IOException {
+                return new URLConnection(url) {
+                    @Override
+                    public void connect() throws IOException {
+                    }
+
+                    @Override
+                    public InputStream getInputStream() throws IOException {
+                        Resources.ResourcesSupport support = ImageSingletons.lookup(Resources.ResourcesSupport.class);
+                        // remove "protcol:" from url to get the resource name
+                        String resName = url.toString().substring(1 + JavaNetSubstitutions.RESOURCE_PROTOCOL.length());
+                        final List<byte[]> bytes = support.resources.get(resName);
+                        if (bytes == null || bytes.size() < 1) {
+                            return null;
+                        } else {
+                            return new ByteArrayInputStream(bytes.get(0));
+                        }
+                    }
+                };
+            }
+        };
     }
 
     private static void unsupported(String message) {

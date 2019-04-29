@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2016, 2016, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2016, 2019, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -26,10 +26,13 @@ package com.oracle.truffle.regex.tregex.matchers;
 
 import static com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 
+import com.oracle.truffle.api.dsl.Specialization;
+import com.oracle.truffle.regex.charset.CharSet;
+
 /**
  * Matcher for a single character range.
  */
-public final class SingleRangeMatcher extends InvertibleCharMatcher {
+public abstract class SingleRangeMatcher extends InvertibleCharMatcher {
 
     private final char lo;
     private final char hi;
@@ -41,10 +44,14 @@ public final class SingleRangeMatcher extends InvertibleCharMatcher {
      * @param lo inclusive lower bound of range to match.
      * @param hi inclusive upper bound of range to match.
      */
-    public SingleRangeMatcher(boolean invert, char lo, char hi) {
+    SingleRangeMatcher(boolean invert, char lo, char hi) {
         super(invert);
         this.lo = lo;
         this.hi = hi;
+    }
+
+    public static SingleRangeMatcher create(boolean invert, char lo, char hi) {
+        return SingleRangeMatcherNodeGen.create(invert, lo, hi);
     }
 
     /**
@@ -61,9 +68,9 @@ public final class SingleRangeMatcher extends InvertibleCharMatcher {
         return hi;
     }
 
-    @Override
-    public boolean matchChar(char c) {
-        return lo <= c && hi >= c;
+    @Specialization
+    boolean match(char c, boolean compactString) {
+        return result((!compactString || lo < 256) && lo <= c && hi >= c);
     }
 
     @Override
@@ -74,6 +81,6 @@ public final class SingleRangeMatcher extends InvertibleCharMatcher {
     @Override
     @TruffleBoundary
     public String toString() {
-        return modifiersToString() + MatcherBuilder.rangeToString(lo, hi);
+        return modifiersToString() + CharSet.rangeToString(lo, hi);
     }
 }

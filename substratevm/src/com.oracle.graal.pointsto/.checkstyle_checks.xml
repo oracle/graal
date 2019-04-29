@@ -11,6 +11,25 @@
 <module name="Checker">
   <property name="severity" value="error"/>
   <module name="TreeWalker">
+    
+    <!-- Disallows direct calls to "AnnotatedElement.get(Declared)Annotation(s)". This check can yield false positives,
+    i.e., it will match any ".get(Declared)Annotation(s)" calls that are not preceded by "GuardedAnnotationAccess"
+    since checkstyle relies only on pattern matching and it cannot determine the type of the call's receiver object. -->
+    <module name="RegexpSinglelineJava">
+      <property name="id" value="annotationAccess"/>
+      <metadata name="net.sf.eclipsecs.core.comment" value="Disallow calls to AnnotatedElement.get(Declared)Annotation(s)."/>
+      <property name="severity" value="error"/>
+      <property name="format" value="\b(?&lt;!AnnotationAccess)\.(getAnnotation|getAnnotations|getDeclaredAnnotation|getDeclaredAnnotations|isAnnotationPresent)\b"/>
+      <property name="message" value="Direct calls to java.lang.reflect.AnnotatedElement.get(Declared)Annotation(s) are restricted. Use either org.graalvm.util.GuardedAnnotationAccess or org.graalvm.util.DirectAnnotationAccess methods. (Use &quot;// Checkstyle: allow direct annotation access... // Checkstyle: disallow direct annotation access&quot; to disable this check.)"/>
+      <property name="ignoreComments" value="true"/>
+    </module>
+    <module name="SuppressionCommentFilter">
+      <property name="offCommentFormat" value="Checkstyle: allow direct annotation access"/>
+      <property name="onCommentFormat" value="Checkstyle: disallow direct annotation access"/>
+      <property name="checkFormat" value="annotationAccess"/>
+      <metadata name="com.atlassw.tools.eclipse.checkstyle.comment" value="Disable annotation access checks"/>
+    </module>
+
     <module name="AvoidStarImport">
       <property name="allowClassImports" value="false"/>
       <property name="allowStaticMemberImports" value="false"/>

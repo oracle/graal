@@ -55,34 +55,36 @@ import java.util.Collections;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
-import java.util.Set;
 
 import org.graalvm.polyglot.Context;
 import org.junit.After;
 import org.junit.Before;
 import org.junit.Test;
 
+import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.TruffleLanguage.Env;
-import com.oracle.truffle.api.interop.ForeignAccess;
 import com.oracle.truffle.api.interop.InteropException;
-import com.oracle.truffle.api.interop.Message;
-import com.oracle.truffle.api.interop.MessageResolution;
-import com.oracle.truffle.api.interop.Resolve;
+import com.oracle.truffle.api.interop.InteropLibrary;
+import com.oracle.truffle.api.interop.InvalidArrayIndexException;
 import com.oracle.truffle.api.interop.TruffleObject;
 import com.oracle.truffle.api.interop.UnknownIdentifierException;
-import com.oracle.truffle.api.nodes.Node;
+import com.oracle.truffle.api.interop.UnsupportedMessageException;
+import com.oracle.truffle.api.library.ExportLibrary;
+import com.oracle.truffle.api.library.ExportMessage;
 import com.oracle.truffle.api.test.polyglot.ProxyLanguage;
+import org.graalvm.polyglot.HostAccess;
 
 @SuppressWarnings({"rawtypes", "unchecked"})
 public class AsCollectionsTest {
+    private static final InteropLibrary INTEROP = InteropLibrary.getFactory().getUncached();
 
     private Context context;
     private Env env;
 
     @Before
     public void enterContext() {
-        context = Context.create();
+        context = Context.newBuilder().allowHostAccess(HostAccess.ALL).build();
         ProxyLanguage.setDelegate(new ProxyLanguage() {
             @Override
             protected LanguageContext createContext(Env contextEnv) {
@@ -206,6 +208,7 @@ public class AsCollectionsTest {
     }
 
     public static class Validator {
+        @HostAccess.Export
         public boolean validateMap(Map<String, Object> mapGen, Map mapRaw) {
             for (Map map : new Map[]{mapGen, mapRaw}) {
                 assertEquals(1, map.size());
@@ -214,6 +217,7 @@ public class AsCollectionsTest {
             return true;
         }
 
+        @HostAccess.Export
         public boolean validateArrayOfMap(Map<String, Object>[] arrayOfMapGen, Map[] arrayOfMapRaw) {
             for (Map[] arrayOfMap : new Map[][]{arrayOfMapGen, arrayOfMapRaw}) {
                 assertEquals(1, arrayOfMap.length);
@@ -224,6 +228,7 @@ public class AsCollectionsTest {
             return true;
         }
 
+        @HostAccess.Export
         public boolean validateListOfMap(List<Map<String, Object>> listOfMapGen, List<Map> listOfMapRaw) {
             for (List<Map> listOfMap : new List[]{listOfMapGen, listOfMapRaw}) {
                 assertEquals(1, listOfMap.size());
@@ -239,7 +244,7 @@ public class AsCollectionsTest {
     public void testInvokeMap() throws InteropException {
         TruffleObject validator = asTruffleObject(new Validator());
         MapBasedTO mapTO = new MapBasedTO(Collections.singletonMap("foo", "bar"));
-        assertEquals(Boolean.TRUE, ForeignAccess.sendInvoke(Message.INVOKE.createNode(), validator, "validateMap", mapTO, mapTO));
+        assertEquals(Boolean.TRUE, INTEROP.invokeMember(validator, "validateMap", mapTO, mapTO));
     }
 
     @Test
@@ -247,7 +252,7 @@ public class AsCollectionsTest {
         TruffleObject validator = asTruffleObject(new Validator());
         MapBasedTO mapTO = new MapBasedTO(Collections.singletonMap("foo", "bar"));
         TruffleObject listOfMapTO = new ListBasedTO(Arrays.asList(mapTO));
-        assertEquals(Boolean.TRUE, ForeignAccess.sendInvoke(Message.INVOKE.createNode(), validator, "validateArrayOfMap", listOfMapTO, listOfMapTO));
+        assertEquals(Boolean.TRUE, INTEROP.invokeMember(validator, "validateArrayOfMap", listOfMapTO, listOfMapTO));
     }
 
     @Test
@@ -255,10 +260,11 @@ public class AsCollectionsTest {
         TruffleObject validator = asTruffleObject(new Validator());
         MapBasedTO mapTO = new MapBasedTO(Collections.singletonMap("foo", "bar"));
         TruffleObject listOfMapTO = new ListBasedTO(Arrays.asList(mapTO));
-        assertEquals(Boolean.TRUE, ForeignAccess.sendInvoke(Message.INVOKE.createNode(), validator, "validateListOfMap", listOfMapTO, listOfMapTO));
+        assertEquals(Boolean.TRUE, INTEROP.invokeMember(validator, "validateListOfMap", listOfMapTO, listOfMapTO));
     }
 
     public interface ProxyValidator {
+        @HostAccess.Export
         boolean test(List<Map> list);
     }
 
@@ -275,9 +281,11 @@ public class AsCollectionsTest {
                         }));
         MapBasedTO mapTO = new MapBasedTO(Collections.singletonMap("foo", "bar"));
         TruffleObject listOfMapTO = new ListBasedTO(Arrays.asList(mapTO));
-        assertEquals(Boolean.TRUE, ForeignAccess.sendInvoke(Message.INVOKE.createNode(), validator, "test", listOfMapTO));
+        assertEquals(Boolean.TRUE, INTEROP.invokeMember(validator, "test", listOfMapTO));
     }
 
+    @ExportLibrary(InteropLibrary.class)
+    @SuppressWarnings({"static-method", "unused"})
     static final class ListBasedTO implements TruffleObject {
 
         final List list;
@@ -286,64 +294,49 @@ public class AsCollectionsTest {
             this.list = list;
         }
 
-        @Override
-        public ForeignAccess getForeignAccess() {
-            return ListBasedMessageResolutionForeign.ACCESS;
+        @ExportMessage
+        boolean hasArrayElements() {
+            return true;
         }
 
-        public static boolean isInstance(TruffleObject obj) {
-            return obj instanceof ListBasedTO;
-        }
-
-        @MessageResolution(receiverType = ListBasedTO.class)
-        static class ListBasedMessageResolution {
-
-            @Resolve(message = "HAS_SIZE")
-            abstract static class ListBasedHasSizeNode extends Node {
-
-                @SuppressWarnings("unused")
-                public Object access(ListBasedTO lbto) {
-                    return true;
-                }
-            }
-
-            @Resolve(message = "GET_SIZE")
-            abstract static class ListBasedGetSizeNode extends Node {
-
-                public Object access(ListBasedTO lbto) {
-                    return lbto.list.size();
-                }
-            }
-
-            @Resolve(message = "READ")
-            abstract static class ListBasedReadNode extends Node {
-
-                @TruffleBoundary
-                public Object access(ListBasedTO lbto, int index) {
-                    try {
-                        return lbto.list.get(index);
-                    } catch (IndexOutOfBoundsException ioob) {
-                        throw UnknownIdentifierException.raise(Integer.toString(index));
-                    }
-                }
-            }
-
-            @Resolve(message = "WRITE")
-            abstract static class ListBasedWriteNode extends Node {
-
-                @TruffleBoundary
-                public Object access(ListBasedTO lbto, int index, Object value) {
-                    try {
-                        lbto.list.set(index, value);
-                        return value;
-                    } catch (IndexOutOfBoundsException ioob) {
-                        throw UnknownIdentifierException.raise(Integer.toString(index));
-                    }
-                }
+        @ExportMessage
+        @TruffleBoundary
+        Object readArrayElement(long index) throws UnsupportedMessageException, InvalidArrayIndexException {
+            try {
+                return list.get((int) index);
+            } catch (IndexOutOfBoundsException ioob) {
+                throw InvalidArrayIndexException.create(index);
             }
         }
+
+        @ExportMessage
+        @TruffleBoundary
+        Object writeArrayElement(long index, Object value) throws UnsupportedMessageException, InvalidArrayIndexException {
+            try {
+                list.set((int) index, value);
+                return value;
+            } catch (IndexOutOfBoundsException ioob) {
+                throw InvalidArrayIndexException.create(index);
+            }
+        }
+
+        @ExportMessage
+        @TruffleBoundary
+        long getArraySize() {
+            return list.size();
+        }
+
+        @ExportMessage(name = "isArrayElementReadable")
+        @ExportMessage(name = "isArrayElementModifiable")
+        @ExportMessage(name = "isArrayElementInsertable")
+        boolean isArrayElementReadable(long index) {
+            return index >= 0 && index < getArraySize();
+        }
+
     }
 
+    @SuppressWarnings({"static-method", "unused"})
+    @ExportLibrary(InteropLibrary.class)
     static final class MapBasedTO implements TruffleObject {
 
         final Map map;
@@ -352,109 +345,81 @@ public class AsCollectionsTest {
             this.map = map;
         }
 
-        @Override
-        public ForeignAccess getForeignAccess() {
-            return MapBasedMessageResolutionForeign.ACCESS;
+        @ExportMessage
+        boolean hasMembers() {
+            return true;
         }
 
-        public static boolean isInstance(TruffleObject obj) {
-            return obj instanceof MapBasedTO;
+        @ExportMessage
+        @TruffleBoundary
+        Object getMembers(boolean includeInternal) throws UnsupportedMessageException {
+            return new MapKeysTO(map.keySet().toArray());
         }
 
-        @MessageResolution(receiverType = MapBasedTO.class)
-        static class MapBasedMessageResolution {
-
-            @Resolve(message = "HAS_KEYS")
-            abstract static class MapBasedHasKeysNode extends Node {
-
-                @SuppressWarnings("unused")
-                public Object access(MapBasedTO mbto) {
-                    return true;
-                }
-            }
-
-            @Resolve(message = "KEYS")
-            abstract static class MapBasedKeysNode extends Node {
-
-                public Object access(MapBasedTO mbto) {
-                    return new MapKeysTO(mbto.map.keySet());
-                }
-            }
-
-            @Resolve(message = "READ")
-            abstract static class MapBasedReadNode extends Node {
-
-                @TruffleBoundary
-                public Object access(MapBasedTO mbto, String name) {
-                    Object value = mbto.map.get(name);
-                    if (value == null) {
-                        throw UnknownIdentifierException.raise(name);
-                    } else {
-                        return value;
-                    }
-                }
-            }
-
-            @Resolve(message = "WRITE")
-            abstract static class MapBasedWriteNode extends Node {
-
-                @TruffleBoundary
-                public Object access(MapBasedTO mbto, String name, Object value) {
-                    mbto.map.put(name, value);
-                    return value;
-                }
+        @ExportMessage
+        @TruffleBoundary
+        Object readMember(String member) throws UnsupportedMessageException, UnknownIdentifierException {
+            Object value = map.get(member);
+            if (value == null) {
+                throw UnknownIdentifierException.create(member);
+            } else {
+                return value;
             }
         }
+
+        @ExportMessage
+        @TruffleBoundary
+        void writeMember(String member, Object value) throws UnsupportedMessageException, UnknownIdentifierException {
+            map.put(member, value);
+        }
+
+        @ExportMessage(name = "isMemberModifiable")
+        @ExportMessage(name = "isMemberReadable")
+        @TruffleBoundary
+        boolean isMemberReadable(String member) {
+            return member.contains(member);
+        }
+
+        @ExportMessage
+        @TruffleBoundary
+        boolean isMemberInsertable(String member) {
+            return !member.contains(member);
+        }
+
     }
 
+    @ExportLibrary(InteropLibrary.class)
     static final class MapKeysTO implements TruffleObject {
 
-        private final List keys;
+        private final Object[] keys;
 
-        private MapKeysTO(Set keys) {
-            this.keys = new ArrayList(keys);
+        MapKeysTO(Object[] keys) {
+            this.keys = keys;
         }
 
-        @Override
-        public ForeignAccess getForeignAccess() {
-            return MapKeysMessageResolutionForeign.ACCESS;
+        @SuppressWarnings("static-method")
+        @ExportMessage
+        boolean hasArrayElements() {
+            return true;
         }
 
-        public static boolean isInstance(TruffleObject obj) {
-            return obj instanceof MapKeysTO;
+        @ExportMessage
+        boolean isArrayElementReadable(long index) {
+            return index >= 0 && index < keys.length;
         }
 
-        @MessageResolution(receiverType = MapKeysTO.class)
-        static class MapKeysMessageResolution {
+        @ExportMessage
+        long getArraySize() {
+            return keys.length;
+        }
 
-            @Resolve(message = "HAS_SIZE")
-            abstract static class MapKeysHasSizeNode extends Node {
-
-                @SuppressWarnings("unused")
-                public Object access(MapKeysTO lbto) {
-                    return true;
-                }
-            }
-
-            @Resolve(message = "GET_SIZE")
-            abstract static class MapKeysGetSizeNode extends Node {
-
-                public Object access(MapKeysTO mkto) {
-                    return mkto.keys.size();
-                }
-            }
-
-            @Resolve(message = "READ")
-            abstract static class MapKeysReadNode extends Node {
-
-                @TruffleBoundary
-                public Object access(MapKeysTO mkto, int index) {
-                    try {
-                        return mkto.keys.get(index);
-                    } catch (IndexOutOfBoundsException ioob) {
-                        throw UnknownIdentifierException.raise(Integer.toString(index));
-                    }
-                }
+        @ExportMessage
+        Object readArrayElement(long index) throws InvalidArrayIndexException {
+            try {
+                return keys[(int) index];
+            } catch (IndexOutOfBoundsException e) {
+                CompilerDirectives.transferToInterpreter();
+                throw InvalidArrayIndexException.create(index);
             }
         }
     }

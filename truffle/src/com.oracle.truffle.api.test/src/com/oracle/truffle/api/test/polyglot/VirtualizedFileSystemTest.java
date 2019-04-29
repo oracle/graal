@@ -45,12 +45,14 @@ import java.io.BufferedWriter;
 import java.io.Closeable;
 import java.io.IOException;
 import java.io.OutputStream;
+import java.lang.reflect.Constructor;
 import java.lang.reflect.Method;
 import java.net.URI;
 import java.nio.ByteBuffer;
 import java.nio.channels.ByteChannel;
 import java.nio.channels.Channels;
 import java.nio.channels.SeekableByteChannel;
+import java.nio.charset.Charset;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.AccessMode;
 import java.nio.file.CopyOption;
@@ -103,11 +105,14 @@ import com.oracle.truffle.api.TruffleLanguage.Env;
 import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.api.impl.Accessor;
 import com.oracle.truffle.api.nodes.RootNode;
+import java.nio.file.attribute.PosixFilePermission;
+import org.graalvm.polyglot.PolyglotException;
+import org.junit.Assume;
 
 @RunWith(Parameterized.class)
 public class VirtualizedFileSystemTest {
 
-    private static final String LANGAUGE_ID = "virtualised-fs-lang";
+    private static final String LANGUAGE_ID = "virtualised-fs-lang";
     private static final String FOLDER_EXISTING = "folder";
     private static final String FOLDER_EXISTING_INNER1 = "folder1";
     private static final String FOLDER_EXISTING_INNER2 = "folder2";
@@ -117,6 +122,7 @@ public class VirtualizedFileSystemTest {
     private static final String FILE_EXISTING_WRITE_MMAP = "write_mmap.txt";
     private static final String FILE_EXISTING_DELETE = "delete.txt";
     private static final String FILE_EXISTING_RENAME = "rename.txt";
+    private static final String SYMLINK_EXISTING = "lnk_to_folder";
     private static final String FILE_NEW_WRITE_CHANNEL = "write_channel.txt";
     private static final String FILE_NEW_WRITE_STREAM = "write_stream.txt";
     private static final String FILE_NEW_CREATE_DIR = "new_dir";
@@ -133,7 +139,7 @@ public class VirtualizedFileSystemTest {
     private final Configuration cfg;
 
     @Parameterized.Parameters(name = "{0}")
-    public static Collection<Configuration> createParameters() throws IOException {
+    public static Collection<Configuration> createParameters() throws IOException, ReflectiveOperationException {
         assert cfgs == null;
         final List<Configuration> result = new ArrayList<>();
         final FileSystem fullIO = FileSystemProviderTest.newFullIOFileSystem();
@@ -141,17 +147,17 @@ public class VirtualizedFileSystemTest {
         Path accessibleDir = createContent(
                         Files.createTempDirectory(VirtualizedFileSystemTest.class.getSimpleName()),
                         fullIO);
-        Context ctx = Context.newBuilder(LANGAUGE_ID).allowIO(true).build();
+        Context ctx = Context.newBuilder(LANGUAGE_ID).allowIO(true).build();
         setCwd(ctx, accessibleDir, null);
         result.add(new Configuration("Full IO", ctx, accessibleDir, fullIO, true, true, true, true));
         // No IO
-        ctx = Context.newBuilder(LANGAUGE_ID).allowIO(false).build();
+        ctx = Context.newBuilder(LANGUAGE_ID).allowIO(false).build();
         Path privateDir = createContent(
                         Files.createTempDirectory(VirtualizedFileSystemTest.class.getSimpleName()),
                         fullIO);
         result.add(new Configuration("No IO", ctx, privateDir, Paths.get("").toAbsolutePath(), fullIO, false, false, false, true));
         // No IO under language home
-        ctx = Context.newBuilder(LANGAUGE_ID).allowIO(false).build();
+        ctx = Context.newBuilder(LANGUAGE_ID).allowIO(false).build();
         privateDir = createContent(
                         Files.createTempDirectory(VirtualizedFileSystemTest.class.getSimpleName()),
                         fullIO);
@@ -172,7 +178,7 @@ public class VirtualizedFileSystemTest {
         FileSystem fileSystem = new RestrictedFileSystem(FileSystemProviderTest.newFullIOFileSystem(accessibleDir), read, write);
         read.setFileSystem(fileSystem);
         write.setFileSystem(fileSystem);
-        ctx = Context.newBuilder(LANGAUGE_ID).allowIO(true).fileSystem(fileSystem).build();
+        ctx = Context.newBuilder(LANGUAGE_ID).allowIO(true).fileSystem(fileSystem).build();
         result.add(new Configuration("Conditional IO - read/write part", ctx, accessibleDir, fullIO, false, true, true, true));
         read = new AccessPredicate(Arrays.asList(accessibleDir, readOnlyDir));
         write = new AccessPredicate(Collections.singleton(accessibleDir));
@@ -180,14 +186,14 @@ public class VirtualizedFileSystemTest {
                         FileSystemProviderTest.newFullIOFileSystem(readOnlyDir), read, write);
         read.setFileSystem(fileSystem);
         write.setFileSystem(fileSystem);
-        ctx = Context.newBuilder(LANGAUGE_ID).allowIO(true).fileSystem(fileSystem).build();
+        ctx = Context.newBuilder(LANGUAGE_ID).allowIO(true).fileSystem(fileSystem).build();
         result.add(new Configuration("Conditional IO - read only part", ctx, readOnlyDir, fullIO, false, true, false, true));
         read = new AccessPredicate(Arrays.asList(accessibleDir, readOnlyDir));
         write = new AccessPredicate(Collections.singleton(accessibleDir));
         fileSystem = new RestrictedFileSystem(FileSystemProviderTest.newFullIOFileSystem(privateDir), read, write);
         read.setFileSystem(fileSystem);
         write.setFileSystem(fileSystem);
-        ctx = Context.newBuilder(LANGAUGE_ID).allowIO(true).fileSystem(fileSystem).build();
+        ctx = Context.newBuilder(LANGUAGE_ID).allowIO(true).fileSystem(fileSystem).build();
         result.add(new Configuration("Conditional IO - private part", ctx, privateDir, fullIO, false, false, false, true));
 
         // Memory
@@ -195,8 +201,26 @@ public class VirtualizedFileSystemTest {
         Path memDir = mkdirs(fileSystem.parsePath(URI.create("file:///work")), fileSystem);
         ((MemoryFileSystem) fileSystem).setCurrentWorkingDirectory(memDir);
         createContent(memDir, fileSystem);
-        ctx = Context.newBuilder(LANGAUGE_ID).allowIO(true).fileSystem(fileSystem).build();
+        ctx = Context.newBuilder(LANGUAGE_ID).allowIO(true).fileSystem(fileSystem).build();
         result.add(new Configuration("Memory FileSystem", ctx, memDir, fileSystem, false, true, true, true));
+
+        // PreInitializeContextFileSystem in image build time
+        fileSystem = createPreInitializeContextFileSystem();
+        Path workDir = mkdirs(fileSystem.parsePath(Files.createTempDirectory(VirtualizedFileSystemTest.class.getSimpleName()).toString()), fileSystem);
+        fileSystem.setCurrentWorkingDirectory(workDir);
+        createContent(workDir, fileSystem);
+        ctx = Context.newBuilder(LANGUAGE_ID).allowIO(true).fileSystem(fileSystem).build();
+        result.add(new Configuration("Context pre-initialization filesystem build time", ctx, workDir, fileSystem, false, true, true, true));
+
+        // PreInitializeContextFileSystem in image execution time
+        fileSystem = createPreInitializeContextFileSystem();
+        workDir = mkdirs(fileSystem.parsePath(Files.createTempDirectory(VirtualizedFileSystemTest.class.getSimpleName()).toString()), fileSystem);
+        fileSystem.setCurrentWorkingDirectory(workDir);
+        switchToImageExecutionTime(fileSystem, workDir);
+        createContent(workDir, fileSystem);
+        ctx = Context.newBuilder(LANGUAGE_ID).allowIO(true).fileSystem(fileSystem).build();
+        result.add(new Configuration("Context pre-initialization filesystem execution time", ctx, workDir, fileSystem, false, true, true, true));
+
         cfgs = result;
         return result;
     }
@@ -245,7 +269,7 @@ public class VirtualizedFileSystemTest {
                 throw new AssertionError(cfg.formatErrorMessage(ioe.getMessage()), ioe);
             }
         };
-        ctx.eval(LANGAUGE_ID, "");
+        ctx.eval(LANGUAGE_ID, "");
     }
 
     @Test
@@ -269,7 +293,7 @@ public class VirtualizedFileSystemTest {
                 throw new AssertionError(cfg.formatErrorMessage(ioe.getMessage()), ioe);
             }
         };
-        ctx.eval(LANGAUGE_ID, "");
+        ctx.eval(LANGUAGE_ID, "");
     }
 
     @Test
@@ -290,7 +314,7 @@ public class VirtualizedFileSystemTest {
                 throw new AssertionError(cfg.formatErrorMessage(ioe.getMessage()), ioe);
             }
         };
-        ctx.eval(LANGAUGE_ID, "");
+        ctx.eval(LANGUAGE_ID, "");
     }
 
     @Test
@@ -322,7 +346,7 @@ public class VirtualizedFileSystemTest {
                 throw new AssertionError(cfg.formatErrorMessage(ioe.getMessage()), ioe);
             }
         };
-        ctx.eval(LANGAUGE_ID, "");
+        ctx.eval(LANGUAGE_ID, "");
     }
 
     @Test
@@ -350,7 +374,7 @@ public class VirtualizedFileSystemTest {
                 throw new AssertionError(cfg.formatErrorMessage(ioe.getMessage()), ioe);
             }
         };
-        ctx.eval(LANGAUGE_ID, "");
+        ctx.eval(LANGUAGE_ID, "");
     }
 
     @Test
@@ -377,7 +401,7 @@ public class VirtualizedFileSystemTest {
                 throw new AssertionError(cfg.formatErrorMessage(ioe.getMessage()), ioe);
             }
         };
-        ctx.eval(LANGAUGE_ID, "");
+        ctx.eval(LANGUAGE_ID, "");
     }
 
     @Test
@@ -401,7 +425,7 @@ public class VirtualizedFileSystemTest {
                 throw new AssertionError(cfg.formatErrorMessage(ioe.getMessage()), ioe);
             }
         };
-        ctx.eval(LANGAUGE_ID, "");
+        ctx.eval(LANGUAGE_ID, "");
     }
 
     @Test
@@ -425,7 +449,7 @@ public class VirtualizedFileSystemTest {
                 throw new AssertionError(cfg.formatErrorMessage(ioe.getMessage()), ioe);
             }
         };
-        ctx.eval(LANGAUGE_ID, "");
+        ctx.eval(LANGUAGE_ID, "");
     }
 
     @Test
@@ -445,7 +469,7 @@ public class VirtualizedFileSystemTest {
                 throw new AssertionError(cfg.formatErrorMessage(ioe.getMessage()), ioe);
             }
         };
-        ctx.eval(LANGAUGE_ID, "");
+        ctx.eval(LANGUAGE_ID, "");
     }
 
     @Test
@@ -464,7 +488,7 @@ public class VirtualizedFileSystemTest {
                 Assert.assertFalse(cfg.formatErrorMessage("Unexpected SecurityException"), canRead);
             }
         };
-        ctx.eval(LANGAUGE_ID, "");
+        ctx.eval(LANGUAGE_ID, "");
     }
 
     @Test
@@ -481,7 +505,7 @@ public class VirtualizedFileSystemTest {
                 Assert.assertFalse(cfg.formatErrorMessage("Unexpected SecurityException"), allowsUserDir);
             }
         };
-        ctx.eval(LANGAUGE_ID, "");
+        ctx.eval(LANGUAGE_ID, "");
     }
 
     @Test
@@ -501,7 +525,7 @@ public class VirtualizedFileSystemTest {
                 throw new AssertionError(cfg.formatErrorMessage(ioe.getMessage()), ioe);
             }
         };
-        ctx.eval(LANGAUGE_ID, "");
+        ctx.eval(LANGUAGE_ID, "");
     }
 
     @Test
@@ -522,7 +546,7 @@ public class VirtualizedFileSystemTest {
                 throw new AssertionError(cfg.formatErrorMessage(ioe.getMessage()), ioe);
             }
         };
-        ctx.eval(LANGAUGE_ID, "");
+        ctx.eval(LANGUAGE_ID, "");
     }
 
     @Test
@@ -541,7 +565,7 @@ public class VirtualizedFileSystemTest {
                 Assert.assertFalse(cfg.formatErrorMessage("Unexpected SecurityException"), canRead);
             }
         };
-        ctx.eval(LANGAUGE_ID, "");
+        ctx.eval(LANGUAGE_ID, "");
     }
 
     @Test
@@ -560,11 +584,11 @@ public class VirtualizedFileSystemTest {
                 Assert.assertFalse(cfg.formatErrorMessage("Unexpected SecurityException"), canRead);
             }
         };
-        ctx.eval(LANGAUGE_ID, "");
+        ctx.eval(LANGUAGE_ID, "");
     }
 
     @Test
-    public void isReadable() {
+    public void testIsReadable() {
         final Context ctx = cfg.getContext();
         final Path path = cfg.getPath();
         final boolean canRead = cfg.canRead();
@@ -579,11 +603,11 @@ public class VirtualizedFileSystemTest {
                 Assert.assertFalse(cfg.formatErrorMessage("Unexpected SecurityException"), canRead);
             }
         };
-        ctx.eval(LANGAUGE_ID, "");
+        ctx.eval(LANGUAGE_ID, "");
     }
 
     @Test
-    public void isWritable() {
+    public void testIsWritable() {
         final Context ctx = cfg.getContext();
         final Path path = cfg.getPath();
         final boolean canRead = cfg.canRead();
@@ -598,11 +622,11 @@ public class VirtualizedFileSystemTest {
                 Assert.assertFalse(cfg.formatErrorMessage("Unexpected SecurityException"), canRead);
             }
         };
-        ctx.eval(LANGAUGE_ID, "");
+        ctx.eval(LANGUAGE_ID, "");
     }
 
     @Test
-    public void isExecutable() {
+    public void testIsExecutable() {
         final Context ctx = cfg.getContext();
         final Path path = cfg.getPath();
         final boolean canRead = cfg.canRead();
@@ -617,7 +641,33 @@ public class VirtualizedFileSystemTest {
                 Assert.assertFalse(cfg.formatErrorMessage("Unexpected SecurityException"), canRead);
             }
         };
-        ctx.eval(LANGAUGE_ID, "");
+        ctx.eval(LANGUAGE_ID, "");
+    }
+
+    @Test
+    public void testIsSymbolicLink() throws Throwable {
+        final Context ctx = cfg.getContext();
+        final Path path = cfg.getPath();
+        final boolean canRead = cfg.canRead();
+        languageAction = (Env env) -> {
+            final TruffleFile root = env.getTruffleFile(path.toString());
+            try {
+                final TruffleFile file = root.resolve(SYMLINK_EXISTING);
+                Assume.assumeTrue("File System does not support optional symbolic links", file.exists(LinkOption.NOFOLLOW_LINKS));
+                final boolean symlink = file.isSymbolicLink();
+                Assert.assertTrue(cfg.formatErrorMessage("Expected SecurityException"), canRead);
+                Assert.assertTrue(cfg.formatErrorMessage("Is symbolic link"), symlink);
+            } catch (SecurityException se) {
+                Assert.assertFalse(cfg.formatErrorMessage("Unexpected SecurityException"), canRead);
+            }
+        };
+        try {
+            ctx.eval(LANGUAGE_ID, "");
+        } catch (PolyglotException pe) {
+            if (pe.isHostException()) {
+                throw pe.asHostException();
+            }
+        }
     }
 
     @Test
@@ -646,7 +696,7 @@ public class VirtualizedFileSystemTest {
                 throw new AssertionError(cfg.formatErrorMessage(ioe.getMessage()), ioe);
             }
         };
-        ctx.eval(LANGAUGE_ID, "");
+        ctx.eval(LANGUAGE_ID, "");
     }
 
     @Test
@@ -667,7 +717,7 @@ public class VirtualizedFileSystemTest {
                 throw new AssertionError(cfg.formatErrorMessage(ioe.getMessage()), ioe);
             }
         };
-        ctx.eval(LANGAUGE_ID, "");
+        ctx.eval(LANGUAGE_ID, "");
     }
 
     @Test
@@ -686,7 +736,7 @@ public class VirtualizedFileSystemTest {
                 Assert.assertFalse(cfg.formatErrorMessage("Unexpected SecurityException"), allowsUserDir);
             }
         };
-        ctx.eval(LANGAUGE_ID, "");
+        ctx.eval(LANGUAGE_ID, "");
     }
 
     @Test
@@ -704,7 +754,7 @@ public class VirtualizedFileSystemTest {
             Assert.assertTrue(uri.isAbsolute());
             Assert.assertEquals(cfg.formatErrorMessage("Absolute URI"), Paths.get("/").resolve(FOLDER_EXISTING).resolve(FILE_EXISTING).toUri(), uri);
         };
-        ctx.eval(LANGAUGE_ID, "");
+        ctx.eval(LANGUAGE_ID, "");
     }
 
     @Test
@@ -729,7 +779,7 @@ public class VirtualizedFileSystemTest {
             Assert.assertEquals("..", fileNonNormalized.getParent().getName());
             Assert.assertEquals("lib", fileNonNormalized.getParent().getParent().getName());
         };
-        ctx.eval(LANGAUGE_ID, "");
+        ctx.eval(LANGUAGE_ID, "");
     }
 
     @Test
@@ -750,7 +800,7 @@ public class VirtualizedFileSystemTest {
             Assert.assertEquals("../sibling", relative.getPath());
             Assert.assertEquals(sibling.normalize(), parent.resolve(relative.getPath()).normalize());
         };
-        ctx.eval(LANGAUGE_ID, "");
+        ctx.eval(LANGUAGE_ID, "");
     }
 
     @Test
@@ -775,7 +825,7 @@ public class VirtualizedFileSystemTest {
                 Assert.assertFalse(cfg.formatErrorMessage("Unexpected SecurityException"), canRead);
             }
         };
-        ctx.eval(LANGAUGE_ID, "");
+        ctx.eval(LANGUAGE_ID, "");
     }
 
     @Test
@@ -831,7 +881,7 @@ public class VirtualizedFileSystemTest {
             Assert.assertFalse(testParentChildRelative.startsWith(testParentChildAbsolute));
             Assert.assertFalse(testParentChildRelative.startsWith(testParentChildAbsolute.getPath()));
         };
-        ctx.eval(LANGAUGE_ID, "");
+        ctx.eval(LANGUAGE_ID, "");
     }
 
     @Test
@@ -895,7 +945,7 @@ public class VirtualizedFileSystemTest {
             Assert.assertFalse(testParentInnerRelative.endsWith(testParentInnerChildRelative));
             Assert.assertFalse(testParentInnerRelative.endsWith(testParentInnerChildRelative.getPath()));
         };
-        ctx.eval(LANGAUGE_ID, "");
+        ctx.eval(LANGUAGE_ID, "");
     }
 
     @Test
@@ -921,7 +971,7 @@ public class VirtualizedFileSystemTest {
                 throw new AssertionError(cfg.formatErrorMessage(ioe.getMessage()), ioe);
             }
         };
-        ctx.eval(LANGAUGE_ID, "");
+        ctx.eval(LANGUAGE_ID, "");
     }
 
     @Test
@@ -1052,7 +1102,7 @@ public class VirtualizedFileSystemTest {
                 throw new AssertionError(cfg.formatErrorMessage(ioe.getMessage()), ioe);
             }
         };
-        ctx.eval(LANGAUGE_ID, "");
+        ctx.eval(LANGUAGE_ID, "");
     }
 
     @Test
@@ -1075,7 +1125,7 @@ public class VirtualizedFileSystemTest {
                 // Links may not be supported on file system
             }
         };
-        ctx.eval(LANGAUGE_ID, "");
+        ctx.eval(LANGUAGE_ID, "");
     }
 
     @Test
@@ -1090,6 +1140,8 @@ public class VirtualizedFileSystemTest {
                 TruffleFile link = root.resolve(FILE_NEW_SYMLINK);
                 link.createSymbolicLink(target);
                 Assert.assertTrue(cfg.formatErrorMessage("Expected SecurityException"), canWrite);
+                Assert.assertTrue(link.isSymbolicLink());
+                Assert.assertEquals(target.getCanonicalFile(), link.getCanonicalFile());
             } catch (SecurityException se) {
                 Assert.assertFalse(cfg.formatErrorMessage("Unexpected SecurityException"), canWrite);
             } catch (IOException ioe) {
@@ -1098,7 +1150,7 @@ public class VirtualizedFileSystemTest {
                 // Symbolik links may not be supported on file system
             }
         };
-        ctx.eval(LANGAUGE_ID, "");
+        ctx.eval(LANGUAGE_ID, "");
     }
 
     @Test
@@ -1121,7 +1173,7 @@ public class VirtualizedFileSystemTest {
                 // Onwer may not be supported on file system
             }
         };
-        ctx.eval(LANGAUGE_ID, "");
+        ctx.eval(LANGUAGE_ID, "");
     }
 
     @Test
@@ -1144,7 +1196,7 @@ public class VirtualizedFileSystemTest {
                 // Group may not be supported on file system
             }
         };
-        ctx.eval(LANGAUGE_ID, "");
+        ctx.eval(LANGUAGE_ID, "");
     }
 
     @Test
@@ -1188,7 +1240,7 @@ public class VirtualizedFileSystemTest {
                 throw new AssertionError(cfg.formatErrorMessage(ioe.getMessage()), ioe);
             }
         };
-        ctx.eval(LANGAUGE_ID, "");
+        ctx.eval(LANGUAGE_ID, "");
     }
 
     @Test
@@ -1208,7 +1260,7 @@ public class VirtualizedFileSystemTest {
                 }
             }
         };
-        ctx.eval(LANGAUGE_ID, "");
+        ctx.eval(LANGUAGE_ID, "");
     }
 
     @Test
@@ -1256,7 +1308,271 @@ public class VirtualizedFileSystemTest {
                 Assert.assertFalse(cfg.formatErrorMessage("Unexpected SecurityException"), allowsUserDir);
             }
         };
-        ctx.eval(LANGAUGE_ID, "");
+        ctx.eval(LANGUAGE_ID, "");
+    }
+
+    @Test
+    public void testGetFileNameSeparator() {
+        final Context ctx = cfg.getContext();
+        languageAction = (Env env) -> {
+            Assert.assertEquals(cfg.fileSystem.getSeparator(), env.getFileNameSeparator());
+        };
+        ctx.eval(LANGUAGE_ID, "");
+    }
+
+    @Test
+    public void testGetAttribute() {
+        Context ctx = cfg.getContext();
+        Path path = cfg.getPath();
+        boolean canRead = cfg.canRead();
+        languageAction = (Env env) -> {
+            TruffleFile root = env.getTruffleFile(path.toString());
+            try {
+                TruffleFile file = root.resolve(FOLDER_EXISTING).resolve(FILE_EXISTING);
+                Assert.assertEquals(file.getLastModifiedTime(), file.getAttribute(TruffleFile.LAST_MODIFIED_TIME));
+                Assert.assertTrue(cfg.formatErrorMessage("Expected SecurityException"), canRead);
+                Assert.assertEquals(file.getLastAccessTime(), file.getAttribute(TruffleFile.LAST_ACCESS_TIME));
+                Assert.assertEquals(file.getCreationTime(), file.getAttribute(TruffleFile.CREATION_TIME));
+                Assert.assertEquals(file.isRegularFile(), file.getAttribute(TruffleFile.IS_REGULAR_FILE));
+                Assert.assertEquals(file.isDirectory(), file.getAttribute(TruffleFile.IS_DIRECTORY));
+                Assert.assertEquals(file.isSymbolicLink(), file.getAttribute(TruffleFile.IS_SYMBOLIC_LINK));
+                Assert.assertEquals(!(file.isRegularFile() | file.isDirectory() | file.isSymbolicLink()), file.getAttribute(TruffleFile.IS_OTHER));
+                Assert.assertEquals(file.size(), file.getAttribute(TruffleFile.SIZE).longValue());
+                Assert.assertEquals(file.getOwner(), file.getAttribute(TruffleFile.UNIX_OWNER));
+                Assert.assertEquals(file.getGroup(), file.getAttribute(TruffleFile.UNIX_GROUP));
+                Assert.assertEquals(file.getPosixPermissions(), file.getAttribute(TruffleFile.UNIX_PERMISSIONS));
+                Assert.assertTrue(file.getAttribute(TruffleFile.UNIX_NLINK) >= 1);
+                Assert.assertEquals(file.getOwner().hashCode(), file.getAttribute(TruffleFile.UNIX_UID).intValue());
+                Assert.assertEquals(file.getGroup().hashCode(), file.getAttribute(TruffleFile.UNIX_GID).intValue());
+                Assert.assertTrue(verifyPermissions(file.getPosixPermissions(), file.getAttribute(TruffleFile.UNIX_MODE)));
+            } catch (SecurityException se) {
+                Assert.assertFalse(cfg.formatErrorMessage("Unexpected SecurityException"), canRead);
+            } catch (IOException ioe) {
+                throw new AssertionError(cfg.formatErrorMessage(ioe.getMessage()), ioe);
+            } catch (UnsupportedOperationException e) {
+                // Verify that file system does not support unix attributes
+                try {
+                    cfg.fileSystem.readAttributes(path, "unix:*");
+                    throw e;
+                } catch (UnsupportedOperationException unsupported) {
+                    // Expected
+                } catch (IOException ioe) {
+                    throw new RuntimeException(ioe);
+                }
+            }
+        };
+        ctx.eval(LANGUAGE_ID, "");
+    }
+
+    @Test
+    public void testGetAttributes() {
+        Context ctx = cfg.getContext();
+        Path path = cfg.getPath();
+        boolean canRead = cfg.canRead();
+        languageAction = (Env env) -> {
+            TruffleFile root = env.getTruffleFile(path.toString());
+            TruffleFile file = root.resolve(FOLDER_EXISTING).resolve(FILE_EXISTING);
+            try {
+                TruffleFile.Attributes attrs = file.getAttributes(Arrays.asList(
+                                TruffleFile.LAST_MODIFIED_TIME,
+                                TruffleFile.LAST_ACCESS_TIME,
+                                TruffleFile.CREATION_TIME,
+                                TruffleFile.IS_REGULAR_FILE,
+                                TruffleFile.IS_DIRECTORY,
+                                TruffleFile.IS_SYMBOLIC_LINK,
+                                TruffleFile.IS_OTHER,
+                                TruffleFile.SIZE));
+                Assert.assertTrue(cfg.formatErrorMessage("Expected SecurityException"), canRead);
+                Assert.assertNotNull(attrs);
+                Assert.assertEquals(file.getLastModifiedTime(), attrs.get(TruffleFile.LAST_MODIFIED_TIME));
+                Assert.assertEquals(file.getLastAccessTime(), attrs.get(TruffleFile.LAST_ACCESS_TIME));
+                Assert.assertEquals(file.getCreationTime(), attrs.get(TruffleFile.CREATION_TIME));
+                Assert.assertEquals(file.isRegularFile(), attrs.get(TruffleFile.IS_REGULAR_FILE));
+                Assert.assertEquals(file.isDirectory(), attrs.get(TruffleFile.IS_DIRECTORY));
+                Assert.assertEquals(file.isSymbolicLink(), attrs.get(TruffleFile.IS_SYMBOLIC_LINK));
+                Assert.assertEquals(!(file.isRegularFile() | file.isDirectory() | file.isSymbolicLink()), attrs.get(TruffleFile.IS_OTHER));
+                Assert.assertEquals(file.size(), attrs.get(TruffleFile.SIZE).longValue());
+            } catch (SecurityException se) {
+                Assert.assertFalse(cfg.formatErrorMessage("Unexpected SecurityException"), canRead);
+            } catch (IOException ioe) {
+                throw new AssertionError(cfg.formatErrorMessage(ioe.getMessage()), ioe);
+            }
+            try {
+                TruffleFile.Attributes attrs = file.getAttributes(Arrays.asList(TruffleFile.LAST_MODIFIED_TIME,
+                                TruffleFile.LAST_ACCESS_TIME,
+                                TruffleFile.CREATION_TIME,
+                                TruffleFile.IS_REGULAR_FILE,
+                                TruffleFile.IS_DIRECTORY,
+                                TruffleFile.IS_SYMBOLIC_LINK,
+                                TruffleFile.IS_OTHER,
+                                TruffleFile.SIZE,
+                                TruffleFile.UNIX_OWNER,
+                                TruffleFile.UNIX_GROUP,
+                                TruffleFile.UNIX_PERMISSIONS,
+                                TruffleFile.UNIX_MODE,
+                                TruffleFile.UNIX_INODE,
+                                TruffleFile.UNIX_DEV,
+                                TruffleFile.UNIX_RDEV,
+                                TruffleFile.UNIX_NLINK,
+                                TruffleFile.UNIX_UID,
+                                TruffleFile.UNIX_GID,
+                                TruffleFile.UNIX_CTIME));
+                Assert.assertTrue(cfg.formatErrorMessage("Expected SecurityException"), canRead);
+                Assert.assertNotNull(attrs);
+                Assert.assertEquals(file.getLastModifiedTime(), attrs.get(TruffleFile.LAST_MODIFIED_TIME));
+                Assert.assertEquals(file.getLastAccessTime(), attrs.get(TruffleFile.LAST_ACCESS_TIME));
+                Assert.assertEquals(file.getCreationTime(), attrs.get(TruffleFile.CREATION_TIME));
+                Assert.assertEquals(file.isRegularFile(), attrs.get(TruffleFile.IS_REGULAR_FILE));
+                Assert.assertEquals(file.isDirectory(), attrs.get(TruffleFile.IS_DIRECTORY));
+                Assert.assertEquals(file.isSymbolicLink(), attrs.get(TruffleFile.IS_SYMBOLIC_LINK));
+                Assert.assertEquals(!(file.isRegularFile() | file.isDirectory() | file.isSymbolicLink()), attrs.get(TruffleFile.IS_OTHER));
+                Assert.assertEquals(file.size(), attrs.get(TruffleFile.SIZE).longValue());
+                Assert.assertEquals(file.getOwner(), attrs.get(TruffleFile.UNIX_OWNER));
+                Assert.assertEquals(file.getGroup(), attrs.get(TruffleFile.UNIX_GROUP));
+                Assert.assertEquals(file.getPosixPermissions(), attrs.get(TruffleFile.UNIX_PERMISSIONS));
+                Assert.assertTrue(attrs.get(TruffleFile.UNIX_NLINK) >= 1);
+                Assert.assertEquals(file.getOwner().hashCode(), attrs.get(TruffleFile.UNIX_UID).intValue());
+                Assert.assertEquals(file.getGroup().hashCode(), attrs.get(TruffleFile.UNIX_GID).intValue());
+                Assert.assertTrue(verifyPermissions(file.getPosixPermissions(), attrs.get(TruffleFile.UNIX_MODE)));
+            } catch (SecurityException se) {
+                Assert.assertFalse(cfg.formatErrorMessage("Unexpected SecurityException"), canRead);
+            } catch (IOException ioe) {
+                throw new AssertionError(cfg.formatErrorMessage(ioe.getMessage()), ioe);
+            } catch (UnsupportedOperationException e) {
+                // Verify that file system does not support unix attributes
+                try {
+                    cfg.fileSystem.readAttributes(path, "unix:*");
+                    throw e;
+                } catch (UnsupportedOperationException unsupported) {
+                    // Expected
+                } catch (IOException ioe) {
+                    throw new RuntimeException(ioe);
+                }
+            }
+            try {
+                TruffleFile.Attributes attrs = file.getAttributes(Arrays.asList(TruffleFile.LAST_MODIFIED_TIME,
+                                TruffleFile.LAST_ACCESS_TIME,
+                                TruffleFile.SIZE,
+                                TruffleFile.UNIX_MODE,
+                                TruffleFile.UNIX_INODE,
+                                TruffleFile.UNIX_DEV,
+                                TruffleFile.UNIX_NLINK,
+                                TruffleFile.UNIX_UID,
+                                TruffleFile.UNIX_GID,
+                                TruffleFile.UNIX_CTIME));
+                Assert.assertTrue(cfg.formatErrorMessage("Expected SecurityException"), canRead);
+                Assert.assertNotNull(attrs);
+                Assert.assertEquals(file.getLastModifiedTime(), attrs.get(TruffleFile.LAST_MODIFIED_TIME));
+                Assert.assertEquals(file.getLastAccessTime(), attrs.get(TruffleFile.LAST_ACCESS_TIME));
+                Assert.assertEquals(file.size(), attrs.get(TruffleFile.SIZE).longValue());
+                Assert.assertTrue(verifyPermissions(file.getPosixPermissions(), attrs.get(TruffleFile.UNIX_MODE)));
+                Assert.assertNotNull(attrs.get(TruffleFile.UNIX_INODE));
+                Assert.assertNotNull(attrs.get(TruffleFile.UNIX_DEV));
+                Assert.assertTrue(attrs.get(TruffleFile.UNIX_NLINK) >= 1);
+                Assert.assertEquals(file.getOwner().hashCode(), attrs.get(TruffleFile.UNIX_UID).intValue());
+                Assert.assertEquals(file.getGroup().hashCode(), attrs.get(TruffleFile.UNIX_GID).intValue());
+                Assert.assertNotNull(attrs.get(TruffleFile.UNIX_CTIME));
+                try {
+                    attrs.get(TruffleFile.CREATION_TIME);
+                    Assert.fail("Expected IllegalArgumentException");
+                } catch (IllegalArgumentException e) {
+                    // Expected
+                }
+                try {
+                    attrs.get(TruffleFile.IS_REGULAR_FILE);
+                    Assert.fail("Expected IllegalArgumentException");
+                } catch (IllegalArgumentException e) {
+                    // Expected
+                }
+                try {
+                    attrs.get(TruffleFile.IS_DIRECTORY);
+                    Assert.fail("Expected IllegalArgumentException");
+                } catch (IllegalArgumentException e) {
+                    // Expected
+                }
+                try {
+                    attrs.get(TruffleFile.IS_SYMBOLIC_LINK);
+                    Assert.fail("Expected IllegalArgumentException");
+                } catch (IllegalArgumentException e) {
+                    // Expected
+                }
+                try {
+                    attrs.get(TruffleFile.IS_OTHER);
+                    Assert.fail("Expected IllegalArgumentException");
+                } catch (IllegalArgumentException e) {
+                    // Expected
+                }
+                try {
+                    attrs.get(TruffleFile.UNIX_PERMISSIONS);
+                    Assert.fail("Expected IllegalArgumentException");
+                } catch (IllegalArgumentException e) {
+                    // Expected
+                }
+                try {
+                    attrs.get(TruffleFile.UNIX_OWNER);
+                    Assert.fail("Expected IllegalArgumentException");
+                } catch (IllegalArgumentException e) {
+                    // Expected
+                }
+                try {
+                    attrs.get(TruffleFile.UNIX_GROUP);
+                    Assert.fail("Expected IllegalArgumentException");
+                } catch (IllegalArgumentException e) {
+                    // Expected
+                }
+            } catch (SecurityException se) {
+                Assert.assertFalse(cfg.formatErrorMessage("Unexpected SecurityException"), canRead);
+            } catch (IOException ioe) {
+                throw new AssertionError(cfg.formatErrorMessage(ioe.getMessage()), ioe);
+            } catch (UnsupportedOperationException e) {
+                // Verify that file system does not support unix attributes
+                try {
+                    cfg.fileSystem.readAttributes(path, "unix:*");
+                    throw e;
+                } catch (UnsupportedOperationException unsupported) {
+                    // Expected
+                } catch (IOException ioe) {
+                    throw new RuntimeException(ioe);
+                }
+            }
+        };
+        ctx.eval(LANGUAGE_ID, "");
+    }
+
+    static boolean verifyPermissions(Set<PosixFilePermission> permissions, int mode) {
+        int perms = 0;
+        for (PosixFilePermission perm : permissions) {
+            switch (perm) {
+                case OWNER_READ:
+                    perms |= 4 << 6;
+                    break;
+                case OWNER_WRITE:
+                    perms |= 2 << 6;
+                    break;
+                case OTHERS_EXECUTE:
+                    perms |= 1 << 6;
+                    break;
+                case GROUP_READ:
+                    perms |= 4 << 3;
+                    break;
+                case GROUP_WRITE:
+                    perms |= 2 << 3;
+                    break;
+                case GROUP_EXECUTE:
+                    perms |= 1 << 3;
+                    break;
+                case OTHERS_READ:
+                    perms |= 4;
+                    break;
+                case OTHERS_WRITE:
+                    perms |= 2;
+                    break;
+                case OWNER_EXECUTE:
+                    perms |= 1;
+                    break;
+            }
+        }
+        return (perms & mode) == perms;
     }
 
     public static final class Configuration implements Closeable {
@@ -1400,7 +1716,7 @@ public class VirtualizedFileSystemTest {
         }
     }
 
-    @TruffleLanguage.Registration(id = LANGAUGE_ID, name = LANGAUGE_ID, version = "1.0")
+    @TruffleLanguage.Registration(id = LANGUAGE_ID, name = LANGUAGE_ID, version = "1.0")
     public static class VirtualizedFileSystemTestLanguage extends TruffleLanguage<LanguageContext> {
 
         @Override
@@ -1419,7 +1735,7 @@ public class VirtualizedFileSystemTest {
             return Truffle.getRuntime().createCallTarget(new RootNode(this) {
                 @Override
                 public Object execute(VirtualFrame frame) {
-                    languageAction.accept(getContextReference().get().env());
+                    languageAction.accept(lookupContextReference(VirtualizedFileSystemTestLanguage.class).get().env());
                     return result;
                 }
             });
@@ -1443,6 +1759,11 @@ public class VirtualizedFileSystemTest {
         touch(folder.resolve(FILE_EXISTING_WRITE_MMAP), fs);
         touch(folder.resolve(FILE_EXISTING_DELETE), fs);
         touch(folder.resolve(FILE_EXISTING_RENAME), fs);
+        try {
+            ln(folder.resolve(FOLDER_EXISTING), folder.resolve(SYMLINK_EXISTING), fs);
+        } catch (UnsupportedOperationException unsupported) {
+            // File system does not support optional symbolic links, test will be ignored
+        }
         return folder;
     }
 
@@ -1482,6 +1803,10 @@ public class VirtualizedFileSystemTest {
         fs.newByteChannel(
                         path,
                         EnumSet.<StandardOpenOption> of(StandardOpenOption.CREATE_NEW, StandardOpenOption.WRITE)).close();
+    }
+
+    private static void ln(Path file, Path link, FileSystem fs) throws IOException {
+        fs.createSymbolicLink(link, file);
     }
 
     private static boolean isDirectory(final Path path, final FileSystem fs) throws IOException {
@@ -1528,10 +1853,28 @@ public class VirtualizedFileSystemTest {
             env.setCurrentWorkingDirectory(env.getTruffleFile(cwd.toString()));
         };
         if (langHome != null) {
-            System.setProperty(LANGAUGE_ID + ".home", langHome.toString());
+            System.setProperty(LANGUAGE_ID + ".home", langHome.toString());
             resetLanguageHomes();
         }
-        ctx.eval(LANGAUGE_ID, "");
+        ctx.eval(LANGUAGE_ID, "");
+    }
+
+    private static FileSystem createPreInitializeContextFileSystem() throws ReflectiveOperationException {
+        Class<? extends FileSystem> clazz = Class.forName("com.oracle.truffle.polyglot.FileSystems$PreInitializeContextFileSystem").asSubclass(FileSystem.class);
+        Constructor<? extends FileSystem> init = clazz.getDeclaredConstructor();
+        init.setAccessible(true);
+        return init.newInstance();
+    }
+
+    private static void switchToImageExecutionTime(FileSystem fileSystem, Path cwd) throws ReflectiveOperationException {
+        String workDir = cwd.toString();
+        Class<? extends FileSystem> clazz = Class.forName("com.oracle.truffle.polyglot.FileSystems$PreInitializeContextFileSystem").asSubclass(FileSystem.class);
+        Method preInitClose = clazz.getDeclaredMethod("onPreInitializeContextEnd");
+        preInitClose.setAccessible(true);
+        preInitClose.invoke(fileSystem);
+        Method patchStart = clazz.getDeclaredMethod("onLoadPreinitializedContext", FileSystem.class);
+        patchStart.setAccessible(true);
+        patchStart.invoke(fileSystem, FileSystemProviderTest.newFullIOFileSystem(Paths.get(workDir)));
     }
 
     static class ForwardingFileSystem implements FileSystem {
@@ -1630,6 +1973,21 @@ public class VirtualizedFileSystemTest {
         @Override
         public void setCurrentWorkingDirectory(Path currentWorkingDirectory) {
             delegate.setCurrentWorkingDirectory(currentWorkingDirectory);
+        }
+
+        @Override
+        public String getSeparator() {
+            return delegate.getSeparator();
+        }
+
+        @Override
+        public String getMimeType(Path path) {
+            return delegate.getMimeType(path);
+        }
+
+        @Override
+        public Charset getEncoding(Path path) {
+            return delegate.getEncoding(path);
         }
     }
 

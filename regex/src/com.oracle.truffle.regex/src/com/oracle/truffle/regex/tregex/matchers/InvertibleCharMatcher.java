@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2016, 2016, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2016, 2019, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -28,25 +28,23 @@ package com.oracle.truffle.regex.tregex.matchers;
  * Abstract character matcher that allows matching behavior to be inverted with a constructor
  * parameter.
  */
-public abstract class InvertibleCharMatcher implements CharMatcher {
+public abstract class InvertibleCharMatcher extends CharMatcher {
 
     private final boolean invert;
 
     /**
      * Construct a new {@link InvertibleCharMatcher}.
      *
-     * @param invert if this is set to true, the result of {@link #match(char)} is always inverted.
+     * @param invert if this is set to true, the result of {@link #execute(char, boolean)} is always
+     *            inverted.
      */
     protected InvertibleCharMatcher(boolean invert) {
         this.invert = invert;
     }
 
-    @Override
-    public boolean match(char c) {
-        return matchChar(c) != invert;
+    protected boolean result(boolean result) {
+        return result != invert;
     }
-
-    protected abstract boolean matchChar(char c);
 
     protected String modifiersToString() {
         return invert ? "!" : "";

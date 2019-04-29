@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2017, 2018, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2017, 2019, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -49,18 +49,17 @@ import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.Truffle;
 import com.oracle.truffle.api.frame.VirtualFrame;
-import com.oracle.truffle.api.interop.ForeignAccess;
 import com.oracle.truffle.api.interop.InteropException;
-import com.oracle.truffle.api.interop.Message;
+import com.oracle.truffle.api.interop.InteropLibrary;
 import com.oracle.truffle.api.interop.TruffleObject;
-import com.oracle.truffle.api.interop.UnsupportedMessageException;
-import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.api.nodes.RootNode;
 import com.oracle.truffle.api.source.Source;
 import com.oracle.truffle.tck.TruffleRunner;
 import org.graalvm.polyglot.Context;
 
 public class NFITest {
+
+    protected static final InteropLibrary UNCACHED_INTEROP = InteropLibrary.getFactory().getUncached();
 
     @ClassRule public static TruffleRunner.RunWithPolyglotRule runWithPolyglot = new TruffleRunner.RunWithPolyglotRule(Context.newBuilder().allowNativeAccess(true));
 
@@ -92,8 +91,8 @@ public class NFITest {
 
     private static final class LookupAndBindNode extends RootNode {
 
-        @Child Node lookupSymbol = Message.READ.createNode();
-        @Child Node bind = Message.INVOKE.createNode();
+        @Child InteropLibrary libInterop = InteropLibrary.getFactory().createDispatched(5);
+        @Child InteropLibrary symInterop = InteropLibrary.getFactory().createDispatched(5);
 
         private LookupAndBindNode() {
             super(null);
@@ -101,13 +100,13 @@ public class NFITest {
 
         @Override
         public Object execute(VirtualFrame frame) {
-            TruffleObject library = (TruffleObject) frame.getArguments()[0];
+            Object library = frame.getArguments()[0];
             String symbolName = (String) frame.getArguments()[1];
-            String signature = (String) frame.getArguments()[2];
+            Object signature = frame.getArguments()[2];
 
             try {
-                TruffleObject symbol = (TruffleObject) ForeignAccess.sendRead(lookupSymbol, library, symbolName);
-                return ForeignAccess.sendInvoke(bind, symbol, "bind", signature);
+                Object symbol = libInterop.readMember(library, symbolName);
+                return symInterop.invokeMember(symbol, "bind", signature);
             } catch (InteropException e) {
                 CompilerDirectives.transferToInterpreter();
                 throw new AssertionError(e);
@@ -119,6 +118,14 @@ public class NFITest {
 
         protected NFITestRootNode() {
             super(null);
+        }
+
+        protected static InteropLibrary getInterop() {
+            return InteropLibrary.getFactory().createDispatched(5);
+        }
+
+        protected static InteropLibrary getInterop(Object receiver) {
+            return InteropLibrary.getFactory().create(receiver);
         }
 
         @TruffleBoundary
@@ -143,7 +150,7 @@ public class NFITest {
 
         private final TruffleObject receiver;
 
-        @Child Node execute;
+        @Child InteropLibrary interop;
 
         protected SendExecuteNode(String symbol, String signature) {
             this(lookupAndBind(symbol, signature));
@@ -151,12 +158,12 @@ public class NFITest {
 
         protected SendExecuteNode(TruffleObject receiver) {
             this.receiver = receiver;
-            execute = Message.EXECUTE.createNode();
+            this.interop = getInterop(receiver);
         }
 
         @Override
         public Object executeTest(VirtualFrame frame) throws InteropException {
-            return ForeignAccess.sendExecute(execute, receiver, frame.getArguments());
+            return interop.execute(receiver, frame.getArguments());
         }
     }
 
@@ -164,23 +171,17 @@ public class NFITest {
         return lookupAndBind(testLibrary, name, signature);
     }
 
-    protected static TruffleObject lookupAndBind(TruffleObject library, String name, String signature) {
-        return (TruffleObject) lookupAndBind.call(library, name, signature);
-    }
+    static final boolean IS_WINDOWS = System.getProperty("os.name").startsWith("Windows");
 
-    protected static boolean isBoxed(TruffleObject obj) {
-        return ForeignAccess.sendIsBoxed(Message.IS_BOXED.createNode(), obj);
-    }
-
-    protected static Object unbox(TruffleObject obj) {
-        try {
-            return ForeignAccess.sendUnbox(Message.UNBOX.createNode(), obj);
-        } catch (UnsupportedMessageException e) {
-            throw new AssertionError(e);
+    protected static TruffleObject lookupAndBindDefault(String name, String signature) {
+        if (IS_WINDOWS) {
+            return lookupAndBind(testLibrary, "reexport_" + name, signature);
+        } else {
+            return lookupAndBind(defaultLibrary, name, signature);
         }
     }
 
-    protected static boolean isNull(TruffleObject foreignObject) {
-        return ForeignAccess.sendIsNull(Message.IS_NULL.createNode(), foreignObject);
+    private static TruffleObject lookupAndBind(TruffleObject library, String name, String signature) {
+        return (TruffleObject) lookupAndBind.call(library, name, signature);
     }
 }

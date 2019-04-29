@@ -63,7 +63,7 @@ import org.graalvm.compiler.replacements.nodes.ExplodeLoopNode;
 import org.graalvm.compiler.word.BarrieredAccess;
 import org.graalvm.compiler.word.ObjectAccess;
 import org.graalvm.compiler.word.Word;
-import org.graalvm.nativeimage.RuntimeReflection;
+import org.graalvm.nativeimage.hosted.RuntimeReflection;
 import org.graalvm.word.LocationIdentity;
 import org.graalvm.word.Pointer;
 import org.graalvm.word.UnsignedWord;
@@ -542,8 +542,6 @@ public final class AllocationSnippets extends SubstrateTemplates implements Snip
                 memory.writeInt(offset, 0, LocationIdentity.INIT_LOCATION);
                 offset = offset.add(4);
             }
-            /* Assert that offset is now Word aligned, or past the end of the elements. */
-            assert isWordAligned(offset) : "offset should be Word aligned";
             while (offset.belowThan(size)) {
                 memory.writeWord(offset, WordFactory.zero(), LocationIdentity.INIT_LOCATION);
                 offset = offset.add(ConfigurationValues.getTarget().wordSize);

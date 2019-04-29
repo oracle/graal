@@ -34,17 +34,25 @@ import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
 import java.util.jar.JarFile;
+import org.graalvm.component.installer.DownloadURLIterable.DownloadURLParam;
 import org.graalvm.component.installer.commands.MockStorage;
+import org.graalvm.component.installer.jar.JarMetaLoader;
+import org.graalvm.component.installer.model.CatalogContents;
 import org.graalvm.component.installer.model.ComponentInfo;
 import org.graalvm.component.installer.model.ComponentRegistry;
+import org.graalvm.component.installer.model.ComponentStorage;
 import org.graalvm.component.installer.persist.ComponentPackageLoader;
+import org.graalvm.component.installer.remote.FileDownloader;
+import org.graalvm.component.installer.persist.MetadataLoader;
 import org.graalvm.component.installer.persist.test.Handler;
+import org.graalvm.component.installer.remote.RemoteComponentParam;
+import org.graalvm.component.installer.remote.CatalogIterable.CatalogItemParam;
 import org.junit.Before;
 import org.junit.Rule;
 import org.junit.rules.ExpectedException;
 import org.junit.rules.TemporaryFolder;
 
-public class CommandTestBase extends TestBase implements CommandInput {
+public class CommandTestBase extends TestBase implements CommandInput, SoftwareChannel {
     @Rule public ExpectedException exception = ExpectedException.none();
     protected JarFile componentJarFile;
     @Rule public TemporaryFolder folder = new TemporaryFolder();
@@ -52,7 +60,8 @@ public class CommandTestBase extends TestBase implements CommandInput {
     protected Path targetPath;
 
     protected MockStorage storage;
-    protected ComponentRegistry registry;
+    protected MockStorage catalogStorage;
+    protected ComponentCollection registry;
     protected ComponentRegistry localRegistry;
 
     protected List<File> files = new ArrayList<>();
@@ -61,7 +70,7 @@ public class CommandTestBase extends TestBase implements CommandInput {
     protected Map<String, String> options = new HashMap<>();
 
     ComponentParam param;
-    CatalogIterable.RemoteComponentParam rparam;
+    RemoteComponentParam rparam;
     URL url;
     URL clu;
     ComponentInfo info;
@@ -76,12 +85,12 @@ public class CommandTestBase extends TestBase implements CommandInput {
 
         File f = dataFile(relativeJar).toFile();
         JarFile jf = new JarFile(f, false);
-        ComponentPackageLoader cpl = new ComponentPackageLoader(jf, this);
+        ComponentPackageLoader cpl = new JarMetaLoader(jf, this);
         info = cpl.getComponentInfo();
         // unknown in catalog metadata
         info.setLicensePath(null);
         info.setRemoteURL(url);
-        param = rparam = new CatalogIterable.RemoteComponentParam(info, disp, spec, this, false);
+        param = rparam = new CatalogItemParam(this, info, disp, spec, this, false);
     }
 
     protected void initURLComponent(String relativeJar, String spec) throws IOException {
@@ -91,22 +100,31 @@ public class CommandTestBase extends TestBase implements CommandInput {
 
         File f = dataFile(relativeJar).toFile();
         JarFile jf = new JarFile(f, false);
-        ComponentPackageLoader cpl = new ComponentPackageLoader(jf, this);
+        ComponentPackageLoader cpl = new JarMetaLoader(jf, this);
         info = cpl.getComponentInfo();
         // unknown in catalog metadata
         info.setLicensePath(null);
         info.setRemoteURL(url);
-        param = rparam = new CatalogIterable.RemoteComponentParam(url, spec, spec, this, false);
+        param = rparam = new DownloadURLParam(url, spec, spec, this, false);
     }
 
-    protected Iterable<ComponentParam> paramIterable;
+    protected ComponentIterable paramIterable;
 
     @Override
-    public Iterable<ComponentParam> existingFiles() throws FailedOperationException {
+    public ComponentIterable existingFiles() throws FailedOperationException {
         if (paramIterable != null) {
             return paramIterable;
         }
-        return new Iterable<ComponentParam>() {
+        return new ComponentIterable() {
+            @Override
+            public void setVerifyJars(boolean verify) {
+            }
+
+            @Override
+            public ComponentParam createParam(String cmdString, ComponentInfo nfo) {
+                return null;
+            }
+
             @Override
             public Iterator<ComponentParam> iterator() {
                 return new Iterator<ComponentParam>() {
@@ -136,6 +154,16 @@ public class CommandTestBase extends TestBase implements CommandInput {
                 };
             }
 
+            @Override
+            public ComponentIterable matchVersion(Version.Match m) {
+                return this;
+            }
+
+            @Override
+            public ComponentIterable allowIncompatible() {
+                return this;
+            }
+
         };
     }
 
@@ -156,6 +184,14 @@ public class CommandTestBase extends TestBase implements CommandInput {
     }
 
     @Override
+    public String peekParameter() {
+        if (!textParams.isEmpty()) {
+            return textParams.get(0);
+        }
+        return files.isEmpty() ? null : files.get(0).toString();
+    }
+
+    @Override
     public boolean hasParameter() {
         return (!textParams.isEmpty() || !files.isEmpty());
     }
@@ -166,12 +202,18 @@ public class CommandTestBase extends TestBase implements CommandInput {
     }
 
     @Override
-    public ComponentRegistry getRegistry() {
+    public ComponentCollection getRegistry() {
+        if (registry == null) {
+            registry = new CatalogContents(this, catalogStorage, getLocalRegistry());
+        }
         return registry;
     }
 
     @Override
     public ComponentRegistry getLocalRegistry() {
+        if (localRegistry == null) {
+            localRegistry = new ComponentRegistry(this, storage);
+        }
         return localRegistry;
     }
 
@@ -184,6 +226,22 @@ public class CommandTestBase extends TestBase implements CommandInput {
     public void setUp() throws Exception {
         targetPath = folder.newFolder("inst").toPath();
         storage = new MockStorage();
-        localRegistry = registry = new ComponentRegistry(this, storage);
+        catalogStorage = new MockStorage();
+
+    }
+
+    @Override
+    public FileDownloader configureDownloader(ComponentInfo ci, FileDownloader dn) {
+        return dn;
+    }
+
+    @Override
+    public MetadataLoader createLocalFileLoader(ComponentInfo ci, Path localFile, boolean verify) throws IOException {
+        return new JarMetaLoader(new JarFile(localFile.toFile(), verify), this);
+    }
+
+    @Override
+    public ComponentStorage getStorage() {
+        return catalogStorage;
     }
 }

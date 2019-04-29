@@ -44,6 +44,7 @@ import static com.oracle.truffle.api.dsl.test.TestHelper.assertionsEnabled;
 import static com.oracle.truffle.api.dsl.test.TestHelper.createCallTarget;
 import static com.oracle.truffle.api.dsl.test.TestHelper.createNode;
 import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertNull;
 import static org.junit.Assert.fail;
 
 import java.lang.reflect.Field;
@@ -52,8 +53,11 @@ import org.junit.Assert;
 import org.junit.Test;
 
 import com.oracle.truffle.api.CallTarget;
+import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.CompilerDirectives.CompilationFinal;
+import com.oracle.truffle.api.Truffle;
 import com.oracle.truffle.api.dsl.Cached;
+import com.oracle.truffle.api.dsl.GenerateUncached;
 import com.oracle.truffle.api.dsl.NodeChild;
 import com.oracle.truffle.api.dsl.NodeChildren;
 import com.oracle.truffle.api.dsl.NodeField;
@@ -73,6 +77,7 @@ import com.oracle.truffle.api.dsl.test.CachedTestFactory.ChildrenAdoption5Factor
 import com.oracle.truffle.api.dsl.test.CachedTestFactory.ChildrenAdoption6Factory;
 import com.oracle.truffle.api.dsl.test.CachedTestFactory.ChildrenAdoption7Factory;
 import com.oracle.truffle.api.dsl.test.CachedTestFactory.NullChildAdoptionNodeGen;
+import com.oracle.truffle.api.dsl.test.CachedTestFactory.NullLiteralNodeGen;
 import com.oracle.truffle.api.dsl.test.CachedTestFactory.TestBoundCacheOverflowContainsFactory;
 import com.oracle.truffle.api.dsl.test.CachedTestFactory.TestCacheFieldFactory;
 import com.oracle.truffle.api.dsl.test.CachedTestFactory.TestCacheMethodFactory;
@@ -86,8 +91,11 @@ import com.oracle.truffle.api.dsl.test.CachedTestFactory.TestMultipleCachesFacto
 import com.oracle.truffle.api.dsl.test.CachedTestFactory.UnboundCacheFactory;
 import com.oracle.truffle.api.dsl.test.TypeSystemTest.ValueNode;
 import com.oracle.truffle.api.dsl.test.examples.ExampleTypes;
+import com.oracle.truffle.api.frame.VirtualFrame;
+import com.oracle.truffle.api.nodes.IndirectCallNode;
 import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.api.nodes.NodeInterface;
+import com.oracle.truffle.api.nodes.RootNode;
 
 @SuppressWarnings("unused")
 public class CachedTest {
@@ -243,8 +251,14 @@ public class CachedTest {
         private int increment = 1;
 
         public int execute(int value) {
-            replace(new NodeSubClass()).increment = increment + 1;
+            final NodeSubClass replaced = doReplace();
+            replaced.increment = increment + 1;
             return value + increment;
+        }
+
+        @CompilerDirectives.TruffleBoundary
+        private NodeSubClass doReplace() {
+            return replace(new NodeSubClass());
         }
 
     }
@@ -283,7 +297,7 @@ public class CachedTest {
         assertEquals(42, root.call(42));
         assertEquals(42, root.call(43));
         assertEquals(42, root.call(44));
-        if (assertionsEnabled()) {
+        if (assertionsEnabled() && !isCompileImmediately()) {
             Assert.assertTrue(TestGuardWithJustCachedParameter.invocations >= 3);
         } else {
             assertEquals(1, TestGuardWithJustCachedParameter.invocations);
@@ -307,6 +321,16 @@ public class CachedTest {
 
     }
 
+    private static boolean isCompileImmediately() {
+        CallTarget target = Truffle.getRuntime().createCallTarget(new RootNode(null) {
+            @Override
+            public Object execute(VirtualFrame frame) {
+                return CompilerDirectives.inCompiledCode();
+            }
+        });
+        return (boolean) target.call();
+    }
+
     @Test
     public void testGuardWithCachedAndDynamicParameter() {
         TestGuardWithCachedAndDynamicParameter.cachedMethodInvocations = 0;
@@ -316,7 +340,7 @@ public class CachedTest {
         assertEquals(42, root.call(43));
         assertEquals(42, root.call(44));
         // guards with just cached parameters are just invoked on the slow path
-        if (assertionsEnabled()) {
+        if (assertionsEnabled() && !isCompileImmediately()) {
             Assert.assertTrue(TestGuardWithCachedAndDynamicParameter.cachedMethodInvocations >= 3);
         } else {
             assertEquals(1, TestGuardWithCachedAndDynamicParameter.cachedMethodInvocations);
@@ -371,7 +395,9 @@ public class CachedTest {
     static class TestMultipleCaches extends ValueNode {
 
         @Specialization
-        static int do1(int value, @Cached("value") int cachedValue1, @Cached("value") int cachedValue2) {
+        static int do1(int value,
+                        @Cached("value") int cachedValue1,
+                        @Cached("value") int cachedValue2) {
             return cachedValue1 + cachedValue2;
         }
 
@@ -536,7 +562,7 @@ public class CachedTest {
     @Test
     public void testCacheDimension2() throws NoSuchFieldException, SecurityException {
         CacheDimensions2 node = TestHelper.createNode(CacheDimensions2Factory.getInstance(), false);
-        Field cachedField = node.getClass().getDeclaredField("do1_cachedValue_");
+        Field cachedField = node.getClass().getDeclaredField("cachedValue_");
         cachedField.setAccessible(true);
         assertEquals(1, cachedField.getAnnotation(CompilationFinal.class).dimensions());
     }
@@ -720,6 +746,27 @@ public class CachedTest {
         Assert.assertTrue(hasParent(root, child));
     }
 
+    @GenerateUncached
+    abstract static class NullLiteralNode extends Node {
+
+        abstract Object execute(Object value);
+
+        @Specialization
+        static Object do1(String value, @Cached(value = "null", uncached = "null") Object cachedValue) {
+            return cachedValue;
+        }
+
+        protected static Object createChildren() {
+            return null;
+        }
+    }
+
+    @Test
+    public void testNullLiteral() {
+        assertNull(NullLiteralNodeGen.create().execute(""));
+        assertNull(NullLiteralNodeGen.getUncached().execute(""));
+    }
+
     private static boolean hasParent(Node parent, Node node) {
         Node current = node != null ? node.getParent() : null;
         while (current != null) {
@@ -767,8 +814,8 @@ public class CachedTest {
     @NodeChild
     static class CachedError1 extends ValueNode {
         @Specialization
-        static int do1(int value, @ExpectError("Incompatible return type int. The expression type must be equal to the parameter type double.")//
-        @Cached("value") double cachedValue) {
+        static int do1(int value, @ExpectError("Incompatible return type int. The expression type must be equal to the parameter type short.")//
+        @Cached("value") short cachedValue) {
             return value;
         }
     }
@@ -780,7 +827,7 @@ public class CachedTest {
 
         @Specialization
         static int do1(int value,
-                        @ExpectError("The initializer expression of parameter 'cachedValue1' binds unitialized parameter 'cachedValue2. Reorder the parameters to resolve the problem.") @Cached("cachedValue2") int cachedValue1,
+                        @ExpectError("The initializer expression of parameter 'cachedValue1' binds uninitialized parameter 'cachedValue2. Reorder the parameters to resolve the problem.") @Cached("cachedValue2") int cachedValue1,
                         @Cached("value") int cachedValue2) {
             return cachedValue1 + cachedValue2;
         }
@@ -793,7 +840,7 @@ public class CachedTest {
         // cyclic dependency between cached expressions
         @Specialization
         static int do1(int value,
-                        @ExpectError("The initializer expression of parameter 'cachedValue1' binds unitialized parameter 'cachedValue2. Reorder the parameters to resolve the problem.") @Cached("cachedValue2") int cachedValue1,
+                        @ExpectError("The initializer expression of parameter 'cachedValue1' binds uninitialized parameter 'cachedValue2. Reorder the parameters to resolve the problem.") @Cached("cachedValue2") int cachedValue1,
                         @Cached("cachedValue1") int cachedValue2) {
             return cachedValue1 + cachedValue2;
         }

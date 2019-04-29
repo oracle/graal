@@ -24,16 +24,20 @@
  */
 package com.oracle.svm.core.heap;
 
+import org.graalvm.compiler.serviceprovider.GraalUnsafeAccess;
 import org.graalvm.compiler.word.ObjectAccess;
 import org.graalvm.compiler.word.Word;
 import org.graalvm.word.Pointer;
 import org.graalvm.word.WordFactory;
 
-import com.oracle.svm.core.UnsafeAccess;
 import com.oracle.svm.core.annotate.ExcludeFromReferenceMap;
 import com.oracle.svm.core.annotate.Uninterruptible;
 import com.oracle.svm.core.snippets.KnownIntrinsics;
 import com.oracle.svm.core.util.VMError;
+
+// Checkstyle: stop
+import sun.misc.Unsafe;
+// Checkstyle resume
 
 /**
  * This class is the plumbing under java.lang.ref.Reference. Instances of this class are discovered
@@ -70,6 +74,8 @@ public class DiscoverableReference {
      * List access methods.
      */
 
+    private static final Unsafe UNSAFE = GraalUnsafeAccess.getUnsafe();
+
     /** Push a DiscoverableReference onto the list. */
     public DiscoverableReference prependToDiscoveredReference(DiscoverableReference newNext) {
         setNextDiscoverableReference(newNext, true);
@@ -79,6 +85,20 @@ public class DiscoverableReference {
     /*
      * Instance access methods.
      */
+
+    /**
+     * Is this instance initialized?
+     *
+     * This seems like a funny method to have, because by the time I could see an instance class
+     * from ordinary Java code it would be initialized. But the collector might see a reference to
+     * an instance between when it is allocated and when it is initialized, and so must be able to
+     * detect if the fields of the instance are safe to access. The constructor is
+     * unininterruptible, so the collector either sees an uninitialized instance or fully
+     * initialized instance.
+     */
+    public boolean isDiscoverableReferenceInitialized() {
+        return discoverableReferenceInitialized;
+    }
 
     /** Read access to the referent, as an Object. */
     Object getReferentObject() {
@@ -137,15 +157,12 @@ public class DiscoverableReference {
      *
      * @param referent The Object to be tracked by this DiscoverableReference.
      */
-    protected DiscoverableReference(Object referent) {
-        initialize(referent);
-    }
-
     @Uninterruptible(reason = "The initialization of the fields must be atomic with respect to collection.")
-    private void initialize(Object referent) {
+    protected DiscoverableReference(Object referent) {
         this.rawReferent = referent;
         this.next = null;
         this.isDiscovered = false;
+        this.discoverableReferenceInitialized = true;
     }
 
     /*
@@ -172,7 +189,7 @@ public class DiscoverableReference {
 
     private static long getFieldOffset(String fieldName) {
         try {
-            return UnsafeAccess.UNSAFE.objectFieldOffset(DiscoverableReference.class.getDeclaredField(fieldName));
+            return UNSAFE.objectFieldOffset(DiscoverableReference.class.getDeclaredField(fieldName));
         } catch (NoSuchFieldException ex) {
             throw VMError.shouldNotReachHere(ex);
         }
@@ -188,7 +205,11 @@ public class DiscoverableReference {
     private boolean isDiscovered;
 
     /** The next element in whichever list of DiscoverableReferences. */
-    @SuppressWarnings("unused") private DiscoverableReference next;
+    @SuppressWarnings("unused") //
+    private DiscoverableReference next;
+
+    /** Has the constructor of this instance run? */
+    private final boolean discoverableReferenceInitialized;
 
     /** For testing and debugging. */
     public static final class TestingBackDoor {

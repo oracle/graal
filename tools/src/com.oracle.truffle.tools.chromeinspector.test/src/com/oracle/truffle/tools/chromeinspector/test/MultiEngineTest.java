@@ -54,7 +54,7 @@ import com.oracle.truffle.tools.utils.json.JSONObject;
 import org.graalvm.polyglot.Context;
 import org.graalvm.polyglot.Engine;
 import org.graalvm.polyglot.Source;
-
+import org.graalvm.polyglot.Value;
 import org.java_websocket.client.WebSocketClient;
 import org.java_websocket.handshake.ServerHandshake;
 
@@ -228,7 +228,12 @@ public class MultiEngineTest {
         try (Engine e = Engine.newBuilder().option("inspect.Path", src.getName()).err(out).build()) {
             Context c = Context.newBuilder().engine(e).allowAllAccess(true).build();
             isUp.countDown();
-            return c.eval(src).as(String.class);
+            Value result = c.eval(src);
+            if (result.fitsInLong()) {
+                return String.valueOf(result.asLong());
+            } else {
+                return result.as(String.class);
+            }
         }
     }
 

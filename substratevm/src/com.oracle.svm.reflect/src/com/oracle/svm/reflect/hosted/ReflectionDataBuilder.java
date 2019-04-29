@@ -40,26 +40,62 @@ import java.util.List;
 import java.util.Map;
 import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
+import java.util.function.Predicate;
 
-import org.graalvm.nativeimage.Feature.DuringAnalysisAccess;
+import org.graalvm.nativeimage.hosted.Feature.DuringAnalysisAccess;
 import org.graalvm.nativeimage.impl.RuntimeReflectionSupport;
 
+import com.oracle.graal.pointsto.meta.AnalysisMetaAccess;
 import com.oracle.graal.pointsto.meta.AnalysisType;
+import com.oracle.svm.core.annotate.Delete;
 import com.oracle.svm.core.hub.ClassForNameSupport;
 import com.oracle.svm.core.hub.DynamicHub;
 import com.oracle.svm.core.util.UserError;
 import com.oracle.svm.core.util.VMError;
 import com.oracle.svm.hosted.FeatureImpl.DuringAnalysisAccessImpl;
+import com.oracle.svm.hosted.substitute.DeletedElementException;
+import com.oracle.svm.hosted.substitute.SubstitutionReflectivityFilter;
 
 public class ReflectionDataBuilder implements RuntimeReflectionSupport {
 
     private boolean modified;
     private boolean sealed;
 
+    private final DynamicHub.ReflectionData arrayReflectionData;
     private Set<Class<?>> reflectionClasses = Collections.newSetFromMap(new ConcurrentHashMap<>());
     private Set<Executable> reflectionMethods = Collections.newSetFromMap(new ConcurrentHashMap<>());
     private Map<Field, Boolean> reflectionFields = new ConcurrentHashMap<>();
     private Set<Field> analyzedFinalFields = Collections.newSetFromMap(new ConcurrentHashMap<>());
+
+    public ReflectionDataBuilder() {
+        arrayReflectionData = getArrayReflectionData();
+    }
+
+    private static DynamicHub.ReflectionData getArrayReflectionData() {
+        Method[] publicArrayMethods;
+        try {
+            Method getPublicMethodsMethod = findMethod(Class.class, "privateGetPublicMethods");
+            publicArrayMethods = (Method[]) getPublicMethodsMethod.invoke(Object[].class);
+        } catch (ReflectiveOperationException e) {
+            throw VMError.shouldNotReachHere(e);
+        }
+
+        // array classes only have methods inherited from Object
+        return new DynamicHub.ReflectionData(
+                        new Field[0],
+                        new Field[0],
+                        new Field[0],
+                        new Method[0],
+                        publicArrayMethods,
+                        new Constructor<?>[0],
+                        new Constructor<?>[0],
+                        null,
+                        new Field[0],
+                        new Method[0],
+                        new Class<?>[0],
+                        new Class<?>[0],
+                        null);
+    }
 
     @Override
     public void register(Class<?>... classes) {
@@ -117,10 +153,6 @@ public class ReflectionDataBuilder implements RuntimeReflectionSupport {
         Field declaredPublicFieldsField = findField(originalReflectionDataClass, "declaredPublicFields");
         Field declaredPublicMethodsField = findField(originalReflectionDataClass, "declaredPublicMethods");
 
-        Field[] emptyFields = new Field[0];
-        Method[] emptyMethods = new Method[0];
-        Constructor<?>[] emptyConstructors = new Constructor<?>[0];
-
         Set<Class<?>> allClasses = new HashSet<>(reflectionClasses);
         reflectionMethods.stream().map(method -> method.getDeclaringClass()).forEach(clazz -> allClasses.add(clazz));
         reflectionFields.keySet().stream().map(field -> field.getDeclaringClass()).forEach(clazz -> allClasses.add(clazz));
@@ -141,6 +173,9 @@ public class ReflectionDataBuilder implements RuntimeReflectionSupport {
                  * We haven an enclosing method or constructor for this class, so we add the class
                  * to the set of processed classes so that the ReflectionData is initialized below.
                  */
+                allClasses.add(originalClass);
+            } else if (originalClass != null && originalClass.isArray()) {
+                // Always register reflection data for array classes
                 allClasses.add(originalClass);
             }
         }
@@ -166,26 +201,53 @@ public class ReflectionDataBuilder implements RuntimeReflectionSupport {
              * Ensure all internal fields of the original Class.ReflectionData object are
              * initialized. Calling the public methods triggers lazy initialization of the fields.
              */
-            clazz.getDeclaredFields();
-            clazz.getFields();
-            clazz.getDeclaredMethods();
-            clazz.getMethods();
-            clazz.getDeclaredConstructors();
-            clazz.getConstructors();
+            try {
+                clazz.getDeclaredFields();
+                clazz.getFields();
+                clazz.getDeclaredMethods();
+                clazz.getMethods();
+                clazz.getDeclaredConstructors();
+                clazz.getConstructors();
+                clazz.getDeclaredClasses();
+                clazz.getClasses();
+            } catch (NoClassDefFoundError e) {
+                /*
+                 * If any of the methods or fields reference missing types in their signatures a
+                 * NoClassDefFoundError is thrown. Skip registering reflection metadata for this
+                 * class.
+                 */
+                // Checkstyle: stop
+                System.out.println("WARNING: Could not register reflection metadata for " + clazz.getTypeName() +
+                                ". Reason: " + e.getClass().getTypeName() + ": " + e.getMessage() + ".");
+                // Checkstyle: resume
+                continue;
+            }
 
             try {
                 Object originalReflectionData = reflectionDataMethod.invoke(clazz);
-                hub.setReflectionData(new DynamicHub.ReflectionData(
-                                filter(declaredFieldsField.get(originalReflectionData), reflectionFields.keySet(), emptyFields),
-                                filter(publicFieldsField.get(originalReflectionData), reflectionFields.keySet(), emptyFields),
-                                filter(declaredMethodsField.get(originalReflectionData), reflectionMethods, emptyMethods),
-                                filter(publicMethodsField.get(originalReflectionData), reflectionMethods, emptyMethods),
-                                filter(declaredConstructorsField.get(originalReflectionData), reflectionMethods, emptyConstructors),
-                                filter(publicConstructorsField.get(originalReflectionData), reflectionMethods, emptyConstructors),
-                                nullaryConstructor(declaredConstructorsField.get(originalReflectionData), reflectionMethods),
-                                filter(declaredPublicFieldsField.get(originalReflectionData), reflectionFields.keySet(), emptyFields),
-                                filter(declaredPublicMethodsField.get(originalReflectionData), reflectionMethods, emptyMethods),
-                                enclosingMethodOrConstructor(clazz)));
+                DynamicHub.ReflectionData reflectionData;
+
+                if (type.isArray()) {
+                    // Always register reflection data for array classes
+                    reflectionData = arrayReflectionData;
+                } else {
+                    reflectionData = new DynamicHub.ReflectionData(
+                                    filterFields(declaredFieldsField.get(originalReflectionData), reflectionFields.keySet(), access.getMetaAccess()),
+                                    filterFields(publicFieldsField.get(originalReflectionData), reflectionFields.keySet(), access.getMetaAccess()),
+                                    filterFields(publicFieldsField.get(originalReflectionData), f -> reflectionFields.containsKey(f) && !isShadowedIn(f, clazz), access.getMetaAccess()),
+                                    filterMethods(declaredMethodsField.get(originalReflectionData), reflectionMethods, access.getMetaAccess()),
+                                    filterMethods(publicMethodsField.get(originalReflectionData), reflectionMethods, access.getMetaAccess()),
+                                    filterConstructors(declaredConstructorsField.get(originalReflectionData), reflectionMethods, access.getMetaAccess()),
+                                    filterConstructors(publicConstructorsField.get(originalReflectionData), reflectionMethods, access.getMetaAccess()),
+                                    nullaryConstructor(declaredConstructorsField.get(originalReflectionData), reflectionMethods),
+                                    filterFields(declaredPublicFieldsField.get(originalReflectionData), reflectionFields.keySet(), access.getMetaAccess()),
+                                    filterMethods(declaredPublicMethodsField.get(originalReflectionData), reflectionMethods, access.getMetaAccess()),
+                                    filterClasses(clazz.getDeclaredClasses(), reflectionClasses, access.getMetaAccess()),
+                                    filterClasses(clazz.getClasses(), reflectionClasses, access.getMetaAccess()),
+                                    enclosingMethodOrConstructor(clazz));
+                }
+
+                hub.setReflectionData(reflectionData);
             } catch (IllegalAccessException | IllegalArgumentException | InvocationTargetException ex) {
                 throw VMError.shouldNotReachHere(ex);
             }
@@ -214,6 +276,12 @@ public class ReflectionDataBuilder implements RuntimeReflectionSupport {
         try {
             enclosingMethod = clazz.getEnclosingMethod();
             enclosingConstructor = clazz.getEnclosingConstructor();
+        } catch (NoClassDefFoundError e) {
+            /*
+             * If any of the methods or fields in the class of the enclosing method reference
+             * missing types in their signatures a NoClassDefFoundError is thrown. Skip the class.
+             */
+            return null;
         } catch (InternalError ex) {
             // Checkstyle: stop
             System.err.println("GR-7731: Could not find the enclosing method of class " + clazz.getTypeName() +
@@ -225,7 +293,7 @@ public class ReflectionDataBuilder implements RuntimeReflectionSupport {
         if (enclosingMethod == null && enclosingConstructor == null) {
             return null;
         } else if (enclosingMethod != null && enclosingConstructor != null) {
-            throw VMError.shouldNotReachHere("Classs has both an enclosingMethod and an enclosingConstructor: " + clazz + ", " + enclosingMethod + ", " + enclosingConstructor);
+            throw VMError.shouldNotReachHere("Class has both an enclosingMethod and an enclosingConstructor: " + clazz + ", " + enclosingMethod + ", " + enclosingConstructor);
         }
 
         Executable enclosingMethodOrConstructor = enclosingMethod != null ? enclosingMethod : enclosingConstructor;
@@ -237,14 +305,60 @@ public class ReflectionDataBuilder implements RuntimeReflectionSupport {
         }
     }
 
-    private static <T> T[] filter(Object elements, Set<?> filter, T[] prototypeArray) {
-        List<Object> result = new ArrayList<>();
-        for (Object element : (Object[]) elements) {
-            if (filter.contains(element)) {
-                result.add(element);
+    private static Field[] filterFields(Object fields, Set<Field> filterSet, AnalysisMetaAccess metaAccess) {
+        return filterFields(fields, filterSet::contains, metaAccess);
+    }
+
+    private static boolean isShadowedIn(Field field, Class<?> clazz) {
+        try {
+            return !clazz.getField(field.getName()).equals(field);
+        } catch (NoSuchFieldException e) {
+            throw VMError.shouldNotReachHere(e);
+        }
+    }
+
+    private static Field[] filterFields(Object fields, Predicate<Field> filter, AnalysisMetaAccess metaAccess) {
+        List<Field> result = new ArrayList<>();
+        for (Field field : (Field[]) fields) {
+            if (filter.test(field) && !SubstitutionReflectivityFilter.shouldExclude(field, metaAccess)) {
+                try {
+                    if (!metaAccess.lookupJavaField(field).isAnnotationPresent(Delete.class)) {
+                        result.add(field);
+                    }
+                } catch (DeletedElementException ignored) { // filter
+                }
+            }
+        }
+        return result.toArray(new Field[0]);
+    }
+
+    private static Constructor<?>[] filterConstructors(Object methods, Set<Executable> filter, AnalysisMetaAccess metaAccess) {
+        return filterMethods(methods, filter, metaAccess, new Constructor<?>[0]);
+    }
+
+    private static Method[] filterMethods(Object methods, Set<Executable> filter, AnalysisMetaAccess metaAccess) {
+        return filterMethods(methods, filter, metaAccess, new Method[0]);
+    }
+
+    @SuppressWarnings("unchecked")
+    private static <T extends Executable> T[] filterMethods(Object methods, Set<Executable> filter, AnalysisMetaAccess metaAccess, T[] prototypeArray) {
+        List<T> result = new ArrayList<>();
+        for (T method : (T[]) methods) {
+            if (filter.contains(method) && !SubstitutionReflectivityFilter.shouldExclude(method, metaAccess)) {
+                result.add(method);
             }
         }
         return result.toArray(prototypeArray);
+    }
+
+    private static Class<?>[] filterClasses(Object classes, Set<Class<?>> filter, AnalysisMetaAccess metaAccess) {
+        List<Class<?>> result = new ArrayList<>();
+        for (Class<?> clazz : (Class<?>[]) classes) {
+            if (filter.contains(clazz) && !SubstitutionReflectivityFilter.shouldExclude(clazz, metaAccess)) {
+                result.add(clazz);
+            }
+        }
+        return result.toArray(new Class<?>[0]);
     }
 
     private static Method findMethod(Class<?> declaringClass, String methodName, Class<?>... parameterTypes) {

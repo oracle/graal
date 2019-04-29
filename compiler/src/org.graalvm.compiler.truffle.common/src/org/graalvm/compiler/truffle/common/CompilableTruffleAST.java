@@ -38,7 +38,12 @@ public interface CompilableTruffleAST {
      */
     JavaConstant asJavaConstant();
 
-    SpeculationLog getSpeculationLog();
+    /**
+     * Gets a speculation log to be used for a single Truffle compilation. The returned speculation
+     * log provides access to all relevant failed speculations as well as support for making
+     * speculation during a single compilation.
+     */
+    SpeculationLog getCompilationSpeculationLog();
 
     /**
      * Notifies this object that a compilation of the AST it represents failed.

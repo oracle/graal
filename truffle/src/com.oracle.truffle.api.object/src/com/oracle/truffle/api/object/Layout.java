@@ -243,4 +243,24 @@ public abstract class Layout {
     protected static boolean getPolymorphicUnboxing(Builder builder) {
         return builder.polymorphicUnboxing;
     }
+
+    /**
+     * Internal package access helper.
+     *
+     * @since 1.0
+     */
+    @SuppressWarnings("static-method")
+    protected abstract static class Access {
+        /** @since 1.0 */
+        protected Access() {
+            if (!getClass().getName().startsWith("com.oracle.truffle.object.")) {
+                throw new IllegalAccessError();
+            }
+        }
+
+        /** @since 1.0 */
+        public final void setShape(DynamicObject object, Shape shape) {
+            object.setShape(shape);
+        }
+    }
 }

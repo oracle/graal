@@ -63,27 +63,53 @@ import java.util.concurrent.atomic.AtomicReference;
 
 import org.graalvm.polyglot.Context;
 import org.graalvm.polyglot.Engine;
+import org.graalvm.polyglot.HostAccess;
 import org.graalvm.polyglot.Value;
+import org.junit.BeforeClass;
 import org.junit.Test;
 
 import com.oracle.truffle.api.CallTarget;
+import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.Scope;
 import com.oracle.truffle.api.Truffle;
+import com.oracle.truffle.api.TruffleLanguage;
 import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.api.interop.ArityException;
-import com.oracle.truffle.api.interop.ForeignAccess;
-import com.oracle.truffle.api.interop.Message;
+import com.oracle.truffle.api.interop.InteropLibrary;
 import com.oracle.truffle.api.interop.TruffleObject;
 import com.oracle.truffle.api.interop.UnknownIdentifierException;
 import com.oracle.truffle.api.interop.UnsupportedMessageException;
 import com.oracle.truffle.api.interop.UnsupportedTypeException;
+import com.oracle.truffle.api.library.ExportLibrary;
+import com.oracle.truffle.api.library.ExportMessage;
 import com.oracle.truffle.api.nodes.RootNode;
+import com.oracle.truffle.api.test.option.OptionProcessorTest.OptionTestLang1;
 import com.oracle.truffle.api.test.polyglot.ContextAPITestLanguage.LanguageContext;
 import com.oracle.truffle.api.test.polyglot.ValueAssert.Trait;
+import org.graalvm.polyglot.PolyglotAccess;
 
 public class ContextAPITest {
+    private static HostAccess CONFIG;
 
     static LanguageContext langContext;
+
+    @BeforeClass
+    public static void initHostAccess() throws Exception {
+        CONFIG = HostAccess.newBuilder().allowAccess(Runnable.class.getMethod("run")).allowAccessAnnotatedBy(HostAccess.Export.class).build();
+    }
+
+    @Test
+    public void testEqualsAndHashcode() {
+        Context context = Context.create();
+        context.enter();
+
+        Context currentContext = Context.getCurrent();
+        assertEquals(context, currentContext);
+        assertEquals(context.hashCode(), currentContext.hashCode());
+
+        context.leave();
+        context.close();
+    }
 
     @Test
     public void testContextCreateSingleLanguage() {
@@ -150,8 +176,51 @@ public class ContextAPITest {
         // Instrument options can be set to context builders with implicit engine:
         Context.Builder contextBuilder = Context.newBuilder();
         contextBuilder.option("optiontestinstr1.StringOption1", "Hello");
-        contextBuilder.build();
+        contextBuilder.build().close();
+    }
 
+    @Test
+    public void testStableOption() {
+        try (Context context = Context.newBuilder().option("optiontestlang1.StableOption", "Hello").build()) {
+            context.initialize("optiontestlang1");
+            context.enter();
+            try {
+                assertEquals("Hello", OptionTestLang1.getCurrentContext().getOptions().get(OptionTestLang1.StableOption));
+            } finally {
+                context.leave();
+            }
+        }
+    }
+
+    @Test
+    public void testExperimentalOption() {
+        try (Context context = Context.newBuilder().allowExperimentalOptions(true).option("optiontestlang1.StringOption2", "Allow").build()) {
+            context.initialize("optiontestlang1");
+            context.enter();
+            try {
+                assertEquals("Allow", OptionTestLang1.getCurrentContext().getOptions().get(OptionTestLang1.StringOption2));
+            } finally {
+                context.leave();
+            }
+        }
+
+        try (Context context = Context.newBuilder().allowAllAccess(true).option("optiontestlang1.StringOption2", "All access").build()) {
+            context.initialize("optiontestlang1");
+            context.enter();
+            try {
+                assertEquals("All access", OptionTestLang1.getCurrentContext().getOptions().get(OptionTestLang1.StringOption2));
+            } finally {
+                context.leave();
+            }
+        }
+    }
+
+    @Test
+    public void testExperimentalOptionException() {
+        ValueAssert.assertFails(() -> Context.newBuilder().option("optiontestlang1.StringOption2", "Hello").build(), IllegalArgumentException.class, e -> {
+            assertEquals("Option 'optiontestlang1.StringOption2' is experimental and must be enabled with allowExperimentalOptions(). Do not use experimental options in production environments.",
+                            e.getMessage());
+        });
     }
 
     @Test
@@ -309,7 +378,7 @@ public class ContextAPITest {
     }
 
     private static void testExecute(Context context) {
-        ContextAPITestLanguage.runinside = (env) -> new ProxyInteropObject() {
+        ContextAPITestLanguage.runinside = (env) -> new ProxyLegacyInteropObject() {
             @Override
             public boolean isExecutable() {
                 return true;
@@ -338,8 +407,9 @@ public class ContextAPITest {
 
     public static class MyClass {
 
-        public Object field = "bar";
+        @HostAccess.Export public Object field = "bar";
 
+        @HostAccess.Export
         public int bazz() {
             return 42;
         }
@@ -363,28 +433,61 @@ public class ContextAPITest {
         assertEquals(42, bindings.getMember("obj").getMember("bazz").execute().asInt());
     }
 
-    private static void testBindings(Context context) {
+    @ExportLibrary(InteropLibrary.class)
+    static final class TopScope implements TruffleObject {
+
         Map<String, Object> values = new HashMap<>();
+
+        @ExportMessage
+        @TruffleBoundary
+        Object readMember(String key) {
+            return values.get(key);
+        }
+
+        @ExportMessage
+        @TruffleBoundary
+        Object writeMember(String key, Object value) {
+            values.put(key, value);
+            return value;
+        }
+
+        @SuppressWarnings("static-method")
+        @ExportMessage
+        Object getMembers(@SuppressWarnings("unused") boolean includeInternal) throws UnsupportedMessageException {
+            throw UnsupportedMessageException.create();
+        }
+
+        @ExportMessage
+        @TruffleBoundary
+        boolean isMemberReadable(String member) {
+            return values.containsKey(member);
+        }
+
+        @ExportMessage
+        @TruffleBoundary
+        boolean isMemberModifiable(String member) {
+            return values.containsKey(member);
+        }
+
+        @ExportMessage
+        @TruffleBoundary
+        boolean isMemberInsertable(String member) {
+            return !values.containsKey(member);
+        }
+
+        @SuppressWarnings("static-method")
+        @ExportMessage
+        boolean hasMembers() {
+            return true;
+        }
+    }
+
+    private static void testBindings(Context context) {
+        TopScope values = new TopScope();
         ProxyLanguage.setDelegate(new ProxyLanguage() {
             @Override
             protected Iterable<Scope> findTopScopes(LanguageContext env) {
-                return Arrays.asList(Scope.newBuilder("top", new ProxyInteropObject() {
-                    @Override
-                    public Object read(String key) throws UnsupportedMessageException, UnknownIdentifierException {
-                        return values.get(key);
-                    }
-
-                    @Override
-                    public Object write(String key, Object value) throws UnsupportedMessageException, UnknownIdentifierException, UnsupportedTypeException {
-                        values.put(key, value);
-                        return value;
-                    }
-
-                    @Override
-                    public boolean hasKeys() {
-                        return true;
-                    }
-                }).build());
+                return Arrays.asList(Scope.newBuilder("top", values).build());
             }
         });
         Value bindings = context.getBindings(ProxyLanguage.ID);
@@ -398,7 +501,7 @@ public class ContextAPITest {
     public void testEnteredContext() {
         assertFails(() -> Context.getCurrent(), IllegalStateException.class);
 
-        Context context = Context.create();
+        Context context = Context.newBuilder().allowHostAccess(HostAccess.ALL).build();
 
         assertFails(() -> Context.getCurrent(), IllegalStateException.class);
 
@@ -417,7 +520,7 @@ public class ContextAPITest {
     @Test
     public void testEnteredContextInJava() {
         assertFails(() -> Context.getCurrent(), IllegalStateException.class);
-        Context context = Context.create();
+        Context context = Context.newBuilder().allowHostAccess(HostAccess.ALL).build();
         assertFails(() -> Context.getCurrent(), IllegalStateException.class);
         Value v = context.asValue(new Runnable() {
             public void run() {
@@ -439,10 +542,10 @@ public class ContextAPITest {
 
     @Test
     public void testChangeContextInJava() {
-        Context context = Context.create();
+        Context context = Context.newBuilder().allowHostAccess(HostAccess.ALL).build();
         Value v = context.asValue(new Runnable() {
             public void run() {
-                Context innerContext = Context.create();
+                Context innerContext = Context.newBuilder().allowHostAccess(HostAccess.ALL).build();
                 testGetContext(context);
                 innerContext.enter();
                 testGetContext(innerContext);
@@ -493,7 +596,7 @@ public class ContextAPITest {
 
     @Test
     public void testTransferControlToOtherThreadWhileEntered() {
-        Context context = Context.create();
+        Context context = Context.newBuilder().allowHostAccess(CONFIG).allowPolyglotAccess(PolyglotAccess.ALL).build();
 
         ProxyLanguage.setDelegate(new ProxyLanguage() {
             @Override
@@ -502,11 +605,16 @@ public class ContextAPITest {
                     @Override
                     public Object execute(VirtualFrame frame) {
                         try {
-                            TruffleObject o = (TruffleObject) ForeignAccess.sendRead(Message.READ.createNode(), (TruffleObject) ProxyLanguage.getCurrentContext().env.getPolyglotBindings(), "test");
-                            return ForeignAccess.sendExecute(Message.EXECUTE.createNode(), o);
+                            return boundary();
                         } catch (Exception e) {
                             throw new RuntimeException(e);
                         }
+                    }
+
+                    @TruffleBoundary
+                    private Object boundary() throws UnsupportedMessageException, UnsupportedTypeException, ArityException, UnknownIdentifierException {
+                        Object o = InteropLibrary.getFactory().getUncached().readMember(ProxyLanguage.getCurrentContext().env.getPolyglotBindings(), "test");
+                        return InteropLibrary.getFactory().getUncached().execute(o);
                     }
                 });
             }
@@ -552,4 +660,28 @@ public class ContextAPITest {
         assertEquals(3, depth.get());
     }
 
+    @Test
+    public void testContextBuilderAllAccess() {
+        Context.Builder builder = Context.newBuilder();
+        builder.allowAllAccess(true);
+        try (Context context = builder.build()) {
+            context.initialize(ProxyLanguage.ID);
+            context.enter();
+            TruffleLanguage.Env env = ProxyLanguage.getCurrentContext().getEnv();
+            assertTrue("all access implies host access allowed", env.isHostLookupAllowed());
+            assertTrue("all access implies native access allowed", env.isNativeAccessAllowed());
+            assertTrue("all access implies create thread allowed", env.isCreateThreadAllowed());
+            context.leave();
+        }
+        builder.allowAllAccess(false);
+        try (Context context = builder.build()) {
+            context.initialize(ProxyLanguage.ID);
+            context.enter();
+            TruffleLanguage.Env env = ProxyLanguage.getCurrentContext().getEnv();
+            assertFalse("host access is disallowed by default", env.isHostLookupAllowed());
+            assertFalse("native access is disallowed by default", env.isNativeAccessAllowed());
+            assertFalse("thread creation is disallowed by default", env.isCreateThreadAllowed());
+            context.leave();
+        }
+    }
 }

@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2016, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2016, 2018, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -40,11 +40,12 @@ import jdk.vm.ci.code.CodeUtil;
 import jdk.vm.ci.meta.JavaMethod;
 import jdk.vm.ci.meta.MetaUtil;
 import jdk.vm.ci.meta.ResolvedJavaMethod;
+import jdk.vm.ci.services.Services;
 
 public class NodeSourcePosition extends BytecodePosition implements Iterable<NodeSourcePosition> {
 
-    private static final boolean STRICT_SOURCE_POSITION = Boolean.getBoolean("debug.graal.SourcePositionStrictChecks");
-    private static final boolean SOURCE_POSITION_BYTECODES = Boolean.getBoolean("debug.graal.SourcePositionDisassemble");
+    private static final boolean STRICT_SOURCE_POSITION = Boolean.parseBoolean(Services.getSavedProperties().get("debug.graal.SourcePositionStrictChecks"));
+    private static final boolean SOURCE_POSITION_BYTECODES = Boolean.parseBoolean(Services.getSavedProperties().get("debug.graal.SourcePositionDisassemble"));
 
     private final int hashCode;
     private final Marker marker;

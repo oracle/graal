@@ -37,6 +37,7 @@ import java.util.concurrent.atomic.AtomicReference;
 import java.util.concurrent.atomic.LongAdder;
 
 import org.graalvm.compiler.debug.DebugContext;
+import org.graalvm.compiler.debug.DebugContext.Activation;
 import org.graalvm.compiler.debug.DebugContext.Description;
 import org.graalvm.compiler.debug.DebugContext.Scope;
 import org.graalvm.compiler.debug.DebugHandlersFactory;
@@ -57,8 +58,6 @@ public final class CompletionExecutor {
         STARTED,
         UNUSED
     }
-
-    private final Thread mainThread;
 
     private final AtomicReference<State> state;
     private final LongAdder postedOperations;
@@ -86,7 +85,6 @@ public final class CompletionExecutor {
 
     public CompletionExecutor(BigBang bb, ForkJoinPool forkJoin) {
         this.bb = bb;
-        mainThread = Thread.currentThread();
         executorService = forkJoin;
         state = new AtomicReference<>(State.UNUSED);
         postedOperations = new LongAdder();
@@ -100,7 +98,6 @@ public final class CompletionExecutor {
 
     public void init(Timing newTiming) {
         assert isSequential() || !executorService.hasQueuedSubmissions();
-        assert Thread.currentThread() == mainThread;
 
         timing = newTiming;
         setState(State.BEFORE_START);
@@ -127,7 +124,7 @@ public final class CompletionExecutor {
         /**
          * Gets a {@link DebugContext} the executor will use for this task.
          *
-         * A task can override this and return {@link DebugContext#DISABLED} to avoid the cost of
+         * A task can override this and return {@link DebugContext#disabled} to avoid the cost of
          * creating a {@link DebugContext} if one is not needed.
          */
         default DebugContext getDebug(OptionValues options, List<DebugHandlersFactory> factories) {
@@ -146,7 +143,6 @@ public final class CompletionExecutor {
             case UNUSED:
                 throw JVMCIError.shouldNotReachHere();
             case BEFORE_START:
-                assert Thread.currentThread() == mainThread;
                 postedBeforeStart.add(command);
                 break;
             case STARTED:
@@ -170,7 +166,8 @@ public final class CompletionExecutor {
                         }
                         Throwable thrown = null;
                         try (DebugContext debug = command.getDebug(bb.getOptions(), bb.getDebugHandlerFactories());
-                                        Scope s = debug.scope("Operation")) {
+                                        Scope s = debug.scope("Operation");
+                                        Activation a = debug.activate()) {
                             command.run(debug);
                         } catch (Throwable x) {
                             thrown = x;
@@ -197,7 +194,6 @@ public final class CompletionExecutor {
 
     public void start() {
         assert state.get() == State.BEFORE_START;
-        assert Thread.currentThread() == mainThread;
 
         setState(State.STARTED);
         postedBeforeStart.forEach(this::execute);
@@ -226,7 +222,6 @@ public final class CompletionExecutor {
 
         while (true) {
             assert state.get() == State.STARTED;
-            assert Thread.currentThread() == mainThread;
 
             boolean quiescent = executorService.awaitTermination(100, TimeUnit.MILLISECONDS);
             if (timing != null && !quiescent) {
@@ -255,7 +250,6 @@ public final class CompletionExecutor {
     }
 
     public long getPostedOperations() {
-        assert Thread.currentThread() == mainThread;
         return postedOperations.sum() + postedBeforeStart.size();
     }
 
@@ -273,4 +267,7 @@ public final class CompletionExecutor {
         return state.get() == State.STARTED;
     }
 
+    public ForkJoinPool getExecutorService() {
+        return executorService;
+    }
 }

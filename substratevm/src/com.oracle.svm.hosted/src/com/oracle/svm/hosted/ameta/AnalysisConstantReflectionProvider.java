@@ -40,8 +40,8 @@ import com.oracle.svm.core.hub.DynamicHub;
 import com.oracle.svm.core.meta.ReadableJavaField;
 import com.oracle.svm.core.meta.SubstrateObjectConstant;
 import com.oracle.svm.core.util.VMError;
-import com.oracle.svm.hosted.ClassInitializationFeature;
 import com.oracle.svm.hosted.SVMHost;
+import com.oracle.svm.hosted.classinitialization.ClassInitializationSupport;
 
 import jdk.vm.ci.meta.Constant;
 import jdk.vm.ci.meta.ConstantReflectionProvider;
@@ -53,16 +53,14 @@ import jdk.vm.ci.meta.ResolvedJavaType;
 
 @Platforms(Platform.HOSTED_ONLY.class)
 public class AnalysisConstantReflectionProvider extends SharedConstantReflectionProvider {
-    private final SVMHost hostVM;
     private final AnalysisUniverse universe;
     private final ConstantReflectionProvider originalConstantReflection;
-    private final ClassInitializationFeature classInitializationFeature;
+    private final ClassInitializationSupport classInitializationSupport;
 
-    public AnalysisConstantReflectionProvider(SVMHost hostVM, AnalysisUniverse universe, ConstantReflectionProvider originalConstantReflection) {
-        this.hostVM = hostVM;
+    public AnalysisConstantReflectionProvider(AnalysisUniverse universe, ConstantReflectionProvider originalConstantReflection, ClassInitializationSupport classInitializationSupport) {
         this.universe = universe;
         this.originalConstantReflection = originalConstantReflection;
-        this.classInitializationFeature = ClassInitializationFeature.singleton();
+        this.classInitializationSupport = classInitializationSupport;
     }
 
     @Override
@@ -80,7 +78,7 @@ public class AnalysisConstantReflectionProvider extends SharedConstantReflection
     }
 
     public JavaConstant readValue(AnalysisField field, JavaConstant receiver) {
-        if (classInitializationFeature.shouldInitializeAtRuntime(field.getDeclaringClass())) {
+        if (classInitializationSupport.shouldInitializeAtRuntime(field.getDeclaringClass())) {
             if (field.isStatic()) {
                 /*
                  * Static fields of classes that are initialized at run time have the default
@@ -144,12 +142,9 @@ public class AnalysisConstantReflectionProvider extends SharedConstantReflection
                  */
                 return JavaConstant.TRUE;
             }
-            if (SubstrateOptions.RuntimeAssertions.getValue()) {
-                // For the user-provided filter, match substitution target names to avoid confusion
-                String className = field.getDeclaringClass().toJavaName();
-                return JavaConstant.forBoolean(!SubstrateOptions.getRuntimeAssertionsFilter().test(className));
-            }
-            return JavaConstant.TRUE;
+            /* For the user-provided filter, match substitution target names to avoid confusion. */
+            String className = field.getDeclaringClass().toJavaName();
+            return JavaConstant.forBoolean(!SubstrateOptions.getRuntimeAssertionsForClass(className));
         }
         return value;
     }
@@ -170,9 +165,9 @@ public class AnalysisConstantReflectionProvider extends SharedConstantReflection
                  */
                 return value;
             } else if (originalObject instanceof WordBase) {
-                return JavaConstant.forIntegerKind(universe.getTarget().wordJavaKind, ((WordBase) originalObject).rawValue());
+                return JavaConstant.forIntegerKind(universe.getWordKind(), ((WordBase) originalObject).rawValue());
             } else if (originalObject == null && field.getType().isWordType()) {
-                return JavaConstant.forIntegerKind(universe.getTarget().wordJavaKind, 0);
+                return JavaConstant.forIntegerKind(universe.getWordKind(), 0);
             }
         }
         return value;
@@ -183,7 +178,7 @@ public class AnalysisConstantReflectionProvider extends SharedConstantReflection
         if (constant instanceof SubstrateObjectConstant) {
             Object obj = SubstrateObjectConstant.asObject(constant);
             if (obj instanceof DynamicHub) {
-                return hostVM.lookupType((DynamicHub) obj);
+                return getHostVM().lookupType((DynamicHub) obj);
             } else if (obj instanceof Class) {
                 throw VMError.shouldNotReachHere("Must not have java.lang.Class object: " + obj);
             }
@@ -193,12 +188,18 @@ public class AnalysisConstantReflectionProvider extends SharedConstantReflection
 
     @Override
     public JavaConstant asJavaClass(ResolvedJavaType type) {
-        DynamicHub dynamicHub = hostVM.dynamicHub(type);
-        registerHub(hostVM, dynamicHub);
+        DynamicHub dynamicHub = getHostVM().dynamicHub(type);
+        assert dynamicHub != null : type.toClassName() + " has a null dynamicHub.";
+        registerHub(getHostVM(), dynamicHub);
         return SubstrateObjectConstant.forObject(dynamicHub);
     }
 
+    private SVMHost getHostVM() {
+        return (SVMHost) universe.hostVM();
+    }
+
     protected static void registerHub(SVMHost hostVM, DynamicHub dynamicHub) {
+        assert dynamicHub != null;
         /* Make sure that the DynamicHub of this type ends up in the native image. */
         AnalysisType valueType = hostVM.lookupType(dynamicHub);
         if (!valueType.isInTypeCheck()) {

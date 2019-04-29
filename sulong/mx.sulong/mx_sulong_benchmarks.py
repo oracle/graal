@@ -1,5 +1,5 @@
 #
-# Copyright (c) 2016, 2018, Oracle and/or its affiliates.
+# Copyright (c) 2016, 2019, Oracle and/or its affiliates.
 #
 # All rights reserved.
 #
@@ -32,7 +32,6 @@ import shutil
 
 import mx, mx_benchmark, mx_sulong, mx_buildtools
 import os
-import mx_subst
 from os.path import join, exists
 from mx_benchmark import VmRegistry, java_vm_registry, Vm, GuestVm, VmBenchmarkSuite
 
@@ -44,11 +43,10 @@ _env_flags = []
 if 'CPPFLAGS' in os.environ:
     _env_flags = os.environ['CPPFLAGS'].split(' ')
 
-
 class SulongBenchmarkRule(mx_benchmark.StdOutRule):
-    def __init__(self, replacement):
+    def __init__(self, pattern, replacement):
         super(SulongBenchmarkRule, self).__init__(
-            pattern=r'^last 10 iterations (?P<benchmark>[\S]+):(?P<line>([ ,]+(?:\d+(?:\.\d+)?))+)',
+            pattern=pattern,
             replacement=replacement)
 
     def parseResults(self, text):
@@ -131,7 +129,20 @@ class SulongBenchmarkSuite(VmBenchmarkSuite):
 
     def rules(self, out, benchmarks, bmSuiteArgs):
         return [
-            SulongBenchmarkRule({
+            SulongBenchmarkRule(
+		r'^first [\d]+ warmup iterations (?P<benchmark>[\S]+):(?P<line>([ ,]+(?:\d+(?:\.\d+)?))+)',
+		{
+                "benchmark": ("<benchmark>", str),
+                "metric.name": "warmup",
+                "metric.type": "numeric",
+                "metric.value": ("<score>", float),
+                "metric.score-function": "id",
+                "metric.better": "lower",
+                "metric.iteration": ("<iteration>", int),
+            }),
+            SulongBenchmarkRule(
+		r'^last [\d]+ iterations (?P<benchmark>[\S]+):(?P<line>([ ,]+(?:\d+(?:\.\d+)?))+)',
+		{
                 "benchmark": ("<benchmark>", str),
                 "metric.name": "time",
                 "metric.type": "numeric",
@@ -249,10 +260,10 @@ class SulongVm(CExecutionEnvironmentMixin, GuestVm):
             def _filter_properties(args):
                 props = []
                 remaining_args = []
-                jvm_prefix = "--jvm.D"
+                vm_prefix = "--vm.D"
                 for arg in args:
-                    if arg.startswith(jvm_prefix):
-                        props.append('-D' + arg[len(jvm_prefix):])
+                    if arg.startswith(vm_prefix):
+                        props.append('-D' + arg[len(vm_prefix):])
                     else:
                         remaining_args.append(arg)
                 return props, remaining_args
@@ -289,25 +300,13 @@ class SulongVm(CExecutionEnvironmentMixin, GuestVm):
         ]
 
     def launcher_vm_args(self):
-        return mx_sulong.getClasspathOptions() + \
-               [mx_subst.path_substitutions.substitute('-Dpolyglot.llvm.libraryPath=<path:SULONG_LIBS>')]
+        return mx_sulong.getClasspathOptions()
 
     def launcher_args(self, args):
         launcher_args = [
-            '--jvm.Dgraal.TruffleBackgroundCompilation=false',
-            '--jvm.Dgraal.TruffleInliningMaxCallerSize=10000',
-            '--jvm.Dgraal.TruffleCompilationExceptionsAreFatal=true',
+            '--vm.Dgraal.TruffleInliningMaxCallerSize=10000',
+            '--vm.Dgraal.TruffleCompilationExceptionsAreFatal=true',
             '--llvm.libraries=libgmp.so.10'] + args
-        # FIXME: currently, we do not support a common option prefix for jvm and native mode (GR-11165) #pylint: disable=fixme
-        if self.host_vm().config_name() == "native":
-            def _convert_arg(arg):
-                jvm_prefix = "--jvm."
-                if arg.startswith(jvm_prefix):
-                    return "--native." + arg[len(jvm_prefix):]
-                return arg
-
-            launcher_args = [_convert_arg(arg) for arg in launcher_args]
-
         return launcher_args
 
     def hosting_registry(self):

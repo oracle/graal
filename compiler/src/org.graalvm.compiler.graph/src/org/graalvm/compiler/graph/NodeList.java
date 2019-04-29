@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2011, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2011, 2018, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -201,16 +201,24 @@ public abstract class NodeList<T extends Node> extends AbstractList<T> implement
         size = other.size;
     }
 
-    public boolean equals(NodeList<T> other) {
-        if (size != other.size) {
-            return false;
+    @Override
+    public boolean equals(Object other) {
+        if (other == this) {
+            return true;
         }
-        for (int i = 0; i < size; i++) {
-            if (nodes[i] != other.nodes[i]) {
+        if (other instanceof List<?>) {
+            List<?> otherList = (List<?>) other;
+            if (size != otherList.size()) {
                 return false;
             }
+            for (int i = 0; i < size; i++) {
+                if (nodes[i] != otherList.get(i)) {
+                    return false;
+                }
+            }
+            return true;
         }
-        return true;
+        return false;
     }
 
     @SuppressWarnings("unchecked")

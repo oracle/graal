@@ -119,6 +119,7 @@ public abstract class LayoutImpl extends Layout {
     protected abstract Location getPrimitiveArrayLocation();
 
     /** @since 0.17 or earlier */
+    @Deprecated
     protected int objectFieldIndex(@SuppressWarnings("unused") Location location) {
         throw new UnsupportedOperationException();
     }
@@ -131,4 +132,16 @@ public abstract class LayoutImpl extends Layout {
     public LayoutStrategy getStrategy() {
         return strategy;
     }
+
+    @Override
+    public String toString() {
+        return "Layout[" + clazz.getName() + "]";
+    }
+
+    static final class CoreAccess extends Access {
+        private CoreAccess() {
+        }
+    }
+
+    static final CoreAccess ACCESS = new CoreAccess();
 }

@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2016, 2017, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2016, 2019, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -26,6 +26,7 @@ package com.oracle.svm.core.os;
 
 import org.graalvm.compiler.api.replacements.Fold;
 import org.graalvm.nativeimage.Platform;
+import org.graalvm.nativeimage.impl.InternalPlatform;
 
 /**
  * Whether certain C pre-processor macros are defined on particular platforms. These are annotated
@@ -38,12 +39,12 @@ public class IsDefined {
 
     @Fold
     public static final boolean isDarwin() {
-        return Platform.includedIn(Platform.DARWIN.class);
+        return Platform.includedIn(InternalPlatform.DARWIN_AND_JNI.class);
     }
 
     @Fold
     public static final boolean isLinux() {
-        return Platform.includedIn(Platform.LINUX.class);
+        return Platform.includedIn(InternalPlatform.LINUX_AND_JNI.class);
     }
 
     @Fold
@@ -72,6 +73,11 @@ public class IsDefined {
 
     @Fold
     public static boolean socket_AF_INET6() {
+        return isDarwin() || isLinux();
+    }
+
+    @Fold
+    public static boolean socket_AF_UNIX() {
         return isDarwin() || isLinux();
     }
 

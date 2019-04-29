@@ -43,6 +43,7 @@ package com.oracle.truffle.api.debug.test;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertNotNull;
+import static org.junit.Assert.assertNull;
 import static org.junit.Assert.assertTrue;
 
 import java.util.Iterator;
@@ -53,6 +54,7 @@ import org.graalvm.polyglot.Value;
 import org.junit.Test;
 
 import com.oracle.truffle.api.debug.DebugScope;
+import com.oracle.truffle.api.debug.DebugStackFrame;
 import com.oracle.truffle.api.debug.DebugValue;
 import com.oracle.truffle.api.debug.Debugger;
 import com.oracle.truffle.api.debug.DebuggerSession;
@@ -129,4 +131,43 @@ public class DebugScopeTest extends AbstractDebugTest {
         session.close();
         assertTrue(suspended[0]);
     }
+
+    @Test
+    public void testNoReceiver() {
+        final Source source = testSource("ROOT(DEFINE(a,ROOT(\n" +
+                        "  STATEMENT())\n" +
+                        "),\n" +
+                        "CALL(a))\n");
+        try (DebuggerSession session = startSession()) {
+            session.suspendNextExecution();
+            startEval(source);
+
+            expectSuspended((SuspendedEvent event) -> {
+                DebugStackFrame frame = event.getTopStackFrame();
+                assertNull(frame.getScope().getReceiver());
+            });
+            expectDone();
+        }
+    }
+
+    @Test
+    public void testReceiver() {
+        final Source source = testSource("ROOT(DEFINE(a,ROOT(\n" +
+                        "  STATEMENT())\n" +
+                        "),\n" +
+                        "CALL_WITH(a, 42))\n");
+        try (DebuggerSession session = startSession()) {
+            session.suspendNextExecution();
+            startEval(source);
+
+            expectSuspended((SuspendedEvent event) -> {
+                DebugStackFrame frame = event.getTopStackFrame();
+                DebugValue receiver = frame.getScope().getReceiver();
+                assertEquals("THIS", receiver.getName());
+                assertEquals(42, receiver.as(Number.class).intValue());
+            });
+            expectDone();
+        }
+    }
+
 }

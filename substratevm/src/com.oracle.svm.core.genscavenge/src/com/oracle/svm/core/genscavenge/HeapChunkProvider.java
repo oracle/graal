@@ -95,28 +95,11 @@ class HeapChunkProvider {
         return Log.noopLog();
     }
 
-    /** Throw the pre-allocated singleton instance to indicate failure from an Allocator method. */
-    static final class AllocatorOutOfMemoryError extends OutOfMemoryError {
+    /** An OutOFMemoryError for being unable to allocate memory for an aligned heap chunk. */
+    private static final OutOfMemoryError ALIGNED_OUT_OF_MEMORY_ERROR = new OutOfMemoryError("Could not allocate an aligned heap chunk");
 
-        /** Every Error should have one of these. */
-        private static final long serialVersionUID = -6391446900635004964L;
-
-        /** A pre-allocated singleton instance. */
-        private static final AllocatorOutOfMemoryError SINGLETON = new AllocatorOutOfMemoryError();
-
-        /** Private constructor because there is just the singleton instance. */
-        private AllocatorOutOfMemoryError() {
-            super();
-        }
-
-        /** Throw the singleton error, maybe with a runtime (but allocation-free!) message. */
-        static Error throwError(String message) {
-            /* Maybe log the message and throw the error. */
-            Log.noopLog().string("[Allocator.OutOfMemoryError.throwError:  message: ").string(message).string("]").newline();
-            throw SINGLETON;
-        }
-
-    }
+    /** An OutOFMemoryError for being unable to allocate memory for an unaligned heap chunk. */
+    private static final OutOfMemoryError UNALIGNED_OUT_OF_MEMORY_ERROR = new OutOfMemoryError("Could not allocate an unaligned heap chunk");
 
     /**
      * Produce a new AlignedHeapChunk, either from the free list or from the operating system.
@@ -133,7 +116,7 @@ class HeapChunkProvider {
             noteFirstAllocationTime();
             result = (AlignedHeader) CommittedMemoryProvider.get().allocate(chunkSize, HeapPolicy.getAlignedHeapChunkAlignment(), false);
             if (result.isNull()) {
-                throw AllocatorOutOfMemoryError.throwError("No virtual memory for aligned chunk");
+                throw ALIGNED_OUT_OF_MEMORY_ERROR;
             }
             log().string("  new chunk: ").hex(result).newline();
 
@@ -278,7 +261,7 @@ class HeapChunkProvider {
         noteFirstAllocationTime();
         UnalignedHeader result = (UnalignedHeader) CommittedMemoryProvider.get().allocate(chunkSize, CommittedMemoryProvider.UNALIGNED, false);
         if (result.isNull()) {
-            throw AllocatorOutOfMemoryError.throwError("No virtual memory for unaligned chunk");
+            throw UNALIGNED_OUT_OF_MEMORY_ERROR;
         }
 
         initializeChunk(result, chunkSize);

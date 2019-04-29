@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2017, 2018, Oracle and/or its affiliates.
+ * Copyright (c) 2017, 2019, Oracle and/or its affiliates.
  *
  * All rights reserved.
  *
@@ -29,28 +29,21 @@
  */
 package com.oracle.truffle.llvm.nodes.intrinsics.llvm.debug;
 
-import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.dsl.Fallback;
 import com.oracle.truffle.api.dsl.Specialization;
-import com.oracle.truffle.api.interop.ForeignAccess;
-import com.oracle.truffle.api.interop.Message;
 import com.oracle.truffle.api.interop.TruffleObject;
 import com.oracle.truffle.api.interop.UnsupportedMessageException;
-import com.oracle.truffle.api.nodes.Node;
+import com.oracle.truffle.api.library.CachedLibrary;
 import com.oracle.truffle.llvm.runtime.LLVMBoxedPrimitive;
 import com.oracle.truffle.llvm.runtime.debug.value.LLVMDebugValue;
+import com.oracle.truffle.llvm.runtime.global.LLVMGlobalContainer;
+import com.oracle.truffle.llvm.runtime.library.LLVMNativeLibrary;
 import com.oracle.truffle.llvm.runtime.nodes.api.LLVMNode;
+import com.oracle.truffle.llvm.runtime.pointer.LLVMManagedPointer;
 import com.oracle.truffle.llvm.runtime.pointer.LLVMNativePointer;
 import com.oracle.truffle.llvm.runtime.pointer.LLVMPointer;
 
 public abstract class LLVMToDebugDeclarationNode extends LLVMNode implements LLVMDebugValue.Builder {
-
-    @Child protected Node isPointer = Message.IS_POINTER.createNode();
-    @Child protected Node asPointer = Message.AS_POINTER.createNode();
-
-    protected static boolean isPointer(Object object) {
-        return LLVMPointer.isInstance(object);
-    }
 
     public abstract LLVMDebugValue executeWithTarget(Object value);
 
@@ -60,8 +53,33 @@ public abstract class LLVMToDebugDeclarationNode extends LLVMNode implements LLV
     }
 
     @Specialization
-    protected LLVMDebugValue fromPointer(LLVMPointer address) {
-        return new LLDBMemoryValue(address);
+    protected LLVMDebugValue fromPointer(LLVMPointer pointer) {
+        if (LLVMManagedPointer.isInstance(pointer)) {
+            final TruffleObject target = LLVMManagedPointer.cast(pointer).getObject();
+            if (target instanceof LLVMGlobalContainer) {
+                return fromGlobalContainer((LLVMGlobalContainer) target);
+            }
+        }
+        return new LLDBMemoryValue(pointer);
+    }
+
+    private static LLVMDebugValue fromGlobalContainer(LLVMGlobalContainer globalContainer) {
+        if (globalContainer.isPointer()) {
+            try {
+                return new LLDBMemoryValue(LLVMNativePointer.create(globalContainer.asPointer()));
+            } catch (UnsupportedMessageException e) {
+                return LLVMDebugValue.UNAVAILABLE;
+            }
+        }
+
+        final Object currentValue = globalContainer.get();
+        if (LLVMPointer.isInstance(currentValue)) {
+            return new LLDBMemoryValue(LLVMPointer.cast(currentValue));
+        } else if (currentValue instanceof TruffleObject) {
+            return new LLDBMemoryValue(LLVMManagedPointer.create((TruffleObject) currentValue));
+        } else {
+            return new LLDBBoxedPrimitive(new LLVMBoxedPrimitive(currentValue));
+        }
     }
 
     @Specialization
@@ -73,17 +91,10 @@ public abstract class LLVMToDebugDeclarationNode extends LLVMNode implements LLV
         }
     }
 
-    @Specialization(guards = "!isPointer(obj)")
-    protected LLVMDebugValue fromTruffleObject(TruffleObject obj) {
-        try {
-            if (ForeignAccess.sendIsPointer(isPointer, obj)) {
-                final long rawAddress = ForeignAccess.sendAsPointer(asPointer, obj);
-                return fromPointer(LLVMNativePointer.create(rawAddress));
-            }
-        } catch (UnsupportedMessageException ignored) {
-            CompilerDirectives.transferToInterpreter();
-        }
-        return fromGenericObject(obj);
+    @Specialization(limit = "3", guards = "llvmNative.isPointer(address)")
+    protected LLVMDebugValue fromNative(Object address,
+                    @CachedLibrary("address") LLVMNativeLibrary llvmNative) {
+        return fromPointer(llvmNative.toNativePointer(address));
     }
 
     @Fallback

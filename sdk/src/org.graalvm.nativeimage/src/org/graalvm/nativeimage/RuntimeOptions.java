@@ -40,6 +40,8 @@
  */
 package org.graalvm.nativeimage;
 
+import java.util.EnumSet;
+
 import org.graalvm.nativeimage.impl.RuntimeOptionsSupport;
 import org.graalvm.options.OptionDescriptors;
 
@@ -72,25 +74,31 @@ public final class RuntimeOptions {
     }
 
     /**
+     * Classes of options that can be queried through {@link #getOptions(EnumSet)}.
+     *
+     * @since 1.0
+     */
+    public enum OptionClass {
+        VM,
+        Compiler
+    }
+
+    /**
+     * Returns available run time options for the selected {@linkplain OptionClass option classes}.
+     *
+     * @since 1.0
+     */
+    public static OptionDescriptors getOptions(EnumSet<OptionClass> classes) {
+        return ImageSingletons.lookup(RuntimeOptionsSupport.class).getOptions(classes);
+    }
+
+    /**
      * Returns all available run time options.
      *
      * @since 1.0
      */
     public static OptionDescriptors getOptions() {
-        return ImageSingletons.lookup(RuntimeOptionsSupport.class).getOptions();
+        return getOptions(EnumSet.allOf(OptionClass.class));
     }
 
-    /**
-     * Runs all startup hooks that were registered during image building. Startup hooks usually
-     * depend on option values, so it is recommended (but not required) that all option values are
-     * set before calling this method.
-     * <p>
-     * Invoking this method more than once has no effect, i.e., startup hooks are only executed at
-     * the first invocation.
-     *
-     * @since 1.0
-     */
-    public static void runStartupHooks() {
-        ImageSingletons.lookup(RuntimeOptionsSupport.class).runStartupHooks();
-    }
 }

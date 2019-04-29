@@ -30,6 +30,8 @@ import mx, mx_benchmark
 import mx_sdk, mx_vm
 
 import os
+from os.path import dirname
+
 
 _suite = mx.suite('vm')
 _native_image_vm_registry = mx_benchmark.VmRegistry('NativeImage', 'ni-vm')
@@ -43,10 +45,12 @@ class GraalVm(mx_benchmark.OutputCapturingJavaVm):
         :type extra_java_args: list[str] | None
         :type extra_launcher_args: list[str] | None
         """
+        super(GraalVm, self).__init__()
         self._name = name
         self._config_name = config_name
         self.extra_java_args = extra_java_args or []
         self.extra_launcher_args = extra_launcher_args or []
+        self.debug_args = mx.java_debug_args() if config_name == "jvm" else []
 
     def name(self):
         return self._name
@@ -55,10 +59,12 @@ class GraalVm(mx_benchmark.OutputCapturingJavaVm):
         return self._config_name
 
     def post_process_command_line_args(self, args):
-        return self.extra_java_args + args
+        return self.extra_java_args + self.debug_args + args
 
     def post_process_launcher_command_line_args(self, args):
-        return self.extra_launcher_args + args
+        return self.extra_launcher_args + \
+               ['--vm.' + x[1:] if x.startswith('-X') else x for x in self.debug_args] + \
+               args
 
     def dimensions(self, cwd, args, code, out):
         return {}
@@ -95,6 +101,7 @@ class GuVm(GraalVm):
 
 class NativeImageBenchmarkSuite(mx_benchmark.VmBenchmarkSuite):
     def __init__(self, name, benchmarks, registry):
+        super(NativeImageBenchmarkSuite, self).__init__()
         self._name = name
         self._benchmarks = benchmarks
         self._registry = registry
@@ -154,3 +161,11 @@ def register_graalvm_vms():
     if mx_vm.has_component('svm', fatalIfMissing=False):
         _native_image_vm_registry.add_vm(NativeImageVm(graalvm_hostvm_name, 'default', [], []), _suite, 10)
         _gu_vm_registry.add_vm(GuVm(graalvm_hostvm_name, 'default', [], []), _suite, 10)
+    # Add VMs for libgraal
+    if mx_vm.has_component('LibGraal', fatalIfMissing=False):
+        libgraal_location = mx_vm.get_native_image_locations('LibGraal', 'jvmcicompiler')
+        if libgraal_location is not None:
+            import mx_graal_benchmark
+            mx_graal_benchmark.build_jvmci_vm_variants('server', 'graal-core-libgraal',
+                                                       ['-server', '-XX:+EnableJVMCI', '-Dgraal.CompilerConfiguration=community', '-Djvmci.Compiler=graal', '-XX:+UseJVMCINativeLibrary', '-XX:JVMCILibPath=' + dirname(libgraal_location)],
+                                                       mx_graal_benchmark._graal_variants, suite=_suite, priority=15, hosted=False)

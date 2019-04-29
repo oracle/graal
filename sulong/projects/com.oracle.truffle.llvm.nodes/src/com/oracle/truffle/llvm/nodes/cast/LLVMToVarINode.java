@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2016, 2018, Oracle and/or its affiliates.
+ * Copyright (c) 2016, 2019, Oracle and/or its affiliates.
  *
  * All rights reserved.
  *
@@ -29,20 +29,45 @@
  */
 package com.oracle.truffle.llvm.nodes.cast;
 
+import com.oracle.truffle.api.dsl.Cached;
 import com.oracle.truffle.api.dsl.NodeChild;
 import com.oracle.truffle.api.dsl.NodeField;
 import com.oracle.truffle.api.dsl.Specialization;
+import com.oracle.truffle.llvm.nodes.cast.LLVMToVarINodeGen.LLVMBitcastToIVarNodeGen;
+import com.oracle.truffle.llvm.nodes.cast.LLVMToVarINodeGen.LLVMSignedCastToIVarNodeGen;
+import com.oracle.truffle.llvm.nodes.cast.LLVMToVarINodeGen.LLVMUnsignedCastToIVarNodeGen;
 import com.oracle.truffle.llvm.runtime.LLVMIVarBit;
 import com.oracle.truffle.llvm.runtime.floating.LLVM80BitFloat;
 import com.oracle.truffle.llvm.runtime.nodes.api.LLVMExpressionNode;
+import com.oracle.truffle.llvm.runtime.nodes.api.LLVMToNativeNode;
+import com.oracle.truffle.llvm.runtime.pointer.LLVMPointer;
 
+@NodeChild(value = "fromNode", type = LLVMExpressionNode.class)
+@NodeField(type = int.class, name = "bits")
 public abstract class LLVMToVarINode extends LLVMExpressionNode {
 
-    @NodeChild(value = "fromNode", type = LLVMExpressionNode.class)
-    @NodeField(type = int.class, name = "bits")
+    public abstract int getBits();
+
+    protected abstract LLVMIVarBit executeWith(long value);
+
+    protected LLVMToVarINode createRecursive() {
+        throw new IllegalStateException("abstract node LLVMToVarINode used");
+    }
+
+    @Specialization
+    protected LLVMIVarBit doPointer(LLVMPointer from,
+                    @Cached("createToNativeWithTarget()") LLVMToNativeNode toNative,
+                    @Cached("createRecursive()") LLVMToVarINode recursive) {
+        long ptr = toNative.executeWithTarget(from).asNative();
+        return recursive.executeWith(ptr);
+    }
+
     public abstract static class LLVMSignedCastToIVarNode extends LLVMToVarINode {
 
-        public abstract int getBits();
+        @Override
+        protected LLVMToVarINode createRecursive() {
+            return LLVMSignedCastToIVarNodeGen.create(null, getBits());
+        }
 
         @Specialization
         protected LLVMIVarBit doI8(byte from) {
@@ -75,11 +100,12 @@ public abstract class LLVMToVarINode extends LLVMExpressionNode {
         }
     }
 
-    @NodeChild(value = "fromNode", type = LLVMExpressionNode.class)
-    @NodeField(type = int.class, name = "bits")
     public abstract static class LLVMUnsignedCastToIVarNode extends LLVMToVarINode {
 
-        public abstract int getBits();
+        @Override
+        protected LLVMToVarINode createRecursive() {
+            return LLVMUnsignedCastToIVarNodeGen.create(null, getBits());
+        }
 
         @Specialization
         protected LLVMIVarBit doI8(byte from) {
@@ -107,11 +133,12 @@ public abstract class LLVMToVarINode extends LLVMExpressionNode {
         }
     }
 
-    @NodeChild(value = "fromNode", type = LLVMExpressionNode.class)
-    @NodeField(type = int.class, name = "bits")
     public abstract static class LLVMBitcastToIVarNode extends LLVMToVarINode {
 
-        public abstract int getBits();
+        @Override
+        protected LLVMToVarINode createRecursive() {
+            return LLVMBitcastToIVarNodeGen.create(null, getBits());
+        }
 
         @Specialization
         protected LLVMIVarBit doI8(byte from) {

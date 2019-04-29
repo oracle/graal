@@ -24,42 +24,22 @@
  */
 package com.oracle.svm.core.jdk;
 
-import java.io.IOException;
 import java.nio.file.Path;
-import java.nio.file.spi.FileTypeDetector;
+import java.nio.file.Paths;
 import java.security.SecureRandom;
-
-import org.graalvm.nativeimage.ImageSingletons;
 
 import com.oracle.svm.core.annotate.Alias;
 import com.oracle.svm.core.annotate.InjectAccessors;
-import com.oracle.svm.core.annotate.Substitute;
 import com.oracle.svm.core.annotate.TargetClass;
-
-@TargetClass(java.nio.file.Files.class)
-final class Target_java_nio_file_Files {
-
-    @Substitute
-    private static String probeContentType(Path path) throws IOException {
-        FilesSupport fs = ImageSingletons.lookup(FilesSupport.class);
-
-        for (FileTypeDetector detector : fs.installedDetectors) {
-            String result = detector.probeContentType(path);
-            if (result != null) {
-                return result;
-            }
-        }
-
-        // fallback to default
-        return fs.defaultFileTypeDetector.probeContentType(path);
-    }
-}
 
 @TargetClass(className = "java.nio.file.TempFileHelper")
 final class Target_java_nio_file_TempFileHelper {
 
     @Alias @InjectAccessors(TempFileHelperRandomAccessors.class)//
     static SecureRandom random;
+
+    @Alias @InjectAccessors(TempFileHelperDir.class)//
+    static Path tmpdir;
 
     static final class TempFileHelperRandomAccessors {
         private static SecureRandom random;
@@ -69,6 +49,17 @@ final class Target_java_nio_file_TempFileHelper {
                 random = new SecureRandom();
             }
             return random;
+        }
+    }
+
+    static final class TempFileHelperDir {
+        private static Path dir;
+
+        static Path get() {
+            if (dir == null) {
+                dir = Paths.get(System.getProperty("java.io.tmpdir"));
+            }
+            return dir;
         }
     }
 }

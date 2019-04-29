@@ -1,7 +1,7 @@
 # VM suite
 
 The VM suite allows you to build custom GraalVM distributions, as well as installable components.
-It defines a base GraalVM distribution that contains the JVMCI-enabled JDK, the Graal SDK, Truffle, and the GraalVM component installer.
+It defines a base GraalVM distribution that contains the JVMCI-enabled JDK, the GraalVM SDK, Truffle, and the GraalVM component installer.
 More components are added by dynamically importing additional suites.
 This can be done either by:
 1. running `mx --dynamicimports <suite...> build`
@@ -12,8 +12,8 @@ After the compilation:
 - the `latest_graalvm` symbolic link points to the latest built GraalVM
 - `$ mx [build-time arguments] graalvm-home` prints the path to the GraalVM home directory
 
-Note that the build requirements of each component are specified in the README file of the corresponding repository.
-For example, building the Graal compiler currently requires the `JAVA_HOME` environment variable to point to a JVMCI-enabled JDK, which can be downloaded [here](https://github.com/graalvm/openjdk8-jvmci-builder/releases) or [built from sources](https://github.com/graalvm/openjdk8-jvmci-builder).
+Note that the build dependencies of each component are specified in the README file of the corresponding repository.
+A common requirement is that the `JAVA_HOME` environment variable must point to the latest JVMCI-enabled JDK8 ([pre-built archives](https://github.com/graalvm/openjdk8-jvmci-builder/releases); [build instructions](https://github.com/graalvm/openjdk8-jvmci-builder)).
 
 
 ### Example: build the base GraalVM CE image
@@ -27,7 +27,16 @@ The base GraalVM CE image includes:
 - the `polyglot` launcher
 - the `libpolyglot` shared library
 
-To build it, you can either run:
+In our CI, we build it using:
+- the latest JVMCI-enabled JDK8 ([pre-built archives](https://github.com/graalvm/openjdk8-jvmci-builder/releases); [build instructions](https://github.com/graalvm/openjdk8-jvmci-builder)). The `JAVA_HOME` environment variable must point to it.
+- `gcc`: `4.9.1`
+- `make`: `3.83`
+- `binutils`: `2.23.2`
+- `llvm`: `3.8` on linux; `4.0.1` on darwin
+
+Newer versions might also work. For more details, please check the README file of each component.
+
+To start the build, you can either run:
 
 1.
 ```bash
@@ -74,7 +83,7 @@ To override the default behavior, the `vm` suite defines the following `mx` argu
 ```
   --disable-libpolyglot         Disable the 'polyglot' library project
   --disable-polyglot            Disable the 'polyglot' launcher project
-  --force-bash-launchers        Force the use of bash launchers instead of native images.
+  --force-bash-launchers=...    Force the use of bash launchers instead of native images.
                                 This can be a comma-separated list of disabled launchers or `true` to disable all native launchers.
 ```
 And the following environment variables:

@@ -41,22 +41,20 @@
 package com.oracle.truffle.nfi.test;
 
 import com.oracle.truffle.api.CallTarget;
+import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
+import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.frame.VirtualFrame;
-import com.oracle.truffle.api.interop.ForeignAccess;
 import com.oracle.truffle.api.interop.InteropException;
-import com.oracle.truffle.api.interop.KeyInfo;
-import com.oracle.truffle.api.interop.Message;
-import com.oracle.truffle.api.interop.TruffleObject;
+import com.oracle.truffle.api.interop.InteropLibrary;
+import com.oracle.truffle.api.library.CachedLibrary;
 import com.oracle.truffle.api.nodes.Node;
-import com.oracle.truffle.nfi.test.interop.BoxedPrimitive;
+import com.oracle.truffle.nfi.test.KeyInfoNFITestFactory.VerifyKeyInfoNodeGen;
 import com.oracle.truffle.tck.TruffleRunner;
 import com.oracle.truffle.tck.TruffleRunner.Inject;
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.List;
 import java.util.function.Supplier;
-import static org.hamcrest.CoreMatchers.instanceOf;
-import static org.hamcrest.CoreMatchers.is;
 import org.junit.Assert;
 import org.junit.Test;
 import org.junit.runner.RunWith;
@@ -68,54 +66,53 @@ import org.junit.runners.Parameterized.Parameters;
 @Parameterized.UseParametersRunnerFactory(TruffleRunner.ParametersFactory.class)
 public class KeyInfoNFITest extends NFITest {
 
-    private static void addTest(List<Object[]> ret, Object symbol, Supplier<TruffleObject> object, String description, boolean read, boolean invoke) {
-        ret.add(new Object[]{symbol, object, description, read, invoke});
-        ret.add(new Object[]{new BoxedPrimitive(symbol), object, description, read, invoke});
+    private static void addTest(List<Object[]> ret, String symbol, Supplier<Object> object, String description, boolean read, boolean invoke, boolean optional) {
+        ret.add(new Object[]{symbol, object, description, read, invoke, optional});
     }
 
     @Parameters(name = "{2}[{0}]")
     public static Collection<Object[]> data() {
         List<Object[]> ret = new ArrayList<>();
-        addTest(ret, "increment_SINT32", () -> testLibrary, "testLibrary", true, false);
-        addTest(ret, "__NOT_EXISTING__", () -> testLibrary, "testLibrary", false, false);
-        addTest(ret, 42, () -> testLibrary, "testLibrary", false, false);
+        addTest(ret, "increment_SINT32", () -> testLibrary, "testLibrary", true, false, false);
+        addTest(ret, "__NOT_EXISTING__", () -> testLibrary, "testLibrary", false, false, true);
 
-        Supplier<TruffleObject> symbol = () -> {
+        Supplier<Object> symbol = () -> {
             try {
-                return (TruffleObject) ForeignAccess.sendRead(Message.READ.createNode(), testLibrary, "increment_SINT32");
+                return UNCACHED_INTEROP.readMember(testLibrary, "increment_SINT32");
             } catch (InteropException e) {
                 throw new AssertionError(e);
             }
         };
-        addTest(ret, "bind", symbol, "symbol", false, true);
-        addTest(ret, "__NOT_EXISTING__", symbol, "symbol", false, false);
-        addTest(ret, 42, symbol, "symbol", false, false);
+        addTest(ret, "bind", symbol, "symbol", false, true, false);
+        addTest(ret, "__NOT_EXISTING__", symbol, "symbol", false, false, false);
 
-        Supplier<TruffleObject> boundSymbol = () -> lookupAndBind("increment_SINT32", "(sint32):sint32");
-        addTest(ret, "bind", boundSymbol, "boundSymbol", false, true);
-        addTest(ret, "__NOT_EXISTING__", boundSymbol, "boundSymbol", false, false);
-        addTest(ret, 42, boundSymbol, "boundSymbol", false, false);
+        Supplier<Object> boundSymbol = () -> lookupAndBind("increment_SINT32", "(sint32):sint32");
+        addTest(ret, "bind", boundSymbol, "boundSymbol", false, true, false);
+        addTest(ret, "__NOT_EXISTING__", boundSymbol, "boundSymbol", false, false, false);
 
         return ret;
     }
 
-    @Parameter(0) public Object symbol;
-    @Parameter(1) public Supplier<TruffleObject> object;
+    @Parameter(0) public String symbol;
+    @Parameter(1) public Supplier<Object> object;
     @Parameter(2) public String description;
 
     @Parameter(3) public boolean read;
     @Parameter(4) public boolean invoke;
+    @Parameter(5) public boolean optional;
 
     public static class KeyInfoNode extends NFITestRootNode {
 
-        @Child Node keyInfo = Message.KEY_INFO.createNode();
+        @Child VerifyKeyInfoNode verify = VerifyKeyInfoNodeGen.create();
 
         @Override
-        public Object executeTest(VirtualFrame frame) throws InteropException {
-            return ForeignAccess.sendKeyInfo(keyInfo, (TruffleObject) frame.getArguments()[0], frame.getArguments()[1]);
+        public Object executeTest(VirtualFrame frame) {
+            verify.execute(frame.getArguments()[0], (String) frame.getArguments()[1], (boolean) frame.getArguments()[2], (boolean) frame.getArguments()[3], (boolean) frame.getArguments()[4]);
+            return null;
         }
     }
 
+    @TruffleBoundary
     private static void assertBoolean(String message, boolean expected, boolean actual) {
         if (expected) {
             Assert.assertTrue(message, actual);
@@ -124,22 +121,60 @@ public class KeyInfoNFITest extends NFITest {
         }
     }
 
-    private void verifyKeyInfo(Object keyInfo) {
-        Assert.assertThat(keyInfo, is(instanceOf(Integer.class)));
-        int flags = (Integer) keyInfo;
+    @TruffleBoundary
+    private static void assertBooleanOptional(String message, boolean expected, boolean actual) {
+        if (expected) {
+            Assert.assertTrue(message, actual);
+        }
+    }
 
-        assertBoolean("isExisting", read || invoke, KeyInfo.isExisting(flags));
+    abstract static class VerifyKeyInfoNode extends Node {
 
-        assertBoolean("isReadable", read, KeyInfo.isReadable(flags));
-        assertBoolean("isInvocable", invoke, KeyInfo.isInvocable(flags));
+        abstract void execute(Object object, String symbol, boolean read, boolean invoke, boolean optional);
 
-        Assert.assertFalse(KeyInfo.isWritable(flags));
-        Assert.assertFalse(KeyInfo.isInternal(flags));
+        @Specialization(limit = "3")
+        void verify(Object object, String symbol, boolean read, boolean invoke, boolean optional,
+                        @CachedLibrary("object") InteropLibrary interop) {
+            if (optional) {
+                /*
+                 * As a performance optimization, the NFI is allowed to report non-existing symbols
+                 * in libraries as existing.
+                 */
+                assertBooleanOptional("isMemberExisting", read || invoke, interop.isMemberExisting(object, symbol));
+                assertBooleanOptional("isMemberReadable", read, interop.isMemberReadable(object, symbol));
+            } else {
+                assertBoolean("isMemberExisting", read || invoke, interop.isMemberExisting(object, symbol));
+                assertBoolean("isMemberReadable", read, interop.isMemberReadable(object, symbol));
+            }
+
+            /*
+             * Even in the optional case, the actual read should fail.
+             */
+            boolean success = tryRead(interop, object, symbol);
+            assertBoolean("trying to read member", read, success);
+
+            assertBoolean("isMemberInvocable", invoke, interop.isMemberInvocable(object, symbol));
+
+            assertBoolean("isMemberInsertable", false, interop.isMemberInsertable(object, symbol));
+            assertBoolean("isMemberModifiable", false, interop.isMemberModifiable(object, symbol));
+            assertBoolean("isMemberWritable", false, interop.isMemberWritable(object, symbol));
+            assertBoolean("isMemberRemovable", false, interop.isMemberRemovable(object, symbol));
+            assertBoolean("isMemberInternal", false, interop.isMemberInternal(object, symbol));
+        }
+
+        @TruffleBoundary
+        static boolean tryRead(InteropLibrary interop, Object object, String symbol) {
+            try {
+                interop.readMember(object, symbol);
+                return true;
+            } catch (InteropException ex) {
+                return false;
+            }
+        }
     }
 
     @Test
     public void testKeyInfo(@Inject(KeyInfoNode.class) CallTarget keyInfo) {
-        Object result = keyInfo.call(object.get(), symbol);
-        verifyKeyInfo(result);
+        keyInfo.call(object.get(), symbol, read, invoke, optional);
     }
 }

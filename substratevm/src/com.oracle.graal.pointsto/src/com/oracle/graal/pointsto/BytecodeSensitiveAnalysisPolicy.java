@@ -104,6 +104,11 @@ public class BytecodeSensitiveAnalysisPolicy extends AnalysisPolicy {
     }
 
     @Override
+    public void noteMerge(BigBang bb, AnalysisObject o) {
+        o.noteMerge(bb);
+    }
+
+    @Override
     public boolean isContextSensitiveAllocation(BigBang bb, AnalysisType type, AnalysisContext allocationContext) {
         return bb.trackConcreteAnalysisObjects(type);
     }

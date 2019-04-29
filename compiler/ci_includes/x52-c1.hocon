@@ -2,8 +2,6 @@
 x52.c1 : ${labsjdk8} {
   capabilities: [linux, x52, no_frequency_scaling]
   environment : {
-    XMX          : "64g"
-    XMS          : "64g"
     JVM_CONFIG :  "default"
     JVM        :  "client"
     MACHINE_NAME: "x52"

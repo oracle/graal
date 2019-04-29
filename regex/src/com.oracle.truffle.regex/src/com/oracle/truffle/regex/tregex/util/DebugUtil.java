@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2016, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2016, 2019, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -25,7 +25,7 @@
 package com.oracle.truffle.regex.tregex.util;
 
 import com.oracle.truffle.api.TruffleLogger;
-import com.oracle.truffle.regex.chardata.Constants;
+import com.oracle.truffle.regex.charset.Constants;
 import com.oracle.truffle.regex.util.CompilationFinalBitSet;
 
 import java.util.Random;

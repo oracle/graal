@@ -34,10 +34,12 @@ import java.util.Enumeration;
 import java.util.List;
 import java.util.concurrent.ConcurrentHashMap;
 
+import com.oracle.svm.core.annotate.KeepOriginal;
 import com.oracle.svm.core.annotate.Substitute;
 import com.oracle.svm.core.annotate.TargetClass;
 import com.oracle.svm.core.annotate.TargetElement;
 import com.oracle.svm.core.hub.ClassForNameSupport;
+import com.oracle.svm.core.hub.DynamicHub;
 import com.oracle.svm.core.jdk.JavaLangSubstitutions.ClassLoaderSupport;
 import com.oracle.svm.core.snippets.KnownIntrinsics;
 import com.oracle.svm.core.util.VMError;
@@ -49,6 +51,8 @@ public final class Target_java_lang_ClassLoader {
 
     @Substitute //
     private Target_java_lang_ClassLoader parent;
+
+    @Substitute @TargetElement(onlyWith = JDK9OrLater.class) private final ConcurrentHashMap<String, Target_java_lang_NamedPackage> packages = new ConcurrentHashMap<>();
 
     @Substitute
     public Target_java_lang_ClassLoader() {
@@ -135,7 +139,7 @@ public final class Target_java_lang_ClassLoader {
     @Substitute //
     @TargetElement(onlyWith = JDK9OrLater.class) //
     public static ClassLoader getPlatformClassLoader() {
-        throw VMError.unsupportedFeature("JDK9OrLater: Target_java_lang_ClassLoader.loadClass(Target_java_lang_Module, String)");
+        throw VMError.unsupportedFeature("JDK9OrLater: Target_java_lang_ClassLoader.getPlatformClassLoader()");
     }
 
     @Substitute //
@@ -196,6 +200,26 @@ public final class Target_java_lang_ClassLoader {
     @SuppressWarnings({"unused"})
     public Package getDefinedPackage(String name) {
         throw VMError.unsupportedFeature("JDK9OrLater: Target_java_lang_ClassLoader.getDefinedPackage(String name)");
+    }
+
+    @KeepOriginal
+    @TargetElement(onlyWith = JDK9OrLater.class) //
+    public native Package definePackage(Class<?> clazz);
+
+    @KeepOriginal //
+    @TargetElement(onlyWith = JDK9OrLater.class) //
+    @SuppressWarnings({"unused"})
+    public native Package definePackage(String name, Target_java_lang_Module module);
+
+    @KeepOriginal
+    @TargetElement(onlyWith = JDK9OrLater.class) //
+    private native Package toPackage(String name, Target_java_lang_NamedPackage p, Target_java_lang_Module m);
+
+    @Substitute
+    @TargetElement(onlyWith = JDK9OrLater.class)
+    @SuppressWarnings({"unused"})
+    public Target_java_lang_Module getUnnamedModule() {
+        return DynamicHub.singleModuleReference.get();
     }
 }
 

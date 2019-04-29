@@ -176,7 +176,7 @@ public class LibC {
     public static native UnsignedWord strlcpy(CCharPointer dst, CCharPointer src, UnsignedWord len);
 
     /** Copy a zero-terminated string from source to a newly allocated destination. */
-    @CFunction(transition = CFunction.Transition.NO_TRANSITION)
+    @CFunction(value = "_strdup", transition = CFunction.Transition.NO_TRANSITION)
     public static native CCharPointer strdup(CCharPointer src);
 
     /** Returns a pointer to the first occurrence of the character c in the string s. */

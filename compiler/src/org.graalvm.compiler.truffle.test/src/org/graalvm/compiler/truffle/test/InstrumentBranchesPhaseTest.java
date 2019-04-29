@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2016, 2016, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2016, 2018, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -25,13 +25,10 @@
 package org.graalvm.compiler.truffle.test;
 
 import static org.graalvm.compiler.truffle.compiler.TruffleCompilerOptions.TruffleInstrumentBranches;
-import static org.graalvm.compiler.truffle.compiler.TruffleCompilerOptions.TruffleInstrumentBranchesFilter;
-import static org.graalvm.compiler.truffle.compiler.TruffleCompilerOptions.TruffleInstrumentBranchesPretty;
 
-import org.graalvm.compiler.options.OptionValues;
-import org.graalvm.compiler.truffle.compiler.phases.InstrumentPhase;
 import org.graalvm.compiler.truffle.compiler.TruffleCompilerOptions;
 import org.graalvm.compiler.truffle.compiler.TruffleCompilerOptions.TruffleOptionsOverrideScope;
+import org.graalvm.compiler.truffle.compiler.phases.InstrumentPhase;
 import org.graalvm.compiler.truffle.runtime.OptimizedCallTarget;
 import org.graalvm.compiler.truffle.test.nodes.AbstractTestNode;
 import org.graalvm.compiler.truffle.test.nodes.RootTestNode;
@@ -88,16 +85,12 @@ public class InstrumentBranchesPhaseTest extends PartialEvaluationTest {
 
     @Override
     protected void beforeInitialization() {
-        overrides = TruffleCompilerOptions.overrideOptions(TruffleInstrumentBranches, true, TruffleInstrumentBranchesPretty, false, TruffleInstrumentBranchesFilter, "*.*.execute");
+        overrides = TruffleCompilerOptions.overrideOptions(TruffleInstrumentBranches, true);
     }
 
     @After
     public void disableInstrumentAfterTests() {
         overrides.close();
-    }
-
-    private static OptionValues getOptions() {
-        return TruffleCompilerOptions.getOptions();
     }
 
     @Test

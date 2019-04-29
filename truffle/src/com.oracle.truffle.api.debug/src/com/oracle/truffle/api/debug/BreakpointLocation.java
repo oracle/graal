@@ -146,11 +146,16 @@ abstract class BreakpointLocation {
             SourceFilter.Builder f = SourceFilter.newBuilder();
             if (key instanceof URI) {
                 final URI sourceUri = (URI) key;
+                final String sourceRawPath = sourceUri.getRawPath() != null ? sourceUri.getRawPath() : sourceUri.getRawSchemeSpecificPart();
                 f.sourceIs(new Predicate<Source>() {
                     @Override
                     public boolean test(Source s) {
                         URI uri = s.getURI();
-                        return sourceUri.equals(uri);
+                        if (uri.isAbsolute()) {
+                            return sourceUri.equals(uri);
+                        } else {
+                            return sourceRawPath != null && sourceRawPath.endsWith(uri.getRawPath());
+                        }
                     }
 
                     @Override

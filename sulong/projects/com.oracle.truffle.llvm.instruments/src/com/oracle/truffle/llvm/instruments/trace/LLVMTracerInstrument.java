@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, Oracle and/or its affiliates.
+ * Copyright (c) 2019, Oracle and/or its affiliates.
  *
  * All rights reserved.
  *
@@ -30,39 +30,30 @@
 package com.oracle.truffle.llvm.instruments.trace;
 
 import java.io.BufferedOutputStream;
-import java.io.FileNotFoundException;
-import java.io.FileOutputStream;
+import java.io.IOException;
 import java.io.OutputStream;
 import java.io.PrintStream;
+import java.nio.file.StandardOpenOption;
 
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
-import com.oracle.truffle.api.Option;
+import com.oracle.truffle.api.TruffleFile;
+import com.oracle.truffle.api.TruffleLanguage;
 import com.oracle.truffle.api.instrumentation.Instrumenter;
 import com.oracle.truffle.api.instrumentation.SourceSectionFilter;
 import com.oracle.truffle.api.instrumentation.StandardTags;
-import com.oracle.truffle.api.instrumentation.TruffleInstrument;
-import com.oracle.truffle.api.instrumentation.TruffleInstrument.Registration;
-import org.graalvm.options.OptionCategory;
-import org.graalvm.options.OptionDescriptors;
-import org.graalvm.options.OptionKey;
 
-@Registration(id = LLVMTracerInstrument.ID, name = LLVMTracerInstrument.NAME, services = LLVMTracerInstrument.class)
-public final class LLVMTracerInstrument extends TruffleInstrument {
+public final class LLVMTracerInstrument {
 
-    static final String ID = "TraceLLVM";
-    static final String NAME = "LLVMTracerInstrument";
-
-    @Option(name = "", category = OptionCategory.DEBUG, help = "Enable tracing of executed instructions (defaults to \'stdout\', can be set to \'stderr\').") //
-    static final OptionKey<String> TRACELLVM = new OptionKey<>(String.valueOf("stdout"));
-
-    private PrintStream traceTarget;
+    private PrintStream targetStream;
+    private String targetOptionString;
 
     public LLVMTracerInstrument() {
-        traceTarget = null;
+        targetStream = null;
+        targetOptionString = null;
     }
 
-    @Override
-    protected void onCreate(Env env) {
+    @TruffleBoundary
+    public void initialize(TruffleLanguage.Env env, String optionString) {
         env.registerService(this);
 
         final SourceSectionFilter.Builder builder = SourceSectionFilter.newBuilder();
@@ -70,46 +61,46 @@ public final class LLVMTracerInstrument extends TruffleInstrument {
         builder.tagIs(StandardTags.StatementTag.class, StandardTags.RootTag.class);
         final SourceSectionFilter filter = builder.build();
 
-        final Instrumenter instrumenter = env.getInstrumenter();
-        traceTarget = createTargetStream(env, env.getOptions().get(LLVMTracerInstrument.TRACELLVM));
-        instrumenter.attachExecutionEventFactory(filter, new LLVMTraceNodeFactory(traceTarget));
+        final Instrumenter instrumenter = env.lookup(Instrumenter.class);
+        if (instrumenter == null) {
+            throw new IllegalStateException("Could not find Instrumenter");
+        }
+        targetOptionString = optionString;
+        targetStream = createTargetStream(env, optionString);
+        instrumenter.attachExecutionEventFactory(filter, new LLVMTraceNodeFactory(targetStream));
     }
 
-    @Override
     @TruffleBoundary
-    protected void onDispose(Env env) {
-        traceTarget.flush();
+    public void dispose() {
+        targetStream.flush();
 
-        final String target = env.getOptions().get(LLVMTracerInstrument.TRACELLVM);
+        final String target = targetOptionString;
         assert target != null : "Invalid modification of tracing target!";
 
-        switch (target) {
+        switch (target.toLowerCase()) {
+            case "true":
             case "out":
             case "stdout":
             case "err":
             case "stderr":
                 break;
             default:
-                traceTarget.close();
+                targetStream.close();
                 break;
         }
-    }
-
-    @Override
-    protected OptionDescriptors getOptionDescriptors() {
-        return new LLVMTracerInstrumentOptionDescriptors();
     }
 
     private static final String FILE_TARGET_PREFIX = "file://";
 
     @TruffleBoundary
-    private static PrintStream createTargetStream(TruffleInstrument.Env env, String target) {
+    private static PrintStream createTargetStream(TruffleLanguage.Env env, String target) {
         if (target == null) {
             throw new IllegalArgumentException("Target for trace unspecified!");
         }
 
         final OutputStream targetStream;
-        switch (target) {
+        switch (target.toLowerCase()) {
+            case "true":
             case "out":
             case "stdout":
                 targetStream = env.out();
@@ -124,8 +115,9 @@ public final class LLVMTracerInstrument extends TruffleInstrument {
                 if (target.startsWith(FILE_TARGET_PREFIX)) {
                     final String fileName = target.substring(FILE_TARGET_PREFIX.length());
                     try {
-                        targetStream = new BufferedOutputStream(new FileOutputStream(fileName, true));
-                    } catch (FileNotFoundException e) {
+                        final TruffleFile file = env.getTruffleFile(fileName);
+                        targetStream = new BufferedOutputStream(file.newOutputStream(StandardOpenOption.CREATE, StandardOpenOption.APPEND));
+                    } catch (IOException e) {
                         throw new IllegalArgumentException("Invalid file: " + fileName, e);
                     }
                 } else {

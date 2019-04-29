@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2016, 2018, Oracle and/or its affiliates.
+ * Copyright (c) 2016, 2019, Oracle and/or its affiliates.
  *
  * All rights reserved.
  *
@@ -41,13 +41,13 @@ import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.CompilerDirectives.ValueType;
 import com.oracle.truffle.api.dsl.Cached;
 import com.oracle.truffle.api.dsl.Specialization;
-import com.oracle.truffle.api.interop.ForeignAccess;
 import com.oracle.truffle.api.interop.InteropException;
-import com.oracle.truffle.api.interop.Message;
+import com.oracle.truffle.api.interop.InteropLibrary;
 import com.oracle.truffle.api.interop.TruffleObject;
+import com.oracle.truffle.api.library.CachedLibrary;
 import com.oracle.truffle.api.nodes.ExplodeLoop;
-import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.llvm.runtime.LLVMContext;
+import com.oracle.truffle.llvm.runtime.LLVMLanguage;
 import com.oracle.truffle.llvm.runtime.NFIContextExtension;
 import com.oracle.truffle.llvm.runtime.floating.LLVM80BitFloatFactory.LLVM80BitFloatNativeCallNodeGen;
 import com.oracle.truffle.llvm.runtime.memory.LLVMMemory;
@@ -644,14 +644,12 @@ public final class LLVM80BitFloat implements LLVMArithmetic {
     protected abstract static class LLVM80BitFloatNativeCallNode extends LLVMNode {
         private final String name;
 
-        @Child private Node nativeExecute = Message.EXECUTE.createNode();
-
         public LLVM80BitFloatNativeCallNode(String name) {
             this.name = name;
         }
 
         protected TruffleObject createFunction() {
-            LLVMContext context = getContextReference().get();
+            LLVMContext context = lookupContextReference(LLVMLanguage.class).get();
             NFIContextExtension nfiContextExtension = context.getContextExtensionOrNull(NFIContextExtension.class);
             return nfiContextExtension == null ? null : nfiContextExtension.getNativeFunction(context, "@__sulong_fp80_" + name, "(UINT64,UINT64,UINT64):VOID");
         }
@@ -661,6 +659,7 @@ public final class LLVM80BitFloat implements LLVMArithmetic {
         @Specialization(guards = "function != null")
         protected LLVM80BitFloat doCall(LLVM80BitFloat x, LLVM80BitFloat y,
                         @Cached("createFunction()") TruffleObject function,
+                        @CachedLibrary("function") InteropLibrary nativeExecute,
                         @Cached("getLLVMMemory()") LLVMMemory memory) {
             LLVMNativePointer mem = memory.allocateMemory(3 * 16);
             LLVMNativePointer ptrX = mem;
@@ -669,7 +668,7 @@ public final class LLVM80BitFloat implements LLVMArithmetic {
             memory.put80BitFloat(ptrX, x);
             memory.put80BitFloat(ptrY, y);
             try {
-                ForeignAccess.sendExecute(nativeExecute, function, ptrZ.asNative(), ptrX.asNative(), ptrY.asNative());
+                nativeExecute.execute(function, ptrZ.asNative(), ptrX.asNative(), ptrY.asNative());
                 LLVM80BitFloat z = memory.get80BitFloat(ptrZ);
                 return z;
             } catch (InteropException e) {
@@ -764,7 +763,7 @@ public final class LLVM80BitFloat implements LLVMArithmetic {
     public LLVMArithmeticCompareNode createCmpNode() {
         return new LLVMArithmeticCompareNode() {
             @Override
-            public int execute(Object x, Object y) throws InteropException {
+            public int execute(Object x, Object y) {
                 LLVM80BitFloat a = (LLVM80BitFloat) x;
                 LLVM80BitFloat b = (LLVM80BitFloat) y;
                 return compare(a, b);

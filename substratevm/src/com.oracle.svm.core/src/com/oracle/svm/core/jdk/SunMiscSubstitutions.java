@@ -30,7 +30,7 @@ import java.lang.ref.ReferenceQueue;
 import java.util.function.Function;
 
 import org.graalvm.compiler.nodes.extended.MembarNode;
-import org.graalvm.compiler.serviceprovider.GraalServices;
+import org.graalvm.compiler.serviceprovider.JavaVersionUtil;
 import org.graalvm.compiler.word.Word;
 import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.Platforms;
@@ -44,6 +44,7 @@ import com.oracle.svm.core.annotate.Delete;
 import com.oracle.svm.core.annotate.RecomputeFieldValue;
 import com.oracle.svm.core.annotate.Substitute;
 import com.oracle.svm.core.annotate.TargetClass;
+import com.oracle.svm.core.annotate.TargetElement;
 import com.oracle.svm.core.annotate.Uninterruptible;
 import com.oracle.svm.core.hub.DynamicHub;
 import com.oracle.svm.core.hub.LayoutEncoding;
@@ -54,10 +55,11 @@ import com.oracle.svm.core.snippets.KnownIntrinsics;
 import jdk.vm.ci.code.MemoryBarriers;
 import sun.misc.Unsafe;
 
-@TargetClass(sun.misc.Unsafe.class)
+@TargetClass(classNameProvider = Package_jdk_internal_misc.class, className = "Unsafe")
 @SuppressWarnings({"static-method"})
-final class Target_sun_misc_Unsafe {
+final class Target_Unsafe_Core {
 
+    @TargetElement(onlyWith = JDK8OrEarlier.class)
     @Substitute
     private long allocateMemory(long bytes) {
         if (bytes < 0L || (Unsafe.ADDRESS_SIZE == 4 && bytes > Integer.MAX_VALUE)) {
@@ -70,6 +72,13 @@ final class Target_sun_misc_Unsafe {
         return result.rawValue();
     }
 
+    @TargetElement(onlyWith = JDK9OrLater.class)
+    @Substitute
+    private long allocateMemory0(long bytes) {
+        return UnmanagedMemory.malloc(WordFactory.unsigned(bytes)).rawValue();
+    }
+
+    @TargetElement(onlyWith = JDK8OrEarlier.class)
     @Substitute
     private long reallocateMemory(long address, long bytes) {
         if (bytes == 0) {
@@ -89,6 +98,13 @@ final class Target_sun_misc_Unsafe {
         return result.rawValue();
     }
 
+    @TargetElement(onlyWith = JDK9OrLater.class)
+    @Substitute
+    private long reallocateMemory0(long address, long bytes) {
+        return UnmanagedMemory.realloc(WordFactory.unsigned(address), WordFactory.unsigned(bytes)).rawValue();
+    }
+
+    @TargetElement(onlyWith = JDK8OrEarlier.class)
     @Substitute
     private void freeMemory(long address) {
         if (address != 0L) {
@@ -96,17 +112,68 @@ final class Target_sun_misc_Unsafe {
         }
     }
 
+    @TargetElement(onlyWith = JDK9OrLater.class)
+    @Substitute
+    private void freeMemory0(long address) {
+        UnmanagedMemory.free(WordFactory.unsigned(address));
+    }
+
+    @TargetElement(onlyWith = JDK8OrEarlier.class)
     @Substitute
     @Uninterruptible(reason = "Converts Object to Pointer.")
     private void copyMemory(Object srcBase, long srcOffset, Object destBase, long destOffset, long bytes) {
-        MemoryUtil.copyConjointMemoryAtomic(Word.objectToUntrackedPointer(srcBase).add(WordFactory.signed(srcOffset)), Word.objectToUntrackedPointer(destBase).add(WordFactory.signed(destOffset)),
+        MemoryUtil.copyConjointMemoryAtomic(
+                        Word.objectToUntrackedPointer(srcBase).add(WordFactory.unsigned(srcOffset)),
+                        Word.objectToUntrackedPointer(destBase).add(WordFactory.unsigned(destOffset)),
                         WordFactory.unsigned(bytes));
     }
 
+    @TargetElement(onlyWith = JDK9OrLater.class)
+    @Substitute
+    @Uninterruptible(reason = "Converts Object to Pointer.")
+    private void copyMemory0(Object srcBase, long srcOffset, Object destBase, long destOffset, long bytes) {
+        MemoryUtil.copyConjointMemoryAtomic(
+                        Word.objectToUntrackedPointer(srcBase).add(WordFactory.unsigned(srcOffset)),
+                        Word.objectToUntrackedPointer(destBase).add(WordFactory.unsigned(destOffset)),
+                        WordFactory.unsigned(bytes));
+    }
+
+    @TargetElement(onlyWith = JDK9OrLater.class)
+    @Substitute
+    @Uninterruptible(reason = "Converts Object to Pointer.")
+    private void copySwapMemory0(Object srcBase, long srcOffset, Object destBase, long destOffset, long bytes, long elemSize) {
+        MemoryUtil.copyConjointSwap(
+                        Word.objectToUntrackedPointer(srcBase).add(WordFactory.unsigned(srcOffset)),
+                        Word.objectToUntrackedPointer(destBase).add(WordFactory.unsigned(destOffset)),
+                        WordFactory.unsigned(bytes), WordFactory.unsigned(elemSize));
+    }
+
+    @TargetElement(onlyWith = JDK8OrEarlier.class)
     @Substitute
     @Uninterruptible(reason = "Converts Object to Pointer.")
     private void setMemory(Object destBase, long destOffset, long bytes, byte bvalue) {
-        MemoryUtil.fillToMemoryAtomic(Word.objectToUntrackedPointer(destBase).add(WordFactory.signed(destOffset)), WordFactory.unsigned(bytes), bvalue);
+        MemoryUtil.fillToMemoryAtomic(
+                        Word.objectToUntrackedPointer(destBase).add(WordFactory.unsigned(destOffset)),
+                        WordFactory.unsigned(bytes), bvalue);
+    }
+
+    @TargetElement(onlyWith = JDK9OrLater.class)
+    @Substitute
+    @Uninterruptible(reason = "Converts Object to Pointer.")
+    private void setMemory0(Object destBase, long destOffset, long bytes, byte bvalue) {
+        MemoryUtil.fillToMemoryAtomic(
+                        Word.objectToUntrackedPointer(destBase).add(WordFactory.unsigned(destOffset)),
+                        WordFactory.unsigned(bytes), bvalue);
+    }
+
+    @TargetElement(onlyWith = JDK8OrEarlier.class)
+    @Substitute
+    private int addressSize() {
+        /*
+         * No substitution necessary for JDK 9 or later because there the method is already
+         * implemented exactly like this.
+         */
+        return Unsafe.ADDRESS_SIZE;
     }
 
     @Substitute
@@ -184,7 +251,7 @@ final class Target_sun_misc_MessageUtils {
 class Package_jdk_internal_ref implements Function<TargetClass, String> {
     @Override
     public String apply(TargetClass annotation) {
-        if (GraalServices.Java8OrEarlier) {
+        if (JavaVersionUtil.Java8OrEarlier) {
             return "sun.misc." + annotation.className();
         } else {
             return "jdk.internal.ref." + annotation.className();
@@ -248,7 +315,7 @@ final class Target_jdk_internal_ref_SoftCleanable {
 class Package_jdk_internal_perf implements Function<TargetClass, String> {
     @Override
     public String apply(TargetClass annotation) {
-        if (GraalServices.Java8OrEarlier) {
+        if (JavaVersionUtil.Java8OrEarlier) {
             return "sun.misc." + annotation.className();
         } else {
             return "jdk.internal.perf." + annotation.className();
@@ -295,7 +362,7 @@ final class Target_jdk_internal_misc_JavaLangAccess {
 class Package_jdk_internal_loader implements Function<TargetClass, String> {
     @Override
     public String apply(TargetClass annotation) {
-        if (GraalServices.Java8OrEarlier) {
+        if (JavaVersionUtil.Java8OrEarlier) {
             return "sun.misc." + annotation.className();
         } else {
             return "jdk.internal.loader." + annotation.className();

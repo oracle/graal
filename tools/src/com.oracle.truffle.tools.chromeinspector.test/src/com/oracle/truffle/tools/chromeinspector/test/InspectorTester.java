@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2017, 2018, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2017, 2019, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -25,7 +25,11 @@
 package com.oracle.truffle.tools.chromeinspector.test;
 
 import java.io.IOException;
+import java.io.OutputStream;
+import java.net.URI;
 import java.nio.ByteBuffer;
+import java.util.Collections;
+import java.util.List;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.Future;
 import java.util.concurrent.Semaphore;
@@ -40,7 +44,8 @@ import org.graalvm.polyglot.Source;
 import org.graalvm.polyglot.Value;
 import org.graalvm.polyglot.io.MessageEndpoint;
 
-import com.oracle.truffle.tools.chromeinspector.TruffleExecutionContext;
+import com.oracle.truffle.tools.chromeinspector.InspectorExecutionContext;
+import com.oracle.truffle.tools.chromeinspector.domains.DebuggerDomain;
 import com.oracle.truffle.tools.chromeinspector.server.ConnectionWatcher;
 import com.oracle.truffle.tools.chromeinspector.server.InspectServerSession;
 import com.oracle.truffle.tools.chromeinspector.types.ExceptionDetails;
@@ -59,13 +64,34 @@ public final class InspectorTester {
     }
 
     public static InspectorTester start(boolean suspend, final boolean inspectInternal, final boolean inspectInitialization) throws InterruptedException {
+        return start(suspend, inspectInternal, inspectInitialization, Collections.emptyList());
+    }
+
+    public static InspectorTester start(boolean suspend, final boolean inspectInternal, final boolean inspectInitialization, List<URI> sourcePath) throws InterruptedException {
         RemoteObject.resetIDs();
         ExceptionDetails.resetIDs();
-        TruffleExecutionContext.resetIDs();
-        InspectExecThread exec = new InspectExecThread(suspend, inspectInternal, inspectInitialization);
+        InspectorExecutionContext.resetIDs();
+        InspectExecThread exec = new InspectExecThread(suspend, inspectInternal, inspectInitialization, sourcePath);
         exec.start();
         exec.initialized.acquire();
         return new InspectorTester(exec);
+    }
+
+    static String getStringURI(URI uri) {
+        if ("truffle".equals(uri.getScheme())) {
+            String ssp = uri.getSchemeSpecificPart();
+            return ssp.substring(ssp.indexOf('/') + 1);
+        } else {
+            return uri.toString();
+        }
+    }
+
+    public DebuggerDomain getDebugger() {
+        return exec.inspect.getDebugger();
+    }
+
+    public void setErr(OutputStream err) {
+        exec.err.delegate = err;
     }
 
     public void finish() throws InterruptedException {
@@ -85,7 +111,7 @@ public final class InspectorTester {
         exec.join();
         RemoteObject.resetIDs();
         ExceptionDetails.resetIDs();
-        TruffleExecutionContext.resetIDs();
+        InspectorExecutionContext.resetIDs();
         return exec.error;
     }
 
@@ -152,6 +178,10 @@ public final class InspectorTester {
     }
 
     public String receiveMessages(String... messageParts) throws InterruptedException {
+        return receiveMessages(false, messageParts);
+    }
+
+    public String receiveMessages(boolean ignoreNotMatched, String... messageParts) throws InterruptedException {
         int part = 0;
         int pos = 0;
         StringBuilder allMessages = new StringBuilder();
@@ -169,6 +199,12 @@ public final class InspectorTester {
                 allMessages.append(messages);
                 if (part == 0) {
                     int l = messageParts[0].length();
+                    if (ignoreNotMatched) {
+                        int minl = Math.min(l, allMessages.length());
+                        if (!messageParts[0].substring(0, minl).equals(allMessages.substring(0, minl))) {
+                            return null;
+                        }
+                    }
                     if (allMessages.length() < l) {
                         continue;
                     }
@@ -200,8 +236,9 @@ public final class InspectorTester {
     private static class InspectExecThread extends Thread implements MessageEndpoint {
 
         private final boolean suspend;
-        private boolean inspectInternal = false;
-        private boolean inspectInitialization = false;
+        private final boolean inspectInternal;
+        private final boolean inspectInitialization;
+        private final List<URI> sourcePath;
         private Context context;
         private InspectServerSession inspect;
         private ConnectionWatcher connectionWatcher;
@@ -214,20 +251,22 @@ public final class InspectorTester {
         private boolean catchError;
         private Throwable error;
         final Object lock = new Object();
+        final ProxyOutputStream err = new ProxyOutputStream(System.err);
 
-        InspectExecThread(boolean suspend, final boolean inspectInternal, final boolean inspectInitialization) {
+        InspectExecThread(boolean suspend, final boolean inspectInternal, final boolean inspectInitialization, List<URI> sourcePath) {
             super("Inspector Executor");
             this.suspend = suspend;
             this.inspectInternal = inspectInternal;
             this.inspectInitialization = inspectInitialization;
+            this.sourcePath = sourcePath;
         }
 
         @Override
         public void run() {
-            Engine engine = Engine.create();
+            Engine engine = Engine.newBuilder().err(err).build();
             Instrument testInstrument = engine.getInstruments().get(InspectorTestInstrument.ID);
             InspectSessionInfoProvider sessionInfoProvider = testInstrument.lookup(InspectSessionInfoProvider.class);
-            InspectSessionInfo sessionInfo = sessionInfoProvider.getSessionInfo(suspend, inspectInternal, inspectInitialization);
+            InspectSessionInfo sessionInfo = sessionInfoProvider.getSessionInfo(suspend, inspectInternal, inspectInitialization, sourcePath);
             inspect = sessionInfo.getInspectServerSession();
             try {
                 connectionWatcher = sessionInfo.getConnectionWatcher();
@@ -307,6 +346,36 @@ public final class InspectorTester {
 
         @Override
         public void sendClose() throws IOException {
+        }
+
+    }
+
+    private static final class ProxyOutputStream extends OutputStream {
+
+        OutputStream delegate;
+
+        ProxyOutputStream(OutputStream delegate) {
+            this.delegate = delegate;
+        }
+
+        @Override
+        public void write(int b) throws IOException {
+            delegate.write(b);
+        }
+
+        @Override
+        public void write(byte[] b, int off, int len) throws IOException {
+            delegate.write(b, off, len);
+        }
+
+        @Override
+        public void flush() throws IOException {
+            delegate.flush();
+        }
+
+        @Override
+        public void close() throws IOException {
+            delegate.close();
         }
 
     }

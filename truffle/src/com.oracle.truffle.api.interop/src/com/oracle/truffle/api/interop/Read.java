@@ -40,6 +40,7 @@
  */
 package com.oracle.truffle.api.interop;
 
+@SuppressWarnings("deprecation")
 final class Read extends KnownMessage {
     public static final int HASH = 423438;
     static final Message INSTANCE = new Read();

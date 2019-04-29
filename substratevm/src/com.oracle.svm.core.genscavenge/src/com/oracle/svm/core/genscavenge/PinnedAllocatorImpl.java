@@ -194,8 +194,6 @@ public final class PinnedAllocatorImpl extends PinnedAllocator {
         if (openPinnedAllocator.get() != this) {
             throw NOT_OPEN_ERROR;
         }
-        /* Asserts are ignored in snippets, but this is also called from non-snippet code. */
-        assert phase == LifeCyclePhase.OPENED : "PinnedAllocatorImpl.ensureOpen: phase != OPENED";
     }
 
     /* Slow path of the pinned new instance allocation snippet. */

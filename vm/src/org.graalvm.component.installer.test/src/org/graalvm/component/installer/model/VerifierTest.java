@@ -29,6 +29,7 @@ import static org.graalvm.component.installer.CommonConstants.CAP_OS_NAME;
 import org.graalvm.component.installer.DependencyException;
 import org.graalvm.component.installer.TestBase;
 import org.graalvm.component.installer.commands.MockStorage;
+import org.graalvm.component.installer.jar.JarMetaLoader;
 import org.graalvm.component.installer.persist.ComponentPackageLoader;
 import org.junit.Before;
 import org.junit.Rule;
@@ -54,7 +55,7 @@ public class VerifierTest extends TestBase {
     @Test
     public void testGraalCapabilitiesCaseInsensitive() throws Exception {
         try (JarFile jf = new JarFile(dataFile("truffleruby2.jar").toFile())) {
-            ComponentPackageLoader ldr = new ComponentPackageLoader(jf, this);
+            ComponentPackageLoader ldr = new JarMetaLoader(jf, this);
 
             rubyInfo = ldr.createComponentInfo();
             ldr.loadPaths();
@@ -62,14 +63,14 @@ public class VerifierTest extends TestBase {
         }
         mockStorage.graalInfo.put(CAP_OS_NAME, "LiNuX");
 
-        Verifier vfy = new Verifier(this, registry, rubyInfo);
-        vfy.validateRequirements();
+        Verifier vfy = new Verifier(this, registry, registry);
+        vfy.validateRequirements(rubyInfo);
     }
 
     @Test
     public void testGraalCapabilitiesMismatch() throws Exception {
         try (JarFile jf = new JarFile(dataFile("truffleruby2.jar").toFile())) {
-            ComponentPackageLoader ldr = new ComponentPackageLoader(jf, this);
+            ComponentPackageLoader ldr = new JarMetaLoader(jf, this);
 
             rubyInfo = ldr.createComponentInfo();
             ldr.loadPaths();
@@ -77,9 +78,9 @@ public class VerifierTest extends TestBase {
         }
         mockStorage.graalInfo.put(CAP_OS_NAME, "LiNuy");
 
-        Verifier vfy = new Verifier(this, registry, rubyInfo);
+        Verifier vfy = new Verifier(this, registry, registry);
         exception.expect(DependencyException.Mismatch.class);
         exception.expectMessage("VERIFY_Dependency_Failed");
-        vfy.validateRequirements();
+        vfy.validateRequirements(rubyInfo);
     }
 }

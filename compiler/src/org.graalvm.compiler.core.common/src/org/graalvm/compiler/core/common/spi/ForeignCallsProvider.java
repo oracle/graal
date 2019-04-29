@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2013, 2016, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2013, 2018, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -61,4 +61,9 @@ public interface ForeignCallsProvider extends ValueKindFactory<LIRKind> {
      * Gets the linkage for a foreign call.
      */
     ForeignCallLinkage lookupForeignCall(ForeignCallDescriptor descriptor);
+
+    /**
+     * Return true if the foreign call has a binding.
+     */
+    boolean isAvailable(ForeignCallDescriptor descriptor);
 }

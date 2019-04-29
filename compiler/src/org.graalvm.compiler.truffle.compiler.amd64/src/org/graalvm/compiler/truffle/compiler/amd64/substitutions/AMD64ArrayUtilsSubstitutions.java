@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2018, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -24,8 +24,9 @@
  */
 package org.graalvm.compiler.truffle.compiler.amd64.substitutions;
 
-import jdk.vm.ci.meta.JavaKind;
-import jdk.vm.ci.meta.MetaAccessProvider;
+import static org.graalvm.compiler.api.replacements.Fold.InjectedParameter;
+import static org.graalvm.compiler.serviceprovider.JavaVersionUtil.Java8OrEarlier;
+
 import org.graalvm.compiler.api.replacements.ClassSubstitution;
 import org.graalvm.compiler.api.replacements.Fold;
 import org.graalvm.compiler.api.replacements.MethodSubstitution;
@@ -35,8 +36,8 @@ import org.graalvm.compiler.replacements.amd64.AMD64ArrayIndexOf;
 import org.graalvm.compiler.word.Word;
 import org.graalvm.word.Pointer;
 
-import static org.graalvm.compiler.api.replacements.Fold.InjectedParameter;
-import static org.graalvm.compiler.serviceprovider.GraalServices.Java8OrEarlier;
+import jdk.vm.ci.meta.JavaKind;
+import jdk.vm.ci.meta.MetaAccessProvider;
 
 @ClassSubstitution(className = "com.oracle.truffle.api.ArrayUtils", optional = true)
 public class AMD64ArrayUtilsSubstitutions {
@@ -66,7 +67,6 @@ public class AMD64ArrayUtilsSubstitutions {
 
     @MethodSubstitution(optional = true)
     public static int runIndexOf(String str, int fromIndex, int maxIndex, char... chars) {
-        assert 0 < maxIndex && maxIndex <= str.length();
         if (fromIndex >= str.length()) {
             return -1;
         }
@@ -96,7 +96,6 @@ public class AMD64ArrayUtilsSubstitutions {
 
     @MethodSubstitution(optional = true)
     public static int runIndexOf(char[] array, int fromIndex, int maxIndex, char... chars) {
-        assert 0 < maxIndex && maxIndex <= array.length;
         if (fromIndex >= array.length) {
             return -1;
         }
@@ -114,7 +113,6 @@ public class AMD64ArrayUtilsSubstitutions {
 
     @MethodSubstitution(optional = true)
     public static int runIndexOf(byte[] array, int fromIndex, int maxIndex, byte... bytes) {
-        assert 0 < maxIndex && maxIndex <= array.length;
         if (fromIndex >= array.length) {
             return -1;
         }
@@ -131,17 +129,14 @@ public class AMD64ArrayUtilsSubstitutions {
     }
 
     private static Word arrayToPointer(byte[] array, int fromIndex) {
-        assert 0 <= fromIndex && fromIndex < array.length;
         return Word.objectToTrackedPointer(array).add(byteArrayBaseOffset(INJECTED)).add(fromIndex * byteArrayIndexScale(INJECTED));
     }
 
     private static Word arrayToPointer(char[] array, int fromIndex) {
-        assert 0 <= fromIndex && fromIndex < array.length;
         return Word.objectToTrackedPointer(array).add(charArrayBaseOffset(INJECTED)).add(fromIndex * charArrayIndexScale(INJECTED));
     }
 
     private static int indexOfChar(Pointer arrayPointer, int arrayLength, char[] chars) {
-        assert chars.length > 0;
         if (chars.length == 1) {
             return AMD64ArrayIndexOf.indexOf1Char(arrayPointer, arrayLength, chars[0]);
         } else if (chars.length == 2) {
@@ -154,7 +149,6 @@ public class AMD64ArrayUtilsSubstitutions {
     }
 
     private static int indexOfByte(Pointer arrayPointer, int arrayLength, byte[] bytes) {
-        assert bytes.length > 0;
         if (bytes.length == 1) {
             return AMD64ArrayIndexOf.indexOf1Byte(arrayPointer, arrayLength, bytes[0]);
         } else if (bytes.length == 2) {
@@ -167,7 +161,6 @@ public class AMD64ArrayUtilsSubstitutions {
     }
 
     private static int indexOfByte(Pointer arrayPointer, int arrayLength, char[] bytes) {
-        assert bytes.length > 0;
         if (bytes.length == 1) {
             return AMD64ArrayIndexOf.indexOf1Byte(arrayPointer, arrayLength, (byte) bytes[0]);
         } else if (bytes.length == 2) {

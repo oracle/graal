@@ -102,6 +102,7 @@ mx_benchmark.parsers["temporary_workdir_parser"] = ParserEntry(
 
 class JvmciJdkVm(mx_benchmark.OutputCapturingJavaVm):
     def __init__(self, raw_name, raw_config_name, extra_args):
+        super(JvmciJdkVm, self).__init__()
         self.raw_name = raw_name
         self.raw_config_name = raw_config_name
         self.extra_args = extra_args
@@ -113,7 +114,7 @@ class JvmciJdkVm(mx_benchmark.OutputCapturingJavaVm):
         return self.raw_config_name
 
     def post_process_command_line_args(self, args):
-        return self.extra_args + args
+        return [arg if not callable(arg) else arg() for arg in self.extra_args] + args
 
     def run_java(self, args, out=None, err=None, cwd=None, nonZeroIsFatal=False):
         tag = mx.get_jdk_option().tag
@@ -147,8 +148,11 @@ class JvmciJdkVm(mx_benchmark.OutputCapturingJavaVm):
 mx_benchmark.add_java_vm(JvmciJdkVm('server', 'default', ['-server', '-XX:-EnableJVMCI']), _suite, 2)
 mx_benchmark.add_java_vm(JvmciJdkVm('server', 'hosted', ['-server', '-XX:+EnableJVMCI']), _suite, 3)
 
-def build_jvmci_vm_variants(raw_name, raw_config_name, extra_args, variants, include_default=True, suite=None, priority=0):
-    for prefix, args in [('', ['-XX:+UseJVMCICompiler']), ('hosted-', ['-XX:-UseJVMCICompiler'])]:
+def build_jvmci_vm_variants(raw_name, raw_config_name, extra_args, variants, include_default=True, suite=None, priority=0, hosted=True):
+    prefixes = [('', ['-XX:+UseJVMCICompiler'])]
+    if hosted:
+        prefixes.append(('hosted-', ['-XX:-UseJVMCICompiler']))
+    for prefix, args in prefixes:
         extended_raw_config_name = prefix + raw_config_name
         extended_extra_args = extra_args + args
         if include_default:
@@ -164,8 +168,6 @@ def build_jvmci_vm_variants(raw_name, raw_config_name, extra_args, variants, inc
                 JvmciJdkVm(raw_name, extended_raw_config_name + '-' + var_name, extended_extra_args + var_args), suite, var_priority)
 
 _graal_variants = [
-    ('tracera', ['-Dgraal.TraceRA=true'], 11),
-    ('tracera-bu', ['-Dgraal.TraceRA=true', '-Dgraal.TraceRAPolicy=BottomUpOnly'], 10),
     ('g1gc', ['-XX:+UseG1GC'], 12),
     ('no-comp-oops', ['-XX:-UseCompressedOops'], 0),
     ('no-splitting', ['-Dgraal.TruffleSplitting=false'], 0),
@@ -1673,7 +1675,8 @@ class RenaissanceBenchmarkSuite(mx_benchmark.JavaBenchmarkSuite, mx_benchmark.Av
     def benchmarkList(self, bmSuiteArgs):
         self.validateEnvironment()
         out = mx.OutputCapture()
-        mx.run_java(self.classpathAndMainClass() + ["listraw"], out=out)
+        args = ["listraw", "--list-raw-hidden"] if "--list-hidden" in bmSuiteArgs else ["listraw"]
+        mx.run_java(self.classpathAndMainClass() + args, out=out)
         return str.splitlines(out.data)
 
     def successPatterns(self):

@@ -24,6 +24,8 @@
  */
 package com.oracle.truffle.tools.chromeinspector.types;
 
+import java.text.MessageFormat;
+
 import com.oracle.truffle.api.source.Source;
 
 public final class Script {
@@ -50,8 +52,18 @@ public final class Script {
         return source;
     }
 
+    public CharSequence getCharacters() {
+        if (source.hasCharacters()) {
+            return source.getCharacters();
+        } else {
+            return MessageFormat.format("Can not load source from {0}\n" +
+                            "Please use the --inspect.SourcePath option to point to the source locations.\n" +
+                            "Example: --inspect.SourcePath=/home/joe/project/src\n", url);
+        }
+    }
+
     public String getHash() {
-        CharSequence code = source.getCharacters();
+        CharSequence code = getCharacters();
         // See
         // http://opendatastructures.org/versions/edition-0.1d/ods-java/node33.html#SECTION00832000000000000000
         // Join 5 hash codes:

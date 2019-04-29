@@ -59,6 +59,7 @@ import org.graalvm.word.SignedWord;
 import org.graalvm.word.UnsignedWord;
 import org.graalvm.word.WordFactory;
 
+import com.oracle.svm.core.OS;
 import com.oracle.svm.core.c.ProjectHeaderFile;
 import com.oracle.svm.core.util.VMError;
 import com.oracle.svm.tutorial.CInterfaceTutorial.CInterfaceTutorialDirectives;
@@ -182,7 +183,13 @@ public class CInterfaceTutorial {
 
         IsolateThread currentThread = CurrentIsolate.getCurrentThread();
         /* Call a C function directly. */
-        printingInC(currentThread, data.getCString());
+        if (OS.getCurrent() != OS.WINDOWS) {
+            /*
+             * Calling C functions provided by the main executable from a shared library produced by
+             * the native-image is not yet supported on Windows.
+             */
+            printingInC(currentThread, data.getCString());
+        }
         /* Call a C function indirectly via function pointer. */
         data.getPrintFunction().invoke(currentThread, data.getCString());
     }
@@ -245,8 +252,14 @@ public class CInterfaceTutorial {
     @CEntryPoint(name = "java_print_day")
     protected static void printDay(@SuppressWarnings("unused") IsolateThread thread, DayOfTheWeek day) {
         System.out.format("Day: %s (Java ordinal: %d, C value: %d)%n", day.name(), day.ordinal(), day.getCValue());
-        System.out.format("  follows %s and %s%n", dayOfTheWeekAdd(day, -2), dayOfTheWeekAdd(day, -1));
-        System.out.format("  is followed by %s and %s%n", dayOfTheWeekAdd(day, +1), dayOfTheWeekAdd(day, +2));
+        if (OS.getCurrent() != OS.WINDOWS) {
+            /*
+             * Calling C functions provided by the main executable from a shared library produced by
+             * the native-image is not yet supported on Windows.
+             */
+            System.out.format(" follows %s and %s%n", dayOfTheWeekAdd(day, -2), dayOfTheWeekAdd(day, -1));
+            System.out.format(" is followed by %s and %s%n", dayOfTheWeekAdd(day, +1), dayOfTheWeekAdd(day, +2));
+        }
     }
 
     /*
@@ -263,8 +276,8 @@ public class CInterfaceTutorial {
         @CField
         byte type();
 
-        @CFieldAddress("typename")
-        CCharPointer typename();
+        @CFieldAddress("name")
+        CCharPointer name();
 
         @CFieldAddress("type")
         CCharPointer typePtr();

@@ -44,7 +44,6 @@ import static org.junit.Assert.assertFalse;
 
 import org.junit.Test;
 
-import com.oracle.truffle.api.interop.ForeignAccess;
 import com.oracle.truffle.api.object.DynamicObject;
 import com.oracle.truffle.api.object.Layout;
 import com.oracle.truffle.api.object.ObjectType;
@@ -52,10 +51,6 @@ import com.oracle.truffle.api.object.Shape;
 
 public class ObjectTypeTest {
     private static final ObjectType OBJECT_TYPE = new ObjectType() {
-        @Override
-        public ForeignAccess getForeignAccessFactory(DynamicObject obj) {
-            return null;
-        }
     };
 
     @Test

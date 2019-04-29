@@ -25,6 +25,7 @@
 package com.oracle.svm.hosted.phases;
 
 import java.lang.reflect.Method;
+import java.util.function.Supplier;
 
 import org.graalvm.compiler.nodes.CallTargetNode.InvokeKind;
 import org.graalvm.compiler.nodes.ConstantNode;
@@ -44,7 +45,7 @@ import jdk.vm.ci.meta.ResolvedJavaType;
 
 public class SubstrateClassInitializationPlugin implements ClassInitializationPlugin {
 
-    private static final Method ENSURE_INITIALIZED_METHOD;
+    public static final Method ENSURE_INITIALIZED_METHOD;
 
     static {
         try {
@@ -71,20 +72,28 @@ public class SubstrateClassInitializationPlugin implements ClassInitializationPl
     }
 
     @Override
-    public boolean shouldApply(GraphBuilderContext builder, ResolvedJavaType type) {
-        return !type.isInitialized();
+    public boolean apply(GraphBuilderContext builder, ResolvedJavaType type, Supplier<FrameState> frameState, ValueNode[] classInit) {
+        if (needsRuntimeInitialization(builder.getMethod().getDeclaringClass(), type)) {
+            JavaConstant hub = SubstrateObjectConstant.forObject(host.dynamicHub(type));
+            ValueNode[] args = {ConstantNode.forConstant(hub, builder.getMetaAccess(), builder.getGraph())};
+            builder.handleReplacedInvoke(InvokeKind.Special, builder.getMetaAccess().lookupJavaMethod(ENSURE_INITIALIZED_METHOD), args, false);
+            /*
+             * The classInit value is only registered with Invoke nodes. Since we do not need that,
+             * we ensure it is null.
+             */
+            if (classInit != null) {
+                classInit[0] = null;
+            }
+            return true;
+        }
+        return false;
     }
 
-    @Override
-    public ValueNode apply(GraphBuilderContext builder, ResolvedJavaType type, FrameState frameState) {
-        JavaConstant hub = SubstrateObjectConstant.forObject(host.dynamicHub(type));
-        ValueNode[] args = new ValueNode[]{ConstantNode.forConstant(hub, builder.getMetaAccess(), builder.getGraph())};
-        builder.handleReplacedInvoke(InvokeKind.Special, builder.getMetaAccess().lookupJavaMethod(ENSURE_INITIALIZED_METHOD), args, false);
-
-        /*
-         * The return value is only registered with Invoke nodes, and we do not need that feature
-         * for now. So we can just return null.
-         */
-        return null;
+    /**
+     * Return true if the type needs to be initialized at run time, i.e., it has not been already
+     * initialized during image generation.
+     */
+    static boolean needsRuntimeInitialization(ResolvedJavaType declaringClass, ResolvedJavaType type) {
+        return !declaringClass.equals(type) && !type.isInitialized() && !type.isArray();
     }
 }

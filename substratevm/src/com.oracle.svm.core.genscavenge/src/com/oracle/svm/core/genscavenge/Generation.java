@@ -26,6 +26,7 @@ package com.oracle.svm.core.genscavenge;
 
 import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.Platforms;
+import org.graalvm.word.Pointer;
 
 import com.oracle.svm.core.heap.ObjectVisitor;
 import com.oracle.svm.core.log.Log;
@@ -70,8 +71,15 @@ public abstract class Generation {
      * @param original The original Object to be promoted.
      * @return The promoted Object, either the original if promotion was done by HeapChunk motion,
      *         or a new Object if promotion was done by copying.
+     *
+     *         For debugging GR-9912:
+     * @param objRef The address of the reference to the original object.
+     * @param innerOffset The byte offset of a derived pointer from head of the original object.
+     *            Subtract to get to the head of the original object, add to get back to a derived
+     *            pointer inside the original object.
+     * @param compressed Whether object references are compressed.
      */
-    protected abstract Object promoteObject(Object original);
+    protected abstract Object promoteObject(Object original, Pointer objRef, int innerOffset, boolean compressed);
 
     /** Returns true if the space is a valid Space in this generation, else false. */
     protected abstract boolean isValidSpace(Space space);

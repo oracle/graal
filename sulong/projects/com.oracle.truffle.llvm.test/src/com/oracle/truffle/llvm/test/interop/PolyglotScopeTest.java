@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, Oracle and/or its affiliates.
+ * Copyright (c) 2018, 2019, Oracle and/or its affiliates.
  *
  * All rights reserved.
  *
@@ -29,7 +29,6 @@
  */
 package com.oracle.truffle.llvm.test.interop;
 
-import com.oracle.truffle.llvm.test.interop.values.BoxedTestValue;
 import org.junit.Assert;
 import org.junit.BeforeClass;
 import org.junit.Test;
@@ -37,8 +36,10 @@ import org.junit.runner.RunWith;
 
 import com.oracle.truffle.api.CallTarget;
 import com.oracle.truffle.api.interop.TruffleObject;
+import com.oracle.truffle.llvm.test.interop.values.BoxedStringValue;
 import com.oracle.truffle.tck.TruffleRunner;
 import com.oracle.truffle.tck.TruffleRunner.Inject;
+import org.graalvm.polyglot.Value;
 
 @RunWith(TruffleRunner.class)
 public class PolyglotScopeTest extends InteropTestBase {
@@ -65,6 +66,28 @@ public class PolyglotScopeTest extends InteropTestBase {
         Assert.assertEquals(value, ret);
     }
 
+    public static class TestImportExistsNode extends SulongTestNode {
+
+        public TestImportExistsNode() {
+            super(testLibrary, "test_import_exists");
+        }
+    }
+
+    @Test
+    public void testImportFound(@Inject(TestImportExistsNode.class) CallTarget testImportExists) {
+        runWithPolyglot.getPolyglotContext().getPolyglotBindings().putMember("existing_name", "value");
+        Object ret = testImportExists.call("existing_name");
+        Value retValue = runWithPolyglot.getPolyglotContext().asValue(ret);
+        Assert.assertTrue("exists", retValue.asBoolean());
+    }
+
+    @Test
+    public void testImportNotFound(@Inject(TestImportExistsNode.class) CallTarget testImportExists) {
+        Object ret = testImportExists.call("not_existing_name");
+        Value retValue = runWithPolyglot.getPolyglotContext().asValue(ret);
+        Assert.assertFalse("exists", retValue.asBoolean());
+    }
+
     public static class TestImportVarNode extends SulongTestNode {
 
         public TestImportVarNode() {
@@ -84,7 +107,7 @@ public class PolyglotScopeTest extends InteropTestBase {
     public void testImportBoxed(@Inject(TestImportVarNode.class) CallTarget testImport) {
         String value = "testImportBoxedValue";
         runWithPolyglot.getPolyglotContext().getPolyglotBindings().putMember("boxedName", value);
-        Object ret = testImport.call(new BoxedTestValue("boxedName"));
+        Object ret = testImport.call(new BoxedStringValue("boxedName"));
         Assert.assertEquals(value, ret);
     }
 

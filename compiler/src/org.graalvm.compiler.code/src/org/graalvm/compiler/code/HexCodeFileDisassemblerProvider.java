@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2013, 2016, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2013, 2018, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -78,7 +78,7 @@ public class HexCodeFileDisassemblerProvider implements DisassemblerProvider {
         long start = installedCode == null ? 0L : installedCode.getStart();
         HexCodeFile hcf = new HexCodeFile(code, start, target.arch.getName(), target.wordSize * 8);
         if (compResult != null) {
-            HexCodeFile.addAnnotations(hcf, compResult.getAnnotations());
+            HexCodeFile.addAnnotations(hcf, compResult.getCodeAnnotations());
             addExceptionHandlersComment(compResult, hcf);
             Register fp = regConfig.getFrameRegister();
             RefMapFormatter slotFormatter = new DefaultRefMapFormatter(target.wordSize, fp, 0);

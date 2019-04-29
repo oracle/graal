@@ -58,8 +58,6 @@ import org.junit.Assert;
 import org.junit.Before;
 import org.junit.Test;
 
-import com.oracle.truffle.api.CallTarget;
-import com.oracle.truffle.api.Truffle;
 import com.oracle.truffle.api.debug.Breakpoint;
 import com.oracle.truffle.api.debug.DebugScope;
 import com.oracle.truffle.api.debug.DebugStackFrame;
@@ -68,13 +66,10 @@ import com.oracle.truffle.api.debug.Debugger;
 import com.oracle.truffle.api.debug.DebuggerSession;
 import com.oracle.truffle.api.debug.SuspendAnchor;
 import com.oracle.truffle.api.debug.SuspendedEvent;
-import com.oracle.truffle.api.frame.VirtualFrame;
-import com.oracle.truffle.api.interop.ForeignAccess;
-import com.oracle.truffle.api.interop.ForeignAccess.Factory;
-import com.oracle.truffle.api.interop.ForeignAccess.StandardFactory;
-import com.oracle.truffle.api.interop.Message;
+import com.oracle.truffle.api.interop.InteropLibrary;
 import com.oracle.truffle.api.interop.TruffleObject;
-import com.oracle.truffle.api.nodes.RootNode;
+import com.oracle.truffle.api.library.ExportLibrary;
+import com.oracle.truffle.api.library.ExportMessage;
 import com.oracle.truffle.api.source.SourceSection;
 
 public class SLDebugDirectTest {
@@ -419,17 +414,33 @@ public class SLDebugDirectTest {
         assertTrue("Assuming all requests processed: " + run, run.isEmpty());
     }
 
-    private static class ExecNotifyHandler implements TruffleObject {
+    @ExportLibrary(InteropLibrary.class)
+    @SuppressWarnings({"static-method", "unused"})
+    static class ExecNotifyHandler implements TruffleObject {
 
-        private final ExecNotifyHandlerForeign nhf = new ExecNotifyHandlerForeign(this);
-        private final ForeignAccess access = ForeignAccess.create(null, nhf);
         private final Object pauseLock = new Object();
         private boolean canPause;
         private volatile boolean pauseDone;
 
-        @Override
-        public ForeignAccess getForeignAccess() {
-            return access;
+        @ExportMessage
+        final Object readMember(String member) {
+            setCanPause();
+            return !isPauseDone();
+        }
+
+        @ExportMessage
+        final boolean isMemberReadable(String member) {
+            return true;
+        }
+
+        @ExportMessage
+        final boolean hasMembers() {
+            return true;
+        }
+
+        @ExportMessage
+        final Object getMembers(boolean includeInternal) {
+            throw new AssertionError();
         }
 
         private void waitTillCanPause() {
@@ -460,130 +471,4 @@ public class SLDebugDirectTest {
 
     }
 
-    private static class ExecNotifyHandlerForeign implements StandardFactory, Factory {
-
-        private final ExecNotifyHandler nh;
-
-        ExecNotifyHandlerForeign(ExecNotifyHandler nh) {
-            this.nh = nh;
-        }
-
-        @Override
-        public CallTarget accessIsNull() {
-            throw new UnsupportedOperationException("Not supported yet.");
-        }
-
-        @Override
-        public CallTarget accessIsExecutable() {
-            throw new UnsupportedOperationException("Not supported yet.");
-        }
-
-        @Override
-        public CallTarget accessIsBoxed() {
-            throw new UnsupportedOperationException("Not supported yet.");
-        }
-
-        @Override
-        public CallTarget accessHasSize() {
-            throw new UnsupportedOperationException("Not supported yet.");
-        }
-
-        @Override
-        public CallTarget accessGetSize() {
-            throw new UnsupportedOperationException("Not supported yet.");
-        }
-
-        @Override
-        public CallTarget accessUnbox() {
-            throw new UnsupportedOperationException("Not supported yet.");
-        }
-
-        @Override
-        public CallTarget accessRead() {
-            return Truffle.getRuntime().createCallTarget(new ExecNotifyReadNode(nh));
-        }
-
-        @Override
-        public CallTarget accessWrite() {
-            throw new UnsupportedOperationException("Not supported yet.");
-        }
-
-        @Override
-        public CallTarget accessExecute(int i) {
-            throw new UnsupportedOperationException("Not supported yet.");
-        }
-
-        @Override
-        public CallTarget accessInvoke(int i) {
-            throw new UnsupportedOperationException("Not supported yet.");
-        }
-
-        @Override
-        public CallTarget accessNew(int i) {
-            throw new UnsupportedOperationException("Not supported yet.");
-        }
-
-        @Override
-        public CallTarget accessMessage(Message msg) {
-            throw new UnsupportedOperationException("Not supported yet.");
-        }
-
-        @Override
-        public boolean canHandle(TruffleObject to) {
-            return (to instanceof ExecNotifyHandler);
-        }
-
-        @Override
-        public CallTarget accessKeyInfo() {
-            return null;
-        }
-
-        @Override
-        public CallTarget accessKeys() {
-            return null;
-        }
-
-        @Override
-        public CallTarget accessIsPointer() {
-            throw new UnsupportedOperationException("Not supported yet.");
-        }
-
-        @Override
-        public CallTarget accessAsPointer() {
-            throw new UnsupportedOperationException("Not supported yet.");
-        }
-
-        @Override
-        public CallTarget accessToNative() {
-            throw new UnsupportedOperationException("Not supported yet.");
-        }
-
-        @Override
-        public CallTarget accessIsInstantiable() {
-            throw new UnsupportedOperationException("Not supported yet.");
-        }
-
-        @Override
-        public CallTarget accessHasKeys() {
-            throw new UnsupportedOperationException("Not supported yet.");
-        }
-
-    }
-
-    private static class ExecNotifyReadNode extends RootNode {
-
-        private final ExecNotifyHandler nh;
-
-        ExecNotifyReadNode(ExecNotifyHandler nh) {
-            super(null);
-            this.nh = nh;
-        }
-
-        @Override
-        public Object execute(VirtualFrame vf) {
-            nh.setCanPause();
-            return !nh.isPauseDone();
-        }
-
-    }
 }

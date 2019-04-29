@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2013, 2015, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2013, 2018, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -24,11 +24,10 @@
  */
 package org.graalvm.compiler.truffle.test;
 
-import static org.graalvm.compiler.truffle.runtime.TruffleRuntimeOptions.overrideOptions;
-
 import org.graalvm.compiler.truffle.runtime.TruffleInlining;
 import org.graalvm.compiler.truffle.runtime.TruffleRuntimeOptions;
 import org.graalvm.compiler.truffle.runtime.SharedTruffleRuntimeOptions;
+import org.graalvm.polyglot.Context;
 import org.junit.Assert;
 import org.junit.Test;
 
@@ -173,7 +172,7 @@ public class BasicTruffleInliningTest extends TruffleInliningTest {
                 buildDecisions(true);
         // @formatter:on
         assertNotInlined(decisions, "callee");
-        Assert.assertTrue("Wrong reason for not inlining!", decisions.getCallSites().get(0).getProfile().getFailedReason().startsWith("deepNodeCount * callSites  >"));
+        Assert.assertTrue("Wrong reason for not inlining!", decisions.getCallSites().get(0).getProfile().getDebugProperties().get("reason").toString().startsWith("deepNodeCount * callSites >"));
     }
 
     @Test
@@ -221,7 +220,9 @@ public class BasicTruffleInliningTest extends TruffleInliningTest {
     @Test
     @SuppressWarnings("try")
     public void testTruffleFunctionInliningFlag() {
-        try (TruffleRuntimeOptions.TruffleRuntimeOptionsOverrideScope scope = overrideOptions(SharedTruffleRuntimeOptions.TruffleFunctionInlining, false)) {
+        Context context = Context.newBuilder().allowExperimentalOptions(true).option("engine.Inlining", "false").build();
+        context.enter();
+        try {
             // @formatter:off
             TruffleInlining decisions = builder.
                     target("callee").
@@ -230,6 +231,9 @@ public class BasicTruffleInliningTest extends TruffleInliningTest {
                     buildDecisions();
             // @formatter:on
             Assert.assertTrue("Decisions where made!", decisions.getCallSites().isEmpty());
+        } finally {
+            context.leave();
+            context.close();
         }
     }
 }

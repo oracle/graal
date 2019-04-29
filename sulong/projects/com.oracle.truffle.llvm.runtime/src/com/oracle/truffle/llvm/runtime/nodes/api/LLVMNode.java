@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2016, 2018, Oracle and/or its affiliates.
+ * Copyright (c) 2016, 2019, Oracle and/or its affiliates.
  *
  * All rights reserved.
  *
@@ -36,10 +36,8 @@ import com.oracle.truffle.api.TruffleLanguage.ContextReference;
 import com.oracle.truffle.api.dsl.TypeSystemReference;
 import com.oracle.truffle.api.instrumentation.StandardTags;
 import com.oracle.truffle.api.instrumentation.Tag;
-import com.oracle.truffle.api.interop.Message;
 import com.oracle.truffle.api.interop.TruffleObject;
 import com.oracle.truffle.api.nodes.Node;
-import com.oracle.truffle.api.nodes.RootNode;
 import com.oracle.truffle.api.source.SourceSection;
 import com.oracle.truffle.llvm.runtime.LLVMContext;
 import com.oracle.truffle.llvm.runtime.LLVMFunctionDescriptor;
@@ -74,52 +72,17 @@ public abstract class LLVMNode extends Node {
 
     public static final int ADDRESS_SIZE_IN_BYTES = 8;
 
-    public final ContextReference<LLVMContext> getContextReference() {
-        return getLLVMLanguage().getContextReference();
-    }
-
-    public final LLVMLanguage getLLVMLanguage() {
-        LLVMLanguage ret = null;
-
-        final RootNode rootNode = getRootNode();
-        if (rootNode != null) {
-            // for the debugger nodes, a RootNode is not available
-            ret = rootNode.getLanguage(LLVMLanguage.class);
-        }
-
-        if (ret == null) {
-            ret = LLVMLanguage.getLanguage();
-        }
-
-        return ret;
-    }
-
-    public final NodeFactory getNodeFactory() {
+    public static NodeFactory getNodeFactory() {
         CompilerAsserts.neverPartOfCompilation();
-        RootNode rootNode = getRootNode();
-        if (rootNode != null && rootNode.getLanguage(LLVMLanguage.class) != null) {
-            return rootNode.getLanguage(LLVMLanguage.class).getContextReference().get().getNodeFactory();
-        } else {
-            return LLVMLanguage.getLanguage().getContextReference().get().getNodeFactory();
-        }
+        return LLVMLanguage.getLLVMContextReference().get().getNodeFactory();
     }
 
-    public final LLVMMemory getLLVMMemory() {
-        RootNode rootNode = getRootNode();
-        if (rootNode != null && rootNode.getLanguage(LLVMLanguage.class) != null) {
-            return rootNode.getLanguage(LLVMLanguage.class).getCapability(LLVMMemory.class);
-        } else {
-            return LLVMLanguage.getLanguage().getCapability(LLVMMemory.class);
-        }
+    public static LLVMMemory getLLVMMemory() {
+        return LLVMLanguage.getLanguage().getCapability(LLVMMemory.class);
     }
 
-    public final UnsafeArrayAccess getUnsafeArrayAccess() {
-        RootNode rootNode = getRootNode();
-        if (rootNode != null && rootNode.getLanguage(LLVMLanguage.class) != null) {
-            return rootNode.getLanguage(LLVMLanguage.class).getCapability(UnsafeArrayAccess.class);
-        } else {
-            return LLVMLanguage.getLanguage().getCapability(UnsafeArrayAccess.class);
-        }
+    public static UnsafeArrayAccess getUnsafeArrayAccess() {
+        return LLVMLanguage.getLanguage().getCapability(UnsafeArrayAccess.class);
     }
 
     protected static PrintStream nativeCallStatisticsStream(ContextReference<LLVMContext> context) {
@@ -162,20 +125,5 @@ public abstract class LLVMNode extends Node {
     protected static boolean isSameObject(Object a, Object b) {
         // used as a workaround for a DSL bug
         return a == b;
-    }
-
-    protected static Node createIsNull() {
-        CompilerAsserts.neverPartOfCompilation();
-        return Message.IS_NULL.createNode();
-    }
-
-    protected static Node createIsBoxed() {
-        CompilerAsserts.neverPartOfCompilation();
-        return Message.IS_BOXED.createNode();
-    }
-
-    protected static Node createUnbox() {
-        CompilerAsserts.neverPartOfCompilation();
-        return Message.UNBOX.createNode();
     }
 }

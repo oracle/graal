@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2016, 2018, Oracle and/or its affiliates.
+ * Copyright (c) 2016, 2019, Oracle and/or its affiliates.
  *
  * All rights reserved.
  *
@@ -39,21 +39,25 @@ import com.oracle.truffle.api.CompilerDirectives.CompilationFinal;
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.RootCallTarget;
 import com.oracle.truffle.api.Truffle;
-import com.oracle.truffle.api.interop.ForeignAccess;
-import com.oracle.truffle.api.interop.InteropException;
-import com.oracle.truffle.api.interop.Message;
+import com.oracle.truffle.api.dsl.Cached;
+import com.oracle.truffle.api.interop.ArityException;
+import com.oracle.truffle.api.interop.InteropLibrary;
+import com.oracle.truffle.api.interop.InvalidArrayIndexException;
 import com.oracle.truffle.api.interop.TruffleObject;
+import com.oracle.truffle.api.interop.UnknownIdentifierException;
 import com.oracle.truffle.api.interop.UnsupportedMessageException;
+import com.oracle.truffle.api.interop.UnsupportedTypeException;
+import com.oracle.truffle.api.library.ExportLibrary;
+import com.oracle.truffle.api.library.ExportMessage;
 import com.oracle.truffle.llvm.runtime.LLVMContext.ExternalLibrary;
 import com.oracle.truffle.llvm.runtime.NFIContextExtension.NativeLookupResult;
 import com.oracle.truffle.llvm.runtime.debug.type.LLVMSourceFunctionType;
 import com.oracle.truffle.llvm.runtime.except.LLVMLinkerException;
 import com.oracle.truffle.llvm.runtime.global.LLVMGlobal;
-import com.oracle.truffle.llvm.runtime.interop.LLVMFunctionMessageResolutionForeign;
+import com.oracle.truffle.llvm.runtime.interop.LLVMForeignCallNode;
 import com.oracle.truffle.llvm.runtime.interop.LLVMInternalTruffleObject;
 import com.oracle.truffle.llvm.runtime.interop.access.LLVMInteropType;
 import com.oracle.truffle.llvm.runtime.nodes.api.LLVMExpressionNode;
-import com.oracle.truffle.llvm.runtime.nodes.api.LLVMObjectNativeLibrary;
 import com.oracle.truffle.llvm.runtime.pointer.LLVMNativePointer;
 import com.oracle.truffle.llvm.runtime.types.FunctionType;
 
@@ -61,7 +65,9 @@ import com.oracle.truffle.llvm.runtime.types.FunctionType;
  * Our implementation assumes that there is a 1:1 relationship between callable functions and
  * {@link LLVMFunctionDescriptor}s.
  */
-public final class LLVMFunctionDescriptor implements LLVMSymbol, LLVMInternalTruffleObject, Comparable<LLVMFunctionDescriptor>, LLVMObjectNativeLibrary.Provider {
+@ExportLibrary(InteropLibrary.class)
+@SuppressWarnings("static-method")
+public final class LLVMFunctionDescriptor implements LLVMSymbol, LLVMInternalTruffleObject, Comparable<LLVMFunctionDescriptor> {
     private static final long SULONG_FUNCTION_POINTER_TAG = 0xDEAD_FACE_0000_0000L;
 
     private final FunctionType type;
@@ -169,8 +175,9 @@ public final class LLVMFunctionDescriptor implements LLVMSymbol, LLVMInternalTru
                 wrapper = nfiContextExtension.createNativeWrapper(descriptor);
                 if (wrapper != null) {
                     try {
-                        pointer = LLVMNativePointer.create(ForeignAccess.sendAsPointer(Message.AS_POINTER.createNode(), wrapper));
+                        pointer = LLVMNativePointer.create(InteropLibrary.getFactory().getUncached().asPointer(wrapper));
                     } catch (UnsupportedMessageException e) {
+                        CompilerDirectives.transferToInterpreter();
                         throw new AssertionError(e);
                     }
                 }
@@ -273,9 +280,11 @@ public final class LLVMFunctionDescriptor implements LLVMSymbol, LLVMInternalTru
 
     private void setFunction(Function newFunction) {
         CompilerDirectives.transferToInterpreterAndInvalidate();
-        functionAssumption.invalidate();
-        this.function = newFunction;
-        this.functionAssumption = Truffle.getRuntime().createAssumption("LLVMFunctionDescriptor.functionAssumption");
+        synchronized (this) {
+            functionAssumption.invalidate();
+            this.function = newFunction;
+            this.functionAssumption = Truffle.getRuntime().createAssumption("LLVMFunctionDescriptor.functionAssumption");
+        }
     }
 
     public Function getFunction() {
@@ -354,6 +363,7 @@ public final class LLVMFunctionDescriptor implements LLVMSymbol, LLVMInternalTru
             this.library = lib;
             setFunction(newFunction);
         } else {
+            CompilerDirectives.transferToInterpreter();
             throw new AssertionError("Found multiple definitions of function " + getName() + ".");
         }
     }
@@ -422,73 +432,99 @@ public final class LLVMFunctionDescriptor implements LLVMSymbol, LLVMInternalTru
         return context;
     }
 
-    @Override
-    public ForeignAccess getForeignAccess() {
-        return LLVMFunctionMessageResolutionForeign.ACCESS;
-    }
-
-    @Override
-    public LLVMObjectNativeLibrary createLLVMObjectNativeLibrary() {
-        return new LLVMFunctionDescriptorNativeLibrary();
-    }
-
-    private static final class LLVMFunctionDescriptorNativeLibrary extends LLVMObjectNativeLibrary {
-
-        @Override
-        public boolean guard(Object obj) {
-            return obj instanceof LLVMFunctionDescriptor;
-        }
-
-        @Override
-        public boolean isPointer(Object obj) {
-            LLVMFunctionDescriptor fd = (LLVMFunctionDescriptor) obj;
-            return fd.isPointer();
-        }
-
-        @Override
-        public long asPointer(Object obj) throws InteropException {
-            LLVMFunctionDescriptor fd = (LLVMFunctionDescriptor) obj;
-            return fd.asPointer();
-        }
-
-        @Override
-        public LLVMFunctionDescriptor toNative(Object obj) throws InteropException {
-            LLVMFunctionDescriptor fd = (LLVMFunctionDescriptor) obj;
-            return fd.toNative();
-        }
-
-        @Override
-        public boolean isNull(Object obj) {
-            return false;
-        }
-    }
-
-    private long asPointer() {
+    @ExportMessage
+    long asPointer() throws UnsupportedMessageException {
         if (isPointer()) {
             return nativePointer;
         }
         CompilerDirectives.transferToInterpreter();
-        throw UnsupportedMessageException.raise(Message.AS_POINTER);
+        throw UnsupportedMessageException.create();
     }
 
-    private boolean isPointer() {
+    @ExportMessage
+    boolean isPointer() {
         return nativeWrapper != null;
     }
 
     /**
      * Gets a pointer to this function that can be stored in native memory.
      */
-    private LLVMFunctionDescriptor toNative() {
+    @ExportMessage
+    LLVMFunctionDescriptor toNative() {
         if (nativeWrapper == null) {
             CompilerDirectives.transferToInterpreterAndInvalidate();
             nativeWrapper = getFunction().createNativeWrapper(this);
             try {
-                nativePointer = ForeignAccess.sendAsPointer(Message.AS_POINTER.createNode(), nativeWrapper);
+                nativePointer = InteropLibrary.getFactory().getUncached().asPointer(nativeWrapper);
             } catch (UnsupportedMessageException ex) {
                 nativePointer = tagSulongFunctionPointer(functionId);
             }
         }
         return this;
+    }
+
+    @ExportMessage
+    boolean isExecutable() {
+        return true;
+    }
+
+    @ExportMessage
+    Object execute(Object[] args,
+                    @Cached LLVMForeignCallNode callNode) throws ArityException, UnsupportedTypeException {
+        return callNode.executeCall(this, args);
+    }
+
+    @ExportMessage
+    boolean hasMembers() {
+        return true;
+    }
+
+    @ExportLibrary(InteropLibrary.class)
+    static final class FunctionMembers implements TruffleObject {
+
+        @ExportMessage
+        boolean hasArrayElements() {
+            return true;
+        }
+
+        @ExportMessage
+        long getArraySize() {
+            return 1;
+        }
+
+        @ExportMessage
+        boolean isArrayElementReadable(long index) {
+            return index == 0;
+        }
+
+        @ExportMessage
+        Object readArrayElement(long index) throws InvalidArrayIndexException {
+            if (index == 0) {
+                return "bind";
+            } else {
+                throw InvalidArrayIndexException.create(index);
+            }
+        }
+    }
+
+    @ExportMessage
+    Object getMembers(@SuppressWarnings("unused") boolean includeInternal) {
+        return new FunctionMembers();
+    }
+
+    @SuppressWarnings("static-method")
+    @ExportMessage
+    boolean isMemberInvocable(String member) {
+        return "bind".equals(member);
+    }
+
+    @ExportMessage
+    Object invokeMember(String member, @SuppressWarnings("unused") Object[] args) throws UnknownIdentifierException {
+        if ("bind".equals(member)) {
+            return this;
+        } else {
+            throw UnknownIdentifierException.create(member);
+        }
     }
 
     @Override

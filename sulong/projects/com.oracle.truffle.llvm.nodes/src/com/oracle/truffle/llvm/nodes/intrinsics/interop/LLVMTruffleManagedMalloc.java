@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2016, 2018, Oracle and/or its affiliates.
+ * Copyright (c) 2016, 2019, Oracle and/or its affiliates.
  *
  * All rights reserved.
  *
@@ -30,14 +30,15 @@
 package com.oracle.truffle.llvm.nodes.intrinsics.interop;
 
 import com.oracle.truffle.api.CompilerDirectives;
+import com.oracle.truffle.api.dsl.Cached;
+import com.oracle.truffle.api.dsl.Cached.Shared;
 import com.oracle.truffle.api.dsl.NodeChild;
 import com.oracle.truffle.api.dsl.Specialization;
-import com.oracle.truffle.api.interop.CanResolve;
-import com.oracle.truffle.api.interop.ForeignAccess;
-import com.oracle.truffle.api.interop.MessageResolution;
-import com.oracle.truffle.api.interop.Resolve;
-import com.oracle.truffle.api.interop.TruffleObject;
-import com.oracle.truffle.api.nodes.Node;
+import com.oracle.truffle.api.interop.InteropLibrary;
+import com.oracle.truffle.api.interop.InvalidArrayIndexException;
+import com.oracle.truffle.api.library.ExportLibrary;
+import com.oracle.truffle.api.library.ExportMessage;
+import com.oracle.truffle.api.profiles.BranchProfile;
 import com.oracle.truffle.llvm.nodes.intrinsics.llvm.LLVMIntrinsic;
 import com.oracle.truffle.llvm.runtime.interop.LLVMInternalTruffleObject;
 import com.oracle.truffle.llvm.runtime.interop.convert.ForeignToLLVM.ForeignToLLVMType;
@@ -51,51 +52,7 @@ import com.oracle.truffle.llvm.runtime.pointer.LLVMManagedPointer;
 @NodeChild(type = LLVMExpressionNode.class)
 public abstract class LLVMTruffleManagedMalloc extends LLVMIntrinsic {
 
-    @MessageResolution(receiverType = ManagedMallocObject.class)
-    public static class ManagedMallocForeignAccess {
-
-        @CanResolve
-        public abstract static class Check extends Node {
-
-            protected static boolean test(TruffleObject receiver) {
-                return receiver instanceof ManagedMallocObject;
-            }
-        }
-
-        @Resolve(message = "HAS_SIZE")
-        public abstract static class ForeignHasSizeNode extends Node {
-
-            protected Object access(@SuppressWarnings("unused") ManagedMallocObject malloc) {
-                return true;
-            }
-        }
-
-        @Resolve(message = "GET_SIZE")
-        public abstract static class ForeignGetSizeNode extends Node {
-
-            protected Object access(ManagedMallocObject malloc) {
-                return malloc.getSize();
-            }
-        }
-
-        @Resolve(message = "READ")
-        public abstract static class ForeignReadNode extends Node {
-
-            protected Object access(ManagedMallocObject malloc, int index) {
-                return malloc.get(index);
-            }
-        }
-
-        @Resolve(message = "WRITE")
-        public abstract static class ForeignWriteNode extends Node {
-
-            protected Object access(ManagedMallocObject malloc, int index, Object value) {
-                malloc.set(index, value);
-                return value;
-            }
-        }
-    }
-
+    @ExportLibrary(InteropLibrary.class)
     public static class ManagedMallocObject implements LLVMObjectAccess, LLVMInternalTruffleObject {
 
         private final Object[] contents;
@@ -112,13 +69,43 @@ public abstract class LLVMTruffleManagedMalloc extends LLVMIntrinsic {
             contents[index] = value;
         }
 
-        public int getSize() {
+        @ExportMessage
+        boolean hasArrayElements() {
+            return true;
+        }
+
+        @ExportMessage
+        long getArraySize() {
             return contents.length;
         }
 
-        @Override
-        public ForeignAccess getForeignAccess() {
-            return ManagedMallocForeignAccessForeign.ACCESS;
+        @ExportMessage(name = "isArrayElementReadable")
+        @ExportMessage(name = "isArrayElementModifiable")
+        @ExportMessage(name = "isArrayElementInsertable")
+        boolean isArrayElementValid(long index) {
+            return 0 <= index && index < getArraySize();
+        }
+
+        @ExportMessage
+        Object readArrayElement(long index,
+                        @Shared("exception") @Cached BranchProfile exception) throws InvalidArrayIndexException {
+            if (isArrayElementValid(index)) {
+                return get((int) index);
+            } else {
+                exception.enter();
+                throw InvalidArrayIndexException.create(index);
+            }
+        }
+
+        @ExportMessage
+        void writeArrayElement(long index, Object value,
+                        @Shared("exception") @Cached BranchProfile exception) throws InvalidArrayIndexException {
+            if (isArrayElementValid(index)) {
+                set((int) index, value);
+            } else {
+                exception.enter();
+                throw InvalidArrayIndexException.create(index);
+            }
         }
 
         @Override

@@ -38,18 +38,11 @@ public class JNIThreadLocalEnvironment {
 
     static final FastThreadLocalBytes<JNIEnvironment> jniFunctions = FastThreadLocalFactory.createBytes(() -> SizeOf.get(JNIEnvironment.class));
 
-    public static boolean isInitialized() {
-        JNIEnvironment env = jniFunctions.getAddress();
-        return env.getFunctions().isNonNull();
-    }
-
-    public static void initialize() {
-        assert !isInitialized();
-        JNIEnvironment env = jniFunctions.getAddress();
-        env.setFunctions(JNIFunctionTables.singleton().getGlobalFunctionTable());
-    }
-
     public static JNIEnvironment getAddress() {
-        return jniFunctions.getAddress();
+        JNIEnvironment env = jniFunctions.getAddress();
+        if (env.getFunctions().isNull()) {
+            env.setFunctions(JNIFunctionTables.singleton().getGlobalFunctionTable());
+        }
+        return env;
     }
 }

@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2011, 2016, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2011, 2018, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -136,5 +136,9 @@ public abstract class CallTargetNode extends ValueNode implements LIRLowerable {
 
     public void setInvokeKind(InvokeKind kind) {
         this.invokeKind = kind;
+    }
+
+    public Invoke invoke() {
+        return (Invoke) this.usages().first();
     }
 }

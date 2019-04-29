@@ -33,7 +33,7 @@ import org.junit.Test;
 import java.util.function.Predicate;
 
 public class AArch64AddSubShiftTest extends AArch64MatchRuleTest {
-    private static final Predicate<LIRInstruction> predicate = op -> (op instanceof AArch64ArithmeticOp.AddSubShiftOp);
+    private static final Predicate<LIRInstruction> predicate = op -> (op instanceof AArch64ArithmeticOp.BinaryShiftOp);
 
     /**
      * addSubShift match rule test for add operation with int type.

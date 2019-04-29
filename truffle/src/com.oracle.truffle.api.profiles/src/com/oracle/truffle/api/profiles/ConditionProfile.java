@@ -118,6 +118,15 @@ public abstract class ConditionProfile extends Profile {
         }
     }
 
+    /**
+     * Returns the uncached version of the profile. The uncached version of a profile does nothing.
+     *
+     * @since 1.0
+     */
+    public static ConditionProfile getUncached() {
+        return Disabled.INSTANCE;
+    }
+
     static final class Disabled extends ConditionProfile {
 
         static final ConditionProfile INSTANCE = new Disabled();

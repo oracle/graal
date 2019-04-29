@@ -26,8 +26,8 @@ package org.graalvm.compiler.truffle.runtime.hotspot;
 
 import static org.graalvm.compiler.truffle.runtime.SharedTruffleRuntimeOptions.TraceTruffleStackTraceLimit;
 import static org.graalvm.compiler.truffle.runtime.SharedTruffleRuntimeOptions.TraceTruffleTransferToInterpreter;
-import static org.graalvm.compiler.truffle.runtime.hotspot.UnsafeAccess.UNSAFE;
 
+import java.lang.reflect.Field;
 import java.lang.reflect.InvocationTargetException;
 import java.lang.reflect.Method;
 import java.nio.file.FileSystems;
@@ -44,6 +44,7 @@ import org.graalvm.compiler.truffle.common.hotspot.HotSpotTruffleCompilerRuntime
 import org.graalvm.compiler.truffle.runtime.BackgroundCompileQueue;
 import org.graalvm.compiler.truffle.runtime.GraalTruffleRuntime;
 import org.graalvm.compiler.truffle.runtime.OptimizedCallTarget;
+import org.graalvm.compiler.truffle.runtime.OptimizedOSRLoopNode;
 import org.graalvm.compiler.truffle.runtime.TruffleCallBoundary;
 import org.graalvm.compiler.truffle.runtime.TruffleRuntimeOptions;
 
@@ -69,6 +70,7 @@ import jdk.vm.ci.meta.ResolvedJavaMethod;
 import jdk.vm.ci.meta.ResolvedJavaType;
 import jdk.vm.ci.meta.SpeculationLog;
 import jdk.vm.ci.runtime.JVMCI;
+import sun.misc.Unsafe;
 
 /**
  * HotSpot specific implementation of a Graal-enabled Truffle runtime.
@@ -78,6 +80,25 @@ import jdk.vm.ci.runtime.JVMCI;
  * native-image shared library).
  */
 public abstract class AbstractHotSpotTruffleRuntime extends GraalTruffleRuntime implements HotSpotTruffleCompilerRuntime {
+    private static final sun.misc.Unsafe UNSAFE;
+
+    static {
+        UNSAFE = getUnsafe();
+    }
+
+    private static Unsafe getUnsafe() {
+        try {
+            return Unsafe.getUnsafe();
+        } catch (SecurityException e) {
+        }
+        try {
+            Field theUnsafeInstance = Unsafe.class.getDeclaredField("theUnsafe");
+            theUnsafeInstance.setAccessible(true);
+            return (Unsafe) theUnsafeInstance.get(Unsafe.class);
+        } catch (Exception e) {
+            throw new RuntimeException("exception while trying to get Unsafe.theUnsafe via reflection:", e);
+        }
+    }
 
     /**
      * Contains lazily computed data such as the compilation queue and helper for stack
@@ -90,6 +111,8 @@ public abstract class AbstractHotSpotTruffleRuntime extends GraalTruffleRuntime 
             runtime.installDefaultListeners();
         }
     }
+
+    private Boolean traceTransferToInterpreter;
 
     public AbstractHotSpotTruffleRuntime() {
         super(Arrays.asList(HotSpotOptimizedCallTarget.class));
@@ -174,6 +197,21 @@ public abstract class AbstractHotSpotTruffleRuntime extends GraalTruffleRuntime 
         callTarget.setInstalledCode(installedCode);
     }
 
+    /**
+     * Creates a log that {@linkplain HotSpotSpeculationLog#managesFailedSpeculations() manages} a
+     * native failed speculations list. An important invariant is that an nmethod compiled with this
+     * log can never be executing once the log object dies. When the log object dies, it frees the
+     * failed speculations list thus invalidating the
+     * {@linkplain HotSpotSpeculationLog#getFailedSpeculationsAddress() failed speculations address}
+     * embedded in the nmethod. If the nmethod were to execute after this point and fail a
+     * speculation, it would append the failed speculation to the already freed list.
+     * <p>
+     * Truffle ensures this cannot happen as it only attaches managed speculation logs to
+     * {@link OptimizedCallTarget}s and {@link OptimizedOSRLoopNode}s. Executions of nmethods
+     * compiled for an {@link OptimizedCallTarget} or {@link OptimizedOSRLoopNode} object will have
+     * a strong reference to the object (i.e., as the receiver). This guarantees that such an
+     * nmethod cannot be executing after the object has died.
+     */
     @Override
     public SpeculationLog createSpeculationLog() {
         return new HotSpotSpeculationLog();
@@ -294,7 +332,11 @@ public abstract class AbstractHotSpotTruffleRuntime extends GraalTruffleRuntime 
     @Override
     public void notifyTransferToInterpreter() {
         CompilerAsserts.neverPartOfCompilation();
-        if (TruffleRuntimeOptions.getValue(TraceTruffleTransferToInterpreter)) {
+        if (traceTransferToInterpreter == null) {
+            this.traceTransferToInterpreter = TruffleRuntimeOptions.getValue(TraceTruffleTransferToInterpreter);
+        }
+
+        if (traceTransferToInterpreter) {
             TraceTransferToInterpreterHelper.traceTransferToInterpreter(this, this.getTruffleCompiler());
         }
     }

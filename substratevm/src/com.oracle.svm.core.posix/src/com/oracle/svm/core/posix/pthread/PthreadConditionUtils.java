@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2016, 2017, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2016, 2019, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -26,6 +26,7 @@ package com.oracle.svm.core.posix.pthread;
 
 import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.StackValue;
+import org.graalvm.nativeimage.impl.InternalPlatform;
 import org.graalvm.word.WordFactory;
 
 import com.oracle.svm.core.annotate.Uninterruptible;
@@ -49,7 +50,7 @@ public class PthreadConditionUtils {
             return status;
         }
 
-        if (Platform.includedIn(Platform.LINUX.class)) {
+        if (Platform.includedIn(InternalPlatform.LINUX_AND_JNI.class)) {
             /*
              * On Linux, CLOCK_MONOTONIC is also used in the implementation of System.nanoTime, so
              * we can safely assume that it is present.
@@ -69,7 +70,7 @@ public class PthreadConditionUtils {
          * We need the real-time clock to compute absolute deadlines when a conditional wait should
          * return, but calling System.currentTimeMillis reduces the resolution too much.
          */
-        if (Platform.includedIn(Platform.LINUX.class)) {
+        if (Platform.includedIn(InternalPlatform.LINUX_AND_JNI.class)) {
             /*
              * Linux is easy, we can just access the clock that we registered as the attribute when
              * the condition was created.
@@ -97,7 +98,7 @@ public class PthreadConditionUtils {
         assert delayNanos >= 0;
         long sec = TimeUtils.addOrMaxValue(currentTimespec.tv_sec(), TimeUtils.divideNanosToSeconds(delayNanos));
         long nsec = currentTimespec.tv_nsec() + TimeUtils.remainderNanosToSeconds(delayNanos);
-        if (nsec > TimeUtils.nanosPerSecond) {
+        if (nsec >= TimeUtils.nanosPerSecond) {
             sec = TimeUtils.addOrMaxValue(sec, 1);
             nsec -= TimeUtils.nanosPerSecond;
         }

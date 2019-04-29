@@ -64,7 +64,7 @@ public class LanguageSPITestLanguage extends TruffleLanguage<LanguageContext> {
     static final AtomicInteger instanceCount = new AtomicInteger();
 
     static class LanguageContext {
-
+        private volatile boolean initialized;
         int disposeCalled;
         Env env;
         Map<String, Object> config;
@@ -115,16 +115,23 @@ public class LanguageSPITestLanguage extends TruffleLanguage<LanguageContext> {
     }
 
     @Override
-    protected void disposeContext(LanguageContext context) {
-        assertSame(getContext(), context);
-        assertSame(context, getContextReference().get());
+    protected void initializeContext(LanguageContext context) throws Exception {
+        context.initialized = true;
+    }
 
-        assertSame(context, new RootNode(this) {
-            @Override
-            public Object execute(VirtualFrame frame) {
-                return null;
-            }
-        }.getLanguage(LanguageSPITestLanguage.class).getContextReference().get());
+    @Override
+    protected void disposeContext(LanguageContext context) {
+        if (context.initialized) {
+            assertSame(getContext(), context);
+            assertSame(context, getContextReference().get());
+
+            assertSame(context, new RootNode(this) {
+                @Override
+                public Object execute(VirtualFrame frame) {
+                    return lookupContextReference(LanguageSPITestLanguage.class).get();
+                }
+            }.execute(null));
+        }
 
         context.disposeCalled++;
     }
@@ -133,5 +140,4 @@ public class LanguageSPITestLanguage extends TruffleLanguage<LanguageContext> {
     protected boolean isObjectOfLanguage(Object object) {
         return false;
     }
-
 }

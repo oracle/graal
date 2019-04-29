@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2011, 2015, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2011, 2018, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -138,11 +138,19 @@ public class PointerEqualsNode extends CompareNode implements BinaryCommutative<
         } else if (forX.stamp(view).alwaysDistinct(forY.stamp(view))) {
             return LogicConstantNode.contradiction();
         } else if (((AbstractPointerStamp) forX.stamp(view)).alwaysNull()) {
-            return IsNullNode.create(forY);
+            return nullSynonym(forY, forX);
         } else if (((AbstractPointerStamp) forY.stamp(view)).alwaysNull()) {
-            return IsNullNode.create(forX);
+            return nullSynonym(forX, forY);
         } else {
             return null;
+        }
+    }
+
+    private static LogicNode nullSynonym(ValueNode nonNullValue, ValueNode nullValue) {
+        if (nullValue.isConstant()) {
+            return IsNullNode.create(nonNullValue, nullValue.asJavaConstant());
+        } else {
+            return IsNullNode.create(nonNullValue);
         }
     }
 

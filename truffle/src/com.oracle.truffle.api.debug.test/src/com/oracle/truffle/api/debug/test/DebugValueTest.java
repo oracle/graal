@@ -58,14 +58,15 @@ import com.oracle.truffle.api.debug.Debugger;
 import com.oracle.truffle.api.debug.DebuggerSession;
 import com.oracle.truffle.api.debug.SuspendedEvent;
 import com.oracle.truffle.api.instrumentation.test.InstrumentationTestLanguage;
-import com.oracle.truffle.api.interop.ForeignAccess;
-import com.oracle.truffle.api.interop.KeyInfo;
-import com.oracle.truffle.api.interop.MessageResolution;
-import com.oracle.truffle.api.interop.Resolve;
+import com.oracle.truffle.api.interop.InteropLibrary;
+import com.oracle.truffle.api.interop.InvalidArrayIndexException;
 import com.oracle.truffle.api.interop.TruffleObject;
-import com.oracle.truffle.api.nodes.Node;
+import com.oracle.truffle.api.interop.UnsupportedMessageException;
+import com.oracle.truffle.api.library.ExportLibrary;
+import com.oracle.truffle.api.library.ExportMessage;
 import com.oracle.truffle.api.source.SourceSection;
 
+@SuppressWarnings({"static-method", "unused"})
 public class DebugValueTest extends AbstractDebugTest {
 
     @Test
@@ -184,49 +185,45 @@ public class DebugValueTest extends AbstractDebugTest {
         assertTrue(suspended[0]);
     }
 
+    @ExportLibrary(InteropLibrary.class)
     static final class NoAttributesTruffleObject implements TruffleObject {
 
-        @Override
-        public ForeignAccess getForeignAccess() {
-            return NoAttributesMessageResolutionForeign.ACCESS;
+        @ExportMessage
+        boolean hasMembers() {
+            return true;
         }
 
-        public static boolean isInstance(TruffleObject obj) {
-            return obj instanceof NoAttributesTruffleObject;
+        @ExportMessage
+        Object getMembers(boolean internal) {
+            return new PropertyKeysTruffleObject();
         }
 
-        @MessageResolution(receiverType = NoAttributesTruffleObject.class)
-        static final class NoAttributesMessageResolution {
+        @ExportMessage
+        boolean isMemberReadable(String member) {
+            return true;
+        }
 
-            @Resolve(message = "HAS_KEYS")
-            abstract static class NoAttributesHasKeysNode extends Node {
+        @ExportMessage
+        boolean isMemberModifiable(String member) {
+            return true;
+        }
 
-                @SuppressWarnings("unused")
-                public Object access(NoAttributesTruffleObject ato) {
-                    return true;
-                }
-            }
+        @ExportMessage
+        boolean isMemberInsertable(String member) {
+            return true;
+        }
 
-            @Resolve(message = "KEYS")
-            abstract static class NoAttributesKeysNode extends Node {
+        @ExportMessage
+        void writeMember(String member, Object value) {
+        }
 
-                @SuppressWarnings("unused")
-                public Object access(NoAttributesTruffleObject ato) {
-                    return new PropertyKeysTruffleObject();
-                }
-            }
-
-            @Resolve(message = "READ")
-            abstract static class NoAttributesReadNode extends Node {
-
-                @SuppressWarnings("unused")
-                public Object access(NoAttributesTruffleObject ato, String name) {
-                    return "propertyValue";
-                }
-            }
+        @ExportMessage
+        Object readMember(String member) {
+            return "propertyValue";
         }
     }
 
+    @ExportLibrary(InteropLibrary.class)
     static final class ModifiableAttributesTruffleObject implements TruffleObject {
 
         private boolean isReadable;
@@ -235,9 +232,57 @@ public class DebugValueTest extends AbstractDebugTest {
         private boolean hasWriteSideEffects;
         private boolean isInternal;
 
-        @Override
-        public ForeignAccess getForeignAccess() {
-            return ModifiableAttributesMessageResolutionForeign.ACCESS;
+        @ExportMessage
+        boolean hasMembers() {
+            return true;
+        }
+
+        @ExportMessage
+        Object getMembers(boolean internal) {
+            if (internal || isInternal == internal) {
+                return new PropertyKeysTruffleObject();
+            } else {
+                return new EmptyKeysTruffleObject();
+            }
+        }
+
+        @ExportMessage
+        boolean isMemberReadable(String member) {
+            return isReadable;
+        }
+
+        @ExportMessage
+        boolean isMemberModifiable(String member) {
+            return isWritable;
+        }
+
+        @ExportMessage
+        boolean isMemberInternal(String member) {
+            return isInternal;
+        }
+
+        @ExportMessage
+        boolean hasMemberReadSideEffects(String member) {
+            return hasReadSideEffects;
+        }
+
+        @ExportMessage
+        boolean hasMemberWriteSideEffects(String member) {
+            return hasWriteSideEffects;
+        }
+
+        @ExportMessage
+        boolean isMemberInsertable(String member) {
+            return false;
+        }
+
+        @ExportMessage
+        void writeMember(String member, Object value) {
+        }
+
+        @ExportMessage
+        Object readMember(String member) {
+            return "propertyValue";
         }
 
         public void setIsReadable(boolean isReadable) {
@@ -264,128 +309,56 @@ public class DebugValueTest extends AbstractDebugTest {
             return obj instanceof ModifiableAttributesTruffleObject;
         }
 
-        @MessageResolution(receiverType = ModifiableAttributesTruffleObject.class)
-        static final class ModifiableAttributesMessageResolution {
-
-            @Resolve(message = "HAS_KEYS")
-            abstract static class ModifiableAttributesHasKeysNode extends Node {
-
-                @SuppressWarnings("unused")
-                public Object access(ModifiableAttributesTruffleObject ato) {
-                    return true;
-                }
-            }
-
-            @Resolve(message = "KEYS")
-            abstract static class ModifiableAttributesKeysNode extends Node {
-
-                public Object access(ModifiableAttributesTruffleObject ato, boolean internal) {
-                    if (internal || ato.isInternal == internal) {
-                        return new PropertyKeysTruffleObject();
-                    } else {
-                        return new EmptyKeysTruffleObject();
-                    }
-                }
-            }
-
-            @Resolve(message = "READ")
-            abstract static class ModifiableAttributesReadNode extends Node {
-
-                @SuppressWarnings("unused")
-                public Object access(ModifiableAttributesTruffleObject ato, String name) {
-                    return "propertyValue";
-                }
-            }
-
-            @Resolve(message = "KEY_INFO")
-            abstract static class ModifiableAttributesKeyInfoNode extends Node {
-
-                @SuppressWarnings("unused")
-                public int access(ModifiableAttributesTruffleObject ato, String propName) {
-                    return (ato.isReadable ? KeyInfo.READABLE : 0) |
-                                    (ato.isWritable ? KeyInfo.MODIFIABLE : 0) |
-                                    (ato.isInternal ? KeyInfo.INTERNAL : 0) |
-                                    (ato.hasReadSideEffects ? KeyInfo.READ_SIDE_EFFECTS : 0) |
-                                    (ato.hasWriteSideEffects ? KeyInfo.WRITE_SIDE_EFFECTS : 0);
-                }
-            }
-        }
     }
 
     /**
      * Truffle object representing property keys and having one property named "property".
      */
+    @ExportLibrary(InteropLibrary.class)
     static final class PropertyKeysTruffleObject implements TruffleObject {
 
-        @Override
-        public ForeignAccess getForeignAccess() {
-            return PropertyKeysMessageResolutionForeign.ACCESS;
+        @ExportMessage
+        boolean hasArrayElements() {
+            return true;
         }
 
-        public static boolean isInstance(TruffleObject obj) {
-            return obj instanceof PropertyKeysTruffleObject;
+        @ExportMessage
+        Object readArrayElement(long index) throws UnsupportedMessageException, InvalidArrayIndexException {
+            return "property";
         }
 
-        @MessageResolution(receiverType = PropertyKeysTruffleObject.class)
-        static final class PropertyKeysMessageResolution {
+        @ExportMessage
+        long getArraySize() throws UnsupportedMessageException {
+            return 1L;
+        }
 
-            @Resolve(message = "HAS_SIZE")
-            abstract static class PropertyKeysHasSizeNode extends Node {
-
-                @SuppressWarnings("unused")
-                public boolean access(PropertyKeysTruffleObject ato) {
-                    return true;
-                }
-            }
-
-            @Resolve(message = "GET_SIZE")
-            abstract static class PropertyKeysGetSizeNode extends Node {
-
-                @SuppressWarnings("unused")
-                public int access(PropertyKeysTruffleObject ato) {
-                    return 1;
-                }
-            }
-
-            @Resolve(message = "READ")
-            abstract static class PropertyKeysReadNode extends Node {
-
-                @SuppressWarnings("unused")
-                public Object access(PropertyKeysTruffleObject ato, int index) {
-                    return "property";
-                }
-            }
+        @ExportMessage
+        boolean isArrayElementReadable(long index) {
+            return index == 0;
         }
     }
 
-    @MessageResolution(receiverType = EmptyKeysTruffleObject.class)
+    @ExportLibrary(InteropLibrary.class)
     static final class EmptyKeysTruffleObject implements TruffleObject {
 
-        @Override
-        public ForeignAccess getForeignAccess() {
-            return EmptyKeysTruffleObjectForeign.ACCESS;
+        @ExportMessage
+        boolean hasArrayElements() {
+            return true;
         }
 
-        public static boolean isInstance(TruffleObject obj) {
-            return obj instanceof PropertyKeysTruffleObject;
+        @ExportMessage
+        Object readArrayElement(long index) throws UnsupportedMessageException, InvalidArrayIndexException {
+            throw InvalidArrayIndexException.create(index);
         }
 
-        @Resolve(message = "HAS_SIZE")
-        abstract static class PropertyKeysHasSizeNode extends Node {
-
-            @SuppressWarnings("unused")
-            public boolean access(PropertyKeysTruffleObject ato) {
-                return true;
-            }
+        @ExportMessage
+        long getArraySize() throws UnsupportedMessageException {
+            return 0L;
         }
 
-        @Resolve(message = "GET_SIZE")
-        abstract static class PropertyKeysGetSizeNode extends Node {
-
-            @SuppressWarnings("unused")
-            public int access(PropertyKeysTruffleObject ato) {
-                return 0;
-            }
+        @ExportMessage
+        boolean isArrayElementReadable(long index) {
+            return false;
         }
     }
 

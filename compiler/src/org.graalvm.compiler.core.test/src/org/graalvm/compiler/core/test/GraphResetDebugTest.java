@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2017, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2017, 2018, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -51,7 +51,7 @@ public class GraphResetDebugTest extends GraalCompilerTest {
         StructuredGraph graph = parseEager("testSnippet", AllowAssumptions.YES, debug);
         boolean resetSucceeded = false;
         try (Scope scope = debug.scope("some scope")) {
-            graph.resetDebug(DebugContext.DISABLED);
+            graph.resetDebug(DebugContext.disabled(getInitialOptions()));
             resetSucceeded = true;
         } catch (AssertionError expected) {
         }

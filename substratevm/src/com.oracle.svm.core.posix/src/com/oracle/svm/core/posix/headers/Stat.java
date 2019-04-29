@@ -206,6 +206,9 @@ public class Stat {
     @CFunction
     public static native int fstat(int fd, stat buf);
 
+    @CFunction(value = "fstat", transition = CFunction.Transition.NO_TRANSITION)
+    public static native int fstat_no_transition(int fd, stat buf);
+
     /**
      * Similar to stat, get the attributes for FILE and put them in BUF. Relative path names are
      * interpreted relative to FD unless FD is AT_FDCWD.

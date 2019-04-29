@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2016, 2016, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2016, 2019, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -24,50 +24,35 @@
  */
 package com.oracle.truffle.regex.result;
 
+import java.util.Arrays;
+
 import com.oracle.truffle.api.CallTarget;
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
-import com.oracle.truffle.regex.RegexObject;
 import com.oracle.truffle.regex.tregex.nodes.TRegexLazyCaptureGroupsRootNode;
 import com.oracle.truffle.regex.tregex.nodes.TRegexLazyFindStartRootNode;
 import com.oracle.truffle.regex.tregex.util.json.Json;
 import com.oracle.truffle.regex.tregex.util.json.JsonConvertible;
-import com.oracle.truffle.regex.tregex.util.json.JsonValue;
+import com.oracle.truffle.regex.tregex.util.json.JsonObject;
 
-import java.util.Arrays;
+public final class LazyCaptureGroupsResult extends LazyResult implements JsonConvertible {
 
-public final class LazyCaptureGroupsResult extends RegexResult implements JsonConvertible {
-
-    private final int fromIndex;
-    private final int end;
     private int[] result = null;
     private final CallTarget findStartCallTarget;
     private final CallTarget captureGroupCallTarget;
 
-    public LazyCaptureGroupsResult(RegexObject regex,
-                    Object input,
+    public LazyCaptureGroupsResult(Object input,
                     int fromIndex,
                     int end,
-                    int numberOfCaptureGroups,
                     CallTarget findStartCallTarget,
                     CallTarget captureGroupCallTarget) {
-        super(regex, input, numberOfCaptureGroups);
-        this.fromIndex = fromIndex;
-        this.end = end;
+        super(input, fromIndex, end);
         this.findStartCallTarget = findStartCallTarget;
         this.captureGroupCallTarget = captureGroupCallTarget;
     }
 
-    public LazyCaptureGroupsResult(RegexObject regex, Object input, int[] result) {
-        this(regex, input, -1, -1, result.length / 2, null, null);
+    public LazyCaptureGroupsResult(Object input, int[] result) {
+        this(input, -1, -1, null, null);
         this.result = result;
-    }
-
-    public int getFromIndex() {
-        return fromIndex;
-    }
-
-    public int getEnd() {
-        return end;
     }
 
     public void setResult(int[] result) {
@@ -88,7 +73,7 @@ public final class LazyCaptureGroupsResult extends RegexResult implements JsonCo
 
     /**
      * Creates an arguments array suitable for the lazy calculation of this result's starting index.
-     * 
+     *
      * @return an arguments array suitable for calling the {@link TRegexLazyFindStartRootNode}
      *         contained in {@link #getFindStartCallTarget()}.
      */
@@ -99,7 +84,7 @@ public final class LazyCaptureGroupsResult extends RegexResult implements JsonCo
     /**
      * Creates an arguments array suitable for the lazy calculation of this result's capture group
      * boundaries.
-     * 
+     *
      * @param start The value returned by the call to the {@link TRegexLazyFindStartRootNode}
      *            contained in {@link #getFindStartCallTarget()}.
      * @return an arguments array suitable for calling the {@link TRegexLazyCaptureGroupsRootNode}
@@ -113,7 +98,7 @@ public final class LazyCaptureGroupsResult extends RegexResult implements JsonCo
      * Creates an arguments array suitable for the lazy calculation of this result's capture group
      * boundaries if there is no find-start call target (this is the case when the expression is
      * sticky or starts with "^").
-     * 
+     *
      * @return an arguments array suitable for calling the {@link TRegexLazyCaptureGroupsRootNode}
      *         contained in {@link #getCaptureGroupCallTarget()}.
      */
@@ -146,10 +131,7 @@ public final class LazyCaptureGroupsResult extends RegexResult implements JsonCo
 
     @TruffleBoundary
     @Override
-    public JsonValue toJson() {
-        return Json.obj(Json.prop("input", getInput().toString()),
-                        Json.prop("fromIndex", fromIndex),
-                        Json.prop("end", end),
-                        Json.prop("result", Json.array(result)));
+    public JsonObject toJson() {
+        return super.toJson().append(Json.prop("result", Json.array(result)));
     }
 }

@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2015, 2016, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2015, 2018, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -180,7 +180,7 @@ public abstract class OptimizedOSRLoopNode extends LoopNode implements ReplaceOb
                     return false;
                 }
                 if (target.isValid()) {
-                    return directCallTarget(target, frame);
+                    return callOSR(target, frame);
                 }
                 if (!target.isCompiling()) {
                     invalidateOSRTarget(this, "OSR compilation failed or cancelled");
@@ -197,8 +197,8 @@ public abstract class OptimizedOSRLoopNode extends LoopNode implements ReplaceOb
         }
     }
 
-    private boolean directCallTarget(OptimizedCallTarget target, VirtualFrame frame) {
-        if (target.callDirect(frame) == Boolean.TRUE) {
+    private boolean callOSR(OptimizedCallTarget target, VirtualFrame frame) {
+        if (target.callOSR(frame) == Boolean.TRUE) {
             return true;
         } else {
             if (!target.isValid()) {

@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2018, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2019, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -24,13 +24,22 @@
  */
 package com.oracle.truffle.regex.tregex;
 
+import static com.oracle.truffle.regex.tregex.util.DebugUtil.LOG_AUTOMATON_SIZES;
+import static com.oracle.truffle.regex.tregex.util.DebugUtil.LOG_BAILOUT_MESSAGES;
+import static com.oracle.truffle.regex.tregex.util.DebugUtil.LOG_PHASES;
+import static com.oracle.truffle.regex.tregex.util.DebugUtil.LOG_TREGEX_COMPILATIONS;
+
+import java.util.logging.Level;
+
+import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
+import com.oracle.truffle.api.TruffleFile;
+import com.oracle.truffle.api.TruffleLanguage.Env;
 import com.oracle.truffle.api.frame.FrameDescriptor;
 import com.oracle.truffle.api.frame.FrameSlot;
 import com.oracle.truffle.api.frame.FrameSlotKind;
-import com.oracle.truffle.api.interop.TruffleObject;
-import com.oracle.truffle.regex.CompiledRegex;
 import com.oracle.truffle.regex.CompiledRegexObject;
-import com.oracle.truffle.regex.RegexLanguageOptions;
+import com.oracle.truffle.regex.RegexExecRootNode;
+import com.oracle.truffle.regex.RegexLanguage;
 import com.oracle.truffle.regex.RegexOptions;
 import com.oracle.truffle.regex.RegexSource;
 import com.oracle.truffle.regex.UnsupportedRegexException;
@@ -59,14 +68,6 @@ import com.oracle.truffle.regex.tregex.util.DebugUtil;
 import com.oracle.truffle.regex.tregex.util.NFAExport;
 import com.oracle.truffle.regex.tregex.util.json.Json;
 
-import java.util.logging.Level;
-
-import static com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
-import static com.oracle.truffle.regex.tregex.util.DebugUtil.LOG_AUTOMATON_SIZES;
-import static com.oracle.truffle.regex.tregex.util.DebugUtil.LOG_BAILOUT_MESSAGES;
-import static com.oracle.truffle.regex.tregex.util.DebugUtil.LOG_PHASES;
-import static com.oracle.truffle.regex.tregex.util.DebugUtil.LOG_TREGEX_COMPILATIONS;
-
 /**
  * This class is responsible for compiling a single regex pattern. The compilation process is
  * designed to be single-threaded, but multiple {@link TRegexCompilationRequest}s can be compiled in
@@ -77,7 +78,6 @@ final class TRegexCompilationRequest {
     private final DebugUtil.Timer timer = shouldLogPhases() ? new DebugUtil.Timer() : null;
 
     private final TRegexCompiler tRegexCompiler;
-    private final RegexLanguageOptions languageOptions;
 
     private final RegexSource source;
     private RegexAST ast = null;
@@ -90,16 +90,15 @@ final class TRegexCompilationRequest {
 
     TRegexCompilationRequest(TRegexCompiler tRegexCompiler, RegexSource source) {
         this.tRegexCompiler = tRegexCompiler;
-        this.languageOptions = tRegexCompiler.getLanguage().getLanguageOptions();
         this.source = source;
     }
 
     @TruffleBoundary
-    TruffleObject compile() {
+    CompiledRegexObject compile() {
         try {
-            CompiledRegex compiledRegex = compileInternal();
+            RegexExecRootNode compiledRegex = compileInternal();
             logAutomatonSizes(compiledRegex);
-            return new CompiledRegexObject(compiledRegex);
+            return new CompiledRegexObject(tRegexCompiler.getLanguage(), compiledRegex);
         } catch (UnsupportedRegexException e) {
             logAutomatonSizes(null);
             e.setReason("TRegex: " + e.getReason());
@@ -109,7 +108,7 @@ final class TRegexCompilationRequest {
     }
 
     @TruffleBoundary
-    private CompiledRegex compileInternal() {
+    private RegexExecRootNode compileInternal() {
         LOG_TREGEX_COMPILATIONS.finer(() -> String.format("TRegex compiling %s\n%s", DebugUtil.jsStringEscape(source.toString()), new RegexUnifier(source).getUnifiedPattern()));
         createAST();
         RegexProperties properties = ast.getProperties();
@@ -211,7 +210,7 @@ final class TRegexCompilationRequest {
             phaseEnd("Flavor");
         }
         phaseStart("Parser");
-        ast = new RegexParser(ecmascriptSource, options, languageOptions).parse();
+        ast = new RegexParser(ecmascriptSource, options).parse();
         phaseEnd("Parser");
         debugAST();
     }
@@ -224,7 +223,7 @@ final class TRegexCompilationRequest {
     }
 
     private TRegexDFAExecutorNode createDFAExecutor(NFA nfaArg, boolean forward, boolean searching, boolean trackCaptureGroups) {
-        DFAGenerator dfa = new DFAGenerator(nfaArg, createExecutorProperties(nfaArg, forward, searching, trackCaptureGroups), compilationBuffer, languageOptions);
+        DFAGenerator dfa = new DFAGenerator(nfaArg, createExecutorProperties(nfaArg, forward, searching, trackCaptureGroups), compilationBuffer, tRegexCompiler.getOptions());
         phaseStart(dfa.getDebugDumpName() + " DFA");
         dfa.calcDFA();
         TRegexDFAExecutorNode executorNode = dfa.createDFAExecutor();
@@ -245,7 +244,6 @@ final class TRegexCompilationRequest {
         FrameSlot captureGroupResultFS = frameDescriptor.addFrameSlot("captureGroupResult", FrameSlotKind.Object);
         FrameSlot lastTransitionFS = frameDescriptor.addFrameSlot("lastTransition", FrameSlotKind.Int);
         FrameSlot cgDataFS = frameDescriptor.addFrameSlot("cgData", FrameSlotKind.Object);
-        FrameSlot inputIsCompactStringFS = frameDescriptor.addFrameSlot("inputIsCompactString", FrameSlotKind.Boolean);
         return new TRegexDFAExecutorProperties(
                         frameDescriptor,
                         inputFS,
@@ -258,7 +256,6 @@ final class TRegexCompilationRequest {
                         captureGroupResultFS,
                         lastTransitionFS,
                         cgDataFS,
-                        inputIsCompactStringFS,
                         forward,
                         searching,
                         trackCaptureGroups,
@@ -268,32 +265,46 @@ final class TRegexCompilationRequest {
     }
 
     private void debugAST() {
-        if (languageOptions.isDumpAutomata()) {
-            ASTLaTexExportVisitor.exportLatex(ast, "./ast.tex", ASTLaTexExportVisitor.DrawPointers.LOOKBEHIND_ENTRIES);
-            ast.getWrappedRoot().toJson().dump("ast.json");
+        if (tRegexCompiler.getOptions().isDumpAutomata()) {
+            Env env = RegexLanguage.getCurrentContext().getEnv();
+            TruffleFile file = env.getTruffleFile("./ast.tex");
+            ASTLaTexExportVisitor.exportLatex(ast, file);
+            file = env.getTruffleFile("ast.json");
+            ast.getWrappedRoot().toJson().dump(file);
         }
     }
 
     private void debugNFA() {
-        if (languageOptions.isDumpAutomata()) {
-            NFAExport.exportDot(nfa, "./nfa.gv", true, false);
-            NFAExport.exportLaTex(nfa, "./nfa.tex", false, true);
-            NFAExport.exportDotReverse(nfa, "./nfa_reverse.gv", true, false);
-            nfa.toJson().dump("nfa.json");
+        if (tRegexCompiler.getOptions().isDumpAutomata()) {
+            Env env = RegexLanguage.getCurrentContext().getEnv();
+            TruffleFile file = env.getTruffleFile("./nfa.gv");
+            NFAExport.exportDot(nfa, file, true, false);
+            file = env.getTruffleFile("./nfa.tex");
+            NFAExport.exportLaTex(nfa, file, false, true);
+            file = env.getTruffleFile("./nfa_reverse.gv");
+            NFAExport.exportDotReverse(nfa, file, true, false);
+            file = env.getTruffleFile("nfa.json");
+            nfa.toJson().dump(file);
         }
     }
 
     private void debugTraceFinder() {
-        if (languageOptions.isDumpAutomata()) {
-            NFAExport.exportDotReverse(traceFinderNFA, "./trace_finder.gv", true, false);
-            traceFinderNFA.toJson().dump("nfa_trace_finder.json");
+        if (tRegexCompiler.getOptions().isDumpAutomata()) {
+            Env env = RegexLanguage.getCurrentContext().getEnv();
+            TruffleFile file = env.getTruffleFile("./trace_finder.gv");
+            NFAExport.exportDotReverse(traceFinderNFA, file, true, false);
+            file = env.getTruffleFile("nfa_trace_finder.json");
+            traceFinderNFA.toJson().dump(file);
         }
     }
 
     private void debugDFA(DFAGenerator dfa) {
-        if (languageOptions.isDumpAutomata()) {
-            DFAExport.exportDot(dfa, "dfa_" + dfa.getDebugDumpName() + ".gv", false);
-            Json.obj(Json.prop("dfa", dfa.toJson())).dump("dfa_" + dfa.getDebugDumpName() + ".json");
+        if (tRegexCompiler.getOptions().isDumpAutomata()) {
+            Env env = RegexLanguage.getCurrentContext().getEnv();
+            TruffleFile file = env.getTruffleFile("dfa_" + dfa.getDebugDumpName() + ".gv");
+            DFAExport.exportDot(dfa, file, false);
+            file = env.getTruffleFile("dfa_" + dfa.getDebugDumpName() + ".json");
+            Json.obj(Json.prop("dfa", dfa.toJson())).dump(file);
         }
     }
 
@@ -314,7 +325,7 @@ final class TRegexCompilationRequest {
         }
     }
 
-    private void logAutomatonSizes(CompiledRegex result) {
+    private void logAutomatonSizes(RegexExecRootNode result) {
         LOG_AUTOMATON_SIZES.finer(() -> Json.obj(
                         Json.prop("pattern", source.getPattern()),
                         Json.prop("flags", source.getFlags()),
@@ -328,7 +339,7 @@ final class TRegexCompilationRequest {
                         Json.prop("compilerResult", compilerResultToString(result))).toString() + ",");
     }
 
-    private static String compilerResultToString(CompiledRegex result) {
+    private static String compilerResultToString(RegexExecRootNode result) {
         if (result instanceof TRegexExecRootNode) {
             return "tregex";
         } else if (result instanceof LiteralRegexExecRootNode) {

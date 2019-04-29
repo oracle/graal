@@ -59,7 +59,6 @@ gcc-5.2.0/gcc/testsuite/gcc.dg/c99-fordecl-1.c
 gcc-5.2.0/gcc/testsuite/gcc.dg/20020206-1.c
 gcc-5.2.0/gcc/testsuite/gcc.dg/pr66444.c
 gcc-5.2.0/gcc/testsuite/gcc.dg/vla-4.c
-gcc-5.2.0/gcc/testsuite/gcc.dg/addr_equal-1.c
 gcc-5.2.0/gcc/testsuite/gcc.dg/pubtypes-2.c
 gcc-5.2.0/gcc/testsuite/gcc.dg/overflow-2.c
 gcc-5.2.0/gcc/testsuite/gcc.dg/profile-dir-1.c

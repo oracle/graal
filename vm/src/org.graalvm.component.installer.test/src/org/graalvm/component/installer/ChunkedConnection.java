@@ -32,7 +32,7 @@ import java.net.URLConnection;
 import java.util.concurrent.Semaphore;
 import java.util.logging.Level;
 import java.util.logging.Logger;
-import org.graalvm.component.installer.persist.FileDownloaderTest;
+import org.graalvm.component.installer.remote.FileDownloaderTest;
 
 public class ChunkedConnection extends HttpURLConnection {
     public InputStream delegate;
@@ -49,6 +49,12 @@ public class ChunkedConnection extends HttpURLConnection {
 
     @Override
     public void connect() throws IOException {
+        original.connect();
+    }
+
+    @Override
+    public String getHeaderField(String name) {
+        return original.getHeaderField(name);
     }
 
     @Override
@@ -75,6 +81,11 @@ public class ChunkedConnection extends HttpURLConnection {
                 }
             }
         };
+    }
+
+    @Override
+    public long getContentLengthLong() {
+        return original.getContentLengthLong();
     }
 
     @Override

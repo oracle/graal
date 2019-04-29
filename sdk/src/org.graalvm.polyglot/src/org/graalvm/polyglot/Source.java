@@ -48,6 +48,7 @@ import java.io.Reader;
 import java.net.URI;
 import java.net.URISyntaxException;
 import java.net.URL;
+import java.nio.charset.Charset;
 import java.util.Objects;
 
 import org.graalvm.polyglot.impl.AbstractPolyglotImpl.AbstractSourceImpl;
@@ -176,7 +177,9 @@ public final class Source {
 
     /**
      * The fully qualified name of the source. In case this source originates from a {@link File},
-     * then the default path is the normalized, {@link File#getCanonicalPath() canonical path}.
+     * then the path is the normalized, {@link File#getCanonicalPath() canonical path} for absolute
+     * files, or the relative path otherwise. If the source originates from an {@link URL}, then
+     * it's the path component of the URL.
      *
      * @since 1.0
      */
@@ -472,8 +475,11 @@ public final class Source {
     }
 
     /**
-     * Creates a new character based source from a character sequence. The given characters must not
-     * mutate after they were accessed for the first time.
+     * Creates a new character based literal source from a character sequence. The given characters
+     * must not mutate after they were accessed for the first time.
+     * <p>
+     * Use this method for sources that do originate from a literal. For file or URL sources use the
+     * appropriate builder constructor and {@link Builder#content(CharSequence)}.
      * <p>
      * Example usage: {@link SourceSnippets#fromAString}
      *
@@ -488,8 +494,11 @@ public final class Source {
     }
 
     /**
-     * Creates a new byte based source from a byte sequence. The given bytes must not mutate after
-     * they were accessed for the first time.
+     * Creates a new byte based literal source from a byte sequence. The given bytes must not mutate
+     * after they were accessed for the first time.
+     * <p>
+     * Use this method for sources that do originate from a literal. For file or URL sources use the
+     * appropriate builder constructor and {@link Builder#content(CharSequence)}.
      * <p>
      * Example usage: {@link SourceSnippets#fromBytes}
      *
@@ -540,7 +549,10 @@ public final class Source {
     }
 
     /**
-     * Creates new character based source from a reader.
+     * Creates new character based literal source from a reader.
+     * <p>
+     * Use this method for sources that do originate from a literal. For file or URL sources use the
+     * appropriate builder constructor and {@link Builder#content(CharSequence)}.
      * <p>
      * Example usage: {@link SourceSnippets#fromReader}
      *
@@ -553,6 +565,9 @@ public final class Source {
     /**
      * Shortcut for creating a source object from a language and char sequence. The given characters
      * must not mutate after they were accessed for the first time.
+     * <p>
+     * Use for sources that do not come from a file, or URL. If they do, use the appropriate builder
+     * and {@link Builder#content(CharSequence)}.
      *
      * @since 1.0
      */
@@ -705,6 +720,7 @@ public final class Source {
         private boolean cached = true;
         private Object content;
         private String mimeType;
+        private Charset fileEncoding;
 
         Builder(String language, Object origin) {
             Objects.requireNonNull(language);
@@ -880,6 +896,20 @@ public final class Source {
         }
 
         /**
+         * Assigns an encoding used to read the file content. If the encoding is {@code null} then
+         * the file contained encoding information is used. If the file doesn't provide an encoding
+         * information the default {@code UTF-8} encoding is used.
+         *
+         * @param encoding the new file encoding to be used for reading the content
+         * @return instance of <code>this</code> builder ready to {@link #build() create new source}
+         * @since 1.0
+         */
+        public Builder encoding(Charset encoding) {
+            this.fileEncoding = encoding;
+            return this;
+        }
+
+        /**
          * Uses configuration of this builder to create new {@link Source} object. The method throws
          * an {@link IOException} if an error loading the source occured.
          *
@@ -887,7 +917,7 @@ public final class Source {
          * @since 1.0
          */
         public Source build() throws IOException {
-            Source source = getImpl().build(language, origin, uri, name, mimeType, content, interactive, internal, cached);
+            Source source = getImpl().build(language, origin, uri, name, mimeType, content, interactive, internal, cached, fileEncoding);
 
             // make sure origin is not consumed again if builder is used twice
             if (source.hasBytes()) {

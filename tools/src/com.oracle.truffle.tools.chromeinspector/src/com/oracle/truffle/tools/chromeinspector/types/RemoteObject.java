@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2017, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2017, 2019, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -35,30 +35,13 @@ import com.oracle.truffle.tools.utils.json.JSONObject;
 import com.oracle.truffle.api.debug.DebugException;
 import com.oracle.truffle.api.debug.DebugScope;
 import com.oracle.truffle.api.debug.DebugValue;
+import com.oracle.truffle.api.instrumentation.TruffleInstrument;
 import com.oracle.truffle.api.nodes.LanguageInfo;
+import com.oracle.truffle.tools.chromeinspector.InspectorExecutionContext;
+import com.oracle.truffle.tools.chromeinspector.objects.NullObject;
+import com.oracle.truffle.tools.chromeinspector.types.TypeInfo.TYPE;
 
 public final class RemoteObject {
-
-    private enum TYPE {
-
-        OBJECT("object"),
-        FUNCTION("function"),
-        UNDEFINED("undefined"),
-        STRING("string"),
-        NUMBER("number"),
-        BOOLEAN("boolean"),
-        SYMBOL("symbol");
-
-        private final String id;
-
-        TYPE(String id) {
-            this.id = id;
-        }
-
-        String getId() {
-            return id;
-        }
-    }
 
     private static final Double NEGATIVE_DOUBLE_0 = Double.valueOf("-0");
     private static final Float NEGATIVE_FLOAT_0 = Float.valueOf("-0");
@@ -67,26 +50,27 @@ public final class RemoteObject {
 
     private final DebugValue valueValue;
     private final DebugScope valueScope;
+    private final boolean generatePreview;
     private final String objectId;
-    private PrintWriter err = null;
-    private String type;
-    private String subtype;
-    private String className;
+    private final InspectorExecutionContext context;
+    private TypeInfo typeInfo;
     private Object value;
     private boolean replicableValue;
-    private boolean nullValue;
     private String unserializableValue;
     private String description;
+    private JSONObject preview;
+    private JSONObject customPreview;
     private JSONObject jsonObject;
 
-    public RemoteObject(DebugValue debugValue, PrintWriter err) {
-        this(debugValue, false, err);
+    public RemoteObject(DebugValue debugValue, boolean generatePreview, InspectorExecutionContext context) {
+        this(debugValue, false, generatePreview, context);
     }
 
-    public RemoteObject(DebugValue debugValue, boolean readEagerly, PrintWriter err) {
+    public RemoteObject(DebugValue debugValue, boolean readEagerly, boolean generatePreview, InspectorExecutionContext context) {
         this.valueValue = debugValue;
         this.valueScope = null;
-        this.err = err;
+        this.generatePreview = generatePreview;
+        this.context = context;
         if (!debugValue.hasReadSideEffects() || readEagerly) {
             boolean isObject = initFromValue();
             objectId = (isObject) ? Long.toString(LAST_ID.incrementAndGet()) : null;
@@ -103,91 +87,18 @@ public final class RemoteObject {
         if (originalLanguage != null) {
             debugValue = debugValue.asInLanguage(originalLanguage);
         }
-        DebugValue metaObject = getMetaObject(debugValue, originalLanguage, err);
-        boolean isObject = isObject(debugValue, err);
-        String vtype = null;
-        String vsubtype = null;
-        String vclassName = null;
-        String vdescription = null;
-        if (metaObject != null && originalLanguage != null && "js".equals(originalLanguage.getId())) {
-            // Get special JS properties:
-            try {
-                DebugValue property = metaObject.getProperty("type");
-                if (property != null) {
-                    vtype = property.as(String.class);
-                    property = metaObject.getProperty("subtype");
-                    if (property != null) {
-                        vsubtype = property.as(String.class);
-                    }
-                    property = metaObject.getProperty("className");
-                    if (property != null) {
-                        vclassName = property.as(String.class);
-                    }
-                    property = metaObject.getProperty("description");
-                    if (property != null) {
-                        vdescription = property.as(String.class);
-                    }
-                }
-            } catch (DebugException ex) {
-                if (err != null && ex.isInternalError()) {
-                    err.println("getProperties of meta object of (" + debugValue.getName() + ") has caused: " + ex);
-                    ex.printStackTrace(err);
-                }
-                throw ex;
-            }
-        }
-        String descriptionType = null;
-        if (vtype != null && (vsubtype != null || vclassName != null)) {
-            this.type = vtype;
-            this.subtype = vsubtype;
-            this.className = vclassName;
-        } else {
-            if (debugValue.isArray()) {
-                this.subtype = "array";
-            } else {
-                this.subtype = null;
-            }
-            String metaType = null;
-            if (metaObject != null) {
-                try {
-                    metaType = metaObject.as(String.class);
-                } catch (DebugException ex) {
-                    if (err != null && ex.isInternalError()) {
-                        err.println(debugValue.getName() + " as(String.class) has caused: " + ex);
-                        ex.printStackTrace(err);
-                    }
-                    throw ex;
-                }
-            }
-            if (debugValue.canExecute()) {
-                this.type = TYPE.FUNCTION.getId();
-                this.className = metaType;
-            } else if (isObject) {
-                this.type = TYPE.OBJECT.getId();
-                this.className = metaType;
-            } else {
-                this.type = getType(debugValue, metaType);
-                this.className = null;
-                if (TYPE.OBJECT.getId().equals(this.type)) {
-                    descriptionType = metaType;
-                }
-            }
-        }
-        if (descriptionType == null) {
-            descriptionType = this.className;
-        }
+        PrintWriter err = context != null ? context.getErr() : null;
+        this.typeInfo = TypeInfo.fromValue(debugValue, originalLanguage, err);
         String toString;
         Object rawValue = null;
         String unserializable = null;
-        boolean rawNullValue = false;
         boolean replicableRawValue = true;
         try {
             toString = debugValue.as(String.class);
-            if (!isObject) {
-                if ("null".equals(vsubtype) && "object".equals(vtype)) {
+            if (!typeInfo.isObject) {
+                if ("null".equals(typeInfo.subtype) && TYPE.OBJECT.getId().equals(typeInfo.type)) {
                     replicableRawValue = false;
-                    rawNullValue = true;
-                } else if ("undefined".equals(vtype)) {
+                } else if (TYPE.UNDEFINED.getId().equals(typeInfo.type)) {
                     replicableRawValue = false;
                 } else {
                     rawValue = debugValue.as(Boolean.class);
@@ -212,42 +123,63 @@ public final class RemoteObject {
         }
         this.value = rawValue;
         this.replicableValue = replicableRawValue;
-        this.nullValue = rawNullValue;
         this.unserializableValue = unserializable;
-        if (vdescription == null && descriptionType != null) {
-            this.description = descriptionType + ((toString != null && !toString.isEmpty()) ? " " + toString : "");
-        } else if (vdescription != null && !vdescription.isEmpty()) {
-            this.description = vdescription;
+        if (typeInfo.descriptionType != null && !typeInfo.descriptionType.equals(toString)) {
+            this.description = typeInfo.descriptionType + ((toString != null && !toString.isEmpty()) ? " " + toString : "");
         } else {
             this.description = toString;
         }
-        return isObject;
+        if (typeInfo.isObject && typeInfo.isJS && generatePreview) {
+            try {
+                this.preview = ObjectPreview.create(debugValue, typeInfo.type, typeInfo.subtype, originalLanguage, err);
+            } catch (DebugException ex) {
+                if (err != null && ex.isInternalError()) {
+                    err.println(debugValue.getName() + " preview has caused: " + ex);
+                    ex.printStackTrace(err);
+                }
+            }
+        }
+        if (context != null && context.isCustomObjectFormatterEnabled()) {
+            if (originalLanguage != null) {
+                try {
+                    this.customPreview = CustomPreview.create(debugValue, originalLanguage, context);
+                } catch (DebugException ex) {
+                    if (err != null) {
+                        if (ex.isInternalError()) {
+                            err.println(debugValue.getName() + " custom preview has caused: " + ex);
+                            ex.printStackTrace(err);
+                        } else {
+                            err.println("Custom Formatter Failed: " + ex.getLocalizedMessage());
+                        }
+                    }
+                }
+            }
+        }
+        return typeInfo.isObject;
     }
 
     public RemoteObject(DebugScope scope) {
         this.valueValue = null;
         this.valueScope = scope;
-        this.type = "object";
-        this.subtype = null;
-        this.className = null;
+        this.generatePreview = false;
+        this.context = null;
+        this.typeInfo = new TypeInfo(TYPE.OBJECT.getId(), null, null, null, true, false);
         this.value = null;
         this.replicableValue = false;
-        this.nullValue = false;
         this.unserializableValue = null;
         this.objectId = Long.toString(LAST_ID.incrementAndGet());
         this.description = scope.getName();
         this.jsonObject = createJSON();
     }
 
-    private RemoteObject(String type, String className, String description, boolean isNullValue) {
+    private RemoteObject(String type, String subtype, String className, String description) {
         this.valueValue = null;
         this.valueScope = null;
-        this.type = type;
-        this.subtype = null;
-        this.className = className;
+        this.generatePreview = false;
+        this.context = null;
+        this.typeInfo = new TypeInfo(type, subtype, className, null, true, false);
         this.value = null;
         this.replicableValue = false;
-        this.nullValue = isNullValue;
         this.unserializableValue = null;
         this.objectId = Long.toString(LAST_ID.incrementAndGet());
         this.description = description;
@@ -255,30 +187,29 @@ public final class RemoteObject {
     }
 
     public static RemoteObject createSimpleObject(String type, String className, String description) {
-        return new RemoteObject(type, className, description, false);
+        return new RemoteObject(type, null, className, description);
     }
 
-    public static RemoteObject createNullObject() {
-        return new RemoteObject("null", null, "null", true);
+    public static RemoteObject createNullObject(TruffleInstrument.Env env, LanguageInfo language) {
+        String nullStr = env.toString(language, NullObject.INSTANCE);
+        return new RemoteObject("object", "null", null, nullStr);
     }
 
     private JSONObject createJSON() {
         JSONObject json = new JSONObject();
-        json.put("type", type);
-        json.putOpt("subtype", subtype);
-        json.putOpt("className", className);
+        json.put("type", typeInfo.type);
+        json.putOpt("subtype", typeInfo.subtype);
+        json.putOpt("className", typeInfo.className);
         json.putOpt("unserializableValue", unserializableValue);
-        if (nullValue) {
-            json.put("value", JSONObject.NULL);
-        } else {
-            json.putOpt("value", value);
-        }
+        json.putOpt("value", value);
         json.putOpt("description", description);
         json.putOpt("objectId", objectId);
+        json.putOpt("preview", preview);
+        json.putOpt("customPreview", customPreview);
         return json;
     }
 
-    private static DebugValue getMetaObject(DebugValue debugValue, LanguageInfo originalLanguage, PrintWriter err) {
+    static DebugValue getMetaObject(DebugValue debugValue, LanguageInfo originalLanguage, PrintWriter err) {
         DebugValue metaObject;
         try {
             metaObject = debugValue.getMetaObject();
@@ -295,41 +226,16 @@ public final class RemoteObject {
         return metaObject;
     }
 
-    private static boolean isObject(DebugValue debugValue, PrintWriter err) {
-        boolean isObject;
+    static String toString(DebugValue value, PrintWriter err) {
         try {
-            isObject = debugValue.getProperties() != null || debugValue.canExecute();
+            return value.as(String.class);
         } catch (DebugException ex) {
             if (err != null && ex.isInternalError()) {
-                err.println("getProperties(" + debugValue.getName() + ") has caused: " + ex);
+                err.println(value.getName() + " as(String.class) has caused: " + ex);
                 ex.printStackTrace(err);
             }
             throw ex;
         }
-        return isObject;
-    }
-
-    /**
-     * The type must be one of {@link TYPE}.
-     */
-    private static String getType(DebugValue value, String metaObject) {
-        if (metaObject == null) {
-            return TYPE.OBJECT.getId();
-        }
-        for (TYPE type : TYPE.values()) {
-            if (metaObject.equalsIgnoreCase(type.getId())) {
-                return type.getId();
-            }
-        }
-        Number number = value.as(Number.class);
-        if (number != null) {
-            return TYPE.NUMBER.getId();
-        }
-        Boolean bool = value.as(Boolean.class);
-        if (bool != null) {
-            return TYPE.BOOLEAN.getId();
-        }
-        return TYPE.OBJECT.getId();
     }
 
     /**
@@ -339,7 +245,7 @@ public final class RemoteObject {
     public static JSONObject createJSONResultValue(DebugValue debugValue, PrintWriter err) {
         JSONObject json = new JSONObject();
         DebugValue metaObject = getMetaObject(debugValue, null, err);
-        boolean isObject = isObject(debugValue, err);
+        boolean isObject = TypeInfo.isObject(debugValue, err);
         String vtype = null;
         if (metaObject != null) {
             try {
@@ -364,7 +270,7 @@ public final class RemoteObject {
             if (isObject) {
                 vtype = "object";
             } else {
-                vtype = (metaObject != null) ? metaObject.as(String.class) : "object";
+                vtype = (metaObject != null) ? toString(metaObject, err) : "object";
             }
         }
         json.put("type", vtype);

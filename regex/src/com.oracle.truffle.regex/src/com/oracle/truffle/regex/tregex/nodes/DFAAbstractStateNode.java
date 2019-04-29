@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2018, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2019, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -24,12 +24,11 @@
  */
 package com.oracle.truffle.regex.tregex.nodes;
 
+import com.oracle.truffle.api.CompilerDirectives.CompilationFinal;
 import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.regex.tregex.nodesplitter.DFANodeSplit;
 import com.oracle.truffle.regex.tregex.util.json.JsonConvertible;
-
-import static com.oracle.truffle.api.CompilerDirectives.CompilationFinal;
 
 public abstract class DFAAbstractStateNode extends Node implements JsonConvertible {
 
@@ -53,7 +52,7 @@ public abstract class DFAAbstractStateNode extends Node implements JsonConvertib
 
     public abstract short getId();
 
-    public short[] getSuccessors() {
+    public final short[] getSuccessors() {
         return successors;
     }
 
@@ -65,6 +64,7 @@ public abstract class DFAAbstractStateNode extends Node implements JsonConvertib
      *
      * @param frame a virtual frame as described by {@link TRegexDFAExecutorProperties}.
      * @param executor this node's parent {@link TRegexDFAExecutorNode}.
+     * @param compactString
      */
-    public abstract void executeFindSuccessor(VirtualFrame frame, TRegexDFAExecutorNode executor);
+    public abstract void executeFindSuccessor(VirtualFrame frame, TRegexDFAExecutorNode executor, boolean compactString);
 }

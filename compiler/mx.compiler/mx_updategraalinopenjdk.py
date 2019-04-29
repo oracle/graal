@@ -1,7 +1,7 @@
 #
 # ----------------------------------------------------------------------------------------------------
 #
-# Copyright (c) 2018, 2018, Oracle and/or its affiliates. All rights reserved.
+# Copyright (c) 2018, 2019, Oracle and/or its affiliates. All rights reserved.
 # DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
 #
 # This code is free software; you can redistribute it and/or modify it
@@ -28,6 +28,7 @@
 
 import os
 import shutil
+import re
 from collections import namedtuple
 from argparse import ArgumentParser
 from os.path import join, exists, dirname
@@ -80,8 +81,8 @@ def updategraalinopenjdk(args):
         # JDK module jdk.internal.vm.compiler is composed of sources from:
         GraalJDKModule('jdk.internal.vm.compiler',
             # 1. Classes in the compiler suite under the org.graalvm namespace except for packages
-            #    whose names include "truffle" or "management"
-            [SuiteJDKInfo('compiler', ['org.graalvm'], ['truffle', 'management']),
+            #    or projects whose names include "truffle", "management" or "core.llvm"
+            [SuiteJDKInfo('compiler', ['org.graalvm'], ['truffle', 'management', 'core.llvm']),
             # 2. Classes in the sdk suite under the org.graalvm.collections and org.graalvm.word namespaces
              SuiteJDKInfo('sdk', ['org.graalvm.collections', 'org.graalvm.word'], [])]),
         # JDK module jdk.internal.vm.compiler.management is composed of sources from:
@@ -98,7 +99,8 @@ def updategraalinopenjdk(args):
     # as it on the class path and not clash with packages in the jdk.internal.vm.compiler module.
     package_renamings = {
         'org.graalvm.collections' : 'jdk.internal.vm.compiler.collections',
-        'org.graalvm.word'        : 'jdk.internal.vm.compiler.word'
+        'org.graalvm.word'        : 'jdk.internal.vm.compiler.word',
+        'org.graalvm.libgraal'    : 'jdk.internal.vm.compiler.libgraal'
     }
 
     # Strings to be replaced in files copied to OpenJDK.
@@ -142,6 +144,8 @@ def updategraalinopenjdk(args):
                     with open(filepath, 'w') as fp:
                         fp.write(new_contents)
                         mx.log('  updated ' + filepath)
+
+    java_package_re = re.compile(r"^\s*package\s+(?P<package>[a-zA-Z_][\w\.]*)\s*;$", re.MULTILINE)
 
     copied_source_dirs = []
     jdk_internal_vm_compiler_EXCLUDES = set() # pylint: disable=invalid-name
@@ -210,6 +214,15 @@ def updategraalinopenjdk(args):
                                 contents = contents.replace(old_name, new_name)
                             for old_line, new_line in replacements.iteritems():
                                 contents = contents.replace(old_line, new_line)
+
+                            match = java_package_re.search(contents)
+                            if not match:
+                                mx.abort('Could not find package declaration in {}'.format(src_file))
+                            java_package = match.group('package')
+                            if any(ex in java_package for ex in info.excludes):
+                                mx.log('  excluding ' + filename)
+                                continue
+
                             new_line_count = len(contents.split('\n'))
                             if new_line_count > old_line_count:
                                 mx.abort('Pattern replacement caused line count to grow from {} to {} in {}'.format(old_line_count, new_line_count, src_file))
@@ -242,7 +255,7 @@ def updategraalinopenjdk(args):
                         with open(dst_file, 'w') as fp:
                             fp.write(contents)
 
-    def replace_lines(filename, begin_lines, end_line, replace_lines, old_line_check):
+    def replace_lines(filename, begin_lines, end_line, replace_lines, old_line_check, preserve_indent=False):
         mx.log('Updating ' + filename + '...')
         old_lines = []
         new_lines = []
@@ -258,11 +271,19 @@ def updategraalinopenjdk(args):
                     line = fp.readline()
                 assert line, begin_line + ' not found'
 
+            lines = fp.readlines()
             line_in_def = True
-            for replace in replace_lines:
-                new_lines.append(replace)
 
-            for line in fp.readlines():
+            indent = 0
+            if preserve_indent:
+                line = lines[0]
+                lstripped_line = line.lstrip()
+                indent = len(line) - len(lstripped_line)
+
+            for replace in replace_lines:
+                new_lines.append(' ' * indent + replace)
+
+            for line in lines:
                 stripped_line = line.strip()
                 if line_in_def:
                     if stripped_line == end_line:
@@ -286,11 +307,11 @@ def updategraalinopenjdk(args):
     CompileJavaModules_gmk = join(jdkrepo, 'make', 'CompileJavaModules.gmk') # pylint: disable=invalid-name
     new_lines = []
     for pkg in sorted(jdk_internal_vm_compiler_EXCLUDES):
-        new_lines.append('    ' + pkg + ' \\\n')
+        new_lines.append(pkg + ' \\\n')
     begin_lines = ['jdk.internal.vm.compiler_EXCLUDES += \\']
     end_line = '#'
     old_line_check = single_column_with_continuation
-    replace_lines(CompileJavaModules_gmk, begin_lines, end_line, new_lines, old_line_check)
+    replace_lines(CompileJavaModules_gmk, begin_lines, end_line, new_lines, old_line_check, preserve_indent=True)
 
     # Update 'SRC' in the 'Compile graalunit tests' section of make/test/JtregGraalUnit.gmk
     # to include all test packages.
@@ -301,11 +322,11 @@ def updategraalinopenjdk(args):
     jdk_internal_vm_compiler_test_SRC.discard('org.graalvm.compiler.virtual.bench')
     jdk_internal_vm_compiler_test_SRC.discard('org.graalvm.micro.benchmarks')
     for pkg in sorted(jdk_internal_vm_compiler_test_SRC):
-        new_lines.append('            $(SRC_DIR)/' + pkg + '/src \\\n')
+        new_lines.append('$(SRC_DIR)/' + pkg + '/src \\\n')
     begin_lines = ['### Compile graalunit tests', 'SRC := \\']
     end_line = ', \\'
     old_line_check = single_column_with_continuation
-    replace_lines(JtregGraalUnit_gmk, begin_lines, end_line, new_lines, old_line_check)
+    replace_lines(JtregGraalUnit_gmk, begin_lines, end_line, new_lines, old_line_check, preserve_indent=True)
 
     mx.log('Adding new files to HG...')
     overwritten = ''

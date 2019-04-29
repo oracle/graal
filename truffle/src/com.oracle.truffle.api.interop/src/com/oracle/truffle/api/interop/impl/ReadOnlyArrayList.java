@@ -44,7 +44,10 @@ import java.util.List;
 
 /**
  * Kept around. Graal-Core tests are referencing this class.
+ * 
+ * @deprecated will be removed without replacement
  */
+@Deprecated
 public final class ReadOnlyArrayList {
     private ReadOnlyArrayList() {
     }

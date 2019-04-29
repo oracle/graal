@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2017, 2018, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2017, 2019, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -51,6 +51,7 @@ import java.util.Map;
 import java.util.function.Function;
 
 import org.graalvm.polyglot.Context;
+import org.graalvm.polyglot.PolyglotAccess;
 import org.junit.Test;
 import org.junit.runners.model.FrameworkField;
 import org.junit.runners.model.FrameworkMethod;
@@ -106,7 +107,7 @@ final class TruffleTestInvoker<C extends Closeable, T extends CallTarget> extend
         @Override
         public void evaluate() throws Throwable {
             Context prevContext = rule.context;
-            try (Context context = rule.contextBuilder.build()) {
+            try (Context context = rule.contextBuilder.allowPolyglotAccess(PolyglotAccess.ALL).build()) {
                 rule.context = context;
 
                 context.initialize("truffletestinvoker");
@@ -169,7 +170,9 @@ final class TruffleTestInvoker<C extends Closeable, T extends CallTarget> extend
 
                 for (int i = 0; i < paramCount; i++) {
                     Inject testRootNode = findRootNodeAnnotation(method.getParameterAnnotations()[i]);
-                    nodeConstructors[i] = getNodeConstructor(testRootNode, testClass);
+                    if (testRootNode != null) {
+                        nodeConstructors[i] = getNodeConstructor(testRootNode, testClass);
+                    }
                 }
             }
 
@@ -189,7 +192,9 @@ final class TruffleTestInvoker<C extends Closeable, T extends CallTarget> extend
 
             RootNode[] ret = new RootNode[nodeConstructors.length];
             for (int i = 0; i < ret.length; i++) {
-                ret[i] = nodeConstructors[i].apply(test);
+                if (nodeConstructors[i] != null) {
+                    ret[i] = nodeConstructors[i].apply(test);
+                }
             }
             return ret;
         }
@@ -209,7 +214,11 @@ final class TruffleTestInvoker<C extends Closeable, T extends CallTarget> extend
                 try (C testContext = createTestContext(testName)) {
                     ArrayList<T> callTargets = new ArrayList<>(testNodes.length);
                     for (RootNode testNode : testNodes) {
-                        callTargets.add(createTestCallTarget(testContext, testNode));
+                        if (testNode != null) {
+                            callTargets.add(createTestCallTarget(testContext, testNode));
+                        } else {
+                            callTargets.add(null);
+                        }
                     }
 
                     Object[] args = callTargets.toArray();

@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2007, 2012, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2007, 2018, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -24,38 +24,32 @@
  */
 package org.graalvm.compiler.jtt.jdk;
 
+import org.graalvm.compiler.api.directives.GraalDirectives;
+import org.graalvm.compiler.jtt.JTTTest;
 import org.junit.Test;
 
-import org.graalvm.compiler.jtt.JTTTest;
-
-/*
+/**
+ * Checks that the time between 2 successive calls to {@link System#nanoTime()} is less than 30
+ * microseconds at least once in 5_000_000 attempts.
  */
 public class System_nanoTime02 extends JTTTest {
 
     public static boolean test() {
-        long minDelta = Long.MAX_VALUE;
-
-        // the first call to System.nanoTime might take a long time due to call resolution
-        for (int c = 0; c < 10; c++) {
-            long start = System.nanoTime();
-            long delta = 0;
-            int i;
-            for (i = 0; delta == 0 && i < 50000; i++) {
-                delta = System.nanoTime() - start;
-                // do nothing.
-            }
-            if (delta < minDelta) {
-                minDelta = delta;
+        for (int i = 0; i < 5_000_000; i++) {
+            long delta = System.nanoTime() - System.nanoTime();
+            if (delta < 30_000) {
+                return true;
             }
         }
-
-        // better get at least 30 microsecond resolution.
-        return minDelta > 1 && minDelta < 30000;
+        if (!GraalDirectives.inCompiledCode()) {
+            // We don't care about the result for the interpreter, C1 or C2
+            return true;
+        }
+        return false;
     }
 
     @Test
     public void run0() throws Throwable {
         runTest("test");
     }
-
 }

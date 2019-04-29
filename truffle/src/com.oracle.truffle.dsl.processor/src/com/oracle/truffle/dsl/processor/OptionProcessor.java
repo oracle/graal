@@ -78,10 +78,12 @@ import org.graalvm.options.OptionCategory;
 import org.graalvm.options.OptionDescriptor;
 import org.graalvm.options.OptionDescriptors;
 import org.graalvm.options.OptionKey;
+import org.graalvm.options.OptionStability;
 
 import com.oracle.truffle.api.Option;
 import com.oracle.truffle.api.TruffleLanguage;
 import com.oracle.truffle.api.instrumentation.TruffleInstrument;
+import com.oracle.truffle.dsl.processor.generator.GeneratorUtils;
 import com.oracle.truffle.dsl.processor.java.ElementUtils;
 import com.oracle.truffle.dsl.processor.java.model.CodeExecutableElement;
 import com.oracle.truffle.dsl.processor.java.model.CodeTree;
@@ -272,18 +274,14 @@ public class OptionProcessor extends AbstractProcessor {
             optionName = annotation.name();
         }
 
-        if (!optionName.isEmpty() && !Character.isUpperCase(optionName.charAt(0))) {
-            error(element, elementAnnotation, "Option names must start with capital letter");
-            return false;
-        }
-
         boolean deprecated = annotation.deprecated();
 
         OptionCategory category = annotation.category();
-
         if (category == null) {
-            category = OptionCategory.DEBUG;
+            category = OptionCategory.INTERNAL;
         }
+
+        OptionStability stability = annotation.stability();
 
         for (String group : groupPrefixStrings) {
             String name;
@@ -299,7 +297,7 @@ public class OptionProcessor extends AbstractProcessor {
                     name = group + "." + optionName;
                 }
             }
-            info.options.add(new OptionInfo(name, help, field, elementAnnotation, deprecated, category));
+            info.options.add(new OptionInfo(name, help, field, elementAnnotation, deprecated, category, stability));
         }
         return true;
     }
@@ -313,15 +311,14 @@ public class OptionProcessor extends AbstractProcessor {
         processingEnv.getMessager().printMessage(Kind.ERROR, formattedMessage, element, annotation);
     }
 
-    private void generateOptionDescriptor(OptionsInfo info) {
+    private static void generateOptionDescriptor(OptionsInfo info) {
         Element element = info.type;
         ProcessorContext context = ProcessorContext.getInstance();
 
         CodeTypeElement unit = generateDescriptors(context, element, info);
         DeclaredType overrideType = (DeclaredType) context.getType(Override.class);
-        DeclaredType suppressedWarnings = (DeclaredType) context.getType(SuppressWarnings.class);
         unit.accept(new GenerateOverrideVisitor(overrideType), null);
-        unit.accept(new FixWarningsVisitor(context.getEnvironment(), suppressedWarnings, overrideType), null);
+        unit.accept(new FixWarningsVisitor(element, overrideType), null);
         try {
             unit.accept(new CodeWriter(context.getEnvironment(), element), null);
         } catch (RuntimeException e) {
@@ -340,7 +337,7 @@ public class OptionProcessor extends AbstractProcessor {
         ProcessorContext.getInstance().getEnvironment().getMessager().printMessage(Kind.ERROR, message + ": " + ElementUtils.printException(t), e);
     }
 
-    private CodeTypeElement generateDescriptors(ProcessorContext context, Element element, OptionsInfo model) {
+    private static CodeTypeElement generateDescriptors(ProcessorContext context, Element element, OptionsInfo model) {
         String optionsClassName = ElementUtils.getSimpleName(element.asType()) + OptionDescriptors.class.getSimpleName();
         TypeElement sourceType = (TypeElement) model.type;
         PackageElement pack = context.getEnvironment().getElementUtils().getPackageOf(sourceType);
@@ -348,9 +345,10 @@ public class OptionProcessor extends AbstractProcessor {
         CodeTypeElement descriptors = new CodeTypeElement(typeModifiers, ElementKind.CLASS, pack, optionsClassName);
         DeclaredType optionDescriptorsType = context.getDeclaredType(OptionDescriptors.class);
         descriptors.getImplements().add(optionDescriptorsType);
+        GeneratorUtils.addGeneratedBy(context, descriptors, (TypeElement) element);
 
         ExecutableElement get = ElementUtils.findExecutableElement(optionDescriptorsType, "get");
-        CodeExecutableElement getMethod = CodeExecutableElement.clone(processingEnv, get);
+        CodeExecutableElement getMethod = CodeExecutableElement.clone(get);
         getMethod.getModifiers().remove(ABSTRACT);
         CodeTreeBuilder builder = getMethod.createBuilder();
 
@@ -366,7 +364,7 @@ public class OptionProcessor extends AbstractProcessor {
 
         descriptors.add(getMethod);
 
-        CodeExecutableElement iteratorMethod = CodeExecutableElement.clone(processingEnv, ElementUtils.findExecutableElement(optionDescriptorsType, "iterator"));
+        CodeExecutableElement iteratorMethod = CodeExecutableElement.clone(ElementUtils.findExecutableElement(optionDescriptorsType, "iterator"));
         iteratorMethod.getModifiers().remove(ABSTRACT);
         builder = iteratorMethod.createBuilder();
 
@@ -407,6 +405,7 @@ public class OptionProcessor extends AbstractProcessor {
         }
         builder.startCall("", "help").doubleQuote(info.help).end();
         builder.startCall("", "category").staticReference(context.getType(OptionCategory.class), info.category.name()).end();
+        builder.startCall("", "stability").staticReference(context.getType(OptionStability.class), info.stability.name()).end();
         builder.startCall("", "build").end();
         return builder.build();
     }
@@ -420,14 +419,16 @@ public class OptionProcessor extends AbstractProcessor {
         final VariableElement field;
         final AnnotationMirror annotation;
         final OptionCategory category;
+        final OptionStability stability;
 
-        OptionInfo(String name, String help, VariableElement field, AnnotationMirror annotation, boolean deprecated, OptionCategory category) {
+        OptionInfo(String name, String help, VariableElement field, AnnotationMirror annotation, boolean deprecated, OptionCategory category, OptionStability stability) {
             this.name = name;
             this.help = help;
             this.field = field;
             this.annotation = annotation;
             this.deprecated = deprecated;
             this.category = category;
+            this.stability = stability;
         }
 
         @Override

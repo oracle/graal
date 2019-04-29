@@ -25,16 +25,16 @@
 package com.oracle.svm.core;
 
 import java.util.Map;
-import java.util.WeakHashMap;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.locks.AbstractOwnableSynchronizer;
 import java.util.concurrent.locks.Condition;
 import java.util.concurrent.locks.ReentrantLock;
 
 import org.graalvm.compiler.core.common.SuppressFBWarnings;
+import org.graalvm.compiler.serviceprovider.GraalUnsafeAccess;
 import org.graalvm.compiler.word.BarrieredAccess;
 import org.graalvm.compiler.word.Word;
-import org.graalvm.nativeimage.Feature;
+import org.graalvm.nativeimage.hosted.Feature;
 import org.graalvm.nativeimage.ImageSingletons;
 
 import com.oracle.svm.core.annotate.Alias;
@@ -47,6 +47,10 @@ import com.oracle.svm.core.snippets.SubstrateForeignCallTarget;
 import com.oracle.svm.core.thread.ThreadingSupportImpl.PauseRecurringCallback;
 import com.oracle.svm.core.thread.VMOperation;
 import com.oracle.svm.core.util.VMError;
+
+//Checkstyle: stop
+import sun.misc.Unsafe;
+//Checkstyle resume
 
 /**
  * Implementation of synchronized-related operations.
@@ -70,12 +74,13 @@ import com.oracle.svm.core.util.VMError;
  */
 public class MonitorSupport {
 
+    private static final Unsafe UNSAFE = GraalUnsafeAccess.getUnsafe();
     /**
      * Secondary storage for monitor slots.
      *
      * Synchronized to prevent concurrent access and modification.
      */
-    private final Map<Object, ReentrantLock> additionalMonitors = new WeakHashMap<>();
+    private final Map<Object, ReentrantLock> additionalMonitors = new WeakIdentityHashMap<>();
     private final ReentrantLock additionalMonitorsLock = new ReentrantLock();
 
     /**
@@ -83,7 +88,7 @@ public class MonitorSupport {
      *
      * Synchronized to prevent concurrent access and modification.
      */
-    private final Map<Object, Condition> additionalConditions = new WeakHashMap<>();
+    private final Map<Object, Condition> additionalConditions = new WeakIdentityHashMap<>();
     private final ReentrantLock additionalConditionsLock = new ReentrantLock();
 
     /**
@@ -320,7 +325,7 @@ public class MonitorSupport {
             }
             /* Atomically put a new lock in place of the null at the monitorOffset. */
             final ReentrantLock newMonitor = new ReentrantLock();
-            if (UnsafeAccess.UNSAFE.compareAndSwapObject(obj, monitorOffset, null, newMonitor)) {
+            if (UNSAFE.compareAndSwapObject(obj, monitorOffset, null, newMonitor)) {
                 return newMonitor;
             }
             /* We lost the race, use the lock some other thread installed. */
@@ -334,8 +339,12 @@ public class MonitorSupport {
             additionalMonitorsLock.lock();
             try {
                 final ReentrantLock existingEntry = additionalMonitors.get(obj);
-                if (existingEntry != null || !createIfNotExisting) {
+                if (existingEntry != null) {
                     return existingEntry;
+                }
+                /* Existing entry is null, meaning there is no entry. */
+                if (!createIfNotExisting) {
+                    return null;
                 }
                 final ReentrantLock newEntry = new ReentrantLock();
                 final ReentrantLock previousEntry = additionalMonitors.put(obj, newEntry);
@@ -360,8 +369,12 @@ public class MonitorSupport {
         additionalConditionsLock.lock();
         try {
             final Condition existingEntry = additionalConditions.get(obj);
-            if (existingEntry != null || !createIfNotExisting) {
+            if (existingEntry != null) {
                 return existingEntry;
+            }
+            /* Existing entry is null, meaning there is no entry. */
+            if (!createIfNotExisting) {
+                return null;
             }
             final Condition newEntry = lock.newCondition();
             final Condition previousEntry = additionalConditions.put(obj, newEntry);

@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2013, 2018, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2013, 2019, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -48,6 +48,8 @@ import static org.junit.Assert.assertNull;
 import static org.junit.Assert.assertSame;
 import static org.junit.Assert.assertTrue;
 import static org.junit.Assert.fail;
+import static java.nio.file.StandardOpenOption.CREATE;
+import static java.nio.file.StandardOpenOption.WRITE;
 
 import java.io.File;
 import java.io.FileOutputStream;
@@ -56,9 +58,17 @@ import java.io.IOException;
 import java.io.Reader;
 import java.io.StringReader;
 import java.net.MalformedURLException;
+import java.net.URI;
+import java.net.URISyntaxException;
 import java.net.URL;
+import java.nio.ByteBuffer;
+import java.nio.channels.SeekableByteChannel;
+import java.nio.charset.Charset;
+import java.nio.charset.StandardCharsets;
+import java.nio.file.Files;
+import java.nio.file.Path;
+import java.util.EnumSet;
 import java.util.Objects;
-import java.util.concurrent.Callable;
 import java.util.jar.JarOutputStream;
 import java.util.zip.ZipEntry;
 
@@ -74,6 +84,7 @@ import com.oracle.truffle.api.source.Source.SourceBuilder;
 import com.oracle.truffle.api.source.SourceSection;
 import com.oracle.truffle.api.test.polyglot.AbstractPolyglotTest;
 import com.oracle.truffle.api.test.polyglot.ProxyLanguage;
+import static com.oracle.truffle.api.test.polyglot.ValueAssert.assertFails;
 
 public class SourceBuilderTest extends AbstractPolyglotTest {
 
@@ -101,6 +112,7 @@ public class SourceBuilderTest extends AbstractPolyglotTest {
 
         assertTrue(source.hasBytes());
         assertFalse(source.hasCharacters());
+        assertEquals(4, source.getLength());
         assertFails(() -> source.createSection(0), UnsupportedOperationException.class);
         assertFails(() -> source.createSection(0, 0), UnsupportedOperationException.class);
         assertFails(() -> source.createSection(0, 0, 0), UnsupportedOperationException.class);
@@ -177,12 +189,59 @@ public class SourceBuilderTest extends AbstractPolyglotTest {
         assertTrue(source.hasCharacters());
     }
 
-    private static void assertFails(Callable<?> callable, Class<? extends Exception> exception) {
+    @Test
+    public void testNoContentSource() throws Exception {
+        setupEnv();
+        // Relative file
+        TruffleFile truffleFile = languageEnv.getTruffleFile("some/path");
+        URI uri = new URI("some/path");
+        Source source = Source.newBuilder("", truffleFile).content(Source.CONTENT_NONE).build();
+        assertFalse(source.hasBytes());
+        assertFalse(source.hasCharacters());
+        assertEquals("some/path", source.getPath());
+        assertEquals("path", source.getName());
+        assertEquals(uri, source.getURI());
+        assertFalse(source.getURI().isAbsolute());
+        assertFails(() -> source.getLength(), UnsupportedOperationException.class);
+        assertFails(() -> source.getBytes(), UnsupportedOperationException.class);
+        assertFails(() -> source.getCharacters(), UnsupportedOperationException.class);
+        // Absolute file
+        Path tempFile = Files.createTempFile("Test", ".java").toRealPath();
+        tempFile.toFile().deleteOnExit();
+        String content = "// Test";
+        Files.write(tempFile, content.getBytes("UTF-8"));
+        truffleFile = languageEnv.getTruffleFile(tempFile.toString());
+        Source source2 = Source.newBuilder("", truffleFile).content(Source.CONTENT_NONE).mimeType("text/x-java").build();
+        assertFalse(source2.hasBytes());
+        assertFalse(source2.hasCharacters());
+        assertTrue(tempFile.toString() + " x " + source2.getPath(), Files.isSameFile(tempFile, new File(source2.getPath()).toPath()));
+        assertEquals(tempFile.getFileName().toString(), source2.getName());
+        assertTrue(source2.getURI().toString(), source2.getURI().isAbsolute());
+        assertFails(() -> source2.getLength(), UnsupportedOperationException.class);
+        assertFails(() -> source2.getBytes(), UnsupportedOperationException.class);
+        assertFails(() -> source2.getCharacters(), UnsupportedOperationException.class);
+    }
+
+    @Test
+    public void testRelativeSourceWithContent() throws Exception {
+        setupEnv();
+        TruffleFile cwd = languageEnv.getCurrentWorkingDirectory();
+        String relativeName = "Test.java";
+        TruffleFile file = cwd.resolve(relativeName);
+        String content = "// Test";
         try {
-            callable.call();
-            fail("Expected " + exception.getSimpleName() + " but no exception was thrown");
-        } catch (Exception e) {
-            assertTrue(exception.toString(), exception.isInstance(e));
+            try (SeekableByteChannel c = file.newByteChannel(EnumSet.of(WRITE, CREATE))) {
+                c.write(ByteBuffer.wrap(content.getBytes("UTF-8")));
+            }
+            TruffleFile relativeFile = languageEnv.getTruffleFile(relativeName);
+            Source source = Source.newBuilder("", relativeFile).build();
+            assertFalse(source.hasBytes());
+            assertTrue(source.hasCharacters());
+            // Constructed from relativeFile TruffleFile, but loads content and should be absolute
+            assertTrue(source.getURI().toString(), source.getURI().isAbsolute());
+            assertEquals(content, source.getCharacters().toString());
+        } finally {
+            file.delete();
         }
     }
 
@@ -375,6 +434,7 @@ public class SourceBuilderTest extends AbstractPolyglotTest {
 
     @Test
     public void assignMimeTypeAndIdentityForURL() throws IOException {
+        setupEnv();
         File file = File.createTempFile("Hello", ".java");
         file.deleteOnExit();
 
@@ -384,7 +444,6 @@ public class SourceBuilderTest extends AbstractPolyglotTest {
             w.write(text);
         }
         SourceBuilder builder = Source.newBuilder("TestJava", file.toURI().toURL()).name("Hello.java").mimeType(Source.findMimeType(file.toURI().toURL()));
-
         Source s1 = builder.build();
         assertEquals("Recognized as Java", "text/x-java", s1.getMimeType());
         Source s2 = builder.mimeType("text/x-c").build();
@@ -451,6 +510,7 @@ public class SourceBuilderTest extends AbstractPolyglotTest {
 
     @Test
     public void jarURLGetsAName() throws IOException {
+        setupEnv();
         File sample = File.createTempFile("sample", ".jar");
         sample.deleteOnExit();
         JarOutputStream os = new JarOutputStream(new FileOutputStream(sample));
@@ -464,10 +524,23 @@ public class SourceBuilderTest extends AbstractPolyglotTest {
         assertNotNull("Resource found", resource);
         assertEquals("JAR protocol", "jar", resource.getProtocol());
         Source s = Source.newBuilder("TestJS", resource).build();
+        assertEquals(resource, s.getURL());
         Assert.assertArrayEquals(bytes, s.getBytes().toByteArray());
         assertEquals("x.tjs", s.getName());
+        assertEquals(sample.toURI() + "!/x.tjs", s.getPath());
 
         sample.delete();
+    }
+
+    @Test
+    public void testHttpURL() throws IOException, URISyntaxException {
+        setupEnv();
+        URL resource = new URL("http://example.org/test/File.html");
+        Source s = Source.newBuilder("TestJS", resource).content("Empty").build();
+        assertEquals(resource, s.getURL());
+        assertEquals(resource.toURI(), s.getURI());
+        assertEquals("File.html", s.getName());
+        assertEquals("/test/File.html", s.getPath());
     }
 
     @Test
@@ -536,6 +609,67 @@ public class SourceBuilderTest extends AbstractPolyglotTest {
         Source source = Source.newBuilder("lang", "anything", "name").interactive(true).build();
 
         assertTrue("This source is interactive", source.isInteractive());
+    }
+
+    @Test
+    public void testEncodingTruffleFile() throws IOException {
+        // Checkstyle: stop
+        String content = "žščřďťňáéíóúůý";
+        String xmlContent = "<?xml version=\"1.0\" encoding=\"windows-1250\"?>\n<!DOCTYPE foo PUBLIC \"foo\">\n<content>žščřďťňáéíóúůý</content>";
+        // Checkstyle: resume
+        setupEnv();
+        File testFile = File.createTempFile("test", ".txt").getAbsoluteFile();
+        try (FileOutputStream out = new FileOutputStream(testFile)) {
+            out.write(content.getBytes(StandardCharsets.UTF_16LE));
+        }
+        TruffleFile file = languageEnv.getTruffleFile(testFile.getPath());
+        Source src = Source.newBuilder("lang", file).encoding(StandardCharsets.UTF_16LE).build();
+        assertEquals(content, src.getCharacters().toString());
+
+        testFile = File.createTempFile("test", ".xml").getAbsoluteFile();
+        try (FileOutputStream out = new FileOutputStream(testFile)) {
+            out.write(xmlContent.getBytes(Charset.forName("windows-1250")));
+        }
+        file = languageEnv.getTruffleFile(testFile.getPath());
+        src = Source.newBuilder("lang", file).build();
+        assertEquals(xmlContent, src.getCharacters().toString());
+
+        testFile = File.createTempFile("test", ".txt").getAbsoluteFile();
+        try (FileOutputStream out = new FileOutputStream(testFile)) {
+            out.write(content.getBytes(StandardCharsets.UTF_8));
+        }
+        file = languageEnv.getTruffleFile(testFile.getPath());
+        src = Source.newBuilder("lang", file).build();
+        assertEquals(content, src.getCharacters().toString());
+    }
+
+    @Test
+    public void testEncodingURL() throws IOException {
+        // Checkstyle: stop
+        String content = "žščřďťňáéíóúůý";
+        String xmlContent = "<?xml version=\"1.0\" encoding=\"windows-1250\"?>\n<!DOCTYPE foo PUBLIC \"foo\">\n<content>žščřďťňáéíóúůý</content>";
+        // Checkstyle: resume
+        setupEnv();
+        File testFile = File.createTempFile("test", ".txt").getAbsoluteFile();
+        try (FileOutputStream out = new FileOutputStream(testFile)) {
+            out.write(content.getBytes(StandardCharsets.UTF_16LE));
+        }
+        Source src = Source.newBuilder("lang", testFile.toURI().toURL()).encoding(StandardCharsets.UTF_16LE).build();
+        assertEquals(content, src.getCharacters().toString());
+
+        testFile = File.createTempFile("test", ".xml").getAbsoluteFile();
+        try (FileOutputStream out = new FileOutputStream(testFile)) {
+            out.write(xmlContent.getBytes(Charset.forName("windows-1250")));
+        }
+        src = Source.newBuilder("lang", testFile.toURI().toURL()).build();
+        assertEquals(xmlContent, src.getCharacters().toString());
+
+        testFile = File.createTempFile("test", ".txt").getAbsoluteFile();
+        try (FileOutputStream out = new FileOutputStream(testFile)) {
+            out.write(content.getBytes(StandardCharsets.UTF_8));
+        }
+        src = Source.newBuilder("lang", testFile.toURI().toURL()).build();
+        assertEquals(content, src.getCharacters().toString());
     }
 
     public void subSourceHashAndEquals() {
@@ -670,14 +804,17 @@ public class SourceBuilderTest extends AbstractPolyglotTest {
         fail("Unexpected MIME type: " + mimeType);
     }
 
-    @Registration(id = "TestJava", name = "", characterMimeTypes = "text/x-java")
+    @Registration(id = "TestJava", name = "", characterMimeTypes = "text/x-java", fileTypeDetectors = CommonMIMETypeTestDetector.class)
     public static class TestJavaLanguage extends ProxyLanguage {
 
     }
 
-    @Registration(id = "TestJS", name = "", byteMimeTypes = "application/test-js")
+    @Registration(id = "TestJS", name = "", byteMimeTypes = "application/test-js", fileTypeDetectors = CommonMIMETypeTestDetector.class)
     public static class TestJSLanguage extends ProxyLanguage {
+    }
 
+    @Registration(id = "TestTxt", name = "", byteMimeTypes = "text/plain", fileTypeDetectors = CommonMIMETypeTestDetector.class)
+    public static class TestTxtLanguage extends ProxyLanguage {
     }
 
     @SuppressWarnings("deprecation")
@@ -716,4 +853,12 @@ public class SourceBuilderTest extends AbstractPolyglotTest {
         assertTrue(source1.equals(source2));
     }
 
+    @Test
+    public void testFindLaguage() throws IOException {
+        setupEnv();
+        TruffleFile knownMimeTypeFile = languageEnv.getTruffleFile("test.tjs");
+        TruffleFile unknownMimeTypeFile = languageEnv.getTruffleFile("test.unknown");
+        assertEquals("application/test-js", Source.findMimeType(knownMimeTypeFile));
+        assertNull(Source.findMimeType(unknownMimeTypeFile));
+    }
 }

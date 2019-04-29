@@ -34,6 +34,7 @@ import java.net.StandardProtocolFamily;
 import java.nio.channels.DatagramChannel;
 
 import org.graalvm.compiler.api.replacements.Fold;
+import org.graalvm.nativeimage.ImageSingletons;
 import org.graalvm.nativeimage.PinnedObject;
 import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.Platforms;
@@ -48,7 +49,7 @@ import org.graalvm.word.PointerBase;
 import org.graalvm.word.WordFactory;
 
 import com.oracle.svm.core.os.IsDefined;
-import com.oracle.svm.core.posix.headers.Errno;
+import com.oracle.svm.core.headers.Errno;
 import com.oracle.svm.core.posix.headers.Ioctl;
 import com.oracle.svm.core.posix.headers.LibC;
 import com.oracle.svm.core.posix.headers.NetinetIn;
@@ -57,6 +58,7 @@ import com.oracle.svm.core.posix.headers.Poll;
 import com.oracle.svm.core.posix.headers.Poll.pollfd;
 import com.oracle.svm.core.posix.headers.Socket;
 import com.oracle.svm.core.posix.headers.Sysctl;
+import com.oracle.svm.core.posix.headers.Time;
 import com.oracle.svm.core.posix.headers.Unistd;
 import com.oracle.svm.core.posix.headers.darwin.DarwinSysctl;
 import com.oracle.svm.core.util.VMError;
@@ -66,6 +68,7 @@ import com.oracle.svm.core.util.VMError;
 // TODO: This should be in some other package (svm.core.jdk?)
 // but then it can not use the non-public classes in this package.
 /** Native methods from jdk/src/share/native/java/net/net_util.c translated to Java. */
+@Platforms({Platform.LINUX.class, Platform.DARWIN.class})
 class JavaNetNetUtil {
 
     /* Private constructor: No instances. */
@@ -531,6 +534,7 @@ class JavaNetNetUtil {
 }
 
 /** Native methods from jdk/src/solaris/native/java/net/net_util_md.c translated to Java. */
+@Platforms({Platform.LINUX.class, Platform.DARWIN.class})
 class JavaNetNetUtilMD {
 
     /* Private constructor: No instances. */
@@ -1324,54 +1328,77 @@ class JavaNetNetUtilMD {
     }
     /* @formatter:on */
 
-    /* Do not re-wrap commented-out code.  @formatter:off */
-    // 074 #define NET_Timeout     JVM_Timeout
-    static int NET_Timeout(int fd, long timeout) {
-        return Target_os.timeout(fd, timeout);
+    /* { Do not re-wrap commented-out code.  @formatter:off */
+    // 1669  long NET_GetCurrentTime() {
+    static long NET_GetCurrentTime() {
+        // 1670      struct timeval time;
+        Time.timeval time = StackValue.get(Time.timeval.class);
+         // 1671      gettimeofday(&time, NULL);
+        Time.gettimeofday(time, WordFactory.nullPointer());
+        // 1672      return (time.tv_sec * 1000 + time.tv_usec / 1000);
+        return (time.tv_sec() * 1000 + time.tv_usec() / 1000);
     }
-    /* @formatter:on */
+    /* } Do not re-wrap commented-out code.  @formatter:on */
+
+    /* { Do not re-wrap commented-out code.  @formatter:off */
+    // 1675  int NET_TimeoutWithCurrentTime(int s, long timeout, long currentTime) {
+    static long NET_TimeoutWithCurrentTime(int s, long timeout, long currentTime) {
+        // 1676      return NET_Timeout0(s, timeout, currentTime);
+        return ImageSingletons.lookup(PosixJavaNetClose.class).NET_Timeout0(s, timeout, currentTime);
+    }
+    /* } Do not re-wrap commented-out code.  @formatter:on */
+
+    /* { Do not re-wrap commented-out code.  @formatter:off */
+    // 1679  int NET_Timeout(int s, long timeout) {
+    static int NET_Timeout(int s, long timeout) {
+        // 1680      long currentTime = (timeout > 0) ? NET_GetCurrentTime() : 0;
+        long currentTime = (timeout > 0) ? NET_GetCurrentTime() : 0;
+        // 1681      return NET_Timeout0(s, timeout, currentTime);
+        return ImageSingletons.lookup(PosixJavaNetClose.class).NET_Timeout0(s, timeout, currentTime);
+    }
+    /* } Do not re-wrap commented-out code.  @formatter:on */
 
     /* Do not re-wrap commented-out code.  @formatter:off */
     // 075 #define NET_Read        JVM_Read
     static int NET_Read(int fd, CCharPointer bufP, int len) {
-        return (int) Target_os.restartable_read(fd, bufP, len);
+        return ImageSingletons.lookup(PosixJavaNetClose.class).NET_Read(fd, bufP, len);
     }
     /* @formatter:on */
 
     /* Do not re-wrap commented-out code.  @formatter:off */
     // 081 #define NET_Connect     JVM_Connect
     static int NET_Connect(int fd, Socket.sockaddr him, int len) {
-        return VmPrimsJVM.JVM_Connect(fd, him, len);
+        return ImageSingletons.lookup(PosixJavaNetClose.class).NET_Connect(fd, him, len);
     }
     /* @formatter:on */
 
     /* Do not re-wrap commented-out code.  @formatter:off */
     // 082 #define NET_Accept      JVM_Accept
     static int NET_Accept(int fd, Socket.sockaddr him, CIntPointer len_Pointer) {
-        return VmPrimsJVM.JVM_Accept(fd, him, len_Pointer);
+        return ImageSingletons.lookup(PosixJavaNetClose.class).NET_Accept(fd, him, len_Pointer);
     }
     /* @formatter:on */
 
     /* Do not re-wrap commented-out code.  @formatter:off */
     // 086 #define NET_Poll        poll
     static int NET_Poll(pollfd fds, int nfds, int timeout) {
-        return Poll.poll(fds, nfds, timeout);
+        return ImageSingletons.lookup(PosixJavaNetClose.class).NET_Poll(fds, nfds, timeout);
     }
     /* @formatter:on */
 
     /* Do not re-wrap commented-out code.  @formatter:off */
     // 078 #define NET_Send        JVM_Send
     static int NET_Send(int fd, CCharPointer buf, int nBytes, int flags) {
-        return VmPrimsJVM.JVM_Send(fd, buf, nBytes, flags);
+        return ImageSingletons.lookup(PosixJavaNetClose.class).NET_Send(fd, buf, nBytes, flags);
     }
     /* @formatter:on */
 
     static int NET_SendTo(int fd, CCharPointer buf, int n, int flags, Socket.sockaddr addr, int addr_len) {
-        return VmPrimsJVM.JVM_SendTo(fd, buf, n, flags, addr, addr_len);
+        return ImageSingletons.lookup(PosixJavaNetClose.class).NET_SendTo(fd, buf, n, flags, addr, addr_len);
     }
 
     static int NET_RecvFrom(int fd, CCharPointer buf, int n, int flags, Socket.sockaddr addr, CIntPointer addr_len) {
-        return VmPrimsJVM.JVM_RecvFrom(fd, buf, n, flags, addr, addr_len);
+        return ImageSingletons.lookup(PosixJavaNetClose.class).NET_RecvFrom(fd, buf, n, flags, addr, addr_len);
     }
 
     /* Do not re-wrap commented-out code.  @formatter:off */
@@ -1398,14 +1425,14 @@ class JavaNetNetUtilMD {
     /* Do not re-wrap commented-out code.  @formatter:off */
     // 084 #define NET_Dup2        dup2
     static int NET_Dup2(int fd, int fd2) {
-        return Unistd.dup2(fd, fd2);
+        return ImageSingletons.lookup(PosixJavaNetClose.class).NET_Dup2(fd, fd2);
     }
     /* @formatter:on */
 
     /* Do not re-wrap commented-out code.  @formatter:off */
     // 083 #define NET_SocketClose JVM_SocketClose
     static int NET_SocketClose(int fd) {
-        return VmPrimsJVM.JVM_SocketClose(fd);
+        return ImageSingletons.lookup(PosixJavaNetClose.class).NET_SocketClose(fd);
     }
     /* @formatter:on */
 
@@ -2112,6 +2139,7 @@ class JavaNetNetUtilMD {
 }
 
 /** Native methods (and macros) from src/share/vm/prims/jni.cpp translated to Java. */
+@Platforms({Platform.LINUX.class, Platform.DARWIN.class})
 class VmPrimsJNI {
     /* Do not re-format commented-out code: @formatter:off */
 
@@ -2196,6 +2224,7 @@ class VmPrimsJNI {
 
 /** Translations of methods from src/os/bsd/vm/os_bsd.inline.hpp or src/os/bsd/vm/os_bsd.cpp. */
 // TODO: Maybe this should be Target_bsd_vm_os?
+@Platforms({Platform.LINUX.class, Platform.DARWIN.class})
 class Target_os {
     /* Do not re-format commented-out code: @formatter:off */
 
@@ -2231,20 +2260,7 @@ class Target_os {
             pfd.set_events(Poll.POLLIN() | Poll.POLLERR());
             // 210
             // 211     int res = ::poll(&pfd, 1, timeout);
-            /* { FIXME: Limited timeout. */
-            int res;
-            final boolean limitedTimeout = false;
-            if (limitedTimeout) {
-                /* This is a compromise between frequent poll requests and promptness of interruption. */
-                final int limitedTimeoutMillis = 2_000;
-                res = Poll.poll(pfd, 1, limitedTimeoutMillis);
-                if (Thread.interrupted()) {
-                    return VmRuntimeOS.OSReturn.OS_OK();
-                }
-            } else {
-                res = Poll.poll(pfd, 1, timeout);
-            }
-            /* } FIXME: Limited timeout. */
+            int res = Poll.poll(pfd, 1, timeout);
             // 212
             // 213     if (res == OS_ERR && errno == EINTR) {
             if (res == VmRuntimeOS.OSReturn.OS_ERR() && Errno.errno() == Errno.EINTR()) {
@@ -2273,10 +2289,15 @@ class Target_os {
         }
     }
 
+    /* RESTARTABLE loops over a syscall if the call is interrupted. */
     // 149 #define RESTARTABLE(_cmd, _result) do { \
     // 150     _result = _cmd; \
     // 151   } while(((int)_result == OS_ERR) && (errno == EINTR))
 
+    /* The translation of RESTARTABLE_RETURN_INT is to expand the body without the wrapper
+     *     do { .... } while (false)
+     * whose purpose is to make the macro expansion into a single C statement.
+     */
     // 153 #define RESTARTABLE_RETURN_INT(_cmd) do { \
     // 154   int _result; \
     // 155   RESTARTABLE(_cmd, _result); \
@@ -2291,7 +2312,7 @@ class Target_os {
         // 164   RESTARTABLE( (size_t) ::read(fd, buf, (size_t) nBytes), res);
         do {
             res = Unistd.read(fd, buf, WordFactory.unsigned(nBytes)).rawValue();
-        } while ((res == VmRuntimeOS.OSReturn.OS_ERR()) || (Errno.errno() == Errno.EINTR()));
+        } while ((res == VmRuntimeOS.OSReturn.OS_ERR()) && (Errno.errno() == Errno.EINTR()));
         // 165   return res;
         return res;
     }
@@ -2308,7 +2329,7 @@ class Target_os {
         // 4095 RESTARTABLE(::ioctl(fd, FIONREAD, pbytes), ret);
         do {
             ret = Ioctl.ioctl(fd, Ioctl.FIONREAD(), pbytes);
-        } while ((ret == VmRuntimeOS.OSReturn.OS_ERR()) || (Errno.errno() == Errno.EINTR()));
+        } while ((ret == VmRuntimeOS.OSReturn.OS_ERR()) && (Errno.errno() == Errno.EINTR()));
         // 4096
         // 4097 //%% note ioctl can return 0 when successful, JVM_SocketAvailable
         // 4098 // is expected to return 0 on failure and 1 on success to the jdk.
@@ -2320,37 +2341,31 @@ class Target_os {
     // 190 inline int os::send(int fd, char* buf, size_t nBytes, uint flags) {
     static int send(int fd, CCharPointer buf, long nBytes, int flags) {
         // 191   RESTARTABLE_RETURN_INT(::send(fd, buf, nBytes, flags));
+        int _result;
         do {
-            int _result;
-            do {
-                _result = (int) Socket.send(fd, buf, WordFactory.unsigned(nBytes), flags).rawValue();
-            } while ((_result == VmRuntimeOS.OSReturn.OS_ERR()) || (Errno.errno() == Errno.EINTR()));
-            return _result;
-        } while (false);
+            _result = (int) Socket.send(fd, buf, WordFactory.unsigned(nBytes), flags).rawValue();
+        } while ((_result == VmRuntimeOS.OSReturn.OS_ERR()) && (Errno.errno() == Errno.EINTR()));
+        return _result;
     }
 
     // 248 inline int os::sendto(int fd, char* buf, size_t len, uint flags, struct sockaddr *to, socklen_t tolen) {
     static int sendto(int fd, CCharPointer buf, int n, int flags, Socket.sockaddr addr, int addr_len) {
         // 250   RESTARTABLE_RETURN_INT((int)::sendto(fd, buf, len, flags, to, tolen));
+        int _result;
         do {
-            int _result;
-            do {
-                _result = (int) Socket.sendto(fd, buf, WordFactory.unsigned(n), flags, addr, addr_len).rawValue();
-            } while ((_result == VmRuntimeOS.OSReturn.OS_ERR()) || (Errno.errno() == Errno.EINTR()));
-            return _result;
-        } while (false);
+            _result = (int) Socket.sendto(fd, buf, WordFactory.unsigned(n), flags, addr, addr_len).rawValue();
+        } while ((_result == VmRuntimeOS.OSReturn.OS_ERR()) && (Errno.errno() == Errno.EINTR()));
+        return _result;
     }
 
     // 243 inline int os::recvfrom(int fd, char* buf, size_t nBytes, uint flags, sockaddr* from, socklen_t* fromlen) {
     static int recvfrom(int fd, CCharPointer buf, int n, int flags, Socket.sockaddr addr, CIntPointer addr_len) {
         // 245   RESTARTABLE_RETURN_INT((int)::recvfrom(fd, buf, nBytes, flags, from, fromlen));
+        int _result;
         do {
-            int _result;
-            do {
-                _result = (int) Socket.recvfrom(fd, buf, WordFactory.unsigned(n), flags, addr, addr_len).rawValue();
-            } while ((_result == VmRuntimeOS.OSReturn.OS_ERR()) || (Errno.errno() == Errno.EINTR()));
-            return _result;
-        } while (false);
+            _result = (int) Socket.recvfrom(fd, buf, WordFactory.unsigned(n), flags, addr, addr_len).rawValue();
+        } while ((_result == VmRuntimeOS.OSReturn.OS_ERR()) && (Errno.errno() == Errno.EINTR()));
+        return _result;
     }
 
     //     178 inline int os::socket_close(int fd) {
@@ -2381,10 +2396,22 @@ class Target_os {
         return Socket.listen(fd, count);
     }
 
+    // 238  inline int os::accept(int fd, struct sockaddr* him, socklen_t* len) {
+    static int accept(int fd, Socket.sockaddr him, CIntPointer len_Pointer) {
+        // 239    // At least OpenBSD and FreeBSD can return EINTR from accept.
+        // 240    RESTARTABLE_RETURN_INT(::accept(fd, him, len));
+        int _result;
+        do {
+            _result = Socket.accept(fd, him, len_Pointer);
+        } while ((_result == VmRuntimeOS.OSReturn.OS_ERR()) && (Errno.errno() == Errno.EINTR()));
+        return _result;
+    }
+
     /* formatter:on */
 }
 
 /** Translations from src/share/vm/runtime/os.hpp. */
+@Platforms({Platform.LINUX.class, Platform.DARWIN.class})
 class VmRuntimeOS {
 
     /* Do not re-format commented-out code: @formatter:off */
@@ -2427,6 +2454,7 @@ class VmRuntimeOS {
 }
 
 /** Translations from src/share/javavm/export/jvm.h. */
+@Platforms({Platform.LINUX.class, Platform.DARWIN.class})
 class JavavmExportJvm {
 
     // 1100 #define JVM_IO_ERR (-1)

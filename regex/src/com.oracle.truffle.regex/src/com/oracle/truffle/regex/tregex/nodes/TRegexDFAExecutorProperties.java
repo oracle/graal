@@ -40,7 +40,6 @@ public final class TRegexDFAExecutorProperties {
     private final FrameSlot captureGroupResultFS;
     private final FrameSlot lastTransitionFS;
     private final FrameSlot cgDataFS;
-    private final FrameSlot inputIsCompactStringFS;
     private final boolean forward;
     private final boolean searching;
     private final boolean trackCaptureGroups;
@@ -59,7 +58,6 @@ public final class TRegexDFAExecutorProperties {
                     FrameSlot captureGroupResultFS,
                     FrameSlot lastTransitionFS,
                     FrameSlot cgDataFS,
-                    FrameSlot inputIsCompactStringFS,
                     boolean forward,
                     boolean searching,
                     boolean trackCaptureGroups,
@@ -77,7 +75,6 @@ public final class TRegexDFAExecutorProperties {
         this.resultFS = resultFS;
         this.captureGroupResultFS = captureGroupResultFS;
         this.cgDataFS = cgDataFS;
-        this.inputIsCompactStringFS = inputIsCompactStringFS;
         this.forward = forward;
         this.searching = searching;
         this.trackCaptureGroups = trackCaptureGroups;
@@ -128,10 +125,6 @@ public final class TRegexDFAExecutorProperties {
 
     public FrameSlot getCgDataFS() {
         return cgDataFS;
-    }
-
-    public FrameSlot getInputIsCompactStringFS() {
-        return inputIsCompactStringFS;
     }
 
     public boolean isForward() {

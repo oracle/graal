@@ -31,12 +31,12 @@ import java.util.Iterator;
 import java.util.NoSuchElementException;
 import java.util.function.Predicate;
 
+import org.graalvm.compiler.serviceprovider.GraalUnsafeAccess;
 import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.Platforms;
 import org.graalvm.word.WordBase;
 
 import com.oracle.svm.core.FrameAccess;
-import com.oracle.svm.core.UnsafeAccess;
 import com.oracle.svm.core.annotate.UnknownObjectField;
 import com.oracle.svm.core.annotate.UnknownPrimitiveField;
 import com.oracle.svm.core.hub.DynamicHub;
@@ -56,8 +56,11 @@ import jdk.vm.ci.meta.MetaUtil;
 import jdk.vm.ci.meta.ResolvedJavaField;
 import jdk.vm.ci.meta.ResolvedJavaMethod;
 import jdk.vm.ci.meta.ResolvedJavaType;
+import sun.misc.Unsafe;
 
 public class SubstrateType extends NodeClass implements SharedType, Replaced {
+
+    private static final Unsafe UNSAFE = GraalUnsafeAccess.getUnsafe();
 
     protected static final SubstrateType[] EMPTY_ARRAY = new SubstrateType[0];
 
@@ -569,14 +572,14 @@ public class SubstrateType extends NodeClass implements SharedType, Replaced {
         assert !getFieldType(field).isPrimitive();
         assert value == null || getFieldType(field).isInstance(value);
         long offset = SubstrateNodeFieldAccessor.makeOffset((SubstrateField) field);
-        UnsafeAccess.UNSAFE.putObject(receiver, offset, value);
+        UNSAFE.putObject(receiver, offset, value);
     }
 
     @Override
     public Object getFieldObject(Object field, Node receiver) {
         assert !getFieldType(field).isPrimitive();
         long offset = SubstrateNodeFieldAccessor.makeOffset((SubstrateField) field);
-        return UnsafeAccess.UNSAFE.getObject(receiver, offset);
+        return UNSAFE.getObject(receiver, offset);
     }
 
     @Override
@@ -584,23 +587,23 @@ public class SubstrateType extends NodeClass implements SharedType, Replaced {
         Class<?> fieldType = getFieldType(field);
         long offset = SubstrateNodeFieldAccessor.makeOffset((SubstrateField) field);
         if (fieldType == boolean.class) {
-            return UnsafeAccess.UNSAFE.getBoolean(node, offset);
+            return UNSAFE.getBoolean(node, offset);
         } else if (fieldType == byte.class) {
-            return UnsafeAccess.UNSAFE.getByte(node, offset);
+            return UNSAFE.getByte(node, offset);
         } else if (fieldType == short.class) {
-            return UnsafeAccess.UNSAFE.getShort(node, offset);
+            return UNSAFE.getShort(node, offset);
         } else if (fieldType == char.class) {
-            return UnsafeAccess.UNSAFE.getChar(node, offset);
+            return UNSAFE.getChar(node, offset);
         } else if (fieldType == int.class) {
-            return UnsafeAccess.UNSAFE.getInt(node, offset);
+            return UNSAFE.getInt(node, offset);
         } else if (fieldType == long.class) {
-            return UnsafeAccess.UNSAFE.getLong(node, offset);
+            return UNSAFE.getLong(node, offset);
         } else if (fieldType == float.class) {
-            return UnsafeAccess.UNSAFE.getFloat(node, offset);
+            return UNSAFE.getFloat(node, offset);
         } else if (fieldType == double.class) {
-            return UnsafeAccess.UNSAFE.getDouble(node, offset);
+            return UNSAFE.getDouble(node, offset);
         } else {
-            return UnsafeAccess.UNSAFE.getObject(node, offset);
+            return UNSAFE.getObject(node, offset);
         }
     }
 
@@ -755,6 +758,8 @@ class SubstrateNodeFieldIterator implements Iterator<SubstrateField> {
 
 class SubstrateNodeIterator implements Iterator<Node> {
 
+    private static final Unsafe UNSAFE = GraalUnsafeAccess.getUnsafe();
+
     private final Node node;
 
     private final SubstrateType type;
@@ -811,13 +816,13 @@ class SubstrateNodeIterator implements Iterator<Node> {
     private boolean computeNextFromField(SubstrateField field) {
         if (SubstrateNodeFieldAccessor.isChildField(field)) {
             long offset = field.getLocation();
-            next = (Node) UnsafeAccess.UNSAFE.getObject(node, offset);
+            next = (Node) UNSAFE.getObject(node, offset);
             if (next != null) {
                 return true;
             }
         } else if (SubstrateNodeFieldAccessor.isChildrenField(field)) {
             long offset = field.getLocation();
-            children = (Object[]) UnsafeAccess.UNSAFE.getObject(node, offset);
+            children = (Object[]) UNSAFE.getObject(node, offset);
             nextChildInChildren = 0;
             return computeNextFromChildren();
         }

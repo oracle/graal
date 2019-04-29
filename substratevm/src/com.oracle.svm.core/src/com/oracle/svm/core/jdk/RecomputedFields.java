@@ -51,14 +51,14 @@ import java.util.concurrent.atomic.AtomicReferenceFieldUpdater;
 import java.util.concurrent.locks.ReentrantLock;
 import java.util.function.Consumer;
 
-import org.graalvm.compiler.serviceprovider.GraalServices;
-import org.graalvm.nativeimage.Feature;
+import org.graalvm.compiler.serviceprovider.GraalUnsafeAccess;
+import org.graalvm.compiler.serviceprovider.JavaVersionUtil;
+import org.graalvm.nativeimage.hosted.Feature;
 import org.graalvm.nativeimage.ImageSingletons;
 import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.Platforms;
 
 import com.oracle.svm.core.SubstrateOptions;
-import com.oracle.svm.core.UnsafeAccess;
 import com.oracle.svm.core.annotate.Alias;
 import com.oracle.svm.core.annotate.AutomaticFeature;
 import com.oracle.svm.core.annotate.Delete;
@@ -75,6 +75,7 @@ import com.oracle.svm.core.util.VMError;
 import jdk.vm.ci.meta.JavaKind;
 import jdk.vm.ci.meta.MetaAccessProvider;
 import jdk.vm.ci.meta.ResolvedJavaField;
+import sun.misc.Unsafe;
 
 /*
  * This file contains JDK fields that need to be intercepted because their value in the hosted environment is not
@@ -136,13 +137,13 @@ final class Target_java_util_concurrent_atomic_AtomicReferenceFieldUpdater_Atomi
     private long offset;
 
     /** the same as tclass, used for checks */
-    @Alias private final Class<?> cclass;
+    @Alias private Class<?> cclass;
 
     /** class holding the field */
-    @Alias private final Class<?> tclass;
+    @Alias private Class<?> tclass;
 
     /** field value type */
-    @Alias private final Class<?> vclass;
+    @Alias private Class<?> vclass;
 
     // simplified version of the original constructor
     @SuppressWarnings("unused")
@@ -174,7 +175,7 @@ final class Target_java_util_concurrent_atomic_AtomicReferenceFieldUpdater_Atomi
         this.cclass = tclass;
         this.tclass = tclass;
         this.vclass = vclass;
-        this.offset = UnsafeAccess.UNSAFE.objectFieldOffset(field);
+        this.offset = GraalUnsafeAccess.getUnsafe().objectFieldOffset(field);
     }
 }
 
@@ -184,9 +185,9 @@ final class Target_java_util_concurrent_atomic_AtomicIntegerFieldUpdater_AtomicI
     private long offset;
 
     /** the same as tclass, used for checks */
-    @Alias private final Class<?> cclass;
+    @Alias private Class<?> cclass;
     /** class holding the field */
-    @Alias private final Class<?> tclass;
+    @Alias private Class<?> tclass;
 
     // simplified version of the original constructor
     @SuppressWarnings("unused")
@@ -211,7 +212,7 @@ final class Target_java_util_concurrent_atomic_AtomicIntegerFieldUpdater_AtomicI
         // access checks are disabled
         this.cclass = tclass;
         this.tclass = tclass;
-        this.offset = UnsafeAccess.UNSAFE.objectFieldOffset(field);
+        this.offset = GraalUnsafeAccess.getUnsafe().objectFieldOffset(field);
     }
 }
 
@@ -221,9 +222,9 @@ final class Target_java_util_concurrent_atomic_AtomicLongFieldUpdater_CASUpdater
     private long offset;
 
     /** the same as tclass, used for checks */
-    @Alias private final Class<?> cclass;
+    @Alias private Class<?> cclass;
     /** class holding the field */
-    @Alias private final Class<?> tclass;
+    @Alias private Class<?> tclass;
 
     // simplified version of the original constructor
     @SuppressWarnings("unused")
@@ -248,7 +249,7 @@ final class Target_java_util_concurrent_atomic_AtomicLongFieldUpdater_CASUpdater
         // access checks are disabled
         this.cclass = tclass;
         this.tclass = tclass;
-        this.offset = UnsafeAccess.UNSAFE.objectFieldOffset(field);
+        this.offset = GraalUnsafeAccess.getUnsafe().objectFieldOffset(field);
     }
 
 }
@@ -259,9 +260,9 @@ final class Target_java_util_concurrent_atomic_AtomicLongFieldUpdater_LockedUpda
     private long offset;
 
     /** the same as tclass, used for checks */
-    @Alias private final Class<?> cclass;
+    @Alias private Class<?> cclass;
     /** class holding the field */
-    @Alias private final Class<?> tclass;
+    @Alias private Class<?> tclass;
 
     // simplified version of the original constructor
     @SuppressWarnings("unused")
@@ -286,7 +287,7 @@ final class Target_java_util_concurrent_atomic_AtomicLongFieldUpdater_LockedUpda
         // access checks are disabled
         this.cclass = tclass;
         this.tclass = tclass;
-        this.offset = UnsafeAccess.UNSAFE.objectFieldOffset(field);
+        this.offset = GraalUnsafeAccess.getUnsafe().objectFieldOffset(field);
     }
 }
 
@@ -298,6 +299,7 @@ final class Target_java_util_concurrent_atomic_AtomicLongFieldUpdater_LockedUpda
 @AutomaticFeature
 class AtomicFieldUpdaterFeature implements Feature {
 
+    private static final Unsafe UNSAFE = GraalUnsafeAccess.getUnsafe();
     private final ConcurrentMap<Object, Boolean> processedUpdaters = new ConcurrentHashMap<>();
     private Consumer<Field> markAsUnsafeAccessed;
 
@@ -346,7 +348,7 @@ class AtomicFieldUpdaterFeature implements Feature {
             // search the declared fields for a field with a matching offset
             for (Field f : tclass.getDeclaredFields()) {
                 if (!Modifier.isStatic(f.getModifiers())) {
-                    long fieldOffset = UnsafeAccess.UNSAFE.objectFieldOffset(f);
+                    long fieldOffset = UNSAFE.objectFieldOffset(f);
                     if (fieldOffset == searchOffset) {
                         markAsUnsafeAccessed.accept(f);
                         return;
@@ -433,7 +435,7 @@ final class Target_java_util_concurrent_ForkJoinPool {
         /** Ensure that the common pool variables are initialized. */
         protected static void ensureCommonPoolIsInitialized() {
             if (injectedCommon.get() == null) {
-                if (GraalServices.Java8OrEarlier) {
+                if (JavaVersionUtil.Java8OrEarlier) {
                     initializeCommonPool_JDK8OrEarlier();
                 } else {
                     initializeCommonPool_JDK9OrLater();
@@ -500,11 +502,11 @@ final class Target_java_util_concurrent_ForkJoinPool {
 @SuppressWarnings("static-method")
 final class Target_java_util_concurrent_ForkJoinTask {
     @Alias @RecomputeFieldValue(kind = Kind.FromAlias) //
-    private static final Target_java_util_concurrent_ForkJoinTask_ExceptionNode[] exceptionTable;
+    private static Target_java_util_concurrent_ForkJoinTask_ExceptionNode[] exceptionTable;
     @Alias @RecomputeFieldValue(kind = Kind.FromAlias) //
-    private static final ReentrantLock exceptionTableLock;
+    private static ReentrantLock exceptionTableLock;
     @Alias @RecomputeFieldValue(kind = Kind.FromAlias) //
-    private static final ReferenceQueue<Object> exceptionTableRefQueue;
+    private static ReferenceQueue<Object> exceptionTableRefQueue;
 
     static {
         exceptionTableLock = new ReentrantLock();

@@ -26,6 +26,10 @@ package com.oracle.svm.core.properties;
 
 import java.util.Arrays;
 
+import org.graalvm.nativeimage.ImageSingletons;
+
+import com.oracle.svm.core.jdk.SystemPropertiesSupport;
+
 public final class RuntimePropertyParser {
 
     private static final String PROPERTY_PREFIX = "-D";
@@ -65,7 +69,7 @@ public final class RuntimePropertyParser {
         String key = property.substring(0, splitIndex);
         String value = property.substring(splitIndex + 1);
 
-        System.setProperty(key, value);
+        ImageSingletons.lookup(SystemPropertiesSupport.class).initializeProperty(key, value);
 
         return true;
     }

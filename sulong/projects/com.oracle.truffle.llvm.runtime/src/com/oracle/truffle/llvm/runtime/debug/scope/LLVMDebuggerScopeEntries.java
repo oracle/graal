@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, Oracle and/or its affiliates.
+ * Copyright (c) 2018, 2019, Oracle and/or its affiliates.
  *
  * All rights reserved.
  *
@@ -76,5 +76,10 @@ public final class LLVMDebuggerScopeEntries extends LLVMDebuggerValue {
     @TruffleBoundary
     protected Object getElementForDebugger(String key) {
         return entries.get(key);
+    }
+
+    @TruffleBoundary
+    void removeElement(String key) {
+        entries.remove(key);
     }
 }

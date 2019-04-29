@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2013, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2013, 2018, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -23,6 +23,11 @@
  * questions.
  */
 package org.graalvm.compiler.truffle.runtime;
+
+import static org.graalvm.compiler.truffle.runtime.TruffleDebugOptions.PrintGraph;
+import static org.graalvm.compiler.truffle.runtime.TruffleDebugOptions.PrintTruffleTrees;
+import static org.graalvm.compiler.truffle.runtime.TruffleDebugOptions.getValue;
+import static org.graalvm.compiler.truffle.runtime.TruffleDebugOptions.PrintGraphTarget.Disable;
 
 import java.io.IOException;
 import java.util.ArrayList;
@@ -60,7 +65,7 @@ public final class TruffleTreeDumper {
     private static final String AFTER_INLINING = "After Inlining";
 
     public static void dump(TruffleDebugContext debug, OptimizedCallTarget callTarget, TruffleInlining inliningDecision) {
-        if (TruffleDebugOptions.getValue(TruffleDebugOptions.PrintGraph) && TruffleDebugOptions.getValue(TruffleDebugOptions.PrintTruffleTrees)) {
+        if (getValue(PrintGraph) != Disable && getValue(PrintTruffleTrees)) {
             try {
                 dumpASTAndCallTrees(debug, callTarget, inliningDecision);
             } catch (IOException ex) {
@@ -72,7 +77,7 @@ public final class TruffleTreeDumper {
     private static void dumpASTAndCallTrees(TruffleDebugContext debug, OptimizedCallTarget callTarget, TruffleInlining inlining) throws IOException {
         if (callTarget.getRootNode() != null) {
             AST ast = new AST(callTarget);
-            final GraphOutput<AST, ?> astOutput = debug.buildOutput(GraphOutput.newBuilder(AST_DUMP_STRUCTURE).blocks(AST_DUMP_STRUCTURE).protocolVersion(6, 0));
+            final GraphOutput<AST, ?> astOutput = debug.buildOutput(GraphOutput.newBuilder(AST_DUMP_STRUCTURE).blocks(AST_DUMP_STRUCTURE).protocolVersion(6, 1));
 
             astOutput.beginGroup(ast, "AST", "AST", null, 0, debug.getVersionProperties());
 
@@ -86,7 +91,7 @@ public final class TruffleTreeDumper {
             astOutput.close();
 
             CallTree callTree = new CallTree(callTarget, null);
-            final GraphOutput<CallTree, ?> callTreeOutput = debug.buildOutput(GraphOutput.newBuilder(CALL_GRAPH_DUMP_STRUCTURE).blocks(CALL_GRAPH_DUMP_STRUCTURE).protocolVersion(6, 0));
+            final GraphOutput<CallTree, ?> callTreeOutput = debug.buildOutput(GraphOutput.newBuilder(CALL_GRAPH_DUMP_STRUCTURE).blocks(CALL_GRAPH_DUMP_STRUCTURE).protocolVersion(6, 1));
             callTreeOutput.beginGroup(null, "Call Tree", "Call Tree", null, 0, debug.getVersionProperties());
             callTreeOutput.print(callTree, null, 0, AFTER_PROFILING);
             if (inlining.countInlinedCalls() > 0) {

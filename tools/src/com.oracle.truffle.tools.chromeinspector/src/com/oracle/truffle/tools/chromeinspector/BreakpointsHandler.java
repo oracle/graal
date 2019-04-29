@@ -118,21 +118,19 @@ final class BreakpointsHandler {
             bp.setCondition(condition);
         }
         bp = ds.install(bp);
-        JSONArray locations = new JSONArray();
+        Location resolvedLocation = location;
         long id;
         synchronized (bpIDs) {
             id = ++lastID;
             bpIDs.put(bp, id);
             SourceSection section = resolvedBreakpoints.remove(bp);
             if (section != null) {
-                Location resolvedLocation = new Location(location.getScriptId(), section.getStartLine(), section.getStartColumn());
-                locations.put(resolvedLocation.toJSON());
+                resolvedLocation = new Location(location.getScriptId(), section.getStartLine(), section.getStartColumn());
             }
         }
         JSONObject json = new JSONObject();
         json.put("breakpointId", Long.toString(id));
-        locations.put(location.toJSON());
-        json.put("locations", locations);
+        json.put("actualLocation", resolvedLocation.toJSON());
         return new Params(json);
     }
 

@@ -25,6 +25,7 @@
 package com.oracle.graal.pointsto.flow;
 
 import org.graalvm.compiler.nodes.java.StoreFieldNode;
+
 import com.oracle.graal.pointsto.BigBang;
 import com.oracle.graal.pointsto.flow.context.object.AnalysisObject;
 import com.oracle.graal.pointsto.meta.AnalysisField;
@@ -157,7 +158,7 @@ public abstract class StoreFieldTypeFlow extends TypeFlow<StoreFieldNode> {
             /* Iterate over the receiver objects. */
             for (AnalysisObject receiver : objectState.objects()) {
                 /* Get the field flow corresponding to the receiver object. */
-                FieldTypeFlow fieldFlow = receiver.getInstanceFieldFlow(bb, field, true);
+                FieldTypeFlow fieldFlow = receiver.getInstanceFieldFlow(bb, this.method(), field, true);
                 /* Register the field flow as a use, if not already registered. */
                 this.addUse(bb, fieldFlow);
             }

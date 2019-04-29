@@ -14,23 +14,24 @@ The Chrome Inspector can be used with both the precompiled GraalVM and Sulong bu
 The easiest way to use Sulong's source-level debugging capabilities is to run it from GraalVM.
 To start debugging simply run the following in GraalVM's `bin` directory:
 
-    lli --inspect --llvm.enableLVI=true <bitcode file>
+    lli --inspect --llvm.enableLVI <bitcode file>
 
 ### Built from source
 
 The source code of Chrome Inspector is available as part of the
 [Tools suite in the Graal repository](https://github.com/oracle/graal/tree/master/tools).
 If you followed the instructions in [Sulong's README](../README.md) and already built Sulong the Tools suite
-should be available at `sulong-dev/graal/tools`. Please follow the
-[build instructions in Tools's README](https://github.com/oracle/graal/blob/master/tools/README.md)
-to compile the code. If you have not yet built Sulong you can download its dependencies, including the
-Graal repository, by running `mx sforceimports` from `sulong-dev/sulong`. If you were able to build the
-tools correctly you should find `chromeinspector.jar` and `truffle-profiler.jar` in the directory
-`sulong-dev/graal/tools/mxbuild/dists`.
+should be available at `sulong-dev/graal/tools`.
+You can use following command from the `sulong-dev/graal/sulong` directory to build the Tools suite.
 
-To debug a program you can then use the following command in `sulong-dev/sulong`:
+     mx --dynamicimports /tools build
 
-    mx --cp-sfx <path to truffle-profiler.jar>:<path to chromeinspector.jar> lli -Dpolyglot.llvm.enableLVI=true -Dpolyglot.inspect=true <bitcode file>
+See the [build instructions in Tools's README](https://github.com/oracle/graal/blob/master/tools/README.md)
+for more information.
+
+To debug a program you can then use the following command in `sulong-dev/graal/sulong`:
+
+    mx --dynamicimports /tools lli --inspect --llvm.enableLVI <bitcode file>
 
 This can also be used in conjunction with the `-d` option to `mx`, allowing you to attach a Java
 Debugger for debugging Sulong itself in addition to the source-level debugger.
@@ -117,7 +118,7 @@ debugger of choice while debugging the code executed by Sulong in the Chrome ins
 ### How can I generate a trace of how Sulong executes my program?
 
 Sulong can produce an LLVM IR-level trace of its program execution. You can enable
-this feature by passing the `--TraceLLVM=<...>` option to `lli`. This option takes a
+this feature by passing the `--llvm.traceIR<...>` option to `lli`. This option takes a
 single argument denoting the target for the trace output.
 
 * `stdout` or `out`: prints the trace to `stdout`

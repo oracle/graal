@@ -32,6 +32,8 @@ import java.net.NetworkInterface;
 import java.net.SocketException;
 
 import org.graalvm.nativeimage.ImageSingletons;
+import org.graalvm.nativeimage.Platform;
+import org.graalvm.nativeimage.Platforms;
 import org.graalvm.nativeimage.StackValue;
 import org.graalvm.nativeimage.c.struct.SizeOf;
 import org.graalvm.nativeimage.c.type.CCharPointer;
@@ -42,7 +44,7 @@ import org.graalvm.word.WordFactory;
 
 import com.oracle.svm.core.log.Log;
 import com.oracle.svm.core.os.IsDefined;
-import com.oracle.svm.core.posix.headers.Errno;
+import com.oracle.svm.core.headers.Errno;
 import com.oracle.svm.core.posix.headers.LibC;
 import com.oracle.svm.core.posix.headers.NetIf;
 import com.oracle.svm.core.posix.headers.NetinetIn;
@@ -75,6 +77,7 @@ import com.oracle.svm.core.util.PointerUtils;
 // So one can look at the quoted line numbers on the C code to see which platform
 // the code applies to.
 
+@Platforms({Platform.LINUX.class, Platform.DARWIN.class})
 public class JavaNetNetworkInterface {
 
     /*

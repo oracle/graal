@@ -50,13 +50,13 @@ import javax.lang.model.type.MirroredTypeException;
 import javax.lang.model.type.TypeKind;
 import javax.lang.model.type.TypeMirror;
 
-import com.oracle.truffle.api.interop.Message;
-import com.oracle.truffle.api.interop.MessageResolution;
 import com.oracle.truffle.dsl.processor.java.ElementUtils;
 
+@SuppressWarnings("deprecation")
 final class Utils {
 
-    static String getReceiverTypeFullClassName(MessageResolution message) {
+    @SuppressWarnings("deprecation")
+    static String getReceiverTypeFullClassName(com.oracle.truffle.api.interop.MessageResolution message) {
         String receiverTypeFullClassName;
         try {
             message.receiverType().getName();
@@ -71,10 +71,10 @@ final class Utils {
     static Object getMessage(ProcessingEnvironment processingEnv, String messageName) {
         Object currentMessage = null;
         try {
-            currentMessage = Message.valueOf(messageName);
+            currentMessage = com.oracle.truffle.api.interop.Message.valueOf(messageName);
         } catch (IllegalArgumentException ex) {
             TypeElement typeElement = ElementUtils.getTypeElement(processingEnv, messageName);
-            TypeElement messageElement = ElementUtils.getTypeElement(processingEnv, Message.class.getName());
+            TypeElement messageElement = ElementUtils.getTypeElement(processingEnv, com.oracle.truffle.api.interop.Message.class.getName());
             if (typeElement != null && processingEnv.getTypeUtils().isAssignable(typeElement.asType(), messageElement.asType())) {
                 currentMessage = messageName;
             }

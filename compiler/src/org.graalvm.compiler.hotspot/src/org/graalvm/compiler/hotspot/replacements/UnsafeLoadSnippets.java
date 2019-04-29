@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2013, 2015, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2013, 2018, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -24,6 +24,7 @@
  */
 package org.graalvm.compiler.hotspot.replacements;
 
+import static org.graalvm.compiler.hotspot.GraalHotSpotVMConfig.INJECTED_METAACCESS;
 import static org.graalvm.compiler.hotspot.replacements.HotSpotReplacementsUtil.referentOffset;
 import static org.graalvm.compiler.replacements.SnippetTemplate.DEFAULT_REPLACER;
 
@@ -48,7 +49,7 @@ public class UnsafeLoadSnippets implements Snippets {
     @Snippet
     public static Object lowerUnsafeLoad(Object object, long offset) {
         Object fixedObject = FixedValueAnchorNode.getObject(object);
-        if (object instanceof java.lang.ref.Reference && referentOffset() == offset) {
+        if (object instanceof java.lang.ref.Reference && referentOffset(INJECTED_METAACCESS) == offset) {
             return Word.objectToTrackedPointer(fixedObject).readObject((int) offset, BarrierType.PRECISE);
         } else {
             return Word.objectToTrackedPointer(fixedObject).readObject((int) offset, BarrierType.NONE);

@@ -26,6 +26,8 @@ package com.oracle.svm.jni.hosted;
 
 // Checkstyle: allow reflection
 
+import static jdk.vm.ci.services.Services.IS_BUILDING_NATIVE_IMAGE;
+
 import java.lang.reflect.Modifier;
 import java.util.ArrayList;
 import java.util.List;
@@ -48,9 +50,11 @@ import org.graalvm.compiler.nodes.java.MonitorIdNode;
 
 import com.oracle.graal.pointsto.infrastructure.WrappedJavaMethod;
 import com.oracle.graal.pointsto.meta.HostedProviders;
+import com.oracle.svm.core.graal.nodes.CGlobalDataLoadAddressNode;
 import com.oracle.svm.core.hub.DynamicHub;
 import com.oracle.svm.core.meta.SubstrateObjectConstant;
 import com.oracle.svm.hosted.annotation.CustomSubstitutionMethod;
+import com.oracle.svm.hosted.code.SimpleSignature;
 import com.oracle.svm.jni.access.JNIAccessFeature;
 import com.oracle.svm.jni.access.JNINativeLinkage;
 import com.oracle.svm.jni.nativeapi.JNIEnvironment;
@@ -71,8 +75,6 @@ import jdk.vm.ci.meta.Signature;
  * handles and for unboxing an object return value.
  */
 class JNINativeCallWrapperMethod extends CustomSubstitutionMethod {
-    private int maxLocals = -1;
-
     private final JNINativeLinkage linkage;
 
     JNINativeCallWrapperMethod(ResolvedJavaMethod method) {
@@ -88,25 +90,6 @@ class JNINativeCallWrapperMethod extends CustomSubstitutionMethod {
         String className = unwrapped.getDeclaringClass().getName();
         String descriptor = unwrapped.getSignature().toMethodDescriptor();
         return JNIAccessFeature.singleton().makeLinkage(className, unwrapped.getName(), descriptor);
-    }
-
-    @Override
-    public int getMaxLocals() {
-        if (maxLocals == -1) {
-            maxLocals = 0;
-            Signature sig = getOriginal().getSignature();
-            int count = sig.getParameterCount(false);
-            if (!getOriginal().isStatic()) {
-                maxLocals++;
-            }
-            for (int i = 0; i < count; i++) {
-                maxLocals++;
-                if (sig.getParameterKind(i).needsTwoSlots()) {
-                    maxLocals++;
-                }
-            }
-        }
-        return maxLocals;
     }
 
     @Override
@@ -129,7 +112,13 @@ class JNINativeCallWrapperMethod extends CustomSubstitutionMethod {
 
         InvokeWithExceptionNode handleFrame = kit.nativeCallPrologue();
 
-        ValueNode callAddress = kit.nativeCallAddress(kit.createObject(linkage));
+        ValueNode callAddress;
+        if (linkage.isBuiltInFunction()) {
+            callAddress = kit.unique(new CGlobalDataLoadAddressNode(linkage.getBuiltInAddress()));
+        } else {
+            callAddress = kit.nativeCallAddress(kit.createObject(linkage));
+        }
+
         ValueNode environment = kit.environment();
 
         JavaType javaReturnType = method.getSignature().getReturnType(null);
@@ -183,7 +172,7 @@ class JNINativeCallWrapperMethod extends CustomSubstitutionMethod {
 
         kit.getFrameState().clearLocals();
 
-        Signature jniSignature = new JNISignature(jniArgumentTypes, jniReturnType);
+        Signature jniSignature = new SimpleSignature(jniArgumentTypes, jniReturnType);
         ValueNode returnValue = kit.createCFunctionCall(callAddress, jniArguments, jniSignature, true, false);
 
         if (getOriginal().isSynchronized()) {
@@ -200,7 +189,7 @@ class JNINativeCallWrapperMethod extends CustomSubstitutionMethod {
         kit.rethrowPendingException();
         if (javaReturnType.getJavaKind().isObject()) {
             // Just before return to always run the epilogue and never suppress a pending exception
-            returnValue = castObject(kit, returnValue, (ResolvedJavaType) javaReturnType);
+            returnValue = castObject(kit, returnValue, (ResolvedJavaType) javaReturnType, purpose);
         }
         kit.createReturn(returnValue, javaReturnType.getJavaKind());
 
@@ -210,15 +199,26 @@ class JNINativeCallWrapperMethod extends CustomSubstitutionMethod {
         return graph;
     }
 
-    private static ValueNode castObject(JNIGraphKit kit, ValueNode object, ResolvedJavaType type) {
+    private static ValueNode castObject(JNIGraphKit kit, ValueNode object, ResolvedJavaType type, Purpose purpose) {
         ValueNode casted = object;
         if (!type.isJavaLangObject()) { // safe cast to expected type
             TypeReference typeRef = TypeReference.createTrusted(kit.getAssumptions(), type);
-            LogicNode condition = kit.append(InstanceOfNode.createAllowNull(typeRef, object, null, null));
-            if (!condition.isTautology()) {
+            if (IS_BUILDING_NATIVE_IMAGE && purpose == Purpose.AOT_COMPILATION) {
+                // Workaround GR-14106 until JVMCI 0.56
+                // CompilerToVM.getFailedSpeculations returns an Object[] containing byte[]s instead
+                // of a byte[][]. During analysis we generate the proper instanceof to produce this
+                // type but drop the instanceof in the final code generation so we don't throw an
+                // exception.
+                // The code will work ok because the layouts are the same.
                 ObjectStamp stamp = StampFactory.object(typeRef, false);
-                FixedGuardNode fixedGuard = kit.append(new FixedGuardNode(condition, DeoptimizationReason.ClassCastException, DeoptimizationAction.None, false));
-                casted = kit.append(PiNode.create(object, stamp, fixedGuard));
+                casted = kit.append(PiNode.create(object, stamp));
+            } else {
+                LogicNode condition = kit.append(InstanceOfNode.createAllowNull(typeRef, object, null, null));
+                if (!condition.isTautology()) {
+                    ObjectStamp stamp = StampFactory.object(typeRef, false);
+                    FixedGuardNode fixedGuard = kit.append(new FixedGuardNode(condition, DeoptimizationReason.ClassCastException, DeoptimizationAction.None, false));
+                    casted = kit.append(PiNode.create(object, stamp, fixedGuard));
+                }
             }
         }
         return casted;

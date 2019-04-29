@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2013, 2017, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2013, 2019, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -25,14 +25,14 @@
 package com.oracle.svm.core.posix;
 
 import static com.oracle.svm.core.annotate.RecomputeFieldValue.Kind.NewInstance;
+import static com.oracle.svm.core.headers.Errno.EACCES;
+import static com.oracle.svm.core.headers.Errno.EEXIST;
+import static com.oracle.svm.core.headers.Errno.ENOENT;
+import static com.oracle.svm.core.headers.Errno.ENOTDIR;
+import static com.oracle.svm.core.headers.Errno.errno;
 import static com.oracle.svm.core.posix.headers.Dirent.closedir;
 import static com.oracle.svm.core.posix.headers.Dirent.opendir;
 import static com.oracle.svm.core.posix.headers.Dirent.readdir_r;
-import static com.oracle.svm.core.posix.headers.Errno.EACCES;
-import static com.oracle.svm.core.posix.headers.Errno.EEXIST;
-import static com.oracle.svm.core.posix.headers.Errno.ENOENT;
-import static com.oracle.svm.core.posix.headers.Errno.ENOTDIR;
-import static com.oracle.svm.core.posix.headers.Errno.errno;
 import static com.oracle.svm.core.posix.headers.Fcntl.O_APPEND;
 import static com.oracle.svm.core.posix.headers.Fcntl.O_CREAT;
 import static com.oracle.svm.core.posix.headers.Fcntl.O_DSYNC;
@@ -79,35 +79,46 @@ import static com.oracle.svm.core.posix.headers.Unistd.close;
 import static com.oracle.svm.core.posix.headers.Unistd.ftruncate;
 import static com.oracle.svm.core.posix.headers.Unistd.lseek;
 
+import java.io.BufferedInputStream;
+import java.io.BufferedOutputStream;
 import java.io.File;
 import java.io.FileDescriptor;
+import java.io.FileInputStream;
 import java.io.FileNotFoundException;
 import java.io.FileOutputStream;
 import java.io.IOException;
+import java.io.PrintStream;
 import java.nio.charset.Charset;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.concurrent.locks.ReentrantLock;
 
-import org.graalvm.compiler.serviceprovider.GraalServices;
+import org.graalvm.compiler.serviceprovider.JavaVersionUtil;
+import org.graalvm.nativeimage.ImageSingletons;
 import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.Platforms;
 import org.graalvm.nativeimage.StackValue;
+import org.graalvm.nativeimage.c.function.CLibrary;
 import org.graalvm.nativeimage.c.struct.SizeOf;
 import org.graalvm.nativeimage.c.type.CCharPointer;
 import org.graalvm.nativeimage.c.type.CIntPointer;
 import org.graalvm.nativeimage.c.type.CTypeConversion;
 import org.graalvm.nativeimage.c.type.CTypeConversion.CCharPointerHolder;
+import org.graalvm.nativeimage.hosted.Feature;
+import org.graalvm.nativeimage.impl.InternalPlatform;
+import org.graalvm.nativeimage.impl.RuntimeClassInitializationSupport;
 import org.graalvm.word.SignedWord;
 import org.graalvm.word.WordFactory;
 
 import com.oracle.svm.core.SubstrateUtil;
 import com.oracle.svm.core.annotate.Alias;
+import com.oracle.svm.core.annotate.AutomaticFeature;
 import com.oracle.svm.core.annotate.RecomputeFieldValue;
 import com.oracle.svm.core.annotate.Substitute;
 import com.oracle.svm.core.annotate.TargetClass;
 import com.oracle.svm.core.annotate.TargetElement;
 import com.oracle.svm.core.jdk.JDK8OrEarlier;
+import com.oracle.svm.core.log.Log;
 import com.oracle.svm.core.posix.headers.Dirent.DIR;
 import com.oracle.svm.core.posix.headers.Dirent.dirent;
 import com.oracle.svm.core.posix.headers.Dirent.direntPointer;
@@ -121,6 +132,55 @@ import com.oracle.svm.core.posix.headers.Time.timeval;
 import com.oracle.svm.core.posix.headers.Unistd;
 import com.oracle.svm.core.snippets.KnownIntrinsics;
 import com.oracle.svm.core.util.VMError;
+import com.oracle.svm.hosted.jni.JNIRuntimeAccess;
+
+@Platforms({InternalPlatform.LINUX_JNI.class, InternalPlatform.DARWIN_JNI.class})
+@AutomaticFeature
+@CLibrary("java")
+class PosixJavaIOSubstituteFeature implements Feature {
+
+    @Override
+    public void duringSetup(DuringSetupAccess access) {
+        // Can't re-initialize the classes list below:
+        // Error: com.oracle.graal.pointsto.constraints.UnsupportedFeatureException: No instances
+        // are allowed in the image heap for a class
+        // that is initialized or reinitialized at image runtime: java.io.XXX.
+        //
+        // RuntimeClassInitialization.rerun(access.findClassByName("java.io.FileDescriptor"));
+        // RuntimeClassInitialization.rerun(access.findClassByName("java.io.FileInputStream"));
+        // RuntimeClassInitialization.rerun(access.findClassByName("java.io.FileOutputStream"));
+        // RuntimeClassInitialization.rerun(access.findClassByName("java.io.UnixFileSystem"));
+
+        ImageSingletons.lookup(RuntimeClassInitializationSupport.class).rerunInitialization(access.findClassByName("java.io.RandomAccessFile"), "required for substitutions");
+        ImageSingletons.lookup(RuntimeClassInitializationSupport.class).rerunInitialization(access.findClassByName("java.util.zip.ZipFile"), "required for substitutions");
+        ImageSingletons.lookup(RuntimeClassInitializationSupport.class).rerunInitialization(access.findClassByName("java.util.zip.Inflater"), "required for substitutions");
+        ImageSingletons.lookup(RuntimeClassInitializationSupport.class).rerunInitialization(access.findClassByName("java.util.zip.Deflater"), "required for substitutions");
+    }
+
+    @Override
+    public void beforeAnalysis(BeforeAnalysisAccess access) {
+        try {
+            JNIRuntimeAccess.register(java.lang.String.class);
+            JNIRuntimeAccess.register(access.findClassByName("java.lang.String").getDeclaredConstructor(byte[].class, String.class));
+            JNIRuntimeAccess.register(access.findClassByName("java.lang.String").getDeclaredMethod("getBytes", String.class));
+            JNIRuntimeAccess.register(java.io.File.class);
+            JNIRuntimeAccess.register(java.io.File.class.getDeclaredField("path"));
+            JNIRuntimeAccess.register(java.io.FileOutputStream.class);
+            JNIRuntimeAccess.register(java.io.FileOutputStream.class.getDeclaredField("fd"));
+            JNIRuntimeAccess.register(java.io.FileInputStream.class);
+            JNIRuntimeAccess.register(java.io.FileInputStream.class.getDeclaredField("fd"));
+            JNIRuntimeAccess.register(java.io.FileDescriptor.class);
+            JNIRuntimeAccess.register(java.io.FileDescriptor.class.getDeclaredField("fd"));
+            JNIRuntimeAccess.register(java.io.RandomAccessFile.class);
+            JNIRuntimeAccess.register(java.io.RandomAccessFile.class.getDeclaredField("fd"));
+            JNIRuntimeAccess.register(java.io.IOException.class);
+            JNIRuntimeAccess.register(java.io.IOException.class.getDeclaredConstructor(String.class));
+            JNIRuntimeAccess.register(access.findClassByName("java.io.UnixFileSystem"));
+        } catch (NoSuchFieldException | NoSuchMethodException e) {
+            VMError.shouldNotReachHere("PosixJavaIOSubstitutionFeature: Error registering class or method: ", e);
+        }
+    }
+}
 
 @TargetClass(className = "java.io.ExpiringCache")
 @Platforms({Platform.LINUX.class, Platform.DARWIN.class})
@@ -274,7 +334,7 @@ final class Target_java_io_UnixFileSystem {
                 // Other I/O problems cause an error return.
                 continue;
             } else {
-                throw new IOException(PosixUtils.lastErrorString("Bad pathname"));
+                throw PosixUtils.newIOExceptionWithLastError("Bad pathname");
             }
         }
 
@@ -282,7 +342,7 @@ final class Target_java_io_UnixFileSystem {
             // append unresolved subpath to resolved subpath
             String rs = CTypeConversion.toJavaString(r);
             if (rs.length() + 1 + unresolvedPart.length() > maxPathLen) {
-                throw new IOException(PosixUtils.lastErrorString("Bad pathname"));
+                throw PosixUtils.newIOExceptionWithLastError("Bad pathname");
             }
             return PosixUtils.collapse(rs + "/" + unresolvedPart);
         } else {
@@ -397,7 +457,7 @@ final class Target_java_io_UnixFileSystem {
         }
         if (fd < 0) {
             if (fd != EEXIST()) {
-                throw new IOException(PosixUtils.lastErrorString(path));
+                throw PosixUtils.newIOExceptionWithLastError(path);
             }
         } else {
             close(fd);
@@ -512,7 +572,7 @@ final class Target_java_io_FileInputStream {
             }
             return (int) r;
         }
-        throw new IOException(PosixUtils.lastErrorString(""));
+        throw PosixUtils.newIOExceptionWithLastError("");
     }
 
     @Substitute
@@ -522,9 +582,9 @@ final class Target_java_io_FileInputStream {
         int handle = PosixUtils.getFDHandle(fd);
 
         if ((cur = lseek(handle, WordFactory.zero(), SEEK_CUR())).equal(WordFactory.signed(-1))) {
-            throw new IOException(PosixUtils.lastErrorString("Seek error"));
+            throw PosixUtils.newIOExceptionWithLastError("Seek error");
         } else if ((end = lseek(handle, WordFactory.signed(n), SEEK_CUR())).equal(WordFactory.signed(-1))) {
-            throw new IOException(PosixUtils.lastErrorString("Seek error"));
+            throw PosixUtils.newIOExceptionWithLastError("Seek error");
         }
 
         return end.subtract(cur).rawValue();
@@ -570,7 +630,6 @@ final class Target_java_io_FileOutputStream {
     private void write(int b, boolean append) throws IOException {
         PosixUtils.writeSingle(SubstrateUtil.getFileDescriptor(KnownIntrinsics.unsafeCast(this, FileOutputStream.class)), b, append);
     }
-
 }
 
 @TargetClass(java.io.RandomAccessFile.class)
@@ -610,9 +669,9 @@ final class Target_java_io_RandomAccessFile {
     private void seek(long pos) throws IOException {
         int handle = PosixUtils.getFDHandle(fd);
         if (pos < 0L) {
-            throw new IOException("Negative seek offset");
+            throw PosixUtils.newIOExceptionWithLastError("Negative seek offset");
         } else if (lseek(handle, WordFactory.signed(pos), SEEK_SET()).equal(WordFactory.signed(-1))) {
-            throw new IOException(PosixUtils.lastErrorString("Seek failed"));
+            throw PosixUtils.newIOExceptionWithLastError("Seek failed");
         }
 
     }
@@ -622,7 +681,7 @@ final class Target_java_io_RandomAccessFile {
         SignedWord ret;
         int handle = PosixUtils.getFDHandle(fd);
         if ((ret = lseek(handle, WordFactory.zero(), SEEK_CUR())).equal(WordFactory.signed(-1))) {
-            throw new IOException(PosixUtils.lastErrorString("Seek failed"));
+            throw PosixUtils.newIOExceptionWithLastError("Seek failed");
         }
         return ret.rawValue();
     }
@@ -657,11 +716,11 @@ final class Target_java_io_RandomAccessFile {
         int handle = PosixUtils.getFDHandle(fd);
 
         if ((cur = lseek(handle, WordFactory.zero(), SEEK_CUR())).equal(WordFactory.signed(-1))) {
-            throw new IOException(PosixUtils.lastErrorString("Seek failed"));
+            throw PosixUtils.newIOExceptionWithLastError("Seek failed");
         } else if ((end = lseek(handle, WordFactory.zero(), SEEK_END())).equal(WordFactory.signed(-1))) {
-            throw new IOException(PosixUtils.lastErrorString("Seek failed"));
+            throw PosixUtils.newIOExceptionWithLastError("Seek failed");
         } else if (lseek(handle, cur, SEEK_SET()).equal(WordFactory.signed(-1))) {
-            throw new IOException(PosixUtils.lastErrorString("Seek failed"));
+            throw PosixUtils.newIOExceptionWithLastError("Seek failed");
         }
         return end.rawValue();
     }
@@ -672,18 +731,18 @@ final class Target_java_io_RandomAccessFile {
         int handle = PosixUtils.getFDHandle(fd);
 
         if ((cur = lseek(handle, WordFactory.zero(), SEEK_CUR())).equal(WordFactory.signed(-1))) {
-            throw new IOException(PosixUtils.lastErrorString("setLength failed"));
+            throw PosixUtils.newIOExceptionWithLastError("setLength failed");
         }
         if (ftruncate(handle, newLength) == -1) {
-            throw new IOException(PosixUtils.lastErrorString("setLength failed"));
+            throw PosixUtils.newIOExceptionWithLastError("setLength failed");
         }
         if (cur.greaterThan(WordFactory.signed(newLength))) {
             if (lseek(handle, WordFactory.zero(), SEEK_END()).equal(WordFactory.signed(-1))) {
-                throw new IOException(PosixUtils.lastErrorString("setLength failed"));
+                throw PosixUtils.newIOExceptionWithLastError("setLength failed");
             }
         } else {
             if (lseek(handle, cur, SEEK_SET()).equal(WordFactory.signed(-1))) {
-                throw new IOException(PosixUtils.lastErrorString("setLength failed"));
+                throw PosixUtils.newIOExceptionWithLastError("setLength failed");
             }
         }
     }
@@ -723,7 +782,7 @@ final class Target_java_io_Console {
     // 050                           jboolean on) {
     @Substitute
     static boolean echo(boolean on) throws IOException {
-        if (GraalServices.Java8OrEarlier) {
+        if (JavaVersionUtil.Java8OrEarlier) {
             /* Initialize the echo shut down hook, once. */
             Util_java_io_Console_JDK8OrEarlier.addShutdownHook();
         }
@@ -737,7 +796,7 @@ final class Target_java_io_Console {
         // 055     if (tcgetattr(tty, &tio) == -1) {
         if (Termios.tcgetattr(tty, tio) == -1) {
             // 056         JNU_ThrowIOExceptionWithLastError(env, "tcgetattr failed");
-            throw new IOException("tcgetattr failed");
+            throw PosixUtils.newIOExceptionWithLastError("tcgetattr failed");
             // 057         return !on;
             /* Unreachable code. */
         }
@@ -754,7 +813,7 @@ final class Target_java_io_Console {
         // 065     if (tcsetattr(tty, TCSANOW, &tio) == -1) {
         if (Termios.tcsetattr(tty, Termios.TCSANOW(), tio) == -1) {
             // 066         JNU_ThrowIOExceptionWithLastError(env, "tcsetattr failed");
-            throw new IOException("tcsetattr failed");
+            throw PosixUtils.newIOExceptionWithLastError("tcsetattr failed");
         }
         // 068     return old;
         return old;
@@ -818,6 +877,85 @@ class Util_java_io_Console_JDK8OrEarlier {
     }
 }
 
-/** Dummy class to have a class with the file's name. */
+@TargetClass(java.io.FileInputStream.class)
+@Platforms({InternalPlatform.LINUX_JNI.class, InternalPlatform.DARWIN_JNI.class})
+final class Target_java_io_FileInputStream_jni {
+
+    @Alias
+    static native void initIDs();
+}
+
+@TargetClass(java.io.RandomAccessFile.class)
+@Platforms({InternalPlatform.LINUX_JNI.class, InternalPlatform.DARWIN_JNI.class})
+final class Target_java_io_RandomAccessFile_jni {
+
+    @Alias
+    static native void initIDs();
+}
+
+@TargetClass(java.io.FileDescriptor.class)
+@Platforms({InternalPlatform.LINUX_JNI.class, InternalPlatform.DARWIN_JNI.class})
+final class Target_java_io_FileDescriptor_jni {
+
+    @Alias
+    static native void initIDs();
+
+    @Alias static FileDescriptor in;
+    @Alias static FileDescriptor out;
+    @Alias static FileDescriptor err;
+
+}
+
+@TargetClass(java.io.FileOutputStream.class)
+@Platforms({InternalPlatform.LINUX_JNI.class, InternalPlatform.DARWIN_JNI.class})
+final class Target_java_io_FileOutputStream_jni {
+
+    @Alias
+    static native void initIDs();
+}
+
+@TargetClass(className = "java.io.UnixFileSystem")
+@Platforms({InternalPlatform.LINUX_JNI.class, InternalPlatform.DARWIN_JNI.class})
+final class Target_java_io_UnixFileSystem_jni {
+
+    @Alias
+    static native void initIDs();
+}
+
+@Platforms({Platform.LINUX.class, InternalPlatform.LINUX_JNI.class, Platform.DARWIN.class, InternalPlatform.DARWIN_JNI.class})
 public final class PosixJavaIOSubstitutions {
+
+    /** Private constructor: No instances. */
+    private PosixJavaIOSubstitutions() {
+    }
+
+    @Platforms({InternalPlatform.LINUX_JNI.class, InternalPlatform.DARWIN_JNI.class})
+    public static boolean initIDs() {
+        try {
+            /*
+             * java.dll is normally loaded by the VM. After loading java.dll, the VM then calls
+             * initializeSystemClasses which loads zip.dll.
+             *
+             * We might want to consider calling System.initializeSystemClasses instead of
+             * explicitly loading the builtin zip library.
+             */
+
+            System.loadLibrary("java");
+
+            Target_java_io_FileDescriptor_jni.initIDs();
+            Target_java_io_FileInputStream_jni.initIDs();
+            Target_java_io_FileOutputStream_jni.initIDs();
+            Target_java_io_UnixFileSystem_jni.initIDs();
+
+            System.setIn(new BufferedInputStream(new FileInputStream(FileDescriptor.in)));
+            System.setOut(new PrintStream(new BufferedOutputStream(new FileOutputStream(FileDescriptor.out), 128), true));
+            System.setErr(new PrintStream(new BufferedOutputStream(new FileOutputStream(FileDescriptor.err), 128), true));
+
+            System.loadLibrary("zip");
+            return true;
+        } catch (UnsatisfiedLinkError e) {
+            Log.log().string("System.loadLibrary failed, " + e).newline();
+            return false;
+        }
+    }
 }

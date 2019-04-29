@@ -53,7 +53,7 @@ public class StructInfo extends SizableInfo {
     }
 
     @Override
-    public Object getAnnotatedElement() {
+    public ResolvedJavaType getAnnotatedElement() {
         return annotatedType;
     }
 

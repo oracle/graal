@@ -29,6 +29,7 @@ import java.util.concurrent.atomic.AtomicReferenceFieldUpdater;
 import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.Platforms;
 
+import com.oracle.svm.core.SubstrateUtil;
 import com.oracle.svm.core.snippets.KnownIntrinsics;
 
 import jdk.vm.ci.meta.Constant;
@@ -78,7 +79,7 @@ public final class SubstrateObjectConstant implements JavaConstant, Compressible
     }
 
     public static Object asObject(ResolvedJavaType type, JavaConstant constant) {
-        if (constant.isNonNull()) {
+        if (constant.isNonNull() && constant instanceof SubstrateObjectConstant) {
             Object object = ((SubstrateObjectConstant) constant).object;
             if (type.isInstance(constant)) {
                 return object;
@@ -113,6 +114,9 @@ public final class SubstrateObjectConstant implements JavaConstant, Compressible
         this.object = object;
         this.compressed = compressed;
         assert object != null;
+        if (SubstrateUtil.isInLibgraal()) {
+            throw new InternalError();
+        }
     }
 
     public Object getObject() {
