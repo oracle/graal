@@ -286,7 +286,8 @@ class BaseGraalVmLayoutDistribution(mx.LayoutDistribution):
                     source_type = 'skip' if _skip_libraries(lib_polyglot_project.native_image_config) else 'dependency'
                     libpolyglot_dest = "<jdk_base>/jre/lib/polyglot/" + lib_polyglot_project.native_image_name
                     _add(layout, libpolyglot_dest, source_type + ":" + lib_polyglot_project.name)
-                    _add(layout, "<jdk_base>/jre/lib/polyglot/", "dependency:" + lib_polyglot_project.name + "/*.h")
+                    # TODO add directive to output .h files there in the macro
+                    _add(layout, "<jdk_base>/jre/lib/polyglot/", source_type + ":" + lib_polyglot_project.name + "/*.h")
                 _add_native_image_macro(lib_polyglot_project.native_image_config)
 
             # Add release file
@@ -1902,11 +1903,14 @@ def graalvm_show(args):
     else:
         mx.log("No launcher")
 
-    libraries = [p for p in _suite.projects if isinstance(p, GraalVmLibrary) if not p.is_skipped()]
+    libraries = [p for p in _suite.projects if isinstance(p, GraalVmLibrary)]
     if libraries:
         mx.log("Libraries:")
         for library in libraries:
-            mx.log(" - {}".format(library.native_image_name))
+            if library.is_skipped():
+                mx.log(" - {} (skipped)".format(library.native_image_name))
+            else:
+                mx.log(" - {}".format(library.native_image_name))
     else:
         mx.log("No library")
 
