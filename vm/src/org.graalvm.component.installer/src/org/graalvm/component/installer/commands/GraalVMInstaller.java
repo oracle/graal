@@ -159,7 +159,7 @@ public class GraalVMInstaller extends Installer {
 
     @Override
     void installContent() throws IOException {
-        Path registryPath = getInstallPath().resolve(SystemUtils.fromCommonRelative(CommonConstants.PATH_COMPONENT_STORAGE));
+        Path registryPath = getInstalledPath().resolve(SystemUtils.fromCommonRelative(CommonConstants.PATH_COMPONENT_STORAGE));
         Files.createDirectories(registryPath);
         super.installContent();
     }

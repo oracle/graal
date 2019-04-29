@@ -47,7 +47,6 @@ import org.graalvm.component.installer.remote.FileDownloader;
 import org.graalvm.component.installer.persist.MetadataLoader;
 import org.graalvm.component.installer.remote.RemotePropertiesStorage;
 import org.graalvm.component.installer.SoftwareChannel;
-import org.graalvm.component.installer.SystemUtils;
 import org.graalvm.component.installer.model.ComponentInfo;
 
 public class WebCatalog implements SoftwareChannel {
@@ -125,7 +124,7 @@ public class WebCatalog implements SoftwareChannel {
         oldGraalPref.append('.');
 
         String graalVersionString = graalCaps.get(CommonConstants.CAP_GRAALVM_VERSION).toLowerCase();
-        String normalizedVersion = SystemUtils.normalizeOldVersions(graalVersionString);
+        String normalizedVersion = input.getLocalRegistry().getGraalVersion().toString();
 
         StringBuilder graalPref = new StringBuilder(oldGraalPref);
 

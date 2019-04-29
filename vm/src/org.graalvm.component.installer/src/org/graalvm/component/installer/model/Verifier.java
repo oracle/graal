@@ -224,7 +224,7 @@ public class Verifier {
                                         GRAALVM_CAPABILITY,
                                         s, reqVal, graalVal,
                                         feedback.l10n("VERIFY_ObsoleteGraalVM",
-                                                        componentInfo.getName(), reqVal, gv.originalString())));
+                                                        componentInfo.getName(), reqVal, gv.displayString())));
                     } else if (collectVersion) {
                         minVersion = rq;
                     } else {
@@ -232,7 +232,7 @@ public class Verifier {
                                         GRAALVM_CAPABILITY,
                                         s, reqVal, graalVal,
                                         feedback.l10n("VERIFY_UpdateGraalVM",
-                                                        componentInfo.getName(), reqVal, gv.originalString())));
+                                                        componentInfo.getName(), reqVal, gv.displayString())));
                     }
                 }
                 continue;
