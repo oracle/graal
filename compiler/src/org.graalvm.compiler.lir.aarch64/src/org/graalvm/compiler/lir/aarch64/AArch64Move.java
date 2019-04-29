@@ -748,7 +748,7 @@ public class AArch64Move {
                 masm.bind(done);
             } else {
                 masm.subs(64, resultRegister, resultRegister, resultRegister);
-                masm.cmp( 64, inputRegister, nullRegister);
+                masm.cmp(64, inputRegister, nullRegister);
                 Label done = new Label();
                 masm.branchConditionally(AArch64Assembler.ConditionFlag.EQ, done);
                 masm.movx(resultRegister, inputRegister);
