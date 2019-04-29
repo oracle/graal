@@ -63,8 +63,8 @@
  * <a href="doc-files/diamond.bgv">diamond.bgv</a> file generated from the above diamond structure
  * graph.
  * <p>
- * The primary <b>IGV</b> focus is on graphs used by the compiler. As such they aren't plain
- * graphs, but contain various compiler oriented attributes:
+ * The primary <b>IGV</b> focus is on graphs used by the compiler. As such they aren't plain graphs,
+ * but contain various compiler oriented attributes:
  * <ul>
  * <li>{@linkplain org.graalvm.graphio.GraphBlocks code blocks} information</li>
  * <li>{@linkplain org.graalvm.graphio.GraphElements method and fields} information</li>

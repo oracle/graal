@@ -53,9 +53,9 @@ import jdk.vm.ci.code.Architecture;
 import jdk.vm.ci.common.InitTimer;
 
 /**
- * A factory that creates the {@link CompilerConfiguration} the compiler will use. Each
- * factory must have a unique {@link #name} and {@link #autoSelectionPriority}. The latter imposes a
- * total ordering between factories for the purpose of auto-selecting the factory to use.
+ * A factory that creates the {@link CompilerConfiguration} the compiler will use. Each factory must
+ * have a unique {@link #name} and {@link #autoSelectionPriority}. The latter imposes a total
+ * ordering between factories for the purpose of auto-selecting the factory to use.
  */
 public abstract class CompilerConfigurationFactory implements Comparable<CompilerConfigurationFactory> {
 
