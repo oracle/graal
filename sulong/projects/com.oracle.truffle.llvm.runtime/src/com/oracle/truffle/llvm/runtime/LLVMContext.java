@@ -170,7 +170,7 @@ public final class LLVMContext {
         }
     }
 
-    public LLVMContext(LLVMLanguage language, Env env, Configuration activeConfiguration, String languageHome) {
+    LLVMContext(LLVMLanguage language, Env env, Configuration activeConfiguration, String languageHome) {
         this.language = language;
         this.env = env;
         this.activeConfiguration = activeConfiguration;
@@ -245,7 +245,7 @@ public final class LLVMContext {
         }
     }
 
-    public void initialize() {
+    void initialize() {
         assert this.threadingStack == null;
         this.threadingStack = new LLVMThreadingStack(Thread.currentThread(), parseStackSize(env.getOptions().get(SulongEngineOption.STACK_SIZE)));
         for (ContextExtension ext : contextExtensions) {
@@ -259,7 +259,7 @@ public final class LLVMContext {
         }
     }
 
-    public static long parseStackSize(String v) {
+    private static long parseStackSize(String v) {
         String valueString = v.trim().toLowerCase();
         long scale = 1;
         if (valueString.endsWith("k")) {
@@ -337,7 +337,7 @@ public final class LLVMContext {
         return LLVMManagedPointer.create(LLVMTypedForeignObject.createUnknown(value));
     }
 
-    public void finalizeContext() {
+    void finalizeContext() {
         // the following cases exist for cleanup:
         // - exit() or interop: execute all atexit functions, shutdown stdlib, flush IO, and execute
         // destructors
@@ -382,7 +382,7 @@ public final class LLVMContext {
         }
     }
 
-    public void dispose(LLVMMemory memory) {
+    void dispose(LLVMMemory memory) {
         printNativeCallStatistic();
 
         if (isInitialized()) {
@@ -429,10 +429,6 @@ public final class LLVMContext {
             }
         }
         return null;
-    }
-
-    public boolean hasContextExtension(Class<?> type) {
-        return getContextExtensionOrNull(type) != null;
     }
 
     public int getByteAlignment(Type type) {
@@ -898,10 +894,10 @@ public final class LLVMContext {
         }
     }
 
-    public static class DynamicLinkChain {
+    private static class DynamicLinkChain {
         private final ArrayList<LLVMScope> scopes;
 
-        public DynamicLinkChain() {
+        DynamicLinkChain() {
             this.scopes = new ArrayList<>();
         }
 

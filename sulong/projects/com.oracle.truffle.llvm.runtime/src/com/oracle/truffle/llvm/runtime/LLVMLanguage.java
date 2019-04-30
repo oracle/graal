@@ -62,8 +62,8 @@ import com.oracle.truffle.llvm.runtime.pointer.LLVMPointer;
 @ProvidedTags({StandardTags.StatementTag.class, StandardTags.CallTag.class, StandardTags.RootTag.class, DebuggerTags.AlwaysHalt.class})
 public class LLVMLanguage extends TruffleLanguage<LLVMContext> {
 
-    public static final String LLVM_BITCODE_MIME_TYPE = "application/x-llvm-ir-bitcode";
-    public static final String LLVM_BITCODE_EXTENSION = "bc";
+    static final String LLVM_BITCODE_MIME_TYPE = "application/x-llvm-ir-bitcode";
+    static final String LLVM_BITCODE_EXTENSION = "bc";
 
     /*
      * Using this mimeType is deprecated, it is just here for backwards compatibility. Bitcode
@@ -71,15 +71,15 @@ public class LLVMLanguage extends TruffleLanguage<LLVMContext> {
      */
     public static final String LLVM_BITCODE_BASE64_MIME_TYPE = "application/x-llvm-ir-bitcode-base64";
 
-    public static final String LLVM_ELF_SHARED_MIME_TYPE = "application/x-sharedlib";
-    public static final String LLVM_ELF_EXEC_MIME_TYPE = "application/x-executable";
-    public static final String LLVM_ELF_LINUX_EXTENSION = "so";
+    static final String LLVM_ELF_SHARED_MIME_TYPE = "application/x-sharedlib";
+    static final String LLVM_ELF_EXEC_MIME_TYPE = "application/x-executable";
+    static final String LLVM_ELF_LINUX_EXTENSION = "so";
 
-    public static final String MAIN_ARGS_KEY = "Sulong Main Args";
-    public static final String PARSE_ONLY_KEY = "Parse only";
+    static final String MAIN_ARGS_KEY = "Sulong Main Args";
+    static final String PARSE_ONLY_KEY = "Parse only";
 
     public static final String ID = "llvm";
-    public static final String NAME = "LLVM";
+    static final String NAME = "LLVM";
 
     public abstract static class Loader {
 

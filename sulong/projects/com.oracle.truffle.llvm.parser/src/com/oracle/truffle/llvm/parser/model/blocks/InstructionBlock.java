@@ -84,14 +84,6 @@ public final class InstructionBlock {
         return (TerminatingInstruction) instructions.get(instructions.size() - 1);
     }
 
-    public void replace(Instruction oldInst, Instruction newInst) {
-        for (int i = 0; i < instructions.size(); i++) {
-            if (instructions.get(i) == oldInst) {
-                instructions.set(i, newInst);
-            }
-        }
-    }
-
     public void set(int index, Instruction instruction) {
         instructions.set(index, instruction);
     }

@@ -32,19 +32,7 @@ package com.oracle.truffle.llvm.parser.records;
 public final class Records {
 
     private Records() {
-    }
-
-    public static String describe(long id, long[] args) {
-        final StringBuilder builder = new StringBuilder();
-        builder.append("<id=").append(id).append(" - ");
-        for (int i = 0; i < args.length; i++) {
-            builder.append("op").append(i).append('=').append(args[i]);
-            if (i != args.length - 1) {
-                builder.append(", ");
-            }
-        }
-        builder.append('>');
-        return builder.toString();
+        // no instances
     }
 
     public static int[] toIntegers(long[] args) {

@@ -72,7 +72,7 @@ public final class FunctionDefinition implements Constant, FunctionSymbol, Metad
     private int currentBlock = 0;
     private String name;
 
-    public FunctionDefinition(FunctionType type, String name, Linkage linkage, Visibility visibility, AttributesCodeEntry paramAttr) {
+    private FunctionDefinition(FunctionType type, String name, Linkage linkage, Visibility visibility, AttributesCodeEntry paramAttr) {
         this.type = type;
         this.name = name;
         this.paramAttr = paramAttr;

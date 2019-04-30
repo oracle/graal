@@ -132,8 +132,4 @@ public final class SulongStackTrace {
     public List<Element> getTrace() {
         return java.util.Collections.unmodifiableList(trace);
     }
-
-    public void printCStackTrace() {
-        System.err.println(this.toString());
-    }
 }
