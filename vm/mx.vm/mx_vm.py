@@ -800,6 +800,11 @@ class NativePropertiesBuildTask(mx.ProjectBuildTask):
 
             if isinstance(image_config, mx_sdk.LanguageLauncherConfig):
                 build_args += ['--language:' + image_config.language, '--tool:all']
+            elif isinstance(image_config, mx_sdk.LauncherConfig) and 'PolyglotLauncher' in image_config.main_class:
+                build_args += [
+                    '-Dcom.oracle.graalvm.launcher.macrospaths=${.}/..',
+                    '--tool:all',
+                ]
 
             source_type = 'skip' if _skip_libraries(image_config) else 'dependency'
             graalvm_image_destination = graalvm_dist.find_single_source_location(source_type + ':' + project_name_f(image_config))
@@ -825,9 +830,6 @@ class NativePropertiesBuildTask(mx.ProjectBuildTask):
             name = basename(image_config.destination)
             if suffix:
                 name = name[:-len(suffix)]
-
-            if isinstance(image_config, mx_sdk.LauncherConfig) and 'PolyglotLauncher' in image_config.main_class:
-                build_args.append('-Dcom.oracle.graalvm.launcher.macrospaths=${.}/..')
 
             if any((' ' in arg for arg in build_args)):
                 mx.abort("Unsupported space in launcher build argument: {} in config for {}".format(image_config.build_args, image_config.destination))
@@ -1264,7 +1266,7 @@ class GraalVmSVMNativeImageBuildTask(GraalVmNativeImageBuildTask):
             '-H:NumberOfThreads=' + str(self.parallelism),
         ]
         if self.subject.native_image_config.is_polyglot:
-            build_args += ["--macro:truffle", "--language:all", "--tool:all"]
+            build_args += ["--macro:truffle", "--language:all"]
         return build_args
 
 
