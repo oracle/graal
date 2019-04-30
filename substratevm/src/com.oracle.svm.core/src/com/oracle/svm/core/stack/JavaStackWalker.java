@@ -25,18 +25,16 @@
 package com.oracle.svm.core.stack;
 
 import org.graalvm.nativeimage.IsolateThread;
+import org.graalvm.nativeimage.StackValue;
 import org.graalvm.nativeimage.c.function.CodePointer;
 import org.graalvm.word.Pointer;
 import org.graalvm.word.WordFactory;
 
 import com.oracle.svm.core.FrameAccess;
 import com.oracle.svm.core.annotate.AlwaysInline;
-import com.oracle.svm.core.code.CodeInfoQueryResult;
 import com.oracle.svm.core.code.CodeInfoTable;
 import com.oracle.svm.core.deopt.DeoptimizedFrame;
 import com.oracle.svm.core.deopt.Deoptimizer;
-import com.oracle.svm.core.log.Log;
-import com.oracle.svm.core.util.VMError;
 
 /**
  * Applies a {@link StackFrameVisitor} to each of the Java frames in a thread stack. It skips native
@@ -51,89 +49,141 @@ public final class JavaStackWalker {
     private JavaStackWalker() {
     }
 
-    @AlwaysInline("avoid virtual call to visitor")
-    public static boolean walkCurrentThread(Pointer startSP, CodePointer startIP, StackFrameVisitor visitor) {
-        JavaFrameAnchor anchor = JavaFrameAnchors.getFrameAnchor();
-        return doWalk(anchor, startSP, startIP, visitor);
+    /**
+     * Initialize a stack walk for the current thread.  The given {@code walk} parameter should normally be allocated
+     * on the stack.
+     * <p>
+     * The stack walker is only valid while the stack being walked is stable and existent.
+     *
+     * @param walk the stack-allocated walk base pointer
+     * @param startSP the starting SP
+     * @param startIP the starting IP
+     */
+    @AlwaysInline("Stack walker setup is minimal")
+    public static void initWalk(JavaStackWalk walk, Pointer startSP, CodePointer startIP) {
+        walk.setSP(startSP);
+        walk.setIP(startIP);
+        walk.setAnchor(JavaFrameAnchors.getFrameAnchor());
     }
 
-    @AlwaysInline("avoid virtual call to visitor")
-    public static boolean walkThread(IsolateThread thread, StackFrameVisitor visitor) {
+    /**
+     * Initialize a stack walk for the given thread.  The given {@code walk} parameter should normally be allocated
+     * on the stack.
+     * <p>
+     * The stack walker is only valid while the stack being walked is stable and existent.
+     *
+     * @param walk the stack-allocated walk base pointer
+     * @param thread the thread to examine
+     */
+    public static void initWalk(JavaStackWalk walk, IsolateThread thread) {
         JavaFrameAnchor anchor = JavaFrameAnchors.getFrameAnchor(thread);
         Pointer sp = WordFactory.nullPointer();
         CodePointer ip = WordFactory.nullPointer();
         if (anchor.isNonNull()) {
             sp = anchor.getLastJavaSP();
-            ip = anchor.getLastJavaIP();
+            ip = FrameAccess.singleton().readReturnAddress(sp);
         }
-        // always call doWalk() to invoke visitor's methods
-        return doWalk(anchor, sp, ip, visitor);
+        walk.setSP(sp);
+        walk.setIP(ip);
+        walk.setAnchor(anchor);
+    }
+
+    /**
+     * Start the stack walk.  If this method returns {@code false} then calls to {@link #continueWalk(JavaStackWalk)} will
+     * also return {@code false}.
+     *
+     * @param walk the stack walk
+     * @return {@code true} if there is a first frame to examine, or {@code false} if there are no frames to iterate
+     */
+    public static boolean startWalk(JavaStackWalk walk) {
+        return walk.getSP().isNonNull() && walk.getIP().isNonNull() && findNextFrame(walk);
+    }
+
+    /**
+     * Continue a started stack walk.  This method should only be called after {@link #startWalk(JavaStackWalk)} was
+     * called to start the walk.  Once this method returns {@code false}, it will always return {@code false}.
+     *
+     * @param walk the initiated stack walk pointer
+     * @return {@code true} if there is another frame, or {@code false} if there are no more frames to iterate
+     * @see #startWalk(JavaStackWalk)
+     */
+    @AlwaysInline("Stack walker continue is minimal")
+    public static boolean continueWalk(JavaStackWalk walk) {
+        if (walk.getSP().isNull() || walk.getIP().isNull()) return false;
+        /* Bump sp *up* over my frame. */
+        walk.setSP(walk.getSP().add(WordFactory.unsigned(walk.getTotalFrameSize())));
+        /* Read the return address to my caller. */
+        walk.setIP(FrameAccess.singleton().readReturnAddress(walk.getSP()));
+
+        return findNextFrame(walk);
+    }
+
+    private static boolean findNextFrame(JavaStackWalk walk) {
+        Pointer sp = walk.getSP();
+        CodePointer ip = walk.getIP();
+        JavaFrameAnchor anchor = walk.getAnchor();
+        for (;;) {
+            while (anchor.isNonNull() && anchor.getLastJavaSP().belowOrEqual(sp)) {
+                /* Skip anchors that are in parts of the stack we are not traversing. */
+                anchor = anchor.getPreviousAnchor();
+            }
+
+            long totalFrameSize;
+            DeoptimizedFrame deoptFrame = Deoptimizer.checkDeoptimized(sp);
+            if (deoptFrame != null) {
+                totalFrameSize = deoptFrame.getSourceTotalFrameSize();
+            } else {
+                totalFrameSize = CodeInfoTable.lookupTotalFrameSize(ip);
+            }
+
+            if (totalFrameSize != -1) {
+                walk.setSP(sp);
+                walk.setIP(ip);
+                walk.setAnchor(anchor);
+                walk.setTotalFrameSize(totalFrameSize);
+                return true;
+            } else if (anchor.isNonNull()) {
+                /*
+                 * At the end of a block of Java frames, but we have more Java frames after a
+                 * block of C frames.
+                 */
+                assert anchor.getLastJavaSP().aboveThan(sp);
+                sp = anchor.getLastJavaSP();
+                ip = FrameAccess.singleton().readReturnAddress(sp);
+                anchor = anchor.getPreviousAnchor();
+            } else {
+                /* Really at the end of the stack, we are done with walking. */
+                walk.setSP(WordFactory.nullPointer());
+                walk.setIP(WordFactory.nullPointer());
+                return false;
+            }
+        }
     }
 
     @AlwaysInline("avoid virtual call to visitor")
-    private static boolean doWalk(JavaFrameAnchor lastAnchor, Pointer startSP, CodePointer startIP, StackFrameVisitor visitor) {
+    public static boolean walkCurrentThread(Pointer startSP, CodePointer startIP, StackFrameVisitor visitor) {
+        JavaStackWalk walk = StackValue.get(JavaStackWalk.class);
+        initWalk(walk, startSP, startIP);
+        return doWalk(walk, visitor);
+    }
+
+    @AlwaysInline("avoid virtual call to visitor")
+    public static boolean walkThread(IsolateThread thread, StackFrameVisitor visitor) {
+        JavaStackWalk walk = StackValue.get(JavaStackWalk.class);
+        initWalk(walk, thread);
+        return doWalk(walk, visitor);
+    }
+
+    @AlwaysInline("avoid virtual call to visitor")
+    private static boolean doWalk(JavaStackWalk walk, StackFrameVisitor visitor) {
         if (!visitor.prologue()) {
             return false;
         }
-
-        if (startSP.isNonNull() && startIP.isNonNull()) {
-            JavaFrameAnchor anchor = lastAnchor;
-            Pointer sp = startSP;
-            CodePointer ip = startIP;
-
-            while (true) {
-                while (anchor.isNonNull() && anchor.getLastJavaSP().belowOrEqual(sp)) {
-                    /* Skip anchors that are in parts of the stack we are not traversing. */
-                    anchor = anchor.getPreviousAnchor();
-                }
-
-                long totalFrameSize;
-                DeoptimizedFrame deoptFrame = Deoptimizer.checkDeoptimized(sp);
-                if (deoptFrame != null) {
-                    totalFrameSize = deoptFrame.getSourceTotalFrameSize();
-                } else {
-                    totalFrameSize = CodeInfoTable.lookupTotalFrameSize(ip);
-                }
-                if (totalFrameSize == -1) {
-                    Log.log().string("Stack walk must walk only frames of known code:")
-                                    .string("  startSP=").hex(startSP).string("  startIP=").hex(startIP)
-                                    .string("  sp=").hex(sp).string("  ip=").hex(ip)
-                                    .string("  deoptFrame=").object(deoptFrame)
-                                    .newline();
-                    throw VMError.shouldNotReachHere("Stack walk must walk only frames of known code");
-                }
-
-                /* This is a Java frame, visit it. */
-                if (!visitor.visitFrame(sp, ip, deoptFrame)) {
-                    return false;
-                }
-
-                if (totalFrameSize != CodeInfoQueryResult.ENTRY_POINT_FRAME_SIZE) {
-                    /* Bump sp *up* over my frame. */
-                    sp = sp.add(WordFactory.unsigned(totalFrameSize));
-                    /* Read the return address to my caller. */
-                    ip = FrameAccess.singleton().readReturnAddress(sp);
-                } else {
-                    /* Reached an entry point frame. */
-                    if (anchor.isNonNull()) {
-                        /* We have more Java frames after a block of C frames. */
-                        assert anchor.getLastJavaSP().aboveThan(sp);
-                        sp = anchor.getLastJavaSP();
-                        ip = anchor.getLastJavaIP();
-                        anchor = anchor.getPreviousAnchor();
-                    } else {
-                        /* Really at the end of the stack, we are done with walking. */
-                        break;
-                    }
-                }
+        if (startWalk(walk)) do {
+            if (!visitor.visitFrame(walk.getSP(), walk.getIP(), Deoptimizer.checkDeoptimized(walk.getSP()))) {
+                return false;
             }
-        } else {
-            /*
-             * It is fine for a thread to have no Java frames, for example in the case of a native
-             * thread that was attached via JNI, but is currently not executing any Java code.
-             */
-        }
-
+        } while (continueWalk(walk));
         return visitor.epilogue();
     }
 }

@@ -136,11 +136,9 @@ public final class Target_java_lang_ClassLoader {
     static void checkClassLoaderPermission(ClassLoader cl, Class<?> caller) {
     }
 
-    @Substitute //
+    @KeepOriginal
     @TargetElement(onlyWith = JDK9OrLater.class) //
-    public static ClassLoader getPlatformClassLoader() {
-        throw VMError.unsupportedFeature("JDK9OrLater: Target_java_lang_ClassLoader.getPlatformClassLoader()");
-    }
+    public static native ClassLoader getPlatformClassLoader();
 
     @Substitute //
     @TargetElement(onlyWith = JDK9OrLater.class) //
@@ -169,11 +167,10 @@ public final class Target_java_lang_ClassLoader {
         throw VMError.unsupportedFeature("JDK9OrLater: Target_java_lang_ClassLoader.findResource(String, String)");
     }
 
-    @Substitute //
+    @KeepOriginal
     @TargetElement(onlyWith = JDK9OrLater.class) //
-    static ClassLoader getBuiltinPlatformClassLoader() {
-        throw VMError.unsupportedFeature("JDK9OrLater: Target_java_lang_ClassLoader.getBuiltinPlatformClassLoader()");
-    }
+    static native ClassLoader getBuiltinPlatformClassLoader();
+
 
     @Substitute //
     @SuppressWarnings({"unused"})
