@@ -209,8 +209,6 @@ public final class Runner {
 
         @Override
         public Object execute(VirtualFrame frame) {
-            // code aus runner
-            //
             LLVMContext ctx = ctxRef.get();
             try (StackPointer stackPointer = ctxRef.get().getThreadingStack().getStack().newFrame()) {
                 frame.setObject(stackPointerSlot, stackPointer);

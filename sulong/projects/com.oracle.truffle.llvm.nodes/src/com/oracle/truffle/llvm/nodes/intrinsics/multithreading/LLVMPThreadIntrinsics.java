@@ -296,7 +296,6 @@ public class LLVMPThreadIntrinsics {
                 CompilerDirectives.transferToInterpreterAndInvalidate();
                 read = getContextReference().get().getNodeFactory().createLoadNode(LLVMInteropType.ValueKind.I32);
             }
-            // TODO: change from "AtomicInteger" to "Mutex" bc we need both lock count and owner thread id
             // we can use the address of the native pointer here, bc a mutex
             // must only work when using the original variable, not a copy
             // so the address may never change
@@ -319,7 +318,6 @@ public class LLVMPThreadIntrinsics {
     public abstract static class LLVMPThreadMutexLock extends LLVMBuiltin {
         @Specialization
         protected int doIntrinsic(VirtualFrame frame, Object mutex) {
-            // TODO: change from "AtomicInteger" to "Mutex" bc we need both lock count and owner thread id
             // TODO: add stuff for recursive mutexes
             long mutexAddress = ((LLVMNativePointer) mutex).asNative();
             Mutex mutexObj = (Mutex) getContextReference().get().mutexStorage.get(mutexAddress);
@@ -354,7 +352,6 @@ public class LLVMPThreadIntrinsics {
     public abstract static class LLVMPThreadMutexUnlock extends LLVMBuiltin {
         @Specialization
         protected int doIntrinsic(VirtualFrame frame, Object mutex) {
-            // TODO: change from "AtomicInteger" to "Mutex" bc we need both lock count and owner thread id
             // TODO: add stuff for recursive mutexes
             long mutexAddress = ((LLVMNativePointer) mutex).asNative();
             Mutex mutexObj = (Mutex) getContextReference().get().mutexStorage.get(mutexAddress);
