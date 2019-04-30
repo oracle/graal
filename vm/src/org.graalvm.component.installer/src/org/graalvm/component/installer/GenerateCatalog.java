@@ -326,7 +326,8 @@ public final class GenerateCatalog {
                     version = info.getVersionString();
                     break;
                 case 2:
-                    version = SystemUtils.normalizeOldVersions(info.getVersionString());
+                    version = info.getVersion().toString();
+                    break;
             }
         }
         return String.format(graalVersionFormatString,

@@ -219,8 +219,18 @@ public class SystemUtils {
         }
     }
 
-    private static final Pattern OLD_VERSION_PATTERN = Pattern.compile("([0-9]+\\.[0-9]+\\.[0-9]+)(-([a-z]+)([0-9]+))?");
+    private static final Pattern OLD_VERSION_PATTERN = Pattern.compile("([0-9]+\\.[0-9]+(\\.[0-9]+)?(\\.[0-9]+)?)(-([a-z]+)([0-9]+)?)?");
 
+    /**
+     * Will transform some widely used formats to RPM-style. Currently it transforms:
+     * <ul>
+     * <li>1.0.1-dev[.x] => 1.0.1.0-0.dev[.x]
+     * <li>1.0.0 => 1.0.0.0
+     * </ul>
+     * 
+     * @param v
+     * @return normalized version
+     */
     public static String normalizeOldVersions(String v) {
         if (v == null) {
             return null;
@@ -230,18 +240,29 @@ public class SystemUtils {
             return v;
         }
         String numbers = m.group(1);
-        String rel = m.group(3);
-        String relNo = m.group(4);
+        String rel = m.group(5);
+        String relNo = m.group(6);
+
+        if (numbers.startsWith("0.")) {
+            return v;
+        }
 
         if (rel == null) {
-            return numbers + ".0";
+            if (m.group(3) == null) {
+                return numbers + ".0";
+            } else {
+                return numbers;
+            }
         } else {
-            return numbers + "-0." + rel + "." + relNo;
+            if (m.group(3) == null) {
+                numbers = numbers + ".0";
+            }
+            return numbers + "-0." + rel + (relNo == null ? "" : "." + relNo);
         }
     }
 
     public static Path getGraalVMJDKRoot(ComponentRegistry reg) {
-        if ("macos".equals(reg.getGraalCapabilities().get(CommonConstants.CAP_OS_ARCH))) {
+        if ("macos".equals(reg.getGraalCapabilities().get(CommonConstants.CAP_OS_NAME))) {
             return Paths.get("Contents", "Home");
         } else {
             return Paths.get("");
