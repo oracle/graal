@@ -1042,13 +1042,13 @@ public final class BciBlockMapping {
     }
 
     /**
-     * Non-recursive depth-first traversal of the control flow graph. The flag {@linkplain BciBlock#visited}
-     * is used to visit every block only once. The flag {@linkplain BciBlock#active} is used to detect
-     * cycles (backward edges).
+     * Non-recursive depth-first traversal of the control flow graph. The flag
+     * {@linkplain BciBlock#visited} is used to visit every block only once. The flag
+     * {@linkplain BciBlock#active} is used to detect cycles (backward edges)
      */
-    private long computeBlockOrder(BciBlock startBlock) {
+    private long computeBlockOrder(BciBlock initialBlock) {
         ArrayDeque<TraversalStep> workStack = new ArrayDeque<>();
-        workStack.push(new TraversalStep(startBlock));
+        workStack.push(new TraversalStep(initialBlock));
         while (true) {
             TraversalStep step = workStack.peek();
             BciBlock block = step.block;
@@ -1101,9 +1101,9 @@ public final class BciBlockMapping {
         }
     }
 
-    private long fixLoopBits(BciBlock startBlock) {
+    private long fixLoopBits(BciBlock initialBlock) {
         ArrayDeque<TraversalStep> workStack = new ArrayDeque<>();
-        workStack.push(new TraversalStep(startBlock));
+        workStack.push(new TraversalStep(initialBlock));
         while (true) {
             TraversalStep step = workStack.peek();
             BciBlock block = step.block;
