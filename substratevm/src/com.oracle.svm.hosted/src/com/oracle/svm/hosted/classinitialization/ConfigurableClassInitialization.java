@@ -393,6 +393,8 @@ public class ConfigurableClassInitialization implements ClassInitializationSuppo
         } else if (clazz.getTypeName().contains("$$Lambda$")) {
             /* GR-14698 Lambdas get eagerly initialized in the method code. */
             return InitKind.EAGER;
+        } else if (clazz.getTypeName().contains("$$StringConcat")) {
+            return InitKind.EAGER;
         } else if (specifiedInitKindFor(clazz) != null) {
             return specifiedInitKindFor(clazz);
         } else {
