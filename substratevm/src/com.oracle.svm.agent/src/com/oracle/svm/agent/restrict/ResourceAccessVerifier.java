@@ -35,7 +35,7 @@ public class ResourceAccessVerifier extends AbstractAccessVerifier {
     private final ResourceConfiguration configuration;
 
     public ResourceAccessVerifier(ResourceConfiguration configuration, AccessAdvisor advisor) {
-        super(null, advisor);
+        super(advisor);
         this.configuration = configuration;
     }
 
@@ -50,14 +50,6 @@ public class ResourceAccessVerifier extends AbstractAccessVerifier {
     private boolean verifyGetResources0(JNIEnvironment env, JNIObjectHandle name, @SuppressWarnings("unused") JNIObjectHandle callerClass) {
         // NOTE: like BreakpointInterceptor, we currently don't exclude caller classes.
         String resource = fromJniString(env, name);
-        if (configuration.anyMatches(resource)) {
-            return true;
-        }
-        beforeSuppress(resource);
-        return false;
-    }
-
-    private void beforeSuppress(@SuppressWarnings("unused") String name) {
-        // System.err.println(Agent.MESSAGE_PREFIX + "suppressing resource: " + name);
+        return configuration.anyMatches(resource);
     }
 }
