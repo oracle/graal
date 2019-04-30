@@ -24,20 +24,10 @@
  */
 package com.oracle.svm.thirdparty;
 
-import java.io.File;
-import java.net.URISyntaxException;
-import java.net.URL;
-import java.net.URLClassLoader;
-import java.nio.ByteBuffer;
 import java.util.ArrayList;
-import java.util.Enumeration;
-import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
 import java.util.function.BooleanSupplier;
-import java.util.jar.JarEntry;
-import java.util.jar.JarFile;
-import java.util.regex.Pattern;
 
 import org.graalvm.nativeimage.hosted.Feature;
 import org.graalvm.nativeimage.ImageSingletons;
@@ -52,6 +42,8 @@ import com.oracle.svm.core.annotate.RecomputeFieldValue.Kind;
 import com.oracle.svm.core.annotate.Substitute;
 import com.oracle.svm.core.annotate.TargetClass;
 import com.oracle.svm.core.util.VMError;
+
+import com.oracle.svm.hosted.FeatureImpl.FeatureAccessImpl;
 
 /**
  * ICU4JFeature enables ICU4J library ({@link "http://site.icu-project.org/"} to be used in SVM.
@@ -94,19 +86,9 @@ public final class ICU4JFeature implements Feature {
         }
     }
 
-    private Object checkImageHeapDoesNotIncludeDirectByteBuffers(Object obj) {
-        if (obj instanceof ByteBuffer) {
-            if (((ByteBuffer) obj).isDirect()) {
-                throw new UnsupportedOperationException("Direct ByteBuffer found in heap: " + obj);
-            }
-        }
-        return obj;
-    }
-
     @Override
     public void duringSetup(DuringSetupAccess access) {
-        access.registerObjectReplacer(this::checkImageHeapDoesNotIncludeDirectByteBuffers);
-        RuntimeClassInitialization.delayClassInitialization(getIcu4jClasses(access));
+        RuntimeClassInitialization.initializeAtRunTime(getIcu4jClasses(access));
     }
 
     static class Helper {
@@ -118,45 +100,8 @@ public final class ICU4JFeature implements Feature {
     }
 
     private static Class<?>[] getIcu4jClasses(FeatureAccess access) {
-
-        Class<?> icuBinaryClass = access.findClassByName("com.ibm.icu.impl.ICUBinary");
-        Set<String> icu4jClassNames = new HashSet<>();
-        if (icuBinaryClass != null) {
-            ClassLoader hostClassLoader = icuBinaryClass.getClassLoader();
-            Pattern regexPattern = Pattern.compile("^com/ibm/icu.*class$");
-            if (hostClassLoader instanceof URLClassLoader) {
-                for (URL u : ((URLClassLoader) hostClassLoader).getURLs()) {
-                    File f = asFile(u);
-                    try {
-                        JarFile jarFile = new JarFile(f);
-                        Enumeration<JarEntry> entries = jarFile.entries();
-                        while (entries.hasMoreElements()) {
-                            JarEntry entry = entries.nextElement();
-                            if (entry.isDirectory()) {
-                                continue;
-                            }
-                            String entryName = entry.getName();
-
-                            if (regexPattern.matcher(entryName).matches()) {
-                                String icuClassName = entryName.replace('/', '.').substring(0, entryName.length() - 6);
-                                icu4jClassNames.add(icuClassName);
-                            }
-                        }
-                    } catch (Exception ignored) {
-                    }
-                }
-            }
-        }
-
-        return icu4jClassNames.stream().map(s -> access.findClassByName(s)).toArray(Class<?>[]::new);
-    }
-
-    private static File asFile(URL u) {
-        try {
-            return new File(u.toURI());
-        } catch (URISyntaxException e) {
-            return new File(u.getPath());
-        }
+        List<Class<?>> allClasses = ((FeatureAccessImpl) access).findSubclasses(Object.class);
+        return allClasses.stream().filter(clazz -> clazz.getPackage().getName().startsWith("com.ibm.icu")).toArray(Class<?>[]::new);
     }
 }
 
