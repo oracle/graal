@@ -32,7 +32,7 @@ If you don't have a JDK that satisfies the requirement of a versioned project, t
 
 If you only want to develop Graal for a single JDK version, you only need to define `JAVA_HOME`. For example:
 ```
-export JAVA_HOME=/usr/lib/jvm/labsjdk1.8.0_172-jvmci-0.46
+export JAVA_HOME=/usr/lib/jvm/oraclejdk1.8.0_172-jvmci-0.46
 ```
 or:
 ```
@@ -43,12 +43,12 @@ If you want to ensure your changes will pass both JDK 8 and JDK 11 gates, you ca
 For example, to develop Graal for JDK 8 while ensuring `mx build` still works with the JDK 11 specific sources:
 
 ```
-export JAVA_HOME=/usr/lib/jvm/labsjdk1.8.0_172-jvmci-0.46
+export JAVA_HOME=/usr/lib/jvm/oraclejdk1.8.0_172-jvmci-0.46
 export EXTRA_JAVA_HOMES=/usr/lib/jvm/jdk-11
 ```
 And on macOS:
 ```
-export JAVA_HOME=/Library/Java/JavaVirtualMachines/labsjdk1.8.0_172-jvmci-0.46/Contents/Home
+export JAVA_HOME=/Library/Java/JavaVirtualMachines/oraclejdk1.8.0_172-jvmci-0.46/Contents/Home
 export EXTRA_JAVA_HOMES=/Library/Java/JavaVirtualMachines/jdk-11.jdk/Contents/Home
 ```
 If you omit `EXTRA_JAVA_HOMES` in the above examples, versioned projects depending on the specified JDK(s) will be ignored.

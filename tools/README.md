@@ -15,7 +15,7 @@ language launchers. Some tools have their [APIs](http://www.graalvm.org/tools/ja
 
 Graal uses the [MX build tool](https://github.com/graalvm/mx/), which must be downloaded
 and put onto your PATH. Also, point `JAVA_HOME` to a
-[labsjdk](http://www.oracle.com/technetwork/oracle-labs/program-languages/downloads/index.html).
+[JVMCI-enabled JDK 8](http://www.oracle.com/technetwork/oracle-labs/program-languages/downloads/index.html).
 
 ```bash
 git clone https://github.com/graalvm/mx.git

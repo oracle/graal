@@ -1,5 +1,5 @@
 
-x52.c1 : ${labsjdk8} {
+x52.c1 : ${oraclejdk8} {
   capabilities: [linux, x52, no_frequency_scaling]
   environment : {
     JVM_CONFIG :  "default"

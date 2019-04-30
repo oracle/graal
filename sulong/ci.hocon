@@ -1,4 +1,4 @@
-sulong-common: ${common} ${labsjdk8} {
+sulong-common: ${common} ${oraclejdk8} {
     setup: [
         [cd, "./sulong"]
     ]
