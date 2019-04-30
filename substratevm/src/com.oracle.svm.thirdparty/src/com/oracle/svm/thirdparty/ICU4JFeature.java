@@ -162,6 +162,11 @@ final class Target_com_ibm_icu_impl_ICUBinary {
             return instance;
         }
 
+        /*
+         * Any attempt to write to the list should be handled as no-op. The list of ICU4J resource
+         * bundle files should be strictly defined by one of the above mentioned system property,
+         * ICU4J_DATA_PATH_SYS_PROP, or environment variable, ICU4J_DATA_PATH_ENV_VAR.
+         */
         static void set(@SuppressWarnings("unused") List<?> bummer) {
         }
     }
