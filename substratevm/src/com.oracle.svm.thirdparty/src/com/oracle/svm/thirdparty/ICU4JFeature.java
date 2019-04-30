@@ -101,7 +101,7 @@ public final class ICU4JFeature implements Feature {
 
     private static Class<?>[] getIcu4jClasses(FeatureAccess access) {
         List<Class<?>> allClasses = ((FeatureAccessImpl) access).findSubclasses(Object.class);
-        return allClasses.stream().filter(clazz -> clazz.getPackage().getName().startsWith("com.ibm.icu")).toArray(Class<?>[]::new);
+        return allClasses.stream().filter(clazz -> clazz.getName().startsWith("com.ibm.icu")).toArray(Class<?>[]::new);
     }
 }
 
