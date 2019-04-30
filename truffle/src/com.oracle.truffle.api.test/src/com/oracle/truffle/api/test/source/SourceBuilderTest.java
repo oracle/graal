@@ -83,8 +83,13 @@ import com.oracle.truffle.api.source.Source.LiteralBuilder;
 import com.oracle.truffle.api.source.Source.SourceBuilder;
 import com.oracle.truffle.api.source.SourceSection;
 import com.oracle.truffle.api.test.polyglot.AbstractPolyglotTest;
+import com.oracle.truffle.api.test.polyglot.MemoryFileSystem;
 import com.oracle.truffle.api.test.polyglot.ProxyLanguage;
 import static com.oracle.truffle.api.test.polyglot.ValueAssert.assertFails;
+import java.io.OutputStream;
+import java.nio.channels.Channels;
+import java.nio.file.StandardOpenOption;
+import org.graalvm.polyglot.Context;
 
 public class SourceBuilderTest extends AbstractPolyglotTest {
 
@@ -860,5 +865,74 @@ public class SourceBuilderTest extends AbstractPolyglotTest {
         TruffleFile unknownMimeTypeFile = languageEnv.getTruffleFile("test.unknown");
         assertEquals("application/test-js", Source.findMimeType(knownMimeTypeFile));
         assertNull(Source.findMimeType(unknownMimeTypeFile));
+    }
+
+    @Test
+    public void testNonResolvableURLAllowedIO() throws IOException {
+        setupEnv();
+        File file = File.createTempFile("Test", ".java");
+        file.deleteOnExit();
+        String text;
+        try (FileWriter w = new FileWriter(file)) {
+            text = "// Test";
+            w.write(text);
+        }
+        Source src = Source.newBuilder("TestJava", queryURL(file.toURI())).build();
+        assertNotNull(src);
+        assertTrue(text.contentEquals(src.getCharacters()));
+
+        assertEquals("text/plain", Source.findMimeType(queryURL(file.toURI())));
+    }
+
+    @Test
+    public void testNonResolvableURLDeniedIO() throws IOException {
+        setupEnv(Context.create());
+        File file = File.createTempFile("Test", ".java");
+        file.deleteOnExit();
+        String text;
+        try (FileWriter w = new FileWriter(file)) {
+            text = "// Test";
+            w.write(text);
+        }
+        try {
+            Source.newBuilder("TestJava", queryURL(file.toURI())).build();
+            fail("Expected SecurityException");
+        } catch (SecurityException se) {
+            // expected SecurityException
+        }
+        try {
+            Source.findMimeType(queryURL(file.toURI()));
+            fail("Expected SecurityException");
+        } catch (SecurityException se) {
+            // expected SecurityException
+        }
+    }
+
+    @Test
+    public void testNonResolvableURLCustomFileSystem() throws IOException {
+        MemoryFileSystem fs = new MemoryFileSystem();
+        Path path = fs.parsePath("/Test.java");
+        String text;
+        try (OutputStream out = Channels.newOutputStream(fs.newByteChannel(path, EnumSet.of(StandardOpenOption.CREATE, StandardOpenOption.WRITE)))) {
+            text = "// Test";
+            out.write(text.getBytes());
+        }
+        setupEnv(Context.newBuilder().allowIO(true).fileSystem(fs).build());
+        try {
+            Source.newBuilder("TestJava", queryURL(path.toUri())).build();
+            fail("Expected SecurityException");
+        } catch (SecurityException se) {
+            // expected SecurityException
+        }
+        try {
+            Source.findMimeType(queryURL(path.toUri()));
+            fail("Expected SecurityException");
+        } catch (SecurityException se) {
+            // expected SecurityException
+        }
+    }
+
+    private static URL queryURL(URI uri) throws MalformedURLException {
+        return new URL(uri.toString() + "?query");
     }
 }

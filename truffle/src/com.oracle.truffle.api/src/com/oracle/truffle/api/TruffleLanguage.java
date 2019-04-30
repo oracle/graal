@@ -2777,6 +2777,12 @@ public abstract class TruffleLanguage<C> {
         }
 
         @Override
+        public boolean isDefaultFileSystem(Object fileSystemContext) {
+            TruffleFile.FileSystemContext ctx = (TruffleFile.FileSystemContext) fileSystemContext;
+            return AccessAPI.engineAccess().isDefaultFileSystem(ctx.fileSystem);
+        }
+
+        @Override
         public TruffleFile getTruffleFile(String path, FileSystem fileSystem, Supplier<Map<String, Collection<? extends TruffleFile.FileTypeDetector>>> fileTypeDetectorsSupplier) {
             TruffleFile.FileSystemContext ctx = new TruffleFile.FileSystemContext(fileSystem, fileTypeDetectorsSupplier);
             return getTruffleFile(path, ctx);

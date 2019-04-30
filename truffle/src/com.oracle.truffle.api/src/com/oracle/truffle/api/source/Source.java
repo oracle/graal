@@ -1092,21 +1092,26 @@ public abstract class Source {
                     }
                 }
             } catch (FileSystemNotFoundException fsnf) {
-                // Not a recognized by FileSystem, fall back to URLConnection
-                URLConnection connection = useUrl.openConnection();
-                useEncoding = useEncoding == null ? StandardCharsets.UTF_8 : useEncoding;
-                if (legacy) {
-                    useMimeType = useMimeType == null ? findMimeType(useUrl, connection, getValidMimeTypes(language), fileSystemContext.get()) : useMimeType;
-                    useMimeType = useMimeType == null ? UNKNOWN_MIME_TYPE : useMimeType;
-                    useContent = useContent == CONTENT_UNSET ? read(new InputStreamReader(connection.getInputStream(), useEncoding)) : useContent;
-                } else {
-                    if (useContent == CONTENT_UNSET) {
-                        if (isCharacterBased(language, useMimeType)) {
-                            useContent = read(new InputStreamReader(connection.getInputStream(), useEncoding));
-                        } else {
-                            useContent = ByteSequence.create(readBytes(connection));
+                if (SourceAccessor.isDefaultFileSystem(fileSystemContext.get())) {
+                    // Not a recognized by FileSystem, fall back to URLConnection only for allowed
+                    // IO without a custom FileSystem
+                    URLConnection connection = useUrl.openConnection();
+                    useEncoding = useEncoding == null ? StandardCharsets.UTF_8 : useEncoding;
+                    if (legacy) {
+                        useMimeType = useMimeType == null ? findMimeType(useUrl, connection, getValidMimeTypes(language), fileSystemContext.get()) : useMimeType;
+                        useMimeType = useMimeType == null ? UNKNOWN_MIME_TYPE : useMimeType;
+                        useContent = useContent == CONTENT_UNSET ? read(new InputStreamReader(connection.getInputStream(), useEncoding)) : useContent;
+                    } else {
+                        if (useContent == CONTENT_UNSET) {
+                            if (isCharacterBased(language, useMimeType)) {
+                                useContent = read(new InputStreamReader(connection.getInputStream(), useEncoding));
+                            } else {
+                                useContent = ByteSequence.create(readBytes(connection));
+                            }
                         }
                     }
+                } else {
+                    throw new SecurityException("Reading of URL " + useUrl + " is not allowed.");
                 }
             }
         } else if (useOrigin instanceof Reader) {
@@ -1362,6 +1367,11 @@ public abstract class Source {
         } catch (URISyntaxException | IllegalArgumentException | FileSystemNotFoundException ex) {
             // swallow and go on
         }
+
+        if (!SourceAccessor.isDefaultFileSystem(fileSystemContext)) {
+            throw new SecurityException("Reading of URL " + url + " is not allowed.");
+        }
+
         String contentType = connection.getContentType();
         if (contentType != null && (validMimeTypes == null || validMimeTypes.contains(contentType))) {
             return contentType;
