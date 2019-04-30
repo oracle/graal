@@ -482,6 +482,8 @@ public abstract class Accessor {
 
         public abstract TruffleFile getTruffleFile(URI uri, Object fileSystemContext);
 
+        public abstract boolean isDefaultFileSystem(Object fileSystemContext);
+
         public abstract TruffleFile getTruffleFile(String path, FileSystem fileSystem, Supplier<Map<String, Collection<? extends TruffleFile.FileTypeDetector>>> fileTypeDetectorsSupplier);
 
         public abstract TruffleFile getTruffleFile(URI uri, FileSystem fileSystem, Supplier<Map<String, Collection<? extends TruffleFile.FileTypeDetector>>> fileTypeDetectorsSupplier);
