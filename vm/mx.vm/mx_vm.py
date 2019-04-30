@@ -1310,7 +1310,7 @@ class GraalVmSVMNativeImageBuildTask(GraalVmNativeImageBuildTask):
             '-H:NumberOfThreads=' + str(self.parallelism),
         ]
         if self.subject.native_image_config.is_polyglot:
-            build_args += ["--macro:truffle", "--language:all"]
+            build_args += ["--macro:truffle", "--language:all", "--tool:all"]
         return build_args
 
 
