@@ -7,7 +7,7 @@ Substrate VM is a framework that allows ahead-of-time (AOT) compilation of Java 
 
 ## Quick start
 
-Install [mx](https://github.com/graalvm/mx) and point `JAVA_HOME` to a [labsjdk](http://www.oracle.com/technetwork/oracle-labs/program-languages/downloads/index.html) or a openjdk from [this location](https://github.com/graalvm/openjdk8-jvmci-builder/releases).
+Install [mx](https://github.com/graalvm/mx) and point `JAVA_HOME` to a JVMCI-enabled [OracleJDK 8](http://www.oracle.com/technetwork/oracle-labs/program-languages/downloads/index.html) or [OpenJDK 8](https://github.com/graalvm/openjdk8-jvmci-builder/releases).
 
 For compilation `native-image` depends on the local toolchain, so make sure: `glibc-devel`, `zlib-devel` (header files for the C library and `zlib`) and `gcc` are available on your system.
 Building images on Windows is still experimental.

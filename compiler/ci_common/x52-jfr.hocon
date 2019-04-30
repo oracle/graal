@@ -100,10 +100,10 @@ x52.tmpfs10g-jfr : ${x52.default-jfr} {
 }
 
 builds += [
-  ${x52.tmpfs10g-jfr} ${bench-dacapo-jfr}                        ${labsjdk8} { name: "bench-compiler-dacapo-linux-x52-jfr" }
-  ${x52.tmpfs10g-jfr} ${bench-scala-dacapo-jfr}                  ${labsjdk8} { name: "bench-compiler-scala-dacapo-linux-x52-jfr" }
-  ${x52.default-jfr} ${bench-specjvm2008-Single-jfr}             ${labsjdk8} { name: "bench-compiler-specjvm2008-Single-linux-x52-jfr" }
-  ${x52.default-jfr} ${bench-specjbb2015-jfr}                    ${labsjdk8} { name: "bench-compiler-specjbb2015-linux-x52-jfr" }
-  ${x52.default-jfr} ${bench-renaissance-legacy-jfr}             ${labsjdk8} { name: "bench-compiler-renaissance-legacy-linux-x52-jfr" }
-  ${x52.default-jfr} ${bench-spark-sql-perf-jfr}                 ${labsjdk8} { name: "bench-compiler-spark-sql-perf-linux-x52-jfr" }
+  ${x52.tmpfs10g-jfr} ${bench-dacapo-jfr}                        ${oraclejdk8} { name: "bench-compiler-dacapo-linux-x52-jfr" }
+  ${x52.tmpfs10g-jfr} ${bench-scala-dacapo-jfr}                  ${oraclejdk8} { name: "bench-compiler-scala-dacapo-linux-x52-jfr" }
+  ${x52.default-jfr} ${bench-specjvm2008-Single-jfr}             ${oraclejdk8} { name: "bench-compiler-specjvm2008-Single-linux-x52-jfr" }
+  ${x52.default-jfr} ${bench-specjbb2015-jfr}                    ${oraclejdk8} { name: "bench-compiler-specjbb2015-linux-x52-jfr" }
+  ${x52.default-jfr} ${bench-renaissance-legacy-jfr}             ${oraclejdk8} { name: "bench-compiler-renaissance-legacy-linux-x52-jfr" }
+  ${x52.default-jfr} ${bench-spark-sql-perf-jfr}                 ${oraclejdk8} { name: "bench-compiler-spark-sql-perf-linux-x52-jfr" }
 ]

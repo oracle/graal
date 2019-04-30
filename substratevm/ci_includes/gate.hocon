@@ -25,11 +25,11 @@ gate-svm-truffle-tck: {
 }
 
 builds += [
-  ${labsjdk8} ${svm-common-linux-gate} ${gate-svm-js} ${svm-capabilities-base} {
+  ${oraclejdk8} ${svm-common-linux-gate} ${gate-svm-js} ${svm-capabilities-base} {
     name: "gate-svm-js"
     timelimit: "35:00"
   }
-  ${labsjdk8} ${svm-common-darwin-gate} ${gate-svm-js} {
+  ${oraclejdk8} ${svm-common-darwin-gate} ${gate-svm-js} {
     name: "gate-svm-darwin-js"
   }
   ${oraclejdk11} ${svm-common-linux-gate} {
@@ -38,13 +38,13 @@ builds += [
       ${svm-cmd-gate} ["build"]
     ]
   }
-  ${labsjdk8} ${svm-common-linux-gate} ${eclipse} ${jdt} ${linux-deploy} {
+  ${oraclejdk8} ${svm-common-linux-gate} ${eclipse} ${jdt} ${linux-deploy} {
     name: "gate-svm-style-fullbuild"
     run: [
       ${svm-cmd-gate} ["style,fullbuild,helloworld,test,svmjunit,maven"]
     ]
   }
-  ${labsjdk8} ${svm-common-windows-gate} {
+  ${oraclejdk8} ${svm-common-windows-gate} {
     name: "gate-svm-windows-basics"
     environment: {
       PATH : "$MVN_HOME;$PATH"  # workaround until GR-10735 is resolved
@@ -53,7 +53,7 @@ builds += [
       ${svm-cmd-gate} ["build,helloworld,svmjunit,maven"]
     ]
   }
-  ${labsjdk8} ${svm-common-linux-gate} ${gate-svm-truffle-tck} ${svm-capabilities-base} {
+  ${oraclejdk8} ${svm-common-linux-gate} ${gate-svm-truffle-tck} ${svm-capabilities-base} {
     name: "gate-svm-truffle-tck"
     timelimit: "30:00"
   }
