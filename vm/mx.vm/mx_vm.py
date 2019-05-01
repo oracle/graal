@@ -82,19 +82,18 @@ anyjdk_version_regex = re.compile(r'(openjdk|java) version \"(?P<jvm_version>[0-
 openjdk_version_regex = re.compile(r'openjdk version \"(?P<jvm_version>[0-9a-z_\-.]+)\".*\nOpenJDK Runtime Environment [ 0-9.]*\(build [0-9a-z_\-.+]+\)')
 graalvm_version_regex = re.compile(r'.*\n.*\n[0-9a-zA-Z()\- ]+GraalVM[a-zA-Z_ ]+(?P<graalvm_version>[0-9a-z_\-.+]+) \(build [0-9a-z\-.+]+, mixed mode\)')
 
-_registered_graalvm_components = None
+_registered_graalvm_components = {}
 
 
-def registered_graalvm_components():
-    global _registered_graalvm_components
-    if _registered_graalvm_components is None:
+def registered_graalvm_components(stage1=False):
+    if stage1 not in _registered_graalvm_components:
         excluded = _excluded_components()
-        components = [component for component in mx_sdk.graalvm_components() if component.name not in excluded and component.short_name not in excluded]
-        if not any((component.short_name == 'svm' for component in components)):
+        components = [component for component in mx_sdk.graalvm_components() if (component.name not in excluded and component.short_name not in excluded) or (stage1 and component.short_name in ('svm', 'svmee'))]
+        if not any((component.short_name == 'svm' for component in mx_sdk.graalvm_components())):
             # SVM is not included, remove GraalVMSvmMacros
             components = [component for component in components if not isinstance(component, mx_sdk.GraalVMSvmMacro)]
-        _registered_graalvm_components = components
-    return _registered_graalvm_components
+        _registered_graalvm_components[stage1] = components
+    return _registered_graalvm_components[stage1]
 
 
 class BaseGraalVmLayoutDistribution(mx.LayoutDistribution):
@@ -208,7 +207,7 @@ class BaseGraalVmLayoutDistribution(mx.LayoutDistribution):
                         return [(base_dir + '/Contents/Info.plist', plist_src)], [orig_info_plist]
             return [], []
 
-        svm_component = get_component('svm')
+        svm_component = get_component('svm', stage1=True)
 
         def _get_component_type_base(c):
             if isinstance(c, mx_sdk.GraalVmLanguage):
@@ -227,7 +226,7 @@ class BaseGraalVmLayoutDistribution(mx.LayoutDistribution):
                 raise mx.abort("Unknown component type for {}: {}".format(c.name, type(c).__name__))
 
         def _add_native_image_macro(image_config, component=None):
-            if svm_component:
+            if svm_component and (component is None or has_component(component.short_name, stage1=False)):
                 # create macro to build this launcher
                 _macro_dir = _get_component_type_base(svm_component) + svm_component.dir_name + '/macros/' + GraalVmNativeProperties.macro_name(image_config) + '/'
                 _project_name = GraalVmNativeProperties.project_name(image_config)
@@ -472,7 +471,7 @@ class GraalVmLayoutDistribution(BaseGraalVmLayoutDistribution, mx.LayoutTARDistr
             suite=_suite,
             name=name,
             deps=[],
-            components=registered_graalvm_components(),
+            components=registered_graalvm_components(stage1),
             is_graalvm=True,
             exclLibs=[],
             platformDependent=True,
@@ -497,7 +496,7 @@ _graal_vm_configs_cache = {}
 def _get_graalvm_configuration(base_name, stage1=False):
     key = base_name, stage1
     if key not in _graal_vm_configs_cache:
-        components = registered_graalvm_components()
+        components = registered_graalvm_components(stage1)
         components_set = set([c.short_name for c in components])
 
         if _with_polyglot_lib_project() and _get_svm_support().is_supported():
@@ -652,8 +651,8 @@ def remove_lib_prefix_suffix(libname, require_suffix_prefix=True):
 
 class SvmSupport(object):
     def __init__(self):
-        self._svm_supported = 'svm' in (c.short_name for c in registered_graalvm_components())
-        self._debug_supported = 'svmee' in (c.short_name for c in registered_graalvm_components())
+        self._svm_supported = has_component('svm', stage1=True)
+        self._debug_supported = has_component('svmee', stage1=True)
 
     def is_supported(self):
         return self._svm_supported
@@ -1437,8 +1436,8 @@ class GraalVmInstallableComponent(BaseGraalVmLayoutDistribution, mx.LayoutJARDis
             return InstallableComponentArchiver(path, self.components[0], **_kw_args)
 
         other_involved_components = []
-        if _get_svm_support().is_supported() and _get_launcher_configs(component):
-            other_involved_components += [c for c in registered_graalvm_components() if c.short_name in ('svm', 'svmee')]
+        if self.main_component.short_name not in ('svm', 'svmee') and _get_svm_support().is_supported() and _get_launcher_configs(component):
+            other_involved_components += [c for c in registered_graalvm_components(stage1=True) if c.short_name in ('svm', 'svmee')]
 
         name = '{}_INSTALLABLE'.format(component.dir_name.upper())
         for launcher_config in _get_launcher_configs(component):
@@ -1472,7 +1471,7 @@ class GraalVmStandaloneComponent(mx.LayoutTARDistribution):  # pylint: disable=t
         support_dir_pattern = '<jre_base>/languages/{}/'.format(installable.main_component.dir_name)
         other_comp_names = []
         if _get_svm_support().is_supported() and _get_launcher_configs(installable.main_component):
-            other_comp_names += [c.short_name for c in registered_graalvm_components() if c.short_name in ('svm', 'svmee')]
+            other_comp_names += [c.short_name for c in registered_graalvm_components(stage1=True) if c.short_name in ('svm', 'svmee')]
 
         self.main_comp_dir_name = installable.main_component.dir_name
 
@@ -1601,7 +1600,7 @@ def get_lib_polyglot_project():
             has_polyglot_lib_entrypoints = False
             if "LIBPOLYGLOT_DISABLE_BACKGROUND_COMPILATION" in os.environ:
                 polyglot_lib_build_args += ["-R:-TruffleBackgroundCompilation"]
-            for component in registered_graalvm_components():
+            for component in registered_graalvm_components(stage1=False):
                 has_polyglot_lib_entrypoints |= component.has_polyglot_lib_entrypoints
                 polyglot_lib_build_args += component.polyglot_lib_build_args
                 polyglot_lib_jar_dependencies += component.polyglot_lib_jar_dependencies
@@ -1683,7 +1682,7 @@ def _get_library_configs(component):
 def _get_native_image_configs(component, config_type):
     if _native_image_configs.get(config_type) is None:
         new_configs = {}
-        for component_ in registered_graalvm_components():
+        for component_ in registered_graalvm_components(stage1=True):
             for config in getattr(component_, config_type):
                 config_name = config.destination
                 if config_name in new_configs:
@@ -1718,7 +1717,7 @@ def mx_register_dynamic_suite_constituents(register_project, register_distributi
     names = set()
     short_names = set()
     needs_stage1 = False
-    for component in registered_graalvm_components():
+    for component in registered_graalvm_components(stage1=False):
         if component.name in names:
             mx.abort("Two components are named '{}'. The name should be unique".format(component.name))
         if component.short_name in short_names:
@@ -1767,7 +1766,7 @@ def mx_register_dynamic_suite_constituents(register_project, register_distributi
 
     if needs_stage1:
         if register_project:
-            for component in registered_graalvm_components():
+            for component in registered_graalvm_components(stage1=True):
                 if isinstance(component, mx_sdk.GraalVmTruffleComponent):
                     config_class = GraalVmLanguageLauncher
                 else:
@@ -1817,13 +1816,14 @@ def get_native_image_locations(name, image_name):
     return None
 
 
-def get_component(name, fatalIfMissing=False):
+def get_component(name, fatalIfMissing=False, stage1=False):
     """
     :type name: str
     :type fatalIfMissing: bool
+    :type stage1: bool
     :rtype: mx_sdk.GraalVmComponent | None
     """
-    for c in registered_graalvm_components():
+    for c in registered_graalvm_components(stage1=stage1):
         if c.short_name == name or c.name == name:
             return c
     if fatalIfMissing:
@@ -1831,22 +1831,24 @@ def get_component(name, fatalIfMissing=False):
     return None
 
 
-def has_component(name, fatalIfMissing=False):
+def has_component(name, fatalIfMissing=False, stage1=False):
     """
     :type name: str
     :type fatalIfMissing: bool
+    :type stage1: bool
     :rtype: bool
     """
-    return get_component(name, fatalIfMissing) is not None
+    return get_component(name, fatalIfMissing=fatalIfMissing, stage1=stage1) is not None
 
 
-def has_components(names, fatalIfMissing=False):
+def has_components(names, fatalIfMissing=False, stage1=False):
     """
     :type names: list[str]
     :type fatalIfMissing: bool
+    :type stage1: bool
     :rtype: bool
     """
-    return all((has_component(name, fatalIfMissing=fatalIfMissing) for name in names))
+    return all((has_component(name, fatalIfMissing=fatalIfMissing, stage1=stage1) for name in names))
 
 
 def graalvm_output():
@@ -1908,13 +1910,14 @@ def log_standalone_home(args):
 def graalvm_show(args):
     """print the GraalVM config"""
     parser = ArgumentParser(prog='mx graalvm-show', description='Print the GraalVM config')
-    _ = parser.parse_args(args)
+    parser.add_argument('--stage1', action='store_true', help='show the components for stage1')
+    args = parser.parse_args(args)
 
     graalvm_dist = get_final_graalvm_distribution()
     mx.log("GraalVM distribution: {}".format(graalvm_dist))
     mx.log("Version: {}".format(_suite.release_version()))
     mx.log("Components:")
-    for component in registered_graalvm_components():
+    for component in registered_graalvm_components(stage1=args.stage1):
         mx.log(" - {} ('{}', /{})".format(component.name, component.short_name, component.dir_name))
 
     launchers = [p for p in _suite.projects if isinstance(p, GraalVmLauncher) and p.get_containing_graalvm() == graalvm_dist]
