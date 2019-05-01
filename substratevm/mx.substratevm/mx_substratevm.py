@@ -1045,6 +1045,18 @@ mx_sdk.register_graalvm_component(mx_sdk.GraalVmJreComponent(
         ),
     ],
     provided_executables=['bin/rebuild-images'],
+    installable=True,
+    post_install_msg="""
+IMPORTANT NOTE:
+---------------
+The GraalVM native image tool is released as "Early Access" under the terms
+of the Java Specification Participation Agreement.  Oracle intends to submit
+the native image tool to the Java Community Process for standardization by
+the Java Community.  This standardization may result in incompatible changes
+to the tool.  Oracle may limit backports / require customer upgrades to the
+later versions specifically for users of the native image tool.  Oracle does
+provide full production support for users of Native Image along with other
+GraalVM EE components."""
 ))
 
 
