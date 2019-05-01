@@ -1468,6 +1468,7 @@ class GraalVmStandaloneComponent(mx.LayoutTARDistribution):  # pylint: disable=t
         """
         :type installable: GraalVmInstallableComponent
         """
+        assert isinstance(installable.main_component, mx_sdk.GraalVmTruffleComponent)
         support_dir_pattern = '<jre_base>/languages/{}/'.format(installable.main_component.dir_name)
         other_comp_names = []
         if _get_svm_support().is_supported() and _get_launcher_configs(installable.main_component):
@@ -1746,7 +1747,7 @@ def mx_register_dynamic_suite_constituents(register_project, register_distributi
         if not _disable_installable(component) and (component.installable or (isinstance(component, mx_sdk.GraalVmLanguage) and component.dir_name != 'js')):
             installable_component = GraalVmInstallableComponent(component)
             register_distribution(installable_component)
-            if has_svm_launcher(component):
+            if isinstance(component, mx_sdk.GraalVmTruffleComponent) and has_svm_launcher(component):
                 register_distribution(GraalVmStandaloneComponent(installable_component))
 
     if register_project:
