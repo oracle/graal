@@ -69,8 +69,6 @@ def gate_body(args, tasks):
             version_regex = mx_vm.openjdk_version_regex if args.strict_mode else mx_vm.anyjdk_version_regex
             mx_vm.check_versions(mx_vm.graalvm_output(), version_regex, graalvm_version_regex=mx_vm.graalvm_version_regex, expect_graalvm=True, check_jvmci=True)
 
-
-
     if mx_vm.has_component('LibGraal'):
         libgraal_location = mx_vm.get_native_image_locations('LibGraal', 'jvmcicompiler')
         if libgraal_location is None:

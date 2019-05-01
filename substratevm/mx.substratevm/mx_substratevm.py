@@ -1041,8 +1041,7 @@ the Java Community.  This standardization may result in incompatible changes
 to the tool.  Oracle may limit backports / require customer upgrades to the
 later versions specifically for users of the native image tool.  Oracle does
 provide full production support for users of Native Image along with other
-GraalVM EE components."""
-))
+GraalVM EE components."""))
 
 
 mx_sdk.register_graalvm_component(mx_sdk.GraalVmJreComponent(
