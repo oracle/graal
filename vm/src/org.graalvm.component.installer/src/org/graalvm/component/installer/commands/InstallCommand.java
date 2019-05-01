@@ -59,6 +59,8 @@ public class InstallCommand implements InstallerCommand {
     private boolean validateBeforeInstall;
     private boolean validateDownload;
     private boolean allowUpgrades;
+    // verify archives by default
+    private boolean verifyJar = true;
 
     private PostInstProcess postinstHelper;
 
@@ -94,6 +96,14 @@ public class InstallCommand implements InstallerCommand {
         postinstHelper = new PostInstProcess(input, feedBack);
     }
 
+    public boolean isVerifyJar() {
+        return verifyJar;
+    }
+
+    public void setVerifyJar(boolean verifyJar) {
+        this.verifyJar = verifyJar;
+    }
+
     public boolean isAllowUpgrades() {
         return allowUpgrades;
     }
@@ -123,6 +133,7 @@ public class InstallCommand implements InstallerCommand {
     @Override
     public int execute() throws IOException {
         input.getLocalRegistry().verifyAdministratorAccess();
+        input.existingFiles().setVerifyJars(verifyJar);
 
         minRequiredGraalVersion = input.getLocalRegistry().getGraalVersion();
         if (input.optValue(Commands.OPTION_HELP) != null) {
