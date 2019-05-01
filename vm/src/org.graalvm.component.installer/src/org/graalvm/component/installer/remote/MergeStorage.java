@@ -83,7 +83,7 @@ class MergeStorage extends AbstractCatalogStorage {
         Set<ComponentInfo> cis = new HashSet<>();
         for (SoftwareChannel swch : channels) {
             Set<ComponentInfo> newInfos = swch.getStorage().loadComponentMetadata(id);
-            if (newInfos == null) {
+            if (newInfos == null || newInfos.isEmpty()) {
                 continue;
             }
             newInfos.removeAll(cis);
@@ -91,6 +91,7 @@ class MergeStorage extends AbstractCatalogStorage {
                 channelMap.put(ci, swch);
             }
             cis.addAll(newInfos);
+            break;
         }
         return cis;
     }
