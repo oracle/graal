@@ -110,6 +110,8 @@ public class CommandTestBase extends TestBase implements CommandInput, SoftwareC
 
     protected ComponentIterable paramIterable;
 
+    boolean verifyJars;
+
     @Override
     public ComponentIterable existingFiles() throws FailedOperationException {
         if (paramIterable != null) {
@@ -118,6 +120,7 @@ public class CommandTestBase extends TestBase implements CommandInput, SoftwareC
         return new ComponentIterable() {
             @Override
             public void setVerifyJars(boolean verify) {
+                verifyJars = verify;
             }
 
             @Override
@@ -128,8 +131,13 @@ public class CommandTestBase extends TestBase implements CommandInput, SoftwareC
             @Override
             public Iterator<ComponentParam> iterator() {
                 return new Iterator<ComponentParam>() {
-                    private Iterator<ComponentParam> fit = new FileIterable(CommandTestBase.this, CommandTestBase.this).iterator();
                     private Iterator<ComponentParam> pit = components.iterator();
+                    private Iterator<ComponentParam> fit;
+                    {
+                        FileIterable ff = new FileIterable(CommandTestBase.this, CommandTestBase.this);
+                        ff.setVerifyJars(verifyJars);
+                        fit = ff.iterator();
+                    }
 
                     @Override
                     public boolean hasNext() {

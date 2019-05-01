@@ -52,7 +52,7 @@ public class DownloadURLIterable implements ComponentIterable {
 
     @Override
     public void setVerifyJars(boolean verify) {
-        // ignored
+        verifyJars = verify;
     }
 
     @Override
