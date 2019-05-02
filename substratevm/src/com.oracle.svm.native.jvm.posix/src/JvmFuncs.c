@@ -293,12 +293,27 @@ JNIEXPORT jlong Java_java_lang_System_currentTimeMillis(void *env, void * ignore
     return (jlong)(time.tv_sec * 1000)  +  (jlong)(time.tv_usec / 1000);
 }
 
+JNIEXPORT jlong Java_java_lang_System_nanoTime(void *env, void * ignored) {
+    // get implementation from hotspot/os/bsd/os_bsd.cpp
+    // for now, just return 1000 * microseconds
+    struct timeval time;
+    int status = gettimeofday(&time, NULL);
+    return (jlong)(time.tv_sec * 1000000000)  +  (jlong)(time.tv_usec * 1000);
+}
+
 JNIEXPORT jlong JVM_CurrentTimeMillis(void *env, void * ignored) {
     return Java_java_lang_System_currentTimeMillis(env, ignored);
 }
 
+JNIEXPORT jlong JVM_NanoTime(void *env, void * ignored) {
+    return Java_java_lang_System_nanoTime(env, ignored);
+}
+
 JNIEXPORT void JVM_Halt(int retcode) {
     _exit(retcode);
+}
+
+JNIEXPORT void JVM_BeforeHalt() {
 }
 
 JNIEXPORT int JVM_GetLastErrorString(char *buf, int len) {
@@ -322,6 +337,15 @@ JNIEXPORT int JVM_GetLastErrorString(char *buf, int len) {
 
 int jio_vfprintf(FILE* f, const char *fmt, va_list args) {
   return vfprintf(f, fmt, args);
+}
+
+int jio_snprintf(char *str, size_t count, const char *fmt, ...) {
+  va_list args;
+  int len;
+  va_start(args, fmt);
+  len = jio_vsnprintf(str, count, fmt, args);
+  va_end(args);
+  return len;
 }
 
 int jio_vsnprintf(char *str, size_t count, const char *fmt, va_list args) {
