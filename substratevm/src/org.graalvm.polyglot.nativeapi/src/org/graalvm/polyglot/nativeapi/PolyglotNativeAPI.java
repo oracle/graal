@@ -28,6 +28,7 @@ import static org.graalvm.polyglot.nativeapi.types.PolyglotNativeAPITypes.Polygl
 import static org.graalvm.polyglot.nativeapi.types.PolyglotNativeAPITypes.PolyglotStatus.poly_generic_failure;
 import static org.graalvm.polyglot.nativeapi.types.PolyglotNativeAPITypes.PolyglotStatus.poly_number_expected;
 import static org.graalvm.polyglot.nativeapi.types.PolyglotNativeAPITypes.PolyglotStatus.poly_ok;
+import static org.graalvm.polyglot.nativeapi.types.PolyglotNativeAPITypes.PolyglotStatus.poly_pending_exception;
 
 import java.io.PrintWriter;
 import java.io.StringWriter;
@@ -57,6 +58,7 @@ import org.graalvm.polyglot.Context;
 import org.graalvm.polyglot.Engine;
 import org.graalvm.polyglot.Language;
 import org.graalvm.polyglot.PolyglotAccess;
+import org.graalvm.polyglot.PolyglotException;
 import org.graalvm.polyglot.Source;
 import org.graalvm.polyglot.Value;
 import org.graalvm.polyglot.nativeapi.types.CBoolPointer;
@@ -78,6 +80,8 @@ import org.graalvm.polyglot.nativeapi.types.PolyglotNativeAPITypes.PolyglotEngin
 import org.graalvm.polyglot.nativeapi.types.PolyglotNativeAPITypes.PolyglotEngineBuilder;
 import org.graalvm.polyglot.nativeapi.types.PolyglotNativeAPITypes.PolyglotEngineBuilderPointer;
 import org.graalvm.polyglot.nativeapi.types.PolyglotNativeAPITypes.PolyglotEnginePointer;
+import org.graalvm.polyglot.nativeapi.types.PolyglotNativeAPITypes.PolyglotExceptionHandle;
+import org.graalvm.polyglot.nativeapi.types.PolyglotNativeAPITypes.PolyglotExceptionHandlePointer;
 import org.graalvm.polyglot.nativeapi.types.PolyglotNativeAPITypes.PolyglotExtendedErrorInfo;
 import org.graalvm.polyglot.nativeapi.types.PolyglotNativeAPITypes.PolyglotExtendedErrorInfoPointer;
 import org.graalvm.polyglot.nativeapi.types.PolyglotNativeAPITypes.PolyglotIsolateThread;
@@ -113,8 +117,8 @@ public final class PolyglotNativeAPI {
     private static final UnsignedWord POLY_AUTO_LENGTH = WordFactory.unsigned(0xFFFFFFFFFFFFFFFFL);
     private static final int DEFAULT_FRAME_CAPACITY = 16;
 
-    private static ThreadLocal<ErrorInfoHolder> errorInfo = new ThreadLocal<>();
     private static ThreadLocal<CallbackException> exceptionsTL = new ThreadLocal<>();
+    private static ThreadLocal<ErrorStateHolder> errorHolder = new ThreadLocal<>();
     @SuppressWarnings("rawtypes") private static final FastThreadLocalObject<ThreadLocalHandles> handles = FastThreadLocalFactory.createObject(ThreadLocalHandles.class);
 
     @SuppressWarnings("unchecked")
@@ -128,20 +132,16 @@ public final class PolyglotNativeAPI {
     private static final ObjectHandlesImpl objectHandles = new ObjectHandlesImpl(
                     WordFactory.signed(Long.MIN_VALUE), ThreadLocalHandles.nullHandle().subtract(1), ThreadLocalHandles.nullHandle());
 
-    private static class ErrorInfoHolder {
-        PolyglotExtendedErrorInfo info;
-        CCharPointerHolder messageHolder;
-
-        ErrorInfoHolder(PolyglotExtendedErrorInfo info, CCharPointerHolder messageHolder) {
-            this.info = info;
-            this.messageHolder = messageHolder;
-        }
+    private static class ErrorStateHolder {
+        public PolyglotExtendedErrorInfo info = WordFactory.nullPointer();
+        public CCharPointerHolder messageHolder = CTypeConversion.toCString("");
+        public PolyglotException polyglotException = null;
     }
 
     @CEntryPoint(name = "poly_create_engine_builder", documentation = {
                     "Creates a new context builder that allows to configure an engine instance.",
                     "",
-                    " @since 1.1",
+                    " @since 1.0",
     })
     public static PolyglotStatus poly_create_engine_builder(PolyglotIsolateThread thread, PolyglotEngineBuilderPointer result) {
         return withHandledErrors(() -> {
@@ -158,7 +158,7 @@ public final class PolyglotNativeAPI {
                     " @param key_utf8 0 terminated and UTF-8 encoded key for the option.",
                     " @param value_utf8 0 terminated and UTF-8 encoded value for the option.",
                     " @return poly_ok if all works, poly_generic_error if there is a failure.",
-                    " @since 1.1",
+                    " @since 1.0",
     })
     public static PolyglotStatus poly_create_engine_builder(PolyglotIsolateThread thread, PolyglotEngineBuilder engine_builder, @CConst CCharPointer key_utf8, @CConst CCharPointer value_utf8) {
         return withHandledErrors(() -> {
@@ -174,7 +174,7 @@ public final class PolyglotNativeAPI {
                     " @param engine_builder that is used to build.",
                     " @param result the created engine.",
                     " @return poly_ok if all works, poly_generic_error if there is a failure.",
-                    " @since 1.1",
+                    " @since 1.0",
     })
     public static PolyglotStatus poly_engine_builder_build(PolyglotIsolateThread thread, PolyglotEngineBuilder engine_builder, PolyglotEnginePointer result) {
         return withHandledErrors(() -> {
@@ -1145,6 +1145,7 @@ public final class PolyglotNativeAPI {
                     "",
                     " @return poly_ok if all works, poly_generic_failure if the underlying context was closed, if guest language error occurred ",
                     "        during execution.",
+                    "",
                     " @since 1.0"
     })
     public static PolyglotStatus poly_value_fits_in_uint8(PolyglotIsolateThread thread, PolyglotValue value, CBoolPointer result) {
@@ -1430,13 +1431,11 @@ public final class PolyglotNativeAPI {
                     " @since 1.0",
     })
     public static PolyglotStatus poly_get_last_error_info(PolyglotIsolateThread thread, @CConst PolyglotExtendedErrorInfoPointer result) {
-        ErrorInfoHolder errorInfoHolder = errorInfo.get();
-        if (errorInfoHolder != null) {
-            result.write(errorInfoHolder.info);
-            return poly_ok;
-        } else {
-            return poly_generic_failure;
+        ErrorStateHolder holder = errorHolder.get();
+        if (holder != null && holder.info.isNonNull()) {
+            result.write(holder.info);
         }
+        return poly_ok;
     }
 
     @CEntryPoint(name = "poly_create_function", documentation = {
@@ -1560,6 +1559,139 @@ public final class PolyglotNativeAPI {
         return withHandledErrors(() -> getHandles().popFrame());
     }
 
+    @CEntryPoint(name = "poly_get_last_exception", documentation = {
+                    "Returns the last exception that occurred on this thread, or does nothing if an exception did not happen.",
+                    "",
+                    "This method must be called right after an exception occurs (after a method returns poly_pending_exception), ",
+                    "and can be called only once.",
+                    "",
+                    " @param result On success, a handle to the last exception on this thread is put here.",
+                    " @return poly_ok if everything went ok, otherwise an error occurred.",
+                    " @since 1.0",
+    })
+    public static PolyglotStatus poly_get_last_exception(PolyglotIsolateThread thread, PolyglotExceptionHandlePointer result) {
+        ErrorStateHolder holder = errorHolder.get();
+        if (holder == null || holder.polyglotException == null) {
+            result.write(ThreadLocalHandles.nullHandle());
+        } else {
+            result.write(createHandle(holder.polyglotException));
+            holder.polyglotException = null;
+        }
+        return poly_ok;
+    }
+
+    @CEntryPoint(name = "poly_exception_is_syntax_error", documentation = {
+                    "Checks if an exception is caused by a parser or syntax error.",
+                    "",
+                    " @param exception Handle to the exception object.",
+                    " @param result The result of the check.",
+                    " @return poly_ok if everything went ok, otherwise an error occurred.",
+                    " @since 1.0",
+    })
+    public static PolyglotStatus poly_exception_is_syntax_error(PolyglotIsolateThread thread, PolyglotExceptionHandle exception, CBoolPointer result) {
+        return withHandledErrors(() -> {
+            PolyglotException e = fetchHandle(exception);
+            result.write(CTypeConversion.toCBoolean(e.isSyntaxError()));
+        });
+    }
+
+    @CEntryPoint(name = "poly_exception_is_cancelled", documentation = {
+                    "Checks if execution has been cancelled.",
+                    "",
+                    " @param exception Handle to the exception object.",
+                    " @param result The result of the check.",
+                    " @return poly_ok if everything went ok, otherwise an error occurred.",
+                    "",
+                    " @since 1.0",
+    })
+    public static PolyglotStatus poly_exception_is_cancelled(PolyglotIsolateThread thread, PolyglotExceptionHandle exception, CBoolPointer result) {
+        return withHandledErrors(() -> {
+            PolyglotException e = fetchHandle(exception);
+            result.write(CTypeConversion.toCBoolean(e.isCancelled()));
+        });
+    }
+
+    @CEntryPoint(name = "poly_exception_is_internal_error", documentation = {
+                    "Checks if this exception was caused by an internal implementation error.",
+                    "",
+                    " @param exception Handle to the exception object.",
+                    " @param result The result of the check.",
+                    " @return poly_ok if everything went ok, otherwise an error occurred.",
+                    "",
+                    " @since 1.0",
+    })
+    public static PolyglotStatus poly_exception_is_internal_error(PolyglotIsolateThread thread, PolyglotExceptionHandle exception, CBoolPointer result) {
+        return withHandledErrors(() -> {
+            PolyglotException e = fetchHandle(exception);
+            result.write(CTypeConversion.toCBoolean(e.isInternalError()));
+        });
+    }
+
+    @CEntryPoint(name = "poly_exception_has_object", documentation = {
+                    "Checks if this exception has a guest language exception object attached to it.",
+                    "",
+                    " @param exception Handle to the exception object.",
+                    " @param result The result of the check.",
+                    " @return poly_ok if everything went ok, otherwise an error occurred.",
+                    "",
+                    " @since 1.0",
+    })
+    public static PolyglotStatus poly_exception_has_object(PolyglotIsolateThread thread, PolyglotExceptionHandle exception, CBoolPointer result) {
+        return withHandledErrors(() -> {
+            PolyglotException e = fetchHandle(exception);
+            result.write(CTypeConversion.toCBoolean(e.getGuestObject() != null));
+        });
+    }
+
+    @CEntryPoint(name = "poly_exception_get_object", documentation = {
+                    "Gets the handle to the guest exception object. This object can then be used in other poly methods.",
+                    "",
+                    " @param exception Handle to the exception object.",
+                    " @param result The handle to the guest object if it exists.",
+                    " @return poly_ok if everything went ok, otherwise an error occurred.",
+                    "",
+                    " @since 1.0",
+    })
+    public static PolyglotStatus poly_exception_get_object(PolyglotIsolateThread thread, PolyglotExceptionHandle exception, PolyglotValuePointer result) {
+        return withHandledErrors(() -> {
+            PolyglotException e = fetchHandle(exception);
+            Value guestObject = e.getGuestObject();
+            if (guestObject == null) {
+                reportError("Attempted to get the guest object of an exception that did not have one.", poly_generic_failure);
+            } else {
+                result.write(createHandle(guestObject));
+            }
+        });
+    }
+
+    @CEntryPoint(name = "poly_exception_get_stack_trace", documentation = {
+                    "Gets the guest stack traces as a string.",
+                    "The returned string is valid until the next call to this function",
+                    "",
+                    " @param exception Handle to the exception object.",
+                    " @param buffer UTF-8 string representing the stack trace. Can be NULL.",
+                    " @param buffer_size Size of the user-supplied buffer.",
+                    " @param result If buffer is NULL, this will contain the buffer size required to put the trace string in, otherwise, it will contain the number of bytes written",
+                    " @return poly_ok if everything went ok, otherwise an error occurred.",
+                    "",
+                    " @since 1.0",
+    })
+    public static PolyglotStatus poly_exception_get_stack_trace(PolyglotIsolateThread thread, PolyglotExceptionHandle exception, CCharPointer buffer, UnsignedWord buffer_size, SizeTPointer result) {
+        return withHandledErrors(() -> {
+            PolyglotException e = fetchHandle(exception);
+            StringWriter sw = new StringWriter();
+            PrintWriter pw = new PrintWriter(sw);
+            Iterable<PolyglotException.StackFrame> traceElements = e.getPolyglotStackTrace();
+
+            for (PolyglotException.StackFrame trace : traceElements) {
+                if (trace.isGuestFrame()) {
+                    pw.println(trace.toString());
+                }
+            }
+            writeString(sw.toString(), buffer, buffer_size, result, UTF8_CHARSET);
+        });
+    }
+
     private static class PolyglotCallbackInfoInternal {
         ObjectHandle[] arguments;
         VoidPointer data;
@@ -1588,11 +1720,11 @@ public final class PolyglotNativeAPI {
     }
 
     private static void resetErrorState() {
-        ErrorInfoHolder current = errorInfo.get();
-        if (current != null) {
+        ErrorStateHolder current = errorHolder.get();
+        if (current != null && current.info.isNonNull()) {
             current.messageHolder.close();
             UnmanagedMemory.free(current.info);
-            errorInfo.remove();
+            current.info = WordFactory.nullPointer();
         }
     }
 
@@ -1601,7 +1733,22 @@ public final class PolyglotNativeAPI {
     }
 
     private static PolyglotStatus handleThrowable(Throwable t) {
+        ErrorStateHolder current = errorHolder.get();
+        if (current == null) {
+            errorHolder.set(new ErrorStateHolder());
+            current = errorHolder.get();
+        }
+
         PolyglotStatus errorCode = t instanceof PolyglotNativeAPIError ? ((PolyglotNativeAPIError) t).getCode() : poly_generic_failure;
+        if (t instanceof PolyglotException) {
+            /*
+             * We should never have both a PolyglotException and an error happening at the same
+             * time.
+             */
+            current.polyglotException = (PolyglotException) t;
+            errorCode = poly_pending_exception;
+
+        }
         PolyglotExtendedErrorInfo unmanagedErrorInfo = UnmanagedMemory.malloc(SizeOf.get(PolyglotExtendedErrorInfo.class));
         unmanagedErrorInfo.setErrorCode(errorCode.getCValue());
         StringWriter sw = new StringWriter();
@@ -1612,7 +1759,9 @@ public final class PolyglotNativeAPI {
         CCharPointerHolder holder = CTypeConversion.toCString(sw.toString());
         CCharPointer value = holder.get();
         unmanagedErrorInfo.setErrorMessage(value);
-        errorInfo.set(new ErrorInfoHolder(unmanagedErrorInfo, holder));
+
+        current.messageHolder = holder;
+        current.info = unmanagedErrorInfo;
 
         return errorCode;
     }
