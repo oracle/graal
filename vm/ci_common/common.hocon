@@ -98,6 +98,7 @@ fastr_darwin: ${fastr} {
     PATH : "/usr/local/bin:$JAVA_HOME/bin:$PATH"
     F77: "/usr/local/bin/gfortran-4.9"
     TZDIR: "/usr/share/zoneinfo"
+    FASTR_LIBZ_VER: "1.2.11"
   }
 }
 
