@@ -32,6 +32,8 @@ import com.oracle.truffle.api.source.SourceSection;
 
 import static com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 
+import com.oracle.truffle.api.CompilerAsserts;
+
 public final class RegexRootNode extends RootNode {
 
     @Child private RegexBodyNode body;
@@ -62,5 +64,17 @@ public final class RegexRootNode extends RootNode {
             return ((InstrumentableNode.WrapperNode) body).getDelegateNode().toString();
         }
         return body.toString();
+    }
+
+    /**
+     * Throws a {@link RegexInterruptedException} if the current thread is marked as interrupted.
+     * This method should be called in interpreter mode only, since all cancel requests will cause a
+     * deopt on the entire AST held by this root node.
+     */
+    public static void checkThreadInterrupted() {
+        CompilerAsserts.neverPartOfCompilation("do not check thread interruption from compiled code");
+        if (Thread.interrupted()) {
+            throw new RegexInterruptedException();
+        }
     }
 }
