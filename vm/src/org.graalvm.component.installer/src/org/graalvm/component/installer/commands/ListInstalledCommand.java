@@ -66,7 +66,7 @@ public class ListInstalledCommand extends QueryCommandBase {
             if (sb.length() > 0) {
                 sb.append("|");
             }
-            sb.append(Pattern.quote(s));
+            sb.append(Pattern.quote(s)).append("$");
         }
         if (sb.length() == 0) {
             sb.append(".*");

@@ -93,14 +93,14 @@ public final class ComponentInstaller {
         commands.clear();
         globalOptions.clear();
 
-        commands.put("add", new InstallCommand()); // NOI18N
+        commands.put("install", new InstallCommand()); // NOI18N
         commands.put("remove", new UninstallCommand()); // NOI18N
         commands.put("list", new ListInstalledCommand()); // NOI18N
         commands.put("available", new AvailableCommand()); // NOI18N
         commands.put("info", new InfoCommand()); // NOI18N
         commands.put("rebuild-images", new RebuildImageCommand()); // NOI18N
-        commands.put("install", new UpgradeCommand()); // NOI18N
-        commands.put("update", new UpgradeCommand(false)); // NOI18N
+        commands.put("update", new UpgradeCommand()); // NOI18N
+        // commands.put("update", new UpgradeCommand(false)); // NOI18N
 
         // commands used internally by system scripts, names intentionally hashed.
         commands.put("#postinstall", new PostInstCommand()); // NOI18N

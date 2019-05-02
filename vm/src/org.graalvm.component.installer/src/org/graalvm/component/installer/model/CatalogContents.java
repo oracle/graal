@@ -32,6 +32,7 @@ import java.util.Collections;
 import java.util.HashMap;
 import java.util.Iterator;
 import java.util.List;
+import java.util.Locale;
 import java.util.Map;
 import java.util.Set;
 import org.graalvm.component.installer.CommonConstants;
@@ -98,7 +99,7 @@ public class CatalogContents implements ComponentCollection {
             return null;
         }
         ComponentInfo first = null;
-        Version.Match vm = versionMatch(versionSelect);
+        Version.Match vm = versionMatch(versionSelect, cis);
         boolean explicit = versionSelect != null && versionSelect.getType() != Version.Match.Type.MOSTRECENT;
         for (int i = cis.size() - 1; i >= 0; i--) {
             ComponentInfo ci = cis.get(i);
@@ -133,15 +134,27 @@ public class CatalogContents implements ComponentCollection {
         this.allowDistUpdate = allowDistUpdate;
     }
 
-    private Version.Match versionMatch(Version.Match m) {
+    private Version.Match versionMatch(Version.Match m, List<ComponentInfo> infos) {
         if (m != null && m.getType() != Version.Match.Type.MOSTRECENT) {
-            return m;
+            return resolveMatch(m, infos, env);
         }
         Version v = m == null ? graalVersion : m.getVersion();
         if (v == Version.NO_VERSION) {
             v = graalVersion;
         }
         return v.match(allowDistUpdate ? Version.Match.Type.INSTALLABLE : Version.Match.Type.COMPATIBLE);
+    }
+
+    private static Version.Match resolveMatch(Version.Match vm, List<ComponentInfo> comps, Feedback f) {
+        if (vm == null) {
+            return null;
+        }
+        List<Version> vers = new ArrayList<>(comps.size());
+        for (ComponentInfo ci : comps) {
+            vers.add(ci.getVersion());
+        }
+        Collections.sort(vers);
+        return vm.resolveWildcards(vers, f);
     }
 
     @Override
@@ -201,12 +214,14 @@ public class CatalogContents implements ComponentCollection {
 
     private String findAbbreviatedId(String id) {
         String candidate = null;
-        String end = "." + id.toLowerCase(); // NOI18N
+        String lcid = id.toLowerCase(Locale.ENGLISH);
+        String end = "." + lcid; // NOI18N
         for (String s : getComponentIDs()) {
-            if (s.equals(id)) {
-                return id;
+            String lcs = s.toLowerCase();
+            if (lcs.equals(lcid)) {
+                return s;
             }
-            if (s.toLowerCase().endsWith(end)) {
+            if (lcs.toLowerCase().endsWith(end)) {
                 if (candidate != null) {
                     throw env.failure("COMPONENT_AmbiguousIdFound", null, candidate, s);
                 }
@@ -223,13 +238,14 @@ public class CatalogContents implements ComponentCollection {
             return null;
         }
         if (vmatch.getType() == Version.Match.Type.MOSTRECENT) {
-            ComponentInfo comp = compatibleComponent(v, versionMatch(vmatch), true);
+            ComponentInfo comp = compatibleComponent(v, versionMatch(vmatch, v), true);
             return comp == null ? Collections.emptyList() : Collections.singleton(comp);
         }
+        Version.Match resolvedMatch = resolveMatch(vmatch, v, env);
         List<ComponentInfo> versions = new ArrayList<>(v);
         for (Iterator<ComponentInfo> it = versions.iterator(); it.hasNext();) {
             ComponentInfo cv = it.next();
-            if (!vmatch.test(cv.getVersion())) {
+            if (!resolvedMatch.test(cv.getVersion())) {
                 it.remove();
             }
         }

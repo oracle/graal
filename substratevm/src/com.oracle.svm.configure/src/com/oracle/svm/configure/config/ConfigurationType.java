@@ -97,7 +97,7 @@ public class ConfigurationType implements JsonPrintable {
     }
 
     public boolean hasIndividualMethod(String name, String internalSignature) {
-        if (methods != null) {
+        if (methods != null && name != null && internalSignature != null) {
             for (ConfigurationMethod method : methods.keySet()) {
                 if (method.matches(name, internalSignature)) {
                     return true;

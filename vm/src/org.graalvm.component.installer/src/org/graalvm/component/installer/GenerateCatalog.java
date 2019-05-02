@@ -326,7 +326,8 @@ public final class GenerateCatalog {
                     version = info.getVersionString();
                     break;
                 case 2:
-                    version = SystemUtils.normalizeOldVersions(info.getVersionString());
+                    version = info.getVersion().toString();
+                    break;
             }
         }
         return String.format(graalVersionFormatString,
@@ -420,13 +421,16 @@ public final class GenerateCatalog {
                 }
                 String url = (urlPrefix == null || urlPrefix.isEmpty()) ? name : urlPrefix + "/" + name;
                 String sel;
+                String hashSuffix;
 
                 switch (formatVer) {
                     case 1:
-                        sel = "Component.{0}_{1}";
+                        sel = "Component.{0}.{1}";
+                        hashSuffix = "-hash";
                         break;
                     case 2:
                         sel = "Component.{0}/{1}";
+                        hashSuffix = "-hash";
                         break;
                     default:
                         throw new IllegalStateException();
@@ -434,7 +438,7 @@ public final class GenerateCatalog {
                 catalogContents.append(MessageFormat.format(
                                 sel + "={2}\n", prefix, bid, url));
                 catalogContents.append(MessageFormat.format(
-                                sel + "={2}\n", prefix, bid, digest2String(hash)));
+                                sel + hashSuffix + "={2}\n", prefix, bid, digest2String(hash)));
 
                 for (Object a : atts.keySet()) {
                     String key = a.toString();
