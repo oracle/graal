@@ -1362,7 +1362,6 @@ public class LLVMGenerator implements LIRGeneratorTool {
             return null;
         }
 
-        @Override
         public void emitCompareOp(AArch64Kind cmpKind, Variable left, Value right) {
             // This should be implemented, see #1168
         }
