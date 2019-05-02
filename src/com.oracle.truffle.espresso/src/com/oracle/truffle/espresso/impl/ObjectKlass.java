@@ -86,7 +86,7 @@ public final class ObjectKlass extends Klass {
     @CompilationFinal(dimensions = 1) private final Klass[] iKlassTable;
     @CompilationFinal private final int itableLength;
 
-    private int initState = LINKED;
+    @CompilationFinal private volatile int initState = LINKED;
 
     public static final int LOADED = 0;
     public static final int LINKED = 1;
@@ -188,6 +188,7 @@ public final class ObjectKlass extends Klass {
 
     private synchronized void actualInit() {
         if (!(isInitializedOrPrepared())) { // Check under lock
+            initState = PREPARED;
             if (getSuperKlass() != null) {
                 getSuperKlass().initialize();
             }
@@ -258,7 +259,6 @@ public final class ObjectKlass extends Klass {
                     }
                 }
             }
-            initState = PREPARED;
             Method clinit = getClassInitializer();
             if (clinit != null) {
                 clinit.getCallTarget().call();
@@ -268,8 +268,19 @@ public final class ObjectKlass extends Klass {
         }
     }
 
+    // Need to carefully synchronize, as the work of other threads can erase our own work.
     @Override
     public void initialize() {
+        if (isPrepared()) {
+            CompilerDirectives.transferToInterpreterAndInvalidate();
+            // For some reason, doing the reentrant lock this way sometimes solves the memory issue
+            // in DaCapo lusearch...
+            // I have no explanation...
+            if (!Thread.holdsLock(this)) {
+                synchronized (this) {
+                }
+            }
+        }
         if (!isInitialized()) { // Skip synchronization and locks if already init.
             CompilerDirectives.transferToInterpreterAndInvalidate();
             actualInit();

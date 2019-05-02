@@ -65,6 +65,7 @@ import com.oracle.truffle.espresso.meta.Meta;
 import com.oracle.truffle.espresso.runtime.BootstrapMethodsAttribute;
 import com.oracle.truffle.espresso.runtime.EspressoException;
 import com.oracle.truffle.espresso.runtime.EspressoExitException;
+import com.oracle.truffle.espresso.runtime.MemoryErrorDelegate;
 import com.oracle.truffle.espresso.runtime.ReturnAddress;
 import com.oracle.truffle.espresso.runtime.StaticObject;
 import com.oracle.truffle.espresso.vm.InterpreterToVM;
@@ -874,6 +875,12 @@ public class BytecodeNode extends EspressoBaseNode implements CustomNodeCount {
                     // Checkstyle: resume
                 } catch (EspressoException | EspressoExitException e) {
                     throw e;
+                } catch (OutOfMemoryError | StackOverflowError e) {
+                    // Free some memory
+                    CompilerDirectives.transferToInterpreterAndInvalidate();
+                    e.setStackTrace(MemoryErrorDelegate.EMPTY_STACK);
+                    // Delegate to free some stack
+                    throw getContext().getDelegate().delegate(e instanceof StackOverflowError);
                 } catch (RuntimeException e) {
                     CompilerDirectives.transferToInterpreter();
                     if (DEBUG_GENERAL) {
@@ -895,6 +902,18 @@ public class BytecodeNode extends EspressoBaseNode implements CustomNodeCount {
                     continue loop; // skip bs.next()
                 } else {
                     throw e;
+                }
+            } catch (MemoryErrorDelegate e) {
+                CompilerDirectives.transferToInterpreterAndInvalidate();
+                if (e.check()) {
+                    EspressoException exception = e.act(getContext(), getMeta());
+                    if (DEBUG_GENERAL) {
+                        reportThrow(curBCI, getMethod(), exception.getException());
+                    }
+                    throw exception;
+                } else {
+                    // Give us some room on the stack
+                    throw e.deStack();
                 }
             } catch (VirtualMachineError e) {
                 // TODO(peterssen): Host should not throw invalid VME (not in the boot classpath).
@@ -1242,6 +1261,10 @@ public class BytecodeNode extends EspressoBaseNode implements CustomNodeCount {
             }
         }
         return quick.invoke(frame, top) - Bytecodes.stackEffectOf(opCode);
+    }
+
+    private static boolean isReturn(int opCode) {
+        return opCode >= IRETURN && opCode <= RETURN;
     }
 
     private int quickenInvoke(final VirtualFrame frame, int top, int curBCI, int opCode) {

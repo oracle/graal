@@ -28,12 +28,12 @@ import com.oracle.truffle.espresso.impl.Method;
 import com.oracle.truffle.espresso.meta.Meta;
 import com.oracle.truffle.espresso.runtime.StaticObject;
 
-public class MHInvokeBasicNode extends EspressoBaseNode {
+public final class MHInvokeBasicNode extends EspressoBaseNode {
 
-    final int form;
-    final int vmentry;
-    final int hidden_vmtarget;
-    @Child IndirectCallNode callNode;
+    private final int form;
+    private final int vmentry;
+    private final int hidden_vmtarget;
+    private @Child IndirectCallNode callNode;
 
     public MHInvokeBasicNode(Method method) {
         super(method);

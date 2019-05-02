@@ -129,7 +129,8 @@ public final class EspressoLanguage extends TruffleLanguage<EspressoContext> {
         } else {
             System.out.println("Time spent in Epresso: " + (totalTime) + "ms");
         }
-        context.getMeta().Shutdown_shutdown.invokeDirect(null);
+        context.interruptActiveThreads();
+        // context.getMeta().Shutdown_shutdown.invokeDirect(null);
     }
 
     @Override

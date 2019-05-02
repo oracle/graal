@@ -251,6 +251,7 @@ public final class JniEnv extends NativeEnv implements ContextAccess {
     private class VarArgsImpl implements VarArgs {
 
         @Child Node execute = Message.EXECUTE.createNode();
+        @Child Node isNull = Message.IS_NULL.createNode();
 
         private final long nativePointer;
 
@@ -337,10 +338,15 @@ public final class JniEnv extends NativeEnv implements ContextAccess {
                 if (result instanceof StaticObject) {
                     return result;
                 } else {
-                    // TODO(garcia) understand the weird stuff happening here.
-                    // DaCapo batik gives us a NativePointer to 0 here. This is a workaround until I
-                    // figure out just what is happening here.
-                    return StaticObject.NULL;
+                    if (ForeignAccess.sendIsNull(isNull, result)) {
+                        // TODO(garcia) understand the weird stuff happening here.
+                        // DaCapo batik gives us a NativePointer to 0 here. This is a workaround
+                        // until I
+                        // figure out just what is happening here.
+                        return StaticObject.NULL;
+                    } else {
+                        throw EspressoError.unimplemented("non null native pointer in JniEnv");
+                    }
                 }
             } catch (UnsupportedTypeException | ArityException | UnsupportedMessageException e) {
                 throw EspressoError.shouldNotReachHere(e);

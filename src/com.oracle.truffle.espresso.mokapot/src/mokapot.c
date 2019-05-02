@@ -261,7 +261,7 @@ jboolean JVM_IsSilentCompiler(JNIEnv *env, jclass compCls) {
 }
 
 jboolean JVM_CompileClass(JNIEnv *env, jclass compCls, jclass cls) {
-  UNIMPLEMENTED(JVM_CompileClass);
+  IMPLEMENTED(JVM_CompileClass);
   return 0;
 }
 

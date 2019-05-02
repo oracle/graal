@@ -370,6 +370,12 @@ public final class VM extends NativeEnv implements ContextAccess {
                     if (targetEx instanceof RuntimeException) {
                         throw (RuntimeException) targetEx;
                     }
+                    if (targetEx instanceof StackOverflowError) {
+                        throw getContext().getStackOverflow();
+                    }
+                    if (targetEx instanceof OutOfMemoryError) {
+                        throw getContext().getOutOfMemory();
+                    }
                     // FIXME(peterssen): Handle VME exceptions back to guest.
                     throw EspressoError.shouldNotReachHere(targetEx);
                 } catch (IllegalAccessException | IllegalArgumentException e) {
@@ -546,6 +552,9 @@ public final class VM extends NativeEnv implements ContextAccess {
         StaticObject backtrace = (StaticObject) meta.Throwable_backtrace.get(self);
         FrameInstance[] frames = ((FrameInstance[]) backtrace.getHiddenField(meta.HIDDEN_FRAMES));
         FrameInstance frame = frames[index];
+        if (frame == null) {
+            return StaticObject.NULL;
+        }
 
         EspressoRootNode rootNode = (EspressoRootNode) ((RootCallTarget) frame.getCallTarget()).getRootNode();
 

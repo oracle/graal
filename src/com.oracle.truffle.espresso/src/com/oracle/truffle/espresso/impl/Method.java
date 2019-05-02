@@ -362,6 +362,7 @@ public final class Method implements TruffleObject, ModifiersProvider, ContextAc
 
     public ObjectKlass[] getCheckedExceptions() {
         if (checkedExceptions == null) {
+            CompilerDirectives.transferToInterpreterAndInvalidate();
             createCheckedExceptions();
         }
         return checkedExceptions;
@@ -369,7 +370,6 @@ public final class Method implements TruffleObject, ModifiersProvider, ContextAc
 
     private synchronized void createCheckedExceptions() {
         if (checkedExceptions == null) {
-            CompilerDirectives.transferToInterpreterAndInvalidate();
             if (exceptionsAttribute == null) {
                 checkedExceptions = ObjectKlass.EMPTY_ARRAY;
                 return;

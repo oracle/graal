@@ -28,6 +28,7 @@ import com.oracle.truffle.espresso.EspressoOptions;
 import com.oracle.truffle.espresso.descriptors.Symbol.Name;
 import com.oracle.truffle.espresso.descriptors.Symbol.Signature;
 import com.oracle.truffle.espresso.meta.Meta;
+import com.oracle.truffle.espresso.runtime.EspressoContext;
 import com.oracle.truffle.espresso.runtime.StaticObject;
 
 @EspressoSubstitutions
@@ -74,6 +75,8 @@ public final class Target_java_lang_Thread {
     @Substitution(hasReceiver = true)
     public static void start0(@Host(Thread.class) StaticObject self) {
         if (EspressoOptions.ENABLE_THREADS) {
+            EspressoContext context = EspressoLanguage.getCurrentContext();
+            Meta meta = context.getMeta();
             Thread hostThread = EspressoLanguage.getCurrentContext().getEnv().createThread(new Runnable() {
                 @Override
                 public void run() {
@@ -82,10 +85,12 @@ public final class Target_java_lang_Thread {
             });
 
             self.setHiddenField(self.getKlass().getMeta().HIDDEN_HOST_THREAD, hostThread);
+            context.host2guest.put(hostThread, self);
+            context.registerThread(hostThread);
             EspressoLanguage.getCurrentContext().host2guest.put(hostThread, self);
 
             System.err.println("Starting thread: " + self.getKlass());
-            hostThread.setDaemon((boolean) self.getKlass().getMeta().Thread_daemon.get(self));
+            hostThread.setDaemon((boolean) meta.Thread_daemon.get(self));
             hostThread.start();
         } else {
             System.err.println(
@@ -108,7 +113,7 @@ public final class Target_java_lang_Thread {
         return Thread.holdsLock(object);
     }
 
-    @Substitution(hasReceiver = true)
+    @Substitution
     public static void sleep(long millis) {
         try {
             Thread.sleep(millis);
@@ -125,5 +130,15 @@ public final class Target_java_lang_Thread {
             return;
         }
         hostThread.interrupt();
+    }
+
+    @Substitution(hasReceiver = true)
+    public static void join(@Host(Thread.class) StaticObject self, long millis)
+                    throws InterruptedException {
+        Thread hostThread = (Thread) self.getHiddenField(self.getKlass().getMeta().HIDDEN_HOST_THREAD);
+        if (hostThread == null) {
+            return;
+        }
+        hostThread.join(millis);
     }
 }

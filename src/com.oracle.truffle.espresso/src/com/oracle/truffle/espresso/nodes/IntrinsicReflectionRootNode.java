@@ -30,6 +30,7 @@ import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.espresso.impl.Method;
 import com.oracle.truffle.espresso.meta.EspressoError;
 import com.oracle.truffle.espresso.runtime.EspressoException;
+import com.oracle.truffle.espresso.runtime.EspressoExitException;
 
 public class IntrinsicReflectionRootNode extends EspressoBaseNode {
 
@@ -52,6 +53,12 @@ public class IntrinsicReflectionRootNode extends EspressoBaseNode {
             }
             if (inner instanceof VirtualMachineError) {
                 throw (VirtualMachineError) inner;
+            }
+            if (inner instanceof EspressoExitException) {
+                throw (EspressoExitException) inner;
+            }
+            if (inner instanceof InterruptedException) {
+                throw getMeta().throwEx(InterruptedException.class);
             }
             throw EspressoError.shouldNotReachHere(inner + "\n\t in reflected method: " + reflectMethod);
         } catch (Throwable e) {

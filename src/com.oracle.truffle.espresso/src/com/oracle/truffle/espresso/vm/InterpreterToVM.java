@@ -23,19 +23,30 @@
 
 package com.oracle.truffle.espresso.vm;
 
+import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.function.IntFunction;
 
+import com.oracle.truffle.api.CallTarget;
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
+import com.oracle.truffle.api.RootCallTarget;
+import com.oracle.truffle.api.Truffle;
+import com.oracle.truffle.api.frame.FrameInstance;
+import com.oracle.truffle.api.frame.FrameInstanceVisitor;
+import com.oracle.truffle.api.nodes.RootNode;
 import com.oracle.truffle.espresso.EspressoLanguage;
+import com.oracle.truffle.espresso.descriptors.Symbol;
 import com.oracle.truffle.espresso.impl.ContextAccess;
 import com.oracle.truffle.espresso.impl.Field;
 import com.oracle.truffle.espresso.impl.Klass;
+import com.oracle.truffle.espresso.impl.Method;
 import com.oracle.truffle.espresso.impl.ObjectKlass;
 import com.oracle.truffle.espresso.meta.EspressoError;
 import com.oracle.truffle.espresso.meta.JavaKind;
 import com.oracle.truffle.espresso.meta.Meta;
+import com.oracle.truffle.espresso.nodes.EspressoRootNode;
 import com.oracle.truffle.espresso.runtime.EspressoContext;
+import com.oracle.truffle.espresso.runtime.MemoryErrorDelegate;
 import com.oracle.truffle.espresso.runtime.StaticObject;
 import com.oracle.truffle.espresso.substitutions.Host;
 
@@ -419,5 +430,64 @@ public final class InterpreterToVM implements ContextAccess {
     public @Host(String.class) StaticObject intern(@Host(String.class) StaticObject guestString) {
         assert getMeta().String == guestString.getKlass();
         return getStrings().intern(guestString);
+    }
+
+    public static StaticObject fillInStackTrace(ArrayList<FrameInstance> frames, StaticObject throwable, Meta meta) {
+        Counter c = new Counter();
+        int size = EspressoContext.DEFAULT_STACK_SIZE;
+        frames.clear();
+        Truffle.getRuntime().iterateFrames(new FrameInstanceVisitor<Object>() {
+            @Override
+            public Object visitFrame(FrameInstance frameInstance) {
+                if (c.value < size) {
+                    CallTarget callTarget = frameInstance.getCallTarget();
+                    if (callTarget instanceof RootCallTarget) {
+                        RootNode rootNode = ((RootCallTarget) callTarget).getRootNode();
+                        if (rootNode instanceof EspressoRootNode) {
+                            if (!c.checkFillIn(((EspressoRootNode) rootNode).getMethod())) {
+                                if (!c.checkThrowableInit(((EspressoRootNode) rootNode).getMethod())) {
+                                    frames.add(frameInstance);
+                                    c.inc();
+                                }
+                            }
+                        }
+                    }
+                }
+                return null;
+            }
+        });
+        throwable.setHiddenField(meta.HIDDEN_FRAMES, frames.toArray(MemoryErrorDelegate.EMPTY_FRAMES));
+        meta.Throwable_backtrace.set(throwable, throwable);
+        return throwable;
+    }
+
+    static class Counter {
+        public int value = 0;
+        public boolean skipFillInStackTrace = true;
+        public boolean skipThrowableInit = true;
+
+        public int inc() {
+            return value++;
+        }
+
+        public boolean checkFillIn(Method m) {
+            if (!skipFillInStackTrace) {
+                return false;
+            }
+            if (!((m.getName() == Symbol.Name.fillInStackTrace) || (m.getName() == Symbol.Name.fillInStackTrace0))) {
+                skipFillInStackTrace = false;
+            }
+            return skipFillInStackTrace;
+        }
+
+        public boolean checkThrowableInit(Method m) {
+            if (!skipThrowableInit) {
+                return false;
+            }
+            if (!(m.getName() == Symbol.Name.INIT) || !m.getMeta().Throwable.isAssignableFrom(m.getDeclaringKlass())) {
+                skipThrowableInit = false;
+            }
+            return skipThrowableInit;
+        }
     }
 }
