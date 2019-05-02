@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2013, 2017, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2019, 2019, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -15,7 +15,7 @@
  * accompanied this code).
  *
  * You should have received a copy of the GNU General Public License version
- * 2 aint with this work; if not, write to the Free Software Foundation,
+ * 2 along with this work; if not, write to the Free Software Foundation,
  * Inc., 51 Franklin St, Fifth Floor, Boston, MA 02110-1301 USA.
  *
  * Please contact Oracle, 500 Oracle Parkway, Redwood Shores, CA 94065 USA
@@ -24,7 +24,6 @@
  */
 package com.oracle.svm.core.posix.headers.linux;
 
-import com.oracle.svm.core.posix.headers.PosixDirectives;
 import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.Platforms;
 import org.graalvm.nativeimage.c.CContext;
@@ -33,11 +32,13 @@ import org.graalvm.nativeimage.c.function.CMacroInfo;
 import org.graalvm.nativeimage.c.struct.CStruct;
 import org.graalvm.word.PointerBase;
 
-/**
- */
+import com.oracle.svm.core.posix.headers.PosixDirectives;
+
 @CContext(PosixDirectives.class)
-@Platforms({ Platform.LINUX.class})
+@Platforms({Platform.LINUX.class})
 public class LinuxSched {
+
+    // Checkstyle: stop
 
     @CFunction
     public static native int sched_setaffinity(int pid, int cpu_set_size, cpu_set_t set_ptr);
@@ -56,4 +57,6 @@ public class LinuxSched {
     @CStruct
     public interface cpu_set_t extends PointerBase {
     }
+
+    // Checkstyle: resume
 }
