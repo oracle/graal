@@ -202,7 +202,7 @@ class GraalVmComponent(object):
         self.library_configs = library_configs or []
         self.installable = installable
         self.post_install_msg = post_install_msg
-        self.installable_id = installable_id or dir_name
+        self.installable_id = installable_id or self.dir_name
 
         assert isinstance(self.jar_distributions, list)
         assert isinstance(self.builder_jar_distributions, list)
@@ -227,7 +227,7 @@ class GraalVmTruffleComponent(GraalVmComponent):
                  library_configs=None, provided_executables=None, polyglot_lib_build_args=None,
                  polyglot_lib_jar_dependencies=None, polyglot_lib_build_dependencies=None,
                  has_polyglot_lib_entrypoints=False, boot_jars=None, include_in_polyglot=True, priority=None,
-                 installable=False, post_install_msg=None, standalone_dir_name=None):
+                 installable=False, post_install_msg=None, standalone_dir_name=None, installable_id=None):
         """
         :param truffle_jars: JAR distributions that should be on the classpath for the language implementation.
         :param include_in_polyglot: whether this component is included in `--language:all` or `--tool:all` and should be part of polyglot images.
@@ -240,7 +240,7 @@ class GraalVmTruffleComponent(GraalVmComponent):
                                                       dir_name, launcher_configs, library_configs, provided_executables,
                                                       polyglot_lib_build_args, polyglot_lib_jar_dependencies,
                                                       polyglot_lib_build_dependencies, has_polyglot_lib_entrypoints,
-                                                      boot_jars, priority, installable, post_install_msg)
+                                                      boot_jars, priority, installable, post_install_msg, installable_id)
         self.include_in_polyglot = include_in_polyglot
         self.standalone_dir_name = standalone_dir_name or '{}-<version>-<graalvm_os>-<arch>'.format(self.dir_name)
         assert isinstance(self.include_in_polyglot, bool)
@@ -256,7 +256,7 @@ class GraalVmTool(GraalVmTruffleComponent):
                  library_configs=None, provided_executables=None, polyglot_lib_build_args=None,
                  polyglot_lib_jar_dependencies=None, polyglot_lib_build_dependencies=None,
                  has_polyglot_lib_entrypoints=False, boot_jars=None, include_in_polyglot=True, include_by_default=False,
-                 priority=None, installable=False, post_install_msg=None):
+                 priority=None, installable=False, post_install_msg=None, installable_id=None):
         super(GraalVmTool, self).__init__(suite,
                                           name,
                                           short_name,
@@ -277,7 +277,8 @@ class GraalVmTool(GraalVmTruffleComponent):
                                           include_in_polyglot,
                                           priority,
                                           installable,
-                                          post_install_msg)
+                                          post_install_msg,
+                                          installable_id)
         self.include_by_default = include_by_default
 
 
@@ -299,7 +300,7 @@ class GraalVmJvmciComponent(GraalVmJreComponent):
                  graal_compiler=None, dir_name=None, launcher_configs=None, library_configs=None,
                  provided_executables=None, polyglot_lib_build_args=None, polyglot_lib_jar_dependencies=None,
                  polyglot_lib_build_dependencies=None, has_polyglot_lib_entrypoints=False, boot_jars=None,
-                 priority=None, installable=False, post_install_msg=None):
+                 priority=None, installable=False, post_install_msg=None, installable_id=None):
         """
         :type jvmci_jars: list[str]
         :type graal_compiler: str
@@ -323,7 +324,8 @@ class GraalVmJvmciComponent(GraalVmJreComponent):
                                                     boot_jars,
                                                     priority,
                                                     installable,
-                                                    post_install_msg)
+                                                    post_install_msg,
+                                                    installable_id)
 
         self.graal_compiler = graal_compiler
         self.jvmci_jars = jvmci_jars or []
