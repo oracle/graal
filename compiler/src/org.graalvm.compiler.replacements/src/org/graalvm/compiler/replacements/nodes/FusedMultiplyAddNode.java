@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2012, 2019, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2019, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -29,7 +29,6 @@ import static org.graalvm.compiler.nodeinfo.NodeSize.SIZE_1;
 
 import org.graalvm.compiler.core.common.type.FloatStamp;
 import org.graalvm.compiler.core.common.type.Stamp;
-import org.graalvm.compiler.core.common.type.StampFactory;
 import org.graalvm.compiler.graph.NodeClass;
 import org.graalvm.compiler.graph.spi.CanonicalizerTool;
 import org.graalvm.compiler.lir.gen.ArithmeticLIRGeneratorTool;
@@ -50,31 +49,20 @@ public final class FusedMultiplyAddNode extends TernaryNode implements Arithmeti
     public static final NodeClass<FusedMultiplyAddNode> TYPE = NodeClass.create(FusedMultiplyAddNode.class);
 
     public FusedMultiplyAddNode(ValueNode a, ValueNode b, ValueNode c) {
-        super(TYPE, computeStamp(a, b, c), a, b, c);
-        assert a.getStackKind() == JavaKind.Float || a.getStackKind() == JavaKind.Double;
-        assert b.getStackKind() == JavaKind.Float || b.getStackKind() == JavaKind.Double;
-        assert c.getStackKind() == JavaKind.Float || c.getStackKind() == JavaKind.Double;
+        super(TYPE, computeStamp(a.stamp(NodeView.DEFAULT), b.stamp(NodeView.DEFAULT), c.stamp(NodeView.DEFAULT)), a, b, c);
+        assert a.getStackKind().isNumericFloat();
+        assert b.getStackKind().isNumericFloat();
+        assert c.getStackKind().isNumericFloat();
     }
 
     @Override
     public Stamp foldStamp(Stamp stampX, Stamp stampY, Stamp stampZ) {
-        return computeStamp(getX(), getY(), getZ());
+        return computeStamp(stampX, stampY, stampZ);
     }
 
-    static Stamp computeStamp(ValueNode a, ValueNode b, ValueNode c) {
-        FloatStamp fstampX = (FloatStamp) a.stamp(NodeView.DEFAULT);
-        FloatStamp fstampY = (FloatStamp) b.stamp(NodeView.DEFAULT);
-        FloatStamp fstampZ = (FloatStamp) c.stamp(NodeView.DEFAULT);
-
-        double lower = Math.min(fstampX.lowerBound(), fstampY.lowerBound());
-        lower = Math.min(lower, fstampZ.lowerBound());
-
-        double upper = Math.max(fstampX.upperBound(), fstampY.upperBound());
-        upper = Math.min(lower, fstampZ.upperBound());
-
-        boolean isNonNan = fstampX.isNonNaN() && fstampY.isNonNaN() && fstampZ.isNonNaN();
-
-        return StampFactory.forFloat(a.getStackKind(), lower, upper, isNonNan);
+    private static Stamp computeStamp(Stamp stampX, Stamp stampY, Stamp stampZ) {
+        Stamp m = FloatStamp.OPS.getMul().foldStamp(stampX, stampY);
+        return FloatStamp.OPS.getAdd().foldStamp(m, stampZ);
     }
 
     @Override
@@ -88,6 +76,7 @@ public final class FusedMultiplyAddNode extends TernaryNode implements Arithmeti
             if (a.getStackKind() == JavaKind.Float) {
                 res = ConstantNode.forFloat(Math.fma(ca.asFloat(), cb.asFloat(), cc.asFloat()));
             } else {
+                assert a.getStackKind() == JavaKind.Double;
                 res = ConstantNode.forDouble(Math.fma(ca.asDouble(), cb.asDouble(), cc.asDouble()));
             }
             return res;
