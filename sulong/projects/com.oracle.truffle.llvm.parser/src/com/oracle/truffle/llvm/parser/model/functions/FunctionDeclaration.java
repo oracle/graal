@@ -68,6 +68,7 @@ public final class FunctionDeclaration implements Constant, FunctionSymbol {
 
     @Override
     public void setName(String name) {
+        assert !name.startsWith("@");
         this.name = name;
     }
 

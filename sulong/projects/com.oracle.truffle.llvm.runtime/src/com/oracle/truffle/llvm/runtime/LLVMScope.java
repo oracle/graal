@@ -59,6 +59,7 @@ public final class LLVMScope implements TruffleObject {
 
     @TruffleBoundary
     public LLVMSymbol get(String name) {
+        assert !name.startsWith("@") : name;
         return symbols.get(name);
     }
 
@@ -135,7 +136,7 @@ public final class LLVMScope implements TruffleObject {
         if (symbol.isFunction()) {
             assert !functionKeys.contains(name);
             assert functionKeys.size() < symbols.size();
-            functionKeys.add(stripAtCharacter(name));
+            functionKeys.add(name);
         }
     }
 
@@ -144,13 +145,9 @@ public final class LLVMScope implements TruffleObject {
         LLVMSymbol removedSymbol = symbols.remove(name);
 
         if (removedSymbol.isFunction()) {
-            boolean contained = functionKeys.remove(stripAtCharacter(name));
+            boolean contained = functionKeys.remove(name);
             assert contained;
         }
-    }
-
-    private static String stripAtCharacter(String name) {
-        return name.charAt(0) == '@' ? name.substring(1) : name;
     }
 
     @ExportMessage
@@ -171,10 +168,6 @@ public final class LLVMScope implements TruffleObject {
     @ExportMessage
     Object readMember(String globalName,
                     @Cached BranchProfile exception) throws UnknownIdentifierException {
-        String atname = "@" + globalName; // for interop
-        if (contains(atname)) {
-            return get(atname);
-        }
         if (contains(globalName)) {
             return get(globalName);
         }

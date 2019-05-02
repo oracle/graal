@@ -46,7 +46,7 @@ public final class ProtectReadOnlyGlobalsBlockNode extends LLVMNode implements L
 
     public ProtectReadOnlyGlobalsBlockNode(LLVMContext context) {
         NFIContextExtension nfiContextExtension = context.getContextExtensionOrNull(NFIContextExtension.class);
-        this.protectReadonlyGlobalsBlock = nfiContextExtension.getNativeFunction(context, "@__sulong_protect_readonly_globals_block", "(POINTER):VOID");
+        this.protectReadonlyGlobalsBlock = nfiContextExtension.getNativeFunction(context, "__sulong_protect_readonly_globals_block", "(POINTER):VOID");
         this.interop = InteropLibrary.getFactory().create(protectReadonlyGlobalsBlock);
     }
 

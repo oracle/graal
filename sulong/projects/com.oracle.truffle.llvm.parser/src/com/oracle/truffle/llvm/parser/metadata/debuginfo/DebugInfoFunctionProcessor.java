@@ -68,13 +68,13 @@ public final class DebugInfoFunctionProcessor {
 
     private static final int LLVM_DBG_INTRINSICS_VALUE_ARGINDEX = 0;
 
-    private static final String LLVM_DBG_DECLARE_NAME = "@llvm.dbg.declare";
+    private static final String LLVM_DBG_DECLARE_NAME = "llvm.dbg.declare";
     private static final int LLVM_DBG_DECLARE_LOCALREF_ARGINDEX = 1;
     private static final int LLVM_DBG_DECLARE_EXPR_ARGINDEX = 2;
 
-    private static final String LLVM_DBG_ADDR_NAME = "@llvm.dbg.addr";
+    private static final String LLVM_DBG_ADDR_NAME = "llvm.dbg.addr";
 
-    private static final String LLVM_DBG_VALUE_NAME = "@llvm.dbg.value";
+    private static final String LLVM_DBG_VALUE_NAME = "llvm.dbg.value";
 
     private static final int LLVM_DBG_VALUE_INDEX_ARGINDEX_OLD = 1;
     private static final int LLVM_DBG_VALUE_LOCALREF_ARGINDEX_OLD = 2;
@@ -85,7 +85,7 @@ public final class DebugInfoFunctionProcessor {
     private static final int LLVM_DBG_VALUE_EXPR_ARGINDEX_NEW = 2;
     private static final int LLVM_DBG_VALUE_LOCALREF_ARGSIZE_NEW = 3;
 
-    private static final String LLVM_DEBUGTRAP_NAME = "@llvm.debugtrap";
+    private static final String LLVM_DEBUGTRAP_NAME = "llvm.debugtrap";
 
     private final DebugInfoCache cache;
 

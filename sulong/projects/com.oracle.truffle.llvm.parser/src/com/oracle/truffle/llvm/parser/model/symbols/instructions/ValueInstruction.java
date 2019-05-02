@@ -57,7 +57,8 @@ public abstract class ValueInstruction extends Instruction implements ValueSymbo
 
     @Override
     public void setName(String name) {
-        this.name = LLVMIdentifier.toLocalIdentifier(name);
+        assert !name.startsWith("@") && !name.startsWith("%") : name;
+        this.name = name;
     }
 
     public boolean isSourceVariable() {

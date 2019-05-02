@@ -118,11 +118,11 @@ import com.oracle.truffle.llvm.runtime.types.Type;
 
 public final class Runner {
 
-    private static final String MAIN_METHOD_NAME = "@main";
-    private static final String START_METHOD_NAME = "@_start";
+    private static final String MAIN_METHOD_NAME = "main";
+    private static final String START_METHOD_NAME = "_start";
 
-    private static final String CONSTRUCTORS_VARNAME = "@llvm.global_ctors";
-    private static final String DESTRUCTORS_VARNAME = "@llvm.global_dtors";
+    private static final String CONSTRUCTORS_VARNAME = "llvm.global_ctors";
+    private static final String DESTRUCTORS_VARNAME = "llvm.global_dtors";
     private static final int LEAST_CONSTRUCTOR_PRIORITY = 65535;
 
     private static final Comparator<Pair<Integer, ?>> ASCENDING_PRIORITY = (p1, p2) -> p1.getFirst() - p2.getFirst();
@@ -579,8 +579,8 @@ public final class Runner {
                     /*
                      * We already have a function with the same name in another (more important)
                      * library. We rename the already existing symbol by prefixing it with
-                     * "__libName_", e.g., "@__clock_gettime" would be renamed to
-                     * "@__libc___clock_gettime".
+                     * "__libName_", e.g., "__clock_gettime" would be renamed to
+                     * "__libc___clock_gettime".
                      */
                     String renamedName = getRenamedSymbol(name, weakerLibName);
                     if (globalScope.contains(renamedName) || weakerScope.contains(renamedName)) {
@@ -611,8 +611,7 @@ public final class Runner {
     }
 
     private static String getRenamedSymbol(String functionName, String libraryName) {
-        assert functionName.charAt(0) == '@';
-        return "@__" + libraryName + "_" + functionName.substring(1);
+        return "__" + libraryName + "_" + functionName;
     }
 
     private LLVMParserResult parse(List<LLVMParserResult> parserResults, ArrayDeque<ExternalLibrary> dependencyQueue, ExternalLibrary lib) {

@@ -114,6 +114,7 @@ public final class FunctionDefinition implements Constant, FunctionSymbol, Metad
 
     @Override
     public void setName(String name) {
+        assert !name.startsWith("@");
         this.name = name;
     }
 

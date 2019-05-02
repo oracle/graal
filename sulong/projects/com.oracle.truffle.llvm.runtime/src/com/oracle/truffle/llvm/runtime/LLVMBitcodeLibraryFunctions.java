@@ -53,7 +53,7 @@ public final class LLVMBitcodeLibraryFunctions {
     public static final class SulongCanCatchNode extends LibraryFunctionNode {
 
         public SulongCanCatchNode(LLVMContext context) {
-            super(context, "@sulong_eh_canCatch");
+            super(context, "sulong_eh_canCatch");
         }
 
         public int canCatch(LLVMStack.StackPointer stack, Object unwindHeader, LLVMPointer catchType) {
