@@ -957,6 +957,7 @@ suite = {
 
         "SVM_LLVM" : {
             "subDir" : "src",
+            "description" : "LLVM backend for Native Image",
             "dependencies" : ["com.oracle.svm.core.graal.llvm"],
             "distDependencies" : [
                 "SVM",

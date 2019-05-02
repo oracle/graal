@@ -512,8 +512,11 @@ public class LLVMNativeImageCodeCache extends NativeImageCodeCache {
         String relocatableFileName = tempDirectory.resolve(imageName + ObjectFile.getFilenameSuffix()).toString();
         try {
             Path src = Paths.get(bitcodeFileName);
-            Path dst = Paths.get(relocatableFileName).getParent().resolve(src.getFileName());
-            Files.copy(src, dst, StandardCopyOption.REPLACE_EXISTING);
+            Path parent = Paths.get(relocatableFileName).getParent();
+            if (parent != null) {
+                Path dst = parent.resolve(src.getFileName());
+                Files.copy(src, dst, StandardCopyOption.REPLACE_EXISTING);
+            }
         } catch (IOException e) {
             throw new GraalError("Error copying " + bitcodeFileName + ": " + e);
         }

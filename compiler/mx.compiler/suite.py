@@ -2479,6 +2479,7 @@ suite = {
 
     "GRAAL_LLVM" : {
       "subDir" : "src",
+      "description" : "LLVM compiler backend",
       "dependencies" : ["org.graalvm.compiler.core.llvm"],
       "distDependencies" : [
         "GRAAL",

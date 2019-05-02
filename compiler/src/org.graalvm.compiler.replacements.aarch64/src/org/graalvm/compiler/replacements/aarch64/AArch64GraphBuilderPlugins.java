@@ -61,7 +61,7 @@ public class AArch64GraphBuilderPlugins {
 
     public static void register(Plugins plugins, BytecodeProvider bytecodeProvider, boolean explicitUnsafeNullChecks,
                     boolean registerMathPlugins) {
-        register(plugins, bytecodeProvider, explicitUnsafeNullChecks, true);
+        register(plugins, bytecodeProvider, explicitUnsafeNullChecks, registerMathPlugins, true);
     }
 
     public static void register(Plugins plugins, BytecodeProvider bytecodeProvider, boolean explicitUnsafeNullChecks,

@@ -189,7 +189,7 @@ public interface Platform {
     }
 
     /**
-     * Supported leaf platform: Darwin (MacOS) on x86 64-bit.
+     * Supported leaf platform: Darwin (MacOS) on AArch 64-bit.
      *
      * @since 2.0
      */
