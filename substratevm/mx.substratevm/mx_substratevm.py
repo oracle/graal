@@ -652,6 +652,8 @@ def native_image_context(common_args=None, hosted_assertions=True, native_image_
         path = query_native_image(all_args, '-H:Path=')
         name = query_native_image(all_args, '-H:Name=')
         image = join(path, name)
+        if not has_server and '--no-server' in all_args:
+            all_args = [arg for arg in all_args if arg != '--no-server']
         _native_image(all_args, **kwargs)
         return image
     try:
@@ -843,7 +845,7 @@ _graalvm_js_config = GraalVMConfig(dynamicimports=['/graal-js'], disable_libpoly
 
 
 def build_js(native_image):
-    return native_image(['--macro:js-launcher', '--initialize-at-build-time'])
+    return native_image(['--macro:js-launcher', '--no-server'])
 
 def test_js(js, benchmarks, bin_args=None):
     bench_location = join(suite.dir, '..', '..', 'js-benchmarks')
