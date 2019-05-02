@@ -182,8 +182,8 @@ builds += [
   }
   ${scan_malware} ${malware_definition_archived} ${full_vm_build_linux} ${linux-deploy} ${deploy_vm_linux} {
     run: [
-      ${mx_vm_installables} [--dynamicimports, ${vm_extra_suites}, build]
-      ${mx_vm_installables} [--dynamicimports, ${vm_extra_suites}] ${maven_deploy_vm}
+      ${mx_vm_installables} [--dynamicimports, ${vm_extra_suites}, "--exclude-components=nju", build]
+      ${mx_vm_installables} [--dynamicimports, ${vm_extra_suites}, "--exclude-components=nju"] ${maven_deploy_vm}
       ${mx_vm_common} [build]
       ${mx_vm_common} ${maven_deploy_vm}
       ${notify-nexus-deploy}
@@ -195,8 +195,8 @@ builds += [
   }
   ${full_vm_build_darwin} ${darwin-deploy} ${deploy_daily_vm_darwin} {
     run: [
-      ${mx_vm_installables} [--dynamicimports, ${vm_extra_suites}, build]
-      ${mx_vm_installables} [--dynamicimports, ${vm_extra_suites}] ${maven_deploy_vm}
+      ${mx_vm_installables} [--dynamicimports, ${vm_extra_suites}, "--exclude-components=nju", build]
+      ${mx_vm_installables} [--dynamicimports, ${vm_extra_suites}, "--exclude-components=nju"] ${maven_deploy_vm}
       ${notify-nexus-deploy}
     ]
     timelimit: "1:30:00"
