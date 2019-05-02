@@ -86,8 +86,6 @@ function common() {
     if [[ -f "${graalvm_home}/jre/lib/svm/builder/svm-enterprise.jar" ]]; then
         cmd_line+=("-g")
     fi
-
-    cmd_line+=("--tool:all")
 }
 
 function polyglot_common() {
