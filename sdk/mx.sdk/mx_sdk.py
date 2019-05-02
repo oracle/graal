@@ -155,7 +155,7 @@ class GraalVmComponent(object):
                  dir_name=None, launcher_configs=None, library_configs=None, provided_executables=None,
                  polyglot_lib_build_args=None, polyglot_lib_jar_dependencies=None, polyglot_lib_build_dependencies=None,
                  has_polyglot_lib_entrypoints=False,
-                 boot_jars=None, priority=None, installable=False, post_install_msg=None):
+                 boot_jars=None, priority=None, installable=False, post_install_msg=None, installable_id=None):
         """
         :param suite mx.Suite: the suite this component belongs to
         :type name: str
@@ -178,6 +178,7 @@ class GraalVmComponent(object):
         :type support_distributions: list[str]
         :type priority: int
         :type installable: bool
+        :type installable_id: str
         :type post_install_msg: str
         """
         self.suite = suite
@@ -201,6 +202,7 @@ class GraalVmComponent(object):
         self.library_configs = library_configs or []
         self.installable = installable
         self.post_install_msg = post_install_msg
+        self.installable_id = installable_id or dir_name
 
         assert isinstance(self.jar_distributions, list)
         assert isinstance(self.builder_jar_distributions, list)

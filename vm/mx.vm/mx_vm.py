@@ -88,7 +88,7 @@ _registered_graalvm_components = {}
 def registered_graalvm_components(stage1=False):
     if stage1 not in _registered_graalvm_components:
         excluded = _excluded_components()
-        components = [component for component in mx_sdk.graalvm_components() if (component.name not in excluded and component.short_name not in excluded) or (stage1 and component.short_name in ('svm', 'svmee'))]
+        components = [component for component in mx_sdk.graalvm_components() if (component.name not in excluded and component.short_name not in excluded) or (stage1 and component.short_name in ('ni', 'niee'))]
         if not any((component.short_name == 'svm' for component in mx_sdk.graalvm_components())):
             # SVM is not included, remove GraalVMSvmMacros
             components = [component for component in components if not isinstance(component, mx_sdk.GraalVMSvmMacro)]
@@ -651,7 +651,7 @@ def remove_lib_prefix_suffix(libname, require_suffix_prefix=True):
 
 class SvmSupport(object):
     def __init__(self):
-        self._svm_supported = has_component('svm', stage1=True)
+        self._svm_supported = has_component('ni', stage1=True)
         self._debug_supported = has_component('svmee', stage1=True)
 
     def is_supported(self):
@@ -1328,17 +1328,17 @@ class GraalVmLibraryBuildTask(GraalVmSVMNativeImageBuildTask):
 
 
 class InstallableComponentArchiver(mx.Archiver):
-    def __init__(self, path, component, **kw_args):
+    def __init__(self, path, components, **kw_args):
         """
         :type path: str
-        :type component: mx_sdk.GraalVmLanguage
+        :type components: list[mx_sdk.GraalVmLanguage]
         :type kind: str
         :type reset_user_group: bool
         :type duplicates_action: str
         :type context: object
         """
         super(InstallableComponentArchiver, self).__init__(path, **kw_args)
-        self.component = component
+        self.components = components
         self.permissions = []
         self.symlinks = []
 
@@ -1375,28 +1375,36 @@ class InstallableComponentArchiver(mx.Archiver):
         # do not add symlinks, use the metadata to create them
 
     def __exit__(self, exc_type, exc_value, traceback):
+        main_component = self.components[0]
         _manifest_str = """Bundle-Name: {name}
 Bundle-Symbolic-Name: org.graalvm.{id}
 Bundle-Version: {version}
 Bundle-RequireCapability: org.graalvm; filter:="(&(graalvm_version={version})(os_name={os})(os_arch={arch}))"
 x-GraalVM-Polyglot-Part: {polyglot}
 """.format(  # GR-10249: the manifest file must end with a newline
-            name=self.component.name,
-            id=self.component.dir_name,
+            name=main_component.name,
+            id=main_component.installable_id,
             version=_suite.release_version(),
             os=get_graalvm_os(),
             arch=mx.get_arch(),
-            polyglot=isinstance(self.component, mx_sdk.GraalVmTruffleComponent) and self.component.include_in_polyglot
-                        and (not isinstance(self.component, mx_sdk.GraalVmTool) or self.component.include_by_default)
+            polyglot=isinstance(main_component, mx_sdk.GraalVmTruffleComponent) and main_component.include_in_polyglot
+                     and (not isinstance(main_component, mx_sdk.GraalVmTool) or main_component.include_by_default)
         )
 
-        if isinstance(self.component, mx_sdk.GraalVmLanguage):
+        if isinstance(main_component, mx_sdk.GraalVmLanguage):
             _manifest_str += """x-GraalVM-Working-Directories: {workdir}
-""".format(workdir=join('jre', 'languages', self.component.dir_name))
+""".format(workdir=join('jre', 'languages', main_component.dir_name))
 
-        if getattr(self.component, 'post_install_msg', None):
+        post_install_msg = None
+        for component in self.components:
+            if getattr(component, 'post_install_msg', None):
+                if post_install_msg:
+                    post_install_msg = post_install_msg + '\n' + component.post_install_msg
+                else:
+                    post_install_msg = component.post_install_msg
+        if post_install_msg:
             _manifest_str += """x-GraalVM-Message-PostInst: {msg}
-""".format(msg=self.component.post_install_msg.replace("\\", "\\\\").replace("\n", "\\n"))
+""".format(msg=post_install_msg.replace("\\", "\\\\").replace("\n", "\\n"))
 
         _manifest_lines = []
         for l in _manifest_str.split('\n'):
@@ -1425,32 +1433,34 @@ x-GraalVM-Polyglot-Part: {polyglot}
 
 
 class GraalVmInstallableComponent(BaseGraalVmLayoutDistribution, mx.LayoutJARDistribution):  # pylint: disable=R0901
-    def __init__(self, component, **kw_args):
+    def __init__(self, component, extra_components=None, **kw_args):
         """
-        :type component: mx_sdk.GraalVmLanguage
+        :type component: mx_sdk.GraalVmComponent
         """
         self.main_component = component
 
         def create_archive(path, **_kw_args):
-            assert len(self.components) == 1
-            return InstallableComponentArchiver(path, self.components[0], **_kw_args)
+            return InstallableComponentArchiver(path, self.components, **_kw_args)
 
         other_involved_components = []
         if self.main_component.short_name not in ('svm', 'svmee') and _get_svm_support().is_supported() and _get_launcher_configs(component):
             other_involved_components += [c for c in registered_graalvm_components(stage1=True) if c.short_name in ('svm', 'svmee')]
 
-        name = '{}_INSTALLABLE'.format(component.dir_name.upper())
+        name = '{}_INSTALLABLE'.format(component.installable_id.replace('-', '_').upper())
         for launcher_config in _get_launcher_configs(component):
             if _force_bash_launchers(launcher_config):
                 name += '_B' + basename(launcher_config.destination).upper()
         if other_involved_components:
             name += '_' + '_'.join(sorted((component.short_name.upper() for component in other_involved_components)))
         self.maven = True
+        components = [component]
+        if extra_components:
+            components += extra_components
         super(GraalVmInstallableComponent, self).__init__(
             suite=_suite,
             name=name,
             deps=[],
-            components=[component],
+            components=components,
             is_graalvm=False,
             exclLibs=[],
             platformDependent=True,
@@ -1717,6 +1727,7 @@ def mx_register_dynamic_suite_constituents(register_project, register_distributi
     names = set()
     short_names = set()
     needs_stage1 = False
+    installables = {}
     for component in registered_graalvm_components(stage1=False):
         if component.name in names:
             mx.abort("Two components are named '{}'. The name should be unique".format(component.name))
@@ -1744,10 +1755,14 @@ def mx_register_dynamic_suite_constituents(register_project, register_distributi
                     needs_stage1 = True
         # The JS components have issues ATM since they share the same directory
         if not _disable_installable(component) and (component.installable or (isinstance(component, mx_sdk.GraalVmLanguage) and component.dir_name != 'js')):
-            installable_component = GraalVmInstallableComponent(component)
-            register_distribution(installable_component)
-            if isinstance(component, mx_sdk.GraalVmTruffleComponent) and has_svm_launcher(component):
-                register_distribution(GraalVmStandaloneComponent(installable_component))
+            installables.setdefault(component.installable_id, []).append(component)
+
+    for installable_id, components in installables.items():
+        main_component = min(components, key=lambda c: c.priority)
+        installable_component = GraalVmInstallableComponent(main_component, extra_components=[c for c in components if c  != main_component])
+        register_distribution(installable_component)
+        if isinstance(main_component, mx_sdk.GraalVmTruffleComponent) and has_svm_launcher(main_component):
+            register_distribution(GraalVmStandaloneComponent(installable_component))
 
     if register_project:
         lib_polyglot_project = get_lib_polyglot_project()
