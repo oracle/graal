@@ -972,10 +972,10 @@ public class AMD64ArithmeticLIRGenerator extends ArithmeticLIRGenerator implemen
         assert b.getPlatformKind().equals(c.getPlatformKind());
 
         if (a.getPlatformKind() == AMD64Kind.DOUBLE) {
-            getLIRGen().append(new AMD64Ternary.ThreeOp(VFMADD231SD, AVXSize.XMM, result, asAllocatable(a), asAllocatable(b), asAllocatable(c)));
+            getLIRGen().append(new AMD64Ternary.ThreeOp(VFMADD231SD, AVXSize.XMM, result, asAllocatable(c), asAllocatable(a), asAllocatable(b)));
         } else {
             assert a.getPlatformKind() == AMD64Kind.SINGLE;
-            getLIRGen().append(new AMD64Ternary.ThreeOp(VFMADD231SS, AVXSize.XMM, result, asAllocatable(a), asAllocatable(b), asAllocatable(c)));
+            getLIRGen().append(new AMD64Ternary.ThreeOp(VFMADD231SS, AVXSize.XMM, result, asAllocatable(c), asAllocatable(a), asAllocatable(b)));
         }
         return result;
     }
