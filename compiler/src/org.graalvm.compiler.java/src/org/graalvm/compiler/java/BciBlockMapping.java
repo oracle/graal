@@ -478,7 +478,7 @@ public final class BciBlockMapping {
         }
     }
 
-    private static class TraversalStep {
+    private static final class TraversalStep {
         private BciBlock block;
         private int currentSuccessorIndex;
         private long loops;
