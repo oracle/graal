@@ -1,8 +1,17 @@
-# Version 1.0.0 RC17
+# Version 19.0.0
 
 Changes:
 
-* Moved `polyglot.h` into the `include` subdirectory
+* Moved `polyglot.h` into the `include` subdirectory.
+* Remove language version from LLVMLanguage.
+  The LLVM engine in GraalVM is always released in sync with GraalVM, no need for
+  a separate version number.
+
+Fixes:
+
+* Don't use host interop for LLVM engine internals.
+  This means the LLVM engine now works correctly with minimal permissions. In particular,
+  the host interop permission is not needed anymore.
 
 # Version 1.0.0 RC15
 
