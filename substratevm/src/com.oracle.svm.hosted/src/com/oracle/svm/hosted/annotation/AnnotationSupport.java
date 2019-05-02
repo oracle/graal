@@ -106,8 +106,8 @@ public class AnnotationSupport extends CustomSubstitution<AnnotationSubstitution
      * interface should not be otherwise present in the bytecode and no other uses should interfere
      * with our mechanism.
      * 
-     * Note: Although it should be possible to add a custom interface to the boot class path and use
-     * that as a marker this task proved to be more complicated than expected for Java9+.
+     * Note: Ideally we would use a custom marker interface. However, this is impossible as of JDK9
+     * since the set of boot modules is fixed at JDK build time and cannot be extended at runtime.
      * 
      * This allows us to create an optimized type for the ahead-of-time allocated annotation proxy
      * objects which removes the overhead of storing the annotation values in a HashMap. See
