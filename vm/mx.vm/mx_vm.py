@@ -808,10 +808,7 @@ class NativePropertiesBuildTask(mx.ProjectBuildTask):
             if isinstance(image_config, mx_sdk.LanguageLauncherConfig):
                 build_args += ['--language:' + image_config.language, '--tool:all']
             elif isinstance(image_config, mx_sdk.LauncherConfig) and 'PolyglotLauncher' in image_config.main_class:
-                build_args += [
-                    '-Dcom.oracle.graalvm.launcher.macrospaths=${.}/..',
-                    '--tool:all',
-                ]
+                build_args += ['-Dcom.oracle.graalvm.launcher.macrospaths=${.}/..']
 
             source_type = 'skip' if _skip_libraries(image_config) else 'dependency'
             graalvm_image_destination = graalvm_dist.find_single_source_location(source_type + ':' + project_name_f(image_config))
@@ -1577,6 +1574,7 @@ def get_lib_polyglot_project():
                         "-H:+IncludeAllTimeZones",
                         "-Dgraalvm.libpolyglot=true",
                         "-Dorg.graalvm.polyglot.install_name_id=@rpath/jre/lib/polyglot/<lib:polyglot>",
+                        "--tool:all",
                     ] + polyglot_lib_build_args,
                     is_polyglot=True,
                 )
@@ -1602,6 +1600,7 @@ def get_polyglot_launcher_project():
                     "build_args": [
                         "-H:-ParseRuntimeOptions",
                         "-H:Features=org.graalvm.launcher.PolyglotLauncherFeature",
+                        "--tool:all",
                     ],
                     "jar_distributions": [
                         "sdk:LAUNCHER_COMMON",
