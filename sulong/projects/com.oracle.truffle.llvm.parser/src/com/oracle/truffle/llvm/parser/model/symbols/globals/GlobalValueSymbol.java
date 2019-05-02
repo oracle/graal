@@ -118,7 +118,6 @@ public abstract class GlobalValueSymbol implements ValueSymbol, MetadataAttachme
 
     @Override
     public void setName(String name) {
-        assert !name.startsWith("@");
         this.name = name;
     }
 

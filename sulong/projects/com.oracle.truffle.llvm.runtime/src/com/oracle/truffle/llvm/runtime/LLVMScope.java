@@ -59,7 +59,6 @@ public final class LLVMScope implements TruffleObject {
 
     @TruffleBoundary
     public LLVMSymbol get(String name) {
-        assert !name.startsWith("@") : name;
         return symbols.get(name);
     }
 
