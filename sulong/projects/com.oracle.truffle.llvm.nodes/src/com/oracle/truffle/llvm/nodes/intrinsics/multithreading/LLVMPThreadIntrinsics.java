@@ -203,6 +203,7 @@ public class LLVMPThreadIntrinsics {
     }
 
     public static class Mutex {
+        // TODO: correct handling of errorcheck and recursive mutexes
         public enum Type {
             DEFAULT_NORMAL,
             ERRORCHECK,
@@ -211,7 +212,8 @@ public class LLVMPThreadIntrinsics {
 
         private AtomicInteger lockCount;
         private ConcurrentLinkedQueue<Thread> waitingThreads;
-        private Type type;
+        private Thread curOwner;
+        private final Type type;
 
         protected Mutex(int initVal, Type type) {
             this.lockCount = new AtomicInteger(initVal);
@@ -233,8 +235,35 @@ public class LLVMPThreadIntrinsics {
             return waitingThreads;
         }
 
-        // boolean because errorcheck-type allows lock to be not successful
-        public boolean lock() {
+        protected Type getType() {
+            return this.type;
+        }
+
+        // change to int for error codes
+        public boolean lock(Thread thread) {
+            if (this.type == Type.ERRORCHECK && this.curOwner == thread) {
+                return false;
+            }
+            if (this.type == Type.DEFAULT_NORMAL || this.type == Type.ERRORCHECK) {
+                while (!this.lockCount.compareAndSet(0, 1)) {
+                    this.waitingThreads.offer(thread);
+                    // we want wo to wait until we get chosen as next thread to lock / own the mutex
+                    // and get interrupted by an unlock call here
+                    try {
+                        while (true) {
+                            Thread.sleep(Long.MAX_VALUE);
+                        }
+                    } catch (InterruptedException e) {
+                    }
+                }
+                return true;
+            } else if (this.type == Type.RECURSIVE) {
+                // TODO: add max lock number handling
+                // TODO: add owner handling
+                this.lockCount.incrementAndGet();
+                return true;
+            }
+            // should not be reached, because type is always set
             return false;
         }
 
@@ -242,7 +271,36 @@ public class LLVMPThreadIntrinsics {
             return false;
         }
 
-        public void unlock() {
+        public boolean unlock(Thread thread) {
+            if (this.type == Type.DEFAULT_NORMAL) {
+                this.lockCount.set(0);
+                this.curOwner = null;
+                notifyNextThread();
+                return true;
+            } else if (this.type == Type.ERRORCHECK) {
+                if (this.curOwner != thread) {
+                    return false;
+                }
+                if (!this.lockCount.compareAndSet(1, 0)) {
+                    return false;
+                }
+                this.curOwner = null;
+                notifyNextThread();
+                return true;
+            } else if (this.type == Type.RECURSIVE) {
+                // TODO: add owner handling
+                this.lockCount.decrementAndGet();
+                return true;
+            }
+            // should not be reached, because type is always set
+            return false;
+        }
+
+        private void notifyNextThread() {
+            Thread nextThread = this.waitingThreads.poll();
+            if (nextThread != null) {
+                nextThread.interrupt();
+            }
         }
     }
 
@@ -250,7 +308,6 @@ public class LLVMPThreadIntrinsics {
     public abstract static class LLVMPThreadMutexattrInit extends LLVMBuiltin {
         @Specialization
         protected int doIntrinsic(VirtualFrame frame, Object attr) {
-            // TODO: how to handle pthread_mutexattr_t?
             // seems like pthread_mutexattr_t is just an int in the header / lib sulong uses
             // so no need to init here
             return 0;
@@ -264,7 +321,6 @@ public class LLVMPThreadIntrinsics {
 
         @Specialization
         protected int doIntrinsic(VirtualFrame frame, Object attr, Object type) {
-            // TODO: how to handle pthread_mutexattr_t? how to save type info to it?
             // seems like pthread_mutexattr_t is just an int in the header / lib sulong uses
             // so we just write the int-value type to the address attr points to
             // create store node
@@ -274,11 +330,10 @@ public class LLVMPThreadIntrinsics {
             }
             // store type in attr var
             if (type == null) {
-                // 512 is the value for default and normal in the native sulong call, so i use it too
-                type = new Integer(512);
+                type = new Integer(0);
             }
             store.executeWithTarget(attr, type);
-            // TODO: return with error if type not in {512, 1, 2}
+            // TODO: return with error if type not in {0, 1, 2}
             // look up fitting error code
             return 0;
         }
@@ -301,14 +356,15 @@ public class LLVMPThreadIntrinsics {
             // so the address may never change
             long mutexAddress = ((LLVMNativePointer) mutex).asNative();
             Object mutObj = getContextReference().get().mutexStorage.get(mutexAddress);
-            Object attrObj = read.executeWithTarget(attr);
-            // already works, attrObj now has type code
-            // so now save this type info for the mutex
-            // and later use it in mutex lock (ERRORCHECK, RECURSIVE, DEFAULT, NORMAL)
-            // ...
+            int attrValue = (int) read.executeWithTarget(attr);
+            Mutex.Type mutexType = Mutex.Type.DEFAULT_NORMAL;
+            if (attrValue == 1) {
+                mutexType = Mutex.Type.RECURSIVE;
+            } else if (attrValue == 2) {
+                mutexType = Mutex.Type.ERRORCHECK;
+            }
             if (mutObj == null) {
-                // replace null by correct type handling
-                getContextReference().get().mutexStorage.put(mutexAddress, new Mutex(0, null));
+                getContextReference().get().mutexStorage.put(mutexAddress, new Mutex(0, mutexType));
             }
             return 0;
         }
@@ -318,7 +374,6 @@ public class LLVMPThreadIntrinsics {
     public abstract static class LLVMPThreadMutexLock extends LLVMBuiltin {
         @Specialization
         protected int doIntrinsic(VirtualFrame frame, Object mutex) {
-            // TODO: add stuff for recursive mutexes
             long mutexAddress = ((LLVMNativePointer) mutex).asNative();
             Mutex mutexObj = (Mutex) getContextReference().get().mutexStorage.get(mutexAddress);
             if (mutexObj == null) {
@@ -326,25 +381,11 @@ public class LLVMPThreadIntrinsics {
                 // but it works anyway on most implementations
                 // so we will make it work here too, just using default type
                 // set the lock counter to 1
-                // replace null by correct type handling
-                mutexObj = new Mutex(1, null);
+                mutexObj = new Mutex(1, Mutex.Type.DEFAULT_NORMAL);
                 getContextReference().get().mutexStorage.put(mutexAddress, mutexObj);
                 return 0;
             }
-            // add stuff for recursive mutexes
-            while (!mutexObj.getLockCount().compareAndSet(0, 1)) {
-                mutexObj.getQueue().offer(Thread.currentThread());
-                // we want wo to wait until we get chosen as next thread to lock / own the mutex
-                // and get interrupted by an unlock call here
-                try {
-                    while (true) {
-                        Thread.sleep(Long.MAX_VALUE);
-                    }
-                } catch (InterruptedException e) {
-                }
-            }
-            // now the mutex is successfully locked
-            return 0;
+            return mutexObj.lock(Thread.currentThread()) ? 0 : 15; // lock will be changed to int type
         }
     }
 
@@ -352,16 +393,9 @@ public class LLVMPThreadIntrinsics {
     public abstract static class LLVMPThreadMutexUnlock extends LLVMBuiltin {
         @Specialization
         protected int doIntrinsic(VirtualFrame frame, Object mutex) {
-            // TODO: add stuff for recursive mutexes
             long mutexAddress = ((LLVMNativePointer) mutex).asNative();
             Mutex mutexObj = (Mutex) getContextReference().get().mutexStorage.get(mutexAddress);
-            // add stuff for recursive mutexes
-            mutexObj.getLockCount().set(0);
-            Thread nextThread = (Thread) mutexObj.getQueue().poll();
-            if (nextThread != null) {
-                nextThread.interrupt();
-            }
-            return 0;
+            return mutexObj.unlock(Thread.currentThread()) ? 0 : 15; // lock will be changed to int type
         }
     }
 
