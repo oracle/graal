@@ -5,6 +5,14 @@ vm_extra_suites: "truffleruby,graalpython,fastr"
 custom_vm_linux: {}
 custom_vm_darwin: {}
 
+vm_setup: {
+  setup: [
+    [set-export, RELEASE_CATALOG, "https://www.graalvm.org/component-catalog/graal-updater-component-catalog.properties"]
+    [set-export, SNAPSHOT_CATALOG, [mx, urlrewrite, "http://www.graalvm.org/catalog"]]
+    [cd, ${vm_subdir}]
+  ]
+}
+
 builds += [
   ${gate_vm_linux} {
     run: [

@@ -427,10 +427,14 @@ GRAALVM_VERSION={version}""".format(
             version=_suite.release_version()
         )
 
-        if not _suite.is_release():
+        if _suite.is_release():
+            catalog = _release_catalog()
+        else:
             snapshot_catalog = _snapshot_catalog()
-            if snapshot_catalog:
-                _metadata += "\ncomponent_catalog={}/{}".format(snapshot_catalog, _suite.vc.parent(_suite.vc_dir))
+            catalog = "{}/{}".format(snapshot_catalog, _suite.vc.parent(_suite.vc_dir)) if snapshot_catalog else None
+
+        if catalog:
+            _metadata += "\ncomponent_catalog={}".format(catalog)
 
         return _metadata
 
@@ -1999,6 +2003,7 @@ mx.add_argument('--skip-libraries', action='store', help='Do not build native im
                                                                'This can be a comma-separated list of disabled libraries or `true` to disable all libraries.', default=None)
 mx.add_argument('--no-sources', action='store_true', help='Do not include the archives with the source files of open-source components.')
 mx.add_argument('--snapshot-catalog', action='store', help='Change the default URL of the component catalog for snapshots.', default=None)
+mx.add_argument('--release-catalog', action='store', help='Change the default URL of the component catalog for releases.', default=None)
 mx.add_argument('--extra-image-builder-argument', action='append', help='Add extra arguments to the image builder.', default=[])
 
 register_vm_config('ce', ['cmp', 'gu', 'gvm', 'ins', 'js', 'lg', 'nfi', 'njs', 'polynative', 'pro', 'rgx', 'slg', 'svm', 'svml', 'tfl', 'libpoly', 'poly', 'vvm'])
@@ -2088,6 +2093,10 @@ def _include_sources():
 
 def _snapshot_catalog():
     return mx.get_opts().snapshot_catalog or mx.get_env('SNAPSHOT_CATALOG')
+
+
+def _release_catalog():
+    return mx.get_opts().release_catalog or mx.get_env('RELEASE_CATALOG')
 
 
 def mx_post_parse_cmd_line(args):
