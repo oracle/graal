@@ -217,7 +217,7 @@ public final class FunctionDefinition implements Constant, FunctionSymbol, Metad
     }
 
     public void nameBlock(int index, String argName) {
-        blocks[index].setName(LLVMIdentifier.toExplicitBlockName(argName));
+        blocks[index].setName(argName);
     }
 
     public void onAfterParse() {

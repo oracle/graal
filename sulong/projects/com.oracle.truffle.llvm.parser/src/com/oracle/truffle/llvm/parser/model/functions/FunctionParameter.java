@@ -58,7 +58,7 @@ public final class FunctionParameter implements ValueSymbol {
 
     @Override
     public void setName(String name) {
-        this.name = LLVMIdentifier.toLocalIdentifier(name);
+        this.name = name;
     }
 
     @Override

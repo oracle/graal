@@ -99,7 +99,7 @@ final class LLInstructionMapper {
 
         @Override
         public void visitValueInstruction(ValueInstruction value) {
-            assignInstructionLocation(value, value.getName());
+            assignInstructionLocation(value, "%" + value.getName());
         }
 
         @Override
