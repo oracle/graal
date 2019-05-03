@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2017, 2018, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2017, 2019, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -957,8 +957,13 @@ public class HostAccessTest {
             assertNull(context.asValue(42).as(Integer.class));
             fail();
         } catch (PolyglotException e) {
-            assertTrue(e.isHostException());
-            assertTrue(e.asHostException() instanceof StackOverflowError);
+            // which type of exception ends up here depends on where the stack overflow happens
+            if (e.isGuestException()) {
+                assertTrue(e.isInternalError());
+            } else {
+                assertTrue(e.isHostException());
+                assertTrue(e.asHostException() instanceof StackOverflowError);
+            }
         }
     }
 
