@@ -830,6 +830,18 @@ public abstract class Node implements NodeInterface, Cloneable {
 
     private static final Map<Class<?>, ContextReference<?>> UNCACHED_CONTEXT_REFERENCES = new ConcurrentHashMap<>();
 
+    /**
+     * Resets the state for native image generation.
+     *
+     * NOTE: this method is called reflectively by downstream projects.
+     */
+    @SuppressWarnings("unused")
+    private static void resetNativeImageState() {
+        assert TruffleOptions.AOT : "Only supported during image generation";
+        UNCACHED_CONTEXT_REFERENCES.clear();
+        UNCACHED_LANGUAGE_REFERENCES.clear();
+    }
+
     @SuppressWarnings("unchecked")
     @TruffleBoundary
     private static <T extends TruffleLanguage<C>, C> ContextReference<C> lookupUncachedContextReference(Class<T> language) {
