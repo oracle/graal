@@ -47,7 +47,6 @@ public class MainLauncherRootNode extends RootNode {
     public Object execute(VirtualFrame frame) {
         try {
             assert frame.getArguments().length == 0;
-            // main.getVM().JVM_LoadLibrary();
             EspressoContext context = main.getContext();
             main.getDeclaringKlass().initialize();
             // No var-args here, pull parameters from the context.
@@ -56,8 +55,6 @@ public class MainLauncherRootNode extends RootNode {
             StaticObject guestException = e.getException();
             guestException.getKlass().lookupMethod(Symbol.Name.printStackTrace, Symbol.Signature._void).invokeDirect(guestException);
             return StaticObject.NULL;
-        } finally {
-            main.getMeta().Shutdown_shutdown.invokeDirect(null);
         }
     }
 

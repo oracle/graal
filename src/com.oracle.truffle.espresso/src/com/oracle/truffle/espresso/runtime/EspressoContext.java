@@ -65,8 +65,8 @@ public final class EspressoContext {
     private final MethodHandleIntrinsics methodHandleIntrinsics;
 
     // TODO(peterssen): Map host threads to guest threads, should not be public.
-    public final ConcurrentHashMap<Thread, StaticObject> host2guest = new ConcurrentHashMap<>();
-    private Set<Thread> activeThreads = Collections.newSetFromMap(new ConcurrentHashMap<Thread, Boolean>());
+    private final ConcurrentHashMap<Thread, StaticObject> host2guest = new ConcurrentHashMap<>();
+    private final Set<Thread> activeThreads = Collections.newSetFromMap(new ConcurrentHashMap<Thread, Boolean>());
 
     private boolean initialized = false;
 
@@ -232,7 +232,6 @@ public final class EspressoContext {
         // outOfMemoryErrorInstance.setHiddenField(meta.HIDDEN_FRAMES, frames);
         this.stackOverflow = new EspressoException(stackOverflowErrorInstance);
         this.outOfMemory = new EspressoException(outOfMemoryErrorInstance);
-        // TODO(garcia) pre-allocate some space for StackOverflow/OutOfMemory backtrace.
 
         System.err.println("spawnVM: " + (System.currentTimeMillis() - ticks) + " ms");
     }
@@ -256,7 +255,10 @@ public final class EspressoContext {
         Thread initiatingThread = Thread.currentThread();
         for (Thread t : activeThreads) {
             if (t != initiatingThread) {
-                t.interrupt();
+                /**
+                 * TODO Finalizer thread can't be interrupted at all. We must find some way to
+                 * complete it for polyglot.
+                 */
             }
         }
         initiatingThread.interrupt();
@@ -334,6 +336,14 @@ public final class EspressoContext {
 
     public ArrayList<FrameInstance> getFrames() {
         return frames;
+    }
+
+    public void putHost2Guest(Thread hostThread, StaticObject guest) {
+        host2guest.put(hostThread, guest);
+    }
+
+    public StaticObject getHost2Guest(Thread hostThread) {
+        return host2guest.get(hostThread);
     }
 
     public void registerThread(Thread thread) {
