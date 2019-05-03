@@ -316,6 +316,7 @@ class BaseGraalVmLayoutDistribution(mx.LayoutDistribution):
 
         # Add the rest of the GraalVM
 
+        component_suites = {}
         has_graal_compiler = False
         for _component in self.components:
             mx.logv('Adding {} ({}) to the {} {}'.format(_component.name, _component.__class__.__name__, name, self.__class__.__name__))
@@ -407,13 +408,13 @@ class BaseGraalVmLayoutDistribution(mx.LayoutDistribution):
             if isinstance(_component, mx_sdk.GraalVmJvmciComponent) and _component.graal_compiler:
                 has_graal_compiler = True
 
-        component_suites = []
-        for _component in self.components:
             if isinstance(_component, mx_sdk.GraalVmLanguage) and not is_graalvm:
                 # add language-specific release file
-                component_suites.append(_component.suite)
-        _metadata = self._get_metadata(component_suites)
-        _add(layout, _component_base + 'release', "string:{}".format(_metadata))
+                component_suites.setdefault(_component_base, []).append(_component.suite)
+
+        for _base, _suites in component_suites.items():
+            _metadata = self._get_metadata(_suites)
+            _add(layout, _base + 'release', "string:{}".format(_metadata))
 
         if has_graal_compiler:
             _add(layout, '<jre_base>/lib/jvmci/compiler-name', 'string:graal')
