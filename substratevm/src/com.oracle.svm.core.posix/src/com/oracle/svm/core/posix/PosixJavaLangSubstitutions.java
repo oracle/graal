@@ -357,7 +357,7 @@ final class Target_java_lang_Shutdown {
 }
 
 @TargetClass(java.lang.Runtime.class)
-@Platforms({Platform.LINUX.class, Platform.DARWIN.class})
+@Platforms({Platform.DARWIN.class})
 @SuppressWarnings({"static-method"})
 final class Target_java_lang_Runtime {
 
