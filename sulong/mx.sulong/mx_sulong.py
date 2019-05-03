@@ -523,13 +523,13 @@ def getLLVMVersion(llvmProgram):
         return printLLVMVersion.group(3)
 
 # the makefiles do not check which version of clang they invoke
-clang_versions_need_optnone = ['5', '6', '7', '8']
+versions_dont_have_optnone = ['3', '4']
 def getLLVMExplicitArgs(mainLLVMVersion):
     if mainLLVMVersion:
-        for ver in clang_versions_need_optnone:
+        for ver in versions_dont_have_optnone:
             if mainLLVMVersion.startswith(ver):
-                return ["-Xclang", "-disable-O0-optnone"]
-    return []
+                return []
+    return ["-Xclang", "-disable-O0-optnone"]
 
 def getClangImplicitArgs():
     mainLLVMVersion = getLLVMVersion(mx_buildtools.ClangCompiler.CLANG)
