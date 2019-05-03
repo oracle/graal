@@ -682,4 +682,20 @@ public class SourceAPITest {
         assertTrue(section.hasColumns());
         assertEquals("", section.getCharacters());
     }
+
+    @Test
+    public void testNonResolvableURL() throws IOException {
+        File file = File.createTempFile("Test", ".java");
+        file.deleteOnExit();
+        String text;
+        try (FileWriter w = new FileWriter(file)) {
+            text = "// Test";
+            w.write(text);
+        }
+        URL url = new URL(file.toURI() + "?query");
+        Source src = Source.newBuilder("TestJava", url).build();
+        assertNotNull(src);
+        assertTrue(text.contentEquals(src.getCharacters()));
+        assertEquals("text/plain", Source.findMimeType(url));
+    }
 }
