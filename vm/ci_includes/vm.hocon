@@ -8,7 +8,7 @@ custom_vm_darwin: {}
 vm_setup: {
   setup: [
     [set-export, RELEASE_CATALOG, "https://www.graalvm.org/component-catalog/graal-updater-component-catalog.properties"]
-    [set-export, SNAPSHOT_CATALOG, [mx, urlrewrite, "http://www.graalvm.org/catalog"]]
+    [set-export, SNAPSHOT_CATALOG, [mx, urlrewrite, "http://www.graalvm.org/catalog/ce"]]
     [cd, ${vm_subdir}]
   ]
 }
