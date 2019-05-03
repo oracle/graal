@@ -1717,9 +1717,9 @@ def mx_register_dynamic_suite_constituents(register_project, register_distributi
         if not _disable_installable(component) and (component.installable or (isinstance(component, mx_sdk.GraalVmLanguage) and component.dir_name != 'js')):
             installables.setdefault(component.installable_id, []).append(component)
 
-    for installable_id, components in installables.items():
+    for components in installables.values():
         main_component = min(components, key=lambda c: c.priority)
-        installable_component = GraalVmInstallableComponent(main_component, extra_components=[c for c in components if c  != main_component])
+        installable_component = GraalVmInstallableComponent(main_component, extra_components=[c for c in components if c != main_component])
         register_distribution(installable_component)
         if isinstance(main_component, mx_sdk.GraalVmTruffleComponent) and has_svm_launcher(main_component):
             register_distribution(GraalVmStandaloneComponent(installable_component))
