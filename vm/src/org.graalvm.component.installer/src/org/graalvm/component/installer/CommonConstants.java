@@ -99,4 +99,9 @@ public class CommonConstants {
      * components.
      */
     public static final String BUNDLE_ORIGIN_URL = "x-GraalVM-Component-Origin"; // NOI18N
+
+    /**
+     * ID of the native-image component.
+     */
+    public static final String NATIVE_IMAGE_ID = "native-image";
 }
