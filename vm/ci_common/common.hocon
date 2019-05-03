@@ -166,7 +166,7 @@ daily_vm_darwin: ${vm_darwin} {
 }
 
 mx_vm_common: [mx, --strip-jars, --no-sources, --env, ${vm_env}]
-mx_vm_installables: ${mx_vm_common} [--disable-libpolyglot, --disable-polyglot, "--force-bash-launchers=lli"]
+mx_vm_installables: ${mx_vm_common}
 maven_deploy_vm: [--suite, vm, maven-deploy, --validate, none, --all-distribution-types, --with-suite-revisions-metadata, ${binaries-repository}]
 maven_deploy_dry_run_vm: [--suite, vm, maven-deploy, --dry-run, --validate, none, --all-distribution-types, --with-suite-revisions-metadata, ${binaries-repository}]
 

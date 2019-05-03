@@ -1899,6 +1899,7 @@ def graalvm_show(args):
     graalvm_dist = get_final_graalvm_distribution()
     mx.log("GraalVM distribution: {}".format(graalvm_dist))
     mx.log("Version: {}".format(_suite.release_version()))
+    mx.log("Config name: {}".format(graalvm_dist.vm_config_name))
     mx.log("Components:")
     for component in registered_graalvm_components(stage1=args.stage1):
         mx.log(" - {} ('{}', /{})".format(component.name, component.short_name, component.dir_name))
