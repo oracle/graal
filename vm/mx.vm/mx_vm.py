@@ -374,7 +374,7 @@ class BaseGraalVmLayoutDistribution(mx.LayoutDistribution):
                 _add_native_image_macro(_library_config, _component)
             for _provided_executable in _component.provided_executables:
                 if _component.short_name is 'vvm':
-                    _add(layout, _jdk_jre_bin, 'extracted-dependency:tools:VISUALVM_PLATFORM_SPECIFIC/./' + _provided_executable)
+                    _add(layout, _jdk_jre_bin, 'extracted-dependency:tools:VISUALVM_PLATFORM_SPECIFIC/./' + _provided_executable, _component)
                 else:
                     _link_dest = _component_base + _provided_executable
                     _add_link(_jdk_jre_bin, _link_dest)
@@ -388,10 +388,13 @@ class BaseGraalVmLayoutDistribution(mx.LayoutDistribution):
             if isinstance(_component, mx_sdk.GraalVmJvmciComponent) and _component.graal_compiler:
                 has_graal_compiler = True
 
+        component_suites = []
+        for _component in self.components:
             if isinstance(_component, mx_sdk.GraalVmLanguage) and not is_graalvm:
                 # add language-specific release file
-                _metadata = self._get_metadata([_component.suite])
-                _add(layout, _component_base + 'release', "string:{}".format(_metadata))
+                component_suites.append(_component.suite)
+        _metadata = self._get_metadata(component_suites)
+        _add(layout, _component_base + 'release', "string:{}".format(_metadata))
 
         if has_graal_compiler:
             _add(layout, '<jdk_base>/jre/lib/jvmci/compiler-name', 'string:graal')
