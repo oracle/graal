@@ -2488,7 +2488,7 @@ suite = {
         "LLVM_WRAPPER",
         "LLVM_PLATFORM_SPECIFIC",
       ],
-      "maven" : True,
+      "maven" : False,
     }
   },
 }
