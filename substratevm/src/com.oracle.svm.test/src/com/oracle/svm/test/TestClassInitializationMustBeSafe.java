@@ -190,7 +190,7 @@ public class TestClassInitializationMustBeSafe {
         try {
             System.out.println(ThrowsAnExceptionMustBeDelayed.v);
         } catch (Throwable t) {
-            CreatesAnExceptionMustBeDelayed.e.printStackTrace();
+            System.out.println(CreatesAnExceptionMustBeDelayed.e.getMessage());
         }
     }
 }

@@ -24,9 +24,9 @@
  */
 package com.oracle.svm.hosted.classinitialization;
 
-import static com.oracle.svm.hosted.classinitialization.InitKind.DELAY;
-import static com.oracle.svm.hosted.classinitialization.InitKind.EAGER;
+import static com.oracle.svm.hosted.classinitialization.InitKind.BUILD_TIME;
 import static com.oracle.svm.hosted.classinitialization.InitKind.RERUN;
+import static com.oracle.svm.hosted.classinitialization.InitKind.RUN_TIME;
 import static com.oracle.svm.hosted.classinitialization.InitKind.SEPARATOR;
 
 import java.lang.reflect.Modifier;
@@ -56,6 +56,7 @@ import com.oracle.svm.core.hub.ClassInitializationInfo;
 import com.oracle.svm.core.hub.DynamicHub;
 import com.oracle.svm.core.option.APIOption;
 import com.oracle.svm.core.option.HostedOptionKey;
+import com.oracle.svm.core.option.SubstrateOptionsParser;
 import com.oracle.svm.core.util.UserError;
 import com.oracle.svm.hosted.FeatureImpl;
 import com.oracle.svm.hosted.analysis.Inflation;
@@ -98,7 +99,7 @@ public class ClassInitializationFeature implements Feature {
 
         private static class InitializationValueDelay extends InitializationValueTransformer {
             InitializationValueDelay() {
-                super(DELAY.name().toLowerCase());
+                super(RUN_TIME.name().toLowerCase());
             }
         }
 
@@ -110,7 +111,7 @@ public class ClassInitializationFeature implements Feature {
 
         private static class InitializationValueEager extends InitializationValueTransformer {
             InitializationValueEager() {
-                super(EAGER.name().toLowerCase());
+                super(BUILD_TIME.name().toLowerCase());
             }
         }
 
@@ -123,7 +124,7 @@ public class ClassInitializationFeature implements Feature {
         @APIOption(name = "rerun-class-initialization-at-runtime", valueTransformer = InitializationValueRerun.class, //
                         deprecated = "Currently there is no replacement for this option. Try using --initialize-at-run-time or use the non-API option -H:ClassInitialization directly.", //
                         defaultValue = "", customHelp = "A comma-separated list of classes (and implicitly all of their subclasses) that are initialized both at runtime and during image building") //
-        @Option(help = "A comma-separated list of classes appended with their initialization strategy (':delay', ':rerun', or ':eager')", type = OptionType.User)//
+        @Option(help = "A comma-separated list of classes appended with their initialization strategy (':build_time', ':rerun', or ':run_time')", type = OptionType.User)//
         public static final HostedOptionKey<String[]> ClassInitialization = new HostedOptionKey<>(new String[0]);
 
         @Option(help = "Prints class initialization info for all classes detected by analysis.", type = OptionType.Debug)//
@@ -136,7 +137,8 @@ public class ClassInitializationFeature implements Feature {
             for (String info : infos.split(",")) {
                 boolean noMatches = Arrays.stream(InitKind.values()).noneMatch(v -> info.endsWith(v.suffix()));
                 if (noMatches) {
-                    throw UserError.abort("Element in class initialization configuration must end in " + DELAY.suffix() + ", " + RERUN.suffix() + ", or " + EAGER.suffix() + ". Found: " + info);
+                    throw UserError.abort(
+                                    "Element in class initialization configuration must end in " + RUN_TIME.suffix() + ", " + RERUN.suffix() + ", or " + BUILD_TIME.suffix() + ". Found: " + info);
                 }
 
                 Pair<String, InitKind> elementType = InitKind.strip(info);
@@ -157,11 +159,13 @@ public class ClassInitializationFeature implements Feature {
 
     private Object checkImageHeapInstance(Object obj) {
         /*
-         * Note that computeInitKind also memoizes the class as InitKind.EAGER, which means that the
-         * user cannot later manually register it as RERUN or DELAY.
+         * Note that computeInitKind also memoizes the class as InitKind.BUILD_TIME, which means
+         * that the user cannot later manually register it as RERUN or RUN_TIME.
          */
         if (obj != null && classInitializationSupport.shouldInitializeAtRuntime(obj.getClass())) {
-            throw new UnsupportedFeatureException("No instances are allowed in the image heap for a class that is initialized or reinitialized at image runtime: " + obj.getClass().getTypeName());
+            throw new UnsupportedFeatureException("No instances are allowed in the image heap for a class that is initialized or reinitialized at image runtime: " + obj.getClass().getTypeName() +
+                            ". Try marking this class for build-time initialization with " +
+                            SubstrateOptionsParser.commandArgument(ClassInitializationFeature.Options.ClassInitialization, obj.getClass().getTypeName(), "initialize-at-build-time"));
         }
         return obj;
     }
@@ -241,7 +245,8 @@ public class ClassInitializationFeature implements Feature {
             writer.println("}");
         });
 
-        ReportUtils.report(provenSafe.size() + " classes of type SAFE", path, "safe_classes", "txt", printWriter -> provenSafe.forEach(t -> printWriter.println(t.toClassName())));
+        ReportUtils.report(provenSafe.size() + " classes that are considered as safe for build-time initialization", path, "safe_classes", "txt",
+                        printWriter -> provenSafe.forEach(t -> printWriter.println(t.toClassName())));
     }
 
     /**
@@ -273,7 +278,7 @@ public class ClassInitializationFeature implements Feature {
      */
     private Set<AnalysisType> initializeSafeDelayedClasses(TypeInitializerGraph initGraph) {
         Set<AnalysisType> provenSafe = new HashSet<>();
-        classInitializationSupport.classesWithKind(DELAY).stream()
+        classInitializationSupport.classesWithKind(RUN_TIME).stream()
                         .filter(t -> metaAccess.optionalLookupJavaType(t).isPresent())
                         .filter(t -> metaAccess.lookupJavaType(t).isInTypeCheck())
                         .filter(t -> classInitializationSupport.specifiedInitKindFor(t) == null)
