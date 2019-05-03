@@ -1398,7 +1398,7 @@ class GraalVmInstallableComponent(BaseGraalVmLayoutDistribution, mx.LayoutJARDis
         def create_archive(path, **_kw_args):
             return InstallableComponentArchiver(path, self.components, **_kw_args)
 
-        launcher_configs = _get_launcher_configs(component)
+        launcher_configs = list(_get_launcher_configs(component))
         for component_ in extra_components:
             launcher_configs += _get_launcher_configs(component_)
 
