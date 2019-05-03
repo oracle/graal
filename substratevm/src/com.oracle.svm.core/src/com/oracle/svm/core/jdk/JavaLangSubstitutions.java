@@ -139,7 +139,11 @@ final class Target_java_lang_Enum {
          * The original implementation creates and caches a HashMap to make the lookup faster. For
          * simplicity, we do a linear search for now.
          */
-        for (Enum<?> e : DynamicHub.fromClass(enumType).getEnumConstantsShared()) {
+        Enum<?>[] enumConstants = DynamicHub.fromClass(enumType).getEnumConstantsShared();
+        if (enumConstants == null) {
+            throw new IllegalArgumentException(enumType.getName() + " is not an enum type");
+        }
+        for (Enum<?> e : enumConstants) {
             if (e.name().equals(name)) {
                 return e;
             }
