@@ -36,18 +36,18 @@ import org.graalvm.collections.Pair;
  */
 public enum InitKind {
     /** Class is initialized during image building, so it is already initialized at runtime. */
-    EAGER,
+    BUILD_TIME,
     /** Class is initialized both at runtime and during image building. */
     RERUN,
     /** Class should be initialized at runtime and not during image building. */
-    DELAY;
+    RUN_TIME;
 
     InitKind max(InitKind other) {
         return this.ordinal() > other.ordinal() ? this : other;
     }
 
     boolean isDelayed() {
-        return this.equals(DELAY);
+        return this.equals(RUN_TIME);
     }
 
     public static final String SEPARATOR = ":";
@@ -57,7 +57,7 @@ public enum InitKind {
     }
 
     Consumer<String> stringConsumer(ClassInitializationSupport support) {
-        if (this == DELAY) {
+        if (this == RUN_TIME) {
             return name -> support.initializeAtRunTime(name, "from the command line");
         } else if (this == RERUN) {
             return name -> support.rerunInitialization(name, "from the command line");

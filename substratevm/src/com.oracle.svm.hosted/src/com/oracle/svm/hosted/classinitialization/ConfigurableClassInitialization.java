@@ -107,12 +107,12 @@ public class ConfigurableClassInitialization implements ClassInitializationSuppo
 
     @Override
     public boolean shouldInitializeAtRuntime(ResolvedJavaType type) {
-        return computeInitKindAndMaybeInitializeClass(toAnalysisType(type).getJavaClass()) != InitKind.EAGER;
+        return computeInitKindAndMaybeInitializeClass(toAnalysisType(type).getJavaClass()) != InitKind.BUILD_TIME;
     }
 
     @Override
     public boolean shouldInitializeAtRuntime(Class<?> clazz) {
-        return computeInitKindAndMaybeInitializeClass(clazz) != InitKind.EAGER;
+        return computeInitKindAndMaybeInitializeClass(clazz) != InitKind.BUILD_TIME;
     }
 
     @Override
@@ -127,7 +127,7 @@ public class ConfigurableClassInitialization implements ClassInitializationSuppo
     private InitKind ensureClassInitialized(Class<?> clazz) {
         try {
             UNSAFE.ensureClassInitialized(clazz);
-            return InitKind.EAGER;
+            return InitKind.BUILD_TIME;
         } catch (Throwable ex) {
             if (NativeImageOptions.ReportUnsupportedElementsAtRuntime.getValue() || NativeImageOptions.AllowIncompleteClasspath.getValue()) {
                 System.out.println("Warning: class initialization of class " + clazz.getTypeName() + " failed with exception " +
@@ -153,7 +153,7 @@ public class ConfigurableClassInitialization implements ClassInitializationSuppo
                 }
             }
 
-            return InitKind.DELAY;
+            return InitKind.RUN_TIME;
         }
     }
 
@@ -163,7 +163,7 @@ public class ConfigurableClassInitialization implements ClassInitializationSuppo
 
     @Override
     public void initializeAtRunTime(String name, String reason) {
-        classInitializationConfiguration.insert(name, InitKind.DELAY, reason);
+        classInitializationConfiguration.insert(name, InitKind.RUN_TIME, reason);
         Class<?> clazz = loader.findClassByName(name, false);
         if (clazz != null) {
             initializeAtRunTime(clazz, reason);
@@ -172,7 +172,7 @@ public class ConfigurableClassInitialization implements ClassInitializationSuppo
 
     @Override
     public void initializeAtBuildTime(String name, String reason) {
-        classInitializationConfiguration.insert(name, InitKind.EAGER, reason);
+        classInitializationConfiguration.insert(name, InitKind.BUILD_TIME, reason);
         Class<?> clazz = loader.findClassByName(name, false);
         if (clazz != null) {
             initializeAtBuildTime(clazz, reason);
@@ -190,21 +190,21 @@ public class ConfigurableClassInitialization implements ClassInitializationSuppo
 
     @Override
     public void initializeAtRunTime(Class<?> clazz, String reason) {
-        classInitializationConfiguration.insert(clazz.getTypeName(), InitKind.DELAY, reason);
-        setKindForSubclasses(clazz, InitKind.DELAY);
+        classInitializationConfiguration.insert(clazz.getTypeName(), InitKind.RUN_TIME, reason);
+        setKindForSubclasses(clazz, InitKind.RUN_TIME);
         checkEagerInitialization(clazz);
 
         if (!UNSAFE.shouldBeInitialized(clazz)) {
             throw UserError.abort("Class is already initialized, so it is too late to register delaying class initialization: " + clazz.getTypeName() + " for reason: " + reason);
         }
         /*
-         * Propagate possible existing DELAY registration from a superclass, so that we can check
+         * Propagate possible existing RUN_TIME registration from a superclass, so that we can check
          * for user errors below.
          */
         computeInitKindAndMaybeInitializeClass(clazz, false);
 
-        InitKind previousKind = classInitKinds.put(clazz, InitKind.DELAY);
-        if (previousKind == InitKind.EAGER) {
+        InitKind previousKind = classInitKinds.put(clazz, InitKind.RUN_TIME);
+        if (previousKind == InitKind.BUILD_TIME) {
             throw UserError.abort("Class is already initialized, so it is too late to register delaying class initialization: " + clazz.getTypeName() + " for reason: " + reason);
         } else if (previousKind == InitKind.RERUN) {
             throw UserError.abort("Class is registered both for delaying and rerunning the class initializer: " + clazz.getTypeName() + " for reason: " + reason);
@@ -223,14 +223,14 @@ public class ConfigurableClassInitialization implements ClassInitializationSuppo
         }
 
         /*
-         * Propagate possible existing DELAY registration from a superclass, so that we can check
+         * Propagate possible existing RUN_TIME registration from a superclass, so that we can check
          * for user errors below.
          */
         computeInitKindAndMaybeInitializeClass(clazz, false);
 
         InitKind previousKind = classInitKinds.put(clazz, InitKind.RERUN);
         if (previousKind != null) {
-            if (previousKind == InitKind.EAGER) {
+            if (previousKind == InitKind.BUILD_TIME) {
                 throw UserError.abort("The information that the class should be initialized during image building has already been used, " +
                                 "so it is too late to register re-running the class initializer: " + clazz.getTypeName() + " for reason: " + reason);
             } else if (previousKind.isDelayed()) {
@@ -242,7 +242,7 @@ public class ConfigurableClassInitialization implements ClassInitializationSuppo
 
     @Override
     public void initializeAtBuildTime(Class<?> aClass, String reason) {
-        classInitializationConfiguration.insert(aClass.getTypeName(), InitKind.EAGER, reason);
+        classInitializationConfiguration.insert(aClass.getTypeName(), InitKind.BUILD_TIME, reason);
         forceInitializeHosted(aClass, reason);
     }
 
@@ -258,7 +258,7 @@ public class ConfigurableClassInitialization implements ClassInitializationSuppo
         if (clazz == null) {
             return;
         }
-        classInitializationConfiguration.insert(clazz.getTypeName(), InitKind.EAGER, reason);
+        classInitializationConfiguration.insert(clazz.getTypeName(), InitKind.BUILD_TIME, reason);
 
         InitKind initKind = ensureClassInitialized(clazz);
         classInitKinds.put(clazz, initKind);
@@ -270,10 +270,10 @@ public class ConfigurableClassInitialization implements ClassInitializationSuppo
     private void forceInitializeInterfaces(Class<?>[] interfaces, String reason) {
         for (Class<?> iface : interfaces) {
             if (ClassInitializationFeature.declaresDefaultMethods(metaAccess.lookupJavaType(iface))) {
-                classInitializationConfiguration.insert(iface.getTypeName(), InitKind.EAGER, reason);
+                classInitializationConfiguration.insert(iface.getTypeName(), InitKind.BUILD_TIME, reason);
 
                 ensureClassInitialized(iface);
-                classInitKinds.put(iface, InitKind.EAGER);
+                classInitKinds.put(iface, InitKind.BUILD_TIME);
             }
             forceInitializeInterfaces(iface.getInterfaces(), "super type of " + iface.getTypeName());
         }
@@ -288,7 +288,9 @@ public class ConfigurableClassInitialization implements ClassInitializationSuppo
          */
         for (Map.Entry<Class<?>, InitKind> entry : classInitKinds.entrySet()) {
             if (entry.getValue().isDelayed() && !UNSAFE.shouldBeInitialized(entry.getKey())) {
-                throw UserError.abort("Class that is marked for delaying initialization to run time got initialized during image building: " + entry.getKey().getTypeName());
+                throw UserError.abort("Class that is marked for delaying initialization to run time got initialized during image building: " + entry.getKey().getTypeName() +
+                                ". Try marking this class for build-time initialization with " +
+                                SubstrateOptionsParser.commandArgument(ClassInitializationFeature.Options.ClassInitialization, entry.getKey().getTypeName(), "initialize-at-build-time"));
             }
         }
         return true;
@@ -324,7 +326,7 @@ public class ConfigurableClassInitialization implements ClassInitializationSuppo
         /* Without doubt initialize all annotations. */
         if (clazz.isAnnotation()) {
             forceInitializeHosted(clazz, "all annotations are initialized");
-            return InitKind.EAGER;
+            return InitKind.BUILD_TIME;
         }
 
         /* Well, and enums that got initialized while annotations are parsed. */
@@ -332,7 +334,7 @@ public class ConfigurableClassInitialization implements ClassInitializationSuppo
             if (memoize) {
                 forceInitializeHosted(clazz, "enums referred in annotations must be initialized");
             }
-            return InitKind.EAGER;
+            return InitKind.BUILD_TIME;
         }
 
         /* GR-14698 Lambdas get eagerly initialized in the method code. */
@@ -340,7 +342,7 @@ public class ConfigurableClassInitialization implements ClassInitializationSuppo
             if (memoize) {
                 forceInitializeHosted(clazz, "lambdas must be initialized");
             }
-            return InitKind.EAGER;
+            return InitKind.BUILD_TIME;
         }
 
         InitKind result = computeInitKindForClass(clazz);
@@ -384,17 +386,17 @@ public class ConfigurableClassInitialization implements ClassInitializationSuppo
 
     private InitKind computeInitKindForClass(Class<?> clazz) {
         if (clazz.isPrimitive() || clazz.isArray()) {
-            return InitKind.EAGER;
+            return InitKind.BUILD_TIME;
         } else if (clazz.isAnnotation()) {
-            return InitKind.EAGER;
+            return InitKind.BUILD_TIME;
         } else if (Proxy.isProxyClass(clazz)) {
             /* Proxy classes end up as constants in heap. */
-            return InitKind.EAGER;
+            return InitKind.BUILD_TIME;
         } else if (clazz.getTypeName().contains("$$Lambda$")) {
             /* GR-14698 Lambdas get eagerly initialized in the method code. */
-            return InitKind.EAGER;
+            return InitKind.BUILD_TIME;
         } else if (clazz.getTypeName().contains("$$StringConcat")) {
-            return InitKind.EAGER;
+            return InitKind.BUILD_TIME;
         } else if (specifiedInitKindFor(clazz) != null) {
             return specifiedInitKindFor(clazz);
         } else {
@@ -404,11 +406,11 @@ public class ConfigurableClassInitialization implements ClassInitializationSuppo
                             typeClassLoader == com.sun.crypto.provider.SunJCE.class.getClassLoader() ||
                             /* JDK 11 */
                             typeClassLoader == OptionKey.class.getClassLoader()) {
-                return InitKind.EAGER;
+                return InitKind.BUILD_TIME;
             }
         }
 
-        return InitKind.DELAY;
+        return InitKind.RUN_TIME;
     }
 
 }
