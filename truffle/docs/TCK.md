@@ -61,7 +61,7 @@ You can also enable output and error output for all tests but one:
 `mx tck -Dtck.verbose=true -Dtck.ErrorTypeTest.verbose=false`
 
 ## Running TCK tests without mx
-The python [TCK runner](tck.py) can be used to execute the Truffle TCK on top of the GraalVM. The script requires
+The python [TCK runner](../mx.truffle/tck.py) can be used to execute the Truffle TCK on top of the GraalVM. The script requires
 a Maven for downloading the TCK artifacts.
 
 To execute TCK tests on given GraalVM use:
