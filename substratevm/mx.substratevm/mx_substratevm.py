@@ -1201,7 +1201,7 @@ def clinittest(args):
                              str(wrongly_initialized_classes))
 
         reports = os.listdir(os.path.join(build_dir, 'reports'))
-        delayed_classes = next(report for report in reports if report.startswith('delay_classes'))
+        delayed_classes = next(report for report in reports if report.startswith('run_time_classes'))
         safe_classes = next(report for report in reports if report.startswith('safe_classes'))
 
         check_class_initialization(delayed_classes, 'MustBeDelayed')

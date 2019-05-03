@@ -118,7 +118,7 @@ public class TypeInitializerGraph {
      * A type initializer is initially unsafe only if it was marked by the user as such.
      */
     private Safety initialTypeInitializerSafety(AnalysisType t) {
-        return classInitializationSupport.specifiedInitKindFor(t.getJavaClass()) == InitKind.DELAY ? Safety.UNSAFE
+        return classInitializationSupport.specifiedInitKindFor(t.getJavaClass()) == InitKind.RUN_TIME ? Safety.UNSAFE
                         : Safety.SAFE;
     }
 
