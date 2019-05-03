@@ -29,6 +29,7 @@ import java.io.IOException;
 import java.io.InputStream;
 import java.io.InputStreamReader;
 import java.lang.ProcessBuilder.Redirect;
+import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.ArrayList;
 import java.util.HashMap;
@@ -45,6 +46,7 @@ import org.graalvm.component.installer.Commands;
 import org.graalvm.component.installer.Feedback;
 import org.graalvm.component.installer.InstallerCommand;
 import static org.graalvm.component.installer.Commands.DO_NOT_PROCESS_OPTIONS;
+import org.graalvm.component.installer.CommonConstants;
 import org.graalvm.component.installer.SystemUtils;
 
 public class RebuildImageCommand implements InstallerCommand {
@@ -105,7 +107,11 @@ public class RebuildImageCommand implements InstallerCommand {
         ProcessBuilder pb = new ProcessBuilder();
         List<String> commandLine = new ArrayList<>();
         // enforce relative path
-        Path toolPath = input.getGraalHomePath().resolve(SystemUtils.fromCommonString(feedback.l10n("REBUILD_ToolRelativePath")));
+        Path toolPath = findNativeImagePath(input, feedback);
+        if (toolPath == null) {
+            feedback.error("REBUILD_RebuildImagesNotInstalled", null, CommonConstants.NATIVE_IMAGE_ID);
+            return 2;
+        }
         String procName = toolPath.toAbsolutePath().toString();
         commandLine.add(procName);
         if (input.optValue(Commands.OPTION_VERBOSE) != null) {
@@ -142,4 +148,8 @@ public class RebuildImageCommand implements InstallerCommand {
         }
     }
 
+    public static Path findNativeImagePath(CommandInput input, Feedback feedback) {
+        Path p = input.getGraalHomePath().resolve(SystemUtils.fromCommonString(feedback.l10n("REBUILD_ToolRelativePath")));
+        return (Files.isReadable(p) || Files.isExecutable(p)) ? p : null;
+    }
 }

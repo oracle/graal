@@ -101,7 +101,11 @@ final class PostInstProcess {
 
         if (rebuildPolyglot && WARN_REBUILD_IMAGES) {
             Path p = SystemUtils.fromCommonString(CommonConstants.PATH_JRE_BIN);
+            Path toolPath = RebuildImageCommand.findNativeImagePath(input, feedback);
             feedback.output("INSTALL_RebuildPolyglotNeeded", File.separator, input.getGraalHomePath().resolve(p).normalize());
+            if (toolPath == null) {
+                feedback.output("INSTALL_RebuildPolyglotNeeded2", CommonConstants.NATIVE_IMAGE_ID);
+            }
         }
     }
 
