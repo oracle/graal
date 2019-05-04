@@ -72,6 +72,7 @@ import org.graalvm.polyglot.Value;
 import org.graalvm.polyglot.proxy.ProxyExecutable;
 import org.junit.After;
 import org.junit.Test;
+import org.junit.Ignore;
 
 import com.oracle.truffle.api.test.polyglot.ValueAssert.Trait;
 
@@ -943,7 +944,11 @@ public class HostAccessTest {
         assertEquals(1, invoked.get());
     }
 
+    /*
+     * Test for GR-15593.
+     */
     @Test
+    @Ignore
     public void testRecursion() {
         HostAccess.Builder builder = HostAccess.newBuilder();
         builder.targetTypeMapping(Value.class, Integer.class, (v) -> {
