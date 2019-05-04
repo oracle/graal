@@ -568,7 +568,7 @@ public final class GraalFeature implements Feature {
 
             if (implementationMethods.size() > 0) {
                 /* Sort to make printing order and method discovery order deterministic. */
-                implementationMethods.sort((m1, m2) -> m1.format("%H.%n(%p)").compareTo(m2.format("%H.%n(%p)")));
+                implementationMethods.sort((m1, m2) -> m1.getQualifiedName().compareTo(m2.getQualifiedName()));
 
                 String sourceReference = buildSourceReference(targetNode.invoke().stateAfter());
                 for (AnalysisMethod implementationMethod : implementationMethods) {

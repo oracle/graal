@@ -73,6 +73,7 @@ public class AnalysisMethod implements WrappedJavaMethod, GraphProvider {
     private final int id;
     private final ExceptionHandler[] exceptionHandlers;
     private final LocalVariableTable localVariableTable;
+    private final String qualifiedName;
     private MethodTypeFlow typeFlow;
 
     private boolean isRootMethod;
@@ -146,6 +147,11 @@ public class AnalysisMethod implements WrappedJavaMethod, GraphProvider {
                 throw GraalError.shouldNotReachHere(ex);
             }
         }
+        this.qualifiedName = format("%H.%n(%P)");
+    }
+
+    public String getQualifiedName() {
+        return qualifiedName;
     }
 
     private JavaType getCatchType(ExceptionHandler handler) {
