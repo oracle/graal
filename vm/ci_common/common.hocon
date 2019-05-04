@@ -199,7 +199,7 @@ builds += [
       ${mx_vm_installables} [--dynamicimports, ${vm_extra_suites}, "--exclude-components=nju"] ${maven_deploy_vm}
       ${notify-nexus-deploy}
     ]
-    timelimit: "1:30:00"
+    timelimit: "2:00:00"
     name: deploy-vm-installable-darwin-amd64
   }
   ${full_vm_build_darwin} ${darwin-deploy} ${deploy_daily_vm_darwin} {
@@ -208,7 +208,7 @@ builds += [
       ${mx_vm_common} ${maven_deploy_vm}
       ${notify-nexus-deploy}
     ]
-    timelimit: "1:30:00"
+    timelimit: "1:45:00"
     name: deploy-vm-base-darwin-amd64
   }
   ${svm-common-linux-amd64} ${custom_vm_linux} ${vm_linux} {
