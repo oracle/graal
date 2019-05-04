@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2013, 2019, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2017, 2017, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -25,45 +25,33 @@
 package com.oracle.svm.core.stack;
 
 import org.graalvm.nativeimage.c.function.CodePointer;
-import org.graalvm.nativeimage.c.struct.RawField;
-import org.graalvm.nativeimage.c.struct.RawStructure;
 import org.graalvm.word.Pointer;
-import org.graalvm.word.PointerBase;
 
-/**
- * An in-progress Java stack walk.
- */
-@RawStructure
-public interface JavaStackWalk extends PointerBase {
-    @RawField
-    Pointer getSP();
+import com.oracle.svm.core.code.CodeInfoQueryResult;
+import com.oracle.svm.core.code.CodeInfoTable;
+import com.oracle.svm.core.code.FrameInfoQueryResult;
+import com.oracle.svm.core.deopt.DeoptimizedFrame;
 
-    @RawField
-    void setSP(Pointer sp);
+public abstract class JavaStackFrameVisitor implements StackFrameVisitor {
 
-    @RawField
-    CodePointer getIP();
+    @Override
+    public final boolean visitFrame(Pointer sp, CodePointer ip, DeoptimizedFrame deoptimizedFrame) {
+        if (deoptimizedFrame != null) {
+            for (DeoptimizedFrame.VirtualFrame frame = deoptimizedFrame.getTopFrame(); frame != null; frame = frame.getCaller()) {
+                if (!visitFrame(frame.getFrameInfo())) {
+                    return false;
+                }
+            }
+        } else {
+            CodeInfoQueryResult codeInfo = CodeInfoTable.lookupCodeInfoQueryResult(ip);
+            for (FrameInfoQueryResult frameInfo = codeInfo.getFrameInfo(); frameInfo != null; frameInfo = frameInfo.getCaller()) {
+                if (!visitFrame(frameInfo)) {
+                    return false;
+                }
+            }
+        }
+        return true;
+    }
 
-    @RawField
-    void setIP(CodePointer ip);
-
-    @RawField
-    JavaFrameAnchor getAnchor();
-
-    @RawField
-    void setAnchor(JavaFrameAnchor anchor);
-
-    // these fields are for diagnostics
-
-    @RawField
-    Pointer getStartSP();
-
-    @RawField
-    void setStartSP(Pointer sp);
-
-    @RawField
-    CodePointer getStartIP();
-
-    @RawField
-    void setStartIP(CodePointer ip);
+    public abstract boolean visitFrame(FrameInfoQueryResult frameInfo);
 }

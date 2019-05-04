@@ -24,23 +24,21 @@
  */
 package com.oracle.svm.core.jdk;
 
+import java.lang.StackWalker.Option;
 import java.lang.StackWalker.StackFrame;
-import java.lang.reflect.Constructor;
-import java.lang.reflect.Method;
-import java.util.EnumSet;
-import java.util.Iterator;
-import java.util.NoSuchElementException;
 import java.util.Set;
 import java.util.Spliterator;
-import java.util.Spliterators;
 import java.util.function.Consumer;
 import java.util.function.Function;
 import java.util.stream.Stream;
 import java.util.stream.StreamSupport;
 
+import org.graalvm.nativeimage.StackValue;
+import org.graalvm.word.WordFactory;
+
 import com.oracle.svm.core.annotate.Alias;
-import com.oracle.svm.core.annotate.AlwaysInline;
 import com.oracle.svm.core.annotate.Delete;
+import com.oracle.svm.core.annotate.NeverInline;
 import com.oracle.svm.core.annotate.Substitute;
 import com.oracle.svm.core.annotate.TargetClass;
 import com.oracle.svm.core.code.CodeInfoQueryResult;
@@ -48,344 +46,231 @@ import com.oracle.svm.core.code.CodeInfoTable;
 import com.oracle.svm.core.code.FrameInfoQueryResult;
 import com.oracle.svm.core.deopt.DeoptimizedFrame;
 import com.oracle.svm.core.deopt.Deoptimizer;
-import com.oracle.svm.core.snippets.ImplicitExceptions;
 import com.oracle.svm.core.snippets.KnownIntrinsics;
+import com.oracle.svm.core.stack.JavaStackFrameVisitor;
 import com.oracle.svm.core.stack.JavaStackWalk;
 import com.oracle.svm.core.stack.JavaStackWalker;
-import org.graalvm.nativeimage.StackValue;
-import org.graalvm.nativeimage.c.function.CodePointer;
-import org.graalvm.word.Pointer;
 
 @TargetClass(value = java.lang.StackWalker.class, onlyWith = JDK9OrLater.class)
-@Substitute
-public final class Target_java_lang_StackWalker {
+final class Target_java_lang_StackWalker {
 
-    @Alias
-    private final Set<StackWalker.Option> options;
-
-    @Substitute
-    Target_java_lang_StackWalker(EnumSet<StackWalker.Option> options) {
-        this.options = options;
-    }
+    @Alias Set<Option> options;
+    @Alias boolean retainClassRef;
 
     @Substitute
-    @AlwaysInline("Avoid virtual call to consumer")
-    public void forEach(Consumer<? super StackFrame> action) {
-        boolean includeHidden = options.contains(StackWalker.Option.SHOW_HIDDEN_FRAMES);
-        boolean includeReflect = includeHidden || options.contains(StackWalker.Option.SHOW_REFLECT_FRAMES);
-        JavaStackWalk walk = StackValue.get(JavaStackWalk.class);
-        Pointer sp = KnownIntrinsics.readCallerStackPointer();
-        CodePointer ip = KnownIntrinsics.readReturnAddress();
-        JavaStackWalker.initWalk(walk, sp, ip);
-        if (JavaStackWalker.startWalk(walk)) do {
-            DeoptimizedFrame deoptimizedFrame = Deoptimizer.checkDeoptimized(walk.getSP());
-            if (deoptimizedFrame != null) {
-                for (DeoptimizedFrame.VirtualFrame frame = deoptimizedFrame.getTopFrame(); frame != null; frame = frame.getCaller()) {
-                    FrameInfoQueryResult frameInfo = frame.getFrameInfo();
-                    String className = frameInfo.getSourceClassName();
-                    if (includeHidden || ! StackWalker_Util.isHidden(className) || includeReflect || ! StackWalker_Util.isReflect(className)) {
-                        action.accept(new StackFrameImpl(frameInfo));
-                    }
+    @NeverInline("Starting a stack walk in the caller frame")
+    private void forEach(Consumer<? super StackFrame> action) {
+        boolean showHiddenFrames = options.contains(StackWalker.Option.SHOW_HIDDEN_FRAMES);
+        boolean showReflectFrames = options.contains(StackWalker.Option.SHOW_REFLECT_FRAMES);
+
+        JavaStackWalker.walkCurrentThread(KnownIntrinsics.readCallerStackPointer(), KnownIntrinsics.readReturnAddress(), new JavaStackFrameVisitor() {
+            @Override
+            public boolean visitFrame(FrameInfoQueryResult frameInfo) {
+                if (StackTraceUtils.shouldShowFrame(frameInfo, showReflectFrames, showHiddenFrames)) {
+                    action.accept(new StackFrameImpl(frameInfo));
                 }
-            } else {
-                CodeInfoQueryResult codeInfo = CodeInfoTable.lookupCodeInfoQueryResult(ip);
-                for (FrameInfoQueryResult frameInfo = codeInfo.getFrameInfo(); frameInfo != null; frameInfo = frameInfo.getCaller()) {
-                    String className = frameInfo.getSourceClassName();
-                    if (includeHidden || ! StackWalker_Util.isHidden(className) || includeReflect || ! StackWalker_Util.isReflect(className)) {
-                        action.accept(new StackFrameImpl(frameInfo));
-                    }
-                }
+                return true;
             }
-        } while (JavaStackWalker.continueWalk(walk));
+        });
     }
 
-    @Substitute
-    @AlwaysInline("Avoid virtual call to function") // though streams are so heavy, does it matter?
-    public <T> T walk(Function<? super Stream<StackFrame>, ? extends T> function) {
-        JavaStackWalk walk = StackValue.get(JavaStackWalk.class);
-        final Pointer sp = KnownIntrinsics.readCallerStackPointer();
-        final CodePointer ip = KnownIntrinsics.readReturnAddress();
-        JavaStackWalker.initWalk(walk, sp, ip);
-        final StackIterator iter = new StackIterator(walk, options);
-        try {
-            return function.apply(StreamSupport.stream(Spliterators.spliterator(iter, 0L, Spliterator.NONNULL), false));
-        } finally {
-            iter.invalidate();
-        }
-    }
-
-    /**
-     * NOTE: this implementation should be replaced with an intrinsic constant-folding operation.  See
-     * <a href="https://github.com/oracle/graal/pull/734#issuecomment-436747405">#734</a> for more information.
-     *
-     * @return the caller class
+    /*
+     * NOTE: this implementation could be optimized by an intrinsic constant-folding operation in
+     * case deep enough method inlining has happened.
      */
     @Substitute
-    public Class<?> getCallerClass() {
-        boolean includeHidden = options.contains(StackWalker.Option.SHOW_HIDDEN_FRAMES);
-        boolean includeReflect = includeHidden || options.contains(StackWalker.Option.SHOW_REFLECT_FRAMES);
+    @NeverInline("Starting a stack walk in the caller frame")
+    @SuppressWarnings("static-method")
+    private Class<?> getCallerClass() {
+        if (!retainClassRef) {
+            throw new UnsupportedOperationException("This stack walker does not have RETAIN_CLASS_REFERENCE access");
+        }
+
+        /*
+         * It is intentional that the StackWalker.options is ignored. The specification JavaDoc of
+         * StackWalker.getCallerClass states:
+         *
+         * This method filters reflection frames, MethodHandle, and hidden frames regardless of the
+         * SHOW_REFLECT_FRAMES and SHOW_HIDDEN_FRAMES options this StackWalker has been configured
+         * with.
+         */
+
+        Class<?> result = StackTraceUtils.getCallerClass(KnownIntrinsics.readCallerStackPointer(), KnownIntrinsics.readReturnAddress());
+        if (result == null) {
+            throw new IllegalCallerException("No calling frame");
+        }
+        return result;
+    }
+
+    @Substitute
+    @NeverInline("Starting a stack walk in the caller frame")
+    private <T> T walk(Function<? super Stream<StackFrame>, ? extends T> function) {
         JavaStackWalk walk = StackValue.get(JavaStackWalk.class);
-        final Pointer sp = KnownIntrinsics.readCallerStackPointer();
-        final CodePointer ip = KnownIntrinsics.readReturnAddress();
-        JavaStackWalker.initWalk(walk, sp, ip);
-        if (JavaStackWalker.startWalk(walk)) do {
-            DeoptimizedFrame deoptimizedFrame = Deoptimizer.checkDeoptimized(walk.getSP());
-            if (deoptimizedFrame != null) {
-                for (DeoptimizedFrame.VirtualFrame frame = deoptimizedFrame.getTopFrame(); frame != null; frame = frame.getCaller()) {
-                    FrameInfoQueryResult frameInfo = frame.getFrameInfo();
-                    String className = frameInfo.getSourceClassName();
-                    if (includeHidden || ! StackWalker_Util.isHidden(className) || includeReflect || ! StackWalker_Util.isReflect(className)) {
-                        return new StackFrameImpl(frameInfo).getDeclaringClass();
+        JavaStackWalker.initWalk(walk, KnownIntrinsics.readCallerStackPointer(), KnownIntrinsics.readReturnAddress());
+
+        StackFrameSpliterator spliterator = new StackFrameSpliterator(walk);
+        try {
+            return function.apply(StreamSupport.stream(spliterator, false));
+        } finally {
+            spliterator.invalidate();
+        }
+    }
+
+    final class StackFrameSpliterator implements Spliterator<StackFrame> {
+        private final Thread thread;
+        private JavaStackWalk walk;
+        private DeoptimizedFrame.VirtualFrame curDeoptimizedFrame;
+        private FrameInfoQueryResult curRegularFrame;
+
+        StackFrameSpliterator(JavaStackWalk walk) {
+            this.walk = walk;
+            this.thread = Thread.currentThread();
+        }
+
+        void invalidate() {
+            walk = WordFactory.nullPointer();
+        }
+
+        @Override
+        public boolean tryAdvance(Consumer<? super StackFrame> action) {
+            if (thread != Thread.currentThread()) {
+                throw new IllegalStateException("Invalid thread");
+            }
+            if (walk.isNull()) {
+                throw new IllegalStateException("Stack traversal no longer valid");
+            }
+
+            boolean showHiddenFrames = options.contains(StackWalker.Option.SHOW_HIDDEN_FRAMES);
+            boolean showReflectFrames = options.contains(StackWalker.Option.SHOW_REFLECT_FRAMES);
+
+            while (true) {
+                /* Check if we have pending virtual frames to process. */
+                if (curDeoptimizedFrame != null) {
+                    FrameInfoQueryResult frameInfo = curDeoptimizedFrame.getFrameInfo();
+                    curDeoptimizedFrame = curDeoptimizedFrame.getCaller();
+
+                    if (StackTraceUtils.shouldShowFrame(frameInfo, showReflectFrames, showHiddenFrames)) {
+                        action.accept(new StackFrameImpl(frameInfo));
+                        return true;
                     }
-                }
-            } else {
-                CodeInfoQueryResult codeInfo = CodeInfoTable.lookupCodeInfoQueryResult(ip);
-                for (FrameInfoQueryResult frameInfo = codeInfo.getFrameInfo(); frameInfo != null; frameInfo = frameInfo.getCaller()) {
-                    String className = frameInfo.getSourceClassName();
-                    if (includeHidden || ! StackWalker_Util.isHidden(className) || includeReflect || ! StackWalker_Util.isReflect(className)) {
-                        return new StackFrameImpl(frameInfo).getDeclaringClass();
+
+                } else if (curRegularFrame != null) {
+                    FrameInfoQueryResult frameInfo = curRegularFrame;
+                    curRegularFrame = curRegularFrame.getCaller();
+
+                    if (StackTraceUtils.shouldShowFrame(frameInfo, showReflectFrames, showHiddenFrames)) {
+                        action.accept(new StackFrameImpl(frameInfo));
+                        return true;
                     }
+
+                } else if (walk.getSP().isNonNull() && walk.getIP().isNonNull()) {
+                    /* No more virtual frames, but we have more physical frames. */
+
+                    DeoptimizedFrame deoptimizedFrame = Deoptimizer.checkDeoptimized(walk.getSP());
+                    if (deoptimizedFrame != null) {
+                        curDeoptimizedFrame = deoptimizedFrame.getTopFrame();
+                    } else {
+                        CodeInfoQueryResult codeInfo = CodeInfoTable.lookupCodeInfoQueryResult(walk.getIP());
+                        curRegularFrame = codeInfo.getFrameInfo();
+                    }
+
+                    /*
+                     * Now we have virtual frames to process in the next loop iteration. Update the
+                     * physical stack walker to the next physical frame to be ready when all virtual
+                     * frames are processed.
+                     */
+                    JavaStackWalker.continueWalk(walk);
+
+                } else {
+                    /* No more physical frames, we are done. */
+                    return false;
                 }
             }
-        } while (JavaStackWalker.continueWalk(walk));
-        throw new IllegalStateException("No calling frame");
-    }
-
-    @Substitute
-    public static Target_java_lang_StackWalker getInstance() {
-        return StackWalkerHolder.PLAIN;
-    }
-
-    @Substitute
-    public static Target_java_lang_StackWalker getInstance(StackWalker.Option option) {
-        if (option == StackWalker.Option.SHOW_HIDDEN_FRAMES) {
-            return StackWalkerHolder.SHF;
-        } else if (option == StackWalker.Option.SHOW_REFLECT_FRAMES) {
-            return StackWalkerHolder.SRF;
-        } else {
-            return StackWalkerHolder.PLAIN;
         }
-    }
 
-    @Substitute
-    public static Target_java_lang_StackWalker getInstance(Set<StackWalker.Option> option) {
-        if (option.contains(StackWalker.Option.SHOW_HIDDEN_FRAMES)) {
-            return StackWalkerHolder.SHF;
-        } else if (option.contains(StackWalker.Option.SHOW_REFLECT_FRAMES)) {
-            return StackWalkerHolder.SRF;
-        } else {
-            return StackWalkerHolder.PLAIN;
-        }
-    }
-
-    @Substitute
-    public static Target_java_lang_StackWalker getInstance(Set<StackWalker.Option> option, int estDepth) {
-        return getInstance(option);
-    }
-}
-
-final class StackWalker_Util {
-    private StackWalker_Util() {}
-
-    static boolean isReflect(final String nextClassName) {
-        return Method.class.getName().equals(nextClassName) || Constructor.class.getName().equals(nextClassName);
-        // TODO: MethodAccessor.class.isAssignableFrom(c)
-        // TODO: ConstructorAccessor.class.isAssignableFrom(c)
-        // TODO: c.getName().startsWith("java.lang.invoke.LambdaForm")
-    }
-
-    static boolean isHidden(final String nextClassName) {
-        return ImplicitExceptions.class.getName().equals(nextClassName);
-    }
-}
-
-final class StackIterator implements Iterator<StackFrame> {
-    final Thread thread = Thread.currentThread();
-    final boolean includeReflect;
-    final boolean includeHidden;
-    boolean valid = true;
-    JavaStackWalk walk;
-    StackFrame next;
-    Iterator<StackFrame> nested;
-
-    StackIterator(final JavaStackWalk walk, final Set<StackWalker.Option> options) {
-        includeHidden = options.contains(StackWalker.Option.SHOW_HIDDEN_FRAMES);
-        includeReflect = includeHidden || options.contains(StackWalker.Option.SHOW_REFLECT_FRAMES);
-        this.walk = walk;
-        if (JavaStackWalker.startWalk(walk)) {
-            nested = getNested();
-        }
-    }
-
-    public boolean hasNext() {
-        checkThread();
-        while (next == null) {
-            while (nested == null) {
-                Iterator<StackFrame> nested = getNested();
-                if (nested == null) return false;
-                this.nested = nested;
-            }
-            while (nested.hasNext()) {
-                final StackWalker.StackFrame possibleNext = nested.next();
-                final String nextClassName = possibleNext.getClassName();
-                if ((includeHidden || ! StackWalker_Util.isHidden(nextClassName)) && (includeReflect || ! StackWalker_Util.isReflect(nextClassName))) {
-                   this.next = possibleNext;
-                   return true;
-               } else {
-                   // skip frame
-               }
-            }
-            nested = null;
-        }
-        return true;
-    }
-
-    private Iterator<StackFrame> getNested() {
-        if (! JavaStackWalker.continueWalk(walk)) {
+        @Override
+        public Spliterator<StackFrame> trySplit() {
             return null;
         }
-        DeoptimizedFrame deoptimizedFrame = Deoptimizer.checkDeoptimized(walk.getSP());
-        if (deoptimizedFrame != null) {
-            return new VirtualFrameIterator(deoptimizedFrame.getTopFrame());
-        } else {
-            return new FrameInfoIterator(CodeInfoTable.lookupCodeInfoQueryResult(walk.getIP()).getFrameInfo());
+
+        @Override
+        public long estimateSize() {
+            return Long.MAX_VALUE;
+        }
+
+        @Override
+        public int characteristics() {
+            return Spliterator.IMMUTABLE | Spliterator.NONNULL | Spliterator.ORDERED;
         }
     }
 
-    public StackWalker.StackFrame next() {
-        checkThread();
-        if (! hasNext()) throw new NoSuchElementException();
-        try {
-            return next;
-        } finally {
-            next = null;
+    final class StackFrameImpl implements StackWalker.StackFrame {
+        private final FrameInfoQueryResult frameInfo;
+        private StackTraceElement ste;
+
+        StackFrameImpl(FrameInfoQueryResult frameInfo) {
+            this.frameInfo = frameInfo;
         }
-    }
 
-    void checkThread() {
-        if (thread != Thread.currentThread()) throw new IllegalStateException("Invalid thread");
-        if (! valid) throw new IllegalStateException("Stack traversal no longer valid");
-    }
-
-    void invalidate() {
-        valid = false;
-    }
-}
-
-final class VirtualFrameIterator implements Iterator<StackWalker.StackFrame> {
-
-    DeoptimizedFrame.VirtualFrame frame;
-    StackWalker.StackFrame next;
-
-    VirtualFrameIterator(final DeoptimizedFrame.VirtualFrame frame) {
-        this.frame = frame;
-    }
-
-    public boolean hasNext() {
-        if (next == null) {
-            if (frame == null) return false;
-            next = new StackFrameImpl(frame.getFrameInfo());
-            frame = frame.getCaller();
+        @Override
+        public String getClassName() {
+            return frameInfo.getSourceClassName();
         }
-        return true;
-    }
 
-    public StackWalker.StackFrame next() {
-        if (! hasNext()) throw new NoSuchElementException();
-        try {
-            return next;
-        } finally {
-            next = null;
+        @Override
+        public String getMethodName() {
+            return frameInfo.getSourceMethodName();
         }
-    }
-}
 
-final class FrameInfoIterator implements Iterator<StackWalker.StackFrame> {
-
-    FrameInfoQueryResult frameInfo;
-    StackWalker.StackFrame next;
-
-    FrameInfoIterator(final FrameInfoQueryResult frameInfo) {
-        this.frameInfo = frameInfo;
-    }
-
-    public boolean hasNext() {
-        if (next == null) {
-            if (frameInfo == null) return false;
-            next = new StackFrameImpl(frameInfo);
-            frameInfo = frameInfo.getCaller();
+        @Override
+        public Class<?> getDeclaringClass() {
+            if (!retainClassRef) {
+                throw new UnsupportedOperationException("This stack walker does not have RETAIN_CLASS_REFERENCE access");
+            }
+            return frameInfo.getSourceClass();
         }
-        return true;
-    }
 
-    public StackWalker.StackFrame next() {
-        if (! hasNext()) throw new NoSuchElementException();
-        try {
-            return next;
-        } finally {
-            next = null;
+        @Override
+        public int getByteCodeIndex() {
+            return frameInfo.getBci();
         }
-    }
-}
 
-final class StackWalkerHolder {
-    static final Target_java_lang_StackWalker PLAIN = new Target_java_lang_StackWalker(EnumSet.noneOf(StackWalker.Option.class));
-    static final Target_java_lang_StackWalker SRF = new Target_java_lang_StackWalker(EnumSet.of(StackWalker.Option.SHOW_REFLECT_FRAMES));
-    static final Target_java_lang_StackWalker SHF = new Target_java_lang_StackWalker(EnumSet.of(StackWalker.Option.SHOW_HIDDEN_FRAMES));
-}
-
-final class StackFrameImpl implements StackWalker.StackFrame {
-    private final FrameInfoQueryResult frameInfo;
-    private StackTraceElement ste;
-
-    StackFrameImpl(final FrameInfoQueryResult frameInfo) {
-        this.frameInfo = frameInfo;
-    }
-
-    public String getClassName() {
-        final String scn = frameInfo.getSourceClassName();
-        return scn == null ? "" : scn;
-    }
-
-    public String getMethodName() {
-        return frameInfo.getSourceMethodName();
-    }
-
-    public Class<?> getDeclaringClass() {
-        throw new UnsupportedOperationException();
-    }
-
-    public int getByteCodeIndex() {
-        return frameInfo.getBci();
-    }
-
-    public String getFileName() {
-        return frameInfo.getSourceFileName();
-    }
-
-    public int getLineNumber() {
-        return frameInfo.getSourceLineNumber();
-    }
-
-    public boolean isNativeMethod() {
-        return frameInfo.isNativeMethod();
-    }
-
-    public StackTraceElement toStackTraceElement() {
-        StackTraceElement ste = this.ste;
-        if (ste == null) {
-            this.ste = ste = frameInfo.getSourceReference();
+        @Override
+        public String getFileName() {
+            return frameInfo.getSourceFileName();
         }
-        return ste;
+
+        @Override
+        public int getLineNumber() {
+            return frameInfo.getSourceLineNumber();
+        }
+
+        @Override
+        public boolean isNativeMethod() {
+            return frameInfo.isNativeMethod();
+        }
+
+        @Override
+        public StackTraceElement toStackTraceElement() {
+            if (ste == null) {
+                ste = frameInfo.getSourceReference();
+            }
+            return ste;
+        }
+
+        @Override
+        public String toString() {
+            return toStackTraceElement().toString();
+        }
     }
 }
 
 @TargetClass(className = "java.lang.StackFrameInfo", onlyWith = JDK9OrLater.class)
 @Delete
-final class Target_java_lang_StackFrameInfo {}
+final class Target_java_lang_StackFrameInfo {
+}
 
 @TargetClass(className = "java.lang.StackStreamFactory", onlyWith = JDK9OrLater.class)
 @Delete
-final class Target_java_lang_StackStreamFactory {}
-
-
+final class Target_java_lang_StackStreamFactory {
+}

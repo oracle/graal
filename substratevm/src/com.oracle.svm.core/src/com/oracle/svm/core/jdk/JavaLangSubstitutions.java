@@ -55,9 +55,7 @@ import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.Platforms;
 import org.graalvm.nativeimage.c.function.CFunction;
 import org.graalvm.nativeimage.c.function.CLibrary;
-import org.graalvm.nativeimage.c.function.CodePointer;
 import org.graalvm.nativeimage.impl.InternalPlatform;
-import org.graalvm.word.Pointer;
 import org.graalvm.word.UnsignedWord;
 import org.graalvm.word.WordFactory;
 
@@ -75,7 +73,6 @@ import com.oracle.svm.core.annotate.TargetElement;
 import com.oracle.svm.core.hub.DynamicHub;
 import com.oracle.svm.core.log.Log;
 import com.oracle.svm.core.snippets.KnownIntrinsics;
-import com.oracle.svm.core.stack.JavaStackWalker;
 import com.oracle.svm.core.util.VMError;
 
 import jdk.vm.ci.meta.MetaAccessProvider;
@@ -190,15 +187,9 @@ final class Target_java_lang_Throwable {
     }
 
     @Substitute
-    @NeverInline("Prevent inlining in Truffle compilations")
+    @NeverInline("Starting a stack walk in the caller frame")
     private Object fillInStackTrace() {
-        Pointer sp = KnownIntrinsics.readCallerStackPointer();
-        CodePointer ip = KnownIntrinsics.readReturnAddress();
-
-        StackTraceBuilder stackTraceBuilder = new StackTraceBuilder(true);
-        JavaStackWalker.walkCurrentThread(sp, ip, stackTraceBuilder);
-        this.stackTrace = stackTraceBuilder.getTrace();
-
+        stackTrace = StackTraceUtils.getStackTrace(true, KnownIntrinsics.readCallerStackPointer(), KnownIntrinsics.readReturnAddress());
         return this;
     }
 
