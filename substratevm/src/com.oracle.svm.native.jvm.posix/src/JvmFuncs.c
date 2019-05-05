@@ -104,7 +104,7 @@ JNIEXPORT int JVM_ActiveProcessorCount() {
     return sysconf(_SC_NPROCESSORS_ONLN);
 }
 
-JNIEXPORT int JVM_Connect(int fd, struct sockaddr* him, socklen_t len) { 
+JNIEXPORT int JVM_Connect(int fd, struct sockaddr* him, socklen_t len) {
     RESTARTABLE_RETURN_INT(connect(fd, him, len));
 }
 
@@ -282,7 +282,7 @@ JNIEXPORT int JVM_SocketShutdown(int fd, int howto) {
 }
 
 /* Called directly from several native functions */
-JNIEXPORT int JVM_InitializeSocketLibrary() { 
+JNIEXPORT int JVM_InitializeSocketLibrary() {
     /* A noop, returns 0 in hotspot */
    return 0;
 }
@@ -339,6 +339,7 @@ int jio_vfprintf(FILE* f, const char *fmt, va_list args) {
   return vfprintf(f, fmt, args);
 }
 
+#ifdef JAVA_VERSION_9
 int jio_snprintf(char *str, size_t count, const char *fmt, ...) {
   va_list args;
   int len;
@@ -347,6 +348,7 @@ int jio_snprintf(char *str, size_t count, const char *fmt, ...) {
   va_end(args);
   return len;
 }
+#endif
 
 int jio_vsnprintf(char *str, size_t count, const char *fmt, va_list args) {
   int result;
