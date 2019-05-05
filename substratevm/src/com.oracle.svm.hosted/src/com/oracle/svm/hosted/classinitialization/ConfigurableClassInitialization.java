@@ -631,8 +631,6 @@ public class ConfigurableClassInitialization implements ClassInitializationSuppo
             return InitKind.BUILD_TIME;
         } else if (clazz.getTypeName().contains("$$StringConcat")) {
             return InitKind.BUILD_TIME;
-        } else if (specifiedInitKindFor(clazz) != null) {
-            return specifiedInitKindFor(clazz);
         } else {
             ClassLoader typeClassLoader = clazz.getClassLoader();
             if (typeClassLoader == null ||
@@ -643,6 +641,8 @@ public class ConfigurableClassInitialization implements ClassInitializationSuppo
                             /* JDK 15 */
                             typeClassLoader == ConfigurableClassInitialization.class.getClassLoader()) {
                 return InitKind.BUILD_TIME;
+            } else if (specifiedInitKindFor(clazz) != null) {
+                return specifiedInitKindFor(clazz);
             }
         }
 
