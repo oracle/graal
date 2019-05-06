@@ -44,6 +44,7 @@ import com.oracle.truffle.llvm.runtime.LLVMSymbol;
 import com.oracle.truffle.llvm.runtime.debug.scope.LLVMSourceLocation;
 import com.oracle.truffle.llvm.runtime.global.LLVMGlobal;
 import com.oracle.truffle.llvm.runtime.types.PointerType;
+import com.oracle.truffle.llvm.runtime.types.symbols.LLVMIdentifier;
 
 final class LLSourceMap {
 
@@ -147,11 +148,11 @@ final class LLSourceMap {
     }
 
     Function getFunction(String name) {
-        return functions.get("@" + name);
+        return functions.get(LLVMIdentifier.toGlobalIdentifier(name));
     }
 
     void clearFunction(Function function) {
-        functions.remove("@" + function.getName());
+        functions.remove(LLVMIdentifier.toGlobalIdentifier(function.getName()));
     }
 
     Source getLLSource() {
