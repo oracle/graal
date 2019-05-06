@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2016, 2018, Oracle and/or its affiliates.
+ * Copyright (c) 2016, 2019, Oracle and/or its affiliates.
  *
  * All rights reserved.
  *
@@ -117,13 +117,13 @@ public abstract class LLVMGetStackSpaceInstruction extends LLVMExpressionNode {
         @Specialization
         protected LLVMNativePointer doOp(VirtualFrame frame, int nr,
                         @Cached("getLLVMMemory()") LLVMMemory memory) {
-            return LLVMNativePointer.create(LLVMStack.allocateStackMemory(frame, memory, getStackPointerSlot(), getSize() * nr, getAlignment()));
+            return LLVMNativePointer.create(LLVMStack.allocateStackMemory(frame, memory, getStackPointerSlot(), getSize() * (long) nr, getAlignment()));
         }
 
         @Specialization
         protected LLVMNativePointer doOp(VirtualFrame frame, long nr,
                         @Cached("getLLVMMemory()") LLVMMemory memory) {
-            return LLVMNativePointer.create(LLVMStack.allocateStackMemory(frame, memory, getStackPointerSlot(), (int) (getSize() * nr), getAlignment()));
+            return LLVMNativePointer.create(LLVMStack.allocateStackMemory(frame, memory, getStackPointerSlot(), getSize() * nr, getAlignment()));
         }
     }
 }
