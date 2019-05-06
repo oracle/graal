@@ -52,10 +52,6 @@ DEPFLAGS = -MT $@ -MMD -MP -MF deps/$*.Td
 POSTCOMPILE = @mv -f deps/$*.Td deps/$*.d && touch $@
 $(shell mkdir -p deps bin >/dev/null)
 
-ifeq ($(OS), darwin)
-bin/${LIB_POLYGLOT}: LDFLAGS+=-install_name ${LIB_POLYGLOT}
-endif
-
 bin/libsulong.bc: ${C_BC_FILES}
 	$(QUIETLY) $(LLVM_LINK) -o $@ $+
 
@@ -75,10 +71,6 @@ bin/%.noopt.bc: libcxxabi/%.cpp deps/%.d
 
 bin/libsulong-src.tar.gz: ${C_SOURCE_FILES} ${CXX_SOURCE_FILES} include/polyglot.h
 	$(QUIETLY) tar -czf $@ -C ${VPATH} .
-
-bin/$(LIB_POLYGLOT): libpolyglot/polyglot-mock.c
-	$(QUIETLY) $(CLANG) -fPIC -shared -o $@ -I${VPATH}/include -Wno-return-type ${LDFLAGS} ${CFLAGS} ${DEPFLAGS} $<
-	${POSTCOMPILE}
 
 deps/%.d: ;
 .PRECIOUS: deps/%.d
