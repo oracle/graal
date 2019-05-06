@@ -299,7 +299,7 @@ public class NativeImageGeneratorRunner implements ImageBuildTask {
                 compilationExecutor.shutdownNow();
             }
             e.getReason().ifPresent(NativeImageGeneratorRunner::info);
-            return 0;
+            return 3;
         } catch (FallbackFeature.FallbackImageRequest e) {
             reportUserException(e, parsedHostedOptions, NativeImageGeneratorRunner::warn);
             return 2;
