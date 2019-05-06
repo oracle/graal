@@ -40,13 +40,11 @@ import com.oracle.truffle.llvm.parser.model.functions.FunctionDeclaration;
 import com.oracle.truffle.llvm.parser.model.functions.FunctionDefinition;
 import com.oracle.truffle.llvm.parser.model.functions.LazyFunctionParser;
 import com.oracle.truffle.llvm.parser.model.symbols.globals.GlobalAlias;
-import com.oracle.truffle.llvm.parser.model.symbols.globals.GlobalValueSymbol;
 import com.oracle.truffle.llvm.parser.model.symbols.globals.GlobalVariable;
 import com.oracle.truffle.llvm.parser.model.target.TargetDataLayout;
 import com.oracle.truffle.llvm.parser.model.target.TargetInformation;
-import com.oracle.truffle.llvm.parser.model.visitors.ModelVisitor;
-import com.oracle.truffle.llvm.runtime.debug.type.LLVMSourceStaticMemberType;
 import com.oracle.truffle.llvm.runtime.debug.scope.LLVMSourceSymbol;
+import com.oracle.truffle.llvm.runtime.debug.type.LLVMSourceStaticMemberType;
 import com.oracle.truffle.llvm.runtime.types.Type;
 
 public final class ModelModule {
@@ -78,28 +76,6 @@ public final class ModelModule {
 
     public TargetDataLayout getTargetDataLayout() {
         return targetDataLayout;
-    }
-
-    public void accept(ModelVisitor visitor) {
-        visitor.visit(targetDataLayout);
-        for (TargetInformation t : targetInfo) {
-            visitor.visit(t);
-        }
-        for (Type t : types) {
-            visitor.visit(t);
-        }
-        for (GlobalValueSymbol variable : globalVariables) {
-            variable.accept(visitor);
-        }
-        for (GlobalValueSymbol alias : aliases) {
-            alias.accept(visitor);
-        }
-        for (FunctionDefinition d : defines) {
-            visitor.visit(d);
-        }
-        for (FunctionDeclaration d : declares) {
-            visitor.visit(d);
-        }
     }
 
     public void addFunctionDeclaration(FunctionDeclaration declaration) {

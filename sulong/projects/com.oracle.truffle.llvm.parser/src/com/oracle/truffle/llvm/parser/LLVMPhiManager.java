@@ -42,10 +42,9 @@ import com.oracle.truffle.llvm.parser.model.symbols.instructions.PhiInstruction;
 import com.oracle.truffle.llvm.parser.model.symbols.instructions.TerminatingInstruction;
 import com.oracle.truffle.llvm.parser.model.visitors.FunctionVisitor;
 import com.oracle.truffle.llvm.parser.model.visitors.InstructionVisitorAdapter;
-import com.oracle.truffle.llvm.parser.model.visitors.ModelVisitor;
 import com.oracle.truffle.llvm.runtime.except.LLVMParserException;
 
-public final class LLVMPhiManager implements ModelVisitor {
+public final class LLVMPhiManager {
 
     private LLVMPhiManager() {
     }

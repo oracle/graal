@@ -29,26 +29,40 @@
  */
 package com.oracle.truffle.llvm.parser.util;
 
+import java.util.List;
 import java.util.function.BiFunction;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
+import com.oracle.truffle.llvm.parser.model.GlobalSymbol;
 import com.oracle.truffle.llvm.parser.model.ModelModule;
-import com.oracle.truffle.llvm.parser.model.ValueSymbol;
 import com.oracle.truffle.llvm.parser.model.enums.Linkage;
-import com.oracle.truffle.llvm.parser.model.functions.FunctionDeclaration;
-import com.oracle.truffle.llvm.parser.model.functions.FunctionDefinition;
-import com.oracle.truffle.llvm.parser.model.symbols.globals.GlobalAlias;
-import com.oracle.truffle.llvm.parser.model.symbols.globals.GlobalVariable;
 import com.oracle.truffle.llvm.parser.model.target.TargetDataLayout;
-import com.oracle.truffle.llvm.parser.model.visitors.ModelVisitor;
 import com.oracle.truffle.llvm.runtime.except.LLVMParserException;
 
 public final class SymbolNameMangling {
 
+    private static final String MANGLED_PREFIX = "\u0001";
+
+    private static void demangle(List<? extends GlobalSymbol> list, BiFunction<Linkage, String, String> demangler) {
+        for (GlobalSymbol symbol : list) {
+            String name = symbol.getName();
+
+            if (name.startsWith(MANGLED_PREFIX)) {
+                name = demangler.apply(symbol.getLinkage(), name.substring(MANGLED_PREFIX.length()));
+            }
+
+            symbol.setName(name);
+        }
+    }
+
     public static void demangleGlobals(ModelModule model) {
-        final BiFunction<Linkage, String, String> demangler = getDemangler(model.getTargetDataLayout());
-        model.accept(new DemangleVisitor(demangler));
+        BiFunction<Linkage, String, String> demangler = getDemangler(model.getTargetDataLayout());
+
+        demangle(model.getGlobalVariables(), demangler);
+        demangle(model.getAliases(), demangler);
+        demangle(model.getDeclaredFunctions(), demangler);
+        demangle(model.getDefinedFunctions(), demangler);
     }
 
     private static final BiFunction<Linkage, String, String> DEFAULT_DEMANGLER = (linkage, name) -> name;
@@ -111,47 +125,6 @@ public final class SymbolNameMangling {
             }
         } else {
             return DEFAULT_DEMANGLER;
-        }
-    }
-
-    private static final String MANGLED_PREFIX = "\u0001";
-
-    private static final class DemangleVisitor implements ModelVisitor {
-
-        private final BiFunction<Linkage, String, String> demangler;
-
-        private DemangleVisitor(BiFunction<Linkage, String, String> demangler) {
-            this.demangler = demangler;
-        }
-
-        private void demangle(Linkage linkage, ValueSymbol symbol) {
-            String name = symbol.getName();
-
-            if (name.startsWith(MANGLED_PREFIX)) {
-                name = demangler.apply(linkage, name.substring(MANGLED_PREFIX.length()));
-            }
-
-            symbol.setName(name);
-        }
-
-        @Override
-        public void visit(GlobalAlias alias) {
-            demangle(alias.getLinkage(), alias);
-        }
-
-        @Override
-        public void visit(GlobalVariable variable) {
-            demangle(variable.getLinkage(), variable);
-        }
-
-        @Override
-        public void visit(FunctionDeclaration function) {
-            demangle(function.getLinkage(), function);
-        }
-
-        @Override
-        public void visit(FunctionDefinition function) {
-            demangle(function.getLinkage(), function);
         }
     }
 

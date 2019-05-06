@@ -32,7 +32,6 @@ package com.oracle.truffle.llvm.parser.model.symbols.globals;
 import com.oracle.truffle.llvm.parser.model.SymbolTable;
 import com.oracle.truffle.llvm.parser.model.enums.Linkage;
 import com.oracle.truffle.llvm.parser.model.enums.Visibility;
-import com.oracle.truffle.llvm.parser.model.visitors.ModelVisitor;
 import com.oracle.truffle.llvm.parser.model.visitors.SymbolVisitor;
 import com.oracle.truffle.llvm.runtime.types.PointerType;
 
@@ -44,11 +43,6 @@ public final class GlobalAlias extends GlobalValueSymbol {
 
     @Override
     public void accept(SymbolVisitor visitor) {
-        visitor.visit(this);
-    }
-
-    @Override
-    public void accept(ModelVisitor visitor) {
         visitor.visit(this);
     }
 

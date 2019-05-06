@@ -30,24 +30,22 @@
 package com.oracle.truffle.llvm.parser.model.functions;
 
 import com.oracle.truffle.api.CompilerAsserts;
+import com.oracle.truffle.llvm.parser.model.GlobalSymbol;
 import com.oracle.truffle.llvm.parser.model.ValueSymbol;
 import com.oracle.truffle.llvm.parser.model.attributes.AttributesCodeEntry;
 import com.oracle.truffle.llvm.parser.model.attributes.AttributesGroup;
 import com.oracle.truffle.llvm.parser.model.enums.Linkage;
 import com.oracle.truffle.llvm.runtime.types.FunctionType;
 
-public abstract class FunctionSymbol implements ValueSymbol {
+public abstract class FunctionSymbol extends GlobalSymbol implements ValueSymbol {
 
     private final FunctionType type;
-    private String name;
     private final AttributesCodeEntry paramAttr;
-    private final Linkage linkage;
 
     public FunctionSymbol(FunctionType type, String name, Linkage linkage, AttributesCodeEntry paramAttr) {
+        super(name, linkage);
         this.type = type;
-        this.name = name;
         this.paramAttr = paramAttr;
-        this.linkage = linkage;
     }
 
     @Override
@@ -69,25 +67,4 @@ public abstract class FunctionSymbol implements ValueSymbol {
         CompilerAsserts.neverPartOfCompilation();
         return paramAttr.getParameterAttributesGroup(idx);
     }
-
-    public final Linkage getLinkage() {
-        return linkage;
-    }
-
-    @Override
-    public final String getName() {
-        assert name != null;
-        return name;
-    }
-
-    @Override
-    public final void setName(String name) {
-        this.name = name;
-    }
-
-    public abstract boolean isExported();
-
-    public abstract boolean isOverridable();
-
-    public abstract boolean isExternal();
 }

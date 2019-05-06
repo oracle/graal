@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2016, 2018, Oracle and/or its affiliates.
+ * Copyright (c) 2016, 2019, Oracle and/or its affiliates.
  *
  * All rights reserved.
  *
@@ -27,49 +27,38 @@
  * NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED
  * OF THE POSSIBILITY OF SUCH DAMAGE.
  */
-package com.oracle.truffle.llvm.parser.model.visitors;
+package com.oracle.truffle.llvm.parser.model;
 
-import com.oracle.truffle.llvm.parser.model.functions.FunctionDeclaration;
-import com.oracle.truffle.llvm.parser.model.functions.FunctionDefinition;
-import com.oracle.truffle.llvm.parser.model.symbols.globals.GlobalAlias;
-import com.oracle.truffle.llvm.parser.model.symbols.globals.GlobalVariable;
-import com.oracle.truffle.llvm.parser.model.target.TargetDataLayout;
-import com.oracle.truffle.llvm.parser.model.target.TargetInformation;
-import com.oracle.truffle.llvm.runtime.types.Type;
+import com.oracle.truffle.llvm.parser.model.enums.Linkage;
 
-public interface ModelVisitor {
-    /**
-     * We normally don't need to implement all visitors, but want to have a default implementation
-     * for those visitors which are not handled explicitly. This little method allows us to do so.
-     */
-    default void defaultModelAction(@SuppressWarnings("unused") Object obj) {
+public abstract class GlobalSymbol implements ValueSymbol {
+
+    private String name;
+    private final Linkage linkage;
+
+    public GlobalSymbol(String name, Linkage linkage) {
+        this.name = name;
+        this.linkage = linkage;
     }
 
-    default void visit(GlobalAlias alias) {
-        defaultModelAction(alias);
+    public final Linkage getLinkage() {
+        return linkage;
     }
 
-    default void visit(GlobalVariable variable) {
-        defaultModelAction(variable);
+    @Override
+    public final String getName() {
+        assert name != null;
+        return name;
     }
 
-    default void visit(FunctionDeclaration function) {
-        defaultModelAction(function);
+    @Override
+    public final void setName(String name) {
+        this.name = name;
     }
 
-    default void visit(FunctionDefinition function) {
-        defaultModelAction(function);
-    }
+    public abstract boolean isExported();
 
-    default void visit(TargetDataLayout layout) {
-        defaultModelAction(layout);
-    }
+    public abstract boolean isOverridable();
 
-    default void visit(TargetInformation info) {
-        defaultModelAction(info);
-    }
-
-    default void visit(Type type) {
-        defaultModelAction(type);
-    }
+    public abstract boolean isExternal();
 }
