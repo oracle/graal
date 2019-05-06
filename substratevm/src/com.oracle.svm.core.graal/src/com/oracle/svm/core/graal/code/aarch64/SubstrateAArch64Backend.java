@@ -339,11 +339,6 @@ public class SubstrateAArch64Backend extends SubstrateBackend implements LIRGene
         }
 
         @Override
-        public Value emitReadInstructionPointer() {
-            throw unimplemented();
-        }
-
-        @Override
         public void emitVerificationMarker(Object marker) {
             append(new VerificationMarkerOp(marker));
         }

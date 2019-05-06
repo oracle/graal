@@ -39,10 +39,10 @@ import javax.management.ObjectName;
 
 import org.graalvm.compiler.api.replacements.Fold;
 import org.graalvm.compiler.word.Word;
-import org.graalvm.nativeimage.hosted.Feature.FeatureAccess;
 import org.graalvm.nativeimage.IsolateThread;
 import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.Platforms;
+import org.graalvm.nativeimage.hosted.Feature.FeatureAccess;
 import org.graalvm.word.Pointer;
 import org.graalvm.word.PointerBase;
 import org.graalvm.word.UnsignedWord;
@@ -55,6 +55,7 @@ import com.oracle.svm.core.MemoryWalker.NativeImageHeapRegionAccess;
 import com.oracle.svm.core.MemoryWalker.RuntimeCompiledMethodAccess;
 import com.oracle.svm.core.SubstrateOptions;
 import com.oracle.svm.core.SubstrateUtil;
+import com.oracle.svm.core.annotate.NeverInline;
 import com.oracle.svm.core.annotate.Substitute;
 import com.oracle.svm.core.annotate.TargetClass;
 import com.oracle.svm.core.annotate.Uninterruptible;
@@ -610,6 +611,7 @@ public class HeapImpl extends Heap {
         return (HeapOptions.VerifyHeap.getValue() || HeapOptions.VerifyStackAfterCollection.getValue());
     }
 
+    @NeverInline("Starting a stack walk in the caller frame")
     void verifyBeforeGC(String cause, UnsignedWord epoch) {
         final Log trace = Log.noopLog().string("[HeapImpl.verifyBeforeGC:");
         trace.string("  getVerifyHeapBeforeGC(): ").bool(getVerifyHeapBeforeGC()).string("  heapVerifier: ").object(heapVerifier);
@@ -631,6 +633,7 @@ public class HeapImpl extends Heap {
         trace.string("]").newline();
     }
 
+    @NeverInline("Starting a stack walk in the caller frame")
     void verifyAfterGC(String cause, UnsignedWord epoch) {
         if (getVerifyHeapAfterGC()) {
             assert heapVerifier != null : "No heap verifier!";

@@ -544,6 +544,7 @@ public abstract class JavaThreads {
         return result;
     }
 
+    @NeverInline("Starting a stack walk in the caller frame")
     private static StackTraceElement[] getStackTrace(IsolateThread thread) {
         if (thread == CurrentIsolate.getCurrentThread()) {
             /*
