@@ -225,9 +225,13 @@ public class FallbackFeature implements Feature {
         public static final int Automatic = 5;
         public static final int NoFallback = 0;
 
-        @APIOption(name = "force-fallback", fixedValue = "" + ForceFallback, customHelp = "force building of fallback image") //
-        @APIOption(name = "auto-fallback", fixedValue = "" + Automatic, customHelp = "build stand-alone image if possible") //
-        @APIOption(name = "no-fallback", fixedValue = "" + NoFallback, customHelp = "build stand-alone image or report failure") //
+        public static final String OptionNameForceFallback = "force-fallback";
+        public static final String OptionNameAutoFallback = "auto-fallback";
+        public static final String OptionNameNoFallback = "no-fallback";
+
+        @APIOption(name = OptionNameForceFallback, fixedValue = "" + ForceFallback, customHelp = "force building of fallback image") //
+        @APIOption(name = OptionNameAutoFallback, fixedValue = "" + Automatic, customHelp = "build stand-alone image if possible") //
+        @APIOption(name = OptionNameNoFallback, fixedValue = "" + NoFallback, customHelp = "build stand-alone image or report failure") //
         @Option(help = "Define when fallback-image generation should be used.")//
         public static final HostedOptionKey<Integer> FallbackThreshold = new HostedOptionKey<>(Automatic);
     }
@@ -246,8 +250,7 @@ public class FallbackFeature implements Feature {
     @Override
     public void afterRegistration(AfterRegistrationAccess a) {
         if (Options.FallbackThreshold.getValue() == Options.ForceFallback) {
-            String fallbackArgument = SubstrateOptionsParser.commandArgument(Options.FallbackThreshold, "" + Options.FallbackThreshold.getValue());
-            reportFallback(ABORT_MSG_PREFIX + " due to native-image option " + fallbackArgument);
+            reportFallback(ABORT_MSG_PREFIX + " due to native-image option --" + Options.OptionNameForceFallback);
         }
     }
 

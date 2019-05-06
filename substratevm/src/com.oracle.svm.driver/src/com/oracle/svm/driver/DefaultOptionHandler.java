@@ -27,6 +27,7 @@ package com.oracle.svm.driver;
 import java.io.File;
 import java.nio.file.Path;
 import java.nio.file.Paths;
+import java.util.List;
 import java.util.Queue;
 import java.util.jar.Attributes;
 import java.util.jar.JarFile;
@@ -37,6 +38,8 @@ import org.graalvm.compiler.options.OptionType;
 import com.oracle.svm.hosted.ImageClassLoader;
 
 class DefaultOptionHandler extends NativeImage.OptionHandler<NativeImage> {
+
+    private static final String verboseOption = "--verbose";
 
     static final String helpText = NativeImage.getResource("/Help.txt");
     static final String helpExtraText = NativeImage.getResource("/HelpExtra.txt");
@@ -108,7 +111,7 @@ class DefaultOptionHandler extends NativeImage.OptionHandler<NativeImage> {
                 handleJarFileArg(nativeImage.canonicalize(Paths.get(jarFilePathStr)));
                 nativeImage.setJarOptionMode(true);
                 return true;
-            case "--verbose":
+            case verboseOption:
                 args.poll();
                 nativeImage.setVerbose(true);
                 return true;
@@ -230,6 +233,12 @@ class DefaultOptionHandler extends NativeImage.OptionHandler<NativeImage> {
             throw ex;
         } catch (Throwable ex) {
             throw NativeImage.showError("Invalid or corrupt jarfile " + filePath);
+        }
+    }
+
+    void addFallbackBuildArgs(List<String> buildArgs) {
+        if (nativeImage.isVerbose()) {
+            buildArgs.add(verboseOption);
         }
     }
 }

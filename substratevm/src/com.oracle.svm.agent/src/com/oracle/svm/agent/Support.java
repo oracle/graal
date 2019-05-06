@@ -77,6 +77,34 @@ public final class Support {
         jvmtiEnv = nullPointer();
     }
 
+    static String getSystemProperty(JvmtiEnv jvmti, String propertyName) {
+        try (CCharPointerHolder propertyKey = toCString(propertyName)) {
+            CCharPointerPointer propertyValuePtr = StackValue.get(CCharPointerPointer.class);
+            check(jvmti.getFunctions().GetSystemProperty().invoke(jvmti, propertyKey.get(), propertyValuePtr));
+            String propertyValue = fromCString(propertyValuePtr.read());
+            check(jvmti.getFunctions().Deallocate().invoke(jvmti, propertyValuePtr.read()));
+            return propertyValue;
+        } catch (Throwable t) {
+            return null;
+        }
+    }
+
+    static String[] getSystemProperties(JvmtiEnv jvmti) {
+        CIntPointer countPtr = StackValue.get(CIntPointer.class);
+        WordPointer propertyPtr = StackValue.get(WordPointer.class);
+        check(jvmti.getFunctions().GetSystemProperties().invoke(jvmti, countPtr, propertyPtr));
+        int numEntries = countPtr.read();
+        CCharPointerPointer properties = propertyPtr.read();
+        String[] result = new String[numEntries];
+        for (int i = 0; i < numEntries; i++) {
+            CCharPointer rawEntry = properties.read(i);
+            result[i] = fromCString(rawEntry);
+            check(jvmti.getFunctions().Deallocate().invoke(jvmti, rawEntry));
+        }
+        check(jvmti.getFunctions().Deallocate().invoke(jvmti, properties));
+        return result;
+    }
+
     /** JVMTI environments, unlike those of JNI, can be safely shared across threads. */
     private static JvmtiEnv jvmtiEnv;
 

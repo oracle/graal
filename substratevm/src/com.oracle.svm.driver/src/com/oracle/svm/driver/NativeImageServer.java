@@ -82,9 +82,12 @@ final class NativeImageServer extends NativeImage {
     private volatile Server building = null;
     private final List<FileChannel> openFileChannels = new ArrayList<>();
 
+    private final ServerOptionHandler serverOptionHandler;
+
     private NativeImageServer(BuildConfiguration buildConfiguration) {
         super(buildConfiguration);
-        registerOptionHandler(new ServerOptionHandler(this));
+        serverOptionHandler = new ServerOptionHandler(this);
+        registerOptionHandler(serverOptionHandler);
     }
 
     static NativeImage create(BuildConfiguration config) {
@@ -731,6 +734,13 @@ final class NativeImageServer extends NativeImage {
     }
 
     @Override
+    protected ArrayList<String> createFallbackBuildArgs() {
+        ArrayList<String> buildArgs = super.createFallbackBuildArgs();
+        serverOptionHandler.addFallbackBuildArgs(buildArgs);
+        return buildArgs;
+    }
+
+    @Override
     protected int buildImage(List<String> javaArgs, LinkedHashSet<Path> bcp, LinkedHashSet<Path> cp, LinkedHashSet<String> imageArgs, LinkedHashSet<Path> imagecp) {
         boolean printFlags = imageArgs.stream().anyMatch(arg -> arg.contains(enablePrintFlags));
         if (useServer && !printFlags && !javaArgs.contains("-Xdebug")) {
@@ -795,6 +805,10 @@ final class NativeImageServer extends NativeImage {
         useServer = val;
     }
 
+    boolean useServer() {
+        return useServer;
+    }
+
     @Override
     protected void setDryRun(boolean val) {
         super.setDryRun(val);
@@ -803,6 +817,10 @@ final class NativeImageServer extends NativeImage {
 
     void setVerboseServer(boolean val) {
         verboseServer = val;
+    }
+
+    boolean verboseServer() {
+        return verboseServer;
     }
 
     void setSessionName(String val) {
