@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2018, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2013, 2019, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -22,18 +22,48 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.svm.core.code;
+package com.oracle.svm.core.stack;
 
-import org.graalvm.nativeimage.c.function.CEntryPoint;
-
-import com.oracle.svm.core.jdk.InternalVMMethod;
+import org.graalvm.nativeimage.c.function.CodePointer;
+import org.graalvm.nativeimage.c.struct.RawField;
+import org.graalvm.nativeimage.c.struct.RawStructure;
+import org.graalvm.word.Pointer;
+import org.graalvm.word.PointerBase;
 
 /**
- * Holder class for generated Java-to-native call stubs for calling {@link CEntryPoint} methods from
- * Java via a Java-to-native call to their native-to-Java stub.
+ * An in-progress Java stack walk.
  */
-@InternalVMMethod
-public final class IsolateLeaveStub {
-    private IsolateLeaveStub() {
-    }
+@RawStructure
+public interface JavaStackWalk extends PointerBase {
+    @RawField
+    Pointer getSP();
+
+    @RawField
+    void setSP(Pointer sp);
+
+    @RawField
+    CodePointer getIP();
+
+    @RawField
+    void setIP(CodePointer ip);
+
+    @RawField
+    JavaFrameAnchor getAnchor();
+
+    @RawField
+    void setAnchor(JavaFrameAnchor anchor);
+
+    // these fields are for diagnostics
+
+    @RawField
+    Pointer getStartSP();
+
+    @RawField
+    void setStartSP(Pointer sp);
+
+    @RawField
+    CodePointer getStartIP();
+
+    @RawField
+    void setStartIP(CodePointer ip);
 }
