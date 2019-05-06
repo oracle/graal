@@ -848,13 +848,7 @@ public final class LLVMContext {
 
         @Override
         public String toString() {
-            StringBuilder result = new StringBuilder(name);
-            if (path != null) {
-                result.append(" (");
-                result.append(path);
-                result.append(")");
-            }
-            return result.toString();
+            return path == null ? name : name + " (" + path + ")";
         }
     }
 

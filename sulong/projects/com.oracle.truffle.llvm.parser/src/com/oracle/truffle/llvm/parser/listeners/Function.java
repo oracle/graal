@@ -94,11 +94,11 @@ public final class Function implements ParserListener {
     private static final int INSTRUCTION_BINOP = 2;
     private static final int INSTRUCTION_CAST = 3;
     private static final int INSTRUCTION_GEP_OLD = 4;
-    // private static final int INSTRUCTION_SELECT = 5;
+    private static final int INSTRUCTION_SELECT = 5;
     private static final int INSTRUCTION_EXTRACTELT = 6;
     private static final int INSTRUCTION_INSERTELT = 7;
     private static final int INSTRUCTION_SHUFFLEVEC = 8;
-    // private static final int INSTRUCTION_CMP = 9;
+    private static final int INSTRUCTION_CMP = 9;
     private static final int INSTRUCTION_RET = 10;
     private static final int INSTRUCTION_BR = 11;
     private static final int INSTRUCTION_SWITCH = 12;
@@ -107,7 +107,7 @@ public final class Function implements ParserListener {
     private static final int INSTRUCTION_PHI = 16;
     private static final int INSTRUCTION_ALLOCA = 19;
     private static final int INSTRUCTION_LOAD = 20;
-    // private static final int INSTRUCTION_VAARG = 23;
+    private static final int INSTRUCTION_VAARG = 23;
     private static final int INSTRUCTION_STORE_OLD = 24;
     private static final int INSTRUCTION_EXTRACTVAL = 26;
     private static final int INSTRUCTION_INSERTVAL = 27;
@@ -124,18 +124,18 @@ public final class Function implements ParserListener {
     private static final int INSTRUCTION_RESUME = 39;
     private static final int INSTRUCTION_LANDINGPAD_OLD = 40;
     private static final int INSTRUCTION_LOADATOMIC = 41;
-    // private static final int INSTRUCTION_STOREATOMIC_OLD = 42;
+    private static final int INSTRUCTION_STOREATOMIC_OLD = 42;
     private static final int INSTRUCTION_GEP = 43;
     private static final int INSTRUCTION_STORE = 44;
     private static final int INSTRUCTION_STOREATOMIC = 45;
     private static final int INSTRUCTION_CMPXCHG = 46;
     private static final int INSTRUCTION_LANDINGPAD = 47;
-    // private static final int INSTRUCTION_CLEANUPRET = 48;
-    // private static final int INSTRUCTION_CATCHRET = 49;
-    // private static final int INSTRUCTION_CATCHPAD = 50;
-    // private static final int INSTRUCTION_CLEANUPPAD = 51;
-    // private static final int INSTRUCTION_CATCHSWITCH = 52;
-    // private static final int INSTRUCTION_OPERAND_BUNDLE = 55;
+    private static final int INSTRUCTION_CLEANUPRET = 48;
+    private static final int INSTRUCTION_CATCHRET = 49;
+    private static final int INSTRUCTION_CATCHPAD = 50;
+    private static final int INSTRUCTION_CLEANUPPAD = 51;
+    private static final int INSTRUCTION_CATCHSWITCH = 52;
+    private static final int INSTRUCTION_OPERAND_BUNDLE = 55;
 
     private final FunctionDefinition function;
 
@@ -359,7 +359,22 @@ public final class Function implements ParserListener {
                 break;
 
             default:
-                throw new LLVMParserException("Unsupported opCode in function block: " + opCode);
+                // differentiate between unknown and unsupported instructions
+                switch (opCode) {
+                    case INSTRUCTION_SELECT:
+                    case INSTRUCTION_CMP:
+                    case INSTRUCTION_VAARG:
+                    case INSTRUCTION_STOREATOMIC_OLD:
+                    case INSTRUCTION_CLEANUPRET:
+                    case INSTRUCTION_CATCHRET:
+                    case INSTRUCTION_CATCHPAD:
+                    case INSTRUCTION_CLEANUPPAD:
+                    case INSTRUCTION_CATCHSWITCH:
+                    case INSTRUCTION_OPERAND_BUNDLE:
+                        throw new LLVMParserException("Unsupported opCode in function block: " + opCode);
+                    default:
+                        throw new LLVMParserException("Unknown opCode in function block: " + opCode);
+                }
         }
     }
 

@@ -329,8 +329,7 @@ public final class LLVMScanner {
 
         @Override
         public void scan(LLVMScanner scanner) {
-            final long op = scanner.read(width);
-            scanner.recordBuffer.addOp(op);
+            scanner.recordBuffer.addOp(scanner.read(width));
         }
     }
 
@@ -344,8 +343,7 @@ public final class LLVMScanner {
 
         @Override
         public void scan(LLVMScanner scanner) {
-            final long op = scanner.readVBR(width);
-            scanner.recordBuffer.addOp(op);
+            scanner.recordBuffer.addOp(scanner.readVBR(width));
         }
     }
 
@@ -355,23 +353,22 @@ public final class LLVMScanner {
 
         @Override
         public void scan(LLVMScanner scanner) {
-            final long op = scanner.readChar();
-            scanner.recordBuffer.addOp(op);
+            scanner.recordBuffer.addOp(scanner.readChar());
         }
     }
 
     private static final class BlobAbbreviatedRecord implements AbbreviatedRecord {
 
         private static final BlobAbbreviatedRecord INSTANCE = new BlobAbbreviatedRecord();
+        private static final long MAX_BLOB_PART_LENGTH = Long.SIZE / Primitive.USER_OPERAND_LITERAL.getBits();
 
         @Override
         public void scan(LLVMScanner scanner) {
             long blobLength = scanner.read(Primitive.USER_OPERAND_BLOB_LENGTH);
             scanner.alignInt();
-            final long maxBlobPartLength = Long.SIZE / Primitive.USER_OPERAND_LITERAL.getBits();
-            scanner.recordBuffer.ensureFits(blobLength / maxBlobPartLength);
+            scanner.recordBuffer.ensureFits(blobLength / MAX_BLOB_PART_LENGTH);
             while (blobLength > 0) {
-                final long l = blobLength <= maxBlobPartLength ? blobLength : maxBlobPartLength;
+                final long l = blobLength <= MAX_BLOB_PART_LENGTH ? blobLength : MAX_BLOB_PART_LENGTH;
                 final long blobValue = scanner.read((int) (Primitive.USER_OPERAND_LITERAL.getBits() * l));
                 scanner.recordBuffer.addOp(blobValue);
                 blobLength -= l;
