@@ -587,6 +587,37 @@ class GraalVmLayoutDistributionTask(mx.LayoutArchiveTask):
             self._rm_link()
 
 
+class DebuginfoDistribution(mx.LayoutTARDistribution):
+    def __init__(self, subject_distribution, theLicense=None, **kw_args):
+        super(DebuginfoDistribution, self).__init__(_suite,
+                                                    name=subject_distribution.name + '_DEBUGINFO',
+                                                    deps=[subject_distribution.name],
+                                                    layout={},
+                                                    path=None,
+                                                    platformDependent=subject_distribution.platformDependent,
+                                                    theLicense=theLicense, **kw_args)
+        self._layout_initialized = False
+        self.subject_distribution = subject_distribution
+
+    def _walk_layout(self):
+        if not self._layout_initialized:
+            root_contents = []
+            self.layout = {
+                './': root_contents
+            }
+            for dep_name in getattr(self.subject_distribution, 'buildDependencies', []):
+                dep = mx.dependency(dep_name)
+                if isinstance(dep, mx.JARDistribution):
+                    if dep.is_stripped():
+                        root_contents += ['dependency:{}:{}/*.map'.format(dep.suite.name, dep.name)]
+                elif isinstance(dep, GraalVmNativeImage):
+                    if dep.debug_file():
+                        root_contents += ['dependency:{}:{}/*.debug'.format(dep.suite.name, dep.name)]
+                        self.layout[dep.native_image_name + '-sources/'] = 'dependency:{}:{}/sources'.format(dep.suite.name, dep.name)
+            self._layout_initialized = True
+        return super(DebuginfoDistribution, self)._walk_layout()
+
+
 def _get_jdk():
     return mx.get_jdk(tag='default')
 
@@ -639,7 +670,7 @@ def remove_lib_prefix_suffix(libname, require_suffix_prefix=True):
 class SvmSupport(object):
     def __init__(self):
         self._svm_supported = has_component('ni', stage1=True)
-        self._debug_supported = has_component('svmee', stage1=True)
+        self._debug_supported = self._svm_supported and has_component('svmee', stage1=True)
 
     def is_supported(self):
         return self._svm_supported
@@ -1682,6 +1713,7 @@ def mx_register_dynamic_suite_constituents(register_project, register_distributi
     :type register_project: (mx.Project) -> None
     :type register_distribution: (mx.Distribution) -> None
     """
+    with_debuginfo = []
     if has_component('FastR'):
         fastr_release_env = mx.get_env('FASTR_RELEASE', None)
         if fastr_release_env is None:
@@ -1690,6 +1722,7 @@ def mx_register_dynamic_suite_constituents(register_project, register_distributi
             mx.abort("When including FastR, FASTR_RFFI should not be set. Got FASTR_RFFI=" + mx.get_env('FASTR_RFFI'))
 
     register_distribution(get_final_graalvm_distribution())
+    with_debuginfo.append(get_final_graalvm_distribution())
 
     with_svm = _get_svm_support().is_supported()
     names = set()
@@ -1729,8 +1762,11 @@ def mx_register_dynamic_suite_constituents(register_project, register_distributi
         main_component = min(components, key=lambda c: c.priority)
         installable_component = GraalVmInstallableComponent(main_component, extra_components=[c for c in components if c != main_component])
         register_distribution(installable_component)
+        with_debuginfo.append(installable_component)
         if isinstance(main_component, mx_sdk.GraalVmTruffleComponent) and has_svm_launcher(main_component):
-            register_distribution(GraalVmStandaloneComponent(installable_component))
+            standalone = GraalVmStandaloneComponent(installable_component)
+            register_distribution(standalone)
+            with_debuginfo.append(standalone)
 
     if register_project:
         lib_polyglot_project = get_lib_polyglot_project()
@@ -1757,6 +1793,11 @@ def mx_register_dynamic_suite_constituents(register_project, register_distributi
                 for launcher_config in _get_launcher_configs(component):
                     register_project(config_class(launcher_config, stage1=True))
         register_distribution(get_stage1_graalvm_distribution())
+
+    if _with_debuginfo():
+        if _get_svm_support().is_debug_supported() or mx.get_opts().strip_jars:
+            for d in with_debuginfo:
+                register_distribution(DebuginfoDistribution(d))
 
 
 def has_svm_launcher(component, fatalIfMissing=False):
@@ -2037,6 +2078,7 @@ mx.add_argument('--force-bash-launchers', action='store', help='Force the use of
 mx.add_argument('--skip-libraries', action='store', help='Do not build native images for these libraries.'
                                                                'This can be a comma-separated list of disabled libraries or `true` to disable all libraries.', default=None)
 mx.add_argument('--no-sources', action='store_true', help='Do not include the archives with the source files of open-source components.')
+mx.add_argument('--with-debuginfo', action='store_true', help='Generate debuginfo distributions.')
 mx.add_argument('--snapshot-catalog', action='store', help='Change the default URL of the component catalog for snapshots.', default=None)
 mx.add_argument('--release-catalog', action='store', help='Change the default URL of the component catalog for releases.', default=None)
 mx.add_argument('--extra-image-builder-argument', action='append', help='Add extra arguments to the image builder.', default=[])
@@ -2125,6 +2167,10 @@ def _has_forced_launchers(component, forced=None):
 
 def _include_sources():
     return not (mx.get_opts().no_sources or _env_var_to_bool('NO_SOURCES'))
+
+
+def _with_debuginfo():
+    return mx.get_opts().with_debuginfo or _env_var_to_bool('WITH_DEBUGINFO')
 
 
 def _snapshot_catalog():
