@@ -55,17 +55,17 @@ public final class ModelModule {
     // one.
     private static final TargetDataLayout defaultLayout = TargetDataLayout.fromString("e-i64:64-f80:128-n8:16:32:64-S128");
 
-    private final List<Type> types = new ArrayList<>();
-    private final List<GlobalVariable> globalVariables = new ArrayList<>();
-    private final List<GlobalAlias> aliases = new ArrayList<>();
-    private final List<FunctionDeclaration> declares = new ArrayList<>();
-    private final List<FunctionDefinition> defines = new ArrayList<>();
-    private final List<TargetInformation> targetInfo = new ArrayList<>();
-    private final List<String> libraries = new ArrayList<>();
-    private final List<String> paths = new ArrayList<>();
-    private final Map<LLVMSourceSymbol, SymbolImpl> sourceGlobals = new HashMap<>();
-    private final Map<LLVMSourceStaticMemberType, SymbolImpl> sourceStaticMembers = new HashMap<>();
-    private final Map<FunctionDefinition, LazyFunctionParser> lazyFunctionParsers = new HashMap<>();
+    private final ArrayList<Type> types = new ArrayList<>();
+    private final ArrayList<GlobalVariable> globalVariables = new ArrayList<>();
+    private final ArrayList<GlobalAlias> aliases = new ArrayList<>();
+    private final ArrayList<FunctionDeclaration> declares = new ArrayList<>();
+    private final ArrayList<FunctionDefinition> defines = new ArrayList<>();
+    private final ArrayList<TargetInformation> targetInfo = new ArrayList<>();
+    private final ArrayList<String> libraries = new ArrayList<>();
+    private final ArrayList<String> paths = new ArrayList<>();
+    private final HashMap<LLVMSourceSymbol, SymbolImpl> sourceGlobals = new HashMap<>();
+    private final HashMap<LLVMSourceStaticMemberType, SymbolImpl> sourceStaticMembers = new HashMap<>();
+    private final HashMap<FunctionDefinition, LazyFunctionParser> lazyFunctionParsers = new HashMap<>();
     private TargetDataLayout targetDataLayout = defaultLayout;
     private DebugInfoFunctionProcessor functionProcessor = null;
 
