@@ -148,8 +148,8 @@ public class InstallCommand implements InstallerCommand {
         if (validateBeforeInstall) {
             return 0;
         }
-        executeStep(this::acceptLicenses, false);
         executeStep(this::completeInstallers, false);
+        executeStep(this::acceptLicenses, false);
         executeStep(this::doInstallation, false);
         // execute the post-install steps for all processed installers
         executeStep(this::printMessages, true);
@@ -171,6 +171,17 @@ public class InstallCommand implements InstallerCommand {
     protected Version.Match matchInstallVesion() {
         return input.getLocalRegistry().getGraalVersion().match(
                         allowUpgrades ? Version.Match.Type.INSTALLABLE : Version.Match.Type.COMPATIBLE);
+    }
+
+    private void addLicenseToAccept(Installer inst, MetadataLoader ldr) {
+        if (ldr.getLicenseType() != null) {
+            String path = ldr.getLicensePath();
+            if (path != null) {
+                inst.setLicenseRelativePath(SystemUtils.fromCommonRelative(ldr.getLicensePath()));
+            }
+            String licId = ldr.getLicenseID();
+            addLicenseToAccept(licId, ldr);
+        }
     }
 
     void prepareInstallation() throws IOException {
@@ -196,17 +207,10 @@ public class InstallCommand implements InstallerCommand {
                 minRequiredGraalVersion = minV;
             }
 
-            if (ldr.getLicenseType() != null) {
-                String path = ldr.getLicensePath();
-                if (path != null) {
-                    inst.setLicenseRelativePath(SystemUtils.fromCommonRelative(ldr.getLicensePath()));
-                }
-                String licId = ldr.getLicenseID();
-                addLicenseToAccept(licId, ldr);
-            }
-
             installers.add(inst);
             if (p.isComplete()) {
+                // null realInstaller will be handled in completeInstallers() later.
+                addLicenseToAccept(inst, ldr);
                 realInstallers.put(p, inst);
             } else {
                 realInstallers.put(p, null);
@@ -297,7 +301,9 @@ public class InstallCommand implements InstallerCommand {
         for (ComponentParam p : new ArrayList<>(realInstallers.keySet())) {
             Installer i = realInstallers.get(p);
             if (i == null) {
-                i = createInstaller(p, p.createFileLoader());
+                MetadataLoader floader = p.createFileLoader();
+                i = createInstaller(p, floader);
+                addLicenseToAccept(i, floader);
                 installers.add(i);
 
                 if (validateBeforeInstall) {
