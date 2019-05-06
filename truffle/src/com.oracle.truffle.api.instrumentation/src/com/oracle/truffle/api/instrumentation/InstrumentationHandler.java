@@ -1257,6 +1257,8 @@ final class InstrumentationHandler {
         int rootBits;
         /* temporary field for currently computing root bits. value is not reliable. */
         int computingRootNodeBits;
+        /* flag set on when visiting an old subtree that was replaced by materialization */
+        boolean visitingOldNodes;
 
         abstract boolean shouldVisit();
 
@@ -1301,7 +1303,7 @@ final class InstrumentationHandler {
                 computeRootBits(sourceSection);
                 Node oldNode = node;
                 node = materializeSyntaxNodes(node, sourceSection);
-                if (node != oldNode) {
+                if (node != oldNode && !visitingOldNodes) {
                     /*
                      * We also need to traverse all old children on materialization. This is
                      * necessary if the old node is still currently executing and does not yet see
@@ -1310,7 +1312,12 @@ final class InstrumentationHandler {
                      * is especially problematic for long or infinite loops in combination with
                      * cancel events.
                      */
-                    NodeUtil.forEachChild(oldNode, this);
+                    visitingOldNodes = true;
+                    try {
+                        NodeUtil.forEachChild(oldNode, this);
+                    } finally {
+                        visitingOldNodes = false;
+                    }
                 }
                 visitInstrumentable(this.savedParent, this.savedParentSourceSection, node, sourceSection);
                 previousParent = this.savedParent;
