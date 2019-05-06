@@ -108,6 +108,11 @@ graal_compiler_export_packages = [
     'jdk.internal.vm.ci/jdk.vm.ci.code.site']
 GRAAL_COMPILER_FLAGS_MAP['11'].extend(add_exports_from_packages(graal_compiler_export_packages))
 
+graal_compiler_opens_packages = [
+    'jdk.internal.vm.compiler/org.graalvm.compiler.debug',
+    'jdk.internal.vm.compiler/org.graalvm.compiler.nodes',]
+GRAAL_COMPILER_FLAGS_MAP['11'].extend(add_opens_from_packages(graal_compiler_opens_packages))
+
 # Packages to open to allow reflective access at runtime.
 jdk_opens_packages = [
     # Reflective access
@@ -134,13 +139,20 @@ java_base_opens_packages = [
     # Reflective access to java.nio.MappedByteBuffer.fd.
     'java.base/java.nio',
     # Reflective access to java.util.Bits.words.
-    'java.base/java.util']
+    'java.base/java.util',
+    'java.base/jdk.internal.logger',]
 GRAAL_COMPILER_FLAGS_MAP['11'].extend(add_opens_from_packages(java_base_opens_packages))
 
 # Reflective access to org.graalvm.nativeimage.impl.ImageSingletonsSupport.
 graal_sdk_opens_packages = [
-    'org.graalvm.sdk/org.graalvm.nativeimage.impl']
+    'org.graalvm.sdk/org.graalvm.nativeimage.impl',
+    'org.graalvm.sdk/org.graalvm.polyglot',]
 GRAAL_COMPILER_FLAGS_MAP['11'].extend(add_opens_from_packages(graal_sdk_opens_packages))
+
+graal_truffle_opens_packages = [
+    'org.graalvm.truffle/com.oracle.truffle.polyglot',
+    'org.graalvm.truffle/com.oracle.truffle.api.impl',]
+GRAAL_COMPILER_FLAGS_MAP['11'].extend(add_opens_from_packages(graal_truffle_opens_packages))
 
 def svm_java_compliance():
     return mx.get_jdk(tag='default').javaCompliance

@@ -472,7 +472,7 @@ public class NativeImage {
 
         @Override
         public List<Path> getBuilderUpgradeModulePath() {
-            return getJars(rootDir.resolve(Paths.get("lib", "jvmci")), "graal");
+            return getJars(rootDir.resolve(Paths.get("lib", "jvmci")), "graal", "graal-management");
         }
 
         @Override
@@ -1368,6 +1368,7 @@ public class NativeImage {
 
     static List<Path> getJars(Path dir, String... jarBaseNames) {
         try {
+            List<String> baseNameList = Arrays.asList(jarBaseNames);
             return Files.list(dir)
                             .filter(p -> {
                                 String jarFileName = p.getFileName().toString();
@@ -1375,7 +1376,6 @@ public class NativeImage {
                                 if (!jarFileName.toLowerCase().endsWith(jarSuffix)) {
                                     return false;
                                 }
-                                List<String> baseNameList = Arrays.asList(jarBaseNames);
                                 if (baseNameList.isEmpty()) {
                                     return true;
                                 }

@@ -223,8 +223,13 @@ public final class PolyglotLauncher extends Launcher {
 
     static {
         if (IS_AOT) {
-            Stream<String> classNames = Pattern.compile(",").splitAsStream(System.getProperty("com.oracle.graalvm.launcher.launcherclasses"));
-            AOT_LAUNCHER_CLASSES = classNames.map(PolyglotLauncher::getLauncherClass).collect(Collectors.toMap(Class::getName, Function.identity()));
+            String launcherClasses = System.getProperty("com.oracle.graalvm.launcher.launcherclasses");
+            if (launcherClasses == null || launcherClasses.isEmpty()) {
+                AOT_LAUNCHER_CLASSES = Collections.emptyMap();
+            } else {
+                Stream<String> classNames = Pattern.compile(",").splitAsStream(launcherClasses);
+                AOT_LAUNCHER_CLASSES = classNames.map(PolyglotLauncher::getLauncherClass).collect(Collectors.toMap(Class::getName, Function.identity()));
+            }
         } else {
             AOT_LAUNCHER_CLASSES = null;
         }
