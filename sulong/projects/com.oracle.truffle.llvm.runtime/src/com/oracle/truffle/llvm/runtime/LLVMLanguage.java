@@ -29,11 +29,13 @@
  */
 package com.oracle.truffle.llvm.runtime;
 
-import com.oracle.truffle.api.Assumption;
+import java.util.Collections;
+
+import org.graalvm.options.OptionDescriptors;
+
 import com.oracle.truffle.api.CallTarget;
 import com.oracle.truffle.api.CompilerDirectives.CompilationFinal;
 import com.oracle.truffle.api.Scope;
-import com.oracle.truffle.api.Truffle;
 import com.oracle.truffle.api.TruffleLanguage;
 import com.oracle.truffle.api.debug.DebuggerTags;
 import com.oracle.truffle.api.frame.Frame;
@@ -53,8 +55,6 @@ import com.oracle.truffle.llvm.runtime.interop.access.LLVMInteropType;
 import com.oracle.truffle.llvm.runtime.memory.LLVMMemory;
 import com.oracle.truffle.llvm.runtime.options.SulongEngineOption;
 import com.oracle.truffle.llvm.runtime.pointer.LLVMPointer;
-import java.util.Collections;
-import org.graalvm.options.OptionDescriptors;
 
 @TruffleLanguage.Registration(id = LLVMLanguage.ID, name = LLVMLanguage.NAME, internal = false, interactive = false, defaultMimeType = LLVMLanguage.LLVM_BITCODE_MIME_TYPE, //
                 byteMimeTypes = {LLVMLanguage.LLVM_BITCODE_MIME_TYPE, LLVMLanguage.LLVM_ELF_SHARED_MIME_TYPE, LLVMLanguage.LLVM_ELF_EXEC_MIME_TYPE}, //
@@ -62,10 +62,8 @@ import org.graalvm.options.OptionDescriptors;
 @ProvidedTags({StandardTags.StatementTag.class, StandardTags.CallTag.class, StandardTags.RootTag.class, DebuggerTags.AlwaysHalt.class})
 public class LLVMLanguage extends TruffleLanguage<LLVMContext> {
 
-    public static final Assumption SINGLE_CONTEXT_ASSUMPTION = Truffle.getRuntime().createAssumption("Single Context");
-
-    public static final String LLVM_BITCODE_MIME_TYPE = "application/x-llvm-ir-bitcode";
-    public static final String LLVM_BITCODE_EXTENSION = "bc";
+    static final String LLVM_BITCODE_MIME_TYPE = "application/x-llvm-ir-bitcode";
+    static final String LLVM_BITCODE_EXTENSION = "bc";
 
     /*
      * Using this mimeType is deprecated, it is just here for backwards compatibility. Bitcode
@@ -73,15 +71,15 @@ public class LLVMLanguage extends TruffleLanguage<LLVMContext> {
      */
     public static final String LLVM_BITCODE_BASE64_MIME_TYPE = "application/x-llvm-ir-bitcode-base64";
 
-    public static final String LLVM_ELF_SHARED_MIME_TYPE = "application/x-sharedlib";
-    public static final String LLVM_ELF_EXEC_MIME_TYPE = "application/x-executable";
-    public static final String LLVM_ELF_LINUX_EXTENSION = "so";
+    static final String LLVM_ELF_SHARED_MIME_TYPE = "application/x-sharedlib";
+    static final String LLVM_ELF_EXEC_MIME_TYPE = "application/x-executable";
+    static final String LLVM_ELF_LINUX_EXTENSION = "so";
 
-    public static final String MAIN_ARGS_KEY = "Sulong Main Args";
-    public static final String PARSE_ONLY_KEY = "Parse only";
+    static final String MAIN_ARGS_KEY = "Sulong Main Args";
+    static final String PARSE_ONLY_KEY = "Parse only";
 
     public static final String ID = "llvm";
-    public static final String NAME = "LLVM";
+    static final String NAME = "LLVM";
 
     public abstract static class Loader {
 
@@ -100,8 +98,6 @@ public class LLVMLanguage extends TruffleLanguage<LLVMContext> {
         return getLanguage().lldbSupport;
     }
 
-    private LLVMContext mainContext = null;
-
     private @CompilationFinal Configuration activeConfiguration = null;
     private @CompilationFinal Loader loader;
 
@@ -118,13 +114,7 @@ public class LLVMLanguage extends TruffleLanguage<LLVMContext> {
             loader = activeConfiguration.createLoader();
         }
 
-        LLVMContext newContext = new LLVMContext(this, env, activeConfiguration, getLanguageHome());
-        if (mainContext == null) {
-            mainContext = newContext;
-        } else {
-            SINGLE_CONTEXT_ASSUMPTION.invalidate();
-        }
-        return newContext;
+        return new LLVMContext(this, env, activeConfiguration, getLanguageHome());
     }
 
     @Override

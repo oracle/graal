@@ -116,7 +116,7 @@ import com.oracle.truffle.llvm.runtime.types.PrimitiveType;
 import com.oracle.truffle.llvm.runtime.types.StructureType;
 import com.oracle.truffle.llvm.runtime.types.Type;
 
-public final class Runner {
+final class Runner {
 
     private static final String MAIN_METHOD_NAME = "@main";
     private static final String START_METHOD_NAME = "@_start";
@@ -131,7 +131,7 @@ public final class Runner {
     private final LLVMContext context;
     private final DefaultLoader loader;
 
-    public Runner(LLVMContext context, DefaultLoader loader) {
+    Runner(LLVMContext context, DefaultLoader loader) {
         this.context = context;
         this.loader = loader;
     }
@@ -139,7 +139,7 @@ public final class Runner {
     /**
      * Parse bitcode data and do first initializations to prepare bitcode execution.
      */
-    public CallTarget parse(Source source) {
+    CallTarget parse(Source source) {
         ParserInput input = getParserData(source);
         return parse(source, input.bytes, input.library);
     }

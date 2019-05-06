@@ -714,7 +714,7 @@ public final class LLVM80BitFloat implements LLVMArithmetic {
         }
     }
 
-    static class LLVM80BitFloatOpNode extends LLVMArithmeticOpNode {
+    private static class LLVM80BitFloatOpNode extends LLVMArithmeticOpNode {
         @Child private LLVM80BitFloatNativeCallNode node;
 
         LLVM80BitFloatOpNode(String op) {

@@ -140,7 +140,7 @@ public final class Function implements ParserListener {
 
     private final FunctionDefinition function;
 
-    protected final Types types;
+    private final Types types;
 
     private final int mode;
 
