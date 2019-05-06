@@ -81,7 +81,7 @@ public final class BCFileRoot implements ParserListener {
     private static int setMissingNames(List<? extends GlobalValueSymbol> globals, int startIndex) {
         int globalIndex = startIndex;
         for (GlobalValueSymbol variable : globals) {
-            if (variable.getName().equals(LLVMIdentifier.UNKNOWN)) {
+            if (variable.getName() == LLVMIdentifier.UNKNOWN) {
                 variable.setName(String.valueOf(globalIndex++));
             }
         }

@@ -73,7 +73,7 @@ public final class OpaqueType extends Type {
 
     @Override
     public String toString() {
-        if (name.equals(LLVMIdentifier.UNKNOWN)) {
+        if (name == LLVMIdentifier.UNKNOWN) {
             return "opaque";
         } else {
             return name;

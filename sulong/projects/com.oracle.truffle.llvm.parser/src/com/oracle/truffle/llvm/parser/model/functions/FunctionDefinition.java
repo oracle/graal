@@ -178,7 +178,7 @@ public final class FunctionDefinition implements Constant, FunctionSymbol, Metad
 
         final Set<String> explicitBlockNames = Arrays.stream(blocks).map(InstructionBlock::getName).filter(blockName -> !LLVMIdentifier.UNKNOWN.equals(blockName)).collect(Collectors.toSet());
         for (final InstructionBlock block : blocks) {
-            if (block.getName().equals(LLVMIdentifier.UNKNOWN)) {
+            if (block.getName() == LLVMIdentifier.UNKNOWN) {
                 do {
                     block.setName(LLVMIdentifier.toImplicitBlockName(symbolIndex++));
                     // avoid name clashes
@@ -188,7 +188,7 @@ public final class FunctionDefinition implements Constant, FunctionSymbol, Metad
                 final Instruction instruction = block.getInstruction(i);
                 if (instruction instanceof ValueInstruction) {
                     final ValueInstruction value = (ValueInstruction) instruction;
-                    if (value.getName().equals(LLVMIdentifier.UNKNOWN)) {
+                    if (value.getName() == LLVMIdentifier.UNKNOWN) {
                         value.setName(String.valueOf(symbolIndex++));
                     }
                 }
