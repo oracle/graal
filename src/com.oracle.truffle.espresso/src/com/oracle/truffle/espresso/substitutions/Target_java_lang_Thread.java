@@ -25,8 +25,6 @@ package com.oracle.truffle.espresso.substitutions;
 
 import com.oracle.truffle.espresso.EspressoLanguage;
 import com.oracle.truffle.espresso.EspressoOptions;
-import com.oracle.truffle.espresso.descriptors.Symbol.Name;
-import com.oracle.truffle.espresso.descriptors.Symbol.Signature;
 import com.oracle.truffle.espresso.meta.Meta;
 import com.oracle.truffle.espresso.runtime.EspressoContext;
 import com.oracle.truffle.espresso.runtime.StaticObject;
@@ -40,47 +38,26 @@ public final class Target_java_lang_Thread {
         return EspressoLanguage.getCurrentContext().getHost2Guest(Thread.currentThread());
     }
 
-    @Substitution
-    public static void yield() {
-        Thread.yield();
-    }
-
-    @SuppressWarnings("unused")
-    @Substitution(hasReceiver = true)
-    public static void setPriority0(@Host(Thread.class) StaticObject self, int newPriority) {
-        /* nop */
-    }
-
-    @SuppressWarnings("unused")
-    @Substitution(hasReceiver = true)
-    public static void setDaemon(@Host(Thread.class) StaticObject self, boolean on) {
-        /* nop */ }
-
-    @SuppressWarnings("unused")
-    @Substitution(hasReceiver = true)
-    public static boolean isAlive(@Host(Thread.class) StaticObject self) {
-        Thread hostThread = (Thread) self.getHiddenField(self.getKlass().getMeta().HIDDEN_HOST_THREAD);
-        if (hostThread == null) {
-            return false;
-        }
-        return hostThread.isAlive();
-    }
-
-    @SuppressWarnings("unused")
-    @Substitution
-    public static void registerNatives() {
-        /* nop */ }
-
     @SuppressWarnings("unused")
     @Substitution(hasReceiver = true)
     public static void start0(@Host(Thread.class) StaticObject self) {
         if (EspressoOptions.ENABLE_THREADS) {
+            // Thread.start() is synchronized.
             EspressoContext context = self.getKlass().getContext();
             Meta meta = context.getMeta();
             Thread hostThread = EspressoLanguage.getCurrentContext().getEnv().createThread(new Runnable() {
                 @Override
                 public void run() {
-                    self.getKlass().lookupMethod(Name.run, Signature._void).invokeDirect(self);
+                    try {
+                        self.setHiddenField(meta.HIDDEN_IS_ALIVE, true);
+                        self.getKlass().vtableLookup(meta.Thread_run.getVTableIndex()).invokeDirect(self);
+                    } finally {
+                        self.setHiddenField(meta.HIDDEN_IS_ALIVE, false);
+                        synchronized (self) {
+                            self.notifyAll();
+                        }
+                    }
+                    // meta.Thread_exit.invokeDirect(self);
                 }
             });
 
@@ -97,10 +74,44 @@ public final class Target_java_lang_Thread {
         }
     }
 
+    @Substitution
+    public static void yield() {
+        Thread.yield();
+    }
+
     @SuppressWarnings("unused")
     @Substitution(hasReceiver = true)
-    public static boolean isInterrupted(@Host(Thread.class) StaticObject self, boolean ClearInterrupted) {
-        return false;
+    public static void setPriority0(@Host(Thread.class) StaticObject self, int newPriority) {
+        Thread hostThread = (Thread) self.getHiddenField(self.getKlass().getMeta().HIDDEN_HOST_THREAD);
+        if (hostThread == null) {
+            return;
+        }
+        hostThread.setPriority(newPriority);
+    }
+
+    @Substitution(hasReceiver = true)
+    public static boolean isAlive(@Host(Thread.class) StaticObject self) {
+        Boolean state = (Boolean) self.getHiddenField(self.getKlass().getMeta().HIDDEN_IS_ALIVE);
+        return state != null && state;
+    }
+
+    @SuppressWarnings("unused")
+    @Substitution
+    public static void registerNatives() {
+        /* nop */ }
+
+    @Substitution(hasReceiver = true)
+    public static boolean isInterrupted(@Host(Thread.class) StaticObject self) {
+        Thread hostThread = (Thread) self.getHiddenField(self.getKlass().getMeta().HIDDEN_HOST_THREAD);
+        if (hostThread == null) {
+            return false;
+        }
+        return hostThread.isInterrupted();
+    }
+
+    @Substitution
+    public static boolean interrupted() {
+        return Thread.interrupted();
     }
 
     @Substitution
@@ -131,13 +142,23 @@ public final class Target_java_lang_Thread {
         hostThread.interrupt();
     }
 
+    @Deprecated
     @Substitution(hasReceiver = true)
-    public static void join(@Host(Thread.class) StaticObject self, long millis)
-                    throws InterruptedException {
+    public static void resume0(@Host(Object.class) StaticObject self) {
         Thread hostThread = (Thread) self.getHiddenField(self.getKlass().getMeta().HIDDEN_HOST_THREAD);
         if (hostThread == null) {
             return;
         }
-        hostThread.join(millis);
+        hostThread.resume();
+    }
+
+    @Deprecated
+    @Substitution(hasReceiver = true)
+    public static void suspend0(@Host(Object.class) StaticObject self) {
+        Thread hostThread = (Thread) self.getHiddenField(self.getKlass().getMeta().HIDDEN_HOST_THREAD);
+        if (hostThread == null) {
+            return;
+        }
+        hostThread.suspend();
     }
 }

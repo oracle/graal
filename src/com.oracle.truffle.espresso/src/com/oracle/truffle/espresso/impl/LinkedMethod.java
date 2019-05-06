@@ -61,4 +61,8 @@ public final class LinkedMethod {
     public Attribute getAttribute(Symbol<Name> name) {
         return parserMethod.getAttribute(name);
     }
+
+    public LinkedKlass getDeclaringLinkedKlass() {
+        return declaringLinkedKlass;
+    }
 }

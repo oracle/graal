@@ -38,6 +38,7 @@ import com.oracle.truffle.api.nodes.RootNode;
 import com.oracle.truffle.espresso.EspressoOptions;
 import com.oracle.truffle.espresso.classfile.ConstantPool;
 import com.oracle.truffle.espresso.classfile.MethodParametersAttribute;
+import com.oracle.truffle.espresso.classfile.RuntimeConstantPool;
 import com.oracle.truffle.espresso.descriptors.Symbol;
 import com.oracle.truffle.espresso.descriptors.Symbol.Name;
 import com.oracle.truffle.espresso.descriptors.Symbol.Signature;
@@ -576,6 +577,30 @@ public final class VM extends NativeEnv implements ContextAccess {
 
     @VmImpl
     @JniImpl
+    public static @Host(Class.class) StaticObject JVM_ConstantPoolGetClassAt(@SuppressWarnings("unused") Object unused, @Host(Object.class) StaticObject jcpool, int index) {
+        return ((RuntimeConstantPool) jcpool.getMirrorKlass().getConstantPool()).resolvedKlassAt(null, index).mirror();
+    }
+
+    @VmImpl
+    @JniImpl
+    public static double JVM_ConstantPoolGetDoubleAt(@SuppressWarnings("unused") Object unused, @Host(Object.class) StaticObject jcpool, int index) {
+        return jcpool.getMirrorKlass().getConstantPool().doubleAt(index);
+    }
+
+    @VmImpl
+    @JniImpl
+    public static float JVM_ConstantPoolGetFloatAt(@SuppressWarnings("unused") Object unused, @Host(Object.class) StaticObject jcpool, int index) {
+        return jcpool.getMirrorKlass().getConstantPool().floatAt(index);
+    }
+
+    @VmImpl
+    @JniImpl
+    public static @Host(String.class) StaticObject JVM_ConstantPoolGetStringAt(@SuppressWarnings("unused") Object unused, @Host(Object.class) StaticObject jcpool, int index) {
+        return ((RuntimeConstantPool) jcpool.getMirrorKlass().getConstantPool()).resolvedStringAt(index);
+    }
+
+    @VmImpl
+    @JniImpl
     public @Host(String.class) StaticObject JVM_ConstantPoolGetUTF8At(@SuppressWarnings("unused") Object unused, StaticObject jcpool, int index) {
         return getMeta().toGuestString(jcpool.getMirrorKlass().getConstantPool().utf8At(index).toString());
     }
@@ -806,6 +831,23 @@ public final class VM extends NativeEnv implements ContextAccess {
         }
 
         throw EspressoError.shouldNotReachHere();
+    }
+
+    @VmImpl
+    @JniImpl
+    public static @Host(Object.class) StaticObject JVM_LatestUserDefinedLoader() {
+        return Truffle.getRuntime().iterateFrames(new FrameInstanceVisitor<StaticObject>() {
+            public StaticObject visitFrame(FrameInstance frameInstance) {
+                if (frameInstance.getCallTarget() instanceof RootCallTarget) {
+                    RootCallTarget callTarget = (RootCallTarget) frameInstance.getCallTarget();
+                    RootNode rootNode = callTarget.getRootNode();
+                    if (rootNode instanceof EspressoRootNode) {
+                        return ((EspressoRootNode) rootNode).getMethod().getDeclaringKlass().getDefiningClassLoader();
+                    }
+                }
+                return null;
+            }
+        });
     }
 
     @VmImpl

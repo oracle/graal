@@ -196,9 +196,11 @@ public final class Meta implements ContextAccess {
 
         Thread = knownKlass(Type.Thread);
         HIDDEN_HOST_THREAD = Thread.lookupHiddenField(Name.HIDDEN_HOST_THREAD);
+        HIDDEN_IS_ALIVE = Thread.lookupHiddenField(Name.HIDDEN_IS_ALIVE);
         ThreadGroup = knownKlass(Type.ThreadGroup);
         ThreadGroup_maxPriority = ThreadGroup.lookupDeclaredField(Name.maxPriority, Type._int);
         Thread_exit = Thread.lookupDeclaredMethod(Name.exit, Signature._void);
+        Thread_run = Thread.lookupDeclaredMethod(Name.run, Signature._void);
 
         Thread_group = Thread.lookupDeclaredField(Name.group, ThreadGroup.getType());
         Thread_name = Thread.lookupDeclaredField(Name.name, String.getType());
@@ -391,7 +393,9 @@ public final class Meta implements ContextAccess {
     public final Field ThreadGroup_maxPriority;
     public final ObjectKlass Thread;
     public final Method Thread_exit;
+    public final Method Thread_run;
     public final Field HIDDEN_HOST_THREAD;
+    public final Field HIDDEN_IS_ALIVE;
     public final Field Thread_group;
     public final Field Thread_name;
     public final Field Thread_priority;
@@ -538,6 +542,23 @@ public final class Meta implements ContextAccess {
         return ex;
     }
 
+    public StaticObject initExWithCauseAndMessage(java.lang.Class<?> clazz, @Host(Throwable.class) StaticObject cause, String message) {
+        assert Throwable.class.isAssignableFrom(clazz);
+        assert Throwable.isAssignableFrom(cause.getKlass());
+        Klass exKlass = throwableKlass(clazz);
+        StaticObject ex = exKlass.allocateInstance();
+        exKlass.lookupDeclaredMethod(Name.INIT, Signature._void_String_Throwable).invokeDirect(ex, toGuestString(message), cause);
+        return ex;
+    }
+
+    public StaticObject initExWithCauseAndMessage(ObjectKlass exKlass, @Host(Throwable.class) StaticObject cause, @Host(String.class) StaticObject message) {
+        assert Throwable.isAssignableFrom(exKlass);
+        assert Throwable.isAssignableFrom(cause.getKlass());
+        StaticObject ex = exKlass.allocateInstance();
+        exKlass.lookupDeclaredMethod(Name.INIT, Signature._void_String_Throwable).invokeDirect(ex, message, cause);
+        return ex;
+    }
+
     @TruffleBoundary
     public EspressoException throwEx(ObjectKlass exKlass) {
         assert Throwable.isAssignableFrom(exKlass);
@@ -563,6 +584,13 @@ public final class Meta implements ContextAccess {
     }
 
     @TruffleBoundary
+    public EspressoException throwExWithCauseAndMessage(java.lang.Class<?> clazz, @Host(Throwable.class) StaticObject cause, String message) {
+        assert Throwable.class.isAssignableFrom(clazz);
+        assert Throwable.isAssignableFrom(cause.getKlass());
+        throw new EspressoException(initExWithCauseAndMessage(clazz, cause, message));
+    }
+
+    @TruffleBoundary
     public EspressoException throwExWithMessage(ObjectKlass exKlass, @Host(String.class) StaticObject message) {
         assert Throwable.isAssignableFrom(exKlass);
         assert String.isAssignableFrom(message.getKlass());
@@ -574,6 +602,13 @@ public final class Meta implements ContextAccess {
         assert Throwable.isAssignableFrom(exKlass);
         assert Throwable.isAssignableFrom(cause.getKlass());
         throw new EspressoException(initExWithCause(exKlass, cause));
+    }
+
+    @TruffleBoundary
+    public EspressoException throwExWithCauseAndMessage(ObjectKlass exKlass, @Host(Throwable.class) StaticObject cause, @Host(java.lang.String.class) StaticObject message) {
+        assert Throwable.isAssignableFrom(exKlass);
+        assert Throwable.isAssignableFrom(cause.getKlass());
+        throw new EspressoException(initExWithCauseAndMessage(exKlass, cause, message));
     }
 
     @TruffleBoundary

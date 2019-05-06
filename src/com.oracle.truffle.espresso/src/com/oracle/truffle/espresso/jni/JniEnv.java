@@ -1428,6 +1428,11 @@ public final class JniEnv extends NativeEnv implements ContextAccess {
     }
 
     @JniImpl
+    public static StaticObject GetSuperclass(StaticObject self) {
+        return self.getKlass().getSuperKlass().mirror();
+    }
+
+    @JniImpl
     public Object NewObjectVarargs(@Host(Class.class) StaticObject clazz, long methodHandle, long varargsPtr) {
         Klass klass = clazz.getMirrorKlass();
         Method method = methodIds.getObject(methodHandle);

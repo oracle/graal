@@ -130,13 +130,13 @@ public interface ClassConstant extends PoolConstant {
          * </ul>
          */
         private static boolean checkAccess(Klass klass, Klass accessingKlass) {
+            if (accessingKlass == null) {
+                return true;
+            }
             if (klass.isPublic() || klass.getRuntimePackage().equals(accessingKlass.getRuntimePackage())) {
                 return true;
             }
-            if (klass.getMeta().MagicAccessorImpl.isAssignableFrom(accessingKlass)) {
-                return true;
-            }
-            return false;
+            return (klass.getMeta().MagicAccessorImpl.isAssignableFrom(accessingKlass));
         }
     }
 

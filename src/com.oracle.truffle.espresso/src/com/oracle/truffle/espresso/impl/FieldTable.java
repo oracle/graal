@@ -126,6 +126,7 @@ class FieldTable {
             return c;
         } else if (type == Symbol.Type.Thread) {
             tmpTable.add(new Field(thisKlass, tmpTable.size(), fieldIndex + c++, Symbol.Name.HIDDEN_HOST_THREAD));
+            tmpTable.add(new Field(thisKlass, tmpTable.size(), fieldIndex + c++, Symbol.Name.HIDDEN_IS_ALIVE));
             return c;
         } else if (type == Symbol.Type.Class) {
             tmpTable.add(new Field(thisKlass, tmpTable.size(), fieldIndex + c++, Symbol.Name.HIDDEN_SIGNERS));

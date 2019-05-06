@@ -28,6 +28,8 @@ import com.oracle.truffle.espresso.descriptors.Symbol;
 import com.oracle.truffle.espresso.descriptors.Symbol.Name;
 import com.oracle.truffle.espresso.runtime.Attribute;
 
+import java.lang.reflect.Modifier;
+
 // Unresolved unlinked.
 public final class ParserMethod {
 

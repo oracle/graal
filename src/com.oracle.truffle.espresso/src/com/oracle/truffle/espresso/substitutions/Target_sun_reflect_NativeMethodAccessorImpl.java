@@ -256,7 +256,6 @@ public final class Target_sun_reflect_NativeMethodAccessorImpl {
             method = reflectedMethod;
             targetKlass = klass;
         } else {
-
             if (StaticObject.isNull(receiver)) {
                 throw meta.throwEx(meta.NullPointerException);
             }

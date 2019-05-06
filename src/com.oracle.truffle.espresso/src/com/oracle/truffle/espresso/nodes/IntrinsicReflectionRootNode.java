@@ -48,17 +48,33 @@ public class IntrinsicReflectionRootNode extends EspressoBaseNode {
         } catch (InvocationTargetException e) {
             CompilerDirectives.transferToInterpreter();
             Throwable inner = e.getTargetException();
+            // Errors that should propagate
             if (inner instanceof EspressoException) {
                 throw (EspressoException) inner;
             }
+            if (inner instanceof InterruptedException) {
+                throw getMeta().throwEx(InterruptedException.class);
+            }
+            if (inner instanceof IllegalArgumentException) {
+                throw getMeta().throwExWithMessage(IllegalArgumentException.class, inner.getMessage());
+            }
+            // Errors that should propagate without boxing
             if (inner instanceof VirtualMachineError) {
                 throw (VirtualMachineError) inner;
             }
             if (inner instanceof EspressoExitException) {
                 throw (EspressoExitException) inner;
             }
-            if (inner instanceof InterruptedException) {
-                throw getMeta().throwEx(InterruptedException.class);
+            if (inner instanceof EspressoError) {
+                EspressoError outer = (EspressoError) inner;
+                inner = inner.getCause();
+                while (inner instanceof EspressoError) {
+                    outer = (EspressoError) inner;
+                    inner = inner.getCause();
+                }
+
+                outer.printStackTrace();
+                throw outer;
             }
             throw EspressoError.shouldNotReachHere(inner + "\n\t in reflected method: " + reflectMethod);
         } catch (Throwable e) {

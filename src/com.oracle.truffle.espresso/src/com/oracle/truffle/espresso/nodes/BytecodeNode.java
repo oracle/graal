@@ -296,6 +296,7 @@ import static com.oracle.truffle.espresso.bytecode.Bytecodes.WIDE;
 public class BytecodeNode extends EspressoBaseNode implements CustomNodeCount {
 
     public static final boolean DEBUG_GENERAL = false;
+    public static final boolean DEBUG_THROWN = false;
     public static final boolean DEBUG_CATCH = false;
 
     public static final DebugCounter bcCount = DebugCounter.create("Bytecodes executed");
@@ -843,7 +844,7 @@ public class BytecodeNode extends EspressoBaseNode implements CustomNodeCount {
 
                         case ATHROW:
                             CompilerDirectives.transferToInterpreter();
-                            if (DEBUG_GENERAL) {
+                            if (DEBUG_THROWN) {
                                 reportThrow(curBCI, getMethod(), nullCheck(peekObject(frame, top - 1)));
                             }
                             throw new EspressoException(nullCheck(peekObject(frame, top - 1)));
@@ -1263,6 +1264,7 @@ public class BytecodeNode extends EspressoBaseNode implements CustomNodeCount {
         return quick.invoke(frame, top) - Bytecodes.stackEffectOf(opCode);
     }
 
+    @SuppressWarnings("unused")
     private static boolean isReturn(int opCode) {
         return opCode >= IRETURN && opCode <= RETURN;
     }

@@ -22,15 +22,6 @@
  */
 package com.oracle.truffle.espresso.substitutions;
 
-import java.util.ArrayList;
-import java.util.Arrays;
-import java.util.Collections;
-import java.util.List;
-import java.util.Objects;
-import java.util.concurrent.ConcurrentHashMap;
-
-import org.graalvm.collections.EconomicMap;
-
 import com.oracle.truffle.espresso.descriptors.StaticSymbols;
 import com.oracle.truffle.espresso.descriptors.Symbol;
 import com.oracle.truffle.espresso.descriptors.Symbol.Name;
@@ -42,6 +33,14 @@ import com.oracle.truffle.espresso.meta.EspressoError;
 import com.oracle.truffle.espresso.nodes.EspressoRootNode;
 import com.oracle.truffle.espresso.nodes.IntrinsicReflectionRootNode;
 import com.oracle.truffle.espresso.runtime.EspressoContext;
+import org.graalvm.collections.EconomicMap;
+
+import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.Collections;
+import java.util.List;
+import java.util.Objects;
+import java.util.concurrent.ConcurrentHashMap;
 
 /**
  * Substitutions/intrinsics for Espresso.
@@ -169,7 +168,8 @@ public final class Substitutions implements ContextAccess {
                 continue;
             }
 
-            final EspressoRootNodeFactory factory = new EspressoRootNodeFactory() {
+            final EspressoRootNodeFactory factory;
+            factory = new EspressoRootNodeFactory() {
                 @Override
                 public EspressoRootNode spawnNode(Method espressoMethod) {
                     return new EspressoRootNode(espressoMethod, new IntrinsicReflectionRootNode(method, espressoMethod));
