@@ -22,9 +22,6 @@
  */
 package com.oracle.truffle.espresso.meta;
 
-import java.lang.reflect.Constructor;
-import java.lang.reflect.InvocationTargetException;
-
 import com.oracle.truffle.api.CompilerAsserts;
 import com.oracle.truffle.api.CompilerDirectives.CompilationFinal;
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
@@ -44,6 +41,9 @@ import com.oracle.truffle.espresso.runtime.EspressoContext;
 import com.oracle.truffle.espresso.runtime.EspressoException;
 import com.oracle.truffle.espresso.runtime.StaticObject;
 import com.oracle.truffle.espresso.substitutions.Host;
+
+import java.lang.reflect.Constructor;
+import java.lang.reflect.InvocationTargetException;
 
 /**
  * Introspection API to access the guest world from the host. Provides seamless conversions from
@@ -141,6 +141,7 @@ public final class Meta implements ContextAccess {
         IllegalArgumentException = knownKlass(Type.IllegalArgumentException);
         NullPointerException = knownKlass(Type.NullPointerException);
         ClassNotFoundException = knownKlass(Type.ClassNotFoundException);
+        InterruptedException = knownKlass(Type.InterruptedException);
 
         StackOverflowError = knownKlass(Type.StackOverflowError);
         OutOfMemoryError = knownKlass(Type.OutOfMemoryError);
@@ -198,6 +199,7 @@ public final class Meta implements ContextAccess {
         HIDDEN_HOST_THREAD = Thread.lookupHiddenField(Name.HIDDEN_HOST_THREAD);
         HIDDEN_IS_ALIVE = Thread.lookupHiddenField(Name.HIDDEN_IS_ALIVE);
         ThreadGroup = knownKlass(Type.ThreadGroup);
+        ThreadGroup_remove = ThreadGroup.lookupDeclaredMethod(Name.remove, Signature.ThreadGroup_remove);
         ThreadGroup_maxPriority = ThreadGroup.lookupDeclaredField(Name.maxPriority, Type._int);
         Thread_exit = Thread.lookupDeclaredMethod(Name.exit, Signature._void);
         Thread_run = Thread.lookupDeclaredMethod(Name.run, Signature._void);
@@ -207,6 +209,10 @@ public final class Meta implements ContextAccess {
         Thread_priority = Thread.lookupDeclaredField(Name.priority, _int.getType());
         Thread_blockerLock = Thread.lookupDeclaredField(Name.blockerLock, Object.getType());
         Thread_daemon = Thread.lookupDeclaredField(Name.daemon, Type._boolean);
+        Thread_state = Thread.lookupDeclaredField(Name.threadStatus, Type._int);
+
+        sun_misc_VM = knownKlass(Type.sun_misc_VM);
+        toThreadState = sun_misc_VM.lookupDeclaredMethod(Name.toThreadState, Signature.toThreadState);
 
         System = knownKlass(Type.System);
         System_initializeSystemClass = System.lookupDeclaredMethod(Name.initializeSystemClass, Signature._void);
@@ -361,6 +367,7 @@ public final class Meta implements ContextAccess {
     public final ObjectKlass IllegalArgumentException;
     public final ObjectKlass NullPointerException;
     public final ObjectKlass ClassNotFoundException;
+    public final ObjectKlass InterruptedException;
     public final ObjectKlass StackOverflowError;
     public final ObjectKlass OutOfMemoryError;
     public final ObjectKlass ClassCastException;
@@ -390,17 +397,22 @@ public final class Meta implements ContextAccess {
     public final Method ByteBuffer_wrap;
 
     public final ObjectKlass ThreadGroup;
+    public final Method ThreadGroup_remove;
+    public final Field HIDDEN_HOST_THREAD;
     public final Field ThreadGroup_maxPriority;
     public final ObjectKlass Thread;
     public final Method Thread_exit;
     public final Method Thread_run;
-    public final Field HIDDEN_HOST_THREAD;
     public final Field HIDDEN_IS_ALIVE;
     public final Field Thread_group;
     public final Field Thread_name;
     public final Field Thread_priority;
     public final Field Thread_blockerLock;
     public final Field Thread_daemon;
+    public final Field Thread_state;
+
+    public final ObjectKlass sun_misc_VM;
+    public final Method toThreadState;
 
     public final ObjectKlass System;
     public final Method System_initializeSystemClass;

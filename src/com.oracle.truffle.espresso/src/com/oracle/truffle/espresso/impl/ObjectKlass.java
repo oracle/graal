@@ -455,7 +455,7 @@ public final class ObjectKlass extends Klass {
     public final Method lookupInterfaceMethod(Symbol<Name> name, Symbol<Signature> signature) {
         for (Method[] table : itable) {
             for (Method m : table) {
-                if (!m.isStatic() && !m.isPrivate() && name == m.getName() && signature == m.getRawSignature()) {
+                if (!m.isPrivate() && name == m.getName() && signature == m.getRawSignature()) {
                     return m;
                 }
             }

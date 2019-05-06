@@ -1242,7 +1242,12 @@ public class BytecodeNode extends EspressoBaseNode implements CustomNodeCount {
             if (bs.currentBC(curBCI) == QUICK) {
                 quick = nodes[bs.readCPI(curBCI)];
             } else {
-                Klass typeToCheck = resolveType(opCode, bs.readCPI(curBCI));
+                Klass typeToCheck;
+                try {
+                    typeToCheck = resolveType(opCode, bs.readCPI(curBCI));
+                } catch (EspressoException e) {
+                    throw getMeta().throwEx(NoClassDefFoundError.class);
+                }
                 quick = injectQuick(curBCI, CheckCastNodeGen.create(typeToCheck));
             }
         }
@@ -1257,7 +1262,12 @@ public class BytecodeNode extends EspressoBaseNode implements CustomNodeCount {
             if (bs.currentBC(curBCI) == QUICK) {
                 quick = nodes[bs.readCPI(curBCI)];
             } else {
-                Klass typeToCheck = resolveType(opCode, bs.readCPI(curBCI));
+                Klass typeToCheck;
+                try {
+                    typeToCheck = resolveType(opCode, bs.readCPI(curBCI));
+                } catch (EspressoException e) {
+                    throw getMeta().throwEx(NoClassDefFoundError.class);
+                }
                 quick = injectQuick(curBCI, InstanceOfNodeGen.create(typeToCheck));
             }
         }
@@ -1307,7 +1317,6 @@ public class BytecodeNode extends EspressoBaseNode implements CustomNodeCount {
         assert (Bytecodes.INVOKEDYNAMIC == opCode);
         RuntimeConstantPool pool;
         InvokeDynamicConstant inDy;
-        // TODO(garcia) Do something more elegant than code copy-paste for all quickenings.
         synchronized (this) {
             if (bs.currentBC(curBCI) == QUICK) {
                 return nodes[bs.readCPI(curBCI)].invoke(frame, top) - Bytecodes.stackEffectOf(opCode);
