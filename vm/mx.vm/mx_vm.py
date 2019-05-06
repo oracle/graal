@@ -597,6 +597,7 @@ class DebuginfoDistribution(mx.LayoutTARDistribution):
                                                     platformDependent=subject_distribution.platformDependent,
                                                     theLicense=theLicense, **kw_args)
         self._layout_initialized = False
+        self.maven = True
         self.subject_distribution = subject_distribution
 
     def _walk_layout(self):
@@ -974,7 +975,7 @@ class GraalVmNativeImage(mx.Project):
     def debug_file(self):
         if not self.is_native():
             return None
-        if GraalVmNativeImage.is_svm_debug_supported():
+        if GraalVmNativeImage.is_svm_debug_supported() and mx.get_os() == 'linux':
             return join(self.get_output_base(), self.name, self.native_image_name + '.debug')
         return None
 
