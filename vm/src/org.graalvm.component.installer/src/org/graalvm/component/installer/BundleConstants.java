@@ -44,8 +44,6 @@ public class BundleConstants {
      */
     public static final String BUNDLE_WORKDIRS = "x-GraalVM-Working-Directories"; // NOI18N
 
-    public static final String PATH_LICENSE = "LICENSE"; // NOI18N
-
     public static final String META_INF_PATH = "META-INF/"; // NOI18N
     public static final String META_INF_PERMISSIONS_PATH = "META-INF/permissions"; // NOI18N
     public static final String META_INF_SYMLINKS_PATH = "META-INF/symlinks"; // NOI18N
