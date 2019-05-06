@@ -6,7 +6,7 @@ common_vm: ${common} ${vm_java} ${vm_setup} {
   ]
 }
 
-common_vm_linux: ${common_vm} ${linux}  {
+common_vm_linux: ${common_vm} ${linux} {
   packages: {
     gcc: "==4.9.2" # GCC 4.9.0 fails on cluster
     make: ">=3.83"
@@ -28,6 +28,8 @@ common_vm_darwin: ${common_vm} ${darwin} {
     [set-export, PKG_LDFLAGS_OVERRIDE, "-L/cm/shared/apps/bzip2/1.0.6/lib -L/cm/shared/apps/xz/5.2.2/lib -L/cm/shared/apps/pcre/8.42/lib -L/cm/shared/apps/curl/7.50.1/lib -L${GCC_LIB_PATH} -L/usr/lib"]
   ]
 }
+
+common_vm_windows: ${common_vm} ${windows}
 
 # SULONG
 sulong_linux: {
@@ -117,6 +119,10 @@ vm_darwin: ${common_vm_darwin} {
   capabilities: [darwin, amd64, ram16gb]
 }
 
+vm_windows: ${common_vm_windows} {
+  capabilities: [windows, amd64]
+}
+
 gate_vm_linux: ${vm_linux} {
   targets: [gate]
 }
@@ -149,6 +155,10 @@ deploy_daily_vm_darwin: ${vm_darwin} {
   targets: [deploy, daily]
 }
 
+deploy_daily_vm_windows: ${vm_windows} {
+  targets: [deploy, daily]
+}
+
 postmerge_vm_linux: ${vm_linux} {
   targets: [post-merge]
 }
@@ -165,7 +175,7 @@ daily_vm_darwin: ${vm_darwin} {
   targets: [daily]
 }
 
-mx_vm_common: [mx, --strip-jars, --no-sources, --env, ${vm_env}]
+mx_vm_common: [mx, --strip-jars, --no-sources, --env, "${VM_ENV}"]
 mx_vm_installables: ${mx_vm_common}
 maven_deploy_vm: [--suite, vm, maven-deploy, --validate, none, --all-distribution-types, --with-suite-revisions-metadata, ${binaries-repository}]
 maven_deploy_dry_run_vm: [--suite, vm, maven-deploy, --dry-run, --validate, none, --all-distribution-types, --with-suite-revisions-metadata, ${binaries-repository}]
@@ -210,6 +220,16 @@ builds += [
     ]
     timelimit: "1:45:00"
     name: deploy-vm-base-darwin-amd64
+  }
+  ${svm-common-windows} ${deploy_daily_vm_windows} {
+    run: [
+      [set-export, VM_ENV, "${VM_ENV}-win"]
+      ${mx_vm_common} [build]
+      ${mx_vm_common} ${maven_deploy_vm}
+      ${notify-nexus-deploy}
+    ]
+    timelimit: "1:30:00"
+    name: deploy-vm-windows-amd64
   }
   ${svm-common-linux-amd64} ${custom_vm_linux} ${vm_linux} {
     run: [
