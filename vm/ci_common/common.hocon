@@ -29,7 +29,14 @@ common_vm_darwin: ${common_vm} ${darwin} {
   ]
 }
 
-common_vm_windows: ${common_vm} ${windows}
+common_vm_windows: ${common_vm} ${windows} {
+  downloads : {
+    MAVEN_HOME: {name: maven, version: "3.3.9", platformspecific: false}
+  }
+  environment : {
+    PATH : "$MAVEN_HOME\bin;$JAVA_HOME\bin;$PATH"
+  }
+}
 
 # SULONG
 sulong_linux: {
