@@ -126,7 +126,7 @@ vm_linux: ${common_vm_linux} {
 }
 
 vm_darwin: ${common_vm_darwin} {
-  capabilities: [darwin, amd64, ram16gb]
+  capabilities: [darwin_mojave, amd64, ram16gb]
 }
 
 vm_windows: ${common_vm_windows} {
