@@ -59,8 +59,14 @@ import org.graalvm.compiler.graph.SourceLanguagePosition;
 import org.graalvm.compiler.graph.SourceLanguagePositionProvider;
 import org.graalvm.compiler.java.ComputeLoopFrequenciesClosure;
 import org.graalvm.compiler.loop.phases.ConvertDeoptimizeToGuardPhase;
+import org.graalvm.compiler.nodes.AbstractBeginNode;
 import org.graalvm.compiler.nodes.Cancellable;
 import org.graalvm.compiler.nodes.ConstantNode;
+import org.graalvm.compiler.nodes.FixedNode;
+import org.graalvm.compiler.nodes.FixedWithNextNode;
+import org.graalvm.compiler.nodes.Invoke;
+import org.graalvm.compiler.nodes.InvokeWithExceptionNode;
+import org.graalvm.compiler.nodes.LogicConstantNode;
 import org.graalvm.compiler.nodes.StructuredGraph;
 import org.graalvm.compiler.nodes.StructuredGraph.AllowAssumptions;
 import org.graalvm.compiler.nodes.ValueNode;
@@ -94,12 +100,15 @@ import org.graalvm.compiler.replacements.InlineDuringParsingPlugin;
 import org.graalvm.compiler.replacements.PEGraphDecoder;
 import org.graalvm.compiler.replacements.ReplacementsImpl;
 import org.graalvm.compiler.serviceprovider.GraalServices;
+import org.graalvm.compiler.serviceprovider.SpeculationReasonGroup;
 import org.graalvm.compiler.truffle.common.CompilableTruffleAST;
 import org.graalvm.compiler.truffle.common.TruffleCompilerRuntime;
+import org.graalvm.compiler.truffle.common.TruffleCompilerRuntime.InlineKind;
 import org.graalvm.compiler.truffle.common.TruffleInliningPlan;
 import org.graalvm.compiler.truffle.common.TruffleSourceLanguagePosition;
 import org.graalvm.compiler.truffle.compiler.debug.HistogramInlineInvokePlugin;
 import org.graalvm.compiler.truffle.compiler.nodes.TruffleAssumption;
+import org.graalvm.compiler.truffle.compiler.nodes.SpeculativeExceptionGuardNode;
 import org.graalvm.compiler.truffle.compiler.nodes.asserts.NeverPartOfCompilationNode;
 import org.graalvm.compiler.truffle.compiler.nodes.frame.AllowMaterializeNode;
 import org.graalvm.compiler.truffle.compiler.phases.InstrumentBranchesPhase;
@@ -113,12 +122,15 @@ import org.graalvm.compiler.virtual.phases.ea.PartialEscapePhase;
 
 import jdk.vm.ci.code.Architecture;
 import jdk.vm.ci.meta.ConstantReflectionProvider;
+import jdk.vm.ci.meta.DeoptimizationAction;
+import jdk.vm.ci.meta.DeoptimizationReason;
 import jdk.vm.ci.meta.JavaConstant;
 import jdk.vm.ci.meta.JavaKind;
 import jdk.vm.ci.meta.MetaAccessProvider;
 import jdk.vm.ci.meta.ResolvedJavaMethod;
 import jdk.vm.ci.meta.ResolvedJavaType;
 import jdk.vm.ci.meta.SpeculationLog;
+import jdk.vm.ci.meta.SpeculationLog.SpeculationReason;
 
 /**
  * Class performing the partial evaluation starting from the root node of an AST.
@@ -301,7 +313,8 @@ public abstract class PartialEvaluator {
         @Override
         public InlineInfo shouldInlineInvoke(GraphBuilderContext builder, ResolvedJavaMethod original, ValueNode[] arguments) {
             TruffleCompilerRuntime rt = TruffleCompilerRuntime.getRuntime();
-            InlineInfo inlineInfo = asInlineInfo(rt.getInlineKind(original, true), original);
+            InlineKind inlineKind = rt.getInlineKind(original, true);
+            InlineInfo inlineInfo = asInlineInfo(inlineKind, original);
             if (!inlineInfo.allowsInlining()) {
                 return inlineInfo;
             }
@@ -354,6 +367,7 @@ public abstract class PartialEvaluator {
         private final ReplacementsImpl replacements;
         private final InvocationPlugins invocationPlugins;
         private final LoopExplosionPlugin loopExplosionPlugin;
+        private boolean speculativeExceptionEdge;
 
         ParsingInlineInvokePlugin(ReplacementsImpl replacements, InvocationPlugins invocationPlugins, LoopExplosionPlugin loopExplosionPlugin) {
             this.replacements = replacements;
@@ -388,8 +402,13 @@ public abstract class PartialEvaluator {
             }
 
             TruffleCompilerRuntime rt = TruffleCompilerRuntime.getRuntime();
-            InlineInfo inlineInfo = asInlineInfo(rt.getInlineKind(original, true), original);
+            InlineKind inlineKind = rt.getInlineKind(original, true);
+            InlineInfo inlineInfo = asInlineInfo(inlineKind, original);
             if (!inlineInfo.allowsInlining()) {
+                if (inlineKind == InlineKind.DO_NOT_INLINE_WITH_SPECULATIVE_EXCEPTION) {
+                    assert !speculativeExceptionEdge;
+                    speculativeExceptionEdge = true;
+                }
                 return inlineInfo;
             }
             if (original.equals(callIndirectMethod) || original.equals(callDirectMethod)) {
@@ -403,6 +422,23 @@ public abstract class PartialEvaluator {
                 return inlineInfo;
             }
             return null;
+        }
+
+        @Override
+        public void notifyNotInlined(GraphBuilderContext b, ResolvedJavaMethod method, Invoke invoke) {
+            if (speculativeExceptionEdge) {
+                InvokeWithExceptionNode invokeWithException = (InvokeWithExceptionNode) invoke;
+                AbstractBeginNode exceptionEdge = invokeWithException.exceptionEdge();
+                FixedNode next = exceptionEdge.next();
+                assert next != null;
+                exceptionEdge.setNext(null);
+                // Note: Speculation is inserted during PE.
+                FixedWithNextNode guard = b.getGraph().add(new SpeculativeExceptionGuardNode(LogicConstantNode.tautology(b.getGraph()),
+                                DeoptimizationReason.TransferToInterpreter, DeoptimizationAction.InvalidateRecompile, SpeculationLog.NO_SPECULATION, false, method));
+                guard.setNext(next);
+                exceptionEdge.setNext(guard);
+                speculativeExceptionEdge = false;
+            }
         }
     }
 
@@ -741,12 +777,19 @@ public abstract class PartialEvaluator {
             case DO_NOT_INLINE_NO_EXCEPTION:
                 return InlineInfo.DO_NOT_INLINE_NO_EXCEPTION;
             case DO_NOT_INLINE_WITH_EXCEPTION:
+            case DO_NOT_INLINE_WITH_SPECULATIVE_EXCEPTION:
                 return InlineInfo.DO_NOT_INLINE_WITH_EXCEPTION;
             case INLINE:
                 return InlineInfo.createStandardInlineInfo(method);
             default:
                 throw new IllegalArgumentException(String.valueOf(inlineKind));
         }
+    }
+
+    private static final SpeculationReasonGroup TRUFFLE_BOUNDARY_EXCEPTION_SPECULATIONS = new SpeculationReasonGroup("TruffleBoundaryWithoutException", ResolvedJavaMethod.class);
+
+    public static SpeculationReason createTruffleBoundaryExceptionSpeculation(ResolvedJavaMethod targetMethod) {
+        return TRUFFLE_BOUNDARY_EXCEPTION_SPECULATIONS.createSpeculationReason(targetMethod);
     }
 
     private static final class SourceLanguagePositionImpl implements SourceLanguagePosition {
