@@ -174,8 +174,8 @@ public class MonitorSupport {
             msg.append("  lock: ");
             appendObject(msg, lockObject);
 
-            Target_java_util_concurrent_locks_ReentrantLock lockObjectTarget = KnownIntrinsics.unsafeCast(lockObject, Target_java_util_concurrent_locks_ReentrantLock.class);
-            Target_java_util_concurrent_locks_AbstractOwnableSynchronizer sync = KnownIntrinsics.unsafeCast(lockObjectTarget.sync, Target_java_util_concurrent_locks_AbstractOwnableSynchronizer.class);
+            Target_java_util_concurrent_locks_ReentrantLock lockObjectTarget = SubstrateUtil.cast(lockObject, Target_java_util_concurrent_locks_ReentrantLock.class);
+            Target_java_util_concurrent_locks_AbstractOwnableSynchronizer sync = SubstrateUtil.cast(lockObjectTarget.sync, Target_java_util_concurrent_locks_AbstractOwnableSynchronizer.class);
 
             if (sync != null) {
                 msg.append("  sync: ");
@@ -212,8 +212,8 @@ public class MonitorSupport {
             return;
         }
 
-        Target_java_util_concurrent_locks_ReentrantLock lock = KnownIntrinsics.unsafeCast(getOrCreateMonitor(obj, true), Target_java_util_concurrent_locks_ReentrantLock.class);
-        Target_java_util_concurrent_locks_AbstractOwnableSynchronizer sync = KnownIntrinsics.unsafeCast(lock.sync, Target_java_util_concurrent_locks_AbstractOwnableSynchronizer.class);
+        Target_java_util_concurrent_locks_ReentrantLock lock = SubstrateUtil.cast(getOrCreateMonitor(obj, true), Target_java_util_concurrent_locks_ReentrantLock.class);
+        Target_java_util_concurrent_locks_AbstractOwnableSynchronizer sync = SubstrateUtil.cast(lock.sync, Target_java_util_concurrent_locks_AbstractOwnableSynchronizer.class);
 
         VMError.guarantee(sync.getExclusiveOwnerThread() != null, "Cannot patch the exclusiveOwnerThread of an object that is not locked");
         sync.setExclusiveOwnerThread(thread);

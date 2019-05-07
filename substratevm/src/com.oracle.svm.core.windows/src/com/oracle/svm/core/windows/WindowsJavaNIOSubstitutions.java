@@ -37,13 +37,13 @@ import org.graalvm.nativeimage.c.function.CLibrary;
 import org.graalvm.nativeimage.hosted.Feature;
 import org.graalvm.nativeimage.impl.RuntimeClassInitializationSupport;
 
+import com.oracle.svm.core.SubstrateUtil;
 import com.oracle.svm.core.annotate.Alias;
 import com.oracle.svm.core.annotate.AutomaticFeature;
 import com.oracle.svm.core.annotate.Delete;
 import com.oracle.svm.core.annotate.RecomputeFieldValue;
 import com.oracle.svm.core.annotate.Substitute;
 import com.oracle.svm.core.annotate.TargetClass;
-import com.oracle.svm.core.snippets.KnownIntrinsics;
 import com.oracle.svm.core.util.VMError;
 import com.oracle.svm.hosted.jni.JNIRuntimeAccess;
 
@@ -159,7 +159,7 @@ public final class WindowsJavaNIOSubstitutions {
         static FileSystem getDefault() {
             if (Util_Target_java_nio_file_FileSystems.defaultFilesystem == null) {
                 Target_sun_nio_fs_WindowsFileSystemProvider provider = new Target_sun_nio_fs_WindowsFileSystemProvider();
-                Util_Target_java_nio_file_FileSystems.defaultProvider = KnownIntrinsics.unsafeCast(provider, FileSystemProvider.class);
+                Util_Target_java_nio_file_FileSystems.defaultProvider = SubstrateUtil.cast(provider, FileSystemProvider.class);
                 Util_Target_java_nio_file_FileSystems.defaultFilesystem = provider.getFileSystem(uri);
             }
             return Util_Target_java_nio_file_FileSystems.defaultFilesystem;

@@ -26,7 +26,6 @@ package com.oracle.svm.core.jdk;
 
 import static com.oracle.svm.core.annotate.RecomputeFieldValue.Kind.Reset;
 import static com.oracle.svm.core.snippets.KnownIntrinsics.readHub;
-import static com.oracle.svm.core.snippets.KnownIntrinsics.unsafeCast;
 
 import java.io.File;
 import java.io.InputStream;
@@ -61,6 +60,7 @@ import org.graalvm.word.WordFactory;
 
 import com.oracle.svm.core.MonitorSupport;
 import com.oracle.svm.core.SubstrateOptions;
+import com.oracle.svm.core.SubstrateUtil;
 import com.oracle.svm.core.annotate.Alias;
 import com.oracle.svm.core.annotate.Delete;
 import com.oracle.svm.core.annotate.KeepOriginal;
@@ -139,7 +139,7 @@ final class Target_java_lang_Enum {
          * The original implementation creates and caches a HashMap to make the lookup faster. For
          * simplicity, we do a linear search for now.
          */
-        for (Enum<?> e : unsafeCast(enumType, DynamicHub.class).getEnumConstantsShared()) {
+        for (Enum<?> e : DynamicHub.fromClass(enumType).getEnumConstantsShared()) {
             if (e.name().equals(name)) {
                 return e;
             }
@@ -157,7 +157,7 @@ final class Target_java_lang_String {
 
     @Substitute
     public String intern() {
-        String thisStr = unsafeCast(this, String.class);
+        String thisStr = SubstrateUtil.cast(this, String.class);
         return ImageSingletons.lookup(StringInternSupport.class).intern(thisStr);
     }
 }
@@ -703,7 +703,7 @@ final class Target_java_lang_Package {
             name = name.substring(0, i);
             Target_java_lang_Package pkg = new Target_java_lang_Package(name, null, null, null,
                             null, null, null, null, null);
-            return KnownIntrinsics.unsafeCast(pkg, Package.class);
+            return SubstrateUtil.cast(pkg, Package.class);
         } else {
             return null;
         }

@@ -188,7 +188,6 @@ import com.oracle.svm.core.posix.headers.Unistd;
 import com.oracle.svm.core.posix.headers.darwin.CoreFoundation;
 import com.oracle.svm.core.posix.headers.linux.Mntent;
 import com.oracle.svm.core.posix.headers.linux.Mntent.mntent;
-import com.oracle.svm.core.snippets.KnownIntrinsics;
 import com.oracle.svm.core.util.VMError;
 import com.oracle.svm.hosted.jni.JNIRuntimeAccess;
 
@@ -1347,7 +1346,7 @@ public final class PosixJavaNIOSubstitutions {
      * Call this to throw an internal UnixException when a system/library call fails.
      */
     private static Exception throwUnixException(int errnum) throws Exception {
-        throw KnownIntrinsics.unsafeCast(new Target_sun_nio_fs_UnixException(errnum), Exception.class);
+        throw SubstrateUtil.cast(new Target_sun_nio_fs_UnixException(errnum), Exception.class);
     }
 
     private static OutOfMemoryError throwOutOfMemoryError(String msg) {

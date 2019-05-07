@@ -62,12 +62,6 @@ public class KnownIntrinsics {
     public static native Object formatArray(Pointer memory, Class<?> hub, int length, boolean rememberedSet, boolean unaligned);
 
     /**
-     * Casts the result to a new static type without any type checking. The caller is responsible
-     * for type safety.
-     */
-    public static native <T> T unsafeCast(Object obj, Class<T> toType);
-
-    /**
      * Narrow down the range of values to exclude 0 as the possible pointer value.
      *
      * @param pointer that we are narrowing to non-null

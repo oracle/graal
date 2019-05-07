@@ -68,6 +68,7 @@ import org.graalvm.nativeimage.impl.RuntimeClassInitializationSupport;
 import org.graalvm.word.PointerBase;
 import org.graalvm.word.WordFactory;
 
+import com.oracle.svm.core.SubstrateUtil;
 import com.oracle.svm.core.annotate.Alias;
 import com.oracle.svm.core.annotate.AutomaticFeature;
 import com.oracle.svm.core.annotate.RecomputeFieldValue;
@@ -90,7 +91,6 @@ import com.oracle.svm.core.posix.headers.NetinetIn;
 import com.oracle.svm.core.posix.headers.Poll;
 import com.oracle.svm.core.posix.headers.Socket;
 import com.oracle.svm.core.posix.headers.Unistd;
-import com.oracle.svm.core.snippets.KnownIntrinsics;
 import com.oracle.svm.core.util.Utf8;
 import com.oracle.svm.core.util.VMError;
 import com.oracle.svm.hosted.jni.JNIRuntimeAccess;
@@ -311,7 +311,7 @@ final class Target_java_net_PlainDatagramSocketImpl {
         int localport = localportArg;
         //   191      /* fdObj is the FileDescriptor field on this */
         //   192      jobject fdObj = (*env)->GetObjectField(env, this, pdsi_fdID);
-        FileDescriptor fdObj = Util_java_net_DatagramSocketImpl.as_Target_java_net_DatagramSocketImpl(this).fd;
+        FileDescriptor fdObj = SubstrateUtil.cast(this, Target_java_net_DatagramSocketImpl.class).fd;
 
         //   193      /* fd is an int field on fdObj */
         //   194      int fd;
@@ -384,10 +384,10 @@ final class Target_java_net_PlainDatagramSocketImpl {
             localport = JavaNetNetUtilMD.NET_GetPortFromSockaddr(him);
 
             //   242          (*env)->SetIntField(env, this, pdsi_localPortID, localport);
-            Util_java_net_PlainDatagramSocketImpl.as_Target_java_net_DatagramSocketImpl(this).localPort = localport;
+            SubstrateUtil.cast(this, Target_java_net_DatagramSocketImpl.class).localPort = localport;
         } else {
             //   244          (*env)->SetIntField(env, this, pdsi_localPortID, localport);
-            Util_java_net_PlainDatagramSocketImpl.as_Target_java_net_DatagramSocketImpl(this).localPort = localport;
+            SubstrateUtil.cast(this, Target_java_net_DatagramSocketImpl.class).localPort = localport;
         }
     }
     // @formatter:on
@@ -414,7 +414,7 @@ final class Target_java_net_PlainDatagramSocketImpl {
 
         //   366      /* The object's field */
         //   367      jobject fdObj = (*env)->GetObjectField(env, this, pdsi_fdID);
-        FileDescriptor fdObj = Util_java_net_DatagramSocketImpl.as_Target_java_net_DatagramSocketImpl(this).fd;
+        FileDescriptor fdObj = SubstrateUtil.cast(this, Target_java_net_DatagramSocketImpl.class).fd;
 
         //   368      jint trafficClass = (*env)->GetIntField(env, this, pdsi_trafficClassID);
         /* Warning: The local variable trafficClass is hiding a field from type Target_java_net_PlainDatagramSocketImpl */
@@ -468,10 +468,10 @@ final class Target_java_net_PlainDatagramSocketImpl {
         connectedLocal = this.connected;
 
         //   395      packetBuffer = (*env)->GetObjectField(env, packet, dp_bufID);
-        packetBuffer = Util_java_net_DatagramPacket.as_Target_java_net_DatagramPacket(packet).buf;
+        packetBuffer = SubstrateUtil.cast(packet, Target_java_net_DatagramPacket.class).buf;
 
         //   396      packetAddress = (*env)->GetObjectField(env, packet, dp_addressID);
-        packetAddress = Util_java_net_DatagramPacket.as_Target_java_net_DatagramPacket(packet).address;
+        packetAddress = SubstrateUtil.cast(packet, Target_java_net_DatagramPacket.class).address;
 
         //   397      if (IS_NULL(packetBuffer) || IS_NULL(packetAddress)) {
         if (packetBuffer == null || packetAddress == null) {
@@ -480,9 +480,9 @@ final class Target_java_net_PlainDatagramSocketImpl {
         }
 
         //   402      packetBufferOffset = (*env)->GetIntField(env, packet, dp_offsetID);
-        packetBufferOffset = Util_java_net_DatagramPacket.as_Target_java_net_DatagramPacket(packet).offset;
+        packetBufferOffset = SubstrateUtil.cast(packet, Target_java_net_DatagramPacket.class).offset;
         //   403      packetBufferLen = (*env)->GetIntField(env, packet, dp_lengthID);
-        packetBufferLen = Util_java_net_DatagramPacket.as_Target_java_net_DatagramPacket(packet).length;
+        packetBufferLen = SubstrateUtil.cast(packet, Target_java_net_DatagramPacket.class).length;
 
         //   405      if (connected) {
         if (connectedLocal) {
@@ -493,7 +493,7 @@ final class Target_java_net_PlainDatagramSocketImpl {
             rmtaddr = WordFactory.nullPointer();
         } else {
             //   410          packetPort = (*env)->GetIntField(env, packet, dp_portID);
-            packetPort = Util_java_net_DatagramPacket.as_Target_java_net_DatagramPacket(packet).port;
+            packetPort = SubstrateUtil.cast(packet, Target_java_net_DatagramPacket.class).port;
             //   411          if (NET_InetAddressToSockaddr(env, packetAddress, packetPort, (struct sockaddr *)&rmtaddr, &len, JNI_TRUE) != 0) {
             if (JavaNetNetUtilMD.NET_InetAddressToSockaddr(packetAddress, packetPort, rmtaddr, len_Pointer, Util_jni.JNI_TRUE()) != 0) {
                 //   412            return;
@@ -633,7 +633,7 @@ final class Target_java_net_PlainDatagramSocketImpl {
         boolean mallocedPacket = false;
 
         //   772      jobject fdObj = (*env)->GetObjectField(env, this, pdsi_fdID);
-        FileDescriptor fdObj = Util_java_net_DatagramSocketImpl.as_Target_java_net_DatagramSocketImpl(this).fd;
+        FileDescriptor fdObj = SubstrateUtil.cast(this, Target_java_net_DatagramSocketImpl.class).fd;
 
         //   773      jint timeout = (*env)->GetIntField(env, this, pdsi_timeoutID);
         /* Warning: The local variable timeout is hiding a field from type Target_java_net_PlainDatagramSocketImpl */
@@ -687,7 +687,7 @@ final class Target_java_net_PlainDatagramSocketImpl {
         }
 
         //   804      packetBuffer = (*env)->GetObjectField(env, packet, dp_bufID);
-        packetBuffer = Util_java_net_DatagramPacket.as_Target_java_net_DatagramPacket(packet).buf;
+        packetBuffer = SubstrateUtil.cast(packet, Target_java_net_DatagramPacket.class).buf;
 
         //   805      if (IS_NULL(packetBuffer)) {
         if (packetBuffer == null) {
@@ -697,10 +697,10 @@ final class Target_java_net_PlainDatagramSocketImpl {
         }
 
         //   809      packetBufferOffset = (*env)->GetIntField(env, packet, dp_offsetID);
-        packetBufferOffset = Util_java_net_DatagramPacket.as_Target_java_net_DatagramPacket(packet).offset;
+        packetBufferOffset = SubstrateUtil.cast(packet, Target_java_net_DatagramPacket.class).offset;
 
         //   810      packetBufferLen = (*env)->GetIntField(env, packet, dp_bufLengthID);
-        packetBufferLen = Util_java_net_DatagramPacket.as_Target_java_net_DatagramPacket(packet).bufLength;
+        packetBufferLen = SubstrateUtil.cast(packet, Target_java_net_DatagramPacket.class).bufLength;
 
 
         try {
@@ -811,9 +811,9 @@ final class Target_java_net_PlainDatagramSocketImpl {
                 //   885          if (n == JVM_IO_ERR) {
                 if (n == Target_jvm.JVM_IO_ERR()) {
                     //   886              (*env)->SetIntField(env, packet, dp_offsetID, 0);
-                    Util_java_net_DatagramPacket.as_Target_java_net_DatagramPacket(packet).offset = 0;
+                    SubstrateUtil.cast(packet, Target_java_net_DatagramPacket.class).offset = 0;
                     //   887              (*env)->SetIntField(env, packet, dp_lengthID, 0);
-                    Util_java_net_DatagramPacket.as_Target_java_net_DatagramPacket(packet).length = 0;
+                    SubstrateUtil.cast(packet, Target_java_net_DatagramPacket.class).length = 0;
                     int errno = Errno.errno();
                     if (errno == Errno.ECONNREFUSED()) {
                         //   888              if (errno == ECONNREFUSED) {
@@ -834,9 +834,9 @@ final class Target_java_net_PlainDatagramSocketImpl {
                     //   898          } else if (n == JVM_IO_INTR) {
                 } else if (n == Target_jvm.JVM_IO_INTR()) {
                     //   899              (*env)->SetIntField(env, packet, dp_offsetID, 0);
-                    Util_java_net_DatagramPacket.as_Target_java_net_DatagramPacket(packet).offset = 0;
+                    SubstrateUtil.cast(packet, Target_java_net_DatagramPacket.class).offset = 0;
                     //   900              (*env)->SetIntField(env, packet, dp_lengthID, 0);
-                    Util_java_net_DatagramPacket.as_Target_java_net_DatagramPacket(packet).length = 0;
+                    SubstrateUtil.cast(packet, Target_java_net_DatagramPacket.class).length = 0;
                     //   901              JNU_ThrowByName(env, JNU_JAVAIOPKG "InterruptedIOException",
                     //   902                              "operation interrupted");
                     throw new InterruptedIOException("operation interrupted");
@@ -861,7 +861,7 @@ final class Target_java_net_PlainDatagramSocketImpl {
                     //   918               * can't update any existing InetAddress because it is immutable
                     //   919               */
                     //   920              packetAddress = (*env)->GetObjectField(env, packet, dp_addressID);
-                    packetAddress = Util_java_net_DatagramPacket.as_Target_java_net_DatagramPacket(packet).address;
+                    packetAddress = SubstrateUtil.cast(packet, Target_java_net_DatagramPacket.class).address;
                     //   921              if (packetAddress != NULL) {
                     if (packetAddress != null) {
                         //   922                  if (!NET_SockaddrEqualsInetAddress(env, (struct sockaddr *)&remote_addr, packetAddress)) {
@@ -878,7 +878,7 @@ final class Target_java_net_PlainDatagramSocketImpl {
                         packetAddress = JavaNetNetUtil.NET_SockaddrToInetAddress(remote_addr, port_Pointer);
                         //   929                  /* stuff the new Inetaddress in the packet */
                         //   930                  (*env)->SetObjectField(env, packet, dp_addressID, packetAddress);
-                        Util_java_net_DatagramPacket.as_Target_java_net_DatagramPacket(packet).address = packetAddress;
+                        SubstrateUtil.cast(packet, Target_java_net_DatagramPacket.class).address = packetAddress;
                     } else {
                         //   932                  /* only get the new port number */
                         //   933                  port = NET_GetPortFromSockaddr((struct sockaddr *)&remote_addr);
@@ -889,9 +889,9 @@ final class Target_java_net_PlainDatagramSocketImpl {
                     //   937                                         (jbyte *)fullPacket);
                     VmPrimsJNI.SetByteArrayRegion(packetBuffer, packetBufferOffset, n, fullPacket);
                     //   938              (*env)->SetIntField(env, packet, dp_portID, port);
-                    Util_java_net_DatagramPacket.as_Target_java_net_DatagramPacket(packet).port = port_Pointer.read();
+                    SubstrateUtil.cast(packet, Target_java_net_DatagramPacket.class).port = port_Pointer.read();
                     //   939              (*env)->SetIntField(env, packet, dp_lengthID, n);
-                    Util_java_net_DatagramPacket.as_Target_java_net_DatagramPacket(packet).length = n;
+                    SubstrateUtil.cast(packet, Target_java_net_DatagramPacket.class).length = n;
                 }
                 //   942      } while (retry);
             } while (retry);
@@ -921,7 +921,7 @@ final class Target_java_net_PlainDatagramSocketImpl {
         // 1058       * REMIND: PUT A LOCK AROUND THIS CODE
         // 1059       */
         // 1060      jobject fdObj = (*env)->GetObjectField(env, this, pdsi_fdID);
-        FileDescriptor fdObj = Util_java_net_DatagramSocketImpl.as_Target_java_net_DatagramSocketImpl(this).fd;
+        FileDescriptor fdObj = SubstrateUtil.cast(this, Target_java_net_DatagramSocketImpl.class).fd;
         // 1061      int fd;
         int fd;
         // 1063      if (IS_NULL(fdObj)) {
@@ -1256,7 +1256,7 @@ final class Target_java_net_PlainDatagramSocketImpl {
 
 
         //   957      jobject fdObj = (*env)->GetObjectField(env, this, pdsi_fdID);
-        FileDescriptor fdObj = Util_java_net_DatagramSocketImpl.as_Target_java_net_DatagramSocketImpl(this).fd;
+        FileDescriptor fdObj = SubstrateUtil.cast(this, Target_java_net_DatagramSocketImpl.class).fd;
         //   958      int arg, fd, t = 1;
         CIntPointer arg_Pointer = StackValue.get(CIntPointer.class);
         int fd;
@@ -1458,7 +1458,7 @@ final class Target_java_net_PlainDatagramSocketImpl {
         CIntPointer retval_Pointer = StackValue.get(CIntPointer.class);
 
         //  2322      jobject fdObj = (*env)->GetObjectField(env, this, pdsi_fdID);
-        FileDescriptor fdObj = Util_java_net_DatagramSocketImpl.as_Target_java_net_DatagramSocketImpl(this).fd;
+        FileDescriptor fdObj = SubstrateUtil.cast(this, Target_java_net_DatagramSocketImpl.class).fd;
 
         //  2324      if (IS_NULL(fdObj)) {
         if (fdObj == null) {
@@ -1494,7 +1494,7 @@ final class Target_java_net_PlainDatagramSocketImpl {
     @SuppressWarnings({"static-method", "unused"})
     protected void setTimeToLive(int ttl) throws IOException {
         //  1868      jobject fdObj = (*env)->GetObjectField(env, this, pdsi_fdID);
-        FileDescriptor fdObj = Util_java_net_DatagramSocketImpl.as_Target_java_net_DatagramSocketImpl(this).fd;
+        FileDescriptor fdObj = SubstrateUtil.cast(this, Target_java_net_DatagramSocketImpl.class).fd;
 
         //  1869      int fd;
         int fd;
@@ -1555,7 +1555,7 @@ final class Target_java_net_PlainDatagramSocketImpl {
     @SuppressWarnings({"static-method"})
     protected int getTimeToLive() throws IOException {
         //  1917      jobject fdObj = (*env)->GetObjectField(env, this, pdsi_fdID);
-        FileDescriptor fdObj = Util_java_net_DatagramSocketImpl.as_Target_java_net_DatagramSocketImpl(this).fd;
+        FileDescriptor fdObj = SubstrateUtil.cast(this, Target_java_net_DatagramSocketImpl.class).fd;
 
         //  1918      jint fd = -1;
         int fd = -1;
@@ -1633,7 +1633,7 @@ final class Target_java_net_PlainDatagramSocketImpl {
     protected void connect0(InetAddress address, int port) throws SocketException {
         //   256      /* The object's field */
         //   257      jobject fdObj = (*env)->GetObjectField(env, this, pdsi_fdID);
-        FileDescriptor fdObj = Util_java_net_DatagramSocketImpl.as_Target_java_net_DatagramSocketImpl(this).fd;
+        FileDescriptor fdObj = SubstrateUtil.cast(this, Target_java_net_DatagramSocketImpl.class).fd;
         //   258      /* The fdObj'fd */
         //   259      jint fd;
         int fd;
@@ -1706,14 +1706,6 @@ final class Target_java_net_DatagramPacket {
     @Alias int port;
 }
 
-/* { Allow names with non-standard names: Checkstyle: stop */
-class Util_java_net_DatagramPacket {
-    static Target_java_net_DatagramPacket as_Target_java_net_DatagramPacket(DatagramPacket packet) {
-        return KnownIntrinsics.unsafeCast(packet, Target_java_net_DatagramPacket.class);
-    }
-}
-/* } Allow names with non-standard names: Checkstyle: resume */
-
 @TargetClass(java.net.DatagramSocketImpl.class)
 @Platforms({Platform.LINUX.class, Platform.DARWIN.class})
 final class Target_java_net_DatagramSocketImpl {
@@ -1723,24 +1715,12 @@ final class Target_java_net_DatagramSocketImpl {
 }
 
 /* { Allow names with non-standard names: Checkstyle: stop */
-class Util_java_net_DatagramSocketImpl {
-    static Target_java_net_DatagramSocketImpl as_Target_java_net_DatagramSocketImpl(Target_java_net_PlainDatagramSocketImpl tjnsi) {
-        return KnownIntrinsics.unsafeCast(tjnsi, Target_java_net_DatagramSocketImpl.class);
-    }
-}
-/* } Allow names with non-standard names: Checkstyle: resume */
-
-/* { Allow names with non-standard names: Checkstyle: stop */
 class Util_java_net_PlainDatagramSocketImpl {
-    static Target_java_net_DatagramSocketImpl as_Target_java_net_DatagramSocketImpl(Target_java_net_PlainDatagramSocketImpl tjnsi) {
-        return KnownIntrinsics.unsafeCast(tjnsi, Target_java_net_DatagramSocketImpl.class);
-    }
-
     /* Do not re-format commented out code: @formatter:off */
     //   137  static int getFD(JNIEnv *env, jobject this) {
     static int getFD(Target_java_net_PlainDatagramSocketImpl self) {
         //   138      jobject fdObj = (*env)->GetObjectField(env, this, pdsi_fdID);
-        FileDescriptor fdObj = Util_java_net_DatagramSocketImpl.as_Target_java_net_DatagramSocketImpl(self).fd;
+        FileDescriptor fdObj = SubstrateUtil.cast(self, Target_java_net_DatagramSocketImpl.class).fd;
         //   139      if (fdObj == NULL) {
         if (fdObj == null) {
             //   140          return -1;
@@ -2611,10 +2591,6 @@ final class Util_java_net_InetAddress {
      * Conversion between the Java and substitution type systems.
      */
 
-    static Target_java_net_InetAddress from_InetAddress(InetAddress ia) {
-        return KnownIntrinsics.unsafeCast(ia, Target_java_net_InetAddress.class);
-    }
-
     /** Initialization. */
 
     /* Do not re-format commented out code: @formatter:off */
@@ -2662,7 +2638,7 @@ final class Target_java_net_InterfaceAddress {
 final class Util_java_net_InterfaceAddress {
 
     static InterfaceAddress toInterfaceAddress(Target_java_net_InterfaceAddress tjnia) {
-        return KnownIntrinsics.unsafeCast(tjnia, InterfaceAddress.class);
+        return SubstrateUtil.cast(tjnia, InterfaceAddress.class);
     }
 
     static InterfaceAddress newInterfaceAddress() {
@@ -2746,14 +2722,8 @@ final class Util_java_net_Inet4Address {
     /** Create an instance of an Inet4Address. */
     static Inet4Address new_Inet4Address() {
         Target_java_net_Inet4Address tjni4a = new Target_java_net_Inet4Address();
-        Inet4Address result = Util_java_net_Inet4Address.to_Inet4Address(tjni4a);
+        Inet4Address result = SubstrateUtil.cast(tjni4a, Inet4Address.class);
         return result;
-    }
-
-    /* Cast between Java and substitution types. */
-
-    static Inet4Address to_Inet4Address(Target_java_net_Inet4Address tjni4a) {
-        return KnownIntrinsics.unsafeCast(tjni4a, Inet4Address.class);
     }
 
     /* Initialization. */
@@ -3189,22 +3159,10 @@ final class Util_java_net_Inet6Address {
     private Util_java_net_Inet6Address() {
     }
 
-    /*
-     * Casts between Java and substitution types.
-     */
-
-    static Target_java_net_Inet6Address from_Inet6Address(Inet6Address i6a) {
-        return KnownIntrinsics.unsafeCast(i6a, Target_java_net_Inet6Address.class);
-    }
-
-    static Inet6Address to_Inet6Address(Target_java_net_Inet6Address tia6Obj) {
-        return KnownIntrinsics.unsafeCast(tia6Obj, Inet6Address.class);
-    }
-
     /** Create an instance of an Inet6Address. */
     static Inet6Address new_Inet6Address() {
         Target_java_net_Inet6Address tjni6a = new Target_java_net_Inet6Address();
-        Inet6Address result = Util_java_net_Inet6Address.to_Inet6Address(tjni6a);
+        Inet6Address result = SubstrateUtil.cast(tjni6a, Inet6Address.class);
         return result;
     }
 
@@ -4166,11 +4124,11 @@ final class Target_java_net_NetworkInterface {
 class Util_java_net_NetworkInterface {
 
     static NetworkInterface toNetworkInterface(Target_java_net_NetworkInterface tjnni) {
-        return KnownIntrinsics.unsafeCast(tjnni, NetworkInterface.class);
+        return SubstrateUtil.cast(tjnni, NetworkInterface.class);
     }
 
     static Target_java_net_NetworkInterface fromNetworkInterface(NetworkInterface ni) {
-        return KnownIntrinsics.unsafeCast(ni, Target_java_net_NetworkInterface.class);
+        return SubstrateUtil.cast(ni, Target_java_net_NetworkInterface.class);
     }
 
     public static NetworkInterface newNetworkInterface() {
@@ -4508,22 +4466,6 @@ final class Target_java_net_SocketImpl {
     @Alias int localport;
 }
 
-/** Methods to operate on java.net.SocketImpl instances. */
-final class Util_java_net_SocketImpl {
-
-    /** Private constructor: No instances. */
-    private Util_java_net_SocketImpl() {
-    }
-
-    /*
-     * Conversion between the Java and substitution type systems.
-     */
-
-    static Target_java_net_SocketImpl from_SocketImpl(SocketImpl socketImpl) {
-        return KnownIntrinsics.unsafeCast(socketImpl, Target_java_net_SocketImpl.class);
-    }
-}
-
 // 044 abstract class AbstractPlainSocketImpl extends SocketImpl
 @TargetClass(className = "java.net.AbstractPlainSocketImpl")
 @Platforms({Platform.LINUX.class, Platform.DARWIN.class})
@@ -4634,7 +4576,7 @@ final class Target_java_net_PlainSocketImpl {
         // 196 CHECK_NULL(socketExceptionCls);
         // 197 }
         // 198 fdObj = (*env)->GetObjectField(env, this, psi_fdID);
-        fdObj = Util_java_net_PlainSocketImpl.as_Target_java_net_SocketImpl(this).fd;
+        fdObj = SubstrateUtil.cast(this, Target_java_net_SocketImpl.class).fd;
         // 199
         // 200 if (fdObj == NULL) {
         // 201 (*env)->ThrowNew(env, socketExceptionCls, "null fd object");
@@ -4684,7 +4626,7 @@ final class Target_java_net_PlainSocketImpl {
         // 229 * automatically and set to non blocking.
         // 230 */
         // 231 ssObj = (*env)->GetObjectField(env, this, psi_serverSocketID);
-        ssObj = Util_java_net_PlainSocketImpl.as_Target_java_net_SocketImpl(this).serverSocket;
+        ssObj = SubstrateUtil.cast(this, Target_java_net_SocketImpl.class).serverSocket;
         // 232 if (ssObj != NULL) {
         if (ssObj != null) {
             // 233 int arg = 1;
@@ -4724,7 +4666,7 @@ final class Target_java_net_PlainSocketImpl {
         CIntPointer ret_Pointer = StackValue.get(CIntPointer.class);
         ret_Pointer.write(-1);
         // 807     jobject fdObj = (*env)->GetObjectField(env, this, psi_fdID);
-        FileDescriptor fdObj = Util_java_net_PlainSocketImpl.as_Target_java_net_SocketImpl(this).fd;
+        FileDescriptor fdObj = SubstrateUtil.cast(this, Target_java_net_SocketImpl.class).fd;
         // 808     jint fd;
         int fd;
         // 810     if (IS_NULL(fdObj)) {
@@ -4769,7 +4711,7 @@ final class Target_java_net_PlainSocketImpl {
         int localport = localportArg;
         // 552     /* fdObj is the FileDescriptor field on this */
         // 553     jobject fdObj = (*env)->GetObjectField(env, this, psi_fdID);
-        FileDescriptor fdObj = Util_java_net_PlainSocketImpl.as_Target_java_net_SocketImpl(this).fd;
+        FileDescriptor fdObj = SubstrateUtil.cast(this, Target_java_net_SocketImpl.class).fd;
         // 554     /* fd is an int field on fdObj */
         // 555     int fd;
         int fd;
@@ -4820,7 +4762,7 @@ final class Target_java_net_PlainSocketImpl {
         }
         // 589     /* set the address */
         // 590     (*env)->SetObjectField(env, this, psi_addressID, iaObj);
-        Util_java_net_PlainSocketImpl.as_Target_java_net_SocketImpl(this).address = iaObj;
+        SubstrateUtil.cast(this, Target_java_net_SocketImpl.class).address = iaObj;
         // 592     /* initialize the local port */
         // 593     if (localport == 0) {
         if (localport == 0) {
@@ -4837,10 +4779,10 @@ final class Target_java_net_PlainSocketImpl {
         // 602         localport = NET_GetPortFromSockaddr((struct sockaddr *)&him);
             localport = JavaNetNetUtilMD.NET_GetPortFromSockaddr(him);
         // 603         (*env)->SetIntField(env, this, psi_localportID, localport);
-            Util_java_net_PlainSocketImpl.as_Target_java_net_SocketImpl(this).localport = localport;
+            SubstrateUtil.cast(this, Target_java_net_SocketImpl.class).localport = localport;
         } else {
         // 605         (*env)->SetIntField(env, this, psi_localportID, localport);
-            Util_java_net_PlainSocketImpl.as_Target_java_net_SocketImpl(this).localport = localport;
+            SubstrateUtil.cast(this, Target_java_net_SocketImpl.class).localport = localport;
         }
     }
     /* @formatter:on */
@@ -4857,7 +4799,7 @@ final class Target_java_net_PlainSocketImpl {
     @Substitute
     void socketClose0(boolean useDeferredClose) throws IOException {
         // 838     jobject fdObj = (*env)->GetObjectField(env, this, psi_fdID);
-        FileDescriptor fdObj = Util_java_net_PlainSocketImpl.as_Target_java_net_SocketImpl(this).fd;
+        FileDescriptor fdObj = SubstrateUtil.cast(this, Target_java_net_SocketImpl.class).fd;
         // 839     jint fd;
         int fd;
         // 841     if (IS_NULL(fdObj)) {
@@ -4893,18 +4835,18 @@ final class Target_java_net_PlainSocketImpl {
         /* local copy of "timeout" argument so it can be modified. */
         int timeout = timeoutArg;
         // 259    jint localport = (*env)->GetIntField(env, this, psi_localportID);
-        int localport = Util_java_net_PlainSocketImpl.as_Target_java_net_SocketImpl(this).localport;
+        int localport = SubstrateUtil.cast(this, Target_java_net_SocketImpl.class).localport;
         // 260    int len = 0;
         CIntPointer len_Pointer = StackValue.get(CIntPointer.class);
         len_Pointer.write(0);
         // 262    /* fdObj is the FileDescriptor field on this */
         // 263    jobject fdObj = (*env)->GetObjectField(env, this, psi_fdID);
-        FileDescriptor fdObj = Util_java_net_PlainSocketImpl.as_Target_java_net_SocketImpl(this).fd;
+        FileDescriptor fdObj = SubstrateUtil.cast(this, Target_java_net_SocketImpl.class).fd;
         // 265    class clazz = (*env)->GetObjectClass(env, this);
         // 267    jobject fdLock;
         Object fdLock;
         // 269    jint trafficClass = (*env)->GetIntField(env, this, psi_trafficClassID);
-        int trafficClass = Util_java_net_PlainSocketImpl.as_Target_java_net_AbstractPlainSocketImpl(this).trafficClass;
+        int trafficClass = SubstrateUtil.cast(this, Target_java_net_AbstractPlainSocketImpl.class).trafficClass;
         // 271    /* fd is an int field on iaObj */
         // 272    jint fd;
         int fd;
@@ -5222,9 +5164,9 @@ final class Target_java_net_PlainSocketImpl {
         PosixUtils.setFD(fdObj, fd);
         // 519     /* set the remote peer address and port */
         // 520     (*env)->SetObjectField(env, this, psi_addressID, iaObj);
-        Util_java_net_PlainSocketImpl.as_Target_java_net_SocketImpl(this).address = iaObj;
+        SubstrateUtil.cast(this, Target_java_net_SocketImpl.class).address = iaObj;
         // 521     (*env)->SetIntField(env, this, psi_portID, port);
-        Util_java_net_PlainSocketImpl.as_Target_java_net_SocketImpl(this).port = port;
+        SubstrateUtil.cast(this, Target_java_net_SocketImpl.class).port = port;
         // 523     /*
         // 524      * we need to initialize the local port field if bind was called
         // 525      * previously to the connect (by the client) then localport field
@@ -5246,7 +5188,7 @@ final class Target_java_net_PlainSocketImpl {
                 // 537             localport = NET_GetPortFromSockaddr((struct sockaddr *)&him);
                 localport = JavaNetNetUtilMD.NET_GetPortFromSockaddr(him);
                 // 538             (*env)->SetIntField(env, this, psi_localportID, localport);
-                Util_java_net_PlainSocketImpl.as_Target_java_net_SocketImpl(this).localport = localport;
+                SubstrateUtil.cast(this, Target_java_net_SocketImpl.class).localport = localport;
             }
         }
     }
@@ -5266,7 +5208,7 @@ final class Target_java_net_PlainSocketImpl {
         int count = countArg;
         // 618     /* this FileDescriptor fd field */
         // 619     jobject fdObj = (*env)->GetObjectField(env, this, psi_fdID);
-        FileDescriptor fdObj = Util_java_net_PlainSocketImpl.as_Target_java_net_SocketImpl(this).fd;
+        FileDescriptor fdObj = SubstrateUtil.cast(this, Target_java_net_SocketImpl.class).fd;
         // 620     /* fdObj's int fd field */
         // 621     int fd;
         int fd;
@@ -5313,11 +5255,11 @@ final class Target_java_net_PlainSocketImpl {
         // 654     int port;
         CIntPointer port_Pointer = StackValue.get(CIntPointer.class);
         // 655     jint timeout = (*env)->GetIntField(env, this, psi_timeoutID);
-        int timeout = Util_java_net_PlainSocketImpl.as_Target_java_net_AbstractPlainSocketImpl(this).timeout;
+        int timeout = SubstrateUtil.cast(this, Target_java_net_AbstractPlainSocketImpl.class).timeout;
         // 656     jlong prevTime = 0;
         long prevTime = 0;
         // 657     jobject fdObj = (*env)->GetObjectField(env, this, psi_fdID);
-        FileDescriptor fdObj = Util_java_net_PlainSocketImpl.as_Target_java_net_SocketImpl(this).fd;
+        FileDescriptor fdObj = SubstrateUtil.cast(this, Target_java_net_SocketImpl.class).fd;
         // 658
         // 659     /* the FileDescriptor field on socket */
         // 660     jobject socketFdObj;
@@ -5503,20 +5445,20 @@ final class Target_java_net_PlainSocketImpl {
         // 785      * Populate SocketImpl.fd.fd
         // 786      */
         // 787     socketFdObj = (*env)->GetObjectField(env, socket, psi_fdID);
-        socketFdObj = Util_java_net_SocketImpl.from_SocketImpl(socket).fd;
+        socketFdObj = SubstrateUtil.cast(socket, Target_java_net_SocketImpl.class).fd;
         // 788     (*env)->SetIntField(env, socketFdObj, IO_fd_fdID, newfd);
         PosixUtils.setFD(socketFdObj, newfd);
         // 789
         // 790     (*env)->SetObjectField(env, socket, psi_addressID, socketAddressObj);
-        Util_java_net_SocketImpl.from_SocketImpl(socket).address = socketAddressObj;
+        SubstrateUtil.cast(socket, Target_java_net_SocketImpl.class).address = socketAddressObj;
         // 791     (*env)->SetIntField(env, socket, psi_portID, port);
-        Util_java_net_SocketImpl.from_SocketImpl(socket).port = port_Pointer.read();
+        SubstrateUtil.cast(socket, Target_java_net_SocketImpl.class).port = port_Pointer.read();
         /* Not re-using the frame-local "port". */
         // 792     /* also fill up the local port information */
         // 793      port = (*env)->GetIntField(env, this, psi_localportID);
-        int thisLocalPort = Util_java_net_PlainSocketImpl.as_Target_java_net_SocketImpl(this).localport;
+        int thisLocalPort = SubstrateUtil.cast(this, Target_java_net_SocketImpl.class).localport;
         // 794     (*env)->SetIntField(env, socket, psi_localportID, port);
-        Util_java_net_SocketImpl.from_SocketImpl(socket).localport = thisLocalPort;
+        SubstrateUtil.cast(socket, Target_java_net_SocketImpl.class).localport = thisLocalPort;
     }
     /* @formatter:on */
 
@@ -5538,7 +5480,7 @@ final class Target_java_net_PlainSocketImpl {
     void socketShutdown(int howto) throws IOException {
         // 867
         // 868     jobject fdObj = (*env)->GetObjectField(env, this, psi_fdID);
-        FileDescriptor fdObj = Util_java_net_PlainSocketImpl.as_Target_java_net_SocketImpl(this).fd;
+        FileDescriptor fdObj = SubstrateUtil.cast(this, Target_java_net_SocketImpl.class).fd;
         // 869     jint fd;
         int fd;
         // 870
@@ -5595,7 +5537,7 @@ final class Target_java_net_PlainSocketImpl {
         // 903      * Check that socket hasn't been closed
         // 904      */
         // 905     fd = getFD(env, this);
-        fd = PosixUtils.getFD(Util_java_net_PlainSocketImpl.as_Target_java_net_SocketImpl(this).fd);
+        fd = PosixUtils.getFD(SubstrateUtil.cast(this, Target_java_net_SocketImpl.class).fd);
         // 906     if (fd < 0) {
         if (fd < 0) {
         // 907         JNU_ThrowByName(env, JNU_JAVANETPKG "SocketException",
@@ -5743,7 +5685,7 @@ final class Target_java_net_PlainSocketImpl {
         // 999      * Check that socket hasn't been closed
         // 1000      */
         // 1001     fd = getFD(env, this);
-        fd = PosixUtils.getFD(Util_java_net_PlainSocketImpl.as_Target_java_net_SocketImpl(this).fd);
+        fd = PosixUtils.getFD(SubstrateUtil.cast(this, Target_java_net_SocketImpl.class).fd);
         // 1002     if (fd < 0) {
         if (fd < 0) {
             // 1003         JNU_ThrowByName(env, JNU_JAVANETPKG "SocketException",
@@ -5885,16 +5827,6 @@ final class Util_java_net_PlainSocketImpl {
 
     /** Private constructor: No instances. */
     private Util_java_net_PlainSocketImpl() {
-    }
-
-    /* Mimic the Java class hierarchy. */
-
-    static Target_java_net_SocketImpl as_Target_java_net_SocketImpl(Target_java_net_PlainSocketImpl tjnsi) {
-        return KnownIntrinsics.unsafeCast(tjnsi, Target_java_net_SocketImpl.class);
-    }
-
-    static Target_java_net_AbstractPlainSocketImpl as_Target_java_net_AbstractPlainSocketImpl(Target_java_net_PlainSocketImpl tjnsi) {
-        return KnownIntrinsics.unsafeCast(tjnsi, Target_java_net_AbstractPlainSocketImpl.class);
     }
 
     /* Do not re-format commented-out code: @formatter:off */

@@ -38,6 +38,7 @@ import java.util.function.BooleanSupplier;
 import java.util.function.Predicate;
 
 import com.oracle.svm.core.SubstrateOptions;
+import com.oracle.svm.core.SubstrateUtil;
 import com.oracle.svm.core.annotate.Alias;
 import com.oracle.svm.core.annotate.InjectAccessors;
 import com.oracle.svm.core.annotate.Substitute;
@@ -45,7 +46,6 @@ import com.oracle.svm.core.annotate.TargetClass;
 import com.oracle.svm.core.annotate.TargetElement;
 import com.oracle.svm.core.log.Log;
 import com.oracle.svm.core.option.SubstrateOptionsParser;
-import com.oracle.svm.core.snippets.KnownIntrinsics;
 import com.oracle.svm.core.util.VMError;
 
 // Checkstyle: allow reflection
@@ -105,7 +105,7 @@ final class Target_java_security_AccessController {
     @Substitute
     private static AccessControlContext getContext() {
         AccessControlContext result = new AccessControlContext(new ProtectionDomain[0]);
-        KnownIntrinsics.unsafeCast(result, Target_java_security_AccessControlContext.class).isPrivileged = true;
+        SubstrateUtil.cast(result, Target_java_security_AccessControlContext.class).isPrivileged = true;
         return result;
     }
 
@@ -114,7 +114,7 @@ final class Target_java_security_AccessController {
                     AccessControlContext parent, AccessControlContext context, Permission[] perms) {
         /* Avoid allocating ProtectionDomain objects. Should go away when GR-11112 is fixed. */
         AccessControlContext result = new AccessControlContext(new ProtectionDomain[0]);
-        KnownIntrinsics.unsafeCast(result, Target_java_security_AccessControlContext.class).isPrivileged = true;
+        SubstrateUtil.cast(result, Target_java_security_AccessControlContext.class).isPrivileged = true;
         return result;
     }
 }
