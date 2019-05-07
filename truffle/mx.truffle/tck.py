@@ -17,7 +17,7 @@ class LogLevel:
 _log_level = LogLevel.INFO
 
 class Abort(RuntimeError):
-    def __init__(self, message, retCode = -1):
+    def __init__(self, message, retCode=-1):
         self.message = message
         self.retCode = retCode
 
@@ -33,7 +33,7 @@ class _ClassPathEntry:
 
 class _MvnClassPathEntry(_ClassPathEntry):
 
-    def __init__(self, groupId, artifactId, version, repository = None):
+    def __init__(self, groupId, artifactId, version, repository=None):
         self.repository = repository
         self.groupId = groupId
         self.artifactId = artifactId
@@ -64,7 +64,7 @@ class _MvnClassPathEntry(_ClassPathEntry):
         return '{0}:{1}:{2}'.format(self.groupId, self.artifactId, self.version)
 
     @staticmethod
-    def _run_maven(args, repository = None):
+    def _run_maven(args, repository=None):
         extra_args = ['-Dmaven.repo.local=' + repository] if repository else []
         extra_args.append('-q')
         host, port = _MvnClassPathEntry._parse_http_proxy(['HTTP_PROXY', 'http_proxy'])
@@ -99,7 +99,7 @@ class _MvnClassPathEntry(_ClassPathEntry):
                     raise Abort('Value of ' + name + ' is not valid:  ' + value)
         return (None, None)
 
-def _log(level, message, args = []):
+def _log(level, message, args=[]):
     if level != LogLevel.OFF and level >= _log_level:
         print(message.format(args))
 
@@ -114,11 +114,11 @@ def _rmdir_recursive(file):
     else:
         os.unlink(file)
 
-def _run(args, log_level = False):
+def _run(args, log_level=False):
     _log(LogLevel.FINE, "exec({0})", ', '.join(['"' + a + '"' for a in args]))
     return subprocess.Popen(args)
 
-def _run_java(javaHome, mainClass, cp = None, truffleCp = None , bootCp = None, vmArgs = [], args = [], dbgPort = None):
+def _run_java(javaHome, mainClass, cp=None, truffleCp=None , bootCp=None, vmArgs=[], args=[], dbgPort=None):
     if cp:
         vmArgs.append('-cp')
         vmArgs.append(os.pathsep.join([e.path for e in cp]))
@@ -144,7 +144,7 @@ def _split_VM_args_and_filters(args):
             return args[:i], args[i:]
     return args, []
 
-def _find_unit_tests(cp, pkgs = None):
+def _find_unit_tests(cp, pkgs=None):
     def includes(n):
         if not pkgs:
             return True
@@ -171,7 +171,7 @@ def _find_unit_tests(cp, pkgs = None):
     return tests
 
 def _execute_tck_impl(graalvm_home, cp, truffle_cp, boot_cp, vm_args, tests_filter, language_filter, debug_port):
-    tests = _find_unit_tests(cp, pkgs = ['com.oracle.truffle.tck.tests'])
+    tests = _find_unit_tests(cp, pkgs=['com.oracle.truffle.tck.tests'])
     if language_filter:
         vmArgs.append('-Dtck.language={0}'.format(parsed_args.language))
     if tests_filter:
@@ -181,12 +181,12 @@ def _execute_tck_impl(graalvm_home, cp, truffle_cp, boot_cp, vm_args, tests_filt
                     return True
             return False
         tests = [test for test in tests if includes(test)]
-    p = _run_java(graalvm_home, 'org.junit.runner.JUnitCore', cp = cp, truffleCp = truffle_cp, bootCp = boot_cp, vmArgs = vm_args, args = tests, dbgPort = debug_port)
+    p = _run_java(graalvm_home, 'org.junit.runner.JUnitCore', cp=cp, truffleCp=truffle_cp, bootCp=boot_cp, vmArgs=vm_args, args=tests, dbgPort=debug_port)
     ret_code = p.wait()
     return ret_code
 
 
-def execute_tck(graalvm_home, cp = [], truffle_cp = [], boot_cp = [], vm_args = [], tests_filter = None, language_filter = None, debug_port = None):
+def execute_tck(graalvm_home, cp=[], truffle_cp=[], boot_cp=[], vm_args=[], tests_filter=None, language_filter=None, debug_port=None):
     """
     Executes Truffle TCK with given TCK providers and languages using GraalVM installed in graalvm_home
 
@@ -250,19 +250,19 @@ def _main(argv):
     and -Dgraal.TruffleBackgroundCompilation=false options to the Java VM.
     """
 
-    parser = argparse.ArgumentParser(description = 'Truffle TCK Runner',
+    parser = argparse.ArgumentParser(description='Truffle TCK Runner',
         formatter_class=argparse.RawDescriptionHelpFormatter,
-        epilog = unittestHelpSuffix)
-    parser.set_defaults(log_level = LogLevel.INFO)
-    parser.add_argument('-v', action = 'store_const', dest='log_level', const = LogLevel.FINE, help = 'enable log_level output')
-    parser.add_argument('-q', action = 'store_const', dest='log_level', const = LogLevel.OFF, help = 'quiet output')
-    parser.add_argument('-g', '--graalvm-home', type = str, dest = 'graalvm_home', help = 'GraalVM to execute TCK on', required = True, metavar = '<graalvm home>')
-    parser.add_argument('--dbg', type = int, dest = 'dbg_port', help = 'make TCK tests wait on <port> for a debugger', metavar = '<port>')
-    parser.add_argument('-d', action = 'store_const', const = 8000, dest = 'dbg_port', help = 'alias for "-dbg 8000"')
-    parser.add_argument('--tck-version', type = str, dest = 'tck_version', help = 'maven TCK version, default is LATEST', default = 'LATEST', metavar = '<version>')
-    parser.add_argument('-cp','--class-path', type = str, dest = 'class_path', help = 'classpath containing additional TCK provider(s)', metavar = '<classpath>')
-    parser.add_argument('-lp','--language-path', type = str, dest = 'truffle_path', help = 'classpath containing additinal language jar(s)', metavar = '<classpath>')
-    parser.add_argument('--language', type = str, dest = 'language', help = 'restricts TCK tests to given language', metavar = '<language id>')
+        epilog=unittestHelpSuffix)
+    parser.set_defaults(log_level=LogLevel.INFO)
+    parser.add_argument('-v', action='store_const', dest='log_level', const=LogLevel.FINE, help='enable log_level output')
+    parser.add_argument('-q', action='store_const', dest='log_level', const=LogLevel.OFF, help='quiet output')
+    parser.add_argument('-g', '--graalvm-home', type=str, dest='graalvm_home', help='GraalVM to execute TCK on', required=True, metavar='<graalvm home>')
+    parser.add_argument('--dbg', type=int, dest='dbg_port', help='make TCK tests wait on <port> for a debugger', metavar='<port>')
+    parser.add_argument('-d', action='store_const', const=8000, dest='dbg_port', help='alias for "-dbg 8000"')
+    parser.add_argument('--tck-version', type=str, dest='tck_version', help='maven TCK version, default is LATEST', default='LATEST', metavar='<version>')
+    parser.add_argument('-cp','--class-path', type=str, dest='class_path', help='classpath containing additional TCK provider(s)', metavar='<classpath>')
+    parser.add_argument('-lp','--language-path', type=str, dest='truffle_path', help='classpath containing additinal language jar(s)', metavar='<classpath>')
+    parser.add_argument('--language', type=str, dest='language', help='restricts TCK tests to given language', metavar='<language id>')
 
     usage = parser.format_usage().strip()
     if usage.startswith('usage: '):
