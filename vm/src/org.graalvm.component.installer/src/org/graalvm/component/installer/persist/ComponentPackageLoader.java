@@ -223,6 +223,10 @@ public class ComponentPackageLoader implements Closeable, MetadataLoader {
     private void loadLicenseType(ComponentInfo nfo) {
         licenseType = parseHeader(BundleConstants.BUNDLE_LICENSE_TYPE, null).getContents(null);
         nfo.setLicenseType(licenseType);
+        if (licenseType != null) {
+            licensePath = parseHeader(BundleConstants.BUNDLE_LICENSE_PATH).mustExist().getContents(null);
+            nfo.setLicensePath(licensePath);
+        }
     }
 
     @Override
