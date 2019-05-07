@@ -400,9 +400,8 @@ public final class LLVMScanner {
 
         AbbreviatedRecord[] operandScanners = new AbbreviatedRecord[(int) operandCount];
 
-        int i = 0;
         boolean containsArrayOperand = false;
-        while (i < operandCount) {
+        for (int i = 0; i < operandCount; i++) {
             // first operand contains the record id
 
             final boolean isLiteral = read(Primitive.USER_OPERAND_LITERALBIT) == 1;
@@ -446,7 +445,6 @@ public final class LLVMScanner {
                         throw new LLVMParserException("Unknown ID in for record abbreviation: " + recordType);
                 }
             }
-            i++;
         }
 
         if (containsArrayOperand) {
@@ -463,13 +461,13 @@ public final class LLVMScanner {
         final long newIdSize = read(Primitive.SUBBLOCK_ID_SIZE);
         alignInt();
         final long numWords = read(Integer.SIZE);
+        final long endingOffset = offset + (numWords * Integer.SIZE);
 
         final Block subBlock = Block.lookup(blockId);
         if (subBlock == null || subBlock.skip()) {
-            offset += numWords * Integer.SIZE;
+            offset = endingOffset;
 
         } else if (subBlock.parseLazily()) {
-            final long endingOffset = offset + (numWords * Integer.SIZE);
             final LazyScanner lazyScanner = new LazyScanner(bitstream, new HashMap<>(defaultAbbreviations), offset, endingOffset, (int) newIdSize, subBlock);
             offset = endingOffset;
             parser.skip(subBlock, lazyScanner);

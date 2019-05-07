@@ -29,9 +29,7 @@
  */
 package com.oracle.truffle.llvm.parser.listeners;
 
-import java.util.ArrayList;
 import java.util.Arrays;
-import java.util.List;
 
 import com.oracle.truffle.llvm.parser.metadata.MDBaseNode;
 import com.oracle.truffle.llvm.parser.metadata.MDKind;
@@ -148,8 +146,6 @@ public final class Function implements ParserListener {
     private boolean isLastBlockTerminated = true;
 
     private MDLocation lastLocation = null;
-
-    private final List<Integer> implicitIndices = new ArrayList<>();
 
     private final ParameterAttributes paramAttributes;
 
@@ -632,22 +628,13 @@ public final class Function implements ParserListener {
         final long successOrdering = buffer.read();
         final long synchronizationScope = buffer.read();
         final long failureOrdering = buffer.remaining() > 0 ? buffer.read() : -1L;
-        final boolean addExtractValue = buffer.remaining() == 0;
-        final boolean isWeak = addExtractValue || buffer.readBoolean();
+        if (buffer.remaining() == 0) {
+            throw new LLVMParserException("Old-style (<3.5.0) cmpxchg instruction is not supported");
+        }
+        final boolean isWeak = buffer.readBoolean();
 
         final AggregateType type = findCmpxchgResultType(Types.castToPointer(ptrType).getPointeeType());
-        CompareExchangeInstruction inst;
-        emit(inst = CompareExchangeInstruction.fromSymbols(scope.getSymbols(), type, ptr, cmp, replace, isVolatile, successOrdering, synchronizationScope, failureOrdering, isWeak));
-
-        if (addExtractValue) {
-            // in older llvm versions cmpxchg just returned the new value at the pointer, to emulate
-            // this we have to add an extractelvalue instruction. llvm does the same thing
-
-            Type elementType = inst.getAggregateType().getElementType(0);
-            emit(ExtractValueInstruction.create(inst, elementType, 0));
-
-            implicitIndices.add(scope.getNextValueIndex() - 1); // register the implicit index
-        }
+        emit(CompareExchangeInstruction.fromSymbols(scope.getSymbols(), type, ptr, cmp, replace, isVolatile, successOrdering, synchronizationScope, failureOrdering, isWeak));
     }
 
     private static final int CMPXCHG_TYPE_LENGTH = 2;
@@ -925,7 +912,7 @@ public final class Function implements ParserListener {
     }
 
     private int readIndexSkipType(RecordBuffer buffer) {
-        int value = Function.this.getIndex(buffer.read());
+        int value = getIndex(buffer.read());
         if (scope.isValueForwardRef(value)) {
             buffer.read();
         }
@@ -948,20 +935,12 @@ public final class Function implements ParserListener {
         }
     }
 
-    private int getIndexAbsolute(long index) {
-        long actualIndex = index;
-        for (int i = 0; i < implicitIndices.size() && implicitIndices.get(i) <= actualIndex; i++) {
-            actualIndex++;
-        }
-        return (int) actualIndex;
+    private static int getIndexAbsolute(long index) {
+        return (int) index;
     }
 
     private int getIndexRelative(long index) {
-        long actualIndex = scope.getNextValueIndex() - index;
-        for (int i = implicitIndices.size() - 1; i >= 0 && implicitIndices.get(i) > actualIndex; i--) {
-            actualIndex--;
-        }
-        return (int) actualIndex;
+        return (int) (scope.getNextValueIndex() - index);
     }
 
     private int[] readIndices(RecordBuffer buffer) {
