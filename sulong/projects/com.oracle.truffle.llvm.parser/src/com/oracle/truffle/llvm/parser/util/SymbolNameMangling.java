@@ -43,7 +43,6 @@ import com.oracle.truffle.llvm.parser.model.symbols.globals.GlobalVariable;
 import com.oracle.truffle.llvm.parser.model.target.TargetDataLayout;
 import com.oracle.truffle.llvm.parser.model.visitors.ModelVisitor;
 import com.oracle.truffle.llvm.runtime.except.LLVMParserException;
-import com.oracle.truffle.llvm.runtime.types.symbols.LLVMIdentifier;
 
 public final class SymbolNameMangling {
 
@@ -132,7 +131,6 @@ public final class SymbolNameMangling {
                 name = demangler.apply(linkage, name.substring(MANGLED_PREFIX.length()));
             }
 
-            name = LLVMIdentifier.toGlobalIdentifier(name);
             symbol.setName(name);
         }
 

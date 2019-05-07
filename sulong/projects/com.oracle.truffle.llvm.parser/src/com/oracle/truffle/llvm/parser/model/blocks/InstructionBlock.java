@@ -76,7 +76,7 @@ public final class InstructionBlock {
     }
 
     public void setName(String name) {
-        this.name = LLVMIdentifier.toExplicitBlockName(name);
+        this.name = name;
     }
 
     public TerminatingInstruction getTerminatingInstruction() {

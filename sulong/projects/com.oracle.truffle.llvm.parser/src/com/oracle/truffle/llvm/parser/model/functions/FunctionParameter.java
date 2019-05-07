@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2016, 2018, Oracle and/or its affiliates.
+ * Copyright (c) 2016, 2019, Oracle and/or its affiliates.
  *
  * All rights reserved.
  *
@@ -58,7 +58,7 @@ public final class FunctionParameter implements ValueSymbol {
 
     @Override
     public void setName(String name) {
-        this.name = LLVMIdentifier.toLocalIdentifier(name);
+        this.name = name;
     }
 
     @Override
