@@ -1301,22 +1301,24 @@ final class InstrumentationHandler {
             SourceSection previousParentSourceSection = null;
             if (instrumentable) {
                 computeRootBits(sourceSection);
-                Node oldNode = node;
-                node = materializeSyntaxNodes(node, sourceSection);
-                if (node != oldNode && !visitingOldNodes) {
-                    /*
-                     * We also need to traverse all old children on materialization. This is
-                     * necessary if the old node is still currently executing and does not yet see
-                     * the new node. Unfortunately we don't know reliably whether we are currently
-                     * executing that is why we always need to instrument the old node as well. This
-                     * is especially problematic for long or infinite loops in combination with
-                     * cancel events.
-                     */
-                    visitingOldNodes = true;
-                    try {
-                        NodeUtil.forEachChild(oldNode, this);
-                    } finally {
-                        visitingOldNodes = false;
+                if (!visitingOldNodes) {
+                    Node oldNode = node;
+                    node = materializeSyntaxNodes(node, sourceSection);
+                    if (node != oldNode) {
+                        /*
+                         * We also need to traverse all old children on materialization. This is
+                         * necessary if the old node is still currently executing and does not yet
+                         * see the new node. Unfortunately we don't know reliably whether we are
+                         * currently executing that is why we always need to instrument the old node
+                         * as well. This is especially problematic for long or infinite loops in
+                         * combination with cancel events.
+                         */
+                        visitingOldNodes = true;
+                        try {
+                            NodeUtil.forEachChild(oldNode, this);
+                        } finally {
+                            visitingOldNodes = false;
+                        }
                     }
                 }
                 visitInstrumentable(this.savedParent, this.savedParentSourceSection, node, sourceSection);
