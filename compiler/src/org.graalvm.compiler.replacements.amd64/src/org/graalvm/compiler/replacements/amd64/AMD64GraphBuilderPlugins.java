@@ -76,8 +76,8 @@ import sun.misc.Unsafe;
 
 public class AMD64GraphBuilderPlugins {
 
-    public static void register(Plugins plugins, BytecodeProvider replacementsBytecodeProvider, boolean useFMAIntrinsics, AMD64 arch, boolean explicitUnsafeNullChecks,
-                    boolean emitJDK9StringSubstitutions) {
+    public static void register(Plugins plugins, BytecodeProvider replacementsBytecodeProvider, AMD64 arch, boolean explicitUnsafeNullChecks, boolean emitJDK9StringSubstitutions,
+                    boolean useFMAIntrinsics) {
         InvocationPlugins invocationPlugins = plugins.getInvocationPlugins();
         invocationPlugins.defer(new Runnable() {
             @Override
