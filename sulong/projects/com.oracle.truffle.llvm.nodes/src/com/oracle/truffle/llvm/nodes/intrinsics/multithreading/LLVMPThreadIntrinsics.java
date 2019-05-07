@@ -5,6 +5,7 @@ import java.io.IOException;
 import java.io.PrintWriter;
 import java.util.concurrent.ConcurrentLinkedQueue;
 import java.util.concurrent.atomic.AtomicInteger;
+import java.util.concurrent.locks.ReentrantLock;
 
 import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.RootCallTarget;
@@ -86,7 +87,7 @@ public class LLVMPThreadIntrinsics {
         }
     }
 
-    static class MyArgNode extends LLVMExpressionNode {
+    static final class MyArgNode extends LLVMExpressionNode {
         private FrameSlot slot;
 
         private MyArgNode(FrameSlot slot) {
@@ -203,21 +204,25 @@ public class LLVMPThreadIntrinsics {
     }
 
     public static class Mutex {
-        // TODO: correct handling of errorcheck and recursive mutexes
         public enum Type {
             DEFAULT_NORMAL,
             ERRORCHECK,
             RECURSIVE
         }
 
-        private AtomicInteger lockCount;
-        private ConcurrentLinkedQueue<Thread> waitingThreads;
+        private final AtomicInteger lockCount;
+        private final ConcurrentLinkedQueue<Thread> waitingThreads;
+        private final ReentrantLock internLock;
         private Thread curOwner;
         private final Type type;
 
         protected Mutex(int initVal, Type type) {
             this.lockCount = new AtomicInteger(initVal);
             this.waitingThreads = new ConcurrentLinkedQueue<>();
+            this.internLock = new ReentrantLock();
+            if (initVal != 0) {
+                this.curOwner = Thread.currentThread();
+            }
             if (type != null) {
                 this.type = type;
             } else {
@@ -225,71 +230,77 @@ public class LLVMPThreadIntrinsics {
             }
         }
 
-        // replace this by the lock / unlock / ... methods
-        protected AtomicInteger getLockCount() {
-            return lockCount;
-        }
-
-        // replace this by some methods
-        protected ConcurrentLinkedQueue getQueue() {
-            return waitingThreads;
-        }
-
         protected Type getType() {
             return this.type;
         }
 
         // change to int for error codes
-        public boolean lock(Thread thread) {
-            if (this.type == Type.ERRORCHECK && this.curOwner == thread) {
-                return false;
-            }
-            if (this.type == Type.DEFAULT_NORMAL || this.type == Type.ERRORCHECK) {
-                while (!this.lockCount.compareAndSet(0, 1)) {
-                    this.waitingThreads.offer(thread);
-                    // we want wo to wait until we get chosen as next thread to lock / own the mutex
-                    // and get interrupted by an unlock call here
-                    try {
-                        while (true) {
-                            Thread.sleep(Long.MAX_VALUE);
-                        }
-                    } catch (InterruptedException e) {
-                    }
+        public boolean lock() {
+            if (this.curOwner == Thread.currentThread()) {
+                if (this.type == Type.ERRORCHECK) {
+                    return false;
                 }
-                return true;
-            } else if (this.type == Type.RECURSIVE) {
-                // TODO: add max lock number handling
-                // TODO: add owner handling
-                this.lockCount.incrementAndGet();
-                return true;
+                if (this.type == Type.RECURSIVE) {
+                    this.lockCount.incrementAndGet();
+                    return true;
+                }
+                // default_normal relock leads to deadlock
             }
-            // should not be reached, because type is always set
-            return false;
+            while (true) {
+                // it should not be possible for compareAndSet to fail
+                // but then in this moment the current locking thread frees / unlocks
+                // and notifys the next thread
+                // before this thread is in the queue
+                // because that would lead to a deadlock
+                // so we have this internLock here and in the unlock method
+                // so this internLock prevents:
+                // THREAD A: compareAndSet(0, 1) fails
+                // THREAD B: set(0)
+                // THREAD B: notifyNextThread()
+                // THREAD A: waitingThreads.offer()
+                internLock.lock();
+                if (this.lockCount.compareAndSet(0, 1)) {
+                    this.curOwner = Thread.currentThread();
+                    internLock.unlock();
+                    return true;
+                }
+                this.waitingThreads.offer(Thread.currentThread());
+                internLock.unlock();
+                // we want wo to wait until we get chosen as next thread to internLock / own the mutex
+                // and get interrupted by an unlock call here
+                try {
+                    while (true) {
+                        Thread.sleep(Long.MAX_VALUE);
+                    }
+                } catch (InterruptedException e) {
+                }
+            }
         }
 
         public boolean tryLock() {
             return false;
         }
 
-        public boolean unlock(Thread thread) {
-            if (this.type == Type.DEFAULT_NORMAL) {
+        public boolean unlock() {
+            if (this.curOwner != Thread.currentThread()) {
+                return false;
+            }
+            if (this.type == Type.DEFAULT_NORMAL || this.type == Type.ERRORCHECK) {
+                // this internLock prevents
+                // THREAD A: compareAndSet(0, 1) fails
+                // THREAD B: set(0)
+                // THREAD B: notifyNextThread()
+                // THREAD A: waitingThreads.offer()
+                internLock.lock();
                 this.lockCount.set(0);
                 this.curOwner = null;
-                notifyNextThread();
-                return true;
-            } else if (this.type == Type.ERRORCHECK) {
-                if (this.curOwner != thread) {
-                    return false;
-                }
-                if (!this.lockCount.compareAndSet(1, 0)) {
-                    return false;
-                }
-                this.curOwner = null;
-                notifyNextThread();
+                this.notifyNextThread();
+                internLock.unlock();
                 return true;
             } else if (this.type == Type.RECURSIVE) {
-                // TODO: add owner handling
-                this.lockCount.decrementAndGet();
+                if (this.lockCount.decrementAndGet() == 0) {
+                    this.curOwner = null;
+                }
                 return true;
             }
             // should not be reached, because type is always set
@@ -380,12 +391,12 @@ public class LLVMPThreadIntrinsics {
                 // mutex is not initialized
                 // but it works anyway on most implementations
                 // so we will make it work here too, just using default type
-                // set the lock counter to 1
+                // set the internLock counter to 1
                 mutexObj = new Mutex(1, Mutex.Type.DEFAULT_NORMAL);
                 getContextReference().get().mutexStorage.put(mutexAddress, mutexObj);
                 return 0;
             }
-            return mutexObj.lock(Thread.currentThread()) ? 0 : 15; // lock will be changed to int type
+            return mutexObj.lock() ? 0 : 15; // internLock will be changed to int type
         }
     }
 
@@ -395,7 +406,7 @@ public class LLVMPThreadIntrinsics {
         protected int doIntrinsic(VirtualFrame frame, Object mutex) {
             long mutexAddress = ((LLVMNativePointer) mutex).asNative();
             Mutex mutexObj = (Mutex) getContextReference().get().mutexStorage.get(mutexAddress);
-            return mutexObj.unlock(Thread.currentThread()) ? 0 : 15; // lock will be changed to int type
+            return mutexObj.unlock() ? 0 : 15; // internLock will be changed to int type
         }
     }
 
@@ -403,7 +414,6 @@ public class LLVMPThreadIntrinsics {
     public abstract static class LLVMPThreadMyTest extends LLVMBuiltin {
         @Specialization
         protected int doIntrinsic(VirtualFrame frame, Object arg) {
-            int i = 5;
             return 35; // just to test return 35
         }
     }

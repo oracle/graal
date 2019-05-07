@@ -339,7 +339,10 @@ public class BasicIntrinsicsProvider implements LLVMIntrinsicProvider, ContextEx
         add("@pthread_mutex_init", (args, context) -> LLVMPThreadIntrinsicsFactory.LLVMPThreadMutexInitNodeGen.create(args.get(1), args.get(2), null));
         add("@pthread_mutex_lock", (args, context) -> LLVMPThreadIntrinsicsFactory.LLVMPThreadMutexLockNodeGen.create(args.get(1), null));
         add("@pthread_mutex_unlock", (args, context) -> LLVMPThreadIntrinsicsFactory.LLVMPThreadMutexUnlockNodeGen.create(args.get(1), null));
-
+        // add pthread_equal
+        // add pthread_mutex_trylock
+        // add pthread cond vars
+        // add pthread rw locks
     }
 
     private static void registerSulongIntrinsics() {
