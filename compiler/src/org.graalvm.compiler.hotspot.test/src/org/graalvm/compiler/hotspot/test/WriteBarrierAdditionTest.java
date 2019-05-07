@@ -315,9 +315,10 @@ public class WriteBarrierAdditionTest extends HotSpotGraalCompilerTest {
                     JavaConstant constDisp = ((OffsetAddressNode) read.getAddress()).getOffset().asJavaConstant();
                     Assert.assertNotNull(constDisp);
                     Assert.assertEquals(referentOffset(getMetaAccess()), constDisp.asLong());
-                    Assert.assertTrue(config.useG1GC);
-                    Assert.assertEquals(BarrierType.PRECISE, read.getBarrierType());
-                    Assert.assertTrue(read.next() instanceof G1ReferentFieldReadBarrier);
+                    Assert.assertEquals(BarrierType.WEAK_FIELD, read.getBarrierType());
+                    if (config.useG1GC) {
+                        Assert.assertTrue(read.next() instanceof G1ReferentFieldReadBarrier);
+                    }
                 }
             }
         } catch (Throwable e) {
