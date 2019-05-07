@@ -417,6 +417,8 @@ public final class GraalServices {
      */
     public static float fma(float a, float b, float c) {
         // Copy from JDK 9
+        // Checkstyle: stop
+        // @formatter:off
         /*
          *  Since the double format has more than twice the precision
          *  of the float format, the multiply of a * b is exact in
@@ -443,6 +445,8 @@ public final class GraalServices {
          */
         float result = (float)(((double) a * (double) b ) + (double) c);
         return result;
+        // @formatter:on
+        // Checkstyle: resume
     }
 
     /**
@@ -452,6 +456,8 @@ public final class GraalServices {
      */
     public static double fma(double a, double b, double c) {
         // Copy from JDK 9
+        // Checkstyle: stop
+        // @formatter:off
         /*
          * Infinity and NaN arithmetic is not quite the same with two
          * roundings as opposed to just one so the simple expression
@@ -515,5 +521,7 @@ public final class GraalServices {
                 }
             }
         }
+        // @formatter:on
+        // Checkstyle: resume
     }
 }
