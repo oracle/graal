@@ -59,6 +59,7 @@ import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.Platforms;
 
 import com.oracle.svm.core.SubstrateOptions;
+import com.oracle.svm.core.SubstrateUtil;
 import com.oracle.svm.core.annotate.Alias;
 import com.oracle.svm.core.annotate.AutomaticFeature;
 import com.oracle.svm.core.annotate.Delete;
@@ -69,7 +70,6 @@ import com.oracle.svm.core.annotate.Substitute;
 import com.oracle.svm.core.annotate.TargetClass;
 import com.oracle.svm.core.annotate.TargetElement;
 import com.oracle.svm.core.config.ObjectLayout;
-import com.oracle.svm.core.snippets.KnownIntrinsics;
 import com.oracle.svm.core.util.VMError;
 
 import jdk.vm.ci.meta.JavaKind;
@@ -429,7 +429,7 @@ final class Target_java_util_concurrent_ForkJoinPool {
         /** The get access method for ForkJoinPool.common. */
         public static ForkJoinPool getCommon() {
             ensureCommonPoolIsInitialized();
-            return Util_java_util_concurrent_ForkJoinPool.as_ForkJoinPool(injectedCommon.get());
+            return SubstrateUtil.cast(injectedCommon.get(), ForkJoinPool.class);
         }
 
         /** Ensure that the common pool variables are initialized. */
@@ -464,7 +464,7 @@ final class Target_java_util_concurrent_ForkJoinPool {
                             "ForkJoinPool.commonPool-worker-");
             /* The assignment to "injectedCommon" is atomic to prevent races. */
             injectedCommon.compareAndSet(null, proposedPool);
-            final ForkJoinPool actualPool = Util_java_util_concurrent_ForkJoinPool.as_ForkJoinPool(injectedCommon.get());
+            final ForkJoinPool actualPool = SubstrateUtil.cast(injectedCommon.get(), ForkJoinPool.class);
             /*
              * The assignment to "commonParallelism" can race because multiple assignments are
              * idempotent once "injectedCommon" is set. This code is a copy of the relevant part of
@@ -483,17 +483,6 @@ final class Target_java_util_concurrent_ForkJoinPool {
              * `parallelism` argument now throws an `IllegalArgumentException` if passed a `0`.
              */
             throw VMError.unsupportedFeature("Target_java_util_concurrent_ForkJoinPool.CommonInjector.initializeCommonPool_JDK9OrLater()");
-        }
-    }
-
-    protected static class Util_java_util_concurrent_ForkJoinPool {
-
-        static ForkJoinPool as_ForkJoinPool(Target_java_util_concurrent_ForkJoinPool tjucfjp) {
-            return KnownIntrinsics.unsafeCast(tjucfjp, ForkJoinPool.class);
-        }
-
-        static Target_java_util_concurrent_ForkJoinPool as_Target_java_util_concurrent_ForkJoinPool(ForkJoinPool forkJoinPool) {
-            return KnownIntrinsics.unsafeCast(forkJoinPool, Target_java_util_concurrent_ForkJoinPool.class);
         }
     }
 }

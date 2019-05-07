@@ -63,6 +63,7 @@ import org.graalvm.nativeimage.c.function.CFunctionPointer;
 import org.graalvm.util.DirectAnnotationAccess;
 
 import com.oracle.svm.core.SubstrateOptions;
+import com.oracle.svm.core.SubstrateUtil;
 import com.oracle.svm.core.annotate.Alias;
 import com.oracle.svm.core.annotate.Hybrid;
 import com.oracle.svm.core.annotate.KeepOriginal;
@@ -78,7 +79,6 @@ import com.oracle.svm.core.jdk.Resources;
 import com.oracle.svm.core.jdk.Target_java_lang_ClassLoader;
 import com.oracle.svm.core.jdk.Target_java_lang_Module;
 import com.oracle.svm.core.meta.SharedType;
-import com.oracle.svm.core.snippets.KnownIntrinsics;
 import com.oracle.svm.core.util.LazyFinalReference;
 import com.oracle.svm.core.util.VMError;
 
@@ -488,7 +488,7 @@ public final class DynamicHub implements JavaKind.FormatWithToString, AnnotatedE
     }
 
     public static DynamicHub fromClass(Class<?> clazz) {
-        return KnownIntrinsics.unsafeCast(clazz, DynamicHub.class);
+        return SubstrateUtil.cast(clazz, DynamicHub.class);
     }
 
     /*
@@ -497,7 +497,7 @@ public final class DynamicHub implements JavaKind.FormatWithToString, AnnotatedE
      */
     @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
     public static Class<?> toClass(DynamicHub hub) {
-        return KnownIntrinsics.unsafeCast(hub, Class.class);
+        return SubstrateUtil.cast(hub, Class.class);
     }
 
     @Substitute
@@ -555,7 +555,7 @@ public final class DynamicHub implements JavaKind.FormatWithToString, AnnotatedE
     @Substitute
     @TargetElement(name = "isAssignableFrom")
     private boolean isAssignableFromClass(Class<?> cls) {
-        return isAssignableFromHub(KnownIntrinsics.unsafeCast(cls, DynamicHub.class));
+        return isAssignableFromHub(fromClass(cls));
     }
 
     public boolean isAssignableFromHub(DynamicHub hub) {
@@ -631,7 +631,7 @@ public final class DynamicHub implements JavaKind.FormatWithToString, AnnotatedE
 
     @Substitute
     private ClassLoader getClassLoader0() {
-        return KnownIntrinsics.unsafeCast(classloader, ClassLoader.class);
+        return SubstrateUtil.cast(classloader, ClassLoader.class);
     }
 
     @KeepOriginal

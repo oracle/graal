@@ -31,6 +31,7 @@ package com.oracle.svm.core.jdk8.zipfile;
 //package java.util.zip;
 
 // SVM start
+import com.oracle.svm.core.SubstrateUtil;
 import com.oracle.svm.core.annotate.Alias;
 import com.oracle.svm.core.annotate.RecomputeFieldValue;
 import com.oracle.svm.core.annotate.Substitute;
@@ -497,7 +498,7 @@ public final class ZipFile implements ZipConstants, Closeable {
         synchronized (inflaterCache) {
             while ((inf = inflaterCache.poll()) != null) {
                 // SVM start
-                if (!KnownIntrinsics.unsafeCast(inf, Target_java_util_zip_Inflater.class).ended()) {
+                if (!SubstrateUtil.cast(inf, Target_java_util_zip_Inflater.class).ended()) {
                 // SVM start
                     return inf;
                 }
@@ -512,7 +513,7 @@ public final class ZipFile implements ZipConstants, Closeable {
     @Substitute
     private void releaseInflater(Inflater inf) {
         // SVM start
-        if (!KnownIntrinsics.unsafeCast(inf, Target_java_util_zip_Inflater.class).ended()) {
+        if (!SubstrateUtil.cast(inf, Target_java_util_zip_Inflater.class).ended()) {
         // SVM end
             inf.reset();
             synchronized (inflaterCache) {
@@ -621,7 +622,7 @@ public final class ZipFile implements ZipConstants, Closeable {
                 name = zc.toString(cen, pos + CENHDR, nlen);
             }
         }
-        ZipEntry e = func == null? new ZipEntry(name) : KnownIntrinsics.unsafeCast(func.apply(name), ZipEntry.class);
+        ZipEntry e = func == null? new ZipEntry(name) : SubstrateUtil.cast(func.apply(name), ZipEntry.class);
         e.flag = flag;
         e.xdostime = CENTIM(cen, pos);
         e.crc = CENCRC(cen, pos);

@@ -26,7 +26,7 @@ package com.oracle.svm.reflect.target;
 
 import org.graalvm.compiler.serviceprovider.JavaVersionUtil;
 
-import com.oracle.svm.core.snippets.KnownIntrinsics;
+import com.oracle.svm.core.SubstrateUtil;
 import com.oracle.svm.core.util.VMError;
 
 class ReflectionHelper {
@@ -72,59 +72,27 @@ class ReflectionHelper {
         return object;
     }
 
-    private static Target_java_lang_reflect_Method asMethod(Object object) {
-        return KnownIntrinsics.unsafeCast(object, Target_java_lang_reflect_Method.class);
-    }
-
-    private static Target_java_lang_reflect_Constructor asConstructor(Object object) {
-        return KnownIntrinsics.unsafeCast(object, Target_java_lang_reflect_Constructor.class);
-    }
-
-    private static Target_java_lang_reflect_Executable asExecutable(Target_java_lang_reflect_Method object) {
-        return KnownIntrinsics.unsafeCast(object, Target_java_lang_reflect_Executable.class);
-    }
-
-    private static Target_java_lang_reflect_Executable asExecutable(Target_java_lang_reflect_Constructor object) {
-        return KnownIntrinsics.unsafeCast(object, Target_java_lang_reflect_Executable.class);
-    }
-
-    private static Target_java_lang_reflect_Executable asExecutable(Target_java_lang_reflect_AccessibleObject object) {
-        return KnownIntrinsics.unsafeCast(object, Target_java_lang_reflect_Executable.class);
-    }
-
-    private static Target_java_lang_reflect_AccessibleObject asAccessibleObject(Object object) {
-        return KnownIntrinsics.unsafeCast(object, Target_java_lang_reflect_AccessibleObject.class);
-    }
-
-    /*
-     * We need a separated getRoot() method for each of Method and Constructor to disambiguate
-     * between the 2 types. This code is doing type conversions via KnownIntrinsics.unsafeCast()
-     * which is not modeled during analysis, therefore no type filtering is performed and
-     * getHolder() methods above could return, for example, both Method and Constructor at the same
-     * time, which would be wrong.
-     */
-
     private static Target_java_lang_reflect_Executable getRoot(Target_java_lang_reflect_Executable executable) {
         if (JavaVersionUtil.Java8OrEarlier) {
             return executable.getRoot();
         } else {
-            return asExecutable(asAccessibleObject(executable).getRoot());
+            return SubstrateUtil.cast(SubstrateUtil.cast(executable, Target_java_lang_reflect_AccessibleObject.class).getRoot(), Target_java_lang_reflect_Executable.class);
         }
     }
 
     private static Target_java_lang_reflect_Method getRoot(Target_java_lang_reflect_Method method) {
         if (JavaVersionUtil.Java8OrEarlier) {
-            return asMethod(asExecutable(method).getRoot());
+            return SubstrateUtil.cast(SubstrateUtil.cast(method, Target_java_lang_reflect_Executable.class).getRoot(), Target_java_lang_reflect_Method.class);
         } else {
-            return asMethod(asAccessibleObject(method).getRoot());
+            return SubstrateUtil.cast(SubstrateUtil.cast(method, Target_java_lang_reflect_AccessibleObject.class).getRoot(), Target_java_lang_reflect_Method.class);
         }
     }
 
     private static Target_java_lang_reflect_Constructor getRoot(Target_java_lang_reflect_Constructor constructor) {
         if (JavaVersionUtil.Java8OrEarlier) {
-            return asConstructor(asExecutable(constructor).getRoot());
+            return SubstrateUtil.cast(SubstrateUtil.cast(constructor, Target_java_lang_reflect_Executable.class).getRoot(), Target_java_lang_reflect_Constructor.class);
         } else {
-            return asConstructor(asAccessibleObject(constructor).getRoot());
+            return SubstrateUtil.cast(SubstrateUtil.cast(constructor, Target_java_lang_reflect_AccessibleObject.class).getRoot(), Target_java_lang_reflect_Constructor.class);
         }
     }
 }
