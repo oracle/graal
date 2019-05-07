@@ -53,6 +53,7 @@ import org.graalvm.word.WordFactory;
 
 import com.oracle.svm.core.SubstrateOptions;
 import com.oracle.svm.core.annotate.AlwaysInline;
+import com.oracle.svm.core.annotate.NeverInline;
 import com.oracle.svm.core.annotate.RestrictHeapAccess;
 import com.oracle.svm.core.heap.AllocationFreeList;
 import com.oracle.svm.core.heap.AllocationFreeList.PreviouslyRegisteredElementException;
@@ -723,6 +724,9 @@ public class GCImpl implements GC {
         trace.string("]").newline();
     }
 
+    @NeverInline("Starting a stack walk in the caller frame. " +
+                    "Note that we could start the stack frame also further down the stack, because GC stack frames must not access any objects that are processed by the GC. " +
+                    "But we don't store stack frame information for the first frame we would need to process.")
     @SuppressWarnings("try")
     private void blackenStackRoots() {
         final Log trace = Log.noopLog().string("[GCImpl.blackenStackRoots:").newline();

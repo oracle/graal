@@ -57,6 +57,7 @@ import org.graalvm.word.WordFactory;
 import com.oracle.svm.core.MonitorSupport;
 import com.oracle.svm.core.SubstrateUtil;
 import com.oracle.svm.core.annotate.Alias;
+import com.oracle.svm.core.annotate.NeverInline;
 import com.oracle.svm.core.annotate.TargetClass;
 import com.oracle.svm.core.c.function.CEntryPointActions;
 import com.oracle.svm.core.c.function.CEntryPointOptions;
@@ -798,6 +799,7 @@ final class JNIFunctions {
      */
     @CEntryPoint(exceptionHandler = JNIExceptionHandlerVoid.class)
     @CEntryPointOptions(prologue = JNIEnvironmentEnterPrologue.class, publishAs = Publish.NotPublished, include = CEntryPointOptions.NotIncludedAutomatically.class)
+    @NeverInline("Access of caller frame.")
     static void FatalError(JNIEnvironment env, CCharPointer message) {
         Log log = Log.log().autoflush(true);
         log.string("Fatal error reported via JNI: ").string(message).newline();

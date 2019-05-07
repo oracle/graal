@@ -36,6 +36,7 @@ import org.graalvm.word.Pointer;
 import org.graalvm.word.UnsignedWord;
 import org.graalvm.word.WordFactory;
 
+import com.oracle.svm.core.annotate.NeverInline;
 import com.oracle.svm.core.annotate.RestrictHeapAccess;
 import com.oracle.svm.core.code.CodeInfoTable;
 import com.oracle.svm.core.deopt.DeoptimizedFrame;
@@ -127,6 +128,7 @@ public class PathExhibitor {
         return null;
     }
 
+    @NeverInline("Starting a stack walk in the caller frame")
     protected StackElement findPathInStack(final Object obj) {
         stackFrameVisitor.initialize(obj);
         Pointer sp = readCallerStackPointer();

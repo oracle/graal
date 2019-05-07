@@ -27,6 +27,7 @@ package com.oracle.svm.core.snippets;
 import org.graalvm.nativeimage.c.function.CodePointer;
 import org.graalvm.word.Pointer;
 
+import com.oracle.svm.core.annotate.NeverInline;
 import com.oracle.svm.core.hub.DynamicHub;
 
 /**
@@ -81,17 +82,18 @@ public class KnownIntrinsics {
     public static native Pointer readStackPointer();
 
     /**
-     * Returns the value of the native instruction pointer.
-     */
-    public static native CodePointer readInstructionPointer();
-
-    /**
      * Returns the value of the native stack pointer for the physical caller frame.
+     *
+     * The caller of this method must be annotated with {@link NeverInline} to ensure that the
+     * physical caller frame is deterministic.
      */
     public static native Pointer readCallerStackPointer();
 
     /**
      * Returns the value of the native instruction pointer for the physical caller frame.
+     *
+     * The caller of this method must be annotated with {@link NeverInline} to ensure that the
+     * physical caller frame is deterministic.
      */
     public static native CodePointer readReturnAddress();
 
