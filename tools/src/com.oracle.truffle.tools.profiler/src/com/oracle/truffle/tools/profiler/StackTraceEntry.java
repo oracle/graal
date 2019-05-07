@@ -46,7 +46,7 @@ import com.oracle.truffle.api.source.SourceSection;
  * execution point at which the stack trace was generated.
  *
  * @see CPUSampler#takeSample()
- * @since 1.0
+ * @since 19.0
  */
 public final class StackTraceEntry {
 
@@ -94,7 +94,7 @@ public final class StackTraceEntry {
      * Returns <code>true</code> if this stack entry was executed in compiled mode at the time when
      * the stack trace was captured, else <code>false</code>.
      *
-     * @since 1.0
+     * @since 19.0
      */
     public boolean isCompiled() {
         return state == STATE_COMPILED || state == STATE_COMPILATION_ROOT;
@@ -104,7 +104,7 @@ public final class StackTraceEntry {
      * Returns <code>true</code> if this stack entry was executed in interpreted mode at the time
      * when the stack trace was captured, else <code>false</code>.
      *
-     * @since 1.0
+     * @since 19.0
      */
     public boolean isInterpreted() {
         return state == STATE_INTERPRETED;
@@ -115,7 +115,7 @@ public final class StackTraceEntry {
      * in a parent stack entry at the time when the stack trace was captured, else
      * <code>false</code>.
      *
-     * @since 1.0
+     * @since 19.0
      */
     public boolean isInlined() {
         return state == STATE_COMPILED;
@@ -124,7 +124,7 @@ public final class StackTraceEntry {
     /**
      * Returns the source section of the stack trace entry.
      *
-     * @since 1.0
+     * @since 19.0
      */
     public SourceSection getSourceSection() {
         return sourceSection;
@@ -135,7 +135,7 @@ public final class StackTraceEntry {
      * like statements and expressions this returns the name of the enclosing root.
      *
      * @see RootNode#getName()
-     * @since 1.0
+     * @since 19.0
      */
     public String getRootName() {
         return rootName;
@@ -149,7 +149,7 @@ public final class StackTraceEntry {
      * filter}. Never <code>null</code>.
      *
      * @see Instrumenter#queryTags(Node)
-     * @since 1.0
+     * @since 19.0
      */
     public Set<Class<?>> getTags() {
         return tags;
@@ -160,7 +160,7 @@ public final class StackTraceEntry {
      * about the format of the stack trace element. The format of the stack trace element may change
      * without notice.
      *
-     * @since 1.0
+     * @since 19.0
      */
     public StackTraceElement toStackTraceElement() {
         /*
@@ -245,7 +245,7 @@ public final class StackTraceEntry {
     /**
      * {@inheritDoc}
      *
-     * @since 1.0
+     * @since 19.0
      */
     @Override
     public int hashCode() {
@@ -255,7 +255,7 @@ public final class StackTraceEntry {
     /**
      * {@inheritDoc}
      *
-     * @since 1.0
+     * @since 19.0
      */
     @Override
     public boolean equals(Object obj) {
@@ -269,7 +269,7 @@ public final class StackTraceEntry {
     /**
      * {@inheritDoc}
      *
-     * @since 1.0
+     * @since 19.0
      */
     @Override
     public String toString() {

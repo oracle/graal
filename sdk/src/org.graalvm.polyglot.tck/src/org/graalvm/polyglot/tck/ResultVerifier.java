@@ -168,7 +168,7 @@ public interface ResultVerifier extends Consumer<ResultVerifier.SnippetRun> {
      * result type is in bounds specified by the {@link Snippet}.
      *
      * @return the default {@link ResultVerifier}
-     * @since 1.0
+     * @since 19.0
      */
     static ResultVerifier getDefaultResultVerifier() {
         return DefaultResultVerifier.INSTANCE;

@@ -48,7 +48,7 @@ import org.graalvm.word.UnsignedWord;
 /**
  * Support for the creation, access to, and tear-down of isolates.
  *
- * @since 1.0
+ * @since 19.0
  */
 public final class Isolates {
     private Isolates() {
@@ -57,7 +57,7 @@ public final class Isolates {
     /**
      * An exception thrown in the context of managing isolates.
      *
-     * @since 1.0
+     * @since 19.0
      */
     public static final class IsolateException extends RuntimeException {
         private static final long serialVersionUID = 1L;
@@ -65,7 +65,7 @@ public final class Isolates {
         /**
          * Constructs a new exception with the specified detail message.
          *
-         * @since 1.0
+         * @since 19.0
          */
         public IsolateException(String message) {
             super(message);
@@ -77,14 +77,14 @@ public final class Isolates {
      *
      * @see CreateIsolateParameters.Builder
      *
-     * @since 1.0
+     * @since 19.0
      */
     public static final class CreateIsolateParameters {
 
         /**
          * Builder for a {@link CreateIsolateParameters} instance.
          *
-         * @since 1.0
+         * @since 19.0
          */
         public static final class Builder {
             private UnsignedWord reservedAddressSpaceSize;
@@ -92,7 +92,7 @@ public final class Isolates {
             /**
              * Creates a new builder with default values.
              *
-             * @since 1.0
+             * @since 19.0
              */
             public Builder() {
             }
@@ -100,7 +100,7 @@ public final class Isolates {
             /**
              * Sets the size in bytes for the reserved virtual address space of the new isolate.
              *
-             * @since 1.0
+             * @since 19.0
              */
             public Builder reservedAddressSpaceSize(UnsignedWord size) {
                 this.reservedAddressSpaceSize = size;
@@ -111,7 +111,7 @@ public final class Isolates {
              * Produces the final {@link CreateIsolateParameters} with the values set previously by
              * the builder methods.
              *
-             * @since 1.0
+             * @since 19.0
              */
             public CreateIsolateParameters build() {
                 return new CreateIsolateParameters(reservedAddressSpaceSize);
@@ -123,7 +123,7 @@ public final class Isolates {
         /**
          * Returns a {@link CreateIsolateParameters} with all default values.
          *
-         * @since 1.0
+         * @since 19.0
          */
         public static CreateIsolateParameters getDefault() {
             return DEFAULT;
@@ -139,7 +139,7 @@ public final class Isolates {
          * Returns the size in bytes for the reserved virtual address space of the new isolate.
          * Returns a {@link CreateIsolateParameters} with all default values.
          *
-         * @since 1.0
+         * @since 19.0
          */
         public UnsignedWord getReservedAddressSpaceSize() {
             return reservedAddressSpaceSize;
@@ -155,7 +155,7 @@ public final class Isolates {
      * @return A pointer to the structure that represents the current thread in the new isolate.
      * @throws IsolateException on error.
      *
-     * @since 1.0
+     * @since 19.0
      */
     public static IsolateThread createIsolate(CreateIsolateParameters parameters) throws IsolateException {
         Objects.requireNonNull(parameters);
@@ -170,7 +170,7 @@ public final class Isolates {
      * @return A pointer to the structure representing the newly attached isolate thread.
      * @throws IsolateException on error.
      *
-     * @since 1.0
+     * @since 19.0
      */
     public static IsolateThread attachCurrentThread(Isolate isolate) throws IsolateException {
         return ImageSingletons.lookup(IsolateSupport.class).attachCurrentThread(isolate);
@@ -186,7 +186,7 @@ public final class Isolates {
      *         if the thread is not attached to that isolate.
      * @throws IsolateException on error.
      *
-     * @since 1.0
+     * @since 19.0
      */
     public static IsolateThread getCurrentThread(Isolate isolate) throws IsolateException {
         return ImageSingletons.lookup(IsolateSupport.class).getCurrentThread(isolate);
@@ -201,7 +201,7 @@ public final class Isolates {
      * @return A pointer to the isolate, or {@code null}.
      * @throws IsolateException on error.
      *
-     * @since 1.0
+     * @since 19.0
      */
     public static Isolate getIsolate(IsolateThread thread) throws IsolateException {
         return ImageSingletons.lookup(IsolateSupport.class).getIsolate(thread);
@@ -215,7 +215,7 @@ public final class Isolates {
      * @param thread The isolate thread to detach from its isolate.
      * @throws IsolateException on error.
      *
-     * @since 1.0
+     * @since 19.0
      */
     public static void detachThread(IsolateThread thread) throws IsolateException {
         ImageSingletons.lookup(IsolateSupport.class).detachThread(thread);
@@ -231,7 +231,7 @@ public final class Isolates {
      *            which is to be torn down.
      * @throws IsolateException on error.
      *
-     * @since 1.0
+     * @since 19.0
      */
     public static void tearDownIsolate(IsolateThread thread) throws IsolateException {
         ImageSingletons.lookup(IsolateSupport.class).tearDownIsolate(thread);

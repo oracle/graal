@@ -140,7 +140,7 @@ public @interface GenerateWrapper {
      * {@link GenerateWrapper}.
      *
      * @see GenerateWrapper for usage examples
-     * @since 1.0
+     * @since 19.0
      */
     @Retention(RetentionPolicy.CLASS)
     @Target({ElementType.METHOD})
@@ -161,7 +161,7 @@ public @interface GenerateWrapper {
      * {@link OutgoingConverter} per class annotated with {@link GenerateWrapper}.
      *
      * @see GenerateWrapper for usage examples
-     * @since 1.0
+     * @since 19.0
      */
     @Retention(RetentionPolicy.CLASS)
     @Target({ElementType.METHOD})
