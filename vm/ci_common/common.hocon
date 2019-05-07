@@ -31,7 +31,7 @@ common_vm_darwin: ${common_vm} ${darwin} {
 
 common_vm_windows: ${common_vm} ${windows} {
   packages : {
-    mx: "b22163e57fa6c31cc47a6d682c687dcce8531ed4"
+    mx: "8d497ab5f960586538dceb2e0ab28c79df5f0e89"
   }
   downloads : {
     MAVEN_HOME: {name: maven, version: "3.3.9", platformspecific: false}
