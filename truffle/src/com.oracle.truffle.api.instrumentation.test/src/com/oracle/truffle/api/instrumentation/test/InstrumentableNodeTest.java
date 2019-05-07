@@ -75,6 +75,7 @@ import com.oracle.truffle.api.instrumentation.test.InstrumentationTestLanguage.M
 import com.oracle.truffle.api.interop.InteropException;
 import com.oracle.truffle.api.interop.InteropLibrary;
 import com.oracle.truffle.api.interop.TruffleObject;
+import com.oracle.truffle.api.nodes.ExplodeLoop;
 import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.api.nodes.RootNode;
 import com.oracle.truffle.api.source.SourceSection;
@@ -351,6 +352,7 @@ public class InstrumentableNodeTest extends InstrumentationEventTest {
                 @Node.Children private MaterializableNode[] children = code.startsWith("num") ? new MaterializableNode[]{} : createChildren(MaterializationLanguage.this, source, 1);
 
                 @Override
+                @ExplodeLoop
                 public Object execute(VirtualFrame frame) {
                     if (code.equals("numMaterializations")) {
                         return numMaterializations;
@@ -429,6 +431,7 @@ public class InstrumentableNodeTest extends InstrumentationEventTest {
                 return sourceSection;
             }
 
+            @ExplodeLoop
             public int execute(@SuppressWarnings("unused") VirtualFrame frame) {
                 int sum = 0;
                 for (MaterializableNode node : children) {
