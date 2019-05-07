@@ -49,6 +49,6 @@
  * @see org.graalvm.options.OptionDescriptor
  * @see org.graalvm.options.OptionValues
  *
- * @since 1.0
+ * @since 19.0
  */
 package org.graalvm.options;

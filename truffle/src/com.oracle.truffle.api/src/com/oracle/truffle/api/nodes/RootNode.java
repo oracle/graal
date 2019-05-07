@@ -331,7 +331,7 @@ public abstract class RootNode extends ExecutableNode {
         return frameDescriptor;
     }
 
-    /** @since 1.0.0 */
+    /** @since 19.0 */
     protected final void setCallTarget(RootCallTarget callTarget) {
         this.callTarget = callTarget;
     }

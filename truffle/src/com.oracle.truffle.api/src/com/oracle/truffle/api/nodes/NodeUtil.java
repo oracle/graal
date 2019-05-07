@@ -236,7 +236,7 @@ public final class NodeUtil {
     /**
      * Returns the current encapsulating node for non {@link Node#isAdoptable() adoptable} nodes.
      *
-     * @since 1.0
+     * @since 19.0
      */
     @TruffleBoundary
     public static Node getCurrentEncapsulatingNode() {
@@ -247,7 +247,7 @@ public final class NodeUtil {
      * Utility to push the current encapsulating Node for nodes that are not
      * {@link Node#isAdoptable() adoptable}.
      *
-     * @since 1.0
+     * @since 19.0
      */
     @TruffleBoundary
     public static Node pushEncapsulatingNode(Node node) {
@@ -262,7 +262,7 @@ public final class NodeUtil {
      * Utility to push the pop encapsulating Node for nodes that are not {@link Node#isAdoptable()
      * adoptable}.
      *
-     * @since 1.0
+     * @since 19.0
      */
     @TruffleBoundary
     public static void popEncapsulatingNode(Node prev) {

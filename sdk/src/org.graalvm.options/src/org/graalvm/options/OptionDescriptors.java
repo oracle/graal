@@ -51,14 +51,14 @@ import java.util.NoSuchElementException;
 /**
  * An interface to a set of {@link OptionDescriptor}s.
  *
- * @since 1.0
+ * @since 19.0
  */
 public interface OptionDescriptors extends Iterable<OptionDescriptor> {
 
     /**
      * An empty set of option descriptors.
      *
-     * @since 1.0
+     * @since 19.0
      */
     OptionDescriptors EMPTY = new OptionDescriptors() {
 
@@ -75,7 +75,7 @@ public interface OptionDescriptors extends Iterable<OptionDescriptor> {
      * Gets the {@link OptionDescriptor} matching a given option name or {@code null} if this option
      * descriptor set does not contain a matching option name.
      *
-     * @since 1.0
+     * @since 19.0
      */
     OptionDescriptor get(String optionName);
 
@@ -84,7 +84,7 @@ public interface OptionDescriptors extends Iterable<OptionDescriptor> {
      * descriptors are not checked for duplicate keys. The option descriptors are iterated in
      * declaration order.
      *
-     * @since 1.0
+     * @since 19.0
      */
     static OptionDescriptors createUnion(OptionDescriptors... descriptors) {
         if (descriptors.length == 0) {
@@ -99,7 +99,7 @@ public interface OptionDescriptors extends Iterable<OptionDescriptor> {
     /**
      * {@inheritDoc}
      *
-     * @since 1.0
+     * @since 19.0
      */
     @Override
     Iterator<OptionDescriptor> iterator();
@@ -108,7 +108,7 @@ public interface OptionDescriptors extends Iterable<OptionDescriptor> {
      * Creates an {@link OptionDescriptors} instance from a list. The option descriptors
      * implementation is backed by a {@link LinkedHashMap} that preserves ordering.
      *
-     * @since 1.0
+     * @since 19.0
      */
     static OptionDescriptors create(List<OptionDescriptor> descriptors) {
         if (descriptors == null || descriptors.isEmpty()) {

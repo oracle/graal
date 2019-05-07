@@ -68,7 +68,7 @@ import java.lang.ref.WeakReference;
  *
  * @see #takeSummary()
  * @see #takeMetaObjectSummary()
- * @since 1.0
+ * @since 19.0
  */
 public final class HeapMonitor implements Closeable {
 
@@ -160,7 +160,7 @@ public final class HeapMonitor implements Closeable {
      *
      * @param engine the engine to find debugger for
      * @return an instance of associated {@link HeapMonitor}
-     * @since 1.0
+     * @since 19.0
      */
     public static HeapMonitor find(Engine engine) {
         return HeapMonitorInstrument.getMonitor(engine);
@@ -171,7 +171,7 @@ public final class HeapMonitor implements Closeable {
      *
      * @param collecting the new state of the monitor.
      * @throws IllegalStateException if the heap monitor was already closed
-     * @since 1.0
+     * @since 19.0
      */
     public synchronized void setCollecting(boolean collecting) {
         if (closed) {
@@ -186,7 +186,7 @@ public final class HeapMonitor implements Closeable {
     /**
      * Returns <code>true</code> if the heap monitor is collecting data, else <code>false</code>.
      *
-     * @since 1.0
+     * @since 19.0
      */
     public synchronized boolean isCollecting() {
         return collecting;
@@ -200,7 +200,7 @@ public final class HeapMonitor implements Closeable {
      * performed while the heap monitor was not collecting data are not tracked.
      *
      * @throws IllegalStateException if the heap monitor was already closed
-     * @since 1.0
+     * @since 19.0
      */
     public HeapSummary takeSummary() {
         if (closed) {
@@ -229,7 +229,7 @@ public final class HeapMonitor implements Closeable {
      * "enabled".
      *
      * @throws IllegalStateException if the heap monitor was already closed
-     * @since 1.0
+     * @since 19.0
      */
     public Map<LanguageInfo, Map<String, HeapSummary>> takeMetaObjectSummary() {
         cleanReferenceQueue();
@@ -294,7 +294,7 @@ public final class HeapMonitor implements Closeable {
     /**
      * Erases all the data gathered by the {@link HeapMonitor}.
      *
-     * @since 1.0
+     * @since 19.0
      */
     public void clearData() {
         synchronized (summaryData) {
@@ -307,7 +307,7 @@ public final class HeapMonitor implements Closeable {
      * Returns <code>true</code> if the {@link HeapMonitor} has collected any data, else
      * <code>false</code>.
      *
-     * @since 1.0
+     * @since 19.0
      */
     public boolean hasData() {
         if (!newReferences.isEmpty()) {
@@ -324,7 +324,7 @@ public final class HeapMonitor implements Closeable {
     /**
      * Closes the {@link HeapMonitor} for further use, deleting all the gathered data.
      *
-     * @since 1.0
+     * @since 19.0
      */
     @Override
     public synchronized void close() {

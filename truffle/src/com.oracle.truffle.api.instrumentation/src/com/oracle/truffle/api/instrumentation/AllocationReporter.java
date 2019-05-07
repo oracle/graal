@@ -99,7 +99,7 @@ public final class AllocationReporter {
      * changes. The listener {@link Consumer#accept(Object) accept} method is called with the new
      * value of {@link #isActive()}.
      *
-     * @since 1.0
+     * @since 19.0
      */
     public void addActiveListener(Consumer<Boolean> listener) {
         activeListeners.add(listener);
@@ -109,7 +109,7 @@ public final class AllocationReporter {
      * Remove a listener that is notified when {@link #isActive() active} value of this reporter
      * changes.
      *
-     * @since 1.0
+     * @since 19.0
      */
     public void removeActiveListener(Consumer<Boolean> listener) {
         activeListeners.remove(listener);

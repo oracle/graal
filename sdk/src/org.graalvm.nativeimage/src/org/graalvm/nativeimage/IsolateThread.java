@@ -50,7 +50,7 @@ import org.graalvm.word.PointerBase;
  * The {@link IsolateThread} points to a thread-local data structure. Therefore, the pointer must
  * not be shared between threads.
  *
- * @since 1.0
+ * @since 19.0
  */
 @CStruct(value = "graal_isolatethread_t", isIncomplete = true)
 public interface IsolateThread extends PointerBase {

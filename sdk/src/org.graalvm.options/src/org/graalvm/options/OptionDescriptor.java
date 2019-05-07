@@ -45,7 +45,7 @@ import java.util.Objects;
 /**
  * Represents metadata for a single option.
  *
- * @since 1.0
+ * @since 19.0
  */
 public final class OptionDescriptor {
 
@@ -68,7 +68,7 @@ public final class OptionDescriptor {
     /**
      * Returns the name of the option that this descriptor represents.
      *
-     * @since 1.0
+     * @since 19.0
      */
     public String getName() {
         return name;
@@ -77,7 +77,7 @@ public final class OptionDescriptor {
     /**
      * Returns the key for this option.
      *
-     * @since 1.0
+     * @since 19.0
      */
     public OptionKey<?> getKey() {
         return key;
@@ -87,7 +87,7 @@ public final class OptionDescriptor {
      * Returns <code>true</code> if this option was marked deprecated. This indicates that the
      * option is going to be removed in a future release or its use is not recommended.
      *
-     * @since 1.0
+     * @since 19.0
      */
     public boolean isDeprecated() {
         return deprecated;
@@ -96,7 +96,7 @@ public final class OptionDescriptor {
     /**
      * Returns the user category of this option.
      *
-     * @since 1.0
+     * @since 19.0
      */
     public OptionCategory getCategory() {
         return kind;
@@ -105,7 +105,7 @@ public final class OptionDescriptor {
     /**
      * Returns the stability of this option.
      *
-     * @since 1.0
+     * @since 19.0
      */
     public OptionStability getStability() {
         return stability;
@@ -114,7 +114,7 @@ public final class OptionDescriptor {
     /**
      * Returns a human-readable description on how to use the option.
      *
-     * @since 1.0
+     * @since 19.0
      */
     public String getHelp() {
         return help;
@@ -123,7 +123,7 @@ public final class OptionDescriptor {
     /**
      * {@inheritDoc}
      *
-     * @since 1.0
+     * @since 19.0
      */
     @Override
     public String toString() {
@@ -133,7 +133,7 @@ public final class OptionDescriptor {
     /**
      * {@inheritDoc}
      *
-     * @since 1.0
+     * @since 19.0
      */
     @Override
     public int hashCode() {
@@ -150,7 +150,7 @@ public final class OptionDescriptor {
     /**
      * {@inheritDoc}
      *
-     * @since 1.0
+     * @since 19.0
      */
     @Override
     public boolean equals(Object obj) {
@@ -173,7 +173,7 @@ public final class OptionDescriptor {
      * Creates a new option descriptor builder by key. The option group and name is inferred by the
      * key.
      *
-     * @since 1.0
+     * @since 19.0
      */
     public static <T> Builder newBuilder(OptionKey<T> key, String name) {
         Objects.requireNonNull(key);
@@ -186,7 +186,7 @@ public final class OptionDescriptor {
     /**
      * Represents an option descriptor builder.
      *
-     * @since 1.0
+     * @since 19.0
      */
     public final class Builder {
 
@@ -206,7 +206,7 @@ public final class OptionDescriptor {
          * Defines the user category for this option. The default value is
          * {@link OptionCategory#INTERNAL}.
          *
-         * @since 1.0
+         * @since 19.0
          */
         public Builder category(@SuppressWarnings("hiding") OptionCategory category) {
             Objects.requireNonNull(category);
@@ -218,7 +218,7 @@ public final class OptionDescriptor {
          * Defines the stability of this option. The default value is
          * {@link OptionStability#EXPERIMENTAL}.
          *
-         * @since 1.0
+         * @since 19.0
          */
         public Builder stability(@SuppressWarnings("hiding") OptionStability stability) {
             Objects.requireNonNull(stability);
@@ -230,7 +230,7 @@ public final class OptionDescriptor {
          * Defines if this option is deprecated. The default value for deprecated is
          * <code>false</code>. This can be used to evolve options between releases.
          *
-         * @since 1.0
+         * @since 19.0
          */
         public Builder deprecated(@SuppressWarnings("hiding") boolean deprecated) {
             this.deprecated = deprecated;
@@ -240,7 +240,7 @@ public final class OptionDescriptor {
         /**
          * Specifies a human-readable description on how to use the option.
          *
-         * @since 1.0
+         * @since 19.0
          */
         public Builder help(@SuppressWarnings("hiding") String help) {
             Objects.requireNonNull(help);
@@ -251,7 +251,7 @@ public final class OptionDescriptor {
         /**
          * Builds and returns a new option descriptor.
          *
-         * @since 1.0
+         * @since 19.0
          */
         public OptionDescriptor build() {
             return new OptionDescriptor(key, name, help, category, stability, deprecated);

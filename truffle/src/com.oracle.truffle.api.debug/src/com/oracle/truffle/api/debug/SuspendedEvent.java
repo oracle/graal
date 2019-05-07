@@ -333,7 +333,7 @@ public final class SuspendedEvent {
      *
      * @param newValue the new return value, can not be <code>null</code>
      * @throws IllegalStateException when {@link #getReturnValue()} returns <code>null</code>
-     * @since 1.0
+     * @since 19.0
      */
     public void setReturnValue(DebugValue newValue) {
         verifyValidState(false);
@@ -348,7 +348,7 @@ public final class SuspendedEvent {
      * event (via an exception breakpoint, for instance). Returns <code>null</code> when no
      * exception occurred.
      *
-     * @since 1.0
+     * @since 19.0
      */
     public DebugException getException() {
         return exception;

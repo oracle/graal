@@ -58,7 +58,7 @@ import org.graalvm.polyglot.PolyglotException;
  * @see ProxyExecutable to mimic objects that can be executed
  * @see ProxyNativeObject to mimic native objects
  *
- * @since 1.0
+ * @since 19.0
  */
 public interface Proxy {
 

@@ -47,7 +47,7 @@ import org.graalvm.word.SignedWord;
 /**
  * A pointer to a 32-bit C primitive value.
  *
- * @since 1.0
+ * @since 19.0
  */
 @CPointerTo(nameOfCType = "int")
 public interface CIntPointer extends PointerBase {
@@ -55,7 +55,7 @@ public interface CIntPointer extends PointerBase {
     /**
      * Reads the value at the pointer address.
      *
-     * @since 1.0
+     * @since 19.0
      */
     int read();
 
@@ -63,7 +63,7 @@ public interface CIntPointer extends PointerBase {
      * Reads the value of the array element with the specified index, treating the pointer as an
      * array of the C type.
      *
-     * @since 1.0
+     * @since 19.0
      */
     int read(int index);
 
@@ -71,14 +71,14 @@ public interface CIntPointer extends PointerBase {
      * Reads the value of the array element with the specified index, treating the pointer as an
      * array of the C type.
      *
-     * @since 1.0
+     * @since 19.0
      */
     int read(SignedWord index);
 
     /**
      * Writes the value at the pointer address.
      *
-     * @since 1.0
+     * @since 19.0
      */
     void write(int value);
 
@@ -86,7 +86,7 @@ public interface CIntPointer extends PointerBase {
      * Writes the value of the array element with the specified index, treating the pointer as an
      * array of the C type.
      *
-     * @since 1.0
+     * @since 19.0
      */
     void write(int index, int value);
 
@@ -94,7 +94,7 @@ public interface CIntPointer extends PointerBase {
      * Writes the value of the array element with the specified index, treating the pointer as an
      * array of the C type.
      *
-     * @since 1.0
+     * @since 19.0
      */
     void write(SignedWord index, int value);
 
@@ -102,7 +102,7 @@ public interface CIntPointer extends PointerBase {
      * Computes the address of the array element with the specified index, treating the pointer as
      * an array of the C type.
      *
-     * @since 1.0
+     * @since 19.0
      */
     CIntPointer addressOf(int index);
 
@@ -110,7 +110,7 @@ public interface CIntPointer extends PointerBase {
      * Computes the address of the array element with the specified index, treating the pointer as
      * an array of the C type.
      *
-     * @since 1.0
+     * @since 19.0
      */
     CIntPointer addressOf(SignedWord index);
 }
