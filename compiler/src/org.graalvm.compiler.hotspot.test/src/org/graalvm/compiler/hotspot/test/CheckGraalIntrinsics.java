@@ -450,6 +450,8 @@ public class CheckGraalIntrinsics extends GraalTest {
                 }
                 add(toBeInvestigated,
                                 "com/sun/crypto/provider/CounterMode.implCrypt([BII[BI)I",
+                                "java/lang/Math.fma(DDD)D",
+                                "java/lang/Math.fma(FFF)F",
                                 "java/lang/Thread.onSpinWait()V",
                                 "java/util/ArraysSupport.vectorizedMismatch(Ljava/lang/Object;JLjava/lang/Object;JII)I",
                                 "jdk/internal/misc/Unsafe.getCharUnaligned(Ljava/lang/Object;J)C",
