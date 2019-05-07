@@ -1909,6 +1909,7 @@ mx.add_argument('--snapshot-catalog', action='store', help='Change the default U
 mx.add_argument('--extra-image-builder-argument', action='append', help='Add extra arguments to the image builder.', default=[])
 
 register_vm_config('ce', ['cmp', 'gu', 'gvm', 'ins', 'js', 'lg', 'nfi', 'njs', 'polynative', 'pro', 'rgx', 'slg', 'svm', 'svmag', 'svmcf', 'svml', 'tfl', 'libpoly', 'poly', 'vvm'])
+register_vm_config('ce-python', ['cmp', 'gu', 'gvm', 'ins', 'js', 'lg', 'nfi', 'njs', 'polynative', 'pyn', 'pro', 'rgx', 'slg', 'svm', 'svmag', 'svmcf', 'svml', 'tfl', 'libpoly', 'poly', 'vvm'])
 register_vm_config('ce-no_native', ['bjs', 'blli', 'bnative-image', 'bpolyglot', 'cmp', 'gu', 'gvm', 'ins', 'js', 'nfi', 'njs', 'polynative', 'pro', 'rgx', 'slg', 'svm', 'svmcf', 'svml', 'tfl', 'poly', 'vvm'])
 register_vm_config('libgraal', ['cmp', 'gu', 'gvm', 'lg', 'nfi', 'poly', 'polynative', 'rgx', 'svm', 'svmcf', 'svml', 'tfl', 'bnative-image', 'bpolyglot'])
 
