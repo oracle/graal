@@ -24,6 +24,8 @@
  */
 package com.oracle.svm.reflect.hosted;
 
+// Checkstyle: allow synchronization
+
 /* Allow imports of java.lang.reflect and sun.misc.ProxyGenerator: Checkstyle: allow reflection. */
 
 import java.lang.reflect.Constructor;
@@ -131,12 +133,11 @@ final class ReflectionSubstitution extends CustomSubstitution<ReflectionSubstitu
         /* } Allow reflection in hosted code. Checkstyle: resume. */
     }
 
-    Class<?> getProxyClass(Member member) {
+    synchronized Class<?> getProxyClass(Member member) {
         Class<?> ret = proxyMap.get(member);
         if (ret == null) {
             /* the unique ID is added for unit tests that don't change the class loader */
             String name = getStableProxyName(member) + PROXY_NAME_SEPARATOR + proxyNr.incrementAndGet();
-
             Class<?> iface = getAccessorInterface(member);
             byte[] proxyBC = generateProxyClass(name, new Class<?>[]{iface, ReflectionProxy.class});
             try {
@@ -199,7 +200,7 @@ final class ReflectionSubstitution extends CustomSubstitution<ReflectionSubstitu
         }
     }
 
-    private ReflectionSubstitutionType getSubstitution(ResolvedJavaType original) {
+    private synchronized ReflectionSubstitutionType getSubstitution(ResolvedJavaType original) {
         ReflectionSubstitutionType subst = getSubstitutionType(original);
         if (subst == null) {
             Member member = typeToMember.get(original);
