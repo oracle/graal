@@ -55,7 +55,7 @@ _exe_suffix = mx.exe_suffix('')
 _lib_suffix = mx.add_lib_suffix("")
 _lib_prefix = mx.add_lib_prefix("")
 
-_vm_configs = {}
+_vm_configs = []
 
 mx_sdk.register_graalvm_component(mx_sdk.GraalVmJdkComponent(
     suite=_suite,
@@ -512,7 +512,7 @@ def _get_graalvm_configuration(base_name, stage1=False):
         # Use custom distribution name and base dir for registered vm configurations
         vm_config_name = None
         vm_config_additional_components = sorted(components_set)
-        for config_name, config_components in _vm_configs.items():
+        for config_name, config_components in _vm_configs:
             config_components_set = set(config_components)
             config_additional_components = sorted(components_set - config_components_set)
             if config_components_set <= components_set and len(config_additional_components) <= len(vm_config_additional_components):
@@ -1673,7 +1673,7 @@ def register_vm_config(config_name, components):
     :type config_name: str
     :type components: list[str]
     """
-    _vm_configs[config_name] = components
+    _vm_configs.append((config_name, components))
 
 
 _native_image_configs = {}
