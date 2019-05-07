@@ -39,13 +39,8 @@ import java.util.Arrays;
 
 import org.graalvm.compiler.bytecode.BytecodeProvider;
 import org.graalvm.compiler.lir.amd64.AMD64ArithmeticLIRGeneratorTool.RoundingMode;
-import org.graalvm.compiler.nodes.ComputeObjectAddressNode;
-import org.graalvm.compiler.nodes.ConstantNode;
-import org.graalvm.compiler.nodes.NodeView;
 import org.graalvm.compiler.nodes.PauseNode;
 import org.graalvm.compiler.nodes.ValueNode;
-import org.graalvm.compiler.nodes.calc.AddNode;
-import org.graalvm.compiler.nodes.extended.ForeignCallNode;
 import org.graalvm.compiler.nodes.graphbuilderconf.GraphBuilderConfiguration.Plugins;
 import org.graalvm.compiler.nodes.graphbuilderconf.GraphBuilderContext;
 import org.graalvm.compiler.nodes.graphbuilderconf.InvocationPlugin;

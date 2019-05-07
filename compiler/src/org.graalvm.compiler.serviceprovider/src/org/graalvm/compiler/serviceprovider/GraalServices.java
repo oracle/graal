@@ -208,6 +208,7 @@ public final class GraalServices {
      * the first two arguments summed with the third argument and then rounded once to the nearest
      * {@code float}.
      */
+    @SuppressWarnings("unused")
     public static float fma(float a, float b, float c) {
         throw shouldNotReachHere();
     }
@@ -217,6 +218,7 @@ public final class GraalServices {
      * the first two arguments summed with the third argument and then rounded once to the nearest
      * {@code double}.
      */
+    @SuppressWarnings("unused")
     public static double fma(double a, double b, double c) {
         throw shouldNotReachHere();
     }
