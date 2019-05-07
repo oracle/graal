@@ -93,10 +93,10 @@ public abstract class TernaryNode extends FloatingNode implements Canonicalizabl
     }
 
     /**
-     * Compute an improved for this node using the passed in stamps. The stamps must be compatible
-     * with the current values of {@link #x}, {@link #y} and {@link #z}. This code is used to
-     * provide the default implementation of {@link #inferStamp()} and may be used by external
-     * optimizations.
+     * Compute an improved stamp for this node using the passed in stamps. The stamps must be
+     * compatible with the current values of {@link #x}, {@link #y} and {@link #z}. This code is
+     * used to provide the default implementation of {@link #inferStamp()} and may be used by
+     * external optimizations.
      *
      * @param stampX
      * @param stampY

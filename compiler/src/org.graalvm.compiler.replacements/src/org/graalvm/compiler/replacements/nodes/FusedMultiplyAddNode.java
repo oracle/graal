@@ -42,6 +42,7 @@ import org.graalvm.compiler.nodes.spi.NodeLIRBuilderTool;
 
 import jdk.vm.ci.meta.JavaConstant;
 import jdk.vm.ci.meta.JavaKind;
+import org.graalvm.compiler.serviceprovider.GraalServices;
 
 @NodeInfo(cycles = CYCLES_2, size = SIZE_1)
 public final class FusedMultiplyAddNode extends TernaryNode implements ArithmeticLIRLowerable {
@@ -74,10 +75,10 @@ public final class FusedMultiplyAddNode extends TernaryNode implements Arithmeti
 
             ValueNode res;
             if (a.getStackKind() == JavaKind.Float) {
-                res = ConstantNode.forFloat(Math.fma(ca.asFloat(), cb.asFloat(), cc.asFloat()));
+                res = ConstantNode.forFloat(GraalServices.fma(ca.asFloat(), cb.asFloat(), cc.asFloat()));
             } else {
                 assert a.getStackKind() == JavaKind.Double;
-                res = ConstantNode.forDouble(Math.fma(ca.asDouble(), cb.asDouble(), cc.asDouble()));
+                res = ConstantNode.forDouble(GraalServices.fma(ca.asDouble(), cb.asDouble(), cc.asDouble()));
             }
             return res;
         }
