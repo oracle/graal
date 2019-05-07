@@ -587,7 +587,7 @@ class GraalVmLayoutDistributionTask(mx.LayoutArchiveTask):
             self._rm_link()
 
 
-class DebuginfoDistribution(mx.LayoutTARDistribution):
+class DebuginfoDistribution(mx.LayoutTARDistribution):  # pylint: disable=too-many-ancestors
     def __init__(self, subject_distribution, theLicense=None, **kw_args):
         super(DebuginfoDistribution, self).__init__(_suite,
                                                     name=subject_distribution.name + '_DEBUGINFO',
