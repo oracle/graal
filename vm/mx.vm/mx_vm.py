@@ -243,7 +243,7 @@ class BaseGraalVmLayoutDistribution(mx.LayoutDistribution):
                         link_template_name = join(_suite.mxDir, 'exe_link_template.cmd')
                         with open(link_template_name, 'r') as template:
                             _template_subst = mx_subst.SubstitutionEngine(mx_subst.string_substitutions)
-                            _template_subst.register_no_arg('target', normpath(_target))
+                            _template_subst.register_no_arg('target', normpath(_linkname))
                             contents = _template_subst.substitute(template.read())
                         _add(layout, _dest + basename(_target)[:-len('.exe')] + '.cmd', 'string:{}'.format(contents), _component)
                     else:
