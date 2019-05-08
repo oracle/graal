@@ -60,6 +60,7 @@ import java.util.function.Predicate;
 import java.util.stream.Collectors;
 import java.util.stream.StreamSupport;
 
+import jdk.vm.ci.amd64.AMD64.CPUFeature;
 import org.graalvm.collections.EconomicSet;
 import org.graalvm.compiler.api.replacements.Fold;
 import org.graalvm.compiler.api.replacements.SnippetReflectionProvider;
@@ -1151,7 +1152,8 @@ public class NativeImageGenerator {
         Architecture architecture = ConfigurationValues.getTarget().arch;
         if (architecture instanceof AMD64) {
             AMD64GraphBuilderPlugins.register(plugins, replacementBytecodeProvider, (AMD64) architecture, explicitUnsafeNullChecks,
-                            SubstrateOptions.EmitStringEncodingSubstitutions.getValue() && JAVA_SPECIFICATION_VERSION >= 9);
+                            SubstrateOptions.EmitStringEncodingSubstitutions.getValue() && JAVA_SPECIFICATION_VERSION >= 9,
+                            ((AMD64) architecture).getFeatures().contains(CPUFeature.FMA) && JAVA_SPECIFICATION_VERSION >= 9);
         } else if (architecture instanceof AArch64) {
             AArch64GraphBuilderPlugins.register(plugins, replacementBytecodeProvider, explicitUnsafeNullChecks, //
                             /* registerMathPlugins */false, SubstrateOptions.EmitStringEncodingSubstitutions.getValue() && JAVA_SPECIFICATION_VERSION >= 9);

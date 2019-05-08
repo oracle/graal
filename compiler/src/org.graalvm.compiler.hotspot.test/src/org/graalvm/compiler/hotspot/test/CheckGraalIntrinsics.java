@@ -272,10 +272,6 @@ public class CheckGraalIntrinsics extends GraalTest {
                             "jdk/jfr/internal/JVM.getClassId(Ljava/lang/Class;)J");
 
             add(toBeInvestigated,
-                            // HotSpot MacroAssembler-based intrinsic
-                            "java/lang/Math.fma(DDD)D",
-                            // HotSpot MacroAssembler-based intrinsic
-                            "java/lang/Math.fma(FFF)F",
                             // Just check if the argument is a compile time constant
                             "java/lang/invoke/MethodHandleImpl.isCompileConstant(Ljava/lang/Object;)Z",
                             // Only used as a marker for vectorization?
@@ -454,6 +450,8 @@ public class CheckGraalIntrinsics extends GraalTest {
                 }
                 add(toBeInvestigated,
                                 "com/sun/crypto/provider/CounterMode.implCrypt([BII[BI)I",
+                                "java/lang/Math.fma(DDD)D",
+                                "java/lang/Math.fma(FFF)F",
                                 "java/lang/Thread.onSpinWait()V",
                                 "java/util/ArraysSupport.vectorizedMismatch(Ljava/lang/Object;JLjava/lang/Object;JII)I",
                                 "jdk/internal/misc/Unsafe.getCharUnaligned(Ljava/lang/Object;J)C",
