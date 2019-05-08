@@ -36,7 +36,7 @@ import subprocess
 
 from abc import ABCMeta
 from argparse import ArgumentParser
-from os.path import relpath, join, dirname, basename, exists, isfile
+from os.path import relpath, join, dirname, basename, exists, isfile, normpath
 from copy import deepcopy
 
 import mx
@@ -234,6 +234,23 @@ class BaseGraalVmLayoutDistribution(mx.LayoutDistribution):
                 if isinstance(image_config, mx_sdk.LanguageLauncherConfig):
                     _add(layout, _macro_dir, 'dependency:{}'.format(_project_name) + '/polyglot.config', component)
 
+        def _add_link(_dest, _target, _component=None):
+            assert _dest.endswith('/')
+            _linkname = relpath(path_substitutions.substitute(_target), start=path_substitutions.substitute(_dest[:-1]))
+            if _linkname != basename(_target):
+                if mx.is_windows():
+                    if _target.endswith('.exe') or _target.endswith('.cmd'):
+                        link_template_name = join(_suite.mxDir, 'exe_link_template.cmd')
+                        with open(link_template_name, 'r') as template:
+                            _template_subst = mx_subst.SubstitutionEngine(mx_subst.string_substitutions)
+                            _template_subst.register_no_arg('target', normpath(_target))
+                            contents = _template_subst.substitute(template.read())
+                        _add(layout, _dest + basename(_target)[:-len('.exe')] + '.cmd', 'string:{}'.format(contents), _component)
+                    else:
+                        mx.abort("Cannot create link on windows for {}->{}".format(_dest, _target))
+                else:
+                    _add(layout, _dest, 'link:{}'.format(_linkname), _component)
+
         if is_graalvm:
             if stage1:
                 # 1. we do not want a GraalVM to be used as base-JDK
@@ -276,6 +293,9 @@ class BaseGraalVmLayoutDistribution(mx.LayoutDistribution):
                 # on macOS the <arch> directory is not used
                 _add(layout, "<jre_base>/lib/", "extracted-dependency:truffle:TRUFFLE_NFI_NATIVE/bin/<lib:trufflenfi>")
                 _add(layout, "<jre_base>/lib/server/vm.properties", "string:name=" + vm_name)
+            elif mx.get_os() == 'windows':
+                _add(layout, "<jre_base>/bin/", "extracted-dependency:truffle:TRUFFLE_NFI_NATIVE/bin/<lib:trufflenfi>")
+                _add(layout, "<jre_base>/bin/server/vm.properties", "string:name=" + vm_name)
             else:
                 _add(layout, "<jre_base>/lib/<arch>/", "extracted-dependency:truffle:TRUFFLE_NFI_NATIVE/bin/<lib:trufflenfi>")
                 _add(layout, "<jre_base>/lib/<arch>/server/vm.properties", "string:name=" + vm_name)
@@ -284,9 +304,9 @@ class BaseGraalVmLayoutDistribution(mx.LayoutDistribution):
             if with_polyglot_launcher:
                 polyglot_launcher_project = get_polyglot_launcher_project()
                 if not stage1:
-                    _add(layout, "<jre_base>/bin/polyglot", "dependency:" + polyglot_launcher_project.name)
+                    _add(layout, "<jre_base>/bin/<exe:polyglot>", "dependency:" + polyglot_launcher_project.name)
                     if _src_jdk_has_jre:
-                        _add(layout, "<jdk_base>/bin/polyglot", "link:../jre/bin/polyglot")
+                        _add_link("<jdk_base>/bin/", path_substitutions.substitute("../jre/bin/<exe:polyglot>"))
                 _add_native_image_macro(polyglot_launcher_project.native_image_config)
 
             # Add libpolyglot library
@@ -346,14 +366,8 @@ class BaseGraalVmLayoutDistribution(mx.LayoutDistribution):
             else:
                 _jdk_jre_bin = '<jre_base>/bin/'
 
-            def _add_link(_dest, _target):
-                assert _dest.endswith('/')
-                _linkname = relpath(path_substitutions.substitute(_target), start=path_substitutions.substitute(_dest[:-1]))
-                if _linkname != basename(_target):
-                    _add(layout, _dest, 'link:{}'.format(_linkname), _component)
-
             for _license in _component.license_files + _component.third_party_license_files:
-                _add_link('<jdk_base>/', _component_base + _license)
+                _add_link('<jdk_base>/', _component_base + _license, _component)
 
             _jre_bin_names = []
 
@@ -368,7 +382,7 @@ class BaseGraalVmLayoutDistribution(mx.LayoutDistribution):
                         _add(layout, dirname(_launcher_dest) + '/', 'dependency:' + GraalVmLauncher.launcher_project_name(_launcher_config, stage1) + '/sources', _component)
                 # add links from jre/bin to launcher
                 if _launcher_config.default_symlinks:
-                    _add_link(_jdk_jre_bin, _launcher_dest)
+                    _add_link(_jdk_jre_bin, _launcher_dest, _component)
                     _jre_bin_names.append(basename(_launcher_dest))
                 for _component_link in _launcher_config.links:
                     _link_dest = _component_base + _component_link
@@ -376,7 +390,7 @@ class BaseGraalVmLayoutDistribution(mx.LayoutDistribution):
                     _add(layout, _link_dest, 'link:{}'.format(relpath(_launcher_dest, start=dirname(_link_dest))), _component)
                     # add links from jre/bin to component link
                     if _launcher_config.default_symlinks:
-                        _add_link(_jdk_jre_bin, _link_dest)
+                        _add_link(_jdk_jre_bin, _link_dest, _component)
                         _jre_bin_names.append(basename(_link_dest))
                 _add_native_image_macro(_launcher_config, _component)
             for _library_config in _get_library_configs(_component):
@@ -398,13 +412,13 @@ class BaseGraalVmLayoutDistribution(mx.LayoutDistribution):
                     _add(layout, _vvm_launcher_dest, 'extracted-dependency:tools:VISUALVM_PLATFORM_SPECIFIC/./' + _provided_executable, _component)
                 else:
                     _link_dest = _component_base + _provided_executable
-                    _add_link(_jdk_jre_bin, _link_dest)
+                    _add_link(_jdk_jre_bin, _link_dest, _component)
                     _jre_bin_names.append(basename(_link_dest))
 
             if _src_jdk_has_jre and 'jre' in _jdk_jre_bin:
                 # Add jdk to jre links
                 for _name in _jre_bin_names:
-                    _add_link('<jdk_base>/bin/', '<jre_base>/bin/' + _name)
+                    _add_link('<jdk_base>/bin/', '<jre_base>/bin/' + _name, _component)
 
             if isinstance(_component, mx_sdk.GraalVmJvmciComponent) and _component.graal_compiler:
                 has_graal_compiler = True
