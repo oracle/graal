@@ -16,6 +16,21 @@ suite = {
   },
 
   "projects" : {
+    "com.oracle.truffle.wasm.test" : {
+      "subDir" : "src",
+      "sourceDirs" : ["src"],
+      "dependencies" : [
+        "com.oracle.truffle.wasm",
+        "com.oracle.truffle.wasm.parser",
+        "mx:JUNIT",
+      ],
+      "checkstyle" : "com.oracle.truffle.wasm",
+      "javaCompliance" : "1.8",
+      "annotationProcessors" : ["truffle:TRUFFLE_DSL_PROCESSOR"],
+      "workingSets" : "Truffle, WebAssembly",
+      "license" : "BSD-new",
+      "testProject" : True,
+    },
     "com.oracle.truffle.wasm" : {
       "subDir" : "src",
       "sourceDirs" : ["src"],
