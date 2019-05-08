@@ -510,18 +510,20 @@ def _get_graalvm_configuration(base_name, stage1=False):
                         components_set.add('s' + remove_lib_prefix_suffix(basename(library_config.destination)))
 
         # Use custom distribution name and base dir for registered vm configurations
+        vm_dist_name = None
         vm_config_name = None
         vm_config_additional_components = sorted(components_set)
-        for config_name, config_components in _vm_configs:
+        for dist_name, config_name, config_components in _vm_configs:
             config_components_set = set(config_components)
             config_additional_components = sorted(components_set - config_components_set)
             if config_components_set <= components_set and len(config_additional_components) <= len(vm_config_additional_components):
+                vm_dist_name = dist_name.replace('-', '_')
                 vm_config_name = config_name.replace('-', '_')
                 vm_config_additional_components = config_additional_components
 
-        if vm_config_name:
-            name = base_name + '_' + vm_config_name
-            base_dir = base_name + '_' + vm_config_name
+        if vm_dist_name:
+            name = base_name + '_' + vm_dist_name
+            base_dir = base_name + '_' + vm_dist_name
         else:
             name = base_name
             base_dir = base_name + '_unknown'
@@ -1668,12 +1670,12 @@ def get_polyglot_launcher_project():
     return _polyglot_launcher_project
 
 
-def register_vm_config(config_name, components):
+def register_vm_config(config_name, components, dist_name=None):
     """
     :type config_name: str
     :type components: list[str]
     """
-    _vm_configs.append((config_name, components))
+    _vm_configs.append((dist_name or config_name, config_name, components))
 
 
 _native_image_configs = {}
@@ -2088,6 +2090,7 @@ if mx.get_os() == 'windows':
     register_vm_config('ce', ['bjs', 'bnative-image', 'bnative-image-configure', 'bpolyglot', 'cmp', 'gvm', 'ins', 'js', 'nfi', 'ni', 'poly', 'polynative', 'pro', 'rgx', 'snative-image-agent', 'svm', 'svml', 'tfl', 'vvm'])
 else:
     register_vm_config('ce', ['cmp', 'gu', 'gvm', 'ins', 'js', 'lg', 'nfi', 'njs', 'polynative', 'pro', 'rgx', 'slg', 'svm', 'svml', 'tfl', 'libpoly', 'poly', 'vvm'])
+    register_vm_config('ce', ['cmp', 'gu', 'gvm', 'ins', 'js', 'lg', 'nfi', 'ni', 'njs', 'polynative', 'pro', 'pyn', 'pynl', 'rby', 'rbyl', 'rgx', 'slg', 'svm', 'svml', 'tfl', 'libpoly', 'poly', 'vvm'], 'ce-complete')
 register_vm_config('ce-no_native', ['bjs', 'blli', 'bnative-image', 'bpolyglot', 'cmp', 'gu', 'gvm', 'ins', 'js', 'nfi', 'njs', 'polynative', 'pro', 'rgx', 'slg', 'svm', 'svml', 'tfl', 'poly', 'vvm'])
 register_vm_config('libgraal', ['cmp', 'gu', 'gvm', 'lg', 'nfi', 'poly', 'polynative', 'rgx', 'svm', 'svml', 'tfl', 'bpolyglot'])
 
