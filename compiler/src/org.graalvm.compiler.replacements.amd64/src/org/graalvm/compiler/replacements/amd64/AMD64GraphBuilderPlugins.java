@@ -114,7 +114,9 @@ public class AMD64GraphBuilderPlugins {
         Class<?> declaringClass = kind.toBoxedJavaClass();
         Class<?> type = kind.toJavaClass();
         Registration r = new Registration(plugins, declaringClass, bytecodeProvider);
+        r.registerMethodSubstitution(substituteDeclaringClass, "numberOfLeadingZeros", type);
         if (arch.getFeatures().contains(AMD64.CPUFeature.LZCNT) && arch.getFlags().contains(AMD64.Flag.UseCountLeadingZerosInstruction)) {
+            r.setAllowOverwrite(true);
             r.register1("numberOfLeadingZeros", type, new InvocationPlugin() {
                 @Override
                 public boolean apply(GraphBuilderContext b, ResolvedJavaMethod targetMethod, Receiver receiver, ValueNode value) {
@@ -127,10 +129,11 @@ public class AMD64GraphBuilderPlugins {
                     return true;
                 }
             });
-        } else {
-            r.registerMethodSubstitution(substituteDeclaringClass, "numberOfLeadingZeros", type);
         }
+
+        r.registerMethodSubstitution(substituteDeclaringClass, "numberOfTrailingZeros", type);
         if (arch.getFeatures().contains(AMD64.CPUFeature.BMI1) && arch.getFlags().contains(AMD64.Flag.UseCountTrailingZerosInstruction)) {
+            r.setAllowOverwrite(true);
             r.register1("numberOfTrailingZeros", type, new InvocationPlugin() {
 
                 @Override
@@ -144,8 +147,6 @@ public class AMD64GraphBuilderPlugins {
                     return true;
                 }
             });
-        } else {
-            r.registerMethodSubstitution(substituteDeclaringClass, "numberOfTrailingZeros", type);
         }
 
         if (arch.getFeatures().contains(AMD64.CPUFeature.POPCNT)) {
