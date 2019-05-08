@@ -200,6 +200,15 @@ builds += [
     ]
     name: gate-vm-style-linux-amd64
   }
+  ${full_vm_build_linux} ${linux-deploy} ${deploy_vm_linux} {
+    run: [
+      ${mx_vm_common} [--dynamicimports, ${vm_extra_suites_no_fastr}, "--exclude-components=nju", "--disable-installables=true", build]
+      ${mx_vm_common} [--dynamicimports, ${vm_extra_suites_no_fastr}, "--exclude-components=nju", "--disable-installables=true"] ${maven_deploy_vm}
+      ${notify-nexus-deploy}
+    ]
+    timelimit: "1:30:00"
+    name: deploy-vm-no-fastr-linux-amd64
+  }
   ${scan_malware} ${malware_definition_archived} ${full_vm_build_linux} ${linux-deploy} ${deploy_vm_linux} {
     run: [
       ${mx_vm_installables} [--dynamicimports, ${vm_extra_suites}, "--exclude-components=nju", build]
@@ -212,6 +221,15 @@ builds += [
     logs: ${common_vm.logs} ${scan_malware.logs}
     timelimit: "1:30:00"
     name: deploy-vm-linux-amd64
+  }
+  ${full_vm_build_darwin} ${darwin-deploy} ${deploy_daily_vm_darwin} {
+    run: [
+      ${mx_vm_common} [--dynamicimports, ${vm_extra_suites_no_fastr}, "--exclude-components=nju", "--disable-installables=true", build]
+      ${mx_vm_common} [--dynamicimports, ${vm_extra_suites_no_fastr}, "--exclude-components=nju", "--disable-installables=true"] ${maven_deploy_vm}
+      ${notify-nexus-deploy}
+    ]
+    timelimit: "1:45:00"
+    name: deploy-vm-no-fastr-darwin-amd64
   }
   ${full_vm_build_darwin} ${darwin-deploy} ${deploy_daily_vm_darwin} {
     run: [

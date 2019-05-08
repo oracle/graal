@@ -1,6 +1,7 @@
 vm_java: ${openjdk8}
 svm_suite: /substratevm
-vm_extra_suites: "truffleruby,graalpython,fastr"
+vm_extra_suites_no_fastr: "truffleruby,graalpython"
+vm_extra_suites: ${vm_extra_suites_no_fastr}",fastr"
 custom_vm_linux: {}
 custom_vm_darwin: {}
 
