@@ -417,36 +417,8 @@ public final class GraalServices {
      */
     public static float fma(float a, float b, float c) {
         // Copy from JDK 9
-        // Checkstyle: stop
-        // @formatter:off
-        /*
-         *  Since the double format has more than twice the precision
-         *  of the float format, the multiply of a * b is exact in
-         *  double. The add of c to the product then incurs one
-         *  rounding error. Since the double format moreover has more
-         *  than (2p + 2) precision bits compared to the p bits of the
-         *  float format, the two roundings of (a * b + c), first to
-         *  the double format and then secondarily to the float format,
-         *  are equivalent to rounding the intermediate result directly
-         *  to the float format.
-         *
-         * In terms of strictfp vs default-fp concerns related to
-         * overflow and underflow, since
-         *
-         * (Float.MAX_VALUE * Float.MAX_VALUE) << Double.MAX_VALUE
-         * (Float.MIN_VALUE * Float.MIN_VALUE) >> Double.MIN_VALUE
-         *
-         * neither the multiply nor add will overflow or underflow in
-         * double. Therefore, it is not necessary for this method to
-         * be declared strictfp to have reproducible
-         * behavior. However, it is necessary to explicitly store down
-         * to a float variable to avoid returning a value in the float
-         * extended value set.
-         */
-        float result = (float)(((double) a * (double) b ) + (double) c);
+        float result = (float) (((double) a * (double) b) + c);
         return result;
-        // @formatter:on
-        // Checkstyle: resume
     }
 
     /**
@@ -456,20 +428,6 @@ public final class GraalServices {
      */
     public static double fma(double a, double b, double c) {
         // Copy from JDK 9
-        // Checkstyle: stop
-        // @formatter:off
-        /*
-         * Infinity and NaN arithmetic is not quite the same with two
-         * roundings as opposed to just one so the simple expression
-         * "a * b + c" cannot always be used to compute the correct
-         * result.  With two roundings, the product can overflow and
-         * if the addend is infinite, a spurious NaN can be produced
-         * if the infinity from the overflow and the infinite addend
-         * have opposite signs.
-         */
-
-        // First, screen for and handle non-finite input values whose
-        // arithmetic is not supported by BigDecimal.
         if (Double.isNaN(a) || Double.isNaN(b) || Double.isNaN(c)) {
             return Double.NaN;
         } else { // All inputs non-NaN
@@ -479,17 +437,11 @@ public final class GraalServices {
             double result;
 
             if (infiniteA || infiniteB || infiniteC) {
-                if (infiniteA && b == 0.0 ||
-                        infiniteB && a == 0.0 ) {
+                if (infiniteA && b == 0.0 || infiniteB && a == 0.0) {
                     return Double.NaN;
                 }
-                // Store product in a double field to cause an
-                // overflow even if non-strictfp evaluation is being
-                // used.
                 double product = a * b;
                 if (Double.isInfinite(product) && !infiniteA && !infiniteB) {
-                    // Intermediate overflow; might cause a
-                    // spurious NaN if added to infinite c.
                     assert Double.isInfinite(c);
                     return c;
                 } else {
@@ -499,21 +451,10 @@ public final class GraalServices {
                 }
             } else { // All inputs finite
                 BigDecimal product = (new BigDecimal(a)).multiply(new BigDecimal(b));
-                if (c == 0.0) { // Positive or negative zero
-                    // If the product is an exact zero, use a
-                    // floating-point expression to compute the sign
-                    // of the zero final result. The product is an
-                    // exact zero if and only if at least one of a and
-                    // b is zero.
+                if (c == 0.0) {
                     if (a == 0.0 || b == 0.0) {
                         return a * b + c;
                     } else {
-                        // The sign of a zero addend doesn't matter if
-                        // the product is nonzero. The sign of a zero
-                        // addend is not factored in the result if the
-                        // exact product is nonzero but underflows to
-                        // zero; see IEEE-754 2008 section 6.3 "The
-                        // sign bit".
                         return product.doubleValue();
                     }
                 } else {
@@ -521,7 +462,5 @@ public final class GraalServices {
                 }
             }
         }
-        // @formatter:on
-        // Checkstyle: resume
     }
 }
