@@ -147,14 +147,14 @@ Next, use git to clone the Sulong project and its dependencies:
     git clone https://github.com/oracle/graal
 
 Next, you need to download a recent
-[labsjdk](http://www.oracle.com/technetwork/oracle-labs/program-languages/downloads/index.html).
+[JVMCI-enabled JDK8](https://github.com/graalvm/openjdk8-jvmci-builder/releases).
 Extract it inside the `sulong-dev` directory:
 
-    tar -zxf labsjdk-8u172-jvmci-0.54-linux-amd64.tar.gz
+    tar -zxf openjdk1.8.0_202-jvmci-0.59-linux-amd64.tar.gz
 
-Set `JAVA_HOME` to point to the extracted labsjdk from above:
+Set `JAVA_HOME` to point to the extracted JDK from above:
 
-    echo JAVA_HOME=`pwd`/labsjdk1.8.0_172-jvmci-0.54 > graal/sulong/mx.sulong/env
+    echo JAVA_HOME=`pwd`/openjdk1.8.0_202-jvmci-0.59 > graal/sulong/mx.sulong/env
 
 Sulong partially consists of C/C++ code that is compiled using `make`. To speed
 up the build process you can edit the `MAKEFLAGS` environment variable:
