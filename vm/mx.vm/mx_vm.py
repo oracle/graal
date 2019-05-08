@@ -462,7 +462,21 @@ GRAALVM_VERSION={version}""".format(
         return _metadata
 
 
-class GraalVmLayoutDistribution(BaseGraalVmLayoutDistribution, mx.LayoutTARDistribution):  # pylint: disable=R0901
+class LayoutZIPDistribution(mx.LayoutJARDistribution):  # pylint: disable=R0901
+    def remoteExtension(self):
+        return 'zip'
+
+    def localExtension(self):
+        return 'zip'
+
+
+if mx.is_windows():
+    LayoutSuper = LayoutZIPDistribution
+else:
+    LayoutSuper = mx.LayoutTARDistribution
+
+
+class GraalVmLayoutDistribution(BaseGraalVmLayoutDistribution, LayoutSuper):  # pylint: disable=R0901
     def __init__(self, base_name, base_layout, theLicense=None, stage1=False, **kw_args):
         self.base_name = base_name
 
