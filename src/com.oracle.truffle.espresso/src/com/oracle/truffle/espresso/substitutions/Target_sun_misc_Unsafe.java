@@ -243,6 +243,9 @@ public final class Target_sun_misc_Unsafe {
     @Substitution(hasReceiver = true)
     public static boolean compareAndSwapInt(@SuppressWarnings("unused") @Host(Unsafe.class) StaticObject self, @Host(Object.class) StaticObject holder, long offset, int before,
                     int after) {
+        if (holder.isArray()) {
+            return U.compareAndSwapInt((holder).unwrap(), offset, before, after);
+        }
         Field f = getInstanceFieldFromIndex(holder, Math.toIntExact(offset) - SAFETY_FIELD_OFFSET);
         assert f != null;
         return holder.compareAndSwapIntField(f, before, after);
@@ -251,6 +254,9 @@ public final class Target_sun_misc_Unsafe {
     @Substitution(hasReceiver = true)
     public static boolean compareAndSwapLong(@SuppressWarnings("unused") @Host(Unsafe.class) StaticObject self, @Host(Object.class) StaticObject holder, long offset, long before,
                     long after) {
+        if (holder.isArray()) {
+            return U.compareAndSwapLong((holder).unwrap(), offset, before, after);
+        }
         Field f = getInstanceFieldFromIndex(holder, Math.toIntExact(offset) - SAFETY_FIELD_OFFSET);
         assert f != null;
         return holder.compareAndSwapLongField(f, before, after);
@@ -554,8 +560,80 @@ public final class Target_sun_misc_Unsafe {
         Field f = getInstanceFieldFromIndex(holder, Math.toIntExact(offset) - SAFETY_FIELD_OFFSET);
         assert f != null;
         assert f.getKind().isSubWord();
-        holder.setWordFieldVolatile(f, value);
+        holder.setIntField(f, value);
     }
+
+    @Substitution(hasReceiver = true)
+    public static void putLongVolatile(@SuppressWarnings("unused") @Host(Unsafe.class) StaticObject self, @Host(Object.class) StaticObject holder, long offset, long value) {
+        if (holder.isArray()) {
+            U.putLongVolatile((holder).unwrap(), offset, value);
+            return;
+        }
+        // TODO(peterssen): Current workaround assumes it's a field access, encoding is offset <->
+        // field index.
+        Field f = getInstanceFieldFromIndex(holder, Math.toIntExact(offset) - SAFETY_FIELD_OFFSET);
+        assert f != null;
+        assert f.getKind().isSubWord();
+        holder.setLongFieldVolatile(f, value);
+    }
+
+    @Substitution(hasReceiver = true)
+    public static void putBooleanVolatile(@SuppressWarnings("unused") @Host(Unsafe.class) StaticObject self, @Host(Object.class) StaticObject holder, long offset, boolean value) {
+        if (holder.isArray()) {
+            U.putBooleanVolatile((holder).unwrap(), offset, value);
+            return;
+        }
+        // TODO(peterssen): Current workaround assumes it's a field access, encoding is offset <->
+        // field index.
+        Field f = getInstanceFieldFromIndex(holder, Math.toIntExact(offset) - SAFETY_FIELD_OFFSET);
+        assert f != null;
+        assert f.getKind().isSubWord();
+        holder.setBooleanField(f, value);
+    }
+
+    @Substitution(hasReceiver = true)
+    public static void putCharVolatile(@SuppressWarnings("unused") @Host(Unsafe.class) StaticObject self, @Host(Object.class) StaticObject holder, long offset, char value) {
+        if (holder.isArray()) {
+            U.putCharVolatile((holder).unwrap(), offset, value);
+            return;
+        }
+        // TODO(peterssen): Current workaround assumes it's a field access, encoding is offset <->
+        // field index.
+        Field f = getInstanceFieldFromIndex(holder, Math.toIntExact(offset) - SAFETY_FIELD_OFFSET);
+        assert f != null;
+        assert f.getKind().isSubWord();
+        holder.setCharField(f, value);
+    }
+
+    @Substitution(hasReceiver = true)
+    public static void putShortVolatile(@SuppressWarnings("unused") @Host(Unsafe.class) StaticObject self, @Host(Object.class) StaticObject holder, long offset, short value) {
+        if (holder.isArray()) {
+            U.putShortVolatile((holder).unwrap(), offset, value);
+            return;
+        }
+        // TODO(peterssen): Current workaround assumes it's a field access, encoding is offset <->
+        // field index.
+        Field f = getInstanceFieldFromIndex(holder, Math.toIntExact(offset) - SAFETY_FIELD_OFFSET);
+        assert f != null;
+        assert f.getKind().isSubWord();
+        holder.setShortField(f, value);
+    }
+
+    @Substitution(hasReceiver = true)
+    public static void putByteVolatile(@SuppressWarnings("unused") @Host(Unsafe.class) StaticObject self, @Host(Object.class) StaticObject holder, long offset, byte value) {
+        if (holder.isArray()) {
+            U.putByteVolatile((holder).unwrap(), offset, value);
+            return;
+        }
+        // TODO(peterssen): Current workaround assumes it's a field access, encoding is offset <->
+        // field index.
+        Field f = getInstanceFieldFromIndex(holder, Math.toIntExact(offset) - SAFETY_FIELD_OFFSET);
+        assert f != null;
+        assert f.getKind().isSubWord();
+        holder.setByteField(f, value);
+    }
+
+
 
     @Substitution(methodName = "shouldBeInitialized", hasReceiver = true)
     public static boolean shouldBeInit(@SuppressWarnings("unused") @Host(Unsafe.class) StaticObject self, @Host(Class.class) StaticObject clazz) {

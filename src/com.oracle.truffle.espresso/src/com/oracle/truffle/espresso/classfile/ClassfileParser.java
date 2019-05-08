@@ -46,6 +46,8 @@ import static com.oracle.truffle.espresso.classfile.Constants.JVM_RECOGNIZED_CLA
 
 public final class ClassfileParser {
 
+    public static final boolean VERIFY = true;
+
     public static final int MAGIC = 0xCAFEBABE;
 
     public static final int JAVA_4_VERSION = 48;
@@ -243,6 +245,10 @@ public final class ClassfileParser {
         ParserMethod[] methods = new ParserMethod[methodCount];
         for (int i = 0; i < methodCount; ++i) {
             methods[i] = parseMethod();
+//            System.err.println("verifying: " + ((Utf8Constant)pool.at(methods[i].getNameIndex())).toString(pool));
+            if (VERIFY) {
+                MethodVerifier.verify(methods[i], pool);
+            }
         }
         return methods;
     }
@@ -416,6 +422,8 @@ public final class ClassfileParser {
         int maxLocals = stream.readU2();
         int codeLength = stream.readS4();
         byte[] code = stream.readByteArray(codeLength);
+        // TODO(garcia) verify code validity here.
+        // throw ClassFormatException if invalid.
         ExceptionHandler[] entries = parseExceptionHandlerEntries();
         Attribute[] codeAttributes = parseAttributes();
         return new CodeAttribute(name, maxStack, maxLocals, code, entries, codeAttributes);

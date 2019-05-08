@@ -164,6 +164,7 @@ public final class Symbol<T> extends ByteSequence {
         public static final Symbol<Name> interrupt = StaticSymbols.putName("interrupt");
         public static final Symbol<Name> daemon = StaticSymbols.putName("daemon");
         public static final Symbol<Name> threadStatus = StaticSymbols.putName("threadStatus");
+        public static final Symbol<Name> checkAccess = StaticSymbols.putName("checkAccess");
         public static final Symbol<Name> remove = StaticSymbols.putName("remove");
         public static final Symbol<Name> toThreadState = StaticSymbols.putName("toThreadState");
         public static final Symbol<Name> form = StaticSymbols.putName("form");

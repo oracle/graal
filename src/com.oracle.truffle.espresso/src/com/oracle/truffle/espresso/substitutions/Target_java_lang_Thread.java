@@ -128,7 +128,7 @@ public final class Target_java_lang_Thread {
             context.registerThread(hostThread);
 
             System.err.println("Starting thread: " + self.getKlass());
-            hostThread.setDaemon((boolean) meta.Thread_daemon.get(self));
+            hostThread.setDaemon(self.getBooleanField(meta.Thread_daemon));
             self.setIntField(meta.Thread_state, State.RUNNABLE.value);
             hostThread.start();
         } else {

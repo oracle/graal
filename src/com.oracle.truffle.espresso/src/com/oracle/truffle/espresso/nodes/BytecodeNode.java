@@ -1337,7 +1337,7 @@ public class BytecodeNode extends EspressoBaseNode implements CustomNodeCount {
         BootstrapMethodsAttribute.Entry bsEntry = bms.at(inDy.getBootstrapMethodAttrIndex());
 
         Klass declaringKlass = getMethod().getDeclaringKlass();
-        StaticObject bsmMH = pool.resolvedMethodHandleAt(declaringKlass, bsEntry.getBootstrapMethodRef());
+        StaticObject bootstrapmethodMethodHandle = pool.resolvedMethodHandleAt(declaringKlass, bsEntry.getBootstrapMethodRef());
 
         StaticObject[] args = new StaticObject[bsEntry.numBootstrapArguments()];
         // @formatter:off
@@ -1369,7 +1369,7 @@ public class BytecodeNode extends EspressoBaseNode implements CustomNodeCount {
         StaticObject memberName = (StaticObject) getMeta().linkCallSite.invokeDirect(
                         null,
                         declaringKlass.mirror(),
-                        bsmMH,
+                        bootstrapmethodMethodHandle,
                         name, methodType,
                         new StaticObject(meta.Object_array, args),
                         appendix);
@@ -1561,7 +1561,6 @@ public class BytecodeNode extends EspressoBaseNode implements CustomNodeCount {
     private static int compareDoubleLess(double y, double x) {
         return (x > y ? 1 : ((x == y) ? 0 : -1));
     }
-
     // endregion Comparisons
 
     // region Misc. checks

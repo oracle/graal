@@ -200,7 +200,6 @@ public final class Meta implements ContextAccess {
         HIDDEN_IS_ALIVE = Thread.lookupHiddenField(Name.HIDDEN_IS_ALIVE);
         ThreadGroup = knownKlass(Type.ThreadGroup);
         ThreadGroup_remove = ThreadGroup.lookupDeclaredMethod(Name.remove, Signature.ThreadGroup_remove);
-        ThreadGroup_maxPriority = ThreadGroup.lookupDeclaredField(Name.maxPriority, Type._int);
         Thread_exit = Thread.lookupDeclaredMethod(Name.exit, Signature._void);
         Thread_run = Thread.lookupDeclaredMethod(Name.run, Signature._void);
 
@@ -209,6 +208,8 @@ public final class Meta implements ContextAccess {
         Thread_priority = Thread.lookupDeclaredField(Name.priority, _int.getType());
         Thread_blockerLock = Thread.lookupDeclaredField(Name.blockerLock, Object.getType());
         Thread_daemon = Thread.lookupDeclaredField(Name.daemon, Type._boolean);
+        Thread_checkAccess = Thread.lookupDeclaredMethod(Name.checkAccess, Signature._void);
+        ThreadGroup_maxPriority = ThreadGroup.lookupDeclaredField(Name.maxPriority, Type._int);
         Thread_state = Thread.lookupDeclaredField(Name.threadStatus, Type._int);
 
         sun_misc_VM = knownKlass(Type.sun_misc_VM);
@@ -403,6 +404,7 @@ public final class Meta implements ContextAccess {
     public final ObjectKlass Thread;
     public final Method Thread_exit;
     public final Method Thread_run;
+    public final Method Thread_checkAccess;
     public final Field HIDDEN_IS_ALIVE;
     public final Field Thread_group;
     public final Field Thread_name;
