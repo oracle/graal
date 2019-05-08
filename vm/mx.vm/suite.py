@@ -118,6 +118,7 @@ suite = {
             "distDependencies": [
                 "truffle:TRUFFLE_API",
             ],
+            "maven" : False,
         },
         "INSTALLER": {
             "subDir": "src",
