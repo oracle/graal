@@ -998,16 +998,18 @@ public abstract class GraalTruffleRuntime implements TruffleRuntime, TruffleComp
     public InlineKind getInlineKind(ResolvedJavaMethod original, boolean duringPartialEvaluation) {
         TruffleBoundary truffleBoundary = getAnnotation(TruffleBoundary.class, original);
         if (truffleBoundary != null) {
-            if (duringPartialEvaluation || !truffleBoundary.allowInlining()) {
+            if (duringPartialEvaluation) {
                 // Since this method is invoked by the bytecode parser plugins, which can be invoked
                 // by the partial evaluator, we want to prevent inlining across the boundary during
                 // partial evaluation,
                 // even if the TruffleBoundary allows inlining after partial evaluation.
-                if (duringPartialEvaluation && truffleBoundary.transferToInterpreterOnException()) {
+                if (truffleBoundary.transferToInterpreterOnException()) {
                     return InlineKind.DO_NOT_INLINE_WITH_SPECULATIVE_EXCEPTION;
                 } else {
                     return InlineKind.DO_NOT_INLINE_WITH_EXCEPTION;
                 }
+            } else if (!truffleBoundary.allowInlining()) {
+                return InlineKind.DO_NOT_INLINE_WITH_EXCEPTION;
             }
         } else if (getAnnotation(TruffleCallBoundary.class, original) != null) {
             return InlineKind.DO_NOT_INLINE_WITH_EXCEPTION;
