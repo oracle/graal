@@ -822,7 +822,7 @@ public final class Value {
      * assert context.eval("js", "42").as(Integer.class) == 42;
      * assert context.eval("js", "{foo:'bar'}").as(Map.class).get("foo").equals("bar");
      * assert context.eval("js", "[42]").as(List.class).get(0).equals(42);
-     * assert ((Map<String, Object>)context.eval("js", "[{foo:'bar'}]").as(List.class).get(0)).get("foo").equals("bar");
+     * assert ((Map&lt;String, Object>)context.eval("js", "[{foo:'bar'}]").as(List.class).get(0)).get("foo").equals("bar");
      *
      * &#64;FunctionalInterface interface IntFunction { int foo(int value); }
      * assert context.eval("js", "(function(a){a})").as(IntFunction.class).foo(42) == 42;
@@ -888,7 +888,7 @@ public final class Value {
      * assert context.eval("js", "42").as(Object.class) instanceof Number;
      * assert context.eval("js", "[]").as(Object.class) instanceof Map;
      * assert context.eval("js", "{}").as(Object.class) instanceof Map;
-     * assert ((Map<Object, Object>) context.eval("js", "[{}]").as(Object.class)).get(0) instanceof Map;
+     * assert ((Map&lt;Object, Object>) context.eval("js", "[{}]").as(Object.class)).get(0) instanceof Map;
      * assert context.eval("js", "(function(){})").as(Object.class) instanceof Function;
      * </pre>
      *
@@ -906,7 +906,7 @@ public final class Value {
      *
      * <pre>
      * Context context = Context.create();
-     * Map<Object, Object> javaMap = context.eval("js", "{}").as(Map.class);
+     * Map&lt;Object, Object> javaMap = context.eval("js", "{}").as(Map.class);
      * Value polyglotValue = context.asValue(javaMap);
      * </pre>
      *
@@ -934,12 +934,12 @@ public final class Value {
      * Usage example:
      *
      * <pre>
-     * static final TypeLiteral<List<String>> STRING_LIST = new TypeLiteral<List<String>>() {
+     * static final TypeLiteral&lt;List&lt;String>> STRING_LIST = new TypeLiteral&lt;List&lt;String>>() {
      * };
      *
      * public static void main(String[] args) {
      *     Context context = Context.create();
-     *     List<String> javaList = context.eval("js", "['foo', 'bar', 'bazz']").as(STRING_LIST);
+     *     List&lt;String> javaList = context.eval("js", "['foo', 'bar', 'bazz']").as(STRING_LIST);
      *     assert javaList.get(0).equals("foo");
      * }
      * </pre>
