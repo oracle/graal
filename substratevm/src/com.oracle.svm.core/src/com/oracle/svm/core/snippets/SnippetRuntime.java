@@ -64,7 +64,6 @@ import jdk.vm.ci.meta.ResolvedJavaMethod;
 
 public class SnippetRuntime {
 
-    public static final SubstrateForeignCallDescriptor REPORT_TYPE_ASSERTION_ERROR = findForeignCall(SnippetRuntime.class, "reportTypeAssertionError", true, LocationIdentity.any());
     public static final SubstrateForeignCallDescriptor UNREACHED_CODE = findForeignCall(SnippetRuntime.class, "unreachedCode", true, LocationIdentity.any());
     public static final SubstrateForeignCallDescriptor UNRESOLVED = findForeignCall(SnippetRuntime.class, "unresolved", true, LocationIdentity.any());
 
@@ -165,13 +164,6 @@ public class SnippetRuntime {
         public LocationIdentity[] getKilledLocations() {
             return killedLocations;
         }
-    }
-
-    /** Foreign call: {@link #REPORT_TYPE_ASSERTION_ERROR}. */
-    @SubstrateForeignCallTarget
-    private static void reportTypeAssertionError(byte[] msg, Object object) {
-        Log.log().string(msg).string(object == null ? "null" : object.getClass().getName()).newline();
-        throw VMError.shouldNotReachHere("type assertion error");
     }
 
     /** Foreign call: {@link #UNREACHED_CODE}. */

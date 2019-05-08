@@ -374,7 +374,7 @@ public class CompileQueue {
         phaseSuite.appendPhase(new DeadStoreRemovalPhase());
         phaseSuite.appendPhase(new DevirtualizeCallsPhase());
         phaseSuite.appendPhase(new CanonicalizerPhase());
-        phaseSuite.appendPhase(new StrengthenStampsPhase(false));
+        phaseSuite.appendPhase(new StrengthenStampsPhase());
         phaseSuite.appendPhase(new CanonicalizerPhase());
         return phaseSuite;
     }
