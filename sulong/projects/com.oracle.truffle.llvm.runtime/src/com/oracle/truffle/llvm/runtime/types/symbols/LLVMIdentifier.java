@@ -59,16 +59,8 @@ public final class LLVMIdentifier {
         }
     }
 
-    public static String toExplicitBlockName(String name) {
-        return toLocalIdentifier(name);
-    }
-
     public static String toImplicitBlockName(int label) {
         return String.format("%d", label);
-    }
-
-    public static String toTypeIdentifier(String name) {
-        return toLocalIdentifier(name);
     }
 
     private static final Pattern UNESCAPED_VARNAME_PATTERN = Pattern.compile("[\\w\\d\\u0024_\\u002e]+");
