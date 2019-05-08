@@ -250,7 +250,7 @@ class BaseGraalVmLayoutDistribution(mx.LayoutDistribution):
                     exclude_base + '/COPYRIGHT',
                     exclude_base + '/LICENSE',
                     exclude_base + '/release',
-                    exclude_base + '/bin/jvisualvm',
+                    exclude_base + '/bin/<exe:jvisualvm>',
                     exclude_base + '/lib/visualvm',
                     exclude_base + hsdis,
                 ] + ([
@@ -375,7 +375,8 @@ class BaseGraalVmLayoutDistribution(mx.LayoutDistribution):
                 _add_native_image_macro(_library_config, _component)
             for _provided_executable in _component.provided_executables:
                 if _component.short_name is 'vvm':
-                    _add(layout, _jdk_jre_bin, 'extracted-dependency:tools:VISUALVM_PLATFORM_SPECIFIC/./' + _provided_executable, _component)
+                    _vvm_launcher_dest = _jdk_jre_bin + '/jvisualvm.exe' if mx.get_os() == 'windows' else _jdk_jre_bin
+                    _add(layout, _vvm_launcher_dest, 'extracted-dependency:tools:VISUALVM_PLATFORM_SPECIFIC/./' + _provided_executable, _component)
                 else:
                     _link_dest = _component_base + _provided_executable
                     _add_link(_jdk_jre_bin, _link_dest)
