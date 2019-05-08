@@ -72,7 +72,7 @@ bench-renaissance-legacy-hwloc-forks-batch0 : ${bench-renaissance-legacy-hwloc} 
   setup: ${fork-counts.setup} ${bench-renaissance-legacy-hwloc.setup}
   timelimit: "06:30:00"
   environment : ${bench-renaissance-legacy-hwloc.environment} ${fork-counts.environment} ${bench-perftag.environment} {
-    FORK_COUNT_FILE: "${FORK_COUNTS_DIRECTORY}/renaissance_forks_batch0.json"
+    FORK_COUNT_FILE: "${FORK_COUNTS_DIRECTORY}/renaissance_legacy_forks_batch0.json"
   }
 }
 bench-renaissance-legacy-hwloc-forks-batch1 : ${bench-renaissance-legacy-hwloc} ${weeklys-bench-notifications} {
@@ -80,7 +80,7 @@ bench-renaissance-legacy-hwloc-forks-batch1 : ${bench-renaissance-legacy-hwloc} 
   setup: ${fork-counts.setup} ${bench-renaissance-legacy-hwloc.setup}
   timelimit: "06:30:00"
   environment : ${bench-renaissance-legacy-hwloc.environment} ${fork-counts.environment} ${bench-perftag.environment} {
-    FORK_COUNT_FILE: "${FORK_COUNTS_DIRECTORY}/renaissance_forks_batch1.json"
+    FORK_COUNT_FILE: "${FORK_COUNTS_DIRECTORY}/renaissance_legacy_forks_batch1.json"
   }
 }
 bench-renaissance-legacy-hwloc-forks-batch2 : ${bench-renaissance-legacy-hwloc} ${weeklys-bench-notifications} {
@@ -88,7 +88,7 @@ bench-renaissance-legacy-hwloc-forks-batch2 : ${bench-renaissance-legacy-hwloc} 
   setup: ${fork-counts.setup} ${bench-renaissance-legacy-hwloc.setup}
   timelimit: "06:30:00"
   environment : ${bench-renaissance-legacy-hwloc.environment} ${fork-counts.environment} ${bench-perftag.environment} {
-    FORK_COUNT_FILE: "${FORK_COUNTS_DIRECTORY}/renaissance_forks_batch2.json"
+    FORK_COUNT_FILE: "${FORK_COUNTS_DIRECTORY}/renaissance_legacy_forks_batch2.json"
   }
 }
 bench-renaissance-legacy-hwloc-forks-batch3 : ${bench-renaissance-legacy-hwloc} ${weeklys-bench-notifications} {
@@ -96,7 +96,7 @@ bench-renaissance-legacy-hwloc-forks-batch3 : ${bench-renaissance-legacy-hwloc} 
   setup: ${fork-counts.setup} ${bench-renaissance-legacy-hwloc.setup}
   timelimit: "06:30:00"
   environment : ${bench-renaissance-legacy-hwloc.environment} ${fork-counts.environment} ${bench-perftag.environment} {
-    FORK_COUNT_FILE: "${FORK_COUNTS_DIRECTORY}/renaissance_forks_batch3.json"
+    FORK_COUNT_FILE: "${FORK_COUNTS_DIRECTORY}/renaissance_legacy_forks_batch3.json"
   }
 }
 
