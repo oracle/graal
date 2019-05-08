@@ -1042,7 +1042,7 @@ mx_sdk.register_graalvm_component(mx_sdk.GraalVmJreComponent(
             ],
         ),
     ],
-    provided_executables=['bin/rebuild-images'],
+    provided_executables=['bin/rebuild-images'] if not mx.is_windows() else [],
     installable=True,
     post_install_msg="""
 IMPORTANT NOTE:
