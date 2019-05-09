@@ -348,7 +348,10 @@ class BaseGraalVmLayoutDistribution(mx.LayoutDistribution):
                 _jdk_jre_bin = '<jdk_base>/jre/bin/'
 
             for _license in _component.license_files + _component.third_party_license_files:
-                _add_link('<jdk_base>/', _component_base + _license, _component)
+                if mx.is_windows():
+                    mx.warn("Can not add license: " + _license)
+                else:
+                    _add_link('<jdk_base>/', _component_base + _license, _component)
 
             _jre_bin_names = []
 
