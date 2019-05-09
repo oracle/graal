@@ -3347,7 +3347,7 @@ final class Target_java_net_Inet6AddressImpl {
     // Do not re-wrap long lines and comments: @formatter:off
     @Substitute
     @SuppressWarnings({"static-method"})
-    public InetAddress[] lookupAllHostAddr(String host) throws UnknownHostException, SocketException, InterruptedException {
+    public InetAddress[] lookupAllHostAddr(String host) throws UnknownHostException, SocketException, InterruptedIOException {
         CCharPointer hostname;
         InetAddress[] ret = null;
         int retLen = 0;
@@ -3575,7 +3575,7 @@ final class Target_java_net_Inet6AddressImpl {
 
 final class Util_java_net_Inet6AddressImpl {
 
-    static InetAddress[] lookupIfLocalhost(CCharPointer hostname, boolean includeV6) throws SocketException, InterruptedException {
+    static InetAddress[] lookupIfLocalhost(CCharPointer hostname, boolean includeV6) throws SocketException, InterruptedIOException {
         /* #ifdef MACOSX */
         if (IsDefined.MACOSX()) {
             /* also called from Inet4AddressImpl.c */
@@ -4550,7 +4550,7 @@ final class Target_java_net_PlainSocketImpl {
     // 180 JNIEXPORT void JNICALL
     // 181 Java_java_net_PlainSocketImpl_socketCreate(JNIEnv *env, jobject this,
     // 182                                            jboolean stream) {
-    void socketCreate(boolean stream) throws IOException, InterruptedException {
+    void socketCreate(boolean stream) throws IOException {
         // 183 jobject fdObj, ssObj;
         FileDescriptor fdObj;
         ServerSocket ssObj;
