@@ -120,7 +120,7 @@ public class RootMethodSubstitutionTest extends GraalCompilerTest {
     StructuredGraph actualGraph;
 
     @Override
-    protected boolean checkHighTierGraph(StructuredGraph graph) {
+    protected void checkHighTierGraph(StructuredGraph graph) {
         // Capture the graphs after high tier
         if (expectedGraph == null) {
             expectedGraph = (StructuredGraph) graph.copy(graph.getDebug());
@@ -128,7 +128,7 @@ public class RootMethodSubstitutionTest extends GraalCompilerTest {
             assert actualGraph == null;
             actualGraph = (StructuredGraph) graph.copy(graph.getDebug());
         }
-        return super.checkHighTierGraph(graph);
+        super.checkHighTierGraph(graph);
     }
 
     @Test
