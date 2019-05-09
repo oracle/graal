@@ -25,6 +25,7 @@
 package com.oracle.svm.core.posix;
 
 import java.io.IOException;
+import java.io.InterruptedIOException;
 import java.net.Inet6Address;
 import java.net.InetAddress;
 import java.net.NetworkInterface;
@@ -48,9 +49,9 @@ import org.graalvm.nativeimage.c.type.WordPointer;
 import org.graalvm.word.PointerBase;
 import org.graalvm.word.WordFactory;
 
-import com.oracle.svm.core.os.IsDefined;
 import com.oracle.svm.core.SubstrateUtil;
 import com.oracle.svm.core.headers.Errno;
+import com.oracle.svm.core.os.IsDefined;
 import com.oracle.svm.core.posix.headers.Ioctl;
 import com.oracle.svm.core.posix.headers.LibC;
 import com.oracle.svm.core.posix.headers.NetinetIn;
@@ -651,7 +652,7 @@ class JavaNetNetUtilMD {
 
     // 275 void
     // 276 NET_ThrowNew(JNIEnv *env, int errorNumber, char *msg) {
-    static void NET_ThrowNew(int errorNumber, String msgArg) throws SocketException, InterruptedException {
+    static void NET_ThrowNew(int errorNumber, String msgArg) throws SocketException, InterruptedIOException {
         /* Do not modify argument! */
         String msg = msgArg;
         // 277 char fullMsg[512];
@@ -672,7 +673,7 @@ class JavaNetNetUtilMD {
             // 286 case EINTR:
             // 287 JNU_ThrowByName(env, JNU_JAVAIOPKG "InterruptedIOException", msg);
             // 288 break;
-            throw new InterruptedException(msg);
+            throw new InterruptedIOException(msg);
         } else {
             // 290 errno = errorNumber;
             Errno.set_errno(errorNumber);
