@@ -304,17 +304,21 @@ public class ClassInitializationFeature implements Feature {
     private void buildClassInitializationInfo(FeatureImpl.DuringAnalysisAccessImpl access, AnalysisType type, DynamicHub hub) {
         ClassInitializationInfo info;
         if (classInitializationSupport.shouldInitializeAtRuntime(type)) {
+            assert !type.isInitialized();
             AnalysisMethod classInitializer = type.getClassInitializer();
-            /*
-             * If classInitializer.getCode() returns null then the type failed to initialize due to
-             * verification issues triggered by missing types.
-             */
-            if (classInitializer != null && classInitializer.getCode() != null) {
-                access.registerAsCompiled(classInitializer);
+            if (type.isLinked()) {
+                if (classInitializer != null) {
+                    assert classInitializer.getCode() != null;
+                    access.registerAsCompiled(classInitializer);
+                }
+                info = new ClassInitializationInfo(MethodPointer.factory(classInitializer));
+            } else {
+                /* The type failed to link due to verification issues triggered by missing types. */
+                assert classInitializer == null || classInitializer.getCode() == null;
+                info = ClassInitializationInfo.FAILED_INFO_SINGLETON;
             }
-            info = new ClassInitializationInfo(MethodPointer.factory(classInitializer));
-
         } else {
+            assert type.isInitialized();
             info = ClassInitializationInfo.INITIALIZED_INFO_SINGLETON;
         }
 
