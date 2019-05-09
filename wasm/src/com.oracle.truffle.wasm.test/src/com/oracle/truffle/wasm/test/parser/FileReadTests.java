@@ -27,24 +27,28 @@
  * NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED
  * OF THE POSSIBILITY OF SUCH DAMAGE.
  */
-package com.oracle.truffle.wasm.parser.binary;
+package com.oracle.truffle.wasm.test.parser;
 
-public class Assert {
 
-    public static void assertEquals(int n1, int n2, String message) throws BinaryReaderException {
-        if (n1 != n2) {
-            fail(String.format("%s: should be equal: %d != %d", message, n1, n2));
+import com.oracle.truffle.wasm.parser.binary.BinaryReader;
+import org.junit.Assert;
+import org.junit.Test;
+
+import java.io.File;
+import java.io.IOException;
+import java.nio.file.Files;
+
+public class FileReadTests {
+
+    @Test
+    public void ParseHelloWorld() {
+        try {
+            byte[] data = Files.readAllBytes(new File("/home/ergys/dev/webassembly/hello.wasm").toPath());
+            BinaryReader reader = new BinaryReader(data);
+            reader.readModule();
+        } catch (IOException exc) {
+            Assert.fail("cannot open file: " + exc.getLocalizedMessage());
         }
-    }
-
-    public static void assertInRange(int value, int start, int end, String message) {
-        if (value < start || value > end) {
-            fail(String.format("%s: value %d should be in range [%d, %d]", message, value, start, end));
-        }
-    }
-
-    public static void fail(String message) throws BinaryReaderException {
-        throw new BinaryReaderException(message);
     }
 
 }
