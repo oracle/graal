@@ -156,7 +156,7 @@ suite = {
             "native": True,
             "description": "VM support distribution for the GraalVM",
             "layout": {
-                "LICENSE": "file:LICENSE_GRAALVM_CE",
+                "LICENSE.txt": "file:LICENSE_GRAALVM_CE",
                 "3rd_party_licenses.txt": "file:3rd_party_licenses_graalvm_ce.txt",
             },
             "maven": False,

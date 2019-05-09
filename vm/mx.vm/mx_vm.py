@@ -73,7 +73,7 @@ mx_sdk.register_graalvm_component(mx_sdk.GraalVmComponent(
     name='GraalVM license files',
     short_name='gvm',
     dir_name='.',
-    license_files=['LICENSE'],
+    license_files=['LICENSE.txt'],
     third_party_license_files=['3rd_party_licenses.txt'],
     support_distributions=['vm:VM_GRAALVM_SUPPORT']
 ))
