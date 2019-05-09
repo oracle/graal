@@ -72,13 +72,17 @@ To include own language and TCK provider use:
 
 `python tck.py -g <path_to_graalvm> -cp <path_to_tck_provider_jars> -lp <path_to_language_jars>`
 
-To restrict tests to certain language use the `--language` option. The following example tests just JavaScript language:
+To restrict tests to certain language use the language id as a first unnamed option. The following example executes tests only for the JavaScript language:
 
-`python tck.py --language js -g <path_to_graalvm>`
+`python tck.py -g <path_to_graalvm> js`
 
 To execute the tests under debugger use the `-d` or `--dbg <port>` option.
 
 `python tck.py -d -g <path_to_graalvm>`
 
-The TCK tests can be filtered by test names. To execute just the `ScriptTest` use:
-`python tck.py -g <path_to_graalvm> ScriptTest`
+The TCK tests can be filtered by test names. To execute just the `ScriptTest` for JavaScript TCK provider use:
+`python tck.py -g <path_to_graalvm> js default ScriptTest`
+
+The TCK tests can be executed in a compile mode in which all calltargets are compiled before they are executed.
+To execute JavaScript tests in a compile mode use:
+`python tck.py -g <path_to_graalvm> js compile`

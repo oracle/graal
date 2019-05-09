@@ -459,15 +459,18 @@ def _execute_debugger_test(testFilter, logFile, testEvaluation=False, unitTestOp
     args = args + testFilter
     unittest(args)
 
-def execute_tck(graalvm_home, vm_args=[], tests_filter=None, language_filter=None, debug_port=None):
+def execute_tck(graalvm_home, mode='default', language_filter=None, values_filter=None, tests_filter=None, vm_args=[]):
     """
     Executes Truffle TCK with all TCK providers reachable from the primary suite and all languages installed in the given GraalVM.
 
     :param graalvm_home: a path to GraalVM
-    :param vm_args: iterable containing additional Java VM args
-    :param tests_filter: a substring of TCK test name or an iterable of substrings of TCK test names
+    :param mode: a name of TCK mode,
+        'default' - executes the test with default GraalVM configuration,
+        'compile' - compiles the tests before execution
     :param language_filter: the language id, limits TCK tests to certain language
-    :param debug_port: a port the Java VM should listen on for debugger connection
+    :param values_filter: an iterable of value constructors language ids, limits TCK values to certain language(s)
+    :param tests_filter: a substring of TCK test name or an iterable of substrings of TCK test names
+    :param vm_args: iterable containing additional Java VM args
     """
     cp = OrderedDict()
     _collect_tck_providers(cp, dict())
@@ -476,7 +479,8 @@ def execute_tck(graalvm_home, vm_args=[], tests_filter=None, language_filter=Non
     _collect_class_path_entries_by_name("TRUFFLE_SL", truffle_cp, dict())
     boot_cp = OrderedDict()
     _collect_class_path_entries_by_name("TRUFFLE_TCK_COMMON", boot_cp, dict())
-    tck.execute_tck(graalvm_home, cp=cp.keys(), truffle_cp=truffle_cp.keys(), boot_cp=boot_cp)
+    return tck.execute_tck(graalvm_home, mode=tck.Mode.for_name(mode), language_filter=language_filter, values_filter=values_filter,
+        tests_filter=tests_filter, cp=cp.keys(), truffle_cp=truffle_cp.keys(), boot_cp=boot_cp, vm_args=vm_args)
 
 
 def _tck(args):

@@ -6,6 +6,55 @@ import subprocess
 import sys
 import zipfile
 
+class Abort(RuntimeError):
+    def __init__(self, message, retCode=-1):
+        self.message = message
+        self.retCode = retCode
+
+_mode_factories = dict()
+
+def _mode_factory(name):
+    def decorator(sm):
+        _mode_factories[name] = sm.__func__
+        return sm
+    return decorator
+
+class Mode:
+    _default = None
+    _compile = None
+
+    def __init__(self, name, vm_args=[]):
+        self.name = name
+        self.vm_args = vm_args
+
+    def __str__(self):
+        return self.name
+
+    @_mode_factory('default')
+    @staticmethod
+    def default():
+        if not Mode._default:
+            Mode._default = Mode('default')
+        return Mode._default
+
+    @_mode_factory('compile')
+    @staticmethod
+    def compile():
+        if not Mode._compile:
+            Mode._compile = Mode('compile', [
+                '-Dgraal.TruffleCompileImmediately=true',
+                '-Dgraal.TruffleBackgroundCompilation=false',
+                '-Dtck.inlineVerifierInstrument=false'])
+        return Mode._compile
+
+    @staticmethod
+    def for_name(name):
+        factory = _mode_factories.get(name)
+        if factory:
+            return factory()
+        else:
+            raise Abort('Mode must be default or compile')
+
 class LogLevel:
     """
     Log level constants to enable verbose output.
@@ -15,11 +64,6 @@ class LogLevel:
     FINE    = 500
 
 _log_level = LogLevel.INFO
-
-class Abort(RuntimeError):
-    def __init__(self, message, retCode=-1):
-        self.message = message
-        self.retCode = retCode
 
 class _ClassPathEntry:
     def __init__(self, path):
@@ -170,10 +214,13 @@ def _find_unit_tests(cp, pkgs=None):
                             tests.append(name)
     return tests
 
-def _execute_tck_impl(graalvm_home, cp, truffle_cp, boot_cp, vm_args, tests_filter, language_filter, debug_port):
+def _execute_tck_impl(graalvm_home, mode, language_filter, values_filter, tests_filter, cp, truffle_cp, boot_cp, vm_args, debug_port):
     tests = _find_unit_tests(cp, pkgs=['com.oracle.truffle.tck.tests'])
+    vm_args.extend(mode.vm_args)
     if language_filter:
-        vmArgs.append('-Dtck.language={0}'.format(parsed_args.language))
+        vm_args.append('-Dtck.language={0}'.format(language_filter))
+    if values_filter:
+        vm_args.append('-Dtck.values={0}'.format(','.join(values_filter)))
     if tests_filter:
         def includes(test):
             for pattern in tests_filter:
@@ -186,29 +233,29 @@ def _execute_tck_impl(graalvm_home, cp, truffle_cp, boot_cp, vm_args, tests_filt
     return ret_code
 
 
-def execute_tck(graalvm_home, cp=[], truffle_cp=[], boot_cp=[], vm_args=[], tests_filter=None, language_filter=None, debug_port=None):
+def execute_tck(graalvm_home, mode=Mode.default(), language_filter=None, values_filter=None, tests_filter=None, cp=[], truffle_cp=[], boot_cp=[], vm_args=[], debug_port=None):
     """
     Executes Truffle TCK with given TCK providers and languages using GraalVM installed in graalvm_home
 
     :param graalvm_home: a path to GraalVM
-    :param cp: a list of paths to add on the Java classpath, the classpath must contain the TCK providers and dependencies
-    :param truffle_cp: a list of paths to add to truffle.class.path, the additional languages and instruments must be a part of the truffle_cp
-    :param boot_cp: list of paths to add to Java boot path
-    :param vm_args: list containing additional Java VM args
-    :param tests_filter: a substring of TCK test name or a list of substrings of TCK test names
+    :param mode: the TCK mode
     :param language_filter: the language id, limits TCK tests to certain language
+    :param values_filter: an iterable of value constructors language ids, limits TCK values to certain language(s)
+    :param tests_filter: a substring of TCK test name or an iterable of substrings of TCK test names
+    :param cp: an iterable of paths to add on the Java classpath, the classpath must contain the TCK providers and dependencies
+    :param truffle_cp: an iterable of paths to add to truffle.class.path, the additional languages and instruments must be a part of the truffle_cp
+    :param boot_cp: an iterable of paths to add to Java boot path
+    :param vm_args: an iterable containing additional Java VM args
     :param debug_port: a port the Java VM should listen on for debugger connection
     """
     if tests_filter and type(tests_filter) is str:
         tests_filter = [tests_filter]
 
-    return _execute_tck_impl(graalvm_home,
+    return _execute_tck_impl(graalvm_home, mode, language_filter, values_filter, tests_filter,
         [_ClassPathEntry(os.path.abspath(e)) for e in cp],
         [_ClassPathEntry(os.path.abspath(e)) for e in truffle_cp],
         [_ClassPathEntry(os.path.abspath(e)) for e in boot_cp],
-        vm_args,
-        tests_filter,
-        language_filter,
+        vm_args if type(vm_args) == list else list(vm_args),
         debug_port)
 
 def set_log_level(log_level):
@@ -220,34 +267,35 @@ def set_log_level(log_level):
     global _log_level
     _log_level = log_level
 
-_JUNIT = [
-    {'groupId':'junit','artifactId':'junit','version':'4.12'},
-    {'groupId':'org/hamcrest','artifactId':'hamcrest-all','version':'1.3'}
-]
-
-_TCK_COMMON = [
-    {'groupId':'org.graalvm.sdk','artifactId':'polyglot-tck'},
-    {'groupId':'org.graalvm.truffle','artifactId':'truffle-tck-common'}
-]
-
-_INSTRUMENTS = [
-    {'groupId':'org.graalvm.truffle','artifactId':'truffle-tck-instrumentation'},
-]
+_MVN_DEPENDENCIES = {
+    'JUNIT' : [
+        {'groupId':'junit','artifactId':'junit','version':'4.12'},
+        {'groupId':'org/hamcrest','artifactId':'hamcrest-all','version':'1.3'}
+    ],
+    'TCK' : [
+        {'groupId':'org.graalvm.sdk','artifactId':'polyglot-tck'},
+        {'groupId':'org.graalvm.truffle','artifactId':'truffle-tck-common'},
+    ],
+    'INSTRUMENTS' : [
+        {'groupId':'org.graalvm.truffle','artifactId':'truffle-tck-instrumentation'},
+    ]
+}
 
 def _main(argv):
 
     unittestHelpSuffix = """
-    To avoid conflicts with VM options '--' can be used as delimiter.
+    Supported modes are:
+        default     executes the test with default GraalVM configuration
+        compile     compiles the tests before execution
 
     If test filters are supplied, only tests whose fully qualified name
     includes a filter as a substring are run.
 
     For example:
 
-       python tck.py -Dgraal.TruffleCompileImmediately=true -Dgraal.TruffleBackgroundCompilation=false ExpressionTest
+       python tck.py js default ExpressionTest
 
-    will run TCK ExpressionTest and will pass -Dgraal.TruffleCompileImmediately=true
-    and -Dgraal.TruffleBackgroundCompilation=false options to the Java VM.
+    will run TCK ExpressionTest for JavaScript language in a default mode.
     """
 
     parser = argparse.ArgumentParser(description='Truffle TCK Runner',
@@ -260,28 +308,40 @@ def _main(argv):
     parser.add_argument('--dbg', type=int, dest='dbg_port', help='make TCK tests wait on <port> for a debugger', metavar='<port>')
     parser.add_argument('-d', action='store_const', const=8000, dest='dbg_port', help='alias for "-dbg 8000"')
     parser.add_argument('--tck-version', type=str, dest='tck_version', help='maven TCK version, default is LATEST', default='LATEST', metavar='<version>')
+    parser.add_argument('--tck-values', type=str, dest='tck_values', help="language ids of value providers to use, separated by ','", metavar='<value providers>')
     parser.add_argument('-cp','--class-path', type=str, dest='class_path', help='classpath containing additional TCK provider(s)', metavar='<classpath>')
     parser.add_argument('-lp','--language-path', type=str, dest='truffle_path', help='classpath containing additinal language jar(s)', metavar='<classpath>')
-    parser.add_argument('--language', type=str, dest='language', help='restricts TCK tests to given language', metavar='<language id>')
 
     usage = parser.format_usage().strip()
     if usage.startswith('usage: '):
         usage = usage[len('usage: '):]
-    parser.usage = usage + ' [VM options...] [test filters...]'
+    parser.usage = usage + ' [VM options...] [language [mode [test filters...]]]'
     parsed_args, args = parser.parse_known_args()
 
     global _log_level
     _log_level = parsed_args.log_level
     cache_folder = 'cache'
     try:
-        vm_args, tests_filter = _split_VM_args_and_filters(args)
-        for pattern in tests_filter:
+        vm_args, other_args = _split_VM_args_and_filters(args)
+        for pattern in other_args:
             if pattern.startswith('-'):
-                raise Abort('VM option {0}  must precede {1}'.format(pattern, tests_filter[0]))
+                raise Abort('VM option {0}  must precede {1}'.format(pattern, other_args[0]))
+        language = None
+        values = None
+        mode = Mode.default()
+        tests_filter = []
+        if len(other_args) > 0:
+            language = other_args[0]
+        if len(other_args) > 1:
+            mode = Mode.for_name(other_args[1])
+        if len(other_args) > 2:
+            tests_filter = other_args[2:]
+        if parsed_args.tck_values:
+            values = parsed_args.tck_values.split(',')
         os.mkdir(cache_folder)
-        boot = [_MvnClassPathEntry(e['groupId'], e['artifactId'], e['version'] if 'version' in e else parsed_args.tck_version) for e in _TCK_COMMON]
-        cp = [_MvnClassPathEntry(e['groupId'], e['artifactId'], e['version'] if 'version' in e else parsed_args.tck_version) for e in _JUNIT]
-        truffle_cp = [_MvnClassPathEntry(e['groupId'], e['artifactId'], e['version'] if 'version' in e else parsed_args.tck_version) for e in _INSTRUMENTS]
+        boot = [_MvnClassPathEntry(e['groupId'], e['artifactId'], e['version'] if 'version' in e else parsed_args.tck_version) for e in _MVN_DEPENDENCIES['TCK']]
+        cp = [_MvnClassPathEntry(e['groupId'], e['artifactId'], e['version'] if 'version' in e else parsed_args.tck_version) for e in _MVN_DEPENDENCIES['JUNIT']]
+        truffle_cp = [_MvnClassPathEntry(e['groupId'], e['artifactId'], e['version'] if 'version' in e else parsed_args.tck_version) for e in _MVN_DEPENDENCIES['INSTRUMENTS']]
         if parsed_args.class_path:
             for e in parsed_args.class_path.split(os.pathsep):
                 cp.append(_ClassPathEntry(os.path.abspath(e)))
@@ -290,7 +350,7 @@ def _main(argv):
                 truffle_cp.append(_ClassPathEntry(os.path.abspath(e)))
         for entry in boot + cp + truffle_cp:
             entry.install(cache_folder)
-        ret_code = _execute_tck_impl(parsed_args.graalvm_home, cp, truffle_cp, boot, vm_args, tests_filter, parsed_args.language, parsed_args.dbg_port)
+        ret_code = _execute_tck_impl(parsed_args.graalvm_home, mode, language, None, tests_filter, cp, truffle_cp, boot, vm_args, parsed_args.dbg_port)
         sys.exit(ret_code)
     except Abort as abort:
         sys.stderr.write(abort.message)
