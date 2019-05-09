@@ -267,7 +267,8 @@ class BaseGraalVmLayoutDistribution(mx.LayoutDistribution):
                     exclude_base + '/COPYRIGHT',
                     exclude_base + '/LICENSE',
                     exclude_base + '/release',
-                    exclude_base + '/bin/<exe:jvisualvm>',
+                    exclude_base + '/bin/jvisualvm',
+                    exclude_base + '/bin/jvisualvm.exe',
                     exclude_base + '/lib/visualvm',
                     exclude_base + hsdis,
                 ] + ([

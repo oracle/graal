@@ -1012,6 +1012,7 @@ mx_sdk.register_graalvm_component(mx_sdk.GraalVmJreComponent(
     installable_id='native-image',
     license_files=[],
     third_party_license_files=[],
+    support_distributions=['substratevm:NATIVE_IMAGE_GRAALVM_SUPPORT'],
     launcher_configs=[
         mx_sdk.LauncherConfig(
             destination="bin/<exe:native-image>",
@@ -1053,7 +1054,7 @@ mx_sdk.register_graalvm_component(mx_sdk.GraalVmJreComponent(
     installable_id='native-image',
     license_files=['LICENSE_NATIVEIMAGE.txt'],
     third_party_license_files=[],
-    support_distributions=['substratevm:NATIVE_IMAGE_GRAALVM_SUPPORT'],
+    support_distributions=['substratevm:NATIVE_IMAGE_LICENSE_GRAALVM_SUPPORT'],
     installable=True,
 ))
 
