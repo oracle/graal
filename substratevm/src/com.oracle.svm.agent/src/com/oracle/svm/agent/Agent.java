@@ -222,7 +222,7 @@ public final class Agent {
         JvmtiEnv jvmti = jvmtiPtr.read();
 
         if (build) {
-            int status = buildImage(jvmti, restrict);
+            int status = buildImage(jvmti);
             System.exit(status);
         }
 
@@ -360,7 +360,7 @@ public final class Agent {
     private static final Pattern propertyBlacklist = Pattern.compile("(java\\..*)|(sun\\..*)|(jvmci\\..*)");
     private static final Pattern propertyWhitelist = Pattern.compile("(java\\.library\\.path)|(java\\.io\\.tmpdir)");
 
-    private static int buildImage(JvmtiEnv jvmti, boolean restrict) {
+    private static int buildImage(JvmtiEnv jvmti) {
         System.out.println("Building native image ...");
         String classpath = Support.getSystemProperty(jvmti, "java.class.path");
         if (classpath == null) {
@@ -395,10 +395,8 @@ public final class Agent {
             buildArgs.addAll(Arrays.asList("-cp", classpath));
         }
         buildArgs.add(mainClass);
-        if (restrict) {
-            String enableAgentRestrictArg = "-agentlib:native-image-agent=restrict";
-            buildArgs.add(oH(FallbackExecutor.Options.FallbackExecutorJavaArg) + "=" + enableAgentRestrictArg);
-        }
+        String enableAgentRestrictArg = "-agentlib:native-image-agent=restrict";
+        buildArgs.add(oH(FallbackExecutor.Options.FallbackExecutorJavaArg) + "=" + enableAgentRestrictArg);
         buildArgs.add(AGENT_NAME + ".build");
         // System.out.println(String.join("\n", buildArgs));
         Path javaHome = Paths.get(Support.getSystemProperty(jvmti, "java.home"));
