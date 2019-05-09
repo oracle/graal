@@ -39,9 +39,7 @@
 #include <sys/ioctl.h>
 #include <sys/time.h>
 
-#define JNIEXPORT
-#define JNIIMPORT
-typedef long jlong;
+#include <jni.h>
 
 #define OS_OK 0
 #define OS_ERR -1
@@ -339,7 +337,7 @@ int jio_vfprintf(FILE* f, const char *fmt, va_list args) {
   return vfprintf(f, fmt, args);
 }
 
-#ifdef JAVA_VERSION_9
+#ifdef JNI_VERSION_9
 int jio_snprintf(char *str, size_t count, const char *fmt, ...) {
   va_list args;
   int len;
