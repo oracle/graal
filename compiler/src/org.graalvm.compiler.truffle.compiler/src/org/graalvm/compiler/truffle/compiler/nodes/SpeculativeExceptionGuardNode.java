@@ -46,6 +46,13 @@ import jdk.vm.ci.meta.SpeculationLog;
 import jdk.vm.ci.meta.SpeculationLog.Speculation;
 import jdk.vm.ci.meta.SpeculationLog.SpeculationReason;
 
+/**
+ * A speculation-less guard node that is inserted into the exception branch of TruffleBoundary calls
+ * during parsing (graph encoding). During partial evaluation (graph decoding) when a speculation
+ * log is available, it will speculate that TruffleBoundary method will not throw and either becomes
+ * a control-flow sink {@link DeoptimizeNode} with the {@link Speculation} in order to off the
+ * branch, or if the speculation has already failed for this compilation root, disappears.
+ */
 @NodeInfo(nameTemplate = "SpeculativeExceptionGuard {p#reason/s}", allowedUsageTypes = Guard, cycles = CYCLES_1, size = SIZE_1)
 public final class SpeculativeExceptionGuardNode extends AbstractFixedGuardNode implements Canonicalizable {
 
