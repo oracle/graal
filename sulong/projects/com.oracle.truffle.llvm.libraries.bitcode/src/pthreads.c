@@ -32,7 +32,10 @@
 #include <pthread.h>
 
 #include "unsupported.h"
-// deleted create, join, exit, mutex_init, mutex_lock, mutex_unlock, self, cond_wait, cond_signal, mutexattr_init, mutexattr_settype
+// deleted create, join, exit, self
+// mutex_init, mutex_lock, mutex_trylock, mutex_unlock
+// mutexattr_init, mutexattr_settype
+// cond_init, cond_broadcast, cond_signal, cond_timedwait, cond_wait
 int pthread_attr_destroy(pthread_attr_t *attr) {
   ERR_UNSUPPORTED(pthread_attr_destroy);
 }
@@ -92,17 +95,8 @@ int pthread_cancel(pthread_t thread) {
 }
 // void  pthread_cleanup_push(void*, void *);
 // void  pthread_cleanup_pop(int);
-int pthread_cond_broadcast(pthread_cond_t *cond) {
-  ERR_UNSUPPORTED(pthread_cond_broadcast);
-}
 int pthread_cond_destroy(pthread_cond_t *cond) {
   ERR_UNSUPPORTED(pthread_cond_destroy);
-}
-int pthread_cond_init(pthread_cond_t *restrict cond, const pthread_condattr_t *restrict attr) {
-  ERR_UNSUPPORTED(pthread_cond_init);
-}
-int pthread_cond_timedwait(pthread_cond_t *restrict cond, pthread_mutex_t *restrict mutex, const struct timespec *restrict abstime) {
-  ERR_UNSUPPORTED(pthread_cond_timedwait);
 }
 int pthread_condattr_destroy(pthread_condattr_t *attr) {
   ERR_UNSUPPORTED(pthread_condattr_destroy);
@@ -148,9 +142,6 @@ int pthread_mutex_getprioceiling(const pthread_mutex_t *restrict mutex, int *res
 }
 int pthread_mutex_setprioceiling(pthread_mutex_t *restrict mutex, int prioceiling, int *restrict old_ceiling) {
   ERR_UNSUPPORTED(pthread_mutex_setprioceiling);
-}
-int pthread_mutex_trylock(pthread_mutex_t *mutex) {
-  ERR_UNSUPPORTED(pthread_mutex_trylock);
 }
 int pthread_mutexattr_destroy(pthread_mutexattr_t *attr) {
   ERR_UNSUPPORTED(pthread_mutexattr_destroy);

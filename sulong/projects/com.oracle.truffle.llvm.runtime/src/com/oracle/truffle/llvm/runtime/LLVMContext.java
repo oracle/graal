@@ -94,6 +94,7 @@ import com.oracle.truffle.llvm.runtime.types.Type;
 public final class LLVMContext {
     // my code start
     // is object ok here?
+    public final ConcurrentMap<Long, Object> condStorage;
     public final ConcurrentMap<Long, Object> mutexStorage;
     public final ConcurrentMap<Long, Object> retValStorage;
     public final ConcurrentMap<Long, Object> threadStorage;
@@ -224,6 +225,7 @@ public final class LLVMContext {
         } else {
             tracer = null;
         }
+        this.condStorage = new ConcurrentHashMap<>();
         this.mutexStorage = new ConcurrentHashMap<>();
         this.retValStorage = new ConcurrentHashMap<>();
         this.threadStorage = new ConcurrentHashMap<>();

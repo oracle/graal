@@ -338,7 +338,14 @@ public class BasicIntrinsicsProvider implements LLVMIntrinsicProvider, ContextEx
         add("@pthread_mutexattr_settype", (args, context) -> LLVMPThreadIntrinsicsFactory.LLVMPThreadMutexattrSettypeNodeGen.create(args.get(1), args.get(2), null));
         add("@pthread_mutex_init", (args, context) -> LLVMPThreadIntrinsicsFactory.LLVMPThreadMutexInitNodeGen.create(args.get(1), args.get(2), null));
         add("@pthread_mutex_lock", (args, context) -> LLVMPThreadIntrinsicsFactory.LLVMPThreadMutexLockNodeGen.create(args.get(1), null));
+        add("@pthread_mutex_trylock", (args, context) -> LLVMPThreadIntrinsicsFactory.LLVMPThreadMutexTrylockNodeGen.create(args.get(1), null));
         add("@pthread_mutex_unlock", (args, context) -> LLVMPThreadIntrinsicsFactory.LLVMPThreadMutexUnlockNodeGen.create(args.get(1), null));
+        add("@pthread_cond_init", (args, context) -> LLVMPThreadIntrinsicsFactory.LLVMPThreadCondInitNodeGen.create(args.get(1), args.get(2), null));
+        add("@pthread_cond_broadcast", (args, context) -> LLVMPThreadIntrinsicsFactory.LLVMPThreadCondBroadcastNodeGen.create(args.get(1), null));
+        add("@pthread_cond_signal", (args, context) -> LLVMPThreadIntrinsicsFactory.LLVMPThreadCondSignalNodeGen.create(args.get(1), null));
+        add("@pthread_cond_timedwait", (args, context) -> LLVMPThreadIntrinsicsFactory.LLVMPThreadCondTimedwaitNodeGen.create(args.get(1), args.get(2), args.get(3), null));
+        add("@pthread_cond_wait", (args, context) -> LLVMPThreadIntrinsicsFactory.LLVMPThreadCondWaitNodeGen.create(args.get(1), args.get(2), null));
+
         // add pthread_equal
         // add pthread_mutex_trylock
         // add pthread cond vars

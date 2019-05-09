@@ -5,6 +5,7 @@ import java.io.IOException;
 import java.io.PrintWriter;
 import java.util.concurrent.ConcurrentLinkedQueue;
 import java.util.concurrent.atomic.AtomicInteger;
+import java.util.concurrent.locks.Condition;
 import java.util.concurrent.locks.ReentrantLock;
 
 import com.oracle.truffle.api.CompilerDirectives;
@@ -185,6 +186,7 @@ public class LLVMPThreadIntrinsics {
                 Object retVal = getContextReference().get().retValStorage.get(thLong);
 
                 // store return value at ptr
+                // TODO: checkstyle says cast to managed or native pointer
                 LLVMPointer thReturnPtr = (LLVMPointer) threadReturn;
                 if (!thReturnPtr.isNull()) {
                     storeNode.executeWithTarget(threadReturn, retVal);
@@ -216,7 +218,7 @@ public class LLVMPThreadIntrinsics {
         private Thread curOwner;
         private final Type type;
 
-        protected Mutex(int initVal, Type type) {
+        public Mutex(int initVal, Type type) {
             this.lockCount = new AtomicInteger(initVal);
             this.waitingThreads = new ConcurrentLinkedQueue<>();
             this.internLock = new ReentrantLock();
@@ -230,7 +232,7 @@ public class LLVMPThreadIntrinsics {
             }
         }
 
-        protected Type getType() {
+        public Type getType() {
             return this.type;
         }
 
@@ -278,6 +280,17 @@ public class LLVMPThreadIntrinsics {
         }
 
         public boolean tryLock() {
+            if (this.curOwner == Thread.currentThread()) {
+                if (this.type == Type.RECURSIVE) {
+                    this.lockCount.incrementAndGet();
+                    return true;
+                }
+                return false;
+            }
+            if (this.lockCount.compareAndSet(0, 1)) {
+                this.curOwner = Thread.currentThread();
+                return true;
+            }
             return false;
         }
 
@@ -401,19 +414,162 @@ public class LLVMPThreadIntrinsics {
     }
 
     @NodeChild(type = LLVMExpressionNode.class)
+    public abstract static class LLVMPThreadMutexTrylock extends LLVMBuiltin {
+        @Specialization
+        protected int doIntrinsic(VirtualFrame frame, Object mutex) {
+            long mutexAddress = ((LLVMNativePointer) mutex).asNative();
+            Mutex mutexObj = (Mutex) getContextReference().get().mutexStorage.get(mutexAddress);
+            if (mutexObj == null) {
+                // mutex is not initialized
+                // but it works anyway on most implementations
+                // so we will make it work here too, just using default type
+                // set the internLock counter to 1
+                mutexObj = new Mutex(1, Mutex.Type.DEFAULT_NORMAL);
+                getContextReference().get().mutexStorage.put(mutexAddress, mutexObj);
+                return 0;
+            }
+            return mutexObj.tryLock() ? 0 : 15; // internLock will be changed to int type
+        }
+    }
+
+    @NodeChild(type = LLVMExpressionNode.class)
     public abstract static class LLVMPThreadMutexUnlock extends LLVMBuiltin {
         @Specialization
         protected int doIntrinsic(VirtualFrame frame, Object mutex) {
+            // TODO: handle calls for not init mutexes
             long mutexAddress = ((LLVMNativePointer) mutex).asNative();
             Mutex mutexObj = (Mutex) getContextReference().get().mutexStorage.get(mutexAddress);
             return mutexObj.unlock() ? 0 : 15; // internLock will be changed to int type
         }
     }
 
+    public static class Cond {
+        public enum Type {
+            DEFAULT
+        }
+
+        private final ConcurrentLinkedQueue<Thread> waitingThreads;
+        private final Condition condition;
+        private final ReentrantLock internLock;
+        private final Type type;
+
+        public Cond() {
+            this.waitingThreads = new ConcurrentLinkedQueue<>();
+            this.internLock = new ReentrantLock();
+            this.condition = internLock.newCondition();
+            this.type = Type.DEFAULT;
+        }
+
+        public void broadcast() {
+            condition.signalAll();
+        }
+
+        public void signal() {
+            condition.signal();
+        }
+
+        public void cTimedwait(long nanos) {
+            try {
+                condition.awaitNanos(nanos);
+            } catch (InterruptedException e) {
+            }
+        }
+
+        public void cWait() {
+            try {
+                condition.await();
+            } catch (InterruptedException e) {
+            }
+        }
+    }
+
+    @NodeChild(type = LLVMExpressionNode.class)
+    @NodeChild(type = LLVMExpressionNode.class)
+    public abstract static class LLVMPThreadCondInit extends LLVMBuiltin {
+        @Specialization
+        protected int doIntrinsic(VirtualFrame frame, Object cond, Object attr) {
+            // we can use the address of the native pointer here, bc a cond
+            // must only work when using the original variable, not a copy
+            // so the address may never change
+            long condAddress = ((LLVMNativePointer) cond).asNative();
+            Object condObj = getContextReference().get().condStorage.get(condAddress);
+            if (condObj == null) {
+                getContextReference().get().condStorage.put(condAddress, new Cond());
+            }
+            return 0;
+        }
+    }
+
+    @NodeChild(type = LLVMExpressionNode.class)
+    public abstract static class LLVMPThreadCondBroadcast extends LLVMBuiltin {
+        @Specialization
+        protected int doIntrinsic(VirtualFrame frame, Object cond) {
+            long condAddress = ((LLVMNativePointer) cond).asNative();
+            Cond condObj = (Cond) getContextReference().get().condStorage.get(condAddress);
+            if (condObj == null) {
+                return 15; // cannot broadcast to cond that does not exist yet
+            }
+            condObj.broadcast();
+            return 0;
+        }
+    }
+
+    @NodeChild(type = LLVMExpressionNode.class)
+    public abstract static class LLVMPThreadCondSignal extends LLVMBuiltin {
+        @Specialization
+        protected int doIntrinsic(VirtualFrame frame, Object cond) {
+            long condAddress = ((LLVMNativePointer) cond).asNative();
+            Cond condObj = (Cond) getContextReference().get().condStorage.get(condAddress);
+            if (condObj == null) {
+                return 15; // cannot signal to cond that does not exist yet
+            }
+            condObj.signal();
+            return 0;
+        }
+    }
+
+    @NodeChild(type = LLVMExpressionNode.class)
+    @NodeChild(type = LLVMExpressionNode.class)
+    @NodeChild(type = LLVMExpressionNode.class)
+    public abstract static class LLVMPThreadCondTimedwait extends LLVMBuiltin {
+        @Specialization
+        protected int doIntrinsic(VirtualFrame frame, Object cond, Object mutex, Object abstime) {
+            long condAddress = ((LLVMNativePointer) cond).asNative();
+            Cond condObj = (Cond) getContextReference().get().condStorage.get(condAddress);
+            if (condObj == null) {
+                // init and then wait
+                condObj = new Cond();
+                getContextReference().get().condStorage.put(condAddress, condObj);
+            }
+            // TODO: handling of time
+            condObj.cTimedwait(100);
+            return 0;
+        }
+    }
+
+    @NodeChild(type = LLVMExpressionNode.class)
+    @NodeChild(type = LLVMExpressionNode.class)
+    public abstract static class LLVMPThreadCondWait extends LLVMBuiltin {
+        @Specialization
+        protected int doIntrinsic(VirtualFrame frame, Object cond, Object mutex) {
+            long condAddress = ((LLVMNativePointer) cond).asNative();
+            Cond condObj = (Cond) getContextReference().get().condStorage.get(condAddress);
+            if (condObj == null) {
+                // init and then wait
+                condObj = new Cond();
+                getContextReference().get().condStorage.put(condAddress, condObj);
+            }
+            condObj.cWait();
+            return 0;
+        }
+    }
+
+
     @NodeChild(type = LLVMExpressionNode.class)
     public abstract static class LLVMPThreadMyTest extends LLVMBuiltin {
         @Specialization
         protected int doIntrinsic(VirtualFrame frame, Object arg) {
+            int i = 5;
             return 35; // just to test return 35
         }
     }
