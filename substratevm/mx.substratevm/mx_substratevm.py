@@ -1025,7 +1025,7 @@ mx_sdk.register_graalvm_component(mx_sdk.GraalVmJreComponent(
     short_name='ni',
     dir_name='svm',
     installable_id='native-image',
-    license_files=[],
+    license_files=['LICENSE_NATIVEIMAGE'],
     third_party_license_files=[],
     support_distributions=['substratevm:NATIVE_IMAGE_GRAALVM_SUPPORT'],
     launcher_configs=[
