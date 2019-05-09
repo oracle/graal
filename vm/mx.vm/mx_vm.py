@@ -296,7 +296,7 @@ class BaseGraalVmLayoutDistribution(mx.LayoutDistribution):
                 polyglot_launcher_project = get_polyglot_launcher_project()
                 if not stage1:
                     _add(layout, "<jdk_base>/jre/bin/<exe:polyglot>", "dependency:" + polyglot_launcher_project.name)
-                    _add_link("<jdk_base>/bin/", path_substitutions.substitute("<jdk_base>/jre/bin/<exe:polyglot>"))
+                    _add_link("<jdk_base>/bin/", "<jdk_base>/jre/bin/" + mx.exe_suffix('polyglot'))
                 _add_native_image_macro(polyglot_launcher_project.native_image_config)
 
             # Add libpolyglot library
