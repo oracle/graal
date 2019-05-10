@@ -42,7 +42,7 @@ example tests JavaScript with Java types:
 To run a single test specify the full test name. For example to run a test for SimpleLanguage `+` operator
 with SimpleLanguage `number` and `big number` use:
 
-`mx tck 'ExpressionTest#testExpression[sl::+(sl::number, sl::bigNumber)]'`
+`mx tck 'ExpressionTest#testExpression[sl::+(sl::number, sl::number)]'`
 
 To run the TCK tests on the GraalVM it's enough to set the mx `--java-home` to point to the GraalVM:
 
