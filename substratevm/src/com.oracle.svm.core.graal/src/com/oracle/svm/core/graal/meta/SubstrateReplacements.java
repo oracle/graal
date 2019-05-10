@@ -223,7 +223,8 @@ public class SubstrateReplacements extends ReplacementsImpl {
         assert builder.graphs.get(method) == null : "snippet registered twice: " + method.getName();
 
         try (DebugContext debug = openDebugContext("Snippet_", method, options)) {
-            StructuredGraph graph = makeGraph(debug, defaultBytecodeProvider, method, null, null, trackNodeSourcePosition, null);
+            Object[] args = prepareConstantArguments(receiver);
+            StructuredGraph graph = makeGraph(debug, defaultBytecodeProvider, method, args, null, trackNodeSourcePosition, null);
 
             // Check if all methods which should be inlined are really inlined.
             for (MethodCallTargetNode callTarget : graph.getNodes(MethodCallTargetNode.TYPE)) {
@@ -317,5 +318,12 @@ public class SubstrateReplacements extends ReplacementsImpl {
     @Override
     protected final GraphMaker createGraphMaker(ResolvedJavaMethod substitute, ResolvedJavaMethod substitutedMethod) {
         return builder.graphMakerFactory.create(this, substitute, substitutedMethod);
+    }
+
+    private static Object[] prepareConstantArguments(Object receiver) {
+        if (receiver != null) {
+            return new Object[]{receiver};
+        }
+        return null;
     }
 }
