@@ -3,9 +3,7 @@ package com.oracle.truffle.espresso.classfile;
 import com.oracle.truffle.espresso.bytecode.BytecodeLookupSwitch;
 import com.oracle.truffle.espresso.bytecode.BytecodeStream;
 import com.oracle.truffle.espresso.bytecode.BytecodeTableSwitch;
-import com.oracle.truffle.espresso.impl.ParserMethod;
-import com.oracle.truffle.espresso.meta.JavaKind;
-import com.sun.org.apache.bcel.internal.classfile.ClassFormatException;
+import com.oracle.truffle.espresso.meta.EspressoError;
 
 import java.util.ArrayList;
 
@@ -213,27 +211,66 @@ import static com.oracle.truffle.espresso.bytecode.Bytecodes.SIPUSH;
 import static com.oracle.truffle.espresso.bytecode.Bytecodes.SWAP;
 import static com.oracle.truffle.espresso.bytecode.Bytecodes.TABLESWITCH;
 import static com.oracle.truffle.espresso.bytecode.Bytecodes.WIDE;
-import static com.oracle.truffle.espresso.meta.JavaKind.Double;
-import static com.oracle.truffle.espresso.meta.JavaKind.Float;
-import static com.oracle.truffle.espresso.meta.JavaKind.Int;
-import static com.oracle.truffle.espresso.meta.JavaKind.Long;
-import static com.oracle.truffle.espresso.meta.JavaKind.Object;
-import static com.oracle.truffle.espresso.meta.JavaKind.Void;
-
 
 /**
  * Extremely light-weight java bytecode verifier. Performs only very basic verifications.
  *
- * In particular, it checks stack consistency (ie: checks that instructions do not pop an empty stack, or that they do not push further than maxStack)
- * This verifier also performs primitive type checks, where all references are considered to be of the Object class.
+ * In particular, it checks stack consistency (ie: checks that instructions do not pop an empty
+ * stack, or that they do not push further than maxStack) This verifier also performs primitive type
+ * checks, where all references are considered to be of the Object class.
  *
- * The primary goal of this verifier is to detect class files that are blatantly ill-formed, and does not replace a complete bytecode verifier.
+ * The primary goal of this verifier is to detect class files that are blatantly ill-formed, and
+ * does not replace a complete bytecode verifier.
  */
 public class MethodVerifier {
     private final BytecodeStream code;
     private final int maxStack;
     private final ConstantPool pool;
-    private final boolean[] verified;
+    private final byte[] verified;
+
+    private enum Operand {
+        Int,
+        Float,
+        Double,
+        Long,
+        Object,
+        Void;
+
+        @Override
+        public String toString() {
+            return opToString(this);
+        }
+    }
+
+    private static String opToString(Operand o) {
+        switch (o) {
+            case Int:
+                return "I";
+            case Float:
+                return "F";
+            case Double:
+                return "D";
+            case Long:
+                return "L";
+            case Object:
+                return "A";
+            case Void:
+                return "V";
+            default:
+                throw EspressoError.shouldNotReachHere();
+        }
+    }
+
+    static private final Operand Int = Operand.Int;
+    static private final Operand Float = Operand.Float;
+    static private final Operand Double = Operand.Double;
+    static private final Operand Long = Operand.Long;
+    static private final Operand Object = Operand.Object;
+    static private final Operand Void = Operand.Void;
+
+    static private final byte UNREACHABLE = 0;
+    static private final byte UNSEEN = 1;
+    static private final byte DONE = 2;
 
     /**
      * Instanciates a MethodVerifier for the given method
@@ -242,22 +279,21 @@ public class MethodVerifier {
      * @param code Raw bytecode representation for the method to verify
      * @param pool The constant pool to be used with this method.
      */
-    public MethodVerifier(int maxStack, byte[] code, ConstantPool pool) {
+    private MethodVerifier(int maxStack, byte[] code, ConstantPool pool) {
         this.code = new BytecodeStream(code);
         this.maxStack = maxStack;
         this.pool = pool;
-        this.verified = new boolean[code.length];
+        this.verified = new byte[code.length];
     }
 
     /**
      * Utility for ease of use in Espresso
      *
-     * @param m The method obtained during parsing phase
+     * @param codeAttribute The code attribute of the verified method
      * @param pool The constant pool of the declaring class
      * @return true, or throws ClassFormatError or VerifyError.
      */
-    static boolean verify(ParserMethod m, ConstantPool pool) {
-        CodeAttribute codeAttribute = (CodeAttribute)m.getAttribute(CodeAttribute.NAME);
+    public static boolean verify(CodeAttribute codeAttribute, ConstantPool pool) {
         if (codeAttribute == null) {
             return true;
         }
@@ -269,54 +305,97 @@ public class MethodVerifier {
      *
      * @return true or throws ClassFormatError or VerifyError
      */
-    public synchronized boolean verify() {
+    private synchronized boolean verify() {
         clear();
         int nextBCI = 0;
         Stack stack = new Stack(maxStack);
-        while (!verified[nextBCI]) {
-            nextBCI = verify(nextBCI, stack);
+        while (verified[nextBCI] != DONE) {
+            nextBCI = verifySafe(nextBCI, stack);
+            if (nextBCI >= code.endBCI()) {
+                throw new VerifyError("Control flow falls through code end");
+            }
         }
         return true;
     }
 
     private void clear() {
-        for (int i = 0; i<verified.length;i++) {
-            verified[i] = false;
+        for (int i = 0; i < verified.length; i++) {
+            verified[i] = UNREACHABLE;
+        }
+        int bci = 0;
+        while (bci < code.endBCI()) {
+            int bc = code.currentBC(bci);
+            if (bc > QUICK) {
+                throw new VerifyError("invalid bytecode: " + bc);
+            }
+            verified[bci] = UNSEEN;
+            bci = code.nextBCI(bci);
         }
     }
 
     private boolean branch(int BCI, Stack stack) {
-        if (verified[BCI]) {
+        if (verified[BCI] == UNREACHABLE) {
+            throw new VerifyError("Jump to the middle of an instruction: " + BCI);
+        }
+        if (verified[BCI] == DONE) {
             return true;
         }
         // TODO(garcia) verify stack merging.
         Stack newStack = stack.copy();
         int nextBCI = BCI;
-        while (!verified[nextBCI]) {
-            nextBCI = verify(nextBCI, newStack);
+        if (nextBCI >= code.endBCI()) {
+            throw new VerifyError("Control flow falls through code end");
+        }
+        while (verified[nextBCI] != DONE) {
+            nextBCI = verifySafe(nextBCI, newStack);
+            if (nextBCI >= code.endBCI()) {
+                throw new VerifyError("Control flow falls through code end");
+            }
+        }
+        if (verified[BCI] == UNREACHABLE) {
+            throw new VerifyError("Control flow falls between instructions: " + BCI);
         }
         return true;
     }
 
-    private static JavaKind fromTag(ConstantPool.Tag tag) {
+    private int verifySafe(int BCI, Stack stack) {
+        try {
+            return verify(BCI, stack);
+        } catch (IndexOutOfBoundsException e) {
+            throw new VerifyError("Inconsistent Stack access!" + e.getMessage());
+        }
+    }
+
+    private static Operand fromTag(ConstantPool.Tag tag) {
         switch (tag) {
-            case INTEGER: return Int;
-            case FLOAT: return Float;
-            case LONG: return Long;
-            case DOUBLE: return Double;
+            case INTEGER:
+                return Int;
+            case FLOAT:
+                return Float;
+            case LONG:
+                return Long;
+            case DOUBLE:
+                return Double;
             case CLASS:
             case STRING:
             case METHODHANDLE:
-            case METHODTYPE: return Object;
+            case METHODTYPE:
+                return Object;
             default:
                 throw new VerifyError("invalid CP load: " + tag);
         }
     }
 
     private int verify(int BCI, Stack stack) {
-        verified[BCI] = true;
-        int curOpcode = code.opcode(BCI);
-//        System.err.println(Bytecodes.nameOf(curOpcode));
+        if (verified[BCI] == UNREACHABLE) {
+            throw new VerifyError("Jump to the middle of an instruction: " + BCI);
+        }
+        verified[BCI] = DONE;
+        int curOpcode;
+        curOpcode = code.currentBC(BCI);
+        if (!(curOpcode <= QUICK)) {
+            throw new VerifyError("invalid bytecode: " + code.readByte(BCI - 1));
+        }
         // @formatter:off
         // Checkstyle: stop
         switch (curOpcode) {
@@ -425,7 +504,6 @@ public class MethodVerifier {
             case POP: stack.pop(); break;
             case POP2: stack.pop2(); break;
 
-            // TODO(peterssen): Stack shuffling is expensive.
             case DUP: stack.dup(); break;
             case DUP_X1: stack.dupx1(); break;
             case DUP_X2: stack.dupx2(); break;
@@ -543,12 +621,13 @@ public class MethodVerifier {
                 break;
             case JSR: // fall through
             case JSR_W: {
-                stack.pushObj();
-                branch(code.readBranchDest(BCI), stack);
+                // Ignore JSR
+//                stack.pushObj();
+//                branch(code.readBranchDest(BCI), stack);
                 break;
             }
             case RET: {
-                break;
+                return BCI;
             }
 
             // @formatter:on
@@ -567,8 +646,8 @@ public class MethodVerifier {
                 stack.popInt();
                 BytecodeLookupSwitch switchHelper = code.getBytecodeLookupSwitch();
                 int low = 0;
-                int high = switchHelper.numberOfCases(BCI);
-                for (int i = low; i < high; i++) {
+                int high = switchHelper.numberOfCases(BCI) - 1;
+                for (int i = low; i <= high; i++) {
                     branch(BCI + switchHelper.offsetAt(BCI, i), stack);
                 }
                 return switchHelper.defaultTarget(BCI);
@@ -589,7 +668,7 @@ public class MethodVerifier {
                 if (!(pc instanceof FieldRefConstant)) {
                     throw new VerifyError();
                 }
-                JavaKind kind = charToKind(((FieldRefConstant) pc).getType(pool).toString().charAt(0));
+                Operand kind = stringToKind(((FieldRefConstant) pc).getType(pool).toString());
                 if (curOpcode == GETFIELD) {
                     stack.popObj();
                 }
@@ -602,8 +681,7 @@ public class MethodVerifier {
                 if (!(pc instanceof FieldRefConstant)) {
                     throw new VerifyError();
                 }
-//                JavaKind kind = JavaKind.fromTypeString(((FieldRefConstant) pc).getType(pool).toString());
-                JavaKind kind = charToKind(((FieldRefConstant) pc).getType(pool).toString().charAt(0));
+                Operand kind = stringToKind(((FieldRefConstant) pc).getType(pool).toString());
                 stack.pop(kind);
                 if (curOpcode == PUTFIELD) {
                     stack.popObj();
@@ -617,11 +695,11 @@ public class MethodVerifier {
             case INVOKEINTERFACE: {
                 PoolConstant pc = pool.at(code.readCPI(BCI));
                 if (!(pc instanceof MethodRefConstant)) {
-                    throw new VerifyError();
+                    throw new VerifyError("Invalid CP constant for a MethodRef: " + pc.getClass().getName());
                 }
-                JavaKind[] parsedSig = parseSig((((MethodRefConstant) pc).getSignature(pool)).toString());
+                Operand[] parsedSig = parseSig((((MethodRefConstant) pc).getSignature(pool)).toString());
                 if (parsedSig.length == 0) {
-                    throw new VerifyError();
+                    throw new ClassFormatError("Method ref with no return value !");
                 }
                 for (int i = parsedSig.length - 2; i>=0; i--) {
                     stack.pop(parsedSig[i]);
@@ -629,7 +707,7 @@ public class MethodVerifier {
                 if (curOpcode != INVOKESTATIC) {
                     stack.popObj();
                 }
-                JavaKind returnKind = parsedSig[parsedSig.length - 1];
+                Operand returnKind = parsedSig[parsedSig.length - 1];
                 if (!(returnKind == Void)) {
                     stack.push(returnKind);
                 }
@@ -663,16 +741,21 @@ public class MethodVerifier {
             case INVOKEDYNAMIC: {
                 PoolConstant pc = pool.at(code.readCPI(BCI));
                 if (!(pc instanceof InvokeDynamicConstant)) {
-                    throw new VerifyError();
+                    throw new VerifyError("Invalid CP constant for an InvokeDynamic: " + pc.getClass().getName());
                 }
-                JavaKind[] parsedSig = parseSig(((InvokeDynamicConstant) pc).getSignature(pool).toString());
+
+                InvokeDynamicConstant idc = (InvokeDynamicConstant) pc;
+                if (!(pool.at(idc.getNameAndTypeIndex()).tag() == ConstantPool.Tag.NAME_AND_TYPE)) {
+                    throw new ClassFormatError("Invalid constant pool !");
+                }
+                Operand[] parsedSig = parseSig(idc.getSignature(pool).toString());
                 if (parsedSig.length == 0) {
-                    throw new VerifyError();
+                    throw new ClassFormatError("No return descriptor for method");
                 }
                 for (int i = parsedSig.length - 2; i >= 0; i--) {
                     stack.pop(parsedSig[i]);
                 }
-                JavaKind returnKind = parsedSig[parsedSig.length - 1];
+                Operand returnKind = parsedSig[parsedSig.length - 1];
                 if (returnKind != Void) {
                     stack.push(returnKind);
                 }
@@ -681,62 +764,116 @@ public class MethodVerifier {
             case QUICK: break;
             default:
         // @formatter:on
-        // Checkstyle: resume
+                // Checkstyle: resume
         }
         return code.nextBCI(BCI);
     }
 
-    private static JavaKind[] parseSig(String sig) {
-        ArrayList<JavaKind> res = new ArrayList<>();
-        int i= 0;
-        while (i < sig.length()) {
+    private static Operand[] parseSig(String sig) {
+        boolean opened = false;
+        ArrayList<Operand> res = new ArrayList<>();
+        int i = 0;
+        int sigLen = sig.length();
+        while (i < sigLen) {
             switch (sig.charAt(i)) {
                 case '(':
+                    i++;
+                    opened = true;
+                    break;
                 case ')':
-                    i++; break;
+                    i++;
+                    opened = false;
+                    break;
                 case '[':
                     res.add(Object);
-                    while (sig.charAt(i) == '[') {
+                    while (i < sigLen && sig.charAt(i) == '[') {
                         i++;
                     }
-                    if (sig.charAt(i) != 'L') {
-                        i++;
-                    } else {
+                    if (i == sigLen) {
+                        throw new ClassFormatError("Invalid method signature: " + sig);
+                    }
+                    char arrayT = sig.charAt(i);
+                    if (arrayT == 'L') {
                         i = sig.indexOf(';', i) + 1;
+                        if (i == 0) {
+                            throw new ClassFormatError("Invalid method signature: " + sig);
+                        }
+                    } else {
+                        if (arrayT == '(' || arrayT == ')') {
+                            throw new ClassFormatError("Invalid method signature: " + sig);
+                        }
+                        i++;
                     }
                     break;
                 case 'L':
                     res.add(Object);
                     i = sig.indexOf(';', i) + 1;
+                    if (i == 0) {
+                        throw new ClassFormatError("Invalid method signature: " + sig);
+                    }
                     break;
                 case 'Z':
                 case 'C':
                 case 'B':
                 case 'S':
                 case 'I':
-                    res.add(Int); i++; break;
+                    res.add(Int);
+                    i++;
+                    break;
                 case 'F':
-                    res.add(Float); i++; break;
+                    res.add(Float);
+                    i++;
+                    break;
                 case 'D':
-                    res.add(Double); i++; break;
+                    res.add(Double);
+                    i++;
+                    break;
                 case 'J':
-                    res.add(Long); i++; break;
+                    res.add(Long);
+                    i++;
+                    break;
                 case 'V':
-                    res.add(Void); i++; break;
+                    res.add(Void);
+                    i++;
+                    break;
                 default:
-                    throw new VerifyError();
+                    throw new ClassFormatError("Invalid method signature: " + sig);
             }
         }
-        return res.toArray(new JavaKind[0]);
+        if (opened) {
+            throw new ClassFormatError("Invalid method signature: " + sig);
+        }
+        return res.toArray(new Operand[0]);
     }
 
-    private static JavaKind charToKind(char c) {
+    private static Operand stringToKind(String s) {
+        int sLen = s.length();
+        if (sLen == 0) {
+            throw new ClassFormatError("invalid standalone type: " + s);
+        }
+        char c = s.charAt(0);
         switch (c) {
             case '(':
             case ')':
-                throw new VerifyError();
+                throw new ClassFormatError("Invalid standalone type: " + c);
             case '[':
+                int i = 1;
+                while (i < sLen && s.charAt(i) == '[') {
+                    i++;
+                }
+                if (i == sLen) {
+                    throw new ClassFormatError("invalid standalone type: " + s);
+                }
+                Operand o = stringToKind(s.substring(i));
+                if (o == null) {
+                    throw new ClassFormatError("invalid standalone type: " + s);
+                }
+                return Object;
             case 'L':
+                int index = s.indexOf(';');
+                if (index == -1 || index != sLen - 1) {
+                    throw new ClassFormatError("invalid standalone type: " + s);
+                }
                 return Object;
             case 'Z':
             case 'C':
@@ -753,22 +890,22 @@ public class MethodVerifier {
             case 'V':
                 return Void;
             default:
-                throw new VerifyError();
+                throw new ClassFormatError("Invalid standalone type: " + c);
         }
     }
 
     private class Stack {
-        private final JavaKind[] stack;
+        private final Operand[] stack;
         private int top;
 
         private Stack(Stack copy) {
-            this.stack = new JavaKind[copy.stack.length];
+            this.stack = new Operand[copy.stack.length];
             this.top = copy.top;
             System.arraycopy(copy.stack, 0, this.stack, 0, top);
         }
 
         Stack(int maxStack) {
-            this.stack = new JavaKind[maxStack];
+            this.stack = new Operand[maxStack];
             this.top = 0;
         }
 
@@ -779,20 +916,24 @@ public class MethodVerifier {
         void pushInt() {
             stack[top++] = Int;
         }
+
         void pushObj() {
             stack[top++] = Object;
         }
+
         void pushFloat() {
             stack[top++] = Float;
         }
+
         void pushDouble() {
             stack[top++] = Double;
         }
+
         void pushLong() {
             stack[top++] = Long;
         }
 
-        void push(JavaKind kind) {
+        void push(Operand kind) {
             stack[top++] = kind;
         }
 
@@ -801,47 +942,48 @@ public class MethodVerifier {
                 throw new VerifyError(stack[top] + " on stack, required: " + Int);
             }
         }
+
         void popObj() {
             if (!(stack[--top] == Object)) {
                 throw new VerifyError(stack[top] + " on stack, required: " + Object);
             }
         }
+
         void popFloat() {
             if (!(stack[--top] == Float)) {
                 throw new VerifyError(stack[top] + " on stack, required: " + Float);
             }
         }
+
         void popDouble() {
             if (!(stack[--top] == Double)) {
                 throw new VerifyError(stack[top] + " on stack, required: " + Double);
             }
         }
+
         void popLong() {
             if (!(stack[--top] == Long)) {
                 throw new VerifyError(stack[top] + " on stack, required: " + Long);
             }
         }
-        void popAny() {
-            if (stack[--top] == null) {
-                throw new VerifyError(stack[top] + " on stack, required: any");
-            }
-        }
-        void pop(JavaKind k) {
+
+        void pop(Operand k) {
             if (!(stack[--top] == k)) {
                 throw new VerifyError(stack[top] + " on stack, required: " + k);
             }
+
         }
 
         void dup() {
-            if (isType2(stack[top-1])) {
+            if (isType2(stack[top - 1])) {
                 throw new VerifyError("type 2 operand for dup.");
             }
-            stack[top] = stack[top-1];
+            stack[top] = stack[top - 1];
             top++;
         }
 
         void pop() {
-            JavaKind v1 = stack[top-1];
+            Operand v1 = stack[top - 1];
             if (isType2(v1)) {
                 throw new VerifyError("type 2 operand for pop.");
             }
@@ -849,12 +991,12 @@ public class MethodVerifier {
         }
 
         void pop2() {
-            JavaKind v1 = stack[top-1];
+            Operand v1 = stack[top - 1];
             if (isType2(v1)) {
                 top--;
                 return;
             }
-            JavaKind v2 = stack[top -2];
+            Operand v2 = stack[top - 2];
             if (isType2(v2)) {
                 throw new VerifyError("type 2 second operand for pop2.");
             }
@@ -862,101 +1004,101 @@ public class MethodVerifier {
         }
 
         void dupx1() {
-            JavaKind v1 = stack[top-1];
-            if (isType2(v1) || isType2(stack[top-2])) {
+            Operand v1 = stack[top - 1];
+            if (isType2(v1) || isType2(stack[top - 2])) {
                 throw new VerifyError("type 2 operand for dupx1.");
             }
-            System.arraycopy(stack, top-2, stack, top-1, 2);
+            System.arraycopy(stack, top - 2, stack, top - 1, 2);
             top++;
-            stack[top-3] = v1;
+            stack[top - 3] = v1;
         }
 
         void dupx2() {
-            JavaKind v1 = stack[top-1];
+            Operand v1 = stack[top - 1];
             if (isType2(v1)) {
                 throw new VerifyError("type 2 first operand for dupx2.");
             }
-            JavaKind v2 = stack[top-2];
+            Operand v2 = stack[top - 2];
             if (isType2(v2)) {
-                System.arraycopy(stack, top-2, stack, top-1, 2);
+                System.arraycopy(stack, top - 2, stack, top - 1, 2);
                 top++;
-                stack[top-3] = v1;
+                stack[top - 3] = v1;
             } else {
-                if (isType2(stack[top -3])) {
+                if (isType2(stack[top - 3])) {
                     throw new VerifyError("type 2 third operand for dupx2.");
                 }
-                System.arraycopy(stack, top-3, stack, top-2, 3);
+                System.arraycopy(stack, top - 3, stack, top - 2, 3);
                 top++;
-                stack[top-4] = v1;
+                stack[top - 4] = v1;
             }
         }
 
         void dup2() {
-            JavaKind v1 = stack[top -1];
+            Operand v1 = stack[top - 1];
             if (isType2(v1)) {
                 stack[top] = v1;
                 top++;
             } else {
-                if (isType2(stack[top-1])) {
+                if (isType2(stack[top - 1])) {
                     throw new VerifyError("type 2 second operand for dup2.");
                 }
-                System.arraycopy(stack, top -2, stack, top, 2);
+                System.arraycopy(stack, top - 2, stack, top, 2);
                 top = top + 2;
             }
         }
 
         void dup2x1() {
-            JavaKind v1 = stack[top-1];
-            JavaKind v2 = stack[top-2];
+            Operand v1 = stack[top - 1];
+            Operand v2 = stack[top - 2];
             if (isType2(v2)) {
                 throw new VerifyError("type 2 second operand for dup2x1");
             }
             if (isType2(v1)) {
-                System.arraycopy(stack, top-2, stack, top-1, 2);
+                System.arraycopy(stack, top - 2, stack, top - 1, 2);
                 top++;
-                stack[top-3] = v1;
+                stack[top - 3] = v1;
                 return;
             }
-            if (isType2(stack[top-3])) {
+            if (isType2(stack[top - 3])) {
                 throw new VerifyError("type 2 third operand for dup2x1.");
             }
-            System.arraycopy(stack, top-3, stack, top, 3);
+            System.arraycopy(stack, top - 3, stack, top - 1, 3);
             top = top + 2;
             stack[top - 5] = v2;
             stack[top - 4] = v1;
         }
 
         void dup2x2() {
-            JavaKind v1 = stack[top-1];
-            JavaKind v2 = stack[top-2];
+            Operand v1 = stack[top - 1];
+            Operand v2 = stack[top - 2];
             boolean b1 = isType2(v1);
             boolean b2 = isType2(v2);
 
             if (b1 && b2) {
-                System.arraycopy(stack, top-2, stack, top-1, 2);
-                stack[top-2] = v1;
+                System.arraycopy(stack, top - 2, stack, top - 1, 2);
+                stack[top - 2] = v1;
                 top++;
                 return;
             }
-            JavaKind v3 = stack[top-3];
+            Operand v3 = stack[top - 3];
             boolean b3 = isType2(v3);
             if (!b1 && !b2 && b3) {
-                System.arraycopy(stack, top-3, stack, top, 3);
+                System.arraycopy(stack, top - 3, stack, top - 1, 3);
                 stack[top - 3] = v2;
                 stack[top - 2] = v1;
                 top = top + 2;
                 return;
             }
             if (b1 && !b2 && !b3) {
-                System.arraycopy(stack, top-3, stack, top-2, 3);
-                stack[top-3] = v1;
+                System.arraycopy(stack, top - 3, stack, top - 2, 3);
+                stack[top - 3] = v1;
                 top++;
                 return;
             }
-            JavaKind v4 = stack[top-4];
+            Operand v4 = stack[top - 4];
             boolean b4 = isType2(v4);
             if (!b1 && !b2 && !b3 && !b4) {
-                System.arraycopy(stack, top-4, stack, top - 2, 4);
+                System.arraycopy(stack, top - 4, stack, top - 2, 4);
                 stack[top - 4] = v2;
                 stack[top - 3] = v1;
                 top = top + 2;
@@ -967,8 +1109,8 @@ public class MethodVerifier {
         }
 
         void swap() {
-            JavaKind v1 = stack[top-1];
-            JavaKind v2 = stack[top-2];
+            Operand v1 = stack[top - 1];
+            Operand v2 = stack[top - 2];
             boolean b1 = isType2(v1);
             boolean b2 = isType2(v2);
             if (!b1 && !b2) {
@@ -979,9 +1121,8 @@ public class MethodVerifier {
             throw new VerifyError("Type 2 operand for SWAP");
         }
 
-        private boolean isType2(JavaKind k) {
+        private boolean isType2(Operand k) {
             return k == Long || k == Double;
         }
     }
-
 }

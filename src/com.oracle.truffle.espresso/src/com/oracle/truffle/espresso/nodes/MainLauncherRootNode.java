@@ -48,8 +48,9 @@ public class MainLauncherRootNode extends RootNode {
         try {
             assert frame.getArguments().length == 0;
             EspressoContext context = main.getContext();
-            main.getDeclaringKlass().initialize();
+            // main.getDeclaringKlass().safeInitialize();
             // No var-args here, pull parameters from the context.
+            // getCallTarget initializes for us.
             return main.getCallTarget().call((Object) toGuestArguments(context, context.getMainArguments()));
         } catch (EspressoException e) {
             StaticObject guestException = e.getException();

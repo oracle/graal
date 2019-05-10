@@ -923,7 +923,9 @@ public final class JniEnv extends NativeEnv implements ContextAccess {
         assert !resolutionSeed.isStatic();
         Object[] args = popVarArgs(varargsPtr, resolutionSeed.getParsedSignature());
         // System.err.println("callVirtualMethod " + resolutionSeed + " " + Arrays.toString(args));
-        Method m = receiver.getKlass().lookupMethod(resolutionSeed.getName(), resolutionSeed.getRawSignature());
+        Method m = receiver.getKlass().vtableLookup(resolutionSeed.getVTableIndex());
+        // Method m = receiver.getKlass().lookupMethod(resolutionSeed.getName(),
+        // resolutionSeed.getRawSignature());
         assert m != null;
         return m.invokeDirect(receiver, args);
     }

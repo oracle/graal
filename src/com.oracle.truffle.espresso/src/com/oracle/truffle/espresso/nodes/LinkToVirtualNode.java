@@ -16,7 +16,7 @@ public class LinkToVirtualNode extends MHLinkToNode {
     protected final Object linkTo(Object[] args) {
         Method target = getTarget(args);
         StaticObject receiver = (StaticObject) args[0];
-        if (!(target.getRefKind() == REF_invokeSpecial)) {
+        if ((target.getRefKind() != REF_invokeSpecial)) {
             target = receiver.getKlass().vtableLookup(target.getVTableIndex());
         }
         Object result = callNode.call(target.getCallTarget(), unbasic(args, target.getParsedSignature(), 0, argCount - 1, true));

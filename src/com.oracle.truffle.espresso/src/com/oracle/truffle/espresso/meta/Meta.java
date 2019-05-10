@@ -136,6 +136,7 @@ public final class Meta implements ContextAccess {
         StackTraceElement = knownKlass(Type.StackTraceElement);
         StackTraceElement_init = StackTraceElement.lookupDeclaredMethod(Name.INIT, Signature._void_String_String_String_int);
 
+        Exception = knownKlass(Type.Exception);
         InvocationTargetException = knownKlass(Type.InvocationTargetException);
         NegativeArraySizeException = knownKlass(Type.NegativeArraySizeException);
         IllegalArgumentException = knownKlass(Type.IllegalArgumentException);
@@ -148,6 +149,7 @@ public final class Meta implements ContextAccess {
         ClassCastException = knownKlass(Type.ClassCastException);
         AbstractMethodError = knownKlass(Type.AbstractMethodError);
         InternalError = knownKlass(Type.InternalError);
+        VerifyError = knownKlass(Type.VerifyError);
 
         NoSuchFieldError = knownKlass(Type.NoSuchFieldError);
         NoSuchMethodError = knownKlass(Type.NoSuchMethodError);
@@ -200,6 +202,7 @@ public final class Meta implements ContextAccess {
         HIDDEN_IS_ALIVE = Thread.lookupHiddenField(Name.HIDDEN_IS_ALIVE);
         ThreadGroup = knownKlass(Type.ThreadGroup);
         ThreadGroup_remove = ThreadGroup.lookupDeclaredMethod(Name.remove, Signature.ThreadGroup_remove);
+        Thread_dispatchUncaughtException = Thread.lookupDeclaredMethod(Name.dispatchUncaughtException, Signature._void_Throwable);
         Thread_exit = Thread.lookupDeclaredMethod(Name.exit, Signature._void);
         Thread_run = Thread.lookupDeclaredMethod(Name.run, Signature._void);
 
@@ -363,6 +366,7 @@ public final class Meta implements ContextAccess {
     public final Method Shutdown_shutdown;
     public final ObjectKlass Shutdown;
 
+    public final ObjectKlass Exception;
     public final ObjectKlass InvocationTargetException;
     public final ObjectKlass NegativeArraySizeException;
     public final ObjectKlass IllegalArgumentException;
@@ -374,6 +378,7 @@ public final class Meta implements ContextAccess {
     public final ObjectKlass ClassCastException;
     public final ObjectKlass AbstractMethodError;
     public final ObjectKlass InternalError;
+    public final ObjectKlass VerifyError;
 
     public final ObjectKlass Throwable;
     public final Field HIDDEN_FRAMES;
@@ -399,6 +404,7 @@ public final class Meta implements ContextAccess {
 
     public final ObjectKlass ThreadGroup;
     public final Method ThreadGroup_remove;
+    public final Method Thread_dispatchUncaughtException;
     public final Field HIDDEN_HOST_THREAD;
     public final Field ThreadGroup_maxPriority;
     public final ObjectKlass Thread;

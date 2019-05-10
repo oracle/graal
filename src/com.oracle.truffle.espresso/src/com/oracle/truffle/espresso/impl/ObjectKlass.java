@@ -25,9 +25,11 @@ package com.oracle.truffle.espresso.impl;
 
 import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.CompilerDirectives.CompilationFinal;
+import com.oracle.truffle.espresso.classfile.CodeAttribute;
 import com.oracle.truffle.espresso.classfile.ConstantValueAttribute;
 import com.oracle.truffle.espresso.classfile.EnclosingMethodAttribute;
 import com.oracle.truffle.espresso.classfile.InnerClassesAttribute;
+import com.oracle.truffle.espresso.classfile.MethodVerifier;
 import com.oracle.truffle.espresso.classfile.RuntimeConstantPool;
 import com.oracle.truffle.espresso.descriptors.Symbol;
 import com.oracle.truffle.espresso.descriptors.Symbol.Name;
@@ -47,6 +49,7 @@ import java.util.List;
  */
 public final class ObjectKlass extends Klass {
 
+    public static final boolean VERIFY = true;
     public static final ObjectKlass[] EMPTY_ARRAY = new ObjectKlass[0];
 
     private final EnclosingMethodAttribute enclosingMethod;
@@ -130,7 +133,8 @@ public final class ObjectKlass extends Klass {
         LinkedMethod[] linkedMethods = linkedKlass.getLinkedMethods();
         Method[] methods = new Method[linkedMethods.length];
         for (int i = 0; i < methods.length; ++i) {
-            methods[i] = new Method(this, linkedMethods[i]);
+            LinkedMethod linkedMethod = linkedMethods[i];
+            methods[i] = new Method(this, linkedMethod);
         }
 
         this.declaredMethods = methods;
@@ -191,6 +195,19 @@ public final class ObjectKlass extends Klass {
             initState = PREPARED;
             if (getSuperKlass() != null) {
                 getSuperKlass().initialize();
+            }
+            if (VERIFY) {
+                for (Method m : declaredMethods) {
+                    CodeAttribute code = m.hasCode() ? m.getCodeAttribute() : null;
+                    try {
+                        MethodVerifier.verify(code, getConstantPool());
+                    } catch (Throwable e) {
+                        if (!(e.getClass() == VerifyError.class || e.getClass() == ClassFormatError.class)) {
+                            e.printStackTrace();
+                        }
+                        throw e;
+                    }
+                }
             }
 
             /**
@@ -271,16 +288,16 @@ public final class ObjectKlass extends Klass {
     // Need to carefully synchronize, as the work of other threads can erase our own work.
     @Override
     public void initialize() {
-        if (isPrepared()) {
-            CompilerDirectives.transferToInterpreterAndInvalidate();
-            // For some reason, doing the reentrant lock this way sometimes solves the memory issue
-            // in DaCapo lusearch...
-            // I have no explanation...
-            if (!Thread.holdsLock(this)) {
-                synchronized (this) {
-                }
-            }
-        }
+        // if (isPrepared()) {
+        // CompilerDirectives.transferToInterpreterAndInvalidate();
+        // // For some reason, doing the reentrant lock this way sometimes solves the memory issue
+        // // in DaCapo lusearch...
+        // // I have no explanation...
+        // if (!Thread.holdsLock(this)) {
+        // synchronized (this) {
+        // }
+        // }
+        // }
         if (!isInitialized()) { // Skip synchronization and locks if already init.
             CompilerDirectives.transferToInterpreterAndInvalidate();
             actualInit();

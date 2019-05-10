@@ -188,7 +188,7 @@ public abstract class Klass implements ModifiersProvider, ContextAccess {
     }
 
     public final StaticObject tryInitializeAndGetStatics() {
-        initialize();
+        safeInitialize();
         return getStatics();
     }
 
@@ -347,7 +347,14 @@ public abstract class Klass implements ModifiersProvider, ContextAccess {
         try {
             initialize();
         } catch (EspressoException e) {
-            throw getMeta().throwExWithCause(ExceptionInInitializerError.class, e.getException());
+            StaticObject cause = e.getException();
+            if (getMeta().Exception.isAssignableFrom(cause.getKlass())) {
+                throw getMeta().throwExWithCause(ExceptionInInitializerError.class, cause);
+            } else {
+                throw e;
+            }
+        } catch (VerifyError | ClassFormatError e) {
+            throw getMeta().throwExWithMessage(e.getClass(), e.getMessage());
         }
     }
 

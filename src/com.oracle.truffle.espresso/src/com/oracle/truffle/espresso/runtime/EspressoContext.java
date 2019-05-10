@@ -270,7 +270,7 @@ public final class EspressoContext {
 
     private void initializeKnownClass(Symbol<Type> type) {
         Klass klass = getRegistries().loadKlassWithBootClassLoader(type);
-        klass.initialize();
+        klass.safeInitialize();
     }
 
     public boolean isInitialized() {

@@ -76,6 +76,7 @@ public class IntrinsicReflectionRootNode extends EspressoBaseNode {
                 outer.printStackTrace();
                 throw outer;
             }
+            inner.printStackTrace();
             throw EspressoError.shouldNotReachHere(inner + "\n\t in reflected method: " + reflectMethod);
         } catch (Throwable e) {
             // Non-espresso exceptions cannot escape to the guest.

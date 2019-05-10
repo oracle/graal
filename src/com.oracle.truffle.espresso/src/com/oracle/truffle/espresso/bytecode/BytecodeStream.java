@@ -200,9 +200,8 @@ public final class BytecodeStream {
 
     public int opcode(int curBCI) {
         if (curBCI < code.length) {
-            int opcode = Bytes.beU1(code, curBCI);
-            assert opcode <= Bytecodes.QUICK : "illegal bytecode";
-            return opcode;
+            // assert opcode <= Bytecodes.QUICK : "illegal bytecode";
+            return Bytes.beU1(code, curBCI);
         } else {
             return Bytecodes.END;
         }
@@ -216,7 +215,7 @@ public final class BytecodeStream {
         if (length == 0) {
             switch (opcode(curBCI)) {
                 case Bytecodes.TABLESWITCH: {
-                    return getBytecodeLookupSwitch().size(curBCI);
+                    return getBytecodeTableSwitch().size(curBCI);
                 }
                 case Bytecodes.LOOKUPSWITCH: {
                     return getBytecodeLookupSwitch().size(curBCI);

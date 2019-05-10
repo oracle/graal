@@ -166,6 +166,7 @@ public final class Symbol<T> extends ByteSequence {
         public static final Symbol<Name> threadStatus = StaticSymbols.putName("threadStatus");
         public static final Symbol<Name> checkAccess = StaticSymbols.putName("checkAccess");
         public static final Symbol<Name> remove = StaticSymbols.putName("remove");
+        public static final Symbol<Name> dispatchUncaughtException = StaticSymbols.putName("dispatchUncaughtException");
         public static final Symbol<Name> toThreadState = StaticSymbols.putName("toThreadState");
         public static final Symbol<Name> form = StaticSymbols.putName("form");
         public static final Symbol<Name> vmentry = StaticSymbols.putName("vmentry");
@@ -330,6 +331,7 @@ public final class Symbol<T> extends ByteSequence {
         public static final Symbol<Type> IncompatibleClassChangeError = StaticSymbols.putType(IncompatibleClassChangeError.class);
         public static final Symbol<Type> AbstractMethodError = StaticSymbols.putType(AbstractMethodError.class);
         public static final Symbol<Type> InternalError = StaticSymbols.putType(InternalError.class);
+        public static final Symbol<Type> VerifyError = StaticSymbols.putType(VerifyError.class);
 
         public static final Symbol<Type> MethodType = StaticSymbols.putType(java.lang.invoke.MethodType.class);
 

@@ -633,8 +633,6 @@ public final class Target_sun_misc_Unsafe {
         holder.setByteField(f, value);
     }
 
-
-
     @Substitution(methodName = "shouldBeInitialized", hasReceiver = true)
     public static boolean shouldBeInit(@SuppressWarnings("unused") @Host(Unsafe.class) StaticObject self, @Host(Class.class) StaticObject clazz) {
         Klass k = clazz.getMirrorKlass();
@@ -937,7 +935,7 @@ public final class Target_sun_misc_Unsafe {
     @Substitution(hasReceiver = true)
     public static Object staticFieldBase(@SuppressWarnings("unused") @Host(Unsafe.class) StaticObject self, @Host(java.lang.reflect.Field.class) StaticObject field) {
         Field target = Field.getReflectiveFieldRoot(field);
-        return target.getDeclaringKlass().tryInitializeAndGetStatics();
+        return target.getDeclaringKlass().getStatics();
     }
 
     @SuppressWarnings("deprecation")

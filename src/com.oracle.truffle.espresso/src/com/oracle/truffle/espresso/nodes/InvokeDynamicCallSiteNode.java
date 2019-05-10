@@ -33,8 +33,7 @@ import com.oracle.truffle.espresso.meta.JavaKind;
 import com.oracle.truffle.espresso.meta.Meta;
 import com.oracle.truffle.espresso.runtime.StaticObject;
 
-// Non-constant call site. His target can change, but hopefully, the signature never changes.
-public final class InvokeDynamicCallSiteNode extends QuickNode {
+final class InvokeDynamicCallSiteNode extends QuickNode {
 
     private final StaticObject appendix;
     private final boolean hasAppendix;
@@ -51,7 +50,7 @@ public final class InvokeDynamicCallSiteNode extends QuickNode {
         this.returnType = Signatures.returnType(parsedSignature);
         this.returnKind = Signatures.returnKind(parsedSignature);
         this.hasAppendix = appendix != StaticObject.NULL;
-        target.getDeclaringKlass().initialize();
+        // target.getDeclaringKlass().safeInitialize();
         this.callNode = DirectCallNode.create(target.getCallTarget());
 
     }

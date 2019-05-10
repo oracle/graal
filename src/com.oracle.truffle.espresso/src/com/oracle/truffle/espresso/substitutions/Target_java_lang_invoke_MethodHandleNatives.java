@@ -190,7 +190,7 @@ public final class Target_java_lang_invoke_MethodHandleNatives {
 
     @Substitution
     public static @Host(Object.class) StaticObject staticFieldBase(@Host(typeName = "Ljava/lang/invoke/MemberName;") StaticObject self) {
-        return ((StaticObject) self.getField(self.getKlass().getMeta().MNclazz)).getMirrorKlass().tryInitializeAndGetStatics();
+        return ((StaticObject) self.getField(self.getKlass().getMeta().MNclazz)).getMirrorKlass().getStatics();
     }
 
     @Substitution
