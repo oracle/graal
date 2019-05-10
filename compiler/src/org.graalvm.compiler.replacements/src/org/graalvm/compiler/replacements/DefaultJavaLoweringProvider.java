@@ -166,7 +166,7 @@ public abstract class DefaultJavaLoweringProvider implements LoweringProvider {
     protected final TargetDescription target;
     private final boolean useCompressedOops;
     private final ResolvedJavaType objectArrayType;
-    private final WordTypes wordTypes;
+    protected final WordTypes wordTypes;
 
     private BoxingSnippets.Templates boxingSnippets;
     private ConstantStringIndexOfSnippets.Templates indexOfSnippets;
@@ -943,8 +943,7 @@ public abstract class DefaultJavaLoweringProvider implements LoweringProvider {
     }
 
     protected BarrierType fieldStoreBarrierType(ResolvedJavaField field) {
-        JavaKind fieldKind = wordTypes.asKind(field.getType());
-        if (fieldKind == JavaKind.Object) {
+        if (getStorageKind(field) == JavaKind.Object) {
             return BarrierType.FIELD;
         }
         return BarrierType.NONE;
@@ -980,7 +979,7 @@ public abstract class DefaultJavaLoweringProvider implements LoweringProvider {
     }
 
     public BarrierType fieldInitializationBarrier(ResolvedJavaField field) {
-        JavaKind fieldKind = wordTypes.asKind(field.getType());
+        JavaKind fieldKind = getStorageKind(field);
         return fieldKind == JavaKind.Object ? BarrierType.FIELD : BarrierType.NONE;
     }
 
