@@ -33,9 +33,9 @@
 
 #include "unsupported.h"
 // deleted create, join, exit, self
-// mutex_init, mutex_lock, mutex_trylock, mutex_unlock
+// mutex_init, mutex_lock, mutex_trylock, mutex_unlock, mutex_destroy
 // mutexattr_init, mutexattr_settype
-// cond_init, cond_broadcast, cond_signal, cond_timedwait, cond_wait
+// cond_init, cond_broadcast, cond_signal, cond_timedwait, cond_wait, cond_destroy
 int pthread_attr_destroy(pthread_attr_t *attr) {
   ERR_UNSUPPORTED(pthread_attr_destroy);
 }
@@ -95,9 +95,6 @@ int pthread_cancel(pthread_t thread) {
 }
 // void  pthread_cleanup_push(void*, void *);
 // void  pthread_cleanup_pop(int);
-int pthread_cond_destroy(pthread_cond_t *cond) {
-  ERR_UNSUPPORTED(pthread_cond_destroy);
-}
 int pthread_condattr_destroy(pthread_condattr_t *attr) {
   ERR_UNSUPPORTED(pthread_condattr_destroy);
 }
@@ -133,9 +130,6 @@ int pthread_key_create(pthread_key_t *key, void (*destructor)(void *)) {
 }
 int pthread_key_delete(pthread_key_t key) {
   ERR_UNSUPPORTED(pthread_key_delete);
-}
-int pthread_mutex_destroy(pthread_mutex_t *mutex) {
-  ERR_UNSUPPORTED(pthread_mutex_destroy);
 }
 int pthread_mutex_getprioceiling(const pthread_mutex_t *restrict mutex, int *restrict prioceiling) {
   ERR_UNSUPPORTED(pthread_mutex_getprioceiling);

@@ -3,8 +3,7 @@ package com.oracle.truffle.llvm.nodes.intrinsics.multithreading;
 import java.io.FileWriter;
 import java.io.IOException;
 import java.io.PrintWriter;
-import java.util.concurrent.ConcurrentLinkedQueue;
-import java.util.concurrent.atomic.AtomicInteger;
+import java.util.concurrent.TimeUnit;
 import java.util.concurrent.locks.Condition;
 import java.util.concurrent.locks.ReentrantLock;
 
@@ -188,7 +187,7 @@ public class LLVMPThreadIntrinsics {
                 // store return value at ptr
                 // TODO: checkstyle says cast to managed or native pointer
                 LLVMPointer thReturnPtr = (LLVMPointer) threadReturn;
-                if (!thReturnPtr.isNull()) {
+                if (!thReturnPtr.isNull() && retVal != null) {
                     storeNode.executeWithTarget(threadReturn, retVal);
                 }
             } catch (Exception e) {
@@ -212,19 +211,11 @@ public class LLVMPThreadIntrinsics {
             RECURSIVE
         }
 
-        private final AtomicInteger lockCount;
-        private final ConcurrentLinkedQueue<Thread> waitingThreads;
         private final ReentrantLock internLock;
-        private Thread curOwner;
         private final Type type;
 
-        public Mutex(int initVal, Type type) {
-            this.lockCount = new AtomicInteger(initVal);
-            this.waitingThreads = new ConcurrentLinkedQueue<>();
+        public Mutex(Type type) {
             this.internLock = new ReentrantLock();
-            if (initVal != 0) {
-                this.curOwner = Thread.currentThread();
-            }
             if (type != null) {
                 this.type = type;
             } else {
@@ -238,93 +229,37 @@ public class LLVMPThreadIntrinsics {
 
         // change to int for error codes
         public boolean lock() {
-            if (this.curOwner == Thread.currentThread()) {
+            if (this.internLock.isHeldByCurrentThread()) {
+                if (this.type == Type.DEFAULT_NORMAL) {
+                    // deadlock according to spec
+                    // does this make sense?
+                    while (true) {
+                        try {
+                            Thread.sleep(Long.MAX_VALUE);
+                        } catch (InterruptedException e) {
+                            // should be possible to interrupt and stop the thread anyway
+                            break;
+                        }
+                    }
+                }
                 if (this.type == Type.ERRORCHECK) {
                     return false;
                 }
-                if (this.type == Type.RECURSIVE) {
-                    this.lockCount.incrementAndGet();
-                    return true;
-                }
-                // default_normal relock leads to deadlock
             }
-            while (true) {
-                // it should not be possible for compareAndSet to fail
-                // but then in this moment the current locking thread frees / unlocks
-                // and notifys the next thread
-                // before this thread is in the queue
-                // because that would lead to a deadlock
-                // so we have this internLock here and in the unlock method
-                // so this internLock prevents:
-                // THREAD A: compareAndSet(0, 1) fails
-                // THREAD B: set(0)
-                // THREAD B: notifyNextThread()
-                // THREAD A: waitingThreads.offer()
-                internLock.lock();
-                if (this.lockCount.compareAndSet(0, 1)) {
-                    this.curOwner = Thread.currentThread();
-                    internLock.unlock();
-                    return true;
-                }
-                this.waitingThreads.offer(Thread.currentThread());
-                internLock.unlock();
-                // we want wo to wait until we get chosen as next thread to internLock / own the mutex
-                // and get interrupted by an unlock call here
-                try {
-                    while (true) {
-                        Thread.sleep(Long.MAX_VALUE);
-                    }
-                } catch (InterruptedException e) {
-                }
-            }
+            internLock.lock();
+            return true;
         }
 
         public boolean tryLock() {
-            if (this.curOwner == Thread.currentThread()) {
-                if (this.type == Type.RECURSIVE) {
-                    this.lockCount.incrementAndGet();
-                    return true;
-                }
-                return false;
-            }
-            if (this.lockCount.compareAndSet(0, 1)) {
-                this.curOwner = Thread.currentThread();
-                return true;
-            }
-            return false;
+            return internLock.tryLock();
         }
 
         public boolean unlock() {
-            if (this.curOwner != Thread.currentThread()) {
+            if (!internLock.isHeldByCurrentThread()) {
                 return false;
             }
-            if (this.type == Type.DEFAULT_NORMAL || this.type == Type.ERRORCHECK) {
-                // this internLock prevents
-                // THREAD A: compareAndSet(0, 1) fails
-                // THREAD B: set(0)
-                // THREAD B: notifyNextThread()
-                // THREAD A: waitingThreads.offer()
-                internLock.lock();
-                this.lockCount.set(0);
-                this.curOwner = null;
-                this.notifyNextThread();
-                internLock.unlock();
-                return true;
-            } else if (this.type == Type.RECURSIVE) {
-                if (this.lockCount.decrementAndGet() == 0) {
-                    this.curOwner = null;
-                }
-                return true;
-            }
-            // should not be reached, because type is always set
-            return false;
-        }
-
-        private void notifyNextThread() {
-            Thread nextThread = this.waitingThreads.poll();
-            if (nextThread != null) {
-                nextThread.interrupt();
-            }
+            internLock.unlock();
+            return true;
         }
     }
 
@@ -364,6 +299,16 @@ public class LLVMPThreadIntrinsics {
     }
 
     @NodeChild(type = LLVMExpressionNode.class)
+    public abstract static class LLVMPThreadMutexDestroy extends LLVMBuiltin {
+        @Specialization
+        protected int doIntrinsic(VirtualFrame frame, Object mutex) {
+            long mutexAddress = ((LLVMNativePointer) mutex).asNative();
+            getContextReference().get().mutexStorage.remove(mutexAddress);
+            return 0;
+        }
+    }
+
+    @NodeChild(type = LLVMExpressionNode.class)
     @NodeChild(type = LLVMExpressionNode.class)
     public abstract static class LLVMPThreadMutexInit extends LLVMBuiltin {
         @Child
@@ -388,7 +333,7 @@ public class LLVMPThreadIntrinsics {
                 mutexType = Mutex.Type.ERRORCHECK;
             }
             if (mutObj == null) {
-                getContextReference().get().mutexStorage.put(mutexAddress, new Mutex(0, mutexType));
+                getContextReference().get().mutexStorage.put(mutexAddress, new Mutex(mutexType));
             }
             return 0;
         }
@@ -405,11 +350,11 @@ public class LLVMPThreadIntrinsics {
                 // but it works anyway on most implementations
                 // so we will make it work here too, just using default type
                 // set the internLock counter to 1
-                mutexObj = new Mutex(1, Mutex.Type.DEFAULT_NORMAL);
+                mutexObj = new Mutex(Mutex.Type.DEFAULT_NORMAL);
                 getContextReference().get().mutexStorage.put(mutexAddress, mutexObj);
-                return 0;
             }
-            return mutexObj.lock() ? 0 : 15; // internLock will be changed to int type
+            // TODO: error code handling
+            return mutexObj.lock() ? 0 : 15;
         }
     }
 
@@ -424,11 +369,11 @@ public class LLVMPThreadIntrinsics {
                 // but it works anyway on most implementations
                 // so we will make it work here too, just using default type
                 // set the internLock counter to 1
-                mutexObj = new Mutex(1, Mutex.Type.DEFAULT_NORMAL);
+                mutexObj = new Mutex(Mutex.Type.DEFAULT_NORMAL);
                 getContextReference().get().mutexStorage.put(mutexAddress, mutexObj);
-                return 0;
             }
-            return mutexObj.tryLock() ? 0 : 15; // internLock will be changed to int type
+            // TODO: error code stuff
+            return mutexObj.tryLock() ? 0 : 15;
         }
     }
 
@@ -436,9 +381,12 @@ public class LLVMPThreadIntrinsics {
     public abstract static class LLVMPThreadMutexUnlock extends LLVMBuiltin {
         @Specialization
         protected int doIntrinsic(VirtualFrame frame, Object mutex) {
-            // TODO: handle calls for not init mutexes
             long mutexAddress = ((LLVMNativePointer) mutex).asNative();
             Mutex mutexObj = (Mutex) getContextReference().get().mutexStorage.get(mutexAddress);
+            // TODO: error code stuff
+            if (mutexObj == null) {
+                return 5;
+            }
             return mutexObj.unlock() ? 0 : 15; // internLock will be changed to int type
         }
     }
@@ -448,40 +396,60 @@ public class LLVMPThreadIntrinsics {
             DEFAULT
         }
 
-        private final ConcurrentLinkedQueue<Thread> waitingThreads;
-        private final Condition condition;
-        private final ReentrantLock internLock;
+        private Condition condition;
         private final Type type;
 
         public Cond() {
-            this.waitingThreads = new ConcurrentLinkedQueue<>();
-            this.internLock = new ReentrantLock();
-            this.condition = internLock.newCondition();
             this.type = Type.DEFAULT;
         }
 
         public void broadcast() {
-            condition.signalAll();
-        }
-
-        public void signal() {
-            condition.signal();
-        }
-
-        public void cTimedwait(long nanos) {
-            try {
-                condition.awaitNanos(nanos);
-            } catch (InterruptedException e) {
+            if (condition != null) {
+                condition.signalAll();
             }
         }
 
-        public void cWait() {
+        public void signal() {
+            if (condition != null) {
+                condition.signal();
+            }
+        }
+
+        public boolean cTimedwait(Mutex mutex, long seconds) {
+            if (!mutex.internLock.isHeldByCurrentThread()) {
+                return false;
+            }
+            this.condition = mutex.internLock.newCondition();
+            try {
+                condition.await(seconds, TimeUnit.SECONDS);
+            } catch (InterruptedException e) {
+            }
+            return true;
+        }
+
+        public boolean cWait(Mutex mutex) {
+            if (!mutex.internLock.isHeldByCurrentThread()) {
+                return false;
+            }
+            this.condition = mutex.internLock.newCondition();
             try {
                 condition.await();
             } catch (InterruptedException e) {
             }
+            return true;
         }
     }
+
+    @NodeChild(type = LLVMExpressionNode.class)
+    public abstract static class LLVMPThreadCondDestroy extends LLVMBuiltin {
+        @Specialization
+        protected int doIntrinsic(VirtualFrame frame, Object mutex) {
+            long condAddress = ((LLVMNativePointer) mutex).asNative();
+            getContextReference().get().condStorage.remove(condAddress);
+            return 0;
+        }
+    }
+
 
     @NodeChild(type = LLVMExpressionNode.class)
     @NodeChild(type = LLVMExpressionNode.class)
@@ -532,17 +500,30 @@ public class LLVMPThreadIntrinsics {
     @NodeChild(type = LLVMExpressionNode.class)
     @NodeChild(type = LLVMExpressionNode.class)
     public abstract static class LLVMPThreadCondTimedwait extends LLVMBuiltin {
+        @Child LLVMLoadNode read;
+
         @Specialization
         protected int doIntrinsic(VirtualFrame frame, Object cond, Object mutex, Object abstime) {
+            if (read == null) {
+                CompilerDirectives.transferToInterpreterAndInvalidate();
+                read = getContextReference().get().getNodeFactory().createLoadNode(LLVMInteropType.ValueKind.I64);
+            }
+
             long condAddress = ((LLVMNativePointer) cond).asNative();
+            long mutexAddress = ((LLVMNativePointer) mutex).asNative();
+
             Cond condObj = (Cond) getContextReference().get().condStorage.get(condAddress);
+            Mutex mutexObj = (Mutex) getContextReference().get().mutexStorage.get(mutexAddress);
             if (condObj == null) {
                 // init and then wait
                 condObj = new Cond();
                 getContextReference().get().condStorage.put(condAddress, condObj);
             }
-            // TODO: handling of time
-            condObj.cTimedwait(100);
+            // TODO: handling of time (nanoseconds possible?)
+            // in sulong timespec only comes as long with the seconds as value
+            long absSeconds = (long) read.executeWithTarget(abstime);
+            long waitTime = absSeconds - System.currentTimeMillis() / 1000;
+            condObj.cTimedwait(mutexObj, waitTime);
             return 0;
         }
     }
@@ -553,13 +534,16 @@ public class LLVMPThreadIntrinsics {
         @Specialization
         protected int doIntrinsic(VirtualFrame frame, Object cond, Object mutex) {
             long condAddress = ((LLVMNativePointer) cond).asNative();
+            long mutexAddress = ((LLVMNativePointer) mutex).asNative();
+
             Cond condObj = (Cond) getContextReference().get().condStorage.get(condAddress);
+            Mutex mutexObj = (Mutex) getContextReference().get().mutexStorage.get(mutexAddress);
             if (condObj == null) {
                 // init and then wait
                 condObj = new Cond();
                 getContextReference().get().condStorage.put(condAddress, condObj);
             }
-            condObj.cWait();
+            condObj.cWait(mutexObj);
             return 0;
         }
     }
