@@ -35,6 +35,9 @@ import org.graalvm.compiler.debug.DebugHandlersFactory;
 import org.graalvm.compiler.graph.Node;
 import org.graalvm.compiler.nodes.extended.BranchProbabilityNode;
 import org.graalvm.compiler.nodes.extended.FixedValueAnchorNode;
+import org.graalvm.compiler.nodes.gc.SerialArrayRangeWriteBarrier;
+import org.graalvm.compiler.nodes.gc.SerialWriteBarrier;
+import org.graalvm.compiler.nodes.gc.WriteBarrier;
 import org.graalvm.compiler.nodes.memory.address.OffsetAddressNode;
 import org.graalvm.compiler.nodes.spi.LoweringTool;
 import org.graalvm.compiler.options.Option;
@@ -79,7 +82,10 @@ public class BarrierSnippets extends SubstrateTemplates implements Snippets {
 
     /** The entry point for registering lowerings. */
     public void registerLowerings(Map<Class<? extends Node>, NodeLoweringProvider<?>> lowerings) {
-        lowerings.put(PostWriteBarrierNode.class, new PostWriteBarrierLowering());
+        PostWriteBarrierLowering lowering = new PostWriteBarrierLowering();
+        lowerings.put(SerialWriteBarrier.class, lowering);
+        // write barriers are currently always imprecise
+        lowerings.put(SerialArrayRangeWriteBarrier.class, lowering);
     }
 
     /**
@@ -119,19 +125,11 @@ public class BarrierSnippets extends SubstrateTemplates implements Snippets {
         super(options, factories, providers, snippetReflection);
     }
 
-    /*
-     * *Not* a static class: references fields of the containing BarrierSnippet instance.
-     */
-    protected class PostWriteBarrierLowering implements NodeLoweringProvider<PostWriteBarrierNode> {
-
+    protected class PostWriteBarrierLowering implements NodeLoweringProvider<WriteBarrier> {
         private final SnippetInfo postWriteBarrierSnippetInfo = snippet(BarrierSnippets.class, "postWriteBarrierSnippet", CardTable.CARD_REMEMBERED_SET_LOCATION);
 
-        /**
-         * Turn a CardRememberedSetNodes.PostWriteBarrierNode into an instantiation of the body of
-         * CardRememberedSetSnippets.BarrierSnippets.postWriteBarrierSnippet, with operands.
-         */
         @Override
-        public void lower(PostWriteBarrierNode barrier, LoweringTool tool) {
+        public void lower(WriteBarrier barrier, LoweringTool tool) {
             Arguments args = new Arguments(postWriteBarrierSnippetInfo, barrier.graph().getGuardsStage(), tool.getLoweringStage());
             OffsetAddressNode address = (OffsetAddressNode) barrier.getAddress();
             args.add("object", address.getBase());

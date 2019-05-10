@@ -22,60 +22,49 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package org.graalvm.compiler.nodes.spi;
+package org.graalvm.compiler.hotspot.meta;
 
-import org.graalvm.compiler.core.common.spi.ConstantFieldProvider;
-import org.graalvm.compiler.core.common.spi.ForeignCallsProvider;
+import org.graalvm.compiler.graph.Node;
+import org.graalvm.compiler.hotspot.GraalHotSpotVMConfig;
+import org.graalvm.compiler.nodes.gc.BarrierSet;
+import org.graalvm.compiler.nodes.gc.CardTableBarrierSet;
+import org.graalvm.compiler.nodes.gc.G1BarrierSet;
+import org.graalvm.compiler.nodes.gc.G1PostWriteBarrier;
+import org.graalvm.compiler.nodes.gc.SerialWriteBarrier;
 import org.graalvm.compiler.nodes.spi.GCProvider;
 
-import jdk.vm.ci.meta.ConstantReflectionProvider;
-import jdk.vm.ci.meta.MetaAccessProvider;
+public class HotSpotGCProvider implements GCProvider {
+    private final GraalHotSpotVMConfig config;
 
-public class CoreProvidersDelegate implements CoreProviders {
-
-    private final CoreProviders providers;
-
-    protected CoreProvidersDelegate(CoreProviders providers) {
-        this.providers = providers;
+    public HotSpotGCProvider(GraalHotSpotVMConfig config) {
+        this.config = config;
     }
 
     @Override
-    public MetaAccessProvider getMetaAccess() {
-        return providers.getMetaAccess();
+    public BarrierSet createBarrierSet() {
+        if (config.useG1GC) {
+            return new G1BarrierSet(useDeferredInitBarriers());
+        } else {
+            return new CardTableBarrierSet(useDeferredInitBarriers());
+        }
     }
 
     @Override
-    public ConstantReflectionProvider getConstantReflection() {
-        return providers.getConstantReflection();
+    public boolean isPostBarrierNode(Node currentNode) {
+        if (config.useG1GC) {
+            return currentNode instanceof G1PostWriteBarrier;
+        } else {
+            return currentNode instanceof SerialWriteBarrier;
+        }
     }
 
     @Override
-    public ConstantFieldProvider getConstantFieldProvider() {
-        return providers.getConstantFieldProvider();
+    public boolean hasPreBarrier() {
+        return config.useG1GC;
     }
 
     @Override
-    public LoweringProvider getLowerer() {
-        return providers.getLowerer();
-    }
-
-    @Override
-    public Replacements getReplacements() {
-        return providers.getReplacements();
-    }
-
-    @Override
-    public StampProvider getStampProvider() {
-        return providers.getStampProvider();
-    }
-
-    @Override
-    public ForeignCallsProvider getForeignCalls() {
-        return providers.getForeignCalls();
-    }
-
-    @Override
-    public GCProvider getGC() {
-        return providers.getGC();
+    public boolean useDeferredInitBarriers() {
+        return config.useDeferredInitBarriers;
     }
 }

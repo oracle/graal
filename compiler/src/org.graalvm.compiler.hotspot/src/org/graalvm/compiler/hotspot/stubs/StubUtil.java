@@ -39,7 +39,7 @@ import org.graalvm.compiler.graph.Node.NodeIntrinsic;
 import org.graalvm.compiler.hotspot.GraalHotSpotVMConfig;
 import org.graalvm.compiler.hotspot.nodes.StubForeignCallNode;
 import org.graalvm.compiler.hotspot.nodes.VMErrorNode;
-import org.graalvm.compiler.replacements.Log;
+import org.graalvm.compiler.hotspot.replacements.Log;
 import org.graalvm.compiler.word.Word;
 import org.graalvm.word.WordFactory;
 

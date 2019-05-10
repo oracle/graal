@@ -22,33 +22,25 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package org.graalvm.compiler.hotspot.phases;
+package org.graalvm.compiler.phases.common;
 
 import org.graalvm.compiler.debug.DebugCloseable;
 import org.graalvm.compiler.graph.Node;
-import org.graalvm.compiler.hotspot.GraalHotSpotVMConfig;
-import org.graalvm.compiler.hotspot.gc.g1.G1BarrierSet;
-import org.graalvm.compiler.hotspot.gc.shared.BarrierSet;
-import org.graalvm.compiler.hotspot.gc.shared.CardTableBarrierSet;
 import org.graalvm.compiler.nodes.StructuredGraph;
 import org.graalvm.compiler.nodes.extended.ArrayRangeWrite;
+import org.graalvm.compiler.nodes.gc.BarrierSet;
 import org.graalvm.compiler.nodes.java.AbstractCompareAndSwapNode;
 import org.graalvm.compiler.nodes.java.LoweredAtomicReadAndWriteNode;
 import org.graalvm.compiler.nodes.memory.ReadNode;
 import org.graalvm.compiler.nodes.memory.WriteNode;
-import org.graalvm.compiler.phases.Phase;
+import org.graalvm.compiler.phases.BasePhase;
+import org.graalvm.compiler.phases.tiers.MidTierContext;
 
-public class WriteBarrierAdditionPhase extends Phase {
-
-    private BarrierSet barrierSet;
-
-    public WriteBarrierAdditionPhase(GraalHotSpotVMConfig config) {
-        this.barrierSet = createBarrierSet(config);
-    }
-
+public class WriteBarrierAdditionPhase extends BasePhase<MidTierContext> {
     @SuppressWarnings("try")
     @Override
-    protected void run(StructuredGraph graph) {
+    protected void run(StructuredGraph graph, MidTierContext context) {
+        BarrierSet barrierSet = context.getGC().createBarrierSet();
         for (Node n : graph.getNodes()) {
             try (DebugCloseable scope = n.graph().withNodeSourcePosition(n)) {
                 if (n instanceof ReadNode) {
@@ -73,21 +65,5 @@ public class WriteBarrierAdditionPhase extends Phase {
     @Override
     public boolean checkContract() {
         return false;
-    }
-
-    private BarrierSet createBarrierSet(GraalHotSpotVMConfig config) {
-        if (config.useG1GC) {
-            return createG1BarrierSet(config);
-        } else {
-            return createCardTableBarrierSet(config);
-        }
-    }
-
-    protected BarrierSet createCardTableBarrierSet(GraalHotSpotVMConfig config) {
-        return new CardTableBarrierSet(config);
-    }
-
-    protected BarrierSet createG1BarrierSet(GraalHotSpotVMConfig config) {
-        return new G1BarrierSet(config);
     }
 }

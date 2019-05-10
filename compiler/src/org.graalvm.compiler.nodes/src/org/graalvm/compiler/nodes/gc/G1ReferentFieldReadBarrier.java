@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2014, 2017, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2013, 2019, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -22,25 +22,38 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.svm.core.genscavenge.graal;
+package org.graalvm.compiler.nodes.gc;
 
-import static org.graalvm.compiler.nodeinfo.NodeCycles.CYCLES_2;
-import static org.graalvm.compiler.nodeinfo.NodeSize.SIZE_2;
+import static org.graalvm.compiler.nodeinfo.NodeCycles.CYCLES_64;
+import static org.graalvm.compiler.nodeinfo.NodeSize.SIZE_64;
 
 import org.graalvm.compiler.graph.NodeClass;
 import org.graalvm.compiler.nodeinfo.NodeInfo;
+import org.graalvm.compiler.nodes.ValueNode;
 import org.graalvm.compiler.nodes.memory.address.AddressNode;
 
 /**
- * A barrier for after writes of oops.
- *
- * TODO: All the semantics seem to be in the post-write-barrier snippet.
+ * The {@code G1ReferentFieldReadBarrier} is added when a read access is performed to the referent
+ * field of a {@link java.lang.ref.Reference} object (through a {@code LoadFieldNode} or an
+ * {@code UnsafeLoadNode}). The return value of the read is passed to the snippet implementing the
+ * read barrier and consequently is added to the SATB queue if the concurrent marker is enabled.
  */
-@NodeInfo(cycles = CYCLES_2, size = SIZE_2)
-public final class PostWriteBarrierNode extends WriteBarrierNode {
-    public static final NodeClass<PostWriteBarrierNode> TYPE = NodeClass.create(PostWriteBarrierNode.class);
+@NodeInfo(cycles = CYCLES_64, size = SIZE_64)
+public final class G1ReferentFieldReadBarrier extends ObjectWriteBarrier {
+    public static final NodeClass<G1ReferentFieldReadBarrier> TYPE = NodeClass.create(G1ReferentFieldReadBarrier.class);
 
-    protected PostWriteBarrierNode(AddressNode address) {
-        super(TYPE, address);
+    private final boolean doLoad;
+
+    public G1ReferentFieldReadBarrier(AddressNode address, ValueNode expectedObject, boolean doLoad) {
+        super(TYPE, address, expectedObject, true);
+        this.doLoad = doLoad;
+    }
+
+    public ValueNode getExpectedObject() {
+        return getValue();
+    }
+
+    public boolean doLoad() {
+        return doLoad;
     }
 }

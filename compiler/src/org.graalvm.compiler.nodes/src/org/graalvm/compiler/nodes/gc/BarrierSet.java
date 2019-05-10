@@ -23,9 +23,8 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package org.graalvm.compiler.hotspot.gc.shared;
+package org.graalvm.compiler.nodes.gc;
 
-import org.graalvm.compiler.hotspot.GraalHotSpotVMConfig;
 import org.graalvm.compiler.nodes.StructuredGraph;
 import org.graalvm.compiler.nodes.extended.ArrayRangeWrite;
 import org.graalvm.compiler.nodes.java.AbstractCompareAndSwapNode;
@@ -33,24 +32,14 @@ import org.graalvm.compiler.nodes.java.LoweredAtomicReadAndWriteNode;
 import org.graalvm.compiler.nodes.memory.ReadNode;
 import org.graalvm.compiler.nodes.memory.WriteNode;
 
-public abstract class BarrierSet {
-    private final GraalHotSpotVMConfig vmConfig;
+public interface BarrierSet {
+    void addReadNodeBarriers(ReadNode node, StructuredGraph graph);
 
-    protected BarrierSet(GraalHotSpotVMConfig vmConfig) {
-        this.vmConfig = vmConfig;
-    }
+    void addWriteNodeBarriers(WriteNode node, StructuredGraph graph);
 
-    public final GraalHotSpotVMConfig getVMConfig() {
-        return vmConfig;
-    }
+    void addAtomicReadWriteNodeBarriers(LoweredAtomicReadAndWriteNode node, StructuredGraph graph);
 
-    public abstract void addReadNodeBarriers(ReadNode node, StructuredGraph graph);
+    void addCASBarriers(AbstractCompareAndSwapNode node, StructuredGraph graph);
 
-    public abstract void addWriteNodeBarriers(WriteNode node, StructuredGraph graph);
-
-    public abstract void addAtomicReadWriteNodeBarriers(LoweredAtomicReadAndWriteNode node, StructuredGraph graph);
-
-    public abstract void addCASBarriers(AbstractCompareAndSwapNode node, StructuredGraph graph);
-
-    public abstract void addArrayRangeBarriers(ArrayRangeWrite write, StructuredGraph graph);
+    void addArrayRangeBarriers(ArrayRangeWrite write, StructuredGraph graph);
 }

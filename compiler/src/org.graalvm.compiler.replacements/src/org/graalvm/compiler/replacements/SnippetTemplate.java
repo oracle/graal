@@ -633,6 +633,10 @@ public class SnippetTemplate {
             }
         }
 
+        public Providers getProviders() {
+            return providers;
+        }
+
         public static Method findMethod(Class<? extends Snippets> declaringClass, String methodName, Method except) {
             for (Method m : declaringClass.getDeclaredMethods()) {
                 if (m.getName().equals(methodName) && !m.equals(except)) {
@@ -698,7 +702,7 @@ public class SnippetTemplate {
          * Gets a template for a given key, creating it first if necessary.
          */
         @SuppressWarnings("try")
-        protected SnippetTemplate template(ValueNode replacee, final Arguments args) {
+        public SnippetTemplate template(ValueNode replacee, final Arguments args) {
             StructuredGraph graph = replacee.graph();
             DebugContext outer = graph.getDebug();
             SnippetTemplate template = Options.UseSnippetTemplateCache.getValue(options) && args.cacheable ? templates.get(args.cacheKey) : null;

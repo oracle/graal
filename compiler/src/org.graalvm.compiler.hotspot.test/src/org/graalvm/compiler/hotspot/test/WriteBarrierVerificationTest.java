@@ -32,14 +32,6 @@ import org.graalvm.compiler.debug.DebugContext;
 import org.graalvm.compiler.debug.DebugContext.Scope;
 import org.graalvm.compiler.debug.DebugDumpScope;
 import org.graalvm.compiler.hotspot.GraalHotSpotVMConfig;
-import org.graalvm.compiler.hotspot.gc.g1.G1ArrayRangePostWriteBarrier;
-import org.graalvm.compiler.hotspot.gc.g1.G1ArrayRangePreWriteBarrier;
-import org.graalvm.compiler.hotspot.gc.g1.G1PostWriteBarrier;
-import org.graalvm.compiler.hotspot.gc.g1.G1PreWriteBarrier;
-import org.graalvm.compiler.hotspot.gc.shared.SerialArrayRangeWriteBarrier;
-import org.graalvm.compiler.hotspot.gc.shared.SerialWriteBarrier;
-import org.graalvm.compiler.hotspot.phases.WriteBarrierAdditionPhase;
-import org.graalvm.compiler.hotspot.phases.WriteBarrierVerificationPhase;
 import org.graalvm.compiler.nodes.AbstractBeginNode;
 import org.graalvm.compiler.nodes.AbstractMergeNode;
 import org.graalvm.compiler.nodes.FieldLocationIdentity;
@@ -49,6 +41,12 @@ import org.graalvm.compiler.nodes.LoopBeginNode;
 import org.graalvm.compiler.nodes.LoopExitNode;
 import org.graalvm.compiler.nodes.StructuredGraph;
 import org.graalvm.compiler.nodes.StructuredGraph.AllowAssumptions;
+import org.graalvm.compiler.nodes.gc.G1ArrayRangePostWriteBarrier;
+import org.graalvm.compiler.nodes.gc.G1ArrayRangePreWriteBarrier;
+import org.graalvm.compiler.nodes.gc.G1PostWriteBarrier;
+import org.graalvm.compiler.nodes.gc.G1PreWriteBarrier;
+import org.graalvm.compiler.nodes.gc.SerialArrayRangeWriteBarrier;
+import org.graalvm.compiler.nodes.gc.SerialWriteBarrier;
 import org.graalvm.compiler.nodes.memory.WriteNode;
 import org.graalvm.compiler.nodes.spi.LoweringTool;
 import org.graalvm.compiler.phases.OptimisticOptimizations;
@@ -56,6 +54,8 @@ import org.graalvm.compiler.phases.common.CanonicalizerPhase;
 import org.graalvm.compiler.phases.common.GuardLoweringPhase;
 import org.graalvm.compiler.phases.common.LoopSafepointInsertionPhase;
 import org.graalvm.compiler.phases.common.LoweringPhase;
+import org.graalvm.compiler.phases.common.WriteBarrierAdditionPhase;
+import org.graalvm.compiler.phases.common.WriteBarrierVerificationPhase;
 import org.graalvm.compiler.phases.graph.ReentrantNodeIterator;
 import org.graalvm.compiler.phases.graph.ReentrantNodeIterator.NodeIteratorClosure;
 import org.graalvm.compiler.phases.tiers.HighTierContext;
@@ -653,7 +653,7 @@ public class WriteBarrierVerificationTest extends HotSpotGraalCompilerTest {
             new LoopSafepointInsertionPhase().apply(graph);
             new LoweringPhase(new CanonicalizerPhase(), LoweringTool.StandardLoweringStage.MID_TIER).apply(graph, highTierContext);
 
-            new WriteBarrierAdditionPhase(config).apply(graph);
+            new WriteBarrierAdditionPhase().apply(graph, midTierContext);
 
             int barriers = 0;
             // First, the total number of expected barriers is checked.
@@ -721,7 +721,7 @@ public class WriteBarrierVerificationTest extends HotSpotGraalCompilerTest {
 
             try (Scope disabled = debug.disable()) {
                 ReentrantNodeIterator.apply(closure, graph.start(), false);
-                new WriteBarrierVerificationPhase(config).apply(graph);
+                new WriteBarrierVerificationPhase().apply(graph, midTierContext);
             } catch (AssertionError error) {
                 /*
                  * Catch assertion, test for expected one and re-throw in order to validate unit

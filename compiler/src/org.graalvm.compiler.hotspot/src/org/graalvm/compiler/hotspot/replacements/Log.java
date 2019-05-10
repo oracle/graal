@@ -22,7 +22,7 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package org.graalvm.compiler.replacements;
+package org.graalvm.compiler.hotspot.replacements;
 
 import static org.graalvm.compiler.replacements.nodes.CStringConstant.cstring;
 

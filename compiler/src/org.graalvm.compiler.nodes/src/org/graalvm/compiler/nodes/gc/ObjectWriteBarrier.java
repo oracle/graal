@@ -22,27 +22,31 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package org.graalvm.compiler.hotspot.nodes;
+package org.graalvm.compiler.nodes.gc;
 
-import org.graalvm.compiler.core.common.type.StampFactory;
 import org.graalvm.compiler.graph.NodeClass;
 import org.graalvm.compiler.nodeinfo.NodeInfo;
-import org.graalvm.compiler.nodes.FixedWithNextNode;
-import org.graalvm.compiler.nodes.spi.Lowerable;
-import org.graalvm.compiler.nodes.spi.LoweringTool;
+import org.graalvm.compiler.nodes.ValueNode;
+import org.graalvm.compiler.nodes.memory.address.AddressNode;
 
 @NodeInfo
-public abstract class WriteBarrier extends FixedWithNextNode implements Lowerable {
+public abstract class ObjectWriteBarrier extends WriteBarrier {
 
-    public static final NodeClass<WriteBarrier> TYPE = NodeClass.create(WriteBarrier.class);
+    public static final NodeClass<ObjectWriteBarrier> TYPE = NodeClass.create(ObjectWriteBarrier.class);
+    @OptionalInput protected ValueNode value;
+    protected final boolean precise;
 
-    protected WriteBarrier(NodeClass<? extends WriteBarrier> c) {
-        super(c, StampFactory.forVoid());
+    protected ObjectWriteBarrier(NodeClass<? extends ObjectWriteBarrier> c, AddressNode address, ValueNode value, boolean precise) {
+        super(c, address);
+        this.value = value;
+        this.precise = precise;
     }
 
-    @Override
-    public void lower(LoweringTool tool) {
-        assert graph().getGuardsStage().areFrameStatesAtDeopts();
-        tool.getLowerer().lower(this, tool);
+    public ValueNode getValue() {
+        return value;
+    }
+
+    public boolean usePrecise() {
+        return precise;
     }
 }

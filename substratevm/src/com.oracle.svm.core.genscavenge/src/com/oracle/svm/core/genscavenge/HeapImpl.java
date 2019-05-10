@@ -38,6 +38,11 @@ import javax.management.NotificationListener;
 import javax.management.ObjectName;
 
 import org.graalvm.compiler.api.replacements.Fold;
+import org.graalvm.compiler.graph.Node;
+import org.graalvm.compiler.nodes.gc.BarrierSet;
+import org.graalvm.compiler.nodes.gc.CardTableBarrierSet;
+import org.graalvm.compiler.nodes.gc.SerialWriteBarrier;
+import org.graalvm.compiler.nodes.spi.GCProvider;
 import org.graalvm.compiler.word.Word;
 import org.graalvm.nativeimage.IsolateThread;
 import org.graalvm.nativeimage.Platform;
@@ -99,6 +104,7 @@ public class HeapImpl extends Heap {
     final HeapChunkProvider chunkProvider;
 
     /** A singleton instance, created during image generation. */
+    private final GenScavengeGCProvider gcProvider;
     private final MemoryMXBean memoryMXBean;
 
     /** A list of all the classes, if someone asks for it. */
@@ -124,6 +130,7 @@ public class HeapImpl extends Heap {
         chunkProvider = new HeapChunkProvider();
         this.pinnedAllocatorListHead = null;
         this.objectVisitorWalkerOperation = new ObjectVisitorWalkerOperation();
+        this.gcProvider = new GenScavengeGCProvider();
         this.memoryMXBean = new HeapImplMemoryMXBean();
         this.classList = null;
         SubstrateUtil.DiagnosticThunkRegister.getSingleton().register(() -> {
@@ -706,6 +713,33 @@ public class HeapImpl extends Heap {
          * it does not include memory in the chunk free list, or memory in the image heap.
          */
         return HeapPolicy.getMaximumHeapSize();
+    }
+
+    @Override
+    public GCProvider getGCProvider() {
+        return gcProvider;
+    }
+
+    private static class GenScavengeGCProvider implements GCProvider {
+        @Override
+        public BarrierSet createBarrierSet() {
+            return new CardTableBarrierSet(useDeferredInitBarriers());
+        }
+
+        @Override
+        public boolean isPostBarrierNode(Node node) {
+            return node instanceof SerialWriteBarrier;
+        }
+
+        @Override
+        public boolean hasPreBarrier() {
+            return false;
+        }
+
+        @Override
+        public boolean useDeferredInitBarriers() {
+            return true;
+        }
     }
 
     @Override

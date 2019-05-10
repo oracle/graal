@@ -23,11 +23,11 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package org.graalvm.compiler.hotspot.gc.g1;
+package org.graalvm.compiler.nodes.gc;
 
+import org.graalvm.compiler.core.common.type.AbstractObjectStamp;
 import org.graalvm.compiler.debug.GraalError;
-import org.graalvm.compiler.hotspot.GraalHotSpotVMConfig;
-import org.graalvm.compiler.hotspot.gc.shared.BarrierSet;
+import org.graalvm.compiler.nodes.NodeView;
 import org.graalvm.compiler.nodes.StructuredGraph;
 import org.graalvm.compiler.nodes.ValueNode;
 import org.graalvm.compiler.nodes.extended.ArrayRangeWrite;
@@ -40,18 +40,16 @@ import org.graalvm.compiler.nodes.memory.WriteNode;
 import org.graalvm.compiler.nodes.memory.address.AddressNode;
 import org.graalvm.compiler.nodes.type.StampTool;
 
-public class G1BarrierSet extends BarrierSet {
+public class CardTableBarrierSet implements BarrierSet {
+    private final boolean useDeferredInitBarriers;
 
-    public G1BarrierSet(GraalHotSpotVMConfig vmConfig) {
-        super(vmConfig);
+    public CardTableBarrierSet(boolean useDeferredInitBarriers) {
+        this.useDeferredInitBarriers = useDeferredInitBarriers;
     }
 
     @Override
     public void addReadNodeBarriers(ReadNode node, StructuredGraph graph) {
-        if (node.getBarrierType() == HeapAccess.BarrierType.WEAK_FIELD) {
-            G1ReferentFieldReadBarrier barrier = graph.add(new G1ReferentFieldReadBarrier(node.getAddress(), node, false));
-            graph.addAfterFixed(node, barrier);
-        }
+        // Nothing to do here.
     }
 
     @Override
@@ -64,15 +62,12 @@ public class G1BarrierSet extends BarrierSet {
             case FIELD:
             case ARRAY:
             case UNKNOWN:
-                boolean init = node.getLocationIdentity().isInit();
-                if (!init || !getVMConfig().useDeferredInitBarriers) {
-                    if (!init) {
-                        // The pre barrier does nothing if the value being read is null, so it can
-                        // be explicitly skipped when this is an initializing store.
-                        addG1PreWriteBarrier(node, node.getAddress(), null, true, node.getNullCheck(), graph);
-                    }
+                if (isObjectValue(node.value())) {
                     boolean precise = barrierType != HeapAccess.BarrierType.FIELD;
-                    addG1PostWriteBarrier(node, node.getAddress(), node.value(), precise, graph);
+                    boolean init = node.getLocationIdentity().isInit();
+                    if (!init || !useDeferredInitBarriers) {
+                        addSerialPostWriteBarrier(node, node.getAddress(), node.value(), precise, graph);
+                    }
                 }
                 break;
             default:
@@ -90,9 +85,10 @@ public class G1BarrierSet extends BarrierSet {
             case FIELD:
             case ARRAY:
             case UNKNOWN:
-                boolean precise = barrierType != HeapAccess.BarrierType.FIELD;
-                addG1PreWriteBarrier(node, node.getAddress(), null, true, node.getNullCheck(), graph);
-                addG1PostWriteBarrier(node, node.getAddress(), node.getNewValue(), precise, graph);
+                if (isObjectValue(node.getNewValue())) {
+                    boolean precise = barrierType != HeapAccess.BarrierType.FIELD;
+                    addSerialPostWriteBarrier(node, node.getAddress(), node.getNewValue(), precise, graph);
+                }
                 break;
             default:
                 throw new GraalError("unexpected barrier type: " + barrierType);
@@ -109,9 +105,10 @@ public class G1BarrierSet extends BarrierSet {
             case FIELD:
             case ARRAY:
             case UNKNOWN:
-                boolean precise = barrierType != HeapAccess.BarrierType.FIELD;
-                addG1PreWriteBarrier(node, node.getAddress(), node.getExpectedValue(), false, false, graph);
-                addG1PostWriteBarrier(node, node.getAddress(), node.getNewValue(), precise, graph);
+                if (isObjectValue(node.getNewValue())) {
+                    boolean precise = barrierType != HeapAccess.BarrierType.FIELD;
+                    addSerialPostWriteBarrier(node, node.getAddress(), node.getNewValue(), precise, graph);
+                }
                 break;
             default:
                 throw new GraalError("unexpected barrier type: " + barrierType);
@@ -120,26 +117,21 @@ public class G1BarrierSet extends BarrierSet {
 
     @Override
     public void addArrayRangeBarriers(ArrayRangeWrite write, StructuredGraph graph) {
-        if (!write.isInitialization()) {
-            // The pre barrier does nothing if the value being read is null, so it can
-            // be explicitly skipped when this is an initializing store.
-            G1ArrayRangePreWriteBarrier g1ArrayRangePreWriteBarrier = graph.add(new G1ArrayRangePreWriteBarrier(write.getAddress(), write.getLength(), write.getElementStride()));
-            graph.addBeforeFixed(write.asNode(), g1ArrayRangePreWriteBarrier);
-        }
-        G1ArrayRangePostWriteBarrier g1ArrayRangePostWriteBarrier = graph.add(new G1ArrayRangePostWriteBarrier(write.getAddress(), write.getLength(), write.getElementStride()));
-        graph.addAfterFixed(write.asNode(), g1ArrayRangePostWriteBarrier);
+        assert write.writesObjectArray();
+        SerialArrayRangeWriteBarrier serialArrayRangeWriteBarrier = graph.add(new SerialArrayRangeWriteBarrier(write.getAddress(), write.getLength(), write.getElementStride()));
+        graph.addAfterFixed(write.asNode(), serialArrayRangeWriteBarrier);
     }
 
-    private static void addG1PreWriteBarrier(FixedAccessNode node, AddressNode address, ValueNode value, boolean doLoad, boolean nullCheck, StructuredGraph graph) {
-        G1PreWriteBarrier preBarrier = graph.add(new G1PreWriteBarrier(address, value, doLoad, nullCheck));
-        preBarrier.setStateBefore(node.stateBefore());
-        node.setNullCheck(false);
-        node.setStateBefore(null);
-        graph.addBeforeFixed(node, preBarrier);
-    }
-
-    private static void addG1PostWriteBarrier(FixedAccessNode node, AddressNode address, ValueNode value, boolean precise, StructuredGraph graph) {
+    protected void addSerialPostWriteBarrier(FixedAccessNode node, AddressNode address, ValueNode value, boolean precise, StructuredGraph graph) {
         final boolean alwaysNull = StampTool.isPointerAlwaysNull(value);
-        graph.addAfterFixed(node, graph.add(new G1PostWriteBarrier(address, value, precise, alwaysNull)));
+        if (alwaysNull) {
+            // Serial barrier isn't needed for null value
+            return;
+        }
+        graph.addAfterFixed(node, graph.add(new SerialWriteBarrier(address, precise)));
+    }
+
+    private static boolean isObjectValue(ValueNode value) {
+        return value.stamp(NodeView.DEFAULT) instanceof AbstractObjectStamp;
     }
 }

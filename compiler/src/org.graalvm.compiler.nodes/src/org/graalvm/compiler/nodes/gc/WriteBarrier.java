@@ -22,25 +22,35 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package org.graalvm.compiler.hotspot.gc.shared;
+package org.graalvm.compiler.nodes.gc;
 
-import static org.graalvm.compiler.nodeinfo.NodeCycles.CYCLES_8;
-import static org.graalvm.compiler.nodeinfo.NodeSize.SIZE_4;
-
+import org.graalvm.compiler.core.common.type.StampFactory;
 import org.graalvm.compiler.graph.NodeClass;
+import org.graalvm.compiler.nodeinfo.InputType;
 import org.graalvm.compiler.nodeinfo.NodeInfo;
+import org.graalvm.compiler.nodes.FixedWithNextNode;
 import org.graalvm.compiler.nodes.memory.address.AddressNode;
+import org.graalvm.compiler.nodes.spi.Lowerable;
+import org.graalvm.compiler.nodes.spi.LoweringTool;
 
-@NodeInfo(cycles = CYCLES_8, size = SIZE_4)
-public class SerialWriteBarrier extends ObjectWriteBarrier {
+@NodeInfo
+public abstract class WriteBarrier extends FixedWithNextNode implements Lowerable {
 
-    public static final NodeClass<SerialWriteBarrier> TYPE = NodeClass.create(SerialWriteBarrier.class);
+    public static final NodeClass<WriteBarrier> TYPE = NodeClass.create(WriteBarrier.class);
+    @Input(InputType.Association) AddressNode address;
 
-    public SerialWriteBarrier(AddressNode address, boolean precise) {
-        this(TYPE, address, precise);
+    protected WriteBarrier(NodeClass<? extends WriteBarrier> c, AddressNode address) {
+        super(c, StampFactory.forVoid());
+        this.address = address;
     }
 
-    protected SerialWriteBarrier(NodeClass<? extends SerialWriteBarrier> c, AddressNode address, boolean precise) {
-        super(c, address, null, precise);
+    @Override
+    public void lower(LoweringTool tool) {
+        assert graph().getGuardsStage().areFrameStatesAtDeopts();
+        tool.getLowerer().lower(this, tool);
+    }
+
+    public AddressNode getAddress() {
+        return address;
     }
 }

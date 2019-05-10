@@ -23,13 +23,12 @@
  * questions.
  */
 
-package org.graalvm.compiler.hotspot.gc.g1;
+package org.graalvm.compiler.nodes.gc;
 
 import static org.graalvm.compiler.nodeinfo.NodeCycles.CYCLES_64;
 import static org.graalvm.compiler.nodeinfo.NodeSize.SIZE_64;
 
 import org.graalvm.compiler.graph.NodeClass;
-import org.graalvm.compiler.hotspot.gc.shared.ObjectWriteBarrier;
 import org.graalvm.compiler.nodeinfo.InputType;
 import org.graalvm.compiler.nodeinfo.NodeInfo;
 import org.graalvm.compiler.nodes.DeoptimizingNode;

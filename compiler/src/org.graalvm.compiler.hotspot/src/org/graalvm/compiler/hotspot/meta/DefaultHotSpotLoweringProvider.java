@@ -60,13 +60,6 @@ import org.graalvm.compiler.graph.Node;
 import org.graalvm.compiler.graph.NodeInputList;
 import org.graalvm.compiler.hotspot.GraalHotSpotVMConfig;
 import org.graalvm.compiler.hotspot.HotSpotGraalRuntimeProvider;
-import org.graalvm.compiler.hotspot.gc.g1.G1ArrayRangePostWriteBarrier;
-import org.graalvm.compiler.hotspot.gc.g1.G1ArrayRangePreWriteBarrier;
-import org.graalvm.compiler.hotspot.gc.g1.G1PostWriteBarrier;
-import org.graalvm.compiler.hotspot.gc.g1.G1PreWriteBarrier;
-import org.graalvm.compiler.hotspot.gc.g1.G1ReferentFieldReadBarrier;
-import org.graalvm.compiler.hotspot.gc.shared.SerialArrayRangeWriteBarrier;
-import org.graalvm.compiler.hotspot.gc.shared.SerialWriteBarrier;
 import org.graalvm.compiler.hotspot.nodes.BeginLockScopeNode;
 import org.graalvm.compiler.hotspot.nodes.HotSpotCompressionNode;
 import org.graalvm.compiler.hotspot.nodes.HotSpotDirectCallTargetNode;
@@ -82,6 +75,8 @@ import org.graalvm.compiler.hotspot.nodes.type.MethodPointerStamp;
 import org.graalvm.compiler.hotspot.replacements.AssertionSnippets;
 import org.graalvm.compiler.hotspot.replacements.ClassGetHubNode;
 import org.graalvm.compiler.hotspot.replacements.HashCodeSnippets;
+import org.graalvm.compiler.hotspot.replacements.HotSpotG1WriteBarrierSnippets;
+import org.graalvm.compiler.hotspot.replacements.HotSpotSerialWriteBarrierSnippets;
 import org.graalvm.compiler.hotspot.replacements.HubGetClassNode;
 import org.graalvm.compiler.hotspot.replacements.IdentityHashCodeNode;
 import org.graalvm.compiler.hotspot.replacements.InstanceOfSnippets;
@@ -92,7 +87,6 @@ import org.graalvm.compiler.hotspot.replacements.NewObjectSnippets;
 import org.graalvm.compiler.hotspot.replacements.ObjectCloneSnippets;
 import org.graalvm.compiler.hotspot.replacements.StringToBytesSnippets;
 import org.graalvm.compiler.hotspot.replacements.UnsafeLoadSnippets;
-import org.graalvm.compiler.hotspot.replacements.WriteBarrierSnippets;
 import org.graalvm.compiler.hotspot.replacements.aot.ResolveConstantSnippets;
 import org.graalvm.compiler.hotspot.replacements.arraycopy.HotSpotArraycopySnippets;
 import org.graalvm.compiler.hotspot.replacements.profiling.ProfileSnippets;
@@ -135,6 +129,13 @@ import org.graalvm.compiler.nodes.extended.OSRMonitorEnterNode;
 import org.graalvm.compiler.nodes.extended.OSRStartNode;
 import org.graalvm.compiler.nodes.extended.RawLoadNode;
 import org.graalvm.compiler.nodes.extended.StoreHubNode;
+import org.graalvm.compiler.nodes.gc.G1ArrayRangePostWriteBarrier;
+import org.graalvm.compiler.nodes.gc.G1ArrayRangePreWriteBarrier;
+import org.graalvm.compiler.nodes.gc.G1PostWriteBarrier;
+import org.graalvm.compiler.nodes.gc.G1PreWriteBarrier;
+import org.graalvm.compiler.nodes.gc.G1ReferentFieldReadBarrier;
+import org.graalvm.compiler.nodes.gc.SerialArrayRangeWriteBarrier;
+import org.graalvm.compiler.nodes.gc.SerialWriteBarrier;
 import org.graalvm.compiler.nodes.java.ClassIsAssignableFromNode;
 import org.graalvm.compiler.nodes.java.DynamicNewArrayNode;
 import org.graalvm.compiler.nodes.java.DynamicNewInstanceNode;
@@ -191,7 +192,8 @@ public class DefaultHotSpotLoweringProvider extends DefaultJavaLoweringProvider 
     protected InstanceOfSnippets.Templates instanceofSnippets;
     protected NewObjectSnippets.Templates newObjectSnippets;
     protected MonitorSnippets.Templates monitorSnippets;
-    protected WriteBarrierSnippets.Templates writeBarrierSnippets;
+    protected HotSpotSerialWriteBarrierSnippets.Templates serialWriteBarrierSnippets;
+    protected HotSpotG1WriteBarrierSnippets.Templates g1WriteBarrierSnippets;
     protected LoadExceptionObjectSnippets.Templates exceptionObjectSnippets;
     protected UnsafeLoadSnippets.Templates unsafeLoadSnippets;
     protected AssertionSnippets.Templates assertionSnippets;
@@ -220,7 +222,11 @@ public class DefaultHotSpotLoweringProvider extends DefaultJavaLoweringProvider 
         instanceofSnippets = new InstanceOfSnippets.Templates(options, factories, runtime, providers, target);
         newObjectSnippets = new NewObjectSnippets.Templates(options, factories, runtime, providers, target, config);
         monitorSnippets = new MonitorSnippets.Templates(options, factories, runtime, providers, target, config.useFastLocking);
-        writeBarrierSnippets = new WriteBarrierSnippets.Templates(options, factories, runtime, providers, target, config);
+        if (config.useG1GC) {
+            g1WriteBarrierSnippets = new HotSpotG1WriteBarrierSnippets.Templates(options, factories, runtime, providers, target, config);
+        } else {
+            serialWriteBarrierSnippets = new HotSpotSerialWriteBarrierSnippets.Templates(options, factories, runtime, providers, target, config);
+        }
         exceptionObjectSnippets = new LoadExceptionObjectSnippets.Templates(options, factories, providers, target);
         unsafeLoadSnippets = new UnsafeLoadSnippets.Templates(options, factories, providers, target);
         assertionSnippets = new AssertionSnippets.Templates(options, factories, providers, target);
@@ -340,19 +346,19 @@ public class DefaultHotSpotLoweringProvider extends DefaultJavaLoweringProvider 
             } else if (n instanceof ArrayCopyWithDelayedLoweringNode) {
                 arraycopySnippets.lower((ArrayCopyWithDelayedLoweringNode) n, tool);
             } else if (n instanceof G1PreWriteBarrier) {
-                writeBarrierSnippets.lower((G1PreWriteBarrier) n, registers, tool);
+                g1WriteBarrierSnippets.lower((G1PreWriteBarrier) n, tool);
             } else if (n instanceof G1PostWriteBarrier) {
-                writeBarrierSnippets.lower((G1PostWriteBarrier) n, registers, tool);
+                g1WriteBarrierSnippets.lower((G1PostWriteBarrier) n, tool);
             } else if (n instanceof G1ReferentFieldReadBarrier) {
-                writeBarrierSnippets.lower((G1ReferentFieldReadBarrier) n, registers, tool);
+                g1WriteBarrierSnippets.lower((G1ReferentFieldReadBarrier) n, tool);
             } else if (n instanceof SerialWriteBarrier) {
-                writeBarrierSnippets.lower((SerialWriteBarrier) n, tool);
+                serialWriteBarrierSnippets.lower((SerialWriteBarrier) n, tool);
             } else if (n instanceof SerialArrayRangeWriteBarrier) {
-                writeBarrierSnippets.lower((SerialArrayRangeWriteBarrier) n, tool);
+                serialWriteBarrierSnippets.lower((SerialArrayRangeWriteBarrier) n, tool);
             } else if (n instanceof G1ArrayRangePreWriteBarrier) {
-                writeBarrierSnippets.lower((G1ArrayRangePreWriteBarrier) n, registers, tool);
+                g1WriteBarrierSnippets.lower((G1ArrayRangePreWriteBarrier) n, tool);
             } else if (n instanceof G1ArrayRangePostWriteBarrier) {
-                writeBarrierSnippets.lower((G1ArrayRangePostWriteBarrier) n, registers, tool);
+                g1WriteBarrierSnippets.lower((G1ArrayRangePostWriteBarrier) n, tool);
             } else if (n instanceof NewMultiArrayNode) {
                 if (graph.getGuardsStage().areFrameStatesAtDeopts()) {
                     newObjectSnippets.lower((NewMultiArrayNode) n, tool);

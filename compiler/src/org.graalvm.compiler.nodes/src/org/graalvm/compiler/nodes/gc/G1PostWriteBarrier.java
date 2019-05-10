@@ -22,24 +22,32 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-
-package org.graalvm.compiler.hotspot.gc.g1;
+package org.graalvm.compiler.nodes.gc;
 
 import static org.graalvm.compiler.nodeinfo.NodeCycles.CYCLES_64;
 import static org.graalvm.compiler.nodeinfo.NodeSize.SIZE_64;
 
 import org.graalvm.compiler.graph.NodeClass;
-import org.graalvm.compiler.hotspot.gc.shared.ArrayRangeWriteBarrier;
 import org.graalvm.compiler.nodeinfo.NodeInfo;
 import org.graalvm.compiler.nodes.ValueNode;
 import org.graalvm.compiler.nodes.memory.address.AddressNode;
 
 @NodeInfo(cycles = CYCLES_64, size = SIZE_64)
-public final class G1ArrayRangePreWriteBarrier extends ArrayRangeWriteBarrier {
-    public static final NodeClass<G1ArrayRangePreWriteBarrier> TYPE = NodeClass.create(G1ArrayRangePreWriteBarrier.class);
+public class G1PostWriteBarrier extends ObjectWriteBarrier {
 
-    public G1ArrayRangePreWriteBarrier(AddressNode address, ValueNode length, int elementStride) {
-        super(TYPE, address, length, elementStride);
+    public static final NodeClass<G1PostWriteBarrier> TYPE = NodeClass.create(G1PostWriteBarrier.class);
+    protected final boolean alwaysNull;
+
+    public G1PostWriteBarrier(AddressNode address, ValueNode value, boolean precise, boolean alwaysNull) {
+        this(TYPE, address, value, precise, alwaysNull);
     }
 
+    private G1PostWriteBarrier(NodeClass<? extends G1PostWriteBarrier> c, AddressNode address, ValueNode value, boolean precise, boolean alwaysNull) {
+        super(c, address, value, precise);
+        this.alwaysNull = alwaysNull;
+    }
+
+    public boolean alwaysNull() {
+        return alwaysNull;
+    }
 }
