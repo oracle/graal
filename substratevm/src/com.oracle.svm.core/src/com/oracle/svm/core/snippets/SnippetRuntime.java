@@ -109,7 +109,16 @@ public class SnippetRuntime {
         return findForeignCall(methodName, declaringClass, methodName, isReexecutable, killedLocations);
     }
 
+    public static SubstrateForeignCallDescriptor findForeignCall(Class<?> declaringClass, String methodName, boolean isReexecutable, boolean needsDebugInfo, LocationIdentity... killedLocations) {
+        return findForeignCall(methodName, declaringClass, methodName, isReexecutable, needsDebugInfo, killedLocations);
+    }
+
     private static SubstrateForeignCallDescriptor findForeignCall(String descriptorName, Class<?> declaringClass, String methodName, boolean isReexecutable, LocationIdentity... killedLocations) {
+        return findForeignCall(descriptorName, declaringClass, methodName, isReexecutable, true, killedLocations);
+    }
+
+    private static SubstrateForeignCallDescriptor findForeignCall(String descriptorName, Class<?> declaringClass, String methodName, boolean isReexecutable, boolean needsDebugInfo,
+                    LocationIdentity... killedLocations) {
         Method foundMethod = null;
         for (Method method : declaringClass.getDeclaredMethods()) {
             if (method.getName().equals(methodName)) {
@@ -126,7 +135,8 @@ public class SnippetRuntime {
         VMError.guarantee(declaringClass.getName().startsWith("java.lang") || DirectAnnotationAccess.isAnnotationPresent(foundMethod, SubstrateForeignCallTarget.class),
                         "Add missing @SubstrateForeignCallTarget to " + declaringClass.getName() + "." + methodName);
 
-        return new SubstrateForeignCallDescriptor(descriptorName, foundMethod, isReexecutable, killedLocations);
+        boolean isGuaranteedSafepoint = needsDebugInfo && !DirectAnnotationAccess.isAnnotationPresent(foundMethod, Uninterruptible.class);
+        return new SubstrateForeignCallDescriptor(descriptorName, foundMethod, isReexecutable, killedLocations, needsDebugInfo, isGuaranteedSafepoint);
     }
 
     public static class SubstrateForeignCallDescriptor extends ForeignCallDescriptor {
@@ -135,13 +145,17 @@ public class SnippetRuntime {
         private final String methodName;
         private final boolean isReexecutable;
         private final LocationIdentity[] killedLocations;
+        private final boolean needsDebugInfo;
+        private final boolean isGuaranteedSafepoint;
 
-        SubstrateForeignCallDescriptor(String descriptorName, Method method, boolean isReexecutable, LocationIdentity[] killedLocations) {
+        SubstrateForeignCallDescriptor(String descriptorName, Method method, boolean isReexecutable, LocationIdentity[] killedLocations, boolean needsDebugInfo, boolean isGuaranteedSafepoint) {
             super(descriptorName, method.getReturnType(), method.getParameterTypes());
             this.declaringClass = method.getDeclaringClass();
             this.methodName = method.getName();
             this.isReexecutable = isReexecutable;
             this.killedLocations = killedLocations;
+            this.needsDebugInfo = needsDebugInfo;
+            this.isGuaranteedSafepoint = isGuaranteedSafepoint;
         }
 
         public Class<?> getDeclaringClass() {
@@ -163,6 +177,14 @@ public class SnippetRuntime {
 
         public LocationIdentity[] getKilledLocations() {
             return killedLocations;
+        }
+
+        public boolean needsDebugInfo() {
+            return needsDebugInfo;
+        }
+
+        public boolean isGuaranteedSafepoint() {
+            return isGuaranteedSafepoint;
         }
     }
 
