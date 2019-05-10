@@ -385,21 +385,31 @@ public final class DynamicHub implements JavaKind.FormatWithToString, AnnotatedE
 
     @Platforms(Platform.HOSTED_ONLY.class)
     public void initEnumConstantsAtRuntime(Class<?> enumClass) {
-        /* Adapted from `Class.getEnumConstantsShared`. */
         try {
-            Method values = enumClass.getMethod("values");
-            values.setAccessible(true);
-            enumConstantsReference = new LazyFinalReference<>(() -> initEnumConstantsAtRuntime(values));
-        } catch (NoSuchMethodException e) {
+            /* Adapted from `Class.getEnumConstantsShared`. */
+            try {
+                Method values = enumClass.getMethod("values");
+                values.setAccessible(true);
+                enumConstantsReference = new LazyFinalReference<>(() -> initEnumConstantsAtRuntime(values));
+            } catch (NoSuchMethodException e) {
+                /*
+                 * This can happen when users concoct enum-like classes that don't comply with the
+                 * enum spec.
+                 */
+                enumConstantsReference = null;
+            }
+        } catch (NoClassDefFoundError e) {
             /*
-             * This can happen when users concoct enum-like classes that don't comply with the enum
-             * spec.
+             * This can happen when an enum references a missing class. So, in order to match the
+             * JVM behaviour, we rethrow the error at runtime.
              */
+            String message = e.getMessage();
+            enumConstantsReference = new LazyFinalReference<>(() -> throwNoClassDefFoundErrorAtRuntime(message));
         }
     }
 
+    /** Executed at runtime. */
     private static Object initEnumConstantsAtRuntime(Method values) {
-        /* Executed at runtime. */
         try {
             return values.invoke(null);
         } catch (InvocationTargetException | IllegalAccessException e) {
@@ -409,6 +419,11 @@ public final class DynamicHub implements JavaKind.FormatWithToString, AnnotatedE
              */
             return null;
         }
+    }
+
+    /** Executed at runtime. */
+    private static Object throwNoClassDefFoundErrorAtRuntime(String message) {
+        throw new NoClassDefFoundError(message);
     }
 
     @Platforms(Platform.HOSTED_ONLY.class)
