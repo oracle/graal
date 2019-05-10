@@ -1056,6 +1056,7 @@ mx_sdk.register_graalvm_component(mx_sdk.GraalVmJreComponent(
     third_party_license_files=[],
     support_distributions=['substratevm:NATIVE_IMAGE_LICENSE_GRAALVM_SUPPORT'],
     installable=True,
+    priority=1,
 ))
 
 mx_sdk.register_graalvm_component(mx_sdk.GraalVmJreComponent(
