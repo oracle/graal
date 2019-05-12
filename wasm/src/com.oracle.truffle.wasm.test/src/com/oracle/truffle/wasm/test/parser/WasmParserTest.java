@@ -39,9 +39,11 @@ import java.io.IOException;
 public class WasmParserTest extends WasmTest {
 
     @Test
-    public void parseHelloWorldTest() throws IOException, InterruptedException {
+    public void parseTest() throws IOException, InterruptedException {
         parseProgram("(module (func (result i32) (i32.const 42)))");
         parseProgram("(module (func (result i32) (i32.const 1690433)))");
+        parseProgram("(module (func (result f32) (f32.const 1.5)))");
+        parseProgram("(module (func (result f64) (f64.const 340.75)))");
     }
 
     private static void parseProgram(String program) throws IOException, InterruptedException {

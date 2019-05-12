@@ -39,18 +39,44 @@ public class UtilityTests {
 
     @Test
     public void testUnsignedLEB128() {
-        checkUnsignedLEB128(new byte[] {0x00}, 0);
-        checkUnsignedLEB128(new byte[] {0x01}, 1);
-        checkUnsignedLEB128(new byte[] {0x02}, 2);
+        checkUnsignedLEB128(new byte[] {(byte)0x00}, 0);
+        checkUnsignedLEB128(new byte[] {(byte)0x01}, 1);
+        checkUnsignedLEB128(new byte[] {(byte)0x02}, 2);
 
-        checkUnsignedLEB128(new byte[] {(byte) 0x82, 0x01}, 130);
-        checkUnsignedLEB128(new byte[] {(byte) 0x8A, 0x02}, 266);
+        checkUnsignedLEB128(new byte[] {(byte)0x82, (byte)0x01}, 130);
+        checkUnsignedLEB128(new byte[] {(byte)0x8A, (byte)0x02}, 266);
+    }
+
+    @Test
+    public void testFloat32() {
+        checkFloat32(new byte[] {(byte)0x00, (byte)0x00, (byte)0x00, (byte)0x00}, 0.0f);
+        checkFloat32(new byte[] {(byte)0xc3, (byte)0xf5, (byte)0x48, (byte)0x40}, 3.14f);
+        checkFloat32(new byte[] {(byte)0x00, (byte)0x60, (byte)0xaa, (byte)0xc3}, -340.75f);
+    }
+
+    @Test
+    public void testFloat64() {
+        checkFloat64(new byte[] {(byte)0x00, (byte)0x00, (byte)0x00, (byte)0x00, (byte)0x00, (byte)0x00, (byte)0x00, (byte)0x00}, 0.0);
+        checkFloat64(new byte[] {(byte)0x94, (byte)0x87, (byte)0x85, (byte)0xda, (byte)0x92, (byte)0x3f, (byte)0x0f, (byte)0x41}, 255_986.3567);
+        checkFloat64(new byte[] {(byte)0xd3, (byte)0xa4, (byte)0x14, (byte)0xa8, (byte)0xf0, (byte)0xa7, (byte)0x37, (byte)0xc1}, -1_550_320.656565);
     }
 
     private void checkUnsignedLEB128(byte[] data, int expectedValue) {
         BinaryReader reader = new BinaryReader(data);
         int result = reader.readUnsignedLEB128();
         Assert.assertEquals(expectedValue, result);
+    }
+
+    private void checkFloat32(byte[] data, float expectedValue) {
+        BinaryReader reader = new BinaryReader(data);
+        float result = reader.readF32();
+        Assert.assertEquals(expectedValue, result, 1e5);
+    }
+
+    private void checkFloat64(byte[] data, double expectedValue) {
+        BinaryReader reader = new BinaryReader(data);
+        double result = reader.readF64();
+        Assert.assertEquals(expectedValue, result, 1e5);
     }
 
 }
