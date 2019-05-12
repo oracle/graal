@@ -100,7 +100,7 @@ package com.oracle.truffle.api.dsl;
  * </pre>
  *
  * @see Cached
- * @since 1.0
+ * @since 19.0
  */
 public @interface GenerateUncached {
 

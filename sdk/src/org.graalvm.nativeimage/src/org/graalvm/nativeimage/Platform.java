@@ -57,7 +57,7 @@ import org.graalvm.nativeimage.impl.InternalPlatform;
  * This system makes the set of platform groups and leaf platforms extensible. Some standard
  * platforms are defined as inner classes.
  *
- * @since 1.0
+ * @since 19.0
  */
 public interface Platform {
 
@@ -67,7 +67,7 @@ public interface Platform {
      * class is inferred from the standard architectures and operating systems specified in this
      * file, i.e., in most cases it is not necessary to use this property.
      *
-     * @since 1.0
+     * @since 19.0
      */
     String PLATFORM_PROPERTY_NAME = "svm.platform";
 
@@ -78,7 +78,7 @@ public interface Platform {
      * The platformGroup must be a compile-time constant, so that the call to this method can be
      * replaced with the constant boolean result.
      *
-     * @since 1.0
+     * @since 19.0
      */
     static boolean includedIn(Class<? extends Platform> platformGroup) {
         return platformGroup.isInstance(ImageSingletons.lookup(Platform.class));
@@ -90,7 +90,7 @@ public interface Platform {
     /**
      * Supported architecture: x86 64-bit.
      *
-     * @since 1.0
+     * @since 19.0
      */
     interface AMD64 extends Platform {
 
@@ -99,7 +99,7 @@ public interface Platform {
     /**
      * Supported architecture: ARMv8 64-bit.
      *
-     * @since 1.0
+     * @since 19.0
      */
     interface AArch64 extends Platform {
 
@@ -111,7 +111,7 @@ public interface Platform {
     /**
      * Supported operating system: Linux.
      *
-     * @since 1.0
+     * @since 19.0
      */
     interface LINUX extends Platform {
 
@@ -120,7 +120,7 @@ public interface Platform {
     /**
      * Supported operating system: Darwin (MacOS).
      *
-     * @since 1.0
+     * @since 19.0
      */
     interface DARWIN extends Platform {
 
@@ -129,7 +129,7 @@ public interface Platform {
     /**
      * Supported operating system: Windows.
      *
-     * @since 1.0
+     * @since 19.0
      */
     interface WINDOWS extends Platform {
 
@@ -141,14 +141,14 @@ public interface Platform {
     /**
      * Supported leaf platform: Linux on x86 64-bit.
      *
-     * @since 1.0
+     * @since 19.0
      */
     class LINUX_AMD64 implements LINUX, InternalPlatform.LINUX_AND_JNI, AMD64 {
 
         /**
          * Instantiates a marker instance of this platform.
          *
-         * @since 1.0
+         * @since 19.0
          */
         public LINUX_AMD64() {
         }
@@ -158,14 +158,14 @@ public interface Platform {
     /**
      * Supported leaf platform: Linux on AArch64 64-bit.
      *
-     * @since 1.0
+     * @since 19.0
      */
     final class LINUX_AArch64 implements LINUX, InternalPlatform.LINUX_AND_JNI, AArch64 {
 
         /**
          * Instantiates a marker instance of this platform.
          *
-         * @since 1.0
+         * @since 19.0
          */
         public LINUX_AArch64() {
         }
@@ -175,14 +175,14 @@ public interface Platform {
     /**
      * Supported leaf platform: Darwin (MacOS) on x86 64-bit.
      *
-     * @since 1.0
+     * @since 19.0
      */
     class DARWIN_AMD64 implements DARWIN, InternalPlatform.DARWIN_AND_JNI, AMD64 {
 
         /**
          * Instantiates a marker instance of this platform.
          *
-         * @since 1.0
+         * @since 19.0
          */
         public DARWIN_AMD64() {
         }
@@ -207,14 +207,14 @@ public interface Platform {
     /**
      * Supported leaf platform: Windows on x86 64-bit.
      *
-     * @since 1.0
+     * @since 19.0
      */
     class WINDOWS_AMD64 implements WINDOWS, AMD64 {
 
         /**
          * Instantiates a marker instance of this platform.
          *
-         * @since 1.0
+         * @since 19.0
          */
         public WINDOWS_AMD64() {
         }
@@ -225,7 +225,7 @@ public interface Platform {
      * Marker for elements (types, methods, or fields) that are only visible during native image
      * generation and cannot be used at run time, regardless of the actual platform.
      *
-     * @since 1.0
+     * @since 19.0
      */
     final class HOSTED_ONLY implements Platform {
         private HOSTED_ONLY() {

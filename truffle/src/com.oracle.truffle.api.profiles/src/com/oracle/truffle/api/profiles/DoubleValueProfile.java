@@ -102,7 +102,7 @@ public abstract class DoubleValueProfile extends Profile {
     /**
      * Returns the uncached version of the profile. The uncached version of a profile does nothing.
      *
-     * @since 1.0
+     * @since 19.0
      */
     public static DoubleValueProfile getUncached() {
         return Disabled.INSTANCE;

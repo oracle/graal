@@ -127,7 +127,7 @@ public class Breakpoint {
      * Specifies a breakpoint kind. Breakpoints with different kinds have different creation methods
      * and address different debugging needs.
      *
-     * @since 1.0
+     * @since 19.0
      */
     public enum Kind {
 
@@ -137,7 +137,7 @@ public class Breakpoint {
          * such nodes with {@link DebuggerTags.AlwaysHalt}. A breakpoint of this kind is created by
          * {@link DebuggerSession} automatically.
          *
-         * @since 1.0
+         * @since 19.0
          */
         HALT_INSTRUCTION,
 
@@ -145,7 +145,7 @@ public class Breakpoint {
          * Represents breakpoints submitted for a particular source code location. Use one of the
          * <code>newBuilder</code> methods to create a breakpoint of this kind.
          *
-         * @since 1.0
+         * @since 19.0
          */
         SOURCE_LOCATION,
 
@@ -154,7 +154,7 @@ public class Breakpoint {
          * language program. Use {@link #newExceptionBuilder(boolean, boolean)} to create a
          * breakpoint of this kind.
          *
-         * @since 1.0
+         * @since 19.0
          */
         EXCEPTION;
 
@@ -213,7 +213,7 @@ public class Breakpoint {
     /**
      * Returns the kind of this breakpoint.
      *
-     * @since 1.0
+     * @since 19.0
      */
     public Kind getKind() {
         if (locationKey == null) {
@@ -767,7 +767,7 @@ public class Breakpoint {
      *            code.
      * @param uncaught <code>true</code> to intercept exceptions that are not caught by guest
      *            language code.
-     * @since 1.0
+     * @since 19.0
      */
     public static ExceptionBuilder newExceptionBuilder(boolean caught, boolean uncaught) {
         if (!(caught || uncaught)) {
@@ -962,7 +962,7 @@ public class Breakpoint {
      * EXCEPTION} kind.
      *
      * @see Breakpoint#newExceptionBuilder(boolean, boolean)
-     * @since 1.0
+     * @since 19.0
      */
     public final class ExceptionBuilder {
 
@@ -980,7 +980,7 @@ public class Breakpoint {
          * A filter to limit source locations which intercept exceptions. Only the source locations
          * matching the filter will report thrown exceptions.
          *
-         * @since 1.0
+         * @since 19.0
          */
         public ExceptionBuilder suspensionFilter(SuspensionFilter filter) {
             this.suspensionFilter = filter;
@@ -993,7 +993,7 @@ public class Breakpoint {
          * per builder.
          *
          * @param sourceElements a non-empty list of source elements
-         * @since 1.0
+         * @since 19.0
          */
         public ExceptionBuilder sourceElements(@SuppressWarnings("hiding") SourceElement... sourceElements) {
             if (this.sourceElements != null) {
@@ -1009,7 +1009,7 @@ public class Breakpoint {
         /**
          * @return a new breakpoint instance of {@link Kind#EXCEPTION EXCEPTION} kind.
          *
-         * @since 1.0
+         * @since 19.0
          */
         public Breakpoint build() {
             if (sourceElements == null) {

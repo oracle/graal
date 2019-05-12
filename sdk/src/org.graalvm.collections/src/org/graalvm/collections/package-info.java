@@ -49,6 +49,6 @@
  * @see org.graalvm.collections.EconomicMap
  * @see org.graalvm.collections.EconomicSet
  *
- * @since 1.0
+ * @since 19.0
  */
 package org.graalvm.collections;

@@ -61,7 +61,7 @@ import com.oracle.truffle.api.source.SourceSection;
  * <p>
  * Debugger methods that run guest language code may throw this exception.
  *
- * @since 1.0
+ * @since 19.0
  */
 public final class DebugException extends RuntimeException {
 
@@ -118,7 +118,7 @@ public final class DebugException extends RuntimeException {
      * Unsupported, {@link DebugException} instances are not writable therefore filling the stack
      * trace has no effect for them.
      *
-     * @since 1.0
+     * @since 19.0
      */
     @SuppressWarnings("sync-override")
     @Override
@@ -130,7 +130,7 @@ public final class DebugException extends RuntimeException {
      * Unsupported, {@link DebugException} instances are not writable therefore setting the stack
      * trace has no effect for them.
      *
-     * @since 1.0
+     * @since 19.0
      */
     @Override
     public void setStackTrace(StackTraceElement[] stackTrace) {
@@ -147,7 +147,7 @@ public final class DebugException extends RuntimeException {
      * {@link #getDebugStackTrace()} as the guest language stack elements do not always fit the Java
      * format for stack trace elements.
      *
-     * @since 1.0
+     * @since 19.0
      */
     @Override
     public StackTraceElement[] getStackTrace() {
@@ -169,7 +169,7 @@ public final class DebugException extends RuntimeException {
     /**
      * Gets stack trace elements of guest languages.
      *
-     * @since 1.0
+     * @since 19.0
      */
     public List<DebugStackTraceElement> getDebugStackTrace() {
         if (debugStackTrace == null) {
@@ -195,7 +195,7 @@ public final class DebugException extends RuntimeException {
     /**
      * {@inheritDoc}
      *
-     * @since 1.0
+     * @since 19.0
      */
     @Override
     public void printStackTrace() {
@@ -205,7 +205,7 @@ public final class DebugException extends RuntimeException {
     /**
      * {@inheritDoc}
      *
-     * @since 1.0
+     * @since 19.0
      */
     @Override
     public void printStackTrace(PrintStream s) {
@@ -219,7 +219,7 @@ public final class DebugException extends RuntimeException {
     /**
      * {@inheritDoc}
      *
-     * @since 1.0
+     * @since 19.0
      */
     @Override
     public void printStackTrace(PrintWriter s) {
@@ -233,7 +233,7 @@ public final class DebugException extends RuntimeException {
     /**
      * Returns <code>true</code> if this exception indicates an internal error.
      *
-     * @since 1.0
+     * @since 19.0
      */
     public boolean isInternalError() {
         if (exception != null && (!(exception instanceof TruffleException) || ((TruffleException) exception).isInternalError())) {
@@ -249,7 +249,7 @@ public final class DebugException extends RuntimeException {
      * Get a guest language object representing the exception, if any.
      *
      * @return an exception object, or <code>null</code>
-     * @since 1.0
+     * @since 19.0
      */
     public DebugValue getExceptionObject() {
         if (!(exception instanceof TruffleException)) {
@@ -273,7 +273,7 @@ public final class DebugException extends RuntimeException {
      * Get source code location where this exception was thrown from.
      *
      * @return the thrown location, or <code>null</code> when the thrown location is not known.
-     * @since 1.0
+     * @since 19.0
      */
     public SourceSection getThrowLocation() {
         if (exception instanceof TruffleException) {
@@ -294,7 +294,7 @@ public final class DebugException extends RuntimeException {
      * is returned for uncaught exceptions.
      *
      * @return the catch location, or <code>null</code> in case of uncaught exceptions.
-     * @since 1.0
+     * @since 19.0
      */
     public CatchLocation getCatchLocation() {
         if (!isCatchNodeComputed) {
@@ -318,7 +318,7 @@ public final class DebugException extends RuntimeException {
      * Represents an exception catch location. It provides a stack frame and a source section where
      * the exception is going to be caught.
      *
-     * @since 1.0
+     * @since 19.0
      */
     public static final class CatchLocation {
 
@@ -341,7 +341,7 @@ public final class DebugException extends RuntimeException {
 
         /**
          * @return a source section, or <code>null</code> if the catch source section is not known.
-         * @since 1.0
+         * @since 19.0
          */
         public SourceSection getSourceSection() {
             return session.resolveSection(section);
@@ -349,7 +349,7 @@ public final class DebugException extends RuntimeException {
 
         /**
          * @return a frame in which the exception is going to be caught.
-         * @since 1.0
+         * @since 19.0
          */
         public DebugStackFrame getFrame() {
             return frame;

@@ -93,7 +93,7 @@ public abstract class DebugValue {
      *
      * @param primitiveValue a primitive value to set
      * @throws DebugException when guest language code throws an exception
-     * @since 1.0
+     * @since 19.0
      */
     public abstract void set(Object primitiveValue) throws DebugException;
 
@@ -121,7 +121,7 @@ public abstract class DebugValue {
      * <code>null</code> otherwise.
      *
      * @throws DebugException when guest language code throws an exception
-     * @since 1.0
+     * @since 19.0
      */
     public abstract String asString() throws DebugException;
 
@@ -147,7 +147,7 @@ public abstract class DebugValue {
      * Returns <code>true</code> if reading of this value can have side-effects, else
      * <code>false</code>. Read has side-effects if it changes runtime state.
      *
-     * @since 1.0
+     * @since 19.0
      */
     public abstract boolean hasReadSideEffects();
 
@@ -155,7 +155,7 @@ public abstract class DebugValue {
      * Returns <code>true</code> if setting a new value can have side-effects, else
      * <code>false</code>. Write has side-effects if it changes runtime state besides this value.
      *
-     * @since 1.0
+     * @since 19.0
      */
     public abstract boolean hasWriteSideEffects();
 
@@ -198,7 +198,7 @@ public abstract class DebugValue {
     /**
      * Test if the value represents 'null'.
      *
-     * @since 1.0
+     * @since 19.0
      */
     public final boolean isNull() {
         if (!isReadable()) {
@@ -253,7 +253,7 @@ public abstract class DebugValue {
      * @return the property value, or <code>null</code> if the property does not exist.
      * @throws DebugException when guest language code throws an exception
      * @throws IllegalStateException if the value is not {@link #isReadable() readable}
-     * @since 1.0
+     * @since 19.0
      */
     public final DebugValue getProperty(String name) throws DebugException {
         if (!isReadable()) {
@@ -390,7 +390,7 @@ public abstract class DebugValue {
      * Returns <code>true</code> if this value can be executed (represents a guest language
      * function), else <code>false</code>.
      *
-     * @since 1.0
+     * @since 19.0
      */
     public final boolean canExecute() throws DebugException {
         Object value = get();
@@ -410,7 +410,7 @@ public abstract class DebugValue {
      * @return the result of the execution
      * @throws DebugException when guest language code throws an exception
      * @see #canExecute()
-     * @since 1.0
+     * @since 19.0
      */
     public final DebugValue execute(DebugValue... arguments) throws DebugException {
         Object value = get();

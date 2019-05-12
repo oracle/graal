@@ -75,7 +75,7 @@ import org.graalvm.nativeimage.impl.RuntimeClassInitializationSupport;
  * initialized, which violates the class initialization specification.</li>
  * <ul>
  *
- * @since 1.0
+ * @since 19.0
  */
 @Platforms(Platform.HOSTED_ONLY.class)
 public final class RuntimeClassInitialization {
@@ -91,7 +91,7 @@ public final class RuntimeClassInitialization {
      * for class initialization. This can be done by, e.g., setting a breakpoint in the class
      * initializer or adding debug printing (print the stack trace) in the class initializer.
      *
-     * @since 1.0
+     * @since 19.0
      */
     public static void initializeAtRunTime(Class<?>... classes) {
         StackTraceElement[] stacktrace = Thread.currentThread().getStackTrace();
@@ -110,7 +110,7 @@ public final class RuntimeClassInitialization {
      * It is up to the user to ensure that this behavior makes sense and does not lead to wrong
      * application behavior.
      *
-     * @since 1.0
+     * @since 19.0
      */
     public static void initializeAtBuildTime(Class<?>... classes) {
         StackTraceElement[] stacktrace = Thread.currentThread().getStackTrace();
@@ -130,7 +130,7 @@ public final class RuntimeClassInitialization {
      * for class initialization. This can be done by, e.g., setting a breakpoint in the class
      * initializer or adding debug printing (print the stack trace) in the class initializer.
      *
-     * @since 1.0
+     * @since 19.0
      */
     public static void initializeAtRunTime(String... packages) {
         StackTraceElement[] stacktrace = Thread.currentThread().getStackTrace();
@@ -149,7 +149,7 @@ public final class RuntimeClassInitialization {
      * It is up to the user to ensure that this behavior makes sense and does not lead to wrong
      * application behavior.
      *
-     * @since 1.0
+     * @since 19.0
      */
     public static void initializeAtBuildTime(String... packages) {
         StackTraceElement[] stacktrace = Thread.currentThread().getStackTrace();

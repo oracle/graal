@@ -73,7 +73,7 @@ import com.oracle.truffle.api.nodes.Node;
  *
  * @see #getStackTrace(Throwable) getStackTrace(Throwable) to retrieve the guest language stack
  *      trace from a {@link Throwable}.
- * @since 1.0
+ * @since 19.0
  */
 @SuppressWarnings("serial")
 public final class TruffleStackTrace extends Exception {
@@ -105,7 +105,7 @@ public final class TruffleStackTrace extends Exception {
     }
 
     /**
-     * @since 1.0
+     * @since 19.0
      */
     @SuppressWarnings("sync-override")
     @Override
@@ -129,7 +129,7 @@ public final class TruffleStackTrace extends Exception {
     }
 
     /**
-     * @since 1.0
+     * @since 19.0
      */
     @Override
     public String toString() {
@@ -145,7 +145,7 @@ public final class TruffleStackTrace extends Exception {
      * {@link TruffleException#getStackTraceElementLimit()}.
      *
      * @param throwable the throwable instance to look for guest language frames
-     * @since 1.0
+     * @since 19.0
      */
     @TruffleBoundary
     public static List<TruffleStackTraceElement> getStackTrace(Throwable throwable) {
@@ -159,7 +159,7 @@ public final class TruffleStackTrace extends Exception {
     /**
      * @deprecated Use {@link TruffleStackTrace#getStackTrace(Throwable)} instead (the method name
      *             was misspelled).
-     * @since 1.0
+     * @since 19.0
      */
     @Deprecated
     public static List<TruffleStackTraceElement> getStacktrace(Throwable throwable) {
@@ -218,7 +218,7 @@ public final class TruffleStackTrace extends Exception {
      * by implementing {@link TruffleException#getStackTraceElementLimit()}.
      *
      * @param throwable the Throwable to fill
-     * @since 1.0
+     * @since 19.0
      */
     @TruffleBoundary
     public static TruffleStackTrace fillIn(Throwable throwable) {
