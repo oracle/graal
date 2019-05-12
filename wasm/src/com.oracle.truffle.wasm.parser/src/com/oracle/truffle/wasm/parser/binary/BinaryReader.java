@@ -34,8 +34,8 @@ package com.oracle.truffle.wasm.parser.binary;
  */
 public class BinaryReader {
 
-    private static final int magic = 0x6d736100;
-    private static final int version = 0x00000001;
+    private static final int MAGIC = 0x6d736100;
+    private static final int VERSION = 0x00000001;
 
     private byte[] data;
     private int offset;
@@ -49,8 +49,8 @@ public class BinaryReader {
     }
 
     public void readModule() {
-        Assert.assertEquals(read4(), magic, "Invalid magic number");
-        Assert.assertEquals(read4(), version, "Invalid version number");
+        Assert.assertEquals(read4(), MAGIC, "Invalid MAGIC number");
+        Assert.assertEquals(read4(), VERSION, "Invalid VERSION number");
         readSections();
     }
 
