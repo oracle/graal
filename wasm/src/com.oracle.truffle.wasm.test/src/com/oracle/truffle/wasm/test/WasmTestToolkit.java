@@ -31,13 +31,26 @@ package com.oracle.truffle.wasm.test;
 
 import org.junit.Assert;
 
+import java.io.BufferedReader;
 import java.io.File;
 import java.io.IOException;
+import java.io.InputStreamReader;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.StandardOpenOption;
+import java.util.stream.Collectors;
 
 public class WasmTestToolkit {
+
+    private static void runExternalToolAndVerify(String message, String[] args) throws IOException, InterruptedException {
+        Runtime runtime = Runtime.getRuntime();
+        Process process = runtime.exec(args);
+        int exitCode = process.waitFor();
+        if (exitCode != 0) {
+            String stderr = new BufferedReader(new InputStreamReader((process.getErrorStream()))).lines().collect(Collectors.joining(System.lineSeparator()));
+            Assert.fail(String.format("%s: %s", message, stderr));
+        }
+    }
 
     public static byte[] compileWat(String program) throws IOException, InterruptedException {
         Assert.assertNotNull(
@@ -45,18 +58,18 @@ public class WasmTestToolkit {
                 System.getenv(WasmTestOptions.WAT2WASM_ENV_VAR));
         // the wat2wasm tool operates on files
         // create two temporary files for the text and the binary, write the given program to the first one
-        File watFile = File.createTempFile("wasm-text", ".wat");
-        File wasmFile = File.createTempFile("wasm-bin", ".wasm");
+        File watFile = File.createTempFile("wasm-text-", ".wat");
+        File wasmFile = File.createTempFile("wasm-bin-", ".wasm");
         Files.write(watFile.toPath(), program.getBytes(StandardCharsets.UTF_8), StandardOpenOption.WRITE);
         // execute the wat2wasm tool and wait for it to finish execution
-        Runtime runtime = Runtime.getRuntime();
-        Process process = runtime.exec(new String[] {
-                System.getenv(WasmTestOptions.WAT2WASM_ENV_VAR),
-                watFile.getPath(),
-                "-o",
-                wasmFile.getPath(),
-        });
-        process.waitFor();
+        runExternalToolAndVerify(
+                "wat2wasm compilation failed",
+                new String[] {
+                        System.getenv(WasmTestOptions.WAT2WASM_ENV_VAR),
+                        watFile.getPath(),
+                        "-o",
+                        wasmFile.getPath()
+                });
         // read the resulting binary, delete the temporary files and return
         byte[] binary = Files.readAllBytes(wasmFile.toPath());
         Assert.assertTrue(watFile.delete());
