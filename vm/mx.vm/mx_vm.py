@@ -1384,7 +1384,7 @@ class GraalVmStandaloneComponent(mx.LayoutTARDistribution):  # pylint: disable=t
         """
         :type installable: GraalVmInstallableComponent
         """
-        support_dir_pattern = '<jdk_base>/jre/languages/{}/'.format(installable.main_component.dir_name)
+        support_dir_pattern = '<jre_base>/languages/{}/'.format(installable.main_component.dir_name)
         other_comp_names = []
         if _get_svm_support().is_supported() and _get_launcher_configs(installable.main_component):
             other_comp_names += [c.short_name for c in registered_graalvm_components() if c.short_name in ('svm', 'svmee')]
