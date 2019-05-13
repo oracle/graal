@@ -71,6 +71,9 @@ public final class InspectorRuntime extends RuntimeDomain {
     private static final Pattern WHITESPACES_PATTERN = Pattern.compile("\\s+");
     private static final String FUNCTION_COMPLETION = eliminateWhiteSpaces("function getCompletions(");
     private static final String FUNCTION_SET_PROPERTY = eliminateWhiteSpaces("function(a, b) { this[a] = b; }");
+    private static final String FUNCTION_GET_ARRAY_NUM_PROPS = eliminateWhiteSpaces("function() { return [this.length, Object.keys(this).length - this.length + 2]; }");
+    private static final String FUNCTION_GET_BUFFER_NUM_PROPS = eliminateWhiteSpaces("function() { return [this.length, 0]; }");
+    private static final String FUNCTION_GET_COLLECTION_NUM_PROPS = eliminateWhiteSpaces("function() { return [0, Object.keys(this).length + 1]; }");
     // Generic matcher of following function:
     // function invokeGetter(arrayStr){let result=this;const properties=JSON.parse(arrayStr);
     // for(let i=0,n=properties.length;i<n;++i)
@@ -82,6 +85,28 @@ public final class InspectorRuntime extends RuntimeDomain {
     // function remoteFunction(propName) { return this[propName]; }
     private static final Pattern FUNCTION_GETTER_PATTERN2 = Pattern.compile(
                     "function\\s+(?<invokeGetter>\\w+)\\((?<propName>\\w+)\\)\\s*\\{\\s*return\\s+this\\[\\k<propName>\\];\\s*\\}");
+    // Generic matcher of following function:
+    // function getIndexedVariables(start, count) {var result = [];
+    // for (var i = start; i < (start + count); i++)
+    // result[i] = this[i];
+    // return result;}
+    private static final Pattern FUNCTION_GET_INDEXED_VARS_PATTERN = Pattern.compile(
+                    "function\\s+(?<getIndexedVariables>\\w+)\\((?<start>\\w+),\\s*(?<count>\\w+)\\)\\s*\\{\\s*\\w+\\s+(?<result>\\w+)\\s*=\\s*\\[\\];" +
+                                    "\\s*for\\s*\\(\\w+\\s+(?<i>\\w+)\\s*=\\s*\\k<start>;\\s*\\k<i>\\s*\\<\\s*\\(\\k<start>\\s*\\+\\s*\\k<count>\\);\\s*(\\+\\+\\k<i>|\\k<i>\\+\\+)\\)" +
+                                    "\\s*\\{?\\s*\\k<result>\\[\\k<i>\\]\\s*=\\s*this\\[\\k<i>\\];\\s*\\}?" +
+                                    "\\s*return\\s+\\k<result>;\\s*\\}");
+    // Generic matcher of following function:
+    // function getNamedVariablesFn(start, count) {var result = [];
+    // var ownProps = Object.getOwnPropertyNames(this);
+    // for (var i = start; i < (start + count); i++)
+    // result[i] = ownProps[i];
+    // return result;}
+    private static final Pattern FUNCTION_GET_NAMED_VARS_PATTERN = Pattern.compile(
+                    "function\\s+(?<getNamedVariables>\\w+)\\((?<start>\\w+),\\s*(?<count>\\w+)\\)\\s*\\{\\s*\\w+\\s+(?<result>\\w+)\\s*=\\s*\\[\\];" +
+                                    "\\s*\\w+\\s+(?<ownProps>\\w+)\\s*=\\s*Object.getOwnPropertyNames\\s*\\(this\\);" +
+                                    "\\s*for\\s*\\(\\w+\\s+(?<i>\\w+)\\s*=\\s*\\k<start>;\\s*\\k<i>\\s*\\<\\s*\\(\\k<start>\\s*\\+\\s*\\k<count>\\);\\s*(\\+\\+\\k<i>|\\k<i>\\+\\+)\\)" +
+                                    "\\s*\\{?\\s*\\k<result>\\[\\k<i>\\]\\s*=\\s*\\k<ownProps>\\[\\k<i>\\];\\s*\\}?" +
+                                    "\\s*return\\s+\\k<result>;\\s*\\}");
 
     private final InspectorExecutionContext context;
     private InspectorExecutionContext.Listener contextListener;
@@ -263,6 +288,7 @@ public final class InspectorRuntime extends RuntimeDomain {
         JSONObject json = new JSONObject();
         if (object != null) {
             DebugValue value = object.getDebugValue();
+            RemoteObject.IndexRange indexRange = object.getIndexRange();
             try {
                 if (value != null) {
                     context.executeInSuspendThread(new SuspendThreadExecutable<Void>() {
@@ -271,8 +297,20 @@ public final class InspectorRuntime extends RuntimeDomain {
                             Collection<DebugValue> properties = value.getProperties();
                             if (properties == null) {
                                 properties = Collections.emptyList();
+                            } else if (indexRange != null && indexRange.isNamed()) {
+                                List<DebugValue> list = new ArrayList<>(properties);
+                                properties = list.subList(indexRange.start(), indexRange.end());
                             }
-                            putResultProperties(json, value, properties, value.isArray() ? value.getArray() : Collections.emptyList(), generatePreview);
+                            Collection<DebugValue> array;
+                            if (!value.isArray()) {
+                                array = Collections.emptyList();
+                            } else if (indexRange != null && !indexRange.isNamed()) {
+                                List<DebugValue> arr = value.getArray();
+                                array = arr.subList(indexRange.start(), indexRange.end());
+                            } else {
+                                array = value.getArray();
+                            }
+                            putResultProperties(json, value, properties, array, generatePreview);
                             return null;
                         }
 
@@ -429,27 +467,92 @@ public final class InspectorRuntime extends RuntimeDomain {
         if (object != null) {
             DebugValue value = object.getDebugValue();
             DebugScope scope = object.getScope();
+            RemoteObject.IndexRange indexRange = object.getIndexRange();
             DebuggerSuspendedInfo suspendedInfo = context.getSuspendedInfo();
             if (suspendedInfo != null) {
                 try {
-                    String function = eliminateWhiteSpaces(functionDeclaration);
+                    String functionTrimmed = functionDeclaration.trim();
+                    String functionNoWS = eliminateWhiteSpaces(functionDeclaration);
                     context.executeInSuspendThread(new SuspendThreadExecutable<Void>() {
                         @Override
                         public Void executeCommand() throws CommandProcessException {
                             JSONObject result;
-                            if (function.startsWith(FUNCTION_COMPLETION)) {
+                            if (functionNoWS.startsWith(FUNCTION_COMPLETION)) {
                                 result = createCodecompletion(value, scope, generatePreview);
-                            } else if (function.equals(FUNCTION_SET_PROPERTY)) {
+                            } else if (functionNoWS.equals(FUNCTION_SET_PROPERTY)) {
                                 // Set of an array element, or object property
-                                if (arguments.length() < 2) {
-                                    throw new CommandProcessException("Insufficient number of arguments: " + arguments.length() + ", expecting: 2");
+                                if (arguments == null || arguments.length() < 2) {
+                                    throw new CommandProcessException("Insufficient number of arguments: " + (arguments != null ? arguments.length() : 0) + ", expecting: 2");
                                 }
                                 Object property = ((JSONObject) arguments.get(0)).get("value");
                                 CallArgument newValue = CallArgument.get((JSONObject) arguments.get(1));
                                 setPropertyValue(value, scope, property, newValue, suspendedInfo.lastEvaluatedValue.getAndSet(null));
                                 result = new JSONObject();
-                            } else if (FUNCTION_GETTER_PATTERN1.matcher(functionDeclaration).matches()) {
-                                if (arguments.length() < 1) {
+                            } else if (functionNoWS.equals(FUNCTION_GET_ARRAY_NUM_PROPS)) {
+                                if (!value.isArray()) {
+                                    throw new CommandProcessException("Expecting an Array the function is called on.");
+                                }
+                                JSONArray arr = new JSONArray();
+                                if (indexRange != null && !indexRange.isNamed()) {
+                                    List<DebugValue> array = value.getArray();
+                                    if (indexRange.start() < 0 || indexRange.end() > array.size()) {
+                                        throw new CommandProcessException("Array range out of bounds.");
+                                    }
+                                    arr.put(indexRange.end() - indexRange.start());
+                                } else {
+                                    arr.put(value.getArray().size());
+                                }
+                                Collection<DebugValue> props = value.getProperties();
+                                if (props == null) {
+                                    arr.put(0);
+                                } else if (indexRange != null && indexRange.isNamed()) {
+                                    ArrayList<DebugValue> list = new ArrayList<>(props);
+                                    if (indexRange.start() < 0 || indexRange.end() > list.size()) {
+                                        throw new CommandProcessException("Named range out of bounds.");
+                                    }
+                                    arr.put(indexRange.end() - indexRange.start());
+                                } else {
+                                    arr.put(props.size());
+                                }
+                                result = new JSONObject();
+                                result.put("value", arr);
+                            } else if (functionNoWS.equals(FUNCTION_GET_BUFFER_NUM_PROPS)) {
+                                if (!value.isArray()) {
+                                    throw new CommandProcessException("Expecting a Buffer the function is called on.");
+                                }
+                                JSONArray arr = new JSONArray();
+                                if (indexRange != null && !indexRange.isNamed()) {
+                                    List<DebugValue> array = value.getArray();
+                                    if (indexRange.start() < 0 || indexRange.end() > array.size()) {
+                                        throw new CommandProcessException("Array range out of bounds.");
+                                    }
+                                    arr.put(indexRange.end() - indexRange.start());
+                                } else {
+                                    arr.put(value.getArray().size());
+                                }
+                                arr.put(0);
+                                result = new JSONObject();
+                                result.put("value", arr);
+                            } else if (functionNoWS.equals(FUNCTION_GET_COLLECTION_NUM_PROPS)) {
+                                Collection<DebugValue> props = value.getProperties();
+                                if (props == null) {
+                                    throw new CommandProcessException("Expecting an Object the function is called on.");
+                                }
+                                JSONArray arr = new JSONArray();
+                                arr.put(0);
+                                if (indexRange != null && indexRange.isNamed()) {
+                                    ArrayList<DebugValue> list = new ArrayList<>(props);
+                                    if (indexRange.start() < 0 || indexRange.end() > list.size()) {
+                                        throw new CommandProcessException("Named range out of bounds.");
+                                    }
+                                    arr.put(indexRange.end() - indexRange.start());
+                                } else {
+                                    arr.put(props.size());
+                                }
+                                result = new JSONObject();
+                                result.put("value", arr);
+                            } else if (FUNCTION_GETTER_PATTERN1.matcher(functionTrimmed).matches()) {
+                                if (arguments == null || arguments.length() < 1) {
                                     throw new CommandProcessException("Expecting an argument to invokeGetter function.");
                                 }
                                 String propertyNames = ((JSONObject) arguments.get(0)).getString("value");
@@ -464,8 +567,8 @@ public final class InspectorRuntime extends RuntimeDomain {
                                     }
                                 }
                                 result = asResult(v);
-                            } else if (FUNCTION_GETTER_PATTERN2.matcher(functionDeclaration).matches()) {
-                                if (arguments.length() < 1) {
+                            } else if (FUNCTION_GETTER_PATTERN2.matcher(functionTrimmed).matches()) {
+                                if (arguments == null || arguments.length() < 1) {
                                     throw new CommandProcessException("Expecting an argument to invokeGetter function.");
                                 }
                                 String propertyName = ((JSONObject) arguments.get(0)).getString("value");
@@ -476,9 +579,34 @@ public final class InspectorRuntime extends RuntimeDomain {
                                     p = scope.getDeclaredValue(propertyName);
                                 }
                                 result = asResult(p);
+                            } else if (FUNCTION_GET_INDEXED_VARS_PATTERN.matcher(functionTrimmed).matches()) {
+                                if (!value.isArray()) {
+                                    throw new CommandProcessException("Expecting an Array the function is called on.");
+                                }
+                                if (arguments == null || arguments.length() < 2) {
+                                    throw new CommandProcessException("Insufficient number of arguments: " + (arguments != null ? arguments.length() : 0) + ", expecting: 2");
+                                }
+                                int start = ((JSONObject) arguments.get(0)).getInt("value");
+                                int count = ((JSONObject) arguments.get(1)).getInt("value");
+                                RemoteObject ro = new RemoteObject(value, true, generatePreview, context, new RemoteObject.IndexRange(start, start + count, false));
+                                context.getRemoteObjectsHandler().register(ro);
+                                result = ro.toJSON();
+                            } else if (FUNCTION_GET_NAMED_VARS_PATTERN.matcher(functionTrimmed).matches()) {
+                                Collection<DebugValue> props = value.getProperties();
+                                if (props == null) {
+                                    throw new CommandProcessException("Expecting an Object the function is called on.");
+                                }
+                                if (arguments == null || arguments.length() < 2) {
+                                    throw new CommandProcessException("Insufficient number of arguments: " + (arguments != null ? arguments.length() : 0) + ", expecting: 2");
+                                }
+                                int start = ((JSONObject) arguments.get(0)).getInt("value");
+                                int count = ((JSONObject) arguments.get(1)).getInt("value");
+                                RemoteObject ro = new RemoteObject(value, true, generatePreview, context, new RemoteObject.IndexRange(start, start + count, true));
+                                context.getRemoteObjectsHandler().register(ro);
+                                result = ro.toJSON();
                             } else {
                                 // Process CustomPreview body:
-                                if (arguments.length() > 0) {
+                                if (arguments != null && arguments.length() > 0) {
                                     Object arg0 = arguments.get(0);
                                     if (arg0 instanceof JSONObject) {
                                         JSONObject argObj = (JSONObject) arg0;
@@ -500,7 +628,7 @@ public final class InspectorRuntime extends RuntimeDomain {
                                         }
                                     }
                                 }
-                                String code = "(" + functionDeclaration + ")(" + ((value != null) ? value.getName() : "") + ")";
+                                String code = "(" + functionTrimmed + ")(" + ((value != null) ? value.getName() : "") + ")";
                                 DebugValue eval = suspendedInfo.getSuspendedEvent().getTopStackFrame().eval(code);
                                 result = asResult(eval);
                             }
