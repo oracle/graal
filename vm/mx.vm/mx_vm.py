@@ -264,13 +264,13 @@ class BaseGraalVmLayoutDistribution(mx.LayoutDistribution):
             _metadata = self._get_metadata(_sorted_suites)
             _add(layout, "<jdk_base>/release", "string:{}".format(_metadata))
 
-        # Add graal-sdk into either lib/boot/ or lib/jvmci/
-        if _src_jdk_has_jre:
-            _add(layout, '<jre_base>/lib/boot/', "dependency:sdk:GRAAL_SDK")
-            _add(layout, '<jre_base>/lib/boot/', "dependency:sdk:GRAAL_SDK/*.src.zip")
-        else:
-            _add(layout, '<jre_base>/lib/jvmci/', "dependency:sdk:GRAAL_SDK")
-            _add(layout, '<jre_base>/lib/jvmci/', "dependency:sdk:GRAAL_SDK/*.src.zip")
+            # Add graal-sdk into either lib/boot/ or lib/jvmci/
+            if _src_jdk_has_jre:
+                _add(layout, '<jre_base>/lib/boot/', "dependency:sdk:GRAAL_SDK")
+                _add(layout, '<jre_base>/lib/boot/', "dependency:sdk:GRAAL_SDK/*.src.zip")
+            else:
+                _add(layout, '<jre_base>/lib/jvmci/', "dependency:sdk:GRAAL_SDK")
+                _add(layout, '<jre_base>/lib/jvmci/', "dependency:sdk:GRAAL_SDK/*.src.zip")
 
         # Add the rest of the GraalVM
 
@@ -313,7 +313,7 @@ class BaseGraalVmLayoutDistribution(mx.LayoutDistribution):
 
             def _add_link(_dest, _target):
                 assert _dest.endswith('/')
-                _linkname = relpath(_target, start=_dest[:-1])
+                _linkname = relpath(path_substitutions.substitute(_target), start=path_substitutions.substitute(_dest[:-1]))
                 if _linkname != basename(_target):
                     _add(layout, _dest, 'link:{}'.format(_linkname), _component)
 
@@ -1137,9 +1137,10 @@ def graalvm_home_relative_classpath(dependencies, start=None, with_boot_jars=Fal
     for _cp_entry in mx.classpath_entries(dependencies):
         if _cp_entry.isJdkLibrary() or _cp_entry.isJreLibrary():
             jdk = _get_jdk()
-            if not _cp_entry.is_provided_by(jdk):
-                jdk_location = relpath(_cp_entry.classpath_repr(jdk), jdk.home)
-                graalvm_location = join(graal_vm.jdk_base, jdk_location)
+            if hasattr(_cp_entry, 'jdkStandardizedSince') and jdk.javaCompliance >= _cp_entry.jdkStandardizedSince:
+                continue
+            jdk_location = relpath(_cp_entry.classpath_repr(jdk), jdk.home)
+            graalvm_location = join(graal_vm.jdk_base, jdk_location)
         else:
             graalvm_location = graal_vm.find_single_source_location('dependency:{}:{}'.format(_cp_entry.suite, _cp_entry.name), fatal_if_missing=False)
             if graalvm_location is None and _cp_entry.isDistribution():
