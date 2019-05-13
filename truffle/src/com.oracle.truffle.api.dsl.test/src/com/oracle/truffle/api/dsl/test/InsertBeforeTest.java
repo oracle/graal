@@ -140,7 +140,7 @@ public class InsertBeforeTest {
 
     abstract static class InsertBeforeOtherPackage extends OtherPackageNode {
 
-        @Specialization(insertBefore = "doDefault")
+        @Specialization(insertBefore = "doDefault", guards = "a != 1")
         int doBefore(int a) {
             return a;
         }
