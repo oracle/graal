@@ -307,6 +307,15 @@ JNIEXPORT jlong JVM_NanoTime(void *env, void * ignored) {
     return Java_java_lang_System_nanoTime(env, ignored);
 }
 
+JNIEXPORT jlong JVM_GetNanoTimeAdjustment(void *env, void * ignored, jlong offset_secs) {
+    printf("JVM_GetNanoTimeAdjustment called: not implemented, return 0\n");
+    return 0;
+}
+
+JNIEXPORT jlong Java_jdk_internal_misc_VM_getNanoTimeAdjustment(void *env, void * ignored, jlong offset_secs) {
+    return JVM_GetNanoTimeAdjustment(env, ignored, offset_secs);
+}
+
 JNIEXPORT void JVM_Halt(int retcode) {
     _exit(retcode);
 }
