@@ -27,32 +27,41 @@
  * NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED
  * OF THE POSSIBILITY OF SUCH DAMAGE.
  */
-package com.oracle.truffle.wasm.test.parser;
+package com.oracle.truffle.wasm.parser.binary;
 
-import com.oracle.truffle.wasm.test.WasmTest;
-import com.oracle.truffle.wasm.test.WasmTestToolkit;
-import org.graalvm.polyglot.Context;
-import org.graalvm.polyglot.Source;
-import org.graalvm.polyglot.io.ByteSequence;
-import org.junit.Test;
+import com.oracle.truffle.api.frame.VirtualFrame;
 
-import java.io.IOException;
+import static com.oracle.truffle.api.CompilerDirectives.CompilationFinal;
 
-public class WasmParserTest extends WasmTest {
+public class WasmBlockNode extends WasmNode {
+    @CompilationFinal private final int startOffset;
 
-    @Test
-    public void parseTest() throws IOException, InterruptedException {
-        parseProgram("(module (func (result i32) (i32.const 42)))");
-        parseProgram("(module (func (result i32) (i32.const 1690433)))");
-        parseProgram("(module (func (result f32) (f32.const 1.5)))");
-        parseProgram("(module (func (result f64) (f64.const 340.75)))");
+    @CompilationFinal private final int size;
+
+    @CompilationFinal private final byte typeId;
+
+    public WasmBlockNode(int startOffset, int size, byte typeId) {
+        this.startOffset = startOffset;
+        this.size = size;
+        this.typeId = typeId;
     }
 
-    private static void parseProgram(String program) throws IOException, InterruptedException {
-        byte[] binary = WasmTestToolkit.compileWat(program);
-        Context context = Context.create();
-        Source source = org.graalvm.polyglot.Source.newBuilder("wasm", ByteSequence.create(binary), "test").build();
-        context.eval(source);
-        System.out.println(context.getBindings("wasm"));
+    public void execute(VirtualFrame frame, CallContext callContext) {
+        callContext.seek(startOffset);
+        while (callContext.offset() < startOffset + size) {
+            byte opcode = callContext.read1();
+            switch (opcode) {
+                case Instructions.I32_CONST:
+                    int value = callContext.readSignedInt32();
+                    callContext.push(value);
+                    break;
+                default:
+                    Assert.fail(String.format("Unknown opcode: 0x%02X", opcode));
+            }
+        }
+    }
+
+    public byte typeId() {
+        return typeId;
     }
 }

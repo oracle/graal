@@ -33,8 +33,6 @@ package com.oracle.truffle.wasm.test.parser;
 import org.junit.Assert;
 import org.junit.Test;
 
-import com.oracle.truffle.wasm.parser.binary.BinaryReader;
-
 public class UtilityTests {
 
     @Test
@@ -62,19 +60,19 @@ public class UtilityTests {
     }
 
     private void checkUnsignedLEB128(byte[] data, int expectedValue) {
-        BinaryReader reader = new BinaryReader(data);
-        int result = reader.readUnsignedLEB128();
+        TestStreamReader reader = new TestStreamReader(data);
+        int result = reader.readUnsignedInt32();
         Assert.assertEquals(expectedValue, result);
     }
 
     private void checkFloat32(byte[] data, float expectedValue) {
-        BinaryReader reader = new BinaryReader(data);
+        TestStreamReader reader = new TestStreamReader(data);
         float result = reader.readF32();
         Assert.assertEquals(expectedValue, result, 1e5);
     }
 
     private void checkFloat64(byte[] data, double expectedValue) {
-        BinaryReader reader = new BinaryReader(data);
+        TestStreamReader reader = new TestStreamReader(data);
         double result = reader.readF64();
         Assert.assertEquals(expectedValue, result, 1e5);
     }

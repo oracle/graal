@@ -29,30 +29,11 @@
  */
 package com.oracle.truffle.wasm.test.parser;
 
-import com.oracle.truffle.wasm.test.WasmTest;
-import com.oracle.truffle.wasm.test.WasmTestToolkit;
-import org.graalvm.polyglot.Context;
-import org.graalvm.polyglot.Source;
-import org.graalvm.polyglot.io.ByteSequence;
-import org.junit.Test;
+import com.oracle.truffle.wasm.parser.binary.BinaryStreamReader;
 
-import java.io.IOException;
+public class TestStreamReader extends BinaryStreamReader {
 
-public class WasmParserTest extends WasmTest {
-
-    @Test
-    public void parseTest() throws IOException, InterruptedException {
-        parseProgram("(module (func (result i32) (i32.const 42)))");
-        parseProgram("(module (func (result i32) (i32.const 1690433)))");
-        parseProgram("(module (func (result f32) (f32.const 1.5)))");
-        parseProgram("(module (func (result f64) (f64.const 340.75)))");
-    }
-
-    private static void parseProgram(String program) throws IOException, InterruptedException {
-        byte[] binary = WasmTestToolkit.compileWat(program);
-        Context context = Context.create();
-        Source source = org.graalvm.polyglot.Source.newBuilder("wasm", ByteSequence.create(binary), "test").build();
-        context.eval(source);
-        System.out.println(context.getBindings("wasm"));
+    public TestStreamReader(byte[] data) {
+        super(data);
     }
 }

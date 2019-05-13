@@ -27,32 +27,29 @@
  * NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED
  * OF THE POSSIBILITY OF SUCH DAMAGE.
  */
-package com.oracle.truffle.wasm.test.parser;
+package com.oracle.truffle.wasm.parser.binary;
 
-import com.oracle.truffle.wasm.test.WasmTest;
-import com.oracle.truffle.wasm.test.WasmTestToolkit;
-import org.graalvm.polyglot.Context;
-import org.graalvm.polyglot.Source;
-import org.graalvm.polyglot.io.ByteSequence;
-import org.junit.Test;
+import com.oracle.truffle.api.CallTarget;
+import com.oracle.truffle.api.Truffle;
+import com.oracle.truffle.api.TruffleLanguage;
 
-import java.io.IOException;
+@TruffleLanguage.Registration(id = "wasm", name = "WebAssembly", defaultMimeType = "application/wasm", byteMimeTypes = "application/wasm", contextPolicy = TruffleLanguage.ContextPolicy.SHARED, fileTypeDetectors = WasmFileDetector.class)
+public final class WasmLanguage extends TruffleLanguage<WasmContext> {
 
-public class WasmParserTest extends WasmTest {
-
-    @Test
-    public void parseTest() throws IOException, InterruptedException {
-        parseProgram("(module (func (result i32) (i32.const 42)))");
-        parseProgram("(module (func (result i32) (i32.const 1690433)))");
-        parseProgram("(module (func (result f32) (f32.const 1.5)))");
-        parseProgram("(module (func (result f64) (f64.const 340.75)))");
+    @Override
+    protected WasmContext createContext(Env env) {
+        return new WasmContext(env, this);
     }
 
-    private static void parseProgram(String program) throws IOException, InterruptedException {
-        byte[] binary = WasmTestToolkit.compileWat(program);
-        Context context = Context.create();
-        Source source = org.graalvm.polyglot.Source.newBuilder("wasm", ByteSequence.create(binary), "test").build();
-        context.eval(source);
-        System.out.println(context.getBindings("wasm"));
+    @Override
+    protected boolean isObjectOfLanguage(Object object) {
+        return false;
+    }
+
+    @Override
+    protected CallTarget parse(ParsingRequest request) throws Exception {
+        BinaryReader reader = new BinaryReader(this, request.getSource().getName(), request.getSource().getBytes().toByteArray());
+        reader.readModule();
+        return Truffle.getRuntime().createCallTarget(new WasmUndefinedFunctionRootCallNode(this));
     }
 }

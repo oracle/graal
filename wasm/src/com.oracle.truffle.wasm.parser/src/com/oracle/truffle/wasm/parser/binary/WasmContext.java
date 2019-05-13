@@ -27,32 +27,42 @@
  * NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED
  * OF THE POSSIBILITY OF SUCH DAMAGE.
  */
-package com.oracle.truffle.wasm.test.parser;
+package com.oracle.truffle.wasm.parser.binary;
 
-import com.oracle.truffle.wasm.test.WasmTest;
-import com.oracle.truffle.wasm.test.WasmTestToolkit;
-import org.graalvm.polyglot.Context;
-import org.graalvm.polyglot.Source;
-import org.graalvm.polyglot.io.ByteSequence;
-import org.junit.Test;
+import com.oracle.truffle.api.CallTarget;
+import com.oracle.truffle.api.Scope;
+import com.oracle.truffle.api.source.Source;
 
-import java.io.IOException;
+import java.util.HashMap;
+import java.util.Map;
 
-public class WasmParserTest extends WasmTest {
+import static com.oracle.truffle.api.TruffleLanguage.Env;
 
-    @Test
-    public void parseTest() throws IOException, InterruptedException {
-        parseProgram("(module (func (result i32) (i32.const 42)))");
-        parseProgram("(module (func (result i32) (i32.const 1690433)))");
-        parseProgram("(module (func (result f32) (f32.const 1.5)))");
-        parseProgram("(module (func (result f64) (f64.const 340.75)))");
+public class WasmContext {
+    private Env env;
+    private WasmLanguage language;
+    private Map<String, WasmModule> modules;
+
+    public WasmContext(Env env, WasmLanguage language) {
+        this.env = env;
+        this.language = language;
+        this.modules = new HashMap<>();
     }
 
-    private static void parseProgram(String program) throws IOException, InterruptedException {
-        byte[] binary = WasmTestToolkit.compileWat(program);
-        Context context = Context.create();
-        Source source = org.graalvm.polyglot.Source.newBuilder("wasm", ByteSequence.create(binary), "test").build();
-        context.eval(source);
-        System.out.println(context.getBindings("wasm"));
+    public CallTarget parse(Source source) {
+        return env.parse(source);
+    }
+
+    public WasmLanguage language() {
+        return language;
+    }
+
+    public Iterable<Scope> getTopScopes() {
+        // Go through all WasmModules parsed with this context, and create a Scope for each of them.
+        return null;
+    }
+
+    void registerModule(WasmModule module) {
+        modules.put(module.name(), module);
     }
 }

@@ -27,32 +27,42 @@
  * NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED
  * OF THE POSSIBILITY OF SUCH DAMAGE.
  */
-package com.oracle.truffle.wasm.test.parser;
+package com.oracle.truffle.wasm.parser.binary;
 
-import com.oracle.truffle.wasm.test.WasmTest;
-import com.oracle.truffle.wasm.test.WasmTestToolkit;
-import org.graalvm.polyglot.Context;
-import org.graalvm.polyglot.Source;
-import org.graalvm.polyglot.io.ByteSequence;
-import org.junit.Test;
+import com.oracle.truffle.api.CompilerDirectives.CompilationFinal;
+import com.oracle.truffle.api.TruffleLanguage;
+import com.oracle.truffle.api.frame.VirtualFrame;
+import com.oracle.truffle.api.nodes.RootNode;
 
-import java.io.IOException;
+public class WasmRootNode extends RootNode {
+    @CompilationFinal private final byte[] data;
+    @Child private WasmBlockNode body;
 
-public class WasmParserTest extends WasmTest {
+    @CompilationFinal private int maxValueStackSize;
 
-    @Test
-    public void parseTest() throws IOException, InterruptedException {
-        parseProgram("(module (func (result i32) (i32.const 42)))");
-        parseProgram("(module (func (result i32) (i32.const 1690433)))");
-        parseProgram("(module (func (result f32) (f32.const 1.5)))");
-        parseProgram("(module (func (result f64) (f64.const 340.75)))");
+    public WasmRootNode(TruffleLanguage<?> language, byte[] data, WasmBlockNode body) {
+        super(language);
+        this.data = data;
+        this.body = body;
     }
 
-    private static void parseProgram(String program) throws IOException, InterruptedException {
-        byte[] binary = WasmTestToolkit.compileWat(program);
-        Context context = Context.create();
-        Source source = org.graalvm.polyglot.Source.newBuilder("wasm", ByteSequence.create(binary), "test").build();
-        context.eval(source);
-        System.out.println(context.getBindings("wasm"));
+    @Override
+    public Object execute(VirtualFrame frame) {
+        CallContext callContext = new CallContext(data, maxValueStackSize);
+        body.execute(frame, callContext);
+        long returnValue = callContext.pop();
+        switch (body.typeId()) {
+            case ValueTypes.I32_TYPE:
+                return (int) returnValue;
+            case ValueTypes.I64_TYPE:
+                return returnValue;
+            case ValueTypes.F32_TYPE:
+                return Float.intBitsToFloat((int) returnValue);
+            case ValueTypes.F64_TYPE:
+                return Double.longBitsToDouble(returnValue);
+            default:
+                Assert.fail(String.format("Unknown type: 0x%02X", body.typeId()));
+                return null;
+        }
     }
 }

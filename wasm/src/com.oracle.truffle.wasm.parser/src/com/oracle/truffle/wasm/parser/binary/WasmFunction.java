@@ -27,28 +27,34 @@
  * NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED
  * OF THE POSSIBILITY OF SUCH DAMAGE.
  */
-package com.oracle.truffle.wasm.test.parser;
+package com.oracle.truffle.wasm.parser.binary;
 
+import com.oracle.truffle.api.RootCallTarget;
 
-import com.oracle.truffle.wasm.parser.binary.BinaryReader;
-import org.junit.Assert;
-import org.junit.Test;
+public class WasmFunction {
+    private SymbolTable symbolTable;
+    private int typeIndex;
+    private RootCallTarget callTarget;
 
-import java.io.File;
-import java.io.IOException;
-import java.nio.file.Files;
+    private byte[] locals;
+    private int offset;
 
-public class FileReadTests {
-
-    @Test
-    public void ParseHelloWorld() {
-        try {
-            byte[] data = Files.readAllBytes(new File("/home/ergys/dev/webassembly/hello.wasm").toPath());
-            BinaryReader reader = new BinaryReader(data);
-            reader.readModule();
-        } catch (IOException exc) {
-            Assert.fail("cannot open file: " + exc.getLocalizedMessage());
-        }
+    public WasmFunction(SymbolTable symbolTable, int typeIndex) {
+        this.symbolTable = symbolTable;
+        this.typeIndex = typeIndex;
+        this.callTarget = null;
     }
 
+    public byte returnType() {
+        return symbolTable.getFunctionReturnType(typeIndex);
+    }
+
+    void setCallTarget(RootCallTarget callTarget) {
+        this.callTarget = callTarget;
+    }
+
+    public void registerLocal(byte type) {
+        locals[offset] = type;
+        offset++;
+    }
 }
