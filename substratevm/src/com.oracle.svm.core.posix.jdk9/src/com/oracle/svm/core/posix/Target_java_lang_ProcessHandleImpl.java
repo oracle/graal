@@ -39,7 +39,7 @@ import com.oracle.svm.core.util.VMError;
 @TargetClass(className = "java.lang.ProcessHandleImpl", onlyWith = JDK9OrLater.class)
 final class Target_java_lang_ProcessHandleImpl {
 
-    @Platforms({Platform.LINUX.class, Platform.DARWIN.class})
+    @Platforms({Platform.LINUX.class, Platform.DARWIN.class})//
     @Delete static Executor processReaperExecutor;
 
     @Substitute

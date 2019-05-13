@@ -56,8 +56,6 @@ _exe_suffix = mx.exe_suffix('')
 
 _vm_configs = {}
 
-_jdk_with_modules = False
-
 mx_sdk.register_graalvm_component(mx_sdk.GraalVmJdkComponent(
     suite=_suite,
     name='Component installer',
@@ -111,7 +109,7 @@ class BaseGraalVmLayoutDistribution(mx.LayoutDistribution):
         _src_jdk_base, _jdk_dir = _get_jdk_dir()
         _src_jdk_base = _src_jdk_base if add_jdk_base else '.'
 
-        _src_jdk_has_jre = not (_src_jdk.version.parts[0] >= 11)
+        _src_jdk_has_jre = not _src_jdk.version.parts[0] >= 11
 
         if base_dir != '.':
             self.jdk_base = '/'.join([base_dir, _src_jdk_base]) if _src_jdk_base and _src_jdk_base != '.' else base_dir
@@ -1051,7 +1049,7 @@ class GraalVmBashLauncherBuildTask(GraalVmNativeImageBuildTask):
         mx.ensure_dir_exists(dirname(output_file))
         graal_vm = self.subject.get_containing_graalvm()
         script_destination_directory = dirname(graal_vm.find_single_source_location('dependency:' + self.subject.name))
-        jdk = _get_jdk();
+        jdk = _get_jdk()
         if jdk.version.parts[0] >= 11:
             jre_bin = _get_graalvm_archive_path('bin', graal_vm=graal_vm)
         else:
@@ -1072,18 +1070,18 @@ class GraalVmBashLauncherBuildTask(GraalVmNativeImageBuildTask):
         _template_subst.register_no_arg('main_class', _get_main_class)
 
         if jdk.version.parts[0] >= 11:
-            start = script_destination_directory;
+            start = script_destination_directory
 
-            graal_sdk = relpath(graal_vm.find_single_source_location('dependency:sdk:GRAAL_SDK'),start);
-            truffle_api = relpath(graal_vm.find_single_source_location('dependency:truffle:TRUFFLE_API'),start);
-            graal_jar = relpath(graal_vm.find_single_source_location('dependency:compiler:GRAAL'),start);
-            graal_management_jar = relpath(graal_vm.find_single_source_location('dependency:compiler:GRAAL_MANAGEMENT'), start);
+            graal_sdk = relpath(graal_vm.find_single_source_location('dependency:sdk:GRAAL_SDK'), start)
+            truffle_api = relpath(graal_vm.find_single_source_location('dependency:truffle:TRUFFLE_API'), start)
+            graal_jar = relpath(graal_vm.find_single_source_location('dependency:compiler:GRAAL'), start)
+            graal_management_jar = relpath(graal_vm.find_single_source_location('dependency:compiler:GRAAL_MANAGEMENT'), start)
 
             def _get_module_path():
-                return graal_sdk + ":"  + truffle_api;
+                return graal_sdk + ":" + truffle_api
 
             def _get_upgrade_module_path():
-                return graal_jar + ":" + graal_management_jar;
+                return graal_jar + ":" + graal_management_jar
 
             _template_subst.register_no_arg('module_path', _get_module_path)
             _template_subst.register_no_arg('upgrade_module_path', _get_upgrade_module_path)
@@ -1907,9 +1905,6 @@ def check_versions(jdk_dir, jdk_version_regex, graalvm_version_regex, expect_gra
         mx.abort("'{}' has an unexpected version string:\n{}\ndoes not match:\n{}".format(jdk_dir, out, jdk_version_regex.pattern))
     elif not (match.group('jvm_version').startswith("1.8.0") or match.group('jvm_version').startswith("11")):
         mx.abort("GraalVM requires a JDK8 or JDK11 as base-JDK, while the selected JDK ('{}') is '{}':\n{}\n{}.".format(jdk_dir, match.group('jvm_version'), out, check_env))
-
-    if match.group('jvm_version').startswith("11"):
-        _jdk_with_modules = True;
 
     match = graalvm_version_regex.match(out)
     if expect_graalvm and match is None:
