@@ -43,6 +43,7 @@ package com.oracle.truffle.api.dsl.test;
 import com.oracle.truffle.api.dsl.NodeChild;
 import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.dsl.test.TypeSystemTest.ValueNode;
+import com.oracle.truffle.api.dsl.test.otherPackage.OtherPackageNode;
 
 public class InsertBeforeTest {
 
@@ -132,6 +133,15 @@ public class InsertBeforeTest {
         @ExpectError("The referenced specialization 'asdf' could not be found.")
         @Specialization(insertBefore = "asdf")
         int f0(int a) {
+            return a;
+        }
+
+    }
+
+    abstract static class InsertBeforeOtherPackage extends OtherPackageNode {
+
+        @Specialization(insertBefore = "doDefault")
+        int doBefore(int a) {
             return a;
         }
 
