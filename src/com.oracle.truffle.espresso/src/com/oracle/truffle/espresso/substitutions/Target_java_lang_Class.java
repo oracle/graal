@@ -27,6 +27,7 @@ import com.oracle.truffle.espresso.EspressoLanguage;
 import com.oracle.truffle.espresso.EspressoOptions;
 import com.oracle.truffle.espresso.classfile.EnclosingMethodAttribute;
 import com.oracle.truffle.espresso.classfile.InnerClassesAttribute;
+import com.oracle.truffle.espresso.classfile.NameAndTypeConstant;
 import com.oracle.truffle.espresso.classfile.RuntimeConstantPool;
 import com.oracle.truffle.espresso.classfile.SignatureAttribute;
 import com.oracle.truffle.espresso.descriptors.Symbol;
@@ -42,6 +43,7 @@ import com.oracle.truffle.espresso.meta.Meta;
 import com.oracle.truffle.espresso.meta.MetaUtil;
 import com.oracle.truffle.espresso.runtime.Attribute;
 import com.oracle.truffle.espresso.runtime.EspressoContext;
+import com.oracle.truffle.espresso.runtime.EspressoException;
 import com.oracle.truffle.espresso.runtime.StaticObject;
 import com.oracle.truffle.espresso.vm.InterpreterToVM;
 
@@ -78,20 +80,28 @@ public final class Target_java_lang_Class {
                     @SuppressWarnings("unused") @Host(Class.class) StaticObject caller) {
 
         assert loader != null;
-
         EspressoContext context = EspressoLanguage.getCurrentContext();
         Meta meta = context.getMeta();
-
-        Klass klass = context.getRegistries().loadKlass(context.getTypes().fromClassGetName(Meta.toHostString(name)), loader);
-
-        if (klass == null) {
+        if (name == StaticObject.NULL) {
             throw meta.throwExWithMessage(meta.ClassNotFoundException, name);
         }
 
-        if (initialize) {
-            klass.safeInitialize();
+        try {
+            Klass klass = context.getRegistries().loadKlass(context.getTypes().fromClassGetName(Meta.toHostString(name)), loader);
+
+            if (klass == null) {
+                throw meta.throwExWithMessage(meta.ClassNotFoundException, name);
+            }
+
+            if (initialize) {
+                klass.safeInitialize();
+            }
+            return klass.mirror();
+        } catch (EspressoException e) {
+            throw e;
+        } catch (Throwable e) {
+            throw meta.throwExWithMessage(meta.ClassNotFoundException, name);
         }
-        return klass.mirror();
     }
 
     @Substitution(hasReceiver = true)
@@ -432,23 +442,40 @@ public final class Target_java_lang_Class {
         Meta meta = EspressoLanguage.getCurrentContext().getMeta();
         InterpreterToVM vm = meta.getInterpreterToVM();
         if (self.getMirrorKlass() instanceof ObjectKlass) {
-            EnclosingMethodAttribute enclosingMethodAttr = ((ObjectKlass) self.getMirrorKlass()).getEnclosingMethod();
+            ObjectKlass klass = (ObjectKlass) self.getMirrorKlass();
+            EnclosingMethodAttribute enclosingMethodAttr = klass.getEnclosingMethod();
             if (enclosingMethodAttr == null) {
                 return StaticObject.NULL;
             }
+            if (enclosingMethodAttr.getMethodIndex() == 0) {
+                return StaticObject.NULL;
+            }
             StaticObject arr = meta.Object.allocateArray(3);
-            Klass enclosingKlass = ((ObjectKlass) self.getMirrorKlass()).getConstantPool().resolvedKlassAt(self.getMirrorKlass(), enclosingMethodAttr.getClassIndex());
+            RuntimeConstantPool pool = klass.getConstantPool();
+            Klass enclosingKlass = pool.resolvedKlassAt(klass, enclosingMethodAttr.getClassIndex());
 
             vm.setArrayObject(enclosingKlass.mirror(), 0, arr);
 
-            if (enclosingMethodAttr.getMethodIndex() != 0) {
-                Method enclosingMethod = ((ObjectKlass) self.getMirrorKlass()).getConstantPool().resolvedMethodAt(self.getMirrorKlass(), enclosingMethodAttr.getMethodIndex());
-                vm.setArrayObject(meta.toGuestString(enclosingMethod.getName().toString()), 1, arr);
-                vm.setArrayObject(meta.toGuestString(enclosingMethod.getRawSignature().toString()), 2, arr);
-            } else {
-                assert vm.getArrayObject(1, arr) == StaticObject.NULL;
-                assert vm.getArrayObject(2, arr) == StaticObject.NULL;
-            }
+            NameAndTypeConstant nmt = pool.nameAndTypeAt(enclosingMethodAttr.getMethodIndex());
+            StaticObject name = meta.toGuestString(nmt.getName(pool));
+            StaticObject desc = meta.toGuestString(nmt.getDescriptor(pool));
+
+            vm.setArrayObject(name, 1, arr);
+            vm.setArrayObject(desc, 2, arr);
+
+            return arr;
+
+            // if (enclosingMethodAttr.getMethodIndex() != 0) {
+            // Method enclosingMethod = ((ObjectKlass)
+            // self.getMirrorKlass()).getConstantPool().resolvedMethodAt(self.getMirrorKlass(),
+            // enclosingMethodAttr.getMethodIndex());
+            // vm.setArrayObject(meta.toGuestString(enclosingMethod.getName().toString()), 1, arr);
+            // vm.setArrayObject(meta.toGuestString(enclosingMethod.getRawSignature().toString()),
+            // 2, arr);
+            // } else {
+            // assert vm.getArrayObject(1, arr) == StaticObject.NULL;
+            // assert vm.getArrayObject(2, arr) == StaticObject.NULL;
+            // }
         }
         return StaticObject.NULL;
     }

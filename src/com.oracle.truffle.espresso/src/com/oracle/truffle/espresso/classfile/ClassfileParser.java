@@ -416,8 +416,6 @@ public final class ClassfileParser {
         int maxLocals = stream.readU2();
         int codeLength = stream.readS4();
         byte[] code = stream.readByteArray(codeLength);
-        // TODO(garcia) verify code validity here.
-        // throw ClassFormatException if invalid.
         ExceptionHandler[] entries = parseExceptionHandlerEntries();
         Attribute[] codeAttributes = parseAttributes();
         return new CodeAttribute(name, maxStack, maxLocals, code, entries, codeAttributes);

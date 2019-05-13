@@ -295,7 +295,7 @@ import static com.oracle.truffle.espresso.bytecode.Bytecodes.WIDE;
  */
 public class BytecodeNode extends EspressoBaseNode implements CustomNodeCount {
 
-    public static final boolean DEBUG_GENERAL = false;
+    public static final boolean DEBUG_GENERAL = true;
     public static final boolean DEBUG_THROWN = false;
     public static final boolean DEBUG_CATCH = false;
 
@@ -888,7 +888,14 @@ public class BytecodeNode extends EspressoBaseNode implements CustomNodeCount {
                     if (DEBUG_GENERAL) {
                         reportRuntimeException(e, curBCI, this);
                     }
-                    throw getMeta().throwEx(InternalError.class);
+                    throw getMeta().throwExWithMessage(e.getClass(), e.getMessage());
+                } catch (Exception e) {
+                    // TODO(garcia) Do not lose the cause.
+                    // TODO There should be no need to wrap exceptions in host language, as they
+                    // should be handled one way or another by espresso itself.
+                    CompilerDirectives.transferToInterpreterAndInvalidate();
+                    e.printStackTrace();
+                    throw getMeta().throwExWithMessage(e.getClass(), e.getMessage());
                 }
             } catch (EspressoException e) {
                 CompilerDirectives.transferToInterpreter();
@@ -1001,6 +1008,9 @@ public class BytecodeNode extends EspressoBaseNode implements CustomNodeCount {
     static private void reportRuntimeException(RuntimeException e, int curBCI, BytecodeNode thisNode) {
         Method m = thisNode.getMethod();
         System.err.println("Internal error (caught in invocation): " + m.report(curBCI));
+        if (e.getCause() != null) {
+            e.getCause().printStackTrace();
+        }
         e.printStackTrace();
     }
 

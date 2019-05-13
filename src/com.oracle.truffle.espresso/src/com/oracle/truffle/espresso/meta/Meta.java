@@ -106,6 +106,18 @@ public final class Meta implements ContextAccess {
         Long = knownKlass(Type.Long);
         Void = knownKlass(Type.Void);
 
+        BOXED_PRIMITIVE_KLASSES = new ObjectKlass[]{
+                        Boolean,
+                        Byte,
+                        Character,
+                        Short,
+                        Float,
+                        Integer,
+                        Double,
+                        Long,
+                        Void
+        };
+
         Boolean_valueOf = Boolean.lookupDeclaredMethod(Name.valueOf, Signature.Boolean_boolean);
         Byte_valueOf = Byte.lookupDeclaredMethod(Name.valueOf, Signature.Byte_byte);
         Character_valueOf = Character.lookupDeclaredMethod(Name.valueOf, Signature.Character_char);
@@ -470,6 +482,8 @@ public final class Meta implements ContextAccess {
 
     @CompilationFinal(dimensions = 1) //
     public final ObjectKlass[] ARRAY_SUPERINTERFACES;
+
+    @CompilationFinal(dimensions = 1) public final ObjectKlass[] BOXED_PRIMITIVE_KLASSES;
 
     private static boolean isKnownClass(java.lang.Class<?> clazz) {
         // Cheap check: (host) known classes are loaded by the BCL.

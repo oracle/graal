@@ -223,13 +223,12 @@ public final class EspressoContext {
             initializeKnownClass(type);
         }
 
+        // Init memoryError instances
         StaticObject stackOverflowErrorInstance = meta.StackOverflowError.allocateInstance();
         StaticObject outOfMemoryErrorInstance = meta.OutOfMemoryError.allocateInstance();
         meta.StackOverflowError.lookupDeclaredMethod(Name.INIT, Signature._void_String).invokeDirect(stackOverflowErrorInstance, meta.toGuestString("VM StackOverFlow"));
         meta.OutOfMemoryError.lookupDeclaredMethod(Name.INIT, Signature._void_String).invokeDirect(outOfMemoryErrorInstance, meta.toGuestString("VM OutOfMemory"));
         this.frames = new ArrayList<>(DEFAULT_STACK_SIZE);
-        // stackOverflowErrorInstance.setHiddenField(meta.HIDDEN_FRAMES, frames);
-        // outOfMemoryErrorInstance.setHiddenField(meta.HIDDEN_FRAMES, frames);
         this.stackOverflow = new EspressoException(stackOverflowErrorInstance);
         this.outOfMemory = new EspressoException(outOfMemoryErrorInstance);
 
@@ -251,13 +250,12 @@ public final class EspressoContext {
     }
 
     public void interruptActiveThreads() {
-        // TODO(garcia) Handle completing active threads
         Thread initiatingThread = Thread.currentThread();
         for (Thread t : activeThreads) {
             if (t != initiatingThread) {
                 /**
-                 * TODO Finalizer thread can't be interrupted at all. We must find some way to
-                 * complete it for polyglot.
+                 * TODO(garcia) Finalizer thread can't be interrupted at all. We must find some way
+                 * to complete it for polyglot.
                  */
             }
         }

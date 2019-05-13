@@ -36,6 +36,8 @@ import com.oracle.truffle.espresso.meta.Meta;
 import com.oracle.truffle.espresso.runtime.EspressoException;
 import com.oracle.truffle.espresso.runtime.StaticObject;
 
+import java.lang.reflect.InvocationTargetException;
+
 /**
  * This substitution is merely for performance reasons, to avoid the deep-dive to native. libjava
  * hardwires {@link #invoke0} to JVM_InvokeMethod in libjvm.
@@ -235,6 +237,11 @@ public final class Target_sun_reflect_NativeMethodAccessorImpl {
         }
 
         Klass klass = ((StaticObject) meta.Method_clazz.get(guestMethod)).getMirrorKlass();
+
+        if (klass == meta.MethodHandle && (reflectedMethod.getName() == Name.invoke || reflectedMethod.getName() == Name.invokeExact)) {
+            throw meta.throwExWithCause(InvocationTargetException.class, meta.initExWithMessage(UnsupportedOperationException.class, "Cannot reflecively invoke MethodHandle.{invoke,invokeExact}"));
+        }
+
         StaticObject parameterTypes = (StaticObject) meta.Method_parameterTypes.get(guestMethod);
         // System.err.println(EspressoOptions.INCEPTION_NAME + " Reflective method for " +
         // reflectedMethod.getName());

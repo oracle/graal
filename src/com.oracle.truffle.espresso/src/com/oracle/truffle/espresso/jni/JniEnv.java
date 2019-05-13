@@ -152,7 +152,11 @@ public final class JniEnv extends NativeEnv implements ContextAccess {
                     // FIXME(peterssen): Also, do use proper nodes.
                     if (shiftedArgs[i] instanceof TruffleObject) {
                         if (ForeignAccess.sendIsNull(Message.IS_NULL.createNode(), (TruffleObject) shiftedArgs[i])) {
-                            shiftedArgs[i] = StaticObject.NULL;
+                            if (params[i] == StaticObject.class) {
+                                shiftedArgs[i] = StaticObject.NULL;
+                            } else {
+                                shiftedArgs[i] = null;
+                            }
                         }
                     } else {
                         // TruffleNFI pass booleans as byte, do the proper conversion.

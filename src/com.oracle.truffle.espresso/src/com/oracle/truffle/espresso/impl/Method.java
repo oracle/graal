@@ -328,8 +328,12 @@ public final class Method implements TruffleObject, ModifiersProvider, ContextAc
                         // (print_jni_name_suffix_on ...)
 
                         if (callTarget == null) {
-                            System.err.println("Failed to link native method: " + getDeclaringKlass().getType() + "." + getName() + " -> " + getRawSignature());
-                            throw getMeta().throwEx(UnsatisfiedLinkError.class);
+                            if (getDeclaringKlass() == getMeta().MethodHandle && (getName() == Name.invokeExact || getName() == Name.invoke)) {
+                                this.callTarget = declaringKlass.lookupPolysigMethod(getName(), getRawSignature()).getCallTarget();
+                            } else {
+                                System.err.println("Failed to link native method: " + getDeclaringKlass().getType() + "." + getName() + " -> " + getRawSignature());
+                                throw getMeta().throwEx(UnsatisfiedLinkError.class);
+                            }
                         }
                     } else {
                         FrameDescriptor frameDescriptor = initFrameDescriptor(getMaxLocals() + getMaxStackSize());

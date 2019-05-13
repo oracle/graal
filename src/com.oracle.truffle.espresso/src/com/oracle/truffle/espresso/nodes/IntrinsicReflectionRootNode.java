@@ -48,7 +48,7 @@ public class IntrinsicReflectionRootNode extends EspressoBaseNode {
         } catch (InvocationTargetException e) {
             CompilerDirectives.transferToInterpreter();
             Throwable inner = e.getTargetException();
-            // Errors that should propagate
+            // Exceptions that should propagate boxed
             if (inner instanceof EspressoException) {
                 throw (EspressoException) inner;
             }
