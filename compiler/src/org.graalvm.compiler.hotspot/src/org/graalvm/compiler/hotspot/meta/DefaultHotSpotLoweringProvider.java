@@ -792,7 +792,7 @@ public class DefaultHotSpotLoweringProvider extends DefaultJavaLoweringProvider 
 
     @Override
     protected final JavaKind getStorageKind(ResolvedJavaField field) {
-        return field.getJavaKind();
+        return wordTypes.asKind(field.getType());
     }
 
     @Override

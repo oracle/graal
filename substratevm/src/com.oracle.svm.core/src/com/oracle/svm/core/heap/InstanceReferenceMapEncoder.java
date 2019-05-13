@@ -32,10 +32,10 @@ import com.oracle.svm.core.code.CodeInfoQueryResult;
 import com.oracle.svm.core.config.ConfigurationValues;
 
 /**
- * Implements a simple reference map encoding that favors decoding speed over compactness. This is
- * fine as there is a limited number of instance reference maps.
- *
- * Each reference map has the following format:
+ * Encodes the reference map of Java instances. Features such as derived pointers and mixing
+ * compressed/uncompressed pointers are neither needed nor supported. The implementation favors
+ * decoding speed over compactness. This is fine as there is a limited number of instance reference
+ * maps. Each reference map has the following format:
  * <ul>
  * <li>int entryCount - the number of entries in the reference map</li>
  * <li>entryCount entries with the following format:
