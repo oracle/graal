@@ -2268,6 +2268,7 @@ suite = {
     },
 
     "GRAAL_PROCESSOR_COMMON" : {
+      "subDir": "src",
       "dependencies" : ["org.graalvm.compiler.processor"],
       "maven": False,
     },

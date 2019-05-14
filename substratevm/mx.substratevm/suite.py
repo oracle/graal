@@ -835,6 +835,7 @@ suite = {
         },
 
         "GRAAL_HOTSPOT_LIBRARY": {
+            "subDir": "src",
             "description" : "SubstrateVM HotSpot Graal library support",
             "dependencies": [
                 "com.oracle.svm.graal.hotspot.libgraal",
@@ -891,6 +892,7 @@ suite = {
         },
 
         "SVM_AGENT": {
+            "subDir": "src",
             "description" : "SubstrateVM native-image-agent library",
             "dependencies": [
                 "com.oracle.svm.agent",
@@ -934,6 +936,7 @@ suite = {
         },
 
         "SVM_TESTS" : {
+          "subDir": "src",
           "relpath" : True,
           "dependencies" : [
             "com.oracle.svm.test",
@@ -946,6 +949,7 @@ suite = {
         },
 
         "POLYGLOT_NATIVE_API" : {
+            "subDir": "src",
             "dependencies": [
                 "org.graalvm.polyglot.nativeapi",
             ],
