@@ -48,13 +48,13 @@ import org.graalvm.nativeimage.impl.ProcessPropertiesSupport;
 /**
  * Utility class to get and set properties of the OS process at run time.
  *
- * @since 1.0
+ * @since 19.0
  */
 public final class ProcessProperties {
     /**
      * Return the canonicalized absolute pathname of the executable.
      *
-     * @since 1.0
+     * @since 19.0
      */
     public static String getExecutableName() {
         return ImageSingletons.lookup(ProcessPropertiesSupport.class).getExecutableName();
@@ -63,7 +63,7 @@ public final class ProcessProperties {
     /**
      * Get the Process ID of the process executing the image.
      *
-     * @since 1.0
+     * @since 19.0
      */
     public static long getProcessID() {
         return ImageSingletons.lookup(ProcessPropertiesSupport.class).getProcessID();
@@ -72,7 +72,7 @@ public final class ProcessProperties {
     /**
      * Get the Process ID of the given process object.
      *
-     * @since 1.0
+     * @since 19.0
      */
     public static long getProcessID(Process process) {
         return ImageSingletons.lookup(ProcessPropertiesSupport.class).getProcessID(process);
@@ -81,7 +81,7 @@ public final class ProcessProperties {
     /**
      * Wait for process termination and return its exit status.
      *
-     * @since 1.0
+     * @since 19.0
      */
     public static int waitForProcessExit(long processID) {
         return ImageSingletons.lookup(ProcessPropertiesSupport.class).waitForProcessExit(processID);
@@ -91,7 +91,7 @@ public final class ProcessProperties {
      * Kills the process. Whether the process represented by the given Process ID is normally
      * terminated or not is implementation dependent.
      *
-     * @since 1.0
+     * @since 19.0
      */
     public static boolean destroy(long processID) {
         return ImageSingletons.lookup(ProcessPropertiesSupport.class).destroy(processID);
@@ -102,7 +102,7 @@ public final class ProcessProperties {
      * terminated. Forcible process destruction is defined as the immediate termination of a
      * process, whereas normal termination allows the process to shut down cleanly.
      *
-     * @since 1.0
+     * @since 19.0
      */
     public static boolean destroyForcibly(long processID) {
         return ImageSingletons.lookup(ProcessPropertiesSupport.class).destroyForcibly(processID);
@@ -114,7 +114,7 @@ public final class ProcessProperties {
      * @return true if the process represented by the given Process ID object has not yet
      *         terminated.
      *
-     * @since 1.0
+     * @since 19.0
      */
     public static boolean isAlive(long processID) {
         return ImageSingletons.lookup(ProcessPropertiesSupport.class).isAlive(processID);
@@ -123,8 +123,8 @@ public final class ProcessProperties {
     /**
      * Return the path of the object file defining the symbol specified as a {@link String}
      * containing the symbol name.
-     * 
-     * @since 1.0
+     *
+     * @since 19.0
      */
     public static String getObjectFile(String symbol) {
         return ImageSingletons.lookup(ProcessPropertiesSupport.class).getObjectFile(symbol);
@@ -134,7 +134,7 @@ public final class ProcessProperties {
      * Return the path of the object file defining the symbol specified as a
      * {@link CEntryPointLiteral} containing a function pointer to symbol.
      *
-     * @since 1.0
+     * @since 19.0
      */
     public static String getObjectFile(CEntryPointLiteral<?> symbol) {
         return ImageSingletons.lookup(ProcessPropertiesSupport.class).getObjectFile(symbol);
@@ -143,7 +143,7 @@ public final class ProcessProperties {
     /**
      * Set the program locale.
      *
-     * @since 1.0
+     * @since 19.0
      */
     public static String setLocale(String category, String locale) {
         return ImageSingletons.lookup(ProcessPropertiesSupport.class).setLocale(category, locale);
@@ -153,7 +153,7 @@ public final class ProcessProperties {
      * Replaces the current process image with the process image specified by the given path invoked
      * with the given args. This method does not return if the call is successful.
      *
-     * @since 1.0
+     * @since 19.0
      */
     public static void exec(Path executable, String... args) {
         ImageSingletons.lookup(ProcessPropertiesSupport.class).exec(executable, args);

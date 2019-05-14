@@ -65,9 +65,9 @@ builds += [
   ${x52.tmpfs10g-g1gc} ${bench-specjvm2008-Single} ${labsjdk8} { targets : [weekly, bench], name: "bench-compiler-specjvm2008-g1gc-Single-linux-x52" }
   ${x52.tmpfs10g-g1gc} ${bench-specjbb2015}        ${labsjdk8} { targets : [weekly, bench], name: "bench-compiler-specjbb2015-g1gc-linux-x52" }
 
-  ${x52.default} ${bench-renaissance-hwloc}       ${labsjdk8} { name: "bench-compiler-renaissance-linux-x52" }
-  ${x52.default-g1gc} ${bench-renaissance-hwloc}  ${labsjdk8} { targets: [weekly, bench], name: "bench-compiler-renaissance-g1gc-linux-x52" }
-  ${x52.default} ${bench-spark-sql-perf}          ${labsjdk8} { name: "bench-compiler-spark-sql-perf-linux-x52" }
+  ${x52.default} ${bench-renaissance-legacy-hwloc}       ${labsjdk8} { name: "bench-compiler-renaissance-legacy-linux-x52" }
+  ${x52.default-g1gc} ${bench-renaissance-legacy-hwloc}  ${labsjdk8} { targets: [weekly, bench], name: "bench-compiler-renaissance-legacy-g1gc-linux-x52" }
+  ${x52.default} ${bench-spark-sql-perf}                 ${labsjdk8} { name: "bench-compiler-spark-sql-perf-linux-x52" }
 
   ${x52.default} ${bench-specjbb2005}             ${labsjdk8} { targets : [weekly, bench],  name: "bench-compiler-specjbb2005-linux-x52"}
   ${x52.default-g1gc} ${bench-specjbb2005}        ${labsjdk8} { targets : [weekly, bench], name: "bench-compiler-specjbb2005-g1gc-linux-x52"}
@@ -90,9 +90,9 @@ builds += [
   ${x52.tmpfs10g-libgraal-g1gc} ${bench-specjvm2008-Single} ${labsjdk8} { targets: [daily, bench], name: "bench-compiler-specjvm2008-libgraal-g1gc-Single-linux-x52" }
   ${x52.tmpfs10g-libgraal-g1gc} ${bench-specjbb2015}        ${labsjdk8} { targets: [weekly, bench], name: "bench-compiler-specjbb2015-libgraal-g1gc-linux-x52" }
 
-  ${x52.default-libgraal} ${bench-renaissance-hwloc}       ${labsjdk8} { targets: [daily, bench], name: "bench-compiler-renaissance-libgraal-linux-x52" }
-  ${x52.default-libgraal-g1gc} ${bench-renaissance-hwloc}  ${labsjdk8} { targets: [daily, bench], name: "bench-compiler-renaissance-libgraal-g1gc-linux-x52" }
-  ${x52.default-libgraal} ${bench-spark-sql-perf}          ${labsjdk8} { targets: [daily, bench], name: "bench-compiler-spark-sql-perf-libgraal-linux-x52" }
+  ${x52.default-libgraal} ${bench-renaissance-legacy-hwloc}       ${labsjdk8} { targets: [daily, bench], name: "bench-compiler-renaissance-legacy-libgraal-linux-x52" }
+  ${x52.default-libgraal-g1gc} ${bench-renaissance-legacy-hwloc}  ${labsjdk8} { targets: [daily, bench], name: "bench-compiler-renaissance-legacy-libgraal-g1gc-linux-x52" }
+  ${x52.default-libgraal} ${bench-spark-sql-perf}                 ${labsjdk8} { targets: [daily, bench], name: "bench-compiler-spark-sql-perf-libgraal-linux-x52" }
 
   ${x52.default-libgraal} ${bench-specjbb2005}             ${labsjdk8} { targets: [weekly, bench], name: "bench-compiler-specjbb2005-libgraal-linux-x52" }
   ${x52.default-libgraal-g1gc} ${bench-specjbb2005}        ${labsjdk8} { targets: [weekly, bench], name: "bench-compiler-specjbb2005-libgraal-g1gc-linux-x52" }

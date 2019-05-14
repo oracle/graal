@@ -174,7 +174,7 @@ public final class DebugStackFrame {
      *
      * @return the language info, or <code>null</code> when no language is associated with this
      *         frame.
-     * @since 1.0
+     * @since 19.0
      */
     public LanguageInfo getLanguage() {
         verifyValidState(true);
@@ -268,7 +268,7 @@ public final class DebugStackFrame {
     }
 
     /**
-     * @since 1.0
+     * @since 19.0
      */
     @Override
     public boolean equals(Object obj) {
@@ -282,7 +282,7 @@ public final class DebugStackFrame {
     }
 
     /**
-     * @since 1.0
+     * @since 19.0
      */
     @Override
     public int hashCode() {

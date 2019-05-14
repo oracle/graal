@@ -27,11 +27,11 @@ package org.graalvm.compiler.phases.util;
 import org.graalvm.compiler.core.common.spi.CodeGenProviders;
 import org.graalvm.compiler.core.common.spi.ConstantFieldProvider;
 import org.graalvm.compiler.core.common.spi.ForeignCallsProvider;
+import org.graalvm.compiler.nodes.spi.CoreProviders;
 import org.graalvm.compiler.nodes.spi.CoreProvidersImpl;
 import org.graalvm.compiler.nodes.spi.LoweringProvider;
 import org.graalvm.compiler.nodes.spi.Replacements;
 import org.graalvm.compiler.nodes.spi.StampProvider;
-import org.graalvm.compiler.phases.tiers.PhaseContext;
 
 import jdk.vm.ci.code.CodeCacheProvider;
 import jdk.vm.ci.meta.ConstantReflectionProvider;
@@ -55,7 +55,7 @@ public class Providers extends CoreProvidersImpl implements CodeGenProviders {
                         copyFrom.getReplacements(), copyFrom.getStampProvider());
     }
 
-    public Providers(PhaseContext copyFrom) {
+    public Providers(CoreProviders copyFrom) {
         this(copyFrom.getMetaAccess(), null, copyFrom.getConstantReflection(), copyFrom.getConstantFieldProvider(), null, copyFrom.getLowerer(), copyFrom.getReplacements(),
                         copyFrom.getStampProvider());
     }

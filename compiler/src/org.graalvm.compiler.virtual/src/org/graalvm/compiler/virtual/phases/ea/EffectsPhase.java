@@ -35,15 +35,15 @@ import org.graalvm.compiler.graph.spi.Simplifiable;
 import org.graalvm.compiler.nodes.StructuredGraph;
 import org.graalvm.compiler.nodes.StructuredGraph.ScheduleResult;
 import org.graalvm.compiler.nodes.cfg.ControlFlowGraph;
+import org.graalvm.compiler.nodes.spi.CoreProviders;
 import org.graalvm.compiler.phases.BasePhase;
 import org.graalvm.compiler.phases.common.CanonicalizerPhase;
 import org.graalvm.compiler.phases.common.DeadCodeEliminationPhase;
 import org.graalvm.compiler.phases.common.util.EconomicSetNodeEventListener;
 import org.graalvm.compiler.phases.graph.ReentrantBlockIterator;
 import org.graalvm.compiler.phases.schedule.SchedulePhase;
-import org.graalvm.compiler.phases.tiers.PhaseContext;
 
-public abstract class EffectsPhase<PhaseContextT extends PhaseContext> extends BasePhase<PhaseContextT> {
+public abstract class EffectsPhase<CoreProvidersT extends CoreProviders> extends BasePhase<CoreProvidersT> {
 
     public abstract static class Closure<T> extends ReentrantBlockIterator.BlockIteratorClosure<T> {
 
@@ -69,12 +69,12 @@ public abstract class EffectsPhase<PhaseContextT extends PhaseContext> extends B
     }
 
     @Override
-    protected void run(StructuredGraph graph, PhaseContextT context) {
+    protected void run(StructuredGraph graph, CoreProvidersT context) {
         runAnalysis(graph, context);
     }
 
     @SuppressWarnings("try")
-    public boolean runAnalysis(StructuredGraph graph, PhaseContextT context) {
+    public boolean runAnalysis(StructuredGraph graph, CoreProvidersT context) {
         boolean changed = false;
         CompilationAlarm compilationAlarm = CompilationAlarm.current();
         DebugContext debug = graph.getDebug();
@@ -129,11 +129,11 @@ public abstract class EffectsPhase<PhaseContextT extends PhaseContext> extends B
         return changed;
     }
 
-    protected void postIteration(final StructuredGraph graph, final PhaseContextT context, EconomicSet<Node> changedNodes) {
+    protected void postIteration(final StructuredGraph graph, final CoreProvidersT context, EconomicSet<Node> changedNodes) {
         if (canonicalizer != null) {
             canonicalizer.applyIncremental(graph, context, changedNodes);
         }
     }
 
-    protected abstract Closure<?> createEffectsClosure(PhaseContextT context, ScheduleResult schedule, ControlFlowGraph cfg);
+    protected abstract Closure<?> createEffectsClosure(CoreProvidersT context, ScheduleResult schedule, ControlFlowGraph cfg);
 }

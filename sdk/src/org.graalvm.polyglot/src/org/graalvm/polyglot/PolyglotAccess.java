@@ -46,21 +46,21 @@ package org.graalvm.polyglot;
  * share symbols in the {@link Context#getPolyglotBindings() polyglot bindings} as well as evaluate
  * code of other languages.
  *
- * @since 1.0
+ * @since 19.0
  */
 public final class PolyglotAccess {
 
     /**
      * Provides guest languages no access to other languages using polyglot builtins.
      *
-     * @since 1.0
+     * @since 19.0
      */
     public static final PolyglotAccess NONE = new PolyglotAccess();
 
     /**
      * Provides guest languages full access to other languages using polyglot builtins.
      *
-     * @since 1.0
+     * @since 19.0
      */
     public static final PolyglotAccess ALL = new PolyglotAccess();
 

@@ -90,20 +90,20 @@ import org.graalvm.compiler.nodes.extended.LoadHubNode;
 import org.graalvm.compiler.nodes.extended.ValueAnchorNode;
 import org.graalvm.compiler.nodes.java.InstanceOfNode;
 import org.graalvm.compiler.nodes.java.TypeSwitchNode;
+import org.graalvm.compiler.nodes.spi.CoreProviders;
 import org.graalvm.compiler.nodes.spi.NodeWithState;
 import org.graalvm.compiler.nodes.spi.StampInverter;
 import org.graalvm.compiler.nodes.util.GraphUtil;
 import org.graalvm.compiler.phases.BasePhase;
 import org.graalvm.compiler.phases.schedule.SchedulePhase;
 import org.graalvm.compiler.phases.schedule.SchedulePhase.SchedulingStrategy;
-import org.graalvm.compiler.phases.tiers.PhaseContext;
 
 import jdk.vm.ci.meta.DeoptimizationAction;
 import jdk.vm.ci.meta.JavaConstant;
 import jdk.vm.ci.meta.SpeculationLog.Speculation;
 import jdk.vm.ci.meta.TriState;
 
-public class ConditionalEliminationPhase extends BasePhase<PhaseContext> {
+public class ConditionalEliminationPhase extends BasePhase<CoreProviders> {
 
     private static final CounterKey counterStampsRegistered = DebugContext.counter("StampsRegistered");
     private static final CounterKey counterStampsFound = DebugContext.counter("StampsFound");
@@ -123,7 +123,7 @@ public class ConditionalEliminationPhase extends BasePhase<PhaseContext> {
 
     @Override
     @SuppressWarnings("try")
-    protected void run(StructuredGraph graph, PhaseContext context) {
+    protected void run(StructuredGraph graph, CoreProviders context) {
         try (DebugContext.Scope s = graph.getDebug().scope("DominatorConditionalElimination")) {
             BlockMap<List<Node>> blockToNodes = null;
             NodeMap<Block> nodeToBlock = null;
@@ -154,7 +154,7 @@ public class ConditionalEliminationPhase extends BasePhase<PhaseContext> {
     }
 
     protected ControlFlowGraph.RecursiveVisitor<?> createVisitor(StructuredGraph graph, @SuppressWarnings("unused") ControlFlowGraph cfg, BlockMap<List<Node>> blockToNodes,
-                    NodeMap<Block> nodeToBlock, PhaseContext context) {
+                    NodeMap<Block> nodeToBlock, CoreProviders context) {
         return new Instance(graph, blockToNodes, nodeToBlock, context);
     }
 
@@ -302,7 +302,7 @@ public class ConditionalEliminationPhase extends BasePhase<PhaseContext> {
          */
         private Deque<DeoptimizingGuard> pendingTests;
 
-        public Instance(StructuredGraph graph, BlockMap<List<Node>> blockToNodes, NodeMap<Block> nodeToBlock, PhaseContext context) {
+        public Instance(StructuredGraph graph, BlockMap<List<Node>> blockToNodes, NodeMap<Block> nodeToBlock, CoreProviders context) {
             this.graph = graph;
             this.debug = graph.getDebug();
             this.blockToNodes = blockToNodes;

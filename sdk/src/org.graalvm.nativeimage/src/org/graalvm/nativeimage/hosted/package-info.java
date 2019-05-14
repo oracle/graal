@@ -55,6 +55,6 @@
  * fields for reflection at run time.</li>
  * </ul>
  *
- * @since 1.0
+ * @since 19.0
  */
 package org.graalvm.nativeimage.hosted;

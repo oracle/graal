@@ -239,7 +239,7 @@ public final class EventContext {
      * multiple bindings when installed at the same source location.
      *
      * @param bindings a collection of bindings to find the event nodes for at this context location
-     * @since 1.0
+     * @since 19.0
      */
     public Iterator<ExecutionEventNode> lookupExecutionEventNodes(Collection<EventBinding<? extends ExecutionEventNodeFactory>> bindings) {
         return probeNode.lookupExecutionEventNodes(bindings);

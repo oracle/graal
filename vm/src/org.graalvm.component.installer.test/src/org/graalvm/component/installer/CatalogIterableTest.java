@@ -116,7 +116,6 @@ public class CatalogIterableTest extends CommandTestBase {
 
         assertEquals("ruby", meta.getId());
         assertNull(meta.getInfoPath());
-        assertNotNull(meta.getLicensePath());
         assertFalse(meta.getPaths().isEmpty());
         assertEquals("TruffleRuby 0.33-dev", meta.getName());
         assertEquals("0.33-dev", meta.getVersionString());

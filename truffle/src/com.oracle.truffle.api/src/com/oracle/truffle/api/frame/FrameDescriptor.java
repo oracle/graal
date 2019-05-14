@@ -297,7 +297,7 @@ public final class FrameDescriptor implements Cloneable {
      *
      * @param frameSlot the slot
      * @return current kind of this slot
-     * @since 1.0
+     * @since 19.0
      */
     public FrameSlotKind getFrameSlotKind(final FrameSlot frameSlot) {
         assert checkFrameSlotOwnership(frameSlot);
@@ -314,7 +314,7 @@ public final class FrameDescriptor implements Cloneable {
      *
      * @param frameSlot the slot
      * @param kind new kind of the slot
-     * @since 1.0
+     * @since 19.0
      */
     public void setFrameSlotKind(final FrameSlot frameSlot, final FrameSlotKind kind) {
         if (frameSlot.kind != kind) {

@@ -36,6 +36,7 @@ import com.oracle.svm.core.annotate.AutomaticFeature;
 import com.oracle.svm.core.option.SubstrateOptionsParser;
 import com.oracle.svm.core.util.VMError;
 import com.oracle.svm.hosted.classinitialization.ClassInitializationFeature;
+import com.oracle.svm.util.ReflectionUtil;
 
 /**
  * Complain if there are types that can not move from the image generator heap to the image heap.
@@ -101,16 +102,7 @@ public class DisallowedImageHeapObjectFeature implements Feature {
                         "Or you can write your own initialization methods and call them explicitly from your main entry point.");
     }
 
-    private static final Field FILE_DESCRIPTOR_FIELD;
-
-    static {
-        try {
-            FILE_DESCRIPTOR_FIELD = MappedByteBuffer.class.getDeclaredField("fd");
-            FILE_DESCRIPTOR_FIELD.setAccessible(true);
-        } catch (ReflectiveOperationException ex) {
-            throw VMError.shouldNotReachHere(ex);
-        }
-    }
+    private static final Field FILE_DESCRIPTOR_FIELD = ReflectionUtil.lookupField(MappedByteBuffer.class, "fd");
 
     private static FileDescriptor getFileDescriptor(MappedByteBuffer buffer) {
         try {

@@ -5602,16 +5602,12 @@ final class Target_java_net_PlainSocketImpl {
                     }
                     // 950                     optlen = sizeof(optval.ling);
                     optlen = SizeOf.get(Socket.linger.class);
-                    /* Copy to optval. */
-                    LibC.memcpy(optval_Pointer, optval_Pointer, WordFactory.unsigned(optlen));
                 } else {
                     // 952                     optval.i = (*env)->GetIntField(env, value, fid);
                     int valueAsInt = ((Integer)value).intValue();
                     ((CIntPointer) optval_Pointer).write(valueAsInt);
                     // 953                     optlen = sizeof(optval.i);
                     optlen = SizeOf.get(CIntPointer.class);
-                    /* Copy to optval. */
-                    LibC.memcpy(optval_Pointer, optval_Pointer, WordFactory.unsigned(optlen));
                 }
                 // 955
                 // 956                 break;
@@ -5625,8 +5621,6 @@ final class Target_java_net_PlainSocketImpl {
                 ((CIntPointer) optval_Pointer).write(on ? 1 : 0);
                 // 962             optlen = sizeof(optval.i);
                 optlen = SizeOf.get(CIntPointer.class);
-                /* Copy to optval. */
-                LibC.memcpy(optval_Pointer, optval_Pointer, WordFactory.unsigned(optlen));
                 // 963
         }
         // 965

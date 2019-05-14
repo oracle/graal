@@ -48,7 +48,6 @@ import org.graalvm.compiler.nodes.graphbuilderconf.NodePlugin;
 import org.graalvm.compiler.nodes.graphbuilderconf.ParameterPlugin;
 import org.graalvm.compiler.phases.OptimisticOptimizations;
 import org.graalvm.compiler.phases.common.CanonicalizerPhase;
-import org.graalvm.compiler.phases.tiers.PhaseContext;
 import org.graalvm.compiler.phases.util.Providers;
 
 import jdk.vm.ci.code.Architecture;
@@ -101,8 +100,7 @@ public class CachingPEGraphDecoder extends PEGraphDecoder {
          * initial graph.
          */
         try (DebugContext.Scope scope = debug.scope("createGraph", graphToEncode)) {
-            PhaseContext context = new PhaseContext(providers);
-            new ConvertDeoptimizeToGuardPhase().apply(graphToEncode, context);
+            new ConvertDeoptimizeToGuardPhase().apply(graphToEncode, providers);
         } catch (Throwable t) {
             throw debug.handle(t);
         }
@@ -128,10 +126,7 @@ public class CachingPEGraphDecoder extends PEGraphDecoder {
                             ? new IntrinsicContext(method, plugin.getSubstitute(providers.getMetaAccess()), intrinsicBytecodeProvider, INLINE_AFTER_PARSING) : null;
             GraphBuilderPhase.Instance graphBuilderPhaseInstance = createGraphBuilderPhaseInstance(initialIntrinsicContext);
             graphBuilderPhaseInstance.apply(graphToEncode);
-
-            PhaseContext context = new PhaseContext(providers);
-            new CanonicalizerPhase().apply(graphToEncode, context);
-
+            new CanonicalizerPhase().apply(graphToEncode, providers);
         } catch (Throwable ex) {
             throw debug.handle(ex);
         }

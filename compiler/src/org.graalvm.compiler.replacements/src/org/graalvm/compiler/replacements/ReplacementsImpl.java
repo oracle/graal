@@ -86,7 +86,6 @@ import org.graalvm.compiler.options.OptionValues;
 import org.graalvm.compiler.phases.OptimisticOptimizations;
 import org.graalvm.compiler.phases.common.CanonicalizerPhase;
 import org.graalvm.compiler.phases.common.DeadCodeEliminationPhase;
-import org.graalvm.compiler.phases.tiers.PhaseContext;
 import org.graalvm.compiler.phases.util.Providers;
 import org.graalvm.compiler.word.Word;
 import org.graalvm.compiler.word.WordOperationPlugin;
@@ -560,7 +559,7 @@ public class ReplacementsImpl implements Replacements, InlineInvokePlugin {
 
                 createGraphBuilder(replacements.providers, config, OptimisticOptimizations.NONE, initialIntrinsicContext).apply(graph);
 
-                new CanonicalizerPhase().apply(graph, new PhaseContext(replacements.providers));
+                new CanonicalizerPhase().apply(graph, replacements.providers);
             } catch (Throwable e) {
                 throw debug.handle(e);
             }

@@ -95,7 +95,6 @@ import org.graalvm.compiler.phases.common.inlining.InliningUtil;
 import org.graalvm.compiler.phases.tiers.HighTierContext;
 import org.graalvm.compiler.phases.tiers.LowTierContext;
 import org.graalvm.compiler.phases.tiers.MidTierContext;
-import org.graalvm.compiler.phases.tiers.PhaseContext;
 import org.graalvm.compiler.phases.tiers.Suites;
 import org.graalvm.compiler.phases.util.GraphOrder;
 import org.graalvm.compiler.phases.util.Providers;
@@ -581,7 +580,7 @@ public class CompileQueue {
 
                     if (inlined) {
                         Providers providers = runtimeConfig.lookupBackend(method).getProviders();
-                        new CanonicalizerPhase().apply(graph, new PhaseContext(providers));
+                        new CanonicalizerPhase().apply(graph, providers);
 
                         /*
                          * Publish the new graph, it can be picked up immediately by other threads

@@ -198,7 +198,7 @@ public class FeatureImpl {
          * {@link DuringAnalysisAccess#requireAnalysisIteration()} to trigger a new iteration of the
          * analysis.
          *
-         * @since 1.0
+         * @since 19.0
          */
         public void registerClassReachabilityListener(BiConsumer<DuringAnalysisAccess, Class<?>> listener) {
             getHostVM().registerClassReachabilityListener(listener);

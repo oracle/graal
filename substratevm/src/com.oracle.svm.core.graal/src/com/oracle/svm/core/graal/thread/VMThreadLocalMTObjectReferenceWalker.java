@@ -46,7 +46,7 @@ public class VMThreadLocalMTObjectReferenceWalker extends ObjectReferenceWalker 
      */
     @UnknownPrimitiveField public int vmThreadSize = -1;
     @UnknownObjectField(types = {byte[].class}) public byte[] vmThreadReferenceMapEncoding;
-    @UnknownPrimitiveField public long vmThreadReferenceMapIndex;
+    @UnknownPrimitiveField public long vmThreadReferenceMapIndex = -1;
 
     @Override
     public boolean walk(ObjectReferenceVisitor referenceVisitor) {
@@ -56,16 +56,5 @@ public class VMThreadLocalMTObjectReferenceWalker extends ObjectReferenceWalker 
             }
         }
         return true;
-    }
-
-    @Override
-    public boolean containsPointer(Pointer p) {
-        for (IsolateThread vmThread = VMThreads.firstThread(); VMThreads.isNonNullThread(vmThread); vmThread = VMThreads.nextThread(vmThread)) {
-            Pointer threadPtr = (Pointer) vmThread;
-            if (p.aboveOrEqual(threadPtr) && p.belowThan(threadPtr.add(vmThreadSize))) {
-                return true;
-            }
-        }
-        return false;
     }
 }

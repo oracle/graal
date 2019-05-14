@@ -49,7 +49,7 @@ import java.lang.annotation.Target;
  * Restricts the annotated element (type, method, or field) to the specified {@link Platform}
  * groups.
  *
- * @since 1.0
+ * @since 19.0
  */
 @Retention(RetentionPolicy.RUNTIME)
 @Target({ElementType.TYPE, ElementType.METHOD, ElementType.CONSTRUCTOR, ElementType.FIELD})
@@ -59,7 +59,7 @@ public @interface Platforms {
      * Restricts the annotated element (type, method, or field) to the specified {@link Platform}
      * groups.
      *
-     * @since 1.0
+     * @since 19.0
      */
     Class<? extends Platform>[] value();
 }

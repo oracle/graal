@@ -29,8 +29,8 @@ import org.graalvm.compiler.graph.Node;
 import org.graalvm.compiler.graph.NodeSourcePosition;
 import org.graalvm.compiler.nodes.IfNode;
 import org.graalvm.compiler.nodes.StructuredGraph;
+import org.graalvm.compiler.nodes.spi.CoreProviders;
 import org.graalvm.compiler.options.OptionValues;
-import org.graalvm.compiler.phases.tiers.PhaseContext;
 import org.graalvm.compiler.truffle.compiler.TruffleCompilerOptions;
 
 import jdk.vm.ci.meta.JavaConstant;
@@ -62,7 +62,7 @@ public class InstrumentBranchesPhase extends InstrumentPhase {
     }
 
     @Override
-    protected void instrumentGraph(StructuredGraph graph, PhaseContext context, JavaConstant tableConstant) {
+    protected void instrumentGraph(StructuredGraph graph, CoreProviders context, JavaConstant tableConstant) {
         for (IfNode n : graph.getNodes().filter(IfNode.class)) {
             Point p = getOrCreatePoint(n);
             if (p != null) {

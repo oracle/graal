@@ -29,8 +29,6 @@ import static org.graalvm.compiler.replacements.StandardGraphBuilderPlugins.regi
 import static org.graalvm.compiler.serviceprovider.JavaVersionUtil.JAVA_SPECIFICATION_VERSION;
 
 import java.io.IOException;
-import java.lang.reflect.Constructor;
-import java.lang.reflect.InvocationTargetException;
 import java.lang.reflect.Method;
 import java.lang.reflect.Modifier;
 import java.lang.reflect.Type;
@@ -55,12 +53,10 @@ import java.util.concurrent.ExecutionException;
 import java.util.concurrent.ForkJoinPool;
 import java.util.concurrent.ForkJoinWorkerThread;
 import java.util.concurrent.atomic.AtomicBoolean;
-import java.util.function.BooleanSupplier;
 import java.util.function.Predicate;
 import java.util.stream.Collectors;
 import java.util.stream.StreamSupport;
 
-import jdk.vm.ci.amd64.AMD64.CPUFeature;
 import org.graalvm.collections.EconomicSet;
 import org.graalvm.compiler.api.replacements.Fold;
 import org.graalvm.compiler.api.replacements.SnippetReflectionProvider;
@@ -261,9 +257,12 @@ import com.oracle.svm.hosted.substitute.AnnotationSubstitutionProcessor;
 import com.oracle.svm.hosted.substitute.DeclarativeSubstitutionProcessor;
 import com.oracle.svm.hosted.substitute.DeletedFieldsPlugin;
 import com.oracle.svm.hosted.substitute.UnsafeAutomaticSubstitutionProcessor;
+import com.oracle.svm.util.ReflectionUtil;
+import com.oracle.svm.util.ReflectionUtil.ReflectionUtilError;
 
 import jdk.vm.ci.aarch64.AArch64;
 import jdk.vm.ci.amd64.AMD64;
+import jdk.vm.ci.amd64.AMD64.CPUFeature;
 import jdk.vm.ci.code.Architecture;
 import jdk.vm.ci.code.CodeCacheProvider;
 import jdk.vm.ci.code.TargetDescription;
@@ -321,11 +320,9 @@ public class NativeImageGenerator {
 
             Object result;
             try {
-                Constructor<?> constructor = platformClass.getDeclaredConstructor();
-                constructor.setAccessible(true);
-                result = constructor.newInstance();
-            } catch (ReflectiveOperationException ex) {
-                throw UserError.abort("Could not instantiated platform class " + platformClassName + ". Ensure the class is not abstract and has a no-argument constructor.");
+                result = ReflectionUtil.newInstance(platformClass);
+            } catch (ReflectionUtilError ex) {
+                throw UserError.abort("Could not instantiate platform class " + platformClassName + ". Ensure the class is not abstract and has a no-argument constructor.", ex.getCause());
             }
 
             if (!(result instanceof Platform)) {
@@ -1017,15 +1014,7 @@ public class NativeImageGenerator {
             boolean include = true;
             CEntryPointOptions options = m.getAnnotation(CEntryPointOptions.class);
             if (options != null) {
-                BooleanSupplier instance;
-                try {
-                    Constructor<? extends BooleanSupplier> constructor = options.include().getDeclaredConstructor();
-                    constructor.setAccessible(true);
-                    instance = constructor.newInstance();
-                } catch (NoSuchMethodException | InstantiationException | IllegalAccessException | IllegalArgumentException | InvocationTargetException ex) {
-                    throw VMError.shouldNotReachHere(ex);
-                }
-                include = instance.getAsBoolean();
+                include = ReflectionUtil.newInstance(options.include()).getAsBoolean();
             }
             if (include) {
                 entryPoints.put(m, CEntryPointData.create(m));

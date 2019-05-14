@@ -26,7 +26,6 @@ package org.graalvm.component.installer.commands;
 
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertFalse;
-import static org.junit.Assert.assertNotEquals;
 import static org.junit.Assert.assertTrue;
 import static org.junit.Assert.fail;
 
@@ -563,30 +562,6 @@ public class InstallerTest extends TestBase {
 
         // MUST still exist, the installe did not fileName it
         assertTrue(Files.exists(check));
-    }
-
-    @Test
-    public void testInstallOneLicenseFile() throws Exception {
-        delegateFeedback(new FeedbackAdapter() {
-            @Override
-            public String l10n(String key, Object... params) {
-                if (key.startsWith("LICENSE_")) {
-                    return reallyl10n(key, params);
-                }
-                return null;
-            }
-        });
-        setupComponentInstall("truffleruby2.jar");
-
-        Archive.FileEntry entry2 = componentJarFile.getJarEntry("LICENSE");
-        Path resultPath = installer.installOneFile(installer.translateTargetPath(entry2), entry2);
-        Path relative = targetPath.relativize(resultPath);
-        assertNotEquals(entry2.getName(), relative.toString());
-        assertTrue(relative.toString().contains(componentInfo.getVersionString()));
-        assertEquals(targetPath, resultPath.getParent());
-
-        installer.revertInstall();
-        assertFalse(Files.exists(resultPath));
     }
 
     /**
