@@ -32,12 +32,17 @@ import org.graalvm.compiler.nodes.StructuredGraph;
 import org.graalvm.compiler.nodes.java.ExceptionObjectNode;
 import org.graalvm.compiler.nodes.util.GraphUtil;
 import org.graalvm.compiler.phases.Phase;
+import org.graalvm.compiler.truffle.compiler.PartialEvaluator;
 
 import com.oracle.svm.hosted.phases.SubstrateGraphBuilderPhase.SubstrateBytecodeParser;
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 
 import jdk.vm.ci.meta.DeoptimizationAction;
 import jdk.vm.ci.meta.DeoptimizationReason;
+import jdk.vm.ci.meta.ResolvedJavaMethod;
+import jdk.vm.ci.meta.SpeculationLog;
+import jdk.vm.ci.meta.SpeculationLog.Speculation;
+import jdk.vm.ci.meta.SpeculationLog.SpeculationReason;
 
 /**
  * Deoptimize for {@link TruffleBoundary} calls when {@link TruffleBoundary#transferToInterpreter()}
@@ -58,10 +63,11 @@ public class TruffleBoundaryPhase extends Phase {
 
                 FixedNode originalNext = exceptionObject.next();
                 if (!(originalNext instanceof DeoptimizeNode) && invoke.callTarget().targetMethod() != null) {
-                    TruffleBoundary truffleBoundary = invoke.callTarget().targetMethod().getAnnotation(TruffleBoundary.class);
+                    ResolvedJavaMethod targetMethod = invoke.callTarget().targetMethod();
+                    TruffleBoundary truffleBoundary = targetMethod.getAnnotation(TruffleBoundary.class);
                     if (truffleBoundary != null) {
                         if (truffleBoundary.transferToInterpreterOnException()) {
-                            addDeoptimizeNode(graph, originalNext);
+                            addDeoptimizeNode(graph, originalNext, targetMethod);
                         }
                     }
                 }
@@ -69,9 +75,16 @@ public class TruffleBoundaryPhase extends Phase {
         }
     }
 
-    private static void addDeoptimizeNode(StructuredGraph graph, FixedNode originalNext) {
-        DeoptimizeNode deoptimize = graph.add(new DeoptimizeNode(DeoptimizationAction.None, DeoptimizationReason.NotCompiledExceptionHandler));
-        originalNext.replaceAtPredecessor(deoptimize);
-        GraphUtil.killCFG(originalNext);
+    private static void addDeoptimizeNode(StructuredGraph graph, FixedNode originalNext, ResolvedJavaMethod targetMethod) {
+        SpeculationLog speculationLog = graph.getSpeculationLog();
+        if (speculationLog != null) {
+            SpeculationReason speculationReason = PartialEvaluator.createTruffleBoundaryExceptionSpeculation(targetMethod);
+            if (speculationLog.maySpeculate(speculationReason)) {
+                Speculation exceptionSpeculation = speculationLog.speculate(speculationReason);
+                DeoptimizeNode deoptimize = graph.add(new DeoptimizeNode(DeoptimizationAction.InvalidateRecompile, DeoptimizationReason.TransferToInterpreter, exceptionSpeculation));
+                originalNext.replaceAtPredecessor(deoptimize);
+                GraphUtil.killCFG(originalNext);
+            }
+        }
     }
 }
