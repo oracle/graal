@@ -719,6 +719,7 @@ public final class JavaLangSubstitutions {
 
     public static class ClassLoaderSupport {
         public Target_java_lang_ClassLoader systemClassLoader;
+        public Target_java_lang_ClassLoader platformClassLoader;
 
         @Platforms(Platform.HOSTED_ONLY.class) public Map<ClassLoader, Target_java_lang_ClassLoader> classLoaders = Collections.synchronizedMap(new IdentityHashMap<>());
 

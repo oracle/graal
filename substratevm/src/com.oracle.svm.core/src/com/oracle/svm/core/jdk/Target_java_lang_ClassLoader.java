@@ -139,7 +139,7 @@ public final class Target_java_lang_ClassLoader {
     @Substitute //
     @TargetElement(onlyWith = JDK9OrLater.class) //
     public static ClassLoader getPlatformClassLoader() {
-        throw VMError.unsupportedFeature("JDK9OrLater: Target_java_lang_ClassLoader.getPlatformClassLoader()");
+        return SubstrateUtil.cast(ClassLoaderSupport.getInstance().platformClassLoader, ClassLoader.class);
     }
 
     @Substitute //

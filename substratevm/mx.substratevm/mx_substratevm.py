@@ -119,6 +119,8 @@ GRAAL_COMPILER_FLAGS_MAP['11'].extend(add_opens_from_packages(jdk_opens_packages
 
 # These packages should be opened at runtime calls to Modules.addOpens, if they are still needed.
 java_base_opens_packages = [
+    # Reflective access to jdk.internal.logger classes
+    'java.base/jdk.internal.logger',
     # Reflective access to jdk.internal.ref.CleanerImpl$PhantomCleanableRef.
     'java.base/jdk.internal.ref',
     # Reflective access to jdk.internal.reflect.MethodAccessor.
