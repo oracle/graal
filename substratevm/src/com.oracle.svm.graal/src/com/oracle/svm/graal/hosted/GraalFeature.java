@@ -69,7 +69,6 @@ import org.graalvm.compiler.options.Option;
 import org.graalvm.compiler.phases.OptimisticOptimizations;
 import org.graalvm.compiler.phases.common.CanonicalizerPhase;
 import org.graalvm.compiler.phases.common.inlining.InliningUtil;
-import org.graalvm.compiler.phases.tiers.PhaseContext;
 import org.graalvm.compiler.phases.tiers.Suites;
 import org.graalvm.compiler.phases.util.Providers;
 import org.graalvm.compiler.word.WordTypes;
@@ -520,9 +519,8 @@ public final class GraalFeature implements Feature {
                     return;
                 }
 
-                PhaseContext phaseContext = new PhaseContext(hostedProviders);
-                new CanonicalizerPhase().apply(graph, phaseContext);
-                new ConvertDeoptimizeToGuardPhase().apply(graph, phaseContext);
+                new CanonicalizerPhase().apply(graph, hostedProviders);
+                new ConvertDeoptimizeToGuardPhase().apply(graph, hostedProviders);
 
                 graphEncoder.prepare(graph);
                 node.graph = graph;
@@ -634,7 +632,6 @@ public final class GraalFeature implements Feature {
 
         StrengthenStampsPhase strengthenStamps = new RuntimeStrengthenStampsPhase(config.getUniverse(), objectReplacer);
         CanonicalizerPhase canonicalizer = new CanonicalizerPhase();
-        PhaseContext phaseContext = new PhaseContext(hostedProviders);
         for (CallTreeNode node : methods.values()) {
             StructuredGraph graph = node.graph;
             if (graph != null) {
@@ -642,9 +639,9 @@ public final class GraalFeature implements Feature {
                 try (DebugContext.Scope scope = debug.scope("RuntimeOptimize", graph)) {
                     removeUnreachableInvokes(node);
                     strengthenStamps.apply(graph);
-                    canonicalizer.apply(graph, phaseContext);
+                    canonicalizer.apply(graph, hostedProviders);
                     GraalConfiguration.instance().runAdditionalCompilerPhases(graph, this);
-                    canonicalizer.apply(graph, phaseContext);
+                    canonicalizer.apply(graph, hostedProviders);
                     graphEncoder.prepare(graph);
                 } catch (Throwable ex) {
                     debug.handle(ex);

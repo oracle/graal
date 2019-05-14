@@ -103,7 +103,6 @@ import org.graalvm.compiler.phases.OptimisticOptimizations;
 import org.graalvm.compiler.phases.common.CanonicalizerPhase;
 import org.graalvm.compiler.phases.graph.MergeableState;
 import org.graalvm.compiler.phases.graph.PostOrderNodeIterator;
-import org.graalvm.compiler.phases.tiers.PhaseContext;
 import org.graalvm.compiler.printer.GraalDebugHandlersFactory;
 import org.graalvm.compiler.replacements.nodes.BasicArrayCopyNode;
 import org.graalvm.compiler.replacements.nodes.BasicObjectCloneNode;
@@ -221,7 +220,7 @@ public class MethodTypeFlowBuilder {
                 // Register used types and fields before canonicalization can optimize them.
                 registerUsedElements();
 
-                new CanonicalizerPhase().apply(graph, new PhaseContext(bb.getProviders()));
+                new CanonicalizerPhase().apply(graph, bb.getProviders());
 
                 // Do it again after canonicalization changed type checks and field accesses.
                 registerUsedElements();
