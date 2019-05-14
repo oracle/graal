@@ -81,6 +81,8 @@ import com.oracle.svm.core.jdk.Target_java_lang_Module;
 import com.oracle.svm.core.meta.SharedType;
 import com.oracle.svm.core.util.LazyFinalReference;
 import com.oracle.svm.core.util.VMError;
+import com.oracle.svm.util.ReflectionUtil;
+import com.oracle.svm.util.ReflectionUtil.ReflectionUtilError;
 
 import jdk.vm.ci.meta.JavaKind;
 import sun.security.util.SecurityConstants;
@@ -385,19 +387,16 @@ public final class DynamicHub implements JavaKind.FormatWithToString, AnnotatedE
 
     @Platforms(Platform.HOSTED_ONLY.class)
     public void initEnumConstantsAtRuntime(Class<?> enumClass) {
+        /* Adapted from `Class.getEnumConstantsShared`. */
         try {
-            /* Adapted from `Class.getEnumConstantsShared`. */
-            try {
-                Method values = enumClass.getMethod("values");
-                values.setAccessible(true);
-                enumConstantsReference = new LazyFinalReference<>(() -> initEnumConstantsAtRuntime(values));
-            } catch (NoSuchMethodException e) {
-                /*
-                 * This can happen when users concoct enum-like classes that don't comply with the
-                 * enum spec.
-                 */
-                enumConstantsReference = null;
-            }
+            Method values = ReflectionUtil.lookupMethod(enumClass, "values");
+            enumConstantsReference = new LazyFinalReference<>(() -> initEnumConstantsAtRuntime(values));
+        } catch (ReflectionUtilError e) {
+            /*
+             * This can happen when users concoct enum-like classes that don't comply with the enum
+             * spec.
+             */
+            enumConstantsReference = null;
         } catch (NoClassDefFoundError e) {
             /*
              * This can happen when an enum references a missing class. So, in order to match the

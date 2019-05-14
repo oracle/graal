@@ -50,6 +50,7 @@ import com.oracle.svm.core.annotate.RecomputeFieldValue.Kind;
 import com.oracle.svm.core.annotate.TargetClass;
 import com.oracle.svm.core.meta.SharedField;
 import com.oracle.svm.core.util.VMError;
+import com.oracle.svm.util.ReflectionUtil;
 
 import jdk.vm.ci.meta.MetaAccessProvider;
 import jdk.vm.ci.meta.ResolvedJavaField;
@@ -120,21 +121,15 @@ public class VarHandleFeature implements Feature {
                                 Class.forName("java.lang.invoke.VarHandle" + typeName + "$FieldStaticReadWrite"));
                 // Checkstyle: resume
             }
-        } catch (ReflectiveOperationException ex) {
+        } catch (ClassNotFoundException ex) {
             throw VMError.shouldNotReachHere(ex);
         }
     }
 
-    private void buildInfo(boolean isStatic, String typeFieldName, Class<?> readOnlyClass, Class<?> readWriteClass) throws ReflectiveOperationException {
-        VarHandleInfo info = new VarHandleInfo(isStatic, getDeclaredField(readOnlyClass, "fieldOffset"), getDeclaredField(readOnlyClass, typeFieldName));
+    private void buildInfo(boolean isStatic, String typeFieldName, Class<?> readOnlyClass, Class<?> readWriteClass) {
+        VarHandleInfo info = new VarHandleInfo(isStatic, ReflectionUtil.lookupField(readOnlyClass, "fieldOffset"), ReflectionUtil.lookupField(readOnlyClass, typeFieldName));
         infos.put(readOnlyClass, info);
         infos.put(readWriteClass, info);
-    }
-
-    private static Field getDeclaredField(Class<?> clazz, String fieldName) throws ReflectiveOperationException {
-        Field result = clazz.getDeclaredField(fieldName);
-        result.setAccessible(true);
-        return result;
     }
 
     /**

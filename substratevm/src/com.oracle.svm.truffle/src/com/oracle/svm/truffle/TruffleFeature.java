@@ -116,6 +116,7 @@ import com.oracle.svm.truffle.api.SubstrateOptimizedCallTarget;
 import com.oracle.svm.truffle.api.SubstratePartialEvaluator;
 import com.oracle.svm.truffle.api.SubstrateTruffleCompiler;
 import com.oracle.svm.truffle.api.SubstrateTruffleRuntime;
+import com.oracle.svm.util.ReflectionUtil;
 import com.oracle.truffle.api.CompilerAsserts;
 import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.Truffle;
@@ -227,18 +228,11 @@ public final class TruffleFeature implements com.oracle.svm.core.graal.GraalFeat
     private static <T> T invokeStaticMethod(String className, String methodName, Collection<Class<?>> parameterTypes, Object... args) {
         try {
             // Checkstyle: stop
-            Method method;
             Class<?> clazz = Class.forName(className);
-            if (parameterTypes.size() > 0) {
-                method = clazz.getDeclaredMethod(methodName, parameterTypes.toArray(new Class<?>[parameterTypes.size()]));
-            } else {
-                method = clazz.getDeclaredMethod(methodName);
-            }
-
             // Checkstyle: resume
-            method.setAccessible(true);
+            Method method = ReflectionUtil.lookupMethod(clazz, methodName, parameterTypes.toArray(new Class<?>[0]));
             return (T) method.invoke(null, args);
-        } catch (Throwable e) {
+        } catch (ReflectiveOperationException e) {
             throw VMError.shouldNotReachHere(e);
         }
     }

@@ -43,6 +43,42 @@ suite = {
     },
 
     "projects": {
+        "com.oracle.svm.util": {
+            "subDir": "src",
+            "sourceDirs": ["src"],
+            "dependencies": [
+                "sdk:GRAAL_SDK",
+                "compiler:GRAAL",
+            ],
+            "javaCompliance": "8+",
+            "annotationProcessors": [
+                "compiler:GRAAL_NODEINFO_PROCESSOR",
+                "compiler:GRAAL_REPLACEMENTS_PROCESSOR",
+                "compiler:GRAAL_OPTIONS_PROCESSOR",
+            ],
+            "checkstyle": "com.oracle.svm.core",
+            "workingSets": "SVM",
+        },
+        "com.oracle.svm.util.jdk11": {
+            "subDir": "src",
+            "sourceDirs": ["src"],
+            "dependencies": [
+                "com.oracle.svm.util",
+            ],
+            "imports" : [
+                "jdk.internal.module",
+            ],
+            "javaCompliance": "11+",
+            "multiReleaseJarVersion": "11",
+            "annotationProcessors": [
+                "compiler:GRAAL_NODEINFO_PROCESSOR",
+                "compiler:GRAAL_REPLACEMENTS_PROCESSOR",
+                "compiler:GRAAL_OPTIONS_PROCESSOR",
+            ],
+            "checkstyle": "com.oracle.svm.core",
+            "workingSets": "SVM",
+        },
+
         "com.oracle.svm.core": {
             "subDir": "src",
             "sourceDirs": [
@@ -50,8 +86,7 @@ suite = {
                 "headers",
             ],
             "dependencies": [
-                "sdk:GRAAL_SDK",
-                "compiler:GRAAL",
+                "com.oracle.svm.util",
             ],
             "javaCompliance": "8+",
             "checkstyleVersion" : "8.8",
@@ -223,7 +258,7 @@ suite = {
             "subDir": "src",
             "sourceDirs": ["src"],
             "dependencies": [
-                "compiler:GRAAL",
+                "com.oracle.svm.util",
             ],
             "checkstyle": "com.oracle.graal.pointsto",
             "javaCompliance": "8+",
@@ -745,6 +780,7 @@ suite = {
             "distDependencies": [
                 "sdk:GRAAL_SDK",
                 "compiler:GRAAL",
+                "POINTSTO",
             ],
             "exclude": [
             ],
@@ -886,6 +922,8 @@ suite = {
             "subDir": "src",
             "description" : "SubstrateVM static analysis to find ahead-of-time the code",
             "dependencies": [
+                "com.oracle.svm.util",
+                "com.oracle.svm.util.jdk11",
                 "com.oracle.graal.pointsto",
             ],
             "distDependencies": [

@@ -31,8 +31,6 @@ import static com.oracle.svm.core.snippets.KnownIntrinsics.readCallerStackPointe
 import static com.oracle.svm.core.snippets.KnownIntrinsics.readReturnAddress;
 
 import java.lang.Thread.UncaughtExceptionHandler;
-import java.lang.invoke.MethodHandle;
-import java.lang.invoke.MethodHandles;
 import java.lang.reflect.Field;
 import java.security.AccessControlContext;
 import java.util.ArrayList;
@@ -89,6 +87,7 @@ import com.oracle.svm.core.threadlocal.FastThreadLocalFactory;
 import com.oracle.svm.core.threadlocal.FastThreadLocalObject;
 import com.oracle.svm.core.util.TimeUtils;
 import com.oracle.svm.core.util.VMError;
+import com.oracle.svm.util.ReflectionUtil;
 
 public abstract class JavaThreads {
 
@@ -588,8 +587,8 @@ public abstract class JavaThreads {
 
         private final CopyOnWriteArraySet<Thread> collectedThreads = new CopyOnWriteArraySet<>();
 
-        private final MethodHandle threadSeqNumberMH = createFieldMH(Thread.class, "threadSeqNumber");
-        private final MethodHandle threadInitNumberMH = createFieldMH(Thread.class, "threadInitNumber");
+        private static final Field threadSeqNumber = ReflectionUtil.lookupField(Thread.class, "threadSeqNumber");
+        private static final Field threadInitNumber = ReflectionUtil.lookupField(Thread.class, "threadInitNumber");
 
         @Override
         public void duringSetup(DuringSetupAccess access) {
@@ -611,21 +610,11 @@ public abstract class JavaThreads {
              */
             if (!collectedThreads.isEmpty()) {
                 try {
-                    JavaThreads.singleton().threadSeqNumber.set((long) threadSeqNumberMH.invokeExact());
-                    JavaThreads.singleton().threadInitNumber.set((int) threadInitNumberMH.invokeExact());
-                } catch (Throwable t) {
+                    JavaThreads.singleton().threadSeqNumber.set(threadSeqNumber.getLong(null));
+                    JavaThreads.singleton().threadInitNumber.set(threadInitNumber.getInt(null));
+                } catch (ReflectiveOperationException t) {
                     throw VMError.shouldNotReachHere(t);
                 }
-            }
-        }
-
-        private static MethodHandle createFieldMH(Class<?> declaringClass, String fieldName) {
-            try {
-                Field field = declaringClass.getDeclaredField(fieldName);
-                field.setAccessible(true);
-                return MethodHandles.lookup().unreflectGetter(field);
-            } catch (Throwable t) {
-                throw VMError.shouldNotReachHere(t);
             }
         }
     }

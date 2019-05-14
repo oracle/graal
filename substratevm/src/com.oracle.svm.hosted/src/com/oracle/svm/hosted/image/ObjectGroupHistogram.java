@@ -40,6 +40,7 @@ import com.oracle.svm.core.meta.SubstrateObjectConstant;
 import com.oracle.svm.hosted.config.HybridLayout;
 import com.oracle.svm.hosted.image.NativeImageHeap.ObjectInfo;
 import com.oracle.svm.hosted.meta.HostedField;
+import com.oracle.svm.util.ReflectionUtil;
 
 import jdk.vm.ci.meta.JavaConstant;
 import jdk.vm.ci.meta.JavaKind;
@@ -155,9 +156,7 @@ public final class ObjectGroupHistogram {
         try {
             Class<?> graalSupportClass = Class.forName("com.oracle.svm.graal.GraalSupport");
             Object graalSupport = ImageSingletons.lookup(graalSupportClass);
-            Field field = graalSupportClass.getDeclaredField(name);
-            field.setAccessible(true);
-            return field.get(graalSupport);
+            return ReflectionUtil.readField(graalSupportClass, name, graalSupport);
         } catch (Throwable ex) {
             System.out.println("Warning: cannot read field from GraalSupport: " + name);
             return null;
