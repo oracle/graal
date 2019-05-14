@@ -178,6 +178,8 @@ class PosixJavaIOSubstituteFeature implements Feature {
             JNIRuntimeAccess.register(java.io.IOException.class);
             JNIRuntimeAccess.register(java.io.IOException.class.getDeclaredConstructor(String.class));
             JNIRuntimeAccess.register(access.findClassByName("java.io.UnixFileSystem"));
+            JNIRuntimeAccess.register(java.util.zip.Inflater.class.getDeclaredField("inputConsumed"));
+            JNIRuntimeAccess.register(java.util.zip.Inflater.class.getDeclaredField("outputConsumed"));
         } catch (NoSuchFieldException | NoSuchMethodException e) {
             VMError.shouldNotReachHere("PosixJavaIOSubstitutionFeature: Error registering class or method: ", e);
         }
