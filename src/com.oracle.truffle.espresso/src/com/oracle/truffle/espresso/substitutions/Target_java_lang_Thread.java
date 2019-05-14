@@ -116,12 +116,13 @@ public final class Target_java_lang_Thread {
                         meta.Thread_dispatchUncaughtException.invokeDirect(self, uncaught.getException());
                     } finally {
                         self.setIntField(meta.Thread_state, State.TERMINATED.value);
+                        meta.Thread_exit.invokeDirect(self);
                         synchronized (self) {
                             // Notify waiting threads you are done working
                             self.notifyAll();
                         }
                         // Cleanup.
-                        meta.Thread_exit.invokeDirect(self);
+                        context.unregisterThread((Thread)self.getHiddenField(meta.HIDDEN_HOST_THREAD));
                     }
                 }
             });
@@ -129,7 +130,6 @@ public final class Target_java_lang_Thread {
             self.setHiddenField(meta.HIDDEN_HOST_THREAD, hostThread);
             context.putHost2Guest(hostThread, self);
             context.registerThread(hostThread);
-
             System.err.println("Starting thread: " + self.getKlass());
             hostThread.setDaemon(self.getBooleanField(meta.Thread_daemon));
             self.setIntField(meta.Thread_state, State.RUNNABLE.value);
@@ -233,5 +233,15 @@ public final class Target_java_lang_Thread {
             return;
         }
         hostThread.suspend();
+    }
+
+    @SuppressWarnings({"deprecation", "unused"})
+    @Substitution(hasReceiver = true)
+    public static void stop0(@Host(Object.class) StaticObject self, Object unused) {
+        Thread hostThread = (Thread) self.getHiddenField(self.getKlass().getMeta().HIDDEN_HOST_THREAD);
+        if (hostThread == null) {
+            return;
+        }
+        hostThread.stop();
     }
 }

@@ -224,6 +224,7 @@ public final class Meta implements ContextAccess {
         Thread_blockerLock = Thread.lookupDeclaredField(Name.blockerLock, Object.getType());
         Thread_daemon = Thread.lookupDeclaredField(Name.daemon, Type._boolean);
         Thread_checkAccess = Thread.lookupDeclaredMethod(Name.checkAccess, Signature._void);
+        Thread_stop = Thread.lookupDeclaredMethod(Name.stop, Signature._void);
         ThreadGroup_maxPriority = ThreadGroup.lookupDeclaredField(Name.maxPriority, Type._int);
         Thread_state = Thread.lookupDeclaredField(Name.threadStatus, Type._int);
 
@@ -423,6 +424,7 @@ public final class Meta implements ContextAccess {
     public final Method Thread_exit;
     public final Method Thread_run;
     public final Method Thread_checkAccess;
+    public final Method Thread_stop;
     public final Field HIDDEN_IS_ALIVE;
     public final Field Thread_group;
     public final Field Thread_name;

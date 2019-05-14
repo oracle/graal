@@ -253,13 +253,21 @@ public final class EspressoContext {
         Thread initiatingThread = Thread.currentThread();
         for (Thread t : activeThreads) {
             if (t != initiatingThread) {
+                try {
+                    if (t.isDaemon()) {
+                        getMeta().Thread_stop.invokeDirect(getHost2Guest(t));
+                        t.join();
+                    } else {
+                        t.join();
+                    }
+                } catch (InterruptedException e) {}
                 /**
                  * TODO(garcia) Finalizer thread can't be interrupted at all. We must find some way
                  * to complete it for polyglot.
                  */
             }
         }
-        initiatingThread.interrupt();
+//        initiatingThread.interrupt();
     }
 
     private void initVmProperties() {

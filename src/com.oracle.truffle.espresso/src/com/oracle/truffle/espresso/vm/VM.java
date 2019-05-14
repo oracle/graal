@@ -377,6 +377,9 @@ public final class VM extends NativeEnv implements ContextAccess {
                     if (targetEx instanceof OutOfMemoryError) {
                         throw getContext().getOutOfMemory();
                     }
+                    if (targetEx instanceof ThreadDeath) {
+                        throw getMeta().throwEx(ThreadDeath.class);
+                    }
                     // FIXME(peterssen): Handle VME exceptions back to guest.
                     throw EspressoError.shouldNotReachHere(targetEx);
                 } catch (IllegalAccessException | IllegalArgumentException e) {

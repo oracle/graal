@@ -155,6 +155,7 @@ public final class Symbol<T> extends ByteSequence {
         public static final Symbol<Name> getProperty = StaticSymbols.putName("getProperty");
         public static final Symbol<Name> setProperty = StaticSymbols.putName("setProperty");
         public static final Symbol<Name> exit = StaticSymbols.putName("exit");
+        public static final Symbol<Name> stop = StaticSymbols.putName("stop");
         public static final Symbol<Name> override = StaticSymbols.putName("override");
         public static final Symbol<Name> parameterTypes = StaticSymbols.putName("parameterTypes");
         public static final Symbol<Name> shutdown = StaticSymbols.putName("shutdown");

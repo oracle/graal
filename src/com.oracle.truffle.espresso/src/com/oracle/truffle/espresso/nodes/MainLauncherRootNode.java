@@ -63,6 +63,9 @@ public class MainLauncherRootNode extends RootNode {
             CompilerDirectives.transferToInterpreter();
             e.printStackTrace();
             return StaticObject.NULL;
+        } finally {
+            main.getMeta().Shutdown_shutdown.invokeDirect(null);
+            main.getContext().interruptActiveThreads();
         }
     }
 
