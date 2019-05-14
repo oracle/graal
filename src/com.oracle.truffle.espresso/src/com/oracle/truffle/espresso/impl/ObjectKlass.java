@@ -525,7 +525,6 @@ public final class ObjectKlass extends Klass {
                 try {
                     MethodVerifier.verify(code, getConstantPool());
                 } catch (Throwable e) {
-                    System.err.println("Unexpected exception during bytecode verification: " + e);
                     throw e;
                 }
             }

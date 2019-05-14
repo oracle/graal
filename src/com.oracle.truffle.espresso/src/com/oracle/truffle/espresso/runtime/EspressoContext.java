@@ -260,14 +260,15 @@ public final class EspressoContext {
                     } else {
                         t.join();
                     }
-                } catch (InterruptedException e) {}
+                } catch (InterruptedException e) {
+                }
                 /**
                  * TODO(garcia) Finalizer thread can't be interrupted at all. We must find some way
                  * to complete it for polyglot.
                  */
             }
         }
-//        initiatingThread.interrupt();
+        // initiatingThread.interrupt();
     }
 
     private void initVmProperties() {

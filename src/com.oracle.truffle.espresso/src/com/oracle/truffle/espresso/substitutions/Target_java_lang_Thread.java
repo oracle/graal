@@ -122,7 +122,7 @@ public final class Target_java_lang_Thread {
                             self.notifyAll();
                         }
                         // Cleanup.
-                        context.unregisterThread((Thread)self.getHiddenField(meta.HIDDEN_HOST_THREAD));
+                        context.unregisterThread((Thread) self.getHiddenField(meta.HIDDEN_HOST_THREAD));
                     }
                 }
             });
