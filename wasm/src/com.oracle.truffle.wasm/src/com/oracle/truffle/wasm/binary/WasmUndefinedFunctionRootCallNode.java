@@ -28,22 +28,20 @@
  * OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 
-package com.oracle.truffle.wasm.parser.binary;
+package com.oracle.truffle.wasm.binary;
 
-import com.oracle.truffle.api.TruffleException;
-import com.oracle.truffle.api.nodes.Node;
+import com.oracle.truffle.api.TruffleLanguage;
+import com.oracle.truffle.api.frame.VirtualFrame;
 
-public class WasmException extends RuntimeException implements TruffleException {
+public class WasmUndefinedFunctionRootCallNode extends WasmRootNode {
 
-    private Node location;
-
-    public WasmException(Node location, String message) {
-        super(message);
-        this.location = location;
+    public WasmUndefinedFunctionRootCallNode(TruffleLanguage<?> language) {
+        super(language, null, null);
     }
 
     @Override
-    public Node getLocation() {
-        return location;
+    public Object execute(VirtualFrame frame) {
+        // TODO: See how to return a Unit value
+        return Boolean.TRUE;
     }
 }

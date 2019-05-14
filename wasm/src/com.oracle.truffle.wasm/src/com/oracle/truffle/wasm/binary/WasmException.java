@@ -27,48 +27,23 @@
  * NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED
  * OF THE POSSIBILITY OF SUCH DAMAGE.
  */
-package com.oracle.truffle.wasm.parser.binary;
 
-import static com.oracle.truffle.api.TruffleLanguage.Env;
+package com.oracle.truffle.wasm.binary;
 
-import java.util.ArrayList;
-import java.util.HashMap;
-import java.util.Map;
+import com.oracle.truffle.api.TruffleException;
+import com.oracle.truffle.api.nodes.Node;
 
-import com.oracle.truffle.api.CallTarget;
-import com.oracle.truffle.api.Scope;
-import com.oracle.truffle.api.source.Source;
+public class WasmException extends RuntimeException implements TruffleException {
 
-public class WasmContext {
-    private Env env;
-    private WasmLanguage language;
-    private Map<String, WasmModule> modules;
+    private Node location;
 
-    public WasmContext(Env env, WasmLanguage language) {
-        this.env = env;
-        this.language = language;
-        this.modules = new HashMap<>();
+    public WasmException(Node location, String message) {
+        super(message);
+        this.location = location;
     }
 
-    public CallTarget parse(Source source) {
-        return env.parse(source);
-    }
-
-    public WasmLanguage language() {
-        return language;
-    }
-
-    public Iterable<Scope> getTopScopes() {
-        // Go through all WasmModules parsed with this context, and create a Scope for each of them.
-        ArrayList<Scope> scopes = new ArrayList<>();
-        for (Map.Entry<String, WasmModule> entry : modules.entrySet()) {
-            Scope scope = Scope.newBuilder(entry.getKey(), entry.getValue()).build();
-            scopes.add(scope);
-        }
-        return scopes;
-    }
-
-    void registerModule(WasmModule module) {
-        modules.put(module.name(), module);
+    @Override
+    public Node getLocation() {
+        return location;
     }
 }

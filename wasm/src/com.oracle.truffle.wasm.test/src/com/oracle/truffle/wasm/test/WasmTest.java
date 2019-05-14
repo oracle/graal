@@ -49,7 +49,7 @@ public abstract class WasmTest {
     }
 
     @Test
-    public final void runTests() {
+    public void runTests() {
         for (TestElement element : testElements) {
             runTest(element);
         }

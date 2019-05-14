@@ -27,10 +27,53 @@
  * NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED
  * OF THE POSSIBILITY OF SUCH DAMAGE.
  */
-package com.oracle.truffle.wasm.parser.binary;
+package com.oracle.truffle.wasm.binary;
 
-public class BinaryReaderException extends RuntimeException {
-    public BinaryReaderException(String message) {
-        super(message);
+import com.oracle.truffle.api.RootCallTarget;
+import com.oracle.truffle.api.interop.InteropLibrary;
+import com.oracle.truffle.api.interop.TruffleObject;
+import com.oracle.truffle.api.library.ExportLibrary;
+import com.oracle.truffle.api.library.ExportMessage;
+
+@ExportLibrary(InteropLibrary.class)
+public class WasmFunction implements TruffleObject {
+    private SymbolTable symbolTable;
+    private int typeIndex;
+    private RootCallTarget callTarget;
+
+    private byte[] locals;
+    private int offset;
+
+    public WasmFunction(SymbolTable symbolTable, int typeIndex) {
+        this.symbolTable = symbolTable;
+        this.typeIndex = typeIndex;
+        this.callTarget = null;
+    }
+
+    public byte returnType() {
+        return symbolTable.getFunctionReturnType(typeIndex);
+    }
+
+    void setCallTarget(RootCallTarget callTarget) {
+        this.callTarget = callTarget;
+    }
+
+    public void registerLocal(byte type) {
+        locals[offset] = type;
+        offset++;
+    }
+
+    public RootCallTarget getCallTarget() {
+        return callTarget;
+    }
+
+    @ExportMessage
+    boolean isExecutable() {
+        return true;
+    }
+
+    @ExportMessage
+    Object execute(Object[] arguments) {
+        return callTarget.call(arguments);
     }
 }

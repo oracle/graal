@@ -27,27 +27,32 @@
  * NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED
  * OF THE POSSIBILITY OF SUCH DAMAGE.
  */
-package com.oracle.truffle.wasm.parser.binary;
+package com.oracle.truffle.wasm.test.execution;
 
-public class CallContext extends BinaryStreamReader {
-    private long[] rawStack;
+import java.io.IOException;
 
-    private int pointer;
+import org.graalvm.polyglot.Context;
+import org.graalvm.polyglot.Source;
+import org.graalvm.polyglot.Value;
+import org.graalvm.polyglot.io.ByteSequence;
+import org.junit.Assert;
 
-    public CallContext(byte[] data, int stackSize) {
-        super(data);
-        this.rawStack = new long[stackSize];
-        this.pointer = 0;
-    }
+import com.oracle.truffle.wasm.test.WasmTest;
+import com.oracle.truffle.wasm.test.WasmTestToolkit;
 
-    public void push(long value) {
-        rawStack[pointer] = value;
-        pointer++;
-    }
-
-    public long pop() {
-        pointer--;
-        long value = rawStack[pointer];
-        return value;
+public class WasmInterpretationTest extends WasmTest {
+    @Override
+    protected void runTest(TestElement element) {
+        try {
+            byte[] binary = WasmTestToolkit.compileWat(element.program);
+            Context context = Context.create();
+            Source source = Source.newBuilder("wasm", ByteSequence.create(binary), "test").build();
+            context.eval(source);
+            Value result = context.getBindings("wasm").getMember("0").execute();
+            element.data.validator.accept(result);
+        } catch (IOException | InterruptedException e) {
+            Assert.fail(String.format("WasmInterpretationTest failed for program: %s", element.program));
+            e.printStackTrace();
+        }
     }
 }

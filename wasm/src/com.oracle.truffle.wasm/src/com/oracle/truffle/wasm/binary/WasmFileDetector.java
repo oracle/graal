@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2016, 2019, Oracle and/or its affiliates.
+ * Copyright (c) 2019, Oracle and/or its affiliates.
  *
  * All rights reserved.
  *
@@ -27,9 +27,24 @@
  * NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED
  * OF THE POSSIBILITY OF SUCH DAMAGE.
  */
-package com.oracle.truffle.wasm.parser.binary;
+package com.oracle.truffle.wasm.binary;
 
-public enum Result {
-    OK,
-    ERROR;
+import java.io.IOException;
+import java.nio.charset.Charset;
+
+import com.oracle.truffle.api.TruffleFile;
+
+public class WasmFileDetector implements TruffleFile.FileTypeDetector {
+    @Override
+    public String findMimeType(TruffleFile file) throws IOException {
+       if (file.getName() != null && file.getName().endsWith(".wasm")) {
+           return "application/wasm";
+       }
+       return null;
+    }
+
+    @Override
+    public Charset findEncoding(TruffleFile file) throws IOException {
+        return null;
+    }
 }

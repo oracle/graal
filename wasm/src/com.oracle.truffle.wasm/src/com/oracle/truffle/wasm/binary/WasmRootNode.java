@@ -27,37 +27,45 @@
  * NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED
  * OF THE POSSIBILITY OF SUCH DAMAGE.
  */
-package com.oracle.truffle.wasm.test.parser;
+package com.oracle.truffle.wasm.binary;
 
-import java.io.IOException;
+import com.oracle.truffle.api.CompilerDirectives.CompilationFinal;
+import com.oracle.truffle.api.TruffleLanguage;
+import com.oracle.truffle.api.frame.VirtualFrame;
+import com.oracle.truffle.api.nodes.RootNode;
 
-import org.graalvm.polyglot.Context;
-import org.graalvm.polyglot.Source;
-import org.graalvm.polyglot.io.ByteSequence;
+public class WasmRootNode extends RootNode {
+    @CompilationFinal private final byte[] data;
+    @Child private WasmBlockNode body;
 
-import com.oracle.truffle.wasm.binary.Assert;
-import com.oracle.truffle.wasm.test.WasmTest;
-import com.oracle.truffle.wasm.test.WasmTestToolkit;
-import org.junit.Test;
+    @CompilationFinal int maxValueStackSize;
 
-public class WasmParserTest extends WasmTest {
-
-    @Override
-    @Test
-    public void runTests() {
-        super.runTests();
+    public WasmRootNode(TruffleLanguage<?> language, byte[] data, WasmBlockNode body) {
+        super(language);
+        this.data = data;
+        this.body = body;
+        this.maxValueStackSize = 0;
     }
 
     @Override
-    public void runTest(TestElement element) {
-        try {
-            byte[] binary = WasmTestToolkit.compileWat(element.program);
-            Context context = Context.create();
-            Source source = Source.newBuilder("wasm", ByteSequence.create(binary), "test").build();
-            context.eval(source);
-        } catch (IOException | InterruptedException e) {
-            Assert.fail(String.format("WasmParserTest failed for program: %s", element.program));
-            e.printStackTrace();
+    public Object execute(VirtualFrame frame) {
+        CallContext callContext = new CallContext(data, maxValueStackSize);
+        body.execute(frame, callContext);
+        long returnValue = callContext.pop();
+        switch (body.typeId()) {
+            case ValueTypes.I32_TYPE:
+                Assert.assertEquals(returnValue >>> 32, 0, "Expected i32 value, popped value was larger than 32 bits.");
+                return Math.toIntExact(returnValue);
+            case ValueTypes.I64_TYPE:
+                return returnValue;
+            case ValueTypes.F32_TYPE:
+                Assert.assertEquals(returnValue >>> 32, 0, "Expected f32 value, popped value was larger than 32 bits.");
+                return Float.intBitsToFloat((int) returnValue);
+            case ValueTypes.F64_TYPE:
+                return Double.longBitsToDouble(returnValue);
+            default:
+                Assert.fail(String.format("Unknown type: 0x%02X", body.typeId()));
+                return null;
         }
     }
 }

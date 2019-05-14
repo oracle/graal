@@ -27,35 +27,9 @@
  * NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED
  * OF THE POSSIBILITY OF SUCH DAMAGE.
  */
-package com.oracle.truffle.wasm.parser.binary;
+package com.oracle.truffle.wasm.binary;
 
-import com.oracle.truffle.api.CallTarget;
-import com.oracle.truffle.api.Scope;
-import com.oracle.truffle.api.Truffle;
-import com.oracle.truffle.api.TruffleLanguage;
+import com.oracle.truffle.api.nodes.Node;
 
-@TruffleLanguage.Registration(id = "wasm", name = "WebAssembly", defaultMimeType = "application/wasm", byteMimeTypes = "application/wasm", contextPolicy = TruffleLanguage.ContextPolicy.SHARED, fileTypeDetectors = WasmFileDetector.class)
-public final class WasmLanguage extends TruffleLanguage<WasmContext> {
-
-    @Override
-    protected WasmContext createContext(Env env) {
-        return new WasmContext(env, this);
-    }
-
-    @Override
-    protected boolean isObjectOfLanguage(Object object) {
-        return false;
-    }
-
-    @Override
-    protected CallTarget parse(ParsingRequest request) throws Exception {
-        BinaryReader reader = new BinaryReader(this, request.getSource().getName(), request.getSource().getBytes().toByteArray());
-        reader.readModule();
-        return Truffle.getRuntime().createCallTarget(new WasmUndefinedFunctionRootCallNode(this));
-    }
-
-    @Override
-    protected Iterable<Scope> findTopScopes(WasmContext context) {
-        return context.getTopScopes();
-    }
+public abstract class WasmNode extends Node {
 }

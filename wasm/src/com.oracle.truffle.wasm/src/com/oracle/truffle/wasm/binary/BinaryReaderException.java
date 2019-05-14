@@ -27,11 +27,10 @@
  * NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED
  * OF THE POSSIBILITY OF SUCH DAMAGE.
  */
-package com.oracle.truffle.wasm.parser.binary;
+package com.oracle.truffle.wasm.binary;
 
-public class ValueTypes {
-    public static final int I32_TYPE = 0x7F;
-    public static final int I64_TYPE = 0x7E;
-    public static final int F32_TYPE = 0x7D;
-    public static final int F64_TYPE = 0x7C;
+public class BinaryReaderException extends RuntimeException {
+    public BinaryReaderException(String message) {
+        super(message);
+    }
 }

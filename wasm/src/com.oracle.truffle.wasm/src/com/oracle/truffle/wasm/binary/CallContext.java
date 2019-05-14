@@ -27,21 +27,27 @@
  * NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED
  * OF THE POSSIBILITY OF SUCH DAMAGE.
  */
+package com.oracle.truffle.wasm.binary;
 
-package com.oracle.truffle.wasm.parser.binary;
+public class CallContext extends BinaryStreamReader {
+    private long[] rawStack;
 
-import com.oracle.truffle.api.TruffleLanguage;
-import com.oracle.truffle.api.frame.VirtualFrame;
+    private int pointer;
 
-public class WasmUndefinedFunctionRootCallNode extends WasmRootNode {
-
-    public WasmUndefinedFunctionRootCallNode(TruffleLanguage<?> language) {
-        super(language, null, null);
+    public CallContext(byte[] data, int stackSize) {
+        super(data);
+        this.rawStack = new long[stackSize];
+        this.pointer = 0;
     }
 
-    @Override
-    public Object execute(VirtualFrame frame) {
-        // TODO: See how to return a Unit value
-        return Boolean.TRUE;
+    public void push(long value) {
+        rawStack[pointer] = value;
+        pointer++;
+    }
+
+    public long pop() {
+        pointer--;
+        long value = rawStack[pointer];
+        return value;
     }
 }

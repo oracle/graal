@@ -29,7 +29,7 @@
  */
 package com.oracle.truffle.wasm.test.parser;
 
-import com.oracle.truffle.wasm.parser.binary.BinaryStreamReader;
+import com.oracle.truffle.wasm.binary.BinaryStreamReader;
 
 public class TestStreamReader extends BinaryStreamReader {
 

@@ -27,32 +27,23 @@
  * NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED
  * OF THE POSSIBILITY OF SUCH DAMAGE.
  */
-package com.oracle.truffle.wasm.test.execution;
+package com.oracle.truffle.wasm.binary;
 
-import java.io.IOException;
+public class ExecutionState {
+    int stackSize;
+    int maxStackSize;
 
-import org.graalvm.polyglot.Context;
-import org.graalvm.polyglot.Source;
-import org.graalvm.polyglot.Value;
-import org.graalvm.polyglot.io.ByteSequence;
-import org.junit.Assert;
+    public ExecutionState() {
+        this.stackSize = 0;
+        this.maxStackSize = 0;
+    }
 
-import com.oracle.truffle.wasm.test.WasmTest;
-import com.oracle.truffle.wasm.test.WasmTestToolkit;
+    public void push() {
+        stackSize++;
+        maxStackSize = Math.max(stackSize, maxStackSize);
+    }
 
-public class WasmExecutionTest extends WasmTest {
-    @Override
-    protected void runTest(TestElement element) {
-        try {
-            byte[] binary = WasmTestToolkit.compileWat(element.program);
-            Context context = Context.create();
-            Source source = Source.newBuilder("wasm", ByteSequence.create(binary), "test").build();
-            context.eval(source);
-            Value result = context.getBindings("wasm").getMember("0").execute();
-            element.data.validator.accept(result);
-        } catch (IOException | InterruptedException e) {
-            Assert.fail(String.format("WasmExecutionTest failed for program: %s", element.program));
-            e.printStackTrace();
-        }
+    public void pop() {
+        stackSize--;
     }
 }

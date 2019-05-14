@@ -27,24 +27,48 @@
  * NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED
  * OF THE POSSIBILITY OF SUCH DAMAGE.
  */
-package com.oracle.truffle.wasm.parser.binary;
+package com.oracle.truffle.wasm.binary;
 
-import java.io.IOException;
-import java.nio.charset.Charset;
+import static com.oracle.truffle.api.TruffleLanguage.Env;
 
-import com.oracle.truffle.api.TruffleFile;
+import java.util.ArrayList;
+import java.util.HashMap;
+import java.util.Map;
 
-public class WasmFileDetector implements TruffleFile.FileTypeDetector {
-    @Override
-    public String findMimeType(TruffleFile file) throws IOException {
-       if (file.getName() != null && file.getName().endsWith(".wasm")) {
-           return "application/wasm";
-       }
-       return null;
+import com.oracle.truffle.api.CallTarget;
+import com.oracle.truffle.api.Scope;
+import com.oracle.truffle.api.source.Source;
+
+public class WasmContext {
+    private Env env;
+    private WasmLanguage language;
+    private Map<String, WasmModule> modules;
+
+    public WasmContext(Env env, WasmLanguage language) {
+        this.env = env;
+        this.language = language;
+        this.modules = new HashMap<>();
     }
 
-    @Override
-    public Charset findEncoding(TruffleFile file) throws IOException {
-        return null;
+    public CallTarget parse(Source source) {
+        return env.parse(source);
+    }
+
+    public WasmLanguage language() {
+        return language;
+    }
+
+    public Iterable<Scope> getTopScopes() {
+        // Go through all WasmModules parsed with this context, and create a Scope for each of them.
+        ArrayList<Scope> scopes = new ArrayList<>();
+        for (Map.Entry<String, WasmModule> entry : modules.entrySet()) {
+            Scope scope = Scope.newBuilder(entry.getKey(), entry.getValue()).build();
+            scopes.add(scope);
+        }
+        return scopes;
+    }
+
+    void registerModule(WasmModule module) {
+        modules.put(module.name(), module);
     }
 }

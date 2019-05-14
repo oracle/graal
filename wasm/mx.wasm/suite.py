@@ -21,7 +21,6 @@ suite = {
       "sourceDirs" : ["src"],
       "dependencies" : [
         "com.oracle.truffle.wasm",
-        "com.oracle.truffle.wasm.parser",
         "mx:JUNIT",
       ],
       "checkstyle" : "com.oracle.truffle.wasm",
@@ -34,22 +33,43 @@ suite = {
     "com.oracle.truffle.wasm" : {
       "subDir" : "src",
       "sourceDirs" : ["src"],
-      "dependencies" : [],
+      "dependencies" : [
+        "truffle:TRUFFLE_API",
+      ],
       "checkstyle" : "com.oracle.truffle.wasm",
       "javaCompliance" : "1.8",
       "annotationProcessors" : ["truffle:TRUFFLE_DSL_PROCESSOR"],
       "workingSets" : "Truffle, WebAssembly",
       "license" : "BSD-new",
     },
-    "com.oracle.truffle.wasm.parser" : {
+  },
+
+  "distributions" : {
+    "WASM" : {
+      "moduleName" : "com.oracle.truffle.wasm",
       "subDir" : "src",
-      "sourceDirs" : ["src"],
-      "dependencies" : [],
-      "checkstyle" : "com.oracle.truffle.wasm",
-      "javaCompliance" : "1.8",
-      "annotationProcessors" : ["truffle:TRUFFLE_DSL_PROCESSOR"],
-      "workingSets" : "Truffle, WebAssembly",
-      "license" : "BSD-new",
-    }
+      "dependencies" : ["com.oracle.truffle.wasm"],
+      "distDependencies" : [
+        "truffle:TRUFFLE_API",
+      ],
+      "maven" : {
+        "artifactId" : "wasm",
+      },
+      "description" : "Truffle WebAssembly language.",
+      "allowsJavadocWarnings": True,
+    },
+
+    "WASM_UNIT_TESTS" : {
+      "dependencies" : [
+        "com.oracle.truffle.wasm.test",
+      ],
+      "exclude" : [
+        "mx:JUNIT",
+      ],
+      "distDependencies" : [
+        "WASM",
+      ],
+      "maven" : False,
+    },
   }
 }
