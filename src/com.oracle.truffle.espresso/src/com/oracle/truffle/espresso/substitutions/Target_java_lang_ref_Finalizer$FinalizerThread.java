@@ -30,6 +30,7 @@ public final class Target_java_lang_ref_Finalizer$FinalizerThread {
 
     // TODO evaluate impact of disabling this class
 
+    @SuppressWarnings("unused")
     @Substitution(hasReceiver = true)
     static public void run(@Host(typeName = "Thread") StaticObject self) {
         /* nop */

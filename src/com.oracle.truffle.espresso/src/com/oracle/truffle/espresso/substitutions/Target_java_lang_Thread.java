@@ -215,7 +215,7 @@ public final class Target_java_lang_Thread {
         hostThread.interrupt();
     }
 
-    // @SuppressWarnings("deprecation")
+    @SuppressWarnings("unused")
     @Substitution(hasReceiver = true)
     public static void resume0(@Host(Object.class) StaticObject self) {
         /* nop */
@@ -227,7 +227,7 @@ public final class Target_java_lang_Thread {
         // hostThread.resume();
     }
 
-    // @SuppressWarnings("deprecation")
+    @SuppressWarnings("unused")
     @Substitution(hasReceiver = true)
     public static void suspend0(@Host(Object.class) StaticObject self) {
         /* nop */
