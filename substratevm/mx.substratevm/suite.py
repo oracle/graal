@@ -107,7 +107,7 @@ suite = {
             "workingSets": "SVM",
         },
 
-        "com.oracle.svm.core.jdk9": {
+        "com.oracle.svm.core.jdk11": {
             "subDir": "src",
             "sourceDirs": ["src"],
             "dependencies": ["com.oracle.svm.core"],
@@ -115,25 +115,25 @@ suite = {
                 "jdk.internal.misc",
                 "jdk.internal.perf",
             ],
-            "javaCompliance": "9+",
-            "multiReleaseJarVersion": "9",
+            "javaCompliance": "11+",
+            "multiReleaseJarVersion": "11",
             "checkstyle": "com.oracle.svm.core",
             "workingSets": "SVM",
         },
 
-        "com.oracle.svm.core.posix.jdk9": {
+        "com.oracle.svm.core.posix.jdk11": {
             "subDir": "src",
             "sourceDirs": ["src"],
             "dependencies": [
-                "com.oracle.svm.core.jdk9",
+                "com.oracle.svm.core.jdk11",
                 "com.oracle.svm.core.posix"
                 ],
             "imports" : [
                 "jdk.internal.misc",
                 "jdk.internal.perf",
             ],
-            "javaCompliance": "9+",
-            "multiReleaseJarVersion": "9",
+            "javaCompliance": "11+",
+            "multiReleaseJarVersion": "11",
             "checkstyle": "com.oracle.svm.core",
             "workingSets": "SVM",
         },
@@ -747,9 +747,9 @@ suite = {
                 "com.oracle.svm.core.graal.amd64",
                 "com.oracle.svm.core.graal.aarch64",
                 "com.oracle.svm.core.jdk8",
-                "com.oracle.svm.core.jdk9",
+                "com.oracle.svm.core.jdk11",
                 "com.oracle.svm.core.posix",
-                "com.oracle.svm.core.posix.jdk9",
+                "com.oracle.svm.core.posix.jdk11",
                 "com.oracle.svm.core.windows",
                 "com.oracle.svm.core.genscavenge",
                 "com.oracle.svm.jni",
