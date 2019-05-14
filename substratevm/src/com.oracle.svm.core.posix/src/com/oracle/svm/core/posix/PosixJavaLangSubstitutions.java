@@ -225,9 +225,7 @@ final class Target_java_lang_UNIXProcess {
 
     // The reaper thread pool and thread groups (currently) confuse the analysis, so we launch
     // reaper threads individually (with the only difference being that threads are not recycled)
-    @Platforms({Platform.LINUX.class, Platform.DARWIN.class})
-    @TargetElement(onlyWith = JDK8OrEarlier.class)
-    @Delete static Executor processReaperExecutor;
+    @Platforms({Platform.LINUX.class, Platform.DARWIN.class}) @TargetElement(onlyWith = JDK8OrEarlier.class) @Delete static Executor processReaperExecutor;
 
     @Alias int pid;
     @Alias OutputStream stdin;
@@ -257,7 +255,6 @@ final class Target_java_lang_UNIXProcess {
         return Java_lang_Process_Supplement.forkAndExec(mode, helperpath, file, argBlock, argCount, envBlock, envCount, dir, fds, redirectErrorStream);
     }
 
-
     @Substitute
     @TargetElement(onlyWith = JDK8OrEarlier.class)
     @Platforms({Platform.LINUX.class, Platform.DARWIN.class})
@@ -271,8 +268,6 @@ final class Target_java_lang_UNIXProcess {
     void initStreams(int[] fds, boolean forceNullOutputStream) {
         UNIXProcess_Support.doInitStreams(this, fds, forceNullOutputStream);
     }
-
-
 
     @Substitute
     @Platforms({Platform.LINUX.class, Platform.DARWIN.class})
@@ -325,15 +320,15 @@ final class UNIXProcess_Support {
                 }
                 if ((Object) proc.stdout != Target_java_lang_ProcessBuilder_NullInputStream.INSTANCE) {
                     SubstrateUtil.cast(proc.stdout, Target_java_lang_UNIXProcess_ProcessPipeInputStream.class)
-                            .processExited();
+                                    .processExited();
                 }
                 if ((Object) proc.stderr != Target_java_lang_ProcessBuilder_NullInputStream.INSTANCE) {
                     SubstrateUtil.cast(proc.stderr, Target_java_lang_UNIXProcess_ProcessPipeInputStream.class)
-                            .processExited();
+                                    .processExited();
                 }
                 if ((Object) proc.stdin != Target_java_lang_ProcessBuilder_NullOutputStream.INSTANCE) {
                     SubstrateUtil.cast(proc.stdin, Target_java_lang_UNIXProcess_ProcessPipeOutputStream.class)
-                            .processExited();
+                                    .processExited();
                 }
             }
         });

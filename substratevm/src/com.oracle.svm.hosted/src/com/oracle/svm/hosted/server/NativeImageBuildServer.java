@@ -447,14 +447,14 @@ public final class NativeImageBuildServer {
     }
 
     private static boolean isSystemLoaderLogLevelEntry(Entry<?, ?> e) {
-        if ( JavaVersionUtil.Java8OrEarlier ) {
+        if (JavaVersionUtil.Java8OrEarlier) {
             return ((List<?>) e.getValue()).stream()
-                    .map(x -> getFieldValueOfObject("java.util.logging.Level$KnownLevel", "levelObject", x))
-                    .allMatch(NativeImageBuildServer::isSystemClassLoader);
+                            .map(x -> getFieldValueOfObject("java.util.logging.Level$KnownLevel", "levelObject", x))
+                            .allMatch(NativeImageBuildServer::isSystemClassLoader);
         } else {
             return ((List<?>) e.getValue()).stream()
-                    .map(x -> getFieldValueOfObject("java.util.logging.Level$KnownLevel", "mirroredLevel", x))
-                    .allMatch(NativeImageBuildServer::isSystemClassLoader);
+                            .map(x -> getFieldValueOfObject("java.util.logging.Level$KnownLevel", "mirroredLevel", x))
+                            .allMatch(NativeImageBuildServer::isSystemClassLoader);
         }
     }
 
