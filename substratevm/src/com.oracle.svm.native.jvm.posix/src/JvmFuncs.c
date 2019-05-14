@@ -347,6 +347,27 @@ int jio_vfprintf(FILE* f, const char *fmt, va_list args) {
 }
 
 #ifdef JNI_VERSION_9
+JNIEXPORT void JVM_AddModuleExports(JNIEnv *env, jobject from_module, const char* package, jobject to_module) {
+    fprintf(stderr, "JVM_AddModuleExports called\n");
+}
+
+JNIEXPORT void JVM_AddModuleExportsToAllUnnamed(JNIEnv *env, jobject from_module, const char* package) {
+    fprintf(stderr, "JVM_AddModuleExportsToAllUnnamed called\n");
+}
+
+JNIEXPORT void JVM_AddModuleExportsToAll(JNIEnv *env, jobject from_module, const char* package) {
+    fprintf(stderr, "JVM_AddModuleExportsToAll called\n");
+}
+
+JNIEXPORT void JVM_AddReadsModule(JNIEnv *env, jobject from_module, jobject source_module) {
+    fprintf(stderr, "JVM_AddReadsModule called\n");
+}
+
+JNIEXPORT void JVM_DefineModule(JNIEnv *env, jobject module, jboolean is_open, jstring version,
+                 jstring location, const char* const* packages, jsize num_packages) {
+    fprintf(stderr, "JVM_DefineModule called\n");
+}
+
 int jio_snprintf(char *str, size_t count, const char *fmt, ...) {
   va_list args;
   int len;
