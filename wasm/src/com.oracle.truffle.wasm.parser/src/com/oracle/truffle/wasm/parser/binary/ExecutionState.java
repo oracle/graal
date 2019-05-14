@@ -31,13 +31,16 @@ package com.oracle.truffle.wasm.parser.binary;
 
 public class ExecutionState {
     int stackSize;
+    int maxStackSize;
 
     public ExecutionState() {
         this.stackSize = 0;
+        this.maxStackSize = 0;
     }
 
     public void push() {
         stackSize++;
+        maxStackSize = Math.max(stackSize, maxStackSize);
     }
 
     public void pop() {

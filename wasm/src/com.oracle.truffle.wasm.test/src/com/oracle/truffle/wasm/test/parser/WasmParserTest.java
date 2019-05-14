@@ -45,7 +45,7 @@ public class WasmParserTest extends WasmTest {
         try {
             byte[] binary = WasmTestToolkit.compileWat(element.program);
             Context context = Context.create();
-            Source source = org.graalvm.polyglot.Source.newBuilder("wasm", ByteSequence.create(binary), "test").build();
+            Source source = Source.newBuilder("wasm", ByteSequence.create(binary), "test").build();
             context.eval(source);
         } catch (IOException | InterruptedException e) {
             Assert.fail(String.format("WasmParserTest failed for program: %s", element.program));
