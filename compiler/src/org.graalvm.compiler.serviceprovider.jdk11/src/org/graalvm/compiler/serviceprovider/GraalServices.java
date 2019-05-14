@@ -35,6 +35,7 @@ import java.util.ServiceConfigurationError;
 import java.util.ServiceLoader;
 import java.util.concurrent.atomic.AtomicLong;
 
+import jdk.vm.ci.code.VirtualObject;
 import jdk.vm.ci.meta.SpeculationLog.SpeculationReason;
 import jdk.vm.ci.runtime.JVMCI;
 import jdk.vm.ci.services.JVMCIPermission;
@@ -353,5 +354,14 @@ public final class GraalServices {
      */
     public static double fma(double a, double b, double c) {
         return Math.fma(a, b, c);
+    }
+
+    /**
+     * Set the flag in the {@link VirtualObject} that indicates that it is a boxed primitive that
+     * was produced as a result of a call to a {@code valueOf} method.
+     */
+    @SuppressWarnings("unused")
+    public static void markVirtualObjectAsAutoBox(VirtualObject virtualObject) {
+        // Only supported by JDK13
     }
 }
