@@ -166,10 +166,19 @@ public class BinaryReader extends BinaryStreamReader {
         WasmRootNode rootNode = new WasmRootNode(wasmLanguage, data, block);
         ExecutionState state = new ExecutionState();
         readBlock(block, state);
-        rootNode.maxValueStackSize = state.stackSize;
+        checkValidStateOnFunctionExit(returnTypeId, state);
+        rootNode.maxValueStackSize = state.maxStackSize;
         RootCallTarget callTarget = Truffle.getRuntime().createCallTarget(rootNode);
         wasmModule.symbolTable().function(funcIndex).setCallTarget(callTarget);
         // TODO: For structured code, we need to set the expressionSize later
+    }
+
+    private void checkValidStateOnFunctionExit(byte returnTypeId, ExecutionState state) {
+        if (returnTypeId == 0x40) {
+            Assert.assertEquals(state.stackSize, 0, "Void function left values in the stack");
+        } else {
+            Assert.assertEquals(state.stackSize, 1, "Function left more than 1 values left in stack");
+        }
     }
 
     private void readBlock(WasmBlockNode currentBlock, ExecutionState state) {
