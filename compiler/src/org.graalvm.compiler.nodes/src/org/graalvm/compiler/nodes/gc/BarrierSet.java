@@ -25,21 +25,8 @@
  */
 package org.graalvm.compiler.nodes.gc;
 
-import org.graalvm.compiler.nodes.StructuredGraph;
-import org.graalvm.compiler.nodes.extended.ArrayRangeWrite;
-import org.graalvm.compiler.nodes.java.AbstractCompareAndSwapNode;
-import org.graalvm.compiler.nodes.java.LoweredAtomicReadAndWriteNode;
-import org.graalvm.compiler.nodes.memory.ReadNode;
-import org.graalvm.compiler.nodes.memory.WriteNode;
+import org.graalvm.compiler.nodes.memory.FixedAccessNode;
 
 public interface BarrierSet {
-    void addReadNodeBarriers(ReadNode node, StructuredGraph graph);
-
-    void addWriteNodeBarriers(WriteNode node, StructuredGraph graph);
-
-    void addAtomicReadWriteNodeBarriers(LoweredAtomicReadAndWriteNode node, StructuredGraph graph);
-
-    void addCASBarriers(AbstractCompareAndSwapNode node, StructuredGraph graph);
-
-    void addArrayRangeBarriers(ArrayRangeWrite write, StructuredGraph graph);
+    void addBarriers(FixedAccessNode n);
 }

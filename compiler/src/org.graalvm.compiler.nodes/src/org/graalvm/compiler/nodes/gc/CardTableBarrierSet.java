@@ -37,8 +37,11 @@ import org.graalvm.compiler.nodes.memory.FixedAccessNode;
 import org.graalvm.compiler.nodes.memory.HeapAccess;
 import org.graalvm.compiler.nodes.memory.ReadNode;
 import org.graalvm.compiler.nodes.memory.WriteNode;
+import org.graalvm.compiler.nodes.memory.HeapAccess.BarrierType;
 import org.graalvm.compiler.nodes.memory.address.AddressNode;
+import org.graalvm.compiler.nodes.memory.address.OffsetAddressNode;
 import org.graalvm.compiler.nodes.type.StampTool;
+import org.graalvm.compiler.nodes.util.GraphUtil;
 
 public class CardTableBarrierSet implements BarrierSet {
     private final boolean useDeferredInitBarriers;
@@ -48,90 +51,140 @@ public class CardTableBarrierSet implements BarrierSet {
     }
 
     @Override
-    public void addReadNodeBarriers(ReadNode node, StructuredGraph graph) {
-        // Nothing to do here.
+    public void addBarriers(FixedAccessNode n) {
+        if (n instanceof ReadNode) {
+            // nothing to do
+        } else if (n instanceof WriteNode) {
+            WriteNode write = (WriteNode) n;
+            addWriteBarrier(write, write.value());
+        } else if (n instanceof LoweredAtomicReadAndWriteNode) {
+            LoweredAtomicReadAndWriteNode atomic = (LoweredAtomicReadAndWriteNode) n;
+            addWriteBarrier(atomic, atomic.getNewValue());
+        } else if (n instanceof AbstractCompareAndSwapNode) {
+            AbstractCompareAndSwapNode cmpSwap = (AbstractCompareAndSwapNode) n;
+            addWriteBarrier(cmpSwap, cmpSwap.getNewValue());
+        } else if (n instanceof ArrayRangeWrite) {
+            addArrayRangeBarriers((ArrayRangeWrite) n);
+        } else {
+            GraalError.guarantee(n.getBarrierType() == BarrierType.NONE, "missed a node that requires a GC barrier: %s", n.getClass());
+        }
     }
 
-    @Override
-    public void addWriteNodeBarriers(WriteNode node, StructuredGraph graph) {
+    public boolean needsBarrier(FixedAccessNode n) {
+        if (n instanceof ReadNode) {
+            return false;
+        } else if (n instanceof WriteNode) {
+            WriteNode write = (WriteNode) n;
+            return needsWriteBarrier(write, write.value());
+        } else if (n instanceof LoweredAtomicReadAndWriteNode) {
+            LoweredAtomicReadAndWriteNode atomic = (LoweredAtomicReadAndWriteNode) n;
+            return needsWriteBarrier(atomic, atomic.getNewValue());
+        } else if (n instanceof AbstractCompareAndSwapNode) {
+            AbstractCompareAndSwapNode cmpSwap = (AbstractCompareAndSwapNode) n;
+            return needsWriteBarrier(cmpSwap, cmpSwap.getNewValue());
+        } else if (n instanceof ArrayRangeWrite) {
+            return needsWriteBarrier((ArrayRangeWrite) n);
+        } else {
+            GraalError.guarantee(n.getBarrierType() == BarrierType.NONE, "missed a node that requires a GC barrier: %s", n.getClass());
+            return false;
+        }
+    }
+
+    public boolean hasBarrier(FixedAccessNode n) {
+        if (n instanceof ReadNode) {
+            return false;
+        } else if (n instanceof WriteNode) {
+            WriteNode write = (WriteNode) n;
+            return hasWriteBarrier(write);
+        } else if (n instanceof LoweredAtomicReadAndWriteNode) {
+            LoweredAtomicReadAndWriteNode atomic = (LoweredAtomicReadAndWriteNode) n;
+            return hasWriteBarrier(atomic);
+        } else if (n instanceof AbstractCompareAndSwapNode) {
+            AbstractCompareAndSwapNode cmpSwap = (AbstractCompareAndSwapNode) n;
+            return hasWriteBarrier(cmpSwap);
+        } else if (n instanceof ArrayRangeWrite) {
+            return hasWriteBarrier((ArrayRangeWrite) n);
+        } else {
+            GraalError.guarantee(n.getBarrierType() == BarrierType.NONE, "missed a node that requires a GC barrier: %s", n.getClass());
+            return false;
+        }
+    }
+
+    public boolean isMatchingBarrier(FixedAccessNode n, WriteBarrier barrier) {
+        if (n instanceof ReadNode) {
+            return false;
+        } else if (n instanceof WriteNode || n instanceof LoweredAtomicReadAndWriteNode || n instanceof AbstractCompareAndSwapNode || n instanceof ArrayRangeWrite) {
+            return barrier instanceof SerialWriteBarrier && matches(n, (SerialWriteBarrier) barrier);
+        } else {
+            throw GraalError.shouldNotReachHere("Unexpected node: " + n.getClass());
+        }
+    }
+
+    public void addArrayRangeBarriers(ArrayRangeWrite write) {
+        if (needsWriteBarrier(write)) {
+            StructuredGraph graph = write.asNode().graph();
+            SerialArrayRangeWriteBarrier serialArrayRangeWriteBarrier = graph.add(new SerialArrayRangeWriteBarrier(write.getAddress(), write.getLength(), write.getElementStride()));
+            graph.addAfterFixed(write.asNode(), serialArrayRangeWriteBarrier);
+        }
+    }
+
+    private void addWriteBarrier(FixedAccessNode node, ValueNode writtenValue) {
+        if (needsWriteBarrier(node, writtenValue)) {
+            addSerialPostWriteBarrier(node, node.getAddress(), node.graph());
+        }
+    }
+
+    public boolean needsWriteBarrier(FixedAccessNode node, ValueNode writtenValue) {
+        assert !(node instanceof ArrayRangeWrite);
         HeapAccess.BarrierType barrierType = node.getBarrierType();
         switch (barrierType) {
             case NONE:
-                // nothing to do
-                break;
+                return false;
             case FIELD:
             case ARRAY:
             case UNKNOWN:
-                if (isObjectValue(node.value())) {
-                    boolean precise = barrierType != HeapAccess.BarrierType.FIELD;
-                    boolean init = node.getLocationIdentity().isInit();
-                    if (!init || !useDeferredInitBarriers) {
-                        addSerialPostWriteBarrier(node, node.getAddress(), node.value(), precise, graph);
-                    }
-                }
-                break;
+                return isNonNullObjectValue(writtenValue) && !isDeferredInit(node);
             default:
                 throw new GraalError("unexpected barrier type: " + barrierType);
         }
     }
 
-    @Override
-    public void addAtomicReadWriteNodeBarriers(LoweredAtomicReadAndWriteNode node, StructuredGraph graph) {
-        HeapAccess.BarrierType barrierType = node.getBarrierType();
-        switch (barrierType) {
-            case NONE:
-                // nothing to do
-                break;
-            case FIELD:
-            case ARRAY:
-            case UNKNOWN:
-                if (isObjectValue(node.getNewValue())) {
-                    boolean precise = barrierType != HeapAccess.BarrierType.FIELD;
-                    addSerialPostWriteBarrier(node, node.getAddress(), node.getNewValue(), precise, graph);
-                }
-                break;
-            default:
-                throw new GraalError("unexpected barrier type: " + barrierType);
-        }
+    public static boolean needsWriteBarrier(ArrayRangeWrite write) {
+        return write.writesObjectArray();
     }
 
-    @Override
-    public void addCASBarriers(AbstractCompareAndSwapNode node, StructuredGraph graph) {
-        HeapAccess.BarrierType barrierType = node.getBarrierType();
-        switch (barrierType) {
-            case NONE:
-                // nothing to do
-                break;
-            case FIELD:
-            case ARRAY:
-            case UNKNOWN:
-                if (isObjectValue(node.getNewValue())) {
-                    boolean precise = barrierType != HeapAccess.BarrierType.FIELD;
-                    addSerialPostWriteBarrier(node, node.getAddress(), node.getNewValue(), precise, graph);
-                }
-                break;
-            default:
-                throw new GraalError("unexpected barrier type: " + barrierType);
-        }
+    private static boolean hasWriteBarrier(FixedAccessNode node) {
+        return node.next() instanceof SerialWriteBarrier && matches(node, (SerialWriteBarrier) node.next());
     }
 
-    @Override
-    public void addArrayRangeBarriers(ArrayRangeWrite write, StructuredGraph graph) {
-        assert write.writesObjectArray();
-        SerialArrayRangeWriteBarrier serialArrayRangeWriteBarrier = graph.add(new SerialArrayRangeWriteBarrier(write.getAddress(), write.getLength(), write.getElementStride()));
-        graph.addAfterFixed(write.asNode(), serialArrayRangeWriteBarrier);
+    private static boolean hasWriteBarrier(ArrayRangeWrite write) {
+        FixedAccessNode node = write.asNode();
+        return node.next() instanceof SerialArrayRangeWriteBarrier && matches(write, (SerialArrayRangeWriteBarrier) node.next());
     }
 
-    protected void addSerialPostWriteBarrier(FixedAccessNode node, AddressNode address, ValueNode value, boolean precise, StructuredGraph graph) {
-        final boolean alwaysNull = StampTool.isPointerAlwaysNull(value);
-        if (alwaysNull) {
-            // Serial barrier isn't needed for null value
-            return;
-        }
+    private static void addSerialPostWriteBarrier(FixedAccessNode node, AddressNode address, StructuredGraph graph) {
+        boolean precise = node.getBarrierType() != HeapAccess.BarrierType.FIELD;
         graph.addAfterFixed(node, graph.add(new SerialWriteBarrier(address, precise)));
     }
 
-    private static boolean isObjectValue(ValueNode value) {
-        return value.stamp(NodeView.DEFAULT) instanceof AbstractObjectStamp;
+    private static boolean isNonNullObjectValue(ValueNode value) {
+        return value.stamp(NodeView.DEFAULT) instanceof AbstractObjectStamp && !StampTool.isPointerAlwaysNull(value);
+    }
+
+    private boolean isDeferredInit(FixedAccessNode node) {
+        return node.getLocationIdentity().isInit() && useDeferredInitBarriers;
+    }
+
+    private static boolean matches(FixedAccessNode node, SerialWriteBarrier barrier) {
+        if (!barrier.usePrecise()) {
+            if (barrier.getAddress() instanceof OffsetAddressNode && node.getAddress() instanceof OffsetAddressNode) {
+                return GraphUtil.unproxify(((OffsetAddressNode) barrier.getAddress()).getBase()) == GraphUtil.unproxify(((OffsetAddressNode) node.getAddress()).getBase());
+            }
+        }
+        return barrier.getAddress() == node.getAddress();
+    }
+
+    private static boolean matches(ArrayRangeWrite node, SerialArrayRangeWriteBarrier barrier) {
+        return barrier.getAddress() == node.getAddress() && node.getLength() == barrier.getLength() && node.getElementStride() == barrier.getElementStride();
     }
 }

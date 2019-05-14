@@ -25,14 +25,9 @@
 package org.graalvm.compiler.phases.common;
 
 import org.graalvm.compiler.debug.DebugCloseable;
-import org.graalvm.compiler.graph.Node;
 import org.graalvm.compiler.nodes.StructuredGraph;
-import org.graalvm.compiler.nodes.extended.ArrayRangeWrite;
 import org.graalvm.compiler.nodes.gc.BarrierSet;
-import org.graalvm.compiler.nodes.java.AbstractCompareAndSwapNode;
-import org.graalvm.compiler.nodes.java.LoweredAtomicReadAndWriteNode;
-import org.graalvm.compiler.nodes.memory.ReadNode;
-import org.graalvm.compiler.nodes.memory.WriteNode;
+import org.graalvm.compiler.nodes.memory.FixedAccessNode;
 import org.graalvm.compiler.phases.BasePhase;
 import org.graalvm.compiler.phases.tiers.MidTierContext;
 
@@ -40,24 +35,10 @@ public class WriteBarrierAdditionPhase extends BasePhase<MidTierContext> {
     @SuppressWarnings("try")
     @Override
     protected void run(StructuredGraph graph, MidTierContext context) {
-        BarrierSet barrierSet = context.getGC().createBarrierSet();
-        for (Node n : graph.getNodes()) {
+        BarrierSet barrierSet = context.getGC().getBarrierSet();
+        for (FixedAccessNode n : graph.getNodes().filter(FixedAccessNode.class)) {
             try (DebugCloseable scope = n.graph().withNodeSourcePosition(n)) {
-                if (n instanceof ReadNode) {
-                    barrierSet.addReadNodeBarriers((ReadNode) n, graph);
-                } else if (n instanceof WriteNode) {
-                    barrierSet.addWriteNodeBarriers((WriteNode) n, graph);
-                } else if (n instanceof LoweredAtomicReadAndWriteNode) {
-                    LoweredAtomicReadAndWriteNode loweredAtomicReadAndWriteNode = (LoweredAtomicReadAndWriteNode) n;
-                    barrierSet.addAtomicReadWriteNodeBarriers(loweredAtomicReadAndWriteNode, graph);
-                } else if (n instanceof AbstractCompareAndSwapNode) {
-                    barrierSet.addCASBarriers((AbstractCompareAndSwapNode) n, graph);
-                } else if (n instanceof ArrayRangeWrite) {
-                    ArrayRangeWrite node = (ArrayRangeWrite) n;
-                    if (node.writesObjectArray()) {
-                        barrierSet.addArrayRangeBarriers(node, graph);
-                    }
-                }
+                barrierSet.addBarriers(n);
             }
         }
     }

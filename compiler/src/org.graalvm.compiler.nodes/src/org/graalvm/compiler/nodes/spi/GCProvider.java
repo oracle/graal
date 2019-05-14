@@ -24,19 +24,9 @@
  */
 package org.graalvm.compiler.nodes.spi;
 
-import org.graalvm.compiler.graph.Node;
 import org.graalvm.compiler.nodes.gc.BarrierSet;
 
 public interface GCProvider {
-    /** Create the barrier set that is used to insert the needed read/write barriers. */
-    BarrierSet createBarrierSet();
-
-    /** Checks if a node is a post barrier node. */
-    boolean isPostBarrierNode(Node currentNode);
-
-    /** Checks if the used GC needs a pre-barrier. */
-    boolean hasPreBarrier();
-
-    /** Checks if write barriers of young objects are deferred. */
-    boolean useDeferredInitBarriers();
+    /** Returns the barrier set that is used to insert the needed read/write barriers. */
+    BarrierSet getBarrierSet();
 }

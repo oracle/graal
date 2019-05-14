@@ -24,47 +24,30 @@
  */
 package org.graalvm.compiler.hotspot.meta;
 
-import org.graalvm.compiler.graph.Node;
 import org.graalvm.compiler.hotspot.GraalHotSpotVMConfig;
 import org.graalvm.compiler.nodes.gc.BarrierSet;
 import org.graalvm.compiler.nodes.gc.CardTableBarrierSet;
 import org.graalvm.compiler.nodes.gc.G1BarrierSet;
-import org.graalvm.compiler.nodes.gc.G1PostWriteBarrier;
-import org.graalvm.compiler.nodes.gc.SerialWriteBarrier;
 import org.graalvm.compiler.nodes.spi.GCProvider;
 
 public class HotSpotGCProvider implements GCProvider {
-    private final GraalHotSpotVMConfig config;
+    private final BarrierSet barrierSet;
 
     public HotSpotGCProvider(GraalHotSpotVMConfig config) {
-        this.config = config;
+        this.barrierSet = createBarrierSet(config);
     }
 
     @Override
-    public BarrierSet createBarrierSet() {
+    public BarrierSet getBarrierSet() {
+        return barrierSet;
+    }
+
+    private static BarrierSet createBarrierSet(GraalHotSpotVMConfig config) {
+        boolean useDeferredInitBarriers = config.useDeferredInitBarriers;
         if (config.useG1GC) {
-            return new G1BarrierSet(useDeferredInitBarriers());
+            return new G1BarrierSet(useDeferredInitBarriers);
         } else {
-            return new CardTableBarrierSet(useDeferredInitBarriers());
+            return new CardTableBarrierSet(useDeferredInitBarriers);
         }
-    }
-
-    @Override
-    public boolean isPostBarrierNode(Node currentNode) {
-        if (config.useG1GC) {
-            return currentNode instanceof G1PostWriteBarrier;
-        } else {
-            return currentNode instanceof SerialWriteBarrier;
-        }
-    }
-
-    @Override
-    public boolean hasPreBarrier() {
-        return config.useG1GC;
-    }
-
-    @Override
-    public boolean useDeferredInitBarriers() {
-        return config.useDeferredInitBarriers;
     }
 }

@@ -38,10 +38,8 @@ import javax.management.NotificationListener;
 import javax.management.ObjectName;
 
 import org.graalvm.compiler.api.replacements.Fold;
-import org.graalvm.compiler.graph.Node;
 import org.graalvm.compiler.nodes.gc.BarrierSet;
 import org.graalvm.compiler.nodes.gc.CardTableBarrierSet;
-import org.graalvm.compiler.nodes.gc.SerialWriteBarrier;
 import org.graalvm.compiler.nodes.spi.GCProvider;
 import org.graalvm.compiler.word.Word;
 import org.graalvm.nativeimage.IsolateThread;
@@ -721,24 +719,15 @@ public class HeapImpl extends Heap {
     }
 
     private static class GenScavengeGCProvider implements GCProvider {
-        @Override
-        public BarrierSet createBarrierSet() {
-            return new CardTableBarrierSet(useDeferredInitBarriers());
+        private final BarrierSet barrierSet;
+
+        GenScavengeGCProvider() {
+            this.barrierSet = new CardTableBarrierSet(true);
         }
 
         @Override
-        public boolean isPostBarrierNode(Node node) {
-            return node instanceof SerialWriteBarrier;
-        }
-
-        @Override
-        public boolean hasPreBarrier() {
-            return false;
-        }
-
-        @Override
-        public boolean useDeferredInitBarriers() {
-            return true;
+        public BarrierSet getBarrierSet() {
+            return barrierSet;
         }
     }
 
