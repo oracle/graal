@@ -46,7 +46,7 @@ public class WasmExecutionTest extends WasmTest {
         try {
             byte[] binary = WasmTestToolkit.compileWat(element.program);
             Context context = Context.create();
-            Source source = org.graalvm.polyglot.Source.newBuilder("wasm", ByteSequence.create(binary), "test").build();
+            Source source = Source.newBuilder("wasm", ByteSequence.create(binary), "test").build();
             context.eval(source);
             Value result = context.getBindings("wasm").getMember("0").execute();
             element.data.validator.accept(result);
