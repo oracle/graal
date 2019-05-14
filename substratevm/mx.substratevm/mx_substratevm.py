@@ -61,7 +61,6 @@ from mx_unittest import _run_tests, _VMLauncher
 GRAAL_COMPILER_FLAGS_BASE = [
     '-XX:+UnlockExperimentalVMOptions',
     '-XX:+EnableJVMCI',
-    '-XX:-UseJVMCICompiler', # GR-8656: Do not run with Graal as JIT compiler until libgraal is available.
     '-Dtruffle.TrustAllTruffleRuntimeProviders=true', # GR-7046
     '-Dtruffle.TruffleRuntime=com.oracle.truffle.api.impl.DefaultTruffleRuntime', # use truffle interpreter as fallback
     '-Dgraalvm.ForcePolyglotInvalid=true', # use PolyglotInvalid PolyglotImpl fallback (when --tool:truffle is not used)
