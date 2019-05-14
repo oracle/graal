@@ -25,7 +25,6 @@
 package com.oracle.svm.hosted.annotation;
 
 import java.lang.reflect.InvocationTargetException;
-import java.lang.reflect.Method;
 import java.lang.reflect.Proxy;
 import java.util.Collections;
 import java.util.HashMap;
@@ -34,6 +33,7 @@ import java.util.Map;
 import org.graalvm.compiler.api.replacements.SnippetReflectionProvider;
 
 import com.oracle.svm.core.util.VMError;
+import com.oracle.svm.util.ReflectionUtil;
 
 import jdk.vm.ci.meta.JavaConstant;
 import jdk.vm.ci.meta.JavaType;
@@ -111,11 +111,8 @@ public class AnnotationSubstitutionField extends CustomSubstitutionField {
                  * modules.
                  */
                 Class<?> annotationInterface = AnnotationSupport.findAnnotationInterfaceTypeForMarkedAnnotationType(proxy.getClass());
-                Method reflectionMethod = annotationInterface.getDeclaredMethod(accessorMethod.getName());
-                reflectionMethod.setAccessible(true);
-
-                annotationFieldValue = reflectionMethod.invoke(proxy);
-            } catch (IllegalAccessException | IllegalArgumentException | NoSuchMethodException ex) {
+                annotationFieldValue = ReflectionUtil.lookupMethod(annotationInterface, accessorMethod.getName()).invoke(proxy);
+            } catch (IllegalAccessException | IllegalArgumentException ex) {
                 throw VMError.shouldNotReachHere(ex);
             } catch (InvocationTargetException ex) {
                 Throwable cause = ex.getCause();

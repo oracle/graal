@@ -25,8 +25,6 @@
 package com.oracle.svm.hosted.c;
 
 import java.lang.reflect.AnnotatedElement;
-import java.lang.reflect.Constructor;
-import java.lang.reflect.InvocationTargetException;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
@@ -39,7 +37,6 @@ import java.util.stream.Collectors;
 
 import org.graalvm.compiler.api.replacements.SnippetReflectionProvider;
 import org.graalvm.nativeimage.c.CContext;
-import org.graalvm.nativeimage.c.CContext.Directives;
 import org.graalvm.nativeimage.c.constant.CConstant;
 import org.graalvm.nativeimage.c.constant.CEnum;
 import org.graalvm.nativeimage.c.function.CFunction;
@@ -60,6 +57,8 @@ import com.oracle.svm.core.option.OptionUtils;
 import com.oracle.svm.core.util.UserError;
 import com.oracle.svm.hosted.c.info.ElementInfo;
 import com.oracle.svm.hosted.classinitialization.ClassInitializationSupport;
+import com.oracle.svm.util.ReflectionUtil;
+import com.oracle.svm.util.ReflectionUtil.ReflectionUtilError;
 
 import jdk.vm.ci.code.TargetDescription;
 import jdk.vm.ci.meta.ConstantReflectionProvider;
@@ -240,19 +239,18 @@ public final class NativeLibraries {
     private NativeCodeContext makeContext(Class<? extends CContext.Directives> compilationUnit) {
         NativeCodeContext result = compilationUnitToContext.get(compilationUnit);
         if (result == null) {
+            CContext.Directives unit;
             try {
-                Constructor<? extends Directives> constructor = compilationUnit.getDeclaredConstructor();
-                constructor.setAccessible(true);
-                CContext.Directives unit = constructor.newInstance();
-                if (classInitializationSupport != null) {
-                    classInitializationSupport.initializeAtBuildTime(unit.getClass(), "CContext.Directives must be eagerly initialized");
-                }
-                result = new NativeCodeContext(unit);
-                compilationUnitToContext.put(compilationUnit, result);
-            } catch (NoSuchMethodException | SecurityException | InstantiationException | IllegalAccessException | IllegalArgumentException | InvocationTargetException e) {
-                e.printStackTrace();
-                throw UserError.abort("can't construct compilation unit " + compilationUnit.getCanonicalName() + ": " + e);
+                unit = ReflectionUtil.newInstance(compilationUnit);
+            } catch (ReflectionUtilError ex) {
+                throw UserError.abort("can't construct compilation unit " + compilationUnit.getCanonicalName(), ex.getCause());
             }
+
+            if (classInitializationSupport != null) {
+                classInitializationSupport.initializeAtBuildTime(unit.getClass(), "CContext.Directives must be eagerly initialized");
+            }
+            result = new NativeCodeContext(unit);
+            compilationUnitToContext.put(compilationUnit, result);
         }
         return result;
     }

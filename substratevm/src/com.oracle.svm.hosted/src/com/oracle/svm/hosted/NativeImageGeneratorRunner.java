@@ -67,6 +67,8 @@ import com.oracle.svm.hosted.c.GraalAccess;
 import com.oracle.svm.hosted.code.CEntryPointData;
 import com.oracle.svm.hosted.image.AbstractBootImage;
 import com.oracle.svm.hosted.option.HostedOptionParser;
+import com.oracle.svm.util.ReflectionUtil;
+import com.oracle.svm.util.ReflectionUtil.ReflectionUtilError;
 
 import jdk.vm.ci.aarch64.AArch64;
 import jdk.vm.ci.amd64.AMD64;
@@ -252,26 +254,28 @@ public class NativeImageGeneratorRunner implements ImageBuildTask {
                     /* First look for an main method with the C-level signature for arguments. */
                     mainEntryPoint = mainClass.getDeclaredMethod(mainEntryPointName, int.class, CCharPointerPointer.class);
                 } catch (NoSuchMethodException ignored2) {
+                    Method javaMainMethod;
                     try {
                         /*
                          * If no C-level main method was found, look for a Java-level main method
                          * and use our wrapper to invoke it.
                          */
-                        Method javaMainMethod = mainClass.getDeclaredMethod(mainEntryPointName, String[].class);
-                        javaMainMethod.setAccessible(true);
-                        if (javaMainMethod.getReturnType() != void.class) {
-                            throw UserError.abort("Java main method must have return type void. Change the return type of method '" + mainClass.getName() + "." + mainEntryPointName + "(String[])'.");
-                        }
-                        final int mainMethodModifiers = javaMainMethod.getModifiers();
-                        if (!Modifier.isPublic(mainMethodModifiers)) {
-                            throw UserError.abort("Method '" + mainClass.getName() + "." + mainEntryPointName + "(String[])' is not accessible.  Please make it 'public'.");
-                        }
-                        javaMainSupport = new JavaMainSupport(javaMainMethod);
-                        mainEntryPoint = JavaMainWrapper.class.getDeclaredMethod("run", int.class, CCharPointerPointer.class);
-                    } catch (NoSuchMethodException ex) {
+                        javaMainMethod = ReflectionUtil.lookupMethod(mainClass, mainEntryPointName, String[].class);
+                    } catch (ReflectionUtilError ex) {
                         throw UserError.abort("Method '" + mainClass.getName() + "." + mainEntryPointName + "' is declared as the main entry point but it can not be found. " +
-                                        "Make sure that class '" + mainClass.getName() + "' is on the classpath and that method '" + mainEntryPointName + "(String[])' exists in that class.");
+                                        "Make sure that class '" + mainClass.getName() + "' is on the classpath and that method '" + mainEntryPointName + "(String[])' exists in that class.",
+                                        ex.getCause());
                     }
+
+                    if (javaMainMethod.getReturnType() != void.class) {
+                        throw UserError.abort("Java main method must have return type void. Change the return type of method '" + mainClass.getName() + "." + mainEntryPointName + "(String[])'.");
+                    }
+                    final int mainMethodModifiers = javaMainMethod.getModifiers();
+                    if (!Modifier.isPublic(mainMethodModifiers)) {
+                        throw UserError.abort("Method '" + mainClass.getName() + "." + mainEntryPointName + "(String[])' is not accessible.  Please make it 'public'.");
+                    }
+                    javaMainSupport = new JavaMainSupport(javaMainMethod);
+                    mainEntryPoint = JavaMainWrapper.class.getDeclaredMethod("run", int.class, CCharPointerPointer.class);
                 }
                 CEntryPoint annotation = mainEntryPoint.getAnnotation(CEntryPoint.class);
                 if (annotation == null) {

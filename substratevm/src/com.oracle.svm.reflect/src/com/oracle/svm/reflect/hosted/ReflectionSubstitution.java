@@ -45,6 +45,7 @@ import com.oracle.svm.hosted.annotation.CustomSubstitution;
 import com.oracle.svm.hosted.classinitialization.ClassInitializationSupport;
 import com.oracle.svm.reflect.helpers.ReflectionProxy;
 import com.oracle.svm.reflect.hosted.ReflectionSubstitutionType.ReflectionSubstitutionMethod;
+import com.oracle.svm.util.ReflectionUtil;
 
 import jdk.vm.ci.meta.MetaAccessProvider;
 import jdk.vm.ci.meta.ResolvedJavaMethod;
@@ -69,20 +70,10 @@ final class ReflectionSubstitution extends CustomSubstitution<ReflectionSubstitu
 
     private final ImageClassLoader imageClassLoader;
 
-    private static Method lookupPrivateMethod(Class<?> clazz, String name, Class<?>... args) {
-        try {
-            Method m = clazz.getDeclaredMethod(name, args);
-            m.setAccessible(true);
-            return m;
-        } catch (Exception ex) {
-            throw VMError.shouldNotReachHere(ex);
-        }
-    }
-
     ReflectionSubstitution(MetaAccessProvider metaAccess, ClassInitializationSupport initializationSupport, ImageClassLoader classLoader) {
         super(metaAccess);
-        defineClass = lookupPrivateMethod(ClassLoader.class, "defineClass", String.class, byte[].class, int.class, int.class);
-        resolveClass = lookupPrivateMethod(ClassLoader.class, "resolveClass", Class.class);
+        defineClass = ReflectionUtil.lookupMethod(ClassLoader.class, "defineClass", String.class, byte[].class, int.class, int.class);
+        resolveClass = ReflectionUtil.lookupMethod(ClassLoader.class, "resolveClass", Class.class);
         reflectionProxy = metaAccess.lookupJavaType(ReflectionProxy.class);
         javaLangReflectProxy = metaAccess.lookupJavaType(java.lang.reflect.Proxy.class);
         classInitializationSupport = initializationSupport;
@@ -123,12 +114,11 @@ final class ReflectionSubstitution extends CustomSubstitution<ReflectionSubstitu
         try {
             if (generateProxyMethod == null) {
                 final String packageName = (JavaVersionUtil.Java8OrEarlier ? "sun.misc." : "java.lang.reflect.");
-                generateProxyMethod = Class.forName(packageName + "ProxyGenerator").getDeclaredMethod("generateProxyClass", String.class, Class[].class);
-                generateProxyMethod.setAccessible(true);
+                generateProxyMethod = ReflectionUtil.lookupMethod(Class.forName(packageName + "ProxyGenerator"), "generateProxyClass", String.class, Class[].class);
             }
             return (byte[]) generateProxyMethod.invoke(null, name, interfaces);
-        } catch (Throwable e) {
-            throw new InternalError(e);
+        } catch (ReflectiveOperationException ex) {
+            throw VMError.shouldNotReachHere(ex);
         }
         /* } Allow reflection in hosted code. Checkstyle: resume. */
     }
