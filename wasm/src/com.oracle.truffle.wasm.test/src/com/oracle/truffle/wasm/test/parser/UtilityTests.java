@@ -67,13 +67,13 @@ public class UtilityTests {
 
     private void checkFloat32(byte[] data, float expectedValue) {
         TestStreamReader reader = new TestStreamReader(data);
-        float result = reader.readF32();
+        float result = reader.readFloat32();
         Assert.assertEquals(expectedValue, result, 1e5);
     }
 
     private void checkFloat64(byte[] data, double expectedValue) {
         TestStreamReader reader = new TestStreamReader(data);
-        double result = reader.readF64();
+        double result = reader.readFloat64();
         Assert.assertEquals(expectedValue, result, 1e5);
     }
 

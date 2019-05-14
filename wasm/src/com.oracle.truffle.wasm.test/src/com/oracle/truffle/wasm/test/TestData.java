@@ -29,42 +29,14 @@
  */
 package com.oracle.truffle.wasm.test;
 
-import org.junit.Assert;
-import org.junit.Test;
+import java.util.function.Consumer;
 
-public abstract class WasmTest {
-    private TestElement[] testElements = {
-            test("(module (func (result i32) (i32.const 42)))", expected(42)),
-            test("(module (func (result i32) (i32.const 1690433)))", expected(1690433)),
-            test("(module (func (result f32) (f32.const 3.14)))", expected(3.14f)),
-            test("(module (func (result f64) (f64.const 340.75)))", expected(340.75)),
-    };
+import org.graalvm.polyglot.Value;
 
-    private static TestElement test(String program, TestData data) {
-        return new TestElement(program, data);
-    }
+public class TestData {
+    public Consumer<Value> validator;
 
-    private static TestData expected(Object expectedValue) {
-        return new TestData((result) -> Assert.assertEquals("", result.as(Object.class), expectedValue));
-    }
-
-    @Test
-    public final void runTests() {
-        for (TestElement element : testElements) {
-            runTest(element);
-        }
-    }
-
-    protected abstract void runTest(TestElement element);
-
-    protected static class TestElement {
-        public String program;
-        public TestData data;
-
-        TestElement(String program, TestData data) {
-            this.program = program;
-            this.data = data;
-        }
-
+    public TestData(Consumer<Value> validator) {
+        this.validator = validator;
     }
 }

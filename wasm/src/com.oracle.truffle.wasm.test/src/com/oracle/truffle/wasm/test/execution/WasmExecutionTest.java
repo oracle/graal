@@ -27,44 +27,32 @@
  * NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED
  * OF THE POSSIBILITY OF SUCH DAMAGE.
  */
-package com.oracle.truffle.wasm.test;
+package com.oracle.truffle.wasm.test.execution;
 
+import java.io.IOException;
+
+import org.graalvm.polyglot.Context;
+import org.graalvm.polyglot.Source;
+import org.graalvm.polyglot.Value;
+import org.graalvm.polyglot.io.ByteSequence;
 import org.junit.Assert;
-import org.junit.Test;
 
-public abstract class WasmTest {
-    private TestElement[] testElements = {
-            test("(module (func (result i32) (i32.const 42)))", expected(42)),
-            test("(module (func (result i32) (i32.const 1690433)))", expected(1690433)),
-            test("(module (func (result f32) (f32.const 3.14)))", expected(3.14f)),
-            test("(module (func (result f64) (f64.const 340.75)))", expected(340.75)),
-    };
+import com.oracle.truffle.wasm.test.WasmTest;
+import com.oracle.truffle.wasm.test.WasmTestToolkit;
 
-    private static TestElement test(String program, TestData data) {
-        return new TestElement(program, data);
-    }
-
-    private static TestData expected(Object expectedValue) {
-        return new TestData((result) -> Assert.assertEquals("", result.as(Object.class), expectedValue));
-    }
-
-    @Test
-    public final void runTests() {
-        for (TestElement element : testElements) {
-            runTest(element);
+public class WasmExecutionTest extends WasmTest {
+    @Override
+    protected void runTest(TestElement element) {
+        try {
+            byte[] binary = WasmTestToolkit.compileWat(element.program);
+            Context context = Context.create();
+            Source source = org.graalvm.polyglot.Source.newBuilder("wasm", ByteSequence.create(binary), "test").build();
+            context.eval(source);
+            Value result = context.getBindings("wasm").getMember("0").execute();
+            element.data.validator.accept(result);
+        } catch (IOException | InterruptedException e) {
+            Assert.fail(String.format("WasmExecutionTest failed for program: %s", element.program));
+            e.printStackTrace();
         }
-    }
-
-    protected abstract void runTest(TestElement element);
-
-    protected static class TestElement {
-        public String program;
-        public TestData data;
-
-        TestElement(String program, TestData data) {
-            this.program = program;
-            this.data = data;
-        }
-
     }
 }
