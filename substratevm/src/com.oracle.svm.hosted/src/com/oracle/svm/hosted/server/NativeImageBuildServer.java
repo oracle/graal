@@ -67,6 +67,7 @@ import java.util.logging.LogManager;
 import java.util.stream.Collectors;
 
 import org.graalvm.collections.EconomicSet;
+import org.graalvm.compiler.serviceprovider.JavaVersionUtil;
 
 import com.oracle.svm.core.util.UserError;
 import com.oracle.svm.core.util.VMError;
@@ -117,7 +118,9 @@ public final class NativeImageBuildServer {
         /*
          * Set the right classloader in the process reaper
          */
-        withGlobalStaticField("java.lang.UNIXProcess", "processReaperExecutor", f -> {
+        String executorClassHolder = JavaVersionUtil.Java8OrEarlier ? "java.lang.UNIXProcess" : "java.lang.ProcessHandleImpl";
+
+        withGlobalStaticField(executorClassHolder, "processReaperExecutor", f -> {
             ThreadPoolExecutor executor = (ThreadPoolExecutor) f.get(null);
             final ThreadFactory factory = executor.getThreadFactory();
             executor.setThreadFactory(r -> {
@@ -444,9 +447,15 @@ public final class NativeImageBuildServer {
     }
 
     private static boolean isSystemLoaderLogLevelEntry(Entry<?, ?> e) {
-        return ((List<?>) e.getValue()).stream()
-                        .map(x -> getFieldValueOfObject("java.util.logging.Level$KnownLevel", "levelObject", x))
-                        .allMatch(NativeImageBuildServer::isSystemClassLoader);
+        if (JavaVersionUtil.Java8OrEarlier) {
+            return ((List<?>) e.getValue()).stream()
+                            .map(x -> getFieldValueOfObject("java.util.logging.Level$KnownLevel", "levelObject", x))
+                            .allMatch(NativeImageBuildServer::isSystemClassLoader);
+        } else {
+            return ((List<?>) e.getValue()).stream()
+                            .map(x -> getFieldValueOfObject("java.util.logging.Level$KnownLevel", "mirroredLevel", x))
+                            .allMatch(NativeImageBuildServer::isSystemClassLoader);
+        }
     }
 
     private static Object getFieldValueOfObject(String className, String fieldName, Object o) {
