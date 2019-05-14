@@ -167,4 +167,30 @@ public class Instructions {
     public static final int I64_REINTERPRET_F64 = 0xBD;
     public static final int F32_REINTERPRET_I32 = 0xBE;
     public static final int F64_REINTERPRET_I64 = 0xBF;
+
+    public static final int I32_LOAD = 0x28;
+    public static final int I64_LOAD = 0x29;
+    public static final int F32_LOAD = 0x2A;
+    public static final int F64_LOAD = 0x2B;
+    public static final int I32_LOAD8_S = 0x2C;
+    public static final int I32_LOAD8_U = 0x2D;
+    public static final int I32_LOAD16_S = 0x2E;
+    public static final int I32_LOAD16_U = 0x2F;
+    public static final int I64_LOAD8_S = 0x30;
+    public static final int I64_LOAD8_U = 0x31;
+    public static final int I64_LOAD16_S = 0x32;
+    public static final int I64_LOAD16_U = 0x33;
+    public static final int I64_LOAD32_S = 0x34;
+    public static final int I64_LOAD32_U = 0x35;
+    public static final int I32_STORE = 0x36;
+    public static final int I64_STORE = 0x37;
+    public static final int F32_STORE = 0x38;
+    public static final int F64_STORE = 0x39;
+    public static final int I32_STORE_8 = 0x3A;
+    public static final int I32_STORE_16 = 0x3B;
+    public static final int I64_STORE_8 = 0x3C;
+    public static final int I64_STORE_16 = 0x3D;
+    public static final int I64_STORE_32 = 0x3E;
+    public static final int MEMORY_SIZE = 0x3F;
+    public static final int MEMORY_GROW = 0x40;
 }
