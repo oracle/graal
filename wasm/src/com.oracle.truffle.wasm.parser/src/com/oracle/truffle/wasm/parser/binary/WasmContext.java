@@ -33,6 +33,7 @@ import com.oracle.truffle.api.CallTarget;
 import com.oracle.truffle.api.Scope;
 import com.oracle.truffle.api.source.Source;
 
+import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.Map;
 
@@ -59,7 +60,12 @@ public class WasmContext {
 
     public Iterable<Scope> getTopScopes() {
         // Go through all WasmModules parsed with this context, and create a Scope for each of them.
-        return null;
+        ArrayList<Scope> scopes = new ArrayList<>();
+        for (Map.Entry<String, WasmModule> entry : modules.entrySet()) {
+            Scope scope = Scope.newBuilder(entry.getKey(), entry.getValue()).build();
+            scopes.add(scope);
+        }
+        return scopes;
     }
 
     void registerModule(WasmModule module) {

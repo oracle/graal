@@ -30,8 +30,16 @@
 package com.oracle.truffle.wasm.parser.binary;
 
 import com.oracle.truffle.api.RootCallTarget;
+import com.oracle.truffle.api.dsl.Cached;
+import com.oracle.truffle.api.dsl.Specialization;
+import com.oracle.truffle.api.interop.InteropLibrary;
+import com.oracle.truffle.api.interop.TruffleObject;
+import com.oracle.truffle.api.library.ExportLibrary;
+import com.oracle.truffle.api.library.ExportMessage;
+import com.oracle.truffle.api.nodes.IndirectCallNode;
 
-public class WasmFunction {
+@ExportLibrary(InteropLibrary.class)
+public class WasmFunction implements TruffleObject {
     private SymbolTable symbolTable;
     private int typeIndex;
     private RootCallTarget callTarget;
@@ -56,5 +64,19 @@ public class WasmFunction {
     public void registerLocal(byte type) {
         locals[offset] = type;
         offset++;
+    }
+
+    public RootCallTarget getCallTarget() {
+        return callTarget;
+    }
+
+    @ExportMessage
+    boolean isExecutable() {
+        return true;
+    }
+
+    @ExportMessage
+    Object execute(Object[] arguments) {
+        return callTarget.call(arguments);
     }
 }

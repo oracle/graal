@@ -29,43 +29,10 @@
  */
 package com.oracle.truffle.wasm.parser.binary;
 
-import com.oracle.truffle.api.CompilerDirectives.CompilationFinal;
-import com.oracle.truffle.api.TruffleLanguage;
-import com.oracle.truffle.api.frame.VirtualFrame;
-import com.oracle.truffle.api.nodes.RootNode;
+public class ExecutionState {
+    int stackSize;
 
-public class WasmRootNode extends RootNode {
-    @CompilationFinal private final byte[] data;
-    @Child private WasmBlockNode body;
-
-    @CompilationFinal int maxValueStackSize;
-
-    public WasmRootNode(TruffleLanguage<?> language, byte[] data, WasmBlockNode body) {
-        super(language);
-        this.data = data;
-        this.body = body;
-        this.maxValueStackSize = 0;
-    }
-
-    @Override
-    public Object execute(VirtualFrame frame) {
-        CallContext callContext = new CallContext(data, maxValueStackSize);
-        body.execute(frame, callContext);
-        long returnValue = callContext.pop();
-        switch (body.typeId()) {
-            case ValueTypes.I32_TYPE:
-                Assert.assertEquals(returnValue >>> 32, 0, "Expected i32 value, popped value was larger than 32 bits.");
-                return Math.toIntExact(returnValue);
-            case ValueTypes.I64_TYPE:
-                return returnValue;
-            case ValueTypes.F32_TYPE:
-                Assert.assertEquals(returnValue >>> 32, 0, "Expected f32 value, popped value was larger than 32 bits.");
-                return Float.intBitsToFloat((int) returnValue);
-            case ValueTypes.F64_TYPE:
-                return Double.longBitsToDouble(returnValue);
-            default:
-                Assert.fail(String.format("Unknown type: 0x%02X", body.typeId()));
-                return null;
-        }
+    public ExecutionState() {
+        this.stackSize = 0;
     }
 }

@@ -30,6 +30,7 @@
 package com.oracle.truffle.wasm.parser.binary;
 
 public class Instructions {
+    public static final int END = 0x0B;
     public static final int I32_CONST = 0x41;
     public static final int I64_CONST = 0x42;
     public static final int F32_CONST = 0x43;
