@@ -79,7 +79,7 @@ mx_sdk.register_graalvm_component(mx_sdk.GraalVmComponent(
 
 anyjdk_version_regex = re.compile(r'(openjdk|java) version \"(?P<jvm_version>[0-9a-z_\-.]+)\".*\n(OpenJDK|Java\(TM\) SE) Runtime Environment [ 0-9.]*\(build [0-9a-z_\-.+]+\)')
 openjdk_version_regex = re.compile(r'openjdk version \"(?P<jvm_version>[0-9a-z_\-.]+)\".*\nOpenJDK Runtime Environment [ 0-9.]*\(build [0-9a-z_\-.+]+\)')
-graalvm_version_regex = re.compile(r'.*\n.*\n[a-zA-Z() ]+GraalVM[a-zA-Z_ ]+(?P<graalvm_version>[0-9a-z_\-.+]+) \(build [0-9a-z\-.+]+, mixed mode\)')
+graalvm_version_regex = re.compile(r'.*\n.*\n[0-9a-zA-Z()\- ]+GraalVM[a-zA-Z_ ]+(?P<graalvm_version>[0-9a-z_\-.+]+) \(build [0-9a-z\-.+]+, mixed mode\)')
 
 _registered_graalvm_components = None
 
@@ -1888,7 +1888,7 @@ def graalvm_vm_name(graalvm_dist, jdk_home):
     """
     java = join(jdk_home, 'bin', 'java')
     out = subprocess.check_output([java, '-version'], stderr=subprocess.STDOUT).rstrip()
-    match = re.search(r'^(?P<base_vm_name>[a-zA-Z() ]+)64-Bit Server VM', out.split('\n')[-1])
+    match = re.search(r'^(?P<base_vm_name>[a-zA-Z() ]+64-Bit )Server VM', out.split('\n')[-1])
     vm_name = match.group('base_vm_name') if match else ''
     vm_name += '{} {}'.format(graalvm_dist.base_name, graalvm_dist.vm_config_name.upper()) if graalvm_dist.vm_config_name else graalvm_dist.base_name
     vm_name += ' {}'.format(graalvm_version())
