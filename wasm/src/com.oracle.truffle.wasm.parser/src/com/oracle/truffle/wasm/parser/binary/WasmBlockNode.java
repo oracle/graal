@@ -51,9 +51,27 @@ public class WasmBlockNode extends WasmNode {
         while (callContext.offset() < startOffset + size) {
             byte opcode = callContext.read1();
             switch (opcode) {
-                case Instructions.I32_CONST:
+                case Instructions.I32_CONST: {
                     int value = callContext.readSignedInt32();
                     callContext.push(value);
+                    break;
+                }
+                case Instructions.I64_CONST: {
+                    long value = callContext.readSignedInt32();
+                    callContext.push(value);
+                    break;
+                }
+                case Instructions.F32_CONST: {
+                    int value = callContext.readFloat32();
+                    callContext.push(value);
+                    break;
+                }
+                case Instructions.F64_CONST: {
+                    long value = callContext.readFloat64();
+                    callContext.push(value);
+                    break;
+                }
+                case Instructions.END:
                     break;
                 default:
                     Assert.fail(String.format("Unknown opcode: 0x%02X", opcode));

@@ -38,12 +38,13 @@ public class WasmRootNode extends RootNode {
     @CompilationFinal private final byte[] data;
     @Child private WasmBlockNode body;
 
-    @CompilationFinal private int maxValueStackSize;
+    @CompilationFinal int maxValueStackSize;
 
     public WasmRootNode(TruffleLanguage<?> language, byte[] data, WasmBlockNode body) {
         super(language);
         this.data = data;
         this.body = body;
+        this.maxValueStackSize = 0;
     }
 
     @Override
@@ -53,10 +54,12 @@ public class WasmRootNode extends RootNode {
         long returnValue = callContext.pop();
         switch (body.typeId()) {
             case ValueTypes.I32_TYPE:
-                return (int) returnValue;
+                Assert.assertEquals(returnValue >>> 32, 0, "Expected i32 value, popped value was larger than 32 bits.");
+                return Math.toIntExact(returnValue);
             case ValueTypes.I64_TYPE:
                 return returnValue;
             case ValueTypes.F32_TYPE:
+                Assert.assertEquals(returnValue >>> 32, 0, "Expected f32 value, popped value was larger than 32 bits.");
                 return Float.intBitsToFloat((int) returnValue);
             case ValueTypes.F64_TYPE:
                 return Double.longBitsToDouble(returnValue);

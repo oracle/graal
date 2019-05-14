@@ -164,13 +164,15 @@ public class BinaryReader extends BinaryStreamReader {
         byte returnTypeId = wasmModule.symbolTable().function(funcIndex).returnType();
         WasmBlockNode block = new WasmBlockNode(offset, expressionSize, returnTypeId);
         WasmRootNode rootNode = new WasmRootNode(wasmLanguage, data, block);
-        readBlock(block);
+        ExecutionState state = new ExecutionState();
+        readBlock(block, state);
+        rootNode.maxValueStackSize = state.stackSize;
         RootCallTarget callTarget = Truffle.getRuntime().createCallTarget(rootNode);
         wasmModule.symbolTable().function(funcIndex).setCallTarget(callTarget);
         // TODO: For structured code, we need to set the expressionSize later
     }
 
-    private void readBlock(WasmBlockNode currentBlock) {
+    private void readBlock(WasmBlockNode currentBlock, ExecutionState state) {
         byte instruction;
         do {
             instruction = read1();
@@ -178,6 +180,7 @@ public class BinaryReader extends BinaryStreamReader {
                 case 0x41:  // i32.const
                 {
                     int val = readSignedInt32();
+                    state.stackSize += 1;
                     break;
                 }
                 case 0x42:  // i64.const
@@ -185,12 +188,14 @@ public class BinaryReader extends BinaryStreamReader {
                     break;
                 case 0x43:  // f32.const
                 {
-                    float val = readF32();
+                    float val = readFloat32();
+                    state.stackSize += 1;
                     break;
                 }
                 case 0x44:  // f64.const
                 {
-                    double val = readF64();
+                    double val = readFloat64();
+                    state.stackSize += 1;
                     break;
                 }
                 default:
