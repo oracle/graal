@@ -155,6 +155,14 @@ public final class JVMCIVersionCheck {
         return false;
     }
 
+    private static String getJVMCIVersionString(int major, int minor) {
+        if (major >= 19) {
+            return String.format("%d-b%02d", major, minor);
+        } else {
+            return String.format("%d.%d", major, minor);
+        }
+    }
+
     private void run(boolean exitOnFailure, int jvmci8MinMajorVersion, int jvmci8MinMinorVersion) {
         // Don't use regular expressions to minimize Graal startup time
         if (javaSpecVersion.compareTo("1.9") < 0) {
@@ -179,8 +187,8 @@ public final class JVMCIVersionCheck {
                     if (major > jvmci8MinMajorVersion || (major >= jvmci8MinMajorVersion && minor >= jvmci8MinMinorVersion)) {
                         return;
                     }
-                    failVersionCheck(props, exitOnFailure, "The VM does not support the minimum JVMCI API version required by Graal: %d.%d < %d.%d.%n",
-                                    major, minor, jvmci8MinMajorVersion, jvmci8MinMinorVersion);
+                    failVersionCheck(props, exitOnFailure, "The VM does not support the minimum JVMCI API version required by Graal: %s < %s.%n",
+                                    getJVMCIVersionString(major, minor), getJVMCIVersionString(jvmci8MinMajorVersion, jvmci8MinMinorVersion));
                     return;
                 }
             }
