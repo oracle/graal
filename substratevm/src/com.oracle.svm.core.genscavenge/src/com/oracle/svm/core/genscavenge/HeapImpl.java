@@ -707,6 +707,16 @@ public class HeapImpl extends Heap {
          */
         return HeapPolicy.getMaximumHeapSize();
     }
+
+    @Override
+    public void prepareForSafepoint() {
+        // nothing to do
+    }
+
+    @Override
+    public void endSafepoint() {
+        // nothing to do
+    }
 }
 
 /**
