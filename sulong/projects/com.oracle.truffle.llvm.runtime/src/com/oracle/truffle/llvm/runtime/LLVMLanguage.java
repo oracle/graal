@@ -35,15 +35,25 @@ import com.oracle.truffle.api.CompilerDirectives.CompilationFinal;
 import com.oracle.truffle.api.Scope;
 import com.oracle.truffle.api.Truffle;
 import com.oracle.truffle.api.TruffleLanguage;
+import com.oracle.truffle.api.TruffleLanguage.InlineParsingRequest;
 import com.oracle.truffle.api.debug.DebuggerTags;
 import com.oracle.truffle.api.frame.Frame;
+import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.api.instrumentation.ProvidedTags;
 import com.oracle.truffle.api.instrumentation.StandardTags;
+import com.oracle.truffle.api.interop.InteropLibrary;
+import com.oracle.truffle.api.interop.InvalidArrayIndexException;
+import com.oracle.truffle.api.interop.TruffleObject;
+import com.oracle.truffle.api.interop.UnknownIdentifierException;
+import com.oracle.truffle.api.interop.UnsupportedMessageException;
+import com.oracle.truffle.api.nodes.ExecutableNode;
 import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.api.source.Source;
 import com.oracle.truffle.api.source.SourceSection;
 import com.oracle.truffle.llvm.runtime.debug.LLDBSupport;
 import com.oracle.truffle.llvm.runtime.debug.LLVMDebuggerValue;
+import com.oracle.truffle.llvm.runtime.debug.debugexpr.parser.DebugExprParser;
+import com.oracle.truffle.llvm.runtime.debug.debugexpr.parser.DebugExprSymbolTable;
 import com.oracle.truffle.llvm.runtime.debug.scope.LLVMDebuggerScopeFactory;
 import com.oracle.truffle.llvm.runtime.debug.scope.LLVMSourceLocation;
 import com.oracle.truffle.llvm.runtime.debug.type.LLVMSourceType;
@@ -56,7 +66,7 @@ import com.oracle.truffle.llvm.runtime.pointer.LLVMPointer;
 import java.util.Collections;
 import org.graalvm.options.OptionDescriptors;
 
-@TruffleLanguage.Registration(id = LLVMLanguage.ID, name = LLVMLanguage.NAME, version = "6.0.0", internal = false, interactive = false, defaultMimeType = LLVMLanguage.LLVM_BITCODE_MIME_TYPE, //
+@TruffleLanguage.Registration(id = LLVMLanguage.ID, name = LLVMLanguage.NAME, version = "6.0.0", internal = false, interactive = true, defaultMimeType = LLVMLanguage.LLVM_BITCODE_MIME_TYPE, //
                 byteMimeTypes = {LLVMLanguage.LLVM_BITCODE_MIME_TYPE, LLVMLanguage.LLVM_ELF_SHARED_MIME_TYPE, LLVMLanguage.LLVM_ELF_EXEC_MIME_TYPE}, //
                 characterMimeTypes = {LLVMLanguage.LLVM_BITCODE_BASE64_MIME_TYPE}, fileTypeDetectors = LLVMFileDetector.class)
 @ProvidedTags({StandardTags.StatementTag.class, StandardTags.CallTag.class, StandardTags.RootTag.class, DebuggerTags.AlwaysHalt.class})
@@ -130,6 +140,19 @@ public class LLVMLanguage extends TruffleLanguage<LLVMContext> {
     @Override
     protected void initializeContext(LLVMContext context) {
         context.initialize();
+    }
+
+    @Override
+    protected ExecutableNode parse(InlineParsingRequest request) throws Exception {
+        final DebugExprParser d = new DebugExprParser(request, mainContext, (c, v) -> findMetaObject(c, v));
+        Object value = d.parse();
+        return new ExecutableNode(this) {
+
+            @Override
+            public Object execute(VirtualFrame frame) {
+                return value;
+            }
+        };
     }
 
     @Override
@@ -224,7 +247,8 @@ public class LLVMLanguage extends TruffleLanguage<LLVMContext> {
     @Override
     protected Iterable<Scope> findLocalScopes(LLVMContext context, Node node, Frame frame) {
         if (context.getEnv().getOptions().get(SulongEngineOption.ENABLE_LVI)) {
-            return LLVMDebuggerScopeFactory.createSourceLevelScope(node, frame, context);
+            final Iterable<Scope> scopes = LLVMDebuggerScopeFactory.createSourceLevelScope(node, frame, context);
+            return scopes;
         } else {
             return LLVMDebuggerScopeFactory.createIRLevelScope(node, frame, context);
         }

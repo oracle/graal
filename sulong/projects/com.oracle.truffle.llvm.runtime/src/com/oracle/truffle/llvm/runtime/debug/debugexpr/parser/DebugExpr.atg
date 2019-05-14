@@ -1,0 +1,323 @@
+import com.oracle.truffle.api.TruffleLanguage.InlineParsingRequest;
+import com.oracle.truffle.llvm.runtime.LLVMContext;
+import com.oracle.truffle.llvm.runtime.debug.debugexpr.nodes.*;
+// Set the name of your grammar here (and at the end of this grammar):
+COMPILER DebugExpr
+
+// Add auxiliary methods and declaration here.
+boolean IsCast() {
+	return false;
+}
+
+DebugExprSymbolTable tab;
+InlineParsingRequest inlineParsingRequest;
+DebugExprOperandNode operand=null;
+LLVMContext context=null;
+
+void SetSymtab(DebugExprSymbolTable tab) {
+	this.tab = tab;
+}
+
+void SetContext(LLVMContext context) {
+	this.context = context;
+}
+
+void SetParsingRequest(InlineParsingRequest inlineParsingRequest) {
+	this.inlineParsingRequest=inlineParsingRequest;
+}
+
+public int GetErrors() {
+	return errors.count;
+}
+
+public DebugExprOperandNode GetOperand() {return operand; }
+public DebugExprNodeFactory NF() {return DebugExprNodeFactory.Get(); }
+// If you want your generated compiler case insensitive add the
+// keyword IGNORECASE here.
+
+
+CHARACTERS
+// Add character set declarations here.
+// Examples:
+   letter = 'A'..'Z' + 'a'..'z'.
+   digit = "0123456789".
+   cr = '\r'.
+   lf = '\n'.
+   singlecomma = '\''.
+   quote = '"'.
+
+
+TOKENS
+// Add token declarations here.
+// Example:
+   ident = letter {letter | digit}.
+   number = digit {digit}.
+   floatnumber = digit letter.
+   charConst = singlecomma (letter|digit) singlecomma.
+   stringType = quote {letter|digit} quote.
+
+PRAGMAS
+// Add pragma declarations here.
+// Example:
+//   switch = '$' { digit | letter }. (. Optional semantic action .)
+
+
+// Add comments here.
+// Example for a multi-line block comment:
+COMMENTS FROM "/*" TO "*/" NESTED
+// Example for a single line comment:
+   COMMENTS FROM "//" TO lf
+
+
+// Set the ignored characters (whitespaces) here, the blank character is
+// ignored by default.
+// Example, add line breaks to the ignore set.
+IGNORE cr + lf
+
+
+PRODUCTIONS
+
+// Add your productions here, one must have the same name as the grammar,
+// it will be the start symbol (entry point of your compiler).
+// Example:
+//   Empty = "BEGIN" { Statement } "END".
+//   Statement = ident "=" number { "+" number } .
+DebugExpr		(. DebugExprOperandNode n=null; .)
+=
+Expr<out n>		(. operand =n; .)
+.
+
+PrimExpr<out DebugExprOperandNode n>	(. n=null; .)
+=
+ident 			(. n = NF().createTabNode(tab.find(t.val));	.)
+|
+number			(. n = NF().createIntNode(Integer.parseInt(t.val)); .)
+|
+floatnumber		(. n = NF().createFloatNode(Float.parseFloat(t.val)); .)
+|
+charConst		(. n = NF().createStringNode(t.val); .)	
+|
+stringType		(. n = NF().createStringNode(t.val); .)
+|
+"(" Expr<out n> ")"
+.
+
+Designator<out DebugExprOperandNode n> (. DebugExprOperandNode idx=null; .)
+=
+PrimExpr<out n> 
+{
+	 "[" Expr<out idx> "]"
+	|
+	 ActPars
+	|
+	 "." ident
+	|
+	 "->" ident
+}
+.
+
+ActPars								(. DebugExprOperandNode n1=null, n2=null; .)
+=
+"(" 
+[
+	 Expr<out n1> 
+	{
+		 "," Expr<out n2>
+	}
+	
+]
+")"
+.
+
+UnaryExpr<out DebugExprOperandNode n>	(. n=null; .)
+=
+Designator<out n>
+|
+UnaryOp CastExpr<out n>
+|
+"sizeof" "(" Type ")"	
+.
+
+UnaryOp
+=
+"&"
+|
+"*"
+|
+"+"
+|
+"-"
+|
+"~"
+|
+"!"
+.
+CastExpr<out DebugExprOperandNode n> (. Object typeO=null; .)
+=
+[
+	IF (IsCast()) "(" Type ")"
+]
+UnaryExpr<out n>	(. if(typeO!=null) n.type = typeO; .)
+.
+
+MultExpr<out DebugExprOperandNode n>	(. DebugExprOperandNode n1=null; .)
+=
+CastExpr<out n> 
+{
+		 "*" CastExpr<out n1>	(. n = NF().createMulNode(n, n1); System.out.println(n); .)		
+		|
+		 "/" CastExpr<out n1>	(. n = NF().createDivNode(n, n1); System.out.println(n); .)
+		|
+		 "%" CastExpr<out n1> 	(. n = NF().createRemNode(n, n1); System.out.println(n); .)
+}
+.
+AddExpr<out DebugExprOperandNode n>	(. DebugExprOperandNode n1=null; .)
+=
+MultExpr<out n> 			
+{
+		 "+" MultExpr<out n1>	(. n = NF().createAddNode(n, n1, context); System.out.println(n); .)		
+		|
+		 "-" MultExpr<out n1>	(. n = NF().createSubNode(n, n1); System.out.println(n); .)	 
+}
+.
+ShiftExpr<out DebugExprOperandNode n>	(. DebugExprOperandNode n1=null; .)
+=
+AddExpr<out n> 
+{
+		 "<<"	 AddExpr<out n1>
+		|
+		 ">>"	 AddExpr<out n1>
+}
+.
+RelExpr<out DebugExprOperandNode n>	(. DebugExprOperandNode n1=null; .)
+=
+ShiftExpr<out n> 
+{
+		 "<"	ShiftExpr<out n1>
+		|
+		 ">"	ShiftExpr<out n1>
+		|
+		 "<="	ShiftExpr<out n1>
+		|
+		 ">="	ShiftExpr<out n1>
+}
+.
+EqExpr<out DebugExprOperandNode n>	(. DebugExprOperandNode n1=null; .)
+=
+RelExpr<out n> 
+{
+		 "==" RelExpr<out n1>
+		|
+		 "!=" RelExpr<out n1>		 
+}
+.
+AndExpr<out DebugExprOperandNode n>	(. DebugExprOperandNode n1=null; .)
+=
+EqExpr<out n> 
+{
+	 "&" EqExpr<out n1>
+}
+.
+
+XorExpr<out DebugExprOperandNode n>	(. DebugExprOperandNode n1=null; .)
+=
+AndExpr<out n> 
+{
+	 "^" AndExpr<out n1>
+}
+.
+
+OrExpr<out DebugExprOperandNode n>	(. DebugExprOperandNode n1=null; .)
+=
+XorExpr<out n> 
+{
+	 "|" XorExpr<out n1>
+}
+.
+
+LogAndExpr<out DebugExprOperandNode n>	(. DebugExprOperandNode n1=null; .)
+=
+OrExpr<out n> 
+{
+	 "&&" OrExpr<out n1>		
+}
+.
+
+LogOrExpr<out DebugExprOperandNode n>	(. DebugExprOperandNode n1=null; .)
+=
+LogAndExpr<out n> 
+{
+	 "||" LogAndExpr<out n1>	
+}
+.
+
+Expr<out DebugExprOperandNode n>	(. DebugExprOperandNode nThen=null, nElse=null; .)
+=
+LogOrExpr<out n> 
+[
+	 "?" Expr<out nThen> ":" Expr<out nElse>
+]
+.
+
+Type
+=
+BaseType 
+(
+	 
+	{
+		 "*"
+	}
+	
+	|
+	 "&"
+)
+{
+	 "[" 
+	[
+		 number
+	]
+	 "]"
+}
+.
+BaseType
+=
+"void"
+|
+ident
+|
+(
+	 "signed"
+	|
+	 "unsigned"
+)
+[
+	 "char"
+	|
+	 "short"
+	|
+	 "int"
+	|
+	 "long"
+]
+|
+"char"
+|
+"short"
+|
+"int"
+|
+"long" 
+[
+	 "double"
+]
+|
+"float"
+|
+"double"
+.
+
+
+// End of your compiler specification, make sure the name here matches
+// the grammar name at the start of this grammar.
+END DebugExpr.
+
