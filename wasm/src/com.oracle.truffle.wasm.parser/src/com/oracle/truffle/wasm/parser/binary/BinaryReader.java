@@ -180,7 +180,7 @@ public class BinaryReader extends BinaryStreamReader {
                 case 0x41:  // i32.const
                 {
                     int val = readSignedInt32();
-                    state.stackSize += 1;
+                    state.push();
                     break;
                 }
                 case 0x42:  // i64.const
@@ -189,13 +189,13 @@ public class BinaryReader extends BinaryStreamReader {
                 case 0x43:  // f32.const
                 {
                     float val = readFloat32();
-                    state.stackSize += 1;
+                    state.push();
                     break;
                 }
                 case 0x44:  // f64.const
                 {
                     double val = readFloat64();
-                    state.stackSize += 1;
+                    state.push();
                     break;
                 }
                 default:

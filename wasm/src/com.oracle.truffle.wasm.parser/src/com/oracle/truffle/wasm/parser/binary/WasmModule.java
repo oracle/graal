@@ -29,14 +29,14 @@
  */
 package com.oracle.truffle.wasm.parser.binary;
 
+import static com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
+
 import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.interop.InteropLibrary;
 import com.oracle.truffle.api.interop.InvalidArrayIndexException;
 import com.oracle.truffle.api.interop.TruffleObject;
 import com.oracle.truffle.api.library.ExportLibrary;
 import com.oracle.truffle.api.library.ExportMessage;
-
-import static com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 
 @ExportLibrary(InteropLibrary.class)
 public class WasmModule implements TruffleObject {

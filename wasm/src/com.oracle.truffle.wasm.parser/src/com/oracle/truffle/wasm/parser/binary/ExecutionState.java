@@ -35,4 +35,12 @@ public class ExecutionState {
     public ExecutionState() {
         this.stackSize = 0;
     }
+
+    public void push() {
+        stackSize++;
+    }
+
+    public void pop() {
+        stackSize--;
+    }
 }
