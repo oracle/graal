@@ -48,7 +48,7 @@ public abstract class BinaryStreamReader {
             shift += 7;
         } while ((b & 0x80) != 0);
 
-        if ((shift < 32) && (b & 0x40) == 0) {
+        if ((shift < 32) && (b & 0x40) != 0) {
             result |= (~0 << shift);
         }
         return result;
@@ -91,14 +91,12 @@ public abstract class BinaryStreamReader {
         return result;
     }
 
-    public float readF32() {
-        int rawBits = read4();
-        return Float.intBitsToFloat(rawBits);
+    public int readFloat32() {
+        return read4();
     }
 
-    public double readF64() {
-        long rawBits = read8();
-        return Double.longBitsToDouble(rawBits);
+    public long readFloat64() {
+        return read8();
     }
 
     public byte read1() {
