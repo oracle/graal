@@ -367,6 +367,15 @@ public class CheckGraalIntrinsics extends GraalTest {
                 add(ignore,
                                 "sun/security/provider/DigestBase.implCompressMultiBlock0([BII)I");
             }
+            if (!config.useFMAIntrinsics) {
+                add(ignore,
+                                "java/lang/Math.fma(DDD)D",
+                                "java/lang/Math.fma(FFF)F");
+            } else if (!(arch instanceof AMD64)) {
+                add(toBeInvestigated,
+                                "java/lang/Math.fma(DDD)D",
+                                "java/lang/Math.fma(FFF)F");
+            }
         }
 
         if (isJDK10OrHigher()) {
@@ -394,6 +403,8 @@ public class CheckGraalIntrinsics extends GraalTest {
 
         if (isJDK13OrHigher()) {
             add(toBeInvestigated,
+                            "java/lang/Math.abs(I)I",
+                            "java/lang/Math.abs(J)J",
                             "java/lang/Math.max(DD)D",
                             "java/lang/Math.max(FF)F",
                             "java/lang/Math.min(DD)D",
