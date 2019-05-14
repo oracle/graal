@@ -255,7 +255,7 @@ public final class EspressoContext {
             if (t != initiatingThread) {
                 try {
                     if (t.isDaemon()) {
-                        getMeta().Thread_stop.invokeDirect(getHost2Guest(t));
+                        t.interrupt();
                         t.join();
                     } else {
                         t.join();
