@@ -29,10 +29,10 @@
  */
 package com.oracle.truffle.wasm.parser.binary;
 
-import com.oracle.truffle.api.TruffleFile;
-
 import java.io.IOException;
 import java.nio.charset.Charset;
+
+import com.oracle.truffle.api.TruffleFile;
 
 public class WasmFileDetector implements TruffleFile.FileTypeDetector {
     @Override

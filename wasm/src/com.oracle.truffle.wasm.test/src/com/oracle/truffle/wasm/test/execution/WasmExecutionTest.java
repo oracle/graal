@@ -27,53 +27,32 @@
  * NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED
  * OF THE POSSIBILITY OF SUCH DAMAGE.
  */
-package com.oracle.truffle.wasm.parser.binary;
+package com.oracle.truffle.wasm.test.execution;
 
-import com.oracle.truffle.api.RootCallTarget;
-import com.oracle.truffle.api.interop.InteropLibrary;
-import com.oracle.truffle.api.interop.TruffleObject;
-import com.oracle.truffle.api.library.ExportLibrary;
-import com.oracle.truffle.api.library.ExportMessage;
+import java.io.IOException;
 
-@ExportLibrary(InteropLibrary.class)
-public class WasmFunction implements TruffleObject {
-    private SymbolTable symbolTable;
-    private int typeIndex;
-    private RootCallTarget callTarget;
+import org.graalvm.polyglot.Context;
+import org.graalvm.polyglot.Source;
+import org.graalvm.polyglot.Value;
+import org.graalvm.polyglot.io.ByteSequence;
+import org.junit.Assert;
 
-    private byte[] locals;
-    private int offset;
+import com.oracle.truffle.wasm.test.WasmTest;
+import com.oracle.truffle.wasm.test.WasmTestToolkit;
 
-    public WasmFunction(SymbolTable symbolTable, int typeIndex) {
-        this.symbolTable = symbolTable;
-        this.typeIndex = typeIndex;
-        this.callTarget = null;
-    }
-
-    public byte returnType() {
-        return symbolTable.getFunctionReturnType(typeIndex);
-    }
-
-    void setCallTarget(RootCallTarget callTarget) {
-        this.callTarget = callTarget;
-    }
-
-    public void registerLocal(byte type) {
-        locals[offset] = type;
-        offset++;
-    }
-
-    public RootCallTarget getCallTarget() {
-        return callTarget;
-    }
-
-    @ExportMessage
-    boolean isExecutable() {
-        return true;
-    }
-
-    @ExportMessage
-    Object execute(Object[] arguments) {
-        return callTarget.call(arguments);
+public class WasmExecutionTest extends WasmTest {
+    @Override
+    protected void runTest(TestElement element) {
+        try {
+            byte[] binary = WasmTestToolkit.compileWat(element.program);
+            Context context = Context.create();
+            Source source = org.graalvm.polyglot.Source.newBuilder("wasm", ByteSequence.create(binary), "test").build();
+            context.eval(source);
+            Value result = context.getBindings("wasm").getMember("0").execute();
+            element.data.validator.accept(result);
+        } catch (IOException | InterruptedException e) {
+            Assert.fail(String.format("WasmExecutionTest failed for program: %s", element.program));
+            e.printStackTrace();
+        }
     }
 }
