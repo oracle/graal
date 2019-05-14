@@ -53,6 +53,7 @@ public final class RemoteObject {
     private final boolean generatePreview;
     private final String objectId;
     private final InspectorExecutionContext context;
+    private final IndexRange indexRange;
     private TypeInfo typeInfo;
     private Object value;
     private boolean replicableValue;
@@ -67,10 +68,15 @@ public final class RemoteObject {
     }
 
     public RemoteObject(DebugValue debugValue, boolean readEagerly, boolean generatePreview, InspectorExecutionContext context) {
+        this(debugValue, readEagerly, generatePreview, context, null);
+    }
+
+    public RemoteObject(DebugValue debugValue, boolean readEagerly, boolean generatePreview, InspectorExecutionContext context, IndexRange indexRange) {
         this.valueValue = debugValue;
         this.valueScope = null;
         this.generatePreview = generatePreview;
         this.context = context;
+        this.indexRange = indexRange;
         if (!debugValue.hasReadSideEffects() || readEagerly) {
             boolean isObject = initFromValue();
             objectId = (isObject) ? Long.toString(LAST_ID.incrementAndGet()) : null;
@@ -163,6 +169,7 @@ public final class RemoteObject {
         this.valueScope = scope;
         this.generatePreview = false;
         this.context = null;
+        this.indexRange = null;
         this.typeInfo = new TypeInfo(TYPE.OBJECT.getId(), null, null, null, true, false);
         this.value = null;
         this.replicableValue = false;
@@ -177,6 +184,7 @@ public final class RemoteObject {
         this.valueScope = null;
         this.generatePreview = false;
         this.context = null;
+        this.indexRange = null;
         this.typeInfo = new TypeInfo(type, subtype, className, null, true, false);
         this.value = null;
         this.replicableValue = false;
@@ -366,6 +374,10 @@ public final class RemoteObject {
         return valueScope;
     }
 
+    public IndexRange getIndexRange() {
+        return indexRange;
+    }
+
     private static boolean isFinite(Number n) {
         if (n instanceof Double) {
             Double d = (Double) n;
@@ -382,5 +394,29 @@ public final class RemoteObject {
      */
     public static void resetIDs() {
         LAST_ID.set(0);
+    }
+
+    public static final class IndexRange {
+        private int start;
+        private int end;
+        private boolean named;
+
+        public IndexRange(int start, int end, boolean named) {
+            this.start = start;
+            this.end = end;
+            this.named = named;
+        }
+
+        public boolean isNamed() {
+            return named;
+        }
+
+        public int start() {
+            return start;
+        }
+
+        public int end() {
+            return end;
+        }
     }
 }
