@@ -9,8 +9,8 @@ jdks: {
   oraclejdk8:      {name : oraclejdk, version : "8u212-jvmci-20-b01-dev", platformspecific: true}
   openjdk8:        {name : openjdk,   version : "8u212-jvmci-20-b01-dev", platformspecific: true}
   oraclejdk8Debug: {name : oraclejdk, version : "8u212-jvmci-20-b01-dev-fastdebug", platformspecific: true}
-  oraclejdk11:     {name : oraclejdk, version : "11.0.3+4", platformspecific: true}
-  openjdk11:       {name : openjdk,   version : "11.0.3+4", platformspecific: true}
+  oraclejdk11:     {name : oraclejdk, version : "11.0.3+12", platformspecific: true}
+  openjdk11:       {name : openjdk,   version : "11.0.3+12", platformspecific: true}
 }
 
 # This must always point to HEAD in the master branch but can be used to point
