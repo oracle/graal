@@ -69,6 +69,7 @@ import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
 import org.graalvm.compiler.options.OptionKey;
+import org.graalvm.compiler.serviceprovider.JavaVersionUtil;
 import org.graalvm.nativeimage.ProcessProperties;
 
 import com.oracle.graal.pointsto.api.PointstoOptions;
@@ -108,7 +109,7 @@ public class NativeImage {
 
     private static Map<String, String[]> getCompilerFlags() {
         Map<String, String[]> result = new HashMap<>();
-        for (String versionTag : Arrays.asList("1.8", "11")) {
+        for (String versionTag : Arrays.asList("8", "11")) {
             result.put(versionTag, getResource("/graal-compiler-flags-" + versionTag + ".config").split("\n"));
         }
         return result;
@@ -284,15 +285,7 @@ public class NativeImage {
          * @return additional arguments for JVM that runs image builder
          */
         default List<String> getBuilderJavaArgs() {
-            String javaVersion = System.getProperty("java.version");
-            if (javaVersion.startsWith("1.")) {
-                javaVersion = javaVersion.substring(0, 3);
-            } else if (javaVersion.contains("-")) {
-                javaVersion = javaVersion.split("-")[0];
-            } else {
-                javaVersion = javaVersion.split("\\.", 2)[0];
-            }
-
+            String javaVersion = String.valueOf(JavaVersionUtil.JAVA_SPECIFICATION_VERSION);
             String[] flagsForVersion = graalCompilerFlags.get(javaVersion);
             if (flagsForVersion == null) {
                 showError(String.format("Image building not supported for Java version %s in %s with VM configuration \"%s\"",
