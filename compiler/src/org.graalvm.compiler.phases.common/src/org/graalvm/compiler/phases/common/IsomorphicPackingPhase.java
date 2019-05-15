@@ -135,10 +135,29 @@ public final class IsomorphicPackingPhase extends BasePhase<PhaseContext> {
         return hasNoPath(block, left.graph().getLastSchedule().getNodeToBlockMap(), shallow, deep);
     }
 
+    /**
+     * Check whether s1 is immediately before s2 in memory, if both are primitive.
+     * @param s1 First FixedAccessNode to check
+     * @param s2 Second FixedAccessNode to check
+     * @return Boolean indicating whether s1 is immediately before s2 in memory
+     */
+    private static boolean adjacent(FixedAccessNode s1, FixedAccessNode s2) {
+        // TODO: GET TYPE INFORMATION, REMOVE 4L
+        return s1.getAddress().getBase().equals(s2.getAddress().getBase()) &&
+                s2.getAddress().getMaxConstantDisplacement() - s1.getAddress().getMaxConstantDisplacement() == 4L;
+    }
+
     private static boolean stmts_can_pack(Block block, FixedNode left, FixedNode right) {
         return isomorphic(left, right) && independent(block, left, right);
     }
 
+    /**
+     * Create the initial seed packSet of operations that are adjacent
+     * TODO: PERFORM ADJACENCY TEST
+     * TODO: CHECK THAT VECTOR ELEMENT TYPE IS THE SAME
+     * @param block Basic block
+     * @param packSet PackSet to populate
+     */
     private static void find_adj_refs(Block block, Set<NodePair<FixedNode>> packSet) {
         // Create initial seed set containing memory operations
         Deque<FixedAccessNode> memoryNodes = // Candidate set of memory nodes
@@ -148,11 +167,11 @@ public final class IsomorphicPackingPhase extends BasePhase<PhaseContext> {
                         .collect(Collectors.toCollection(ArrayDeque::new));
 
         while (!memoryNodes.isEmpty()) {
-            FixedNode leftCandidate = memoryNodes.pop();
+            FixedAccessNode leftCandidate = memoryNodes.pop();
 
             boolean assigned = false;
-            for (FixedNode rightCandidate : memoryNodes) {
-                if (stmts_can_pack(block, leftCandidate, rightCandidate)) {
+            for (FixedAccessNode rightCandidate : memoryNodes) {
+                if (adjacent(leftCandidate, rightCandidate) && stmts_can_pack(block, leftCandidate, rightCandidate)) {
                     packSet.add(new NodePair<>(leftCandidate, rightCandidate));
                     assigned = true;
                     break; // TODO: don't be greedy
@@ -166,6 +185,11 @@ public final class IsomorphicPackingPhase extends BasePhase<PhaseContext> {
 
     }
 
+    /**
+     * Extend the packset by following use->def and def->use links from pack members
+     * @param block Basic block
+     * @param packSet PackSet to populate
+     */
     private static void extend_packlist(Block block, Set<NodePair<FixedNode>> packSet) {
         throw new UnsupportedOperationException("not implemented");
     }
