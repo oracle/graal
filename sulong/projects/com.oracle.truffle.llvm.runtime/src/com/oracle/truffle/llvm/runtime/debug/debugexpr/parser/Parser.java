@@ -4,6 +4,7 @@ import com.oracle.truffle.api.Scope;
 import com.oracle.truffle.api.TruffleLanguage.InlineParsingRequest;
 import com.oracle.truffle.llvm.runtime.nodes.api.LLVMExpressionNode;
 import com.oracle.truffle.llvm.runtime.ArithmeticOperation;
+import com.oracle.truffle.llvm.runtime.CompareOperator;
 import com.oracle.truffle.llvm.runtime.LLVMContext;
 import com.oracle.truffle.llvm.runtime.NodeFactory;
 import com.oracle.truffle.llvm.runtime.debug.debugexpr.nodes.*;
@@ -189,6 +190,7 @@ public NodeFactory NF() {return context.getNodeFactory(); }
 			nThen = Expr();
 			Expect(35);
 			nElse = Expr();
+			n = new DebugExprTernaryNode(n, nThen, nElse); if(n==DebugExprVarNode.noObj) SemErr("Condition unreadable");
 		}
 		return n;
 	}
@@ -412,15 +414,19 @@ public NodeFactory NF() {return context.getNodeFactory(); }
 			if (la.kind == 24) {
 				Get();
 				n1 = ShiftExpr();
+				n = NF().createComparison(CompareOperator.INT_SIGNED_LESS_THAN, null, n, n1); 
 			} else if (la.kind == 25) {
 				Get();
 				n1 = ShiftExpr();
+				n = NF().createComparison(CompareOperator.INT_SIGNED_GREATER_THAN, null, n, n1); 
 			} else if (la.kind == 26) {
 				Get();
 				n1 = ShiftExpr();
+				n = NF().createComparison(CompareOperator.INT_SIGNED_LESS_OR_EQUAL, null, n, n1); 
 			} else {
 				Get();
 				n1 = ShiftExpr();
+				n = NF().createComparison(CompareOperator.INT_SIGNED_GREATER_OR_EQUAL, null, n, n1); 
 			}
 		}
 		return n;
@@ -434,9 +440,11 @@ public NodeFactory NF() {return context.getNodeFactory(); }
 			if (la.kind == 28) {
 				Get();
 				n1 = RelExpr();
+				n = NF().createComparison(CompareOperator.INT_EQUAL, null, n, n1); 
 			} else {
 				Get();
 				n1 = RelExpr();
+				n = NF().createComparison(CompareOperator.INT_NOT_EQUAL, null, n, n1); 
 			}
 		}
 		return n;

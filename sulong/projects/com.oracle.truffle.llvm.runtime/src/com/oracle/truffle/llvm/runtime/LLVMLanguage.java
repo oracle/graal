@@ -138,16 +138,22 @@ public class LLVMLanguage extends TruffleLanguage<LLVMContext> {
 
     @Override
     protected ExecutableNode parse(InlineParsingRequest request) throws Exception {
+
         final DebugExprParser d = new DebugExprParser(request, mainContext);
         LLVMExpressionNode expressionNode = d.parse();
         return new ExecutableNode(this) {
             @Override
             public Object execute(VirtualFrame frame) {
-                Object o = expressionNode.executeGeneric(frame);
-                System.out.println("o: " + o.getClass().getName() + " " + o.toString());
-                return o;
+
+                try {
+                    return expressionNode.executeGeneric(frame);
+                } catch (Exception e) {
+                    System.out.println(e.getClass().getName() + e.getMessage());
+                    throw e;
+                }
             }
         };
+
     }
 
     @Override

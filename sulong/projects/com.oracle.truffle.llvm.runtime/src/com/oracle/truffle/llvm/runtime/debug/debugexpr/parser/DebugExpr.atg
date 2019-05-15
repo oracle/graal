@@ -2,6 +2,7 @@ import com.oracle.truffle.api.Scope;
 import com.oracle.truffle.api.TruffleLanguage.InlineParsingRequest;
 import com.oracle.truffle.llvm.runtime.nodes.api.LLVMExpressionNode;
 import com.oracle.truffle.llvm.runtime.ArithmeticOperation;
+import com.oracle.truffle.llvm.runtime.CompareOperator;
 import com.oracle.truffle.llvm.runtime.LLVMContext;
 import com.oracle.truffle.llvm.runtime.NodeFactory;
 import com.oracle.truffle.llvm.runtime.debug.debugexpr.nodes.*;
@@ -198,22 +199,22 @@ RelExpr<out LLVMExpressionNode n>	(. LLVMExpressionNode n1=null; .)
 =
 ShiftExpr<out n> 
 {
-		 "<"	ShiftExpr<out n1>
+		 "<"	ShiftExpr<out n1>	(. n = NF().createComparison(CompareOperator.INT_SIGNED_LESS_THAN, null, n, n1); .)
 		|
-		 ">"	ShiftExpr<out n1>
+		 ">"	ShiftExpr<out n1>	(. n = NF().createComparison(CompareOperator.INT_SIGNED_GREATER_THAN, null, n, n1); .)
 		|
-		 "<="	ShiftExpr<out n1>
+		 "<="	ShiftExpr<out n1>	(. n = NF().createComparison(CompareOperator.INT_SIGNED_LESS_OR_EQUAL, null, n, n1); .)
 		|
-		 ">="	ShiftExpr<out n1>
+		 ">="	ShiftExpr<out n1>	(. n = NF().createComparison(CompareOperator.INT_SIGNED_GREATER_OR_EQUAL, null, n, n1); .)
 }
 .
 EqExpr<out LLVMExpressionNode n>	(. LLVMExpressionNode n1=null; .)
 =
 RelExpr<out n> 
 {
-		 "==" RelExpr<out n1>
+		 "==" RelExpr<out n1>		(. n = NF().createComparison(CompareOperator.INT_EQUAL, null, n, n1); .)
 		|
-		 "!=" RelExpr<out n1>		 
+		 "!=" RelExpr<out n1>		(. n = NF().createComparison(CompareOperator.INT_NOT_EQUAL, null, n, n1); .) 
 }
 .
 AndExpr<out LLVMExpressionNode n>	(. LLVMExpressionNode n1=null; .)
@@ -258,9 +259,9 @@ LogAndExpr<out n>
 
 Expr<out LLVMExpressionNode n>	(. LLVMExpressionNode nThen=null, nElse=null; .)
 =
-LogOrExpr<out n> 
+LogOrExpr<out n>
 [
-	 "?" Expr<out nThen> ":" Expr<out nElse>
+	 "?" Expr<out nThen> ":" Expr<out nElse>	(. n = new DebugExprTernaryNode(n, nThen, nElse); if(n==DebugExprVarNode.noObj) SemErr("Condition unreadable");.)
 ]
 .
 
