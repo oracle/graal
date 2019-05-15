@@ -46,13 +46,13 @@ public class DebugExprSymbolTable {
 
     public TabObj find(String name) {
         for (Scope scope : scopes) {
-            Object thizz = scope.getReceiver();
+            scope.getReceiver();
             Object vars = scope.getVariables();
             InteropLibrary library = InteropLibrary.getFactory().getUncached();
-            final boolean hasMembers = library.hasMembers(vars);
+            library.hasMembers(vars);
             try {
                 final Object memberKeys = library.getMembers(vars);
-                final boolean memberKeysHasKeys = library.hasArrayElements(memberKeys);
+                library.hasArrayElements(memberKeys);
                 for (long i = 0; i < library.getArraySize(memberKeys); i++) {
                     final String memberKey = (String) library.readArrayElement(memberKeys, i);
                     if (!memberKey.equals(name))
@@ -70,9 +70,5 @@ public class DebugExprSymbolTable {
             }
         }
         return noObj;
-    }
-
-    public TabObj findLocal(String name, TabObj parent) {
-        return null;
     }
 }

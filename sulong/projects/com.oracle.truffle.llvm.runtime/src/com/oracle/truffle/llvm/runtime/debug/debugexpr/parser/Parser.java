@@ -1,11 +1,18 @@
 package com.oracle.truffle.llvm.runtime.debug.debugexpr.parser;
 
+import com.oracle.truffle.api.Scope;
 import com.oracle.truffle.api.TruffleLanguage.InlineParsingRequest;
+import com.oracle.truffle.llvm.runtime.nodes.api.LLVMExpressionNode;
+import com.oracle.truffle.llvm.runtime.ArithmeticOperation;
 import com.oracle.truffle.llvm.runtime.LLVMContext;
+import com.oracle.truffle.llvm.runtime.NodeFactory;
 import com.oracle.truffle.llvm.runtime.debug.debugexpr.nodes.*;
+import com.oracle.truffle.llvm.runtime.types.Type;
 // Set the name of your grammar here (and at the end of this grammar):
 
+//CheckStyle: start generated
 import java.util.List;
+import java.util.LinkedList;
 
 public class Parser {
 	public static final int _EOF = 0;
@@ -43,13 +50,13 @@ public class Parser {
 	return false;
 }
 
-DebugExprSymbolTable tab;
-InlineParsingRequest inlineParsingRequest;
-DebugExprOperandNode operand=null;
-LLVMContext context=null;
+private Iterable<Scope> scopes;
+private InlineParsingRequest inlineParsingRequest;
+private LLVMExpressionNode astRoot=null;
+private LLVMContext context=null;
 
-void SetSymtab(DebugExprSymbolTable tab) {
-	this.tab = tab;
+void SetScopes(Iterable<Scope> scopes) {
+	this.scopes = scopes;
 }
 
 void SetContext(LLVMContext context) {
@@ -64,8 +71,8 @@ public int GetErrors() {
 	return errors.count;
 }
 
-public DebugExprOperandNode GetOperand() {return operand; }
-public DebugExprNodeFactory NF() {return DebugExprNodeFactory.Get(); }
+public LLVMExpressionNode GetASTRoot() {return astRoot; }
+public NodeFactory NF() {return context.getNodeFactory(); }
 // If you want your generated compiler case insensitive add the
 // keyword IGNORECASE here.
 
@@ -168,14 +175,14 @@ public DebugExprNodeFactory NF() {return DebugExprNodeFactory.Get(); }
 	}
 	
 	void DebugExpr() {
-		DebugExprOperandNode n=null; 
+		LLVMExpressionNode n=null; 
 		n = Expr();
-		operand =n; 
+		astRoot =n; 
 	}
 
-	DebugExprOperandNode  Expr() {
-		DebugExprOperandNode  n;
-		DebugExprOperandNode nThen=null, nElse=null; 
+	LLVMExpressionNode  Expr() {
+		LLVMExpressionNode  n;
+		LLVMExpressionNode nThen=null, nElse=null; 
 		n = LogOrExpr();
 		if (la.kind == 34) {
 			Get();
@@ -186,33 +193,30 @@ public DebugExprNodeFactory NF() {return DebugExprNodeFactory.Get(); }
 		return n;
 	}
 
-	DebugExprOperandNode  PrimExpr() {
-		DebugExprOperandNode  n;
+	LLVMExpressionNode  PrimExpr() {
+		LLVMExpressionNode  n;
 		n=null; 
 		switch (la.kind) {
 		case 1: {
 			Get();
-			n = NF().createTabNode(tab.find(t.val));	
+			n = new DebugExprVarNode(t.val, scopes); if(n==DebugExprVarNode.noObj) SemErr("variable not found: "+t.val);	
 			break;
 		}
 		case 2: {
 			Get();
-			n = NF().createIntNode(Integer.parseInt(t.val)); 
+			n = NF().createSimpleConstantNoArray(Integer.parseInt(t.val), Type.getIntegerType(32)); 
 			break;
 		}
 		case 3: {
 			Get();
-			n = NF().createFloatNode(Float.parseFloat(t.val)); 
 			break;
 		}
 		case 4: {
 			Get();
-			n = NF().createStringNode(t.val); 
 			break;
 		}
 		case 5: {
 			Get();
-			n = NF().createStringNode(t.val); 
 			break;
 		}
 		case 6: {
@@ -226,9 +230,9 @@ public DebugExprNodeFactory NF() {return DebugExprNodeFactory.Get(); }
 		return n;
 	}
 
-	DebugExprOperandNode  Designator() {
-		DebugExprOperandNode  n;
-		DebugExprOperandNode idx=null; 
+	LLVMExpressionNode  Designator() {
+		LLVMExpressionNode  n;
+		LLVMExpressionNode idx=null; List<LLVMExpressionNode> l; 
 		n = PrimExpr();
 		while (StartOf(1)) {
 			if (la.kind == 8) {
@@ -236,7 +240,7 @@ public DebugExprNodeFactory NF() {return DebugExprNodeFactory.Get(); }
 				idx = Expr();
 				Expect(9);
 			} else if (la.kind == 6) {
-				ActPars();
+				l = ActPars();
 			} else if (la.kind == 10) {
 				Get();
 				Expect(1);
@@ -248,21 +252,25 @@ public DebugExprNodeFactory NF() {return DebugExprNodeFactory.Get(); }
 		return n;
 	}
 
-	void ActPars() {
-		DebugExprOperandNode n1=null, n2=null; 
+	List  ActPars() {
+		List  l;
+		LLVMExpressionNode n1=null, n2=null; l = new LinkedList<LLVMExpressionNode>(); 
 		Expect(6);
 		if (StartOf(2)) {
 			n1 = Expr();
+			l.add(n1); 
 			while (la.kind == 12) {
 				Get();
 				n2 = Expr();
+				l.add(n2); 
 			}
 		}
 		Expect(7);
+		return l;
 	}
 
-	DebugExprOperandNode  UnaryExpr() {
-		DebugExprOperandNode  n;
+	LLVMExpressionNode  UnaryExpr() {
+		LLVMExpressionNode  n;
 		n=null; 
 		if (StartOf(3)) {
 			n = Designator();
@@ -308,8 +316,8 @@ public DebugExprNodeFactory NF() {return DebugExprNodeFactory.Get(); }
 		}
 	}
 
-	DebugExprOperandNode  CastExpr() {
-		DebugExprOperandNode  n;
+	LLVMExpressionNode  CastExpr() {
+		LLVMExpressionNode  n;
 		Object typeO=null; 
 		if (IsCast()) {
 			Expect(6);
@@ -317,7 +325,6 @@ public DebugExprNodeFactory NF() {return DebugExprNodeFactory.Get(); }
 			Expect(7);
 		}
 		n = UnaryExpr();
-		if(typeO!=null) n.type = typeO; 
 		return n;
 	}
 
@@ -339,65 +346,67 @@ public DebugExprNodeFactory NF() {return DebugExprNodeFactory.Get(); }
 		}
 	}
 
-	DebugExprOperandNode  MultExpr() {
-		DebugExprOperandNode  n;
-		DebugExprOperandNode n1=null; 
+	LLVMExpressionNode  MultExpr() {
+		LLVMExpressionNode  n;
+		LLVMExpressionNode n1=null; 
 		n = CastExpr();
 		while (la.kind == 15 || la.kind == 20 || la.kind == 21) {
 			if (la.kind == 15) {
 				Get();
 				n1 = CastExpr();
-				n = NF().createMulNode(n, n1); System.out.println(n); 
+				n = NF().createArithmeticOp(ArithmeticOperation.MUL, null, n, n1); 
 			} else if (la.kind == 20) {
 				Get();
 				n1 = CastExpr();
-				n = NF().createDivNode(n, n1); System.out.println(n); 
+				n = NF().createArithmeticOp(ArithmeticOperation.DIV, null, n, n1); 
 			} else {
 				Get();
 				n1 = CastExpr();
-				n = NF().createRemNode(n, n1); System.out.println(n); 
+				n = NF().createArithmeticOp(ArithmeticOperation.REM, null, n, n1); 
 			}
 		}
 		return n;
 	}
 
-	DebugExprOperandNode  AddExpr() {
-		DebugExprOperandNode  n;
-		DebugExprOperandNode n1=null; 
+	LLVMExpressionNode  AddExpr() {
+		LLVMExpressionNode  n;
+		LLVMExpressionNode n1=null; 
 		n = MultExpr();
 		while (la.kind == 16 || la.kind == 17) {
 			if (la.kind == 16) {
 				Get();
 				n1 = MultExpr();
-				n = NF().createAddNode(n, n1, context); System.out.println(n); 
+				n = NF().createArithmeticOp(ArithmeticOperation.ADD, null, n, n1); 
 			} else {
 				Get();
 				n1 = MultExpr();
-				n = NF().createSubNode(n, n1); System.out.println(n); 
+				n = NF().createArithmeticOp(ArithmeticOperation.SUB, null, n, n1); 
 			}
 		}
 		return n;
 	}
 
-	DebugExprOperandNode  ShiftExpr() {
-		DebugExprOperandNode  n;
-		DebugExprOperandNode n1=null; 
+	LLVMExpressionNode  ShiftExpr() {
+		LLVMExpressionNode  n;
+		LLVMExpressionNode n1=null; 
 		n = AddExpr();
 		while (la.kind == 22 || la.kind == 23) {
 			if (la.kind == 22) {
 				Get();
 				n1 = AddExpr();
+				n = NF().createArithmeticOp(ArithmeticOperation.SHL, null, n, n1); 
 			} else {
 				Get();
 				n1 = AddExpr();
+				n = NF().createArithmeticOp(ArithmeticOperation.ASHR, null, n, n1); 
 			}
 		}
 		return n;
 	}
 
-	DebugExprOperandNode  RelExpr() {
-		DebugExprOperandNode  n;
-		DebugExprOperandNode n1=null; 
+	LLVMExpressionNode  RelExpr() {
+		LLVMExpressionNode  n;
+		LLVMExpressionNode n1=null; 
 		n = ShiftExpr();
 		while (StartOf(5)) {
 			if (la.kind == 24) {
@@ -417,9 +426,9 @@ public DebugExprNodeFactory NF() {return DebugExprNodeFactory.Get(); }
 		return n;
 	}
 
-	DebugExprOperandNode  EqExpr() {
-		DebugExprOperandNode  n;
-		DebugExprOperandNode n1=null; 
+	LLVMExpressionNode  EqExpr() {
+		LLVMExpressionNode  n;
+		LLVMExpressionNode n1=null; 
 		n = RelExpr();
 		while (la.kind == 28 || la.kind == 29) {
 			if (la.kind == 28) {
@@ -433,42 +442,45 @@ public DebugExprNodeFactory NF() {return DebugExprNodeFactory.Get(); }
 		return n;
 	}
 
-	DebugExprOperandNode  AndExpr() {
-		DebugExprOperandNode  n;
-		DebugExprOperandNode n1=null; 
+	LLVMExpressionNode  AndExpr() {
+		LLVMExpressionNode  n;
+		LLVMExpressionNode n1=null; 
 		n = EqExpr();
 		while (la.kind == 14) {
 			Get();
 			n1 = EqExpr();
+			n = NF().createArithmeticOp(ArithmeticOperation.AND, null, n, n1); 
 		}
 		return n;
 	}
 
-	DebugExprOperandNode  XorExpr() {
-		DebugExprOperandNode  n;
-		DebugExprOperandNode n1=null; 
+	LLVMExpressionNode  XorExpr() {
+		LLVMExpressionNode  n;
+		LLVMExpressionNode n1=null; 
 		n = AndExpr();
 		while (la.kind == 30) {
 			Get();
 			n1 = AndExpr();
+			n = NF().createArithmeticOp(ArithmeticOperation.XOR, null, n, n1); 
 		}
 		return n;
 	}
 
-	DebugExprOperandNode  OrExpr() {
-		DebugExprOperandNode  n;
-		DebugExprOperandNode n1=null; 
+	LLVMExpressionNode  OrExpr() {
+		LLVMExpressionNode  n;
+		LLVMExpressionNode n1=null; 
 		n = XorExpr();
 		while (la.kind == 31) {
 			Get();
 			n1 = XorExpr();
+			n = NF().createArithmeticOp(ArithmeticOperation.OR, null, n, n1); 
 		}
 		return n;
 	}
 
-	DebugExprOperandNode  LogAndExpr() {
-		DebugExprOperandNode  n;
-		DebugExprOperandNode n1=null; 
+	LLVMExpressionNode  LogAndExpr() {
+		LLVMExpressionNode  n;
+		LLVMExpressionNode n1=null; 
 		n = OrExpr();
 		while (la.kind == 32) {
 			Get();
@@ -477,9 +489,9 @@ public DebugExprNodeFactory NF() {return DebugExprNodeFactory.Get(); }
 		return n;
 	}
 
-	DebugExprOperandNode  LogOrExpr() {
-		DebugExprOperandNode  n;
-		DebugExprOperandNode n1=null; 
+	LLVMExpressionNode  LogOrExpr() {
+		LLVMExpressionNode  n;
+		LLVMExpressionNode n1=null; 
 		n = LogAndExpr();
 		while (la.kind == 33) {
 			Get();
