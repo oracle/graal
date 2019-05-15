@@ -236,6 +236,7 @@ class DefaultOptionHandler extends NativeImage.OptionHandler<NativeImage> {
         }
     }
 
+    @Override
     void addFallbackBuildArgs(List<String> buildArgs) {
         if (nativeImage.isVerbose()) {
             buildArgs.add(verboseOption);
