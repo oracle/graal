@@ -295,7 +295,10 @@ public class NativeImage {
 
             String[] flagsForVersion = graalCompilerFlags.get(javaVersion);
             if (flagsForVersion == null) {
-                showError("Image building not supported for Java version " + javaVersion);
+                showError(String.format("Image building not supported for Java version %s in %s with VM configuration \"%s\"",
+                                System.getProperty("java.version"),
+                                System.getProperty("java.home"),
+                                System.getProperty("java.vm.name")));
             }
 
             if (useJVMCINativeLibrary == null) {
@@ -1201,7 +1204,11 @@ public class NativeImage {
             try {
                 nativeImage.prepareImageBuildArgs();
             } catch (NativeImageError e) {
-                throw showError("Requirements for building native images are not fulfilled", nativeImage.isVerbose() ? e : null);
+                if (nativeImage.isVerbose()) {
+                    throw showError("Requirements for building native images are not fulfilled", e);
+                } else {
+                    throw showError("Requirements for building native images are not fulfilled [cause: " + e.getMessage() + "]", null);
+                }
             }
             int buildStatus = nativeImage.completeImageBuild();
             if (buildStatus == 2) {
