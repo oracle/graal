@@ -65,9 +65,6 @@ public class DebugExprVarNode extends LLVMExpressionNode {
                     if (!memberKey.equals(name))
                         continue;
                     Object member = library.readMember(vars, memberKey);
-                    // System.out.println(name + "|member.toString() = " + member.toString());
-                    // System.out.println(name + "|member.getClass().getSimpleName() = " +
-                    // member.getClass().getSimpleName());
                     LLVMDebuggerValue ldv = (LLVMDebuggerValue) member;
                     Object metaObj = ldv.getMetaObject();
                     // System.out.println(name + "|metaObj.toString() = " + metaObj.toString());
