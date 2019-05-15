@@ -28,6 +28,7 @@ import java.io.IOException;
 import java.net.URI;
 import java.nio.ByteBuffer;
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.List;
 import java.util.regex.Pattern;
 
@@ -116,6 +117,44 @@ public class InspectorMessageTransportTest {
     }
 
     @Test
+    public void inspectorReconnectTest() throws IOException, InterruptedException {
+        Session session = new Session(null);
+        DebuggerEndpoint endpoint = new DebuggerEndpoint("simplePath", null);
+        Engine engine = endpoint.onOpen(session);
+
+        try (Context context = Context.newBuilder().engine(engine).build()) {
+            Value result = context.eval("sl", "function main() {\n  x = 1;\n  return x;\n}");
+            Assert.assertEquals("Result", "1", result.toString());
+
+            MessageEndpoint peerEndpoint = endpoint.peer;
+            peerEndpoint.sendClose();
+            Assert.assertNotSame(peerEndpoint, endpoint.peer);
+            result = context.eval("sl", "function main() {\n  x = 2;\n  return x;\n}");
+            Assert.assertEquals("Result", "2", result.toString());
+        }
+        // We will not get the last 4 messages as we do not do initial suspension on re-connect
+        int expectedNumMessages = 2 * MESSAGES.length - 4;
+        while (session.messages.size() < expectedNumMessages) {
+            // The reply messages are sent asynchronously. We need to wait for them.
+            Thread.sleep(100);
+        }
+
+        Assert.assertEquals(session.messages.toString(), expectedNumMessages, session.messages.size());
+        for (int i = 0; i < MESSAGES.length; i++) {
+            if (!session.messages.get(i).startsWith(MESSAGES[i])) {
+                Assert.assertTrue("i = " + i + ", Expected start with '" + MESSAGES[i] + "', got: '" + session.messages.get(i) + "'", false);
+            }
+        }
+        // We will not get the last 4 messages as we do not do initial suspension on re-connect
+        for (int i = 0; i < MESSAGES.length - 4; i++) {
+            int j = i + MESSAGES.length;
+            if (!session.messages.get(j).startsWith(MESSAGES[i])) {
+                Assert.assertTrue("j = " + j + ", Expected start with '" + MESSAGES[i] + "', got: '" + session.messages.get(j) + "'", false);
+            }
+        }
+    }
+
+    @Test
     public void inspectorVetoedTest() {
         Engine.Builder engineBuilder = Engine.newBuilder().serverTransport(new MessageTransport() {
 
@@ -137,7 +176,7 @@ public class InspectorMessageTransportTest {
     private static final class Session {
 
         private final RaceControl rc;
-        final List<String> messages = new ArrayList<>(MESSAGES.length);
+        final List<String> messages = Collections.synchronizedList(new ArrayList<>(MESSAGES.length));
         private final BasicRemote remote = new BasicRemote(messages);
         private boolean opened = true;
 
@@ -200,6 +239,7 @@ public class InspectorMessageTransportTest {
 
         private final String path;
         private final RaceControl rc;
+        MessageEndpoint peer;
 
         DebuggerEndpoint(String path, RaceControl rc) {
             this.path = path;
@@ -212,6 +252,7 @@ public class InspectorMessageTransportTest {
                 @Override
                 public MessageEndpoint open(URI requestURI, MessageEndpoint peerEndpoint) throws IOException, MessageTransport.VetoException {
                     Assert.assertEquals("Invalid protocol", "ws", requestURI.getScheme());
+                    DebuggerEndpoint.this.peer = peerEndpoint;
                     String uriStr = requestURI.toString();
                     if (path == null) {
                         Assert.assertTrue(uriStr, URI_PATTERN.matcher(uriStr).matches());
