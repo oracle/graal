@@ -451,7 +451,8 @@ public final class Target_sun_misc_Unsafe {
         }
         Field f = getInstanceFieldFromIndex(holder, Math.toIntExact(offset) - SAFETY_FIELD_OFFSET);
         assert f != null;
-        return Float.intBitsToFloat((holder).getIntFieldVolatile(f));
+        return holder.getFloatFieldVolatile(f);
+//        return Float.intBitsToFloat((holder).getIntFieldVolatile(f));
     }
 
     @Substitution(hasReceiver = true)
@@ -481,7 +482,7 @@ public final class Target_sun_misc_Unsafe {
         }
         Field f = getInstanceFieldFromIndex(holder, Math.toIntExact(offset) - SAFETY_FIELD_OFFSET);
         assert f != null;
-        return Double.longBitsToDouble((holder).getLongFieldVolatile(f));
+        return holder.getDoubleField(f);
     }
 
     @Substitution(hasReceiver = true)

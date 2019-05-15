@@ -262,6 +262,13 @@ jboolean JVM_IsSilentCompiler(JNIEnv *env, jclass compCls) {
 
 jboolean JVM_CompileClass(JNIEnv *env, jclass compCls, jclass cls) {
   IMPLEMENTED(JVM_CompileClass);
+  // According to hotspot:
+  
+	// java.lang.Compiler //
+	/** The initial cuts of the HotSpot VM will not support JITs, and all existing
+	 * JITs would need extensive changes to work with HotSpot.  The JIT-related JVM
+	 * functions are all silently ignored unless JVM warnings are printed.
+	 */ 
   return 0;
 }
 
@@ -473,6 +480,8 @@ jclass JVM_FindPrimitiveClass(JNIEnv *env, const char *utf) {
 
 void JVM_ResolveClass(JNIEnv *env, jclass cls) {
   IMPLEMENTED(JVM_ResolveClass);
+  /* nop */
+  // Java classes are already resoled. Legacy method, even hotspot emits a warning on use.
 }
 
 jclass JVM_FindClassFromBootLoader(JNIEnv *env, const char *name) {

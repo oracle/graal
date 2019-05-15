@@ -186,26 +186,40 @@ public final class StaticObject implements TruffleObject {
         if (isStatic) {
             for (Field f : thisKlass.getStaticFieldTable()) {
                 assert f.isStatic();
-                if (f.getKind().isSubWord()) {
-                    setWordField(f, MetaUtil.defaultWordFieldValue(f.getKind()));
-                } else if (f.getKind().isPrimitive()) {
-                    // not a subword but primitive -> long or double
-                    setLongField(f, (long) MetaUtil.defaultFieldValue(f.getKind()));
-                } else {
-                    setUnsafeField(f.getFieldIndex(), MetaUtil.defaultFieldValue(f.getKind()));
+                switch (f.getKind()) {
+                    // @formatter:off
+                    // Checkstyle: stop
+                    case Float  : setFloatField(f, MetaUtil.defaultFloatValue(f.getKind()));   break;
+                    case Long   : setLongField(f, MetaUtil.defaultLongValue(f.getKind()));     break;
+                    case Double : setDoubleField(f, MetaUtil.defaultDoubleValue(f.getKind())); break;
+                    default:
+                        if (f.getKind().isSubWord()) {
+                            setWordField(f, MetaUtil.defaultWordFieldValue(f.getKind()));
+                        } else {
+                            setUnsafeField(f.getFieldIndex(), MetaUtil.defaultFieldValue(f.getKind()));
+                        }
+                    // @formatter:on
+                    // Checkstyle: resume
                 }
             }
         } else {
             for (Field f : thisKlass.getFieldTable()) {
                 assert !f.isStatic();
                 if (!f.isHidden()) {
-                    if (f.getKind().isSubWord()) {
-                        setWordField(f, MetaUtil.defaultWordFieldValue(f.getKind()));
-                    } else if (f.getKind().isPrimitive()) {
-                        // not a subword but primitive -> long or double
-                        setLongField(f, (long) MetaUtil.defaultFieldValue(f.getKind()));
-                    } else {
-                        setUnsafeField(f.getFieldIndex(), MetaUtil.defaultFieldValue(f.getKind()));
+                    switch (f.getKind()) {
+                        // @formatter:off
+                        // Checkstyle: stop
+                        case Float  : setFloatField(f, MetaUtil.defaultFloatValue(f.getKind()));   break;
+                        case Long   : setLongField(f, MetaUtil.defaultLongValue(f.getKind()));     break;
+                        case Double : setDoubleField(f, MetaUtil.defaultDoubleValue(f.getKind())); break;
+                        default:
+                            if (f.getKind().isSubWord()) {
+                                setWordField(f, MetaUtil.defaultWordFieldValue(f.getKind()));
+                            } else {
+                                setUnsafeField(f.getFieldIndex(), MetaUtil.defaultFieldValue(f.getKind()));
+                            }
+                        // @formatter:on
+                        // Checkstyle: resume
                     }
                 }
             }
