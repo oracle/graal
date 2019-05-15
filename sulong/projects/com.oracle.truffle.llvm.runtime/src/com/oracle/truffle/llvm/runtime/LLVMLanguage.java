@@ -86,7 +86,6 @@ public class LLVMLanguage extends TruffleLanguage<LLVMContext> {
     @CompilationFinal private NodeFactory nodeFactory;
     @CompilationFinal private List<ContextExtension> contextExtensions;
 
-
     public abstract static class Loader {
 
         public abstract CallTarget load(LLVMContext context, Source source);

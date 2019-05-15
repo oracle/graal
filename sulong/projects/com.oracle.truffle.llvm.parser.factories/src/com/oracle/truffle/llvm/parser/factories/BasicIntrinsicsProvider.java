@@ -393,7 +393,8 @@ public class BasicIntrinsicsProvider implements LLVMIntrinsicProvider, ContextEx
 
         add("polyglot_get_member", (args, context) -> LLVMPolyglotGetMemberNodeGen.create(LLVMLanguage.getLanguage().getNodeFactory().createForeignToLLVM(POINTER), args.get(1), args.get(2)));
 
-        add("polyglot_get_array_element", (args, context) -> LLVMPolyglotGetArrayElementNodeGen.create(LLVMLanguage.getLanguage().getNodeFactory().createForeignToLLVM(POINTER), args.get(1), args.get(2)));
+        add("polyglot_get_array_element",
+                        (args, context) -> LLVMPolyglotGetArrayElementNodeGen.create(LLVMLanguage.getLanguage().getNodeFactory().createForeignToLLVM(POINTER), args.get(1), args.get(2)));
 
         add("polyglot_remove_member", (args, context) -> LLVMPolyglotRemoveMemberNodeGen.create(args.get(1), args.get(2)));
 
@@ -410,7 +411,8 @@ public class BasicIntrinsicsProvider implements LLVMIntrinsicProvider, ContextEx
         add("polyglot_new_instance", (args, context) -> LLVMPolyglotNewInstanceNodeGen.create(argumentsArray(args, 2, args.size() - 2), args.get(1)));
 
         add("polyglot_invoke",
-                        (args, context) -> LLVMPolyglotInvokeNodeGen.create(LLVMLanguage.getLanguage().getNodeFactory().createForeignToLLVM(POINTER), argumentsArray(args, 3, args.size() - 3), args.get(1), args.get(2)));
+                        (args, context) -> LLVMPolyglotInvokeNodeGen.create(LLVMLanguage.getLanguage().getNodeFactory().createForeignToLLVM(POINTER), argumentsArray(args, 3, args.size() - 3),
+                                        args.get(1), args.get(2)));
 
         add("truffle_decorate_function", (args, context) -> LLVMTruffleDecorateFunctionNodeGen.create(args.get(1), args.get(2)));
         add("polyglot_can_execute", (args, context) -> LLVMPolyglotBoxedPredicateNodeGen.create(InteropLibrary::isExecutable, args.get(1)));

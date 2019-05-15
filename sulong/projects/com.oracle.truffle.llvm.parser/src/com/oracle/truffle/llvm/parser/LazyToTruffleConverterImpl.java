@@ -183,8 +183,8 @@ public class LazyToTruffleConverterImpl implements LazyToTruffleConverter {
             if (isStructByValue(parameter)) {
                 Type type = ((PointerType) parameter.getType()).getPointeeType();
                 formalParamInits.add(
-                        LLVMLanguage.getLanguage().getNodeFactory().createFrameWrite(parameter.getType(),
-                                LLVMLanguage.getLanguage().getNodeFactory().createCopyStructByValue(type, GetStackSpaceFactory.createAllocaFactory(), parameterNode), slot, null));
+                                LLVMLanguage.getLanguage().getNodeFactory().createFrameWrite(parameter.getType(),
+                                                LLVMLanguage.getLanguage().getNodeFactory().createCopyStructByValue(type, GetStackSpaceFactory.createAllocaFactory(), parameterNode), slot, null));
             } else {
                 formalParamInits.add(LLVMLanguage.getLanguage().getNodeFactory().createFrameWrite(parameter.getType(), parameterNode, slot, null));
             }
