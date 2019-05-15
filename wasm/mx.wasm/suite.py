@@ -21,12 +21,13 @@ suite = {
       "sourceDirs" : ["src"],
       "dependencies" : [
         "com.oracle.truffle.wasm",
+        "truffle:TRUFFLE_TCK",
         "mx:JUNIT",
       ],
       "checkstyle" : "com.oracle.truffle.wasm",
       "javaCompliance" : "1.8",
       "annotationProcessors" : ["truffle:TRUFFLE_DSL_PROCESSOR"],
-      "workingSets" : "Truffle, WebAssembly",
+      "workingSets" : "Truffle,WebAssembly",
       "license" : "BSD-new",
       "testProject" : True,
     },
@@ -35,6 +36,7 @@ suite = {
       "sourceDirs" : ["src"],
       "dependencies" : [
         "truffle:TRUFFLE_API",
+        "sdk:GRAAL_SDK",
       ],
       "checkstyle" : "com.oracle.truffle.wasm",
       "javaCompliance" : "1.8",
@@ -51,6 +53,8 @@ suite = {
       "dependencies" : ["com.oracle.truffle.wasm"],
       "distDependencies" : [
         "truffle:TRUFFLE_API",
+        "truffle:TRUFFLE_TCK",
+        "sdk:GRAAL_SDK",
       ],
       "maven" : {
         "artifactId" : "wasm",
@@ -62,11 +66,14 @@ suite = {
     "WASM_UNIT_TESTS" : {
       "dependencies" : [
         "com.oracle.truffle.wasm.test",
+        "truffle:TRUFFLE_TCK",
       ],
       "exclude" : [
         "mx:JUNIT",
       ],
       "distDependencies" : [
+        "truffle:TRUFFLE_API",
+        "truffle:TRUFFLE_TCK",
         "WASM",
       ],
       "maven" : False,

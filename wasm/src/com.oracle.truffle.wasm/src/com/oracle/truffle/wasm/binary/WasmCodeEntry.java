@@ -29,25 +29,40 @@
  */
 package com.oracle.truffle.wasm.binary;
 
-public class CallContext extends BinaryStreamReader {
-    private long[] rawStack;
+import com.oracle.truffle.api.CompilerDirectives.CompilationFinal;
+import com.oracle.truffle.api.frame.FrameDescriptor;
+import com.oracle.truffle.api.frame.FrameSlot;
+import com.oracle.truffle.api.frame.FrameSlotKind;
 
-    private int pointer;
+public class WasmCodeEntry {
+    @CompilationFinal(dimensions = 1) private byte[] data;
+    @CompilationFinal private FrameSlot[] stackSlots;
+    @CompilationFinal private FrameSlot stackPointerSlot;
 
-    public CallContext(byte[] data, int stackSize) {
-        super(data);
-        this.rawStack = new long[stackSize];
-        this.pointer = 0;
+    public WasmCodeEntry(byte[] data) {
+        this.data = data;
+        this.stackSlots = null;
     }
 
-    public void push(long value) {
-        rawStack[pointer] = value;
-        pointer++;
+    public byte[] data() {
+        return data;
     }
 
-    public long pop() {
-        pointer--;
-        long value = rawStack[pointer];
-        return value;
+    public FrameSlot stackSlot(int index) {
+        return stackSlots[index];
     }
+
+    public void initStackSlots(FrameDescriptor frameDescriptor, int maxStackSize) {
+        stackPointerSlot = frameDescriptor.addFrameSlot(0, FrameSlotKind.Int);
+        stackSlots = new FrameSlot[maxStackSize];
+        for (int i = 0; i != maxStackSize; ++i) {
+            FrameSlot stackSlot = frameDescriptor.addFrameSlot(i + 1, FrameSlotKind.Long);
+            stackSlots[i] = stackSlot;
+        }
+    }
+
+    public FrameSlot stackPointerSlot() {
+        return stackPointerSlot;
+    }
+
 }

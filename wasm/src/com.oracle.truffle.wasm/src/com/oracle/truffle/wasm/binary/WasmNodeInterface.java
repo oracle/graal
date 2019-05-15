@@ -27,20 +27,45 @@
  * NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED
  * OF THE POSSIBILITY OF SUCH DAMAGE.
  */
-
 package com.oracle.truffle.wasm.binary;
 
-import com.oracle.truffle.api.nodes.Node;
+import com.oracle.truffle.api.CompilerDirectives.CompilationFinal;
+import com.oracle.truffle.api.frame.FrameSlotTypeException;
+import com.oracle.truffle.api.frame.VirtualFrame;
 
-public class WasmNode extends Node implements WasmNodeInterface {
-    private WasmCodeEntry codeEntry;
+public interface WasmNodeInterface {
+    WasmCodeEntry codeEntry();
 
-    public WasmNode(WasmCodeEntry codeEntry) {
-        this.codeEntry = codeEntry;
+    default void initStackPointer(VirtualFrame frame) {
+        frame.setInt(codeEntry().stackPointerSlot(), 0);
     }
 
-    @Override
-    public WasmCodeEntry codeEntry() {
-        return codeEntry;
+    default void push(VirtualFrame frame, long value) {
+        try {
+            int stackPointer = frame.getInt(codeEntry().stackPointerSlot());
+            frame.setLong(codeEntry().stackSlot(stackPointer), value);
+            frame.setInt(codeEntry().stackPointerSlot(), stackPointer + 1);
+        } catch (FrameSlotTypeException e) {
+            throw new RuntimeException(e);
+        }
+    }
+
+    default void pushInt(VirtualFrame frame, int value) {
+        push(frame, value);
+    }
+
+    default long pop(VirtualFrame frame) {
+        try {
+            int stackPointer = frame.getInt(codeEntry().stackPointerSlot());
+            long value = frame.getLong(codeEntry().stackSlot(stackPointer - 1));
+            frame.setInt(codeEntry().stackPointerSlot(), stackPointer - 1);
+            return value;
+        } catch (FrameSlotTypeException e) {
+            throw new RuntimeException(e);
+        }
+    }
+
+    default int popInt(VirtualFrame frame) {
+        return (int) pop(frame);
     }
 }

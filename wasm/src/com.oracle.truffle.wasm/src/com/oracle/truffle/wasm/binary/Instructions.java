@@ -32,6 +32,8 @@ package com.oracle.truffle.wasm.binary;
 public class Instructions {
     public static final int END = 0x0B;
 
+    public static final int DROP = 0x1A;
+
     public static final int LOCAL_GET = 0x20;
     public static final int LOCAL_SET = 0x21;
     public static final int LOCAL_TEE = 0x22;

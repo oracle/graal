@@ -30,51 +30,59 @@
 package com.oracle.truffle.wasm.binary;
 
 import static com.oracle.truffle.api.CompilerDirectives.CompilationFinal;
+import static com.oracle.truffle.wasm.binary.Assert.format;
+import static com.oracle.truffle.wasm.binary.Instructions.DROP;
+import static com.oracle.truffle.wasm.binary.Instructions.END;
+import static com.oracle.truffle.wasm.binary.Instructions.I32_ADD;
+import static com.oracle.truffle.wasm.binary.Instructions.I32_CONST;
+import static com.oracle.truffle.wasm.binary.Instructions.I64_CONST;
 
 import com.oracle.truffle.api.frame.VirtualFrame;
+import com.oracle.truffle.api.nodes.ExplodeLoop;
 
 public class WasmBlockNode extends WasmNode {
     @CompilationFinal private final int startOffset;
-
     @CompilationFinal private final int size;
-
     @CompilationFinal private final byte typeId;
 
-    public WasmBlockNode(int startOffset, int size, byte typeId) {
+    public WasmBlockNode(WasmCodeEntry codeEntry, int startOffset, int size, byte typeId) {
+        super(codeEntry);
         this.startOffset = startOffset;
         this.size = size;
         this.typeId = typeId;
     }
 
-    public void execute(VirtualFrame frame, CallContext callContext) {
-        callContext.seek(startOffset);
-        while (callContext.offset() < startOffset + size) {
-            byte opcode = callContext.read1();
+    @ExplodeLoop
+    public void execute(VirtualFrame frame) {
+        int offset = startOffset;
+        while (offset < startOffset + size) {
+            byte opcode = BinaryStreamReader.peek1(codeEntry().data(), offset);
+            offset++;
             switch (opcode) {
-                case Instructions.I32_CONST: {
-                    int value = callContext.readSignedInt32();
-                    callContext.push(value);
+                case END:
+                    break;
+                case DROP: {
+                    pop(frame);
                     break;
                 }
-                case Instructions.I64_CONST: {
-                    long value = callContext.readSignedInt32();
-                    callContext.push(value);
+                case I32_CONST: {
+                    int value = BinaryStreamReader.peek1(codeEntry().data(), offset);  // TODO: Fix
+                    pushInt(frame, value);
+                    offset++;
                     break;
                 }
-                case Instructions.F32_CONST: {
-                    int value = callContext.readFloat32();
-                    callContext.push(value);
+                case I64_CONST: {
+                    Assert.fail("Not implemented");
                     break;
                 }
-                case Instructions.F64_CONST: {
-                    long value = callContext.readFloat64();
-                    callContext.push(value);
+                case I32_ADD: {
+                    int x = popInt(frame);
+                    int y = popInt(frame);
+                    pushInt(frame, x + y);
                     break;
                 }
-                case Instructions.END:
-                    break;
                 default:
-                    Assert.fail(String.format("Unknown opcode: 0x%02X", opcode));
+                    Assert.fail(format("Unknown opcode: 0x%02X", opcode));
             }
         }
     }

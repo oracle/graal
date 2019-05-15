@@ -54,12 +54,12 @@ public abstract class BinaryStreamReader {
         return result;
     }
 
-    public int peakUnsignedInt32(int ahead) {
+    public int peekUnsignedInt32(int ahead) {
         int result = 0;
         int shift = 0;
         int i = 0;
         do {
-            byte b = peak1(i + ahead);
+            byte b = peek1(i + ahead);
             result |= (b & 0x7F) << shift;
             if ((b & 0x80) == 0) {
                 break;
@@ -100,7 +100,13 @@ public abstract class BinaryStreamReader {
     }
 
     public byte read1() {
-        return data[offset++];
+        byte value = peek1(data, offset);
+        offset++;
+        return value;
+    }
+
+    public static byte peek1(byte[] data, int offset) {
+        return data[offset];
     }
 
     public int read4() {
@@ -121,16 +127,12 @@ public abstract class BinaryStreamReader {
         return result;
     }
 
-    public byte peak1() {
+    public byte peek1() {
         return data[offset];
     }
 
-    public byte peak1(int ahead) {
+    public byte peek1(int ahead) {
         return data[offset + ahead];
-    }
-
-    public void seek(int offset) {
-        this.offset = offset;
     }
 
     public int offset() {

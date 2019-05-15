@@ -34,24 +34,21 @@ import com.oracle.truffle.api.TruffleLanguage;
 import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.api.nodes.RootNode;
 
-public class WasmRootNode extends RootNode {
-    @CompilationFinal private final byte[] data;
+public class WasmRootNode extends RootNode implements WasmNodeInterface {
+    @CompilationFinal private WasmCodeEntry codeEntry;
     @Child private WasmBlockNode body;
 
-    @CompilationFinal int maxValueStackSize;
-
-    public WasmRootNode(TruffleLanguage<?> language, byte[] data, WasmBlockNode body) {
+    public WasmRootNode(TruffleLanguage<?> language, WasmCodeEntry codeEntry, WasmBlockNode body) {
         super(language);
-        this.data = data;
+        this.codeEntry = codeEntry;
         this.body = body;
-        this.maxValueStackSize = 0;
     }
 
     @Override
     public Object execute(VirtualFrame frame) {
-        CallContext callContext = new CallContext(data, maxValueStackSize);
-        body.execute(frame, callContext);
-        long returnValue = callContext.pop();
+        initStackPointer(frame);
+        body.execute(frame);
+        long returnValue = pop(frame);
         switch (body.typeId()) {
             case ValueTypes.I32_TYPE:
                 Assert.assertEquals(returnValue >>> 32, 0, "Expected i32 value, popped value was larger than 32 bits.");
@@ -67,5 +64,10 @@ public class WasmRootNode extends RootNode {
                 Assert.fail(String.format("Unknown type: 0x%02X", body.typeId()));
                 return null;
         }
+    }
+
+    @Override
+    public WasmCodeEntry codeEntry() {
+        return codeEntry;
     }
 }

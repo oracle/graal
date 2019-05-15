@@ -33,6 +33,8 @@ package com.oracle.truffle.wasm.binary;
 import com.oracle.truffle.api.RootCallTarget;
 import com.oracle.truffle.api.Truffle;
 
+import static com.oracle.truffle.wasm.binary.Instructions.*;
+
 /** Simple recursive-descend parser for the binary WebAssembly format.
  */
 public class BinaryReader extends BinaryStreamReader {
@@ -162,15 +164,17 @@ public class BinaryReader extends BinaryStreamReader {
         }
         int expressionSize = codeEntrySize - (offset - startOffset);
         byte returnTypeId = wasmModule.symbolTable().function(funcIndex).returnType();
-        WasmBlockNode block = new WasmBlockNode(offset, expressionSize, returnTypeId);
-        WasmRootNode rootNode = new WasmRootNode(wasmLanguage, data, block);
+        WasmCodeEntry codeEntry = new WasmCodeEntry(data);
+        WasmBlockNode block = new WasmBlockNode(codeEntry, offset, expressionSize, returnTypeId);
+        WasmRootNode rootNode = new WasmRootNode(wasmLanguage, codeEntry, block);
+        // TODO: Push a frame slot to the frame descriptor for every local.
         ExecutionState state = new ExecutionState();
         readBlock(block, state);
         checkValidStateOnFunctionExit(returnTypeId, state);
-        rootNode.maxValueStackSize = state.maxStackSize;
+        codeEntry.initStackSlots(rootNode.getFrameDescriptor(), state.maxStackSize);
         RootCallTarget callTarget = Truffle.getRuntime().createCallTarget(rootNode);
         wasmModule.symbolTable().function(funcIndex).setCallTarget(callTarget);
-        // TODO: For structured code, we need to set the expressionSize later
+        // TODO: For structured code, we need to set the expressionSize later.
     }
 
     private void checkValidStateOnFunctionExit(byte returnTypeId, ExecutionState state) {
@@ -186,24 +190,30 @@ public class BinaryReader extends BinaryStreamReader {
         do {
             instruction = read1();
             switch (instruction) {
-                case 0x41:  // i32.const
-                {
-                    int val = readSignedInt32();
+                case DROP:
+                    state.pop();
+                    break;
+                case I32_CONST: {
+                    readSignedInt32();
                     state.push();
                     break;
                 }
-                case 0x42:  // i64.const
+                case I64_CONST:
                     Assert.fail("Not implemented");
                     break;
-                case 0x43:  // f32.const
-                {
-                    float val = readFloat32();
+                case F32_CONST: {
+                    readFloat32();
                     state.push();
                     break;
                 }
-                case 0x44:  // f64.const
-                {
-                    double val = readFloat64();
+                case F64_CONST: {
+                    readFloat64();
+                    state.push();
+                    break;
+                }
+                case I32_ADD: {
+                    state.pop();
+                    state.pop();
                     state.push();
                     break;
                 }
@@ -227,7 +237,7 @@ public class BinaryReader extends BinaryStreamReader {
 
     public void readFunctionType() {
         int paramsLength = readVectorLength();
-        int resultLength = peakUnsignedInt32(paramsLength);
+        int resultLength = peekUnsignedInt32(paramsLength);
         resultLength = (resultLength == 0x40) ? 0 : resultLength;
         int idx = wasmModule.symbolTable().allocateFunctionType(paramsLength, resultLength);
         readParameterList(idx, paramsLength);
