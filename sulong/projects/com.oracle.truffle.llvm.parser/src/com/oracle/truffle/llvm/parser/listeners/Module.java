@@ -80,9 +80,9 @@ public final class Module implements ParserListener {
         functionQueue = new ArrayDeque<>();
     }
 
-// private static final int STRTAB_RECORD_OFFSET = 2;
-// private static final int STRTAB_RECORD_OFFSET_INDEX = 0;
-// private static final int STRTAB_RECORD_LENGTH_INDEX = 1;
+    // private static final int STRTAB_RECORD_OFFSET = 2;
+    // private static final int STRTAB_RECORD_OFFSET_INDEX = 0;
+    // private static final int STRTAB_RECORD_LENGTH_INDEX = 1;
 
     private boolean useStrTab() {
         return mode == 2;
@@ -106,11 +106,11 @@ public final class Module implements ParserListener {
         }
     }
 
-// private static final int FUNCTION_TYPE = 0;
-// private static final int FUNCTION_ISPROTOTYPE = 2;
-// private static final int FUNCTION_LINKAGE = 3;
-// private static final int FUNCTION_PARAMATTR = 4;
-// private static final int FUNCTION_VISIBILITY = 7;
+    // private static final int FUNCTION_TYPE = 0;
+    // private static final int FUNCTION_ISPROTOTYPE = 2;
+    // private static final int FUNCTION_LINKAGE = 3;
+    // private static final int FUNCTION_PARAMATTR = 4;
+    // private static final int FUNCTION_VISIBILITY = 7;
 
     private void createFunction(RecordBuffer buffer) {
         long name = readNameFromStrTab(buffer);
@@ -147,14 +147,14 @@ public final class Module implements ParserListener {
         }
     }
 
-// private static final int GLOBALVAR_TYPE = 0;
-// private static final int GLOBALVAR_FLAGS = 1;
+    // private static final int GLOBALVAR_TYPE = 0;
+    // private static final int GLOBALVAR_FLAGS = 1;
     private static final long GLOBALVAR_EXPLICICTTYPE_MASK = 0x2;
     private static final long GLOBALVAR_ISCONSTANT_MASK = 0x1;
-// private static final int GLOBALVAR_INTITIALIZER = 2;
-// private static final int GLOBALVAR_LINKAGE = 3;
-// private static final int GLOBALVAR_ALIGN = 4;
-// private static final int GLOBALVAR_VISIBILITY = 6;
+    // private static final int GLOBALVAR_INTITIALIZER = 2;
+    // private static final int GLOBALVAR_LINKAGE = 3;
+    // private static final int GLOBALVAR_ALIGN = 4;
+    // private static final int GLOBALVAR_VISIBILITY = 6;
 
     private void createGlobalVariable(RecordBuffer buffer) {
         long name = readNameFromStrTab(buffer);
@@ -183,9 +183,9 @@ public final class Module implements ParserListener {
         scope.addSymbol(global, global.getType());
     }
 
-// private static final int GLOBALALIAS_TYPE = 0;
-// private static final int GLOBALALIAS_NEW_VALUE = 2;
-// private static final int GLOBALALIAS_NEW_LINKAGE = 3;
+    // private static final int GLOBALALIAS_TYPE = 0;
+    // private static final int GLOBALALIAS_NEW_VALUE = 2;
+    // private static final int GLOBALALIAS_NEW_LINKAGE = 3;
 
     private void createGlobalAliasNew(RecordBuffer buffer) {
         long name = readNameFromStrTab(buffer);
@@ -201,8 +201,8 @@ public final class Module implements ParserListener {
         scope.addSymbol(global, global.getType());
     }
 
-// private static final int GLOBALALIAS_OLD_VALUE = 1;
-// private static final int GLOBALALIAS_OLD_LINKAGE = 2;
+    // private static final int GLOBALALIAS_OLD_VALUE = 1;
+    // private static final int GLOBALALIAS_OLD_LINKAGE = 2;
 
     private void createGlobalAliasOld(RecordBuffer buffer) {
         long name = readNameFromStrTab(buffer);
