@@ -39,8 +39,15 @@ import org.junit.Assert;
 
 import com.oracle.truffle.wasm.test.WasmTest;
 import com.oracle.truffle.wasm.test.WasmTestToolkit;
+import org.junit.Test;
 
 public class WasmInterpretationTest extends WasmTest {
+    @Override
+    @Test
+    public void runTests() {
+        super.runTests();
+    }
+
     @Override
     protected void runTest(TestElement element) {
         try {

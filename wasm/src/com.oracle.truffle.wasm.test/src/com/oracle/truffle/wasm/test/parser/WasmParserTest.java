@@ -49,7 +49,7 @@ public class WasmParserTest extends WasmTest {
     }
 
     @Override
-    public void runTest(TestElement element) {
+    protected void runTest(TestElement element) {
         try {
             byte[] binary = WasmTestToolkit.compileWat(element.program);
             Context context = Context.create();

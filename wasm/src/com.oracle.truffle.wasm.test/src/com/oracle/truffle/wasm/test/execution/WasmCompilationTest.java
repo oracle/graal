@@ -43,6 +43,11 @@ import java.io.IOException;
 public class WasmCompilationTest extends WasmTest {
     @Override
     @Test
+    public void runTests() {
+        super.runTests();
+    }
+
+    @Override
     protected void runTest(TestElement element) {
         try {
             byte[] binary = WasmTestToolkit.compileWat(element.program);
