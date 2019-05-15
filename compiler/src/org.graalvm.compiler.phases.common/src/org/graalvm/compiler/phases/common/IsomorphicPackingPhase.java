@@ -3,6 +3,7 @@ package org.graalvm.compiler.phases.common;
 import jdk.vm.ci.meta.JavaKind;
 import org.graalvm.compiler.graph.Node;
 import org.graalvm.compiler.graph.NodeMap;
+import org.graalvm.compiler.graph.iterators.NodePredicate;
 import org.graalvm.compiler.graph.iterators.NodePredicates;
 import org.graalvm.compiler.nodes.FixedNode;
 import org.graalvm.compiler.nodes.StructuredGraph;
@@ -50,6 +51,15 @@ public final class IsomorphicPackingPhase extends BasePhase<PhaseContext> {
             return elements.get(elements.size() - 1);
         }
 
+        /**
+         * Returns true if left matches the left side of the pair or right matches the right side of the pair.
+         * @param left Node on the left side of the candidate pair
+         * @param right Node on the right side of the candidate pair
+         */
+        public boolean match(T left, T right) {
+            return getLeft().equals(left) || getRight().equals(right);
+        }
+
         public boolean isPair() {
             return elements.size() == 2;
         }
@@ -92,6 +102,17 @@ public final class IsomorphicPackingPhase extends BasePhase<PhaseContext> {
             if (elements.size() < 2) throw new IllegalArgumentException("cannot construct pack consisting of single element");
 
             return new Pack<>(elements);
+        }
+
+        /**
+         * Appends the right pack to the left pack, omitting the first element of the right pack.
+         * Pre: last element of left = first element of right
+         */
+        public static <T extends Node> Pack<T> combine(Pack<T> left, Pack<T> right) {
+            T rightLeft = right.getLeft();
+            return Pack.list(Stream.concat(
+                    left.elements.stream().filter(x -> !x.equals(rightLeft)),
+                    right.elements.stream()).collect(Collectors.toList()));
         }
     }
 
@@ -218,10 +239,10 @@ public final class IsomorphicPackingPhase extends BasePhase<PhaseContext> {
         return s2a.getMaxConstantDisplacement() - s1a.getMaxConstantDisplacement() == s1k.getByteCount();
     }
 
-    private static boolean stmts_can_pack(Block block, FixedNode left, FixedNode right) {
-        // TODO: ensure that the left candidate isn't already present in a left position
-        // TODO: ensure that the right candidate isn't already present in a right position
-        return isomorphic(left, right) && independent(block, left, right);
+    private static boolean stmts_can_pack(Block block, Set<Pack<FixedNode>> packSet, FixedNode left, FixedNode right) {
+        return isomorphic(left, right) &&
+                independent(block, left, right) &&
+                packSet.stream().noneMatch(p -> p.match(left, right));
     }
 
     /**
@@ -233,26 +254,20 @@ public final class IsomorphicPackingPhase extends BasePhase<PhaseContext> {
      */
     private static void find_adj_refs(Block block, Set<Pack<FixedNode>> packSet) {
         // Create initial seed set containing memory operations
-        Deque<FixedAccessNode> memoryNodes = // Candidate set of memory nodes
+        List<FixedAccessNode> memoryNodes = // Candidate list of memory nodes
                 StreamSupport.stream(block.getNodes().spliterator(), false)
                         .filter(NodePredicates.isA(FixedAccessNode.class)::apply)
                         .map(x -> (FixedAccessNode) x)
-                        .collect(Collectors.toCollection(ArrayDeque::new));
+                        .collect(Collectors.toList());
 
-        while (!memoryNodes.isEmpty()) {
-            FixedAccessNode leftCandidate = memoryNodes.pop();
+        // TODO: do better than this, specifically because of stmts_can_back being inefficient
+        for (FixedAccessNode s1 : memoryNodes) {
+            for (FixedAccessNode s2 : memoryNodes) {
+                if (s1 == s2) continue;
 
-            boolean assigned = false;
-            for (FixedAccessNode rightCandidate : memoryNodes) {
-                if (adjacent(leftCandidate, rightCandidate) && stmts_can_pack(block, leftCandidate, rightCandidate)) {
-                    packSet.add(Pack.pair(leftCandidate, rightCandidate));
-                    assigned = true;
-                    break; // TODO: don't be greedy
+                if (adjacent(s1, s2) && stmts_can_pack(block, packSet, s1, s2)) {
+                    packSet.add(Pack.pair(s1, s2));
                 }
-            }
-
-            if (!assigned) { // TODO: handle dropped values & do this check correctly
-                System.out.println(String.format("Dropped %s", leftCandidate.toString()));
             }
         }
 
@@ -298,15 +313,42 @@ public final class IsomorphicPackingPhase extends BasePhase<PhaseContext> {
         } while (change);
     }
 
+    // Combine packs where right = left
     private static void combine_packs(Set<Pack<FixedNode>> packSet) {
-        throw new UnsupportedOperationException("not implemented");
+        boolean changed = false;
+        do {
+            changed = false;
+
+            Deque<Pack<FixedNode>> remove = new ArrayDeque<>();
+            Deque<Pack<FixedNode>> add = new ArrayDeque<>();
+
+            for (Pack<FixedNode> leftPack : packSet) {
+                if (remove.contains(leftPack)) continue;
+
+                for (Pack<FixedNode> rightPack : packSet) {
+                    if (remove.contains(leftPack) || remove.contains(rightPack)) continue;
+
+                    if (leftPack != rightPack && leftPack.getRight().equals(rightPack.getLeft())) {
+                        remove.push(leftPack);
+                        remove.push(rightPack);
+
+                        add.push(Pack.combine(leftPack, rightPack));
+
+                        changed = true;
+                    }
+                }
+            }
+
+            packSet.removeAll(remove);
+            packSet.addAll(add);
+        } while (changed);
     }
 
     private static void SLP_extract(Block block) {
         Set<Pack<FixedNode>> packSet = new HashSet<>();
         find_adj_refs(block, packSet);
         extend_packlist(block, packSet);
-//        combine_packs(packSet);
+        combine_packs(packSet);
         // return a new basic block with the new instructions scheduled
     }
 
