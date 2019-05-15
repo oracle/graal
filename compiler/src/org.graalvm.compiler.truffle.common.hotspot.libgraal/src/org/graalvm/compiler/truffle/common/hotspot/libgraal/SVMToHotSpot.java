@@ -96,6 +96,7 @@ public @interface SVMToHotSpot {
         GetStackTraceElementMethodName(String.class, StackTraceElement.class),
         GetSuppliedString(String.class, Supplier.class),
         GetTargetName(String.class, Decision.class),
+        GetThrowableMessage(String.class, Throwable.class),
         GetTruffleCallBoundaryMethods(long[].class, HotSpotTruffleCompilerRuntime.class),
         GetURI(String.class, TruffleSourceLanguagePosition.class),
         IsCancelled(boolean.class, TruffleCompilationTask.class),
