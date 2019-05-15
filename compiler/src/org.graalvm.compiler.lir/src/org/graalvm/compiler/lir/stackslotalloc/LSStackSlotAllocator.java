@@ -248,7 +248,7 @@ public final class LSStackSlotAllocator extends AllocationPhase {
             if (virtualSlot instanceof VirtualStackSlotRange) {
                 // No reuse of ranges (yet).
                 VirtualStackSlotRange slotRange = (VirtualStackSlotRange) virtualSlot;
-                location = frameMapBuilder.getFrameMap().allocateStackSlots(slotRange.getSlots(), slotRange.getObjects());
+                location = frameMapBuilder.getFrameMap().allocateStackSlots(slotRange.getSlots());
                 StackSlotAllocatorUtil.virtualFramesize.add(debug, frameMapBuilder.getFrameMap().spillSlotRangeSize(slotRange.getSlots()));
                 StackSlotAllocatorUtil.allocatedSlots.increment(debug);
             } else {
