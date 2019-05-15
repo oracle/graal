@@ -848,7 +848,7 @@ public final class VM extends NativeEnv implements ContextAccess {
                         return ((EspressoRootNode) rootNode).getMethod().getDeclaringKlass().getDefiningClassLoader();
                     }
                 }
-                return null;
+                return StaticObject.NULL;
             }
         });
     }
@@ -936,7 +936,6 @@ public final class VM extends NativeEnv implements ContextAccess {
 
         Method method = Method.getHostReflectiveMethodRoot(guestReflectionMethod);
         MethodParametersAttribute methodParameters = (MethodParametersAttribute) method.getAttribute(Name.MethodParameters);
-        // assert methodParameters != null;
 
         if (methodParameters == null) {
             return StaticObject.NULL;

@@ -64,7 +64,6 @@ public final class EspressoContext {
     private final Substitutions substitutions;
     private final MethodHandleIntrinsics methodHandleIntrinsics;
 
-    // TODO(peterssen): Map host threads to guest threads, should not be public.
     private final ConcurrentHashMap<Thread, StaticObject> host2guest = new ConcurrentHashMap<>();
     private final Set<Thread> activeThreads = Collections.newSetFromMap(new ConcurrentHashMap<Thread, Boolean>());
 
@@ -265,6 +264,7 @@ public final class EspressoContext {
                 /**
                  * TODO(garcia) Finalizer thread can't be interrupted at all. We must find some way
                  * to complete it for polyglot.
+                 * Current workaround is disabling it entirely.
                  */
             }
         }

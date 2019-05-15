@@ -200,7 +200,7 @@ public final class BytecodeStream {
 
     public int opcode(int curBCI) {
         if (curBCI < code.length) {
-            // assert opcode <= Bytecodes.QUICK : "illegal bytecode";
+            // opcode validity is performed at verification time.
             return Bytes.beU1(code, curBCI);
         } else {
             return Bytecodes.END;

@@ -91,11 +91,11 @@ public final class Target_java_lang_invoke_MethodHandleNatives {
             int refkind = getRefKind(self.getIntField(meta.MNflags));
             plantResolvedField(self, field, refkind, meta.MNflags, meta);
             // Finish the job
-            Klass fieldKlass = ((StaticObject) ref.getField(meta.Field_class)).getMirrorKlass();
+            Klass fieldKlass = ref.getField(meta.Field_class).getMirrorKlass();
             self.setField(meta.MNclazz, fieldKlass.mirror());
         } else if (targetKlass.getType() == Type.Constructor) {
-            Klass defKlass = ((StaticObject) ref.getField(meta.Constructor_clazz)).getMirrorKlass();
-            Symbol<Signature> constructorSig = context.getSignatures().lookupValidSignature(Meta.toHostString((StaticObject) ref.getField(meta.Constructor_signature)));
+            Klass defKlass = ref.getField(meta.Constructor_clazz).getMirrorKlass();
+            Symbol<Signature> constructorSig = context.getSignatures().lookupValidSignature(Meta.toHostString(ref.getField(meta.Constructor_signature)));
             plantMethodMemberName(self, constructorSig, defKlass, Name.INIT, meta.MNflags, REF_invokeSpecial, meta);
             self.setField(meta.MNclazz, defKlass.mirror());
         } else {
@@ -130,13 +130,12 @@ public final class Target_java_lang_invoke_MethodHandleNatives {
                     @Host(Class.class) StaticObject _caller,
                     int skip,
                     @Host(typeName = "[Ljava/lang/invoke/MemberName;") StaticObject _results) {
-        if (defc == StaticObject.NULL || _results == StaticObject.NULL) {
+        if (StaticObject.isNull(defc)  || StaticObject.isNull(_results)) {
             return -1;
         }
         EspressoContext context = defc.getKlass().getContext();
         StaticObject[] results = _results.unwrap();
         Symbol<Name> name = null;
-        // Symbol<Signature> sig = null;
         if (matchName != StaticObject.NULL) {
             name = context.getNames().lookup(Meta.toHostString(matchName));
             if (name == null)
@@ -189,7 +188,7 @@ public final class Target_java_lang_invoke_MethodHandleNatives {
 
     @Substitution
     public static @Host(Object.class) StaticObject staticFieldBase(@Host(typeName = "Ljava/lang/invoke/MemberName;") StaticObject self) {
-        return ((StaticObject) self.getField(self.getKlass().getMeta().MNclazz)).getMirrorKlass().getStatics();
+        return self.getField(self.getKlass().getMeta().MNclazz).getMirrorKlass().getStatics();
     }
 
     @Substitution
@@ -236,14 +235,14 @@ public final class Target_java_lang_invoke_MethodHandleNatives {
         if (memberName.getHiddenField(meta.HIDDEN_VMTARGET) != null) {
             return self; // Already planted
         }
-        StaticObject clazz = (StaticObject) memberName.getField(meta.MNclazz);
+        StaticObject clazz = memberName.getField(meta.MNclazz);
         Klass defKlass = clazz.getMirrorKlass();
 
         Field flagField = meta.MNflags;
         int flags = memberName.getIntField(flagField);
         int refKind = getRefKind(flags);
 
-        StaticObject name = (StaticObject) memberName.getField(meta.MNname);
+        StaticObject name = memberName.getField(meta.MNname);
         Symbol<Name> methodName;
         try {
             methodName = meta.getEspressoLanguage().getNames().lookup(Meta.toHostString(name));
@@ -271,7 +270,8 @@ public final class Target_java_lang_invoke_MethodHandleNatives {
                 }
             }
         }
-        // StaticObject callerKlass = (caller == StaticObject.NULL) ? meta.Object.mirror() : caller;
+        // TODO(garcia) access checks ?
+        // StaticObject callerKlass = (StaticObject.isNull(caller) ? meta.Object.mirror() : caller;
         String desc = Meta.toHostString(type);
         switch (flags & ALL_KINDS) {
             case MN_IS_CONSTRUCTOR:
@@ -324,8 +324,6 @@ public final class Target_java_lang_invoke_MethodHandleNatives {
         int pcount = Signatures.parameterCount(sig, false);
         int params = max(pcount - (keepLastArg ? 0 : 1), 0);
         List<Symbol<Type>> buf = new ArrayList<>();
-        // Symbol<Type>[] params = new Symbol[max(pcount - (keepLastArg ? 0 : 1), 0)];
-
         for (int i = 0; i < params; i++) {
             Symbol<Type> t = Signatures.parameterType(sig, i);
             if (i == params - 1 && keepLastArg) {

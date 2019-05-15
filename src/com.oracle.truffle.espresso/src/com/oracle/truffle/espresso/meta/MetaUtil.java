@@ -190,9 +190,10 @@ public class MetaUtil {
             case Float:
                 return 0f;
             case Double:
-                return Double.doubleToRawLongBits(0.0);
+                return Double.doubleToRawLongBits(0.0d);
             case Long:
                 return 0L;
+
             // The subwords stay here, if this method is needed later.
             case Char:
                 return (char) 0;

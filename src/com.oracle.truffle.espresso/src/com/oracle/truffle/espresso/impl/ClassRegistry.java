@@ -80,8 +80,6 @@ public abstract class ClassRegistry implements ContextAccess {
 
     public ObjectKlass defineKlass(Symbol<Type> type, final byte[] bytes) {
 
-        // System.err.println("ClassRegistry define " + type);
-
         EspressoError.guarantee(!classes.containsKey(type), "Class " + type + " already defined in the BCL");
 
         ParserKlass parserKlass = ClassfileParser.parse(new ClassfileStream(bytes, null), type.toString(), null, context);

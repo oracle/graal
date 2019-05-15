@@ -82,7 +82,7 @@ public final class Target_java_lang_Class {
         assert loader != null;
         EspressoContext context = EspressoLanguage.getCurrentContext();
         Meta meta = context.getMeta();
-        if (name == StaticObject.NULL) {
+        if (StaticObject.isNull(name)) {
             throw meta.throwExWithMessage(meta.ClassNotFoundException, name);
         }
 
@@ -464,18 +464,6 @@ public final class Target_java_lang_Class {
             vm.setArrayObject(desc, 2, arr);
 
             return arr;
-
-            // if (enclosingMethodAttr.getMethodIndex() != 0) {
-            // Method enclosingMethod = ((ObjectKlass)
-            // self.getMirrorKlass()).getConstantPool().resolvedMethodAt(self.getMirrorKlass(),
-            // enclosingMethodAttr.getMethodIndex());
-            // vm.setArrayObject(meta.toGuestString(enclosingMethod.getName().toString()), 1, arr);
-            // vm.setArrayObject(meta.toGuestString(enclosingMethod.getRawSignature().toString()),
-            // 2, arr);
-            // } else {
-            // assert vm.getArrayObject(1, arr) == StaticObject.NULL;
-            // assert vm.getArrayObject(2, arr) == StaticObject.NULL;
-            // }
         }
         return StaticObject.NULL;
     }
@@ -630,7 +618,7 @@ public final class Target_java_lang_Class {
         }
         Meta meta = self.getKlass().getMeta();
         StaticObject signersArray = (StaticObject) self.getHiddenField(meta.HIDDEN_SIGNERS);
-        if (signersArray == null || signersArray == StaticObject.NULL) {
+        if (signersArray == null|| StaticObject.isNull(signersArray)) {
             return StaticObject.NULL;
         }
         return signersArray.copy();

@@ -252,7 +252,7 @@ public final class Target_sun_reflect_NativeMethodAccessorImpl {
     }
 
     public static @Host(Object.class) StaticObject callMethodReflectively(Meta meta, @Host(Object.class) StaticObject receiver, @Host(Object[].class) StaticObject args, Method reflectedMethod,
-                    Klass klass, StaticObject parameterTypes) {
+                    Klass klass, @Host(Class[].class) StaticObject parameterTypes) {
         klass.safeInitialize();
 
         Method method;      // actual method to invoke

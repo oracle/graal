@@ -268,7 +268,7 @@ public final class InterpreterToVM implements ContextAccess {
 
     public static StaticObject getFieldObject(StaticObject obj, Field field) {
         assert field.getKind() == JavaKind.Object && field.getDeclaringKlass().isAssignableFrom(obj.getKlass());
-        return (StaticObject) (obj.getField(field));
+        return obj.getField(field);
     }
 
     public static char getFieldChar(StaticObject obj, Field field) {
@@ -432,7 +432,7 @@ public final class InterpreterToVM implements ContextAccess {
     }
 
     public static StaticObject fillInStackTrace(ArrayList<FrameInstance> frames, StaticObject throwable, Meta meta) {
-        Counter c = new Counter();
+        FrameCounter c = new FrameCounter();
         int size = EspressoContext.DEFAULT_STACK_SIZE;
         frames.clear();
         Truffle.getRuntime().iterateFrames(new FrameInstanceVisitor<Object>() {
@@ -460,16 +460,16 @@ public final class InterpreterToVM implements ContextAccess {
         return throwable;
     }
 
-    static class Counter {
+    private static class FrameCounter {
         public int value = 0;
-        public boolean skipFillInStackTrace = true;
-        public boolean skipThrowableInit = true;
+        private boolean skipFillInStackTrace = true;
+        private boolean skipThrowableInit = true;
 
         public int inc() {
             return value++;
         }
 
-        public boolean checkFillIn(Method m) {
+        boolean checkFillIn(Method m) {
             if (!skipFillInStackTrace) {
                 return false;
             }
@@ -479,7 +479,7 @@ public final class InterpreterToVM implements ContextAccess {
             return skipFillInStackTrace;
         }
 
-        public boolean checkThrowableInit(Method m) {
+        boolean checkThrowableInit(Method m) {
             if (!skipThrowableInit) {
                 return false;
             }

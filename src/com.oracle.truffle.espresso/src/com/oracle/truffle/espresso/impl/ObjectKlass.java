@@ -275,11 +275,11 @@ public final class ObjectKlass extends Klass {
     // Need to carefully synchronize, as the work of other threads can erase our own work.
     @Override
     public void initialize() {
-        // if (isPrepared()) {
-        // CompilerDirectives.transferToInterpreterAndInvalidate();
         // // For some reason, doing the reentrant lock this way sometimes solves the memory issue
         // // in DaCapo lusearch...
         // // I have no explanation...
+        // if (isPrepared()) {
+        // CompilerDirectives.transferToInterpreterAndInvalidate();
         // if (!Thread.holdsLock(this)) {
         // synchronized (this) {
         // }

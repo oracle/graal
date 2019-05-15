@@ -31,6 +31,7 @@ import java.util.Arrays;
 public class VirtualTable {
 
     private VirtualTable() {
+
     }
 
     // Mirandas are already in the Klass, there is not much left to do.

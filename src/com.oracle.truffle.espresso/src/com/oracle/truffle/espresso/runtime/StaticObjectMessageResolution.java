@@ -42,7 +42,7 @@ public class StaticObjectMessageResolution {
 
         @SuppressWarnings("unused")
         boolean access(StaticObject object) {
-            return object == StaticObject.NULL;
+            return StaticObject.isNull(object);
         }
     }
 

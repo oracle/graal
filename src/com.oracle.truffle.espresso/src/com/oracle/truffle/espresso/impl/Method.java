@@ -396,7 +396,6 @@ public final class Method implements TruffleObject, ModifiersProvider, ContextAc
             final int[] entries = exceptionsAttribute.getCheckedExceptionsCPI();
             ObjectKlass[] tmpchecked = new ObjectKlass[entries.length];
             for (int i = 0; i < entries.length; ++i) {
-                // getConstantPool().classAt(entries[i]).
                 // TODO(peterssen): Resolve and cache CP entries.
                 tmpchecked[i] = (ObjectKlass) ((RuntimeConstantPool) getDeclaringKlass().getConstantPool()).resolvedKlassAt(getDeclaringKlass(), entries[i]);
             }
@@ -450,7 +449,7 @@ public final class Method implements TruffleObject, ModifiersProvider, ContextAc
 
         final Object[] filteredArgs;
         if (isStatic()) {
-            // getDeclaringKlass().safeInitialize();
+            // clinit done when obtaining call target
             filteredArgs = new Object[args.length];
             for (int i = 0; i < filteredArgs.length; ++i) {
                 filteredArgs[i] = getMeta().toGuestBoxed(args[i]);
@@ -476,7 +475,7 @@ public final class Method implements TruffleObject, ModifiersProvider, ContextAc
         getContext().getJNI().clearPendingException();
         if (isStatic()) {
             assert args.length == Signatures.parameterCount(getParsedSignature(), false);
-            // getDeclaringKlass().safeInitialize();
+            // clinit performed on obtaining call target
             return getCallTarget().call(args);
         } else {
             assert args.length + 1 /* self */ == Signatures.parameterCount(getParsedSignature(), !isStatic());

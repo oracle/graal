@@ -491,48 +491,4 @@ public final class ClassfileParser {
     public int getThisKlassIndex() {
         return thisKlassIndex;
     }
-
-    // private static String getPackageName(String fqn) {
-    // int slash = fqn.lastIndexOf('/');
-    // if (slash == -1) {
-    // int first = 0;
-    // while (fqn.charAt(first) == '[') {
-    // first++;
-    // }
-    // if (fqn.charAt(first) == 'L') {
-    // assert fqn.endsWith(";");
-    // first++;
-    // }
-    // int end = fqn.lastIndexOf('/');
-    // if (end != -1) {
-    // return fqn.substring(first, end);
-    // }
-    // }
-    // return null;
-    // }
-
-    // /**
-    // * If the host class and the anonymous class are in the same package then do nothing. If the
-    // * anonymous class is in the unnamed package then move it to its host's package. If the
-    // classes
-    // * are in different packages then throw an {@link IllegalArgumentException}.
-    // */
-    // private void fixAnonymousClassName() {
-    // int slash = this.typeDescriptor.toJavaName().lastIndexOf('/');
-    // String hostPackageName = getPackageName(hostClass.getName());
-    // if (slash == -1) {
-    // // For an anonymous class that is in the unnamed package, move it to its host class's
-    // // package by prepending its host class's package name to its class name.
-    // if (hostPackageName != null) {
-    // String newClassName = 'L' + hostPackageName + '/' + this.typeDescriptor.toJavaName() + ';';
-    // this.className = pool.getContext().getTypeDescriptors().make(newClassName).toJavaName();
-    // }
-    // } else {
-    // String packageName = getPackageName(this.className);
-    // if (!hostPackageName.equals(packageName)) {
-    // throw new IllegalArgumentException("Host class " + hostClass + " and anonymous class " +
-    // this.className + " are in different packages");
-    // }
-    // }
-    // }
 }

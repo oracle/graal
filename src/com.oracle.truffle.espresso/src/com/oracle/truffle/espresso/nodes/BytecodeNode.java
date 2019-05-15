@@ -891,7 +891,7 @@ public class BytecodeNode extends EspressoBaseNode implements CustomNodeCount {
                     throw getMeta().throwExWithMessage(e.getClass(), e.getMessage());
                 } catch (Exception e) {
                     // TODO(garcia) Do not lose the cause.
-                    // TODO There should be no need to wrap exceptions in host language, as they
+                    // There should be no need to wrap exceptions in host language, as they
                     // should be handled one way or another by espresso itself.
                     CompilerDirectives.transferToInterpreterAndInvalidate();
                     e.printStackTrace();
@@ -1320,6 +1320,7 @@ public class BytecodeNode extends EspressoBaseNode implements CustomNodeCount {
                 quick = injectQuick(curBCI, invoke);
             }
         }
+        // Perform the call outside of the lock.
         return quick.invoke(frame, top) - Bytecodes.stackEffectOf(opCode);
     }
 
@@ -1357,15 +1358,15 @@ public class BytecodeNode extends EspressoBaseNode implements CustomNodeCount {
         for (int i = 0; i < bsEntry.numBootstrapArguments(); i++) {
             PoolConstant pc = pool.at(bsEntry.argAt(i));
             switch (pc.tag()) {
-                case METHODHANDLE: args[i] = pool.resolvedMethodHandleAt(declaringKlass, bsEntry.argAt(i)); break;
-                case METHODTYPE: args[i] = pool.resolvedMethodTypeAt(declaringKlass, bsEntry.argAt(i)); break;
-                case CLASS: args[i] = pool.resolvedKlassAt(declaringKlass, bsEntry.argAt(i)).mirror(); break;
-                case STRING: args[i] = pool.resolvedStringAt(bsEntry.argAt(i)); break;
-                case INTEGER: args[i] = meta.boxInteger(pool.intAt(bsEntry.argAt(i))); break;
-                case LONG: args[i] = meta.boxLong(pool.longAt(bsEntry.argAt(i))); break;
-                case DOUBLE: args[i] = meta.boxDouble(pool.doubleAt(bsEntry.argAt(i))); break;
-                case FLOAT: args[i] = meta.boxFloat(pool.floatAt(bsEntry.argAt(i))); break;
-                default: throw EspressoError.shouldNotReachHere();
+                case METHODHANDLE : args[i] = pool.resolvedMethodHandleAt(declaringKlass, bsEntry.argAt(i));    break;
+                case METHODTYPE   : args[i] = pool.resolvedMethodTypeAt(declaringKlass, bsEntry.argAt(i));      break;
+                case CLASS        : args[i] = pool.resolvedKlassAt(declaringKlass, bsEntry.argAt(i)).mirror();  break;
+                case STRING       : args[i] = pool.resolvedStringAt(bsEntry.argAt(i));                          break;
+                case INTEGER      : args[i] = meta.boxInteger(pool.intAt(bsEntry.argAt(i)));                    break;
+                case LONG         : args[i] = meta.boxLong(pool.longAt(bsEntry.argAt(i)));                      break;
+                case DOUBLE       : args[i] = meta.boxDouble(pool.doubleAt(bsEntry.argAt(i)));                  break;
+                case FLOAT        : args[i] = meta.boxFloat(pool.floatAt(bsEntry.argAt(i)));                    break;
+                default           : throw EspressoError.shouldNotReachHere();
             }
         }
         // @formatter:on
@@ -1787,9 +1788,7 @@ public class BytecodeNode extends EspressoBaseNode implements CustomNodeCount {
             case Byte    : putInt(frame, top, (byte) value);              break;
             case Short   : putInt(frame, top, (short) value);             break;
             case Char    : putInt(frame, top, (char) value);              break;
-            case Int     :
-                putInt(frame, top, (int) value);
-                break;
+            case Int     : putInt(frame, top, (int) value);               break;
             case Float   : putFloat(frame, top, (float) value);           break;
             case Long    : putLong(frame, top, (long) value);             break;
             case Double  : putDouble(frame, top, (double) value);         break;
