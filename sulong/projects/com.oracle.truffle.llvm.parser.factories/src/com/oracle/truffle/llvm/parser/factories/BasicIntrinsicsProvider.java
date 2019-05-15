@@ -347,6 +347,13 @@ public class BasicIntrinsicsProvider implements LLVMIntrinsicProvider, ContextEx
         add("@pthread_cond_signal", (args, context) -> LLVMPThreadIntrinsicsFactory.LLVMPThreadCondSignalNodeGen.create(args.get(1), null));
         add("@pthread_cond_timedwait", (args, context) -> LLVMPThreadIntrinsicsFactory.LLVMPThreadCondTimedwaitNodeGen.create(args.get(1), args.get(2), args.get(3), null));
         add("@pthread_cond_wait", (args, context) -> LLVMPThreadIntrinsicsFactory.LLVMPThreadCondWaitNodeGen.create(args.get(1), args.get(2), null));
+        add("@pthread_rwlock_destroy", (args, context) -> LLVMPThreadIntrinsicsFactory.LLVMPThreadRWLockDestroyNodeGen.create(args.get(1), null));
+        add("@pthread_rwlock_init", (args, context) -> LLVMPThreadIntrinsicsFactory.LLVMPThreadRWLockInitNodeGen.create(args.get(1), args.get(2), null));
+        add("@pthread_rwlock_rdlock", (args, context) -> LLVMPThreadIntrinsicsFactory.LLVMPThreadRWLockRdlockNodeGen.create(args.get(1), null));
+        add("@pthread_rwlock_tryrdlock", (args, context) -> LLVMPThreadIntrinsicsFactory.LLVMPThreadRWLockTryrdlockNodeGen.create(args.get(1), null));
+        add("@pthread_rwlock_wrlock", (args, context) -> LLVMPThreadIntrinsicsFactory.LLVMPThreadRWLockWrlockNodeGen.create(args.get(1), null));
+        add("@pthread_rwlock_trywrlock", (args, context) -> LLVMPThreadIntrinsicsFactory.LLVMPThreadRWLockTrywrlockNodeGen.create(args.get(1), null));
+        add("@pthread_rwlock_unlock", (args, context) -> LLVMPThreadIntrinsicsFactory.LLVMPThreadRWLockUnlockNodeGen.create(args.get(1), null));
 
         // add pthread_equal
         // add pthread cond vars

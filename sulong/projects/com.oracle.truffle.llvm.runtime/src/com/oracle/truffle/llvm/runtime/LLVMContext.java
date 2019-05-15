@@ -96,6 +96,7 @@ public final class LLVMContext {
     // is object ok here?
     public final ConcurrentMap<Long, Object> condStorage;
     public final ConcurrentMap<Long, Object> mutexStorage;
+    public final ConcurrentMap<Long, Object> rwlockStorage;
     public final ConcurrentMap<Long, Object> retValStorage;
     public final ConcurrentMap<Long, Object> threadStorage;
     // my code end
@@ -227,6 +228,7 @@ public final class LLVMContext {
         }
         this.condStorage = new ConcurrentHashMap<>();
         this.mutexStorage = new ConcurrentHashMap<>();
+        this.rwlockStorage = new ConcurrentHashMap<>();
         this.retValStorage = new ConcurrentHashMap<>();
         this.threadStorage = new ConcurrentHashMap<>();
     }

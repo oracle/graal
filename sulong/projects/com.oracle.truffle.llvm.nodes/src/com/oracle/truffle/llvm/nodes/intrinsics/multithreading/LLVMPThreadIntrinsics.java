@@ -5,7 +5,9 @@ import java.io.IOException;
 import java.io.PrintWriter;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.locks.Condition;
+import java.util.concurrent.locks.ReadWriteLock;
 import java.util.concurrent.locks.ReentrantLock;
+import java.util.concurrent.locks.ReentrantReadWriteLock;
 
 import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.RootCallTarget;
@@ -397,9 +399,12 @@ public class LLVMPThreadIntrinsics {
         }
 
         private Condition condition;
+        private Mutex curMutex;
         private final Type type;
 
         public Cond() {
+            this.condition = null;
+            this.curMutex = null;
             this.type = Type.DEFAULT;
         }
 
@@ -416,24 +421,36 @@ public class LLVMPThreadIntrinsics {
         }
 
         public boolean cTimedwait(Mutex mutex, long seconds) {
-            if (!mutex.internLock.isHeldByCurrentThread()) {
+            if (this.curMutex == null) {
+                this.curMutex = mutex;
+                this.condition = mutex.internLock.newCondition();
+            } else if (this.curMutex != mutex) {
+                this.curMutex = mutex;
+                this.condition = mutex.internLock.newCondition();
+            }
+            if (!this.curMutex.internLock.isHeldByCurrentThread()) {
                 return false;
             }
-            this.condition = mutex.internLock.newCondition();
             try {
-                condition.await(seconds, TimeUnit.SECONDS);
+                this.condition.await(seconds, TimeUnit.SECONDS);
             } catch (InterruptedException e) {
             }
             return true;
         }
 
         public boolean cWait(Mutex mutex) {
-            if (!mutex.internLock.isHeldByCurrentThread()) {
+            if (this.curMutex == null) {
+                this.curMutex = mutex;
+                this.condition = mutex.internLock.newCondition();
+            } else if (this.curMutex != mutex) {
+                this.curMutex = mutex;
+                this.condition = mutex.internLock.newCondition();
+            }
+            if (!this.curMutex.internLock.isHeldByCurrentThread()) {
                 return false;
             }
-            this.condition = mutex.internLock.newCondition();
             try {
-                condition.await();
+                this.condition.await();
             } catch (InterruptedException e) {
             }
             return true;
@@ -548,6 +565,159 @@ public class LLVMPThreadIntrinsics {
         }
     }
 
+    public static class RWLock {
+        // TODO: add timed stuff
+        private final ReadWriteLock readWriteLock;
+
+        public RWLock() {
+            this.readWriteLock = new ReentrantReadWriteLock();
+        }
+
+        public void readLock() {
+            try {
+                this.readWriteLock.readLock().lockInterruptibly();
+            } catch (InterruptedException e) {
+                e.printStackTrace();
+            }
+        }
+
+        public boolean tryReadLock() {
+            return this.readWriteLock.readLock().tryLock();
+        }
+
+        public void writeLock() {
+            try {
+                this.readWriteLock.writeLock().lockInterruptibly();
+            } catch (InterruptedException e) {
+                e.printStackTrace();
+            }
+        }
+
+        public boolean tryWriteLock() {
+            return this.readWriteLock.writeLock().tryLock();
+        }
+
+        public void unlock() {
+            try {
+                this.readWriteLock.readLock().unlock();
+            } catch (Exception e) {
+            }
+            try {
+                this.readWriteLock.writeLock().unlock();
+            } catch (Exception e) {
+            }
+        }
+    }
+
+    @NodeChild(type = LLVMExpressionNode.class)
+    public abstract static class LLVMPThreadRWLockDestroy extends LLVMBuiltin {
+        @Specialization
+        protected int doIntrinsic(VirtualFrame frame, Object rwlock) {
+            long rwlockAddress = ((LLVMNativePointer) rwlock).asNative();
+            getContextReference().get().condStorage.remove(rwlockAddress);
+            return 0;
+        }
+    }
+
+    @NodeChild(type = LLVMExpressionNode.class)
+    @NodeChild(type = LLVMExpressionNode.class)
+    public abstract static class LLVMPThreadRWLockInit extends LLVMBuiltin {
+        @Specialization
+        protected int doIntrinsic(VirtualFrame frame, Object rwlock, Object attr) {
+            // we can use the address of the native pointer here, bc a rwlock
+            // must only work when using the original variable, not a copy
+            // so the address may never change
+            long rwlockAddress = ((LLVMNativePointer) rwlock).asNative();
+            Object condObj = getContextReference().get().condStorage.get(rwlockAddress);
+            if (condObj == null) {
+                getContextReference().get().condStorage.put(rwlockAddress, new RWLock());
+            }
+            return 0;
+        }
+    }
+
+    @NodeChild(type = LLVMExpressionNode.class)
+    public abstract static class LLVMPThreadRWLockRdlock extends LLVMBuiltin {
+        @Specialization
+        protected int doIntrinsic(VirtualFrame frame, Object rwlock) {
+            long rwlockAddress = ((LLVMNativePointer) rwlock).asNative();
+            RWLock rwlockObj = (RWLock) getContextReference().get().rwlockStorage.get(rwlockAddress);
+            if (rwlockObj == null) {
+                // rwlock is not initialized
+                // but it works anyway on most implementations
+                rwlockObj = new RWLock();
+                getContextReference().get().mutexStorage.put(rwlockAddress, rwlockObj);
+            }
+            rwlockObj.readLock();
+            return 0;
+        }
+    }
+
+    @NodeChild(type = LLVMExpressionNode.class)
+    public abstract static class LLVMPThreadRWLockTryrdlock extends LLVMBuiltin {
+        @Specialization
+        protected int doIntrinsic(VirtualFrame frame, Object rwlock) {
+            long rwlockAddress = ((LLVMNativePointer) rwlock).asNative();
+            RWLock rwlockObj = (RWLock) getContextReference().get().rwlockStorage.get(rwlockAddress);
+            if (rwlockObj == null) {
+                // rwlock is not initialized
+                // but it works anyway on most implementations
+                rwlockObj = new RWLock();
+                getContextReference().get().mutexStorage.put(rwlockAddress, rwlockObj);
+            }
+            return rwlockObj.tryReadLock() ? 0 : 15;
+        }
+    }
+
+    @NodeChild(type = LLVMExpressionNode.class)
+    public abstract static class LLVMPThreadRWLockWrlock extends LLVMBuiltin {
+        @Specialization
+        protected int doIntrinsic(VirtualFrame frame, Object rwlock) {
+            long rwlockAddress = ((LLVMNativePointer) rwlock).asNative();
+            RWLock rwlockObj = (RWLock) getContextReference().get().rwlockStorage.get(rwlockAddress);
+            if (rwlockObj == null) {
+                // rwlock is not initialized
+                // but it works anyway on most implementations
+                rwlockObj = new RWLock();
+                getContextReference().get().mutexStorage.put(rwlockAddress, rwlockObj);
+            }
+            rwlockObj.writeLock();
+            return 0;
+        }
+    }
+
+    @NodeChild(type = LLVMExpressionNode.class)
+    public abstract static class LLVMPThreadRWLockTrywrlock extends LLVMBuiltin {
+        @Specialization
+        protected int doIntrinsic(VirtualFrame frame, Object rwlock) {
+            long rwlockAddress = ((LLVMNativePointer) rwlock).asNative();
+            RWLock rwlockObj = (RWLock) getContextReference().get().rwlockStorage.get(rwlockAddress);
+            if (rwlockObj == null) {
+                // rwlock is not initialized
+                // but it works anyway on most implementations
+                rwlockObj = new RWLock();
+                getContextReference().get().mutexStorage.put(rwlockAddress, rwlockObj);
+            }
+            return rwlockObj.tryWriteLock() ? 0 : 15;
+        }
+    }
+
+    @NodeChild(type = LLVMExpressionNode.class)
+    public abstract static class LLVMPThreadRWLockUnlock extends LLVMBuiltin {
+        @Specialization
+        protected int doIntrinsic(VirtualFrame frame, Object rwlock) {
+            long rwlockAddress = ((LLVMNativePointer) rwlock).asNative();
+            RWLock rwlockObj = (RWLock) getContextReference().get().rwlockStorage.get(rwlockAddress);
+            if (rwlockObj == null) {
+                // rwlock is not initialized
+                // but it works anyway on most implementations
+                rwlockObj = new RWLock();
+                getContextReference().get().mutexStorage.put(rwlockAddress, rwlockObj);
+            }
+            rwlockObj.unlock();
+            return 0;
+        }
+    }
 
     @NodeChild(type = LLVMExpressionNode.class)
     public abstract static class LLVMPThreadMyTest extends LLVMBuiltin {

@@ -36,6 +36,7 @@
 // mutex_init, mutex_lock, mutex_trylock, mutex_unlock, mutex_destroy
 // mutexattr_init, mutexattr_settype
 // cond_init, cond_broadcast, cond_signal, cond_timedwait, cond_wait, cond_destroy
+// rwlock_destroy, rwlock_init, rwlock_rdlock, rwlock_tryrdlock, rwlock_wrlock, rwlock_trywrlock, rwlock_unlock
 int pthread_attr_destroy(pthread_attr_t *attr) {
   ERR_UNSUPPORTED(pthread_attr_destroy);
 }
@@ -163,27 +164,6 @@ int pthread_mutexattr_setpshared(pthread_mutexattr_t *attr, int pshared) {
 }
 int pthread_once(pthread_once_t *once_control, void (*init_routine)(void)) {
   ERR_UNSUPPORTED(pthread_once);
-}
-int pthread_rwlock_destroy(pthread_rwlock_t *rwlock) {
-  ERR_UNSUPPORTED(pthread_rwlock_destroy);
-}
-int pthread_rwlock_init(pthread_rwlock_t *restrict rwlock, const pthread_rwlockattr_t *restrict attr) {
-  ERR_UNSUPPORTED(pthread_rwlock_init);
-}
-int pthread_rwlock_rdlock(pthread_rwlock_t *rwlock) {
-  ERR_UNSUPPORTED(pthread_rwlock_rdlock);
-}
-int pthread_rwlock_tryrdlock(pthread_rwlock_t *rwlock) {
-  ERR_UNSUPPORTED(pthread_rwlock_tryrdlock);
-}
-int pthread_rwlock_trywrlock(pthread_rwlock_t *rwlock) {
-  ERR_UNSUPPORTED(pthread_rwlock_trywrlock);
-}
-int pthread_rwlock_unlock(pthread_rwlock_t *rwlock) {
-  ERR_UNSUPPORTED(pthread_rwlock_unlock);
-}
-int pthread_rwlock_wrlock(pthread_rwlock_t *rwlock) {
-  ERR_UNSUPPORTED(pthread_rwlock_wrlockk);
 }
 int pthread_rwlockattr_destroy(pthread_rwlockattr_t *attr) {
   ERR_UNSUPPORTED(pthread_rwlockattr_destroy);
