@@ -78,6 +78,7 @@ import com.oracle.svm.core.thread.VMOperation;
 import com.oracle.svm.core.thread.VMThreads;
 import com.oracle.svm.core.util.TimeUtils;
 import com.oracle.svm.core.util.VMError;
+import com.sun.management.GcInfo;
 
 //Checkstyle: stop
 import sun.management.Util;
@@ -1746,7 +1747,7 @@ final class GarbageCollectorManagementFactory {
     }
 
     /** A GarbageCollectorMXBean for the incremental collector. */
-    private static final class IncrementalGarbageCollectorMXBean implements GarbageCollectorMXBean, NotificationEmitter {
+    private static final class IncrementalGarbageCollectorMXBean implements com.sun.management.GarbageCollectorMXBean, NotificationEmitter {
 
         private IncrementalGarbageCollectorMXBean() {
             /* Nothing to do. */
@@ -1802,10 +1803,14 @@ final class GarbageCollectorManagementFactory {
             return new MBeanNotificationInfo[0];
         }
 
+        @Override
+        public GcInfo getLastGcInfo() {
+            return null;
+        }
     }
 
     /** A GarbageCollectorMXBean for the complete collector. */
-    private static final class CompleteGarbageCollectorMXBean implements GarbageCollectorMXBean, NotificationEmitter {
+    private static final class CompleteGarbageCollectorMXBean implements com.sun.management.GarbageCollectorMXBean, NotificationEmitter {
 
         private CompleteGarbageCollectorMXBean() {
             /* Nothing to do. */
@@ -1861,5 +1866,9 @@ final class GarbageCollectorManagementFactory {
             return new MBeanNotificationInfo[0];
         }
 
+        @Override
+        public GcInfo getLastGcInfo() {
+            return null;
+        }
     }
 }
