@@ -130,7 +130,7 @@ public final class Target_java_lang_invoke_MethodHandleNatives {
                     @Host(Class.class) StaticObject _caller,
                     int skip,
                     @Host(typeName = "[Ljava/lang/invoke/MemberName;") StaticObject _results) {
-        if (StaticObject.isNull(defc)  || StaticObject.isNull(_results)) {
+        if (StaticObject.isNull(defc) || StaticObject.isNull(_results)) {
             return -1;
         }
         EspressoContext context = defc.getKlass().getContext();
@@ -305,7 +305,7 @@ public final class Target_java_lang_invoke_MethodHandleNatives {
                 plantFieldMemberName(memberName, t, defKlass, methodName, flagField, refKind, meta);
                 break;
             default:
-                throw new EspressoError("Unrecognised member name");
+                throw meta.throwExWithMessage(LinkageError.class, "Member name resolution failed");
         }
 
         return memberName;
@@ -359,7 +359,7 @@ public final class Target_java_lang_invoke_MethodHandleNatives {
     private static void plantMethodMemberName(StaticObject memberName, Symbol<Signature> sig, Klass defKlass, Symbol<Name> name, Field flagField, int refKind, Meta meta) {
         Method target = defKlass.lookupMethod(name, sig);
         if (target == null) {
-            throw defKlass.getContext().getMeta().throwEx(NoSuchMethodException.class);
+            throw defKlass.getContext().getMeta().throwEx(NoSuchMethodError.class);
         }
         plantResolvedMethod(memberName, target, refKind, flagField, meta);
     }
@@ -372,7 +372,7 @@ public final class Target_java_lang_invoke_MethodHandleNatives {
     private static void plantFieldMemberName(StaticObject memberName, Symbol<Type> type, Klass defKlass, Symbol<Name> name, Field flagField, int refKind, Meta meta) {
         Field field = defKlass.lookupField(name, type);
         if (field == null) {
-            throw defKlass.getContext().getMeta().throwEx(NoSuchFieldException.class);
+            throw defKlass.getContext().getMeta().throwEx(NoSuchFieldError.class);
         }
         plantResolvedField(memberName, field, refKind, flagField, meta);
     }

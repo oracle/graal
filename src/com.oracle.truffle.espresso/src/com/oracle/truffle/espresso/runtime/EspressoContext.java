@@ -261,11 +261,6 @@ public final class EspressoContext {
                     }
                 } catch (InterruptedException e) {
                 }
-                /**
-                 * TODO(garcia) Finalizer thread can't be interrupted at all. We must find some way
-                 * to complete it for polyglot.
-                 * Current workaround is disabling it entirely.
-                 */
             }
         }
         // initiatingThread.interrupt();

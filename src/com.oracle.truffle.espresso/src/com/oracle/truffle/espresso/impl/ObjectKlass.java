@@ -436,7 +436,7 @@ public final class ObjectKlass extends Klass {
                 return itable[i][index];
             }
         }
-        return null;
+        throw getMeta().throwExWithMessage(IncompatibleClassChangeError.class, "Class " + getName() + " does not implement " + interfKlass.getName());
     }
 
     final Method[][] getItable() {
@@ -447,9 +447,9 @@ public final class ObjectKlass extends Klass {
         return iKlassTable;
     }
 
-    final Method lookupVirtualMethod(Symbol<Name> name, Symbol<Signature> signature) {
+    final Method lookupVirtualMethodOverride(Symbol<Name> name, Symbol<Signature> signature) {
         for (Method m : vtable) {
-            if (m.getName() == name && m.getRawSignature() == signature) {
+            if (!m.isPrivate() && m.getName() == name && m.getRawSignature() == signature) {
                 return m;
             }
         }
@@ -459,7 +459,7 @@ public final class ObjectKlass extends Klass {
     public final Method lookupInterfaceMethod(Symbol<Name> name, Symbol<Signature> signature) {
         for (Method[] table : itable) {
             for (Method m : table) {
-                if (!m.isPrivate() && name == m.getName() && signature == m.getRawSignature()) {
+                if (name == m.getName() && signature == m.getRawSignature()) {
                     return m;
                 }
             }

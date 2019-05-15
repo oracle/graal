@@ -198,8 +198,8 @@ public final class StaticObject implements TruffleObject {
                         } else {
                             setUnsafeField(f.getFieldIndex(), MetaUtil.defaultFieldValue(f.getKind()));
                         }
-                    // @formatter:on
                     // Checkstyle: resume
+                    // @formatter:on
                 }
             }
         } else {
@@ -218,8 +218,8 @@ public final class StaticObject implements TruffleObject {
                             } else {
                                 setUnsafeField(f.getFieldIndex(), MetaUtil.defaultFieldValue(f.getKind()));
                             }
-                        // @formatter:on
                         // Checkstyle: resume
+                        // @formatter:on
                     }
                 }
             }
@@ -232,7 +232,6 @@ public final class StaticObject implements TruffleObject {
         assert field.getDeclaringKlass().isAssignableFrom(getKlass());
         return (StaticObject) U.getObjectVolatile(fields, Unsafe.ARRAY_OBJECT_BASE_OFFSET + Unsafe.ARRAY_OBJECT_INDEX_SCALE * field.getFieldIndex());
     }
-
 
     // Not to be used to access hidden fields !
     public final StaticObject getField(Field field) {
@@ -494,7 +493,6 @@ public final class StaticObject implements TruffleObject {
         U.putFloatVolatile(primitiveFields, (long) Unsafe.ARRAY_BYTE_BASE_OFFSET + Unsafe.ARRAY_BYTE_INDEX_SCALE * field.getFieldIndex(), value);
     }
 
-
     public boolean compareAndSwapIntField(Field field, int before, int after) {
         assert field.getDeclaringKlass().isAssignableFrom(getKlass());
         return U.compareAndSwapInt(primitiveFields, (long) Unsafe.ARRAY_BYTE_BASE_OFFSET + Unsafe.ARRAY_BYTE_INDEX_SCALE * field.getFieldIndex(), before, after);
@@ -619,6 +617,12 @@ public final class StaticObject implements TruffleObject {
         }
         if (getKlass() == getKlass().getMeta().String) {
             return Meta.toHostString(this);
+        }
+        if (isArray()) {
+            return unwrap().toString();
+        }
+        if (getKlass() == getKlass().getMeta().Class) {
+            return "mirror: " + getMirrorKlass().toString();
         }
         return getKlass().getType().toString();
     }

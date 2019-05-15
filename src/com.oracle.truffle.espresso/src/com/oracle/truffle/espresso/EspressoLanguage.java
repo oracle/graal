@@ -130,7 +130,8 @@ public final class EspressoLanguage extends TruffleLanguage<EspressoContext> {
             System.out.println("Time spent in Epresso: " + (totalTime) + "ms");
         }
         context.interruptActiveThreads();
-        // Shutdown.shutdown creates a Cleaner threas. At this point, Polyglot doesn't allow new threads. We must perform shutdown before then, after main has finished.
+        // Shutdown.shutdown creates a Cleaner threas. At this point, Polyglot doesn't allow new
+        // threads. We must perform shutdown before then, after main has finished.
     }
 
     @Override

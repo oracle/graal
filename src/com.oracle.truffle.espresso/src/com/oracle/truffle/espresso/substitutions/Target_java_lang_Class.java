@@ -618,7 +618,7 @@ public final class Target_java_lang_Class {
         }
         Meta meta = self.getKlass().getMeta();
         StaticObject signersArray = (StaticObject) self.getHiddenField(meta.HIDDEN_SIGNERS);
-        if (signersArray == null|| StaticObject.isNull(signersArray)) {
+        if (signersArray == null || StaticObject.isNull(signersArray)) {
             return StaticObject.NULL;
         }
         return signersArray.copy();

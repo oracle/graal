@@ -22,6 +22,7 @@
  */
 package com.oracle.truffle.espresso.nodes;
 
+import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.dsl.Cached;
 import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.frame.VirtualFrame;
@@ -68,7 +69,12 @@ public abstract class InvokeInterfaceNode extends QuickNode {
 
     static Method methodLookup(StaticObject receiver, int itableIndex, Klass declaringKlass) {
         assert !receiver.getKlass().isArray();
-        return ((ObjectKlass) receiver.getKlass()).itableLookup(declaringKlass, itableIndex);
+        Method method = ((ObjectKlass) receiver.getKlass()).itableLookup(declaringKlass, itableIndex);
+        if (!method.hasCode()) {
+            CompilerDirectives.transferToInterpreterAndInvalidate();
+            throw receiver.getKlass().getMeta().throwEx(AbstractMethodError.class);
+        }
+        return method;
     }
 
     @Override

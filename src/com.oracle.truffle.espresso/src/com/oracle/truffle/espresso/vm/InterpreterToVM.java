@@ -23,6 +23,10 @@
 
 package com.oracle.truffle.espresso.vm;
 
+import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.function.IntFunction;
+
 import com.oracle.truffle.api.CallTarget;
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.RootCallTarget;
@@ -45,11 +49,8 @@ import com.oracle.truffle.espresso.runtime.EspressoContext;
 import com.oracle.truffle.espresso.runtime.MemoryErrorDelegate;
 import com.oracle.truffle.espresso.runtime.StaticObject;
 import com.oracle.truffle.espresso.substitutions.Host;
-import sun.misc.Unsafe;
 
-import java.util.ArrayList;
-import java.util.Arrays;
-import java.util.function.IntFunction;
+import sun.misc.Unsafe;
 
 public final class InterpreterToVM implements ContextAccess {
 

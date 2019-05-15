@@ -54,7 +54,7 @@ public class VirtualTable {
     private static void checkOverride(ObjectKlass superKlass, Method m, ArrayList<Method> tmp) {
         Method override;
         if (superKlass != null) {
-            override = superKlass.lookupVirtualMethod(m.getName(), m.getRawSignature());
+            override = superKlass.lookupVirtualMethodOverride(m.getName(), m.getRawSignature());
         } else {
             override = null;
         }
