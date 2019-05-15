@@ -252,6 +252,15 @@ public class SimplifyingGraphDecoder extends GraphDecoder {
                 }
             }
             return node;
+        } else if (node instanceof FrameSetFoo) {
+            FrameSetFoo set = (FrameSetFoo) node;
+            methodScope.frameSlotStates.put(set.index(), set.value());
+        } else if (node instanceof FrameGetFoo) {
+            FrameGetFoo get = (FrameGetFoo) node;
+            ValueNode value = methodScope.frameSlotStates.get(get.index());
+            if (value != null) {
+                return value;
+            }
         } else if (node instanceof Canonicalizable) {
             return ((Canonicalizable) node).canonical(canonicalizerTool);
         } else {
