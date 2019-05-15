@@ -18,7 +18,7 @@ jdk:
 
 env:
   global:
-    - JVMCI_VERSION="jvmci-20-b01-dev"
+    - JVMCI_VERSION="jvmci-20-b01"
     - JDK8_UPDATE_VERSION="212"
 
 matrix:
