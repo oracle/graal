@@ -1,5 +1,6 @@
 package org.graalvm.compiler.phases.common;
 
+import jdk.vm.ci.meta.JavaKind;
 import org.graalvm.compiler.graph.Node;
 import org.graalvm.compiler.graph.NodeMap;
 import org.graalvm.compiler.graph.iterators.NodePredicates;
@@ -8,6 +9,8 @@ import org.graalvm.compiler.nodes.StructuredGraph;
 import org.graalvm.compiler.nodes.cfg.Block;
 import org.graalvm.compiler.nodes.cfg.ControlFlowGraph;
 import org.graalvm.compiler.nodes.memory.FixedAccessNode;
+import org.graalvm.compiler.nodes.memory.WriteNode;
+import org.graalvm.compiler.nodes.memory.address.AddressNode;
 import org.graalvm.compiler.phases.BasePhase;
 import org.graalvm.compiler.phases.schedule.SchedulePhase;
 import org.graalvm.compiler.phases.tiers.PhaseContext;
@@ -142,9 +145,33 @@ public final class IsomorphicPackingPhase extends BasePhase<PhaseContext> {
      * @return Boolean indicating whether s1 is immediately before s2 in memory
      */
     private static boolean adjacent(FixedAccessNode s1, FixedAccessNode s2) {
-        // TODO: GET TYPE INFORMATION, REMOVE 4L
-        return s1.getAddress().getBase().equals(s2.getAddress().getBase()) &&
-                s2.getAddress().getMaxConstantDisplacement() - s1.getAddress().getMaxConstantDisplacement() == 4L;
+        final JavaKind s1k = s1 instanceof WriteNode ? ((WriteNode) s1).value().getStackKind() : s1.getStackKind();
+        final JavaKind s2k = s2 instanceof WriteNode ? ((WriteNode) s2).value().getStackKind() : s2.getStackKind();
+
+        return adjacent(s1, s2, s1k, s2k);
+    }
+
+    /**
+     * Check whether s1 is immediately before s2 in memory, if both are primitive.
+     * This function exists as not all nodes carry the right kind information.
+     * TODO: Find a better way to deal with this
+     * @param s1 First FixedAccessNode to check
+     * @param s2 Second FixedAccessNode to check
+     * @param s1k JavaKind of the first FixedAccessNode
+     * @param s2k JavaKind of the second FixedAccessNode
+     * @return Boolean indicating whether s1 is immediately before s2 in memory
+     */
+    private static boolean adjacent(FixedAccessNode s1, FixedAccessNode s2, JavaKind s1k, JavaKind s2k) {
+        final AddressNode s1a = s1.getAddress(), s2a = s2.getAddress();
+
+        // Only use superword on primitives
+        if (!s1k.isPrimitive() || !s2k.isPrimitive()) return false;
+
+        // Only use superword on types that are comparable
+        // TODO: Evaluate whether graph guarantees that pointers for same collection have same base
+        if (!s1a.getBase().equals(s2a.getBase())) return false;
+
+        return s2a.getMaxConstantDisplacement() - s1a.getMaxConstantDisplacement() == s1k.getByteCount();
     }
 
     private static boolean stmts_can_pack(Block block, FixedNode left, FixedNode right) {
@@ -178,7 +205,7 @@ public final class IsomorphicPackingPhase extends BasePhase<PhaseContext> {
                 }
             }
 
-            if (!assigned) {
+            if (!assigned) { // TODO: handle dropped values & do this check correctly
                 System.out.println(String.format("Dropped %s", leftCandidate.toString()));
             }
         }
