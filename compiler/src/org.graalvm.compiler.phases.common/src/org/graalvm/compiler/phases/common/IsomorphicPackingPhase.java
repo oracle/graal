@@ -16,7 +16,9 @@ import org.graalvm.compiler.phases.schedule.SchedulePhase;
 import org.graalvm.compiler.phases.tiers.PhaseContext;
 
 import java.util.*;
+import java.util.function.Consumer;
 import java.util.stream.Collectors;
+import java.util.stream.Stream;
 import java.util.stream.StreamSupport;
 
 /**
@@ -27,27 +29,69 @@ import java.util.stream.StreamSupport;
  */
 public final class IsomorphicPackingPhase extends BasePhase<PhaseContext> {
 
-    private static class NodePair<T extends Node> {
-        private T left;
-        private T right;
+    // TODO: extract to separate file
+    private static class Pack<T extends Node> implements Iterable<T> {
+        private List<T> elements;
 
-        public NodePair(T left, T right) {
-            this.left = left;
-            this.right = right;
+        private Pack(T left, T right) {
+            this.elements = Arrays.asList(left, right);
+        }
+
+        private Pack(List<T> elements) {
+            this.elements = elements;
+        }
+
+        // Accessors
+        public T getLeft() {
+            return elements.get(0);
+        }
+
+        public T getRight() {
+            return elements.get(elements.size() - 1);
+        }
+
+        public boolean isPair() {
+            return elements.size() == 2;
         }
 
         @Override
         public boolean equals(Object o) {
             if (this == o) return true;
             if (o == null || getClass() != o.getClass()) return false;
-            NodePair<?> nodePair = (NodePair<?>) o;
-            return left.equals(nodePair.left) &&
-                    right.equals(nodePair.right);
+            Pack<?> pack = (Pack<?>) o;
+            return elements.equals(pack.elements);
         }
 
         @Override
         public int hashCode() {
-            return Objects.hash(left, right);
+            return Objects.hash(elements);
+        }
+
+        // Iterable<T>
+        @Override
+        public Iterator<T> iterator() {
+            return elements.iterator();
+        }
+
+        @Override
+        public Spliterator<T> spliterator() {
+            return elements.spliterator();
+        }
+
+        @Override
+        public void forEach(Consumer<? super T> action) {
+            elements.forEach(action);
+        }
+
+        // Builders
+        public static <T extends Node> Pack<T> pair(T left, T right) {
+            return new Pack<>(left, right);
+        }
+
+        public static <T extends Node> Pack<T> list(List<T> elements) {
+            if (elements.size() < 2) throw new IllegalArgumentException("cannot construct pack consisting of single element");
+
+            return new Pack<>(elements);
         }
     }
 
@@ -175,6 +219,8 @@ public final class IsomorphicPackingPhase extends BasePhase<PhaseContext> {
     }
 
     private static boolean stmts_can_pack(Block block, FixedNode left, FixedNode right) {
+        // TODO: ensure that the left candidate isn't already present in a left position
+        // TODO: ensure that the right candidate isn't already present in a right position
         return isomorphic(left, right) && independent(block, left, right);
     }
 
@@ -185,7 +231,7 @@ public final class IsomorphicPackingPhase extends BasePhase<PhaseContext> {
      * @param block Basic block
      * @param packSet PackSet to populate
      */
-    private static void find_adj_refs(Block block, Set<NodePair<FixedNode>> packSet) {
+    private static void find_adj_refs(Block block, Set<Pack<FixedNode>> packSet) {
         // Create initial seed set containing memory operations
         Deque<FixedAccessNode> memoryNodes = // Candidate set of memory nodes
                 StreamSupport.stream(block.getNodes().spliterator(), false)
@@ -199,7 +245,7 @@ public final class IsomorphicPackingPhase extends BasePhase<PhaseContext> {
             boolean assigned = false;
             for (FixedAccessNode rightCandidate : memoryNodes) {
                 if (adjacent(leftCandidate, rightCandidate) && stmts_can_pack(block, leftCandidate, rightCandidate)) {
-                    packSet.add(new NodePair<>(leftCandidate, rightCandidate));
+                    packSet.add(Pack.pair(leftCandidate, rightCandidate));
                     assigned = true;
                     break; // TODO: don't be greedy
                 }
@@ -213,30 +259,53 @@ public final class IsomorphicPackingPhase extends BasePhase<PhaseContext> {
     }
 
     /**
-     * Extend the packset by following use->def and def->use links from pack members
+     * Extend the packset by visiting operand definitions of nodes inside the provided pack
+     * @param block Basic block currently being optimized
+     * \@param packSet Pack set
+     * @param pack The pack to use for operand definitions
+     */
+    private static void follow_use_defs(Block block, /*Set<Pack<FixedNode>> packSet, */Pack<FixedNode> pack) {
+        assert pack.isPair(); // the pack should be a pair
+
+        for (FixedNode node : pack) {
+            node.inputs();
+        }
+    }
+
+    /**
+     * Extend the packset by visiting uses of jnodes of nodes in the provided pack
+     * @param block Basic block currently being optimized
+     * \@param packSet Pack set
+     * @param pack The pack to use for nodes to find usages of
+     */
+    private static void follow_def_uses(Block block, /*Set<Pack<FixedNode>> packSet, */Pack<FixedNode> pack) {
+        throw new UnsupportedOperationException("not implemented");
+    }
+
+    /**
+     * Extend the packset by following use->def and def->use links from pack members until the set does not change
      * @param block Basic block
      * @param packSet PackSet to populate
      */
-    private static void extend_packlist(Block block, Set<NodePair<FixedNode>> packSet) {
+    private static void extend_packlist(Block block, Set<Pack<FixedNode>> packSet) {
+        boolean change = false;
+
+        do {
+            for (Pack<FixedNode> pack : packSet) {
+                follow_use_defs(block, /* packSet, */pack);
+                follow_def_uses(block, /* packSet, */pack);
+            }
+        } while (change);
+    }
+
+    private static void combine_packs(Set<Pack<FixedNode>> packSet) {
         throw new UnsupportedOperationException("not implemented");
     }
 
-    private static void combine_packs(Set<NodePair<FixedNode>> packSet) {
-        throw new UnsupportedOperationException("not implemented");
-    }
-
-    /* for each pair of nodes (either packed or unpacked)
-       1. isomorphic?
-       2. independent?
-       3. left not already packed in a left position
-       4. right not already packed in a right position
-       5. alignment information consistent
-       6. parallel execution is faster than scalar version (LATER)
-     */
     private static void SLP_extract(Block block) {
-        Set<NodePair<FixedNode>> packSet = new HashSet<>();
+        Set<Pack<FixedNode>> packSet = new HashSet<>();
         find_adj_refs(block, packSet);
-//        extend_packlist(block, packSet);
+        extend_packlist(block, packSet);
 //        combine_packs(packSet);
         // return a new basic block with the new instructions scheduled
     }
