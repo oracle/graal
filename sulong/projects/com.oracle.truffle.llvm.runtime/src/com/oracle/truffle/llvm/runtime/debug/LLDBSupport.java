@@ -88,7 +88,7 @@ public final class LLDBSupport {
     }
 
     private NodeFactory getNodeFactory() {
-        return language.getContextReference().get().getNodeFactory();
+        return language.getNodeFactory();
     }
 
     public static boolean pointsToObjectAccess(LLVMPointer pointer) {

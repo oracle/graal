@@ -126,6 +126,6 @@ public final class LLVMGlobalContainer implements LLVMObjectAccess, LLVMInternal
     }
 
     private static NodeFactory getNodeFactory() {
-        return LLVMLanguage.getLanguage().getContextReference().get().getNodeFactory();
+        return LLVMLanguage.getLanguage().getNodeFactory();
     }
 }

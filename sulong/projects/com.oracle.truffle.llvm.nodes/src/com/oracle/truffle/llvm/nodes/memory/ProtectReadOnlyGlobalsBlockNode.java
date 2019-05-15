@@ -33,6 +33,7 @@ import com.oracle.truffle.api.interop.InteropException;
 import com.oracle.truffle.api.interop.InteropLibrary;
 import com.oracle.truffle.api.interop.TruffleObject;
 import com.oracle.truffle.llvm.runtime.LLVMContext;
+import com.oracle.truffle.llvm.runtime.LLVMLanguage;
 import com.oracle.truffle.llvm.runtime.NFIContextExtension;
 import com.oracle.truffle.llvm.runtime.memory.LLVMMemoryOpNode;
 import com.oracle.truffle.llvm.runtime.nodes.api.LLVMNode;
@@ -45,7 +46,7 @@ public final class ProtectReadOnlyGlobalsBlockNode extends LLVMNode implements L
     private final TruffleObject protectReadonlyGlobalsBlock;
 
     public ProtectReadOnlyGlobalsBlockNode(LLVMContext context) {
-        NFIContextExtension nfiContextExtension = context.getContextExtensionOrNull(NFIContextExtension.class);
+        NFIContextExtension nfiContextExtension = LLVMLanguage.getLanguage().getContextExtensionOrNull(NFIContextExtension.class);
         this.protectReadonlyGlobalsBlock = nfiContextExtension.getNativeFunction(context, "__sulong_protect_readonly_globals_block", "(POINTER):VOID");
         this.interop = InteropLibrary.getFactory().create(protectReadonlyGlobalsBlock);
     }

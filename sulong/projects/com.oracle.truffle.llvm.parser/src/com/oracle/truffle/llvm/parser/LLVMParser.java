@@ -50,6 +50,7 @@ import com.oracle.truffle.llvm.runtime.LLVMContext.ExternalLibrary;
 import com.oracle.truffle.llvm.runtime.LLVMFunctionDescriptor;
 import com.oracle.truffle.llvm.runtime.LLVMFunctionDescriptor.Function;
 import com.oracle.truffle.llvm.runtime.LLVMFunctionDescriptor.LazyLLVMIRFunction;
+import com.oracle.truffle.llvm.runtime.LLVMLanguage;
 import com.oracle.truffle.llvm.runtime.LLVMSymbol;
 import com.oracle.truffle.llvm.runtime.datalayout.DataLayout;
 import com.oracle.truffle.llvm.runtime.debug.LLVMSourceContext;
@@ -233,13 +234,13 @@ public final class LLVMParser {
 
             model.getSourceGlobals().forEach((symbol, irValue) -> {
                 final LLVMExpressionNode node = symbolResolver.resolve(irValue);
-                final LLVMDebugObjectBuilder value = context.getNodeFactory().createDebugStaticValue(node, irValue instanceof GlobalVariable);
+                final LLVMDebugObjectBuilder value = LLVMLanguage.getLanguage().getNodeFactory().createDebugStaticValue(node, irValue instanceof GlobalVariable);
                 sourceContext.registerStatic(symbol, value);
             });
 
             model.getSourceStaticMembers().forEach(((type, symbol) -> {
                 final LLVMExpressionNode node = symbolResolver.resolve(symbol);
-                final LLVMDebugObjectBuilder value = context.getNodeFactory().createDebugStaticValue(node, symbol instanceof GlobalVariable);
+                final LLVMDebugObjectBuilder value = LLVMLanguage.getLanguage().getNodeFactory().createDebugStaticValue(node, symbol instanceof GlobalVariable);
                 type.setValue(value);
             }));
         }
