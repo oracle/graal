@@ -597,6 +597,24 @@ public class LLVMPThreadIntrinsics {
             return this.readWriteLock.writeLock().tryLock();
         }
 
+        public boolean timedReadLock(long seconds) {
+            try {
+                return this.readWriteLock.readLock().tryLock(seconds, TimeUnit.SECONDS);
+            } catch (InterruptedException e) {
+                e.printStackTrace();
+            }
+            return false;
+        }
+
+        public boolean timedWriteLock(long seconds) {
+            try {
+                return this.readWriteLock.writeLock().tryLock(seconds, TimeUnit.SECONDS);
+            } catch (InterruptedException e) {
+                e.printStackTrace();
+            }
+            return false;
+        }
+
         public void unlock() {
             try {
                 this.readWriteLock.readLock().unlock();
@@ -715,6 +733,74 @@ public class LLVMPThreadIntrinsics {
                 getContextReference().get().mutexStorage.put(rwlockAddress, rwlockObj);
             }
             rwlockObj.unlock();
+            return 0;
+        }
+    }
+
+    @NodeChild(type = LLVMExpressionNode.class)
+    @NodeChild(type = LLVMExpressionNode.class)
+    public abstract static class LLVMPThreadRWLockTimedrdlock extends LLVMBuiltin {
+        @Child LLVMLoadNode read;
+
+        @Specialization
+        protected int doIntrinsic(VirtualFrame frame, Object rwlock, Object abstime) {
+            if (read == null) {
+                CompilerDirectives.transferToInterpreterAndInvalidate();
+                read = getContextReference().get().getNodeFactory().createLoadNode(LLVMInteropType.ValueKind.I64);
+            }
+
+            long rwlockAddress = ((LLVMNativePointer) rwlock).asNative();
+            RWLock rwlockObj = (RWLock) getContextReference().get().rwlockStorage.get(rwlockAddress);
+            if (rwlockObj == null) {
+                // rwlock is not initialized
+                // but it works anyway on most implementations
+                rwlockObj = new RWLock();
+                getContextReference().get().mutexStorage.put(rwlockAddress, rwlockObj);
+            }
+            // if lock immediately succeeds, abstime parameter should not be checked
+            if (rwlockObj.tryReadLock()) {
+                return 0;
+            }
+            // TODO: handling of time (nanoseconds possible?)
+            // in sulong timespec only comes as long with the seconds as value
+            long absSeconds = (long) read.executeWithTarget(abstime);
+            long waitTime = absSeconds - System.currentTimeMillis() / 1000;
+
+            rwlockObj.timedReadLock(waitTime);
+            return 0;
+        }
+    }
+
+    @NodeChild(type = LLVMExpressionNode.class)
+    @NodeChild(type = LLVMExpressionNode.class)
+    public abstract static class LLVMPThreadRWLockTimedwrlock extends LLVMBuiltin {
+        @Child LLVMLoadNode read;
+
+        @Specialization
+        protected int doIntrinsic(VirtualFrame frame, Object rwlock, Object abstime) {
+            if (read == null) {
+                CompilerDirectives.transferToInterpreterAndInvalidate();
+                read = getContextReference().get().getNodeFactory().createLoadNode(LLVMInteropType.ValueKind.I64);
+            }
+
+            long rwlockAddress = ((LLVMNativePointer) rwlock).asNative();
+            RWLock rwlockObj = (RWLock) getContextReference().get().rwlockStorage.get(rwlockAddress);
+            if (rwlockObj == null) {
+                // rwlock is not initialized
+                // but it works anyway on most implementations
+                rwlockObj = new RWLock();
+                getContextReference().get().mutexStorage.put(rwlockAddress, rwlockObj);
+            }
+            // if lock immediately succeeds, abstime parameter should not be checked
+            if (rwlockObj.tryWriteLock()) {
+                return 0;
+            }
+            // TODO: handling of time (nanoseconds possible?)
+            // in sulong timespec only comes as long with the seconds as value
+            long absSeconds = (long) read.executeWithTarget(abstime);
+            long waitTime = absSeconds - System.currentTimeMillis() / 1000;
+
+            rwlockObj.timedWriteLock(waitTime);
             return 0;
         }
     }

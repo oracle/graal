@@ -354,6 +354,8 @@ public class BasicIntrinsicsProvider implements LLVMIntrinsicProvider, ContextEx
         add("@pthread_rwlock_wrlock", (args, context) -> LLVMPThreadIntrinsicsFactory.LLVMPThreadRWLockWrlockNodeGen.create(args.get(1), null));
         add("@pthread_rwlock_trywrlock", (args, context) -> LLVMPThreadIntrinsicsFactory.LLVMPThreadRWLockTrywrlockNodeGen.create(args.get(1), null));
         add("@pthread_rwlock_unlock", (args, context) -> LLVMPThreadIntrinsicsFactory.LLVMPThreadRWLockUnlockNodeGen.create(args.get(1), null));
+        add("@pthread_rwlock_timedrdlock", (args, context) -> LLVMPThreadIntrinsicsFactory.LLVMPThreadRWLockTimedrdlockNodeGen.create(args.get(1), args.get(2), null));
+        add("@pthread_rwlock_timedwrlock", (args, context) -> LLVMPThreadIntrinsicsFactory.LLVMPThreadRWLockTimedwrlockNodeGen.create(args.get(1), args.get(2), null));
 
         // add pthread_equal
         // add pthread cond vars
