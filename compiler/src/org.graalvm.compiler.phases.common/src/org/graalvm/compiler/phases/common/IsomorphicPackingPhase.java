@@ -116,287 +116,302 @@ public final class IsomorphicPackingPhase extends BasePhase<PhaseContext> {
         }
     }
 
-    private static boolean notInBlock(NodeMap<Block> nodeToBlockMap, Block block, Node node) {
-        return nodeToBlockMap.get(node) != block;
-    }
+    // Class to encapsulate state used by functions in the algorithm
+    private static class Instance {
+        private final NodeMap<Block> nodeToBlockMap;
+        private final Block currentBlock;
 
-    /**
-     * Check whether the left and right node of a potential pack are isomorphic.
-     * "Isomorphic statements are those that contain the same operations in the same order."
-     * @param left Left node of the potential pack
-     * @param right Right node of the potential pack
-     * @return Boolean indicating whether the left and right node of a potential pack are isomorphic.
-     */
-    private static boolean isomorphic(Node left, Node right) {
-        // Trivial case, isomorphic if the same
-        if (left == right || left.equals(right)) return true;
+        private Instance(NodeMap<Block> nodeToBlockMap, Block currentBlock) {
+            this.nodeToBlockMap = nodeToBlockMap;
+            this.currentBlock = currentBlock;
+        }
 
-        // Are left & right the same action?
-        if (!left.getNodeClass().equals(right.getNodeClass())) return false; // TODO: support subclasses
+        // Utilities
 
-        // Is the input count the same? (accounts for inputs that are null)
-        if (left.inputs().count() != right.inputs().count()) return false;
+        /**
+         * Check whether the node is not in the current basic block
+         * @param node Node to check the block membership of
+         * @return True if the provided node is not in the current basic block
+         */
+        private boolean notInBlock(Node node) {
+            return nodeToBlockMap.get(node) != currentBlock;
+        }
 
-        // Conservatively bail if we have a FAN and non-FAN
-        if (left instanceof FixedAccessNode != right instanceof FixedAccessNode) return false;
+        /**
+         * Check whether the left and right node of a potential pack are isomorphic.
+         * "Isomorphic statements are those that contain the same operations in the same order."
+         * @param left Left node of the potential pack
+         * @param right Right node of the potential pack
+         * @return Boolean indicating whether the left and right node of a potential pack are isomorphic.
+         */
+        private boolean isomorphic(Node left, Node right) {
+            // Trivial case, isomorphic if the same
+            if (left == right || left.equals(right)) return true;
 
-        // Ensure that FixedAccessNodes are dominated by the same controlSplit node
-        if (left instanceof FixedAccessNode &&
-                ((FixedAccessNode) left).getGuard() != null &&
-                ((FixedAccessNode) right).getGuard() != null &&
-                !((FixedAccessNode) left).getGuard().equals(((FixedAccessNode) right).getGuard())) return false;
+            // Are left & right the same action?
+            if (!left.getNodeClass().equals(right.getNodeClass())) return false; // TODO: support subclasses
 
-        return true;
-    }
+            // Is the input count the same? (accounts for inputs that are null)
+            if (left.inputs().count() != right.inputs().count()) return false;
 
-    private static int findDepth(Block block, Node node) {
-        int depth = 0;
-        for (Node current : block.getNodes()) {
-            if (current.equals(node)) {
-                return depth;
+            // Conservatively bail if we have a FAN and non-FAN
+            if (left instanceof FixedAccessNode != right instanceof FixedAccessNode) return false;
+
+            // Ensure that FixedAccessNodes are dominated by the same controlSplit node
+            if (left instanceof FixedAccessNode &&
+                    ((FixedAccessNode) left).getGuard() != null &&
+                    ((FixedAccessNode) right).getGuard() != null &&
+                    !((FixedAccessNode) left).getGuard().equals(((FixedAccessNode) right).getGuard())) return false;
+
+            return true;
+        }
+
+        private int findDepth(Node node) {
+            int depth = 0;
+            for (Node current : currentBlock.getNodes()) {
+                if (current.equals(node)) {
+                    return depth;
+                }
+                depth++;
             }
-            depth++;
+
+            return -1;
         }
 
-        return -1;
-    }
-
-    private static boolean hasNoPath(NodeMap<Block> nodeToBlockMap, Block block, Node shallow, Node deep) {
-        return hasNoPath(nodeToBlockMap, block, shallow, deep, 0);
-    }
-
-    private static boolean hasNoPath(NodeMap<Block> nodeToBlockMap, Block block, Node shallow, Node deep, int iterationDepth) {
-        if (iterationDepth >= 1000) return false; // Stop infinite/deep recursion
-
-        // TODO: pre-compute depth information
-        // TODO: calcluate depth information to avoid recursing too far, doing unnecessary calculations
-        // TODO: verify that at this stage it's even possible to get dependency cycles
-
-        for (Node pred : deep.inputs()) {
-            if (notInBlock(nodeToBlockMap, block, pred)) // ensure that the predecessor is in the block
-                continue;
-
-            if (shallow == pred)
-                return false;
-
-            if (/* pred is below shallow && */ !hasNoPath(nodeToBlockMap, block, shallow, pred, iterationDepth + 1))
-                return false;
+        private boolean hasNoPath(Node shallow, Node deep) {
+            return hasNoPath(shallow, deep, 0);
         }
 
-        return true;
-    }
+        private boolean hasNoPath(Node shallow, Node deep, int iterationDepth) {
+            if (iterationDepth >= 1000) return false; // Stop infinite/deep recursion
 
-    /**
-     * Ensure that there is no data path between left and right.
-     * Pre: left and right are isomorphic
-     * @param left Left node of the potential pack
-     * @param right Right node of the potential pack
-     * @return Are the two statements independent? Only independent statements may be packed.
-     */
-    private static boolean independent(NodeMap<Block> nodeToBlockMap, Block block, Node left, Node right) {
-        // Calculate depth from how far into block.getNodes() we are. TODO: this is a hack.
-        final int leftDepth = findDepth(block, left);
-        final int rightDepth = findDepth(block, right);
+            // TODO: pre-compute depth information
+            // TODO: calcluate depth information to avoid recursing too far, doing unnecessary calculations
+            // TODO: verify that at this stage it's even possible to get dependency cycles
 
-        if (leftDepth == rightDepth) return !left.equals(right);
+            for (Node pred : deep.inputs()) {
+                if (notInBlock(pred)) // ensure that the predecessor is in the block
+                    continue;
 
-        int shallowDepth = Math.min(leftDepth, rightDepth);
-        Node deep = leftDepth == shallowDepth ? right : left;
-        Node shallow = leftDepth == shallowDepth ? left : right;
+                if (shallow == pred)
+                    return false;
 
-        return hasNoPath(nodeToBlockMap, block, shallow, deep);
-    }
+                if (/* pred is below shallow && */ !hasNoPath(shallow, pred, iterationDepth + 1))
+                    return false;
+            }
 
-    /**
-     * Check whether s1 is immediately before s2 in memory, if both are primitive.
-     * @param s1 First FixedAccessNode to check
-     * @param s2 Second FixedAccessNode to check
-     * @return Boolean indicating whether s1 is immediately before s2 in memory
-     */
-    private static boolean adjacent(FixedAccessNode s1, FixedAccessNode s2) {
-        final JavaKind s1k = s1 instanceof WriteNode ? ((WriteNode) s1).value().getStackKind() : s1.getStackKind();
-        final JavaKind s2k = s2 instanceof WriteNode ? ((WriteNode) s2).value().getStackKind() : s2.getStackKind();
+            return true;
+        }
 
-        return adjacent(s1, s2, s1k, s2k);
-    }
+        /**
+         * Ensure that there is no data path between left and right.
+         * Pre: left and right are isomorphic
+         * @param left Left node of the potential pack
+         * @param right Right node of the potential pack
+         * @return Are the two statements independent? Only independent statements may be packed.
+         */
+        private boolean independent(Node left, Node right) {
+            // Calculate depth from how far into block.getNodes() we are. TODO: this is a hack.
+            final int leftDepth = findDepth(left);
+            final int rightDepth = findDepth(right);
 
-    /**
-     * Check whether s1 is immediately before s2 in memory, if both are primitive.
-     * This function exists as not all nodes carry the right kind information.
-     * TODO: Find a better way to deal with this
-     * @param s1 First FixedAccessNode to check
-     * @param s2 Second FixedAccessNode to check
-     * @param s1k JavaKind of the first FixedAccessNode
-     * @param s2k JavaKind of the second FixedAccessNode
-     * @return Boolean indicating whether s1 is immediately before s2 in memory
-     */
-    private static boolean adjacent(FixedAccessNode s1, FixedAccessNode s2, JavaKind s1k, JavaKind s2k) {
-        final AddressNode s1a = s1.getAddress(), s2a = s2.getAddress();
+            if (leftDepth == rightDepth) return !left.equals(right);
 
-        // Only use superword on primitives
-        if (!s1k.isPrimitive() || !s2k.isPrimitive()) return false;
+            int shallowDepth = Math.min(leftDepth, rightDepth);
+            Node deep = leftDepth == shallowDepth ? right : left;
+            Node shallow = leftDepth == shallowDepth ? left : right;
 
-        // Only use superword on types that are comparable
-        // TODO: Evaluate whether graph guarantees that pointers for same collection have same base
-        if (!s1a.getBase().equals(s2a.getBase())) return false;
+            return hasNoPath(shallow, deep);
+        }
 
-        return s2a.getMaxConstantDisplacement() - s1a.getMaxConstantDisplacement() == s1k.getByteCount();
-    }
+        /**
+         * Check whether s1 is immediately before s2 in memory, if both are primitive.
+         * @param s1 First FixedAccessNode to check
+         * @param s2 Second FixedAccessNode to check
+         * @return Boolean indicating whether s1 is immediately before s2 in memory
+         */
+        private boolean adjacent(FixedAccessNode s1, FixedAccessNode s2) {
+            final JavaKind s1k = s1 instanceof WriteNode ? ((WriteNode) s1).value().getStackKind() : s1.getStackKind();
+            final JavaKind s2k = s2 instanceof WriteNode ? ((WriteNode) s2).value().getStackKind() : s2.getStackKind();
 
-    private static boolean stmts_can_pack(NodeMap<Block> nodeToBlockMap, Block block, Set<Pack<Node>> packSet, Node left, Node right) {
-        return isomorphic(left, right) &&
-                independent(nodeToBlockMap, block, left, right) &&
-                packSet.stream().noneMatch(p -> p.match(left, right));
-    }
+            return adjacent(s1, s2, s1k, s2k);
+        }
 
-    /**
-     * Create the initial seed packSet of operations that are adjacent
-     * TODO: PERFORM ADJACENCY TEST
-     * TODO: CHECK THAT VECTOR ELEMENT TYPE IS THE SAME
-     * @param block Basic block
-     * @param packSet PackSet to populate
-     */
-    private static void find_adj_refs(NodeMap<Block> nodeToBlockMap, Block block, Set<Pack<Node>> packSet) {
-        // Create initial seed set containing memory operations
-        List<FixedAccessNode> memoryNodes = // Candidate list of memory nodes
-                StreamSupport.stream(block.getNodes().spliterator(), false)
-                        .filter(NodePredicates.isA(FixedAccessNode.class)::apply)
-                        .map(x -> (FixedAccessNode) x)
-                        .collect(Collectors.toList());
+        /**
+         * Check whether s1 is immediately before s2 in memory, if both are primitive.
+         * This function exists as not all nodes carry the right kind information.
+         * TODO: Find a better way to deal with this
+         * @param s1 First FixedAccessNode to check
+         * @param s2 Second FixedAccessNode to check
+         * @param s1k JavaKind of the first FixedAccessNode
+         * @param s2k JavaKind of the second FixedAccessNode
+         * @return Boolean indicating whether s1 is immediately before s2 in memory
+         */
+        private boolean adjacent(FixedAccessNode s1, FixedAccessNode s2, JavaKind s1k, JavaKind s2k) {
+            final AddressNode s1a = s1.getAddress(), s2a = s2.getAddress();
 
-        // TODO: do better than this, specifically because of stmts_can_back being inefficient
-        for (FixedAccessNode s1 : memoryNodes) {
-            for (FixedAccessNode s2 : memoryNodes) {
-                if (s1 == s2) continue;
+            // Only use superword on primitives
+            if (!s1k.isPrimitive() || !s2k.isPrimitive()) return false;
 
-                if (adjacent(s1, s2) && stmts_can_pack(nodeToBlockMap, block, packSet, s1, s2)) {
-                    packSet.add(Pack.pair(s1, s2));
+            // Only use superword on types that are comparable
+            // TODO: Evaluate whether graph guarantees that pointers for same collection have same base
+            if (!s1a.getBase().equals(s2a.getBase())) return false;
+
+            return s2a.getMaxConstantDisplacement() - s1a.getMaxConstantDisplacement() == s1k.getByteCount();
+        }
+
+        private boolean stmts_can_pack(Set<Pack<Node>> packSet, Node left, Node right) {
+            return isomorphic(left, right) && independent(left, right) && packSet.stream().noneMatch(p -> p.match(left, right));
+        }
+
+        /**
+         * Extend the packset by visiting operand definitions of nodes inside the provided pack
+         * @param packSet Pack set
+         * @param pack The pack to use for operand definitions
+         */
+        private boolean follow_use_defs(Set<Pack<Node>> packSet, Pack<Node> pack) {
+            assert pack.isPair(); // the pack should be a pair
+
+            final Node left = pack.getLeft();
+            final Node right = pack.getRight();
+
+            // TODO: bail if left is load (why?)
+
+            boolean changed = false;
+
+            outer: // labelled outer loop so that hasNext check is performed for left
+            for (Iterator<Node> leftInputIt = left.inputs().iterator(); leftInputIt.hasNext();) {
+                for (Iterator<Node> rightInputIt = right.inputs().iterator(); rightInputIt.hasNext();) {
+                    // Incrementing both iterators at the same time, so looking at the same input always
+                    final Node leftInput = leftInputIt.next();
+                    final Node rightInput = rightInputIt.next();
+
+                    // Check block membership, bail if nodes not in block (prevent analysis beyond block)
+                    if (notInBlock(leftInput) || notInBlock(rightInput)) continue outer;
+
+                    if (!stmts_can_pack(packSet, leftInput, rightInput)) continue outer;
+
+                    changed |= packSet.add(Pack.pair(leftInput, rightInput));
                 }
             }
+
+            return changed;
         }
 
-    }
+        /**
+         * Extend the packset by visiting uses of nodes in the provided pack
+         * @param packSet Pack set
+         * @param pack The pack to use for nodes to find usages of
+         */
+        private boolean follow_def_uses(Set<Pack<Node>> packSet, Pack<Node> pack) {
+            final Node left = pack.getLeft();
+            final Node right = pack.getRight();
 
-    /**
-     * Extend the packset by visiting operand definitions of nodes inside the provided pack
-     * @param block Basic block currently being optimized
-     * @param packSet Pack set
-     * @param pack The pack to use for operand definitions
-     */
-    private static boolean follow_use_defs(NodeMap<Block> nodeToBlockMap, Block block, Set<Pack<Node>> packSet, Pack<Node> pack) {
-        assert pack.isPair(); // the pack should be a pair
+            // TODO: bail if left is store (why?)
 
-        final Node left = pack.getLeft();
-        final Node right = pack.getRight();
+            for (Node leftUsage : left.usages()) {
+                if (notInBlock(left)) continue;
 
-        // TODO: bail if left is load (why?)
+                for (Node rightUsage : right.usages()) {
+                    if (leftUsage == rightUsage || notInBlock(right)) continue;
 
-        boolean changed = false;
-
-        outer: // labelled outer loop so that hasNext check is performed for left
-        for (Iterator<Node> leftInputIt = left.inputs().iterator(); leftInputIt.hasNext();) {
-            for (Iterator<Node> rightInputIt = right.inputs().iterator(); rightInputIt.hasNext();) {
-                // Incrementing both iterators at the same time, so looking at the same input always
-                final Node leftInput = leftInputIt.next();
-                final Node rightInput = rightInputIt.next();
-
-                // Check block membership, bail if nodes not in block (prevent analysis beyond block)
-                if (notInBlock(nodeToBlockMap, block, leftInput) || notInBlock(nodeToBlockMap, block, rightInput)) continue outer;
-
-                if (!stmts_can_pack(nodeToBlockMap, block, packSet, leftInput, rightInput)) continue outer;
-
-                changed |= packSet.add(Pack.pair(leftInput, rightInput));
-            }
-        }
-
-        return changed;
-    }
-
-    /**
-     * Extend the packset by visiting uses of nodes in the provided pack
-     * @param block Basic block currently being optimized
-     * @param packSet Pack set
-     * @param pack The pack to use for nodes to find usages of
-     */
-    private static boolean follow_def_uses(NodeMap<Block> nodeToBlockMap, Block block, Set<Pack<Node>> packSet, Pack<Node> pack) {
-        final Node left = pack.getLeft();
-        final Node right = pack.getRight();
-
-        // TODO: bail if left is store (why?)
-
-        for (Node leftUsage : left.usages()) {
-            if (notInBlock(nodeToBlockMap, block, left)) continue;
-
-            for (Node rightUsage : right.usages()) {
-                if (leftUsage == rightUsage || notInBlock(nodeToBlockMap, block, right)) continue;
-
-                // TODO: Rather than adding the first, add the best
-                if (stmts_can_pack(nodeToBlockMap, block, packSet, leftUsage, rightUsage)) {
-                    return packSet.add(Pack.pair(leftUsage, rightUsage));
-                }
-            }
-        }
-
-        return false;
-    }
-
-    /**
-     * Extend the packset by following use->def and def->use links from pack members until the set does not change
-     * @param block Basic block
-     * @param packSet PackSet to populate
-     */
-    private static void extend_packlist(NodeMap<Block> nodeToBlockMap, Block block, Set<Pack<Node>> packSet) {
-        Set<Pack<Node>> iterationPackSet;
-
-        boolean changed;
-        do {
-            changed = false;
-            iterationPackSet = new HashSet<>(packSet);
-
-            for (Pack<Node> pack : iterationPackSet) {
-                changed |= follow_use_defs(nodeToBlockMap, block, packSet, pack);
-                changed |= follow_def_uses(nodeToBlockMap, block, packSet, pack);
-            }
-        } while (changed);
-    }
-
-    // Combine packs where right = left
-    private static void combine_packs(Set<Pack<Node>> packSet) {
-        boolean changed;
-        do {
-            changed = false;
-
-            Deque<Pack<Node>> remove = new ArrayDeque<>();
-            Deque<Pack<Node>> add = new ArrayDeque<>();
-
-            for (Pack<Node> leftPack : packSet) {
-                if (remove.contains(leftPack)) continue;
-
-                for (Pack<Node> rightPack : packSet) {
-                    if (remove.contains(leftPack) || remove.contains(rightPack)) continue;
-
-                    if (leftPack != rightPack && leftPack.getRight().equals(rightPack.getLeft())) {
-                        remove.push(leftPack);
-                        remove.push(rightPack);
-
-                        add.push(Pack.combine(leftPack, rightPack));
-
-                        changed = true;
+                    // TODO: Rather than adding the first, add the best
+                    if (stmts_can_pack(packSet, leftUsage, rightUsage)) {
+                        return packSet.add(Pack.pair(leftUsage, rightUsage));
                     }
                 }
             }
 
-            packSet.removeAll(remove);
-            packSet.addAll(add);
-        } while (changed);
-    }
+            return false;
+        }
 
-    private static void SLP_extract(NodeMap<Block> nodeToBlockMap, Block block) {
-        Set<Pack<Node>> packSet = new HashSet<>();
-        find_adj_refs(nodeToBlockMap, block, packSet);
-        extend_packlist(nodeToBlockMap, block, packSet);
-        combine_packs(packSet);
-        // return a new basic block with the new instructions scheduled
+        // Core
+
+        /**
+         * Create the initial seed packSet of operations that are adjacent
+         * TODO: PERFORM ADJACENCY TEST
+         * TODO: CHECK THAT VECTOR ELEMENT TYPE IS THE SAME
+         * @param packSet PackSet to populate
+         */
+        private void find_adj_refs(Set<Pack<Node>> packSet) {
+            // Create initial seed set containing memory operations
+            List<FixedAccessNode> memoryNodes = // Candidate list of memory nodes
+                    StreamSupport.stream(currentBlock.getNodes().spliterator(), false)
+                            .filter(NodePredicates.isA(FixedAccessNode.class)::apply)
+                            .map(x -> (FixedAccessNode) x)
+                            .collect(Collectors.toList());
+
+            // TODO: do better than this, specifically because of stmts_can_back being inefficient
+            for (FixedAccessNode s1 : memoryNodes) {
+                for (FixedAccessNode s2 : memoryNodes) {
+                    if (s1 == s2) continue;
+
+                    if (adjacent(s1, s2) && stmts_can_pack(packSet, s1, s2)) {
+                        packSet.add(Pack.pair(s1, s2));
+                    }
+                }
+            }
+        }
+
+        /**
+         * Extend the packset by following use->def and def->use links from pack members until the set does not change
+         * @param packSet PackSet to populate
+         */
+        private void extend_packlist(Set<Pack<Node>> packSet) {
+            Set<Pack<Node>> iterationPackSet;
+
+            boolean changed;
+            do {
+                changed = false;
+                iterationPackSet = new HashSet<>(packSet);
+
+                for (Pack<Node> pack : iterationPackSet) {
+                    changed |= follow_use_defs(packSet, pack);
+                    changed |= follow_def_uses(packSet, pack);
+                }
+            } while (changed);
+        }
+
+        // Combine packs where right = left
+        private void combine_packs(Set<Pack<Node>> packSet) {
+            boolean changed;
+            do {
+                changed = false;
+
+                Deque<Pack<Node>> remove = new ArrayDeque<>();
+                Deque<Pack<Node>> add = new ArrayDeque<>();
+
+                for (Pack<Node> leftPack : packSet) {
+                    if (remove.contains(leftPack)) continue;
+
+                    for (Pack<Node> rightPack : packSet) {
+                        if (remove.contains(leftPack) || remove.contains(rightPack)) continue;
+
+                        if (leftPack != rightPack && leftPack.getRight().equals(rightPack.getLeft())) {
+                            remove.push(leftPack);
+                            remove.push(rightPack);
+
+                            add.push(Pack.combine(leftPack, rightPack));
+
+                            changed = true;
+                        }
+                    }
+                }
+
+                packSet.removeAll(remove);
+                packSet.addAll(add);
+            } while (changed);
+        }
+
+        // Main
+        public void SLP_extract() {
+            Set<Pack<Node>> packSet = new HashSet<>();
+            find_adj_refs(packSet);
+            extend_packlist(packSet);
+            combine_packs(packSet);
+            // return a new basic block with the new instructions scheduled
+        }
+
     }
 
     private final SchedulePhase schedulePhase;
@@ -411,7 +426,7 @@ public final class IsomorphicPackingPhase extends BasePhase<PhaseContext> {
         schedulePhase.apply(graph);
         ControlFlowGraph cfg = graph.getLastSchedule().getCFG();
         for (Block block : cfg.reversePostOrder()) {
-            SLP_extract(graph.getLastSchedule().getNodeToBlockMap(), block);
+            new Instance(graph.getLastSchedule().getNodeToBlockMap(), block).SLP_extract();
         }
     }
 }
