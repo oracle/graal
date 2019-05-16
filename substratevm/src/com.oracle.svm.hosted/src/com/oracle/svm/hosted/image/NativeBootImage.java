@@ -503,7 +503,7 @@ public abstract class NativeBootImage extends AbstractBootImage {
 
     /**
      * Covariant return type overrides added by https://bugs.openjdk.java.net/browse/JDK-4774077
-     * make the cast below unnecessary as of JDK 9.
+     * make the cast below unnecessary as of JDK 11.
      */
     @SuppressWarnings("cast")
     private static ByteBuffer castToByteBuffer(final RelocatableBuffer heapSectionBuffer) {

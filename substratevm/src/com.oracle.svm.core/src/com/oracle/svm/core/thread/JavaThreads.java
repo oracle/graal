@@ -71,8 +71,8 @@ import com.oracle.svm.core.annotate.TargetElement;
 import com.oracle.svm.core.annotate.Uninterruptible;
 import com.oracle.svm.core.heap.FeebleReferenceList;
 import com.oracle.svm.core.heap.Heap;
+import com.oracle.svm.core.jdk.JDK11OrLater;
 import com.oracle.svm.core.jdk.JDK8OrEarlier;
-import com.oracle.svm.core.jdk.JDK9OrLater;
 import com.oracle.svm.core.jdk.Package_jdk_internal_misc;
 import com.oracle.svm.core.jdk.StackTraceUtils;
 import com.oracle.svm.core.jdk.Target_jdk_internal_misc_VM;
@@ -750,7 +750,7 @@ final class Target_java_lang_Thread {
 
     @Substitute
     @SuppressWarnings({"unused"})
-    @TargetElement(onlyWith = JDK9OrLater.class)
+    @TargetElement(onlyWith = JDK11OrLater.class)
     private Target_java_lang_Thread(
                     ThreadGroup g,
                     Runnable target,
@@ -942,11 +942,11 @@ final class Util_java_lang_Thread {
     /**
      * Thread instance initialization.
      *
-     * This method is a copy of the implementation of the JDK-8 method
+     * This method is a copy of the implementation of the JDK 8 method
      *
      * <code>Thread.init(ThreadGroup g, Runnable target, String name, long stackSize)</code>
      *
-     * and the JDK-9 constructor
+     * and the JDK 11 constructor
      *
      * <code>Thread(ThreadGroup g, Runnable target, String name, long stackSize,
      * AccessControlContext acc, boolean inheritThreadLocals)</code>

@@ -22,15 +22,26 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
+
 package com.oracle.svm.core.jdk;
 
-import java.util.function.BooleanSupplier;
+import com.oracle.svm.core.annotate.Substitute;
+import com.oracle.svm.core.annotate.TargetClass;
 
-import org.graalvm.compiler.serviceprovider.JavaVersionUtil;
+@TargetClass(value = java.util.ServiceLoader.class, onlyWith = JDK11OrLater.class)
+final class Target_java_util_ServiceLoader {
+}
 
-public class JDK9OrLater implements BooleanSupplier {
-    @Override
-    public boolean getAsBoolean() {
-        return !JavaVersionUtil.Java8OrEarlier;
+@TargetClass(value = java.util.ServiceLoader.class, innerClass = "ModuleServicesLookupIterator", onlyWith = JDK11OrLater.class)
+final class Target_java_util_ServiceLoader_ModuleServicesLookupIterator {
+    @SuppressWarnings("unused")
+    @Substitute
+    Target_java_util_ServiceLoader_ModuleServicesLookupIterator(Target_java_util_ServiceLoader outer) {
+    }
+
+    @SuppressWarnings("static-method")
+    @Substitute
+    boolean hasNext() {
+        return false;
     }
 }

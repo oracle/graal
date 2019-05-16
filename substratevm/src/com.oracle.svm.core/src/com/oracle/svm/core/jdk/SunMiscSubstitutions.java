@@ -71,7 +71,7 @@ final class Target_Unsafe_Core {
         return result.rawValue();
     }
 
-    @TargetElement(onlyWith = JDK9OrLater.class)
+    @TargetElement(onlyWith = JDK11OrLater.class)
     @Substitute
     private long allocateMemory0(long bytes) {
         return UnmanagedMemory.malloc(WordFactory.unsigned(bytes)).rawValue();
@@ -97,7 +97,7 @@ final class Target_Unsafe_Core {
         return result.rawValue();
     }
 
-    @TargetElement(onlyWith = JDK9OrLater.class)
+    @TargetElement(onlyWith = JDK11OrLater.class)
     @Substitute
     private long reallocateMemory0(long address, long bytes) {
         return UnmanagedMemory.realloc(WordFactory.unsigned(address), WordFactory.unsigned(bytes)).rawValue();
@@ -111,7 +111,7 @@ final class Target_Unsafe_Core {
         }
     }
 
-    @TargetElement(onlyWith = JDK9OrLater.class)
+    @TargetElement(onlyWith = JDK11OrLater.class)
     @Substitute
     private void freeMemory0(long address) {
         UnmanagedMemory.free(WordFactory.unsigned(address));
@@ -127,7 +127,7 @@ final class Target_Unsafe_Core {
                         WordFactory.unsigned(bytes));
     }
 
-    @TargetElement(onlyWith = JDK9OrLater.class)
+    @TargetElement(onlyWith = JDK11OrLater.class)
     @Substitute
     @Uninterruptible(reason = "Converts Object to Pointer.")
     private void copyMemory0(Object srcBase, long srcOffset, Object destBase, long destOffset, long bytes) {
@@ -137,7 +137,7 @@ final class Target_Unsafe_Core {
                         WordFactory.unsigned(bytes));
     }
 
-    @TargetElement(onlyWith = JDK9OrLater.class)
+    @TargetElement(onlyWith = JDK11OrLater.class)
     @Substitute
     @Uninterruptible(reason = "Converts Object to Pointer.")
     private void copySwapMemory0(Object srcBase, long srcOffset, Object destBase, long destOffset, long bytes, long elemSize) {
@@ -156,7 +156,7 @@ final class Target_Unsafe_Core {
                         WordFactory.unsigned(bytes), bvalue);
     }
 
-    @TargetElement(onlyWith = JDK9OrLater.class)
+    @TargetElement(onlyWith = JDK11OrLater.class)
     @Substitute
     @Uninterruptible(reason = "Converts Object to Pointer.")
     private void setMemory0(Object destBase, long destOffset, long bytes, byte bvalue) {
@@ -169,7 +169,7 @@ final class Target_Unsafe_Core {
     @Substitute
     private int addressSize() {
         /*
-         * No substitution necessary for JDK 9 or later because there the method is already
+         * No substitution necessary for JDK 11 or later because there the method is already
          * implemented exactly like this.
          */
         return Unsafe.ADDRESS_SIZE;
@@ -281,7 +281,7 @@ final class Target_jdk_internal_ref_Cleaner {
     native void clean();
 }
 
-@TargetClass(className = "jdk.internal.ref.CleanerImpl", onlyWith = JDK9OrLater.class)
+@TargetClass(className = "jdk.internal.ref.CleanerImpl", onlyWith = JDK11OrLater.class)
 final class Target_jdk_internal_ref_CleanerImpl {
 
     @Alias @RecomputeFieldValue(kind = RecomputeFieldValue.Kind.NewInstance, declClassName = "jdk.internal.ref.CleanerImpl$PhantomCleanableRef")//
@@ -297,15 +297,15 @@ final class Target_jdk_internal_ref_CleanerImpl {
     ReferenceQueue<Object> queue;
 }
 
-@TargetClass(className = "jdk.internal.ref.PhantomCleanable", onlyWith = JDK9OrLater.class)
+@TargetClass(className = "jdk.internal.ref.PhantomCleanable", onlyWith = JDK11OrLater.class)
 final class Target_jdk_internal_ref_PhantomCleanable {
 }
 
-@TargetClass(className = "jdk.internal.ref.WeakCleanable", onlyWith = JDK9OrLater.class)
+@TargetClass(className = "jdk.internal.ref.WeakCleanable", onlyWith = JDK11OrLater.class)
 final class Target_jdk_internal_ref_WeakCleanable {
 }
 
-@TargetClass(className = "jdk.internal.ref.SoftCleanable", onlyWith = JDK9OrLater.class)
+@TargetClass(className = "jdk.internal.ref.SoftCleanable", onlyWith = JDK11OrLater.class)
 final class Target_jdk_internal_ref_SoftCleanable {
 }
 

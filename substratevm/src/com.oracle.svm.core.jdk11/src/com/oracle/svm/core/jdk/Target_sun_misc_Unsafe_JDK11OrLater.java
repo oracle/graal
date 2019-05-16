@@ -30,14 +30,12 @@ import com.oracle.svm.core.annotate.RecomputeFieldValue.Kind;
 import com.oracle.svm.core.annotate.TargetClass;
 
 /**
- * JDK-9 or later substitutions for sun.misc.Unsafe.
- *
- * These substitutions are necessary because in JDK-9 the static initializations of these fields are
- * copies of the corresponding (recomputed) fields of {@link jdk.internal.misc.Unsafe}. But copying
- * a recomputed value during image building does not recompute the value. See GR-12640.
+ * These substitutions are necessary because in JDK 11 the static initializations of these fields
+ * are copies of the corresponding (recomputed) fields of {@link jdk.internal.misc.Unsafe}. But
+ * copying a recomputed value during image building does not recompute the value. See GR-12640.
  */
-@TargetClass(value = sun.misc.Unsafe.class, onlyWith = JDK9OrLater.class)
-final class Target_sun_misc_Unsafe_JDK9OrLater {
+@TargetClass(value = sun.misc.Unsafe.class, onlyWith = JDK11OrLater.class)
+final class Target_sun_misc_Unsafe_JDK11OrLater {
 
     /* { Checkstyle: stop */
 

@@ -38,9 +38,8 @@ import sun.util.locale.provider.LocaleProviderAdapter;
 import sun.util.locale.provider.LocaleProviderAdapter.Type;
 // Checkstyle: resume
 
-/** The JDK-9 or later substitution for sun.util.locale.provider.LocaleProviderAdapter. */
-@TargetClass(value = sun.util.locale.provider.LocaleProviderAdapter.class, onlyWith = JDK9OrLater.class)
-public final class Target_sun_util_locale_provider_LocaleProviderAdapter_JDK9OrLater {
+@TargetClass(value = sun.util.locale.provider.LocaleProviderAdapter.class, onlyWith = JDK11OrLater.class)
+public final class Target_sun_util_locale_provider_LocaleProviderAdapter_JDK11OrLater {
 
     @Substitute
     @SuppressWarnings({"unused"})
@@ -58,7 +57,7 @@ public final class Target_sun_util_locale_provider_LocaleProviderAdapter_JDK9OrL
         if (result != null) {
             return result;
         }
-        throw VMError.unsupportedFeature("JDK9OrLater: LocaleProviderAdapter.forType:  type: " + type.toString());
+        throw VMError.unsupportedFeature("JDK11OrLater: LocaleProviderAdapter.forType:  type: " + type.toString());
     }
 }
 

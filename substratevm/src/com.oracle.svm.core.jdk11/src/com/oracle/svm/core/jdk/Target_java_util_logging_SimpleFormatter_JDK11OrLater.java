@@ -60,8 +60,8 @@ class FormatAccessors {
     }
 }
 
-@TargetClass(value = java.util.logging.SimpleFormatter.class, onlyWith = JDK9OrLater.class)
-public final class Target_java_util_logging_SimpleFormatter_JDK9OrLater {
+@TargetClass(value = java.util.logging.SimpleFormatter.class, onlyWith = JDK11OrLater.class)
+public final class Target_java_util_logging_SimpleFormatter_JDK11OrLater {
 
     @Alias @InjectAccessors(FormatAccessors.class)//
     private String format;

@@ -24,13 +24,25 @@
  */
 package com.oracle.svm.core.jdk;
 
-import java.util.function.BooleanSupplier;
+import java.util.HashMap;
+import java.util.zip.ZipFile;
 
-import org.graalvm.compiler.serviceprovider.JavaVersionUtil;
+import com.oracle.svm.core.annotate.Alias;
+import com.oracle.svm.core.annotate.RecomputeFieldValue;
+import com.oracle.svm.core.annotate.TargetClass;
 
-public class JDK10OrEarlier implements BooleanSupplier {
-    @Override
-    public boolean getAsBoolean() {
-        return JavaVersionUtil.JAVA_SPECIFICATION_VERSION <= 10;
-    }
+@TargetClass(value = ZipFile.class, innerClass = "Source", onlyWith = JDK11OrLater.class)
+final class Target_java_util_zip_ZipFile_Source {
+
+    @Alias//
+    @RecomputeFieldValue(kind = RecomputeFieldValue.Kind.NewInstance, declClass = HashMap.class, isFinal = true)//
+    private static HashMap<Target_java_util_zip_ZipFile_Source_Key, Target_java_util_zip_ZipFile_Source> files;
+}
+
+@TargetClass(value = ZipFile.class, innerClass = {"Source", "Key"}, onlyWith = JDK11OrLater.class)
+final class Target_java_util_zip_ZipFile_Source_Key {
+}
+
+/* Dummy class to have the same name as the file. */
+public class Target_java_util_zip_ZipFile {
 }

@@ -42,8 +42,8 @@ import com.oracle.svm.core.annotate.Alias;
 import com.oracle.svm.core.annotate.Substitute;
 import com.oracle.svm.core.annotate.TargetClass;
 import com.oracle.svm.core.annotate.TargetElement;
-import com.oracle.svm.core.jdk.JDK10OrEarlier;
 import com.oracle.svm.core.jdk.JDK11OrLater;
+import com.oracle.svm.core.jdk.JDK8OrEarlier;
 import com.oracle.svm.core.posix.headers.LibC;
 import com.oracle.svm.core.posix.headers.ZLib;
 import com.oracle.svm.core.posix.headers.ZLib.z_stream;
@@ -112,15 +112,15 @@ final class Target_java_util_zip_CRC32 {
 @TargetClass(value = java.util.zip.Deflater.class)
 final class Target_java_util_zip_Deflater {
     @Alias //
-    @TargetElement(onlyWith = JDK10OrEarlier.class) //
+    @TargetElement(onlyWith = JDK8OrEarlier.class) //
     private byte[] buf;
 
     @Alias //
-    @TargetElement(onlyWith = JDK10OrEarlier.class) //
+    @TargetElement(onlyWith = JDK8OrEarlier.class) //
     int off;
 
     @Alias //
-    @TargetElement(onlyWith = JDK10OrEarlier.class) //
+    @TargetElement(onlyWith = JDK8OrEarlier.class) //
     int len;
 
     @Alias //
@@ -197,7 +197,7 @@ final class Target_java_util_zip_Deflater {
     // @formatter:on
     @SuppressWarnings("hiding")
     @Substitute
-    @TargetElement(onlyWith = JDK10OrEarlier.class)
+    @TargetElement(onlyWith = JDK8OrEarlier.class)
     private int deflateBytes(long addr, byte[] b, int off, int len, int flush) {
         z_stream strm = WordFactory.pointer(addr);
 
@@ -211,7 +211,7 @@ final class Target_java_util_zip_Deflater {
                 int res = ZLib.deflateParams(strm, level, strategy);
                 this.setParams = false;
                 if (res == ZLib.Z_OK()) {
-                    return Util_java_util_zip_Deflater_JDK10OrEarlier.update(this, len, strm);
+                    return Util_java_util_zip_Deflater_JDK8OrEarlier.update(this, len, strm);
                 } else if (res == ZLib.Z_BUF_ERROR()) {
                     return 0;
                 } else {
@@ -221,9 +221,9 @@ final class Target_java_util_zip_Deflater {
                 int res = ZLib.deflate(strm, this.finish ? ZLib.Z_FINISH() : flush);
                 if (res == ZLib.Z_STREAM_END()) {
                     this.finished = true;
-                    return Util_java_util_zip_Deflater_JDK10OrEarlier.update(this, len, strm);
+                    return Util_java_util_zip_Deflater_JDK8OrEarlier.update(this, len, strm);
                 } else if (res == ZLib.Z_OK()) {
-                    return Util_java_util_zip_Deflater_JDK10OrEarlier.update(this, len, strm);
+                    return Util_java_util_zip_Deflater_JDK8OrEarlier.update(this, len, strm);
                 } else if (res == ZLib.Z_BUF_ERROR()) {
                     return 0;
                 } else {
@@ -417,7 +417,7 @@ final class Util_java_util_zip_Deflater_JDK11OrLater {
     }
 }
 
-final class Util_java_util_zip_Deflater_JDK10OrEarlier {
+final class Util_java_util_zip_Deflater_JDK8OrEarlier {
 
     static int update(Object obj, int len, z_stream strm) {
         Target_java_util_zip_Deflater instance = SubstrateUtil.cast(obj, Target_java_util_zip_Deflater.class);
@@ -432,15 +432,15 @@ final class Util_java_util_zip_Deflater_JDK10OrEarlier {
 final class Target_java_util_zip_Inflater {
 
     @Alias //
-    @TargetElement(onlyWith = JDK10OrEarlier.class) //
+    @TargetElement(onlyWith = JDK8OrEarlier.class) //
     private byte[] buf;
 
     @Alias //
-    @TargetElement(onlyWith = JDK10OrEarlier.class) //
+    @TargetElement(onlyWith = JDK8OrEarlier.class) //
     int off;
 
     @Alias //
-    @TargetElement(onlyWith = JDK10OrEarlier.class) //
+    @TargetElement(onlyWith = JDK8OrEarlier.class) //
     int len;
 
     @Alias private boolean finished;
@@ -516,7 +516,7 @@ final class Target_java_util_zip_Inflater {
     // @formatter:on
     @SuppressWarnings("hiding")
     @Substitute
-    @TargetElement(onlyWith = JDK10OrEarlier.class)
+    @TargetElement(onlyWith = JDK8OrEarlier.class)
     private int inflateBytes(long addr, byte[] b, int off, int len) throws DataFormatException {
         z_stream strm = WordFactory.pointer(addr);
 
@@ -530,12 +530,12 @@ final class Target_java_util_zip_Inflater {
             int ret = ZLib.inflate(strm, ZLib.Z_PARTIAL_FLUSH());
             if (ret == ZLib.Z_STREAM_END()) {
                 this.finished = true;
-                return Util_java_util_zip_Inflater_JDK10OrEarlier.update(this, len, strm);
+                return Util_java_util_zip_Inflater_JDK8OrEarlier.update(this, len, strm);
             } else if (ret == ZLib.Z_OK()) {
-                return Util_java_util_zip_Inflater_JDK10OrEarlier.update(this, len, strm);
+                return Util_java_util_zip_Inflater_JDK8OrEarlier.update(this, len, strm);
             } else if (ret == ZLib.Z_NEED_DICT()) {
                 needDict = true;
-                Util_java_util_zip_Inflater_JDK10OrEarlier.update(this, len, strm);
+                Util_java_util_zip_Inflater_JDK8OrEarlier.update(this, len, strm);
                 return 0;
             } else if (ret == ZLib.Z_BUF_ERROR()) {
                 return 0;
@@ -706,7 +706,7 @@ final class Util_java_util_zip_Inflater_JDK11OrLater {
     }
 }
 
-final class Util_java_util_zip_Inflater_JDK10OrEarlier {
+final class Util_java_util_zip_Inflater_JDK8OrEarlier {
     static int update(Object obj, int len, z_stream strm) {
         Target_java_util_zip_Inflater instance = SubstrateUtil.cast(obj, Target_java_util_zip_Inflater.class);
         instance.off += instance.len - strm.avail_in();

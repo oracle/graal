@@ -42,7 +42,7 @@ public final class Target_jdk_internal_misc_VM {
     @Delete //
     private static Properties savedProps;
 
-    @TargetElement(name = "savedProps", onlyWith = JDK9OrLater.class)//
+    @TargetElement(name = "savedProps", onlyWith = JDK11OrLater.class)//
     @Delete //
     private static Map<String, String> savedProps9;
 

@@ -39,13 +39,6 @@ import java.io.SyncFailedException;
 import java.util.ArrayList;
 import java.util.List;
 
-import com.oracle.svm.core.posix.headers.Dlfcn;
-import com.oracle.svm.core.headers.Errno;
-import com.oracle.svm.core.posix.headers.Fcntl;
-import com.oracle.svm.core.posix.headers.LibC;
-import com.oracle.svm.core.posix.headers.Locale;
-import com.oracle.svm.core.posix.headers.Unistd;
-import com.oracle.svm.core.posix.headers.Wait;
 import org.graalvm.compiler.core.common.SuppressFBWarnings;
 import org.graalvm.nativeimage.PinnedObject;
 import org.graalvm.nativeimage.Platform;
@@ -67,7 +60,14 @@ import com.oracle.svm.core.annotate.Substitute;
 import com.oracle.svm.core.annotate.TargetClass;
 import com.oracle.svm.core.annotate.TargetElement;
 import com.oracle.svm.core.annotate.Uninterruptible;
-import com.oracle.svm.core.jdk.JDK9OrLater;
+import com.oracle.svm.core.headers.Errno;
+import com.oracle.svm.core.jdk.JDK11OrLater;
+import com.oracle.svm.core.posix.headers.Dlfcn;
+import com.oracle.svm.core.posix.headers.Fcntl;
+import com.oracle.svm.core.posix.headers.LibC;
+import com.oracle.svm.core.posix.headers.Locale;
+import com.oracle.svm.core.posix.headers.Unistd;
+import com.oracle.svm.core.posix.headers.Wait;
 import com.oracle.svm.core.util.VMError;
 
 @Platforms({InternalPlatform.LINUX_AND_JNI.class, InternalPlatform.DARWIN_AND_JNI.class})
@@ -154,7 +154,7 @@ public class PosixUtils {
         }
 
         @Substitute //
-        @TargetElement(onlyWith = JDK9OrLater.class) //
+        @TargetElement(onlyWith = JDK11OrLater.class) //
         @SuppressWarnings({"unused"})
         /* { Do not re-format commented out C code.  @formatter:off */
         /* open-jdk11/src/java.base/unix/native/libjava/FileDescriptor_md.c */
@@ -169,7 +169,7 @@ public class PosixUtils {
         /* } Do not re-format commented out C code. @formatter:on */
 
         @Substitute //
-        @TargetElement(onlyWith = JDK9OrLater.class) //
+        @TargetElement(onlyWith = JDK11OrLater.class) //
         @SuppressWarnings({"unused", "static-method"})
         /* { Do not re-format commented out C code.  @formatter:off */
         /* open-jdk11/src/java.base/unix/native/libjava/FileDescriptor_md.c */

@@ -24,15 +24,15 @@
  */
 package com.oracle.svm.core.jdk;
 
-import com.oracle.svm.core.annotate.Substitute;
-import com.oracle.svm.core.annotate.TargetClass;
-import com.oracle.svm.core.annotate.TargetElement;
-
 import java.io.ByteArrayInputStream;
 import java.io.InputStream;
 import java.util.List;
 
-@TargetClass(className = "java.lang.Module", onlyWith = JDK9OrLater.class)
+import com.oracle.svm.core.annotate.Substitute;
+import com.oracle.svm.core.annotate.TargetClass;
+import com.oracle.svm.core.annotate.TargetElement;
+
+@TargetClass(className = "java.lang.Module", onlyWith = JDK11OrLater.class)
 public final class Target_java_lang_Module {
     @SuppressWarnings("static-method")
     @Substitute

@@ -40,7 +40,6 @@ import sun.util.locale.provider.LocaleProviderAdapter;
 import sun.util.resources.LocaleData;
 // Checkstyle: resume
 
-/** JDK-9-or-later localization resource bundle initialization. */
 @Platforms(Platform.HOSTED_ONLY.class)
 public class LocalizationResourceBundles extends LocalizationSupport {
 
