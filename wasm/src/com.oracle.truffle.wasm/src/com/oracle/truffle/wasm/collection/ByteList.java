@@ -1,6 +1,8 @@
 package com.oracle.truffle.wasm.collection;
 
 public class ByteList {
+    private static final byte[] EMPTY_BYTE_ARRAY = new byte[0];
+
     private byte[] array;
     private int offset;
 
@@ -27,7 +29,11 @@ public class ByteList {
 
     public byte[] toArray() {
         byte[] result = new byte[offset];
-        System.arraycopy(array, 0, result, 0, offset);
-        return result;
+        if (array != null) {
+            System.arraycopy(array, 0, result, 0, offset);
+            return result;
+        } else {
+            return EMPTY_BYTE_ARRAY;
+        }
     }
 }
