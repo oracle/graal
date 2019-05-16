@@ -116,6 +116,10 @@ public final class IsomorphicPackingPhase extends BasePhase<PhaseContext> {
         }
     }
 
+    private static boolean inBlock(NodeMap<Block> nodeToBlockMap, Block block, Node node) {
+        return nodeToBlockMap.get(node) == block;
+    }
+
     /**
      * Check whether the left and right node of a potential pack are isomorphic.
      * "Isomorphic statements are those that contain the same operations in the same order."
@@ -169,7 +173,7 @@ public final class IsomorphicPackingPhase extends BasePhase<PhaseContext> {
         // TODO: verify that at this stage it's even possible to get dependency cycles
 
         for (Node pred : deep.inputs()) {
-            if (nodeToBlockMap.get(pred)!=block) // ensure that the predecessor is in the block
+            if (!inBlock(nodeToBlockMap, block, pred)) // ensure that the predecessor is in the block
                 continue;
 
             if (shallow == pred)
@@ -285,6 +289,8 @@ public final class IsomorphicPackingPhase extends BasePhase<PhaseContext> {
         final Node left = pack.getLeft();
         final Node right = pack.getRight();
 
+        // TODO: bail if left is load (why?)
+
         boolean changed = false;
 
         for (Iterator<Node> leftInputIt = left.inputs().iterator(); leftInputIt.hasNext();) {
@@ -294,12 +300,11 @@ public final class IsomorphicPackingPhase extends BasePhase<PhaseContext> {
                 final Node rightInput = rightInputIt.next();
 
                 // Check block membership, bail if nodes not in block (prevent analysis beyond block)
-                if (nodeToBlockMap.get(leftInput) != block || nodeToBlockMap.get(rightInput) != block) continue;
+                if (!inBlock(nodeToBlockMap, block, leftInput) || !inBlock(nodeToBlockMap, block, rightInput)) continue;
 
                 if (!stmts_can_pack(nodeToBlockMap, block, packSet, leftInput, rightInput)) continue;
 
-                packSet.add(Pack.pair(leftInput, rightInput));
-                changed = true;
+                changed |= packSet.add(Pack.pair(leftInput, rightInput));
             }
         }
 
@@ -307,13 +312,31 @@ public final class IsomorphicPackingPhase extends BasePhase<PhaseContext> {
     }
 
     /**
-     * Extend the packset by visiting uses of jnodes of nodes in the provided pack
+     * Extend the packset by visiting uses of nodes in the provided pack
      * @param block Basic block currently being optimized
      * @param packSet Pack set
      * @param pack The pack to use for nodes to find usages of
      */
-    private static void follow_def_uses(Block block, Set<Pack<Node>> packSet, Pack<Node> pack) {
-        throw new UnsupportedOperationException("not implemented");
+    private static boolean follow_def_uses(NodeMap<Block> nodeToBlockMap, Block block, Set<Pack<Node>> packSet, Pack<Node> pack) {
+        final Node left = pack.getLeft();
+        final Node right = pack.getRight();
+
+        // TODO: bail if left is store (why?)
+
+        for (Node leftUsage : left.usages()) {
+            if (!inBlock(nodeToBlockMap, block, left)) continue;
+
+            for (Node rightUsage : right.usages()) {
+                if (leftUsage == rightUsage || !inBlock(nodeToBlockMap, block, right)) continue;
+
+                // TODO: Rather than adding the first, add the best
+                if (stmts_can_pack(nodeToBlockMap, block, packSet, leftUsage, rightUsage)) {
+                    return packSet.add(Pack.pair(leftUsage, rightUsage));
+                }
+            }
+        }
+
+        return false;
     }
 
     /**
@@ -322,20 +345,23 @@ public final class IsomorphicPackingPhase extends BasePhase<PhaseContext> {
      * @param packSet PackSet to populate
      */
     private static void extend_packlist(NodeMap<Block> nodeToBlockMap, Block block, Set<Pack<Node>> packSet) {
-        boolean change = false;
+        Set<Pack<Node>> iterationPackSet;
 
+        boolean changed;
         do {
-            for (Pack<Node> pack : packSet) {
-                boolean udChanged = follow_use_defs(nodeToBlockMap, block, packSet, pack);
-                // TODO: IF UDCHANGED THEN PACKSET ITER NEEDS TO CHANGE TOO
-                follow_def_uses(block, packSet, pack);
+            changed = false;
+            iterationPackSet = new HashSet<>(packSet);
+
+            for (Pack<Node> pack : iterationPackSet) {
+                changed |= follow_use_defs(nodeToBlockMap, block, packSet, pack);
+                changed |= follow_def_uses(nodeToBlockMap, block, packSet, pack);
             }
-        } while (change);
+        } while (changed);
     }
 
     // Combine packs where right = left
     private static void combine_packs(Set<Pack<Node>> packSet) {
-        boolean changed = false;
+        boolean changed;
         do {
             changed = false;
 
@@ -384,7 +410,7 @@ public final class IsomorphicPackingPhase extends BasePhase<PhaseContext> {
         schedulePhase.apply(graph);
         ControlFlowGraph cfg = graph.getLastSchedule().getCFG();
         for (Block block : cfg.reversePostOrder()) {
-            SLP_extract(cfg.getNodeToBlock(), block);
+            SLP_extract(graph.getLastSchedule().getNodeToBlockMap(), block);
         }
     }
 }
