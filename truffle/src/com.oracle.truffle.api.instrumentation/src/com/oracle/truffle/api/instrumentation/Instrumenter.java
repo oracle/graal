@@ -259,7 +259,7 @@ public abstract class Instrumenter {
      *
      * @see LoadSourceSectionListener#onLoad(LoadSourceSectionEvent)
      *
-     * @since 1.0
+     * @since 19.0
      */
     public abstract void visitLoadedSourceSections(SourceSectionFilter filter, LoadSourceSectionListener listener);
 
@@ -364,7 +364,7 @@ public abstract class Instrumenter {
      * @param node an instrumentable node specifying the location
      * @param binding the binding to lookup the execution nodes of
      * @return the {@link ExecutionEventNode}, or <code>null</code>.
-     * @since 1.0
+     * @since 19.0
      */
     public abstract ExecutionEventNode lookupExecutionEventNode(Node node, EventBinding<?> binding);
 

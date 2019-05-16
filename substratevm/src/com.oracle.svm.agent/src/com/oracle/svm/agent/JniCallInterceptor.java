@@ -31,10 +31,13 @@ import static com.oracle.svm.agent.Support.clearException;
 import static com.oracle.svm.agent.Support.fromCString;
 import static com.oracle.svm.agent.Support.getClassNameOr;
 import static com.oracle.svm.agent.Support.getFieldDeclaringClass;
+import static com.oracle.svm.agent.Support.getFieldName;
 import static com.oracle.svm.agent.Support.getMethodDeclaringClass;
+import static com.oracle.svm.agent.Support.handles;
 import static com.oracle.svm.agent.Support.jniFunctions;
 import static com.oracle.svm.agent.Support.jvmtiEnv;
 import static com.oracle.svm.agent.Support.jvmtiFunctions;
+import static com.oracle.svm.agent.Support.toCString;
 import static com.oracle.svm.jni.JNIObjectHandles.nullHandle;
 import static org.graalvm.word.WordFactory.nullPointer;
 
@@ -42,17 +45,28 @@ import org.graalvm.nativeimage.StackValue;
 import org.graalvm.nativeimage.c.function.CEntryPoint;
 import org.graalvm.nativeimage.c.function.CEntryPointLiteral;
 import org.graalvm.nativeimage.c.type.CCharPointer;
+import org.graalvm.nativeimage.c.type.CCharPointerPointer;
+import org.graalvm.nativeimage.c.type.CTypeConversion.CCharPointerHolder;
 import org.graalvm.nativeimage.c.type.WordPointer;
 
 import com.oracle.svm.agent.jvmti.JvmtiEnv;
+import com.oracle.svm.agent.jvmti.JvmtiError;
 import com.oracle.svm.agent.restrict.JniAccessVerifier;
+import com.oracle.svm.configure.config.ConfigurationMethod;
 import com.oracle.svm.core.c.function.CEntryPointOptions;
 import com.oracle.svm.jni.nativeapi.JNIEnvironment;
+import com.oracle.svm.jni.nativeapi.JNIErrors;
 import com.oracle.svm.jni.nativeapi.JNIFieldId;
+import com.oracle.svm.jni.nativeapi.JNIFunctionPointerTypes.CallObjectMethod0FunctionPointer;
 import com.oracle.svm.jni.nativeapi.JNIFunctionPointerTypes.DefineClassFunctionPointer;
 import com.oracle.svm.jni.nativeapi.JNIFunctionPointerTypes.FindClassFunctionPointer;
+import com.oracle.svm.jni.nativeapi.JNIFunctionPointerTypes.FromReflectedFieldFunctionPointer;
+import com.oracle.svm.jni.nativeapi.JNIFunctionPointerTypes.FromReflectedMethodFunctionPointer;
 import com.oracle.svm.jni.nativeapi.JNIFunctionPointerTypes.GetFieldIDFunctionPointer;
 import com.oracle.svm.jni.nativeapi.JNIFunctionPointerTypes.GetMemberIDFunctionPointer;
+import com.oracle.svm.jni.nativeapi.JNIFunctionPointerTypes.ThrowNewFunctionPointer;
+import com.oracle.svm.jni.nativeapi.JNIFunctionPointerTypes.ToReflectedFieldFunctionPointer;
+import com.oracle.svm.jni.nativeapi.JNIFunctionPointerTypes.ToReflectedMethodFunctionPointer;
 import com.oracle.svm.jni.nativeapi.JNIMethodId;
 import com.oracle.svm.jni.nativeapi.JNINativeInterface;
 import com.oracle.svm.jni.nativeapi.JNIObjectHandle;
@@ -88,10 +102,10 @@ final class JniCallInterceptor {
     @CEntryPointOptions(prologue = AgentIsolate.Prologue.class, epilogue = AgentIsolate.Epilogue.class)
     private static JNIObjectHandle defineClass(JNIEnvironment env, CCharPointer name, JNIObjectHandle loader, CCharPointer buf, int bufLen) {
         JNIObjectHandle callerClass = getCallerClass(env);
-        if (accessVerifier != null && !accessVerifier.verifyDefineClass(env, name, loader, buf, bufLen, callerClass)) {
-            return nullHandle();
+        JNIObjectHandle result = nullHandle();
+        if (accessVerifier == null || accessVerifier.verifyDefineClass(env, name, loader, buf, bufLen, callerClass)) {
+            result = jniFunctions().getDefineClass().invoke(env, name, loader, buf, bufLen);
         }
-        JNIObjectHandle result = jniFunctions().getDefineClass().invoke(env, name, loader, buf, bufLen);
         if (shouldTrace()) {
             traceCall(env, "DefineClass", nullHandle(), nullHandle(), callerClass, result.notEqual(nullHandle()), fromCString(name));
         }
@@ -110,10 +124,10 @@ final class JniCallInterceptor {
     @CEntryPointOptions(prologue = AgentIsolate.Prologue.class, epilogue = AgentIsolate.Epilogue.class)
     private static JNIObjectHandle findClass(JNIEnvironment env, CCharPointer name) {
         JNIObjectHandle callerClass = getCallerClass(env);
-        if (accessVerifier != null && !accessVerifier.verifyFindClass(env, name, callerClass)) {
-            return nullHandle();
+        JNIObjectHandle result = nullHandle();
+        if (accessVerifier == null || accessVerifier.verifyFindClass(env, name, callerClass)) {
+            result = jniFunctions().getFindClass().invoke(env, name);
         }
-        JNIObjectHandle result = jniFunctions().getFindClass().invoke(env, name);
         if (shouldTrace()) {
             traceCall(env, "FindClass", nullHandle(), nullHandle(), callerClass, result.notEqual(nullHandle()), fromCString(name));
         }
@@ -127,7 +141,7 @@ final class JniCallInterceptor {
         JNIMethodId result = jniFunctions().getGetMethodID().invoke(env, clazz, name, signature);
         if (result.isNonNull() && accessVerifier != null && !accessVerifier.verifyGetMethodID(env, clazz, name, signature, result, callerClass)) {
             // NOTE: GetMethodID() above can have initialized `clazz` as a side effect
-            return nullPointer();
+            result = nullPointer();
         }
         if (shouldTrace()) {
             traceCall(env, "GetMethodID", clazz, getMethodDeclaringClass(result), callerClass, result.isNonNull(), fromCString(name), fromCString(signature));
@@ -142,7 +156,7 @@ final class JniCallInterceptor {
         JNIMethodId result = jniFunctions().getGetStaticMethodID().invoke(env, clazz, name, signature);
         if (result.isNonNull() && accessVerifier != null && !accessVerifier.verifyGetMethodID(env, clazz, name, signature, result, callerClass)) {
             // NOTE: GetStaticMethodID() above can have initialized `clazz` as a side effect
-            return nullPointer();
+            result = nullPointer();
         }
         if (shouldTrace()) {
             traceCall(env, "GetStaticMethodID", clazz, getMethodDeclaringClass(result), callerClass, result.isNonNull(), fromCString(name), fromCString(signature));
@@ -157,7 +171,7 @@ final class JniCallInterceptor {
         JNIFieldId result = jniFunctions().getGetFieldID().invoke(env, clazz, name, signature);
         if (result.isNonNull() && accessVerifier != null && !accessVerifier.verifyGetFieldID(env, clazz, name, signature, result, callerClass)) {
             // NOTE: GetFieldID() above can have initialized `clazz` as a side effect
-            return nullPointer();
+            result = nullPointer();
         }
         if (shouldTrace()) {
             traceCall(env, "GetFieldID", clazz, getFieldDeclaringClass(clazz, result), callerClass, result.isNonNull(), fromCString(name), fromCString(signature));
@@ -172,10 +186,121 @@ final class JniCallInterceptor {
         JNIFieldId result = jniFunctions().getGetStaticFieldID().invoke(env, clazz, name, signature);
         if (result.isNonNull() && accessVerifier != null && !accessVerifier.verifyGetFieldID(env, clazz, name, signature, result, callerClass)) {
             // NOTE: GetStaticFieldID() above can have initialized `clazz` as a side effect
-            return nullPointer();
+            result = nullPointer();
         }
         if (shouldTrace()) {
             traceCall(env, "GetStaticFieldID", clazz, getFieldDeclaringClass(clazz, result), callerClass, result.isNonNull(), fromCString(name), fromCString(signature));
+        }
+        return result;
+    }
+
+    @CEntryPoint(name = "ThrowNew")
+    @CEntryPointOptions(prologue = AgentIsolate.Prologue.class, epilogue = AgentIsolate.Epilogue.class)
+    private static int throwNew(JNIEnvironment env, JNIObjectHandle clazz, CCharPointer message) {
+        JNIObjectHandle callerClass = getCallerClass(env);
+        int result;
+        if (accessVerifier == null || accessVerifier.verifyThrowNew(env, clazz, callerClass)) {
+            result = jniFunctions().getThrowNew().invoke(env, clazz, message);
+        } else { // throw NoSuchMethodError like HotSpot
+            try (CCharPointerHolder errorMessage = toCString(Agent.MESSAGE_PREFIX + "configuration does not permit access to method: " +
+                            getClassNameOr(env, clazz, "(null)", "(?)") + "." + ConfigurationMethod.CONSTRUCTOR_NAME + "(Ljava/lang/String;)V")) {
+
+                jniFunctions().getThrowNew().invoke(env, handles().javaLangNoSuchMethodError, errorMessage.get());
+            }
+            result = JNIErrors.JNI_ERR();
+        }
+        if (shouldTrace()) {
+            traceCall(env, "ThrowNew", clazz, nullHandle(), callerClass, (result == JNIErrors.JNI_OK()), TraceWriter.UNKNOWN_VALUE);
+        }
+        return result;
+    }
+
+    @CEntryPoint(name = "FromReflectedMethod")
+    @CEntryPointOptions(prologue = AgentIsolate.Prologue.class, epilogue = AgentIsolate.Epilogue.class)
+    private static JNIMethodId fromReflectedMethod(JNIEnvironment env, JNIObjectHandle method) {
+        JNIObjectHandle callerClass = getCallerClass(env);
+        JNIMethodId result = jniFunctions().getFromReflectedMethod().invoke(env, method);
+        JNIObjectHandle declaring = nullHandle();
+        String name = null;
+        String signature = null;
+        if (result.isNonNull()) {
+            declaring = getMethodDeclaringClass(result);
+            CCharPointerPointer namePtr = StackValue.get(CCharPointerPointer.class);
+            CCharPointerPointer signaturePtr = StackValue.get(CCharPointerPointer.class);
+            if (jvmtiFunctions().GetMethodName().invoke(jvmtiEnv(), result, namePtr, signaturePtr, nullPointer()) == JvmtiError.JVMTI_ERROR_NONE) {
+                name = fromCString(namePtr.read());
+                signature = fromCString(signaturePtr.read());
+                jvmtiFunctions().Deallocate().invoke(jvmtiEnv(), namePtr.read());
+                jvmtiFunctions().Deallocate().invoke(jvmtiEnv(), signaturePtr.read());
+            }
+
+            if (accessVerifier != null && !accessVerifier.verifyFromReflectedMethod(env, declaring, name, signature, result, callerClass)) {
+                result = nullPointer();
+            }
+        }
+        if (shouldTrace()) {
+            traceCall(env, "FromReflectedMethod", declaring, nullHandle(), callerClass, result.isNonNull(), name, signature);
+        }
+        return result;
+    }
+
+    @CEntryPoint(name = "FromReflectedField")
+    @CEntryPointOptions(prologue = AgentIsolate.Prologue.class, epilogue = AgentIsolate.Epilogue.class)
+    private static JNIFieldId fromReflectedField(JNIEnvironment env, JNIObjectHandle field) {
+        JNIObjectHandle callerClass = getCallerClass(env);
+        JNIFieldId result = jniFunctions().getFromReflectedField().invoke(env, field);
+        JNIObjectHandle declaring = nullHandle();
+        String name = TraceWriter.EXPLICIT_NULL;
+        if (result.isNonNull()) {
+            declaring = jniFunctions().<CallObjectMethod0FunctionPointer> getCallObjectMethod().invoke(env, field, handles().javaLangReflectMemberGetDeclaringClass);
+            name = getFieldName(declaring, result);
+            if (accessVerifier != null && !accessVerifier.verifyFromReflectedField(env, declaring, name, result, callerClass)) {
+                result = nullPointer();
+            }
+        }
+        if (shouldTrace()) {
+            traceCall(env, "FromReflectedField", declaring, nullHandle(), callerClass, result.isNonNull(), name);
+        }
+        return result;
+    }
+
+    @CEntryPoint(name = "ToReflectedMethod")
+    @CEntryPointOptions(prologue = AgentIsolate.Prologue.class, epilogue = AgentIsolate.Epilogue.class)
+    private static JNIObjectHandle toReflectedMethod(JNIEnvironment env, JNIObjectHandle clazz, JNIMethodId method, boolean isStatic) {
+        JNIObjectHandle callerClass = getCallerClass(env);
+        JNIObjectHandle declaring = getMethodDeclaringClass(method);
+        String name = null;
+        String signature = null;
+        CCharPointerPointer namePtr = StackValue.get(CCharPointerPointer.class);
+        CCharPointerPointer signaturePtr = StackValue.get(CCharPointerPointer.class);
+        if (jvmtiFunctions().GetMethodName().invoke(jvmtiEnv(), method, namePtr, signaturePtr, nullPointer()) == JvmtiError.JVMTI_ERROR_NONE) {
+            name = fromCString(namePtr.read());
+            signature = fromCString(signaturePtr.read());
+            jvmtiFunctions().Deallocate().invoke(jvmtiEnv(), namePtr.read());
+            jvmtiFunctions().Deallocate().invoke(jvmtiEnv(), signaturePtr.read());
+        }
+        JNIObjectHandle result = nullHandle();
+        if (accessVerifier == null || accessVerifier.verifyToReflectedMethod(env, clazz, declaring, method, name, signature, callerClass)) {
+            result = jniFunctions().getToReflectedMethod().invoke(env, clazz, method, isStatic);
+        }
+        if (shouldTrace()) {
+            traceCall(env, "ToReflectedMethod", clazz, declaring, callerClass, result.notEqual(nullHandle()), name, signature);
+        }
+        return result;
+    }
+
+    @CEntryPoint(name = "ToReflectedField")
+    @CEntryPointOptions(prologue = AgentIsolate.Prologue.class, epilogue = AgentIsolate.Epilogue.class)
+    private static JNIObjectHandle toReflectedField(JNIEnvironment env, JNIObjectHandle clazz, JNIFieldId field, boolean isStatic) {
+        JNIObjectHandle callerClass = getCallerClass(env);
+        JNIObjectHandle declaring = getFieldDeclaringClass(clazz, field);
+        String name = getFieldName(clazz, field);
+        JNIObjectHandle result = nullHandle();
+        if (accessVerifier == null || accessVerifier.verifyToReflectedField(env, clazz, declaring, name, field, callerClass)) {
+            result = jniFunctions().getToReflectedField().invoke(env, clazz, field, isStatic);
+        }
+        if (shouldTrace()) {
+            traceCall(env, "ToReflectedField", clazz, declaring, callerClass, result.notEqual(nullHandle()), name);
         }
         return result;
     }
@@ -195,6 +320,11 @@ final class JniCallInterceptor {
         functions.setGetStaticMethodID(getStaticMethodIDLiteral.getFunctionPointer());
         functions.setGetFieldID(getFieldIDLiteral.getFunctionPointer());
         functions.setGetStaticFieldID(getStaticFieldIDLiteral.getFunctionPointer());
+        functions.setThrowNew(throwNewLiteral.getFunctionPointer());
+        functions.setFromReflectedMethod(fromReflectedMethodLiteral.getFunctionPointer());
+        functions.setToReflectedMethod(toReflectedMethodLiteral.getFunctionPointer());
+        functions.setFromReflectedField(fromReflectedFieldLiteral.getFunctionPointer());
+        functions.setToReflectedField(toReflectedFieldLiteral.getFunctionPointer());
         check(jvmti.getFunctions().SetJNIFunctionTable().invoke(jvmti, functions));
         check(jvmti.getFunctions().Deallocate().invoke(jvmti, functions));
     }
@@ -223,4 +353,19 @@ final class JniCallInterceptor {
 
     private static final CEntryPointLiteral<GetFieldIDFunctionPointer> getStaticFieldIDLiteral = CEntryPointLiteral.create(JniCallInterceptor.class,
                     "getStaticFieldID", JNIEnvironment.class, JNIObjectHandle.class, CCharPointer.class, CCharPointer.class);
+
+    private static final CEntryPointLiteral<ThrowNewFunctionPointer> throwNewLiteral = CEntryPointLiteral.create(JniCallInterceptor.class,
+                    "throwNew", JNIEnvironment.class, JNIObjectHandle.class, CCharPointer.class);
+
+    private static final CEntryPointLiteral<FromReflectedMethodFunctionPointer> fromReflectedMethodLiteral = CEntryPointLiteral.create(JniCallInterceptor.class,
+                    "fromReflectedMethod", JNIEnvironment.class, JNIObjectHandle.class);
+
+    private static final CEntryPointLiteral<FromReflectedFieldFunctionPointer> fromReflectedFieldLiteral = CEntryPointLiteral.create(JniCallInterceptor.class,
+                    "fromReflectedField", JNIEnvironment.class, JNIObjectHandle.class);
+
+    private static final CEntryPointLiteral<ToReflectedMethodFunctionPointer> toReflectedMethodLiteral = CEntryPointLiteral.create(JniCallInterceptor.class,
+                    "toReflectedMethod", JNIEnvironment.class, JNIObjectHandle.class, JNIMethodId.class, boolean.class);
+
+    private static final CEntryPointLiteral<ToReflectedFieldFunctionPointer> toReflectedFieldLiteral = CEntryPointLiteral.create(JniCallInterceptor.class,
+                    "toReflectedField", JNIEnvironment.class, JNIObjectHandle.class, JNIFieldId.class, boolean.class);
 }

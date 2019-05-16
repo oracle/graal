@@ -4,7 +4,7 @@ suite = {
     "defaultLicense" : "GPLv2-CPE",
 
     "groupId" : "org.graalvm.tools",
-    "version" : "1.0.0-rc16",
+    "version" : "1.0.0-rc18",
     "release" : False,
     "url" : "http://openjdk.java.net/projects/graal",
     "developer" : {
@@ -142,27 +142,27 @@ suite = {
             }
         },
         "VISUALVM_COMMON" : {
-            "urls" : ["https://lafo.ssw.uni-linz.ac.at/pub/graal-external-deps/visualvm-655.tar.gz"],
-            "sha1" : "5a5574f03b58465226166a638641a384b9f44445",
+            "urls" : ["https://lafo.ssw.uni-linz.ac.at/pub/graal-external-deps/visualvm-670.tar.gz"],
+            "sha1" : "aee7dd2a9663701df57a96e501b9219a7c90cbc3",
         },
         "VISUALVM_PLATFORM_SPECIFIC" : {
             "os_arch" : {
                 "linux" : {
                     "amd64" : {
-                        "urls" : ["https://lafo.ssw.uni-linz.ac.at/pub/graal-external-deps/visualvm-655-linux-amd64.tar.gz"],
-                        "sha1" : "64f07398bac9897e9b8123edeaf5cf9ff19517b5",
+                        "urls" : ["https://lafo.ssw.uni-linz.ac.at/pub/graal-external-deps/visualvm-670-linux-amd64.tar.gz"],
+                        "sha1" : "e607a0c40716f4a232de3726ab101f5c54798cfa",
                     }
                 },
                 "darwin" : {
                     "amd64" : {
-                        "urls" : ["https://lafo.ssw.uni-linz.ac.at/pub/graal-external-deps/visualvm-655-macosx-x86_64.tar.gz"],
-                        "sha1" : "48da5fcf73bd85b257dbeb3ca033fd96e5ec2278",
+                        "urls" : ["https://lafo.ssw.uni-linz.ac.at/pub/graal-external-deps/visualvm-670-macosx-x86_64.tar.gz"],
+                        "sha1" : "ea45e21c35f24d05e74d46bbdc068bf48865aa8f",
                     }
                 },
                 "windows" : {
                     "amd64" : {
-                        "urls" : ["https://lafo.ssw.uni-linz.ac.at/pub/graal-external-deps/visualvm-655-windows-amd64.tar.gz"],
-                        "sha1" : "ddaec648e701a88bb673ac3a1a96d2453d91eaee",
+                        "urls" : ["https://lafo.ssw.uni-linz.ac.at/pub/graal-external-deps/visualvm-670-windows-amd64.tar.gz"],
+                        "sha1" : "6a4fa4b6a0c1fceeee63567af9f70d63a5ad6334",
                     }
                 },
             }

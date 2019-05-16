@@ -74,7 +74,6 @@ import org.graalvm.compiler.nodes.type.StampTool;
 import org.graalvm.compiler.nodes.util.GraphUtil;
 import org.graalvm.compiler.phases.OptimisticOptimizations;
 import org.graalvm.compiler.phases.common.CanonicalizerPhase;
-import org.graalvm.compiler.phases.tiers.PhaseContext;
 import org.graalvm.compiler.phases.util.Providers;
 import org.graalvm.compiler.replacements.MethodHandlePlugin;
 import org.graalvm.compiler.replacements.ReplacementsImpl;
@@ -345,7 +344,7 @@ public class IntrinsifyMethodHandlesInvocationPlugin implements NodePlugin {
              * The canonicalizer converts unsafe field accesses for get/set method handles back to
              * high-level field load and store nodes.
              */
-            new CanonicalizerPhase().apply(graph, new PhaseContext(originalProviders));
+            new CanonicalizerPhase().apply(graph, originalProviders);
             for (FixedGuardNode guard : graph.getNodes(FixedGuardNode.TYPE)) {
                 if (guard.next() instanceof AccessFieldNode && guard.condition() instanceof IsNullNode && guard.isNegated() &&
                                 ((IsNullNode) guard.condition()).getValue() == ((AccessFieldNode) guard.next()).object()) {

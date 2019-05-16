@@ -30,6 +30,7 @@ import com.oracle.truffle.api.frame.FrameUtil;
 import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.api.nodes.ExplodeLoop;
 import com.oracle.truffle.api.nodes.Node;
+import com.oracle.truffle.regex.RegexRootNode;
 import com.oracle.truffle.regex.tregex.nodes.input.InputCharAtNode;
 import com.oracle.truffle.regex.tregex.nodes.input.InputLengthNode;
 
@@ -149,6 +150,9 @@ public final class TRegexDFAExecutorNode extends Node {
         }
         int ip = 0;
         outer: while (true) {
+            if (CompilerDirectives.inInterpreter()) {
+                RegexRootNode.checkThreadInterrupted();
+            }
             CompilerAsserts.partialEvaluationConstant(ip);
             if (ip == -1) {
                 break;

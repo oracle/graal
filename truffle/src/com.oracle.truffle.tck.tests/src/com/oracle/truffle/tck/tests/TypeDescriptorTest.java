@@ -45,7 +45,6 @@ import java.util.Collections;
 import java.util.List;
 import java.util.function.Function;
 import org.graalvm.polyglot.Context;
-import org.graalvm.polyglot.HostAccess;
 import org.graalvm.polyglot.Value;
 import org.graalvm.polyglot.proxy.ProxyArray;
 import org.graalvm.polyglot.proxy.ProxyObject;
@@ -615,7 +614,7 @@ public class TypeDescriptorTest {
 
     @Test
     public void testForValue() {
-        try (Context ctx = Context.newBuilder().allowHostAccess(HostAccess.ALL).build()) {
+        try (Context ctx = Context.newBuilder().allowAllAccess(true).build()) {
             Value v = ctx.asValue(1);
             Assert.assertTrue(TypeDescriptor.NUMBER.isAssignable(TypeDescriptor.forValue(v)));
             v = ctx.asValue(true);

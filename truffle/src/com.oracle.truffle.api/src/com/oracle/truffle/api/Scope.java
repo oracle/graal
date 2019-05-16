@@ -179,7 +179,7 @@ public final class Scope {
      * do not provide it, unless they override it.
      *
      * @return the receiver object, or <code>null</code> when there is no receiver
-     * @since 1.0
+     * @since 19.0
      * @see #getReceiverName()
      */
     public Object getReceiver() {
@@ -190,7 +190,7 @@ public final class Scope {
      * Get code name of the receiver object, if there is any.
      *
      * @return the code name of {@link #getReceiver() receiver object}, or <code>null</code>.
-     * @since 1.0
+     * @since 19.0
      * @see #getReceiver()
      */
     public String getReceiverName() {
@@ -256,7 +256,7 @@ public final class Scope {
          *
          * @param name code name of the receiver object
          * @param receiver the receiver object
-         * @since 1.0
+         * @since 19.0
          */
         @SuppressWarnings("hiding")
         public Builder receiver(String name, Object receiver) {

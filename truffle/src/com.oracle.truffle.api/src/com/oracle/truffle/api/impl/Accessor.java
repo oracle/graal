@@ -482,6 +482,8 @@ public abstract class Accessor {
 
         public abstract TruffleFile getTruffleFile(URI uri, Object fileSystemContext);
 
+        public abstract boolean isDefaultFileSystem(Object fileSystemContext);
+
         public abstract TruffleFile getTruffleFile(String path, FileSystem fileSystem, Supplier<Map<String, Collection<? extends TruffleFile.FileTypeDetector>>> fileTypeDetectorsSupplier);
 
         public abstract TruffleFile getTruffleFile(URI uri, FileSystem fileSystem, Supplier<Map<String, Collection<? extends TruffleFile.FileTypeDetector>>> fileTypeDetectorsSupplier);
@@ -776,6 +778,18 @@ public abstract class Accessor {
 
         public abstract Object call(Node callNode, CallTarget target, Object... arguments);
 
+    }
+
+    public abstract static class CastUnsafe {
+
+        public abstract Object[] castArrayFixedLength(Object[] args, int length);
+
+        @SuppressWarnings({"unchecked"})
+        public abstract <T> T unsafeCast(Object value, Class<T> type, boolean condition, boolean nonNull, boolean exact);
+    }
+
+    protected CastUnsafe getCastUnsafe() {
+        return SUPPORT.getCastUnsafe();
     }
 
     protected CallInlined getCallInlined() {

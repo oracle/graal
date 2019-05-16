@@ -61,14 +61,14 @@ from mx_unittest import _run_tests, _VMLauncher
 GRAAL_COMPILER_FLAGS_BASE = [
     '-XX:+UnlockExperimentalVMOptions',
     '-XX:+EnableJVMCI',
-    '-XX:-UseJVMCICompiler', # GR-8656: Do not run with Graal as JIT compiler until libgraal is available.
     '-Dtruffle.TrustAllTruffleRuntimeProviders=true', # GR-7046
     '-Dtruffle.TruffleRuntime=com.oracle.truffle.api.impl.DefaultTruffleRuntime', # use truffle interpreter as fallback
+    '-Dgraalvm.ForcePolyglotInvalid=true', # use PolyglotInvalid PolyglotImpl fallback (when --tool:truffle is not used)
     '-Dgraalvm.locatorDisabled=true',
 ]
 
 GRAAL_COMPILER_FLAGS_MAP = dict()
-GRAAL_COMPILER_FLAGS_MAP['1.8'] = ['-d64', '-XX:-UseJVMCIClassLoader']
+GRAAL_COMPILER_FLAGS_MAP['8'] = ['-d64', '-XX:-UseJVMCIClassLoader']
 GRAAL_COMPILER_FLAGS_MAP['11'] = []
 # Disable the check for JDK-8 graal version.
 GRAAL_COMPILER_FLAGS_MAP['11'] += ['-Dsubstratevm.IgnoreGraalVersionCheck=true']
@@ -107,6 +107,11 @@ graal_compiler_export_packages = [
     'jdk.internal.vm.ci/jdk.vm.ci.code.site']
 GRAAL_COMPILER_FLAGS_MAP['11'].extend(add_exports_from_packages(graal_compiler_export_packages))
 
+graal_compiler_opens_packages = [
+    'jdk.internal.vm.compiler/org.graalvm.compiler.debug',
+    'jdk.internal.vm.compiler/org.graalvm.compiler.nodes',]
+GRAAL_COMPILER_FLAGS_MAP['11'].extend(add_opens_from_packages(graal_compiler_opens_packages))
+
 # Packages to open to allow reflective access at runtime.
 jdk_opens_packages = [
     # Reflective access
@@ -133,22 +138,29 @@ java_base_opens_packages = [
     # Reflective access to java.nio.MappedByteBuffer.fd.
     'java.base/java.nio',
     # Reflective access to java.util.Bits.words.
-    'java.base/java.util']
+    'java.base/java.util',
+    'java.base/jdk.internal.logger',]
 GRAAL_COMPILER_FLAGS_MAP['11'].extend(add_opens_from_packages(java_base_opens_packages))
 
 # Reflective access to org.graalvm.nativeimage.impl.ImageSingletonsSupport.
 graal_sdk_opens_packages = [
-    'org.graalvm.sdk/org.graalvm.nativeimage.impl']
+    'org.graalvm.sdk/org.graalvm.nativeimage.impl',
+    'org.graalvm.sdk/org.graalvm.polyglot',]
 GRAAL_COMPILER_FLAGS_MAP['11'].extend(add_opens_from_packages(graal_sdk_opens_packages))
+
+graal_truffle_opens_packages = [
+    'org.graalvm.truffle/com.oracle.truffle.polyglot',
+    'org.graalvm.truffle/com.oracle.truffle.api.impl',]
+GRAAL_COMPILER_FLAGS_MAP['11'].extend(add_opens_from_packages(graal_truffle_opens_packages))
 
 def svm_java_compliance():
     return mx.get_jdk(tag='default').javaCompliance
 
-def svm_java80():
+def svm_java8():
     return svm_java_compliance() <= mx.JavaCompliance('1.8')
 
-if svm_java80():
-    GRAAL_COMPILER_FLAGS = GRAAL_COMPILER_FLAGS_BASE + GRAAL_COMPILER_FLAGS_MAP['1.8']
+if svm_java8():
+    GRAAL_COMPILER_FLAGS = GRAAL_COMPILER_FLAGS_BASE + GRAAL_COMPILER_FLAGS_MAP['8']
 else:
     GRAAL_COMPILER_FLAGS = GRAAL_COMPILER_FLAGS_BASE + GRAAL_COMPILER_FLAGS_MAP['11']
 
@@ -161,14 +173,15 @@ clibraryDists = ['SVM_HOSTED_NATIVE']
 def _host_os_supported():
     return mx.get_os() == 'linux' or mx.get_os() == 'darwin' or mx.get_os() == 'windows'
 
-def _unittest_config_participant(config):
+def svm_unittest_config_participant(config):
     vmArgs, mainClass, mainClassArgs = config
     # Run the VM in a mode where application/test classes can
     # access JVMCI loaded classes.
     vmArgs = GRAAL_COMPILER_FLAGS + vmArgs
     return (vmArgs, mainClass, mainClassArgs)
 
-mx_unittest.add_config_participant(_unittest_config_participant)
+if mx.primary_suite() == suite:
+    mx_unittest.add_config_participant(svm_unittest_config_participant)
 
 def classpath(args):
     if not args:
@@ -382,7 +395,7 @@ def layout_native_image_root(native_image_root):
 
     # Create native-image layout for sdk parts
     graal_sdk_dists = ['sdk:GRAAL_SDK']
-    if svm_java80():
+    if svm_java8():
         native_image_layout_dists(join('lib', 'boot'), graal_sdk_dists)
         jvmci_dists = graalDistribution
     else:
@@ -391,7 +404,7 @@ def layout_native_image_root(native_image_root):
     # Create native-image layout for compiler & jvmci parts
     native_image_layout_dists(join('lib', 'jvmci'), jvmci_dists)
     jdk_config = mx.get_jdk()
-    if svm_java80():
+    if svm_java8():
         jvmci_path = join(jdk_config.home, 'jre', 'lib', 'jvmci')
         if os.path.isdir(jvmci_path):
             for symlink_name in os.listdir(jvmci_path):
@@ -581,12 +594,13 @@ def svm_gate_body(args, tasks):
 
         with Task('native unittests', tasks, tags=[GraalTags.test]) as t:
             if t:
-                native_unittest([])
+                native_unittest(['--build-args', '--initialize-at-build-time'])
 
         with Task('Run Truffle NFI unittests with SVM image', tasks, tags=["svmjunit"]) as t:
             if t:
                 testlib = mx_subst.path_substitutions.substitute('-Dnative.test.lib=<path:truffle:TRUFFLE_TEST_NATIVE>/<lib:nativetest>')
-                native_unittest_args = ['com.oracle.truffle.nfi.test', '--build-args', '--tool:nfi', '-H:MaxRuntimeCompileMethods=1500', '--run-args', testlib, '--very-verbose', '--enable-timing']
+                native_unittest_args = ['com.oracle.truffle.nfi.test', '--build-args', '--initialize-at-build-time', '--tool:nfi',
+                                        '-H:MaxRuntimeCompileMethods=1500', '--run-args', testlib, '--very-verbose', '--enable-timing']
                 native_unittest(native_unittest_args)
 
         with Task('JavaScript', tasks, tags=[GraalTags.js]) as t:
@@ -608,7 +622,10 @@ def svm_gate_body(args, tasks):
                         mx.abort('TCK tests not found.')
                     unittest_deps.append(mx.dependency('truffle:TRUFFLE_SL_TCK'))
                     vm_image_args = mx.get_runtime_jvm_args(unittest_deps, jdk=mx_compiler.jdk)
-                    tests_image = native_image(vm_image_args + ['--tool:truffle', '--features=com.oracle.truffle.tck.tests.TruffleTCKFeature', '-H:Class=org.junit.runner.JUnitCore', '-H:IncludeResources=com/oracle/truffle/sl/tck/resources/.*', '-H:MaxRuntimeCompileMethods=3000'])
+                    tests_image = native_image(vm_image_args + ['--tool:truffle', '--initialize-at-build-time',
+                                                                '--features=com.oracle.truffle.tck.tests.TruffleTCKFeature',
+                                                                '-H:Class=org.junit.runner.JUnitCore', '-H:IncludeResources=com/oracle/truffle/sl/tck/resources/.*',
+                                                                '-H:MaxRuntimeCompileMethods=3000'])
                     with open(unittest_file) as f:
                         test_classes = [l.rstrip() for l in f.readlines()]
                     mx.run([tests_image, '-Dtck.inlineVerifierInstrument=false'] + test_classes)
@@ -739,7 +756,7 @@ def js_image_test(binary, bench_location, name, warmup_iterations, iterations, t
 
 def build_js(native_image):
     truffle_language_ensure('js')
-    return native_image(['--language:js'])
+    return native_image(['--language:js', '--initialize-at-build-time'])
 
 def test_js(js, benchmarks, bin_args=None):
     bench_location = join(suite.dir, '..', '..', 'js-benchmarks')
@@ -846,7 +863,7 @@ def _javac_image(native_image, path, args=None):
 
     # Build an image for the javac compiler, so that we test and gate-check javac all the time.
     # Dynamic class loading code is reachable (used by the annotation processor), so -H:+ReportUnsupportedElementsAtRuntime is a necessary option
-    native_image(["-H:Path=" + path, '-cp', mx_compiler.jdk.toolsjar, "com.sun.tools.javac.Main", "javac",
+    native_image(['--initialize-at-build-time', "-H:Path=" + path, '-cp', mx_compiler.jdk.toolsjar, "com.sun.tools.javac.Main", "javac",
                   "-H:+ReportUnsupportedElementsAtRuntime", "-H:+AllowIncompleteClasspath",
                   "-H:IncludeResourceBundles=com.sun.tools.javac.resources.compiler,com.sun.tools.javac.resources.javac,com.sun.tools.javac.resources.version"] + args)
 
@@ -921,6 +938,7 @@ mx_sdk.register_graalvm_component(mx_sdk.GraalVmJreComponent(
             ]
         )
     ],
+    provided_executables=['bin/rebuild-images'],
 ))
 
 
@@ -1041,6 +1059,7 @@ if os.environ.has_key('LIBGRAAL'):
                 ],
                 build_args=[
                     '--features=com.oracle.svm.graal.hotspot.libgraal.HotSpotGraalLibraryFeature',
+                    '--initialize-at-build-time',
                     '-H:-UseServiceLoaderFeature',
                     '-H:+AllowFoldMethods',
                     '-Djdk.vm.ci.services.aot=true',
@@ -1094,8 +1113,7 @@ def clinittest(args):
         # Build and run the example
         native_image(
             ['-H:Path=' + build_dir, '-cp', test_cp, '-H:Class=com.oracle.svm.test.TestClassInitializationMustBeSafe',
-             '-H:-EagerlyInitializeClasses', '-H:+PrintClassInitialization', '-H:Name=clinittest',
-             '-H:+ReportExceptionStackTraces'] + args)
+             '-H:+PrintClassInitialization', '-H:Name=clinittest', '-H:+ReportExceptionStackTraces'] + args)
         mx.run([join(build_dir, 'clinittest')])
 
         # Check the reports for initialized classes
@@ -1108,7 +1126,7 @@ def clinittest(args):
                              str(wrongly_initialized_classes))
 
         reports = os.listdir(os.path.join(build_dir, 'reports'))
-        delayed_classes = next(report for report in reports if report.startswith('delay_classes'))
+        delayed_classes = next(report for report in reports if report.startswith('run_time_classes'))
         safe_classes = next(report for report in reports if report.startswith('safe_classes'))
 
         check_class_initialization(delayed_classes, 'MustBeDelayed')

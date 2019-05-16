@@ -96,7 +96,7 @@ import org.graalvm.polyglot.management.ExecutionEvent;
  * It can be useful to {@link Engine#create() create} an engine instance without a context to only
  * access meta-data for installed languages, instruments and their available options.
  *
- * @since 1.0
+ * @since 19.0
  */
 public final class Engine implements AutoCloseable {
 
@@ -136,7 +136,7 @@ public final class Engine implements AutoCloseable {
      * Gets a map of all installed languages with the language id as key and the language object as
      * value. The returned map is unmodifiable and might be used from multiple threads.
      *
-     * @since 1.0
+     * @since 19.0
      */
     public Map<String, Language> getLanguages() {
         return impl.getLanguages();
@@ -149,7 +149,7 @@ public final class Engine implements AutoCloseable {
      * options} passed to the {@link Builder#option(String, String) engine} when the engine or
      * context is constructed.
      *
-     * @since 1.0
+     * @since 19.0
      */
     public Map<String, Instrument> getInstruments() {
         return impl.getInstruments();
@@ -170,7 +170,7 @@ public final class Engine implements AutoCloseable {
      * @see Builder#option(String, String) To set an option for an engine, language, or instrument.
      * @see Context.Builder#option(String, String) To set an option for a context.
      *
-     * @since 1.0
+     * @since 19.0
      */
     public OptionDescriptors getOptions() {
         return impl.getOptions();
@@ -179,7 +179,7 @@ public final class Engine implements AutoCloseable {
     /**
      * Gets the version string of the engine in an unspecified format.
      *
-     * @since 1.0
+     * @since 19.0
      */
     public String getVersion() {
         return impl.getVersion();
@@ -195,7 +195,7 @@ public final class Engine implements AutoCloseable {
      *
      * @param cancelIfExecuting if <code>true</code> then currently executing contexts will be
      *            cancelled, else an {@link IllegalStateException} is thrown.
-     * @since 1.0
+     * @since 19.0
      */
     public void close(boolean cancelIfExecuting) {
         impl.close(this, cancelIfExecuting);
@@ -210,7 +210,7 @@ public final class Engine implements AutoCloseable {
      * @throws IllegalStateException if there currently executing open context instances.
      * @see #close(boolean)
      * @see Engine#close()
-     * @since 1.0
+     * @since 19.0
      */
     @Override
     public void close() {
@@ -222,7 +222,7 @@ public final class Engine implements AutoCloseable {
      * Engine" or "Graal Truffle Engine"). The returned value may change without notice. The value
      * is never <code>null</code>.
      *
-     * @since 1.0
+     * @since 19.0
      */
     public String getImplementationName() {
         return impl.getImplementationName();
@@ -233,7 +233,7 @@ public final class Engine implements AutoCloseable {
      * same configuration as it will be as when constructed implicitly using the context builder.
      *
      * @see Context#create(String...) to create a new execution context.
-     * @since 1.0
+     * @since 19.0
      */
     public static Engine create() {
         return newBuilder().build();
@@ -243,7 +243,7 @@ public final class Engine implements AutoCloseable {
      * Creates a new context builder that allows to configure an engine instance.
      *
      * @see Context#newBuilder(String...) to construct a new execution context.
-     * @since 1.0
+     * @since 19.0
      */
     public static Builder newBuilder() {
         return EMPTY.new Builder();
@@ -253,7 +253,7 @@ public final class Engine implements AutoCloseable {
      * Finds the GraalVM home folder.
      *
      * @return the path to a folder containing the GraalVM or {@code null} if it cannot be found
-     * @since 1.0
+     * @since 19.0
      */
     public static Path findHome() {
         return getImpl().findHome();
@@ -282,7 +282,7 @@ public final class Engine implements AutoCloseable {
 
     /**
      *
-     * @since 1.0
+     * @since 19.0
      */
     @SuppressWarnings("hiding")
     public final class Builder {
@@ -310,7 +310,7 @@ public final class Engine implements AutoCloseable {
          * engine will inherit the configured output stream if it is not specified in the context.
          * If not set then the system output stream will be used.
          *
-         * @since 1.0
+         * @since 19.0
          */
         public Builder out(OutputStream out) {
             Objects.requireNonNull(out);
@@ -323,7 +323,7 @@ public final class Engine implements AutoCloseable {
          * engine will inherit the configured error stream if it is not specified in the context. If
          * not set then the system error stream will be used.
          *
-         * @since 1.0
+         * @since 19.0
          */
         public Builder err(OutputStream err) {
             Objects.requireNonNull(err);
@@ -336,7 +336,7 @@ public final class Engine implements AutoCloseable {
          * engine will inherit the configured input stream if it is not specified in the context. If
          * not set then the system input stream will be used.
          *
-         * @since 1.0
+         * @since 19.0
          */
         public Builder in(InputStream in) {
             Objects.requireNonNull(in);
@@ -350,7 +350,7 @@ public final class Engine implements AutoCloseable {
          * then passing an experimental option results in an {@link IllegalArgumentException} when
          * the context is built.
          *
-         * @since 1.0
+         * @since 19.0
          */
         public Builder allowExperimentalOptions(boolean enabled) {
             this.allowExperimentalOptions = enabled;
@@ -372,7 +372,7 @@ public final class Engine implements AutoCloseable {
          * @param enabled if <code>true</code> system properties will be used as options.
          * @see #option(String, String) To specify option values directly.
          * @see #build() To build the engine instance.
-         * @since 1.0
+         * @since 19.0
          */
         public Builder useSystemProperties(boolean enabled) {
             useSystemProperties = enabled;
@@ -391,7 +391,7 @@ public final class Engine implements AutoCloseable {
          * @see Language#getOptions() To list all available options for a {@link Language language}.
          * @see Instrument#getOptions() To list all available options for an {@link Instrument
          *      instrument}.
-         * @since 1.0
+         * @since 19.0
          */
         public Builder option(String key, String value) {
             Objects.requireNonNull(key, "Key must not be null.");
@@ -406,7 +406,7 @@ public final class Engine implements AutoCloseable {
          *
          * @param options a map options.
          * @see #option(String, String) To set a single option.
-         * @since 1.0
+         * @since 19.0
          */
         public Builder options(Map<String, String> options) {
             for (String key : options.keySet()) {
@@ -425,7 +425,7 @@ public final class Engine implements AutoCloseable {
          *
          * @param serverTransport an implementation of message transport interceptor
          * @see MessageTransport
-         * @since 1.0
+         * @since 19.0
          */
         public Builder serverTransport(final MessageTransport serverTransport) {
             Objects.requireNonNull(serverTransport, "MessageTransport must be non null.");
@@ -454,7 +454,7 @@ public final class Engine implements AutoCloseable {
          *            The passed {@code logHandler} is closed when the engine is
          *            {@link Engine#close() closed}.
          * @return the {@link Builder}
-         * @since 1.0
+         * @since 19.0
          */
         public Builder logHandler(final Handler logHandler) {
             Objects.requireNonNull(logHandler, "Handler must be non null.");
@@ -483,7 +483,7 @@ public final class Engine implements AutoCloseable {
          *            The passed {@code logOut} stream is closed when the engine is
          *            {@link Engine#close() closed}.
          * @return the {@link Builder}
-         * @since 1.0
+         * @since 19.0
          */
         public Builder logHandler(final OutputStream logOut) {
             Objects.requireNonNull(logOut, "LogOut must be non null.");
@@ -495,7 +495,7 @@ public final class Engine implements AutoCloseable {
          * Creates a new engine instance from the configuration provided in the builder. The same
          * engine builder can be used to create multiple engine instances.
          *
-         * @since 1.0
+         * @since 19.0
          */
         public Engine build() {
             AbstractPolyglotImpl loadedImpl = getImpl();
@@ -608,6 +608,11 @@ public final class Engine implements AutoCloseable {
         }
 
         @Override
+        public boolean allowsImplementation(HostAccess access, Class<?> type) {
+            return access.allowsImplementation(type);
+        }
+
+        @Override
         public List<Object> getTargetMappings(HostAccess access) {
             return access.getTargetMappings();
         }
@@ -643,18 +648,22 @@ public final class Engine implements AutoCloseable {
                 Class<?> servicesClass = null;
                 boolean useContextClassLoader = false;
 
-                if (JDK8_OR_EARLIER) {
-                    try {
-                        servicesClass = Class.forName("jdk.vm.ci.services.Services");
-                    } catch (ClassNotFoundException e) {
-                    }
-                    if (servicesClass != null) {
+                if (Boolean.getBoolean("graalvm.ForcePolyglotInvalid")) {
+                    engine = createInvalidPolyglotImpl();
+                } else {
+                    if (JDK8_OR_EARLIER) {
                         try {
-                            Method m = servicesClass.getDeclaredMethod("loadSingle", Class.class, boolean.class);
-                            engine = (AbstractPolyglotImpl) m.invoke(null, AbstractPolyglotImpl.class, false);
-                        } catch (Throwable e) {
-                            // Fail fast for other errors
-                            throw new InternalError(e);
+                            servicesClass = Class.forName("jdk.vm.ci.services.Services");
+                        } catch (ClassNotFoundException e) {
+                        }
+                        if (servicesClass != null) {
+                            try {
+                                Method m = servicesClass.getDeclaredMethod("loadSingle", Class.class, boolean.class);
+                                engine = (AbstractPolyglotImpl) m.invoke(null, AbstractPolyglotImpl.class, false);
+                            } catch (Throwable e) {
+                                // Fail fast for other errors
+                                throw new InternalError(e);
+                            }
                         }
                     }
                 }
@@ -784,7 +793,7 @@ public final class Engine implements AutoCloseable {
         private static RuntimeException noPolyglotImplementationFound() {
             String suggestion;
             if (AOT) {
-                suggestion = "Make sure a language is added to the classpath (e.g., native-image --js).";
+                suggestion = "Make sure a language is added to the classpath (e.g., native-image --language:js).";
             } else {
                 suggestion = "Make sure the truffle-api.jar is on the classpath.";
             }

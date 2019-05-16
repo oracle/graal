@@ -45,6 +45,7 @@ import com.oracle.svm.core.heap.FeebleReference;
 import com.oracle.svm.core.heap.FeebleReferenceList;
 import com.oracle.svm.core.thread.VMOperation;
 import com.oracle.svm.core.util.VMError;
+import com.oracle.svm.util.ReflectionUtil;
 
 import jdk.vm.ci.meta.MetaAccessProvider;
 import jdk.vm.ci.meta.ResolvedJavaField;
@@ -65,16 +66,7 @@ class ReferenceWrapper extends FeebleReference<Object> {
 @Platforms(Platform.HOSTED_ONLY.class)
 class ComputeReferenceValue implements CustomFieldValueComputer {
 
-    private static final Field REFERENT_FIELD;
-
-    static {
-        try {
-            REFERENT_FIELD = Reference.class.getDeclaredField("referent");
-            REFERENT_FIELD.setAccessible(true);
-        } catch (ReflectiveOperationException ex) {
-            throw VMError.shouldNotReachHere(ex);
-        }
-    }
+    private static final Field REFERENT_FIELD = ReflectionUtil.lookupField(Reference.class, "referent");
 
     @Override
     public Object compute(MetaAccessProvider metaAccess, ResolvedJavaField original, ResolvedJavaField annotated, Object receiver) {

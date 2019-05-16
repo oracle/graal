@@ -70,8 +70,8 @@ def netbeans_jdk(appName):
 def igv(args):
     """(obsolete) informs about IGV"""
     mx.warn(
-        """IGV (idealgraphvisualizer) is distributed as part of GraalVM EE, available from
-    https://www.oracle.com/technetwork/oracle-labs/program-languages/downloads/index.html
+        """IGV (idealgraphvisualizer) is available from
+    https://www.oracle.com/technetwork/graalvm/downloads/index.html
 Please download the distribution and run
     bin/idealgraphvisualizer
 from the GraalVM EE installation.

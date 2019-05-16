@@ -26,7 +26,6 @@ package org.graalvm.component.installer.commands;
 
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertFalse;
-import static org.junit.Assert.assertNotEquals;
 import static org.junit.Assert.assertTrue;
 import static org.junit.Assert.fail;
 
@@ -85,7 +84,7 @@ public class InstallerTest extends TestBase {
         componentJarFile = new JarArchive(jf);
 
         loader.loadPaths();
-        installer = new Installer(fb(), componentInfo, registry, componentJarFile);
+        installer = new Installer(fb(), componentInfo, registry, registry, componentJarFile);
         installer.setInstallPath(targetPath);
         installer.setLicenseRelativePath(SystemUtils.fromCommonRelative(loader.getLicensePath()));
     }
@@ -132,26 +131,40 @@ public class InstallerTest extends TestBase {
 
     /**
      * Checks that the component will be uninstalled before installing a new one.
+     * 
+     * Disabled; the uninstall logic is now implemented by InstallCommand and tested by InstallTest.
+     * 
+     * @Test public void testSetReplaceComponents() throws IOException {
+     *       setupComponentInstall("truffleruby2.jar"); ComponentInfo fakeInfo = new
+     *       ComponentInfo("org.graalvm.ruby", "Fake ruby", "0.32");
+     *       storage.installed.add(fakeInfo);
+     * 
+     *       installer.setReplaceComponents(true); installer.validateRequirements();
+     *       installer.install(); }
      */
-    @Test
-    public void testSetReplaceComponents() throws IOException {
-        setupComponentInstall("truffleruby2.jar");
-        ComponentInfo fakeInfo = new ComponentInfo("org.graalvm.ruby", "Fake ruby", "1.0");
-        storage.installed.add(fakeInfo);
-
-        installer.setReplaceComponents(true);
-        installer.validateRequirements();
-        installer.install();
-    }
 
     @Test
     public void testFailOnExistingComponent() throws IOException {
         setupComponentInstall("truffleruby2.jar");
-        ComponentInfo fakeInfo = new ComponentInfo("org.graalvm.ruby", "Fake ruby", "1.0");
+        // the version has to be the same as the installed component, or newer so that installer
+        // will not attempt to replace it.
+        ComponentInfo fakeInfo = new ComponentInfo("org.graalvm.ruby", "Fake ruby", "1.1");
         storage.installed.add(fakeInfo);
 
         exception.expect(DependencyException.Conflict.class);
         exception.expectMessage("VERIFY_ComponentExists");
+        installer.setFailOnExisting(true);
+        installer.validateRequirements();
+    }
+
+    @Test
+    public void testDontFailOnComponentUpdate() throws IOException {
+        setupComponentInstall("truffleruby2.jar");
+        // the version has to be the same as the installed component, or newer so that installer
+        // will not attempt to replace it.
+        ComponentInfo fakeInfo = new ComponentInfo("org.graalvm.ruby", "Fake ruby", "0.99");
+        storage.installed.add(fakeInfo);
+
         installer.setFailOnExisting(true);
         installer.validateRequirements();
     }
@@ -164,6 +177,16 @@ public class InstallerTest extends TestBase {
 
         installer.setFailOnExisting(false);
         assertFalse("Must refuse installation", installer.validateAll());
+    }
+
+    @Test
+    public void testAcceptComponentUpgrade() throws IOException {
+        setupComponentInstall("truffleruby2.jar");
+        ComponentInfo fakeInfo = new ComponentInfo("org.graalvm.ruby", "Fake ruby", "0.32");
+        storage.installed.add(fakeInfo);
+
+        installer.setFailOnExisting(false);
+        assertTrue("Must refuse installation", installer.validateAll());
     }
 
     /**
@@ -389,7 +412,7 @@ public class InstallerTest extends TestBase {
         installer.getComponentInfo().addRequiredValue(CommonConstants.CAP_GRAALVM_VERSION, "0.33");
 
         exception.expect(DependencyException.class);
-        exception.expectMessage("VERIFY_Dependency_Failed");
+        exception.expectMessage("VERIFY_UpdateGraalVM");
         installer.validateRequirements();
     }
 
@@ -401,7 +424,7 @@ public class InstallerTest extends TestBase {
         storage.graalInfo.put(CommonConstants.CAP_GRAALVM_VERSION, "0.30");
 
         exception.expect(DependencyException.class);
-        exception.expectMessage("VERIFY_Dependency_Failed");
+        exception.expectMessage("VERIFY_UpdateGraalVM");
         installer.validateRequirements();
     }
 
@@ -539,30 +562,6 @@ public class InstallerTest extends TestBase {
 
         // MUST still exist, the installe did not fileName it
         assertTrue(Files.exists(check));
-    }
-
-    @Test
-    public void testInstallOneLicenseFile() throws Exception {
-        delegateFeedback(new FeedbackAdapter() {
-            @Override
-            public String l10n(String key, Object... params) {
-                if (key.startsWith("LICENSE_")) {
-                    return reallyl10n(key, params);
-                }
-                return null;
-            }
-        });
-        setupComponentInstall("truffleruby2.jar");
-
-        Archive.FileEntry entry2 = componentJarFile.getJarEntry("LICENSE");
-        Path resultPath = installer.installOneFile(installer.translateTargetPath(entry2), entry2);
-        Path relative = targetPath.relativize(resultPath);
-        assertNotEquals(entry2.getName(), relative.toString());
-        assertTrue(relative.toString().contains(componentInfo.getVersionString()));
-        assertEquals(targetPath, resultPath.getParent());
-
-        installer.revertInstall();
-        assertFalse(Files.exists(resultPath));
     }
 
     /**
@@ -932,11 +931,24 @@ public class InstallerTest extends TestBase {
         installer.validateSymlinks();
     }
 
-    public void testVerifyCatalogMatchingComponent() throws Exception {
-        fail("TBD");
-    }
+    /**
+     * Checks that installer blocks files in component storage directory, but not in subdirs.
+     */
+    @Test
+    public void testComponentRegistryNotWrittenTo() throws Exception {
+        setupComponentInstall("trufflerubyWork.jar");
+        installer.setSymlinks(loader.loadSymlinks());
+        installer.setPermissions(loader.loadPermissions());
+        installer.install();
 
-    public void testVerifyCatalogInvalidComponent() throws Exception {
-        fail("TBD");
+        Path p = targetPath.resolve(SystemUtils.fromCommonString(CommonConstants.PATH_COMPONENT_STORAGE));
+        Path rubyMeta = p.resolve("org.graalvm.ruby.meta");
+        Path other = p.resolve("other");
+        Path pythonList = p.resolve("python.list");
+
+        assertFalse(Files.exists(rubyMeta));
+        assertFalse(Files.exists(pythonList));
+
+        assertTrue(Files.exists(other));
     }
 }

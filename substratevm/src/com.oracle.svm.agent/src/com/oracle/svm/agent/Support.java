@@ -35,6 +35,7 @@ import java.util.concurrent.locks.ReentrantLock;
 
 import org.graalvm.nativeimage.StackValue;
 import org.graalvm.nativeimage.c.type.CCharPointer;
+import org.graalvm.nativeimage.c.type.CCharPointerPointer;
 import org.graalvm.nativeimage.c.type.CIntPointer;
 import org.graalvm.nativeimage.c.type.CTypeConversion;
 import org.graalvm.nativeimage.c.type.WordPointer;
@@ -74,6 +75,34 @@ public final class Support {
         handles = null;
         jniFunctions = nullPointer();
         jvmtiEnv = nullPointer();
+    }
+
+    static String getSystemProperty(JvmtiEnv jvmti, String propertyName) {
+        try (CCharPointerHolder propertyKey = toCString(propertyName)) {
+            CCharPointerPointer propertyValuePtr = StackValue.get(CCharPointerPointer.class);
+            check(jvmti.getFunctions().GetSystemProperty().invoke(jvmti, propertyKey.get(), propertyValuePtr));
+            String propertyValue = fromCString(propertyValuePtr.read());
+            check(jvmti.getFunctions().Deallocate().invoke(jvmti, propertyValuePtr.read()));
+            return propertyValue;
+        } catch (Throwable t) {
+            return null;
+        }
+    }
+
+    static String[] getSystemProperties(JvmtiEnv jvmti) {
+        CIntPointer countPtr = StackValue.get(CIntPointer.class);
+        WordPointer propertyPtr = StackValue.get(WordPointer.class);
+        check(jvmti.getFunctions().GetSystemProperties().invoke(jvmti, countPtr, propertyPtr));
+        int numEntries = countPtr.read();
+        CCharPointerPointer properties = propertyPtr.read();
+        String[] result = new String[numEntries];
+        for (int i = 0; i < numEntries; i++) {
+            CCharPointer rawEntry = properties.read(i);
+            result[i] = fromCString(rawEntry);
+            check(jvmti.getFunctions().Deallocate().invoke(jvmti, rawEntry));
+        }
+        check(jvmti.getFunctions().Deallocate().invoke(jvmti, properties));
+        return result;
     }
 
     /** JVMTI environments, unlike those of JNI, can be safely shared across threads. */
@@ -293,7 +322,7 @@ public final class Support {
         return getClassNameOr(env, clazz, null, null);
     }
 
-    static JNIObjectHandle getMethodDeclaringClass(JNIMethodId method) {
+    public static JNIObjectHandle getMethodDeclaringClass(JNIMethodId method) {
         WordPointer declaringClass = StackValue.get(WordPointer.class);
         if (method.isNull() || jvmtiFunctions().GetMethodDeclaringClass().invoke(jvmtiEnv(), method, declaringClass) != JvmtiError.JVMTI_ERROR_NONE) {
             declaringClass.write(nullPointer());
@@ -301,12 +330,22 @@ public final class Support {
         return declaringClass.read();
     }
 
-    static JNIObjectHandle getFieldDeclaringClass(JNIObjectHandle clazz, JNIFieldId method) {
+    public static JNIObjectHandle getFieldDeclaringClass(JNIObjectHandle clazz, JNIFieldId method) {
         WordPointer declaringClass = StackValue.get(WordPointer.class);
         if (method.isNull() || jvmtiFunctions().GetFieldDeclaringClass().invoke(jvmtiEnv(), clazz, method, declaringClass) != JvmtiError.JVMTI_ERROR_NONE) {
             declaringClass.write(nullPointer());
         }
         return declaringClass.read();
+    }
+
+    public static String getFieldName(JNIObjectHandle clazz, JNIFieldId field) {
+        String name = null;
+        CCharPointerPointer namePtr = StackValue.get(CCharPointerPointer.class);
+        if (jvmtiFunctions().GetFieldName().invoke(jvmtiEnv(), clazz, field, namePtr, nullPointer(), nullPointer()) == JvmtiError.JVMTI_ERROR_NONE) {
+            name = fromCString(namePtr.read());
+            jvmtiFunctions().Deallocate().invoke(jvmtiEnv(), namePtr.read());
+        }
+        return name;
     }
 
     public static boolean clearException(JNIEnvironment localEnv) {

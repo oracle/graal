@@ -115,7 +115,7 @@ import com.oracle.truffle.api.nodes.NodeUtil;
  *
  * </pre>
  *
- * @since 1.0
+ * @since 19.0
  */
 @GenerateLibrary
 @DefaultExport(ReflectionLibraryDefault.class)
@@ -125,7 +125,7 @@ public abstract class ReflectionLibrary extends Library {
      * Constructor for generated subclasses. Subclasses of this class are generated, do not extend
      * this class directly.
      *
-     * @since 1.0
+     * @since 19.0
      */
     protected ReflectionLibrary() {
     }
@@ -135,7 +135,7 @@ public abstract class ReflectionLibrary extends Library {
      * receiver and message must not be null. If the argument types don't match the expected message
      * signature then an {@link IllegalArgumentException} will be thrown.
      *
-     * @since 1.0
+     * @since 19.0
      */
     @Abstract
     public abstract Object send(Object receiver, Message message, Object... args) throws Exception;
@@ -145,7 +145,7 @@ public abstract class ReflectionLibrary extends Library {
     /**
      * Returns the library factory for {@link ReflectionLibrary}.
      *
-     * @since 1.0
+     * @since 19.0
      */
     public static LibraryFactory<ReflectionLibrary> getFactory() {
         return FACTORY;

@@ -44,7 +44,7 @@ public interface PlatformNativeLibrarySupport {
 
         boolean isBuiltin();
 
-        void load() throws UnsatisfiedLinkError;
+        boolean load();
 
         PointerBase findSymbol(String name);
     }

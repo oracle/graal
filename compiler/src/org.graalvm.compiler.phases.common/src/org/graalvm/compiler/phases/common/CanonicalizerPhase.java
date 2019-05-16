@@ -52,18 +52,18 @@ import org.graalvm.compiler.nodes.StartNode;
 import org.graalvm.compiler.nodes.StructuredGraph;
 import org.graalvm.compiler.nodes.ValueNode;
 import org.graalvm.compiler.nodes.calc.FloatingNode;
+import org.graalvm.compiler.nodes.spi.CoreProviders;
 import org.graalvm.compiler.nodes.util.GraphUtil;
 import org.graalvm.compiler.options.OptionValues;
 import org.graalvm.compiler.phases.BasePhase;
 import org.graalvm.compiler.phases.Phase;
-import org.graalvm.compiler.phases.tiers.PhaseContext;
 
 import jdk.vm.ci.meta.Assumptions;
 import jdk.vm.ci.meta.Constant;
 import jdk.vm.ci.meta.ConstantReflectionProvider;
 import jdk.vm.ci.meta.MetaAccessProvider;
 
-public class CanonicalizerPhase extends BasePhase<PhaseContext> {
+public class CanonicalizerPhase extends BasePhase<CoreProviders> {
 
     private static final int MAX_ITERATION_PER_NODE = 10;
     private static final CounterKey COUNTER_CANONICALIZED_NODES = DebugContext.counter("CanonicalizedNodes");
@@ -121,7 +121,7 @@ public class CanonicalizerPhase extends BasePhase<PhaseContext> {
     }
 
     @Override
-    protected void run(StructuredGraph graph, PhaseContext context) {
+    protected void run(StructuredGraph graph, CoreProviders context) {
         new Instance(context).run(graph);
     }
 
@@ -129,11 +129,11 @@ public class CanonicalizerPhase extends BasePhase<PhaseContext> {
      * @param newNodesMark only the {@linkplain Graph#getNewNodes(Mark) new nodes} specified by this
      *            mark are processed
      */
-    public void applyIncremental(StructuredGraph graph, PhaseContext context, Mark newNodesMark) {
+    public void applyIncremental(StructuredGraph graph, CoreProviders context, Mark newNodesMark) {
         applyIncremental(graph, context, newNodesMark, true);
     }
 
-    public void applyIncremental(StructuredGraph graph, PhaseContext context, Mark newNodesMark, boolean dumpGraph) {
+    public void applyIncremental(StructuredGraph graph, CoreProviders context, Mark newNodesMark, boolean dumpGraph) {
         new Instance(context, newNodesMark).apply(graph, dumpGraph);
     }
 
@@ -141,19 +141,19 @@ public class CanonicalizerPhase extends BasePhase<PhaseContext> {
      * @param workingSet the initial working set of nodes on which the canonicalizer works, should
      *            be an auto-grow node bitmap
      */
-    public void applyIncremental(StructuredGraph graph, PhaseContext context, Iterable<? extends Node> workingSet) {
+    public void applyIncremental(StructuredGraph graph, CoreProviders context, Iterable<? extends Node> workingSet) {
         applyIncremental(graph, context, workingSet, true);
     }
 
-    public void applyIncremental(StructuredGraph graph, PhaseContext context, Iterable<? extends Node> workingSet, boolean dumpGraph) {
+    public void applyIncremental(StructuredGraph graph, CoreProviders context, Iterable<? extends Node> workingSet, boolean dumpGraph) {
         new Instance(context, workingSet).apply(graph, dumpGraph);
     }
 
-    public void applyIncremental(StructuredGraph graph, PhaseContext context, Iterable<? extends Node> workingSet, Mark newNodesMark) {
+    public void applyIncremental(StructuredGraph graph, CoreProviders context, Iterable<? extends Node> workingSet, Mark newNodesMark) {
         applyIncremental(graph, context, workingSet, newNodesMark, true);
     }
 
-    public void applyIncremental(StructuredGraph graph, PhaseContext context, Iterable<? extends Node> workingSet, Mark newNodesMark, boolean dumpGraph) {
+    public void applyIncremental(StructuredGraph graph, CoreProviders context, Iterable<? extends Node> workingSet, Mark newNodesMark, boolean dumpGraph) {
         new Instance(context, workingSet, newNodesMark).apply(graph, dumpGraph);
     }
 
@@ -164,26 +164,26 @@ public class CanonicalizerPhase extends BasePhase<PhaseContext> {
     private final class Instance extends Phase {
 
         private final Mark newNodesMark;
-        private final PhaseContext context;
+        private final CoreProviders context;
         private final Iterable<? extends Node> initWorkingSet;
 
         private NodeWorkList workList;
         private Tool tool;
         private DebugContext debug;
 
-        private Instance(PhaseContext context) {
+        private Instance(CoreProviders context) {
             this(context, null, null);
         }
 
-        private Instance(PhaseContext context, Iterable<? extends Node> workingSet) {
+        private Instance(CoreProviders context, Iterable<? extends Node> workingSet) {
             this(context, workingSet, null);
         }
 
-        private Instance(PhaseContext context, Mark newNodesMark) {
+        private Instance(CoreProviders context, Mark newNodesMark) {
             this(context, null, newNodesMark);
         }
 
-        private Instance(PhaseContext context, Iterable<? extends Node> workingSet, Mark newNodesMark) {
+        private Instance(CoreProviders context, Iterable<? extends Node> workingSet, Mark newNodesMark) {
             this.newNodesMark = newNodesMark;
             this.context = context;
             this.initWorkingSet = workingSet;

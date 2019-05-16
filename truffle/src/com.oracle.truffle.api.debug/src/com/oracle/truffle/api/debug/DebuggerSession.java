@@ -203,6 +203,7 @@ public final class DebuggerSession implements Closeable {
     private final StableBoolean ignoreLanguageContextInitialization = new StableBoolean(false);
     private boolean includeInternal = false;
     private Predicate<Source> sourceFilter;
+    @CompilationFinal private volatile Assumption suspensionFilterUnchanged = Truffle.getRuntime().createAssumption("Unchanged suspension filter");
     private final StableBoolean alwaysHaltBreakpointsActive = new StableBoolean(true);
     private final StableBoolean locationBreakpointsActive = new StableBoolean(true);
     private final StableBoolean exceptionBreakpointsActive = new StableBoolean(true);
@@ -333,11 +334,30 @@ public final class DebuggerSession implements Closeable {
             this.includeInternal = steppingFilter.isInternalIncluded();
             Predicate<Source> oldSourceFilter = this.sourceFilter;
             this.sourceFilter = steppingFilter.getSourcePredicate();
+            this.suspensionFilterUnchanged.invalidate();
+            this.suspensionFilterUnchanged = Truffle.getRuntime().createAssumption("Unchanged suspension filter");
             if (oldIncludeInternal != this.includeInternal || oldSourceFilter != this.sourceFilter) {
                 removeBindings();
                 addBindings(this.includeInternal, this.sourceFilter);
             }
         }
+    }
+
+    boolean isIncludeInternal() {
+        return includeInternal;
+    }
+
+    boolean isSourceFilteredOut(Source source) {
+        Predicate<Source> filter = sourceFilter;
+        if (filter != null) {
+            return !filter.test(source);
+        } else {
+            return false;
+        }
+    }
+
+    Assumption getSuspensionFilterUnchangedAssumption() {
+        return suspensionFilterUnchanged;
     }
 
     /**
@@ -627,7 +647,7 @@ public final class DebuggerSession implements Closeable {
      * @param breakpointKind the kind of breakpoints to activate/deactivate
      * @param active <code>true</code> to make breakpoints active, <code>false</code> to make
      *            breakpoints inactive.
-     * @since 1.0
+     * @since 19.0
      */
     public void setBreakpointsActive(Breakpoint.Kind breakpointKind, boolean active) {
         switch (breakpointKind) {
@@ -668,7 +688,7 @@ public final class DebuggerSession implements Closeable {
      * break execution when not active.
      *
      * @param breakpointKind the kind of breakpoints to test
-     * @since 1.0
+     * @since 19.0
      */
     public boolean isBreakpointsActive(Breakpoint.Kind breakpointKind) {
         switch (breakpointKind) {
@@ -766,7 +786,7 @@ public final class DebuggerSession implements Closeable {
      * @param uris a list of absolute URIs
      * @throws IllegalArgumentException when an URI is not absolute
      * @see #resolveSource(Source)
-     * @since 1.0
+     * @since 19.0
      */
     public void setSourcePath(Iterable<URI> uris) {
         sources.setSourcePath(uris);
@@ -780,7 +800,7 @@ public final class DebuggerSession implements Closeable {
      * @param source the source to resolve
      * @return the provided source if no resolution is necessary, or the resolved source, or
      *         <code>null</code> when it's not possible to resolve the provided source
-     * @since 1.0
+     * @since 19.0
      */
     public Source resolveSource(Source source) {
         return sources.resolve(source);

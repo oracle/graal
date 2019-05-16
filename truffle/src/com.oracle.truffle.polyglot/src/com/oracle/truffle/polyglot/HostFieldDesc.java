@@ -58,10 +58,16 @@ abstract class HostFieldDesc {
 
     private final Class<?> type;
     private final Type genericType;
+    private final boolean isFinal;
 
-    private HostFieldDesc(Class<?> type, Type genericType) {
+    private HostFieldDesc(Class<?> type, Type genericType, boolean isFinal) {
         this.type = type;
         this.genericType = genericType;
+        this.isFinal = isFinal;
+    }
+
+    public final boolean isFinal() {
+        return isFinal;
     }
 
     public final Class<?> getType() {
@@ -93,7 +99,7 @@ abstract class HostFieldDesc {
         private final Field field;
 
         ReflectImpl(Field field) {
-            super(field.getType(), field.getGenericType());
+            super(field.getType(), field.getGenericType(), Modifier.isFinal(field.getModifiers()));
             this.field = field;
         }
 
@@ -145,7 +151,7 @@ abstract class HostFieldDesc {
         @CompilationFinal private MethodHandle setHandle;
 
         MHImpl(Field field) {
-            super(field.getType(), field.getGenericType());
+            super(field.getType(), field.getGenericType(), Modifier.isFinal(field.getModifiers()));
             this.field = field;
         }
 

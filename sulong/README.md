@@ -107,17 +107,43 @@ file. For a successful build you need to have LLVM (incl. `CLANG` and `OPT`
 tool) in one of the supported versions (v3.8 - v7.0) installed. For best
 experience we suggest to install either LLVM 4 or LLVM 6.
 
+#### Linux
 On a Linux-based operating system you can usually use its included package
 manager to install a supported version. Note, however, that the LLVM that
 is shipped with MacOS does not contain the `opt` tool, which a Sulong
 build needs. On MacOS, we recommend installing LLVM via `homebrew` and
 appending the bin path to the `PATH`.
 
-To install Clang and LLVM 4 on MacOS using `homebrew` you can use the
-following command:
+#### MacOS
+To install Clang and LLVM 4 on MacOS using `homebrew`, you can use the
+following commands:
 
-    brew install llvm@4
-    export PATH="/usr/local/opt/llvm@4/bin:$PATH"
+```bash
+brew install llvm@4
+export PATH="/usr/local/opt/llvm@4/bin:$PATH"
+```
+
+On macOS Mojave 10.14 and later, you may run into a build error like
+this:
+```
+Building com.oracle.truffle.llvm.libraries.bitcode with GNU Make... [rebuild needed by GNU Make]
+../graal/sulong/projects/com.oracle.truffle.llvm.libraries.bitcode/src/abort.c:30:10: fatal error: 'stdio.h' file not found
+#include <stdio.h>
+         ^~~~~~~~~
+1 error generated.
+make: *** [bin/abort.noopt.bc] Error 1
+
+Building com.oracle.truffle.llvm.libraries.bitcode with GNU Make failed
+1 build tasks failed
+```
+
+In this case, please install the macOS SDK headers with the following
+commands:
+
+```bash
+xcode-select --install
+open /Library/Developer/CommandLineTools/Packages/macOS_SDK_headers_for_macOS_10.14.pkg
+```
 
 Runtime Dependencies
 --------------------
@@ -147,14 +173,14 @@ Next, use git to clone the Sulong project and its dependencies:
     git clone https://github.com/oracle/graal
 
 Next, you need to download a recent
-[JVMCI-enabled JDK8](https://github.com/graalvm/openjdk8-jvmci-builder/releases).
+[JVMCI-enabled JDK 8](https://www.oracle.com/technetwork/graalvm/downloads/index.html).
 Extract it inside the `sulong-dev` directory:
 
-    tar -zxf openjdk1.8.0_202-jvmci-0.59-linux-amd64.tar.gz
+    tar -zxf oraclejdk-8u212-jvmci-20-b01-linux-amd64.tar.gz
 
 Set `JAVA_HOME` to point to the extracted JDK from above:
 
-    echo JAVA_HOME=`pwd`/openjdk1.8.0_202-jvmci-0.59 > graal/sulong/mx.sulong/env
+    echo JAVA_HOME=`pwd`/oraclejdk1.8.0_212-jvmci-20-b01 > graal/sulong/mx.sulong/env
 
 Sulong partially consists of C/C++ code that is compiled using `make`. To speed
 up the build process you can edit the `MAKEFLAGS` environment variable:

@@ -25,6 +25,7 @@
 package com.oracle.svm.agent;
 
 import java.io.Closeable;
+import java.util.Arrays;
 import java.util.HashMap;
 import java.util.Map;
 
@@ -36,7 +37,24 @@ public abstract class TraceWriter implements Closeable {
     public static final String UNKNOWN_VALUE = new String("\0");
 
     static Object handleSpecialValue(Object obj) {
-        return (obj == EXPLICIT_NULL) ? null : obj;
+        if (obj == EXPLICIT_NULL) {
+            return null;
+        }
+        if (obj instanceof Object[]) {
+            Object[] array = (Object[]) obj;
+            Object[] newArray = null;
+            for (int i = 0; i < array.length; i++) {
+                Object newValue = handleSpecialValue(array[i]);
+                if (newValue != array[i]) {
+                    if (newArray == null) {
+                        newArray = Arrays.copyOf(array, array.length);
+                    }
+                    newArray[i] = newValue;
+                }
+            }
+            return (newArray != null) ? newArray : array;
+        }
+        return obj;
     }
 
     void traceInitialization() {
@@ -86,8 +104,8 @@ public abstract class TraceWriter implements Closeable {
         if (result != null) {
             entry.put("result", handleSpecialValue(result));
         }
-        if (args != null && args.length > 0) {
-            entry.put("args", args);
+        if (args != null) {
+            entry.put("args", handleSpecialValue(args));
         }
         traceEntry(entry);
     }

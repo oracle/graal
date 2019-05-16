@@ -59,7 +59,7 @@ public final class RegexSource implements JsonConvertible {
     public Source getSource() {
         if (source == null) {
             String text = toString();
-            source = Source.newBuilder(RegexLanguage.ID, text, text).name(text).mimeType(RegexLanguage.MIME_TYPE).build();
+            source = Source.newBuilder(RegexLanguage.ID, text, text).internal(true).name(text).mimeType(RegexLanguage.MIME_TYPE).build();
         }
         return source;
     }

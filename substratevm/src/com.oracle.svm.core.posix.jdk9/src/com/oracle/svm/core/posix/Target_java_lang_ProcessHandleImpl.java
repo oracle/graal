@@ -24,6 +24,11 @@
  */
 package com.oracle.svm.core.posix;
 
+import java.util.concurrent.Executor;
+
+import com.oracle.svm.core.annotate.Delete;
+import org.graalvm.nativeimage.Platform;
+import org.graalvm.nativeimage.Platforms;
 import org.graalvm.nativeimage.ProcessProperties;
 
 import com.oracle.svm.core.annotate.Substitute;
@@ -33,6 +38,9 @@ import com.oracle.svm.core.util.VMError;
 
 @TargetClass(className = "java.lang.ProcessHandleImpl", onlyWith = JDK9OrLater.class)
 final class Target_java_lang_ProcessHandleImpl {
+
+    @Platforms({Platform.LINUX.class, Platform.DARWIN.class})//
+    @Delete static Executor processReaperExecutor;
 
     @Substitute
     private static long isAlive0(long pid) {

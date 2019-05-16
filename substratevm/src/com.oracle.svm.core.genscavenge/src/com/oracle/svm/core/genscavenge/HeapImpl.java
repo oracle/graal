@@ -38,11 +38,14 @@ import javax.management.NotificationListener;
 import javax.management.ObjectName;
 
 import org.graalvm.compiler.api.replacements.Fold;
+import org.graalvm.compiler.nodes.gc.BarrierSet;
+import org.graalvm.compiler.nodes.gc.CardTableBarrierSet;
+import org.graalvm.compiler.nodes.spi.GCProvider;
 import org.graalvm.compiler.word.Word;
-import org.graalvm.nativeimage.hosted.Feature.FeatureAccess;
 import org.graalvm.nativeimage.IsolateThread;
 import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.Platforms;
+import org.graalvm.nativeimage.hosted.Feature.FeatureAccess;
 import org.graalvm.word.Pointer;
 import org.graalvm.word.PointerBase;
 import org.graalvm.word.UnsignedWord;
@@ -55,6 +58,7 @@ import com.oracle.svm.core.MemoryWalker.NativeImageHeapRegionAccess;
 import com.oracle.svm.core.MemoryWalker.RuntimeCompiledMethodAccess;
 import com.oracle.svm.core.SubstrateOptions;
 import com.oracle.svm.core.SubstrateUtil;
+import com.oracle.svm.core.annotate.NeverInline;
 import com.oracle.svm.core.annotate.Substitute;
 import com.oracle.svm.core.annotate.TargetClass;
 import com.oracle.svm.core.annotate.Uninterruptible;
@@ -98,6 +102,7 @@ public class HeapImpl extends Heap {
     final HeapChunkProvider chunkProvider;
 
     /** A singleton instance, created during image generation. */
+    private final GenScavengeGCProvider gcProvider;
     private final MemoryMXBean memoryMXBean;
 
     /** A list of all the classes, if someone asks for it. */
@@ -123,6 +128,7 @@ public class HeapImpl extends Heap {
         chunkProvider = new HeapChunkProvider();
         this.pinnedAllocatorListHead = null;
         this.objectVisitorWalkerOperation = new ObjectVisitorWalkerOperation();
+        this.gcProvider = new GenScavengeGCProvider();
         this.memoryMXBean = new HeapImplMemoryMXBean();
         this.classList = null;
         SubstrateUtil.DiagnosticThunkRegister.getSingleton().register(() -> {
@@ -320,11 +326,11 @@ public class HeapImpl extends Heap {
         }
     }
 
-    public Object promoteObject(Object original, Pointer objRef, int offset, boolean compressed) {
+    public Object promoteObject(Object original) {
         final Log trace = Log.noopLog().string("[HeapImpl.promoteObject:").string("  original: ").object(original);
 
         final OldGeneration oldGen = getOldGeneration();
-        final Object result = oldGen.promoteObject(original, objRef, offset, compressed);
+        final Object result = oldGen.promoteObject(original);
 
         trace.string("  result: ").object(result).string("]").newline();
         return result;
@@ -610,6 +616,7 @@ public class HeapImpl extends Heap {
         return (HeapOptions.VerifyHeap.getValue() || HeapOptions.VerifyStackAfterCollection.getValue());
     }
 
+    @NeverInline("Starting a stack walk in the caller frame")
     void verifyBeforeGC(String cause, UnsignedWord epoch) {
         final Log trace = Log.noopLog().string("[HeapImpl.verifyBeforeGC:");
         trace.string("  getVerifyHeapBeforeGC(): ").bool(getVerifyHeapBeforeGC()).string("  heapVerifier: ").object(heapVerifier);
@@ -631,6 +638,7 @@ public class HeapImpl extends Heap {
         trace.string("]").newline();
     }
 
+    @NeverInline("Starting a stack walk in the caller frame")
     void verifyAfterGC(String cause, UnsignedWord epoch) {
         if (getVerifyHeapAfterGC()) {
             assert heapVerifier != null : "No heap verifier!";
@@ -703,6 +711,34 @@ public class HeapImpl extends Heap {
          * it does not include memory in the chunk free list, or memory in the image heap.
          */
         return HeapPolicy.getMaximumHeapSize();
+    }
+
+    @Override
+    public GCProvider getGCProvider() {
+        return gcProvider;
+    }
+
+    private static class GenScavengeGCProvider implements GCProvider {
+        private final BarrierSet barrierSet;
+
+        GenScavengeGCProvider() {
+            this.barrierSet = new CardTableBarrierSet(true);
+        }
+
+        @Override
+        public BarrierSet getBarrierSet() {
+            return barrierSet;
+        }
+    }
+
+    @Override
+    public void prepareForSafepoint() {
+        // nothing to do
+    }
+
+    @Override
+    public void endSafepoint() {
+        // nothing to do
     }
 }
 

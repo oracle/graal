@@ -55,7 +55,7 @@ import org.graalvm.component.installer.model.ComponentInfo;
  * Loads information from the component's bundle.
  */
 public class ComponentPackageLoader implements Closeable, MetadataLoader {
-    private final Feedback feedback;
+    protected final Feedback feedback;
 
     /**
      * Default value producer.
@@ -122,7 +122,14 @@ public class ComponentPackageLoader implements Closeable, MetadataLoader {
     }
 
     private HeaderParser parseHeader(String header) throws MetadataException {
+        return parseHeader2(header, null);
+    }
+
+    private HeaderParser parseHeader2(String header, Function<String, String> fn) throws MetadataException {
         String s = valueSupplier.apply(header);
+        if (fn != null) {
+            s = fn.apply(s);
+        }
         return new HeaderParser(header, s, feedback).mustExist();
     }
 
@@ -194,6 +201,7 @@ public class ComponentPackageLoader implements Closeable, MetadataLoader {
                         () -> {
                             info = new ComponentInfo(id, name, version);
                             info.addRequiredValues(parseHeader(BundleConstants.BUNDLE_REQUIRED).parseRequiredCapabilities());
+                            info.addProvidedValues(parseHeader(BundleConstants.BUNDLE_PROVIDED, "").parseProvidedCapabilities());
                         });
         return info;
     }
@@ -215,6 +223,10 @@ public class ComponentPackageLoader implements Closeable, MetadataLoader {
     private void loadLicenseType(ComponentInfo nfo) {
         licenseType = parseHeader(BundleConstants.BUNDLE_LICENSE_TYPE, null).getContents(null);
         nfo.setLicenseType(licenseType);
+        if (licenseType != null) {
+            licensePath = parseHeader(BundleConstants.BUNDLE_LICENSE_PATH).mustExist().getContents(null);
+            nfo.setLicensePath(licensePath);
+        }
     }
 
     @Override

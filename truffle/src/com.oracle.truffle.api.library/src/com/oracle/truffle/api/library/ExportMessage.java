@@ -56,7 +56,7 @@ import com.oracle.truffle.api.dsl.Specialization;
  * and a method cannot be exported at the same time for a single message and enclosing class.
  *
  * @see ExportLibrary For usage examples.
- * @since 1.0
+ * @since 19.0
  */
 @Retention(RetentionPolicy.RUNTIME)
 @Target({ElementType.METHOD, ElementType.TYPE})
@@ -70,7 +70,7 @@ public @interface ExportMessage {
      * the exported message does not match the exported method or class name or if multiple messages
      * need to be exported for a method or class.
      *
-     * @since 1.0
+     * @since 19.0
      */
     String name() default "";
 
@@ -79,7 +79,7 @@ public @interface ExportMessage {
      * the message is unique. Needs to be specified if the name is not unique when implementing
      * multiple libraries.
      *
-     * @since 1.0
+     * @since 19.0
      */
     Class<? extends Library> library() default Library.class;
 
@@ -90,18 +90,18 @@ public @interface ExportMessage {
      *
      * @see Specialization#limit()
      * @see CachedLibrary
-     * @since 1.0
+     * @since 19.0
      */
     String limit() default "";
 
     /***
-     * @since 1.0
+     * @since 19.0
      */
     @Retention(RetentionPolicy.RUNTIME)
     @Target({ElementType.METHOD, ElementType.TYPE})
     public @interface Repeat {
         /***
-         * @since 1.0
+         * @since 19.0
          */
         ExportMessage[] value();
 
@@ -110,7 +110,7 @@ public @interface ExportMessage {
     /***
      * Explicitly ignores warning messages originating from the {@link ExportLibrary} annotation.
      *
-     * @since 1.0
+     * @since 19.0
      */
     @Retention(RetentionPolicy.RUNTIME)
     @Target({ElementType.METHOD, ElementType.TYPE})

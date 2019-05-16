@@ -4,3 +4,13 @@ svm_suite: /substratevm
 vm_extra_suites: "truffleruby,graalpython,fastr"
 custom_vm_linux: {}
 custom_vm_darwin: {}
+
+builds += [
+  ${gate_vm_linux} {
+    run: [
+      [mx, build]
+      [mx, unittest, --suite, vm]
+    ]
+    name: gate-vm-unittest-linux-amd64
+  }
+]

@@ -259,7 +259,7 @@ public @interface Cached {
      * versions of exported library messages.
      *
      * @see GenerateUncached
-     * @since 1.0
+     * @since 19.0
      */
     String uncached() default "getUncached($parameters)";
 
@@ -288,14 +288,14 @@ public @interface Cached {
      * {@link #value()} expression in the {@link #uncached()} expression. This flag cannot be set in
      * combination with {@link #uncached()}.
      *
-     * @since 1.0
+     * @since 19.0
      */
     boolean allowUncached() default false;
 
     /**
      * Specifies the bindings used for the $parameters variable in cached or uncached initializers.
      *
-     * @since 1.0
+     * @since 19.0
      */
     String[] parameters() default {};
 
@@ -306,7 +306,7 @@ public @interface Cached {
      * opportunities to the user by showing a warning.
      *
      * @see Exclusive
-     * @since 1.0
+     * @since 19.0
      */
     @Retention(RetentionPolicy.CLASS)
     @Target({ElementType.PARAMETER})
@@ -315,7 +315,7 @@ public @interface Cached {
         /**
          * Specifies the sharing group of the shared cached element.
          *
-         * @since 1.0
+         * @since 19.0
          */
         String value();
 
@@ -325,7 +325,7 @@ public @interface Cached {
      * Disallows any sharing with other cached parameters. The DSL will indicate sharing
      * opportunities to the user by showing a warning.
      *
-     * @since 1.0
+     * @since 19.0
      */
     @Retention(RetentionPolicy.CLASS)
     @Target({ElementType.PARAMETER, ElementType.METHOD, ElementType.TYPE})

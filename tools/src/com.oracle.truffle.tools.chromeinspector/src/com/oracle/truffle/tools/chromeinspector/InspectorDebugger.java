@@ -241,6 +241,9 @@ public final class InspectorDebugger extends DebuggerDomain {
                 if (c2 <= 0) {
                     c2 = -1;
                 }
+                if (l1 > l2) {
+                    l1 = l2;
+                }
             } else {
                 l2 = l1;
                 if (c1 == -1) {

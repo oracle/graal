@@ -33,7 +33,6 @@ import java.lang.reflect.Array;
 import java.lang.reflect.Constructor;
 import java.lang.reflect.Executable;
 import java.lang.reflect.Field;
-import java.lang.reflect.InvocationTargetException;
 import java.lang.reflect.Method;
 import java.lang.reflect.Modifier;
 import java.util.Comparator;
@@ -42,7 +41,6 @@ import java.util.List;
 import java.util.Map;
 import java.util.Optional;
 import java.util.function.BooleanSupplier;
-import java.util.function.Function;
 import java.util.function.Predicate;
 
 import org.graalvm.nativeimage.ImageSingletons;
@@ -72,6 +70,8 @@ import com.oracle.svm.hosted.NativeImageOptions;
 import com.oracle.svm.hosted.annotation.AnnotationSubstitutionType;
 import com.oracle.svm.hosted.annotation.CustomSubstitutionMethod;
 import com.oracle.svm.hosted.classinitialization.ClassInitializationSupport;
+import com.oracle.svm.util.ReflectionUtil;
+import com.oracle.svm.util.ReflectionUtil.ReflectionUtilError;
 
 import jdk.vm.ci.common.NativeImageReinitialize;
 import jdk.vm.ci.meta.MetaAccessProvider;
@@ -258,7 +258,7 @@ public class AnnotationSubstitutionProcessor extends SubstitutionProcessor {
          * The annotatedClass is never used directly, i.e., never wrapped in an AnalysisType. So we
          * need to ensure manually here that its static initializer runs.
          */
-        classInitializationSupport.forceInitializeHosted(annotatedClass);
+        classInitializationSupport.forceInitializeHosted(annotatedClass, "substitutions are always initialized");
 
         Delete deleteAnnotation = lookupAnnotation(annotatedClass, Delete.class);
         Substitute substituteAnnotation = lookupAnnotation(annotatedClass, Substitute.class);
@@ -675,11 +675,9 @@ public class AnnotationSubstitutionProcessor extends SubstitutionProcessor {
         for (Class<?> onlyWithClass : targetElementAnnotation.onlyWith()) {
             Object onlyWithProvider;
             try {
-                Constructor<?> constructor = onlyWithClass.getDeclaredConstructor();
-                constructor.setAccessible(true);
-                onlyWithProvider = constructor.newInstance();
-            } catch (NoSuchMethodException | InstantiationException | IllegalAccessException | IllegalArgumentException | InvocationTargetException ex) {
-                throw UserError.abort("Class specified as onlyWith for " + annotatedElement + " cannot be loaded or instantiated: " + onlyWithClass.getTypeName());
+                onlyWithProvider = ReflectionUtil.newInstance(onlyWithClass);
+            } catch (ReflectionUtilError ex) {
+                throw UserError.abort("Class specified as onlyWith for " + annotatedElement + " cannot be loaded or instantiated: " + onlyWithClass.getTypeName(), ex.getCause());
             }
 
             boolean onlyWithResult;
@@ -786,12 +784,9 @@ public class AnnotationSubstitutionProcessor extends SubstitutionProcessor {
             className = target.value().getName();
         } else if (target.classNameProvider() != TargetClass.NoClassNameProvider.class) {
             try {
-                Constructor<? extends Function<TargetClass, String>> classNameProviderConstructor = target.classNameProvider().getDeclaredConstructor();
-                classNameProviderConstructor.setAccessible(true);
-                Function<TargetClass, String> classNameProvider = classNameProviderConstructor.newInstance();
-                className = classNameProvider.apply(target);
-            } catch (NoSuchMethodException | InstantiationException | IllegalAccessException | InvocationTargetException e) {
-                throw UserError.abort("Cannot instantiate classNameProvider: " + target.classNameProvider().getTypeName() + ". The class must have a parameterless constructor.");
+                className = ReflectionUtil.newInstance(target.classNameProvider()).apply(target);
+            } catch (ReflectionUtilError ex) {
+                throw UserError.abort("Cannot instantiate classNameProvider: " + target.classNameProvider().getTypeName() + ". The class must have a parameterless constructor.", ex.getCause());
             }
         } else {
             guarantee(!target.className().isEmpty(), "Neither class, className, nor classNameProvider specified for substitution");
@@ -801,11 +796,9 @@ public class AnnotationSubstitutionProcessor extends SubstitutionProcessor {
         for (Class<?> onlyWithClass : target.onlyWith()) {
             Object onlyWithProvider;
             try {
-                Constructor<?> constructor = onlyWithClass.getDeclaredConstructor();
-                constructor.setAccessible(true);
-                onlyWithProvider = constructor.newInstance();
-            } catch (NoSuchMethodException | InstantiationException | IllegalAccessException | IllegalArgumentException | InvocationTargetException ex) {
-                throw UserError.abort("Class specified as onlyWith for " + annotatedBaseClass.getTypeName() + " cannot be loaded or instantiated: " + onlyWithClass.getTypeName());
+                onlyWithProvider = ReflectionUtil.newInstance(onlyWithClass);
+            } catch (ReflectionUtilError ex) {
+                throw UserError.abort("Class specified as onlyWith for " + annotatedBaseClass.getTypeName() + " cannot be loaded or instantiated: " + onlyWithClass.getTypeName(), ex.getCause());
             }
 
             boolean onlyWithResult;

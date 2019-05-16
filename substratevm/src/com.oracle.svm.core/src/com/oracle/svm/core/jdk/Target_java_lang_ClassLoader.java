@@ -34,6 +34,7 @@ import java.util.Enumeration;
 import java.util.List;
 import java.util.concurrent.ConcurrentHashMap;
 
+import com.oracle.svm.core.SubstrateUtil;
 import com.oracle.svm.core.annotate.KeepOriginal;
 import com.oracle.svm.core.annotate.Substitute;
 import com.oracle.svm.core.annotate.TargetClass;
@@ -41,7 +42,6 @@ import com.oracle.svm.core.annotate.TargetElement;
 import com.oracle.svm.core.hub.ClassForNameSupport;
 import com.oracle.svm.core.hub.DynamicHub;
 import com.oracle.svm.core.jdk.JavaLangSubstitutions.ClassLoaderSupport;
-import com.oracle.svm.core.snippets.KnownIntrinsics;
 import com.oracle.svm.core.util.VMError;
 
 @TargetClass(ClassLoader.class)
@@ -117,7 +117,7 @@ public final class Target_java_lang_ClassLoader {
 
     @Substitute
     public static ClassLoader getSystemClassLoader() {
-        return KnownIntrinsics.unsafeCast(ClassLoaderSupport.getInstance().systemClassLoader, ClassLoader.class);
+        return SubstrateUtil.cast(ClassLoaderSupport.getInstance().systemClassLoader, ClassLoader.class);
     }
 
     @Substitute

@@ -32,7 +32,6 @@ import shutil
 
 import mx, mx_benchmark, mx_sulong, mx_buildtools
 import os
-import mx_subst
 from os.path import join, exists
 from mx_benchmark import VmRegistry, java_vm_registry, Vm, GuestVm, VmBenchmarkSuite
 
@@ -301,8 +300,7 @@ class SulongVm(CExecutionEnvironmentMixin, GuestVm):
         ]
 
     def launcher_vm_args(self):
-        return mx_sulong.getClasspathOptions() + \
-               [mx_subst.path_substitutions.substitute('-Dpolyglot.llvm.libraryPath=<path:SULONG_LIBS>')]
+        return mx_sulong.getClasspathOptions()
 
     def launcher_args(self, args):
         launcher_args = [

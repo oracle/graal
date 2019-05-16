@@ -102,7 +102,7 @@ import org.graalvm.polyglot.proxy.Proxy;
  * @see Context
  * @see Engine
  * @see PolyglotException
- * @since 1.0
+ * @since 19.0
  */
 public final class Value {
 
@@ -121,7 +121,7 @@ public final class Value {
      * language does not provide any meta object information, <code>null</code> is returned.
      *
      * @throws IllegalStateException if the context is already closed.
-     * @since 1.0
+     * @since 19.0
      */
     public Value getMetaObject() {
         return impl.getMetaObject(receiver);
@@ -135,7 +135,7 @@ public final class Value {
      *
      * @throws IllegalStateException if the context is already closed.
      * @throws PolyglotException if a guest language error occurred during execution.
-     * @since 1.0
+     * @since 19.0
      */
     public boolean hasArrayElements() {
         return impl.hasArrayElements(receiver);
@@ -151,7 +151,7 @@ public final class Value {
      *             readable.
      * @throws IllegalStateException if the context is already closed.
      * @throws PolyglotException if a guest language error occurred during execution.
-     * @since 1.0
+     * @since 19.0
      */
     public Value getArrayElement(long index) {
         return impl.getArrayElement(receiver, index);
@@ -168,7 +168,7 @@ public final class Value {
      *             modifiable.
      * @throws IllegalStateException if the context is already closed.
      * @throws PolyglotException if a guest language error occurred during execution.
-     * @since 1.0
+     * @since 19.0
      */
     public void setArrayElement(long index, Object value) {
         impl.setArrayElement(receiver, index, value);
@@ -184,7 +184,7 @@ public final class Value {
      *             removable.
      * @throws IllegalStateException if the context is already closed.
      * @throws PolyglotException if a guest language error occurred during execution.
-     * @since 1.0
+     * @since 19.0
      */
     public boolean removeArrayElement(long index) {
         return impl.removeArrayElement(receiver, index);
@@ -197,7 +197,7 @@ public final class Value {
      *             {@link #hasArrayElements() array elements}.
      * @throws IllegalStateException if the context is already closed.
      * @throws PolyglotException if a guest language error occurred during execution.
-     * @since 1.0
+     * @since 19.0
      */
     public long getArraySize() {
         return impl.getArraySize(receiver);
@@ -217,7 +217,7 @@ public final class Value {
      * @see #getMemberKeys() For a list of members.
      * @throws IllegalStateException if the context is already closed.
      * @throws PolyglotException if a guest language error occurred during execution.
-     * @since 1.0
+     * @since 19.0
      */
     public boolean hasMembers() {
         return impl.hasMembers(receiver);
@@ -230,7 +230,7 @@ public final class Value {
      *
      * @throws PolyglotException if a guest language error occurred during execution.
      * @throws NullPointerException if the identifier is null.
-     * @since 1.0
+     * @since 19.0
      */
     public boolean hasMember(String identifier) {
         Objects.requireNonNull(identifier, "identifier");
@@ -245,7 +245,7 @@ public final class Value {
      *             the given identifier exists but is not readable.
      * @throws PolyglotException if a guest language error occurred during execution.
      * @throws NullPointerException if the identifier is null.
-     * @since 1.0
+     * @since 19.0
      */
     public Value getMember(String identifier) {
         Objects.requireNonNull(identifier, "identifier");
@@ -263,7 +263,7 @@ public final class Value {
      *
      * @throws IllegalStateException if the context is already {@link Context#close() closed}.
      * @throws PolyglotException if a guest language error occurred during execution.
-     * @since 1.0
+     * @since 19.0
      */
     public Set<String> getMemberKeys() {
         return impl.getMemberKeys(receiver);
@@ -279,7 +279,7 @@ public final class Value {
      *             member is not modifiable.
      * @throws PolyglotException if a guest language error occurred during execution.
      * @throws NullPointerException if the identifier is null.
-     * @since 1.0
+     * @since 19.0
      */
     public void putMember(String identifier, Object value) {
         Objects.requireNonNull(identifier, "identifier");
@@ -295,7 +295,7 @@ public final class Value {
      * @throws IllegalStateException if the context is already {@link Context#close() closed}.
      * @throws PolyglotException if a guest language error occurred during execution.
      * @throws NullPointerException if the identifier is null.
-     * @since 1.0
+     * @since 19.0
      */
     public boolean removeMember(String identifier) {
         Objects.requireNonNull(identifier, "identifier");
@@ -309,7 +309,7 @@ public final class Value {
      *
      * @throws IllegalStateException if the underlying context was closed.
      * @see #execute(Object...)
-     * @since 1.0
+     * @since 19.0
      */
     public boolean canExecute() {
         return impl.canExecute(receiver);
@@ -328,7 +328,7 @@ public final class Value {
      * @throws PolyglotException if a guest language error occurred during execution.
      * @throws NullPointerException if the arguments array is null.
      * @see #executeVoid(Object...)
-     * @since 1.0
+     * @since 19.0
      */
     public Value execute(Object... arguments) {
         if (arguments.length == 0) {
@@ -350,7 +350,7 @@ public final class Value {
      * @throws PolyglotException if a guest language error occurred during execution.
      * @throws NullPointerException if the arguments array is null.
      * @see #execute(Object...)
-     * @since 1.0
+     * @since 19.0
      */
     public void executeVoid(Object... arguments) {
         if (arguments.length == 0) {
@@ -365,7 +365,7 @@ public final class Value {
      * Returns <code>true</code> if the value can be instantiated. This indicates that the
      * {@link #newInstance(Object...)} can be used with this value.
      *
-     * @since 1.0
+     * @since 19.0
      */
     public boolean canInstantiate() {
         return impl.canInstantiate(receiver);
@@ -381,7 +381,7 @@ public final class Value {
      * @throws UnsupportedOperationException if this value cannot be instantiated.
      * @throws PolyglotException if a guest language error occurred during execution.
      * @throws NullPointerException if the arguments array is null.
-     * @since 1.0
+     * @since 19.0
      */
     public Value newInstance(Object... arguments) {
         Objects.requireNonNull(arguments, "arguments");
@@ -398,7 +398,7 @@ public final class Value {
      * @throws PolyglotException if a guest language error occurred.
      * @see #getMemberKeys() For a list of members.
      * @see #invokeMember(String, Object...)
-     * @since 1.0
+     * @since 19.0
      */
     public boolean canInvokeMember(String identifier) {
         Objects.requireNonNull(identifier, "identifier");
@@ -418,7 +418,7 @@ public final class Value {
      * @throws PolyglotException if a guest language error occurred during invocation.
      * @throws NullPointerException if the arguments array is null.
      * @see #canInvokeMember(String)
-     * @since 1.0
+     * @since 19.0
      */
     public Value invokeMember(String identifier, Object... arguments) {
         Objects.requireNonNull(identifier, "identifier");
@@ -435,7 +435,7 @@ public final class Value {
      *
      * @throws PolyglotException if a guest language error occurred during execution.
      * @throws IllegalStateException if the underlying context was closed.
-     * @since 1.0
+     * @since 19.0
      */
     public boolean isString() {
         return impl.isString(receiver);
@@ -448,7 +448,7 @@ public final class Value {
      * @throws ClassCastException if this value could not be converted to string.
      * @throws UnsupportedOperationException if this value does not represent a string.
      * @throws PolyglotException if a guest language error occurred during execution.
-     * @since 1.0
+     * @since 19.0
      */
     public String asString() {
         return impl.asString(receiver);
@@ -461,7 +461,7 @@ public final class Value {
      * @throws PolyglotException if a guest language error occurred during execution.
      * @throws IllegalStateException if the underlying context was closed.
      * @see #asInt()
-     * @since 1.0
+     * @since 19.0
      */
     public boolean fitsInInt() {
         return impl.fitsInInt(receiver);
@@ -475,7 +475,7 @@ public final class Value {
      * @throws ClassCastException if this value could not be converted.
      * @throws PolyglotException if a guest language error occurred during execution.
      * @throws IllegalStateException if the underlying context was closed.
-     * @since 1.0
+     * @since 19.0
      */
     public int asInt() {
         return impl.asInt(receiver);
@@ -487,7 +487,7 @@ public final class Value {
      * @throws PolyglotException if a guest language error occurred during execution.
      * @throws IllegalStateException if the underlying context was closed.
      * @see #asBoolean()
-     * @since 1.0
+     * @since 19.0
      */
     public boolean isBoolean() {
         return impl.isBoolean(receiver);
@@ -501,7 +501,7 @@ public final class Value {
      * @throws ClassCastException if this value could not be converted.
      * @throws PolyglotException if a guest language error occurred during execution.
      * @throws IllegalStateException if the underlying context was closed.
-     * @since 1.0
+     * @since 19.0
      */
     public boolean asBoolean() {
         return impl.asBoolean(receiver);
@@ -515,7 +515,7 @@ public final class Value {
      *
      * @throws PolyglotException if a guest language error occurred during execution.
      * @throws IllegalStateException if the underlying context was closed.
-     * @since 1.0
+     * @since 19.0
      */
     public boolean isNumber() {
         return impl.isNumber(receiver);
@@ -528,7 +528,7 @@ public final class Value {
      * @throws PolyglotException if a guest language error occurred during execution.
      * @throws IllegalStateException if the underlying context was closed.
      * @see #asLong()
-     * @since 1.0
+     * @since 19.0
      */
     public boolean fitsInLong() {
         return impl.fitsInLong(receiver);
@@ -542,7 +542,7 @@ public final class Value {
      * @throws ClassCastException if this value could not be converted to long.
      * @throws PolyglotException if a guest language error occurred during execution.
      * @throws IllegalStateException if the underlying context was closed.
-     * @since 1.0
+     * @since 19.0
      */
     public long asLong() {
         return impl.asLong(receiver);
@@ -555,7 +555,7 @@ public final class Value {
      * @throws PolyglotException if a guest language error occurred during execution.
      * @throws IllegalStateException if the underlying context was closed.
      * @see #asDouble()
-     * @since 1.0
+     * @since 19.0
      */
     public boolean fitsInDouble() {
         return impl.fitsInDouble(receiver);
@@ -569,7 +569,7 @@ public final class Value {
      * @throws ClassCastException if this value could not be converted.
      * @throws PolyglotException if a guest language error occurred during execution.
      * @throws IllegalStateException if the underlying context was closed.
-     * @since 1.0
+     * @since 19.0
      */
     public double asDouble() {
         return impl.asDouble(receiver);
@@ -582,7 +582,7 @@ public final class Value {
      * @throws PolyglotException if a guest language error occurred during execution.
      * @throws IllegalStateException if the underlying context was closed.
      * @see #asFloat()
-     * @since 1.0
+     * @since 19.0
      */
     public boolean fitsInFloat() {
         return impl.fitsInFloat(receiver);
@@ -596,7 +596,7 @@ public final class Value {
      * @throws ClassCastException if this value could not be converted.
      * @throws PolyglotException if a guest language error occurred during execution.
      * @throws IllegalStateException if the underlying context was closed.
-     * @since 1.0
+     * @since 19.0
      */
     public float asFloat() {
         return impl.asFloat(receiver);
@@ -609,7 +609,7 @@ public final class Value {
      * @throws PolyglotException if a guest language error occurred during execution.
      * @throws IllegalStateException if the underlying context was closed.
      * @see #asByte()
-     * @since 1.0
+     * @since 19.0
      */
     public boolean fitsInByte() {
         return impl.fitsInByte(receiver);
@@ -623,7 +623,7 @@ public final class Value {
      * @throws ClassCastException if this value could not be converted.
      * @throws PolyglotException if a guest language error occurred during execution.
      * @throws IllegalStateException if the underlying context was closed.
-     * @since 1.0
+     * @since 19.0
      */
     public byte asByte() {
         return impl.asByte(receiver);
@@ -636,7 +636,7 @@ public final class Value {
      * @throws PolyglotException if a guest language error occurred during execution.
      * @throws IllegalStateException if the underlying context was closed.
      * @see #asShort()
-     * @since 1.0
+     * @since 19.0
      */
     public boolean fitsInShort() {
         return impl.fitsInShort(receiver);
@@ -650,7 +650,7 @@ public final class Value {
      * @throws ClassCastException if this value could not be converted.
      * @throws PolyglotException if a guest language error occurred during execution.
      * @throws IllegalStateException if the underlying context was closed.
-     * @since 1.0
+     * @since 19.0
      */
     public short asShort() {
         return impl.asShort(receiver);
@@ -661,7 +661,7 @@ public final class Value {
      *
      * @throws PolyglotException if a guest language error occurred during execution.
      * @throws IllegalStateException if the underlying context was closed.
-     * @since 1.0
+     * @since 19.0
      */
     public boolean isNull() {
         return impl.isNull(receiver);
@@ -673,7 +673,7 @@ public final class Value {
      *
      * @throws PolyglotException if a guest language error occurred during execution.
      * @throws IllegalStateException if the underlying context was closed.
-     * @since 1.0
+     * @since 19.0
      */
     public boolean isNativePointer() {
         return impl.isNativePointer(receiver);
@@ -685,7 +685,7 @@ public final class Value {
      * @throws UnsupportedOperationException if the value is not a pointer.
      * @throws PolyglotException if a guest language error occurred during execution.
      * @throws IllegalStateException if the underlying context was closed.
-     * @since 1.0
+     * @since 19.0
      */
     public long asNativePointer() {
         return impl.asNativePointer(receiver);
@@ -697,7 +697,7 @@ public final class Value {
      *
      * @throws PolyglotException if a guest language error occurred during execution.
      * @throws IllegalStateException if the underlying context was closed.
-     * @since 1.0
+     * @since 19.0
      */
     public boolean isHostObject() {
         return impl.isHostObject(receiver);
@@ -709,7 +709,7 @@ public final class Value {
      * @throws UnsupportedOperationException if {@link #isHostObject()} is <code>false</code>.
      * @throws PolyglotException if a guest language error occurred during execution.
      * @throws IllegalStateException if the underlying context was closed.
-     * @since 1.0
+     * @since 19.0
      */
     @SuppressWarnings("unchecked")
     public <T> T asHostObject() {
@@ -722,7 +722,7 @@ public final class Value {
      *
      * @throws PolyglotException if a guest language error occurred during execution.
      * @throws IllegalStateException if the underlying context was closed.
-     * @since 1.0
+     * @since 19.0
      */
     public boolean isProxyObject() {
         return impl.isProxyObject(receiver);
@@ -735,7 +735,7 @@ public final class Value {
      * @throws UnsupportedOperationException if a value is not a proxy object.
      * @throws PolyglotException if a guest language error occurred during execution.
      * @throws IllegalStateException if the underlying context was closed.
-     * @since 1.0
+     * @since 19.0
      */
     @SuppressWarnings("unchecked")
     public <T extends Proxy> T asProxyObject() {
@@ -794,18 +794,21 @@ public final class Value {
      * might be an expensive operation it is recommended to use the `List` or `Collection` target
      * type if possible.
      * <li>Any {@link FunctionalInterface functional} interface if the value can be
-     * {@link #canExecute() executed} or {@link #canInstantiate() instantiated}. In case a value can
-     * be executed and instantiated then the returned implementation of the interface will be
-     * {@link #execute(Object...) executed}. The coercion to the parameter types of functional
-     * interface method is converted using the semantics of {@link #as(Class)}. If a standard
-     * functional interface like {@link Function} is used, it is recommended to use
+     * {@link #canExecute() executed} or {@link #canInstantiate() instantiated} and the interface
+     * type is {@link HostAccess implementable}. Note that {@link FunctionalInterface} are
+     * implementable by default in with the {@link HostAccess#EXPLICIT explicit} host access policy.
+     * In case a value can be executed and instantiated then the returned implementation of the
+     * interface will be {@link #execute(Object...) executed}. The coercion to the parameter types
+     * of functional interface method is converted using the semantics of {@link #as(Class)}. If a
+     * standard functional interface like {@link Function} is used, it is recommended to use
      * {@link #as(TypeLiteral) type literals} to specify the expected generic method parameter and
      * return type.
-     * <li>Any interface if the value {@link #hasMembers()}. Each method or field name maps to one
+     * <li>Any interface if the value {@link #hasMembers() has members} and the interface type is
+     * {@link HostAccess.Implementable implementable}. Each interface method maps to one
      * {@link #getMember(String) member} of the value. Whenever a method of the interface is
      * executed a member with the method or field name must exist otherwise a
-     * {@link UnsupportedOperationException} is thrown when the method is executed. If one of the
-     * parameters cannot be mapped to the target type a {@link ClassCastException} or a
+     * {@link UnsupportedOperationException} is thrown when the method is executed. A member If one
+     * of the parameters cannot be mapped to the target type a {@link ClassCastException} or a
      * {@link NullPointerException} is thrown.
      * </ul>
      * A {@link ClassCastException} is thrown for other unsupported target types.
@@ -819,7 +822,7 @@ public final class Value {
      * assert context.eval("js", "42").as(Integer.class) == 42;
      * assert context.eval("js", "{foo:'bar'}").as(Map.class).get("foo").equals("bar");
      * assert context.eval("js", "[42]").as(List.class).get(0).equals(42);
-     * assert ((Map<String, Object>)context.eval("js", "[{foo:'bar'}]").as(List.class).get(0)).get("foo").equals("bar");
+     * assert ((Map&lt;String, Object>)context.eval("js", "[{foo:'bar'}]").as(List.class).get(0)).get("foo").equals("bar");
      *
      * &#64;FunctionalInterface interface IntFunction { int foo(int value); }
      * assert context.eval("js", "(function(a){a})").as(IntFunction.class).foo(42) == 42;
@@ -885,7 +888,7 @@ public final class Value {
      * assert context.eval("js", "42").as(Object.class) instanceof Number;
      * assert context.eval("js", "[]").as(Object.class) instanceof Map;
      * assert context.eval("js", "{}").as(Object.class) instanceof Map;
-     * assert ((Map<Object, Object>) context.eval("js", "[{}]").as(Object.class)).get(0) instanceof Map;
+     * assert ((Map&lt;Object, Object>) context.eval("js", "[{}]").as(Object.class)).get(0) instanceof Map;
      * assert context.eval("js", "(function(){})").as(Object.class) instanceof Function;
      * </pre>
      *
@@ -903,7 +906,7 @@ public final class Value {
      *
      * <pre>
      * Context context = Context.create();
-     * Map<Object, Object> javaMap = context.eval("js", "{}").as(Map.class);
+     * Map&lt;Object, Object> javaMap = context.eval("js", "{}").as(Map.class);
      * Value polyglotValue = context.asValue(javaMap);
      * </pre>
      *
@@ -913,7 +916,7 @@ public final class Value {
      * @throws PolyglotException if the conversion triggered a guest language error.
      * @throws IllegalStateException if the underlying context is already closed.
      * @throws NullPointerException if the target type is null.
-     * @since 1.0
+     * @since 19.0
      */
     @SuppressWarnings("unchecked")
     public <T> T as(Class<T> targetType) throws ClassCastException, IllegalStateException, PolyglotException {
@@ -931,19 +934,19 @@ public final class Value {
      * Usage example:
      *
      * <pre>
-     * static final TypeLiteral<List<String>> STRING_LIST = new TypeLiteral<List<String>>() {
+     * static final TypeLiteral&lt;List&lt;String>> STRING_LIST = new TypeLiteral&lt;List&lt;String>>() {
      * };
      *
      * public static void main(String[] args) {
      *     Context context = Context.create();
-     *     List<String> javaList = context.eval("js", "['foo', 'bar', 'bazz']").as(STRING_LIST);
+     *     List&lt;String> javaList = context.eval("js", "['foo', 'bar', 'bazz']").as(STRING_LIST);
      *     assert javaList.get(0).equals("foo");
      * }
      * </pre>
      *
      * @throws NullPointerException if the target type is null.
      * @see #as(Class)
-     * @since 1.0
+     * @since 19.0
      */
     public <T> T as(TypeLiteral<T> targetType) {
         Objects.requireNonNull(targetType, "targetType");
@@ -953,7 +956,7 @@ public final class Value {
     /**
      * A string representation of the value formatted by the original language.
      *
-     * @since 1.0
+     * @since 19.0
      */
     @Override
     public String toString() {
@@ -964,7 +967,7 @@ public final class Value {
      * Returns the declared source location of the value.
      *
      * @return the {@link SourceSection} or null if unknown
-     * @since 1.0
+     * @since 19.0
      */
     public SourceSection getSourceLocation() {
         return impl.getSourceLocation(receiver);
@@ -977,7 +980,7 @@ public final class Value {
      * @param o the object to convert
      * @throws IllegalStateException if no context is currently entered.
      * @see Context#asValue(Object) Conversion rules.
-     * @since 1.0
+     * @since 19.0
      */
     public static Value asValue(Object o) {
         if (o instanceof Value) {

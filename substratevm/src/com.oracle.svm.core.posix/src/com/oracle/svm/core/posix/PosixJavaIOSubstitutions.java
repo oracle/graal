@@ -25,14 +25,14 @@
 package com.oracle.svm.core.posix;
 
 import static com.oracle.svm.core.annotate.RecomputeFieldValue.Kind.NewInstance;
-import static com.oracle.svm.core.posix.headers.Dirent.closedir;
-import static com.oracle.svm.core.posix.headers.Dirent.opendir;
-import static com.oracle.svm.core.posix.headers.Dirent.readdir_r;
 import static com.oracle.svm.core.headers.Errno.EACCES;
 import static com.oracle.svm.core.headers.Errno.EEXIST;
 import static com.oracle.svm.core.headers.Errno.ENOENT;
 import static com.oracle.svm.core.headers.Errno.ENOTDIR;
 import static com.oracle.svm.core.headers.Errno.errno;
+import static com.oracle.svm.core.posix.headers.Dirent.closedir;
+import static com.oracle.svm.core.posix.headers.Dirent.opendir;
+import static com.oracle.svm.core.posix.headers.Dirent.readdir_r;
 import static com.oracle.svm.core.posix.headers.Fcntl.O_APPEND;
 import static com.oracle.svm.core.posix.headers.Fcntl.O_CREAT;
 import static com.oracle.svm.core.posix.headers.Fcntl.O_DSYNC;
@@ -83,26 +83,30 @@ import java.io.BufferedInputStream;
 import java.io.BufferedOutputStream;
 import java.io.File;
 import java.io.FileDescriptor;
-import java.io.FileNotFoundException;
 import java.io.FileInputStream;
+import java.io.FileNotFoundException;
 import java.io.FileOutputStream;
-import java.io.PrintStream;
 import java.io.IOException;
+import java.io.PrintStream;
 import java.nio.charset.Charset;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.concurrent.locks.ReentrantLock;
 
 import org.graalvm.compiler.serviceprovider.JavaVersionUtil;
+import org.graalvm.nativeimage.ImageSingletons;
 import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.Platforms;
 import org.graalvm.nativeimage.StackValue;
+import org.graalvm.nativeimage.c.function.CLibrary;
 import org.graalvm.nativeimage.c.struct.SizeOf;
 import org.graalvm.nativeimage.c.type.CCharPointer;
 import org.graalvm.nativeimage.c.type.CIntPointer;
 import org.graalvm.nativeimage.c.type.CTypeConversion;
 import org.graalvm.nativeimage.c.type.CTypeConversion.CCharPointerHolder;
+import org.graalvm.nativeimage.hosted.Feature;
 import org.graalvm.nativeimage.impl.InternalPlatform;
+import org.graalvm.nativeimage.impl.RuntimeClassInitializationSupport;
 import org.graalvm.word.SignedWord;
 import org.graalvm.word.WordFactory;
 
@@ -114,6 +118,7 @@ import com.oracle.svm.core.annotate.Substitute;
 import com.oracle.svm.core.annotate.TargetClass;
 import com.oracle.svm.core.annotate.TargetElement;
 import com.oracle.svm.core.jdk.JDK8OrEarlier;
+import com.oracle.svm.core.log.Log;
 import com.oracle.svm.core.posix.headers.Dirent.DIR;
 import com.oracle.svm.core.posix.headers.Dirent.dirent;
 import com.oracle.svm.core.posix.headers.Dirent.direntPointer;
@@ -125,13 +130,8 @@ import com.oracle.svm.core.posix.headers.Statvfs.statvfs;
 import com.oracle.svm.core.posix.headers.Termios;
 import com.oracle.svm.core.posix.headers.Time.timeval;
 import com.oracle.svm.core.posix.headers.Unistd;
-import com.oracle.svm.core.snippets.KnownIntrinsics;
-import com.oracle.svm.core.log.Log;
 import com.oracle.svm.core.util.VMError;
 import com.oracle.svm.hosted.jni.JNIRuntimeAccess;
-import org.graalvm.nativeimage.hosted.RuntimeClassInitialization;
-import org.graalvm.nativeimage.c.function.CLibrary;
-import org.graalvm.nativeimage.hosted.Feature;
 
 @Platforms({InternalPlatform.LINUX_JNI.class, InternalPlatform.DARWIN_JNI.class})
 @AutomaticFeature
@@ -145,15 +145,15 @@ class PosixJavaIOSubstituteFeature implements Feature {
         // are allowed in the image heap for a class
         // that is initialized or reinitialized at image runtime: java.io.XXX.
         //
-        // RuntimeClassInitialization.rerunClassInitialization(access.findClassByName("java.io.FileDescriptor"));
-        // RuntimeClassInitialization.rerunClassInitialization(access.findClassByName("java.io.FileInputStream"));
-        // RuntimeClassInitialization.rerunClassInitialization(access.findClassByName("java.io.FileOutputStream"));
-        // RuntimeClassInitialization.rerunClassInitialization(access.findClassByName("java.io.UnixFileSystem"));
+        // RuntimeClassInitialization.rerun(access.findClassByName("java.io.FileDescriptor"));
+        // RuntimeClassInitialization.rerun(access.findClassByName("java.io.FileInputStream"));
+        // RuntimeClassInitialization.rerun(access.findClassByName("java.io.FileOutputStream"));
+        // RuntimeClassInitialization.rerun(access.findClassByName("java.io.UnixFileSystem"));
 
-        RuntimeClassInitialization.rerunClassInitialization(access.findClassByName("java.io.RandomAccessFile"));
-        RuntimeClassInitialization.rerunClassInitialization(access.findClassByName("java.util.zip.ZipFile"));
-        RuntimeClassInitialization.rerunClassInitialization(access.findClassByName("java.util.zip.Inflater"));
-        RuntimeClassInitialization.rerunClassInitialization(access.findClassByName("java.util.zip.Deflater"));
+        ImageSingletons.lookup(RuntimeClassInitializationSupport.class).rerunInitialization(access.findClassByName("java.io.RandomAccessFile"), "required for substitutions");
+        ImageSingletons.lookup(RuntimeClassInitializationSupport.class).rerunInitialization(access.findClassByName("java.util.zip.ZipFile"), "required for substitutions");
+        ImageSingletons.lookup(RuntimeClassInitializationSupport.class).rerunInitialization(access.findClassByName("java.util.zip.Inflater"), "required for substitutions");
+        ImageSingletons.lookup(RuntimeClassInitializationSupport.class).rerunInitialization(access.findClassByName("java.util.zip.Deflater"), "required for substitutions");
     }
 
     @Override
@@ -170,6 +170,9 @@ class PosixJavaIOSubstituteFeature implements Feature {
             JNIRuntimeAccess.register(java.io.FileInputStream.class.getDeclaredField("fd"));
             JNIRuntimeAccess.register(java.io.FileDescriptor.class);
             JNIRuntimeAccess.register(java.io.FileDescriptor.class.getDeclaredField("fd"));
+            if (!JavaVersionUtil.Java8OrEarlier) {
+                JNIRuntimeAccess.register(java.io.FileDescriptor.class.getDeclaredField("append"));
+            }
             JNIRuntimeAccess.register(java.io.RandomAccessFile.class);
             JNIRuntimeAccess.register(java.io.RandomAccessFile.class.getDeclaredField("fd"));
             JNIRuntimeAccess.register(java.io.IOException.class);
@@ -611,23 +614,23 @@ final class Target_java_io_FileOutputStream {
 
     @Substitute
     protected void writeBytes(byte[] bytes, int off, int len, boolean append) throws IOException {
-        PosixUtils.writeBytes(SubstrateUtil.getFileDescriptor(KnownIntrinsics.unsafeCast(this, FileOutputStream.class)), bytes, off, len, append);
+        PosixUtils.writeBytes(SubstrateUtil.getFileDescriptor(SubstrateUtil.cast(this, FileOutputStream.class)), bytes, off, len, append);
     }
 
     @Substitute
     private void open(String name, boolean append) throws FileNotFoundException {
-        PosixUtils.fileOpen(name, SubstrateUtil.getFileDescriptor(KnownIntrinsics.unsafeCast(this, FileOutputStream.class)), O_WRONLY() | O_CREAT() | (append ? O_APPEND() : O_TRUNC()));
+        PosixUtils.fileOpen(name, SubstrateUtil.getFileDescriptor(SubstrateUtil.cast(this, FileOutputStream.class)), O_WRONLY() | O_CREAT() | (append ? O_APPEND() : O_TRUNC()));
     }
 
     @Substitute //
     @TargetElement(onlyWith = JDK8OrEarlier.class)
     private void close0() throws IOException {
-        PosixUtils.fileClose(SubstrateUtil.getFileDescriptor(KnownIntrinsics.unsafeCast(this, FileOutputStream.class)));
+        PosixUtils.fileClose(SubstrateUtil.getFileDescriptor(SubstrateUtil.cast(this, FileOutputStream.class)));
     }
 
     @Substitute
     private void write(int b, boolean append) throws IOException {
-        PosixUtils.writeSingle(SubstrateUtil.getFileDescriptor(KnownIntrinsics.unsafeCast(this, FileOutputStream.class)), b, append);
+        PosixUtils.writeSingle(SubstrateUtil.getFileDescriptor(SubstrateUtil.cast(this, FileOutputStream.class)), b, append);
     }
 }
 

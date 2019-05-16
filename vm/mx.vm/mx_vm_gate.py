@@ -69,29 +69,7 @@ def gate_body(args, tasks):
             version_regex = mx_vm.openjdk_version_regex if args.strict_mode else mx_vm.anyjdk_version_regex
             mx_vm.check_versions(mx_vm.graalvm_output(), version_regex, graalvm_version_regex=mx_vm.graalvm_version_regex, expect_graalvm=True, check_jvmci=True)
 
-    with Task('Vm: Sulong tests', tasks, tags=[VmGateTasks.sulong]) as t:
-        if t and mx_vm.has_component('Sulong', fatalIfMissing=True):
-            pass
 
-    with Task('Vm: Graal.js tests', tasks, tags=[VmGateTasks.graal_js_all]) as t:
-        if t and mx_vm.has_component('Graal.js', fatalIfMissing=True):
-            pass
-
-    with Task('Vm: Graal.nodejs tests', tasks, tags=[VmGateTasks.graal_nodejs]) as t:
-        if t and mx_vm.has_component('Graal.nodejs', fatalIfMissing=True):
-            pass
-
-    with Task('Vm: TruffleRuby tests', tasks, tags=[VmGateTasks.truffleruby]) as t:
-        if t and mx_vm.has_component('TruffleRuby', fatalIfMissing=True):
-            pass
-
-    with Task('Vm: FastR tests', tasks, tags=[VmGateTasks.fastr]) as t:
-        if t and mx_vm.has_component('FastR', fatalIfMissing=True):
-            pass
-
-    with Task('Vm: Graal.Python tests', tasks, tags=[VmGateTasks.graalpython]) as t:
-        if t and mx_vm.has_component('Graal.Python', fatalIfMissing=True):
-            pass
 
     if mx_vm.has_component('LibGraal'):
         libgraal_location = mx_vm.get_native_image_locations('LibGraal', 'jvmcicompiler')
@@ -122,7 +100,13 @@ def gate_body(args, tasks):
                 if t:
                     def _unittest_config_participant(config):
                         vmArgs, mainClass, mainClassArgs = config
-                        newVmArgs = [arg for arg in vmArgs if arg != "-Dtruffle.TruffleRuntime=com.oracle.truffle.api.impl.DefaultTruffleRuntime"]
+                        def is_truffle_fallback(arg):
+                            fallback_args = [
+                                "-Dtruffle.TruffleRuntime=com.oracle.truffle.api.impl.DefaultTruffleRuntime",
+                                "-Dgraalvm.ForcePolyglotInvalid=true"
+                            ]
+                            return arg in fallback_args
+                        newVmArgs = [arg for arg in vmArgs if not is_truffle_fallback(arg)]
                         return (newVmArgs, mainClass, mainClassArgs)
                     mx_unittest.add_config_participant(_unittest_config_participant)
                     excluded_tests = environ.get("TEST_LIBGRAAL_EXCLUDE")
@@ -160,7 +144,8 @@ def gate_substratevm(tasks):
     with Task('Run Truffle host interop tests on SVM', tasks, tags=[VmGateTasks.substratevm]) as t:
         if t:
             tests = ['ValueHostInteropTest', 'ValueHostConversionTest']
-            truffle_no_compilation = ['--tool:truffle', '-Dtruffle.TruffleRuntime=com.oracle.truffle.api.impl.DefaultTruffleRuntime']
+            truffle_no_compilation = ['--initialize-at-build-time', '--tool:truffle',
+                                      '-Dtruffle.TruffleRuntime=com.oracle.truffle.api.impl.DefaultTruffleRuntime']
             truffle_dir = mx.suite('truffle').dir
             args = ['--build-args'] + truffle_no_compilation + [
                 '-H:Features=com.oracle.truffle.api.test.polyglot.RegisterTestClassesForReflectionFeature',
@@ -185,11 +170,11 @@ def gate_sulong(tasks):
             sulong = mx.suite('sulong')
             native_image_context, svm = graalvm_svm()
             with native_image_context(svm.IMAGE_ASSERTION_FLAGS) as native_image:
-                # TODO Use mx_vm.get_final_graalvm_distribution().find_single_source_location to rewire SULONG_LIBS
+                # TODO Use mx_vm.get_final_graalvm_distribution().find_single_source_location to rewire SULONG_HOME
                 sulong_libs = join(mx_vm.graalvm_output(), 'jre', 'languages', 'llvm')
                 def distribution_paths(dname):
                     path_substitutions = {
-                        'SULONG_LIBS': sulong_libs
+                        'SULONG_HOME': sulong_libs
                     }
                     return path_substitutions.get(dname, mx._get_dependency_path(dname))
                 mx_subst.path_substitutions.register_with_arg('path', distribution_paths)

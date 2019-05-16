@@ -41,6 +41,7 @@
 package com.oracle.truffle.api.instrumentation.test;
 
 import java.util.ArrayList;
+import java.util.LinkedList;
 import java.util.List;
 import java.util.Set;
 import java.util.concurrent.CountDownLatch;
@@ -188,6 +189,7 @@ public class DeadlockTest {
         private final Object lock = new Object();
         private final CountDownLatch executionLatch = new CountDownLatch(1);
         private final CountDownLatch materializationLatch = new CountDownLatch(1);
+        private final List<CallTarget> targets = new LinkedList<>(); // To prevent from GC
 
         @Override
         protected CallTarget parse(ParsingRequest request) throws Exception {
@@ -233,6 +235,7 @@ public class DeadlockTest {
                         }
                         codeExec = Truffle.getRuntime().createCallTarget(codeExecRoot);
                     }
+                    targets.add(codeExec);
                     return codeExec.call();
                 }
 

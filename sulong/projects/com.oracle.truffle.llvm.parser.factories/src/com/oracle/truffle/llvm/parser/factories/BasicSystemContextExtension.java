@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2017, 2018, Oracle and/or its affiliates.
+ * Copyright (c) 2017, 2019, Oracle and/or its affiliates.
  *
  * All rights reserved.
  *
@@ -101,8 +101,12 @@ import com.oracle.truffle.llvm.runtime.SystemContextExtension;
 import com.oracle.truffle.llvm.runtime.memory.LLVMSyscallOperationNode;
 import com.oracle.truffle.llvm.runtime.options.SulongEngineOption;
 
+import java.nio.file.Path;
+import java.nio.file.Paths;
+
 public class BasicSystemContextExtension extends SystemContextExtension {
 
+    private static final Path SULONG_LIBDIR = Paths.get("native", "lib");
     protected static final String LIBSULONG_FILENAME = "libsulong.bc";
     protected static final String LIBSULONGXX_FILENAME = "libsulong++.bc";
 
@@ -110,6 +114,11 @@ public class BasicSystemContextExtension extends SystemContextExtension {
 
     public BasicSystemContextExtension(Env env) {
         this.loadCxxLibraries = env.getOptions().get(SulongEngineOption.LOAD_CXX_LIBRARIES);
+    }
+
+    @Override
+    public Path getSulongLibrariesPath() {
+        return SULONG_LIBDIR;
     }
 
     @Override

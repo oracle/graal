@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2013, 2018, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2013, 2019, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -25,6 +25,7 @@
 package com.oracle.svm.core.stack;
 
 import org.graalvm.nativeimage.IsolateThread;
+import org.graalvm.nativeimage.StackValue;
 import org.graalvm.nativeimage.c.function.CodePointer;
 import org.graalvm.word.Pointer;
 import org.graalvm.word.WordFactory;
@@ -36,6 +37,7 @@ import com.oracle.svm.core.code.CodeInfoTable;
 import com.oracle.svm.core.deopt.DeoptimizedFrame;
 import com.oracle.svm.core.deopt.Deoptimizer;
 import com.oracle.svm.core.log.Log;
+import com.oracle.svm.core.thread.VMOperation;
 import com.oracle.svm.core.util.VMError;
 
 /**
@@ -51,89 +53,149 @@ public final class JavaStackWalker {
     private JavaStackWalker() {
     }
 
+    /**
+     * Initialize a stack walk for the current thread. The given {@code walk} parameter should
+     * normally be allocated on the stack.
+     * <p>
+     * The stack walker is only valid while the stack being walked is stable and existent.
+     *
+     * @param walk the stack-allocated walk base pointer
+     * @param startSP the starting SP
+     * @param startIP the starting IP
+     */
+    public static boolean initWalk(JavaStackWalk walk, Pointer startSP, CodePointer startIP) {
+        walk.setSP(startSP);
+        walk.setIP(startIP);
+        walk.setStartSP(startSP);
+        walk.setStartIP(startIP);
+        walk.setAnchor(JavaFrameAnchors.getFrameAnchor());
+        return true;
+    }
+
+    /**
+     * Initialize a stack walk for the given thread. The given {@code walk} parameter should
+     * normally be allocated on the stack.
+     *
+     * @param walk the stack-allocated walk base pointer
+     * @param thread the thread to examine
+     */
+    public static boolean initWalk(JavaStackWalk walk, IsolateThread thread) {
+        VMOperation.guaranteeInProgress("Walking the stack of another thread is only safe when that thread is stopped at a safepoint");
+
+        JavaFrameAnchor anchor = JavaFrameAnchors.getFrameAnchor(thread);
+        boolean result = anchor.isNonNull();
+        Pointer sp = WordFactory.nullPointer();
+        CodePointer ip = WordFactory.nullPointer();
+        if (result) {
+            sp = anchor.getLastJavaSP();
+            ip = anchor.getLastJavaIP();
+        }
+
+        walk.setSP(sp);
+        walk.setIP(ip);
+        walk.setStartSP(sp);
+        walk.setStartIP(ip);
+        walk.setAnchor(anchor);
+
+        return result;
+    }
+
+    /**
+     * Continue a started stack walk. This method must only be called after {@link #initWalk} was
+     * called to start the walk. Once this method returns {@code false}, it will always return
+     * {@code false}.
+     *
+     * @param walk the initiated stack walk pointer
+     * @return {@code true} if there is another frame, or {@code false} if there are no more frames
+     *         to iterate
+     */
+    public static boolean continueWalk(JavaStackWalk walk) {
+        if (walk.getSP().isNull() || walk.getIP().isNull()) {
+            return false;
+        }
+
+        Pointer sp = walk.getSP();
+        CodePointer ip = walk.getIP();
+
+        long totalFrameSize;
+        DeoptimizedFrame deoptFrame = Deoptimizer.checkDeoptimized(sp);
+        if (deoptFrame != null) {
+            totalFrameSize = deoptFrame.getSourceTotalFrameSize();
+        } else {
+            totalFrameSize = CodeInfoTable.lookupTotalFrameSize(ip);
+        }
+
+        if (totalFrameSize == -1) {
+            Log.log().string("Stack walk must walk only frames of known code:")
+                            .string("  startSP=").hex(walk.getStartSP()).string("  startIP=").hex(walk.getStartIP())
+                            .string("  sp=").hex(sp).string("  ip=").hex(ip)
+                            .string("  deoptFrame=").object(deoptFrame)
+                            .newline();
+            throw VMError.shouldNotReachHere("Stack walk must walk only frames of known code");
+
+        } else if (totalFrameSize != CodeInfoQueryResult.ENTRY_POINT_FRAME_SIZE) {
+            /* Bump sp *up* over my frame. */
+            sp = sp.add(WordFactory.unsigned(totalFrameSize));
+            /* Read the return address to my caller. */
+            ip = FrameAccess.singleton().readReturnAddress(sp);
+
+            walk.setSP(sp);
+            walk.setIP(ip);
+            return true;
+
+        } else {
+            /* Reached an entry point frame. */
+
+            JavaFrameAnchor anchor = walk.getAnchor();
+            while (anchor.isNonNull() && anchor.getLastJavaSP().belowOrEqual(sp)) {
+                /* Skip anchors that are in parts of the stack we are not traversing. */
+                anchor = anchor.getPreviousAnchor();
+            }
+
+            if (anchor.isNonNull()) {
+                /* We have more Java frames after a block of C frames. */
+                assert anchor.getLastJavaSP().aboveThan(sp);
+                walk.setSP(anchor.getLastJavaSP());
+                walk.setIP(anchor.getLastJavaIP());
+                walk.setAnchor(anchor.getPreviousAnchor());
+                return true;
+
+            } else {
+                /* Really at the end of the stack, we are done with walking. */
+                walk.setSP(WordFactory.nullPointer());
+                walk.setIP(WordFactory.nullPointer());
+                walk.setAnchor(WordFactory.nullPointer());
+                return false;
+            }
+        }
+    }
+
     @AlwaysInline("avoid virtual call to visitor")
     public static boolean walkCurrentThread(Pointer startSP, CodePointer startIP, StackFrameVisitor visitor) {
-        JavaFrameAnchor anchor = JavaFrameAnchors.getFrameAnchor();
-        return doWalk(anchor, startSP, startIP, visitor);
+        JavaStackWalk walk = StackValue.get(JavaStackWalk.class);
+        boolean hasFrames = initWalk(walk, startSP, startIP);
+        return doWalk(walk, visitor, hasFrames);
     }
 
     @AlwaysInline("avoid virtual call to visitor")
     public static boolean walkThread(IsolateThread thread, StackFrameVisitor visitor) {
-        JavaFrameAnchor anchor = JavaFrameAnchors.getFrameAnchor(thread);
-        Pointer sp = WordFactory.nullPointer();
-        CodePointer ip = WordFactory.nullPointer();
-        if (anchor.isNonNull()) {
-            sp = anchor.getLastJavaSP();
-            ip = anchor.getLastJavaIP();
-        }
-        // always call doWalk() to invoke visitor's methods
-        return doWalk(anchor, sp, ip, visitor);
+        JavaStackWalk walk = StackValue.get(JavaStackWalk.class);
+        boolean hasFrames = initWalk(walk, thread);
+        return doWalk(walk, visitor, hasFrames);
     }
 
     @AlwaysInline("avoid virtual call to visitor")
-    private static boolean doWalk(JavaFrameAnchor lastAnchor, Pointer startSP, CodePointer startIP, StackFrameVisitor visitor) {
+    private static boolean doWalk(JavaStackWalk walk, StackFrameVisitor visitor, boolean hasFrames) {
         if (!visitor.prologue()) {
             return false;
         }
-
-        if (startSP.isNonNull() && startIP.isNonNull()) {
-            JavaFrameAnchor anchor = lastAnchor;
-            Pointer sp = startSP;
-            CodePointer ip = startIP;
-
-            while (true) {
-                while (anchor.isNonNull() && anchor.getLastJavaSP().belowOrEqual(sp)) {
-                    /* Skip anchors that are in parts of the stack we are not traversing. */
-                    anchor = anchor.getPreviousAnchor();
-                }
-
-                long totalFrameSize;
-                DeoptimizedFrame deoptFrame = Deoptimizer.checkDeoptimized(sp);
-                if (deoptFrame != null) {
-                    totalFrameSize = deoptFrame.getSourceTotalFrameSize();
-                } else {
-                    totalFrameSize = CodeInfoTable.lookupTotalFrameSize(ip);
-                }
-                if (totalFrameSize == -1) {
-                    Log.log().string("Stack walk must walk only frames of known code:")
-                                    .string("  startSP=").hex(startSP).string("  startIP=").hex(startIP)
-                                    .string("  sp=").hex(sp).string("  ip=").hex(ip)
-                                    .string("  deoptFrame=").object(deoptFrame)
-                                    .newline();
-                    throw VMError.shouldNotReachHere("Stack walk must walk only frames of known code");
-                }
-
-                /* This is a Java frame, visit it. */
-                if (!visitor.visitFrame(sp, ip, deoptFrame)) {
+        if (hasFrames) {
+            do {
+                if (!visitor.visitFrame(walk.getSP(), walk.getIP(), Deoptimizer.checkDeoptimized(walk.getSP()))) {
                     return false;
                 }
-
-                if (totalFrameSize != CodeInfoQueryResult.ENTRY_POINT_FRAME_SIZE) {
-                    /* Bump sp *up* over my frame. */
-                    sp = sp.add(WordFactory.unsigned(totalFrameSize));
-                    /* Read the return address to my caller. */
-                    ip = FrameAccess.singleton().readReturnAddress(sp);
-                } else {
-                    /* Reached an entry point frame. */
-                    if (anchor.isNonNull()) {
-                        /* We have more Java frames after a block of C frames. */
-                        assert anchor.getLastJavaSP().aboveThan(sp);
-                        sp = anchor.getLastJavaSP();
-                        ip = anchor.getLastJavaIP();
-                        anchor = anchor.getPreviousAnchor();
-                    } else {
-                        /* Really at the end of the stack, we are done with walking. */
-                        break;
-                    }
-                }
-            }
-        } else {
-            /*
-             * It is fine for a thread to have no Java frames, for example in the case of a native
-             * thread that was attached via JNI, but is currently not executing any Java code.
-             */
+            } while (continueWalk(walk));
         }
-
         return visitor.epilogue();
     }
 }

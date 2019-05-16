@@ -24,6 +24,7 @@
  */
 package com.oracle.svm.hosted.classinitialization;
 
+import java.util.List;
 import java.util.Set;
 
 import org.graalvm.nativeimage.impl.RuntimeClassInitializationSupport;
@@ -38,32 +39,9 @@ import jdk.vm.ci.meta.ResolvedJavaType;
 public interface ClassInitializationSupport extends RuntimeClassInitializationSupport {
 
     /**
-     * The initialization kind for a class. The order of the enum values matters, {@link #max}
-     * depends on it.
-     */
-    enum InitKind {
-        /** Class is initialized during image building, so it is already initialized at runtime. */
-        EAGER,
-        /** Class is initialized both at runtime and during image building. */
-        RERUN,
-        /** Class should be initialized at runtime and not during image building. */
-        DELAY,
-        /** Class must be initialized at runtime and not during image building. */
-        MUST_DELAY;
-
-        InitKind max(InitKind other) {
-            return this.ordinal() > other.ordinal() ? this : other;
-        }
-
-        boolean isDelayed() {
-            return ordinal() >= DELAY.ordinal();
-        }
-    }
-
-    /**
      * Returns an init kind for {@code clazz}.
      */
-    InitKind initKindFor(Class<?> clazz);
+    InitKind specifiedInitKindFor(Class<?> clazz);
 
     /**
      * Returns all classes of a single {@link InitKind}.
@@ -90,19 +68,7 @@ public interface ClassInitializationSupport extends RuntimeClassInitializationSu
      * Initializes the class during image building, and reports an error if the user requested to
      * delay initialization to runtime.
      */
-    void forceInitializeHosted(ResolvedJavaType type);
-
-    /**
-     * Initializes the class during image building, and reports an error if the user requested to
-     * delay initialization to runtime.
-     */
-    void forceInitializeHosted(Class<?> clazz);
-
-    /**
-     * Initializes the class during image building, and reports an error if the user requested to
-     * delay initialization to runtime.
-     */
-    void forceInitializeHierarchy(Class<?> clazz);
+    void forceInitializeHosted(Class<?> clazz, String reason);
 
     /**
      * Check that all registered classes are here, regardless if the AnalysisType got actually
@@ -112,4 +78,6 @@ public interface ClassInitializationSupport extends RuntimeClassInitializationSu
     boolean checkDelayedInitialization();
 
     void setUnsupportedFeatures(UnsupportedFeatures o);
+
+    List<ClassOrPackageConfig> getClassInitializationConfiguration();
 }

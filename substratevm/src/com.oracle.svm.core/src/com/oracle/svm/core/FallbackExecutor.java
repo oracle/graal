@@ -60,12 +60,20 @@ public class FallbackExecutor {
         public static final HostedOptionKey<String> FallbackExecutorMainClass = new HostedOptionKey<>(null);
         @Option(help = "Internal option used to specify Classpath for FallbackExecutor.")//
         public static final HostedOptionKey<String> FallbackExecutorClasspath = new HostedOptionKey<>(null);
+        @Option(help = "Internal option used to specify java arguments for FallbackExecutor.")//
+        public static final HostedOptionKey<String[]> FallbackExecutorJavaArg = new HostedOptionKey<>(null);
     }
 
     public static void main(String[] args) {
         List<String> command = new ArrayList<>();
         Path javaExecutable = getJavaExecutable().toAbsolutePath().normalize();
         command.add(javaExecutable.toString());
+        String[] javaArgValues = Options.FallbackExecutorJavaArg.getValue();
+        if (javaArgValues != null) {
+            for (String arg : javaArgValues) {
+                command.add(arg);
+            }
+        }
         String[] properties = Options.FallbackExecutorSystemProperty.getValue();
         if (properties != null) {
             for (String p : properties) {
@@ -96,9 +104,17 @@ public class FallbackExecutor {
         ProcessProperties.exec(javaExecutable, command.toArray(new String[0]));
     }
 
+    private static final Path buildTimeJavaHome = Paths.get(System.getProperty("java.home"));
+
     private static Path getJavaExecutable() {
         Path binJava = Paths.get("bin", OS.getCurrent() == OS.WINDOWS ? "java.exe" : "java");
-        Path javaCandidate = Paths.get(".").resolve(binJava);
+
+        Path javaCandidate = buildTimeJavaHome.resolve(binJava);
+        if (Files.isExecutable(javaCandidate)) {
+            return javaCandidate;
+        }
+
+        javaCandidate = Paths.get(".").resolve(binJava);
         if (Files.isExecutable(javaCandidate)) {
             return javaCandidate;
         }

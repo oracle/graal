@@ -168,6 +168,7 @@ def _sulong_gate_runner(args, tasks):
     _sulong_gate_sulongsuite_unittest('Debug', tasks, args, testClasses='LLVMDebugTest', tags=['debug', 'sulongBasic', 'sulongCoverage'])
     _sulong_gate_sulongsuite_unittest('IRDebug', tasks, args, testClasses='LLVMIRDebugTest', tags=['irdebug', 'sulongBasic', 'sulongCoverage'])
     _sulong_gate_sulongsuite_unittest('BitcodeFormat', tasks, args, testClasses='BitcodeFormatTest', tags=['bitcodeFormat', 'sulongBasic', 'sulongCoverage'])
+    _sulong_gate_sulongsuite_unittest('OtherTests', tasks, args, testClasses='com.oracle.truffle.llvm.test.other', tags=['otherTests', 'sulongBasic', 'sulongCoverage'])
     _sulong_gate_testsuite('Assembly', 'inlineassemblytests', tasks, args, testClasses='InlineAssemblyTest', tags=['assembly', 'sulongCoverage'])
     _sulong_gate_testsuite('Args', 'other', tasks, args, tags=['args', 'sulongMisc', 'sulongCoverage'], testClasses=['com.oracle.truffle.llvm.test.MainArgsTest'])
     _sulong_gate_testsuite('Callback', 'other', tasks, args, tags=['callback', 'sulongMisc', 'sulongCoverage'], testClasses=['com.oracle.truffle.llvm.test.CallbackTest'])
@@ -185,7 +186,7 @@ def testLLVMImage(image, imageArgs=None, testFilter=None, libPath=True, test=Non
     args = ['-Dsulongtest.testAOTImage=' + image]
     aotArgs = []
     if libPath:
-        aotArgs += [mx_subst.path_substitutions.substitute('-Dllvm.home=<path:SULONG_LIBS>')]
+        aotArgs += [mx_subst.path_substitutions.substitute('<sulong_home>')]
     if imageArgs is not None:
         aotArgs += imageArgs
     if aotArgs:
@@ -228,7 +229,8 @@ def runLLVMUnittests(unittest_runner):
 
     run_args = [libpath, libs] + java_run_props
     build_args = ['--language:llvm'] + java_run_props
-    unittest_runner(['com.oracle.truffle.llvm.test.interop', '--run-args'] + run_args + ['--build-args'] + build_args)
+    unittest_runner(['com.oracle.truffle.llvm.test.interop', '--run-args'] + run_args +
+                    ['--build-args', '--initialize-at-build-time'] + build_args)
 
 
 def clangformatcheck(args=None):
@@ -521,13 +523,13 @@ def getLLVMVersion(llvmProgram):
         return printLLVMVersion.group(3)
 
 # the makefiles do not check which version of clang they invoke
-clang_versions_need_optnone = ['5', '6', '7', '8']
+versions_dont_have_optnone = ['3', '4']
 def getLLVMExplicitArgs(mainLLVMVersion):
     if mainLLVMVersion:
-        for ver in clang_versions_need_optnone:
+        for ver in versions_dont_have_optnone:
             if mainLLVMVersion.startswith(ver):
-                return ["-Xclang", "-disable-O0-optnone"]
-    return []
+                return []
+    return ["-Xclang", "-disable-O0-optnone"]
 
 def getClangImplicitArgs():
     mainLLVMVersion = getLLVMVersion(mx_buildtools.ClangCompiler.CLANG)
@@ -618,6 +620,21 @@ def ensureLLVMBinariesExist():
             raise Exception(llvmBinary + ' not found')
 
 
+def _get_sulong_home():
+    return mx_subst.path_substitutions.substitute('<path:SULONG_HOME>')
+
+_the_get_sulong_home = _get_sulong_home
+
+def get_sulong_home():
+    return _the_get_sulong_home()
+
+def update_sulong_home(new_home):
+    global _the_get_sulong_home
+    _the_get_sulong_home = new_home
+
+mx_subst.path_substitutions.register_no_arg('sulong_home', get_sulong_home)
+
+
 def runLLVM(args=None, out=None, get_classpath_options=getClasspathOptions):
     """uses Sulong to execute a LLVM IR file"""
     vmArgs, sulongArgs = truffle_extract_VM_args(args)
@@ -676,7 +693,7 @@ mx_sdk.register_graalvm_component(mx_sdk.GraalVmLanguage(
     third_party_license_files=[],
     truffle_jars=['sulong:SULONG'],
     support_distributions=[
-        'sulong:SULONG_LIBS',
+        'sulong:SULONG_HOME',
         'sulong:SULONG_GRAALVM_DOCS',
     ],
     launcher_configs=[

@@ -42,4 +42,10 @@ public class PythonTests extends RegexTestBase {
     public void gr15012() {
         test("(-*[A-]*)", "", "A", 0, true, 0, 1, 0, 1);
     }
+
+    @Test
+    public void gr15243() {
+        test("^(\\s*)([rRuUbB]{,2})(\"\"\"(?:.|\\n)*?\"\"\")", "", "R\"\"\"\"\"\"", 0, true, 0, 7, 0, 0, 0, 1, 1, 7);
+        test("A{,}", "", "AAAA", 0, true, 0, 4);
+    }
 }

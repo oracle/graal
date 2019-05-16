@@ -31,6 +31,7 @@ import org.graalvm.nativeimage.c.function.CodePointer;
 import org.graalvm.word.LocationIdentity;
 import org.graalvm.word.Pointer;
 
+import com.oracle.svm.core.annotate.NeverInline;
 import com.oracle.svm.core.code.CodeInfoQueryResult;
 import com.oracle.svm.core.code.CodeInfoTable;
 import com.oracle.svm.core.code.DeoptimizationSourcePositionDecoder;
@@ -39,6 +40,7 @@ import com.oracle.svm.core.snippets.KnownIntrinsics;
 import com.oracle.svm.core.snippets.SnippetRuntime;
 import com.oracle.svm.core.snippets.SnippetRuntime.SubstrateForeignCallDescriptor;
 import com.oracle.svm.core.snippets.SubstrateForeignCallTarget;
+import com.oracle.svm.core.stack.StackOverflowCheck;
 
 import jdk.vm.ci.meta.DeoptimizationAction;
 import jdk.vm.ci.meta.DeoptimizationReason;
@@ -50,60 +52,77 @@ public class DeoptimizationRuntime {
 
     /** Foreign call: {@link #DEOPTIMIZE}. */
     @SubstrateForeignCallTarget
+    @NeverInline("Access of caller frame")
     private static void deoptimize(long actionAndReason, SpeculationReason speculation) {
-        Pointer sp = KnownIntrinsics.readCallerStackPointer();
-        DeoptimizationAction action = Deoptimizer.decodeDeoptAction(actionAndReason);
+        /*
+         * In cases where we doeptimize because of a StackOverflowError, we do not immediately want
+         * to create and throw another StackOverflowError. Therefore, we enable the yellow zone. The
+         * actual deoptimization operation is a VMOperation and would enable the yellow zone anyway.
+         */
+        StackOverflowCheck.singleton().makeYellowZoneAvailable();
+        try {
 
-        if (Deoptimizer.Options.TraceDeoptimization.getValue()) {
-            Log log = Log.log().string("[Deoptimization initiated").newline();
+            Pointer sp = KnownIntrinsics.readCallerStackPointer();
+            DeoptimizationAction action = Deoptimizer.decodeDeoptAction(actionAndReason);
 
-            CodePointer ip = KnownIntrinsics.readReturnAddress();
-            SubstrateInstalledCode installedCode = CodeInfoTable.lookupInstalledCode(ip);
-            if (installedCode != null) {
-                log.string("    name: ").string(installedCode.getName()).newline();
+            if (Deoptimizer.Options.TraceDeoptimization.getValue()) {
+                CodePointer ip = KnownIntrinsics.readReturnAddress();
+                traceDeoptimization(actionAndReason, speculation, action, sp, ip);
             }
-            log.string("    sp: ").hex(sp).string("  ip: ").hex(ip).newline();
 
-            DeoptimizationReason reason = Deoptimizer.decodeDeoptReason(actionAndReason);
-            log.string("    reason: ").string(reason.toString()).string("  action: ").string(action.toString()).newline();
+            if (action.doesInvalidateCompilation()) {
+                Deoptimizer.invalidateMethodOfFrame(sp, speculation);
+            } else {
+                Deoptimizer.deoptimizeFrame(sp, false, speculation);
+            }
 
-            int debugId = Deoptimizer.decodeDebugId(actionAndReason);
-            log.string("    debugId: ").signed(debugId).string("  speculation: ").string(Objects.toString(speculation)).newline();
+            if (Deoptimizer.Options.TraceDeoptimization.getValue()) {
+                Log.log().string("]").newline();
+            }
 
-            CodeInfoQueryResult info = CodeInfoTable.lookupCodeInfoQueryResult(ip);
-            if (info != null) {
-                NodeSourcePosition sourcePosition = DeoptimizationSourcePositionDecoder.decode(debugId, info);
-                if (sourcePosition != null) {
-                    log.string("    stack trace that triggered deoptimization:").newline();
-                    NodeSourcePosition cur = sourcePosition;
-                    while (cur != null) {
-                        log.string("        at ");
-                        if (cur.getMethod() != null) {
-                            StackTraceElement element = cur.getMethod().asStackTraceElement(cur.getBCI());
-                            if (element.getFileName() != null && element.getLineNumber() >= 0) {
-                                log.string(element.toString());
-                            } else {
-                                log.string(cur.getMethod().format("%H.%n(%p)")).string(" bci ").signed(cur.getBCI());
-                            }
+        } finally {
+            StackOverflowCheck.singleton().protectYellowZone();
+        }
+    }
+
+    private static void traceDeoptimization(long actionAndReason, SpeculationReason speculation, DeoptimizationAction action, Pointer sp, CodePointer ip) {
+        Log log = Log.log().string("[Deoptimization initiated").newline();
+
+        SubstrateInstalledCode installedCode = CodeInfoTable.lookupInstalledCode(ip);
+        if (installedCode != null) {
+            log.string("    name: ").string(installedCode.getName()).newline();
+        }
+        log.string("    sp: ").hex(sp).string("  ip: ").hex(ip).newline();
+
+        DeoptimizationReason reason = Deoptimizer.decodeDeoptReason(actionAndReason);
+        log.string("    reason: ").string(reason.toString()).string("  action: ").string(action.toString()).newline();
+
+        int debugId = Deoptimizer.decodeDebugId(actionAndReason);
+        log.string("    debugId: ").signed(debugId).string("  speculation: ").string(Objects.toString(speculation)).newline();
+
+        CodeInfoQueryResult info = CodeInfoTable.lookupCodeInfoQueryResult(ip);
+        if (info != null) {
+            NodeSourcePosition sourcePosition = DeoptimizationSourcePositionDecoder.decode(debugId, info);
+            if (sourcePosition != null) {
+                log.string("    stack trace that triggered deoptimization:").newline();
+                NodeSourcePosition cur = sourcePosition;
+                while (cur != null) {
+                    log.string("        at ");
+                    if (cur.getMethod() != null) {
+                        StackTraceElement element = cur.getMethod().asStackTraceElement(cur.getBCI());
+                        if (element.getFileName() != null && element.getLineNumber() >= 0) {
+                            log.string(element.toString());
                         } else {
-                            log.string("[unknown method]");
+                            log.string(cur.getMethod().format("%H.%n(%p)")).string(" bci ").signed(cur.getBCI());
                         }
-                        log.newline();
-
-                        cur = cur.getCaller();
+                    } else {
+                        log.string("[unknown method]");
                     }
+                    log.newline();
+
+                    cur = cur.getCaller();
                 }
             }
-        }
-
-        if (action.doesInvalidateCompilation()) {
-            Deoptimizer.invalidateMethodOfFrame(sp, speculation);
-        } else {
-            Deoptimizer.deoptimizeFrame(sp, false, speculation);
-        }
-
-        if (Deoptimizer.Options.TraceDeoptimization.getValue()) {
-            Log.log().string("]").newline();
         }
     }
 }

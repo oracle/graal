@@ -95,7 +95,6 @@ import org.graalvm.compiler.phases.common.inlining.InliningUtil;
 import org.graalvm.compiler.phases.tiers.HighTierContext;
 import org.graalvm.compiler.phases.tiers.LowTierContext;
 import org.graalvm.compiler.phases.tiers.MidTierContext;
-import org.graalvm.compiler.phases.tiers.PhaseContext;
 import org.graalvm.compiler.phases.tiers.Suites;
 import org.graalvm.compiler.phases.util.GraphOrder;
 import org.graalvm.compiler.phases.util.Providers;
@@ -271,7 +270,7 @@ public class CompileQueue {
 
         TrivialInlineTask(HostedMethod method) {
             this.method = method;
-            this.description = new Description(method, toString());
+            this.description = new Description(method, method.getName());
         }
 
         @Override
@@ -294,7 +293,7 @@ public class CompileQueue {
         public ParseTask(HostedMethod method, CompileReason reason) {
             this.method = method;
             this.reason = reason;
-            this.description = new Description(method, toString());
+            this.description = new Description(method, method.getName());
         }
 
         @Override
@@ -374,7 +373,7 @@ public class CompileQueue {
         phaseSuite.appendPhase(new DeadStoreRemovalPhase());
         phaseSuite.appendPhase(new DevirtualizeCallsPhase());
         phaseSuite.appendPhase(new CanonicalizerPhase());
-        phaseSuite.appendPhase(new StrengthenStampsPhase(false));
+        phaseSuite.appendPhase(new StrengthenStampsPhase());
         phaseSuite.appendPhase(new CanonicalizerPhase());
         return phaseSuite;
     }
@@ -519,6 +518,7 @@ public class CompileQueue {
                 if (method.compilationInfo.getGraph() != null) {
                     HostedProviders providers = (HostedProviders) runtimeConfig.lookupBackend(method).getProviders();
                     if (!universe.isPostParseCanonicalized()) {
+                        method.compilationInfo.getGraph().resetDebug(debug);
                         afterParseSuite.apply(method.compilationInfo.getGraph(), new HighTierContext(providers, afterParseSuite, getOptimisticOpts()));
 
                         /* Check that graph is in good shape after parsing. */
@@ -580,7 +580,7 @@ public class CompileQueue {
 
                     if (inlined) {
                         Providers providers = runtimeConfig.lookupBackend(method).getProviders();
-                        new CanonicalizerPhase().apply(graph, new PhaseContext(providers));
+                        new CanonicalizerPhase().apply(graph, providers);
 
                         /*
                          * Publish the new graph, it can be picked up immediately by other threads
@@ -611,7 +611,7 @@ public class CompileQueue {
                 }
                 InliningUtil.inline(invoke, singleCallee.compilationInfo.getGraph(), true, singleCallee);
 
-                graph.getDebug().dump(DebugContext.DETAILED_LEVEL, graph, "After inlining %s with trivial callee %s", invoke, singleCallee.format("%H.%n(%p)"));
+                graph.getDebug().dump(DebugContext.DETAILED_LEVEL, graph, "After inlining %s with trivial callee %s", invoke, singleCallee.getQualifiedName());
                 return true;
             }
         }
@@ -636,8 +636,16 @@ public class CompileQueue {
     }
 
     private static boolean mustNotAllocate(HostedMethod method) {
+        /*
+         * GR-15580: This check is suspicious. The no-allocation restriction is propagated through
+         * the call graph, so checking explicitly for annotated methods means that either not enough
+         * methods are excluded from inlining, or the inlining restriction is not necessary at all.
+         * We should elevate all methods that really need an inlining restriction
+         * to @Uninterruptible or mark them as @NeverInline, so that no-allocation does not need any
+         * more inlining restrictions and this code can be removed.
+         */
         RestrictHeapAccess annotation = method.getAnnotation(RestrictHeapAccess.class);
-        return annotation != null && annotation.access() == RestrictHeapAccess.Access.NO_ALLOCATION;
+        return annotation != null && annotation.access() == RestrictHeapAccess.Access.NO_ALLOCATION && !annotation.mayBeInlined();
     }
 
     public static boolean callerAnnotatedWith(Invoke invoke, Class<? extends Annotation> annotationClass) {

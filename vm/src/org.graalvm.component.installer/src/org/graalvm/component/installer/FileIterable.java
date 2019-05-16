@@ -32,6 +32,7 @@ import java.nio.channels.ReadableByteChannel;
 import java.nio.file.StandardOpenOption;
 import java.util.Iterator;
 import java.util.ServiceLoader;
+import org.graalvm.component.installer.model.ComponentInfo;
 import org.graalvm.component.installer.persist.MetadataLoader;
 
 public class FileIterable implements ComponentIterable {
@@ -51,6 +52,16 @@ public class FileIterable implements ComponentIterable {
     @Override
     public void setVerifyJars(boolean verifyJars) {
         this.verifyJars = verifyJars;
+    }
+
+    @Override
+    public ComponentIterable matchVersion(Version.Match m) {
+        return this;
+    }
+
+    @Override
+    public ComponentIterable allowIncompatible() {
+        return this;
     }
 
     private File getFile(String pathSpec) {
@@ -76,6 +87,11 @@ public class FileIterable implements ComponentIterable {
         };
     }
 
+    @Override
+    public ComponentParam createParam(String cmdString, ComponentInfo info) {
+        return null;
+    }
+
     public static class FileComponent implements ComponentParam {
         private final File localFile;
         private MetadataLoader loader;
@@ -85,7 +101,7 @@ public class FileIterable implements ComponentIterable {
         public FileComponent(File localFile, boolean verifyJars, Feedback feedback) {
             this.localFile = localFile;
             this.verifyJars = verifyJars;
-            this.feedback = feedback;
+            this.feedback = feedback.withBundle(FileComponent.class);
         }
 
         @Override
@@ -95,10 +111,14 @@ public class FileIterable implements ComponentIterable {
             }
             byte[] fileStart = null;
 
-            try (ReadableByteChannel ch = FileChannel.open(localFile.toPath(), StandardOpenOption.READ)) {
-                ByteBuffer bb = ByteBuffer.allocate(8);
-                ch.read(bb);
-                fileStart = bb.array();
+            if (localFile.isFile()) {
+                try (ReadableByteChannel ch = FileChannel.open(localFile.toPath(), StandardOpenOption.READ)) {
+                    ByteBuffer bb = ByteBuffer.allocate(8);
+                    ch.read(bb);
+                    fileStart = bb.array();
+                }
+            } else {
+                fileStart = new byte[]{0, 0, 0, 0, 0, 0, 0, 0};
             }
 
             for (ComponentArchiveReader provider : ServiceLoader.load(ComponentArchiveReader.class)) {

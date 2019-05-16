@@ -193,7 +193,7 @@ public final class StandardTags {
      * not. When this block catches all exceptions, no special node object or catches function needs
      * to be provided.
      *
-     * @since 1.0
+     * @since 19.0
      */
     @Tag.Identifier("TRY_BLOCK")
     public static final class TryBlockTag extends Tag {
@@ -201,7 +201,7 @@ public final class StandardTags {
         /**
          * Name of the <code>catches</code> function.
          *
-         * @since 1.0
+         * @since 19.0
          */
         public static final String CATCHES = "catches";
 

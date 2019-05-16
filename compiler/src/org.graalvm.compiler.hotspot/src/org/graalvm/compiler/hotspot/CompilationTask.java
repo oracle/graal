@@ -32,7 +32,6 @@ import static org.graalvm.compiler.core.phases.HighTier.Options.Inline;
 import static org.graalvm.compiler.java.BytecodeParserOptions.InlineDuringParsing;
 
 import java.io.PrintStream;
-import java.util.List;
 
 import org.graalvm.collections.EconomicMap;
 import org.graalvm.compiler.api.replacements.SnippetReflectionProvider;
@@ -44,7 +43,6 @@ import org.graalvm.compiler.debug.CounterKey;
 import org.graalvm.compiler.debug.DebugCloseable;
 import org.graalvm.compiler.debug.DebugContext;
 import org.graalvm.compiler.debug.DebugDumpScope;
-import org.graalvm.compiler.debug.GraalError;
 import org.graalvm.compiler.debug.TimerKey;
 import org.graalvm.compiler.options.OptionKey;
 import org.graalvm.compiler.options.OptionValues;
@@ -52,30 +50,16 @@ import org.graalvm.compiler.printer.GraalDebugHandlersFactory;
 
 import jdk.vm.ci.code.BailoutException;
 import jdk.vm.ci.code.CodeCacheProvider;
-import jdk.vm.ci.hotspot.EventProvider;
 import jdk.vm.ci.hotspot.HotSpotCompilationRequest;
 import jdk.vm.ci.hotspot.HotSpotCompilationRequestResult;
 import jdk.vm.ci.hotspot.HotSpotInstalledCode;
 import jdk.vm.ci.hotspot.HotSpotJVMCIRuntime;
 import jdk.vm.ci.hotspot.HotSpotNmethod;
 import jdk.vm.ci.hotspot.HotSpotResolvedJavaMethod;
+import jdk.vm.ci.meta.ResolvedJavaMethod;
 import jdk.vm.ci.runtime.JVMCICompiler;
-import jdk.vm.ci.services.JVMCIServiceLocator;
 
 public class CompilationTask {
-
-    private static final EventProvider eventProvider;
-
-    static {
-        List<EventProvider> providers = JVMCIServiceLocator.getProviders(EventProvider.class);
-        if (providers.size() > 1) {
-            throw new GraalError("Multiple %s providers found: %s", EventProvider.class.getName(), providers);
-        } else if (providers.isEmpty()) {
-            eventProvider = EventProvider.createEmptyEventProvider();
-        } else {
-            eventProvider = providers.get(0);
-        }
-    }
 
     private final HotSpotJVMCIRuntime jvmciRuntime;
 
@@ -94,12 +78,10 @@ public class CompilationTask {
     private final boolean shouldRetainLocalVariables;
 
     final class HotSpotCompilationWrapper extends CompilationWrapper<HotSpotCompilationRequestResult> {
-        private final EventProvider.CompilationEvent compilationEvent;
         CompilationResult result;
 
-        HotSpotCompilationWrapper(EventProvider.CompilationEvent compilationEvent) {
+        HotSpotCompilationWrapper() {
             super(compiler.getGraalRuntime().getOutputDirectory(), compiler.getGraalRuntime().getCompilationProblemsPerAction());
-            this.compilationEvent = compilationEvent;
         }
 
         @Override
@@ -124,13 +106,6 @@ public class CompilationTask {
                  * given tier will happen if retry is false.
                  */
                 return HotSpotCompilationRequestResult.failure(bailout.getMessage(), !bailout.isPermanent());
-            }
-            // Log a failure event.
-            EventProvider.CompilerFailureEvent event = eventProvider.newCompilerFailureEvent();
-            if (event.shouldWrite()) {
-                event.setCompileId(getId());
-                event.setMessage(t.getMessage());
-                event.commit();
             }
 
             /*
@@ -181,14 +156,9 @@ public class CompilationTask {
             final CompilationPrinter printer = CompilationPrinter.begin(debug.getOptions(), compilationId, method, entryBCI);
 
             try (DebugContext.Scope s = debug.scope("Compiling", new DebugDumpScope(getIdString(), true))) {
-                // Begin the compilation event.
-                compilationEvent.begin();
                 result = compiler.compile(method, entryBCI, useProfilingInfo, shouldRetainLocalVariables, compilationId, debug);
             } catch (Throwable e) {
                 throw debug.handle(e);
-            } finally {
-                // End the compilation event.
-                compilationEvent.end();
             }
 
             if (result != null) {
@@ -200,7 +170,13 @@ public class CompilationTask {
             }
             stats.finish(method, installedCode);
             if (result != null) {
-                return HotSpotCompilationRequestResult.success(result.getBytecodeSize() - method.getCodeSize());
+                // For compilation of substitutions the method in the compilation request might be
+                // different than the actual method parsed. The root of the compilation will always
+                // be the first method in the methods list, so use that instead.
+                ResolvedJavaMethod rootMethod = result.getMethods()[0];
+                int inlinedBytecodes = result.getBytecodeSize() - rootMethod.getCodeSize();
+                assert inlinedBytecodes >= 0 : rootMethod + " " + method;
+                return HotSpotCompilationRequestResult.success(inlinedBytecodes);
             }
             return null;
         }
@@ -322,9 +298,6 @@ public class CompilationTask {
         boolean isOSR = entryBCI != JVMCICompiler.INVOCATION_ENTRY_BCI;
         HotSpotResolvedJavaMethod method = getMethod();
 
-        // Log a compilation event.
-        EventProvider.CompilationEvent compilationEvent = eventProvider.newCompilationEvent();
-
         if (installAsDefault || isOSR) {
             // If there is already compiled code for this method on our level we simply return.
             // JVMCI compiles are always at the highest compile level, even in non-tiered mode so we
@@ -337,7 +310,7 @@ public class CompilationTask {
             }
         }
 
-        HotSpotCompilationWrapper compilation = new HotSpotCompilationWrapper(compilationEvent);
+        HotSpotCompilationWrapper compilation = new HotSpotCompilationWrapper();
         try (DebugCloseable a = CompilationTime.start(debug)) {
             return compilation.run(debug);
         } finally {
@@ -353,18 +326,6 @@ public class CompilationTask {
                         CompiledAndInstalledBytecodes.add(debug, compiledBytecodes);
                         InstalledCodeSize.add(debug, codeSize);
                     }
-                }
-
-                // Log a compilation event.
-                if (compilationEvent.shouldWrite()) {
-                    compilationEvent.setMethod(method.format("%H.%n(%p)"));
-                    compilationEvent.setCompileId(getId());
-                    compilationEvent.setCompileLevel(config.compilationLevelFullOptimization);
-                    compilationEvent.setSucceeded(compilation.result != null && installedCode != null);
-                    compilationEvent.setIsOsr(isOSR);
-                    compilationEvent.setCodeSize(codeSize);
-                    compilationEvent.setInlinedBytes(compiledBytecodes);
-                    compilationEvent.commit();
                 }
             } catch (Throwable t) {
                 return compilation.handleException(t);

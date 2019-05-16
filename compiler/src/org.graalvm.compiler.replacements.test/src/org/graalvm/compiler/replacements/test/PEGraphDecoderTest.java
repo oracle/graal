@@ -43,9 +43,9 @@ import org.graalvm.compiler.nodes.memory.HeapAccess.BarrierType;
 import org.graalvm.compiler.nodes.memory.ReadNode;
 import org.graalvm.compiler.nodes.memory.address.AddressNode;
 import org.graalvm.compiler.nodes.memory.address.OffsetAddressNode;
+import org.graalvm.compiler.nodes.spi.CoreProviders;
 import org.graalvm.compiler.phases.OptimisticOptimizations;
 import org.graalvm.compiler.phases.common.CanonicalizerPhase;
-import org.graalvm.compiler.phases.tiers.PhaseContext;
 import org.graalvm.compiler.replacements.CachingPEGraphDecoder;
 import org.graalvm.word.LocationIdentity;
 import org.junit.Test;
@@ -144,7 +144,7 @@ public class PEGraphDecoderTest extends GraalCompilerTest {
             debug.dump(DebugContext.BASIC_LEVEL, targetGraph, "Target Graph");
             targetGraph.verify();
 
-            PhaseContext context = new PhaseContext(getProviders());
+            CoreProviders context = getProviders();
             new CanonicalizerPhase().apply(targetGraph, context);
             targetGraph.verify();
 

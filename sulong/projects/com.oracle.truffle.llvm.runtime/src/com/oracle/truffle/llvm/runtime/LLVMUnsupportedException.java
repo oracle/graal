@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2016, 2018, Oracle and/or its affiliates.
+ * Copyright (c) 2016, 2019, Oracle and/or its affiliates.
  *
  * All rights reserved.
  *
@@ -29,7 +29,10 @@
  */
 package com.oracle.truffle.llvm.runtime;
 
-public final class LLVMUnsupportedException extends RuntimeException {
+import com.oracle.truffle.api.nodes.Node;
+import com.oracle.truffle.llvm.runtime.except.LLVMException;
+
+public final class LLVMUnsupportedException extends LLVMException {
 
     private static final long serialVersionUID = 1L;
 
@@ -55,26 +58,16 @@ public final class LLVMUnsupportedException extends RuntimeException {
         }
     }
 
-    private final UnsupportedReason reason;
-    private final String details;
-
-    public LLVMUnsupportedException(UnsupportedReason reason) {
-        super(reason.getDescription());
-        this.details = null;
-        this.reason = reason;
+    public LLVMUnsupportedException(Node location, UnsupportedReason reason) {
+        super(location, reason.getDescription());
     }
 
-    public LLVMUnsupportedException(UnsupportedReason reason, String details) {
-        super(reason.getDescription() + ": " + details);
-        this.details = details;
-        this.reason = reason;
+    public LLVMUnsupportedException(Node location, UnsupportedReason reason, String details) {
+        super(location, reason.getDescription() + ": " + details);
     }
 
-    public UnsupportedReason getReason() {
-        return reason;
+    public LLVMUnsupportedException(Node location, UnsupportedReason reason, Throwable cause) {
+        super(location, reason.getDescription(), cause);
     }
 
-    public String getDetails() {
-        return details;
-    }
 }

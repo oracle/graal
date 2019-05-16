@@ -77,7 +77,7 @@ public abstract class DynamicObject implements TruffleObject {
     /**
      * Constructor for subclasses.
      *
-     * @since 1.0
+     * @since 19.0
      */
     protected DynamicObject(Shape shape) {
         verifyShape(shape, this.getClass());

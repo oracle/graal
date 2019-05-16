@@ -24,6 +24,7 @@
  */
 package org.graalvm.component.installer.persist;
 
+import java.util.Collections;
 import org.graalvm.component.installer.MetadataException;
 import org.graalvm.component.installer.DependencyException;
 import java.util.HashMap;
@@ -32,6 +33,7 @@ import java.util.Map;
 import java.util.function.Predicate;
 import org.graalvm.component.installer.BundleConstants;
 import org.graalvm.component.installer.Feedback;
+import org.graalvm.component.installer.Version;
 
 /**
  * Parses OSGI-like metadata in JAR component bundles.
@@ -43,6 +45,7 @@ public class HeaderParser {
     private final Map<String, String> parameters = new HashMap<>();
     private final Map<String, String> directives = new HashMap<>();
     private final Map<String, String> filterValue = new HashMap<>();
+    private final Map<String, Object> capabilities = new HashMap<>();
     private final Feedback feedback;
 
     private String header;
@@ -56,7 +59,7 @@ public class HeaderParser {
 
     public HeaderParser(String headerName, String header, Feedback feedback) {
         this.headerName = headerName;
-        this.feedback = feedback;
+        this.feedback = feedback.withBundle(HeaderParser.class);
 
         if (header != null) {
             // trim whitespaces;
@@ -188,6 +191,10 @@ public class HeaderParser {
             if (Character.isWhitespace(c)) {
                 break;
             }
+            if (c == ';') {
+                pos--;
+                break;
+            }
             if (!isExtended(c)) {
                 throw metaEx("ERROR_InvalidParameterSyntax", directiveOrParameterName);
             }
@@ -293,7 +300,8 @@ public class HeaderParser {
             }
             advance();
             if (c == '.') {
-                if (++partCount > 3 || !partContents) {
+                ++partCount;
+                if (!partContents) {
                     throw metaErr("ERROR_InvalidVersion");
                 }
                 partContents = false;
@@ -339,7 +347,7 @@ public class HeaderParser {
             char c = ch();
             if (isExtended(c)) {
                 advance();
-            } else if (Character.isWhitespace(c) || c == ':' || c == '=') {
+            } else if (Character.isWhitespace(c) || c == ':' || c == '=' || c == ';') {
                 break;
             } else {
                 throw metaEx("ERROR_InvalidParameterName");
@@ -525,4 +533,87 @@ public class HeaderParser {
 
         return filterValue;
     }
+
+    public Map<String, Object> parseProvidedCapabilities() {
+        if (isEmpty()) {
+            return Collections.emptyMap();
+        }
+        String namespace = parseNamespace();
+
+        char c = next();
+        if (c != ';' && c != 0) {
+            throw metaErr("ERROR_InvalidFilterSpecification");
+        }
+
+        if (!BundleConstants.GRAALVM_CAPABILITY.equals(namespace)) {
+            // unsupported capability
+            throw new DependencyException(namespace, null, null, feedback.l10n("ERROR_UnknownCapability"));
+        }
+        while (!isEmpty()) {
+            parseCapability();
+        }
+        return capabilities;
+    }
+
+    private void parseCapability() {
+        String capName = readExtendedName();
+        if (capName.isEmpty()) {
+            throw metaEx("ERROR_InvalidCapabilityName");
+        }
+        directiveOrParameterName = capName;
+
+        char c = next();
+        boolean dcolon = c == ':'; // NOI18N
+        boolean makeVersion = false;
+        if (dcolon) {
+            if (ch() == '=') {
+                throw metaEx("ERROR_InvalidCapabilitySyntax", capName);
+            }
+            skipWhitespaces();
+            while (true) {
+                if (isEmpty()) {
+                    throw metaEx("ERROR_InvalidCapabilitySyntax", capName);
+                }
+                c = next();
+                if (Character.isWhitespace(c) || c == '=' || c == ';') {
+                    break;
+                } else if (!isAlphaNum(c)) {
+                    throw metaEx("ERROR_InvalidCapabilitySyntax", capName);
+                }
+            }
+            String type = cut();
+
+            switch (type.toLowerCase()) {
+                case "version":
+                    makeVersion = true;
+                    break;
+                case "string":
+                    break;
+                case "long":
+                case "double":
+                case "list":
+                default:
+                    throw metaEx("ERROR_UnsupportedCapabilityType", capName, type);
+            }
+            skipWhitespaces();
+            c = next();
+        }
+        if (c != '=') { // NOI18N
+            throw metaEx("ERROR_InvalidCapabilitySyntax", capName);
+        }
+        String s = parseArgument();
+        Object o;
+
+        if (makeVersion) {
+            try {
+                o = Version.fromString(s);
+            } catch (IllegalArgumentException ex) {
+                throw metaEx("ERROR_InvalidCapabilityVersion", capName, s);
+            }
+        } else {
+            o = s;
+        }
+        capabilities.put(capName, o);
+    }
+
 }

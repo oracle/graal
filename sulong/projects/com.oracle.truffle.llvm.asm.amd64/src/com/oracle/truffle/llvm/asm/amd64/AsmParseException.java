@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2016, 2018, Oracle and/or its affiliates.
+ * Copyright (c) 2016, 2019, Oracle and/or its affiliates.
  *
  * All rights reserved.
  *
@@ -29,7 +29,9 @@
  */
 package com.oracle.truffle.llvm.asm.amd64;
 
-class AsmParseException extends RuntimeException {
+import com.oracle.truffle.llvm.runtime.except.LLVMParserException;
+
+public class AsmParseException extends LLVMParserException {
     private static final long serialVersionUID = 1L;
 
     AsmParseException(String msg) {

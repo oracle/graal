@@ -88,7 +88,7 @@ import java.lang.annotation.Target;
  *
  * @see DefaultExport to specify default exports.
  * @see Abstract to make messages abstract if they have a default implemetnation
- * @since 1.0
+ * @since 19.0
  */
 @Retention(RetentionPolicy.CLASS)
 @Target({ElementType.TYPE})
@@ -145,7 +145,7 @@ public @interface GenerateLibrary {
      *
      * </pre>
      *
-     * @since 1.0
+     * @since 19.0
      */
     Class<? extends Library> assertions() default Library.class;
 
@@ -156,7 +156,7 @@ public @interface GenerateLibrary {
      * therefore export the library for any receiver type the message methods first parameter is
      * compatible with.
      *
-     * @since 1.0
+     * @since 19.0
      */
     Class<?> receiverType() default Object.class;
 
@@ -165,7 +165,7 @@ public @interface GenerateLibrary {
      * Specifies {@link GenerateLibrary library} implementations provided by default as a fallback.
      * May only be used on classes annotated with Library.
      *
-     * @since 1.0
+     * @since 19.0
      */
     @Retention(RetentionPolicy.CLASS)
     @Target({ElementType.TYPE})
@@ -173,19 +173,19 @@ public @interface GenerateLibrary {
     public @interface DefaultExport {
 
         /**
-         * @since 1.0
+         * @since 19.0
          */
         Class<?> value();
 
         /**
-         * @since 1.0
+         * @since 19.0
          */
         @Retention(RetentionPolicy.CLASS)
         @Target({ElementType.TYPE})
         public @interface Repeat {
 
             /**
-             * @since 1.0
+             * @since 19.0
              */
             DefaultExport[] value();
 
@@ -222,7 +222,7 @@ public @interface GenerateLibrary {
      * conditionally abstract by specifying the {@link Abstract#ifExported()} attribute.
      *
      * @see #ifExported()
-     * @since 1.0
+     * @since 19.0
      */
     @Retention(RetentionPolicy.CLASS)
     @Target({ElementType.METHOD})
@@ -253,7 +253,7 @@ public @interface GenerateLibrary {
          * In this example the isArray message only needs to be exported if the read message is
          * exported and vice-versa.
          *
-         * @since 1.0
+         * @since 19.0
          */
         String[] ifExported() default {};
 

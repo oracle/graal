@@ -43,14 +43,14 @@ package org.graalvm.options;
 /**
  * Represents a set of option values based on an {@link OptionDescriptor}.
  *
- * @since 1.0
+ * @since 19.0
  */
 public interface OptionValues {
 
     /**
      * Returns all available options.
      *
-     * @since 1.0
+     * @since 19.0
      */
     OptionDescriptors getDescriptors();
 
@@ -62,14 +62,14 @@ public interface OptionValues {
      *             the operation succeeds if the option key is not described by any of the
      *             associated {@link #getDescriptors() descriptors}.
      *
-     * @since 1.0
+     * @since 19.0
      */
     <T> void set(OptionKey<T> optionKey, T value);
 
     /**
      * Returns the value of a given option.
      *
-     * @since 1.0
+     * @since 19.0
      */
     <T> T get(OptionKey<T> optionKey);
 
@@ -77,7 +77,7 @@ public interface OptionValues {
      * Determines if a value for {@code optionKey} has been {@link #set} in this set of option
      * values.
      *
-     * @since 1.0
+     * @since 19.0
      */
     boolean hasBeenSet(OptionKey<?> optionKey);
 
@@ -85,7 +85,7 @@ public interface OptionValues {
      * Determines if a value for any of the option keys in {@link #getDescriptors() option
      * descriptors} has been {@link #set} in this set of option values.
      *
-     * @since 1.0
+     * @since 19.0
      */
     default boolean hasSetOptions() {
         for (OptionDescriptor descriptor : getDescriptors()) {

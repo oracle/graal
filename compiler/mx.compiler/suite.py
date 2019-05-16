@@ -4,7 +4,7 @@ suite = {
   "sourceinprojectwhitelist" : [],
 
   "groupId" : "org.graalvm.compiler",
-  "version" : "1.0.0-rc16",
+  "version" : "1.0.0-rc18",
   "release" : False,
   "url" : "http://www.graalvm.org/",
   "developer" : {
@@ -274,7 +274,7 @@ suite = {
       "workingSets" : "API,Graal",
     },
 
-    "org.graalvm.compiler.serviceprovider.jdk9" : {
+    "org.graalvm.compiler.serviceprovider.jdk11" : {
       "subDir" : "src",
       "sourceDirs" : ["src"],
       "dependencies" : ["org.graalvm.compiler.serviceprovider"],
@@ -283,9 +283,24 @@ suite = {
         "org.graalvm.compiler.phases.common.jmx.HotSpotMBeanOperationProvider",
       ],
       "checkstyle" : "org.graalvm.compiler.graph",
-      "javaCompliance" : "9+",
+      "javaCompliance" : "11+",
       "checkPackagePrefix" : "false",
-      "multiReleaseJarVersion" : "9",
+      "multiReleaseJarVersion" : "11",
+      "workingSets" : "API,Graal",
+    },
+
+    "org.graalvm.compiler.serviceprovider.jdk13" : {
+      "subDir" : "src",
+      "sourceDirs" : ["src"],
+      "dependencies" : ["org.graalvm.compiler.serviceprovider"],
+      "uses" : [
+        "org.graalvm.compiler.serviceprovider.JMXService",
+        "org.graalvm.compiler.phases.common.jmx.HotSpotMBeanOperationProvider",
+      ],
+      "checkstyle" : "org.graalvm.compiler.graph",
+      "javaCompliance" : "13+",
+      "checkPackagePrefix" : "false",
+      "multiReleaseJarVersion" : "13",
       "workingSets" : "API,Graal",
     },
 
@@ -610,7 +625,7 @@ suite = {
       "subDir" : "src",
       "sourceDirs" : ["src"],
       "dependencies" : [
-        "org.graalvm.compiler.serviceprovider.jdk9",
+        "org.graalvm.compiler.serviceprovider.jdk11",
         "org.graalvm.compiler.hotspot.management",
       ],
       "imports" : [
@@ -622,6 +637,25 @@ suite = {
         "GRAAL_SERVICEPROVIDER_PROCESSOR",
       ],
       "javaCompliance" : "11+",
+      "workingSets" : "Graal,HotSpot",
+    },
+
+    "org.graalvm.compiler.hotspot.management.jdk13" : {
+      "subDir" : "src",
+      "sourceDirs" : ["src"],
+      "dependencies" : [
+        "org.graalvm.compiler.serviceprovider.jdk13",
+        "org.graalvm.compiler.hotspot.management",
+      ],
+      "imports" : [
+        "java.management",
+      ],
+      "multiReleaseJarVersion" : "13",
+      "checkstyle" : "org.graalvm.compiler.graph",
+      "annotationProcessors" : [
+        "GRAAL_SERVICEPROVIDER_PROCESSOR",
+      ],
+      "javaCompliance" : "13+",
       "workingSets" : "Graal,HotSpot",
     },
 
@@ -1401,6 +1435,7 @@ suite = {
       "sourceDirs" : ["src"],
       "dependencies" : [
         "org.graalvm.compiler.core",
+        "org.graalvm.compiler.lir.aarch64",
         "LLVM_WRAPPER",
         "LLVM_PLATFORM_SPECIFIC",
       ],
@@ -1975,7 +2010,8 @@ suite = {
       "subDir" : "src",
       "dependencies" : [
         "org.graalvm.compiler.serviceprovider.jdk8",
-        "org.graalvm.compiler.serviceprovider.jdk9",
+        "org.graalvm.compiler.serviceprovider.jdk11",
+        "org.graalvm.compiler.serviceprovider.jdk13",
       ],
       "distDependencies" : [
         "JVMCI_SERVICES"
@@ -2313,7 +2349,8 @@ suite = {
         "org.graalvm.libgraal.jdk11",
         "org.graalvm.libgraal.jdk13",
         "org.graalvm.compiler.serviceprovider.jdk8",
-        "org.graalvm.compiler.serviceprovider.jdk9",
+        "org.graalvm.compiler.serviceprovider.jdk11",
+        "org.graalvm.compiler.serviceprovider.jdk13",
         "org.graalvm.compiler.options",
         "org.graalvm.compiler.nodeinfo",
         "org.graalvm.compiler.api.replacements",
@@ -2442,6 +2479,7 @@ suite = {
 
     "GRAAL_LLVM" : {
       "subDir" : "src",
+      "description" : "LLVM compiler backend",
       "dependencies" : ["org.graalvm.compiler.core.llvm"],
       "distDependencies" : [
         "GRAAL",

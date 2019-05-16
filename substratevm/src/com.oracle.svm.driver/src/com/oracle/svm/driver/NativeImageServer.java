@@ -82,9 +82,12 @@ final class NativeImageServer extends NativeImage {
     private volatile Server building = null;
     private final List<FileChannel> openFileChannels = new ArrayList<>();
 
+    private final ServerOptionHandler serverOptionHandler;
+
     private NativeImageServer(BuildConfiguration buildConfiguration) {
         super(buildConfiguration);
-        registerOptionHandler(new ServerOptionHandler(this));
+        serverOptionHandler = new ServerOptionHandler(this);
+        registerOptionHandler(serverOptionHandler);
     }
 
     static NativeImage create(BuildConfiguration config) {
@@ -669,7 +672,7 @@ final class NativeImageServer extends NativeImage {
         }
     }
 
-    private FileLock lockFileChannel(FileChannel channel) throws IOException {
+    private static FileLock lockFileChannel(FileChannel channel) throws IOException {
         Thread lockWatcher = new Thread(() -> {
             try {
                 Thread.sleep(TimeUnit.MINUTES.toMillis(10));
@@ -795,6 +798,10 @@ final class NativeImageServer extends NativeImage {
         useServer = val;
     }
 
+    boolean useServer() {
+        return useServer;
+    }
+
     @Override
     protected void setDryRun(boolean val) {
         super.setDryRun(val);
@@ -803,6 +810,10 @@ final class NativeImageServer extends NativeImage {
 
     void setVerboseServer(boolean val) {
         verboseServer = val;
+    }
+
+    boolean verboseServer() {
+        return verboseServer;
     }
 
     void setSessionName(String val) {

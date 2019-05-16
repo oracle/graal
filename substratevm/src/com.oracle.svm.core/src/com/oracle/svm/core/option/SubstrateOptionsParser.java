@@ -506,6 +506,21 @@ public class SubstrateOptionsParser {
      */
     @Platforms(Platform.HOSTED_ONLY.class)
     public static String commandArgument(OptionKey<?> option, String value) {
+        return commandArgument(option, value, null);
+    }
+
+    /**
+     * Returns a string to be used on command line to set the option to a desirable value. If the
+     * option has one or more {@link APIOption} annotations, preference is given to a matching
+     * {@link APIOption} syntax.
+     *
+     * @param option for which the command line argument is created
+     * @param apiOptionName name of the API option (in case there are multiple)
+     * @return recommendation for setting a option value (e.g., for option 'Name' and value 'file'
+     *         it returns "-H:Name=file")
+     */
+    @Platforms(Platform.HOSTED_ONLY.class)
+    public static String commandArgument(OptionKey<?> option, String value, String apiOptionName) {
         Field field;
         try {
             field = option.getDescriptor().getDeclaringClass().getDeclaredField(option.getDescriptor().getFieldName());
@@ -514,6 +529,10 @@ public class SubstrateOptionsParser {
         }
 
         APIOption[] apiOptions = field.getAnnotationsByType(APIOption.class);
+
+        for (APIOption apiOption : apiOptions) {
+            assert !apiOption.name().equals(apiOptionName) || apiOption.deprecated().equals("") : "Using the deprecated option in a description: " + apiOption;
+        }
 
         if (option.getDescriptor().getOptionValueType() == Boolean.class) {
             VMError.guarantee(value.equals("+") || value.equals("-"), "Boolean option value can be only + or -");
@@ -527,12 +546,15 @@ public class SubstrateOptionsParser {
         } else {
             for (APIOption apiOption : apiOptions) {
                 String fixedValue = apiOption.fixedValue().length == 0 ? null : apiOption.fixedValue()[0];
-                if (fixedValue == null) {
-                    return APIOption.Utils.name(apiOption) + "=" + value;
-                } else if (value.equals(fixedValue)) {
-                    return APIOption.Utils.name(apiOption);
+                if (apiOption.name().equals(apiOptionName)) {
+                    if (fixedValue == null) {
+                        return APIOption.Utils.name(apiOption) + "=" + value;
+                    } else if (value.equals(fixedValue)) {
+                        return APIOption.Utils.name(apiOption);
+                    }
                 }
             }
+            assert apiOptionName == null : "invalid API option name " + apiOptionName;
             return HOSTED_OPTION_PREFIX + option.getName() + "=" + value;
         }
     }

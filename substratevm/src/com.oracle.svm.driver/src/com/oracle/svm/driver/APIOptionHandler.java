@@ -24,9 +24,7 @@
  */
 package com.oracle.svm.driver;
 
-import java.lang.reflect.Constructor;
 import java.lang.reflect.Field;
-import java.lang.reflect.InvocationTargetException;
 import java.nio.file.Paths;
 import java.util.ArrayList;
 import java.util.Arrays;
@@ -41,10 +39,10 @@ import java.util.stream.Collectors;
 
 import org.graalvm.compiler.options.OptionDescriptor;
 import org.graalvm.compiler.options.OptionDescriptors;
-import org.graalvm.nativeimage.hosted.Feature;
 import org.graalvm.nativeimage.ImageSingletons;
 import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.Platforms;
+import org.graalvm.nativeimage.hosted.Feature;
 
 import com.oracle.svm.core.annotate.AutomaticFeature;
 import com.oracle.svm.core.option.APIOption;
@@ -53,6 +51,8 @@ import com.oracle.svm.core.option.SubstrateOptionsParser;
 import com.oracle.svm.core.util.VMError;
 import com.oracle.svm.hosted.FeatureImpl;
 import com.oracle.svm.hosted.option.HostedOptionParser;
+import com.oracle.svm.util.ReflectionUtil;
+import com.oracle.svm.util.ReflectionUtil.ReflectionUtilError;
 
 class APIOptionHandler extends NativeImage.OptionHandler<NativeImage> {
 
@@ -62,15 +62,23 @@ class APIOptionHandler extends NativeImage.OptionHandler<NativeImage> {
         final String helpText;
         final boolean hasPathArguments;
         final boolean defaultFinal;
+        final String deprecationWarning;
+
         final List<Function<Object, Object>> valueTransformers;
 
-        OptionInfo(String builderOption, String defaultValue, String helpText, boolean hasPathArguments, boolean defaultFinal, List<Function<Object, Object>> valueTransformers) {
+        OptionInfo(String builderOption, String defaultValue, String helpText, boolean hasPathArguments, boolean defaultFinal, String deprecationWarning,
+                        List<Function<Object, Object>> valueTransformers) {
             this.builderOption = builderOption;
             this.defaultValue = defaultValue;
             this.helpText = helpText;
             this.hasPathArguments = hasPathArguments;
             this.defaultFinal = defaultFinal;
+            this.deprecationWarning = deprecationWarning;
             this.valueTransformers = valueTransformers;
+        }
+
+        boolean isDeprecated() {
+            return deprecationWarning.length() > 0;
         }
     }
 
@@ -104,6 +112,7 @@ class APIOptionHandler extends NativeImage.OptionHandler<NativeImage> {
         try {
             Field optionField = optionDescriptor.getDeclaringClass().getDeclaredField(optionDescriptor.getFieldName());
             APIOption[] apiAnnotations = optionField.getAnnotationsByType(APIOption.class);
+
             for (APIOption apiAnnotation : apiAnnotations) {
                 String builderOption = optionPrefix;
                 String apiOptionName = APIOption.Utils.name(apiAnnotation);
@@ -152,18 +161,15 @@ class APIOptionHandler extends NativeImage.OptionHandler<NativeImage> {
                 List<Function<Object, Object>> valueTransformers = new ArrayList<>(apiAnnotation.valueTransformer().length);
                 for (Class<? extends Function<Object, Object>> transformerClass : apiAnnotation.valueTransformer()) {
                     try {
-                        Constructor<? extends Function<Object, Object>> constructor = transformerClass.getDeclaredConstructor();
-                        constructor.setAccessible(true);
-                        valueTransformers.add(constructor.newInstance());
-                    } catch (NoSuchMethodException | InstantiationException | IllegalAccessException | IllegalArgumentException | InvocationTargetException ex) {
+                        valueTransformers.add(ReflectionUtil.newInstance(transformerClass));
+                    } catch (ReflectionUtilError ex) {
                         throw VMError.shouldNotReachHere(
-                                        "Class specified as valueTransformer for @APIOption " + apiOptionName + " cannot be loaded or instantiated: " + transformerClass.getTypeName(), ex);
+                                        "Class specified as valueTransformer for @APIOption " + apiOptionName + " cannot be loaded or instantiated: " + transformerClass.getTypeName(), ex.getCause());
                     }
                 }
-
                 apiOptions.put(apiOptionName,
                                 new APIOptionHandler.OptionInfo(builderOption, defaultValue, helpText, apiAnnotation.kind().equals(APIOptionKind.Paths),
-                                                booleanOption || apiAnnotation.fixedValue().length > 0, valueTransformers));
+                                                booleanOption || apiAnnotation.fixedValue().length > 0, apiAnnotation.deprecated(), valueTransformers));
             }
         } catch (NoSuchFieldException e) {
             /* Does not qualify as APIOption */
@@ -186,6 +192,9 @@ class APIOptionHandler extends NativeImage.OptionHandler<NativeImage> {
         String[] optionParts = arg.split("=", 2);
         OptionInfo option = apiOptions.get(optionParts[0]);
         if (option != null) {
+            if (!option.deprecationWarning.isEmpty()) {
+                NativeImage.showWarning("Using a deprecated option " + optionParts[0] + ". " + option.deprecationWarning);
+            }
             String builderOption = option.builderOption;
             String optionValue = option.defaultValue;
             if (optionParts.length == 2) {
@@ -205,8 +214,10 @@ class APIOptionHandler extends NativeImage.OptionHandler<NativeImage> {
                 for (Function<Object, Object> transformer : option.valueTransformers) {
                     transformed = transformer.apply(transformed);
                 }
+
                 builderOption += transformed.toString();
             }
+
             return builderOption;
         }
         return null;
@@ -222,7 +233,9 @@ class APIOptionHandler extends NativeImage.OptionHandler<NativeImage> {
     }
 
     void printOptions(Consumer<String> println) {
-        apiOptions.forEach((optionName, optionInfo) -> SubstrateOptionsParser.printOption(println, optionName, optionInfo.helpText, 4, 22, 66));
+        apiOptions.entrySet().stream()
+                        .filter(e -> !e.getValue().isDeprecated())
+                        .forEach(e -> SubstrateOptionsParser.printOption(println, e.getKey(), e.getValue().helpText, 4, 22, 66));
     }
 }
 

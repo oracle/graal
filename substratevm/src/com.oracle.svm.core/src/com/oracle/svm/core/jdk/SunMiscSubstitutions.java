@@ -50,7 +50,6 @@ import com.oracle.svm.core.hub.DynamicHub;
 import com.oracle.svm.core.hub.LayoutEncoding;
 import com.oracle.svm.core.log.Log;
 import com.oracle.svm.core.os.VirtualMemoryProvider;
-import com.oracle.svm.core.snippets.KnownIntrinsics;
 
 import jdk.vm.ci.code.MemoryBarriers;
 import sun.misc.Unsafe;
@@ -193,9 +192,8 @@ final class Target_Unsafe_Core {
     }
 
     @Substitute
-    private void throwException(Throwable t) {
-        /* Make the Java compiler happy by pretending we are throwing a non-checked exception. */
-        throw KnownIntrinsics.unsafeCast(t, RuntimeException.class);
+    private void throwException(Throwable t) throws Throwable {
+        throw t;
     }
 
     @Substitute

@@ -75,6 +75,7 @@ import com.oracle.svm.core.util.UserError;
 import com.oracle.svm.hosted.NativeImageClassLoader;
 import com.oracle.svm.hosted.SVMHost;
 import com.oracle.svm.hosted.analysis.flow.SVMMethodTypeFlowBuilder;
+import com.oracle.svm.hosted.meta.HostedType;
 import com.oracle.svm.hosted.substitute.AnnotationSubstitutionProcessor;
 
 import jdk.vm.ci.common.JVMCIError;
@@ -612,6 +613,16 @@ public class Inflation extends BigBang {
         return annotationInterfaceType.isInstantiated() || annotationInterfaceType.isInTypeCheck();
     }
 
+    public static ResolvedJavaType toWrappedType(ResolvedJavaType type) {
+        if (type instanceof AnalysisType) {
+            return ((AnalysisType) type).getWrappedWithoutResolve();
+        } else if (type instanceof HostedType) {
+            return ((HostedType) type).getWrapped().getWrappedWithoutResolve();
+        } else {
+            return type;
+        }
+    }
+
     @Override
     public boolean trackConcreteAnalysisObjects(AnalysisType type) {
         /*
@@ -636,10 +647,10 @@ public class Inflation extends BigBang {
 
     /**
      * Builds a pattern that checks if the tested string starts with any of the target prefixes,
-     * like so: {@code str1(.*)|str2(.*)|str3(.*)}.
+     * like so: {@code ^(str1(.*)|str2(.*)|str3(.*))}.
      */
     private static Pattern buildPrefixMatchPattern(String[] targetPrefixes) {
-        StringBuilder patternStr = new StringBuilder();
+        StringBuilder patternStr = new StringBuilder("^(");
         for (int i = 0; i < targetPrefixes.length; i++) {
             String prefix = targetPrefixes[i];
             patternStr.append(prefix);
@@ -648,14 +659,15 @@ public class Inflation extends BigBang {
                 patternStr.append("|");
             }
         }
+        patternStr.append(')');
         return Pattern.compile(patternStr.toString());
     }
 
     @Override
     public boolean isCallAllowed(BigBang bb, AnalysisMethod caller, AnalysisMethod callee, NodeSourcePosition srcPosition) {
-        String calleeName = callee.format("%H.%n");
+        String calleeName = callee.getQualifiedName();
         if (illegalCalleesPattern.matcher(calleeName).find()) {
-            String callerName = caller.format("%H.%n");
+            String callerName = caller.getQualifiedName();
             if (targetCallersPattern.matcher(callerName).find()) {
                 SuppressSVMWarnings suppress = caller.getAnnotation(SuppressSVMWarnings.class);
                 AnalysisType callerType = caller.getDeclaringClass();

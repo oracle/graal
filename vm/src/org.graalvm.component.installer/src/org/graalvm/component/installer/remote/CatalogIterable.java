@@ -27,16 +27,25 @@ package org.graalvm.component.installer.remote;
 import java.io.File;
 import java.io.IOException;
 import java.nio.file.Path;
+import java.util.ArrayList;
+import java.util.Collection;
+import java.util.Collections;
 import java.util.Iterator;
+import java.util.List;
+import org.graalvm.component.installer.BundleConstants;
 import org.graalvm.component.installer.CommandInput;
 import org.graalvm.component.installer.Commands;
+import org.graalvm.component.installer.ComponentCollection;
 import org.graalvm.component.installer.ComponentIterable;
 import org.graalvm.component.installer.ComponentParam;
 import org.graalvm.component.installer.FailedOperationException;
 import org.graalvm.component.installer.Feedback;
+import org.graalvm.component.installer.FileIterable;
+import org.graalvm.component.installer.FileIterable.FileComponent;
 import org.graalvm.component.installer.SoftwareChannel;
+import org.graalvm.component.installer.UnknownVersionException;
+import org.graalvm.component.installer.Version;
 import org.graalvm.component.installer.model.ComponentInfo;
-import org.graalvm.component.installer.model.ComponentRegistry;
 import org.graalvm.component.installer.persist.MetadataLoader;
 
 /**
@@ -48,13 +57,15 @@ public class CatalogIterable implements ComponentIterable {
     private final CommandInput input;
     private final Feedback feedback;
     private final SoftwareChannel factory;
-    private ComponentRegistry remoteRegistry;
+    private final ComponentCollection remoteRegistry;
     private boolean verifyJars;
+    private boolean incompatible;
 
-    public CatalogIterable(CommandInput input, Feedback feedback, SoftwareChannel fact) {
+    public CatalogIterable(CommandInput input, Feedback feedback, ComponentCollection remoteRegistry, SoftwareChannel fact) {
         this.input = input;
-        this.feedback = feedback;
+        this.feedback = feedback.withBundle(CatalogIterable.class);
         this.factory = fact;
+        this.remoteRegistry = remoteRegistry;
     }
 
     public boolean isVerifyJars() {
@@ -71,11 +82,29 @@ public class CatalogIterable implements ComponentIterable {
         return new It();
     }
 
-    ComponentRegistry getRegistry() {
-        if (remoteRegistry == null) {
-            remoteRegistry = factory.getRegistry();
-        }
+    ComponentCollection getRegistry() {
         return remoteRegistry;
+    }
+
+    @Override
+    public ComponentIterable allowIncompatible() {
+        incompatible = true;
+        return this;
+    }
+
+    private Version.Match versionFilter;
+
+    @Override
+    public ComponentIterable matchVersion(Version.Match m) {
+        this.versionFilter = m;
+        return this;
+    }
+
+    private ComponentParam latest(String s, Collection<ComponentInfo> infos) {
+        List<ComponentInfo> ordered = new ArrayList<>(infos);
+        Collections.sort(ordered, ComponentInfo.versionComparator().reversed());
+        boolean progress = input.optValue(Commands.OPTION_NO_DOWNLOAD_PROGRESS) == null;
+        return createComponentParam(s, ordered.get(0), progress);
     }
 
     private class It implements Iterator<ComponentParam> {
@@ -98,12 +127,47 @@ public class CatalogIterable implements ComponentIterable {
             String s = input.nextParameter();
             ComponentInfo info;
             try {
-                if (getRegistry().findComponent(s.toLowerCase()) == null) {
-                    thrownUnknown(s, true);
+                Version.Match[] m = new Version.Match[1];
+                String id = Version.idAndVersion(s, m);
+                if (m[0].getType() == Version.Match.Type.MOSTRECENT && versionFilter != null) {
+                    m[0] = versionFilter;
                 }
-
-                info = getRegistry().loadSingleComponent(s.toLowerCase(), false);
+                try {
+                    info = getRegistry().findComponent(id, m[0]);
+                } catch (UnknownVersionException ex) {
+                    // could not find anything to match the user version against
+                    if (ex.getCandidate() == null) {
+                        throw feedback.failure("REMOTE_NoSpecificVersion", ex, id, m[0].getVersion().displayString());
+                    } else {
+                        throw feedback.failure("REMOTE_NoSpecificVersion2", ex, id, m[0].getVersion().displayString(), ex.getCandidate().displayString());
+                    }
+                }
                 if (info == null) {
+                    // must be already initialized
+                    Version gv = input.getLocalRegistry().getGraalVersion();
+                    Version.Match selector = gv.match(Version.Match.Type.INSTALLABLE);
+                    Collection<ComponentInfo> infos = remoteRegistry.loadComponents(id, selector, false);
+                    if (infos != null && !infos.isEmpty()) {
+                        if (incompatible) {
+                            return latest(s, infos);
+                        }
+                        String rvs = infos.iterator().next().getRequiredGraalValues().get(BundleConstants.GRAAL_VERSION);
+                        Version rv = Version.fromString(rvs);
+                        if (rv.compareTo(gv) > 0) {
+                            throw feedback.failure("REMOTE_UpgradeGraalVMCore", null, id, rvs);
+                        }
+                        if (m[0].getType() == Version.Match.Type.EXACT) {
+                            throw feedback.failure("REMOTE_NoSpecificVersion", null, id, m[0].getVersion().displayString());
+                        }
+                    }
+                    // last try, catch obsolete components:
+                    infos = remoteRegistry.loadComponents(id, Version.NO_VERSION.match(Version.Match.Type.GREATER), false);
+                    if (infos != null && !infos.isEmpty()) {
+                        if (incompatible) {
+                            return latest(s, infos);
+                        }
+                        throw feedback.failure("REMOTE_IncompatibleComponentVersion", null, id);
+                    }
                     thrownUnknown(s, true);
                 }
             } catch (FailedOperationException ex) {
@@ -111,15 +175,21 @@ public class CatalogIterable implements ComponentIterable {
                 throw ex;
             }
             boolean progress = input.optValue(Commands.OPTION_NO_DOWNLOAD_PROGRESS) == null;
-            return createComponenParam(s, info, progress);
+            return createComponentParam(s, info, progress);
         }
     }
 
-    protected ComponentParam createComponenParam(String cmdLineString, ComponentInfo info, boolean progress) {
+    @Override
+    public ComponentParam createParam(String cmdString, ComponentInfo info) {
+        boolean progress = input.optValue(Commands.OPTION_NO_DOWNLOAD_PROGRESS) == null;
+        return createComponentParam(cmdString, info, progress);
+    }
+
+    protected ComponentParam createComponentParam(String cmdLineString, ComponentInfo info, boolean progress) {
         RemoteComponentParam param = new CatalogItemParam(
                         factory,
                         info,
-                        feedback.l10n("REMOTE_ComponentFileLabel", cmdLineString),
+                        info.getName(),
                         cmdLineString,
                         feedback, progress);
         param.setVerifyJars(verifyJars);
@@ -137,12 +207,14 @@ public class CatalogIterable implements ComponentIterable {
         @Override
         protected FileDownloader createDownloader() {
             FileDownloader d = super.createDownloader();
-            return channel.configureDownloader(d);
+            return channel.configureDownloader(getCatalogInfo(), d);
         }
 
         @Override
         protected MetadataLoader metadataFromLocal(Path localFile) throws IOException {
-            return channel.createLocalFileLoader(localFile, isVerifyJars());
+            FileComponent fc = new FileIterable.FileComponent(localFile.toFile(), isVerifyJars(), getFeedback());
+            return fc.createFileLoader();
+            // return channel.createLocalFileLoader(getCatalogInfo(), localFile, isVerifyJars());
         }
 
         @Override

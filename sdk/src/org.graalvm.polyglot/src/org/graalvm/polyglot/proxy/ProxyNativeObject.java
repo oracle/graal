@@ -44,14 +44,14 @@ package org.graalvm.polyglot.proxy;
  * Interface to be implemented to mimic native pointers.
  *
  * @see #asPointer()
- * @since 1.0
+ * @since 19.0
  */
 public interface ProxyNativeObject extends Proxy {
 
     /**
      * Returns the native pointer value that this object represents.
      *
-     * @since 1.0
+     * @since 19.0
      */
     long asPointer();
 

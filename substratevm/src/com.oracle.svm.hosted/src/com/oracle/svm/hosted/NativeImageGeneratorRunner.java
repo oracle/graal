@@ -41,7 +41,6 @@ import java.util.Map;
 import java.util.TimerTask;
 import java.util.concurrent.ForkJoinPool;
 import java.util.function.Consumer;
-import java.util.stream.Stream;
 
 import org.graalvm.compiler.debug.DebugContext;
 import org.graalvm.compiler.options.OptionValues;
@@ -68,6 +67,8 @@ import com.oracle.svm.hosted.c.GraalAccess;
 import com.oracle.svm.hosted.code.CEntryPointData;
 import com.oracle.svm.hosted.image.AbstractBootImage;
 import com.oracle.svm.hosted.option.HostedOptionParser;
+import com.oracle.svm.util.ReflectionUtil;
+import com.oracle.svm.util.ReflectionUtil.ReflectionUtilError;
 
 import jdk.vm.ci.aarch64.AArch64;
 import jdk.vm.ci.amd64.AMD64;
@@ -88,10 +89,15 @@ public class NativeImageGeneratorRunner implements ImageBuildTask {
         if (watchPID >= 0) {
             VMError.guarantee(OS.getCurrent().hasProcFS, WATCHPID_PREFIX + " <pid> requires system with /proc");
             timerTask = new TimerTask() {
+                int cmdlineHashCode = 0;
+
                 @Override
                 public void run() {
-                    try (Stream<String> stream = Files.lines(Paths.get("/proc/" + watchPID + "/comm"))) {
-                        if (stream.noneMatch(line -> line.contains("native-image"))) {
+                    try {
+                        int currentCmdlineHashCode = Arrays.hashCode(Files.readAllBytes(Paths.get("/proc/" + watchPID + "/cmdline")));
+                        if (cmdlineHashCode == 0) {
+                            cmdlineHashCode = currentCmdlineHashCode;
+                        } else if (currentCmdlineHashCode != cmdlineHashCode) {
                             System.exit(1);
                         }
                     } catch (IOException e) {
@@ -101,7 +107,6 @@ public class NativeImageGeneratorRunner implements ImageBuildTask {
             };
             java.util.Timer timer = new java.util.Timer("native-image pid watcher");
             timer.scheduleAtFixedRate(timerTask, 0, 1000);
-
         }
         int exitStatus = 1;
         try {
@@ -182,7 +187,7 @@ public class NativeImageGeneratorRunner implements ImageBuildTask {
     }
 
     @SuppressWarnings("try")
-    private int buildImage(String[] arguments, String[] classpath, ClassLoader classLoader) {
+    private int buildImage(String[] arguments, String[] classpath, NativeImageClassLoader classLoader) {
         if (!verifyValidJavaVersionAndPlatform()) {
             return 1;
         }
@@ -249,26 +254,28 @@ public class NativeImageGeneratorRunner implements ImageBuildTask {
                     /* First look for an main method with the C-level signature for arguments. */
                     mainEntryPoint = mainClass.getDeclaredMethod(mainEntryPointName, int.class, CCharPointerPointer.class);
                 } catch (NoSuchMethodException ignored2) {
+                    Method javaMainMethod;
                     try {
                         /*
                          * If no C-level main method was found, look for a Java-level main method
                          * and use our wrapper to invoke it.
                          */
-                        Method javaMainMethod = mainClass.getDeclaredMethod(mainEntryPointName, String[].class);
-                        javaMainMethod.setAccessible(true);
-                        if (javaMainMethod.getReturnType() != void.class) {
-                            throw UserError.abort("Java main method must have return type void. Change the return type of method '" + mainClass.getName() + "." + mainEntryPointName + "(String[])'.");
-                        }
-                        final int mainMethodModifiers = javaMainMethod.getModifiers();
-                        if (!Modifier.isPublic(mainMethodModifiers)) {
-                            throw UserError.abort("Method '" + mainClass.getName() + "." + mainEntryPointName + "(String[])' is not accessible.  Please make it 'public'.");
-                        }
-                        javaMainSupport = new JavaMainSupport(javaMainMethod);
-                        mainEntryPoint = JavaMainWrapper.class.getDeclaredMethod("run", int.class, CCharPointerPointer.class);
-                    } catch (NoSuchMethodException ex) {
+                        javaMainMethod = ReflectionUtil.lookupMethod(mainClass, mainEntryPointName, String[].class);
+                    } catch (ReflectionUtilError ex) {
                         throw UserError.abort("Method '" + mainClass.getName() + "." + mainEntryPointName + "' is declared as the main entry point but it can not be found. " +
-                                        "Make sure that class '" + mainClass.getName() + "' is on the classpath and that method '" + mainEntryPointName + "(String[])' exists in that class.");
+                                        "Make sure that class '" + mainClass.getName() + "' is on the classpath and that method '" + mainEntryPointName + "(String[])' exists in that class.",
+                                        ex.getCause());
                     }
+
+                    if (javaMainMethod.getReturnType() != void.class) {
+                        throw UserError.abort("Java main method must have return type void. Change the return type of method '" + mainClass.getName() + "." + mainEntryPointName + "(String[])'.");
+                    }
+                    final int mainMethodModifiers = javaMainMethod.getModifiers();
+                    if (!Modifier.isPublic(mainMethodModifiers)) {
+                        throw UserError.abort("Method '" + mainClass.getName() + "." + mainEntryPointName + "(String[])' is not accessible.  Please make it 'public'.");
+                    }
+                    javaMainSupport = new JavaMainSupport(javaMainMethod);
+                    mainEntryPoint = JavaMainWrapper.class.getDeclaredMethod("run", int.class, CCharPointerPointer.class);
                 }
                 CEntryPoint annotation = mainEntryPoint.getAnnotation(CEntryPoint.class);
                 if (annotation == null) {
@@ -296,7 +303,7 @@ public class NativeImageGeneratorRunner implements ImageBuildTask {
                 compilationExecutor.shutdownNow();
             }
             e.getReason().ifPresent(NativeImageGeneratorRunner::info);
-            return 0;
+            return 3;
         } catch (FallbackFeature.FallbackImageRequest e) {
             reportUserException(e, parsedHostedOptions, NativeImageGeneratorRunner::warn);
             return 2;
@@ -423,7 +430,7 @@ public class NativeImageGeneratorRunner implements ImageBuildTask {
     }
 
     @Override
-    public int build(String[] args, String[] classpath, ClassLoader imageClassLoader) {
+    public int build(String[] args, String[] classpath, NativeImageClassLoader imageClassLoader) {
         return buildImage(args, classpath, imageClassLoader);
     }
 

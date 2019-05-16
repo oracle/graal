@@ -45,7 +45,7 @@ import java.util.Objects;
 /**
  * Represents the option key for an option specification.
  *
- * @since 1.0
+ * @since 19.0
  */
 public final class OptionKey<T> {
 
@@ -57,7 +57,7 @@ public final class OptionKey<T> {
      * no default {@link OptionType} could be {@link OptionType#defaultType(Object) resolved} for
      * the given type. The default value must not be <code>null</code>.
      *
-     * @since 1.0
+     * @since 19.0
      */
     public OptionKey(T defaultValue) {
         Objects.requireNonNull(defaultValue);
@@ -71,7 +71,7 @@ public final class OptionKey<T> {
     /**
      * Constructs a new option key given a default value and option key.
      *
-     * @since 1.0
+     * @since 19.0
      */
     public OptionKey(T defaultValue, OptionType<T> type) {
         Objects.requireNonNull(type);
@@ -82,7 +82,7 @@ public final class OptionKey<T> {
     /**
      * Returns the option type of this key.
      *
-     * @since 1.0
+     * @since 19.0
      */
     public OptionType<T> getType() {
         return type;
@@ -91,7 +91,7 @@ public final class OptionKey<T> {
     /**
      * Returns the default value for this option.
      *
-     * @since 1.0
+     * @since 19.0
      */
     public T getDefaultValue() {
         return defaultValue;
@@ -100,7 +100,7 @@ public final class OptionKey<T> {
     /**
      * Returns the value of this key given the {@link OptionValues values}.
      *
-     * @since 1.0
+     * @since 19.0
      */
     public T getValue(OptionValues values) {
         return values.get(this);
@@ -110,7 +110,7 @@ public final class OptionKey<T> {
      * Returns <code>true</code> if a value for this key has been set for the given option values or
      * <code>false</code> if no value has been set.
      *
-     * @since 1.0
+     * @since 19.0
      */
     public boolean hasBeenSet(OptionValues values) {
         return values.hasBeenSet(this);

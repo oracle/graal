@@ -57,6 +57,6 @@
  * examples on how to use this API.
  *
  * @see org.graalvm.polyglot.Context For an overview over the features the polyglot API provides.
- * @since 1.0
+ * @since 19.0
  */
 package org.graalvm.polyglot;

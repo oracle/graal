@@ -66,7 +66,7 @@ import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
  *
  * @see ReflectionLibrary
  * @see Library
- * @since 1.0
+ * @since 19.0
  */
 public abstract class Message {
 
@@ -80,7 +80,7 @@ public abstract class Message {
     @CompilationFinal LibraryFactory<Library> library;
 
     /**
-     * @since 1.0
+     * @since 19.0
      */
     @SuppressWarnings("unchecked")
     protected Message(Class<? extends Library> libraryClass, String messageName, Class<?> returnType, Class<?>... parameterTypes) {
@@ -104,7 +104,7 @@ public abstract class Message {
      *
      * @see #getSimpleName()
      * @see #getLibraryName()
-     * @since 1.0
+     * @since 19.0
      */
     public final String getQualifiedName() {
         return qualifiedName;
@@ -116,7 +116,7 @@ public abstract class Message {
      * {@link String#intern() interned} can can safely be compared by identity. The returned name is
      * never <code>null</code>.
      *
-     * @since 1.0
+     * @since 19.0
      */
     public final String getSimpleName() {
         return simpleName;
@@ -127,7 +127,7 @@ public abstract class Message {
      * {@link Class#getName() name} of the {@link #getLibraryClass() library class}. The returned
      * name is never <code>null</code>.
      *
-     * @since 1.0
+     * @since 19.0
      */
     public final String getLibraryName() {
         return getLibraryClass().getName();
@@ -137,7 +137,7 @@ public abstract class Message {
      * Returns the return type of the message. The return type can be useful for
      * {@link ReflectionLibrary reflective} invocations of the message.
      *
-     * @since 1.0
+     * @since 19.0
      */
     public final Class<?> getReturnType() {
         return returnType;
@@ -150,7 +150,7 @@ public abstract class Message {
      * sub-types. The receiver type may be useful for {@link ReflectionLibrary reflective}
      * invocations of the message.
      *
-     * @since 1.0
+     * @since 19.0
      */
     public final Class<?> getReceiverType() {
         return parameterTypes.get(0);
@@ -162,7 +162,7 @@ public abstract class Message {
      * parameter types of the declared library method. The parameter types may be useful for
      * {@link ReflectionLibrary reflective} invocations of the message.
      *
-     * @since 1.0
+     * @since 19.0
      */
     public final List<Class<?>> getParameterTypes() {
         return parameterTypes;
@@ -171,7 +171,7 @@ public abstract class Message {
     /**
      * Returns the number of parameters including the receiver type.
      *
-     * @since 1.0
+     * @since 19.0
      */
     public final int getParameterCount() {
         return parameterCount;
@@ -181,14 +181,14 @@ public abstract class Message {
      * Returns the library class of this message. The library class may be used to
      * {@link #resolve(Class, String) resolve} other messages of the same library.
      *
-     * @since 1.0
+     * @since 19.0
      */
     public final Class<? extends Library> getLibraryClass() {
         return libraryClass;
     }
 
     /**
-     * @since 1.0
+     * @since 19.0
      */
     public final LibraryFactory<?> getFactory() {
         return library;
@@ -197,7 +197,7 @@ public abstract class Message {
     /**
      * {@inheritDoc}
      *
-     * @since 1.0
+     * @since 19.0
      */
     @Override
     public final boolean equals(Object obj) {
@@ -207,7 +207,7 @@ public abstract class Message {
     /**
      * {@inheritDoc}
      *
-     * @since 1.0
+     * @since 19.0
      */
     @Override
     public final int hashCode() {
@@ -217,7 +217,7 @@ public abstract class Message {
     /**
      * {@inheritDoc}
      *
-     * @since 1.0
+     * @since 19.0
      */
     @Override
     protected final Object clone() throws CloneNotSupportedException {
@@ -227,7 +227,7 @@ public abstract class Message {
     /**
      * {@inheritDoc}
      *
-     * @since 1.0
+     * @since 19.0
      */
     @Override
     public final String toString() {
@@ -255,7 +255,7 @@ public abstract class Message {
      *
      * @param libraryClass the class of the library this message is contained in.
      * @param messageName the simple name of this message.
-     * @since 1.0
+     * @since 19.0
      */
     @TruffleBoundary
     public static Message resolve(Class<? extends Library> libraryClass, String messageName) {
@@ -272,7 +272,7 @@ public abstract class Message {
      * @param messageName the simple name of this message.
      * @param fail whether to fail with an {@link IllegalArgumentException} or return
      *            <code>null</code> if the message was not found.
-     * @since 1.0
+     * @since 19.0
      */
     @TruffleBoundary
     public static Message resolve(Class<? extends Library> libraryClass, String messageName, boolean fail) {

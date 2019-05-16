@@ -50,3 +50,4 @@ test-output/
 workingsets.xml
 bench-results.json
 jmh_result.json
+/vm/src/installer/dist/

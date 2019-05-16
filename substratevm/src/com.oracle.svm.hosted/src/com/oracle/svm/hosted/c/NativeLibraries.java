@@ -25,8 +25,6 @@
 package com.oracle.svm.hosted.c;
 
 import java.lang.reflect.AnnotatedElement;
-import java.lang.reflect.Constructor;
-import java.lang.reflect.InvocationTargetException;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
@@ -38,9 +36,7 @@ import java.util.Map;
 import java.util.stream.Collectors;
 
 import org.graalvm.compiler.api.replacements.SnippetReflectionProvider;
-import org.graalvm.nativeimage.hosted.RuntimeClassInitialization;
 import org.graalvm.nativeimage.c.CContext;
-import org.graalvm.nativeimage.c.CContext.Directives;
 import org.graalvm.nativeimage.c.constant.CConstant;
 import org.graalvm.nativeimage.c.constant.CEnum;
 import org.graalvm.nativeimage.c.function.CFunction;
@@ -60,6 +56,9 @@ import com.oracle.svm.core.jdk.PlatformNativeLibrarySupport;
 import com.oracle.svm.core.option.OptionUtils;
 import com.oracle.svm.core.util.UserError;
 import com.oracle.svm.hosted.c.info.ElementInfo;
+import com.oracle.svm.hosted.classinitialization.ClassInitializationSupport;
+import com.oracle.svm.util.ReflectionUtil;
+import com.oracle.svm.util.ReflectionUtil.ReflectionUtilError;
 
 import jdk.vm.ci.code.TargetDescription;
 import jdk.vm.ci.meta.ConstantReflectionProvider;
@@ -73,6 +72,7 @@ public final class NativeLibraries {
 
     private final SnippetReflectionProvider snippetReflection;
     private final TargetDescription target;
+    private ClassInitializationSupport classInitializationSupport;
 
     private final Map<Object, ElementInfo> elementToInfo;
     private final Map<Class<? extends CContext.Directives>, NativeCodeContext> compilationUnitToContext;
@@ -94,11 +94,13 @@ public final class NativeLibraries {
 
     private final CAnnotationProcessorCache cache;
 
-    public NativeLibraries(ConstantReflectionProvider constantReflection, MetaAccessProvider metaAccess, SnippetReflectionProvider snippetReflection, TargetDescription target) {
+    public NativeLibraries(ConstantReflectionProvider constantReflection, MetaAccessProvider metaAccess, SnippetReflectionProvider snippetReflection, TargetDescription target,
+                    ClassInitializationSupport classInitializationSupport) {
         this.metaAccess = metaAccess;
         this.constantReflection = constantReflection;
         this.snippetReflection = snippetReflection;
         this.target = target;
+        this.classInitializationSupport = classInitializationSupport;
 
         elementToInfo = new HashMap<>();
         errors = new ArrayList<>();
@@ -237,17 +239,18 @@ public final class NativeLibraries {
     private NativeCodeContext makeContext(Class<? extends CContext.Directives> compilationUnit) {
         NativeCodeContext result = compilationUnitToContext.get(compilationUnit);
         if (result == null) {
+            CContext.Directives unit;
             try {
-                Constructor<? extends Directives> constructor = compilationUnit.getDeclaredConstructor();
-                constructor.setAccessible(true);
-                CContext.Directives unit = constructor.newInstance();
-                RuntimeClassInitialization.eagerClassInitialization(unit.getClass());
-                result = new NativeCodeContext(unit);
-                compilationUnitToContext.put(compilationUnit, result);
-            } catch (NoSuchMethodException | SecurityException | InstantiationException | IllegalAccessException | IllegalArgumentException | InvocationTargetException e) {
-                e.printStackTrace();
-                throw UserError.abort("can't construct compilation unit " + compilationUnit.getCanonicalName() + ": " + e);
+                unit = ReflectionUtil.newInstance(compilationUnit);
+            } catch (ReflectionUtilError ex) {
+                throw UserError.abort("can't construct compilation unit " + compilationUnit.getCanonicalName(), ex.getCause());
             }
+
+            if (classInitializationSupport != null) {
+                classInitializationSupport.initializeAtBuildTime(unit.getClass(), "CContext.Directives must be eagerly initialized");
+            }
+            result = new NativeCodeContext(unit);
+            compilationUnitToContext.put(compilationUnit, result);
         }
         return result;
     }

@@ -24,12 +24,13 @@
  */
 package com.oracle.svm.configure.trace;
 
+import java.util.Arrays;
 import java.util.function.Supplier;
 
 public class AccessAdvisor {
     private boolean ignoreInternalAccesses = true;
     private boolean isInLivePhase = false;
-    private boolean previousIsGetApplicationClass = false;
+    private int launchPhase = 0;
 
     public void setIgnoreInternalAccesses(boolean enabled) {
         ignoreInternalAccesses = enabled;
@@ -41,8 +42,7 @@ public class AccessAdvisor {
 
     private static boolean isInternalClass(String qualifiedClass) {
         assert qualifiedClass == null || qualifiedClass.indexOf('/') == -1 : "expecting Java-format qualifiers, not internal format";
-        return qualifiedClass != null && (qualifiedClass.startsWith("java.") || qualifiedClass.startsWith("javax.") || qualifiedClass.startsWith("sun.") ||
-                        qualifiedClass.startsWith("com.sun.") || qualifiedClass.startsWith("jdk."));
+        return qualifiedClass != null && Arrays.asList("java.", "javax.", "sun.", "com.sun.", "jdk.", "org.graalvm.compiler.").stream().anyMatch(qualifiedClass::startsWith);
     }
 
     public boolean shouldIgnore(Supplier<String> callerClass) {
@@ -56,17 +56,25 @@ public class AccessAdvisor {
         if (shouldIgnore(callerClass)) {
             return true;
         }
-        // Heuristic: filter LauncherHelper as well as a lookup of main(String[]) that
-        // immediately follows a lookup of LauncherHelper.getApplicationClass()
+        // Heuristic to ignore this sequence during startup:
+        // 1. Lookup of LauncherHelper.getApplicationClass()
+        // 2. Lookup of Class.getCanonicalName() -- only on Darwin
+        // 3. Lookup of application's main(String[])
         if ("sun.launcher.LauncherHelper".equals(queriedClass.get())) {
-            previousIsGetApplicationClass = "getApplicationClass".equals(name.get()) && "()Ljava/lang/Class;".equals(signature.get());
+            if (launchPhase == 0 && "getApplicationClass".equals(name.get()) && "()Ljava/lang/Class;".equals(signature.get())) {
+                launchPhase = 1;
+            }
             return true;
         }
-        if (previousIsGetApplicationClass) {
+        if (launchPhase == 1 && "getCanonicalName".equals(name.get()) && "()Ljava/lang/String;".equals(signature.get())) {
+            launchPhase = 2;
+            return true;
+        }
+        if (launchPhase > 0) {
+            launchPhase = -1;
             if ("main".equals(name.get()) && "([Ljava/lang/String;)V".equals(signature.get())) {
                 return true;
             }
-            previousIsGetApplicationClass = false;
         }
         /*
          * NOTE: JVM invocations cannot be reliably filtered with callerClass == null because these

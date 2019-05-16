@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2016, 2018, Oracle and/or its affiliates.
+ * Copyright (c) 2016, 2019, Oracle and/or its affiliates.
  *
  * All rights reserved.
  *
@@ -57,7 +57,7 @@ public abstract class ValueInstruction extends Instruction implements ValueSymbo
 
     @Override
     public void setName(String name) {
-        this.name = LLVMIdentifier.toLocalIdentifier(name);
+        this.name = name;
     }
 
     public boolean isSourceVariable() {

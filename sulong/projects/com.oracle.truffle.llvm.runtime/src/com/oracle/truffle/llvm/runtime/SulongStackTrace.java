@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2017, 2018, Oracle and/or its affiliates.
+ * Copyright (c) 2017, 2019, Oracle and/or its affiliates.
  *
  * All rights reserved.
  *
@@ -131,9 +131,5 @@ public final class SulongStackTrace {
 
     public List<Element> getTrace() {
         return java.util.Collections.unmodifiableList(trace);
-    }
-
-    public void printCStackTrace() {
-        System.err.println(this.toString());
     }
 }

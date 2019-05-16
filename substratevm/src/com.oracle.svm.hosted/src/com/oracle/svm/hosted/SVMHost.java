@@ -191,7 +191,7 @@ public final class SVMHost implements HostVM {
     @Override
     public boolean isInitialized(AnalysisType type) {
         boolean shouldInitializeAtRuntime = classInitializationSupport.shouldInitializeAtRuntime(type);
-        assert shouldInitializeAtRuntime || type.getWrapped().isInitialized() : "Types that are not marked for runtime initializations must have been initialized";
+        assert shouldInitializeAtRuntime || type.getWrapped().isInitialized() : "Types that are not marked for runtime initializations must have been initialized: " + type;
 
         return !shouldInitializeAtRuntime;
     }
@@ -215,7 +215,7 @@ public final class SVMHost implements HostVM {
         } else if (type instanceof HostedType) {
             aType = ((HostedType) type).getWrapped();
         } else {
-            throw VMError.shouldNotReachHere();
+            throw VMError.shouldNotReachHere("Found unsupported type: " + type);
         }
         return typeToHub.get(aType);
     }

@@ -281,7 +281,7 @@ abstract class HostExecuteNode extends Node {
                      * checked for not applicable in order to ensure that mappings with priority
                      * continue to not apply.
                      */
-                    if (!ToHostNode.canConvert(arg, paramType, paramType, languageContext, priority,
+                    if (!ToHostNode.canConvert(arg, paramType, paramType, null, languageContext, priority,
                                     InteropLibrary.getFactory().getUncached(), TargetMappingNodeGen.getUncached())) {
                         PolyglotTargetMapping[] otherMappings = cache.getMappings(paramType);
                         if (otherPossibleMappings == null) {
@@ -365,7 +365,8 @@ abstract class HostExecuteNode extends Node {
             if (args.length == parameterCount) {
                 Class<?> varArgParamType = overload.getParameterTypes()[parameterCount - 1];
                 return !isSubtypeOf(args[parameterCount - 1], varArgParamType) &&
-                                !ToHostNode.canConvert(args[parameterCount - 1], varArgParamType, overload.getGenericParameterTypes()[parameterCount - 1], languageContext, ToHostNode.LOOSE,
+                                !ToHostNode.canConvert(args[parameterCount - 1], varArgParamType, overload.getGenericParameterTypes()[parameterCount - 1],
+                                                null, languageContext, ToHostNode.LOOSE,
                                                 InteropLibrary.getFactory().getUncached(), TargetMappingNode.getUncached());
             } else {
                 assert args.length != parameterCount;
@@ -490,7 +491,8 @@ abstract class HostExecuteNode extends Node {
                     boolean applicable = true;
                     for (int i = 0; i < paramCount; i++) {
                         if (!isSubtypeOf(args[i], parameterTypes[i]) &&
-                                        !ToHostNode.canConvert(args[i], parameterTypes[i], genericParameterTypes[i], languageContext, priority, InteropLibrary.getFactory().getUncached(args[i]),
+                                        !ToHostNode.canConvert(args[i], parameterTypes[i], genericParameterTypes[i], null,
+                                                        languageContext, priority, InteropLibrary.getFactory().getUncached(args[i]),
                                                         TargetMappingNode.getUncached())) {
                             applicable = false;
                             break;
@@ -510,7 +512,8 @@ abstract class HostExecuteNode extends Node {
                     boolean applicable = true;
                     for (int i = 0; i < parameterCount - 1; i++) {
                         if (!isSubtypeOf(args[i], parameterTypes[i]) &&
-                                        !ToHostNode.canConvert(args[i], parameterTypes[i], genericParameterTypes[i], languageContext, priority, InteropLibrary.getFactory().getUncached(args[i]),
+                                        !ToHostNode.canConvert(args[i], parameterTypes[i], genericParameterTypes[i], null,
+                                                        languageContext, priority, InteropLibrary.getFactory().getUncached(args[i]),
                                                         TargetMappingNode.getUncached())) {
                             applicable = false;
                             break;
@@ -527,7 +530,8 @@ abstract class HostExecuteNode extends Node {
                         }
                         for (int i = parameterCount - 1; i < args.length; i++) {
                             if (!isSubtypeOf(args[i], varArgsComponentType) &&
-                                            !ToHostNode.canConvert(args[i], varArgsComponentType, varArgsGenericComponentType, languageContext, priority,
+                                            !ToHostNode.canConvert(args[i], varArgsComponentType, varArgsGenericComponentType, null,
+                                                            languageContext, priority,
                                                             InteropLibrary.getFactory().getUncached(args[i]), TargetMappingNode.getUncached())) {
                                 applicable = false;
                                 break;
@@ -646,8 +650,8 @@ abstract class HostExecuteNode extends Node {
             if (p > priority) {
                 break;
             }
-            boolean p1 = ToHostNode.canConvert(arg, t1, t1, languageContext, p, argInterop, mapping);
-            boolean p2 = ToHostNode.canConvert(arg, t2, t2, languageContext, p, argInterop, mapping);
+            boolean p1 = ToHostNode.canConvert(arg, t1, t1, null, languageContext, p, argInterop, mapping);
+            boolean p2 = ToHostNode.canConvert(arg, t2, t2, null, languageContext, p, argInterop, mapping);
             if (p1 != p2) {
                 return p1 ? -1 : 1;
             }
