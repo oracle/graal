@@ -45,6 +45,7 @@ public class WasmBlockNode extends WasmNode {
     @CompilationFinal private final int size;
     @CompilationFinal private final byte typeId;
     @CompilationFinal private final int initialStackPointer;
+    @CompilationFinal byte[] constantLenghtTable;
 
     public WasmBlockNode(WasmCodeEntry codeEntry, int startOffset, int size, byte typeId, int initialStackPointer) {
         super(codeEntry);
@@ -52,10 +53,12 @@ public class WasmBlockNode extends WasmNode {
         this.size = size;
         this.typeId = typeId;
         this.initialStackPointer = initialStackPointer;
+        this.constantLenghtTable = null;
     }
 
     @ExplodeLoop
     public void execute(VirtualFrame frame) {
+        int constantOffset = 0;
         int stackPointer = initialStackPointer;
         int offset = startOffset;
         while (offset < startOffset + size) {
@@ -70,10 +73,13 @@ public class WasmBlockNode extends WasmNode {
                     break;
                 }
                 case I32_CONST: {
-                    int value = BinaryStreamReader.peek1(codeEntry().data(), offset);  // TODO: Fix
+                    int value = BinaryStreamReader.peek1(codeEntry().data(), offset);
+                    // byte constantLength = constantLenghtTable[constantOffset];
+                    // constantOffset++;
+                    // offset += constantLength;
+                    offset += 1;  // TODO: Fix -- use constant lengths here.
                     pushInt(frame, stackPointer, value);
                     stackPointer++;
-                    offset++;
                     break;
                 }
                 case I64_CONST: {
