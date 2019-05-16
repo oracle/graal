@@ -46,9 +46,8 @@ public class WasmRootNode extends RootNode implements WasmNodeInterface {
 
     @Override
     public Object execute(VirtualFrame frame) {
-        initStackPointer(frame);
         body.execute(frame);
-        long returnValue = pop(frame);
+        long returnValue = pop(frame, 0);
         switch (body.typeId()) {
             case ValueTypes.I32_TYPE:
                 Assert.assertEquals(returnValue >>> 32, 0, "Expected i32 value, popped value was larger than 32 bits.");

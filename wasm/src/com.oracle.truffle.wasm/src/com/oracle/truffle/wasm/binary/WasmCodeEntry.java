@@ -37,7 +37,6 @@ import com.oracle.truffle.api.frame.FrameSlotKind;
 public class WasmCodeEntry {
     @CompilationFinal(dimensions = 1) private byte[] data;
     @CompilationFinal private FrameSlot[] stackSlots;
-    @CompilationFinal private FrameSlot stackPointerSlot;
 
     public WasmCodeEntry(byte[] data) {
         this.data = data;
@@ -53,16 +52,11 @@ public class WasmCodeEntry {
     }
 
     public void initStackSlots(FrameDescriptor frameDescriptor, int maxStackSize) {
-        stackPointerSlot = frameDescriptor.addFrameSlot(0, FrameSlotKind.Int);
         stackSlots = new FrameSlot[maxStackSize];
         for (int i = 0; i != maxStackSize; ++i) {
-            FrameSlot stackSlot = frameDescriptor.addFrameSlot(i + 1, FrameSlotKind.Long);
+            FrameSlot stackSlot = frameDescriptor.addFrameSlot(i, FrameSlotKind.Long);
             stackSlots[i] = stackSlot;
         }
-    }
-
-    public FrameSlot stackPointerSlot() {
-        return stackPointerSlot;
     }
 
 }

@@ -44,16 +44,19 @@ public class WasmBlockNode extends WasmNode {
     @CompilationFinal private final int startOffset;
     @CompilationFinal private final int size;
     @CompilationFinal private final byte typeId;
+    @CompilationFinal private final int initialStackPointer;
 
-    public WasmBlockNode(WasmCodeEntry codeEntry, int startOffset, int size, byte typeId) {
+    public WasmBlockNode(WasmCodeEntry codeEntry, int startOffset, int size, byte typeId, int initialStackPointer) {
         super(codeEntry);
         this.startOffset = startOffset;
         this.size = size;
         this.typeId = typeId;
+        this.initialStackPointer = initialStackPointer;
     }
 
     @ExplodeLoop
     public void execute(VirtualFrame frame) {
+        int stackPointer = initialStackPointer;
         int offset = startOffset;
         while (offset < startOffset + size) {
             byte opcode = BinaryStreamReader.peek1(codeEntry().data(), offset);
@@ -62,12 +65,14 @@ public class WasmBlockNode extends WasmNode {
                 case END:
                     break;
                 case DROP: {
-                    pop(frame);
+                    stackPointer--;
+                    pop(frame, stackPointer);
                     break;
                 }
                 case I32_CONST: {
                     int value = BinaryStreamReader.peek1(codeEntry().data(), offset);  // TODO: Fix
-                    pushInt(frame, value);
+                    pushInt(frame, stackPointer, value);
+                    stackPointer++;
                     offset++;
                     break;
                 }
@@ -76,9 +81,12 @@ public class WasmBlockNode extends WasmNode {
                     break;
                 }
                 case I32_ADD: {
-                    int x = popInt(frame);
-                    int y = popInt(frame);
-                    pushInt(frame, x + y);
+                    stackPointer--;
+                    int x = popInt(frame, stackPointer);
+                    stackPointer--;
+                    int y = popInt(frame, stackPointer);
+                    pushInt(frame, stackPointer, x + y);
+                    stackPointer++;
                     break;
                 }
                 default:

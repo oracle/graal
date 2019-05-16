@@ -34,7 +34,6 @@ import org.graalvm.compiler.nodes.ValueNode;
 import org.graalvm.compiler.nodes.graphbuilderconf.InvocationPlugin.Receiver;
 import org.graalvm.compiler.nodes.spi.Virtualizable;
 import org.graalvm.compiler.nodes.spi.VirtualizerTool;
-import org.graalvm.compiler.nodes.virtual.VirtualFrameSetNodeInterface;
 import org.graalvm.compiler.nodes.virtual.VirtualObjectNode;
 
 import jdk.vm.ci.meta.JavaKind;
@@ -42,7 +41,7 @@ import jdk.vm.ci.meta.JavaKind;
 import org.graalvm.compiler.truffle.common.TruffleCompilerRuntime;
 
 @NodeInfo(cycles = CYCLES_0, size = SIZE_0)
-public final class VirtualFrameSetNode extends VirtualFrameAccessorNode implements Virtualizable, VirtualFrameSetNodeInterface {
+public final class VirtualFrameSetNode extends VirtualFrameAccessorNode implements Virtualizable {
     public static final NodeClass<VirtualFrameSetNode> TYPE = NodeClass.create(VirtualFrameSetNode.class);
 
     @Input private ValueNode value;
@@ -80,15 +79,5 @@ public final class VirtualFrameSetNode extends VirtualFrameAccessorNode implemen
          * do not have a FrameState to use for the memory store.
          */
         insertDeoptimization(tool);
-    }
-
-    @Override
-    public int frameSlotIndex() {
-        return frameSlotIndex;
-    }
-
-    @Override
-    public ValueNode value() {
-        return value;
     }
 }

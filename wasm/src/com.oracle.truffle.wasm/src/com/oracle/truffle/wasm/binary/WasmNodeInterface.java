@@ -35,36 +35,23 @@ import com.oracle.truffle.api.frame.VirtualFrame;
 public interface WasmNodeInterface {
     WasmCodeEntry codeEntry();
 
-    default void initStackPointer(VirtualFrame frame) {
-        frame.setInt(codeEntry().stackPointerSlot(), 0);
+    default void push(VirtualFrame frame, int slot, long value) {
+        frame.setLong(codeEntry().stackSlot(slot), value);
     }
 
-    default void push(VirtualFrame frame, long value) {
+    default void pushInt(VirtualFrame frame, int slot, int value) {
+        push(frame, slot, value);
+    }
+
+    default long pop(VirtualFrame frame, int slot) {
         try {
-            int stackPointer = frame.getInt(codeEntry().stackPointerSlot());
-            frame.setLong(codeEntry().stackSlot(stackPointer), value);
-            frame.setInt(codeEntry().stackPointerSlot(), stackPointer + 1);
+            return frame.getLong(codeEntry().stackSlot(slot));
         } catch (FrameSlotTypeException e) {
             throw new RuntimeException(e);
         }
     }
 
-    default void pushInt(VirtualFrame frame, int value) {
-        push(frame, value);
-    }
-
-    default long pop(VirtualFrame frame) {
-        try {
-            int stackPointer = frame.getInt(codeEntry().stackPointerSlot());
-            long value = frame.getLong(codeEntry().stackSlot(stackPointer - 1));
-            frame.setInt(codeEntry().stackPointerSlot(), stackPointer - 1);
-            return value;
-        } catch (FrameSlotTypeException e) {
-            throw new RuntimeException(e);
-        }
-    }
-
-    default int popInt(VirtualFrame frame) {
-        return (int) pop(frame);
+    default int popInt(VirtualFrame frame, int slot) {
+        return (int) pop(frame, slot);
     }
 }

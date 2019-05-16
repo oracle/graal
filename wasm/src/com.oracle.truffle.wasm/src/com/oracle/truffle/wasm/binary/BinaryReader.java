@@ -171,7 +171,7 @@ public class BinaryReader extends BinaryStreamReader {
         int expressionSize = codeEntrySize - (offset - startOffset);
         byte returnTypeId = wasmModule.symbolTable().function(funcIndex).returnType();
         WasmCodeEntry codeEntry = new WasmCodeEntry(data);
-        WasmBlockNode block = new WasmBlockNode(codeEntry, offset, expressionSize, returnTypeId);
+        WasmBlockNode block = new WasmBlockNode(codeEntry, offset, expressionSize, returnTypeId, 0);
         WasmRootNode rootNode = new WasmRootNode(wasmLanguage, codeEntry, block);
 
         // TODO: Push a frame slot to the frame descriptor for every local.

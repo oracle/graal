@@ -30,10 +30,11 @@
 
 package com.oracle.truffle.wasm.binary;
 
+import com.oracle.truffle.api.CompilerDirectives.CompilationFinal;
 import com.oracle.truffle.api.nodes.Node;
 
 public class WasmNode extends Node implements WasmNodeInterface {
-    private WasmCodeEntry codeEntry;
+    @CompilationFinal private WasmCodeEntry codeEntry;
 
     public WasmNode(WasmCodeEntry codeEntry) {
         this.codeEntry = codeEntry;
