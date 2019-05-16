@@ -74,10 +74,9 @@ public class WasmBlockNode extends WasmNode {
                 }
                 case I32_CONST: {
                     int value = BinaryStreamReader.peek1(codeEntry().data(), offset);
-                    // byte constantLength = constantLengthTable[constantOffset];
-                    // constantOffset++;
-                    // offset += constantLength;
-                    offset += 1;  // TODO: Fix -- use constant lengths here.
+                    byte constantLength = constantLengthTable[constantOffset];
+                    constantOffset++;
+                    offset += constantLength;
                     pushInt(frame, stackPointer, value);
                     stackPointer++;
                     break;

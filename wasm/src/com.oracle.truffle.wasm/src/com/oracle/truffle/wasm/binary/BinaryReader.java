@@ -39,6 +39,7 @@ import static com.oracle.truffle.wasm.binary.Instructions.I64_CONST;
 
 import com.oracle.truffle.api.RootCallTarget;
 import com.oracle.truffle.api.Truffle;
+import com.oracle.truffle.wasm.collection.ByteList;
 
 /** Simple recursive-descend parser for the binary WebAssembly format.
  */
@@ -211,6 +212,7 @@ public class BinaryReader extends BinaryStreamReader {
     }
 
     private void readBlock(WasmBlockNode currentBlock, ExecutionState state) {
+        ByteList constantLengthTable = new ByteList();
         byte instruction;
         do {
             instruction = read1();
@@ -219,7 +221,8 @@ public class BinaryReader extends BinaryStreamReader {
                     state.pop();
                     break;
                 case I32_CONST:
-                    readSignedInt32();
+                    readSignedInt32(bytesConsumed);
+                    constantLengthTable.add(bytesConsumed[0]);
                     state.push();
                     break;
                 case I64_CONST:
@@ -242,6 +245,7 @@ public class BinaryReader extends BinaryStreamReader {
                     break;
             }
         } while (instruction != 0x0B);
+        currentBlock.constantLengthTable = constantLengthTable.toArray();
     }
 
     private void readElementSection() {
