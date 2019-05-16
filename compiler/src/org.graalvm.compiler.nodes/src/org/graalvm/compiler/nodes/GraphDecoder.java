@@ -110,7 +110,7 @@ public class GraphDecoder {
         public final EconomicSet<Node> loopExplosionMerges;
 
         /** Known values that were written to the frames. */
-        public final EconomicMap<Integer, Node> frameSlotStates;
+        public final EconomicMap<Integer, ValueNode> frameSlotStates;
 
         /**
          * The start of explosion, and the merge point for when irreducible loops are detected. Only
