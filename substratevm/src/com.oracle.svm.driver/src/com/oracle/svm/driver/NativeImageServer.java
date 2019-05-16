@@ -734,13 +734,6 @@ final class NativeImageServer extends NativeImage {
     }
 
     @Override
-    protected ArrayList<String> createFallbackBuildArgs() {
-        ArrayList<String> buildArgs = super.createFallbackBuildArgs();
-        serverOptionHandler.addFallbackBuildArgs(buildArgs);
-        return buildArgs;
-    }
-
-    @Override
     protected int buildImage(List<String> javaArgs, LinkedHashSet<Path> bcp, LinkedHashSet<Path> cp, LinkedHashSet<String> imageArgs, LinkedHashSet<Path> imagecp) {
         boolean printFlags = imageArgs.stream().anyMatch(arg -> arg.contains(enablePrintFlags));
         if (useServer && !printFlags && !javaArgs.contains("-Xdebug")) {

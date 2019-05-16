@@ -110,6 +110,7 @@ class ServerOptionHandler extends NativeImage.OptionHandler<NativeImageServer> {
         return false;
     }
 
+    @Override
     void addFallbackBuildArgs(List<String> buildArgs) {
         if (!nativeImage.useServer()) {
             buildArgs.add(noServerOption);

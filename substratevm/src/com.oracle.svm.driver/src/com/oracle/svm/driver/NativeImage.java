@@ -139,10 +139,13 @@ public class NativeImage {
         }
 
         abstract boolean consume(Queue<String> args);
+
+        void addFallbackBuildArgs(@SuppressWarnings("unused") List<String> buildArgs) {
+            /* Override to forward fallback relevant args */
+        }
     }
 
     final APIOptionHandler apiOptionHandler;
-    final DefaultOptionHandler defaultOptionHandler;
 
     public static final String oH = "-H:";
     static final String oR = "-R:";
@@ -553,7 +556,7 @@ public class NativeImage {
         }
     }
 
-    protected ArrayList<String> createFallbackBuildArgs() {
+    private ArrayList<String> createFallbackBuildArgs() {
         ArrayList<String> buildArgs = new ArrayList<>();
         Collection<String> fallbackSystemProperties = customJavaArgs.stream()
                         .filter(s -> s.startsWith("-D"))
@@ -580,7 +583,9 @@ public class NativeImage {
         buildArgs.add(FallbackExecutor.class.getName());
         buildArgs.add(imageName);
 
-        defaultOptionHandler.addFallbackBuildArgs(buildArgs);
+        for (OptionHandler<? extends NativeImage> handler : optionHandlers) {
+            handler.addFallbackBuildArgs(buildArgs);
+        }
         return buildArgs;
     }
 
@@ -634,8 +639,7 @@ public class NativeImage {
         optionRegistry = new MacroOption.Registry();
 
         /* Default handler needs to be fist */
-        defaultOptionHandler = new DefaultOptionHandler(this);
-        registerOptionHandler(defaultOptionHandler);
+        registerOptionHandler(new DefaultOptionHandler(this));
         apiOptionHandler = new APIOptionHandler(this);
         registerOptionHandler(apiOptionHandler);
         registerOptionHandler(new MacroOptionHandler(this));
@@ -931,7 +935,7 @@ public class NativeImage {
         } else {
             args.accept(oH(resourceType.optionKey) + resourceRoot.relativize(resourcePath));
         }
-        args.apply();
+        args.apply(true);
     }
 
     private int completeImageBuild() {
@@ -1161,11 +1165,10 @@ public class NativeImage {
             if (resourceType == MetaInfFileType.Properties) {
                 Map<String, String> properties = loadProperties(Files.newInputStream(resourcePath));
                 forEachPropertyValue(properties.get("Args"), args, resolver);
-                args.apply();
             } else {
                 args.accept(oH(resourceType.optionKey) + resourceRoot.relativize(resourcePath));
-                args.apply();
             }
+            args.apply(true);
             extractionResults.put(classpathEntry, new ArrayList<>(nativeImage.imageBuilderArgs));
         };
         for (String entry : imageClasspath) {
@@ -1263,22 +1266,35 @@ public class NativeImage {
     }
 
     class NativeImageArgsProcessor implements Consumer<String> {
-        ArrayDeque<String> args = new ArrayDeque<>();
+        Queue<String> args = new ArrayDeque<>();
 
         @Override
         public void accept(String arg) {
             args.add(arg);
         }
 
-        void apply() {
+        List<String> apply(boolean strict) {
+            List<String> leftoverArgs = new ArrayList<>();
             while (!args.isEmpty()) {
                 boolean consumed = false;
-                consumed = consumed || apiOptionHandler.consume(args);
-                consumed = consumed || defaultOptionHandler.consume(args);
+                for (int index = optionHandlers.size() - 1; index >= 0; --index) {
+                    OptionHandler<? extends NativeImage> handler = optionHandlers.get(index);
+                    int numArgs = args.size();
+                    if (handler.consume(args)) {
+                        assert args.size() < numArgs : "OptionHandler pretends to consume argument(s) but isn't: " + handler.getClass().getName();
+                        consumed = true;
+                        break;
+                    }
+                }
                 if (!consumed) {
-                    showError("Property 'Args' contains invalid entry '" + args.peek() + "'");
+                    if (strict) {
+                        showError("Property 'Args' contains invalid entry '" + args.peek() + "'");
+                    } else {
+                        leftoverArgs.add(args.poll());
+                    }
                 }
             }
+            return leftoverArgs;
         }
     }
 
@@ -1312,14 +1328,15 @@ public class NativeImage {
         Path classpathEntry;
         try {
             classpathEntry = canonicalize(classpath);
-            processClasspathNativeImageMetaInf(classpathEntry);
         } catch (NativeImageError e) {
             if (isVerbose()) {
                 showWarning("Invalid classpath entry: " + classpath);
             }
             /* Allow non-existent classpath entries to comply with `java` command behaviour. */
-            classpathEntry = canonicalize(classpath, false);
+            customImageClasspath.add(canonicalize(classpath, false));
+            return;
         }
+        processClasspathNativeImageMetaInf(classpathEntry);
         customImageClasspath.add(classpathEntry);
     }
 
@@ -1427,45 +1444,31 @@ public class NativeImage {
     }
 
     private List<String> processNativeImageArgs() {
-        List<String> leftoverArgs = new ArrayList<>();
-        Queue<String> arguments = new ArrayDeque<>();
+        NativeImageArgsProcessor argsProcessor = new NativeImageArgsProcessor();
         String defaultNativeImageArgs = getUserConfigProperties().get(pKeyNativeImageArgs);
         if (defaultNativeImageArgs != null && !defaultNativeImageArgs.isEmpty()) {
-            arguments.addAll(Arrays.asList(defaultNativeImageArgs.split(" ")));
+            for (String defaultArg : defaultNativeImageArgs.split(" ")) {
+                argsProcessor.accept(defaultArg);
+            }
         }
         for (String arg : config.getBuildArgs()) {
             switch (arg) {
                 case "--language:all":
                     for (String lang : optionRegistry.getAvailableOptions(MacroOptionKind.Language)) {
-                        arguments.add("--language:" + lang);
+                        argsProcessor.accept("--language:" + lang);
                     }
                     break;
                 case "--tool:all":
                     for (String lang : optionRegistry.getAvailableOptions(MacroOptionKind.Tool)) {
-                        arguments.add("--tool:" + lang);
+                        argsProcessor.accept("--tool:" + lang);
                     }
                     break;
                 default:
-                    arguments.add(arg);
+                    argsProcessor.accept(arg);
                     break;
             }
         }
-        while (!arguments.isEmpty()) {
-            boolean consumed = false;
-            for (int index = optionHandlers.size() - 1; index >= 0; --index) {
-                OptionHandler<? extends NativeImage> handler = optionHandlers.get(index);
-                int numArgs = arguments.size();
-                if (handler.consume(arguments)) {
-                    assert arguments.size() < numArgs : "OptionHandler pretends to consume argument(s) but isn't: " + handler.getClass().getName();
-                    consumed = true;
-                    break;
-                }
-            }
-            if (!consumed) {
-                leftoverArgs.add(arguments.poll());
-            }
-        }
-        return leftoverArgs;
+        return argsProcessor.apply(false);
     }
 
     protected String getXmsValue() {
