@@ -293,6 +293,7 @@ public final class IsomorphicPackingPhase extends BasePhase<PhaseContext> {
 
         boolean changed = false;
 
+        outer: // labelled outer loop so that hasNext check is performed for left
         for (Iterator<Node> leftInputIt = left.inputs().iterator(); leftInputIt.hasNext();) {
             for (Iterator<Node> rightInputIt = right.inputs().iterator(); rightInputIt.hasNext();) {
                 // Incrementing both iterators at the same time, so looking at the same input always
@@ -300,9 +301,9 @@ public final class IsomorphicPackingPhase extends BasePhase<PhaseContext> {
                 final Node rightInput = rightInputIt.next();
 
                 // Check block membership, bail if nodes not in block (prevent analysis beyond block)
-                if (notInBlock(nodeToBlockMap, block, leftInput) || notInBlock(nodeToBlockMap, block, rightInput)) continue;
+                if (notInBlock(nodeToBlockMap, block, leftInput) || notInBlock(nodeToBlockMap, block, rightInput)) continue outer;
 
-                if (!stmts_can_pack(nodeToBlockMap, block, packSet, leftInput, rightInput)) continue;
+                if (!stmts_can_pack(nodeToBlockMap, block, packSet, leftInput, rightInput)) continue outer;
 
                 changed |= packSet.add(Pack.pair(leftInput, rightInput));
             }
