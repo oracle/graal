@@ -77,8 +77,8 @@ import com.oracle.svm.core.annotate.Substitute;
 import com.oracle.svm.core.annotate.TargetClass;
 import com.oracle.svm.core.annotate.TargetElement;
 import com.oracle.svm.core.headers.Errno;
+import com.oracle.svm.core.jdk.JDK11OrLater;
 import com.oracle.svm.core.jdk.JDK8OrEarlier;
-import com.oracle.svm.core.jdk.JDK9OrLater;
 import com.oracle.svm.core.os.IsDefined;
 import com.oracle.svm.core.posix.JavaNetNetworkInterface.PlatformSupport;
 import com.oracle.svm.core.posix.headers.Fcntl;
@@ -2508,19 +2508,19 @@ final class Target_java_net_InetAddress {
     static boolean preferIPv6AddressJDK8OrEarlier;
 
     @Alias //
-    @TargetElement(name = "preferIPv6Address", onlyWith = JDK9OrLater.class) //
-    static int preferIPv6AddressJDK9OrLater;
+    @TargetElement(name = "preferIPv6Address", onlyWith = JDK11OrLater.class) //
+    static int preferIPv6AddressJDK11OrLater;
 
     @Alias //
-    @TargetElement(onlyWith = JDK9OrLater.class) //
+    @TargetElement(onlyWith = JDK11OrLater.class) //
     static /* final */ int PREFER_IPV4_VALUE;
 
     @Alias //
-    @TargetElement(onlyWith = JDK9OrLater.class) //
+    @TargetElement(onlyWith = JDK11OrLater.class) //
     static /* final */ int PREFER_IPV6_VALUE;
 
     @Alias //
-    @TargetElement(onlyWith = JDK9OrLater.class) //
+    @TargetElement(onlyWith = JDK11OrLater.class) //
     static /* final */ int PREFER_SYSTEM_VALUE;
 
     @Alias Target_java_net_InetAddress_InetAddressHolder holder;
@@ -2554,9 +2554,9 @@ final class Target_java_net_InetAddress {
     static InetAddress cachedLocalHostJDK8OrEarlier;
 
     @Alias //
-    @TargetElement(name = "cachedLocalHost", onlyWith = JDK9OrLater.class) //
+    @TargetElement(name = "cachedLocalHost", onlyWith = JDK11OrLater.class) //
     @RecomputeFieldValue(kind = Kind.Reset) //
-    static Target_java_net_InetAddress_CachedLocalHost cachedLocalHostJDK9OrLater;
+    static Target_java_net_InetAddress_CachedLocalHost cachedLocalHostJDK11OrLater;
 
     @Alias //
     @TargetElement(onlyWith = JDK8OrEarlier.class) //
@@ -2575,7 +2575,7 @@ final class Target_java_net_InetAddress_Cache {
     LinkedHashMap<String, Object> cache;
 }
 
-@TargetClass(className = "java.net.InetAddress", innerClass = "CachedLocalHost", onlyWith = JDK9OrLater.class)
+@TargetClass(className = "java.net.InetAddress", innerClass = "CachedLocalHost", onlyWith = JDK11OrLater.class)
 @Platforms({Platform.LINUX.class, Platform.DARWIN.class})
 final class Target_java_net_InetAddress_CachedLocalHost {
 }
@@ -3486,13 +3486,13 @@ final class Target_java_net_Inet6AddressImpl {
                             inet6Index = inetCount;
                         }
                     } else {
-                        if (Target_java_net_InetAddress.preferIPv6AddressJDK9OrLater == Target_java_net_InetAddress.PREFER_IPV6_VALUE) {
+                        if (Target_java_net_InetAddress.preferIPv6AddressJDK11OrLater == Target_java_net_InetAddress.PREFER_IPV6_VALUE) {
                             inetIndex = inet6Count;
                             inet6Index = 0;
-                        } else if (Target_java_net_InetAddress.preferIPv6AddressJDK9OrLater == Target_java_net_InetAddress.PREFER_IPV4_VALUE) {
+                        } else if (Target_java_net_InetAddress.preferIPv6AddressJDK11OrLater == Target_java_net_InetAddress.PREFER_IPV4_VALUE) {
                             inetIndex = 0;
                             inet6Index = inetCount;
-                        } else if (Target_java_net_InetAddress.preferIPv6AddressJDK9OrLater == Target_java_net_InetAddress.PREFER_SYSTEM_VALUE) {
+                        } else if (Target_java_net_InetAddress.preferIPv6AddressJDK11OrLater == Target_java_net_InetAddress.PREFER_SYSTEM_VALUE) {
                             inetIndex = 0;
                             inet6Index = 0;
                             originalIndex = 0;
@@ -3543,7 +3543,7 @@ final class Target_java_net_Inet6AddressImpl {
                             inet6Index++;
                         }
                         if (!JavaVersionUtil.Java8OrEarlier) {
-                            if (Target_java_net_InetAddress.preferIPv6AddressJDK9OrLater == Target_java_net_InetAddress.PREFER_SYSTEM_VALUE) {
+                            if (Target_java_net_InetAddress.preferIPv6AddressJDK11OrLater == Target_java_net_InetAddress.PREFER_SYSTEM_VALUE) {
                                 originalIndex++;
                                 inetIndex = 0;
                                 inet6Index = 0;
@@ -3664,8 +3664,8 @@ final class Util_java_net_Inet6AddressImpl {
                      * Inet6AddressImpl.anyLocalAddress() for what seems to be a corresponding
                      * comparison.
                      */
-                    if ((Target_java_net_InetAddress.preferIPv6AddressJDK9OrLater == Target_java_net_InetAddress.PREFER_IPV6_VALUE) ||
-                                    (Target_java_net_InetAddress.preferIPv6AddressJDK9OrLater == Target_java_net_InetAddress.PREFER_SYSTEM_VALUE)) {
+                    if ((Target_java_net_InetAddress.preferIPv6AddressJDK11OrLater == Target_java_net_InetAddress.PREFER_IPV6_VALUE) ||
+                                    (Target_java_net_InetAddress.preferIPv6AddressJDK11OrLater == Target_java_net_InetAddress.PREFER_SYSTEM_VALUE)) {
                         i = includeLoopback ? addrs6 : (addrs6 - numV6Loopbacks);
                         j = 0;
                     } else {
@@ -5925,7 +5925,7 @@ final class Target_sun_net_spi_DefaultProxySelector {
     }
 
     @Substitute
-    @TargetElement(onlyWith = JDK9OrLater.class)
+    @TargetElement(onlyWith = JDK11OrLater.class)
     @SuppressWarnings({"static-method", "unused"})
     /* FIXME: No proxies, yet. */
     private synchronized /* native */ Proxy[] getSystemProxies(String protocol, String host) {

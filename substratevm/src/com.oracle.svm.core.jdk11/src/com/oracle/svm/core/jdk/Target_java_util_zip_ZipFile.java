@@ -31,7 +31,7 @@ import com.oracle.svm.core.annotate.Alias;
 import com.oracle.svm.core.annotate.RecomputeFieldValue;
 import com.oracle.svm.core.annotate.TargetClass;
 
-@TargetClass(value = ZipFile.class, innerClass = "Source", onlyWith = JDK9OrLater.class)
+@TargetClass(value = ZipFile.class, innerClass = "Source", onlyWith = JDK11OrLater.class)
 final class Target_java_util_zip_ZipFile_Source {
 
     @Alias//
@@ -39,7 +39,7 @@ final class Target_java_util_zip_ZipFile_Source {
     private static HashMap<Target_java_util_zip_ZipFile_Source_Key, Target_java_util_zip_ZipFile_Source> files;
 }
 
-@TargetClass(value = ZipFile.class, innerClass = {"Source", "Key"}, onlyWith = JDK9OrLater.class)
+@TargetClass(value = ZipFile.class, innerClass = {"Source", "Key"}, onlyWith = JDK11OrLater.class)
 final class Target_java_util_zip_ZipFile_Source_Key {
 }
 

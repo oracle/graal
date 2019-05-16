@@ -180,7 +180,7 @@ public class UnsafeAutomaticSubstitutionProcessor extends SubstitutionProcessor 
             neverInlineSet.add(unsafeObjectFieldOffsetFieldMethod);
 
             if (!JavaVersionUtil.Java8OrEarlier) {
-                /* JDK-9 introduced Unsafe.objectFieldOffset(Class, String). */
+                /* JDK 11 and later have Unsafe.objectFieldOffset(Class, String). */
                 Method unsafeObjectClassStringOffset = unsafeClass.getMethod("objectFieldOffset", java.lang.Class.class, String.class);
                 unsafeObjectFieldOffsetClassStringMethod = originalMetaAccess.lookupJavaMethod(unsafeObjectClassStringOffset);
                 noCheckedExceptionsSet.add(unsafeObjectFieldOffsetClassStringMethod);

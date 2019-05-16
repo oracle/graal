@@ -28,11 +28,11 @@ package com.oracle.svm.core.jdk;
 import com.oracle.svm.core.annotate.Substitute;
 import com.oracle.svm.core.annotate.TargetClass;
 
-@TargetClass(value = java.util.ServiceLoader.class, onlyWith = JDK9OrLater.class)
+@TargetClass(value = java.util.ServiceLoader.class, onlyWith = JDK11OrLater.class)
 final class Target_java_util_ServiceLoader {
 }
 
-@TargetClass(value = java.util.ServiceLoader.class, innerClass = "ModuleServicesLookupIterator", onlyWith = JDK9OrLater.class)
+@TargetClass(value = java.util.ServiceLoader.class, innerClass = "ModuleServicesLookupIterator", onlyWith = JDK11OrLater.class)
 final class Target_java_util_ServiceLoader_ModuleServicesLookupIterator {
     @SuppressWarnings("unused")
     @Substitute

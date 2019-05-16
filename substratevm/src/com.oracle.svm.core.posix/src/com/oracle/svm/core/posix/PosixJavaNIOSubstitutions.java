@@ -153,8 +153,8 @@ import com.oracle.svm.core.annotate.Substitute;
 import com.oracle.svm.core.annotate.TargetClass;
 import com.oracle.svm.core.annotate.TargetElement;
 import com.oracle.svm.core.headers.Errno;
+import com.oracle.svm.core.jdk.JDK11OrLater;
 import com.oracle.svm.core.jdk.JDK8OrEarlier;
-import com.oracle.svm.core.jdk.JDK9OrLater;
 import com.oracle.svm.core.log.Log;
 import com.oracle.svm.core.os.IsDefined;
 import com.oracle.svm.core.posix.darwin.DarwinCoreFoundationUtils;
@@ -538,7 +538,7 @@ public final class PosixJavaNIOSubstitutions {
 
         /* open/src/java.base/unix/native/libnio/ch/IOUtil.c */
         @Substitute
-        @TargetElement(onlyWith = JDK9OrLater.class)
+        @TargetElement(onlyWith = JDK11OrLater.class)
         // 131 JNIEXPORT jint JNICALL
         // 132 Java_sun_nio_ch_IOUtil_drain1(JNIEnv *env, jclass cl, jint fd)
         // 133 {
@@ -1996,7 +1996,7 @@ public final class PosixJavaNIOSubstitutions {
         }
 
         @Substitute
-        @TargetElement(onlyWith = JDK9OrLater.class)
+        @TargetElement(onlyWith = JDK11OrLater.class)
         private static int stat1(long pathAddress) {
             int err;
             Stat.stat buf = StackValue.get(Stat.stat.class);
@@ -2014,7 +2014,7 @@ public final class PosixJavaNIOSubstitutions {
         }
 
         @Substitute
-        @TargetElement(onlyWith = JDK9OrLater.class)
+        @TargetElement(onlyWith = JDK11OrLater.class)
         private static boolean exists0(long pathAddress) {
             int err;
 
@@ -3155,7 +3155,7 @@ public final class PosixJavaNIOSubstitutions {
 
         /* { Do not format quoted code: @formatter:off */
         @Substitute
-        @TargetElement(onlyWith = JDK9OrLater.class)
+        @TargetElement(onlyWith = JDK11OrLater.class)
         /* open/src/java.base/share/classes/sun/nio/ch/SocketChannelImpl.java */
         // 1120    private static native int checkConnect(FileDescriptor fd, boolean block)
         // 1121        throws IOException;

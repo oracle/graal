@@ -28,10 +28,10 @@ import java.io.IOException;
 
 import com.oracle.svm.core.annotate.Substitute;
 import com.oracle.svm.core.annotate.TargetClass;
-import com.oracle.svm.core.jdk.JDK9OrLater;
+import com.oracle.svm.core.jdk.JDK11OrLater;
 import com.oracle.svm.core.posix.headers.Unistd;
 
-@TargetClass(className = "java.io.FileCleanable", onlyWith = JDK9OrLater.class)
+@TargetClass(className = "java.io.FileCleanable", onlyWith = JDK11OrLater.class)
 final class Target_java_io_FileCleanable {
 
     /* { Do not re-format commented out C code. @formatter:off */

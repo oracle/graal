@@ -369,7 +369,7 @@ final class Target_java_util_concurrent_ForkJoinPool {
     }
 
     @Alias //
-    @TargetElement(onlyWith = JDK9OrLater.class) //
+    @TargetElement(onlyWith = JDK11OrLater.class) //
     @SuppressWarnings("unused") //
     private Target_java_util_concurrent_ForkJoinPool(byte forCommonPoolOnly) {
     }
@@ -397,7 +397,7 @@ final class Target_java_util_concurrent_ForkJoinPool {
     static /* final */ int commonParallelism;
 
     @Alias //
-    @TargetElement(onlyWith = JDK9OrLater.class) //
+    @TargetElement(onlyWith = JDK11OrLater.class) //
     static /* final */ int COMMON_PARALLELISM;
 
     /**
@@ -427,7 +427,7 @@ final class Target_java_util_concurrent_ForkJoinPool {
                 if (JavaVersionUtil.Java8OrEarlier) {
                     initializeCommonPool_JDK8OrEarlier();
                 } else {
-                    initializeCommonPool_JDK9OrLater();
+                    initializeCommonPool_JDK11OrLater();
                 }
             }
         }
@@ -462,7 +462,7 @@ final class Target_java_util_concurrent_ForkJoinPool {
             commonParallelism = actualPool.getParallelism();
         }
 
-        protected static void initializeCommonPool_JDK9OrLater() {
+        protected static void initializeCommonPool_JDK11OrLater() {
             /* "common" and "commonParallelism" have to be set together. */
             /*
              * TODO: This should be a simplified version of ForkJoinPool(byte), , without the
@@ -471,7 +471,7 @@ final class Target_java_util_concurrent_ForkJoinPool {
              * Among the problems is that the public ForkJoinPool constructor that takes a
              * `parallelism` argument now throws an `IllegalArgumentException` if passed a `0`.
              */
-            throw VMError.unsupportedFeature("Target_java_util_concurrent_ForkJoinPool.CommonInjector.initializeCommonPool_JDK9OrLater()");
+            throw VMError.unsupportedFeature("Target_java_util_concurrent_ForkJoinPool.CommonInjector.initializeCommonPool_JDK11OrLater()");
         }
     }
 }

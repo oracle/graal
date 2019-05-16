@@ -164,7 +164,7 @@ final class Target_sun_util_locale_provider_LocaleServiceProviderPool {
     }
 
     @KeepOriginal //
-    @TargetElement(onlyWith = JDK9OrLater.class) //
+    @TargetElement(onlyWith = JDK11OrLater.class) //
     public native <P extends LocaleServiceProvider, S> S getLocalizedObject(LocalizedObjectGetter<P, S> getter,
                     Locale locale,
                     Boolean isObjectProvider,
@@ -172,7 +172,7 @@ final class Target_sun_util_locale_provider_LocaleServiceProviderPool {
                     Object... params);
 
     @KeepOriginal //
-    @TargetElement(onlyWith = JDK9OrLater.class) //
+    @TargetElement(onlyWith = JDK11OrLater.class) //
     static native void config(Class<? extends Object> caller, String message);
 }
 

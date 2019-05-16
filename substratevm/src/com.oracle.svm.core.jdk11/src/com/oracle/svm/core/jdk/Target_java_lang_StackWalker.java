@@ -51,7 +51,7 @@ import com.oracle.svm.core.stack.JavaStackFrameVisitor;
 import com.oracle.svm.core.stack.JavaStackWalk;
 import com.oracle.svm.core.stack.JavaStackWalker;
 
-@TargetClass(value = java.lang.StackWalker.class, onlyWith = JDK9OrLater.class)
+@TargetClass(value = java.lang.StackWalker.class, onlyWith = JDK11OrLater.class)
 final class Target_java_lang_StackWalker {
 
     @Alias Set<Option> options;
@@ -265,12 +265,12 @@ final class Target_java_lang_StackWalker {
     }
 }
 
-@TargetClass(className = "java.lang.StackFrameInfo", onlyWith = JDK9OrLater.class)
+@TargetClass(className = "java.lang.StackFrameInfo", onlyWith = JDK11OrLater.class)
 @Delete
 final class Target_java_lang_StackFrameInfo {
 }
 
-@TargetClass(className = "java.lang.StackStreamFactory", onlyWith = JDK9OrLater.class)
+@TargetClass(className = "java.lang.StackStreamFactory", onlyWith = JDK11OrLater.class)
 @Delete
 final class Target_java_lang_StackStreamFactory {
 }
