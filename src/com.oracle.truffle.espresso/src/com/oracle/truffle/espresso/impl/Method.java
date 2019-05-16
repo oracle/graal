@@ -147,7 +147,8 @@ public final class Method implements TruffleObject, ModifiersProvider, ContextAc
         initRefKind();
         // Proxy the method, so that we have the same callTarget if it is not yet initialized.
         // Allows for not duplicating the codeAttribute
-        this.proxy = method;
+        this.proxy = method.proxy == null ? method : method.proxy;
+        this.poisonPill = method.poisonPill;
     }
 
     Method(ObjectKlass declaringKlass, LinkedMethod linkedMethod) {

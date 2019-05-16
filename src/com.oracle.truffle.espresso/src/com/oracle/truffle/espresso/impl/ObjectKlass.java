@@ -139,15 +139,15 @@ public final class ObjectKlass extends Klass {
 
         this.declaredMethods = methods;
         if (this.isInterface()) {
-            InterfaceTables.CreationResult methodCR = InterfaceTables.create(this, superInterfaces, declaredMethods);
-            this.itable = methodCR.getItable();
-            this.iKlassTable = methodCR.getiKlass();
+            this.itable = null;
             this.vtable = null;
+            this.iKlassTable = InterfaceTables.getiKlassTable(this, declaredMethods);
         } else {
-            InterfaceTables.CreationResult methodCR = InterfaceTables.create(superKlass, superInterfaces, this);
-            this.itable = methodCR.getItable();
-            this.iKlassTable = methodCR.getiKlass();
+            InterfaceTables.CreationResult methodCR = InterfaceTables.create(this, superKlass, superInterfaces);
+            this.iKlassTable = methodCR.klassTable;
+            this.mirandaMethods = methodCR.mirandas;
             this.vtable = VirtualTable.create(superKlass, declaredMethods, this);
+            this.itable = InterfaceTables.fixTables(this, methodCR.tables, iKlassTable);
         }
         this.itableLength = iKlassTable.length;
     }
@@ -457,13 +457,21 @@ public final class ObjectKlass extends Klass {
     }
 
     public final Method lookupInterfaceMethod(Symbol<Name> name, Symbol<Signature> signature) {
-        for (Method[] table : itable) {
-            for (Method m : table) {
+        assert isInterface();
+        for (Klass k : iKlassTable) {
+            for (Method m : k.getDeclaredMethods()) {
                 if (name == m.getName() && signature == m.getRawSignature()) {
                     return m;
                 }
             }
         }
+        // for (Method[] table : itable) {
+        // for (Method m : table) {
+        // if (name == m.getName() && signature == m.getRawSignature()) {
+        // return m;
+        // }
+        // }
+        // }
         assert getSuperKlass().getType() == Type.Object;
         Method m = getSuperKlass().lookupDeclaredMethod(name, signature);
         if (m != null && m.isPublic() && !m.isStatic()) {
@@ -494,16 +502,6 @@ public final class ObjectKlass extends Klass {
 
     public final Field[] getStaticFieldTable() {
         return staticFieldTable;
-    }
-
-    final void setMirandas(ArrayList<InterfaceTables.Miranda> mirandas) {
-        Method[] declaredAndMirandaMethods = new Method[mirandas.size()];
-        int pos = 0;
-        for (InterfaceTables.Miranda miranda : mirandas) {
-            miranda.setDeclaredMethodPos(pos);
-            declaredAndMirandaMethods[pos++] = new Method(miranda.method);
-        }
-        this.mirandaMethods = declaredAndMirandaMethods;
     }
 
     private Method lookupMirandas(Symbol<Name> methodName, Symbol<Signature> signature) {
