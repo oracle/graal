@@ -34,16 +34,18 @@ import org.junit.Test;
 
 public abstract class WasmTest {
     private TestElement[] testElements = {
-            test("(module (func (result i32) (i32.const 42)))", expected(42)),
-            test("(module (func (result i32) (i32.const 1895633)))", expected(1_895_633)),
+            test("(module (func (result i32) i32.const 42))", expected(42)),
+            test("(module (func (result i32) i32.const 1895633))", expected(1_895_633)),
             test("(module (func (result i32) i32.const 42 i32.const 17 drop))", expected(42)),
             test("(module (func (result i32) i32.const 42 i32.const 17 i32.add))", expected(59)),
             test("(module (func (result i32) i32.const 42 i32.const 17 i32.sub))", expected(25)),
             test("(module (func (result i32) i32.const 42 i32.const 43 i32.sub))", expected(-1)),
             test("(module (func (result i32) i32.const 11 i32.const 12 i32.mul))", expected(132)),
-            test("(module (func (result i32) (i32.const 1690433)))", expected(1690433)),
-            test("(module (func (result f32) (f32.const 3.14)))", expected(3.14f)),
-            test("(module (func (result f64) (f64.const 340.75)))", expected(340.75)),
+            test("(module (func (result i32) i32.const 1690433))", expected(1690433)),
+            test("(module (func (result f32) f32.const 3.14))", expected(3.14f, 0.001f)),
+            test("(module (func (result f32) f32.const 3.14 f32.const 2.71 f32.add))", expected(5.85f, 0.001f)),
+            test("(module (func (result f64) f64.const 340.75))", expected(340.75, 0.001)),
+            test("(module (func (result i32) block $B0 i32.const 11 end i32.const 21 i32.add end", expected(33)),
             test("(module (func (result i32) block $B0 (result i32) i32.const 11 end i32.const 21 i32.add))", expected(33)),
     };
 
@@ -53,6 +55,14 @@ public abstract class WasmTest {
 
     private static TestData expected(Object expectedValue) {
         return new TestData((result) -> Assert.assertEquals("", result.as(Object.class), expectedValue));
+    }
+
+    private static TestData expected(float expectedValue, float e) {
+        return new TestData((result) -> Assert.assertEquals(expectedValue, result.as(Float.class), e));
+    }
+
+    private static TestData expected(double expectedValue, double e) {
+        return new TestData((result) -> Assert.assertEquals(expectedValue, result.as(Double.class), e));
     }
 
     @Test
