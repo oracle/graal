@@ -33,6 +33,7 @@ import java.util.List;
 import org.graalvm.compiler.core.common.spi.ConstantFieldProvider;
 import org.graalvm.compiler.core.common.type.Stamp;
 import org.graalvm.compiler.debug.DebugCloseable;
+import org.graalvm.compiler.debug.TTY;
 import org.graalvm.compiler.graph.Node;
 import org.graalvm.compiler.graph.NodeClass;
 import org.graalvm.compiler.graph.spi.Canonicalizable;
@@ -188,6 +189,9 @@ public class SimplifyingGraphDecoder extends GraphDecoder {
     @Override
     protected void handleFixedNode(MethodScope methodScope, LoopScope loopScope, int nodeOrderId, FixedNode node) {
         Node canonical = canonicalizeFixedNode(methodScope, node);
+        if (graph.name.contains("WasmRootNode")) {
+            TTY.println("We're in");
+        }
         if (canonical != node) {
             handleCanonicalization(loopScope, nodeOrderId, node, canonical);
         }

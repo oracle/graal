@@ -48,6 +48,7 @@ import org.graalvm.compiler.core.common.util.TypeReader;
 import org.graalvm.compiler.core.common.util.UnsafeArrayTypeReader;
 import org.graalvm.compiler.debug.DebugContext;
 import org.graalvm.compiler.debug.GraalError;
+import org.graalvm.compiler.debug.TTY;
 import org.graalvm.compiler.graph.Edges;
 import org.graalvm.compiler.graph.Graph;
 import org.graalvm.compiler.graph.Node;
@@ -584,9 +585,12 @@ public class GraphDecoder {
             handlePhiFunctions(methodScope, phiInputScope, phiNodeScope, (AbstractEndNode) node, merge);
 
         } else if (node instanceof Invoke) {
+            if (graph.name != null && graph.name.contains("WasmRootNode")) {
+                TTY.println("We're in");
+            }
+
             InvokeData invokeData = readInvokeData(methodScope, nodeOrderId, (Invoke) node);
             resultScope = handleInvoke(methodScope, loopScope, invokeData);
-
         } else if (node instanceof ReturnNode || node instanceof UnwindNode) {
             methodScope.returnAndUnwindNodes.add((ControlSinkNode) node);
         } else {
