@@ -30,6 +30,7 @@
 package com.oracle.truffle.llvm.nodes.memory;
 
 import com.oracle.truffle.llvm.runtime.LLVMContext;
+import com.oracle.truffle.llvm.runtime.LLVMLanguage;
 import com.oracle.truffle.llvm.runtime.memory.LLVMAllocateNode;
 import com.oracle.truffle.llvm.runtime.memory.LLVMMemory;
 import com.oracle.truffle.llvm.runtime.nodes.api.LLVMNode;
@@ -43,7 +44,7 @@ public final class AllocateGlobalsBlockNode extends LLVMNode implements LLVMAllo
 
     public AllocateGlobalsBlockNode(LLVMContext context, StructureType type) {
         this.size = context.getByteSize(type);
-        this.memory = context.getLanguage().getCapability(LLVMMemory.class);
+        this.memory = LLVMLanguage.getLanguage().getCapability(LLVMMemory.class);
     }
 
     @Override

@@ -41,6 +41,7 @@ import com.oracle.truffle.llvm.parser.factories.BasicSystemContextExtension;
 import com.oracle.truffle.llvm.runtime.Configuration;
 import com.oracle.truffle.llvm.runtime.ContextExtension;
 import com.oracle.truffle.llvm.runtime.LLVMContext;
+import com.oracle.truffle.llvm.runtime.LLVMLanguage;
 import com.oracle.truffle.llvm.runtime.LLVMLanguage.Loader;
 import com.oracle.truffle.llvm.runtime.NFIContextExtension;
 import com.oracle.truffle.llvm.runtime.NodeFactory;
@@ -79,7 +80,7 @@ public final class NativeConfiguration implements Configuration {
     @Override
     public List<ContextExtension> createContextExtensions(LLVMContext context) {
         List<ContextExtension> result = new ArrayList<>();
-        result.add(new BasicIntrinsicsProvider(context));
+        result.add(new BasicIntrinsicsProvider(LLVMLanguage.getLanguage()));
         result.add(new BasicSystemContextExtension(context.getEnv()));
         if (context.getEnv().getOptions().get(SulongEngineOption.ENABLE_NFI)) {
             result.add(new NFIContextExtension(context.getEnv()));

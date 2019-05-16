@@ -389,6 +389,7 @@ import com.oracle.truffle.llvm.runtime.LLVMContext.ExternalLibrary;
 import com.oracle.truffle.llvm.runtime.LLVMFunctionDescriptor;
 import com.oracle.truffle.llvm.runtime.LLVMFunctionDescriptor.LLVMIRFunction;
 import com.oracle.truffle.llvm.runtime.LLVMIVarBit;
+import com.oracle.truffle.llvm.runtime.LLVMLanguage;
 import com.oracle.truffle.llvm.runtime.LLVMUnsupportedException.UnsupportedReason;
 import com.oracle.truffle.llvm.runtime.NodeFactory;
 import com.oracle.truffle.llvm.runtime.debug.scope.LLVMDebugGlobalVariable;
@@ -1699,7 +1700,7 @@ public class BasicNodeFactory implements NodeFactory {
     @Override
     public RootNode createFunctionStartNode(LLVMExpressionNode functionBodyNode, FrameDescriptor frame, String name, String originalName,
                     int argumentCount, Source bcSource, LLVMSourceLocation location) {
-        return new LLVMFunctionStartNode(context.getLanguage(), functionBodyNode, frame, name, argumentCount, originalName, bcSource, location);
+        return new LLVMFunctionStartNode(LLVMLanguage.getLanguage(), functionBodyNode, frame, name, argumentCount, originalName, bcSource, location);
     }
 
     @Override
@@ -1716,7 +1717,7 @@ public class BasicNodeFactory implements NodeFactory {
 
         LLVMInlineAssemblyRootNode assemblyRoot;
         try {
-            assemblyRoot = InlineAssemblyParser.parseInlineAssembly(context, sourceSection, asmExpression, asmFlags, argTypes, retType, retTypes, retOffsets);
+            assemblyRoot = InlineAssemblyParser.parseInlineAssembly(LLVMLanguage.getLanguage(), sourceSection, asmExpression, asmFlags, argTypes, retType, retTypes, retOffsets);
         } catch (AsmParseException e) {
             assemblyRoot = getLazyUnsupportedInlineRootNode(sourceSection, asmExpression, e);
         }
@@ -1727,10 +1728,10 @@ public class BasicNodeFactory implements NodeFactory {
         return new LLVMCallNode(new FunctionType(MetaType.UNKNOWN, argTypes, false), asmFunction, args, sourceSection);
     }
 
-    private LLVMInlineAssemblyRootNode getLazyUnsupportedInlineRootNode(LLVMSourceLocation sourceSection, String asmExpression, AsmParseException e) {
+    private static LLVMInlineAssemblyRootNode getLazyUnsupportedInlineRootNode(LLVMSourceLocation sourceSection, String asmExpression, AsmParseException e) {
         LLVMInlineAssemblyRootNode assemblyRoot;
         String message = asmExpression + ": " + e.getMessage();
-        assemblyRoot = new LLVMInlineAssemblyRootNode(context.getLanguage(), sourceSection, new FrameDescriptor(),
+        assemblyRoot = new LLVMInlineAssemblyRootNode(LLVMLanguage.getLanguage(), sourceSection, new FrameDescriptor(),
                         new LLVMStatementNode[]{LLVMUnsupportedInstructionNode.create(sourceSection, UnsupportedReason.INLINE_ASSEMBLER, message)}, new ArrayList<>(), null);
         return assemblyRoot;
     }

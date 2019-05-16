@@ -184,10 +184,10 @@ final class Runner {
         @Children final InitializeModuleNode[] initModules;
 
         LoadModulesNode(Runner runner, FrameDescriptor rootFrame, InitializationOrder order, SulongLibrary sulongLibrary) {
-            super(runner.context.getLanguage(), rootFrame);
+            super(runner.language, rootFrame);
             this.sulongLibrary = sulongLibrary;
             this.stackPointerSlot = rootFrame.findFrameSlot(LLVMStack.FRAME_ID);
-            this.ctxRef = runner.context.getLanguage().getContextReference();
+            this.ctxRef = runner.language.getContextReference();
 
             this.initContextBefore = order.sulongLibraries.size();
             this.initContext = runner.context.createInitializeContextNode(rootFrame);
@@ -477,7 +477,7 @@ final class Runner {
         // There could be conflicts between Sulong's default libraries and the ones that are
         // passed on the command-line. To resolve that, we add ours first but parse them later
         // on.
-        String[] sulongLibraryNames = LLVMLanguage.getLanguage().getContextExtension(SystemContextExtension.class).getSulongDefaultLibraries();
+        String[] sulongLibraryNames = language.getContextExtension(SystemContextExtension.class).getSulongDefaultLibraries();
         ExternalLibrary[] sulongLibraries = new ExternalLibrary[sulongLibraryNames.length];
         for (int i = 0; i < sulongLibraries.length; i++) {
             sulongLibraries[i] = context.addInternalLibrary(sulongLibraryNames[i], false);
@@ -907,7 +907,7 @@ final class Runner {
     private RootCallTarget createDestructor(LLVMParserResult parserResult) {
         LLVMStatementNode[] destructor = createStructor(DESTRUCTORS_VARNAME, parserResult, DESCENDING_PRIORITY);
         if (destructor.length > 0) {
-            LLVMStatementRootNode root = new LLVMStatementRootNode(context.getLanguage(), new StaticInitsNode(destructor), StackManager.createRootFrame());
+            LLVMStatementRootNode root = new LLVMStatementRootNode(language, new StaticInitsNode(destructor), StackManager.createRootFrame());
             return Truffle.getRuntime().createCallTarget(root);
         } else {
             return null;
@@ -980,7 +980,7 @@ final class Runner {
         if (mainFunctionDescriptor != null && startFunctionDescriptor != null) {
             RootCallTarget startCallTarget = startFunctionDescriptor.getLLVMIRFunction();
             Path applicationPath = mainFunctionDescriptor.getLibrary().getPath();
-            RootNode rootNode = new LLVMGlobalRootNode(context.getLanguage(), StackManager.createRootFrame(), mainFunctionDescriptor, startCallTarget, Objects.toString(applicationPath, ""));
+            RootNode rootNode = new LLVMGlobalRootNode(language, StackManager.createRootFrame(), mainFunctionDescriptor, startCallTarget, Objects.toString(applicationPath, ""));
             mainFunctionCallTarget = Truffle.getRuntime().createCallTarget(rootNode);
         }
 
