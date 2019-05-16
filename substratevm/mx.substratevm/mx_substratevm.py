@@ -68,7 +68,7 @@ GRAAL_COMPILER_FLAGS_BASE = [
 ]
 
 GRAAL_COMPILER_FLAGS_MAP = dict()
-GRAAL_COMPILER_FLAGS_MAP['1.8'] = ['-d64', '-XX:-UseJVMCIClassLoader']
+GRAAL_COMPILER_FLAGS_MAP['8'] = ['-d64', '-XX:-UseJVMCIClassLoader']
 GRAAL_COMPILER_FLAGS_MAP['11'] = []
 # Disable the check for JDK-8 graal version.
 GRAAL_COMPILER_FLAGS_MAP['11'] += ['-Dsubstratevm.IgnoreGraalVersionCheck=true']
@@ -156,11 +156,11 @@ GRAAL_COMPILER_FLAGS_MAP['11'].extend(add_opens_from_packages(graal_truffle_open
 def svm_java_compliance():
     return mx.get_jdk(tag='default').javaCompliance
 
-def svm_java80():
+def svm_java8():
     return svm_java_compliance() <= mx.JavaCompliance('1.8')
 
-if svm_java80():
-    GRAAL_COMPILER_FLAGS = GRAAL_COMPILER_FLAGS_BASE + GRAAL_COMPILER_FLAGS_MAP['1.8']
+if svm_java8():
+    GRAAL_COMPILER_FLAGS = GRAAL_COMPILER_FLAGS_BASE + GRAAL_COMPILER_FLAGS_MAP['8']
 else:
     GRAAL_COMPILER_FLAGS = GRAAL_COMPILER_FLAGS_BASE + GRAAL_COMPILER_FLAGS_MAP['11']
 
@@ -395,7 +395,7 @@ def layout_native_image_root(native_image_root):
 
     # Create native-image layout for sdk parts
     graal_sdk_dists = ['sdk:GRAAL_SDK']
-    if svm_java80():
+    if svm_java8():
         native_image_layout_dists(join('lib', 'boot'), graal_sdk_dists)
         jvmci_dists = graalDistribution
     else:
@@ -404,7 +404,7 @@ def layout_native_image_root(native_image_root):
     # Create native-image layout for compiler & jvmci parts
     native_image_layout_dists(join('lib', 'jvmci'), jvmci_dists)
     jdk_config = mx.get_jdk()
-    if svm_java80():
+    if svm_java8():
         jvmci_path = join(jdk_config.home, 'jre', 'lib', 'jvmci')
         if os.path.isdir(jvmci_path):
             for symlink_name in os.listdir(jvmci_path):

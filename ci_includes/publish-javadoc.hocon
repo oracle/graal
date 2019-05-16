@@ -1,7 +1,7 @@
 # Publish Javadoc of graal components post-merge
 
 builds += [
-  ${linux-amd64} ${labsjdk8} {
+  ${linux-amd64} ${oraclejdk8} {
     timelimit : "30:00",
     run : [
         [cd, "./sdk"],

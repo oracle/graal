@@ -248,9 +248,9 @@ To see the compiler data structures used while compiling `Node.updateUsages`, us
 > mx vm -XX:+UseJVMCICompiler -XX:+BootstrapJVMCI -XX:-TieredCompilation -Dgraal.Dump= -Dgraal.MethodFilter=Node.updateUsages -version
 Bootstrapping JVMCI....Dumping debug output in /Users/dsimon/graal/graal/compiler/dumps/1497910458736
 ................................................ in 38177 ms (compiled 5206 methods)
-java version "1.8.0_121"
-Java(TM) SE Runtime Environment (build 1.8.0_121-b13)
-Java HotSpot(TM) 64-Bit Server VM (build 25.71-b01-internal-jvmci-0.26, mixed mode)
+java version "1.8.0_212"
+Java(TM) SE Runtime Environment (build 1.8.0_212-b31)
+Java HotSpot(TM) 64-Bit Server VM (build 25.212-b31-jvmci-20-b01, mixed mode)
 > find dumps/1497910458736 -type f
 dumps/1497910458736/HotSpotCompilation-539[org.graalvm.compiler.graph.Node.updateUsages(Node, Node)].bgv
 dumps/1497910458736/HotSpotCompilation-539[org.graalvm.compiler.graph.Node.updateUsages(Node, Node)].cfg

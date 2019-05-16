@@ -1,16 +1,16 @@
 # overlay version
-overlay = 92cc4cf61ccb3ffc91bea53450b8a73222107f8e
+overlay = 222db15cfd9f6bec9148f197d4c86cf8a13c9289
 
 # oraclejdk* are released OracleJDK binaries
-# labsjdk* are JDKs based on OracleJDK binaries
+# oraclejdk* are JDKs based on OracleJDK binaries
 # openjdk8 JDKs on Linux are built by Oracle Labs
 # openjdk8 JDKs on macOS are based on AdoptOpenJDK binaries
 jdks: {
-  labsjdk8:      {name : labsjdk,   version : "8u202-jvmci-0.59", platformspecific: true}
-  openjdk8:      {name : openjdk,   version : "8u202-jvmci-0.59", platformspecific: true}
-  labsjdk8Debug: {name : labsjdk,   version : "8u202-jvmci-0.59-fastdebug", platformspecific: true}
-  oraclejdk11:   {name : oraclejdk, version : "11+28", platformspecific: true}
-  openjdk11:     {name : openjdk,   version : "11+28", platformspecific: true}
+  oraclejdk8:      {name : oraclejdk, version : "8u212-jvmci-20-b01", platformspecific: true}
+  openjdk8:        {name : openjdk,   version : "8u212-jvmci-20-b01", platformspecific: true}
+  oraclejdk8Debug: {name : oraclejdk, version : "8u212-jvmci-20-b01-fastdebug", platformspecific: true}
+  oraclejdk11:     {name : oraclejdk, version : "11.0.3+12", platformspecific: true}
+  openjdk11:       {name : openjdk,   version : "11.0.3+12", platformspecific: true}
 }
 
 # This must always point to HEAD in the master branch but can be used to point
@@ -27,8 +27,8 @@ download-hsdis : {
   ]
 }
 
-labsjdk8 :      { downloads : { JAVA_HOME : ${jdks.labsjdk8},      EXTRA_JAVA_HOMES : { pathlist :[ ${jdks.oraclejdk11} ]} }}
-labsjdk8Debug : { downloads : { JAVA_HOME : ${jdks.labsjdk8Debug}, EXTRA_JAVA_HOMES : { pathlist :[ ${jdks.oraclejdk11} ]} }}
+oraclejdk8 :      { downloads : { JAVA_HOME : ${jdks.oraclejdk8},      EXTRA_JAVA_HOMES : { pathlist :[ ${jdks.oraclejdk11} ]} }}
+oraclejdk8Debug : { downloads : { JAVA_HOME : ${jdks.oraclejdk8Debug}, EXTRA_JAVA_HOMES : { pathlist :[ ${jdks.oraclejdk11} ]} }}
 
 openjdk8 :        { downloads : { JAVA_HOME : ${jdks.openjdk8} }}
 
