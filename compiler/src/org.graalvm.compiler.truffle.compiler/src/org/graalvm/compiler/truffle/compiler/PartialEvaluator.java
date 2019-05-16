@@ -59,14 +59,8 @@ import org.graalvm.compiler.graph.SourceLanguagePosition;
 import org.graalvm.compiler.graph.SourceLanguagePositionProvider;
 import org.graalvm.compiler.java.ComputeLoopFrequenciesClosure;
 import org.graalvm.compiler.loop.phases.ConvertDeoptimizeToGuardPhase;
-import org.graalvm.compiler.nodes.AbstractBeginNode;
 import org.graalvm.compiler.nodes.Cancellable;
 import org.graalvm.compiler.nodes.ConstantNode;
-import org.graalvm.compiler.nodes.FixedNode;
-import org.graalvm.compiler.nodes.FixedWithNextNode;
-import org.graalvm.compiler.nodes.Invoke;
-import org.graalvm.compiler.nodes.InvokeWithExceptionNode;
-import org.graalvm.compiler.nodes.LogicConstantNode;
 import org.graalvm.compiler.nodes.StructuredGraph;
 import org.graalvm.compiler.nodes.StructuredGraph.AllowAssumptions;
 import org.graalvm.compiler.nodes.ValueNode;
@@ -108,12 +102,12 @@ import org.graalvm.compiler.truffle.common.TruffleInliningPlan;
 import org.graalvm.compiler.truffle.common.TruffleSourceLanguagePosition;
 import org.graalvm.compiler.truffle.compiler.debug.HistogramInlineInvokePlugin;
 import org.graalvm.compiler.truffle.compiler.nodes.TruffleAssumption;
-import org.graalvm.compiler.truffle.compiler.nodes.SpeculativeExceptionGuardNode;
 import org.graalvm.compiler.truffle.compiler.nodes.asserts.NeverPartOfCompilationNode;
 import org.graalvm.compiler.truffle.compiler.nodes.frame.AllowMaterializeNode;
 import org.graalvm.compiler.truffle.compiler.phases.InstrumentBranchesPhase;
 import org.graalvm.compiler.truffle.compiler.phases.InstrumentPhase;
 import org.graalvm.compiler.truffle.compiler.phases.InstrumentTruffleBoundariesPhase;
+import org.graalvm.compiler.truffle.compiler.phases.DeoptimizeOnExceptionPhase;
 import org.graalvm.compiler.truffle.compiler.phases.VerifyFrameDoesNotEscapePhase;
 import org.graalvm.compiler.truffle.compiler.substitutions.KnownTruffleTypes;
 import org.graalvm.compiler.truffle.compiler.substitutions.TruffleGraphBuilderPlugins;
@@ -122,8 +116,6 @@ import org.graalvm.compiler.virtual.phases.ea.PartialEscapePhase;
 
 import jdk.vm.ci.code.Architecture;
 import jdk.vm.ci.meta.ConstantReflectionProvider;
-import jdk.vm.ci.meta.DeoptimizationAction;
-import jdk.vm.ci.meta.DeoptimizationReason;
 import jdk.vm.ci.meta.JavaConstant;
 import jdk.vm.ci.meta.JavaKind;
 import jdk.vm.ci.meta.MetaAccessProvider;
@@ -313,8 +305,7 @@ public abstract class PartialEvaluator {
         @Override
         public InlineInfo shouldInlineInvoke(GraphBuilderContext builder, ResolvedJavaMethod original, ValueNode[] arguments) {
             TruffleCompilerRuntime rt = TruffleCompilerRuntime.getRuntime();
-            InlineKind inlineKind = rt.getInlineKind(original, true);
-            InlineInfo inlineInfo = asInlineInfo(inlineKind, original);
+            InlineInfo inlineInfo = asInlineInfo(rt.getInlineKind(original, true), original);
             if (!inlineInfo.allowsInlining()) {
                 return inlineInfo;
             }
@@ -367,7 +358,6 @@ public abstract class PartialEvaluator {
         private final ReplacementsImpl replacements;
         private final InvocationPlugins invocationPlugins;
         private final LoopExplosionPlugin loopExplosionPlugin;
-        private boolean speculativeExceptionEdge;
 
         ParsingInlineInvokePlugin(ReplacementsImpl replacements, InvocationPlugins invocationPlugins, LoopExplosionPlugin loopExplosionPlugin) {
             this.replacements = replacements;
@@ -402,13 +392,8 @@ public abstract class PartialEvaluator {
             }
 
             TruffleCompilerRuntime rt = TruffleCompilerRuntime.getRuntime();
-            InlineKind inlineKind = rt.getInlineKind(original, true);
-            InlineInfo inlineInfo = asInlineInfo(inlineKind, original);
+            InlineInfo inlineInfo = asInlineInfo(rt.getInlineKind(original, true), original);
             if (!inlineInfo.allowsInlining()) {
-                if (inlineKind == InlineKind.DO_NOT_INLINE_WITH_SPECULATIVE_EXCEPTION) {
-                    assert !speculativeExceptionEdge;
-                    speculativeExceptionEdge = true;
-                }
                 return inlineInfo;
             }
             if (original.equals(callIndirectMethod) || original.equals(callDirectMethod)) {
@@ -422,23 +407,6 @@ public abstract class PartialEvaluator {
                 return inlineInfo;
             }
             return null;
-        }
-
-        @Override
-        public void notifyNotInlined(GraphBuilderContext b, ResolvedJavaMethod method, Invoke invoke) {
-            if (speculativeExceptionEdge) {
-                InvokeWithExceptionNode invokeWithException = (InvokeWithExceptionNode) invoke;
-                AbstractBeginNode exceptionEdge = invokeWithException.exceptionEdge();
-                FixedNode next = exceptionEdge.next();
-                assert next != null;
-                exceptionEdge.setNext(null);
-                // Note: Speculation is inserted during PE.
-                FixedWithNextNode guard = b.getGraph().add(new SpeculativeExceptionGuardNode(LogicConstantNode.tautology(b.getGraph()),
-                                DeoptimizationReason.TransferToInterpreter, DeoptimizationAction.InvalidateRecompile, SpeculationLog.NO_SPECULATION, false, method));
-                guard.setNext(next);
-                exceptionEdge.setNext(guard);
-                speculativeExceptionEdge = false;
-            }
         }
     }
 
@@ -481,10 +449,12 @@ public abstract class PartialEvaluator {
             plugins.appendInlineInvokePlugin(new InlineDuringParsingPlugin());
         }
 
+        DeoptimizeOnExceptionPhase postParsingPhase = new DeoptimizeOnExceptionPhase(
+                        method -> TruffleCompilerRuntime.getRuntime().getInlineKind(method, true) == InlineKind.DO_NOT_INLINE_WITH_SPECULATIVE_EXCEPTION);
+
         Providers compilationUnitProviders = providers.copyWith(new TruffleConstantFieldProvider(providers.getConstantFieldProvider(), providers.getMetaAccess()));
-        return new CachingPEGraphDecoder(architecture, graph, compilationUnitProviders, newConfig, TruffleCompilerImpl.Optimizations,
-                        AllowAssumptions.ifNonNull(graph.getAssumptions()),
-                        loopExplosionPlugin, decodingInvocationPlugins, inlineInvokePlugins, parameterPlugin, nodePluginList, callInlined, sourceLanguagePositionProvider);
+        return new CachingPEGraphDecoder(architecture, graph, compilationUnitProviders, newConfig, TruffleCompilerImpl.Optimizations, AllowAssumptions.ifNonNull(graph.getAssumptions()),
+                        loopExplosionPlugin, decodingInvocationPlugins, inlineInvokePlugins, parameterPlugin, nodePluginList, callInlined, sourceLanguagePositionProvider, postParsingPhase);
     }
 
     protected void doGraphPE(CompilableTruffleAST compilable, StructuredGraph graph, HighTierContext tierContext, TruffleInliningPlan inliningDecision) {

@@ -24,20 +24,15 @@
  */
 package com.oracle.svm.hosted.phases;
 
-import java.util.function.Predicate;
-
 import org.graalvm.compiler.api.replacements.Fold;
 import org.graalvm.compiler.graph.Node;
 import org.graalvm.compiler.graph.Node.NodeIntrinsic;
 import org.graalvm.compiler.java.BytecodeParser;
-import org.graalvm.compiler.java.FrameStateBuilder;
 import org.graalvm.compiler.java.GraphBuilderPhase;
 import org.graalvm.compiler.nodes.AbstractBeginNode;
 import org.graalvm.compiler.nodes.CallTargetNode;
-import org.graalvm.compiler.nodes.FixedWithNextNode;
 import org.graalvm.compiler.nodes.InvokeWithExceptionNode;
 import org.graalvm.compiler.nodes.KillingBeginNode;
-import org.graalvm.compiler.nodes.LogicConstantNode;
 import org.graalvm.compiler.nodes.StructuredGraph;
 import org.graalvm.compiler.nodes.ValueNode;
 import org.graalvm.compiler.nodes.graphbuilderconf.GeneratedInvocationPlugin;
@@ -48,31 +43,22 @@ import org.graalvm.compiler.nodes.java.NewInstanceNode;
 import org.graalvm.compiler.phases.OptimisticOptimizations;
 import org.graalvm.compiler.phases.util.Providers;
 import org.graalvm.compiler.replacements.SnippetTemplate;
-import org.graalvm.compiler.truffle.compiler.nodes.SpeculativeExceptionGuardNode;
 import org.graalvm.compiler.word.WordTypes;
 import org.graalvm.word.LocationIdentity;
 
 import com.oracle.svm.core.annotate.Uninterruptible;
 import com.oracle.svm.core.graal.nodes.SubstrateNewArrayNode;
 import com.oracle.svm.core.graal.nodes.SubstrateNewInstanceNode;
-import com.oracle.svm.core.util.VMError;
 
-import jdk.vm.ci.meta.DeoptimizationAction;
-import jdk.vm.ci.meta.DeoptimizationReason;
 import jdk.vm.ci.meta.JavaKind;
 import jdk.vm.ci.meta.ResolvedJavaMethod;
 import jdk.vm.ci.meta.ResolvedJavaType;
-import jdk.vm.ci.meta.SpeculationLog;
 
 public class SubstrateGraphBuilderPhase extends SharedGraphBuilderPhase {
 
-    private final Predicate<ResolvedJavaMethod> deoptimizeOnExceptionPredicate;
-
     public SubstrateGraphBuilderPhase(Providers providers,
-                    GraphBuilderConfiguration graphBuilderConfig, OptimisticOptimizations optimisticOpts, IntrinsicContext initialIntrinsicContext, WordTypes wordTypes,
-                    Predicate<ResolvedJavaMethod> deoptimizeOnExceptionPredicate) {
+                    GraphBuilderConfiguration graphBuilderConfig, OptimisticOptimizations optimisticOpts, IntrinsicContext initialIntrinsicContext, WordTypes wordTypes) {
         super(providers, graphBuilderConfig, optimisticOpts, initialIntrinsicContext, wordTypes);
-        this.deoptimizeOnExceptionPredicate = deoptimizeOnExceptionPredicate != null ? deoptimizeOnExceptionPredicate : (method -> false);
     }
 
     @Override
@@ -104,44 +90,6 @@ public class SubstrateGraphBuilderPhase extends SharedGraphBuilderPhase {
         @Override
         protected NewArrayNode createNewArray(ResolvedJavaType elementType, ValueNode length, boolean fillContents) {
             return new SubstrateNewArrayNode(elementType, length, fillContents, null);
-        }
-
-        /**
-         * We do not have access to the invoked method in {@link #createHandleExceptionTarget}.
-         * Therefore, we need to make the decision whether to deoptimize in
-         * {@link #createInvokeWithException} and propagate the result via this field.
-         */
-        private boolean curDeoptimizeOnException;
-        private ResolvedJavaMethod curInvokedMethod;
-
-        @Override
-        protected void createHandleExceptionTarget(FixedWithNextNode afterExceptionLoaded, int bci, FrameStateBuilder dispatchState) {
-            FixedWithNextNode instrumentedExceptionLoaded;
-            if (curDeoptimizeOnException) {
-                VMError.guarantee(afterExceptionLoaded.next() == null);
-                VMError.guarantee(curInvokedMethod != null);
-                // Note: Speculation is inserted during PE.
-                FixedWithNextNode guard = graph.add(new SpeculativeExceptionGuardNode(LogicConstantNode.tautology(graph),
-                                DeoptimizationReason.TransferToInterpreter, DeoptimizationAction.InvalidateRecompile, SpeculationLog.NO_SPECULATION, false, curInvokedMethod));
-                afterExceptionLoaded.setNext(guard);
-                instrumentedExceptionLoaded = guard;
-            } else {
-                instrumentedExceptionLoaded = afterExceptionLoaded;
-            }
-            super.createHandleExceptionTarget(instrumentedExceptionLoaded, bci, dispatchState);
-        }
-
-        @Override
-        protected InvokeWithExceptionNode createInvokeWithException(int invokeBci, CallTargetNode callTarget, JavaKind resultType, ExceptionEdgeAction exceptionEdgeAction) {
-            try {
-                assert curDeoptimizeOnException == false;
-                curDeoptimizeOnException = getGraphBuilderInstance().deoptimizeOnExceptionPredicate.test(callTarget.targetMethod());
-                curInvokedMethod = callTarget.targetMethod();
-                return super.createInvokeWithException(invokeBci, callTarget, resultType, exceptionEdgeAction);
-            } finally {
-                curInvokedMethod = null;
-                curDeoptimizeOnException = false;
-            }
         }
 
         /**
