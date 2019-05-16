@@ -52,7 +52,7 @@ public interface WasmNodeInterface {
     }
 
     default void pushInt(VirtualFrame frame, int slot, int value) {
-        push(frame, slot, value);
+        push(frame, slot, value & 0xffffffffL);
     }
 
     default long pop(VirtualFrame frame, int slot) {
