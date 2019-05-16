@@ -45,7 +45,7 @@ public class WasmBlockNode extends WasmNode {
     @CompilationFinal private final int size;
     @CompilationFinal private final byte typeId;
     @CompilationFinal private final int initialStackPointer;
-    @CompilationFinal byte[] constantLenghtTable;
+    @CompilationFinal byte[] constantLengthTable;
 
     public WasmBlockNode(WasmCodeEntry codeEntry, int startOffset, int size, byte typeId, int initialStackPointer) {
         super(codeEntry);
@@ -53,7 +53,7 @@ public class WasmBlockNode extends WasmNode {
         this.size = size;
         this.typeId = typeId;
         this.initialStackPointer = initialStackPointer;
-        this.constantLenghtTable = null;
+        this.constantLengthTable = null;
     }
 
     @ExplodeLoop
@@ -74,7 +74,7 @@ public class WasmBlockNode extends WasmNode {
                 }
                 case I32_CONST: {
                     int value = BinaryStreamReader.peek1(codeEntry().data(), offset);
-                    // byte constantLength = constantLenghtTable[constantOffset];
+                    // byte constantLength = constantLengthTable[constantOffset];
                     // constantOffset++;
                     // offset += constantLength;
                     offset += 1;  // TODO: Fix -- use constant lengths here.
