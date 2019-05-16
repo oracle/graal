@@ -34,19 +34,7 @@ import com.oracle.truffle.api.RootCallTarget;
 import com.oracle.truffle.api.Truffle;
 import com.oracle.truffle.wasm.collection.ByteList;
 
-import static com.oracle.truffle.wasm.binary.Instructions.BLOCK;
-import static com.oracle.truffle.wasm.binary.Instructions.DROP;
-import static com.oracle.truffle.wasm.binary.Instructions.F32_CONST;
-import static com.oracle.truffle.wasm.binary.Instructions.F64_CONST;
-import static com.oracle.truffle.wasm.binary.Instructions.I32_ADD;
-import static com.oracle.truffle.wasm.binary.Instructions.I32_AND;
-import static com.oracle.truffle.wasm.binary.Instructions.I32_CONST;
-import static com.oracle.truffle.wasm.binary.Instructions.I32_MUL;
-import static com.oracle.truffle.wasm.binary.Instructions.I32_OR;
-import static com.oracle.truffle.wasm.binary.Instructions.I32_SUB;
-import static com.oracle.truffle.wasm.binary.Instructions.I32_XOR;
-import static com.oracle.truffle.wasm.binary.Instructions.I64_CONST;
-
+import static com.oracle.truffle.wasm.binary.Instructions.*;
 import static com.oracle.truffle.wasm.binary.Sections.CODE;
 import static com.oracle.truffle.wasm.binary.Sections.CUSTOM;
 import static com.oracle.truffle.wasm.binary.Sections.DATA;
@@ -233,10 +221,10 @@ public class BinaryReader extends BinaryStreamReader {
 
     private void readBlock(WasmBlockNode currentBlock, ExecutionState state, byte returnTypeId) {
         ByteList constantLengthTable = new ByteList();
-        byte instruction;
+        int instruction;
         int startStackSize = state.stackSize();
         do {
-            instruction = read1();
+            instruction = read1() & 0xFF;
             switch (instruction) {
                 case BLOCK:
                     byte blockTypeId = readBlockType();
@@ -270,6 +258,7 @@ public class BinaryReader extends BinaryStreamReader {
                 case I32_AND:
                 case I32_OR:
                 case I32_XOR:
+                case F32_ADD:
                     state.pop();
                     state.pop();
                     state.push();
