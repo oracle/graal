@@ -36,7 +36,7 @@ import com.oracle.truffle.espresso.descriptors.Symbol.Signature;
  *
  * - Second pass is performed after constructing the virtual table (which itself is done after first
  * pass). Its goal is to find and insert in the vtable and the miranda methods the maximally
- * specific method.
+ * specific methods.
  *
  * - Third pass is performed just after second. Using the now correct vtable and mirandas, perform a
  * simple mapping from the helper table to the final itable.
@@ -103,7 +103,7 @@ class InterfaceTables {
         tmpKlassTable.add(thisInterfKlass);
         for (ObjectKlass interf : thisInterfKlass.getSuperInterfaces()) {
             for (Klass supInterf : interf.getiKlassTable()) {
-                if (!checkDoublon(supInterf, tmpKlassTable)) {
+                if (canInsert(supInterf, tmpKlassTable)) {
                     tmpKlassTable.add(supInterf);
                 }
             }
@@ -122,8 +122,8 @@ class InterfaceTables {
      * @return a 3-uple containing:
      *      - An intermediate helper for the itable.
      *        Each entry of the helper table contains information of where to find the method that will be put in its place
-     *      - An array containg all directtly and indirectly implemented interfaces
-     *      - An array of implicitly declared methods (aka, mirandas)
+     *      - An array containing all directly and indirectly implemented interfaces
+     *      - An array of implicitly declared methods (aka, mirandas). This most notably contains default methods.
      */
     // checkstyle: resume
     // @formatter:on
@@ -175,7 +175,7 @@ class InterfaceTables {
     }
 
     private void fillMirandas(Klass interf) {
-        if (!checkDoublon(interf, tmpKlassTable)) {
+        if (canInsert(interf, tmpKlassTable)) {
             Method[] interfMethods = interf.getDeclaredMethods();
             Entry[] res = new Entry[interfMethods.length];
             for (int i = 0; i < res.length; i++) {
@@ -312,11 +312,11 @@ class InterfaceTables {
         }
     }
 
-    private static boolean checkDoublon(Klass interf, ArrayList<Klass> tmpKlassTable) {
+    private static boolean canInsert(Klass interf, ArrayList<Klass> tmpKlassTable) {
         for (Klass k : tmpKlassTable) {
             if (k == interf)
-                return true;
+                return false;
         }
-        return false;
+        return true;
     }
 }
