@@ -123,7 +123,7 @@ public final class IsomorphicPackingPhase extends BasePhase<PhaseContext> {
      * @param right Right node of the potential pack
      * @return Boolean indicating whether the left and right node of a potential pack are isomorphic.
      */
-    private static boolean isomorphic(FixedNode left, FixedNode right) {
+    private static boolean isomorphic(Node left, Node right) {
         // Trivial case, isomorphic if the same
         if (left == right || left.equals(right)) return true;
 
@@ -145,9 +145,9 @@ public final class IsomorphicPackingPhase extends BasePhase<PhaseContext> {
         return true;
     }
 
-    private static int findDepth(Block block, FixedNode node) {
+    private static int findDepth(Block block, Node node) {
         int depth = 0;
-        for (FixedNode current : block.getNodes()) {
+        for (Node current : block.getNodes()) {
             if (current.equals(node)) {
                 return depth;
             }
@@ -157,11 +157,11 @@ public final class IsomorphicPackingPhase extends BasePhase<PhaseContext> {
         return -1;
     }
 
-    private static boolean hasNoPath(Block block, NodeMap<Block> nodeToBlockMap, Node shallow, Node deep) {
-        return hasNoPath(block, nodeToBlockMap, shallow, deep, 0);
+    private static boolean hasNoPath(NodeMap<Block> nodeToBlockMap, Block block, Node shallow, Node deep) {
+        return hasNoPath(nodeToBlockMap, block, shallow, deep, 0);
     }
 
-    private static boolean hasNoPath(Block block, NodeMap<Block> nodeToBlockMap, Node shallow, Node deep, int iterationDepth) {
+    private static boolean hasNoPath(NodeMap<Block> nodeToBlockMap, Block block, Node shallow, Node deep, int iterationDepth) {
         if (iterationDepth >= 1000) return false; // Stop infinite/deep recursion
 
         // TODO: pre-compute depth information
@@ -175,7 +175,7 @@ public final class IsomorphicPackingPhase extends BasePhase<PhaseContext> {
             if (shallow == pred)
                 return false;
 
-            if (/* pred is below shallow && */ !hasNoPath(block, nodeToBlockMap, shallow, pred, iterationDepth + 1))
+            if (/* pred is below shallow && */ !hasNoPath(nodeToBlockMap, block, shallow, pred, iterationDepth + 1))
                 return false;
         }
 
@@ -189,7 +189,7 @@ public final class IsomorphicPackingPhase extends BasePhase<PhaseContext> {
      * @param right Right node of the potential pack
      * @return Are the two statements independent? Only independent statements may be packed.
      */
-    private static boolean independent(Block block, FixedNode left, FixedNode right) {
+    private static boolean independent(NodeMap<Block> nodeToBlockMap, Block block, Node left, Node right) {
         // Calculate depth from how far into block.getNodes() we are. TODO: this is a hack.
         final int leftDepth = findDepth(block, left);
         final int rightDepth = findDepth(block, right);
@@ -197,10 +197,10 @@ public final class IsomorphicPackingPhase extends BasePhase<PhaseContext> {
         if (leftDepth == rightDepth) return !left.equals(right);
 
         int shallowDepth = Math.min(leftDepth, rightDepth);
-        FixedNode deep = leftDepth == shallowDepth ? right : left;
-        FixedNode shallow = leftDepth == shallowDepth ? left : right;
+        Node deep = leftDepth == shallowDepth ? right : left;
+        Node shallow = leftDepth == shallowDepth ? left : right;
 
-        return hasNoPath(block, left.graph().getLastSchedule().getNodeToBlockMap(), shallow, deep);
+        return hasNoPath(nodeToBlockMap, block, shallow, deep);
     }
 
     /**
@@ -239,9 +239,9 @@ public final class IsomorphicPackingPhase extends BasePhase<PhaseContext> {
         return s2a.getMaxConstantDisplacement() - s1a.getMaxConstantDisplacement() == s1k.getByteCount();
     }
 
-    private static boolean stmts_can_pack(Block block, Set<Pack<FixedNode>> packSet, FixedNode left, FixedNode right) {
+    private static boolean stmts_can_pack(NodeMap<Block> nodeToBlockMap, Block block, Set<Pack<Node>> packSet, Node left, Node right) {
         return isomorphic(left, right) &&
-                independent(block, left, right) &&
+                independent(nodeToBlockMap, block, left, right) &&
                 packSet.stream().noneMatch(p -> p.match(left, right));
     }
 
@@ -252,7 +252,7 @@ public final class IsomorphicPackingPhase extends BasePhase<PhaseContext> {
      * @param block Basic block
      * @param packSet PackSet to populate
      */
-    private static void find_adj_refs(Block block, Set<Pack<FixedNode>> packSet) {
+    private static void find_adj_refs(NodeMap<Block> nodeToBlockMap, Block block, Set<Pack<Node>> packSet) {
         // Create initial seed set containing memory operations
         List<FixedAccessNode> memoryNodes = // Candidate list of memory nodes
                 StreamSupport.stream(block.getNodes().spliterator(), false)
@@ -265,7 +265,7 @@ public final class IsomorphicPackingPhase extends BasePhase<PhaseContext> {
             for (FixedAccessNode s2 : memoryNodes) {
                 if (s1 == s2) continue;
 
-                if (adjacent(s1, s2) && stmts_can_pack(block, packSet, s1, s2)) {
+                if (adjacent(s1, s2) && stmts_can_pack(nodeToBlockMap, block, packSet, s1, s2)) {
                     packSet.add(Pack.pair(s1, s2));
                 }
             }
@@ -276,24 +276,43 @@ public final class IsomorphicPackingPhase extends BasePhase<PhaseContext> {
     /**
      * Extend the packset by visiting operand definitions of nodes inside the provided pack
      * @param block Basic block currently being optimized
-     * \@param packSet Pack set
+     * @param packSet Pack set
      * @param pack The pack to use for operand definitions
      */
-    private static void follow_use_defs(Block block, /*Set<Pack<FixedNode>> packSet, */Pack<FixedNode> pack) {
+    private static boolean follow_use_defs(NodeMap<Block> nodeToBlockMap, Block block, Set<Pack<Node>> packSet, Pack<Node> pack) {
         assert pack.isPair(); // the pack should be a pair
 
-        for (FixedNode node : pack) {
-            node.inputs();
+        final Node left = pack.getLeft();
+        final Node right = pack.getRight();
+
+        boolean changed = false;
+
+        for (Iterator<Node> leftInputIt = left.inputs().iterator(); leftInputIt.hasNext();) {
+            for (Iterator<Node> rightInputIt = right.inputs().iterator(); rightInputIt.hasNext();) {
+                // Incrementing both iterators at the same time, so looking at the same input always
+                final Node leftInput = leftInputIt.next();
+                final Node rightInput = rightInputIt.next();
+
+                // Check block membership, bail if nodes not in block (prevent analysis beyond block)
+                if (nodeToBlockMap.get(leftInput) != block || nodeToBlockMap.get(rightInput) != block) continue;
+
+                if (!stmts_can_pack(nodeToBlockMap, block, packSet, leftInput, rightInput)) continue;
+
+                packSet.add(Pack.pair(leftInput, rightInput));
+                changed = true;
+            }
         }
+
+        return changed;
     }
 
     /**
      * Extend the packset by visiting uses of jnodes of nodes in the provided pack
      * @param block Basic block currently being optimized
-     * \@param packSet Pack set
+     * @param packSet Pack set
      * @param pack The pack to use for nodes to find usages of
      */
-    private static void follow_def_uses(Block block, /*Set<Pack<FixedNode>> packSet, */Pack<FixedNode> pack) {
+    private static void follow_def_uses(Block block, Set<Pack<Node>> packSet, Pack<Node> pack) {
         throw new UnsupportedOperationException("not implemented");
     }
 
@@ -302,30 +321,31 @@ public final class IsomorphicPackingPhase extends BasePhase<PhaseContext> {
      * @param block Basic block
      * @param packSet PackSet to populate
      */
-    private static void extend_packlist(Block block, Set<Pack<FixedNode>> packSet) {
+    private static void extend_packlist(NodeMap<Block> nodeToBlockMap, Block block, Set<Pack<Node>> packSet) {
         boolean change = false;
 
         do {
-            for (Pack<FixedNode> pack : packSet) {
-                follow_use_defs(block, /* packSet, */pack);
-                follow_def_uses(block, /* packSet, */pack);
+            for (Pack<Node> pack : packSet) {
+                boolean udChanged = follow_use_defs(nodeToBlockMap, block, packSet, pack);
+                // TODO: IF UDCHANGED THEN PACKSET ITER NEEDS TO CHANGE TOO
+                follow_def_uses(block, packSet, pack);
             }
         } while (change);
     }
 
     // Combine packs where right = left
-    private static void combine_packs(Set<Pack<FixedNode>> packSet) {
+    private static void combine_packs(Set<Pack<Node>> packSet) {
         boolean changed = false;
         do {
             changed = false;
 
-            Deque<Pack<FixedNode>> remove = new ArrayDeque<>();
-            Deque<Pack<FixedNode>> add = new ArrayDeque<>();
+            Deque<Pack<Node>> remove = new ArrayDeque<>();
+            Deque<Pack<Node>> add = new ArrayDeque<>();
 
-            for (Pack<FixedNode> leftPack : packSet) {
+            for (Pack<Node> leftPack : packSet) {
                 if (remove.contains(leftPack)) continue;
 
-                for (Pack<FixedNode> rightPack : packSet) {
+                for (Pack<Node> rightPack : packSet) {
                     if (remove.contains(leftPack) || remove.contains(rightPack)) continue;
 
                     if (leftPack != rightPack && leftPack.getRight().equals(rightPack.getLeft())) {
@@ -344,10 +364,10 @@ public final class IsomorphicPackingPhase extends BasePhase<PhaseContext> {
         } while (changed);
     }
 
-    private static void SLP_extract(Block block) {
-        Set<Pack<FixedNode>> packSet = new HashSet<>();
-        find_adj_refs(block, packSet);
-        extend_packlist(block, packSet);
+    private static void SLP_extract(NodeMap<Block> nodeToBlockMap, Block block) {
+        Set<Pack<Node>> packSet = new HashSet<>();
+        find_adj_refs(nodeToBlockMap, block, packSet);
+        extend_packlist(nodeToBlockMap, block, packSet);
         combine_packs(packSet);
         // return a new basic block with the new instructions scheduled
     }
@@ -364,7 +384,7 @@ public final class IsomorphicPackingPhase extends BasePhase<PhaseContext> {
         schedulePhase.apply(graph);
         ControlFlowGraph cfg = graph.getLastSchedule().getCFG();
         for (Block block : cfg.reversePostOrder()) {
-            SLP_extract(block);
+            SLP_extract(cfg.getNodeToBlock(), block);
         }
     }
 }
