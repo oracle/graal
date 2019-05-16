@@ -46,4 +46,8 @@ public class ExecutionState {
     public void pop() {
         stackSize--;
     }
+
+    public int stackSize() {
+        return stackSize;
+    }
 }

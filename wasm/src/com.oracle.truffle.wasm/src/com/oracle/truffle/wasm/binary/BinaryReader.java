@@ -170,14 +170,14 @@ public class BinaryReader extends BinaryStreamReader {
         /* Create the necessary objects for the code entry */
         int expressionSize = codeEntrySize - (offset - startOffset);
         byte returnTypeId = wasmModule.symbolTable().function(funcIndex).returnType();
+        ExecutionState state = new ExecutionState();
         WasmCodeEntry codeEntry = new WasmCodeEntry(data);
-        WasmBlockNode block = new WasmBlockNode(codeEntry, offset, expressionSize, returnTypeId, 0);
+        WasmBlockNode block = new WasmBlockNode(codeEntry, offset, expressionSize, returnTypeId, state.stackSize());
         WasmRootNode rootNode = new WasmRootNode(wasmLanguage, codeEntry, block);
 
         // TODO: Push a frame slot to the frame descriptor for every local.
 
         /* Abstractly interpret the code entry block */
-        ExecutionState state = new ExecutionState();
         readBlock(block, state);
         checkValidStateOnFunctionExit(returnTypeId, state);
 
