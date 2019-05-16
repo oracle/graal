@@ -24,6 +24,8 @@
  */
 package com.oracle.svm.core.jdk;
 
+//Checkstyle: stop
+import java.lang.reflect.Method;
 import java.util.Locale;
 import java.util.ResourceBundle;
 import java.util.TimeZone;
@@ -32,10 +34,8 @@ import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.Platforms;
 
 import com.oracle.svm.core.util.VMError;
+import com.oracle.svm.util.ReflectionUtil;
 
-import jdk.internal.misc.JavaUtilResourceBundleAccess;
-import jdk.internal.misc.SharedSecrets;
-// Checkstyle: stop
 import sun.util.locale.provider.LocaleProviderAdapter;
 import sun.util.resources.LocaleData;
 // Checkstyle: resume
@@ -105,6 +105,18 @@ public class LocalizationResourceBundles extends LocalizationSupport {
         localizationSupport.addBundleToCache(sunUtilLoggingResourcesLoggingKey, sunUtilLoggingResourcesLoggingBundle);
     }
 
+    private static final Method NEW_RESOURCE_BUNDLE;
+
+    static {
+        try {
+            // Checkstyle: stop
+            NEW_RESOURCE_BUNDLE = ReflectionUtil.lookupMethod(Class.forName("java.util.ResourceBundle$ResourceBundleProviderHelper"), "newResourceBundle", Class.class);
+            // Checkstyle: resume
+        } catch (ClassNotFoundException ex) {
+            throw VMError.shouldNotReachHere(ex);
+        }
+    }
+
     private static ResourceBundle getBundleByName(String bundleName) {
         Class<? extends ResourceBundle> bundleClass = null;
         try {
@@ -117,9 +129,11 @@ public class LocalizationResourceBundles extends LocalizationSupport {
         } catch (ClassCastException cce) {
             throw VMError.shouldNotReachHere("Class is not a ResourceBundle:", cce);
         }
-        final JavaUtilResourceBundleAccess access = SharedSecrets.getJavaUtilResourceBundleAccess();
-        final ResourceBundle result = access.newResourceBundle(bundleClass);
-        return result;
+        try {
+            return (ResourceBundle) NEW_RESOURCE_BUNDLE.invoke(null, bundleClass);
+        } catch (ReflectiveOperationException ex) {
+            throw VMError.shouldNotReachHere(ex);
+        }
     }
 
 }

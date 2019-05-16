@@ -77,6 +77,7 @@ import com.oracle.svm.core.annotate.Substitute;
 import com.oracle.svm.core.annotate.TargetClass;
 import com.oracle.svm.core.annotate.TargetElement;
 import com.oracle.svm.core.headers.Errno;
+import com.oracle.svm.core.jdk.JDK11OrEarlier;
 import com.oracle.svm.core.jdk.JDK11OrLater;
 import com.oracle.svm.core.jdk.JDK8OrEarlier;
 import com.oracle.svm.core.os.IsDefined;
@@ -2479,9 +2480,12 @@ class Util_java_net_PlainDatagramSocketImpl {
 @Platforms({Platform.LINUX.class, Platform.DARWIN.class})
 final class Target_java_net_ServerSocket {
 
-    @Alias boolean oldImpl;
+    @TargetElement(onlyWith = JDK11OrEarlier.class) //
+    @Alias //
+    boolean oldImpl;
 
     /* TODO: I do not support old (pre-JDK-1.4) implementations of ServerSocket. */
+    @TargetElement(onlyWith = JDK11OrEarlier.class)
     @Substitute
     private void checkOldImpl() {
         oldImpl = false;
@@ -4140,9 +4144,12 @@ class Util_java_net_NetworkInterface {
 @Platforms({Platform.LINUX.class, Platform.DARWIN.class})
 final class Target_java_net_Socket {
 
-    @Alias boolean oldImpl;
+    @TargetElement(onlyWith = JDK11OrEarlier.class) //
+    @Alias //
+    boolean oldImpl;
 
     // TODO: I do not support old (pre-JDK-1.4) implementations of Socket.
+    @TargetElement(onlyWith = JDK11OrEarlier.class)
     @Substitute
     private void checkOldImpl() {
         oldImpl = false;
@@ -4455,7 +4462,9 @@ final class Target_java_net_SocketImpl {
 
     /* Aliases to get visibility for substituted methods. */
 
-    @Alias ServerSocket serverSocket;
+    @TargetElement(onlyWith = JDK11OrEarlier.class) //
+    @Alias //
+    ServerSocket serverSocket;
 
     @Alias FileDescriptor fd;
 

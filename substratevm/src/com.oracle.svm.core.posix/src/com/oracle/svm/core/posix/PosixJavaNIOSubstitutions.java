@@ -153,6 +153,7 @@ import com.oracle.svm.core.annotate.Substitute;
 import com.oracle.svm.core.annotate.TargetClass;
 import com.oracle.svm.core.annotate.TargetElement;
 import com.oracle.svm.core.headers.Errno;
+import com.oracle.svm.core.jdk.JDK11OrEarlier;
 import com.oracle.svm.core.jdk.JDK11OrLater;
 import com.oracle.svm.core.jdk.JDK8OrEarlier;
 import com.oracle.svm.core.log.Log;
@@ -1189,6 +1190,7 @@ public final class PosixJavaNIOSubstitutions {
         //        069 Java_sun_nio_ch_ServerSocketChannelImpl_accept0(JNIEnv *env, jobject this,
         //        070                                                 jobject ssfdo, jobject newfdo,
         //        071                                                 jobjectArray isaa)
+        @TargetElement(onlyWith = JDK11OrEarlier.class)
         @Substitute
         @SuppressWarnings({"static-method"})
         int accept0(FileDescriptor ssfdo, FileDescriptor newfdo, InetSocketAddress[] isaa) throws IOException {
@@ -3155,7 +3157,7 @@ public final class PosixJavaNIOSubstitutions {
 
         /* { Do not format quoted code: @formatter:off */
         @Substitute
-        @TargetElement(onlyWith = JDK11OrLater.class)
+        @TargetElement(onlyWith = {JDK11OrLater.class, JDK11OrEarlier.class})
         /* open/src/java.base/share/classes/sun/nio/ch/SocketChannelImpl.java */
         // 1120    private static native int checkConnect(FileDescriptor fd, boolean block)
         // 1121        throws IOException;
@@ -3279,6 +3281,7 @@ public final class PosixJavaNIOSubstitutions {
         /* { Do not format quoted code: @formatter:off */
 
         /* Translated from src/solaris/native/sun/nio/ch/UnixAsynchronousServerSocketChannelImpl.c?v=Java_1.8.0_40_b10 */
+        @TargetElement(onlyWith = JDK11OrEarlier.class)
         @Substitute
         // 041 JNIEXPORT jint JNICALL
         // 042 Java_sun_nio_ch_UnixAsynchronousServerSocketChannelImpl_accept0(JNIEnv* env,
