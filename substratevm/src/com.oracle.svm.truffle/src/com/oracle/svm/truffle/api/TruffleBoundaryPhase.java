@@ -24,9 +24,9 @@
  */
 package com.oracle.svm.truffle.api;
 
-import org.graalvm.compiler.graph.Node;
 import org.graalvm.compiler.nodes.DeoptimizeNode;
 import org.graalvm.compiler.nodes.FixedNode;
+import org.graalvm.compiler.nodes.Invoke;
 import org.graalvm.compiler.nodes.InvokeWithExceptionNode;
 import org.graalvm.compiler.nodes.StructuredGraph;
 import org.graalvm.compiler.nodes.java.ExceptionObjectNode;
@@ -56,7 +56,7 @@ public class TruffleBoundaryPhase extends Phase {
     @Override
     @SuppressWarnings("deprecation")
     protected void run(StructuredGraph graph) {
-        for (Node n : graph.getNodes()) {
+        for (Invoke n : graph.getInvokes()) {
             if (n instanceof InvokeWithExceptionNode) {
                 InvokeWithExceptionNode invoke = (InvokeWithExceptionNode) n;
                 ExceptionObjectNode exceptionObject = (ExceptionObjectNode) invoke.exceptionEdge();
