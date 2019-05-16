@@ -134,9 +134,9 @@ public final class FunctionDefinition extends FunctionSymbol implements Constant
             }
         }
 
-        final Set<String> explicitBlockNames = Arrays.stream(blocks).map(InstructionBlock::getName).filter(blockName -> !LLVMIdentifier.UNKNOWN.equals(blockName)).collect(Collectors.toSet());
+        final Set<String> explicitBlockNames = Arrays.stream(blocks).map(InstructionBlock::getName).filter(blockName -> !LLVMIdentifier.isUnknown(blockName)).collect(Collectors.toSet());
         for (final InstructionBlock block : blocks) {
-            if (block.getName() == LLVMIdentifier.UNKNOWN) {
+            if (LLVMIdentifier.isUnknown(block.getName())) {
                 do {
                     block.setName(LLVMIdentifier.toImplicitBlockName(symbolIndex++));
                     // avoid name clashes
@@ -146,7 +146,7 @@ public final class FunctionDefinition extends FunctionSymbol implements Constant
                 final Instruction instruction = block.getInstruction(i);
                 if (instruction instanceof ValueInstruction) {
                     final ValueInstruction value = (ValueInstruction) instruction;
-                    if (value.getName() == LLVMIdentifier.UNKNOWN) {
+                    if (LLVMIdentifier.isUnknown(value.getName())) {
                         value.setName(String.valueOf(symbolIndex++));
                     }
                 }

@@ -41,6 +41,17 @@ public final class LLVMIdentifier {
     private LLVMIdentifier() {
     }
 
+    /*
+     * Object parameter to avoid warnings about string comparisons.
+     */
+    private static Object asObject(String value) {
+        return value;
+    }
+
+    public static boolean isUnknown(Object name) {
+        return name == asObject(UNKNOWN);
+    }
+
     public static String toGlobalIdentifier(String name) {
         if (GLOBAL_VARNAME_PATTERN.matcher(name).matches()) {
             // already a global identifier

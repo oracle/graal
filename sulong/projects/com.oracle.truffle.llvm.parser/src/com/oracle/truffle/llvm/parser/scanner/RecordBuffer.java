@@ -87,7 +87,7 @@ public final class RecordBuffer {
     }
 
     /**
-     * Returns the size (not including the record id)
+     * Returns the size (not including the record id).
      */
     public int size() {
         return size - 1;
