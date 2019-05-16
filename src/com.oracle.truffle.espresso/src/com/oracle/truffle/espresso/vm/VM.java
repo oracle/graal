@@ -839,7 +839,7 @@ public final class VM extends NativeEnv implements ContextAccess {
     @VmImpl
     @JniImpl
     public static @Host(Object.class) StaticObject JVM_LatestUserDefinedLoader() {
-        return Truffle.getRuntime().iterateFrames(new FrameInstanceVisitor<StaticObject>() {
+        StaticObject result = Truffle.getRuntime().iterateFrames(new FrameInstanceVisitor<StaticObject>() {
             public StaticObject visitFrame(FrameInstance frameInstance) {
                 if (frameInstance.getCallTarget() instanceof RootCallTarget) {
                     RootCallTarget callTarget = (RootCallTarget) frameInstance.getCallTarget();
@@ -848,9 +848,10 @@ public final class VM extends NativeEnv implements ContextAccess {
                         return ((EspressoRootNode) rootNode).getMethod().getDeclaringKlass().getDefiningClassLoader();
                     }
                 }
-                return StaticObject.NULL;
+                return null;
             }
         });
+        return result == null ? StaticObject.NULL : result;
     }
 
     @VmImpl
