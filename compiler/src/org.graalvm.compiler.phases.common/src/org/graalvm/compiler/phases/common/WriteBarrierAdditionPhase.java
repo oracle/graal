@@ -22,35 +22,29 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package org.graalvm.compiler.nodes.extended;
+package org.graalvm.compiler.phases.common;
 
-import org.graalvm.compiler.graph.NodeInterface;
-import org.graalvm.compiler.nodes.ValueNode;
+import org.graalvm.compiler.debug.DebugCloseable;
+import org.graalvm.compiler.nodes.StructuredGraph;
+import org.graalvm.compiler.nodes.gc.BarrierSet;
 import org.graalvm.compiler.nodes.memory.FixedAccessNode;
-import org.graalvm.compiler.nodes.memory.address.AddressNode;
+import org.graalvm.compiler.phases.BasePhase;
+import org.graalvm.compiler.phases.tiers.MidTierContext;
 
-public interface ArrayRangeWrite extends NodeInterface {
-    AddressNode getAddress();
-
-    /**
-     * The length of the modified range.
-     */
-    ValueNode getLength();
-
-    /**
-     * Return true if the written array is an object array, false if it is a primitive array.
-     */
-    boolean writesObjectArray();
-
-    /**
-     * Returns whether this write is the initialization of the written location. If it is true, the
-     * old value of the memory location is either uninitialized or zero. If it is false, the memory
-     * location is guaranteed to contain a valid value or zero.
-     */
-    boolean isInitialization();
-
-    int getElementStride();
+public class WriteBarrierAdditionPhase extends BasePhase<MidTierContext> {
+    @SuppressWarnings("try")
+    @Override
+    protected void run(StructuredGraph graph, MidTierContext context) {
+        BarrierSet barrierSet = context.getGC().getBarrierSet();
+        for (FixedAccessNode n : graph.getNodes().filter(FixedAccessNode.class)) {
+            try (DebugCloseable scope = n.graph().withNodeSourcePosition(n)) {
+                barrierSet.addBarriers(n);
+            }
+        }
+    }
 
     @Override
-    FixedAccessNode asNode();
+    public boolean checkContract() {
+        return false;
+    }
 }

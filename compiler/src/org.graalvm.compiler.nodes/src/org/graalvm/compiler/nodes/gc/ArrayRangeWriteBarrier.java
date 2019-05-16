@@ -22,33 +22,33 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package org.graalvm.compiler.hotspot.gc.g1;
-
-import static org.graalvm.compiler.nodeinfo.NodeCycles.CYCLES_64;
-import static org.graalvm.compiler.nodeinfo.NodeSize.SIZE_64;
+package org.graalvm.compiler.nodes.gc;
 
 import org.graalvm.compiler.graph.NodeClass;
-import org.graalvm.compiler.hotspot.gc.shared.ObjectWriteBarrier;
 import org.graalvm.compiler.nodeinfo.NodeInfo;
 import org.graalvm.compiler.nodes.ValueNode;
 import org.graalvm.compiler.nodes.memory.address.AddressNode;
+import org.graalvm.compiler.nodes.spi.Lowerable;
 
-@NodeInfo(cycles = CYCLES_64, size = SIZE_64)
-public class G1PostWriteBarrier extends ObjectWriteBarrier {
+@NodeInfo
+public abstract class ArrayRangeWriteBarrier extends WriteBarrier implements Lowerable {
 
-    public static final NodeClass<G1PostWriteBarrier> TYPE = NodeClass.create(G1PostWriteBarrier.class);
-    protected final boolean alwaysNull;
+    public static final NodeClass<ArrayRangeWriteBarrier> TYPE = NodeClass.create(ArrayRangeWriteBarrier.class);
+    @Input ValueNode length;
 
-    public G1PostWriteBarrier(AddressNode address, ValueNode value, boolean precise, boolean alwaysNull) {
-        this(TYPE, address, value, precise, alwaysNull);
+    private final int elementStride;
+
+    protected ArrayRangeWriteBarrier(NodeClass<? extends ArrayRangeWriteBarrier> c, AddressNode address, ValueNode length, int elementStride) {
+        super(c, address);
+        this.length = length;
+        this.elementStride = elementStride;
     }
 
-    private G1PostWriteBarrier(NodeClass<? extends G1PostWriteBarrier> c, AddressNode address, ValueNode value, boolean precise, boolean alwaysNull) {
-        super(c, address, value, precise);
-        this.alwaysNull = alwaysNull;
+    public ValueNode getLength() {
+        return length;
     }
 
-    public boolean alwaysNull() {
-        return alwaysNull;
+    public int getElementStride() {
+        return elementStride;
     }
 }

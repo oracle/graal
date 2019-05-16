@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2013, 2018, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2019, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -22,22 +22,32 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package org.graalvm.compiler.hotspot.gc.shared;
+package org.graalvm.compiler.hotspot.meta;
 
-import static org.graalvm.compiler.nodeinfo.NodeCycles.CYCLES_8;
-import static org.graalvm.compiler.nodeinfo.NodeSize.SIZE_8;
+import org.graalvm.compiler.hotspot.GraalHotSpotVMConfig;
+import org.graalvm.compiler.nodes.gc.BarrierSet;
+import org.graalvm.compiler.nodes.gc.CardTableBarrierSet;
+import org.graalvm.compiler.nodes.gc.G1BarrierSet;
+import org.graalvm.compiler.nodes.spi.GCProvider;
 
-import org.graalvm.compiler.graph.NodeClass;
-import org.graalvm.compiler.nodeinfo.NodeInfo;
-import org.graalvm.compiler.nodes.ValueNode;
-import org.graalvm.compiler.nodes.memory.address.AddressNode;
+public class HotSpotGCProvider implements GCProvider {
+    private final BarrierSet barrierSet;
 
-@NodeInfo(cycles = CYCLES_8, size = SIZE_8)
-public final class SerialArrayRangeWriteBarrier extends ArrayRangeWriteBarrier {
-    public static final NodeClass<SerialArrayRangeWriteBarrier> TYPE = NodeClass.create(SerialArrayRangeWriteBarrier.class);
-
-    public SerialArrayRangeWriteBarrier(AddressNode address, ValueNode length, int elementStride) {
-        super(TYPE, address, length, elementStride);
+    public HotSpotGCProvider(GraalHotSpotVMConfig config) {
+        this.barrierSet = createBarrierSet(config);
     }
 
+    @Override
+    public BarrierSet getBarrierSet() {
+        return barrierSet;
+    }
+
+    private static BarrierSet createBarrierSet(GraalHotSpotVMConfig config) {
+        boolean useDeferredInitBarriers = config.useDeferredInitBarriers;
+        if (config.useG1GC) {
+            return new G1BarrierSet(useDeferredInitBarriers);
+        } else {
+            return new CardTableBarrierSet(useDeferredInitBarriers);
+        }
+    }
 }
