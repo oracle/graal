@@ -31,6 +31,7 @@ package com.oracle.truffle.wasm.binary;
 
 import com.oracle.truffle.api.frame.FrameSlotTypeException;
 import com.oracle.truffle.api.frame.VirtualFrame;
+import com.oracle.truffle.api.interop.InteropLibrary;
 
 public interface WasmNodeInterface {
     WasmCodeEntry codeEntry();
@@ -55,6 +56,14 @@ public interface WasmNodeInterface {
         push(frame, slot, value & 0xffffffffL);
     }
 
+    default void pushFloat(VirtualFrame frame, int slot, float value) {
+        pushInt(frame, slot, Float.floatToIntBits(value));
+    }
+
+    default void pushDouble(VirtualFrame frame, int slot, double value) {
+        push(frame, slot, Double.doubleToLongBits(value));
+    }
+
     default long pop(VirtualFrame frame, int slot) {
         try {
             return frame.getLong(codeEntry().stackSlot(slot));
@@ -65,5 +74,13 @@ public interface WasmNodeInterface {
 
     default int popInt(VirtualFrame frame, int slot) {
         return (int) pop(frame, slot);
+    }
+
+    default float popAsFloat(VirtualFrame frame, int slot) {
+        return Float.intBitsToFloat(popInt(frame, slot));
+    }
+
+    default double popAsDouble(VirtualFrame frame, int slot) {
+        return Double.longBitsToDouble(pop(frame, slot));
     }
 }

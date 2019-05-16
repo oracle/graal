@@ -31,20 +31,14 @@ package com.oracle.truffle.wasm.binary;
 
 import static com.oracle.truffle.api.CompilerDirectives.CompilationFinal;
 import static com.oracle.truffle.wasm.binary.Assert.format;
-import static com.oracle.truffle.wasm.binary.Instructions.DROP;
-import static com.oracle.truffle.wasm.binary.Instructions.END;
-import static com.oracle.truffle.wasm.binary.Instructions.I32_ADD;
-import static com.oracle.truffle.wasm.binary.Instructions.I32_CONST;
-import static com.oracle.truffle.wasm.binary.Instructions.I32_MUL;
-import static com.oracle.truffle.wasm.binary.Instructions.I32_SUB;
-import static com.oracle.truffle.wasm.binary.Instructions.I64_CONST;
+import static com.oracle.truffle.wasm.binary.Instructions.*;
 
 import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.api.nodes.ExplodeLoop;
 
 public class WasmBlockNode extends WasmNode {
     @CompilationFinal private final int startOffset;
-    @CompilationFinal private final int size;
+    @CompilationFinal private int size;
     @CompilationFinal private final byte typeId;
     @CompilationFinal private final int initialStackPointer;
     @CompilationFinal byte[] constantLengthTable;
@@ -64,7 +58,8 @@ public class WasmBlockNode extends WasmNode {
         int stackPointer = initialStackPointer;
         int offset = startOffset;
         while (offset < startOffset + size) {
-            byte opcode = BinaryStreamReader.peek1(codeEntry().data(), offset);
+            byte byteOpcode = BinaryStreamReader.peek1(codeEntry().data(), offset);
+            int opcode = byteOpcode & 0xFF;
             offset++;
             switch (opcode) {
                 case END:
@@ -114,6 +109,29 @@ public class WasmBlockNode extends WasmNode {
                     stackPointer++;
                     break;
                 }
+                case F32_CONST: {
+                    int value = BinaryStreamReader.peekFloatAsInt32(codeEntry().data(), offset);
+                    offset += 4;
+                    pushInt(frame, stackPointer, value);
+                    stackPointer++;
+                    break;
+                }
+                case F32_ADD: {
+                    stackPointer--;
+                    float x = popAsFloat(frame, stackPointer);
+                    stackPointer--;
+                    float y = popAsFloat(frame, stackPointer);
+                    pushFloat(frame, stackPointer, y + x);
+                    stackPointer++;
+                    break;
+                }
+                case F64_CONST: {
+                    long value = BinaryStreamReader.peekFloatAsInt64(codeEntry().data(), offset);
+                    offset += 8;
+                    push(frame, stackPointer, value);
+                    stackPointer++;
+                    break;
+                }
                 default:
                     Assert.fail(format("Unknown opcode: 0x%02X", opcode));
             }
@@ -122,5 +140,9 @@ public class WasmBlockNode extends WasmNode {
 
     public byte typeId() {
         return typeId;
+    }
+
+    public void setSize(int size) {
+        this.size = size;
     }
 }

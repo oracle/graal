@@ -116,11 +116,19 @@ public abstract class BinaryStreamReader {
         return result;
     }
 
-    public int readFloat32() {
+    public static int peekFloatAsInt32(byte[] data, int offset) {
+        return peek4(data, offset);
+    }
+
+    public int readFloatAsInt32() {
         return read4();
     }
 
-    public long readFloat64() {
+    public static long peekFloatAsInt64(byte[] data, int offset) {
+        return peek8(data, offset);
+    }
+
+    public long readFloatAsInt64() {
         return read8();
     }
 
@@ -132,6 +140,24 @@ public abstract class BinaryStreamReader {
 
     public static byte peek1(byte[] data, int offset) {
         return data[offset];
+    }
+
+    public static int peek4(byte[] data, int offset) {
+        int result = 0;
+        for (int i = 0; i != 4; ++i) {
+            int x = Byte.toUnsignedInt(peek1(data, offset));
+            result |= x << 8 * i;
+        }
+        return result;
+    }
+
+    public static long peek8(byte[] data, int offset) {
+        long result = 0;
+        for (int i = 0; i != 8; ++i) {
+            long x = Byte.toUnsignedLong(peek1(data, offset));
+            result |= x << 8 * i;
+        }
+        return result;
     }
 
     public int read4() {

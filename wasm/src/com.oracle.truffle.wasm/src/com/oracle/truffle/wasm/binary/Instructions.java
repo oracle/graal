@@ -30,6 +30,10 @@
 package com.oracle.truffle.wasm.binary;
 
 public class Instructions {
+
+    public static final int UNREACHABLE = 0x00;
+    public static final int NOP = 0x01;
+    public static final int BLOCK = 0x02;
     public static final int END = 0x0B;
 
     public static final int DROP = 0x1A;

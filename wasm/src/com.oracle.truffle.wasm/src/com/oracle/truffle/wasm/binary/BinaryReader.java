@@ -30,18 +30,35 @@
 package com.oracle.truffle.wasm.binary;
 
 
+import com.oracle.truffle.api.RootCallTarget;
+import com.oracle.truffle.api.Truffle;
+import com.oracle.truffle.wasm.collection.ByteList;
+
+import static com.oracle.truffle.wasm.binary.Instructions.BLOCK;
 import static com.oracle.truffle.wasm.binary.Instructions.DROP;
 import static com.oracle.truffle.wasm.binary.Instructions.F32_CONST;
 import static com.oracle.truffle.wasm.binary.Instructions.F64_CONST;
 import static com.oracle.truffle.wasm.binary.Instructions.I32_ADD;
+import static com.oracle.truffle.wasm.binary.Instructions.I32_AND;
 import static com.oracle.truffle.wasm.binary.Instructions.I32_CONST;
 import static com.oracle.truffle.wasm.binary.Instructions.I32_MUL;
+import static com.oracle.truffle.wasm.binary.Instructions.I32_OR;
 import static com.oracle.truffle.wasm.binary.Instructions.I32_SUB;
+import static com.oracle.truffle.wasm.binary.Instructions.I32_XOR;
 import static com.oracle.truffle.wasm.binary.Instructions.I64_CONST;
 
-import com.oracle.truffle.api.RootCallTarget;
-import com.oracle.truffle.api.Truffle;
-import com.oracle.truffle.wasm.collection.ByteList;
+import static com.oracle.truffle.wasm.binary.Sections.CODE;
+import static com.oracle.truffle.wasm.binary.Sections.CUSTOM;
+import static com.oracle.truffle.wasm.binary.Sections.DATA;
+import static com.oracle.truffle.wasm.binary.Sections.ELEMENT;
+import static com.oracle.truffle.wasm.binary.Sections.EXPORT;
+import static com.oracle.truffle.wasm.binary.Sections.FUNCTION;
+import static com.oracle.truffle.wasm.binary.Sections.GLOBAL;
+import static com.oracle.truffle.wasm.binary.Sections.IMPORT;
+import static com.oracle.truffle.wasm.binary.Sections.MEMORY;
+import static com.oracle.truffle.wasm.binary.Sections.START;
+import static com.oracle.truffle.wasm.binary.Sections.TABLE;
+import static com.oracle.truffle.wasm.binary.Sections.TYPE;
 
 /** Simple recursive-descend parser for the binary WebAssembly format.
  */
@@ -74,40 +91,40 @@ public class BinaryReader extends BinaryStreamReader {
             int size = readUnsignedInt32();
             int startOffset = offset;
             switch(sectionID) {
-                case 0x00:
+                case CUSTOM:
                     readCustomSection();
                     break;
-                case 0x01:
+                case TYPE:
                     readTypeSection();
                     break;
-                case 0x02:
+                case IMPORT:
                     readImportSection();
                     break;
-                case 0x03:
+                case FUNCTION:
                     readFunctionSection();
                     break;
-                case 0x04:
+                case TABLE:
                     readTableSection();
                     break;
-                case 0x05:
+                case MEMORY:
                     readMemorySection();
                     break;
-                case 0x06:
+                case GLOBAL:
                     readGlobalSection();
                     break;
-                case 0x07:
+                case EXPORT:
                     readExportSection();
                     break;
-                case 0x08:
+                case START:
                     readStartSection();
                     break;
-                case 0x09:
+                case ELEMENT:
                     readElementSection();
                     break;
-                case 0x0A:
+                case CODE:
                     readCodeSection();
                     break;
-                case 0x0B:
+                case DATA:
                     readDataSection();
                     break;
                 default:
@@ -183,8 +200,7 @@ public class BinaryReader extends BinaryStreamReader {
         // TODO: Push a frame slot to the frame descriptor for every local.
 
         // Abstractly interpret the code entry block.
-        readBlock(block, state);
-        checkValidStateOnFunctionExit(returnTypeId, state);
+        readBlock(block, state, returnTypeId);
 
         // Initialize the Truffle-related components required for execution.
         initTruffleForCodeEntry(codeEntry, numLocals, rootNode, state, funcIndex);
@@ -207,20 +223,28 @@ public class BinaryReader extends BinaryStreamReader {
         wasmModule.symbolTable().function(funcIndex).setCallTarget(callTarget);
     }
 
-    private void checkValidStateOnFunctionExit(byte returnTypeId, ExecutionState state) {
+    private void checkValidStateOnBlockExit(byte returnTypeId, ExecutionState state, int initialStackSize) {
         if (returnTypeId == 0x40) {
-            Assert.assertEquals(state.stackSize, 0, "Void function left values in the stack");
+            Assert.assertEquals(state.stackSize(), initialStackSize, "Void function left values in the stack");
         } else {
-            Assert.assertEquals(state.stackSize, 1, "Function left more than 1 values left in stack");
+            Assert.assertEquals(state.stackSize(), initialStackSize + 1, "Function left more than 1 values left in stack");
         }
     }
 
-    private void readBlock(WasmBlockNode currentBlock, ExecutionState state) {
+    private void readBlock(WasmBlockNode currentBlock, ExecutionState state, byte returnTypeId) {
         ByteList constantLengthTable = new ByteList();
         byte instruction;
+        int startStackSize = state.stackSize();
         do {
             instruction = read1();
             switch (instruction) {
+                case BLOCK:
+                    byte blockTypeId = readBlockType();
+                    int startOffset = offset();
+                    WasmBlockNode blockNode = new WasmBlockNode(currentBlock.codeEntry(), offset(), -1, blockTypeId, state.stackSize());
+                    readBlock(blockNode, state, blockTypeId);
+                    blockNode.setSize(offset() - startOffset);
+                    break;
                 case DROP:
                     state.pop();
                     break;
@@ -233,24 +257,19 @@ public class BinaryReader extends BinaryStreamReader {
                     Assert.fail("Not implemented");
                     break;
                 case F32_CONST:
-                    readFloat32();
+                    readFloatAsInt32();
                     state.push();
                     break;
                 case F64_CONST:
-                    readFloat64();
+                    readFloatAsInt64();
                     state.push();
                     break;
                 case I32_ADD:
-                    state.pop();
-                    state.pop();
-                    state.push();
-                    break;
                 case I32_SUB:
-                    state.pop();
-                    state.pop();
-                    state.push();
-                    break;
                 case I32_MUL:
+                case I32_AND:
+                case I32_OR:
+                case I32_XOR:
                     state.pop();
                     state.pop();
                     state.push();
@@ -260,6 +279,7 @@ public class BinaryReader extends BinaryStreamReader {
             }
         } while (instruction != 0x0B);
         currentBlock.constantLengthTable = constantLengthTable.toArray();
+        checkValidStateOnBlockExit(returnTypeId, state, startStackSize);
     }
 
     private void readElementSection() {
@@ -306,6 +326,16 @@ public class BinaryReader extends BinaryStreamReader {
                 break;
             default:
                 Assert.fail(String.format("Invalid return value specifier: 0x%02X", b));
+        }
+    }
+
+    public byte readBlockType() {
+        byte type = peek1();
+        switch (type) {
+            case 0x40:
+                return read1();
+            default:
+                return readValueType();
         }
     }
 
