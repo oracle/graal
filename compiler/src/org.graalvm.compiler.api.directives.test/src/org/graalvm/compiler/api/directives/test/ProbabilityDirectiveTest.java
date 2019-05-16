@@ -24,6 +24,8 @@
  */
 package org.graalvm.compiler.api.directives.test;
 
+import jdk.vm.ci.meta.ResolvedJavaMethod;
+
 import org.graalvm.compiler.api.directives.GraalDirectives;
 import org.graalvm.compiler.core.test.GraalCompilerTest;
 import org.graalvm.compiler.graph.iterators.NodeIterable;
@@ -36,6 +38,15 @@ import org.junit.Assert;
 import org.junit.Test;
 
 public class ProbabilityDirectiveTest extends GraalCompilerTest {
+
+    /**
+     * Called before a test is compiled.
+     */
+    @Override
+    protected void before(ResolvedJavaMethod method) {
+        // don't let -Xcomp pollute profile
+        method.reprofile();
+    }
 
     public static int branchProbabilitySnippet(int arg) {
         if (GraalDirectives.injectBranchProbability(0.125, arg > 0)) {
