@@ -1142,7 +1142,7 @@ public final class DynamicHub implements JavaKind.FormatWithToString, AnnotatedE
 
     @Substitute
     private static Class<?> forName(String className) throws ClassNotFoundException {
-        return ClassForNameSupport.forName(className);
+        return ClassForNameSupport.forName(className, true);
     }
 
     @Substitute //
@@ -1154,7 +1154,7 @@ public final class DynamicHub implements JavaKind.FormatWithToString, AnnotatedE
 
     @Substitute
     private static Class<?> forName(String name, @SuppressWarnings("unused") boolean initialize, @SuppressWarnings("unused") ClassLoader loader) throws ClassNotFoundException {
-        return ClassForNameSupport.forName(name);
+        return ClassForNameSupport.forName(name, initialize);
     }
 
     @KeepOriginal

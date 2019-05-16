@@ -128,7 +128,7 @@ public final class Target_java_lang_ClassLoader {
 
     @Substitute
     private Class<?> loadClass(String name) throws ClassNotFoundException {
-        return ClassForNameSupport.forName(name);
+        return ClassForNameSupport.forName(name, false);
     }
 
     @Substitute
