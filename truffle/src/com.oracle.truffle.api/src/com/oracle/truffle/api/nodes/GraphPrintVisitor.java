@@ -64,7 +64,7 @@ import com.oracle.truffle.api.TruffleOptions;
 
 /**
  * Don't use. There is more lightweight replacement - the <code>org.graalvm.graphio</code> API
- * provided as part of the Graal compiler project.
+ * provided as part of the GraalVM compiler project.
  *
  *
  * @since 0.8 or earlier

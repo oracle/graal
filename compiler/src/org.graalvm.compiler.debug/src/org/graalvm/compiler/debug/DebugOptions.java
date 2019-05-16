@@ -119,7 +119,7 @@ public class DebugOptions {
     public static final OptionKey<String> MetricsThreadFilter = new OptionKey<>(null);
     @Option(help = "Enable debug output for stub code generation and snippet preparation.", type = OptionType.Debug)
     public static final OptionKey<Boolean> DebugStubsAndSnippets = new OptionKey<>(false);
-    @Option(help = "Send Graal compiler IR to dump handlers on error.", type = OptionType.Debug)
+    @Option(help = "Send compiler IR to dump handlers on error.", type = OptionType.Debug)
     public static final OptionKey<Boolean> DumpOnError = new OptionKey<>(false);
     @Option(help = "Intercept also bailout exceptions", type = OptionType.Debug)
     public static final OptionKey<Boolean> InterceptBailout = new OptionKey<>(false);

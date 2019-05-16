@@ -1,15 +1,15 @@
 
-This pages covers the various mechanisms currently available for debugging Graal.
+This pages covers the various mechanisms currently available for debugging the GraalVM compiler.
 
 ## IDE Support
 
-All the parts of Graal written in Java can be debugged with a standard Java debugger.
+All the parts of the GraalVM compiler (henceforth just "compiler") written in Java can be debugged with a standard Java debugger.
 While debugging with Eclipse is described here, it should not be too hard to adapt these instructions for another debugger.
 
 The `mx eclipseinit` command not only creates Eclipse project configurations but also creates an
 Eclipse launch configuration (in
 `mx.compiler/eclipse-launches/compiler-attach-localhost-8000.launch`) that can be used to debug all
-Graal code running in the VM.  This launch configuration requires you to start the VM with the `-d`
+compiler code running in the VM.  This launch configuration requires you to start the VM with the `-d`
 global option which puts the VM into a state waiting for a remote debugger to attach to port `8000`:
 
 ```
@@ -34,7 +34,7 @@ At this point you can set breakpoints and perform all other normal Java debuggin
 
 ## Logging
 
-In addition to IDE debugging, Graal includes support for *printf* style debugging.
+In addition to IDE debugging, there is support for *printf* style debugging.
 The simplest is to place temporary usages of `System.out` where ever you need them.
 
 For more permanent logging statements, use the `log(...)` methods in
@@ -66,16 +66,16 @@ taken when such objects can be exposed to multiple threads.  There are assertion
 guarding against use in a thread different from the one in which it was instantiated.
 
 
-## JVMCI and Graal specific options
+## JVMCI and compiler specific options
 
-JVMCI and Graal options are specified by the `jvmci.*` and `graal.*` system properties
+JVMCI and GraalVM compiler options are specified by the `jvmci.*` and `graal.*` system properties
 respectively. These must be specified on the JVM command line. Modifications to these properties by
-application code are not seen by JVMCI and Graal. A listing of all supported properties can be
+application code are not seen by JVMCI and the compiler. A listing of all supported properties can be
 obtained with `-XX:+JVMCIPrintProperties`.
 
 ## Metrics
 
-Graal supports metrics in the form of counters, timers and memory trackers.
+The compiler supports metrics in the form of counters, timers and memory trackers.
 Each metric has a unique name. Metrics are collected per-compilation.
 At shutdown, they are aggregated across all compilations and reported to the console.
 This ouput can be redirected to a file via the `-Dgraal.AggregatedMetricsFile` option.
@@ -210,7 +210,7 @@ since metric registration is lazy.  For example, to see all the metrics availabl
 
 ## Dumping
 
-In addition to logging, Graal provides support for generating (or dumping) more detailed
+In addition to logging, there is support for generating (or dumping) more detailed
 visualizations of certain compiler data structures. Currently, there is support for dumping:
 
 * HIR graphs (i.e., instances of
@@ -256,7 +256,7 @@ dumps/1497910458736/HotSpotCompilation-539[org.graalvm.compiler.graph.Node.updat
 dumps/1497910458736/HotSpotCompilation-539[org.graalvm.compiler.graph.Node.updateUsages(Node, Node)].cfg
 ```
 
-As you become familiar with the scope names used in Graal, you can refine the `-Dgraal.Dump` option
+As you become familiar with the scope names used in the compiler, you can refine the `-Dgraal.Dump` option
 to limit the amount of dump output generated. For example, the `"CodeGen"` and `"CodeInstall"`
 scopes are active during code generation and installation respectively. To see the machine code (in
 the C1Visualizer) produced during these scopes:

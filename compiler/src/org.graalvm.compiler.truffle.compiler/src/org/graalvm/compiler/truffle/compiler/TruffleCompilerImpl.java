@@ -184,7 +184,7 @@ public abstract class TruffleCompilerImpl implements TruffleCompiler {
     }
 
     /**
-     * Gets the Graal compiler backend used for Truffle compilation.
+     * Gets the compiler backend used for Truffle compilation.
      */
     public Backend getBackend() {
         return backend;

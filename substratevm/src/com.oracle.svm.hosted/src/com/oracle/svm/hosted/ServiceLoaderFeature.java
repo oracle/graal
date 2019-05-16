@@ -182,7 +182,7 @@ public class ServiceLoaderFeature implements Feature {
         for (String implementationClassName : implementationClassNames) {
             if (implementationClassName.startsWith("org.graalvm.compiler") && implementationClassName.contains("hotspot")) {
                 /*
-                 * Workaround for Graal compiler services. The classpath always contains the
+                 * Workaround for compiler services. The classpath always contains the
                  * HotSpot-specific classes of Graal. This is caused by the current distribution
                  * .jar files and class loader hierarchies of Graal. We filter out HotSpot-specific
                  * service implementations using the naming convention: they have "hotspot" in the

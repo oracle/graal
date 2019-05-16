@@ -49,7 +49,7 @@ GraalVM native image.
 - `--vm.<option>` passes VM options to GraalVM.
 List available JVM options with `--help:vm`.
 
-- `--vm.Dgraal.<property>=<value>` passes settings to the Graal compiler.
+- `--vm.Dgraal.<property>=<value>` passes settings to the GraalVM compiler.
 For example, `--vm.Dgraal.DumpOnError=true` sends the compiler intermediate
 representation (IR) to dump handlers if errors occur.
 
@@ -173,7 +173,7 @@ Next, use git to clone the Sulong project and its dependencies:
     git clone https://github.com/oracle/graal
 
 Next, you need to download a recent
-[JVMCI-enabled JDK 8](http://www.oracle.com/technetwork/oracle-labs/program-languages/downloads/index.html).
+[JVMCI-enabled JDK 8](https://www.oracle.com/technetwork/graalvm/downloads/index.html).
 Extract it inside the `sulong-dev` directory:
 
     tar -zxf oraclejdk-8u212-jvmci-20-b01-linux-amd64.tar.gz
@@ -212,7 +212,7 @@ multiple arguments separated by `:`.
 
     mx lli -Dpolyglot.llvm.libraryPath=lib -Dpolyglot.llvm.libraries=liba.so test.bc
 
-#### Running with the Graal compiler
+#### Running with the GraalVM compiler
 
 In contrast to GraalVM, `mx lli` will by default  *not* optimize your program.
 If you are interested in high performance, you might want to import the Graal
