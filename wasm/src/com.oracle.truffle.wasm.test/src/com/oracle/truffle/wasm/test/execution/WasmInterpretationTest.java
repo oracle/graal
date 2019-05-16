@@ -44,7 +44,7 @@ import com.oracle.truffle.wasm.test.WasmTestToolkit;
 public class WasmInterpretationTest extends WasmTest {
     @Override
     @Test
-    public void runTests() {
+    public void runTests() throws InterruptedException {
         super.runTests();
     }
 
