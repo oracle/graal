@@ -109,6 +109,9 @@ public class GraphDecoder {
         /** All merges created during loop explosion. */
         public final EconomicSet<Node> loopExplosionMerges;
 
+        /** Known values that were written to the frames. */
+        public final EconomicMap<Integer, ValueNode> frameSlotStates;
+
         /**
          * The start of explosion, and the merge point for when irreducible loops are detected. Only
          * used when {@link MethodScope#loopExplosion} is {@link LoopExplosionKind#MERGE_EXPLODE}.
@@ -121,6 +124,7 @@ public class GraphDecoder {
             this.encodedGraph = encodedGraph;
             this.loopExplosion = loopExplosion;
             this.returnAndUnwindNodes = new ArrayList<>(2);
+            this.frameSlotStates = EconomicMap.create();
 
             if (encodedGraph != null) {
                 reader = UnsafeArrayTypeReader.create(encodedGraph.getEncoding(), encodedGraph.getStartOffset(), architecture.supportsUnalignedMemoryAccess());
