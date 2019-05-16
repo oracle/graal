@@ -116,8 +116,8 @@ public final class IsomorphicPackingPhase extends BasePhase<PhaseContext> {
         }
     }
 
-    private static boolean inBlock(NodeMap<Block> nodeToBlockMap, Block block, Node node) {
-        return nodeToBlockMap.get(node) == block;
+    private static boolean notInBlock(NodeMap<Block> nodeToBlockMap, Block block, Node node) {
+        return nodeToBlockMap.get(node) != block;
     }
 
     /**
@@ -173,7 +173,7 @@ public final class IsomorphicPackingPhase extends BasePhase<PhaseContext> {
         // TODO: verify that at this stage it's even possible to get dependency cycles
 
         for (Node pred : deep.inputs()) {
-            if (!inBlock(nodeToBlockMap, block, pred)) // ensure that the predecessor is in the block
+            if (notInBlock(nodeToBlockMap, block, pred)) // ensure that the predecessor is in the block
                 continue;
 
             if (shallow == pred)
@@ -300,7 +300,7 @@ public final class IsomorphicPackingPhase extends BasePhase<PhaseContext> {
                 final Node rightInput = rightInputIt.next();
 
                 // Check block membership, bail if nodes not in block (prevent analysis beyond block)
-                if (!inBlock(nodeToBlockMap, block, leftInput) || !inBlock(nodeToBlockMap, block, rightInput)) continue;
+                if (notInBlock(nodeToBlockMap, block, leftInput) || notInBlock(nodeToBlockMap, block, rightInput)) continue;
 
                 if (!stmts_can_pack(nodeToBlockMap, block, packSet, leftInput, rightInput)) continue;
 
@@ -324,10 +324,10 @@ public final class IsomorphicPackingPhase extends BasePhase<PhaseContext> {
         // TODO: bail if left is store (why?)
 
         for (Node leftUsage : left.usages()) {
-            if (!inBlock(nodeToBlockMap, block, left)) continue;
+            if (notInBlock(nodeToBlockMap, block, left)) continue;
 
             for (Node rightUsage : right.usages()) {
-                if (leftUsage == rightUsage || !inBlock(nodeToBlockMap, block, right)) continue;
+                if (leftUsage == rightUsage || notInBlock(nodeToBlockMap, block, right)) continue;
 
                 // TODO: Rather than adding the first, add the best
                 if (stmts_can_pack(nodeToBlockMap, block, packSet, leftUsage, rightUsage)) {
