@@ -225,6 +225,20 @@ public final class IsomorphicPackingPhase extends BasePhase<PhaseContext> {
         }
 
         /**
+         * Ensure that there is no data path between left and right.
+         * This version operates on Nodes, avoiding the need to check for FAN at the callsite.
+         * Pre: left and right are isomorphic
+         * @param left Left node of the potential pack
+         * @param right Right node of the potential pack
+         * @return Are the two statements independent? Only independent statements may be packed.
+         */
+        private boolean adjacent(Node left, Node right) {
+            return left instanceof FixedAccessNode &&
+                   right instanceof FixedAccessNode &&
+                   adjacent((FixedAccessNode) left, (FixedAccessNode) right);
+        }
+
+        /**
          * Check whether s1 is immediately before s2 in memory, if both are primitive.
          * @param s1 First FixedAccessNode to check
          * @param s2 Second FixedAccessNode to check
@@ -252,6 +266,9 @@ public final class IsomorphicPackingPhase extends BasePhase<PhaseContext> {
 
             // Only use superword on primitives
             if (!s1k.isPrimitive() || !s2k.isPrimitive()) return false;
+
+            // Only use superword on nodes in the current block
+            if (notInBlock(s1) || notInBlock(s2)) return false;
 
             // Only use superword on types that are comparable
             // TODO: Evaluate whether graph guarantees that pointers for same collection have same base
@@ -289,7 +306,12 @@ public final class IsomorphicPackingPhase extends BasePhase<PhaseContext> {
                     // Check block membership, bail if nodes not in block (prevent analysis beyond block)
                     if (notInBlock(leftInput) || notInBlock(rightInput)) continue outer;
 
+                    // If the statements cannot be packed, bail
                     if (!stmts_can_pack(packSet, leftInput, rightInput)) continue outer;
+
+                    // If there are no savings to be gained, bail
+                    // NB: here this is basically useless, as <s>our</s> Oracle's formula does not allow for negative savings
+                    if (est_savings(packSet, leftInput, rightInput) < 0) continue outer;
 
                     changed |= packSet.add(Pack.pair(leftInput, rightInput));
                 }
@@ -307,6 +329,9 @@ public final class IsomorphicPackingPhase extends BasePhase<PhaseContext> {
             final Node left = pack.getLeft();
             final Node right = pack.getRight();
 
+            int savings = -1;
+            Pack<Node> bestPack = null;
+
             // TODO: bail if left is store (why?)
 
             for (Node leftUsage : left.usages()) {
@@ -317,12 +342,77 @@ public final class IsomorphicPackingPhase extends BasePhase<PhaseContext> {
 
                     // TODO: Rather than adding the first, add the best
                     if (stmts_can_pack(packSet, leftUsage, rightUsage)) {
-                        return packSet.add(Pack.pair(leftUsage, rightUsage));
+                        final int currentSavings = est_savings(packSet, leftUsage, rightUsage);
+                        if (currentSavings > savings) {
+                            savings = currentSavings;
+                            bestPack = Pack.pair(leftUsage, rightUsage);
+                        }
                     }
                 }
             }
 
+            if (savings >= 0) {
+                return packSet.add(bestPack);
+            }
+
             return false;
+        }
+
+        /**
+         * Estimate the savings of executing the pack rather than two separate instructions.
+         * @param s1 Candidate left element of Pack
+         * @param s2 Candidate right element of Pack
+         * @param packSet PackSet, for membership checks
+         * @return Savings in an arbitrary unit and can be negative.
+         */
+        private int est_savings(Set<Pack<Node>> packSet, Node s1, Node s2) {
+            // Savings originating from inputs
+            int saveIn = 1; // Save 1 instruction as executing 2 in parallel.
+
+            outer: // labelled outer loop so that hasNext check is performed for left
+            for (Iterator<Node> leftInputIt = s1.inputs().iterator(); leftInputIt.hasNext();) {
+                for (Iterator<Node> rightInputIt = s2.inputs().iterator(); rightInputIt.hasNext();) {
+                    final Node leftInput = leftInputIt.next();
+                    final Node rightInput = rightInputIt.next();
+
+                    if (leftInput == rightInput) continue outer;
+
+                    if (adjacent(leftInput, rightInput)) {
+                        // Inputs are adjacent in memory, this is good.
+                        saveIn += 2; // Not necessarily packed, but good because packing is easy.
+                    } else if (packSet.contains(Pack.pair(leftInput, rightInput))) {
+                        saveIn += 2; // Inputs already packed, so we don't need to pack these.
+                    } else {
+                        saveIn -= 2; // Not adjacent, not packed. Inputs need to be packed in a vector for candidate.
+                    }
+                }
+            }
+
+            // Savings originating from result
+            int ct = 0; // the number of usages that are packed
+            int saveUse = 0;
+            for (Node s1Usage : s1.usages()) {
+                for (Pack<Node> pack : packSet) {
+                    if (pack.getLeft()!=s1Usage) continue;
+
+                    for (Node s2Usage : s2.usages()) {
+                        if (pack.getRight()!=s2Usage) continue;
+
+                        ct++;
+
+                        if (adjacent(s1Usage, s2Usage)) {
+                            saveUse += 2;
+                        }
+                    }
+                }
+            }
+
+            // idk, c2 does this though
+            if (ct < s1.getUsageCount()) saveUse += 1;
+            if (ct < s2.getUsageCount()) saveUse += 1;
+
+            // TODO: investigate this formula - can't have negative savings
+            return Math.max(saveIn, saveUse);
         }
 
         // Core
@@ -404,7 +494,7 @@ public final class IsomorphicPackingPhase extends BasePhase<PhaseContext> {
         }
 
         // Main
-        public void SLP_extract() {
+        void SLP_extract() {
             Set<Pack<Node>> packSet = new HashSet<>();
             find_adj_refs(packSet);
             extend_packlist(packSet);
