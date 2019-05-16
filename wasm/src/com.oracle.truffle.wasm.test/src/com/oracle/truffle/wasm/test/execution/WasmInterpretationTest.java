@@ -36,10 +36,10 @@ import org.graalvm.polyglot.Source;
 import org.graalvm.polyglot.Value;
 import org.graalvm.polyglot.io.ByteSequence;
 import org.junit.Assert;
+import org.junit.Test;
 
 import com.oracle.truffle.wasm.test.WasmTest;
 import com.oracle.truffle.wasm.test.WasmTestToolkit;
-import org.junit.Test;
 
 public class WasmInterpretationTest extends WasmTest {
     @Override

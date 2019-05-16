@@ -30,10 +30,15 @@
 package com.oracle.truffle.wasm.binary;
 
 
+import static com.oracle.truffle.wasm.binary.Instructions.DROP;
+import static com.oracle.truffle.wasm.binary.Instructions.F32_CONST;
+import static com.oracle.truffle.wasm.binary.Instructions.F64_CONST;
+import static com.oracle.truffle.wasm.binary.Instructions.I32_ADD;
+import static com.oracle.truffle.wasm.binary.Instructions.I32_CONST;
+import static com.oracle.truffle.wasm.binary.Instructions.I64_CONST;
+
 import com.oracle.truffle.api.RootCallTarget;
 import com.oracle.truffle.api.Truffle;
-
-import static com.oracle.truffle.wasm.binary.Instructions.*;
 
 /** Simple recursive-descend parser for the binary WebAssembly format.
  */
@@ -158,23 +163,41 @@ public class BinaryReader extends BinaryStreamReader {
 
     private void readCodeEntry(int codeEntrySize, int funcIndex) {
         int startOffset = offset;
-        int numLocals = readVectorLength();
-        for (int local = 0; local < numLocals; local++) {
-            throw new RuntimeException("Not implemented");
-        }
+
+        /* Read code entry (function) locals */
+        readCodeEntryLocals();
+
+        /* Create the necessary objects for the code entry */
         int expressionSize = codeEntrySize - (offset - startOffset);
         byte returnTypeId = wasmModule.symbolTable().function(funcIndex).returnType();
         WasmCodeEntry codeEntry = new WasmCodeEntry(data);
         WasmBlockNode block = new WasmBlockNode(codeEntry, offset, expressionSize, returnTypeId);
         WasmRootNode rootNode = new WasmRootNode(wasmLanguage, codeEntry, block);
+
         // TODO: Push a frame slot to the frame descriptor for every local.
+
+        /* Abstractly interpret the code entry block */
         ExecutionState state = new ExecutionState();
         readBlock(block, state);
         checkValidStateOnFunctionExit(returnTypeId, state);
+
+        /* Initialize the Truffle stuff for the code entry execution */
+        initTruffleForCodeEntry(codeEntry, rootNode, state, funcIndex);
+
+        // TODO: For structured code, we need to set the expressionSize later.
+    }
+
+    private void readCodeEntryLocals() {
+        int numLocals = readVectorLength();
+        for (int local = 0; local < numLocals; local++) {
+            throw new RuntimeException("Not implemented");
+        }
+    }
+
+    private void initTruffleForCodeEntry(WasmCodeEntry codeEntry, WasmRootNode rootNode, ExecutionState state, int funcIndex) {
         codeEntry.initStackSlots(rootNode.getFrameDescriptor(), state.maxStackSize);
         RootCallTarget callTarget = Truffle.getRuntime().createCallTarget(rootNode);
         wasmModule.symbolTable().function(funcIndex).setCallTarget(callTarget);
-        // TODO: For structured code, we need to set the expressionSize later.
     }
 
     private void checkValidStateOnFunctionExit(byte returnTypeId, ExecutionState state) {
@@ -193,30 +216,26 @@ public class BinaryReader extends BinaryStreamReader {
                 case DROP:
                     state.pop();
                     break;
-                case I32_CONST: {
+                case I32_CONST:
                     readSignedInt32();
                     state.push();
                     break;
-                }
                 case I64_CONST:
                     Assert.fail("Not implemented");
                     break;
-                case F32_CONST: {
+                case F32_CONST:
                     readFloat32();
                     state.push();
                     break;
-                }
-                case F64_CONST: {
+                case F64_CONST:
                     readFloat64();
                     state.push();
                     break;
-                }
-                case I32_ADD: {
+                case I32_ADD:
                     state.pop();
                     state.pop();
                     state.push();
                     break;
-                }
                 default:
                     break;
             }
