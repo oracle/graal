@@ -35,6 +35,18 @@ import com.oracle.truffle.api.frame.VirtualFrame;
 public interface WasmNodeInterface {
     WasmCodeEntry codeEntry();
 
+    default long get(VirtualFrame frame, int slot) {
+        try {
+            return frame.getLong(codeEntry().stackSlot(slot));
+        } catch (FrameSlotTypeException e) {
+            throw new RuntimeException(e);
+        }
+    }
+
+    default void set(VirtualFrame frame, int slot, long value) {
+        frame.setLong(codeEntry().stackSlot(slot), value);
+    }
+
     default void push(VirtualFrame frame, int slot, long value) {
         frame.setLong(codeEntry().stackSlot(slot), value);
     }

@@ -170,36 +170,38 @@ public class BinaryReader extends BinaryStreamReader {
         int startOffset = offset;
 
         /* Read code entry (function) locals */
-        readCodeEntryLocals();
+        WasmCodeEntry codeEntry = new WasmCodeEntry(data);
+        int numLocals = readCodeEntryLocals();
 
         /* Create the necessary objects for the code entry */
         int expressionSize = codeEntrySize - (offset - startOffset);
         byte returnTypeId = wasmModule.symbolTable().function(funcIndex).returnType();
         ExecutionState state = new ExecutionState();
-        WasmCodeEntry codeEntry = new WasmCodeEntry(data);
         WasmBlockNode block = new WasmBlockNode(codeEntry, offset, expressionSize, returnTypeId, state.stackSize());
         WasmRootNode rootNode = new WasmRootNode(wasmLanguage, codeEntry, block);
 
         // TODO: Push a frame slot to the frame descriptor for every local.
 
-        /* Abstractly interpret the code entry block */
+        // Abstractly interpret the code entry block.
         readBlock(block, state);
         checkValidStateOnFunctionExit(returnTypeId, state);
 
-        /* Initialize the Truffle stuff for the code entry execution */
-        initTruffleForCodeEntry(codeEntry, rootNode, state, funcIndex);
+        // Initialize the Truffle-related components required for execution.
+        initTruffleForCodeEntry(codeEntry, numLocals, rootNode, state, funcIndex);
 
         // TODO: For structured code, we need to set the expressionSize later.
     }
 
-    private void readCodeEntryLocals() {
+    private int readCodeEntryLocals() {
         int numLocals = readVectorLength();
         for (int local = 0; local < numLocals; local++) {
             throw new RuntimeException("Not implemented");
         }
+        return numLocals;
     }
 
-    private void initTruffleForCodeEntry(WasmCodeEntry codeEntry, WasmRootNode rootNode, ExecutionState state, int funcIndex) {
+    private void initTruffleForCodeEntry(WasmCodeEntry codeEntry, int numLocals, WasmRootNode rootNode, ExecutionState state, int funcIndex) {
+        codeEntry.initLocalSlots(rootNode.getFrameDescriptor(), numLocals);
         codeEntry.initStackSlots(rootNode.getFrameDescriptor(), state.maxStackSize);
         RootCallTarget callTarget = Truffle.getRuntime().createCallTarget(rootNode);
         wasmModule.symbolTable().function(funcIndex).setCallTarget(callTarget);
