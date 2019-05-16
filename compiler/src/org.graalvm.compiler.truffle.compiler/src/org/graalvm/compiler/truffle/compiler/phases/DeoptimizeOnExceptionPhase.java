@@ -31,15 +31,13 @@ import org.graalvm.compiler.nodes.FixedNode;
 import org.graalvm.compiler.nodes.FixedWithNextNode;
 import org.graalvm.compiler.nodes.Invoke;
 import org.graalvm.compiler.nodes.InvokeWithExceptionNode;
-import org.graalvm.compiler.nodes.LogicConstantNode;
 import org.graalvm.compiler.nodes.StructuredGraph;
 import org.graalvm.compiler.phases.Phase;
-import org.graalvm.compiler.truffle.compiler.nodes.SpeculativeExceptionGuardNode;
+import org.graalvm.compiler.truffle.compiler.nodes.SpeculativeExceptionAnchorNode;
 
 import jdk.vm.ci.meta.DeoptimizationAction;
 import jdk.vm.ci.meta.DeoptimizationReason;
 import jdk.vm.ci.meta.ResolvedJavaMethod;
-import jdk.vm.ci.meta.SpeculationLog;
 
 /**
  * Instruments the exception edge of TruffleBoundary method calls with a speculative transfer to
@@ -65,11 +63,9 @@ public class DeoptimizeOnExceptionPhase extends Phase {
                     assert next != null;
                     exceptionEdge.setNext(null);
                     // Note: Speculation is inserted during PE.
-                    FixedWithNextNode guard = graph.add(new SpeculativeExceptionGuardNode(LogicConstantNode.tautology(graph),
-                                    DeoptimizationReason.TransferToInterpreter, DeoptimizationAction.InvalidateRecompile, SpeculationLog.NO_SPECULATION, false,
-                                    targetMethod));
-                    guard.setNext(next);
-                    exceptionEdge.setNext(guard);
+                    FixedWithNextNode newNode = graph.add(new SpeculativeExceptionAnchorNode(DeoptimizationReason.TransferToInterpreter, DeoptimizationAction.InvalidateRecompile, targetMethod));
+                    newNode.setNext(next);
+                    exceptionEdge.setNext(newNode);
                 }
             }
         }
