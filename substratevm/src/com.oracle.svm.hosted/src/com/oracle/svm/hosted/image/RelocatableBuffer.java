@@ -32,6 +32,7 @@ import java.util.Set;
 import java.util.TreeMap;
 
 import org.graalvm.compiler.core.common.NumUtil;
+import org.graalvm.compiler.serviceprovider.BufferUtil;
 import org.graalvm.nativeimage.c.function.CFunctionPointer;
 import org.graalvm.nativeimage.c.function.RelocatedPointer;
 
@@ -133,7 +134,7 @@ public final class RelocatableBuffer {
     }
 
     public RelocatableBuffer setPosition(final int newPosition) {
-        getBuffer().position(newPosition);
+        BufferUtil.asBaseBuffer(getBuffer()).position(newPosition);
         return this;
     }
 
