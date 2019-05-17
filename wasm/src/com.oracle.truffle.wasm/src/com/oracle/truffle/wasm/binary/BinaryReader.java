@@ -182,7 +182,6 @@ public class BinaryReader extends BinaryStreamReader {
     public void readTypeSection() {
         int numTypes = readVectorLength();
         for (int t = 0; t != numTypes; ++t) {
-            System.err.println("offset: " + offset());
             byte type = read1();
             switch(type) {
                 case 0x60:

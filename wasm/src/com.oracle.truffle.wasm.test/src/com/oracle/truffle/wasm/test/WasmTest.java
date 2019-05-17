@@ -32,6 +32,7 @@ package com.oracle.truffle.wasm.test;
 import java.util.LinkedHashMap;
 import java.util.Map;
 
+import com.oracle.truffle.api.Truffle;
 import org.junit.Assert;
 import org.junit.Test;
 
@@ -166,13 +167,19 @@ public abstract class WasmTest {
     @Test
     public void runTests() throws InterruptedException {
         Map<TestElement, Throwable> errors = new LinkedHashMap<>();
+        System.out.println("Using runtime: " + Truffle.getRuntime().toString());
         for (TestElement element : testElements) {
             try {
                 runTest(element);
+                System.out.print(".");
+                System.out.flush();
             } catch (Throwable e) {
+                System.out.print('E');
+                System.out.flush();
                 errors.put(element, e);
             }
         }
+        System.out.println("");
         if (!errors.isEmpty()) {
             for (Map.Entry<TestElement, Throwable> entry : errors.entrySet()) {
                 System.err.println("Failure in: " + entry.getKey().name);
