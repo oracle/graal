@@ -45,7 +45,11 @@ import static com.oracle.truffle.wasm.binary.Instructions.I32_CONST;
 import static com.oracle.truffle.wasm.binary.Instructions.I32_CTZ;
 import static com.oracle.truffle.wasm.binary.Instructions.I32_DIV_S;
 import static com.oracle.truffle.wasm.binary.Instructions.I32_DIV_U;
+import static com.oracle.truffle.wasm.binary.Instructions.I32_EQ;
+import static com.oracle.truffle.wasm.binary.Instructions.I32_EQZ;
+import static com.oracle.truffle.wasm.binary.Instructions.I32_LT_S;
 import static com.oracle.truffle.wasm.binary.Instructions.I32_MUL;
+import static com.oracle.truffle.wasm.binary.Instructions.I32_NE;
 import static com.oracle.truffle.wasm.binary.Instructions.I32_OR;
 import static com.oracle.truffle.wasm.binary.Instructions.I32_POPCNT;
 import static com.oracle.truffle.wasm.binary.Instructions.I32_REM_S;
@@ -117,6 +121,40 @@ public class WasmBlockNode extends WasmNode {
                 }
                 case I64_CONST: {
                     Assert.fail("Not implemented");
+                    break;
+                }
+                case I32_EQZ: {
+                    stackPointer--;
+                    int x = popInt(frame, stackPointer);
+                    pushInt(frame, stackPointer, x == 0 ? 1 : 0);
+                    stackPointer++;
+                    break;
+                }
+                case I32_EQ: {
+                    stackPointer--;
+                    int x = popInt(frame, stackPointer);
+                    stackPointer--;
+                    int y = popInt(frame, stackPointer);
+                    pushInt(frame, stackPointer, y == x ? 1 : 0);
+                    stackPointer++;
+                    break;
+                }
+                case I32_NE: {
+                    stackPointer--;
+                    int x = popInt(frame, stackPointer);
+                    stackPointer--;
+                    int y = popInt(frame, stackPointer);
+                    pushInt(frame, stackPointer, y != x ? 1 : 0);
+                    stackPointer++;
+                    break;
+                }
+                case I32_LT_S: {
+                    stackPointer--;
+                    int x = popInt(frame, stackPointer);
+                    stackPointer--;
+                    int y = popInt(frame, stackPointer);
+                    pushInt(frame, stackPointer, y < x ? 1 : 0);
+                    stackPointer++;
                     break;
                 }
                 case I32_CLZ: {
