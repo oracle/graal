@@ -30,6 +30,8 @@
 package com.oracle.truffle.wasm.binary;
 
 public class ValueTypes {
+    public static final int VOID_TYPE = 0x40;
+
     public static final int I32_TYPE = 0x7F;
     public static final int I64_TYPE = 0x7E;
     public static final int F32_TYPE = 0x7D;
