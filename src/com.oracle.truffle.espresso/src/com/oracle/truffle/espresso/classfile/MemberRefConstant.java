@@ -108,10 +108,6 @@ public interface MemberRefConstant extends PoolConstant {
      * <li>R is private and is declared in D.
      * </ul>
      */
-    static boolean sameRuntimePackage(Klass k1, Klass k2) {
-        return k1.getDefiningClassLoader() == k2.getDefiningClassLoader() && k1.getRuntimePackage().equals(k2.getRuntimePackage());
-    }
-
     static boolean checkAccess(Klass accessingKlass, Klass resolvedKlass, Field f) {
         if (f.isPublic()) {
             return true;

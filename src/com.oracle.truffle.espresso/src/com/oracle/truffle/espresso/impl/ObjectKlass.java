@@ -85,6 +85,8 @@ public final class ObjectKlass extends Klass {
     private final Klass hostKlass;
 
     @CompilationFinal(dimensions = 1) private final Method[] vtable;
+
+    // TODO(garcia) Sort itables (according to an arbitrary key) for dichotomic search?
     @CompilationFinal(dimensions = 2) private final Method[][] itable;
     @CompilationFinal(dimensions = 1) private final Klass[] iKlassTable;
     @CompilationFinal private final int itableLength;

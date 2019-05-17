@@ -1304,6 +1304,7 @@ public class BytecodeNode extends EspressoBaseNode implements CustomNodeCount {
                 QuickNode invoke = null;
 
                 if (opCode == INVOKEINTERFACE && resolutionSeed.getITableIndex() < 0) {
+                    // Can happen in old classfiles that calls j.l.Object on interfaces.
                     invoke = InvokeVirtualNodeGen.create(resolutionSeed);
                 } else if (opCode == INVOKEVIRTUAL && (resolutionSeed.isFinal() || resolutionSeed.getDeclaringKlass().isFinalFlagSet())) {
                     invoke = new InvokeSpecialNode(resolutionSeed);
