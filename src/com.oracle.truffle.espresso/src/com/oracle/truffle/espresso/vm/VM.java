@@ -22,6 +22,32 @@
  */
 package com.oracle.truffle.espresso.vm;
 
+import static com.oracle.truffle.espresso.jni.JniVersion.JNI_VERSION_1_1;
+import static com.oracle.truffle.espresso.jni.JniVersion.JNI_VERSION_1_2;
+import static com.oracle.truffle.espresso.jni.JniVersion.JNI_VERSION_1_4;
+import static com.oracle.truffle.espresso.jni.JniVersion.JNI_VERSION_1_6;
+import static com.oracle.truffle.espresso.jni.JniVersion.JNI_VERSION_1_8;
+
+import java.io.File;
+import java.lang.reflect.Array;
+import java.lang.reflect.Field;
+import java.lang.reflect.InvocationTargetException;
+import java.lang.reflect.Parameter;
+import java.nio.ByteBuffer;
+import java.nio.LongBuffer;
+import java.security.ProtectionDomain;
+import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.Collections;
+import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
+import java.util.Properties;
+import java.util.concurrent.ConcurrentHashMap;
+import java.util.function.IntFunction;
+
+import org.graalvm.options.OptionValues;
+
 import com.oracle.truffle.api.CallTarget;
 import com.oracle.truffle.api.RootCallTarget;
 import com.oracle.truffle.api.Truffle;
@@ -65,31 +91,6 @@ import com.oracle.truffle.espresso.runtime.StaticObject;
 import com.oracle.truffle.espresso.substitutions.Host;
 import com.oracle.truffle.espresso.substitutions.SuppressFBWarnings;
 import com.oracle.truffle.nfi.types.NativeSimpleType;
-import org.graalvm.options.OptionValues;
-
-import java.io.File;
-import java.lang.reflect.Array;
-import java.lang.reflect.Field;
-import java.lang.reflect.InvocationTargetException;
-import java.lang.reflect.Parameter;
-import java.nio.ByteBuffer;
-import java.nio.LongBuffer;
-import java.security.ProtectionDomain;
-import java.util.ArrayList;
-import java.util.Arrays;
-import java.util.Collections;
-import java.util.HashMap;
-import java.util.List;
-import java.util.Map;
-import java.util.Properties;
-import java.util.concurrent.ConcurrentHashMap;
-import java.util.function.IntFunction;
-
-import static com.oracle.truffle.espresso.jni.JniVersion.JNI_VERSION_1_1;
-import static com.oracle.truffle.espresso.jni.JniVersion.JNI_VERSION_1_2;
-import static com.oracle.truffle.espresso.jni.JniVersion.JNI_VERSION_1_4;
-import static com.oracle.truffle.espresso.jni.JniVersion.JNI_VERSION_1_6;
-import static com.oracle.truffle.espresso.jni.JniVersion.JNI_VERSION_1_8;
 
 /**
  * Espresso implementation of the VM interface (libjvm).

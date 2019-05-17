@@ -23,10 +23,15 @@
 
 package com.oracle.truffle.espresso.impl;
 
-import java.util.ArrayList;
-import java.util.Arrays;
-import java.util.Collections;
-import java.util.List;
+import static com.oracle.truffle.espresso.classfile.Constants.REF_invokeVirtual;
+import static com.oracle.truffle.espresso.runtime.MethodHandleIntrinsics.PolySigIntrinsics.InvokeBasic;
+import static com.oracle.truffle.espresso.runtime.MethodHandleIntrinsics.PolySigIntrinsics.InvokeGeneric;
+import static com.oracle.truffle.espresso.runtime.MethodHandleIntrinsics.PolySigIntrinsics.LinkToInterface;
+import static com.oracle.truffle.espresso.runtime.MethodHandleIntrinsics.PolySigIntrinsics.LinkToSpecial;
+import static com.oracle.truffle.espresso.runtime.MethodHandleIntrinsics.PolySigIntrinsics.LinkToStatic;
+import static com.oracle.truffle.espresso.runtime.MethodHandleIntrinsics.PolySigIntrinsics.LinkToVirtual;
+import static com.oracle.truffle.espresso.substitutions.Target_java_lang_invoke_MethodHandleNatives.toBasic;
+
 import java.util.function.Function;
 import java.util.function.IntFunction;
 
@@ -55,15 +60,6 @@ import com.oracle.truffle.espresso.substitutions.Host;
 import com.oracle.truffle.espresso.vm.InterpreterToVM;
 import com.oracle.truffle.object.DebugCounter;
 
-import static com.oracle.truffle.espresso.classfile.Constants.REF_invokeVirtual;
-import static com.oracle.truffle.espresso.runtime.MethodHandleIntrinsics.PolySigIntrinsics.InvokeBasic;
-import static com.oracle.truffle.espresso.runtime.MethodHandleIntrinsics.PolySigIntrinsics.InvokeGeneric;
-import static com.oracle.truffle.espresso.runtime.MethodHandleIntrinsics.PolySigIntrinsics.LinkToInterface;
-import static com.oracle.truffle.espresso.runtime.MethodHandleIntrinsics.PolySigIntrinsics.LinkToSpecial;
-import static com.oracle.truffle.espresso.runtime.MethodHandleIntrinsics.PolySigIntrinsics.LinkToStatic;
-import static com.oracle.truffle.espresso.runtime.MethodHandleIntrinsics.PolySigIntrinsics.LinkToVirtual;
-import static com.oracle.truffle.espresso.substitutions.Target_java_lang_invoke_MethodHandleNatives.toBasic;
-
 public abstract class Klass implements ModifiersProvider, ContextAccess {
 
     public static final Klass[] EMPTY_ARRAY = new Klass[0];
@@ -89,6 +85,8 @@ public abstract class Klass implements ModifiersProvider, ContextAccess {
     private volatile StaticObject mirrorCache;
 
     private final boolean isArray;
+
+    @CompilationFinal private int hierarchyDepth = -1;
 
     public final ObjectKlass[] getSuperInterfaces() {
         return superInterfaces;
@@ -235,6 +233,11 @@ public abstract class Klass implements ModifiersProvider, ContextAccess {
      * Determines if this type is either the same as, or is a superclass or superinterface of, the
      * type represented by the specified parameter. This method is identical to
      * {@link Class#isAssignableFrom(Class)} in terms of the value return for this type.
+     * 
+     * Fast check for Object types (as opposed to interface types) -> do not need to walk the entire
+     * class hierarchy.
+     * 
+     * Interface check is still slow, though.
      */
     @TruffleBoundary
     public final boolean isAssignableFrom(Klass other) {
@@ -250,9 +253,15 @@ public abstract class Klass implements ModifiersProvider, ContextAccess {
             return this.getComponentType().isAssignableFrom(other.getComponentType());
         }
         if (isInterface()) {
-            return other.getTransitiveInterfacesList().contains(this);
+            for (Klass k : other.getTransitiveInterfacesList()) {
+                if (k == this) {
+                    return true;
+                }
+            }
+            return false;
         }
-        return other.getSupertypesList(true).contains(this);
+        int depth = getHierarchyDepth();
+        return other.getHierarchyDepth() >= depth && other.getSuperTypes()[depth] == this;
     }
 
     /**
@@ -361,6 +370,9 @@ public abstract class Klass implements ModifiersProvider, ContextAccess {
     public abstract Klass getComponentType();
 
     public final Klass getSupertype() {
+        if (isPrimitive()) {
+            return null;
+        }
         if (isArray()) {
             Klass component = getComponentType();
             if (this == getMeta().Object.array() || component.isPrimitive()) {
@@ -382,57 +394,59 @@ public abstract class Klass implements ModifiersProvider, ContextAccess {
         return !isInterface();
     }
 
-    @CompilationFinal //
-    private List<Klass> supertypesWithSelfCache;
+    @CompilationFinal(dimensions = 1) //
+    private Klass[] supertypesWithSelfCache;
 
+    // index 0 is Object, index hierarchyDepth is this
     @TruffleBoundary
-    private final List<Klass> getSupertypesList(boolean includeSelf) {
-        List<Klass> supertypesWithSelf = getSupertypesList();
-        if (includeSelf) {
-            return supertypesWithSelf;
-        }
-        assert supertypesWithSelf.get(0) == this;
-        // Skip self.
-        return supertypesWithSelf.subList(1, supertypesWithSelf.size());
-    }
-
-    @TruffleBoundary
-    private final List<Klass> getSupertypesList() {
-        List<Klass> supertypes = supertypesWithSelfCache;
+    private Klass[] getSuperTypes() {
+        Klass[] supertypes = supertypesWithSelfCache;
         if (supertypes == null) {
             CompilerDirectives.transferToInterpreterAndInvalidate();
-            supertypes = new ArrayList<>();
-            supertypes.add(this);
             Klass supertype = getSupertype();
-            if (supertype != null) {
-                supertypes.addAll(supertype.getSupertypesList());
+            if (supertype == null) {
+                this.supertypesWithSelfCache = new Klass[]{this};
+                return supertypesWithSelfCache;
             }
-            supertypes = Collections.unmodifiableList(supertypes);
+            Klass[] superKlassTypes = supertype.getSuperTypes();
+            supertypes = new Klass[superKlassTypes.length + 1];
+            int depth = getHierarchyDepth();
+            assert supertypes.length == depth + 1;
+            supertypes[depth] = this;
+            System.arraycopy(superKlassTypes, 0, supertypes, 0, depth);
             supertypesWithSelfCache = supertypes;
         }
         return supertypes;
     }
 
-    @CompilationFinal //
-    private List<ObjectKlass> transitiveInterfacesCache;
+    private int getHierarchyDepth() {
+        int result = hierarchyDepth;
+        if (result == -1) {
+            if (getSupertype() == null) {
+                // Primitives or java.lang.Object
+                result = 0;
+            } else {
+                result = getSupertype().getHierarchyDepth() + 1;
+            }
+            hierarchyDepth = result;
+        }
+        return result;
+    }
+
+    @CompilationFinal(dimensions = 1) private Klass[] transitiveInterfaceCache;
 
     @TruffleBoundary
-    protected final List<ObjectKlass> getTransitiveInterfacesList() {
-        List<ObjectKlass> transitiveInterfaces = transitiveInterfacesCache;
+    protected final Klass[] getTransitiveInterfacesList() {
+        Klass[] transitiveInterfaces = transitiveInterfaceCache;
         if (transitiveInterfaces == null) {
             CompilerDirectives.transferToInterpreterAndInvalidate();
-            List<ObjectKlass> interfaces = new ArrayList<>(Arrays.asList(getInterfaces()));
-            ObjectKlass superclass = getSuperKlass();
-            if (superclass != null) {
-                interfaces.addAll(superclass.getTransitiveInterfacesList());
+            if (this.isArray() || this.isPrimitive()) {
+                transitiveInterfaces = this.getSuperInterfaces();
+            } else {
+                // Use the itable construction.
+                transitiveInterfaces = ((ObjectKlass) this).getiKlassTable();
             }
-            ArrayList<ObjectKlass> flatMapped = new ArrayList<>();
-            for (ObjectKlass i : interfaces) {
-                flatMapped.add(i);
-                flatMapped.addAll(i.getTransitiveInterfacesList());
-            }
-            transitiveInterfaces = Collections.unmodifiableList(flatMapped);
-            transitiveInterfacesCache = transitiveInterfaces;
+            transitiveInterfaceCache = transitiveInterfaces;
         }
         return transitiveInterfaces;
     }
@@ -579,21 +593,29 @@ public abstract class Klass implements ModifiersProvider, ContextAccess {
         return InterpreterToVM.newObject(this);
     }
 
-    // TODO(peterssen): Cache package.
-    public final String getRuntimePackage() {
+    @CompilationFinal private String runtimePackage;
 
-        assert !isArray();
-        String typeString = getType().toString();
-        int lastSlash = typeString.lastIndexOf('/');
-        if (lastSlash < 0)
-            return "";
-        assert typeString.startsWith("L");
-        String pkg = typeString.substring(1, lastSlash);
-        assert !pkg.endsWith(";");
+    public final String getRuntimePackage() {
+        String pkg = runtimePackage;
+        if (runtimePackage == null) {
+            assert !isArray();
+            String typeString = getType().toString();
+            int lastSlash = typeString.lastIndexOf('/');
+            if (lastSlash < 0)
+                return "";
+            assert typeString.startsWith("L");
+            pkg = typeString.substring(1, lastSlash);
+            assert !pkg.endsWith(";");
+            runtimePackage = pkg;
+        }
         return pkg;
     }
 
     public Symbol<Name> getName() {
         return name;
+    }
+
+    boolean sameRuntimePackage(Klass other) {
+        return this.getDefiningClassLoader() == other.getDefiningClassLoader() && this.getRuntimePackage().equals(other.getRuntimePackage());
     }
 }

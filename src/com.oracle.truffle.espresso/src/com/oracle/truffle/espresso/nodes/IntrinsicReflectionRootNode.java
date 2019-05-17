@@ -72,7 +72,7 @@ public class IntrinsicReflectionRootNode extends EspressoBaseNode {
                     inner = inner.getCause();
                 }
 
-                outer.printStackTrace();
+                // outer.printStackTrace();
                 throw outer;
             }
             inner.printStackTrace();

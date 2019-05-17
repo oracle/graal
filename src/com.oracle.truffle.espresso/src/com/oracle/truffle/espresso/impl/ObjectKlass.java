@@ -23,6 +23,9 @@
 
 package com.oracle.truffle.espresso.impl;
 
+import java.util.ArrayList;
+import java.util.List;
+
 import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.CompilerDirectives.CompilationFinal;
 import com.oracle.truffle.espresso.classfile.CodeAttribute;
@@ -40,9 +43,6 @@ import com.oracle.truffle.espresso.runtime.Attribute;
 import com.oracle.truffle.espresso.runtime.EspressoContext;
 import com.oracle.truffle.espresso.runtime.StaticObject;
 import com.oracle.truffle.espresso.substitutions.Host;
-
-import java.util.ArrayList;
-import java.util.List;
 
 /**
  * Resolved non-primitive, non-array types in Espresso.
@@ -150,6 +150,7 @@ public final class ObjectKlass extends Klass {
             this.itable = InterfaceTables.fixTables(this, methodCR.tables, iKlassTable);
         }
         this.itableLength = iKlassTable.length;
+
     }
 
     @Override
@@ -275,16 +276,6 @@ public final class ObjectKlass extends Klass {
     // Need to carefully synchronize, as the work of other threads can erase our own work.
     @Override
     public void initialize() {
-        // // For some reason, doing the reentrant lock this way sometimes solves the memory issue
-        // // in DaCapo lusearch...
-        // // I have no explanation...
-        // if (isPrepared()) {
-        // CompilerDirectives.transferToInterpreterAndInvalidate();
-        // if (!Thread.holdsLock(this)) {
-        // synchronized (this) {
-        // }
-        // }
-        // }
         if (!isInitialized()) { // Skip synchronization and locks if already init.
             CompilerDirectives.transferToInterpreterAndInvalidate();
             actualInit();
@@ -465,13 +456,6 @@ public final class ObjectKlass extends Klass {
                 }
             }
         }
-        // for (Method[] table : itable) {
-        // for (Method m : table) {
-        // if (name == m.getName() && signature == m.getRawSignature()) {
-        // return m;
-        // }
-        // }
-        // }
         assert getSuperKlass().getType() == Type.Object;
         Method m = getSuperKlass().lookupDeclaredMethod(name, signature);
         if (m != null && m.isPublic() && !m.isStatic()) {

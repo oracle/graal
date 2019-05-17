@@ -22,6 +22,9 @@
  */
 package com.oracle.truffle.espresso.meta;
 
+import java.lang.reflect.Constructor;
+import java.lang.reflect.InvocationTargetException;
+
 import com.oracle.truffle.api.CompilerAsserts;
 import com.oracle.truffle.api.CompilerDirectives.CompilationFinal;
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
@@ -41,9 +44,6 @@ import com.oracle.truffle.espresso.runtime.EspressoContext;
 import com.oracle.truffle.espresso.runtime.EspressoException;
 import com.oracle.truffle.espresso.runtime.StaticObject;
 import com.oracle.truffle.espresso.substitutions.Host;
-
-import java.lang.reflect.Constructor;
-import java.lang.reflect.InvocationTargetException;
 
 /**
  * Introspection API to access the guest world from the host. Provides seamless conversions from
@@ -155,6 +155,7 @@ public final class Meta implements ContextAccess {
         NullPointerException = knownKlass(Type.NullPointerException);
         ClassNotFoundException = knownKlass(Type.ClassNotFoundException);
         InterruptedException = knownKlass(Type.InterruptedException);
+        RuntimeException = knownKlass(Type.RuntimeException);
 
         StackOverflowError = knownKlass(Type.StackOverflowError);
         OutOfMemoryError = knownKlass(Type.OutOfMemoryError);
@@ -386,6 +387,7 @@ public final class Meta implements ContextAccess {
     public final ObjectKlass NullPointerException;
     public final ObjectKlass ClassNotFoundException;
     public final ObjectKlass InterruptedException;
+    public final ObjectKlass RuntimeException;
     public final ObjectKlass StackOverflowError;
     public final ObjectKlass OutOfMemoryError;
     public final ObjectKlass ClassCastException;

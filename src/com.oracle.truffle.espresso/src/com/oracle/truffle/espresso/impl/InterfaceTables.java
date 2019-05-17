@@ -210,6 +210,7 @@ class InterfaceTables {
                 Method result = resolveMaximallySpecific(virtualMethod, interfMethod);
                 if (result != virtualMethod) {
                     if (entry.loc == Location.MIRANDAS) {
+                        result = new Method(result);
                         int vtableIndex = virtualMethod.getVTableIndex();
                         vtable[vtableIndex] = result;
                         mirandas[index] = result;
@@ -229,15 +230,16 @@ class InterfaceTables {
         for (Entry entry : entries) {
             switch (entry.loc) {
                 case SUPERVTABLE:
-                    res[pos] = vtable[entry.index];
+                    res[pos] = new Method(vtable[entry.index]);
                     break;
                 case DECLARED:
-                    res[pos] = declared[entry.index];
+                    res[pos] = new Method(declared[entry.index]);
                     break;
                 case MIRANDAS:
-                    res[pos] = mirandas[entry.index];
+                    res[pos] = new Method(mirandas[entry.index]);
                     break;
             }
+            res[pos].setITableIndex(pos);
             pos++;
         }
         return res;

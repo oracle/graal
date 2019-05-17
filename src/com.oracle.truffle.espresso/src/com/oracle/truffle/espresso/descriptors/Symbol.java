@@ -296,6 +296,7 @@ public final class Symbol<T> extends ByteSequence {
         public static final Symbol<Type> ClassNotFoundException = StaticSymbols.putType(ClassNotFoundException.class);
         public static final Symbol<Type> InterruptedException = StaticSymbols.putType(InterruptedException.class);
         public static final Symbol<Type> NegativeArraySizeException = StaticSymbols.putType(NegativeArraySizeException.class);
+        public static final Symbol<Type> RuntimeException = StaticSymbols.putType(RuntimeException.class);
         public static final Symbol<Type> InvocationTargetException = StaticSymbols.putType(java.lang.reflect.InvocationTargetException.class);
 
         public static final Symbol<Type> Thread = StaticSymbols.putType(Thread.class);
