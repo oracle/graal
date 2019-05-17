@@ -67,6 +67,12 @@ public abstract class WasmTest {
                     test("(module (func (result f32) f32.const 3.14 f32.const 2.71 f32.add))", expected(5.85f, 0.001f)),
                     test("(module (func (result f64) f64.const 340.75))", expected(340.75, 0.001)),
                     test("(module (func (result i32) block $B0 (result i32) i32.const 11 end i32.const 21 i32.add))", expected(32)),
+                    test("(module (func (result i32) block $B0 (result i32) i32.const 42 block $B1 (result i32) i32.const 12 end i32.add end))", expected(54)),
+                    test("(module (func (result i32) block $B0 (result i32) i32.const 42 block $B1 (result i32) i32.const 12 i32.const 24 i32.add end i32.sub end))", expected(6)),
+                    test("(module (func (result i32) block $B0 (result i32) i32.const 42 block $B1 (result i32) i32.const 12 i32.const 24 i32.add block $B3 (result i32) i32.const 36 end i32.sub end i32.sub end))",
+                                    expected(42)),
+                    test("(module (func (result i32) block $B0 (result i32) i32.const 42 block $B1 (result i32) i32.const 12 i32.const 24 block $B4 i32.const 0 i32.const 1 i32.const 2 drop drop drop end i32.add block $B3 (result i32) i32.const 36 end i32.sub end i32.sub end))",
+                                    expected(42)),
     };
 
     private static TestElement test(String program, TestData data) {
