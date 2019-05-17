@@ -30,12 +30,6 @@
 package com.oracle.truffle.wasm.binary;
 
 
-import com.oracle.truffle.api.RootCallTarget;
-import com.oracle.truffle.api.Truffle;
-import com.oracle.truffle.wasm.collection.ByteList;
-
-import java.util.ArrayList;
-
 import static com.oracle.truffle.wasm.binary.Instructions.BLOCK;
 import static com.oracle.truffle.wasm.binary.Instructions.DROP;
 import static com.oracle.truffle.wasm.binary.Instructions.END;
@@ -73,6 +67,17 @@ import static com.oracle.truffle.wasm.binary.Instructions.I32_SHR_U;
 import static com.oracle.truffle.wasm.binary.Instructions.I32_SUB;
 import static com.oracle.truffle.wasm.binary.Instructions.I32_XOR;
 import static com.oracle.truffle.wasm.binary.Instructions.I64_CONST;
+import static com.oracle.truffle.wasm.binary.Instructions.I64_EQ;
+import static com.oracle.truffle.wasm.binary.Instructions.I64_EQZ;
+import static com.oracle.truffle.wasm.binary.Instructions.I64_GE_S;
+import static com.oracle.truffle.wasm.binary.Instructions.I64_GE_U;
+import static com.oracle.truffle.wasm.binary.Instructions.I64_GT_S;
+import static com.oracle.truffle.wasm.binary.Instructions.I64_GT_U;
+import static com.oracle.truffle.wasm.binary.Instructions.I64_LE_S;
+import static com.oracle.truffle.wasm.binary.Instructions.I64_LE_U;
+import static com.oracle.truffle.wasm.binary.Instructions.I64_LT_S;
+import static com.oracle.truffle.wasm.binary.Instructions.I64_LT_U;
+import static com.oracle.truffle.wasm.binary.Instructions.I64_NE;
 import static com.oracle.truffle.wasm.binary.Instructions.NOP;
 import static com.oracle.truffle.wasm.binary.Sections.CODE;
 import static com.oracle.truffle.wasm.binary.Sections.CUSTOM;
@@ -87,6 +92,12 @@ import static com.oracle.truffle.wasm.binary.Sections.START;
 import static com.oracle.truffle.wasm.binary.Sections.TABLE;
 import static com.oracle.truffle.wasm.binary.Sections.TYPE;
 import static com.oracle.truffle.wasm.binary.ValueTypes.VOID_TYPE;
+
+import java.util.ArrayList;
+
+import com.oracle.truffle.api.RootCallTarget;
+import com.oracle.truffle.api.Truffle;
+import com.oracle.truffle.wasm.collection.ByteList;
 
 /** Simple recursive-descend parser for the binary WebAssembly format.
  */
@@ -288,7 +299,9 @@ public class BinaryReader extends BinaryStreamReader {
                     state.push();
                     break;
                 case I64_CONST:
-                    Assert.fail("Not implemented");
+                    readSignedInt64(bytesConsumed);
+                    constantLengthTable.add(bytesConsumed[0]);
+                    state.push();
                     break;
                 case F32_CONST:
                     readFloatAsInt32();
@@ -312,6 +325,24 @@ public class BinaryReader extends BinaryStreamReader {
                 case I32_LE_U:
                 case I32_GE_S:
                 case I32_GE_U:
+                    state.pop();
+                    state.pop();
+                    state.push();
+                    break;
+                case I64_EQZ:
+                    state.pop();
+                    state.push();
+                    break;
+                case I64_EQ:
+                case I64_NE:
+                case I64_LT_S:
+                case I64_LT_U:
+                case I64_GT_S:
+                case I64_GT_U:
+                case I64_LE_S:
+                case I64_LE_U:
+                case I64_GE_S:
+                case I64_GE_U:
                     state.pop();
                     state.pop();
                     state.push();

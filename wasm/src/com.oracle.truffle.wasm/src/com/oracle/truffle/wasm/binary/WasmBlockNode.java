@@ -69,6 +69,17 @@ import static com.oracle.truffle.wasm.binary.Instructions.I32_SHR_U;
 import static com.oracle.truffle.wasm.binary.Instructions.I32_SUB;
 import static com.oracle.truffle.wasm.binary.Instructions.I32_XOR;
 import static com.oracle.truffle.wasm.binary.Instructions.I64_CONST;
+import static com.oracle.truffle.wasm.binary.Instructions.I64_EQ;
+import static com.oracle.truffle.wasm.binary.Instructions.I64_EQZ;
+import static com.oracle.truffle.wasm.binary.Instructions.I64_GE_S;
+import static com.oracle.truffle.wasm.binary.Instructions.I64_GE_U;
+import static com.oracle.truffle.wasm.binary.Instructions.I64_GT_S;
+import static com.oracle.truffle.wasm.binary.Instructions.I64_GT_U;
+import static com.oracle.truffle.wasm.binary.Instructions.I64_LE_S;
+import static com.oracle.truffle.wasm.binary.Instructions.I64_LE_U;
+import static com.oracle.truffle.wasm.binary.Instructions.I64_LT_S;
+import static com.oracle.truffle.wasm.binary.Instructions.I64_LT_U;
+import static com.oracle.truffle.wasm.binary.Instructions.I64_NE;
 import static com.oracle.truffle.wasm.binary.Instructions.NOP;
 
 import com.oracle.truffle.api.frame.VirtualFrame;
@@ -127,7 +138,12 @@ public class WasmBlockNode extends WasmNode {
                     break;
                 }
                 case I64_CONST: {
-                    Assert.fail("Not implemented");
+                    long value = BinaryStreamReader.peekSignedInt64(codeEntry().data(), offset, null);
+                    byte constantLength = constantLengthTable[constantOffset];
+                    constantOffset++;
+                    offset += constantLength;
+                    push(frame, stackPointer, value);
+                    stackPointer++;
                     break;
                 }
                 case I32_EQZ: {
@@ -224,6 +240,103 @@ public class WasmBlockNode extends WasmNode {
                     stackPointer--;
                     int y = popInt(frame, stackPointer);
                     pushInt(frame, stackPointer, Integer.compareUnsigned(y, x) >= 0 ? 1 : 0);
+                    stackPointer++;
+                    break;
+                }
+                case I64_EQZ: {
+                    stackPointer--;
+                    long x = pop(frame, stackPointer);
+                    pushInt(frame, stackPointer, x == 0 ? 1 : 0);
+                    stackPointer++;
+                    break;
+                }
+                case I64_EQ: {
+                    stackPointer--;
+                    long x = pop(frame, stackPointer);
+                    stackPointer--;
+                    long y = pop(frame, stackPointer);
+                    pushInt(frame, stackPointer, y == x ? 1 : 0);
+                    stackPointer++;
+                    break;
+                }
+                case I64_NE: {
+                    stackPointer--;
+                    long x = pop(frame, stackPointer);
+                    stackPointer--;
+                    long y = pop(frame, stackPointer);
+                    pushInt(frame, stackPointer, y != x ? 1 : 0);
+                    stackPointer++;
+                    break;
+                }
+                case I64_LT_S: {
+                    stackPointer--;
+                    long x = pop(frame, stackPointer);
+                    stackPointer--;
+                    long y = pop(frame, stackPointer);
+                    pushInt(frame, stackPointer, y < x ? 1 : 0);
+                    stackPointer++;
+                    break;
+                }
+                case I64_LT_U: {
+                    stackPointer--;
+                    long x = pop(frame, stackPointer);
+                    stackPointer--;
+                    long y = pop(frame, stackPointer);
+                    pushInt(frame, stackPointer, Long.compareUnsigned(y, x) < 0 ? 1 : 0);
+                    stackPointer++;
+                    break;
+                }
+                case I64_GT_S: {
+                    stackPointer--;
+                    long x = pop(frame, stackPointer);
+                    stackPointer--;
+                    long y = pop(frame, stackPointer);
+                    pushInt(frame, stackPointer, y > x ? 1 : 0);
+                    stackPointer++;
+                    break;
+                }
+                case I64_GT_U: {
+                    stackPointer--;
+                    long x = pop(frame, stackPointer);
+                    stackPointer--;
+                    long y = pop(frame, stackPointer);
+                    pushInt(frame, stackPointer, Long.compareUnsigned(y, x) > 0 ? 1 : 0);
+                    stackPointer++;
+                    break;
+                }
+                case I64_LE_S: {
+                    stackPointer--;
+                    int x = popInt(frame, stackPointer);
+                    stackPointer--;
+                    int y = popInt(frame, stackPointer);
+                    pushInt(frame, stackPointer, y <= x ? 1 : 0);
+                    stackPointer++;
+                    break;
+                }
+                case I64_LE_U: {
+                    stackPointer--;
+                    long x = pop(frame, stackPointer);
+                    stackPointer--;
+                    long y = pop(frame, stackPointer);
+                    pushInt(frame, stackPointer, Long.compareUnsigned(y, x) <= 0 ? 1 : 0);
+                    stackPointer++;
+                    break;
+                }
+                case I64_GE_S: {
+                    stackPointer--;
+                    long x = pop(frame, stackPointer);
+                    stackPointer--;
+                    long y = pop(frame, stackPointer);
+                    pushInt(frame, stackPointer, y >= x ? 1 : 0);
+                    stackPointer++;
+                    break;
+                }
+                case I64_GE_U: {
+                    stackPointer--;
+                    long x = pop(frame, stackPointer);
+                    stackPointer--;
+                    long y = pop(frame, stackPointer);
+                    pushInt(frame, stackPointer, Long.compareUnsigned(y, x) >= 0 ? 1 : 0);
                     stackPointer++;
                     break;
                 }
