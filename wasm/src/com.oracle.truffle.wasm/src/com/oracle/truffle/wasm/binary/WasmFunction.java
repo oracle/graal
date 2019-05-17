@@ -38,14 +38,13 @@ import com.oracle.truffle.api.library.ExportMessage;
 @ExportLibrary(InteropLibrary.class)
 public class WasmFunction implements TruffleObject {
     private SymbolTable symbolTable;
+    private WasmCodeEntry codeEntry;
     private int typeIndex;
     private RootCallTarget callTarget;
 
-    private byte[] locals;
-    private int offset;
-
     public WasmFunction(SymbolTable symbolTable, int typeIndex) {
         this.symbolTable = symbolTable;
+        this.codeEntry = null;
         this.typeIndex = typeIndex;
         this.callTarget = null;
     }
@@ -56,11 +55,6 @@ public class WasmFunction implements TruffleObject {
 
     void setCallTarget(RootCallTarget callTarget) {
         this.callTarget = callTarget;
-    }
-
-    public void registerLocal(byte type) {
-        locals[offset] = type;
-        offset++;
     }
 
     public RootCallTarget getCallTarget() {
@@ -75,5 +69,13 @@ public class WasmFunction implements TruffleObject {
     @ExportMessage
     Object execute(Object[] arguments) {
         return callTarget.call(arguments);
+    }
+
+    public WasmCodeEntry codeEntry() {
+        return codeEntry;
+    }
+
+    public void setCodeEntry(WasmCodeEntry codeEntry) {
+        this.codeEntry = codeEntry;
     }
 }

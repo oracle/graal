@@ -50,6 +50,8 @@ import static com.oracle.truffle.wasm.binary.Instructions.I32_REM_U;
 import static com.oracle.truffle.wasm.binary.Instructions.I32_SUB;
 import static com.oracle.truffle.wasm.binary.Instructions.I32_XOR;
 import static com.oracle.truffle.wasm.binary.Instructions.I64_CONST;
+import static com.oracle.truffle.wasm.binary.Instructions.LOCAL_GET;
+import static com.oracle.truffle.wasm.binary.Instructions.LOCAL_SET;
 import static com.oracle.truffle.wasm.binary.Instructions.NOP;
 
 import com.oracle.truffle.api.frame.VirtualFrame;
@@ -96,6 +98,74 @@ public class WasmBlockNode extends WasmNode {
                 case DROP: {
                     stackPointer--;
                     pop(frame, stackPointer);
+                    break;
+                }
+                case LOCAL_GET: {
+                    int index = BinaryStreamReader.peekUnsignedInt32(codeEntry().data(), offset, null);
+                    byte constantLength = constantLengthTable[constantOffset];
+                    constantOffset++;
+                    offset += constantLength;
+                    byte type = codeEntry().localType(index);
+                    switch (type) {
+                        case ValueTypes.I32_TYPE: {
+                            int value = getInt(frame, index);
+                            pushInt(frame, stackPointer, value);
+                            stackPointer++;
+                            break;
+                        }
+                        case ValueTypes.I64_TYPE: {
+                            long value = getLong(frame, index);
+                            push(frame, stackPointer, value);
+                            stackPointer++;
+                            break;
+                        }
+                        case ValueTypes.F32_TYPE: {
+                            float value = getFloat(frame, index);
+                            pushFloat(frame, stackPointer, value);
+                            stackPointer++;
+                            break;
+                        }
+                        case ValueTypes.F64_TYPE: {
+                            double value = getDouble(frame, index);
+                            pushDouble(frame, stackPointer, value);
+                            stackPointer++;
+                            break;
+                        }
+                    }
+                    break;
+                }
+                case LOCAL_SET: {
+                    int index = BinaryStreamReader.peekUnsignedInt32(codeEntry().data(), offset, null);
+                    byte constantLength = constantLengthTable[constantOffset];
+                    constantOffset++;
+                    offset += constantLength;
+                    byte type = codeEntry().localType(index);
+                    switch (type) {
+                        case ValueTypes.I32_TYPE: {
+                            stackPointer--;
+                            int value = popInt(frame, stackPointer);
+                            setInt(frame, index, value);
+                            break;
+                        }
+                        case ValueTypes.I64_TYPE: {
+                            stackPointer--;
+                            long value = pop(frame, stackPointer);
+                            setLong(frame, index, value);
+                            break;
+                        }
+                        case ValueTypes.F32_TYPE: {
+                            stackPointer--;
+                            float value = popAsFloat(frame, stackPointer);
+                            setFloat(frame, index, value);
+                            break;
+                        }
+                        case ValueTypes.F64_TYPE: {
+                            stackPointer--;
+                            double value = popAsDouble(frame, stackPointer);
+                            setDouble(frame, index, value);
+                            break;
+                        }
+                    }
                     break;
                 }
                 case I32_CONST: {

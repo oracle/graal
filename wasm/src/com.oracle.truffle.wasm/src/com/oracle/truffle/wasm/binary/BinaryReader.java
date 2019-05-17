@@ -54,6 +54,9 @@ import static com.oracle.truffle.wasm.binary.Instructions.I32_REM_U;
 import static com.oracle.truffle.wasm.binary.Instructions.I32_SUB;
 import static com.oracle.truffle.wasm.binary.Instructions.I32_XOR;
 import static com.oracle.truffle.wasm.binary.Instructions.I64_CONST;
+import static com.oracle.truffle.wasm.binary.Instructions.LOCAL_GET;
+import static com.oracle.truffle.wasm.binary.Instructions.LOCAL_SET;
+import static com.oracle.truffle.wasm.binary.Instructions.LOCAL_TEE;
 import static com.oracle.truffle.wasm.binary.Instructions.NOP;
 import static com.oracle.truffle.wasm.binary.Sections.CODE;
 import static com.oracle.truffle.wasm.binary.Sections.CUSTOM;
@@ -149,6 +152,7 @@ public class BinaryReader extends BinaryStreamReader {
     public void readTypeSection() {
         int numTypes = readVectorLength();
         for (int t = 0; t != numTypes; ++t) {
+            System.err.println("offset: " + offset());
             byte type = read1();
             switch(type) {
                 case 0x60:
@@ -197,7 +201,8 @@ public class BinaryReader extends BinaryStreamReader {
 
         /* Read code entry (function) locals */
         WasmCodeEntry codeEntry = new WasmCodeEntry(data);
-        int numLocals = readCodeEntryLocals();
+        wasmModule.symbolTable().function(funcIndex).setCodeEntry(codeEntry);
+        int numLocals = readCodeEntryLocals(codeEntry);
 
         /* Create the necessary objects for the code entry */
         int expressionSize = codeEntrySize - (offset - startOffset);
@@ -206,7 +211,8 @@ public class BinaryReader extends BinaryStreamReader {
         WasmBlockNode block = new WasmBlockNode(codeEntry, offset, expressionSize, returnTypeId, state.stackSize());
         WasmRootNode rootNode = new WasmRootNode(wasmLanguage, codeEntry, block);
 
-        // TODO: Push a frame slot to the frame descriptor for every local.
+        // Push a frame slot to the frame descriptor for every local.
+        codeEntry.initLocalSlots(rootNode.getFrameDescriptor());
 
         // Abstractly interpret the code entry block.
         readBlock(block, state, returnTypeId);
@@ -217,16 +223,23 @@ public class BinaryReader extends BinaryStreamReader {
         // TODO: For structured code, we need to set the expressionSize later.
     }
 
-    private int readCodeEntryLocals() {
-        int numLocals = readVectorLength();
-        for (int local = 0; local < numLocals; local++) {
-            throw new RuntimeException("Not implemented");
+    private int readCodeEntryLocals(WasmCodeEntry codeEntry) {
+        int numLocalsGroups = readVectorLength();
+        int numLocals = 0;
+        ByteList locals = new ByteList();
+        for (int localGroup = 0; localGroup < numLocalsGroups; localGroup++) {
+            int groupLength = readVectorLength();
+            byte t = readValueType();
+            for (int i = 0; i != groupLength; ++i) {
+                locals.add(t);
+            }
+            numLocals += groupLength;
         }
+        codeEntry.setLocalTypes(locals.toArray());
         return numLocals;
     }
 
     private void initTruffleForCodeEntry(WasmCodeEntry codeEntry, int numLocals, WasmRootNode rootNode, ExecutionState state, int funcIndex) {
-        codeEntry.initLocalSlots(rootNode.getFrameDescriptor(), numLocals);
         codeEntry.initStackSlots(rootNode.getFrameDescriptor(), state.maxStackSize);
         RootCallTarget callTarget = Truffle.getRuntime().createCallTarget(rootNode);
         wasmModule.symbolTable().function(funcIndex).setCallTarget(callTarget);
@@ -263,6 +276,34 @@ public class BinaryReader extends BinaryStreamReader {
                 case DROP:
                     state.pop();
                     break;
+                case LOCAL_GET: {
+                    int localIndex = readLocalIndex(bytesConsumed);
+                    constantLengthTable.add(bytesConsumed[0]);
+                    // TODO: Assert localIndex exists.
+                    currentBlock.codeEntry().localSlot(localIndex);
+                    state.push();
+                    break;
+                }
+                case LOCAL_SET: {
+                    int localIndex = readLocalIndex(bytesConsumed);
+                    constantLengthTable.add(bytesConsumed[0]);
+                    // TODO: Assert localIndex exists
+                    currentBlock.codeEntry().localSlot(localIndex);
+                    // Assert there is a value on the top of the stack.
+                    Assert.assertLarger(state.stackSize(), 0, "local.set requires at least one element in the stack");
+                    state.pop();
+                    break;
+                }
+                case LOCAL_TEE: {
+                    int localIndex = readLocalIndex(bytesConsumed);
+                    constantLengthTable.add(bytesConsumed[0]);
+                    // TODO: Assert localIndex exists
+                    currentBlock.codeEntry().localSlot(localIndex);
+                    // Assert there is a value on the top of the stack.
+                    Assert.assertLarger(state.stackSize(), 0, "local.tee requires at least one element in the stack");
+                    state.push();
+                    break;
+                }
                 case I32_CONST:
                     readSignedInt32(bytesConsumed);
                     constantLengthTable.add(bytesConsumed[0]);
@@ -357,5 +398,13 @@ public class BinaryReader extends BinaryStreamReader {
 
     public int readVectorLength() {
         return readUnsignedInt32();
+    }
+
+    public int readLocalIndex() {
+        return readUnsignedInt32();
+    }
+
+    public int readLocalIndex(byte[] bytesConsumed) {
+        return readUnsignedInt32(bytesConsumed);
     }
 }

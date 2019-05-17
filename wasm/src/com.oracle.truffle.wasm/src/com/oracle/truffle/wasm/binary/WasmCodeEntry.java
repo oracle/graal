@@ -38,11 +38,14 @@ public class WasmCodeEntry {
     @CompilationFinal(dimensions = 1) private byte[] data;
     @CompilationFinal(dimensions = 1) private FrameSlot[] localSlots;
     @CompilationFinal(dimensions = 1) private FrameSlot[] stackSlots;
+    @CompilationFinal(dimensions = 1) private byte[] localTypes;
+
 
     public WasmCodeEntry(byte[] data) {
         this.data = data;
         this.localSlots = null;
         this.stackSlots = null;
+        this.localTypes = null;
     }
 
     public byte[] data() {
@@ -57,12 +60,28 @@ public class WasmCodeEntry {
         return stackSlots[index];
     }
 
-    public void initLocalSlots(FrameDescriptor frameDescriptor, int numLocals) {
-        localSlots = new FrameSlot[numLocals];
-        for (int i = 0; i != numLocals; ++i) {
-            FrameSlot stackSlot = frameDescriptor.addFrameSlot(i, FrameSlotKind.Long);
-            stackSlots[i] = stackSlot;
+    public void initLocalSlots(FrameDescriptor frameDescriptor) {
+        localSlots = new FrameSlot[localTypes.length];
+        for (int i = 0; i != localTypes.length; ++i) {
+            FrameSlot stackSlot = frameDescriptor.addFrameSlot(i, frameSlotKind(localTypes[i]));
+            localSlots[i] = stackSlot;
         }
+    }
+
+    private static FrameSlotKind frameSlotKind(byte valueType) {
+        switch (valueType) {
+            case ValueTypes.I32_TYPE:
+                return FrameSlotKind.Int;
+            case ValueTypes.I64_TYPE:
+                return FrameSlotKind.Long;
+            case ValueTypes.F32_TYPE:
+                return FrameSlotKind.Float;
+            case ValueTypes.F64_TYPE:
+                return FrameSlotKind.Double;
+            default:
+                Assert.fail(String.format("Unknown value type: 0x%02X", valueType));
+        }
+        return null;
     }
 
     public void initStackSlots(FrameDescriptor frameDescriptor, int maxStackSize) {
@@ -71,5 +90,13 @@ public class WasmCodeEntry {
             FrameSlot stackSlot = frameDescriptor.addFrameSlot(localSlots.length + i, FrameSlotKind.Long);
             stackSlots[i] = stackSlot;
         }
+    }
+
+    public void setLocalTypes(byte[] localTypes) {
+        this.localTypes = localTypes;
+    }
+
+    public byte localType(int index) {
+        return localTypes[index];
     }
 }

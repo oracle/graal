@@ -63,9 +63,9 @@ public abstract class BinaryStreamReader {
         byte b;
         do {
             b = peek1(data, offset);
+            offset++;
             result |= ((b & 0x7F) << shift);
             shift += 7;
-            offset++;
         } while ((b & 0x80) != 0);
 
         if ((shift < 32) && (b & 0x40) != 0) {
@@ -73,8 +73,46 @@ public abstract class BinaryStreamReader {
         }
 
         if (bytesConsumed != null) {
-            bytesConsumed[0] = (byte) (shift / 7);
+            bytesConsumed[0] = (byte) (offset - initialOffset);
         }
+        return result;
+    }
+
+    public int readUnsignedInt32() {
+        int value = peekUnsignedInt32(data, offset, bytesConsumed);
+        offset += bytesConsumed[0];
+        return value;
+    }
+
+    public int readUnsignedInt32(byte[] bytesConsumedOut) {
+        byte[] out = bytesConsumedOut != null ? bytesConsumedOut : bytesConsumed;
+        int value = peekUnsignedInt32(data, offset, out);
+        offset += out[0];
+        return value;
+    }
+
+    @ExplodeLoop
+    public static int peekUnsignedInt32(byte[] data, int initialOffset, byte[] bytesConsumed) {
+        int result = 0;
+        int shift = 0;
+        int offset = initialOffset;
+        do {
+            byte b = peek1(data, offset);
+            offset++;
+            result |= (b & 0x7F) << shift;
+            if ((b & 0x80) == 0) {
+                break;
+            }
+            shift += 7;
+        } while (shift < 35);
+        if (shift == 35) {
+            Assert.fail("Unsigned LEB128 overflow");
+        }
+
+        if (bytesConsumed != null) {
+            bytesConsumed[0] = (byte) (offset - initialOffset);
+        }
+
         return result;
     }
 
@@ -91,24 +129,6 @@ public abstract class BinaryStreamReader {
             }
             shift += 7;
             i++;
-        } while (shift < 35);
-        if (shift == 35) {
-            Assert.fail("Unsigned LEB128 overflow");
-        }
-        return result;
-    }
-
-    // This is used for indices, so we don't expect values larger than 2^31.
-    public int readUnsignedInt32() {
-        int result = 0;
-        int shift = 0;
-        do {
-            byte b = read1();
-            result |= (b & 0x7F) << shift;
-            if ((b & 0x80) == 0) {
-                break;
-            }
-            shift += 7;
         } while (shift < 35);
         if (shift == 35) {
             Assert.fail("Unsigned LEB128 overflow");
