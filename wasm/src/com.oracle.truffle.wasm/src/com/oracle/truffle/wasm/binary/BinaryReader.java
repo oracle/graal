@@ -228,8 +228,6 @@ public class BinaryReader extends BinaryStreamReader {
             switch (opcode) {
                 case NOP:
                     break;
-                case END:
-                    break;
                 case BLOCK:
                     byte blockTypeId = readBlockType();
                     int startOffset = offset();
