@@ -985,8 +985,16 @@ suite = {
             "platformDependent" : True,
             "description" : "Native Image support distribution for the GraalVM",
             "layout" : {
-                "LICENSE_NATIVEIMAGE.txt" : "file:LICENSE.md",
                 "bin/rebuild-images" : "file:mx.substratevm/rebuild-images.sh",
+            },
+        },
+
+        "NATIVE_IMAGE_LICENSE_GRAALVM_SUPPORT" : {
+            "native" : True,
+            "platformDependent" : False,
+            "description" : "Native Image support distribution for the GraalVM",
+            "layout" : {
+                "LICENSE_NATIVEIMAGE.txt" : "file:LICENSE.md",
             },
         },
 
