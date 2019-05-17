@@ -46,13 +46,8 @@ public final class Target_java_lang_System {
         arraycopyCount.inc();
         try {
             // Mimics hotspot implementation.
-            if (srcPos < 0 || destPos < 0 || length < 0) {
-                throw new ArrayIndexOutOfBoundsException();
-            }
             if (src.isArray() && dest.isArray()) {
-                if (length + srcPos > src.length() || length + destPos > dest.length()) {
-                    throw new ArrayIndexOutOfBoundsException();
-                }
+                // System.arraycopy does the bounds checks
                 if (src == dest) {
                     // Same array, no need to type check
                     System.arraycopy(src.unwrap(), srcPos, dest.unwrap(), destPos, length);
@@ -72,6 +67,10 @@ public final class Target_java_lang_System {
                         // Use cases:
                         // - System startup.
                         // - MethodHandle and CallSite linking.
+                        if (length < 0 || length + srcPos > src.length() || length + destPos > dest.length()){
+                            // Other checks are caught during execution without side effects.
+                            throw new ArrayIndexOutOfBoundsException();
+                        }
                         StaticObject[] s = src.unwrap();
                         StaticObject[] d = dest.unwrap();
                         for (int i = 0; i < length; i++) {

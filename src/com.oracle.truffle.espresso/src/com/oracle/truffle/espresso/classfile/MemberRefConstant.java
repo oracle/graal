@@ -129,7 +129,7 @@ public interface MemberRefConstant extends PoolConstant {
             }
         }
         if (f.isProtected() || f.isPackagePrivate()) {
-            if (sameRuntimePackage(accessingKlass, fieldKlass)) {
+            if (accessingKlass.sameRuntimePackage(fieldKlass)) {
                 return true;
             }
         }
@@ -173,14 +173,14 @@ public interface MemberRefConstant extends PoolConstant {
             }
         }
         if (m.isProtected() || m.isPackagePrivate()) {
-            if (sameRuntimePackage(accessingKlass, methodKlass)) {
+            if (accessingKlass.sameRuntimePackage(methodKlass)) {
                 return true;
             }
         }
         if (m.isPrivate() && methodKlass == accessingKlass) {
             return true;
         }
-        // MagicAccessorImpl marks internal reflection classes that have access to eveything.
+        // MagicAccessorImpl marks internal reflection classes that have access to everything.
         if (accessingKlass.getMeta().MagicAccessorImpl.isAssignableFrom(accessingKlass)) {
             return true;
         }

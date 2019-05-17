@@ -133,7 +133,7 @@ public interface ClassConstant extends PoolConstant {
             if (accessingKlass == null) {
                 return true;
             }
-            if (klass.isPublic() || klass.getRuntimePackage().equals(accessingKlass.getRuntimePackage())) {
+            if (klass.isPublic() || klass.sameRuntimePackage(accessingKlass)) {
                 return true;
             }
             return (klass.getMeta().MagicAccessorImpl.isAssignableFrom(accessingKlass));
@@ -207,7 +207,7 @@ public interface ClassConstant extends PoolConstant {
          * </ul>
          */
         private static boolean checkAccess(Klass klass, Klass accessingKlass) {
-            if (klass.isPublic() || klass.getRuntimePackage().equals(accessingKlass.getRuntimePackage())) {
+            if (klass.isPublic() || klass.sameRuntimePackage(accessingKlass)) {
                 return true;
             }
             if (klass.getMeta().MagicAccessorImpl.isAssignableFrom(accessingKlass)) {
