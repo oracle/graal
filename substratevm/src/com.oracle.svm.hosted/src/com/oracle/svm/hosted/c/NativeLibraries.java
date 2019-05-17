@@ -24,6 +24,7 @@
  */
 package com.oracle.svm.hosted.c;
 
+import java.io.IOException;
 import java.lang.reflect.AnnotatedElement;
 import java.nio.file.Files;
 import java.nio.file.Path;
@@ -31,6 +32,8 @@ import java.nio.file.Paths;
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.HashMap;
+import java.util.LinkedHashMap;
+import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.stream.Collectors;
@@ -86,8 +89,9 @@ public final class NativeLibraries {
     private final ResolvedJavaType enumType;
     private final ResolvedJavaType locationIdentityType;
 
-    private final List<String> libraries;
-    private final List<String> libraryPaths;
+    private final LinkedHashSet<String> libraries;
+    private final LinkedHashSet<String> staticLibraries;
+    private final LinkedHashSet<String> libraryPaths;
 
     private final List<CInterfaceError> errors;
     private final ConstantReflectionProvider constantReflection;
@@ -115,7 +119,8 @@ public final class NativeLibraries {
         enumType = metaAccess.lookupJavaType(Enum.class);
         locationIdentityType = metaAccess.lookupJavaType(LocationIdentity.class);
 
-        libraries = new ArrayList<>();
+        libraries = new LinkedHashSet<>();
+        staticLibraries = new LinkedHashSet<>();
         libraryPaths = initCLibraryPath();
 
         this.cache = new CAnnotationProcessorCache();
@@ -133,8 +138,11 @@ public final class NativeLibraries {
         return target;
     }
 
-    private static List<String> initCLibraryPath() {
-        List<String> libraryPaths = new ArrayList<>();
+    private static final String libPrefix = OS.getCurrent() == OS.WINDOWS ? "" : "lib";
+    private static final String libSuffix = OS.getCurrent() == OS.WINDOWS ? ".lib" : ".a";
+
+    private static LinkedHashSet<String> initCLibraryPath() {
+        LinkedHashSet<String> libraryPaths = new LinkedHashSet<>();
 
         Path staticLibsDir = null;
 
@@ -147,8 +155,6 @@ public final class NativeLibraries {
                         return false;
                     }
                     String libName = path.getFileName().toString();
-                    String libPrefix = OS.getCurrent() == OS.WINDOWS ? "" : "lib";
-                    String libSuffix = OS.getCurrent() == OS.WINDOWS ? ".lib" : ".a";
                     if (!(libName.startsWith(libPrefix) && libName.endsWith(libSuffix))) {
                         return false;
                     }
@@ -224,15 +230,38 @@ public final class NativeLibraries {
         }
     }
 
-    public void addLibrary(String library) {
-        libraries.add(library);
+    public void addLibrary(String library, boolean requireStatic) {
+        (requireStatic ? staticLibraries : libraries).add(library);
     }
 
     public Collection<String> getLibraries() {
         return libraries;
     }
 
-    public List<String> getLibraryPaths() {
+    public Collection<Path> getStaticLibraries() {
+        Map<Path, Path> allStaticLibs = new LinkedHashMap<>();
+        for (String libraryPath : getLibraryPaths()) {
+            try {
+                Files.list(Paths.get(libraryPath))
+                                .filter(Files::isRegularFile)
+                                .filter(path -> path.getFileName().toString().endsWith(libSuffix))
+                                .forEachOrdered(candidate -> allStaticLibs.put(candidate.getFileName(), candidate));
+            } catch (IOException e) {
+                UserError.abort("Invalid library path " + libraryPath, e);
+            }
+        }
+        List<Path> staticLibs = new ArrayList<>();
+        for (String staticLibraryName : staticLibraries) {
+            Path libraryPath = allStaticLibs.get(Paths.get(libPrefix + staticLibraryName + libSuffix));
+            if (libraryPath == null) {
+                continue;
+            }
+            staticLibs.add(libraryPath);
+        }
+        return staticLibs;
+    }
+
+    public Collection<String> getLibraryPaths() {
         return libraryPaths;
     }
 

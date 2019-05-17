@@ -1515,7 +1515,7 @@ public class NativeImageGenerator {
             classInitializationSupport.initializeAtBuildTime(clazz, "classes annotated with " + CContext.class.getSimpleName() + " are always initialized");
         }
         for (CLibrary library : loader.findAnnotations(CLibrary.class)) {
-            nativeLibs.addLibrary(library.value());
+            nativeLibs.addLibrary(library.value(), library.requireStatic());
         }
 
         nativeLibs.finish(tempDirectory());

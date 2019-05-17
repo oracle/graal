@@ -135,7 +135,7 @@ import com.oracle.svm.hosted.jni.JNIRuntimeAccess;
 
 @Platforms({InternalPlatform.LINUX_JNI.class, InternalPlatform.DARWIN_JNI.class})
 @AutomaticFeature
-@CLibrary("java")
+@CLibrary(value = "java", requireStatic = true)
 class PosixJavaIOSubstituteFeature implements Feature {
 
     @Override

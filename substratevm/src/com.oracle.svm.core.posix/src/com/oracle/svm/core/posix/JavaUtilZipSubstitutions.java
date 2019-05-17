@@ -739,7 +739,7 @@ public final class JavaUtilZipSubstitutions {
 }
 
 @Platforms({InternalPlatform.LINUX_JNI.class, InternalPlatform.DARWIN_JNI.class})
-@CLibrary("zip")
+@CLibrary(value = "zip", requireStatic = true)
 final class JavaUtilZipJNISubstitutions {
 
     private JavaUtilZipJNISubstitutions() {
