@@ -153,16 +153,20 @@ graal_truffle_opens_packages = [
     'org.graalvm.truffle/com.oracle.truffle.api.impl',]
 GRAAL_COMPILER_FLAGS_MAP['11'].extend(add_opens_from_packages(graal_truffle_opens_packages))
 
+# Currently JDK 13 and JDK 11 have the same flags
+GRAAL_COMPILER_FLAGS_MAP['13'] = GRAAL_COMPILER_FLAGS_MAP['11']
+
 def svm_java_compliance():
     return mx.get_jdk(tag='default').javaCompliance
 
 def svm_java8():
     return svm_java_compliance() <= mx.JavaCompliance('1.8')
 
-if svm_java8():
-    GRAAL_COMPILER_FLAGS = GRAAL_COMPILER_FLAGS_BASE + GRAAL_COMPILER_FLAGS_MAP['8']
-else:
-    GRAAL_COMPILER_FLAGS = GRAAL_COMPILER_FLAGS_BASE + GRAAL_COMPILER_FLAGS_MAP['11']
+# The list of supported Java versions is implicitly defined via GRAAL_COMPILER_FLAGS_MAP:
+# If there are no compiler flags for a Java version, it is also not supported.
+if not str(svm_java_compliance().value) in GRAAL_COMPILER_FLAGS_MAP:
+    mx.abort("Substrate VM does not support this Java version: " + str(svm_java_compliance()))
+GRAAL_COMPILER_FLAGS = GRAAL_COMPILER_FLAGS_BASE + GRAAL_COMPILER_FLAGS_MAP[str(svm_java_compliance().value)]
 
 IMAGE_ASSERTION_FLAGS = ['-H:+VerifyGraalGraphs', '-H:+VerifyPhases']
 suite = mx.suite('substratevm')
@@ -1168,6 +1172,7 @@ def build(args, vm=None):
                 print('Write file ' + flags_path)
                 f.write(flags_contents)
 
+    update_if_needed("versions", GRAAL_COMPILER_FLAGS_MAP.keys())
     for version_tag in GRAAL_COMPILER_FLAGS_MAP:
         update_if_needed(version_tag, GRAAL_COMPILER_FLAGS_BASE + GRAAL_COMPILER_FLAGS_MAP[version_tag])
 

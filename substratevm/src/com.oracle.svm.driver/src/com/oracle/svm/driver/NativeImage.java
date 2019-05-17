@@ -109,10 +109,14 @@ public class NativeImage {
 
     private static Map<String, String[]> getCompilerFlags() {
         Map<String, String[]> result = new HashMap<>();
-        for (String versionTag : Arrays.asList("8", "11")) {
-            result.put(versionTag, getResource("/graal-compiler-flags-" + versionTag + ".config").split("\n"));
+        for (String versionTag : getResource(flagsFileName("versions")).split("\n")) {
+            result.put(versionTag, getResource(flagsFileName(versionTag)).split("\n"));
         }
         return result;
+    }
+
+    private static String flagsFileName(String versionTag) {
+        return "/graal-compiler-flags-" + versionTag + ".config";
     }
 
     static final Map<String, String[]> graalCompilerFlags = getCompilerFlags();

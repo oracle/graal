@@ -289,6 +289,40 @@ public class Inflation extends BigBang {
         }
     }
 
+    /** Modified copy of {@link Arrays#equals(Object[], Object[])}. */
+    private static boolean shallowEquals(Object[] a, Object[] a2) {
+        if (a == a2) {
+            return true;
+        } else if (a == null || a2 == null) {
+            return false;
+        }
+        int length = a.length;
+        if (a2.length != length) {
+            return false;
+        }
+        for (int i = 0; i < length; i++) {
+            /* Modification: use reference equality. */
+            if (a[i] != a2[i]) {
+                return false;
+            }
+        }
+        return true;
+    }
+
+    /** Modified copy of {@link Arrays#hashCode(Object[])}. */
+    private static int shallowHashCode(Object[] a) {
+        if (a == null) {
+            return 0;
+        }
+        int result = 1;
+
+        for (Object element : a) {
+            /* Modification: use identity hash code. */
+            result = 31 * result + System.identityHashCode(element);
+        }
+        return result;
+    }
+
     class AnnotatedInterfacesEncodingKey {
         final AnnotatedType[] interfaces;
 
@@ -296,14 +330,22 @@ public class Inflation extends BigBang {
             this.interfaces = aInterfaces;
         }
 
+        /*
+         * JDK 12 introduced a broken implementation of hashCode() and equals() for the
+         * implementation classes of annotated types, leading to an infinite recursion. Tracked as
+         * JDK-8224012. As a workaround, we use shallow implementations that only depend on the
+         * identity hash code and reference equality. This is the same behavior as on JDK 8 and JDK
+         * 11 anyway.
+         */
+
         @Override
         public boolean equals(Object obj) {
-            return obj instanceof AnnotatedInterfacesEncodingKey && Arrays.equals(interfaces, ((AnnotatedInterfacesEncodingKey) obj).interfaces);
+            return obj instanceof AnnotatedInterfacesEncodingKey && shallowEquals(interfaces, ((AnnotatedInterfacesEncodingKey) obj).interfaces);
         }
 
         @Override
         public int hashCode() {
-            return Arrays.hashCode(interfaces);
+            return shallowHashCode(interfaces);
         }
     }
 

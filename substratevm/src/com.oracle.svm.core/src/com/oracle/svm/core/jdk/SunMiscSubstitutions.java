@@ -340,20 +340,20 @@ final class Target_jdk_internal_perf_PerfCounter {
     }
 }
 
-@TargetClass(classNameProvider = Package_jdk_internal_misc.class, className = "SharedSecrets")
-final class Target_jdk_internal_misc_SharedSecrets {
+@TargetClass(classNameProvider = Package_jdk_internal_access.class, className = "SharedSecrets")
+final class Target_jdk_internal_access_SharedSecrets {
     @Substitute
-    private static Target_jdk_internal_misc_JavaAWTAccess getJavaAWTAccess() {
+    private static Target_jdk_internal_access_JavaAWTAccess getJavaAWTAccess() {
         return null;
     }
 }
 
-@TargetClass(classNameProvider = Package_jdk_internal_misc.class, className = "JavaAWTAccess")
-final class Target_jdk_internal_misc_JavaAWTAccess {
+@TargetClass(classNameProvider = Package_jdk_internal_access.class, className = "JavaAWTAccess")
+final class Target_jdk_internal_access_JavaAWTAccess {
 }
 
-@TargetClass(classNameProvider = Package_jdk_internal_misc.class, className = "JavaLangAccess")
-final class Target_jdk_internal_misc_JavaLangAccess {
+@TargetClass(classNameProvider = Package_jdk_internal_access.class, className = "JavaLangAccess")
+final class Target_jdk_internal_access_JavaLangAccess {
 }
 
 @Platforms(Platform.HOSTED_ONLY.class)
