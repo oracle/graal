@@ -141,7 +141,7 @@ Designator<out n>
 |
 UnaryOp CastExpr<out n>
 |
-"sizeof" "(" Type ")"	
+"sizeof" "(" Type ")"
 .
 
 UnaryOp
@@ -245,7 +245,7 @@ LogAndExpr<out LLVMExpressionNode n>	(. LLVMExpressionNode n1=null; .)
 =
 OrExpr<out n> 
 {
-	 "&&" OrExpr<out n1>		
+	 "&&" OrExpr<out n1>	(. n= new DebugExprSCENode(n, n1, DebugExprSCENode.SCEKind.AND); .)	
 }
 .
 
@@ -253,7 +253,7 @@ LogOrExpr<out LLVMExpressionNode n>	(. LLVMExpressionNode n1=null; .)
 =
 LogAndExpr<out n> 
 {
-	 "||" LogAndExpr<out n1>	
+	 "||" LogAndExpr<out n1>	(. n= new DebugExprSCENode(n, n1, DebugExprSCENode.SCEKind.OR); .)	
 }
 .
 

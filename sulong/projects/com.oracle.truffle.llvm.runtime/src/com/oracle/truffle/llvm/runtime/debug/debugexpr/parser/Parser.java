@@ -493,6 +493,7 @@ public NodeFactory NF() {return context.getNodeFactory(); }
 		while (la.kind == 32) {
 			Get();
 			n1 = OrExpr();
+			n= new DebugExprSCENode(n, n1, DebugExprSCENode.SCEKind.AND); 
 		}
 		return n;
 	}
@@ -504,6 +505,7 @@ public NodeFactory NF() {return context.getNodeFactory(); }
 		while (la.kind == 33) {
 			Get();
 			n1 = LogAndExpr();
+			n= new DebugExprSCENode(n, n1, DebugExprSCENode.SCEKind.OR); 
 		}
 		return n;
 	}
