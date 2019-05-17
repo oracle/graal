@@ -34,7 +34,23 @@ import com.oracle.truffle.api.RootCallTarget;
 import com.oracle.truffle.api.Truffle;
 import com.oracle.truffle.wasm.collection.ByteList;
 
-import static com.oracle.truffle.wasm.binary.Instructions.*;
+import java.util.ArrayList;
+
+import static com.oracle.truffle.wasm.binary.Instructions.BLOCK;
+import static com.oracle.truffle.wasm.binary.Instructions.DROP;
+import static com.oracle.truffle.wasm.binary.Instructions.END;
+import static com.oracle.truffle.wasm.binary.Instructions.F32_ADD;
+import static com.oracle.truffle.wasm.binary.Instructions.F32_CONST;
+import static com.oracle.truffle.wasm.binary.Instructions.F64_CONST;
+import static com.oracle.truffle.wasm.binary.Instructions.I32_ADD;
+import static com.oracle.truffle.wasm.binary.Instructions.I32_AND;
+import static com.oracle.truffle.wasm.binary.Instructions.I32_CONST;
+import static com.oracle.truffle.wasm.binary.Instructions.I32_MUL;
+import static com.oracle.truffle.wasm.binary.Instructions.I32_OR;
+import static com.oracle.truffle.wasm.binary.Instructions.I32_SUB;
+import static com.oracle.truffle.wasm.binary.Instructions.I32_XOR;
+import static com.oracle.truffle.wasm.binary.Instructions.I64_CONST;
+import static com.oracle.truffle.wasm.binary.Instructions.NOP;
 import static com.oracle.truffle.wasm.binary.Sections.CODE;
 import static com.oracle.truffle.wasm.binary.Sections.CUSTOM;
 import static com.oracle.truffle.wasm.binary.Sections.DATA;
@@ -221,6 +237,7 @@ public class BinaryReader extends BinaryStreamReader {
 
     private void readBlock(WasmBlockNode currentBlock, ExecutionState state, byte returnTypeId) {
         ByteList constantLengthTable = new ByteList();
+        ArrayList<WasmNode> nestedControlTable = new ArrayList<>();
         int opcode;
         int startStackSize = state.stackSize();
         do {
@@ -236,6 +253,9 @@ public class BinaryReader extends BinaryStreamReader {
                     WasmBlockNode blockNode = new WasmBlockNode(currentBlock.codeEntry(), offset(), -1, blockTypeId, state.stackSize());
                     readBlock(blockNode, state, blockTypeId);
                     blockNode.setSize(offset() - startOffset);
+                    nestedControlTable.add(blockNode);
+                    break;
+                case END:
                     break;
                 case DROP:
                     state.pop();
@@ -271,8 +291,9 @@ public class BinaryReader extends BinaryStreamReader {
                     Assert.fail(Assert.format("Unknown opcode: 0x%02x", opcode));
                     break;
             }
-        } while (opcode != 0x0B);
+        } while (opcode != END);
         currentBlock.constantLengthTable = constantLengthTable.toArray();
+        currentBlock.nestedControlTable = nestedControlTable.toArray(new WasmNode[nestedControlTable.size()]);
         checkValidStateOnBlockExit(returnTypeId, state, startStackSize);
     }
 
@@ -321,30 +342,6 @@ public class BinaryReader extends BinaryStreamReader {
             default:
                 Assert.fail(String.format("Invalid return value specifier: 0x%02X", b));
         }
-    }
-
-    public byte readBlockType() {
-        byte type = peek1();
-        switch (type) {
-            case 0x40:
-                return read1();
-            default:
-                return readValueType();
-        }
-    }
-
-    public byte readValueType() {
-        byte b = read1();
-        switch (b) {
-            case 0x7F:  // i32
-            case 0x7E:  // i64
-            case 0x7D:  // f32
-            case 0x7C:  // f64
-                break;
-            default:
-                Assert.fail(String.format("Invalid value type: 0x%02X", b));
-        }
-        return b;
     }
 
     public boolean isEOF() {

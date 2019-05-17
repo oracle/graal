@@ -31,38 +31,60 @@ package com.oracle.truffle.wasm.binary;
 
 import static com.oracle.truffle.api.CompilerDirectives.CompilationFinal;
 import static com.oracle.truffle.wasm.binary.Assert.format;
-import static com.oracle.truffle.wasm.binary.Instructions.*;
+
+import static com.oracle.truffle.wasm.binary.Instructions.BLOCK;
+import static com.oracle.truffle.wasm.binary.Instructions.DROP;
+import static com.oracle.truffle.wasm.binary.Instructions.END;
+import static com.oracle.truffle.wasm.binary.Instructions.F32_ADD;
+import static com.oracle.truffle.wasm.binary.Instructions.F32_CONST;
+import static com.oracle.truffle.wasm.binary.Instructions.F64_CONST;
+import static com.oracle.truffle.wasm.binary.Instructions.I32_ADD;
+import static com.oracle.truffle.wasm.binary.Instructions.I32_AND;
+import static com.oracle.truffle.wasm.binary.Instructions.I32_CONST;
+import static com.oracle.truffle.wasm.binary.Instructions.I32_MUL;
+import static com.oracle.truffle.wasm.binary.Instructions.I32_OR;
+import static com.oracle.truffle.wasm.binary.Instructions.I32_SUB;
+import static com.oracle.truffle.wasm.binary.Instructions.I64_CONST;
+import static com.oracle.truffle.wasm.binary.Instructions.NOP;
 
 import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.api.nodes.ExplodeLoop;
 
 public class WasmBlockNode extends WasmNode {
     @CompilationFinal private final int startOffset;
-    @CompilationFinal private int size;
-    @CompilationFinal private final byte typeId;
+    @CompilationFinal private final byte returnTypeId;
     @CompilationFinal private final int initialStackPointer;
-    @CompilationFinal byte[] constantLengthTable;
+    @CompilationFinal(dimensions = 1) byte[] constantLengthTable;
+    @CompilationFinal(dimensions = 1) WasmNode[] nestedControlTable;
 
-    public WasmBlockNode(WasmCodeEntry codeEntry, int startOffset, int size, byte typeId, int initialStackPointer) {
-        super(codeEntry);
+    public WasmBlockNode(WasmCodeEntry codeEntry, int startOffset, int size, byte returnTypeId, int initialStackPointer) {
+        super(codeEntry, size);
         this.startOffset = startOffset;
-        this.size = size;
-        this.typeId = typeId;
+        this.returnTypeId = returnTypeId;
         this.initialStackPointer = initialStackPointer;
         this.constantLengthTable = null;
+        this.nestedControlTable = null;
     }
 
     @ExplodeLoop
     public void execute(VirtualFrame frame) {
         int constantOffset = 0;
+        int nestedControlOffset = 0;
         int stackPointer = initialStackPointer;
         int offset = startOffset;
-        while (offset < startOffset + size) {
+        while (offset < startOffset + size()) {
             byte byteOpcode = BinaryStreamReader.peek1(codeEntry().data(), offset);
             int opcode = byteOpcode & 0xFF;
             offset++;
             switch (opcode) {
                 case NOP:
+                    break;
+                case BLOCK:
+                    WasmNode block = nestedControlTable[nestedControlOffset];
+                    block.execute(frame);
+                    nestedControlOffset++;
+                    offset += block.size();
+                    stackPointer += block.returnTypeLength();
                     break;
                 case END:
                     break;
@@ -167,11 +189,18 @@ public class WasmBlockNode extends WasmNode {
         }
     }
 
-    public byte typeId() {
-        return typeId;
+    public byte returnTypeId() {
+        return returnTypeId;
     }
 
-    public void setSize(int size) {
-        this.size = size;
+    @Override
+    public int returnTypeLength() {
+        switch (returnTypeId()) {
+            case 0x00:
+            case 0x40:
+                return 0;
+            default:
+                return 1;
+        }
     }
 }

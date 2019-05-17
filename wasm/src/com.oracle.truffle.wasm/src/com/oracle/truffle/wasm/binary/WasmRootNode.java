@@ -48,7 +48,7 @@ public class WasmRootNode extends RootNode implements WasmNodeInterface {
     public Object execute(VirtualFrame frame) {
         body.execute(frame);
         long returnValue = pop(frame, 0);
-        switch (body.typeId()) {
+        switch (body.returnTypeId()) {
             case ValueTypes.I32_TYPE:
                 Assert.assertEquals(returnValue >>> 32, 0, "Expected i32 value, popped value was larger than 32 bits.");
                 return (int) (returnValue & 0xffffffff);
@@ -60,7 +60,7 @@ public class WasmRootNode extends RootNode implements WasmNodeInterface {
             case ValueTypes.F64_TYPE:
                 return Double.longBitsToDouble(returnValue);
             default:
-                Assert.fail(String.format("Unknown type: 0x%02X", body.typeId()));
+                Assert.fail(String.format("Unknown type: 0x%02X", body.returnTypeId()));
                 return null;
         }
     }

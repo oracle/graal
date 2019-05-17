@@ -189,4 +189,41 @@ public abstract class BinaryStreamReader {
     public int offset() {
         return offset;
     }
+
+    public static byte peekBlockType(byte[] data, int offset) {
+        byte type = peek1(data, offset);
+        switch (type) {
+            case 0x40:
+                return type;
+            default:
+                return peekValueType(data, offset);
+        }
+    }
+
+    public byte readBlockType() {
+        byte type = peekBlockType(data, offset);
+        offset++;
+        return type;
+    }
+
+    public static byte peekValueType(byte[] data, int offset) {
+        byte b = peek1(data, offset);
+        switch (b) {
+            case 0x7F:  // i32
+            case 0x7E:  // i64
+            case 0x7D:  // f32
+            case 0x7C:  // f64
+                break;
+            default:
+                Assert.fail(String.format("Invalid value type: 0x%02X", b));
+        }
+        return b;
+    }
+
+    public byte readValueType() {
+        byte b = peekValueType(data, offset);
+        offset++;
+        return b;
+    }
+
 }
