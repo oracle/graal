@@ -27,10 +27,13 @@ package com.oracle.svm.reflect.target;
 
 // Checkstyle: allow reflection
 
+import com.oracle.svm.core.SubstrateUtil;
 import com.oracle.svm.core.annotate.Substitute;
 import com.oracle.svm.core.annotate.TargetClass;
 import com.oracle.svm.core.jdk.Package_jdk_internal_misc;
 import com.oracle.svm.core.util.VMError;
+
+import java.lang.reflect.Field;
 
 @TargetClass(classNameProvider = Package_jdk_internal_misc.class, className = "Unsafe")
 @SuppressWarnings({"static-method"})
@@ -51,5 +54,19 @@ public final class Target_jdk_internal_misc_Unsafe_Reflection {
                         "Then, implement the method beforeAnalysis(org.graalvm.nativeimage.BeforeAnalysisAccess config). " +
                         "Next, use the config object to register the field for unsafe access by calling config.registerAsUnsafeAccessed(java.lang.reflect.Field) method. " +
                         "Finally, specify the custom feature to the native image building tool using the -H:Features=MyCustomFeature option.");
+    }
+
+    @Substitute
+    public long objectFieldOffset(Class<?> c, String name) {
+        if (c == null || name == null) {
+            throw new NullPointerException();
+        }
+        try {
+            Field field = c.getField(name);
+            Target_java_lang_reflect_Field cast = SubstrateUtil.cast(field, Target_java_lang_reflect_Field.class);
+            return objectFieldOffset(cast);
+        } catch ( NoSuchFieldException nse) {
+            throw new InternalError();
+        }
     }
 }
