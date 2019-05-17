@@ -893,7 +893,7 @@ public final class DynamicHub implements JavaKind.FormatWithToString, AnnotatedE
     public static final class ReflectionData {
         final Field[] declaredFields;
         final Field[] publicFields;
-        final Field[] publicUnshadowedFields;
+        final Field[] publicUnhiddenFields;
         final Method[] declaredMethods;
         final Method[] publicMethods;
         final Constructor<?>[] declaredConstructors;
@@ -910,12 +910,12 @@ public final class DynamicHub implements JavaKind.FormatWithToString, AnnotatedE
          */
         final Executable enclosingMethodOrConstructor;
 
-        public ReflectionData(Field[] declaredFields, Field[] publicFields, Field[] publicUnshadowedFields, Method[] declaredMethods, Method[] publicMethods, Constructor<?>[] declaredConstructors,
+        public ReflectionData(Field[] declaredFields, Field[] publicFields, Field[] publicUnhiddenFields, Method[] declaredMethods, Method[] publicMethods, Constructor<?>[] declaredConstructors,
                         Constructor<?>[] publicConstructors, Constructor<?> nullaryConstructor, Field[] declaredPublicFields, Method[] declaredPublicMethods, Class<?>[] declaredClasses,
                         Class<?>[] publicClasses, Executable enclosingMethodOrConstructor) {
             this.declaredFields = declaredFields;
             this.publicFields = publicFields;
-            this.publicUnshadowedFields = publicUnshadowedFields;
+            this.publicUnhiddenFields = publicUnhiddenFields;
             this.declaredMethods = declaredMethods;
             this.publicMethods = publicMethods;
             this.declaredConstructors = declaredConstructors;
@@ -958,7 +958,7 @@ public final class DynamicHub implements JavaKind.FormatWithToString, AnnotatedE
          * The original code of getField() does a recursive search to avoid creating objects for all
          * public fields. We prepare them during the image build and can just iterate here.
          *
-         * Note that we only search fields that are not shadowed by other fields because those are
+         * Note that we only search those fields which are not hidden by other fields which are
          * possibly not registered for reflective access. For example:
          *
          * class A { public int field; public static int staticField; } // both registered
@@ -966,9 +966,9 @@ public final class DynamicHub implements JavaKind.FormatWithToString, AnnotatedE
          * class B extends A { public int field; public static int staticField; } // not registered
          *
          * Here, we do not want B.class.getField("field") to return A.field; same applies to
-         * staticField. Note that shadowed fields of A are still returned by B.class.getFields().
+         * staticField. Note that hidden fields of A are still returned by B.class.getFields().
          */
-        for (Field field : rd.publicUnshadowedFields) {
+        for (Field field : rd.publicUnhiddenFields) {
             if (field.getName().equals(name)) {
                 return field;
             }
