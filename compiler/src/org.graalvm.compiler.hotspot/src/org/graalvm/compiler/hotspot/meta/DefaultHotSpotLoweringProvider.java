@@ -222,11 +222,8 @@ public class DefaultHotSpotLoweringProvider extends DefaultJavaLoweringProvider 
         instanceofSnippets = new InstanceOfSnippets.Templates(options, factories, runtime, providers, target);
         newObjectSnippets = new NewObjectSnippets.Templates(options, factories, runtime, providers, target, config);
         monitorSnippets = new MonitorSnippets.Templates(options, factories, runtime, providers, target, config.useFastLocking);
-        if (config.useG1GC) {
-            g1WriteBarrierSnippets = new HotSpotG1WriteBarrierSnippets.Templates(options, factories, runtime, providers, target, config);
-        } else {
-            serialWriteBarrierSnippets = new HotSpotSerialWriteBarrierSnippets.Templates(options, factories, runtime, providers, target, config);
-        }
+        g1WriteBarrierSnippets = new HotSpotG1WriteBarrierSnippets.Templates(options, factories, runtime, providers, target, config);
+        serialWriteBarrierSnippets = new HotSpotSerialWriteBarrierSnippets.Templates(options, factories, runtime, providers, target, config);
         exceptionObjectSnippets = new LoadExceptionObjectSnippets.Templates(options, factories, providers, target);
         unsafeLoadSnippets = new UnsafeLoadSnippets.Templates(options, factories, providers, target);
         assertionSnippets = new AssertionSnippets.Templates(options, factories, providers, target);
