@@ -44,6 +44,7 @@ public abstract class WasmNode extends Node implements WasmNodeInterface {
     }
 
     public abstract void execute(VirtualFrame frame);
+
     public abstract int returnTypeLength();
 
     @Override
