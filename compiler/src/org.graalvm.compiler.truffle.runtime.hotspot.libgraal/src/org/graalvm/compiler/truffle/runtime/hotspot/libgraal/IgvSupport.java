@@ -28,6 +28,7 @@ import static org.graalvm.libgraal.LibGraal.getIsolateThread;
 
 import java.io.Closeable;
 import java.io.IOException;
+import java.nio.Buffer;
 import java.nio.ByteBuffer;
 import java.nio.channels.WritableByteChannel;
 import java.nio.file.Files;
@@ -170,6 +171,13 @@ final class IgvSupport extends SVMObject implements TruffleDebugContext {
             super(handle);
         }
 
+        /**
+         * See {@code org.graalvm.compiler.serviceprovider.BufferUtil}.
+         */
+        static Buffer asBaseBuffer(Buffer obj) {
+            return obj;
+        }
+
         @Override
         public int write(ByteBuffer src) throws IOException {
             if (src.hasArray()) {
@@ -180,7 +188,7 @@ final class IgvSupport extends SVMObject implements TruffleDebugContext {
             int limit = src.limit();
             int written = HotSpotToSVMCalls.dumpChannelWrite(getIsolateThread(), handle, src, capacity, pos, limit);
             if (written > 0) {
-                src.position(pos + written);
+                asBaseBuffer(src).position(pos + written);
             }
             return written;
         }
