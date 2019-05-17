@@ -88,7 +88,7 @@ _registered_graalvm_components = {}
 def registered_graalvm_components(stage1=False):
     if stage1 not in _registered_graalvm_components:
         excluded = _excluded_components()
-        components = [component for component in mx_sdk.graalvm_components() if (component.name not in excluded and component.short_name not in excluded) or (stage1 and component.short_name in ('ni', 'niee'))]
+        components = [component for component in mx_sdk.graalvm_components() if (component.name not in excluded and component.short_name not in excluded) or (stage1 and component.short_name in ('ni', 'niee', 'nil'))]
         if not any((component.short_name == 'svm' for component in mx_sdk.graalvm_components())):
             # SVM is not included, remove GraalVMSvmMacros
             components = [component for component in components if not isinstance(component, mx_sdk.GraalVMSvmMacro)]
@@ -2167,10 +2167,10 @@ mx.add_argument('--release-catalog', action='store', help='Change the default UR
 mx.add_argument('--extra-image-builder-argument', action='append', help='Add extra arguments to the image builder.', default=[])
 
 if mx.get_os() == 'windows':
-    register_vm_config('ce', ['bjs', 'bnative-image', 'bnative-image-configure', 'bpolyglot', 'cmp', 'gvm', 'ins', 'js', 'nfi', 'ni', 'poly', 'polynative', 'pro', 'rgx', 'snative-image-agent', 'svm', 'svml', 'tfl', 'vvm'])
+    register_vm_config('ce', ['bjs', 'bnative-image', 'bnative-image-configure', 'bpolyglot', 'cmp', 'gvm', 'ins', 'js', 'nfi', 'ni', 'nil', 'poly', 'polynative', 'pro', 'rgx', 'snative-image-agent', 'svm', 'svml', 'tfl', 'vvm'])
 else:
     register_vm_config('ce', ['cmp', 'gu', 'gvm', 'ins', 'js', 'lg', 'nfi', 'njs', 'polynative', 'pro', 'rgx', 'slg', 'svm', 'svml', 'tfl', 'libpoly', 'poly', 'vvm'])
-    register_vm_config('ce', ['cmp', 'gu', 'gvm', 'ins', 'js', 'lg', 'nfi', 'ni', 'njs', 'polynative', 'pro', 'pyn', 'pynl', 'rby', 'rbyl', 'rgx', 'slg', 'svm', 'svml', 'tfl', 'libpoly', 'poly', 'vvm'], 'ce-complete')
+    register_vm_config('ce', ['cmp', 'gu', 'gvm', 'ins', 'js', 'lg', 'nfi', 'ni', 'nil', 'njs', 'polynative', 'pro', 'pyn', 'pynl', 'rby', 'rbyl', 'rgx', 'slg', 'svm', 'svml', 'tfl', 'libpoly', 'poly', 'vvm'], 'ce-complete')
 register_vm_config('ce-python', ['cmp', 'gu', 'gvm', 'ins', 'js', 'lg', 'nfi', 'njs', 'polynative', 'pyn', 'pro', 'rgx', 'slg', 'svm', 'svml', 'tfl', 'libpoly', 'poly', 'vvm'])
 register_vm_config('ce-no_native', ['bjs', 'blli', 'bnative-image', 'bpolyglot', 'cmp', 'gu', 'gvm', 'ins', 'js', 'nfi', 'njs', 'polynative', 'pro', 'rgx', 'slg', 'svm', 'svml', 'tfl', 'poly', 'vvm'])
 register_vm_config('libgraal', ['cmp', 'gu', 'gvm', 'lg', 'nfi', 'poly', 'polynative', 'rgx', 'svm', 'svml', 'tfl', 'bpolyglot'])

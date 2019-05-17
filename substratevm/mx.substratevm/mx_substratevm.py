@@ -1025,9 +1025,8 @@ mx_sdk.register_graalvm_component(mx_sdk.GraalVmJreComponent(
     short_name='ni',
     dir_name='svm',
     installable_id='native-image',
-    license_files=['LICENSE_NATIVEIMAGE.txt'],
+    license_files=[],
     third_party_license_files=[],
-    support_distributions=['substratevm:NATIVE_IMAGE_GRAALVM_SUPPORT'],
     launcher_configs=[
         mx_sdk.LauncherConfig(
             destination="bin/<exe:native-image>",
@@ -1059,18 +1058,19 @@ mx_sdk.register_graalvm_component(mx_sdk.GraalVmJreComponent(
     ],
     provided_executables=['bin/rebuild-images'] if not mx.is_windows() else [],
     installable=True,
-    post_install_msg="""
-IMPORTANT NOTE:
----------------
-The GraalVM native image tool is released as "Early Access" under the terms
-of the Java Specification Participation Agreement.  Oracle intends to submit
-the native image tool to the Java Community Process for standardization by
-the Java Community.  This standardization may result in incompatible changes
-to the tool.  Oracle may limit backports / require customer upgrades to the
-later versions specifically for users of the native image tool.  Oracle does
-provide full production support for users of Native Image along with other
-GraalVM EE components."""))
+))
 
+mx_sdk.register_graalvm_component(mx_sdk.GraalVmJreComponent(
+    suite=suite,
+    name='Native Image licence files',
+    short_name='nil',
+    dir_name='svm',
+    installable_id='native-image',
+    license_files=['LICENSE_NATIVEIMAGE.txt'],
+    third_party_license_files=[],
+    support_distributions=['substratevm:NATIVE_IMAGE_GRAALVM_SUPPORT'],
+    installable=True,
+))
 
 mx_sdk.register_graalvm_component(mx_sdk.GraalVmJreComponent(
     suite=suite,
