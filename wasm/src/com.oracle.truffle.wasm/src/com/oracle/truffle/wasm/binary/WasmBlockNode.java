@@ -40,13 +40,18 @@ import static com.oracle.truffle.wasm.binary.Instructions.F32_CONST;
 import static com.oracle.truffle.wasm.binary.Instructions.F64_CONST;
 import static com.oracle.truffle.wasm.binary.Instructions.I32_ADD;
 import static com.oracle.truffle.wasm.binary.Instructions.I32_AND;
+import static com.oracle.truffle.wasm.binary.Instructions.I32_CLZ;
 import static com.oracle.truffle.wasm.binary.Instructions.I32_CONST;
+import static com.oracle.truffle.wasm.binary.Instructions.I32_CTZ;
 import static com.oracle.truffle.wasm.binary.Instructions.I32_DIV_S;
 import static com.oracle.truffle.wasm.binary.Instructions.I32_DIV_U;
 import static com.oracle.truffle.wasm.binary.Instructions.I32_MUL;
 import static com.oracle.truffle.wasm.binary.Instructions.I32_OR;
+import static com.oracle.truffle.wasm.binary.Instructions.I32_POPCNT;
 import static com.oracle.truffle.wasm.binary.Instructions.I32_REM_S;
 import static com.oracle.truffle.wasm.binary.Instructions.I32_REM_U;
+import static com.oracle.truffle.wasm.binary.Instructions.I32_ROTL;
+import static com.oracle.truffle.wasm.binary.Instructions.I32_ROTR;
 import static com.oracle.truffle.wasm.binary.Instructions.I32_SHL;
 import static com.oracle.truffle.wasm.binary.Instructions.I32_SHR_S;
 import static com.oracle.truffle.wasm.binary.Instructions.I32_SHR_U;
@@ -112,6 +117,27 @@ public class WasmBlockNode extends WasmNode {
                 }
                 case I64_CONST: {
                     Assert.fail("Not implemented");
+                    break;
+                }
+                case I32_CLZ: {
+                    stackPointer--;
+                    int x = popInt(frame, stackPointer);
+                    pushInt(frame, stackPointer, Integer.numberOfLeadingZeros(x));
+                    stackPointer++;
+                    break;
+                }
+                case I32_CTZ: {
+                    stackPointer--;
+                    int x = popInt(frame, stackPointer);
+                    pushInt(frame, stackPointer, Integer.numberOfTrailingZeros(x));
+                    stackPointer++;
+                    break;
+                }
+                case I32_POPCNT: {
+                    stackPointer--;
+                    int x = popInt(frame, stackPointer);
+                    pushInt(frame, stackPointer, Integer.bitCount(x));
+                    stackPointer++;
                     break;
                 }
                 case I32_ADD: {
@@ -228,6 +254,24 @@ public class WasmBlockNode extends WasmNode {
                     stackPointer--;
                     int y = popInt(frame, stackPointer);
                     pushInt(frame, stackPointer, y >>> x);
+                    stackPointer++;
+                    break;
+                }
+                case I32_ROTL: {
+                    stackPointer--;
+                    int x = popInt(frame, stackPointer);
+                    stackPointer--;
+                    int y = popInt(frame, stackPointer);
+                    pushInt(frame, stackPointer, Integer.rotateLeft(y, x));
+                    stackPointer++;
+                    break;
+                }
+                case I32_ROTR: {
+                    stackPointer--;
+                    int x = popInt(frame, stackPointer);
+                    stackPointer--;
+                    int y = popInt(frame, stackPointer);
+                    pushInt(frame, stackPointer, Integer.rotateRight(y, x));
                     stackPointer++;
                     break;
                 }

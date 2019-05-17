@@ -44,13 +44,18 @@ import static com.oracle.truffle.wasm.binary.Instructions.F32_CONST;
 import static com.oracle.truffle.wasm.binary.Instructions.F64_CONST;
 import static com.oracle.truffle.wasm.binary.Instructions.I32_ADD;
 import static com.oracle.truffle.wasm.binary.Instructions.I32_AND;
+import static com.oracle.truffle.wasm.binary.Instructions.I32_CLZ;
 import static com.oracle.truffle.wasm.binary.Instructions.I32_CONST;
+import static com.oracle.truffle.wasm.binary.Instructions.I32_CTZ;
 import static com.oracle.truffle.wasm.binary.Instructions.I32_DIV_S;
 import static com.oracle.truffle.wasm.binary.Instructions.I32_DIV_U;
 import static com.oracle.truffle.wasm.binary.Instructions.I32_MUL;
 import static com.oracle.truffle.wasm.binary.Instructions.I32_OR;
+import static com.oracle.truffle.wasm.binary.Instructions.I32_POPCNT;
 import static com.oracle.truffle.wasm.binary.Instructions.I32_REM_S;
 import static com.oracle.truffle.wasm.binary.Instructions.I32_REM_U;
+import static com.oracle.truffle.wasm.binary.Instructions.I32_ROTL;
+import static com.oracle.truffle.wasm.binary.Instructions.I32_ROTR;
 import static com.oracle.truffle.wasm.binary.Instructions.I32_SHL;
 import static com.oracle.truffle.wasm.binary.Instructions.I32_SHR_S;
 import static com.oracle.truffle.wasm.binary.Instructions.I32_SHR_U;
@@ -282,6 +287,12 @@ public class BinaryReader extends BinaryStreamReader {
                     readFloatAsInt64();
                     state.push();
                     break;
+                case I32_CLZ:
+                case I32_CTZ:
+                case I32_POPCNT:
+                    state.pop();
+                    state.push();
+                    break;
                 case I32_ADD:
                 case I32_SUB:
                 case I32_MUL:
@@ -295,6 +306,8 @@ public class BinaryReader extends BinaryStreamReader {
                 case I32_SHL:
                 case I32_SHR_S:
                 case I32_SHR_U:
+                case I32_ROTL:
+                case I32_ROTR:
                 case F32_ADD:
                     state.pop();
                     state.pop();
