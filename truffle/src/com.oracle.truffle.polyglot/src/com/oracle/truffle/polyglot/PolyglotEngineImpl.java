@@ -62,7 +62,6 @@ import java.util.Objects;
 import java.util.Properties;
 import java.util.Set;
 import java.util.WeakHashMap;
-import java.util.function.Supplier;
 import java.util.function.Predicate;
 import java.util.function.Supplier;
 import java.util.logging.Handler;
@@ -1157,7 +1156,7 @@ final class PolyglotEngineImpl extends org.graalvm.polyglot.impl.AbstractPolyglo
         if (allowCreateProcess) {
             useProcessHandler = processHandler != null ? processHandler : ProcessHandlers.newDefaultProcessHandler();
         } else {
-            useProcessHandler = ProcessHandlers.newDeniedProcessHandler();
+            useProcessHandler = null;
         }
 
         PolyglotContextConfig config = new PolyglotContextConfig(this, useOut, useErr, useIn,

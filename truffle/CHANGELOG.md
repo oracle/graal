@@ -13,6 +13,8 @@ This changelog summarizes major changes between Truffle versions relevant to lan
 
 ## Version 19.0.0
 * Renamed version 1.0.0 to 19.0.0
+* Introduced Truffle process sandboxing. Added a [TruffleLanguage.Env.newProcessBuilder](https://www.graalvm.org/truffle/javadoc/com/oracle/truffle/api/TruffleLanguage.Env.html#newProcessBuilder-java.lang.String...-) method creating a new [TruffleProcessBuilder](https://www.graalvm.org/truffle/javadoc/com/oracle/truffle/api/io/TruffleProcessBuilder.html) to configure and start a new sub-process.
+* Added support for reading environment variables, use [TruffleLanguage.Env.getEnvironment](https://www.graalvm.org/truffle/javadoc/com/oracle/truffle/api/TruffleLanguage.Env.html#getEnvironment--) to obtain process environment variables.
 
 ## Version 1.0.0 RC15
 * This version includes a major revision of the Truffle Interoperability APIs. Most existing APIs for Truffle Interoperability were deprecated. The compatiblity layer may cause significant performance reduction for interoperability calls. 

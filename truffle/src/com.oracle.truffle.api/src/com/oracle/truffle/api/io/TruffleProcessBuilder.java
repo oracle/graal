@@ -38,8 +38,11 @@
  * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
  * SOFTWARE.
  */
-package com.oracle.truffle.api;
+package com.oracle.truffle.api.io;
 
+import com.oracle.truffle.api.TruffleFile;
+import com.oracle.truffle.api.TruffleLanguage.Env;
+import com.oracle.truffle.api.impl.Accessor;
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.Arrays;
@@ -49,22 +52,21 @@ import java.util.List;
 import java.util.Map;
 import java.util.Objects;
 import org.graalvm.polyglot.Context;
-import org.graalvm.polyglot.EnvironmentAccess;
 import org.graalvm.polyglot.io.FileSystem;
 import org.graalvm.polyglot.io.ProcessHandler;
 import org.graalvm.polyglot.io.ProcessHandler.Redirect;
 
 /**
- * A builder used to create an external subprocess. The {@ TruffleProcessBuilder} instance allows to
- * set subprocess attributes. The {@link #start()} method creates a new {@link Process} instance
- * with those attributes. The {@link #start()} method can be invoked repeatedly from the same
- * instance to create new subprocesses with the same attributes.
+ * A builder used to create an external subprocess. The {@code TruffleProcessBuilder} instance
+ * allows to set subprocess attributes. The {@link #start()} method creates a new {@link Process}
+ * instance with those attributes. The {@link #start()} method can be invoked repeatedly from the
+ * same instance to create new subprocesses with the same attributes.
  *
- * @since 1.0
+ * @since 20.0.0 beta 1
  */
 public class TruffleProcessBuilder {
 
-    private final Object polylgotLanguageContext;
+    private final Object polyglotLanguageContext;
     private final FileSystem fileSystem;
     private List<String> cmd;
     private TruffleFile cwd;
@@ -78,7 +80,7 @@ public class TruffleProcessBuilder {
         Objects.requireNonNull(polylgotLanguageContext, "PolylgotLanguageContext must be non null.");
         Objects.requireNonNull(fileSystem, "FileSystem must be non null.");
         Objects.requireNonNull(command, "Command must be non null.");
-        this.polylgotLanguageContext = polylgotLanguageContext;
+        this.polyglotLanguageContext = polylgotLanguageContext;
         this.fileSystem = fileSystem;
         this.cmd = command;
         this.redirects = new Redirect[]{Redirect.PIPE, Redirect.PIPE, Redirect.PIPE};
@@ -89,7 +91,7 @@ public class TruffleProcessBuilder {
      *
      * @param command the list containing the executable and its arguments
      * @return this {@link TruffleProcessBuilder builder}
-     * @since 1.0
+     * @since 20.0.0 beta 1
      */
     public TruffleProcessBuilder command(List<String> command) {
         Objects.requireNonNull(command, "Command must be non null.");
@@ -102,7 +104,7 @@ public class TruffleProcessBuilder {
      *
      * @param command the string array containing the executable and its arguments
      * @return this {@link TruffleProcessBuilder builder}
-     * @since 1.0
+     * @since 20.0.0 beta 1
      */
     public TruffleProcessBuilder command(String... command) {
         Objects.requireNonNull(command, "Command must be non null.");
@@ -114,12 +116,11 @@ public class TruffleProcessBuilder {
     /**
      * Sets this process current working directory. The {@code currentWorkingDirectory} may be
      * {@code null}, in this case the subprocess current working directory is set to
-     * {@link TruffleLanguage.Env#getCurrentWorkingDirectory() file system current working
-     * directory}.
+     * {@link Env#getCurrentWorkingDirectory() file system current working directory}.
      *
      * @param currentWorkingDirectory the new current working directory
      * @return this {@link TruffleProcessBuilder builder}
-     * @since 1.0
+     * @since 20.0.0 beta 1
      */
     public TruffleProcessBuilder directory(TruffleFile currentWorkingDirectory) {
         this.cwd = currentWorkingDirectory;
@@ -131,7 +132,7 @@ public class TruffleProcessBuilder {
      *
      * @param enabled enables merging of standard error output into standard output
      * @return this {@link TruffleProcessBuilder builder}
-     * @since 1.0
+     * @since 20.0.0 beta 1
      */
     public TruffleProcessBuilder redirectErrorStream(boolean enabled) {
         this.redirectErrorStream = enabled;
@@ -149,7 +150,7 @@ public class TruffleProcessBuilder {
      *
      * @param source the new standard input source
      * @return this {@link TruffleProcessBuilder builder}
-     * @since 1.0
+     * @since 20.0.0 beta 1
      */
     public TruffleProcessBuilder redirectInput(Redirect source) {
         Objects.requireNonNull(source, "Source must be non null.");
@@ -169,7 +170,7 @@ public class TruffleProcessBuilder {
      *
      * @param destination the new standard output destination
      * @return this {@link TruffleProcessBuilder builder}
-     * @since 1.0
+     * @since 20.0.0 beta 1
      */
     public TruffleProcessBuilder redirectOutput(Redirect destination) {
         Objects.requireNonNull(destination, "Destination must be non null.");
@@ -189,7 +190,7 @@ public class TruffleProcessBuilder {
      *
      * @param destination the new error output destination
      * @return this {@link TruffleProcessBuilder builder}
-     * @since 1.0
+     * @since 20.0.0 beta 1
      */
     public TruffleProcessBuilder redirectError(Redirect destination) {
         Objects.requireNonNull(destination, "Destination must be non null.");
@@ -203,7 +204,7 @@ public class TruffleProcessBuilder {
      *
      * @param enabled enables standard I/O inheritance
      * @return this {@link TruffleProcessBuilder builder}
-     * @since 1.0
+     * @since 20.0.0 beta 1
      */
     public TruffleProcessBuilder inheritIO(boolean enabled) {
         this.inheritIO = enabled;
@@ -215,7 +216,7 @@ public class TruffleProcessBuilder {
      *
      * @param clear disables inheritance of environment variables
      * @return this {@link TruffleProcessBuilder builder}
-     * @since 1.0
+     * @since 20.0.0 beta 1
      */
     public TruffleProcessBuilder clearEnvironment(boolean clear) {
         this.clearEnvironment = clear;
@@ -228,7 +229,7 @@ public class TruffleProcessBuilder {
      * @param name the variable name
      * @param value the value
      * @return this {@link TruffleProcessBuilder builder}
-     * @since 1.0
+     * @since 20.0.0 beta 1
      */
     public TruffleProcessBuilder environment(String name, String value) {
         Objects.requireNonNull(name, "Name must be non null.");
@@ -247,7 +248,7 @@ public class TruffleProcessBuilder {
      * @param environment environment variables
      * @see #environment(String, String) To set a single environment variable.
      * @return this {@link TruffleProcessBuilder builder}
-     * @since 1.0
+     * @since 20.0.0 beta 1
      */
     public TruffleProcessBuilder environment(Map<String, String> environment) {
         for (Map.Entry<String, String> e : environment.entrySet()) {
@@ -258,17 +259,17 @@ public class TruffleProcessBuilder {
 
     /**
      * Starts a new subprocess using the attributes of this builder. The new process invokes the
-     * command with arguments given by {@link #command()}, in a working directory given by
-     * {@link #directory()}, with a process environment inherited from {@link Context} and possibly
-     * extended by {@link #environment(java.lang.String, java.lang.String)}.
+     * command with arguments given by {@link #command(java.lang.String...)}, in a working directory
+     * given by {@link #directory(com.oracle.truffle.api.TruffleFile)}, with a process environment
+     * inherited from {@link Context} and possibly extended by
+     * {@link #environment(java.lang.String, java.lang.String)}.
      *
      * @return a new {@link Process} instance
      * @throws NullPointerException if an element of the command list is null
      * @throws IndexOutOfBoundsException if the command is an empty list
-     * @throws SecurityException when either the process creation is not allowed or the environment
-     *             was modified by this builder but environment modification is not allowed.
+     * @throws SecurityException when process creation is forbidden by {@link ProcessHandler}
      * @throws IOException if the process fails to execute
-     * @since 1.0
+     * @since 20.0.0 beta 1
      */
     public Process start() throws IOException {
         List<String> useCmd = new ArrayList<>();
@@ -284,31 +285,67 @@ public class TruffleProcessBuilder {
         if (inheritIO) {
             Arrays.fill(redirects, Redirect.INHERIT);
         }
-        EnvironmentAccess envAccess = TruffleLanguage.AccessAPI.engineAccess().getEnvironmentAccess(polylgotLanguageContext);
         Map<String, String> useEnv;
-        if (envAccess == EnvironmentAccess.ALL) {
-            useEnv = clearEnvironment ? new HashMap<>() : new HashMap<>(TruffleLanguage.AccessAPI.engineAccess().getProcessEnvironment(polylgotLanguageContext));
+        if (clearEnvironment) {
+            useEnv = env == null ? Collections.emptyMap() : env;
+        } else {
+            useEnv = AccessIO.engineAccess().getProcessEnvironment(polyglotLanguageContext);
             if (env != null) {
+                useEnv = new HashMap<>(useEnv);
                 useEnv.putAll(env);
             }
-        } else if (env != null || clearEnvironment) {
-            throw new SecurityException("Environment modification is not allowed.");
-        } else {
-            useEnv = new HashMap<>(TruffleLanguage.AccessAPI.engineAccess().getProcessEnvironment(polylgotLanguageContext));
         }
         String useCwd;
         if (cwd != null) {
-            useCwd = cwd.getSPIPath().toString();
+            useCwd = cwd.getPath();
         } else {
             useCwd = fileSystem.toAbsolutePath(fileSystem.parsePath("")).toString();
         }
-        ProcessHandler.ProcessCommand processCommand = TruffleLanguage.AccessAPI.engineAccess().newProcessCommand(
-                        polylgotLanguageContext,
+        ProcessHandler.ProcessCommand processCommand = AccessIO.engineAccess().newProcessCommand(
+                        polyglotLanguageContext,
                         useCmd,
                         useCwd,
                         useEnv,
                         redirectErrorStream,
                         redirects);
-        return TruffleLanguage.AccessAPI.engineAccess().startProcess(polylgotLanguageContext, processCommand);
+        ProcessHandler handler = AccessIO.engineAccess().getProcessHandler(polyglotLanguageContext);
+        try {
+            return handler.start(processCommand);
+        } catch (Throwable t) {
+            throw wrapHostException(handler, t);
+        }
+    }
+
+    private <T extends Throwable> RuntimeException wrapHostException(ProcessHandler handler, T t) {
+        if (AccessIO.engineAccess().isDefaultProcessHandler(handler)) {
+            throw sthrow(t);
+        }
+        throw AccessIO.engineAccess().wrapHostException(null, polyglotLanguageContext, t);
+    }
+
+    @SuppressWarnings("unchecked")
+    private static <T extends RuntimeException> T sthrow(final Throwable t) throws T {
+        throw (T) t;
+    }
+
+    static final AccessIO IO = new AccessIO();
+
+    static final class AccessIO extends Accessor {
+
+        @Override
+        protected Accessor.IOSupport ioSupport() {
+            return new IOSupportImpl();
+        }
+
+        static Accessor.EngineSupport engineAccess() {
+            return IO.engineSupport();
+        }
+    }
+
+    static final class IOSupportImpl extends Accessor.IOSupport {
+        @Override
+        public TruffleProcessBuilder createProcessBuilder(Object polylgotLanguageContext, FileSystem fileSystem, List<String> command) {
+            return new TruffleProcessBuilder(polylgotLanguageContext, fileSystem, command);
+        }
     }
 }

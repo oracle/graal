@@ -44,7 +44,6 @@ import static com.oracle.truffle.polyglot.VMAccessor.INSTRUMENT;
 import static com.oracle.truffle.polyglot.VMAccessor.LANGUAGE;
 import static com.oracle.truffle.polyglot.VMAccessor.NODES;
 
-import java.io.IOException;
 import java.io.InputStream;
 import java.io.OutputStream;
 import java.net.URI;
@@ -67,7 +66,6 @@ import java.util.logging.LogRecord;
 import org.graalvm.options.OptionValues;
 import org.graalvm.polyglot.Context;
 import org.graalvm.polyglot.Engine;
-import org.graalvm.polyglot.EnvironmentAccess;
 import org.graalvm.polyglot.HostAccess;
 import org.graalvm.polyglot.PolyglotAccess;
 import org.graalvm.polyglot.PolyglotException;
@@ -1216,11 +1214,6 @@ public final class PolyglotImpl extends AbstractPolyglotImpl {
         }
 
         @Override
-        public EnvironmentAccess getEnvironmentAccess(Object polyglotLanguageContext) {
-            return ((PolyglotLanguageContext) polyglotLanguageContext).context.config.environmentConfig.getEnvironmentAccess();
-        }
-
-        @Override
         public Map<String, String> getProcessEnvironment(Object polyglotLanguageContext) {
             return ((PolyglotLanguageContext) polyglotLanguageContext).context.config.environmentConfig.getEnvironment();
         }
@@ -1232,8 +1225,13 @@ public final class PolyglotImpl extends AbstractPolyglotImpl {
         }
 
         @Override
-        public Process startProcess(Object polylgotLanguageContext, ProcessHandler.ProcessCommand processCommand) throws IOException {
-            return ((PolyglotLanguageContext) polylgotLanguageContext).context.config.processHandler.start(processCommand);
+        public ProcessHandler getProcessHandler(Object polylgotLanguageContext) {
+            return ((PolyglotLanguageContext) polylgotLanguageContext).context.config.processHandler;
+        }
+
+        @Override
+        public boolean isDefaultProcessHandler(ProcessHandler handler) {
+            return ProcessHandlers.isDefault(handler);
         }
     }
 }

@@ -55,8 +55,8 @@ final class ProcessHandlers {
         return new DefaultProcessHandler();
     }
 
-    static ProcessHandler newDeniedProcessHandler() {
-        return new DeniedProcessHandler();
+    static boolean isDefault(ProcessHandler handler) {
+        return handler instanceof DefaultProcessHandler;
     }
 
     private static final class DefaultProcessHandler implements ProcessHandler {
@@ -85,13 +85,5 @@ final class ProcessHandlers {
             }
         }
 
-    }
-
-    private static final class DeniedProcessHandler implements ProcessHandler {
-
-        @Override
-        public Process start(ProcessCommand command) {
-            throw new SecurityException("Process creation is not allowed, to enable it set Context.Builder.allowCreateProcess(true).");
-        }
     }
 }

@@ -38,30 +38,17 @@
  * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
  * SOFTWARE.
  */
-package org.graalvm.polyglot;
+
+/*
+ @ApiInfo(
+ group="Truffle"
+ )
+ */
 
 /**
- * Represents an access policy for process environment in the guest languages.
+ * This package contains I/O related classes used by {@link com.oracle.truffle.api.TruffleLanguage}
+ * implementations.
  *
  * @since 20.0.0 beta 1
  */
-public final class EnvironmentAccess {
-
-    /**
-     * Provides guest languages no access to process environment. No environment variables are
-     * visible for reading.
-     *
-     * @since 20.0.0 beta 1
-     */
-    public static EnvironmentAccess NONE = new EnvironmentAccess();
-
-    /**
-     * Provides guest languages read access to process environment.
-     * 
-     * @since 20.0.0 beta 1
-     */
-    public static EnvironmentAccess INHERIT = new EnvironmentAccess();
-
-    private EnvironmentAccess() {
-    }
-}
+package com.oracle.truffle.api.io;

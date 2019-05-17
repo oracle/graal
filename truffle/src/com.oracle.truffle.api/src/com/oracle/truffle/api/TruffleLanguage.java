@@ -40,6 +40,7 @@
  */
 package com.oracle.truffle.api;
 
+import com.oracle.truffle.api.io.TruffleProcessBuilder;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.OutputStream;
@@ -2129,67 +2130,44 @@ public abstract class TruffleLanguage<C> {
         }
 
         /**
+         * Returns {@code true} if the creation of a sub-process is allowed in the current
+         * environment.
+         *
+         * @see #newProcessBuilder(java.lang.String...)
+         * @since 20.0.0 beta 1
+         */
+        public boolean isCreateProcessAllowed() {
+            return AccessAPI.engineAccess().isCreateProcessAllowed(vmObject);
+        }
+
+        /**
          * Creates a new process builder with the specified operating program and arguments.
          *
          * @param command the executable and its arguments
          * @throws SecurityException when process creation is not allowed
-         * @since 1.0
+         * @since 20.0.0 beta 1
          */
         @TruffleBoundary
         public TruffleProcessBuilder newProcessBuilder(String... command) {
-            if (!AccessAPI.engineAccess().isCreateProcessAllowed(vmObject)) {
+            if (!isCreateProcessAllowed()) {
                 throw new SecurityException("Process creation is not allowed, to enable it set Context.Builder.allowCreateProcess(true).");
             }
             List<String> cmd = new ArrayList<>(command.length);
             Collections.addAll(cmd, command);
-            return new TruffleProcessBuilder(vmObject, fileSystemContext.fileSystem, cmd);
-        }
-
-        /**
-         * Sets the value of the specified variable. If the environment variable is already set it's
-         * value is updated. When the {@code Context} is configured with
-         * {@link EnvironmentAccess#NONE} or {@link EnvironmentAccess#READ} this method always
-         * throws a {@link SecurityException}.
-         *
-         * @param name the name of the environment variable
-         * @param value the value of the environment variable
-         * @throws {@link SecurityException} when environment modification is denied
-         */
-        @TruffleBoundary
-        public void setEnvironment(String name, String value) {
-            Objects.requireNonNull(name, "Name must be non null");
-            Objects.requireNonNull(value, "Value must be non null");
-            EnvironmentAccess envAccess = AccessAPI.engineAccess().getEnvironmentAccess(vmObject);
-            if (envAccess != EnvironmentAccess.ALL) {
-                throw new SecurityException("Env modification is not allowed");
-            }
-            AccessAPI.engineAccess().getProcessEnvironment(vmObject).put(name, value);
-        }
-
-        /**
-         * Returns the value of the specified environment variable. When the {@code Context} is
-         * configured with {@link EnvironmentAccess#NONE} it always returns {@code null}.
-         *
-         * @param name the name of the environment variable
-         * @return the string value of the variable, or {@code null} if the variable is not defined
-         * @since 1.0
-         */
-        @TruffleBoundary
-        public String getEnvironment(String key) {
-            Objects.requireNonNull(key, "Key must be non null");
-            return AccessAPI.engineAccess().getProcessEnvironment(vmObject).get(key);
+            return AccessAPI.ioAccess().createProcessBuilder(vmObject, fileSystemContext.fileSystem, cmd);
         }
 
         /**
          * Returns an unmodifiable map of the process environment. When the {@code Context} is
-         * configured with {@link EnvironmentAccess#NONE} it returns an empty map.
+         * configured with {@link EnvironmentAccess#INHERIT} it returns {@link System#getenv()}, for
+         * {@link EnvironmentAccess#NONE} an empty map is returned.
          *
          * @return the process environment as a map of variable names to values
-         * @since 1.0
+         * @since 20.0.0 beta 1
          */
         @TruffleBoundary
         public Map<String, String> getEnvironment() {
-            return Collections.unmodifiableMap(AccessAPI.engineAccess().getProcessEnvironment(vmObject));
+            return AccessAPI.engineAccess().getProcessEnvironment(vmObject);
         }
 
         @SuppressWarnings("rawtypes")
@@ -2505,6 +2483,10 @@ public abstract class TruffleLanguage<C> {
 
         static InteropSupport interopAccess() {
             return API.interopSupport();
+        }
+
+        static IOSupport ioAccess() {
+            return API.ioSupport();
         }
 
         @Override

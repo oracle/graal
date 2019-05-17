@@ -1227,7 +1227,7 @@ final class PolyglotContextImpl extends AbstractContextImpl implements com.oracl
                         engine.getLanguages().keySet(),
                         Collections.emptyMap(),
                         fs, engine.logHandler, true, ProcessHandlers.newDefaultProcessHandler(),
-                        new AbstractPolyglotImpl.EnvironmentConfig(EnvironmentAccess.ALL, true, Collections.emptyMap()));
+                        new AbstractPolyglotImpl.EnvironmentConfig(EnvironmentAccess.INHERIT));
         final PolyglotContextImpl context = new PolyglotContextImpl(engine, config);
         try {
             final String optionValue = engine.engineOptionValues.get(PolyglotEngineOptions.PreinitializeContexts);

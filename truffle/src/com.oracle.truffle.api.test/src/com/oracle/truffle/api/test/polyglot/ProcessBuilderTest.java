@@ -41,7 +41,7 @@
 package com.oracle.truffle.api.test.polyglot;
 
 import com.oracle.truffle.api.TruffleFile;
-import com.oracle.truffle.api.TruffleProcessBuilder;
+import com.oracle.truffle.api.io.TruffleProcessBuilder;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.OutputStream;
@@ -160,55 +160,27 @@ public class ProcessBuilderTest extends AbstractPolyglotTest {
     @Test
     public void testEnvironment() throws Exception {
         Assert.assertEquals(Collections.emptyMap(), envFromContext(EnvironmentAccess.NONE));
-        Assert.assertEquals(pairsAsMap("k1", "v1", "k2", "v2"), envFromContext(EnvironmentAccess.READ));
-        Assert.assertEquals(pairsAsMap("k1", "v1", "k2", "v2"), envFromContext(EnvironmentAccess.ALL));
-
-        try {
-            envExtendedByProcessBuilder(EnvironmentAccess.NONE);
-            Assert.fail("Expected SecurityException");
-        } catch (SecurityException se) {
-            // Expected
+        Assert.assertEquals(System.getenv(), envFromContext(EnvironmentAccess.INHERIT));
+        Map<String, String> expected = pairsAsMap("k3", "v3", "k4", "v4");
+        Assert.assertEquals(expected, envExtendedByProcessBuilder(EnvironmentAccess.NONE));
+        expected = new HashMap<>(System.getenv());
+        expected.putAll(pairsAsMap("k3", "v3", "k4", "v4"));
+        Assert.assertEquals(expected, envExtendedByProcessBuilder(EnvironmentAccess.INHERIT));
+        String newValue = "override";
+        Assert.assertEquals(Collections.emptyMap(), envOverridenByProcessBuilder(EnvironmentAccess.NONE, newValue));
+        expected = new HashMap<>();
+        for (Map.Entry<String, String> e : System.getenv().entrySet()) {
+            expected.put(e.getKey(), newValue);
         }
-        try {
-            envExtendedByProcessBuilder(EnvironmentAccess.READ);
-            Assert.fail("Expected SecurityException");
-        } catch (SecurityException se) {
-            // Expected
-        }
-        Assert.assertEquals(pairsAsMap("k1", "v1", "k2", "v2", "k3", "v3", "k4", "v4"), envExtendedByProcessBuilder(EnvironmentAccess.ALL));
-
-        try {
-            envOverridenByProcessBuilder(EnvironmentAccess.NONE);
-            Assert.fail("Expected SecurityException");
-        } catch (SecurityException se) {
-            // Expected
-        }
-        try {
-            envOverridenByProcessBuilder(EnvironmentAccess.READ);
-            Assert.fail("Expected SecurityException");
-        } catch (SecurityException se) {
-            // Expected
-        }
-        Assert.assertEquals(pairsAsMap("k1", "vA", "k2", "vB"), envOverridenByProcessBuilder(EnvironmentAccess.ALL));
-
-        try {
-            envCleanedByProcessBuilder(EnvironmentAccess.NONE);
-            Assert.fail("Expected SecurityException");
-        } catch (SecurityException se) {
-            // Expected
-        }
-        try {
-            envCleanedByProcessBuilder(EnvironmentAccess.READ);
-            Assert.fail("Expected SecurityException");
-        } catch (SecurityException se) {
-            // Expected
-        }
-        Assert.assertEquals(pairsAsMap("k3", "v3", "k4", "v4"), envCleanedByProcessBuilder(EnvironmentAccess.ALL));
+        Assert.assertEquals(expected, envOverridenByProcessBuilder(EnvironmentAccess.INHERIT, newValue));
+        expected = pairsAsMap("k3", "v3", "k4", "v4");
+        Assert.assertEquals(expected, envCleanedByProcessBuilder(EnvironmentAccess.NONE));
+        Assert.assertEquals(expected, envCleanedByProcessBuilder(EnvironmentAccess.INHERIT));
     }
 
     private Map<String, String> envFromContext(EnvironmentAccess envAccess) throws IOException {
         MockProcessHandler testHandler = new MockProcessHandler();
-        setupEnv(Context.newBuilder().allowCreateProcess(true).processHandler(testHandler).allowEnvironmentAccess(envAccess).environment("k1", "v1").environment("k2", "v2").build());
+        setupEnv(Context.newBuilder().allowCreateProcess(true).processHandler(testHandler).allowEnvironmentAccess(envAccess).build());
         languageEnv.newProcessBuilder("process").start();
         ProcessHandler.ProcessCommand command = testHandler.getAndCleanLastCommand();
         return command.getEnvironment();
@@ -216,7 +188,7 @@ public class ProcessBuilderTest extends AbstractPolyglotTest {
 
     private Map<String, String> envExtendedByProcessBuilder(EnvironmentAccess envAccess) throws IOException {
         MockProcessHandler testHandler = new MockProcessHandler();
-        setupEnv(Context.newBuilder().allowCreateProcess(true).processHandler(testHandler).allowEnvironmentAccess(envAccess).environment("k1", "v1").environment("k2", "v2").build());
+        setupEnv(Context.newBuilder().allowCreateProcess(true).processHandler(testHandler).allowEnvironmentAccess(envAccess).build());
         TruffleProcessBuilder builder = languageEnv.newProcessBuilder("process");
         builder.environment(pairsAsMap("k3", "v3", "k4", "v4"));
         builder.start();
@@ -224,11 +196,15 @@ public class ProcessBuilderTest extends AbstractPolyglotTest {
         return command.getEnvironment();
     }
 
-    private Map<String, String> envOverridenByProcessBuilder(EnvironmentAccess envAccess) throws IOException {
+    private Map<String, String> envOverridenByProcessBuilder(EnvironmentAccess envAccess, String value) throws IOException {
         MockProcessHandler testHandler = new MockProcessHandler();
-        setupEnv(Context.newBuilder().allowCreateProcess(true).processHandler(testHandler).allowEnvironmentAccess(envAccess).environment("k1", "v1").environment("k2", "v2").build());
+        setupEnv(Context.newBuilder().allowCreateProcess(true).processHandler(testHandler).allowEnvironmentAccess(envAccess).build());
         TruffleProcessBuilder builder = languageEnv.newProcessBuilder("process");
-        builder.environment(pairsAsMap("k1", "vA", "k2", "vB"));
+        Map<String, String> newEnv = new HashMap<>();
+        for (String key : languageEnv.getEnvironment().keySet()) {
+            newEnv.put(key, value);
+        }
+        builder.environment(newEnv);
         builder.start();
         ProcessHandler.ProcessCommand command = testHandler.getAndCleanLastCommand();
         return command.getEnvironment();
@@ -236,7 +212,7 @@ public class ProcessBuilderTest extends AbstractPolyglotTest {
 
     private Map<String, String> envCleanedByProcessBuilder(EnvironmentAccess envAccess) throws IOException {
         MockProcessHandler testHandler = new MockProcessHandler();
-        setupEnv(Context.newBuilder().allowCreateProcess(true).processHandler(testHandler).allowEnvironmentAccess(envAccess).environment("k1", "v1").environment("k2", "v2").build());
+        setupEnv(Context.newBuilder().allowCreateProcess(true).processHandler(testHandler).allowEnvironmentAccess(envAccess).build());
         TruffleProcessBuilder builder = languageEnv.newProcessBuilder("process");
         builder.clearEnvironment(true);
         builder.environment(pairsAsMap("k3", "v3", "k4", "v4"));

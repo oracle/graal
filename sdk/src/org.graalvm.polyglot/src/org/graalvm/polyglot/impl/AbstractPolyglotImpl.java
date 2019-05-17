@@ -698,16 +698,11 @@ public abstract class AbstractPolyglotImpl {
 
     public static final class EnvironmentConfig {
         private final EnvironmentAccess environmentAccess;
-        private final boolean inheritEnvironment;
-        private final Map<String, String> environment;
         private volatile Map<String, String> configuredEnvironement;
 
-        public EnvironmentConfig(EnvironmentAccess environmentAcceess, boolean inheritEnvironment, Map<String, String> environment) {
+        public EnvironmentConfig(EnvironmentAccess environmentAcceess) {
             assert environmentAcceess != null;
-            assert environment != null;
             this.environmentAccess = environmentAcceess;
-            this.inheritEnvironment = inheritEnvironment;
-            this.environment = environment;
         }
 
         public EnvironmentAccess getEnvironmentAccess() {
@@ -722,24 +717,16 @@ public abstract class AbstractPolyglotImpl {
                     if (result == null) {
                         if (environmentAccess == EnvironmentAccess.NONE) {
                             result = Collections.emptyMap();
-                        } else if (environmentAccess == EnvironmentAccess.READ) {
-                            result = Collections.unmodifiableMap(createInitialEnv(new HashMap<>()));
+                        } else if (environmentAccess == EnvironmentAccess.INHERIT) {
+                            result = System.getenv();   // System.getenv returns unmodifiable map.
                         } else {
-                            result = createInitialEnv(new ConcurrentHashMap<>());
+                            throw new IllegalStateException(String.format("Unsupported EnvironmentAccess: %s", environmentAccess));
                         }
                         configuredEnvironement = result;
                     }
                 }
             }
             return result;
-        }
-
-        private Map<String, String> createInitialEnv(Map<String, String> map) {
-            if (inheritEnvironment) {
-                map.putAll(System.getenv());
-            }
-            map.putAll(environment);
-            return map;
         }
     }
 }

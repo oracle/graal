@@ -765,8 +765,6 @@ public final class Context implements AutoCloseable {
         private Boolean allowCreateProcess;
         private ProcessHandler processHandler;
         private EnvironmentAccess environmentAcceess;
-        private Map<String, String> environment;
-        private boolean allowInheritEnvironment;
 
         Builder(String... onlyLanguages) {
             Objects.requireNonNull(onlyLanguages);
@@ -1241,7 +1239,7 @@ public final class Context implements AutoCloseable {
          *
          * @param enabled {@code true} to enable external process creation
          * @return the {@link Builder}
-         * @since 1.0
+         * @since 20.0.0 beta 1
          */
         public Builder allowCreateProcess(boolean enabled) {
             this.allowCreateProcess = enabled;
@@ -1253,7 +1251,7 @@ public final class Context implements AutoCloseable {
          *
          * @param handler the handler to be installed
          * @return the {@link Builder}
-         * @since 1.0
+         * @since 20.0.0 beta 1
          */
         public Builder processHandler(ProcessHandler handler) {
             Objects.requireNonNull(handler, "Handler must be non null.");
@@ -1264,63 +1262,16 @@ public final class Context implements AutoCloseable {
         /**
          * Allow environment access using the provided policy. If {@link #allowAllAccess(boolean)
          * all access} is {@code true} then the default environment access policy is
-         * {@link EnvironmentAccess#ALL}, otherwise {@link EnvironmentAccess#NONE}. The provided
+         * {@link EnvironmentAccess#INHERIT}, otherwise {@link EnvironmentAccess#NONE}. The provided
          * access policy must not be {@code null}.
          *
          * @param accessPolicy the {@link EnvironmentAccess environment access policy}
          * @return the {@link Builder}
-         * @since 1.0
+         * @since 20.0.0 beta 1
          */
         public Builder allowEnvironmentAccess(EnvironmentAccess accessPolicy) {
             Objects.requireNonNull(accessPolicy, "AccessPolicy must be non null.");
             this.environmentAcceess = accessPolicy;
-            return this;
-        }
-
-        /**
-         * Sets an environment variable.
-         *
-         * @param name the variable name
-         * @param value the value
-         * @return the {@link Builder}
-         * @since 1.0
-         */
-        public Builder environment(String name, String value) {
-            Objects.requireNonNull(name, "Name must be non null.");
-            Objects.requireNonNull(value, "Value must be non null.");
-            if (this.environment == null) {
-                this.environment = new HashMap<>();
-            }
-            this.environment.put(name, value);
-            return this;
-        }
-
-        /**
-         * Shortcut for setting multiple {@link #environment(String, String) environment variables}
-         * using a map. All values of the provided map must be non-null.
-         *
-         * @param env environment variables
-         * @see #environment(String, String) To set a single environment variable.
-         * @since 1.0
-         */
-        public Builder environment(Map<String, String> env) {
-            Objects.requireNonNull(env, "Env must be non null.");
-            for (Map.Entry<String, String> e : env.entrySet()) {
-                environment(e.getKey(), e.getValue());
-            }
-            return this;
-        }
-
-        /**
-         * Shortcut for setting multiple {@link #environment(String, String) environment variables}
-         * using a map. All values of the provided map must be non-null.
-         *
-         * @param env environment variables
-         * @see #environment(String, String) To set a single environment variable.
-         * @since 1.0
-         */
-        public Builder inheritEnvironment(boolean enabled) {
-            this.allowInheritEnvironment = enabled;
             return this;
         }
 
@@ -1374,12 +1325,10 @@ public final class Context implements AutoCloseable {
             }
 
             boolean createProcess = orAllAccess(allowCreateProcess);
-            boolean inheritEnvironment = orAllAccess(allowInheritEnvironment);
             if (environmentAcceess == null) {
-                environmentAcceess = this.allowAllAccess ? EnvironmentAccess.ALL : EnvironmentAccess.NONE;
+                environmentAcceess = this.allowAllAccess ? EnvironmentAccess.INHERIT : EnvironmentAccess.NONE;
             }
-            AbstractPolyglotImpl.EnvironmentConfig envConfig = new AbstractPolyglotImpl.EnvironmentConfig(environmentAcceess, inheritEnvironment,
-                            environment == null ? Collections.emptyMap() : environment);
+            AbstractPolyglotImpl.EnvironmentConfig envConfig = new AbstractPolyglotImpl.EnvironmentConfig(environmentAcceess);
             if (!io && customFileSystem != null) {
                 throw new IllegalStateException("Cannot install custom FileSystem when IO is disabled.");
             }

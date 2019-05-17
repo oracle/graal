@@ -79,6 +79,7 @@ import com.oracle.truffle.api.TruffleOptions;
 import com.oracle.truffle.api.frame.Frame;
 import com.oracle.truffle.api.frame.FrameDescriptor;
 import com.oracle.truffle.api.frame.MaterializedFrame;
+import com.oracle.truffle.api.io.TruffleProcessBuilder;
 import com.oracle.truffle.api.nodes.ExecutableNode;
 import com.oracle.truffle.api.nodes.IndirectCallNode;
 import com.oracle.truffle.api.nodes.LanguageInfo;
@@ -377,14 +378,14 @@ public abstract class Accessor {
 
         public abstract boolean isCreateProcessAllowed(Object polylgotLanguageContext);
 
-        public abstract EnvironmentAccess getEnvironmentAccess(Object polyglotLanguageContext);
-
         public abstract Map<String, String> getProcessEnvironment(Object polyglotLanguageContext);
 
         public abstract ProcessHandler.ProcessCommand newProcessCommand(Object vmObject, List<String> cmd, String cwd, Map<String, String> environment, boolean redirectErrorStream,
                         ProcessHandler.Redirect[] redirects);
 
-        public abstract Process startProcess(Object polylgotLanguageContext, ProcessHandler.ProcessCommand processCommand) throws IOException;
+        public abstract ProcessHandler getProcessHandler(Object polylgotLanguageContext);
+
+        public abstract boolean isDefaultProcessHandler(ProcessHandler handler);
     }
 
     public abstract static class LanguageSupport {
@@ -578,6 +579,10 @@ public abstract class Accessor {
         protected abstract boolean getMaterializeCalled(FrameDescriptor descriptor);
     }
 
+    public abstract static class IOSupport {
+        public abstract TruffleProcessBuilder createProcessBuilder(Object polylgotLanguageContext, FileSystem fileSystem, List<String> command);
+    }
+
     @CompilationFinal private static Accessor.LanguageSupport API;
     @CompilationFinal private static Accessor.EngineSupport SPI;
     private static Accessor.Nodes NODES;
@@ -586,6 +591,7 @@ public abstract class Accessor {
     private static Accessor.InteropSupport INTEROP;
     private static Accessor.Frames FRAMES;
     private static Accessor.SourceSupport SOURCE;
+    private static Accessor.IOSupport IO;
 
     static {
         TruffleLanguage<?> lng = new TruffleLanguage<Object>() {
@@ -609,6 +615,7 @@ public abstract class Accessor {
         conditionallyInitInterop();
         conditionallyInitInstrumentation();
         conditionallyInitSourceAccessor();
+        conditionallyInitIOAccessor();
         if (TruffleOptions.TraceASTJSON) {
             try {
                 Class.forName("com.oracle.truffle.api.utilities.JSONHelper", true, Accessor.class.getClassLoader());
@@ -670,6 +677,19 @@ public abstract class Accessor {
         }
     }
 
+    @SuppressWarnings("all")
+    private static void conditionallyInitIOAccessor() throws IllegalStateException {
+        try {
+            Class.forName(TruffleProcessBuilder.class.getName(), true, Accessor.class.getClassLoader());
+        } catch (ClassNotFoundException ex) {
+            boolean assertOn = false;
+            assert assertOn = true;
+            if (!assertOn) {
+                throw new IllegalStateException(ex);
+            }
+        }
+    }
+
     protected Accessor() {
         if (!this.getClass().getName().startsWith("com.oracle.truffle") && !this.getClass().getName().startsWith("com.oracle.truffle.tck")) {
             throw new IllegalStateException();
@@ -695,6 +715,11 @@ public abstract class Accessor {
                 throw new IllegalStateException();
             }
             FRAMES = this.framesSupport();
+        } else if (simpleName.endsWith("IO")) {
+            if (IO != null) {
+                throw new IllegalStateException();
+            }
+            IO = this.ioSupport();
         } else if (simpleName.endsWith("SourceAccessor")) {
             SOURCE = this.sourceSupport();
         } else if (simpleName.endsWith("DumpAccessor")) {
@@ -767,6 +792,10 @@ public abstract class Accessor {
 
     static Accessor.Frames framesAccess() {
         return FRAMES;
+    }
+
+    protected Accessor.IOSupport ioSupport() {
+        return IO;
     }
 
     /**
