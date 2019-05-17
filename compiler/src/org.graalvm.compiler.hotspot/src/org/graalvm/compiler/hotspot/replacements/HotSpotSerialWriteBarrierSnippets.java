@@ -39,6 +39,8 @@ import org.graalvm.compiler.replacements.SnippetCounter.Group;
 import org.graalvm.compiler.replacements.SnippetTemplate.AbstractTemplates;
 import org.graalvm.compiler.replacements.SnippetTemplate.SnippetInfo;
 import org.graalvm.compiler.replacements.gc.SerialWriteBarrierSnippets;
+import org.graalvm.compiler.word.Word;
+import org.graalvm.word.WordFactory;
 
 import jdk.vm.ci.code.TargetDescription;
 
@@ -50,13 +52,8 @@ public class HotSpotSerialWriteBarrierSnippets extends SerialWriteBarrierSnippet
     }
 
     @Override
-    public boolean isCardTableAddressConstant() {
-        return GraalHotSpotVMConfigNode.isCardTableAddressConstant();
-    }
-
-    @Override
-    public long cardTableAddress() {
-        return GraalHotSpotVMConfigNode.cardTableAddress();
+    public Word cardTableAddress() {
+        return WordFactory.unsigned(GraalHotSpotVMConfigNode.cardTableAddress());
     }
 
     @Override
@@ -67,6 +64,11 @@ public class HotSpotSerialWriteBarrierSnippets extends SerialWriteBarrierSnippet
     @Override
     public boolean verifyBarrier() {
         return ReplacementsUtil.REPLACEMENTS_ASSERTIONS_ENABLED || config.verifyBeforeGC || config.verifyAfterGC;
+    }
+
+    @Override
+    protected byte dirtyCardValue() {
+        return config.dirtyCardValue;
     }
 
     public static class Templates extends AbstractTemplates {
@@ -83,7 +85,7 @@ public class HotSpotSerialWriteBarrierSnippets extends SerialWriteBarrierSnippet
             HotSpotSerialWriteBarrierSnippets receiver = new HotSpotSerialWriteBarrierSnippets(config);
             serialImpreciseWriteBarrier = snippet(SerialWriteBarrierSnippets.class, "serialImpreciseWriteBarrier", null, receiver, GC_CARD_LOCATION);
             serialPreciseWriteBarrier = snippet(SerialWriteBarrierSnippets.class, "serialPreciseWriteBarrier", null, receiver, GC_CARD_LOCATION);
-            serialArrayRangeWriteBarrier = snippet(SerialWriteBarrierSnippets.class, "serialArrayRangeWriteBarrier", null, receiver);
+            serialArrayRangeWriteBarrier = snippet(SerialWriteBarrierSnippets.class, "serialArrayRangeWriteBarrier", null, receiver, GC_CARD_LOCATION);
         }
 
         public void lower(SerialWriteBarrier barrier, LoweringTool tool) {

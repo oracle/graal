@@ -105,8 +105,8 @@ public final class CardTable {
         return isDirtyEntryAtIndexUnchecked(table, index);
     }
 
-    private static boolean isDirtyEntryAtIndexUnchecked(Pointer table, UnsignedWord index) {
-        return isDirtyEntry(readEntryAtIndex(table, index));
+    static boolean isDirtyEntryAtIndexUnchecked(Pointer table, UnsignedWord index) {
+        return isDirtyEntry(readEntryAtIndexUnchecked(table, index));
     }
 
     static boolean containsReferenceToYoungSpace(Object obj) {
@@ -201,8 +201,12 @@ public final class CardTable {
     }
 
     /** Read the entry in a table. */
+    private static int readEntryAtIndexUnchecked(Pointer table, UnsignedWord index) {
+        return table.readByte(indexToTableOffset(index));
+    }
+
     private static int readEntryAtIndex(Pointer table, UnsignedWord index) {
-        final int result = table.readByte(indexToTableOffset(index));
+        int result = readEntryAtIndexUnchecked(table, index);
         assert ((result == DIRTY_ENTRY) || (result == CLEAN_ENTRY)) : "Table entry out of range.";
         return result;
     }

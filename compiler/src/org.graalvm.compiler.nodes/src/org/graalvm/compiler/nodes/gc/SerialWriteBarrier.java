@@ -33,8 +33,9 @@ import org.graalvm.compiler.nodes.memory.address.AddressNode;
 
 @NodeInfo(cycles = CYCLES_8, size = SIZE_4)
 public class SerialWriteBarrier extends ObjectWriteBarrier {
-
     public static final NodeClass<SerialWriteBarrier> TYPE = NodeClass.create(SerialWriteBarrier.class);
+
+    protected boolean verifyOnly;
 
     public SerialWriteBarrier(AddressNode address, boolean precise) {
         this(TYPE, address, precise);
@@ -42,5 +43,13 @@ public class SerialWriteBarrier extends ObjectWriteBarrier {
 
     protected SerialWriteBarrier(NodeClass<? extends SerialWriteBarrier> c, AddressNode address, boolean precise) {
         super(c, address, null, precise);
+    }
+
+    public void setVerifyOnly(boolean value) {
+        this.verifyOnly = value;
+    }
+
+    public boolean getVerifyOnly() {
+        return verifyOnly;
     }
 }
