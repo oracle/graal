@@ -129,6 +129,15 @@ public class WasmBlockNode extends WasmNode {
                     stackPointer++;
                     break;
                 }
+                case I32_XOR: {
+                    stackPointer--;
+                    int x = popInt(frame, stackPointer);
+                    stackPointer--;
+                    int y = popInt(frame, stackPointer);
+                    pushInt(frame, stackPointer, y ^ x);
+                    stackPointer++;
+                    break;
+                }
                 case F32_CONST: {
                     int value = BinaryStreamReader.peekFloatAsInt32(codeEntry().data(), offset);
                     offset += 4;
