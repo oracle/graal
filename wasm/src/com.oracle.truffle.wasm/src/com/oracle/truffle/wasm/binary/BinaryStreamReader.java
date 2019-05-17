@@ -136,6 +136,42 @@ public abstract class BinaryStreamReader {
         return result;
     }
 
+    public long readSignedInt64() {
+        long value = peekSignedInt64(data, offset, bytesConsumed);
+        offset += bytesConsumed[0];
+        return value;
+    }
+
+    public long readSignedInt64(byte[] bytesConsumedOut) {
+        byte[] out = bytesConsumedOut != null ? bytesConsumedOut : bytesConsumed;
+        int value = peekSignedInt32(data, offset, out);
+        offset += out[0];
+        return value;
+    }
+
+    @ExplodeLoop
+    public static long peekSignedInt64(byte[] data, int initialOffset, byte[] bytesConsumed) {
+        long result = 0;
+        int shift = 0;
+        int offset = initialOffset;
+        byte b;
+        do {
+            b = peek1(data, offset);
+            result |= ((b & 0x7F) << shift);
+            shift += 7;
+            offset++;
+        } while ((b & 0x80) != 0);
+
+        if ((shift < 64) && (b & 0x40) != 0) {
+            result |= (~0 << shift);
+        }
+
+        if (bytesConsumed != null) {
+            bytesConsumed[0] = (byte) (shift / 7);
+        }
+        return result;
+    }
+
     public static int peekFloatAsInt32(byte[] data, int offset) {
         return peek4(data, offset);
     }
