@@ -51,7 +51,14 @@ import static com.oracle.truffle.wasm.binary.Instructions.I32_DIV_S;
 import static com.oracle.truffle.wasm.binary.Instructions.I32_DIV_U;
 import static com.oracle.truffle.wasm.binary.Instructions.I32_EQ;
 import static com.oracle.truffle.wasm.binary.Instructions.I32_EQZ;
+import static com.oracle.truffle.wasm.binary.Instructions.I32_GE_S;
+import static com.oracle.truffle.wasm.binary.Instructions.I32_GE_U;
+import static com.oracle.truffle.wasm.binary.Instructions.I32_GT_S;
+import static com.oracle.truffle.wasm.binary.Instructions.I32_GT_U;
+import static com.oracle.truffle.wasm.binary.Instructions.I32_LE_S;
+import static com.oracle.truffle.wasm.binary.Instructions.I32_LE_U;
 import static com.oracle.truffle.wasm.binary.Instructions.I32_LT_S;
+import static com.oracle.truffle.wasm.binary.Instructions.I32_LT_U;
 import static com.oracle.truffle.wasm.binary.Instructions.I32_MUL;
 import static com.oracle.truffle.wasm.binary.Instructions.I32_NE;
 import static com.oracle.truffle.wasm.binary.Instructions.I32_OR;
@@ -298,6 +305,13 @@ public class BinaryReader extends BinaryStreamReader {
                 case I32_EQ:
                 case I32_NE:
                 case I32_LT_S:
+                case I32_LT_U:
+                case I32_GT_S:
+                case I32_GT_U:
+                case I32_LE_S:
+                case I32_LE_U:
+                case I32_GE_S:
+                case I32_GE_U:
                     state.pop();
                     state.pop();
                     state.push();

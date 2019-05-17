@@ -47,7 +47,14 @@ import static com.oracle.truffle.wasm.binary.Instructions.I32_DIV_S;
 import static com.oracle.truffle.wasm.binary.Instructions.I32_DIV_U;
 import static com.oracle.truffle.wasm.binary.Instructions.I32_EQ;
 import static com.oracle.truffle.wasm.binary.Instructions.I32_EQZ;
+import static com.oracle.truffle.wasm.binary.Instructions.I32_GE_S;
+import static com.oracle.truffle.wasm.binary.Instructions.I32_GE_U;
+import static com.oracle.truffle.wasm.binary.Instructions.I32_GT_S;
+import static com.oracle.truffle.wasm.binary.Instructions.I32_GT_U;
+import static com.oracle.truffle.wasm.binary.Instructions.I32_LE_S;
+import static com.oracle.truffle.wasm.binary.Instructions.I32_LE_U;
 import static com.oracle.truffle.wasm.binary.Instructions.I32_LT_S;
+import static com.oracle.truffle.wasm.binary.Instructions.I32_LT_U;
 import static com.oracle.truffle.wasm.binary.Instructions.I32_MUL;
 import static com.oracle.truffle.wasm.binary.Instructions.I32_NE;
 import static com.oracle.truffle.wasm.binary.Instructions.I32_OR;
@@ -154,6 +161,69 @@ public class WasmBlockNode extends WasmNode {
                     stackPointer--;
                     int y = popInt(frame, stackPointer);
                     pushInt(frame, stackPointer, y < x ? 1 : 0);
+                    stackPointer++;
+                    break;
+                }
+                case I32_LT_U: {
+                    stackPointer--;
+                    int x = popInt(frame, stackPointer);
+                    stackPointer--;
+                    int y = popInt(frame, stackPointer);
+                    pushInt(frame, stackPointer, Integer.compareUnsigned(y, x) < 0 ? 1 : 0);
+                    stackPointer++;
+                    break;
+                }
+                case I32_GT_S: {
+                    stackPointer--;
+                    int x = popInt(frame, stackPointer);
+                    stackPointer--;
+                    int y = popInt(frame, stackPointer);
+                    pushInt(frame, stackPointer, y > x ? 1 : 0);
+                    stackPointer++;
+                    break;
+                }
+                case I32_GT_U: {
+                    stackPointer--;
+                    int x = popInt(frame, stackPointer);
+                    stackPointer--;
+                    int y = popInt(frame, stackPointer);
+                    pushInt(frame, stackPointer, Integer.compareUnsigned(y, x) > 0 ? 1 : 0);
+                    stackPointer++;
+                    break;
+                }
+                case I32_LE_S: {
+                    stackPointer--;
+                    int x = popInt(frame, stackPointer);
+                    stackPointer--;
+                    int y = popInt(frame, stackPointer);
+                    pushInt(frame, stackPointer, y <= x ? 1 : 0);
+                    stackPointer++;
+                    break;
+                }
+                case I32_LE_U: {
+                    stackPointer--;
+                    int x = popInt(frame, stackPointer);
+                    stackPointer--;
+                    int y = popInt(frame, stackPointer);
+                    pushInt(frame, stackPointer, Integer.compareUnsigned(y, x) <= 0 ? 1 : 0);
+                    stackPointer++;
+                    break;
+                }
+                case I32_GE_S: {
+                    stackPointer--;
+                    int x = popInt(frame, stackPointer);
+                    stackPointer--;
+                    int y = popInt(frame, stackPointer);
+                    pushInt(frame, stackPointer, y >= x ? 1 : 0);
+                    stackPointer++;
+                    break;
+                }
+                case I32_GE_U: {
+                    stackPointer--;
+                    int x = popInt(frame, stackPointer);
+                    stackPointer--;
+                    int y = popInt(frame, stackPointer);
+                    pushInt(frame, stackPointer, Integer.compareUnsigned(y, x) >= 0 ? 1 : 0);
                     stackPointer++;
                     break;
                 }
