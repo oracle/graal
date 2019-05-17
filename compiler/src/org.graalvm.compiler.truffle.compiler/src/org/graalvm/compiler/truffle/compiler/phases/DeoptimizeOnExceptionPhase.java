@@ -27,7 +27,6 @@ package org.graalvm.compiler.truffle.compiler.phases;
 import java.util.function.Predicate;
 
 import org.graalvm.compiler.nodes.AbstractBeginNode;
-import org.graalvm.compiler.nodes.FixedNode;
 import org.graalvm.compiler.nodes.FixedWithNextNode;
 import org.graalvm.compiler.nodes.Invoke;
 import org.graalvm.compiler.nodes.InvokeWithExceptionNode;
@@ -58,14 +57,10 @@ public class DeoptimizeOnExceptionPhase extends Phase {
                 ResolvedJavaMethod targetMethod = invokeWithException.callTarget().targetMethod();
                 if (deoptimizeOnExceptionPredicate.test(targetMethod)) {
                     // Method has @TruffleBoundary(transferToInterpreterOnException=true)
-                    AbstractBeginNode exceptionEdge = invokeWithException.exceptionEdge();
-                    FixedNode next = exceptionEdge.next();
-                    assert next != null;
-                    exceptionEdge.setNext(null);
                     // Note: Speculation is inserted during PE.
+                    AbstractBeginNode exceptionEdge = invokeWithException.exceptionEdge();
                     FixedWithNextNode newNode = graph.add(new SpeculativeExceptionAnchorNode(DeoptimizationReason.TransferToInterpreter, DeoptimizationAction.InvalidateRecompile, targetMethod));
-                    newNode.setNext(next);
-                    exceptionEdge.setNext(newNode);
+                    graph.addAfterFixed(exceptionEdge, newNode);
                 }
             }
         }
