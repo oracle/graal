@@ -32,6 +32,9 @@ package com.oracle.truffle.wasm.test;
 import org.junit.Assert;
 import org.junit.Test;
 
+import java.util.HashMap;
+import java.util.Map;
+
 public abstract class WasmTest {
     private TestElement[] testElements = {
             test("(module (func (result i32) i32.const 42))", expected(42)),
@@ -41,11 +44,14 @@ public abstract class WasmTest {
             test("(module (func (result i32) i32.const 42 i32.const 17 i32.sub))", expected(25)),
             test("(module (func (result i32) i32.const 42 i32.const 43 i32.sub))", expected(-1)),
             test("(module (func (result i32) i32.const 11 i32.const 12 i32.mul))", expected(132)),
+            test("(module (func (result i32) i32.const 10 i32.const 7 i32.and))", expected(2)),
+            test("(module (func (result i32) i32.const -1 i32.const 7 i32.and))", expected(7)),
+            test("(module (func (result i32) i32.const -2 i32.const 7 i32.or))", expected(-1)),
+            test("(module (func (result i32) i32.const 6 i32.const 9 i32.or))", expected(15)),
             test("(module (func (result i32) i32.const 1690433))", expected(1690433)),
             test("(module (func (result f32) f32.const 3.14))", expected(3.14f, 0.001f)),
             test("(module (func (result f32) f32.const 3.14 f32.const 2.71 f32.add))", expected(5.85f, 0.001f)),
             test("(module (func (result f64) f64.const 340.75))", expected(340.75, 0.001)),
-            test("(module (func (result i32) block $B0 i32.const 11 end i32.const 21 i32.add end", expected(33)),
             test("(module (func (result i32) block $B0 (result i32) i32.const 11 end i32.const 21 i32.add))", expected(33)),
     };
 
@@ -67,8 +73,24 @@ public abstract class WasmTest {
 
     @Test
     public void runTests() throws InterruptedException {
+        Map<TestElement, Throwable> errors = new HashMap<>();
         for (TestElement element : testElements) {
-            runTest(element);
+            try {
+                runTest(element);
+            } catch (Throwable e) {
+                errors.put(element, e);
+            }
+        }
+        if (!errors.isEmpty()) {
+            for (Map.Entry<TestElement, Throwable> entry : errors.entrySet()) {
+                System.err.println("Failure in: " + entry.getKey().name);
+                System.err.println(entry.getValue().getClass().getSimpleName() + ": " + entry.getValue().getMessage());
+                entry.getValue().printStackTrace();
+            }
+            System.err.println("\u001B[31m" + (testElements.length - errors.size()) + "/" + testElements.length + " tests passed.\u001B[0m");
+            throw new RuntimeException("Tests failed!");
+        } else {
+            System.out.println("\u001B[32m" + testElements.length + "/" + testElements.length + " tests passed.\u001B[0m");
         }
         Thread.sleep(10000);
     }
@@ -76,13 +98,20 @@ public abstract class WasmTest {
     protected abstract void runTest(TestElement element);
 
     protected static class TestElement {
+        public String name;
         public String program;
         public TestData data;
 
-        TestElement(String program, TestData data) {
+        TestElement(String name, String program, TestData data) {
+            this.name = name;
             this.program = program;
             this.data = data;
         }
 
+        TestElement(String program, TestData data) {
+            this.name = program;
+            this.program = program;
+            this.data = data;
+        }
     }
 }

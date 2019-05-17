@@ -62,6 +62,8 @@ public class WasmBlockNode extends WasmNode {
             int opcode = byteOpcode & 0xFF;
             offset++;
             switch (opcode) {
+                case NOP:
+                    break;
                 case END:
                     break;
                 case DROP: {
@@ -106,6 +108,24 @@ public class WasmBlockNode extends WasmNode {
                     stackPointer--;
                     int y = popInt(frame, stackPointer);
                     pushInt(frame, stackPointer, y * x);
+                    stackPointer++;
+                    break;
+                }
+                case I32_AND: {
+                    stackPointer--;
+                    int x = popInt(frame, stackPointer);
+                    stackPointer--;
+                    int y = popInt(frame, stackPointer);
+                    pushInt(frame, stackPointer, y & x);
+                    stackPointer++;
+                    break;
+                }
+                case I32_OR: {
+                    stackPointer--;
+                    int x = popInt(frame, stackPointer);
+                    stackPointer--;
+                    int y = popInt(frame, stackPointer);
+                    pushInt(frame, stackPointer, y | x);
                     stackPointer++;
                     break;
                 }
