@@ -368,7 +368,13 @@ class BaseGraalVmLayoutDistribution(mx.LayoutDistribution):
 
             for _license in _component.license_files + _component.third_party_license_files:
                 if mx.is_windows():
-                    mx.warn("Can not add license: " + _license)
+                    if _component_base == '<jdk_base>/':
+                        pass  # already in place from the support dist
+                    elif len(_component.support_distributions) == 1:
+                        _support = _component.support_distributions[0]
+                        _add(layout, '<jdk_base>/', 'extracted-dependency:{}/{}'.format(_support, _license), _component)
+                    else:
+                        mx.warn("Can not add license: " + _license)
                 else:
                     _add_link('<jdk_base>/', _component_base + _license, _component)
 
