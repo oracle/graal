@@ -997,6 +997,10 @@ public final class Engine implements AutoCloseable {
             return new Object();
         }
 
+        @Override
+        public SecurityException throwSecurityException(String message) {
+            throw new SecurityException(message);
+        }
     }
 
 }

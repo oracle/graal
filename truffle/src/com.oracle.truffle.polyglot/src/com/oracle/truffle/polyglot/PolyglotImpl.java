@@ -325,6 +325,11 @@ public final class PolyglotImpl extends AbstractPolyglotImpl {
         }
     }
 
+    @Override
+    public SecurityException throwSecurityException(String message) {
+        throw VMAccessor.LANGUAGE.throwSecurityException(message);
+    }
+
     org.graalvm.polyglot.Source getPolyglotSource(Source source) {
         org.graalvm.polyglot.Source polyglotSource = VMAccessor.SOURCE.getPolyglotSource(source);
         if (polyglotSource == null) {

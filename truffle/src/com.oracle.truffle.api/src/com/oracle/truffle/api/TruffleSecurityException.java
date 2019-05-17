@@ -38,40 +38,19 @@
  * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
  * SOFTWARE.
  */
-package com.oracle.truffle.api.test.polyglot;
+package com.oracle.truffle.api;
 
-import java.util.Map;
-import org.graalvm.polyglot.Context;
-import org.graalvm.polyglot.EnvironmentAccess;
-import org.junit.Assert;
-import org.junit.Test;
+import com.oracle.truffle.api.nodes.Node;
 
-public class ProcessEnvironmentTest extends AbstractPolyglotTest {
+@SuppressWarnings("serial")
+final class TruffleSecurityException extends SecurityException implements TruffleException {
 
-    @Test
-    public void testEnvironmentAccessNone() {
-        setupEnv(Context.newBuilder().allowEnvironmentAccess(EnvironmentAccess.NONE).build());
-        Map<String, String> env = languageEnv.getEnvironment();
-        Assert.assertTrue(env.isEmpty());
-        try {
-            env.put("k1", "v1");
-            Assert.fail("Environment map must be unmodifiable.");
-        } catch (UnsupportedOperationException e) {
-            // expected
-        }
+    TruffleSecurityException(String message) {
+        super(message);
     }
 
-    @Test
-    public void testEnvironmentInherit() {
-        setupEnv(Context.newBuilder().allowEnvironmentAccess(EnvironmentAccess.INHERIT).build());
-        Map<String, String> env = languageEnv.getEnvironment();
-        Map<String, String> expected = System.getenv();
-        Assert.assertEquals(expected, env);
-        try {
-            env.put("k1", "v1");
-            Assert.fail("Environment map must be unmodifiable.");
-        } catch (UnsupportedOperationException e) {
-            // expected
-        }
+    @Override
+    public Node getLocation() {
+        return null;
     }
 }

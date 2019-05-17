@@ -2150,7 +2150,7 @@ public abstract class TruffleLanguage<C> {
         @TruffleBoundary
         public TruffleProcessBuilder newProcessBuilder(String... command) {
             if (!isCreateProcessAllowed()) {
-                throw new SecurityException("Process creation is not allowed, to enable it set Context.Builder.allowCreateProcess(true).");
+                throw new TruffleSecurityException("Process creation is not allowed, to enable it set Context.Builder.allowCreateProcess(true).");
             }
             List<String> cmd = new ArrayList<>(command.length);
             Collections.addAll(cmd, command);
@@ -2876,6 +2876,11 @@ public abstract class TruffleLanguage<C> {
         @Override
         public TruffleLogger getLogger(String id, String loggerName, Object loggers) {
             return TruffleLogger.getLogger(id, loggerName, (TruffleLogger.LoggerCache) loggers);
+        }
+
+        @Override
+        public SecurityException throwSecurityException(String message) {
+            throw new TruffleSecurityException(message);
         }
     }
 }

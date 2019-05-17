@@ -74,10 +74,13 @@ public interface ProcessHandler {
     /**
      * Subprocess attributes passed to
      * {@link #start(org.graalvm.polyglot.io.ProcessHandler.ProcessCommand) start} method.
-     * 
+     *
      * @since 20.0.0 beta 1
      */
     final class ProcessCommand {
+
+        private static final AbstractPolyglotImpl impl = initImpl();
+
         private List<String> cmd;
         private String cwd;
         private Map<String, String> environment;
@@ -165,12 +168,26 @@ public interface ProcessHandler {
             return redirects[2];
         }
 
-        static {
+        /**
+         * Throws a {@link SecurityException} with a given message. The {@link ProcessHandler}
+         * should use this method to throw the {@link SecurityException} when it forbids the
+         * sub-process creation.
+         *
+         * @param message the exception message
+         * @since 20.0.0 beta 1
+         */
+        @SuppressWarnings("static-method")
+        public SecurityException throwSecurityException(String message) {
+            throw impl.throwSecurityException(message);
+        }
+
+        private static AbstractPolyglotImpl initImpl() {
             try {
                 Method method = Engine.class.getDeclaredMethod("getImpl");
                 method.setAccessible(true);
-                AbstractPolyglotImpl impl = (AbstractPolyglotImpl) method.invoke(null);
-                impl.setIO(new IOAccessImpl());
+                AbstractPolyglotImpl polyglotImpl = (AbstractPolyglotImpl) method.invoke(null);
+                polyglotImpl.setIO(new IOAccessImpl());
+                return polyglotImpl;
             } catch (Exception e) {
                 throw new IllegalStateException("Failed to initialize execution listener class.", e);
             }

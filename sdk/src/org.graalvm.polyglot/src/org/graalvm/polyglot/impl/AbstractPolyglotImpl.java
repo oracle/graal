@@ -696,6 +696,8 @@ public abstract class AbstractPolyglotImpl {
 
     public abstract <S, T> Object newTargetTypeMapping(Class<S> sourceType, Class<T> targetType, Predicate<S> acceptsValue, Function<S, T> convertValue);
 
+    public abstract SecurityException throwSecurityException(String message);
+
     public static final class EnvironmentConfig {
         private final EnvironmentAccess environmentAccess;
         private volatile Map<String, String> configuredEnvironement;

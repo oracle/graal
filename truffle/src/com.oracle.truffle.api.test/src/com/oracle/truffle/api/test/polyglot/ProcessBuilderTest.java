@@ -40,6 +40,7 @@
  */
 package com.oracle.truffle.api.test.polyglot;
 
+import com.oracle.truffle.api.TruffleException;
 import com.oracle.truffle.api.TruffleFile;
 import com.oracle.truffle.api.io.TruffleProcessBuilder;
 import java.io.IOException;
@@ -72,6 +73,7 @@ public class ProcessBuilderTest extends AbstractPolyglotTest {
             Assert.fail("SecurityException expected.");
         } catch (SecurityException se) {
             // Expected
+            verifySecurityException(se);
         }
     }
 
@@ -106,6 +108,7 @@ public class ProcessBuilderTest extends AbstractPolyglotTest {
             Assert.fail("SecurityException expected.");
         } catch (SecurityException se) {
             // Expected
+            verifySecurityException(se);
         }
     }
 
@@ -272,6 +275,10 @@ public class ProcessBuilderTest extends AbstractPolyglotTest {
         Assert.assertEquals(ProcessHandler.Redirect.PIPE, command.getInputRedirect());
         Assert.assertEquals(ProcessHandler.Redirect.PIPE, command.getOutputRedirect());
         Assert.assertEquals(ProcessHandler.Redirect.INHERIT, command.getErrorRedirect());
+    }
+
+    private static void verifySecurityException(SecurityException se) {
+        Assert.assertTrue(se instanceof TruffleException);
     }
 
     private static Path getJavaExecutable() {

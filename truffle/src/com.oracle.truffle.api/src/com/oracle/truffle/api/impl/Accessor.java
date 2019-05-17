@@ -89,7 +89,6 @@ import com.oracle.truffle.api.source.Source;
 import com.oracle.truffle.api.source.Source.SourceBuilder;
 import com.oracle.truffle.api.source.SourceSection;
 import java.util.List;
-import org.graalvm.polyglot.EnvironmentAccess;
 import org.graalvm.polyglot.io.ProcessHandler;
 
 /**
@@ -501,6 +500,8 @@ public abstract class Accessor {
         public abstract TruffleFile getTruffleFile(String path, FileSystem fileSystem, Supplier<Map<String, Collection<? extends TruffleFile.FileTypeDetector>>> fileTypeDetectorsSupplier);
 
         public abstract TruffleFile getTruffleFile(URI uri, FileSystem fileSystem, Supplier<Map<String, Collection<? extends TruffleFile.FileTypeDetector>>> fileTypeDetectorsSupplier);
+
+        public abstract SecurityException throwSecurityException(String message);
     }
 
     public abstract static class InstrumentSupport {
