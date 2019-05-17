@@ -31,17 +31,31 @@
 package com.oracle.truffle.wasm.binary;
 
 import com.oracle.truffle.api.CompilerDirectives.CompilationFinal;
+import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.api.nodes.Node;
 
-public class WasmNode extends Node implements WasmNodeInterface {
+public abstract class WasmNode extends Node implements WasmNodeInterface {
     @CompilationFinal private WasmCodeEntry codeEntry;
+    @CompilationFinal private int size;
 
-    public WasmNode(WasmCodeEntry codeEntry) {
+    public WasmNode(WasmCodeEntry codeEntry, int size) {
         this.codeEntry = codeEntry;
+        this.size = size;
     }
+
+    public abstract void execute(VirtualFrame frame);
+    public abstract int returnTypeLength();
 
     @Override
     public WasmCodeEntry codeEntry() {
         return codeEntry;
+    }
+
+    public int size() {
+        return this.size;
+    }
+
+    public void setSize(int size) {
+        this.size = size;
     }
 }

@@ -52,7 +52,7 @@ public abstract class WasmTest {
             test("(module (func (result f32) f32.const 3.14))", expected(3.14f, 0.001f)),
             test("(module (func (result f32) f32.const 3.14 f32.const 2.71 f32.add))", expected(5.85f, 0.001f)),
             test("(module (func (result f64) f64.const 340.75))", expected(340.75, 0.001)),
-            test("(module (func (result i32) block $B0 (result i32) i32.const 11 end i32.const 21 i32.add))", expected(33)),
+            test("(module (func (result i32) block $B0 (result i32) i32.const 11 end i32.const 21 i32.add))", expected(32)),
     };
 
     private static TestElement test(String program, TestData data) {
