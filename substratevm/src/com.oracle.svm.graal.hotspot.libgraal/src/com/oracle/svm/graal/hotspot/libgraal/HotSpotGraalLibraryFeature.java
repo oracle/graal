@@ -482,7 +482,7 @@ public final class HotSpotGraalLibraryFeature implements com.oracle.svm.core.gra
         }
 
         public Annotation[] getClassAnnotations(String className) {
-            return classAnnotationMap.get(className);
+            return classAnnotationMap.getOrDefault(className, NO_ANNOTATIONS);
         }
 
         public Annotation[][] getParameterAnnotations(String className, String methodName) {
@@ -492,7 +492,7 @@ public final class HotSpotGraalLibraryFeature implements com.oracle.svm.core.gra
 
         public Annotation[] getMethodAnnotations(ResolvedJavaMethod javaMethod) {
             String name = javaMethod.format("%R %H.%n%P");
-            return methodAnnotationMap.get(name);
+            return methodAnnotationMap.getOrDefault(name, NO_ANNOTATIONS);
 
         }
     }

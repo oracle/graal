@@ -612,6 +612,12 @@ def compiler_gate_benchmark_runner(tasks, extraVMarguments=None, prefix=''):
             if t: _gate_dacapo('pmd', 4, _remove_empty_entries(extraVMarguments) + ['-XX:+UseJVMCICompiler', '-Xmx256M', '-XX:+UseConcMarkSweepGC', '-XX:+CMSIncrementalMode'], threads=4, force_serial_gc=False, set_start_heap_size=False)
 
 
+        if prefix != '':
+            # ensure G1 still works with libgraal
+            with Task(prefix + 'DaCapo_pmd:G1', tasks, tags=cms) as t:
+                if t: _gate_dacapo('pmd', 4, _remove_empty_entries(extraVMarguments) + ['-XX:+UseJVMCICompiler', '-Xmx256M', '-XX:+UseG1GC'], threads=4, force_serial_gc=False, set_start_heap_size=False)
+
+
 
 graal_unit_test_runs = [
     UnitTestRun('UnitTests', [], tags=GraalTags.test + GraalTags.coverage),
