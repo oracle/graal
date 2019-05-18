@@ -338,7 +338,7 @@ def updategraalinopenjdk(args):
             replace_lines(CompileJavaModules_gmk, begin_lines, end_line, new_lines, old_line_check, preserve_indent=True)
         else:
             # append exclude setting after jdk.internal.vm.compiler_EXCLUDES
-            new_lines = ['\n','jdk.aot_EXCLUDES += \\\n','    jdk.tools.jaotc.test \\\n','    #\n','\n']  # indent is inlined
+            new_lines = ['\n', 'jdk.aot_EXCLUDES += \\\n', '    jdk.tools.jaotc.test \\\n', '    #\n', '\n']  # indent is inlined
             replace_lines(CompileJavaModules_gmk, begin_lines, end_line, new_lines, old_line_check, preserve_indent=True, append_mode=True)
 
     # Update 'SRC' in the 'Compile graalunit tests' section of make/test/JtregGraalUnit.gmk
