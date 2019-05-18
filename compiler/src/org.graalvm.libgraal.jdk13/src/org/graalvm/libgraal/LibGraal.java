@@ -40,7 +40,6 @@ public class LibGraal {
         return Services.IS_IN_NATIVE_IMAGE;
     }
 
-    @SuppressWarnings("unused")
     public static void registerNativeMethods(HotSpotJVMCIRuntime runtime, Class<?> clazz) {
         if (clazz.isPrimitive()) {
             throw new IllegalArgumentException();
@@ -48,27 +47,27 @@ public class LibGraal {
         if (inLibGraal() || !isAvailable()) {
             throw new IllegalStateException();
         }
-        // Waiting for https://bugs.openjdk.java.net/browse/JDK-8220623
-        // runtime.registerNativeMethods(clazz);
-        throw new IllegalStateException("Requires JDK-8220623");
+        runtime.registerNativeMethods(clazz);
     }
 
-    @SuppressWarnings("unused")
     public static long translate(HotSpotJVMCIRuntime runtime, Object obj) {
         if (!isAvailable()) {
             throw new IllegalStateException();
         }
-        // return runtime.translate(obj);
-        throw new IllegalStateException("Requires JDK-8220623");
+        if (!inLibGraal() && LibGraalScope.currentScope.get() == null) {
+            throw new IllegalStateException("Not within a " + LibGraalScope.class.getName());
+        }
+        return runtime.translate(obj);
     }
 
-    @SuppressWarnings("unused")
     public static <T> T unhand(HotSpotJVMCIRuntime runtime, Class<T> type, long handle) {
         if (!isAvailable()) {
             throw new IllegalStateException();
         }
-        // return runtime.unhand(type, handle);
-        throw new IllegalStateException("Requires JDK-8220623");
+        if (!inLibGraal() && LibGraalScope.currentScope.get() == null) {
+            throw new IllegalStateException("Not within a " + LibGraalScope.class.getName());
+        }
+        return runtime.unhand(type, handle);
     }
 
     private static long initializeLibgraal() {
@@ -78,11 +77,9 @@ public class LibGraal {
             // below will fail on JDK13+.
             Services.initializeJVMCI();
 
-            // Waiting for https://bugs.openjdk.java.net/browse/JDK-8220623
-            // HotSpotJVMCIRuntime runtime = HotSpotJVMCIRuntime.runtime();
-            // long[] nativeInterface = runtime.registerNativeMethods(LibGraal.class);
-            // return nativeInterface[1];
-            return 0L;
+            HotSpotJVMCIRuntime runtime = HotSpotJVMCIRuntime.runtime();
+            long[] nativeInterface = runtime.registerNativeMethods(LibGraal.class);
+            return nativeInterface[1];
         } catch (UnsupportedOperationException e) {
             return 0L;
         }
@@ -90,25 +87,16 @@ public class LibGraal {
 
     static final long isolate = Services.IS_BUILDING_NATIVE_IMAGE ? 0L : initializeLibgraal();
 
-    @SuppressWarnings("unused")
     static boolean isCurrentThreadAttached(HotSpotJVMCIRuntime runtime) {
-        // Waiting for https://bugs.openjdk.java.net/browse/JDK-8220623
-        // return runtime.isCurrentThreadAttached();
-        throw new IllegalStateException("Requires JDK-8220623");
+        return runtime.isCurrentThreadAttached();
     }
 
-    @SuppressWarnings("unused")
     static boolean attachCurrentThread(HotSpotJVMCIRuntime runtime) {
-        // Waiting for https://bugs.openjdk.java.net/browse/JDK-8220623
-        // runtime.attachCurrentThread();
-        throw new IllegalStateException("Requires JDK-8220623");
+        return runtime.attachCurrentThread(false);
     }
 
-    @SuppressWarnings("unused")
     static void detachCurrentThread(HotSpotJVMCIRuntime runtime) {
-        // Waiting for https://bugs.openjdk.java.net/browse/JDK-8220623
-        // runtime.detachCurrentThread();
-        throw new IllegalStateException("Requires JDK-8220623");
+        runtime.detachCurrentThread();
     }
 
     static native long getCurrentIsolateThread(long iso);
