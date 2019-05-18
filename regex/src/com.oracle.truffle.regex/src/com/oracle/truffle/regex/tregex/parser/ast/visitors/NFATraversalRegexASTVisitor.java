@@ -184,6 +184,10 @@ public abstract class NFATraversalRegexASTVisitor {
         this.insideLoops = new ASTNodeSet<>(ast);
     }
 
+    public Set<LookBehindAssertion> getTraversableLookBehindAssertions() {
+        return traversableLookBehindAssertions;
+    }
+
     public void setTraversableLookBehindAssertions(Set<LookBehindAssertion> traversableLookBehindAssertions) {
         this.traversableLookBehindAssertions = traversableLookBehindAssertions;
     }
