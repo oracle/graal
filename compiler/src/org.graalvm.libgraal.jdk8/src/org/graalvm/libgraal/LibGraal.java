@@ -75,12 +75,6 @@ public class LibGraal {
             HotSpotJVMCIRuntime runtime = HotSpotJVMCIRuntime.runtime();
             long[] nativeInterface = runtime.registerNativeMethods(LibGraal.class);
             return nativeInterface[1];
-        } catch (UnsatisfiedLinkError e) {
-            // Remove once Graal depends on a jvmci release including GR-14941
-            // since we can then rely solely on UnsupportedOperationException
-            // to indicate whether libgraal is available. All other exceptions
-            // raised here should then cause fail-fast behavior.
-            return 0L;
         } catch (UnsupportedOperationException e) {
             return 0L;
         }
