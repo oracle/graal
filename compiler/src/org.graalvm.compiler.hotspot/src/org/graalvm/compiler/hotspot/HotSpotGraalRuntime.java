@@ -364,7 +364,11 @@ public final class HotSpotGraalRuntime implements HotSpotGraalRuntimeProvider {
     }
 
     private long runtimeStartTime;
-    private boolean shutdown;
+
+    /**
+     * Called from compiler threads to check whether to bail out of a compilation.
+     */
+    private volatile boolean shutdown;
 
     /**
      * Take action related to entering a new execution phase.
@@ -391,6 +395,16 @@ public final class HotSpotGraalRuntime implements HotSpotGraalRuntimeProvider {
         BenchmarkCounters.shutdown(runtime(), optionsRef.get(), runtimeStartTime);
 
         outputDirectory.close();
+
+        shutdownLibGraal();
+    }
+
+    /**
+     * Substituted by
+     * {@code com.oracle.svm.graal.hotspot.libgraal.Target_org_graalvm_compiler_hotspot_HotSpotGraalRuntime}
+     * to call {@code org.graalvm.nativeimage.VMRuntime.shutdown()}.
+     */
+    private static void shutdownLibGraal() {
     }
 
     void clearMetrics() {

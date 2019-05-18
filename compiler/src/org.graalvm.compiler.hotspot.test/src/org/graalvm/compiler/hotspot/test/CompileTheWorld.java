@@ -97,6 +97,7 @@ import org.graalvm.compiler.options.OptionsParser;
 import org.graalvm.compiler.serviceprovider.GraalUnsafeAccess;
 import org.graalvm.compiler.serviceprovider.JavaVersionUtil;
 import org.graalvm.libgraal.LibGraal;
+import org.graalvm.libgraal.LibGraalScope;
 import org.graalvm.libgraal.OptionsEncoder;
 
 import jdk.vm.ci.hotspot.HotSpotCodeCacheProvider;
@@ -940,6 +941,7 @@ public final class CompileTheWorld {
     /**
      * Compiles a method and gathers some statistics.
      */
+    @SuppressWarnings("try")
     private void compileMethod(HotSpotResolvedJavaMethod method, int counter, LibGraalParams libgraal) {
         try {
             long start = System.currentTimeMillis();
@@ -950,32 +952,33 @@ public final class CompileTheWorld {
             HotSpotInstalledCode installedCode;
             if (libgraal != null) {
                 HotSpotJVMCIRuntime runtime = HotSpotJVMCIRuntime.runtime();
-                long methodHandle = LibGraal.translate(runtime, method);
-                long isolateThread = LibGraal.getIsolateThread();
+                try (LibGraalScope scope = new LibGraalScope(runtime)) {
+                    long methodHandle = LibGraal.translate(runtime, method);
+                    long isolateThread = LibGraalScope.getIsolateThread();
 
-                StackTraceBuffer stackTraceBuffer = libgraal.getStackTraceBuffer();
+                    StackTraceBuffer stackTraceBuffer = libgraal.getStackTraceBuffer();
 
-                long stackTraceBufferAddress = stackTraceBuffer.getAddress();
-                long installedCodeHandle = compileMethodInLibgraal(isolateThread,
-                                methodHandle,
-                                useProfilingInfo,
-                                installAsDefault,
-                                libgraal.options.getAddress(),
-                                libgraal.options.size,
-                                libgraal.options.hash,
-                                stackTraceBufferAddress,
-                                stackTraceBuffer.size);
+                    long stackTraceBufferAddress = stackTraceBuffer.getAddress();
+                    long installedCodeHandle = compileMethodInLibgraal(isolateThread,
+                                    methodHandle,
+                                    useProfilingInfo,
+                                    installAsDefault,
+                                    libgraal.options.getAddress(),
+                                    libgraal.options.size,
+                                    libgraal.options.hash,
+                                    stackTraceBufferAddress,
+                                    stackTraceBuffer.size);
 
-                installedCode = LibGraal.unhand(runtime, HotSpotInstalledCode.class, installedCodeHandle);
-                if (installedCode == null) {
-                    int length = UNSAFE.getInt(stackTraceBufferAddress);
-                    byte[] data = new byte[length];
-                    UNSAFE.copyMemory(null, stackTraceBufferAddress + Integer.BYTES, data, ARRAY_BYTE_BASE_OFFSET, length);
-                    String stackTrace = new String(data).trim();
-                    println("CompileTheWorld (%d) : Error compiling method: %s", counter, method.format("%H.%n(%p):%r"));
-                    println(stackTrace);
+                    installedCode = LibGraal.unhand(runtime, HotSpotInstalledCode.class, installedCodeHandle);
+                    if (installedCode == null) {
+                        int length = UNSAFE.getInt(stackTraceBufferAddress);
+                        byte[] data = new byte[length];
+                        UNSAFE.copyMemory(null, stackTraceBufferAddress + Integer.BYTES, data, ARRAY_BYTE_BASE_OFFSET, length);
+                        String stackTrace = new String(data).trim();
+                        println("CompileTheWorld (%d) : Error compiling method: %s", counter, method.format("%H.%n(%p):%r"));
+                        println(stackTrace);
+                    }
                 }
-
             } else {
                 int entryBCI = JVMCICompiler.INVOCATION_ENTRY_BCI;
                 HotSpotCompilationRequest request = new HotSpotCompilationRequest(method, entryBCI, 0L);

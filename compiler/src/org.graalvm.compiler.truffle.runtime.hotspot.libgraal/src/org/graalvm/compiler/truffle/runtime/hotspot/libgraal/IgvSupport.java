@@ -24,7 +24,7 @@
  */
 package org.graalvm.compiler.truffle.runtime.hotspot.libgraal;
 
-import static org.graalvm.libgraal.LibGraal.getIsolateThread;
+import static org.graalvm.libgraal.LibGraalScope.getIsolateThread;
 
 import java.io.Closeable;
 import java.io.IOException;
@@ -43,8 +43,10 @@ import org.graalvm.compiler.truffle.common.CompilableTruffleAST;
 import org.graalvm.compiler.truffle.common.TruffleDebugContext;
 import org.graalvm.compiler.truffle.common.TruffleDebugJavaMethod;
 import org.graalvm.graphio.GraphOutput;
+import org.graalvm.libgraal.LibGraalScope;
 import org.graalvm.libgraal.OptionsEncoder;
 
+import jdk.vm.ci.hotspot.HotSpotJVMCIRuntime;
 import jdk.vm.ci.services.Services;
 
 final class IgvSupport extends SVMObject implements TruffleDebugContext {
@@ -53,13 +55,15 @@ final class IgvSupport extends SVMObject implements TruffleDebugContext {
     private static volatile Map<Object, Object> versionProperties;
 
     private final SVMHotSpotTruffleCompiler owner;
+    private final LibGraalScope scope;
     private GraphOutput<?, ?> parentOutput;
     private IgvDumpChannel sharedChannel;
 
-    private IgvSupport(SVMHotSpotTruffleCompiler owner, long handle) {
+    private IgvSupport(LibGraalScope scope, SVMHotSpotTruffleCompiler owner, long handle) {
         super(handle);
         Objects.requireNonNull(owner, "Owner must be non null.");
         this.owner = owner;
+        this.scope = scope;
     }
 
     @Override
@@ -132,7 +136,11 @@ final class IgvSupport extends SVMObject implements TruffleDebugContext {
 
     @Override
     public void close() {
-        HotSpotToSVMCalls.closeDebugContext(getIsolateThread(), handle);
+        try {
+            HotSpotToSVMCalls.closeDebugContext(getIsolateThread(), handle);
+        } finally {
+            scope.close();
+        }
     }
 
     @Override
@@ -162,7 +170,8 @@ final class IgvSupport extends SVMObject implements TruffleDebugContext {
 
     static IgvSupport create(SVMHotSpotTruffleCompiler compiler, Map<String, Object> options, SVMTruffleCompilation compilation) {
         byte[] encodedOptions = OptionsEncoder.encode(options);
-        return new IgvSupport(compiler, HotSpotToSVMCalls.openDebugContext(getIsolateThread(), compiler.handle, compilation == null ? 0 : compilation.handle, encodedOptions));
+        LibGraalScope scope = new LibGraalScope(HotSpotJVMCIRuntime.runtime());
+        return new IgvSupport(scope, compiler, HotSpotToSVMCalls.openDebugContext(getIsolateThread(), compiler.handle, compilation == null ? 0 : compilation.handle, encodedOptions));
     }
 
     private static final class IgvDumpChannel extends SVMObject implements WritableByteChannel {

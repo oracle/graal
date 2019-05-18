@@ -24,7 +24,7 @@
  */
 package org.graalvm.compiler.truffle.runtime.hotspot.libgraal;
 
-import static org.graalvm.libgraal.LibGraal.getIsolateThread;
+import static org.graalvm.libgraal.LibGraalScope.getIsolateThread;
 
 import java.lang.ref.PhantomReference;
 import java.lang.ref.ReferenceQueue;
