@@ -79,6 +79,7 @@ public class InvokerSignatureMismatchTest extends CustomizedBytecodePatternTest 
             invokeBasicI.visitEnd();
 
         } else {
+            assert className.equals("ISMTest") : className;
             cw.visitField(ACC_FINAL | ACC_STATIC, "INT_MH", "Ljava/lang/invoke/MethodHandle;", null, null).visitAnnotation("Ljava/lang/invoke/Stable.class;", true).visitEnd();
             MethodVisitor clinit = cw.visitMethod(ACC_STATIC, "<clinit>", "()V", null, exceptions);
             clinit.visitCode();
