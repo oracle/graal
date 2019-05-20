@@ -49,7 +49,7 @@ import com.oracle.svm.hosted.jni.JNIRuntimeAccess;
 
 @Platforms(Platform.WINDOWS.class)
 @AutomaticFeature
-@CLibrary("nio")
+@CLibrary(value = "nio", requireStatic = true)
 class WindowsJavaNIOSubstituteFeature implements Feature {
 
     @Override

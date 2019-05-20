@@ -41,7 +41,7 @@ import com.oracle.svm.hosted.jni.JNIRuntimeAccess;
 
 @Platforms(Platform.WINDOWS.class)
 @AutomaticFeature
-@CLibrary("net")
+@CLibrary(value = "net", requireStatic = true)
 class WindowsJavaNetSubstitutionsFeature implements Feature {
 
     @Override

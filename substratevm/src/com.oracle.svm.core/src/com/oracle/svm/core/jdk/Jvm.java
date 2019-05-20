@@ -41,7 +41,7 @@ import org.graalvm.nativeimage.impl.InternalPlatform;
  *
  */
 @Platforms({InternalPlatform.LINUX_JNI.class, InternalPlatform.DARWIN_JNI.class, Platform.WINDOWS.class})
-@CLibrary("jvm")
+@CLibrary(value = "jvm", requireStatic = true)
 public class Jvm {
 
     @CFunction(transition = CFunction.Transition.NO_TRANSITION)
