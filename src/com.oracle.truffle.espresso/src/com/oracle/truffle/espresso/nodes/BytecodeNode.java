@@ -505,6 +505,10 @@ public class BytecodeNode extends EspressoBaseNode implements CustomNodeCount {
 
         initArguments(frame);
 
+        if (toString().contains("loadClass") && ((StaticObject) frame.getArguments()[0]).getKlass().getName().toString().contains("AsmLoader")) {
+            int dood = 1;
+        }
+
         loop: while (true) {
             int curOpcode;
             bcCount.inc();
