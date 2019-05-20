@@ -9,38 +9,18 @@ builds += [
   }
   ${svm-common-linux-amd64} ${sulong_linux} ${truffleruby_linux} ${custom_vm_linux} ${gate_vm_linux} {
     run: [
-      [git, clone, --depth, "1", [mx, urlrewrite, "https://github.com/oracle/truffleruby.git"], "../../truffleruby"]
       [export, "SVM_SUITE="${svm_suite}]
       [mx, --dynamicimports, "$SVM_SUITE,truffleruby", --disable-polyglot, --disable-libpolyglot, "--force-bash-launchers=lli,native-image", gate, --no-warning-as-error, --tags, "build,ruby"]
     ]
     timelimit: "35:00"
-    name: gate-vm-native-truffleruby-tip
-  }
-  ${svm-common-linux-amd64} ${sulong_linux} ${truffleruby_linux} ${custom_vm_linux} ${vm_linux} {
-    targets: [daily]
-    run: [
-      [export, "SVM_SUITE="${svm_suite}]
-      [mx, --dynamicimports, "$SVM_SUITE,truffleruby", --disable-polyglot, --disable-libpolyglot, "--force-bash-launchers=lli,native-image", gate, --no-warning-as-error, --tags, "build,ruby"]
-    ]
-    timelimit: "35:00"
-    name: daily-vm-native-truffleruby
+    name: gate-vm-native-truffleruby
   }
   ${svm-common-linux-amd64} ${sulong_linux} ${graalpython_linux} ${custom_vm_linux} ${gate_vm_linux} {
     run: [
-      [git, clone, --depth, "1", [mx, urlrewrite, "https://github.com/oracle/graalpython.git"], "../../graalpython"]
       [export, "SVM_SUITE="${svm_suite}]
       [mx, --dynamicimports, "$SVM_SUITE,graalpython", --disable-polyglot, --disable-libpolyglot, "--force-bash-launchers=lli,native-image", gate, --no-warning-as-error, --tags, "build,python"]
     ]
     timelimit: "35:00"
-    name: gate-vm-native-graalpython-tip
-  }
-  ${svm-common-linux-amd64} ${sulong_linux} ${graalpython_linux} ${custom_vm_linux} ${vm_linux} {
-    targets: [daily]
-    run: [
-      [export, "SVM_SUITE="${svm_suite}]
-      [mx, --dynamicimports, "$SVM_SUITE,graalpython", --disable-polyglot, --disable-libpolyglot, "--force-bash-launchers=lli,native-image", gate, --no-warning-as-error, --tags, "build,python"]
-    ]
-    timelimit: "35:00"
-    name: daily-vm-native-graalpython
+    name: gate-vm-native-graalpython
   }
 ]
