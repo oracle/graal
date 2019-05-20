@@ -507,7 +507,7 @@ public final class ObjectKlass extends Klass {
             for (Method m : declaredMethods) {
                 CodeAttribute code = m.hasCode() ? m.getCodeAttribute() : null;
                 try {
-                    MethodVerifier.verify(code, getConstantPool());
+                    MethodVerifier.verify(code, getConstantPool(), m.getRawSignature().toString(), m.isStatic());
                 } catch (Throwable e) {
                     throw e;
                 }

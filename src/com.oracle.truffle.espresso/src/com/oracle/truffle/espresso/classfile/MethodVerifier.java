@@ -28,6 +28,7 @@ import com.oracle.truffle.espresso.bytecode.BytecodeTableSwitch;
 import com.oracle.truffle.espresso.meta.EspressoError;
 
 import java.util.ArrayList;
+import java.util.Arrays;
 
 import static com.oracle.truffle.espresso.bytecode.Bytecodes.AALOAD;
 import static com.oracle.truffle.espresso.bytecode.Bytecodes.AASTORE;
@@ -247,21 +248,36 @@ import static com.oracle.truffle.espresso.bytecode.Bytecodes.WIDE;
 public class MethodVerifier {
     private final BytecodeStream code;
     private final int maxStack;
+    private final int maxLocals;
     private final ConstantPool pool;
     private final byte[] verified;
+    private final StackFrame[] stackFrames;
+    private final String sig;
+    private final boolean isStatic;
 
     private enum Operand {
+        // TODO(garcia) subTyping
         Int,
         Float,
         Double,
         Long,
         Object,
-        Void;
+        Void,
+        Invalid;
 
         @Override
         public String toString() {
             return opToString(this);
         }
+
+        public boolean canMerge(Operand other) {
+            return this == other;
+        }
+
+    }
+
+    static boolean isType2(Operand k) {
+        return k == Long || k == Double;
     }
 
     private static String opToString(Operand o) {
@@ -278,6 +294,8 @@ public class MethodVerifier {
                 return "A";
             case Void:
                 return "V";
+            case Invalid:
+                return "Invalid";
             default:
                 throw EspressoError.shouldNotReachHere();
         }
@@ -289,6 +307,7 @@ public class MethodVerifier {
     static private final Operand Long = Operand.Long;
     static private final Operand Object = Operand.Object;
     static private final Operand Void = Operand.Void;
+    static private final Operand Invalid = Operand.Invalid;
 
     static private final byte UNREACHABLE = 0;
     static private final byte UNSEEN = 1;
@@ -301,11 +320,15 @@ public class MethodVerifier {
      * @param code Raw bytecode representation for the method to verify
      * @param pool The constant pool to be used with this method.
      */
-    private MethodVerifier(int maxStack, byte[] code, ConstantPool pool) {
+    private MethodVerifier(int maxStack, int maxLocals, byte[] code, ConstantPool pool, String sig, boolean isStatic) {
         this.code = new BytecodeStream(code);
         this.maxStack = maxStack;
+        this.maxLocals = maxLocals;
         this.pool = pool;
         this.verified = new byte[code.length];
+        this.stackFrames = new StackFrame[code.length];
+        this.sig = sig;
+        this.isStatic = isStatic;
     }
 
     /**
@@ -315,11 +338,11 @@ public class MethodVerifier {
      * @param pool The constant pool of the declaring class
      * @return true, or throws ClassFormatError or VerifyError.
      */
-    public static boolean verify(CodeAttribute codeAttribute, ConstantPool pool) {
+    public static boolean verify(CodeAttribute codeAttribute, ConstantPool pool, String sig, boolean isStatic) {
         if (codeAttribute == null) {
             return true;
         }
-        return new MethodVerifier(codeAttribute.getMaxStack(), codeAttribute.getCode(), pool).verify();
+        return new MethodVerifier(codeAttribute.getMaxStack(), codeAttribute.getMaxLocals(), codeAttribute.getCode(), pool, sig, isStatic).verify();
     }
 
     /**
@@ -334,8 +357,9 @@ public class MethodVerifier {
         }
         int nextBCI = 0;
         Stack stack = new Stack(maxStack);
+        Locals locals = new Locals(maxLocals, sig, isStatic);
         while (verified[nextBCI] != DONE) {
-            nextBCI = verifySafe(nextBCI, stack);
+            nextBCI = verifySafe(nextBCI, stack, locals);
             if (nextBCI >= code.endBCI()) {
                 throw new VerifyError("Control flow falls through code end");
             }
@@ -358,21 +382,28 @@ public class MethodVerifier {
         }
     }
 
-    private boolean branch(int BCI, Stack stack) {
+    private boolean branch(int BCI, Stack stack, Locals locals) {
         if (verified[BCI] == UNREACHABLE) {
             throw new VerifyError("Jump to the middle of an instruction: " + BCI);
         }
         if (verified[BCI] == DONE) {
             return true;
         }
-        // TODO(garcia) verify stack merging.
+        if (stackFrames[BCI] != null) {
+            if (!stack.mergeInto(stackFrames[BCI])) {
+                throw new VerifyError();
+            }
+        } else {
+            stackFrames[BCI] = stack.toStackFrame();
+        }
         Stack newStack = stack.copy();
+        Locals newLocals = locals.copy();
         int nextBCI = BCI;
         if (nextBCI >= code.endBCI()) {
             throw new VerifyError("Control flow falls through code end");
         }
         while (verified[nextBCI] != DONE) {
-            nextBCI = verifySafe(nextBCI, newStack);
+            nextBCI = verifySafe(nextBCI, newStack, newLocals);
             if (nextBCI >= code.endBCI()) {
                 throw new VerifyError("Control flow falls through code end");
             }
@@ -383,11 +414,11 @@ public class MethodVerifier {
         return true;
     }
 
-    private int verifySafe(int BCI, Stack stack) {
+    private int verifySafe(int BCI, Stack stack, Locals locals) {
         try {
-            return verify(BCI, stack);
+            return verify(BCI, stack, locals);
         } catch (IndexOutOfBoundsException e) {
-            throw new VerifyError("Inconsistent Stack access!" + e.getMessage());
+            throw new VerifyError("Inconsistent Stack/Local access at index: " + e.getMessage());
         }
     }
 
@@ -411,7 +442,7 @@ public class MethodVerifier {
         }
     }
 
-    private int verify(int BCI, Stack stack) {
+    private int verify(int BCI, Stack stack, Locals locals) {
         if (verified[BCI] == UNREACHABLE) {
             throw new VerifyError("Jump to the middle of an instruction: " + BCI);
         }
@@ -454,32 +485,32 @@ public class MethodVerifier {
                 stack.push(fromTag(pool.at(code.readCPI(BCI)).tag()));
                 break;
 
-            case ILOAD: stack.pushInt(); break;
-            case LLOAD: stack.pushLong(); break;
-            case FLOAD: stack.pushFloat(); break;
-            case DLOAD: stack.pushDouble(); break;
-            case ALOAD: stack.pushObj(); break;
+            case ILOAD: locals.load(code.readLocalIndex(BCI), Int); stack.pushInt(); break;
+            case LLOAD: locals.load(code.readLocalIndex(BCI), Long); stack.pushLong(); break;
+            case FLOAD: locals.load(code.readLocalIndex(BCI), Float); stack.pushFloat(); break;
+            case DLOAD: locals.load(code.readLocalIndex(BCI), Double); stack.pushDouble(); break;
+            case ALOAD: locals.load(code.readLocalIndex(BCI), Object); stack.pushObj(); break;
 
-            case ILOAD_0:
+            case ILOAD_0: 
             case ILOAD_1:
             case ILOAD_2:
-            case ILOAD_3: stack.pushInt(); break;
+            case ILOAD_3: locals.load(curOpcode - ILOAD_0, Int); stack.pushInt(); break;
             case LLOAD_0:
             case LLOAD_1:
             case LLOAD_2:
-            case LLOAD_3: stack.pushLong(); break;
+            case LLOAD_3: locals.load(curOpcode - LLOAD_0, Long); stack.pushLong(); break;
             case FLOAD_0:
             case FLOAD_1:
             case FLOAD_2:
-            case FLOAD_3: stack.pushFloat(); break;
+            case FLOAD_3: locals.load(curOpcode - FLOAD_0, Float); stack.pushFloat(); break;
             case DLOAD_0:
             case DLOAD_1:
             case DLOAD_2:
-            case DLOAD_3: stack.pushDouble(); break;
+            case DLOAD_3: locals.load(curOpcode - DLOAD_0, Double); stack.pushDouble(); break;
             case ALOAD_0:
             case ALOAD_1:
             case ALOAD_2:
-            case ALOAD_3: stack.pushObj(); break;
+            case ALOAD_3: locals.load(curOpcode - ALOAD_0, Object); stack.pushObj(); break;
 
             case IALOAD: stack.popInt(); stack.popObj(); stack.pushInt(); break;
             case LALOAD: stack.popInt(); stack.popObj(); stack.pushLong(); break;
@@ -490,32 +521,32 @@ public class MethodVerifier {
             case CALOAD: stack.popInt(); stack.popObj(); stack.pushInt(); break;
             case SALOAD: stack.popInt(); stack.popObj(); stack.pushInt(); break;
 
-            case ISTORE: stack.popInt(); break;
-            case LSTORE: stack.popLong(); break;
-            case FSTORE: stack.popFloat(); break;
-            case DSTORE: stack.popDouble(); break;
-            case ASTORE: stack.popObj(); break;
+            case ISTORE: stack.popInt(); locals.store(code.readLocalIndex(BCI), Int); break;
+            case LSTORE: stack.popLong(); locals.store(code.readLocalIndex(BCI), Long); break;
+            case FSTORE: stack.popFloat(); locals.store(code.readLocalIndex(BCI), Float); break;
+            case DSTORE: stack.popDouble(); locals.store(code.readLocalIndex(BCI), Double); break;
+            case ASTORE: stack.popObj(); locals.store(code.readLocalIndex(BCI), Object); break;
 
             case ISTORE_0:
             case ISTORE_1:
             case ISTORE_2:
-            case ISTORE_3: stack.popInt(); break;
+            case ISTORE_3: stack.popInt(); locals.store(curOpcode - ISTORE_0, Int); break;
             case LSTORE_0:
             case LSTORE_1:
             case LSTORE_2:
-            case LSTORE_3: stack.popLong(); break;
+            case LSTORE_3: stack.popLong(); locals.store(curOpcode - LSTORE_0, Long); break;
             case FSTORE_0:
             case FSTORE_1:
             case FSTORE_2:
-            case FSTORE_3: stack.popFloat(); break;
+            case FSTORE_3: stack.popFloat(); locals.store(curOpcode - FSTORE_0, Float); break;
             case DSTORE_0:
             case DSTORE_1:
             case DSTORE_2:
-            case DSTORE_3: stack.popDouble(); break;
+            case DSTORE_3: stack.popDouble(); locals.store(curOpcode - DSTORE_0, Double); break;
             case ASTORE_0:
             case ASTORE_1:
             case ASTORE_2:
-            case ASTORE_3: stack.popObj(); break;
+            case ASTORE_3: stack.popObj(); locals.store(curOpcode - ASTORE_0, Object); break;
 
             case IASTORE: stack.popInt(); stack.popInt(); stack.popObj(); break;
             case LASTORE: stack.popLong(); stack.popInt(); stack.popObj(); break;
@@ -583,7 +614,7 @@ public class MethodVerifier {
             case IXOR: stack.popInt(); stack.popInt(); stack.pushInt(); break;
             case LXOR: stack.popLong(); stack.popLong(); stack.pushLong();break;
 
-            case IINC: break;
+            case IINC: locals.load(code.readLocalIndex(BCI), Int); break;
 
             case I2L: stack.popInt(); stack.pushLong(); break;
             case I2F: stack.popInt(); stack.pushFloat(); break;
@@ -618,7 +649,7 @@ public class MethodVerifier {
             case IFGT: // fall through
             case IFLE:
                 stack.popInt();
-                branch(code.readBranchDest(BCI), stack);
+                branch(code.readBranchDest(BCI), stack, locals);
                 break;
             case IF_ICMPEQ: // fall through
             case IF_ICMPNE: // fall through
@@ -627,22 +658,22 @@ public class MethodVerifier {
             case IF_ICMPGT: // fall through
             case IF_ICMPLE:
                 stack.popInt(); stack.popInt();
-                branch(code.readBranchDest(BCI), stack);
+                branch(code.readBranchDest(BCI), stack, locals);
                 break;
             case IF_ACMPEQ: // fall through
             case IF_ACMPNE:
                 stack.popObj(); stack.popObj();
-                branch(code.readBranchDest(BCI), stack);
+                branch(code.readBranchDest(BCI), stack, locals);
                 break;
 
             case GOTO:
             case GOTO_W:
-                branch(code.readBranchDest(BCI), stack);
+                branch(code.readBranchDest(BCI), stack, locals);
                 return BCI;
             case IFNULL: // fall through
             case IFNONNULL:
                 stack.popObj();
-                branch(code.readBranchDest(BCI), stack);
+                branch(code.readBranchDest(BCI), stack, locals);
                 break;
             case JSR: // fall through
             case JSR_W: {
@@ -663,7 +694,7 @@ public class MethodVerifier {
                 int low = switchHelper.lowKey(BCI);
                 int high = switchHelper.highKey(BCI);
                 for (int i = low; i < high; i++) {
-                    branch(switchHelper.targetAt(BCI, i - low), stack);
+                    branch(switchHelper.targetAt(BCI, i - low), stack, locals);
                 }
                 return switchHelper.defaultTarget(BCI);
             }
@@ -673,7 +704,7 @@ public class MethodVerifier {
                 int low = 0;
                 int high = switchHelper.numberOfCases(BCI) - 1;
                 for (int i = low; i <= high; i++) {
-                    branch(BCI + switchHelper.offsetAt(BCI, i), stack);
+                    branch(BCI + switchHelper.offsetAt(BCI, i), stack, locals);
                 }
                 return switchHelper.defaultTarget(BCI);
             }
@@ -919,6 +950,65 @@ public class MethodVerifier {
         }
     }
 
+    private class Locals {
+        Operand[] registers;
+
+        Locals(int maxLocals, String sig, boolean isStatic) {
+            Operand[] parsedSig = parseSig(sig);
+            if (parsedSig.length - (isStatic ? 1 : 0) > maxLocals) {
+                throw new VerifyError("Too much method arguments for the number of locals !");
+            }
+            this.registers = new Operand[maxLocals];
+            Arrays.fill(registers, Invalid);
+            int index = 0;
+            if (!isStatic) {
+                registers[index++] = Object;
+            }
+            for (int i = 0; i < parsedSig.length - 1; i++) {
+                registers[index++] = parsedSig[i];
+                if (isType2(parsedSig[i])) {
+                    index++;
+                }
+            }
+        }
+
+        private Locals(Operand[] registers) {
+            this.registers = registers;
+        }
+
+        Locals copy() {
+            return new Locals((registers.clone()));
+        }
+
+        Operand load(int index, Operand expected) {
+            Operand op = registers[index];
+            if (op != expected) {
+                throw new VerifyError("Incompatible register type. Expected: " + expected + ", found: " + op);
+            }
+            if (isType2(expected)) {
+                if (registers[index + 1] != Invalid) {
+                    throw new VerifyError("Loading corrupted long primitive from locals!");
+                }
+            }
+            return op;
+        }
+
+        void store(int index, Operand op) {
+            registers[index] = op;
+            if (isType2(op)) {
+                registers[index + 1] = Invalid;
+            }
+        }
+    }
+
+    private class StackFrame {
+        Operand[] stack;
+
+        StackFrame(Operand[] stack) {
+            this.stack = stack;
+        }
+    }
+
     private class Stack {
         private final Operand[] stack;
         private int top;
@@ -1146,8 +1236,23 @@ public class MethodVerifier {
             throw new VerifyError("Type 2 operand for SWAP");
         }
 
-        private boolean isType2(Operand k) {
-            return k == Long || k == Double;
+        private boolean mergeInto(StackFrame stackFrame) {
+            if (top != stackFrame.stack.length) {
+                throw new VerifyError("Incompatible stack size.");
+            }
+            for (int i = 0; i < top; i++) {
+                if (!stack[i].canMerge(stackFrame.stack[i])) {
+                    throw new VerifyError("Incompatible stack types.");
+                }
+            }
+            return true;
+        }
+
+        private StackFrame toStackFrame() {
+            Operand[] frameStack = new Operand[top];
+            System.arraycopy(stack, 0, frameStack, 0, top);
+            return new StackFrame(frameStack);
         }
     }
+
 }
