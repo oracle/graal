@@ -174,7 +174,7 @@ public abstract class WasmTest {
                 System.out.print("\uD83D\uDE0D");
                 System.out.flush();
             } catch (Throwable e) {
-                System.out.print("\uD83D\uDCA5");
+                System.out.print("\uD83D\uDE2D");
                 System.out.flush();
                 errors.put(element, e);
             }
