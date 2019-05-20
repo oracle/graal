@@ -43,6 +43,8 @@ import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.atomic.AtomicLong;
 
+import com.oracle.svm.core.SubstrateUtil;
+import com.oracle.svm.core.jdk.JavaLangSubstitutions;
 import org.graalvm.compiler.api.replacements.Fold;
 import org.graalvm.compiler.core.common.SuppressFBWarnings;
 import org.graalvm.nativeimage.CurrentIsolate;
@@ -725,6 +727,7 @@ final class Target_java_lang_Thread {
         name = (withName != null) ? withName : ("System-" + nextThreadNum());
         group = (withGroup != null) ? withGroup : JavaThreads.singleton().rootGroup;
         priority = Thread.NORM_PRIORITY;
+        contextClassLoader = SubstrateUtil.cast(ImageSingletons.lookup(JavaLangSubstitutions.ClassLoaderSupport.class).systemClassLoader, ClassLoader.class);
         blockerLock = new Object();
         daemon = asDaemon;
     }
