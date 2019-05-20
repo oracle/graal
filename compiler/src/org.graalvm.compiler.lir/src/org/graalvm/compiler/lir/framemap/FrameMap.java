@@ -40,7 +40,7 @@ import jdk.vm.ci.meta.ValueKind;
  * This class is used to build the stack frame layout for a compiled method. A {@link StackSlot} is
  * used to index slots of the frame relative to the stack pointer. The frame size is only fixed
  * after register allocation when all spill slots have been allocated. Both the outgoing argument
- * area and the spill are can grow until then. Therefore, outgoing arguments are indexed from the
+ * area and the spill area can grow until then. Therefore, outgoing arguments are indexed from the
  * stack pointer, while spill slots are indexed from the beginning of the frame (and the total frame
  * size has to be added to get the actual offset from the stack pointer).
  */
@@ -223,11 +223,10 @@ public abstract class FrameMap {
      * boundary.
      *
      * @param kind The kind of the spill slot to be reserved.
-     * @param additionalOffset
      * @return A spill slot denoting the reserved memory area.
      */
-    protected StackSlot allocateNewSpillSlot(ValueKind<?> kind, int additionalOffset) {
-        return StackSlot.get(kind, -spillSize + additionalOffset, true);
+    protected StackSlot allocateNewSpillSlot(ValueKind<?> kind) {
+        return StackSlot.get(kind, -spillSize, true);
     }
 
     /**
@@ -253,7 +252,7 @@ public abstract class FrameMap {
         assert frameSize == -1 : "frame size must not yet be fixed";
         int size = spillSlotSize(kind);
         spillSize = NumUtil.roundUp(spillSize + size, size);
-        return allocateNewSpillSlot(kind, 0);
+        return allocateNewSpillSlot(kind);
     }
 
     /**
@@ -279,7 +278,7 @@ public abstract class FrameMap {
             return null;
         }
         spillSize += spillSlotRangeSize(slots);
-        return allocateNewSpillSlot(LIRKind.value(getTarget().arch.getWordKind()), 0);
+        return allocateNewSpillSlot(LIRKind.value(getTarget().arch.getWordKind()));
     }
 
     public ReferenceMapBuilder newReferenceMapBuilder() {
