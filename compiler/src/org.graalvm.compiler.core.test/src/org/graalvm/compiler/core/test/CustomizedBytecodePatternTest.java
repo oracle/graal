@@ -32,26 +32,14 @@ public abstract class CustomizedBytecodePatternTest extends GraalCompilerTest im
         return new CachedLoader(CustomizedBytecodePatternTest.class.getClassLoader(), className).findClass(className);
     }
 
-    protected Class<?> getClass0(String className) throws ClassNotFoundException {
-        return new CachedLoader(null, className, true).findClass(className);
-    }
-
     private class CachedLoader extends ClassLoader {
 
         final String className;
         Class<?> loaded;
-        boolean useBootClassLoader;
 
         CachedLoader(ClassLoader parent, String className) {
             super(parent);
             this.className = className;
-            useBootClassLoader = false;
-        }
-
-        CachedLoader(ClassLoader parent, String className, boolean useBootClassLoader) {
-            super(parent);
-            this.className = className;
-            this.useBootClassLoader = useBootClassLoader;
         }
 
         @Override
@@ -59,11 +47,7 @@ public abstract class CustomizedBytecodePatternTest extends GraalCompilerTest im
             if (name.equals(className)) {
                 if (loaded == null) {
                     byte[] gen = generateClass(name.replace('.', '/'));
-                    if (useBootClassLoader) {
-                        loaded = UNSAFE.defineClass(name, gen, 0, gen.length, null, null);
-                    } else {
-                        loaded = defineClass(name, gen, 0, gen.length);
-                    }
+                    loaded = defineClass(name, gen, 0, gen.length);
                 }
                 return loaded;
             } else {

@@ -24,25 +24,95 @@
  */
 package org.graalvm.compiler.replacements.test;
 
+import static org.graalvm.compiler.test.SubprocessUtil.getVMCommandLine;
+import static org.graalvm.compiler.test.SubprocessUtil.withoutDebuggerArguments;
+
 import org.junit.Test;
 import org.objectweb.asm.ClassWriter;
 import org.objectweb.asm.MethodVisitor;
 import org.objectweb.asm.Type;
 
+import java.io.File;
+import java.lang.invoke.MethodHandles;
+import java.lang.reflect.Method;
+import java.util.List;
+import java.security.ProtectionDomain;
+
 import org.graalvm.compiler.core.test.CustomizedBytecodePatternTest;
+import org.graalvm.compiler.test.SubprocessUtil;
+import org.graalvm.compiler.test.SubprocessUtil.Subprocess;
+
+import sun.misc.Unsafe;
 
 import jdk.vm.ci.meta.ResolvedJavaMethod;
 
-public class InvokerSignatureMismatchTest extends CustomizedBytecodePatternTest {
+public class InvokerSignatureMismatchTest {
+
     @Test
     public void test() throws Throwable {
-        getClass0("java/lang/invoke/MHHelper");
+        List<String> args = withoutDebuggerArguments(getVMCommandLine());
+        String classPath = System.getProperty("java.class.path");
+        classPath = classPath + File.pathSeparator + TestISMBL.class.getProtectionDomain().getCodeSource().getLocation().getPath();
+        args.add("-Xbootclasspath/a:" + classPath);
+        args.add("-XX:-TieredCompilation");
+        args.add("-XX:+EnableJVMCI");
+        args.add("-XX:+UseJVMCICompiler");
+
+        args.add(TestISMBL.class.getName());
+        Subprocess proc = SubprocessUtil.java(args);
+        if (proc.exitCode != 0) {
+            System.out.println(proc);
+        }
+    }
+}
+
+class TestISMBL extends CustomizedBytecodePatternTest {
+
+    public static void main(String[] args) {
+        try {
+            new TestISMBL().test();
+        } catch (Throwable e) {
+            e.printStackTrace();
+            System.exit(1);
+        }
+        System.exit(0);
+    }
+
+    private void test() throws Throwable {
+        getClass("java/lang/invoke/MHHelper");
         Class<?> testClass = getClass("ISMTest");
 
         ResolvedJavaMethod mL = getResolvedJavaMethod(testClass, "mainLink");
         ResolvedJavaMethod mI = getResolvedJavaMethod(testClass, "mainInvoke");
         executeActual(mL, null, 100);
         executeActual(mI, null, 100);
+    }
+
+    @Override
+    protected Class<?> getClass(String className) throws ClassNotFoundException {
+        if (className.equals("java/lang/invoke/MHHelper")) {
+            return getClassBL(className);
+        } else {
+            return super.getClass(className);
+        }
+    }
+
+    private Class<?> getClassBL(String className) throws ClassNotFoundException {
+        byte[] gen = generateClass(className);
+        Method defineClass = null;
+        Class<?> loadedClass = null;
+        try {
+            if (Java8OrEarlier) {
+                defineClass = Unsafe.class.getDeclaredMethod("defineClass", String.class, byte[].class, int.class, int.class, ClassLoader.class, ProtectionDomain.class);
+                loadedClass = (Class<?>) defineClass.invoke(UNSAFE, className, gen, 0, gen.length, null, null);
+            } else {
+                defineClass = MethodHandles.lookup().getClass().getDeclaredMethod("defineClass", byte[].class);
+                loadedClass = (Class<?>) defineClass.invoke(MethodHandles.lookup(), gen);
+            }
+        } catch (Exception e) {
+            throw new ClassNotFoundException();
+        }
+        return loadedClass;
     }
 
     @Override
