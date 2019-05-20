@@ -40,23 +40,15 @@
  */
 package com.oracle.truffle.api.test.option;
 
-import static org.junit.Assert.assertEquals;
-import static org.junit.Assert.assertFalse;
-import static org.junit.Assert.assertNotNull;
-import static org.junit.Assert.assertNull;
-import static org.junit.Assert.assertSame;
-import static org.junit.Assert.assertTrue;
+import static org.junit.Assert.*;
 
 import java.util.Collections;
+import java.util.HashMap;
 import java.util.Iterator;
 import java.util.Map;
 
-import org.graalvm.options.OptionCategory;
-import org.graalvm.options.OptionDescriptor;
+import org.graalvm.options.*;
 import org.graalvm.options.OptionDescriptor.NamePredicate;
-import org.graalvm.options.OptionDescriptors;
-import org.graalvm.options.OptionKey;
-import org.graalvm.options.OptionStability;
 import org.graalvm.polyglot.Engine;
 import org.junit.Test;
 
@@ -66,7 +58,6 @@ import com.oracle.truffle.api.TruffleLanguage.Env;
 import com.oracle.truffle.api.TruffleLanguage.Registration;
 import com.oracle.truffle.api.instrumentation.TruffleInstrument;
 import com.oracle.truffle.api.test.ExpectError;
-import org.graalvm.options.OptionValues;
 
 public class OptionProcessorTest {
 
@@ -197,12 +188,41 @@ public class OptionProcessorTest {
 
     }
 
+    @Test
+    public void testPrefixOptions() {
+        OptionDescriptors descriptors = new PrefixOptionDescriptors();
+        OptionDescriptor descriptor = descriptors.get("prefix.Prefix.DynamicPropertySetAtRuntimeWhoseNameIsNotKnown");
+        assertNotNull(descriptor);
+        assertEquals(OptionCategory.USER, descriptor.getCategory());
+        assertEquals(NamePredicate.PREFIX, descriptor.getNamePredicate());
+        assertEquals("prefix.Prefix", descriptor.getName());
+        assertEquals(OptionStability.STABLE, descriptor.getStability());
+        assertEquals("Prefix option help", descriptor.getHelp());
+        assertEquals(Collections.emptyMap(), descriptor.getKey().getDefaultValue());
+
+        OptionDescriptor descriptor2 = descriptors.get("prefix.Prefix2.DynamicPropertySetAtRuntimeWhoseNameIsNotKnown");
+        assertNotNull(descriptor2);
+        assertEquals("prefix.Prefix2", descriptor2.getName());
+        assertEquals(Prefix.NON_EMPTY_DEFAULT_OPTIONS, descriptor2.getKey().getDefaultValue());
+    }
+
     @Option.Group("prefix")
     public static class Prefix {
 
-        @Option(help = "", category = OptionCategory.USER, namePredicate = NamePredicate.PREFIX) //
-        static final OptionKey<Map<String, String>> Prefix = new OptionKey<>(Collections.emptyMap());
+        private static Map<String, String> nonEmptyDefaultOptions() {
+            Map<String, String> options = new HashMap<>();
+            options.put("answer", "42");
+            options.put("OneVMToRuleThemAll", "GraalVM");
+            return Collections.unmodifiableMap(options);
+        }
 
+        public static final Map<String, String> NON_EMPTY_DEFAULT_OPTIONS = nonEmptyDefaultOptions();
+
+        @Option(help = "Prefix option help", category = OptionCategory.USER, stability = OptionStability.STABLE, namePredicate = NamePredicate.PREFIX) //
+        static final OptionKey<Map<String, String>> Prefix = OptionKey.mapOf(String.class);
+
+        @Option(help = "", category = OptionCategory.USER, namePredicate = NamePredicate.PREFIX) //
+        static final OptionKey<Map<String, String>> Prefix2 = new OptionKey<>(NON_EMPTY_DEFAULT_OPTIONS, OptionType.mapOf(String.class));
     }
 
     @Option.Group("foobar")
