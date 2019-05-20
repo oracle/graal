@@ -28,7 +28,7 @@ import java.util.function.Consumer;
 
 import org.graalvm.compiler.asm.Assembler.CodeAnnotation;
 import org.graalvm.compiler.asm.aarch64.AArch64Assembler;
-import org.graalvm.compiler.asm.aarch64.AArch64Assembler.OperandDataAnnotation;
+import org.graalvm.compiler.asm.aarch64.AArch64Assembler.SingleInstructionAnnotation;
 import org.graalvm.compiler.asm.aarch64.AArch64MacroAssembler;
 import org.graalvm.compiler.code.CompilationResult;
 import org.graalvm.nativeimage.hosted.Feature;
@@ -62,12 +62,12 @@ class AArch64HostedPatcherFeature implements Feature {
                 return new Consumer<CodeAnnotation>() {
                     @Override
                     public void accept(CodeAnnotation annotation) {
-                        if (annotation instanceof OperandDataAnnotation) {
-                            compilationResult.addAnnotation(new AArch64HostedPatcher(annotation.instructionPosition, (OperandDataAnnotation) annotation));
+                        if (annotation instanceof SingleInstructionAnnotation) {
+                            compilationResult.addAnnotation(new SingleInstructionHostedPatcher(annotation.instructionPosition, (SingleInstructionAnnotation) annotation));
                         } else if (annotation instanceof AArch64Assembler.MovSequenceAnnotation) {
-                            compilationResult.addAnnotation(new AArch64MovSequenceHostedPatcher(annotation.instructionPosition, (AArch64Assembler.MovSequenceAnnotation) annotation));
-                        } else if (annotation instanceof AArch64MacroAssembler.ADRADDPRELMacroInstruction) {
-                            compilationResult.addAnnotation(new ADRADDPRELMacroInstructionHostedPatcher((AArch64MacroAssembler.ADRADDPRELMacroInstruction) annotation));
+                            compilationResult.addAnnotation(new MovSequenceHostedPatcher(annotation.instructionPosition, (AArch64Assembler.MovSequenceAnnotation) annotation));
+                        } else if (annotation instanceof AArch64MacroAssembler.AdrpLdrMacroInstruction) {
+                            compilationResult.addAnnotation(new AdrpLdrMacroInstructionHostedPatcher((AArch64MacroAssembler.AdrpLdrMacroInstruction) annotation));
                         } else if (annotation instanceof AArch64MacroAssembler.AdrpAddMacroInstruction) {
                             compilationResult.addAnnotation(new AdrpAddMacroInstructionHostedPatcher((AArch64MacroAssembler.AdrpAddMacroInstruction) annotation));
                         }
@@ -78,10 +78,10 @@ class AArch64HostedPatcherFeature implements Feature {
     }
 }
 
-public class AArch64HostedPatcher extends CompilationResult.CodeAnnotation implements HostedPatcher {
-    private final OperandDataAnnotation annotation;
+public class SingleInstructionHostedPatcher extends CompilationResult.CodeAnnotation implements HostedPatcher {
+    private final SingleInstructionAnnotation annotation;
 
-    public AArch64HostedPatcher(int instructionStartPosition, OperandDataAnnotation annotation) {
+    public SingleInstructionHostedPatcher(int instructionStartPosition, SingleInstructionAnnotation annotation) {
         super(instructionStartPosition);
         this.annotation = annotation;
     }
@@ -145,10 +145,10 @@ public class AArch64HostedPatcher extends CompilationResult.CodeAnnotation imple
     }
 }
 
-class ADRADDPRELMacroInstructionHostedPatcher extends CompilationResult.CodeAnnotation implements HostedPatcher {
-    private final AArch64MacroAssembler.ADRADDPRELMacroInstruction macroInstruction;
+class AdrpLdrMacroInstructionHostedPatcher extends CompilationResult.CodeAnnotation implements HostedPatcher {
+    private final AArch64MacroAssembler.AdrpLdrMacroInstruction macroInstruction;
 
-    ADRADDPRELMacroInstructionHostedPatcher(AArch64MacroAssembler.ADRADDPRELMacroInstruction macroInstruction) {
+    AdrpLdrMacroInstructionHostedPatcher(AArch64MacroAssembler.AdrpLdrMacroInstruction macroInstruction) {
         super(macroInstruction.instructionPosition);
         this.macroInstruction = macroInstruction;
     }
@@ -201,10 +201,10 @@ class AdrpAddMacroInstructionHostedPatcher extends CompilationResult.CodeAnnotat
     }
 }
 
-class AArch64MovSequenceHostedPatcher extends CompilationResult.CodeAnnotation implements HostedPatcher {
+class MovSequenceHostedPatcher extends CompilationResult.CodeAnnotation implements HostedPatcher {
     private final AArch64Assembler.MovSequenceAnnotation annotation;
 
-    AArch64MovSequenceHostedPatcher(int instructionStartPosition, AArch64Assembler.MovSequenceAnnotation annotation) {
+    MovSequenceHostedPatcher(int instructionStartPosition, AArch64Assembler.MovSequenceAnnotation annotation) {
         super(instructionStartPosition);
         this.annotation = annotation;
     }
@@ -215,7 +215,7 @@ class AArch64MovSequenceHostedPatcher extends CompilationResult.CodeAnnotation i
         int curValue = relative - (4 * annotation.numInstrs); // n 32-bit instrs to patch n 16-bit
                                                               // movs
 
-        int bitsRemaining = annotation.operandSizeBits;
+        int bitsRemaining = annotation.numInstrs * 8;
 
         for (int i = 0; i < 4 * annotation.numInstrs; i = i + 4) {
             if (bitsRemaining >= 8) {
