@@ -65,7 +65,7 @@ public final class Target_jdk_internal_misc_Unsafe_Reflection {
             Field field = c.getField(name);
             Target_java_lang_reflect_Field cast = SubstrateUtil.cast(field, Target_java_lang_reflect_Field.class);
             return objectFieldOffset(cast);
-        } catch ( NoSuchFieldException nse) {
+        } catch (NoSuchFieldException nse) {
             throw new InternalError();
         }
     }
