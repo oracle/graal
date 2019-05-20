@@ -30,6 +30,7 @@ import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.espresso.impl.Method;
 import com.oracle.truffle.espresso.meta.EspressoError;
 import com.oracle.truffle.espresso.runtime.EspressoException;
+import com.oracle.truffle.espresso.runtime.EspressoExitException;
 
 public class IntrinsicReflectionRootNode extends EspressoBaseNode {
 
@@ -47,13 +48,35 @@ public class IntrinsicReflectionRootNode extends EspressoBaseNode {
         } catch (InvocationTargetException e) {
             CompilerDirectives.transferToInterpreter();
             Throwable inner = e.getTargetException();
+            // Exceptions that should propagate as is
             if (inner instanceof EspressoException) {
                 throw (EspressoException) inner;
             }
+            // Exceptions that should not be caught.
+            if (inner instanceof EspressoExitException) {
+                throw (EspressoExitException) inner;
+            }
+            // Box exceptions
+            if (inner instanceof Exception) {
+                throw getMeta().throwExWithMessage(inner.getClass(), inner.getMessage());
+            }
+            // Errors that should propagate without boxing
             if (inner instanceof VirtualMachineError) {
                 throw (VirtualMachineError) inner;
             }
-            throw EspressoError.shouldNotReachHere(inner);
+            if (inner instanceof EspressoError) {
+                EspressoError outer = (EspressoError) inner;
+                inner = inner.getCause();
+                while (inner instanceof EspressoError) {
+                    outer = (EspressoError) inner;
+                    inner = inner.getCause();
+                }
+
+                // outer.printStackTrace();
+                throw outer;
+            }
+            inner.printStackTrace();
+            throw EspressoError.shouldNotReachHere(inner + "\n\t in reflected method: " + reflectMethod);
         } catch (Throwable e) {
             // Non-espresso exceptions cannot escape to the guest.
             throw EspressoError.shouldNotReachHere(e);

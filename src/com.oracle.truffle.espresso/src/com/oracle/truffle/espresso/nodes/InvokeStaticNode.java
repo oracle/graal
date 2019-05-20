@@ -43,7 +43,7 @@ public final class InvokeStaticNode extends QuickNode {
         // TODO(peterssen): Constant fold this check.
         if (directCallNode == null) {
             CompilerDirectives.transferToInterpreterAndInvalidate();
-            method.getDeclaringKlass().initialize();
+            // Obtaining call target initializes the declaring klass
             directCallNode = DirectCallNode.create(method.getCallTarget());
         }
         BytecodeNode root = (BytecodeNode) getParent();

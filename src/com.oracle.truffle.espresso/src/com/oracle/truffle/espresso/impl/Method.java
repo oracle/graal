@@ -22,15 +22,13 @@
  */
 package com.oracle.truffle.espresso.impl;
 
-import java.lang.reflect.Modifier;
-import java.util.function.Function;
-
 import com.oracle.truffle.api.CallTarget;
 import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.CompilerDirectives.CompilationFinal;
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.Truffle;
 import com.oracle.truffle.api.frame.FrameDescriptor;
+import com.oracle.truffle.api.interop.ForeignAccess;
 import com.oracle.truffle.api.interop.TruffleObject;
 import com.oracle.truffle.api.interop.UnknownIdentifierException;
 import com.oracle.truffle.espresso.Utils;
@@ -39,6 +37,7 @@ import com.oracle.truffle.espresso.classfile.ConstantPool;
 import com.oracle.truffle.espresso.classfile.Constants;
 import com.oracle.truffle.espresso.classfile.ExceptionsAttribute;
 import com.oracle.truffle.espresso.classfile.RuntimeConstantPool;
+import com.oracle.truffle.espresso.classfile.SourceFileAttribute;
 import com.oracle.truffle.espresso.descriptors.Signatures;
 import com.oracle.truffle.espresso.descriptors.Symbol;
 import com.oracle.truffle.espresso.descriptors.Symbol.Name;
@@ -49,6 +48,7 @@ import com.oracle.truffle.espresso.jni.NativeLibrary;
 import com.oracle.truffle.espresso.meta.ExceptionHandler;
 import com.oracle.truffle.espresso.meta.JavaKind;
 import com.oracle.truffle.espresso.meta.Meta;
+import com.oracle.truffle.espresso.meta.MetaUtil;
 import com.oracle.truffle.espresso.meta.ModifiersProvider;
 import com.oracle.truffle.espresso.nodes.BytecodeNode;
 import com.oracle.truffle.espresso.nodes.EspressoBaseNode;
@@ -59,16 +59,17 @@ import com.oracle.truffle.espresso.runtime.BootstrapMethodsAttribute;
 import com.oracle.truffle.espresso.runtime.EspressoContext;
 import com.oracle.truffle.espresso.runtime.MethodHandleIntrinsics;
 import com.oracle.truffle.espresso.runtime.StaticObject;
-import com.oracle.truffle.espresso.runtime.StaticObjectImpl;
-import com.oracle.truffle.espresso.substitutions.Target_java_lang_Class;
 import com.oracle.truffle.nfi.types.NativeSimpleType;
+
+import java.lang.reflect.Modifier;
+import java.util.function.Function;
 
 import static com.oracle.truffle.espresso.classfile.Constants.REF_invokeInterface;
 import static com.oracle.truffle.espresso.classfile.Constants.REF_invokeSpecial;
 import static com.oracle.truffle.espresso.classfile.Constants.REF_invokeStatic;
 import static com.oracle.truffle.espresso.classfile.Constants.REF_invokeVirtual;
 
-public final class Method implements ModifiersProvider, ContextAccess {
+public final class Method implements TruffleObject, ModifiersProvider, ContextAccess {
     public static final Method[] EMPTY_ARRAY = new Method[0];
 
     private final LinkedMethod linkedMethod;
@@ -130,7 +131,7 @@ public final class Method implements ModifiersProvider, ContextAccess {
     Method(Method method) {
         this.declaringKlass = method.declaringKlass;
         // TODO(peterssen): Custom constant pool for methods is not supported.
-        this.pool = declaringKlass.getConstantPool();
+        this.pool = (RuntimeConstantPool) method.getConstantPool();
 
         this.name = method.linkedMethod.getName();
         this.linkedMethod = method.linkedMethod;
@@ -146,7 +147,8 @@ public final class Method implements ModifiersProvider, ContextAccess {
         initRefKind();
         // Proxy the method, so that we have the same callTarget if it is not yet initialized.
         // Allows for not duplicating the codeAttribute
-        this.proxy = method;
+        this.proxy = method.proxy == null ? method : method.proxy;
+        this.poisonPill = method.poisonPill;
     }
 
     Method(ObjectKlass declaringKlass, LinkedMethod linkedMethod) {
@@ -193,6 +195,11 @@ public final class Method implements ModifiersProvider, ContextAccess {
         return linkedMethod.getAttribute(attrName);
     }
 
+    @TruffleBoundary
+    public final int BCItoLineNumber(int atBCI) {
+        return codeAttribute.BCItoLineNumber(atBCI);
+    }
+
     @Override
     public EspressoContext getContext() {
         return declaringKlass.getContext();
@@ -204,6 +211,10 @@ public final class Method implements ModifiersProvider, ContextAccess {
 
     public byte[] getCode() {
         return codeAttribute.getCode();
+    }
+
+    public CodeAttribute getCodeAttribute() {
+        return codeAttribute;
     }
 
     public int getCodeSize() {
@@ -250,65 +261,86 @@ public final class Method implements ModifiersProvider, ContextAccess {
         return NativeLibrary.bind(symbol, signature);
     }
 
+    /**
+     * Ensure any callTarget is called immediately before a BCI is advanced, or it could violate the
+     * specs on class init.
+     */
     @TruffleBoundary
     public CallTarget getCallTarget() {
-        // TODO(peterssen): Make lazy call target thread-safe.
         if (callTarget == null) {
+            CompilerDirectives.transferToInterpreterAndInvalidate();
             if (poisonPill) {
                 getMeta().throwExWithMessage(IncompatibleClassChangeError.class, "Conflicting default methods: " + this.getName());
             }
-            if (proxy != null) {
-                this.callTarget = proxy.getCallTarget();
-                return callTarget;
-            }
-            CompilerDirectives.transferToInterpreterAndInvalidate();
+            // Initializing a class costs a lock, do it outside of this method's lock to avoid
+            // congestion.
+            // Note that requesting a call target is immediately followed by a call to the method,
+            // before advancing BCI.
+            // This ensures that we are respecting the specs, saying that a class must be
+            // initialized before a method is called, while saving a call to safeInitialize after a
+            // method lookup.
+            declaringKlass.safeInitialize();
 
-            EspressoRootNode redirectedMethod = getSubstitutions().get(this);
-            if (redirectedMethod != null) {
-                callTarget = Truffle.getRuntime().createCallTarget(redirectedMethod);
-            } else {
-                if (this.isNative()) {
-                    // Bind native method.
-                    // System.err.println("Linking native method: " +
-                    // meta(this).getDeclaringClass().getName() + "#" + getName() + " " +
-                    // getSignature());
+            synchronized (this) {
+                if (callTarget != null) {
+                    return callTarget;
+                }
+                if (proxy != null) {
+                    this.callTarget = proxy.getCallTarget();
+                    return callTarget;
+                }
+                EspressoRootNode redirectedMethod = getSubstitutions().get(this);
+                if (redirectedMethod != null) {
+                    callTarget = Truffle.getRuntime().createCallTarget(redirectedMethod);
+                } else {
+                    if (this.isNative()) {
+                        // Bind native method.
+                        // System.err.println("Linking native method: " +
+                        // meta(this).getDeclaringClass().getName() + "#" + getName() + " " +
+                        // getSignature());
 
-                    // If the loader is null we have a system class, so we attempt a lookup in
-                    // the native Java library.
-                    if (StaticObject.isNull(getDeclaringKlass().getDefiningClassLoader())) {
-                        // Look in libjava
-                        for (boolean withSignature : new boolean[]{false, true}) {
-                            String mangledName = Mangle.mangleMethod(this, withSignature);
+                        // If the loader is null we have a system class, so we attempt a lookup in
+                        // the native Java library.
+                        if (StaticObject.isNull(getDeclaringKlass().getDefiningClassLoader())) {
+                            // Look in libjava
+                            for (boolean withSignature : new boolean[]{false, true}) {
+                                String mangledName = Mangle.mangleMethod(this, withSignature);
 
-                            try {
-                                TruffleObject nativeMethod = bind(getVM().getJavaLibrary(), this, mangledName);
-                                callTarget = Truffle.getRuntime().createCallTarget(new EspressoRootNode(this, new NativeRootNode(nativeMethod, this, true)));
-                                return callTarget;
-                            } catch (UnknownIdentifierException e) {
-                                // native method not found in libjava, safe to ignore
+                                try {
+                                    TruffleObject nativeMethod = bind(getVM().getJavaLibrary(), this, mangledName);
+                                    callTarget = Truffle.getRuntime().createCallTarget(new EspressoRootNode(this, new NativeRootNode(nativeMethod, this, true)));
+                                    return callTarget;
+                                } catch (UnknownIdentifierException e) {
+                                    // native method not found in libjava, safe to ignore
+                                }
                             }
                         }
+
+                        Method findNative = getMeta().ClassLoader_findNative;
+
+                        // Lookup the short name first, otherwise lookup the long name (with
+                        // signature).
+                        callTarget = lookupJniCallTarget(findNative, false);
+                        if (callTarget == null) {
+                            callTarget = lookupJniCallTarget(findNative, true);
+                        }
+
+                        // TODO(peterssen): Search JNI methods with OS prefix/suffix
+                        // (print_jni_name_suffix_on ...)
+
+                        if (callTarget == null) {
+                            if (getDeclaringKlass() == getMeta().MethodHandle && (getName() == Name.invokeExact || getName() == Name.invoke)) {
+                                this.callTarget = declaringKlass.lookupPolysigMethod(getName(), getRawSignature()).getCallTarget();
+                            } else {
+                                System.err.println("Failed to link native method: " + getDeclaringKlass().getType() + "." + getName() + " -> " + getRawSignature());
+                                throw getMeta().throwEx(UnsatisfiedLinkError.class);
+                            }
+                        }
+                    } else {
+                        FrameDescriptor frameDescriptor = initFrameDescriptor(getMaxLocals() + getMaxStackSize());
+                        EspressoRootNode rootNode = new EspressoRootNode(this, frameDescriptor, new BytecodeNode(this, frameDescriptor));
+                        callTarget = Truffle.getRuntime().createCallTarget(rootNode);
                     }
-
-                    Method findNative = getMeta().ClassLoader_findNative;
-
-                    // Lookup the short name first, otherwise lookup the long name (with signature).
-                    callTarget = lookupJniCallTarget(findNative, false);
-                    if (callTarget == null) {
-                        callTarget = lookupJniCallTarget(findNative, true);
-                    }
-
-                    // TODO(peterssen): Search JNI methods with OS prefix/suffix
-                    // (print_jni_name_suffix_on ...)
-
-                    if (callTarget == null) {
-                        System.err.println("Failed to link native method: " + getDeclaringKlass().getType() + "." + getName() + " -> " + getRawSignature());
-                        throw getMeta().throwEx(UnsatisfiedLinkError.class);
-                    }
-                } else {
-                    FrameDescriptor frameDescriptor = initFrameDescriptor(getMaxLocals() + getMaxStackSize());
-                    EspressoRootNode rootNode = new EspressoRootNode(this, frameDescriptor, new BytecodeNode(this, frameDescriptor));
-                    callTarget = Truffle.getRuntime().createCallTarget(rootNode);
                 }
             }
         }
@@ -351,19 +383,25 @@ public final class Method implements ModifiersProvider, ContextAccess {
     public ObjectKlass[] getCheckedExceptions() {
         if (checkedExceptions == null) {
             CompilerDirectives.transferToInterpreterAndInvalidate();
-            if (exceptionsAttribute == null) {
-                checkedExceptions = ObjectKlass.EMPTY_ARRAY;
-                return checkedExceptions;
-            }
-            final int[] entries = exceptionsAttribute.getCheckedExceptionsCPI();
-            checkedExceptions = new ObjectKlass[entries.length];
-            for (int i = 0; i < entries.length; ++i) {
-                // getConstantPool().classAt(entries[i]).
-                // TODO(peterssen): Resolve and cache CP entries.
-                checkedExceptions[i] = (ObjectKlass) ((RuntimeConstantPool) getDeclaringKlass().getConstantPool()).resolvedKlassAt(getDeclaringKlass(), entries[i]);
-            }
+            createCheckedExceptions();
         }
         return checkedExceptions;
+    }
+
+    private synchronized void createCheckedExceptions() {
+        if (checkedExceptions == null) {
+            if (exceptionsAttribute == null) {
+                checkedExceptions = ObjectKlass.EMPTY_ARRAY;
+                return;
+            }
+            final int[] entries = exceptionsAttribute.getCheckedExceptionsCPI();
+            ObjectKlass[] tmpchecked = new ObjectKlass[entries.length];
+            for (int i = 0; i < entries.length; ++i) {
+                // TODO(peterssen): Resolve and cache CP entries.
+                tmpchecked[i] = (ObjectKlass) ((RuntimeConstantPool) getDeclaringKlass().getConstantPool()).resolvedKlassAt(getDeclaringKlass(), entries[i]);
+            }
+            checkedExceptions = tmpchecked;
+        }
     }
 
     public boolean isFinal() {
@@ -408,11 +446,11 @@ public final class Method implements ModifiersProvider, ContextAccess {
     public Object invokeWithConversions(Object self, Object... args) {
         getContext().getJNI().clearPendingException();
         assert args.length == Signatures.parameterCount(getParsedSignature(), false);
-        // assert !isStatic() || ((StaticObjectImpl) self).isStatic();
-        getDeclaringKlass().safeInitialize();
+        // assert !isStatic() || ((StaticObject) self).isStatic();
 
         final Object[] filteredArgs;
         if (isStatic()) {
+            // clinit done when obtaining call target
             filteredArgs = new Object[args.length];
             for (int i = 0; i < filteredArgs.length; ++i) {
                 filteredArgs[i] = getMeta().toGuestBoxed(args[i]);
@@ -438,7 +476,7 @@ public final class Method implements ModifiersProvider, ContextAccess {
         getContext().getJNI().clearPendingException();
         if (isStatic()) {
             assert args.length == Signatures.parameterCount(getParsedSignature(), false);
-            getDeclaringKlass().safeInitialize();
+            // clinit performed on obtaining call target
             return getCallTarget().call(args);
         } else {
             assert args.length + 1 /* self */ == Signatures.parameterCount(getParsedSignature(), !isStatic());
@@ -494,7 +532,7 @@ public final class Method implements ModifiersProvider, ContextAccess {
         StaticObject curMethod = seed;
         Method target = null;
         while (target == null) {
-            target = (Method) ((StaticObjectImpl) curMethod).getHiddenField(Target_java_lang_Class.HIDDEN_METHOD_KEY);
+            target = (Method) curMethod.getHiddenField(meta.HIDDEN_METHOD_KEY);
             if (target == null) {
                 curMethod = (StaticObject) meta.Method_root.get(curMethod);
             }
@@ -527,7 +565,7 @@ public final class Method implements ModifiersProvider, ContextAccess {
     }
 
     public final boolean hasCode() {
-        return codeAttribute != null;
+        return codeAttribute != null || isNative();
     }
 
     public final boolean isVirtualCall() {
@@ -544,5 +582,25 @@ public final class Method implements ModifiersProvider, ContextAccess {
 
     public void setPoisonPill() {
         this.poisonPill = true;
+    }
+
+    private String getSourceFile() {
+        SourceFileAttribute sfa = (SourceFileAttribute) declaringKlass.getAttribute(Name.SourceFile);
+        if (sfa == null) {
+            return "unknown source";
+        }
+        return declaringKlass.getConstantPool().utf8At(sfa.getSourceFileIndex()).toString();
+    }
+
+    public final String report(int curBCI) {
+        return "at " + MetaUtil.internalNameToJava(getDeclaringKlass().getType().toString(), true, false) + "." + getName() + "(" + getSourceFile() + ":" + BCItoLineNumber(curBCI) + ")";
+    }
+
+    public final String report() {
+        return "at " + MetaUtil.internalNameToJava(getDeclaringKlass().getType().toString(), true, false) + "." + getName() + "(unknown source)";
+    }
+
+    public final ForeignAccess getForeignAccess() {
+        return EspressoMethodMessageResolutionForeign.ACCESS;
     }
 }

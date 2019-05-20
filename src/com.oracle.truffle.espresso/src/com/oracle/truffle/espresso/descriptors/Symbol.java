@@ -28,6 +28,7 @@ import java.util.Arrays;
 import com.oracle.truffle.api.CompilerDirectives.CompilationFinal;
 import com.oracle.truffle.espresso.jni.Utf8;
 import com.oracle.truffle.espresso.meta.EspressoError;
+import sun.misc.VM;
 
 /**
  * Modified-UTF8 byte string (symbol) for internal use in Espresso.
@@ -123,6 +124,8 @@ public final class Symbol<T> extends ByteSequence {
         public static final Symbol<Name> CLINIT = StaticSymbols.putName("<clinit>");
 
         public static final Symbol<Name> backtrace = StaticSymbols.putName("backtrace");
+        public static final Symbol<Name> fillInStackTrace = StaticSymbols.putName("fillInStackTrace");
+        public static final Symbol<Name> fillInStackTrace0 = StaticSymbols.putName("fillInStackTrace0");
         public static final Symbol<Name> clazz = StaticSymbols.putName("clazz");
         public static final Symbol<Name> type = StaticSymbols.putName("type");
         public static final Symbol<Name> slot = StaticSymbols.putName("slot");
@@ -152,13 +155,20 @@ public final class Symbol<T> extends ByteSequence {
         public static final Symbol<Name> getProperty = StaticSymbols.putName("getProperty");
         public static final Symbol<Name> setProperty = StaticSymbols.putName("setProperty");
         public static final Symbol<Name> exit = StaticSymbols.putName("exit");
+        public static final Symbol<Name> stop = StaticSymbols.putName("stop");
         public static final Symbol<Name> override = StaticSymbols.putName("override");
         public static final Symbol<Name> parameterTypes = StaticSymbols.putName("parameterTypes");
         public static final Symbol<Name> shutdown = StaticSymbols.putName("shutdown");
         public static final Symbol<Name> clone = StaticSymbols.putName("clone");
         public static final Symbol<Name> printStackTrace = StaticSymbols.putName("printStackTrace");
         public static final Symbol<Name> maxPriority = StaticSymbols.putName("maxPriority");
+        public static final Symbol<Name> interrupt = StaticSymbols.putName("interrupt");
         public static final Symbol<Name> daemon = StaticSymbols.putName("daemon");
+        public static final Symbol<Name> threadStatus = StaticSymbols.putName("threadStatus");
+        public static final Symbol<Name> checkAccess = StaticSymbols.putName("checkAccess");
+        public static final Symbol<Name> remove = StaticSymbols.putName("remove");
+        public static final Symbol<Name> dispatchUncaughtException = StaticSymbols.putName("dispatchUncaughtException");
+        public static final Symbol<Name> toThreadState = StaticSymbols.putName("toThreadState");
         public static final Symbol<Name> form = StaticSymbols.putName("form");
         public static final Symbol<Name> vmentry = StaticSymbols.putName("vmentry");
         public static final Symbol<Name> target = StaticSymbols.putName("target");
@@ -191,6 +201,7 @@ public final class Symbol<T> extends ByteSequence {
         public static final Symbol<Name> EnclosingMethod = StaticSymbols.putName("EnclosingMethod");
         public static final Symbol<Name> Exceptions = StaticSymbols.putName("Exceptions");
         public static final Symbol<Name> InnerClasses = StaticSymbols.putName("InnerClasses");
+        public static final Symbol<Name> LineNumberTable = StaticSymbols.putName("LineNumberTable");
 
         public static final Symbol<Name> BootstrapMethods = StaticSymbols.putName("BootstrapMethods");
         public static final Symbol<Name> ConstantValue = StaticSymbols.putName("ConstantValue");
@@ -200,6 +211,22 @@ public final class Symbol<T> extends ByteSequence {
         public static final Symbol<Name> AnnotationDefault = StaticSymbols.putName("AnnotationDefault");
         public static final Symbol<Name> MethodParameters = StaticSymbols.putName("MethodParameters");
         public static final Symbol<Name> Signature = StaticSymbols.putName("Signature");
+        public static final Symbol<Name> SourceFile = StaticSymbols.putName("SourceFile");
+
+        // Hidden field names. Starts with a 0 in order for the names to be illegal.
+        public static final Symbol<Name> HIDDEN_VMTARGET = StaticSymbols.putName("0HIDDEN_VMTARGET");
+        public static final Symbol<Name> HIDDEN_VMINDEX = StaticSymbols.putName("0HIDDEN_VMINDEX");
+        public static final Symbol<Name> HIDDEN_METHOD_RUNTIME_VISIBLE_TYPE_ANNOTATIONS = StaticSymbols.putName("0HIDDEN_METHOD_RUNTIME_VISIBLE_TYPE_ANNOTATIONS");
+        public static final Symbol<Name> HIDDEN_METHOD_KEY = StaticSymbols.putName("0HIDDEN_METHOD_KEY");
+        public static final Symbol<Name> HIDDEN_CONSTRUCTOR_RUNTIME_VISIBLE_TYPE_ANNOTATIONS = StaticSymbols.putName("0HIDDEN_CONSTRUCTOR_RUNTIME_VISIBLE_TYPE_ANNOTATIONS");
+        public static final Symbol<Name> HIDDEN_CONSTRUCTOR_KEY = StaticSymbols.putName("0HIDDEN_CONSTRUCTOR_KEY");
+        public static final Symbol<Name> HIDDEN_FIELD_RUNTIME_VISIBLE_TYPE_ANNOTATIONS = StaticSymbols.putName("0HIDDEN_FIELD_RUNTIME_VISIBLE_TYPE_ANNOTATIONS");
+        public static final Symbol<Name> HIDDEN_FIELD_KEY = StaticSymbols.putName("0HIDDEN_FIELD_KEY");
+        public static final Symbol<Name> HIDDEN_FRAMES = StaticSymbols.putName("0HIDDEN_FRAMES");
+        public static final Symbol<Name> HIDDEN_HOST_THREAD = StaticSymbols.putName("0HIDDEN_HOST_THREAD");
+        public static final Symbol<Name> HIDDEN_MIRROR_KLASS = StaticSymbols.putName("0HIDDEN_MIRROR_KLASS");
+        public static final Symbol<Name> HIDDEN_SIGNERS = StaticSymbols.putName("0HIDDEN_SIGNERS");
+        public static final Symbol<Name> HIDDEN_IS_ALIVE = StaticSymbols.putName("0HIDDEN_IS_ALIVE");
     }
 
     public static final class Type extends Descriptor {
@@ -267,11 +294,16 @@ public final class Symbol<T> extends ByteSequence {
         public static final Symbol<Type> IllegalMonitorStateException = StaticSymbols.putType(IllegalMonitorStateException.class);
         public static final Symbol<Type> IllegalArgumentException = StaticSymbols.putType(IllegalArgumentException.class);
         public static final Symbol<Type> ClassNotFoundException = StaticSymbols.putType(ClassNotFoundException.class);
+        public static final Symbol<Type> InterruptedException = StaticSymbols.putType(InterruptedException.class);
         public static final Symbol<Type> NegativeArraySizeException = StaticSymbols.putType(NegativeArraySizeException.class);
+        public static final Symbol<Type> RuntimeException = StaticSymbols.putType(RuntimeException.class);
         public static final Symbol<Type> InvocationTargetException = StaticSymbols.putType(java.lang.reflect.InvocationTargetException.class);
 
         public static final Symbol<Type> Thread = StaticSymbols.putType(Thread.class);
         public static final Symbol<Type> ThreadGroup = StaticSymbols.putType(ThreadGroup.class);
+
+        public static final Symbol<Type> sun_misc_VM = StaticSymbols.putType(VM.class);
+        public static final Symbol<Type> ThreadStateEnum = StaticSymbols.putType(Thread.State.class);
 
         // Guest reflection.
         public static final Symbol<Type> Field = StaticSymbols.putType(java.lang.reflect.Field.class);
@@ -301,6 +333,7 @@ public final class Symbol<T> extends ByteSequence {
         public static final Symbol<Type> IncompatibleClassChangeError = StaticSymbols.putType(IncompatibleClassChangeError.class);
         public static final Symbol<Type> AbstractMethodError = StaticSymbols.putType(AbstractMethodError.class);
         public static final Symbol<Type> InternalError = StaticSymbols.putType(InternalError.class);
+        public static final Symbol<Type> VerifyError = StaticSymbols.putType(VerifyError.class);
 
         public static final Symbol<Type> MethodType = StaticSymbols.putType(java.lang.invoke.MethodType.class);
 
@@ -314,9 +347,6 @@ public final class Symbol<T> extends ByteSequence {
         public static final Symbol<Type> MemberName = StaticSymbols.putType("Ljava/lang/invoke/MemberName;");
         public static final Symbol<Type> MethodHandle = StaticSymbols.putType(java.lang.invoke.MethodHandle.class);
         public static final Symbol<Type> LambdaForm = StaticSymbols.putType("Ljava/lang/invoke/LambdaForm;");
-
-        // Special type for never finding declared intrinsics
-        public static final Symbol<Type> invalid = StaticSymbols.putType("L~INVALID~;");
     }
 
     public static final class Signature extends Descriptor {
@@ -341,6 +371,7 @@ public final class Symbol<T> extends ByteSequence {
         public static final Symbol<Signature> Class_boolean_int_String = StaticSymbols.putSignature(Type.Class, Type._boolean, Type._int, Type.String);
 
         public static final Symbol<Signature> _void_Throwable = StaticSymbols.putSignature(Type._void, Type.Throwable);
+        public static final Symbol<Signature> _void_String_Throwable = StaticSymbols.putSignature(Type._void, Type.String, Type.Throwable);
         public static final Symbol<Signature> _void_String = StaticSymbols.putSignature(Type._void, Type.String);
         public static final Symbol<Signature> Class_String = StaticSymbols.putSignature(Type.Class, Type.String);
         public static final Symbol<Signature> ByteBuffer_byte_array = StaticSymbols.putSignature(Type.ByteBuffer, Type._byte_array);
@@ -370,7 +401,8 @@ public final class Symbol<T> extends ByteSequence {
         public static final Symbol<Signature> linkCallSite_signature = StaticSymbols.putSignature(Type.MemberName, Type.Object, Type.Object, Type.Object, Type.Object, Type.Object, Type.Object_array);
         public static final Symbol<Signature> lookup_signature = StaticSymbols.putSignature(Type.Lookup);
 
-        public static final Symbol<Signature> invalid = StaticSymbols.putSignature(Type.invalid);
+        public static final Symbol<Signature> toThreadState = StaticSymbols.putSignature(Type.ThreadStateEnum, Type._int);
+        public static final Symbol<Signature> ThreadGroup_remove = StaticSymbols.putSignature(Type._void, Type.Thread);
 
     }
 }

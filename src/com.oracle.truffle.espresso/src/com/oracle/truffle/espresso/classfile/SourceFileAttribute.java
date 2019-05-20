@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2018, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2019, 2019, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -20,19 +20,24 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.truffle.espresso.runtime;
+package com.oracle.truffle.espresso.classfile;
 
-import com.oracle.truffle.api.interop.CanResolve;
-import com.oracle.truffle.api.interop.MessageResolution;
-import com.oracle.truffle.api.interop.TruffleObject;
-import com.oracle.truffle.api.nodes.Node;
+import com.oracle.truffle.espresso.descriptors.Symbol;
+import com.oracle.truffle.espresso.descriptors.Symbol.Name;
+import com.oracle.truffle.espresso.runtime.Attribute;
 
-@MessageResolution(receiverType = Void.class)
-public class VoidMessageResolution {
-    @CanResolve
-    abstract static class CanResolveVoid extends Node {
-        boolean test(TruffleObject object) {
-            return object instanceof Void;
-        }
+public final class SourceFileAttribute extends Attribute {
+
+    public static final Symbol<Name> NAME = Name.SourceFile;
+
+    private final int sourceFileIndex;
+
+    public SourceFileAttribute(Symbol<Name> name, int sourceFileIndex) {
+        super(name, null);
+        this.sourceFileIndex = sourceFileIndex;
+    }
+
+    public int getSourceFileIndex() {
+        return sourceFileIndex;
     }
 }

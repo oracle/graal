@@ -27,8 +27,6 @@ import com.oracle.truffle.espresso.impl.Klass;
 import com.oracle.truffle.espresso.impl.Method;
 import com.oracle.truffle.espresso.meta.Meta;
 import com.oracle.truffle.espresso.runtime.StaticObject;
-import com.oracle.truffle.espresso.runtime.StaticObjectArray;
-import com.oracle.truffle.espresso.runtime.StaticObjectImpl;
 
 public interface MethodHandleConstant extends PoolConstant {
     default Tag tag() {
@@ -113,9 +111,9 @@ public interface MethodHandleConstant extends PoolConstant {
                 i++;
             }
             StaticObject rtype = payload.resolveReturnKlass().mirror();
-            StaticObjectImpl mtype = (StaticObjectImpl) meta.findMethodHandleType.invokeDirect(
+            StaticObject mtype = (StaticObject) meta.findMethodHandleType.invokeDirect(
                             null,
-                            rtype, new StaticObjectArray(meta.Class_Array, ptypes));
+                            rtype, new StaticObject(meta.Class_Array, ptypes));
 
             Klass mklass = payload.getDeclaringKlass();
             return new Resolved((StaticObject) meta.linkMethodHandleConstant.invokeDirect(

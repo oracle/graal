@@ -20,30 +20,19 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.truffle.espresso.runtime;
 
-import com.oracle.truffle.api.interop.CanResolve;
-import com.oracle.truffle.api.interop.MessageResolution;
-import com.oracle.truffle.api.interop.Resolve;
-import com.oracle.truffle.api.interop.TruffleObject;
-import com.oracle.truffle.api.nodes.Node;
+package com.oracle.truffle.espresso.substitutions;
 
-@MessageResolution(receiverType = Null.class)
-public class NullMessageResolution {
+import com.oracle.truffle.espresso.runtime.StaticObject;
 
-    @Resolve(message = "IS_NULL")
-    abstract static class IsNullNode extends Node {
+@EspressoSubstitutions
+public final class Target_java_lang_ref_Finalizer$FinalizerThread {
 
-        @SuppressWarnings("unused")
-        boolean access(Null object) {
-            return true;
-        }
-    }
+    // TODO(garcia) evaluate impact of disabling this class
 
-    @CanResolve
-    abstract static class CanResolveNull extends Node {
-        boolean test(TruffleObject object) {
-            return object instanceof Null;
-        }
+    @SuppressWarnings("unused")
+    @Substitution(hasReceiver = true)
+    static public void run(@Host(typeName = "Thread") StaticObject self) {
+        /* nop */
     }
 }

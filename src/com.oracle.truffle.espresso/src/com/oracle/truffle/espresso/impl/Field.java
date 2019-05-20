@@ -22,19 +22,18 @@
  */
 package com.oracle.truffle.espresso.impl;
 
+import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.espresso.classfile.Constants;
+import com.oracle.truffle.espresso.classfile.SignatureAttribute;
 import com.oracle.truffle.espresso.descriptors.Symbol;
 import com.oracle.truffle.espresso.descriptors.Symbol.Name;
 import com.oracle.truffle.espresso.descriptors.Symbol.Type;
-import com.oracle.truffle.espresso.descriptors.Types;
 import com.oracle.truffle.espresso.meta.EspressoError;
 import com.oracle.truffle.espresso.meta.JavaKind;
 import com.oracle.truffle.espresso.meta.Meta;
 import com.oracle.truffle.espresso.meta.ModifiersProvider;
 import com.oracle.truffle.espresso.runtime.Attribute;
 import com.oracle.truffle.espresso.runtime.StaticObject;
-import com.oracle.truffle.espresso.runtime.StaticObjectImpl;
-import com.oracle.truffle.espresso.substitutions.Target_java_lang_Class;
 import com.oracle.truffle.espresso.vm.InterpreterToVM;
 
 /**
@@ -50,8 +49,24 @@ public final class Field implements ModifiersProvider {
     private final Symbol<Name> name;
     private volatile Klass typeKlassCache;
 
+    @CompilerDirectives.CompilationFinal private int fieldIndex = -1;
+    @CompilerDirectives.CompilationFinal private String genericSignature = null;
+    @CompilerDirectives.CompilationFinal private int slot = -1;
+
     public Symbol<Type> getType() {
         return type;
+    }
+
+    public final String getGenericSignature() {
+        if (genericSignature == null) {
+            SignatureAttribute attr = (SignatureAttribute) linkedField.getAttribute(SignatureAttribute.NAME);
+            if (attr == null) {
+                genericSignature = getType().toString();
+            } else {
+                genericSignature = holder.getConstantPool().utf8At(attr.getSignatureIndex()).toString();
+            }
+        }
+        return genericSignature;
     }
 
     public Field(LinkedField linkedField, ObjectKlass holder) {
@@ -61,8 +76,22 @@ public final class Field implements ModifiersProvider {
         this.name = linkedField.getName();
     }
 
+    // Hidden field. Placeholder in the fieldTable
+    public Field(ObjectKlass holder, int hiddenSlot, int hiddenIndex, Symbol<Name> name) {
+        this.holder = holder;
+        this.linkedField = new LinkedField(new ParserField(0, name, Type.Object, -1, null), holder.getLinkedKlass(), -1);
+        this.type = null;
+        this.name = name;
+        this.slot = hiddenSlot;
+        this.fieldIndex = hiddenIndex;
+    }
+
+    public boolean isHidden() {
+        return linkedField.getParserField().getTypeIndex() == -1;
+    }
+
     public JavaKind getKind() {
-        return Types.getJavaKind(getType());
+        return linkedField.getKind();
     }
 
     public int getModifiers() {
@@ -73,8 +102,26 @@ public final class Field implements ModifiersProvider {
         return holder;
     }
 
+    /**
+     * The slot serves as the position in the `field table` of the ObjectKlass
+     */
     public int getSlot() {
-        return linkedField.getSlot();
+        return slot;
+    }
+
+    void setSlot(int value) {
+        this.slot = value;
+    }
+
+    /**
+     * The fieldIndex is the actual position in the field array of an actual instance
+     */
+    public int getFieldIndex() {
+        return fieldIndex;
+    }
+
+    void setFieldIndex(int index) {
+        this.fieldIndex = index;
     }
 
     @Override
@@ -150,11 +197,12 @@ public final class Field implements ModifiersProvider {
         StaticObject curField = seed;
         Field target = null;
         while (target == null) {
-            target = (Field) ((StaticObjectImpl) curField).getHiddenField(Target_java_lang_Class.HIDDEN_FIELD_KEY);
+            target = (Field) curField.getHiddenField(meta.HIDDEN_FIELD_KEY);
             if (target == null) {
                 curField = (StaticObject) meta.Field_root.get(curField);
             }
         }
         return target;
     }
+
 }

@@ -24,15 +24,42 @@ package com.oracle.truffle.espresso.runtime;
 
 import com.oracle.truffle.api.interop.CanResolve;
 import com.oracle.truffle.api.interop.MessageResolution;
+import com.oracle.truffle.api.interop.Resolve;
 import com.oracle.truffle.api.interop.TruffleObject;
 import com.oracle.truffle.api.nodes.Node;
 
-@MessageResolution(receiverType = StaticObjectImpl.class)
+@MessageResolution(receiverType = StaticObject.class)
 public class StaticObjectMessageResolution {
     @CanResolve
     abstract static class CanResolveVoid extends Node {
         boolean test(TruffleObject object) {
-            return object instanceof StaticObjectImpl;
+            return object instanceof StaticObject;
         }
     }
+
+    @Resolve(message = "IS_NULL")
+    abstract static class IsNullNode extends Node {
+
+        @SuppressWarnings("unused")
+        boolean access(StaticObject object) {
+            return StaticObject.isNull(object);
+        }
+    }
+
+    @Resolve(message = "IS_BOXED")
+    abstract static class IsBoxedNode extends Node {
+        @SuppressWarnings("unused")
+        boolean access(StaticObject object) {
+            return true;
+        }
+    }
+
+    @Resolve(message = "UNBOX")
+    abstract static class UnboxNode extends Node {
+        @SuppressWarnings("unused")
+        Object access(StaticObject object) {
+            return object.getKlass().getMeta().toHostBoxed(object);
+        }
+    }
+
 }

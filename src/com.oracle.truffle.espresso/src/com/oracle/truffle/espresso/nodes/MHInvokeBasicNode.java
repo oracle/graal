@@ -22,71 +22,34 @@
  */
 package com.oracle.truffle.espresso.nodes;
 
-import com.oracle.truffle.api.dsl.Cached;
-import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.frame.VirtualFrame;
-import com.oracle.truffle.api.nodes.DirectCallNode;
 import com.oracle.truffle.api.nodes.IndirectCallNode;
-import com.oracle.truffle.api.nodes.Node;
-import com.oracle.truffle.espresso.impl.Field;
 import com.oracle.truffle.espresso.impl.Method;
 import com.oracle.truffle.espresso.meta.Meta;
-import com.oracle.truffle.espresso.runtime.StaticObjectImpl;
+import com.oracle.truffle.espresso.runtime.StaticObject;
 
-import static com.oracle.truffle.espresso.substitutions.Target_java_lang_invoke_MethodHandleNatives.VMTARGET;
+public final class MHInvokeBasicNode extends EspressoBaseNode {
 
-public class MHInvokeBasicNode extends EspressoBaseNode {
-
-    @Child BasicNode node;
+    private final int form;
+    private final int vmentry;
+    private final int hidden_vmtarget;
+    private @Child IndirectCallNode callNode;
 
     public MHInvokeBasicNode(Method method) {
         super(method);
-        this.node = BasicNodeGen.create();
+        Meta meta = getMeta();
+        this.form = meta.form.getFieldIndex();
+        this.vmentry = meta.vmentry.getFieldIndex();
+        this.hidden_vmtarget = meta.HIDDEN_VMTARGET.getFieldIndex();
+        this.callNode = IndirectCallNode.create();
     }
 
     @Override
     public Object invokeNaked(VirtualFrame frame) {
-        Meta meta = getMeta();
-        StaticObjectImpl mh = (StaticObjectImpl) frame.getArguments()[0];
-        return node.executeBasic(mh, frame.getArguments(), meta);
-    }
-}
-
-abstract class BasicNode extends Node {
-    final static String vmtarget = VMTARGET;
-
-    static final int INLINE_CACHE_SIZE_LIMIT = 5;
-
-    public abstract Object executeBasic(StaticObjectImpl methodHandle, Object[] args, Meta meta);
-
-    @SuppressWarnings("unused")
-    @Specialization(limit = "INLINE_CACHE_SIZE_LIMIT", guards = {"methodHandle == cachedHandle", "getBooleanField(lform, meta.isCompiled)"})
-    Object directBasic(StaticObjectImpl methodHandle, Object[] args, Meta meta,
-                    @Cached("methodHandle") StaticObjectImpl cachedHandle,
-                    @Cached("getSOIField(methodHandle, meta.form)") StaticObjectImpl lform,
-                    @Cached("getMethodHiddenField(getSOIField(lform, meta.vmentry), vmtarget)") Method target,
-                    @Cached("create(target.getCallTarget())") DirectCallNode callNode) {
-        return callNode.call(args);
-    }
-
-    @Specialization()
-    Object normalBasic(StaticObjectImpl methodHandle, Object[] args, Meta meta,
-                    @Cached("create()") IndirectCallNode callNode) {
-        StaticObjectImpl lform = (StaticObjectImpl) methodHandle.getField(meta.form);
-        StaticObjectImpl mname = (StaticObjectImpl) lform.getField(meta.vmentry);
-        Method target = (Method) mname.getHiddenField(vmtarget);
-        return callNode.call(target.getCallTarget(), args);
-    }
-
-    static StaticObjectImpl getSOIField(StaticObjectImpl object, Field field) {
-        return (StaticObjectImpl) object.getField(field);
-    }
-
-    static Method getMethodHiddenField(StaticObjectImpl object, String name) {
-        return (Method) object.getHiddenField(name);
-    }
-
-    static boolean getBooleanField(StaticObjectImpl object, Field field) {
-        return (boolean) object.getField(field);
+        StaticObject mh = (StaticObject) frame.getArguments()[0];
+        StaticObject lform = (StaticObject) mh.getUnsafeField(form);
+        StaticObject mname = (StaticObject) lform.getUnsafeField(vmentry);
+        Method target = (Method) mname.getUnsafeField(hidden_vmtarget);
+        return callNode.call(target.getCallTarget(), frame.getArguments());
     }
 }

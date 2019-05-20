@@ -44,6 +44,7 @@ import com.oracle.truffle.espresso.runtime.StaticObject;
  */
 @EspressoSubstitutions
 public final class Target_java_security_AccessController {
+
     @Substitution
     public static @Host(Object.class) StaticObject doPrivileged(@Host(PrivilegedAction.class) StaticObject action) {
         Method run = action.getKlass().lookupMethod(Name.run, Signature.Object);
@@ -66,14 +67,24 @@ public final class Target_java_security_AccessController {
     public static @Host(Object.class) StaticObject doPrivileged_PrivilegedExceptionAction_AccessControlContext(
                     @Host(PrivilegedExceptionAction.class) StaticObject action,
                     @SuppressWarnings("unused") @Host(AccessControlContext.class) StaticObject context) {
+        Method run = null;
         try {
-            return doPrivileged(action);
+            run = action.getKlass().lookupMethod(Name.run, Signature.Object);
+            return (StaticObject) run.invokeDirect(action);
         } catch (EspressoException e) {
             Meta meta = action.getKlass().getMeta();
-            // Wrap exception in PrivilegedActionException.
-            StaticObject wrapper = meta.PrivilegedActionException.allocateInstance();
-            meta.PrivilegedActionException_init_Exception.invokeDirect(wrapper, e.getException());
-            throw new EspressoException(wrapper);
+            // Wrap exception in PrivilegedActionException if it is a declared exception.
+            if (run == null) {
+                throw e;
+            }
+            if (meta.Exception.isAssignableFrom(e.getException().getKlass()) &&
+                            !meta.RuntimeException.isAssignableFrom(e.getException().getKlass())) {
+                StaticObject wrapper = meta.PrivilegedActionException.allocateInstance();
+                meta.PrivilegedActionException_init_Exception.invokeDirect(wrapper, e.getException());
+                throw new EspressoException(wrapper);
+            }
+            throw e;
+
         } catch (Exception e) {
             e.printStackTrace();
             throw EspressoError.shouldNotReachHere(e);

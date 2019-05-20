@@ -22,7 +22,7 @@
  */
 package com.oracle.truffle.espresso.nodes;
 
-import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
+import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.dsl.Cached;
 import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.frame.VirtualFrame;
@@ -31,8 +31,8 @@ import com.oracle.truffle.api.nodes.IndirectCallNode;
 import com.oracle.truffle.espresso.descriptors.Signatures;
 import com.oracle.truffle.espresso.impl.Klass;
 import com.oracle.truffle.espresso.impl.Method;
+import com.oracle.truffle.espresso.impl.ObjectKlass;
 import com.oracle.truffle.espresso.runtime.StaticObject;
-import com.oracle.truffle.espresso.runtime.StaticObjectImpl;
 
 public abstract class InvokeVirtualNode extends QuickNode {
 
@@ -45,7 +45,7 @@ public abstract class InvokeVirtualNode extends QuickNode {
 
     @SuppressWarnings("unused")
     @Specialization(limit = "INLINE_CACHE_SIZE_LIMIT", guards = "receiver.getKlass() == cachedKlass")
-    Object callVirtualDirect(StaticObjectImpl receiver, Object[] args,
+    Object callVirtualDirect(StaticObject receiver, Object[] args,
                     @Cached("receiver.getKlass()") Klass cachedKlass,
                     @Cached("methodLookup(receiver, vtableIndex)") Method resolvedMethod,
                     @Cached("create(resolvedMethod.getCallTarget())") DirectCallNode directCallNode) {
@@ -56,7 +56,12 @@ public abstract class InvokeVirtualNode extends QuickNode {
     Object callVirtualIndirect(StaticObject receiver, Object[] arguments,
                     @Cached("create()") IndirectCallNode indirectCallNode) {
         // vtable lookup.
-        return indirectCallNode.call(methodLookup(receiver, vtableIndex).getCallTarget(), arguments);
+        Method target = methodLookup(receiver, vtableIndex);
+        if (!target.hasCode()) {
+            CompilerDirectives.transferToInterpreterAndInvalidate();
+            throw receiver.getKlass().getMeta().throwEx(AbstractMethodError.class);
+        }
+        return indirectCallNode.call(target.getCallTarget(), arguments);
     }
 
     InvokeVirtualNode(Method resolutionSeed) {
@@ -65,14 +70,15 @@ public abstract class InvokeVirtualNode extends QuickNode {
         this.vtableIndex = resolutionSeed.getVTableIndex();
     }
 
-    @TruffleBoundary
     static Method methodLookup(StaticObject receiver, int vtableIndex) {
-        Klass clazz = receiver.getKlass();
-        Method m = clazz.vtableLookup(vtableIndex);
         // Suprisingly, invokeVirtuals can try to invoke interface methods, even non-default
         // ones.
         // Good thing is, miranda methods are taken care of at vtable creation !
-        return m;
+        Klass receiverKlass = receiver.getKlass();
+        if (receiverKlass.isArray()) {
+            return receiverKlass.getSuperKlass().vtableLookup(vtableIndex);
+        }
+        return ((ObjectKlass) receiverKlass).vtableLookup(vtableIndex);
     }
 
     @Override
@@ -83,7 +89,8 @@ public abstract class InvokeVirtualNode extends QuickNode {
         // TODO(peterssen): Maybe refrain from exposing the whole root node?.
         BytecodeNode root = (BytecodeNode) getParent();
         // TODO(peterssen): IsNull Node?.
-        StaticObject receiver = nullCheck(root.peekReceiver(frame, top, resolutionSeed));
+        StaticObject receiver = root.peekReceiver(frame, top, resolutionSeed);
+        nullCheck(receiver);
         Object[] args = root.peekArguments(frame, top, true, resolutionSeed.getParsedSignature());
         assert receiver != null;
         assert receiver == args[0] : "receiver must be the first argument";

@@ -29,14 +29,14 @@ import com.oracle.truffle.espresso.descriptors.Symbol.Name;
 import com.oracle.truffle.espresso.descriptors.Symbol.Type;
 import com.oracle.truffle.espresso.impl.Klass;
 import com.oracle.truffle.espresso.impl.Method;
+import com.oracle.truffle.espresso.impl.ObjectKlass;
 import com.oracle.truffle.espresso.meta.EspressoError;
 import com.oracle.truffle.espresso.meta.JavaKind;
 import com.oracle.truffle.espresso.meta.Meta;
 import com.oracle.truffle.espresso.runtime.EspressoException;
 import com.oracle.truffle.espresso.runtime.StaticObject;
-import com.oracle.truffle.espresso.runtime.StaticObjectArray;
-import com.oracle.truffle.espresso.runtime.StaticObjectClass;
-import com.oracle.truffle.espresso.runtime.StaticObjectImpl;
+
+import java.lang.reflect.InvocationTargetException;
 
 /**
  * This substitution is merely for performance reasons, to avoid the deep-dive to native. libjava
@@ -225,20 +225,24 @@ public final class Target_sun_reflect_NativeMethodAccessorImpl {
     @Substitution
     public static @Host(Object.class) StaticObject invoke0(@Host(java.lang.reflect.Method.class) StaticObject guestMethod, @Host(Object.class) StaticObject receiver,
                     @Host(Object[].class) StaticObject args) {
-
         Meta meta = EspressoLanguage.getCurrentContext().getMeta();
         StaticObject curMethod = guestMethod;
 
         Method reflectedMethod = null;
         while (reflectedMethod == null) {
-            reflectedMethod = (Method) ((StaticObjectImpl) curMethod).getHiddenField(Target_java_lang_Class.HIDDEN_METHOD_KEY);
+            reflectedMethod = (Method) curMethod.getHiddenField(meta.HIDDEN_METHOD_KEY);
             if (reflectedMethod == null) {
                 curMethod = (StaticObject) meta.Method_root.get(curMethod);
             }
         }
 
-        Klass klass = ((StaticObjectClass) meta.Method_clazz.get(guestMethod)).getMirrorKlass();
-        StaticObjectArray parameterTypes = (StaticObjectArray) meta.Method_parameterTypes.get(guestMethod);
+        Klass klass = ((StaticObject) meta.Method_clazz.get(guestMethod)).getMirrorKlass();
+
+        if (klass == meta.MethodHandle && (reflectedMethod.getName() == Name.invoke || reflectedMethod.getName() == Name.invokeExact)) {
+            throw meta.throwExWithCause(InvocationTargetException.class, meta.initExWithMessage(UnsupportedOperationException.class, "Cannot reflecively invoke MethodHandle.{invoke,invokeExact}"));
+        }
+
+        StaticObject parameterTypes = (StaticObject) meta.Method_parameterTypes.get(guestMethod);
         // System.err.println(EspressoOptions.INCEPTION_NAME + " Reflective method for " +
         // reflectedMethod.getName());
         StaticObject result = callMethodReflectively(meta, receiver, args, reflectedMethod, klass, parameterTypes);
@@ -248,7 +252,7 @@ public final class Target_sun_reflect_NativeMethodAccessorImpl {
     }
 
     public static @Host(Object.class) StaticObject callMethodReflectively(Meta meta, @Host(Object.class) StaticObject receiver, @Host(Object[].class) StaticObject args, Method reflectedMethod,
-                    Klass klass, StaticObjectArray parameterTypes) {
+                    Klass klass, @Host(Class[].class) StaticObject parameterTypes) {
         klass.safeInitialize();
 
         Method method;      // actual method to invoke
@@ -259,7 +263,6 @@ public final class Target_sun_reflect_NativeMethodAccessorImpl {
             method = reflectedMethod;
             targetKlass = klass;
         } else {
-
             if (StaticObject.isNull(receiver)) {
                 throw meta.throwEx(meta.NullPointerException);
             }
@@ -280,22 +283,21 @@ public final class Target_sun_reflect_NativeMethodAccessorImpl {
                     // resolve interface call
                     // Match resolution errors with those thrown due to reflection inlining
                     // Linktime resolution & IllegalAccessCheck already done by Class.getMethod()
-                    throw EspressoError.unimplemented("reflective interface calls");
-                    // This is what it should look like for interfaces.
-                    // try {
-                    // method = resolveInterfaceCall(klass, reflectedMethod, targetKlass, receiver);
-                    // } catch (EspressoException e) {
-                    // // Method resolution threw an exception; wrap it in an
-                    // InvocationTargetException
-                    // throw meta.throwExWithCause(meta.InvocationTargetException,
-                    // e.getException());
-                    // }
+                    method = reflectedMethod;
+                    assert targetKlass instanceof ObjectKlass;
+                    method = ((ObjectKlass) targetKlass).itableLookup(method.getDeclaringKlass(), method.getITableIndex());
+                    if (method != null) {
+                        // Check for abstract methods as well
+                        if (!method.hasCode()) {
+                            // new default: 65315
+                            throw meta.throwExWithCause(meta.InvocationTargetException, Meta.initEx(meta.AbstractMethodError));
+                        }
+                    }
                 } else {
                     // if the method can be overridden, we resolve using the vtable index.
                     method = reflectedMethod;
                     // VTable is live, use it
                     method = targetKlass.vtableLookup(method.getVTableIndex());
-                    // No vtable in Espresso, just lookup.
                     if (method != null) {
                         // Check for abstract methods as well
                         if (method.isAbstract()) {
@@ -314,7 +316,7 @@ public final class Target_sun_reflect_NativeMethodAccessorImpl {
             throw meta.throwExWithMessage(meta.NoSuchMethodError, meta.toGuestString("please let Karen know"));
         }
 
-        int argsLen = StaticObject.isNull(args) ? 0 : ((StaticObjectArray) args).length();
+        int argsLen = StaticObject.isNull(args) ? 0 : args.length();
         final Symbol<Type>[] signature = method.getParsedSignature();
 
         // Check number of arguments.
@@ -324,9 +326,9 @@ public final class Target_sun_reflect_NativeMethodAccessorImpl {
 
         Object[] adjustedArgs = new Object[argsLen];
         for (int i = 0; i < argsLen; ++i) {
-            StaticObject arg = ((StaticObjectArray) args).get(i);
+            StaticObject arg = args.get(i);
             StaticObject paramTypeMirror = parameterTypes.get(i);
-            Klass paramKlass = ((StaticObjectClass) paramTypeMirror).getMirrorKlass();
+            Klass paramKlass = paramTypeMirror.getMirrorKlass();
             // Throws guest IllegallArgumentException if the parameter cannot be casted or widened.
             adjustedArgs[i] = checkAndWiden(meta, arg, paramKlass);
         }

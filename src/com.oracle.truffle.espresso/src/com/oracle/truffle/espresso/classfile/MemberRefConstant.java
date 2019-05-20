@@ -64,6 +64,7 @@ public interface MemberRefConstant extends PoolConstant {
     abstract class Indexes implements MemberRefConstant {
 
         final char classIndex;
+
         final char nameAndTypeIndex;
 
         Indexes(int classIndex, int nameAndTypeIndex) {
@@ -124,7 +125,7 @@ public interface MemberRefConstant extends PoolConstant {
             }
         }
         if (f.isProtected() || f.isPackagePrivate()) {
-            if (accessingKlass.getRuntimePackage().equals(fieldKlass.getRuntimePackage())) {
+            if (accessingKlass.sameRuntimePackage(fieldKlass)) {
                 return true;
             }
         }
@@ -144,7 +145,6 @@ public interface MemberRefConstant extends PoolConstant {
 
     // Same as above.
     static boolean checkAccess(Klass accessingKlass, Klass resolvedKlass, Method m) {
-
         Klass methodKlass = m.getDeclaringKlass();
 
         if (m.isPublic()) {
@@ -169,14 +169,14 @@ public interface MemberRefConstant extends PoolConstant {
             }
         }
         if (m.isProtected() || m.isPackagePrivate()) {
-            if (accessingKlass.getRuntimePackage().equals(methodKlass.getRuntimePackage())) {
+            if (accessingKlass.sameRuntimePackage(methodKlass)) {
                 return true;
             }
         }
         if (m.isPrivate() && methodKlass == accessingKlass) {
             return true;
         }
-        // MagicAccessorImpl marks internal reflection classes that have access to eveything.
+        // MagicAccessorImpl marks internal reflection classes that have access to everything.
         if (accessingKlass.getMeta().MagicAccessorImpl.isAssignableFrom(accessingKlass)) {
             return true;
         }

@@ -28,20 +28,17 @@ import com.oracle.truffle.api.nodes.ExplodeLoop;
 import com.oracle.truffle.espresso.descriptors.Signatures;
 import com.oracle.truffle.espresso.impl.Method;
 import com.oracle.truffle.espresso.runtime.StaticObject;
-import com.oracle.truffle.espresso.runtime.StaticObjectImpl;
-
-import static com.oracle.truffle.espresso.substitutions.Target_java_lang_invoke_MethodHandleNatives.VMTARGET;
 
 public class MHInvokeGenericNode extends EspressoBaseNode {
     private final int argCount;
     private final StaticObject appendix;
     @Child private DirectCallNode callNode;
 
-    public MHInvokeGenericNode(Method method, StaticObjectImpl memberName, StaticObject appendix) {
+    public MHInvokeGenericNode(Method method, StaticObject memberName, StaticObject appendix) {
         super(method);
         this.argCount = Signatures.parameterCount(getMethod().getParsedSignature(), false);
         this.appendix = appendix;
-        Method target = (Method) memberName.getHiddenField(VMTARGET);
+        Method target = (Method) memberName.getHiddenField(method.getMeta().HIDDEN_VMTARGET);
         this.callNode = DirectCallNode.create(target.getCallTarget());
     }
 

@@ -23,10 +23,15 @@
 
 package com.oracle.truffle.espresso.impl;
 
-import java.util.ArrayList;
-import java.util.Arrays;
-import java.util.Collections;
-import java.util.List;
+import static com.oracle.truffle.espresso.classfile.Constants.REF_invokeVirtual;
+import static com.oracle.truffle.espresso.runtime.MethodHandleIntrinsics.PolySigIntrinsics.InvokeBasic;
+import static com.oracle.truffle.espresso.runtime.MethodHandleIntrinsics.PolySigIntrinsics.InvokeGeneric;
+import static com.oracle.truffle.espresso.runtime.MethodHandleIntrinsics.PolySigIntrinsics.LinkToInterface;
+import static com.oracle.truffle.espresso.runtime.MethodHandleIntrinsics.PolySigIntrinsics.LinkToSpecial;
+import static com.oracle.truffle.espresso.runtime.MethodHandleIntrinsics.PolySigIntrinsics.LinkToStatic;
+import static com.oracle.truffle.espresso.runtime.MethodHandleIntrinsics.PolySigIntrinsics.LinkToVirtual;
+import static com.oracle.truffle.espresso.substitutions.Target_java_lang_invoke_MethodHandleNatives.toBasic;
+
 import java.util.function.Function;
 import java.util.function.IntFunction;
 
@@ -51,21 +56,9 @@ import com.oracle.truffle.espresso.runtime.EspressoContext;
 import com.oracle.truffle.espresso.runtime.EspressoException;
 import com.oracle.truffle.espresso.runtime.MethodHandleIntrinsics;
 import com.oracle.truffle.espresso.runtime.StaticObject;
-import com.oracle.truffle.espresso.runtime.StaticObjectArray;
-import com.oracle.truffle.espresso.runtime.StaticObjectClass;
-import com.oracle.truffle.espresso.runtime.StaticObjectImpl;
 import com.oracle.truffle.espresso.substitutions.Host;
 import com.oracle.truffle.espresso.vm.InterpreterToVM;
 import com.oracle.truffle.object.DebugCounter;
-
-import static com.oracle.truffle.espresso.classfile.Constants.REF_invokeVirtual;
-import static com.oracle.truffle.espresso.runtime.MethodHandleIntrinsics.PolySigIntrinsics.InvokeBasic;
-import static com.oracle.truffle.espresso.runtime.MethodHandleIntrinsics.PolySigIntrinsics.InvokeGeneric;
-import static com.oracle.truffle.espresso.runtime.MethodHandleIntrinsics.PolySigIntrinsics.LinkToInterface;
-import static com.oracle.truffle.espresso.runtime.MethodHandleIntrinsics.PolySigIntrinsics.LinkToSpecial;
-import static com.oracle.truffle.espresso.runtime.MethodHandleIntrinsics.PolySigIntrinsics.LinkToStatic;
-import static com.oracle.truffle.espresso.runtime.MethodHandleIntrinsics.PolySigIntrinsics.LinkToVirtual;
-import static com.oracle.truffle.espresso.substitutions.Target_java_lang_invoke_MethodHandleNatives.toBasic;
 
 public abstract class Klass implements ModifiersProvider, ContextAccess {
 
@@ -89,7 +82,11 @@ public abstract class Klass implements ModifiersProvider, ContextAccess {
     private volatile ArrayKlass arrayClass;
 
     @CompilationFinal //
-    private StaticObjectClass mirrorCache;
+    private volatile StaticObject mirrorCache;
+
+    private final boolean isArray;
+
+    @CompilationFinal private int hierarchyDepth = -1;
 
     public final ObjectKlass[] getSuperInterfaces() {
         return superInterfaces;
@@ -102,6 +99,7 @@ public abstract class Klass implements ModifiersProvider, ContextAccess {
         this.kind = Types.getJavaKind(type);
         this.superKlass = superKlass;
         this.superInterfaces = superInterfaces;
+        this.isArray = Types.isArray(type);
     }
 
     public abstract @Host(ClassLoader.class) StaticObject getDefiningClassLoader();
@@ -113,16 +111,21 @@ public abstract class Klass implements ModifiersProvider, ContextAccess {
     }
 
     public final boolean isArray() {
-        return Types.isArray(getType());
+        return isArray;
     }
 
     public StaticObject mirror() {
-        // TODO(peterssen): Make thread-safe.
         if (mirrorCache == null) {
-            CompilerDirectives.transferToInterpreterAndInvalidate();
-            mirrorCache = new StaticObjectClass(this);
+            mirrorCreate();
         }
         return mirrorCache;
+    }
+
+    private synchronized void mirrorCreate() {
+        if (mirrorCache == null) {
+            CompilerDirectives.transferToInterpreterAndInvalidate();
+            this.mirrorCache = new StaticObject(getMeta().Class, this);
+        }
     }
 
     @Override
@@ -183,7 +186,7 @@ public abstract class Klass implements ModifiersProvider, ContextAccess {
     }
 
     public final StaticObject tryInitializeAndGetStatics() {
-        initialize();
+        safeInitialize();
         return getStatics();
     }
 
@@ -230,6 +233,11 @@ public abstract class Klass implements ModifiersProvider, ContextAccess {
      * Determines if this type is either the same as, or is a superclass or superinterface of, the
      * type represented by the specified parameter. This method is identical to
      * {@link Class#isAssignableFrom(Class)} in terms of the value return for this type.
+     * 
+     * Fast check for Object types (as opposed to interface types) -> do not need to walk the entire
+     * class hierarchy.
+     * 
+     * Interface check is still slow, though.
      */
     @TruffleBoundary
     public final boolean isAssignableFrom(Klass other) {
@@ -245,9 +253,15 @@ public abstract class Klass implements ModifiersProvider, ContextAccess {
             return this.getComponentType().isAssignableFrom(other.getComponentType());
         }
         if (isInterface()) {
-            return other.getTransitiveInterfacesList().contains(this);
+            for (Klass k : other.getTransitiveInterfacesList()) {
+                if (k == this) {
+                    return true;
+                }
+            }
+            return false;
         }
-        return other.getSupertypesList(true).contains(this);
+        int depth = getHierarchyDepth();
+        return other.getHierarchyDepth() >= depth && other.getSuperTypes()[depth] == this;
     }
 
     /**
@@ -342,13 +356,23 @@ public abstract class Klass implements ModifiersProvider, ContextAccess {
         try {
             initialize();
         } catch (EspressoException e) {
-            throw getMeta().throwExWithCause(ExceptionInInitializerError.class, e.getException());
+            StaticObject cause = e.getException();
+            if (getMeta().Exception.isAssignableFrom(cause.getKlass())) {
+                throw getMeta().throwExWithCause(ExceptionInInitializerError.class, cause);
+            } else {
+                throw e;
+            }
+        } catch (VerifyError | ClassFormatError e) {
+            throw getMeta().throwExWithMessage(e.getClass(), e.getMessage());
         }
     }
 
     public abstract Klass getComponentType();
 
     public final Klass getSupertype() {
+        if (isPrimitive()) {
+            return null;
+        }
         if (isArray()) {
             Klass component = getComponentType();
             if (this == getMeta().Object.array() || component.isPrimitive()) {
@@ -370,74 +394,76 @@ public abstract class Klass implements ModifiersProvider, ContextAccess {
         return !isInterface();
     }
 
-    @CompilationFinal //
-    private List<Klass> supertypesWithSelfCache;
+    @CompilationFinal(dimensions = 1) //
+    private Klass[] supertypesWithSelfCache;
 
+    // index 0 is Object, index hierarchyDepth is this
     @TruffleBoundary
-    private final List<Klass> getSupertypesList(boolean includeSelf) {
-        List<Klass> supertypesWithSelf = getSupertypesList();
-        if (includeSelf) {
-            return supertypesWithSelf;
-        }
-        assert supertypesWithSelf.get(0) == this;
-        // Skip self.
-        return supertypesWithSelf.subList(1, supertypesWithSelf.size());
-    }
-
-    @TruffleBoundary
-    private final List<Klass> getSupertypesList() {
-        List<Klass> supertypes = supertypesWithSelfCache;
+    private Klass[] getSuperTypes() {
+        Klass[] supertypes = supertypesWithSelfCache;
         if (supertypes == null) {
             CompilerDirectives.transferToInterpreterAndInvalidate();
-            supertypes = new ArrayList<>();
-            supertypes.add(this);
             Klass supertype = getSupertype();
-            if (supertype != null) {
-                supertypes.addAll(supertype.getSupertypesList());
+            if (supertype == null) {
+                this.supertypesWithSelfCache = new Klass[]{this};
+                return supertypesWithSelfCache;
             }
-            supertypes = Collections.unmodifiableList(supertypes);
+            Klass[] superKlassTypes = supertype.getSuperTypes();
+            supertypes = new Klass[superKlassTypes.length + 1];
+            int depth = getHierarchyDepth();
+            assert supertypes.length == depth + 1;
+            supertypes[depth] = this;
+            System.arraycopy(superKlassTypes, 0, supertypes, 0, depth);
             supertypesWithSelfCache = supertypes;
         }
         return supertypes;
     }
 
-    @CompilationFinal //
-    private List<ObjectKlass> transitiveInterfacesCache;
+    private int getHierarchyDepth() {
+        int result = hierarchyDepth;
+        if (result == -1) {
+            if (getSupertype() == null) {
+                // Primitives or java.lang.Object
+                result = 0;
+            } else {
+                result = getSupertype().getHierarchyDepth() + 1;
+            }
+            hierarchyDepth = result;
+        }
+        return result;
+    }
+
+    @CompilationFinal(dimensions = 1) private Klass[] transitiveInterfaceCache;
 
     @TruffleBoundary
-    protected final List<ObjectKlass> getTransitiveInterfacesList() {
-        List<ObjectKlass> transitiveInterfaces = transitiveInterfacesCache;
+    protected final Klass[] getTransitiveInterfacesList() {
+        Klass[] transitiveInterfaces = transitiveInterfaceCache;
         if (transitiveInterfaces == null) {
             CompilerDirectives.transferToInterpreterAndInvalidate();
-            List<ObjectKlass> interfaces = new ArrayList<>(Arrays.asList(getInterfaces()));
-            ObjectKlass superclass = getSuperKlass();
-            if (superclass != null) {
-                interfaces.addAll(superclass.getTransitiveInterfacesList());
+            if (this.isArray() || this.isPrimitive()) {
+                transitiveInterfaces = this.getSuperInterfaces();
+            } else {
+                // Use the itable construction.
+                transitiveInterfaces = ((ObjectKlass) this).getiKlassTable();
             }
-            ArrayList<ObjectKlass> flatMapped = new ArrayList<>();
-            for (ObjectKlass i : interfaces) {
-                flatMapped.add(i);
-                flatMapped.addAll(i.getTransitiveInterfacesList());
-            }
-            transitiveInterfaces = Collections.unmodifiableList(flatMapped);
-            transitiveInterfacesCache = transitiveInterfaces;
+            transitiveInterfaceCache = transitiveInterfaces;
         }
         return transitiveInterfaces;
     }
 
     @TruffleBoundary
-    public StaticObjectArray allocateArray(int length) {
+    public StaticObject allocateArray(int length) {
         return InterpreterToVM.newArray(this, length);
     }
 
     @TruffleBoundary
-    public StaticObjectArray allocateArray(int length, IntFunction<StaticObject> generator) {
+    public StaticObject allocateArray(int length, IntFunction<StaticObject> generator) {
         // TODO(peterssen): Store check is missing.
         StaticObject[] array = new StaticObject[length];
         for (int i = 0; i < array.length; ++i) {
             array[i] = generator.apply(i);
         }
-        return new StaticObjectArray(getArrayClass(), array);
+        return new StaticObject(getArrayClass(), array);
     }
 
     // region Lookup
@@ -463,6 +489,10 @@ public abstract class Klass implements ModifiersProvider, ContextAccess {
         return field;
     }
 
+    public abstract Field lookupFieldTable(int slot);
+
+    public abstract Field lookupStaticFieldTable(int slot);
+
     public final Method lookupDeclaredMethod(Symbol<Name> methodName, Symbol<Signature> signature) {
         declaredMethodLookupCount.inc();
         // TODO(peterssen): Improve lookup performance.
@@ -474,22 +504,9 @@ public abstract class Klass implements ModifiersProvider, ContextAccess {
         return null;
     }
 
-    public final Method lookupMethod(Symbol<Name> methodName, Symbol<Signature> signature) {
-        methodLookupCount.inc();
-        // TODO(peterssen): Improve lookup performance.
-        Method method = lookupDeclaredMethod(methodName, signature);
-        if (method == null && type == Type.MethodHandle) {
-            method = lookupPolysigMethod(methodName, signature);
-        }
-        if (method == null && getSuperKlass() != null) {
-            method = getSuperKlass().lookupMethod(methodName, signature);
-        }
-        return method;
-    }
+    public abstract Method lookupMethod(Symbol<Name> methodName, Symbol<Signature> signature);
 
     public abstract Method vtableLookup(int vtableIndex);
-
-    public abstract Method itableLookup(Klass interfKlass, int itableIndex);
 
     public Method lookupPolysigMethod(Symbol<Name> methodName, Symbol<Signature> signature) {
         if (methodName == Name.invoke || methodName == Name.invokeExact) {
@@ -522,8 +539,8 @@ public abstract class Klass implements ModifiersProvider, ContextAccess {
                 public EspressoBaseNode apply(Method method) {
                     // TODO(garcia) true access checks
                     ObjectKlass callerKlass = getMeta().Object;
-                    StaticObjectArray appendixBox = new StaticObjectArray(getMeta().Object_array, new Object[1]);
-                    StaticObjectImpl memberName = (StaticObjectImpl) getMeta().linkMethod.invokeDirect(
+                    StaticObject appendixBox = new StaticObject(getMeta().Object_array, new Object[1]);
+                    StaticObject memberName = (StaticObject) getMeta().linkMethod.invokeDirect(
                                     null,
                                     callerKlass.mirror(), (int) REF_invokeVirtual,
                                     getMeta().MethodHandle.mirror(), getMeta().toGuestString(methodName), getMeta().toGuestString(signature),
@@ -576,21 +593,30 @@ public abstract class Klass implements ModifiersProvider, ContextAccess {
         return InterpreterToVM.newObject(this);
     }
 
-    // TODO(peterssen): Cache package.
-    public final String getRuntimePackage() {
+    // TODO(garcia) Symbolify package ?
+    @CompilationFinal private String runtimePackage;
 
-        assert !isArray();
-        String typeString = getType().toString();
-        int lastSlash = typeString.lastIndexOf('/');
-        if (lastSlash < 0)
-            return "";
-        assert typeString.startsWith("L");
-        String pkg = typeString.substring(1, lastSlash);
-        assert !pkg.endsWith(";");
+    public final String getRuntimePackage() {
+        String pkg = runtimePackage;
+        if (runtimePackage == null) {
+            assert !isArray();
+            String typeString = getType().toString();
+            int lastSlash = typeString.lastIndexOf('/');
+            if (lastSlash < 0)
+                return "";
+            assert typeString.startsWith("L");
+            pkg = typeString.substring(1, lastSlash);
+            assert !pkg.endsWith(";");
+            runtimePackage = pkg;
+        }
         return pkg;
     }
 
     public Symbol<Name> getName() {
         return name;
+    }
+
+    public boolean sameRuntimePackage(Klass other) {
+        return this.getDefiningClassLoader() == other.getDefiningClassLoader() && this.getRuntimePackage().equals(other.getRuntimePackage());
     }
 }

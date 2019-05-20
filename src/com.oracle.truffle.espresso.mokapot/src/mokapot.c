@@ -261,7 +261,14 @@ jboolean JVM_IsSilentCompiler(JNIEnv *env, jclass compCls) {
 }
 
 jboolean JVM_CompileClass(JNIEnv *env, jclass compCls, jclass cls) {
-  UNIMPLEMENTED(JVM_CompileClass);
+  IMPLEMENTED(JVM_CompileClass);
+  // According to hotspot:
+  
+	// java.lang.Compiler //
+	/** The initial cuts of the HotSpot VM will not support JITs, and all existing
+	 * JITs would need extensive changes to work with HotSpot.  The JIT-related JVM
+	 * functions are all silently ignored unless JVM warnings are printed.
+	 */ 
   return 0;
 }
 
@@ -416,8 +423,8 @@ jobject JVM_AllocateNewArray(JNIEnv *env, jobject obj, jclass currClass, jint le
 }
 
 jobject JVM_LatestUserDefinedLoader(JNIEnv *env) {
-  UNIMPLEMENTED(JVM_LatestUserDefinedLoader);
-  return NULL;
+  IMPLEMENTED(JVM_LatestUserDefinedLoader);
+  return (*getEnv())->JVM_LatestUserDefinedLoader(env);
 }
 
 jclass JVM_LoadClass0(JNIEnv *env, jobject obj, jclass currClass, jstring currClassName) {
@@ -472,8 +479,9 @@ jclass JVM_FindPrimitiveClass(JNIEnv *env, const char *utf) {
 }
 
 void JVM_ResolveClass(JNIEnv *env, jclass cls) {
-  UNIMPLEMENTED(JVM_ResolveClass);
-
+  IMPLEMENTED(JVM_ResolveClass);
+  /* nop */
+  // Java classes are already resoled. Legacy method, even hotspot emits a warning on use.
 }
 
 jclass JVM_FindClassFromBootLoader(JNIEnv *env, const char *name) {
@@ -638,8 +646,8 @@ jint JVM_ConstantPoolGetSize(JNIEnv *env, jobject unused, jobject jcpool) {
 }
 
 jclass JVM_ConstantPoolGetClassAt(JNIEnv *env, jobject unused, jobject jcpool, jint index) {
-  UNIMPLEMENTED(JVM_ConstantPoolGetClassAt);
-  return NULL;
+  IMPLEMENTED(JVM_ConstantPoolGetClassAt);
+  return (*getEnv())->JVM_ConstantPoolGetClassAt(env, unused, jcpool, index);
 }
 
 jclass JVM_ConstantPoolGetClassAtIfLoaded(JNIEnv *env, jobject unused, jobject jcpool, jint index) {
@@ -683,18 +691,18 @@ jlong JVM_ConstantPoolGetLongAt(JNIEnv *env, jobject unused, jobject jcpool, jin
 }
 
 jfloat JVM_ConstantPoolGetFloatAt(JNIEnv *env, jobject unused, jobject jcpool, jint index) {
-  UNIMPLEMENTED(JVM_ConstantPoolGetFloatAt);
-  return 0;
+  IMPLEMENTED(JVM_ConstantPoolGetFloatAt);
+  return (*getEnv())->JVM_ConstantPoolGetFloatAt(env, unused, jcpool, index);
 }
 
 jdouble JVM_ConstantPoolGetDoubleAt(JNIEnv *env, jobject unused, jobject jcpool, jint index) {
-  UNIMPLEMENTED(JVM_ConstantPoolGetDoubleAt);
-  return 0;
+  IMPLEMENTED(JVM_ConstantPoolGetDoubleAt);
+  return (*getEnv())->JVM_ConstantPoolGetDoubleAt(env, unused, jcpool, index);
 }
 
 jstring JVM_ConstantPoolGetStringAt(JNIEnv *env, jobject unused, jobject jcpool, jint index) {
-  UNIMPLEMENTED(JVM_ConstantPoolGetStringAt);
-  return NULL;
+  IMPLEMENTED(JVM_ConstantPoolGetStringAt);
+  return (*getEnv())->JVM_ConstantPoolGetStringAt(env, unused, jcpool, index);
 }
 
 jstring JVM_ConstantPoolGetUTF8At(JNIEnv *env, jobject unused, jobject jcpool, jint index) {

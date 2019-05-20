@@ -64,9 +64,9 @@ public final class EspressoOptions {
     @Option(help = "Enable system assertions.", category = OptionCategory.USER) //
     public static final OptionKey<Boolean> EnableSystemAssertions = new OptionKey<>(false);
 
-    public static final boolean ENABLE_THREADS = Boolean.getBoolean("espresso.EnableThreads");
-
+    public static final boolean ENABLE_THREADS = (System.getProperty("espresso.EnableThreads") == null) || Boolean.getBoolean("espresso.EnableThreads");
     public static final boolean RUNNING_ON_SVM = ImageInfo.inImageCode();
 
     public static final String INCEPTION_NAME = System.getProperty("espresso.inception.name", "#");
+
 }

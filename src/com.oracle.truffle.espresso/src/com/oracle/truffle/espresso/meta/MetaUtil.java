@@ -24,7 +24,6 @@ package com.oracle.truffle.espresso.meta;
 
 import com.oracle.truffle.api.CompilerAsserts;
 import com.oracle.truffle.espresso.runtime.StaticObject;
-import com.oracle.truffle.espresso.runtime.StaticObjectArray;
 
 /**
  * Miscellaneous collection of utility methods used by {@code jdk.vm.ci.meta} and its clients.
@@ -171,8 +170,8 @@ public class MetaUtil {
         if (StaticObject.isNull(object)) {
             return null;
         }
-        if (object instanceof StaticObjectArray) {
-            return ((StaticObjectArray) object).unwrap();
+        if (object.isArray()) {
+            return object.unwrap();
         }
         return object;
     }
@@ -188,18 +187,19 @@ public class MetaUtil {
         switch (kind) {
             case Object:
                 return StaticObject.NULL;
+            // The primitives stay here, if this method is needed later.
             case Float:
                 return 0f;
             case Double:
-                return 0.0;
+                return 0.0d;
+            case Long:
+                return 0L;
             case Char:
                 return (char) 0;
             case Short:
                 return (short) 0;
             case Int:
                 return 0;
-            case Long:
-                return 0L;
             case Byte:
                 return (byte) 0;
             case Boolean:
@@ -209,6 +209,51 @@ public class MetaUtil {
             default:
                 CompilerAsserts.neverPartOfCompilation();
                 throw EspressoError.shouldNotReachHere("Invalid field type " + kind);
+        }
+    }
+
+    public static int defaultWordFieldValue(JavaKind kind) {
+        switch (kind) {
+            case Char:
+                return (char) 0;
+            case Short:
+                return (short) 0;
+            case Int:
+                return 0;
+            case Byte:
+                return (byte) 0;
+            case Boolean:
+                return 0;
+            default:
+                CompilerAsserts.neverPartOfCompilation();
+                throw EspressoError.shouldNotReachHere("Invalid Word field type " + kind);
+        }
+    }
+
+    public static long defaultLongValue(JavaKind kind) {
+        if (kind == JavaKind.Long) {
+            return 0L;
+        } else {
+            CompilerAsserts.neverPartOfCompilation();
+            throw EspressoError.shouldNotReachHere("Invalid Long field type " + kind);
+        }
+    }
+
+    public static float defaultFloatValue(JavaKind kind) {
+        if (kind == JavaKind.Float) {
+            return 0.0f;
+        } else {
+            CompilerAsserts.neverPartOfCompilation();
+            throw EspressoError.shouldNotReachHere("Invalid Float field type " + kind);
+        }
+    }
+
+    public static double defaultDoubleValue(JavaKind kind) {
+        if (kind == JavaKind.Double) {
+            return 0.0d;
+        } else {
+            CompilerAsserts.neverPartOfCompilation();
+            throw EspressoError.shouldNotReachHere("Invalid Double field type " + kind);
         }
     }
 }

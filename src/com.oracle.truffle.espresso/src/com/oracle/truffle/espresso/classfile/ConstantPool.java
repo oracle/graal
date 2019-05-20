@@ -47,7 +47,6 @@ import com.oracle.truffle.espresso.descriptors.Symbol.Constant;
 import com.oracle.truffle.espresso.meta.Meta;
 import com.oracle.truffle.espresso.runtime.EspressoContext;
 import com.oracle.truffle.espresso.runtime.StaticObject;
-import com.oracle.truffle.espresso.runtime.StaticObjectClass;
 import com.oracle.truffle.object.DebugCounter;
 
 /**
@@ -355,8 +354,8 @@ public abstract class ConstantPool {
                 case CLASS: {
                     if (existsAt(patches, i)) {
                         StaticObject classSpecifier = patches[i];
-                        if (classSpecifier instanceof StaticObjectClass) {
-                            entries[i] = new ClassConstant.PreResolved(((StaticObjectClass) classSpecifier).getMirrorKlass());
+                        if (classSpecifier.getKlass().getType() == Symbol.Type.Class) {
+                            entries[i] = new ClassConstant.PreResolved(classSpecifier.getMirrorKlass());
                         } else {
                             entries[i] = new ClassConstant.WithString(context.getNames().lookup(Meta.toHostString(patches[i])));
                         }

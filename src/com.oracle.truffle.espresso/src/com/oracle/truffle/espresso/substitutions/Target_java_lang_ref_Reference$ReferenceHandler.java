@@ -23,32 +23,16 @@
 
 package com.oracle.truffle.espresso.substitutions;
 
-import java.io.IOException;
-import java.util.Arrays;
-import java.util.function.IntFunction;
-
-import com.oracle.truffle.espresso.meta.Meta;
 import com.oracle.truffle.espresso.runtime.StaticObject;
-import com.oracle.truffle.espresso.runtime.StaticObjectArray;
 
 @EspressoSubstitutions
-public final class Target_java_lang_Runtime {
-    // TODO(peterssen): This a hack to be able to spawn processes without going down to UNIXProcess.
+public final class Target_java_lang_ref_Reference$ReferenceHandler {
+
+    // TODO(garcia) evaluate impact of disabling this class
+
+    @SuppressWarnings("unused")
     @Substitution(hasReceiver = true)
-    public static @Host(Process.class) Object exec(@SuppressWarnings("unused") StaticObject self, @Host(String[].class) StaticObject cmdarray) {
-        StaticObject[] wrapped = ((StaticObjectArray) cmdarray).unwrap();
-        String[] hostArgs = new String[wrapped.length];
-        Arrays.setAll(hostArgs, new IntFunction<String>() {
-            @Override
-            public String apply(int i) {
-                return Meta.toHostString(wrapped[i]);
-            }
-        });
-        try {
-            Runtime.getRuntime().exec(hostArgs);
-        } catch (IOException e) {
-            throw new RuntimeException(e);
-        }
-        return StaticObject.NULL;
+    static public void run(@Host(typeName = "Thread") StaticObject self) {
+        /* nop */
     }
 }

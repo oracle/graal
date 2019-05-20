@@ -2,7 +2,7 @@ package com.oracle.truffle.espresso.nodes;
 
 import com.oracle.truffle.espresso.descriptors.Signatures;
 import com.oracle.truffle.espresso.impl.Method;
-import com.oracle.truffle.espresso.runtime.StaticObjectImpl;
+import com.oracle.truffle.espresso.runtime.StaticObject;
 
 import static com.oracle.truffle.espresso.classfile.Constants.REF_invokeSpecial;
 import static com.oracle.truffle.espresso.runtime.MethodHandleIntrinsics.PolySigIntrinsics.LinkToVirtual;
@@ -15,8 +15,8 @@ public class LinkToVirtualNode extends MHLinkToNode {
     @Override
     protected final Object linkTo(Object[] args) {
         Method target = getTarget(args);
-        StaticObjectImpl receiver = (StaticObjectImpl) args[0];
-        if (!(target.getRefKind() == REF_invokeSpecial)) {
+        StaticObject receiver = (StaticObject) args[0];
+        if ((target.getRefKind() != REF_invokeSpecial)) {
             target = receiver.getKlass().vtableLookup(target.getVTableIndex());
         }
         Object result = callNode.call(target.getCallTarget(), unbasic(args, target.getParsedSignature(), 0, argCount - 1, true));

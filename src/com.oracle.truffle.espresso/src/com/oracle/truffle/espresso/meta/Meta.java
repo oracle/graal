@@ -43,7 +43,6 @@ import com.oracle.truffle.espresso.impl.PrimitiveKlass;
 import com.oracle.truffle.espresso.runtime.EspressoContext;
 import com.oracle.truffle.espresso.runtime.EspressoException;
 import com.oracle.truffle.espresso.runtime.StaticObject;
-import com.oracle.truffle.espresso.runtime.StaticObjectArray;
 import com.oracle.truffle.espresso.substitutions.Host;
 
 /**
@@ -67,12 +66,14 @@ public final class Meta implements ContextAccess {
         Serializable = knownKlass(Type.Serializable);
         ARRAY_SUPERINTERFACES = new ObjectKlass[]{Cloneable, Serializable};
 
-        Object_array = Object.array();
-
-        String = knownKlass(Type.String);
         Class = knownKlass(Type.Class);
+        HIDDEN_MIRROR_KLASS = Class.lookupHiddenField(Name.HIDDEN_MIRROR_KLASS);
+        HIDDEN_SIGNERS = Class.lookupHiddenField(Name.HIDDEN_SIGNERS);
+        String = knownKlass(Type.String);
         Class_Array = Class.array();
         Class_forName_String = Class.lookupDeclaredMethod(Name.forName, Signature.Class_String);
+
+        Object_array = Object.array();
 
         // Primitives.
         _boolean = knownPrimitive(Type._boolean);
@@ -105,6 +106,18 @@ public final class Meta implements ContextAccess {
         Long = knownKlass(Type.Long);
         Void = knownKlass(Type.Void);
 
+        BOXED_PRIMITIVE_KLASSES = new ObjectKlass[]{
+                        Boolean,
+                        Byte,
+                        Character,
+                        Short,
+                        Float,
+                        Integer,
+                        Double,
+                        Long,
+                        Void
+        };
+
         Boolean_valueOf = Boolean.lookupDeclaredMethod(Name.valueOf, Signature.Boolean_boolean);
         Byte_valueOf = Byte.lookupDeclaredMethod(Name.valueOf, Signature.Byte_byte);
         Character_valueOf = Character.lookupDeclaredMethod(Name.valueOf, Signature.Character_char);
@@ -129,21 +142,27 @@ public final class Meta implements ContextAccess {
         String_length = String.lookupDeclaredMethod(Name.length, Signature._int);
 
         Throwable = knownKlass(Type.Throwable);
+        HIDDEN_FRAMES = Throwable.lookupHiddenField(Name.HIDDEN_FRAMES);
         Throwable_backtrace = Throwable.lookupField(Name.backtrace, Type.Object);
 
         StackTraceElement = knownKlass(Type.StackTraceElement);
         StackTraceElement_init = StackTraceElement.lookupDeclaredMethod(Name.INIT, Signature._void_String_String_String_int);
 
+        Exception = knownKlass(Type.Exception);
         InvocationTargetException = knownKlass(Type.InvocationTargetException);
         NegativeArraySizeException = knownKlass(Type.NegativeArraySizeException);
         IllegalArgumentException = knownKlass(Type.IllegalArgumentException);
         NullPointerException = knownKlass(Type.NullPointerException);
         ClassNotFoundException = knownKlass(Type.ClassNotFoundException);
+        InterruptedException = knownKlass(Type.InterruptedException);
+        RuntimeException = knownKlass(Type.RuntimeException);
+
         StackOverflowError = knownKlass(Type.StackOverflowError);
         OutOfMemoryError = knownKlass(Type.OutOfMemoryError);
         ClassCastException = knownKlass(Type.ClassCastException);
         AbstractMethodError = knownKlass(Type.AbstractMethodError);
         InternalError = knownKlass(Type.InternalError);
+        VerifyError = knownKlass(Type.VerifyError);
 
         NoSuchFieldError = knownKlass(Type.NoSuchFieldError);
         NoSuchMethodError = knownKlass(Type.NoSuchMethodError);
@@ -159,6 +178,8 @@ public final class Meta implements ContextAccess {
 
         // Guest reflection.
         Constructor = knownKlass(Type.Constructor);
+        HIDDEN_CONSTRUCTOR_KEY = Constructor.lookupHiddenField(Name.HIDDEN_CONSTRUCTOR_KEY);
+        HIDDEN_CONSTRUCTOR_RUNTIME_VISIBLE_TYPE_ANNOTATIONS = Constructor.lookupHiddenField(Name.HIDDEN_CONSTRUCTOR_RUNTIME_VISIBLE_TYPE_ANNOTATIONS);
         Constructor_clazz = Constructor.lookupDeclaredField(Name.clazz, Type.Class);
         Constructor_root = Constructor.lookupDeclaredField(Name.root, Type.Constructor);
         Constructor_parameterTypes = Constructor.lookupDeclaredField(Name.parameterTypes, Type.Class_array);
@@ -166,6 +187,8 @@ public final class Meta implements ContextAccess {
         MagicAccessorImpl = knownKlass(Type.MagicAccessorImpl);
 
         Method = knownKlass(Type.Method);
+        HIDDEN_METHOD_KEY = Method.lookupHiddenField(Name.HIDDEN_METHOD_KEY);
+        HIDDEN_METHOD_RUNTIME_VISIBLE_TYPE_ANNOTATIONS = Method.lookupHiddenField(Name.HIDDEN_METHOD_RUNTIME_VISIBLE_TYPE_ANNOTATIONS);
         Method_root = Method.lookupDeclaredField(Name.root, Type.Method);
         Method_clazz = Method.lookupDeclaredField(Name.clazz, Type.Class);
         Method_override = Method.lookupDeclaredField(Name.override, Type._boolean);
@@ -174,6 +197,8 @@ public final class Meta implements ContextAccess {
         Parameter = knownKlass(Type.Parameter);
 
         Field = knownKlass(Type.Field);
+        HIDDEN_FIELD_KEY = Field.lookupHiddenField(Name.HIDDEN_FIELD_KEY);
+        HIDDEN_FIELD_RUNTIME_VISIBLE_TYPE_ANNOTATIONS = Field.lookupHiddenField(Name.HIDDEN_FIELD_RUNTIME_VISIBLE_TYPE_ANNOTATIONS);
         Field_root = Field.lookupDeclaredField(Name.root, Field.getType());
         Field_class = Field.lookupDeclaredField(Name.clazz, Type.Class);
         Field_name = Field.lookupDeclaredField(Name.name, Type.String);
@@ -186,14 +211,26 @@ public final class Meta implements ContextAccess {
         ByteBuffer_wrap = ByteBuffer.lookupDeclaredMethod(Name.wrap, Signature.ByteBuffer_byte_array);
 
         Thread = knownKlass(Type.Thread);
+        HIDDEN_HOST_THREAD = Thread.lookupHiddenField(Name.HIDDEN_HOST_THREAD);
+        HIDDEN_IS_ALIVE = Thread.lookupHiddenField(Name.HIDDEN_IS_ALIVE);
         ThreadGroup = knownKlass(Type.ThreadGroup);
-        ThreadGroup_maxPriority = ThreadGroup.lookupDeclaredField(Name.maxPriority, Type._int);
+        ThreadGroup_remove = ThreadGroup.lookupDeclaredMethod(Name.remove, Signature.ThreadGroup_remove);
+        Thread_dispatchUncaughtException = Thread.lookupDeclaredMethod(Name.dispatchUncaughtException, Signature._void_Throwable);
+        Thread_exit = Thread.lookupDeclaredMethod(Name.exit, Signature._void);
+        Thread_run = Thread.lookupDeclaredMethod(Name.run, Signature._void);
 
         Thread_group = Thread.lookupDeclaredField(Name.group, ThreadGroup.getType());
         Thread_name = Thread.lookupDeclaredField(Name.name, String.getType());
         Thread_priority = Thread.lookupDeclaredField(Name.priority, _int.getType());
         Thread_blockerLock = Thread.lookupDeclaredField(Name.blockerLock, Object.getType());
         Thread_daemon = Thread.lookupDeclaredField(Name.daemon, Type._boolean);
+        Thread_checkAccess = Thread.lookupDeclaredMethod(Name.checkAccess, Signature._void);
+        Thread_stop = Thread.lookupDeclaredMethod(Name.stop, Signature._void);
+        ThreadGroup_maxPriority = ThreadGroup.lookupDeclaredField(Name.maxPriority, Type._int);
+        Thread_state = Thread.lookupDeclaredField(Name.threadStatus, Type._int);
+
+        sun_misc_VM = knownKlass(Type.sun_misc_VM);
+        toThreadState = sun_misc_VM.lookupDeclaredMethod(Name.toThreadState, Signature.toThreadState);
 
         System = knownKlass(Type.System);
         System_initializeSystemClass = System.lookupDeclaredMethod(Name.initializeSystemClass, Signature._void);
@@ -204,6 +241,8 @@ public final class Meta implements ContextAccess {
         fromMethodDescriptorString = MethodType.lookupDeclaredMethod(Name.fromMethodDescriptorString, Signature.fromMethodDescriptorString_signature);
 
         MemberName = knownKlass(Type.MemberName);
+        HIDDEN_VMINDEX = MemberName.lookupHiddenField(Name.HIDDEN_VMINDEX);
+        HIDDEN_VMTARGET = MemberName.lookupHiddenField(Name.HIDDEN_VMTARGET);
         getSignature = MemberName.lookupDeclaredMethod(Name.getSignature, Signature.String);
         MNclazz = MemberName.lookupDeclaredField(Name.clazz, Type.Class);
         MNname = MemberName.lookupDeclaredField(Name.name, Type.String);
@@ -245,6 +284,8 @@ public final class Meta implements ContextAccess {
 
     public final ObjectKlass String;
     public final ObjectKlass Class;
+    public final Field HIDDEN_MIRROR_KLASS;
+    public final Field HIDDEN_SIGNERS;
     public final ArrayKlass Class_Array;
     public final Method Class_forName_String;
 
@@ -309,6 +350,8 @@ public final class Meta implements ContextAccess {
     public final Method ClassLoader_getSystemClassLoader;
 
     public final ObjectKlass Constructor;
+    public final Field HIDDEN_CONSTRUCTOR_RUNTIME_VISIBLE_TYPE_ANNOTATIONS;
+    public final Field HIDDEN_CONSTRUCTOR_KEY;
     public final Field Constructor_clazz;
     public final Field Constructor_root;
     public final Field Constructor_parameterTypes;
@@ -317,6 +360,8 @@ public final class Meta implements ContextAccess {
     public final ObjectKlass MagicAccessorImpl;
 
     public final ObjectKlass Method;
+    public final Field HIDDEN_METHOD_RUNTIME_VISIBLE_TYPE_ANNOTATIONS;
+    public final Field HIDDEN_METHOD_KEY;
     public final Field Method_root;
     public final Field Method_clazz;
     public final Field Method_override;
@@ -325,6 +370,8 @@ public final class Meta implements ContextAccess {
     public final ObjectKlass Parameter;
 
     public final ObjectKlass Field;
+    public final Field HIDDEN_FIELD_RUNTIME_VISIBLE_TYPE_ANNOTATIONS;
+    public final Field HIDDEN_FIELD_KEY;
     public final Field Field_root;
     public final Field Field_class;
     public final Field Field_name;
@@ -333,18 +380,23 @@ public final class Meta implements ContextAccess {
     public final Method Shutdown_shutdown;
     public final ObjectKlass Shutdown;
 
+    public final ObjectKlass Exception;
     public final ObjectKlass InvocationTargetException;
     public final ObjectKlass NegativeArraySizeException;
     public final ObjectKlass IllegalArgumentException;
     public final ObjectKlass NullPointerException;
     public final ObjectKlass ClassNotFoundException;
+    public final ObjectKlass InterruptedException;
+    public final ObjectKlass RuntimeException;
     public final ObjectKlass StackOverflowError;
     public final ObjectKlass OutOfMemoryError;
     public final ObjectKlass ClassCastException;
     public final ObjectKlass AbstractMethodError;
     public final ObjectKlass InternalError;
+    public final ObjectKlass VerifyError;
 
     public final ObjectKlass Throwable;
+    public final Field HIDDEN_FRAMES;
     public final Field Throwable_backtrace;
 
     public final ObjectKlass NoSuchFieldError;
@@ -366,13 +418,25 @@ public final class Meta implements ContextAccess {
     public final Method ByteBuffer_wrap;
 
     public final ObjectKlass ThreadGroup;
+    public final Method ThreadGroup_remove;
+    public final Method Thread_dispatchUncaughtException;
+    public final Field HIDDEN_HOST_THREAD;
     public final Field ThreadGroup_maxPriority;
     public final ObjectKlass Thread;
+    public final Method Thread_exit;
+    public final Method Thread_run;
+    public final Method Thread_checkAccess;
+    public final Method Thread_stop;
+    public final Field HIDDEN_IS_ALIVE;
     public final Field Thread_group;
     public final Field Thread_name;
     public final Field Thread_priority;
     public final Field Thread_blockerLock;
     public final Field Thread_daemon;
+    public final Field Thread_state;
+
+    public final ObjectKlass sun_misc_VM;
+    public final Method toThreadState;
 
     public final ObjectKlass System;
     public final Method System_initializeSystemClass;
@@ -384,6 +448,8 @@ public final class Meta implements ContextAccess {
     public final ObjectKlass MemberName;
     public final Method getSignature;
     public final Method fromMethodDescriptorString;
+    public final Field HIDDEN_VMTARGET;
+    public final Field HIDDEN_VMINDEX;
     public final Field MNclazz;
     public final Field MNname;
     public final Field MNtype;
@@ -420,6 +486,8 @@ public final class Meta implements ContextAccess {
 
     @CompilationFinal(dimensions = 1) //
     public final ObjectKlass[] ARRAY_SUPERINTERFACES;
+
+    @CompilationFinal(dimensions = 1) public final ObjectKlass[] BOXED_PRIMITIVE_KLASSES;
 
     private static boolean isKnownClass(java.lang.Class<?> clazz) {
         // Cheap check: (host) known classes are loaded by the BCL.
@@ -512,6 +580,23 @@ public final class Meta implements ContextAccess {
         return ex;
     }
 
+    public StaticObject initExWithCauseAndMessage(java.lang.Class<?> clazz, @Host(Throwable.class) StaticObject cause, String message) {
+        assert Throwable.class.isAssignableFrom(clazz);
+        assert Throwable.isAssignableFrom(cause.getKlass());
+        Klass exKlass = throwableKlass(clazz);
+        StaticObject ex = exKlass.allocateInstance();
+        exKlass.lookupDeclaredMethod(Name.INIT, Signature._void_String_Throwable).invokeDirect(ex, toGuestString(message), cause);
+        return ex;
+    }
+
+    public StaticObject initExWithCauseAndMessage(ObjectKlass exKlass, @Host(Throwable.class) StaticObject cause, @Host(String.class) StaticObject message) {
+        assert Throwable.isAssignableFrom(exKlass);
+        assert Throwable.isAssignableFrom(cause.getKlass());
+        StaticObject ex = exKlass.allocateInstance();
+        exKlass.lookupDeclaredMethod(Name.INIT, Signature._void_String_Throwable).invokeDirect(ex, message, cause);
+        return ex;
+    }
+
     @TruffleBoundary
     public EspressoException throwEx(ObjectKlass exKlass) {
         assert Throwable.isAssignableFrom(exKlass);
@@ -537,6 +622,13 @@ public final class Meta implements ContextAccess {
     }
 
     @TruffleBoundary
+    public EspressoException throwExWithCauseAndMessage(java.lang.Class<?> clazz, @Host(Throwable.class) StaticObject cause, String message) {
+        assert Throwable.class.isAssignableFrom(clazz);
+        assert Throwable.isAssignableFrom(cause.getKlass());
+        throw new EspressoException(initExWithCauseAndMessage(clazz, cause, message));
+    }
+
+    @TruffleBoundary
     public EspressoException throwExWithMessage(ObjectKlass exKlass, @Host(String.class) StaticObject message) {
         assert Throwable.isAssignableFrom(exKlass);
         assert String.isAssignableFrom(message.getKlass());
@@ -548,6 +640,13 @@ public final class Meta implements ContextAccess {
         assert Throwable.isAssignableFrom(exKlass);
         assert Throwable.isAssignableFrom(cause.getKlass());
         throw new EspressoException(initExWithCause(exKlass, cause));
+    }
+
+    @TruffleBoundary
+    public EspressoException throwExWithCauseAndMessage(ObjectKlass exKlass, @Host(Throwable.class) StaticObject cause, @Host(java.lang.String.class) StaticObject message) {
+        assert Throwable.isAssignableFrom(exKlass);
+        assert Throwable.isAssignableFrom(cause.getKlass());
+        throw new EspressoException(initExWithCauseAndMessage(exKlass, cause, message));
     }
 
     @TruffleBoundary
@@ -593,7 +692,7 @@ public final class Meta implements ContextAccess {
             return null;
         }
         Meta meta = str.getKlass().getMeta();
-        char[] value = ((StaticObjectArray) meta.String_value.get(str)).unwrap();
+        char[] value = ((StaticObject) meta.String_value.get(str)).unwrap();
         return HostJava.createString(value);
     }
 
@@ -605,7 +704,7 @@ public final class Meta implements ContextAccess {
         final char[] value = HostJava.getStringValue(hostString);
         final int hash = HostJava.getStringHash(hostString);
         StaticObject guestString = String.allocateInstance();
-        String_value.set(guestString, StaticObjectArray.wrap(value));
+        String_value.set(guestString, StaticObject.wrap(value));
         String_hash.set(guestString, hash);
         // String.hashCode must be equivalent for host and guest.
         assert hostString.hashCode() == (int) String_hashCode.invokeDirect(guestString);
@@ -655,12 +754,13 @@ public final class Meta implements ContextAccess {
             if (guestObject == StaticObject.VOID) {
                 return null;
             }
-            if (guestObject instanceof StaticObjectArray) {
-                return ((StaticObjectArray) guestObject).unwrap();
+            if (guestObject.isArray()) {
+                return guestObject.unwrap();
             }
             if (guestObject.getKlass() == String) {
                 return toHostString(guestObject);
             }
+            return unboxGuest((StaticObject) object);
         }
         return object;
     }
@@ -720,6 +820,29 @@ public final class Meta implements ContextAccess {
 
     // region Guest Unboxing
 
+    public Object unboxGuest(StaticObject boxed) {
+        Klass klass = boxed.getKlass();
+        if (klass == Boolean) {
+            return unboxBoolean(boxed);
+        } else if (klass == Byte) {
+            return unboxByte(boxed);
+        } else if (klass == Character) {
+            return unboxCharacter(boxed);
+        } else if (klass == Short) {
+            return unboxShort(boxed);
+        } else if (klass == Float) {
+            return unboxFloat(boxed);
+        } else if (klass == Integer) {
+            return unboxInteger(boxed);
+        } else if (klass == Double) {
+            return unboxDouble(boxed);
+        } else if (klass == Long) {
+            return unboxLong(boxed);
+        } else {
+            return boxed;
+        }
+    }
+
     public boolean unboxBoolean(@Host(Boolean.class) StaticObject boxed) {
         if (StaticObject.isNull(boxed) || boxed.getKlass() != Boolean) {
             throw throwEx(IllegalArgumentException);
@@ -778,7 +901,7 @@ public final class Meta implements ContextAccess {
 
     // endregion Guest Unboxing
 
-    // region Guest boxing
+    // region Guest
 
     public @Host(Boolean.class) StaticObject boxBoolean(boolean value) {
         return (StaticObject) Boolean_valueOf.invokeDirect(null, value);
