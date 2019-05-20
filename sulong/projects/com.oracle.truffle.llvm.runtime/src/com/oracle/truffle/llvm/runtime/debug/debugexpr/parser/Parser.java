@@ -273,12 +273,22 @@ public NodeFactory NF() {return context.getNodeFactory(); }
 
 	LLVMExpressionNode  UnaryExpr() {
 		LLVMExpressionNode  n;
-		n=null; 
+		n=null; int kind=-1; 
 		if (StartOf(3)) {
 			n = Designator();
 		} else if (StartOf(4)) {
-			UnaryOp();
+			kind = UnaryOp();
 			n = CastExpr();
+			switch(kind) {
+			case 0:/*n = address(n)*/ break;
+			case 1: /*deref(n)*/ break;
+			case 2: default: break;
+			case 3: n = NF().createArithmeticOp(ArithmeticOperation.SUB, null, 
+			NF().createSimpleConstantNoArray(0, Type.getIntegerType(32))
+			, n); break;
+			case 4: /*flip bits*/ break;
+			case 5: /*negate boolean/int*/ break;
+			} 
 		} else if (la.kind == 13) {
 			Get();
 			Expect(6);
@@ -288,34 +298,43 @@ public NodeFactory NF() {return context.getNodeFactory(); }
 		return n;
 	}
 
-	void UnaryOp() {
+	int  UnaryOp() {
+		int  kind;
+		kind=-1; 
 		switch (la.kind) {
 		case 14: {
 			Get();
+			kind=0; 
 			break;
 		}
 		case 15: {
 			Get();
+			kind=1; 
 			break;
 		}
 		case 16: {
 			Get();
+			kind=2; 
 			break;
 		}
 		case 17: {
 			Get();
+			kind=3; 
 			break;
 		}
 		case 18: {
 			Get();
+			kind=4; 
 			break;
 		}
 		case 19: {
 			Get();
+			kind=5; 
 			break;
 		}
 		default: SynErr(48); break;
 		}
+		return kind;
 	}
 
 	LLVMExpressionNode  CastExpr() {

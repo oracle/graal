@@ -135,28 +135,37 @@ ActPars<out List l>					(. LLVMExpressionNode n1=null, n2=null; l = new LinkedLi
 ")"
 .
 
-UnaryExpr<out LLVMExpressionNode n>	(. n=null; .)
+UnaryExpr<out LLVMExpressionNode n>	(. n=null; int kind=-1; .)
 =
 Designator<out n>
 |
-UnaryOp CastExpr<out n>
+UnaryOp<out kind> CastExpr<out n> (. switch(kind) {
+										case 0:/*n = address(n)*/ break;
+										case 1: /*deref(n)*/ break;
+										case 2: default: break;
+										case 3: n = NF().createArithmeticOp(ArithmeticOperation.SUB, null, 
+										NF().createSimpleConstantNoArray(0, Type.getIntegerType(32))
+										, n); break;
+										case 4: /*flip bits*/ break;
+										case 5: /*negate boolean/int*/ break;
+									} .)
 |
 "sizeof" "(" Type ")"
 .
 
-UnaryOp
+UnaryOp<out int kind>	(. kind=-1; .)
 =
-"&"
+"&"	(. kind=0; .)
 |
-"*"
+"*"	(. kind=1; .)
 |
-"+"
+"+"	(. kind=2; .)
 |
-"-"
+"-"	(. kind=3; .)
 |
-"~"
+"~"	(. kind=4; .)
 |
-"!"
+"!"	(. kind=5; .)
 .
 CastExpr<out LLVMExpressionNode n> (. Object typeO=null; .)
 =
