@@ -848,11 +848,12 @@ public class NativeImageGenerator {
     public static AnalysisUniverse createAnalysisUniverse(OptionValues options, Platform platform, TargetDescription target, ImageClassLoader loader, MetaAccessProvider originalMetaAccess,
                     SnippetReflectionProvider originalSnippetReflection, AnnotationSubstitutionProcessor annotationSubstitutions, SubstitutionProcessor cEnumProcessor,
                     ClassInitializationSupport classInitializationSupport, List<SubstitutionProcessor> additionalSubstitutions) {
-        UnsafeAutomaticSubstitutionProcessor automaticSubstitutions = createAutomaticUnsafeSubstitutions(originalSnippetReflection, originalMetaAccess, annotationSubstitutions, loader);
+        UnsafeAutomaticSubstitutionProcessor automaticSubstitutions = createAutomaticUnsafeSubstitutions(originalSnippetReflection, annotationSubstitutions);
         SubstitutionProcessor aSubstitutions = createAnalysisSubstitutionProcessor(originalMetaAccess, originalSnippetReflection, cEnumProcessor, automaticSubstitutions,
                         annotationSubstitutions, additionalSubstitutions);
 
         SVMHost hostVM = new SVMHost(options, loader.getClassLoader(), classInitializationSupport, automaticSubstitutions);
+        automaticSubstitutions.init(loader, originalMetaAccess, hostVM);
         AnalysisPolicy analysisPolicy = PointstoOptions.AllocationSiteSensitiveHeap.getValue(options) ? new AllocationSiteSensitiveAnalysisPolicy(options)
                         : new ContextInsensitiveAnalysisPolicy(options);
         return new AnalysisUniverse(hostVM, target.wordJavaKind, platform, analysisPolicy, aSubstitutions, originalMetaAccess, originalSnippetReflection,
@@ -866,11 +867,9 @@ public class NativeImageGenerator {
         return annotationSubstitutions;
     }
 
-    public static UnsafeAutomaticSubstitutionProcessor createAutomaticUnsafeSubstitutions(SnippetReflectionProvider originalSnippetReflection, MetaAccessProvider originalMetaAccess,
-                    AnnotationSubstitutionProcessor annotationSubstitutions, ImageClassLoader loader) {
-        UnsafeAutomaticSubstitutionProcessor automaticSubstitutions = new UnsafeAutomaticSubstitutionProcessor(annotationSubstitutions, originalSnippetReflection);
-        automaticSubstitutions.init(loader, originalMetaAccess);
-        return automaticSubstitutions;
+    public static UnsafeAutomaticSubstitutionProcessor createAutomaticUnsafeSubstitutions(SnippetReflectionProvider originalSnippetReflection,
+                    AnnotationSubstitutionProcessor annotationSubstitutions) {
+        return new UnsafeAutomaticSubstitutionProcessor(annotationSubstitutions, originalSnippetReflection);
     }
 
     public static SubstitutionProcessor createAnalysisSubstitutionProcessor(MetaAccessProvider originalMetaAccess, SnippetReflectionProvider originalSnippetReflection,
