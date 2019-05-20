@@ -27,10 +27,30 @@
  * NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED
  * OF THE POSSIBILITY OF SUCH DAMAGE.
  */
-package com.oracle.truffle.wasm.binary;
+package com.oracle.truffle.wasm.binary.exception;
 
-public class BinaryReaderException extends RuntimeException {
-    public BinaryReaderException(String message) {
+import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
+import com.oracle.truffle.api.TruffleException;
+import com.oracle.truffle.api.nodes.Node;
+
+public class WasmTrap extends RuntimeException implements TruffleException {
+
+    private final Node location;
+
+    @TruffleBoundary
+    public WasmTrap(String message, Node location) {
         super(message);
+        this.location = location;
     }
+
+    @Override
+    public Node getLocation() {
+        return null;
+    }
+
+    @Override
+    public final Throwable fillInStackTrace() {
+        return this;
+    }
+
 }

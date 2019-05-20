@@ -33,6 +33,9 @@ import java.util.LinkedHashMap;
 import java.util.Map;
 
 import com.oracle.truffle.api.Truffle;
+import com.oracle.truffle.wasm.binary.exception.WasmTrap;
+import org.graalvm.polyglot.PolyglotException;
+import org.graalvm.polyglot.Value;
 import org.junit.Assert;
 import org.junit.Test;
 
@@ -147,6 +150,8 @@ public abstract class WasmTest {
                                     expected(42)),
                     test("(module (func (result i32) (local $l0 i32) i32.const 42 local.set $l0 local.get $l0))",
                                     expected(42)),
+                    test("(module (func (result i32) (local $l0 i32) i32.const 42 local.set $l0 local.get $l0 unreachable))",
+                                    expectedThrows("unreachable")),
     };
 
     private static TestElement test(String program, TestData data) {
@@ -163,6 +168,28 @@ public abstract class WasmTest {
 
     private static TestData expected(double expectedValue, double e) {
         return new TestData((result) -> Assert.assertEquals(expectedValue, result.as(Double.class), e));
+    }
+
+    private static TestData expectedThrows(String expectedErrorMessage) {
+        return new TestData(expectedErrorMessage);
+    }
+
+    protected void validateResult(TestData data, Value value) {
+        if (data.validator != null) {
+            data.validator.accept(value);
+        } else {
+            Assert.fail("Test was not supposed to return a value.");
+        }
+    }
+
+    protected void validateThrown(TestData data, PolyglotException e) throws PolyglotException {
+        if (data.expectedErrorMessage != null) {
+            if (!data.expectedErrorMessage.equals(e.getMessage())) {
+                throw e;
+            }
+        } else {
+            throw e;
+        }
     }
 
     @Test
@@ -195,7 +222,7 @@ public abstract class WasmTest {
         Thread.sleep(10000);
     }
 
-    protected abstract void runTest(TestElement element);
+    protected abstract void runTest(TestElement element) throws Throwable;
 
     protected static class TestElement {
         public String name;

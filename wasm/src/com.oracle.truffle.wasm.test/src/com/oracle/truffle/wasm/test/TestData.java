@@ -35,8 +35,15 @@ import org.graalvm.polyglot.Value;
 
 public class TestData {
     public Consumer<Value> validator;
+    public String expectedErrorMessage;
 
     public TestData(Consumer<Value> validator) {
         this.validator = validator;
+        this.expectedErrorMessage = null;
+    }
+
+    public TestData(String expectedErrorMessage) {
+        this.validator = null;
+        this.expectedErrorMessage = expectedErrorMessage;
     }
 }

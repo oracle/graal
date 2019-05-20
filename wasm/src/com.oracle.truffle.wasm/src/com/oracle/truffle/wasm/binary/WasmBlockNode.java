@@ -84,9 +84,11 @@ import static com.oracle.truffle.wasm.binary.Instructions.I64_LT_S;
 import static com.oracle.truffle.wasm.binary.Instructions.I64_LT_U;
 import static com.oracle.truffle.wasm.binary.Instructions.I64_NE;
 import static com.oracle.truffle.wasm.binary.Instructions.NOP;
+import static com.oracle.truffle.wasm.binary.Instructions.UNREACHABLE;
 
 import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.api.nodes.ExplodeLoop;
+import com.oracle.truffle.wasm.binary.exception.WasmTrap;
 
 public class WasmBlockNode extends WasmNode {
     @CompilationFinal private final int startOffset;
@@ -115,6 +117,8 @@ public class WasmBlockNode extends WasmNode {
             int opcode = byteOpcode & 0xFF;
             offset++;
             switch (opcode) {
+                case UNREACHABLE:
+                    throw new WasmTrap("unreachable", this);
                 case NOP:
                     break;
                 case BLOCK:
