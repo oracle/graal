@@ -341,10 +341,10 @@ public abstract class WasmTest {
                 System.err.println(entry.getValue().getClass().getSimpleName() + ": " + entry.getValue().getMessage());
                 entry.getValue().printStackTrace();
             }
-            System.err.println("\u001B[31m" + (testElements.length - errors.size()) + "/" + testElements.length + " tests passed.\u001B[0m");
+            System.err.println("\uD83D\uDCA5\u001B[31m" + (testElements.length - errors.size()) + "/" + testElements.length + " Wasm tests passed.\u001B[0m");
             throw new RuntimeException("Tests failed!");
         } else {
-            System.out.println("\u001B[32m" + testElements.length + "/" + testElements.length + " tests passed.\u001B[0m");
+            System.out.println("\uD83C\uDF40\u001B[32m" + testElements.length + "/" + testElements.length + " Wasm tests passed.\u001B[0m");
         }
         Thread.sleep(10000);
     }
