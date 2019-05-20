@@ -1,5 +1,5 @@
 suite = {
-    "mxversion": "5.210.5",
+    "mxversion": "5.218.0",
     "name": "substratevm",
     "version" : "20.0.0-beta.01",
     "release" : False,
