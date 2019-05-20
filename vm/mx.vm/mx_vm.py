@@ -590,7 +590,7 @@ class SvmSupport(object):
         native_image_command = [native_image_bin, '--no-fallback', '--initialize-at-build-time', '-H:+EnforceMaxRuntimeCompileMethods'] + build_args
         # currently, when building with the bash version of native-image, --no-server is implied (and can not be passed)
         output_directory = dirname(output_file)
-        if "-H:Kind=SHARED_LIBRARY" in build_args:
+        if "--shared" in build_args:
             suffix = mx.add_lib_suffix("")
         else:
             suffix = _exe_suffix
@@ -946,7 +946,7 @@ class GraalVmLibrary(GraalVmNativeImage):
         self.buildDependencies += ['{}:{}'.format(stage1.suite, stage1.name)]
 
     def build_args(self):
-        return super(GraalVmLibrary, self).build_args() + ["-H:Kind=SHARED_LIBRARY"]
+        return super(GraalVmLibrary, self).build_args() + ["--shared"]
 
     def getBuildTask(self, args):
         svm_support = _get_svm_support()

@@ -22,7 +22,7 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.svm.hosted.config;
+package com.oracle.svm.core.configure;
 
 import java.io.IOException;
 import java.io.Reader;
@@ -32,7 +32,6 @@ import java.util.function.Consumer;
 
 import com.oracle.svm.core.util.json.JSONParser;
 import com.oracle.svm.core.util.json.JSONParserException;
-import com.oracle.svm.hosted.ResourcesFeature.ResourcesRegistry;
 
 public class ResourceConfigurationParser extends ConfigurationParser {
     private final ResourcesRegistry registry;

@@ -175,6 +175,7 @@ import com.oracle.svm.core.graal.phases.OptimizeExceptionCallsPhase;
 import com.oracle.svm.core.graal.phases.RemoveUnwindPhase;
 import com.oracle.svm.core.graal.phases.TrustedInterfaceTypePlugin;
 import com.oracle.svm.core.graal.snippets.ArithmeticSnippets;
+import com.oracle.svm.core.graal.snippets.DeoptHostedSnippets;
 import com.oracle.svm.core.graal.snippets.DeoptRuntimeSnippets;
 import com.oracle.svm.core.graal.snippets.ExceptionSnippets;
 import com.oracle.svm.core.graal.snippets.MonitorSnippets;
@@ -254,7 +255,6 @@ import com.oracle.svm.hosted.phases.IntrinsifyMethodHandlesInvocationPlugin;
 import com.oracle.svm.hosted.phases.SubstrateClassInitializationPlugin;
 import com.oracle.svm.hosted.phases.VerifyDeoptFrameStatesLIRPhase;
 import com.oracle.svm.hosted.phases.VerifyNoGuardsPhase;
-import com.oracle.svm.hosted.snippets.DeoptHostedSnippets;
 import com.oracle.svm.hosted.snippets.SubstrateGraphBuilderPlugins;
 import com.oracle.svm.hosted.substitute.AnnotationSubstitutionProcessor;
 import com.oracle.svm.hosted.substitute.DeclarativeSubstitutionProcessor;
@@ -1128,7 +1128,7 @@ public class NativeImageGenerator {
                 }
             };
         }
-        for (Class<? extends NodeIntrinsicPluginFactory> factoryClass : loader.findSubclasses(NodeIntrinsicPluginFactory.class)) {
+        for (Class<? extends NodeIntrinsicPluginFactory> factoryClass : loader.findSubclasses(NodeIntrinsicPluginFactory.class, true)) {
             if (!Modifier.isAbstract(factoryClass.getModifiers()) && !factoryClass.getName().contains("hotspot")) {
                 NodeIntrinsicPluginFactory factory;
                 try {
@@ -1493,24 +1493,24 @@ public class NativeImageGenerator {
         for (Method method : loader.findAnnotatedMethods(CFunction.class)) {
             nativeLibs.loadJavaMethod(metaAccess.lookupJavaMethod(method));
         }
-        for (Class<?> clazz : loader.findAnnotatedClasses(CStruct.class)) {
+        for (Class<?> clazz : loader.findAnnotatedClasses(CStruct.class, false)) {
             classInitializationSupport.initializeAtBuildTime(clazz, "classes annotated with " + CStruct.class.getSimpleName() + " are always initialized");
             nativeLibs.loadJavaType(metaAccess.lookupJavaType(clazz));
         }
-        for (Class<?> clazz : loader.findAnnotatedClasses(RawStructure.class)) {
+        for (Class<?> clazz : loader.findAnnotatedClasses(RawStructure.class, false)) {
             classInitializationSupport.initializeAtBuildTime(clazz, "classes annotated with " + RawStructure.class.getSimpleName() + " are always initialized");
             nativeLibs.loadJavaType(metaAccess.lookupJavaType(clazz));
         }
-        for (Class<?> clazz : loader.findAnnotatedClasses(CPointerTo.class)) {
+        for (Class<?> clazz : loader.findAnnotatedClasses(CPointerTo.class, false)) {
             classInitializationSupport.initializeAtBuildTime(clazz, "classes annotated with " + CPointerTo.class.getSimpleName() + " are always initialized");
             nativeLibs.loadJavaType(metaAccess.lookupJavaType(clazz));
         }
-        for (Class<?> clazz : loader.findAnnotatedClasses(CEnum.class)) {
+        for (Class<?> clazz : loader.findAnnotatedClasses(CEnum.class, false)) {
             ResolvedJavaType type = metaAccess.lookupJavaType(clazz);
             classInitializationSupport.initializeAtBuildTime(clazz, "classes annotated with " + CEnum.class.getSimpleName() + " are always initialized");
             nativeLibs.loadJavaType(type);
         }
-        for (Class<?> clazz : loader.findAnnotatedClasses(CContext.class)) {
+        for (Class<?> clazz : loader.findAnnotatedClasses(CContext.class, false)) {
             classInitializationSupport.initializeAtBuildTime(clazz, "classes annotated with " + CContext.class.getSimpleName() + " are always initialized");
         }
         for (CLibrary library : loader.findAnnotations(CLibrary.class)) {

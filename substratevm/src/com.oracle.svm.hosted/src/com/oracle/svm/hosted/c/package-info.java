@@ -22,28 +22,9 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.svm.hosted;
 
-import org.graalvm.nativeimage.hosted.Feature;
+@Platforms(Platform.HOSTED_ONLY.class)
+package com.oracle.svm.hosted.c;
+
 import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.Platforms;
-import org.graalvm.nativeimage.hosted.RuntimeReflection;
-
-import java.lang.reflect.Method;
-import java.lang.reflect.Modifier;
-
-/**
- * JCK Runtime tests reflectively access public methods of main class.
- */
-@Platforms(Platform.HOSTED_ONLY.class)
-public class JCKRuntimeTestsSupportFeature implements Feature {
-    @Override
-    public void beforeAnalysis(BeforeAnalysisAccess config) {
-        Class<?> mainClass = config.findClassByName(NativeImageOptions.Class.getValue());
-        for (Method method : mainClass.getDeclaredMethods()) {
-            if (Modifier.isPublic(method.getModifiers())) {
-                RuntimeReflection.register(method);
-            }
-        }
-    }
-}

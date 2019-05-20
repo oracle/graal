@@ -77,22 +77,13 @@ import com.oracle.svm.core.FallbackExecutor;
 import com.oracle.svm.core.OS;
 import com.oracle.svm.core.SubstrateOptions;
 import com.oracle.svm.core.SubstrateUtil;
+import com.oracle.svm.core.configure.ConfigurationFiles;
 import com.oracle.svm.core.option.SubstrateOptionsParser;
+import com.oracle.svm.core.util.ClasspathUtils;
 import com.oracle.svm.core.util.VMError;
 import com.oracle.svm.driver.MacroOption.EnabledOption;
 import com.oracle.svm.driver.MacroOption.MacroOptionKind;
 import com.oracle.svm.driver.MacroOption.Registry;
-import com.oracle.svm.graal.hosted.GraalFeature;
-import com.oracle.svm.hosted.FallbackFeature;
-import com.oracle.svm.hosted.ImageClassLoader;
-import com.oracle.svm.hosted.NativeImageGeneratorRunner;
-import com.oracle.svm.hosted.NativeImageOptions;
-import com.oracle.svm.hosted.ResourcesFeature;
-import com.oracle.svm.hosted.config.ConfigurationDirectories;
-import com.oracle.svm.hosted.image.AbstractBootImage.NativeImageKind;
-import com.oracle.svm.hosted.substitute.DeclarativeSubstitutionProcessor;
-import com.oracle.svm.reflect.hosted.ReflectionFeature;
-import com.oracle.svm.reflect.proxy.hosted.DynamicProxyFeature;
 
 public class NativeImage {
 
@@ -161,22 +152,22 @@ public class NativeImage {
         return oH + option.getName() + "=";
     }
 
-    final String oHClass = oH(NativeImageOptions.Class);
-    final String oHName = oH(NativeImageOptions.Name);
+    final String oHClass = oH(SubstrateOptions.Class);
+    final String oHName = oH(SubstrateOptions.Name);
     final String oHPath = oH(SubstrateOptions.Path);
-    final String oHKind = oH(NativeImageOptions.Kind);
+    final String enableSharedLibraryFlag = oH + "+" + SubstrateOptions.SharedLibrary.getName();
     final String oHCLibraryPath = oH(SubstrateOptions.CLibraryPath);
     final String oHOptimize = oH(SubstrateOptions.Optimize);
-    final String oHFallbackThreshold = oH(FallbackFeature.Options.FallbackThreshold);
+    final String oHFallbackThreshold = oH(SubstrateOptions.FallbackThreshold);
     final String oHFallbackExecutorJavaArg = oH(FallbackExecutor.Options.FallbackExecutorJavaArg);
 
     /* List arguments */
-    final String oHSubstitutionFiles = oH(DeclarativeSubstitutionProcessor.Options.SubstitutionFiles);
-    final String oHReflectionConfigurationFiles = oH(ReflectionFeature.Options.ReflectionConfigurationFiles);
-    final String oHDynamicProxyConfigurationFiles = oH(DynamicProxyFeature.Options.DynamicProxyConfigurationFiles);
-    final String oHJNIConfigurationFiles = oH(SubstrateOptions.JNIConfigurationFiles);
+    final String oHSubstitutionFiles = oH(ConfigurationFiles.Options.SubstitutionFiles);
+    final String oHReflectionConfigurationFiles = oH(ConfigurationFiles.Options.ReflectionConfigurationFiles);
+    final String oHDynamicProxyConfigurationFiles = oH(ConfigurationFiles.Options.DynamicProxyConfigurationFiles);
+    final String oHResourceConfigurationFiles = oH(ConfigurationFiles.Options.ResourceConfigurationFiles);
+    final String oHJNIConfigurationFiles = oH(ConfigurationFiles.Options.JNIConfigurationFiles);
 
-    final String oHMaxRuntimeCompileMethods = oH(GraalFeature.Options.MaxRuntimeCompileMethods);
     final String oHInspectServerContentPath = oH(PointstoOptions.InspectServerContentPath);
     final String oDPolyglotLauncherClasses = "-Dcom.oracle.graalvm.launcher.launcherclasses=";
     final String oDLauncherClasspath = "-Dorg.graalvm.launcher.classpath=";
@@ -575,7 +566,7 @@ public class NativeImage {
         buildArgs.add(oH + "+" + SubstrateOptions.ParseRuntimeOptions.getName());
         String classpathString = imageClasspath.stream()
                         .map(imagePath::relativize)
-                        .map(ImageClassLoader::classpathToString)
+                        .map(ClasspathUtils::classpathToString)
                         .collect(Collectors.joining(File.pathSeparator));
         buildArgs.add(oHPath + imagePath.toString());
         buildArgs.add(oH(FallbackExecutor.Options.FallbackExecutorClasspath) + classpathString);
@@ -730,7 +721,7 @@ public class NativeImage {
         LinkedHashSet<EnabledOption> enabledOptions = optionRegistry.getEnabledOptions();
         /* Any use of MacroOptions opts-out of auto-fallback and activates --no-fallback */
         if (!enabledOptions.isEmpty()) {
-            addPlainImageBuilderArg(oHFallbackThreshold + FallbackFeature.Options.NoFallback);
+            addPlainImageBuilderArg(oHFallbackThreshold + SubstrateOptions.NoFallback);
         }
 
         /* Determine if truffle is needed- any MacroOption of kind Language counts */
@@ -837,10 +828,10 @@ public class NativeImage {
 
     enum MetaInfFileType {
         Properties(null, nativeImagePropertiesFilename),
-        JniConfiguration(SubstrateOptions.JNIConfigurationResources, ConfigurationDirectories.FileNames.JNI_NAME),
-        ReflectConfiguration(ReflectionFeature.Options.ReflectionConfigurationResources, ConfigurationDirectories.FileNames.REFLECTION_NAME),
-        ResourceConfiguration(ResourcesFeature.Options.ResourceConfigurationResources, ConfigurationDirectories.FileNames.RESOURCES_NAME),
-        ProxyConfiguration(DynamicProxyFeature.Options.DynamicProxyConfigurationResources, ConfigurationDirectories.FileNames.DYNAMIC_PROXY_NAME);
+        JniConfiguration(ConfigurationFiles.Options.JNIConfigurationResources, ConfigurationFiles.JNI_NAME),
+        ReflectConfiguration(ConfigurationFiles.Options.ReflectionConfigurationResources, ConfigurationFiles.REFLECTION_NAME),
+        ResourceConfiguration(ConfigurationFiles.Options.ResourceConfigurationResources, ConfigurationFiles.RESOURCES_NAME),
+        ProxyConfiguration(ConfigurationFiles.Options.DynamicProxyConfigurationResources, ConfigurationFiles.DYNAMIC_PROXY_NAME);
 
         final OptionKey<?> optionKey;
         final String fileName;
@@ -866,7 +857,7 @@ public class NativeImage {
                 processNativeImageMetaInf(classpathEntry, nativeImageMetaInfBase, metaInfProcessor);
             } else {
                 List<Path> jarFileMatches = Collections.emptyList();
-                if (classpathEntry.endsWith(ImageClassLoader.cpWildcardSubstitute)) {
+                if (classpathEntry.endsWith(ClasspathUtils.cpWildcardSubstitute)) {
                     try {
                         jarFileMatches = Files.list(classpathEntry.getParent())
                                         .filter(p -> p.getFileName().toString().toLowerCase().endsWith(".jar"))
@@ -887,7 +878,7 @@ public class NativeImage {
                 }
             }
         } catch (IOException | FileSystemNotFoundException e) {
-            throw showError("Invalid classpath entry " + ImageClassLoader.classpathToString(classpathEntry), e);
+            throw showError("Invalid classpath entry " + ClasspathUtils.classpathToString(classpathEntry), e);
         }
     }
 
@@ -967,11 +958,11 @@ public class NativeImage {
 
         /* Perform option consolidation of imageBuilderArgs */
         Function<String, String> canonicalizedPathStr = s -> canonicalize(Paths.get(s)).toString();
-        consolidateArgs(imageBuilderArgs, oHMaxRuntimeCompileMethods, Integer::parseInt, String::valueOf, () -> 0, Integer::sum);
         consolidateListArgs(imageBuilderArgs, oHCLibraryPath, ",", canonicalizedPathStr);
         consolidateListArgs(imageBuilderArgs, oHSubstitutionFiles, ",", canonicalizedPathStr);
         consolidateListArgs(imageBuilderArgs, oHReflectionConfigurationFiles, ",", canonicalizedPathStr);
         consolidateListArgs(imageBuilderArgs, oHDynamicProxyConfigurationFiles, ",", canonicalizedPathStr);
+        consolidateListArgs(imageBuilderArgs, oHResourceConfigurationFiles, ",", canonicalizedPathStr);
         consolidateListArgs(imageBuilderArgs, oHJNIConfigurationFiles, ",", canonicalizedPathStr);
 
         BiFunction<String, String, String> takeLast = (a, b) -> b;
@@ -984,8 +975,7 @@ public class NativeImage {
 
         consolidateArgs(imageBuilderArgs, oHName, Function.identity(), Function.identity(), () -> null, takeLast);
         mainClass = consolidateSingleValueArg(imageBuilderArgs, oHClass);
-        String imageKind = consolidateSingleValueArg(imageBuilderArgs, oHKind);
-        boolean buildExecutable = !NativeImageKind.SHARED_LIBRARY.name().equals(imageKind);
+        boolean buildExecutable = !imageBuilderArgs.stream().anyMatch(arg -> arg.contains(enableSharedLibraryFlag));
         boolean printFlags = imageBuilderArgs.stream().anyMatch(arg -> arg.contains(enablePrintFlags));
 
         if (!printFlags) {
@@ -1093,8 +1083,8 @@ public class NativeImage {
 
     protected static List<String> createImageBuilderArgs(LinkedHashSet<String> imageArgs, LinkedHashSet<Path> imagecp) {
         List<String> result = new ArrayList<>();
-        result.add(NativeImageGeneratorRunner.IMAGE_CLASSPATH_PREFIX);
-        result.add(imagecp.stream().map(ImageClassLoader::classpathToString).collect(Collectors.joining(File.pathSeparator)));
+        result.add(SubstrateOptions.IMAGE_CLASSPATH_PREFIX);
+        result.add(imagecp.stream().map(ClasspathUtils::classpathToString).collect(Collectors.joining(File.pathSeparator)));
         result.addAll(imageArgs);
         return result;
     }
@@ -1115,7 +1105,7 @@ public class NativeImage {
              * GR-8254: Ensure image-building VM shuts down even if native-image dies unexpected
              * (e.g. using CTRL-C in Gradle daemon mode)
              */
-            command.addAll(Arrays.asList(NativeImageGeneratorRunner.WATCHPID_PREFIX, "" + ProcessProperties.getProcessID()));
+            command.addAll(Arrays.asList(SubstrateOptions.WATCHPID_PREFIX, "" + ProcessProperties.getProcessID()));
         }
         command.addAll(createImageBuilderArgs(imageArgs, imagecp));
 
@@ -1172,7 +1162,7 @@ public class NativeImage {
             extractionResults.put(classpathEntry, new ArrayList<>(nativeImage.imageBuilderArgs));
         };
         for (String entry : imageClasspath) {
-            Path classpathEntry = nativeImage.canonicalize(ImageClassLoader.stringToClasspath(entry), false);
+            Path classpathEntry = nativeImage.canonicalize(ClasspathUtils.stringToClasspath(entry), false);
             nativeImage.processClasspathNativeImageMetaInf(classpathEntry, extractor);
         }
         return extractionResults;
@@ -1216,7 +1206,7 @@ public class NativeImage {
                 build(FallbackBuildConfiguration.create(nativeImage), nativeImageProvider);
                 showWarning("Image '" + nativeImage.imageName +
                                 "' is a fallback image that requires a JDK for execution " +
-                                "(use --" + FallbackFeature.Options.OptionNameNoFallback + " to suppress fallback image generation).");
+                                "(use --" + SubstrateOptions.OptionNameNoFallback + " to suppress fallback image generation).");
             } else if (buildStatus != 0) {
                 throw showError("Image build request failed with exit status " + buildStatus);
             }
@@ -1232,24 +1222,24 @@ public class NativeImage {
         if (!strict) {
             return absolutePath;
         }
-        boolean hasWildcard = absolutePath.endsWith(ImageClassLoader.cpWildcardSubstitute);
+        boolean hasWildcard = absolutePath.endsWith(ClasspathUtils.cpWildcardSubstitute);
         if (hasWildcard) {
             absolutePath = absolutePath.getParent();
         }
         try {
             Path realPath = absolutePath.toRealPath(LinkOption.NOFOLLOW_LINKS);
             if (!Files.isReadable(realPath)) {
-                showError("Path entry " + ImageClassLoader.classpathToString(path) + " is not readable");
+                showError("Path entry " + ClasspathUtils.classpathToString(path) + " is not readable");
             }
             if (hasWildcard) {
                 if (!Files.isDirectory(realPath)) {
-                    showError("Path entry with wildcard " + ImageClassLoader.classpathToString(path) + " is not a directory");
+                    showError("Path entry with wildcard " + ClasspathUtils.classpathToString(path) + " is not a directory");
                 }
-                realPath = realPath.resolve(ImageClassLoader.cpWildcardSubstitute);
+                realPath = realPath.resolve(ClasspathUtils.cpWildcardSubstitute);
             }
             return realPath;
         } catch (IOException e) {
-            throw showError("Invalid Path entry " + ImageClassLoader.classpathToString(path), e);
+            throw showError("Invalid Path entry " + ClasspathUtils.classpathToString(path), e);
         }
     }
 
@@ -1325,7 +1315,7 @@ public class NativeImage {
     }
 
     void addCustomImageClasspath(String classpath) {
-        addCustomImageClasspath(ImageClassLoader.stringToClasspath(classpath));
+        addCustomImageClasspath(ClasspathUtils.stringToClasspath(classpath));
     }
 
     void addCustomImageClasspath(Path classpath) {

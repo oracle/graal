@@ -22,7 +22,7 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.svm.hosted.config;
+package com.oracle.svm.core.configure;
 
 import java.io.IOException;
 import java.io.Reader;

@@ -36,11 +36,11 @@ import java.util.LinkedHashSet;
 import java.util.Set;
 import java.util.function.Function;
 
-import com.oracle.svm.hosted.config.ConfigurationDirectories;
-import com.oracle.svm.hosted.config.ConfigurationParser;
-import com.oracle.svm.hosted.config.ProxyConfigurationParser;
-import com.oracle.svm.hosted.config.ReflectionConfigurationParser;
-import com.oracle.svm.hosted.config.ResourceConfigurationParser;
+import com.oracle.svm.core.configure.ConfigurationFiles;
+import com.oracle.svm.core.configure.ConfigurationParser;
+import com.oracle.svm.core.configure.ProxyConfigurationParser;
+import com.oracle.svm.core.configure.ReflectionConfigurationParser;
+import com.oracle.svm.core.configure.ResourceConfigurationParser;
 
 public class ConfigurationSet {
     public static final Function<IOException, Exception> FAIL_ON_EXCEPTION = e -> e;
@@ -51,10 +51,10 @@ public class ConfigurationSet {
     private final Set<URI> resourceConfigPaths = new LinkedHashSet<>();
 
     public void addDirectory(Path path) {
-        jniConfigPaths.add(path.resolve(ConfigurationDirectories.FileNames.JNI_NAME).toUri());
-        reflectConfigPaths.add(path.resolve(ConfigurationDirectories.FileNames.REFLECTION_NAME).toUri());
-        proxyConfigPaths.add(path.resolve(ConfigurationDirectories.FileNames.DYNAMIC_PROXY_NAME).toUri());
-        resourceConfigPaths.add(path.resolve(ConfigurationDirectories.FileNames.RESOURCES_NAME).toUri());
+        jniConfigPaths.add(path.resolve(ConfigurationFiles.JNI_NAME).toUri());
+        reflectConfigPaths.add(path.resolve(ConfigurationFiles.REFLECTION_NAME).toUri());
+        proxyConfigPaths.add(path.resolve(ConfigurationFiles.DYNAMIC_PROXY_NAME).toUri());
+        resourceConfigPaths.add(path.resolve(ConfigurationFiles.RESOURCES_NAME).toUri());
     }
 
     public boolean isEmpty() {

@@ -22,43 +22,9 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.svm.hosted.config;
 
-import java.util.List;
+@Platforms(Platform.HOSTED_ONLY.class)
+package com.oracle.svm.hosted.javafx;
 
-public interface ReflectionConfigurationParserDelegate<T> {
-    T resolveType(String typeName);
-
-    void registerType(T type);
-
-    void registerPublicClasses(T type);
-
-    void registerDeclaredClasses(T type);
-
-    void registerPublicFields(T type);
-
-    void registerDeclaredFields(T type);
-
-    void registerPublicMethods(T type);
-
-    void registerDeclaredMethods(T type);
-
-    void registerPublicConstructors(T type);
-
-    void registerDeclaredConstructors(T type);
-
-    void registerField(T type, String fieldName, boolean allowWrite) throws NoSuchFieldException;
-
-    boolean registerAllMethodsWithName(T type, String methodName);
-
-    void registerMethod(T type, String methodName, List<T> methodParameterTypes) throws NoSuchMethodException;
-
-    void registerConstructor(T type, List<T> methodParameterTypes) throws NoSuchMethodException;
-
-    boolean registerAllConstructors(T type);
-
-    String getTypeName(T type);
-
-    String getSimpleName(T type);
-
-}
+import org.graalvm.nativeimage.Platform;
+import org.graalvm.nativeimage.Platforms;
