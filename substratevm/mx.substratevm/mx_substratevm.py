@@ -359,11 +359,12 @@ def extract_target_name(arg, kind):
 
 
 class GraalVMConfig(object):
-    def __init__(self, dynamicimports=None, disable_libpolyglot=False, force_bash_launchers=None, skip_libraries=None):
+    def __init__(self, dynamicimports=None, disable_libpolyglot=False, force_bash_launchers=None, skip_libraries=None, exclude_components=None):
         self.dynamicimports = dynamicimports or []
         self.disable_libpolyglot = disable_libpolyglot
         self.force_bash_launchers = force_bash_launchers or []
         self.skip_libraries = skip_libraries or []
+        self.exclude_components = exclude_components or []
         if '/substratevm' not in self.dynamicimports:
             self.dynamicimports.append('/substratevm')
 
@@ -377,6 +378,8 @@ class GraalVMConfig(object):
             args += ['--force-bash-launchers=' + ','.join(self.force_bash_launchers)]
         if self.skip_libraries:
             args += ['--skip-libraries=' + ','.join(self.skip_libraries)]
+        if self.exclude_components:
+            args += ['--exclude-components=' + ','.join(self.exclude_components)]
         return args
 
     def _tuple(self):
@@ -415,7 +418,11 @@ def _vm_home(config):
     return _vm_homes[config]
 
 
-_graalvm_config = GraalVMConfig(disable_libpolyglot=True, force_bash_launchers=['polyglot', 'native-image-configure'], skip_libraries=['native-image-agent'])
+_graalvm_exclude_components = ['gu'] if mx.is_windows() else []  # gu does not work on Windows atm
+_graalvm_config = GraalVMConfig(disable_libpolyglot=True,
+                                force_bash_launchers=['polyglot', 'native-image-configure'],
+                                skip_libraries=['native-image-agent'],
+                                exclude_components=_graalvm_exclude_components)
 
 graalvm_configs = [_graalvm_config]
 
@@ -826,7 +833,10 @@ def js_image_test(binary, bench_location, name, warmup_iterations, iterations, t
         mx.abort('JS benchmark ' + name + ' failed')
 
 
-_graalvm_js_config = GraalVMConfig(dynamicimports=['/graal-js'], disable_libpolyglot=True, force_bash_launchers=['polyglot', 'native-image-configure', 'js'], skip_libraries=['native-image-agent'])
+_graalvm_js_config = GraalVMConfig(dynamicimports=['/graal-js'], disable_libpolyglot=True,
+                                   force_bash_launchers=['polyglot', 'native-image-configure', 'js'],
+                                   skip_libraries=['native-image-agent'],
+                                   exclude_components=_graalvm_exclude_components)
 
 
 def build_js(native_image):
