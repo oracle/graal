@@ -234,11 +234,13 @@ import com.oracle.truffle.espresso.bytecode.BytecodeLookupSwitch;
 import com.oracle.truffle.espresso.bytecode.BytecodeStream;
 import com.oracle.truffle.espresso.bytecode.BytecodeTableSwitch;
 import com.oracle.truffle.espresso.bytecode.Bytecodes;
+import com.oracle.truffle.espresso.descriptors.Symbol;
 import com.oracle.truffle.espresso.descriptors.Types;
 import com.oracle.truffle.espresso.impl.Field;
 import com.oracle.truffle.espresso.impl.Klass;
 import com.oracle.truffle.espresso.impl.Method;
 import com.oracle.truffle.espresso.meta.EspressoError;
+import com.oracle.truffle.espresso.runtime.EspressoException;
 
 /**
  * Extremely light-weight java bytecode verifier. Performs only very basic verifications.
@@ -325,7 +327,7 @@ public class MethodVerifier {
     static private final byte DONE = 2;
 
     /**
-     * Instanciates a MethodVerifier for the given method
+     * Instantiates a MethodVerifier for the given method
      *
      * @param maxStack Maximum amount of operand on the stack during execution
      * @param code Raw bytecode representation for the method to verify
@@ -469,6 +471,7 @@ public class MethodVerifier {
         // Checkstyle: stop
         wideEscape:
         // EXTREMELY dirty trick to handle WIDE. This is not supposed to be a loop ! (returns on first iteration)
+        // Executes a second time ONLY for wide instruction, with curOpcode being the opcode of the widened instruction.
         while (true) {
             switch (curOpcode) {
                 case NOP: break;
@@ -693,12 +696,13 @@ public class MethodVerifier {
                     break;
                 case JSR: // fall through
                 case JSR_W: {
-                    // Ignore JSR
                     stack.push(ReturnAddress);
                     branch(code.readBranchDest(BCI), stack, locals);
-                    break;
+                    // RET will need to branch here to finish the job.
+                    return BCI;
                 }
-                case RET: {
+                case RET: { 
+                    locals.load(code.readLocalIndex(BCI), ReturnAddress);
                     return BCI;
                 }
     
@@ -740,7 +744,15 @@ public class MethodVerifier {
                     if (!(pc instanceof FieldRefConstant)) {
                         throw new VerifyError();
                     }
-                    Field f = pool.resolvedFieldAt(thisKlass, code.readCPI(BCI));
+                    Field f;
+                    try {
+                        f = pool.resolvedFieldAt(thisKlass, code.readCPI(BCI));
+                    } catch (EspressoException e) {
+                        if (e.getException().getKlass().getType() == Symbol.Type.ClassNotFoundException) {
+                            throw new NoClassDefFoundError("Field " + ((FieldRefConstant)pc).getName(pool) + " not present in class " + ((FieldRefConstant)pc).getHolderKlassName(pool));
+                        }
+                        throw e;
+                    }
                     if ((f.isStatic() && curOpcode == GETFIELD) || (!f.isStatic() && curOpcode == GETSTATIC)) {
                         throw new IncompatibleClassChangeError("op code " + Bytecodes.nameOf(curOpcode) + " trying to read in field " + f.getName());
                     }
@@ -758,7 +770,15 @@ public class MethodVerifier {
                     if (!(pc instanceof FieldRefConstant)) {
                         throw new VerifyError();
                     }
-                    Field f = pool.resolvedFieldAt(thisKlass, code.readCPI(BCI));
+                    Field f;
+                    try {
+                        f = pool.resolvedFieldAt(thisKlass, code.readCPI(BCI));
+                    } catch (EspressoException e) {
+                        if (e.getException().getKlass().getType() == Symbol.Type.ClassNotFoundException) {
+                            throw new NoClassDefFoundError("Field " + ((FieldRefConstant)pc).getName(pool) + " not present in class " + ((FieldRefConstant)pc).getHolderKlassName(pool));
+                        }
+                        throw e;
+                    }
                     if ((f.isStatic() && curOpcode == PUTFIELD) || (!f.isStatic() && curOpcode == PUTSTATIC)) {
                         throw new IncompatibleClassChangeError("op code " + Bytecodes.nameOf(curOpcode) + " trying to write in field " + f.getName());
                     }
@@ -1321,7 +1341,7 @@ public class MethodVerifier {
                 top = top + 2;
                 return;
             }
-            throw new VerifyError("Seriously, what are you doing with dup2x2 ?");
+            throw new VerifyError("Calling dup2x2 with operands: " + v1 + ", " + v2 + ", " + v3 + ", " + v4);
 
         }
 
