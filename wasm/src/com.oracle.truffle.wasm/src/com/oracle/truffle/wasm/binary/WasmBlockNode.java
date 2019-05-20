@@ -34,6 +34,7 @@ import static com.oracle.truffle.wasm.binary.Assert.format;
 
 import static com.oracle.truffle.wasm.binary.Instructions.BLOCK;
 import static com.oracle.truffle.wasm.binary.Instructions.DROP;
+import static com.oracle.truffle.wasm.binary.Instructions.ELSE;
 import static com.oracle.truffle.wasm.binary.Instructions.END;
 import static com.oracle.truffle.wasm.binary.Instructions.F32_ADD;
 import static com.oracle.truffle.wasm.binary.Instructions.F32_CONST;
@@ -81,6 +82,7 @@ import static com.oracle.truffle.wasm.binary.Instructions.I32_SHR_U;
 import static com.oracle.truffle.wasm.binary.Instructions.I32_SUB;
 import static com.oracle.truffle.wasm.binary.Instructions.I32_XOR;
 import static com.oracle.truffle.wasm.binary.Instructions.I64_CONST;
+import static com.oracle.truffle.wasm.binary.Instructions.IF;
 import static com.oracle.truffle.wasm.binary.Instructions.LOCAL_GET;
 import static com.oracle.truffle.wasm.binary.Instructions.LOCAL_SET;
 import static com.oracle.truffle.wasm.binary.Instructions.I64_EQ;
@@ -94,6 +96,7 @@ import static com.oracle.truffle.wasm.binary.Instructions.I64_LE_U;
 import static com.oracle.truffle.wasm.binary.Instructions.I64_LT_S;
 import static com.oracle.truffle.wasm.binary.Instructions.I64_LT_U;
 import static com.oracle.truffle.wasm.binary.Instructions.I64_NE;
+import static com.oracle.truffle.wasm.binary.Instructions.LOCAL_TEE;
 import static com.oracle.truffle.wasm.binary.Instructions.NOP;
 import static com.oracle.truffle.wasm.binary.Instructions.UNREACHABLE;
 
@@ -108,8 +111,8 @@ public class WasmBlockNode extends WasmNode {
     @CompilationFinal(dimensions = 1) byte[] constantLengthTable;
     @CompilationFinal(dimensions = 1) WasmNode[] nestedControlTable;
 
-    public WasmBlockNode(WasmCodeEntry codeEntry, int startOffset, int size, byte returnTypeId, int initialStackPointer) {
-        super(codeEntry, size);
+    public WasmBlockNode(WasmCodeEntry codeEntry, int startOffset, int byteLength, byte returnTypeId, int initialStackPointer) {
+        super(codeEntry, byteLength);
         this.startOffset = startOffset;
         this.returnTypeId = returnTypeId;
         this.initialStackPointer = initialStackPointer;
@@ -123,7 +126,7 @@ public class WasmBlockNode extends WasmNode {
         int nestedControlOffset = 0;
         int stackPointer = initialStackPointer;
         int offset = startOffset;
-        while (offset < startOffset + size()) {
+        while (offset < startOffset + byteLength()) {
             byte byteOpcode = BinaryStreamReader.peek1(codeEntry().data(), offset);
             int opcode = byteOpcode & 0xFF;
             offset++;
@@ -132,12 +135,24 @@ public class WasmBlockNode extends WasmNode {
                     throw new WasmTrap("unreachable", this);
                 case NOP:
                     break;
-                case BLOCK:
+                case BLOCK: {
                     WasmNode block = nestedControlTable[nestedControlOffset];
                     block.execute(frame);
                     nestedControlOffset++;
-                    offset += block.size();
+                    offset += block.byteLength();
                     stackPointer += block.returnTypeLength();
+                    break;
+                }
+                case IF: {
+                    WasmNode ifBlock = nestedControlTable[nestedControlOffset];
+                    stackPointer--;
+                    ifBlock.execute(frame);
+                    nestedControlOffset++;
+                    offset += ifBlock.byteLength();
+                    stackPointer += ifBlock.returnTypeLength();
+                    break;
+                }
+                case ELSE:
                     break;
                 case END:
                     break;
@@ -214,6 +229,9 @@ public class WasmBlockNode extends WasmNode {
                     }
                     break;
                 }
+                case LOCAL_TEE:
+                    // TODO
+                    break;
                 case I32_CONST: {
                     int value = BinaryStreamReader.peekSignedInt32(codeEntry().data(), offset, null);
                     byte constantLength = constantLengthTable[constantOffset];
@@ -719,18 +737,9 @@ public class WasmBlockNode extends WasmNode {
         }
     }
 
+    @Override
     public byte returnTypeId() {
         return returnTypeId;
     }
 
-    @Override
-    public int returnTypeLength() {
-        switch (returnTypeId()) {
-            case 0x00:
-            case 0x40:
-                return 0;
-            default:
-                return 1;
-        }
-    }
 }

@@ -32,46 +32,35 @@ package com.oracle.truffle.wasm.binary;
 
 import com.oracle.truffle.api.CompilerDirectives.CompilationFinal;
 import com.oracle.truffle.api.frame.VirtualFrame;
-import com.oracle.truffle.api.nodes.Node;
 
-public abstract class WasmNode extends Node implements WasmNodeInterface {
-    @CompilationFinal private WasmCodeEntry codeEntry;
+public class WasmIfNode extends WasmNode {
+    @CompilationFinal private final byte returnTypeId;
+    @CompilationFinal private final int initialStackPointer;
+    @Child WasmNode trueBranch;
+    @Child WasmNode falseBranch;
 
-    /**
-     * The length (in bytes) of the control structure in the instructions stream,
-     * without the initial opcode and the block return type.
-     */
-    @CompilationFinal private int byteLength;
-
-    public WasmNode(WasmCodeEntry codeEntry, int byteLength) {
-        this.codeEntry = codeEntry;
-        this.byteLength = byteLength;
+    public WasmIfNode(WasmCodeEntry codeEntry, int byteLength, byte returnTypeId, int initialStackPointer, WasmNode trueBranch, WasmNode falseBranch) {
+        super(codeEntry, byteLength);
+        this.returnTypeId = returnTypeId;
+        this.initialStackPointer = initialStackPointer;
+        this.trueBranch = trueBranch;
+        this.falseBranch = falseBranch;
     }
 
-    public abstract void execute(VirtualFrame frame);
-
-    public abstract byte returnTypeId();
-
-    public int returnTypeLength() {
-        switch (returnTypeId()) {
-            case 0x00:
-            case 0x40:
-                return 0;
-            default:
-                return 1;
+    @Override
+    public void execute(VirtualFrame frame) {
+        int stackPointer = initialStackPointer - 1;
+        int condition = popInt(frame, stackPointer);
+        if (condition != 0) {
+            trueBranch.execute(frame);
+        } else {
+            falseBranch.execute(frame);
         }
     }
 
     @Override
-    public WasmCodeEntry codeEntry() {
-        return codeEntry;
+    public byte returnTypeId() {
+        return returnTypeId;
     }
 
-    public int byteLength() {
-        return this.byteLength;
-    }
-
-    public void setByteLength(int byteLength) {
-        this.byteLength = byteLength;
-    }
 }

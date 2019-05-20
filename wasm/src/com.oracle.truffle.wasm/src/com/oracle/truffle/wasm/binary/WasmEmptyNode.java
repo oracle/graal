@@ -27,51 +27,26 @@
  * NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED
  * OF THE POSSIBILITY OF SUCH DAMAGE.
  */
-
 package com.oracle.truffle.wasm.binary;
 
-import com.oracle.truffle.api.CompilerDirectives.CompilationFinal;
 import com.oracle.truffle.api.frame.VirtualFrame;
-import com.oracle.truffle.api.nodes.Node;
 
-public abstract class WasmNode extends Node implements WasmNodeInterface {
-    @CompilationFinal private WasmCodeEntry codeEntry;
+import static com.oracle.truffle.wasm.binary.ValueTypes.VOID_TYPE;
 
-    /**
-     * The length (in bytes) of the control structure in the instructions stream,
-     * without the initial opcode and the block return type.
-     */
-    @CompilationFinal private int byteLength;
+public class WasmEmptyNode extends WasmNode {
 
-    public WasmNode(WasmCodeEntry codeEntry, int byteLength) {
-        this.codeEntry = codeEntry;
-        this.byteLength = byteLength;
-    }
-
-    public abstract void execute(VirtualFrame frame);
-
-    public abstract byte returnTypeId();
-
-    public int returnTypeLength() {
-        switch (returnTypeId()) {
-            case 0x00:
-            case 0x40:
-                return 0;
-            default:
-                return 1;
-        }
+    public WasmEmptyNode(WasmCodeEntry codeEntry, int byteLength) {
+        super(codeEntry, byteLength);
     }
 
     @Override
-    public WasmCodeEntry codeEntry() {
-        return codeEntry;
+    public void execute(VirtualFrame frame) {
     }
 
-    public int byteLength() {
-        return this.byteLength;
+    @Override
+    public byte returnTypeId() {
+        return VOID_TYPE;
     }
 
-    public void setByteLength(int byteLength) {
-        this.byteLength = byteLength;
-    }
 }
+

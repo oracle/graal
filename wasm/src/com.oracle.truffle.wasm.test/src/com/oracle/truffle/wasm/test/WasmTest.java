@@ -239,6 +239,12 @@ public abstract class WasmTest {
                                     expected(42)),
                     test("(module (func (result i32) (local $l0 i32) i32.const 42 local.set $l0 local.get $l0 unreachable))",
                                     expectedThrows("unreachable")),
+                    test("(module (func (result i32) (local $l0 i32) i32.const 0 if $l0 (result i32) i32.const 42 else i32.const 55 end))",
+                                    expected(55)),
+                    test("(module (func (result i32) (local $l0 i32) i32.const 1 if $l0 (result i32) i32.const 42 else i32.const 55 end))",
+                                    expected(42)),
+                    test("(module (func (result i64) (local $l0 i32) i32.const 1 if $l0 i32.const 42 drop else i32.const 55 drop end i64.const 100))",
+                                    expected(100L)),
     };
 
     private static TestElement test(String program, TestData data) {
@@ -281,17 +287,20 @@ public abstract class WasmTest {
 
     @Test
     public void runTests() throws InterruptedException {
+        String filter = System.getProperty("wasm.TestFilter");
         Map<TestElement, Throwable> errors = new LinkedHashMap<>();
         System.out.println("Using runtime: " + Truffle.getRuntime().toString());
         for (TestElement element : testElements) {
-            try {
-                runTest(element);
-                System.out.print("\uD83D\uDE0D");
-                System.out.flush();
-            } catch (Throwable e) {
-                System.out.print("\uD83D\uDE2D");
-                System.out.flush();
-                errors.put(element, e);
+            if (element.program.matches(filter)) {
+                try {
+                    runTest(element);
+                    System.out.print("\uD83D\uDE0D");
+                    System.out.flush();
+                } catch (Throwable e) {
+                    System.out.print("\uD83D\uDE2D");
+                    System.out.flush();
+                    errors.put(element, e);
+                }
             }
         }
         System.out.println("");

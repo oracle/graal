@@ -32,6 +32,7 @@ package com.oracle.truffle.wasm.binary;
 
 import static com.oracle.truffle.wasm.binary.Instructions.BLOCK;
 import static com.oracle.truffle.wasm.binary.Instructions.DROP;
+import static com.oracle.truffle.wasm.binary.Instructions.ELSE;
 import static com.oracle.truffle.wasm.binary.Instructions.END;
 import static com.oracle.truffle.wasm.binary.Instructions.F32_ADD;
 import static com.oracle.truffle.wasm.binary.Instructions.F32_CONST;
@@ -79,6 +80,7 @@ import static com.oracle.truffle.wasm.binary.Instructions.I32_SHR_U;
 import static com.oracle.truffle.wasm.binary.Instructions.I32_SUB;
 import static com.oracle.truffle.wasm.binary.Instructions.I32_XOR;
 import static com.oracle.truffle.wasm.binary.Instructions.I64_CONST;
+import static com.oracle.truffle.wasm.binary.Instructions.IF;
 import static com.oracle.truffle.wasm.binary.Instructions.LOCAL_GET;
 import static com.oracle.truffle.wasm.binary.Instructions.LOCAL_SET;
 import static com.oracle.truffle.wasm.binary.Instructions.LOCAL_TEE;
@@ -306,13 +308,21 @@ public class BinaryReader extends BinaryStreamReader {
                 case UNREACHABLE:
                 case NOP:
                     break;
-                case BLOCK:
+                case BLOCK: {
                     byte blockTypeId = readBlockType();
                     int startOffset = offset();
                     WasmBlockNode blockNode = new WasmBlockNode(currentBlock.codeEntry(), offset(), -1, blockTypeId, state.stackSize());
                     readBlock(blockNode, state, blockTypeId);
-                    blockNode.setSize(offset() - startOffset);
+                    blockNode.setByteLength(offset() - startOffset);
                     nestedControlTable.add(blockNode);
+                    break;
+                }
+                case IF: {
+                    WasmIfNode ifNode = readIf(currentBlock.codeEntry(), state);
+                    nestedControlTable.add(ifNode);
+                    break;
+                }
+                case ELSE:
                     break;
                 case END:
                     break;
@@ -451,10 +461,51 @@ public class BinaryReader extends BinaryStreamReader {
                     Assert.fail(Assert.format("Unknown opcode: 0x%02x", opcode));
                     break;
             }
-        } while (opcode != END);
+        } while (opcode != END && opcode != ELSE);
         currentBlock.constantLengthTable = constantLengthTable.toArray();
         currentBlock.nestedControlTable = nestedControlTable.toArray(new WasmNode[nestedControlTable.size()]);
         checkValidStateOnBlockExit(returnTypeId, state, startStackSize);
+    }
+
+    private WasmIfNode readIf(WasmCodeEntry codeEntry, ExecutionState state) {
+        byte blockTypeId = readBlockType();
+        int initialStackPointer = state.stackSize();
+
+        // Pop the condition value from the stack.
+        state.pop();
+
+        // Read true branch.
+        int startOffset = offset();
+        WasmBlockNode trueBranchBlock = new WasmBlockNode(codeEntry, offset(), -1, blockTypeId, state.stackSize());
+        readBlock(trueBranchBlock, state, blockTypeId);
+        trueBranchBlock.setByteLength(offset() - startOffset);
+
+        // Read false branch, if it exists.
+        WasmNode falseBranch;
+        if (peek1(-1) == ELSE) {
+            int stackSizeAfterTrueBlock = state.stackSize();
+
+            // If the if instruction has a true and a false branch, and it has non-void type, then each one of the two
+            // readBlock above and below would push once, hence we need to pop once to compensate for the extra push.
+            if (blockTypeId != VOID_TYPE) {
+                state.pop();
+            }
+
+            int startFalseOffset = offset();
+            WasmBlockNode falseBranchBlock = new WasmBlockNode(codeEntry, offset(), -1, blockTypeId, state.stackSize());
+            readBlock(falseBranchBlock, state, blockTypeId);
+            falseBranchBlock.setByteLength(offset() - startFalseOffset);
+            falseBranch = falseBranchBlock;
+
+            Assert.assertEquals(stackSizeAfterTrueBlock, state.stackSize(), "Stack sizes must be equal after both branches of an if statement.");
+        } else {
+            if (blockTypeId != VOID_TYPE) {
+                Assert.fail("An if statement without an else branch block cannot return values.");
+            }
+            falseBranch = new WasmEmptyNode(codeEntry, 0);
+        }
+
+        return new WasmIfNode(codeEntry, offset() - startOffset, blockTypeId, initialStackPointer, trueBranchBlock, falseBranch);
     }
 
     private void readElementSection() {

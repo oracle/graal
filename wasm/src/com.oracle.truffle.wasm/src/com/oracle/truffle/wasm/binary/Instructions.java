@@ -34,6 +34,9 @@ public class Instructions {
     public static final int UNREACHABLE = 0x00;
     public static final int NOP = 0x01;
     public static final int BLOCK = 0x02;
+    public static final int LOOP = 0x03;
+    public static final int IF = 0x04;
+    public static final int ELSE = 0x05;
     public static final int END = 0x0B;
 
     public static final int DROP = 0x1A;
