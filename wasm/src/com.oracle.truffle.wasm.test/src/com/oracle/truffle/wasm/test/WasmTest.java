@@ -171,10 +171,10 @@ public abstract class WasmTest {
         for (TestElement element : testElements) {
             try {
                 runTest(element);
-                System.out.print(".");
+                System.out.print("\uD83D\uDE0D");
                 System.out.flush();
             } catch (Throwable e) {
-                System.out.print('E');
+                System.out.print("\uD83D\uDCA5");
                 System.out.flush();
                 errors.put(element, e);
             }
