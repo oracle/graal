@@ -9,6 +9,7 @@ This changelog summarizes major changes between Truffle versions relevant to lan
 * `SlowPathException#fillInStackTrace` is now `final`.
 * Added an ability to read a [path separator](https://www.graalvm.org/truffle/javadoc/com/oracle/truffle/api/TruffleLanguage.Env.html#getPathSeparator--) used to separate filenames in a path list.
 * `@TruffleBoundary` methods that throw but are not annotated with `@TruffleBoundary(transferToInterpreterOnException=false)` will now transfer to the interpreter only once per `CallTarget` (compilation root).
+* Added [TruffleFile.setAttribute](https://www.graalvm.org/truffle/javadoc/com/oracle/truffle/api/TruffleFile.html#setAttribute-com.oracle.truffle.api.TruffleFile.AttributeDescriptor-T-java.nio.file.LinkOption...-) to allow languages to set file attributes.
 
 ## Version 19.0.0
 * Renamed version 1.0.0 to 19.0.0

@@ -1733,6 +1733,33 @@ public final class TruffleFile {
     }
 
     /**
+     * Sets a single file's attribute.
+     *
+     * @param attribute the attribute to set
+     * @param value the attribute value
+     * @param linkOptions the options determining how the symbolic links should be handled
+     * @throws IOException in case of IO error
+     * @throws UnsupportedOperationException when the filesystem does not support given attribute
+     * @throws IllegalArgumentException when the attribute value has an inappropriate value
+     * @throws SecurityException if the {@link FileSystem} denied the operation
+     * @since 20.0.0 beta 1
+     */
+    @TruffleBoundary
+    public <T> void setAttribute(AttributeDescriptor<T> attribute, T value, LinkOption... linkOptions) throws IOException {
+        try {
+            fileSystemContext.fileSystem.setAttribute(
+                            normalizedPath,
+                            createAttributeString(attribute.group, Collections.singleton(attribute.name)),
+                            value,
+                            linkOptions);
+        } catch (IOException | UnsupportedOperationException | SecurityException e) {
+            throw e;
+        } catch (Throwable t) {
+            throw wrapHostException(t);
+        }
+    }
+
+    /**
      * Reads file's attributes as a bulk operation.
      *
      * @param attributes the attributes to read
