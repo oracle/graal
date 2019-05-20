@@ -27,6 +27,8 @@ package com.oracle.svm.core.jdk;
 // Checkstyle: allow reflection
 
 import java.lang.ref.ReferenceQueue;
+import java.lang.reflect.InvocationTargetException;
+import java.lang.reflect.Method;
 import java.util.function.Function;
 
 import org.graalvm.compiler.nodes.extended.MembarNode;
@@ -371,6 +373,14 @@ class Package_jdk_internal_loader implements Function<TargetClass, String> {
 @TargetClass(classNameProvider = Package_jdk_internal_loader.class, className = "URLClassPath", innerClass = "JarLoader")
 @Delete
 final class Target_sun_misc_URLClassPath_JarLoader {
+}
+
+@TargetClass(className = "sun.reflect.misc.MethodUtil")
+final class Target_sun_reflect_misc_MethodUtil {
+    @Substitute
+    private static Object invoke(Method m, Object obj, Object[] params) throws InvocationTargetException, IllegalAccessException {
+        return m.invoke(obj, params);
+    }
 }
 
 /** Dummy class to have a class with the file's name. */
