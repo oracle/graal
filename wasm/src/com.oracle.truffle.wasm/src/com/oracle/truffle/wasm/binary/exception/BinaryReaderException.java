@@ -27,50 +27,10 @@
  * NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED
  * OF THE POSSIBILITY OF SUCH DAMAGE.
  */
-package com.oracle.truffle.wasm.binary;
+package com.oracle.truffle.wasm.binary.exception;
 
-import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
-import com.oracle.truffle.wasm.binary.exception.BinaryReaderException;
-
-public class Assert {
-
-    public static void assertEquals(int n1, int n2, String message) throws BinaryReaderException {
-        if (n1 != n2) {
-            fail(format("%s: should be equal: %d != %d", message, n1, n2));
-        }
+public class BinaryReaderException extends RuntimeException {
+    public BinaryReaderException(String message) {
+        super(message);
     }
-
-    public static void assertEquals(long n1, long n2, String message) throws BinaryReaderException {
-        if (n1 != n2) {
-            fail(format("%s: should be equal: %d != %d", message, n1, n2));
-        }
-    }
-
-    public static void assertInRange(int value, int start, int end, String message) {
-        if (value < start || value > end) {
-            fail(format("%s: value %d should be in range [%d, %d]", message, value, start, end));
-        }
-    }
-
-    public static void assertLarger(int n1, int n2, String message) throws BinaryReaderException {
-        if (n1 <= n2) {
-            fail(format("%s: should be larger: %d <= %d", message, n1, n2));
-        }
-    }
-
-    public static void assertLess(int n1, int n2, String message) throws BinaryReaderException {
-        if (n1 > n2) {
-            fail(format("%s: should be less: %d > %d", message, n1, n2));
-        }
-    }
-
-    public static void fail(String message) throws BinaryReaderException {
-        throw new BinaryReaderException(message);
-    }
-
-    @TruffleBoundary
-    public static String format(String format, Object... args) {
-        return String.format(format, args);
-    }
-
 }

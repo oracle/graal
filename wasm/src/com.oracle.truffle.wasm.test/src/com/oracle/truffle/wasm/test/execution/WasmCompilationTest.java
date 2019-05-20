@@ -32,6 +32,7 @@ package com.oracle.truffle.wasm.test.execution;
 import java.io.IOException;
 
 import org.graalvm.polyglot.Context;
+import org.graalvm.polyglot.PolyglotException;
 import org.graalvm.polyglot.Source;
 import org.graalvm.polyglot.Value;
 import org.graalvm.polyglot.io.ByteSequence;
@@ -49,7 +50,7 @@ public class WasmCompilationTest extends WasmTest {
     }
 
     @Override
-    protected void runTest(TestElement element) {
+    protected void runTest(TestElement element) throws Throwable {
         try {
             byte[] binary = WasmTestToolkit.compileWat(element.program);
             Context context = Context.create();
@@ -59,10 +60,12 @@ public class WasmCompilationTest extends WasmTest {
             for (int i = 0; i != 1_000_000; ++i) {
                 function.execute();
             }
-            element.data.validator.accept(function.execute());
+            validateResult(element.data, function.execute());
         } catch (IOException | InterruptedException e) {
             Assert.fail(String.format("WasmInterpretationTest failed for program: %s", element.program));
             e.printStackTrace();
+        } catch (PolyglotException e) {
+            validateThrown(element.data, e);
         }
     }
 }
