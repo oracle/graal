@@ -28,6 +28,8 @@ import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
+import java.text.SimpleDateFormat;
+import java.util.Date;
 
 import org.graalvm.collections.EconomicMap;
 import org.graalvm.compiler.options.EnumOptionKey;
@@ -203,7 +205,9 @@ public class DebugOptions {
         if (DumpPath.hasBeenSet(options)) {
             dumpDir = Paths.get(DumpPath.getValue(options));
         } else {
-            dumpDir = Paths.get(DumpPath.getValue(options), String.valueOf(GraalServices.getGlobalTimeStamp()));
+            Date date = new Date(GraalServices.getGlobalTimeStamp());
+            SimpleDateFormat formatter = new SimpleDateFormat( "YYYY.MM.dd.HH.mm.ss.SSS" );
+            dumpDir = Paths.get(DumpPath.getValue(options), formatter.format(date));
         }
         dumpDir = dumpDir.toAbsolutePath();
         if (!Files.exists(dumpDir)) {
