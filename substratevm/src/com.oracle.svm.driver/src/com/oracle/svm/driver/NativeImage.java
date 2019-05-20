@@ -440,21 +440,39 @@ public class NativeImage {
 
         @Override
         public Path getJavaExecutable() {
-            Path javaHomePath = rootDir.getParent();
-            Path binJava = Paths.get("bin", OS.getCurrent() == OS.WINDOWS ? "java.exe" : "java");
-            if (Files.isExecutable(javaHomePath.resolve(binJava))) {
-                return javaHomePath.resolve(binJava);
+            Path java = attemptBinJava(rootDir);
+            if (java != null) {
+                return java;
+            }
+
+            java = attemptBinJava(rootDir.getParent());
+            if (java != null) {
+                return java;
             }
 
             String javaHome = System.getenv("JAVA_HOME");
             if (javaHome == null) {
                 throw showError("Environment variable JAVA_HOME is not set");
             }
-            javaHomePath = Paths.get(javaHome);
-            if (!Files.isExecutable(javaHomePath.resolve(binJava))) {
-                throw showError("Environment variable JAVA_HOME does not refer to a directory with a " + binJava + " executable");
+
+            java = attemptBinJava(Paths.get(javaHome));
+            if (java != null) {
+                return java;
             }
-            return javaHomePath.resolve(binJava);
+
+            throw showError("Environment variable JAVA_HOME does not refer to a directory with a " + binJava() + " executable");
+        }
+
+        private static Path binJava() {
+            return Paths.get("bin", OS.getCurrent() == OS.WINDOWS ? "java.exe" : "java");
+        }
+
+        private static Path attemptBinJava(Path dir) {
+            Path candidate = dir.resolve(binJava());
+            if (Files.exists(candidate) && Files.isExecutable(candidate)) {
+                return candidate;
+            }
+            return null;
         }
 
         @Override
