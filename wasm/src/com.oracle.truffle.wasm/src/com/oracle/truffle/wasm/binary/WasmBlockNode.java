@@ -37,6 +37,7 @@ import static com.oracle.truffle.wasm.binary.Instructions.DROP;
 import static com.oracle.truffle.wasm.binary.Instructions.END;
 import static com.oracle.truffle.wasm.binary.Instructions.F32_ADD;
 import static com.oracle.truffle.wasm.binary.Instructions.F32_CONST;
+import static com.oracle.truffle.wasm.binary.Instructions.F32_EQ;
 import static com.oracle.truffle.wasm.binary.Instructions.F64_CONST;
 import static com.oracle.truffle.wasm.binary.Instructions.I32_ADD;
 import static com.oracle.truffle.wasm.binary.Instructions.I32_AND;
@@ -407,6 +408,15 @@ public class WasmBlockNode extends WasmNode {
                     stackPointer--;
                     long y = pop(frame, stackPointer);
                     pushInt(frame, stackPointer, Long.compareUnsigned(y, x) >= 0 ? 1 : 0);
+                    stackPointer++;
+                    break;
+                }
+                case F32_EQ: {
+                    stackPointer--;
+                    float x = popAsFloat(frame, stackPointer);
+                    stackPointer--;
+                    float y = popAsFloat(frame, stackPointer);
+                    pushInt(frame, stackPointer, y == x ? 1 : 0);
                     stackPointer++;
                     break;
                 }
