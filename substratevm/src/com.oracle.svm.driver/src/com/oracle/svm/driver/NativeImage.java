@@ -399,17 +399,16 @@ public class NativeImage {
 
         @Override
         public Path getJavaExecutable() {
-            Path javaHomePath = rootDir.getParent();
             Path binJava = Paths.get("bin", OS.getCurrent() == OS.WINDOWS ? "java.exe" : "java");
-            if (Files.isExecutable(javaHomePath.resolve(binJava))) {
-                return javaHomePath.resolve(binJava);
+            if (Files.isExecutable(rootDir.resolve(binJava))) {
+                return rootDir.resolve(binJava);
             }
 
             String javaHome = System.getenv("JAVA_HOME");
             if (javaHome == null) {
                 throw showError("Environment variable JAVA_HOME is not set");
             }
-            javaHomePath = Paths.get(javaHome);
+            Path javaHomePath = Paths.get(javaHome);
             if (!Files.isExecutable(javaHomePath.resolve(binJava))) {
                 throw showError("Environment variable JAVA_HOME does not refer to a directory with a " + binJava + " executable");
             }
