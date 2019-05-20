@@ -398,8 +398,8 @@ def _vm_suite_dir():
     return join(dirname(suite.dir), 'vm')
 
 
-def _mx_vm(args, config, nonZeroIsFatal=True, out=None, err=None, timeout=None, env=None):
-    return mx.run_mx(config.mx_args() + args, suite=_vm_suite_dir(), nonZeroIsFatal=nonZeroIsFatal, out=out, err=err, timeout=timeout, env=env)
+def _mx_vm(args, config, nonZeroIsFatal=True, out=None, err=None, timeout=None, env=None, quiet=False):
+    return mx.run_mx(config.mx_args() + args, suite=_vm_suite_dir(), nonZeroIsFatal=nonZeroIsFatal, out=out, err=err, timeout=timeout, env=env, quiet=quiet)
 
 
 _vm_homes = {}
@@ -408,9 +408,9 @@ _vm_homes = {}
 def _vm_home(config):
     if config not in _vm_homes:
         # get things initialized (e.g., cloning)
-        _mx_vm(['--no-warning', 'graalvm-home'], config, out=mx.OutputCapture())
+        _mx_vm(['graalvm-home'], config, out=mx.OutputCapture())
         capture = mx.OutputCapture()
-        _mx_vm(['--no-warning', 'graalvm-home'], config, out=capture)
+        _mx_vm(['graalvm-home'], config, out=capture, quiet=True)
         _vm_homes[config] = capture.data.strip()
     return _vm_homes[config]
 
