@@ -81,7 +81,25 @@ import static com.oracle.truffle.wasm.binary.Instructions.I32_SHR_S;
 import static com.oracle.truffle.wasm.binary.Instructions.I32_SHR_U;
 import static com.oracle.truffle.wasm.binary.Instructions.I32_SUB;
 import static com.oracle.truffle.wasm.binary.Instructions.I32_XOR;
+import static com.oracle.truffle.wasm.binary.Instructions.I64_ADD;
+import static com.oracle.truffle.wasm.binary.Instructions.I64_AND;
+import static com.oracle.truffle.wasm.binary.Instructions.I64_CLZ;
 import static com.oracle.truffle.wasm.binary.Instructions.I64_CONST;
+import static com.oracle.truffle.wasm.binary.Instructions.I64_CTZ;
+import static com.oracle.truffle.wasm.binary.Instructions.I64_DIV_S;
+import static com.oracle.truffle.wasm.binary.Instructions.I64_DIV_U;
+import static com.oracle.truffle.wasm.binary.Instructions.I64_MUL;
+import static com.oracle.truffle.wasm.binary.Instructions.I64_OR;
+import static com.oracle.truffle.wasm.binary.Instructions.I64_POPCNT;
+import static com.oracle.truffle.wasm.binary.Instructions.I64_REM_S;
+import static com.oracle.truffle.wasm.binary.Instructions.I64_REM_U;
+import static com.oracle.truffle.wasm.binary.Instructions.I64_ROTL;
+import static com.oracle.truffle.wasm.binary.Instructions.I64_ROTR;
+import static com.oracle.truffle.wasm.binary.Instructions.I64_SHL;
+import static com.oracle.truffle.wasm.binary.Instructions.I64_SHR_S;
+import static com.oracle.truffle.wasm.binary.Instructions.I64_SHR_U;
+import static com.oracle.truffle.wasm.binary.Instructions.I64_SUB;
+import static com.oracle.truffle.wasm.binary.Instructions.I64_XOR;
 import static com.oracle.truffle.wasm.binary.Instructions.IF;
 import static com.oracle.truffle.wasm.binary.Instructions.LOCAL_GET;
 import static com.oracle.truffle.wasm.binary.Instructions.LOCAL_SET;
@@ -707,6 +725,162 @@ public class WasmBlockNode extends WasmNode {
                     stackPointer--;
                     int y = popInt(frame, stackPointer);
                     pushInt(frame, stackPointer, Integer.rotateRight(y, x));
+                    stackPointer++;
+                    break;
+                }
+                case I64_CLZ: {
+                    stackPointer--;
+                    long x = pop(frame, stackPointer);
+                    push(frame, stackPointer, Long.numberOfLeadingZeros(x));
+                    stackPointer++;
+                    break;
+                }
+                case I64_CTZ: {
+                    stackPointer--;
+                    long x = pop(frame, stackPointer);
+                    push(frame, stackPointer, Long.numberOfTrailingZeros(x));
+                    stackPointer++;
+                    break;
+                }
+                case I64_POPCNT: {
+                    stackPointer--;
+                    long x = pop(frame, stackPointer);
+                    push(frame, stackPointer, Long.bitCount(x));
+                    stackPointer++;
+                    break;
+                }
+                case I64_ADD: {
+                    stackPointer--;
+                    long x = pop(frame, stackPointer);
+                    stackPointer--;
+                    long y = pop(frame, stackPointer);
+                    push(frame, stackPointer, y + x);
+                    stackPointer++;
+                    break;
+                }
+                case I64_SUB: {
+                    stackPointer--;
+                    long x = pop(frame, stackPointer);
+                    stackPointer--;
+                    long y = pop(frame, stackPointer);
+                    push(frame, stackPointer, y - x);
+                    stackPointer++;
+                    break;
+                }
+                case I64_MUL: {
+                    stackPointer--;
+                    long x = pop(frame, stackPointer);
+                    stackPointer--;
+                    long y = pop(frame, stackPointer);
+                    push(frame, stackPointer, y * x);
+                    stackPointer++;
+                    break;
+                }
+                case I64_DIV_S: {
+                    stackPointer--;
+                    long x = pop(frame, stackPointer);
+                    stackPointer--;
+                    long y = pop(frame, stackPointer);
+                    push(frame, stackPointer, y / x);
+                    stackPointer++;
+                    break;
+                }
+                case I64_DIV_U: {
+                    stackPointer--;
+                    long x = pop(frame, stackPointer);
+                    stackPointer--;
+                    long y = pop(frame, stackPointer);
+                    push(frame, stackPointer, Long.divideUnsigned(y, x));
+                    stackPointer++;
+                    break;
+                }
+                case I64_REM_S: {
+                    stackPointer--;
+                    long x = pop(frame, stackPointer);
+                    stackPointer--;
+                    long y = pop(frame, stackPointer);
+                    push(frame, stackPointer, y % x);
+                    stackPointer++;
+                    break;
+                }
+                case I64_REM_U: {
+                    stackPointer--;
+                    long x = pop(frame, stackPointer);
+                    stackPointer--;
+                    long y = pop(frame, stackPointer);
+                    push(frame, stackPointer, Long.remainderUnsigned(y, x));
+                    stackPointer++;
+                    break;
+                }
+                case I64_AND: {
+                    stackPointer--;
+                    long x = pop(frame, stackPointer);
+                    stackPointer--;
+                    long y = pop(frame, stackPointer);
+                    push(frame, stackPointer, y & x);
+                    stackPointer++;
+                    break;
+                }
+                case I64_OR: {
+                    stackPointer--;
+                    long x = pop(frame, stackPointer);
+                    stackPointer--;
+                    long y = pop(frame, stackPointer);
+                    push(frame, stackPointer, y | x);
+                    stackPointer++;
+                    break;
+                }
+                case I64_XOR: {
+                    stackPointer--;
+                    long x = pop(frame, stackPointer);
+                    stackPointer--;
+                    long y = pop(frame, stackPointer);
+                    push(frame, stackPointer, y ^ x);
+                    stackPointer++;
+                    break;
+                }
+                case I64_SHL: {
+                    stackPointer--;
+                    long x = pop(frame, stackPointer);
+                    stackPointer--;
+                    long y = pop(frame, stackPointer);
+                    push(frame, stackPointer, y << x);
+                    stackPointer++;
+                    break;
+                }
+                case I64_SHR_S: {
+                    stackPointer--;
+                    long x = pop(frame, stackPointer);
+                    stackPointer--;
+                    long y = pop(frame, stackPointer);
+                    push(frame, stackPointer, y >> x);
+                    stackPointer++;
+                    break;
+                }
+                case I64_SHR_U: {
+                    stackPointer--;
+                    long x = pop(frame, stackPointer);
+                    stackPointer--;
+                    long y = pop(frame, stackPointer);
+                    push(frame, stackPointer, y >>> x);
+                    stackPointer++;
+                    break;
+                }
+                case I64_ROTL: {
+                    stackPointer--;
+                    long x = pop(frame, stackPointer);
+                    stackPointer--;
+                    long y = pop(frame, stackPointer);
+                    push(frame, stackPointer, Long.rotateLeft(y, (int) x));
+                    stackPointer++;
+                    break;
+                }
+                case I64_ROTR: {
+                    stackPointer--;
+                    long x = pop(frame, stackPointer);
+                    stackPointer--;
+                    long y = pop(frame, stackPointer);
+                    push(frame, stackPointer, Long.rotateRight(y, (int) x));
                     stackPointer++;
                     break;
                 }

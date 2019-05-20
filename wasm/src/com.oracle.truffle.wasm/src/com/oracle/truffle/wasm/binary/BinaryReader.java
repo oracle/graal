@@ -79,7 +79,25 @@ import static com.oracle.truffle.wasm.binary.Instructions.I32_SHR_S;
 import static com.oracle.truffle.wasm.binary.Instructions.I32_SHR_U;
 import static com.oracle.truffle.wasm.binary.Instructions.I32_SUB;
 import static com.oracle.truffle.wasm.binary.Instructions.I32_XOR;
+import static com.oracle.truffle.wasm.binary.Instructions.I64_ADD;
+import static com.oracle.truffle.wasm.binary.Instructions.I64_AND;
+import static com.oracle.truffle.wasm.binary.Instructions.I64_CLZ;
 import static com.oracle.truffle.wasm.binary.Instructions.I64_CONST;
+import static com.oracle.truffle.wasm.binary.Instructions.I64_CTZ;
+import static com.oracle.truffle.wasm.binary.Instructions.I64_DIV_S;
+import static com.oracle.truffle.wasm.binary.Instructions.I64_DIV_U;
+import static com.oracle.truffle.wasm.binary.Instructions.I64_MUL;
+import static com.oracle.truffle.wasm.binary.Instructions.I64_OR;
+import static com.oracle.truffle.wasm.binary.Instructions.I64_POPCNT;
+import static com.oracle.truffle.wasm.binary.Instructions.I64_REM_S;
+import static com.oracle.truffle.wasm.binary.Instructions.I64_REM_U;
+import static com.oracle.truffle.wasm.binary.Instructions.I64_ROTL;
+import static com.oracle.truffle.wasm.binary.Instructions.I64_ROTR;
+import static com.oracle.truffle.wasm.binary.Instructions.I64_SHL;
+import static com.oracle.truffle.wasm.binary.Instructions.I64_SHR_S;
+import static com.oracle.truffle.wasm.binary.Instructions.I64_SHR_U;
+import static com.oracle.truffle.wasm.binary.Instructions.I64_SUB;
+import static com.oracle.truffle.wasm.binary.Instructions.I64_XOR;
 import static com.oracle.truffle.wasm.binary.Instructions.IF;
 import static com.oracle.truffle.wasm.binary.Instructions.LOCAL_GET;
 import static com.oracle.truffle.wasm.binary.Instructions.LOCAL_SET;
@@ -454,6 +472,35 @@ public class BinaryReader extends BinaryStreamReader {
                 case I32_SHR_U:
                 case I32_ROTL:
                 case I32_ROTR:
+                    state.pop();
+                    state.pop();
+                    state.push();
+                    break;
+                case I64_CLZ:
+                case I64_CTZ:
+                case I64_POPCNT:
+                    state.pop();
+                    state.push();
+                    break;
+                case I64_ADD:
+                case I64_SUB:
+                case I64_MUL:
+                case I64_DIV_S:
+                case I64_DIV_U:
+                case I64_REM_S:
+                case I64_REM_U:
+                case I64_AND:
+                case I64_OR:
+                case I64_XOR:
+                case I64_SHL:
+                case I64_SHR_S:
+                case I64_SHR_U:
+                case I64_ROTL:
+                case I64_ROTR:
+                    state.pop();
+                    state.pop();
+                    state.push();
+                    break;
                 case F32_ADD:
                     state.pop();
                     state.pop();
@@ -511,7 +558,7 @@ public class BinaryReader extends BinaryStreamReader {
             falseBranch = new WasmEmptyNode(codeEntry, 0);
         }
 
-        return new WasmIfNode(codeEntry, offset() - startOffset, blockTypeId, trueBranchBlock, falseBranch, initialStackPointer, state.byteConstantOffset() - initialByteConstantOffset);
+        return new WasmIfNode(codeEntry, trueBranchBlock, falseBranch, offset() - startOffset, blockTypeId, initialStackPointer, state.byteConstantOffset() - initialByteConstantOffset);
     }
 
     private void readElementSection() {

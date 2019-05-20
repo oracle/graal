@@ -144,7 +144,7 @@ public abstract class BinaryStreamReader {
 
     public long readSignedInt64(byte[] bytesConsumedOut) {
         byte[] out = bytesConsumedOut != null ? bytesConsumedOut : bytesConsumed;
-        int value = peekSignedInt32(data, offset, out);
+        long value = peekSignedInt64(data, offset, out);
         offset += out[0];
         return value;
     }
@@ -157,7 +157,7 @@ public abstract class BinaryStreamReader {
         byte b;
         do {
             b = peek1(data, offset);
-            result |= ((b & 0x7F) << shift);
+            result |= ((b & 0x7FL) << shift);
             shift += 7;
             offset++;
         } while ((b & 0x80) != 0);
