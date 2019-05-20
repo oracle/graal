@@ -566,11 +566,11 @@ def _get_graalvm_configuration(base_name, stage1=False):
         if vm_dist_name:
             name = base_name + '_' + vm_dist_name
             base_dir = base_name + '_' + vm_dist_name
+            if vm_config_additional_components:
+                name += '_' + '_'.join(vm_config_additional_components)
         else:
-            name = base_name
             base_dir = base_name + '_unknown'
-        if vm_config_additional_components:
-            name += '_' + '_'.join(vm_config_additional_components)
+            name = base_dir + ('_stage1' if stage1 else '')
         name = name.upper()
         base_dir = base_dir.lower().replace('_', '-') + '-{}'.format(_suite.release_version())
 
