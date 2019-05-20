@@ -24,15 +24,12 @@
  */
 package org.graalvm.libgraal;
 
-import org.graalvm.nativeimage.c.function.CEntryPoint;
-import org.graalvm.nativeimage.c.function.CEntryPoint.IsolateThreadContext;
-
 import jdk.vm.ci.hotspot.HotSpotJVMCIRuntime;
 
 /**
- * Scope for calling {@link CEntryPoint}s in libgraal.
- * {@linkplain #LibGraalScope(HotSpotJVMCIRuntime) Opening} a scope attaches the current thread to
- * libgraal and {@linkplain #close() closing} it detaches the current thread.
+ * Scope for calling CEntryPoints in libgraal. {@linkplain #LibGraalScope(HotSpotJVMCIRuntime)
+ * Opening} a scope attaches the current thread to libgraal and {@linkplain #close() closing} it
+ * detaches the current thread.
  */
 public final class LibGraalScope implements AutoCloseable {
 
@@ -47,9 +44,9 @@ public final class LibGraalScope implements AutoCloseable {
      * Gets the isolate thread associated with the current thread. The current thread must be in an
      * {@linkplain #LibGraalScope(HotSpotJVMCIRuntime) opened} scope.
      *
-     * @returns a value that can be used for the {@link IsolateThreadContext} argument of a
-     *          {@code native} method {@link LibGraal#registerNativeMethods linked} to a
-     *          {@link CEntryPoint} function in libgraal
+     * @returns a value that can be used for the IsolateThreadContext argument of a {@code native}
+     *          method {@link LibGraal#registerNativeMethods linked} to a CEntryPoint function in
+     *          libgraal
      * @throws IllegalStateException if not the current thread is not attached to libgraal
      */
     public static long getIsolateThread() {
