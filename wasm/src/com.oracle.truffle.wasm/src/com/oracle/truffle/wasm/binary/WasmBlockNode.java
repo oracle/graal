@@ -38,8 +38,18 @@ import static com.oracle.truffle.wasm.binary.Instructions.END;
 import static com.oracle.truffle.wasm.binary.Instructions.F32_ADD;
 import static com.oracle.truffle.wasm.binary.Instructions.F32_CONST;
 import static com.oracle.truffle.wasm.binary.Instructions.F32_EQ;
+import static com.oracle.truffle.wasm.binary.Instructions.F32_GE;
+import static com.oracle.truffle.wasm.binary.Instructions.F32_GT;
+import static com.oracle.truffle.wasm.binary.Instructions.F32_LE;
+import static com.oracle.truffle.wasm.binary.Instructions.F32_LT;
 import static com.oracle.truffle.wasm.binary.Instructions.F32_NE;
 import static com.oracle.truffle.wasm.binary.Instructions.F64_CONST;
+import static com.oracle.truffle.wasm.binary.Instructions.F64_EQ;
+import static com.oracle.truffle.wasm.binary.Instructions.F64_GE;
+import static com.oracle.truffle.wasm.binary.Instructions.F64_GT;
+import static com.oracle.truffle.wasm.binary.Instructions.F64_LE;
+import static com.oracle.truffle.wasm.binary.Instructions.F64_LT;
+import static com.oracle.truffle.wasm.binary.Instructions.F64_NE;
 import static com.oracle.truffle.wasm.binary.Instructions.I32_ADD;
 import static com.oracle.truffle.wasm.binary.Instructions.I32_AND;
 import static com.oracle.truffle.wasm.binary.Instructions.I32_CLZ;
@@ -431,6 +441,96 @@ public class WasmBlockNode extends WasmNode {
                     stackPointer--;
                     float y = popAsFloat(frame, stackPointer);
                     pushInt(frame, stackPointer, y != x ? 1 : 0);
+                    stackPointer++;
+                    break;
+                }
+                case F32_LT: {
+                    stackPointer--;
+                    float x = popAsFloat(frame, stackPointer);
+                    stackPointer--;
+                    float y = popAsFloat(frame, stackPointer);
+                    pushInt(frame, stackPointer, y < x ? 1 : 0);
+                    stackPointer++;
+                    break;
+                }
+                case F32_GT: {
+                    stackPointer--;
+                    float x = popAsFloat(frame, stackPointer);
+                    stackPointer--;
+                    float y = popAsFloat(frame, stackPointer);
+                    pushInt(frame, stackPointer, y > x ? 1 : 0);
+                    stackPointer++;
+                    break;
+                }
+                case F32_LE: {
+                    stackPointer--;
+                    float x = popAsFloat(frame, stackPointer);
+                    stackPointer--;
+                    float y = popAsFloat(frame, stackPointer);
+                    pushInt(frame, stackPointer, y <= x ? 1 : 0);
+                    stackPointer++;
+                    break;
+                }
+                case F32_GE: {
+                    stackPointer--;
+                    float x = popAsFloat(frame, stackPointer);
+                    stackPointer--;
+                    float y = popAsFloat(frame, stackPointer);
+                    pushInt(frame, stackPointer, y >= x ? 1 : 0);
+                    stackPointer++;
+                    break;
+                }
+                case F64_EQ: {
+                    stackPointer--;
+                    double x = popAsDouble(frame, stackPointer);
+                    stackPointer--;
+                    double y = popAsDouble(frame, stackPointer);
+                    pushInt(frame, stackPointer, y == x ? 1 : 0);
+                    stackPointer++;
+                    break;
+                }
+                case F64_NE: {
+                    stackPointer--;
+                    double x = popAsDouble(frame, stackPointer);
+                    stackPointer--;
+                    double y = popAsDouble(frame, stackPointer);
+                    pushInt(frame, stackPointer, y != x ? 1 : 0);
+                    stackPointer++;
+                    break;
+                }
+                case F64_LT: {
+                    stackPointer--;
+                    double x = popAsDouble(frame, stackPointer);
+                    stackPointer--;
+                    double y = popAsDouble(frame, stackPointer);
+                    pushInt(frame, stackPointer, y < x ? 1 : 0);
+                    stackPointer++;
+                    break;
+                }
+                case F64_GT: {
+                    stackPointer--;
+                    double x = popAsDouble(frame, stackPointer);
+                    stackPointer--;
+                    double y = popAsDouble(frame, stackPointer);
+                    pushInt(frame, stackPointer, y > x ? 1 : 0);
+                    stackPointer++;
+                    break;
+                }
+                case F64_LE: {
+                    stackPointer--;
+                    double x = popAsDouble(frame, stackPointer);
+                    stackPointer--;
+                    double y = popAsDouble(frame, stackPointer);
+                    pushInt(frame, stackPointer, y <= x ? 1 : 0);
+                    stackPointer++;
+                    break;
+                }
+                case F64_GE: {
+                    stackPointer--;
+                    double x = popAsDouble(frame, stackPointer);
+                    stackPointer--;
+                    double y = popAsDouble(frame, stackPointer);
+                    pushInt(frame, stackPointer, y >= x ? 1 : 0);
                     stackPointer++;
                     break;
                 }

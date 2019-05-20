@@ -36,8 +36,18 @@ import static com.oracle.truffle.wasm.binary.Instructions.END;
 import static com.oracle.truffle.wasm.binary.Instructions.F32_ADD;
 import static com.oracle.truffle.wasm.binary.Instructions.F32_CONST;
 import static com.oracle.truffle.wasm.binary.Instructions.F32_EQ;
+import static com.oracle.truffle.wasm.binary.Instructions.F32_GE;
+import static com.oracle.truffle.wasm.binary.Instructions.F32_GT;
+import static com.oracle.truffle.wasm.binary.Instructions.F32_LE;
+import static com.oracle.truffle.wasm.binary.Instructions.F32_LT;
 import static com.oracle.truffle.wasm.binary.Instructions.F32_NE;
 import static com.oracle.truffle.wasm.binary.Instructions.F64_CONST;
+import static com.oracle.truffle.wasm.binary.Instructions.F64_EQ;
+import static com.oracle.truffle.wasm.binary.Instructions.F64_GE;
+import static com.oracle.truffle.wasm.binary.Instructions.F64_GT;
+import static com.oracle.truffle.wasm.binary.Instructions.F64_LE;
+import static com.oracle.truffle.wasm.binary.Instructions.F64_LT;
+import static com.oracle.truffle.wasm.binary.Instructions.F64_NE;
 import static com.oracle.truffle.wasm.binary.Instructions.I32_ADD;
 import static com.oracle.truffle.wasm.binary.Instructions.I32_AND;
 import static com.oracle.truffle.wasm.binary.Instructions.I32_CLZ;
@@ -393,6 +403,20 @@ public class BinaryReader extends BinaryStreamReader {
                     break;
                 case F32_EQ:
                 case F32_NE:
+                case F32_LT:
+                case F32_GT:
+                case F32_LE:
+                case F32_GE:
+                    state.pop();
+                    state.pop();
+                    state.push();
+                    break;
+                case F64_EQ:
+                case F64_NE:
+                case F64_LT:
+                case F64_GT:
+                case F64_LE:
+                case F64_GE:
                     state.pop();
                     state.pop();
                     state.push();
