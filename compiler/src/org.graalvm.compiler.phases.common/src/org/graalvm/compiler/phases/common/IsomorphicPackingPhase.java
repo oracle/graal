@@ -3,13 +3,12 @@ package org.graalvm.compiler.phases.common;
 import jdk.vm.ci.meta.JavaKind;
 import org.graalvm.compiler.graph.Node;
 import org.graalvm.compiler.graph.NodeMap;
-import org.graalvm.compiler.graph.iterators.NodePredicate;
-import org.graalvm.compiler.graph.iterators.NodePredicates;
-import org.graalvm.compiler.nodes.FixedNode;
 import org.graalvm.compiler.nodes.StructuredGraph;
+import org.graalvm.compiler.nodes.ValueNode;
 import org.graalvm.compiler.nodes.cfg.Block;
 import org.graalvm.compiler.nodes.cfg.ControlFlowGraph;
 import org.graalvm.compiler.nodes.memory.FixedAccessNode;
+import org.graalvm.compiler.nodes.memory.LIRLowerableAccess;
 import org.graalvm.compiler.nodes.memory.WriteNode;
 import org.graalvm.compiler.nodes.memory.address.AddressNode;
 import org.graalvm.compiler.phases.BasePhase;
@@ -116,10 +115,85 @@ public final class IsomorphicPackingPhase extends BasePhase<PhaseContext> {
         }
     }
 
+    // Alignments, enum with associated values
+    static class Alignment {
+        private enum Type {
+            TOP,    // these are alignments that have not yet been determined
+            BOTTOM, // these are invalid/nonexistent alignments
+            VALUE   // these are valid alignments, with an associated value
+        }
+
+        private final Type type;
+        private final int value;
+
+        private Alignment(Type type, int value) {
+            this.type = type;
+            this.value = value;
+        }
+
+        public int getValue() {
+            return value;
+        }
+
+        public boolean isValue() {
+            return type == Type.VALUE;
+        }
+
+        public boolean isBottom() {
+            return type == Type.BOTTOM;
+        }
+
+        public boolean isTop() {
+            return type == Type.TOP;
+        }
+
+        public Alignment addValue(int delta) {
+            if (isValue()) {
+                return Alignment.value(value + delta);
+            }
+
+            return bottom();
+        }
+
+        @Override
+        public boolean equals(Object o) {
+            if (this == o) return true;
+            if (o == null || getClass() != o.getClass()) return false;
+            Alignment alignment = (Alignment) o;
+            return value == alignment.value &&
+                    type == alignment.type;
+        }
+
+        @Override
+        public int hashCode() {
+            return Objects.hash(type, value);
+        }
+
+        private final static Alignment top = new Alignment(Type.TOP, -1);
+        private final static Alignment bottom = new Alignment(Type.BOTTOM, -666);
+        private final static HashMap<Integer, Alignment> alignments = new HashMap<>();
+
+        static Alignment top() {
+            return top;
+        }
+
+        static Alignment bottom() {
+            return bottom;
+        }
+
+        static Alignment value(int value) {
+            if (value == -1) return top;
+            if (value < 0) return bottom;
+
+            return alignments.computeIfAbsent(value, v -> new Alignment(Type.VALUE, v));
+        }
+    }
+
     // Class to encapsulate state used by functions in the algorithm
     private static class Instance {
         private final NodeMap<Block> nodeToBlockMap;
         private final Block currentBlock;
+        private final Map<Node, Alignment> alignmentMap = new HashMap<>();
 
         private Instance(NodeMap<Block> nodeToBlockMap, Block currentBlock) {
             this.nodeToBlockMap = nodeToBlockMap;
@@ -135,6 +209,70 @@ public final class IsomorphicPackingPhase extends BasePhase<PhaseContext> {
          */
         private boolean notInBlock(Node node) {
             return nodeToBlockMap.get(node) != currentBlock;
+        }
+
+        /**
+         * Get the width of a vector, measured in the number of underlying elements.
+         * Returns either the loop stride or max vector size (for particular node type).
+         * Loop stride depends on unroll factor
+         * TODO: don't hardcode vector width
+         */
+        private int vectorWidth(Node node) {
+            return 4;
+        }
+
+        private int data_size(Node node) {
+            if (node instanceof LIRLowerableAccess)
+                return data_size((LIRLowerableAccess) node);
+
+            if (node instanceof ValueNode)
+                return data_size((ValueNode) node);
+
+            return -1;
+        }
+
+        private int data_size(ValueNode node) {
+            return node.stamp().getStackKind().getStackKind().getByteCount();
+        }
+
+        private int data_size(LIRLowerableAccess node) {
+            return node.getAccessStamp().getStackKind().getByteCount();
+        }
+
+        /**
+         * Get the alignment of a vector memory reference
+         */
+        private <T extends FixedAccessNode & LIRLowerableAccess> Alignment memoryAlignment(T access, int iv_adjust) {
+            final int byteCount = access.getAccessStamp().getStackKind().getByteCount();
+            // TODO: velt may be different to type at address
+            final int vectorElementWidthInBytes = byteCount * vectorWidth(access);
+
+            // If each vector element is less than 2 bytes, no need to vectorize
+            if (vectorElementWidthInBytes < 2) {
+                return Alignment.bottom();
+            }
+
+            final int offset = (int) access.getAddress().getMaxConstantDisplacement() + iv_adjust * byteCount;
+            final int offset_remainder = offset % vectorElementWidthInBytes;
+
+            return Alignment.value(offset_remainder >= 0 ? offset_remainder : offset_remainder + vectorElementWidthInBytes);
+        }
+
+        private void setAlignment(Node s1, Node s2, Alignment align) {
+            setAlignment(s1, align);
+            if (align.isTop() || align.isBottom()) {
+                setAlignment(s2, align);
+            } else {
+                setAlignment(s2, align.addValue(data_size(s1)));
+            }
+        }
+
+        private void setAlignment(Node node, Alignment alignment) {
+            alignmentMap.put(node, alignment);
+        }
+
+        private Alignment getAlignment(Node node) {
+            return alignmentMap.getOrDefault(node, Alignment.top());
         }
 
         /**
@@ -277,8 +415,22 @@ public final class IsomorphicPackingPhase extends BasePhase<PhaseContext> {
             return s2a.getMaxConstantDisplacement() - s1a.getMaxConstantDisplacement() == s1k.getByteCount();
         }
 
-        private boolean stmts_can_pack(Set<Pack<Node>> packSet, Node left, Node right) {
-            return isomorphic(left, right) && independent(left, right) && packSet.stream().noneMatch(p -> p.match(left, right));
+        private boolean stmts_can_pack(Set<Pack<Node>> packSet, Node s1, Node s2, Alignment align) {
+            // Also make sure that the platform supports vectors of the primitive type of this candidate pack
+            if (isomorphic(s1, s2) && independent(s1, s2) && packSet.stream().noneMatch(p -> p.match(s1, s2))) {
+                final Alignment align_s1 = getAlignment(s1);
+                final Alignment align_s2 = getAlignment(s2);
+
+                final int s2_data_size = data_size(s2);
+                boolean offset = false;
+                if (s2_data_size >= 0) {
+                    offset = align_s2.equals(align.addValue(s2_data_size));
+                }
+
+                return (align_s1.isTop() || align_s1.equals(align)) && (align_s2.isTop() || offset);
+            }
+
+            return false;
         }
 
         /**
@@ -291,6 +443,7 @@ public final class IsomorphicPackingPhase extends BasePhase<PhaseContext> {
 
             final Node left = pack.getLeft();
             final Node right = pack.getRight();
+            final Alignment align = getAlignment(left);
 
             // TODO: bail if left is load (why?)
 
@@ -307,13 +460,14 @@ public final class IsomorphicPackingPhase extends BasePhase<PhaseContext> {
                     if (notInBlock(leftInput) || notInBlock(rightInput)) continue outer;
 
                     // If the statements cannot be packed, bail
-                    if (!stmts_can_pack(packSet, leftInput, rightInput)) continue outer;
+                    if (!stmts_can_pack(packSet, leftInput, rightInput, align)) continue outer;
 
                     // If there are no savings to be gained, bail
                     // NB: here this is basically useless, as <s>our</s> Oracle's formula does not allow for negative savings
                     if (est_savings(packSet, leftInput, rightInput) < 0) continue outer;
 
                     changed |= packSet.add(Pack.pair(leftInput, rightInput));
+                    setAlignment(left, right, align);
                 }
             }
 
@@ -328,6 +482,7 @@ public final class IsomorphicPackingPhase extends BasePhase<PhaseContext> {
         private boolean follow_def_uses(Set<Pack<Node>> packSet, Pack<Node> pack) {
             final Node left = pack.getLeft();
             final Node right = pack.getRight();
+            final Alignment align = getAlignment(left);
 
             int savings = -1;
             Pack<Node> bestPack = null;
@@ -341,7 +496,7 @@ public final class IsomorphicPackingPhase extends BasePhase<PhaseContext> {
                     if (leftUsage == rightUsage || notInBlock(right)) continue;
 
                     // TODO: Rather than adding the first, add the best
-                    if (stmts_can_pack(packSet, leftUsage, rightUsage)) {
+                    if (stmts_can_pack(packSet, leftUsage, rightUsage, align)) {
                         final int currentSavings = est_savings(packSet, leftUsage, rightUsage);
                         if (currentSavings > savings) {
                             savings = currentSavings;
@@ -352,6 +507,7 @@ public final class IsomorphicPackingPhase extends BasePhase<PhaseContext> {
             }
 
             if (savings >= 0) {
+                setAlignment(bestPack.getLeft(), bestPack.getRight(), align);
                 return packSet.add(bestPack);
             }
 
@@ -427,16 +583,19 @@ public final class IsomorphicPackingPhase extends BasePhase<PhaseContext> {
             // Create initial seed set containing memory operations
             List<FixedAccessNode> memoryNodes = // Candidate list of memory nodes
                     StreamSupport.stream(currentBlock.getNodes().spliterator(), false)
-                            .filter(NodePredicates.isA(FixedAccessNode.class)::apply)
-                            .map(x -> (FixedAccessNode) x)
+                            .filter(x -> x instanceof FixedAccessNode && x instanceof LIRLowerableAccess)
+                            .map(x -> (FixedAccessNode & LIRLowerableAccess) x)
+                            .filter(x -> x.getAccessStamp().getStackKind().isPrimitive() && !memoryAlignment(x, 0).isBottom())
                             .collect(Collectors.toList());
 
-            // TODO: do better than this, specifically because of stmts_can_back being inefficient
+            // TODO: Align relative to best reference rather than setting alignment for all
+            for (FixedAccessNode node : memoryNodes) {
+                setAlignment(node, memoryAlignment((FixedAccessNode & LIRLowerableAccess) node, 0));
+            }
+
             for (FixedAccessNode s1 : memoryNodes) {
                 for (FixedAccessNode s2 : memoryNodes) {
-                    if (s1 == s2) continue;
-
-                    if (adjacent(s1, s2) && stmts_can_pack(packSet, s1, s2)) {
+                    if (adjacent(s1, s2) && stmts_can_pack(packSet, s1, s2, getAlignment(s1))) {
                         packSet.add(Pack.pair(s1, s2));
                     }
                 }
