@@ -103,6 +103,7 @@ public abstract class WasmTest {
                     test("(module (func (result i32) i64.const 0xdedababa i64.const 0xbabababa i64.ge_u))", expected(1)),
                     test("(module (func (result i32) i64.const 0xdedababa i64.const 0xdedababa i64.ge_u))", expected(1)),
                     test("(module (func (result i32) i64.const 0xcafebabe i64.const 0xdedababa i64.ge_u))", expected(0)),
+                    test("(module (func (result i32) f32.const 0.5 f32.const 0.5 f32.eq))", expected(1)),
                     test("(module (func (result i32) i32.const 0x12345678 i32.clz))", expected(3)),
                     test("(module (func (result i32) i32.const 0x1234567C i32.ctz))", expected(2)),
                     test("(module (func (result i32) i32.const 0x12345670 i32.ctz))", expected(4)),
