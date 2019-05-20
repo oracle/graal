@@ -108,22 +108,22 @@ public class WasmBlockNode extends WasmNode {
     @CompilationFinal private final int startOffset;
     @CompilationFinal private final byte returnTypeId;
     @CompilationFinal private final int initialStackPointer;
-    @CompilationFinal(dimensions = 1) byte[] constantLengthTable;
+    @CompilationFinal private final int initialConstantOffset;
     @CompilationFinal(dimensions = 1) WasmNode[] nestedControlTable;
 
-    public WasmBlockNode(WasmCodeEntry codeEntry, int startOffset, int byteLength, byte returnTypeId, int initialStackPointer) {
+    public WasmBlockNode(WasmCodeEntry codeEntry, int startOffset, int byteLength, byte returnTypeId, int initialStackPointer, int initialConstantOffset) {
         super(codeEntry, byteLength);
         this.startOffset = startOffset;
         this.returnTypeId = returnTypeId;
         this.initialStackPointer = initialStackPointer;
-        this.constantLengthTable = null;
+        this.initialConstantOffset = initialConstantOffset;
         this.nestedControlTable = null;
     }
 
     @ExplodeLoop
     public void execute(VirtualFrame frame) {
-        int constantOffset = 0;
         int nestedControlOffset = 0;
+        int constantOffset = initialConstantOffset;
         int stackPointer = initialStackPointer;
         int offset = startOffset;
         while (offset < startOffset + byteLength()) {
@@ -163,7 +163,7 @@ public class WasmBlockNode extends WasmNode {
                 }
                 case LOCAL_GET: {
                     int index = BinaryStreamReader.peekUnsignedInt32(codeEntry().data(), offset, null);
-                    byte constantLength = constantLengthTable[constantOffset];
+                    byte constantLength = codeEntry().byteConstants()[constantOffset];
                     constantOffset++;
                     offset += constantLength;
                     byte type = codeEntry().localType(index);
@@ -197,7 +197,7 @@ public class WasmBlockNode extends WasmNode {
                 }
                 case LOCAL_SET: {
                     int index = BinaryStreamReader.peekUnsignedInt32(codeEntry().data(), offset, null);
-                    byte constantLength = constantLengthTable[constantOffset];
+                    byte constantLength = codeEntry().byteConstants()[constantOffset];
                     constantOffset++;
                     offset += constantLength;
                     byte type = codeEntry().localType(index);
@@ -234,7 +234,7 @@ public class WasmBlockNode extends WasmNode {
                     break;
                 case I32_CONST: {
                     int value = BinaryStreamReader.peekSignedInt32(codeEntry().data(), offset, null);
-                    byte constantLength = constantLengthTable[constantOffset];
+                    byte constantLength = codeEntry().byteConstants()[constantOffset];
                     constantOffset++;
                     offset += constantLength;
                     pushInt(frame, stackPointer, value);
@@ -243,7 +243,7 @@ public class WasmBlockNode extends WasmNode {
                 }
                 case I64_CONST: {
                     long value = BinaryStreamReader.peekSignedInt64(codeEntry().data(), offset, null);
-                    byte constantLength = constantLengthTable[constantOffset];
+                    byte constantLength = codeEntry().byteConstants()[constantOffset];
                     constantOffset++;
                     offset += constantLength;
                     push(frame, stackPointer, value);
