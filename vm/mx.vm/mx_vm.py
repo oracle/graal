@@ -235,11 +235,14 @@ class BaseGraalVmLayoutDistribution(mx.LayoutDistribution):
                             _template_subst = mx_subst.SubstitutionEngine(mx_subst.string_substitutions)
                             _template_subst.register_no_arg('target', normpath(_linkname))
                             contents = _template_subst.substitute(template.read())
-                        _add(layout, _dest + basename(_target)[:-len('.exe')] + '.cmd', 'string:{}'.format(contents), _component)
+                        full_dest = _dest + basename(_target)[:-len('.exe')] + '.cmd'
+                        _add(layout, full_dest, 'string:{}'.format(contents), _component)
+                        return full_dest
                     else:
                         mx.abort("Cannot create link on windows for {}->{}".format(_dest, _target))
                 else:
                     _add(layout, _dest, 'link:{}'.format(_linkname), _component)
+                    return _dest + basename(_target)
 
         if is_graalvm:
             if stage1:
@@ -373,16 +376,16 @@ class BaseGraalVmLayoutDistribution(mx.LayoutDistribution):
                         _add(layout, dirname(_launcher_dest) + '/', 'dependency:' + GraalVmLauncher.launcher_project_name(_launcher_config, stage1) + '/sources', _component)
                 # add links from jre/bin to launcher
                 if _launcher_config.default_symlinks:
-                    _add_link(_jdk_jre_bin, _launcher_dest, _component)
-                    _jre_bin_names.append(basename(_launcher_dest))
+                    _link_path = _add_link(_jdk_jre_bin, _launcher_dest, _component)
+                    _jre_bin_names.append(basename(_link_path))
                 for _component_link in _launcher_config.links:
                     _link_dest = _component_base + _component_link
                     # add links `LauncherConfig.links` -> `LauncherConfig.destination`
                     _add(layout, _link_dest, 'link:{}'.format(relpath(_launcher_dest, start=dirname(_link_dest))), _component)
                     # add links from jre/bin to component link
                     if _launcher_config.default_symlinks:
-                        _add_link(_jdk_jre_bin, _link_dest, _component)
-                        _jre_bin_names.append(basename(_link_dest))
+                        _link_path = _add_link(_jdk_jre_bin, _link_dest, _component)
+                        _jre_bin_names.append(basename(_link_path))
                 _add_native_image_macro(_launcher_config, _component)
             for _library_config in _get_library_configs(_component):
                 _add(layout, '<jdk_base>/jre/lib/graalvm/', ['dependency:' + d for d in _library_config.jar_distributions], _component, with_sources=True)
@@ -403,8 +406,8 @@ class BaseGraalVmLayoutDistribution(mx.LayoutDistribution):
                     _add(layout, _vvm_launcher_dest, 'extracted-dependency:tools:VISUALVM_PLATFORM_SPECIFIC/./' + _provided_executable, _component)
                 else:
                     _link_dest = _component_base + _provided_executable
-                    _add_link(_jdk_jre_bin, _link_dest, _component)
-                    _jre_bin_names.append(basename(_link_dest))
+                    _link_path = _add_link(_jdk_jre_bin, _link_dest, _component)
+                    _jre_bin_names.append(basename(_link_path))
 
             if 'jre' in _jdk_jre_bin:
                 # Add jdk to jre links
