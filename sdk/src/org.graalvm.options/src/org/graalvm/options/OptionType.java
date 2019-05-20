@@ -105,6 +105,7 @@ public final class OptionType<T> {
      *
      * @since 19.0
      */
+    @SuppressWarnings("unchecked")
     public OptionType(String name, Function<String, T> stringConverter) {
         this(name, stringConverter, (Consumer<T>) EMPTY_VALIDATOR);
     }
@@ -288,21 +289,22 @@ public final class OptionType<T> {
      * Returns the default option type for property maps for the given value class. Returns
      * <code>null</code> if no default option type is available for the value class.
      */
+    @SuppressWarnings("unchecked")
     public static <V> OptionType<Map<String, V>> mapOf(Class<V> valueClass) {
         final OptionType<V> valueType = defaultType(valueClass);
         if (valueType == null) {
             return null;
         }
-        return new OptionType<>("Properties", Collections.emptyMap(), new Converter<Map<String, V>>() {
-            public Map<String, V> convert(Map<String, V> previousValue, String key, String t) {
+        return new OptionType<>("Map", new Converter<Map<String, V>>() {
+            public Map<String, V> convert(Map<String, V> previousValue, String key, String value) {
                 Map<String, V> map = previousValue;
                 if (!(map instanceof ReadonlyPropertiesMap)) {
                     map = new ReadonlyPropertiesMap<>(new HashMap<>(map));
                 }
-                ((ReadonlyPropertiesMap<V>) map).backingMap.put(key, valueType.convert(map.get(key), key, t));
+                ((ReadonlyPropertiesMap<V>) map).backingMap.put(key, valueType.convert(map.get(key), key, value));
                 return map;
             }
-        });
+        }, (Consumer<Map<String, V>>) EMPTY_VALIDATOR);
     }
 
     /**
@@ -317,7 +319,7 @@ public final class OptionType<T> {
     }
 
     @FunctionalInterface
-    public interface Converter<T> {
+    private interface Converter<T> {
 
         T convert(T previousValue, String key, String value);
 

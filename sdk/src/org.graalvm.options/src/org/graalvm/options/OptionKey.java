@@ -40,6 +40,7 @@
  */
 package org.graalvm.options;
 
+import java.util.Collections;
 import java.util.Map;
 import java.util.Objects;
 
@@ -90,7 +91,7 @@ public final class OptionKey<T> {
         if (type == null) {
             throw new IllegalArgumentException("No default type specified for type " + valueClass.getName());
         }
-        return new OptionKey<>(type.getDefaultValue(), type);
+        return new OptionKey<>(Collections.emptyMap(), type);
     }
 
     /**
