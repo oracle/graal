@@ -83,14 +83,15 @@ public final class Target_java_lang_Class {
         EspressoContext context = EspressoLanguage.getCurrentContext();
         Meta meta = context.getMeta();
         if (StaticObject.isNull(name)) {
-            throw meta.throwExWithMessage(meta.ClassNotFoundException, name);
+            throw meta.throwExWithMessage(meta.NullPointerException, name);
         }
 
         try {
             Klass klass = context.getRegistries().loadKlass(context.getTypes().fromClassGetName(Meta.toHostString(name)), loader);
 
             if (klass == null) {
-                throw meta.throwExWithMessage(meta.ClassNotFoundException, name);
+                throw meta.throwExWithMessage(NoClassDefFoundError.class, Meta.toHostString(name));
+                // throw meta.throwExWithMessage(meta.ClassNotFoundException, name);
             }
 
             if (initialize) {
@@ -122,10 +123,7 @@ public final class Target_java_lang_Class {
         // TODO(peterssen): From Hostpot: 4496456 We need to filter out
         // java.lang.Throwable.backtrace.
 
-        Klass mirrorKlass = self.getMirrorKlass();
-        mirrorKlass.safeInitialize();
-
-        final Field[] fields = Arrays.stream(mirrorKlass.getDeclaredFields()).filter(new Predicate<Field>() {
+        final Field[] fields = Arrays.stream(self.getMirrorKlass().getDeclaredFields()).filter(new Predicate<Field>() {
             @Override
             public boolean test(Field f) {
                 return (!publicOnly || f.isPublic());
@@ -189,10 +187,7 @@ public final class Target_java_lang_Class {
 
     @Substitution(hasReceiver = true)
     public static @Host(Constructor[].class) StaticObject getDeclaredConstructors0(@Host(Class.class) StaticObject self, boolean publicOnly) {
-        Klass mirrorKlass = self.getMirrorKlass();
-        mirrorKlass.safeInitialize();
-
-        final Method[] constructors = Arrays.stream(mirrorKlass.getDeclaredConstructors()).filter(new Predicate<Method>() {
+        final Method[] constructors = Arrays.stream(self.getMirrorKlass().getDeclaredConstructors()).filter(new Predicate<Method>() {
             @Override
             public boolean test(Method m) {
                 return Name.INIT.equals(m.getName()) && (!publicOnly || m.isPublic());
@@ -285,10 +280,7 @@ public final class Target_java_lang_Class {
     @Substitution(hasReceiver = true)
     public static @Host(java.lang.reflect.Method[].class) StaticObject getDeclaredMethods0(@Host(Class.class) StaticObject self, boolean publicOnly) {
 
-        Klass mirrorKlass = self.getMirrorKlass();
-        mirrorKlass.safeInitialize();
-
-        final Method[] methods = Arrays.stream(mirrorKlass.getDeclaredMethods()).filter(new Predicate<Method>() {
+        final Method[] methods = Arrays.stream(self.getMirrorKlass().getDeclaredMethods()).filter(new Predicate<Method>() {
             @Override
             public boolean test(Method m) {
                 return (!publicOnly || m.isPublic()) &&

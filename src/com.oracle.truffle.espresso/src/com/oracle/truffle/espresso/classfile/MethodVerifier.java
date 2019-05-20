@@ -22,14 +22,6 @@
  */
 package com.oracle.truffle.espresso.classfile;
 
-import com.oracle.truffle.espresso.bytecode.BytecodeLookupSwitch;
-import com.oracle.truffle.espresso.bytecode.BytecodeStream;
-import com.oracle.truffle.espresso.bytecode.BytecodeTableSwitch;
-import com.oracle.truffle.espresso.meta.EspressoError;
-
-import java.util.ArrayList;
-import java.util.Arrays;
-
 import static com.oracle.truffle.espresso.bytecode.Bytecodes.AALOAD;
 import static com.oracle.truffle.espresso.bytecode.Bytecodes.AASTORE;
 import static com.oracle.truffle.espresso.bytecode.Bytecodes.ACONST_NULL;
@@ -235,6 +227,19 @@ import static com.oracle.truffle.espresso.bytecode.Bytecodes.SWAP;
 import static com.oracle.truffle.espresso.bytecode.Bytecodes.TABLESWITCH;
 import static com.oracle.truffle.espresso.bytecode.Bytecodes.WIDE;
 
+import java.util.ArrayList;
+import java.util.Arrays;
+
+import com.oracle.truffle.espresso.bytecode.BytecodeLookupSwitch;
+import com.oracle.truffle.espresso.bytecode.BytecodeStream;
+import com.oracle.truffle.espresso.bytecode.BytecodeTableSwitch;
+import com.oracle.truffle.espresso.bytecode.Bytecodes;
+import com.oracle.truffle.espresso.descriptors.Types;
+import com.oracle.truffle.espresso.impl.Field;
+import com.oracle.truffle.espresso.impl.Klass;
+import com.oracle.truffle.espresso.impl.Method;
+import com.oracle.truffle.espresso.meta.EspressoError;
+
 /**
  * Extremely light-weight java bytecode verifier. Performs only very basic verifications.
  *
@@ -249,20 +254,23 @@ public class MethodVerifier {
     private final BytecodeStream code;
     private final int maxStack;
     private final int maxLocals;
-    private final ConstantPool pool;
+    private final RuntimeConstantPool pool;
     private final byte[] verified;
     private final StackFrame[] stackFrames;
     private final String sig;
     private final boolean isStatic;
+    private final Klass thisKlass;
 
     private enum Operand {
         // TODO(garcia) subTyping
+        // TODO(garcia) array typing
         Int,
         Float,
         Double,
         Long,
         Object,
         Void,
+        ReturnAddress,
         Invalid;
 
         @Override
@@ -294,6 +302,8 @@ public class MethodVerifier {
                 return "A";
             case Void:
                 return "V";
+            case ReturnAddress:
+                return "ReturnAddress";
             case Invalid:
                 return "Invalid";
             default:
@@ -308,6 +318,7 @@ public class MethodVerifier {
     static private final Operand Object = Operand.Object;
     static private final Operand Void = Operand.Void;
     static private final Operand Invalid = Operand.Invalid;
+    static private final Operand ReturnAddress = Operand.ReturnAddress;
 
     static private final byte UNREACHABLE = 0;
     static private final byte UNSEEN = 1;
@@ -320,7 +331,7 @@ public class MethodVerifier {
      * @param code Raw bytecode representation for the method to verify
      * @param pool The constant pool to be used with this method.
      */
-    private MethodVerifier(int maxStack, int maxLocals, byte[] code, ConstantPool pool, String sig, boolean isStatic) {
+    private MethodVerifier(int maxStack, int maxLocals, byte[] code, RuntimeConstantPool pool, String sig, boolean isStatic, Klass thisKlass) {
         this.code = new BytecodeStream(code);
         this.maxStack = maxStack;
         this.maxLocals = maxLocals;
@@ -329,20 +340,22 @@ public class MethodVerifier {
         this.stackFrames = new StackFrame[code.length];
         this.sig = sig;
         this.isStatic = isStatic;
+        this.thisKlass = thisKlass;
     }
 
     /**
      * Utility for ease of use in Espresso
      *
-     * @param codeAttribute The code attribute of the verified method
-     * @param pool The constant pool of the declaring class
+     * @param m the method to verify
      * @return true, or throws ClassFormatError or VerifyError.
      */
-    public static boolean verify(CodeAttribute codeAttribute, ConstantPool pool, String sig, boolean isStatic) {
+    public static boolean verify(Method m) {
+        CodeAttribute codeAttribute = m.getCodeAttribute();
         if (codeAttribute == null) {
             return true;
         }
-        return new MethodVerifier(codeAttribute.getMaxStack(), codeAttribute.getMaxLocals(), codeAttribute.getCode(), pool, sig, isStatic).verify();
+        return new MethodVerifier(codeAttribute.getMaxStack(), codeAttribute.getMaxLocals(), codeAttribute.getCode(), m.getRuntimeConstantPool(), m.getRawSignature().toString(), m.isStatic(),
+                        m.getDeclaringKlass()).verify();
     }
 
     /**
@@ -448,381 +461,446 @@ public class MethodVerifier {
         }
         verified[BCI] = DONE;
         int curOpcode;
-        curOpcode = code.currentBC(BCI);
+        curOpcode = code.opcode(BCI);
         if (!(curOpcode <= QUICK)) {
             throw new VerifyError("invalid bytecode: " + code.readByte(BCI - 1));
         }
         // @formatter:off
         // Checkstyle: stop
-        switch (curOpcode) {
-            case NOP: break;
-            case ACONST_NULL: stack.pushObj(); break;
-
-            case ICONST_M1:
-            case ICONST_0:
-            case ICONST_1:
-            case ICONST_2:
-            case ICONST_3:
-            case ICONST_4:
-            case ICONST_5: stack.pushInt(); break;
-
-            case LCONST_0:
-            case LCONST_1: stack.pushLong(); break;
-
-            case FCONST_0:
-            case FCONST_1:
-            case FCONST_2: stack.pushFloat(); break;
-
-            case DCONST_0:
-            case DCONST_1: stack.pushDouble(); break;
-
-            case BIPUSH: stack.pushInt(); break;
-            case SIPUSH: stack.pushInt(); break;
-
-            case LDC:
-            case LDC_W:
-            case LDC2_W:
-                stack.push(fromTag(pool.at(code.readCPI(BCI)).tag()));
-                break;
-
-            case ILOAD: locals.load(code.readLocalIndex(BCI), Int); stack.pushInt(); break;
-            case LLOAD: locals.load(code.readLocalIndex(BCI), Long); stack.pushLong(); break;
-            case FLOAD: locals.load(code.readLocalIndex(BCI), Float); stack.pushFloat(); break;
-            case DLOAD: locals.load(code.readLocalIndex(BCI), Double); stack.pushDouble(); break;
-            case ALOAD: locals.load(code.readLocalIndex(BCI), Object); stack.pushObj(); break;
-
-            case ILOAD_0: 
-            case ILOAD_1:
-            case ILOAD_2:
-            case ILOAD_3: locals.load(curOpcode - ILOAD_0, Int); stack.pushInt(); break;
-            case LLOAD_0:
-            case LLOAD_1:
-            case LLOAD_2:
-            case LLOAD_3: locals.load(curOpcode - LLOAD_0, Long); stack.pushLong(); break;
-            case FLOAD_0:
-            case FLOAD_1:
-            case FLOAD_2:
-            case FLOAD_3: locals.load(curOpcode - FLOAD_0, Float); stack.pushFloat(); break;
-            case DLOAD_0:
-            case DLOAD_1:
-            case DLOAD_2:
-            case DLOAD_3: locals.load(curOpcode - DLOAD_0, Double); stack.pushDouble(); break;
-            case ALOAD_0:
-            case ALOAD_1:
-            case ALOAD_2:
-            case ALOAD_3: locals.load(curOpcode - ALOAD_0, Object); stack.pushObj(); break;
-
-            case IALOAD: stack.popInt(); stack.popObj(); stack.pushInt(); break;
-            case LALOAD: stack.popInt(); stack.popObj(); stack.pushLong(); break;
-            case FALOAD: stack.popInt(); stack.popObj(); stack.pushFloat(); break;
-            case DALOAD: stack.popInt(); stack.popObj(); stack.pushDouble(); break;
-            case AALOAD: stack.popInt(); stack.popObj(); stack.pushObj(); break;
-            case BALOAD: stack.popInt(); stack.popObj(); stack.pushInt(); break;
-            case CALOAD: stack.popInt(); stack.popObj(); stack.pushInt(); break;
-            case SALOAD: stack.popInt(); stack.popObj(); stack.pushInt(); break;
-
-            case ISTORE: stack.popInt(); locals.store(code.readLocalIndex(BCI), Int); break;
-            case LSTORE: stack.popLong(); locals.store(code.readLocalIndex(BCI), Long); break;
-            case FSTORE: stack.popFloat(); locals.store(code.readLocalIndex(BCI), Float); break;
-            case DSTORE: stack.popDouble(); locals.store(code.readLocalIndex(BCI), Double); break;
-            case ASTORE: stack.popObj(); locals.store(code.readLocalIndex(BCI), Object); break;
-
-            case ISTORE_0:
-            case ISTORE_1:
-            case ISTORE_2:
-            case ISTORE_3: stack.popInt(); locals.store(curOpcode - ISTORE_0, Int); break;
-            case LSTORE_0:
-            case LSTORE_1:
-            case LSTORE_2:
-            case LSTORE_3: stack.popLong(); locals.store(curOpcode - LSTORE_0, Long); break;
-            case FSTORE_0:
-            case FSTORE_1:
-            case FSTORE_2:
-            case FSTORE_3: stack.popFloat(); locals.store(curOpcode - FSTORE_0, Float); break;
-            case DSTORE_0:
-            case DSTORE_1:
-            case DSTORE_2:
-            case DSTORE_3: stack.popDouble(); locals.store(curOpcode - DSTORE_0, Double); break;
-            case ASTORE_0:
-            case ASTORE_1:
-            case ASTORE_2:
-            case ASTORE_3: stack.popObj(); locals.store(curOpcode - ASTORE_0, Object); break;
-
-            case IASTORE: stack.popInt(); stack.popInt(); stack.popObj(); break;
-            case LASTORE: stack.popLong(); stack.popInt(); stack.popObj(); break;
-            case FASTORE: stack.popFloat(); stack.popInt(); stack.popObj(); break;
-            case DASTORE: stack.popDouble(); stack.popInt(); stack.popObj(); break;
-            case AASTORE: stack.popObj(); stack.popInt(); stack.popObj(); break;
-            case BASTORE: stack.popInt(); stack.popInt(); stack.popObj(); break;
-            case CASTORE: stack.popInt(); stack.popInt(); stack.popObj(); break;
-            case SASTORE: stack.popInt(); stack.popInt(); stack.popObj(); break;
-
-            case POP: stack.pop(); break;
-            case POP2: stack.pop2(); break;
-
-            case DUP: stack.dup(); break;
-            case DUP_X1: stack.dupx1(); break;
-            case DUP_X2: stack.dupx2(); break;
-            case DUP2: stack.dup2(); break;
-            case DUP2_X1: stack.dup2x1(); break;
-            case DUP2_X2: stack.dup2x2(); break;
-            case SWAP: stack.swap(); break;
-
-            case IADD: stack.popInt(); stack.popInt(); stack.pushInt(); break;
-            case LADD: stack.popLong(); stack.popLong(); stack.pushLong();break;
-            case FADD: stack.popFloat(); stack.popFloat(); stack.pushFloat();break;
-            case DADD: stack.popDouble(); stack.popDouble(); stack.pushDouble();break;
-
-            case ISUB: stack.popInt(); stack.popInt(); stack.pushInt(); break;
-            case LSUB: stack.popLong(); stack.popLong(); stack.pushLong();break;
-            case FSUB: stack.popFloat(); stack.popFloat(); stack.pushFloat();break;
-            case DSUB: stack.popDouble(); stack.popDouble(); stack.pushDouble();break;
-
-            case IMUL: stack.popInt(); stack.popInt(); stack.pushInt(); break;
-            case LMUL: stack.popLong(); stack.popLong(); stack.pushLong();break;
-            case FMUL: stack.popFloat(); stack.popFloat(); stack.pushFloat();break;
-            case DMUL: stack.popDouble(); stack.popDouble(); stack.pushDouble();break;
-
-            case IDIV: stack.popInt(); stack.popInt(); stack.pushInt(); break;
-            case LDIV: stack.popLong(); stack.popLong(); stack.pushLong();break;
-            case FDIV: stack.popFloat(); stack.popFloat(); stack.pushFloat();break;
-            case DDIV: stack.popDouble(); stack.popDouble(); stack.pushDouble();break;
-
-            case IREM: stack.popInt(); stack.popInt(); stack.pushInt(); break;
-            case LREM: stack.popLong(); stack.popLong(); stack.pushLong();break;
-            case FREM: stack.popFloat(); stack.popFloat(); stack.pushFloat();break;
-            case DREM: stack.popDouble(); stack.popDouble(); stack.pushDouble();break;
-
-            case INEG:  stack.popInt(); stack.pushInt(); break;
-            case LNEG:  stack.popLong(); stack.pushLong();break;
-            case FNEG:  stack.popFloat(); stack.pushFloat();break;
-            case DNEG:  stack.popDouble(); stack.pushDouble();break;
-
-            case ISHL: stack.popInt(); stack.popInt(); stack.pushInt(); break;
-            case LSHL: stack.popInt(); stack.popLong(); stack.pushLong();break;
-            case ISHR: stack.popInt(); stack.popInt(); stack.pushInt(); break;
-            case LSHR: stack.popInt(); stack.popLong(); stack.pushLong();break;
-            case IUSHR: stack.popInt(); stack.popInt(); stack.pushInt(); break;
-            case LUSHR: stack.popInt(); stack.popLong(); stack.pushLong();break;
-
-            case IAND: stack.popInt(); stack.popInt(); stack.pushInt(); break;
-            case LAND: stack.popLong(); stack.popLong(); stack.pushLong();break;
-
-            case IOR: stack.popInt(); stack.popInt(); stack.pushInt(); break;
-            case LOR: stack.popLong(); stack.popLong(); stack.pushLong();break;
-
-            case IXOR: stack.popInt(); stack.popInt(); stack.pushInt(); break;
-            case LXOR: stack.popLong(); stack.popLong(); stack.pushLong();break;
-
-            case IINC: locals.load(code.readLocalIndex(BCI), Int); break;
-
-            case I2L: stack.popInt(); stack.pushLong(); break;
-            case I2F: stack.popInt(); stack.pushFloat(); break;
-            case I2D: stack.popInt(); stack.pushDouble(); break;
-
-            case L2I: stack.popLong(); stack.pushInt(); break;
-            case L2F: stack.popLong(); stack.pushFloat(); break;
-            case L2D: stack.popLong(); stack.pushDouble(); break;
-
-            case F2I: stack.popFloat(); stack.pushInt(); break;
-            case F2L: stack.popFloat(); stack.pushLong();break;
-            case F2D: stack.popFloat(); stack.pushDouble();break;
-
-            case D2I: stack.popDouble(); stack.pushInt();break;
-            case D2L: stack.popDouble(); stack.pushLong();break;
-            case D2F: stack.popDouble(); stack.pushFloat();break;
-
-            case I2B: stack.popInt(); stack.pushInt();break;
-            case I2C: stack.popInt(); stack.pushInt();break;
-            case I2S: stack.popInt(); stack.pushInt();break;
-
-            case LCMP: stack.popLong(); stack.popLong(); stack.pushInt();break;
-            case FCMPL:
-            case FCMPG: stack.popFloat(); stack.popFloat(); stack.pushInt();break;
-            case DCMPL:
-            case DCMPG: stack.popDouble(); stack.popDouble(); stack.pushInt();break;
-
-            case IFEQ: // fall through
-            case IFNE: // fall through
-            case IFLT: // fall through
-            case IFGE: // fall through
-            case IFGT: // fall through
-            case IFLE:
-                stack.popInt();
-                branch(code.readBranchDest(BCI), stack, locals);
-                break;
-            case IF_ICMPEQ: // fall through
-            case IF_ICMPNE: // fall through
-            case IF_ICMPLT: // fall through
-            case IF_ICMPGE: // fall through
-            case IF_ICMPGT: // fall through
-            case IF_ICMPLE:
-                stack.popInt(); stack.popInt();
-                branch(code.readBranchDest(BCI), stack, locals);
-                break;
-            case IF_ACMPEQ: // fall through
-            case IF_ACMPNE:
-                stack.popObj(); stack.popObj();
-                branch(code.readBranchDest(BCI), stack, locals);
-                break;
-
-            case GOTO:
-            case GOTO_W:
-                branch(code.readBranchDest(BCI), stack, locals);
-                return BCI;
-            case IFNULL: // fall through
-            case IFNONNULL:
-                stack.popObj();
-                branch(code.readBranchDest(BCI), stack, locals);
-                break;
-            case JSR: // fall through
-            case JSR_W: {
-                // Ignore JSR
-//                stack.pushObj();
-//                branch(code.readBranchDest(BCI), stack);
-                break;
-            }
-            case RET: {
-                return BCI;
-            }
-
-            // @formatter:on
-            // Checkstyle: resume
-            case TABLESWITCH: {
-                stack.popInt();
-                BytecodeTableSwitch switchHelper = code.getBytecodeTableSwitch();
-                int low = switchHelper.lowKey(BCI);
-                int high = switchHelper.highKey(BCI);
-                for (int i = low; i < high; i++) {
-                    branch(switchHelper.targetAt(BCI, i - low), stack, locals);
-                }
-                return switchHelper.defaultTarget(BCI);
-            }
-            case LOOKUPSWITCH: {
-                stack.popInt();
-                BytecodeLookupSwitch switchHelper = code.getBytecodeLookupSwitch();
-                int low = 0;
-                int high = switchHelper.numberOfCases(BCI) - 1;
-                for (int i = low; i <= high; i++) {
-                    branch(BCI + switchHelper.offsetAt(BCI, i), stack, locals);
-                }
-                return switchHelper.defaultTarget(BCI);
-            }
-            // @formatter:off
-            // Checkstyle: stop
-            case IRETURN: stack.popInt(); return BCI;
-            case LRETURN: stack.popLong(); return BCI;
-            case FRETURN: stack.popFloat(); return BCI;
-            case DRETURN: stack.popDouble(); return BCI;
-            case ARETURN: stack.popObj(); return BCI;
-            case RETURN: return BCI;
-
-            case GETSTATIC:
-            case GETFIELD:
-            {
-                PoolConstant pc = pool.at(code.readCPI(BCI));
-                if (!(pc instanceof FieldRefConstant)) {
-                    throw new VerifyError();
-                }
-                Operand kind = stringToKind(((FieldRefConstant) pc).getType(pool).toString());
-                if (curOpcode == GETFIELD) {
-                    stack.popObj();
-                }
-                stack.push(kind);
-                break;
-            }
-            case PUTSTATIC:
-            case PUTFIELD: {
-                PoolConstant pc = pool.at(code.readCPI(BCI));
-                if (!(pc instanceof FieldRefConstant)) {
-                    throw new VerifyError();
-                }
-                Operand kind = stringToKind(((FieldRefConstant) pc).getType(pool).toString());
-                stack.pop(kind);
-                if (curOpcode == PUTFIELD) {
-                    stack.popObj();
-                }
-                break;
-            }
-
-            case INVOKEVIRTUAL:
-            case INVOKESPECIAL:
-            case INVOKESTATIC:
-            case INVOKEINTERFACE: {
-                PoolConstant pc = pool.at(code.readCPI(BCI));
-                if (!(pc instanceof MethodRefConstant)) {
-                    throw new VerifyError("Invalid CP constant for a MethodRef: " + pc.getClass().getName());
-                }
-                Operand[] parsedSig = parseSig((((MethodRefConstant) pc).getSignature(pool)).toString());
-                if (parsedSig.length == 0) {
-                    throw new ClassFormatError("Method ref with no return value !");
-                }
-                for (int i = parsedSig.length - 2; i>=0; i--) {
-                    stack.pop(parsedSig[i]);
-                }
-                if (curOpcode != INVOKESTATIC) {
-                    stack.popObj();
-                }
-                Operand returnKind = parsedSig[parsedSig.length - 1];
-                if (!(returnKind == Void)) {
-                    stack.push(returnKind);
-                }
-                break;
-            }
-
-            case NEW: stack.pushObj(); break;
-            case NEWARRAY: stack.popInt(); stack.pushObj(); break;
-            case ANEWARRAY: stack.popInt(); stack.pushObj(); break;
-            case ARRAYLENGTH: stack.popObj(); stack.pushInt(); break;
-
-            case ATHROW: stack.popObj(); return BCI;
-
-            case CHECKCAST: stack.popObj(); stack.pushObj(); break;
-            case INSTANCEOF: stack.popObj(); stack.pushInt(); break;
-
-            case MONITORENTER: stack.popObj(); break;
-            case MONITOREXIT: stack.popObj(); break;
-
-            case WIDE: break;
-            case MULTIANEWARRAY:
-                int dim = code.readUByte(BCI + 3);
-                for (int i = 0; i<dim; i++) {
+        wideEscape:
+        // EXTREMELY dirty trick to handle WIDE. This is not supposed to be a loop ! (returns on first iteration)
+        while (true) {
+            switch (curOpcode) {
+                case NOP: break;
+                case ACONST_NULL: stack.pushObj(); break;
+    
+                case ICONST_M1:
+                case ICONST_0:
+                case ICONST_1:
+                case ICONST_2:
+                case ICONST_3:
+                case ICONST_4:
+                case ICONST_5: stack.pushInt(); break;
+    
+                case LCONST_0:
+                case LCONST_1: stack.pushLong(); break;
+    
+                case FCONST_0:
+                case FCONST_1:
+                case FCONST_2: stack.pushFloat(); break;
+    
+                case DCONST_0:
+                case DCONST_1: stack.pushDouble(); break;
+    
+                case BIPUSH: stack.pushInt(); break;
+                case SIPUSH: stack.pushInt(); break;
+    
+                case LDC:
+                case LDC_W:
+                case LDC2_W:
+                    stack.push(fromTag(pool.at(code.readCPI(BCI)).tag()));
+                    break;
+    
+                case ILOAD: locals.load(code.readLocalIndex(BCI), Int); stack.pushInt(); break;
+                case LLOAD: locals.load(code.readLocalIndex(BCI), Long); stack.pushLong(); break;
+                case FLOAD: locals.load(code.readLocalIndex(BCI), Float); stack.pushFloat(); break;
+                case DLOAD: locals.load(code.readLocalIndex(BCI), Double); stack.pushDouble(); break;
+                case ALOAD: locals.load(code.readLocalIndex(BCI), Object); stack.pushObj(); break;
+    
+                case ILOAD_0: 
+                case ILOAD_1:
+                case ILOAD_2:
+                case ILOAD_3: locals.load(curOpcode - ILOAD_0, Int); stack.pushInt(); break;
+                case LLOAD_0:
+                case LLOAD_1:
+                case LLOAD_2:
+                case LLOAD_3: locals.load(curOpcode - LLOAD_0, Long); stack.pushLong(); break;
+                case FLOAD_0:
+                case FLOAD_1:
+                case FLOAD_2:
+                case FLOAD_3: locals.load(curOpcode - FLOAD_0, Float); stack.pushFloat(); break;
+                case DLOAD_0:
+                case DLOAD_1:
+                case DLOAD_2:
+                case DLOAD_3: locals.load(curOpcode - DLOAD_0, Double); stack.pushDouble(); break;
+                case ALOAD_0:
+                case ALOAD_1:
+                case ALOAD_2:
+                case ALOAD_3: locals.load(curOpcode - ALOAD_0, Object); stack.pushObj(); break;
+    
+                case IALOAD: stack.popInt(); stack.popObj(); stack.pushInt(); break;
+                case LALOAD: stack.popInt(); stack.popObj(); stack.pushLong(); break;
+                case FALOAD: stack.popInt(); stack.popObj(); stack.pushFloat(); break;
+                case DALOAD: stack.popInt(); stack.popObj(); stack.pushDouble(); break;
+                case AALOAD: stack.popInt(); stack.popObj(); stack.pushObj(); break;
+                case BALOAD: stack.popInt(); stack.popObj(); stack.pushInt(); break;
+                case CALOAD: stack.popInt(); stack.popObj(); stack.pushInt(); break;
+                case SALOAD: stack.popInt(); stack.popObj(); stack.pushInt(); break;
+    
+                case ISTORE: stack.popInt(); locals.store(code.readLocalIndex(BCI), Int); break;
+                case LSTORE: stack.popLong(); locals.store(code.readLocalIndex(BCI), Long); break;
+                case FSTORE: stack.popFloat(); locals.store(code.readLocalIndex(BCI), Float); break;
+                case DSTORE: stack.popDouble(); locals.store(code.readLocalIndex(BCI), Double); break;
+                case ASTORE: locals.store(code.readLocalIndex(BCI), stack.popObjOrRA()); break;
+    
+                case ISTORE_0:
+                case ISTORE_1:
+                case ISTORE_2:
+                case ISTORE_3: stack.popInt(); locals.store(curOpcode - ISTORE_0, Int); break;
+                case LSTORE_0:
+                case LSTORE_1:
+                case LSTORE_2:
+                case LSTORE_3: stack.popLong(); locals.store(curOpcode - LSTORE_0, Long); break;
+                case FSTORE_0:
+                case FSTORE_1:
+                case FSTORE_2:
+                case FSTORE_3: stack.popFloat(); locals.store(curOpcode - FSTORE_0, Float); break;
+                case DSTORE_0:
+                case DSTORE_1:
+                case DSTORE_2:
+                case DSTORE_3: stack.popDouble(); locals.store(curOpcode - DSTORE_0, Double); break;
+                case ASTORE_0:
+                case ASTORE_1:
+                case ASTORE_2:
+                case ASTORE_3: locals.store(curOpcode - ASTORE_0, stack.popObjOrRA()); break;
+    
+                case IASTORE: stack.popInt(); stack.popInt(); stack.popObj(); break;
+                case LASTORE: stack.popLong(); stack.popInt(); stack.popObj(); break;
+                case FASTORE: stack.popFloat(); stack.popInt(); stack.popObj(); break;
+                case DASTORE: stack.popDouble(); stack.popInt(); stack.popObj(); break;
+                case AASTORE: stack.popObj(); stack.popInt(); stack.popObj(); break;
+                case BASTORE: stack.popInt(); stack.popInt(); stack.popObj(); break;
+                case CASTORE: stack.popInt(); stack.popInt(); stack.popObj(); break;
+                case SASTORE: stack.popInt(); stack.popInt(); stack.popObj(); break;
+    
+                case POP: stack.pop(); break;
+                case POP2: stack.pop2(); break;
+    
+                case DUP: stack.dup(); break;
+                case DUP_X1: stack.dupx1(); break;
+                case DUP_X2: stack.dupx2(); break;
+                case DUP2: stack.dup2(); break;
+                case DUP2_X1: stack.dup2x1(); break;
+                case DUP2_X2: stack.dup2x2(); break;
+                case SWAP: stack.swap(); break;
+    
+                case IADD: stack.popInt(); stack.popInt(); stack.pushInt(); break;
+                case LADD: stack.popLong(); stack.popLong(); stack.pushLong();break;
+                case FADD: stack.popFloat(); stack.popFloat(); stack.pushFloat();break;
+                case DADD: stack.popDouble(); stack.popDouble(); stack.pushDouble();break;
+    
+                case ISUB: stack.popInt(); stack.popInt(); stack.pushInt(); break;
+                case LSUB: stack.popLong(); stack.popLong(); stack.pushLong();break;
+                case FSUB: stack.popFloat(); stack.popFloat(); stack.pushFloat();break;
+                case DSUB: stack.popDouble(); stack.popDouble(); stack.pushDouble();break;
+    
+                case IMUL: stack.popInt(); stack.popInt(); stack.pushInt(); break;
+                case LMUL: stack.popLong(); stack.popLong(); stack.pushLong();break;
+                case FMUL: stack.popFloat(); stack.popFloat(); stack.pushFloat();break;
+                case DMUL: stack.popDouble(); stack.popDouble(); stack.pushDouble();break;
+    
+                case IDIV: stack.popInt(); stack.popInt(); stack.pushInt(); break;
+                case LDIV: stack.popLong(); stack.popLong(); stack.pushLong();break;
+                case FDIV: stack.popFloat(); stack.popFloat(); stack.pushFloat();break;
+                case DDIV: stack.popDouble(); stack.popDouble(); stack.pushDouble();break;
+    
+                case IREM: stack.popInt(); stack.popInt(); stack.pushInt(); break;
+                case LREM: stack.popLong(); stack.popLong(); stack.pushLong();break;
+                case FREM: stack.popFloat(); stack.popFloat(); stack.pushFloat();break;
+                case DREM: stack.popDouble(); stack.popDouble(); stack.pushDouble();break;
+    
+                case INEG:  stack.popInt(); stack.pushInt(); break;
+                case LNEG:  stack.popLong(); stack.pushLong();break;
+                case FNEG:  stack.popFloat(); stack.pushFloat();break;
+                case DNEG:  stack.popDouble(); stack.pushDouble();break;
+    
+                case ISHL: stack.popInt(); stack.popInt(); stack.pushInt(); break;
+                case LSHL: stack.popInt(); stack.popLong(); stack.pushLong();break;
+                case ISHR: stack.popInt(); stack.popInt(); stack.pushInt(); break;
+                case LSHR: stack.popInt(); stack.popLong(); stack.pushLong();break;
+                case IUSHR: stack.popInt(); stack.popInt(); stack.pushInt(); break;
+                case LUSHR: stack.popInt(); stack.popLong(); stack.pushLong();break;
+    
+                case IAND: stack.popInt(); stack.popInt(); stack.pushInt(); break;
+                case LAND: stack.popLong(); stack.popLong(); stack.pushLong();break;
+    
+                case IOR: stack.popInt(); stack.popInt(); stack.pushInt(); break;
+                case LOR: stack.popLong(); stack.popLong(); stack.pushLong();break;
+    
+                case IXOR: stack.popInt(); stack.popInt(); stack.pushInt(); break;
+                case LXOR: stack.popLong(); stack.popLong(); stack.pushLong();break;
+    
+                case IINC: locals.load(code.readLocalIndex(BCI), Int); break;
+    
+                case I2L: stack.popInt(); stack.pushLong(); break;
+                case I2F: stack.popInt(); stack.pushFloat(); break;
+                case I2D: stack.popInt(); stack.pushDouble(); break;
+    
+                case L2I: stack.popLong(); stack.pushInt(); break;
+                case L2F: stack.popLong(); stack.pushFloat(); break;
+                case L2D: stack.popLong(); stack.pushDouble(); break;
+    
+                case F2I: stack.popFloat(); stack.pushInt(); break;
+                case F2L: stack.popFloat(); stack.pushLong();break;
+                case F2D: stack.popFloat(); stack.pushDouble();break;
+    
+                case D2I: stack.popDouble(); stack.pushInt();break;
+                case D2L: stack.popDouble(); stack.pushLong();break;
+                case D2F: stack.popDouble(); stack.pushFloat();break;
+    
+                case I2B: stack.popInt(); stack.pushInt();break;
+                case I2C: stack.popInt(); stack.pushInt();break;
+                case I2S: stack.popInt(); stack.pushInt();break;
+    
+                case LCMP: stack.popLong(); stack.popLong(); stack.pushInt();break;
+                case FCMPL:
+                case FCMPG: stack.popFloat(); stack.popFloat(); stack.pushInt();break;
+                case DCMPL:
+                case DCMPG: stack.popDouble(); stack.popDouble(); stack.pushInt();break;
+    
+                case IFEQ: // fall through
+                case IFNE: // fall through
+                case IFLT: // fall through
+                case IFGE: // fall through
+                case IFGT: // fall through
+                case IFLE:
                     stack.popInt();
+                    branch(code.readBranchDest(BCI), stack, locals);
+                    break;
+                case IF_ICMPEQ: // fall through
+                case IF_ICMPNE: // fall through
+                case IF_ICMPLT: // fall through
+                case IF_ICMPGE: // fall through
+                case IF_ICMPGT: // fall through
+                case IF_ICMPLE:
+                    stack.popInt(); stack.popInt();
+                    branch(code.readBranchDest(BCI), stack, locals);
+                    break;
+                case IF_ACMPEQ: // fall through
+                case IF_ACMPNE:
+                    stack.popObj(); stack.popObj();
+                    branch(code.readBranchDest(BCI), stack, locals);
+                    break;
+    
+                case GOTO:
+                case GOTO_W:
+                    branch(code.readBranchDest(BCI), stack, locals);
+                    return BCI;
+                case IFNULL: // fall through
+                case IFNONNULL:
+                    stack.popObj();
+                    branch(code.readBranchDest(BCI), stack, locals);
+                    break;
+                case JSR: // fall through
+                case JSR_W: {
+                    // Ignore JSR
+                    stack.push(ReturnAddress);
+                    branch(code.readBranchDest(BCI), stack, locals);
+                    break;
                 }
-                stack.pushObj();
-                break;
-
-            case BREAKPOINT: break;
-
-            case INVOKEDYNAMIC: {
-                PoolConstant pc = pool.at(code.readCPI(BCI));
-                if (!(pc instanceof InvokeDynamicConstant)) {
-                    throw new VerifyError("Invalid CP constant for an InvokeDynamic: " + pc.getClass().getName());
+                case RET: {
+                    return BCI;
                 }
-
-                InvokeDynamicConstant idc = (InvokeDynamicConstant) pc;
-                if (!(pool.at(idc.getNameAndTypeIndex()).tag() == ConstantPool.Tag.NAME_AND_TYPE)) {
-                    throw new ClassFormatError("Invalid constant pool !");
-                }
-                Operand[] parsedSig = parseSig(idc.getSignature(pool).toString());
-                if (parsedSig.length == 0) {
-                    throw new ClassFormatError("No return descriptor for method");
-                }
-                for (int i = parsedSig.length - 2; i >= 0; i--) {
-                    stack.pop(parsedSig[i]);
-                }
-                Operand returnKind = parsedSig[parsedSig.length - 1];
-                if (returnKind != Void) {
-                    stack.push(returnKind);
-                }
-                break;
-            }
-            case QUICK: break;
-            default:
-        // @formatter:on
+    
+                // @formatter:on
                 // Checkstyle: resume
+                case TABLESWITCH: {
+                    stack.popInt();
+                    BytecodeTableSwitch switchHelper = code.getBytecodeTableSwitch();
+                    int low = switchHelper.lowKey(BCI);
+                    int high = switchHelper.highKey(BCI);
+                    for (int i = low; i < high; i++) {
+                        branch(switchHelper.targetAt(BCI, i - low), stack, locals);
+                    }
+                    return switchHelper.defaultTarget(BCI);
+                }
+                case LOOKUPSWITCH: {
+                    stack.popInt();
+                    BytecodeLookupSwitch switchHelper = code.getBytecodeLookupSwitch();
+                    int low = 0;
+                    int high = switchHelper.numberOfCases(BCI) - 1;
+                    for (int i = low; i <= high; i++) {
+                        branch(BCI + switchHelper.offsetAt(BCI, i), stack, locals);
+                    }
+                    return switchHelper.defaultTarget(BCI);
+                }
+                // @formatter:off
+                // Checkstyle: stop
+                case IRETURN: stack.popInt(); return BCI;
+                case LRETURN: stack.popLong(); return BCI;
+                case FRETURN: stack.popFloat(); return BCI;
+                case DRETURN: stack.popDouble(); return BCI;
+                case ARETURN: stack.popObj(); return BCI;
+                case RETURN: return BCI;
+    
+                case GETSTATIC:
+                case GETFIELD:
+                {
+                    PoolConstant pc = pool.at(code.readCPI(BCI));
+                    if (!(pc instanceof FieldRefConstant)) {
+                        throw new VerifyError();
+                    }
+                    Field f = pool.resolvedFieldAt(thisKlass, code.readCPI(BCI));
+                    if ((f.isStatic() && curOpcode == GETFIELD) || (!f.isStatic() && curOpcode == GETSTATIC)) {
+                        throw new IncompatibleClassChangeError("op code " + Bytecodes.nameOf(curOpcode) + " trying to read in field " + f.getName());
+                    }
+                    Operand kind = stringToKind(((FieldRefConstant) pc).getType(pool).toString());
+                    if (curOpcode == GETFIELD) {
+                        // TODO check if it is an Array type
+                        stack.popObj();
+                    }
+                    stack.push(kind);
+                    break;
+                }
+                case PUTSTATIC:
+                case PUTFIELD: {
+                    PoolConstant pc = pool.at(code.readCPI(BCI));
+                    if (!(pc instanceof FieldRefConstant)) {
+                        throw new VerifyError();
+                    }
+                    Field f = pool.resolvedFieldAt(thisKlass, code.readCPI(BCI));
+                    if ((f.isStatic() && curOpcode == PUTFIELD) || (!f.isStatic() && curOpcode == PUTSTATIC)) {
+                        throw new IncompatibleClassChangeError("op code " + Bytecodes.nameOf(curOpcode) + " trying to write in field " + f.getName());
+                    }
+                    if (thisKlass != f.getDeclaringKlass() && f.isFinalFlagSet()) {
+                        throw new IllegalAccessError("Trying to modify a final field: " + f.getName());
+                    }
+                    Operand kind = stringToKind(((FieldRefConstant) pc).getType(pool).toString());
+                    stack.pop(kind);
+                    if (curOpcode == PUTFIELD) {
+                        // TODO check if it is an Array type
+                        stack.popObj();
+                    }
+                    break;
+                }
+    
+                case INVOKEVIRTUAL:
+                case INVOKESPECIAL:
+                case INVOKESTATIC:
+                case INVOKEINTERFACE: {
+                    PoolConstant pc = pool.at(code.readCPI(BCI));
+                    if (!(pc instanceof MethodRefConstant)) {
+                        throw new VerifyError("Invalid CP constant for a MethodRef: " + pc.getClass().getName());
+                    }
+                    Operand[] parsedSig = parseSig((((MethodRefConstant) pc).getSignature(pool)).toString());
+                    if (parsedSig.length == 0) {
+                        throw new ClassFormatError("Method ref with no return value !");
+                    }
+                    for (int i = parsedSig.length - 2; i>=0; i--) {
+                        stack.pop(parsedSig[i]);
+                    }
+                    if (curOpcode != INVOKESTATIC) {
+                        stack.popObj();
+                    }
+                    Operand returnKind = parsedSig[parsedSig.length - 1];
+                    if (!(returnKind == Void)) {
+                        stack.push(returnKind);
+                    }
+                    break;
+                }
+    
+                case NEW: 
+                    {
+                        PoolConstant pc = pool.at(code.readCPI(BCI));
+                        if (!(pc instanceof ClassConstant)) {
+                            throw new VerifyError("Invalid CP constant for a Class: " + pc.toString());
+                        }
+                        Klass k = pool.resolvedKlassAt(thisKlass, code.readCPI(BCI));
+                        if (k.isAbstract() || k.isInterface()) {
+                            throw new InstantiationError("Cannot create instance of abstract class or interface " + k.getType());
+                        }
+                        if (k.isArray()) {
+                            throw new VerifyError("use NEWARRAY for creating array types: " + k.getName());
+                        }
+                        stack.pushObj(); 
+                        break;
+                    }
+                case NEWARRAY: 
+                    byte b = code.readByte(BCI);
+                    if (b < 4 || b > 11) {
+                        throw new VerifyError("invalid jvmPrimitiveType for NEWARRAY: " + b);
+                    }
+                    stack.popInt(); 
+                    stack.pushObj(); break;
+                case ANEWARRAY: 
+                    stack.popInt(); stack.pushObj(); break;
+                case ARRAYLENGTH: stack.popObj(); stack.pushInt(); break;
+    
+                case ATHROW: stack.popObj(); return BCI;
+    
+                case CHECKCAST: stack.popObj(); stack.pushObj(); break;
+                case INSTANCEOF: stack.popObj(); stack.pushInt(); break;
+    
+                case MONITORENTER: stack.popObj(); break;
+                case MONITOREXIT: stack.popObj(); break;
+    
+                case WIDE: 
+                    curOpcode = code.currentBC(BCI);
+                    if (!wideOpcodes(curOpcode)) {
+                        throw new VerifyError("invalid widened opcode: " + Bytecodes.nameOf(curOpcode));
+                    }
+                    continue wideEscape;
+                case MULTIANEWARRAY:
+                    {
+                        PoolConstant pc = pool.at(code.readCPI(BCI));
+                        if (!(pc instanceof ClassConstant)) {
+                            throw new VerifyError("Invalid CP constant for a Class: " + pc.toString());
+                        }
+                        Klass k = pool.resolvedKlassAt(thisKlass, code.readCPI(BCI));
+                        if (!k.isArray()) {
+                            throw new VerifyError("Class is not an array: " + k.getType());
+                        }
+                        int dim = code.readUByte(BCI + 3);
+                        if (dim <= 0) {
+                            throw new VerifyError("Negative or 0 dimension for MULTIANEWARRAY: " + dim);
+                        }
+                        if (Types.getArrayDimensions(k.getType()) < dim) {
+                            throw new VerifyError("Incompatible dimensions from constant pool: " + Types.getArrayDimensions(k.getType()) + " and instruction: " + dim);
+                        }
+                        for (int i = 0; i<dim; i++) {
+                            stack.popInt();
+                        }
+                        stack.pushObj();
+                        break;
+                    }
+    
+                case BREAKPOINT: break;
+    
+                case INVOKEDYNAMIC: 
+                    {
+                        PoolConstant pc = pool.at(code.readCPI(BCI));
+                        if (!(pc instanceof InvokeDynamicConstant)) {
+                            throw new VerifyError("Invalid CP constant for an InvokeDynamic: " + pc.getClass().getName());
+                        }
+        
+                        InvokeDynamicConstant idc = (InvokeDynamicConstant) pc;
+                        if (!(pool.at(idc.getNameAndTypeIndex()).tag() == ConstantPool.Tag.NAME_AND_TYPE)) {
+                            throw new ClassFormatError("Invalid constant pool !");
+                        }
+                        Operand[] parsedSig = parseSig(idc.getSignature(pool).toString());
+                        if (parsedSig.length == 0) {
+                            throw new ClassFormatError("No return descriptor for method");
+                        }
+                        for (int i = parsedSig.length - 2; i >= 0; i--) {
+                            stack.pop(parsedSig[i]);
+                        }
+                        Operand returnKind = parsedSig[parsedSig.length - 1];
+                        if (returnKind != Void) {
+                            stack.push(returnKind);
+                        }
+                        break;
+                    }
+                case QUICK: break;
+                default:
+            // @formatter:on
+                    // Checkstyle: resume
+            }
+            return code.nextBCI(BCI);
         }
-        return code.nextBCI(BCI);
+    }
+
+    private static boolean wideOpcodes(int op) {
+        return (op >= ILOAD && op <= ALOAD) || (op >= ISTORE && op <= ASTORE) || (op == RET) || (op == IINC);
     }
 
     private static Operand[] parseSig(String sig) {
@@ -950,7 +1028,7 @@ public class MethodVerifier {
         }
     }
 
-    private class Locals {
+    private static class Locals {
         Operand[] registers;
 
         Locals(int maxLocals, String sig, boolean isStatic) {
@@ -1001,7 +1079,7 @@ public class MethodVerifier {
         }
     }
 
-    private class StackFrame {
+    private static class StackFrame {
         Operand[] stack;
 
         StackFrame(Operand[] stack) {
@@ -1009,19 +1087,32 @@ public class MethodVerifier {
         }
     }
 
-    private class Stack {
+    private static class Stack {
         private final Operand[] stack;
         private int top;
+        private int size;
 
         private Stack(Stack copy) {
             this.stack = new Operand[copy.stack.length];
             this.top = copy.top;
+            this.size = copy.size;
             System.arraycopy(copy.stack, 0, this.stack, 0, top);
         }
 
         Stack(int maxStack) {
             this.stack = new Operand[maxStack];
             this.top = 0;
+            this.size = 0;
+        }
+
+        void procSize(int modif) {
+            size += modif;
+            if (size > stack.length) {
+                throw new VerifyError("insufficent stack size: " + stack.length);
+            }
+            if (size < 0) {
+                throw new VerifyError("invalid stack access: " + size);
+            }
         }
 
         Stack copy() {
@@ -1029,67 +1120,71 @@ public class MethodVerifier {
         }
 
         void pushInt() {
-            stack[top++] = Int;
+            push(Int);
         }
 
         void pushObj() {
-            stack[top++] = Object;
+            push(Object);
         }
 
         void pushFloat() {
-            stack[top++] = Float;
+            push(Float);
         }
 
         void pushDouble() {
-            stack[top++] = Double;
+            push(Double);
         }
 
         void pushLong() {
-            stack[top++] = Long;
+            push(Long);
         }
 
         void push(Operand kind) {
+            procSize(isType2(kind) ? 2 : 1);
+            if (size > stack.length) {
+                throw new VerifyError("insufficent stack size: " + stack.length);
+            }
             stack[top++] = kind;
         }
 
         void popInt() {
-            if (!(stack[--top] == Int)) {
-                throw new VerifyError(stack[top] + " on stack, required: " + Int);
-            }
+            pop(Int);
         }
 
         void popObj() {
-            if (!(stack[--top] == Object)) {
-                throw new VerifyError(stack[top] + " on stack, required: " + Object);
-            }
+            pop(Object);
         }
 
         void popFloat() {
-            if (!(stack[--top] == Float)) {
-                throw new VerifyError(stack[top] + " on stack, required: " + Float);
-            }
+            pop(Float);
         }
 
         void popDouble() {
-            if (!(stack[--top] == Double)) {
-                throw new VerifyError(stack[top] + " on stack, required: " + Double);
-            }
+            pop(Double);
         }
 
         void popLong() {
-            if (!(stack[--top] == Long)) {
-                throw new VerifyError(stack[top] + " on stack, required: " + Long);
+            pop(Long);
+        }
+
+        Operand popObjOrRA() {
+            procSize(-1);
+            Operand op = stack[--top];
+            if (!(op == Object || op == ReturnAddress)) {
+                throw new VerifyError(op + " on stack, required: A or ReturnAddress");
             }
+            return op;
         }
 
         void pop(Operand k) {
+            procSize((isType2(k) ? -2 : -1));
             if (!(stack[--top] == k)) {
                 throw new VerifyError(stack[top] + " on stack, required: " + k);
             }
-
         }
 
         void dup() {
+            procSize(1);
             if (isType2(stack[top - 1])) {
                 throw new VerifyError("type 2 operand for dup.");
             }
@@ -1098,6 +1193,7 @@ public class MethodVerifier {
         }
 
         void pop() {
+            procSize(-1);
             Operand v1 = stack[top - 1];
             if (isType2(v1)) {
                 throw new VerifyError("type 2 operand for pop.");
@@ -1106,6 +1202,7 @@ public class MethodVerifier {
         }
 
         void pop2() {
+            procSize(-2);
             Operand v1 = stack[top - 1];
             if (isType2(v1)) {
                 top--;
@@ -1119,6 +1216,7 @@ public class MethodVerifier {
         }
 
         void dupx1() {
+            procSize(1);
             Operand v1 = stack[top - 1];
             if (isType2(v1) || isType2(stack[top - 2])) {
                 throw new VerifyError("type 2 operand for dupx1.");
@@ -1129,6 +1227,7 @@ public class MethodVerifier {
         }
 
         void dupx2() {
+            procSize(1);
             Operand v1 = stack[top - 1];
             if (isType2(v1)) {
                 throw new VerifyError("type 2 first operand for dupx2.");
@@ -1149,12 +1248,13 @@ public class MethodVerifier {
         }
 
         void dup2() {
+            procSize(2);
             Operand v1 = stack[top - 1];
             if (isType2(v1)) {
                 stack[top] = v1;
                 top++;
             } else {
-                if (isType2(stack[top - 1])) {
+                if (isType2(stack[top - 2])) {
                     throw new VerifyError("type 2 second operand for dup2.");
                 }
                 System.arraycopy(stack, top - 2, stack, top, 2);
@@ -1163,6 +1263,7 @@ public class MethodVerifier {
         }
 
         void dup2x1() {
+            procSize(2);
             Operand v1 = stack[top - 1];
             Operand v2 = stack[top - 2];
             if (isType2(v2)) {
@@ -1184,6 +1285,7 @@ public class MethodVerifier {
         }
 
         void dup2x2() {
+            procSize(2);
             Operand v1 = stack[top - 1];
             Operand v2 = stack[top - 2];
             boolean b1 = isType2(v1);
