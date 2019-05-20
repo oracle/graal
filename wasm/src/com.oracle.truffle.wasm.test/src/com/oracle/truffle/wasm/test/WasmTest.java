@@ -245,6 +245,8 @@ public abstract class WasmTest {
                                     expected(42)),
                     test("(module (func (result i64) (local $l0 i32) i32.const 1 if $l0 i32.const 42 drop else i32.const 55 drop end i64.const 100))",
                                     expected(100L)),
+                    test("(module (func (result i64) (local $l0 i32) i32.const 1 if $l0 i32.const 42 drop end i64.const 100))",
+                                    expected(100L)),
     };
 
     private static TestElement test(String program, TestData data) {
