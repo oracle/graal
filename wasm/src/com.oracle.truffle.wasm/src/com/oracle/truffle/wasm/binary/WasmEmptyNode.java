@@ -36,7 +36,7 @@ import static com.oracle.truffle.wasm.binary.ValueTypes.VOID_TYPE;
 public class WasmEmptyNode extends WasmNode {
 
     public WasmEmptyNode(WasmCodeEntry codeEntry, int byteLength) {
-        super(codeEntry, byteLength);
+        super(codeEntry, byteLength, 0);
     }
 
     @Override

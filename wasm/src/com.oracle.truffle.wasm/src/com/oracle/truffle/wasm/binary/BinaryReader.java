@@ -252,7 +252,7 @@ public class BinaryReader extends BinaryStreamReader {
         int expressionSize = codeEntrySize - (offset - startOffset);
         byte returnTypeId = wasmModule.symbolTable().function(funcIndex).returnType();
         ExecutionState state = new ExecutionState();
-        WasmBlockNode block = new WasmBlockNode(codeEntry, offset, expressionSize, returnTypeId, state.stackSize(), 0);
+        WasmBlockNode block = new WasmBlockNode(codeEntry, offset, expressionSize, returnTypeId, state.stackSize(), 0, -1); // TODO: The byte constant offset length will be fixed after readBlock refactoring.
         WasmRootNode rootNode = new WasmRootNode(wasmLanguage, codeEntry, block);
 
         // Push a frame slot to the frame descriptor for every local.
@@ -311,8 +311,10 @@ public class BinaryReader extends BinaryStreamReader {
                 case BLOCK: {
                     byte blockTypeId = readBlockType();
                     int startOffset = offset();
-                    WasmBlockNode blockNode = new WasmBlockNode(currentBlock.codeEntry(), offset(), -1, blockTypeId, state.stackSize(), state.constantOffset());
+                    int startByteConstantOffset = state.byteConstantOffset();
+                    WasmBlockNode blockNode = new WasmBlockNode(currentBlock.codeEntry(), offset(), -1, blockTypeId, state.stackSize(), state.byteConstantOffset(), -1);
                     readBlock(blockNode, state, blockTypeId);
+                    blockNode.setByteConstantLength(state.byteConstantOffset() - startByteConstantOffset);
                     blockNode.setByteLength(offset() - startOffset);
                     nestedControlTable.add(blockNode);
                     break;
@@ -469,13 +471,16 @@ public class BinaryReader extends BinaryStreamReader {
     private WasmIfNode readIf(WasmCodeEntry codeEntry, ExecutionState state) {
         byte blockTypeId = readBlockType();
         int initialStackPointer = state.stackSize();
+        int initialByteConstantOffset = state.byteConstantOffset();
 
         // Pop the condition value from the stack.
         state.pop();
 
         // Read true branch.
         int startOffset = offset();
-        WasmBlockNode trueBranchBlock = new WasmBlockNode(codeEntry, offset(), -1, blockTypeId, state.stackSize(), state.constantOffset());
+        int initialTrueByteConstantOffset = state.byteConstantOffset();
+        WasmBlockNode trueBranchBlock = new WasmBlockNode(codeEntry, offset(), -1, blockTypeId, state.stackSize(), state.byteConstantOffset(), -1);
+        trueBranchBlock.setByteConstantLength(state.byteConstantOffset() - initialTrueByteConstantOffset);
         readBlock(trueBranchBlock, state, blockTypeId);
         trueBranchBlock.setByteLength(offset() - startOffset);
 
@@ -490,10 +495,12 @@ public class BinaryReader extends BinaryStreamReader {
                 state.pop();
             }
 
-            int startFalseOffset = offset();
-            WasmBlockNode falseBranchBlock = new WasmBlockNode(codeEntry, offset(), -1, blockTypeId, state.stackSize(), state.constantOffset());
+            int initialFalseOffset = offset();
+            int initialFalseByteConstantOffset = state.byteConstantOffset();
+            WasmBlockNode falseBranchBlock = new WasmBlockNode(codeEntry, offset(), -1, blockTypeId, state.stackSize(), state.byteConstantOffset(), -1);
             readBlock(falseBranchBlock, state, blockTypeId);
-            falseBranchBlock.setByteLength(offset() - startFalseOffset);
+            falseBranchBlock.setByteConstantLength(state.byteConstantOffset() - initialFalseByteConstantOffset);
+            falseBranchBlock.setByteLength(offset() - initialFalseOffset);
             falseBranch = falseBranchBlock;
 
             Assert.assertEquals(stackSizeAfterTrueBlock, state.stackSize(), "Stack sizes must be equal after both branches of an if statement.");
@@ -504,7 +511,7 @@ public class BinaryReader extends BinaryStreamReader {
             falseBranch = new WasmEmptyNode(codeEntry, 0);
         }
 
-        return new WasmIfNode(codeEntry, offset() - startOffset, blockTypeId, initialStackPointer, trueBranchBlock, falseBranch);
+        return new WasmIfNode(codeEntry, offset() - startOffset, blockTypeId, trueBranchBlock, falseBranch, initialStackPointer, state.byteConstantOffset() - initialByteConstantOffset);
     }
 
     private void readElementSection() {

@@ -63,7 +63,7 @@ public class ExecutionState {
         return maxStackSize;
     }
 
-    public int constantOffset() {
+    public int byteConstantOffset() {
         return byteConstants.size();
     }
 
