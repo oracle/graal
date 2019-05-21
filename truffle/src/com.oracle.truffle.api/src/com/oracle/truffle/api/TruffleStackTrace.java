@@ -156,16 +156,6 @@ public final class TruffleStackTrace extends Exception {
         return null;
     }
 
-    /**
-     * @deprecated Use {@link TruffleStackTrace#getStackTrace(Throwable)} instead (the method name
-     *             was misspelled).
-     * @since 19.0
-     */
-    @Deprecated
-    public static List<TruffleStackTraceElement> getStacktrace(Throwable throwable) {
-        return getStackTrace(throwable);
-    }
-
     static void materializeHostFrames(Throwable t) {
         TruffleStackTrace stack = fillIn(t);
         if (stack != null) {
