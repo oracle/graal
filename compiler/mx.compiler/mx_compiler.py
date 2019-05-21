@@ -594,7 +594,18 @@ def compiler_gate_benchmark_runner(tasks, extraVMarguments=None, prefix=''):
     # ensure benchmark counters still work
     if mx.get_arch() != 'aarch64': # GR-8364 Exclude benchmark counters on AArch64
         with Task(prefix + 'DaCapo_pmd:BenchmarkCounters', tasks, tags=GraalTags.test) as t:
-            if t: _gate_dacapo('pmd', 1, _remove_empty_entries(extraVMarguments) + ['-XX:+UseJVMCICompiler', '-Dgraal.LIRProfileMoves=true', '-Dgraal.GenericDynamicCounters=true', '-Dgraal.TimedDynamicCounters=1000', '-XX:JVMCICounterSize=10'])
+            if t:
+                fd, logFile = tempfile.mkstemp()
+                os.close(fd) # Don't leak file descriptors
+                try:
+                    _gate_dacapo('pmd', 1, _remove_empty_entries(extraVMarguments) + ['-Dgraal.LogFile=' + logFile, '-XX:+UseJVMCICompiler', '-Dgraal.LIRProfileMoves=true', '-Dgraal.GenericDynamicCounters=true', '-Dgraal.TimedDynamicCounters=1000', '-XX:JVMCICounterSize=10'])
+                    with open(logFile) as fp:
+                        haystack = fp.read()
+                        needle = 'MoveOperations (dynamic counters)'
+                        if needle not in haystack:
+                            mx.abort('Expected to see "' + needle + '" in output:\n' + haystack)
+                finally:
+                    os.remove(logFile)
 
     # ensure -Xcomp still works
     with Task(prefix + 'XCompMode:product', tasks, tags=GraalTags.test) as t:
