@@ -43,8 +43,9 @@ class ServerOptionHandler extends NativeImage.OptionHandler<NativeImageServer> {
             case "--help-extra":
                 args.poll();
                 nativeImage.showMessage(DefaultOptionHandler.helpExtraText);
-                nativeImage.optionRegistry.showOptions(MacroOptionKind.Macro, true, nativeImage::showMessage);
                 nativeImage.showMessage(helpTextServer);
+                nativeImage.optionRegistry.showOptions(MacroOptionKind.Macro, true, nativeImage::showMessage);
+                nativeImage.showNewline();
                 System.exit(0);
                 return true;
 
