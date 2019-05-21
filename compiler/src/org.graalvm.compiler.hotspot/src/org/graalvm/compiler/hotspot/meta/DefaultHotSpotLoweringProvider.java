@@ -38,7 +38,6 @@ import static org.graalvm.compiler.hotspot.replacements.HotSpotReplacementsUtil.
 import static org.graalvm.compiler.hotspot.replacements.HotSpotReplacementsUtil.HUB_WRITE_LOCATION;
 import static org.graalvm.compiler.hotspot.replacements.HotSpotReplacementsUtil.KLASS_LAYOUT_HELPER_LOCATION;
 import static org.graalvm.compiler.hotspot.replacements.HotSpotReplacementsUtil.OBJ_ARRAY_KLASS_ELEMENT_KLASS_LOCATION;
-import static org.graalvm.compiler.serviceprovider.JavaVersionUtil.Java8OrEarlier;
 import static org.graalvm.word.LocationIdentity.any;
 
 import java.lang.ref.Reference;
@@ -165,6 +164,7 @@ import org.graalvm.compiler.replacements.arraycopy.ArrayCopyNode;
 import org.graalvm.compiler.replacements.arraycopy.ArrayCopySnippets;
 import org.graalvm.compiler.replacements.arraycopy.ArrayCopyWithDelayedLoweringNode;
 import org.graalvm.compiler.replacements.nodes.AssertionNode;
+import org.graalvm.compiler.serviceprovider.JavaVersionUtil;
 import org.graalvm.word.LocationIdentity;
 
 import jdk.vm.ci.code.TargetDescription;
@@ -232,7 +232,7 @@ public class DefaultHotSpotLoweringProvider extends DefaultJavaLoweringProvider 
         resolveConstantSnippets = new ResolveConstantSnippets.Templates(options, factories, providers, target);
         objectCloneSnippets = new ObjectCloneSnippets.Templates(options, factories, providers, target);
         foreignCallSnippets = new ForeignCallSnippets.Templates(options, factories, providers, target);
-        if (Java8OrEarlier) {
+        if (JavaVersionUtil.JAVA_SPEC <= 8) {
             // AOT only introduced in JDK 9
             profileSnippets = null;
         } else {

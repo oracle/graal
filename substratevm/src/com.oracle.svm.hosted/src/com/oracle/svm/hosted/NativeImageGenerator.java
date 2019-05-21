@@ -1147,11 +1147,11 @@ public class NativeImageGenerator {
         Architecture architecture = ConfigurationValues.getTarget().arch;
         if (architecture instanceof AMD64) {
             AMD64GraphBuilderPlugins.register(plugins, replacementBytecodeProvider, (AMD64) architecture, explicitUnsafeNullChecks,
-                            SubstrateOptions.EmitStringEncodingSubstitutions.getValue() && JavaVersionUtil.JAVA_SPECIFICATION_VERSION >= 11,
-                            ((AMD64) architecture).getFeatures().contains(CPUFeature.FMA) && JavaVersionUtil.JAVA_SPECIFICATION_VERSION >= 11);
+                            SubstrateOptions.EmitStringEncodingSubstitutions.getValue() && JavaVersionUtil.JAVA_SPEC >= 11,
+                            ((AMD64) architecture).getFeatures().contains(CPUFeature.FMA) && JavaVersionUtil.JAVA_SPEC >= 11);
         } else if (architecture instanceof AArch64) {
             AArch64GraphBuilderPlugins.register(plugins, replacementBytecodeProvider, explicitUnsafeNullChecks, //
-                            /* registerMathPlugins */false, SubstrateOptions.EmitStringEncodingSubstitutions.getValue() && JavaVersionUtil.JAVA_SPECIFICATION_VERSION >= 11);
+                            /* registerMathPlugins */false, SubstrateOptions.EmitStringEncodingSubstitutions.getValue() && JavaVersionUtil.JAVA_SPEC >= 11);
         } else {
             throw GraalError.shouldNotReachHere("Unimplemented GraphBuilderPlugin for architecture " + architecture);
         }

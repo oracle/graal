@@ -114,7 +114,7 @@ final class FileTypeDetectorFeature implements Feature {
         if (FileTypeDetectorSupport.Options.AddAllFileTypeDetectors.getValue()) {
             Class<?> jdkClass = access.findClassByName("java.nio.file.Files$FileTypeDetectors");
             /* Note the typo in the JDK field name on JDK 8. */
-            String installedDetectorsFieldName = JavaVersionUtil.Java8OrEarlier ? "installeDetectors" : "installedDetectors";
+            String installedDetectorsFieldName = JavaVersionUtil.JAVA_SPEC <= 8 ? "installeDetectors" : "installedDetectors";
             installedDetectors.addAll(ReflectionUtil.readStaticField(jdkClass, installedDetectorsFieldName));
             defaultFileTypeDetector = ReflectionUtil.readStaticField(jdkClass, "defaultFileTypeDetector");
         }

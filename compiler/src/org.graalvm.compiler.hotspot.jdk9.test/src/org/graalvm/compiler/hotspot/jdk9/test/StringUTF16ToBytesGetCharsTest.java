@@ -32,6 +32,7 @@ import org.graalvm.compiler.nodes.StructuredGraph;
 import org.graalvm.compiler.nodes.java.NewArrayNode;
 import org.graalvm.compiler.replacements.arraycopy.ArrayCopyCallNode;
 import org.graalvm.compiler.replacements.test.MethodSubstitutionTest;
+import org.graalvm.compiler.serviceprovider.JavaVersionUtil;
 import org.graalvm.compiler.test.AddExports;
 import org.junit.Test;
 
@@ -49,7 +50,7 @@ public final class StringUTF16ToBytesGetCharsTest extends MethodSubstitutionTest
     private static final int N_OVERFLOW = 10;
 
     public StringUTF16ToBytesGetCharsTest() {
-        assumeFalse(Java8OrEarlier);
+        assumeFalse(JavaVersionUtil.JAVA_SPEC <= 8);
     }
 
     @Test

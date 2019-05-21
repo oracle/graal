@@ -167,7 +167,7 @@ public class NativeImageGeneratorRunner implements ImageBuildTask {
 
     /** Unless the check should be ignored, check that I am running on JDK-8. */
     public static boolean isValidJavaVersion() {
-        return (Boolean.getBoolean("substratevm.IgnoreGraalVersionCheck") || JavaVersionUtil.Java8OrEarlier);
+        return (Boolean.getBoolean("substratevm.IgnoreGraalVersionCheck") || JavaVersionUtil.JAVA_SPEC <= 8);
     }
 
     private static void reportToolUserError(String msg) {

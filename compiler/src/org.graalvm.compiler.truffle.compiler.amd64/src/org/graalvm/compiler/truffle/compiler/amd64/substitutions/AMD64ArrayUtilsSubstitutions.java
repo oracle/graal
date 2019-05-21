@@ -24,15 +24,14 @@
  */
 package org.graalvm.compiler.truffle.compiler.amd64.substitutions;
 
-import static org.graalvm.compiler.api.replacements.Fold.InjectedParameter;
-import static org.graalvm.compiler.serviceprovider.JavaVersionUtil.Java8OrEarlier;
-
 import org.graalvm.compiler.api.replacements.ClassSubstitution;
 import org.graalvm.compiler.api.replacements.Fold;
+import org.graalvm.compiler.api.replacements.Fold.InjectedParameter;
 import org.graalvm.compiler.api.replacements.MethodSubstitution;
 import org.graalvm.compiler.replacements.JDK9StringSubstitutions;
 import org.graalvm.compiler.replacements.StringSubstitutions;
 import org.graalvm.compiler.replacements.amd64.AMD64ArrayIndexOf;
+import org.graalvm.compiler.serviceprovider.JavaVersionUtil;
 import org.graalvm.compiler.word.Word;
 import org.graalvm.word.Pointer;
 
@@ -73,7 +72,7 @@ public class AMD64ArrayUtilsSubstitutions {
         if (chars.length <= 4) {
             int arrayLength = maxIndex - fromIndex;
             int result;
-            if (Java8OrEarlier) {
+            if (JavaVersionUtil.JAVA_SPEC <= 8) {
                 char[] sourceArray = StringSubstitutions.getValue(str);
                 result = indexOfChar(arrayToPointer(sourceArray, fromIndex), arrayLength, chars);
             } else {

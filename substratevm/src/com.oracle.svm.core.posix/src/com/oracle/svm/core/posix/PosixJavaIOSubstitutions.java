@@ -170,7 +170,7 @@ class PosixJavaIOSubstituteFeature implements Feature {
             JNIRuntimeAccess.register(java.io.FileInputStream.class.getDeclaredField("fd"));
             JNIRuntimeAccess.register(java.io.FileDescriptor.class);
             JNIRuntimeAccess.register(java.io.FileDescriptor.class.getDeclaredField("fd"));
-            if (!JavaVersionUtil.Java8OrEarlier) {
+            if (JavaVersionUtil.JAVA_SPEC > 8) {
                 JNIRuntimeAccess.register(java.io.FileDescriptor.class.getDeclaredField("append"));
             }
             JNIRuntimeAccess.register(java.io.RandomAccessFile.class);
@@ -178,7 +178,7 @@ class PosixJavaIOSubstituteFeature implements Feature {
             JNIRuntimeAccess.register(java.io.IOException.class);
             JNIRuntimeAccess.register(java.io.IOException.class.getDeclaredConstructor(String.class));
             JNIRuntimeAccess.register(access.findClassByName("java.io.UnixFileSystem"));
-            if (JavaVersionUtil.JAVA_SPECIFICATION_VERSION >= 11) {
+            if (JavaVersionUtil.JAVA_SPEC >= 11) {
                 JNIRuntimeAccess.register(java.util.zip.Inflater.class.getDeclaredField("inputConsumed"));
                 JNIRuntimeAccess.register(java.util.zip.Inflater.class.getDeclaredField("outputConsumed"));
             }
@@ -788,7 +788,7 @@ final class Target_java_io_Console {
     // 050                           jboolean on) {
     @Substitute
     static boolean echo(boolean on) throws IOException {
-        if (JavaVersionUtil.Java8OrEarlier) {
+        if (JavaVersionUtil.JAVA_SPEC <= 8) {
             /* Initialize the echo shut down hook, once. */
             Util_java_io_Console_JDK8OrEarlier.addShutdownHook();
         }

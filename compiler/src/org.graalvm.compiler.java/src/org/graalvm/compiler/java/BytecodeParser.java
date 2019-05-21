@@ -4233,7 +4233,7 @@ public class BytecodeParser implements GraphBuilderContext {
 
     private String unresolvedMethodAssertionMessage(JavaMethod result) {
         String message = result.format("%H.%n(%P)%R");
-        if (JavaVersionUtil.Java8OrEarlier) {
+        if (JavaVersionUtil.JAVA_SPEC <= 8) {
             JavaType declaringClass = result.getDeclaringClass();
             String className = declaringClass.getName();
             switch (className) {

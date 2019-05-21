@@ -58,7 +58,7 @@ import com.oracle.svm.core.util.VMError;
 class Package_jdk_internal_misc implements Function<TargetClass, String> {
     @Override
     public String apply(TargetClass annotation) {
-        if (JavaVersionUtil.Java8OrEarlier) {
+        if (JavaVersionUtil.JAVA_SPEC <= 8) {
             return "sun.misc." + annotation.className();
         } else {
             return "jdk.internal.misc." + annotation.className();

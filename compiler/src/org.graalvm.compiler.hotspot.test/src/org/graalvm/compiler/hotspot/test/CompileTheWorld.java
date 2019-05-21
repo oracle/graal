@@ -31,7 +31,6 @@ import static org.graalvm.compiler.core.GraalCompilerOptions.CompilationFailureA
 import static org.graalvm.compiler.core.test.ReflectionOptionDescriptors.extractEntries;
 import static org.graalvm.compiler.debug.MemUseTrackerKey.getCurrentThreadAllocatedBytes;
 import static org.graalvm.compiler.hotspot.test.CompileTheWorld.Options.DESCRIPTORS;
-import static org.graalvm.compiler.serviceprovider.JavaVersionUtil.Java8OrEarlier;
 import static sun.misc.Unsafe.ARRAY_BYTE_BASE_OFFSET;
 
 import java.io.ByteArrayOutputStream;
@@ -118,9 +117,8 @@ import sun.misc.Unsafe;
 public final class CompileTheWorld {
 
     /**
-     * Magic token to denote that JDK classes are to be compiled. If
-     * {@link JavaVersionUtil#Java8OrEarlier}, then the classes in {@code rt.jar} are compiled.
-     * Otherwise the classes in the Java runtime image are compiled.
+     * Magic token to denote that JDK classes are to be compiled. For JDK 8, the classes in
+     * {@code rt.jar} are compiled. Otherwise the classes in the Java runtime image are compiled.
      */
     public static final String SUN_BOOT_CLASS_PATH = "sun.boot.class.path";
 
@@ -399,7 +397,7 @@ public final class CompileTheWorld {
         try (LibGraalParams libgraal = LibGraal.isAvailable() ? new LibGraalParams(compilerOptions) : null) {
             if (SUN_BOOT_CLASS_PATH.equals(inputClassPath)) {
                 String bcpEntry = null;
-                if (Java8OrEarlier) {
+                if (JavaVersionUtil.JAVA_SPEC <= 8) {
                     final String[] entries = System.getProperty(SUN_BOOT_CLASS_PATH).split(File.pathSeparator);
                     for (int i = 0; i < entries.length && bcpEntry == null; i++) {
                         String entry = entries[i];

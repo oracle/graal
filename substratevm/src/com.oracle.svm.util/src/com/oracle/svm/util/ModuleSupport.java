@@ -36,6 +36,6 @@ final class ModuleSupport {
     @SuppressWarnings("unused")
     static void openModule(Class<?> declaringClass, Class<?> accessingClass) {
         /* Nothing to do in JDK 8 version. JDK 11 version provides a proper implementation. */
-        assert JavaVersionUtil.Java8OrEarlier;
+        assert JavaVersionUtil.JAVA_SPEC <= 8;
     }
 }

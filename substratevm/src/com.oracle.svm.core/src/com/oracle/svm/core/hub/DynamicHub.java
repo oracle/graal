@@ -703,7 +703,7 @@ public final class DynamicHub implements JavaKind.FormatWithToString, AnnotatedE
 
     @Substitute
     public boolean isLocalOrAnonymousClass() {
-        if (JavaVersionUtil.Java8OrEarlier) {
+        if (JavaVersionUtil.JAVA_SPEC <= 8) {
             return isLocalClass() || isAnonymousClass();
         } else {
             return rd.enclosingMethodOrConstructor != null;
@@ -750,7 +750,7 @@ public final class DynamicHub implements JavaKind.FormatWithToString, AnnotatedE
     public Object newInstance() throws Throwable {
         final Constructor<?> nullaryConstructor = rd.nullaryConstructor;
         if (nullaryConstructor == null) {
-            if (JavaVersionUtil.Java8OrEarlier) {
+            if (JavaVersionUtil.JAVA_SPEC <= 8) {
                 throw new InstantiationException("Type `" + this.getCanonicalNameJDK8OrEarlier() +
                                 "` can not be instantiated reflectively as it does not have a no-parameter constructor or the no-parameter constructor has not been added explicitly to the native image.");
             } else {
