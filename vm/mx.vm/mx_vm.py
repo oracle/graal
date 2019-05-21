@@ -78,8 +78,8 @@ mx_sdk.register_graalvm_component(mx_sdk.GraalVmComponent(
     support_distributions=['vm:VM_GRAALVM_SUPPORT']
 ))
 
-anyjdk_version_regex = re.compile(r'(openjdk|java) version \"(?P<jvm_version>[0-9a-z_\-.]+)\".*\n(OpenJDK|Java\(TM\) SE) Runtime Environment [ 0-9.]*\(build [0-9a-zA-Z_\-.+]+\)')
-openjdk_version_regex = re.compile(r'openjdk version \"(?P<jvm_version>[0-9a-z_\-.]+)\".*\nOpenJDK Runtime Environment [ 0-9.]*\(build [0-9a-z_\-.+]+\)')
+anyjdk_version_regex = re.compile(r'(openjdk|java) version \"(?P<jvm_version>[0-9a-z_\-.]+)\".*\n(OpenJDK|Java\(TM\) SE) Runtime Environment (AdoptOpenJDK )?[ 0-9.]*\(build [0-9a-zA-Z_\-.+]+\)')
+openjdk_version_regex = re.compile(r'openjdk version \"(?P<jvm_version>[0-9a-z_\-.]+)\".*\nOpenJDK Runtime Environment (AdoptOpenJDK )?[ 0-9.]*\(build [0-9a-z_\-.+]+\)')
 graalvm_version_regex = re.compile(r'.*\n.*\n[0-9a-zA-Z()\- ]+GraalVM[a-zA-Z_ ]+(?P<graalvm_version>[0-9a-z_\-.+]+) \(build [0-9a-z\-.+]+, mixed mode\)')
 
 _registered_graalvm_components = {}
