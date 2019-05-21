@@ -679,7 +679,17 @@ public final class IsomorphicPackingPhase extends BasePhase<PhaseContext> {
                     .allMatch(scheduled::contains);
         }
 
-        private void schedule(List<Node> block, Set<Pack<Node>> packSet) {
+        private Pack<Node> earliest_unscheduled(List<Node> unscheduled, Map<Node, Pack<Node>> nodeToPackMap) {
+            for (Node node : unscheduled) {
+                if (nodeToPackMap.containsKey(node)) {
+                    return nodeToPackMap.get(node);
+                }
+            }
+
+            return null;
+        }
+
+        private void schedule(List<Node> unscheduled, Set<Pack<Node>> packSet) {
             final List<Node> scheduled = new ArrayList<>();
 
             // Populate a nodeToPackMap
@@ -687,34 +697,36 @@ public final class IsomorphicPackingPhase extends BasePhase<PhaseContext> {
                     .flatMap(pack -> pack.getElements().stream().map(node -> Pair.create(node, pack)))
                     .collect(Collectors.toMap(Pair::getLeft, Pair::getRight));
 
-            // While block isn't empty
+            // While unscheduled isn't empty
             outer:
-            while (!block.isEmpty()) {
-                for (Node node : block) {
+            while (!unscheduled.isEmpty()) {
+                for (Node node : unscheduled) {
                     // Node is in some pack p
                     if (nodeToPackMap.containsKey(node)) {
                         final Pack<Node> pack = nodeToPackMap.get(node);
                         // Have the dependencies of statements in the pack been scheduled?
                         if (pack.getElements().stream().allMatch(n -> deps_scheduled(n, scheduled))) {
-                            // Remove statements from block
-                            System.out.println(String.format("Vectorizing pack %s", pack.toString()));
+                            // Remove statements from unscheduled
                             scheduled.addAll(pack.getElements());
-                            block.removeAll(pack.getElements());
+                            unscheduled.removeAll(pack.getElements());
                             continue outer;
                         }
                     } else if (deps_scheduled(node, scheduled)) {
-                        // Remove statement from block and schedule
-                        System.out.println(String.format("Vectorizing statement %s", node.toString()));
+                        // Remove statement from unscheduled and schedule
                         scheduled.add(node);
-                        block.remove(node);
+                        unscheduled.remove(node);
                         continue outer;
                     }
+                }
 
-                    System.out.println("none of the conditions held");
+                // We only reach here if there is a grouped statement dependency violation.
+                // These are broken by removing one of the packs.
+                Pack<Node> packToRemove = earliest_unscheduled(unscheduled, nodeToPackMap);
+                assert packToRemove != null; // We should only reach this point if there are unscheduled statements in packs
+                for (Node packNode : packToRemove.getElements()) {
+                    nodeToPackMap.remove(packNode); // Remove all references for these statements to pack
                 }
             }
-
-            System.out.println(String.format("Final schedule: %s", scheduled.toString()));
         }
 
         // Main
