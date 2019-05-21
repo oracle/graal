@@ -35,6 +35,7 @@ import com.oracle.truffle.api.nodes.Node;
 
 public class WasmTrap extends RuntimeException implements TruffleException {
 
+    private static final long serialVersionUID = 8195809219857028793L;
     private final Node location;
 
     @TruffleBoundary

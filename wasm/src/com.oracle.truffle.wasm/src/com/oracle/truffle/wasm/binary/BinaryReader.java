@@ -264,7 +264,7 @@ public class BinaryReader extends BinaryStreamReader {
         /* Read code entry (function) locals */
         WasmCodeEntry codeEntry = new WasmCodeEntry(data);
         wasmModule.symbolTable().function(funcIndex).setCodeEntry(codeEntry);
-        int numLocals = readCodeEntryLocals(codeEntry);
+        readCodeEntryLocals(codeEntry);
 
         /* Create the necessary objects for the code entry */
         int expressionSize = codeEntrySize - (offset - startOffset);
@@ -281,9 +281,9 @@ public class BinaryReader extends BinaryStreamReader {
 
         // Initialize the Truffle-related components required for execution.
         codeEntry.setByteConstants(state.byteConstants());
-        initTruffleForCodeEntry(codeEntry, numLocals, rootNode, state, funcIndex);
-
-        // TODO: For structured code, we need to set the expressionSize later.
+        codeEntry.initStackSlots(rootNode.getFrameDescriptor(), state.maxStackSize());
+        RootCallTarget callTarget = Truffle.getRuntime().createCallTarget(rootNode);
+        wasmModule.symbolTable().function(funcIndex).setCallTarget(callTarget);
     }
 
     private int readCodeEntryLocals(WasmCodeEntry codeEntry) {
@@ -300,12 +300,6 @@ public class BinaryReader extends BinaryStreamReader {
         }
         codeEntry.setLocalTypes(locals.toArray());
         return numLocals;
-    }
-
-    private void initTruffleForCodeEntry(WasmCodeEntry codeEntry, int numLocals, WasmRootNode rootNode, ExecutionState state, int funcIndex) {
-        codeEntry.initStackSlots(rootNode.getFrameDescriptor(), state. maxStackSize());
-        RootCallTarget callTarget = Truffle.getRuntime().createCallTarget(rootNode);
-        wasmModule.symbolTable().function(funcIndex).setCallTarget(callTarget);
     }
 
     private void checkValidStateOnBlockExit(byte returnTypeId, ExecutionState state, int initialStackSize) {

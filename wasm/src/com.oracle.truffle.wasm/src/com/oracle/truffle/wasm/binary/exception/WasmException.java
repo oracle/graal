@@ -28,13 +28,14 @@
  * OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 
-package com.oracle.truffle.wasm.binary;
+package com.oracle.truffle.wasm.binary.exception;
 
 import com.oracle.truffle.api.TruffleException;
 import com.oracle.truffle.api.nodes.Node;
 
 public class WasmException extends RuntimeException implements TruffleException {
 
+    private static final long serialVersionUID = 1787712823539392187L;
     private Node location;
 
     public WasmException(Node location, String message) {
