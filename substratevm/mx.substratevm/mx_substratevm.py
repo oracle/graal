@@ -1043,9 +1043,7 @@ mx_sdk.register_graalvm_component(mx_sdk.GraalVmJreComponent(
             destination="bin/<exe:native-image>",
             jar_distributions=["substratevm:SVM_DRIVER"],
             main_class="com.oracle.svm.driver.NativeImage",
-            build_args=[
-                "-H:-ParseRuntimeOptions",
-            ]
+            build_args=[],
         ),
         mx_sdk.LauncherConfig(
             destination="bin/<exe:native-image-configure>",
