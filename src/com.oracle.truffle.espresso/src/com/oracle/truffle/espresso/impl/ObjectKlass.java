@@ -212,7 +212,7 @@ public final class ObjectKlass extends Klass {
                 if (f.isStatic()) {
                     ConstantValueAttribute a = (ConstantValueAttribute) f.getAttribute(Name.ConstantValue);
                     if (a == null) {
-                        break;
+                        continue;
                     }
                     switch (f.getKind()) {
                         case Boolean: {
