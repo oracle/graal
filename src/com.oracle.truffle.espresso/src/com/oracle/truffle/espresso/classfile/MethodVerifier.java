@@ -236,6 +236,7 @@ import com.oracle.truffle.espresso.bytecode.Bytecodes;
 import com.oracle.truffle.espresso.descriptors.Symbol;
 import com.oracle.truffle.espresso.descriptors.Symbol.Signature;
 import com.oracle.truffle.espresso.descriptors.Symbol.Type;
+import com.oracle.truffle.espresso.descriptors.Symbol.Name;
 import com.oracle.truffle.espresso.descriptors.Types;
 import com.oracle.truffle.espresso.impl.ContextAccess;
 import com.oracle.truffle.espresso.impl.Klass;
@@ -255,15 +256,16 @@ import com.oracle.truffle.espresso.runtime.EspressoContext;
  * does not replace a complete bytecode verifier.
  */
 public class MethodVerifier implements ContextAccess {
+    private final Klass thisKlass;
     private final BytecodeStream code;
+    private final RuntimeConstantPool pool;
+    private final Symbol<Signature> sig;
+    private final Symbol<Name> methodName;
+    private final boolean isStatic;
     private final int maxStack;
     private final int maxLocals;
-    private final RuntimeConstantPool pool;
     private final byte[] verified;
     private final StackFrame[] stackFrames;
-    private final Symbol<Signature> sig;
-    private final boolean isStatic;
-    private final Klass thisKlass;
 
     @Override
     public EspressoContext getContext() {
@@ -313,6 +315,10 @@ public class MethodVerifier implements ContextAccess {
             return -1;
         }
 
+        boolean isUninit() {
+            return false;
+        }
+
         abstract boolean canMerge(Operand other);
     }
 
@@ -338,11 +344,11 @@ public class MethodVerifier implements ContextAccess {
     }
 
     static class ReferenceOperand extends Operand {
-        private Symbol<Type> type;
-        private Klass thisKlass;
+        protected Symbol<Type> type;
+        protected Klass thisKlass;
 
         // Load if needed.
-        private Klass klass = null;
+        protected Klass klass = null;
 
         ReferenceOperand(Symbol<Type> type, Klass thisKlass) {
             super(JavaKind.Object);
@@ -467,6 +473,29 @@ public class MethodVerifier implements ContextAccess {
         }
     }
 
+    static class UninitReferenceOperand extends ReferenceOperand {
+        UninitReferenceOperand(Symbol<Type> type, Klass thisKlass) {
+            super(type, thisKlass);
+        }
+
+        UninitReferenceOperand(Klass klass, Klass thisKlass) {
+            super(klass, thisKlass);
+        }
+
+        @Override
+        boolean isUninit() {
+            return true;
+        }
+
+        ReferenceOperand init() {
+            if (klass == null) {
+                return new ReferenceOperand(type, thisKlass);
+            } else {
+                return new ReferenceOperand(klass, thisKlass);
+            }
+        }
+    }
+
     static boolean isType2(Operand k) {
         return k == Long || k == Double;
     }
@@ -527,7 +556,7 @@ public class MethodVerifier implements ContextAccess {
      * @param code Raw bytecode representation for the method to verify
      * @param pool The constant pool to be used with this method.
      */
-    private MethodVerifier(int maxStack, int maxLocals, byte[] code, RuntimeConstantPool pool, Symbol<Signature> sig, boolean isStatic, Klass thisKlass) {
+    private MethodVerifier(int maxStack, int maxLocals, byte[] code, RuntimeConstantPool pool, Symbol<Signature> sig, boolean isStatic, Klass thisKlass, Symbol<Name> methodName) {
         this.code = new BytecodeStream(code);
         this.maxStack = maxStack;
         this.maxLocals = maxLocals;
@@ -537,6 +566,7 @@ public class MethodVerifier implements ContextAccess {
         this.sig = sig;
         this.isStatic = isStatic;
         this.thisKlass = thisKlass;
+        this.methodName = methodName;
 
         jlClass = new ReferenceOperand(Type.Class, thisKlass);
         jlString = new ReferenceOperand(Type.String, thisKlass);
@@ -557,7 +587,7 @@ public class MethodVerifier implements ContextAccess {
             return true;
         }
         return new MethodVerifier(codeAttribute.getMaxStack(), codeAttribute.getMaxLocals(), codeAttribute.getCode(), m.getRuntimeConstantPool(), m.getRawSignature(), m.isStatic(),
-                        m.getDeclaringKlass()).verify();
+                        m.getDeclaringKlass(), m.getName()).verify();
     }
 
     /**
@@ -962,10 +992,12 @@ public class MethodVerifier implements ContextAccess {
                     if (!(pc instanceof FieldRefConstant)) {
                         throw new VerifyError();
                     }
-                    Symbol<Type> type = ((FieldRefConstant) pc).getType(pool);
+                    FieldRefConstant frc = (FieldRefConstant) pc;
+                    Symbol<Type> type = frc.getType(pool);
                     Operand op = kindToOperand(type);
                     if (curOpcode == GETFIELD) {
-                        Operand receiver = stack.popRef();
+                        Symbol<Type> holderType = getTypes().fromName(frc.getHolderKlassName(pool));
+                        Operand receiver = checkInit(stack, stack.popRef(kindToOperand(holderType)));
                         if (receiver.isArrayType()) {
                             throw new VerifyError("Trying to access field of an array type: " + receiver);
                         }
@@ -980,11 +1012,13 @@ public class MethodVerifier implements ContextAccess {
                     if (!(pc instanceof FieldRefConstant)) {
                         throw new VerifyError();
                     }
-                    Symbol<Type> type = ((FieldRefConstant) pc).getType(pool);
-                    Operand op = kindToOperand(type);
+                    FieldRefConstant frc = (FieldRefConstant) pc;
+                    Symbol<Type> fieldType = frc.getType(pool);
+                    Operand op = kindToOperand(fieldType);
                     stack.pop(op);
                     if (curOpcode == PUTFIELD) {
-                        Operand receiver = stack.popRef();
+                        Symbol<Type> holderType = getTypes().fromName(frc.getHolderKlassName(pool));
+                        Operand receiver = checkInit(stack, stack.popRef(kindToOperand(holderType)));
                         if (receiver.isArrayType()) {
                             throw new VerifyError("Trying to access field of an array type: " + receiver);
                         }
@@ -1001,6 +1035,9 @@ public class MethodVerifier implements ContextAccess {
                         throw new VerifyError("Invalid CP constant for a MethodRef: " + pc.getClass().getName());
                     }
                     MethodRefConstant mrc = (MethodRefConstant) pc;
+                    if (mrc.getName(pool) == Symbol.Name.CLINIT) {
+                        throw new VerifyError("Invocation of class initializer!");
+                    }
                     Operand[] parsedSig = getOperandSig(mrc.getSignature(pool));
                     if (parsedSig.length == 0) {
                         throw new ClassFormatError("Method ref with no return value !");
@@ -1008,10 +1045,13 @@ public class MethodVerifier implements ContextAccess {
                     for (int i = parsedSig.length - 2; i >= 0; i--) {
                         stack.pop(parsedSig[i]);
                     }
-                    if (curOpcode != INVOKESTATIC) {
-                        Symbol<Type> type = getTypes().fromName(mrc.getHolderKlassName(pool));
-                        Operand op = kindToOperand(type);
-                        stack.popRef(op);
+                    if (curOpcode == INVOKESPECIAL && mrc.getName(pool) == Symbol.Name.INIT) {
+                        Operand op = getOperand(mrc);
+                        Operand toInit = stack.popUninitRef(op);
+                        stack.initUninit((UninitReferenceOperand)toInit);
+                    } else if (curOpcode != INVOKESTATIC) {
+                        Operand op = getOperand(mrc);
+                        checkInit(stack, stack.popRef(op));
                     }
                     Operand returnKind = parsedSig[parsedSig.length - 1];
                     if (!(returnKind == Void)) {
@@ -1027,10 +1067,10 @@ public class MethodVerifier implements ContextAccess {
                     }
                     ClassConstant cc = (ClassConstant) pc;
                     Symbol<Type> type = getTypes().fromName(cc.getName(pool));
-                    if (Types.isArray(type)) {
-                        throw new VerifyError("use NEWARRAY for creating array types: " + type);
+                    if (Types.isPrimitive(type) || Types.isArray(type)) {
+                        throw new VerifyError("use NEWARRAY for creating array or primitive type: " + type);
                     }
-                    Operand op = kindToOperand(type);
+                    Operand op = new UninitReferenceOperand(type, thisKlass);
                     stack.push(op);
                     break;
                 }
@@ -1181,6 +1221,21 @@ public class MethodVerifier implements ContextAccess {
         }
     }
 
+    private Operand checkInit(Stack stack, Operand op) {
+        if (op.isUninit()) {
+            if (methodName != Name.INIT) {
+                throw new VerifyError("Accessing field or calling method of an uninitialized reference.");
+            }
+            return stack.initUninit((UninitReferenceOperand) op);
+        }
+        return op;
+    }
+
+    private Operand getOperand(MethodRefConstant mrc) {
+        Symbol<Type> type = getTypes().fromName(mrc.getHolderKlassName(pool));
+        return kindToOperand(type);
+    }
+
     private static Operand fromJVMType(byte jvmType) {
         // @formatter:off
         // Checkstyle: stop
@@ -1273,7 +1328,11 @@ public class MethodVerifier implements ContextAccess {
             Arrays.fill(registers, Invalid);
             int index = 0;
             if (!isStatic) {
-                registers[index++] = new ReferenceOperand(mv.thisKlass, mv.thisKlass);
+                if (mv.methodName == Name.INIT) {
+                    registers[index++] = new UninitReferenceOperand(mv.thisKlass, mv.thisKlass);
+                } else {
+                    registers[index++] = new ReferenceOperand(mv.thisKlass, mv.thisKlass);
+                }
             }
             for (int i = 0; i < parsedSig.length - 1; i++) {
                 Operand op = parsedSig[i];
@@ -1406,12 +1465,25 @@ public class MethodVerifier implements ContextAccess {
             return op;
         }
 
-        void popRef(Operand kind) {
+        Operand popRef(Operand kind) {
             procSize(-(isType2(kind) ? 2 : 1));
             Operand op = stack[--top];
             if (!op.canMerge(kind)) {
                 throw new VerifyError("Type check error: " + op + " cannot be merged into " + kind);
             }
+            return op;
+        }
+
+        public Operand popUninitRef(Operand kind) {
+            procSize(-(isType2(kind) ? 2 : 1));
+            Operand op = stack[--top];
+            if (!op.canMerge(kind)) {
+                throw new VerifyError("Type check error: " + op + " cannot be merged into " + kind);
+            }
+            if (!op.isUninit()) {
+                throw new VerifyError("Calling initialization method on already initialized reference.");
+            }
+            return op;
         }
 
         Operand popArray() {
@@ -1447,7 +1519,8 @@ public class MethodVerifier implements ContextAccess {
         void pop(Operand k) {
             if (!k.getKind().isStackInt() || k == Int) {
                 procSize((isType2(k) ? -2 : -1));
-                if (!(stack[--top].canMerge(k))) {
+                Operand op = stack[--top];
+                if (!(op.canMerge(k))) {
                     throw new VerifyError(stack[top] + " on stack, required: " + k);
                 }
             } else {
@@ -1626,6 +1699,16 @@ public class MethodVerifier implements ContextAccess {
             Operand[] frameStack = new Operand[top];
             System.arraycopy(stack, 0, frameStack, 0, top);
             return new StackFrame(frameStack);
+        }
+
+        private Operand initUninit(UninitReferenceOperand toInit) {
+            Operand init = toInit.init();
+            for (int i = 0; i < top; i++) {
+                if (stack[i] == toInit) {
+                    stack[i] = init;
+                }
+            }
+            return init;
         }
     }
 
