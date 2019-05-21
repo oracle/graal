@@ -30,6 +30,8 @@ package com.oracle.svm.reflect.target;
 import com.oracle.svm.core.SubstrateUtil;
 import com.oracle.svm.core.annotate.Substitute;
 import com.oracle.svm.core.annotate.TargetClass;
+import com.oracle.svm.core.annotate.TargetElement;
+import com.oracle.svm.core.jdk.JDK11OrLater;
 import com.oracle.svm.core.jdk.Package_jdk_internal_misc;
 import com.oracle.svm.core.util.VMError;
 
@@ -57,12 +59,13 @@ public final class Target_jdk_internal_misc_Unsafe_Reflection {
     }
 
     @Substitute
+    @TargetElement(onlyWith = JDK11OrLater.class)
     public long objectFieldOffset(Class<?> c, String name) {
         if (c == null || name == null) {
             throw new NullPointerException();
         }
         try {
-            Field field = c.getField(name);
+            Field field = c.getDeclaredField(name);
             Target_java_lang_reflect_Field cast = SubstrateUtil.cast(field, Target_java_lang_reflect_Field.class);
             return objectFieldOffset(cast);
         } catch (NoSuchFieldException nse) {
