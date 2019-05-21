@@ -588,6 +588,8 @@ def _get_graalvm_configuration(base_name, stage1=False):
             if vm_config_additional_components:
                 name += '_' + '_'.join(vm_config_additional_components)
         else:
+            if mx.get_opts().verbose:
+                mx.logv("No dist name for {}".format(vm_config_additional_components))
             base_dir = base_name + '_unknown'
             name = base_dir + ('_stage1' if stage1 else '')
         name = name.upper()
@@ -2179,6 +2181,10 @@ register_vm_config('ce-python', ['cmp', 'gu', 'gvm', 'ins', 'js', 'lg', 'nfi', '
 register_vm_config('ce-no_native', ['bjs', 'blli', 'bnative-image', 'bpolyglot', 'cmp', 'gu', 'gvm', 'ins', 'js', 'nfi', 'njs', 'polynative', 'pro', 'rgx', 'slg', 'svm', 'svml', 'tfl', 'poly', 'vvm'])
 register_vm_config('libgraal', ['cmp', 'gu', 'gvm', 'lg', 'nfi', 'poly', 'polynative', 'rgx', 'svm', 'svml', 'tfl', 'bpolyglot'])
 
+if mx.get_os() == 'windows':
+    register_vm_config('svm', ['bnative-image', 'bnative-image-configure', 'bpolyglot', 'cmp', 'gvm', 'nfi', 'ni', 'nil', 'nju', 'poly', 'polynative', 'rgx', 'snative-image-agent', 'svm', 'svml', 'tfl'])
+else:
+    register_vm_config('svm', ['bnative-image', 'bnative-image-configure', 'bpolyglot', 'cmp', 'gu', 'gvm', 'nfi', 'ni', 'nil', 'nju', 'poly', 'polynative', 'rgx', 'snative-image-agent', 'svm', 'svml', 'tfl'])
 
 def _debug_images():
     return mx.get_opts().debug_images or _env_var_to_bool('DEBUG_IMAGES')
