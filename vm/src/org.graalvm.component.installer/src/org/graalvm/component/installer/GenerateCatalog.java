@@ -371,7 +371,7 @@ public final class GenerateCatalog {
                     throw new IOException("No manifest in " + spec);
                 }
                 Attributes atts = mf.getMainAttributes();
-                String bid = atts.getValue(BundleConstants.BUNDLE_ID).toLowerCase();
+                String bid = atts.getValue(BundleConstants.BUNDLE_ID).toLowerCase().replace("-", "_");
                 String bl = atts.getValue(BundleConstants.BUNDLE_NAME);
 
                 if (bid == null) {

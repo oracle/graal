@@ -1,5 +1,3 @@
 DYNAMIC_IMPORTS=/substratevm,/tools,/sulong,/graal-nodejs
 DISABLE_INSTALLABLES=js,njs,slg
-FORCE_BASH_LAUNCHERS=true
-DISABLE_LIBPOLYGLOT=true
-EXCLUDE_COMPONENTS=svmag,nju,ni,nil
+LIBGRAAL=true

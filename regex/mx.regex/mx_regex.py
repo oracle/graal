@@ -39,7 +39,7 @@ def _tregex_tests_gate_runner(args, tasks):
             unittest(['--enable-timing', '--very-verbose', 'com.oracle.truffle.regex'])
 
 
-mx_sdk.register_graalvm_component(mx_sdk.GraalVmTool(
+mx_sdk.register_graalvm_component(mx_sdk.GraalVmLanguage(
     suite=_suite,
     name='TRegex',
     short_name='rgx',
