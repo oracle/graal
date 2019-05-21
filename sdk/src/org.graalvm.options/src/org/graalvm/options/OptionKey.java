@@ -82,9 +82,13 @@ public final class OptionKey<T> {
     }
 
     /**
-     * Constructs a new option key to group options with common prefixes. Throws
-     * {@link IllegalArgumentException} if no default {@link OptionType} could be
+     * Constructs a new option key to group options with common prefixes. This type of options allow
+     * to collect key=value pairs whose keys are unknown beforehand e.g. user defined properties.
+     * 
+     * Throws {@link IllegalArgumentException} if no default {@link OptionType} could be
      * {@link OptionType#defaultType(Object) resolved} for the value type.
+     * 
+     * @since 19.0
      */
     public static <V> OptionKey<Map<String, V>> mapOf(Class<V> valueClass) {
         OptionType<Map<String, V>> type = OptionType.mapOf(valueClass);

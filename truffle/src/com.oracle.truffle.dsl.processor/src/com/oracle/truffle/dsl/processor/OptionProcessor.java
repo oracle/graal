@@ -76,7 +76,7 @@ import javax.tools.Diagnostic.Kind;
 
 import org.graalvm.options.OptionCategory;
 import org.graalvm.options.OptionDescriptor;
-import org.graalvm.options.OptionDescriptor.NamePredicate;
+import org.graalvm.options.NamePredicate;
 import org.graalvm.options.OptionDescriptors;
 import org.graalvm.options.OptionKey;
 import org.graalvm.options.OptionStability;

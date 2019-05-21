@@ -161,6 +161,15 @@ public final class OptionType<T> {
         return v;
     }
 
+    /**
+     * Converts a string value, validates it, and converts it to an object of this type. For prefix
+     * options include the previous value stored for the option, and the name/key of the option.
+     *
+     * @param nameSuffix the key for prefix options.
+     * @param previousValue the previous value holded by option.
+     * @throws IllegalArgumentException if the value is invalid or cannot be converted.
+     * @since 19.0
+     */
     @SuppressWarnings("unchecked")
     public T convert(Object previousValue, String nameSuffix, String value) {
         T v = converter.convert((T) previousValue, nameSuffix, value);
@@ -288,6 +297,8 @@ public final class OptionType<T> {
     /**
      * Returns the default option type for property maps for the given value class. Returns
      * <code>null</code> if no default option type is available for the value class.
+     *
+     * @since 19.0
      */
     @SuppressWarnings("unchecked")
     public static <V> OptionType<Map<String, V>> mapOf(Class<V> valueClass) {

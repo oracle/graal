@@ -95,6 +95,11 @@ public final class OptionDescriptor {
         return deprecated;
     }
 
+    /**
+     * Returns the type of this option.
+     *
+     * @since 19.0
+     */
     public NamePredicate getNamePredicate() {
         return namePredicate;
     }
@@ -189,11 +194,6 @@ public final class OptionDescriptor {
     }
 
     private static final OptionDescriptor EMPTY = new OptionDescriptor(null, null, null, null, null, false, NamePredicate.EXACT);
-
-    public enum NamePredicate {
-        EXACT,
-        PREFIX
-    }
 
     /**
      * Represents an option descriptor builder.

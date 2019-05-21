@@ -51,7 +51,7 @@ import org.graalvm.options.OptionDescriptor;
 import org.graalvm.options.OptionDescriptors;
 import org.graalvm.options.OptionKey;
 import org.graalvm.options.OptionStability;
-import org.graalvm.options.OptionDescriptor.NamePredicate;
+import org.graalvm.options.NamePredicate;
 
 /**
  * Describes the attributes of an option whose {@link OptionKey value} is in a static field
@@ -126,6 +126,12 @@ public @interface Option {
      */
     OptionCategory category();
 
+    /**
+     * Specifies the type of the option. The generated option descriptor returns this value as
+     * result of {@link OptionDescriptor#getNamePredicate()}.
+     *
+     * @since 19.0
+     */
     NamePredicate namePredicate() default NamePredicate.EXACT;
 
     /**

@@ -40,15 +40,26 @@
  */
 package com.oracle.truffle.api.test.option;
 
-import static org.junit.Assert.*;
+import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertFalse;
+import static org.junit.Assert.assertNotNull;
+import static org.junit.Assert.assertNull;
+import static org.junit.Assert.assertSame;
+import static org.junit.Assert.assertTrue;
 
 import java.util.Collections;
 import java.util.HashMap;
 import java.util.Iterator;
 import java.util.Map;
 
-import org.graalvm.options.*;
-import org.graalvm.options.OptionDescriptor.NamePredicate;
+import org.graalvm.options.OptionCategory;
+import org.graalvm.options.OptionDescriptor;
+import org.graalvm.options.NamePredicate;
+import org.graalvm.options.OptionDescriptors;
+import org.graalvm.options.OptionKey;
+import org.graalvm.options.OptionStability;
+import org.graalvm.options.OptionType;
+import org.graalvm.options.OptionValues;
 import org.graalvm.polyglot.Engine;
 import org.junit.Test;
 
