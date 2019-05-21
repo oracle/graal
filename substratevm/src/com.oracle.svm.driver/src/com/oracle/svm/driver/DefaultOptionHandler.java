@@ -78,6 +78,7 @@ class DefaultOptionHandler extends NativeImage.OptionHandler<NativeImage> {
                 args.poll();
                 nativeImage.showMessage(helpExtraText);
                 nativeImage.optionRegistry.showOptions(MacroOptionKind.Macro, true, nativeImage::showMessage);
+                nativeImage.showNewline();
                 System.exit(0);
                 return true;
             case "-cp":
