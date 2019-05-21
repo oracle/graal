@@ -146,6 +146,9 @@ public final class HotSpotGraalLibraryFeature implements com.oracle.svm.core.gra
 
         List<OptionDescriptors> descriptors = new ArrayList<>();
         for (Class<? extends OptionDescriptors> optionsClass : imageClassLoader.findSubclasses(OptionDescriptors.class, false)) {
+            if (!OptionDescriptorsFilter.shouldIncludeDescriptors(optionsClass)) {
+                continue;
+            }
             if (!Modifier.isAbstract(optionsClass.getModifiers())) {
                 try {
                     descriptors.add(optionsClass.getDeclaredConstructor().newInstance());
