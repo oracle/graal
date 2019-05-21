@@ -62,7 +62,7 @@ public final class InspectServerSession implements MessageEndpoint {
     final InspectorExecutionContext context;
     private volatile MessageEndpoint messageEndpoint;
     private volatile JSONMessageListener jsonMessageListener;
-    private CommandProcessThread processThread;
+    private volatile CommandProcessThread processThread;
     private Runnable onClose;
 
     private InspectServerSession(RuntimeDomain runtime, DebuggerDomain debugger, ProfilerDomain profiler,
@@ -86,15 +86,19 @@ public final class InspectServerSession implements MessageEndpoint {
 
     @Override
     public void sendClose() {
-        runtime.disable();
-        debugger.disable();
-        profiler.disable();
-        context.reset();
-        messageEndpoint = null;
-        processThread.dispose();
-        processThread = null;
-        if (onClose != null) {
-            onClose.run();
+        Runnable onCloseRunnable = null;
+        synchronized (this) {
+            runtime.disable();
+            debugger.disable();
+            profiler.disable();
+            context.reset();
+            messageEndpoint = null;
+            processThread.dispose();
+            processThread = null;
+            onCloseRunnable = onClose;
+        }
+        if (onCloseRunnable != null) {
+            onCloseRunnable.run();
         }
     }
 
@@ -103,7 +107,7 @@ public final class InspectServerSession implements MessageEndpoint {
         return debugger;
     }
 
-    public void setMessageListener(MessageEndpoint messageListener) {
+    public synchronized void setMessageListener(MessageEndpoint messageListener) {
         this.messageEndpoint = messageListener;
         if (messageListener != null && processThread == null) {
             EventHandler eh = new EventHandlerImpl();
@@ -115,7 +119,7 @@ public final class InspectServerSession implements MessageEndpoint {
         }
     }
 
-    public void setJSONMessageListener(JSONMessageListener messageListener) {
+    public synchronized void setJSONMessageListener(JSONMessageListener messageListener) {
         this.jsonMessageListener = messageListener;
         if (messageListener != null && processThread == null) {
             EventHandler eh = new EventHandlerImpl();
@@ -139,14 +143,20 @@ public final class InspectServerSession implements MessageEndpoint {
             }
             return;
         }
-        processThread.push(cmd);
+        CommandProcessThread pt = processThread;
+        if (pt != null) {
+            pt.push(cmd);
+        }
     }
 
     public void sendCommand(Command cmd) {
         if (context.isSynchronous()) {
             sendCommandSync(cmd);
         } else {
-            processThread.push(cmd);
+            CommandProcessThread pt = processThread;
+            if (pt != null) {
+                pt.push(cmd);
+            }
         }
     }
 

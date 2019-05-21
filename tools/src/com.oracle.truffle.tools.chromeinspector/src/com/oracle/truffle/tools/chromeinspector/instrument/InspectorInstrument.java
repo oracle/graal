@@ -420,10 +420,10 @@ public final class InspectorInstrument extends TruffleInstrument {
                     info.println("    " + address);
                     info.flush();
                 } else {
+                    restartServerEndpointOnClose(hostAndPort, env, wsuri, executionContext, connectionWatcher, iss, interceptor);
                     interceptor.opened(serverEndpoint);
                     wss = interceptor;
                     wsURL = wsuri.toString();
-                    restartServerEndpointOnClose(hostAndPort, env, wsuri, executionContext, connectionWatcher, iss, interceptor);
                 }
             }
             if (debugBreak || waitAttached) {

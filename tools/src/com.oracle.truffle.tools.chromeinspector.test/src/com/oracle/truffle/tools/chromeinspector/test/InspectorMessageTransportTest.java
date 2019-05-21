@@ -134,9 +134,11 @@ public class InspectorMessageTransportTest {
         }
         // We will not get the last 4 messages as we do not do initial suspension on re-connect
         int expectedNumMessages = 2 * MESSAGES.length - 4;
-        while (session.messages.size() < expectedNumMessages) {
-            // The reply messages are sent asynchronously. We need to wait for them.
-            Thread.sleep(100);
+        synchronized (session.messages) {
+            while (session.messages.size() < expectedNumMessages) {
+                // The reply messages are sent asynchronously. We need to wait for them.
+                session.messages.wait();
+            }
         }
 
         Assert.assertEquals(session.messages.toString(), expectedNumMessages, session.messages.size());
@@ -226,7 +228,10 @@ public class InspectorMessageTransportTest {
 
         void sendText(String text) throws IOException {
             if (!text.startsWith("{\"method\":\"Debugger.scriptParsed\"")) {
-                messages.add("toClient(" + text + ")");
+                synchronized (messages) {
+                    messages.add("toClient(" + text + ")");
+                    messages.notifyAll();
+                }
             }
             if (text.startsWith("{\"method\":\"Debugger.paused\"")) {
                 handler.onMessage("{\"id\":100,\"method\":\"Debugger.resume\"}");
