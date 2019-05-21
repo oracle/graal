@@ -34,6 +34,8 @@ public interface InvokeDynamicConstant extends PoolConstant {
 
     Symbol<Symbol.Signature> getSignature(ConstantPool pool);
 
+    Symbol<Symbol.Name> getName(ConstantPool pool);
+
     default Tag tag() {
         return Tag.INVOKEDYNAMIC;
     }
@@ -62,6 +64,10 @@ public interface InvokeDynamicConstant extends PoolConstant {
             return Signatures.check(pool.nameAndTypeAt(nameAndTypeIndex).getDescriptor(pool));
         }
 
+        @Override
+        public final Symbol<Symbol.Name> getName(ConstantPool pool) {
+            return pool.nameAndTypeAt(nameAndTypeIndex).getName(pool);
+        }
     }
 
     @Override

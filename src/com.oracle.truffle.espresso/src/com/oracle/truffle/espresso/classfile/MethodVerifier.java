@@ -227,7 +227,6 @@ import static com.oracle.truffle.espresso.bytecode.Bytecodes.SWAP;
 import static com.oracle.truffle.espresso.bytecode.Bytecodes.TABLESWITCH;
 import static com.oracle.truffle.espresso.bytecode.Bytecodes.WIDE;
 
-import java.util.ArrayList;
 import java.util.Arrays;
 
 import com.oracle.truffle.espresso.bytecode.BytecodeLookupSwitch;
@@ -235,12 +234,15 @@ import com.oracle.truffle.espresso.bytecode.BytecodeStream;
 import com.oracle.truffle.espresso.bytecode.BytecodeTableSwitch;
 import com.oracle.truffle.espresso.bytecode.Bytecodes;
 import com.oracle.truffle.espresso.descriptors.Symbol;
+import com.oracle.truffle.espresso.descriptors.Symbol.Signature;
+import com.oracle.truffle.espresso.descriptors.Symbol.Type;
 import com.oracle.truffle.espresso.descriptors.Types;
-import com.oracle.truffle.espresso.impl.Field;
+import com.oracle.truffle.espresso.impl.ContextAccess;
 import com.oracle.truffle.espresso.impl.Klass;
 import com.oracle.truffle.espresso.impl.Method;
 import com.oracle.truffle.espresso.meta.EspressoError;
-import com.oracle.truffle.espresso.runtime.EspressoException;
+import com.oracle.truffle.espresso.meta.JavaKind;
+import com.oracle.truffle.espresso.runtime.EspressoContext;
 
 /**
  * Extremely light-weight java bytecode verifier. Performs only very basic verifications.
@@ -252,75 +254,267 @@ import com.oracle.truffle.espresso.runtime.EspressoException;
  * The primary goal of this verifier is to detect class files that are blatantly ill-formed, and
  * does not replace a complete bytecode verifier.
  */
-public class MethodVerifier {
+public class MethodVerifier implements ContextAccess {
     private final BytecodeStream code;
     private final int maxStack;
     private final int maxLocals;
     private final RuntimeConstantPool pool;
     private final byte[] verified;
     private final StackFrame[] stackFrames;
-    private final String sig;
+    private final Symbol<Signature> sig;
     private final boolean isStatic;
     private final Klass thisKlass;
 
-    private enum Operand {
-        // TODO(garcia) subTyping
-        // TODO(garcia) array typing
-        Int,
-        Float,
-        Double,
-        Long,
-        Object,
-        Void,
-        ReturnAddress,
-        Invalid;
+    @Override
+    public EspressoContext getContext() {
+        return thisKlass.getContext();
+    }
+
+    static abstract class Operand {
+        protected JavaKind kind;
+
+        Operand(JavaKind kind) {
+            this.kind = kind;
+        }
+
+        JavaKind getKind() {
+            return kind;
+        }
+
+        boolean isArrayType() {
+            return false;
+        }
+
+        boolean isReference() {
+            return false;
+        }
+
+        boolean isPrimitive() {
+            return false;
+        }
+
+        Operand getComponent() {
+            return null;
+        }
+
+        Operand getElemental() {
+            return null;
+        }
+
+        Symbol<Type> getType() {
+            return null;
+        }
+
+        Klass getKlass() {
+            return null;
+        }
+
+        int getDimensions() {
+            return -1;
+        }
+
+        abstract boolean canMerge(Operand other);
+    }
+
+    static class PrimitiveOperand extends Operand {
+        PrimitiveOperand(JavaKind kind) {
+            super(kind);
+        }
+
+        @Override
+        boolean isPrimitive() {
+            return true;
+        }
+
+        @Override
+        boolean canMerge(Operand other) {
+            return other.isPrimitive() && other.getKind() == this.kind;
+        }
 
         @Override
         public String toString() {
-            return opToString(this);
+            return kind.toString();
+        }
+    }
+
+    static class ReferenceOperand extends Operand {
+        private Symbol<Type> type;
+        private Klass thisKlass;
+
+        // Load if needed.
+        private Klass klass = null;
+
+        ReferenceOperand(Symbol<Type> type, Klass thisKlass) {
+            super(JavaKind.Object);
+            assert type == null || !Types.isPrimitive(type);
+            this.type = type;
+            this.thisKlass = thisKlass;
         }
 
-        public boolean canMerge(Operand other) {
-            return this == other;
+        ReferenceOperand(Klass klass, Klass thisKlass) {
+            super(JavaKind.Object);
+            assert type == null || !Types.isPrimitive(type);
+            this.type = klass.getType();
+            this.klass = klass;
+            this.thisKlass = thisKlass;
         }
 
+        @Override
+        boolean isReference() {
+            return true;
+        }
+
+        @Override
+        Symbol<Type> getType() {
+            return type;
+        }
+
+        @Override
+        Klass getKlass() {
+            if (klass == null) {
+                klass = thisKlass.getMeta().loadKlass(type, thisKlass.getDefiningClassLoader());
+                if (klass == null) {
+                    throw new NoClassDefFoundError(type.toString());
+                }
+            }
+            return klass;
+        }
+
+        @Override
+        boolean canMerge(Operand other) {
+            if (other.isReference()) {
+                if (type == null || other.getType() == this.type) {
+                    return true;
+                }
+                return other.getKlass().isAssignableFrom(getKlass());
+            }
+            return false;
+        }
+
+        @Override
+        public String toString() {
+            return type == null ? "null" : type.toString();
+        }
+    }
+
+    static class ArrayOperand extends Operand {
+        private int dimensions;
+        private Operand elemental;
+        private Operand component = null;
+
+        ArrayOperand(Operand elemental, int dimensions) {
+            super(JavaKind.Object);
+            assert !elemental.isArrayType();
+            this.dimensions = dimensions;
+            this.elemental = elemental;
+        }
+
+        ArrayOperand(Operand elemental) {
+            this(elemental, 1);
+        }
+
+        @Override
+        boolean canMerge(Operand other) {
+            if (other.isArrayType()) {
+                if (other.getDimensions() < getDimensions()) {
+                    return other.getElemental().isReference() && other.getElemental().getType() == Type.Object;
+                } else if (other.getDimensions() == getDimensions()) {
+                    return elemental.canMerge(other.getElemental());
+                }
+                return false;
+            }
+            return other.isReference() && other.getType() == Type.Object;
+        }
+
+        @Override
+        boolean isReference() {
+            return true;
+        }
+
+        @Override
+        boolean isArrayType() {
+            return true;
+        }
+
+        @Override
+        Operand getComponent() {
+            if (component == null) {
+                if (dimensions == 1) {
+                    component = elemental;
+                } else {
+                    component = new ArrayOperand(elemental, dimensions - 1);
+                }
+            }
+            return component;
+        }
+
+        @Override
+        Operand getElemental() {
+            return elemental;
+        }
+
+        @Override
+        public String toString() {
+            if (dimensions == 1) {
+                return "[" + getElemental();
+            }
+            return "[dim:" + dimensions + "]" + getElemental();
+        }
+
+        @Override
+        int getDimensions() {
+            return dimensions;
+        }
     }
 
     static boolean isType2(Operand k) {
         return k == Long || k == Double;
     }
 
-    private static String opToString(Operand o) {
-        switch (o) {
-            case Int:
-                return "I";
-            case Float:
-                return "F";
-            case Double:
-                return "D";
-            case Long:
-                return "L";
-            case Object:
-                return "A";
-            case Void:
-                return "V";
-            case ReturnAddress:
-                return "ReturnAddress";
-            case Invalid:
-                return "Invalid";
-            default:
-                throw EspressoError.shouldNotReachHere();
-        }
-    }
+    static private final PrimitiveOperand Int = new PrimitiveOperand(JavaKind.Int);
+    static private final PrimitiveOperand Byte = new PrimitiveOperand(JavaKind.Byte);
+    static private final PrimitiveOperand Char = new PrimitiveOperand(JavaKind.Char);
+    static private final PrimitiveOperand Short = new PrimitiveOperand(JavaKind.Short);
+    static private final PrimitiveOperand Float = new PrimitiveOperand(JavaKind.Float);
+    static private final PrimitiveOperand Double = new PrimitiveOperand(JavaKind.Double);
+    static private final PrimitiveOperand Long = new PrimitiveOperand(JavaKind.Long);
+    static private final PrimitiveOperand Void = new PrimitiveOperand(JavaKind.Void);
+    static private final PrimitiveOperand Invalid = new PrimitiveOperand(JavaKind.Illegal);
 
-    static private final Operand Int = Operand.Int;
-    static private final Operand Float = Operand.Float;
-    static private final Operand Double = Operand.Double;
-    static private final Operand Long = Operand.Long;
-    static private final Operand Object = Operand.Object;
-    static private final Operand Void = Operand.Void;
-    static private final Operand Invalid = Operand.Invalid;
-    static private final Operand ReturnAddress = Operand.ReturnAddress;
+    static private final Operand ReturnAddress = new PrimitiveOperand(JavaKind.ReturnAddress);
+
+    static private final Operand Null = new Operand(JavaKind.Object) {
+        @Override
+        boolean canMerge(Operand other) {
+            return other.isReference();
+        }
+
+        @Override
+        boolean isReference() {
+            return true;
+        }
+
+        @Override
+        public String toString() {
+            return "null";
+        }
+
+        @Override
+        boolean isPrimitive() {
+            return false;
+        }
+
+        @Override
+        Operand getComponent() {
+            return this;
+        }
+    };
+
+    private final Operand jlClass;
+    private final Operand jlString;
+    private final Operand MethodType;
+    private final Operand MethodHandle;
+    private final Operand Throwable;
 
     static private final byte UNREACHABLE = 0;
     static private final byte UNSEEN = 1;
@@ -333,7 +527,7 @@ public class MethodVerifier {
      * @param code Raw bytecode representation for the method to verify
      * @param pool The constant pool to be used with this method.
      */
-    private MethodVerifier(int maxStack, int maxLocals, byte[] code, RuntimeConstantPool pool, String sig, boolean isStatic, Klass thisKlass) {
+    private MethodVerifier(int maxStack, int maxLocals, byte[] code, RuntimeConstantPool pool, Symbol<Signature> sig, boolean isStatic, Klass thisKlass) {
         this.code = new BytecodeStream(code);
         this.maxStack = maxStack;
         this.maxLocals = maxLocals;
@@ -343,6 +537,12 @@ public class MethodVerifier {
         this.sig = sig;
         this.isStatic = isStatic;
         this.thisKlass = thisKlass;
+
+        jlClass = new ReferenceOperand(Type.Class, thisKlass);
+        jlString = new ReferenceOperand(Type.String, thisKlass);
+        MethodType = new ReferenceOperand(Type.MethodType, thisKlass);
+        MethodHandle = new ReferenceOperand(Type.MethodHandle, thisKlass);
+        Throwable = new ReferenceOperand(Type.Throwable, thisKlass);
     }
 
     /**
@@ -356,7 +556,7 @@ public class MethodVerifier {
         if (codeAttribute == null) {
             return true;
         }
-        return new MethodVerifier(codeAttribute.getMaxStack(), codeAttribute.getMaxLocals(), codeAttribute.getCode(), m.getRuntimeConstantPool(), m.getRawSignature().toString(), m.isStatic(),
+        return new MethodVerifier(codeAttribute.getMaxStack(), codeAttribute.getMaxLocals(), codeAttribute.getCode(), m.getRuntimeConstantPool(), m.getRawSignature(), m.isStatic(),
                         m.getDeclaringKlass()).verify();
     }
 
@@ -372,7 +572,7 @@ public class MethodVerifier {
         }
         int nextBCI = 0;
         Stack stack = new Stack(maxStack);
-        Locals locals = new Locals(maxLocals, sig, isStatic);
+        Locals locals = new Locals(this, maxLocals, sig, isStatic);
         while (verified[nextBCI] != DONE) {
             nextBCI = verifySafe(nextBCI, stack, locals);
             if (nextBCI >= code.endBCI()) {
@@ -437,24 +637,23 @@ public class MethodVerifier {
         }
     }
 
-    private static Operand fromTag(ConstantPool.Tag tag) {
+    private Operand fromTag(ConstantPool.Tag tag) {
+        // @formatter:off
+        // checkstyle: stop
         switch (tag) {
-            case INTEGER:
-                return Int;
-            case FLOAT:
-                return Float;
-            case LONG:
-                return Long;
-            case DOUBLE:
-                return Double;
-            case CLASS:
-            case STRING:
-            case METHODHANDLE:
-            case METHODTYPE:
-                return Object;
+            case INTEGER:       return Int;
+            case FLOAT:         return Float;
+            case LONG:          return Long;
+            case DOUBLE:        return Double;
+            case CLASS:         return jlClass;
+            case STRING:        return jlString;
+            case METHODHANDLE:  return MethodHandle;
+            case METHODTYPE:    return MethodType;
             default:
                 throw new VerifyError("invalid CP load: " + tag);
         }
+        // checkstyle: resume
+        // @formatter:on
     }
 
     private int verify(int BCI, Stack stack, Locals locals) {
@@ -469,14 +668,17 @@ public class MethodVerifier {
         }
         // @formatter:off
         // Checkstyle: stop
+        
+        // EXTREMELY dirty trick to handle WIDE. This is not supposed to be a loop ! (returns on
+        // first iteration)
+        // Executes a second time ONLY for wide instruction, with curOpcode being the opcode of the
+        // widened instruction.
         wideEscape:
-        // EXTREMELY dirty trick to handle WIDE. This is not supposed to be a loop ! (returns on first iteration)
-        // Executes a second time ONLY for wide instruction, with curOpcode being the opcode of the widened instruction.
         while (true) {
             switch (curOpcode) {
                 case NOP: break;
-                case ACONST_NULL: stack.pushObj(); break;
-    
+                case ACONST_NULL: stack.push(Null); break;
+
                 case ICONST_M1:
                 case ICONST_0:
                 case ICONST_1:
@@ -484,216 +686,236 @@ public class MethodVerifier {
                 case ICONST_3:
                 case ICONST_4:
                 case ICONST_5: stack.pushInt(); break;
-    
+
                 case LCONST_0:
                 case LCONST_1: stack.pushLong(); break;
-    
+
                 case FCONST_0:
                 case FCONST_1:
                 case FCONST_2: stack.pushFloat(); break;
-    
+
                 case DCONST_0:
                 case DCONST_1: stack.pushDouble(); break;
-    
+
                 case BIPUSH: stack.pushInt(); break;
                 case SIPUSH: stack.pushInt(); break;
-    
+
                 case LDC:
                 case LDC_W:
-                case LDC2_W:
-                    stack.push(fromTag(pool.at(code.readCPI(BCI)).tag()));
-                    break;
-    
-                case ILOAD: locals.load(code.readLocalIndex(BCI), Int); stack.pushInt(); break;
-                case LLOAD: locals.load(code.readLocalIndex(BCI), Long); stack.pushLong(); break;
-                case FLOAD: locals.load(code.readLocalIndex(BCI), Float); stack.pushFloat(); break;
-                case DLOAD: locals.load(code.readLocalIndex(BCI), Double); stack.pushDouble(); break;
-                case ALOAD: locals.load(code.readLocalIndex(BCI), Object); stack.pushObj(); break;
-    
-                case ILOAD_0: 
+                case LDC2_W: stack.push(fromTag(pool.at(code.readCPI(BCI)).tag())); break;
+
+                case ILOAD: locals.load(code.readLocalIndex(BCI), Int);     stack.pushInt();    break;
+                case LLOAD: locals.load(code.readLocalIndex(BCI), Long);    stack.pushLong();   break;
+                case FLOAD: locals.load(code.readLocalIndex(BCI), Float);   stack.pushFloat();  break;
+                case DLOAD: locals.load(code.readLocalIndex(BCI), Double);  stack.pushDouble(); break;
+                case ALOAD: stack.push(locals.loadRef(code.readLocalIndex(BCI))); break;
+                
+                case ILOAD_0:
                 case ILOAD_1:
                 case ILOAD_2:
                 case ILOAD_3: locals.load(curOpcode - ILOAD_0, Int); stack.pushInt(); break;
+                
                 case LLOAD_0:
                 case LLOAD_1:
                 case LLOAD_2:
                 case LLOAD_3: locals.load(curOpcode - LLOAD_0, Long); stack.pushLong(); break;
+                
                 case FLOAD_0:
                 case FLOAD_1:
                 case FLOAD_2:
                 case FLOAD_3: locals.load(curOpcode - FLOAD_0, Float); stack.pushFloat(); break;
+                
                 case DLOAD_0:
                 case DLOAD_1:
                 case DLOAD_2:
                 case DLOAD_3: locals.load(curOpcode - DLOAD_0, Double); stack.pushDouble(); break;
+                
                 case ALOAD_0:
                 case ALOAD_1:
                 case ALOAD_2:
-                case ALOAD_3: locals.load(curOpcode - ALOAD_0, Object); stack.pushObj(); break;
-    
-                case IALOAD: stack.popInt(); stack.popObj(); stack.pushInt(); break;
-                case LALOAD: stack.popInt(); stack.popObj(); stack.pushLong(); break;
-                case FALOAD: stack.popInt(); stack.popObj(); stack.pushFloat(); break;
-                case DALOAD: stack.popInt(); stack.popObj(); stack.pushDouble(); break;
-                case AALOAD: stack.popInt(); stack.popObj(); stack.pushObj(); break;
-                case BALOAD: stack.popInt(); stack.popObj(); stack.pushInt(); break;
-                case CALOAD: stack.popInt(); stack.popObj(); stack.pushInt(); break;
-                case SALOAD: stack.popInt(); stack.popObj(); stack.pushInt(); break;
-    
-                case ISTORE: stack.popInt(); locals.store(code.readLocalIndex(BCI), Int); break;
-                case LSTORE: stack.popLong(); locals.store(code.readLocalIndex(BCI), Long); break;
-                case FSTORE: stack.popFloat(); locals.store(code.readLocalIndex(BCI), Float); break;
-                case DSTORE: stack.popDouble(); locals.store(code.readLocalIndex(BCI), Double); break;
+                case ALOAD_3: stack.push(locals.loadRef(curOpcode - ALOAD_0)); break;
+                
+
+                case IALOAD: xaload(stack, Int);    break;
+                case LALOAD: xaload(stack, Long);   break;
+                case FALOAD: xaload(stack, Float);  break;
+                case DALOAD: xaload(stack, Double); break;
+                
+                case AALOAD: {
+                    stack.popInt();
+                    Operand op = stack.popArray();
+                    if (!op.getComponent().isReference()) {
+                        throw new VerifyError("Loading reference from " + op + " array.");
+                    }
+                    stack.push(op.getComponent());
+                    break;
+                }
+                
+                case BALOAD: xaload(stack, Byte);  break;
+                case CALOAD: xaload(stack, Char);  break;
+                case SALOAD: xaload(stack, Short); break;
+
+                case ISTORE: stack.popInt();     locals.store(code.readLocalIndex(BCI), Int);    break;
+                case LSTORE: stack.popLong();    locals.store(code.readLocalIndex(BCI), Long);   break;
+                case FSTORE: stack.popFloat();   locals.store(code.readLocalIndex(BCI), Float);  break;
+                case DSTORE: stack.popDouble();  locals.store(code.readLocalIndex(BCI), Double); break;
+                
                 case ASTORE: locals.store(code.readLocalIndex(BCI), stack.popObjOrRA()); break;
-    
+
                 case ISTORE_0:
                 case ISTORE_1:
                 case ISTORE_2:
                 case ISTORE_3: stack.popInt(); locals.store(curOpcode - ISTORE_0, Int); break;
+                
                 case LSTORE_0:
                 case LSTORE_1:
                 case LSTORE_2:
                 case LSTORE_3: stack.popLong(); locals.store(curOpcode - LSTORE_0, Long); break;
+                
                 case FSTORE_0:
                 case FSTORE_1:
                 case FSTORE_2:
                 case FSTORE_3: stack.popFloat(); locals.store(curOpcode - FSTORE_0, Float); break;
+                
                 case DSTORE_0:
                 case DSTORE_1:
                 case DSTORE_2:
                 case DSTORE_3: stack.popDouble(); locals.store(curOpcode - DSTORE_0, Double); break;
+                
                 case ASTORE_0:
                 case ASTORE_1:
                 case ASTORE_2:
                 case ASTORE_3: locals.store(curOpcode - ASTORE_0, stack.popObjOrRA()); break;
-    
-                case IASTORE: stack.popInt(); stack.popInt(); stack.popObj(); break;
-                case LASTORE: stack.popLong(); stack.popInt(); stack.popObj(); break;
-                case FASTORE: stack.popFloat(); stack.popInt(); stack.popObj(); break;
-                case DASTORE: stack.popDouble(); stack.popInt(); stack.popObj(); break;
-                case AASTORE: stack.popObj(); stack.popInt(); stack.popObj(); break;
-                case BASTORE: stack.popInt(); stack.popInt(); stack.popObj(); break;
-                case CASTORE: stack.popInt(); stack.popInt(); stack.popObj(); break;
-                case SASTORE: stack.popInt(); stack.popInt(); stack.popObj(); break;
-    
-                case POP: stack.pop(); break;
-                case POP2: stack.pop2(); break;
-    
-                case DUP: stack.dup(); break;
-                case DUP_X1: stack.dupx1(); break;
-                case DUP_X2: stack.dupx2(); break;
-                case DUP2: stack.dup2(); break;
-                case DUP2_X1: stack.dup2x1(); break;
-                case DUP2_X2: stack.dup2x2(); break;
-                case SWAP: stack.swap(); break;
-    
+
+                case IASTORE: xastore(stack, Int);      break;
+                case LASTORE: xastore(stack, Long);     break;
+                case FASTORE: xastore(stack, Float);    break;
+                case DASTORE: xastore(stack, Double);   break;
+                
+                case AASTORE: {
+                    Operand toStore = stack.popRef();
+                    stack.popInt();
+                    Operand array = stack.popArray();
+                    if (!array.getComponent().isReference()) {
+                        throw new VerifyError("Trying to store " + toStore + " in " + array);
+                    }
+                    break;
+                }
+                
+                case BASTORE: xastore(stack, Byte); break;
+                case CASTORE: xastore(stack, Char); break;
+                case SASTORE: xastore(stack, Short); break;
+
+                case POP:   stack.pop();    break;
+                case POP2:  stack.pop2();   break;
+
+                case DUP:     stack.dup();      break;
+                case DUP_X1:  stack.dupx1();    break;
+                case DUP_X2:  stack.dupx2();    break;
+                case DUP2:    stack.dup2();     break;
+                case DUP2_X1: stack.dup2x1();   break;
+                case DUP2_X2: stack.dup2x2();   break;
+                case SWAP:    stack.swap();     break;
+
                 case IADD: stack.popInt(); stack.popInt(); stack.pushInt(); break;
-                case LADD: stack.popLong(); stack.popLong(); stack.pushLong();break;
-                case FADD: stack.popFloat(); stack.popFloat(); stack.pushFloat();break;
-                case DADD: stack.popDouble(); stack.popDouble(); stack.pushDouble();break;
-    
+                case LADD: stack.popLong(); stack.popLong(); stack.pushLong(); break;
+                case FADD: stack.popFloat(); stack.popFloat(); stack.pushFloat(); break;
+                case DADD: stack.popDouble(); stack.popDouble(); stack.pushDouble(); break;
+
                 case ISUB: stack.popInt(); stack.popInt(); stack.pushInt(); break;
-                case LSUB: stack.popLong(); stack.popLong(); stack.pushLong();break;
-                case FSUB: stack.popFloat(); stack.popFloat(); stack.pushFloat();break;
-                case DSUB: stack.popDouble(); stack.popDouble(); stack.pushDouble();break;
-    
+                case LSUB: stack.popLong(); stack.popLong(); stack.pushLong(); break;
+                case FSUB: stack.popFloat(); stack.popFloat(); stack.pushFloat(); break;
+                case DSUB: stack.popDouble(); stack.popDouble(); stack.pushDouble(); break;
+
                 case IMUL: stack.popInt(); stack.popInt(); stack.pushInt(); break;
-                case LMUL: stack.popLong(); stack.popLong(); stack.pushLong();break;
-                case FMUL: stack.popFloat(); stack.popFloat(); stack.pushFloat();break;
-                case DMUL: stack.popDouble(); stack.popDouble(); stack.pushDouble();break;
-    
+                case LMUL: stack.popLong(); stack.popLong(); stack.pushLong(); break;
+                case FMUL: stack.popFloat(); stack.popFloat(); stack.pushFloat(); break;
+                case DMUL: stack.popDouble(); stack.popDouble(); stack.pushDouble(); break;
+
                 case IDIV: stack.popInt(); stack.popInt(); stack.pushInt(); break;
-                case LDIV: stack.popLong(); stack.popLong(); stack.pushLong();break;
-                case FDIV: stack.popFloat(); stack.popFloat(); stack.pushFloat();break;
-                case DDIV: stack.popDouble(); stack.popDouble(); stack.pushDouble();break;
-    
+                case LDIV: stack.popLong(); stack.popLong(); stack.pushLong(); break;
+                case FDIV: stack.popFloat(); stack.popFloat(); stack.pushFloat(); break;
+                case DDIV: stack.popDouble(); stack.popDouble(); stack.pushDouble(); break;
+
                 case IREM: stack.popInt(); stack.popInt(); stack.pushInt(); break;
-                case LREM: stack.popLong(); stack.popLong(); stack.pushLong();break;
-                case FREM: stack.popFloat(); stack.popFloat(); stack.pushFloat();break;
-                case DREM: stack.popDouble(); stack.popDouble(); stack.pushDouble();break;
-    
-                case INEG:  stack.popInt(); stack.pushInt(); break;
-                case LNEG:  stack.popLong(); stack.pushLong();break;
-                case FNEG:  stack.popFloat(); stack.pushFloat();break;
-                case DNEG:  stack.popDouble(); stack.pushDouble();break;
-    
+                case LREM: stack.popLong(); stack.popLong(); stack.pushLong(); break;
+                case FREM: stack.popFloat(); stack.popFloat(); stack.pushFloat(); break;
+                case DREM: stack.popDouble(); stack.popDouble(); stack.pushDouble(); break;
+
+                case INEG: stack.popInt(); stack.pushInt(); break;
+                case LNEG: stack.popLong(); stack.pushLong(); break;
+                case FNEG: stack.popFloat(); stack.pushFloat(); break;
+                case DNEG: stack.popDouble(); stack.pushDouble(); break;
+
                 case ISHL: stack.popInt(); stack.popInt(); stack.pushInt(); break;
-                case LSHL: stack.popInt(); stack.popLong(); stack.pushLong();break;
+                case LSHL: stack.popInt(); stack.popLong(); stack.pushLong(); break;
                 case ISHR: stack.popInt(); stack.popInt(); stack.pushInt(); break;
-                case LSHR: stack.popInt(); stack.popLong(); stack.pushLong();break;
+                case LSHR: stack.popInt(); stack.popLong(); stack.pushLong(); break;
                 case IUSHR: stack.popInt(); stack.popInt(); stack.pushInt(); break;
-                case LUSHR: stack.popInt(); stack.popLong(); stack.pushLong();break;
-    
+                case LUSHR: stack.popInt(); stack.popLong(); stack.pushLong(); break;
+
                 case IAND: stack.popInt(); stack.popInt(); stack.pushInt(); break;
-                case LAND: stack.popLong(); stack.popLong(); stack.pushLong();break;
-    
+                case LAND: stack.popLong(); stack.popLong(); stack.pushLong(); break;
+
                 case IOR: stack.popInt(); stack.popInt(); stack.pushInt(); break;
-                case LOR: stack.popLong(); stack.popLong(); stack.pushLong();break;
-    
+                case LOR: stack.popLong(); stack.popLong(); stack.pushLong(); break;
+
                 case IXOR: stack.popInt(); stack.popInt(); stack.pushInt(); break;
-                case LXOR: stack.popLong(); stack.popLong(); stack.pushLong();break;
-    
+                case LXOR: stack.popLong(); stack.popLong(); stack.pushLong(); break;
+
                 case IINC: locals.load(code.readLocalIndex(BCI), Int); break;
-    
+
                 case I2L: stack.popInt(); stack.pushLong(); break;
                 case I2F: stack.popInt(); stack.pushFloat(); break;
                 case I2D: stack.popInt(); stack.pushDouble(); break;
-    
+
                 case L2I: stack.popLong(); stack.pushInt(); break;
                 case L2F: stack.popLong(); stack.pushFloat(); break;
                 case L2D: stack.popLong(); stack.pushDouble(); break;
-    
+
                 case F2I: stack.popFloat(); stack.pushInt(); break;
-                case F2L: stack.popFloat(); stack.pushLong();break;
-                case F2D: stack.popFloat(); stack.pushDouble();break;
-    
-                case D2I: stack.popDouble(); stack.pushInt();break;
-                case D2L: stack.popDouble(); stack.pushLong();break;
-                case D2F: stack.popDouble(); stack.pushFloat();break;
-    
-                case I2B: stack.popInt(); stack.pushInt();break;
-                case I2C: stack.popInt(); stack.pushInt();break;
-                case I2S: stack.popInt(); stack.pushInt();break;
-    
-                case LCMP: stack.popLong(); stack.popLong(); stack.pushInt();break;
+                case F2L: stack.popFloat(); stack.pushLong(); break;
+                case F2D: stack.popFloat(); stack.pushDouble(); break;
+
+                case D2I: stack.popDouble(); stack.pushInt(); break;
+                case D2L: stack.popDouble(); stack.pushLong(); break;
+                case D2F: stack.popDouble(); stack.pushFloat(); break;
+
+                case I2B: stack.popInt(); stack.pushInt(); break;
+                case I2C: stack.popInt(); stack.pushInt(); break;
+                case I2S: stack.popInt(); stack.pushInt(); break;
+
+                case LCMP: stack.popLong(); stack.popLong(); stack.pushInt(); break;
+                
                 case FCMPL:
-                case FCMPG: stack.popFloat(); stack.popFloat(); stack.pushInt();break;
+                case FCMPG: stack.popFloat(); stack.popFloat(); stack.pushInt(); break;
+                
                 case DCMPL:
-                case DCMPG: stack.popDouble(); stack.popDouble(); stack.pushInt();break;
-    
+                case DCMPG: stack.popDouble(); stack.popDouble(); stack.pushInt(); break;
+
                 case IFEQ: // fall through
                 case IFNE: // fall through
                 case IFLT: // fall through
                 case IFGE: // fall through
                 case IFGT: // fall through
-                case IFLE:
-                    stack.popInt();
-                    branch(code.readBranchDest(BCI), stack, locals);
-                    break;
+                case IFLE: stack.popInt(); branch(code.readBranchDest(BCI), stack, locals); break;
+                
                 case IF_ICMPEQ: // fall through
                 case IF_ICMPNE: // fall through
                 case IF_ICMPLT: // fall through
                 case IF_ICMPGE: // fall through
                 case IF_ICMPGT: // fall through
-                case IF_ICMPLE:
-                    stack.popInt(); stack.popInt();
-                    branch(code.readBranchDest(BCI), stack, locals);
-                    break;
+                case IF_ICMPLE: stack.popInt(); stack.popInt(); branch(code.readBranchDest(BCI), stack, locals); break;
+                
                 case IF_ACMPEQ: // fall through
-                case IF_ACMPNE:
-                    stack.popObj(); stack.popObj();
-                    branch(code.readBranchDest(BCI), stack, locals);
-                    break;
-    
+                case IF_ACMPNE: stack.popRef(); stack.popRef(); branch(code.readBranchDest(BCI), stack, locals); break;
+
                 case GOTO:
-                case GOTO_W:
-                    branch(code.readBranchDest(BCI), stack, locals);
-                    return BCI;
+                case GOTO_W: branch(code.readBranchDest(BCI), stack, locals); return BCI;
+                
                 case IFNULL: // fall through
-                case IFNONNULL:
-                    stack.popObj();
-                    branch(code.readBranchDest(BCI), stack, locals);
-                    break;
+                case IFNONNULL: stack.popRef(); branch(code.readBranchDest(BCI), stack, locals); break;
+                
                 case JSR: // fall through
                 case JSR_W: {
                     stack.push(ReturnAddress);
@@ -701,13 +923,11 @@ public class MethodVerifier {
                     // RET will need to branch here to finish the job.
                     return BCI;
                 }
-                case RET: { 
+                case RET: {
                     locals.load(code.readLocalIndex(BCI), ReturnAddress);
                     return BCI;
                 }
-    
-                // @formatter:on
-                // Checkstyle: resume
+                
                 case TABLESWITCH: {
                     stack.popInt();
                     BytecodeTableSwitch switchHelper = code.getBytecodeTableSwitch();
@@ -728,72 +948,50 @@ public class MethodVerifier {
                     }
                     return switchHelper.defaultTarget(BCI);
                 }
-                // @formatter:off
-                // Checkstyle: stop
+                
                 case IRETURN: stack.popInt(); return BCI;
                 case LRETURN: stack.popLong(); return BCI;
                 case FRETURN: stack.popFloat(); return BCI;
                 case DRETURN: stack.popDouble(); return BCI;
-                case ARETURN: stack.popObj(); return BCI;
-                case RETURN: return BCI;
-    
+                case ARETURN: stack.popRef(); return BCI;
+                case RETURN: return BCI; 
+                
                 case GETSTATIC:
-                case GETFIELD:
-                {
+                case GETFIELD: {
                     PoolConstant pc = pool.at(code.readCPI(BCI));
                     if (!(pc instanceof FieldRefConstant)) {
                         throw new VerifyError();
                     }
-                    Field f;
-                    try {
-                        f = pool.resolvedFieldAt(thisKlass, code.readCPI(BCI));
-                    } catch (EspressoException e) {
-                        if (e.getException().getKlass().getType() == Symbol.Type.ClassNotFoundException) {
-                            throw new NoClassDefFoundError("Field " + ((FieldRefConstant)pc).getName(pool) + " not present in class " + ((FieldRefConstant)pc).getHolderKlassName(pool));
-                        }
-                        throw e;
-                    }
-                    if ((f.isStatic() && curOpcode == GETFIELD) || (!f.isStatic() && curOpcode == GETSTATIC)) {
-                        throw new IncompatibleClassChangeError("op code " + Bytecodes.nameOf(curOpcode) + " trying to read in field " + f.getName());
-                    }
-                    Operand kind = stringToKind(((FieldRefConstant) pc).getType(pool).toString());
+                    Symbol<Type> type = ((FieldRefConstant) pc).getType(pool);
+                    Operand op = kindToOperand(type);
                     if (curOpcode == GETFIELD) {
-                        // TODO check if it is an Array type
-                        stack.popObj();
+                        Operand receiver = stack.popRef();
+                        if (receiver.isArrayType()) {
+                            throw new VerifyError("Trying to access field of an array type: " + receiver);
+                        }
                     }
-                    stack.push(kind);
+                    stack.push(op);
                     break;
                 }
+                
                 case PUTSTATIC:
                 case PUTFIELD: {
                     PoolConstant pc = pool.at(code.readCPI(BCI));
                     if (!(pc instanceof FieldRefConstant)) {
                         throw new VerifyError();
                     }
-                    Field f;
-                    try {
-                        f = pool.resolvedFieldAt(thisKlass, code.readCPI(BCI));
-                    } catch (EspressoException e) {
-                        if (e.getException().getKlass().getType() == Symbol.Type.ClassNotFoundException) {
-                            throw new NoClassDefFoundError("Field " + ((FieldRefConstant)pc).getName(pool) + " not present in class " + ((FieldRefConstant)pc).getHolderKlassName(pool));
-                        }
-                        throw e;
-                    }
-                    if ((f.isStatic() && curOpcode == PUTFIELD) || (!f.isStatic() && curOpcode == PUTSTATIC)) {
-                        throw new IncompatibleClassChangeError("op code " + Bytecodes.nameOf(curOpcode) + " trying to write in field " + f.getName());
-                    }
-                    if (thisKlass != f.getDeclaringKlass() && f.isFinalFlagSet()) {
-                        throw new IllegalAccessError("Trying to modify a final field: " + f.getName());
-                    }
-                    Operand kind = stringToKind(((FieldRefConstant) pc).getType(pool).toString());
-                    stack.pop(kind);
+                    Symbol<Type> type = ((FieldRefConstant) pc).getType(pool);
+                    Operand op = kindToOperand(type);
+                    stack.pop(op);
                     if (curOpcode == PUTFIELD) {
-                        // TODO check if it is an Array type
-                        stack.popObj();
+                        Operand receiver = stack.popRef();
+                        if (receiver.isArrayType()) {
+                            throw new VerifyError("Trying to access field of an array type: " + receiver);
+                        }
                     }
                     break;
                 }
-    
+
                 case INVOKEVIRTUAL:
                 case INVOKESPECIAL:
                 case INVOKESTATIC:
@@ -802,15 +1000,18 @@ public class MethodVerifier {
                     if (!(pc instanceof MethodRefConstant)) {
                         throw new VerifyError("Invalid CP constant for a MethodRef: " + pc.getClass().getName());
                     }
-                    Operand[] parsedSig = parseSig((((MethodRefConstant) pc).getSignature(pool)).toString());
+                    MethodRefConstant mrc = (MethodRefConstant) pc;
+                    Operand[] parsedSig = getOperandSig(mrc.getSignature(pool));
                     if (parsedSig.length == 0) {
                         throw new ClassFormatError("Method ref with no return value !");
                     }
-                    for (int i = parsedSig.length - 2; i>=0; i--) {
+                    for (int i = parsedSig.length - 2; i >= 0; i--) {
                         stack.pop(parsedSig[i]);
                     }
                     if (curOpcode != INVOKESTATIC) {
-                        stack.popObj();
+                        Symbol<Type> type = getTypes().fromName(mrc.getHolderKlassName(pool));
+                        Operand op = kindToOperand(type);
+                        stack.popRef(op);
                     }
                     Operand returnKind = parsedSig[parsedSig.length - 1];
                     if (!(returnKind == Void)) {
@@ -818,101 +1019,241 @@ public class MethodVerifier {
                     }
                     break;
                 }
-    
-                case NEW: 
-                    {
-                        PoolConstant pc = pool.at(code.readCPI(BCI));
-                        if (!(pc instanceof ClassConstant)) {
-                            throw new VerifyError("Invalid CP constant for a Class: " + pc.toString());
-                        }
-                        Klass k = pool.resolvedKlassAt(thisKlass, code.readCPI(BCI));
-                        if (k.isArray()) {
-                            throw new VerifyError("use NEWARRAY for creating array types: " + k.getName());
-                        }
-                        stack.pushObj(); 
-                        break;
+
+                case NEW: {
+                    PoolConstant pc = pool.at(code.readCPI(BCI));
+                    if (!(pc instanceof ClassConstant)) {
+                        throw new VerifyError("Invalid CP constant for a Class: " + pc.toString());
                     }
-                case NEWARRAY: 
-                    byte b = code.readByte(BCI);
-                    if (b < 4 || b > 11) {
-                        throw new VerifyError("invalid jvmPrimitiveType for NEWARRAY: " + b);
+                    ClassConstant cc = (ClassConstant) pc;
+                    Symbol<Type> type = getTypes().fromName(cc.getName(pool));
+                    if (Types.isArray(type)) {
+                        throw new VerifyError("use NEWARRAY for creating array types: " + type);
                     }
-                    stack.popInt(); 
-                    stack.pushObj(); break;
-                case ANEWARRAY: 
-                    stack.popInt(); stack.pushObj(); break;
-                case ARRAYLENGTH: stack.popObj(); stack.pushInt(); break;
-    
-                case ATHROW: stack.popObj(); return BCI;
-    
-                case CHECKCAST: stack.popObj(); stack.pushObj(); break;
-                case INSTANCEOF: stack.popObj(); stack.pushInt(); break;
-    
-                case MONITORENTER: stack.popObj(); break;
-                case MONITOREXIT: stack.popObj(); break;
-    
-                case WIDE: 
+                    Operand op = kindToOperand(type);
+                    stack.push(op);
+                    break;
+                }
+                case NEWARRAY: {
+                    byte jvmType = code.readByte(BCI);
+                    if (jvmType < 4 || jvmType > 11) {
+                        throw new VerifyError("invalid jvmPrimitiveType for NEWARRAY: " + jvmType);
+                    }
+                    stack.popInt();
+                    stack.push(fromJVMType(jvmType));
+                    break;
+                }
+                case ANEWARRAY: {
+                    int CPI = code.readCPI(BCI);
+                    PoolConstant pc = pool.at(CPI);
+                    if (!(pc instanceof ClassConstant)) {
+                        throw new VerifyError("Invalid CP constant for ANEWARRAY: " + pc.toString());
+                    }
+                    ClassConstant cc = (ClassConstant) pc;
+                    Symbol<Type> type = getTypes().fromName(cc.getName(pool));
+                    if (Types.isPrimitive(type)) {
+                        throw new VerifyError("Primitive type for ANEWARRAY: " + type);
+                    }
+                    stack.popInt();
+                    Operand ref = spawnFromType(type);
+                    if (ref.isArrayType()) {
+                        stack.push(new ArrayOperand(ref.getElemental(), ref.getDimensions() + 1));
+                    } else {
+                        stack.push(new ArrayOperand(ref));
+                    }
+                    break;
+                }
+                
+                case ARRAYLENGTH:
+                    stack.popArray();
+                    stack.pushInt();
+                    break;
+
+                case ATHROW:
+                    stack.popRef(Throwable);
+                    return BCI;
+
+                case CHECKCAST: {
+                    stack.popRef();
+                    int CPI = code.readCPI(BCI);
+                    PoolConstant pc = pool.at(CPI);
+                    if (!(pc instanceof ClassConstant)) {
+                        throw new VerifyError("Invalid CP constant for ANEWARRAY: " + pc.toString());
+                    }
+                    ClassConstant cc = (ClassConstant) pc;
+                    Symbol<Type> type = getTypes().fromName(cc.getName(pool));
+                    if (Types.isPrimitive(type)) {
+                        throw new VerifyError("Primitive type for ANEWARRAY: " + type);
+                    }
+                    stack.push(spawnFromType(type));
+                    break;
+                }
+                
+                case INSTANCEOF: {
+                    stack.popRef();
+                    int CPI = code.readCPI(BCI);
+                    PoolConstant pc = pool.at(CPI);
+                    if (!(pc instanceof ClassConstant)) {
+                        throw new VerifyError("Invalid CP constant for ANEWARRAY: " + pc.toString());
+                    }
+                    ClassConstant cc = (ClassConstant) pc;
+                    Symbol<Type> type = getTypes().fromName(cc.getName(pool));
+                    if (Types.isPrimitive(type)) {
+                        throw new VerifyError("Primitive type for ANEWARRAY: " + type);
+                    }
+                    stack.pushInt();
+                    break;
+                }
+
+                case MONITORENTER:
+                    stack.popRef();
+                    break;
+                case MONITOREXIT:
+                    stack.popRef();
+                    break;
+
+                case WIDE:
                     curOpcode = code.currentBC(BCI);
                     if (!wideOpcodes(curOpcode)) {
                         throw new VerifyError("invalid widened opcode: " + Bytecodes.nameOf(curOpcode));
                     }
                     continue wideEscape;
-                case MULTIANEWARRAY:
-                    {
-                        PoolConstant pc = pool.at(code.readCPI(BCI));
-                        if (!(pc instanceof ClassConstant)) {
-                            throw new VerifyError("Invalid CP constant for a Class: " + pc.toString());
-                        }
-                        Klass k = pool.resolvedKlassAt(thisKlass, code.readCPI(BCI));
-                        if (!k.isArray()) {
-                            throw new VerifyError("Class is not an array: " + k.getType());
-                        }
-                        int dim = code.readUByte(BCI + 3);
-                        if (dim <= 0) {
-                            throw new VerifyError("Negative or 0 dimension for MULTIANEWARRAY: " + dim);
-                        }
-                        if (Types.getArrayDimensions(k.getType()) < dim) {
-                            throw new VerifyError("Incompatible dimensions from constant pool: " + Types.getArrayDimensions(k.getType()) + " and instruction: " + dim);
-                        }
-                        for (int i = 0; i<dim; i++) {
-                            stack.popInt();
-                        }
-                        stack.pushObj();
-                        break;
+
+                case MULTIANEWARRAY: {
+                    PoolConstant pc = pool.at(code.readCPI(BCI));
+                    if (!(pc instanceof ClassConstant)) {
+                        throw new VerifyError("Invalid CP constant for a Class: " + pc.toString());
                     }
-    
+                    ClassConstant cc = (ClassConstant) pc;
+                    Symbol<Type> type = getTypes().fromName(cc.getName(pool));
+                    if (!Types.isArray(type)) {
+                        throw new VerifyError("Class " + type + " for MULTINEWARRAY is not an array type.");
+                    }
+                    int dim = code.readUByte(BCI + 3);
+                    if (dim <= 0) {
+                        throw new VerifyError("Negative or 0 dimension for MULTIANEWARRAY: " + dim);
+                    }
+                    if (Types.getArrayDimensions(type) < dim) {
+                        throw new VerifyError("Incompatible dimensions from constant pool: " + Types.getArrayDimensions(type) + " and instruction: " + dim);
+                    }
+                    for (int i = 0; i < dim; i++) {
+                        stack.popInt();
+                    }
+                    stack.push(kindToOperand(type));
+                    break;
+                }
+
                 case BREAKPOINT: break;
-    
-                case INVOKEDYNAMIC: 
-                    {
-                        PoolConstant pc = pool.at(code.readCPI(BCI));
-                        if (!(pc instanceof InvokeDynamicConstant)) {
-                            throw new VerifyError("Invalid CP constant for an InvokeDynamic: " + pc.getClass().getName());
-                        }
-        
-                        InvokeDynamicConstant idc = (InvokeDynamicConstant) pc;
-                        if (!(pool.at(idc.getNameAndTypeIndex()).tag() == ConstantPool.Tag.NAME_AND_TYPE)) {
-                            throw new ClassFormatError("Invalid constant pool !");
-                        }
-                        Operand[] parsedSig = parseSig(idc.getSignature(pool).toString());
-                        if (parsedSig.length == 0) {
-                            throw new ClassFormatError("No return descriptor for method");
-                        }
-                        for (int i = parsedSig.length - 2; i >= 0; i--) {
-                            stack.pop(parsedSig[i]);
-                        }
-                        Operand returnKind = parsedSig[parsedSig.length - 1];
-                        if (returnKind != Void) {
-                            stack.push(returnKind);
-                        }
-                        break;
+
+                case INVOKEDYNAMIC: {
+                    PoolConstant pc = pool.at(code.readCPI(BCI));
+                    if (!(pc instanceof InvokeDynamicConstant)) {
+                        throw new VerifyError("Invalid CP constant for an InvokeDynamic: " + pc.getClass().getName());
                     }
+
+                    InvokeDynamicConstant idc = (InvokeDynamicConstant) pc;
+                    if (!(pool.at(idc.getNameAndTypeIndex()).tag() == ConstantPool.Tag.NAME_AND_TYPE)) {
+                        throw new ClassFormatError("Invalid constant pool !");
+                    }
+                    Symbol<Symbol.Name> name = idc.getName(pool);
+                    if (name == Symbol.Name.INIT || name == Symbol.Name.CLINIT) {
+                        throw new VerifyError("Invalid bootstrap method name: " + name);
+                    }
+                    Operand[] parsedSig = getOperandSig(idc.getSignature(pool));
+                    if (parsedSig.length == 0) {
+                        throw new ClassFormatError("No return descriptor for method");
+                    }
+                    for (int i = parsedSig.length - 2; i >= 0; i--) {
+                        stack.pop(parsedSig[i]);
+                    }
+                    Operand returnKind = parsedSig[parsedSig.length - 1];
+                    if (returnKind != Void) {
+                        stack.push(returnKind);
+                    }
+                    break;
+                }
                 case QUICK: break;
                 default:
-            // @formatter:on
-                    // Checkstyle: resume
             }
+            // Checkstyle: resume
+            // @formatter:on
             return code.nextBCI(BCI);
+        }
+    }
+
+    private static Operand fromJVMType(byte jvmType) {
+        // @formatter:off
+        // Checkstyle: stop
+        switch (jvmType) {
+            case 4  : return new ArrayOperand(Byte);
+            case 5  : return new ArrayOperand(Char);
+            case 6  : return new ArrayOperand(Float);
+            case 7  : return new ArrayOperand(Double);
+            case 8  : return new ArrayOperand(Byte);
+            case 9  : return new ArrayOperand(Short);
+            case 10 : return new ArrayOperand(Int);
+            case 11 : return new ArrayOperand(Long);
+            default:
+                throw EspressoError.shouldNotReachHere();
+        }
+        // Checkstyle: resume
+        // @formatter:on
+    }
+
+    private Operand[] getOperandSig(Symbol<Symbol.Signature> toParse) {
+        Symbol<Type>[] parsedSig = getSignatures().parsed(toParse);
+        Operand[] operandSig = new Operand[parsedSig.length];
+        for (int i = 0; i < operandSig.length; i++) {
+            Symbol<Type> type = parsedSig[i];
+            operandSig[i] = kindToOperand(type);
+        }
+        return operandSig;
+    }
+
+    private Operand kindToOperand(Symbol<Type> type) {
+        // @formatter:off
+        // Checkstyle: stop
+        switch (Types.getJavaKind(type)) {
+            case Boolean:return Byte;
+            case Byte   :return Byte;
+            case Short  :return Short;
+            case Char   :return Char;
+            case Int    :return Int;
+            case Float  :return Float;
+            case Long   :return Long;
+            case Double :return Double;
+            case Void   :return Void;
+            case Object :return spawnFromType(type);
+            default:
+                throw EspressoError.shouldNotReachHere();
+        }
+        // Checkstyle: resume
+        // @formatter:on
+    }
+
+    private Operand spawnFromType(Symbol<Type> type) {
+        if (Types.isArray(type)) {
+            return new ArrayOperand(kindToOperand(getTypes().getElementalType(type)), Types.getArrayDimensions(type));
+        } else {
+            return new ReferenceOperand(type, thisKlass);
+        }
+    }
+
+    private static void xaload(Stack stack, PrimitiveOperand kind) {
+        stack.popInt();
+        Operand op = stack.popArray();
+        if (op.getComponent() != kind) {
+            throw new VerifyError("Loading " + kind + " from " + op + " array.");
+        }
+        stack.push(kind);
+    }
+
+    private static void xastore(Stack stack, PrimitiveOperand kind) {
+        stack.pop(kind);
+        stack.popInt();
+        Operand array = stack.popArray();
+        if (array.getComponent() != kind) {
+            throw new VerifyError("got array of type: " + array + ", while storing a " + kind);
         }
     }
 
@@ -920,136 +1261,11 @@ public class MethodVerifier {
         return (op >= ILOAD && op <= ALOAD) || (op >= ISTORE && op <= ASTORE) || (op == RET) || (op == IINC);
     }
 
-    private static Operand[] parseSig(String sig) {
-        boolean opened = false;
-        ArrayList<Operand> res = new ArrayList<>();
-        int i = 0;
-        int sigLen = sig.length();
-        while (i < sigLen) {
-            switch (sig.charAt(i)) {
-                case '(':
-                    i++;
-                    opened = true;
-                    break;
-                case ')':
-                    i++;
-                    opened = false;
-                    break;
-                case '[':
-                    res.add(Object);
-                    while (i < sigLen && sig.charAt(i) == '[') {
-                        i++;
-                    }
-                    if (i == sigLen) {
-                        throw new ClassFormatError("Invalid method signature: " + sig);
-                    }
-                    char arrayT = sig.charAt(i);
-                    if (arrayT == 'L') {
-                        i = sig.indexOf(';', i) + 1;
-                        if (i == 0) {
-                            throw new ClassFormatError("Invalid method signature: " + sig);
-                        }
-                    } else {
-                        if (arrayT == '(' || arrayT == ')') {
-                            throw new ClassFormatError("Invalid method signature: " + sig);
-                        }
-                        i++;
-                    }
-                    break;
-                case 'L':
-                    res.add(Object);
-                    i = sig.indexOf(';', i) + 1;
-                    if (i == 0) {
-                        throw new ClassFormatError("Invalid method signature: " + sig);
-                    }
-                    break;
-                case 'Z':
-                case 'C':
-                case 'B':
-                case 'S':
-                case 'I':
-                    res.add(Int);
-                    i++;
-                    break;
-                case 'F':
-                    res.add(Float);
-                    i++;
-                    break;
-                case 'D':
-                    res.add(Double);
-                    i++;
-                    break;
-                case 'J':
-                    res.add(Long);
-                    i++;
-                    break;
-                case 'V':
-                    res.add(Void);
-                    i++;
-                    break;
-                default:
-                    throw new ClassFormatError("Invalid method signature: " + sig);
-            }
-        }
-        if (opened) {
-            throw new ClassFormatError("Invalid method signature: " + sig);
-        }
-        return res.toArray(new Operand[0]);
-    }
-
-    private static Operand stringToKind(String s) {
-        int sLen = s.length();
-        if (sLen == 0) {
-            throw new ClassFormatError("invalid standalone type: " + s);
-        }
-        char c = s.charAt(0);
-        switch (c) {
-            case '(':
-            case ')':
-                throw new ClassFormatError("Invalid standalone type: " + c);
-            case '[':
-                int i = 1;
-                while (i < sLen && s.charAt(i) == '[') {
-                    i++;
-                }
-                if (i == sLen) {
-                    throw new ClassFormatError("invalid standalone type: " + s);
-                }
-                Operand o = stringToKind(s.substring(i));
-                if (o == null) {
-                    throw new ClassFormatError("invalid standalone type: " + s);
-                }
-                return Object;
-            case 'L':
-                int index = s.indexOf(';');
-                if (index == -1 || index != sLen - 1) {
-                    throw new ClassFormatError("invalid standalone type: " + s);
-                }
-                return Object;
-            case 'Z':
-            case 'C':
-            case 'B':
-            case 'S':
-            case 'I':
-                return Int;
-            case 'F':
-                return Float;
-            case 'D':
-                return Double;
-            case 'J':
-                return Long;
-            case 'V':
-                return Void;
-            default:
-                throw new ClassFormatError("Invalid standalone type: " + c);
-        }
-    }
-
     private static class Locals {
         Operand[] registers;
 
-        Locals(int maxLocals, String sig, boolean isStatic) {
-            Operand[] parsedSig = parseSig(sig);
+        Locals(MethodVerifier mv, int maxLocals, Symbol<Symbol.Signature> m, boolean isStatic) {
+            Operand[] parsedSig = mv.getOperandSig(m);
             if (parsedSig.length - (isStatic ? 1 : 0) > maxLocals) {
                 throw new VerifyError("Too much method arguments for the number of locals !");
             }
@@ -1057,11 +1273,16 @@ public class MethodVerifier {
             Arrays.fill(registers, Invalid);
             int index = 0;
             if (!isStatic) {
-                registers[index++] = Object;
+                registers[index++] = new ReferenceOperand(mv.thisKlass, mv.thisKlass);
             }
             for (int i = 0; i < parsedSig.length - 1; i++) {
-                registers[index++] = parsedSig[i];
-                if (isType2(parsedSig[i])) {
+                Operand op = parsedSig[i];
+                if (op.getKind().isStackInt()) {
+                    registers[index++] = Int;
+                } else {
+                    registers[index++] = op;
+                }
+                if (isType2(op)) {
                     index++;
                 }
             }
@@ -1077,13 +1298,21 @@ public class MethodVerifier {
 
         Operand load(int index, Operand expected) {
             Operand op = registers[index];
-            if (op != expected) {
+            if (!op.canMerge(expected)) {
                 throw new VerifyError("Incompatible register type. Expected: " + expected + ", found: " + op);
             }
             if (isType2(expected)) {
                 if (registers[index + 1] != Invalid) {
                     throw new VerifyError("Loading corrupted long primitive from locals!");
                 }
+            }
+            return op;
+        }
+
+        Operand loadRef(int index) {
+            Operand op = registers[index];
+            if (!op.isReference()) {
+                throw new VerifyError("Incompatible register type. Expected a reference" + ", found: " + op);
             }
             return op;
         }
@@ -1140,10 +1369,6 @@ public class MethodVerifier {
             push(Int);
         }
 
-        void pushObj() {
-            push(Object);
-        }
-
         void pushFloat() {
             push(Float);
         }
@@ -1161,15 +1386,41 @@ public class MethodVerifier {
             if (size > stack.length) {
                 throw new VerifyError("insufficent stack size: " + stack.length);
             }
-            stack[top++] = kind;
+            if (kind.getKind().isStackInt()) {
+                stack[top++] = Int;
+            } else {
+                stack[top++] = kind;
+            }
         }
 
         void popInt() {
             pop(Int);
         }
 
-        void popObj() {
-            pop(Object);
+        Operand popRef() {
+            procSize(-1);
+            Operand op = stack[--top];
+            if (!op.isReference()) {
+                throw new VerifyError("Invalid operand. Expected a reference, found: " + op);
+            }
+            return op;
+        }
+
+        void popRef(Operand kind) {
+            procSize(-(isType2(kind) ? 2 : 1));
+            Operand op = stack[--top];
+            if (!op.canMerge(kind)) {
+                throw new VerifyError("Type check error: " + op + " cannot be merged into " + kind);
+            }
+        }
+
+        Operand popArray() {
+            procSize(-1);
+            Operand op = stack[--top];
+            if (!(op == Null || op.isArrayType())) {
+                throw new VerifyError("Invalid operand. Expected array, found: " + op);
+            }
+            return op;
         }
 
         void popFloat() {
@@ -1187,16 +1438,20 @@ public class MethodVerifier {
         Operand popObjOrRA() {
             procSize(-1);
             Operand op = stack[--top];
-            if (!(op == Object || op == ReturnAddress)) {
+            if (!(op.isReference() || op == ReturnAddress)) {
                 throw new VerifyError(op + " on stack, required: A or ReturnAddress");
             }
             return op;
         }
 
         void pop(Operand k) {
-            procSize((isType2(k) ? -2 : -1));
-            if (!(stack[--top] == k)) {
-                throw new VerifyError(stack[top] + " on stack, required: " + k);
+            if (!k.getKind().isStackInt() || k == Int) {
+                procSize((isType2(k) ? -2 : -1));
+                if (!(stack[--top].canMerge(k))) {
+                    throw new VerifyError(stack[top] + " on stack, required: " + k);
+                }
+            } else {
+                pop(Int);
             }
         }
 
