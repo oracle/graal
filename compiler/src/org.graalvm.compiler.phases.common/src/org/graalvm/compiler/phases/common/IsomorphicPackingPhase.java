@@ -723,7 +723,6 @@ public final class IsomorphicPackingPhase extends BasePhase<PhaseContext> {
             find_adj_refs(packSet);
             extend_packlist(packSet);
             combine_packs(packSet);
-            if (currentBlock.toString().equals("B13"))
             schedule(new ArrayList<>(blockToNodesMap.get(currentBlock)), packSet);
             // return a new basic block with the new instructions scheduled
         }
