@@ -362,7 +362,7 @@ public abstract class Klass implements ModifiersProvider, ContextAccess {
             } else {
                 throw e;
             }
-        } catch (VerifyError | ClassFormatError e) {
+        } catch (VerifyError | ClassFormatError | IncompatibleClassChangeError | NoClassDefFoundError e) {
             throw getMeta().throwExWithMessage(e.getClass(), e.getMessage());
         }
     }

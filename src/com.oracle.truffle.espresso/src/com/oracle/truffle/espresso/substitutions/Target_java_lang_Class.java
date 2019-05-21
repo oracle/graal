@@ -83,14 +83,15 @@ public final class Target_java_lang_Class {
         EspressoContext context = EspressoLanguage.getCurrentContext();
         Meta meta = context.getMeta();
         if (StaticObject.isNull(name)) {
-            throw meta.throwExWithMessage(meta.ClassNotFoundException, name);
+            throw meta.throwExWithMessage(meta.NullPointerException, name);
         }
 
         try {
             Klass klass = context.getRegistries().loadKlass(context.getTypes().fromClassGetName(Meta.toHostString(name)), loader);
 
             if (klass == null) {
-                throw meta.throwExWithMessage(meta.ClassNotFoundException, name);
+                throw meta.throwExWithMessage(NoClassDefFoundError.class, Meta.toHostString(name));
+                // throw meta.throwExWithMessage(meta.ClassNotFoundException, name);
             }
 
             if (initialize) {

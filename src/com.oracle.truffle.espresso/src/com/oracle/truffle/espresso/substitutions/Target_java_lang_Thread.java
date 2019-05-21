@@ -215,39 +215,46 @@ public final class Target_java_lang_Thread {
         hostThread.interrupt();
     }
 
-    @SuppressWarnings("unused")
+    @SuppressWarnings({"unused", "deprecation"})
     @Substitution(hasReceiver = true)
     public static void resume0(@Host(Object.class) StaticObject self) {
-        /* nop */
-        // Thread hostThread = (Thread)
-        // self.getHiddenField(self.getKlass().getMeta().HIDDEN_HOST_THREAD);
-        // if (hostThread == null) {
-        // return;
-        // }
-        // hostThread.resume();
+        if (EspressoOptions.RUNNING_ON_SVM) {
+            /* nop */
+        } else {
+            Thread hostThread = (Thread) self.getHiddenField(self.getKlass().getMeta().HIDDEN_HOST_THREAD);
+            if (hostThread == null) {
+                return;
+            }
+            hostThread.resume();
+        }
     }
 
-    @SuppressWarnings("unused")
+    @SuppressWarnings({"unused", "deprecation"})
     @Substitution(hasReceiver = true)
     public static void suspend0(@Host(Object.class) StaticObject self) {
-        /* nop */
-        // Thread hostThread = (Thread)
-        // self.getHiddenField(self.getKlass().getMeta().HIDDEN_HOST_THREAD);
-        // if (hostThread == null) {
-        // return;
-        // }
-        // hostThread.suspend();
+        if (EspressoOptions.RUNNING_ON_SVM) {
+            /* nop */
+        } else {
+            Thread hostThread = (Thread) self.getHiddenField(self.getKlass().getMeta().HIDDEN_HOST_THREAD);
+            if (hostThread == null) {
+                return;
+            }
+            hostThread.suspend();
+        }
     }
 
-    @SuppressWarnings({"unused"})
+    @SuppressWarnings({"unused", "deprecation"})
     @Substitution(hasReceiver = true)
     public static void stop0(@Host(Object.class) StaticObject self, Object unused) {
-        /* nop */
-        // Thread hostThread = (Thread)
-        // self.getHiddenField(self.getKlass().getMeta().HIDDEN_HOST_THREAD);
-        // if (hostThread == null) {
-        // return;
-        // }
-        // hostThread.stop();
+        if (EspressoOptions.RUNNING_ON_SVM) {
+            /* nop */
+        } else {
+
+            Thread hostThread = (Thread) self.getHiddenField(self.getKlass().getMeta().HIDDEN_HOST_THREAD);
+            if (hostThread == null) {
+                return;
+            }
+            hostThread.stop();
+        }
     }
 }

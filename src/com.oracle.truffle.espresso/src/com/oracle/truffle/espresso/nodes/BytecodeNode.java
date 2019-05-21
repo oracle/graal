@@ -420,6 +420,11 @@ public class BytecodeNode extends EspressoBaseNode implements CustomNodeCount {
         frame.setObject(stackSlots[slot], value);
     }
 
+    private void putObjectOrReturnAddress(VirtualFrame frame, int slot, Object value) {
+        assert value instanceof StaticObject || value instanceof ReturnAddress || value == null;
+        frame.setObject(stackSlots[slot], value);
+    }
+
     private void putInt(VirtualFrame frame, int slot, int value) {
         frame.setLong(stackSlots[slot], value);
     }
@@ -1030,7 +1035,7 @@ public class BytecodeNode extends EspressoBaseNode implements CustomNodeCount {
             return;
         }
         System.err.println("Caught: " + e.getException().getKlass().getType() + ": " + e.getMessage() +
-                        "\n\t In: " + thisNode + " at BCI: " + thisNode.getMethod().BCItoLineNumber(curBCI));
+                        "\n\t In: " + thisNode + " at line: " + thisNode.getMethod().BCItoLineNumber(curBCI));
     }
 
     private JavaKind peekKind(VirtualFrame frame, int slot) {
@@ -1812,7 +1817,7 @@ public class BytecodeNode extends EspressoBaseNode implements CustomNodeCount {
         // Checkstyle: stop
         switch (kind) {
             case Long    : frame.setLong(stackSlots[slot], (long) value); break;
-            case Object  : putObject(frame, slot, (StaticObject) value);  break;
+            case Object  : putObjectOrReturnAddress(frame, slot, value);  break;
             default      : throw EspressoError.shouldNotReachHere();
         }
         // @formatter:on
