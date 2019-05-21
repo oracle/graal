@@ -111,7 +111,6 @@ public class NodeLLVMBuilder implements NodeLIRBuilderTool {
 
     private Map<ValuePhiNode, LLVMValueRef> backwardsPhi = new HashMap<>();
     private long startPatchpointID = -1L;
-    private LLVMValueRef setjmpBuffer = null;
 
     protected NodeLLVMBuilder(StructuredGraph graph, LLVMGenerator gen, BiFunction<NodeValueMap, DebugContext, DebugInfoBuilder> debugInfoProvider, boolean isEntryPoint) {
         this.gen = gen;
@@ -144,13 +143,7 @@ public class NodeLLVMBuilder implements NodeLIRBuilderTool {
 
             startPatchpointID = LLVMIRBuilder.nextPatchpointId.getAndIncrement();
             gen.getLLVMResult().setStartPatchpointID(startPatchpointID);
-            if (graph.getNodes(InvokeWithExceptionNode.TYPE).count() > 0) {
-                setjmpBuffer = builder.buildArrayAlloca(5);
-                builder.buildStackmap(builder.constantLong(startPatchpointID), setjmpBuffer);
-                setjmpBuffer = builder.buildBitcast(setjmpBuffer, builder.pointerType(builder.arrayType(builder.longType(), 5), false));
-            } else {
-                builder.buildStackmap(builder.constantLong(startPatchpointID));
-            }
+            builder.buildStackmap(builder.constantLong(startPatchpointID));
 
             for (ParameterNode param : graph.getNodes(ParameterNode.TYPE)) {
                 LLVMValueRef paramValue = builder.getParam(param.index());
@@ -439,23 +432,7 @@ public class NodeLLVMBuilder implements NodeLIRBuilderTool {
             LLVMBasicBlockRef successor = gen.getBlock(invokeWithExceptionNode.next());
             LLVMBasicBlockRef handler = gen.getBlock(invokeWithExceptionNode.exceptionEdge());
 
-            Block currentBlock = (Block) gen.getCurrentBlock();
-            LLVMBasicBlockRef callBlock = builder.appendBasicBlock(currentBlock.toString() + "_invoke");
-            gen.splitBlockEndMap.put(currentBlock, callBlock);
-
-            LLVMValueRef fpAddr = builder.buildGEP(setjmpBuffer, builder.constantInt(0), builder.constantInt(0));
-            LLVMValueRef framePointer = builder.buildFrameAddress(builder.constantInt(0));
-            builder.buildStore(framePointer, fpAddr);
-
-            LLVMValueRef status = builder.buildSetjmp(builder.buildBitcast(setjmpBuffer, builder.rawPointerType()));
-            LLVMValueRef zeroStatus = builder.buildICmp(Condition.EQ, status, builder.constantInt(0));
-            builder.buildIf(zeroStatus, callBlock, handler);
-
-            builder.positionAtEnd(callBlock);
-            call = builder.buildCall(callee, patchpointId, callType, args);
-            builder.buildBranch(successor);
-
-            gen.getLLVMResult().recordExceptionHandler(patchpointId, startPatchpointID);
+            call = builder.buildInvoke(callee, successor, handler, patchpointId, callType, args);
         } else {
             call = builder.buildCall(callee, patchpointId, callType, args);
         }
@@ -464,7 +441,9 @@ public class NodeLLVMBuilder implements NodeLIRBuilderTool {
 
     @Override
     public void emitReadExceptionObject(ValueNode node) {
-        setResult(node, builder.buildLoad(builder.getUniqueGlobal("__svm_exception_object", builder.objectType(), true), builder.objectType()));
+        LLVMValueRef landingPad = builder.buildLandingPad();
+        LLVMValueRef exception = builder.buildExtractValue(landingPad, 0);
+        setResult(node, builder.buildRegisterObject(exception));
     }
 
     @Override

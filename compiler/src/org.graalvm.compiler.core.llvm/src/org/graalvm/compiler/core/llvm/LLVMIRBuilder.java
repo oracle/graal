@@ -69,7 +69,7 @@ public class LLVMIRBuilder {
     protected LLVMIRBuilder(String functionName, LLVMContextRef context, boolean trackPointers) {
         this.context = context;
         this.functionName = functionName;
-        this.trackPointers = trackPointers;
+        this.trackPointers = false; //trackPointers;
 
         this.module = LLVM.LLVMModuleCreateWithNameInContext(functionName, context);
         this.builder = LLVM.LLVMCreateBuilderInContext(context);
@@ -165,6 +165,14 @@ public class LLVMIRBuilder {
             default:
                 return LLVM.LLVMCCallConv;
         }
+    }
+
+    void setPersonalityFunction(LLVMValueRef function, LLVMValueRef personality) {
+        LLVM.LLVMSetPersonalityFn(function, personality);
+    }
+
+    public void setPersonalityFunction(LLVMValueRef personality) {
+        setPersonalityFunction(getMainFunction(), personality);
     }
 
     public LLVMValueRef createJNIWrapper(LLVMValueRef callee, long statepointId, int numArgs, int anchorIPOffset, LLVMBasicBlockRef currentBlock) {
@@ -617,7 +625,7 @@ public class LLVMIRBuilder {
     /* Control flow */
     public static final AtomicLong nextPatchpointId = new AtomicLong(0);
 
-    LLVMValueRef buildCall(LLVMValueRef callee, LLVMValueRef... args) {
+    public LLVMValueRef buildCall(LLVMValueRef callee, LLVMValueRef... args) {
         return LLVM.LLVMBuildCall(builder, callee, new PointerPointer<>(args), args.length, DEFAULT_INSTR_NAME);
     }
 
@@ -630,39 +638,21 @@ public class LLVMIRBuilder {
                 addCallSiteAttribute(result, "statepoint-id", Long.toString(statepointId));
             } else {
                 LLVMTypeRef calleeType = typeOf(callee);
-                LLVMTypeRef statepointType = functionType(tokenType(), true, longType(), intType(), calleeType, intType(), intType());
+                LLVMValueRef token = call = buildCall(getStatepointIntrinsic(calleeType), getStatepointArgs(statepointId, callee, args));
 
-                LLVMValueRef[] statepointArgs = new LLVMValueRef[args.length + 7];
-                statepointArgs[0] = constantLong(statepointId);
-                statepointArgs[1] = constantInt(0); /* numPatchBytes */
-                statepointArgs[2] = callee;
-                statepointArgs[3] = constantInt(args.length);
-                statepointArgs[4] = constantInt(0); /* flags */
-                System.arraycopy(args, 0, statepointArgs, 5, args.length);
-                statepointArgs[5 + args.length] = constantLong(0L); /* numTransitionArgs */
-                statepointArgs[6 + args.length] = constantLong(0L); /* numDeoptArgs */
-
-                LLVMValueRef token = call = buildIntrinsicCall("llvm.experimental.gc.statepoint." + intrinsicType(calleeType), statepointType, statepointArgs);
-
-                LLVMTypeRef resultType = getReturnType(LLVM.LLVMGetElementType(calleeType));
-                LLVMTypeRef gcResultType = functionType(resultType, tokenType());
-                result = buildIntrinsicCall("llvm.experimental.gc.result." + intrinsicType(resultType), gcResultType, token);
+                LLVMTypeRef resultType = getReturnType(getElementType(calleeType));
+                if (isVoidType(resultType)) {
+                    result = token;
+                } else {
+                    LLVMTypeRef gcResultType = functionType(resultType, tokenType());
+                    result = buildIntrinsicCall("llvm.experimental.gc.result." + intrinsicType(resultType), gcResultType, token);
+                }
             }
 
             setCallCallingConvention(call, callingConvention(callType));
         } else {
             LLVMTypeRef returnType = getReturnType(getElementType(typeOf(callee)));
-            boolean returns = !isVoidType(returnType);
-            LLVMTypeRef patchpointType = functionType(returns ? longType() : voidType(), true, longType(), intType(), rawPointerType(), intType());
-
-            LLVMValueRef[] patchpointArgs = new LLVMValueRef[args.length + 4];
-            patchpointArgs[0] = constantLong(statepointId);
-            patchpointArgs[1] = constantInt(4); /* numPatchBytes TODO this is ARM-specific */
-            patchpointArgs[2] = buildBitcast(callee, rawPointerType());
-            patchpointArgs[3] = constantInt(args.length);
-            System.arraycopy(args, 0, patchpointArgs, 4, args.length);
-
-            result = buildIntrinsicCall("llvm.experimental.patchpoint." + (returns ? "i64" : "void"), patchpointType, patchpointArgs);
+            result = buildCall(getPatchpointIntrinsic(returnType), getPatchpointArgs(statepointId, callee, args));
 
             if (isVoidType(returnType)) {
                 // Do nothing
@@ -680,6 +670,93 @@ public class LLVMIRBuilder {
         }
 
         return result;
+    }
+
+    private LLVMValueRef buildInvoke(LLVMValueRef callee, LLVMBasicBlockRef successor, LLVMBasicBlockRef handler, LLVMValueRef... args) {
+        return LLVM.LLVMBuildInvoke(builder, callee, new PointerPointer<>(args), args.length, successor, handler, DEFAULT_INSTR_NAME);
+    }
+
+    LLVMValueRef buildInvoke(LLVMValueRef callee, LLVMBasicBlockRef successor, LLVMBasicBlockRef handler, long statepointId, CallingConvention.Type callType, LLVMValueRef... args) {
+        LLVMValueRef result;
+        if (Platform.includedIn(Platform.AMD64.class)) {
+            LLVMValueRef call;
+            if (trackPointers) {
+                result = call = buildInvoke(callee, successor, handler, args);
+                addCallSiteAttribute(result, "statepoint-id", Long.toString(statepointId));
+            } else {
+                LLVMTypeRef calleeType = typeOf(callee);
+                LLVMValueRef token = call = buildInvoke(getStatepointIntrinsic(calleeType), successor, handler, getStatepointArgs(statepointId, callee, args));
+
+                LLVMTypeRef resultType = getReturnType(LLVM.LLVMGetElementType(calleeType));
+                if (isVoidType(resultType)) {
+                    result = token;
+                } else {
+                    positionAtEnd(successor); /* No need to set it back as invoke is a terminator instruction */
+                    LLVMTypeRef gcResultType = functionType(resultType, tokenType());
+                    result = buildIntrinsicCall("llvm.experimental.gc.result." + intrinsicType(resultType), gcResultType, token);
+                }
+            }
+
+            setCallCallingConvention(call, callingConvention(callType));
+        } else {
+            LLVMTypeRef returnType = getReturnType(getElementType(typeOf(callee)));
+            result = buildInvoke(getPatchpointIntrinsic(returnType), successor, handler, getPatchpointArgs(statepointId, callee, args));
+
+            positionAtEnd(successor); /* No need to set it back as invoke is a terminator instruction */
+            if (isVoidType(returnType)) {
+                // Do nothing
+            } else if (isPointer(returnType)) {
+                result = buildIntToPtr(result, returnType);
+            } else if (isIntegerType(returnType)) {
+                result = buildIntegerConvert(result, integerTypeWidth(returnType));
+            } else if (isFloatType(returnType)) {
+                result = buildBitcast(buildTrunc(result, 32), returnType);
+            } else if (isDoubleType(returnType)) {
+                result = buildBitcast(result, returnType);
+            } else {
+                throw shouldNotReachHere("Invalid return type");
+            }
+        }
+
+        return result;
+    }
+
+    private LLVMValueRef getStatepointIntrinsic(LLVMTypeRef calleeType) {
+        LLVMTypeRef statepointType = functionType(tokenType(), true, longType(), intType(), calleeType, intType(), intType());
+        return getFunction("llvm.experimental.gc.statepoint." + intrinsicType(calleeType), statepointType);
+    }
+
+    private LLVMValueRef[] getStatepointArgs(long statepointId, LLVMValueRef callee, LLVMValueRef... args) {
+        LLVMValueRef[] statepointArgs = new LLVMValueRef[args.length + 7];
+
+        statepointArgs[0] = constantLong(statepointId);
+        statepointArgs[1] = constantInt(0); /* numPatchBytes */
+        statepointArgs[2] = callee;
+        statepointArgs[3] = constantInt(args.length);
+        statepointArgs[4] = constantInt(0); /* flags */
+        System.arraycopy(args, 0, statepointArgs, 5, args.length);
+        statepointArgs[5 + args.length] = constantLong(0L); /* numTransitionArgs */
+        statepointArgs[6 + args.length] = constantLong(0L); /* numDeoptArgs */
+
+        return statepointArgs;
+    }
+
+    private LLVMValueRef getPatchpointIntrinsic(LLVMTypeRef returnType) {
+        boolean returns = !isVoidType(returnType);
+        LLVMTypeRef patchpointType = functionType(returns ? longType() : voidType(), true, longType(), intType(), rawPointerType(), intType());
+        return getFunction("llvm.experimental.patchpoint." + (returns ? "i64" : "void"), patchpointType);
+    }
+
+    private LLVMValueRef[] getPatchpointArgs(long statepointId, LLVMValueRef callee, LLVMValueRef... args) {
+        LLVMValueRef[] patchpointArgs = new LLVMValueRef[args.length + 4];
+
+        patchpointArgs[0] = constantLong(statepointId);
+        patchpointArgs[1] = constantInt(4); /* numPatchBytes TODO this is ARM-specific */
+        patchpointArgs[2] = buildBitcast(callee, rawPointerType());
+        patchpointArgs[3] = constantInt(args.length);
+        System.arraycopy(args, 0, patchpointArgs, 4, args.length);
+
+        return patchpointArgs;
     }
 
     protected String callingConvention(CallingConvention.Type callType) {
@@ -720,6 +797,12 @@ public class LLVMIRBuilder {
             LLVM.LLVMAddCase(switchVal, switchValues[i], switchBlocks[i]);
         }
         return switchVal;
+    }
+
+    public LLVMValueRef buildLandingPad() {
+        LLVMValueRef landingPad = LLVM.LLVMBuildLandingPad(builder, structType(rawPointerType(), intType()), null, 1, DEFAULT_INSTR_NAME);
+        LLVM.LLVMAddClause(landingPad, constantNull(rawPointerType()));
+        return landingPad;
     }
 
     public void buildUnreachable() {

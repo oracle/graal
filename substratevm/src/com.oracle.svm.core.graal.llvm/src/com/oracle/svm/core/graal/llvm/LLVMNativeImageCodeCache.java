@@ -47,7 +47,6 @@ import java.util.TreeMap;
 import java.util.stream.Collectors;
 import java.util.stream.IntStream;
 
-import com.oracle.svm.core.OS;
 import org.bytedeco.javacpp.BytePointer;
 import org.bytedeco.javacpp.LLVM;
 import org.bytedeco.javacpp.LLVM.LLVMMemoryBufferRef;
@@ -72,6 +71,7 @@ import com.oracle.objectfile.ObjectFile;
 import com.oracle.objectfile.ObjectFile.Element;
 import com.oracle.objectfile.SectionName;
 import com.oracle.svm.core.FrameAccess;
+import com.oracle.svm.core.OS;
 import com.oracle.svm.core.SubstrateOptions;
 import com.oracle.svm.core.SubstrateUtil;
 import com.oracle.svm.core.graal.code.CGlobalDataReference;
@@ -90,7 +90,6 @@ import com.oracle.svm.hosted.meta.MethodPointer;
 import jdk.vm.ci.code.site.Call;
 import jdk.vm.ci.code.site.DataPatch;
 import jdk.vm.ci.code.site.DataSectionReference;
-import jdk.vm.ci.code.site.ExceptionHandler;
 import jdk.vm.ci.code.site.Infopoint;
 import jdk.vm.ci.code.site.InfopointReason;
 
@@ -275,36 +274,6 @@ public class LLVMNativeImageCodeCache extends NativeImageCodeCache {
 
             newInfopoints.forEach(compilation::addInfopoint);
 
-            Map<Integer, Integer> newExceptionHandlers = new HashMap<>();
-            for (ExceptionHandler handler : compilation.getExceptionHandlers()) {
-                for (int actualPCOffset : info.getPatchpointOffsets(handler.pcOffset)) {
-                    if (Platform.includedIn(Platform.AArch64.class)) {
-                        actualPCOffset += 4; /* Patchpoints register the address of the call, not the return */
-                    }
-                    assert handler.handlerPos == startPatchpointID;
-                    int handlerOffset = info.getAllocaOffset(handler.handlerPos);
-                    assert handlerOffset >= 0 && handlerOffset < info.getFunctionStackSize(startPatchpointID);
-
-                    if (LLVMOptions.DumpLLVMStackMap.hasBeenSet()) {
-                        patchpointsDump.append("  {");
-                        patchpointsDump.append(actualPCOffset);
-                        patchpointsDump.append("} -> ");
-                        patchpointsDump.append(handlerOffset);
-                        patchpointsDump.append("\n");
-                    }
-
-                    /*
-                     * handlerPos is the position of the setjmp buffer relative to the stack
-                     * pointer, plus 1 to avoid having 0 as an offset.
-                     */
-                    newExceptionHandlers.put(actualPCOffset, actualPCOffset + handlerOffset + 1);
-                }
-            }
-
-            compilation.clearExceptionHandlers();
-
-            newExceptionHandlers.forEach(compilation::recordExceptionHandler);
-
             if (LLVMOptions.DumpLLVMStackMap.hasBeenSet()) {
                 try {
                     stackMapDump.write(patchpointsDump.toString());
@@ -452,9 +421,9 @@ public class LLVMNativeImageCodeCache extends NativeImageCodeCache {
              * Mem2reg has to be run before rewriting statepoints as it promotes allocas, which are
              * not supported for statepoints.
              */
-            if (Platform.AMD64.class.isInstance(targetPlatform)) {
-                cmd.add("-mem2reg");
-                cmd.add("-rewrite-statepoints-for-gc");
+            if (targetPlatform instanceof Platform.AMD64) {
+//                cmd.add("-mem2reg");
+//                cmd.add("-rewrite-statepoints-for-gc");
             }
             cmd.add("-always-inline");
             cmd.add("-o");
@@ -469,6 +438,7 @@ public class LLVMNativeImageCodeCache extends NativeImageCodeCache {
 
             int status = p.waitFor();
             if (status != 0) {
+                System.out.println(output.toString());
                 debug.log("%s", output.toString());
                 throw new GraalError("LLVM optimization failed for " + inputPath + ": " + status);
             }
@@ -562,6 +532,7 @@ public class LLVMNativeImageCodeCache extends NativeImageCodeCache {
 
             int status = p.waitFor();
             if (status != 0) {
+                System.out.println(output.toString());
                 debug.log("%s", output.toString());
                 throw new GraalError("LLVM compilation failed for " + inputPath + ": " + status);
             }
@@ -588,6 +559,7 @@ public class LLVMNativeImageCodeCache extends NativeImageCodeCache {
 
             int status = p.waitFor();
             if (status != 0) {
+                System.out.println(output.toString());
                 debug.log("%s", output.toString());
                 throw new GraalError("LLVM linking failed into " + outputPath + ": " + status);
             }
@@ -614,6 +586,7 @@ public class LLVMNativeImageCodeCache extends NativeImageCodeCache {
 
             int status = p.waitFor();
             if (status != 0) {
+                System.out.println(output.toString());
                 debug.log("%s", output.toString());
                 throw new GraalError("Native linking failed into " + outputPath + ": " + status);
             }

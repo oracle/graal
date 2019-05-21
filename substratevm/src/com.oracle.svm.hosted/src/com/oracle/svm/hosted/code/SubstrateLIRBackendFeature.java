@@ -53,5 +53,6 @@ class SubstrateLIRBackendFeature implements Feature {
             }
         });
         ImageSingletons.add(SnippetRuntime.ExceptionStackFrameVisitor.class, new SnippetRuntime.ExceptionStackFrameVisitor());
+        ImageSingletons.add(SnippetRuntime.ExceptionUnwind.class, new SnippetRuntime.ExceptionUnwind());
     }
 }

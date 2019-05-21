@@ -180,7 +180,7 @@ public class LLVMGenerator implements LIRGeneratorTool {
         throw unimplemented();
     }
 
-    LLVMValueRef getFunction(ResolvedJavaMethod method) {
+    public LLVMValueRef getFunction(ResolvedJavaMethod method) {
         LLVMTypeRef functionType = getLLVMFunctionType(method);
         return builder.getFunction(getFunctionName(method), functionType);
     }

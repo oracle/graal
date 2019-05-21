@@ -90,7 +90,8 @@ public class SubstrateLLVMBackend extends SubstrateBackend implements LLVMGenera
         builder.buildStackmap(builder.constantLong(startPatchpointId));
 
         LLVMValueRef methodBase = builder.buildInlineGetRegister(methodIdArg.getRegister().name);
-        LLVMValueRef jumpAddress = builder.buildGEP(builder.buildIntToPtr(methodBase, builder.rawPointerType()), builder.constantInt(offset));
+        LLVMValueRef jumpTargetAddress = builder.buildGEP(builder.buildIntToPtr(methodBase, builder.rawPointerType()), builder.constantInt(offset));
+        LLVMValueRef jumpAddress = builder.buildLoad(jumpTargetAddress, builder.rawPointerType());
         builder.buildInlineJump(jumpAddress);
         builder.buildUnreachable();
 

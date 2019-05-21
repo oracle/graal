@@ -83,17 +83,8 @@ public class SubstrateLLVMGenerator extends LLVMGenerator implements SubstrateLI
 
     @Override
     public void emitFarReturn(AllocatableValue result, Value sp, Value setjmpBuffer) {
-        LLVMValueRef exceptionHolder = builder.getUniqueGlobal("__svm_exception_object", builder.objectType(), true);
-        LLVMValueRef exceptionObject = getVal(result);
-        builder.buildStore(exceptionObject, exceptionHolder);
-
-        LLVMValueRef buffer = builder.buildIntToPtr(getVal(setjmpBuffer), builder.pointerType(builder.arrayType(builder.longType(), 5), false));
-
-        LLVMValueRef spAddr = builder.buildGEP(buffer, builder.constantInt(0), builder.constantInt(2));
-        builder.buildStore(getVal(sp), spAddr);
-
-        builder.buildLongjmp(builder.buildBitcast(buffer, builder.rawPointerType()));
-        builder.buildUnreachable();
+        /* Exception unwinding is handled by libunwind */
+        throw unimplemented();
     }
 
     @Override
