@@ -4,6 +4,10 @@ This changelog summarizes major changes between Truffle versions relevant to lan
 
 ## Version 20.0.0 Beta 1
 * The [LanguageProvider](https://www.graalvm.org/truffle/javadoc/org/graalvm/polyglot/tck/LanguageProvider.html#createIdentityFunctionSnippet-org.graalvm.polyglot.Context-) can override the default verfication of the TCK `IdentityFunctionTest`.
+* Removed deprecated and misspelled method `TruffleStackTrace#getStacktrace`.
+* Removed deprecated methods`TruffleStackTraceElement#getStackTrace` and `TruffleStackTraceElement#fillIn` (use methods of `TruffleStackTrace` instead).
+* `SlowPathException#fillInStackTrace` is now `final`.
+
 ## Version 19.0.0
 * Renamed version 1.0.0 to 19.0.0
 
