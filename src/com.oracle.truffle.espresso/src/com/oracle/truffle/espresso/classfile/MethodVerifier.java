@@ -826,9 +826,6 @@ public class MethodVerifier {
                             throw new VerifyError("Invalid CP constant for a Class: " + pc.toString());
                         }
                         Klass k = pool.resolvedKlassAt(thisKlass, code.readCPI(BCI));
-                        if (k.isAbstract() || k.isInterface()) {
-                            throw new InstantiationError("Cannot create instance of abstract class or interface " + k.getType());
-                        }
                         if (k.isArray()) {
                             throw new VerifyError("use NEWARRAY for creating array types: " + k.getName());
                         }
