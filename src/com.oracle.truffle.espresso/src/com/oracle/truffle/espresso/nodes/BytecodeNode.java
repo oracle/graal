@@ -421,6 +421,7 @@ public class BytecodeNode extends EspressoBaseNode implements CustomNodeCount {
     }
 
     private void putObjectOrReturnAddress(VirtualFrame frame, int slot, Object value) {
+        assert value instanceof StaticObject || value instanceof ReturnAddress || value == null;
         frame.setObject(stackSlots[slot], value);
     }
 
