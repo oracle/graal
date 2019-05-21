@@ -89,6 +89,7 @@ public final class ICU4JFeature implements Feature {
     @Override
     public void duringSetup(DuringSetupAccess access) {
         RuntimeClassInitialization.initializeAtRunTime(getIcu4jClasses(access));
+        RuntimeClassInitialization.initializeAtBuildTime(getIcu4jFeatureClasses(access));
     }
 
     static class Helper {
@@ -102,6 +103,14 @@ public final class ICU4JFeature implements Feature {
     private static Class<?>[] getIcu4jClasses(FeatureAccess access) {
         List<Class<?>> allClasses = ((FeatureAccessImpl) access).findSubclasses(Object.class);
         return allClasses.stream().filter(clazz -> clazz.getName().startsWith("com.ibm.icu")).toArray(Class<?>[]::new);
+    }
+
+    private static Class<?>[] getIcu4jFeatureClasses(FeatureAccess access) {
+        List<Class<?>> allClasses = ((FeatureAccessImpl) access).findSubclasses(Object.class);
+        return allClasses.stream().filter(clazz -> {
+            String className = clazz.getName();
+            return className.startsWith("com.oracle.svm.thirdparty") && className.toLowerCase().contains("icu");
+        }).toArray(Class<?>[]::new);
     }
 }
 
