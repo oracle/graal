@@ -1,6 +1,7 @@
 package org.graalvm.compiler.phases.common;
 
 import jdk.vm.ci.meta.JavaKind;
+import org.graalvm.compiler.core.common.cfg.BlockMap;
 import org.graalvm.compiler.graph.Node;
 import org.graalvm.compiler.graph.NodeMap;
 import org.graalvm.compiler.nodes.StructuredGraph;
@@ -14,6 +15,7 @@ import org.graalvm.compiler.nodes.memory.address.AddressNode;
 import org.graalvm.compiler.phases.BasePhase;
 import org.graalvm.compiler.phases.schedule.SchedulePhase;
 import org.graalvm.compiler.phases.tiers.PhaseContext;
+import org.graalvm.util.Pair;
 
 import java.util.*;
 import java.util.function.Consumer;
@@ -50,6 +52,10 @@ public final class IsomorphicPackingPhase extends BasePhase<PhaseContext> {
             return elements.get(elements.size() - 1);
         }
 
+        public List<T> getElements() {
+            return elements;
+        }
+
         /**
          * Returns true if left matches the left side of the pair or right matches the right side of the pair.
          * @param left Node on the left side of the candidate pair
@@ -74,6 +80,19 @@ public final class IsomorphicPackingPhase extends BasePhase<PhaseContext> {
         @Override
         public int hashCode() {
             return Objects.hash(elements);
+        }
+
+        @Override
+        public String toString() {
+            final StringBuilder sb = new StringBuilder();
+            if (isPair()) {
+                sb.append('P');
+            }
+
+            sb.append('<');
+            sb.append(elements.toString());
+            sb.append('>');
+            return sb.toString();
         }
 
         // Iterable<T>
@@ -192,11 +211,13 @@ public final class IsomorphicPackingPhase extends BasePhase<PhaseContext> {
     // Class to encapsulate state used by functions in the algorithm
     private static class Instance {
         private final NodeMap<Block> nodeToBlockMap;
+        private final BlockMap<List<Node>> blockToNodesMap;
         private final Block currentBlock;
         private final Map<Node, Alignment> alignmentMap = new HashMap<>();
 
-        private Instance(NodeMap<Block> nodeToBlockMap, Block currentBlock) {
+        private Instance(NodeMap<Block> nodeToBlockMap, BlockMap<List<Node>> blockToNodesMap, Block currentBlock) {
             this.nodeToBlockMap = nodeToBlockMap;
+            this.blockToNodesMap = blockToNodesMap;
             this.currentBlock = currentBlock;
         }
 
@@ -652,12 +673,58 @@ public final class IsomorphicPackingPhase extends BasePhase<PhaseContext> {
             } while (changed);
         }
 
+        private boolean deps_scheduled(Node node, List<Node> scheduled) {
+            return StreamSupport.stream(node.inputs().spliterator(), false)
+                    .filter(n -> nodeToBlockMap.get(n) == currentBlock)
+                    .allMatch(scheduled::contains);
+        }
+
+        private void schedule(List<Node> block, Set<Pack<Node>> packSet) {
+            final List<Node> scheduled = new ArrayList<>();
+
+            // Populate a nodeToPackMap
+            final Map<Node, Pack<Node>> nodeToPackMap = packSet.stream()
+                    .flatMap(pack -> pack.getElements().stream().map(node -> Pair.create(node, pack)))
+                    .collect(Collectors.toMap(Pair::getLeft, Pair::getRight));
+
+            // While block isn't empty
+            outer:
+            while (!block.isEmpty()) {
+                for (Node node : block) {
+                    // Node is in some pack p
+                    if (nodeToPackMap.containsKey(node)) {
+                        final Pack<Node> pack = nodeToPackMap.get(node);
+                        // Have the dependencies of statements in the pack been scheduled?
+                        if (pack.getElements().stream().allMatch(n -> deps_scheduled(n, scheduled))) {
+                            // Remove statements from block
+                            System.out.println(String.format("Vectorizing pack %s", pack.toString()));
+                            scheduled.addAll(pack.getElements());
+                            block.removeAll(pack.getElements());
+                            continue outer;
+                        }
+                    } else if (deps_scheduled(node, scheduled)) {
+                        // Remove statement from block and schedule
+                        System.out.println(String.format("Vectorizing statement %s", node.toString()));
+                        scheduled.add(node);
+                        block.remove(node);
+                        continue outer;
+                    }
+
+                    System.out.println("none of the conditions held");
+                }
+            }
+
+            System.out.println(String.format("Final schedule: %s", scheduled.toString()));
+        }
+
         // Main
         void SLP_extract() {
             Set<Pack<Node>> packSet = new HashSet<>();
             find_adj_refs(packSet);
             extend_packlist(packSet);
             combine_packs(packSet);
+            if (currentBlock.toString().equals("B13"))
+            schedule(new ArrayList<>(blockToNodesMap.get(currentBlock)), packSet);
             // return a new basic block with the new instructions scheduled
         }
 
@@ -675,7 +742,7 @@ public final class IsomorphicPackingPhase extends BasePhase<PhaseContext> {
         schedulePhase.apply(graph);
         ControlFlowGraph cfg = graph.getLastSchedule().getCFG();
         for (Block block : cfg.reversePostOrder()) {
-            new Instance(graph.getLastSchedule().getNodeToBlockMap(), block).SLP_extract();
+            new Instance(graph.getLastSchedule().getNodeToBlockMap(), graph.getLastSchedule().getBlockToNodesMap(), block).SLP_extract();
         }
     }
 }
