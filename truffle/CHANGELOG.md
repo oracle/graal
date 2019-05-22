@@ -7,6 +7,7 @@ This changelog summarizes major changes between Truffle versions relevant to lan
 * Removed deprecated and misspelled method `TruffleStackTrace#getStacktrace`.
 * Removed deprecated methods`TruffleStackTraceElement#getStackTrace` and `TruffleStackTraceElement#fillIn` (use methods of `TruffleStackTrace` instead).
 * `SlowPathException#fillInStackTrace` is now `final`.
+* Added an ability to read a [path separator](https://www.graalvm.org/truffle/javadoc/com/oracle/truffle/api/TruffleLanguage.Env.html#getPathSeparator--) used to separate filenames in a path list.
 
 ## Version 19.0.0
 * Renamed version 1.0.0 to 19.0.0

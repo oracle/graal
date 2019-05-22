@@ -1321,6 +1321,15 @@ public class VirtualizedFileSystemTest {
     }
 
     @Test
+    public void testGetPathSeparator() {
+        final Context ctx = cfg.getContext();
+        languageAction = (Env env) -> {
+            Assert.assertEquals(cfg.fileSystem.getSeparator(), env.getFileNameSeparator());
+        };
+        ctx.eval(LANGUAGE_ID, "");
+    }
+
+    @Test
     public void testGetAttribute() {
         Context ctx = cfg.getContext();
         Path path = cfg.getPath();

@@ -4,8 +4,9 @@ This changelog summarizes major changes between GraalVM SDK versions. The main f
 
 ## Version 20.0.0 Beta 1
 * Removed deprecated `OptionCategory.DEBUG` (use `OptionCategory.INTERNAL` instead).
+* The path separator can now be configured by [FileSystem](http://www.graalvm.org/sdk/javadoc/org/graalvm/polyglot/io/FileSystem.html#getPathSeparator--).
 
-## Version 19.0.0 
+## Version 19.0.0
 * `Value.as(Interface.class)` now requires interface classes to be annotated with `HostAccess.Implementable` in `EXPLICIT` host access mode. Added new APIs to configure implementable behavior in HostAccess.
 
 ## Version 1.0.0 RC16
