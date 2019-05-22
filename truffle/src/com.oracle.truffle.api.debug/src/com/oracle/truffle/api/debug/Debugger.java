@@ -167,6 +167,7 @@ public final class Debugger {
             for (Breakpoint b : breakpoints) {
                 b.sessionClosed(session);
             }
+            alwaysHaltBreakpoint.sessionClosed(session);
         }
     }
 
