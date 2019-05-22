@@ -94,8 +94,10 @@ import org.graalvm.compiler.replacements.InlineDuringParsingPlugin;
 import org.graalvm.compiler.replacements.PEGraphDecoder;
 import org.graalvm.compiler.replacements.ReplacementsImpl;
 import org.graalvm.compiler.serviceprovider.GraalServices;
+import org.graalvm.compiler.serviceprovider.SpeculationReasonGroup;
 import org.graalvm.compiler.truffle.common.CompilableTruffleAST;
 import org.graalvm.compiler.truffle.common.TruffleCompilerRuntime;
+import org.graalvm.compiler.truffle.common.TruffleCompilerRuntime.InlineKind;
 import org.graalvm.compiler.truffle.common.TruffleInliningPlan;
 import org.graalvm.compiler.truffle.common.TruffleSourceLanguagePosition;
 import org.graalvm.compiler.truffle.compiler.debug.HistogramInlineInvokePlugin;
@@ -105,6 +107,7 @@ import org.graalvm.compiler.truffle.compiler.nodes.frame.AllowMaterializeNode;
 import org.graalvm.compiler.truffle.compiler.phases.InstrumentBranchesPhase;
 import org.graalvm.compiler.truffle.compiler.phases.InstrumentPhase;
 import org.graalvm.compiler.truffle.compiler.phases.InstrumentTruffleBoundariesPhase;
+import org.graalvm.compiler.truffle.compiler.phases.DeoptimizeOnExceptionPhase;
 import org.graalvm.compiler.truffle.compiler.phases.VerifyFrameDoesNotEscapePhase;
 import org.graalvm.compiler.truffle.compiler.substitutions.KnownTruffleTypes;
 import org.graalvm.compiler.truffle.compiler.substitutions.TruffleGraphBuilderPlugins;
@@ -119,6 +122,7 @@ import jdk.vm.ci.meta.MetaAccessProvider;
 import jdk.vm.ci.meta.ResolvedJavaMethod;
 import jdk.vm.ci.meta.ResolvedJavaType;
 import jdk.vm.ci.meta.SpeculationLog;
+import jdk.vm.ci.meta.SpeculationLog.SpeculationReason;
 
 /**
  * Class performing the partial evaluation starting from the root node of an AST.
@@ -445,10 +449,12 @@ public abstract class PartialEvaluator {
             plugins.appendInlineInvokePlugin(new InlineDuringParsingPlugin());
         }
 
+        DeoptimizeOnExceptionPhase postParsingPhase = new DeoptimizeOnExceptionPhase(
+                        method -> TruffleCompilerRuntime.getRuntime().getInlineKind(method, true) == InlineKind.DO_NOT_INLINE_WITH_SPECULATIVE_EXCEPTION);
+
         Providers compilationUnitProviders = providers.copyWith(new TruffleConstantFieldProvider(providers.getConstantFieldProvider(), providers.getMetaAccess()));
-        return new CachingPEGraphDecoder(architecture, graph, compilationUnitProviders, newConfig, TruffleCompilerImpl.Optimizations,
-                        AllowAssumptions.ifNonNull(graph.getAssumptions()),
-                        loopExplosionPlugin, decodingInvocationPlugins, inlineInvokePlugins, parameterPlugin, nodePluginList, callInlined, sourceLanguagePositionProvider);
+        return new CachingPEGraphDecoder(architecture, graph, compilationUnitProviders, newConfig, TruffleCompilerImpl.Optimizations, AllowAssumptions.ifNonNull(graph.getAssumptions()),
+                        loopExplosionPlugin, decodingInvocationPlugins, inlineInvokePlugins, parameterPlugin, nodePluginList, callInlined, sourceLanguagePositionProvider, postParsingPhase);
     }
 
     protected void doGraphPE(CompilableTruffleAST compilable, StructuredGraph graph, HighTierContext tierContext, TruffleInliningPlan inliningDecision) {
@@ -741,12 +747,19 @@ public abstract class PartialEvaluator {
             case DO_NOT_INLINE_NO_EXCEPTION:
                 return InlineInfo.DO_NOT_INLINE_NO_EXCEPTION;
             case DO_NOT_INLINE_WITH_EXCEPTION:
+            case DO_NOT_INLINE_WITH_SPECULATIVE_EXCEPTION:
                 return InlineInfo.DO_NOT_INLINE_WITH_EXCEPTION;
             case INLINE:
                 return InlineInfo.createStandardInlineInfo(method);
             default:
                 throw new IllegalArgumentException(String.valueOf(inlineKind));
         }
+    }
+
+    private static final SpeculationReasonGroup TRUFFLE_BOUNDARY_EXCEPTION_SPECULATIONS = new SpeculationReasonGroup("TruffleBoundaryWithoutException", ResolvedJavaMethod.class);
+
+    public static SpeculationReason createTruffleBoundaryExceptionSpeculation(ResolvedJavaMethod targetMethod) {
+        return TRUFFLE_BOUNDARY_EXCEPTION_SPECULATIONS.createSpeculationReason(targetMethod);
     }
 
     private static final class SourceLanguagePositionImpl implements SourceLanguagePosition {

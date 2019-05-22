@@ -71,6 +71,7 @@ import org.graalvm.compiler.phases.common.CanonicalizerPhase;
 import org.graalvm.compiler.phases.common.inlining.InliningUtil;
 import org.graalvm.compiler.phases.tiers.Suites;
 import org.graalvm.compiler.phases.util.Providers;
+import org.graalvm.compiler.truffle.compiler.phases.DeoptimizeOnExceptionPhase;
 import org.graalvm.compiler.word.WordTypes;
 import org.graalvm.nativeimage.hosted.Feature;
 import org.graalvm.nativeimage.ImageSingletons;
@@ -238,8 +239,8 @@ public final class GraalFeature implements Feature {
 
         RuntimeGraphBuilderPhase(Providers providers,
                         GraphBuilderConfiguration graphBuilderConfig, OptimisticOptimizations optimisticOpts, IntrinsicContext initialIntrinsicContext, WordTypes wordTypes,
-                        Predicate<ResolvedJavaMethod> deoptimizeOnExceptionPredicate, CallTreeNode node) {
-            super(providers, graphBuilderConfig, optimisticOpts, initialIntrinsicContext, wordTypes, deoptimizeOnExceptionPredicate);
+                        CallTreeNode node) {
+            super(providers, graphBuilderConfig, optimisticOpts, initialIntrinsicContext, wordTypes);
             this.node = node;
         }
 
@@ -501,8 +502,7 @@ public final class GraalFeature implements Feature {
 
             try (DebugContext.Scope scope = debug.scope("RuntimeCompile", graph)) {
                 if (parse) {
-                    RuntimeGraphBuilderPhase builderPhase = new RuntimeGraphBuilderPhase(hostedProviders, graphBuilderConfig, optimisticOpts, null, hostedProviders.getWordTypes(),
-                                    deoptimizeOnExceptionPredicate, node);
+                    RuntimeGraphBuilderPhase builderPhase = new RuntimeGraphBuilderPhase(hostedProviders, graphBuilderConfig, optimisticOpts, null, hostedProviders.getWordTypes(), node);
                     builderPhase.apply(graph);
                 }
 
@@ -520,6 +520,9 @@ public final class GraalFeature implements Feature {
                 }
 
                 new CanonicalizerPhase().apply(graph, hostedProviders);
+                if (deoptimizeOnExceptionPredicate != null) {
+                    new DeoptimizeOnExceptionPhase(deoptimizeOnExceptionPredicate).apply(graph);
+                }
                 new ConvertDeoptimizeToGuardPhase().apply(graph, hostedProviders);
 
                 graphEncoder.prepare(graph);
