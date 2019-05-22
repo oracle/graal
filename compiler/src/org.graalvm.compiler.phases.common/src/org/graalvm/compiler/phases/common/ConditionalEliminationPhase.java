@@ -413,10 +413,16 @@ public class ConditionalEliminationPhase extends BasePhase<CoreProviders> {
                              * we should still canonicalize the checked stamp for consistency.
                              */
                             if (differentCheckedStamp) {
-                                assert differentObject;
                                 PiNode alternatePi = graph.unique(new PiNode(existing.object(), inst.getCheckedStamp(), (ValueNode) guard));
-                                assert alternatePi.stamp(NodeView.DEFAULT).join(existing.stamp(NodeView.DEFAULT)).equals(alternatePi.stamp(NodeView.DEFAULT));
-                                existing.replaceAndDelete(alternatePi);
+                                /*
+                                 * If the resulting stamp is as good or better then do the
+                                 * replacement. However when interface types are involved it's
+                                 * possible that improving the checked stamp merges types which
+                                 * appear unrelated so there's we must skip the replacement.
+                                 */
+                                if (alternatePi.stamp(NodeView.DEFAULT).join(existing.stamp(NodeView.DEFAULT)).equals(alternatePi.stamp(NodeView.DEFAULT))) {
+                                    existing.replaceAndDelete(alternatePi);
+                                }
                             }
                             continue;
                         }
