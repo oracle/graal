@@ -29,7 +29,7 @@ import org.graalvm.compiler.options.OptionKey;
 import org.graalvm.compiler.options.OptionType;
 
 /**
- * This class encapsulates options that control the behavior of the Graal compiler.
+ * This class encapsulates options that control the behavior of the GraalVM compiler.
  */
 // @formatter:off
 public final class GraalOptions {
@@ -236,9 +236,6 @@ public final class GraalOptions {
 
     @Option(help = "", type = OptionType.Debug)
     public static final OptionKey<Boolean> OptImplicitNullChecks = new OptionKey<>(true);
-
-    @Option(help = "", type = OptionType.Debug)
-    public static final OptionKey<Boolean> OptClearNonLiveLocals = new OptionKey<>(true);
 
     @Option(help = "", type = OptionType.Debug)
     public static final OptionKey<Boolean> OptLoopTransform = new OptionKey<>(true);

@@ -24,14 +24,15 @@
  */
 package com.oracle.svm.core.windows;
 
-import com.oracle.svm.core.annotate.Alias;
-import com.oracle.svm.core.annotate.TargetClass;
-import org.graalvm.nativeimage.c.function.CLibrary;
 import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.Platforms;
+import org.graalvm.nativeimage.c.function.CLibrary;
+
+import com.oracle.svm.core.annotate.Alias;
+import com.oracle.svm.core.annotate.TargetClass;
 
 @Platforms(Platform.WINDOWS.class)
-@CLibrary("zip")
+@CLibrary(value = "zip", requireStatic = true)
 public final class WindowsJavaZipSubstitutions {
 
     private WindowsJavaZipSubstitutions() {

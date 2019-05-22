@@ -24,9 +24,8 @@
  */
 package org.graalvm.libgraal;
 
+import org.graalvm.nativeimage.IsolateThread;
 import org.graalvm.nativeimage.c.function.CEntryPoint;
-import org.graalvm.nativeimage.c.function.CEntryPoint.IsolateContext;
-import org.graalvm.nativeimage.c.function.CEntryPoint.IsolateThreadContext;
 
 import jdk.vm.ci.hotspot.HotSpotJVMCIRuntime;
 
@@ -34,13 +33,25 @@ import jdk.vm.ci.hotspot.HotSpotJVMCIRuntime;
  * Access to libgraal, a shared library containing an AOT compiled version of Graal produced by SVM.
  * The libgraal library is only available if:
  * <ul>
- * <li>the current runtime is libgraal, or</li>
+ * <li>the {@linkplain #inLibGraal() current runtime} is libgraal, or</li>
  * <li>the HotSpot {@code UseJVMCINativeLibrary} flag is true and the current runtime includes the
  * relevant JVMCI API additions for accessing libgraal.</li>
  * </ul>
  *
  * The {@link #isAvailable()} method is provided to test these conditions. It must be used to guard
- * usage of all other methods in this class.
+ * usage of all other methods in this class. In addition, only the following methods can be called
+ * from within libgraal:
+ * <ul>
+ * <li>{@link #isAvailable()}</li>
+ * <li>{@link #inLibGraal()}</li>
+ * <li>{@link #translate(HotSpotJVMCIRuntime, Object)}</li>
+ * <li>{@link #unhand(HotSpotJVMCIRuntime, Class, long)}</li>
+ * </ul>
+ *
+ * The typical usage of this class is to {@linkplain #registerNativeMethods link} and call
+ * {@link CEntryPoint}s in libgraal. Each call to a {@link CEntryPoint} requires an
+ * {@link IsolateThread} argument which can be {@linkplain LibGraalScope#getIsolateThread obtained}
+ * from a {@link LibGraalScope}.
  */
 public class LibGraal {
 
@@ -58,62 +69,27 @@ public class LibGraal {
     /**
      * Determines if the current runtime is libgraal.
      */
-    public static boolean isCurrentRuntime() {
-        throw shouldNotReachHere();
-    }
-
-    /**
-     * Gets the libgraal isolate.
-     *
-     * This cannot be called from {@linkplain #isCurrentRuntime() within} libgraal.
-     *
-     * @returns a value that can be used for the {@link IsolateContext} argument of a {@code native}
-     *          method {@link #registerNativeMethods linked} to a {@link CEntryPoint} function in
-     *          libgraal
-     * @throws IllegalStateException if libgraal is {@linkplain #isAvailable() unavailable} or
-     *             {@link #isCurrentRuntime()} returns true
-     */
-    public static long getIsolate() {
-        throw shouldNotReachHere();
-    }
-
-    /**
-     * Gets a libgraal isolate thread associated with the current thread. This method attaches the
-     * current thread to an isolate thread first if necessary.
-     *
-     * This cannot be called from {@linkplain #isCurrentRuntime() within} libgraal.
-     *
-     * @returns a value that can be used for the {@link IsolateThreadContext} argument of a
-     *          {@code native} method {@link #registerNativeMethods linked} to a {@link CEntryPoint}
-     *          function in libgraal
-     * @throws IllegalStateException if libgraal is {@linkplain #isAvailable() unavailable} or
-     *             {@link #isCurrentRuntime()} returns true
-     */
-    public static long getIsolateThread() {
+    public static boolean inLibGraal() {
         throw shouldNotReachHere();
     }
 
     /**
      * Links each native method in {@code clazz} to a {@link CEntryPoint} in libgraal.
      *
-     * This cannot be called from {@linkplain #isCurrentRuntime() within} libgraal.
-     *
-     * @return an array of 4 longs where the first value is the {@code JavaVM*} value representing
-     *         the libgraal Java VM, and the remaining values are the first 3 pointers in the
-     *         Invocation API function table (i.e., {@code JNIInvokeInterface})
+     * This cannot be called from {@linkplain #inLibGraal() within} libgraal.
      *
      * @throws NullPointerException if {@code clazz == null}
      * @throws UnsupportedOperationException if libgraal is not enabled (i.e.
      *             {@code -XX:-UseJVMCINativeLibrary})
-     * @throws IllegalArgumentException if{@code clazz} is {@link Class#isPrimitive()}
+     * @throws IllegalArgumentException if {@code clazz} is {@link Class#isPrimitive()}
      * @throws IllegalStateException if libgraal is {@linkplain #isAvailable() unavailable} or
-     *             {@link #isCurrentRuntime()} returns true
+     *             {@link #inLibGraal()} returns true
      * @throws UnsatisfiedLinkError if there's a problem linking a native method in {@code clazz}
      *             (no matching JNI symbol or the native method is already linked to a different
      *             address)
      */
     @SuppressWarnings("unused")
-    public static long[] registerNativeMethods(HotSpotJVMCIRuntime runtime, Class<?> clazz) {
+    public static void registerNativeMethods(HotSpotJVMCIRuntime runtime, Class<?> clazz) {
         throw shouldNotReachHere();
     }
 
@@ -144,6 +120,48 @@ public class LibGraal {
      */
     @SuppressWarnings("unused")
     public static <T> T unhand(HotSpotJVMCIRuntime runtime, Class<T> type, long handle) {
+        throw shouldNotReachHere();
+    }
+
+    static final long isolate;
+    static {
+        // Prevent javac from inlining this field.
+        isolate = 0L;
+    }
+
+    /**
+     * Determines if the current thread is {@linkplain #attachCurrentThread(HotSpotJVMCIRuntime)
+     * attached} to the peer runtime.
+     */
+    @SuppressWarnings("unused")
+    static boolean isCurrentThreadAttached(HotSpotJVMCIRuntime runtime) {
+        throw shouldNotReachHere();
+    }
+
+    /**
+     * Ensures the current thread is attached to the peer runtime.
+     *
+     * @return {@code true} if this call attached the current thread, {@code false} if the current
+     *         thread was already attached
+     */
+    @SuppressWarnings("unused")
+    static boolean attachCurrentThread(HotSpotJVMCIRuntime runtime) {
+        throw shouldNotReachHere();
+    }
+
+    /**
+     * Detaches the current thread from the peer runtime.
+     */
+    @SuppressWarnings("unused")
+    static void detachCurrentThread(HotSpotJVMCIRuntime runtime) {
+        throw shouldNotReachHere();
+    }
+
+    /**
+     * Gets the isolate thread for the current thread (which must be attached to libgraal).
+     */
+    @SuppressWarnings("unused")
+    static long getCurrentIsolateThread(long iso) {
         throw shouldNotReachHere();
     }
 }

@@ -35,11 +35,12 @@ import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ConcurrentMap;
 import java.util.function.Consumer;
+import java.util.function.Function;
 
 import org.graalvm.compiler.serviceprovider.GraalUnsafeAccess;
 import org.graalvm.compiler.serviceprovider.JavaVersionUtil;
-import org.graalvm.nativeimage.hosted.Feature;
 import org.graalvm.nativeimage.ImageSingletons;
+import org.graalvm.nativeimage.hosted.Feature;
 
 import com.oracle.svm.core.StaticFieldsSupport;
 import com.oracle.svm.core.annotate.Alias;
@@ -47,7 +48,9 @@ import com.oracle.svm.core.annotate.AutomaticFeature;
 import com.oracle.svm.core.annotate.InjectAccessors;
 import com.oracle.svm.core.annotate.RecomputeFieldValue;
 import com.oracle.svm.core.annotate.RecomputeFieldValue.Kind;
+import com.oracle.svm.core.annotate.Substitute;
 import com.oracle.svm.core.annotate.TargetClass;
+import com.oracle.svm.core.annotate.TargetElement;
 import com.oracle.svm.core.meta.SharedField;
 import com.oracle.svm.core.util.VMError;
 import com.oracle.svm.util.ReflectionUtil;
@@ -98,6 +101,9 @@ import sun.misc.Unsafe;
 public class VarHandleFeature implements Feature {
     private static final Unsafe UNSAFE = GraalUnsafeAccess.getUnsafe();
 
+    /** The JDK 11 class VarHandleObjects got renamed to VarHandleReferences. */
+    static final String OBJECT_SUFFIX = JavaVersionUtil.JAVA_SPECIFICATION_VERSION > 11 ? "References" : "Objects";
+
     private final Map<Class<?>, VarHandleInfo> infos = new HashMap<>();
 
     private final ConcurrentMap<Object, Boolean> processedVarHandles = new ConcurrentHashMap<>();
@@ -111,7 +117,7 @@ public class VarHandleFeature implements Feature {
     @Override
     public void afterRegistration(AfterRegistrationAccess access) {
         try {
-            for (String typeName : new String[]{"Booleans", "Bytes", "Chars", "Doubles", "Floats", "Ints", "Longs", "Shorts", "Objects"}) {
+            for (String typeName : new String[]{"Booleans", "Bytes", "Chars", "Doubles", "Floats", "Ints", "Longs", "Shorts", OBJECT_SUFFIX}) {
                 // Checkstyle: stop
                 buildInfo(false, "receiverType",
                                 Class.forName("java.lang.invoke.VarHandle" + typeName + "$FieldInstanceReadOnly"),
@@ -247,6 +253,13 @@ class VarHandleFieldStaticBaseObjectAccessor {
     }
 }
 
+class VarHandleObjectsClassNameProvider implements Function<TargetClass, String> {
+    @Override
+    public String apply(TargetClass t) {
+        return "java.lang.invoke.VarHandle" + VarHandleFeature.OBJECT_SUFFIX;
+    }
+}
+
 /*
  * Substitutions for VarHandle array access classes. They all follow the same pattern: the array
  * base offset and array index shift is stored in instance fields, and we recompute the instance
@@ -257,7 +270,7 @@ class VarHandleFieldStaticBaseObjectAccessor {
  * (instead of storing it in each individual VarHandle instance). But we just need to handle what
  * the JDK gives us.
  */
-@TargetClass(className = "java.lang.invoke.VarHandleBooleans", innerClass = "Array", onlyWith = JDK9OrLater.class)
+@TargetClass(className = "java.lang.invoke.VarHandleBooleans", innerClass = "Array", onlyWith = JDK11OrLater.class)
 final class Target_java_lang_invoke_VarHandleBooleans_Array {
     @Alias @RecomputeFieldValue(kind = Kind.ArrayBaseOffset, declClass = boolean[].class) //
     int abase;
@@ -265,7 +278,7 @@ final class Target_java_lang_invoke_VarHandleBooleans_Array {
     int ashift;
 }
 
-@TargetClass(className = "java.lang.invoke.VarHandleBytes", innerClass = "Array", onlyWith = JDK9OrLater.class)
+@TargetClass(className = "java.lang.invoke.VarHandleBytes", innerClass = "Array", onlyWith = JDK11OrLater.class)
 final class Target_java_lang_invoke_VarHandleBytes_Array {
     @Alias @RecomputeFieldValue(kind = Kind.ArrayBaseOffset, declClass = byte[].class) //
     int abase;
@@ -273,7 +286,7 @@ final class Target_java_lang_invoke_VarHandleBytes_Array {
     int ashift;
 }
 
-@TargetClass(className = "java.lang.invoke.VarHandleChars", innerClass = "Array", onlyWith = JDK9OrLater.class)
+@TargetClass(className = "java.lang.invoke.VarHandleChars", innerClass = "Array", onlyWith = JDK11OrLater.class)
 final class Target_java_lang_invoke_VarHandleChars_Array {
     @Alias @RecomputeFieldValue(kind = Kind.ArrayBaseOffset, declClass = char[].class) //
     int abase;
@@ -281,7 +294,7 @@ final class Target_java_lang_invoke_VarHandleChars_Array {
     int ashift;
 }
 
-@TargetClass(className = "java.lang.invoke.VarHandleDoubles", innerClass = "Array", onlyWith = JDK9OrLater.class)
+@TargetClass(className = "java.lang.invoke.VarHandleDoubles", innerClass = "Array", onlyWith = JDK11OrLater.class)
 final class Target_java_lang_invoke_VarHandleDoubles_Array {
     @Alias @RecomputeFieldValue(kind = Kind.ArrayBaseOffset, declClass = double[].class) //
     int abase;
@@ -289,7 +302,7 @@ final class Target_java_lang_invoke_VarHandleDoubles_Array {
     int ashift;
 }
 
-@TargetClass(className = "java.lang.invoke.VarHandleFloats", innerClass = "Array", onlyWith = JDK9OrLater.class)
+@TargetClass(className = "java.lang.invoke.VarHandleFloats", innerClass = "Array", onlyWith = JDK11OrLater.class)
 final class Target_java_lang_invoke_VarHandleFloats_Array {
     @Alias @RecomputeFieldValue(kind = Kind.ArrayBaseOffset, declClass = float[].class) //
     int abase;
@@ -297,7 +310,7 @@ final class Target_java_lang_invoke_VarHandleFloats_Array {
     int ashift;
 }
 
-@TargetClass(className = "java.lang.invoke.VarHandleInts", innerClass = "Array", onlyWith = JDK9OrLater.class)
+@TargetClass(className = "java.lang.invoke.VarHandleInts", innerClass = "Array", onlyWith = JDK11OrLater.class)
 final class Target_java_lang_invoke_VarHandleInts_Array {
     @Alias @RecomputeFieldValue(kind = Kind.ArrayBaseOffset, declClass = int[].class) //
     int abase;
@@ -305,7 +318,7 @@ final class Target_java_lang_invoke_VarHandleInts_Array {
     int ashift;
 }
 
-@TargetClass(className = "java.lang.invoke.VarHandleLongs", innerClass = "Array", onlyWith = JDK9OrLater.class)
+@TargetClass(className = "java.lang.invoke.VarHandleLongs", innerClass = "Array", onlyWith = JDK11OrLater.class)
 final class Target_java_lang_invoke_VarHandleLongs_Array {
     @Alias @RecomputeFieldValue(kind = Kind.ArrayBaseOffset, declClass = long[].class) //
     int abase;
@@ -313,7 +326,7 @@ final class Target_java_lang_invoke_VarHandleLongs_Array {
     int ashift;
 }
 
-@TargetClass(className = "java.lang.invoke.VarHandleShorts", innerClass = "Array", onlyWith = JDK9OrLater.class)
+@TargetClass(className = "java.lang.invoke.VarHandleShorts", innerClass = "Array", onlyWith = JDK11OrLater.class)
 final class Target_java_lang_invoke_VarHandleShorts_Array {
     @Alias @RecomputeFieldValue(kind = Kind.ArrayBaseOffset, declClass = short[].class) //
     int abase;
@@ -321,7 +334,7 @@ final class Target_java_lang_invoke_VarHandleShorts_Array {
     int ashift;
 }
 
-@TargetClass(className = "java.lang.invoke.VarHandleObjects", innerClass = "Array", onlyWith = JDK9OrLater.class)
+@TargetClass(classNameProvider = VarHandleObjectsClassNameProvider.class, innerClass = "Array", onlyWith = JDK11OrLater.class)
 final class Target_java_lang_invoke_VarHandleObjects_Array {
     @Alias @RecomputeFieldValue(kind = Kind.ArrayBaseOffset, declClass = Object[].class) //
     int abase;
@@ -335,55 +348,55 @@ final class Target_java_lang_invoke_VarHandleObjects_Array {
  * that).
  */
 
-@TargetClass(className = "java.lang.invoke.VarHandleBooleans", innerClass = "FieldInstanceReadOnly", onlyWith = JDK9OrLater.class)
+@TargetClass(className = "java.lang.invoke.VarHandleBooleans", innerClass = "FieldInstanceReadOnly", onlyWith = JDK11OrLater.class)
 final class Target_java_lang_invoke_VarHandleBooleans_FieldInstanceReadOnly {
     @Alias @RecomputeFieldValue(kind = Kind.Custom, declClass = VarHandleFieldOffsetComputer.class) //
     long fieldOffset;
 }
 
-@TargetClass(className = "java.lang.invoke.VarHandleBytes", innerClass = "FieldInstanceReadOnly", onlyWith = JDK9OrLater.class)
+@TargetClass(className = "java.lang.invoke.VarHandleBytes", innerClass = "FieldInstanceReadOnly", onlyWith = JDK11OrLater.class)
 final class Target_java_lang_invoke_VarHandleBytes_FieldInstanceReadOnly {
     @Alias @RecomputeFieldValue(kind = Kind.Custom, declClass = VarHandleFieldOffsetComputer.class) //
     long fieldOffset;
 }
 
-@TargetClass(className = "java.lang.invoke.VarHandleChars", innerClass = "FieldInstanceReadOnly", onlyWith = JDK9OrLater.class)
+@TargetClass(className = "java.lang.invoke.VarHandleChars", innerClass = "FieldInstanceReadOnly", onlyWith = JDK11OrLater.class)
 final class Target_java_lang_invoke_VarHandleChars_FieldInstanceReadOnly {
     @Alias @RecomputeFieldValue(kind = Kind.Custom, declClass = VarHandleFieldOffsetComputer.class) //
     long fieldOffset;
 }
 
-@TargetClass(className = "java.lang.invoke.VarHandleDoubles", innerClass = "FieldInstanceReadOnly", onlyWith = JDK9OrLater.class)
+@TargetClass(className = "java.lang.invoke.VarHandleDoubles", innerClass = "FieldInstanceReadOnly", onlyWith = JDK11OrLater.class)
 final class Target_java_lang_invoke_VarHandleDoubles_FieldInstanceReadOnly {
     @Alias @RecomputeFieldValue(kind = Kind.Custom, declClass = VarHandleFieldOffsetComputer.class) //
     long fieldOffset;
 }
 
-@TargetClass(className = "java.lang.invoke.VarHandleFloats", innerClass = "FieldInstanceReadOnly", onlyWith = JDK9OrLater.class)
+@TargetClass(className = "java.lang.invoke.VarHandleFloats", innerClass = "FieldInstanceReadOnly", onlyWith = JDK11OrLater.class)
 final class Target_java_lang_invoke_VarHandleFloats_FieldInstanceReadOnly {
     @Alias @RecomputeFieldValue(kind = Kind.Custom, declClass = VarHandleFieldOffsetComputer.class) //
     long fieldOffset;
 }
 
-@TargetClass(className = "java.lang.invoke.VarHandleInts", innerClass = "FieldInstanceReadOnly", onlyWith = JDK9OrLater.class)
+@TargetClass(className = "java.lang.invoke.VarHandleInts", innerClass = "FieldInstanceReadOnly", onlyWith = JDK11OrLater.class)
 final class Target_java_lang_invoke_VarHandleInts_FieldInstanceReadOnly {
     @Alias @RecomputeFieldValue(kind = Kind.Custom, declClass = VarHandleFieldOffsetComputer.class) //
     long fieldOffset;
 }
 
-@TargetClass(className = "java.lang.invoke.VarHandleLongs", innerClass = "FieldInstanceReadOnly", onlyWith = JDK9OrLater.class)
+@TargetClass(className = "java.lang.invoke.VarHandleLongs", innerClass = "FieldInstanceReadOnly", onlyWith = JDK11OrLater.class)
 final class Target_java_lang_invoke_VarHandleLongs_FieldInstanceReadOnly {
     @Alias @RecomputeFieldValue(kind = Kind.Custom, declClass = VarHandleFieldOffsetComputer.class) //
     long fieldOffset;
 }
 
-@TargetClass(className = "java.lang.invoke.VarHandleShorts", innerClass = "FieldInstanceReadOnly", onlyWith = JDK9OrLater.class)
+@TargetClass(className = "java.lang.invoke.VarHandleShorts", innerClass = "FieldInstanceReadOnly", onlyWith = JDK11OrLater.class)
 final class Target_java_lang_invoke_VarHandleShorts_FieldInstanceReadOnly {
     @Alias @RecomputeFieldValue(kind = Kind.Custom, declClass = VarHandleFieldOffsetComputer.class) //
     long fieldOffset;
 }
 
-@TargetClass(className = "java.lang.invoke.VarHandleObjects", innerClass = "FieldInstanceReadOnly", onlyWith = JDK9OrLater.class)
+@TargetClass(classNameProvider = VarHandleObjectsClassNameProvider.class, innerClass = "FieldInstanceReadOnly", onlyWith = JDK11OrLater.class)
 final class Target_java_lang_invoke_VarHandleObjects_FieldInstanceReadOnly {
     @Alias @RecomputeFieldValue(kind = Kind.Custom, declClass = VarHandleFieldOffsetComputer.class) //
     long fieldOffset;
@@ -396,7 +409,7 @@ final class Target_java_lang_invoke_VarHandleObjects_FieldInstanceReadOnly {
  * VM, but a single byte[] array (for primitive types) or Object[] array (for Object types).
  */
 
-@TargetClass(className = "java.lang.invoke.VarHandleBooleans", innerClass = "FieldStaticReadOnly", onlyWith = JDK9OrLater.class)
+@TargetClass(className = "java.lang.invoke.VarHandleBooleans", innerClass = "FieldStaticReadOnly", onlyWith = JDK11OrLater.class)
 final class Target_java_lang_invoke_VarHandleBooleans_FieldStaticReadOnly {
     @Alias @InjectAccessors(VarHandleFieldStaticBasePrimitiveAccessor.class) //
     Object base;
@@ -404,7 +417,7 @@ final class Target_java_lang_invoke_VarHandleBooleans_FieldStaticReadOnly {
     long fieldOffset;
 }
 
-@TargetClass(className = "java.lang.invoke.VarHandleBytes", innerClass = "FieldStaticReadOnly", onlyWith = JDK9OrLater.class)
+@TargetClass(className = "java.lang.invoke.VarHandleBytes", innerClass = "FieldStaticReadOnly", onlyWith = JDK11OrLater.class)
 final class Target_java_lang_invoke_VarHandleBytes_FieldStaticReadOnly {
     @Alias @InjectAccessors(VarHandleFieldStaticBasePrimitiveAccessor.class) //
     Object base;
@@ -412,7 +425,7 @@ final class Target_java_lang_invoke_VarHandleBytes_FieldStaticReadOnly {
     long fieldOffset;
 }
 
-@TargetClass(className = "java.lang.invoke.VarHandleChars", innerClass = "FieldStaticReadOnly", onlyWith = JDK9OrLater.class)
+@TargetClass(className = "java.lang.invoke.VarHandleChars", innerClass = "FieldStaticReadOnly", onlyWith = JDK11OrLater.class)
 final class Target_java_lang_invoke_VarHandleChars_FieldStaticReadOnly {
     @Alias @InjectAccessors(VarHandleFieldStaticBasePrimitiveAccessor.class) //
     Object base;
@@ -420,7 +433,7 @@ final class Target_java_lang_invoke_VarHandleChars_FieldStaticReadOnly {
     long fieldOffset;
 }
 
-@TargetClass(className = "java.lang.invoke.VarHandleDoubles", innerClass = "FieldStaticReadOnly", onlyWith = JDK9OrLater.class)
+@TargetClass(className = "java.lang.invoke.VarHandleDoubles", innerClass = "FieldStaticReadOnly", onlyWith = JDK11OrLater.class)
 final class Target_java_lang_invoke_VarHandleDoubles_FieldStaticReadOnly {
     @Alias @InjectAccessors(VarHandleFieldStaticBasePrimitiveAccessor.class) //
     Object base;
@@ -428,7 +441,7 @@ final class Target_java_lang_invoke_VarHandleDoubles_FieldStaticReadOnly {
     long fieldOffset;
 }
 
-@TargetClass(className = "java.lang.invoke.VarHandleFloats", innerClass = "FieldStaticReadOnly", onlyWith = JDK9OrLater.class)
+@TargetClass(className = "java.lang.invoke.VarHandleFloats", innerClass = "FieldStaticReadOnly", onlyWith = JDK11OrLater.class)
 final class Target_java_lang_invoke_VarHandleFloats_FieldStaticReadOnly {
     @Alias @InjectAccessors(VarHandleFieldStaticBasePrimitiveAccessor.class) //
     Object base;
@@ -436,7 +449,7 @@ final class Target_java_lang_invoke_VarHandleFloats_FieldStaticReadOnly {
     long fieldOffset;
 }
 
-@TargetClass(className = "java.lang.invoke.VarHandleInts", innerClass = "FieldStaticReadOnly", onlyWith = JDK9OrLater.class)
+@TargetClass(className = "java.lang.invoke.VarHandleInts", innerClass = "FieldStaticReadOnly", onlyWith = JDK11OrLater.class)
 final class Target_java_lang_invoke_VarHandleInts_FieldStaticReadOnly {
     @Alias @InjectAccessors(VarHandleFieldStaticBasePrimitiveAccessor.class) //
     Object base;
@@ -444,7 +457,7 @@ final class Target_java_lang_invoke_VarHandleInts_FieldStaticReadOnly {
     long fieldOffset;
 }
 
-@TargetClass(className = "java.lang.invoke.VarHandleLongs", innerClass = "FieldStaticReadOnly", onlyWith = JDK9OrLater.class)
+@TargetClass(className = "java.lang.invoke.VarHandleLongs", innerClass = "FieldStaticReadOnly", onlyWith = JDK11OrLater.class)
 final class Target_java_lang_invoke_VarHandleLongs_FieldStaticReadOnly {
     @Alias @InjectAccessors(VarHandleFieldStaticBasePrimitiveAccessor.class) //
     Object base;
@@ -452,7 +465,7 @@ final class Target_java_lang_invoke_VarHandleLongs_FieldStaticReadOnly {
     long fieldOffset;
 }
 
-@TargetClass(className = "java.lang.invoke.VarHandleShorts", innerClass = "FieldStaticReadOnly", onlyWith = JDK9OrLater.class)
+@TargetClass(className = "java.lang.invoke.VarHandleShorts", innerClass = "FieldStaticReadOnly", onlyWith = JDK11OrLater.class)
 final class Target_java_lang_invoke_VarHandleShorts_FieldStaticReadOnly {
     @Alias @InjectAccessors(VarHandleFieldStaticBasePrimitiveAccessor.class) //
     Object base;
@@ -460,10 +473,26 @@ final class Target_java_lang_invoke_VarHandleShorts_FieldStaticReadOnly {
     long fieldOffset;
 }
 
-@TargetClass(className = "java.lang.invoke.VarHandleObjects", innerClass = "FieldStaticReadOnly", onlyWith = JDK9OrLater.class)
+@TargetClass(classNameProvider = VarHandleObjectsClassNameProvider.class, innerClass = "FieldStaticReadOnly", onlyWith = JDK11OrLater.class)
 final class Target_java_lang_invoke_VarHandleObjects_FieldStaticReadOnly {
     @Alias @InjectAccessors(VarHandleFieldStaticBaseObjectAccessor.class) //
     Object base;
     @Alias @RecomputeFieldValue(kind = Kind.Custom, declClass = VarHandleFieldOffsetComputer.class) //
     long fieldOffset;
+}
+
+@TargetClass(className = "java.lang.invoke.VarHandle", onlyWith = JDK11OrLater.class)
+final class Target_java_lang_invoke_VarHandle {
+
+    /**
+     * JDK 11 does not have an override of toString(), but later JDK versions do. The implementation
+     * collects details about the MemberName, which are method handle internals that must not be
+     * reachable.
+     */
+    @TargetElement(onlyWith = JDK13OrLater.class)
+    @Substitute
+    @Override
+    public String toString() {
+        return "VarHandle[printing VarHandle details is not supported on Substrate VM]";
+    }
 }

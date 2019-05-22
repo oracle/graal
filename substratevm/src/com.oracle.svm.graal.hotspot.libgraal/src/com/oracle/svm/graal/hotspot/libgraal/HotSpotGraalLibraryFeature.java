@@ -39,6 +39,7 @@ import java.lang.reflect.Modifier;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
+import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.HashMap;
 import java.util.List;
@@ -50,6 +51,7 @@ import org.graalvm.collections.EconomicMap;
 import org.graalvm.collections.EconomicSet;
 import org.graalvm.collections.MapCursor;
 import org.graalvm.compiler.api.replacements.SnippetReflectionProvider;
+import org.graalvm.compiler.core.GraalServiceThread;
 import org.graalvm.compiler.debug.DebugContext;
 import org.graalvm.compiler.debug.DebugHandlersFactory;
 import org.graalvm.compiler.debug.GraalError;
@@ -75,6 +77,7 @@ import org.graalvm.compiler.truffle.runtime.GraalTruffleRuntime;
 import org.graalvm.nativeimage.ImageSingletons;
 import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.Platforms;
+import org.graalvm.nativeimage.VMRuntime;
 import org.graalvm.nativeimage.hosted.Feature;
 import org.graalvm.nativeimage.hosted.RuntimeReflection;
 
@@ -93,6 +96,7 @@ import com.oracle.svm.core.option.XOptions;
 import com.oracle.svm.core.snippets.KnownIntrinsics;
 import com.oracle.svm.core.util.UserError;
 import com.oracle.svm.core.util.UserError.UserException;
+import com.oracle.svm.core.util.VMError;
 import com.oracle.svm.graal.hosted.GraalFeature;
 import com.oracle.svm.hosted.FeatureImpl;
 import com.oracle.svm.hosted.FeatureImpl.DuringAnalysisAccessImpl;
@@ -137,7 +141,23 @@ public final class HotSpotGraalLibraryFeature implements com.oracle.svm.core.gra
         ImageSingletons.add(MethodAnnotationSupport.class, new MethodAnnotationSupport());
 
         JNIRuntimeAccessibilitySupport registry = ImageSingletons.lookup(JNIRuntimeAccessibilitySupport.class);
-        registerJNIConfiguration(registry, ((DuringSetupAccessImpl) access).getImageClassLoader());
+        ImageClassLoader imageClassLoader = ((DuringSetupAccessImpl) access).getImageClassLoader();
+        registerJNIConfiguration(registry, imageClassLoader);
+
+        List<OptionDescriptors> descriptors = new ArrayList<>();
+        for (Class<? extends OptionDescriptors> optionsClass : imageClassLoader.findSubclasses(OptionDescriptors.class, false)) {
+            if (!OptionDescriptorsFilter.shouldIncludeDescriptors(optionsClass)) {
+                continue;
+            }
+            if (!Modifier.isAbstract(optionsClass.getModifiers())) {
+                try {
+                    descriptors.add(optionsClass.getDeclaredConstructor().newInstance());
+                } catch (ReflectiveOperationException ex) {
+                    throw VMError.shouldNotReachHere(ex);
+                }
+            }
+        }
+        OptionsParser.setCachedOptionDescriptors(descriptors);
     }
 
     /**
@@ -482,7 +502,7 @@ public final class HotSpotGraalLibraryFeature implements com.oracle.svm.core.gra
         }
 
         public Annotation[] getClassAnnotations(String className) {
-            return classAnnotationMap.get(className);
+            return classAnnotationMap.getOrDefault(className, NO_ANNOTATIONS);
         }
 
         public Annotation[][] getParameterAnnotations(String className, String methodName) {
@@ -492,7 +512,7 @@ public final class HotSpotGraalLibraryFeature implements com.oracle.svm.core.gra
 
         public Annotation[] getMethodAnnotations(ResolvedJavaMethod javaMethod) {
             String name = javaMethod.format("%R %H.%n%P");
-            return methodAnnotationMap.get(name);
+            return methodAnnotationMap.getOrDefault(name, NO_ANNOTATIONS);
 
         }
     }
@@ -526,6 +546,14 @@ final class Target_jdk_vm_ci_hotspot_SharedLibraryJVMCIReflection {
     @Substitute
     static Object convertUnknownValue(Object object) {
         return KnownIntrinsics.convertUnknownValue(object, Object.class);
+    }
+}
+
+@TargetClass(className = "org.graalvm.compiler.hotspot.HotSpotGraalRuntime", onlyWith = HotSpotGraalLibraryFeature.IsEnabled.class)
+final class Target_org_graalvm_compiler_hotspot_HotSpotGraalRuntime {
+    @Substitute
+    private static void shutdownLibGraal() {
+        VMRuntime.shutdown();
     }
 }
 
@@ -589,4 +617,21 @@ final class Target_org_graalvm_compiler_truffle_common_TruffleCompilerRuntimeIns
     @Alias @RecomputeFieldValue(kind = Kind.Reset, isFinal = true) static Object TRUFFLE_RUNTIME;
     // Checkstyle: resume
     @Alias @RecomputeFieldValue(kind = Kind.Reset) static TruffleCompilerRuntime truffleCompilerRuntime;
+}
+
+@TargetClass(className = "org.graalvm.compiler.core.GraalServiceThread", onlyWith = HotSpotGraalLibraryFeature.IsEnabled.class)
+final class Target_org_graalvm_compiler_core_GraalServiceThread {
+    @Substitute()
+    void beforeRun() {
+        GraalServiceThread thread = KnownIntrinsics.convertUnknownValue(this, GraalServiceThread.class);
+        if (!HotSpotJVMCIRuntime.runtime().attachCurrentThread(thread.isDaemon())) {
+            throw new InternalError("Couldn't attach to HotSpot runtime");
+        }
+    }
+
+    @Substitute
+    @SuppressWarnings("static-method")
+    void afterRun() {
+        HotSpotJVMCIRuntime.runtime().detachCurrentThread();
+    }
 }

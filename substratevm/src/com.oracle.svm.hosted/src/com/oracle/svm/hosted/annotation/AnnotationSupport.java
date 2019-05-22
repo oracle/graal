@@ -59,15 +59,11 @@ import org.graalvm.compiler.nodes.java.InstanceOfNode;
 import org.graalvm.compiler.nodes.java.LoadFieldNode;
 import org.graalvm.compiler.replacements.GraphKit;
 import org.graalvm.compiler.replacements.nodes.BasicObjectCloneNode;
-import org.graalvm.nativeimage.ImageSingletons;
 import org.graalvm.nativeimage.hosted.Feature;
 
 import com.oracle.graal.pointsto.constraints.UnsupportedFeatureException;
 import com.oracle.graal.pointsto.meta.HostedProviders;
 import com.oracle.svm.core.annotate.AutomaticFeature;
-import com.oracle.svm.core.annotate.Substitute;
-import com.oracle.svm.core.annotate.TargetClass;
-import com.oracle.svm.core.hub.AnnotationTypeSupport;
 import com.oracle.svm.core.jdk.AnnotationSupportConfig;
 import com.oracle.svm.core.meta.SubstrateObjectConstant;
 import com.oracle.svm.core.util.VMError;
@@ -84,7 +80,6 @@ import jdk.vm.ci.meta.MetaAccessProvider;
 import jdk.vm.ci.meta.ResolvedJavaField;
 import jdk.vm.ci.meta.ResolvedJavaMethod;
 import jdk.vm.ci.meta.ResolvedJavaType;
-import sun.reflect.annotation.AnnotationType;
 import sun.reflect.annotation.TypeNotPresentExceptionProxy;
 
 public class AnnotationSupport extends CustomSubstitution<AnnotationSubstitutionType> {
@@ -573,25 +568,6 @@ public class AnnotationSupport extends CustomSubstitution<AnnotationSubstitution
 
 }
 
-@TargetClass(className = "sun.reflect.annotation.AnnotationType")
-final class Target_sun_reflect_annotation_AnnotationType {
-
-    /**
-     * In JDK this class lazily initializes AnnotationTypes as they are requested.
-     *
-     * In SVM we analyze only the types that are used as {@link java.lang.annotation.Repeatable}
-     * annotations and pre-initialize those.
-     *
-     * If this method fails, introduce missing pre-initialization rules in
-     * {@link AnnotationTypeFeature}.
-     */
-    @Substitute
-    public static AnnotationType getInstance(Class<? extends Annotation> annotationClass) {
-        return ImageSingletons.lookup(AnnotationTypeSupport.class).getInstance(annotationClass);
-    }
-
-}
-
 @AutomaticFeature
 class AnnotationSupportFeature implements Feature {
 
@@ -611,12 +587,12 @@ class AnnotationObjectReplacer implements Function<Object, Object> {
      * Cache the replaced objects to ensure that they are only replaced once. We are using a
      * concurrent hash map because replace() may be called from BigBang.finish(), which is
      * multi-threaded.
-     * 
+     *
      * A side effect of this caching is de-duplication of annotation instances. When running as a
      * native image two equal annotation instances are also identical. On HotSpot that is not true,
      * the two annotation instances, although equal, are actually two distinct objects. Although
      * this is a small deviation from HotSpot semantics it can improve the native image size.
-     * 
+     *
      * If de-duplication is not desired that can be achieved by replacing the ConcurrentHashMap with
      * an IdentityHashMap (and additional access synchronisation).
      */

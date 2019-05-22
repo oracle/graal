@@ -150,9 +150,9 @@ import jdk.vm.ci.meta.ResolvedJavaType;
 import jdk.vm.ci.meta.SpeculationLog;
 
 /**
- * Base class for Graal compiler unit tests.
+ * Base class for compiler unit tests.
  * <p>
- * White box tests for Graal compiler transformations use this pattern:
+ * White box tests for compiler transformations use this pattern:
  * <ol>
  * <li>Create a graph by {@linkplain #parseEager parsing} a method.</li>
  * <li>Manually modify the graph (e.g. replace a parameter node with a constant).</li>

@@ -80,6 +80,7 @@ import com.oracle.svm.core.option.HostedOptionKey;
 import com.oracle.svm.core.util.VMError;
 import com.oracle.svm.hosted.FeatureImpl.DuringAnalysisAccessImpl;
 import com.oracle.svm.hosted.ImageClassLoader;
+import com.oracle.svm.hosted.SVMHost;
 import com.oracle.svm.hosted.c.GraalAccess;
 import com.oracle.svm.hosted.phases.NoClassInitializationPlugin;
 import com.oracle.svm.hosted.snippets.ReflectionPlugins;
@@ -144,7 +145,7 @@ public class UnsafeAutomaticSubstitutionProcessor extends SubstitutionProcessor 
         this.supressWarnings = new ArrayList<>();
     }
 
-    public void init(ImageClassLoader loader, MetaAccessProvider originalMetaAccess) {
+    public void init(ImageClassLoader loader, MetaAccessProvider originalMetaAccess, SVMHost hostVM) {
         ResolvedJavaMethod atomicIntegerFieldUpdaterNewUpdaterMethod;
         ResolvedJavaMethod atomicLongFieldUpdaterNewUpdaterMethod;
         ResolvedJavaMethod atomicReferenceFieldUpdaterNewUpdaterMethod;
@@ -180,7 +181,7 @@ public class UnsafeAutomaticSubstitutionProcessor extends SubstitutionProcessor 
             neverInlineSet.add(unsafeObjectFieldOffsetFieldMethod);
 
             if (!JavaVersionUtil.Java8OrEarlier) {
-                /* JDK-9 introduced Unsafe.objectFieldOffset(Class, String). */
+                /* JDK 11 and later have Unsafe.objectFieldOffset(Class, String). */
                 Method unsafeObjectClassStringOffset = unsafeClass.getMethod("objectFieldOffset", java.lang.Class.class, String.class);
                 unsafeObjectFieldOffsetClassStringMethod = originalMetaAccess.lookupJavaMethod(unsafeObjectClassStringOffset);
                 noCheckedExceptionsSet.add(unsafeObjectFieldOffsetClassStringMethod);
@@ -236,7 +237,7 @@ public class UnsafeAutomaticSubstitutionProcessor extends SubstitutionProcessor 
         plugins.appendInlineInvokePlugin(inlineInvokePlugin);
         plugins.setClassInitializationPlugin(new NoClassInitializationPlugin());
 
-        ReflectionPlugins.registerInvocationPlugins(loader, snippetReflection, annotationSubstitutions, plugins.getInvocationPlugins(), false, false);
+        ReflectionPlugins.registerInvocationPlugins(loader, snippetReflection, annotationSubstitutions, plugins.getInvocationPlugins(), hostVM, false, false);
 
         builderPhase = new GraphBuilderPhase(GraphBuilderConfiguration.getDefault(plugins).withEagerResolving(true));
 

@@ -315,7 +315,7 @@ def verify_jvmci_ci_versions(args):
     If the ci.hocon files use a -dev version, it allows the travis ones to use the previous version.
     For example, if ci.hocon uses jvmci-0.24-dev, travis may use either jvmci-0.24-dev or jvmci-0.23
     """
-    version_pattern = re.compile(r'^(?!\s*#).*jvmci-(?P<version>\d*\.\d*)(?P<dev>-dev)?')
+    version_pattern = re.compile(r'^(?!\s*#).*jvmci-(?P<major>\d*)(?:\.|-b)(?P<minor>\d*)(?P<dev>-dev)?')
 
     def _grep_version(files, msg):
         version = None
@@ -326,7 +326,9 @@ def verify_jvmci_ci_versions(args):
             for line in open(filename):
                 m = version_pattern.search(line)
                 if m:
-                    new_version = m.group('version')
+                    new_major = m.group('major')
+                    new_minor = m.group('minor')
+                    new_version = (new_major, new_minor)
                     new_dev = bool(m.group('dev'))
                     if (version and version != new_version) or (dev is not None and dev != new_dev):
                         mx.abort(
@@ -353,13 +355,13 @@ def verify_jvmci_ci_versions(args):
     if hocon_version != travis_version or hocon_dev != travis_dev:
         versions_ok = False
         if not travis_dev and hocon_dev:
-            next_travis_version = [int(a) for a in travis_version.split('.')]
-            next_travis_version[-1] += 1
-            next_travis_version_str = '.'.join((str(a) for a in next_travis_version))
-            if next_travis_version_str == hocon_version:
+            travis_major, travis_minor = travis_version # pylint: disable=unpacking-non-sequence
+            next_travis_minor = str(int(travis_minor) + 1)
+            next_travis_version = (travis_major, next_travis_minor)
+            if next_travis_version == hocon_version:
                 versions_ok = True
         if not versions_ok:
-            mx.abort("Travis and ci.hocon JVMCI versions do not match: {0} vs. {1}".format(travis_version + ('-dev' if travis_dev else ''), hocon_version + ('-dev' if hocon_dev else '')))
+            mx.abort("Travis and ci.hocon JVMCI versions do not match: {0} vs. {1}".format(str(travis_version) + ('-dev' if travis_dev else ''), str(hocon_version) + ('-dev' if hocon_dev else '')))
     mx.log('JVMCI versions are ok!')
 
 
@@ -592,7 +594,7 @@ def compiler_gate_benchmark_runner(tasks, extraVMarguments=None, prefix=''):
     # ensure benchmark counters still work
     if mx.get_arch() != 'aarch64': # GR-8364 Exclude benchmark counters on AArch64
         with Task(prefix + 'DaCapo_pmd:BenchmarkCounters', tasks, tags=GraalTags.test) as t:
-            if t: _gate_dacapo('pmd', 1, _remove_empty_entries(extraVMarguments) + ['-XX:+UseJVMCICompiler', '-Dgraal.LIRProfileMoves=true', '-Dgraal.GenericDynamicCounters=true', '-XX:JVMCICounterSize=10'])
+            if t: _gate_dacapo('pmd', 1, _remove_empty_entries(extraVMarguments) + ['-XX:+UseJVMCICompiler', '-Dgraal.LIRProfileMoves=true', '-Dgraal.GenericDynamicCounters=true', '-Dgraal.TimedDynamicCounters=1000', '-XX:JVMCICounterSize=10'])
 
     # ensure -Xcomp still works
     with Task(prefix + 'XCompMode:product', tasks, tags=GraalTags.test) as t:
@@ -608,6 +610,12 @@ def compiler_gate_benchmark_runner(tasks, extraVMarguments=None, prefix=''):
         # ensure CMSIncrementalMode still works
         with Task(prefix + 'DaCapo_pmd:CMSIncrementalMode', tasks, tags=cms) as t:
             if t: _gate_dacapo('pmd', 4, _remove_empty_entries(extraVMarguments) + ['-XX:+UseJVMCICompiler', '-Xmx256M', '-XX:+UseConcMarkSweepGC', '-XX:+CMSIncrementalMode'], threads=4, force_serial_gc=False, set_start_heap_size=False)
+
+
+        if prefix != '':
+            # ensure G1 still works with libgraal
+            with Task(prefix + 'DaCapo_pmd:G1', tasks, tags=cms) as t:
+                if t: _gate_dacapo('pmd', 4, _remove_empty_entries(extraVMarguments) + ['-XX:+UseJVMCICompiler', '-Xmx256M', '-XX:+UseG1GC'], threads=4, force_serial_gc=False, set_start_heap_size=False)
 
 
 
@@ -1162,7 +1170,7 @@ def makegraaljdk(args):
 
 mx_sdk.register_graalvm_component(mx_sdk.GraalVmJvmciComponent(
     suite=_suite,
-    name='Graal compiler',
+    name='GraalVM compiler',
     short_name='cmp',
     dir_name='graal',
     license_files=[],

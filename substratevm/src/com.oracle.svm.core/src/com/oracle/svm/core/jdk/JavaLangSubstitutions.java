@@ -386,7 +386,7 @@ final class Target_java_lang_System {
 }
 
 @TargetClass(java.lang.StrictMath.class)
-@CLibrary("strictmath")
+@CLibrary(value = "strictmath", requireStatic = true)
 final class Target_java_lang_StrictMath {
     // Checkstyle: stop
 

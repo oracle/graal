@@ -278,8 +278,8 @@ final class JceSecurityUtil {
 }
 
 /**
- * JDK-8 (and earlier) has the class `javax.crypto.JarVerifier`, but in JDK-9 (and later) that class
- * is only available in Oracle builds, and not in OpenJDK builds.
+ * JDK 8 has the class `javax.crypto.JarVerifier`, but in JDK 11 and later that class is only
+ * available in Oracle builds, and not in OpenJDK builds.
  */
 @TargetClass(className = "javax.crypto.JarVerifier", onlyWith = PlatformHasClass.class)
 @SuppressWarnings({"static-method", "unused"})

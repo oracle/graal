@@ -4,7 +4,7 @@ suite = {
   "sourceinprojectwhitelist" : [],
 
   "groupId" : "org.graalvm.compiler",
-  "version" : "1.0.0-rc18",
+  "version" : "20.0.0-beta.01",
   "release" : False,
   "url" : "http://www.graalvm.org/",
   "developer" : {
@@ -423,6 +423,7 @@ suite = {
       "subDir" : "src",
       "sourceDirs" : ["src"],
       "dependencies" : [
+          "org.graalvm.libgraal",
           "sdk:GRAAL_SDK",
           "JVMCI_HOTSPOT",
       ],
@@ -2268,6 +2269,7 @@ suite = {
     },
 
     "GRAAL_PROCESSOR_COMMON" : {
+      "subDir": "src",
       "dependencies" : ["org.graalvm.compiler.processor"],
       "maven": False,
     },
@@ -2398,7 +2400,7 @@ suite = {
         "JVMCI_HOTSPOT",
       ],
       "allowsJavadocWarnings": True,
-      "description":  "The Graal compiler and the Graal-truffle optimizer.",
+      "description":  "The GraalVM compiler and the Graal-truffle optimizer.",
       "maven" : {
         "artifactId" : "compiler",
       },

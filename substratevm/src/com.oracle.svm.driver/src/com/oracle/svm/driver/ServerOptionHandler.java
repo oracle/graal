@@ -24,6 +24,8 @@
  */
 package com.oracle.svm.driver;
 
+import com.oracle.svm.driver.MacroOption.MacroOptionKind;
+
 import java.util.List;
 import java.util.Queue;
 
@@ -46,6 +48,8 @@ class ServerOptionHandler extends NativeImage.OptionHandler<NativeImageServer> {
                 args.poll();
                 nativeImage.showMessage(DefaultOptionHandler.helpExtraText);
                 nativeImage.showMessage(helpTextServer);
+                nativeImage.optionRegistry.showOptions(MacroOptionKind.Macro, true, nativeImage::showMessage);
+                nativeImage.showNewline();
                 System.exit(0);
                 return true;
             case noServerOption:
@@ -110,6 +114,7 @@ class ServerOptionHandler extends NativeImage.OptionHandler<NativeImageServer> {
         return false;
     }
 
+    @Override
     void addFallbackBuildArgs(List<String> buildArgs) {
         if (!nativeImage.useServer()) {
             buildArgs.add(noServerOption);

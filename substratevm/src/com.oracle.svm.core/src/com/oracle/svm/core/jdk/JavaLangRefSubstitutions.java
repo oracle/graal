@@ -159,7 +159,7 @@ final class Target_java_lang_ref_Reference {
     }
 
     @Substitute
-    @TargetElement(onlyWith = JDK9OrLater.class)
+    @TargetElement(onlyWith = JDK11OrLater.class)
     @SuppressWarnings("unused")
     private static boolean waitForReferenceProcessing() {
         throw VMError.unimplemented();
@@ -167,11 +167,11 @@ final class Target_java_lang_ref_Reference {
 
     @Override
     @KeepOriginal //
-    @TargetElement(onlyWith = JDK9OrLater.class) //
+    @TargetElement(onlyWith = JDK11OrLater.class) //
     protected native Object clone() throws CloneNotSupportedException;
 
     @Substitute //
-    @TargetElement(onlyWith = JDK9OrLater.class) //
+    @TargetElement(onlyWith = JDK11OrLater.class) //
     // @ForceInline
     @SuppressWarnings("unused")
     public static void reachabilityFence(Object ref) {

@@ -197,7 +197,6 @@ public abstract class VMThreads {
         // implicitly calling addSuppressed(), which is not uninterruptible.
         VMThreads.THREAD_MUTEX.lockNoTransition();
         try {
-            VMThreads.THREAD_MUTEX.guaranteeIsLocked("Must hold the VMThreads lock.");
             nextTL.set(thread, head);
             head = thread;
             StatusSupport.setStatusNative(thread);
@@ -282,7 +281,16 @@ public abstract class VMThreads {
     public IsolateThread findIsolateThreadforCurrentOSThread() {
         ComparableWord id = getCurrentOSThreadId();
         IsolateThread thread;
-        for (thread = head; isNonNullThread(thread) && OSThreadIdTL.get(thread).notEqual(id); thread = nextThread(thread)) {
+        /*
+         * Accessing the VMThread list requires the lock, but locking must be without transitions
+         * because the IsolateThread is not set up yet.
+         */
+        VMThreads.THREAD_MUTEX.lockNoTransition();
+        try {
+            for (thread = firstThread(); isNonNullThread(thread) && OSThreadIdTL.get(thread).notEqual(id); thread = nextThread(thread)) {
+            }
+        } finally {
+            VMThreads.THREAD_MUTEX.unlock();
         }
         return thread;
     }

@@ -40,6 +40,7 @@ import org.graalvm.compiler.bytecode.Bytecodes;
 import org.graalvm.compiler.bytecode.Bytes;
 import org.graalvm.compiler.bytecode.ResolvedJavaMethodBytecode;
 import org.graalvm.compiler.core.common.calc.Condition;
+import org.graalvm.compiler.core.common.type.FloatStamp;
 import org.graalvm.compiler.core.common.type.IntegerStamp;
 import org.graalvm.compiler.core.common.type.Stamp;
 import org.graalvm.compiler.core.common.type.StampFactory;
@@ -58,9 +59,11 @@ import org.graalvm.compiler.nodeinfo.InputType;
 import org.graalvm.compiler.nodeinfo.NodeInfo;
 import org.graalvm.compiler.nodes.calc.CompareNode;
 import org.graalvm.compiler.nodes.calc.ConditionalNode;
+import org.graalvm.compiler.nodes.calc.FloatLessThanNode;
 import org.graalvm.compiler.nodes.calc.IntegerBelowNode;
 import org.graalvm.compiler.nodes.calc.IntegerEqualsNode;
 import org.graalvm.compiler.nodes.calc.IntegerLessThanNode;
+import org.graalvm.compiler.nodes.calc.IntegerLowerThanNode;
 import org.graalvm.compiler.nodes.calc.IsNullNode;
 import org.graalvm.compiler.nodes.calc.NormalizeCompareNode;
 import org.graalvm.compiler.nodes.calc.ObjectEqualsNode;
@@ -980,25 +983,32 @@ public final class IfNode extends ControlSplitNode implements Simplifiable, LIRL
                         return graph().unique(new NormalizeCompareNode(x, y, stackKind, false));
                     } else if (cond1 == Condition.LT && cond2 == Condition.EQ && c1 == 1 && c2 == 0 && c3 == -1) {
                         // x < y ? 1 : (x == y ? 0 : -1) => y cmp x
-                        return graph().unique(new NormalizeCompareNode(y, x, stackKind, false));
+                        return graph().unique(new NormalizeCompareNode(y, x, stackKind, true));
                     } else if (cond1 == Condition.EQ && cond2 == Condition.LT && c1 == 0 && c2 == -1 && c3 == 1) {
                         // x == y ? 0 : (x < y ? -1 : 1) => x cmp y
                         return graph().unique(new NormalizeCompareNode(x, y, stackKind, false));
                     } else if (cond1 == Condition.EQ && cond2 == Condition.LT && c1 == 0 && c2 == 1 && c3 == -1) {
                         // x == y ? 0 : (x < y ? 1 : -1) => y cmp x
-                        return graph().unique(new NormalizeCompareNode(y, x, stackKind, false));
+                        return graph().unique(new NormalizeCompareNode(y, x, stackKind, true));
                     } else if (cond1 == Condition.EQ && cond2 == Condition.GT && c1 == 0 && c2 == -1 && c3 == 1) {
                         // x == y ? 0 : (x > y ? -1 : 1) => y cmp x
                         return graph().unique(new NormalizeCompareNode(y, x, stackKind, false));
                     } else if (cond1 == Condition.EQ && cond2 == Condition.GT && c1 == 0 && c2 == 1 && c3 == -1) {
                         // x == y ? 0 : (x > y ? 1 : -1) => x cmp y
-                        return graph().unique(new NormalizeCompareNode(x, y, stackKind, false));
-                    } else if (cond1 == Condition.LT && cond2 == Condition.GT && c1 == 1 && c2 == -1 && c3 == 0) {
-                        // x < y ? 1 : (x > y ? -1 : 0) => y cmp x
-                        return graph().unique(new NormalizeCompareNode(y, x, stackKind, false));
-                    } else if (cond1 == Condition.LT && cond2 == Condition.GT && c1 == -1 && c2 == 1 && c3 == 0) {
-                        // x < y ? -1 : (x > y ? 1 : 0) => x cmp y
-                        return graph().unique(new NormalizeCompareNode(x, y, stackKind, false));
+                        return graph().unique(new NormalizeCompareNode(x, y, stackKind, true));
+                    } else {
+                        boolean floatComparisonWithoutNaN = condition() instanceof FloatLessThanNode &&
+                                        ((FloatStamp) x.stamp(NodeView.from(tool))).isNonNaN() &&
+                                        ((FloatStamp) y.stamp(NodeView.from(tool))).isNonNaN();
+                        if (condition() instanceof IntegerLowerThanNode || floatComparisonWithoutNaN) {
+                            if (cond1 == Condition.LT && cond2 == Condition.GT && c1 == 1 && c2 == -1 && c3 == 0) {
+                                // x < y ? 1 : (x > y ? -1 : 0) => y cmp x
+                                return graph().unique(new NormalizeCompareNode(y, x, stackKind, false));
+                            } else if (cond1 == Condition.LT && cond2 == Condition.GT && c1 == -1 && c2 == 1 && c3 == 0) {
+                                // x < y ? -1 : (x > y ? 1 : 0) => x cmp y
+                                return graph().unique(new NormalizeCompareNode(x, y, stackKind, false));
+                            }
+                        }
                     }
                 }
             }

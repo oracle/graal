@@ -1,7 +1,7 @@
 suite = {
-    "mxversion": "5.210.5",
+    "mxversion": "5.218.0",
     "name": "substratevm",
-    "version" : "1.0.0-rc18",
+    "version" : "20.0.0-beta.01",
     "release" : False,
     "url" : "https://github.com/oracle/graal/tree/master/substratevm",
 
@@ -107,7 +107,7 @@ suite = {
             "workingSets": "SVM",
         },
 
-        "com.oracle.svm.core.jdk9": {
+        "com.oracle.svm.core.jdk11": {
             "subDir": "src",
             "sourceDirs": ["src"],
             "dependencies": ["com.oracle.svm.core"],
@@ -115,25 +115,25 @@ suite = {
                 "jdk.internal.misc",
                 "jdk.internal.perf",
             ],
-            "javaCompliance": "9+",
-            "multiReleaseJarVersion": "9",
+            "javaCompliance": "11+",
+            "multiReleaseJarVersion": "11",
             "checkstyle": "com.oracle.svm.core",
             "workingSets": "SVM",
         },
 
-        "com.oracle.svm.core.posix.jdk9": {
+        "com.oracle.svm.core.posix.jdk11": {
             "subDir": "src",
             "sourceDirs": ["src"],
             "dependencies": [
-                "com.oracle.svm.core.jdk9",
+                "com.oracle.svm.core.jdk11",
                 "com.oracle.svm.core.posix"
                 ],
             "imports" : [
                 "jdk.internal.misc",
                 "jdk.internal.perf",
             ],
-            "javaCompliance": "9+",
-            "multiReleaseJarVersion": "9",
+            "javaCompliance": "11+",
+            "multiReleaseJarVersion": "11",
             "checkstyle": "com.oracle.svm.core",
             "workingSets": "SVM",
         },
@@ -407,8 +407,7 @@ suite = {
                 "resources"
             ],
             "dependencies": [
-                "com.oracle.svm.graal",
-                "com.oracle.svm.reflect",
+                "com.oracle.svm.hosted",
             ],
             "checkstyle": "com.oracle.svm.driver",
             "checkstyleVersion" : "8.8",
@@ -696,7 +695,7 @@ suite = {
                 "resources",
             ],
             "dependencies": [
-                "com.oracle.svm.hosted",
+                "com.oracle.svm.core",
             ],
             "checkstyle": "com.oracle.svm.driver",
             "workingSets": "SVM",
@@ -747,9 +746,9 @@ suite = {
                 "com.oracle.svm.core.graal.amd64",
                 "com.oracle.svm.core.graal.aarch64",
                 "com.oracle.svm.core.jdk8",
-                "com.oracle.svm.core.jdk9",
+                "com.oracle.svm.core.jdk11",
                 "com.oracle.svm.core.posix",
-                "com.oracle.svm.core.posix.jdk9",
+                "com.oracle.svm.core.posix.jdk11",
                 "com.oracle.svm.core.windows",
                 "com.oracle.svm.core.genscavenge",
                 "com.oracle.svm.jni",
@@ -835,6 +834,7 @@ suite = {
         },
 
         "GRAAL_HOTSPOT_LIBRARY": {
+            "subDir": "src",
             "description" : "SubstrateVM HotSpot Graal library support",
             "dependencies": [
                 "com.oracle.svm.graal.hotspot.libgraal",
@@ -891,6 +891,7 @@ suite = {
         },
 
         "SVM_AGENT": {
+            "subDir": "src",
             "description" : "SubstrateVM native-image-agent library",
             "dependencies": [
                 "com.oracle.svm.agent",
@@ -934,6 +935,7 @@ suite = {
         },
 
         "SVM_TESTS" : {
+          "subDir": "src",
           "relpath" : True,
           "dependencies" : [
             "com.oracle.svm.test",
@@ -946,6 +948,7 @@ suite = {
         },
 
         "POLYGLOT_NATIVE_API" : {
+            "subDir": "src",
             "dependencies": [
                 "org.graalvm.polyglot.nativeapi",
             ],
@@ -972,17 +975,26 @@ suite = {
             "platformDependent" : True,
             "description" : "SubstrateVM support distribution for the GraalVM",
             "layout" : {
-                "bin/rebuild-images" : "file:mx.substratevm/rebuild-images.sh",
                 "clibraries/" : ["extracted-dependency:substratevm:SVM_HOSTED_NATIVE"],
                 "builder/clibraries/" : ["extracted-dependency:substratevm:SVM_HOSTED_NATIVE"],
             },
         },
 
-        "NATIVE_IMAGE_CONFIGURE_SUPPORT" : {
+        "NATIVE_IMAGE_GRAALVM_SUPPORT" : {
             "native" : True,
-            "description" : "SubstrateVM native-image configuration tool",
+            "platformDependent" : True,
+            "description" : "Native Image support distribution for the GraalVM",
             "layout" : {
-                "native-image.properties" : "file:mx.substratevm/tools-native-image-configure.properties",
+                "bin/rebuild-images" : "file:mx.substratevm/rebuild-images.sh",
+            },
+        },
+
+        "NATIVE_IMAGE_LICENSE_GRAALVM_SUPPORT" : {
+            "native" : True,
+            "platformDependent" : False,
+            "description" : "Native Image support distribution for the GraalVM",
+            "layout" : {
+                "LICENSE_NATIVEIMAGE.txt" : "file:LICENSE.md",
             },
         },
 
@@ -990,7 +1002,7 @@ suite = {
             "native" : True,
             "description" : "Native-image based junit testing support",
             "layout" : {
-                "native-image.properties" : "file:mx.substratevm/tools-junit.properties",
+                "native-image.properties" : "file:mx.substratevm/macro-junit.properties",
             },
         },
 

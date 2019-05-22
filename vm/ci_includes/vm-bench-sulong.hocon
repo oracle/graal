@@ -28,7 +28,7 @@ sulong_logs_bc: ${sulong_logs} [
     "../sulong-benchmarks/*/*/*.bc"
 ]
 
-bench-llvm-linux: ${x52.default} ${labsjdk8} {
+bench-llvm-linux: ${x52.default} ${oraclejdk8} {
   capabilities: ${x52.default.capabilities} [tmpfs25g]
   environment: {
     RESULTS_FILE_PREFIX: results-

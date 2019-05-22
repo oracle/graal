@@ -88,7 +88,15 @@ public final class GraalServices {
             synchronized (servicesCache) {
                 ArrayList<S> providersList = new ArrayList<>();
                 for (S provider : providers) {
-                    providersList.add(provider);
+                    /*
+                     * When building libgraal, we want providers that comes from the Graal community
+                     * and enterprise modules but not those available on the native-image class
+                     * path.
+                     */
+                    Module module = provider.getClass().getModule();
+                    if (module.isNamed()) {
+                        providersList.add(provider);
+                    }
                 }
                 providers = providersList;
                 servicesCache.put(service, providersList);
@@ -100,7 +108,7 @@ public final class GraalServices {
     }
 
     protected static <S> Iterable<S> load0(Class<S> service) {
-        Iterable<S> iterable = ServiceLoader.load(service, GraalServices.class.getClassLoader());
+        Iterable<S> iterable = ServiceLoader.load(service);
         return new Iterable<>() {
             @Override
             public Iterator<S> iterator() {
@@ -135,7 +143,9 @@ public final class GraalServices {
      * @param other all JVMCI packages will be opened to the module defining this class
      */
     static void openJVMCITo(Class<?> other) {
-        if (IS_IN_NATIVE_IMAGE) return;
+        if (IS_IN_NATIVE_IMAGE) {
+            return;
+        }
 
         Module jvmciModule = JVMCI_MODULE;
         Module otherModule = other.getModule();

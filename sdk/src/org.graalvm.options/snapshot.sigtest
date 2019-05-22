@@ -43,8 +43,6 @@ meth public int hashCode()
 meth public java.lang.String toString()
 
 CLSS public final !enum org.graalvm.options.OptionCategory
-fld public final static org.graalvm.options.OptionCategory DEBUG
- anno 0 java.lang.Deprecated()
 fld public final static org.graalvm.options.OptionCategory EXPERT
 fld public final static org.graalvm.options.OptionCategory INTERNAL
 fld public final static org.graalvm.options.OptionCategory USER

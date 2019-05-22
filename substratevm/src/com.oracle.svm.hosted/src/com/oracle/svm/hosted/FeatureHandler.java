@@ -75,7 +75,7 @@ public class FeatureHandler {
     public void registerFeatures(ImageClassLoader loader, DebugContext debug) {
         IsInConfigurationAccessImpl access = new IsInConfigurationAccessImpl(this, loader, debug);
 
-        for (Class<?> automaticFeature : loader.findAnnotatedClasses(AutomaticFeature.class)) {
+        for (Class<?> automaticFeature : loader.findAnnotatedClasses(AutomaticFeature.class, true)) {
             registerFeature(automaticFeature, access);
         }
 

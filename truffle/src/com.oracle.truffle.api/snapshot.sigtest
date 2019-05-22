@@ -513,8 +513,6 @@ meth public java.lang.String toString()
 meth public java.lang.Throwable fillInStackTrace()
 meth public static com.oracle.truffle.api.TruffleStackTrace fillIn(java.lang.Throwable)
 meth public static java.util.List<com.oracle.truffle.api.TruffleStackTraceElement> getStackTrace(java.lang.Throwable)
-meth public static java.util.List<com.oracle.truffle.api.TruffleStackTraceElement> getStacktrace(java.lang.Throwable)
- anno 0 java.lang.Deprecated()
 supr java.lang.Exception
 hfds EMPTY,frames,lazyFrames,materializedHostException
 hcls LazyStackTrace,TracebackElement
@@ -523,10 +521,6 @@ CLSS public final com.oracle.truffle.api.TruffleStackTraceElement
 meth public com.oracle.truffle.api.RootCallTarget getTarget()
 meth public com.oracle.truffle.api.frame.Frame getFrame()
 meth public com.oracle.truffle.api.nodes.Node getLocation()
-meth public static java.util.List<com.oracle.truffle.api.TruffleStackTraceElement> getStackTrace(java.lang.Throwable)
- anno 0 java.lang.Deprecated()
-meth public static void fillIn(java.lang.Throwable)
- anno 0 java.lang.Deprecated()
 supr java.lang.Object
 hfds frame,location,target
 
@@ -1025,7 +1019,7 @@ cons public init()
 cons public init(java.lang.String)
 cons public init(java.lang.String,java.lang.Throwable)
 cons public init(java.lang.Throwable)
-meth public java.lang.Throwable fillInStackTrace()
+meth public final java.lang.Throwable fillInStackTrace()
  anno 0 java.lang.Deprecated()
 supr java.lang.Exception
 hfds serialVersionUID

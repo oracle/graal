@@ -31,6 +31,8 @@ import jdk.vm.ci.hotspot.HotSpotJVMCIRuntime;
  */
 public class LibGraal {
 
+    static final long isolate = 0L;
+
     private static IllegalStateException unavailable() {
         throw new IllegalStateException("libgraal is not available");
     }
@@ -39,16 +41,16 @@ public class LibGraal {
         return false;
     }
 
+    public static boolean inLibGraal() {
+        throw unavailable();
+    }
+
     public static long getIsolate() {
         throw unavailable();
     }
 
-    public static long getIsolateThread() {
-        throw unavailable();
-    }
-
     @SuppressWarnings("unused")
-    public static long[] registerNativeMethods(HotSpotJVMCIRuntime runtime, Class<?> clazz) {
+    public static void registerNativeMethods(HotSpotJVMCIRuntime runtime, Class<?> clazz) {
         throw unavailable();
     }
 
@@ -59,6 +61,26 @@ public class LibGraal {
 
     @SuppressWarnings("unused")
     public static <T> T unhand(HotSpotJVMCIRuntime runtime, Class<T> type, long handle) {
+        throw unavailable();
+    }
+
+    @SuppressWarnings("unused")
+    static boolean isCurrentThreadAttached(HotSpotJVMCIRuntime runtime) {
+        throw unavailable();
+    }
+
+    @SuppressWarnings("unused")
+    static boolean attachCurrentThread(HotSpotJVMCIRuntime runtime) {
+        throw unavailable();
+    }
+
+    @SuppressWarnings("unused")
+    static void detachCurrentThread(HotSpotJVMCIRuntime runtime) {
+        throw unavailable();
+    }
+
+    @SuppressWarnings("unused")
+    static long getCurrentIsolateThread(long iso) {
         throw unavailable();
     }
 }

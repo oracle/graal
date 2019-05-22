@@ -46,9 +46,9 @@ public final class Target_jdk_internal_reflect_Reflection {
     }
 
     @Substitute //
-    @TargetElement(onlyWith = JDK9OrLater.class) //
+    @TargetElement(onlyWith = JDK11OrLater.class) //
     @SuppressWarnings({"unused"})
     public static /* native */ boolean areNestMates(Class<?> currentClass, Class<?> memberClass) {
-        throw VMError.unsupportedFeature("JDK9OrLater: Target_jdk_internal_reflect_Reflection.areNestMates");
+        throw VMError.unsupportedFeature("JDK11OrLater: Target_jdk_internal_reflect_Reflection.areNestMates");
     }
 }

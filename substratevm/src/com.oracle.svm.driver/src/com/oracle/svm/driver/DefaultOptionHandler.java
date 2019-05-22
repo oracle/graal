@@ -35,7 +35,8 @@ import java.util.jar.Manifest;
 
 import org.graalvm.compiler.options.OptionType;
 
-import com.oracle.svm.hosted.ImageClassLoader;
+import com.oracle.svm.driver.MacroOption.MacroOptionKind;
+import com.oracle.svm.core.util.ClasspathUtils;
 
 class DefaultOptionHandler extends NativeImage.OptionHandler<NativeImage> {
 
@@ -76,6 +77,8 @@ class DefaultOptionHandler extends NativeImage.OptionHandler<NativeImage> {
             case "--help-extra":
                 args.poll();
                 nativeImage.showMessage(helpExtraText);
+                nativeImage.optionRegistry.showOptions(MacroOptionKind.Macro, true, nativeImage::showMessage);
+                nativeImage.showNewline();
                 System.exit(0);
                 return true;
             case "-cp":
@@ -220,7 +223,7 @@ class DefaultOptionHandler extends NativeImage.OptionHandler<NativeImage> {
             /* Missing Class-Path Attribute is tolerable */
             if (classPath != null) {
                 for (String cp : classPath.split(" +")) {
-                    Path manifestClassPath = ImageClassLoader.stringToClasspath(cp);
+                    Path manifestClassPath = ClasspathUtils.stringToClasspath(cp);
                     if (!manifestClassPath.isAbsolute()) {
                         /* Resolve relative manifestClassPath against directory containing jar */
                         manifestClassPath = filePath.getParent().resolve(manifestClassPath);
@@ -236,6 +239,7 @@ class DefaultOptionHandler extends NativeImage.OptionHandler<NativeImage> {
         }
     }
 
+    @Override
     void addFallbackBuildArgs(List<String> buildArgs) {
         if (nativeImage.isVerbose()) {
             buildArgs.add(verboseOption);

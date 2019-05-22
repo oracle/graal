@@ -173,7 +173,7 @@ public class MethodTypeFlowBuilder {
 
     @SuppressWarnings("try")
     private boolean parse() {
-        OptionValues options = bb.getUniverse().adjustCompilerOptions(bb.getOptions(), method);
+        OptionValues options = bb.getOptions();
         GraalJVMCICompiler compiler = (GraalJVMCICompiler) JVMCI.getRuntime().getCompiler();
         SnippetReflectionProvider snippetReflection = compiler.getGraalRuntime().getRequiredCapability(SnippetReflectionProvider.class);
         // Use the real SnippetReflectionProvider for dumping
@@ -210,6 +210,14 @@ public class MethodTypeFlowBuilder {
                         GraphBuilderConfiguration config = GraphBuilderConfiguration.getDefault(bb.getProviders().getGraphBuilderPlugins()).withEagerResolving(true)
                                         .withUnresolvedIsError(PointstoOptions.UnresolvedIsError.getValue(bb.getOptions()))
                                         .withNodeSourcePosition(true).withBytecodeExceptionMode(BytecodeExceptionMode.CheckAll);
+
+                        /*
+                         * We want to always disable the liveness analysis, since we want the
+                         * points-to analysis to be as conservative as possible. The analysis
+                         * results can then be used with the liveness analysis enabled or disabled.
+                         */
+                        config = config.withRetainLocalVariables(true);
+
                         bb.getHostVM().createGraphBuilderPhase(bb.getProviders(), config, OptimisticOptimizations.NONE, null).apply(graph);
                     }
                 } catch (PermanentBailoutException ex) {

@@ -46,7 +46,6 @@ import java.util.zip.ZipException;
 
 import org.graalvm.compiler.core.common.SuppressFBWarnings;
 import com.oracle.svm.core.jdk.JDK8OrEarlier;
-import com.oracle.svm.core.jdk.JDK9OrLater;
 import com.oracle.svm.core.snippets.KnownIntrinsics;
 
 import jdk.vm.ci.services.Services;
@@ -346,12 +345,6 @@ public final class ZipFile implements ZipConstants, Closeable {
     @Substitute
     public ZipEntry getEntry(String name) {
         return getEntry0(name, java.util.zip.ZipEntry::new);
-    }
-
-    @Substitute
-    @TargetElement(name = "getEntry", onlyWith = JDK9OrLater.class)
-    ZipEntry getEntryJDK9OrLater(String name, Function<String, ? extends java.util.zip.ZipEntry> func) {
-        return getEntry0(name, func);
     }
 
     ZipEntry getEntry0(String name, Function<String, ? extends java.util.zip.ZipEntry> func) {

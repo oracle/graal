@@ -121,9 +121,20 @@ public final class SVMHost implements HostVM {
             return;
         }
 
-        EnumSet<AnalysisType.UsageKind> forbiddenType = forbiddenTypes.get(type.getWrapped().toJavaName());
-        if (forbiddenType != null && forbiddenType.contains(kind)) {
-            throw new UnsupportedFeatureException("Forbidden type " + type.getWrapped().toJavaName() + " UsageKind: " + kind);
+        /*
+         * We check the class hierarchy, because putting a restriction on a superclass should cover
+         * all subclasses too.
+         *
+         * We do not check the interface hierarchy for now, although it would be possible. But it
+         * seems less likely that someone registers an interface as forbidden.
+         */
+        for (AnalysisType cur = type; cur != null; cur = cur.getSuperclass()) {
+            EnumSet<AnalysisType.UsageKind> forbiddenType = forbiddenTypes.get(cur.getWrapped().toJavaName());
+            if (forbiddenType != null && forbiddenType.contains(kind)) {
+                throw new UnsupportedFeatureException("Forbidden type " + cur.getWrapped().toJavaName() +
+                                (cur.equals(type) ? "" : " (superclass of " + type.getWrapped().toJavaName() + ")") +
+                                " UsageKind: " + kind);
+            }
         }
     }
 
@@ -149,7 +160,7 @@ public final class SVMHost implements HostVM {
 
     @Override
     public String getImageName() {
-        return NativeImageOptions.Name.getValue(options);
+        return SubstrateOptions.Name.getValue(options);
     }
 
     @Override

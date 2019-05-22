@@ -54,6 +54,7 @@ import org.graalvm.compiler.core.common.CompressEncoding;
 import org.graalvm.compiler.core.common.NumUtil;
 import org.graalvm.compiler.debug.DebugContext;
 import org.graalvm.compiler.debug.Indent;
+import org.graalvm.compiler.serviceprovider.BufferUtil;
 import org.graalvm.nativeimage.ImageSingletons;
 import org.graalvm.nativeimage.c.function.CFunctionPointer;
 
@@ -503,11 +504,11 @@ public abstract class NativeBootImage extends AbstractBootImage {
 
     /**
      * Covariant return type overrides added by https://bugs.openjdk.java.net/browse/JDK-4774077
-     * make the cast below unnecessary as of JDK 9.
+     * make the cast below unnecessary as of JDK 11.
      */
     @SuppressWarnings("cast")
     private static ByteBuffer castToByteBuffer(final RelocatableBuffer heapSectionBuffer) {
-        return (ByteBuffer) heapSectionBuffer.getBuffer().asReadOnlyBuffer().position(0);
+        return (ByteBuffer) BufferUtil.asBaseBuffer(heapSectionBuffer.getBuffer().asReadOnlyBuffer()).position(0);
     }
 
     private void markRelocationSitesFromMaps(RelocatableBuffer relocationMap, ProgbitsSectionImpl sectionImpl, Map<Object, NativeImageHeap.ObjectInfo> objectMap) {

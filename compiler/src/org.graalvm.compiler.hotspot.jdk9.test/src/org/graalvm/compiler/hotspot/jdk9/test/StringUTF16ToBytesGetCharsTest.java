@@ -57,7 +57,7 @@ public final class StringUTF16ToBytesGetCharsTest extends MethodSubstitutionTest
         Class<?> javaclass = Class.forName("java.lang.StringUTF16");
 
         ResolvedJavaMethod caller = getResolvedJavaMethod(javaclass, "toBytes", char[].class, int.class, int.class);
-        StructuredGraph graph = getReplacements().getIntrinsicGraph(caller, CompilationIdentifier.INVALID_COMPILATION_ID, getDebugContext());
+        StructuredGraph graph = getReplacements().getIntrinsicGraph(caller, CompilationIdentifier.INVALID_COMPILATION_ID, getDebugContext(), null);
         assertInGraph(graph, NewArrayNode.class);
         assertInGraph(graph, ArrayCopyCallNode.class);
 
@@ -88,7 +88,7 @@ public final class StringUTF16ToBytesGetCharsTest extends MethodSubstitutionTest
         Class<?> javaclass = Class.forName("java.lang.StringUTF16");
 
         ResolvedJavaMethod caller = getResolvedJavaMethod(javaclass, "getChars", byte[].class, int.class, int.class, char[].class, int.class);
-        StructuredGraph graph = getReplacements().getIntrinsicGraph(caller, CompilationIdentifier.INVALID_COMPILATION_ID, getDebugContext());
+        StructuredGraph graph = getReplacements().getIntrinsicGraph(caller, CompilationIdentifier.INVALID_COMPILATION_ID, getDebugContext(), null);
         assertInGraph(graph, ArrayCopyCallNode.class);
 
         InstalledCode code = getCode(caller, graph);

@@ -72,4 +72,9 @@ public class CoreProvidersDelegate implements CoreProviders {
     public ForeignCallsProvider getForeignCalls() {
         return providers.getForeignCalls();
     }
+
+    @Override
+    public GCProvider getGC() {
+        return providers.getGC();
+    }
 }

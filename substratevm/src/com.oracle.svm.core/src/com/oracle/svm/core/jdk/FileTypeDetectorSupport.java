@@ -149,7 +149,7 @@ final class Target_java_nio_file_Files_FileTypeDetectors {
     @Alias @TargetElement(onlyWith = JDK8OrEarlier.class) //
     @RecomputeFieldValue(kind = Kind.Custom, declClass = InstalledDetectorsComputer.class) //
     static List<FileTypeDetector> installeDetectors;
-    @Alias @TargetElement(onlyWith = JDK9OrLater.class) //
+    @Alias @TargetElement(onlyWith = JDK11OrLater.class) //
     @RecomputeFieldValue(kind = Kind.Custom, declClass = InstalledDetectorsComputer.class) //
     static List<FileTypeDetector> installedDetectors;
 
