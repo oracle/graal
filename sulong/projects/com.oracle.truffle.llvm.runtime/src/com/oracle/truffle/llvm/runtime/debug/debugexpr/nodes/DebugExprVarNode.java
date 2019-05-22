@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2017, 2019, Oracle and/or its affiliates.
+ * Copyright (c) 2019, Oracle and/or its affiliates.
  *
  * All rights reserved.
  *
@@ -37,13 +37,13 @@ import com.oracle.truffle.api.interop.UnknownIdentifierException;
 import com.oracle.truffle.api.interop.UnsupportedMessageException;
 import com.oracle.truffle.llvm.runtime.LLVMLanguage;
 import com.oracle.truffle.llvm.runtime.debug.LLVMDebuggerValue;
+import com.oracle.truffle.llvm.runtime.debug.debugexpr.parser.Parser;
 import com.oracle.truffle.llvm.runtime.nodes.api.LLVMExpressionNode;
 
 public class DebugExprVarNode extends LLVMExpressionNode {
 
     private final String name;
     private Iterable<Scope> scopes;
-    public final static Object noObj = "$none";
 
     public DebugExprVarNode(String name, Iterable<Scope> scopes) {
         this.name = name;
@@ -81,6 +81,6 @@ public class DebugExprVarNode extends LLVMExpressionNode {
                 // should not happen
             }
         }
-        return noObj;
+        return Parser.noObjNode.executeGeneric(frame);
     }
 }

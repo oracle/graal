@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2017, 2019, Oracle and/or its affiliates.
+ * Copyright (c) 2019, Oracle and/or its affiliates.
  *
  * All rights reserved.
  *
@@ -31,6 +31,7 @@ package com.oracle.truffle.llvm.runtime.debug.debugexpr.nodes;
 
 import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.api.nodes.UnexpectedResultException;
+import com.oracle.truffle.llvm.runtime.debug.debugexpr.parser.Parser;
 import com.oracle.truffle.llvm.runtime.nodes.api.LLVMExpressionNode;
 
 public class DebugExprTernaryNode extends LLVMExpressionNode {
@@ -50,7 +51,7 @@ public class DebugExprTernaryNode extends LLVMExpressionNode {
             cond = condition.executeI1(frame);
         } catch (UnexpectedResultException e) {
             System.out.println("CATCH " + e.getMessage());
-            return DebugExprVarNode.noObj;
+            return Parser.errorObjNode.executeGeneric(frame);
         }
         if (cond)
             return thenNode.executeGeneric(frame);

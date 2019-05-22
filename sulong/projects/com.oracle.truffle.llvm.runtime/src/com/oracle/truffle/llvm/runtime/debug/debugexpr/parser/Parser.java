@@ -1,7 +1,6 @@
 package com.oracle.truffle.llvm.runtime.debug.debugexpr.parser;
 
 import com.oracle.truffle.api.Scope;
-import com.oracle.truffle.api.TruffleLanguage.InlineParsingRequest;
 import com.oracle.truffle.llvm.runtime.nodes.api.LLVMExpressionNode;
 import com.oracle.truffle.llvm.runtime.ArithmeticOperation;
 import com.oracle.truffle.llvm.runtime.CompareOperator;
@@ -11,7 +10,7 @@ import com.oracle.truffle.llvm.runtime.debug.debugexpr.nodes.*;
 import com.oracle.truffle.llvm.runtime.types.Type;
 // Set the name of your grammar here (and at the end of this grammar):
 
-//CheckStyle: start generated
+// CheckStyle: start generated
 import java.util.List;
 import java.util.LinkedList;
 
@@ -52,9 +51,10 @@ public class Parser {
 }
 
 private Iterable<Scope> scopes;
-private InlineParsingRequest inlineParsingRequest;
 private LLVMExpressionNode astRoot=null;
 private LLVMContext context=null;
+public final static DebugExprErrorNode noObjNode = new DebugExprErrorNode("<cannot find expression>");
+public final static DebugExprErrorNode errorObjNode = new DebugExprErrorNode("<cannot evaluate expression>");
 
 void SetScopes(Iterable<Scope> scopes) {
 	this.scopes = scopes;
@@ -62,10 +62,6 @@ void SetScopes(Iterable<Scope> scopes) {
 
 void SetContext(LLVMContext context) {
 	this.context = context;
-}
-
-void SetParsingRequest(InlineParsingRequest inlineParsingRequest) {
-	this.inlineParsingRequest=inlineParsingRequest;
 }
 
 public int GetErrors() {
@@ -178,7 +174,7 @@ public NodeFactory NF() {return context.getNodeFactory(); }
 	void DebugExpr() {
 		LLVMExpressionNode n=null; 
 		n = Expr();
-		astRoot =n; 
+		if(errors.count==0) astRoot =n; 
 	}
 
 	LLVMExpressionNode  Expr() {
@@ -190,7 +186,7 @@ public NodeFactory NF() {return context.getNodeFactory(); }
 			nThen = Expr();
 			Expect(35);
 			nElse = Expr();
-			n = new DebugExprTernaryNode(n, nThen, nElse); if(n==DebugExprVarNode.noObj) SemErr("Condition unreadable");
+			n = new DebugExprTernaryNode(n, nThen, nElse);
 		}
 		return n;
 	}
@@ -201,7 +197,7 @@ public NodeFactory NF() {return context.getNodeFactory(); }
 		switch (la.kind) {
 		case 1: {
 			Get();
-			n = new DebugExprVarNode(t.val, scopes); if(n==DebugExprVarNode.noObj) SemErr("variable not found: "+t.val);	
+			n = new DebugExprVarNode(t.val, scopes);
 			break;
 		}
 		case 2: {
@@ -283,7 +279,7 @@ public NodeFactory NF() {return context.getNodeFactory(); }
 			case 0:/*n = address(n)*/ break;
 			case 1: /*deref(n)*/ break;
 			case 2: default: break;
-			case 3: n = NF().createArithmeticOp(ArithmeticOperation.SUB, null, 
+			case 3: n = NF().createArithmeticOp(ArithmeticOperation.SUB, null,
 			NF().createSimpleConstantNoArray(0, Type.getIntegerType(32))
 			, n); break;
 			case 4: /*flip bits*/ break;

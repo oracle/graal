@@ -27,38 +27,24 @@
  * NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED
  * OF THE POSSIBILITY OF SUCH DAMAGE.
  */
+package com.oracle.truffle.llvm.runtime.debug.debugexpr.nodes;
 
-package com.oracle.truffle.llvm.runtime.debug.debugexpr.parser;
-
-import java.io.IOException;
-import java.io.InputStream;
+import com.oracle.truffle.api.frame.VirtualFrame;
+import com.oracle.truffle.llvm.runtime.nodes.api.LLVMExpressionNode;
 
 /**
- * Converts a given String into an InputStream such that it can be used by the Coco/R-generated
- * Parser.
+ * DebugExprErrorNode is used if the DebugExprParser parses the given expression with errors.
  */
-public class CocoInputStream extends InputStream {
-    private final String s;
-    private int pos;
+public class DebugExprErrorNode extends LLVMExpressionNode {
+    private final Object errorObject;
 
-    public CocoInputStream(String s) {
-        this.s = s;
-        pos = 0;
-    }
-
-    public CocoInputStream(CharSequence cs) {
-        this(cs.toString());
+    public DebugExprErrorNode(Object errorObj) {
+        this.errorObject = errorObj;
     }
 
     @Override
-    public int read() throws IOException {
-        if (s == null) {
-            throw new IOException("String is null");
-        }
-        if (pos < s.length()) {
-            return s.charAt(pos++);
-        }
-        return -1;
+    public Object executeGeneric(VirtualFrame frame) {
+        return errorObject;
     }
 
 }

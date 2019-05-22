@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2017, 2019, Oracle and/or its affiliates.
+ * Copyright (c) 2019, Oracle and/or its affiliates.
  *
  * All rights reserved.
  *
@@ -56,11 +56,18 @@ public class DebugExprParser {
     }
 
     public LLVMExpressionNode parse() throws Exception {
-        parser.Parse();
-        if (parser.errors.count > 0) {
-            throw new DebugExprException("DebugExpr incorrect\n" + parser.errors.toString());
-        } else {
-            return parser.GetASTRoot();
+        try {
+            parser.Parse();
+            LLVMExpressionNode root = parser.GetASTRoot();
+            if (parser.errors.count == 0) { // parsed correctly
+                return root;
+            } else {
+                throw new DebugExprException(Parser.errorObjNode);
+            }
+        } catch (DebugExprException d) {
+            if (d.exceptionNode == null)
+                throw new RuntimeException();
+            return d.exceptionNode;
         }
     }
 }

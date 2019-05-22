@@ -1,5 +1,4 @@
-/*
- * Copyright (c) 2019, Oracle and/or its affiliates.
+/* Copyright (c) 2019, Oracle and/or its affiliates.
  *
  * All rights reserved.
  *
@@ -27,38 +26,33 @@
  * NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED
  * OF THE POSSIBILITY OF SUCH DAMAGE.
  */
+package com.oracle.truffle.llvm.runtime.debug.debugexpr.nodes;
 
-package com.oracle.truffle.llvm.runtime.debug.debugexpr.parser;
+import com.oracle.truffle.api.dsl.UnsupportedSpecializationException;
+import com.oracle.truffle.api.frame.VirtualFrame;
+import com.oracle.truffle.llvm.runtime.debug.debugexpr.parser.DebugExprException;
+import com.oracle.truffle.llvm.runtime.debug.debugexpr.parser.Parser;
+import com.oracle.truffle.llvm.runtime.nodes.api.LLVMExpressionNode;
 
-import java.io.IOException;
-import java.io.InputStream;
+public class DebugExprRootNode extends LLVMExpressionNode {
+    private final LLVMExpressionNode root;
 
-/**
- * Converts a given String into an InputStream such that it can be used by the Coco/R-generated
- * Parser.
- */
-public class CocoInputStream extends InputStream {
-    private final String s;
-    private int pos;
-
-    public CocoInputStream(String s) {
-        this.s = s;
-        pos = 0;
-    }
-
-    public CocoInputStream(CharSequence cs) {
-        this(cs.toString());
+    public DebugExprRootNode(LLVMExpressionNode root) {
+        this.root = root;
     }
 
     @Override
-    public int read() throws IOException {
-        if (s == null) {
-            throw new IOException("String is null");
+    public Object executeGeneric(VirtualFrame frame) {
+        try {
+            return root.executeGeneric(frame);
+        } catch (UnsupportedSpecializationException use) {
+            return Parser.errorObjNode.executeGeneric(frame);
+        } catch (DebugExprException dee) {
+            if (dee.exceptionNode == null)
+                return Parser.errorObjNode.executeGeneric(frame);
+            else
+                return dee.exceptionNode.executeGeneric(frame);
         }
-        if (pos < s.length()) {
-            return s.charAt(pos++);
-        }
-        return -1;
     }
 
 }

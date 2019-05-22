@@ -29,53 +29,18 @@
  */
 package com.oracle.truffle.llvm.runtime.debug.debugexpr.parser;
 
-import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
-import com.oracle.truffle.api.nodes.Node;
-import com.oracle.truffle.api.source.SourceSection;
+import com.oracle.truffle.llvm.runtime.debug.debugexpr.nodes.DebugExprErrorNode;
 
-public class DebugExprException extends RuntimeException /* implements TruffleException */ {
+public class DebugExprException extends RuntimeException {
 
     /**
      *
      */
-    private static final long serialVersionUID = -5893992403978432581L;
-    // private final Node location;
+    private static final long serialVersionUID = -5083864640686842678L;
 
-    @TruffleBoundary
-    public DebugExprException(String message/* , Node location */) {
-        super(message);
-        // this.location = location;
+    public final DebugExprErrorNode exceptionNode;
+
+    public DebugExprException(DebugExprErrorNode exceptionNode) {
+        this.exceptionNode = exceptionNode;
     }
-
-    @SuppressWarnings("sync-override")
-    @Override
-    public final Throwable fillInStackTrace() {
-        return this;
-    }
-
-    // @Override
-    // public Node getLocation() {
-    // return location;
-    // }
-
-    /**
-     * Provides a user-readable message for non-translatable expressions
-     */
-    @TruffleBoundary
-    public static DebugExprException typeError(Node operation) {
-        StringBuilder result = new StringBuilder();
-        result.append("Type error");
-
-        if (operation != null) {
-            SourceSection ss = operation.getEncapsulatingSourceSection();
-            if (ss != null && ss.isAvailable()) {
-                result.append(" at ").append(" col ").append(ss.getStartColumn());
-            }
-        }
-
-        result.append(": operation");
-
-        return new DebugExprException(result.toString()/* , operation */);
-    }
-
 }
