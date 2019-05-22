@@ -51,8 +51,8 @@ public class CEnumCallWrapperSubstitutionProcessor extends SubstitutionProcessor
 
     @Override
     public ResolvedJavaMethod lookup(ResolvedJavaMethod method) {
-        if (GuardedAnnotationAccess.isAnnotationPresent(method, CEnumLookup.class) ||
-                        GuardedAnnotationAccess.isAnnotationPresent(method, CEnumValue.class)) {
+        if (!method.isClassInitializer() && (GuardedAnnotationAccess.isAnnotationPresent(method, CEnumLookup.class) ||
+                        GuardedAnnotationAccess.isAnnotationPresent(method, CEnumValue.class))) {
             return callWrappers.computeIfAbsent(method, v -> new CEnumCallWrapperMethod(nativeLibraries, v));
         } else {
             return method;
