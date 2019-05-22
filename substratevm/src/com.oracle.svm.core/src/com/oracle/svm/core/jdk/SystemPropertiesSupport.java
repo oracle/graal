@@ -56,8 +56,6 @@ public abstract class SystemPropertiesSupport {
                      * in other classes, so changing them would be tricky.
                      */
                     "line.separator", "path.separator", "file.separator",
-                    /* We do not support cross-compilation for now. */
-                    "os.arch", "os.name",
                     /* For our convenience for now. */
                     "file.encoding", "sun.jnu.encoding",
                     "java.class.version",
@@ -99,6 +97,11 @@ public abstract class SystemPropertiesSupport {
         initializeProperty("java.endorsed.dirs", "");
         initializeProperty("java.ext.dirs", "");
         initializeProperty("java.library.path", "");
+
+        String targetName = System.getProperty("svm.targetName");
+        String targetArch = System.getProperty("svm.targetArch");
+        initializeProperty("os.name", targetName != null ? targetName : System.getProperty("os.name"));
+        initializeProperty("os.arch", targetArch != null ? targetArch : System.getProperty("os.arch"));
 
         initializeProperty(ImageInfo.PROPERTY_IMAGE_CODE_KEY, ImageInfo.PROPERTY_IMAGE_CODE_VALUE_RUNTIME);
 
