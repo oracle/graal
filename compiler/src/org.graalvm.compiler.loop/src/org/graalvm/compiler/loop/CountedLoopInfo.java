@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2012, 2018, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2012, 2019, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -43,6 +43,7 @@ import org.graalvm.compiler.nodes.LogicNode;
 import org.graalvm.compiler.nodes.NodeView;
 import org.graalvm.compiler.nodes.StructuredGraph;
 import org.graalvm.compiler.nodes.ValueNode;
+import org.graalvm.compiler.nodes.ValuePhiNode;
 import org.graalvm.compiler.nodes.calc.ConditionalNode;
 import org.graalvm.compiler.nodes.calc.IntegerLessThanNode;
 import org.graalvm.compiler.nodes.calc.NegateNode;
@@ -61,6 +62,7 @@ public class CountedLoopInfo {
     private boolean oneOff;
     private AbstractBeginNode body;
     private IfNode ifNode;
+    private IntegerStamp loopStamp;
 
     CountedLoopInfo(LoopEx loop, InductionVariable iv, IfNode ifNode, ValueNode end, boolean oneOff, AbstractBeginNode body) {
         assert iv.direction() != null;
@@ -287,6 +289,43 @@ public class CountedLoopInfo {
             loop.loopBegin().setOverflowGuard(overflowGuard);
             return overflowGuard;
         }
+    }
+
+    public IntegerStamp getLoopStamp() {
+        if (loopStamp == null) {
+            if (!isConstantMaxTripCount() || !counterNeverOverflows()) {
+                return null;
+            }
+
+            ValueNode value = iv.valueNode();
+            ValueNode init = iv.initNode();
+            ValueNode stride = iv.strideNode();
+            assert stride instanceof ConstantNode;
+
+            if (init == null || end == null || stride == null || value == null) {
+                return null;
+            }
+            if (!(value instanceof ValuePhiNode)) {
+                return null;
+            }
+
+            long lowerBound;
+            long upperBound;
+            NodeView view = NodeView.DEFAULT;
+            assert init.stamp(view) instanceof IntegerStamp && end.stamp(view) instanceof IntegerStamp;
+            IntegerStamp initStamp = (IntegerStamp) init.stamp(view);
+            IntegerStamp limitStamp = (IntegerStamp) end.stamp(view);
+            if (iv.direction() == Direction.Up) {
+                lowerBound = initStamp.lowerBound();
+                upperBound = limitStamp.upperBound();
+            } else {
+                assert iv.direction() == Direction.Down;
+                lowerBound = limitStamp.lowerBound();
+                upperBound = initStamp.upperBound();
+            }
+            loopStamp = IntegerStamp.create(initStamp.getBits(), lowerBound, upperBound);
+        }
+        return loopStamp;
     }
 
     public IntegerStamp getStamp() {

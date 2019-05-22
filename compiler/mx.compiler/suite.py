@@ -1215,7 +1215,10 @@ suite = {
     "org.graalvm.compiler.phases.common" : {
       "subDir" : "src",
       "sourceDirs" : ["src"],
-      "dependencies" : ["org.graalvm.compiler.phases"],
+      "dependencies" : [
+        "org.graalvm.compiler.phases",
+        "org.graalvm.compiler.loop",
+      ],
       "annotationProcessors" : [
         "GRAAL_NODEINFO_PROCESSOR",
         "GRAAL_OPTIONS_PROCESSOR"
@@ -1307,8 +1310,7 @@ suite = {
       "subDir" : "src",
       "sourceDirs" : ["src"],
       "dependencies" : [
-     "org.graalvm.compiler.loop",
-     "org.graalvm.compiler.phases.common",
+        "org.graalvm.compiler.phases.common",
        ],
       "annotationProcessors" : ["GRAAL_OPTIONS_PROCESSOR"],
       "checkstyle" : "org.graalvm.compiler.graph",

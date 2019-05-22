@@ -31,6 +31,7 @@ import org.graalvm.compiler.nodes.FixedNode;
 import org.graalvm.compiler.nodes.NodeView;
 import org.graalvm.compiler.nodes.StructuredGraph;
 import org.graalvm.compiler.nodes.ValueNode;
+import org.graalvm.compiler.nodes.ValuePhiNode;
 import org.graalvm.compiler.nodes.calc.BinaryArithmeticNode;
 import org.graalvm.compiler.nodes.calc.IntegerDivRemNode;
 import org.graalvm.compiler.nodes.calc.IntegerMulHighNode;
@@ -41,14 +42,34 @@ import org.graalvm.compiler.nodes.calc.SignExtendNode;
 import org.graalvm.compiler.nodes.calc.SignedDivNode;
 import org.graalvm.compiler.nodes.calc.SignedRemNode;
 import org.graalvm.compiler.nodes.calc.UnsignedRightShiftNode;
+
 import org.graalvm.compiler.phases.Phase;
+
+import org.graalvm.compiler.loop.LoopEx;
+import org.graalvm.compiler.loop.LoopsData;
 
 import jdk.vm.ci.code.CodeUtil;
 
+import java.util.List;
+
 public class OptimizeDivPhase extends Phase {
+    private boolean onlyInferStampX;
+
+    public OptimizeDivPhase() {
+        this(false);
+    }
+
+    public OptimizeDivPhase(boolean onlyInferStampX) {
+        this.onlyInferStampX = onlyInferStampX;
+    }
 
     @Override
     protected void run(StructuredGraph graph) {
+        if (onlyInferStampX) {
+            inferStampForX(graph);
+            return;
+        }
+
         for (IntegerDivRemNode rem : graph.getNodes().filter(IntegerDivRemNode.class)) {
             if (rem instanceof SignedRemNode && divByNonZeroConstant(rem)) {
                 optimizeRem(rem);
@@ -64,6 +85,35 @@ public class OptimizeDivPhase extends Phase {
     @Override
     public float codeSizeIncrease() {
         return 5.0f;
+    }
+
+    private static void inferStampForX(StructuredGraph graph) {
+        // Infer stamp for the dividend to set a boundary for it. Afterwards it may be treated as
+        // positive or negative.
+        if (graph.hasLoops()) {
+            final LoopsData dataCounted = new LoopsData(graph);
+            dataCounted.detectedCountedLoops();
+            for (LoopEx loop : dataCounted.countedLoops()) {
+                if (!loop.isCounted()) {
+                    continue;
+                }
+
+                // Compute a bounded loop stamp for loopPhi.
+                IntegerStamp loopStamp = loop.counted().getLoopStamp();
+                if (loopStamp == null) {
+                    continue;
+                }
+
+                ValuePhiNode phi = (ValuePhiNode) loop.counted().getCounter().valueNode();
+                List<IntegerDivRemNode> nodes = phi.usages().filter(IntegerDivRemNode.class).snapshot();
+                for (IntegerDivRemNode node : nodes) {
+                    if (!phi.isLoopPhi() || node.getX() != phi || loopStamp == node.getIncomingStampX()) {
+                        continue;
+                    }
+                    node.setIncomingStampX(loopStamp);
+                }
+            }
+        }
     }
 
     protected static boolean divByNonZeroConstant(IntegerDivRemNode divRemNode) {

@@ -79,7 +79,7 @@ public class SignedDivNode extends IntegerDivRemNode implements LIRLowerable {
             return ConstantNode.forIntegerStamp(stamp, forX.asJavaConstant().asLong() / y);
         } else if (forY.isConstant()) {
             long c = forY.asJavaConstant().asLong();
-            ValueNode v = canonical(forX, c, view);
+            ValueNode v = canonical(self, forX, c, view);
             if (v != null) {
                 return v;
             }
@@ -109,7 +109,7 @@ public class SignedDivNode extends IntegerDivRemNode implements LIRLowerable {
         return self != null ? self : new SignedDivNode(forX, forY, zeroCheck);
     }
 
-    public static ValueNode canonical(ValueNode forX, long c, NodeView view) {
+    public static ValueNode canonical(SignedDivNode self, ValueNode forX, long c, NodeView view) {
         if (c == 1) {
             return forX;
         }
@@ -117,12 +117,15 @@ public class SignedDivNode extends IntegerDivRemNode implements LIRLowerable {
             return NegateNode.create(forX, view);
         }
         long abs = Math.abs(c);
-        if (CodeUtil.isPowerOf2(abs) && forX.stamp(view) instanceof IntegerStamp) {
+        if (CodeUtil.isPowerOf2(abs) && forX.stamp(view) instanceof IntegerStamp && self != null) {
             IntegerStamp stampX = (IntegerStamp) forX.stamp(view);
+            if (self.incomingStampX != null) {
+                stampX = self.incomingStampX;
+            }
             ValueNode dividend = forX;
             int log2 = CodeUtil.log2(abs);
             // no rounding if dividend is positive or if its low bits are always 0
-            if (stampX.canBeNegative() || (stampX.upMask() & (abs - 1)) != 0) {
+            if (stampX.canBeNegative() && (stampX.upMask() & (abs - 1)) != 0) {
                 int bits = PrimitiveStamp.getBits(forX.stamp(view));
                 RightShiftNode sign = new RightShiftNode(forX, ConstantNode.forInt(bits - 1));
                 UnsignedRightShiftNode round = new UnsignedRightShiftNode(sign, ConstantNode.forInt(bits - log2));

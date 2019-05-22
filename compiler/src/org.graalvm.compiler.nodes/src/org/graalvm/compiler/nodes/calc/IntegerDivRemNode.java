@@ -58,6 +58,7 @@ public abstract class IntegerDivRemNode extends FixedBinaryNode implements Lower
     private final Op op;
     private final Type type;
     private final boolean canDeopt;
+    protected IntegerStamp incomingStampX;
 
     protected IntegerDivRemNode(NodeClass<? extends IntegerDivRemNode> c, Stamp stamp, Op op, Type type, ValueNode x, ValueNode y, GuardingNode zeroCheck) {
         super(c, stamp, x, y);
@@ -91,5 +92,13 @@ public abstract class IntegerDivRemNode extends FixedBinaryNode implements Lower
     @Override
     public boolean canDeoptimize() {
         return canDeopt;
+    }
+
+    public void setIncomingStampX(IntegerStamp stamp) {
+        incomingStampX = stamp;
+    }
+
+    public IntegerStamp getIncomingStampX() {
+        return incomingStampX;
     }
 }

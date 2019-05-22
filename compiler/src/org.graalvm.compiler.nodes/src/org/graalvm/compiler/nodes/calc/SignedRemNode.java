@@ -94,6 +94,9 @@ public class SignedRemNode extends IntegerDivRemNode implements LIRLowerable {
                     // x % y == 0 <=> (x & (y-1)) == 0
                     return new AndNode(forX, ConstantNode.forIntegerStamp(yStamp, constY - 1));
                 } else {
+                    if (self != null && self.incomingStampX != null) {
+                        xStamp = self.incomingStampX;
+                    }
                     if (xStamp.isPositive()) {
                         // x & (y - 1)
                         return new AndNode(forX, ConstantNode.forIntegerStamp(stamp, constY - 1));
