@@ -218,7 +218,7 @@ public final class InspectorDebugger extends DebuggerDomain {
         JSONObject json = new JSONObject();
         JSONArray arr = new JSONArray();
         Source source = script.getSource();
-        if (source.getLength() > 0) {
+        if (source.hasCharacters() && source.getLength() > 0) {
             int l1 = start.getLine();
             int c1 = start.getColumn();
             if (c1 <= 0) {
@@ -240,6 +240,9 @@ public final class InspectorDebugger extends DebuggerDomain {
                 c2 = end.getColumn();
                 if (c2 <= 0) {
                     c2 = -1;
+                }
+                if (l1 > l2) {
+                    l1 = l2;
                 }
             } else {
                 l2 = l1;
@@ -547,7 +550,7 @@ public final class InspectorDebugger extends DebuggerDomain {
                         if (value == null) {
                             String errorMessage = getEvalNonInteractiveMessage();
                             ExceptionDetails exceptionDetails = new ExceptionDetails(errorMessage);
-                            json.put("exceptionDetails", exceptionDetails.createJSON(context));
+                            json.put("exceptionDetails", exceptionDetails.createJSON(context, generatePreview));
                             JSONObject err = new JSONObject();
                             err.putOpt("value", errorMessage);
                             err.putOpt("type", "string");
@@ -557,7 +560,7 @@ public final class InspectorDebugger extends DebuggerDomain {
                         value = cf.getFrame().eval(expression);
                     }
                     if (value != null) {
-                        RemoteObject ro = new RemoteObject(value, context.getErr());
+                        RemoteObject ro = new RemoteObject(value, generatePreview, context);
                         context.getRemoteObjectsHandler().register(ro);
                         json.put("result", ro.toJSON());
                     }
@@ -567,10 +570,10 @@ public final class InspectorDebugger extends DebuggerDomain {
                 @Override
                 public JSONObject processException(DebugException dex) {
                     JSONObject json = new JSONObject();
-                    InspectorRuntime.fillExceptionDetails(json, dex, context);
+                    InspectorRuntime.fillExceptionDetails(json, dex, context, generatePreview);
                     DebugValue exceptionObject = dex.getExceptionObject();
                     if (exceptionObject != null) {
-                        RemoteObject ro = context.createAndRegister(exceptionObject);
+                        RemoteObject ro = context.createAndRegister(exceptionObject, generatePreview);
                         json.put("result", ro.toJSON());
                     } else {
                         JSONObject err = new JSONObject();
@@ -597,6 +600,10 @@ public final class InspectorDebugger extends DebuggerDomain {
             DebugValue var = debugScope.getDeclaredValue(name);
             if (var != null) {
                 return var;
+            }
+            DebugValue receiver = debugScope.getReceiver();
+            if (receiver != null && name.equals(receiver.getName())) {
+                return receiver;
             }
         }
         return null;
@@ -726,8 +733,8 @@ public final class InspectorDebugger extends DebuggerDomain {
         }
     }
 
-    public static boolean sourceMatchesBlackboxPatterns(Source source, Pattern[] patterns) {
-        String uri = ScriptsHandler.getNiceStringFromURI(source.getURI());
+    public boolean sourceMatchesBlackboxPatterns(Source source, Pattern[] patterns) {
+        String uri = slh.getSourceURL(source);
         for (Pattern pattern : patterns) {
             // Check whether pattern corresponds to:
             // 1) the name of a file
@@ -1005,7 +1012,7 @@ public final class InspectorDebugger extends DebuggerDomain {
             DebugValue exceptionObject = exception.getExceptionObject();
             JSONObject data;
             if (exceptionObject != null) {
-                RemoteObject remoteObject = context.createAndRegister(exceptionObject);
+                RemoteObject remoteObject = context.createAndRegister(exceptionObject, false);
                 data = remoteObject.toJSON();
             } else {
                 data = new JSONObject();

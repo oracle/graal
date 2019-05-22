@@ -158,7 +158,7 @@ public abstract class LLVMForeignCallNode extends LLVMNode {
         try (StackPointer stackPointer = stack.newFrame()) {
             result = callNode.call(packNode.pack(arguments, stackPointer));
         }
-        return prepareValueForEscape.executeWithTarget(result);
+        return prepareReturnValue(cachedFunction, prepareValueForEscape, result);
     }
 
     @Specialization(replaces = "callDirectCached")
@@ -171,6 +171,17 @@ public abstract class LLVMForeignCallNode extends LLVMNode {
         Object result;
         try (StackPointer stackPointer = stack.newFrame()) {
             result = callNode.call(getCallTarget(function), slowPathPack(function, arguments, stackPointer));
+        }
+        return prepareReturnValue(function, prepareValueForEscape, result);
+    }
+
+    private static Object prepareReturnValue(LLVMFunctionDescriptor function, LLVMDataEscapeNode prepareValueForEscape, Object result) {
+        LLVMInteropType functionType = function.getInteropType();
+        if (functionType instanceof LLVMInteropType.Function) {
+            LLVMInteropType returnType = ((LLVMInteropType.Function) functionType).getReturnType();
+            if (returnType instanceof LLVMInteropType.Value) {
+                return prepareValueForEscape.executeWithType(result, ((LLVMInteropType.Value) returnType).getBaseType());
+            }
         }
         return prepareValueForEscape.executeWithTarget(result);
     }

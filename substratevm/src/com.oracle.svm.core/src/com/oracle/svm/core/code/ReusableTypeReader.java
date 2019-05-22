@@ -24,7 +24,7 @@
  */
 package com.oracle.svm.core.code;
 
-import org.graalvm.compiler.core.common.util.TypeReader;
+import org.graalvm.compiler.core.common.util.AbstractTypeReader;
 import org.graalvm.compiler.core.common.util.UnsafeArrayTypeReader;
 
 import com.oracle.svm.core.util.VMError;
@@ -33,7 +33,7 @@ import com.oracle.svm.core.util.VMError;
  * Custom TypeReader that allows reusing the same instance over and over again. Only getSV(),
  * getSVInt(), getUV(), getUVInt() are implemented.
  */
-public final class ReusableTypeReader implements TypeReader {
+public final class ReusableTypeReader extends AbstractTypeReader {
 
     private byte[] data;
     private long byteIndex;

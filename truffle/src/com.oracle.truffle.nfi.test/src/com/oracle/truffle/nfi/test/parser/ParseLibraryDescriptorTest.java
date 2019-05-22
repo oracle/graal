@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2017, 2018, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2017, 2019, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -40,40 +40,53 @@
  */
 package com.oracle.truffle.nfi.test.parser;
 
-import com.oracle.truffle.nfi.types.NativeLibraryDescriptor;
-import com.oracle.truffle.nfi.types.Parser;
+import com.oracle.truffle.api.CallTarget;
+import com.oracle.truffle.api.source.Source;
+import com.oracle.truffle.nfi.spi.types.NativeLibraryDescriptor;
+import com.oracle.truffle.nfi.test.parser.backend.TestLibrary;
+import com.oracle.truffle.tck.TruffleRunner.RunWithPolyglotRule;
 import org.junit.Assert;
+import org.junit.ClassRule;
 import org.junit.Test;
 
 public class ParseLibraryDescriptorTest {
 
+    @ClassRule public static RunWithPolyglotRule runWithPolyglot = new RunWithPolyglotRule();
+
+    private static NativeLibraryDescriptor parseLibraryDescriptor(String descriptor) {
+        Source source = Source.newBuilder("nfi", String.format("with test %s", descriptor), "ParseLibraryDescriptorTest").build();
+        CallTarget target = runWithPolyglot.getTruffleTestEnv().parse(source);
+        TestLibrary library = (TestLibrary) target.call();
+        return library.descriptor;
+    }
+
     @Test
     public void parseDefault() {
-        NativeLibraryDescriptor def = Parser.parseLibraryDescriptor("default");
+        NativeLibraryDescriptor def = parseLibraryDescriptor("default");
         Assert.assertTrue("isDefaultLibrary", def.isDefaultLibrary());
     }
 
     @Test
     public void parseFileStringSingle() {
-        NativeLibraryDescriptor test = Parser.parseLibraryDescriptor("load 'test filename'");
+        NativeLibraryDescriptor test = parseLibraryDescriptor("load 'test filename'");
         Assert.assertEquals("file name", "test filename", test.getFilename());
     }
 
     @Test
     public void parseFileStringDouble() {
-        NativeLibraryDescriptor test = Parser.parseLibraryDescriptor("load \"test filename\"");
+        NativeLibraryDescriptor test = parseLibraryDescriptor("load \"test filename\"");
         Assert.assertEquals("file name", "test filename", test.getFilename());
     }
 
     @Test
     public void parseFileIdent() {
-        NativeLibraryDescriptor test = Parser.parseLibraryDescriptor("load /test/path/file.so");
+        NativeLibraryDescriptor test = parseLibraryDescriptor("load /test/path/file.so");
         Assert.assertEquals("file name", "/test/path/file.so", test.getFilename());
     }
 
     @Test
     public void parseWithOneFlag() {
-        NativeLibraryDescriptor test = Parser.parseLibraryDescriptor("load(RTLD_NOW) testfile");
+        NativeLibraryDescriptor test = parseLibraryDescriptor("load(RTLD_NOW) testfile");
         Assert.assertEquals("file name", "testfile", test.getFilename());
         Assert.assertEquals("flag count", 1, test.getFlags().size());
         Assert.assertEquals("RTLD_NOW", test.getFlags().get(0));
@@ -81,7 +94,7 @@ public class ParseLibraryDescriptorTest {
 
     @Test
     public void parseWithTwoFlags() {
-        NativeLibraryDescriptor test = Parser.parseLibraryDescriptor("load(RTLD_NOW | RTLD_GLOBAL) testfile");
+        NativeLibraryDescriptor test = parseLibraryDescriptor("load(RTLD_NOW | RTLD_GLOBAL) testfile");
         Assert.assertEquals("file name", "testfile", test.getFilename());
         Assert.assertEquals("flag count", 2, test.getFlags().size());
         Assert.assertEquals("RTLD_NOW", test.getFlags().get(0));
@@ -90,31 +103,31 @@ public class ParseLibraryDescriptorTest {
 
     @Test(expected = IllegalArgumentException.class)
     public void parseUnknownCommand() {
-        Parser.parseLibraryDescriptor("_unknown_command");
+        parseLibraryDescriptor("_unknown_command");
     }
 
     @Test(expected = IllegalArgumentException.class)
     public void parseUnknownToken() {
-        Parser.parseLibraryDescriptor("%");
+        parseLibraryDescriptor("%");
     }
 
     @Test(expected = IllegalArgumentException.class)
     public void parseEmpty() {
-        Parser.parseLibraryDescriptor("");
+        parseLibraryDescriptor("");
     }
 
     @Test(expected = IllegalArgumentException.class)
     public void parseEmptyFlags() {
-        Parser.parseLibraryDescriptor("load() testfile");
+        parseLibraryDescriptor("load() testfile");
     }
 
     @Test(expected = IllegalArgumentException.class)
     public void parseFlagsError() {
-        Parser.parseLibraryDescriptor("load(RTLD_NOW .) testfile");
+        parseLibraryDescriptor("load(RTLD_NOW .) testfile");
     }
 
     @Test(expected = IllegalArgumentException.class)
     public void parseStringError() {
-        Parser.parseLibraryDescriptor("load 'testfile");
+        parseLibraryDescriptor("load 'testfile");
     }
 }

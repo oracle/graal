@@ -63,8 +63,9 @@ import java.util.concurrent.atomic.AtomicReference;
 
 import org.graalvm.polyglot.Context;
 import org.graalvm.polyglot.Engine;
+import org.graalvm.polyglot.HostAccess;
 import org.graalvm.polyglot.Value;
-import org.junit.Assume;
+import org.junit.BeforeClass;
 import org.junit.Test;
 
 import com.oracle.truffle.api.CallTarget;
@@ -85,8 +86,7 @@ import com.oracle.truffle.api.nodes.RootNode;
 import com.oracle.truffle.api.test.option.OptionProcessorTest.OptionTestLang1;
 import com.oracle.truffle.api.test.polyglot.ContextAPITestLanguage.LanguageContext;
 import com.oracle.truffle.api.test.polyglot.ValueAssert.Trait;
-import org.graalvm.polyglot.HostAccess;
-import org.junit.BeforeClass;
+import org.graalvm.polyglot.PolyglotAccess;
 
 public class ContextAPITest {
     private static HostAccess CONFIG;
@@ -217,8 +217,6 @@ public class ContextAPITest {
 
     @Test
     public void testExperimentalOptionException() {
-        Assume.assumeTrue(Boolean.parseBoolean(System.getenv("GRAALVM_CHECK_EXPERIMENTAL_OPTIONS")));
-
         ValueAssert.assertFails(() -> Context.newBuilder().option("optiontestlang1.StringOption2", "Hello").build(), IllegalArgumentException.class, e -> {
             assertEquals("Option 'optiontestlang1.StringOption2' is experimental and must be enabled with allowExperimentalOptions(). Do not use experimental options in production environments.",
                             e.getMessage());
@@ -598,7 +596,7 @@ public class ContextAPITest {
 
     @Test
     public void testTransferControlToOtherThreadWhileEntered() {
-        Context context = Context.newBuilder().allowHostAccess(CONFIG).build();
+        Context context = Context.newBuilder().allowHostAccess(CONFIG).allowPolyglotAccess(PolyglotAccess.ALL).build();
 
         ProxyLanguage.setDelegate(new ProxyLanguage() {
             @Override

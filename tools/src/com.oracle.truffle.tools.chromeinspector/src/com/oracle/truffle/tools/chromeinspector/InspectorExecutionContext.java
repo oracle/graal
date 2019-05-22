@@ -38,6 +38,7 @@ import java.util.logging.Level;
 import com.oracle.truffle.api.TruffleLogger;
 import com.oracle.truffle.api.debug.DebugException;
 import com.oracle.truffle.api.debug.DebugValue;
+import com.oracle.truffle.api.debug.DebuggerSession;
 import com.oracle.truffle.api.instrumentation.EventBinding;
 import com.oracle.truffle.api.instrumentation.SourceFilter;
 import com.oracle.truffle.api.instrumentation.TruffleInstrument;
@@ -73,6 +74,7 @@ public final class InspectorExecutionContext {
     private volatile String lastMimeType = "text/javascript";   // Default JS
     private volatile String lastLanguage = "js";
     private boolean synchronous = false;
+    private boolean customObjectFormatterEnabled = false;
 
     public InspectorExecutionContext(String name, boolean inspectInternal, boolean inspectInitialization, TruffleInstrument.Env env, List<URI> sourceRoots, PrintWriter err) {
         this.name = name;
@@ -184,15 +186,15 @@ public final class InspectorExecutionContext {
         }
     }
 
-    synchronized RemoteObjectsHandler getRemoteObjectsHandler() {
+    public synchronized RemoteObjectsHandler getRemoteObjectsHandler() {
         if (roh == null) {
-            roh = new RemoteObjectsHandler(err);
+            roh = new RemoteObjectsHandler(this);
         }
         return roh;
     }
 
-    public RemoteObject createAndRegister(DebugValue value) {
-        RemoteObject ro = new RemoteObject(value, getErr());
+    public RemoteObject createAndRegister(DebugValue value, boolean generatePreview) {
+        RemoteObject ro = new RemoteObject(value, generatePreview, this);
         if (ro.getId() != null) {
             getRemoteObjectsHandler().register(ro);
         }
@@ -289,6 +291,16 @@ public final class InspectorExecutionContext {
     }
 
     /**
+     * Returns the current debugger session if debugging is on.
+     *
+     * @return the current debugger session, or <code>null</code>.
+     */
+    public DebuggerSession getDebuggerSession() {
+        ScriptsHandler handler = this.sch;
+        return (handler != null) ? handler.getDebuggerSession() : null;
+    }
+
+    /**
      * For test purposes only. Do not call from production code.
      */
     public static void resetIDs() {
@@ -311,6 +323,14 @@ public final class InspectorExecutionContext {
 
     public boolean isSynchronous() {
         return synchronous;
+    }
+
+    void setCustomObjectFormatterEnabled(boolean enabled) {
+        this.customObjectFormatterEnabled = enabled;
+    }
+
+    public boolean isCustomObjectFormatterEnabled() {
+        return this.customObjectFormatterEnabled;
     }
 
     public interface Listener {

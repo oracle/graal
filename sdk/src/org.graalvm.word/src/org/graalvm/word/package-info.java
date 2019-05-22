@@ -40,13 +40,13 @@
  */
 /*
  @ApiInfo(
- group="Graal SDK"
+ group="GraalVM SDK"
  )
  */
 /**
  * This package provides a low-level mechanism to use machine-word-sized values in Java. The package
  * can only be used in the context of native images or Graal snippets.
  *
- * @since 1.0
+ * @since 19.0
  */
 package org.graalvm.word;

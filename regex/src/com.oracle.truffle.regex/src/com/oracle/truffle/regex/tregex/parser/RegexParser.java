@@ -31,9 +31,9 @@ import com.oracle.truffle.regex.RegexOptions;
 import com.oracle.truffle.regex.RegexSource;
 import com.oracle.truffle.regex.RegexSyntaxException;
 import com.oracle.truffle.regex.UnsupportedRegexException;
-import com.oracle.truffle.regex.chardata.CodePointRange;
-import com.oracle.truffle.regex.chardata.CodePointSet;
-import com.oracle.truffle.regex.chardata.Constants;
+import com.oracle.truffle.regex.charset.CodePointRange;
+import com.oracle.truffle.regex.charset.CodePointSetBuilder;
+import com.oracle.truffle.regex.charset.Constants;
 import com.oracle.truffle.regex.charset.CharSet;
 import com.oracle.truffle.regex.tregex.TRegexOptions;
 import com.oracle.truffle.regex.tregex.parser.ast.BackReference;
@@ -114,6 +114,8 @@ public final class RegexParser {
     private Group curGroup;
     private Term curTerm;
 
+    private RegexFeatures features;
+
     @TruffleBoundary
     public RegexParser(RegexSource source, RegexOptions options) throws RegexSyntaxException {
         this.source = source;
@@ -162,7 +164,13 @@ public final class RegexParser {
 
     @TruffleBoundary
     public void validate() throws RegexSyntaxException {
+        features = new RegexFeatures();
         parseDryRun();
+    }
+
+    @TruffleBoundary
+    public int getNumberOfCaptureGroups() {
+        return lexer.numberOfCaptureGroups();
     }
 
     @TruffleBoundary
@@ -172,6 +180,16 @@ public final class RegexParser {
 
     public RegexFlags getFlags() {
         return flags;
+    }
+
+    /**
+     * Returns the features used by the regular expression that was just validated. This property is
+     * only populated after a call to {@link #validate()} and should therefore only be accessed
+     * then.
+     */
+    public RegexFeatures getFeatures() {
+        assert features != null;
+        return features;
     }
 
     /* AST manipulation */
@@ -271,15 +289,15 @@ public final class RegexParser {
     }
 
     private Term translateUnicodeCharClass(Token.CharacterClass token) {
-        CodePointSet codePointSet = token.getCodePointSet();
+        CodePointSetBuilder codePointSet = token.getCodePointSet();
         SourceSection src = token.getSourceSection();
         Group group = ast.createGroup();
         group.setEnclosedCaptureGroupsLow(groupCount.getCount());
         group.setEnclosedCaptureGroupsHigh(groupCount.getCount());
-        CodePointSet bmpRanges = Constants.BMP_WITHOUT_SURROGATES.createIntersection(codePointSet);
-        CodePointSet astralRanges = Constants.ASTRAL_SYMBOLS.createIntersection(codePointSet);
-        CodePointSet loneLeadSurrogateRanges = Constants.LEAD_SURROGATES.createIntersection(codePointSet);
-        CodePointSet loneTrailSurrogateRanges = Constants.TRAIL_SURROGATES.createIntersection(codePointSet);
+        CodePointSetBuilder bmpRanges = codePointSet.createIntersection(Constants.BMP_WITHOUT_SURROGATES);
+        CodePointSetBuilder astralRanges = codePointSet.createIntersection(Constants.ASTRAL_SYMBOLS);
+        CodePointSetBuilder loneLeadSurrogateRanges = codePointSet.createIntersection(Constants.LEAD_SURROGATES);
+        CodePointSetBuilder loneTrailSurrogateRanges = codePointSet.createIntersection(Constants.TRAIL_SURROGATES);
 
         if (bmpRanges.matchesSomething()) {
             Sequence bmpAlternative = group.addSequence(ast);
@@ -303,15 +321,15 @@ public final class RegexParser {
         if (astralRanges.matchesSomething()) {
             // completeRanges matches surrogate pairs where leading surrogates can be followed by
             // any trailing surrogates
-            CodePointSet completeRanges = CodePointSet.createEmpty();
+            CodePointSetBuilder completeRanges = CodePointSetBuilder.createEmpty();
 
             char curLead = Character.highSurrogate(astralRanges.getRanges().get(0).lo);
-            CodePointSet curTrails = CodePointSet.createEmpty();
+            CodePointSetBuilder curTrails = CodePointSetBuilder.createEmpty();
             for (CodePointRange astralRange : astralRanges.getRanges()) {
                 char startLead = Character.highSurrogate(astralRange.lo);
-                char startTrail = Character.lowSurrogate(astralRange.lo);
+                final char startTrail = Character.lowSurrogate(astralRange.lo);
                 char endLead = Character.highSurrogate(astralRange.hi);
-                char endTrail = Character.lowSurrogate(astralRange.hi);
+                final char endTrail = Character.lowSurrogate(astralRange.hi);
 
                 if (startLead > curLead) {
                     if (curTrails.matchesSomething()) {
@@ -320,7 +338,7 @@ public final class RegexParser {
                         finishedAlternative.add(createCharClass(curTrails, src));
                     }
                     curLead = startLead;
-                    curTrails = CodePointSet.createEmpty();
+                    curTrails = CodePointSetBuilder.createEmpty();
                 }
                 if (startLead == endLead) {
                     curTrails.addRange(new CodePointRange(startTrail, endTrail));
@@ -337,7 +355,7 @@ public final class RegexParser {
                         finishedAlternative.add(createCharClass(curTrails, src));
                     }
                     curLead = endLead;
-                    curTrails = CodePointSet.createEmpty();
+                    curTrails = CodePointSetBuilder.createEmpty();
 
                     if (endTrail != Constants.TRAIL_SURROGATE_RANGE.hi) {
                         curTrails.addRange(new CodePointRange(Constants.TRAIL_SURROGATE_RANGE.lo, endTrail));
@@ -382,7 +400,7 @@ public final class RegexParser {
     }
 
     private void addCharClass(Token.CharacterClass token) {
-        CodePointSet codePointSet = token.getCodePointSet();
+        CodePointSetBuilder codePointSet = token.getCodePointSet();
         if (flags.isUnicode()) {
             if (codePointSet.matchesNothing()) {
                 // We need this branch because a Group with no alternatives is invalid
@@ -395,7 +413,7 @@ public final class RegexParser {
         }
     }
 
-    private CharacterClass createCharClass(CodePointSet codePointSet, SourceSection sourceSection) {
+    private CharacterClass createCharClass(CodePointSetBuilder codePointSet, SourceSection sourceSection) {
         return createCharClass(CharSet.create(codePointSet), sourceSection);
     }
 
@@ -665,15 +683,37 @@ public final class RegexParser {
      */
     private void parseDryRun() throws RegexSyntaxException {
         List<RegexStackElem> syntaxStack = new ArrayList<>();
+        int lookBehindDepth = 0;
         CurTermState curTermState = CurTermState.Null;
         while (lexer.hasNext()) {
             Token token = lexer.next();
+            if (lookBehindDepth > 0 && token.kind != Token.Kind.charClass && token.kind != Token.Kind.groupEnd) {
+                features.setNonLiteralLookBehindAssertions();
+            }
             switch (token.kind) {
                 case caret:
+                    curTermState = CurTermState.Other;
+                    break;
                 case dollar:
+                    if (lookBehindDepth > 0 && !flags.isMultiline()) {
+                        features.setEndOfStringAssertionsInLookBehind();
+                    }
+                    curTermState = CurTermState.Other;
+                    break;
                 case wordBoundary:
                 case nonWordBoundary:
+                    if (lookBehindDepth > 0) {
+                        features.setWordBoundaryAssertionsInLookBehind();
+                    }
+                    curTermState = CurTermState.Other;
+                    break;
                 case backReference:
+                    features.setBackReferences();
+                    if (lookBehindDepth > 0) {
+                        features.setBackReferencesInLookBehind();
+                    }
+                    curTermState = CurTermState.Other;
+                    break;
                 case charClass:
                     curTermState = CurTermState.Other;
                     break;
@@ -688,6 +728,15 @@ public final class RegexParser {
                             break;
                         case LookBehindAssertion:
                             throw syntaxError(ErrorMessages.QUANTIFIER_ON_LOOKBEHIND_ASSERTION);
+                        case Other:
+                            Token.Quantifier quantifier = (Token.Quantifier) token;
+                            if (lookBehindDepth > 0 && quantifier.getMin() != quantifier.getMax()) {
+                                features.setNonTrivialQuantifiersInLookBehind();
+                            }
+                            if (quantifier.getMin() > TRegexOptions.TRegexMaxCountedRepetition || quantifier.getMax() > TRegexOptions.TRegexMaxCountedRepetition) {
+                                features.setLargeCountedRepetitions();
+                            }
+                            break;
                     }
                     curTermState = CurTermState.Other;
                     break;
@@ -700,11 +749,24 @@ public final class RegexParser {
                     curTermState = CurTermState.Null;
                     break;
                 case lookAheadAssertionBegin:
+                    if (((Token.LookAheadAssertionBegin) token).isNegated()) {
+                        features.setNegativeLookAheadAssertions();
+                    }
+                    if (lookBehindDepth > 0) {
+                        features.setLookAheadAssertionsInLookBehind();
+                    }
                     syntaxStack.add(RegexStackElem.LookAheadAssertion);
                     curTermState = CurTermState.Null;
                     break;
                 case lookBehindAssertionBegin:
+                    if (((Token.LookBehindAssertionBegin) token).isNegated()) {
+                        features.setNegativeLookBehindAssertions();
+                        if (lookBehindDepth > 0) {
+                            features.setNegativeLookBehindAssertionsInLookBehind();
+                        }
+                    }
                     syntaxStack.add(RegexStackElem.LookBehindAssertion);
+                    lookBehindDepth++;
                     curTermState = CurTermState.Null;
                     break;
                 case groupEnd:
@@ -717,6 +779,7 @@ public final class RegexParser {
                             curTermState = CurTermState.LookAheadAssertion;
                             break;
                         case LookBehindAssertion:
+                            lookBehindDepth--;
                             curTermState = CurTermState.LookBehindAssertion;
                             break;
                         case Group:

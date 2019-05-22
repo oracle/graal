@@ -66,6 +66,7 @@ import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.InstrumentInfo;
 import com.oracle.truffle.api.Option;
 import com.oracle.truffle.api.Scope;
+import com.oracle.truffle.api.TruffleFile;
 import com.oracle.truffle.api.TruffleLanguage;
 import com.oracle.truffle.api.TruffleLogger;
 import com.oracle.truffle.api.TruffleRuntime;
@@ -149,7 +150,7 @@ public abstract class TruffleInstrument {
      * instrument can prepare for disposal while still having other instruments not disposed yet.
      *
      * @param env environment information for the instrument
-     * @since 1.0
+     * @since 19.0
      */
     protected void onFinalize(Env env) {
         // default implementation does nothing
@@ -280,7 +281,7 @@ public abstract class TruffleInstrument {
          * @return an implementation of {@link MessageEndpoint} call back representing the client
          *         side, or <code>null</code> when no virtual transport is available
          * @throws MessageTransport.VetoException if creation of a server at that URI is not allowed
-         * @since 1.0
+         * @since 19.0
          */
         public MessageEndpoint startServer(URI uri, MessageEndpoint server) throws IOException, MessageTransport.VetoException {
             if (messageTransport == null) {
@@ -436,6 +437,30 @@ public abstract class TruffleInstrument {
                 fragment = new GuardedExecutableNode(languageSPI, fragment, frame);
             }
             return fragment;
+        }
+
+        /**
+         * Returns a {@link TruffleFile} for given path. This must be called on a context thread
+         * only.
+         *
+         * @param path the absolute or relative path to create {@link TruffleFile} for
+         * @return {@link TruffleFile}
+         * @since 19.0
+         */
+        public TruffleFile getTruffleFile(String path) {
+            return AccessorInstrumentHandler.engineAccess().getTruffleFile(path);
+        }
+
+        /**
+         * Returns a {@link TruffleFile} for given {@link URI}. This must be called on a context
+         * thread only.
+         *
+         * @param uri the {@link URI} to create {@link TruffleFile} for
+         * @return {@link TruffleFile}
+         * @since 19.0
+         */
+        public TruffleFile getTruffleFile(URI uri) {
+            return AccessorInstrumentHandler.engineAccess().getTruffleFile(uri);
         }
 
         private static class GuardedExecutableNode extends ExecutableNode {
@@ -659,7 +684,7 @@ public abstract class TruffleInstrument {
          * @param loggerName the the name of a {@link TruffleLogger}, if a {@code loggerName} is
          *            null or empty a root logger for language or instrument is returned
          * @return a {@link TruffleLogger}
-         * @since 1.0
+         * @since 19.0
          */
         public TruffleLogger getLogger(String loggerName) {
             return AccessorInstrumentHandler.engineAccess().getLogger(vmObject, loggerName);
@@ -686,7 +711,7 @@ public abstract class TruffleInstrument {
          * @param forClass the {@link Class} to create a logger for
          * @return a {@link TruffleLogger}
          * @throws NullPointerException if {@code forClass} is null
-         * @since 1.0
+         * @since 19.0
          */
         public TruffleLogger getLogger(Class<?> forClass) {
             return getLogger(forClass.getName());

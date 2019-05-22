@@ -18,8 +18,8 @@ jdk:
 
 env:
   global:
-    - JVMCI_VERSION="jvmci-0.57"
-    - JDK8_UPDATE_VERSION="202"
+    - JVMCI_VERSION="jvmci-20-b01"
+    - JDK8_UPDATE_VERSION="212"
 
 matrix:
   include:
@@ -37,7 +37,7 @@ matrix:
           - clang-format-3.8
           - libc++1
           - libc++-dev
-  - env: JDK="jdk8" GATE="build,sulong" PRIMARY="vm" DYNAMIC_IMPORTS="/sulong,/substratevm" LLVM_VERSION="6.0" DISABLE_POLYGLOT=true DISABLE_LIBPOLYGLOT=true NATIVE_IMAGE_TESTING=true
+  - env: JDK="jdk8" GATE="build,sulong" PRIMARY="vm" DYNAMIC_IMPORTS="/sulong,/substratevm" LLVM_VERSION="6.0" DISABLE_POLYGLOT=true DISABLE_LIBPOLYGLOT=true
     addons:
       apt:
         sources:
@@ -67,7 +67,7 @@ install:
         pip install pylint==1.1.0
 
         export ECLIPSE_TAR=${TRAVIS_BUILD_DIR}/../eclipse.tar.gz
-        wget http://archive.eclipse.org/eclipse/downloads/drops4/R-4.5.2-201602121500/eclipse-SDK-4.5.2-linux-gtk-x86_64.tar.gz -O ${ECLIPSE_TAR}
+        wget https://archive.eclipse.org/eclipse/downloads/drops4/R-4.5.2-201602121500/eclipse-SDK-4.5.2-linux-gtk-x86_64.tar.gz -O ${ECLIPSE_TAR}
         tar -C ${TRAVIS_BUILD_DIR}/.. -xzf ${ECLIPSE_TAR}
         export ECLIPSE_EXE=${TRAVIS_BUILD_DIR}/../eclipse/eclipse
 
@@ -81,7 +81,7 @@ install:
         if [ "${JDK}" == "jdk8" ]
         then
           export JDT=${MX_PATH}/ecj.jar
-          wget http://archive.eclipse.org/eclipse/downloads/drops4/R-4.5.2-201602121500/ecj-4.5.2.jar -O ${JDT}
+          wget https://archive.eclipse.org/eclipse/downloads/drops4/R-4.5.2-201602121500/ecj-4.5.2.jar -O ${JDT}
         fi
       fi
   - |

@@ -37,6 +37,7 @@ import java.util.function.Function;
 import org.graalvm.compiler.debug.DebugContext;
 import org.graalvm.compiler.debug.Indent;
 import org.graalvm.nativeimage.Platform;
+import org.graalvm.nativeimage.impl.InternalPlatform;
 
 import com.oracle.objectfile.ObjectFile;
 import com.oracle.svm.core.LinkerInvocation;
@@ -114,7 +115,7 @@ public abstract class NativeBootImageViaCC extends NativeBootImage {
                     throw UserError.abort(OS.getCurrent().name() + " does not support building static executable images.");
                 case SHARED_LIBRARY:
                     cmd.add("-shared");
-                    if (Platform.includedIn(Platform.DARWIN_AND_JNI.class)) {
+                    if (Platform.includedIn(InternalPlatform.DARWIN_AND_JNI.class)) {
                         cmd.add("-undefined");
                         cmd.add("dynamic_lookup");
                     }
@@ -165,6 +166,9 @@ public abstract class NativeBootImageViaCC extends NativeBootImage {
             cmd.add("/Fe" + outputFile.toString());
 
             cmd.addAll(inputFilenames);
+            for (Path staticLibrary : nativeLibs.getStaticLibraries()) {
+                cmd.add(staticLibrary.toString());
+            }
 
             cmd.add("/link /INCREMENTAL:NO /NODEFAULTLIB:LIBCMT /NODEFAULTLIB:OLDNAMES");
 
@@ -223,6 +227,10 @@ public abstract class NativeBootImageViaCC extends NativeBootImage {
 
         for (String filename : codeCache.getCCInputFiles(tempDirectory, imageName)) {
             inv.addInputFile(filename);
+        }
+
+        for (Path staticLibraryPath : nativeLibs.getStaticLibraries()) {
+            inv.addInputFile(staticLibraryPath.toString());
         }
 
         addMainEntryPoint(inv);

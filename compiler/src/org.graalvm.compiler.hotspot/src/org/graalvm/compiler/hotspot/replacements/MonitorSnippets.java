@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2012, 2018, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2012, 2019, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -25,6 +25,7 @@
 package org.graalvm.compiler.hotspot.replacements;
 
 import static jdk.vm.ci.code.MemoryBarriers.LOAD_STORE;
+import static jdk.vm.ci.code.MemoryBarriers.STORE_LOAD;
 import static jdk.vm.ci.code.MemoryBarriers.STORE_STORE;
 import static org.graalvm.compiler.hotspot.GraalHotSpotVMConfig.INJECTED_OPTIONVALUES;
 import static org.graalvm.compiler.hotspot.GraalHotSpotVMConfig.INJECTED_VMCONFIG;
@@ -38,6 +39,7 @@ import static org.graalvm.compiler.hotspot.replacements.HotSpotReplacementsUtil.
 import static org.graalvm.compiler.hotspot.replacements.HotSpotReplacementsUtil.OBJECT_MONITOR_ENTRY_LIST_LOCATION;
 import static org.graalvm.compiler.hotspot.replacements.HotSpotReplacementsUtil.OBJECT_MONITOR_OWNER_LOCATION;
 import static org.graalvm.compiler.hotspot.replacements.HotSpotReplacementsUtil.OBJECT_MONITOR_RECURSION_LOCATION;
+import static org.graalvm.compiler.hotspot.replacements.HotSpotReplacementsUtil.OBJECT_MONITOR_SUCC_LOCATION;
 import static org.graalvm.compiler.hotspot.replacements.HotSpotReplacementsUtil.PROTOTYPE_MARK_WORD_LOCATION;
 import static org.graalvm.compiler.hotspot.replacements.HotSpotReplacementsUtil.ageMaskInPlace;
 import static org.graalvm.compiler.hotspot.replacements.HotSpotReplacementsUtil.biasedLockMaskInPlace;
@@ -51,6 +53,7 @@ import static org.graalvm.compiler.hotspot.replacements.HotSpotReplacementsUtil.
 import static org.graalvm.compiler.hotspot.replacements.HotSpotReplacementsUtil.objectMonitorEntryListOffset;
 import static org.graalvm.compiler.hotspot.replacements.HotSpotReplacementsUtil.objectMonitorOwnerOffset;
 import static org.graalvm.compiler.hotspot.replacements.HotSpotReplacementsUtil.objectMonitorRecursionsOffset;
+import static org.graalvm.compiler.hotspot.replacements.HotSpotReplacementsUtil.objectMonitorSuccOffset;
 import static org.graalvm.compiler.hotspot.replacements.HotSpotReplacementsUtil.pageSize;
 import static org.graalvm.compiler.hotspot.replacements.HotSpotReplacementsUtil.prototypeMarkWordOffset;
 import static org.graalvm.compiler.hotspot.replacements.HotSpotReplacementsUtil.registerAsWord;
@@ -119,7 +122,6 @@ import org.graalvm.compiler.nodes.spi.LoweringTool;
 import org.graalvm.compiler.nodes.type.StampTool;
 import org.graalvm.compiler.options.OptionValues;
 import org.graalvm.compiler.phases.common.inlining.InliningUtil;
-import org.graalvm.compiler.replacements.Log;
 import org.graalvm.compiler.replacements.SnippetCounter;
 import org.graalvm.compiler.replacements.SnippetTemplate.AbstractTemplates;
 import org.graalvm.compiler.replacements.SnippetTemplate.Arguments;
@@ -574,6 +576,32 @@ public class MonitorSnippets implements Snippets {
                     traceObject(trace, "-lock{inflated:simple}", object, false);
                     counters.unlockInflatedSimple.inc();
                     return true;
+                } else {
+                    int succOffset = objectMonitorSuccOffset(INJECTED_VMCONFIG);
+                    Word succ = monitor.readWord(succOffset, OBJECT_MONITOR_SUCC_LOCATION);
+                    if (probability(FREQUENT_PROBABILITY, succ.isNonNull())) {
+                        // There may be a thread spinning on this monitor. Temporarily setting
+                        // the monitor owner to null, and hope that the other thread will grab it.
+                        monitor.writeWord(ownerOffset, zero());
+                        memoryBarrier(STORE_STORE | STORE_LOAD);
+                        succ = monitor.readWord(succOffset, OBJECT_MONITOR_SUCC_LOCATION);
+                        if (probability(NOT_FREQUENT_PROBABILITY, succ.isNonNull())) {
+                            // We manage to release the monitor before the other running thread even
+                            // notices.
+                            traceObject(trace, "-lock{inflated:transfer}", object, false);
+                            counters.unlockInflatedTransfer.inc();
+                            return true;
+                        } else {
+                            // Either the monitor is grabbed by a spinning thread, or the spinning
+                            // thread parks. Now we attempt to reset the owner of the monitor.
+                            if (probability(FREQUENT_PROBABILITY, !monitor.logicCompareAndSwapWord(ownerOffset, zero(), thread, OBJECT_MONITOR_OWNER_LOCATION))) {
+                                // The monitor is stolen.
+                                traceObject(trace, "-lock{inflated:transfer}", object, false);
+                                counters.unlockInflatedTransfer.inc();
+                                return true;
+                            }
+                        }
+                    }
                 }
             }
             counters.unlockStubInflated.inc();
@@ -692,6 +720,7 @@ public class MonitorSnippets implements Snippets {
         public final SnippetCounter unlockStub;
         public final SnippetCounter unlockStubInflated;
         public final SnippetCounter unlockInflatedSimple;
+        public final SnippetCounter unlockInflatedTransfer;
 
         public Counters(SnippetCounter.Group.Factory factory) {
             SnippetCounter.Group enter = factory.createSnippetCounterGroup("MonitorEnters");
@@ -716,13 +745,15 @@ public class MonitorSnippets implements Snippets {
             unlockStub = new SnippetCounter(exit, "unlock{stub}", "stub-unlocked an object");
             unlockStubInflated = new SnippetCounter(exit, "unlock{stub:inflated}", "stub-unlocked an object with inflated monitor");
             unlockInflatedSimple = new SnippetCounter(exit, "unlock{inflated}", "unlocked an object monitor");
+            unlockInflatedTransfer = new SnippetCounter(exit, "unlock{inflated:transfer}", "unlocked an object monitor in the presence of ObjectMonitor::_succ");
         }
     }
 
     public static class Templates extends AbstractTemplates {
 
         private final SnippetInfo monitorenter = snippet(MonitorSnippets.class, "monitorenter");
-        private final SnippetInfo monitorexit = snippet(MonitorSnippets.class, "monitorexit");
+        private final SnippetInfo monitorexit = snippet(MonitorSnippets.class, "monitorexit", DISPLACED_MARK_WORD_LOCATION, OBJECT_MONITOR_OWNER_LOCATION, OBJECT_MONITOR_CXQ_LOCATION,
+                        OBJECT_MONITOR_ENTRY_LIST_LOCATION, OBJECT_MONITOR_RECURSION_LOCATION, OBJECT_MONITOR_SUCC_LOCATION);
         private final SnippetInfo monitorenterStub = snippet(MonitorSnippets.class, "monitorenterStub");
         private final SnippetInfo monitorexitStub = snippet(MonitorSnippets.class, "monitorexitStub");
         private final SnippetInfo initCounter = snippet(MonitorSnippets.class, "initCounter");
@@ -831,7 +862,8 @@ public class MonitorSnippets implements Snippets {
                     invoke.setStateAfter(graph.start().stateAfter());
                     graph.addAfterFixed(graph.start(), invoke);
 
-                    StructuredGraph inlineeGraph = providers.getReplacements().getSnippet(initCounter.getMethod(), null, invoke.graph().trackNodeSourcePosition(), invoke.getNodeSourcePosition());
+                    StructuredGraph inlineeGraph = providers.getReplacements().getSnippet(initCounter.getMethod(), null, null, invoke.graph().trackNodeSourcePosition(), invoke.getNodeSourcePosition(),
+                                    invoke.getOptions());
                     InliningUtil.inline(invoke, inlineeGraph, false, null);
 
                     List<ReturnNode> rets = graph.getNodes(ReturnNode.TYPE).snapshot();

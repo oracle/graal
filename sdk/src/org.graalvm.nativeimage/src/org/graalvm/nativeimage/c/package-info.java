@@ -40,13 +40,13 @@
  */
 /*
  @ApiInfo(
- group="Graal SDK"
+ group="GraalVM SDK"
  )
  */
 /**
  * This package and its sub-packages provide a fast and lightweight interface between Java code and
  * C code.
  *
- * @since 1.0
+ * @since 19.0
  */
 package org.graalvm.nativeimage.c;

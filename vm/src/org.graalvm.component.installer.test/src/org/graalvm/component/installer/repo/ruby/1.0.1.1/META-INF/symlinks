@@ -1,0 +1,6 @@
+bin/ruby = ../jre/bin/ruby
+bin/rake = ../jre/bin/rake
+jre/bin/truffleruby = ../languages/ruby/bin/truffleruby
+jre/bin/rake = ../languages/ruby/bin/rake
+LICENSE_TRUFFLERUBY.md = jre/languages/ruby/LICENSE_TRUFFLERUBY.md
+jre/languages/ruby/bin/ruby = truffleruby

@@ -30,11 +30,11 @@ import java.util.concurrent.locks.ReentrantLock;
 import java.util.function.Function;
 
 import org.graalvm.compiler.serviceprovider.JavaVersionUtil;
-import org.graalvm.nativeimage.Feature;
 import org.graalvm.nativeimage.ImageInfo;
 import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.Platforms;
 import org.graalvm.nativeimage.StackValue;
+import org.graalvm.nativeimage.hosted.Feature;
 import org.graalvm.word.WordFactory;
 
 import com.oracle.svm.core.annotate.Alias;
@@ -42,13 +42,13 @@ import com.oracle.svm.core.annotate.AutomaticFeature;
 import com.oracle.svm.core.annotate.Substitute;
 import com.oracle.svm.core.annotate.TargetClass;
 import com.oracle.svm.core.annotate.TargetElement;
+import com.oracle.svm.core.headers.Errno;
+import com.oracle.svm.core.jdk.JDK11OrLater;
 import com.oracle.svm.core.jdk.JDK8OrEarlier;
-import com.oracle.svm.core.jdk.JDK9OrLater;
 import com.oracle.svm.core.jdk.RuntimeSupport;
 import com.oracle.svm.core.log.Log;
 import com.oracle.svm.core.os.IsDefined;
 import com.oracle.svm.core.posix.headers.CSunMiscSignal;
-import com.oracle.svm.core.headers.Errno;
 import com.oracle.svm.core.posix.headers.Signal;
 import com.oracle.svm.core.posix.headers.Signal.SignalDispatcher;
 import com.oracle.svm.core.posix.headers.Time;
@@ -77,7 +77,7 @@ final class Target_jdk_internal_misc_Signal {
     }
 
     @Substitute
-    @TargetElement(onlyWith = JDK9OrLater.class)
+    @TargetElement(onlyWith = JDK11OrLater.class)
     private static /* native */ int findSignal0(String signalName) {
         return Util_jdk_internal_misc_Signal.numberFromName(signalName);
     }
@@ -440,7 +440,7 @@ class IgnoreSIGPIPEFeature implements Feature {
 }
 
 @Platforms({Platform.LINUX.class, Platform.DARWIN.class})
-@TargetClass(className = "jdk.internal.misc.VM", onlyWith = JDK9OrLater.class)
+@TargetClass(className = "jdk.internal.misc.VM", onlyWith = JDK11OrLater.class)
 final class Target_jdk_internal_misc_VM {
 
     /* Implementation from src/hotspot/share/prims/jvm.cpp#L286 translated to Java. */

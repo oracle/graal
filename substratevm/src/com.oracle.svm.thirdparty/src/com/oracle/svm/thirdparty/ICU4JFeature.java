@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2017, 2018, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2017, 2019, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -27,12 +27,12 @@ package com.oracle.svm.thirdparty;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Set;
-import java.util.concurrent.ConcurrentHashMap;
 import java.util.function.BooleanSupplier;
 
-import org.graalvm.nativeimage.Feature;
+import org.graalvm.nativeimage.hosted.Feature;
 import org.graalvm.nativeimage.ImageSingletons;
-import org.graalvm.nativeimage.RuntimeReflection;
+import org.graalvm.nativeimage.hosted.RuntimeReflection;
+import org.graalvm.nativeimage.hosted.RuntimeClassInitialization;
 
 import com.oracle.svm.core.annotate.Alias;
 import com.oracle.svm.core.annotate.AutomaticFeature;
@@ -42,6 +42,8 @@ import com.oracle.svm.core.annotate.RecomputeFieldValue.Kind;
 import com.oracle.svm.core.annotate.Substitute;
 import com.oracle.svm.core.annotate.TargetClass;
 import com.oracle.svm.core.util.VMError;
+
+import com.oracle.svm.hosted.FeatureImpl.FeatureAccessImpl;
 
 /**
  * ICU4JFeature enables ICU4J library ({@link "http://site.icu-project.org/"} to be used in SVM.
@@ -72,6 +74,7 @@ public final class ICU4JFeature implements Feature {
     public void beforeAnalysis(BeforeAnalysisAccess access) {
         registerShimClass(access, "com.ibm.icu.text.NumberFormatServiceShim");
         registerShimClass(access, "com.ibm.icu.text.CollatorServiceShim");
+        registerShimClass(access, "com.ibm.icu.text.BreakIteratorFactory");
     }
 
     private static void registerShimClass(BeforeAnalysisAccess access, String shimClassName) {
@@ -83,12 +86,22 @@ public final class ICU4JFeature implements Feature {
         }
     }
 
+    @Override
+    public void duringSetup(DuringSetupAccess access) {
+        RuntimeClassInitialization.initializeAtRunTime(getIcu4jClasses(access));
+    }
+
     static class Helper {
         /** Dummy ClassLoader used only for resource loading. */
         // Checkstyle: stop
         static final ClassLoader DUMMY_LOADER = new ClassLoader(null) {
         };
         // CheckStyle: resume
+    }
+
+    private static Class<?>[] getIcu4jClasses(FeatureAccess access) {
+        List<Class<?>> allClasses = ((FeatureAccessImpl) access).findSubclasses(Object.class);
+        return allClasses.stream().filter(clazz -> clazz.getName().startsWith("com.ibm.icu")).toArray(Class<?>[]::new);
     }
 }
 
@@ -148,6 +161,14 @@ final class Target_com_ibm_icu_impl_ICUBinary {
             }
             return instance;
         }
+
+        /*
+         * Any attempt to write to the list should be handled as no-op. The list of ICU4J resource
+         * bundle files should be strictly defined by one of the above mentioned system property,
+         * ICU4J_DATA_PATH_SYS_PROP, or environment variable, ICU4J_DATA_PATH_ENV_VAR.
+         */
+        static void set(@SuppressWarnings("unused") List<?> bummer) {
+        }
     }
 }
 
@@ -174,23 +195,10 @@ final class Target_com_ibm_icu_impl_ICUResourceBundle_WholeBundle {
     // Checkstyle: resume
 }
 
-@TargetClass(className = "com.ibm.icu.impl.SoftCache", onlyWith = ICU4JFeature.IsEnabled.class)
-final class Target_com_ibm_icu_impl_SoftCache {
-    // Checkstyle: stop
-    @Alias @RecomputeFieldValue(kind = Kind.NewInstance, declClass = ConcurrentHashMap.class) private ConcurrentHashMap<?, ?> map;
-    // Checkstyle: resume
-}
-
 @TargetClass(className = "com.ibm.icu.impl.ICUResourceBundle$AvailEntry", onlyWith = ICU4JFeature.IsEnabled.class)
 final class Target_com_ibm_icu_impl_ICUResourceBundle_AvailEntry {
     @Alias @RecomputeFieldValue(kind = Kind.Reset)
     // Checkstyle: stop
     ClassLoader loader;
     // Checkstyle: resume
-}
-
-@TargetClass(className = "com.ibm.icu.util.TimeZone", onlyWith = ICU4JFeature.IsEnabled.class)
-final class Target_com_ibm_icu_util_TimeZone {
-    // clear default time zone to force reinitialization at run time
-    @Alias @RecomputeFieldValue(kind = Kind.Reset) private static Target_com_ibm_icu_util_TimeZone defaultZone;
 }

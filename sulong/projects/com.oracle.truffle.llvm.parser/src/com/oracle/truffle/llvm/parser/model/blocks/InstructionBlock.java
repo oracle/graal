@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2016, 2018, Oracle and/or its affiliates.
+ * Copyright (c) 2016, 2019, Oracle and/or its affiliates.
  *
  * All rights reserved.
  *
@@ -76,20 +76,12 @@ public final class InstructionBlock {
     }
 
     public void setName(String name) {
-        this.name = LLVMIdentifier.toExplicitBlockName(name);
+        this.name = name;
     }
 
     public TerminatingInstruction getTerminatingInstruction() {
         assert instructions.get(instructions.size() - 1) instanceof TerminatingInstruction : "last instruction must be a terminating instruction";
         return (TerminatingInstruction) instructions.get(instructions.size() - 1);
-    }
-
-    public void replace(Instruction oldInst, Instruction newInst) {
-        for (int i = 0; i < instructions.size(); i++) {
-            if (instructions.get(i) == oldInst) {
-                instructions.set(i, newInst);
-            }
-        }
     }
 
     public void set(int index, Instruction instruction) {

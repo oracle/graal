@@ -46,7 +46,7 @@ import org.graalvm.compiler.phases.PhaseSuite;
 import org.graalvm.compiler.phases.tiers.HighTierContext;
 import org.graalvm.compiler.phases.tiers.Suites;
 import org.graalvm.compiler.phases.util.Providers;
-import org.graalvm.nativeimage.Feature;
+import org.graalvm.nativeimage.hosted.Feature;
 import org.graalvm.nativeimage.ImageSingletons;
 
 import com.oracle.svm.core.config.ConfigurationValues;
@@ -106,7 +106,8 @@ public class GraalConfiguration {
      * Returns a {@link ListIterator} at the position of the last inlining phase or null if no
      * inlining phases were created.
      */
-    public ListIterator<BasePhase<? super HighTierContext>> createHostedInliners(@SuppressWarnings("unused") PhaseSuite<HighTierContext> highTier) {
+    public ListIterator<BasePhase<? super HighTierContext>> createHostedInliners(@SuppressWarnings("unused") PhaseSuite<HighTierContext> highTier,
+                    @SuppressWarnings("unused") boolean requiresPostParseCanonicalization) {
         return null;
     }
 }

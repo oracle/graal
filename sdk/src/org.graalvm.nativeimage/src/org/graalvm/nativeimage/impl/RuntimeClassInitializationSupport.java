@@ -42,7 +42,15 @@ package org.graalvm.nativeimage.impl;
 
 public interface RuntimeClassInitializationSupport {
 
-    void delayClassInitialization(Class<?>[] classes);
+    void initializeAtRunTime(String name, String reason);
 
-    void rerunClassInitialization(Class<?>[] classes);
+    void initializeAtBuildTime(String name, String reason);
+
+    void rerunInitialization(String name, String reason);
+
+    void initializeAtRunTime(Class<?> aClass, String reason);
+
+    void rerunInitialization(Class<?> aClass, String reason);
+
+    void initializeAtBuildTime(Class<?> aClass, String reason);
 }

@@ -24,14 +24,13 @@
  */
 package com.oracle.svm.core.windows;
 
-import org.graalvm.nativeimage.Feature;
 import org.graalvm.nativeimage.ImageSingletons;
 import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.Platforms;
 import org.graalvm.nativeimage.c.type.CCharPointer;
 import org.graalvm.nativeimage.c.type.CTypeConversion;
 import org.graalvm.nativeimage.c.type.CTypeConversion.CCharPointerHolder;
-import org.graalvm.word.Pointer;
+import org.graalvm.nativeimage.hosted.Feature;
 import org.graalvm.word.PointerBase;
 import org.graalvm.word.WordFactory;
 
@@ -39,6 +38,7 @@ import com.oracle.svm.core.annotate.AutomaticFeature;
 import com.oracle.svm.core.jdk.Jvm;
 import com.oracle.svm.core.jdk.PlatformNativeLibrarySupport;
 import com.oracle.svm.core.windows.headers.WinBase;
+import com.oracle.svm.core.windows.headers.WinBase.HMODULE;
 
 @AutomaticFeature
 @Platforms(Platform.WINDOWS.class)
@@ -77,7 +77,7 @@ class WindowsNativeLibrarySupport implements PlatformNativeLibrarySupport {
     @Override
     public PointerBase findBuiltinSymbol(String name) {
         try (CCharPointerHolder symbol = CTypeConversion.toCString(name)) {
-            Pointer builtinHandle = WinBase.GetModuleHandleA(WordFactory.nullPointer());
+            HMODULE builtinHandle = WinBase.GetModuleHandleA(WordFactory.nullPointer());
             return WinBase.GetProcAddress(builtinHandle, symbol.get());
         }
     }
@@ -86,7 +86,7 @@ class WindowsNativeLibrarySupport implements PlatformNativeLibrarySupport {
 
         private final String canonicalIdentifier;
         private final boolean builtin;
-        private Pointer dlhandle = WordFactory.nullPointer();
+        private HMODULE dlhandle = WordFactory.nullPointer();
 
         WindowsNativeLibrary(String canonicalIdentifier, boolean builtin) {
             // Make sure the jvm.lib is available for linking
@@ -108,21 +108,20 @@ class WindowsNativeLibrarySupport implements PlatformNativeLibrarySupport {
         }
 
         @Override
-        public void load() {
-            if (!builtin) {
-                assert dlhandle.isNull();
-                String dllPath = canonicalIdentifier;
-                CCharPointerHolder dllpathPin = CTypeConversion.toCString(dllPath);
-                CCharPointer dllPathPtr = dllpathPin.get();
+        public boolean load() {
+            if (builtin) {
+                return true;
+            }
+            assert dlhandle.isNull();
+            try (CCharPointerHolder dllPathPin = CTypeConversion.toCString(canonicalIdentifier)) {
+                CCharPointer dllPathPtr = dllPathPin.get();
                 /*
                  * WinBase.SetDllDirectoryA(dllpathPtr); CCharPointerHolder pathPin =
                  * CTypeConversion.toCString(path); CCharPointer pathPtr = pathPin.get();
                  */
                 dlhandle = WinBase.LoadLibraryA(dllPathPtr);
-                if (this.dlhandle.isNull()) {
-                    throw new UnsatisfiedLinkError(dllPath + ": " + WinBase.GetLastError());
-                }
             }
+            return dlhandle.isNonNull();
         }
 
         @Override

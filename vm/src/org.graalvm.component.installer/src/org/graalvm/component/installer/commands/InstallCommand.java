@@ -24,34 +24,30 @@
  */
 package org.graalvm.component.installer.commands;
 
-import java.io.File;
 import java.io.IOException;
-import java.nio.file.Path;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
-import java.util.regex.Matcher;
-import java.util.regex.Pattern;
 import java.util.zip.ZipException;
 import org.graalvm.component.installer.Archive;
 import org.graalvm.component.installer.CommandInput;
 import org.graalvm.component.installer.Commands;
-import org.graalvm.component.installer.CommonConstants;
-import static org.graalvm.component.installer.CommonConstants.WARN_REBUILD_IMAGES;
 import org.graalvm.component.installer.ComponentParam;
 import org.graalvm.component.installer.Feedback;
 import org.graalvm.component.installer.InstallerCommand;
 import org.graalvm.component.installer.InstallerStopException;
 import org.graalvm.component.installer.SystemUtils;
 import org.graalvm.component.installer.UserAbortException;
+import org.graalvm.component.installer.Version;
 import org.graalvm.component.installer.model.ComponentInfo;
+import org.graalvm.component.installer.model.Verifier;
 import org.graalvm.component.installer.persist.MetadataLoader;
 
 /**
- * Implementation of 'install' command.
+ * Implementation of 'add' command.
  */
 public class InstallCommand implements InstallerCommand {
     private static final Map<String, String> OPTIONS = new HashMap<>();
@@ -60,9 +56,13 @@ public class InstallCommand implements InstallerCommand {
     private Feedback feedback;
     private boolean ignoreFailures;
     private boolean force;
-    private boolean rebuildPolyglot;
     private boolean validateBeforeInstall;
     private boolean validateDownload;
+    private boolean allowUpgrades;
+    // verify archives by default
+    private boolean verifyJar = true;
+
+    private PostInstProcess postinstHelper;
 
     static {
         OPTIONS.put(Commands.OPTION_DRY_RUN, "");
@@ -92,6 +92,24 @@ public class InstallCommand implements InstallerCommand {
         ignoreFailures = this.input.optValue(Commands.OPTION_IGNORE_FAILURES) != null;
         validateBeforeInstall = this.input.optValue(Commands.OPTION_VALIDATE) != null;
         validateDownload = this.input.optValue(Commands.OPTION_VALIDATE_DOWNLOAD) != null;
+
+        postinstHelper = new PostInstProcess(input, feedBack);
+    }
+
+    public boolean isVerifyJar() {
+        return verifyJar;
+    }
+
+    public void setVerifyJar(boolean verifyJar) {
+        this.verifyJar = verifyJar;
+    }
+
+    public boolean isAllowUpgrades() {
+        return allowUpgrades;
+    }
+
+    public void setAllowUpgrades(boolean allowUpgrades) {
+        this.allowUpgrades = allowUpgrades;
     }
 
     @Override
@@ -107,8 +125,17 @@ public class InstallCommand implements InstallerCommand {
 
     private String current;
 
+    /**
+     * Minimum required GraalVM version for the to-be-installed content.
+     */
+    private Version minRequiredGraalVersion;
+
     @Override
     public int execute() throws IOException {
+        input.getLocalRegistry().verifyAdministratorAccess();
+        input.existingFiles().setVerifyJars(verifyJar);
+
+        minRequiredGraalVersion = input.getLocalRegistry().getGraalVersion();
         if (input.optValue(Commands.OPTION_HELP) != null) {
             feedback.output("INSTALL_Help");
             return 0;
@@ -121,15 +148,17 @@ public class InstallCommand implements InstallerCommand {
         if (validateBeforeInstall) {
             return 0;
         }
-        executeStep(this::acceptLicenses, false);
         executeStep(this::completeInstallers, false);
+        executeStep(this::acceptLicenses, false);
         executeStep(this::doInstallation, false);
         // execute the post-install steps for all processed installers
         executeStep(this::printMessages, true);
-        if (rebuildPolyglot && WARN_REBUILD_IMAGES) {
-            Path p = SystemUtils.fromCommonString(CommonConstants.PATH_JRE_BIN);
-            feedback.output("INSTALL_RebuildPolyglotNeeded", File.separator, input.getGraalHomePath().resolve(p).normalize());
-        }
+        /*
+         * if (rebuildPolyglot && WARN_REBUILD_IMAGES) { Path p =
+         * SystemUtils.fromCommonString(CommonConstants.PATH_JRE_BIN);
+         * feedback.output("INSTALL_RebuildPolyglotNeeded", File.separator,
+         * input.getGraalHomePath().resolve(p).normalize()); }
+         */
         return 0;
     }
 
@@ -139,6 +168,22 @@ public class InstallCommand implements InstallerCommand {
         licensesToAccept.computeIfAbsent(id, (x) -> new ArrayList<>()).add(ldr);
     }
 
+    protected Version.Match matchInstallVesion() {
+        return input.getLocalRegistry().getGraalVersion().match(
+                        allowUpgrades ? Version.Match.Type.INSTALLABLE : Version.Match.Type.COMPATIBLE);
+    }
+
+    private void addLicenseToAccept(Installer inst, MetadataLoader ldr) {
+        if (ldr.getLicenseType() != null) {
+            String path = ldr.getLicensePath();
+            if (path != null) {
+                inst.setLicenseRelativePath(SystemUtils.fromCommonRelative(ldr.getLicensePath()));
+            }
+            String licId = ldr.getLicenseID();
+            addLicenseToAccept(licId, ldr);
+        }
+    }
+
     void prepareInstallation() throws IOException {
         for (ComponentParam p : input.existingFiles()) {
 
@@ -146,24 +191,26 @@ public class InstallCommand implements InstallerCommand {
             current = p.getSpecification();
             MetadataLoader ldr = validateDownload ? p.createFileLoader() : p.createMetaLoader();
             Installer inst = createInstaller(p, ldr);
-            boolean keep = force || inst.validateRequirements().shouldInstall();
+            ComponentInfo info = inst.getComponentInfo();
+
+            Verifier vrf = inst.createVerifier();
+            vrf.setVersionMatch(matchInstallVesion());
+            vrf.validateRequirements(info);
+            boolean keep = force || vrf.shouldInstall(info);
             if (!keep) {
                 // component will be skipped, do not bother with validation
                 feedback.output("INSTALL_ComponentAlreadyInstalled", inst.getComponentInfo().getName(), inst.getComponentInfo().getId());
                 continue;
             }
-
-            if (ldr.getLicenseType() != null) {
-                String path = ldr.getLicensePath();
-                if (path != null) {
-                    inst.setLicenseRelativePath(SystemUtils.fromCommonRelative(ldr.getLicensePath()));
-                }
-                String licId = ldr.getLicenseID();
-                addLicenseToAccept(licId, ldr);
+            Version minV = vrf.getMinVersion();
+            if (minV != null && minV.compareTo(this.minRequiredGraalVersion) > 0) {
+                minRequiredGraalVersion = minV;
             }
 
             installers.add(inst);
             if (p.isComplete()) {
+                // null realInstaller will be handled in completeInstallers() later.
+                addLicenseToAccept(inst, ldr);
                 realInstallers.put(p, inst);
             } else {
                 realInstallers.put(p, null);
@@ -242,52 +289,8 @@ public class InstallCommand implements InstallerCommand {
         void execute() throws IOException;
     }
 
-    private static final Pattern TOKEN_PATTERN = Pattern.compile("\\$\\{([\\p{Alnum}_-]+)\\}");
-
-    String replaceTokens(ComponentInfo info, String message) {
-        Map<String, String> tokens = new HashMap<>();
-        String graalPath = input.getGraalHomePath().normalize().toString();
-        tokens.putAll(info.getRequiredGraalValues());
-        tokens.putAll(input.getLocalRegistry().getGraalCapabilities());
-        tokens.put(CommonConstants.TOKEN_GRAALVM_PATH, graalPath);
-
-        Matcher m = TOKEN_PATTERN.matcher(message);
-        StringBuilder result = null;
-        int start = 0;
-        int last = 0;
-        while (m.find(start)) {
-            String token = m.group(1);
-            String val = tokens.get(token);
-            if (val != null) {
-                if (result == null) {
-                    result = new StringBuilder(graalPath.length() * 2);
-                }
-                result.append(message.substring(last, m.start()));
-                result.append(val);
-                last = m.end();
-            }
-            start = m.end();
-        }
-
-        if (result == null) {
-            return message;
-        } else {
-            result.append(message.substring(last));
-            return result.toString();
-        }
-    }
-
     void printMessages() {
-        for (Installer i : executedInstallers) {
-            String msg = i.getComponentInfo().getPostinstMessage();
-            if (msg != null) {
-                String replaced = replaceTokens(i.getComponentInfo(), msg);
-                // replace potential fileName etc
-                feedback.verbatimOut(replaced, false);
-                // add some newlines
-                feedback.verbatimOut("", false);
-            }
-        }
+        postinstHelper.run();
     }
 
     /**
@@ -298,7 +301,9 @@ public class InstallCommand implements InstallerCommand {
         for (ComponentParam p : new ArrayList<>(realInstallers.keySet())) {
             Installer i = realInstallers.get(p);
             if (i == null) {
-                i = createInstaller(p, p.createFileLoader());
+                MetadataLoader floader = p.createFileLoader();
+                i = createInstaller(p, floader);
+                addLicenseToAccept(i, floader);
                 installers.add(i);
 
                 if (validateBeforeInstall) {
@@ -322,13 +327,8 @@ public class InstallCommand implements InstallerCommand {
 
             i.setComponentDirectories(input.getLocalRegistry().getComponentDirectories());
             i.install();
-
-            rebuildPolyglot |= i.isRebuildPolyglot();
+            postinstHelper.addComponentInfo(i.getComponentInfo());
         }
-    }
-
-    public boolean isRebuildPolyglot() {
-        return rebuildPolyglot;
     }
 
     void ensureExistingComponentRemoved(ComponentInfo info) throws IOException {
@@ -354,7 +354,11 @@ public class InstallCommand implements InstallerCommand {
     private final List<Installer> installers = new ArrayList<>();
     private final List<Installer> executedInstallers = new ArrayList<>();
 
-    private void configureInstaller(Installer inst) {
+    List<Installer> getInstallers() {
+        return installers;
+    }
+
+    protected void configureInstaller(Installer inst) {
         inst.setInstallPath(input.getGraalHomePath());
         inst.setDryRun(input.optValue(Commands.OPTION_DRY_RUN) != null);
         force = input.optValue(Commands.OPTION_FORCE) != null;
@@ -386,7 +390,8 @@ public class InstallCommand implements InstallerCommand {
             a = ldr.getArchive();
             a.verifyIntegrity(input);
         }
-        Installer inst = new Installer(feedback, partialInfo, input.getLocalRegistry(), a);
+        Installer inst = new Installer(feedback, partialInfo, input.getLocalRegistry(),
+                        input.getRegistry(), a);
         inst.setPermissions(ldr.loadPermissions());
         inst.setSymlinks(ldr.loadSymlinks());
         configureInstaller(inst);

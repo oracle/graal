@@ -63,8 +63,8 @@ public final class UnknownIdentifierException extends InteropException {
 
     /**
      * {@inheritDoc}
-     * 
-     * @since 1.0
+     *
+     * @since 19.0
      */
     @Override
     public String getMessage() {
@@ -96,7 +96,7 @@ public final class UnknownIdentifierException extends InteropException {
      * Creates an {@link UnknownIdentifierException} to indicate that an identifier is missing.
      *
      * @param unknownIdentifier the identifier that could not be accessed
-     * @since 1.0
+     * @since 19.0
      */
     public static UnknownIdentifierException create(String unknownIdentifier) {
         CompilerDirectives.transferToInterpreter();

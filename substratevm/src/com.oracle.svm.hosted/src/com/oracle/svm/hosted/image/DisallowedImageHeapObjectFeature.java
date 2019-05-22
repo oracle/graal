@@ -26,15 +26,17 @@ package com.oracle.svm.hosted.image;
 
 import java.io.FileDescriptor;
 import java.lang.reflect.Field;
+import java.nio.Buffer;
 import java.nio.MappedByteBuffer;
 
-import org.graalvm.nativeimage.Feature;
+import org.graalvm.nativeimage.hosted.Feature;
 
 import com.oracle.graal.pointsto.constraints.UnsupportedFeatureException;
 import com.oracle.svm.core.annotate.AutomaticFeature;
 import com.oracle.svm.core.option.SubstrateOptionsParser;
 import com.oracle.svm.core.util.VMError;
-import com.oracle.svm.hosted.ClassInitializationFeature;
+import com.oracle.svm.hosted.classinitialization.ClassInitializationFeature;
+import com.oracle.svm.util.ReflectionUtil;
 
 /**
  * Complain if there are types that can not move from the image generator heap to the image heap.
@@ -70,13 +72,16 @@ public class DisallowedImageHeapObjectFeature implements Feature {
             MappedByteBuffer buffer = (MappedByteBuffer) original;
             /*
              * We allow 0-length non-file-based direct buffers, see comment on
-             * Targt_java_nio_DirectByteBuffer.
+             * Target_java_nio_DirectByteBuffer.
              */
             if (buffer.capacity() != 0 || getFileDescriptor(buffer) != null) {
                 throw error("Detected a direct/mapped ByteBuffer in the image heap. " +
                                 "A direct ByteBuffer has a pointer to unmanaged C memory, and C memory from the image generator is not available at image run time. " +
                                 "A mapped ByteBuffer references a file descriptor, which is no longer open and mapped at run time. ");
             }
+        } else if (original instanceof Buffer && ((Buffer) original).isDirect()) {
+            throw error("Detected a direct Buffer in the image heap. " +
+                            "A direct Buffer has a pointer to unmanaged C memory, and C memory from the image generator is not available at image run time.");
         }
 
         /* ZipFiles can not be in the image heap. */
@@ -93,20 +98,11 @@ public class DisallowedImageHeapObjectFeature implements Feature {
                         "The object was probably created by a class initializer and is reachable from a static field. " +
                         "By default, all class initialization is done during native image building." +
                         "You can manually delay class initialization to image run time by using the option " +
-                        SubstrateOptionsParser.commandArgument(ClassInitializationFeature.Options.DelayClassInitialization, "<class-name>") + ". " +
+                        SubstrateOptionsParser.commandArgument(ClassInitializationFeature.Options.ClassInitialization, "<class-name>") + ". " +
                         "Or you can write your own initialization methods and call them explicitly from your main entry point.");
     }
 
-    private static final Field FILE_DESCRIPTOR_FIELD;
-
-    static {
-        try {
-            FILE_DESCRIPTOR_FIELD = MappedByteBuffer.class.getDeclaredField("fd");
-            FILE_DESCRIPTOR_FIELD.setAccessible(true);
-        } catch (ReflectiveOperationException ex) {
-            throw VMError.shouldNotReachHere(ex);
-        }
-    }
+    private static final Field FILE_DESCRIPTOR_FIELD = ReflectionUtil.lookupField(MappedByteBuffer.class, "fd");
 
     private static FileDescriptor getFileDescriptor(MappedByteBuffer buffer) {
         try {

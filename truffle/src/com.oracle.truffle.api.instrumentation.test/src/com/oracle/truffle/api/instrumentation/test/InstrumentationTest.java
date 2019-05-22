@@ -1767,7 +1767,7 @@ public class InstrumentationTest extends AbstractInstrumentationTest {
         TestLangInitialized service = instrument.lookup(TestLangInitialized.class);
 
         run("LOOP(2, STATEMENT())");
-        assertEquals("[FunctionRootNode, false, StatementNode, false, ExpressionNode, false, ExpressionNode, false, FunctionRootNode, true, LoopNode, true, StatementNode, true, StatementNode, true]",
+        assertEquals("[FunctionRootNode, false, StatementNode, false, ExpressionNode, false, ExpressionNode, false, FunctionRootNode, true, WhileLoopNode, true, StatementNode, true, StatementNode, true]",
                         service.getEnteredNodes());
     }
 
@@ -1781,7 +1781,7 @@ public class InstrumentationTest extends AbstractInstrumentationTest {
         TestLangInitialized.initializationEvents = false;
         TestLangInitialized service = instrument.lookup(TestLangInitialized.class);
         run("LOOP(2, STATEMENT())");
-        assertEquals("[FunctionRootNode, true, LoopNode, true, StatementNode, true, StatementNode, true]", service.getEnteredNodes());
+        assertEquals("[FunctionRootNode, true, WhileLoopNode, true, StatementNode, true, StatementNode, true]", service.getEnteredNodes());
     }
 
     @Test
@@ -1795,7 +1795,7 @@ public class InstrumentationTest extends AbstractInstrumentationTest {
         TestLangInitialized service = instrument.lookup(TestLangInitialized.class);
         run("LOOP(2, STATEMENT())");
         assertEquals("[FunctionRootNode, false, StatementNode, false, ExpressionNode, false, ExpressionNode, false, " +
-                        "FunctionRootNode, true, LoopNode, true, StatementNode, true, StatementNode, true, FunctionRootNode, true, StatementNode, true, ExpressionNode, true, ExpressionNode, true]",
+                        "FunctionRootNode, true, WhileLoopNode, true, StatementNode, true, StatementNode, true, FunctionRootNode, true, StatementNode, true, ExpressionNode, true, ExpressionNode, true]",
                         service.getEnteredNodes());
     }
 
@@ -1810,7 +1810,7 @@ public class InstrumentationTest extends AbstractInstrumentationTest {
         TestLangInitialized.initializationEvents = false;
         TestLangInitialized service = instrument.lookup(TestLangInitialized.class);
         run("LOOP(2, STATEMENT())");
-        assertEquals("[FunctionRootNode, true, LoopNode, true, StatementNode, true, StatementNode, true, FunctionRootNode, true, StatementNode, true, ExpressionNode, true, ExpressionNode, true]",
+        assertEquals("[FunctionRootNode, true, WhileLoopNode, true, StatementNode, true, StatementNode, true, FunctionRootNode, true, StatementNode, true, ExpressionNode, true, ExpressionNode, true]",
                         service.getEnteredNodes());
     }
 

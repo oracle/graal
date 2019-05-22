@@ -34,8 +34,8 @@ import org.graalvm.compiler.core.common.SuppressFBWarnings;
 import org.graalvm.compiler.serviceprovider.GraalUnsafeAccess;
 import org.graalvm.compiler.word.BarrieredAccess;
 import org.graalvm.compiler.word.Word;
-import org.graalvm.nativeimage.Feature;
 import org.graalvm.nativeimage.ImageSingletons;
+import org.graalvm.nativeimage.hosted.Feature;
 
 import com.oracle.svm.core.annotate.Alias;
 import com.oracle.svm.core.annotate.AutomaticFeature;
@@ -98,8 +98,21 @@ public class MonitorSupport {
      * This is a static method so that it can be called directly via a foreign call from snippets.
      */
     @SubstrateForeignCallTarget
-    @SuppressWarnings("try")
     public static void monitorEnter(Object obj) {
+        /*
+         * GR-3655: The guaranteeOkayToBlock ensures that VMOperation cannot deadlock by disallowing
+         * synchronization. Enabling this check is blocked by GR-9200: Lazy creation of
+         * java.lang.Thread objects during deoptimization performs synchronization in the Thread
+         * initialization code.
+         */
+        // VMOperationControl.guaranteeOkayToBlock("No Java synchronization must be performed within
+        // a VMOperation: if the object is already locked, the VM is at a deadlock");
+
+        monitorEnterWithoutBlockingCheck(obj);
+    }
+
+    @SuppressWarnings("try")
+    public static void monitorEnterWithoutBlockingCheck(Object obj) {
         assert obj != null;
         if (!SubstrateOptions.MultiThreaded.getValue()) {
             /* Synchronization is a no-op in single threaded mode. */
@@ -174,8 +187,8 @@ public class MonitorSupport {
             msg.append("  lock: ");
             appendObject(msg, lockObject);
 
-            Target_java_util_concurrent_locks_ReentrantLock lockObjectTarget = KnownIntrinsics.unsafeCast(lockObject, Target_java_util_concurrent_locks_ReentrantLock.class);
-            Target_java_util_concurrent_locks_AbstractOwnableSynchronizer sync = KnownIntrinsics.unsafeCast(lockObjectTarget.sync, Target_java_util_concurrent_locks_AbstractOwnableSynchronizer.class);
+            Target_java_util_concurrent_locks_ReentrantLock lockObjectTarget = SubstrateUtil.cast(lockObject, Target_java_util_concurrent_locks_ReentrantLock.class);
+            Target_java_util_concurrent_locks_AbstractOwnableSynchronizer sync = SubstrateUtil.cast(lockObjectTarget.sync, Target_java_util_concurrent_locks_AbstractOwnableSynchronizer.class);
 
             if (sync != null) {
                 msg.append("  sync: ");
@@ -212,8 +225,8 @@ public class MonitorSupport {
             return;
         }
 
-        Target_java_util_concurrent_locks_ReentrantLock lock = KnownIntrinsics.unsafeCast(getOrCreateMonitor(obj, true), Target_java_util_concurrent_locks_ReentrantLock.class);
-        Target_java_util_concurrent_locks_AbstractOwnableSynchronizer sync = KnownIntrinsics.unsafeCast(lock.sync, Target_java_util_concurrent_locks_AbstractOwnableSynchronizer.class);
+        Target_java_util_concurrent_locks_ReentrantLock lock = SubstrateUtil.cast(getOrCreateMonitor(obj, true), Target_java_util_concurrent_locks_ReentrantLock.class);
+        Target_java_util_concurrent_locks_AbstractOwnableSynchronizer sync = SubstrateUtil.cast(lock.sync, Target_java_util_concurrent_locks_AbstractOwnableSynchronizer.class);
 
         VMError.guarantee(sync.getExclusiveOwnerThread() != null, "Cannot patch the exclusiveOwnerThread of an object that is not locked");
         sync.setExclusiveOwnerThread(thread);

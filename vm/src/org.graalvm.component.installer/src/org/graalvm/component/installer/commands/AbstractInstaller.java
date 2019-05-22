@@ -32,7 +32,9 @@ import java.util.HashSet;
 import java.util.Map;
 import java.util.Set;
 import org.graalvm.component.installer.Archive;
+import org.graalvm.component.installer.ComponentCollection;
 import org.graalvm.component.installer.Feedback;
+import org.graalvm.component.installer.Version;
 import org.graalvm.component.installer.model.ComponentInfo;
 import org.graalvm.component.installer.model.ComponentRegistry;
 import org.graalvm.component.installer.model.Verifier;
@@ -47,6 +49,7 @@ public abstract class AbstractInstaller implements Closeable {
     protected final Feedback feedback;
     protected final ComponentInfo componentInfo;
     protected final ComponentRegistry registry;
+    protected final ComponentCollection catalog;
     protected final Archive archive;
 
     private Map<String, String> permissions = Collections.emptyMap();
@@ -60,13 +63,23 @@ public abstract class AbstractInstaller implements Closeable {
     private boolean ignoreRequirements;
     private boolean failOnExisting;
     private Path installPath;
+    private boolean allowUpgrades;
 
     public AbstractInstaller(Feedback fb, ComponentInfo info,
-                    ComponentRegistry reg, Archive a) {
+                    ComponentRegistry reg, ComponentCollection cat, Archive a) {
         this.feedback = fb;
         this.componentInfo = info;
         this.registry = reg;
         this.archive = a;
+        this.catalog = cat;
+    }
+
+    public boolean isAllowUpgrades() {
+        return allowUpgrades;
+    }
+
+    public void setAllowUpgrades(boolean allowUpgrades) {
+        this.allowUpgrades = allowUpgrades;
     }
 
     public boolean isFailOnExisting() {
@@ -127,12 +140,17 @@ public abstract class AbstractInstaller implements Closeable {
 
     public abstract void revertInstall();
 
-    public Verifier validateRequirements() {
-        return new Verifier(feedback, registry, componentInfo)
+    public Verifier createVerifier() {
+        return new Verifier(feedback, registry, catalog)
                         .ignoreRequirements(ignoreRequirements)
                         .replaceComponents(replaceComponents)
-                        .ignoreExisting(!failOnExisting)
-                        .validateRequirements();
+                        .ignoreExisting(!failOnExisting);
+    }
+
+    public Verifier validateRequirements() {
+        Verifier vrf = createVerifier();
+        return vrf.setVersionMatch(registry.getGraalVersion().match(Version.Match.Type.COMPATIBLE))
+                        .validateRequirements(componentInfo);
     }
 
     /**

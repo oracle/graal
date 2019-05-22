@@ -250,23 +250,12 @@ def _ctw_system_properties_suffix():
 def ctw(args, extraVMarguments=None):
     """run CompileTheWorld"""
 
-    defaultCtwopts = 'Inline=false'
-
     parser = ArgumentParser(prog='mx ctw', formatter_class=RawDescriptionHelpFormatter, epilog=_ctw_system_properties_suffix())
-    parser.add_argument('--ctwopts', action='store', help='space separated Graal options used for CTW compilations (default: --ctwopts="' + defaultCtwopts + '")', metavar='<options>')
     parser.add_argument('--cp', '--jar', action='store', help='jar or class path denoting classes to compile', metavar='<path>')
     if not isJDK8:
         parser.add_argument('--limitmods', action='store', help='limits the set of compiled classes to only those in the listed modules', metavar='<modulename>[,<modulename>...]')
 
-    configArgs = [a for a in args if a.startswith('-DCompileTheWorld.Config=')]
     args, vmargs = parser.parse_known_args(args)
-
-    if args.ctwopts:
-        if configArgs:
-            mx.abort('Cannot specify both --ctwopts and -DCompileTheWorld.Config')
-        vmargs.append('-DCompileTheWorld.Config=' + re.sub(r'\s+', '#', args.ctwopts))
-    elif not configArgs:
-        vmargs.append('-DCompileTheWorld.Config=Inline=false')
 
     if mx.get_os() == 'darwin':
         # suppress menubar and dock when running on Mac
@@ -285,8 +274,9 @@ def ctw(args, extraVMarguments=None):
     exclusions = ','.join([a[len(exclusionPrefix):] for a in vmargs if a.startswith(exclusionPrefix)] + ['sun.awt.X11.*.*'])
     vmargs.append(exclusionPrefix + exclusions)
 
-    if _get_XX_option_value(vmargs + _remove_empty_entries(extraVMarguments), 'UseJVMCICompiler', False):
-        vmargs.append('-XX:+BootstrapJVMCI')
+    if not _get_XX_option_value(vmargs + _remove_empty_entries(extraVMarguments), 'UseJVMCINativeLibrary', False):
+        if _get_XX_option_value(vmargs + _remove_empty_entries(extraVMarguments), 'UseJVMCICompiler', False):
+            vmargs.append('-XX:+BootstrapJVMCI')
 
     mainClassAndArgs = []
     if isJDK8:
@@ -325,7 +315,7 @@ def verify_jvmci_ci_versions(args):
     If the ci.hocon files use a -dev version, it allows the travis ones to use the previous version.
     For example, if ci.hocon uses jvmci-0.24-dev, travis may use either jvmci-0.24-dev or jvmci-0.23
     """
-    version_pattern = re.compile(r'^(?!\s*#).*jvmci-(?P<version>\d*\.\d*)(?P<dev>-dev)?')
+    version_pattern = re.compile(r'^(?!\s*#).*jvmci-(?P<major>\d*)(?:\.|-b)(?P<minor>\d*)(?P<dev>-dev)?')
 
     def _grep_version(files, msg):
         version = None
@@ -336,7 +326,9 @@ def verify_jvmci_ci_versions(args):
             for line in open(filename):
                 m = version_pattern.search(line)
                 if m:
-                    new_version = m.group('version')
+                    new_major = m.group('major')
+                    new_minor = m.group('minor')
+                    new_version = (new_major, new_minor)
                     new_dev = bool(m.group('dev'))
                     if (version and version != new_version) or (dev is not None and dev != new_dev):
                         mx.abort(
@@ -363,13 +355,13 @@ def verify_jvmci_ci_versions(args):
     if hocon_version != travis_version or hocon_dev != travis_dev:
         versions_ok = False
         if not travis_dev and hocon_dev:
-            next_travis_version = [int(a) for a in travis_version.split('.')]
-            next_travis_version[-1] += 1
-            next_travis_version_str = '.'.join((str(a) for a in next_travis_version))
-            if next_travis_version_str == hocon_version:
+            travis_major, travis_minor = travis_version # pylint: disable=unpacking-non-sequence
+            next_travis_minor = str(int(travis_minor) + 1)
+            next_travis_version = (travis_major, next_travis_minor)
+            if next_travis_version == hocon_version:
                 versions_ok = True
         if not versions_ok:
-            mx.abort("Travis and ci.hocon JVMCI versions do not match: {0} vs. {1}".format(travis_version + ('-dev' if travis_dev else ''), hocon_version + ('-dev' if hocon_dev else '')))
+            mx.abort("Travis and ci.hocon JVMCI versions do not match: {0} vs. {1}".format(str(travis_version) + ('-dev' if travis_dev else ''), str(hocon_version) + ('-dev' if hocon_dev else '')))
     mx.log('JVMCI versions are ok!')
 
 
@@ -532,7 +524,7 @@ def compiler_gate_runner(suites, unit_test_runs, bootstrap_tests, tasks, extraVM
     with Task('CTW:hosted', tasks, tags=GraalTags.ctw) as t:
         if t:
             ctw([
-                    '--ctwopts', 'Inline=false CompilationFailureAction=ExitVM', '-esa', '-XX:-UseJVMCICompiler', '-XX:+EnableJVMCI',
+                    '-DCompileTheWorld.Config=Inline=false CompilationFailureAction=ExitVM', '-esa', '-XX:-UseJVMCICompiler', '-XX:+EnableJVMCI',
                     '-DCompileTheWorld.MultiThreaded=true', '-Dgraal.InlineDuringParsing=false', '-Dgraal.TrackNodeSourcePosition=true',
                     '-DCompileTheWorld.Verbose=false', '-XX:ReservedCodeCacheSize=300m',
                 ], _remove_empty_entries(extraVMarguments))
@@ -602,7 +594,7 @@ def compiler_gate_benchmark_runner(tasks, extraVMarguments=None, prefix=''):
     # ensure benchmark counters still work
     if mx.get_arch() != 'aarch64': # GR-8364 Exclude benchmark counters on AArch64
         with Task(prefix + 'DaCapo_pmd:BenchmarkCounters', tasks, tags=GraalTags.test) as t:
-            if t: _gate_dacapo('pmd', 1, _remove_empty_entries(extraVMarguments) + ['-XX:+UseJVMCICompiler', '-Dgraal.LIRProfileMoves=true', '-Dgraal.GenericDynamicCounters=true', '-XX:JVMCICounterSize=10'])
+            if t: _gate_dacapo('pmd', 1, _remove_empty_entries(extraVMarguments) + ['-XX:+UseJVMCICompiler', '-Dgraal.LIRProfileMoves=true', '-Dgraal.GenericDynamicCounters=true', '-Dgraal.TimedDynamicCounters=1000', '-XX:JVMCICounterSize=10'])
 
     # ensure -Xcomp still works
     with Task(prefix + 'XCompMode:product', tasks, tags=GraalTags.test) as t:
@@ -618,6 +610,12 @@ def compiler_gate_benchmark_runner(tasks, extraVMarguments=None, prefix=''):
         # ensure CMSIncrementalMode still works
         with Task(prefix + 'DaCapo_pmd:CMSIncrementalMode', tasks, tags=cms) as t:
             if t: _gate_dacapo('pmd', 4, _remove_empty_entries(extraVMarguments) + ['-XX:+UseJVMCICompiler', '-Xmx256M', '-XX:+UseConcMarkSweepGC', '-XX:+CMSIncrementalMode'], threads=4, force_serial_gc=False, set_start_heap_size=False)
+
+
+        if prefix != '':
+            # ensure G1 still works with libgraal
+            with Task(prefix + 'DaCapo_pmd:G1', tasks, tags=cms) as t:
+                if t: _gate_dacapo('pmd', 4, _remove_empty_entries(extraVMarguments) + ['-XX:+UseJVMCICompiler', '-Xmx256M', '-XX:+UseG1GC'], threads=4, force_serial_gc=False, set_start_heap_size=False)
 
 
 
@@ -808,6 +806,11 @@ def _parseVmArgs(args, addDefaultArgs=True):
     # Diagnose is a more useful "default" value.
     if not any(a.startswith('-Dgraal.CompilationFailureAction=') for a in args):
         argsPrefix.append('-Dgraal.CompilationFailureAction=Diagnose')
+
+    # It is safe to assume that Network dumping is the desired default when using mx.
+    # Mx is never used in production environments.
+    if not any(a.startswith('-Dgraal.PrintGraph=') for a in args):
+        argsPrefix.append('-Dgraal.PrintGraph=Network')
 
     return jdk.processArgs(argsPrefix + args, addDefaultArgs=addDefaultArgs)
 
@@ -1167,7 +1170,7 @@ def makegraaljdk(args):
 
 mx_sdk.register_graalvm_component(mx_sdk.GraalVmJvmciComponent(
     suite=_suite,
-    name='Graal compiler',
+    name='GraalVM compiler',
     short_name='cmp',
     dir_name='graal',
     license_files=[],

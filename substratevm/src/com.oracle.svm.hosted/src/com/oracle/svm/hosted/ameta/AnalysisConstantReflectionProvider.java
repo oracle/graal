@@ -40,8 +40,8 @@ import com.oracle.svm.core.hub.DynamicHub;
 import com.oracle.svm.core.meta.ReadableJavaField;
 import com.oracle.svm.core.meta.SubstrateObjectConstant;
 import com.oracle.svm.core.util.VMError;
-import com.oracle.svm.hosted.ClassInitializationSupport;
 import com.oracle.svm.hosted.SVMHost;
+import com.oracle.svm.hosted.classinitialization.ClassInitializationSupport;
 
 import jdk.vm.ci.meta.Constant;
 import jdk.vm.ci.meta.ConstantReflectionProvider;
@@ -189,6 +189,7 @@ public class AnalysisConstantReflectionProvider extends SharedConstantReflection
     @Override
     public JavaConstant asJavaClass(ResolvedJavaType type) {
         DynamicHub dynamicHub = getHostVM().dynamicHub(type);
+        assert dynamicHub != null : type.toClassName() + " has a null dynamicHub.";
         registerHub(getHostVM(), dynamicHub);
         return SubstrateObjectConstant.forObject(dynamicHub);
     }
@@ -198,6 +199,7 @@ public class AnalysisConstantReflectionProvider extends SharedConstantReflection
     }
 
     protected static void registerHub(SVMHost hostVM, DynamicHub dynamicHub) {
+        assert dynamicHub != null;
         /* Make sure that the DynamicHub of this type ends up in the native image. */
         AnalysisType valueType = hostVM.lookupType(dynamicHub);
         if (!valueType.isInTypeCheck()) {

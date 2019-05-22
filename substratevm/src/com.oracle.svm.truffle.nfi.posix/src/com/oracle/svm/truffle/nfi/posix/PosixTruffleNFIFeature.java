@@ -31,7 +31,7 @@ import com.oracle.svm.core.posix.headers.LibC;
 import com.oracle.svm.core.snippets.KnownIntrinsics;
 import com.oracle.svm.truffle.nfi.Target_com_oracle_truffle_nfi_impl_NFIUnsatisfiedLinkError;
 import com.oracle.truffle.api.CompilerDirectives;
-import org.graalvm.nativeimage.Feature;
+import org.graalvm.nativeimage.hosted.Feature;
 import org.graalvm.nativeimage.ImageSingletons;
 import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.Platforms;
@@ -40,11 +40,12 @@ import com.oracle.svm.core.annotate.AutomaticFeature;
 import com.oracle.svm.core.util.VMError;
 import com.oracle.svm.truffle.nfi.TruffleNFISupport;
 import org.graalvm.nativeimage.c.type.CCharPointer;
+import org.graalvm.nativeimage.impl.InternalPlatform;
 import org.graalvm.word.PointerBase;
 import org.graalvm.word.WordFactory;
 
 @AutomaticFeature
-@Platforms({Platform.LINUX_AND_JNI.class, Platform.DARWIN_AND_JNI.class})
+@Platforms({InternalPlatform.LINUX_AND_JNI.class, InternalPlatform.DARWIN_AND_JNI.class})
 public final class PosixTruffleNFIFeature implements Feature {
 
     @Override
@@ -63,10 +64,10 @@ final class PosixTruffleNFISupport extends TruffleNFISupport {
     }
 
     private static String getErrnoGetterFunctionName() {
-        if (Platform.includedIn(Platform.LINUX_AND_JNI.class)) {
+        if (Platform.includedIn(InternalPlatform.LINUX_AND_JNI.class)) {
             return "__errno_location";
         }
-        if (Platform.includedIn(Platform.DARWIN_AND_JNI.class)) {
+        if (Platform.includedIn(InternalPlatform.DARWIN_AND_JNI.class)) {
             return "__error";
         }
         throw VMError.unsupportedFeature("unsupported platform for TruffleNFIFeature");

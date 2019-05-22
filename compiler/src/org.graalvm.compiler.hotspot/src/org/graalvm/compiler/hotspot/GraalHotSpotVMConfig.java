@@ -102,11 +102,13 @@ public class GraalHotSpotVMConfig extends GraalHotSpotVMConfigBase {
     private final boolean useSHA256Intrinsics = getFlag("UseSHA256Intrinsics", Boolean.class);
     private final boolean useSHA512Intrinsics = getFlag("UseSHA512Intrinsics", Boolean.class);
     private final boolean useGHASHIntrinsics = getFlag("UseGHASHIntrinsics", Boolean.class, false);
+    private final boolean useBase64Intrinsics = getFlag("UseBASE64Intrinsics", Boolean.class, false);
     private final boolean useMontgomeryMultiplyIntrinsic = getFlag("UseMontgomeryMultiplyIntrinsic", Boolean.class, false);
     private final boolean useMontgomerySquareIntrinsic = getFlag("UseMontgomerySquareIntrinsic", Boolean.class, false);
     private final boolean useMulAddIntrinsic = getFlag("UseMulAddIntrinsic", Boolean.class, false);
     private final boolean useSquareToLenIntrinsic = getFlag("UseSquareToLenIntrinsic", Boolean.class, false);
     public final boolean useVectorizedMismatchIntrinsic = getFlag("UseVectorizedMismatchIntrinsic", Boolean.class, false);
+    public final boolean useFMAIntrinsics = getFlag("UseFMA", Boolean.class, false);
 
     /*
      * These are methods because in some JDKs the flags are visible but the stubs themselves haven't
@@ -130,6 +132,10 @@ public class GraalHotSpotVMConfig extends GraalHotSpotVMConfigBase {
 
     public boolean useGHASHIntrinsics() {
         return useGHASHIntrinsics && ghashProcessBlocks != 0;
+    }
+
+    public boolean useBase64Intrinsics() {
+        return useBase64Intrinsics && base64EncodeBlock != 0;
     }
 
     public boolean useMontgomeryMultiplyIntrinsic() {
@@ -455,6 +461,7 @@ public class GraalHotSpotVMConfig extends GraalHotSpotVMConfigBase {
     public final int objectMonitorRecursions = getFieldOffset("ObjectMonitor::_recursions", Integer.class, "intptr_t", -1);
     public final int objectMonitorCxq = getFieldOffset("ObjectMonitor::_cxq", Integer.class, "ObjectWaiter*", -1);
     public final int objectMonitorEntryList = getFieldOffset("ObjectMonitor::_EntryList", Integer.class, "ObjectWaiter*", -1);
+    public final int objectMonitorSucc = getFieldOffset("ObjectMonitor::_succ", Integer.class, "Thread*", -1);
 
     public final int markWordNoHashInPlace = getConstant("markOopDesc::no_hash_in_place", Integer.class);
     public final int markWordNoLockInPlace = getConstant("markOopDesc::no_lock_in_place", Integer.class);
@@ -647,6 +654,7 @@ public class GraalHotSpotVMConfig extends GraalHotSpotVMConfigBase {
 
     public final long counterModeAESCrypt = getFieldValue("StubRoutines::_counterMode_AESCrypt", Long.class, "address", 0L);
     public final long ghashProcessBlocks = getFieldValue("StubRoutines::_ghash_processBlocks", Long.class, "address", 0L);
+    public final long base64EncodeBlock = getFieldValue("StubRoutines::_base64_encodeBlock", Long.class, "address", 0L);
     public final long crc32cTableTddr = getFieldValue("StubRoutines::_crc32c_table_addr", Long.class, "address", 0L);
     public final long updateBytesCRC32C = getFieldValue("StubRoutines::_updateBytesCRC32C", Long.class, "address", 0L);
     public final long updateBytesAdler32 = getFieldValue("StubRoutines::_updateBytesAdler32", Long.class, "address", 0L);

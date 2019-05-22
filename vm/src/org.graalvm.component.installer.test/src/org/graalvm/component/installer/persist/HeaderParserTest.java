@@ -44,6 +44,10 @@ public class HeaderParserTest extends TestBase {
         return new HeaderParser(BundleConstants.BUNDLE_REQUIRED, content, withBundle(HeaderParser.class));
     }
 
+    private HeaderParser c(String content) {
+        return new HeaderParser(BundleConstants.BUNDLE_PROVIDED, content, withBundle(HeaderParser.class));
+    }
+
     private static void assertHeader(MetadataException ex) {
         assertEquals(BundleConstants.BUNDLE_VERSION, ex.getOffendingHeader());
     }
@@ -290,5 +294,19 @@ public class HeaderParserTest extends TestBase {
         exc.expect(MetadataException.class);
         exc.expectMessage("ERROR_DuplicateFilterAttribute");
         r("org.graalvm; filter := \"(&(graalvm_version=0.32)(graalvm_version=111))\"").parseRequiredCapabilities();
+    }
+
+    @Test
+    public void testSimpleProvidedCapability() {
+        Map<String, Object> v = c("org.graalvm; edition=ee; graalvm_version=ff").parseProvidedCapabilities();
+        assertEquals("ee", v.get("edition"));
+        assertEquals("ff", v.get("graalvm_version"));
+    }
+
+    @Test
+    public void testSimpleProvidedCapabilityBad1() {
+        exc.expect(MetadataException.class);
+        exc.expectMessage("ERROR_InvalidCapabilitySyntax");
+        c("org.graalvm; edition; graalvm_version=ff").parseProvidedCapabilities();
     }
 }

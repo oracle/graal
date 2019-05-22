@@ -27,8 +27,6 @@ package org.graalvm.component.installer.persist;
 
 import java.io.IOException;
 import java.net.URL;
-import java.util.Collection;
-import java.util.Date;
 import java.util.Map;
 import org.graalvm.component.installer.Feedback;
 import org.graalvm.component.installer.MetadataException;
@@ -105,34 +103,5 @@ public abstract class AbstractCatalogStorage implements ComponentStorage {
 
     protected byte[] toHashBytes(String comp, String hashS) {
         return toHashBytes(comp, hashS, feedback);
-    }
-
-    @Override
-    public void deleteComponent(String id) throws IOException {
-        throw new UnsupportedOperationException("Read only"); // NOI18N
-    }
-
-    @Override
-    public Map<String, Collection<String>> readReplacedFiles() throws IOException {
-        throw new UnsupportedOperationException("Should not be called."); // NOI18N
-    }
-
-    @Override
-    public void saveComponent(ComponentInfo info) throws IOException {
-        throw new UnsupportedOperationException("Should not be called."); // NOI18N
-    }
-
-    @Override
-    public Date licenseAccepted(ComponentInfo info, String licenseID) {
-        return null;
-    }
-
-    @Override
-    public void recordLicenseAccepted(ComponentInfo info, String licenseID, String licenseText) throws IOException {
-    }
-
-    @Override
-    public void updateReplacedFiles(Map<String, Collection<String>> replacedFiles) throws IOException {
-        throw new UnsupportedOperationException("Should not be called."); // NOI18N
     }
 }

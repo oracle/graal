@@ -57,6 +57,7 @@ import java.nio.file.AccessMode;
 import java.nio.file.DirectoryNotEmptyException;
 import java.nio.file.DirectoryStream;
 import java.nio.file.FileAlreadyExistsException;
+import java.nio.file.FileSystemNotFoundException;
 import java.nio.file.LinkOption;
 import java.nio.file.NoSuchFileException;
 import java.nio.file.NotDirectoryException;
@@ -86,8 +87,35 @@ import java.util.Set;
 import java.util.function.BiConsumer;
 import org.graalvm.polyglot.io.FileSystem;
 
-final class MemoryFileSystem implements FileSystem {
+public final class MemoryFileSystem implements FileSystem {
     private static final byte[] EMPTY = new byte[0];
+    private static final UserPrincipal USER = new UserPrincipal() {
+        @Override
+        public String getName() {
+            return "";
+        }
+
+        @Override
+        public int hashCode() {
+            return 0;
+        }
+
+        @Override
+        public boolean equals(Object other) {
+            return other == USER;
+        }
+    };
+    private static final GroupPrincipal GROUP = new GroupPrincipal() {
+        @Override
+        public String getName() {
+            return "";
+        }
+
+        @Override
+        public int hashCode() {
+            return 0;
+        }
+    };
 
     private final Map<Long, FileInfo> inodes;
     private final Map<Long, byte[]> blocks;
@@ -95,7 +123,7 @@ final class MemoryFileSystem implements FileSystem {
     private volatile Path userDir;
     private long nextInode = 0;
 
-    MemoryFileSystem() throws IOException {
+    public MemoryFileSystem() throws IOException {
         this.inodes = new HashMap<>();
         this.blocks = new HashMap<>();
         root = parsePath("/");
@@ -110,7 +138,11 @@ final class MemoryFileSystem implements FileSystem {
 
     @Override
     public Path parsePath(URI uri) {
-        return new MemoryPath(Paths.get(uri));
+        try {
+            return new MemoryPath(Paths.get(uri));
+        } catch (IllegalArgumentException | FileSystemNotFoundException e) {
+            throw new UnsupportedOperationException(e);
+        }
     }
 
     @Override
@@ -656,29 +688,9 @@ final class MemoryFileSystem implements FileSystem {
                 }
                 return result;
             } else if (ATTR_OWNER.equals(key)) {
-                return new UserPrincipal() {
-                    @Override
-                    public String getName() {
-                        return "";
-                    }
-
-                    @Override
-                    public int hashCode() {
-                        return 0;
-                    }
-                };
+                return USER;
             } else if (ATTR_GROUP.equals(key)) {
-                return new GroupPrincipal() {
-                    @Override
-                    public String getName() {
-                        return "";
-                    }
-
-                    @Override
-                    public int hashCode() {
-                        return 0;
-                    }
-                };
+                return GROUP;
             }
             return super.getValue(key);
         }

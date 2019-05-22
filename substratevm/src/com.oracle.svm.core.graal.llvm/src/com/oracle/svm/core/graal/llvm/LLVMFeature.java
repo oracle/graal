@@ -33,10 +33,9 @@ import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
 
-import org.graalvm.compiler.options.Option;
 import org.graalvm.compiler.phases.util.Providers;
 import org.graalvm.compiler.replacements.Snippets;
-import org.graalvm.nativeimage.Feature;
+import org.graalvm.nativeimage.hosted.Feature;
 import org.graalvm.nativeimage.ImageSingletons;
 import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.Platforms;
@@ -49,7 +48,6 @@ import com.oracle.svm.core.annotate.AutomaticFeature;
 import com.oracle.svm.core.graal.GraalFeature;
 import com.oracle.svm.core.graal.code.SubstrateBackend;
 import com.oracle.svm.core.graal.code.SubstrateBackendFactory;
-import com.oracle.svm.core.option.HostedOptionKey;
 import com.oracle.svm.core.snippets.SnippetRuntime;
 import com.oracle.svm.core.util.UserError;
 import com.oracle.svm.hosted.c.util.FileUtils;
@@ -62,14 +60,6 @@ import com.oracle.svm.hosted.image.NativeImageHeap;
 @CLibrary("m")
 @Platforms({Platform.LINUX.class, Platform.DARWIN.class})
 public class LLVMFeature implements Feature, GraalFeature, Snippets {
-
-    public static class Options {
-        @Option(help = "Include debugging info in the generated image (for LLVM backend).")//
-        public static final HostedOptionKey<Integer> IncludeLLVMDebugInfo = new HostedOptionKey<>(0);
-
-        @Option(help = "Dump contents of the generated stackmap to the specified file")//
-        public static final HostedOptionKey<String> DumpLLVMStackMap = new HostedOptionKey<>(null);
-    }
 
     @Override
     public boolean isInConfiguration(IsInConfigurationAccess access) {
@@ -88,8 +78,8 @@ public class LLVMFeature implements Feature, GraalFeature, Snippets {
         });
         ImageSingletons.add(NativeImageCodeCacheFactory.class, new NativeImageCodeCacheFactory() {
             @Override
-            public NativeImageCodeCache newCodeCache(CompileQueue compileQueue, NativeImageHeap heap) {
-                return new LLVMNativeImageCodeCache(compileQueue.getCompilations(), heap);
+            public NativeImageCodeCache newCodeCache(CompileQueue compileQueue, NativeImageHeap heap, Platform platform) {
+                return new LLVMNativeImageCodeCache(compileQueue.getCompilations(), heap, platform);
             }
         });
         ImageSingletons.add(SnippetRuntime.ExceptionStackFrameVisitor.class, new SnippetRuntime.ExceptionStackFrameVisitor() {

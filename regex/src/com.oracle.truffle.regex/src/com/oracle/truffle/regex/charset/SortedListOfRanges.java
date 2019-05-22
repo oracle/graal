@@ -24,32 +24,34 @@
  */
 package com.oracle.truffle.regex.charset;
 
-import java.util.List;
-
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
-import com.oracle.truffle.regex.chardata.CodePointRange;
-import com.oracle.truffle.regex.chardata.CodePointSet;
-import com.oracle.truffle.regex.chardata.Constants;
+import com.oracle.truffle.regex.chardata.CharacterSet;
 import com.oracle.truffle.regex.tregex.buffer.CompilationBuffer;
-import com.oracle.truffle.regex.tregex.buffer.RangesArrayBuffer;
-import com.oracle.truffle.regex.tregex.matchers.ListOfRanges;
 import com.oracle.truffle.regex.tregex.util.DebugUtil;
 
-public abstract class SortedListOfRanges implements ListOfRanges {
+public abstract class SortedListOfRanges implements ListOfRanges, CharacterSet {
 
     protected abstract <T extends SortedListOfRanges> T createEmpty();
 
     protected abstract <T extends SortedListOfRanges> T createFull();
 
-    protected abstract <T extends SortedListOfRanges> T create(RangesArrayBuffer ranges);
+    protected abstract <T extends SortedListOfRanges> T create(RangesBuffer buffer);
 
     protected abstract int getMinValue();
 
     protected abstract int getMaxValue();
 
-    protected abstract void addRangeBulkTo(RangesArrayBuffer rangesArrayBuffer, int startIndex, int endIndex);
+    protected abstract RangesBuffer getBuffer1(CompilationBuffer compilationBuffer);
 
-    protected abstract boolean equalsRangesArrayBuffer(RangesArrayBuffer buffer);
+    protected abstract RangesBuffer getBuffer2(CompilationBuffer compilationBuffer);
+
+    protected abstract RangesBuffer getBuffer3(CompilationBuffer compilationBuffer);
+
+    protected abstract RangesBuffer createTempBuffer();
+
+    protected abstract void addRangeBulkTo(RangesBuffer buffer, int startIndex, int endIndex);
+
+    protected abstract boolean equalsBuffer(RangesBuffer buffer);
 
     protected boolean isSingle(int ia) {
         return getLo(ia) == getHi(ia);
@@ -131,10 +133,14 @@ public abstract class SortedListOfRanges implements ListOfRanges {
     }
 
     protected boolean equal(int ia, ListOfRanges o, int ib) {
-        return getLo(ia) == o.getLo(ib) && getHi(ia) == o.getHi(ib);
+        return equal(ia, o.getLo(ib), o.getHi(ib));
     }
 
-    protected void intersect(int ia, SortedListOfRanges o, int ib, RangesArrayBuffer result) {
+    protected boolean equal(int ia, int oLo, int oHi) {
+        return getLo(ia) == oLo && getHi(ia) == oHi;
+    }
+
+    protected void intersect(int ia, SortedListOfRanges o, int ib, RangesBuffer result) {
         assert intersects(ia, o, ib);
         result.addRange(Math.max(getLo(ia), o.getLo(ib)), Math.min(getHi(ia), o.getHi(ib)));
     }
@@ -156,18 +162,26 @@ public abstract class SortedListOfRanges implements ListOfRanges {
         return -(low + 1);  // key not found.
     }
 
-    protected boolean binarySearchExactMatch(int ia, SortedListOfRanges o, int searchResult) {
-        return searchResult >= 0 && equal(ia, o, searchResult);
+    protected boolean binarySearchExactMatch(int searchResult, SortedListOfRanges o, int oI) {
+        return binarySearchExactMatch(searchResult, o.getLo(oI), o.getHi(oI));
     }
 
-    protected int binarySearchGetFirstIntersecting(int ia, SortedListOfRanges o, int searchResult) {
+    protected boolean binarySearchExactMatch(int searchResult, int oLo, int oHi) {
+        return searchResult >= 0 && equal(searchResult, oLo, oHi);
+    }
+
+    protected int binarySearchGetFirstIntersecting(int searchResult, SortedListOfRanges o, int oI) {
         assert o.rangesAreSortedAndDisjoint();
+        return binarySearchGetFirstIntersecting(searchResult, o.getLo(oI), o.getHi(oI));
+    }
+
+    protected int binarySearchGetFirstIntersecting(int searchResult, int oLo, int oHi) {
         if (searchResult >= 0) {
-            assert !equal(ia, o, searchResult);
+            assert !equal(searchResult, oLo, oHi);
             return searchResult;
         }
         int insertionPoint = (searchResult + 1) * (-1);
-        if (insertionPoint > 0 && intersects(ia, o, insertionPoint - 1)) {
+        if (insertionPoint > 0 && intersects(insertionPoint - 1, oLo, oHi)) {
             return insertionPoint - 1;
         }
         return insertionPoint;
@@ -177,8 +191,8 @@ public abstract class SortedListOfRanges implements ListOfRanges {
         return firstIntersecting == size();
     }
 
-    protected void addRangeTo(RangesArrayBuffer rangesArrayBuffer, int i) {
-        rangesArrayBuffer.addRange(getLo(i), getHi(i));
+    protected void addRangeTo(RangesBuffer buffer, int i) {
+        buffer.addRange(getLo(i), getHi(i));
     }
 
     protected boolean rangesAreSortedAndDisjoint() {
@@ -188,6 +202,23 @@ public abstract class SortedListOfRanges implements ListOfRanges {
             }
         }
         return true;
+    }
+
+    @Override
+    public boolean contains(int codePoint) {
+        int low = 0;
+        int high = size() - 1;
+        while (low <= high) {
+            int mid = (low + high) / 2;
+            if (codePoint < getLo(mid)) {
+                high = mid - 1;
+            } else if (codePoint > getHi(mid)) {
+                low = mid + 1;
+            } else { // codePoint >= midRange.lo && codePoint <= midRange.hi
+                return true;
+            }
+        }
+        return false;
     }
 
     public boolean contains(SortedListOfRanges o) {
@@ -214,15 +245,15 @@ public abstract class SortedListOfRanges implements ListOfRanges {
     }
 
     @SuppressWarnings("unchecked")
-    public <T extends SortedListOfRanges> T createIntersectionMatcher(T o, CompilationBuffer compilationBuffer) {
-        RangesArrayBuffer intersectionRanges = compilationBuffer.getRangesArrayBuffer1();
+    public <T extends SortedListOfRanges> T createIntersection(T o, CompilationBuffer compilationBuffer) {
+        RangesBuffer intersectionRanges = getBuffer1(compilationBuffer);
         for (int ia = 0; ia < size(); ia++) {
             int search = o.binarySearch(getLo(ia));
-            if (binarySearchExactMatch(ia, o, search)) {
+            if (o.binarySearchExactMatch(search, this, ia)) {
                 addRangeTo(intersectionRanges, ia);
                 continue;
             }
-            int firstIntersection = binarySearchGetFirstIntersecting(ia, o, search);
+            int firstIntersection = o.binarySearchGetFirstIntersecting(search, this, ia);
             for (int ib = firstIntersection; ib < o.size(); ib++) {
                 if (o.rightOf(ib, this, ia)) {
                     break;
@@ -230,17 +261,24 @@ public abstract class SortedListOfRanges implements ListOfRanges {
                 intersect(ia, o, ib, intersectionRanges);
             }
         }
-        if (equalsRangesArrayBuffer(intersectionRanges)) {
+        if (equalsBuffer(intersectionRanges)) {
             return (T) this;
         }
-        if (o.equalsRangesArrayBuffer(intersectionRanges)) {
+        if (o.equalsBuffer(intersectionRanges)) {
             return o;
         }
         return create(intersectionRanges);
     }
 
+    public <T extends SortedListOfRanges> T createInverse() {
+        return createInverse(createTempBuffer());
+    }
+
     public <T extends SortedListOfRanges> T createInverse(CompilationBuffer compilationBuffer) {
-        RangesArrayBuffer invRanges = compilationBuffer.getRangesArrayBuffer1();
+        return createInverse(getBuffer1(compilationBuffer));
+    }
+
+    private <T extends SortedListOfRanges> T createInverse(RangesBuffer invRanges) {
         if (matchesNothing()) {
             return createFull();
         }
@@ -258,17 +296,17 @@ public abstract class SortedListOfRanges implements ListOfRanges {
 
     @SuppressWarnings("unchecked")
     public <T extends SortedListOfRanges> T subtract(T o, CompilationBuffer compilationBuffer) {
-        RangesArrayBuffer subtractionRanges = compilationBuffer.getRangesArrayBuffer1();
+        RangesBuffer subtractionRanges = getBuffer1(compilationBuffer);
         int tmpLo;
         int tmpHi;
         boolean unchanged = true;
         for (int ia = 0; ia < size(); ia++) {
             int search = o.binarySearch(getLo(ia));
-            if (binarySearchExactMatch(ia, o, search)) {
+            if (o.binarySearchExactMatch(search, this, ia)) {
                 unchanged = false;
                 continue;
             }
-            int firstIntersection = binarySearchGetFirstIntersecting(ia, o, search);
+            int firstIntersection = o.binarySearchGetFirstIntersecting(search, this, ia);
             if (o.binarySearchNoIntersectingFound(firstIntersection)) {
                 addRangeTo(subtractionRanges, ia);
                 continue;
@@ -300,7 +338,7 @@ public abstract class SortedListOfRanges implements ListOfRanges {
             }
         }
         if (unchanged) {
-            assert equalsRangesArrayBuffer(subtractionRanges);
+            assert equalsBuffer(subtractionRanges);
             return (T) this;
         }
         return create(subtractionRanges);
@@ -322,9 +360,9 @@ public abstract class SortedListOfRanges implements ListOfRanges {
             result[2] = createEmpty();
             return;
         }
-        RangesArrayBuffer subtractedA = compilationBuffer.getRangesArrayBuffer1();
-        RangesArrayBuffer subtractedB = compilationBuffer.getRangesArrayBuffer2();
-        RangesArrayBuffer intersectionRanges = compilationBuffer.getRangesArrayBuffer3();
+        RangesBuffer subtractedA = getBuffer1(compilationBuffer);
+        RangesBuffer subtractedB = getBuffer2(compilationBuffer);
+        RangesBuffer intersectionRanges = getBuffer3(compilationBuffer);
         int ia = 0;
         int ib = 0;
         boolean noIntersection = false;
@@ -431,10 +469,10 @@ public abstract class SortedListOfRanges implements ListOfRanges {
         result[0] = create(subtractedA);
         result[1] = create(subtractedB);
         if (subtractedA.isEmpty()) {
-            assert equalsRangesArrayBuffer(intersectionRanges);
+            assert equalsBuffer(intersectionRanges);
             result[2] = (T) this;
         } else if (subtractedB.isEmpty()) {
-            assert o.equalsRangesArrayBuffer(intersectionRanges);
+            assert o.equalsBuffer(intersectionRanges);
             result[2] = o;
         } else {
             result[2] = create(intersectionRanges);
@@ -442,15 +480,15 @@ public abstract class SortedListOfRanges implements ListOfRanges {
     }
 
     public <T extends SortedListOfRanges> T union(T o) {
-        return union(o, new RangesArrayBuffer());
+        return union(o, createTempBuffer());
     }
 
     public <T extends SortedListOfRanges> T union(T o, CompilationBuffer compilationBuffer) {
-        return union(o, compilationBuffer.getRangesArrayBuffer1());
+        return union(o, getBuffer1(compilationBuffer));
     }
 
     @SuppressWarnings("unchecked")
-    public <T extends SortedListOfRanges> T union(T o, RangesArrayBuffer unionRanges) {
+    public <T extends SortedListOfRanges> T union(T o, RangesBuffer unionRanges) {
         if (matchesNothing() || o.matchesEverything()) {
             return o;
         }
@@ -512,10 +550,10 @@ public abstract class SortedListOfRanges implements ListOfRanges {
         if (ib < o.size()) {
             o.addRangeBulkTo(unionRanges, ib, o.size());
         }
-        if (equalsRangesArrayBuffer(unionRanges)) {
+        if (equalsBuffer(unionRanges)) {
             return (T) this;
         }
-        if (o.equalsRangesArrayBuffer(unionRanges)) {
+        if (o.equalsBuffer(unionRanges)) {
             return o;
         }
         return create(unionRanges);
@@ -601,28 +639,28 @@ public abstract class SortedListOfRanges implements ListOfRanges {
 
     @TruffleBoundary
     protected String toString(boolean addBrackets) {
-        if (equalsCodePointSet(Constants.DOT)) {
+        if (equals(Constants.DOT)) {
             return ".";
         }
-        if (equalsCodePointSet(Constants.LINE_TERMINATOR)) {
+        if (equals(Constants.LINE_TERMINATOR)) {
             return "[\\r\\n\\u2028\\u2029]";
         }
-        if (equalsCodePointSet(Constants.DIGITS)) {
+        if (equals(Constants.DIGITS)) {
             return "\\d";
         }
-        if (equalsCodePointSet(Constants.NON_DIGITS)) {
+        if (equals(Constants.NON_DIGITS)) {
             return "\\D";
         }
-        if (equalsCodePointSet(Constants.WORD_CHARS)) {
+        if (equals(Constants.WORD_CHARS)) {
             return "\\w";
         }
-        if (equalsCodePointSet(Constants.NON_WORD_CHARS)) {
+        if (equals(Constants.NON_WORD_CHARS)) {
             return "\\W";
         }
-        if (equalsCodePointSet(Constants.WHITE_SPACE)) {
+        if (equals(Constants.WHITE_SPACE)) {
             return "\\s";
         }
-        if (equalsCodePointSet(Constants.NON_WHITE_SPACE)) {
+        if (equals(Constants.NON_WHITE_SPACE)) {
             return "\\S";
         }
         if (matchesEverything()) {
@@ -645,19 +683,6 @@ public abstract class SortedListOfRanges implements ListOfRanges {
         }
     }
 
-    private boolean equalsCodePointSet(CodePointSet other) {
-        List<CodePointRange> otherRanges = other.getRanges();
-        if (size() != otherRanges.size()) {
-            return false;
-        }
-        for (int i = 0; i < size(); i++) {
-            if (getLo(i) != otherRanges.get(i).lo || getHi(i) != otherRanges.get(i).hi) {
-                return false;
-            }
-        }
-        return true;
-    }
-
     @TruffleBoundary
     public static String rangeToString(int lo, int hi) {
         if (lo == hi) {
@@ -667,19 +692,10 @@ public abstract class SortedListOfRanges implements ListOfRanges {
     }
 
     @TruffleBoundary
-    protected String rangesToString() {
-        return rangesToString(false);
-    }
-
-    @TruffleBoundary
-    protected String rangesToString(boolean numeric) {
+    private String rangesToString() {
         StringBuilder sb = new StringBuilder();
         for (int i = 0; i < size(); i++) {
-            if (numeric) {
-                sb.append("[").append(getLo(i)).append("-").append(getHi(i)).append("]");
-            } else {
-                sb.append(rangeToString(getLo(i), getHi(i)));
-            }
+            sb.append(rangeToString(getLo(i), getHi(i)));
         }
         return sb.toString();
     }

@@ -41,7 +41,7 @@
 suite = {
   "mxversion" : "5.213.3",
   "name" : "truffle",
-  "version" : "1.0.0-rc15",
+  "version" : "20.0.0-beta.01",
   "release" : False,
   "groupId" : "org.graalvm.truffle",
   "sourceinprojectwhitelist" : [],
@@ -126,7 +126,7 @@ suite = {
       ],
       "exports" : [
         "<package-info>", # exports all packages containing package-info.java
-        "com.oracle.truffle.api.impl", # exported to the Graal compiler
+        "com.oracle.truffle.api.impl", # exported to the GraalVM compiler
       ],
       # We need to force javac as JDT has a bug that JDT ignores SuppressWarnings
       # if warnings as errors is enabled. See GR-14683.
@@ -173,12 +173,8 @@ suite = {
       "subDir" : "src",
       "sourceDirs" : ["src"],
       "dependencies" : [
-        "com.oracle.truffle.api.profiles",
-        "com.oracle.truffle.api.interop",
-        "com.oracle.truffle.api.debug",
-        "com.oracle.truffle.api.utilities",
-        "com.oracle.truffle.object.basic",
-        "com.oracle.truffle.polyglot",
+        "TRUFFLE_API",
+        "TRUFFLE_SL",
         "mx:JUNIT",
       ],
       "imports" : ["jdk.internal.loader"],
@@ -583,7 +579,7 @@ suite = {
       "jniHeaders" : True,
       "dependencies" : [
         "com.oracle.truffle.api.interop",
-        "com.oracle.truffle.nfi.types",
+        "com.oracle.truffle.nfi.spi",
       ],
       "exports" : [
         "<package-info>", # exports all packages containing package-info.java
@@ -606,13 +602,15 @@ suite = {
       },
     },
 
-    "com.oracle.truffle.nfi.types" : {
+    "com.oracle.truffle.nfi.spi" : {
       "subDir" : "src",
       "sourceDirs" : ["src"],
       "dependencies" : [
+        "TRUFFLE_API",
       ],
       "checkstyle" : "com.oracle.truffle.api",
       "javaCompliance" : "8+",
+      "annotationProcessors" : ["TRUFFLE_DSL_PROCESSOR_INTEROP_INTERNAL"],
       "workingSets" : "Truffle",
     },
 
@@ -973,6 +971,9 @@ suite = {
       "exclude" : ["mx:HAMCREST", "mx:JUNIT", "mx:JMH_1_21"],
       "distDependencies" : [
         "TRUFFLE_API",
+        "TRUFFLE_SL",
+        "TRUFFLE_TCK",
+        "sdk:POLYGLOT_TCK",
         "TRUFFLE_DSL_PROCESSOR",
       ],
       "description" : "Instrumentation tests including InstrumentationTestLanguage.",
@@ -1018,9 +1019,9 @@ suite = {
 
     "TRUFFLE_GRAALVM_SUPPORT" : {
       "native" : True,
-      "description" : "Truffle support distribution for the GraalVM",
+      "description" : "Truffle support distribution for SVM",
       "layout" : {
-        "native-image.properties" : "file:mx.truffle/tools-truffle.properties",
+        "native-image.properties" : "file:mx.truffle/macro-truffle.properties",
       },
     },
 
@@ -1028,7 +1029,7 @@ suite = {
       "native" : True,
       "description" : "Truffle NFI support distribution for the GraalVM",
       "layout" : {
-        "native-image.properties" : "file:mx.truffle/tools-nfi.properties",
+        "native-image.properties" : "file:mx.truffle/language-nfi.properties",
       },
     },
   },

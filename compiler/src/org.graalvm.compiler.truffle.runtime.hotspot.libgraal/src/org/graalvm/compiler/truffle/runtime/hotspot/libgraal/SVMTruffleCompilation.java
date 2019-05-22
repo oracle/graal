@@ -24,27 +24,30 @@
  */
 package org.graalvm.compiler.truffle.runtime.hotspot.libgraal;
 
-import static org.graalvm.compiler.truffle.runtime.hotspot.libgraal.LibGraalTruffleRuntime.getIsolateThreadId;
+import static org.graalvm.libgraal.LibGraalScope.getIsolateThread;
 
 import org.graalvm.compiler.truffle.common.CompilableTruffleAST;
 import org.graalvm.compiler.truffle.common.TruffleCompilation;
+import org.graalvm.libgraal.LibGraalScope;
 
 final class SVMTruffleCompilation extends SVMObject implements TruffleCompilation {
 
     private final SVMHotSpotTruffleCompiler owner;
     private volatile CompilableTruffleAST cachedCompilableTruffleAST;
     private volatile String cachedId;
+    private final LibGraalScope scope;
 
-    SVMTruffleCompilation(SVMHotSpotTruffleCompiler owner, long handle) {
+    SVMTruffleCompilation(SVMHotSpotTruffleCompiler owner, long handle, LibGraalScope scope) {
         super(handle);
         this.owner = owner;
+        this.scope = scope;
     }
 
     @Override
     public CompilableTruffleAST getCompilable() {
         CompilableTruffleAST compilable = cachedCompilableTruffleAST;
         if (compilable == null) {
-            compilable = HotSpotToSVMCalls.getTruffleCompilationTruffleAST(getIsolateThreadId(), handle);
+            compilable = HotSpotToSVMCalls.getTruffleCompilationTruffleAST(getIsolateThread(), handle);
             cachedCompilableTruffleAST = compilable;
         }
         return compilable;
@@ -55,14 +58,15 @@ final class SVMTruffleCompilation extends SVMObject implements TruffleCompilatio
         try {
             owner.closeCompilation(this);
         } finally {
-            HotSpotToSVMCalls.closeCompilation(getIsolateThreadId(), handle);
+            HotSpotToSVMCalls.closeCompilation(getIsolateThread(), handle);
+            scope.close();
         }
     }
 
     String getId() {
         String id = cachedId;
         if (id == null) {
-            id = HotSpotToSVMCalls.getTruffleCompilationId(getIsolateThreadId(), handle);
+            id = HotSpotToSVMCalls.getTruffleCompilationId(getIsolateThread(), handle);
             cachedId = id;
         }
         return id;

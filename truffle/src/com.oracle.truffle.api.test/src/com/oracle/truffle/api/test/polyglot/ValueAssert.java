@@ -74,6 +74,7 @@ import java.util.function.Function;
 
 import org.graalvm.polyglot.TypeLiteral;
 import org.graalvm.polyglot.Value;
+import org.graalvm.polyglot.HostAccess.Implementable;
 import org.graalvm.polyglot.proxy.Proxy;
 
 public class ValueAssert {
@@ -107,7 +108,16 @@ public class ValueAssert {
 
     public static void assertValue(Value value, Trait... expectedTypes) {
         try {
-            assertValueImpl(value, 0, expectedTypes);
+            assertValueImpl(value, 0, true, expectedTypes);
+        } catch (AssertionError e) {
+            e.addSuppressed(new AssertionError(String.format("assertValue: %s traits: %s", value, Arrays.asList(expectedTypes))));
+            throw e;
+        }
+    }
+
+    public static void assertValue(Value value, boolean hasHostAccess, Trait... expectedTypes) {
+        try {
+            assertValueImpl(value, 0, hasHostAccess, expectedTypes);
         } catch (AssertionError e) {
             e.addSuppressed(new AssertionError(String.format("assertValue: %s traits: %s", value, Arrays.asList(expectedTypes))));
             throw e;
@@ -115,7 +125,7 @@ public class ValueAssert {
     }
 
     @SuppressWarnings("unchecked")
-    private static void assertValueImpl(Value value, int depth, Trait... expectedTypes) {
+    private static void assertValueImpl(Value value, int depth, boolean hasHostAccess, Trait... expectedTypes) {
         if (depth > 10) {
             // stop at a certain recursion depth for recursive data structures
             return;
@@ -124,7 +134,7 @@ public class ValueAssert {
         assertNotNull(value.toString());
         Value metaObject = value.getMetaObject();
         if (metaObject != null && depth == 0) { // meta-object may be null
-            assertValueImpl(metaObject, depth + 1, detectSupportedTypes(metaObject));
+            assertValueImpl(metaObject, depth + 1, hasHostAccess, detectSupportedTypes(metaObject));
             assertNotNull(metaObject.toString());
         }
 
@@ -156,7 +166,7 @@ public class ValueAssert {
                     break;
                 case ARRAY_ELEMENTS:
                     assertTrue(msg, value.hasArrayElements());
-                    assertValueArrayElements(value, depth);
+                    assertValueArrayElements(value, depth, hasHostAccess);
                     break;
                 case EXECUTABLE:
                     assertTrue(msg, value.canExecute());
@@ -174,14 +184,16 @@ public class ValueAssert {
                     assertTrue(msg, value.isHostObject());
                     Object hostObject = value.asHostObject();
                     assertFalse(hostObject instanceof Proxy);
-                    if (hostObject != null && value.hasMembers() && !java.lang.reflect.Proxy.isProxyClass(hostObject.getClass())) {
+                    if (hasHostAccess && hostObject != null && value.hasMembers() && !java.lang.reflect.Proxy.isProxyClass(hostObject.getClass())) {
                         if (hostObject instanceof Class) {
                             boolean isStaticClass = value.hasMember("class");
                             if (isStaticClass) {
                                 assertClassMembers(value, (Class<?>) hostObject, true);
                             } else {
-                                assertClassMembers(value, Class.class, false);
-                                assertTrue(value.hasMember("static"));
+                                if (hasHostAccess) {
+                                    assertClassMembers(value, Class.class, false);
+                                    assertTrue(value.hasMember("static"));
+                                }
                             }
                         } else {
                             assertClassMembers(value, hostObject.getClass(), false);
@@ -201,7 +213,7 @@ public class ValueAssert {
                         Value child = value.getMember(key);
                         expectedValues.put(key, child.as(Object.class));
                         if (!isSameHostObject(value, child)) {
-                            assertValueImpl(child, depth + 1, detectSupportedTypes(child));
+                            assertValueImpl(child, depth + 1, hasHostAccess, detectSupportedTypes(child));
                         }
                     }
 
@@ -342,24 +354,13 @@ public class ValueAssert {
                         assertNull(value.asString());
                     } else {
                         assertFails(() -> value.asString(), ClassCastException.class);
-
-                        if (value.isBoolean()) {
-                            String expected = String.valueOf(value.asBoolean());
-                            assertEquals(expected, value.as(String.class));
-                        } else if (value.isNumber()) {
-                            String expected = value.as(Number.class).toString();
-                            assertEquals(expected, value.as(String.class));
-                        } else {
-                            assertFails(() -> value.as(String.class), ClassCastException.class);
-                        }
-
-                        if (value.isNumber() && value.fitsInInt() && value.asInt() >= 0 && value.asInt() < 65536) {
-                            char ch = value.as(Character.class);
-                            assertEquals(ch, value.asInt());
-                            ch = value.as(char.class);
-                            assertEquals(ch, value.asInt());
+                        assertFails(() -> value.as(String.class), ClassCastException.class);
+                        if (value.fitsInInt() && value.asInt() >= 0 && value.asInt() < 65536) {
+                            assertEquals((Character) (char) value.asInt(), value.as(Character.class));
+                            assertEquals((Character) (char) value.asInt(), value.as(char.class));
                         } else {
                             assertFails(() -> value.as(Character.class), ClassCastException.class);
+                            assertFails(() -> value.as(char.class), ClassCastException.class);
                         }
                     }
 
@@ -369,6 +370,8 @@ public class ValueAssert {
                     assertFalse(value.hasMember("asdf"));
                     assertFails(() -> value.getMember("asdf"), UnsupportedOperationException.class);
                     assertFails(() -> value.putMember("", ""), UnsupportedOperationException.class);
+                    assertFails(() -> value.removeMember(""), UnsupportedOperationException.class);
+                    assertFails(() -> value.invokeMember(""), UnsupportedOperationException.class);
                     assertTrue(value.getMemberKeys().isEmpty());
 
                     if (value.isNull()) {
@@ -449,7 +452,7 @@ public class ValueAssert {
     }
 
     @SuppressWarnings("unchecked")
-    private static void assertValueArrayElements(Value value, int depth) {
+    private static void assertValueArrayElements(Value value, int depth, boolean hasHostAccess) {
         assertTrue(value.hasArrayElements());
 
         List<Object> receivedObjects = new ArrayList<>();
@@ -460,7 +463,7 @@ public class ValueAssert {
             receivedObjects.add(arrayElement.as(Object.class));
             receivedObjectsLongMap.put(i, arrayElement.as(Object.class));
             receivedObjectsIntMap.put((int) i, arrayElement.as(Object.class));
-            assertValueImpl(arrayElement, depth + 1, detectSupportedTypes(arrayElement));
+            assertValueImpl(arrayElement, depth + 1, hasHostAccess, detectSupportedTypes(arrayElement));
         }
 
         List<Object> objectList1 = value.as(OBJECT_LIST);
@@ -617,10 +620,12 @@ public class ValueAssert {
         }
     }
 
+    @Implementable
     public interface EmptyInterface {
 
     }
 
+    @Implementable
     public interface NonFunctionalInterface {
         void foobarbaz();
 

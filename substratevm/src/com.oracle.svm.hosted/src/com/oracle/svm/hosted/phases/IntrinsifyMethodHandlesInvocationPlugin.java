@@ -74,25 +74,21 @@ import org.graalvm.compiler.nodes.type.StampTool;
 import org.graalvm.compiler.nodes.util.GraphUtil;
 import org.graalvm.compiler.phases.OptimisticOptimizations;
 import org.graalvm.compiler.phases.common.CanonicalizerPhase;
-import org.graalvm.compiler.phases.tiers.PhaseContext;
 import org.graalvm.compiler.phases.util.Providers;
 import org.graalvm.compiler.replacements.MethodHandlePlugin;
 import org.graalvm.compiler.replacements.ReplacementsImpl;
 import org.graalvm.compiler.word.WordOperationPlugin;
 
 import com.oracle.graal.pointsto.constraints.UnsupportedFeatureException;
-import com.oracle.graal.pointsto.meta.AnalysisMethod;
-import com.oracle.graal.pointsto.meta.AnalysisType;
 import com.oracle.graal.pointsto.meta.AnalysisUniverse;
 import com.oracle.svm.core.FrameAccess;
 import com.oracle.svm.core.graal.phases.TrustedInterfaceTypePlugin;
 import com.oracle.svm.core.graal.word.SubstrateWordTypes;
 import com.oracle.svm.core.jdk.VarHandleFeature;
 import com.oracle.svm.core.meta.SubstrateObjectConstant;
+import com.oracle.svm.hosted.NativeImageUtil;
 import com.oracle.svm.hosted.SVMHost;
 import com.oracle.svm.hosted.c.GraalAccess;
-import com.oracle.svm.hosted.meta.HostedMethod;
-import com.oracle.svm.hosted.meta.HostedType;
 import com.oracle.svm.hosted.meta.HostedUniverse;
 
 import jdk.vm.ci.meta.Constant;
@@ -218,7 +214,7 @@ public class IntrinsifyMethodHandlesInvocationPlugin implements NodePlugin {
                 if (argType != null) {
                     // TODO For trustInterfaces = false, we cannot be more specific here
                     // (i.e. we cannot use TypeReference.createExactTrusted here)
-                    TypeReference typeref = TypeReference.createWithoutAssumptions(toOriginal(argType));
+                    TypeReference typeref = TypeReference.createWithoutAssumptions(NativeImageUtil.toOriginal(argType));
                     argStamp = StampTool.isPointerNonNull(argStamp) ? StampFactory.objectNonNull(typeref) : StampFactory.object(typeref);
                 }
                 return new ParameterNode(index, StampPair.createSingle(argStamp));
@@ -306,7 +302,7 @@ public class IntrinsifyMethodHandlesInvocationPlugin implements NodePlugin {
         GraphBuilderPhase.Instance graphBuilder = new GraphBuilderPhase.Instance(originalProviders, graphBuilderConfig, OptimisticOptimizations.NONE, null);
 
         DebugContext debug = b.getDebug();
-        StructuredGraph graph = new StructuredGraph.Builder(b.getOptions(), debug).method(toOriginal(methodHandleMethod)).build();
+        StructuredGraph graph = new StructuredGraph.Builder(b.getOptions(), debug).method(NativeImageUtil.toOriginal(methodHandleMethod)).build();
         try (DebugContext.Scope s = debug.scope("IntrinsifyMethodHandles", graph)) {
             graphBuilder.apply(graph);
 
@@ -348,7 +344,7 @@ public class IntrinsifyMethodHandlesInvocationPlugin implements NodePlugin {
              * The canonicalizer converts unsafe field accesses for get/set method handles back to
              * high-level field load and store nodes.
              */
-            new CanonicalizerPhase().apply(graph, new PhaseContext(originalProviders));
+            new CanonicalizerPhase().apply(graph, originalProviders);
             for (FixedGuardNode guard : graph.getNodes(FixedGuardNode.TYPE)) {
                 if (guard.next() instanceof AccessFieldNode && guard.condition() instanceof IsNullNode && guard.isNegated() &&
                                 ((IsNullNode) guard.condition()).getValue() == ((AccessFieldNode) guard.next()).object()) {
@@ -467,22 +463,6 @@ public class IntrinsifyMethodHandlesInvocationPlugin implements NodePlugin {
             result = hUniverse.lookup(result);
         }
         return result;
-    }
-
-    private static ResolvedJavaMethod toOriginal(ResolvedJavaMethod method) {
-        if (method instanceof HostedMethod) {
-            return ((HostedMethod) method).wrapped.wrapped;
-        } else {
-            return ((AnalysisMethod) method).wrapped;
-        }
-    }
-
-    private static ResolvedJavaType toOriginal(ResolvedJavaType type) {
-        if (type instanceof HostedType) {
-            return ((HostedType) type).getWrapped().getWrapped();
-        } else {
-            return ((AnalysisType) type).getWrapped();
-        }
     }
 
     private JavaConstant lookup(JavaConstant constant) {

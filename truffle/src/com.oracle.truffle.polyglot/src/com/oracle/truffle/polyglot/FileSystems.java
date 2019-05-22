@@ -92,7 +92,7 @@ final class FileSystems {
     }
 
     static FileSystem newDefaultFileSystem() {
-        return FileSystems.newFileSystem(findDefaultFileSystemProvider());
+        return newFileSystem(findDefaultFileSystemProvider());
     }
 
     static FileSystem newDefaultFileSystem(Path userDir) {
@@ -962,7 +962,17 @@ final class FileSystems {
             Map<String, Collection<? extends TruffleFile.FileTypeDetector>> detectors = new HashMap<>();
             for (LanguageCache cache : languageCaches) {
                 for (String mimeType : cache.getMimeTypes()) {
-                    detectors.put(mimeType, cache.getFileTypeDetectors());
+                    Collection<? extends TruffleFile.FileTypeDetector> languageDetectors = cache.getFileTypeDetectors();
+                    Collection<? extends TruffleFile.FileTypeDetector> mimeTypeDetectors = detectors.get(mimeType);
+                    if (mimeTypeDetectors != null) {
+                        if (!languageDetectors.isEmpty()) {
+                            Collection<TruffleFile.FileTypeDetector> mergedDetectors = new ArrayList<>(mimeTypeDetectors);
+                            mergedDetectors.addAll(languageDetectors);
+                            detectors.put(mimeType, mergedDetectors);
+                        }
+                    } else {
+                        detectors.put(mimeType, languageDetectors);
+                    }
                 }
             }
             return detectors;

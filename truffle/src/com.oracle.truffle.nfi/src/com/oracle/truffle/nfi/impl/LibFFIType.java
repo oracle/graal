@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2017, 2018, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2017, 2019, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -50,6 +50,7 @@ import com.oracle.truffle.api.dsl.Cached;
 import com.oracle.truffle.api.dsl.Cached.Exclusive;
 import com.oracle.truffle.api.dsl.Cached.Shared;
 import com.oracle.truffle.api.dsl.CachedContext;
+import com.oracle.truffle.api.dsl.CachedLanguage;
 import com.oracle.truffle.api.dsl.Fallback;
 import com.oracle.truffle.api.dsl.GenerateUncached;
 import com.oracle.truffle.api.dsl.ImportStatic;
@@ -67,7 +68,7 @@ import com.oracle.truffle.nfi.impl.ClosureArgumentNode.StringClosureArgumentNode
 import com.oracle.truffle.nfi.impl.LibFFIType.ArrayType.HostObjectHelperNode.WrongTypeException;
 import com.oracle.truffle.nfi.impl.LibFFITypeFactory.ArrayTypeFactory.CachedHostObjectHelperNodeGen;
 import com.oracle.truffle.nfi.impl.NativeArgumentBuffer.TypeTag;
-import com.oracle.truffle.nfi.types.NativeSimpleType;
+import com.oracle.truffle.nfi.spi.types.NativeSimpleType;
 
 abstract class LibFFIType {
 
@@ -185,18 +186,22 @@ abstract class LibFFIType {
 
         @ExportMessage
         Object deserialize(NativeArgumentBuffer buffer,
-                        @Shared("cachedType") @Cached("this.simpleType") NativeSimpleType cachedType) {
+                        @Shared("cachedType") @Cached("this.simpleType") NativeSimpleType cachedType,
+                        @CachedLanguage NFILanguageImpl language) {
             buffer.align(alignment);
             switch (cachedType) {
                 case VOID:
                     return null;
                 case UINT8:
+                    return buffer.getInt8() & (short) 0xFF;
                 case SINT8:
                     return buffer.getInt8();
                 case UINT16:
+                    return buffer.getInt16() & 0xFFFF;
                 case SINT16:
                     return buffer.getInt16();
                 case UINT32:
+                    return buffer.getInt32() & 0xFFFF_FFFFL;
                 case SINT32:
                     return buffer.getInt32();
                 case UINT64:
@@ -207,13 +212,13 @@ abstract class LibFFIType {
                 case DOUBLE:
                     return buffer.getDouble();
                 case POINTER:
-                    return new NativePointer(buffer.getPointer(size));
+                    return NativePointer.create(language, buffer.getPointer(size));
                 case STRING:
                     return new NativeString(buffer.getPointer(size));
                 case OBJECT:
                     Object ret = buffer.getObject(size);
                     if (ret == null) {
-                        return new NativePointer(0);
+                        return NativePointer.create(language, 0);
                     } else {
                         return ret;
                     }
@@ -224,8 +229,8 @@ abstract class LibFFIType {
         }
 
         @Override
-        public Object deserializeRet(NativeArgumentBuffer buffer) {
-            return deserialize(buffer, simpleType);
+        public Object deserializeRet(NativeArgumentBuffer buffer, NFILanguageImpl language) {
+            return deserialize(buffer, simpleType, language);
         }
     }
 
@@ -238,14 +243,17 @@ abstract class LibFFIType {
         public Object fromPrimitive(long primitive) {
             switch (simpleType) {
                 case VOID:
-                    return new NativePointer(0);
+                    return NativePointer.create(ctx.language, 0);
                 case UINT8:
+                    return primitive & (short) 0xFF;
                 case SINT8:
                     return (byte) primitive;
                 case UINT16:
+                    return primitive & 0xFFFF;
                 case SINT16:
                     return (short) primitive;
                 case UINT32:
+                    return primitive & 0xFFFF_FFFFL;
                 case SINT32:
                     return (int) primitive;
                 case UINT64:
@@ -268,7 +276,7 @@ abstract class LibFFIType {
                 case DOUBLE:
                     return Double.longBitsToDouble(primitive);
                 case POINTER:
-                    return new NativePointer(primitive);
+                    return NativePointer.create(ctx.language, primitive);
                 default:
                     CompilerDirectives.transferToInterpreter();
                     throw new AssertionError(simpleType.name());
@@ -310,8 +318,8 @@ abstract class LibFFIType {
         }
 
         @Override
-        public Object deserializeRet(NativeArgumentBuffer buffer) {
-            return new NativePointer(0);
+        public Object deserializeRet(NativeArgumentBuffer buffer, NFILanguageImpl language) {
+            return NativePointer.create(language, 0);
         }
     }
 
@@ -547,7 +555,8 @@ abstract class LibFFIType {
 
         @Override
         @ExportMessage(name = "deserialize")
-        public Object deserializeRet(NativeArgumentBuffer buffer) {
+        public Object deserializeRet(NativeArgumentBuffer buffer,
+                        @CachedLanguage NFILanguageImpl language) {
             CompilerDirectives.transferToInterpreter();
             throw new AssertionError("Arrays can only be passed from Java to native");
         }
@@ -630,14 +639,14 @@ abstract class LibFFIType {
 
         @ExportMessage(name = "deserialize")
         @Override
-        public Object deserializeRet(NativeArgumentBuffer buffer) {
+        public Object deserializeRet(NativeArgumentBuffer buffer,
+                        @CachedLanguage NFILanguageImpl language) {
             long functionPointer = buffer.getPointer(size);
-            NativePointer symbol = new NativePointer(functionPointer);
             if (functionPointer == 0) {
                 // cannot bind null pointer
-                return symbol;
+                return NativePointer.create(language, 0);
             } else {
-                return new LibFFIFunction(symbol, signature);
+                return NativePointer.createBound(language, functionPointer, signature);
             }
         }
 
@@ -662,7 +671,8 @@ abstract class LibFFIType {
 
         @ExportMessage(name = "deserialize")
         @Override
-        public Object deserializeRet(NativeArgumentBuffer buffer) {
+        public Object deserializeRet(NativeArgumentBuffer buffer,
+                        @CachedLanguage NFILanguageImpl language) {
             CompilerDirectives.transferToInterpreter();
             throw new AssertionError("environment pointer can not be used as return type");
         }
@@ -712,7 +722,7 @@ abstract class LibFFIType {
 
     public abstract ClosureArgumentNode createClosureArgumentNode();
 
-    public abstract Object deserializeRet(NativeArgumentBuffer buffer);
+    public abstract Object deserializeRet(NativeArgumentBuffer buffer, NFILanguageImpl language);
 
     public LibFFIType overrideClosureRetType() {
         return this;

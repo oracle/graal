@@ -35,7 +35,7 @@ public final class TraceFinderResult extends LazyResult {
     private boolean resultCalculated = false;
 
     public TraceFinderResult(Object input, int fromIndex, int end, CallTarget traceFinderCallTarget, PreCalculatedResultFactory[] preCalculatedResults) {
-        super(input, fromIndex, end, preCalculatedResults[0].getNumberOfGroups());
+        super(input, fromIndex, end);
         this.indices = new int[preCalculatedResults[0].getNumberOfGroups() * 2];
         this.traceFinderCallTarget = traceFinderCallTarget;
         this.preCalculatedResults = preCalculatedResults;

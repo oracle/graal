@@ -40,6 +40,7 @@ import com.oracle.truffle.llvm.parser.model.symbols.constants.Constant;
 import com.oracle.truffle.llvm.parser.model.symbols.constants.GetElementPointerConstant;
 import com.oracle.truffle.llvm.parser.model.symbols.constants.InlineAsmConstant;
 import com.oracle.truffle.llvm.parser.model.symbols.constants.NullConstant;
+import com.oracle.truffle.llvm.parser.model.symbols.constants.SelectConstant;
 import com.oracle.truffle.llvm.parser.model.symbols.constants.StringConstant;
 import com.oracle.truffle.llvm.parser.model.symbols.constants.UndefinedConstant;
 import com.oracle.truffle.llvm.parser.model.symbols.constants.floatingpoint.FloatingPointConstant;
@@ -64,7 +65,7 @@ public final class Constants implements ParserListener {
     private static final int CONSTANT_CE_BINOP = 10;
     private static final int CONSTANT_CE_CAST = 11;
     private static final int CONSTANT_CE_GEP = 12;
-    // private static final int CONSTANT_CE_SELECT = 13;
+    private static final int CONSTANT_CE_SELECT = 13;
     // private static final int CONSTANT_CE_EXTRACTELT = 14;
     // private static final int CONSTANT_CE_INSERTELT = 15;
     // private static final int CONSTANT_CE_SHUFFLEVEC = 16;
@@ -189,6 +190,14 @@ public final class Constants implements ParserListener {
             case CONSTANT_CE_GEP_WITH_INRANGE_INDEX:
                 createGetElementPointerExpression(args, opCode);
                 return;
+
+            case CONSTANT_CE_SELECT: {
+                final int condition = (int) args[0];
+                final int trueValue = (int) args[1];
+                final int falseValue = (int) args[2];
+                scope.addSymbol(SelectConstant.fromSymbols(scope.getSymbols(), type, condition, trueValue, falseValue), type);
+                break;
+            }
 
             default:
                 throw new LLVMParserException("Unsupported opCode in constant block: " + opCode);

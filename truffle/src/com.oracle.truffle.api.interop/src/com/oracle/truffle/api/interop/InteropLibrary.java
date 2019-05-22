@@ -104,7 +104,7 @@ import com.oracle.truffle.api.nodes.RootNode;
  * (-ea) are enabled.
  *
  * @see com.oracle.truffle.api.library Reference documentation of Truffle Libraries.
- * @since 1.0
+ * @since 19.0
  */
 @GenerateLibrary(assertions = Asserts.class, receiverType = TruffleObject.class)
 @DefaultExport(DefaultBooleanExports.class)
@@ -121,7 +121,7 @@ import com.oracle.truffle.api.nodes.RootNode;
 public abstract class InteropLibrary extends Library {
 
     /**
-     * @since 1.0
+     * @since 19.0
      */
     protected InteropLibrary() {
     }
@@ -131,7 +131,7 @@ public abstract class InteropLibrary extends Library {
      * <code>false</code>. Most object oriented languages have one or many values representing null
      * values. Invoking this message does not cause any observable side-effects.
      *
-     * @since 1.0
+     * @since 19.0
      */
     public boolean isNull(Object receiver) {
         return false;
@@ -142,7 +142,7 @@ public abstract class InteropLibrary extends Library {
      * <code>false</code>. Invoking this message does not cause any observable side-effects.
      *
      * @see #asBoolean(Object)
-     * @since 1.0
+     * @since 19.0
      */
     // Boolean Messages
     @Abstract(ifExported = "asBoolean")
@@ -157,7 +157,7 @@ public abstract class InteropLibrary extends Library {
      * @throws UnsupportedMessageException if and only if {@link #isBoolean(Object)} returns
      *             <code>false</code> for the same receiver.
      * @see #isBoolean(Object)
-     * @since 1.0
+     * @since 19.0
      */
     @Abstract(ifExported = "isBoolean")
     public boolean asBoolean(Object receiver) throws UnsupportedMessageException {
@@ -172,7 +172,7 @@ public abstract class InteropLibrary extends Library {
      * {@link #isInstantiable(Object) instantiable}.
      *
      * @see #execute(Object, Object...)
-     * @since 1.0
+     * @since 19.0
      */
     @Abstract(ifExported = "execute")
     public boolean isExecutable(Object receiver) {
@@ -189,7 +189,7 @@ public abstract class InteropLibrary extends Library {
      * @throws UnsupportedMessageException if and only if {@link #isExecutable(Object)} returns
      *             <code>false</code> for the same receiver.
      * @see #isExecutable(Object)
-     * @since 1.0
+     * @since 19.0
      */
     @Abstract(ifExported = "isExecutable")
     public Object execute(Object receiver, Object... arguments) throws UnsupportedTypeException, ArityException, UnsupportedMessageException {
@@ -206,7 +206,7 @@ public abstract class InteropLibrary extends Library {
      * {@link #isInstantiable(Object) instantiable}.
      *
      * @see #instantiate(Object, Object...)
-     * @since 1.0
+     * @since 19.0
      */
     @Abstract(ifExported = "instantiate")
     public boolean isInstantiable(Object receiver) {
@@ -223,7 +223,7 @@ public abstract class InteropLibrary extends Library {
      * @throws UnsupportedMessageException if and only if {@link #isInstantiable(Object)} returns
      *             <code>false</code> for the same receiver.
      * @see #isExecutable(Object)
-     * @since 1.0
+     * @since 19.0
      */
     @Abstract(ifExported = "isInstantiable")
     public Object instantiate(Object receiver, Object... arguments) throws UnsupportedTypeException, ArityException, UnsupportedMessageException {
@@ -237,7 +237,7 @@ public abstract class InteropLibrary extends Library {
      * <code>false</code>. Invoking this message does not cause any observable side-effects.
      *
      * @see #asString(Object)
-     * @since 1.0
+     * @since 19.0
      */
     @Abstract(ifExported = "asString")
     public boolean isString(Object receiver) {
@@ -251,7 +251,7 @@ public abstract class InteropLibrary extends Library {
      * @throws UnsupportedMessageException if and only if {@link #isString(Object)} returns
      *             <code>false</code> for the same receiver.
      * @see #isBoolean(Object)
-     * @since 1.0
+     * @since 19.0
      */
     @Abstract(ifExported = "isString")
     public String asString(Object receiver) throws UnsupportedMessageException {
@@ -276,7 +276,7 @@ public abstract class InteropLibrary extends Library {
      * @see #asLong(Object)
      * @see #asFloat(Object)
      * @see #asDouble(Object)
-     * @since 1.0
+     * @since 19.0
      */
     @Abstract(ifExported = {"fitsInByte", "fitsInShort", "fitsInInt", "fitsInLong", "fitsInFloat", "fitsInDouble", "asByte", "asShort", "asInt", "asLong", "asFloat", "asDouble"})
     public boolean isNumber(Object receiver) {
@@ -290,7 +290,7 @@ public abstract class InteropLibrary extends Library {
      *
      * @see #isNumber(Object)
      * @see #asByte(Object)
-     * @since 1.0
+     * @since 19.0
      */
     @Abstract(ifExported = "isNumber")
     public boolean fitsInByte(Object receiver) {
@@ -304,7 +304,7 @@ public abstract class InteropLibrary extends Library {
      *
      * @see #isNumber(Object)
      * @see #asShort(Object)
-     * @since 1.0
+     * @since 19.0
      */
     @Abstract(ifExported = "isNumber")
     public boolean fitsInShort(Object receiver) {
@@ -318,7 +318,7 @@ public abstract class InteropLibrary extends Library {
      *
      * @see #isNumber(Object)
      * @see #asInt(Object)
-     * @since 1.0
+     * @since 19.0
      */
     @Abstract(ifExported = "isNumber")
     public boolean fitsInInt(Object receiver) {
@@ -332,7 +332,7 @@ public abstract class InteropLibrary extends Library {
      *
      * @see #isNumber(Object)
      * @see #asLong(Object)
-     * @since 1.0
+     * @since 19.0
      */
     @Abstract(ifExported = "isNumber")
     public boolean fitsInLong(Object receiver) {
@@ -346,7 +346,7 @@ public abstract class InteropLibrary extends Library {
      *
      * @see #isNumber(Object)
      * @see #asFloat(Object)
-     * @since 1.0
+     * @since 19.0
      */
     @Abstract(ifExported = "isNumber")
     public boolean fitsInFloat(Object receiver) {
@@ -360,7 +360,7 @@ public abstract class InteropLibrary extends Library {
      *
      * @see #isNumber(Object)
      * @see #asDouble(Object)
-     * @since 1.0
+     * @since 19.0
      */
     @Abstract(ifExported = "isNumber")
     public boolean fitsInDouble(Object receiver) {
@@ -375,7 +375,7 @@ public abstract class InteropLibrary extends Library {
      *             {@link #isNumber(Object)} or it does not fit without less of precision.
      * @see #isNumber(Object)
      * @see #fitsInByte(Object)
-     * @since 1.0
+     * @since 19.0
      */
     @Abstract(ifExported = "isNumber")
     public byte asByte(Object receiver) throws UnsupportedMessageException {
@@ -391,7 +391,7 @@ public abstract class InteropLibrary extends Library {
      *             {@link #isNumber(Object)} or it does not fit without less of precision.
      * @see #isNumber(Object)
      * @see #fitsInShort(Object)
-     * @since 1.0
+     * @since 19.0
      */
     @Abstract(ifExported = "isNumber")
     public short asShort(Object receiver) throws UnsupportedMessageException {
@@ -407,7 +407,7 @@ public abstract class InteropLibrary extends Library {
      *             {@link #isNumber(Object)} or it does not fit without less of precision.
      * @see #isNumber(Object)
      * @see #fitsInInt(Object)
-     * @since 1.0
+     * @since 19.0
      */
     @Abstract(ifExported = "isNumber")
     public int asInt(Object receiver) throws UnsupportedMessageException {
@@ -423,7 +423,7 @@ public abstract class InteropLibrary extends Library {
      *             {@link #isNumber(Object)} or it does not fit without less of precision.
      * @see #isNumber(Object)
      * @see #fitsInLong(Object)
-     * @since 1.0
+     * @since 19.0
      */
     @Abstract(ifExported = "isNumber")
     public long asLong(Object receiver) throws UnsupportedMessageException {
@@ -439,7 +439,7 @@ public abstract class InteropLibrary extends Library {
      *             {@link #isNumber(Object)} or it does not fit without less of precision.
      * @see #isNumber(Object)
      * @see #fitsInFloat(Object)
-     * @since 1.0
+     * @since 19.0
      */
     @Abstract(ifExported = "isNumber")
     public float asFloat(Object receiver) throws UnsupportedMessageException {
@@ -455,7 +455,7 @@ public abstract class InteropLibrary extends Library {
      *             {@link #isNumber(Object)} or it does not fit without less of precision.
      * @see #isNumber(Object)
      * @see #fitsInDouble(Object)
-     * @since 1.0
+     * @since 19.0
      */
     @Abstract(ifExported = "isNumber")
     public double asDouble(Object receiver) throws UnsupportedMessageException {
@@ -479,7 +479,7 @@ public abstract class InteropLibrary extends Library {
      * @see #writeMember(Object, String, Object)
      * @see #removeMember(Object, String)
      * @see #invokeMember(Object, String, Object...)
-     * @since 1.0
+     * @since 19.0
      */
     @Abstract(ifExported = {"getMembers", "isMemberReadable", "readMember", "isMemberModifiable", "isMemberInsertable", "writeMember", "isMemberRemovable", "removeMember", "isMemberInvocable",
                     "invokeMember", "isMemberInternal", "hasMemberReadSideEffects", "hasMemberWriteSideEffects"})
@@ -499,7 +499,7 @@ public abstract class InteropLibrary extends Library {
      * @throws UnsupportedMessageException if and only if the receiver does not have any
      *             {@link #hasMembers(Object) members}.
      * @see #hasMembers(Object)
-     * @since 1.0
+     * @since 19.0
      */
     @Abstract(ifExported = "hasMembers")
     public Object getMembers(Object receiver, boolean includeInternal) throws UnsupportedMessageException {
@@ -514,7 +514,7 @@ public abstract class InteropLibrary extends Library {
      * @throws UnsupportedMessageException if and only if the receiver has no
      *             {@link #hasMembers(Object) members}.
      * @see #getMembers(Object, boolean)
-     * @since 1.0
+     * @since 19.0
      */
     public final Object getMembers(Object receiver) throws UnsupportedMessageException {
         return getMembers(receiver, false);
@@ -527,7 +527,7 @@ public abstract class InteropLibrary extends Library {
      * Returns <code>false</code> by default.
      *
      * @see #readMember(Object, String)
-     * @since 1.0
+     * @since 19.0
      */
     @Abstract(ifExported = "readMember")
     public boolean isMemberReadable(Object receiver, String member) {
@@ -544,7 +544,7 @@ public abstract class InteropLibrary extends Library {
      * @throws UnsupportedMessageException if the member is not readable
      * @throws UnknownIdentifierException if the given member does not exist.
      * @see #hasMemberReadSideEffects(Object, String)
-     * @since 1.0
+     * @since 19.0
      */
     @Abstract(ifExported = "isMemberReadable")
     public Object readMember(Object receiver, String member) throws UnsupportedMessageException, UnknownIdentifierException {
@@ -560,7 +560,7 @@ public abstract class InteropLibrary extends Library {
      * default.
      *
      * @see #writeMember(Object, String, Object)
-     * @since 1.0
+     * @since 19.0
      */
     @Abstract(ifExported = "writeMember")
     public boolean isMemberModifiable(Object receiver, String member) {
@@ -575,7 +575,7 @@ public abstract class InteropLibrary extends Library {
      * default.
      *
      * @see #writeMember(Object, String, Object)
-     * @since 1.0
+     * @since 19.0
      */
     @Abstract(ifExported = "writeMember")
     public boolean isMemberInsertable(Object receiver, String member) {
@@ -594,7 +594,7 @@ public abstract class InteropLibrary extends Library {
      * @throws UnknownIdentifierException if the given member is not insertable and does not exist.
      * @throws UnsupportedTypeException if the provided value type is not allowed to be written
      * @see #hasMemberWriteSideEffects(Object, String)
-     * @since 1.0
+     * @since 19.0
      */
     @Abstract(ifExported = {"isMemberModifiable", "isMemberInsertable"})
     public void writeMember(Object receiver, String member, Object value) throws UnsupportedMessageException, UnknownIdentifierException, UnsupportedTypeException {
@@ -609,7 +609,7 @@ public abstract class InteropLibrary extends Library {
      * by default.
      *
      * @see #removeMember(Object, String)
-     * @since 1.0
+     * @since 19.0
      */
     @Abstract(ifExported = "removeMember")
     public boolean isMemberRemovable(Object receiver, String member) {
@@ -626,7 +626,7 @@ public abstract class InteropLibrary extends Library {
      * @throws UnknownIdentifierException if the given member is not existing but removing would be
      *             allowed
      * @see #isMemberRemovable(Object, String)
-     * @since 1.0
+     * @since 19.0
      */
     @Abstract(ifExported = "isMemberRemovable")
     public void removeMember(Object receiver, String member) throws UnsupportedMessageException, UnknownIdentifierException {
@@ -641,7 +641,7 @@ public abstract class InteropLibrary extends Library {
      * default.
      *
      * @see #invokeMember(Object, String, Object...)
-     * @since 1.0
+     * @since 19.0
      */
     @Abstract(ifExported = "invokeMember")
     public boolean isMemberInvocable(Object receiver, String member) {
@@ -658,7 +658,7 @@ public abstract class InteropLibrary extends Library {
      *             actual arguments.
      * @throws UnsupportedMessageException if the member is not invocable
      * @see #isMemberInvocable(Object, String)
-     * @since 1.0
+     * @since 19.0
      */
     @Abstract(ifExported = "isMemberInvocable")
     public Object invokeMember(Object receiver, String member, Object... arguments)
@@ -675,7 +675,7 @@ public abstract class InteropLibrary extends Library {
      * observable side-effects. Returns <code>false</code> by default.
      *
      * @see #getMembers(Object, boolean)
-     * @since 1.0
+     * @since 19.0
      */
     public boolean isMemberInternal(Object receiver, String member) {
         return false;
@@ -685,7 +685,7 @@ public abstract class InteropLibrary extends Library {
      * Returns true if the member is {@link #isMemberModifiable(Object, String) modifiable} or
      * {@link #isMemberInsertable(Object, String) insertable}.
      *
-     * @since 1.0
+     * @since 19.0
      */
     public final boolean isMemberWritable(Object receiver, String member) {
         return isMemberModifiable(receiver, member) || isMemberInsertable(receiver, member);
@@ -697,7 +697,7 @@ public abstract class InteropLibrary extends Library {
      * {@link #isMemberReadable(Object, String) readable}, {@link #isMemberRemovable(Object, String)
      * removable} or {@link #isMemberInvocable(Object, String) invocable}.
      *
-     * @since 1.0
+     * @since 19.0
      */
     public final boolean isMemberExisting(Object receiver, String member) {
         return isMemberReadable(receiver, member) || isMemberModifiable(receiver, member) || isMemberRemovable(receiver, member) || isMemberInvocable(receiver, member);
@@ -712,7 +712,7 @@ public abstract class InteropLibrary extends Library {
      * function.
      *
      * @see #readMember(Object, String)
-     * @since 1.0
+     * @since 19.0
      */
     public boolean hasMemberReadSideEffects(Object receiver, String member) {
         return false;
@@ -727,7 +727,7 @@ public abstract class InteropLibrary extends Library {
      * setter function.
      *
      * @see #writeMember(Object, String, Object)
-     * @since 1.0
+     * @since 19.0
      */
     public boolean hasMemberWriteSideEffects(Object receiver, String member) {
         return false;
@@ -741,7 +741,7 @@ public abstract class InteropLibrary extends Library {
      * message does not cause any observable side-effects. Returns <code>false</code> by default.
      *
      * @see #getArraySize(Object)
-     * @since 1.0
+     * @since 19.0
      */
     @Abstract(ifExported = {"readArrayElement", "writeArrayElement", "removeArrayElement", "isArrayElementModifiable", "isArrayElementRemovable", "isArrayElementReadable", "getArraySize"})
     public boolean hasArrayElements(Object receiver) {
@@ -754,7 +754,7 @@ public abstract class InteropLibrary extends Library {
      *
      * @throws UnsupportedMessageException if the array element is not readable.
      * @throws InvalidArrayIndexException if the array index is out of bounds or invalid.
-     * @since 1.0
+     * @since 19.0
      */
     @Abstract(ifExported = {"hasArrayElements"})
     public Object readArrayElement(Object receiver, long index) throws UnsupportedMessageException, InvalidArrayIndexException {
@@ -767,7 +767,7 @@ public abstract class InteropLibrary extends Library {
      *
      * @throws UnsupportedMessageException if and only if {@link #hasArrayElements(Object)} returns
      *             <code>false</code>.
-     * @since 1.0
+     * @since 19.0
      */
     @Abstract(ifExported = {"hasArrayElements"})
     public long getArraySize(Object receiver) throws UnsupportedMessageException {
@@ -782,7 +782,7 @@ public abstract class InteropLibrary extends Library {
      * side-effects. Returns <code>false</code> by default.
      *
      * @see #readArrayElement(Object, long)
-     * @since 1.0
+     * @since 19.0
      */
     @Abstract(ifExported = {"hasArrayElements"})
     public boolean isArrayElementReadable(Object receiver, long index) {
@@ -799,7 +799,7 @@ public abstract class InteropLibrary extends Library {
      * @throws UnsupportedMessageException if the array element is not writable
      * @throws InvalidArrayIndexException if the array element is not insertable and does not exist.
      * @throws UnsupportedTypeException if the provided value type is not allowed to be written
-     * @since 1.0
+     * @since 19.0
      */
     @Abstract(ifExported = {"isArrayElementModifiable", "isArrayElementInsertable"})
     public void writeArrayElement(Object receiver, long index, Object value) throws UnsupportedMessageException, UnsupportedTypeException, InvalidArrayIndexException {
@@ -817,7 +817,7 @@ public abstract class InteropLibrary extends Library {
      * @throws InvalidArrayIndexException if the given array element index is not existing but
      *             removing would be allowed
      * @see #isMemberRemovable(Object, String)
-     * @since 1.0
+     * @since 19.0
      */
     @Abstract(ifExported = "isArrayElementRemovable")
     public void removeArrayElement(Object receiver, long index) throws UnsupportedMessageException, InvalidArrayIndexException {
@@ -833,7 +833,7 @@ public abstract class InteropLibrary extends Library {
      * by default.
      *
      * @see #writeArrayElement(Object, long, Object)
-     * @since 1.0
+     * @since 19.0
      */
     @Abstract(ifExported = "writeArrayElement")
     public boolean isArrayElementModifiable(Object receiver, long index) {
@@ -848,7 +848,7 @@ public abstract class InteropLibrary extends Library {
      * by default.
      *
      * @see #writeArrayElement(Object, long, Object)
-     * @since 1.0
+     * @since 19.0
      */
     @Abstract(ifExported = "writeArrayElement")
     public boolean isArrayElementInsertable(Object receiver, long index) {
@@ -863,7 +863,7 @@ public abstract class InteropLibrary extends Library {
      * by default.
      *
      * @see #removeArrayElement(Object, long)
-     * @since 1.0
+     * @since 19.0
      */
     @Abstract(ifExported = "removeArrayElement")
     public boolean isArrayElementRemovable(Object receiver, long index) {
@@ -874,7 +874,7 @@ public abstract class InteropLibrary extends Library {
      * Returns true if the array element is {@link #isArrayElementModifiable(Object, long)
      * modifiable} or {@link #isArrayElementInsertable(Object, long) insertable}.
      *
-     * @since 1.0
+     * @since 19.0
      */
     public final boolean isArrayElementWritable(Object receiver, long index) {
         return isArrayElementModifiable(receiver, index) || isArrayElementInsertable(receiver, index);
@@ -886,7 +886,7 @@ public abstract class InteropLibrary extends Library {
      * {@link #isArrayElementReadable(Object, long) readable} or
      * {@link #isArrayElementRemovable(Object, long) removable}.
      *
-     * @since 1.0
+     * @since 19.0
      */
     public final boolean isArrayElementExisting(Object receiver, long index) {
         return isArrayElementModifiable(receiver, index) || isArrayElementReadable(receiver, index) || isArrayElementRemovable(receiver, index);
@@ -905,7 +905,7 @@ public abstract class InteropLibrary extends Library {
      *
      * @see #asPointer(Object)
      * @see #toNative(Object)
-     * @since 1.0
+     * @since 19.0
      */
     @Abstract(ifExported = {"asPointer"})
     public boolean isPointer(Object receiver) {
@@ -918,7 +918,7 @@ public abstract class InteropLibrary extends Library {
      * @throws UnsupportedMessageException if and only if {@link #isPointer(Object)} returns
      *             <code>false</code> for the same receiver.
      * @see #isPointer(Object)
-     * @since 1.0
+     * @since 19.0
      */
     @Abstract(ifExported = {"isPointer"})
     public long asPointer(Object receiver) throws UnsupportedMessageException {
@@ -933,7 +933,7 @@ public abstract class InteropLibrary extends Library {
      *
      * @see #isPointer(Object)
      * @see #asPointer(Object)
-     * @since 1.0
+     * @since 19.0
      */
     public void toNative(Object receiver) {
     }
@@ -943,7 +943,7 @@ public abstract class InteropLibrary extends Library {
      * {@link LibraryFactory#resolve(Class) ResolvedLibrary.resolve(InteropLibrary.class)}.
      *
      * @see LibraryFactory#resolve(Class)
-     * @since 1.0
+     * @since 19.0
      */
     public static LibraryFactory<InteropLibrary> getFactory() {
         return FACTORY;
@@ -953,7 +953,7 @@ public abstract class InteropLibrary extends Library {
      * Utility for libraries to require adoption before cached versions of nodes can be executed.
      * Only failes if assertions (-ea) are enabled.
      *
-     * @since 1.0
+     * @since 19.0
      */
     protected final boolean assertAdopted() {
         assert assertAdoptedImpl();
@@ -971,7 +971,7 @@ public abstract class InteropLibrary extends Library {
             node = node.getParent();
         } while (node != null);
 
-        assert false : "Invalid libray usage. Cached library must be adopted by a RootNode before it is executed.";
+        assert false : "Invalid library usage. Cached library must be adopted by a RootNode before it is executed.";
         return true;
     }
 

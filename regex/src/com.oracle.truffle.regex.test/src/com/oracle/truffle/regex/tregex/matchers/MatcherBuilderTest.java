@@ -75,7 +75,7 @@ public class MatcherBuilderTest {
     }
 
     private static void checkIntersection(CharSet a, CharSet b, char... values) {
-        CharSet intersection = a.createIntersectionMatcher(b, new CompilationBuffer());
+        CharSet intersection = a.createIntersection(b, new CompilationBuffer());
         checkMatch("intersection(" + a + "," + b + ")", intersection, values);
         CharSet[] result = new CharSet[3];
         a.intersectAndSubtract(b, new CompilationBuffer(), result);

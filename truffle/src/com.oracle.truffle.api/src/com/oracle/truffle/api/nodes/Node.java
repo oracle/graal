@@ -191,7 +191,7 @@ public abstract class Node implements NodeInterface, Cloneable {
      * Implementations of {@link #isAdoptable()} are required to fold to a constant result when
      * compiled with a constant receiver.
      *
-     * @since 1.0
+     * @since 19.0
      */
     public boolean isAdoptable() {
         return true;
@@ -692,7 +692,7 @@ public abstract class Node implements NodeInterface, Cloneable {
      *
      * @see com.oracle.truffle.api.dsl.CachedContext @CachedContext to use the context reference in
      *      specializations or exported messages.
-     * @since 1.0
+     * @since 19.0
      */
     @SuppressWarnings({"unchecked", "rawtypes"})
     protected final <T extends TruffleLanguage> LanguageReference<T> lookupLanguageReference(Class<T> languageClass) {
@@ -802,7 +802,7 @@ public abstract class Node implements NodeInterface, Cloneable {
      *
      * @see com.oracle.truffle.api.dsl.CachedContext @CachedContext to use the context reference in
      *      specializations or exported messages.
-     * @since 1.0
+     * @since 19.0
      */
     @SuppressWarnings("unchecked")
     protected final <C, T extends TruffleLanguage<C>> ContextReference<C> lookupContextReference(Class<T> languageClass) {
@@ -829,6 +829,18 @@ public abstract class Node implements NodeInterface, Cloneable {
     }
 
     private static final Map<Class<?>, ContextReference<?>> UNCACHED_CONTEXT_REFERENCES = new ConcurrentHashMap<>();
+
+    /**
+     * Resets the state for native image generation.
+     *
+     * NOTE: this method is called reflectively by downstream projects.
+     */
+    @SuppressWarnings("unused")
+    private static void resetNativeImageState() {
+        assert TruffleOptions.AOT : "Only supported during image generation";
+        UNCACHED_CONTEXT_REFERENCES.clear();
+        UNCACHED_LANGUAGE_REFERENCES.clear();
+    }
 
     @SuppressWarnings("unchecked")
     @TruffleBoundary

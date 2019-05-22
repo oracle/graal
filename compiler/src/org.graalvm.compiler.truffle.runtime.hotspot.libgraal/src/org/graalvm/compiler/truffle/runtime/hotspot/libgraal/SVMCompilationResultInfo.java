@@ -24,7 +24,7 @@
  */
 package org.graalvm.compiler.truffle.runtime.hotspot.libgraal;
 
-import static org.graalvm.compiler.truffle.runtime.hotspot.libgraal.LibGraalTruffleRuntime.getIsolateThreadId;
+import static org.graalvm.libgraal.LibGraalScope.getIsolateThread;
 
 import org.graalvm.compiler.truffle.common.TruffleCompilerListener;
 
@@ -39,36 +39,36 @@ final class SVMCompilationResultInfo extends SVMObject implements TruffleCompile
 
     @Override
     public int getTargetCodeSize() {
-        return HotSpotToSVMCalls.getTargetCodeSize(getIsolateThreadId(), handle);
+        return HotSpotToSVMCalls.getTargetCodeSize(getIsolateThread(), handle);
     }
 
     @Override
     public int getTotalFrameSize() {
-        return HotSpotToSVMCalls.getTotalFrameSize(getIsolateThreadId(), handle);
+        return HotSpotToSVMCalls.getTotalFrameSize(getIsolateThread(), handle);
     }
 
     @Override
     public int getExceptionHandlersCount() {
-        return HotSpotToSVMCalls.getExceptionHandlersCount(getIsolateThreadId(), handle);
+        return HotSpotToSVMCalls.getExceptionHandlersCount(getIsolateThread(), handle);
     }
 
     @Override
     public int getInfopointsCount() {
-        return HotSpotToSVMCalls.getInfopointsCount(getIsolateThreadId(), handle);
+        return HotSpotToSVMCalls.getInfopointsCount(getIsolateThread(), handle);
     }
 
     @Override
     public String[] getInfopoints() {
-        return HotSpotToSVMCalls.getInfopoints(getIsolateThreadId(), handle);
+        return HotSpotToSVMCalls.getInfopoints(getIsolateThread(), handle);
     }
 
     @Override
     public int getMarksCount() {
-        return HotSpotToSVMCalls.getMarksCount(getIsolateThreadId(), handle);
+        return HotSpotToSVMCalls.getMarksCount(getIsolateThread(), handle);
     }
 
     @Override
     public int getDataPatchesCount() {
-        return HotSpotToSVMCalls.getDataPatchesCount(getIsolateThreadId(), handle);
+        return HotSpotToSVMCalls.getDataPatchesCount(getIsolateThread(), handle);
     }
 }

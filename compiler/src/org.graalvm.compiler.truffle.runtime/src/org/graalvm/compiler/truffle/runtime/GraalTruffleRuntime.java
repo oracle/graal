@@ -123,7 +123,7 @@ import jdk.vm.ci.meta.SpeculationLog;
 import jdk.vm.ci.services.Services;
 
 /**
- * Implementation of the Truffle runtime when running on top of Graal.
+ * Implementation of the Truffle runtime when running on top of Graal. There is only one per VM.
  */
 public abstract class GraalTruffleRuntime implements TruffleRuntime, TruffleCompilerRuntime {
 
@@ -642,7 +642,7 @@ public abstract class GraalTruffleRuntime implements TruffleRuntime, TruffleComp
     public RootCallTarget createCallTarget(RootNode rootNode) {
         CompilerAsserts.neverPartOfCompilation();
         final RootCallTarget newCallTarget = createClonedCallTarget(null, rootNode);
-        TruffleSplittingStrategy.newTargetCreated(tvmci, newCallTarget);
+        TruffleSplittingStrategy.newTargetCreated(newCallTarget);
         return newCallTarget;
     }
 

@@ -94,7 +94,7 @@ public class UnsupportedFeatures {
      * @throws UnsupportedFeatureException if unsupported features are found
      */
     public void report(BigBang bb) {
-        if (!messages.isEmpty()) {
+        if (exist()) {
             List<Data> entries = new ArrayList<>(messages.values());
             Collections.sort(entries);
 
@@ -129,11 +129,15 @@ public class UnsupportedFeatures {
                 unsupportedFeaturesMessage = entries.get(0).message + "\nDetailed message:\n" + outputStream.toString();
                 throw new UnsupportedFeatureException(unsupportedFeaturesMessage, entries.get(0).originalException);
             } else {
-                unsupportedFeaturesMessage = "unsupported features in " + entries.size() + " methods" + "\nDetailed message:\n" + outputStream.toString();
+                unsupportedFeaturesMessage = "Unsupported features in " + entries.size() + " methods" + "\nDetailed message:\n" + outputStream.toString();
                 throw new UnsupportedFeatureException(unsupportedFeaturesMessage);
             }
 
         }
+    }
+
+    public boolean exist() {
+        return !messages.isEmpty();
     }
 
     public void checkMethod(AnalysisMethod method, StructuredGraph graph) {

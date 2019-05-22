@@ -24,9 +24,6 @@
  */
 package com.oracle.svm.core.posix;
 
-import static com.oracle.svm.core.posix.headers.Dirent.opendir;
-import static com.oracle.svm.core.posix.headers.Dirent.readdir_r;
-import static com.oracle.svm.core.posix.headers.Dlfcn.RTLD_DEFAULT;
 import static com.oracle.svm.core.headers.Errno.EACCES;
 import static com.oracle.svm.core.headers.Errno.EAGAIN;
 import static com.oracle.svm.core.headers.Errno.ECANCELED;
@@ -41,6 +38,9 @@ import static com.oracle.svm.core.headers.Errno.EOPNOTSUPP;
 import static com.oracle.svm.core.headers.Errno.ERANGE;
 import static com.oracle.svm.core.headers.Errno.ESRCH;
 import static com.oracle.svm.core.headers.Errno.errno;
+import static com.oracle.svm.core.posix.headers.Dirent.opendir;
+import static com.oracle.svm.core.posix.headers.Dirent.readdir_r;
+import static com.oracle.svm.core.posix.headers.Dlfcn.RTLD_DEFAULT;
 import static com.oracle.svm.core.posix.headers.Fcntl.F_GETFL;
 import static com.oracle.svm.core.posix.headers.Fcntl.F_RDLCK;
 import static com.oracle.svm.core.posix.headers.Fcntl.F_SETFL;
@@ -116,10 +116,9 @@ import java.nio.file.FileSystems;
 import java.nio.file.spi.FileSystemProvider;
 import java.util.function.Predicate;
 
-import org.graalvm.nativeimage.Feature;
+import org.graalvm.nativeimage.ImageSingletons;
 import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.Platforms;
-import org.graalvm.nativeimage.RuntimeClassInitialization;
 import org.graalvm.nativeimage.StackValue;
 import org.graalvm.nativeimage.c.function.CFunctionPointer;
 import org.graalvm.nativeimage.c.function.CLibrary;
@@ -132,6 +131,9 @@ import org.graalvm.nativeimage.c.type.CTypeConversion;
 import org.graalvm.nativeimage.c.type.CTypeConversion.CCharPointerHolder;
 import org.graalvm.nativeimage.c.type.VoidPointer;
 import org.graalvm.nativeimage.c.type.WordPointer;
+import org.graalvm.nativeimage.hosted.Feature;
+import org.graalvm.nativeimage.impl.InternalPlatform;
+import org.graalvm.nativeimage.impl.RuntimeClassInitializationSupport;
 import org.graalvm.word.PointerBase;
 import org.graalvm.word.SignedWord;
 import org.graalvm.word.UnsignedWord;
@@ -150,8 +152,10 @@ import com.oracle.svm.core.annotate.RecomputeFieldValue;
 import com.oracle.svm.core.annotate.Substitute;
 import com.oracle.svm.core.annotate.TargetClass;
 import com.oracle.svm.core.annotate.TargetElement;
+import com.oracle.svm.core.headers.Errno;
+import com.oracle.svm.core.jdk.JDK11OrEarlier;
+import com.oracle.svm.core.jdk.JDK11OrLater;
 import com.oracle.svm.core.jdk.JDK8OrEarlier;
-import com.oracle.svm.core.jdk.JDK9OrLater;
 import com.oracle.svm.core.log.Log;
 import com.oracle.svm.core.os.IsDefined;
 import com.oracle.svm.core.posix.darwin.DarwinCoreFoundationUtils;
@@ -160,7 +164,6 @@ import com.oracle.svm.core.posix.headers.Dirent.DIR;
 import com.oracle.svm.core.posix.headers.Dirent.dirent;
 import com.oracle.svm.core.posix.headers.Dirent.direntPointer;
 import com.oracle.svm.core.posix.headers.Dlfcn;
-import com.oracle.svm.core.headers.Errno;
 import com.oracle.svm.core.posix.headers.Fcntl;
 import com.oracle.svm.core.posix.headers.Fcntl.flock;
 import com.oracle.svm.core.posix.headers.Grp.group;
@@ -186,23 +189,22 @@ import com.oracle.svm.core.posix.headers.Unistd;
 import com.oracle.svm.core.posix.headers.darwin.CoreFoundation;
 import com.oracle.svm.core.posix.headers.linux.Mntent;
 import com.oracle.svm.core.posix.headers.linux.Mntent.mntent;
-import com.oracle.svm.core.snippets.KnownIntrinsics;
 import com.oracle.svm.core.util.VMError;
 import com.oracle.svm.hosted.jni.JNIRuntimeAccess;
 
-@Platforms({Platform.LINUX_JNI.class, Platform.DARWIN_JNI.class})
+@Platforms({InternalPlatform.LINUX_JNI.class, InternalPlatform.DARWIN_JNI.class})
 @AutomaticFeature
-@CLibrary("nio")
+@CLibrary(value = "nio", requireStatic = true)
 class PosixJavaNIOSubstituteFeature implements Feature {
 
     @Override
     public void duringSetup(DuringSetupAccess access) {
-        RuntimeClassInitialization.rerunClassInitialization(access.findClassByName("sun.nio.ch.FileKey"));
-        RuntimeClassInitialization.rerunClassInitialization(access.findClassByName("sun.nio.fs.UnixNativeDispatcher"));
-        RuntimeClassInitialization.rerunClassInitialization(access.findClassByName("sun.nio.ch.ServerSocketChannelImpl"));
-        RuntimeClassInitialization.rerunClassInitialization(access.findClassByName("sun.nio.ch.IOUtil"));
-        RuntimeClassInitialization.rerunClassInitialization(access.findClassByName("sun.nio.ch.FileChannelImpl"));
-        RuntimeClassInitialization.rerunClassInitialization(access.findClassByName("java.nio.file.FileSystems"));
+        ImageSingletons.lookup(RuntimeClassInitializationSupport.class).rerunInitialization(access.findClassByName("sun.nio.ch.FileKey"), "required for substitutions");
+        ImageSingletons.lookup(RuntimeClassInitializationSupport.class).rerunInitialization(access.findClassByName("sun.nio.fs.UnixNativeDispatcher"), "required for substitutions");
+        ImageSingletons.lookup(RuntimeClassInitializationSupport.class).rerunInitialization(access.findClassByName("sun.nio.ch.ServerSocketChannelImpl"), "required for substitutions");
+        ImageSingletons.lookup(RuntimeClassInitializationSupport.class).rerunInitialization(access.findClassByName("sun.nio.ch.IOUtil"), "required for substitutions");
+        ImageSingletons.lookup(RuntimeClassInitializationSupport.class).rerunInitialization(access.findClassByName("sun.nio.ch.FileChannelImpl"), "required for substitutions");
+        ImageSingletons.lookup(RuntimeClassInitializationSupport.class).rerunInitialization(access.findClassByName("java.nio.file.FileSystems"), "required for substitutions");
     }
 
     @Override
@@ -537,7 +539,7 @@ public final class PosixJavaNIOSubstitutions {
 
         /* open/src/java.base/unix/native/libnio/ch/IOUtil.c */
         @Substitute
-        @TargetElement(onlyWith = JDK9OrLater.class)
+        @TargetElement(onlyWith = JDK11OrLater.class)
         // 131 JNIEXPORT jint JNICALL
         // 132 Java_sun_nio_ch_IOUtil_drain1(JNIEnv *env, jclass cl, jint fd)
         // 133 {
@@ -1188,6 +1190,7 @@ public final class PosixJavaNIOSubstitutions {
         //        069 Java_sun_nio_ch_ServerSocketChannelImpl_accept0(JNIEnv *env, jobject this,
         //        070                                                 jobject ssfdo, jobject newfdo,
         //        071                                                 jobjectArray isaa)
+        @TargetElement(onlyWith = JDK11OrEarlier.class)
         @Substitute
         @SuppressWarnings({"static-method"})
         int accept0(FileDescriptor ssfdo, FileDescriptor newfdo, InetSocketAddress[] isaa) throws IOException {
@@ -1345,7 +1348,7 @@ public final class PosixJavaNIOSubstitutions {
      * Call this to throw an internal UnixException when a system/library call fails.
      */
     private static Exception throwUnixException(int errnum) throws Exception {
-        throw KnownIntrinsics.unsafeCast(new Target_sun_nio_fs_UnixException(errnum), Exception.class);
+        throw SubstrateUtil.cast(new Target_sun_nio_fs_UnixException(errnum), Exception.class);
     }
 
     private static OutOfMemoryError throwOutOfMemoryError(String msg) {
@@ -1995,7 +1998,7 @@ public final class PosixJavaNIOSubstitutions {
         }
 
         @Substitute
-        @TargetElement(onlyWith = JDK9OrLater.class)
+        @TargetElement(onlyWith = JDK11OrLater.class)
         private static int stat1(long pathAddress) {
             int err;
             Stat.stat buf = StackValue.get(Stat.stat.class);
@@ -2013,7 +2016,7 @@ public final class PosixJavaNIOSubstitutions {
         }
 
         @Substitute
-        @TargetElement(onlyWith = JDK9OrLater.class)
+        @TargetElement(onlyWith = JDK11OrLater.class)
         private static boolean exists0(long pathAddress) {
             int err;
 
@@ -3154,7 +3157,7 @@ public final class PosixJavaNIOSubstitutions {
 
         /* { Do not format quoted code: @formatter:off */
         @Substitute
-        @TargetElement(onlyWith = JDK9OrLater.class)
+        @TargetElement(onlyWith = {JDK11OrLater.class, JDK11OrEarlier.class})
         /* open/src/java.base/share/classes/sun/nio/ch/SocketChannelImpl.java */
         // 1120    private static native int checkConnect(FileDescriptor fd, boolean block)
         // 1121        throws IOException;
@@ -3278,6 +3281,7 @@ public final class PosixJavaNIOSubstitutions {
         /* { Do not format quoted code: @formatter:off */
 
         /* Translated from src/solaris/native/sun/nio/ch/UnixAsynchronousServerSocketChannelImpl.c?v=Java_1.8.0_40_b10 */
+        @TargetElement(onlyWith = JDK11OrEarlier.class)
         @Substitute
         // 041 JNIEXPORT jint JNICALL
         // 042 Java_sun_nio_ch_UnixAsynchronousServerSocketChannelImpl_accept0(JNIEnv* env,
@@ -3981,6 +3985,6 @@ final class SunNioChNativeThreadFeature implements Feature {
 
     @Override
     public void duringSetup(DuringSetupAccess access) {
-        RuntimeClassInitialization.rerunClassInitialization(access.findClassByName("sun.nio.ch.NativeThread"));
+        ImageSingletons.lookup(RuntimeClassInitializationSupport.class).rerunInitialization(access.findClassByName("sun.nio.ch.NativeThread"), "required for substitutions");
     }
 }

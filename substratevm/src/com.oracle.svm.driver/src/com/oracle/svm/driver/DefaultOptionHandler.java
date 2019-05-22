@@ -27,6 +27,7 @@ package com.oracle.svm.driver;
 import java.io.File;
 import java.nio.file.Path;
 import java.nio.file.Paths;
+import java.util.List;
 import java.util.Queue;
 import java.util.jar.Attributes;
 import java.util.jar.JarFile;
@@ -34,9 +35,12 @@ import java.util.jar.Manifest;
 
 import org.graalvm.compiler.options.OptionType;
 
-import com.oracle.svm.hosted.ImageClassLoader;
+import com.oracle.svm.driver.MacroOption.MacroOptionKind;
+import com.oracle.svm.core.util.ClasspathUtils;
 
 class DefaultOptionHandler extends NativeImage.OptionHandler<NativeImage> {
+
+    private static final String verboseOption = "--verbose";
 
     static final String helpText = NativeImage.getResource("/Help.txt");
     static final String helpExtraText = NativeImage.getResource("/HelpExtra.txt");
@@ -73,6 +77,8 @@ class DefaultOptionHandler extends NativeImage.OptionHandler<NativeImage> {
             case "--help-extra":
                 args.poll();
                 nativeImage.showMessage(helpExtraText);
+                nativeImage.optionRegistry.showOptions(MacroOptionKind.Macro, true, nativeImage::showMessage);
+                nativeImage.showNewline();
                 System.exit(0);
                 return true;
             case "-cp":
@@ -108,7 +114,7 @@ class DefaultOptionHandler extends NativeImage.OptionHandler<NativeImage> {
                 handleJarFileArg(nativeImage.canonicalize(Paths.get(jarFilePathStr)));
                 nativeImage.setJarOptionMode(true);
                 return true;
-            case "--verbose":
+            case verboseOption:
                 args.poll();
                 nativeImage.setVerbose(true);
                 return true;
@@ -217,7 +223,7 @@ class DefaultOptionHandler extends NativeImage.OptionHandler<NativeImage> {
             /* Missing Class-Path Attribute is tolerable */
             if (classPath != null) {
                 for (String cp : classPath.split(" +")) {
-                    Path manifestClassPath = ImageClassLoader.stringToClasspath(cp);
+                    Path manifestClassPath = ClasspathUtils.stringToClasspath(cp);
                     if (!manifestClassPath.isAbsolute()) {
                         /* Resolve relative manifestClassPath against directory containing jar */
                         manifestClassPath = filePath.getParent().resolve(manifestClassPath);
@@ -230,6 +236,13 @@ class DefaultOptionHandler extends NativeImage.OptionHandler<NativeImage> {
             throw ex;
         } catch (Throwable ex) {
             throw NativeImage.showError("Invalid or corrupt jarfile " + filePath);
+        }
+    }
+
+    @Override
+    void addFallbackBuildArgs(List<String> buildArgs) {
+        if (nativeImage.isVerbose()) {
+            buildArgs.add(verboseOption);
         }
     }
 }

@@ -45,6 +45,7 @@ import java.util.concurrent.locks.ReentrantLock;
 import com.oracle.truffle.api.CallTarget;
 import com.oracle.truffle.api.CompilerAsserts;
 import com.oracle.truffle.api.CompilerDirectives.CompilationFinal;
+import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.CompilerOptions;
 import com.oracle.truffle.api.RootCallTarget;
 import com.oracle.truffle.api.TruffleLanguage;
@@ -214,6 +215,9 @@ public abstract class RootNode extends ExecutableNode {
      * This method is intended to be overwritten by guest languages, when the node's source is
      * internal, the implementation should respect that. Can be called on any thread and without a
      * language context.
+     * <p>
+     * This method may be invoked on compiled code paths. It is recommended to implement this method
+     * such that it returns a compilation final constant.
      *
      * @since 0.27
      */
@@ -221,11 +225,16 @@ public abstract class RootNode extends ExecutableNode {
         if (getLanguageInfo() == null) {
             return true;
         }
-        SourceSection sc = getSourceSection();
+        SourceSection sc = materializeSourceSection();
         if (sc != null) {
             return sc.getSource().isInternal();
         }
         return false;
+    }
+
+    @TruffleBoundary
+    private SourceSection materializeSourceSection() {
+        return getSourceSection();
     }
 
     /**
@@ -322,7 +331,7 @@ public abstract class RootNode extends ExecutableNode {
         return frameDescriptor;
     }
 
-    /** @since 1.0.0 */
+    /** @since 19.0 */
     protected final void setCallTarget(RootCallTarget callTarget) {
         this.callTarget = callTarget;
     }

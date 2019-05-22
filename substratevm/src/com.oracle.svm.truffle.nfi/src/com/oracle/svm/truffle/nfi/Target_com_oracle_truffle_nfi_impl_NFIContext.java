@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2017, 2018, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2017, 2019, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -50,13 +50,16 @@ import com.oracle.svm.truffle.nfi.libffi.LibFFI.ffi_cif;
 import com.oracle.truffle.api.CallTarget;
 import com.oracle.truffle.api.interop.TruffleObject;
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
-import com.oracle.truffle.nfi.types.NativeSimpleType;
+import com.oracle.truffle.nfi.impl.NFILanguageImpl;
+import com.oracle.truffle.nfi.spi.types.NativeSimpleType;
 
 import jdk.vm.ci.meta.MetaAccessProvider;
 import jdk.vm.ci.meta.ResolvedJavaField;
 
 @TargetClass(className = "com.oracle.truffle.nfi.impl.NFIContext", onlyWith = TruffleNFIFeature.IsEnabled.class)
 final class Target_com_oracle_truffle_nfi_impl_NFIContext {
+
+    @Alias private NFILanguageImpl language;
 
     // clear these fields, they will be re-filled by patchContext
     @Alias @RecomputeFieldValue(kind = Kind.Reset) private long nativeContext;
@@ -210,7 +213,7 @@ final class Target_com_oracle_truffle_nfi_impl_NFIContext {
         if (ImageSingletons.lookup(TruffleNFISupport.class).errnoGetterFunctionName.equals(name)) {
             return new ErrnoMirror();
         } else {
-            Target_com_oracle_truffle_nfi_impl_LibFFISymbol ret = Target_com_oracle_truffle_nfi_impl_LibFFISymbol.create(library, lookup(nativeContext, library.handle, name));
+            Target_com_oracle_truffle_nfi_impl_LibFFISymbol ret = Target_com_oracle_truffle_nfi_impl_LibFFISymbol.create(language, library, lookup(nativeContext, library.handle, name));
             return KnownIntrinsics.convertUnknownValue(ret, TruffleObject.class);
         }
     }

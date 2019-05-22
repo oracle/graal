@@ -39,9 +39,7 @@
 #include <sys/ioctl.h>
 #include <sys/time.h>
 
-#define JNIEXPORT
-#define JNIIMPORT
-typedef long jlong;
+#include <jni.h>
 
 #define OS_OK 0
 #define OS_ERR -1
@@ -104,7 +102,7 @@ JNIEXPORT int JVM_ActiveProcessorCount() {
     return sysconf(_SC_NPROCESSORS_ONLN);
 }
 
-JNIEXPORT int JVM_Connect(int fd, struct sockaddr* him, socklen_t len) { 
+JNIEXPORT int JVM_Connect(int fd, struct sockaddr* him, socklen_t len) {
     RESTARTABLE_RETURN_INT(connect(fd, him, len));
 }
 
@@ -282,7 +280,7 @@ JNIEXPORT int JVM_SocketShutdown(int fd, int howto) {
 }
 
 /* Called directly from several native functions */
-JNIEXPORT int JVM_InitializeSocketLibrary() { 
+JNIEXPORT int JVM_InitializeSocketLibrary() {
     /* A noop, returns 0 in hotspot */
    return 0;
 }
@@ -293,12 +291,36 @@ JNIEXPORT jlong Java_java_lang_System_currentTimeMillis(void *env, void * ignore
     return (jlong)(time.tv_sec * 1000)  +  (jlong)(time.tv_usec / 1000);
 }
 
+JNIEXPORT jlong Java_java_lang_System_nanoTime(void *env, void * ignored) {
+    // get implementation from hotspot/os/bsd/os_bsd.cpp
+    // for now, just return 1000 * microseconds
+    struct timeval time;
+    int status = gettimeofday(&time, NULL);
+    return (jlong)(time.tv_sec * 1000000000)  +  (jlong)(time.tv_usec * 1000);
+}
+
 JNIEXPORT jlong JVM_CurrentTimeMillis(void *env, void * ignored) {
     return Java_java_lang_System_currentTimeMillis(env, ignored);
 }
 
+JNIEXPORT jlong JVM_NanoTime(void *env, void * ignored) {
+    return Java_java_lang_System_nanoTime(env, ignored);
+}
+
+JNIEXPORT jlong JVM_GetNanoTimeAdjustment(void *env, void * ignored, jlong offset_secs) {
+    printf("JVM_GetNanoTimeAdjustment called: not implemented, return 0\n");
+    return 0;
+}
+
+JNIEXPORT jlong Java_jdk_internal_misc_VM_getNanoTimeAdjustment(void *env, void * ignored, jlong offset_secs) {
+    return JVM_GetNanoTimeAdjustment(env, ignored, offset_secs);
+}
+
 JNIEXPORT void JVM_Halt(int retcode) {
     _exit(retcode);
+}
+
+JNIEXPORT void JVM_BeforeHalt() {
 }
 
 JNIEXPORT int JVM_GetLastErrorString(char *buf, int len) {
@@ -323,6 +345,38 @@ JNIEXPORT int JVM_GetLastErrorString(char *buf, int len) {
 int jio_vfprintf(FILE* f, const char *fmt, va_list args) {
   return vfprintf(f, fmt, args);
 }
+
+#ifdef JNI_VERSION_9
+JNIEXPORT void JVM_AddModuleExports(JNIEnv *env, jobject from_module, const char* package, jobject to_module) {
+    fprintf(stderr, "JVM_AddModuleExports called\n");
+}
+
+JNIEXPORT void JVM_AddModuleExportsToAllUnnamed(JNIEnv *env, jobject from_module, const char* package) {
+    fprintf(stderr, "JVM_AddModuleExportsToAllUnnamed called\n");
+}
+
+JNIEXPORT void JVM_AddModuleExportsToAll(JNIEnv *env, jobject from_module, const char* package) {
+    fprintf(stderr, "JVM_AddModuleExportsToAll called\n");
+}
+
+JNIEXPORT void JVM_AddReadsModule(JNIEnv *env, jobject from_module, jobject source_module) {
+    fprintf(stderr, "JVM_AddReadsModule called\n");
+}
+
+JNIEXPORT void JVM_DefineModule(JNIEnv *env, jobject module, jboolean is_open, jstring version,
+                 jstring location, const char* const* packages, jsize num_packages) {
+    fprintf(stderr, "JVM_DefineModule called\n");
+}
+
+int jio_snprintf(char *str, size_t count, const char *fmt, ...) {
+  va_list args;
+  int len;
+  va_start(args, fmt);
+  len = jio_vsnprintf(str, count, fmt, args);
+  va_end(args);
+  return len;
+}
+#endif
 
 int jio_vsnprintf(char *str, size_t count, const char *fmt, va_list args) {
   int result;

@@ -29,19 +29,15 @@ import static com.oracle.svm.core.util.VMError.shouldNotReachHere;
 import java.lang.reflect.Method;
 import java.util.function.Function;
 
-import org.graalvm.nativeimage.Feature;
 import org.graalvm.nativeimage.c.function.CEntryPoint;
 import org.graalvm.nativeimage.c.function.CEntryPointLiteral;
-import org.graalvm.nativeimage.c.function.CFunctionPointer;
+import org.graalvm.nativeimage.hosted.Feature;
 import org.graalvm.nativeimage.impl.CEntryPointLiteralCodePointer;
 
 import com.oracle.graal.pointsto.BigBang;
 import com.oracle.graal.pointsto.infrastructure.UniverseMetaAccess;
 import com.oracle.graal.pointsto.meta.AnalysisMethod;
-import com.oracle.svm.core.annotate.Alias;
 import com.oracle.svm.core.annotate.AutomaticFeature;
-import com.oracle.svm.core.annotate.Substitute;
-import com.oracle.svm.core.annotate.TargetClass;
 import com.oracle.svm.core.util.UserError;
 import com.oracle.svm.hosted.FeatureImpl.CompilationAccessImpl;
 import com.oracle.svm.hosted.FeatureImpl.DuringSetupAccessImpl;
@@ -110,16 +106,5 @@ public class CEntryPointLiteralFeature implements Feature {
 
         metaAccess = config.getMetaAccess();
         bb = null;
-    }
-}
-
-@TargetClass(CEntryPointLiteral.class)
-final class Target_org_graalvm_nativeimage_c_function_CEntryPointLiteral {
-
-    @Alias protected CFunctionPointer functionPointer;
-
-    @Substitute
-    public CFunctionPointer getFunctionPointer() {
-        return functionPointer;
     }
 }

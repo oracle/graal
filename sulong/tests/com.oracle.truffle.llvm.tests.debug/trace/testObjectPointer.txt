@@ -31,15 +31,17 @@
 BREAK 53 CONTINUE "myMethod"
     OPEN_SCOPE
         MEMBER structured "MyClass*" "this"
-            MEMBER int "int" "a" "16"
-            MEMBER float32 "float" "b" "3.2"
-            MEMBER float64 "double" "c" "4.657"
-            MEMBER int "long int" "d" "149237354238697"
-            MEMBER char "char" "e" "e"
-            MEMBER structured "short[3]" "f"
-                MEMBER int "short" "[1]" "-1"
-                MEMBER int "short" "[2]" "32767"
-                MEMBER int "short" "[0]" "-32768"
+            MEMBER structured "MyClass" "<target>"
+                MEMBER int "int" "a" "16"
+                MEMBER float32 "float" "b" "3.2"
+                MEMBER float64 "double" "c" "4.657"
+                MEMBER int "long int" "d" "149237354238697"
+                MEMBER char "char" "e" "e"
+                MEMBER structured "short[3]" "f"
+                    MEMBER int "short" "[1]" "-1"
+                    MEMBER int "short" "[2]" "32767"
+                    MEMBER int "short" "[0]" "-32768"
+                END_MEMBERS
             END_MEMBERS
         END_MEMBERS
 
@@ -63,15 +65,17 @@ BREAK 57 CONTINUE "myStaticMethod"
 BREAK 53 CONTINUE "myMethod"
     OPEN_SCOPE
         MEMBER structured "MyClass*" "this"
-            MEMBER int "int" "a" "16"
-            MEMBER float32 "float" "b" "3.2"
-            MEMBER float64 "double" "c" "4.657"
-            MEMBER int "long int" "d" "149237354238697"
-            MEMBER char "char" "e" "e"
-            MEMBER structured "short[3]" "f"
-                MEMBER int "short" "[1]" "-1"
-                MEMBER int "short" "[2]" "32767"
-                MEMBER int "short" "[0]" "-32768"
+            MEMBER structured "MyClass" "<target>"
+                MEMBER int "int" "a" "16"
+                MEMBER float32 "float" "b" "3.2"
+                MEMBER float64 "double" "c" "4.657"
+                MEMBER int "long int" "d" "149237354238697"
+                MEMBER char "char" "e" "e"
+                MEMBER structured "short[3]" "f"
+                    MEMBER int "short" "[1]" "-1"
+                    MEMBER int "short" "[2]" "32767"
+                    MEMBER int "short" "[0]" "-32768"
+                END_MEMBERS
             END_MEMBERS
         END_MEMBERS
 
@@ -95,15 +99,17 @@ BREAK 57 CONTINUE "myStaticMethod"
 BREAK 53 CONTINUE "myMethod"
     OPEN_SCOPE
         MEMBER structured "MyClass*" "this"
-            MEMBER int "int" "a" "16"
-            MEMBER float32 "float" "b" "3.2"
-            MEMBER float64 "double" "c" "4.657"
-            MEMBER int "long int" "d" "149237354238697"
-            MEMBER char "char" "e" "e"
-            MEMBER structured "short[3]" "f"
-                MEMBER int "short" "[1]" "-1"
-                MEMBER int "short" "[2]" "32767"
-                MEMBER int "short" "[0]" "-32768"
+            MEMBER structured "MyClass" "<target>"
+                MEMBER int "int" "a" "16"
+                MEMBER float32 "float" "b" "3.2"
+                MEMBER float64 "double" "c" "4.657"
+                MEMBER int "long int" "d" "149237354238697"
+                MEMBER char "char" "e" "e"
+                MEMBER structured "short[3]" "f"
+                    MEMBER int "short" "[1]" "-1"
+                    MEMBER int "short" "[2]" "32767"
+                    MEMBER int "short" "[0]" "-32768"
+                END_MEMBERS
             END_MEMBERS
         END_MEMBERS
 
@@ -127,15 +133,17 @@ BREAK 57 CONTINUE "myStaticMethod"
 BREAK 53 CONTINUE "myMethod"
     OPEN_SCOPE
         MEMBER structured "MyClass*" "this"
-            MEMBER int "int" "a" "16"
-            MEMBER float32 "float" "b" "3.2"
-            MEMBER float64 "double" "c" "4.657"
-            MEMBER int "long int" "d" "149237354238697"
-            MEMBER char "char" "e" "e"
-            MEMBER structured "short[3]" "f"
-                MEMBER int "short" "[1]" "-1"
-                MEMBER int "short" "[2]" "32767"
-                MEMBER int "short" "[0]" "-32768"
+            MEMBER structured "MyClass" "<target>"
+                MEMBER int "int" "a" "16"
+                MEMBER float32 "float" "b" "3.2"
+                MEMBER float64 "double" "c" "4.657"
+                MEMBER int "long int" "d" "149237354238697"
+                MEMBER char "char" "e" "e"
+                MEMBER structured "short[3]" "f"
+                    MEMBER int "short" "[1]" "-1"
+                    MEMBER int "short" "[2]" "32767"
+                    MEMBER int "short" "[0]" "-32768"
+                END_MEMBERS
             END_MEMBERS
         END_MEMBERS
 

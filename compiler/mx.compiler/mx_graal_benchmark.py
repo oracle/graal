@@ -1633,7 +1633,7 @@ class RenaissanceBenchmarkSuite(mx_benchmark.JavaBenchmarkSuite, mx_benchmark.Av
     """Renaissance benchmark suite implementation.
     """
     def name(self):
-        return "renaissance"
+        return "renaissance-legacy"
 
     def group(self):
         return "Graal"
@@ -1642,7 +1642,7 @@ class RenaissanceBenchmarkSuite(mx_benchmark.JavaBenchmarkSuite, mx_benchmark.Av
         return "graal-compiler"
 
     def renaissancePath(self):
-        renaissance = mx.get_env("RENAISSANCE")
+        renaissance = mx.get_env("RENAISSANCE_LEGACY")
         if renaissance:
             return join(renaissance, "jars")
         return None
@@ -1650,7 +1650,7 @@ class RenaissanceBenchmarkSuite(mx_benchmark.JavaBenchmarkSuite, mx_benchmark.Av
     def validateEnvironment(self):
         if not self.renaissancePath():
             raise RuntimeError(
-                "The RENAISSANCE environment variable was not specified.")
+                "The RENAISSANCE_LEGACY environment variable was not specified.")
 
     def validateReturnCode(self, retcode):
         return retcode == 0

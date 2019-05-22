@@ -77,6 +77,7 @@ import org.graalvm.compiler.nodes.graphbuilderconf.NodePlugin;
 import org.graalvm.compiler.nodes.graphbuilderconf.ParameterPlugin;
 import org.graalvm.compiler.nodes.java.InstanceOfNode;
 import org.graalvm.compiler.nodes.java.MethodCallTargetNode;
+import org.graalvm.compiler.nodes.spi.CoreProviders;
 import org.graalvm.compiler.nodes.util.GraphUtil;
 import org.graalvm.compiler.nodes.virtual.VirtualInstanceNode;
 import org.graalvm.compiler.nodes.virtual.VirtualObjectNode;
@@ -87,7 +88,6 @@ import org.graalvm.compiler.phases.common.CanonicalizerPhase;
 import org.graalvm.compiler.phases.common.ConditionalEliminationPhase;
 import org.graalvm.compiler.phases.common.inlining.InliningUtil;
 import org.graalvm.compiler.phases.tiers.HighTierContext;
-import org.graalvm.compiler.phases.tiers.PhaseContext;
 import org.graalvm.compiler.phases.util.Providers;
 import org.graalvm.compiler.replacements.CachingPEGraphDecoder;
 import org.graalvm.compiler.replacements.InlineDuringParsingPlugin;
@@ -236,7 +236,7 @@ public abstract class PartialEvaluator {
         try (DebugContext.Scope s = debug.scope("CreateGraph", graph);
                         Indent indent = debug.logAndIndent("createGraph %s", graph);) {
 
-            PhaseContext baseContext = new PhaseContext(providers);
+            CoreProviders baseContext = providers;
             HighTierContext tierContext = new HighTierContext(providers, new PhaseSuite<HighTierContext>(), OptimisticOptimizations.NONE);
 
             fastPartialEvaluation(compilable, inliningPlan, graph, baseContext, tierContext);
@@ -460,7 +460,8 @@ public abstract class PartialEvaluator {
         InlineInvokePlugin inlineInvokePlugin = new PEInlineInvokePlugin(inliningDecision);
 
         HistogramInlineInvokePlugin histogramPlugin = null;
-        if (TruffleCompilerOptions.getValue(PrintTruffleExpansionHistogram)) {
+        Boolean printTruffleExpansionHistogram = TruffleCompilerOptions.getValue(PrintTruffleExpansionHistogram);
+        if (printTruffleExpansionHistogram) {
             histogramPlugin = new HistogramInlineInvokePlugin(graph);
             inlineInvokePlugins = new InlineInvokePlugin[]{replacements, inlineInvokePlugin, histogramPlugin};
         } else {
@@ -472,7 +473,7 @@ public abstract class PartialEvaluator {
                         sourceLanguagePosition);
         decoder.decode(graph.method(), graph.isSubstitution(), graph.trackNodeSourcePosition());
 
-        if (TruffleCompilerOptions.getValue(PrintTruffleExpansionHistogram)) {
+        if (printTruffleExpansionHistogram) {
             histogramPlugin.print(compilable);
         }
     }
@@ -506,7 +507,7 @@ public abstract class PartialEvaluator {
     }
 
     @SuppressWarnings({"try", "unused"})
-    private void fastPartialEvaluation(CompilableTruffleAST compilable, TruffleInliningPlan inliningDecision, StructuredGraph graph, PhaseContext baseContext, HighTierContext tierContext) {
+    private void fastPartialEvaluation(CompilableTruffleAST compilable, TruffleInliningPlan inliningDecision, StructuredGraph graph, CoreProviders baseContext, HighTierContext tierContext) {
         DebugContext debug = graph.getDebug();
         doGraphPE(compilable, graph, tierContext, inliningDecision);
         debug.dump(DebugContext.BASIC_LEVEL, graph, "After Partial Evaluation");
@@ -519,7 +520,7 @@ public abstract class PartialEvaluator {
         for (MethodCallTargetNode methodCallTargetNode : graph.getNodes(MethodCallTargetNode.TYPE)) {
             if (methodCallTargetNode.invoke().useForInlining()) {
                 StructuredGraph inlineGraph = providers.getReplacements().getSubstitution(methodCallTargetNode.targetMethod(), methodCallTargetNode.invoke().bci(), graph.trackNodeSourcePosition(),
-                                methodCallTargetNode.asNode().getNodeSourcePosition());
+                                methodCallTargetNode.asNode().getNodeSourcePosition(), debug.getOptions());
                 if (inlineGraph != null) {
                     InliningUtil.inline(methodCallTargetNode.invoke(), inlineGraph, true, methodCallTargetNode.targetMethod());
                 }

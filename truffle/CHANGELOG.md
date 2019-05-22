@@ -2,6 +2,15 @@
 
 This changelog summarizes major changes between Truffle versions relevant to languages implementors building upon the Truffle framework. The main focus is on APIs exported by Truffle.
 
+## Version 20.0.0 Beta 1
+* The [LanguageProvider](https://www.graalvm.org/truffle/javadoc/org/graalvm/polyglot/tck/LanguageProvider.html#createIdentityFunctionSnippet-org.graalvm.polyglot.Context-) can override the default verfication of the TCK `IdentityFunctionTest`.
+* Removed deprecated and misspelled method `TruffleStackTrace#getStacktrace`.
+* Removed deprecated methods`TruffleStackTraceElement#getStackTrace` and `TruffleStackTraceElement#fillIn` (use methods of `TruffleStackTrace` instead).
+* `SlowPathException#fillInStackTrace` is now `final`.
+
+## Version 19.0.0
+* Renamed version 1.0.0 to 19.0.0
+
 ## Version 1.0.0 RC15
 * This version includes a major revision of the Truffle Interoperability APIs. Most existing APIs for Truffle Interoperability were deprecated. The compatiblity layer may cause significant performance reduction for interoperability calls. 
 	* Please see the [Interop Migration Guide](https://github.com/oracle/graal/blob/master/truffle/docs/InteropMigration.md) for an overview and individual `@deprecated` javadoc tags for guidance.
@@ -46,8 +55,12 @@ This changelog summarizes major changes between Truffle versions relevant to lan
     - Added [TruffleFile.getMimeType method](https://www.graalvm.org/truffle/javadoc/com/oracle/truffle/api/TruffleFile.html#getMimeType--) to obtain a `TruffleFile` MIME type.
     - Added a possibility to set an [encoding in SourceBuilder](https://www.graalvm.org/truffle/javadoc/com/oracle/truffle/api/source/Source.SourceBuilder.html#encoding-java.nio.charset.Charset-)
     - The [Source builders](https://www.graalvm.org/truffle/javadoc/com/oracle/truffle/api/source/Source.html) are sandboxed for files and file URLs.
-    - Deprecated usage of NIO `FileTypeDetector` for MIME type detection.
+    - Removed usage of NIO `FileTypeDetector` for MIME type detection, language implementations have to migrate to `TruffleFile.FileTypeDetector`.
 * TruffleFile's paths from image building time are translated in image execution time into new paths using Context's FileSystem. The absolute paths pointing to files in language homes in image generation time are resolved using image execution time language homes.
+* Added [Env.isPolylgotAccessAllowed()](https://www.graalvm.org/truffle/javadoc/com/oracle/truffle/api/TruffleLanguage.Env.html#isPolyglotAccessAllowed--) to check whether polyglot access (e.g. access to polyglot builtins) is allowed.
+* The methods `Env.getPolyglotBindings()` and `Env.importSymbol` and `Env.exportSymbol` now throw a `SecurityException` if polyglot access not allowed.
+* Added `DebugValue.isNull()` to check for null values, `DebugValue.execute()` to be able to execute values and `DebugValue.asString()` to get the String from String values.
+* Added the [TruffleFile.getAttribute](https://www.graalvm.org/truffle/javadoc/com/oracle/truffle/api/TruffleFile.html#getAttribute-com.oracle.truffle.api.TruffleFile.AttributeDescriptor-java.nio.file.LinkOption...-) method to read a single file's attribute and [TruffleFile.getAttributes] (https://www.graalvm.org/truffle/javadoc/com/oracle/truffle/api/TruffleFile.html#getAttributes-java.util.Collection-java.nio.file.LinkOption...-) method to read file's attributes as a bulk operation.
 
 ## Version 1.0.0 RC14
 * Removed some deprecated elements:

@@ -78,7 +78,18 @@ public final class TruffleContext implements AutoCloseable {
 
     static final TruffleContext EMPTY = new TruffleContext();
 
-    private static ThreadLocal<List<Object>> assertStack;
+    private static final ThreadLocal<List<Object>> CONTEXT_ASSERT_STACK;
+
+    static {
+        boolean assertions = false;
+        assert (assertions = true) == true;
+        CONTEXT_ASSERT_STACK = assertions ? new ThreadLocal<List<Object>>() {
+            @Override
+            protected List<Object> initialValue() {
+                return new ArrayList<>();
+            }
+        } : null;
+    }
     final Object impl;
     final boolean closeable;
 
@@ -105,20 +116,6 @@ public final class TruffleContext implements AutoCloseable {
     private TruffleContext() {
         this.impl = null;
         this.closeable = false;
-    }
-
-    static {
-        assert initializeAssertStack();
-    }
-
-    private static boolean initializeAssertStack() {
-        assertStack = new ThreadLocal<List<Object>>() {
-            @Override
-            protected List<Object> initialValue() {
-                return new ArrayList<>();
-            }
-        };
-        return true;
     }
 
     /**
@@ -154,7 +151,9 @@ public final class TruffleContext implements AutoCloseable {
      */
     public Object enter() {
         Object prev = AccessAPI.engineAccess().enterInternalContext(impl);
-        assert verifyEnter(prev);
+        if (CONTEXT_ASSERT_STACK != null) {
+            verifyEnter(prev);
+        }
         return prev;
     }
 
@@ -169,7 +168,9 @@ public final class TruffleContext implements AutoCloseable {
      * @since 0.27
      */
     public void leave(Object prev) {
-        assert verifyLeave(prev);
+        if (CONTEXT_ASSERT_STACK != null) {
+            verifyLeave(prev);
+        }
         AccessAPI.engineAccess().leaveInternalContext(impl, prev);
     }
 
@@ -196,19 +197,19 @@ public final class TruffleContext implements AutoCloseable {
     }
 
     @TruffleBoundary
-    private static boolean verifyEnter(Object prev) {
-        assertStack.get().add(prev);
-        return true;
+    private static void verifyEnter(Object prev) {
+        assert CONTEXT_ASSERT_STACK != null;
+        CONTEXT_ASSERT_STACK.get().add(prev);
     }
 
     @TruffleBoundary
-    private static boolean verifyLeave(Object prev) {
-        List<Object> list = assertStack.get();
-        assert list.size() > 0 : "Assert stack is empty.";
+    private static void verifyLeave(Object prev) {
+        assert CONTEXT_ASSERT_STACK != null;
+        List<Object> list = CONTEXT_ASSERT_STACK.get();
+        assert !list.isEmpty() : "Assert stack is empty.";
         Object expectedPrev = list.get(list.size() - 1);
         assert prev == expectedPrev : "Invalid prev argument provided in TruffleContext.leave(Object).";
-        list.remove(list.size() - 1);
-        return true;
+        list.remove(list.size() - 1); // pop
     }
 
     /**

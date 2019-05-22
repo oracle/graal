@@ -29,7 +29,8 @@
  */
 package com.oracle.truffle.llvm.runtime.debug.scope;
 
-import com.oracle.truffle.api.interop.TruffleObject;
+import com.oracle.truffle.api.interop.InteropLibrary;
+import com.oracle.truffle.api.library.ExportLibrary;
 import com.oracle.truffle.llvm.runtime.global.LLVMGlobal;
 import com.oracle.truffle.llvm.runtime.interop.LLVMInternalTruffleObject;
 
@@ -37,6 +38,7 @@ import com.oracle.truffle.llvm.runtime.interop.LLVMInternalTruffleObject;
  * This class is used to wrap global variables when they are added to debug scopes by the LLVM
  * parser, so that the LLVMToDebugValueNode later on recognizes them.
  */
+@ExportLibrary(InteropLibrary.class)
 public final class LLVMDebugGlobalVariable implements LLVMInternalTruffleObject {
 
     private final LLVMGlobal descriptor;
@@ -47,9 +49,5 @@ public final class LLVMDebugGlobalVariable implements LLVMInternalTruffleObject 
 
     public LLVMGlobal getDescriptor() {
         return descriptor;
-    }
-
-    public static boolean isInstance(TruffleObject object) {
-        return object instanceof LLVMDebugGlobalVariable;
     }
 }

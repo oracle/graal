@@ -1,5 +1,5 @@
 #Signature file v4.1
-#Version 
+#Version
 
 CLSS public abstract interface java.lang.Iterable<%0 extends java.lang.Object>
 meth public abstract java.util.Iterator<{java.lang.Iterable%0}> iterator()
@@ -103,6 +103,4 @@ CLSS public abstract interface org.graalvm.collections.UnmodifiableMapCursor<%0 
 meth public abstract boolean advance()
 meth public abstract {org.graalvm.collections.UnmodifiableMapCursor%0} getKey()
 meth public abstract {org.graalvm.collections.UnmodifiableMapCursor%1} getValue()
-
-CLSS abstract interface org.graalvm.collections.package-info
 

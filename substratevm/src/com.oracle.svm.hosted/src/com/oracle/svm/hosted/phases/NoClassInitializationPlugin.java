@@ -31,6 +31,7 @@ import org.graalvm.compiler.nodes.ValueNode;
 import org.graalvm.compiler.nodes.graphbuilderconf.ClassInitializationPlugin;
 import org.graalvm.compiler.nodes.graphbuilderconf.GraphBuilderContext;
 
+import com.oracle.graal.pointsto.constraints.UnresolvedElementException;
 import com.oracle.graal.pointsto.infrastructure.WrappedConstantPool;
 
 import jdk.vm.ci.meta.ConstantPool;
@@ -50,7 +51,11 @@ public class NoClassInitializationPlugin implements ClassInitializationPlugin {
     @Override
     public void loadReferencedType(GraphBuilderContext builder, ConstantPool cp, int cpi, int bytecode) {
         /* Do not trigger class initialization. */
-        WrappedConstantPool.loadReferencedType(cp, cpi, bytecode, false);
+        try {
+            WrappedConstantPool.loadReferencedType(cp, cpi, bytecode, false);
+        } catch (UnresolvedElementException uee) {
+            /* Plugin should be non-intrusive. Therefore we ignore missing class-path failures. */
+        }
     }
 
     @Override

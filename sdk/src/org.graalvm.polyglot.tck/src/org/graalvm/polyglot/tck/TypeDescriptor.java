@@ -153,7 +153,7 @@ public final class TypeDescriptor {
      * <p>
      *
      * @see TypeDescriptor#EXECUTABLE
-     * @since 1.0
+     * @since 19.0
      */
     public static final TypeDescriptor EXECUTABLE_ANY = new TypeDescriptor(new ExecutableImpl(ExecutableImpl.Kind.TOP, null, true, Collections.emptyList()));
 
@@ -166,7 +166,7 @@ public final class TypeDescriptor {
      *
      *
      * @see Value#canInstantiate().
-     * @since 1.0
+     * @since 19.0
      */
     public static final TypeDescriptor INSTANTIABLE = new TypeDescriptor(new InstantiableImpl(ExecutableImpl.Kind.BOTTOM, null, true, Collections.emptyList()));
 
@@ -180,7 +180,7 @@ public final class TypeDescriptor {
      *
      *
      * @see TypeDescriptor#INSTANTIABLE
-     * @since 1.0
+     * @since 19.0
      */
     public static final TypeDescriptor INSTANTIABLE_ANY = new TypeDescriptor(new InstantiableImpl(ExecutableImpl.Kind.TOP, null, true, Collections.emptyList()));
 
@@ -544,7 +544,7 @@ public final class TypeDescriptor {
      *            instantiable has variable arguments length.
      * @param parameterTypes the required parameter types
      * @return an instantiable type
-     * @since 1.0
+     * @since 19.0
      */
     public static TypeDescriptor instantiable(TypeDescriptor instanceType, boolean vararg, TypeDescriptor... parameterTypes) {
         Objects.requireNonNull(instanceType, "Instance type cannot be null");
@@ -594,7 +594,7 @@ public final class TypeDescriptor {
             }
             switch (contentTypes.size()) {
                 case 0:
-                    descs.add(intersection(NOTYPE, NULL, BOOLEAN, NUMBER, STRING, HOST_OBJECT, NATIVE_POINTER, OBJECT, ARRAY, EXECUTABLE, INSTANTIABLE));
+                    descs.add(array(intersection(NOTYPE, NULL, BOOLEAN, NUMBER, STRING, HOST_OBJECT, NATIVE_POINTER, OBJECT, ARRAY, EXECUTABLE, INSTANTIABLE)));
                     break;
                 case 1:
                     descs.add(array(contentTypes.iterator().next()));

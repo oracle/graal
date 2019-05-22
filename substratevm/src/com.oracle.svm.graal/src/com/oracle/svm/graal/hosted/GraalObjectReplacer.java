@@ -35,7 +35,7 @@ import java.util.function.Function;
 import org.graalvm.compiler.api.runtime.GraalRuntime;
 import org.graalvm.compiler.core.common.spi.ForeignCallsProvider;
 import org.graalvm.compiler.nodes.FieldLocationIdentity;
-import org.graalvm.nativeimage.Feature.CompilationAccess;
+import org.graalvm.nativeimage.hosted.Feature.CompilationAccess;
 import org.graalvm.nativeimage.c.function.RelocatedPointer;
 
 import com.oracle.graal.pointsto.constraints.UnsupportedFeatureException;

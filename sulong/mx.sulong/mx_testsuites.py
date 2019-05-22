@@ -53,8 +53,6 @@ def run(vmArgs, unittests, extraOption=None, extraLibs=None):
         command = mx_sulong.getCommonOptions(True, extraLibs) + extraOption + vmArgs + unittests
         return mx_unittest.unittest(command)
 
-mx_subst.path_substitutions.register_no_arg('sulong_include', lambda: os.path.join(mx.suite('sulong').dir, 'include'))
-
 
 def compileTestSuite(testsuiteproject, extra_build_args):
     defaultBuildArgs = ['--project', testsuiteproject]

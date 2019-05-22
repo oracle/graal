@@ -40,6 +40,7 @@
  */
 package org.graalvm.nativeimage;
 
+import org.graalvm.nativeimage.hosted.Feature;
 import org.graalvm.nativeimage.impl.ImageSingletonsSupport;
 
 /**
@@ -57,7 +58,7 @@ import org.graalvm.nativeimage.impl.ImageSingletonsSupport;
  * image generation and accessing it at run time, the value is put into the {@link ImageSingletons}.
  * Usually, that happens in one of the early initialization methods of a {@link Feature}.
  *
- * @since 1.0
+ * @since 19.0
  */
 public final class ImageSingletons {
 
@@ -65,7 +66,7 @@ public final class ImageSingletons {
      * Add a singleton to the registry. The key must be unique, i.e., no value must have been
      * registered with the given class before.
      *
-     * @since 1.0
+     * @since 19.0
      */
     @Platforms(Platform.HOSTED_ONLY.class)
     public static <T> void add(Class<T> key, T value) {
@@ -79,7 +80,7 @@ public final class ImageSingletons {
      * The key must have been {@link #add added} before, i.e., the result is guaranteed to be non-
      * {@code null}.
      *
-     * @since 1.0
+     * @since 19.0
      */
     public static <T> T lookup(Class<T> key) {
         return ImageSingletonsSupport.get().lookup(key);
@@ -89,7 +90,7 @@ public final class ImageSingletons {
      * Checks if a singleton is in the registry. The key must be a compile time constant, so that
      * the call to this method can be replaced with the constant {@code true} of {@code false}.
      *
-     * @since 1.0
+     * @since 19.0
      */
     public static boolean contains(Class<?> key) {
         return ImageSingletonsSupport.get().contains(key);

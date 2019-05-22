@@ -11,8 +11,8 @@ while [ -h "$source" ] ; do
     fi
 done
 bin_dir="$( cd -P "$( dirname "$source" )" && pwd )"
-lib_dir="${bin_dir}"/..
-root_dir="${bin_dir}/../../../.."
+installer_dir="${bin_dir}"/..
+root_dir="${installer_dir}/../.."
 java_exe="${root_dir}/bin/java"
 
 JAVA_ARGS=()
@@ -30,7 +30,7 @@ done
 
 libs=""
 # Add possible drop-in extensions
-for x in "${lib_dir}"/*.jar ; do
+for x in "${installer_dir}"/*.jar ; do
     if [ -z "$libs" ]; then
         libs="$x"
     else

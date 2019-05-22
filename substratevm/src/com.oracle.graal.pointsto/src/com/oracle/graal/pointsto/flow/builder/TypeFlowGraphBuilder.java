@@ -102,7 +102,7 @@ public class TypeFlowGraphBuilder {
      */
     public void checkFormalParameterBuilder(TypeFlowBuilder<?> paramBuilder) {
         AnalysisMethod method = (AnalysisMethod) ((ParameterNode) paramBuilder.getSource()).graph().method();
-        String methodFormat = method.format("%H.%n(%P)");
+        String methodFormat = method.getQualifiedName();
         for (String specialMethodFormat : waitNotifyHashCodeMethods) {
             if (methodFormat.equals(specialMethodFormat)) {
                 dataFlowSinkBuilders.add(paramBuilder);

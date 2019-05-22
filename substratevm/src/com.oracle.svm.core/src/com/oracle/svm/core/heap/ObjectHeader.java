@@ -130,7 +130,7 @@ public abstract class ObjectHeader {
         } else {
             objectValue = ((Pointer) pointerBits).toObject();
         }
-        return KnownIntrinsics.unsafeCast(objectValue, DynamicHub.class);
+        return KnownIntrinsics.convertUnknownValue(objectValue, DynamicHub.class);
     }
 
     /*

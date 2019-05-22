@@ -26,15 +26,15 @@ package com.oracle.svm.core;
 
 import org.graalvm.nativeimage.c.CContext;
 import org.graalvm.nativeimage.c.function.CFunction;
-import org.graalvm.nativeimage.c.function.CLibrary;
 import org.graalvm.nativeimage.c.function.CFunction.Transition;
+import org.graalvm.nativeimage.c.function.CLibrary;
 import org.graalvm.nativeimage.c.struct.AllowNarrowingCast;
 import org.graalvm.nativeimage.c.struct.CField;
 import org.graalvm.nativeimage.c.struct.CStruct;
 import org.graalvm.nativeimage.c.type.CCharPointerPointer;
 import org.graalvm.word.PointerBase;
 
-@CLibrary("libchelper")
+@CLibrary(value = "libchelper", requireStatic = true)
 public class LibCHelper {
     @CFunction(transition = Transition.NO_TRANSITION)
     public static native CCharPointerPointer getEnviron();

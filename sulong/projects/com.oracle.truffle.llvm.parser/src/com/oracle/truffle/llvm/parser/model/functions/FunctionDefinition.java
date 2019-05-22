@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2016, 2018, Oracle and/or its affiliates.
+ * Copyright (c) 2016, 2019, Oracle and/or its affiliates.
  *
  * All rights reserved.
  *
@@ -72,7 +72,7 @@ public final class FunctionDefinition implements Constant, FunctionSymbol, Metad
     private int currentBlock = 0;
     private String name;
 
-    public FunctionDefinition(FunctionType type, String name, Linkage linkage, Visibility visibility, AttributesCodeEntry paramAttr) {
+    private FunctionDefinition(FunctionType type, String name, Linkage linkage, Visibility visibility, AttributesCodeEntry paramAttr) {
         this.type = type;
         this.name = name;
         this.paramAttr = paramAttr;
@@ -216,7 +216,7 @@ public final class FunctionDefinition implements Constant, FunctionSymbol, Metad
     }
 
     public void nameBlock(int index, String argName) {
-        blocks[index].setName(LLVMIdentifier.toExplicitBlockName(argName));
+        blocks[index].setName(argName);
     }
 
     public void onAfterParse() {

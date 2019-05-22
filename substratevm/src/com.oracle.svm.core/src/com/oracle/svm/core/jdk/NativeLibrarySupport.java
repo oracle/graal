@@ -33,7 +33,7 @@ import java.util.Deque;
 import java.util.List;
 import java.util.concurrent.locks.ReentrantLock;
 
-import org.graalvm.nativeimage.Feature;
+import org.graalvm.nativeimage.hosted.Feature;
 import org.graalvm.nativeimage.ImageSingletons;
 import org.graalvm.nativeimage.Platform.HOSTED_ONLY;
 import org.graalvm.nativeimage.Platforms;
@@ -146,7 +146,9 @@ public final class NativeLibrarySupport {
             NativeLibrary lib = PlatformNativeLibrarySupport.singleton().createLibrary(canonical, asBuiltin);
             currentLoadContext.push(lib);
             try {
-                lib.load();
+                if (!lib.load()) {
+                    return false;
+                }
                 if (libraryInitializer != null) {
                     libraryInitializer.initialize(lib);
                 }

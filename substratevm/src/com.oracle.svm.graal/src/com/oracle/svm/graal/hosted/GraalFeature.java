@@ -69,11 +69,10 @@ import org.graalvm.compiler.options.Option;
 import org.graalvm.compiler.phases.OptimisticOptimizations;
 import org.graalvm.compiler.phases.common.CanonicalizerPhase;
 import org.graalvm.compiler.phases.common.inlining.InliningUtil;
-import org.graalvm.compiler.phases.tiers.PhaseContext;
 import org.graalvm.compiler.phases.tiers.Suites;
 import org.graalvm.compiler.phases.util.Providers;
 import org.graalvm.compiler.word.WordTypes;
-import org.graalvm.nativeimage.Feature;
+import org.graalvm.nativeimage.hosted.Feature;
 import org.graalvm.nativeimage.ImageSingletons;
 
 import com.oracle.graal.pointsto.BigBang;
@@ -102,7 +101,6 @@ import com.oracle.svm.graal.meta.SubstrateField;
 import com.oracle.svm.graal.meta.SubstrateMethod;
 import com.oracle.svm.graal.meta.SubstrateRuntimeConfigurationBuilder;
 import com.oracle.svm.graal.meta.SubstrateType;
-import com.oracle.svm.hosted.ClassInitializationSupport;
 import com.oracle.svm.hosted.FeatureHandler;
 import com.oracle.svm.hosted.FeatureImpl.AfterHeapLayoutAccessImpl;
 import com.oracle.svm.hosted.FeatureImpl.BeforeAnalysisAccessImpl;
@@ -112,6 +110,7 @@ import com.oracle.svm.hosted.FeatureImpl.DuringSetupAccessImpl;
 import com.oracle.svm.hosted.NativeImageGenerator;
 import com.oracle.svm.hosted.analysis.Inflation;
 import com.oracle.svm.hosted.c.GraalAccess;
+import com.oracle.svm.hosted.classinitialization.ClassInitializationSupport;
 import com.oracle.svm.hosted.code.CompilationInfoSupport;
 import com.oracle.svm.hosted.code.SharedRuntimeConfigurationBuilder;
 import com.oracle.svm.hosted.meta.HostedField;
@@ -149,7 +148,7 @@ public final class GraalFeature implements Feature {
         public static final HostedOptionKey<Boolean> PrintStaticTruffleBoundaries = new HostedOptionKey<>(false);
 
         @Option(help = "Maximum number of methods allowed for runtime compilation.")//
-        public static final HostedOptionKey<Integer> MaxRuntimeCompileMethods = new HostedOptionKey<>(0);
+        public static final HostedOptionKey<Integer[]> MaxRuntimeCompileMethods = new HostedOptionKey<>(new Integer[]{});
 
         @Option(help = "Enforce checking of maximum number of methods allowed for runtime compilation. Useful for checking in the gate that the number of methods does not go up without a good reason.")//
         public static final HostedOptionKey<Boolean> EnforceMaxRuntimeCompileMethods = new HostedOptionKey<>(false);
@@ -339,14 +338,14 @@ public final class GraalFeature implements Feature {
         ClassInitializationSupport classInitializationSupport = config.getHostVM().getClassInitializationSupport();
         Providers originalProviders = GraalAccess.getOriginalProviders();
         runtimeConfigBuilder = new SubstrateRuntimeConfigurationBuilder(RuntimeOptionValues.singleton(), config.getHostVM(), config.getUniverse(), config.getMetaAccess(),
-                        originalProviders.getConstantReflection(), backendProvider, classInitializationSupport).build();
+                        originalProviders.getConstantReflection(), backendProvider, config.getNativeLibraries(), classInitializationSupport).build();
         RuntimeConfiguration runtimeConfig = runtimeConfigBuilder.getRuntimeConfig();
 
         Providers runtimeProviders = runtimeConfig.getProviders();
         WordTypes wordTypes = runtimeConfigBuilder.getWordTypes();
         hostedProviders = new HostedProviders(runtimeProviders.getMetaAccess(), runtimeProviders.getCodeCache(), runtimeProviders.getConstantReflection(), runtimeProviders.getConstantFieldProvider(),
                         runtimeProviders.getForeignCalls(), runtimeProviders.getLowerer(), runtimeProviders.getReplacements(), runtimeProviders.getStampProvider(),
-                        runtimeConfig.getSnippetReflection(), wordTypes);
+                        runtimeConfig.getSnippetReflection(), wordTypes, runtimeProviders.getGC());
 
         SubstrateGraalRuntime graalRuntime = new SubstrateGraalRuntime();
         objectReplacer.setGraalRuntime(graalRuntime);
@@ -360,9 +359,9 @@ public final class GraalFeature implements Feature {
         DebugContext debug = DebugContext.forCurrentThread();
         NativeImageGenerator.registerReplacements(debug, featureHandler, runtimeConfig, runtimeConfig.getProviders(), runtimeConfig.getSnippetReflection(), false, true);
         featureHandler.forEachGraalFeature(feature -> feature.registerCodeObserver(runtimeConfig));
-        Suites suites = NativeImageGenerator.createSuites(featureHandler, runtimeConfig, runtimeConfig.getSnippetReflection(), false);
+        Suites suites = NativeImageGenerator.createSuites(featureHandler, runtimeConfig, runtimeConfig.getSnippetReflection(), false, false);
         LIRSuites lirSuites = NativeImageGenerator.createLIRSuites(featureHandler, runtimeConfig.getProviders(), false);
-        Suites firstTierSuites = NativeImageGenerator.createFirstTierSuites(featureHandler, runtimeConfig, runtimeConfig.getSnippetReflection(), false);
+        Suites firstTierSuites = NativeImageGenerator.createFirstTierSuites(featureHandler, runtimeConfig, runtimeConfig.getSnippetReflection(), false, false);
         LIRSuites firstTierLirSuites = NativeImageGenerator.createFirstTierLIRSuites(featureHandler, runtimeConfig.getProviders(), false);
         GraalSupport.setRuntimeConfig(runtimeConfig, suites, lirSuites, firstTierSuites, firstTierLirSuites);
 
@@ -520,9 +519,8 @@ public final class GraalFeature implements Feature {
                     return;
                 }
 
-                PhaseContext phaseContext = new PhaseContext(hostedProviders);
-                new CanonicalizerPhase().apply(graph, phaseContext);
-                new ConvertDeoptimizeToGuardPhase().apply(graph, phaseContext);
+                new CanonicalizerPhase().apply(graph, hostedProviders);
+                new ConvertDeoptimizeToGuardPhase().apply(graph, hostedProviders);
 
                 graphEncoder.prepare(graph);
                 node.graph = graph;
@@ -568,7 +566,7 @@ public final class GraalFeature implements Feature {
 
             if (implementationMethods.size() > 0) {
                 /* Sort to make printing order and method discovery order deterministic. */
-                implementationMethods.sort((m1, m2) -> m1.format("%H.%n(%p)").compareTo(m2.format("%H.%n(%p)")));
+                implementationMethods.sort((m1, m2) -> m1.getQualifiedName().compareTo(m2.getQualifiedName()));
 
                 String sourceReference = buildSourceReference(targetNode.invoke().stateAfter());
                 for (AnalysisMethod implementationMethod : implementationMethods) {
@@ -617,7 +615,10 @@ public final class GraalFeature implements Feature {
             printStaticTruffleBoundaries();
         }
 
-        Integer maxMethods = Options.MaxRuntimeCompileMethods.getValue();
+        int maxMethods = 0;
+        for (Integer value : Options.MaxRuntimeCompileMethods.getValue()) {
+            maxMethods += value;
+        }
         if (Options.EnforceMaxRuntimeCompileMethods.getValue() && maxMethods != 0 && methods.size() > maxMethods) {
             printDeepestLevelPath();
             throw VMError.shouldNotReachHere("Number of methods for runtime compilation exceeds the allowed limit: " + methods.size() + " > " + maxMethods);
@@ -634,7 +635,6 @@ public final class GraalFeature implements Feature {
 
         StrengthenStampsPhase strengthenStamps = new RuntimeStrengthenStampsPhase(config.getUniverse(), objectReplacer);
         CanonicalizerPhase canonicalizer = new CanonicalizerPhase();
-        PhaseContext phaseContext = new PhaseContext(hostedProviders);
         for (CallTreeNode node : methods.values()) {
             StructuredGraph graph = node.graph;
             if (graph != null) {
@@ -642,9 +642,9 @@ public final class GraalFeature implements Feature {
                 try (DebugContext.Scope scope = debug.scope("RuntimeOptimize", graph)) {
                     removeUnreachableInvokes(node);
                     strengthenStamps.apply(graph);
-                    canonicalizer.apply(graph, phaseContext);
+                    canonicalizer.apply(graph, hostedProviders);
                     GraalConfiguration.instance().runAdditionalCompilerPhases(graph, this);
-                    canonicalizer.apply(graph, phaseContext);
+                    canonicalizer.apply(graph, hostedProviders);
                     graphEncoder.prepare(graph);
                 } catch (Throwable ex) {
                     debug.handle(ex);
@@ -837,7 +837,6 @@ class RuntimeStrengthenStampsPhase extends StrengthenStampsPhase {
     private final GraalObjectReplacer objectReplacer;
 
     RuntimeStrengthenStampsPhase(HostedUniverse hUniverse, GraalObjectReplacer objectReplacer) {
-        super(false);
         this.hUniverse = hUniverse;
         this.objectReplacer = objectReplacer;
     }

@@ -57,6 +57,7 @@ import org.graalvm.word.WordFactory;
 import com.oracle.svm.core.MonitorSupport;
 import com.oracle.svm.core.SubstrateUtil;
 import com.oracle.svm.core.annotate.Alias;
+import com.oracle.svm.core.annotate.NeverInline;
 import com.oracle.svm.core.annotate.TargetClass;
 import com.oracle.svm.core.c.function.CEntryPointActions;
 import com.oracle.svm.core.c.function.CEntryPointOptions;
@@ -83,6 +84,7 @@ import com.oracle.svm.jni.functions.JNIFunctions.Support.JNIExceptionHandlerRetu
 import com.oracle.svm.jni.functions.JNIFunctions.Support.JNIExceptionHandlerReturnMinusOne;
 import com.oracle.svm.jni.functions.JNIFunctions.Support.JNIExceptionHandlerReturnNullHandle;
 import com.oracle.svm.jni.functions.JNIFunctions.Support.JNIExceptionHandlerReturnNullWord;
+import com.oracle.svm.jni.functions.JNIFunctions.Support.JNIExceptionHandlerReturnZero;
 import com.oracle.svm.jni.functions.JNIFunctions.Support.JNIExceptionHandlerVoid;
 import com.oracle.svm.jni.functions.JNIFunctions.Support.JNIJavaVMEnterAttachThreadPrologue;
 import com.oracle.svm.jni.nativeapi.JNIEnvironment;
@@ -489,7 +491,7 @@ final class JNIFunctions {
     @CEntryPoint(exceptionHandler = JNIExceptionHandlerReturnNullWord.class)
     @CEntryPointOptions(prologue = JNIEnvironmentEnterPrologue.class, publishAs = Publish.NotPublished, include = CEntryPointOptions.NotIncludedAutomatically.class)
     static CShortPointer GetStringChars(JNIEnvironment env, JNIObjectHandle hstr, CCharPointer isCopy) {
-        return Support.pinStringAndGetChars(hstr, isCopy);
+        return Support.getNulTerminatedStringCharsAndPin(hstr, isCopy);
     }
 
     @CEntryPoint(exceptionHandler = JNIExceptionHandlerVoid.class)
@@ -533,7 +535,7 @@ final class JNIFunctions {
     @CEntryPoint(exceptionHandler = JNIExceptionHandlerReturnNullWord.class)
     @CEntryPointOptions(prologue = JNIEnvironmentEnterPrologue.class, publishAs = Publish.NotPublished, include = CEntryPointOptions.NotIncludedAutomatically.class)
     static CShortPointer GetStringCritical(JNIEnvironment env, JNIObjectHandle hstr, CCharPointer isCopy) {
-        return Support.pinStringAndGetChars(hstr, isCopy);
+        return Support.getNulTerminatedStringCharsAndPin(hstr, isCopy);
     }
 
     @CEntryPoint(exceptionHandler = JNIExceptionHandlerVoid.class)
@@ -767,9 +769,9 @@ final class JNIFunctions {
     /*
      * jint Throw(JNIEnv *env, jthrowable obj);
      */
-    @CEntryPoint(exceptionHandler = JNIExceptionHandlerVoid.class)
+    @CEntryPoint(exceptionHandler = JNIExceptionHandlerReturnZero.class)
     @CEntryPointOptions(prologue = JNIEnvironmentEnterPrologue.class, publishAs = Publish.NotPublished, include = CEntryPointOptions.NotIncludedAutomatically.class)
-    static void Throw(JNIEnvironment env, JNIObjectHandle handle) throws Throwable {
+    static int Throw(JNIEnvironment env, JNIObjectHandle handle) throws Throwable {
         throw (Throwable) JNIObjectHandles.getObject(handle);
     }
 
@@ -781,11 +783,11 @@ final class JNIFunctions {
     /*
      * jint ThrowNew(JNIEnv *env, jclass clazz, const char *message);
      */
-    @CEntryPoint(exceptionHandler = JNIExceptionHandlerVoid.class)
+    @CEntryPoint(exceptionHandler = JNIExceptionHandlerReturnZero.class)
     @CEntryPointOptions(prologue = JNIEnvironmentEnterPrologue.class, publishAs = Publish.NotPublished, include = CEntryPointOptions.NotIncludedAutomatically.class)
-    static void ThrowNew(JNIEnvironment env, JNIObjectHandle clazzHandle, CCharPointer message) throws Throwable {
+    static int ThrowNew(JNIEnvironment env, JNIObjectHandle clazzHandle, CCharPointer message) throws Throwable {
         Class<?> clazz = JNIObjectHandles.getObject(clazzHandle);
-        JNIMethodId ctor = JNIReflectionDictionary.singleton().getMethodID(clazz, "<init>", "(Ljava/lang/String;)V", false);
+        JNIMethodId ctor = Support.getMethodID(clazz, "<init>", "(Ljava/lang/String;)V", false);
         JNIObjectHandle messageHandle = NewStringUTF(env, message);
         NewObjectWithObjectArgFunctionPointer newObject = (NewObjectWithObjectArgFunctionPointer) env.getFunctions().getNewObject();
         JNIObjectHandle exception = newObject.invoke(env, clazzHandle, ctor, messageHandle);
@@ -797,6 +799,7 @@ final class JNIFunctions {
      */
     @CEntryPoint(exceptionHandler = JNIExceptionHandlerVoid.class)
     @CEntryPointOptions(prologue = JNIEnvironmentEnterPrologue.class, publishAs = Publish.NotPublished, include = CEntryPointOptions.NotIncludedAutomatically.class)
+    @NeverInline("Access of caller frame.")
     static void FatalError(JNIEnvironment env, CCharPointer message) {
         Log log = Log.log().autoflush(true);
         log.string("Fatal error reported via JNI: ").string(message).newline();
@@ -994,6 +997,13 @@ final class JNIFunctions {
             }
         }
 
+        static class JNIExceptionHandlerReturnZero {
+            static int handle(Throwable t) {
+                Support.handleException(t);
+                return 0;
+            }
+        }
+
         static class JNIExceptionHandlerReturnJniErr {
             static int handle(Throwable t) {
                 Support.handleException(t);
@@ -1005,6 +1015,10 @@ final class JNIFunctions {
             Class<?> clazz = JNIObjectHandles.getObject(hclazz);
             String name = CTypeConversion.toJavaString(cname);
             String signature = CTypeConversion.toJavaString(csig);
+            return getMethodID(clazz, name, signature, isStatic);
+        }
+
+        private static JNIMethodId getMethodID(Class<?> clazz, String name, String signature, boolean isStatic) {
             JNIMethodId methodID = JNIReflectionDictionary.singleton().getMethodID(clazz, name, signature, isStatic);
             if (methodID.isNull()) {
                 String message = clazz.getName() + "." + name + signature;
@@ -1032,7 +1046,7 @@ final class JNIFunctions {
             return fieldID;
         }
 
-        static CShortPointer pinStringAndGetChars(JNIObjectHandle hstr, CCharPointer isCopy) {
+        static CShortPointer getNulTerminatedStringCharsAndPin(JNIObjectHandle hstr, CCharPointer isCopy) {
             String str = JNIObjectHandles.getObject(hstr);
             if (str == null) {
                 return WordFactory.nullPointer();
@@ -1046,7 +1060,8 @@ final class JNIFunctions {
              * a JDK 9 UTF16 encoded String, we could avoid the copying. But it would require us to
              * know internals of the String implementation, so we do not do it for now.
              */
-            char[] chars = str.toCharArray();
+            char[] chars = new char[str.length() + 1];
+            str.getChars(0, str.length(), chars, 0);
             return JNIThreadLocalPinnedObjects.pinArrayAndGetAddress(chars);
         }
 

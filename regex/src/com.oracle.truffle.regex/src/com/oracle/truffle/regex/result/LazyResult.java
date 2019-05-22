@@ -35,8 +35,7 @@ public abstract class LazyResult extends RegexResult implements JsonConvertible 
     private final int fromIndex;
     private final int end;
 
-    public LazyResult(Object input, int fromIndex, int end, int numberOfCaptureGroups) {
-        super(numberOfCaptureGroups);
+    public LazyResult(Object input, int fromIndex, int end) {
         this.input = input;
         this.fromIndex = fromIndex;
         this.end = end;

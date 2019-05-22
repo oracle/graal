@@ -31,8 +31,6 @@ import static com.oracle.svm.core.snippets.KnownIntrinsics.readCallerStackPointe
 import static com.oracle.svm.core.snippets.KnownIntrinsics.readReturnAddress;
 
 import java.lang.Thread.UncaughtExceptionHandler;
-import java.lang.invoke.MethodHandle;
-import java.lang.invoke.MethodHandles;
 import java.lang.reflect.Field;
 import java.security.AccessControlContext;
 import java.util.ArrayList;
@@ -45,10 +43,11 @@ import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.atomic.AtomicLong;
 
+import com.oracle.svm.core.SubstrateUtil;
+import com.oracle.svm.core.jdk.JavaLangSubstitutions;
 import org.graalvm.compiler.api.replacements.Fold;
 import org.graalvm.compiler.core.common.SuppressFBWarnings;
 import org.graalvm.nativeimage.CurrentIsolate;
-import org.graalvm.nativeimage.Feature;
 import org.graalvm.nativeimage.ImageSingletons;
 import org.graalvm.nativeimage.Isolate;
 import org.graalvm.nativeimage.IsolateThread;
@@ -57,6 +56,7 @@ import org.graalvm.nativeimage.ObjectHandles;
 import org.graalvm.nativeimage.c.function.CEntryPoint;
 import org.graalvm.nativeimage.c.struct.RawField;
 import org.graalvm.nativeimage.c.struct.RawStructure;
+import org.graalvm.nativeimage.hosted.Feature;
 import org.graalvm.word.PointerBase;
 
 import com.oracle.svm.core.MonitorSupport;
@@ -73,23 +73,23 @@ import com.oracle.svm.core.annotate.TargetElement;
 import com.oracle.svm.core.annotate.Uninterruptible;
 import com.oracle.svm.core.heap.FeebleReferenceList;
 import com.oracle.svm.core.heap.Heap;
+import com.oracle.svm.core.jdk.JDK11OrLater;
 import com.oracle.svm.core.jdk.JDK8OrEarlier;
-import com.oracle.svm.core.jdk.JDK9OrLater;
 import com.oracle.svm.core.jdk.Package_jdk_internal_misc;
-import com.oracle.svm.core.jdk.StackTraceBuilder;
+import com.oracle.svm.core.jdk.StackTraceUtils;
 import com.oracle.svm.core.jdk.Target_jdk_internal_misc_VM;
 import com.oracle.svm.core.jdk.UninterruptibleUtils.AtomicReference;
 import com.oracle.svm.core.locks.VMMutex;
 import com.oracle.svm.core.log.Log;
 import com.oracle.svm.core.option.XOptions;
 import com.oracle.svm.core.snippets.KnownIntrinsics;
-import com.oracle.svm.core.stack.JavaStackWalker;
 import com.oracle.svm.core.stack.StackOverflowCheck;
 import com.oracle.svm.core.thread.ParkEvent.WaitResult;
 import com.oracle.svm.core.threadlocal.FastThreadLocalFactory;
 import com.oracle.svm.core.threadlocal.FastThreadLocalObject;
 import com.oracle.svm.core.util.TimeUtils;
 import com.oracle.svm.core.util.VMError;
+import com.oracle.svm.util.ReflectionUtil;
 
 public abstract class JavaThreads {
 
@@ -545,19 +545,16 @@ public abstract class JavaThreads {
         return result;
     }
 
+    @NeverInline("Starting a stack walk in the caller frame")
     private static StackTraceElement[] getStackTrace(IsolateThread thread) {
         if (thread == CurrentIsolate.getCurrentThread()) {
             /*
              * Internal frames from the VMOperation handling show up in the stack traces, but we are
              * OK with that.
              */
-            StackTraceBuilder stackTraceBuilder = new StackTraceBuilder(false);
-            JavaStackWalker.walkCurrentThread(readCallerStackPointer(), readReturnAddress(), stackTraceBuilder);
-            return stackTraceBuilder.getTrace();
+            return StackTraceUtils.getStackTrace(false, readCallerStackPointer(), readReturnAddress());
         } else {
-            StackTraceBuilder stackTraceBuilder = new StackTraceBuilder(false);
-            JavaStackWalker.walkThread(thread, stackTraceBuilder);
-            return stackTraceBuilder.getTrace();
+            return StackTraceUtils.getStackTrace(false, thread);
         }
     }
 
@@ -592,8 +589,8 @@ public abstract class JavaThreads {
 
         private final CopyOnWriteArraySet<Thread> collectedThreads = new CopyOnWriteArraySet<>();
 
-        private final MethodHandle threadSeqNumberMH = createFieldMH(Thread.class, "threadSeqNumber");
-        private final MethodHandle threadInitNumberMH = createFieldMH(Thread.class, "threadInitNumber");
+        private static final Field threadSeqNumber = ReflectionUtil.lookupField(Thread.class, "threadSeqNumber");
+        private static final Field threadInitNumber = ReflectionUtil.lookupField(Thread.class, "threadInitNumber");
 
         @Override
         public void duringSetup(DuringSetupAccess access) {
@@ -615,21 +612,11 @@ public abstract class JavaThreads {
              */
             if (!collectedThreads.isEmpty()) {
                 try {
-                    JavaThreads.singleton().threadSeqNumber.set((long) threadSeqNumberMH.invokeExact());
-                    JavaThreads.singleton().threadInitNumber.set((int) threadInitNumberMH.invokeExact());
-                } catch (Throwable t) {
+                    JavaThreads.singleton().threadSeqNumber.set(threadSeqNumber.getLong(null));
+                    JavaThreads.singleton().threadInitNumber.set(threadInitNumber.getInt(null));
+                } catch (ReflectiveOperationException t) {
                     throw VMError.shouldNotReachHere(t);
                 }
-            }
-        }
-
-        private static MethodHandle createFieldMH(Class<?> declaringClass, String fieldName) {
-            try {
-                Field field = declaringClass.getDeclaredField(fieldName);
-                field.setAccessible(true);
-                return MethodHandles.lookup().unreflectGetter(field);
-            } catch (Throwable t) {
-                throw VMError.shouldNotReachHere(t);
             }
         }
     }
@@ -740,6 +727,7 @@ final class Target_java_lang_Thread {
         name = (withName != null) ? withName : ("System-" + nextThreadNum());
         group = (withGroup != null) ? withGroup : JavaThreads.singleton().rootGroup;
         priority = Thread.NORM_PRIORITY;
+        contextClassLoader = SubstrateUtil.cast(ImageSingletons.lookup(JavaLangSubstitutions.ClassLoaderSupport.class).systemClassLoader, ClassLoader.class);
         blockerLock = new Object();
         daemon = asDaemon;
     }
@@ -765,7 +753,7 @@ final class Target_java_lang_Thread {
 
     @Substitute
     @SuppressWarnings({"unused"})
-    @TargetElement(onlyWith = JDK9OrLater.class)
+    @TargetElement(onlyWith = JDK11OrLater.class)
     private Target_java_lang_Thread(
                     ThreadGroup g,
                     Runnable target,
@@ -936,14 +924,11 @@ final class Target_java_lang_Thread {
     }
 
     @Substitute
-    @NeverInline("Immediate caller must show up in stack trace and so needs its own stack frame")
+    @NeverInline("Starting a stack walk in the caller frame")
     private StackTraceElement[] getStackTrace() {
         if (JavaThreads.fromTarget(this) == Thread.currentThread()) {
             /* We can walk our own stack without a VMOperation. */
-            StackTraceBuilder stackTraceBuilder = new StackTraceBuilder(false);
-            JavaStackWalker.walkCurrentThread(KnownIntrinsics.readCallerStackPointer(), KnownIntrinsics.readReturnAddress(), stackTraceBuilder);
-            return stackTraceBuilder.getTrace();
-
+            return StackTraceUtils.getStackTrace(false, KnownIntrinsics.readCallerStackPointer(), KnownIntrinsics.readReturnAddress());
         } else {
             return JavaThreads.getStackTrace(JavaThreads.fromTarget(this));
         }
@@ -960,11 +945,11 @@ final class Util_java_lang_Thread {
     /**
      * Thread instance initialization.
      *
-     * This method is a copy of the implementation of the JDK-8 method
+     * This method is a copy of the implementation of the JDK 8 method
      *
      * <code>Thread.init(ThreadGroup g, Runnable target, String name, long stackSize)</code>
      *
-     * and the JDK-9 constructor
+     * and the JDK 11 constructor
      *
      * <code>Thread(ThreadGroup g, Runnable target, String name, long stackSize,
      * AccessControlContext acc, boolean inheritThreadLocals)</code>

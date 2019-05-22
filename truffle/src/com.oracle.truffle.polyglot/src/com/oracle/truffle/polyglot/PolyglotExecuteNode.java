@@ -118,7 +118,7 @@ abstract class PolyglotExecuteNode extends Node {
             unsupportedError.enter();
             throw HostInteropErrors.executeUnsupported(languageContext, function);
         }
-        return toHost.execute(result, resultClass, resultType, languageContext);
+        return toHost.execute(result, resultClass, resultType, languageContext, true);
     }
 
 }

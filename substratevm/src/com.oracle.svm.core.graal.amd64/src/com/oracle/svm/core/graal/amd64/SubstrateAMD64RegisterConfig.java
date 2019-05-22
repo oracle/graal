@@ -50,7 +50,7 @@ import static jdk.vm.ci.amd64.AMD64.valueRegistersSSE;
 
 import java.util.ArrayList;
 
-import org.graalvm.nativeimage.Feature;
+import org.graalvm.nativeimage.hosted.Feature;
 import org.graalvm.nativeimage.ImageSingletons;
 import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.Platforms;

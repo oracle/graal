@@ -30,9 +30,9 @@ import org.graalvm.word.Pointer;
 import com.oracle.svm.core.annotate.UnknownObjectField;
 import com.oracle.svm.core.annotate.UnknownPrimitiveField;
 import com.oracle.svm.core.heap.GC;
+import com.oracle.svm.core.heap.InstanceReferenceMapDecoder;
 import com.oracle.svm.core.heap.ObjectReferenceVisitor;
 import com.oracle.svm.core.heap.ObjectReferenceWalker;
-import com.oracle.svm.core.heap.ReferenceMapDecoder;
 import com.oracle.svm.core.thread.VMThreads;
 
 /**
@@ -46,26 +46,15 @@ public class VMThreadLocalMTObjectReferenceWalker extends ObjectReferenceWalker 
      */
     @UnknownPrimitiveField public int vmThreadSize = -1;
     @UnknownObjectField(types = {byte[].class}) public byte[] vmThreadReferenceMapEncoding;
-    @UnknownPrimitiveField public long vmThreadReferenceMapIndex;
+    @UnknownPrimitiveField public long vmThreadReferenceMapIndex = -1;
 
     @Override
     public boolean walk(ObjectReferenceVisitor referenceVisitor) {
         for (IsolateThread vmThread = VMThreads.firstThread(); VMThreads.isNonNullThread(vmThread); vmThread = VMThreads.nextThread(vmThread)) {
-            if (!ReferenceMapDecoder.walkOffsetsFromPointer(vmThread, vmThreadReferenceMapEncoding, vmThreadReferenceMapIndex, referenceVisitor)) {
+            if (!InstanceReferenceMapDecoder.walkOffsetsFromPointer((Pointer) vmThread, vmThreadReferenceMapEncoding, vmThreadReferenceMapIndex, referenceVisitor)) {
                 return false;
             }
         }
         return true;
-    }
-
-    @Override
-    public boolean containsPointer(Pointer p) {
-        for (IsolateThread vmThread = VMThreads.firstThread(); VMThreads.isNonNullThread(vmThread); vmThread = VMThreads.nextThread(vmThread)) {
-            Pointer threadPtr = (Pointer) vmThread;
-            if (p.aboveOrEqual(threadPtr) && p.belowThan(threadPtr.add(vmThreadSize))) {
-                return true;
-            }
-        }
-        return false;
     }
 }

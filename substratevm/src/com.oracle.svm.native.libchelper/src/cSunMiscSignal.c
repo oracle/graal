@@ -109,6 +109,18 @@ int cSunMiscSignal_open() {
 		  cSunMiscSignal_table[i] = 0;
 		  i += 1;
 	    }
+#if POSIX_C_SOURCE >= 200112L
+		/* Create an anonymous semaphore. */
+		cSunMiscSignal_semaphore = malloc(sizeof(sem_t));
+		if (! cSunMiscSignal_semaphore) {
+			return -1;
+		}
+		if (! sem_init(cSunMiscSemaphore, 0)) {
+			free(cSunMiscSignal_semaphore);
+			cSunMiscSignal_semaphore = NULL;
+			return -1;
+		}
+#else /* POSIX_C_SOURCE >= 200112L */
 		/* Get a process-specific name for the semaphore. */
 		char cSunMiscSignal_semaphoreName[NAME_MAX];
 		const char* const nameFormat = "/cSunMiscSignal-%d";
@@ -129,6 +141,7 @@ int cSunMiscSignal_open() {
 		if (unlinkResult != 0) {
 			return unlinkResult;
 		}
+#endif /* POSIX_C_SOURCE >= 200112L */
 		return 0;
 	}
 	errno = EBUSY;
@@ -138,10 +151,17 @@ int cSunMiscSignal_open() {
 /* Close the C signal handler mechanism. */
 int cSunMiscSignal_close() {
 	if (haveSemaphore()) {
+#if POSIX_C_SOURCE >= 200112L
+		int const semCloseResult = sem_destroy(cSunMiscSignal_semaphore);
+#else /* POSIX_C_SOURCE >= 200112L */
 		int const semCloseResult = sem_close(cSunMiscSignal_semaphore);
+#endif /* POSIX_C_SOURCE >= 200112L */
 		if (semCloseResult != 0) {
 			return semCloseResult;
 		}
+#if POSIX_C_SOURCE >= 200112L
+		free(cSunMiscSignal_semaphore);
+#endif /* POSIX_C_SOURCE >= 200112L */
 		cSunMiscSignal_semaphore = NULL;
 	}
 

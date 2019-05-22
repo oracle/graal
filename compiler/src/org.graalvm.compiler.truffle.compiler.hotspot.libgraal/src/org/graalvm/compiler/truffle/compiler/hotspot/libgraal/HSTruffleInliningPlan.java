@@ -59,6 +59,7 @@ import org.graalvm.compiler.truffle.common.hotspot.libgraal.SVMToHotSpot;
 import org.graalvm.compiler.truffle.compiler.hotspot.libgraal.JNI.JNIEnv;
 import org.graalvm.compiler.truffle.compiler.hotspot.libgraal.JNI.JObject;
 import org.graalvm.compiler.truffle.compiler.hotspot.libgraal.JNI.JString;
+import org.graalvm.libgraal.LibGraal;
 
 import jdk.vm.ci.meta.JavaConstant;
 
@@ -77,7 +78,7 @@ class HSTruffleInliningPlan extends HSObject implements TruffleInliningPlan {
     @SVMToHotSpot(FindDecision)
     @Override
     public Decision findDecision(JavaConstant callNode) {
-        long callNodeHandle = runtime().translate(callNode);
+        long callNodeHandle = LibGraal.translate(runtime(), callNode);
         JNIEnv env = scope.getEnv();
         JObject res = callFindDecision(env, getHandle(), callNodeHandle);
         if (res.isNull()) {
@@ -89,7 +90,7 @@ class HSTruffleInliningPlan extends HSObject implements TruffleInliningPlan {
     @SVMToHotSpot(GetPosition)
     @Override
     public TruffleSourceLanguagePosition getPosition(JavaConstant node) {
-        long nodeHandle = runtime().translate(node);
+        long nodeHandle = LibGraal.translate(runtime(), node);
         JNIEnv env = scope.getEnv();
         JObject res = callGetPosition(env, getHandle(), nodeHandle);
         if (res.isNull()) {
@@ -131,7 +132,7 @@ class HSTruffleInliningPlan extends HSObject implements TruffleInliningPlan {
         @Override
         public JavaConstant getNodeRewritingAssumption() {
             long javaConstantHandle = callGetNodeRewritingAssumption(scope.getEnv(), getHandle());
-            return runtime().unhand(JavaConstant.class, javaConstantHandle);
+            return LibGraal.unhand(runtime(), JavaConstant.class, javaConstantHandle);
         }
     }
 

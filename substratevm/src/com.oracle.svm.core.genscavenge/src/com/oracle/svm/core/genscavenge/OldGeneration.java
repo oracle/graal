@@ -33,10 +33,8 @@ import com.oracle.svm.core.MemoryWalker;
 import com.oracle.svm.core.annotate.Uninterruptible;
 import com.oracle.svm.core.heap.ObjectHeader;
 import com.oracle.svm.core.heap.ObjectVisitor;
-import com.oracle.svm.core.heap.ReferenceAccess;
 import com.oracle.svm.core.hub.LayoutEncoding;
 import com.oracle.svm.core.log.Log;
-import com.oracle.svm.core.util.VMError;
 
 /**
  * An OldGeneration has three Spaces,
@@ -107,14 +105,14 @@ public class OldGeneration extends Generation {
 
     /** Promote an Object to ToSpace if it is not already in ToSpace or PinnedToSpace. */
     @Override
-    public Object promoteObject(Object original, Pointer objRef, int innerOffset, boolean compressed) {
+    public Object promoteObject(Object original) {
         final Log trace = Log.noopLog().string("[OldGeneration.promoteObject:").string("  original: ").object(original).newline();
         Object result;
         /* Choose between object copying and chunk motion. */
         if (ObjectHeaderImpl.getObjectHeaderImpl().isAlignedObject(original)) {
             trace.string("  aligned header: ").hex(ObjectHeader.readHeaderFromObject(original)).newline();
             /* Promote by Object copying to the old generation. */
-            result = promoteAlignedObject(original, objRef, innerOffset, compressed);
+            result = promoteAlignedObject(original);
         } else {
             trace.string("  unaligned header: ").hex(ObjectHeader.readHeaderFromObject(original)).newline();
             /* Promote by HeapChunk motion to the old generation. */
@@ -153,24 +151,11 @@ public class OldGeneration extends Generation {
         return result;
     }
 
-    private Object promoteAlignedObject(Object original, Pointer objRef, int innerOffset, boolean compressed) {
+    private Object promoteAlignedObject(Object original) {
         final Log trace = Log.noopLog().string("[OldGeneration.promoteAlignedObject:").string("  original: ").object(original);
         assert ObjectHeaderImpl.getObjectHeaderImpl().isAlignedObject(original);
         final AlignedHeapChunk.AlignedHeader originalChunk = AlignedHeapChunk.getEnclosingAlignedHeapChunk(original);
         final Space originalSpace = originalChunk.getSpace();
-        /* { GR-9912: Check that `original` is in a well-formed Space (or at least non-null). */
-        if (originalSpace == null) {
-            /* I am about to fail a guarantee, but first log some things about the object. */
-            final Log failureLog = Log.log().string("[! OldGeneration.promoteAlignedObject:").string("  originalSpace == null").indent(true);
-            ObjectHeaderImpl.getObjectHeaderImpl().objectHeaderToLog(original, failureLog);
-            failureLog.string("  objRef: ").hex(objRef)
-                            .string("  innerOffset: ").signed(innerOffset)
-                            .string("  compressed: ").bool(compressed)
-                            .string("  *objRef: ").hex(ReferenceAccess.singleton().readObjectAsUntrackedPointer(objRef, compressed))
-                            .string(" !]").indent(false);
-            throw VMError.shouldNotReachHere("OldGeneration.promoteAlignedObject:  originalSpace == null");
-        }
-        /* } GR-9912: Check that `original` is in a well-formed Space (or at least non-null). */
         trace.string("  originalSpace: ").string(originalSpace.getName());
         Object result = original;
         if (shouldPromoteFrom(originalSpace)) {

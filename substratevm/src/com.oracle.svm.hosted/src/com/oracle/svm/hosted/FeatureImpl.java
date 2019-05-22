@@ -42,9 +42,9 @@ import java.util.function.Function;
 import java.util.function.Predicate;
 
 import org.graalvm.compiler.debug.DebugContext;
-import org.graalvm.nativeimage.Feature;
-import org.graalvm.nativeimage.Feature.DuringAnalysisAccess;
-import org.graalvm.nativeimage.RuntimeReflection;
+import org.graalvm.nativeimage.hosted.Feature;
+import org.graalvm.nativeimage.hosted.Feature.DuringAnalysisAccess;
+import org.graalvm.nativeimage.hosted.RuntimeReflection;
 
 import com.oracle.graal.pointsto.BigBang;
 import com.oracle.graal.pointsto.api.UnsafePartitionKind;
@@ -64,6 +64,7 @@ import com.oracle.svm.core.meta.SubstrateObjectConstant;
 import com.oracle.svm.hosted.analysis.Inflation;
 import com.oracle.svm.hosted.c.NativeLibraries;
 import com.oracle.svm.hosted.code.CompilationInfoSupport;
+import com.oracle.svm.hosted.code.SharedRuntimeConfigurationBuilder;
 import com.oracle.svm.hosted.image.AbstractBootImage;
 import com.oracle.svm.hosted.image.AbstractBootImage.NativeImageKind;
 import com.oracle.svm.hosted.image.NativeImageHeap;
@@ -77,6 +78,7 @@ import jdk.vm.ci.meta.JavaConstant;
 import jdk.vm.ci.meta.JavaKind;
 import jdk.vm.ci.meta.MetaAccessProvider;
 
+@SuppressWarnings("deprecation")
 public class FeatureImpl {
 
     public abstract static class FeatureAccessImpl implements Feature.FeatureAccess {
@@ -101,11 +103,11 @@ public class FeatureImpl {
         }
 
         public <T> List<Class<? extends T>> findSubclasses(Class<T> baseClass) {
-            return imageClassLoader.findSubclasses(baseClass);
+            return imageClassLoader.findSubclasses(baseClass, false);
         }
 
         public List<Class<?>> findAnnotatedClasses(Class<? extends Annotation> annotationClass) {
-            return imageClassLoader.findAnnotatedClasses(annotationClass);
+            return imageClassLoader.findAnnotatedClasses(annotationClass, false);
         }
 
         public List<Method> findAnnotatedMethods(Class<? extends Annotation> annotationClass) {
@@ -196,7 +198,7 @@ public class FeatureImpl {
          * {@link DuringAnalysisAccess#requireAnalysisIteration()} to trigger a new iteration of the
          * analysis.
          *
-         * @since 1.0
+         * @since 19.0
          */
         public void registerClassReachabilityListener(BiConsumer<DuringAnalysisAccess, Class<?>> listener) {
             getHostVM().registerClassReachabilityListener(listener);
@@ -452,9 +454,16 @@ public class FeatureImpl {
     }
 
     public static class BeforeCompilationAccessImpl extends CompilationAccessImpl implements Feature.BeforeCompilationAccess {
+        SharedRuntimeConfigurationBuilder runtimeBuilder;
+
         BeforeCompilationAccessImpl(FeatureHandler featureHandler, ImageClassLoader imageClassLoader, AnalysisUniverse aUniverse, HostedUniverse hUniverse, HostedMetaAccess hMetaAccess,
-                        NativeImageHeap heap, DebugContext debugContext) {
+                        NativeImageHeap heap, DebugContext debugContext, SharedRuntimeConfigurationBuilder runtime) {
             super(featureHandler, imageClassLoader, aUniverse, hUniverse, hMetaAccess, heap, debugContext);
+            runtimeBuilder = runtime;
+        }
+
+        public SharedRuntimeConfigurationBuilder getRuntimeBuilder() {
+            return runtimeBuilder;
         }
     }
 

@@ -274,7 +274,7 @@ public class NativeImageMojo extends AbstractMojo {
 
         URI jarFileURI = URI.create("jar:" + jarFilePath.toUri());
         try (FileSystem jarFS = FileSystems.newFileSystem(jarFileURI, Collections.emptyMap())) {
-            Path nativeImageMetaInfBase = jarFS.getPath("/" + NativeImage.nativeImagePropertiesMetaInf);
+            Path nativeImageMetaInfBase = jarFS.getPath("/" + NativeImage.nativeImageMetaInf);
             if (Files.isDirectory(nativeImageMetaInfBase)) {
                 List<Path> nativeImageProperties = Files.walk(nativeImageMetaInfBase)
                                 .filter(p -> p.endsWith(NativeImage.nativeImagePropertiesFilename))
@@ -286,7 +286,7 @@ public class NativeImageMojo extends AbstractMojo {
                     valid = valid && relativeSubDir.getName(0).toString().equals(artifact.getGroupId());
                     valid = valid && relativeSubDir.getName(1).toString().equals(artifact.getArtifactId());
                     if (!valid) {
-                        String example = NativeImage.nativeImagePropertiesMetaInf + "/${groupId}/${artifactId}/" + NativeImage.nativeImagePropertiesFilename;
+                        String example = NativeImage.nativeImageMetaInf + "/${groupId}/${artifactId}/" + NativeImage.nativeImagePropertiesFilename;
                         getLog().warn(nativeImageProperty.toUri() + " does not match recommended " + example + " layout.");
                     }
                 }

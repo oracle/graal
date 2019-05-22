@@ -48,15 +48,18 @@ import com.oracle.truffle.api.TruffleLanguage;
 import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.api.nodes.RootNode;
 import com.oracle.truffle.nfi.impl.FunctionExecuteNode.SlowPathExecuteNode;
-import com.oracle.truffle.nfi.types.NativeLibraryDescriptor;
-import com.oracle.truffle.nfi.types.Parser;
+import com.oracle.truffle.nfi.spi.NFIBackend;
+import com.oracle.truffle.nfi.spi.NFIBackendFactory;
+import com.oracle.truffle.nfi.spi.NFIBackendTools;
+import com.oracle.truffle.nfi.spi.types.NativeLibraryDescriptor;
 
-@TruffleLanguage.Registration(id = "nfi/native", name = "nfi-native", version = "0.1", characterMimeTypes = NFILanguageImpl.MIME_TYPE, internal = true)
+@TruffleLanguage.Registration(id = "internal/nfi-native", name = "nfi-native", version = "0.1", characterMimeTypes = NFILanguageImpl.MIME_TYPE, internal = true, services = NFIBackendFactory.class)
 public class NFILanguageImpl extends TruffleLanguage<NFIContext> {
 
     public static final String MIME_TYPE = "trufflenfi/native";
 
     @CompilationFinal private CallTarget slowPathCall;
+    @CompilationFinal private NFIBackendImpl backend;
 
     CallTarget getSlowPathCall() {
         if (slowPathCall == null) {
@@ -66,8 +69,27 @@ public class NFILanguageImpl extends TruffleLanguage<NFIContext> {
         return slowPathCall;
     }
 
+    NFIBackendTools getTools() {
+        return backend.tools;
+    }
+
     @Override
     protected NFIContext createContext(Env env) {
+        env.registerService(new NFIBackendFactory() {
+
+            @Override
+            public String getBackendId() {
+                return "native";
+            }
+
+            @Override
+            public NFIBackend createBackend(NFIBackendTools tools) {
+                if (backend == null) {
+                    backend = new NFIBackendImpl(tools);
+                }
+                return backend;
+            }
+        });
         return new NFIContext(this, env);
     }
 
@@ -152,50 +174,68 @@ public class NFILanguageImpl extends TruffleLanguage<NFIContext> {
         }
     }
 
-    @Override
-    protected CallTarget parse(ParsingRequest request) throws Exception {
-        CharSequence library = request.getSource().getCharacters();
-        RootNode root;
-        NativeLibraryDescriptor descriptor = Parser.parseLibraryDescriptor(library);
-        NFIContext ctx = getContextReference().get();
+    private final class NFIBackendImpl implements NFIBackend {
 
-        if (descriptor.isDefaultLibrary()) {
-            root = new GetDefaultLibraryNode(this);
-        } else {
-            int flags = 0;
-            boolean lazyOrNow = false;
-            if (descriptor.getFlags() != null) {
-                for (String flag : descriptor.getFlags()) {
-                    switch (flag) {
-                        case "RTLD_GLOBAL":
-                            flags |= ctx.RTLD_GLOBAL;
-                            break;
-                        case "RTLD_LOCAL":
-                            flags |= ctx.RTLD_LOCAL;
-                            break;
-                        case "RTLD_LAZY":
-                            flags |= ctx.RTLD_LAZY;
-                            lazyOrNow = true;
-                            break;
-                        case "RTLD_NOW":
-                            flags |= ctx.RTLD_NOW;
-                            lazyOrNow = true;
-                            break;
-                    }
-                }
-            }
-            if (!lazyOrNow) {
-                // default to 'RTLD_NOW' if neither 'RTLD_LAZY' nor 'RTLD_NOW' was specified
-                flags |= ctx.RTLD_NOW;
-            }
-            root = new LoadLibraryNode(this, descriptor.getFilename(), flags);
+        final NFIBackendTools tools;
+
+        NFIBackendImpl(NFIBackendTools tools) {
+            this.tools = tools;
         }
 
-        return Truffle.getRuntime().createCallTarget(root);
+        @Override
+        public CallTarget parse(NativeLibraryDescriptor descriptor) {
+            RootNode root;
+            NFIContext ctx = getContextReference().get();
+
+            if (descriptor.isDefaultLibrary()) {
+                root = new GetDefaultLibraryNode(NFILanguageImpl.this);
+            } else {
+                int flags = 0;
+                boolean lazyOrNow = false;
+                if (descriptor.getFlags() != null) {
+                    for (String flag : descriptor.getFlags()) {
+                        switch (flag) {
+                            case "RTLD_GLOBAL":
+                                flags |= ctx.RTLD_GLOBAL;
+                                break;
+                            case "RTLD_LOCAL":
+                                flags |= ctx.RTLD_LOCAL;
+                                break;
+                            case "RTLD_LAZY":
+                                flags |= ctx.RTLD_LAZY;
+                                lazyOrNow = true;
+                                break;
+                            case "RTLD_NOW":
+                                flags |= ctx.RTLD_NOW;
+                                lazyOrNow = true;
+                                break;
+                        }
+                    }
+                }
+                if (!lazyOrNow) {
+                    // default to 'RTLD_NOW' if neither 'RTLD_LAZY' nor 'RTLD_NOW' was specified
+                    flags |= ctx.RTLD_NOW;
+                }
+                root = new LoadLibraryNode(NFILanguageImpl.this, descriptor.getFilename(), flags);
+            }
+
+            return Truffle.getRuntime().createCallTarget(root);
+        }
+    }
+
+    @Override
+    protected CallTarget parse(ParsingRequest request) throws Exception {
+        return Truffle.getRuntime().createCallTarget(new RootNode(this) {
+
+            @Override
+            public Object execute(VirtualFrame frame) {
+                throw new UnsupportedOperationException("illegal access to internal language");
+            }
+        });
     }
 
     @Override
     protected boolean isObjectOfLanguage(Object object) {
-        return object instanceof LibFFIFunction || object instanceof LibFFILibrary || object instanceof NativePointer || object instanceof NativeString;
+        return object instanceof LibFFILibrary || object instanceof NativePointer || object instanceof NativeString;
     }
 }

@@ -97,6 +97,10 @@ final class SourceAccessor extends Accessor {
         return ACCESSOR.languageSupport().getTruffleFile(path, fileSystemContext);
     }
 
+    static boolean isDefaultFileSystem(Object fileSystemContext) {
+        return ACCESSOR.languageSupport().isDefaultFileSystem(fileSystemContext);
+    }
+
     static final class SourceSupportImpl extends Accessor.SourceSupport {
 
         @Override

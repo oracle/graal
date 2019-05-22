@@ -1,6 +1,6 @@
 # Eigth of a M7 processor with 4 cores, 8 threads each
 
-m7_eighth.c1 : ${labsjdk8} {
+m7_eighth.c1 : ${oraclejdk8} {
   targets: [weekly]
   capabilities: [solaris, m7_eighth]
   environment : {

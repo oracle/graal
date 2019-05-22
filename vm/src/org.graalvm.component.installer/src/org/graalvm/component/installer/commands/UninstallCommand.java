@@ -31,6 +31,7 @@ import java.util.HashMap;
 import java.util.HashSet;
 import java.util.LinkedHashMap;
 import java.util.Map;
+import org.graalvm.component.installer.BundleConstants;
 import org.graalvm.component.installer.CommandInput;
 import org.graalvm.component.installer.Commands;
 import org.graalvm.component.installer.CommonConstants;
@@ -76,6 +77,8 @@ public class UninstallCommand implements InstallerCommand {
 
     @Override
     public int execute() throws IOException {
+        input.getLocalRegistry().verifyAdministratorAccess();
+
         this.registry = input.getLocalRegistry();
 
         ignoreFailures = input.optValue(Commands.OPTION_FORCE) != null;
@@ -97,6 +100,12 @@ public class UninstallCommand implements InstallerCommand {
             ComponentInfo info = input.getLocalRegistry().loadSingleComponent(compId.toLowerCase(), true);
             if (info == null) {
                 throw feedback.failure("UNINSTALL_UnknownComponentId", null, compId);
+            }
+            if (info.getId().equals(BundleConstants.GRAAL_COMPONENT_ID)) {
+                throw feedback.failure("UNINSTALL_CoreComponent", null, compId);
+            }
+            if (info.isNativeComponent()) {
+                throw feedback.failure("UNINSTALL_NativeComponent", null, compId);
             }
             toUninstall.put(compId, info);
         }

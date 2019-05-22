@@ -349,7 +349,7 @@ In this tutorial, we have learned that with Truffle Libraries we no longer need 
 
 * Library exports currently cannot explicitly invoke their `super` implementation. This makes reflective implementations currently infeasible. See the example [here](https://github.com/oracle/graal/tree/master/truffle/src/com.oracle.truffle.api.library.test/src/com/oracle/truffle/api/library/test/examples/ReflectiveCallExample.java).
 * Boxing elimination for return values is currently not supported. A message can only have one generic return type. Support for this is planned.
-
+* Reflection without static dependencies on the `Library` class is currently not supported. Support for full dynamic reflection is planned.
 
 ### When should I use Truffle Libraries?
 

@@ -224,10 +224,13 @@ def bench_jsimage(bench_conf, out, err, extra_options=None):
 
     image_dir, js_image_name, image_path = _bench_image_params(bench_conf)
     if not exists(image_path):
+        native_image = mx_substratevm.vm_native_image_path(mx_substratevm._graalvm_js_config)
+        if not exists(native_image):
+            mx_substratevm.build_native_image_image(mx_substratevm._graalvm_js_config)
         with _timedelta('IMAGEBUILD: ', out=out):
             out('INFO: EXECUTE IMAGEBUILD: svmimage-%s\n' % bench_conf)
             _, image_building_options = _bench_configs[bench_conf]
-            command = [mx_substratevm.native_image_path(mx_substratevm.suite_native_image_root()), '--language:js', '-H:Path=' + image_dir,
+            command = [native_image, '--language:js', '-H:Path=' + image_dir,
                        '-H:Name=' + js_image_name] + image_building_options + extra_options
             # Print out the command.
             print(' '.join(command))
@@ -274,7 +277,7 @@ def run_js(vmArgs, jsArgs, nonZeroIsFatal, out, err, cwd):
     _, _, image_path = _bench_image_params(bench_conf)
     if should_bench_compile_server and not exists(image_path):
         for _ in range(_IMAGE_BENCH_REPETITIONS):
-            with mx_substratevm.native_image_context():
+            with mx_substratevm.native_image_context(config=mx_substratevm._graalvm_js_config, build_if_missing=True):
                 _bench_compile_server(bench_conf, out)
 
     image_path = bench_jsimage(bench_conf, out=out, err=err)

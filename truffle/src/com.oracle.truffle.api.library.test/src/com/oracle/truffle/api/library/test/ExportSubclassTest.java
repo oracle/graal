@@ -47,6 +47,8 @@ import org.junit.Test;
 import com.oracle.truffle.api.dsl.Cached;
 import com.oracle.truffle.api.dsl.Cached.Exclusive;
 import com.oracle.truffle.api.dsl.Specialization;
+import com.oracle.truffle.api.interop.TruffleObject;
+import com.oracle.truffle.api.library.CachedLibrary;
 import com.oracle.truffle.api.library.ExportLibrary;
 import com.oracle.truffle.api.library.ExportMessage;
 import com.oracle.truffle.api.library.GenerateLibrary;
@@ -214,6 +216,48 @@ public class ExportSubclassTest extends AbstractLibraryTest {
             assertEquals("sub1_m1", lib.m1(new SubClass1()));
             assertEquals("base_m1", lib.m1(new SubClass2()));
             assertEquals("sub3_m01", lib.m0(new SubClass3()));
+        }
+    }
+
+    @Test
+    public void testMergedLibraryInheritance() {
+        ExportSubclassLibrary lib = createCachedDispatch(ExportSubclassLibrary.class, 5);
+        assertEquals("m0_default", lib.m0(new MergedLibraryBase()));
+        assertEquals("base_m1", lib.m1(new MergedLibraryBase()));
+
+        assertEquals("sub_m0", lib.m0(new MergedLibrarySub()));
+        assertEquals("base_m1", lib.m1(new MergedLibrarySub()));
+
+    }
+
+    @ExportLibrary(ExportSubclassLibrary.class)
+    static class MergedLibraryBase implements TruffleObject {
+
+        final Object member = "";
+
+        ExportSubclassLibrary firstLib;
+
+        @ExportMessage
+        final String m1(@CachedLibrary("this.member") ExportSubclassLibrary lib) {
+            if (firstLib == null) {
+                firstLib = lib;
+            }
+            assert firstLib == lib : "merged library is not shared";
+            return "base_m1";
+        }
+
+    }
+
+    @ExportLibrary(ExportSubclassLibrary.class)
+    static class MergedLibrarySub extends MergedLibraryBase {
+
+        @ExportMessage
+        final String m0(@CachedLibrary("this.member") ExportSubclassLibrary lib) {
+            if (firstLib == null) {
+                firstLib = lib;
+            }
+            assert firstLib == lib : "merged library is not shared";
+            return "sub_m0";
         }
     }
 

@@ -143,13 +143,13 @@ public class ContextPolicyTest {
 
         // same options parse caching enabled
         Engine engine = Engine.create();
-        Context context0 = Context.newBuilder().engine(engine).option(SHARED0 + ".Dummy", "1").build();
+        Context context0 = Context.newBuilder().engine(engine).allowExperimentalOptions(true).option(SHARED0 + ".Dummy", "1").build();
         context0.eval(source0);
         context0.eval(source1);
         assertEquals(2, parseRequest.size());
         context0.close();
 
-        Context context1 = Context.newBuilder().engine(engine).option(SHARED0 + ".Dummy", "1").build();
+        Context context1 = Context.newBuilder().engine(engine).allowExperimentalOptions(true).option(SHARED0 + ".Dummy", "1").build();
         context1.eval(source0);
         context1.eval(source1);
         assertEquals(2, parseRequest.size());
@@ -158,13 +158,13 @@ public class ContextPolicyTest {
         // different options parse caching disabled
         cleanup();
         engine = Engine.create();
-        context0 = Context.newBuilder().engine(engine).option(SHARED0 + ".Dummy", "1").build();
+        context0 = Context.newBuilder().engine(engine).allowExperimentalOptions(true).option(SHARED0 + ".Dummy", "1").build();
         context0.eval(source0);
         context0.eval(source1);
         assertEquals(2, parseRequest.size());
         context0.close();
 
-        context1 = Context.newBuilder().engine(engine).option(SHARED0 + ".Dummy", "2").build();
+        context1 = Context.newBuilder().engine(engine).allowExperimentalOptions(true).option(SHARED0 + ".Dummy", "2").build();
         context1.eval(source0);
         context1.eval(source1);
         assertEquals(4, parseRequest.size());
@@ -177,19 +177,19 @@ public class ContextPolicyTest {
         Source source1 = Source.create(REUSE0, "s1");
 
         Engine engine = Engine.create();
-        Context context0 = Context.newBuilder().engine(engine).option(REUSE0 + ".Dummy", "1").build();
+        Context context0 = Context.newBuilder().engine(engine).allowExperimentalOptions(true).option(REUSE0 + ".Dummy", "1").build();
         context0.eval(source0);
         context0.eval(source1);
         assertEquals(2, parseRequest.size());
         context0.close();
 
-        Context context1 = Context.newBuilder().engine(engine).option(REUSE0 + ".Dummy", "1").build();
+        Context context1 = Context.newBuilder().engine(engine).allowExperimentalOptions(true).option(REUSE0 + ".Dummy", "1").build();
         context1.eval(source0);
         context1.eval(source1);
         assertEquals(2, parseRequest.size());
         context1.close();
 
-        Context context2 = Context.newBuilder().engine(engine).option(REUSE0 + ".Dummy", "2").build();
+        Context context2 = Context.newBuilder().engine(engine).allowExperimentalOptions(true).option(REUSE0 + ".Dummy", "2").build();
         context2.eval(source0);
         context2.eval(source1);
         assertEquals(4, parseRequest.size());
@@ -561,7 +561,7 @@ public class ContextPolicyTest {
 
         // opening contexts consecutively
         try (Engine engine = Engine.create()) {
-            Context.Builder b0 = Context.newBuilder();
+            Context.Builder b0 = Context.newBuilder().allowExperimentalOptions(true);
             if (!sharedContext1) {
                 b0.engine(engine);
             }
@@ -579,7 +579,7 @@ public class ContextPolicyTest {
                 v0l0.execute(v0l0, v0l1);
             }
 
-            Context.Builder b1 = Context.newBuilder();
+            Context.Builder b1 = Context.newBuilder().allowExperimentalOptions(true);
             if (!sharedContext2) {
                 b1.engine(engine);
             }
@@ -600,14 +600,14 @@ public class ContextPolicyTest {
 
         // opening two contexts at the same time
         try (Engine engine = Engine.create()) {
-            Context.Builder b0 = Context.newBuilder();
+            Context.Builder b0 = Context.newBuilder().allowExperimentalOptions(true);
             if (!sharedContext1) {
                 b0.engine(engine);
             }
             if (!language0Compatible) {
                 b0.option(sl0.getLanguage() + ".Dummy", "0");
             }
-            Context.Builder b1 = Context.newBuilder();
+            Context.Builder b1 = Context.newBuilder().allowExperimentalOptions(true);
             if (!sharedContext2) {
                 b1.engine(engine);
             }

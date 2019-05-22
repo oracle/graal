@@ -28,20 +28,39 @@ import static org.graalvm.compiler.nodeinfo.NodeCycles.CYCLES_8;
 import static org.graalvm.compiler.nodeinfo.NodeSize.SIZE_8;
 
 import org.graalvm.compiler.core.common.type.StampFactory;
+import org.graalvm.compiler.graph.Node;
 import org.graalvm.compiler.graph.NodeClass;
 import org.graalvm.compiler.nodeinfo.NodeInfo;
 import org.graalvm.compiler.nodes.FixedWithNextNode;
+import org.graalvm.compiler.nodes.debug.ControlFlowAnchored;
 import org.graalvm.compiler.nodes.memory.MemoryCheckpoint;
 import org.graalvm.compiler.nodes.spi.Lowerable;
 import org.graalvm.compiler.nodes.spi.LoweringTool;
 import org.graalvm.word.LocationIdentity;
 
+/**
+ * See comments in {@link CFunctionPrologueNode} for details.
+ */
 @NodeInfo(cycles = CYCLES_8, size = SIZE_8)
-public final class CFunctionEpilogueNode extends FixedWithNextNode implements Lowerable, MemoryCheckpoint.Single {
+public final class CFunctionEpilogueNode extends FixedWithNextNode implements Lowerable, MemoryCheckpoint.Single, ControlFlowAnchored {
     public static final NodeClass<CFunctionEpilogueNode> TYPE = NodeClass.create(CFunctionEpilogueNode.class);
+
+    /** See comment in {@link CFunctionPrologueNode}. */
+    private CFunctionEpilogueMarker marker;
 
     public CFunctionEpilogueNode() {
         super(TYPE, StampFactory.forVoid());
+        marker = new CFunctionEpilogueMarker();
+    }
+
+    @Override
+    protected void afterClone(Node other) {
+        super.afterClone(other);
+        marker = new CFunctionEpilogueMarker();
+    }
+
+    public CFunctionEpilogueMarker getMarker() {
+        return marker;
     }
 
     @Override

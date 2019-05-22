@@ -39,15 +39,15 @@ public class RegexCompilerWithFallback implements RegexCompiler {
     private final RegexCompiler mainCompiler;
     private final RegexCompiler fallbackCompiler;
 
-    public RegexCompilerWithFallback(TruffleObject mainCompiler, TruffleObject fallbackCompiler) {
-        this.mainCompiler = ForeignRegexCompiler.importRegexCompiler(mainCompiler);
+    public RegexCompilerWithFallback(RegexCompiler mainCompiler, TruffleObject fallbackCompiler) {
+        this.mainCompiler = mainCompiler;
         this.fallbackCompiler = ForeignRegexCompiler.importRegexCompiler(fallbackCompiler);
     }
 
     @Override
     @CompilerDirectives.TruffleBoundary
-    public TruffleObject compile(RegexSource regexSource) throws RegexSyntaxException, UnsupportedRegexException {
-        TruffleObject regex;
+    public Object compile(RegexSource regexSource) throws RegexSyntaxException, UnsupportedRegexException {
+        Object regex;
         long elapsedTimeMain = 0;
         long elapsedTimeFallback = 0;
         DebugUtil.Timer timer = null;

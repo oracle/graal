@@ -40,15 +40,15 @@
  */
 /*
  @ApiInfo(
- group="Graal SDK"
+ group="GraalVM SDK"
  )
  */
 /**
- * The Graal-SDK collections package contains memory efficient data structures.
+ * The GraalVM SDK collections package contains memory efficient data structures.
  *
  * @see org.graalvm.collections.EconomicMap
  * @see org.graalvm.collections.EconomicSet
  *
- * @since 1.0
+ * @since 19.0
  */
 package org.graalvm.collections;

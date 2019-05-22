@@ -40,12 +40,14 @@ import org.graalvm.compiler.core.common.util.Util;
 import org.graalvm.compiler.truffle.runtime.GraalTruffleRuntime;
 import org.graalvm.compiler.truffle.runtime.OptimizedCallTarget;
 import org.graalvm.compiler.truffle.runtime.OptimizedOSRLoopNode;
+import org.graalvm.compiler.truffle.runtime.PolyglotCompilerOptions;
 import org.graalvm.compiler.truffle.runtime.TruffleRuntimeOptions;
 import org.graalvm.compiler.truffle.runtime.TruffleRuntimeOptions.TruffleRuntimeOptionsOverrideScope;
 import org.graalvm.compiler.truffle.runtime.SharedTruffleRuntimeOptions;
 import org.graalvm.compiler.truffle.test.nodes.AbstractTestNode;
 import org.graalvm.compiler.truffle.test.nodes.ConstantTestNode;
 import org.graalvm.compiler.truffle.test.nodes.RootTestNode;
+import org.graalvm.polyglot.Context;
 import org.junit.Assert;
 import org.junit.Ignore;
 import org.junit.Test;
@@ -186,12 +188,11 @@ public class OptimizedCallTargetTest extends TestWithSynchronousCompiling {
     @Test
     public void testRewriteAssumption() {
         String testName = "testRewriteAssumption";
-        assertTrue("test only works with inlining enabled", TruffleRuntimeOptions.getValue(SharedTruffleRuntimeOptions.TruffleFunctionInlining));
+        final int compilationThreshold = 20;
 
-        try (TruffleRuntimeOptionsOverrideScope s = TruffleRuntimeOptions.overrideOptions(SharedTruffleRuntimeOptions.TruffleCompilationThreshold, 20)) {
-            final int compilationThreshold = TruffleRuntimeOptions.getValue(SharedTruffleRuntimeOptions.TruffleCompilationThreshold);
-            assertTrue(compilationThreshold >= 2);
-
+        Context context = Context.newBuilder().allowExperimentalOptions(true).option("engine.Inlining", "true").option("engine.CompilationThreshold", String.valueOf(compilationThreshold)).build();
+        context.enter();
+        try {
             OptimizedCallTarget innermostCallTarget = (OptimizedCallTarget) runtime.createCallTarget(new RootTestNode(new FrameDescriptor(), testName + 0, new AbstractTestNode() {
                 @Child private AbstractTestNode child = new ConstantTestNode(42);
                 @Child private AbstractTestNode dummy = new ConstantTestNode(17);
@@ -206,6 +207,8 @@ public class OptimizedCallTargetTest extends TestWithSynchronousCompiling {
                     return child.execute(frame);
                 }
             }));
+            assertEquals(compilationThreshold, (int) innermostCallTarget.getOptionValue(PolyglotCompilerOptions.CompilationThreshold));
+
             OptimizedCallTarget ct = innermostCallTarget;
             ct = (OptimizedCallTarget) runtime.createCallTarget(new RootTestNode(new FrameDescriptor(), testName + 1, new CallTestNode(ct)));
             ct = (OptimizedCallTarget) runtime.createCallTarget(new RootTestNode(new FrameDescriptor(), testName + 2, new CallTestNode(ct)));
@@ -241,6 +244,9 @@ public class OptimizedCallTargetTest extends TestWithSynchronousCompiling {
             assertTrue(finalRewriteAssumption.isValid());
 
             assertFalse(rewriteAssumptions.stream().filter(a -> a != finalRewriteAssumption).anyMatch(Assumption::isValid));
+        } finally {
+            context.leave();
+            context.close();
         }
     }
 
@@ -503,5 +509,38 @@ public class OptimizedCallTargetTest extends TestWithSynchronousCompiling {
         Assert.assertEquals(0, innerExecute[0]);
         Assert.assertEquals(0, innerMethod[0]);
         Assert.assertEquals(0, innerBoundary[0]);
+    }
+
+    @Test
+    public void testManyArguments() {
+        try (TruffleRuntimeOptionsOverrideScope scope = TruffleRuntimeOptions.overrideOptions(
+                        SharedTruffleRuntimeOptions.TruffleCompileImmediately, true,
+                        SharedTruffleRuntimeOptions.TruffleCompilationExceptionsAreThrown, true)) {
+            CallTarget fortyTwo = runtime.createCallTarget(new RootTestNode(new FrameDescriptor(), "42", new ConstantTestNode(42)));
+            OptimizedCallTarget ct = (OptimizedCallTarget) runtime.createCallTarget(new RootTestNode(new FrameDescriptor(), "caller", new CallTestNode(fortyTwo)));
+            for (int i = 0; i < 3; i++) {
+                ct.call(IntStream.range(0, 100000).mapToObj(Integer::valueOf).toArray());
+            }
+            assertCompiled(ct);
+        }
+    }
+
+    @Test
+    public void testNoArgumentTypeSpeculation() {
+        try (TruffleRuntimeOptionsOverrideScope scope = TruffleRuntimeOptions.overrideOptions(
+                        SharedTruffleRuntimeOptions.TruffleCompileImmediately, true,
+                        SharedTruffleRuntimeOptions.TruffleCompilationExceptionsAreThrown, true,
+                        SharedTruffleRuntimeOptions.TruffleArgumentTypeSpeculation, false)) {
+            CallTarget fortyTwo = runtime.createCallTarget(new RootTestNode(new FrameDescriptor(), "42", new ConstantTestNode(42)));
+            OptimizedCallTarget ct = (OptimizedCallTarget) runtime.createCallTarget(new RootTestNode(new FrameDescriptor(), "caller", new CallTestNode(fortyTwo)));
+            for (int i = 0; i < 3; i++) {
+                ct.call(IntStream.range(0, 20).mapToObj(Integer::valueOf).toArray());
+            }
+            assertCompiled(ct);
+
+            // argument type change does not invalidate
+            ct.call(IntStream.range(0, 20).mapToObj(String::valueOf).toArray());
+            assertCompiled(ct);
+        }
     }
 }

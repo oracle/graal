@@ -50,6 +50,7 @@ public class Uninstaller {
     private final Feedback feedback;
     private final ComponentInfo componentInfo;
     private final ComponentRegistry registry;
+    private PreRemoveProcess preRemove;
     private Set<String> preservePaths = Collections.emptySet();
     private boolean dryRun;
     private boolean ignoreFailedDeletions;
@@ -116,7 +117,7 @@ public class Uninstaller {
             Set<PosixFilePermission> restoreDirPermissions = null;
             if (attrs != null) {
                 Files.setPosixFilePermissions(p, ALL_WRITE_PERMS);
-                Path d = p.getParent();
+                Path d = p.normalize().getParent();
                 // set the parent directory's permissions, but do not
                 // alter permissions outside the to-be-deleted tree:
                 if (d == null) {
@@ -147,6 +148,9 @@ public class Uninstaller {
     }
 
     void uninstallContent() throws IOException {
+        preRemove = new PreRemoveProcess(installPath, feedback)
+                        .setDryRun(isDryRun())
+                        .setIgnoreFailedDeletions(isIgnoreFailedDeletions());
         // remove all the files occupied by the component
         O: for (String p : componentInfo.getPaths()) {
             if (preservePaths.contains(p)) {
@@ -168,26 +172,12 @@ public class Uninstaller {
             }
             feedback.verboseOutput("UNINSTALL_DeletingFile", p);
             if (!dryRun) {
-                try {
-                    // ignore missing files, handle permissions
-                    deleteOneFile(toDelete, installPath);
-                } catch (IOException ex) {
-                    if (ignoreFailedDeletions) {
-                        feedback.error("INSTALL_FailedToDeleteFile", ex, toDelete, ex.getLocalizedMessage());
-                    } else {
-                        throw ex;
-                    }
-                }
+                // ignore missing files, handle permissions
+                preRemove.deleteOneFile(toDelete);
             }
         }
         List<String> dirNames = new ArrayList<>(directoriesToDelete);
-        for (String s : componentInfo.getWorkingDirectories()) {
-            Path p = installPath.resolve(SystemUtils.fromCommonRelative(s));
-            feedback.verboseOutput("UNINSTALL_DeletingDirectoryRecursively", p);
-            if (componentInfo.getWorkingDirectories().contains(s)) {
-                deleteContentsRecursively(p);
-            }
-        }
+        preRemove.processComponent(componentInfo);
         Collections.sort(dirNames);
         Collections.reverse(dirNames);
         for (String s : dirNames) {

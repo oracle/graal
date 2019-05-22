@@ -68,9 +68,8 @@ public final class MachOObjectFile extends ObjectFile {
     private static final ByteOrder nativeOrder = ByteOrder.nativeOrder();
     private static final ByteOrder oppositeOrder = (nativeOrder == ByteOrder.BIG_ENDIAN) ? ByteOrder.LITTLE_ENDIAN : ByteOrder.BIG_ENDIAN;
 
-    MachOCpuType cpuType = MachOCpuType.X86_64; // FIXME: smarter defaults
-
-    int cpuSubType = 3; // FIXME: what does this mean? + smarter defaults?
+    final MachOCpuType cpuType;
+    final int cpuSubType;
 
     private final MachOHeader header;
 
@@ -81,6 +80,13 @@ public final class MachOObjectFile extends ObjectFile {
      * Create an empty Mach-O object file.
      */
     public MachOObjectFile() {
+        if ("arm".equals(System.getProperty("svm.targetArch"))) {
+            cpuType = MachOCpuType.ARM64;
+            cpuSubType = 0;
+        } else {
+            cpuType = MachOCpuType.X86_64;
+            cpuSubType = 3;
+        }
         header = new MachOHeader("MachOHeader");
         setByteOrder(ByteOrder.nativeOrder());
 
@@ -2268,14 +2274,6 @@ public final class MachOObjectFile extends ObjectFile {
     public void setFlags(EnumSet<Flag> flags) {
         this.flags.clear();
         this.flags.addAll(flags);
-    }
-
-    public void setCpuType(MachOCpuType cpuType) {
-        this.cpuType = cpuType;
-    }
-
-    public void setCpuSubtype(int cpuSubType) {
-        this.cpuSubType = cpuSubType;
     }
 
     protected LinkEditSegment64Command getOrCreateLinkEditSegment() {

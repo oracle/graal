@@ -28,14 +28,11 @@ import java.util.Arrays;
 import java.util.List;
 
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
-import com.oracle.truffle.regex.chardata.CodePointRange;
-import com.oracle.truffle.regex.chardata.CodePointSet;
-import com.oracle.truffle.regex.chardata.Constants;
 import com.oracle.truffle.regex.tregex.TRegexOptions;
 import com.oracle.truffle.regex.tregex.buffer.ByteArrayBuffer;
 import com.oracle.truffle.regex.tregex.buffer.CompilationBuffer;
 import com.oracle.truffle.regex.tregex.buffer.ObjectArrayBuffer;
-import com.oracle.truffle.regex.tregex.buffer.RangesArrayBuffer;
+import com.oracle.truffle.regex.tregex.buffer.CharRangesBuffer;
 import com.oracle.truffle.regex.tregex.matchers.AnyMatcher;
 import com.oracle.truffle.regex.tregex.matchers.BitSetMatcher;
 import com.oracle.truffle.regex.tregex.matchers.CharMatcher;
@@ -63,17 +60,6 @@ public final class CharSet extends SortedListOfRanges implements Comparable<Char
     private static final CharSet[] CONSTANT_INVERSE_ASCII = new CharSet[128];
     private static final CharSet[] CONSTANT_CASE_FOLD_ASCII = new CharSet[26];
 
-    private static final CodePointSet[] CONSTANT_CODE_POINT_SETS = new CodePointSet[]{
-                    Constants.WORD_CHARS,
-                    Constants.NON_WORD_CHARS,
-                    Constants.WHITE_SPACE,
-                    Constants.NON_WHITE_SPACE,
-                    Constants.DIGITS,
-                    Constants.NON_DIGITS,
-                    Constants.LINE_TERMINATOR,
-                    Constants.DOT,
-                    Constants.HEX_CHARS
-    };
     private static final CharSet[] CONSTANT_CODE_POINT_SETS_MB;
 
     private static final CharSet CONSTANT_TRAIL_SURROGATE_RANGE = new CharSet(new char[]{(char) Constants.TRAIL_SURROGATE_RANGE.lo, (char) Constants.TRAIL_SURROGATE_RANGE.hi});
@@ -88,9 +74,9 @@ public final class CharSet extends SortedListOfRanges implements Comparable<Char
         for (char i = 'A'; i <= 'Z'; i++) {
             CONSTANT_CASE_FOLD_ASCII[i - 'A'] = new CharSet(new char[]{i, i, Character.toLowerCase(i), Character.toLowerCase(i)});
         }
-        CONSTANT_CODE_POINT_SETS_MB = new CharSet[CONSTANT_CODE_POINT_SETS.length];
-        for (int i = 0; i < CONSTANT_CODE_POINT_SETS.length; i++) {
-            CONSTANT_CODE_POINT_SETS_MB[i] = createTrimCodePointSet(CONSTANT_CODE_POINT_SETS[i]);
+        CONSTANT_CODE_POINT_SETS_MB = new CharSet[Constants.CONSTANT_CODE_POINT_SETS.length];
+        for (int i = 0; i < Constants.CONSTANT_CODE_POINT_SETS.length; i++) {
+            CONSTANT_CODE_POINT_SETS_MB[i] = createTrimCodePointSet(Constants.CONSTANT_CODE_POINT_SETS[i]);
         }
     }
 
@@ -126,15 +112,15 @@ public final class CharSet extends SortedListOfRanges implements Comparable<Char
         return constant;
     }
 
-    public static CharSet create(CodePointSet codePointSet) {
-        if (codePointSet.matchesNothing()) {
+    public static CharSet create(CodePointSetBuilder builder) {
+        if (builder.matchesNothing()) {
             return CONSTANT_EMPTY;
         }
-        if (codePointSet.matchesEverything()) {
+        if (builder.matchesEverything()) {
             return CONSTANT_FULL;
         }
-        final List<CodePointRange> codePointRanges = codePointSet.getRanges();
-        if (codePointSet.matchesSingleAscii()) {
+        final List<CodePointRange> codePointRanges = builder.getRanges();
+        if (builder.matchesSingleAscii()) {
             return CONSTANT_ASCII[codePointRanges.get(0).lo];
         }
         if (codePointRanges.size() == 2) {
@@ -143,12 +129,12 @@ public final class CharSet extends SortedListOfRanges implements Comparable<Char
                 return ret;
             }
         }
-        for (int i = 0; i < CONSTANT_CODE_POINT_SETS.length; i++) {
-            if (codePointSet.equals(CONSTANT_CODE_POINT_SETS[i])) {
+        for (int i = 0; i < Constants.CONSTANT_CODE_POINT_SETS.length; i++) {
+            if (builder.equalsCodePointSet(Constants.CONSTANT_CODE_POINT_SETS[i])) {
                 return CONSTANT_CODE_POINT_SETS_MB[i];
             }
         }
-        return createTrimCodePointSet(codePointSet);
+        return createTrimCodePointSet(builder);
     }
 
     private static CharSet checkConstants(char[] ranges, int length) {
@@ -202,7 +188,7 @@ public final class CharSet extends SortedListOfRanges implements Comparable<Char
         return null;
     }
 
-    private static CharSet createTrimCodePointSet(CodePointSet codePointSet) {
+    private static CharSet createTrimCodePointSet(CodePointSetBuilder codePointSet) {
         int size = 0;
         for (CodePointRange range : codePointSet.getRanges()) {
             if (range.intersects(Constants.BMP_RANGE)) {
@@ -215,6 +201,23 @@ public final class CharSet extends SortedListOfRanges implements Comparable<Char
             if (range.intersects(Constants.BMP_RANGE)) {
                 ranges[i++] = (char) range.lo;
                 ranges[i++] = (char) Math.min(range.hi, Constants.BMP_RANGE.hi);
+            }
+        }
+        return new CharSet(ranges);
+    }
+
+    private static CharSet createTrimCodePointSet(CodePointSet codePointSet) {
+        int size = 0;
+        for (int i = 0; i < codePointSet.size(); i++) {
+            if (codePointSet.intersects(i, Constants.BMP_RANGE.lo, Constants.BMP_RANGE.hi)) {
+                size++;
+            }
+        }
+        char[] ranges = new char[size * 2];
+        for (int i = 0; i < codePointSet.size(); i++) {
+            if (codePointSet.intersects(i, Constants.BMP_RANGE.lo, Constants.BMP_RANGE.hi)) {
+                ranges[i * 2] = (char) codePointSet.getLo(i);
+                ranges[i * 2 + 1] = (char) Math.min(codePointSet.getHi(i), Constants.BMP_RANGE.hi);
             }
         }
         return new CharSet(ranges);
@@ -234,10 +237,12 @@ public final class CharSet extends SortedListOfRanges implements Comparable<Char
 
     @SuppressWarnings("unchecked")
     @Override
-    protected CharSet create(RangesArrayBuffer rangesArrayBuffer) {
-        CharSet constant = checkConstants(rangesArrayBuffer.getBuffer(), rangesArrayBuffer.length());
+    protected CharSet create(RangesBuffer buffer) {
+        assert buffer instanceof CharRangesBuffer;
+        CharRangesBuffer buf = (CharRangesBuffer) buffer;
+        CharSet constant = checkConstants(buf.getBuffer(), buf.length());
         if (constant == null) {
-            return new CharSet(rangesArrayBuffer.toArray());
+            return new CharSet(buf.toArray());
         }
         return constant;
     }
@@ -268,19 +273,43 @@ public final class CharSet extends SortedListOfRanges implements Comparable<Char
     }
 
     @Override
-    protected void addRangeBulkTo(RangesArrayBuffer rangesArrayBuffer, int startIndex, int endIndex) {
+    protected CharRangesBuffer getBuffer1(CompilationBuffer compilationBuffer) {
+        return compilationBuffer.getCharRangesBuffer1();
+    }
+
+    @Override
+    protected CharRangesBuffer getBuffer2(CompilationBuffer compilationBuffer) {
+        return compilationBuffer.getCharRangesBuffer2();
+    }
+
+    @Override
+    protected CharRangesBuffer getBuffer3(CompilationBuffer compilationBuffer) {
+        return compilationBuffer.getCharRangesBuffer3();
+    }
+
+    @Override
+    protected CharRangesBuffer createTempBuffer() {
+        return new CharRangesBuffer();
+    }
+
+    @Override
+    protected void addRangeBulkTo(RangesBuffer buffer, int startIndex, int endIndex) {
+        assert buffer instanceof CharRangesBuffer;
         int bulkLength = (endIndex - startIndex) * 2;
         if (bulkLength == 0) {
             return;
         }
-        int newSize = rangesArrayBuffer.length() + bulkLength;
-        rangesArrayBuffer.ensureCapacity(newSize);
-        System.arraycopy(ranges, startIndex * 2, rangesArrayBuffer.getBuffer(), rangesArrayBuffer.length(), bulkLength);
-        rangesArrayBuffer.setLength(newSize);
+        CharRangesBuffer buf = (CharRangesBuffer) buffer;
+        int newSize = buf.length() + bulkLength;
+        buf.ensureCapacity(newSize);
+        System.arraycopy(ranges, startIndex * 2, buf.getBuffer(), buf.length(), bulkLength);
+        buf.setLength(newSize);
     }
 
     @Override
-    protected boolean equalsRangesArrayBuffer(RangesArrayBuffer buf) {
+    protected boolean equalsBuffer(RangesBuffer buffer) {
+        assert buffer instanceof CharRangesBuffer;
+        CharRangesBuffer buf = (CharRangesBuffer) buffer;
         return ranges.length == buf.length() && rangesEqual(ranges, buf.getBuffer(), ranges.length);
     }
 
@@ -354,7 +383,7 @@ public final class CharSet extends SortedListOfRanges implements Comparable<Char
                 charMatcher = RangeTreeMatcher.fromRanges(inverse, ranges);
             }
         }
-        return ProfilingCharMatcher.create(createIntersectionMatcher(BYTE_RANGE, compilationBuffer).createMatcher(compilationBuffer, inverse, false), charMatcher);
+        return ProfilingCharMatcher.create(createIntersection(BYTE_RANGE, compilationBuffer).createMatcher(compilationBuffer, inverse, false), charMatcher);
     }
 
     private boolean preferRangeListMatcherOverBitSetMatcher() {
@@ -390,7 +419,7 @@ public final class CharSet extends SortedListOfRanges implements Comparable<Char
 
     private CharMatcher createHybridMatcher(CompilationBuffer compilationBuffer, boolean inverse) {
         assert size() > 1;
-        RangesArrayBuffer rest = compilationBuffer.getRangesArrayBuffer1();
+        CharRangesBuffer rest = compilationBuffer.getCharRangesBuffer1();
         ByteArrayBuffer highBytes = compilationBuffer.getByteArrayBuffer();
         ObjectArrayBuffer bitSets = compilationBuffer.getObjectBuffer1();
         int lowestRangeOnCurPlane = 0;

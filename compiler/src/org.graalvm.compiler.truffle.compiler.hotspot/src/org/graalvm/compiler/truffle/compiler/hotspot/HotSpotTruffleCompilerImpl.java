@@ -99,7 +99,7 @@ public final class HotSpotTruffleCompilerImpl extends TruffleCompilerImpl implem
 
     public static class Options {
         // @formatter:off
-        @Option(help = "Select a Graal compiler configuration for Truffle compilation (default: use Graal system compiler configuration).")
+        @Option(help = "Select a compiler configuration for Truffle compilation (default: use Graal system compiler configuration).")
         public static final OptionKey<String> TruffleCompilerConfiguration = new OptionKey<>(null);
         // @formatter:on
     }
@@ -216,7 +216,7 @@ public final class HotSpotTruffleCompilerImpl extends TruffleCompilerImpl implem
             OptionValues options = getOptions();
             try (DebugContext debug = DebugStubsAndSnippets.getValue(options)
                             ? hotspotGraalRuntime.openDebugContext(options, compilationId, method, getDebugHandlerFactories(), DebugContext.DEFAULT_LOG_STREAM)
-                            : DebugContext.DISABLED;
+                            : DebugContext.disabled(options);
                             Activation a = debug.activate();
                             DebugContext.Scope d = debug.scope("InstallingTruffleStub")) {
                 CompilationResult compResult = compileTruffleCallBoundaryMethod(method, compilationId, debug);

@@ -40,7 +40,7 @@ import org.graalvm.compiler.options.NestedBooleanOptionKey;
 import org.graalvm.compiler.options.OptionDescriptor;
 import org.graalvm.compiler.options.OptionKey;
 import org.graalvm.compiler.options.OptionValues;
-import org.graalvm.nativeimage.Feature;
+import org.graalvm.nativeimage.hosted.Feature;
 import org.graalvm.nativeimage.ImageSingletons;
 import org.graalvm.nativeimage.RuntimeOptions.OptionClass;
 import org.graalvm.nativeimage.impl.RuntimeOptionsSupport;
@@ -143,7 +143,7 @@ class RuntimeOptionsSupportImpl implements RuntimeOptionsSupport {
         Class<T> clazz = (Class<T>) descriptor.getOptionValueType();
         OptionType<T> type;
         if (clazz.isEnum()) {
-            type = (OptionType<T>) ENUM_TYPE_CACHE.computeIfAbsent(clazz, c -> new OptionType<>(c.getSimpleName(), null, s -> (T) Enum.valueOf((Class<? extends Enum>) c, s)));
+            type = (OptionType<T>) ENUM_TYPE_CACHE.computeIfAbsent(clazz, c -> new OptionType<>(c.getSimpleName(), s -> (T) Enum.valueOf((Class<? extends Enum>) c, s)));
         } else if (clazz == Long.class) {
             type = (OptionType<T>) LONG_OPTION_TYPE;
         } else {
@@ -161,7 +161,7 @@ class RuntimeOptionsSupportImpl implements RuntimeOptionsSupport {
     }
 
     private static final Map<Class<?>, OptionType<?>> ENUM_TYPE_CACHE = new HashMap<>();
-    private static final OptionType<Long> LONG_OPTION_TYPE = new OptionType<>("long", 0L, RuntimeOptionsSupportImpl::parseLong);
+    private static final OptionType<Long> LONG_OPTION_TYPE = new OptionType<>("long", RuntimeOptionsSupportImpl::parseLong);
 
     private static long parseLong(String v) {
         String valueString = v.toLowerCase();

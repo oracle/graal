@@ -32,13 +32,12 @@ import org.graalvm.compiler.api.replacements.Fold;
 import org.graalvm.compiler.debug.DebugContext;
 import org.graalvm.compiler.hotspot.GraalHotSpotVMConfig;
 import org.graalvm.compiler.hotspot.GraalHotSpotVMConfigBase;
-import org.graalvm.compiler.hotspot.gc.g1.G1PostWriteBarrier;
-import org.graalvm.compiler.hotspot.gc.g1.G1PreWriteBarrier;
-import org.graalvm.compiler.hotspot.gc.g1.G1ReferentFieldReadBarrier;
-import org.graalvm.compiler.hotspot.gc.shared.SerialWriteBarrier;
-import org.graalvm.compiler.hotspot.phases.WriteBarrierAdditionPhase;
 import org.graalvm.compiler.nodes.StructuredGraph;
 import org.graalvm.compiler.nodes.StructuredGraph.AllowAssumptions;
+import org.graalvm.compiler.nodes.gc.G1PostWriteBarrier;
+import org.graalvm.compiler.nodes.gc.G1PreWriteBarrier;
+import org.graalvm.compiler.nodes.gc.G1ReferentFieldReadBarrier;
+import org.graalvm.compiler.nodes.gc.SerialWriteBarrier;
 import org.graalvm.compiler.nodes.graphbuilderconf.InvocationPlugins;
 import org.graalvm.compiler.nodes.graphbuilderconf.NodeIntrinsicPluginFactory;
 import org.graalvm.compiler.nodes.memory.HeapAccess.BarrierType;
@@ -50,11 +49,14 @@ import org.graalvm.compiler.phases.OptimisticOptimizations;
 import org.graalvm.compiler.phases.common.CanonicalizerPhase;
 import org.graalvm.compiler.phases.common.GuardLoweringPhase;
 import org.graalvm.compiler.phases.common.LoweringPhase;
+import org.graalvm.compiler.phases.common.WriteBarrierAdditionPhase;
 import org.graalvm.compiler.phases.common.inlining.InliningPhase;
 import org.graalvm.compiler.phases.common.inlining.policy.InlineEverythingPolicy;
 import org.graalvm.compiler.phases.tiers.HighTierContext;
 import org.graalvm.compiler.phases.tiers.MidTierContext;
 import org.graalvm.compiler.replacements.NodeIntrinsificationProvider;
+import org.graalvm.compiler.word.Word;
+import org.graalvm.word.WordFactory;
 import org.junit.Assert;
 import org.junit.Test;
 
@@ -255,6 +257,34 @@ public class WriteBarrierAdditionTest extends HotSpotGraalCompilerTest {
         test2("testArrayCopy", src, dst, dst.length);
     }
 
+    public static class WordContainer {
+        public Word word;
+    }
+
+    public static void testWordFieldSnippet() {
+        WordContainer wordContainer = new WordContainer();
+        wordContainer.word = WordFactory.signed(42);
+    }
+
+    @Test
+    public void testWordField() throws Exception {
+        testHelper("testWordFieldSnippet", 0);
+    }
+
+    public static Word[] testWordArraySnippet(int length) {
+        Word fortyTwo = WordFactory.signed(42);
+        Word[] words = new Word[length];
+        for (int i = 0; i < length; i++) {
+            words[i] = fortyTwo;
+        }
+        return words;
+    }
+
+    @Test
+    public void testWordArray() throws Exception {
+        testHelper("testWordArraySnippet", 0);
+    }
+
     public static Object testUnsafeLoad(Unsafe theUnsafe, Object a, Object b, Object c) throws Exception {
         final int offset = (c == null ? 0 : ((Integer) c).intValue());
         final long displacement = (b == null ? 0 : ((Long) b).longValue());
@@ -281,7 +311,7 @@ public class WriteBarrierAdditionTest extends HotSpotGraalCompilerTest {
             new LoweringPhase(new CanonicalizerPhase(), LoweringTool.StandardLoweringStage.HIGH_TIER).apply(graph, highContext);
             new GuardLoweringPhase().apply(graph, midContext);
             new LoweringPhase(new CanonicalizerPhase(), LoweringTool.StandardLoweringStage.MID_TIER).apply(graph, midContext);
-            new WriteBarrierAdditionPhase(config).apply(graph);
+            new WriteBarrierAdditionPhase().apply(graph, midContext);
             debug.dump(DebugContext.BASIC_LEVEL, graph, "After Write Barrier Addition");
 
             int barriers = 0;
@@ -315,9 +345,10 @@ public class WriteBarrierAdditionTest extends HotSpotGraalCompilerTest {
                     JavaConstant constDisp = ((OffsetAddressNode) read.getAddress()).getOffset().asJavaConstant();
                     Assert.assertNotNull(constDisp);
                     Assert.assertEquals(referentOffset(getMetaAccess()), constDisp.asLong());
-                    Assert.assertTrue(config.useG1GC);
-                    Assert.assertEquals(BarrierType.PRECISE, read.getBarrierType());
-                    Assert.assertTrue(read.next() instanceof G1ReferentFieldReadBarrier);
+                    Assert.assertEquals(BarrierType.WEAK_FIELD, read.getBarrierType());
+                    if (config.useG1GC) {
+                        Assert.assertTrue(read.next() instanceof G1ReferentFieldReadBarrier);
+                    }
                 }
             }
         } catch (Throwable e) {

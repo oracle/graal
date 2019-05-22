@@ -32,7 +32,7 @@ package org.graalvm.compiler.truffle.common;
 public interface TruffleCompilerListener {
 
     /**
-     * Summary information for a Graal compiler graph.
+     * Summary information for a compiler graph.
      */
     interface GraphInfo {
         /**

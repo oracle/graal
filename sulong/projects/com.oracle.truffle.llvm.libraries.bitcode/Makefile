@@ -1,5 +1,5 @@
 #
-# Copyright (c) 2017, 2018, Oracle and/or its affiliates.
+# Copyright (c) 2017, 2019, Oracle and/or its affiliates.
 #
 # All rights reserved.
 #
@@ -30,7 +30,7 @@
 QUIETLY$(MX_VERBOSE) = @
 
 .PHONY: default
-default: bin/libsulong.bc bin/libsulong++.bc bin/libsulong-src.tar.gz
+default: bin/libsulong.bc bin/libsulong++.bc bin/libsulong-src.tar.gz bin/$(LIB_POLYGLOT)
 
 CLANG?=clang
 CLANGXX?=clang++
@@ -71,6 +71,10 @@ bin/%.noopt.bc: libcxxabi/%.cpp deps/%.d
 
 bin/libsulong-src.tar.gz: ${C_SOURCE_FILES} ${CXX_SOURCE_FILES} include/polyglot.h
 	$(QUIETLY) tar -czf $@ -C ${VPATH} .
+
+bin/$(LIB_POLYGLOT): libpolyglot/polyglot-mock.c
+	$(QUIETLY) $(CLANG) -fPIC -shared -o $@ -I${VPATH}/include -Wno-return-type ${CFLAGS} ${DEPFLAGS} $<
+	${POSTCOMPILE}
 
 deps/%.d: ;
 .PRECIOUS: deps/%.d

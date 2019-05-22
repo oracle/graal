@@ -24,7 +24,7 @@
  */
 package org.graalvm.compiler.truffle.runtime.hotspot.libgraal;
 
-import static org.graalvm.compiler.truffle.runtime.hotspot.libgraal.LibGraalTruffleRuntime.getIsolateThreadId;
+import static org.graalvm.libgraal.LibGraalScope.getIsolateThread;
 
 import java.util.function.Supplier;
 
@@ -39,6 +39,6 @@ final class SVMStringSupplier extends SVMObject implements Supplier<String> {
 
     @Override
     public String get() {
-        return HotSpotToSVMCalls.getSuppliedString(getIsolateThreadId(), handle);
+        return HotSpotToSVMCalls.getSuppliedString(getIsolateThread(), handle);
     }
 }

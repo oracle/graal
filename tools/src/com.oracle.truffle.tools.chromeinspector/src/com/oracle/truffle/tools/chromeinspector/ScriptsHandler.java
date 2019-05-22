@@ -24,8 +24,7 @@
  */
 package com.oracle.truffle.tools.chromeinspector;
 
-import java.net.URI;
-import java.net.URISyntaxException;
+import java.net.URL;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.HashMap;
@@ -43,6 +42,7 @@ public final class ScriptsHandler implements LoadSourceListener {
 
     private final Map<Source, Integer> sourceIDs = new HashMap<>(100);
     private final List<Script> scripts = new ArrayList<>(100);
+    private final Map<String, Integer> uniqueSourceNames = new HashMap<>();
     private final List<LoadScriptListener> listeners = new ArrayList<>();
     private final boolean reportInternal;
     private volatile DebuggerSession debuggerSession;
@@ -53,6 +53,10 @@ public final class ScriptsHandler implements LoadSourceListener {
 
     void setDebuggerSession(DebuggerSession debuggerSession) {
         this.debuggerSession = debuggerSession;
+    }
+
+    DebuggerSession getDebuggerSession() {
+        return this.debuggerSession;
     }
 
     public int getScriptId(Source source) {
@@ -102,7 +106,6 @@ public final class ScriptsHandler implements LoadSourceListener {
         }
         Source source = (sourceResolved != null) ? sourceResolved : sourceLoaded;
         Script scr;
-        URI uri = source.getURI();
         int id;
         LoadScriptListener[] listenersToNotify;
         synchronized (sourceIDs) {
@@ -111,7 +114,7 @@ public final class ScriptsHandler implements LoadSourceListener {
                 return eid;
             }
             id = scripts.size();
-            String sourceUrl = getNiceStringFromURI(uri);
+            String sourceUrl = getSourceURL(source);
             scr = new Script(id, sourceUrl, source);
             sourceIDs.put(source, id);
             scripts.add(scr);
@@ -123,184 +126,37 @@ public final class ScriptsHandler implements LoadSourceListener {
         return id;
     }
 
-    /**
-     * Create a "nice" String representing the URI. It decodes special characters so that the name
-     * looks better in the Chrome Inspector UI. In order to know where query or fragment starts, it
-     * stores their indexes in the scheme in the form of &lt;scheme&gt;?&lt;query
-     * index&gt;#&lt;fragment index&gt;`.
-     */
-    public static String getNiceStringFromURI(URI uri) {
-        StringBuilder sb = new StringBuilder();
-        String scheme = uri.getScheme();
-        String query = uri.getQuery();
-        String fragment = uri.getFragment();
-        int queryIndex = -1;
-        int fragmentIndex = -1;
-
-        if (uri.isOpaque()) {
-            String ssp = uri.getSchemeSpecificPart();
-            if (ssp.startsWith("/") || ssp.startsWith("_")) {
-                sb.append('_'); // Assure that the scheme specific part does not start with '/'
-            }
-            sb.append(ssp);
-        } else {
-            String host = uri.getHost();
-            if (host != null) {
-                sb.append("//");
-                if (uri.getRawUserInfo() != null) {
-                    sb.append(uri.getRawUserInfo());
-                    sb.append('@');
-                }
-                boolean needBrackets = ((host.indexOf(':') >= 0) && !host.startsWith("[") && !host.endsWith("]"));
-                if (needBrackets) {
-                    sb.append('[');
-                }
-                sb.append(host);
-                if (needBrackets) {
-                    sb.append(']');
-                }
-                if (uri.getPort() != -1) {
-                    sb.append(':');
-                    sb.append(uri.getPort());
-                }
-            } else if (uri.getRawAuthority() != null) {
-                sb.append("//");
-                sb.append(uri.getRawAuthority());
-            } else if ("file".equals(scheme)) {
-                sb.append("//");
-            }
-            if (uri.getPath() != null) {
-                sb.append(uri.getPath());
-            }
-            if (query != null) {
-                queryIndex = sb.length();
-                sb.append('?');
-                sb.append(query);
-            }
+    public String getSourceURL(Source source) {
+        URL url = source.getURL();
+        if (url != null) {
+            return url.toExternalForm();
         }
-        if (fragment != null) {
-            fragmentIndex = sb.length();
-            sb.append('#');
-            sb.append(fragment);
-        }
-        String schemeAppend = "";
-        if (queryIndex >= 0) {
-            schemeAppend += "?" + queryIndex;
-        }
-        if (fragmentIndex >= 0) {
-            schemeAppend += "#" + fragmentIndex;
-        }
-        if (schemeAppend.isEmpty()) {
-            if (scheme != null && scheme.endsWith("`")) {
-                scheme += "`";
-            }
-        } else {
-            if (scheme == null) {
-                scheme = schemeAppend + "`";
+        String path = source.getPath();
+        if (path != null) {
+            if (source.getURI().isAbsolute()) {
+                return "file://" + path;
             } else {
-                scheme += schemeAppend + "`";
+                return path;
             }
         }
-        if (scheme != null) {
-            sb.insert(0, scheme);
-            sb.insert(scheme.length(), ':');
-        } else {
-            sb.insert(0, ':');  // empty scheme
-        }
-        return sb.toString();
-    }
-
-    /**
-     * Parse the "nice" String created by {@link #getNiceStringFromURI(java.net.URI)} and convert it
-     * into the original URI.
-     */
-    public static URI getURIFromNiceString(String str) throws URISyntaxException {
-        String scheme;
-        int queryIndex = -1;
-        int fragmentIndex = -1;
-        int i = str.indexOf(':');
-        if (i <= 0) {
-            scheme = null;
-        } else {
-            scheme = str.substring(0, i);
-            if (scheme.endsWith("``")) {
-                scheme = scheme.substring(0, scheme.length() - 1);
-            } else if (scheme.endsWith("`")) {
-                int end = scheme.length() - 1;
-                int qi = scheme.lastIndexOf('?');
-                int fi = scheme.lastIndexOf('#');
-                if (fi >= 0) {
-                    fragmentIndex = Integer.parseUnsignedInt(scheme.substring(fi + 1, end));
-                    end = fi;
+        String name = source.getName();
+        if (name != null) {
+            String uniqueName;
+            synchronized (uniqueSourceNames) {
+                int count = uniqueSourceNames.getOrDefault(name, 0);
+                count++;
+                if (count == 1) {
+                    uniqueName = name;
+                } else {
+                    do {
+                        uniqueName = count + "/" + name;
+                    } while (uniqueSourceNames.containsKey(uniqueName) && (count++) > 0);
                 }
-                if (qi >= 0) {
-                    queryIndex = Integer.parseUnsignedInt(scheme.substring(qi + 1, end));
-                    end = qi;
-                }
-                scheme = scheme.substring(0, end);
+                uniqueSourceNames.put(name, count);
             }
-            if (scheme.isEmpty()) {
-                scheme = null;
-            }
+            return uniqueName;
         }
-        i++; // skip the colon
-        int end = str.length();
-        String query = null;
-        String fragment = null;
-        if (fragmentIndex >= 0) {
-            fragment = str.substring(i + fragmentIndex + 1);
-            end = i + fragmentIndex;
-        }
-        if (queryIndex >= 0) {
-            query = str.substring(i + queryIndex + 1, end);
-            end = i + queryIndex;
-        }
-        String ssp = null;
-        if (scheme != null && i < end) {
-            char c = str.charAt(i);
-            if (c == '_') { // Scheme Specific Part
-                ssp = str.substring(i + 1, end);
-            } else if (c != '/') { // Scheme Specific Part
-                ssp = str.substring(i, end);
-            }
-        }
-        if (ssp != null) {
-            return new URI(scheme, ssp, fragment);
-        } else {
-            String authority = null;
-            URI authorityDecoder = null;
-            String path = null;
-            if (i < end) { // Hierarchical
-                int p1 = i;
-                char c1 = str.charAt(i);
-                if ((i + 1) < end) {
-                    char c2 = str.charAt(i + 1);
-
-                    if (c1 == '/' && c2 == '/') { // Authority
-                        p1 = str.indexOf('/', i + 2);
-                        if (p1 > end || p1 < 0) {
-                            p1 = end;
-                        }
-                        authority = str.substring(i + 2, p1);
-                        if (authority.isEmpty()) {
-                            authority = null;
-                        } else {
-                            // Need to decode the encoded authority:
-                            authorityDecoder = new URI("a://" + authority);
-                        }
-                    }
-                }
-                path = str.substring(p1, end);
-                if (path.isEmpty()) {
-                    path = null;
-                }
-            }
-            if (authorityDecoder == null) {
-                return new URI(scheme, null, path, query, fragment);
-            } else {
-                return new URI(scheme, authorityDecoder.getUserInfo(), authorityDecoder.getHost(), authorityDecoder.getPort(), path, query, fragment);
-            }
-        }
+        return source.getURI().toString();
     }
 
     @Override
