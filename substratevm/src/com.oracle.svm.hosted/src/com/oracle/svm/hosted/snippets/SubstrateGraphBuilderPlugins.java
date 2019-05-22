@@ -237,7 +237,9 @@ public class SubstrateGraphBuilderPlugins {
         if (interfaces != null) {
             /* The interfaces array can be empty. The java.lang.reflect.Proxy API allows it. */
             ImageSingletons.lookup(DynamicProxyRegistry.class).addProxyClass(interfaces);
-            ImageSingletons.lookup(FallbackFeature.class).addAutoProxyInvoke(b.getMethod(), b.bci());
+            if (ImageSingletons.contains(FallbackFeature.class)) {
+                ImageSingletons.lookup(FallbackFeature.class).addAutoProxyInvoke(b.getMethod(), b.bci());
+            }
             if (Options.DynamicProxyTracing.getValue()) {
                 System.out.println("Successfully determined constant value for interfaces argument of call to " + targetMethod.format("%H.%n(%p)") +
                                 " reached from " + b.getGraph().method().format("%H.%n(%p)") + ". " + "Registered proxy class for " + Arrays.toString(interfaces) + ".");
