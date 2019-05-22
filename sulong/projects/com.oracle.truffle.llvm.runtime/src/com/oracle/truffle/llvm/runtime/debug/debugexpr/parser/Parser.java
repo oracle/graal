@@ -174,7 +174,7 @@ public NodeFactory NF() {return context.getNodeFactory(); }
 	void DebugExpr() {
 		LLVMExpressionNode n=null; 
 		n = Expr();
-		if(errors.count==0) astRoot =n; 
+		if(errors.count==0) astRoot =new DebugExprRootNode(n); 
 	}
 
 	LLVMExpressionNode  Expr() {

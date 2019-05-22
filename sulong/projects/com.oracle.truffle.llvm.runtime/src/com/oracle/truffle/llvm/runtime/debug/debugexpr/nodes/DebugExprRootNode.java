@@ -34,6 +34,10 @@ import com.oracle.truffle.llvm.runtime.debug.debugexpr.parser.DebugExprException
 import com.oracle.truffle.llvm.runtime.debug.debugexpr.parser.Parser;
 import com.oracle.truffle.llvm.runtime.nodes.api.LLVMExpressionNode;
 
+/**
+ * this @Node has to be the root node of 'debugexpr' expressions. Exceptions, that occur during
+ * execution of these AST nodes, are caught and overwritten by a message string
+ */
 public class DebugExprRootNode extends LLVMExpressionNode {
     private final LLVMExpressionNode root;
 
@@ -44,10 +48,13 @@ public class DebugExprRootNode extends LLVMExpressionNode {
     @Override
     public Object executeGeneric(VirtualFrame frame) {
         try {
+            // try to execute node
             return root.executeGeneric(frame);
         } catch (UnsupportedSpecializationException use) {
+            // return error string node
             return Parser.errorObjNode.executeGeneric(frame);
         } catch (DebugExprException dee) {
+            // use existing exception if available
             if (dee.exceptionNode == null)
                 return Parser.errorObjNode.executeGeneric(frame);
             else

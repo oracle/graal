@@ -86,7 +86,7 @@ PRODUCTIONS
 //   Statement = ident "=" number { "+" number } .
 DebugExpr		(. LLVMExpressionNode n=null; .)
 =
-Expr<out n> 	(. if(errors.count==0) astRoot =n; .)
+Expr<out n> 	(. if(errors.count==0) astRoot =new DebugExprRootNode(n); .)
 .
 
 PrimExpr<out LLVMExpressionNode n>		(. n=null; .)

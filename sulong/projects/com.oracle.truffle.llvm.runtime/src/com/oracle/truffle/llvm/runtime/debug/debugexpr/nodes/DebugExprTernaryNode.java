@@ -50,7 +50,6 @@ public class DebugExprTernaryNode extends LLVMExpressionNode {
         try {
             cond = condition.executeI1(frame);
         } catch (UnexpectedResultException e) {
-            System.out.println("CATCH " + e.getMessage());
             return Parser.errorObjNode.executeGeneric(frame);
         }
         if (cond)
