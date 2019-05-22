@@ -96,6 +96,7 @@ public final class ObjectKlass extends Klass {
     public static final int LINKED = 1;
     public static final int PREPARED = 2;
     public static final int INITIALIZED = 3;
+    public static final int ERRONEOUS = 99;
 
     public final Attribute getAttribute(Symbol<Name> name) {
         return linkedKlass.getAttribute(name);
@@ -194,6 +195,9 @@ public final class ObjectKlass extends Klass {
 
     private synchronized void actualInit() {
         if (!(isInitializedOrPrepared())) { // Check under lock
+            if (initState == ERRONEOUS) {
+                throw new NoClassDefFoundError("Erroneous class: " + getName());
+            }
             initState = PREPARED;
             if (getSuperKlass() != null) {
                 getSuperKlass().initialize();
@@ -511,5 +515,9 @@ public final class ObjectKlass extends Klass {
                 }
             }
         }
+    }
+
+    void setErroneous() {
+        initState = ERRONEOUS;
     }
 }

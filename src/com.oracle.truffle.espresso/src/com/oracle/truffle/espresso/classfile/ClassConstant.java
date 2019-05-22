@@ -34,6 +34,7 @@ import com.oracle.truffle.espresso.descriptors.Symbol.Name;
 import com.oracle.truffle.espresso.impl.Klass;
 import com.oracle.truffle.espresso.meta.Meta;
 import com.oracle.truffle.espresso.runtime.EspressoContext;
+import com.oracle.truffle.espresso.runtime.EspressoException;
 
 /**
  * Interface denoting a class entry in a constant pool.
@@ -111,6 +112,13 @@ public interface ClassConstant extends PoolConstant {
 
                 return new Resolved(klass);
 
+            } catch (EspressoException e) {
+                CompilerDirectives.transferToInterpreter();
+                e.printStackTrace();
+                if (pool.getContext().getMeta().ClassNotFoundException.isAssignableFrom(e.getException().getKlass())) {
+                    throw pool.getContext().getMeta().throwEx(NoClassDefFoundError.class);
+                }
+                throw e;
             } catch (VirtualMachineError e) {
                 // Comment from Hotspot:
                 // Just throw the exception and don't prevent these classes from

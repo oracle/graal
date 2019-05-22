@@ -31,9 +31,9 @@ import com.oracle.truffle.espresso.impl.Klass;
 import com.oracle.truffle.espresso.impl.ParserField;
 import com.oracle.truffle.espresso.impl.ParserKlass;
 import com.oracle.truffle.espresso.impl.ParserMethod;
+import com.oracle.truffle.espresso.meta.EspressoError;
 import com.oracle.truffle.espresso.meta.ExceptionHandler;
 import com.oracle.truffle.espresso.runtime.Attribute;
-import com.oracle.truffle.espresso.runtime.BootstrapMethodsAttribute;
 import com.oracle.truffle.espresso.runtime.ClasspathFile;
 import com.oracle.truffle.espresso.runtime.EspressoContext;
 import com.oracle.truffle.espresso.runtime.StaticObject;
@@ -42,7 +42,17 @@ import java.util.Objects;
 
 import static com.oracle.truffle.espresso.classfile.Constants.ACC_ABSTRACT;
 import static com.oracle.truffle.espresso.classfile.Constants.ACC_INTERFACE;
+import static com.oracle.truffle.espresso.classfile.Constants.APPEND_FRAME_BOUND;
+import static com.oracle.truffle.espresso.classfile.Constants.CHOP_BOUND;
+import static com.oracle.truffle.espresso.classfile.Constants.FULL_FRAME;
+import static com.oracle.truffle.espresso.classfile.Constants.ITEM_InitObject;
+import static com.oracle.truffle.espresso.classfile.Constants.ITEM_NewObject;
+import static com.oracle.truffle.espresso.classfile.Constants.ITEM_Object;
 import static com.oracle.truffle.espresso.classfile.Constants.JVM_RECOGNIZED_CLASS_MODIFIERS;
+import static com.oracle.truffle.espresso.classfile.Constants.SAME_FRAME_BOUND;
+import static com.oracle.truffle.espresso.classfile.Constants.SAME_FRAME_EXTENDED;
+import static com.oracle.truffle.espresso.classfile.Constants.SAME_LOCALS_1_STACK_ITEM_BOUND;
+import static com.oracle.truffle.espresso.classfile.Constants.SAME_LOCALS_1_STACK_ITEM_EXTENDED;
 
 public final class ClassfileParser {
 
@@ -300,6 +310,9 @@ public final class ClassfileParser {
         if (SourceFileAttribute.NAME.equals(name)) {
             return parseSourceFileAttribute(name);
         }
+        if (StackMapTableAttribute.NAME.equals(name)) {
+            return parseStackMapTableAttribute(name);
+        }
         int length = stream.readS4();
         byte[] data = stream.readByteArray(length);
         return new Attribute(name, data);
@@ -408,6 +421,85 @@ public final class ClassfileParser {
         int classIndex = stream.readU2();
         int methodIndex = stream.readU2();
         return new EnclosingMethodAttribute(name, classIndex, methodIndex);
+    }
+
+    private StackMapFrame parseStackMapFrame() {
+        int frameType = stream.readU1();
+        if (frameType < SAME_FRAME_BOUND) {
+            return new SameFrame(frameType);
+        }
+        if (frameType < SAME_LOCALS_1_STACK_ITEM_BOUND) {
+            VerificationTypeInfo stackItem = parseVerificationTypeInfo();
+            return new SameLocals1StackItemFrame(frameType, stackItem);
+        }
+        if (frameType < SAME_LOCALS_1_STACK_ITEM_EXTENDED) {
+            // [128, 246] is reserved and still unused
+            throw new ClassFormatError("Encountered reserved StackMapFrame tag: " + frameType);
+        }
+        if (frameType == SAME_LOCALS_1_STACK_ITEM_EXTENDED) {
+            int offsetDelta = stream.readU2();
+            VerificationTypeInfo stackItem = parseVerificationTypeInfo();
+            return new SameLocals1StackItemFrameExtended(frameType, offsetDelta, stackItem);
+        }
+        if (frameType < CHOP_BOUND) {
+            int offsetDelta = stream.readU2();
+            return new ChopFrame(frameType, offsetDelta);
+        }
+        if (frameType == SAME_FRAME_EXTENDED) {
+            int offsetDelta = stream.readU2();
+            return new SameFrameExtended(frameType, offsetDelta);
+        }
+        if (frameType < APPEND_FRAME_BOUND) {
+            int offsetDelta = stream.readU2();
+            int appendLength = frameType - SAME_FRAME_EXTENDED;
+            VerificationTypeInfo[] locals = new VerificationTypeInfo[appendLength];
+            for (int i = 0; i < appendLength; i++) {
+                locals[i] = parseVerificationTypeInfo();
+            }
+            return new AppendFrame(frameType, offsetDelta, locals);
+        }
+        if (frameType == FULL_FRAME) {
+            int offsetDelta = stream.readU2();
+            int localsLength = stream.readU2();
+            VerificationTypeInfo[] locals = new VerificationTypeInfo[localsLength];
+            for (int i = 0; i < localsLength; i++) {
+                locals[i] = parseVerificationTypeInfo();
+            }
+            int stackLength = stream.readU2();
+            VerificationTypeInfo[] stack = new VerificationTypeInfo[stackLength];
+            for (int i = 0; i < stackLength; i++) {
+                stack[i] = parseVerificationTypeInfo();
+            }
+            return new FullFrame(frameType, offsetDelta, locals, stack);
+        }
+        throw EspressoError.shouldNotReachHere();
+    }
+
+    private VerificationTypeInfo parseVerificationTypeInfo() {
+        int tag = stream.readU1();
+        if (tag < ITEM_InitObject) {
+            return new PrimitiveTypeInfo(tag);
+        }
+        switch (tag) {
+            case ITEM_InitObject:
+                return new UninitializedThis(tag);
+            case ITEM_Object:
+                return new ReferenceVariable(tag, stream.readU2());
+            case ITEM_NewObject:
+                return new UninitializedVariable(tag, stream.readU2());
+            default:
+                throw EspressoError.shouldNotReachHere();
+        }
+    }
+
+    private StackMapTableAttribute parseStackMapTableAttribute(Symbol<Name> name) {
+        /* int length = */ stream.readS4();
+        int entryCount = stream.readU2();
+        StackMapFrame[] entries = new StackMapFrame[entryCount];
+        for (int i = 0; i < entryCount; i++) {
+            entries[i] = parseStackMapFrame();
+        }
+        return new StackMapTableAttribute(name, entries);
     }
 
     private CodeAttribute parseCodeAttribute(Symbol<Name> name) {
