@@ -31,6 +31,6 @@ import org.graalvm.compiler.serviceprovider.JavaVersionUtil;
 public class JDK11OrEarlier implements BooleanSupplier {
     @Override
     public boolean getAsBoolean() {
-        return JavaVersionUtil.JAVA_SPECIFICATION_VERSION <= 11;
+        return JavaVersionUtil.JAVA_SPEC <= 11;
     }
 }

@@ -102,7 +102,7 @@ public class VarHandleFeature implements Feature {
     private static final Unsafe UNSAFE = GraalUnsafeAccess.getUnsafe();
 
     /** The JDK 11 class VarHandleObjects got renamed to VarHandleReferences. */
-    static final String OBJECT_SUFFIX = JavaVersionUtil.JAVA_SPECIFICATION_VERSION > 11 ? "References" : "Objects";
+    static final String OBJECT_SUFFIX = JavaVersionUtil.JAVA_SPEC > 11 ? "References" : "Objects";
 
     private final Map<Class<?>, VarHandleInfo> infos = new HashMap<>();
 
@@ -111,7 +111,7 @@ public class VarHandleFeature implements Feature {
 
     @Override
     public boolean isInConfiguration(IsInConfigurationAccess access) {
-        return !JavaVersionUtil.Java8OrEarlier;
+        return JavaVersionUtil.JAVA_SPEC >= 11;
     }
 
     @Override

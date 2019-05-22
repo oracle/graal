@@ -430,7 +430,7 @@ public final class LinuxNIOSubstitutions {
 
         @Override
         public void duringSetup(DuringSetupAccess access) {
-            if (JavaVersionUtil.Java8OrEarlier) {
+            if (JavaVersionUtil.JAVA_SPEC <= 8) {
                 /* This class only exists on JDK-8 and earlier platforms. */
                 ImageSingletons.lookup(RuntimeClassInitializationSupport.class).rerunInitialization(access.findClassByName("sun.nio.ch.EPollArrayWrapper"), "required for substitutions");
             }

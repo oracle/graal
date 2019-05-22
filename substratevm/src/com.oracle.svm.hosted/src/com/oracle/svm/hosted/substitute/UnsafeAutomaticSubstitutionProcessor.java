@@ -166,7 +166,7 @@ public class UnsafeAutomaticSubstitutionProcessor extends SubstitutionProcessor 
             Class<?> unsafeClass;
 
             try {
-                if (JavaVersionUtil.Java8OrEarlier) {
+                if (JavaVersionUtil.JAVA_SPEC <= 8) {
                     unsafeClass = Class.forName("sun.misc.Unsafe");
                 } else {
                     unsafeClass = Class.forName("jdk.internal.misc.Unsafe");
@@ -180,7 +180,7 @@ public class UnsafeAutomaticSubstitutionProcessor extends SubstitutionProcessor 
             noCheckedExceptionsSet.add(unsafeObjectFieldOffsetFieldMethod);
             neverInlineSet.add(unsafeObjectFieldOffsetFieldMethod);
 
-            if (!JavaVersionUtil.Java8OrEarlier) {
+            if (JavaVersionUtil.JAVA_SPEC >= 11) {
                 /* JDK 11 and later have Unsafe.objectFieldOffset(Class, String). */
                 Method unsafeObjectClassStringOffset = unsafeClass.getMethod("objectFieldOffset", java.lang.Class.class, String.class);
                 unsafeObjectFieldOffsetClassStringMethod = originalMetaAccess.lookupJavaMethod(unsafeObjectClassStringOffset);

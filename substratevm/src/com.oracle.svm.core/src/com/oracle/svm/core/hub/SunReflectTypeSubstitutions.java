@@ -94,7 +94,7 @@ final class Target_sun_reflect_generics_reflectiveObjects_TypeVariableImpl {
 
     @Substitute
     public Type[] getBounds() {
-        if (JavaVersionUtil.Java8OrEarlier) {
+        if (JavaVersionUtil.JAVA_SPEC <= 8) {
             return boundsJDK8OrEarlier;
         } else {
             Object[] value = boundsJDK11OrLater;
@@ -204,7 +204,7 @@ final class Target_sun_reflect_generics_reflectiveObjects_WildcardTypeImpl {
 
     @Substitute
     public Type[] getUpperBounds() {
-        if (JavaVersionUtil.Java8OrEarlier) {
+        if (JavaVersionUtil.JAVA_SPEC <= 8) {
             return upperBoundsJDK8OrEarlier;
         } else {
             Object[] value = upperBoundsJDK11OrLater;
@@ -218,7 +218,7 @@ final class Target_sun_reflect_generics_reflectiveObjects_WildcardTypeImpl {
 
     @Substitute
     public Type[] getLowerBounds() {
-        if (JavaVersionUtil.Java8OrEarlier) {
+        if (JavaVersionUtil.JAVA_SPEC <= 8) {
             return lowerBoundsJDK8OrEarlier;
         } else {
             Object[] value = lowerBoundsJDK11OrLater;

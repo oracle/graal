@@ -73,7 +73,7 @@ class ReflectionHelper {
     }
 
     private static Target_java_lang_reflect_Executable getRoot(Target_java_lang_reflect_Executable executable) {
-        if (JavaVersionUtil.Java8OrEarlier) {
+        if (JavaVersionUtil.JAVA_SPEC <= 8) {
             return executable.getRoot();
         } else {
             return SubstrateUtil.cast(SubstrateUtil.cast(executable, Target_java_lang_reflect_AccessibleObject.class).getRoot(), Target_java_lang_reflect_Executable.class);
@@ -81,7 +81,7 @@ class ReflectionHelper {
     }
 
     private static Target_java_lang_reflect_Method getRoot(Target_java_lang_reflect_Method method) {
-        if (JavaVersionUtil.Java8OrEarlier) {
+        if (JavaVersionUtil.JAVA_SPEC <= 8) {
             return SubstrateUtil.cast(SubstrateUtil.cast(method, Target_java_lang_reflect_Executable.class).getRoot(), Target_java_lang_reflect_Method.class);
         } else {
             return SubstrateUtil.cast(SubstrateUtil.cast(method, Target_java_lang_reflect_AccessibleObject.class).getRoot(), Target_java_lang_reflect_Method.class);
@@ -89,7 +89,7 @@ class ReflectionHelper {
     }
 
     private static Target_java_lang_reflect_Constructor getRoot(Target_java_lang_reflect_Constructor constructor) {
-        if (JavaVersionUtil.Java8OrEarlier) {
+        if (JavaVersionUtil.JAVA_SPEC <= 8) {
             return SubstrateUtil.cast(SubstrateUtil.cast(constructor, Target_java_lang_reflect_Executable.class).getRoot(), Target_java_lang_reflect_Constructor.class);
         } else {
             return SubstrateUtil.cast(SubstrateUtil.cast(constructor, Target_java_lang_reflect_AccessibleObject.class).getRoot(), Target_java_lang_reflect_Constructor.class);

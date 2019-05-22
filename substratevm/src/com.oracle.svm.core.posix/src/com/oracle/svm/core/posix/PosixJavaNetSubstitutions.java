@@ -114,7 +114,7 @@ class PosixJavaNetSubstitutionsFeature implements Feature {
             ImageSingletons.lookup(RuntimeClassInitializationSupport.class).rerunInitialization(access.findClassByName("java.net.AbstractPlainDatagramSocketImpl"), "required for substitutions");
             ImageSingletons.lookup(RuntimeClassInitializationSupport.class).rerunInitialization(access.findClassByName("java.net.PlainSocketImpl"), "required for substitutions");
             ImageSingletons.lookup(RuntimeClassInitializationSupport.class).rerunInitialization(access.findClassByName("java.net.PlainDatagramSocketImpl"), "required for substitutions");
-            if (JavaVersionUtil.Java8OrEarlier) {
+            if (JavaVersionUtil.JAVA_SPEC <= 8) {
                 ImageSingletons.lookup(RuntimeClassInitializationSupport.class).rerunInitialization(access.findClassByName("sun.net.ExtendedOptionsImpl"), "required for substitutions");
             }
         } catch (Exception e) {
@@ -3479,7 +3479,7 @@ final class Target_java_net_Inet6AddressImpl {
 
                     ret = new InetAddress[retLen];
 
-                    if (JavaVersionUtil.Java8OrEarlier) {
+                    if (JavaVersionUtil.JAVA_SPEC <= 8) {
                         if (Target_java_net_InetAddress.preferIPv6AddressJDK8OrEarlier) {
                             /* AF_INET addresses will be offset by inet6Count */
                             inetIndex = inet6Count;
@@ -3546,7 +3546,7 @@ final class Target_java_net_Inet6AddressImpl {
                             // 474 inet6Index++;
                             inet6Index++;
                         }
-                        if (!JavaVersionUtil.Java8OrEarlier) {
+                        if (JavaVersionUtil.JAVA_SPEC > 8) {
                             if (Target_java_net_InetAddress.preferIPv6AddressJDK11OrLater == Target_java_net_InetAddress.PREFER_SYSTEM_VALUE) {
                                 originalIndex++;
                                 inetIndex = 0;
@@ -3652,7 +3652,7 @@ final class Util_java_net_Inet6AddressImpl {
                 /* Create and fill the Java array. */
                 int arraySize = addrs4 + addrs6 - (includeLoopback ? 0 : (numV4Loopbacks + numV6Loopbacks));
                 result = new InetAddress[arraySize];
-                if (JavaVersionUtil.Java8OrEarlier) {
+                if (JavaVersionUtil.JAVA_SPEC <= 8) {
                     if (Target_java_net_InetAddress.preferIPv6AddressJDK8OrEarlier) {
                         i = includeLoopback ? addrs6 : (addrs6 - numV6Loopbacks);
                         j = 0;

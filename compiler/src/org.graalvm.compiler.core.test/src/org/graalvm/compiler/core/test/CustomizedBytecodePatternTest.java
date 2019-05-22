@@ -28,6 +28,7 @@ import java.lang.invoke.MethodHandles;
 import java.lang.reflect.Method;
 import java.security.ProtectionDomain;
 
+import org.graalvm.compiler.serviceprovider.JavaVersionUtil;
 import org.objectweb.asm.Opcodes;
 
 import sun.misc.Unsafe;
@@ -49,7 +50,7 @@ public abstract class CustomizedBytecodePatternTest extends GraalCompilerTest im
         Method defineClass = null;
         Class<?> loadedClass = null;
         try {
-            if (Java8OrEarlier) {
+            if (JavaVersionUtil.JAVA_SPEC <= 8) {
                 defineClass = Unsafe.class.getDeclaredMethod("defineClass", String.class, byte[].class, int.class, int.class, ClassLoader.class, ProtectionDomain.class);
                 loadedClass = (Class<?>) defineClass.invoke(UNSAFE, className, gen, 0, gen.length, null, null);
             } else {

@@ -124,6 +124,7 @@ import org.graalvm.compiler.phases.tiers.TargetProvider;
 import org.graalvm.compiler.phases.util.Providers;
 import org.graalvm.compiler.printer.GraalDebugHandlersFactory;
 import org.graalvm.compiler.runtime.RuntimeProvider;
+import org.graalvm.compiler.serviceprovider.JavaVersionUtil;
 import org.graalvm.compiler.test.AddExports;
 import org.graalvm.compiler.test.GraalTest;
 import org.graalvm.compiler.test.JLModule;
@@ -194,7 +195,7 @@ public abstract class GraalCompilerTest extends GraalTest {
      * as of JDK 9.
      */
     protected final void exportPackage(Class<?> moduleMember, String packageName) {
-        if (!Java8OrEarlier) {
+        if (JavaVersionUtil.JAVA_SPEC > 8) {
             JLModule.exportPackageTo(moduleMember, packageName, getClass());
         }
     }

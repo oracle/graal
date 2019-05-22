@@ -568,23 +568,23 @@ public class CheckGraalIntrinsics extends GraalTest {
     }
 
     private static boolean isJDK9OrHigher() {
-        return JavaVersionUtil.JAVA_SPECIFICATION_VERSION >= 9;
+        return JavaVersionUtil.JAVA_SPEC >= 9;
     }
 
     private static boolean isJDK10OrHigher() {
-        return JavaVersionUtil.JAVA_SPECIFICATION_VERSION >= 10;
+        return JavaVersionUtil.JAVA_SPEC >= 10;
     }
 
     private static boolean isJDK11OrHigher() {
-        return JavaVersionUtil.JAVA_SPECIFICATION_VERSION >= 11;
+        return JavaVersionUtil.JAVA_SPEC >= 11;
     }
 
     private static boolean isJDK12OrHigher() {
-        return JavaVersionUtil.JAVA_SPECIFICATION_VERSION >= 12;
+        return JavaVersionUtil.JAVA_SPEC >= 12;
     }
 
     private static boolean isJDK13OrHigher() {
-        return JavaVersionUtil.JAVA_SPECIFICATION_VERSION >= 13;
+        return JavaVersionUtil.JAVA_SPEC >= 13;
     }
 
     public interface Refiner {

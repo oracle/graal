@@ -118,7 +118,7 @@ public final class NativeImageBuildServer {
         /*
          * Set the right classloader in the process reaper
          */
-        String executorClassHolder = JavaVersionUtil.Java8OrEarlier ? "java.lang.UNIXProcess" : "java.lang.ProcessHandleImpl";
+        String executorClassHolder = JavaVersionUtil.JAVA_SPEC <= 8 ? "java.lang.UNIXProcess" : "java.lang.ProcessHandleImpl";
 
         withGlobalStaticField(executorClassHolder, "processReaperExecutor", f -> {
             ThreadPoolExecutor executor = (ThreadPoolExecutor) f.get(null);
@@ -447,7 +447,7 @@ public final class NativeImageBuildServer {
     }
 
     private static boolean isSystemLoaderLogLevelEntry(Entry<?, ?> e) {
-        if (JavaVersionUtil.Java8OrEarlier) {
+        if (JavaVersionUtil.JAVA_SPEC <= 8) {
             return ((List<?>) e.getValue()).stream()
                             .map(x -> getFieldValueOfObject("java.util.logging.Level$KnownLevel", "levelObject", x))
                             .allMatch(NativeImageBuildServer::isSystemClassLoader);

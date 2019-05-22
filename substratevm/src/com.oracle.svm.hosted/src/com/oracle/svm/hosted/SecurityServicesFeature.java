@@ -105,7 +105,7 @@ public class SecurityServicesFeature implements Feature {
         ImageSingletons.lookup(RuntimeClassInitializationSupport.class).rerunInitialization(access.findClassByName("sun.security.provider.SeedGenerator"), "for substitutions");
         ImageSingletons.lookup(RuntimeClassInitializationSupport.class).rerunInitialization(access.findClassByName("sun.security.provider.SecureRandom$SeederHolder"), "for substitutions");
 
-        if (!JavaVersionUtil.Java8OrEarlier) {
+        if (JavaVersionUtil.JAVA_SPEC > 8) {
             ImageSingletons.lookup(RuntimeClassInitializationSupport.class).rerunInitialization(access.findClassByName("sun.security.provider.FileInputStreamPool"), "for substitutions");
         }
 

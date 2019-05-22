@@ -49,7 +49,7 @@ public class InliningUtilities {
     @SuppressWarnings("unchecked")
     private static Class<? extends Annotation> lookupForceInlineAnnotation() {
         try {
-            if (JavaVersionUtil.Java8OrEarlier) {
+            if (JavaVersionUtil.JAVA_SPEC <= 8) {
                 return (Class<? extends Annotation>) Class.forName("java.lang.invoke.ForceInline");
             } else {
                 return (Class<? extends Annotation>) Class.forName("jdk.internal.vm.annotation.ForceInline");

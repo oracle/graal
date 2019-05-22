@@ -75,7 +75,7 @@ class PosixJavaLangSubstituteFeature implements Feature {
 
     @Override
     public void duringSetup(DuringSetupAccess access) {
-        if (JavaVersionUtil.Java8OrEarlier) {
+        if (JavaVersionUtil.JAVA_SPEC <= 8) {
             ImageSingletons.lookup(RuntimeClassInitializationSupport.class).rerunInitialization(access.findClassByName("java.lang.UNIXProcess"), "required for substitutions");
         } else {
             ImageSingletons.lookup(RuntimeClassInitializationSupport.class).rerunInitialization(access.findClassByName("java.lang.ProcessImpl"), "required for substitutions");
@@ -211,7 +211,7 @@ class ProcessNameProvider implements Function<TargetClass, String> {
 
     @Override
     public String apply(TargetClass annotation) {
-        if (JavaVersionUtil.Java8OrEarlier) {
+        if (JavaVersionUtil.JAVA_SPEC <= 8) {
             return "java.lang.UNIXProcess";
         } else {
             return "java.lang.ProcessImpl";

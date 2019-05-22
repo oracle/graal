@@ -97,7 +97,7 @@ final class ReflectionSubstitution extends CustomSubstitution<ReflectionSubstitu
 
     /** Track classes in the `reflect` package across JDK versions. */
     private static Class<?> packageJdkInternalReflectClassForName(String className) {
-        final String packageName = (JavaVersionUtil.Java8OrEarlier ? "sun.reflect." : "jdk.internal.reflect.");
+        final String packageName = (JavaVersionUtil.JAVA_SPEC <= 8 ? "sun.reflect." : "jdk.internal.reflect.");
         try {
             /* { Allow reflection in hosted code. Checkstyle: stop. */
             return Class.forName(packageName + className);
@@ -113,7 +113,7 @@ final class ReflectionSubstitution extends CustomSubstitution<ReflectionSubstitu
         /* { Allow reflection in hosted code. Checkstyle: stop. */
         try {
             if (generateProxyMethod == null) {
-                final String packageName = (JavaVersionUtil.Java8OrEarlier ? "sun.misc." : "java.lang.reflect.");
+                final String packageName = (JavaVersionUtil.JAVA_SPEC <= 8 ? "sun.misc." : "java.lang.reflect.");
                 generateProxyMethod = ReflectionUtil.lookupMethod(Class.forName(packageName + "ProxyGenerator"), "generateProxyClass", String.class, Class[].class);
             }
             return (byte[]) generateProxyMethod.invoke(null, name, interfaces);

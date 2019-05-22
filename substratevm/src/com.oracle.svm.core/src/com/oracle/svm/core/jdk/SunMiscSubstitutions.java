@@ -249,7 +249,7 @@ final class Target_sun_misc_MessageUtils {
 class Package_jdk_internal_ref implements Function<TargetClass, String> {
     @Override
     public String apply(TargetClass annotation) {
-        if (JavaVersionUtil.Java8OrEarlier) {
+        if (JavaVersionUtil.JAVA_SPEC <= 8) {
             return "sun.misc." + annotation.className();
         } else {
             return "jdk.internal.ref." + annotation.className();
@@ -313,7 +313,7 @@ final class Target_jdk_internal_ref_SoftCleanable {
 class Package_jdk_internal_perf implements Function<TargetClass, String> {
     @Override
     public String apply(TargetClass annotation) {
-        if (JavaVersionUtil.Java8OrEarlier) {
+        if (JavaVersionUtil.JAVA_SPEC <= 8) {
             return "sun.misc." + annotation.className();
         } else {
             return "jdk.internal.perf." + annotation.className();
@@ -360,7 +360,7 @@ final class Target_jdk_internal_access_JavaLangAccess {
 class Package_jdk_internal_loader implements Function<TargetClass, String> {
     @Override
     public String apply(TargetClass annotation) {
-        if (JavaVersionUtil.Java8OrEarlier) {
+        if (JavaVersionUtil.JAVA_SPEC <= 8) {
             return "sun.misc." + annotation.className();
         } else {
             return "jdk.internal.loader." + annotation.className();

@@ -277,7 +277,7 @@ public class NativeImage {
          * @return additional arguments for JVM that runs image builder
          */
         default List<String> getBuilderJavaArgs() {
-            String javaVersion = String.valueOf(JavaVersionUtil.JAVA_SPECIFICATION_VERSION);
+            String javaVersion = String.valueOf(JavaVersionUtil.JAVA_SPEC);
             String[] flagsForVersion = graalCompilerFlags.get(javaVersion);
             if (flagsForVersion == null) {
                 showError(String.format("Image building not supported for Java version %s in %s with VM configuration \"%s\"",
