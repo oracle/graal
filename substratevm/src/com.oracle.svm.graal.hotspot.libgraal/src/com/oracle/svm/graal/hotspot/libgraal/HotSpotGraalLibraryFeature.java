@@ -198,7 +198,7 @@ public final class HotSpotGraalLibraryFeature implements com.oracle.svm.core.gra
             }
             configFilePath = Paths.get("libgraal_jniconfig.txt");
 
-            String[] command = {javaExe.toFile().getAbsolutePath(), "-XX:JVMCILibDumpJNIConfig=" + configFilePath};
+            String[] command = {javaExe.toFile().getAbsolutePath(), "-XX:+UnlockExperimentalVMOptions", "-XX:+EnableJVMCI", "-XX:JVMCILibDumpJNIConfig=" + configFilePath};
             quotedCommand = Arrays.asList(command).stream().map(e -> e.indexOf(' ') == -1 ? e : '\'' + e + '\'').collect(Collectors.joining(" "));
             ProcessBuilder pb = new ProcessBuilder(command);
             pb.redirectErrorStream(true);

@@ -1190,9 +1190,9 @@ public final class PosixJavaNIOSubstitutions {
         //        069 Java_sun_nio_ch_ServerSocketChannelImpl_accept0(JNIEnv *env, jobject this,
         //        070                                                 jobject ssfdo, jobject newfdo,
         //        071                                                 jobjectArray isaa)
-        @TargetElement(onlyWith = JDK11OrEarlier.class)
         @Substitute
         @SuppressWarnings({"static-method"})
+        @TargetElement(onlyWith = JDK8OrEarlier.class)
         int accept0(FileDescriptor ssfdo, FileDescriptor newfdo, InetSocketAddress[] isaa) throws IOException {
             /* Ignore the receiver. */
             return Util_sun_nio_ch_ServerSocketChannelImpl.accept0(ssfdo, newfdo, isaa);
@@ -3281,12 +3281,12 @@ public final class PosixJavaNIOSubstitutions {
         /* { Do not format quoted code: @formatter:off */
 
         /* Translated from src/solaris/native/sun/nio/ch/UnixAsynchronousServerSocketChannelImpl.c?v=Java_1.8.0_40_b10 */
-        @TargetElement(onlyWith = JDK11OrEarlier.class)
         @Substitute
         // 041 JNIEXPORT jint JNICALL
         // 042 Java_sun_nio_ch_UnixAsynchronousServerSocketChannelImpl_accept0(JNIEnv* env,
         // 043     jobject this, jobject ssfdo, jobject newfdo, jobjectArray isaa)
         @SuppressWarnings({"static-method"})
+        @TargetElement(onlyWith = JDK8OrEarlier.class)
         int accept0(FileDescriptor ssfd, FileDescriptor newfd, InetSocketAddress[] isaa) throws IOException {
             // 045     return Java_sun_nio_ch_ServerSocketChannelImpl_accept0(env, this,
             // 046         ssfdo, newfdo, isaa);
