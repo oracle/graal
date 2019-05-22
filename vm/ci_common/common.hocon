@@ -33,7 +33,7 @@ common_vm_darwin: ${common_vm} ${darwin} {
 # SULONG
 sulong_linux: {
   packages: {
-    llvm: "==3.8"
+    llvm: "==6.0.1"
     ruby: "==2.1.0" # for mdl
   }
   downloads: {
@@ -54,7 +54,7 @@ sulong_darwin: {
 # TRUFFLERUBY
 truffleruby_linux: {
   packages: {
-    llvm: "==3.8"
+    llvm: "==6.0.1"
     ruby: "==2.1.0"
   }
 }

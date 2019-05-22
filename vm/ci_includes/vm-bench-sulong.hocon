@@ -1,6 +1,6 @@
 bench-llvm-common: {
   packages: {
-    llvm: "==3.8"
+    llvm: "==6.0.1"
   }
   downloads: {
     LIBGMP: {name: libgmp, version: "6.1.0", platformspecific: true}
