@@ -386,19 +386,15 @@ public class CheckGraalIntrinsics extends GraalTest {
         if (isJDK11OrHigher()) {
             // Relevant for Java flight recorder
             add(toBeInvestigated,
+                            "java/lang/CharacterDataLatin1.isDigit(I)Z",
+                            "java/lang/CharacterDataLatin1.isLowerCase(I)Z",
+                            "java/lang/CharacterDataLatin1.isUpperCase(I)Z",
+                            "java/lang/CharacterDataLatin1.isWhitespace(I)Z",
                             "jdk/jfr/internal/JVM.getEventWriter()Ljava/lang/Object;");
             if (!config.useBase64Intrinsics()) {
                 add(ignore,
                                 "java/util/Base64$Encoder.encodeBlock([BII[BIZ)V");
             }
-        }
-
-        if (isJDK12OrHigher()) {
-            add(toBeInvestigated,
-                            "java/lang/CharacterDataLatin1.isDigit(I)Z",
-                            "java/lang/CharacterDataLatin1.isLowerCase(I)Z",
-                            "java/lang/CharacterDataLatin1.isUpperCase(I)Z",
-                            "java/lang/CharacterDataLatin1.isWhitespace(I)Z");
         }
 
         if (isJDK13OrHigher()) {
