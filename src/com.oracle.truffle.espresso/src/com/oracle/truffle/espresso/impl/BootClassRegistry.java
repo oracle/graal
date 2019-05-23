@@ -59,7 +59,7 @@ public final class BootClassRegistry extends ClassRegistry {
     }
 
     @Override
-    public Klass loadKlass(Symbol<Type> type) {
+    public Klass loadKlass(Symbol<Type> type, Symbol<Type> instigator) {
         if (Types.isArray(type)) {
             Symbol<Type> elemental = getTypes().getElementalType(type);
             Klass elementalKlass = loadKlass(elemental);
@@ -86,7 +86,7 @@ public final class BootClassRegistry extends ClassRegistry {
 
         // Defining a class also loads the superclass and the superinterfaces which excludes the
         // use of computeIfAbsent to insert the class since the map is modified.
-        ObjectKlass result = defineKlass(type, classpathFile.contents);
+        ObjectKlass result = defineKlass(type, classpathFile.contents, instigator);
         packageMap.put(result.getRuntimePackage(), classpathFile.classpathEntry.path());
 
         return result;

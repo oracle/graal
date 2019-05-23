@@ -474,6 +474,7 @@ public final class ObjectKlass extends Klass {
         methodLookupCount.inc();
         Method method = lookupDeclaredMethod(methodName, signature);
         if (method == null) {
+            // Implicit interface methods.
             method = lookupMirandas(methodName, signature);
         }
         if (method == null && getType() == Type.MethodHandle) {

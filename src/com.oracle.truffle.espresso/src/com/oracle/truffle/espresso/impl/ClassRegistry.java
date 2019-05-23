@@ -61,7 +61,11 @@ public abstract class ClassRegistry implements ContextAccess {
         this.context = context;
     }
 
-    public abstract Klass loadKlass(Symbol<Type> type);
+    public Klass loadKlass(Symbol<Type> type) {
+        return loadKlass(type, null);
+    }
+
+    protected abstract Klass loadKlass(Symbol<Type> type, Symbol<Type> instigator);
 
     public Klass findLoadedKlass(Symbol<Type> type) {
         if (Types.isArray(type)) {
@@ -78,6 +82,10 @@ public abstract class ClassRegistry implements ContextAccess {
     public abstract @Host(ClassLoader.class) StaticObject getClassLoader();
 
     public ObjectKlass defineKlass(Symbol<Type> type, final byte[] bytes) {
+        return defineKlass(type, bytes, null);
+    }
+
+    public ObjectKlass defineKlass(Symbol<Type> type, final byte[] bytes, Symbol<Type> instigator) {
 
         if (classes.containsKey(type)) {
             throw getMeta().throwExWithMessage(LinkageError.class, "Class " + type + " already defined in the BCL");
@@ -87,14 +95,14 @@ public abstract class ClassRegistry implements ContextAccess {
 
         Symbol<Type> superKlassType = parserKlass.getSuperKlass();
 
-        if (type == superKlassType) {
+        if (type == superKlassType || (superKlassType != null && instigator == superKlassType)) {
             throw getMeta().throwEx(ClassCircularityError.class);
         }
 
         // TODO(peterssen): Superclass must be a class, and non-final.
         ObjectKlass superKlass = superKlassType != null
-                        ? (ObjectKlass) loadKlass(superKlassType) // Should only be an ObjectKlass,
-                        // not primitives nor arrays.
+                        // Should only be an ObjectKlass, not primitives nor arrays.
+                        ? (ObjectKlass) loadKlass(superKlassType, (instigator == null) ? type : instigator)
                         : null;
 
         assert superKlass == null || !superKlass.isInterface();
