@@ -321,6 +321,10 @@ public class MethodVerifier implements ContextAccess {
             return false;
         }
 
+        boolean isNull() {
+            return false;
+        }
+
         abstract boolean canMerge(Operand other);
 
         abstract Operand mergeInto(Operand other);
@@ -387,7 +391,6 @@ public class MethodVerifier implements ContextAccess {
         @Override
         Klass getKlass() {
             if (klass == null) {
-
                 try {
                     klass = thisKlass.getMeta().loadKlass(type, thisKlass.getDefiningClassLoader());
                 } catch (Exception e) {
@@ -405,6 +408,9 @@ public class MethodVerifier implements ContextAccess {
                 if (type == null || other.getType() == this.type || other.getType() == Type.Object) {
                     return true;
                 }
+                if (other.getType() == null) {
+                    return false;
+                }
                 return other.getKlass().isAssignableFrom(getKlass());
             }
             return false;
@@ -417,6 +423,9 @@ public class MethodVerifier implements ContextAccess {
             }
             if (other.isArrayType()) {
                 return jlObject;
+            }
+            if (other.isNull()) {
+                return this;
             }
             Klass result = getKlass().getClosestCommonSupertype(other.getKlass());
             return result == null ? null : new ReferenceOperand(result, thisKlass);
@@ -461,6 +470,9 @@ public class MethodVerifier implements ContextAccess {
         Operand mergeInto(Operand other) {
             if (!other.isReference()) {
                 return null;
+            }
+            if (other.isNull()) {
+                return this;
             }
             if (!other.isArrayType()) {
                 return jlObject;
@@ -599,6 +611,11 @@ public class MethodVerifier implements ContextAccess {
 
         @Override
         boolean isReference() {
+            return true;
+        }
+
+        @Override
+        boolean isNull() {
             return true;
         }
 
