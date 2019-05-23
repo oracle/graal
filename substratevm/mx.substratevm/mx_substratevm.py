@@ -946,7 +946,6 @@ def clinittest(args):
     native_image_context_run(build_and_test_clinittest_image, args, build_if_missing=True)
 
 
-
 orig_command_build = mx.command_function('build')
 
 
@@ -989,6 +988,11 @@ def build(args, vm=None):
         # build "jvm" config used by native-image and native-image-configure commands
         config = graalvm_jvm_configs[-1]
         build_native_image_image(config)
+        if not mx.is_windows():
+            vm_link = join(svmbuild_dir(), 'vm')
+            if os.path.lexists(vm_link):
+                os.unlink(vm_link)
+            os.symlink(os.path.relpath(_vm_home(config), dirname(vm_link)), vm_link)
 
 
 @mx.command(suite.name, 'native-image')
@@ -1000,8 +1004,12 @@ def native_image_on_jvm(args, **kwargs):
         else:
             save_args.append(arg)
 
-    config = graalvm_jvm_configs[-1]
-    executable = vm_native_image_path(config)
+    if mx.is_windows():
+        config = graalvm_jvm_configs[-1]
+        executable = vm_native_image_path(config)
+    else:
+        vm_link = join(svmbuild_dir(), 'vm')
+        executable = join(vm_link, 'bin', 'native-image')
     if not exists(executable):
         mx.abort("Can not find " + executable + "\nDid you forget to build? Try `mx build`")
     mx.run([executable, '-H:CLibraryPath=' + clibrary_libpath()] + save_args, **kwargs)
@@ -1009,8 +1017,12 @@ def native_image_on_jvm(args, **kwargs):
 
 @mx.command(suite.name, 'native-image-configure')
 def native_image_configure_on_jvm(args, **kwargs):
-    config = graalvm_jvm_configs[-1]
-    executable = vm_executable_path('native-image-configure', config)
+    if mx.is_windows():
+        config = graalvm_jvm_configs[-1]
+        executable = vm_executable_path('native-image-configure', config)
+    else:
+        vm_link = join(svmbuild_dir(), 'vm')
+        executable = join(vm_link, 'bin', 'native-image-configure')
     if not exists(executable):
         mx.abort("Can not find " + executable + "\nDid you forget to build? Try `mx build`")
     mx.run([executable, '-H:CLibraryPath=' + clibrary_libpath()] + args, **kwargs)
