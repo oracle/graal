@@ -76,6 +76,7 @@ import jdk.vm.ci.code.site.Infopoint;
 import jdk.vm.ci.meta.Constant;
 import jdk.vm.ci.meta.JavaConstant;
 import jdk.vm.ci.meta.ResolvedJavaMethod;
+import jdk.vm.ci.meta.VMConstant;
 
 public abstract class NativeImageCodeCache {
 
@@ -94,7 +95,7 @@ public abstract class NativeImageCodeCache {
 
     private final DataSection dataSection;
 
-    private final Map<JavaConstant, String> constantReasons = new HashMap<>();
+    private final Map<Constant, String> constantReasons = new HashMap<>();
 
     public NativeImageCodeCache(Map<HostedMethod, CompilationResult> compilations, NativeImageHeap imageHeap) {
         this(compilations, imageHeap, ImageSingletons.lookup(Platform.class));
@@ -139,6 +140,13 @@ public abstract class NativeImageCodeCache {
             }
 
             dataSection.addAll(compilation.getDataSection());
+
+            for (DataPatch patch : compilation.getDataPatches()) {
+                if (patch.reference instanceof ConstantReference) {
+                    VMConstant constant = ((ConstantReference) patch.reference).getConstant();
+                    constantReasons.put(constant, compilation.getName());
+                }
+            }
         }
         dataSection.close();
     }
