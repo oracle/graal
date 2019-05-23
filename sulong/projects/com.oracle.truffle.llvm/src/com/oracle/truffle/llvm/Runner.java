@@ -135,7 +135,7 @@ final class Runner {
     Runner(LLVMContext context, DefaultLoader loader) {
         this.context = context;
         this.loader = loader;
-        this.language = LLVMLanguage.getLanguage();
+        this.language = context.getLanguage();
     }
 
     /**
@@ -379,8 +379,8 @@ final class Runner {
                 }
             }
 
-            this.allocRoSection = roSection.getAllocateNode(LLVMLanguage.getLanguage().getNodeFactory(), "roglobals_struct", true);
-            this.allocRwSection = rwSection.getAllocateNode(LLVMLanguage.getLanguage().getNodeFactory(), "rwglobals_struct", false);
+            this.allocRoSection = roSection.getAllocateNode(context.getLanguage().getNodeFactory(), "roglobals_struct", true);
+            this.allocRwSection = rwSection.getAllocateNode(context.getLanguage().getNodeFactory(), "rwglobals_struct", false);
             this.allocGlobals = allocGlobalsList.toArray(AllocGlobalNode.EMPTY);
             this.fileScope = res.getRuntime().getFileScope();
         }
@@ -423,8 +423,8 @@ final class Runner {
 
         @TruffleBoundary
         private void bindUnresolvedSymbols(LLVMContext ctx) {
-            NFIContextExtension nfiContextExtension = LLVMLanguage.getLanguage().getContextExtensionOrNull(NFIContextExtension.class);
-            LLVMIntrinsicProvider intrinsicProvider = LLVMLanguage.getLanguage().getContextExtensionOrNull(LLVMIntrinsicProvider.class);
+            NFIContextExtension nfiContextExtension = ctx.getLanguage().getContextExtensionOrNull(NFIContextExtension.class);
+            LLVMIntrinsicProvider intrinsicProvider = ctx.getLanguage().getContextExtensionOrNull(LLVMIntrinsicProvider.class);
             for (LLVMSymbol symbol : fileScope.values()) {
                 if (!symbol.isDefined()) {
                     if (symbol instanceof LLVMGlobal) {
@@ -842,7 +842,7 @@ final class Runner {
             this.destructor = runner.createDestructor(parserResult);
 
             this.globalVarInit = runner.createGlobalVariableInitializer(rootFrame, parserResult);
-            this.protectRoData = LLVMLanguage.getLanguage().getNodeFactory().createProtectGlobalsBlock();
+            this.protectRoData = runner.language.getNodeFactory().createProtectGlobalsBlock();
             this.constructor = runner.createConstructor(parserResult);
         }
 
@@ -1034,8 +1034,8 @@ final class Runner {
         return result;
     }
 
-    private static void overrideSulongLibraryFunctionsWithIntrinsics(List<LLVMParserResult> sulongLibraries) {
-        LLVMIntrinsicProvider intrinsicProvider = LLVMLanguage.getLanguage().getContextExtensionOrNull(LLVMIntrinsicProvider.class);
+    private void overrideSulongLibraryFunctionsWithIntrinsics(List<LLVMParserResult> sulongLibraries) {
+        LLVMIntrinsicProvider intrinsicProvider = language.getContextExtensionOrNull(LLVMIntrinsicProvider.class);
         if (intrinsicProvider != null) {
             for (LLVMParserResult parserResult : sulongLibraries) {
                 for (LLVMSymbol symbol : parserResult.getRuntime().getFileScope().values()) {

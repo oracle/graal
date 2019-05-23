@@ -33,7 +33,6 @@ import com.oracle.truffle.api.interop.InteropException;
 import com.oracle.truffle.api.interop.InteropLibrary;
 import com.oracle.truffle.api.interop.TruffleObject;
 import com.oracle.truffle.llvm.runtime.LLVMContext;
-import com.oracle.truffle.llvm.runtime.LLVMLanguage;
 import com.oracle.truffle.llvm.runtime.NFIContextExtension;
 import com.oracle.truffle.llvm.runtime.memory.LLVMMemoryOpNode;
 import com.oracle.truffle.llvm.runtime.nodes.api.LLVMNode;
@@ -46,7 +45,7 @@ public final class FreeReadOnlyGlobalsBlockNode extends LLVMNode implements LLVM
     private final TruffleObject freeGlobalsBlock;
 
     public FreeReadOnlyGlobalsBlockNode(LLVMContext context) {
-        NFIContextExtension nfiContextExtension = LLVMLanguage.getLanguage().getContextExtensionOrNull(NFIContextExtension.class);
+        NFIContextExtension nfiContextExtension = context.getLanguage().getContextExtensionOrNull(NFIContextExtension.class);
         this.freeGlobalsBlock = nfiContextExtension.getNativeFunction(context, "__sulong_free_globals_block", "(POINTER):VOID");
         this.interop = InteropLibrary.getFactory().create(freeGlobalsBlock);
     }

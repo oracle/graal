@@ -38,11 +38,11 @@ public interface GetStackSpaceFactory {
     LLVMExpressionNode createGetStackSpace(LLVMContext context, Type type);
 
     static GetStackSpaceFactory createAllocaFactory() {
-        return (context, type) -> LLVMLanguage.getLanguage().getNodeFactory().createAlloca(type);
+        return (context, type) -> context.getLanguage().getNodeFactory().createAlloca(type);
     }
 
     static GetStackSpaceFactory createGetUniqueStackSpaceFactory(UniquesRegion uniquesRegion) {
-        return (context, type) -> LLVMLanguage.getLanguage().getNodeFactory().createGetUniqueStackSpace(type, uniquesRegion);
+        return (context, type) -> context.getLanguage().getNodeFactory().createGetUniqueStackSpace(type, uniquesRegion);
     }
 
 }
