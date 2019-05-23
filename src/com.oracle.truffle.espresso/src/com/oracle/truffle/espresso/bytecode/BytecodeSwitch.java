@@ -103,5 +103,4 @@ public abstract class BytecodeSwitch {
      * @return the total size in bytes of the switch instruction
      */
     public abstract int size(int bci);
-
 }
