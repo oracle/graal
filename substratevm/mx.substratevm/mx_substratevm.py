@@ -215,7 +215,7 @@ class GraalVMConfig(object):
             self.dynamicimports.append('/substratevm')
 
     def mx_args(self):
-        args = []
+        args = ['--disable-installables=true']
         if self.dynamicimports:
             args += ['--dynamicimports', ','.join(self.dynamicimports)]
         if self.disable_libpolyglot:
