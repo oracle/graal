@@ -253,14 +253,12 @@ public class BinaryReader extends BinaryStreamReader {
             int codeEntrySize = readUnsignedInt32();
             int startOffset = offset;
             // TODO: Offset the entry by the number of already parsed code entries
-            readCodeEntry(codeEntrySize, entry);
+            readCodeEntry(entry);
             Assert.assertEquals(offset - startOffset, codeEntrySize, String.format("Code entry %d size is incorrect", entry));
         }
     }
 
-    private void readCodeEntry(int codeEntrySize, int funcIndex) {
-        int startOffset = offset();
-
+    private void readCodeEntry(int funcIndex) {
         /* Read code entry (function) locals */
         WasmCodeEntry codeEntry = new WasmCodeEntry(data);
         wasmModule.symbolTable().function(funcIndex).setCodeEntry(codeEntry);
@@ -272,9 +270,6 @@ public class BinaryReader extends BinaryStreamReader {
         WasmBlockNode block = readBlock(codeEntry, state, returnTypeId);
         WasmRootNode rootNode = new WasmRootNode(wasmLanguage, codeEntry, block);
 
-        /* Validate the code entry size. */
-        validateCodeEntrySize(codeEntrySize, startOffset, funcIndex);
-
         /* Push a frame slot to the frame descriptor for every local. */
         codeEntry.initLocalSlots(rootNode.getFrameDescriptor());
 
@@ -283,10 +278,6 @@ public class BinaryReader extends BinaryStreamReader {
         codeEntry.initStackSlots(rootNode.getFrameDescriptor(), state.maxStackSize());
         RootCallTarget callTarget = Truffle.getRuntime().createCallTarget(rootNode);
         wasmModule.symbolTable().function(funcIndex).setCallTarget(callTarget);
-    }
-
-    private void validateCodeEntrySize(int codeEntrySize, int startOffset, int funcIndex) {
-        Assert.assertEquals(codeEntrySize, offset() - startOffset, String.format("Invalid code entry size for funcIndex %d", funcIndex));
     }
 
     private int readCodeEntryLocals(WasmCodeEntry codeEntry) {
