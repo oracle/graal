@@ -290,10 +290,10 @@ def graalvm_config():
     return graalvm_configs[-1]
 
 
-def build_native_image_image(config=None):
+def build_native_image_image(config=None, args=None):
     config = config or graalvm_config()
     mx.log('Building GraalVM with native-image in ' + _vm_home(config))
-    _mx_vm(['build'], config)
+    _mx_vm(['build'] + (args or []), config)
 
 
 def locale_US_args():
@@ -987,7 +987,7 @@ def build(args, vm=None):
     if 'substratevm' in mx.primary_suite().name:
         # build "jvm" config used by native-image and native-image-configure commands
         config = graalvm_jvm_configs[-1]
-        build_native_image_image(config)
+        build_native_image_image(config, args=[arg for arg in args if arg != '-f'])
         if not mx.is_windows():
             vm_link = join(svmbuild_dir(), 'vm')
             if os.path.lexists(vm_link):
