@@ -264,10 +264,6 @@ public abstract class WasmTest {
                                     expected(42)),
                     test("(module (func (result i32) block $B0 (result i32) i32.const 42 block $B1 (result i32) i32.const 12 i32.const 24 block $B4 i32.const 0 i32.const 1 i32.const 2 drop drop drop end i32.add block $B3 (result i32) i32.const 36 end i32.sub end i32.sub end))",
                                     expected(42)),
-                    test("(module (func (result i32) (local $l0 i32) i32.const 42 local.set $l0 local.get $l0))",
-                                    expected(42)),
-                    test("(module (func (result i32) (local $l0 i32) i32.const 42 local.set $l0 local.get $l0 unreachable))",
-                                    expectedThrows("unreachable")),
                     test("(module (func (result i32) (local $l0 i32) i32.const 0 if $l0 (result i32) i32.const 42 else i32.const 55 end))",
                                     expected(55)),
                     test("(module (func (result i32) (local $l0 i32) i32.const 1 if $l0 (result i32) i32.const 42 else i32.const 55 end))",
@@ -286,12 +282,12 @@ public abstract class WasmTest {
         return new TestData((result) -> Assert.assertEquals("", expectedValue, result.as(Object.class)));
     }
 
-    private static TestData expected(float expectedValue, float e) {
-        return new TestData((result) -> Assert.assertEquals(expectedValue, result.as(Float.class), e));
+    private static TestData expected(float expectedValue, float delta) {
+        return new TestData((result) -> Assert.assertEquals(expectedValue, result.as(Float.class), delta));
     }
 
-    private static TestData expected(double expectedValue, double e) {
-        return new TestData((result) -> Assert.assertEquals(expectedValue, result.as(Double.class), e));
+    private static TestData expected(double expectedValue, double delta) {
+        return new TestData((result) -> Assert.assertEquals(expectedValue, result.as(Double.class), delta));
     }
 
     private static TestData expectedThrows(String expectedErrorMessage) {

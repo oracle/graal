@@ -259,31 +259,34 @@ public class BinaryReader extends BinaryStreamReader {
     }
 
     private void readCodeEntry(int codeEntrySize, int funcIndex) {
-        int startOffset = offset;
+        int startOffset = offset();
 
         /* Read code entry (function) locals */
         WasmCodeEntry codeEntry = new WasmCodeEntry(data);
         wasmModule.symbolTable().function(funcIndex).setCodeEntry(codeEntry);
         readCodeEntryLocals(codeEntry);
 
-        /* Create the necessary objects for the code entry */
-        int expressionSize = codeEntrySize - (offset - startOffset);
+        /* Create the necessary objects, read and abstractly interpret the code entry */
         byte returnTypeId = wasmModule.symbolTable().function(funcIndex).returnType();
         ExecutionState state = new ExecutionState();
-        WasmBlockNode block = new WasmBlockNode(codeEntry, offset, expressionSize, returnTypeId, state.stackSize(), 0, -1); // TODO: The byte constant offset length will be fixed after readBlock refactoring.
+        WasmBlockNode block = readBlock(codeEntry, state, returnTypeId);
         WasmRootNode rootNode = new WasmRootNode(wasmLanguage, codeEntry, block);
 
-        // Push a frame slot to the frame descriptor for every local.
+        /* Validate the code entry size. */
+        validateCodeEntrySize(codeEntrySize, startOffset, funcIndex);
+
+        /* Push a frame slot to the frame descriptor for every local. */
         codeEntry.initLocalSlots(rootNode.getFrameDescriptor());
 
-        // Abstractly interpret the code entry block.
-        readBlock(block, state, returnTypeId);
-
-        // Initialize the Truffle-related components required for execution.
+        /* Initialize the Truffle-related components required for execution. */
         codeEntry.setByteConstants(state.byteConstants());
         codeEntry.initStackSlots(rootNode.getFrameDescriptor(), state.maxStackSize());
         RootCallTarget callTarget = Truffle.getRuntime().createCallTarget(rootNode);
         wasmModule.symbolTable().function(funcIndex).setCallTarget(callTarget);
+    }
+
+    private void validateCodeEntrySize(int codeEntrySize, int startOffset, int funcIndex) {
+        Assert.assertEquals(codeEntrySize, offset() - startOffset, String.format("Invalid code entry size for funcIndex %d", funcIndex));
     }
 
     private int readCodeEntryLocals(WasmCodeEntry codeEntry) {
@@ -310,10 +313,18 @@ public class BinaryReader extends BinaryStreamReader {
         }
     }
 
-    private void readBlock(WasmBlockNode currentBlock, ExecutionState state, byte returnTypeId) {
+    private WasmBlockNode readBlock(WasmCodeEntry codeEntry, ExecutionState state) {
+        byte blockTypeId = readBlockType();
+        return readBlock(codeEntry, state, blockTypeId);
+    }
+
+    private WasmBlockNode readBlock(WasmCodeEntry codeEntry, ExecutionState state, byte returnTypeId) {
         ArrayList<WasmNode> nestedControlTable = new ArrayList<>();
         int opcode;
         int startStackSize = state.stackSize();
+        int startOffset = offset();
+        int startByteConstantOffset = state.byteConstantOffset();
+        WasmBlockNode currentBlock = new WasmBlockNode(codeEntry, startOffset, -1, returnTypeId, state.stackSize(), state.byteConstantOffset(), -1);
         do {
             opcode = read1() & 0xFF;
             switch (opcode) {
@@ -321,18 +332,12 @@ public class BinaryReader extends BinaryStreamReader {
                 case NOP:
                     break;
                 case BLOCK: {
-                    byte blockTypeId = readBlockType();
-                    int startOffset = offset();
-                    int startByteConstantOffset = state.byteConstantOffset();
-                    WasmBlockNode blockNode = new WasmBlockNode(currentBlock.codeEntry(), offset(), -1, blockTypeId, state.stackSize(), state.byteConstantOffset(), -1);
-                    readBlock(blockNode, state, blockTypeId);
-                    blockNode.setByteConstantLength(state.byteConstantOffset() - startByteConstantOffset);
-                    blockNode.setByteLength(offset() - startOffset);
-                    nestedControlTable.add(blockNode);
+                    WasmBlockNode nestedBlock = readBlock(codeEntry, state);
+                    nestedControlTable.add(nestedBlock);
                     break;
                 }
                 case IF: {
-                    WasmIfNode ifNode = readIf(currentBlock.codeEntry(), state);
+                    WasmIfNode ifNode = readIf(codeEntry, state);
                     nestedControlTable.add(ifNode);
                     break;
                 }
@@ -347,7 +352,7 @@ public class BinaryReader extends BinaryStreamReader {
                     int localIndex = readLocalIndex(bytesConsumed);
                     state.useByteConstant(bytesConsumed[0]);
                     // TODO: Assert localIndex exists.
-                    currentBlock.codeEntry().localSlot(localIndex);
+                    codeEntry.localSlot(localIndex);
                     state.push();
                     break;
                 }
@@ -355,7 +360,7 @@ public class BinaryReader extends BinaryStreamReader {
                     int localIndex = readLocalIndex(bytesConsumed);
                     state.useByteConstant(bytesConsumed[0]);
                     // TODO: Assert localIndex exists
-                    currentBlock.codeEntry().localSlot(localIndex);
+                    codeEntry.localSlot(localIndex);
                     // Assert there is a value on the top of the stack.
                     Assert.assertLarger(state.stackSize(), 0, "local.set requires at least one element in the stack");
                     state.pop();
@@ -365,7 +370,7 @@ public class BinaryReader extends BinaryStreamReader {
                     int localIndex = readLocalIndex(bytesConsumed);
                     state.useByteConstant(bytesConsumed[0]);
                     // TODO: Assert localIndex exists
-                    currentBlock.codeEntry().localSlot(localIndex);
+                    codeEntry.localSlot(localIndex);
                     // Assert there is a value on the top of the stack.
                     Assert.assertLarger(state.stackSize(), 0, "local.tee requires at least one element in the stack");
                     state.push();
@@ -506,7 +511,10 @@ public class BinaryReader extends BinaryStreamReader {
             }
         } while (opcode != END && opcode != ELSE);
         currentBlock.nestedControlTable = nestedControlTable.toArray(new WasmNode[nestedControlTable.size()]);
+        currentBlock.setByteLength(offset() - startOffset);
+        currentBlock.setByteConstantLength(state.byteConstantOffset() - startByteConstantOffset);
         checkValidStateOnBlockExit(returnTypeId, state, startStackSize);
+        return currentBlock;
     }
 
     private WasmIfNode readIf(WasmCodeEntry codeEntry, ExecutionState state) {
@@ -519,11 +527,7 @@ public class BinaryReader extends BinaryStreamReader {
 
         // Read true branch.
         int startOffset = offset();
-        int initialTrueByteConstantOffset = state.byteConstantOffset();
-        WasmBlockNode trueBranchBlock = new WasmBlockNode(codeEntry, offset(), -1, blockTypeId, state.stackSize(), state.byteConstantOffset(), -1);
-        trueBranchBlock.setByteConstantLength(state.byteConstantOffset() - initialTrueByteConstantOffset);
-        readBlock(trueBranchBlock, state, blockTypeId);
-        trueBranchBlock.setByteLength(offset() - startOffset);
+        WasmBlockNode trueBranchBlock = readBlock(codeEntry, state, blockTypeId);
 
         // Read false branch, if it exists.
         WasmNode falseBranch;
@@ -536,14 +540,7 @@ public class BinaryReader extends BinaryStreamReader {
                 state.pop();
             }
 
-            int initialFalseOffset = offset();
-            int initialFalseByteConstantOffset = state.byteConstantOffset();
-            WasmBlockNode falseBranchBlock = new WasmBlockNode(codeEntry, offset(), -1, blockTypeId, state.stackSize(), state.byteConstantOffset(), -1);
-            readBlock(falseBranchBlock, state, blockTypeId);
-            falseBranchBlock.setByteConstantLength(state.byteConstantOffset() - initialFalseByteConstantOffset);
-            falseBranchBlock.setByteLength(offset() - initialFalseOffset);
-            falseBranch = falseBranchBlock;
-
+            falseBranch = readBlock(codeEntry, state, blockTypeId);
             Assert.assertEquals(stackSizeAfterTrueBlock, state.stackSize(), "Stack sizes must be equal after both branches of an if statement.");
         } else {
             if (blockTypeId != VOID_TYPE) {
