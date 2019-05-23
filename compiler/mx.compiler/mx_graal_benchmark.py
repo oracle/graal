@@ -1633,6 +1633,34 @@ class JMHDistWhiteboxBenchmarkSuite(mx_benchmark.JMHDistBenchmarkSuite):
 mx_benchmark.add_bm_suite(JMHDistWhiteboxBenchmarkSuite())
 
 
+_renaissanceConfig = {
+    "akka-uct"         : 24,
+    "als"              : 60,
+    "chi-square"       : 60,
+    "db-shootout"      : 16,
+    "dec-tree"         : 40,
+    "dotty"            : 50,
+    "finagle-chirper"  : 90,
+    "finagle-http"     : 12,
+    "fj-kmeans"        : 30,
+    "future-genetic"   : 50,
+    "gauss-mix"        : 40,
+    "log-regression"   : 20,
+    "mnemonics"        : 16,
+    "movie-lens"       : 20,
+    "naive-bayes"      : 30,
+    "neo4j-analytics"  : 20,
+    "page-rank"        : 20,
+    "par-mnemonics"    : 16,
+    "philosophers"     : 30,
+    "reactors"         : 10,
+    "rx-scrabble"      : 80,
+    "scala-kmeans"     : 50,
+    "scala-stm-bench7" : 60,
+    "scrabble"         : 50
+}
+
+
 class RenaissanceBenchmarkSuite(mx_benchmark.JavaBenchmarkSuite, mx_benchmark.AveragingBenchmarkMixin, TemporaryWorkdirMixin):
     """Renaissance benchmark suite implementation.
     """
@@ -1648,30 +1676,44 @@ class RenaissanceBenchmarkSuite(mx_benchmark.JavaBenchmarkSuite, mx_benchmark.Av
     def renaissanceLibraryName(self):
         return "RENAISSANCE"
 
+    def renaissanceIterations(self):
+        return _renaissanceConfig.copy()
+
     def renaissancePath(self):
         lib = mx.library(self.renaissanceLibraryName())
         if lib:
             return lib.get_path(True)
         return None
 
+    def postprocessRunArgs(self, benchname, runArgs):
+        parser = argparse.ArgumentParser(add_help=False)
+        parser.add_argument("-r", default=None)
+        args, remaining = parser.parse_known_args(runArgs)
+        if args.r:
+            if args.r.isdigit():
+                return ["-r", args.r] + remaining
+            if args.n == "-1":
+                return None
+        else:
+            iterations = self.renaissanceIterations()[benchname]
+            if iterations == -1:
+                return None
+            else:
+                return ["-r", str(iterations)] + remaining
+
     def createCommandLineArgs(self, benchmarks, bmSuiteArgs):
         benchArg = ""
         if benchmarks is None:
-            benchArg = "all"
+            mx.abort("Suite can only run a single benchmark per VM instance.")
         elif len(benchmarks) == 0:
             mx.abort("Must specify at least one benchmark.")
         else:
             benchArg = ",".join(benchmarks)
-        vmArgs = self.vmArgs(bmSuiteArgs)
-        runArgs = self.runArgs(bmSuiteArgs)
-        return (vmArgs + ["-jar", self.renaissancePath()] + runArgs + [benchArg])
+        runArgs = self.postprocessRunArgs(benchmarks[0], self.runArgs(bmSuiteArgs))
+        return (self.vmArgs(bmSuiteArgs) + ["-jar", self.renaissancePath()] + runArgs + [benchArg])
 
     def benchmarkList(self, bmSuiteArgs):
-        self.validateEnvironment()
-        out = mx.OutputCapture()
-        args = ["--raw-list"]
-        mx.run_java(["-jar", self.renaissancePath()] + args, out=out)
-        return str.splitlines(out.data)
+        return sorted(_renaissanceConfig.keys())
 
     def successPatterns(self):
         return []

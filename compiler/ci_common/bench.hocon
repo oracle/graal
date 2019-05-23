@@ -172,7 +172,7 @@ bench-renaissance: ${bench-common} ${default-heap} ${renaissance-bench-notificat
   run: [
     ${bench-jvmci.mx-renaissance} ${bench-arguments}
   ]
-  timelimit: "2:30:00"
+  timelimit: "3:00:00"
 }
 
 bench-renaissance-legacy: ${bench-common} ${default-heap} ${renaissance-bench-notifications} {
