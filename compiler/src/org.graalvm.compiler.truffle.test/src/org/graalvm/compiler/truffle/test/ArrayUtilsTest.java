@@ -58,13 +58,10 @@ public class ArrayUtilsTest extends GraalCompilerTest {
                     "L",
                     "0",
                     "t",
-                    "\u0000",
-                    "\uffff",
-                    "X",
                     "X0",
                     "LX",
-                    "LXY",
-                    "LXYZ",
+                    "XYL",
+                    "XLYZ",
                     "VXY0",
     };
 
@@ -73,15 +70,11 @@ public class ArrayUtilsTest extends GraalCompilerTest {
         ArrayList<Object[]> parameters = new ArrayList<>();
         for (String str : strings) {
             for (String sv : searchValues) {
-                for (int maxIndex : new int[]{str.length() - 1, str.length()}) {
-                    for (int fromIndex : new int[]{0, 15, 16, 17, 31, 32, 33, str.length() - 1, str.length()}) {
-                        if (fromIndex < maxIndex) {
-                            parameters.add(new Object[]{str, fromIndex, maxIndex, sv});
-                        }
-                    }
-                }
+                addTests(parameters, str, sv);
             }
         }
+        addTests(parameters, searchValues[searchValues.length - 1], "\u0000");
+        addTests(parameters, searchValues[searchValues.length - 1], "\uffff");
         String str = strings[1];
         String sv = searchValues[0];
         for (int maxIndex : new int[]{-1, 0, str.length() + 1}) {
@@ -90,6 +83,16 @@ public class ArrayUtilsTest extends GraalCompilerTest {
             }
         }
         return parameters;
+    }
+
+    private static void addTests(ArrayList<Object[]> parameters, String str, String sv) {
+        for (int maxIndex : new int[]{str.length() - 1, str.length()}) {
+            for (int fromIndex : new int[]{0, 15, 16, 17, 31, 32, 33, str.length() - 1, str.length()}) {
+                if (fromIndex < maxIndex) {
+                    parameters.add(new Object[]{str, fromIndex, maxIndex, sv});
+                }
+            }
+        }
     }
 
     private final String haystack;

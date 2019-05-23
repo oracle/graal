@@ -25,9 +25,6 @@
 package org.graalvm.compiler.replacements.amd64;
 
 import org.graalvm.compiler.core.common.spi.ForeignCallDescriptor;
-import org.graalvm.compiler.graph.Node.ConstantNodeParameter;
-import org.graalvm.compiler.graph.Node.NodeIntrinsic;
-import org.graalvm.compiler.nodes.extended.ForeignCallNode;
 
 public class AMD64ArrayIndexOf {
 
@@ -64,106 +61,64 @@ public class AMD64ArrayIndexOf {
 
     public static int indexOfTwoConsecutiveBytes(byte[] array, int arrayLength, int fromIndex, byte b1, byte b2) {
         int searchValue = (Byte.toUnsignedInt(b2) << Byte.SIZE) | Byte.toUnsignedInt(b1);
-        return callInt(STUB_INDEX_OF_TWO_CONSECUTIVE_BYTES, array, arrayLength, fromIndex, searchValue);
+        return AMD64ArrayIndexOfDispatchNode.indexOf2ConsecutiveBytes(STUB_INDEX_OF_TWO_CONSECUTIVE_BYTES, array, arrayLength, fromIndex, searchValue);
     }
 
     public static int indexOfTwoConsecutiveChars(char[] array, int arrayLength, int fromIndex, char c1, char c2) {
         int searchValue = (c2 << Character.SIZE) | c1;
-        return callInt(STUB_INDEX_OF_TWO_CONSECUTIVE_CHARS, array, arrayLength, fromIndex, searchValue);
+        return AMD64ArrayIndexOfDispatchNode.indexOf2ConsecutiveChars(STUB_INDEX_OF_TWO_CONSECUTIVE_CHARS, array, arrayLength, fromIndex, searchValue);
     }
 
     public static int indexOfTwoConsecutiveChars(byte[] array, int arrayLength, int fromIndex, char c1, char c2) {
         int searchValue = (c2 << Character.SIZE) | c1;
-        return callInt(STUB_INDEX_OF_TWO_CONSECUTIVE_CHARS_COMPACT, array, arrayLength, fromIndex, searchValue);
+        return AMD64ArrayIndexOfDispatchNode.indexOf2ConsecutiveChars(STUB_INDEX_OF_TWO_CONSECUTIVE_CHARS_COMPACT, array, arrayLength, fromIndex, searchValue);
     }
 
     public static int indexOf1Byte(byte[] array, int arrayLength, int fromIndex, byte b) {
-        return callByte1(STUB_INDEX_OF_1_BYTE, array, arrayLength, fromIndex, b);
+        return AMD64ArrayIndexOfDispatchNode.indexOf(STUB_INDEX_OF_1_BYTE, array, arrayLength, fromIndex, b);
     }
 
     public static int indexOf2Bytes(byte[] array, int arrayLength, int fromIndex, byte b1, byte b2) {
-        return callByte2(STUB_INDEX_OF_2_BYTES, array, arrayLength, fromIndex, b1, b2);
+        return AMD64ArrayIndexOfDispatchNode.indexOf(STUB_INDEX_OF_2_BYTES, array, arrayLength, fromIndex, b1, b2);
     }
 
     public static int indexOf3Bytes(byte[] array, int arrayLength, int fromIndex, byte b1, byte b2, byte b3) {
-        return callByte3(STUB_INDEX_OF_3_BYTES, array, arrayLength, fromIndex, b1, b2, b3);
+        return AMD64ArrayIndexOfDispatchNode.indexOf(STUB_INDEX_OF_3_BYTES, array, arrayLength, fromIndex, b1, b2, b3);
     }
 
     public static int indexOf4Bytes(byte[] array, int arrayLength, int fromIndex, byte b1, byte b2, byte b3, byte b4) {
-        return callByte4(STUB_INDEX_OF_4_BYTES, array, arrayLength, fromIndex, b1, b2, b3, b4);
+        return AMD64ArrayIndexOfDispatchNode.indexOf(STUB_INDEX_OF_4_BYTES, array, arrayLength, fromIndex, b1, b2, b3, b4);
     }
 
     public static int indexOf1Char(char[] array, int arrayLength, int fromIndex, char c) {
-        return callChar1(STUB_INDEX_OF_1_CHAR, array, arrayLength, fromIndex, c);
+        return AMD64ArrayIndexOfDispatchNode.indexOf(STUB_INDEX_OF_1_CHAR, array, arrayLength, fromIndex, c);
     }
 
     public static int indexOf2Chars(char[] array, int arrayLength, int fromIndex, char c1, char c2) {
-        return callChar2(STUB_INDEX_OF_2_CHARS, array, arrayLength, fromIndex, c1, c2);
+        return AMD64ArrayIndexOfDispatchNode.indexOf(STUB_INDEX_OF_2_CHARS, array, arrayLength, fromIndex, c1, c2);
     }
 
     public static int indexOf3Chars(char[] array, int arrayLength, int fromIndex, char c1, char c2, char c3) {
-        return callChar3(STUB_INDEX_OF_3_CHARS, array, arrayLength, fromIndex, c1, c2, c3);
+        return AMD64ArrayIndexOfDispatchNode.indexOf(STUB_INDEX_OF_3_CHARS, array, arrayLength, fromIndex, c1, c2, c3);
     }
 
     public static int indexOf4Chars(char[] array, int arrayLength, int fromIndex, char c1, char c2, char c3, char c4) {
-        return callChar4(STUB_INDEX_OF_4_CHARS, array, arrayLength, fromIndex, c1, c2, c3, c4);
+        return AMD64ArrayIndexOfDispatchNode.indexOf(STUB_INDEX_OF_4_CHARS, array, arrayLength, fromIndex, c1, c2, c3, c4);
     }
 
     public static int indexOf1Char(byte[] array, int arrayLength, int fromIndex, char c) {
-        return callChar1(STUB_INDEX_OF_1_CHAR_COMPACT, array, arrayLength, fromIndex, c);
+        return AMD64ArrayIndexOfDispatchNode.indexOf(STUB_INDEX_OF_1_CHAR_COMPACT, array, arrayLength, fromIndex, c);
     }
 
     public static int indexOf2Chars(byte[] array, int arrayLength, int fromIndex, char c1, char c2) {
-        return callChar2(STUB_INDEX_OF_2_CHARS_COMPACT, array, arrayLength, fromIndex, c1, c2);
+        return AMD64ArrayIndexOfDispatchNode.indexOf(STUB_INDEX_OF_2_CHARS_COMPACT, array, arrayLength, fromIndex, c1, c2);
     }
 
     public static int indexOf3Chars(byte[] array, int arrayLength, int fromIndex, char c1, char c2, char c3) {
-        return callChar3(STUB_INDEX_OF_3_CHARS_COMPACT, array, arrayLength, fromIndex, c1, c2, c3);
+        return AMD64ArrayIndexOfDispatchNode.indexOf(STUB_INDEX_OF_3_CHARS_COMPACT, array, arrayLength, fromIndex, c1, c2, c3);
     }
 
     public static int indexOf4Chars(byte[] array, int arrayLength, int fromIndex, char c1, char c2, char c3, char c4) {
-        return callChar4(STUB_INDEX_OF_4_CHARS_COMPACT, array, arrayLength, fromIndex, c1, c2, c3, c4);
+        return AMD64ArrayIndexOfDispatchNode.indexOf(STUB_INDEX_OF_4_CHARS_COMPACT, array, arrayLength, fromIndex, c1, c2, c3, c4);
     }
-
-    @NodeIntrinsic(value = ForeignCallNode.class)
-    private static native int callInt(@ConstantNodeParameter ForeignCallDescriptor descriptor, byte[] array, int arrayLength, int fromIndex, int v1);
-
-    @NodeIntrinsic(value = ForeignCallNode.class)
-    private static native int callInt(@ConstantNodeParameter ForeignCallDescriptor descriptor, char[] array, int arrayLength, int fromIndex, int v1);
-
-    @NodeIntrinsic(value = ForeignCallNode.class)
-    private static native int callByte1(@ConstantNodeParameter ForeignCallDescriptor descriptor, byte[] array, int arrayLength, int fromIndex, byte v1);
-
-    @NodeIntrinsic(value = ForeignCallNode.class)
-    private static native int callByte2(@ConstantNodeParameter ForeignCallDescriptor descriptor, byte[] array, int arrayLength, int fromIndex, byte v1, byte v2);
-
-    @NodeIntrinsic(value = ForeignCallNode.class)
-    private static native int callByte3(@ConstantNodeParameter ForeignCallDescriptor descriptor, byte[] array, int arrayLength, int fromIndex, byte v1, byte v2, byte v3);
-
-    @NodeIntrinsic(value = ForeignCallNode.class)
-    private static native int callByte4(@ConstantNodeParameter ForeignCallDescriptor descriptor, byte[] array, int arrayLength, int fromIndex, byte v1, byte v2, byte v3, byte v4);
-
-    @NodeIntrinsic(value = ForeignCallNode.class)
-    private static native int callChar1(@ConstantNodeParameter ForeignCallDescriptor descriptor, char[] array, int arrayLength, int fromIndex, char v1);
-
-    @NodeIntrinsic(value = ForeignCallNode.class)
-    private static native int callChar2(@ConstantNodeParameter ForeignCallDescriptor descriptor, char[] array, int arrayLength, int fromIndex, char v1, char v2);
-
-    @NodeIntrinsic(value = ForeignCallNode.class)
-    private static native int callChar3(@ConstantNodeParameter ForeignCallDescriptor descriptor, char[] array, int arrayLength, int fromIndex, char v1, char v2, char v3);
-
-    @NodeIntrinsic(value = ForeignCallNode.class)
-    private static native int callChar4(@ConstantNodeParameter ForeignCallDescriptor descriptor, char[] array, int arrayLength, int fromIndex, char v1, char v2, char v3, char v4);
-
-    @NodeIntrinsic(value = ForeignCallNode.class)
-    private static native int callChar1(@ConstantNodeParameter ForeignCallDescriptor descriptor, byte[] array, int arrayLength, int fromIndex, char v1);
-
-    @NodeIntrinsic(value = ForeignCallNode.class)
-    private static native int callChar2(@ConstantNodeParameter ForeignCallDescriptor descriptor, byte[] array, int arrayLength, int fromIndex, char v1, char v2);
-
-    @NodeIntrinsic(value = ForeignCallNode.class)
-    private static native int callChar3(@ConstantNodeParameter ForeignCallDescriptor descriptor, byte[] array, int arrayLength, int fromIndex, char v1, char v2, char v3);
-
-    @NodeIntrinsic(value = ForeignCallNode.class)
-    private static native int callChar4(@ConstantNodeParameter ForeignCallDescriptor descriptor, byte[] array, int arrayLength, int fromIndex, char v1, char v2, char v3, char v4);
 }
