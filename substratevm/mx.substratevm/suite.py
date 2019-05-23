@@ -572,18 +572,6 @@ suite = {
                 "truffle:TRUFFLE_DSL_PROCESSOR",
             ],
             "workingSets": "SVM",
-            "os_arch": {
-                "windows": {
-                    "<others>": {
-                        "ignore": "posix only project",
-                    },
-                },
-                "<others>": {
-                    "<others>": {
-                        "ignore": False,
-                    },
-                },
-            },
         },
 
         "com.oracle.svm.truffle.nfi.windows": {
@@ -599,18 +587,6 @@ suite = {
                 "truffle:TRUFFLE_DSL_PROCESSOR",
             ],
             "workingSets": "SVM",
-            "os_arch": {
-                "windows": {
-                    "<others>": {
-                        "ignore": False,
-                    },
-                },
-                "<others>": {
-                    "<others>": {
-                        "ignore": "only windows is supported",
-                    },
-                },
-            },
         },
 
         "com.oracle.svm.jline": {
