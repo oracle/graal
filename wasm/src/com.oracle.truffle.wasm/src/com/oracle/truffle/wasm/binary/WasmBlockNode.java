@@ -129,8 +129,8 @@ public class WasmBlockNode extends WasmNode {
     @CompilationFinal private final int initialByteConstantOffset;
     @CompilationFinal(dimensions = 1) WasmNode[] nestedControlTable;
 
-    public WasmBlockNode(WasmCodeEntry codeEntry, int startOffset, int byteLength, byte returnTypeId, int initialStackPointer, int initialByteConstantOffset, int byteConstantLength) {
-        super(codeEntry, byteLength, byteConstantLength);
+    public WasmBlockNode(WasmCodeEntry codeEntry, int startOffset, byte returnTypeId, int initialStackPointer, int initialByteConstantOffset) {
+        super(codeEntry, -1, -1);
         this.startOffset = startOffset;
         this.returnTypeId = returnTypeId;
         this.initialStackPointer = initialStackPointer;

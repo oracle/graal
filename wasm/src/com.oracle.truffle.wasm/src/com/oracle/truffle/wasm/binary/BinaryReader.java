@@ -315,7 +315,7 @@ public class BinaryReader extends BinaryStreamReader {
         int startStackSize = state.stackSize();
         int startOffset = offset();
         int startByteConstantOffset = state.byteConstantOffset();
-        WasmBlockNode currentBlock = new WasmBlockNode(codeEntry, startOffset, -1, returnTypeId, state.stackSize(), state.byteConstantOffset(), -1);
+        WasmBlockNode currentBlock = new WasmBlockNode(codeEntry, startOffset, returnTypeId, state.stackSize(), state.byteConstantOffset());
         do {
             opcode = read1() & 0xFF;
             switch (opcode) {
