@@ -181,7 +181,7 @@ mx_sdk.register_graalvm_component(mx_sdk.GraalVmJdkComponent(
     license_files=[],
     third_party_license_files=[],
     support_distributions=['tools:VISUALVM_GRAALVM_SUPPORT'],
-    provided_executables=['bin/<exe:{}>'.format('visualvm' if mx.get_os() == 'windows' else 'jvisualvm')]
+    provided_executables=['bin/<exe:jvisualvm>']
 ))
 
 for mode in ['jvm', 'native']:
