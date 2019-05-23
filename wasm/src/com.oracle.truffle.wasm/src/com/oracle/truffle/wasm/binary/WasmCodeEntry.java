@@ -108,4 +108,8 @@ public class WasmCodeEntry {
     public void setByteConstants(byte[] byteConstants) {
         this.byteConstants = byteConstants;
     }
+
+    public int numLocals() {
+        return localTypes.length;
+    }
 }

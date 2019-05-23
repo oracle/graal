@@ -351,16 +351,16 @@ public class BinaryReader extends BinaryStreamReader {
                 case LOCAL_GET: {
                     int localIndex = readLocalIndex(bytesConsumed);
                     state.useByteConstant(bytesConsumed[0]);
-                    // TODO: Assert localIndex exists.
-                    codeEntry.localSlot(localIndex);
+                    // Assert localIndex exists.
+                    Assert.assertLess(localIndex, codeEntry.numLocals(), "Invalid local index for local.get");
                     state.push();
                     break;
                 }
                 case LOCAL_SET: {
                     int localIndex = readLocalIndex(bytesConsumed);
                     state.useByteConstant(bytesConsumed[0]);
-                    // TODO: Assert localIndex exists
-                    codeEntry.localSlot(localIndex);
+                    // Assert localIndex exists.
+                    Assert.assertLess(localIndex, codeEntry.numLocals(), "Invalid local index for local.set");
                     // Assert there is a value on the top of the stack.
                     Assert.assertLarger(state.stackSize(), 0, "local.set requires at least one element in the stack");
                     state.pop();
@@ -369,8 +369,8 @@ public class BinaryReader extends BinaryStreamReader {
                 case LOCAL_TEE: {
                     int localIndex = readLocalIndex(bytesConsumed);
                     state.useByteConstant(bytesConsumed[0]);
-                    // TODO: Assert localIndex exists
-                    codeEntry.localSlot(localIndex);
+                    // Assert localIndex exists.
+                    Assert.assertLess(localIndex, codeEntry.numLocals(), "Invalid local index for local.tee");
                     // Assert there is a value on the top of the stack.
                     Assert.assertLarger(state.stackSize(), 0, "local.tee requires at least one element in the stack");
                     state.push();
