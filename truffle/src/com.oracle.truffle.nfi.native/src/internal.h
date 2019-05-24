@@ -41,6 +41,12 @@
 #ifndef __TRUFFLE_INTERNAL_H
 #define __TRUFFLE_INTERNAL_H
 
+#include "native.h"
+
+#if defined(ENABLE_ISOLATED_NAMESPACE)
+#include <dlfcn.h>
+#endif
+
 #include "trufflenfi.h"
 #include <ffi.h>
 #include <jni.h>
@@ -62,6 +68,9 @@ struct __TruffleContextInternal {
     JavaVM *javaVM;
     jobject NFIContext;
 
+#if defined(ENABLE_ISOLATED_NAMESPACE)
+    Lmid_t isolated_namespace_id;
+#endif
 
     jmethodID CallTarget_call;
 

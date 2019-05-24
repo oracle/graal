@@ -209,6 +209,12 @@ public class NFILanguageImpl extends TruffleLanguage<NFIContext> {
                                 flags |= ctx.RTLD_NOW;
                                 lazyOrNow = true;
                                 break;
+                            case "ISOLATED_NAMESPACE":
+                                if (ctx.ISOLATED_NAMESPACE == 0) { // undefined
+                                    throw new IllegalArgumentException("isolated namespace not supported");
+                                }
+                                flags |= ctx.ISOLATED_NAMESPACE;
+                                break;
                         }
                     }
                 }

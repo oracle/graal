@@ -53,4 +53,9 @@
 #include "com_oracle_truffle_nfi_impl_ClosureNativePointer.h"
 #include "com_oracle_truffle_nfi_impl_NativeString.h"
 
+#if defined(__linux__) && defined(_GNU_SOURCE)
+#define ENABLE_ISOLATED_NAMESPACE
+#define ISOLATED_NAMESPACE 0x10000
+#endif
+
 #endif

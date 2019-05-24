@@ -41,7 +41,6 @@
 
 #if !defined(_WIN32)
 
-#define _GNU_SOURCE
 #include <dlfcn.h>
 
 #include "native.h"
@@ -49,16 +48,52 @@
 #include <string.h>
 #include "internal.h"
 
+
 JNIEXPORT jlong JNICALL Java_com_oracle_truffle_nfi_impl_NFIContext_loadLibrary(JNIEnv *env, jclass self, jlong context, jstring name, jint flags) {
     const char *utfName = (*env)->GetStringUTFChars(env, name, NULL);
-    void *ret = dlopen(utfName, flags);
-    if (ret == NULL) {
+    struct __TruffleContextInternal *ctx = (struct __TruffleContextInternal *) context;
+    void *handle = NULL;
+
+#if defined(ENABLE_ISOLATED_NAMESPACE)
+    if (flags & ISOLATED_NAMESPACE) {
+        flags &= ~ISOLATED_NAMESPACE;
+
+        Lmid_t isolated_namespace_id = ctx->isolated_namespace_id;
+
+        // Synchronize on the NFI context for namespace creation.
+        if (isolated_namespace_id == LM_ID_NEWLM) {
+            (*env)->MonitorEnter(env, ctx->NFIContext);
+        }
+
+        handle = dlmopen(isolated_namespace_id, utfName, flags);
+
+        if (isolated_namespace_id == LM_ID_NEWLM) {
+            (*env)->MonitorExit(env, ctx->NFIContext);
+        }
+
+        if (handle != NULL && isolated_namespace_id == LM_ID_NEWLM) {
+            if (dlinfo((void*) handle, RTLD_DI_LMID, &isolated_namespace_id) == -1) {
+                const char *error = dlerror();                
+                // The library was loaded, but can't peek the namespace: dlclose the library?.
+                (*env)->ThrowNew(env, ctx->UnsatisfiedLinkError, error);
+            } else {
+                ctx->isolated_namespace_id = isolated_namespace_id;
+            }
+        }
+    } else {
+#endif    
+    handle = dlopen(utfName, flags);
+#if defined(ENABLE_ISOLATED_NAMESPACE)
+    }
+#endif
+
+    if (handle == NULL) {
         const char *error = dlerror();
-        struct __TruffleContextInternal *ctx = (struct __TruffleContextInternal *) context;
         (*env)->ThrowNew(env, ctx->UnsatisfiedLinkError, error);
     }
+
     (*env)->ReleaseStringUTFChars(env, name, utfName);
-    return (jlong) ret;
+    return (jlong) handle;
 }
 
 JNIEXPORT void JNICALL Java_com_oracle_truffle_nfi_impl_NFIContext_freeLibrary(JNIEnv *env, jclass self, jlong handle) {
