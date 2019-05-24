@@ -379,14 +379,12 @@ public final class MethodVerifier implements ContextAccess {
 
         ReferenceOperand(Symbol<Type> type, Klass thisKlass) {
             super(JavaKind.Object);
-            assert type == null || !Types.isPrimitive(type);
             this.type = type;
             this.thisKlass = thisKlass;
         }
 
         ReferenceOperand(Klass klass, Klass thisKlass) {
             super(JavaKind.Object);
-            assert type == null || !Types.isPrimitive(type);
             this.type = klass.getType();
             this.klass = klass;
             this.thisKlass = thisKlass;
