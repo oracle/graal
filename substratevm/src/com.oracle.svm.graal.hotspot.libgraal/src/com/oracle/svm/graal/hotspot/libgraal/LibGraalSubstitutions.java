@@ -31,11 +31,11 @@ import com.oracle.svm.core.annotate.TargetClass;
 import jdk.vm.ci.services.Services;
 
 /** Dummy class to have a class with the file's name. Do not remove. */
-public final class HotSpotGraalSubstitutions {
+public final class LibGraalSubstitutions {
     // Dummy
 }
 
-@TargetClass(value = Services.class, onlyWith = HotSpotGraalLibraryFeature.IsEnabled.class)
+@TargetClass(value = Services.class, onlyWith = LibGraalFeature.IsEnabled.class)
 final class Target_jdk_vm_ci_services_Services {
     // Checkstyle: stop
     @Alias @RecomputeFieldValue(kind = RecomputeFieldValue.Kind.FromAlias, isFinal = true)//
@@ -43,7 +43,7 @@ final class Target_jdk_vm_ci_services_Services {
     // Checkstyle: resume
 }
 
-@TargetClass(className = "jdk.vm.ci.hotspot.HotSpotJDKReflection", onlyWith = HotSpotGraalLibraryFeature.IsEnabled.class)
+@TargetClass(className = "jdk.vm.ci.hotspot.HotSpotJDKReflection", onlyWith = LibGraalFeature.IsEnabled.class)
 final class Target_jdk_vm_ci_hotspot_HotSpotJDKReflection {
 
     @Alias @RecomputeFieldValue(kind = RecomputeFieldValue.Kind.None)//

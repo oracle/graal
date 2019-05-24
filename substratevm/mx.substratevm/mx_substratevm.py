@@ -868,7 +868,7 @@ if os.environ.has_key('LIBGRAAL'):
                     'compiler:GRAAL_TRUFFLE_COMPILER_LIBGRAAL'
                 ],
                 build_args=[
-                    '--features=com.oracle.svm.graal.hotspot.libgraal.HotSpotGraalLibraryFeature',
+                    '--features=com.oracle.svm.graal.hotspot.libgraal.LibGraalFeature',
                     '--initialize-at-build-time',
                     '-H:-UseServiceLoaderFeature',
                     '-H:+AllowFoldMethods',
