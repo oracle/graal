@@ -56,6 +56,7 @@ import com.oracle.truffle.api.interop.UnsupportedTypeException;
 import com.oracle.truffle.api.library.CachedLibrary;
 import com.oracle.truffle.api.library.ExportLibrary;
 import com.oracle.truffle.api.library.ExportMessage;
+import com.oracle.truffle.api.library.LibraryFactory;
 import com.oracle.truffle.api.nodes.ExplodeLoop;
 import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.api.nodes.RootNode;
@@ -84,6 +85,10 @@ final class LibFFIClosure implements TruffleObject {
         if (retType instanceof LibFFIType.ObjectType) {
             // shortcut for simple object return values
             CallTarget executeCallTarget = Truffle.getRuntime().createCallTarget(new ObjectRetClosureRootNode(signature, executable));
+            this.nativePointer = context.allocateClosureObjectRet(signature, executeCallTarget);
+        } else if (retType instanceof LibFFIType.NullableType) {
+            // shortcut for simple object return values
+            CallTarget executeCallTarget = Truffle.getRuntime().createCallTarget(new NullableRetClosureRootNode(signature, executable));
             this.nativePointer = context.allocateClosureObjectRet(signature, executeCallTarget);
         } else if (retType instanceof LibFFIType.StringType) {
             // shortcut for simple string return values
@@ -224,6 +229,25 @@ final class LibFFIClosure implements TruffleObject {
         @Override
         public Object execute(VirtualFrame frame) {
             return callClosure.execute(frame.getArguments());
+        }
+    }
+
+    private static final class NullableRetClosureRootNode extends RootNode {
+
+        @Child private CallClosureNode callClosure;
+
+        private NullableRetClosureRootNode(LibFFISignature signature, Object receiver) {
+            super(null);
+            callClosure = new CallClosureNode(signature, receiver);
+        }
+
+        @Override
+        public Object execute(VirtualFrame frame) {
+            Object ret = callClosure.execute(frame.getArguments());
+            if (ret instanceof TruffleObject && LibraryFactory.resolve(InteropLibrary.class).getUncached().isNull(ret)) {
+                return null;
+            }
+            return ret;
         }
     }
 
