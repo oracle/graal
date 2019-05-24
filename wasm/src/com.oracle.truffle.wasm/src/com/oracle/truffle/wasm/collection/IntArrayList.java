@@ -29,20 +29,20 @@
  */
 package com.oracle.truffle.wasm.collection;
 
-public class ByteList {
-    private static final byte[] EMPTY_BYTE_ARRAY = new byte[0];
+public class IntArrayList {
+    private static final int[] EMPTY_INT_ARRAY = new int[0];
 
-    private byte[] array;
+    private int[] array;
     private int offset;
 
-    public ByteList() {
+    public IntArrayList() {
         this.array = null;
         this.offset = 0;
     }
 
-    public void add(byte b) {
+    public void add(int n) {
         ensureSize();
-        array[offset] = b;
+        array[offset] = n;
         offset++;
     }
 
@@ -52,21 +52,21 @@ public class ByteList {
 
     private void ensureSize() {
         if (array == null) {
-            array = new byte[4];
+            array = new int[4];
         } else if (offset == array.length) {
-            byte[] narray = new byte[array.length * 2];
+            int[] narray = new int[array.length * 2];
             System.arraycopy(array, 0, narray, 0, offset);
             array = narray;
         }
     }
 
-    public byte[] toArray() {
-        byte[] result = new byte[offset];
+    public int[] toArray() {
+        int[] result = new int[offset];
         if (array != null) {
             System.arraycopy(array, 0, result, 0, offset);
             return result;
         } else {
-            return EMPTY_BYTE_ARRAY;
+            return EMPTY_INT_ARRAY;
         }
     }
 }

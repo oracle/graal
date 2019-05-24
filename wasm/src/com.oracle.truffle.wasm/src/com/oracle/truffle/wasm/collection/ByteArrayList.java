@@ -27,62 +27,46 @@
  * NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED
  * OF THE POSSIBILITY OF SUCH DAMAGE.
  */
-package com.oracle.truffle.wasm.binary;
+package com.oracle.truffle.wasm.collection;
 
-import com.oracle.truffle.wasm.collection.ByteArrayList;
-import com.oracle.truffle.wasm.collection.IntArrayList;
+public class ByteArrayList {
+    private static final byte[] EMPTY_BYTE_ARRAY = new byte[0];
 
-public class ExecutionState {
-    private int stackSize;
-    private int maxStackSize;
-    private ByteArrayList byteConstants;
-    private IntArrayList intConstants;
+    private byte[] array;
+    private int offset;
 
-    public ExecutionState() {
-        this.stackSize = 0;
-        this.maxStackSize = 0;
-        this.byteConstants = new ByteArrayList();
-        this.intConstants = new IntArrayList();
+    public ByteArrayList() {
+        this.array = null;
+        this.offset = 0;
     }
 
-    public void push() {
-        stackSize++;
-        maxStackSize = Math.max(stackSize, maxStackSize);
+    public void add(byte b) {
+        ensureSize();
+        array[offset] = b;
+        offset++;
     }
 
-    public void pop() {
-        stackSize--;
+    public int size() {
+        return offset;
     }
 
-    public void useByteConstant(byte constant) {
-        byteConstants.add(constant);
+    private void ensureSize() {
+        if (array == null) {
+            array = new byte[4];
+        } else if (offset == array.length) {
+            byte[] narray = new byte[array.length * 2];
+            System.arraycopy(array, 0, narray, 0, offset);
+            array = narray;
+        }
     }
 
-    public void useIntConstant(int constant) {
-        intConstants.add(constant);
-    }
-
-    public int stackSize() {
-        return stackSize;
-    }
-
-    public int maxStackSize() {
-        return maxStackSize;
-    }
-
-    public int byteConstantOffset() {
-        return byteConstants.size();
-    }
-
-    public int intConstantOffset() {
-        return intConstants.size();
-    }
-
-    public byte[] byteConstants() {
-        return byteConstants.toArray();
-    }
-
-    public int[] intConstants() {
-        return intConstants.toArray();
+    public byte[] toArray() {
+        byte[] result = new byte[offset];
+        if (array != null) {
+            System.arraycopy(array, 0, result, 0, offset);
+            return result;
+        } else {
+            return EMPTY_BYTE_ARRAY;
+        }
     }
 }

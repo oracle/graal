@@ -133,7 +133,7 @@ import java.util.ArrayList;
 
 import com.oracle.truffle.api.RootCallTarget;
 import com.oracle.truffle.api.Truffle;
-import com.oracle.truffle.wasm.collection.ByteList;
+import com.oracle.truffle.wasm.collection.ByteArrayList;
 
 /** Simple recursive-descend parser for the binary WebAssembly format.
  */
@@ -283,7 +283,7 @@ public class BinaryReader extends BinaryStreamReader {
     private int readCodeEntryLocals(WasmCodeEntry codeEntry) {
         int numLocalsGroups = readVectorLength();
         int numLocals = 0;
-        ByteList locals = new ByteList();
+        ByteArrayList locals = new ByteArrayList();
         for (int localGroup = 0; localGroup < numLocalsGroups; localGroup++) {
             int groupLength = readVectorLength();
             byte t = readValueType();
