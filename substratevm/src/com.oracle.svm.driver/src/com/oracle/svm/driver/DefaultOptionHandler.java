@@ -35,8 +35,8 @@ import java.util.jar.Manifest;
 
 import org.graalvm.compiler.options.OptionType;
 
-import com.oracle.svm.driver.MacroOption.MacroOptionKind;
 import com.oracle.svm.core.util.ClasspathUtils;
+import com.oracle.svm.driver.MacroOption.MacroOptionKind;
 
 class DefaultOptionHandler extends NativeImage.OptionHandler<NativeImage> {
 
@@ -51,12 +51,19 @@ class DefaultOptionHandler extends NativeImage.OptionHandler<NativeImage> {
 
     boolean useDebugAttach = false;
 
+    private static void singleArgumentCheck(Queue<String> args, String arg) {
+        if (!args.isEmpty()) {
+            NativeImage.showError("Option " + arg + " cannot be combined with other options.");
+        }
+    }
+
     @Override
     public boolean consume(Queue<String> args) {
         String headArg = args.peek();
         switch (headArg) {
             case "--help":
                 args.poll();
+                singleArgumentCheck(args, headArg);
                 nativeImage.showMessage(helpText);
                 nativeImage.showNewline();
                 nativeImage.apiOptionHandler.printOptions(nativeImage::showMessage);
@@ -67,6 +74,7 @@ class DefaultOptionHandler extends NativeImage.OptionHandler<NativeImage> {
                 return true;
             case "--version":
                 args.poll();
+                singleArgumentCheck(args, headArg);
                 String message = "GraalVM Version " + NativeImage.graalvmVersion;
                 if (!NativeImage.graalvmConfig.isEmpty()) {
                     message += " " + NativeImage.graalvmConfig;
@@ -76,6 +84,7 @@ class DefaultOptionHandler extends NativeImage.OptionHandler<NativeImage> {
                 return true;
             case "--help-extra":
                 args.poll();
+                singleArgumentCheck(args, headArg);
                 nativeImage.showMessage(helpExtraText);
                 nativeImage.optionRegistry.showOptions(MacroOptionKind.Macro, true, nativeImage::showMessage);
                 nativeImage.showNewline();
