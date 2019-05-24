@@ -32,10 +32,11 @@ import org.graalvm.nativeimage.c.function.CFunction;
 import org.graalvm.nativeimage.c.function.CFunction.Transition;
 import org.graalvm.nativeimage.c.struct.AllowWideningCast;
 import org.graalvm.nativeimage.c.struct.CField;
+import org.graalvm.nativeimage.c.struct.CPointerTo;
 import org.graalvm.nativeimage.c.struct.CStruct;
+import org.graalvm.nativeimage.c.type.CCharPointer;
 import org.graalvm.nativeimage.c.type.CIntPointer;
 import org.graalvm.nativeimage.c.type.CLongPointer;
-import org.graalvm.nativeimage.c.type.CCharPointer;
 import org.graalvm.word.Pointer;
 import org.graalvm.word.PointerBase;
 import org.graalvm.word.UnsignedWord;
@@ -59,6 +60,13 @@ public class WinBase {
      * Windows Module Handle type
      */
     public interface HMODULE extends PointerBase {
+    }
+
+    @CPointerTo(nameOfCType = "HMODULE")
+    public interface HMODULEPointer extends PointerBase {
+        public HMODULE read();
+
+        public void write(HMODULE value);
     }
 
     /**
@@ -297,31 +305,43 @@ public class WinBase {
      * GetModuleHandle
      */
     @CFunction(transition = Transition.NO_TRANSITION)
-    public static native Pointer GetModuleHandleA(PointerBase lpModuleName);
+    public static native HMODULE GetModuleHandleA(PointerBase lpModuleName);
 
     /**
      * GetModuleFileNameA
      */
     @CFunction(transition = Transition.NO_TRANSITION)
-    public static native int GetModuleFileNameA(Pointer hModule, CCharPointer lpFilename, int nSize);
+    public static native int GetModuleFileNameA(HMODULE hModule, CCharPointer lpFilename, int nSize);
+
+    @CConstant
+    public static native int GET_MODULE_HANDLE_EX_FLAG_FROM_ADDRESS();
+
+    @CConstant
+    public static native int GET_MODULE_HANDLE_EX_FLAG_UNCHANGED_REFCOUNT();
+
+    /**
+     * GetModuleHandleExA
+     */
+    @CFunction(transition = Transition.NO_TRANSITION)
+    public static native boolean GetModuleHandleExA(int flags, PointerBase lpModuleName, HMODULEPointer module);
 
     /**
      * GetProcAddress
      */
     @CFunction(transition = Transition.NO_TRANSITION)
-    public static native PointerBase GetProcAddress(Pointer hModule, PointerBase lpProcName);
+    public static native PointerBase GetProcAddress(HMODULE hModule, PointerBase lpProcName);
 
     /**
      * LoadLibraryA
      */
     @CFunction(transition = Transition.NO_TRANSITION)
-    public static native Pointer LoadLibraryA(PointerBase lpFileName);
+    public static native HMODULE LoadLibraryA(PointerBase lpFileName);
 
     /**
      * LoadLibraryExA
      */
     @CFunction(transition = Transition.NO_TRANSITION)
-    public static native Pointer LoadLibraryExA(PointerBase lpFileName, int dummy, int flags);
+    public static native HMODULE LoadLibraryExA(PointerBase lpFileName, int dummy, int flags);
 
     /**
      * FreeLibrary

@@ -359,11 +359,12 @@ def extract_target_name(arg, kind):
 
 
 class GraalVMConfig(object):
-    def __init__(self, dynamicimports=None, disable_libpolyglot=False, force_bash_launchers=None, skip_libraries=None):
+    def __init__(self, dynamicimports=None, disable_libpolyglot=False, force_bash_launchers=None, skip_libraries=None, exclude_components=None):
         self.dynamicimports = dynamicimports or []
         self.disable_libpolyglot = disable_libpolyglot
         self.force_bash_launchers = force_bash_launchers or []
         self.skip_libraries = skip_libraries or []
+        self.exclude_components = exclude_components or []
         if '/substratevm' not in self.dynamicimports:
             self.dynamicimports.append('/substratevm')
 
@@ -377,6 +378,8 @@ class GraalVMConfig(object):
             args += ['--force-bash-launchers=' + ','.join(self.force_bash_launchers)]
         if self.skip_libraries:
             args += ['--skip-libraries=' + ','.join(self.skip_libraries)]
+        if self.exclude_components:
+            args += ['--exclude-components=' + ','.join(self.exclude_components)]
         return args
 
     def _tuple(self):
@@ -398,8 +401,8 @@ def _vm_suite_dir():
     return join(dirname(suite.dir), 'vm')
 
 
-def _mx_vm(args, config, nonZeroIsFatal=True, out=None, err=None, timeout=None, env=None):
-    return mx.run_mx(config.mx_args() + args, suite=_vm_suite_dir(), nonZeroIsFatal=nonZeroIsFatal, out=out, err=err, timeout=timeout, env=env)
+def _mx_vm(args, config, nonZeroIsFatal=True, out=None, err=None, timeout=None, env=None, quiet=False):
+    return mx.run_mx(config.mx_args() + args, suite=_vm_suite_dir(), nonZeroIsFatal=nonZeroIsFatal, out=out, err=err, timeout=timeout, env=env, quiet=quiet)
 
 
 _vm_homes = {}
@@ -408,14 +411,18 @@ _vm_homes = {}
 def _vm_home(config):
     if config not in _vm_homes:
         # get things initialized (e.g., cloning)
-        _mx_vm(['--no-warning', 'graalvm-home'], config, out=mx.OutputCapture())
+        _mx_vm(['graalvm-home'], config, out=mx.OutputCapture())
         capture = mx.OutputCapture()
-        _mx_vm(['--no-warning', 'graalvm-home'], config, out=capture)
+        _mx_vm(['graalvm-home'], config, out=capture, quiet=True)
         _vm_homes[config] = capture.data.strip()
     return _vm_homes[config]
 
 
-_graalvm_config = GraalVMConfig(disable_libpolyglot=True, force_bash_launchers=['polyglot', 'native-image-configure'], skip_libraries=['native-image-agent'])
+_graalvm_exclude_components = ['gu'] if mx.is_windows() else []  # gu does not work on Windows atm
+_graalvm_config = GraalVMConfig(disable_libpolyglot=True,
+                                force_bash_launchers=['polyglot', 'native-image-configure'],
+                                skip_libraries=['native-image-agent'],
+                                exclude_components=_graalvm_exclude_components)
 
 graalvm_configs = [_graalvm_config]
 
@@ -826,7 +833,10 @@ def js_image_test(binary, bench_location, name, warmup_iterations, iterations, t
         mx.abort('JS benchmark ' + name + ' failed')
 
 
-_graalvm_js_config = GraalVMConfig(dynamicimports=['/graal-js'], disable_libpolyglot=True, force_bash_launchers=['polyglot', 'native-image-configure', 'js'], skip_libraries=['native-image-agent'])
+_graalvm_js_config = GraalVMConfig(dynamicimports=['/graal-js'], disable_libpolyglot=True,
+                                   force_bash_launchers=['polyglot', 'native-image-configure', 'js'],
+                                   skip_libraries=['native-image-agent'],
+                                   exclude_components=_graalvm_exclude_components)
 
 
 def build_js(native_image):
@@ -1018,9 +1028,7 @@ mx_sdk.register_graalvm_component(mx_sdk.GraalVmJreComponent(
             destination="bin/<exe:native-image>",
             jar_distributions=["substratevm:SVM_DRIVER"],
             main_class="com.oracle.svm.driver.NativeImage",
-            build_args=[
-                "-H:-ParseRuntimeOptions",
-            ]
+            build_args=[],
         ),
         mx_sdk.LauncherConfig(
             destination="bin/<exe:native-image-configure>",
