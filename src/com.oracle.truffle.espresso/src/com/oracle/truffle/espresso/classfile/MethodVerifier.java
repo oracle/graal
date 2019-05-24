@@ -226,6 +226,22 @@ import static com.oracle.truffle.espresso.bytecode.Bytecodes.SIPUSH;
 import static com.oracle.truffle.espresso.bytecode.Bytecodes.SWAP;
 import static com.oracle.truffle.espresso.bytecode.Bytecodes.TABLESWITCH;
 import static com.oracle.truffle.espresso.bytecode.Bytecodes.WIDE;
+import static com.oracle.truffle.espresso.classfile.Constants.APPEND_FRAME_BOUND;
+import static com.oracle.truffle.espresso.classfile.Constants.CHOP_BOUND;
+import static com.oracle.truffle.espresso.classfile.Constants.FULL_FRAME;
+import static com.oracle.truffle.espresso.classfile.Constants.ITEM_Bogus;
+import static com.oracle.truffle.espresso.classfile.Constants.ITEM_Double;
+import static com.oracle.truffle.espresso.classfile.Constants.ITEM_Float;
+import static com.oracle.truffle.espresso.classfile.Constants.ITEM_InitObject;
+import static com.oracle.truffle.espresso.classfile.Constants.ITEM_Integer;
+import static com.oracle.truffle.espresso.classfile.Constants.ITEM_Long;
+import static com.oracle.truffle.espresso.classfile.Constants.ITEM_NewObject;
+import static com.oracle.truffle.espresso.classfile.Constants.ITEM_Null;
+import static com.oracle.truffle.espresso.classfile.Constants.ITEM_Object;
+import static com.oracle.truffle.espresso.classfile.Constants.SAME_FRAME_BOUND;
+import static com.oracle.truffle.espresso.classfile.Constants.SAME_FRAME_EXTENDED;
+import static com.oracle.truffle.espresso.classfile.Constants.SAME_LOCALS_1_STACK_ITEM_BOUND;
+import static com.oracle.truffle.espresso.classfile.Constants.SAME_LOCALS_1_STACK_ITEM_EXTENDED;
 
 import java.util.Arrays;
 
@@ -247,27 +263,22 @@ import com.oracle.truffle.espresso.runtime.EspressoContext;
 import com.oracle.truffle.espresso.runtime.StaticObject;
 
 /**
- * Extremely light-weight java bytecode verifier. Performs only very basic verifications.
- *
- * In particular, it checks stack consistency (ie: checks that instructions do not pop an empty
- * stack, or that they do not push further than maxStack) This verifier also performs primitive type
- * checks, where all references are considered to be of the Object class.
- *
- * The primary goal of this verifier is to detect class files that are blatantly ill-formed, and
- * does not replace a complete bytecode verifier.
+ * Should be a complete bytecode Verifier. Given the version of the clqssfile from which the method
+ * is taken, the type-checking or type-infering Verifier is used.
  */
-public class MethodVerifier implements ContextAccess {
+public final class MethodVerifier implements ContextAccess {
     private final boolean USE_STACK_MAP_FRAMES;
     private final Klass thisKlass;
     private final BytecodeStream code;
     private final RuntimeConstantPool pool;
-    private final Symbol<Signature> sig;
+    private final Symbol<Type>[] sig;
     private final Symbol<Name> methodName;
     private final boolean isStatic;
     private final int maxStack;
     private final int maxLocals;
     private final byte[] verified;
     private final StackFrame[] stackFrames;
+    private final StackMapTableAttribute stackMapTableAttribute;
 
     @Override
     public EspressoContext getContext() {
@@ -275,6 +286,8 @@ public class MethodVerifier implements ContextAccess {
     }
 
     static abstract class Operand {
+        static public Operand[] EMPTY_ARRAY = new Operand[0];
+
         protected JavaKind kind;
 
         Operand(JavaKind kind) {
@@ -546,12 +559,21 @@ public class MethodVerifier implements ContextAccess {
     }
 
     static class UninitReferenceOperand extends ReferenceOperand {
+        final int newBCI;
+
         UninitReferenceOperand(Symbol<Type> type, Klass thisKlass) {
             super(type, thisKlass);
+            this.newBCI = -1;
+        }
+
+        UninitReferenceOperand(Symbol<Type> type, Klass thisKlass, int newBCI) {
+            super(type, thisKlass);
+            this.newBCI = newBCI;
         }
 
         UninitReferenceOperand(Klass klass, Klass thisKlass) {
             super(klass, thisKlass);
+            this.newBCI = -1;
         }
 
         @Override
@@ -600,7 +622,7 @@ public class MethodVerifier implements ContextAccess {
     static private final Operand Null = new Operand(JavaKind.Object) {
         @Override
         boolean canMerge(Operand other) {
-            return other.isReference();
+            return other == Invalid || other.isReference();
         }
 
         @Override
@@ -649,24 +671,25 @@ public class MethodVerifier implements ContextAccess {
     static private final byte JUMP_TARGET = 3;
 
     /**
-     * Instantiates a MethodVerifier for the given method
-     *
-     * @param maxStack Maximum amount of operand on the stack during execution
-     * @param code Raw bytecode representation for the method to verify
-     * @param pool The constant pool to be used with this method.
+     * Construct the data structure to perform verification
+     * 
+     * @param codeAttribute the code attribute of the method
+     * @param m the Espresso method
      */
-    private MethodVerifier(int maxStack, int maxLocals, byte[] code, RuntimeConstantPool pool, Symbol<Signature> sig, boolean isStatic, Klass thisKlass, Symbol<Name> methodName) {
-        this.code = new BytecodeStream(code);
-        this.maxStack = maxStack;
-        this.maxLocals = maxLocals;
-        this.pool = pool;
-        this.verified = new byte[code.length];
-        this.stackFrames = new StackFrame[code.length];
-        this.sig = sig;
-        this.isStatic = isStatic;
-        this.thisKlass = thisKlass;
-        this.methodName = methodName;
-        this.USE_STACK_MAP_FRAMES = false;
+
+    private MethodVerifier(CodeAttribute codeAttribute, Method m) {
+        this.code = new BytecodeStream(codeAttribute.getCode());
+        this.maxStack = codeAttribute.getMaxStack();
+        this.maxLocals = codeAttribute.getMaxLocals();
+        this.pool = m.getRuntimeConstantPool();
+        this.verified = new byte[code.endBCI()];
+        this.stackFrames = new StackFrame[code.endBCI()];
+        this.sig = m.getParsedSignature();
+        this.isStatic = m.isStatic();
+        this.thisKlass = m.getDeclaringKlass();
+        this.methodName = m.getName();
+        this.stackMapTableAttribute = codeAttribute.getStackMapFrame();
+        this.USE_STACK_MAP_FRAMES = codeAttribute.useStackMaps();
 
         jlClass = new ReferenceOperand(Type.Class, thisKlass);
         jlString = new ReferenceOperand(Type.String, thisKlass);
@@ -686,8 +709,7 @@ public class MethodVerifier implements ContextAccess {
         if (codeAttribute == null) {
             return true;
         }
-        return new MethodVerifier(codeAttribute.getMaxStack(), codeAttribute.getMaxLocals(), codeAttribute.getCode(), m.getRuntimeConstantPool(), m.getRawSignature(), m.isStatic(),
-                        m.getDeclaringKlass(), m.getName()).verify();
+        return new MethodVerifier(codeAttribute, m).verify();
     }
 
     private void initVerifier() {
@@ -773,6 +795,173 @@ public class MethodVerifier implements ContextAccess {
         }
     }
 
+    private void initStackFrames() {
+        // First implicit stack frame.
+        StackFrame previous = new StackFrame(this);
+        assert stackFrames.length > 0;
+        int BCI = 0;
+        boolean first = true;
+        stackFrames[BCI] = previous;
+        if (stackMapTableAttribute == null) {
+            return;
+        }
+        StackMapFrame[] entries = stackMapTableAttribute.getEntries();
+        for (StackMapFrame smf : entries) {
+            StackFrame frame = getStackFrame(smf, previous);
+            BCI = BCI + smf.getOffset() + 1;
+            if (first) {
+                BCI--;
+                first = false;
+            }
+            stackFrames[BCI] = frame;
+            previous = frame;
+            first = false;
+        }
+    }
+
+    private StackFrame getStackFrame(StackMapFrame smf, StackFrame previous) {
+        int frameType = smf.getFrameType();
+        if (frameType < SAME_FRAME_BOUND) {
+            if (previous.top == 0) {
+                return previous;
+            }
+            StackFrame res = new StackFrame(Operand.EMPTY_ARRAY, 0, 0, previous.locals);
+            res.lastLocal = previous.lastLocal;
+            return res;
+        }
+        if (frameType < SAME_LOCALS_1_STACK_ITEM_BOUND) {
+            Stack stack = new Stack(2);
+            stack.push(getOperandFromVerificationType(smf.getStackItem()));
+            StackFrame res = new StackFrame(stack, previous.locals);
+            res.lastLocal = previous.lastLocal;
+            return res;
+        }
+        if (frameType < SAME_LOCALS_1_STACK_ITEM_EXTENDED) {
+            // [128, 246] is reserved and still unused
+            throw new ClassFormatError("Encountered reserved StackMapFrame tag: " + frameType);
+        }
+        if (frameType == SAME_LOCALS_1_STACK_ITEM_EXTENDED) {
+            Stack stack = new Stack(2);
+            stack.push(getOperandFromVerificationType(smf.getStackItem()));
+            StackFrame res = new StackFrame(stack, previous.locals);
+            res.lastLocal = previous.lastLocal;
+            return res;
+        }
+        if (frameType < CHOP_BOUND) {
+            Operand[] newLocals = previous.locals.clone();
+            int actualLocalOffset = 0;
+            for (int i = 0; i < smf.getChopped(); i++) {
+                Operand op = newLocals[previous.lastLocal - actualLocalOffset];
+                if (op == Invalid && (previous.lastLocal - actualLocalOffset - 1 > 0)) {
+                    if (isType2(newLocals[previous.lastLocal - actualLocalOffset - 1])) {
+                        actualLocalOffset++;
+                    }
+                }
+                newLocals[previous.lastLocal - actualLocalOffset] = Invalid;
+                actualLocalOffset++;
+            }
+            StackFrame res = new StackFrame(Operand.EMPTY_ARRAY, 0, 0, newLocals);
+            res.lastLocal = previous.lastLocal - actualLocalOffset;
+            if (res.lastLocal > 0 && newLocals[res.lastLocal] == Invalid && res.lastLocal - 1 > 0 && isType2(newLocals[res.lastLocal - 1])) {
+                res.lastLocal = res.lastLocal - 1;
+            }
+            return res;
+        }
+        if (frameType == SAME_FRAME_EXTENDED) {
+            if (previous.top == 0) {
+                return previous;
+            }
+            StackFrame res = new StackFrame(Operand.EMPTY_ARRAY, 0, 0, previous.locals);
+            res.lastLocal = previous.lastLocal;
+            return res;
+        }
+        if (frameType < APPEND_FRAME_BOUND) {
+            Operand[] newLocals = previous.locals.clone();
+            Operand[] appends = new Operand[smf.getLocals().length];
+            int i = 0;
+            for (VerificationTypeInfo vti : smf.getLocals()) {
+                appends[i++] = getOperandFromVerificationType(vti);
+            }
+            i = previous.lastLocal;
+            Operand op = null;
+            if (i >= 0) {
+                op = newLocals[i];
+                if (isType2(op)) {
+                    newLocals[++i] = Invalid;
+                }
+            }
+            i++;
+            int j;
+            for (j = 0; j < appends.length; j++) {
+                op = appends[j];
+                newLocals[i++] = op;
+                if (isType2(op)) {
+                    newLocals[i++] = Invalid;
+                }
+            }
+            if (j == 0) {
+                throw new VerifyError("Empty Append Frame in the StackmapTable");
+            }
+            StackFrame res = new StackFrame(Operand.EMPTY_ARRAY, 0, 0, newLocals);
+            res.lastLocal = i - (isType2(op) ? 2 : 1);
+            return res;
+        }
+        if (frameType == FULL_FRAME) {
+            Stack fullStack = new Stack(maxStack);
+            for (VerificationTypeInfo vti : smf.getStack()) {
+                fullStack.push(getOperandFromVerificationType(vti));
+            }
+            Operand[] locals = new Operand[maxLocals];
+            Arrays.fill(locals, Invalid);
+            int pos = 0;
+            for (VerificationTypeInfo vti : smf.getLocals()) {
+                Operand op = getOperandFromVerificationType(vti);
+                locals[pos++] = op;
+                if (isType2(op)) {
+                    locals[pos++] = Invalid;
+                }
+            }
+            StackFrame res = new StackFrame(fullStack, locals);
+            if (pos == 0) {
+                res.lastLocal = 0;
+                return res;
+            }
+            if (locals[pos - 1] == Invalid && pos - 2 > 0 && isType2(locals[pos - 2])) {
+                res.lastLocal = pos - 2;
+                return res;
+            }
+            res.lastLocal = pos - 1;
+            return res;
+
+        }
+        throw EspressoError.shouldNotReachHere();
+    }
+
+    private Operand getOperandFromVerificationType(VerificationTypeInfo vti) {
+        switch (vti.getTag()) {
+            case ITEM_Bogus:
+                return Invalid;
+            case ITEM_Integer:
+                return Int;
+            case ITEM_Float:
+                return Float;
+            case ITEM_Double:
+                return Double;
+            case ITEM_Long:
+                return Long;
+            case ITEM_Null:
+                return Null;
+            case ITEM_InitObject:
+                return new UninitReferenceOperand(thisKlass, thisKlass);
+            case ITEM_Object:
+                return spawnFromType(getTypes().fromName(pool.classAt(vti.getConstantPoolOffset()).getName(pool)));
+            case ITEM_NewObject:
+                return new UninitReferenceOperand(getTypes().fromName(pool.classAt(code.readCPI(vti.getNewOffset())).getName(pool)), thisKlass, vti.getNewOffset());
+            default:
+                throw EspressoError.shouldNotReachHere("Unrecognized VerificationTypeInfo: " + vti);
+        }
+    }
+
     // TODO(garcia) implement instruction stack to visit, to avoid stack overflows from recursively
     // finding fixed points.
 
@@ -791,6 +980,9 @@ public class MethodVerifier implements ContextAccess {
             throw new VerifyError("Control flow falls through code end");
         }
         int nextBCI = 0;
+        if (USE_STACK_MAP_FRAMES) {
+            initStackFrames();
+        }
         Stack stack = new Stack(maxStack);
         Locals locals = new Locals(this);
         while (verified[nextBCI] != DONE || (stackFrames[nextBCI] != null && stack.mergeInto(stackFrames[nextBCI]) != -1)) {
@@ -1149,7 +1341,7 @@ public class MethodVerifier implements ContextAccess {
                     BytecodeTableSwitch switchHelper = code.getBytecodeTableSwitch();
                     int low = switchHelper.lowKey(BCI);
                     int high = switchHelper.highKey(BCI);
-                    for (int i = low; i <= high; i++) {
+                    for (int i = low; i != high + 1; i++) {
                         branch(switchHelper.targetAt(BCI, i - low), stack, locals);
                     }
                     return switchHelper.defaultTarget(BCI);
@@ -1234,10 +1426,19 @@ public class MethodVerifier implements ContextAccess {
                     for (int i = parsedSig.length - 2; i >= 0; i--) {
                         stack.pop(parsedSig[i]);
                     }
-                    if (curOpcode == INVOKESPECIAL && mrc.getName(pool) == Symbol.Name.INIT) {
+                    if (curOpcode == INVOKESPECIAL && mrc.getName(pool) == Name.INIT) {
                         Operand op = getOperand(mrc);
-                        Operand toInit = stack.popUninitRef(op);
-                        stack.initUninit((UninitReferenceOperand)toInit);
+                        UninitReferenceOperand toInit = (UninitReferenceOperand) stack.popUninitRef(op);
+                        if (toInit.newBCI != -1) {
+                            if (code.opcode(toInit.newBCI) != NEW) {
+                                throw new VerifyError("There is no NEW bytecode at BCI: " + toInit.newBCI);
+                            }
+                        } else {
+                            if (methodName != Name.INIT) {
+                                throw new VerifyError("Encountered UninitializedThis outside of Constructor: " + toInit);
+                            }
+                        }
+                        stack.initUninit(toInit);
                     } else if (curOpcode != INVOKESTATIC) {
                         Operand op = getOperand(mrc);
                         checkInit(stack, stack.popRef(op));
@@ -1259,7 +1460,7 @@ public class MethodVerifier implements ContextAccess {
                     if (Types.isPrimitive(type) || Types.isArray(type)) {
                         throw new VerifyError("use NEWARRAY for creating array or primitive type: " + type);
                     }
-                    Operand op = new UninitReferenceOperand(type, thisKlass);
+                    Operand op = new UninitReferenceOperand(type, thisKlass, BCI);
                     stack.push(op);
                     break;
                 }
@@ -1444,14 +1645,17 @@ public class MethodVerifier implements ContextAccess {
         // @formatter:on
     }
 
-    private Operand[] getOperandSig(Symbol<Symbol.Signature> toParse) {
-        Symbol<Type>[] parsedSig = getSignatures().parsed(toParse);
-        Operand[] operandSig = new Operand[parsedSig.length];
+    private Operand[] getOperandSig(Symbol<Type>[] toParse) {
+        Operand[] operandSig = new Operand[toParse.length];
         for (int i = 0; i < operandSig.length; i++) {
-            Symbol<Type> type = parsedSig[i];
+            Symbol<Type> type = toParse[i];
             operandSig[i] = kindToOperand(type);
         }
         return operandSig;
+    }
+
+    private Operand[] getOperandSig(Symbol<Signature> toParse) {
+        return getOperandSig(getSignatures().parsed(toParse));
     }
 
     private Operand kindToOperand(Symbol<Type> type) {
@@ -1889,7 +2093,7 @@ public class MethodVerifier implements ContextAccess {
         private Operand initUninit(UninitReferenceOperand toInit) {
             Operand init = toInit.init();
             for (int i = 0; i < top; i++) {
-                if (stack[i] == toInit) {
+                if (stack[i].isUninit() && ((UninitReferenceOperand) stack[i]).newBCI == toInit.newBCI) {
                     stack[i] = init;
                 }
             }
@@ -1898,16 +2102,35 @@ public class MethodVerifier implements ContextAccess {
     }
 
     private static class StackFrame {
-        Operand[] stack;
-        int stackSize;
-        int top;
-        Operand[] locals;
+        final Operand[] stack;
+        final int stackSize;
+        final int top;
+        final Operand[] locals;
+        int lastLocal;
 
         StackFrame(Stack stack, Locals locals) {
             this.stack = stack.extract();
             this.stackSize = stack.size;
             this.top = stack.top;
             this.locals = locals.extract();
+        }
+
+        StackFrame(Stack stack, Operand[] locals) {
+            this.stack = stack.extract();
+            this.stackSize = stack.size;
+            this.top = stack.top;
+            this.locals = locals;
+        }
+
+        StackFrame(MethodVerifier mv) {
+            this(new Stack(mv.maxStack), new Locals(mv));
+            int last = (mv.isStatic ? -1 : 0);
+            for (int i = 0; i < mv.sig.length - 1; i++) {
+                if (isType2(locals[++last])) {
+                    last++;
+                }
+            }
+            this.lastLocal = last;
         }
 
         public StackFrame(Operand[] stack, int stackSize, int top, Operand[] locals) {
@@ -1987,7 +2210,7 @@ public class MethodVerifier implements ContextAccess {
         return new StackFrame(mergedStack, stack.size, stack.top, mergedLocals);
     }
 
-    public StackFrame spawnStackFrame(Stack stack, Locals locals) {
+    public static StackFrame spawnStackFrame(Stack stack, Locals locals) {
         return new StackFrame(stack, locals);
     }
 

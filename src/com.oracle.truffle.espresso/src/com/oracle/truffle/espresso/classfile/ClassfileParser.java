@@ -166,6 +166,10 @@ public final class ClassfileParser {
         }
     }
 
+    boolean useStackMapTables() {
+        return majorVersion >= JAVA_6_VERSION;
+    }
+
     public static ParserKlass parse(ClassfileStream stream, String requestedClassName, Klass hostClass, EspressoContext context) {
         return new ClassfileParser(stream, requestedClassName, hostClass, context).parseClass();
     }
@@ -510,7 +514,7 @@ public final class ClassfileParser {
         byte[] code = stream.readByteArray(codeLength);
         ExceptionHandler[] entries = parseExceptionHandlerEntries();
         Attribute[] codeAttributes = parseAttributes();
-        return new CodeAttribute(name, maxStack, maxLocals, code, entries, codeAttributes);
+        return new CodeAttribute(name, maxStack, maxLocals, code, entries, codeAttributes, useStackMapTables());
     }
 
     private ExceptionHandler[] parseExceptionHandlerEntries() {

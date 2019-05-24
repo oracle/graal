@@ -33,6 +33,8 @@ public final class CodeAttribute extends Attribute {
 
     public static final Symbol<Name> NAME = Name.Code;
 
+    private final boolean useStackMaps;
+
     private final int maxStack;
     private final int maxLocals;
 
@@ -45,13 +47,14 @@ public final class CodeAttribute extends Attribute {
     @CompilationFinal(dimensions = 1) //
     private final Attribute[] attributes;
 
-    public CodeAttribute(Symbol<Name> name, int maxStack, int maxLocals, byte[] code, ExceptionHandler[] exceptionHandlerEntries, Attribute[] attributes) {
+    public CodeAttribute(Symbol<Name> name, int maxStack, int maxLocals, byte[] code, ExceptionHandler[] exceptionHandlerEntries, Attribute[] attributes, boolean useStackMaps) {
         super(name, null);
         this.maxStack = maxStack;
         this.maxLocals = maxLocals;
         this.code = code;
         this.exceptionHandlerEntries = exceptionHandlerEntries;
         this.attributes = attributes;
+        this.useStackMaps = useStackMaps;
     }
 
     public int getMaxStack() {
@@ -74,8 +77,13 @@ public final class CodeAttribute extends Attribute {
         return exceptionHandlerEntries;
     }
 
-    public final CodeAttribute dupe() {
-        return new CodeAttribute(getName(), maxStack, maxLocals, code.clone(), exceptionHandlerEntries, attributes);
+    public StackMapTableAttribute getStackMapFrame() {
+        for (Attribute attr : attributes) {
+            if (attr.getName() == Name.StackMapTable) {
+                return (StackMapTableAttribute) attr;
+            }
+        }
+        return null;
     }
 
     private LineNumberTable getLineNumberTableAttribute() {
@@ -93,5 +101,9 @@ public final class CodeAttribute extends Attribute {
             return -1;
         }
         return lnt.getLineNumber(BCI);
+    }
+
+    public final boolean useStackMaps() {
+        return useStackMaps;
     }
 }
