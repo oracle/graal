@@ -69,6 +69,10 @@ mx.update_commands(_suite, {
       lambda args: mx_benchmark.benchmark(["specjbb2015"] + args),
       '[-- [VM options] [-- [SPECjbb2015 options]]]'
     ],
+    'renaissance': [
+        lambda args: createBenchmarkShortcut("renaissance", args),
+        '[<benchmarks>|*] [-- [VM options] [-- [Renaissance options]]]'
+    ],
 })
 
 
@@ -1629,8 +1633,139 @@ class JMHDistWhiteboxBenchmarkSuite(mx_benchmark.JMHDistBenchmarkSuite):
 mx_benchmark.add_bm_suite(JMHDistWhiteboxBenchmarkSuite())
 
 
+_renaissanceConfig = {
+    "akka-uct"         : 24,
+    "als"              : 60,
+    "chi-square"       : 60,
+    "db-shootout"      : 16,
+    "dec-tree"         : 40,
+    "dotty"            : 50,
+    "finagle-chirper"  : 90,
+    "finagle-http"     : 12,
+    "fj-kmeans"        : 30,
+    "future-genetic"   : 50,
+    "gauss-mix"        : 40,
+    "log-regression"   : 20,
+    "mnemonics"        : 16,
+    "movie-lens"       : 20,
+    "naive-bayes"      : 30,
+    "neo4j-analytics"  : 20,
+    "page-rank"        : 20,
+    "par-mnemonics"    : 16,
+    "philosophers"     : 30,
+    "reactors"         : 10,
+    "rx-scrabble"      : 80,
+    "scala-kmeans"     : 50,
+    "scala-stm-bench7" : 60,
+    "scrabble"         : 50
+}
+
+
 class RenaissanceBenchmarkSuite(mx_benchmark.JavaBenchmarkSuite, mx_benchmark.AveragingBenchmarkMixin, TemporaryWorkdirMixin):
     """Renaissance benchmark suite implementation.
+    """
+    def name(self):
+        return "renaissance"
+
+    def group(self):
+        return "Graal"
+
+    def subgroup(self):
+        return "graal-compiler"
+
+    def renaissanceLibraryName(self):
+        return "RENAISSANCE"
+
+    def renaissanceIterations(self):
+        return _renaissanceConfig.copy()
+
+    def renaissancePath(self):
+        lib = mx.library(self.renaissanceLibraryName())
+        if lib:
+            return lib.get_path(True)
+        return None
+
+    def postprocessRunArgs(self, benchname, runArgs):
+        parser = argparse.ArgumentParser(add_help=False)
+        parser.add_argument("-r", default=None)
+        args, remaining = parser.parse_known_args(runArgs)
+        if args.r:
+            if args.r.isdigit():
+                return ["-r", args.r] + remaining
+            if args.n == "-1":
+                return None
+        else:
+            iterations = self.renaissanceIterations()[benchname]
+            if iterations == -1:
+                return None
+            else:
+                return ["-r", str(iterations)] + remaining
+
+    def createCommandLineArgs(self, benchmarks, bmSuiteArgs):
+        benchArg = ""
+        if benchmarks is None:
+            mx.abort("Suite can only run a single benchmark per VM instance.")
+        elif len(benchmarks) == 0:
+            mx.abort("Must specify at least one benchmark.")
+        else:
+            benchArg = ",".join(benchmarks)
+        runArgs = self.postprocessRunArgs(benchmarks[0], self.runArgs(bmSuiteArgs))
+        return (self.vmArgs(bmSuiteArgs) + ["-jar", self.renaissancePath()] + runArgs + [benchArg])
+
+    def benchmarkList(self, bmSuiteArgs):
+        return sorted(_renaissanceConfig.keys())
+
+    def successPatterns(self):
+        return []
+
+    def failurePatterns(self):
+        return []
+
+    def rules(self, out, benchmarks, bmSuiteArgs):
+        return [
+            mx_benchmark.StdOutRule(
+                r"====== (?P<benchmark>[a-zA-Z0-9_\-]+) \((?P<benchgroup>[a-zA-Z0-9_\-]+)\), iteration (?P<iteration>[0-9]+) completed \((?P<value>[0-9]+(.[0-9]*)?) ms\) ======",
+                {
+                    "benchmark": ("<benchmark>", str),
+                    "vm": "jvmci",
+                    "config.name": "default",
+                    "metric.name": "warmup",
+                    "metric.value": ("<value>", float),
+                    "metric.unit": "ms",
+                    "metric.type": "numeric",
+                    "metric.score-function": "id",
+                    "metric.better": "lower",
+                    "metric.iteration": ("<iteration>", int),
+                }
+            ),
+            mx_benchmark.StdOutRule(
+                r"====== (?P<benchmark>[a-zA-Z0-9_\-]+) \((?P<benchgroup>[a-zA-Z0-9_\-]+)\), final iteration completed \((?P<value>[0-9]+(.[0-9]*)?) ms\) ======",
+                {
+                    "benchmark": ("<benchmark>", str),
+                    "vm": "jvmci",
+                    "config.name": "default",
+                    "metric.name": "final-time",
+                    "metric.value": ("<value>", float),
+                    "metric.unit": "ms",
+                    "metric.type": "numeric",
+                    "metric.score-function": "id",
+                    "metric.better": "lower",
+                    "metric.iteration": 0,
+                }
+            )
+        ]
+
+    def run(self, benchmarks, bmSuiteArgs):
+        results = super(RenaissanceBenchmarkSuite, self).run(benchmarks, bmSuiteArgs)
+        self.addAverageAcrossLatestResults(results)
+        return results
+
+
+mx_benchmark.add_bm_suite(RenaissanceBenchmarkSuite())
+
+
+class RenaissanceLegacyBenchmarkSuite(mx_benchmark.JavaBenchmarkSuite, mx_benchmark.AveragingBenchmarkMixin, TemporaryWorkdirMixin):
+    """Legacy renaissance benchmark suite implementation.
     """
     def name(self):
         return "renaissance-legacy"
@@ -1720,12 +1855,12 @@ class RenaissanceBenchmarkSuite(mx_benchmark.JavaBenchmarkSuite, mx_benchmark.Av
         ]
 
     def run(self, benchmarks, bmSuiteArgs):
-        results = super(RenaissanceBenchmarkSuite, self).run(benchmarks, bmSuiteArgs)
+        results = super(RenaissanceLegacyBenchmarkSuite, self).run(benchmarks, bmSuiteArgs)
         self.addAverageAcrossLatestResults(results)
         return results
 
 
-mx_benchmark.add_bm_suite(RenaissanceBenchmarkSuite())
+mx_benchmark.add_bm_suite(RenaissanceLegacyBenchmarkSuite())
 
 
 class SparkSqlPerfBenchmarkSuite(mx_benchmark.JavaBenchmarkSuite, mx_benchmark.AveragingBenchmarkMixin, TemporaryWorkdirMixin):

@@ -14,6 +14,7 @@ bench-jvmci : {
   mx-specjvm2008-OneVM: ${bench-jvmci.mx-benchmark} ["specjvm2008"]
   mx-specjbb2005: ${bench-jvmci.mx-benchmark} ["specjbb2005"]
   mx-specjbb2015: ${bench-jvmci.mx-benchmark} ["specjbb2015"]
+  mx-renaissance: ${bench-jvmci.mx-benchmark} ["renaissance:*"]
   mx-renaissance-legacy: ${bench-jvmci.mx-benchmark} ["renaissance-legacy:*"]
   mx-spark-sql-perf: ${bench-jvmci.mx-benchmark} ["spark-sql-perf"]
   mx-micros-graal-whitebox: ${bench-jvmci.mx-benchmark} ["jmh-whitebox:*"]
@@ -165,6 +166,14 @@ bench-micros-graal-dist: ${bench-common} ${default-heap} ${micros-bench-notifica
 }
 
 # Renaissance-related targets
+
+bench-renaissance: ${bench-common} ${default-heap} ${renaissance-bench-notifications} {
+  targets: [bench, post-merge]
+  run: [
+    ${bench-jvmci.mx-renaissance} ${bench-arguments}
+  ]
+  timelimit: "3:00:00"
+}
 
 bench-renaissance-legacy: ${bench-common} ${default-heap} ${renaissance-bench-notifications} {
   targets: [bench, post-merge]

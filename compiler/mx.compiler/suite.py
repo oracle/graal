@@ -92,6 +92,13 @@ suite = {
       "sha1" : "b072de027141ac81ab5d48706949fda86de62468",
     },
 
+    "RENAISSANCE" : {
+      "urls" : [
+        "https://lafo.ssw.uni-linz.ac.at/pub/graal-external-deps/renaissance/renaissance-gpl-0.9.0.jar"
+      ],
+      "sha1" : "925ca7d440078b0b30f5849695061262c226820e",
+    },
+
     "JAVA_ALLOCATION_INSTRUMENTER" : {
       "sha1" : "d0bdc21c5e6404726b102998e44c66a738897905",
       "maven" : {

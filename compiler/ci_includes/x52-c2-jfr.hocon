@@ -18,5 +18,6 @@ builds += [
   ${x52.c2-tmpfs10g-jfr} ${bench-scala-dacapo-jfr}   ${oraclejdk8} { targets: [bench, weekly], name: "bench-compiler-scala-dacapo-linux-x52-c2-jfr" }
   ${x52.c2-jfr} ${bench-specjvm2008-Single-jfr}      ${oraclejdk8} { targets: [bench, weekly], name: "bench-compiler-specjvm2008-Single-linux-x52-c2-jfr" }
   ${x52.c2-jfr} ${bench-specjbb2015-jfr}             ${oraclejdk8} { targets: [bench, weekly], name: "bench-compiler-specjbb2015-linux-x52-c2-jfr" }
+  ${x52.c2-jfr} ${bench-renaissance-jfr}      ${oraclejdk8} { targets: [bench, weekly], name: "bench-compiler-renaissance-linux-x52-c2-jfr" }
   ${x52.c2-jfr} ${bench-renaissance-legacy-jfr}      ${oraclejdk8} { targets: [bench, weekly], name: "bench-compiler-renaissance-legacy-linux-x52-c2-jfr" }
 ]
