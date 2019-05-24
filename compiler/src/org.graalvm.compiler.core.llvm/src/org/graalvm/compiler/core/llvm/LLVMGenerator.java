@@ -35,7 +35,6 @@ import static org.graalvm.compiler.debug.GraalError.unimplemented;
 
 import java.util.ArrayList;
 import java.util.Arrays;
-import java.util.BitSet;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -1008,16 +1007,12 @@ public class LLVMGenerator implements LIRGeneratorTool {
     }
 
     @Override
-    public VirtualStackSlot allocateStackSlots(int slots, BitSet objects, List<VirtualStackSlot> outObjectStackSlots) {
+    public VirtualStackSlot allocateStackSlots(int slots) {
         builder.positionAtStart();
         LLVMValueRef alloca = builder.buildPtrToInt(builder.buildArrayAlloca(slots), builder.longType());
         builder.positionAtEnd(getBlockEnd(currentBlock));
 
-        LLVMStackSlot stackSlot = new LLVMStackSlot(alloca);
-        if (outObjectStackSlots != null) {
-            outObjectStackSlots.add(stackSlot);
-        }
-        return stackSlot;
+        return new LLVMStackSlot(alloca);
     }
 
     @Override

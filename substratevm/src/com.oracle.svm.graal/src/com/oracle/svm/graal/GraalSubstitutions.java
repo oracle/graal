@@ -211,7 +211,7 @@ final class Target_org_graalvm_compiler_debug_TimeSource {
     private static boolean USING_THREAD_CPU_TIME = false;
 }
 
-@TargetClass(value = org.graalvm.compiler.debug.TTY.class, onlyWith = GraalFeature.IsEnabled.class)
+@TargetClass(value = org.graalvm.compiler.debug.TTY.class, onlyWith = GraalFeature.IsEnabledAndNotLibgraal.class)
 final class Target_org_graalvm_compiler_debug_TTY {
 
     @Alias @RecomputeFieldValue(kind = FromAlias)//
