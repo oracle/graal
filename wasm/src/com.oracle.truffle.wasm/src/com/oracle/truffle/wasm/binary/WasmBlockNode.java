@@ -249,9 +249,48 @@ public class WasmBlockNode extends WasmNode {
                     }
                     break;
                 }
-                case LOCAL_TEE:
-                    // TODO
+                case LOCAL_TEE: {
+                    int index = BinaryStreamReader.peekUnsignedInt32(codeEntry().data(), offset, null);
+                    byte constantLength = codeEntry().byteConstants()[byteConstantOffset];
+                    byteConstantOffset++;
+                    offset += constantLength;
+                    byte type = codeEntry().localType(index);
+                    switch (type) {
+                        case ValueTypes.I32_TYPE: {
+                            stackPointer--;
+                            int value = popInt(frame, stackPointer);
+                            pushInt(frame, stackPointer, value);
+                            stackPointer++;
+                            setInt(frame, index, value);
+                            break;
+                        }
+                        case ValueTypes.I64_TYPE: {
+                            stackPointer--;
+                            long value = pop(frame, stackPointer);
+                            push(frame, stackPointer, value);
+                            stackPointer++;
+                            setLong(frame, index, value);
+                            break;
+                        }
+                        case ValueTypes.F32_TYPE: {
+                            stackPointer--;
+                            float value = popAsFloat(frame, stackPointer);
+                            pushFloat(frame, stackPointer, value);
+                            stackPointer++;
+                            setFloat(frame, index, value);
+                            break;
+                        }
+                        case ValueTypes.F64_TYPE: {
+                            stackPointer--;
+                            double value = popAsDouble(frame, stackPointer);
+                            pushDouble(frame, stackPointer, value);
+                            stackPointer++;
+                            setDouble(frame, index, value);
+                            break;
+                        }
+                    }
                     break;
+                }
                 case I32_CONST: {
                     int value = BinaryStreamReader.peekSignedInt32(codeEntry().data(), offset, null);
                     byte constantLength = codeEntry().byteConstants()[byteConstantOffset];
