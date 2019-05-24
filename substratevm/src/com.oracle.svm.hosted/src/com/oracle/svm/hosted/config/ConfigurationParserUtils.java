@@ -32,6 +32,7 @@ import java.io.IOException;
 import java.io.InputStreamReader;
 import java.io.Reader;
 import java.net.URL;
+import java.net.URLConnection;
 import java.util.stream.Stream;
 
 import org.graalvm.nativeimage.impl.ReflectionRegistry;
@@ -84,8 +85,12 @@ public final class ConfigurationParserUtils {
             if (url == null) {
                 throw UserError.abort("Could not find " + featureName + " configuration resource \"" + resource + "\".");
             }
-            try (Reader reader = new InputStreamReader(url.openStream())) {
-                doParseAndRegister(parser, reader, featureName, url, configResourcesOption);
+            try {
+                URLConnection urlConnection = url.openConnection();
+                urlConnection.setUseCaches(false);
+                try (Reader reader = new InputStreamReader(urlConnection.getInputStream())) {
+                    doParseAndRegister(parser, reader, featureName, url, configResourcesOption);
+                }
             } catch (IOException e) {
                 throw UserError.abort("Could not open " + url + ": " + e.getMessage());
             }
