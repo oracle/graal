@@ -112,7 +112,7 @@ public class HotSpotGraalCompiler implements GraalJVMCICompiler, Cancellable {
     @SuppressWarnings("try")
     CompilationRequestResult compileMethod(CompilationRequest request, boolean installAsDefault, OptionValues initialOptions) {
         if (graalRuntime.isShutdown()) {
-            return HotSpotCompilationRequestResult.failure(String.format("Shutdown entered"), false);
+            return HotSpotCompilationRequestResult.failure(String.format("Shutdown entered"), true);
         }
 
         ResolvedJavaMethod method = request.getMethod();

@@ -288,6 +288,7 @@ import org.graalvm.compiler.bytecode.ResolvedJavaMethodBytecode;
 import org.graalvm.compiler.bytecode.ResolvedJavaMethodBytecodeProvider;
 import org.graalvm.compiler.core.common.GraalOptions;
 import org.graalvm.compiler.core.common.PermanentBailoutException;
+import org.graalvm.compiler.core.common.RetryableBailoutException;
 import org.graalvm.compiler.core.common.calc.CanonicalCondition;
 import org.graalvm.compiler.core.common.calc.Condition;
 import org.graalvm.compiler.core.common.calc.Condition.CanonicalizedCondition;
@@ -998,6 +999,11 @@ public class BytecodeParser implements GraphBuilderContext {
                 GraphUtil.unlinkFixedNode(beginNode);
                 beginNode.safeDelete();
             }
+        }
+        if (graph.isOSR() && getParent() == null && graph.getNodes().filter(EntryMarkerNode.class).isEmpty()) {
+            // This should generally be a transient condition because of inconsistent profile
+            // information.
+            throw new RetryableBailoutException("OSR entry point wasn't parsed");
         }
     }
 
