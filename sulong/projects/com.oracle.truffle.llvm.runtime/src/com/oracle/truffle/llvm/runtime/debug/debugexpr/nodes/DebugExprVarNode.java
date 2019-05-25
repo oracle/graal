@@ -67,10 +67,19 @@ public class DebugExprVarNode extends LLVMExpressionNode {
                     Object member = library.readMember(vars, memberKey);
                     LLVMDebuggerValue ldv = (LLVMDebuggerValue) member;
                     Object metaObj = ldv.getMetaObject();
+                    if (metaObj == null) {
+                        return member;
+                    }
                     // System.out.println(name + "|metaObj.toString() = " + metaObj.toString());
                     // System.out.println(name + "|ldv.toString() = " + ldv.toString());
-                    if (metaObj.toString().contentEquals("int"))
+                    if (metaObj.toString().contentEquals("int")) {
                         return Integer.parseInt(member.toString());
+                    } else if (metaObj.toString().contentEquals("float")) {
+                        return Float.parseFloat(member.toString());
+                    } else if (metaObj.toString().contentEquals("double")) {
+                        return Double.parseDouble(member.toString());
+                    }
+                    System.out.println("String representation: " + metaObj.toString());
                     return member;
                 }
             } catch (UnsupportedMessageException e) {

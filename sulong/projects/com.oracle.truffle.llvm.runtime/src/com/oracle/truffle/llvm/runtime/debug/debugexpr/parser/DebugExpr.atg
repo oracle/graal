@@ -54,7 +54,7 @@ TOKENS
 // Example:
    ident = letter {letter | digit}.
    number = digit {digit}.
-   floatnumber = digit letter.
+   floatnumber = digit {digit} "." digit {digit} [ ("e"|"E") ["+"|"-"] digit {digit}].
    charConst = singlecomma (letter|digit) singlecomma.
    stringType = quote {letter|digit} quote.
 
@@ -95,7 +95,7 @@ ident 								(. n = new DebugExprVarNode(t.val, scopes);.)
 |
 number 									(. n = NF().createSimpleConstantNoArray(Integer.parseInt(t.val), Type.getIntegerType(32)); .)
 |
-floatnumber
+floatnumber								
 |
 charConst
 |
