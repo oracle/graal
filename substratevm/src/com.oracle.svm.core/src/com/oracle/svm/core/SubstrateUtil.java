@@ -395,7 +395,7 @@ public class SubstrateUtil {
         log.indent(true);
         for (IsolateThread vmThread = VMThreads.firstThread(); vmThread != VMThreads.nullThread(); vmThread = VMThreads.nextThread(vmThread)) {
             log.string("VMThread ").zhex(vmThread.rawValue()).spaces(2).string(VMThreads.StatusSupport.getStatusString(vmThread))
-                            .spaces(2).object(JavaThreads.singleton().fromVMThread(vmThread)).newline();
+                            .spaces(2).object(JavaThreads.fromVMThread(vmThread)).newline();
         }
         log.indent(false);
     }

@@ -674,7 +674,7 @@ public final class Deoptimizer {
                      * the same object can be re-locked multiple times, we change the thread after
                      * all virtual frames have been reconstructed.
                      */
-                    ImageSingletons.lookup(MonitorSupport.class).setExclusiveOwnerThread(lockee, JavaThreads.singleton().createIfNotExisting(currentThread));
+                    ImageSingletons.lookup(MonitorSupport.class).setExclusiveOwnerThread(lockee, JavaThreads.fromVMThread(currentThread));
                 }
             }
         }

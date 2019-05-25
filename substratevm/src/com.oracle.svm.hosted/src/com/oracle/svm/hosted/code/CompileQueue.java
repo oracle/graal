@@ -1107,14 +1107,13 @@ public class CompileQueue {
              * tracks the bug in DebugValueMap.
              */
             String className = method.getDeclaringClass().getName();
-            // @formatter:off
             if (className.contains("/svm/core/code/CodeInfoEncoder") ||
-                    className.contains("com/oracle/svm/core/heap/") ||
-                    className.contains("com/oracle/svm/core/genscavenge/") ||
-                    className.contains("debug/internal/DebugValueMap") && method.getName().equals("registerTopLevel")) {
+                            className.contains("com/oracle/svm/core/thread/JavaThreads") ||
+                            className.contains("com/oracle/svm/core/heap/") ||
+                            className.contains("com/oracle/svm/core/genscavenge/") ||
+                            className.contains("debug/internal/DebugValueMap") && method.getName().equals("registerTopLevel")) {
                 return false;
             }
-            // @formatter:on
             /*
              * Method without bytecodes, e.g., methods that have a manually constructed graph, are
              * usually not deoptimizable. This needs to change as soon as we want to runtime compile

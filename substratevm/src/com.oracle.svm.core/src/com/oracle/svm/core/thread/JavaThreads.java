@@ -31,20 +31,19 @@ import static com.oracle.svm.core.snippets.KnownIntrinsics.readCallerStackPointe
 import static com.oracle.svm.core.snippets.KnownIntrinsics.readReturnAddress;
 
 import java.lang.Thread.UncaughtExceptionHandler;
-import java.lang.reflect.Field;
 import java.security.AccessControlContext;
 import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.Collections;
 import java.util.HashMap;
+import java.util.IdentityHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
-import java.util.concurrent.CopyOnWriteArraySet;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.atomic.AtomicLong;
 
-import com.oracle.svm.core.SubstrateUtil;
-import com.oracle.svm.core.jdk.JavaLangSubstitutions;
 import org.graalvm.compiler.api.replacements.Fold;
 import org.graalvm.compiler.core.common.SuppressFBWarnings;
 import org.graalvm.nativeimage.CurrentIsolate;
@@ -53,6 +52,8 @@ import org.graalvm.nativeimage.Isolate;
 import org.graalvm.nativeimage.IsolateThread;
 import org.graalvm.nativeimage.ObjectHandle;
 import org.graalvm.nativeimage.ObjectHandles;
+import org.graalvm.nativeimage.Platform;
+import org.graalvm.nativeimage.Platforms;
 import org.graalvm.nativeimage.c.function.CEntryPoint;
 import org.graalvm.nativeimage.c.struct.RawField;
 import org.graalvm.nativeimage.c.struct.RawStructure;
@@ -61,6 +62,7 @@ import org.graalvm.word.PointerBase;
 
 import com.oracle.svm.core.MonitorSupport;
 import com.oracle.svm.core.SubstrateOptions;
+import com.oracle.svm.core.SubstrateUtil;
 import com.oracle.svm.core.annotate.Alias;
 import com.oracle.svm.core.annotate.AutomaticFeature;
 import com.oracle.svm.core.annotate.Delete;
@@ -75,12 +77,14 @@ import com.oracle.svm.core.heap.FeebleReferenceList;
 import com.oracle.svm.core.heap.Heap;
 import com.oracle.svm.core.jdk.JDK11OrLater;
 import com.oracle.svm.core.jdk.JDK8OrEarlier;
+import com.oracle.svm.core.jdk.JavaLangSubstitutions;
+import com.oracle.svm.core.jdk.ManagementSupport;
 import com.oracle.svm.core.jdk.Package_jdk_internal_misc;
 import com.oracle.svm.core.jdk.StackTraceUtils;
-import com.oracle.svm.core.jdk.Target_jdk_internal_misc_VM;
 import com.oracle.svm.core.jdk.UninterruptibleUtils.AtomicReference;
-import com.oracle.svm.core.locks.VMMutex;
 import com.oracle.svm.core.log.Log;
+import com.oracle.svm.core.nodes.CFunctionEpilogueNode;
+import com.oracle.svm.core.nodes.CFunctionPrologueNode;
 import com.oracle.svm.core.option.XOptions;
 import com.oracle.svm.core.snippets.KnownIntrinsics;
 import com.oracle.svm.core.stack.StackOverflowCheck;
@@ -88,8 +92,11 @@ import com.oracle.svm.core.thread.ParkEvent.WaitResult;
 import com.oracle.svm.core.threadlocal.FastThreadLocalFactory;
 import com.oracle.svm.core.threadlocal.FastThreadLocalObject;
 import com.oracle.svm.core.util.TimeUtils;
+import com.oracle.svm.core.util.UserError;
 import com.oracle.svm.core.util.VMError;
-import com.oracle.svm.util.ReflectionUtil;
+
+import jdk.vm.ci.meta.MetaAccessProvider;
+import jdk.vm.ci.meta.ResolvedJavaField;
 
 public abstract class JavaThreads {
 
@@ -98,44 +105,58 @@ public abstract class JavaThreads {
         return ImageSingletons.lookup(JavaThreads.class);
     }
 
-    /**
-     * The {@link java.lang.Thread} for the {@link IsolateThread}. It can be null if the
-     * {@link Thread} has never been accessed. The only possible transition is from null to the
-     * {@link Thread}, after that initialization (which must use atomic operations) the value never
-     * changes again. Therefore, reads do not need to be volatile reads.
-     */
-    protected static final FastThreadLocalObject<Thread> currentThread = FastThreadLocalFactory.createObject(Thread.class);
-
-    protected final AtomicLong totalThreads = new AtomicLong();
-    protected final AtomicInteger peakThreads = new AtomicInteger();
-    protected final AtomicInteger liveThreads = new AtomicInteger();
-    protected final AtomicInteger daemonThreads = new AtomicInteger();
-    protected final AtomicInteger nonDaemonThreads = new AtomicInteger();
-
-    /** The group we use for VM threads. */
-    final ThreadGroup rootGroup = Thread.currentThread().getThreadGroup();
-    /*
-     * By using the current thread group as the SVM root group we are preserving runtime environment
-     * of a generated image, which is necessary as the current thread group is available to static
-     * initializers and we are allowing ThreadGroups and unstarted Threads in the image heap.
-     *
-     * There are tests in place to make sure that we are using the JVM's "main" group during image
-     * generation and that we are not leaking any thread groups.
-     */
+    /** The {@link java.lang.Thread} for the {@link IsolateThread}. */
+    static final FastThreadLocalObject<Thread> currentThread = FastThreadLocalFactory.createObject(Thread.class);
 
     /**
-     * The single thread object we use when building a VM without
-     * {@link SubstrateOptions#MultiThreaded thread support}.
+     * The number of running non-daemon threads. The initial value accounts for the main thread,
+     * which is implicitly running when the isolate is created.
      */
-    final Thread singleThread = new Thread("SVM");
+    final AtomicInteger nonDaemonThreads = new AtomicInteger(1);
 
     /** For Thread.nextThreadID(). */
     final AtomicLong threadSeqNumber = new AtomicLong();
-
     /** For Thread.nextThreadNum(). */
     final AtomicInteger threadInitNumber = new AtomicInteger();
 
+    /** The default group for new Threads that are attached without an explicit group. */
+    final ThreadGroup mainGroup;
+    /** The root group for all threads. */
+    final ThreadGroup systemGroup;
+    /**
+     * The preallocated thread object for the main thread, to avoid expensive allocations and
+     * ThreadGroup operations immediately at startup.
+     *
+     * We cannot put the main thread in a "running" state during image generation, but we still want
+     * it in "running" state at run time without running state transition code. Therefore, we use
+     * field value recomputations to put the thread in "running" state as part of the image heap
+     * writing.
+     */
+    final Thread mainThread;
+    final Thread[] mainGroupThreadsArray;
+
     /* Accessor functions for private fields of java.lang.Thread that we alias or inject. */
+
+    @Platforms(Platform.HOSTED_ONLY.class)
+    protected JavaThreads() {
+        /*
+         * By using the current thread group as the SVM root group we are preserving runtime
+         * environment of a generated image, which is necessary as the current thread group is
+         * available to static initializers and we are allowing ThreadGroups and unstarted Threads
+         * in the image heap.
+         */
+        mainGroup = Thread.currentThread().getThreadGroup();
+        VMError.guarantee(mainGroup.getName().equals("main"), "Wrong ThreadGroup for main");
+        systemGroup = mainGroup.getParent();
+        VMError.guarantee(systemGroup.getParent() == null && systemGroup.getName().equals("system"), "Wrong ThreadGroup for system");
+
+        mainThread = new Thread(mainGroup, "main");
+        mainThread.setDaemon(false);
+
+        /* The ThreadGroup uses 4 as the initial array length. */
+        mainGroupThreadsArray = new Thread[4];
+        mainGroupThreadsArray[0] = mainThread;
+    }
 
     @SuppressFBWarnings(value = "BC", justification = "Cast for @TargetClass")
     static Thread fromTarget(Target_java_lang_Thread thread) {
@@ -165,41 +186,8 @@ public abstract class JavaThreads {
 
     /* End of accessor functions. */
 
-    public Thread fromVMThread(IsolateThread vmThread) {
+    public static Thread fromVMThread(IsolateThread vmThread) {
         return currentThread.get(vmThread);
-    }
-
-    @Uninterruptible(reason = "Called from uninterruptible codet st.", calleeMustBe = false)
-    public static Thread getCurrentThread() {
-        return currentThread.get();
-    }
-
-    public Thread createIfNotExisting(IsolateThread vmThread) {
-        if (!MultiThreaded.getValue()) {
-            return singleThread;
-        }
-
-        Thread result = currentThread.get(vmThread);
-        if (result == null) {
-            result = createThread(vmThread);
-        }
-        return result;
-    }
-
-    public long getTotalThreads() {
-        return totalThreads.get();
-    }
-
-    public int getPeakThreads() {
-        return peakThreads.get();
-    }
-
-    public int getLiveThreads() {
-        return liveThreads.get();
-    }
-
-    public int getDaemonThreads() {
-        return daemonThreads.get();
     }
 
     @SuppressFBWarnings(value = "BC", justification = "Cast for @TargetClass")
@@ -213,51 +201,77 @@ public abstract class JavaThreads {
      */
     @SuppressWarnings("try")
     public void joinAllNonDaemons() {
-        int expected = 0;
-        if (currentThread.get() != null && !currentThread.get().isDaemon()) {
-            expected = 1;
+        int expected = Thread.currentThread().isDaemon() ? 0 : 1;
+
+        while (nonDaemonThreads.get() > expected) {
+            awaitThreadListChange();
         }
-        try (VMMutex ignored = VMThreads.THREAD_MUTEX.lock()) {
-            while (nonDaemonThreads.get() > expected) {
-                VMThreads.THREAD_LIST_CONDITION.block();
-            }
-        }
-    }
-
-    @NeverInline("Truffle compilation must not inline this method")
-    private static Thread createThread(IsolateThread isolateThread) {
-        /*
-         * Either the main thread, or VMThread was started a different way. Create a new Thread
-         * object and remember it for future calls, so that currentThread always returns the same
-         * object.
-         */
-
-        // The thread has not been launched as java.lang.Thread, so we consider it a daemon thread.
-        boolean isDaemon = true;
-
-        final Thread thread = JavaThreads.fromTarget(new Target_java_lang_Thread(null, null, isDaemon));
-        if (!assignJavaThread(isolateThread, thread, true)) {
-            return currentThread.get(isolateThread);
-        }
-        return thread;
-    }
-
-    /** Signal that a thread was started by calling Thread.start(). */
-    public void signalNonDaemonThreadStart() {
-        nonDaemonThreads.incrementAndGet();
     }
 
     /**
-     * Create a {@link Thread} object for the current thread. The current thread must have already
-     * been attached {@link VMThreads} as an {@link IsolateThread}.
+     * We must not lock the {@link VMThreads#THREAD_MUTEX} while in Java mode, otherwise we can
+     * deadlock when a safepoint is requested concurrently. Therefore, we transition the thread
+     * manually from Java into native mode. This makes the lock / block / unlock atomic with respect
+     * to safepoints.
+     *
+     * The garbage collector will not see (or update) any object references in the stack called by
+     * this method while the thread is in native mode. Therefore, the uninterruptible code must only
+     * reference objects that are in the image heap.
+     */
+    @NeverInline("Must not be inlined in a caller that has an exception handler: We only support InvokeNode and not InvokeWithExceptionNode between a CFunctionPrologueNode and CFunctionEpilogueNode")
+    private static void awaitThreadListChange() {
+        CFunctionPrologueNode.cFunctionPrologue();
+        awaitThreadListChangeInNative();
+        CFunctionEpilogueNode.cFunctionEpilogue();
+    }
+
+    @Uninterruptible(reason = "Must not stop while in native.")
+    @NeverInline("Provide a return address for the Java frame anchor.")
+    private static void awaitThreadListChangeInNative() {
+        VMThreads.THREAD_MUTEX.lockNoTransition();
+        VMThreads.THREAD_LIST_CONDITION.blockNoTransition();
+        VMThreads.THREAD_MUTEX.unlock();
+    }
+
+    /**
+     * Returns true if the {@link Thread} object for the current thread exists. This method only
+     * returns false in the very early initialization stages of a newly attached thread.
+     */
+    public static boolean currentJavaThreadInitialized() {
+        return currentThread.get() != null;
+    }
+
+    /**
+     * Ensures that a {@link Thread} object for the current thread exists. If a {@link Thread}
+     * already exists, this method is a no-op. The current thread must have already been attached.
+     *
+     * @return true if a new thread was created; false if a {@link Thread} object had already been
+     *         assigned.
+     */
+    public static boolean ensureJavaThread() {
+        /*
+         * The thread was manually attached and started as a java.lang.Thread, so we consider it a
+         * daemon thread.
+         */
+        return ensureJavaThread(null, null, true);
+    }
+
+    /**
+     * Ensures that a {@link Thread} object for the current thread exists. If a {@link Thread}
+     * already exists, this method is a no-op. The current thread must have already been attached.
      *
      * @param name the thread's name, or {@code null} for a default name.
      * @param group the thread group, or {@code null} for the default thread group.
-     * @return true if successful; false if a {@link Thread} object has already been assigned.
+     * @param asDaemon the daemon status of the new thread.
+     * @return true if a new thread was created; false if a {@link Thread} object had already been
+     *         assigned.
      */
-    public boolean assignJavaThread(String name, ThreadGroup group, boolean asDaemon) {
-        final Thread thread = JavaThreads.fromTarget(new Target_java_lang_Thread(name, group, asDaemon));
-        return assignJavaThread(CurrentIsolate.getCurrentThread(), thread, true);
+    public static boolean ensureJavaThread(String name, ThreadGroup group, boolean asDaemon) {
+        if (currentThread.get() == null) {
+            assignJavaThread(JavaThreads.fromTarget(new Target_java_lang_Thread(name, group, asDaemon)), true);
+            return true;
+        }
+        return false;
     }
 
     /**
@@ -267,29 +281,28 @@ public abstract class JavaThreads {
      * The manuallyStarted parameter is true if this thread was started directly by calling
      * assignJavaThread(Thread). It is false when the thread is started using
      * PosixJavaThreads.pthreadStartRoutine, e.g., called from PosixJavaThreads.start0.
-     *
-     * @return true if successful; false if a {@link Thread} object has already been assigned.
      */
-    public boolean assignJavaThread(Thread thread, boolean manuallyStarted) {
-        return assignJavaThread(CurrentIsolate.getCurrentThread(), thread, manuallyStarted);
-    }
+    public static void assignJavaThread(Thread thread, boolean manuallyStarted) {
+        VMError.guarantee(currentThread.get() == null, "overwriting existing java.lang.Thread");
+        currentThread.set(thread);
 
-    private static boolean assignJavaThread(IsolateThread isolateThread, Thread thread, boolean manuallyStarted) {
-        if (!currentThread.compareAndSet(isolateThread, null, thread)) {
-            return false;
-        }
         /* If the thread was manually started, finish initializing it. */
         if (manuallyStarted) {
             setThreadStatus(thread, ThreadStatus.RUNNABLE);
             final ThreadGroup group = thread.getThreadGroup();
             toTarget(group).addUnstarted();
             toTarget(group).add(thread);
+
+            if (!thread.isDaemon()) {
+                singleton().nonDaemonThreads.incrementAndGet();
+            }
         }
-        if (!thread.isDaemon() && manuallyStarted) {
-            assert isolateThread.equal(CurrentIsolate.getCurrentThread()) : "Non-daemon threads must call this method themselves, or they can detach incompletely in a race";
-            singleton().nonDaemonThreads.incrementAndGet();
-        }
-        return true;
+    }
+
+    @Uninterruptible(reason = "Called during isolate initialization")
+    public void initializeIsolate() {
+        /* The thread that creates the isolate is considered the "main" thread. */
+        currentThread.set(mainThread);
     }
 
     /**
@@ -309,8 +322,7 @@ public abstract class JavaThreads {
     }
 
     /**
-     * Detach the provided Java thread. Note that the Java thread might not have been created, in
-     * which case it is null and we have nothing to do.
+     * Detach the provided Java thread.
      */
     public static void detachThread(IsolateThread vmThread) {
         /*
@@ -318,15 +330,12 @@ public abstract class JavaThreads {
          * Uninterruptible.
          */
         VMThreads.THREAD_MUTEX.assertIsLocked("Should hold the VMThreads mutex.");
-        // Disable thread-local allocation for this thread.
+
         Heap.getHeap().disableAllocation(vmThread);
 
         // Detach ParkEvents for this thread, if any.
 
         final Thread thread = currentThread.get(vmThread);
-        if (thread == null) {
-            return;
-        }
 
         ParkEvent.detach(getUnsafeParkEvent(thread));
         ParkEvent.detach(getSleepParkEvent(thread));
@@ -438,12 +447,12 @@ public abstract class JavaThreads {
         void setIsolate(Isolate vm);
     }
 
-    protected static void prepareStartData(Thread thread, ThreadStartData startData) {
+    protected void prepareStartData(Thread thread, ThreadStartData startData) {
         startData.setIsolate(CurrentIsolate.getIsolate());
         startData.setThreadHandle(ObjectHandles.getGlobal().create(thread));
 
         if (!thread.isDaemon()) {
-            JavaThreads.singleton().signalNonDaemonThreadStart();
+            nonDaemonThreads.incrementAndGet();
         }
     }
 
@@ -458,8 +467,7 @@ public abstract class JavaThreads {
     protected static void threadStartRoutine(ObjectHandle threadHandle) {
         Thread thread = ObjectHandles.getGlobal().get(threadHandle);
 
-        boolean status = singleton().assignJavaThread(thread, false);
-        VMError.guarantee(status, "currentThread already initialized");
+        assignJavaThread(thread, false);
 
         /*
          * Destroy the handle only after setting currentThread, since the lock used by destroy
@@ -467,7 +475,8 @@ public abstract class JavaThreads {
          */
         ObjectHandles.getGlobal().destroy(threadHandle);
 
-        singleton().noteThreadStart(thread);
+        singleton().beforeThreadRun(thread);
+        ManagementSupport.noteThreadStart(thread);
 
         try {
             thread.run();
@@ -475,28 +484,12 @@ public abstract class JavaThreads {
             dispatchUncaughtException(thread, ex);
         } finally {
             exit(thread);
-            singleton().noteThreadFinish(thread);
+            ManagementSupport.noteThreadFinish(thread);
         }
     }
 
-    protected void noteThreadStart(Thread thread) {
-        totalThreads.incrementAndGet();
-        int lThreads = liveThreads.incrementAndGet();
-        peakThreads.set(Integer.max(peakThreads.get(), lThreads));
-        if (thread.isDaemon()) {
-            daemonThreads.incrementAndGet();
-        } else {
-            nonDaemonThreads.incrementAndGet();
-        }
-    }
-
-    protected void noteThreadFinish(Thread thread) {
-        liveThreads.decrementAndGet();
-        if (thread.isDaemon()) {
-            daemonThreads.decrementAndGet();
-        } else {
-            nonDaemonThreads.decrementAndGet();
-        }
+    /** Hook for subclasses. */
+    protected void beforeThreadRun(@SuppressWarnings("unused") Thread thread) {
     }
 
     /**
@@ -526,7 +519,7 @@ public abstract class JavaThreads {
         StackTraceElement[][] result = new StackTraceElement[1][0];
         VMOperation.enqueueBlockingSafepoint("getStackTrace", () -> {
             for (IsolateThread cur = VMThreads.firstThread(); cur.isNonNull(); cur = VMThreads.nextThread(cur)) {
-                if (JavaThreads.singleton().fromVMThread(cur) == thread) {
+                if (JavaThreads.fromVMThread(cur) == thread) {
                     result[0] = getStackTrace(cur);
                     break;
                 }
@@ -539,7 +532,7 @@ public abstract class JavaThreads {
         Map<Thread, StackTraceElement[]> result = new HashMap<>();
         VMOperation.enqueueBlockingSafepoint("getAllStackTraces", () -> {
             for (IsolateThread cur = VMThreads.firstThread(); cur.isNonNull(); cur = VMThreads.nextThread(cur)) {
-                result.put(JavaThreads.singleton().createIfNotExisting(cur), getStackTrace(cur));
+                result.put(JavaThreads.fromVMThread(cur), getStackTrace(cur));
             }
         });
         return result;
@@ -583,42 +576,185 @@ public abstract class JavaThreads {
         }
     }
 
-    /** Initialize thread ID and autonumber sequences in the image heap. */
-    @AutomaticFeature
-    private static class SequenceInitializingFeature implements Feature {
-
-        private final CopyOnWriteArraySet<Thread> collectedThreads = new CopyOnWriteArraySet<>();
-
-        private static final Field threadSeqNumber = ReflectionUtil.lookupField(Thread.class, "threadSeqNumber");
-        private static final Field threadInitNumber = ReflectionUtil.lookupField(Thread.class, "threadInitNumber");
-
-        @Override
-        public void duringSetup(DuringSetupAccess access) {
-            access.registerObjectReplacer(this::collectThreads);
+    /**
+     * Thread instance initialization.
+     *
+     * This method is a copy of the implementation of the JDK 8 method
+     *
+     * <code>Thread.init(ThreadGroup g, Runnable target, String name, long stackSize)</code>
+     *
+     * and the JDK 11 constructor
+     *
+     * <code>Thread(ThreadGroup g, Runnable target, String name, long stackSize,
+     * AccessControlContext acc, boolean inheritThreadLocals)</code>
+     *
+     * with these unsupported features removed:
+     * <ul>
+     * <li>No security manager: using the ContextClassLoader of the parent.</li>
+     * <li>Not implemented: inheritedAccessControlContext.</li>
+     * <li>Not implemented: inheritableThreadLocals.</li>
+     * </ul>
+     */
+    static void initializeNewThread(
+                    Target_java_lang_Thread tjlt,
+                    ThreadGroup groupArg,
+                    Runnable target,
+                    String name,
+                    long stackSize) {
+        if (name == null) {
+            throw new NullPointerException("name cannot be null");
         }
+        tjlt.name = name;
 
-        private Object collectThreads(Object original) {
-            if (original instanceof Thread) {
-                collectedThreads.add((Thread) original);
+        final Thread parent = Target_java_lang_Thread.currentThread();
+        final ThreadGroup group = ((groupArg != null) ? groupArg : parent.getThreadGroup());
+
+        JavaThreads.toTarget(group).addUnstarted();
+
+        tjlt.group = group;
+        tjlt.daemon = parent.isDaemon();
+        tjlt.contextClassLoader = parent.getContextClassLoader();
+        tjlt.priority = parent.getPriority();
+        tjlt.target = target;
+        tjlt.setPriority(tjlt.priority);
+
+        /* Stash the specified stack size in case the VM cares */
+        tjlt.stackSize = stackSize;
+
+        /* Set thread ID */
+        tjlt.tid = Target_java_lang_Thread.nextThreadID();
+    }
+}
+
+@AutomaticFeature
+@Platforms(Platform.HOSTED_ONLY.class)
+class JavaThreadsFeature implements Feature {
+
+    static JavaThreadsFeature singleton() {
+        return ImageSingletons.lookup(JavaThreadsFeature.class);
+    }
+
+    /**
+     * All {@link Thread} objects that are reachable in the image heap. Only unstarted threads,
+     * i.e., threads in state NEW, are allowed.
+     */
+    final Map<Thread, Boolean> reachableThreads = Collections.synchronizedMap(new IdentityHashMap<>());
+    /**
+     * All {@link ThreadGroup} objects that are reachable in the image heap. The value of the map is
+     * a helper object storing information that is used by the field value recomputations.
+     */
+    final Map<ThreadGroup, ReachableThreadGroup> reachableThreadGroups = Collections.synchronizedMap(new IdentityHashMap<>());
+    /** No new threads and thread groups can be discovered after the static analysis. */
+    private boolean sealed;
+
+    @Override
+    public void duringSetup(DuringSetupAccess access) {
+        access.registerObjectReplacer(this::collectReachableObjects);
+    }
+
+    private Object collectReachableObjects(Object original) {
+        if (original instanceof Thread) {
+            Thread thread = (Thread) original;
+            if (thread.getState() == Thread.State.NEW) {
+                registerReachableObject(reachableThreads, thread, Boolean.TRUE);
+            } else {
+                /*
+                 * Started Threads must not be in the image heap. The error is reported in
+                 * DisallowedImageHeapObjectFeature (which is in a hosted project).
+                 */
             }
-            return original;
-        }
 
-        @Override
-        public void beforeCompilation(BeforeCompilationAccess access) {
-            /*
-             * If there are unstarted threads in the image heap, initialize image version of both
-             * sequences with current values. Otherwise, they'll be restarted from 0.
-             */
-            if (!collectedThreads.isEmpty()) {
-                try {
-                    JavaThreads.singleton().threadSeqNumber.set(threadSeqNumber.getLong(null));
-                    JavaThreads.singleton().threadInitNumber.set(threadInitNumber.getInt(null));
-                } catch (ReflectiveOperationException t) {
-                    throw VMError.shouldNotReachHere(t);
+        } else if (original instanceof ThreadGroup) {
+            ThreadGroup group = (ThreadGroup) original;
+            if (registerReachableObject(reachableThreadGroups, group, new ReachableThreadGroup())) {
+                ThreadGroup parent = group.getParent();
+                if (parent != null) {
+                    /* Ensure ReachableThreadGroup object for parent is created. */
+                    collectReachableObjects(parent);
+                    /*
+                     * Build the tree of thread groups that is then written out in the image heap.
+                     * This tree is a subtree of all thread groups in the image generator,
+                     * containing only the thread groups that were found as reachable at run time.
+                     */
+                    reachableThreadGroups.get(parent).add(group);
+                } else {
+                    assert group == JavaThreads.singleton().systemGroup;
                 }
             }
         }
+        return original;
+    }
+
+    private <K, V> boolean registerReachableObject(Map<K, V> map, K object, V value) {
+        boolean result = map.putIfAbsent(object, value) == null;
+        if (sealed && result) {
+            throw UserError.abort(object.getClass().getSimpleName() + " is reachable in the image heap but was not seen during the points-to analysis: " + object);
+        }
+        return result;
+    }
+
+    @Override
+    public void afterAnalysis(AfterAnalysisAccess access) {
+        /*
+         * No more changes to the reachable threads and thread groups are allowed after the
+         * analysis.
+         */
+        sealed = true;
+
+        /*
+         * Compute the maximum thread id and autonumber sequence from all reachable threads, and use
+         * these numbers as the initial values at run time. This still means that numbers are not
+         * dense when threads other than the main thread are reachable. However, changing the thread
+         * id or autonumber of a thread that the user created during image generation would be an
+         * intrusion with unpredictable side effects.
+         */
+        long maxThreadId = 0;
+        int maxAutonumber = -1;
+        for (Thread thread : reachableThreads.keySet()) {
+            maxThreadId = Math.max(maxThreadId, threadId(thread));
+            maxAutonumber = Math.max(maxAutonumber, autonumberOf(thread));
+        }
+        assert maxThreadId >= 1 : "main thread with id 1 must always be found";
+        JavaThreads.singleton().threadSeqNumber.set(maxThreadId);
+        JavaThreads.singleton().threadInitNumber.set(maxAutonumber);
+    }
+
+    static long threadId(Thread thread) {
+        return thread == JavaThreads.singleton().mainThread ? 1 : thread.getId();
+    }
+
+    private static final String AUTONUMBER_PREFIX = "Thread-";
+
+    static int autonumberOf(Thread thread) {
+        if (thread.getName().startsWith(AUTONUMBER_PREFIX)) {
+            try {
+                return Integer.parseInt(thread.getName().substring(AUTONUMBER_PREFIX.length()));
+            } catch (NumberFormatException ex) {
+                /*
+                 * Ignore. If the suffix is not a valid integer number, then the thread name is not
+                 * an autonumber name.
+                 */
+            }
+        }
+        return -1;
+    }
+}
+
+@Platforms(Platform.HOSTED_ONLY.class)
+class ReachableThreadGroup {
+    int ngroups;
+    ThreadGroup[] groups;
+
+    /* Copy of ThreadGroup.add(). */
+    // Checkstyle: allow synchronization
+    synchronized void add(ThreadGroup g) {
+        if (groups == null) {
+            groups = new ThreadGroup[4];
+        } else if (ngroups == groups.length) {
+            groups = Arrays.copyOf(groups, ngroups * 2);
+        }
+        groups[ngroups] = g;
+        ngroups++;
     }
 }
 
@@ -670,17 +806,18 @@ final class Target_java_lang_Thread {
     long stackSize;
 
     /* Thread ID */
-    @Alias//
+    @Alias @RecomputeFieldValue(kind = RecomputeFieldValue.Kind.Custom, declClass = ThreadIdRecomputation.class) //
     long tid;
 
-    /** We have our own atomic sequence numbers in {@link JavaThreads}. */
+    /** We have our own atomic number in {@link JavaThreads#threadSeqNumber}. */
     @Delete//
     static long threadSeqNumber;
+    /** We have our own atomic number in {@link JavaThreads#threadInitNumber}. */
     @Delete//
     static int threadInitNumber;
 
-    @Alias//
-    public volatile int threadStatus;
+    @Alias @RecomputeFieldValue(kind = RecomputeFieldValue.Kind.Custom, declClass = ThreadStatusRecomputation.class) //
+    int threadStatus;
 
     @Alias//
     /* private */ /* final */ Object blockerLock;
@@ -707,7 +844,7 @@ final class Target_java_lang_Thread {
     /** Replace "synchronized" modifier with delegation to an atomic increment. */
     @Substitute
     private static int nextThreadNum() {
-        return JavaThreads.singleton().threadInitNumber.getAndIncrement();
+        return JavaThreads.singleton().threadInitNumber.incrementAndGet();
     }
 
     @Alias
@@ -725,7 +862,7 @@ final class Target_java_lang_Thread {
         tid = nextThreadID();
         threadStatus = ThreadStatus.RUNNABLE;
         name = (withName != null) ? withName : ("System-" + nextThreadNum());
-        group = (withGroup != null) ? withGroup : JavaThreads.singleton().rootGroup;
+        group = (withGroup != null) ? withGroup : JavaThreads.singleton().mainGroup;
         priority = Thread.NORM_PRIORITY;
         contextClassLoader = SubstrateUtil.cast(ImageSingletons.lookup(JavaLangSubstitutions.ClassLoaderSupport.class).systemClassLoader, ClassLoader.class);
         blockerLock = new Object();
@@ -734,11 +871,9 @@ final class Target_java_lang_Thread {
 
     @Substitute
     static Thread currentThread() {
-        if (!SubstrateOptions.MultiThreaded.getValue()) {
-            return JavaThreads.singleton().singleThread;
-        }
-        IsolateThread vmThread = CurrentIsolate.getCurrentThread();
-        return JavaThreads.singleton().createIfNotExisting(vmThread);
+        Thread result = JavaThreads.currentThread.get();
+        assert result != null : "java.lang.Thread not assigned when thread was attached to the VM";
+        return result;
     }
 
     @Substitute
@@ -748,7 +883,7 @@ final class Target_java_lang_Thread {
         this.unsafeParkEvent = new AtomicReference<>();
         this.sleepParkEvent = new AtomicReference<>();
         /* Initialize the rest of the Thread object. */
-        Util_java_lang_Thread.initialize(this, groupArg, targetArg, nameArg, stackSizeArg);
+        JavaThreads.initializeNewThread(this, groupArg, targetArg, nameArg, stackSizeArg);
     }
 
     @Substitute
@@ -767,7 +902,7 @@ final class Target_java_lang_Thread {
         this.unsafeParkEvent = new AtomicReference<>();
         this.sleepParkEvent = new AtomicReference<>();
         /* Initialize the rest of the Thread object, ignoring `acc` and `inheritThreadLocals`. */
-        Util_java_lang_Thread.initialize(this, g, target, name, stackSize);
+        JavaThreads.initializeNewThread(this, g, target, name, stackSize);
     }
 
     @Substitute
@@ -812,34 +947,8 @@ final class Target_java_lang_Thread {
     }
 
     @Substitute
-    private long getId() {
-        if (!SubstrateOptions.MultiThreaded.getValue()) {
-            return 1;
-        }
-
-        return tid;
-    }
-
-    @Substitute
-    private Thread.State getState() {
-        if (!SubstrateOptions.MultiThreaded.getValue()) {
-            if (JavaThreads.fromTarget(this) == JavaThreads.singleton().singleThread) {
-                return Thread.State.RUNNABLE;
-            } else {
-                return Thread.State.NEW;
-            }
-        }
-
-        return Target_jdk_internal_misc_VM.toThreadState(threadStatus);
-    }
-
-    @Substitute
     @SuppressWarnings({"static-method"})
     protected void setNativeName(String name) {
-        if (!SubstrateOptions.MultiThreaded.getValue()) {
-            return;
-        }
-
         JavaThreads.singleton().setNativeName(JavaThreads.fromTarget(this), name);
     }
 
@@ -849,10 +958,6 @@ final class Target_java_lang_Thread {
 
     @Substitute
     private boolean isInterrupted(boolean clearInterrupted) {
-        if (!SubstrateOptions.MultiThreaded.getValue()) {
-            return false;
-        }
-
         final boolean result = interrupted;
         if (clearInterrupted) {
             interrupted = false;
@@ -882,10 +987,6 @@ final class Target_java_lang_Thread {
 
     @Substitute
     private boolean isAlive() {
-        if (!SubstrateOptions.MultiThreaded.getValue()) {
-            return JavaThreads.fromTarget(this) == JavaThreads.singleton().singleThread;
-        }
-
         // There are fewer cases that are not-alive.
         return !(threadStatus == ThreadStatus.NEW || threadStatus == ThreadStatus.TERMINATED);
     }
@@ -940,66 +1041,20 @@ final class Target_java_lang_Thread {
     }
 }
 
-final class Util_java_lang_Thread {
-
-    /**
-     * Thread instance initialization.
-     *
-     * This method is a copy of the implementation of the JDK 8 method
-     *
-     * <code>Thread.init(ThreadGroup g, Runnable target, String name, long stackSize)</code>
-     *
-     * and the JDK 11 constructor
-     *
-     * <code>Thread(ThreadGroup g, Runnable target, String name, long stackSize,
-     * AccessControlContext acc, boolean inheritThreadLocals)</code>
-     *
-     * with these unsupported features removed:
-     * <ul>
-     * <li>No security manager: using the ContextClassLoader of the parent.</li>
-     * <li>Not implemented: inheritedAccessControlContext.</li>
-     * <li>Not implemented: inheritableThreadLocals.</li>
-     * </ul>
-     */
-    static void initialize(
-                    Target_java_lang_Thread tjlt,
-                    ThreadGroup groupArg,
-                    Runnable target,
-                    String name,
-                    long stackSize) {
-        if (name == null) {
-            throw new NullPointerException("name cannot be null");
-        }
-        tjlt.name = name;
-
-        final Thread parent = Target_java_lang_Thread.currentThread();
-        final ThreadGroup group = ((groupArg != null) ? groupArg : parent.getThreadGroup());
-
-        JavaThreads.toTarget(group).addUnstarted();
-
-        tjlt.group = group;
-        tjlt.daemon = parent.isDaemon();
-        tjlt.contextClassLoader = parent.getContextClassLoader();
-        tjlt.priority = parent.getPriority();
-        tjlt.target = target;
-        tjlt.setPriority(tjlt.priority);
-
-        /* Stash the specified stack size in case the VM cares */
-        tjlt.stackSize = stackSize;
-
-        /* Set thread ID */
-        tjlt.tid = Target_java_lang_Thread.nextThreadID();
-    }
-}
-
 @TargetClass(ThreadGroup.class)
 final class Target_java_lang_ThreadGroup {
 
-    @Alias @RecomputeFieldValue(kind = RecomputeFieldValue.Kind.Reset)//
+    @Alias @RecomputeFieldValue(kind = RecomputeFieldValue.Kind.Custom, declClass = ThreadGroupNUnstartedThreadsRecomputation.class)//
+    private int nUnstartedThreads;
+    @Alias @RecomputeFieldValue(kind = RecomputeFieldValue.Kind.Custom, declClass = ThreadGroupNThreadsRecomputation.class)//
     private int nthreads;
-
-    @Alias @RecomputeFieldValue(kind = RecomputeFieldValue.Kind.Reset)//
+    @Alias @RecomputeFieldValue(kind = RecomputeFieldValue.Kind.Custom, declClass = ThreadGroupThreadsRecomputation.class)//
     private Thread[] threads;
+
+    @Alias @RecomputeFieldValue(kind = RecomputeFieldValue.Kind.Custom, declClass = ThreadGroupNGroupsRecomputation.class)//
+    private int ngroups;
+    @Alias @RecomputeFieldValue(kind = RecomputeFieldValue.Kind.Custom, declClass = ThreadGroupGroupsRecomputation.class)//
+    private ThreadGroup[] groups;
 
     @Alias
     native void addUnstarted();
@@ -1008,12 +1063,99 @@ final class Target_java_lang_ThreadGroup {
     native void add(Thread t);
 }
 
-/** Methods in support of the injected field Target_java_lang_Thread.unsafeParkEvent. */
-final class UnsafeParkSupport {
-
-    /** All static methods: no instances. */
-    private UnsafeParkSupport() {
+@Platforms(Platform.HOSTED_ONLY.class)
+class ThreadIdRecomputation implements RecomputeFieldValue.CustomFieldValueComputer {
+    @Override
+    public Object compute(MetaAccessProvider metaAccess, ResolvedJavaField original, ResolvedJavaField annotated, Object receiver) {
+        Thread thread = (Thread) receiver;
+        return JavaThreadsFeature.threadId(thread);
     }
+}
+
+@Platforms(Platform.HOSTED_ONLY.class)
+class ThreadStatusRecomputation implements RecomputeFieldValue.CustomFieldValueComputer {
+    @Override
+    public Object compute(MetaAccessProvider metaAccess, ResolvedJavaField original, ResolvedJavaField annotated, Object receiver) {
+        Thread thread = (Thread) receiver;
+        assert thread.getState() == Thread.State.NEW : "All threads are in NEW state during image generation";
+        if (thread == JavaThreads.singleton().mainThread) {
+            /* The main thread is recomputed as running. */
+            return ThreadStatus.RUNNABLE;
+        } else {
+            /* All other threads remain unstarted. */
+            return ThreadStatus.NEW;
+        }
+    }
+}
+
+@Platforms(Platform.HOSTED_ONLY.class)
+class ThreadGroupNUnstartedThreadsRecomputation implements RecomputeFieldValue.CustomFieldValueComputer {
+    @Override
+    public Object compute(MetaAccessProvider metaAccess, ResolvedJavaField original, ResolvedJavaField annotated, Object receiver) {
+        ThreadGroup group = (ThreadGroup) receiver;
+        int result = 0;
+        for (Thread thread : JavaThreadsFeature.singleton().reachableThreads.keySet()) {
+            /* The main thread is recomputed as running and therefore not counted as unstarted. */
+            if (thread.getThreadGroup() == group && thread != JavaThreads.singleton().mainThread) {
+                result++;
+            }
+        }
+        return result;
+    }
+}
+
+@Platforms(Platform.HOSTED_ONLY.class)
+class ThreadGroupNThreadsRecomputation implements RecomputeFieldValue.CustomFieldValueComputer {
+    @Override
+    public Object compute(MetaAccessProvider metaAccess, ResolvedJavaField original, ResolvedJavaField annotated, Object receiver) {
+        ThreadGroup group = (ThreadGroup) receiver;
+
+        if (group == JavaThreads.singleton().mainGroup) {
+            /* The main group contains the main thread, which we recompute as running. */
+            return 1;
+        } else {
+            /* No other thread group has a thread running at startup. */
+            return 0;
+        }
+    }
+}
+
+@Platforms(Platform.HOSTED_ONLY.class)
+class ThreadGroupThreadsRecomputation implements RecomputeFieldValue.CustomFieldValueComputer {
+    @Override
+    public Object compute(MetaAccessProvider metaAccess, ResolvedJavaField original, ResolvedJavaField annotated, Object receiver) {
+        ThreadGroup group = (ThreadGroup) receiver;
+
+        if (group == JavaThreads.singleton().mainGroup) {
+            /* The main group contains the main thread, which we recompute as running. */
+            return JavaThreads.singleton().mainGroupThreadsArray;
+        } else {
+            /* No other thread group has a thread running at startup. */
+            return null;
+        }
+    }
+}
+
+@Platforms(Platform.HOSTED_ONLY.class)
+class ThreadGroupNGroupsRecomputation implements RecomputeFieldValue.CustomFieldValueComputer {
+    @Override
+    public Object compute(MetaAccessProvider metaAccess, ResolvedJavaField original, ResolvedJavaField annotated, Object receiver) {
+        ThreadGroup group = (ThreadGroup) receiver;
+        return JavaThreadsFeature.singleton().reachableThreadGroups.get(group).ngroups;
+    }
+}
+
+@Platforms(Platform.HOSTED_ONLY.class)
+class ThreadGroupGroupsRecomputation implements RecomputeFieldValue.CustomFieldValueComputer {
+    @Override
+    public Object compute(MetaAccessProvider metaAccess, ResolvedJavaField original, ResolvedJavaField annotated, Object receiver) {
+        ThreadGroup group = (ThreadGroup) receiver;
+        return JavaThreadsFeature.singleton().reachableThreadGroups.get(group).groups;
+    }
+}
+
+/** Methods in support of the injected field {@link Target_java_lang_Thread#unsafeParkEvent}. */
+final class UnsafeParkSupport {
 
     /** Interruptibly park the current thread. */
     static WaitResult park() {
@@ -1072,12 +1214,8 @@ final class UnsafeParkSupport {
     }
 }
 
-/** Methods in support of the injected field Target_java_lang_Thread.sleepParkEvent. */
+/** Methods in support of the injected field {@link Target_java_lang_Thread#sleepParkEvent}. */
 final class SleepSupport {
-
-    /** All static methods: no instances. */
-    private SleepSupport() {
-    }
 
     /** Sleep for the given number of nanoseconds, dealing with early wakeups and interruptions. */
     protected static WaitResult sleep(long delayNanos) {
@@ -1125,7 +1263,7 @@ final class SleepSupport {
 
 @TargetClass(classNameProvider = Package_jdk_internal_misc.class, className = "Unsafe")
 @SuppressWarnings({"static-method"})
-final class Target_Unsafe_JavaThreads {
+final class Target_jdk_internal_misc_Unsafe_JavaThreads {
 
     /**
      * Block current thread, returning when a balancing <tt>unpark</tt> occurs, or a balancing
@@ -1190,7 +1328,7 @@ class ThreadListOperation extends VMOperation {
                         .flush();
         list.clear();
         for (IsolateThread isolateThread = VMThreads.firstThread(); VMThreads.isNonNullThread(isolateThread); isolateThread = VMThreads.nextThread(isolateThread)) {
-            final Thread thread = JavaThreads.singleton().fromVMThread(isolateThread);
+            final Thread thread = JavaThreads.fromVMThread(isolateThread);
             if (thread != null) {
                 list.add(thread);
             }
@@ -1224,7 +1362,7 @@ class VMThreadCounterOperation extends VMOperation {
             count += 1;
             if (printLaggards.get() && trace.isEnabled() && (isolateThread != getQueuingVMThread())) {
                 trace.string("  laggard isolateThread: ").hex(isolateThread);
-                final Thread thread = JavaThreads.singleton().fromVMThread(isolateThread);
+                final Thread thread = JavaThreads.fromVMThread(isolateThread);
                 if (thread != null) {
                     final String name = thread.getName();
                     final Thread.State status = thread.getState();

@@ -29,7 +29,6 @@ import java.util.Properties;
 
 import org.graalvm.nativeimage.ImageSingletons;
 
-import com.oracle.svm.core.annotate.Alias;
 import com.oracle.svm.core.annotate.Delete;
 import com.oracle.svm.core.annotate.Substitute;
 import com.oracle.svm.core.annotate.TargetClass;
@@ -50,7 +49,4 @@ public final class Target_jdk_internal_misc_VM {
     public static String getSavedProperty(String name) {
         return ImageSingletons.lookup(SystemPropertiesSupport.class).getSavedProperties().get(name);
     }
-
-    @Alias
-    public static native Thread.State toThreadState(int threadStatus);
 }

@@ -86,7 +86,7 @@ import com.oracle.svm.jni.functions.JNIFunctions.Support.JNIExceptionHandlerRetu
 import com.oracle.svm.jni.functions.JNIFunctions.Support.JNIExceptionHandlerReturnNullWord;
 import com.oracle.svm.jni.functions.JNIFunctions.Support.JNIExceptionHandlerReturnZero;
 import com.oracle.svm.jni.functions.JNIFunctions.Support.JNIExceptionHandlerVoid;
-import com.oracle.svm.jni.functions.JNIFunctions.Support.JNIJavaVMEnterAttachThreadPrologue;
+import com.oracle.svm.jni.functions.JNIFunctions.Support.JNIJavaVMEnterAttachThreadEnsureJavaThreadPrologue;
 import com.oracle.svm.jni.nativeapi.JNIEnvironment;
 import com.oracle.svm.jni.nativeapi.JNIErrors;
 import com.oracle.svm.jni.nativeapi.JNIFieldId;
@@ -957,9 +957,15 @@ final class JNIFunctions {
             }
         }
 
-        static class JNIJavaVMEnterAttachThreadPrologue {
+        static class JNIJavaVMEnterAttachThreadEnsureJavaThreadPrologue {
             static void enter(JNIJavaVM vm) {
-                CEntryPointActions.enterAttachThread(vm.getFunctions().getIsolate());
+                CEntryPointActions.enterAttachThread(vm.getFunctions().getIsolate(), true);
+            }
+        }
+
+        static class JNIJavaVMEnterAttachThreadManualJavaThreadPrologue {
+            static void enter(JNIJavaVM vm) {
+                CEntryPointActions.enterAttachThread(vm.getFunctions().getIsolate(), false);
             }
         }
 
@@ -1103,7 +1109,7 @@ final class JNIFunctions {
          * Stub for unimplemented JNI functionality with a JavaVM argument.
          */
         @CEntryPoint
-        @CEntryPointOptions(prologue = JNIJavaVMEnterAttachThreadPrologue.class, publishAs = Publish.NotPublished, include = CEntryPointOptions.NotIncludedAutomatically.class)
+        @CEntryPointOptions(prologue = JNIJavaVMEnterAttachThreadEnsureJavaThreadPrologue.class, publishAs = Publish.NotPublished, include = CEntryPointOptions.NotIncludedAutomatically.class)
         static void unimplemented(JNIJavaVM vm) {
             VMError.shouldNotReachHere("An unimplemented JNI function was called. Please refer to the stack trace.");
         }
