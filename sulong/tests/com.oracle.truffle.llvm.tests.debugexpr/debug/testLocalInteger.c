@@ -47,6 +47,7 @@ int main(int argc, char* argv[]) {
 	int rem = a % b;
 	int g = gcd(a, b);
 	__builtin_debugtrap();
+	printf("%i\n",g);
 	return 0;
 }
 

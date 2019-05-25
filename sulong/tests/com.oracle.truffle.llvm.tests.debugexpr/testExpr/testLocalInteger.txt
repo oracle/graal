@@ -29,9 +29,17 @@
 #
 
 BREAK 44 CONTINUE "main"
-    OPEN_SCOPE
-        MEMBER structured "struct <anonymous>" "uiBool"
-	    MEMBER int "unsigned int" "a" "54"
-            MEMBER int "unsigned int" "b" "2015"
-        END_MEMBERS
+	"4==3?1:0" "0"
+	"a" "54"
+	"b" "2016"
+	"a*b" "108864"
+	"a+b" "2070"
+	"a%b" "54"
+	"a-b" "-1962"
+	END
 
+BREAK 49 CONTINUE "main"
+	"a" "54"
+	"b" "2016"
+	"g" "18"
+	END
