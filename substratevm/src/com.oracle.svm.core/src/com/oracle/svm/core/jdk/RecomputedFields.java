@@ -424,7 +424,7 @@ final class Target_java_util_concurrent_ForkJoinPool {
         /** Ensure that the common pool variables are initialized. */
         protected static void ensureCommonPoolIsInitialized() {
             if (injectedCommon.get() == null) {
-                if (JavaVersionUtil.Java8OrEarlier) {
+                if (JavaVersionUtil.JAVA_SPEC <= 8) {
                     initializeCommonPool_JDK8OrEarlier();
                 } else {
                     initializeCommonPool_JDK11OrLater();

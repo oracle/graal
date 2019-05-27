@@ -67,6 +67,15 @@ bench-specjvm2008-Single-forks-batch4 : ${bench-specjvm2008-Single} ${weeklys-be
   }
 }
 
+bench-renaissance-hwloc-forks : ${bench-renaissance-hwloc} ${weeklys-bench-notifications} {
+  targets: [bench, weekly],
+  setup: ${fork-counts.setup} ${bench-renaissance-hwloc.setup}
+  timelimit: "06:30:00"
+  environment : ${bench-renaissance-hwloc.environment} ${fork-counts.environment} ${bench-perftag.environment} {
+    FORK_COUNT_FILE: "${FORK_COUNTS_DIRECTORY}/renaissance_forks.json"
+  }
+}
+
 bench-renaissance-legacy-hwloc-forks-batch0 : ${bench-renaissance-legacy-hwloc} ${weeklys-bench-notifications} {
   targets: [bench, weekly],
   setup: ${fork-counts.setup} ${bench-renaissance-legacy-hwloc.setup}
@@ -126,6 +135,7 @@ builds += [
   ${x52.default} ${bench-specjvm2008-Single-forks-batch2}            ${oraclejdk8} { name: "bench-forks-compiler-specjvm2008-Single-linux-x52-batch2" }
   ${x52.default} ${bench-specjvm2008-Single-forks-batch3}            ${oraclejdk8} { name: "bench-forks-compiler-specjvm2008-Single-linux-x52-batch3" }
   ${x52.default} ${bench-specjvm2008-Single-forks-batch4}            ${oraclejdk8} { name: "bench-forks-compiler-specjvm2008-Single-linux-x52-batch4" }
+  ${x52.tmpfs10g} ${bench-renaissance-hwloc-forks}                   ${oraclejdk8} { name: "bench-forks-compiler-renaissance-linux-x52" }
   ${x52.tmpfs10g} ${bench-renaissance-legacy-hwloc-forks-batch0}     ${oraclejdk8} { name: "bench-forks-compiler-renaissance-legacy-linux-x52-batch0" }
   ${x52.tmpfs10g} ${bench-renaissance-legacy-hwloc-forks-batch1}     ${oraclejdk8} { name: "bench-forks-compiler-renaissance-legacy-linux-x52-batch1" }
   ${x52.tmpfs10g} ${bench-renaissance-legacy-hwloc-forks-batch2}     ${oraclejdk8} { name: "bench-forks-compiler-renaissance-legacy-linux-x52-batch2" }
@@ -141,6 +151,7 @@ builds += [
   ${x52.default-libgraal} ${bench-specjvm2008-Single-forks-batch2}          ${oraclejdk8} { name: "bench-forks-compiler-specjvm2008-Single-libgraal-linux-x52-batch2" }
   ${x52.default-libgraal} ${bench-specjvm2008-Single-forks-batch3}          ${oraclejdk8} { name: "bench-forks-compiler-specjvm2008-Single-libgraal-linux-x52-batch3" }
   ${x52.default-libgraal} ${bench-specjvm2008-Single-forks-batch4}          ${oraclejdk8} { name: "bench-forks-compiler-specjvm2008-Single-libgraal-linux-x52-batch4" }
+  ${x52.tmpfs10g-libgraal} ${bench-renaissance-hwloc-forks}                 ${oraclejdk8} { name: "bench-forks-compiler-renaissance-libgraal-linux-x52" }
   ${x52.tmpfs10g-libgraal} ${bench-renaissance-legacy-hwloc-forks-batch0}   ${oraclejdk8} { name: "bench-forks-compiler-renaissance-legacy-libgraal-linux-x52-batch0" }
   ${x52.tmpfs10g-libgraal} ${bench-renaissance-legacy-hwloc-forks-batch1}   ${oraclejdk8} { name: "bench-forks-compiler-renaissance-legacy-libgraal-linux-x52-batch1" }
   ${x52.tmpfs10g-libgraal} ${bench-renaissance-legacy-hwloc-forks-batch2}   ${oraclejdk8} { name: "bench-forks-compiler-renaissance-legacy-libgraal-linux-x52-batch2" }

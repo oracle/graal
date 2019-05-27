@@ -138,6 +138,7 @@ class SulongBenchmarkSuite(VmBenchmarkSuite):
                 "metric.value": ("<score>", float),
                 "metric.score-function": "id",
                 "metric.better": "lower",
+                "metric.unit": "us",
                 "metric.iteration": ("<iteration>", int),
             }),
             SulongBenchmarkRule(
@@ -149,6 +150,7 @@ class SulongBenchmarkSuite(VmBenchmarkSuite):
                 "metric.value": ("<score>", float),
                 "metric.score-function": "id",
                 "metric.better": "lower",
+                "metric.unit": "us",
                 "metric.iteration": ("<iteration>", int),
             }),
         ]

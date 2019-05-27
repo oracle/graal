@@ -347,10 +347,14 @@ public final class CEntryPointSnippets extends SubstrateTemplates implements Sni
             setHeapBase(Isolates.getHeapBase(isolate));
         }
         if (MultiThreaded.getValue()) {
-            Safepoint.transitionNativeToJava();
             if (runtimeAssertionsEnabled()) {
+                /*
+                 * Verification must happen before the thread state transition. It locks the raw
+                 * THREAD_MUTEX, so the thread must still be invisible to the safepoint manager.
+                 */
                 runtimeCall(VERIFY_ISOLATE_THREAD, thread);
             }
+            Safepoint.transitionNativeToJava();
         }
 
         return CEntryPointErrors.NO_ERROR;

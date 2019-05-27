@@ -60,7 +60,7 @@ import org.graalvm.nativeimage.ProcessProperties;
 import org.graalvm.word.WordFactory;
 
 import com.oracle.svm.core.option.SubstrateOptionsParser;
-import com.oracle.svm.hosted.ImageClassLoader;
+import com.oracle.svm.core.util.ClasspathUtils;
 import com.oracle.svm.hosted.server.NativeImageBuildClient;
 import com.oracle.svm.hosted.server.NativeImageBuildServer;
 import com.oracle.svm.hosted.server.SubstrateServerMessage.ServerCommand;
@@ -152,7 +152,7 @@ final class NativeImageServer extends NativeImage {
         private LinkedHashSet<Path> readClasspath(String rawClasspathString) {
             LinkedHashSet<Path> result = new LinkedHashSet<>();
             for (String pathStr : rawClasspathString.split(" ")) {
-                result.add(ImageClassLoader.stringToClasspath(pathStr));
+                result.add(ClasspathUtils.stringToClasspath(pathStr));
             }
             return result;
         }
@@ -641,8 +641,8 @@ final class NativeImageServer extends NativeImage {
         sp.setProperty(Server.pKeyPort, String.valueOf(port));
         sp.setProperty(Server.pKeyPID, String.valueOf(pid));
         sp.setProperty(Server.pKeyJavaArgs, String.join(" ", javaArgs));
-        sp.setProperty(Server.pKeyBCP, bootClasspath.stream().map(ImageClassLoader::classpathToString).collect(Collectors.joining(" ")));
-        sp.setProperty(Server.pKeyCP, classpath.stream().map(ImageClassLoader::classpathToString).collect(Collectors.joining(" ")));
+        sp.setProperty(Server.pKeyBCP, bootClasspath.stream().map(ClasspathUtils::classpathToString).collect(Collectors.joining(" ")));
+        sp.setProperty(Server.pKeyCP, classpath.stream().map(ClasspathUtils::classpathToString).collect(Collectors.joining(" ")));
         Path serverPropertiesPath = serverDir.resolve(Server.serverProperties);
         try (OutputStream os = Files.newOutputStream(serverPropertiesPath)) {
             sp.store(os, "");

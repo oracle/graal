@@ -25,7 +25,6 @@
 package org.graalvm.compiler.hotspot.amd64;
 
 import static org.graalvm.compiler.hotspot.HotSpotBackend.Options.GraalArithmeticStubs;
-import static org.graalvm.compiler.serviceprovider.JavaVersionUtil.Java8OrEarlier;
 
 import org.graalvm.compiler.api.replacements.Snippet;
 import org.graalvm.compiler.core.common.spi.ForeignCallsProvider;
@@ -46,6 +45,7 @@ import org.graalvm.compiler.options.OptionValues;
 import org.graalvm.compiler.replacements.amd64.AMD64ConvertSnippets;
 import org.graalvm.compiler.replacements.nodes.UnaryMathIntrinsicNode;
 import org.graalvm.compiler.replacements.nodes.UnaryMathIntrinsicNode.UnaryOperation;
+import org.graalvm.compiler.serviceprovider.JavaVersionUtil;
 
 import jdk.vm.ci.code.TargetDescription;
 import jdk.vm.ci.hotspot.HotSpotConstantReflectionProvider;
@@ -66,7 +66,7 @@ public class AMD64HotSpotLoweringProvider extends DefaultHotSpotLoweringProvider
     @Override
     public void initialize(OptionValues options, Iterable<DebugHandlersFactory> factories, HotSpotProviders providers, GraalHotSpotVMConfig config) {
         convertSnippets = new AMD64ConvertSnippets.Templates(options, factories, providers, providers.getSnippetReflection(), providers.getCodeCache().getTarget());
-        if (Java8OrEarlier) {
+        if (JavaVersionUtil.JAVA_SPEC <= 8) {
             // AOT only introduced in JDK 9
             profileSnippets = null;
         } else {

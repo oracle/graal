@@ -103,11 +103,11 @@ public class FeatureImpl {
         }
 
         public <T> List<Class<? extends T>> findSubclasses(Class<T> baseClass) {
-            return imageClassLoader.findSubclasses(baseClass);
+            return imageClassLoader.findSubclasses(baseClass, false);
         }
 
         public List<Class<?>> findAnnotatedClasses(Class<? extends Annotation> annotationClass) {
-            return imageClassLoader.findAnnotatedClasses(annotationClass);
+            return imageClassLoader.findAnnotatedClasses(annotationClass, false);
         }
 
         public List<Method> findAnnotatedMethods(Class<? extends Annotation> annotationClass) {

@@ -24,8 +24,6 @@
  */
 package org.graalvm.compiler.core.test;
 
-import static org.graalvm.compiler.serviceprovider.JavaVersionUtil.Java8OrEarlier;
-
 import java.lang.annotation.Annotation;
 
 import org.graalvm.compiler.nodes.Invoke;
@@ -33,6 +31,7 @@ import org.graalvm.compiler.nodes.StructuredGraph;
 import org.graalvm.compiler.nodes.java.MethodCallTargetNode;
 import org.graalvm.compiler.nodes.spi.CoreProviders;
 import org.graalvm.compiler.phases.VerifyPhase;
+import org.graalvm.compiler.serviceprovider.JavaVersionUtil;
 
 import jdk.vm.ci.meta.ResolvedJavaMethod;
 import jdk.vm.ci.meta.ResolvedJavaType;
@@ -54,7 +53,7 @@ public class VerifyCallerSensitiveMethods extends VerifyPhase<CoreProviders> {
     public VerifyCallerSensitiveMethods() {
         try {
             ClassLoader classLoader = ClassLoader.getSystemClassLoader();
-            if (Java8OrEarlier) {
+            if (JavaVersionUtil.JAVA_SPEC <= 8) {
                 reflectionClass = classLoader.loadClass("sun.reflect.Reflection");
                 callerSensitiveClass = (Class<? extends Annotation>) classLoader.loadClass("sun.reflect.ConstantPool");
             } else {

@@ -25,6 +25,7 @@
 package com.oracle.svm.thirdparty;
 
 import java.util.ArrayList;
+import java.util.Collection;
 import java.util.List;
 import java.util.Set;
 import java.util.function.BooleanSupplier;
@@ -88,7 +89,9 @@ public final class ICU4JFeature implements Feature {
 
     @Override
     public void duringSetup(DuringSetupAccess access) {
-        RuntimeClassInitialization.initializeAtRunTime(getIcu4jClasses(access));
+        List<Class<?>> allClasses = ((FeatureAccessImpl) access).findSubclasses(Object.class);
+        RuntimeClassInitialization.initializeAtRunTime(getIcu4jClasses(allClasses));
+        RuntimeClassInitialization.initializeAtBuildTime(getIcu4jFeatureClasses(allClasses));
     }
 
     static class Helper {
@@ -99,9 +102,16 @@ public final class ICU4JFeature implements Feature {
         // CheckStyle: resume
     }
 
-    private static Class<?>[] getIcu4jClasses(FeatureAccess access) {
-        List<Class<?>> allClasses = ((FeatureAccessImpl) access).findSubclasses(Object.class);
+    private static Class<?>[] getIcu4jClasses(Collection<Class<?>> allClasses) {
         return allClasses.stream().filter(clazz -> clazz.getName().startsWith("com.ibm.icu")).toArray(Class<?>[]::new);
+    }
+
+    private static Class<?>[] getIcu4jFeatureClasses(Collection<Class<?>> allClasses) {
+        return allClasses.stream().filter(clazz -> {
+            String className = clazz.getName();
+            return className.startsWith("com.oracle.svm.thirdparty") &&
+                            (className.contains("com_ibm_icu") || className.contains("ICU4JFeature"));
+        }).toArray(Class<?>[]::new);
     }
 }
 

@@ -1,9 +1,18 @@
-vm_env: ce
 vm_java: ${openjdk8}
 svm_suite: /substratevm
-vm_extra_suites: "truffleruby,graalpython,fastr"
+vm_extra_suites_no_fastr: "truffleruby,graalpython"
+vm_extra_suites: ${vm_extra_suites_no_fastr}",fastr"
 custom_vm_linux: {}
 custom_vm_darwin: {}
+
+vm_setup: {
+  setup: [
+    [set-export, VM_ENV, ce]
+    [set-export, RELEASE_CATALOG, "https://www.graalvm.org/component-catalog/graal-updater-component-catalog.properties"]
+    [set-export, SNAPSHOT_CATALOG, [mx, urlrewrite, "http://www.graalvm.org/catalog/ce"]]
+    [cd, ${vm_subdir}]
+  ]
+}
 
 builds += [
   ${gate_vm_linux} {

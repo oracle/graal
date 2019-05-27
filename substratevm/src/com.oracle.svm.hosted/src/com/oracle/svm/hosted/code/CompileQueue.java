@@ -128,7 +128,6 @@ import com.oracle.svm.core.graal.nodes.DeoptTestNode;
 import com.oracle.svm.core.graal.phases.DeadStoreRemovalPhase;
 import com.oracle.svm.core.graal.stackvalue.StackValueNode;
 import com.oracle.svm.core.heap.RestrictHeapAccessCallees;
-import com.oracle.svm.core.option.HostedOptionValues;
 import com.oracle.svm.core.util.InterruptImageBuilding;
 import com.oracle.svm.core.util.VMError;
 import com.oracle.svm.hosted.FeatureHandler;
@@ -728,8 +727,7 @@ public class CompileQueue {
         }
         if (graph == null) {
             needParsing = true;
-            OptionValues options = universe.adjustCompilerOptions(HostedOptionValues.singleton(), method);
-            graph = new StructuredGraph.Builder(options, debug).method(method).build();
+            graph = new StructuredGraph.Builder(debug.getOptions(), debug).method(method).build();
         }
 
         try (DebugContext.Scope s = debug.scope("Parsing", graph, method, this)) {
@@ -775,8 +773,20 @@ public class CompileQueue {
         }
     }
 
-    protected GraphBuilderConfiguration createHostedGraphBuilderConfiguration(HostedProviders providers, @SuppressWarnings("unused") HostedMethod method) {
+    protected GraphBuilderConfiguration createHostedGraphBuilderConfiguration(HostedProviders providers, HostedMethod method) {
         GraphBuilderConfiguration gbConf = GraphBuilderConfiguration.getDefault(providers.getGraphBuilderPlugins()).withBytecodeExceptionMode(BytecodeExceptionMode.CheckAll);
+
+        if (SubstrateOptions.Optimize.getValue() <= 0 && !method.isDeoptTarget()) {
+            /*
+             * Disabling liveness analysis preserves the values of local variables beyond the
+             * bytecode-liveness. This greatly helps debugging. When local variable numbers are
+             * reused by javac, local variables can still get illegal values. Since we cannot
+             * "restore" such illegal values during deoptimization, we cannot disable liveness
+             * analysis for deoptimization target methods.
+             */
+            gbConf = gbConf.withRetainLocalVariables(true);
+        }
+
         return gbConf;
     }
 

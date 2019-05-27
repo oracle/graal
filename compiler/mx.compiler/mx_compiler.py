@@ -594,7 +594,18 @@ def compiler_gate_benchmark_runner(tasks, extraVMarguments=None, prefix=''):
     # ensure benchmark counters still work
     if mx.get_arch() != 'aarch64': # GR-8364 Exclude benchmark counters on AArch64
         with Task(prefix + 'DaCapo_pmd:BenchmarkCounters', tasks, tags=GraalTags.test) as t:
-            if t: _gate_dacapo('pmd', 1, _remove_empty_entries(extraVMarguments) + ['-XX:+UseJVMCICompiler', '-Dgraal.LIRProfileMoves=true', '-Dgraal.GenericDynamicCounters=true', '-Dgraal.TimedDynamicCounters=1000', '-XX:JVMCICounterSize=10'])
+            if t:
+                fd, logFile = tempfile.mkstemp()
+                os.close(fd) # Don't leak file descriptors
+                try:
+                    _gate_dacapo('pmd', 1, _remove_empty_entries(extraVMarguments) + ['-Dgraal.LogFile=' + logFile, '-XX:+UseJVMCICompiler', '-Dgraal.LIRProfileMoves=true', '-Dgraal.GenericDynamicCounters=true', '-Dgraal.TimedDynamicCounters=1000', '-XX:JVMCICounterSize=10'])
+                    with open(logFile) as fp:
+                        haystack = fp.read()
+                        needle = 'MoveOperations (dynamic counters)'
+                        if needle not in haystack:
+                            mx.abort('Expected to see "' + needle + '" in output:\n' + haystack)
+                finally:
+                    os.remove(logFile)
 
     # ensure -Xcomp still works
     with Task(prefix + 'XCompMode:product', tasks, tags=GraalTags.test) as t:
@@ -739,6 +750,36 @@ def _uniqify(alist):
     seen = set()
     return [e for e in alist if e not in seen and seen.add(e) is None]
 
+def _record_last_updated_jar(dist, path):
+    last_updated_jar = join(dist.suite.get_output_root(), dist.name + '.lastUpdatedJar')
+    with open(last_updated_jar, 'w') as fp:
+        java_home = mx.get_env('JAVA_HOME', '')
+        extra_java_homes = mx.get_env('EXTRA_JAVA_HOMES', '')
+        fp.write(path + '|' + java_home + '|' + extra_java_homes)
+
+def _get_last_updated_jar(dist):
+    last_updated_jar = join(dist.suite.get_output_root(), dist.name + '.lastUpdatedJar')
+    if exists(last_updated_jar):
+        try:
+            with open(last_updated_jar) as fp:
+                return fp.read().split('|')
+        except BaseException as e:
+            mx.warn('Error reading {}: {}'.format(last_updated_jar, e))
+    return None, None, None
+
+def _check_using_latest_jars(dists):
+    for dist in dists:
+        last_updated_jar, java_home, extra_java_homes = _get_last_updated_jar(dist)
+        if last_updated_jar:
+            current_jar = dist.classpath_repr()
+            if last_updated_jar != current_jar:
+                mx.warn('The most recently updated jar for {} ({}) differs from the jar used to construct the VM class or module path ({}). '.format(dist, last_updated_jar, current_jar) +
+                        'This usually means the current values of JAVA_HOME and EXTRA_JAVA_HOMES are '
+                        'different from the values when {} was last built by `mx build` '.format(dist) +
+                        'or an IDE. As a result, you may be running with out-of-date code.\n' +
+                        'Current JDKs:\n  JAVA_HOME={}\n  EXTRA_JAVA_HOMES={}\n'.format(mx.get_env('JAVA_HOME', ''), mx.get_env('EXTRA_JAVA_HOMES', '')) +
+                        'Build time JDKs:\n  JAVA_HOME={}\n  EXTRA_JAVA_HOMES={}'.format(java_home, extra_java_homes))
+
 def _parseVmArgs(args, addDefaultArgs=True):
     args = mx.expand_project_in_args(args, insitu=False)
 
@@ -753,11 +794,14 @@ def _parseVmArgs(args, addDefaultArgs=True):
         argsPrefix.append('-Dgraal.options.file=' + options_file)
 
     if isJDK8:
+        _check_using_latest_jars([e.dist() for e in _jvmci_classpath])
+        _check_using_latest_jars(_bootclasspath_appends)
         argsPrefix.append('-Djvmci.class.path.append=' + os.pathsep.join((e.get_path() for e in _jvmci_classpath)))
         argsPrefix.append('-Xbootclasspath/a:' + os.pathsep.join([dep.classpath_repr() for dep in _bootclasspath_appends]))
     else:
         deployedDists = [entry.dist() for entry in _jvmci_classpath] + \
                         [e for e in _bootclasspath_appends if e.isJARDistribution()]
+        _check_using_latest_jars(deployedDists)
         deployedModules = [as_java_module(dist, jdk) for dist in deployedDists]
 
         # Set or update module path to include Graal and its dependencies as modules
@@ -913,7 +957,6 @@ def run_vm(args, nonZeroIsFatal=True, out=None, err=None, cwd=None, timeout=None
     """run a Java program by executing the java executable in a JVMCI JDK"""
     return run_java(args, nonZeroIsFatal=nonZeroIsFatal, out=out, err=err, cwd=cwd, timeout=timeout)
 
-
 class GraalArchiveParticipant:
     providersRE = re.compile(r'(?:META-INF/versions/([1-9][0-9]*)/)?META-INF/providers/(.+)')
 
@@ -923,6 +966,7 @@ class GraalArchiveParticipant:
 
     def __opened__(self, arc, srcArc, services):
         self.services = services
+        self.arc = arc
 
     def __add__(self, arcname, contents): # pylint: disable=unexpected-special-method-signature
         m = GraalArchiveParticipant.providersRE.match(arcname)
@@ -960,8 +1004,7 @@ class GraalArchiveParticipant:
         return False
 
     def __closing__(self):
-        pass
-
+        _record_last_updated_jar(self.dist, self.arc.path)
 
 mx.add_argument('--vmprefix', action='store', dest='vm_prefix', help='prefix for running the VM (e.g. "gdb --args")', metavar='<prefix>')
 mx.add_argument('--gdb', action='store_const', const='gdb --args', dest='vm_prefix', help='alias for --vmprefix "gdb --args"')

@@ -102,24 +102,4 @@ public final class TruffleStackTraceElement {
         return frame;
     }
 
-    /**
-     * @deprecated Use {@link TruffleStackTrace#getStackTrace(Throwable)} instead.
-     *
-     * @since 0.27
-     */
-    @Deprecated
-    public static List<TruffleStackTraceElement> getStackTrace(Throwable throwable) {
-        return TruffleStackTrace.getStackTrace(throwable);
-    }
-
-    /**
-     * @deprecated Use {@link TruffleStackTrace#fillIn(Throwable)} instead.
-     *
-     * @since 0.27
-     */
-    @Deprecated
-    public static void fillIn(Throwable throwable) {
-        TruffleStackTrace.fillIn(throwable);
-    }
-
 }

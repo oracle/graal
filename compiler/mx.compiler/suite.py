@@ -4,7 +4,7 @@ suite = {
   "sourceinprojectwhitelist" : [],
 
   "groupId" : "org.graalvm.compiler",
-  "version" : "1.0.0-rc18",
+  "version" : "20.0.0-beta.01",
   "release" : False,
   "url" : "http://www.graalvm.org/",
   "developer" : {
@@ -90,6 +90,13 @@ suite = {
         "http://d3s.mff.cuni.cz/software/benchmarking/files/dacapo-9.12-d3s.jar",
       ],
       "sha1" : "b072de027141ac81ab5d48706949fda86de62468",
+    },
+
+    "RENAISSANCE" : {
+      "urls" : [
+        "https://lafo.ssw.uni-linz.ac.at/pub/graal-external-deps/renaissance/renaissance-gpl-0.9.0.jar"
+      ],
+      "sha1" : "925ca7d440078b0b30f5849695061262c226820e",
     },
 
     "JAVA_ALLOCATION_INSTRUMENTER" : {

@@ -128,6 +128,19 @@ bench-scala-dacapo-move-profiling-hwloc: ${bench-scala-dacapo-move-profiling} ${
 }
 
 # Renaissance-related targets
+bench-renaissance-hwloc: ${bench-renaissance}
+# Parallel executions of renaissance not yet supported : https://github.com/renaissance-benchmarks/renaissance/issues/13
+#bench-renaissance-hwloc: ${bench-renaissance} ${hwloc.bench-common} {
+#  run: [
+#    [export, "LOGDIR=${PWD}"]
+#    ${export.node0}
+#    ${hwloc.node} ${bench-jvmci.mx-renaissance} ${bench-arguments} ${hwloc.cmd.suffix}
+#    ${export.node1}
+#    ${hwloc.node} ${bench-jvmci.mx-renaissance} ${bench-arguments} ${hwloc.cmd.suffix}
+#    [wait]
+#  ]
+#}
+
 
 bench-renaissance-legacy-hwloc: ${bench-renaissance-legacy} ${hwloc.bench-common} {
   run: [

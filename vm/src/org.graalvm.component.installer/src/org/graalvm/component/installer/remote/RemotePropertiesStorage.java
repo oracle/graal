@@ -130,8 +130,9 @@ public class RemotePropertiesStorage extends AbstractCatalogStorage {
                 dashPos = s.length();
             }
             cid = s.substring(l, dashPos);
-
-            filteredComponents.computeIfAbsent(cid, (unused) -> new Properties()).setProperty(pn, catalogProperties.getProperty(s));
+            String patchedCid = cid.replace("_", "-");
+            String patchedPn = pn.replace(cid, patchedCid);
+            filteredComponents.computeIfAbsent(patchedCid, (unused) -> new Properties()).setProperty(patchedPn, catalogProperties.getProperty(s));
         }
     }
 

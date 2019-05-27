@@ -247,7 +247,7 @@ public class ConfigurableClassInitialization implements ClassInitializationSuppo
     }
 
     private void setKindForSubclasses(Class<?> clazz, InitKind kind) {
-        loader.findSubclasses(clazz).stream()
+        loader.findSubclasses(clazz, false).stream()
                         .filter(c -> !c.equals(clazz))
                         .filter(c -> !(c.isInterface() && !ClassInitializationFeature.declaresDefaultMethods(metaAccess.lookupJavaType(c))))
                         .forEach(c -> classInitializationConfiguration.insert(c.getTypeName(), kind, "subtype of " + clazz.getTypeName()));

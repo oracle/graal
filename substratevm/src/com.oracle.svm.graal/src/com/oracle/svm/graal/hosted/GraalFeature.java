@@ -71,6 +71,7 @@ import org.graalvm.compiler.phases.common.CanonicalizerPhase;
 import org.graalvm.compiler.phases.common.inlining.InliningUtil;
 import org.graalvm.compiler.phases.tiers.Suites;
 import org.graalvm.compiler.phases.util.Providers;
+import org.graalvm.compiler.truffle.compiler.phases.DeoptimizeOnExceptionPhase;
 import org.graalvm.compiler.word.WordTypes;
 import org.graalvm.nativeimage.hosted.Feature;
 import org.graalvm.nativeimage.ImageSingletons;
@@ -148,7 +149,7 @@ public final class GraalFeature implements Feature {
         public static final HostedOptionKey<Boolean> PrintStaticTruffleBoundaries = new HostedOptionKey<>(false);
 
         @Option(help = "Maximum number of methods allowed for runtime compilation.")//
-        public static final HostedOptionKey<Integer> MaxRuntimeCompileMethods = new HostedOptionKey<>(0);
+        public static final HostedOptionKey<Integer[]> MaxRuntimeCompileMethods = new HostedOptionKey<>(new Integer[]{});
 
         @Option(help = "Enforce checking of maximum number of methods allowed for runtime compilation. Useful for checking in the gate that the number of methods does not go up without a good reason.")//
         public static final HostedOptionKey<Boolean> EnforceMaxRuntimeCompileMethods = new HostedOptionKey<>(false);
@@ -238,8 +239,8 @@ public final class GraalFeature implements Feature {
 
         RuntimeGraphBuilderPhase(Providers providers,
                         GraphBuilderConfiguration graphBuilderConfig, OptimisticOptimizations optimisticOpts, IntrinsicContext initialIntrinsicContext, WordTypes wordTypes,
-                        Predicate<ResolvedJavaMethod> deoptimizeOnExceptionPredicate, CallTreeNode node) {
-            super(providers, graphBuilderConfig, optimisticOpts, initialIntrinsicContext, wordTypes, deoptimizeOnExceptionPredicate);
+                        CallTreeNode node) {
+            super(providers, graphBuilderConfig, optimisticOpts, initialIntrinsicContext, wordTypes);
             this.node = node;
         }
 
@@ -501,8 +502,7 @@ public final class GraalFeature implements Feature {
 
             try (DebugContext.Scope scope = debug.scope("RuntimeCompile", graph)) {
                 if (parse) {
-                    RuntimeGraphBuilderPhase builderPhase = new RuntimeGraphBuilderPhase(hostedProviders, graphBuilderConfig, optimisticOpts, null, hostedProviders.getWordTypes(),
-                                    deoptimizeOnExceptionPredicate, node);
+                    RuntimeGraphBuilderPhase builderPhase = new RuntimeGraphBuilderPhase(hostedProviders, graphBuilderConfig, optimisticOpts, null, hostedProviders.getWordTypes(), node);
                     builderPhase.apply(graph);
                 }
 
@@ -520,6 +520,9 @@ public final class GraalFeature implements Feature {
                 }
 
                 new CanonicalizerPhase().apply(graph, hostedProviders);
+                if (deoptimizeOnExceptionPredicate != null) {
+                    new DeoptimizeOnExceptionPhase(deoptimizeOnExceptionPredicate).apply(graph);
+                }
                 new ConvertDeoptimizeToGuardPhase().apply(graph, hostedProviders);
 
                 graphEncoder.prepare(graph);
@@ -615,7 +618,10 @@ public final class GraalFeature implements Feature {
             printStaticTruffleBoundaries();
         }
 
-        Integer maxMethods = Options.MaxRuntimeCompileMethods.getValue();
+        int maxMethods = 0;
+        for (Integer value : Options.MaxRuntimeCompileMethods.getValue()) {
+            maxMethods += value;
+        }
         if (Options.EnforceMaxRuntimeCompileMethods.getValue() && maxMethods != 0 && methods.size() > maxMethods) {
             printDeepestLevelPath();
             throw VMError.shouldNotReachHere("Number of methods for runtime compilation exceeds the allowed limit: " + methods.size() + " > " + maxMethods);
