@@ -260,6 +260,7 @@ public final class EspressoContext {
                         t.join();
                     }
                 } catch (InterruptedException e) {
+                    System.err.println("Interrupted while stopping thread in closing context.");
                 }
             }
         }

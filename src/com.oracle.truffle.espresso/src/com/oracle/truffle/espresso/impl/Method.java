@@ -23,6 +23,7 @@
 package com.oracle.truffle.espresso.impl;
 
 import com.oracle.truffle.api.CallTarget;
+import com.oracle.truffle.api.CompilerAsserts;
 import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.CompilerDirectives.CompilationFinal;
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
@@ -548,6 +549,7 @@ public final class Method implements TruffleObject, ModifiersProvider, ContextAc
 
     final void setVTableIndex(int i) {
         assert (vtableIndex == -1 || vtableIndex == i);
+        CompilerAsserts.neverPartOfCompilation();
         this.vtableIndex = i;
     }
 
@@ -557,6 +559,7 @@ public final class Method implements TruffleObject, ModifiersProvider, ContextAc
 
     final void setITableIndex(int i) {
         assert (itableIndex == -1 || itableIndex == i);
+        CompilerAsserts.neverPartOfCompilation();
         this.itableIndex = i;
     }
 

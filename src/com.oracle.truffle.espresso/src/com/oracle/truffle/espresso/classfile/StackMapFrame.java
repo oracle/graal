@@ -54,7 +54,7 @@ public abstract class StackMapFrame {
         throw EspressoError.shouldNotReachHere("Asking for stack of incompatible stackMap frame");
     }
 
-    abstract int getOffset();
+    public abstract int getOffset();
 }
 
 class SameFrame extends StackMapFrame {

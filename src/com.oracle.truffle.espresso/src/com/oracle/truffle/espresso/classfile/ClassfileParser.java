@@ -514,7 +514,7 @@ public final class ClassfileParser {
         byte[] code = stream.readByteArray(codeLength);
         ExceptionHandler[] entries = parseExceptionHandlerEntries();
         Attribute[] codeAttributes = parseAttributes();
-        return new CodeAttribute(name, maxStack, maxLocals, code, entries, codeAttributes, useStackMapTables());
+        return new CodeAttribute(name, maxStack, maxLocals, code, entries, codeAttributes, majorVersion);
     }
 
     private ExceptionHandler[] parseExceptionHandlerEntries() {

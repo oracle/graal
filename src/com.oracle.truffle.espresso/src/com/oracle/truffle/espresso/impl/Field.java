@@ -22,6 +22,7 @@
  */
 package com.oracle.truffle.espresso.impl;
 
+import com.oracle.truffle.api.CompilerAsserts;
 import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.espresso.classfile.Constants;
 import com.oracle.truffle.espresso.classfile.SignatureAttribute;
@@ -110,6 +111,7 @@ public final class Field implements ModifiersProvider {
     }
 
     void setSlot(int value) {
+        CompilerAsserts.neverPartOfCompilation();
         this.slot = value;
     }
 
@@ -121,6 +123,7 @@ public final class Field implements ModifiersProvider {
     }
 
     void setFieldIndex(int index) {
+        CompilerAsserts.neverPartOfCompilation();
         this.fieldIndex = index;
     }
 
