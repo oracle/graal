@@ -30,6 +30,7 @@ package com.oracle.truffle.llvm.runtime.debug.debugexpr.nodes;
 
 import com.oracle.truffle.api.dsl.UnsupportedSpecializationException;
 import com.oracle.truffle.api.frame.VirtualFrame;
+import com.oracle.truffle.api.nodes.UnexpectedResultException;
 import com.oracle.truffle.llvm.runtime.debug.debugexpr.parser.DebugExprException;
 import com.oracle.truffle.llvm.runtime.debug.debugexpr.parser.Parser;
 import com.oracle.truffle.llvm.runtime.nodes.api.LLVMExpressionNode;
@@ -47,6 +48,13 @@ public class DebugExprRootNode extends LLVMExpressionNode {
 
     @Override
     public Object executeGeneric(VirtualFrame frame) {
+        try {
+            // for boolean results: convert to a string
+            boolean result = root.executeI1(frame);
+            return result ? "true" : "false";
+        } catch (UnsupportedSpecializationException | UnexpectedResultException e) {
+            // perform normal execution
+        }
         try {
             // try to execute node
             return root.executeGeneric(frame);
