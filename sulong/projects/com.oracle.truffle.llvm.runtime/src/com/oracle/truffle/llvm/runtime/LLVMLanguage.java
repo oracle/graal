@@ -30,10 +30,12 @@
 package com.oracle.truffle.llvm.runtime;
 
 import java.util.Collections;
+import java.util.List;
 
 import org.graalvm.options.OptionDescriptors;
 
 import com.oracle.truffle.api.CallTarget;
+import com.oracle.truffle.api.CompilerAsserts;
 import com.oracle.truffle.api.CompilerDirectives.CompilationFinal;
 import com.oracle.truffle.api.Scope;
 import com.oracle.truffle.api.TruffleLanguage;
@@ -81,6 +83,9 @@ public class LLVMLanguage extends TruffleLanguage<LLVMContext> {
     public static final String ID = "llvm";
     static final String NAME = "LLVM";
 
+    @CompilationFinal private NodeFactory nodeFactory;
+    @CompilationFinal private List<ContextExtension> contextExtensions;
+
     public abstract static class Loader {
 
         public abstract CallTarget load(LLVMContext context, Source source);
@@ -88,6 +93,32 @@ public class LLVMLanguage extends TruffleLanguage<LLVMContext> {
 
     public static ContextReference<LLVMContext> getLLVMContextReference() {
         return getCurrentLanguage(LLVMLanguage.class).getContextReference();
+    }
+
+    public NodeFactory getNodeFactory() {
+        return nodeFactory;
+    }
+
+    public List<ContextExtension> getLanguageContextExtension() {
+        return contextExtensions;
+    }
+
+    public <T> T getContextExtension(Class<T> type) {
+        T result = getContextExtensionOrNull(type);
+        if (result != null) {
+            return result;
+        }
+        throw new IllegalStateException("No context extension for: " + type);
+    }
+
+    public <T> T getContextExtensionOrNull(Class<T> type) {
+        CompilerAsserts.neverPartOfCompilation();
+        for (ContextExtension ce : contextExtensions) {
+            if (ce.extensionClass() == type) {
+                return type.cast(ce);
+            }
+        }
+        return null;
     }
 
     public static LLVMLanguage getLanguage() {
@@ -113,8 +144,10 @@ public class LLVMLanguage extends TruffleLanguage<LLVMContext> {
             activeConfiguration = Configurations.findActiveConfiguration(env);
             loader = activeConfiguration.createLoader();
         }
-
-        return new LLVMContext(this, env, activeConfiguration, getLanguageHome());
+        LLVMContext context = new LLVMContext(this, env, getLanguageHome());
+        this.nodeFactory = activeConfiguration.createNodeFactory(context);
+        this.contextExtensions = activeConfiguration.createContextExtensions(context);
+        return context;
     }
 
     @Override

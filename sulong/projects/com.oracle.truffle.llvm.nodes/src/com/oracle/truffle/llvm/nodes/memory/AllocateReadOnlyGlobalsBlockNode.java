@@ -53,7 +53,7 @@ public final class AllocateReadOnlyGlobalsBlockNode extends LLVMNode implements 
         this.size = context.getByteSize(type);
         this.toNative = LLVMToNativeNode.createToNativeWithTarget();
 
-        NFIContextExtension nfiContextExtension = context.getContextExtensionOrNull(NFIContextExtension.class);
+        NFIContextExtension nfiContextExtension = context.getLanguage().getContextExtensionOrNull(NFIContextExtension.class);
         this.allocateGlobalsBlock = nfiContextExtension.getNativeFunction(context, "__sulong_allocate_globals_block", "(UINT64):POINTER");
         this.interop = InteropLibrary.getFactory().create(allocateGlobalsBlock);
     }

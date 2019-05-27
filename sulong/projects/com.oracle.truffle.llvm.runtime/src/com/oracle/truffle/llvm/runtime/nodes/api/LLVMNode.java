@@ -74,7 +74,7 @@ public abstract class LLVMNode extends Node {
 
     public static NodeFactory getNodeFactory() {
         CompilerAsserts.neverPartOfCompilation();
-        return LLVMLanguage.getLLVMContextReference().get().getNodeFactory();
+        return LLVMLanguage.getLanguage().getNodeFactory();
     }
 
     public static LLVMMemory getLLVMMemory() {

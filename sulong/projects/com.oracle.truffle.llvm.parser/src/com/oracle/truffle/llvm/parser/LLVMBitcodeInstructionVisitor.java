@@ -132,7 +132,7 @@ final class LLVMBitcodeInstructionVisitor implements SymbolVisitor {
                     ExternalLibrary library, ArrayList<LLVMLivenessAnalysis.NullerInformation> nullerInfos, List<FrameSlot> notNullable, LLVMRuntimeDebugInformation dbgInfoHandler) {
         this.frame = frame;
         this.blockPhis = blockPhis;
-        this.nodeFactory = context.getNodeFactory();
+        this.nodeFactory = context.getLanguage().getNodeFactory();
         this.argCount = argCount;
         this.symbols = symbols;
         this.context = context;

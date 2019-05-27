@@ -709,7 +709,7 @@ mx_sdk.register_graalvm_component(mx_sdk.GraalVmLanguage(
 
 COPYRIGHT_HEADER_BSD = """\
 /*
- * Copyright (c) 2016, 2018, Oracle and/or its affiliates.
+ * Copyright (c) 2016, 2019, Oracle and/or its affiliates.
  *
  * All rights reserved.
  *
