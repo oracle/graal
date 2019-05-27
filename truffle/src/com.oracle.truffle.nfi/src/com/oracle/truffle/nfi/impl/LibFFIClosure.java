@@ -235,16 +235,18 @@ final class LibFFIClosure implements TruffleObject {
     private static final class NullableRetClosureRootNode extends RootNode {
 
         @Child private CallClosureNode callClosure;
+        @Child private InteropLibrary interopLibrary;
 
         private NullableRetClosureRootNode(LibFFISignature signature, Object receiver) {
             super(null);
             callClosure = new CallClosureNode(signature, receiver);
+            interopLibrary = InteropLibrary.getFactory().createDispatched(4);
         }
 
         @Override
         public Object execute(VirtualFrame frame) {
             Object ret = callClosure.execute(frame.getArguments());
-            if (ret instanceof TruffleObject && LibraryFactory.resolve(InteropLibrary.class).getUncached().isNull(ret)) {
+            if (interopLibrary.isNull(ret)) {
                 return null;
             }
             return ret;
