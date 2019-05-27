@@ -3,11 +3,12 @@ package com.oracle.truffle.llvm.runtime.debug.debugexpr.parser;
 import com.oracle.truffle.api.Scope;
 import com.oracle.truffle.llvm.runtime.nodes.api.LLVMExpressionNode;
 import com.oracle.truffle.llvm.runtime.ArithmeticOperation;
-import com.oracle.truffle.llvm.runtime.CompareOperator;
 import com.oracle.truffle.llvm.runtime.LLVMContext;
 import com.oracle.truffle.llvm.runtime.NodeFactory;
 import com.oracle.truffle.llvm.runtime.debug.debugexpr.nodes.*;
+import com.oracle.truffle.llvm.runtime.debug.debugexpr.nodes.DebugExprCompareNode.Op;
 import com.oracle.truffle.llvm.runtime.types.Type;
+import com.oracle.truffle.llvm.runtime.types.PrimitiveType;
 // Set the name of your grammar here (and at the end of this grammar):
 
 // CheckStyle: start generated
@@ -193,7 +194,7 @@ public NodeFactory NF() {return context.getNodeFactory(); }
 
 	LLVMExpressionNode  PrimExpr() {
 		LLVMExpressionNode  n;
-		n=null; 
+		n=errorObjNode; 
 		switch (la.kind) {
 		case 1: {
 			Get();
@@ -202,11 +203,12 @@ public NodeFactory NF() {return context.getNodeFactory(); }
 		}
 		case 2: {
 			Get();
-			n = NF().createSimpleConstantNoArray(Integer.parseInt(t.val), Type.getIntegerType(32)); 
+			n = NF().createSimpleConstantNoArray(Integer.parseInt(t.val), PrimitiveType.I32); 
 			break;
 		}
 		case 3: {
 			Get();
+			n = NF().createSimpleConstantNoArray(Float.parseFloat(t.val), PrimitiveType.FLOAT); 
 			break;
 		}
 		case 4: {
@@ -429,19 +431,19 @@ public NodeFactory NF() {return context.getNodeFactory(); }
 			if (la.kind == 24) {
 				Get();
 				n1 = ShiftExpr();
-				n = NF().createComparison(CompareOperator.INT_SIGNED_LESS_THAN, null, n, n1); 
+				n = new DebugExprCompareNode(NF(), n, Op.LT, n1); 
 			} else if (la.kind == 25) {
 				Get();
 				n1 = ShiftExpr();
-				n = NF().createComparison(CompareOperator.INT_SIGNED_GREATER_THAN, null, n, n1); 
+				n = new DebugExprCompareNode(NF(), n, Op.GT, n1); 
 			} else if (la.kind == 26) {
 				Get();
 				n1 = ShiftExpr();
-				n = NF().createComparison(CompareOperator.INT_SIGNED_LESS_OR_EQUAL, null, n, n1); 
+				n = new DebugExprCompareNode(NF(), n, Op.LE, n1); 
 			} else {
 				Get();
 				n1 = ShiftExpr();
-				n = NF().createComparison(CompareOperator.INT_SIGNED_GREATER_OR_EQUAL, null, n, n1); 
+				n = new DebugExprCompareNode(NF(), n, Op.GE, n1); 
 			}
 		}
 		return n;
@@ -455,11 +457,11 @@ public NodeFactory NF() {return context.getNodeFactory(); }
 			if (la.kind == 28) {
 				Get();
 				n1 = RelExpr();
-				n = NF().createComparison(CompareOperator.INT_EQUAL, null, n, n1); 
+				n = new DebugExprCompareNode(NF(), n, Op.EQ, n1); 
 			} else {
 				Get();
 				n1 = RelExpr();
-				n = NF().createComparison(CompareOperator.INT_NOT_EQUAL, null, n, n1); 
+				n = new DebugExprCompareNode(NF(), n, Op.NE, n1); 
 			}
 		}
 		return n;

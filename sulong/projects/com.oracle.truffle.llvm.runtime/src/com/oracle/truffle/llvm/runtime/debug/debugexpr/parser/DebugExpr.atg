@@ -1,11 +1,12 @@
 import com.oracle.truffle.api.Scope;
 import com.oracle.truffle.llvm.runtime.nodes.api.LLVMExpressionNode;
 import com.oracle.truffle.llvm.runtime.ArithmeticOperation;
-import com.oracle.truffle.llvm.runtime.CompareOperator;
 import com.oracle.truffle.llvm.runtime.LLVMContext;
 import com.oracle.truffle.llvm.runtime.NodeFactory;
 import com.oracle.truffle.llvm.runtime.debug.debugexpr.nodes.*;
+import com.oracle.truffle.llvm.runtime.debug.debugexpr.nodes.DebugExprCompareNode.Op;
 import com.oracle.truffle.llvm.runtime.types.Type;
+import com.oracle.truffle.llvm.runtime.types.PrimitiveType;
 // Set the name of your grammar here (and at the end of this grammar):
 COMPILER DebugExpr
 
@@ -89,13 +90,13 @@ DebugExpr		(. LLVMExpressionNode n=null; .)
 Expr<out n> 	(. if(errors.count==0) astRoot =new DebugExprRootNode(n); .)
 .
 
-PrimExpr<out LLVMExpressionNode n>		(. n=null; .)
+PrimExpr<out LLVMExpressionNode n>		(. n=errorObjNode; .)
 =
 ident 								(. n = new DebugExprVarNode(t.val, scopes);.)
 |
-number 									(. n = NF().createSimpleConstantNoArray(Integer.parseInt(t.val), Type.getIntegerType(32)); .)
+number 								(. n = NF().createSimpleConstantNoArray(Integer.parseInt(t.val), PrimitiveType.I32); .)
 |
-floatnumber								
+floatnumber							(. n = NF().createSimpleConstantNoArray(Float.parseFloat(t.val), PrimitiveType.FLOAT); .)					
 |
 charConst
 |
@@ -219,19 +220,19 @@ RelExpr<out LLVMExpressionNode n>		(. LLVMExpressionNode n1=null; .)
 ShiftExpr<out n> 
 {
 	 "<" ShiftExpr<out n1> 				(./*null is passed as type, since a type check is done by the compare node anyway*/
-											n = NF().createComparison(CompareOperator.INT_SIGNED_LESS_THAN, null, n, n1); .)
+	 										n = new DebugExprCompareNode(NF(), n, Op.LT, n1); .)
 	
 	|
 	 ">" ShiftExpr<out n1> 				(./*null is passed as type, since a type check is done by the compare node anyway*/
-											n = NF().createComparison(CompareOperator.INT_SIGNED_GREATER_THAN, null, n, n1); .)
+											n = new DebugExprCompareNode(NF(), n, Op.GT, n1); .)
 	
 	|
 	 "<=" ShiftExpr<out n1> 			(./*null is passed as type, since a type check is done by the compare node anyway*/
-											n = NF().createComparison(CompareOperator.INT_SIGNED_LESS_OR_EQUAL, null, n, n1); .)
+											n = new DebugExprCompareNode(NF(), n, Op.LE, n1); .)
 	
 	|
 	 ">=" ShiftExpr<out n1> 			(./*null is passed as type, since a type check is done by the compare node anyway*/
-											n = NF().createComparison(CompareOperator.INT_SIGNED_GREATER_OR_EQUAL, null, n, n1); .)
+											n = new DebugExprCompareNode(NF(), n, Op.GE, n1); .)
 	
 }
 .
@@ -240,11 +241,11 @@ EqExpr<out LLVMExpressionNode n>	(. LLVMExpressionNode n1=null; .)
 RelExpr<out n> 
 {
 	 "==" RelExpr<out n1> 			(./*null is passed as type, since a type check is done by the compare node anyway*/
-										n = NF().createComparison(CompareOperator.INT_EQUAL, null, n, n1); .)
+										n = new DebugExprCompareNode(NF(), n, Op.EQ, n1); .)
 	
 	|
 	 "!=" RelExpr<out n1> 			(./*null is passed as type, since a type check is done by the compare node anyway*/
-										n = NF().createComparison(CompareOperator.INT_NOT_EQUAL, null, n, n1); .)
+										n = new DebugExprCompareNode(NF(), n, Op.NE, n1); .)
 	
 }
 .
