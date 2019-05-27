@@ -295,6 +295,19 @@ public class NodeUtilTest {
                         "      child1 = " + testNodeSimpleName + "\n" +
                         "    children[3] = " + testNodeSimpleName + "\n" +
                         "    lastChild = " + testNodeSimpleName + "\n", output);
+        TestBlockResNode block = new TestBlockResNode(new Node[]{new TestNode(), new TestNode()}, new TestNode());
+        String testBlockResNodeSimpleName = getSimpleName(TestBlockResNode.class);
+        output = NodeUtil.printCompactTreeToString(block);
+        assertEquals("" +
+                        "  " + testBlockResNodeSimpleName + "\n" +
+                        "    children[0] = " + testNodeSimpleName + "\n" +
+                        "    children[1] = " + testNodeSimpleName + "\n" +
+                        "    resultNode = " + testNodeSimpleName + "\n", output);
+        block = new TestBlockResNode(null, new TestNode());
+        output = NodeUtil.printCompactTreeToString(block);
+        assertEquals("" +
+                        "  " + testBlockResNodeSimpleName + "\n" +
+                        "    resultNode = " + testNodeSimpleName + "\n", output);
     }
 
     private static int iterate(Iterator<Node> iterator) {
@@ -364,6 +377,17 @@ public class NodeUtilTest {
             this.children = new Node[childrenSize];
         }
 
+    }
+
+    private static class TestBlockResNode extends VisitableNode {
+
+        private @Children Node[] children;
+        private @Child Node resultNode;
+
+        TestBlockResNode(Node[] body, Node resultNode) {
+            this.children = body;
+            this.resultNode = resultNode;
+        }
     }
 
 }
