@@ -114,7 +114,7 @@ import jdk.vm.ci.meta.MetaAccessProvider;
 import jdk.vm.ci.meta.ResolvedJavaMethod;
 import jdk.vm.ci.meta.ResolvedJavaType;
 
-public final class HotSpotGraalLibraryFeature implements com.oracle.svm.core.graal.GraalFeature {
+public final class LibGraalFeature implements com.oracle.svm.core.graal.GraalFeature {
 
     private HotSpotReplacementsImpl hotSpotSubstrateReplacements;
 
@@ -130,7 +130,7 @@ public final class HotSpotGraalLibraryFeature implements com.oracle.svm.core.gra
     public static final class IsEnabled implements BooleanSupplier {
         @Override
         public boolean getAsBoolean() {
-            return ImageSingletons.contains(HotSpotGraalLibraryFeature.class);
+            return ImageSingletons.contains(LibGraalFeature.class);
         }
     }
 
@@ -525,22 +525,22 @@ public final class HotSpotGraalLibraryFeature implements com.oracle.svm.core.gra
 
 }
 
-@TargetClass(className = "jdk.vm.ci.hotspot.SharedLibraryJVMCIReflection", onlyWith = HotSpotGraalLibraryFeature.IsEnabled.class)
+@TargetClass(className = "jdk.vm.ci.hotspot.SharedLibraryJVMCIReflection", onlyWith = LibGraalFeature.IsEnabled.class)
 final class Target_jdk_vm_ci_hotspot_SharedLibraryJVMCIReflection {
 
     @Substitute
     static Annotation[] getClassAnnotations(String className) {
-        return ImageSingletons.lookup(HotSpotGraalLibraryFeature.MethodAnnotationSupport.class).getClassAnnotations(className);
+        return ImageSingletons.lookup(LibGraalFeature.MethodAnnotationSupport.class).getClassAnnotations(className);
     }
 
     @Substitute
     static Annotation[][] getParameterAnnotations(String className, String methodName) {
-        return ImageSingletons.lookup(HotSpotGraalLibraryFeature.MethodAnnotationSupport.class).getParameterAnnotations(className, methodName);
+        return ImageSingletons.lookup(LibGraalFeature.MethodAnnotationSupport.class).getParameterAnnotations(className, methodName);
     }
 
     @Substitute
     static Annotation[] getMethodAnnotationsInternal(ResolvedJavaMethod javaMethod) {
-        return ImageSingletons.lookup(HotSpotGraalLibraryFeature.MethodAnnotationSupport.class).getMethodAnnotations(javaMethod);
+        return ImageSingletons.lookup(LibGraalFeature.MethodAnnotationSupport.class).getMethodAnnotations(javaMethod);
     }
 
     @Substitute
@@ -549,7 +549,7 @@ final class Target_jdk_vm_ci_hotspot_SharedLibraryJVMCIReflection {
     }
 }
 
-@TargetClass(className = "org.graalvm.compiler.hotspot.HotSpotGraalRuntime", onlyWith = HotSpotGraalLibraryFeature.IsEnabled.class)
+@TargetClass(className = "org.graalvm.compiler.hotspot.HotSpotGraalRuntime", onlyWith = LibGraalFeature.IsEnabled.class)
 final class Target_org_graalvm_compiler_hotspot_HotSpotGraalRuntime {
     @Substitute
     private static void shutdownLibGraal() {
@@ -557,7 +557,7 @@ final class Target_org_graalvm_compiler_hotspot_HotSpotGraalRuntime {
     }
 }
 
-@TargetClass(className = "org.graalvm.compiler.hotspot.HotSpotGraalOptionValues", onlyWith = HotSpotGraalLibraryFeature.IsEnabled.class)
+@TargetClass(className = "org.graalvm.compiler.hotspot.HotSpotGraalOptionValues", onlyWith = LibGraalFeature.IsEnabled.class)
 final class Target_org_graalvm_compiler_hotspot_HotSpotGraalOptionValues {
 
     @Substitute
@@ -611,7 +611,7 @@ final class Target_org_graalvm_compiler_hotspot_HotSpotGraalOptionValues {
  * This field resetting must be done via substitutions instead of {@link NativeImageReinitialize} as
  * the fields must only be reset in a libgraal image.
  */
-@TargetClass(className = "org.graalvm.compiler.truffle.common.TruffleCompilerRuntimeInstance", onlyWith = HotSpotGraalLibraryFeature.IsEnabled.class)
+@TargetClass(className = "org.graalvm.compiler.truffle.common.TruffleCompilerRuntimeInstance", onlyWith = LibGraalFeature.IsEnabled.class)
 final class Target_org_graalvm_compiler_truffle_common_TruffleCompilerRuntimeInstance {
     // Checkstyle: stop
     @Alias @RecomputeFieldValue(kind = Kind.Reset, isFinal = true) static Object TRUFFLE_RUNTIME;
@@ -619,7 +619,7 @@ final class Target_org_graalvm_compiler_truffle_common_TruffleCompilerRuntimeIns
     @Alias @RecomputeFieldValue(kind = Kind.Reset) static TruffleCompilerRuntime truffleCompilerRuntime;
 }
 
-@TargetClass(className = "org.graalvm.compiler.core.GraalServiceThread", onlyWith = HotSpotGraalLibraryFeature.IsEnabled.class)
+@TargetClass(className = "org.graalvm.compiler.core.GraalServiceThread", onlyWith = LibGraalFeature.IsEnabled.class)
 final class Target_org_graalvm_compiler_core_GraalServiceThread {
     @Substitute()
     void beforeRun() {

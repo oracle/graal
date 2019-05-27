@@ -100,7 +100,7 @@ public final class LibGraalEntryPoints {
 
     @SuppressWarnings({"unused"})
     @CEntryPoint(name = "Java_org_graalvm_libgraal_LibGraal_setCurrentThreadName")
-    @CEntryPointOptions(include = HotSpotGraalLibraryFeature.IsEnabled.class)
+    @CEntryPointOptions(include = LibGraalFeature.IsEnabled.class)
     private static void setCurrentThreadName(PointerBase jniEnv,
                     PointerBase jclass,
                     @CEntryPoint.IsolateThreadContext long isolateThread,
@@ -144,7 +144,7 @@ public final class LibGraalEntryPoints {
      */
     @SuppressWarnings({"unused", "try"})
     @CEntryPoint(name = "Java_org_graalvm_compiler_hotspot_test_CompileTheWorld_compileMethodInLibgraal")
-    @CEntryPointOptions(include = HotSpotGraalLibraryFeature.IsEnabled.class)
+    @CEntryPointOptions(include = LibGraalFeature.IsEnabled.class)
     private static long compileMethod(PointerBase jniEnv,
                     PointerBase jclass,
                     @CEntryPoint.IsolateThreadContext long isolateThread,
