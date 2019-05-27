@@ -59,26 +59,26 @@ JNIEXPORT jlong JNICALL Java_com_oracle_truffle_nfi_impl_NFIContext_loadLibrary(
         flags &= ~ISOLATED_NAMESPACE;
 
         Lmid_t isolated_namespace_id = ctx->isolated_namespace_id;
-
-        // Synchronize on the NFI context for namespace creation.
         if (isolated_namespace_id == LM_ID_NEWLM) {
+            // Double-checked locking for namespace creation.
             (*env)->MonitorEnter(env, ctx->NFIContext);
-        }
-
-        handle = dlmopen(isolated_namespace_id, utfName, flags);
-
-        if (isolated_namespace_id == LM_ID_NEWLM) {
-            (*env)->MonitorExit(env, ctx->NFIContext);
-        }
-
-        if (handle != NULL && isolated_namespace_id == LM_ID_NEWLM) {
-            if (dlinfo((void*) handle, RTLD_DI_LMID, &isolated_namespace_id) == -1) {
-                const char *error = dlerror();                
-                // The library was loaded, but can't peek the namespace: dlclose the library?.
-                (*env)->ThrowNew(env, ctx->UnsatisfiedLinkError, error);
-            } else {
-                ctx->isolated_namespace_id = isolated_namespace_id;
+            Lmid_t tmp_id = ctx->isolated_namespace_id;
+            if (tmp_id == LM_ID_NEWLM) {
+                handle = dlmopen(LM_ID_NEWLM, utfName, flags);
+                if (handle != NULL) {
+                    if (dlinfo((void*) handle, RTLD_DI_LMID, &isolated_namespace_id) == -1) {
+                        const char *error = dlerror();                
+                        // Library was loaded, but can't peek the link-map (namespace); should not reach here.
+                        (*env)->ThrowNew(env, ctx->UnsatisfiedLinkError, error);
+                    } else {
+                        ctx->isolated_namespace_id = isolated_namespace_id;
+                    }
+                }
             }
+            (*env)->MonitorExit(env, ctx->NFIContext);
+        } else {
+            // Namespace was already created.
+            handle = dlmopen(isolated_namespace_id, utfName, flags);
         }
     } else {
 #endif    

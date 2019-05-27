@@ -69,7 +69,7 @@ struct __TruffleContextInternal {
     jobject NFIContext;
 
 #if defined(ENABLE_ISOLATED_NAMESPACE)
-    Lmid_t isolated_namespace_id;
+    volatile Lmid_t isolated_namespace_id;
 #endif
 
     jmethodID CallTarget_call;
