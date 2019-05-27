@@ -159,7 +159,41 @@ public final class RegexParser {
                 new MarkLookBehindEntriesVisitor(ast).run();
             }
         }
+        checkInnerLiteral();
         return ast;
+    }
+
+    private void checkInnerLiteral() {
+        if (ast.isLiteralString() || ast.getRoot().startsWithCaret() || ast.getRoot().endsWithDollar() || ast.getRoot().getAlternatives().size() != 1) {
+            return;
+        }
+        ArrayList<Term> terms = ast.getRoot().getAlternatives().get(0).getTerms();
+        int literalStart = -1;
+        int literalEnd = -1;
+        int maxPath = 0;
+        for (int i = 0; i < terms.size(); i++) {
+            Term t = terms.get(i);
+            if (t instanceof CharacterClass && ((CharacterClass) t).getMatcherBuilder().matchesSingleChar()) {
+                if (literalStart < 0) {
+                    literalStart = i;
+                }
+                literalEnd = i + 1;
+            } else if (literalStart >= 0 || t.hasLoops()) {
+                break;
+            } else {
+                maxPath = t.getMaxPath();
+                if (maxPath > 4) {
+                    return;
+                }
+            }
+        }
+        if (literalStart >= 0 && (literalStart > 0 || literalEnd - literalStart > 1)) {
+            StringBuilder sb = new StringBuilder(literalEnd - literalStart);
+            for (int i = literalStart; i < literalEnd; i++) {
+                sb.append(((CharacterClass) terms.get(i)).getMatcherBuilder().getLo(0));
+            }
+            properties.setInnerLiteral(sb.toString());
+        }
     }
 
     @TruffleBoundary
@@ -231,7 +265,7 @@ public final class RegexParser {
 
     /**
      * Adds a new {@link Sequence} to the current {@link Group}.
-     * 
+     *
      * @param token the opening bracket of the parent group ({@link Token.Kind#captureGroupBegin})
      *            or the alternation symbol ({@link Token.Kind#alternation}) that opens the new
      *            sequence.
@@ -457,7 +491,6 @@ public final class RegexParser {
     }
 
     private void setLoop() {
-        properties.setLoops();
         assert curTerm instanceof Group;
         ((Group) curTerm).setLoop(true);
     }
@@ -617,7 +650,7 @@ public final class RegexParser {
      * {@link CharacterClass} each, the {@link CharacterClass} contained in the current
      * {@link Sequence} will be removed and merged into the last {@link Sequence}'s
      * {@link CharacterClass}, resulting in a smaller NFA.
-     * 
+     *
      * @return {@code true} if the {@link CharacterClass} in the current sequence was merged with
      *         the {@link CharacterClass} in the last Sequence.
      */
@@ -678,7 +711,7 @@ public final class RegexParser {
      * <p>
      * Unlike {@link #parse(boolean)}, this method will never throw an
      * {@link UnsupportedRegexException}.
-     * 
+     *
      * @throws RegexSyntaxException when a syntax error is detected in the RegExp
      */
     private void parseDryRun() throws RegexSyntaxException {
