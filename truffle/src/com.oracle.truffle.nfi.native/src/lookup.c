@@ -57,13 +57,13 @@ JNIEXPORT jlong JNICALL Java_com_oracle_truffle_nfi_impl_NFIContext_loadLibrary(
 #if defined(ENABLE_ISOLATED_NAMESPACE)
     if (flags & ISOLATED_NAMESPACE) {
         flags &= ~ISOLATED_NAMESPACE;
-
-        Lmid_t isolated_namespace_id = ctx->isolated_namespace_id;
+        
+        // Double-checked locking for namespace creation.
+        Lmid_t isolated_namespace_id = (Lmid_t) (*env)->GetLongField(env, ctx->NFIContext, ctx->NFIContext_isolatedNamespaceId);
         if (isolated_namespace_id == LM_ID_NEWLM) {
-            // Double-checked locking for namespace creation.
             (*env)->MonitorEnter(env, ctx->NFIContext);
-            Lmid_t tmp_id = ctx->isolated_namespace_id;
-            if (tmp_id == LM_ID_NEWLM) {
+            isolated_namespace_id = (Lmid_t) (*env)->GetLongField(env, ctx->NFIContext, ctx->NFIContext_isolatedNamespaceId);
+            if (isolated_namespace_id == LM_ID_NEWLM) {
                 handle = dlmopen(LM_ID_NEWLM, utfName, flags);
                 if (handle != NULL) {
                     if (dlinfo((void*) handle, RTLD_DI_LMID, &isolated_namespace_id) == -1) {
@@ -71,7 +71,7 @@ JNIEXPORT jlong JNICALL Java_com_oracle_truffle_nfi_impl_NFIContext_loadLibrary(
                         // Library was loaded, but can't peek the link-map (namespace); should not reach here.
                         (*env)->ThrowNew(env, ctx->UnsatisfiedLinkError, error);
                     } else {
-                        ctx->isolated_namespace_id = isolated_namespace_id;
+                        (*env)->SetLongField(env, ctx->NFIContext, ctx->NFIContext_isolatedNamespaceId, (jlong) isolated_namespace_id);
                     }
                 }
             }

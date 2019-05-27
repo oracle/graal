@@ -78,10 +78,6 @@ JNIEXPORT jlong JNICALL Java_com_oracle_truffle_nfi_impl_NFIContext_initializeNa
     ret->functions = &truffleThreadAPI;
     ret->NFIContext = (*env)->NewGlobalRef(env, context);
     
-#if defined(ENABLE_ISOLATED_NAMESPACE)
-    ret->isolated_namespace_id = LM_ID_NEWLM;
-#endif    
-
     CallTarget = (*env)->FindClass(env, "com/oracle/truffle/api/CallTarget");
     ret->CallTarget_call = (*env)->GetMethodID(env, CallTarget, "call", "([Ljava/lang/Object;)Ljava/lang/Object;");
 
@@ -148,6 +144,8 @@ JNIEXPORT jlong JNICALL Java_com_oracle_truffle_nfi_impl_NFIContext_initializeNa
     
 #if defined(ENABLE_ISOLATED_NAMESPACE)
     initializeFlag(env, NFIContext, context, "ISOLATED_NAMESPACE", ISOLATED_NAMESPACE);
+    ret->NFIContext_isolatedNamespaceId = (*env)->GetFieldID(env, NFIContext, "isolatedNamespaceId", "J");
+    (*env)->SetLongField(env, context, ret->NFIContext_isolatedNamespaceId, (jlong) LM_ID_NEWLM);
 #endif
 
     initialize_intrinsics(ret);
