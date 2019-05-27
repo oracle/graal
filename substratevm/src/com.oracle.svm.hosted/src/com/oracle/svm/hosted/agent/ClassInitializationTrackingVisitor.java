@@ -1,0 +1,146 @@
+/*
+ * Copyright (c) 2019, 2019, Oracle and/or its affiliates. All rights reserved.
+ * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
+ *
+ * This code is free software; you can redistribute it and/or modify it
+ * under the terms of the GNU General Public License version 2 only, as
+ * published by the Free Software Foundation.  Oracle designates this
+ * particular file as subject to the "Classpath" exception as provided
+ * by Oracle in the LICENSE file that accompanied this code.
+ *
+ * This code is distributed in the hope that it will be useful, but WITHOUT
+ * ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or
+ * FITNESS FOR A PARTICULAR PURPOSE.  See the GNU General Public License
+ * version 2 for more details (a copy is included in the LICENSE file that
+ * accompanied this code).
+ *
+ * You should have received a copy of the GNU General Public License version
+ * 2 along with this work; if not, write to the Free Software Foundation,
+ * Inc., 51 Franklin St, Fifth Floor, Boston, MA 02110-1301 USA.
+ *
+ * Please contact Oracle, 500 Oracle Parkway, Redwood Shores, CA 94065 USA
+ * or visit www.oracle.com if you need additional information or have any
+ * questions.
+ */
+package com.oracle.svm.hosted.agent;
+
+import static org.objectweb.asm.Opcodes.ACC_STATIC;
+import static org.objectweb.asm.Opcodes.ASM6;
+import static org.objectweb.asm.Opcodes.GETSTATIC;
+import static org.objectweb.asm.Opcodes.IFEQ;
+import static org.objectweb.asm.Opcodes.INVOKESTATIC;
+import static org.objectweb.asm.Opcodes.RETURN;
+
+import org.graalvm.compiler.serviceprovider.JavaVersionUtil;
+import org.objectweb.asm.ClassVisitor;
+import org.objectweb.asm.ClassWriter;
+import org.objectweb.asm.Label;
+import org.objectweb.asm.MethodVisitor;
+import org.objectweb.asm.Opcodes;
+import org.objectweb.asm.Type;
+
+import com.oracle.svm.core.util.VMError;
+
+public class ClassInitializationTrackingVisitor extends ClassVisitor {
+
+    private final ClassLoader loader;
+    private final String className;
+    private String moduleName;
+    private boolean hasClinit;
+    private boolean ldcClassLiteralSupported;
+
+    public ClassInitializationTrackingVisitor(String moduleName, ClassLoader loader, String className, ClassWriter writer) {
+        super(ASM6, writer);
+        this.moduleName = moduleName;
+        this.hasClinit = false;
+        this.loader = loader;
+        this.className = className;
+    }
+
+    @Override
+    public void visit(int version, int access, String name, String signature, String superName, String[] interfaces) {
+        super.visit(version, access, name, signature, superName, interfaces);
+        ldcClassLiteralSupported = version >= Opcodes.V1_7;
+    }
+
+    @Override
+    public void visitEnd() {
+        if (!hasClinit) {
+            MethodVisitor mv = visitMethod(ACC_STATIC, "<clinit>", "()V", null, null);
+            mv.visitCode();
+            mv.visitInsn(RETURN);
+            mv.visitMaxs(1, 0);
+            mv.visitEnd();
+        }
+        super.visitEnd();
+    }
+
+    @Override
+    public MethodVisitor visitMethod(int access, String name, String desc, String signature, String[] exceptions) {
+        MethodVisitor methodVisitor = super.visitMethod(access, name, desc, signature, exceptions);
+        boolean isClinitMethod = "<clinit>".equals(name);
+        hasClinit = hasClinit || isClinitMethod;
+        if (isClinitMethod && instrumentationSupported()) {
+            return new ClassInitializerMethod(methodVisitor);
+        } else {
+            return methodVisitor;
+        }
+    }
+
+    private boolean instrumentationSupported() {
+        if (!ldcClassLiteralSupported) {
+            return false;
+        }
+        if (JavaVersionUtil.JAVA_SPEC == 8) {
+            return loader != null && className != null &&
+                            /* The class literal throws a NoClassDefFound error. */
+                            !className.startsWith("sun/reflect/Generated");
+        } else if (JavaVersionUtil.JAVA_SPEC > 8) {
+            return !(moduleName == null ||
+                            moduleName.startsWith("java.") ||
+                            moduleName.startsWith("jdk."));
+        } else {
+            throw VMError.shouldNotReachHere();
+        }
+    }
+
+    private static String toInternalName(String className) {
+        StringBuilder stringBuilder = new StringBuilder();
+        stringBuilder.append('L');
+        int nameLength = className.length();
+        for (int i = 0; i < nameLength; ++i) {
+            char car = className.charAt(i);
+            stringBuilder.append(car == '.' ? '/' : car);
+        }
+        stringBuilder.append(';');
+        return stringBuilder.toString();
+    }
+
+    public class ClassInitializerMethod extends MethodVisitor {
+        ClassInitializerMethod(MethodVisitor methodVisitor) {
+            super(ASM6, methodVisitor);
+        }
+
+        @Override
+        public void visitCode() {
+            String trackingClass = "org/graalvm/nativeimage/impl/clinit/ClassInitializationTracking";
+            mv.visitFieldInsn(GETSTATIC, trackingClass, "IS_IMAGE_BUILD_TIME", "Z");
+            Label l1 = new Label();
+            mv.visitJumpInsn(IFEQ, l1);
+            mv.visitLdcInsn(Type.getType(toInternalName(className)));
+            mv.visitMethodInsn(INVOKESTATIC,
+                            trackingClass,
+                            "reportClassInitialized",
+                            "(Ljava/lang/Class;)V",
+                            false);
+            mv.visitLabel(l1);
+            mv.visitCode();
+        }
+
+        @Override
+        public void visitMaxs(int maxStack, int maxLocals) {
+            super.visitMaxs(maxStack == 0 ? 1 : maxStack, maxLocals);
+        }
+    }
+
+}

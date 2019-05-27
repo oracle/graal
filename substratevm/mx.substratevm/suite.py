@@ -17,6 +17,19 @@ suite = {
         "write" : "git@github.com:oracle/graal.git",
     },
 
+    "libraries": {
+        "ASM_6.2.1": {
+            "sha1": "c01b6798f81b0fc2c5faa70cbe468c275d4b50c7",
+            "sourceSha1" : "cee28077ac7a63d3de0b205ec314d83944ff6267",
+            "maven": {
+                "groupId": "org.ow2.asm",
+                "artifactId": "asm",
+                "version": "6.2.1",
+            },
+            "license": "BSD-new",
+        },
+    },
+
     "defaultLicense" : "GPLv2-CPE",
 
     "versionConflictResolution": "latest",
@@ -289,6 +302,7 @@ suite = {
                 "com.oracle.objectfile",
                 "com.oracle.svm.core.graal",
                 "com.oracle.graal.pointsto",
+                "ASM_6.2.1",
             ],
             "javaCompliance": "8+",
             "checkstyleVersion" : "8.8",
@@ -759,6 +773,9 @@ suite = {
             "overlaps" : [
                 "SVM_CORE", "SVM_HOSTED",
             ],
+            "manifestEntries" : {
+                "Premain-Class": "com.oracle.svm.hosted.agent.NativeImageBytecodeInstrumentationAgent",
+            },
             "distDependencies": [
                 "SVM_HOSTED_NATIVE",
                 "sdk:GRAAL_SDK",

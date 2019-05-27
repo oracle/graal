@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2017, 2018, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2019, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -38,44 +38,55 @@
  * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
  * SOFTWARE.
  */
-package org.graalvm.nativeimage.impl;
+package org.graalvm.nativeimage.impl.clinit;
+
+import java.util.Collections;
+import java.util.Map;
+import java.util.WeakHashMap;
 
 import org.graalvm.nativeimage.ImageSingletons;
 import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.Platforms;
+import org.graalvm.nativeimage.impl.ImageSingletonsSupport;
+import org.graalvm.nativeimage.impl.RuntimeClassInitializationSupport;
 
-@Platforms(Platform.HOSTED_ONLY.class)
-public abstract class ImageSingletonsSupport {
+public class ClassInitializationTracking {
 
-    /** Implementation-specific singleton that stores the registration data. */
-    private static ImageSingletonsSupport support;
+    @Platforms(Platform.HOSTED_ONLY.class) //
+    public static final Map<Class<?>, StackTraceElement[]> initializedClasses = Collections.synchronizedMap(new WeakHashMap<>());
 
-    protected static void installSupport(ImageSingletonsSupport imageSingletonsSupport) {
-        assert imageSingletonsSupport != null : "ImageSingletonsSupport cannot be null.";
-        support = imageSingletonsSupport;
+    /**
+     * Field that is true during native image generation (even during system class loading), but
+     * false at run time.
+     *
+     * Static initializer runs on the hosting VM, setting field value to true during native image
+     * generation. At run time, the substituted value is used, setting the field value to false.
+     */
+    public static final boolean IS_IMAGE_BUILD_TIME;
+    public static final int START_OF_THE_TRACE = 2;
+
+    static {
+        /*
+         * Prevents javac from constant folding use of this field. It is set to true by the process
+         * that builds the shared library.
+         */
+        IS_IMAGE_BUILD_TIME = true;
     }
 
-    public static boolean isInstalled() {
-        return support != null;
-    }
-
-    public static ImageSingletonsSupport get() {
-        checkInstalled();
-        return support;
-    }
-
-    private static void checkInstalled() {
-        if (support == null) {
-            throw new Error("The class " + ImageSingletons.class.getSimpleName() + " can only be used when building native images, i.e., when using the native-image command.");
+    /**
+     * This method is called from the instrumented class initialization methods.
+     */
+    @SuppressWarnings({"unused", "ConstantConditions"})
+    public static void reportClassInitialized(Class<?> c) {
+        if (initializedClasses != null) {
+            if (ImageSingletonsSupport.isInstalled() && ImageSingletons.contains(RuntimeClassInitializationSupport.class)) {
+                RuntimeClassInitializationSupport runtimeClassInitialization = ImageSingletons.lookup(RuntimeClassInitializationSupport.class);
+                runtimeClassInitialization.reportClassInitialized(c);
+            }
+            StackTraceElement[] trace = Thread.currentThread().getStackTrace();
+            /* It can be null as we instrument clinit of this class as well. */
+            initializedClasses.put(c, trace);
         }
     }
 
-    protected ImageSingletonsSupport() {
-    }
-
-    public abstract <T> void add(Class<T> key, T value);
-
-    public abstract <T> T lookup(Class<T> key);
-
-    public abstract boolean contains(Class<?> key);
 }

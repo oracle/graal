@@ -230,7 +230,7 @@ class NativeImageVM(GraalVm):
                                                     out=None, err=None, cwd=cwd, nonZeroIsFatal=nonZeroIsFatal)
 
             base_image_build_args = [os.path.join(mx_vm.graalvm_home(fatalIfMissing=True), 'bin', 'native-image')]
-            base_image_build_args += ['--no-fallback']
+            base_image_build_args += ['--no-fallback', '-H:+TraceClassInitialization']
             base_image_build_args += ['-J-ea', '-J-esa']
             base_image_build_args += system_properties
             base_image_build_args += classpath_arguments

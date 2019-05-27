@@ -24,7 +24,10 @@
  */
 package com.oracle.svm.hosted.classinitialization;
 
+import static com.oracle.svm.core.SubstrateOptions.TraceClassInitialization;
+
 import java.lang.reflect.Proxy;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
@@ -33,6 +36,7 @@ import java.util.stream.Collectors;
 
 import org.graalvm.compiler.options.OptionKey;
 import org.graalvm.compiler.serviceprovider.GraalUnsafeAccess;
+import org.graalvm.nativeimage.impl.clinit.ClassInitializationTracking;
 
 import com.oracle.graal.pointsto.constraints.UnsupportedFeatures;
 import com.oracle.graal.pointsto.meta.AnalysisType;
@@ -69,6 +73,8 @@ public class ConfigurableClassInitialization implements ClassInitializationSuppo
      */
     private final Map<Class<?>, InitKind> classInitKinds = new ConcurrentHashMap<>();
 
+    private boolean configurationSealed;
+
     private final ImageClassLoader loader;
 
     /**
@@ -81,6 +87,11 @@ public class ConfigurableClassInitialization implements ClassInitializationSuppo
     public ConfigurableClassInitialization(MetaAccessProvider metaAccess, ImageClassLoader loader) {
         this.metaAccess = metaAccess;
         this.loader = loader;
+    }
+
+    @Override
+    public void setConfigurationSealed(boolean sealed) {
+        configurationSealed = sealed;
     }
 
     @Override
@@ -177,6 +188,7 @@ public class ConfigurableClassInitialization implements ClassInitializationSuppo
 
     @Override
     public void initializeAtRunTime(String name, String reason) {
+        UserError.guarantee(!configurationSealed, "The class initialization configuration can be changed only before the phase analysis.");
         classInitializationConfiguration.insert(name, InitKind.RUN_TIME, reason);
         Class<?> clazz = loader.findClassByName(name, false);
         if (clazz != null) {
@@ -186,6 +198,7 @@ public class ConfigurableClassInitialization implements ClassInitializationSuppo
 
     @Override
     public void initializeAtBuildTime(String name, String reason) {
+        UserError.guarantee(!configurationSealed, "The class initialization configuration can be changed only before the phase analysis.");
         classInitializationConfiguration.insert(name, InitKind.BUILD_TIME, reason);
         Class<?> clazz = loader.findClassByName(name, false);
         if (clazz != null) {
@@ -195,6 +208,7 @@ public class ConfigurableClassInitialization implements ClassInitializationSuppo
 
     @Override
     public void rerunInitialization(String name, String reason) {
+        UserError.guarantee(!configurationSealed, "The class initialization configuration can be changed only before the phase analysis.");
         classInitializationConfiguration.insert(name, InitKind.RERUN, reason);
         Class<?> clazz = loader.findClassByName(name, false);
         if (clazz != null) {
@@ -204,12 +218,14 @@ public class ConfigurableClassInitialization implements ClassInitializationSuppo
 
     @Override
     public void initializeAtRunTime(Class<?> clazz, String reason) {
+        UserError.guarantee(!configurationSealed, "The class initialization configuration can be changed only before the phase analysis.");
         classInitializationConfiguration.insert(clazz.getTypeName(), InitKind.RUN_TIME, reason);
         setKindForSubclasses(clazz, InitKind.RUN_TIME);
         checkEagerInitialization(clazz);
 
         if (!UNSAFE.shouldBeInitialized(clazz)) {
-            throw UserError.abort("Class is already initialized, so it is too late to register delaying class initialization: " + clazz.getTypeName() + " for reason: " + reason);
+            throw UserError.abort("The class " + clazz.getTypeName() + " has already been initialized; it is too late to register delaying class initialization for the reason: " + reason + "\n." +
+                            classInitializationTraceMessage(clazz));
         }
         /*
          * Propagate possible existing RUN_TIME registration from a superclass, so that we can check
@@ -225,15 +241,50 @@ public class ConfigurableClassInitialization implements ClassInitializationSuppo
         }
     }
 
+    public String classInitializationTraceMessage(Class<?> clazz) {
+        if (ClassInitializationTracking.initializedClasses.containsKey(clazz)) {
+            String culprit = null;
+            StackTraceElement[] trace = ClassInitializationTracking.initializedClasses.get(clazz);
+            for (StackTraceElement stackTraceElement : trace) {
+                if (stackTraceElement.getMethodName().equals("<clinit>")) {
+                    culprit = stackTraceElement.getClassName();
+                }
+            }
+            if (culprit != null) {
+                boolean intentional = classInitializationConfiguration.lookupKind(culprit) != InitKind.BUILD_TIME;
+                String action = intentional ? culprit + " initialization was intentionally requested for " + classInitializationConfiguration.lookupReason(culprit)
+                                : culprit + " was unintentionally initialized with the following trace: " + classInitializationTrace(clazz);
+                return clazz.getTypeName() + " has been initialized by the " + culprit + " class initializer. " + action;
+            } else {
+                return clazz.getTypeName() + " has been initialized through the following trace:\n" + classInitializationTrace(clazz);
+            }
+        } else {
+            return clazz.getTypeName() + " has been initialized without the native-image initialization instrumentation and the stack trace can't be tracked.";
+        }
+    }
+
+    public static String classInitializationTrace(Class<?> clazz) {
+        StackTraceElement[] trace = ClassInitializationTracking.initializedClasses.get(clazz);
+        StringBuilder b = new StringBuilder();
+
+        for (int i = ClassInitializationTracking.START_OF_THE_TRACE; i < trace.length; i++) {
+            StackTraceElement stackTraceElement = trace[i];
+            b.append("\tat ").append(stackTraceElement.toString()).append("\n");
+        }
+
+        return b.toString();
+    }
+
     @Override
     public void rerunInitialization(Class<?> clazz, String reason) {
+        UserError.guarantee(!configurationSealed, "The class initialization configuration can be changed only before the phase analysis.");
         classInitializationConfiguration.insert(clazz.getTypeName(), InitKind.RERUN, reason);
         checkEagerInitialization(clazz);
 
         try {
             UNSAFE.ensureClassInitialized(clazz);
         } catch (Throwable ex) {
-            throw UserError.abort("Class initialization failed: " + clazz.getTypeName(), ex);
+            throw UserError.abort("Class initialization failed for " + clazz.getTypeName() + ". The class is requested for re-running (reason: " + reason + ")", ex);
         }
 
         /*
@@ -246,16 +297,17 @@ public class ConfigurableClassInitialization implements ClassInitializationSuppo
         if (previousKind != null) {
             if (previousKind == InitKind.BUILD_TIME) {
                 throw UserError.abort("The information that the class should be initialized during image building has already been used, " +
-                                "so it is too late to register re-running the class initializer: " + clazz.getTypeName() + " for reason: " + reason);
+                                "so it is too late to register the class initializer of" + clazz.getTypeName() + " for re-running. The reason for re-run request is " + reason);
             } else if (previousKind.isDelayed()) {
                 throw UserError.abort("Class or a superclass is already registered for delaying the class initializer, " +
-                                "so it is too late to register re-running the class initializer: " + clazz.getTypeName() + " for reason: " + reason);
+                                "so it is too late to register the class initializer of" + clazz.getTypeName() + " for re-running. The reason for re-run request is " + reason);
             }
         }
     }
 
     @Override
     public void initializeAtBuildTime(Class<?> aClass, String reason) {
+        UserError.guarantee(!configurationSealed, "The class initialization configuration can be changed only before the phase analysis.");
         classInitializationConfiguration.insert(aClass.getTypeName(), InitKind.BUILD_TIME, reason);
         forceInitializeHosted(aClass, reason, false);
     }
@@ -268,12 +320,23 @@ public class ConfigurableClassInitialization implements ClassInitializationSuppo
     }
 
     @Override
+    public void reportClassInitialized(Class<?> clazz) {
+        assert TraceClassInitialization.getValue();
+        if (configurationSealed) {
+            UserError.guarantee(InitKind.RUN_TIME != specifiedInitKindFor(clazz),
+                            "Class " + clazz.getTypeName() + " got initiailized although it is marked for run-time initialization.");
+
+            UserError.guarantee(!shouldInitializeAtRuntime(clazz),
+                            "Class " + clazz.getTypeName() + " got initiailized although it should be initialized at run-time.");
+        }
+    }
+
+    @Override
     public void forceInitializeHosted(Class<?> clazz, String reason, boolean allowInitializationErrors) {
         if (clazz == null) {
             return;
         }
         classInitializationConfiguration.insert(clazz.getTypeName(), InitKind.BUILD_TIME, reason);
-
         InitKind initKind = ensureClassInitialized(clazz, allowInitializationErrors);
         classInitKinds.put(clazz, initKind);
 
@@ -300,12 +363,32 @@ public class ConfigurableClassInitialization implements ClassInitializationSuppo
          * as used. Class initialization can have side effects on other classes without the class
          * being used itself, e.g., a class initializer can write a static field in another class.
          */
+        Set<Class<?>> illegalyInitialized = new HashSet<>();
         for (Map.Entry<Class<?>, InitKind> entry : classInitKinds.entrySet()) {
             if (entry.getValue().isDelayed() && !UNSAFE.shouldBeInitialized(entry.getKey())) {
-                throw UserError.abort("Class that is marked for delaying initialization to run time got initialized during image building: " + entry.getKey().getTypeName() +
-                                ". Try marking this class for build-time initialization with " +
-                                SubstrateOptionsParser.commandArgument(ClassInitializationFeature.Options.ClassInitialization, entry.getKey().getTypeName(), "initialize-at-build-time"));
+                illegalyInitialized.add(entry.getKey());
             }
+        }
+
+        if (illegalyInitialized.size() > 0) {
+            StringBuilder detailedMessage = new StringBuilder("Classes that should be initialized at run time got initialized during image building:\n ");
+            illegalyInitialized.forEach(c -> {
+                InitKind specifiedKind = specifiedInitKindFor(c);
+                /* not specified by the user so it is an accident => try to fix it */
+                if (specifiedKind == null) {
+                    detailedMessage.append(classInitializationTraceMessage(c));
+                    detailedMessage.append("Try marking this class for build-time initialization with ")
+                                    .append(SubstrateOptionsParser.commandArgument(ClassInitializationFeature.Options.ClassInitialization,
+                                                    c.getTypeName(), "initialize-at-build-time"));
+                } else {
+                    assert specifiedKind.isDelayed();
+                    String reason = classInitializationConfiguration.lookupReason(c.getTypeName());
+                    detailedMessage.append(c.getTypeName()).append(" the class was requested to be initialized at build time for reason: ").append(reason).append(".")
+                                    .append(classInitializationTraceMessage(c));
+                }
+            });
+
+            throw UserError.abort(detailedMessage.toString());
         }
         return true;
     }
@@ -313,7 +396,7 @@ public class ConfigurableClassInitialization implements ClassInitializationSuppo
     private static void checkEagerInitialization(Class<?> clazz) {
         if (clazz.isPrimitive() || clazz.isArray()) {
             throw UserError.abort("Primitive types and array classes are initialized eagerly because initialization is side-effect free. " +
-                            "It is not possible (and also not useful) to register them for run time initialization: " + clazz.getTypeName());
+                            "It is not possible (and also not useful) to register them for run time initialization. Culprit: " + clazz.getTypeName());
         }
         if (clazz.isAnnotation()) {
             throw UserError.abort("Class initialization of annotation classes cannot be delayed to runtime. Culprit: " + clazz.getTypeName());

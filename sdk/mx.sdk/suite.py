@@ -137,6 +137,7 @@ suite = {
       ],
       "exports" : [
         "<package-info>",  # exports all packages containing package-info.java
+        "org.graalvm.nativeimage.impl.clinit",  # class initialization instrumentation
       ],
       "checkstyle" : "org.graalvm.word",
       "javaCompliance" : "8+",

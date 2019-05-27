@@ -368,6 +368,10 @@ public class NativeImage {
         default boolean buildFallbackImage() {
             return false;
         }
+
+        default String getAgentJAR() {
+            return null;
+        }
     }
 
     private static class DefaultBuildConfiguration implements BuildConfiguration {
@@ -507,6 +511,12 @@ public class NativeImage {
             buildArgs.addAll(args);
             return buildArgs;
         }
+
+        @Override
+        public String getAgentJAR() {
+            return rootDir.resolve(Paths.get("lib", "svm", "builder", "svm.jar")).toAbsolutePath().toString();
+        }
+
     }
 
     private ArrayList<String> createFallbackBuildArgs() {
@@ -1083,6 +1093,10 @@ public class NativeImage {
         command.addAll(javaArgs);
         if (!bcp.isEmpty()) {
             command.add(bcp.stream().map(Path::toString).collect(Collectors.joining(File.pathSeparator, "-Xbootclasspath/a:", "")));
+        }
+
+        if (config.getAgentJAR() != null && imageArgs.contains("-H:+TraceClassInitialization")) {
+            command.add("-javaagent:" + config.getAgentJAR());
         }
         command.addAll(Arrays.asList("-cp", cp.stream().map(Path::toString).collect(Collectors.joining(File.pathSeparator))));
         command.add("com.oracle.svm.hosted.NativeImageGeneratorRunner");

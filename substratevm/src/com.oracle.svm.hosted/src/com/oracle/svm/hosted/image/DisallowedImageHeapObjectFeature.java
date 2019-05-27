@@ -102,9 +102,8 @@ public class DisallowedImageHeapObjectFeature implements Feature {
     private static RuntimeException error(String msg) {
         throw new UnsupportedFeatureException(msg +
                         "The object was probably created by a class initializer and is reachable from a static field. " +
-                        "By default, all class initialization is done during native image building." +
-                        "You can manually delay class initialization to image run time by using the option " +
-                        SubstrateOptionsParser.commandArgument(ClassInitializationFeature.Options.ClassInitialization, "<class-name>") + ". " +
+                        "You can request class initialization at image run time by using the option " +
+                        SubstrateOptionsParser.commandArgument(ClassInitializationFeature.Options.ClassInitialization, "<class-name>", "initialize-at-build-time") + ". " +
                         "Or you can write your own initialization methods and call them explicitly from your main entry point.");
     }
 

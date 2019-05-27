@@ -357,7 +357,7 @@ def vm_executable_path(executable, config):
 def native_image_context(common_args=None, hosted_assertions=True, native_image_cmd='', config=None, build_if_missing=False):
     config = config or graalvm_config()
     common_args = [] if common_args is None else common_args
-    base_args = ['--no-fallback', '-H:+EnforceMaxRuntimeCompileMethods']
+    base_args = ['--no-fallback', '-H:+EnforceMaxRuntimeCompileMethods', '-H:+TraceClassInitialization']
     base_args += ['-H:Path=' + svmbuild_dir()]
     has_server = mx.get_os() != 'windows'
     if mx.get_opts().verbose:
