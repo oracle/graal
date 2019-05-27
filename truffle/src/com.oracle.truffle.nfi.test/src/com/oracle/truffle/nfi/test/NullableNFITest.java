@@ -66,9 +66,9 @@ public class NullableNFITest extends NFITest {
     @Parameters
     public static Object[] data() {
         return new Object[]{
-                new NullObject(),
-                "a string",
-                new TestCallback(0, (args) -> 0)
+                        new NullObject(),
+                        "a string",
+                        new TestCallback(0, (args) -> 0)
         };
     }
 
