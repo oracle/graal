@@ -237,7 +237,7 @@ public class ReflectionDataBuilder implements RuntimeReflectionSupport {
                     reflectionData = new DynamicHub.ReflectionData(
                                     filterFields(declaredFieldsField.get(originalReflectionData), reflectionFields.keySet(), access.getMetaAccess()),
                                     filterFields(publicFieldsField.get(originalReflectionData), reflectionFields.keySet(), access.getMetaAccess()),
-                                    filterFields(publicFieldsField.get(originalReflectionData), f -> reflectionFields.containsKey(f) && !isShadowedIn(f, clazz), access.getMetaAccess()),
+                                    filterFields(publicFieldsField.get(originalReflectionData), f -> reflectionFields.containsKey(f) && !isHiddenIn(f, clazz), access.getMetaAccess()),
                                     filterMethods(declaredMethodsField.get(originalReflectionData), reflectionMethods, access.getMetaAccess()),
                                     filterMethods(publicMethodsField.get(originalReflectionData), reflectionMethods, access.getMetaAccess()),
                                     filterConstructors(declaredConstructorsField.get(originalReflectionData), reflectionMethods, access.getMetaAccess()),
@@ -312,7 +312,7 @@ public class ReflectionDataBuilder implements RuntimeReflectionSupport {
         return filterFields(fields, filterSet::contains, metaAccess);
     }
 
-    private static boolean isShadowedIn(Field field, Class<?> clazz) {
+    private static boolean isHiddenIn(Field field, Class<?> clazz) {
         try {
             return !clazz.getField(field.getName()).equals(field);
         } catch (NoSuchFieldException e) {

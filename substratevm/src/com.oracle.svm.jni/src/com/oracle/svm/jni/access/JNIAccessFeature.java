@@ -272,7 +272,7 @@ public class JNIAccessFeature implements Feature {
                 wrappers = Stream.concat(wrappers, Stream.of(varargsNonvirtualCallWrapper, arrayNonvirtualCallWrapper, valistNonvirtualCallWrapper));
             }
 
-            JNIAccessibleMethod jniMethod = new JNIAccessibleMethod(method.getModifiers(), jniClass, varargsCallWrapper, arrayCallWrapper, valistCallWrapper,
+            JNIAccessibleMethod jniMethod = new JNIAccessibleMethod(d, method.getModifiers(), jniClass, varargsCallWrapper, arrayCallWrapper, valistCallWrapper,
                             varargsNonvirtualCallWrapper, arrayNonvirtualCallWrapper, valistNonvirtualCallWrapper);
             wrappers.forEach(wrapper -> {
                 AnalysisMethod analysisWrapper = access.getUniverse().lookup(wrapper);
@@ -321,10 +321,10 @@ public class JNIAccessFeature implements Feature {
         CompilationAccessImpl access = (CompilationAccessImpl) a;
         for (JNIAccessibleClass clazz : JNIReflectionDictionary.singleton().getClasses()) {
             for (JNIAccessibleField field : clazz.getFields()) {
-                field.fillOffset(access);
+                field.finishBeforeCompilation(access);
             }
             for (JNIAccessibleMethod method : clazz.getMethods()) {
-                method.resolveJavaCallWrapper(access);
+                method.finishBeforeCompilation(access);
                 access.registerAsImmutable(method); // for constant address to use as identifier
             }
         }
