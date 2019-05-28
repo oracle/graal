@@ -26,9 +26,13 @@ package com.oracle.svm.driver;
 
 import com.oracle.svm.driver.MacroOption.MacroOptionKind;
 
+import java.util.List;
 import java.util.Queue;
 
 class ServerOptionHandler extends NativeImage.OptionHandler<NativeImageServer> {
+
+    private static final String noServerOption = "--no-server";
+    private static final String verboseServerOption = "--verbose-server";
 
     private static final String helpTextServer = NativeImage.getResource("/HelpServer.txt");
 
@@ -48,12 +52,11 @@ class ServerOptionHandler extends NativeImage.OptionHandler<NativeImageServer> {
                 nativeImage.showNewline();
                 System.exit(0);
                 return true;
-
-            case "--no-server":
+            case noServerOption:
                 args.poll();
                 nativeImage.setUseServer(false);
                 return true;
-            case "--verbose-server":
+            case verboseServerOption:
                 args.poll();
                 nativeImage.setVerboseServer(true);
                 return true;
@@ -109,5 +112,14 @@ class ServerOptionHandler extends NativeImage.OptionHandler<NativeImageServer> {
             NativeImage.showError("Invalid server option: " + headArg);
         }
         return false;
+    }
+
+    void addFallbackBuildArgs(List<String> buildArgs) {
+        if (!nativeImage.useServer()) {
+            buildArgs.add(noServerOption);
+        }
+        if (nativeImage.verboseServer()) {
+            buildArgs.add(verboseServerOption);
+        }
     }
 }
