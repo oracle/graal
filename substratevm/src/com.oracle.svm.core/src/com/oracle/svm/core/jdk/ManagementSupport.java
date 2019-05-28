@@ -44,6 +44,8 @@ import java.util.List;
 import java.util.Map;
 import java.util.Properties;
 import java.util.Set;
+import java.util.concurrent.atomic.AtomicInteger;
+import java.util.concurrent.atomic.AtomicLong;
 
 import javax.management.MBeanServer;
 import javax.management.MBeanServerConnection;
@@ -88,7 +90,7 @@ final class Target_java_lang_management_ManagementFactory {
 
     @Substitute
     private static ThreadMXBean getThreadMXBean() {
-        return ImageSingletons.lookup(ThreadMXBean.class);
+        return SubstrateThreadMXBean.singleton();
     }
 
     @Substitute
@@ -359,9 +361,35 @@ final class SubstrateRuntimeMXBean implements RuntimeMXBean {
 
 final class SubstrateThreadMXBean implements com.sun.management.ThreadMXBean {
 
+    static SubstrateThreadMXBean singleton() {
+        return (SubstrateThreadMXBean) ImageSingletons.lookup(ThreadMXBean.class);
+    }
+
     private static final String MSG = "ThreadMXBean methods";
 
-    SubstrateThreadMXBean() {
+    /*
+     * Initial values account for the main thread (a non-daemon thread) that is running without an
+     * explicit notification at startup.
+     */
+    private final AtomicLong totalStartedThreadCount = new AtomicLong(1);
+    private final AtomicInteger peakThreadCount = new AtomicInteger(1);
+    private final AtomicInteger threadCount = new AtomicInteger(1);
+    private final AtomicInteger daemonThreadCount = new AtomicInteger(0);
+
+    void noteThreadStart(Thread thread) {
+        totalStartedThreadCount.incrementAndGet();
+        int curThreadCount = threadCount.incrementAndGet();
+        peakThreadCount.set(Integer.max(peakThreadCount.get(), curThreadCount));
+        if (thread.isDaemon()) {
+            daemonThreadCount.incrementAndGet();
+        }
+    }
+
+    void noteThreadFinish(Thread thread) {
+        threadCount.decrementAndGet();
+        if (thread.isDaemon()) {
+            daemonThreadCount.decrementAndGet();
+        }
     }
 
     @Override
@@ -391,22 +419,27 @@ final class SubstrateThreadMXBean implements com.sun.management.ThreadMXBean {
 
     @Override
     public int getThreadCount() {
-        return JavaThreads.singleton().getLiveThreads();
+        return threadCount.get();
     }
 
     @Override
     public int getPeakThreadCount() {
-        return JavaThreads.singleton().getPeakThreads();
+        return peakThreadCount.get();
+    }
+
+    @Override
+    public void resetPeakThreadCount() {
+        peakThreadCount.set(threadCount.get());
     }
 
     @Override
     public long getTotalStartedThreadCount() {
-        return JavaThreads.singleton().getTotalThreads();
+        return totalStartedThreadCount.get();
     }
 
     @Override
     public int getDaemonThreadCount() {
-        return JavaThreads.singleton().getDaemonThreads();
+        return daemonThreadCount.get();
     }
 
     /* All remaining methods are unsupported on Substrate VM. */
@@ -482,11 +515,6 @@ final class SubstrateThreadMXBean implements com.sun.management.ThreadMXBean {
 
     @Override
     public long[] findMonitorDeadlockedThreads() {
-        throw VMError.unsupportedFeature(MSG);
-    }
-
-    @Override
-    public void resetPeakThreadCount() {
         throw VMError.unsupportedFeature(MSG);
     }
 
@@ -596,6 +624,13 @@ class SubstrateCompilationMXBean implements CompilationMXBean {
     }
 }
 
-/** Dummy class to have a class with the file's name. */
-public final class JavaManagementSubstitutions {
+public final class ManagementSupport {
+
+    public static void noteThreadStart(Thread thread) {
+        SubstrateThreadMXBean.singleton().noteThreadStart(thread);
+    }
+
+    public static void noteThreadFinish(Thread thread) {
+        SubstrateThreadMXBean.singleton().noteThreadFinish(thread);
+    }
 }

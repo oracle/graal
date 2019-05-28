@@ -119,7 +119,7 @@ public final class WindowsJavaThreads extends JavaThreads {
 
         @SuppressWarnings("unused")
         static void enter(WindowsThreadStartData data) {
-            int code = CEntryPointActions.enterAttachThread(data.getIsolate());
+            int code = CEntryPointActions.enterAttachThread(data.getIsolate(), false);
             if (code != 0) {
                 CEntryPointActions.failFatally(code, errorMessage.get());
             }

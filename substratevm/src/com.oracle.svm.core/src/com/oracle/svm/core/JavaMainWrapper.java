@@ -114,17 +114,9 @@ public class JavaMainWrapper {
         }
     }
 
-    private static final Thread preallocatedThread;
-    static {
-        preallocatedThread = new Thread("main");
-        preallocatedThread.setDaemon(false);
-    }
-
     @CEntryPoint
     @CEntryPointOptions(prologue = EnterCreateIsolatePrologue.class, include = CEntryPointOptions.NotIncludedAutomatically.class)
     public static int run(int paramArgc, CCharPointerPointer paramArgv) throws Exception {
-        JavaThreads.singleton().assignJavaThread(preallocatedThread, true);
-
         JavaMainWrapper.argc = paramArgc;
         JavaMainWrapper.argv = paramArgv;
 
