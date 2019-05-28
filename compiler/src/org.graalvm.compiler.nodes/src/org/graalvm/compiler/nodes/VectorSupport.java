@@ -21,24 +21,29 @@ public final class VectorSupport {
 
         public static final NodeClass<VectorToScalarValueNode> TYPE = NodeClass.create(VectorToScalarValueNode.class);
 
-        @Input private VectorValueNode value;
+        @Input private ValueNode value;
 
-        public VectorToScalarValueNode(Stamp stamp, VectorValueNode value) {
+        public VectorToScalarValueNode(Stamp stamp, ValueNode value) {
             this(TYPE, stamp, value);
         }
 
-        private VectorToScalarValueNode(NodeClass<? extends VectorToScalarValueNode> c, Stamp stamp, VectorValueNode value) {
+        private VectorToScalarValueNode(NodeClass<? extends VectorToScalarValueNode> c, Stamp stamp, ValueNode value) {
             super(c, stamp);
             this.value = value;
         }
 
-        public VectorValueNode value() {
+        public ValueNode value() {
             return value;
+        }
+
+        @Override
+        public boolean verify() {
+            return value.isVector() && super.verify();
         }
     }
 
     @NodeInfo
-    public static final class ScalarToVectorValueNode extends VectorValueNode /*implements Canonicalizable */{
+    public static final class ScalarToVectorValueNode extends ValueNode /*implements Canonicalizable */{
 
         public static final NodeClass<ScalarToVectorValueNode> TYPE = NodeClass.create(ScalarToVectorValueNode.class);
 
@@ -55,6 +60,16 @@ public final class VectorSupport {
 
         public NodeInputList<ValueNode> values() {
             return values;
+        }
+
+        @Override
+        public boolean verify() {
+            return values.stream().allMatch(ValueNode::isVector) && super.verify();
+        }
+
+        @Override
+        public boolean isVector() {
+            return true;
         }
 
         //        @Override

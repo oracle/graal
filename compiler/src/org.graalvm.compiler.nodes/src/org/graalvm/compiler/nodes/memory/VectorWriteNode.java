@@ -10,7 +10,6 @@ import org.graalvm.compiler.nodeinfo.NodeInfo;
 import org.graalvm.compiler.nodes.ValueNode;
 import org.graalvm.compiler.nodes.ValueNodeUtil;
 import org.graalvm.compiler.nodes.VectorFixedAccessNode;
-import org.graalvm.compiler.nodes.VectorValueNode;
 import org.graalvm.compiler.nodes.memory.address.AddressNode;
 import org.graalvm.compiler.nodes.spi.LIRLowerable;
 import org.graalvm.compiler.nodes.spi.NodeLIRBuilderTool;
@@ -22,18 +21,18 @@ public class VectorWriteNode extends VectorFixedAccessNode implements LIRLowerab
 
     public static final NodeClass<VectorWriteNode> TYPE = NodeClass.create(VectorWriteNode.class);
 
-    @Input VectorValueNode value;
+    @Input ValueNode value;
     @OptionalInput(InputType.Memory) Node lastLocationAccess;
 
-    public VectorValueNode value() {
+    public ValueNode value() {
         return value;
     }
 
-    public VectorWriteNode(AddressNode address, LocationIdentity[] locations, VectorValueNode value, BarrierType barrierType) {
+    public VectorWriteNode(AddressNode address, LocationIdentity[] locations, ValueNode value, BarrierType barrierType) {
         this(TYPE, address, locations, value, barrierType);
     }
 
-    protected VectorWriteNode(NodeClass<? extends VectorWriteNode> c, AddressNode address, LocationIdentity[] locations, VectorValueNode value, BarrierType barrierType) {
+    protected VectorWriteNode(NodeClass<? extends VectorWriteNode> c, AddressNode address, LocationIdentity[] locations, ValueNode value, BarrierType barrierType) {
         super(c, address, locations, StampFactory.forVoid(), barrierType);
         this.value = value;
     }
@@ -71,8 +70,14 @@ public class VectorWriteNode extends VectorFixedAccessNode implements LIRLowerab
         return false;
     }
 
-    public static VectorWriteNode fromPackElements(List<WriteNode> nodes, VectorValueNode value) {
+    @Override
+    public boolean verify() {
+        return value.isVector() && super.verify();
+    }
+
+    public static VectorWriteNode fromPackElements(List<WriteNode> nodes, ValueNode value) {
         assert nodes.size() != 0 : "pack empty";
+        assert value.isVector() : "value not vector";
         // Pre: nodes all have the same guard.
         // Pre: nodes are contiguous
         // Pre: nodes are from the same memory region

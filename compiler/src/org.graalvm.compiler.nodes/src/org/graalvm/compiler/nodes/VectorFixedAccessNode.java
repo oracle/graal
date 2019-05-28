@@ -11,7 +11,7 @@ import org.graalvm.compiler.nodes.memory.VectorAccess;
 import org.graalvm.compiler.nodes.memory.address.AddressNode;
 
 @NodeInfo
-public abstract class VectorFixedAccessNode extends VectorFixedWithNextNode implements VectorAccess, IterableNodeType  {
+public abstract class VectorFixedAccessNode extends FixedWithNextNode implements VectorAccess, IterableNodeType  {
     public static final NodeClass<VectorFixedAccessNode> TYPE = NodeClass.create(VectorFixedAccessNode.class);
 
     @OptionalInput(InputType.Guard) protected GuardingNode guard;

@@ -38,6 +38,11 @@ public class VectorReadNode extends VectorFixedAccessNode implements LIRLowerabl
         return getNullCheck() && type == InputType.Guard || super.isAllowedUsageType(type);
     }
 
+    @Override
+    public boolean isVector() {
+        return true;
+    }
+
     public static VectorReadNode fromPackElements(List<ReadNode> nodes) {
         assert nodes.size() != 0 : "pack empty";
         // Pre: nodes all have the same guard.

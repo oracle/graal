@@ -212,4 +212,8 @@ public abstract class ValueNode extends org.graalvm.compiler.graph.Node implemen
         }
         return true;
     }
+
+    public boolean isVector() {
+        return false;
+    }
 }
