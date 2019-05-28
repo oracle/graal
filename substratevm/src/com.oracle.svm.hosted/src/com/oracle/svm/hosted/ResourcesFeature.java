@@ -160,6 +160,9 @@ public final class ResourcesFeature implements Feature {
 
     @Override
     public void beforeCompilation(BeforeCompilationAccess access) {
+        if (!ImageSingletons.contains(FallbackFeature.class)) {
+            return;
+        }
         FallbackFeature.FallbackImageRequest resourceFallback = ImageSingletons.lookup(FallbackFeature.class).resourceFallback;
         if (resourceFallback != null && Options.IncludeResources.getValue().length == 0 &&
                         ConfigurationFiles.Options.ResourceConfigurationFiles.getValue().length == 0 &&
