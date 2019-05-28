@@ -750,7 +750,7 @@ public final class IsomorphicPackingPhase extends BasePhase<PhaseContext> {
                 final List<ReadNode> nodes = pack.getElements().stream().map(x -> (ReadNode) x).collect(Collectors.toList());
                 final VectorReadNode vectorRead = VectorReadNode.fromPackElements(nodes);
 
-                final VectorToScalarValueNode vts = new VectorToScalarValueNode(vectorRead.stamp(), vectorRead);
+                final VectorToScalarValueNode vts = new VectorToScalarValueNode(vectorRead.stamp().unrestricted(), vectorRead);
                 for (ReadNode node : nodes) {
                     node.replaceAtUsagesAndDelete(vts);
                 }
@@ -768,7 +768,7 @@ public final class IsomorphicPackingPhase extends BasePhase<PhaseContext> {
             if (first instanceof WriteNode) {
                 final List<WriteNode> nodes = pack.getElements().stream().map(x -> (WriteNode) x).collect(Collectors.toList());
 
-                final ScalarToVectorValueNode stv = new ScalarToVectorValueNode(nodes.get(0).getAccessStamp(), nodes.stream().map(AbstractWriteNode::value).collect(Collectors.toList()));
+                final ScalarToVectorValueNode stv = new ScalarToVectorValueNode(nodes.get(0).getAccessStamp().unrestricted(), nodes.stream().map(AbstractWriteNode::value).collect(Collectors.toList()));
                 final VectorWriteNode vectorWrite = VectorWriteNode.fromPackElements(nodes, stv);
 
                 for (WriteNode node : nodes) {
@@ -789,8 +789,8 @@ public final class IsomorphicPackingPhase extends BasePhase<PhaseContext> {
                 final List<AddNode> nodes = pack.getElements().stream().map(x -> (AddNode) x).collect(Collectors.toList());
 
                 // Input to vector, output to scalar
-                final ScalarToVectorValueNode stvX = new ScalarToVectorValueNode(nodes.get(0).getX().stamp(), nodes.stream().map(BinaryNode::getX).collect(Collectors.toList()));
-                final ScalarToVectorValueNode stvY = new ScalarToVectorValueNode(nodes.get(0).getY().stamp(), nodes.stream().map(BinaryNode::getY).collect(Collectors.toList()));
+                final ScalarToVectorValueNode stvX = new ScalarToVectorValueNode(nodes.get(0).getX().stamp().unrestricted(), nodes.stream().map(BinaryNode::getX).collect(Collectors.toList()));
+                final ScalarToVectorValueNode stvY = new ScalarToVectorValueNode(nodes.get(0).getY().stamp().unrestricted(), nodes.stream().map(BinaryNode::getY).collect(Collectors.toList()));
                 final VectorAddNode vector = new VectorAddNode(stvX, stvY);
                 final VectorToScalarValueNode vts = new VectorToScalarValueNode(nodes.get(0).stamp(), vector);
                 for (AddNode node : nodes) {
