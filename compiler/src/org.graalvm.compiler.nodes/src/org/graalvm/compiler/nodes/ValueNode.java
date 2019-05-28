@@ -213,6 +213,10 @@ public abstract class ValueNode extends org.graalvm.compiler.graph.Node implemen
         return true;
     }
 
+    /**
+     * Checks whether this value represents a vector.
+     * All vector values should return true. To be used in the verify method.
+     */
     public boolean isVector() {
         return false;
     }

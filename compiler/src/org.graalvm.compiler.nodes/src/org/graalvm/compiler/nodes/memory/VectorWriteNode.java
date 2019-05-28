@@ -72,7 +72,8 @@ public class VectorWriteNode extends VectorFixedAccessNode implements LIRLowerab
 
     @Override
     public boolean verify() {
-        return value.isVector() && super.verify();
+        assertTrue(value.isVector(), "VectorWriteNode value needs to be vector");
+        return super.verify();
     }
 
     public static VectorWriteNode fromPackElements(List<WriteNode> nodes, ValueNode value) {

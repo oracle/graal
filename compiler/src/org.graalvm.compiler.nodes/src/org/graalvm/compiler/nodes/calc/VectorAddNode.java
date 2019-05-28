@@ -27,7 +27,9 @@ public class VectorAddNode extends ValueNode {
 
     @Override
     public boolean verify() {
-        return x.isVector() && y.isVector() && super.verify();
+        assertTrue(x.isVector(), "[+] x input needs to be vector");
+        assertTrue(y.isVector(), "[+] y input needs to be vector");
+        return super.verify();
     }
 
     @Override

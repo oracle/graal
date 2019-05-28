@@ -38,7 +38,8 @@ public final class VectorSupport {
 
         @Override
         public boolean verify() {
-            return value.isVector() && super.verify();
+            assertTrue(value.isVector(), "VectorToScalarValueNode requires a vector ValueNode input");
+            return super.verify();
         }
     }
 
@@ -64,7 +65,8 @@ public final class VectorSupport {
 
         @Override
         public boolean verify() {
-            return values.stream().allMatch(ValueNode::isVector) && super.verify();
+            assertTrue(values.stream().noneMatch(ValueNode::isVector), "ScalarToVectorValueNode requires scalar inputs");
+            return super.verify();
         }
 
         @Override
