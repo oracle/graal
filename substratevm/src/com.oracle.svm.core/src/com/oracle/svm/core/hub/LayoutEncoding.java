@@ -126,6 +126,7 @@ public class LayoutEncoding {
         return WordFactory.unsigned((encoding >> ARRAY_BASE_SHIFT) & ARRAY_BASE_MASK);
     }
 
+    @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
     public static int getArrayIndexShift(int encoding) {
         return (encoding >> ARRAY_INDEX_SHIFT_SHIFT) & ARRAY_INDEX_SHIFT_MASK;
     }
@@ -134,10 +135,12 @@ public class LayoutEncoding {
         return 1 << getArrayIndexShift(encoding);
     }
 
+    @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
     public static UnsignedWord getArrayElementOffset(int encoding, int index) {
         return getArrayBaseOffset(encoding).add(WordFactory.unsigned(index).shiftLeft(getArrayIndexShift(encoding)));
     }
 
+    @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
     public static UnsignedWord getArraySize(int encoding, int length) {
         int alignmentMask = getAlignmentMask();
         return getArrayElementOffset(encoding, length).add(alignmentMask).and(~alignmentMask);

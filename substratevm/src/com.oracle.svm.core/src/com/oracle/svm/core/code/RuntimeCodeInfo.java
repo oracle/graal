@@ -27,20 +27,23 @@ package com.oracle.svm.core.code;
 import java.util.Arrays;
 
 import org.graalvm.compiler.options.Option;
-import org.graalvm.nativeimage.hosted.Feature;
 import org.graalvm.nativeimage.ImageSingletons;
 import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.Platforms;
 import org.graalvm.nativeimage.c.function.CodePointer;
+import org.graalvm.nativeimage.hosted.Feature;
 import org.graalvm.word.UnsignedWord;
 
 import com.oracle.svm.core.MemoryWalker;
 import com.oracle.svm.core.annotate.AutomaticFeature;
 import com.oracle.svm.core.annotate.Uninterruptible;
+import com.oracle.svm.core.c.PinnedArrays;
+import com.oracle.svm.core.c.PinnedObjectArray;
 import com.oracle.svm.core.deopt.Deoptimizer;
 import com.oracle.svm.core.deopt.SubstrateInstalledCode;
 import com.oracle.svm.core.heap.Heap;
-import com.oracle.svm.core.heap.PinnedAllocator;
+import com.oracle.svm.core.heap.ObjectReferenceVisitor;
+import com.oracle.svm.core.heap.ObjectReferenceWalker;
 import com.oracle.svm.core.log.Log;
 import com.oracle.svm.core.log.StringBuilderLog;
 import com.oracle.svm.core.option.RuntimeOptionKey;
@@ -68,9 +71,8 @@ public class RuntimeCodeInfo {
 
     private static final int INITIAL_TABLE_SIZE = 100;
 
-    private RuntimeMethodInfo[] methodInfos;
+    private PinnedObjectArray<RuntimeMethodInfo> methodInfos;
     private int numMethods;
-    private PinnedAllocator tablePin;
 
     @Platforms(Platform.HOSTED_ONLY.class)
     public RuntimeCodeInfo() {
@@ -80,8 +82,9 @@ public class RuntimeCodeInfo {
     @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
     public final void tearDown() {
         for (int i = 0; i < numMethods; i++) {
-            methodInfos[i].freeInstalledCode();
+            PinnedArrays.getObject(methodInfos, i).freeInstalledCode();
         }
+        PinnedArrays.releaseUnmanagedArray(methodInfos);
     }
 
     protected RuntimeMethodInfo lookupMethod(CodePointer ip) {
@@ -107,17 +110,17 @@ public class RuntimeCodeInfo {
         int idx = binarySearch(methodInfos, 0, numMethods, ip);
         if (idx >= 0) {
             /* Exact hit, ip is the begin of the method. */
-            return methodInfos[idx];
+            return PinnedArrays.getObject(methodInfos, idx);
         }
 
         int insertionPoint = -idx - 1;
         if (insertionPoint == 0) {
             /* ip is below the first method, so no hit. */
-            assert ((UnsignedWord) ip).belowThan((UnsignedWord) methodInfos[0].getCodeStart());
+            assert ((UnsignedWord) ip).belowThan((UnsignedWord) PinnedArrays.getObject(methodInfos, 0).getCodeStart());
             return null;
         }
 
-        RuntimeMethodInfo methodInfo = methodInfos[insertionPoint - 1];
+        RuntimeMethodInfo methodInfo = PinnedArrays.getObject(methodInfos, insertionPoint - 1);
         assert ((UnsignedWord) ip).aboveThan((UnsignedWord) methodInfo.getCodeStart());
         if (((UnsignedWord) ip).subtract((UnsignedWord) methodInfo.getCodeStart()).aboveOrEqual(methodInfo.getCodeSize())) {
             /* ip is not within the range of a method. */
@@ -129,13 +132,13 @@ public class RuntimeCodeInfo {
 
     /* Copied and adapted from Arrays.binarySearch. */
     @Uninterruptible(reason = "called from uninterruptible code")
-    private static int binarySearch(RuntimeMethodInfo[] a, int fromIndex, int toIndex, CodePointer key) {
+    private static int binarySearch(PinnedObjectArray<RuntimeMethodInfo> a, int fromIndex, int toIndex, CodePointer key) {
         int low = fromIndex;
         int high = toIndex - 1;
 
         while (low <= high) {
             int mid = (low + high) >>> 1;
-            CodePointer midVal = a[mid].getCodeStart();
+            CodePointer midVal = PinnedArrays.getObject(a, mid).getCodeStart();
 
             if (((UnsignedWord) midVal).belowThan((UnsignedWord) key)) {
                 low = mid + 1;
@@ -167,18 +170,18 @@ public class RuntimeCodeInfo {
             Log.log().string("]").newline();
         }
 
-        if (methodInfos == null || numMethods >= methodInfos.length) {
+        if (methodInfos.isNull() || numMethods >= PinnedArrays.lengthOf(methodInfos)) {
             enlargeTable();
             assert verifyTable();
         }
-        assert numMethods < methodInfos.length;
+        assert numMethods < PinnedArrays.lengthOf(methodInfos);
 
         int idx = binarySearch(methodInfos, 0, numMethods, methodInfo.getCodeStart());
         assert idx < 0 : "must not find code already in table";
         int insertionPoint = -idx - 1;
-        System.arraycopy(methodInfos, insertionPoint, methodInfos, insertionPoint + 1, numMethods - insertionPoint);
+        PinnedArrays.arraycopy(methodInfos, insertionPoint, methodInfos, insertionPoint + 1, numMethods - insertionPoint);
         numMethods++;
-        methodInfos[insertionPoint] = methodInfo;
+        PinnedArrays.setObject(methodInfos, insertionPoint, methodInfo);
 
         if (Options.TraceCodeCache.getValue()) {
             logTable();
@@ -186,38 +189,18 @@ public class RuntimeCodeInfo {
         assert verifyTable();
     }
 
+    @Uninterruptible(reason = "Prevent garbage collection before new table is published.")
     private void enlargeTable() {
-        VMOperation.guaranteeInProgress("Modifying code tables that are used by the GC");
-        RuntimeMethodInfo[] oldMethodInfos = methodInfos;
-        PinnedAllocator oldTablePin = tablePin;
-
-        int newTableSize = Math.max(INITIAL_TABLE_SIZE, numMethods * 2);
-        tablePin = Heap.getHeap().createPinnedAllocator();
-        tablePin.open();
-        RuntimeMethodInfo[] newMethodInfos = (RuntimeMethodInfo[]) tablePin.newArray(RuntimeMethodInfo.class, newTableSize);
-        tablePin.close();
-
-        if (oldMethodInfos != null) {
-            System.arraycopy(oldMethodInfos, 0, newMethodInfos, 0, oldMethodInfos.length);
-            oldTablePin.release();
+        int newTableSize = numMethods * 2;
+        if (newTableSize < INITIAL_TABLE_SIZE) {
+            newTableSize = INITIAL_TABLE_SIZE;
         }
-
-        /*
-         * Publish the new, larger array after it has been filled with the old values. This ensures
-         * that a GC triggered by the allocation of the new array still sees a valid methodInfos
-         * table.
-         */
+        PinnedObjectArray<RuntimeMethodInfo> newMethodInfos = PinnedArrays.createUnmanagedObjectArray(newTableSize);
+        if (methodInfos.isNonNull()) {
+            PinnedArrays.arraycopy(methodInfos, 0, newMethodInfos, 0, PinnedArrays.lengthOf(methodInfos));
+            PinnedArrays.releaseUnmanagedArray(methodInfos);
+        }
         methodInfos = newMethodInfos;
-
-        if (oldMethodInfos != null) {
-            /*
-             * The old array is in a pinned chunk that probably still contains metadata for other
-             * methods that are still alive. So even though we release our allocator, the old array
-             * is not garbage collected any time soon. By clearing the object array, we make sure
-             * that we do not keep objects alive unnecessarily.
-             */
-            Arrays.fill(oldMethodInfos, null);
-        }
     }
 
     protected void invalidateMethod(RuntimeMethodInfo methodInfo) {
@@ -256,9 +239,9 @@ public class RuntimeCodeInfo {
         /* Remove methodInfo entry from our table. */
         int idx = binarySearch(methodInfos, 0, numMethods, methodInfo.getCodeStart());
         assert idx >= 0 : "methodInfo must be in table";
-        System.arraycopy(methodInfos, idx + 1, methodInfos, idx, numMethods - (idx + 1));
+        PinnedArrays.arraycopy(methodInfos, idx + 1, methodInfos, idx, numMethods - (idx + 1));
         numMethods--;
-        methodInfos[numMethods] = null;
+        PinnedArrays.setObject(methodInfos, numMethods, null);
 
         Heap.getHeap().getGC().unregisterObjectReferenceWalker(methodInfo.constantsWalker);
 
@@ -290,22 +273,23 @@ public class RuntimeCodeInfo {
 
     @Uninterruptible(reason = "called from uninterruptible code")
     private boolean verifyTable() {
-        if (methodInfos == null) {
+        if (methodInfos.isNull()) {
             assert numMethods == 0 : "a1";
             return true;
         }
 
-        assert numMethods <= methodInfos.length : "a11";
+        assert numMethods <= PinnedArrays.lengthOf(methodInfos) : "a11";
 
         for (int i = 0; i < numMethods; i++) {
-            RuntimeMethodInfo methodInfo = methodInfos[i];
+            RuntimeMethodInfo methodInfo = PinnedArrays.getObject(methodInfos, i);
             assert methodInfo != null : "a20";
-            assert i == 0 || ((UnsignedWord) methodInfos[i - 1].getCodeStart()).belowThan((UnsignedWord) methodInfos[i].getCodeStart()) : "a22";
-            assert i == 0 || ((UnsignedWord) methodInfos[i - 1].getCodeEnd()).belowOrEqual((UnsignedWord) methodInfo.getCodeStart()) : "a23";
+            assert i == 0 || ((UnsignedWord) PinnedArrays.getObject(methodInfos, i - 1).getCodeStart())
+                            .belowThan((UnsignedWord) PinnedArrays.getObject(methodInfos, i).getCodeStart()) : "a22";
+            assert i == 0 || ((UnsignedWord) PinnedArrays.getObject(methodInfos, i - 1).getCodeEnd()).belowOrEqual((UnsignedWord) methodInfo.getCodeStart()) : "a23";
         }
 
-        for (int i = numMethods; i < methodInfos.length; i++) {
-            assert methodInfos[i] == null : "a31";
+        for (int i = numMethods; i < PinnedArrays.lengthOf(methodInfos); i++) {
+            assert PinnedArrays.getObject(methodInfos, i) == null : "a31";
         }
         return true;
     }
@@ -325,8 +309,8 @@ public class RuntimeCodeInfo {
     public void logTable(Log log) {
         log.string("== [RuntimeCodeCache: ").signed(numMethods).string(" methods");
         for (int i = 0; i < numMethods; i++) {
-            log.newline().hex(methodInfos[i].getCodeStart()).string("  ");
-            logMethod(log, methodInfos[i]);
+            log.newline().hex(PinnedArrays.getObject(methodInfos, i).getCodeStart()).string("  ");
+            logMethod(log, PinnedArrays.getObject(methodInfos, i));
         }
         log.string("]").newline();
     }
@@ -362,9 +346,20 @@ public class RuntimeCodeInfo {
         VMOperation.guaranteeInProgress("Modifying code tables that are used by the GC");
         boolean continueVisiting = true;
         for (int i = 0; (continueVisiting && (i < numMethods)); i += 1) {
-            continueVisiting = visitor.visitRuntimeCompiledMethod(methodInfos[i], ImageSingletons.lookup(RuntimeCodeInfo.MemoryWalkerAccessImpl.class));
+            continueVisiting = visitor.visitRuntimeCompiledMethod(PinnedArrays.getObject(methodInfos, i),
+                            ImageSingletons.lookup(RuntimeCodeInfo.MemoryWalkerAccessImpl.class));
         }
         return continueVisiting;
+    }
+
+    final class RuntimeCodeInfoReferenceWalker extends ObjectReferenceWalker {
+        @Override
+        public boolean walk(ObjectReferenceVisitor referenceVisitor) {
+            if (methodInfos.isNonNull()) {
+                PinnedArrays.walkUnmanagedObjectArray(methodInfos, referenceVisitor);
+            }
+            return true;
+        }
     }
 
     /** Methods for a MemoryWalker to access runtime compiled code. */
@@ -403,10 +398,14 @@ public class RuntimeCodeInfo {
 }
 
 @AutomaticFeature
-class RuntimeCodeInfoMemoryWalkerAccessFeature implements Feature {
-
+class RuntimeCodeInfoWalkersFeature implements Feature {
     @Override
     public void afterRegistration(AfterRegistrationAccess access) {
         ImageSingletons.add(RuntimeCodeInfo.MemoryWalkerAccessImpl.class, new RuntimeCodeInfo.MemoryWalkerAccessImpl());
+    }
+
+    @Override
+    public void duringSetup(DuringSetupAccess access) {
+        Heap.getHeap().getGC().registerObjectReferenceWalker(CodeInfoTable.getRuntimeCodeCache().new RuntimeCodeInfoReferenceWalker());
     }
 }
