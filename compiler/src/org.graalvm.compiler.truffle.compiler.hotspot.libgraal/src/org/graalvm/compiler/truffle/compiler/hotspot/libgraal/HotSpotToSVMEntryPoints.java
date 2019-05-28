@@ -383,7 +383,7 @@ final class HotSpotToSVMEntryPoints {
         CCharPointer optionsCPointer = GetByteArrayElements(env, hsOptions, WordFactory.nullPointer());
         try {
             byte[] optionsBuffer = new byte[len];
-            CTypeConversion.asByteBuffer(optionsCPointer, len).put(optionsBuffer);
+            CTypeConversion.asByteBuffer(optionsCPointer, len).get(optionsBuffer);
             options = OptionsEncoder.decode(optionsBuffer);
         } finally {
             ReleaseByteArrayElements(env, hsOptions, optionsCPointer, JArray.MODE_RELEASE);
