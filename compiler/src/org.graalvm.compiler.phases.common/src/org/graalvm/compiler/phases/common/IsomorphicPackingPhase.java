@@ -3,14 +3,19 @@ package org.graalvm.compiler.phases.common;
 import jdk.vm.ci.meta.JavaKind;
 import org.graalvm.compiler.core.common.cfg.BlockMap;
 import org.graalvm.compiler.graph.Node;
+import org.graalvm.compiler.graph.NodeInputList;
 import org.graalvm.compiler.graph.NodeMap;
+import org.graalvm.compiler.nodes.FixedNode;
+import org.graalvm.compiler.nodes.FixedWithNextNode;
 import org.graalvm.compiler.nodes.StructuredGraph;
 import org.graalvm.compiler.nodes.ValueNode;
+import org.graalvm.compiler.nodes.VectorSupport.*;
+import org.graalvm.compiler.nodes.calc.AddNode;
+import org.graalvm.compiler.nodes.calc.BinaryNode;
+import org.graalvm.compiler.nodes.calc.VectorAddNode;
 import org.graalvm.compiler.nodes.cfg.Block;
 import org.graalvm.compiler.nodes.cfg.ControlFlowGraph;
-import org.graalvm.compiler.nodes.memory.FixedAccessNode;
-import org.graalvm.compiler.nodes.memory.LIRLowerableAccess;
-import org.graalvm.compiler.nodes.memory.WriteNode;
+import org.graalvm.compiler.nodes.memory.*;
 import org.graalvm.compiler.nodes.memory.address.AddressNode;
 import org.graalvm.compiler.phases.BasePhase;
 import org.graalvm.compiler.phases.schedule.SchedulePhase;
@@ -691,11 +696,14 @@ public final class IsomorphicPackingPhase extends BasePhase<PhaseContext> {
 
         private void schedule(List<Node> unscheduled, Set<Pack<Node>> packSet) {
             final List<Node> scheduled = new ArrayList<>();
+            final Deque<Node> lastFixed = new ArrayDeque<>();
 
             // Populate a nodeToPackMap
             final Map<Node, Pack<Node>> nodeToPackMap = packSet.stream()
                     .flatMap(pack -> pack.getElements().stream().map(node -> Pair.create(node, pack)))
                     .collect(Collectors.toMap(Pair::getLeft, Pair::getRight));
+
+            final List<Runnable> deferred = new ArrayList<>();
 
             // While unscheduled isn't empty
             outer:
@@ -709,12 +717,14 @@ public final class IsomorphicPackingPhase extends BasePhase<PhaseContext> {
                             // Remove statements from unscheduled
                             scheduled.addAll(pack.getElements());
                             unscheduled.removeAll(pack.getElements());
+                            deferred.add(() -> schedulePack(pack, lastFixed));
                             continue outer;
                         }
                     } else if (deps_scheduled(node, scheduled)) {
                         // Remove statement from unscheduled and schedule
                         scheduled.add(node);
                         unscheduled.remove(node);
+                        deferred.add(() -> scheduleStmt(node, lastFixed));
                         continue outer;
                     }
                 }
@@ -722,10 +732,81 @@ public final class IsomorphicPackingPhase extends BasePhase<PhaseContext> {
                 // We only reach here if there is a grouped statement dependency violation.
                 // These are broken by removing one of the packs.
                 Pack<Node> packToRemove = earliest_unscheduled(unscheduled, nodeToPackMap);
-                assert packToRemove != null; // We should only reach this point if there are unscheduled statements in packs
+                assert packToRemove != null : "there no are unscheduled statements in packs";
                 for (Node packNode : packToRemove.getElements()) {
                     nodeToPackMap.remove(packNode); // Remove all references for these statements to pack
                 }
+            }
+
+            for (Runnable runnable : deferred) {
+                runnable.run();
+            }
+
+            System.out.println(String.format("Final schedule %s", scheduled.toString()));
+        }
+
+        private void schedulePack(Pack<Node> pack, Deque<Node> lastFixed) {
+            final Node first = pack.getLeft();
+
+            if (first instanceof ReadNode) {
+                final List<ReadNode> nodes = pack.getElements().stream().map(x -> (ReadNode) x).collect(Collectors.toList());
+                final VectorReadNode vectorRead = VectorReadNode.fromPackElements(nodes);
+
+                final VectorToScalarValueNode vts = new VectorToScalarValueNode(vectorRead.stamp(), vectorRead);
+                for (ReadNode node : nodes) {
+                    node.replaceAtUsagesAndDelete(vts);
+                }
+
+                first.graph().add(vectorRead);
+                first.graph().add(vts);
+
+//                if (!lastFixed.isEmpty()) {
+//                    ((FixedWithNextNode) lastFixed.poll()).setNext(vectorRead);
+//                }
+
+                lastFixed.add(vectorRead);
+            }
+
+            if (first instanceof WriteNode) {
+                final List<WriteNode> nodes = pack.getElements().stream().map(x -> (WriteNode) x).collect(Collectors.toList());
+
+                final ScalarToVectorValueNode stv = new ScalarToVectorValueNode(nodes.get(0).getAccessStamp(), nodes.stream().map(AbstractWriteNode::value).collect(Collectors.toList()));
+                final VectorWriteNode vectorWrite = VectorWriteNode.fromPackElements(nodes, stv);
+
+                for (WriteNode node : nodes) {
+                    node.safeDelete();
+                }
+
+                first.graph().add(stv);
+                first.graph().add(vectorWrite);
+
+                lastFixed.add(vectorWrite);
+            }
+
+            if (first instanceof AddNode) {
+                final List<AddNode> nodes = pack.getElements().stream().map(x -> (AddNode) x).collect(Collectors.toList());
+
+                // Input to vector, output to scalar
+                final ScalarToVectorValueNode stvX = new ScalarToVectorValueNode(nodes.get(0).getX().stamp(), nodes.stream().map(BinaryNode::getX).collect(Collectors.toList()));
+                final ScalarToVectorValueNode stvY = new ScalarToVectorValueNode(nodes.get(0).getY().stamp(), nodes.stream().map(BinaryNode::getY).collect(Collectors.toList()));
+                final VectorAddNode vector = new VectorAddNode(stvX, stvY);
+                final VectorToScalarValueNode vts = new VectorToScalarValueNode(nodes.get(0).stamp(), vector);
+                for (AddNode node : nodes) {
+                    node.replaceAtUsagesAndDelete(vts);
+                }
+
+                first.graph().add(stvX);
+                first.graph().add(stvY);
+                first.graph().add(vector);
+                first.graph().add(vts);
+            }
+
+            return;
+        }
+
+        private void scheduleStmt(Node node, Deque<Node> lastFixed) {
+            if (node instanceof FixedWithNextNode) {
+                lastFixed.add(node);
             }
         }
 

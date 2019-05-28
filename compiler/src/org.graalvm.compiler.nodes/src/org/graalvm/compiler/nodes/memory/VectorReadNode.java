@@ -4,37 +4,33 @@ import org.graalvm.compiler.core.common.LocationIdentity;
 import org.graalvm.compiler.core.common.type.Stamp;
 import org.graalvm.compiler.debug.GraalError;
 import org.graalvm.compiler.graph.NodeClass;
-import org.graalvm.compiler.graph.spi.Canonicalizable;
 import org.graalvm.compiler.nodeinfo.InputType;
 import org.graalvm.compiler.nodeinfo.NodeInfo;
-import org.graalvm.compiler.nodes.FrameState;
+import org.graalvm.compiler.nodes.VectorFixedAccessNode;
 import org.graalvm.compiler.nodes.extended.GuardingNode;
 import org.graalvm.compiler.nodes.memory.address.AddressNode;
+import org.graalvm.compiler.nodes.spi.LIRLowerable;
 import org.graalvm.compiler.nodes.spi.NodeLIRBuilderTool;
 
-@NodeInfo(nameTemplate = "VectorRead#{p#location/s}")
-public class VectorReadNode extends FloatableAccessNode implements LIRLowerableAccess, GuardingNode {
+import java.util.List;
+
+@NodeInfo(nameTemplate = "VectorRead#{p#locations/s}")
+public class VectorReadNode extends VectorFixedAccessNode implements LIRLowerable {
 
     public static final NodeClass<VectorReadNode> TYPE = NodeClass.create(VectorReadNode.class);
 
-    public VectorReadNode(AddressNode address, LocationIdentity location, Stamp stamp, BarrierType barrierType) {
-        this(TYPE, address, location, stamp, null, barrierType, false, null);
+    public VectorReadNode(AddressNode address, LocationIdentity[] locations, Stamp stamp, BarrierType barrierType) {
+        this(TYPE, address, locations, stamp, null, barrierType, false);
     }
 
-    protected VectorReadNode(NodeClass<? extends VectorReadNode> c, AddressNode address, LocationIdentity location, Stamp stamp, GuardingNode guard, BarrierType barrierType, boolean nullCheck, FrameState stateBefore) {
-        super(c, address, location, stamp, guard, barrierType, nullCheck, stateBefore);
+    public VectorReadNode(NodeClass<? extends VectorReadNode> c, AddressNode address, LocationIdentity[] locations, Stamp stamp, GuardingNode guard, BarrierType barrierType, boolean nullCheck) {
+        super(c, address, locations, stamp, guard, barrierType, nullCheck);
     }
 
     @Override
     public void generate(NodeLIRBuilderTool generator) {
-        // TODO: IMPLEMENT GENERATE
-        throw GraalError.unimplemented("VRN unimplemented");
-    }
-
-    @Override
-    public FloatingAccessNode asFloatingNode(MemoryNode lastLocationAccess) {
-        // TODO: IMPLEMENT FLOATING
-        throw GraalError.shouldNotReachHere("VectorReadNode not actually floatable");
+        // TODO: Implement
+        throw GraalError.unimplemented();
     }
 
     @Override
@@ -42,13 +38,17 @@ public class VectorReadNode extends FloatableAccessNode implements LIRLowerableA
         return getNullCheck() && type == InputType.Guard || super.isAllowedUsageType(type);
     }
 
-    @Override
-    public boolean canNullCheck() {
-        return true;
-    }
+    public static VectorReadNode fromPackElements(List<ReadNode> nodes) {
+        assert nodes.size() != 0 : "pack empty";
+        // Pre: nodes all have the same guard.
+        // Pre: nodes are contiguous
+        // Pre: nodes are from the same memory region
+        // ???
 
-    @Override
-    public Stamp getAccessStamp() {
-        return stamp();
+        final ReadNode anchor = nodes.get(0);
+        final AddressNode address = anchor.getAddress();
+        final LocationIdentity[] locations = nodes.stream().map(ReadNode::getLocationIdentity).toArray(LocationIdentity[]::new);
+
+        return new VectorReadNode(TYPE, address, locations, anchor.getAccessStamp(), anchor.getGuard(), anchor.getBarrierType(), anchor.getNullCheck());
     }
 }
