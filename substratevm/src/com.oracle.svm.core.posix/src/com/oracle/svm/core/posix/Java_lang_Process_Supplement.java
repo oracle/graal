@@ -46,12 +46,12 @@ import org.graalvm.word.WordFactory;
 
 import com.oracle.svm.core.LibCHelper;
 import com.oracle.svm.core.annotate.Uninterruptible;
+import com.oracle.svm.core.headers.Errno;
 import com.oracle.svm.core.heap.NoAllocationVerifier;
 import com.oracle.svm.core.posix.headers.Dirent;
 import com.oracle.svm.core.posix.headers.Dirent.DIR;
 import com.oracle.svm.core.posix.headers.Dirent.dirent;
 import com.oracle.svm.core.posix.headers.Dirent.direntPointer;
-import com.oracle.svm.core.headers.Errno;
 import com.oracle.svm.core.posix.headers.Fcntl;
 import com.oracle.svm.core.posix.headers.LibC;
 import com.oracle.svm.core.posix.headers.Limits;
@@ -256,9 +256,9 @@ public final class Java_lang_Process_Supplement {
             ptrblock.write(k, cstrblock.addressOf(i));
             k++;
 
-            do {
+            while (i < nbytes && cstrblock.read(i) != '\0') {
                 i++;
-            } while (i < nbytes && cstrblock.read(i) != '\0');
+            }
             i++;
         }
         assert i == nbytes && k == nptrs - 1;
