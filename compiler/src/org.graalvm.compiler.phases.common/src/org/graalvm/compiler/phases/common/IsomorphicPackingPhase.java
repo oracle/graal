@@ -696,7 +696,7 @@ public final class IsomorphicPackingPhase extends BasePhase<PhaseContext> {
 
         private void schedule(List<Node> unscheduled, Set<Pack<Node>> packSet) {
             final List<Node> scheduled = new ArrayList<>();
-            final Deque<Node> lastFixed = new ArrayDeque<>();
+            final Deque<FixedNode> lastFixed = new ArrayDeque<>();
 
             // Populate a nodeToPackMap
             final Map<Node, Pack<Node>> nodeToPackMap = packSet.stream()
@@ -745,7 +745,7 @@ public final class IsomorphicPackingPhase extends BasePhase<PhaseContext> {
             System.out.println(String.format("Final schedule %s", scheduled.toString()));
         }
 
-        private void schedulePack(Pack<Node> pack, Deque<Node> lastFixed) {
+        private void schedulePack(Pack<Node> pack, Deque<FixedNode> lastFixed) {
             final Node first = pack.getLeft();
 
             if (first instanceof ReadNode) {
@@ -760,9 +760,9 @@ public final class IsomorphicPackingPhase extends BasePhase<PhaseContext> {
                 first.graph().add(vectorRead);
                 first.graph().add(vts);
 
-//                if (!lastFixed.isEmpty()) {
-//                    ((FixedWithNextNode) lastFixed.poll()).setNext(vectorRead);
-//                }
+                if (!lastFixed.isEmpty() && lastFixed.element() instanceof FixedWithNextNode) {
+                    ((FixedWithNextNode) lastFixed.poll()).setNext(vectorRead);
+                }
 
                 lastFixed.add(vectorRead);
             }
@@ -779,6 +779,10 @@ public final class IsomorphicPackingPhase extends BasePhase<PhaseContext> {
 
                 first.graph().add(stv);
                 first.graph().add(vectorWrite);
+
+                if (!lastFixed.isEmpty() && lastFixed.element() instanceof FixedWithNextNode) {
+                    ((FixedWithNextNode) lastFixed.poll()).setNext(vectorWrite);
+                }
 
                 lastFixed.add(vectorWrite);
             }
@@ -804,9 +808,13 @@ public final class IsomorphicPackingPhase extends BasePhase<PhaseContext> {
             return;
         }
 
-        private void scheduleStmt(Node node, Deque<Node> lastFixed) {
-            if (node instanceof FixedWithNextNode) {
-                lastFixed.add(node);
+        private void scheduleStmt(Node node, Deque<FixedNode> lastFixed) {
+            if (node instanceof FixedNode) {
+                lastFixed.add((FixedNode) node);
+
+                if (!lastFixed.isEmpty() && lastFixed.element() instanceof FixedWithNextNode) {
+                    ((FixedWithNextNode) lastFixed.poll()).setNext((FixedNode) node);
+                }
             }
         }
 
