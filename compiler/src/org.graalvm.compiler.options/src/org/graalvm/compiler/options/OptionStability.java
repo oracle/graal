@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2019, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -22,26 +22,22 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package org.graalvm.compiler.core.common;
+package org.graalvm.compiler.options;
 
-import org.graalvm.compiler.options.EnumOptionKey;
-import org.graalvm.compiler.options.Option;
-import org.graalvm.compiler.options.OptionKey;
-import org.graalvm.compiler.options.OptionStability;
-import org.graalvm.compiler.options.OptionType;
+/**
+ * Categorizes options according to their stability.
+ */
+public enum OptionStability {
 
-public enum SpeculativeExecutionAttacksMitigations {
-    None,
-    AllTargets,
-    GuardTargets,
-    NonDeoptGuardTargets;
+    /**
+     * A stable option is expected to remain available for many releases. End users can rely on such
+     * an option being present. A stable option can still be removed but will go through a clear
+     * deprecating process before being removed.
+     */
+    STABLE,
 
-    public static class Options {
-        // @formatter:off
-        @Option(help = "file:doc-files/MitigateSpeculativeExecutionAttacksHelp.txt")
-        public static final EnumOptionKey<SpeculativeExecutionAttacksMitigations> MitigateSpeculativeExecutionAttacks = new EnumOptionKey<>(None);
-        @Option(help = "Use index masking after bounds check to mitigate speculative execution attacks.", type = OptionType.User, stability = OptionStability.STABLE)
-        public static final OptionKey<Boolean> UseIndexMasking = new OptionKey<>(false);
-        // @formatter:on
-    }
+    /**
+     * An experimental option has no guarantees of stability and might be removed at any point.
+     */
+    EXPERIMENTAL
 }
