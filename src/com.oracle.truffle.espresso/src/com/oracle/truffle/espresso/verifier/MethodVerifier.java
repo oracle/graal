@@ -267,11 +267,14 @@ import com.oracle.truffle.espresso.descriptors.Symbol.Signature;
 import com.oracle.truffle.espresso.descriptors.Symbol.Type;
 import com.oracle.truffle.espresso.descriptors.Types;
 import com.oracle.truffle.espresso.impl.ContextAccess;
+import com.oracle.truffle.espresso.impl.Field;
 import com.oracle.truffle.espresso.impl.Klass;
 import com.oracle.truffle.espresso.impl.Method;
 import com.oracle.truffle.espresso.meta.EspressoError;
+import com.oracle.truffle.espresso.meta.ExceptionHandler;
 import com.oracle.truffle.espresso.meta.JavaKind;
 import com.oracle.truffle.espresso.runtime.EspressoContext;
+import com.oracle.truffle.espresso.runtime.EspressoException;
 import com.oracle.truffle.espresso.runtime.StaticObject;
 
 /**
@@ -292,6 +295,7 @@ public final class MethodVerifier implements ContextAccess {
     private final byte[] verified;
     private final StackFrame[] stackFrames;
     private final StackMapTableAttribute stackMapTableAttribute;
+    private final ExceptionHandler[] exceptionHandlers;
 
     Symbol<Type>[] getSig() {
         return sig;
@@ -395,6 +399,8 @@ public final class MethodVerifier implements ContextAccess {
     private final Operand MethodHandle;
     private final Operand Throwable;
 
+    private final Operand thisOperand;
+
     static private final byte UNREACHABLE = 0;
     static private final byte UNSEEN = 1;
     static private final byte DONE = 2;
@@ -419,6 +425,7 @@ public final class MethodVerifier implements ContextAccess {
         this.thisKlass = m.getDeclaringKlass();
         this.methodName = m.getName();
         this.stackMapTableAttribute = codeAttribute.getStackMapFrame();
+        this.exceptionHandlers = m.getExceptionHandlers();
         this.majorVersion = codeAttribute.getMajorVersion();
         this.useStackMaps = codeAttribute.useStackMaps();
 
@@ -427,20 +434,21 @@ public final class MethodVerifier implements ContextAccess {
         MethodType = new ReferenceOperand(Type.MethodType, thisKlass);
         MethodHandle = new ReferenceOperand(Type.MethodHandle, thisKlass);
         Throwable = new ReferenceOperand(Type.Throwable, thisKlass);
+
+        thisOperand = new ReferenceOperand(thisKlass, thisKlass);
     }
 
     /**
      * Utility for ease of use in Espresso
      *
      * @param m the method to verify
-     * @return true, or throws ClassFormatError or VerifyError.
      */
-    public static boolean verify(Method m) {
+    public static void verify(Method m) {
         CodeAttribute codeAttribute = m.getCodeAttribute();
         if (codeAttribute == null) {
-            return true;
+            return;
         }
-        return new MethodVerifier(codeAttribute, m).verify();
+        new MethodVerifier(codeAttribute, m).verify();
     }
 
     private void initVerifier() {
@@ -539,7 +547,7 @@ public final class MethodVerifier implements ContextAccess {
         int BCI = 0;
         boolean first = true;
         stackFrames[BCI] = previous;
-        if (stackMapTableAttribute == null) {
+        if (!useStackMaps || stackMapTableAttribute == null) {
             return;
         }
         StackMapFrame[] entries = stackMapTableAttribute.getEntries();
@@ -706,10 +714,8 @@ public final class MethodVerifier implements ContextAccess {
 
     /**
      * Performs the verification for the method associated with this
-     *
-     * @return true or throws ClassFormatError or VerifyError
      */
-    private synchronized boolean verify() {
+    private synchronized void verify() {
         try {
             initVerifier();
         } catch (IndexOutOfBoundsException e) {
@@ -718,36 +724,69 @@ public final class MethodVerifier implements ContextAccess {
         if (code.endBCI() == 0) {
             throw new VerifyError("Control flow falls through code end");
         }
-        int nextBCI = 0;
-        if (useStackMaps) {
-            try {
-                initStackFrames();
-            } catch (IndexOutOfBoundsException e) {
-                throw new VerifyError("Could not construct stackFrames due to invalid maxStack or maxLocals value: " + e.getMessage());
-            }
+        try {
+            initStackFrames();
+        } catch (IndexOutOfBoundsException e) {
+            throw new VerifyError("Could not construct stackFrames due to invalid maxStack or maxLocals value: " + e.getMessage());
         }
+        validateExceptionHandlers();
         Stack stack = new Stack(maxStack);
         Locals locals = new Locals(this);
-        while (verified[nextBCI] != DONE || (stackFrames[nextBCI] != null && stack.mergeInto(stackFrames[nextBCI]) != -1)) {
-            if (stackFrames[nextBCI] != null || verified[nextBCI] == JUMP_TARGET) {
-                StackFrame frame = mergeFrames(stack, locals, stackFrames[nextBCI]);
-                if (!(frame == stackFrames[nextBCI])) {
-                    stackFrames[nextBCI] = frame;
-                }
-                stack = frame.extractStack(maxStack);
-                locals = frame.extractLocals();
-                nextBCI = verifySafe(nextBCI, stack, locals);
-            } else {
-                nextBCI = verifySafe(nextBCI, stack, locals);
-            }
-            if (nextBCI >= code.endBCI()) {
-                throw new VerifyError("Control flow falls through code end");
-            }
-        }
-        return true;
+        startVerify(0, stack, locals);
+        verifyExceptionHandlers();
     }
 
-    private boolean branch(int BCI, Stack stack, Locals locals) {
+    private void validateExceptionHandlers() {
+        for (ExceptionHandler handler : exceptionHandlers) {
+            int BCI = handler.getHandlerBCI();
+            validateBCI(BCI);
+            BCI = handler.getStartBCI();
+            validateBCI(BCI);
+            int endBCI = handler.getEndBCI();
+            if (endBCI <= BCI) {
+                throw new VerifyError("End BCI of handler is before start BCI");
+            }
+            if (endBCI > code.endBCI()) {
+                throw new VerifyError("Control flow falls through code end");
+            }
+            if (endBCI < 0) {
+                throw new VerifyError("negative branch target: " + BCI);
+            }
+            if (endBCI != code.endBCI()) {
+                if (verified[BCI] == UNREACHABLE) {
+                    throw new VerifyError("Jump to the middle of an instruction: " + BCI);
+                }
+            }
+        }
+    }
+
+    private void verifyExceptionHandlers() {
+        for (ExceptionHandler handler : exceptionHandlers) {
+            int handlerBCI = handler.getHandlerBCI();
+            Locals locals;
+            Stack stack;
+            StackFrame frame = stackFrames[handlerBCI];
+            if (frame == null) {
+                Operand[] registers = new Operand[maxLocals];
+                Arrays.fill(registers, Invalid);
+                locals = new Locals(registers);
+                stack = new Stack(maxStack);
+                stack.push(new ReferenceOperand(handler.getCatchType(), thisKlass));
+            } else {
+                stack = frame.extractStack(maxStack);
+                locals = frame.extractLocals();
+            }
+
+            startVerify(handlerBCI, stack, locals);
+        }
+    }
+
+    private void branch(int BCI, Stack stack, Locals locals) {
+        validateBCI(BCI);
+        startVerify(BCI, stack, locals);
+    }
+
+    private void validateBCI(int BCI) {
         if (BCI >= code.endBCI()) {
             throw new VerifyError("Control flow falls through code end");
         }
@@ -757,33 +796,55 @@ public final class MethodVerifier implements ContextAccess {
         if (verified[BCI] == UNREACHABLE) {
             throw new VerifyError("Jump to the middle of an instruction: " + BCI);
         }
-        StackFrame frame = mergeFrames(stack, locals, stackFrames[BCI]);
-        if (!(frame == stackFrames[BCI])) {
-            verified[BCI] = JUMP_TARGET;
-            stackFrames[BCI] = frame;
-        }
-        if (verified[BCI] == DONE) {
-            return true;
-        }
-        Stack newStack = frame.extractStack(maxStack);
-        Locals newLocals = frame.extractLocals();
+    }
+
+    private boolean startVerify(int BCI, Stack stack_, Locals locals_) {
+        Stack stack = stack_;
+        Locals locals = locals_;
         int nextBCI = BCI;
-        while (verified[nextBCI] != DONE) {
-            nextBCI = verifySafe(nextBCI, newStack, newLocals);
+        int previousBCI;
+
+        do {
+            previousBCI = nextBCI;
+            if (stackFrames[nextBCI] != null || verified[nextBCI] == JUMP_TARGET) {
+                StackFrame frame = mergeFrames(stack, locals, stackFrames[nextBCI]);
+                if (!(frame == stackFrames[nextBCI])) {
+                    verified[nextBCI] = JUMP_TARGET;
+                    stackFrames[nextBCI] = frame;
+                }
+                stack = frame.extractStack(maxStack);
+                locals = frame.extractLocals();
+            }
+            if (verified[nextBCI] == DONE) {
+                return true;
+            }
+            checkExceptionHandlers(nextBCI, locals);
+            nextBCI = verifySafe(nextBCI, stack, locals);
             if (nextBCI >= code.endBCI()) {
                 throw new VerifyError("Control flow falls through code end");
             }
-        }
-        if (verified[BCI] == UNREACHABLE) {
-            throw new VerifyError("Control flow falls between instructions: " + BCI);
-        }
+        } while (previousBCI != nextBCI);
+
         return true;
+    }
+
+    private void checkExceptionHandlers(int nextBCI, Locals locals) {
+        for (ExceptionHandler handler : exceptionHandlers) {
+            if (handler.getStartBCI() >= nextBCI && handler.getEndBCI() < nextBCI) {
+                Stack stack = new Stack(1);
+                Symbol<Type> catchType = handler.getCatchType();
+                stack.push(catchType == null ? Throwable : new ReferenceOperand(catchType, thisKlass));
+                stackFrames[handler.getHandlerBCI()] = mergeFrames(stack, locals, stackFrames[handler.getHandlerBCI()]);
+            }
+        }
     }
 
     private int verifySafe(int BCI, Stack stack, Locals locals) {
         try {
             return verify(BCI, stack, locals);
         } catch (IndexOutOfBoundsException e) {
+            // At this point, the only appearance of an IndexOutOfBounds should be from stack and
+            // locals access (BCI bound checks are done beforehand).
             throw new VerifyError("Inconsistent Stack/Local access: " + e.getMessage() + ", in: " + thisKlass.getType() + "." + methodName);
         }
     }
@@ -1149,8 +1210,10 @@ public final class MethodVerifier implements ContextAccess {
                     FieldRefConstant frc = (FieldRefConstant) pc;
                     Symbol<Type> type = frc.getType(pool);
                     if (curOpcode == GETFIELD) {
-                        Operand fieldHolder = kindToOperand(getTypes().fromName(frc.getHolderKlassName(pool)));
+                        Symbol<Type> fieldHolderType = getTypes().fromName(frc.getHolderKlassName(pool));
+                        Operand fieldHolder = kindToOperand(fieldHolderType);
                         Operand receiver = checkInit(stack, stack.popRef(fieldHolder));
+                        checkProtectedField(receiver, fieldHolderType, code.readCPI(BCI));
                         if (receiver.isArrayType()) {
                             throw new VerifyError("Trying to access field of an array type: " + receiver);
                         }
@@ -1219,22 +1282,33 @@ public final class MethodVerifier implements ContextAccess {
                     for (int i = parsedSig.length - 2; i >= 0; i--) {
                         stack.pop(parsedSig[i]);
                     }
-                    Operand op = getHolderKlassAsOperand(mrc);
+                    Symbol<Type> methodHolder = getTypes().fromName(mrc.getHolderKlassName(pool));
+                    Operand methodHolderOp = kindToOperand(methodHolder);
 
-                    if (curOpcode == INVOKESPECIAL && calledMethodName == Name.INIT) {
-                        UninitReferenceOperand toInit = (UninitReferenceOperand) stack.popUninitRef(op);
-                        if (toInit.newBCI != -1) {
-                            if (code.opcode(toInit.newBCI) != NEW) {
-                                throw new VerifyError("There is no NEW bytecode at BCI: " + toInit.newBCI);
+                    if (curOpcode == INVOKESPECIAL) {
+                        if (calledMethodName == Name.INIT) {
+                            UninitReferenceOperand toInit = (UninitReferenceOperand) stack.popUninitRef(methodHolderOp);
+                            if (toInit.newBCI != -1) {
+                                if (code.opcode(toInit.newBCI) != NEW) {
+                                    throw new VerifyError("There is no NEW bytecode at BCI: " + toInit.newBCI);
+                                }
+                            } else {
+                                if (methodName != Name.INIT) {
+                                    throw new VerifyError("Encountered UninitializedThis outside of Constructor: " + toInit);
+                                }
                             }
+                            Operand stackOp = stack.initUninit(toInit);
+                            locals.initUninit(toInit, stackOp);
+
+                            checkProtectedMethod(stackOp, methodHolder, code.readCPI(BCI));
                         } else {
-                            if (methodName != Name.INIT) {
-                                throw new VerifyError("Encountered UninitializedThis outside of Constructor: " + toInit);
+                            Operand stackOp = checkInit(stack, stack.popRef(methodHolderOp));
+                            if (!(stackOp.compliesWith(thisOperand) || checkHostAccess(stackOp))) {
+                                throw new VerifyError("Invalid use of INVOKESPECIAL");
                             }
                         }
-                        stack.initUninit(toInit);
                     } else if (curOpcode != INVOKESTATIC) {
-                        checkInit(stack, stack.popRef(op));
+                        checkInit(stack, stack.popRef(methodHolderOp));
                     }
                     Operand returnOp = parsedSig[parsedSig.length - 1];
                     if (!(returnOp == Void)) {
@@ -1409,17 +1483,23 @@ public final class MethodVerifier implements ContextAccess {
         }
     }
 
+    private boolean checkHostAccess(Operand stackOp) {
+        if (thisOperand.getKlass().getHostClass() != null) {
+            return stackOp.getKlass().isAssignableFrom(thisOperand.getKlass().getHostClass());
+        }
+        return true;
+    }
+
     // Helper methods
 
-    @SuppressWarnings("unused")
-    private static void checkProtected(Operand thisOp, Operand stackOp, Method calledMethod) {
+    private void checkProtectedField(Operand stackOp, Symbol<Type> fieldHolderType, int fieldCPI) {
         /**
          * 4.10.1.8.
          * 
          * If the name of a class is not the name of any superclass, it cannot be a superclass, and
          * so it can safely be ignored.
          */
-        if (!thisOp.compliesWith(stackOp)) {
+        if (stackOp.getType() == thisKlass.getType()) {
             return;
         }
         /**
@@ -1428,17 +1508,94 @@ public final class MethodVerifier implements ContextAccess {
          * different run-time package has a protected member named MemberName with descriptor
          * MemberDescriptor, the protected check does not apply.
          */
-        if (thisOp.getKlass().sameRuntimePackage(calledMethod.getDeclaringKlass())) {
+        Klass superKlass = thisKlass.getSuperKlass();
+        while (superKlass != null) {
+            if (superKlass.getType() == fieldHolderType) {
+                final Field field;
+                try {
+                    field = pool.resolvedFieldAt(thisKlass, fieldCPI);
+                } catch (EspressoException e) {
+                    if (getMeta().IllegalArgumentException.isAssignableFrom(e.getException().getKlass())) {
+                        throw new VerifyError(EspressoException.getMessage(e.getException()));
+                    }
+                    throw e;
+                }
+                /**
+                 * If there does exist a protected superclass member in a different run-time
+                 * package, then load MemberClassName; if the member in question is not protected,
+                 * the check does not apply. (Using a superclass member that is not protected is
+                 * trivially correct.)
+                 */
+                if (!field.isProtected()) {
+                    return;
+                } else if (!thisKlass.getRuntimePackage().equals(Types.getRuntimePackage(fieldHolderType))) {
+                    if (!stackOp.compliesWith(thisOperand)) {
+                        /**
+                         * Otherwise, use of a member of an object of type Target requires that
+                         * Target be assignable to the type of the current class.
+                         */
+                        throw new VerifyError("Illegal protected field access");
+                    }
+                }
+            }
+            superKlass = superKlass.getSuperKlass();
+        }
+    }
+
+    private void checkProtectedMethod(Operand stackOp, Symbol<Type> methodHolderType, int fieldCPI) {
+        /**
+         * 4.10.1.8.
+         *
+         * If the name of a class is not the name of any superclass, it cannot be a superclass, and
+         * so it can safely be ignored.
+         */
+        if (stackOp.getType() == thisKlass.getType()) {
             return;
         }
         /**
-         * Otherwise, use of a member of an object of type Target requires that Target be assignable
-         * to the type of the current class.
+         * If the MemberClassName is the same as the name of a superclass, the class being resolved
+         * may indeed be a superclass. In this case, if no superclass named MemberClassName in a
+         * different run-time package has a protected member named MemberName with descriptor
+         * MemberDescriptor, the protected check does not apply.
          */
-        if (stackOp.compliesWith(thisOp)) {
-            return;
+        Klass superKlass = thisKlass.getSuperKlass();
+        while (superKlass != null) {
+            if (superKlass.getType() == methodHolderType) {
+                final Method method;
+                try {
+                    method = pool.resolvedMethodAt(thisKlass, fieldCPI);
+                } catch (EspressoException e) {
+                    if (getMeta().IllegalArgumentException.isAssignableFrom(e.getException().getKlass())) {
+                        throw new VerifyError(EspressoException.getMessage(e.getException()));
+                    }
+                    throw e;
+                }
+                if (stackOp.getType().toString().contains("invokespecial00804m1g")) {
+                    System.err.println("method resolved");
+                }
+                /**
+                 * If there does exist a protected superclass member in a different run-time
+                 * package, then load MemberClassName; if the member in question is not protected,
+                 * the check does not apply. (Using a superclass member that is not protected is
+                 * trivially correct.)
+                 */
+                if (!method.isProtected()) {
+                    return;
+                }
+                if (!thisKlass.getRuntimePackage().equals(Types.getRuntimePackage(methodHolderType))) {
+                    if (!stackOp.compliesWith(thisOperand)) {
+                        /**
+                         * Otherwise, use of a member of an object of type Target requires that
+                         * Target be assignable to the type of the current class.
+                         */
+                        throw new VerifyError("Illegal protected field access");
+                    }
+                }
+
+                return;
+            }
+            superKlass = superKlass.getSuperKlass();
         }
-        throw new VerifyError("Doing weird stuff with protected members");
     }
 
     static boolean isType2(Operand k) {
@@ -1453,17 +1610,6 @@ public final class MethodVerifier implements ContextAccess {
             return stack.initUninit((UninitReferenceOperand) op);
         }
         return op;
-    }
-
-    private Operand getHolderKlassAsOperand(MethodRefConstant mrc) {
-        Klass k = pool.resolvedKlassAt(thisKlass, ((MethodRefConstant.Indexes) mrc).getHolderClassIndex());
-        if (k.isArray()) {
-            if (k.getElementalType().isPrimitive()) {
-                return new ArrayOperand(kindToOperand(k.getElementalType().getType()), Types.getArrayDimensions(k.getType()));
-            }
-            return new ArrayOperand(new ReferenceOperand(k.getElementalType(), thisKlass), Types.getArrayDimensions(k.getType()));
-        }
-        return new ReferenceOperand(k, thisKlass);
     }
 
     private static Operand fromJVMType(byte jvmType) {

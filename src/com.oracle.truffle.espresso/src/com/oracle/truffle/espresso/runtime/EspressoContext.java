@@ -264,7 +264,7 @@ public final class EspressoContext {
                 }
             }
         }
-        // initiatingThread.interrupt();
+        initiatingThread.interrupt();
     }
 
     private void initVmProperties() {

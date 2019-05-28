@@ -453,4 +453,12 @@ class Locals {
         }
         return -1;
     }
+
+    void initUninit(UninitReferenceOperand toInit, Operand stackOp) {
+        for (int i = 0; i < registers.length; i++) {
+            if ((registers[i].isUninit() && ((UninitReferenceOperand) registers[i]).newBCI == toInit.newBCI)) {
+                registers[i] = stackOp;
+            }
+        }
+    }
 }
