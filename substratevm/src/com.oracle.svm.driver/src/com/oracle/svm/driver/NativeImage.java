@@ -1037,7 +1037,8 @@ public class NativeImage {
                 args.accept(oH(resourceType.optionKey) + resourceRoot.relativize(resourcePath));
             }
             args.apply(true);
-            extractionResults.put(classpathEntry, new ArrayList<>(nativeImage.imageBuilderArgs));
+            List<String> perEntryResults = extractionResults.computeIfAbsent(classpathEntry, unused -> new ArrayList<>());
+            perEntryResults.addAll(nativeImage.imageBuilderArgs);
         };
         for (String entry : imageClasspath) {
             Path classpathEntry = nativeImage.canonicalize(ClasspathUtils.stringToClasspath(entry), false);
