@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2017, 2017, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2017, 2019, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -24,22 +24,15 @@
  */
 package com.oracle.svm.core.thread;
 
-//Checkstyle: allow reflection
-
 import static com.oracle.svm.core.SubstrateOptions.MultiThreaded;
 import static com.oracle.svm.core.snippets.KnownIntrinsics.readCallerStackPointer;
 import static com.oracle.svm.core.snippets.KnownIntrinsics.readReturnAddress;
 
 import java.lang.Thread.UncaughtExceptionHandler;
-import java.security.AccessControlContext;
 import java.util.ArrayList;
-import java.util.Arrays;
-import java.util.Collections;
 import java.util.HashMap;
-import java.util.IdentityHashMap;
 import java.util.List;
 import java.util.Map;
-import java.util.Objects;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.atomic.AtomicLong;
@@ -57,46 +50,24 @@ import org.graalvm.nativeimage.Platforms;
 import org.graalvm.nativeimage.c.function.CEntryPoint;
 import org.graalvm.nativeimage.c.struct.RawField;
 import org.graalvm.nativeimage.c.struct.RawStructure;
-import org.graalvm.nativeimage.hosted.Feature;
 import org.graalvm.word.PointerBase;
 
-import com.oracle.svm.core.MonitorSupport;
 import com.oracle.svm.core.SubstrateOptions;
-import com.oracle.svm.core.SubstrateUtil;
-import com.oracle.svm.core.annotate.Alias;
-import com.oracle.svm.core.annotate.AutomaticFeature;
-import com.oracle.svm.core.annotate.Delete;
-import com.oracle.svm.core.annotate.Inject;
 import com.oracle.svm.core.annotate.NeverInline;
-import com.oracle.svm.core.annotate.RecomputeFieldValue;
-import com.oracle.svm.core.annotate.Substitute;
-import com.oracle.svm.core.annotate.TargetClass;
-import com.oracle.svm.core.annotate.TargetElement;
 import com.oracle.svm.core.annotate.Uninterruptible;
 import com.oracle.svm.core.heap.FeebleReferenceList;
 import com.oracle.svm.core.heap.Heap;
-import com.oracle.svm.core.jdk.JDK11OrLater;
-import com.oracle.svm.core.jdk.JDK8OrEarlier;
-import com.oracle.svm.core.jdk.JavaLangSubstitutions;
 import com.oracle.svm.core.jdk.ManagementSupport;
-import com.oracle.svm.core.jdk.Package_jdk_internal_misc;
 import com.oracle.svm.core.jdk.StackTraceUtils;
 import com.oracle.svm.core.jdk.UninterruptibleUtils.AtomicReference;
 import com.oracle.svm.core.log.Log;
 import com.oracle.svm.core.nodes.CFunctionEpilogueNode;
 import com.oracle.svm.core.nodes.CFunctionPrologueNode;
-import com.oracle.svm.core.option.XOptions;
-import com.oracle.svm.core.snippets.KnownIntrinsics;
-import com.oracle.svm.core.stack.StackOverflowCheck;
 import com.oracle.svm.core.thread.ParkEvent.WaitResult;
 import com.oracle.svm.core.threadlocal.FastThreadLocalFactory;
 import com.oracle.svm.core.threadlocal.FastThreadLocalObject;
 import com.oracle.svm.core.util.TimeUtils;
-import com.oracle.svm.core.util.UserError;
 import com.oracle.svm.core.util.VMError;
-
-import jdk.vm.ci.meta.MetaAccessProvider;
-import jdk.vm.ci.meta.ResolvedJavaField;
 
 public abstract class JavaThreads {
 
@@ -624,544 +595,12 @@ public abstract class JavaThreads {
         /* Set thread ID */
         tjlt.tid = Target_java_lang_Thread.nextThreadID();
     }
-}
-
-@AutomaticFeature
-@Platforms(Platform.HOSTED_ONLY.class)
-class JavaThreadsFeature implements Feature {
-
-    static JavaThreadsFeature singleton() {
-        return ImageSingletons.lookup(JavaThreadsFeature.class);
-    }
-
-    /**
-     * All {@link Thread} objects that are reachable in the image heap. Only unstarted threads,
-     * i.e., threads in state NEW, are allowed.
-     */
-    final Map<Thread, Boolean> reachableThreads = Collections.synchronizedMap(new IdentityHashMap<>());
-    /**
-     * All {@link ThreadGroup} objects that are reachable in the image heap. The value of the map is
-     * a helper object storing information that is used by the field value recomputations.
-     */
-    final Map<ThreadGroup, ReachableThreadGroup> reachableThreadGroups = Collections.synchronizedMap(new IdentityHashMap<>());
-    /** No new threads and thread groups can be discovered after the static analysis. */
-    private boolean sealed;
-
-    @Override
-    public void duringSetup(DuringSetupAccess access) {
-        access.registerObjectReplacer(this::collectReachableObjects);
-    }
-
-    private Object collectReachableObjects(Object original) {
-        if (original instanceof Thread) {
-            Thread thread = (Thread) original;
-            if (thread.getState() == Thread.State.NEW) {
-                registerReachableObject(reachableThreads, thread, Boolean.TRUE);
-            } else {
-                /*
-                 * Started Threads must not be in the image heap. The error is reported in
-                 * DisallowedImageHeapObjectFeature (which is in a hosted project).
-                 */
-            }
-
-        } else if (original instanceof ThreadGroup) {
-            ThreadGroup group = (ThreadGroup) original;
-            if (registerReachableObject(reachableThreadGroups, group, new ReachableThreadGroup())) {
-                ThreadGroup parent = group.getParent();
-                if (parent != null) {
-                    /* Ensure ReachableThreadGroup object for parent is created. */
-                    collectReachableObjects(parent);
-                    /*
-                     * Build the tree of thread groups that is then written out in the image heap.
-                     * This tree is a subtree of all thread groups in the image generator,
-                     * containing only the thread groups that were found as reachable at run time.
-                     */
-                    reachableThreadGroups.get(parent).add(group);
-                } else {
-                    assert group == JavaThreads.singleton().systemGroup;
-                }
-            }
-        }
-        return original;
-    }
-
-    private <K, V> boolean registerReachableObject(Map<K, V> map, K object, V value) {
-        boolean result = map.putIfAbsent(object, value) == null;
-        if (sealed && result) {
-            throw UserError.abort(object.getClass().getSimpleName() + " is reachable in the image heap but was not seen during the points-to analysis: " + object);
-        }
-        return result;
-    }
-
-    @Override
-    public void afterAnalysis(AfterAnalysisAccess access) {
-        /*
-         * No more changes to the reachable threads and thread groups are allowed after the
-         * analysis.
-         */
-        sealed = true;
-
-        /*
-         * Compute the maximum thread id and autonumber sequence from all reachable threads, and use
-         * these numbers as the initial values at run time. This still means that numbers are not
-         * dense when threads other than the main thread are reachable. However, changing the thread
-         * id or autonumber of a thread that the user created during image generation would be an
-         * intrusion with unpredictable side effects.
-         */
-        long maxThreadId = 0;
-        int maxAutonumber = -1;
-        for (Thread thread : reachableThreads.keySet()) {
-            maxThreadId = Math.max(maxThreadId, threadId(thread));
-            maxAutonumber = Math.max(maxAutonumber, autonumberOf(thread));
-        }
-        assert maxThreadId >= 1 : "main thread with id 1 must always be found";
-        JavaThreads.singleton().threadSeqNumber.set(maxThreadId);
-        JavaThreads.singleton().threadInitNumber.set(maxAutonumber);
-    }
-
-    static long threadId(Thread thread) {
-        return thread == JavaThreads.singleton().mainThread ? 1 : thread.getId();
-    }
-
-    private static final String AUTONUMBER_PREFIX = "Thread-";
-
-    static int autonumberOf(Thread thread) {
-        if (thread.getName().startsWith(AUTONUMBER_PREFIX)) {
-            try {
-                return Integer.parseInt(thread.getName().substring(AUTONUMBER_PREFIX.length()));
-            } catch (NumberFormatException ex) {
-                /*
-                 * Ignore. If the suffix is not a valid integer number, then the thread name is not
-                 * an autonumber name.
-                 */
-            }
-        }
-        return -1;
-    }
-}
-
-@Platforms(Platform.HOSTED_ONLY.class)
-class ReachableThreadGroup {
-    int ngroups;
-    ThreadGroup[] groups;
-
-    /* Copy of ThreadGroup.add(). */
-    // Checkstyle: allow synchronization
-    synchronized void add(ThreadGroup g) {
-        if (groups == null) {
-            groups = new ThreadGroup[4];
-        } else if (ngroups == groups.length) {
-            groups = Arrays.copyOf(groups, ngroups * 2);
-        }
-        groups[ngroups] = g;
-        ngroups++;
-    }
-}
-
-@TargetClass(Thread.class)
-@SuppressWarnings({"unused"})
-final class Target_java_lang_Thread {
-
-    /** Every thread has a boolean for noting whether this thread is interrupted. */
-    @Inject @RecomputeFieldValue(kind = RecomputeFieldValue.Kind.Reset)//
-    volatile boolean interrupted;
-
-    /**
-     * Every thread has a {@link ParkEvent} for {@link sun.misc.Unsafe#park} and
-     * {@link sun.misc.Unsafe#unpark}. Lazily initialized.
-     */
-    @Inject @RecomputeFieldValue(kind = RecomputeFieldValue.Kind.NewInstance, declClass = AtomicReference.class)//
-    AtomicReference<ParkEvent> unsafeParkEvent;
-
-    /** Every thread has a {@link ParkEvent} for {@link Thread#sleep}. Lazily initialized. */
-    @Inject @RecomputeFieldValue(kind = RecomputeFieldValue.Kind.NewInstance, declClass = AtomicReference.class)//
-    AtomicReference<ParkEvent> sleepParkEvent;
-
-    @Alias//
-    ClassLoader contextClassLoader;
-
-    @Alias//
-    volatile String name;
-
-    @Alias//
-    int priority;
-
-    /* Whether or not the thread is a daemon . */
-    @Alias//
-    boolean daemon;
-
-    /* What will be run. */
-    @Alias//
-    Runnable target;
-
-    /* The group of this thread */
-    @Alias//
-    ThreadGroup group;
-
-    /*
-     * The requested stack size for this thread, or 0 if the creator did not specify a stack size.
-     * It is up to the VM to do whatever it likes with this number; some VMs will ignore it.
-     */
-    @Alias//
-    long stackSize;
-
-    /* Thread ID */
-    @Alias @RecomputeFieldValue(kind = RecomputeFieldValue.Kind.Custom, declClass = ThreadIdRecomputation.class) //
-    long tid;
-
-    /** We have our own atomic number in {@link JavaThreads#threadSeqNumber}. */
-    @Delete//
-    static long threadSeqNumber;
-    /** We have our own atomic number in {@link JavaThreads#threadInitNumber}. */
-    @Delete//
-    static int threadInitNumber;
-
-    @Alias @RecomputeFieldValue(kind = RecomputeFieldValue.Kind.Custom, declClass = ThreadStatusRecomputation.class) //
-    int threadStatus;
-
-    @Alias//
-    /* private */ /* final */ Object blockerLock;
-
-    @Alias
-    native void setPriority(int newPriority);
-
-    @Substitute
-    public ClassLoader getContextClassLoader() {
-        return contextClassLoader;
-    }
-
-    @Substitute
-    public void setContextClassLoader(ClassLoader cl) {
-        contextClassLoader = cl;
-    }
-
-    /** Replace "synchronized" modifier with delegation to an atomic increment. */
-    @Substitute
-    static long nextThreadID() {
-        return JavaThreads.singleton().threadSeqNumber.incrementAndGet();
-    }
-
-    /** Replace "synchronized" modifier with delegation to an atomic increment. */
-    @Substitute
-    private static int nextThreadNum() {
-        return JavaThreads.singleton().threadInitNumber.incrementAndGet();
-    }
-
-    @Alias
-    public native void exit();
-
-    Target_java_lang_Thread(String withName, ThreadGroup withGroup, boolean asDaemon) {
-        /*
-         * Raw creation of a thread without calling init(). Used to create a Thread object for an
-         * already running thread.
-         */
-
-        this.unsafeParkEvent = new AtomicReference<>();
-        this.sleepParkEvent = new AtomicReference<>();
-
-        tid = nextThreadID();
-        threadStatus = ThreadStatus.RUNNABLE;
-        name = (withName != null) ? withName : ("System-" + nextThreadNum());
-        group = (withGroup != null) ? withGroup : JavaThreads.singleton().mainGroup;
-        priority = Thread.NORM_PRIORITY;
-        contextClassLoader = SubstrateUtil.cast(ImageSingletons.lookup(JavaLangSubstitutions.ClassLoaderSupport.class).systemClassLoader, ClassLoader.class);
-        blockerLock = new Object();
-        daemon = asDaemon;
-    }
-
-    @Substitute
-    static Thread currentThread() {
-        Thread result = JavaThreads.currentThread.get();
-        assert result != null : "java.lang.Thread not assigned when thread was attached to the VM";
-        return result;
-    }
-
-    @Substitute
-    @TargetElement(onlyWith = JDK8OrEarlier.class)
-    private void init(ThreadGroup groupArg, Runnable targetArg, String nameArg, long stackSizeArg) {
-        /* Injected Target_java_lang_Thread instance field initialization. */
-        this.unsafeParkEvent = new AtomicReference<>();
-        this.sleepParkEvent = new AtomicReference<>();
-        /* Initialize the rest of the Thread object. */
-        JavaThreads.initializeNewThread(this, groupArg, targetArg, nameArg, stackSizeArg);
-    }
-
-    @Substitute
-    @SuppressWarnings({"unused"})
-    @TargetElement(onlyWith = JDK11OrLater.class)
-    private Target_java_lang_Thread(
-                    ThreadGroup g,
-                    Runnable target,
-                    String name,
-                    long stackSize,
-                    AccessControlContext acc,
-                    boolean inheritThreadLocals) {
-        /* Non-0 instance field initialization. */
-        this.blockerLock = new Object();
-        /* Injected Target_java_lang_Thread instance field initialization. */
-        this.unsafeParkEvent = new AtomicReference<>();
-        this.sleepParkEvent = new AtomicReference<>();
-        /* Initialize the rest of the Thread object, ignoring `acc` and `inheritThreadLocals`. */
-        JavaThreads.initializeNewThread(this, g, target, name, stackSize);
-    }
-
-    @Substitute
-    private void start0() {
-        if (!SubstrateOptions.MultiThreaded.getValue()) {
-            throw VMError.unsupportedFeature("Single-threaded VM cannot create new threads");
-        }
-
-        /* Choose a stack size based on parameters, command line flags, and system restrictions. */
-        long chosenStackSize = 0L;
-        if (stackSize != 0) {
-            /* If the user set a thread stack size at thread creation, then use that. */
-            chosenStackSize = stackSize;
-        } else {
-            /* If the user set a thread stack size on the command line, then use that. */
-            final int defaultThreadStackSize = (int) XOptions.getXss().getValue();
-            if (defaultThreadStackSize != 0L) {
-                chosenStackSize = defaultThreadStackSize;
-            }
-        }
-
-        if (chosenStackSize != 0) {
-            /*
-             * Add the yellow+red zone size: This area of the stack is not accessible to the user's
-             * Java code, so it would be surprising if we gave the user less stack space to use than
-             * explicitly requested. In particular, a size less than the yellow+red size would lead
-             * to an immediate StackOverflowError.
-             */
-            chosenStackSize += StackOverflowCheck.singleton().yellowAndRedZoneSize();
-        }
-
-        /*
-         * The threadStatus must be set to RUNNABLE by the parent thread and before the child thread
-         * starts because we are creating child threads asynchronously (there is no coordination
-         * between parent and child threads).
-         *
-         * Otherwise, a call to Thread.join() in the parent thread could succeed even before the
-         * child thread starts, or it could hang in case that the child thread is already dead.
-         */
-        threadStatus = ThreadStatus.RUNNABLE;
-        JavaThreads.singleton().doStartThread(JavaThreads.fromTarget(this), chosenStackSize);
-    }
-
-    @Substitute
-    @SuppressWarnings({"static-method"})
-    protected void setNativeName(String name) {
-        JavaThreads.singleton().setNativeName(JavaThreads.fromTarget(this), name);
-    }
-
-    @Substitute
-    private void setPriority0(int priority) {
-    }
-
-    @Substitute
-    private boolean isInterrupted(boolean clearInterrupted) {
-        final boolean result = interrupted;
-        if (clearInterrupted) {
-            interrupted = false;
-        }
-        return result;
-    }
-
-    @Substitute
-    void interrupt0() {
-        /* Set the interrupt status of the thread. */
-        interrupted = true;
-
-        if (!SubstrateOptions.MultiThreaded.getValue()) {
-            /* If the VM is single-threaded, this thread can not be blocked. */
-            return;
-        }
-
-        // Cf. os::interrupt(Thread*) from HotSpot, which unparks all of:
-        // (1) thread->_SleepEvent,
-        // (2) ((JavaThread*)thread)->parker()
-        // (3) thread->_ParkEvent
-        SleepSupport.interrupt(JavaThreads.fromTarget(this));
-        UnsafeParkSupport.unpark(JavaThreads.fromTarget(this));
-        /* Interrupt anyone waiting on a VMCondVar. */
-        JavaThreads.interruptVMCondVars();
-    }
-
-    @Substitute
-    private boolean isAlive() {
-        // There are fewer cases that are not-alive.
-        return !(threadStatus == ThreadStatus.NEW || threadStatus == ThreadStatus.TERMINATED);
-    }
-
-    @Substitute
-    private static void yield() {
-        JavaThreads.singleton().yield();
-    }
-
-    @Substitute
-    private static void sleep(long millis) throws InterruptedException {
-        if (millis < 0) {
-            throw new IllegalArgumentException("timeout value is negative");
-        }
-        WaitResult sleepResult = SleepSupport.sleep(TimeUtils.millisToNanos(millis));
-        /*
-         * If the sleep did not time out, I was interrupted. The interrupted flag of the thread must
-         * be cleared when an InterruptedException is thrown (see JavaDoc of Thread.sleep), so we
-         * call Thread.interrupted() unconditionally.
-         */
-        boolean interrupted = Thread.interrupted();
-        /* The common case is interruption is UNPARKED: Check it first. */
-        if ((sleepResult == WaitResult.UNPARKED) || (sleepResult == WaitResult.INTERRUPTED) || interrupted) {
-            throw new InterruptedException();
-        }
-    }
-
-    /**
-     * Returns <tt>true</tt> if and only if the current thread holds the monitor lock on the
-     * specified object.
-     */
-    @Substitute
-    private static boolean holdsLock(Object obj) {
-        Objects.requireNonNull(obj);
-        return ImageSingletons.lookup(MonitorSupport.class).holdsLock(obj);
-    }
-
-    @Substitute
-    @NeverInline("Starting a stack walk in the caller frame")
-    private StackTraceElement[] getStackTrace() {
-        if (JavaThreads.fromTarget(this) == Thread.currentThread()) {
-            /* We can walk our own stack without a VMOperation. */
-            return StackTraceUtils.getStackTrace(false, KnownIntrinsics.readCallerStackPointer(), KnownIntrinsics.readReturnAddress());
-        } else {
-            return JavaThreads.getStackTrace(JavaThreads.fromTarget(this));
-        }
-    }
-
-    @Substitute
-    private static Map<Thread, StackTraceElement[]> getAllStackTraces() {
-        return JavaThreads.getAllStackTraces();
-    }
-}
-
-@TargetClass(ThreadGroup.class)
-final class Target_java_lang_ThreadGroup {
-
-    @Alias @RecomputeFieldValue(kind = RecomputeFieldValue.Kind.Custom, declClass = ThreadGroupNUnstartedThreadsRecomputation.class)//
-    private int nUnstartedThreads;
-    @Alias @RecomputeFieldValue(kind = RecomputeFieldValue.Kind.Custom, declClass = ThreadGroupNThreadsRecomputation.class)//
-    private int nthreads;
-    @Alias @RecomputeFieldValue(kind = RecomputeFieldValue.Kind.Custom, declClass = ThreadGroupThreadsRecomputation.class)//
-    private Thread[] threads;
-
-    @Alias @RecomputeFieldValue(kind = RecomputeFieldValue.Kind.Custom, declClass = ThreadGroupNGroupsRecomputation.class)//
-    private int ngroups;
-    @Alias @RecomputeFieldValue(kind = RecomputeFieldValue.Kind.Custom, declClass = ThreadGroupGroupsRecomputation.class)//
-    private ThreadGroup[] groups;
-
-    @Alias
-    native void addUnstarted();
-
-    @Alias
-    native void add(Thread t);
-}
-
-@Platforms(Platform.HOSTED_ONLY.class)
-class ThreadIdRecomputation implements RecomputeFieldValue.CustomFieldValueComputer {
-    @Override
-    public Object compute(MetaAccessProvider metaAccess, ResolvedJavaField original, ResolvedJavaField annotated, Object receiver) {
-        Thread thread = (Thread) receiver;
-        return JavaThreadsFeature.threadId(thread);
-    }
-}
-
-@Platforms(Platform.HOSTED_ONLY.class)
-class ThreadStatusRecomputation implements RecomputeFieldValue.CustomFieldValueComputer {
-    @Override
-    public Object compute(MetaAccessProvider metaAccess, ResolvedJavaField original, ResolvedJavaField annotated, Object receiver) {
-        Thread thread = (Thread) receiver;
-        assert thread.getState() == Thread.State.NEW : "All threads are in NEW state during image generation";
-        if (thread == JavaThreads.singleton().mainThread) {
-            /* The main thread is recomputed as running. */
-            return ThreadStatus.RUNNABLE;
-        } else {
-            /* All other threads remain unstarted. */
-            return ThreadStatus.NEW;
-        }
-    }
-}
-
-@Platforms(Platform.HOSTED_ONLY.class)
-class ThreadGroupNUnstartedThreadsRecomputation implements RecomputeFieldValue.CustomFieldValueComputer {
-    @Override
-    public Object compute(MetaAccessProvider metaAccess, ResolvedJavaField original, ResolvedJavaField annotated, Object receiver) {
-        ThreadGroup group = (ThreadGroup) receiver;
-        int result = 0;
-        for (Thread thread : JavaThreadsFeature.singleton().reachableThreads.keySet()) {
-            /* The main thread is recomputed as running and therefore not counted as unstarted. */
-            if (thread.getThreadGroup() == group && thread != JavaThreads.singleton().mainThread) {
-                result++;
-            }
-        }
-        return result;
-    }
-}
-
-@Platforms(Platform.HOSTED_ONLY.class)
-class ThreadGroupNThreadsRecomputation implements RecomputeFieldValue.CustomFieldValueComputer {
-    @Override
-    public Object compute(MetaAccessProvider metaAccess, ResolvedJavaField original, ResolvedJavaField annotated, Object receiver) {
-        ThreadGroup group = (ThreadGroup) receiver;
-
-        if (group == JavaThreads.singleton().mainGroup) {
-            /* The main group contains the main thread, which we recompute as running. */
-            return 1;
-        } else {
-            /* No other thread group has a thread running at startup. */
-            return 0;
-        }
-    }
-}
-
-@Platforms(Platform.HOSTED_ONLY.class)
-class ThreadGroupThreadsRecomputation implements RecomputeFieldValue.CustomFieldValueComputer {
-    @Override
-    public Object compute(MetaAccessProvider metaAccess, ResolvedJavaField original, ResolvedJavaField annotated, Object receiver) {
-        ThreadGroup group = (ThreadGroup) receiver;
-
-        if (group == JavaThreads.singleton().mainGroup) {
-            /* The main group contains the main thread, which we recompute as running. */
-            return JavaThreads.singleton().mainGroupThreadsArray;
-        } else {
-            /* No other thread group has a thread running at startup. */
-            return null;
-        }
-    }
-}
-
-@Platforms(Platform.HOSTED_ONLY.class)
-class ThreadGroupNGroupsRecomputation implements RecomputeFieldValue.CustomFieldValueComputer {
-    @Override
-    public Object compute(MetaAccessProvider metaAccess, ResolvedJavaField original, ResolvedJavaField annotated, Object receiver) {
-        ThreadGroup group = (ThreadGroup) receiver;
-        return JavaThreadsFeature.singleton().reachableThreadGroups.get(group).ngroups;
-    }
-}
-
-@Platforms(Platform.HOSTED_ONLY.class)
-class ThreadGroupGroupsRecomputation implements RecomputeFieldValue.CustomFieldValueComputer {
-    @Override
-    public Object compute(MetaAccessProvider metaAccess, ResolvedJavaField original, ResolvedJavaField annotated, Object receiver) {
-        ThreadGroup group = (ThreadGroup) receiver;
-        return JavaThreadsFeature.singleton().reachableThreadGroups.get(group).groups;
-    }
-}
-
-/** Methods in support of the injected field {@link Target_java_lang_Thread#unsafeParkEvent}. */
-final class UnsafeParkSupport {
 
     /** Interruptibly park the current thread. */
     static WaitResult park() {
         VMOperationControl.guaranteeOkayToBlock("[UnsafeParkSupport.park(): Should not park when it is not okay to block.]");
         final Thread thread = Thread.currentThread();
-        final ParkEvent parkEvent = ensureParkEvent(thread);
+        final ParkEvent parkEvent = ensureUnsafeParkEvent(thread);
 
         // Change the Java thread state while parking.
         final int oldStatus = JavaThreads.getThreadStatus(thread);
@@ -1177,7 +616,7 @@ final class UnsafeParkSupport {
     static WaitResult park(long delayNanos) {
         VMOperationControl.guaranteeOkayToBlock("[UnsafeParkSupport.park(long): Should not park when it is not okay to block.]");
         final Thread thread = Thread.currentThread();
-        final ParkEvent parkEvent = ensureParkEvent(thread);
+        final ParkEvent parkEvent = ensureUnsafeParkEvent(thread);
 
         final long startNanos = System.nanoTime();
         /* Can not park past the end of a 64-bit nanosecond epoch. */
@@ -1205,20 +644,16 @@ final class UnsafeParkSupport {
 
     /** Unpark a Thread. */
     static void unpark(Thread thread) {
-        ensureParkEvent(thread).unpark();
+        ensureUnsafeParkEvent(thread).unpark();
     }
 
     /** Get the Park event for a thread, initializing it if necessary. */
-    private static ParkEvent ensureParkEvent(Thread thread) {
+    private static ParkEvent ensureUnsafeParkEvent(Thread thread) {
         return ParkEvent.initializeOnce(JavaThreads.getUnsafeParkEvent(thread), false);
     }
-}
-
-/** Methods in support of the injected field {@link Target_java_lang_Thread#sleepParkEvent}. */
-final class SleepSupport {
 
     /** Sleep for the given number of nanoseconds, dealing with early wakeups and interruptions. */
-    protected static WaitResult sleep(long delayNanos) {
+    static WaitResult sleep(long delayNanos) {
         VMOperationControl.guaranteeOkayToBlock("[SleepSupport.sleep(long): Should not sleep when it is not okay to block.]");
         final Thread thread = Thread.currentThread();
         final ParkEvent sleepEvent = ensureSleepEvent(thread);
@@ -1248,7 +683,7 @@ final class SleepSupport {
     }
 
     /** Interrupt a sleeping thread. */
-    protected static void interrupt(Thread thread) {
+    static void interrupt(Thread thread) {
         final ParkEvent sleepEvent = JavaThreads.getSleepParkEvent(thread).get();
         if (sleepEvent != null) {
             sleepEvent.unpark();
@@ -1258,55 +693,6 @@ final class SleepSupport {
     /** Get the Sleep event for a thread, lazily initializing if needed. */
     private static ParkEvent ensureSleepEvent(Thread thread) {
         return ParkEvent.initializeOnce(JavaThreads.getSleepParkEvent(thread), true);
-    }
-}
-
-@TargetClass(classNameProvider = Package_jdk_internal_misc.class, className = "Unsafe")
-@SuppressWarnings({"static-method"})
-final class Target_jdk_internal_misc_Unsafe_JavaThreads {
-
-    /**
-     * Block current thread, returning when a balancing <tt>unpark</tt> occurs, or a balancing
-     * <tt>unpark</tt> has already occurred, or the thread is interrupted, or, if not absolute and
-     * time is not zero, the given time nanoseconds have elapsed, or if absolute, the given deadline
-     * in milliseconds since Epoch has passed, or spuriously (i.e., returning for no "reason").
-     * Note: This operation is in the Unsafe class only because <tt>unpark</tt> is, so it would be
-     * strange to place it elsewhere.
-     */
-    @Substitute
-    private void park(boolean isAbsolute, long time) {
-        /* Decide what kind of park I am doing. */
-        if (!isAbsolute && time == 0L) {
-            /* Park without deadline. */
-            UnsafeParkSupport.park();
-        } else {
-            /* Park with deadline. */
-            final long delayNanos = TimeUtils.delayNanos(isAbsolute, time);
-            UnsafeParkSupport.park(delayNanos);
-        }
-        // sun.misc.Unsafe.park does not distinguish between
-        // timing out, being unparked, and being interrupted.
-    }
-
-    /**
-     * Unblock the given thread blocked on <tt>park</tt>, or, if it is not blocked, cause the
-     * subsequent call to <tt>park</tt> not to block. Note: this operation is "unsafe" solely
-     * because the caller must somehow ensure that the thread has not been destroyed. Nothing
-     * special is usually required to ensure this when called from Java (in which there will
-     * ordinarily be a live reference to the thread) but this is not nearly-automatically so when
-     * calling from native code.
-     *
-     * @param threadObj the thread to unpark.
-     */
-    @Substitute
-    private void unpark(Object threadObj) {
-        if (threadObj == null) {
-            throw new NullPointerException("Unsafe.unpark(thread == null)");
-        } else if (!(threadObj instanceof Thread)) {
-            throw new IllegalArgumentException("Unsafe.unpark(!(thread instanceof Thread))");
-        }
-        Thread thread = (Thread) threadObj;
-        UnsafeParkSupport.unpark(thread);
     }
 }
 
