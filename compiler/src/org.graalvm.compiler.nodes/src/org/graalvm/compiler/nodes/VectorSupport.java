@@ -7,6 +7,7 @@ import org.graalvm.compiler.graph.NodeInputList;
 import org.graalvm.compiler.graph.spi.Canonicalizable;
 import org.graalvm.compiler.graph.spi.CanonicalizerTool;
 import org.graalvm.compiler.nodeinfo.NodeInfo;
+import org.graalvm.compiler.nodes.calc.FloatingNode;
 
 import java.util.List;
 import java.util.stream.StreamSupport;
@@ -17,7 +18,7 @@ public final class VectorSupport {
     // TODO: Use these for packing
 
     @NodeInfo
-    public static final class VectorToScalarValueNode extends ValueNode {
+    public static final class VectorToScalarValueNode extends FloatingNode {
 
         public static final NodeClass<VectorToScalarValueNode> TYPE = NodeClass.create(VectorToScalarValueNode.class);
 
@@ -44,7 +45,7 @@ public final class VectorSupport {
     }
 
     @NodeInfo
-    public static final class ScalarToVectorValueNode extends ValueNode /*implements Canonicalizable */{
+    public static final class ScalarToVectorValueNode extends FloatingNode implements Canonicalizable {
 
         public static final NodeClass<ScalarToVectorValueNode> TYPE = NodeClass.create(ScalarToVectorValueNode.class);
 
@@ -74,7 +75,7 @@ public final class VectorSupport {
             return true;
         }
 
-        //        @Override
+        @Override
         public Node canonical(CanonicalizerTool tool) {
             // Do nothing if no inputs
             if (inputs().isEmpty()) {
@@ -94,7 +95,7 @@ public final class VectorSupport {
             final VectorToScalarValueNode firstVTS = (VectorToScalarValueNode) first;
 
             // What happens when we return null?
-            replaceAtUsagesAndDelete(firstVTS.value);
+            replaceAtUsages(firstVTS.value);
 
             return null; // to delete the current node
         }

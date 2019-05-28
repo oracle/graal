@@ -5,10 +5,7 @@ import org.graalvm.compiler.core.common.cfg.BlockMap;
 import org.graalvm.compiler.graph.Node;
 import org.graalvm.compiler.graph.NodeInputList;
 import org.graalvm.compiler.graph.NodeMap;
-import org.graalvm.compiler.nodes.FixedNode;
-import org.graalvm.compiler.nodes.FixedWithNextNode;
-import org.graalvm.compiler.nodes.StructuredGraph;
-import org.graalvm.compiler.nodes.ValueNode;
+import org.graalvm.compiler.nodes.*;
 import org.graalvm.compiler.nodes.VectorSupport.*;
 import org.graalvm.compiler.nodes.calc.AddNode;
 import org.graalvm.compiler.nodes.calc.BinaryNode;
@@ -601,7 +598,6 @@ public final class IsomorphicPackingPhase extends BasePhase<PhaseContext> {
 
         /**
          * Create the initial seed packSet of operations that are adjacent
-         * TODO: PERFORM ADJACENCY TEST
          * TODO: CHECK THAT VECTOR ELEMENT TYPE IS THE SAME
          * @param packSet PackSet to populate
          */
@@ -678,6 +674,10 @@ public final class IsomorphicPackingPhase extends BasePhase<PhaseContext> {
             } while (changed);
         }
 
+        /**
+         * Have all of the dependencies of node been scheduled?
+         * Filters inputs, removing blocks that are not in the current block as well as Begin/End/Return.
+         */
         private boolean deps_scheduled(Node node, List<Node> scheduled) {
             return StreamSupport.stream(node.inputs().spliterator(), false)
                     .filter(n -> nodeToBlockMap.get(n) == currentBlock)
@@ -741,8 +741,6 @@ public final class IsomorphicPackingPhase extends BasePhase<PhaseContext> {
             for (Runnable runnable : deferred) {
                 runnable.run();
             }
-
-            System.out.println(String.format("Final schedule %s", scheduled.toString()));
         }
 
         private void schedulePack(Pack<Node> pack, Deque<FixedNode> lastFixed) {
@@ -758,7 +756,7 @@ public final class IsomorphicPackingPhase extends BasePhase<PhaseContext> {
                 }
 
                 first.graph().add(vectorRead);
-                first.graph().add(vts);
+                first.graph().addOrUnique(vts);
 
                 if (!lastFixed.isEmpty() && lastFixed.element() instanceof FixedWithNextNode) {
                     ((FixedWithNextNode) lastFixed.poll()).setNext(vectorRead);
@@ -777,7 +775,7 @@ public final class IsomorphicPackingPhase extends BasePhase<PhaseContext> {
                     node.safeDelete();
                 }
 
-                first.graph().add(stv);
+                first.graph().addOrUnique(stv);
                 first.graph().add(vectorWrite);
 
                 if (!lastFixed.isEmpty() && lastFixed.element() instanceof FixedWithNextNode) {
@@ -799,22 +797,20 @@ public final class IsomorphicPackingPhase extends BasePhase<PhaseContext> {
                     node.replaceAtUsagesAndDelete(vts);
                 }
 
-                first.graph().add(stvX);
-                first.graph().add(stvY);
+                first.graph().addOrUnique(stvX);
+                first.graph().addOrUnique(stvY);
                 first.graph().add(vector);
-                first.graph().add(vts);
+                first.graph().addOrUnique(vts);
             }
-
-            return;
         }
 
         private void scheduleStmt(Node node, Deque<FixedNode> lastFixed) {
             if (node instanceof FixedNode) {
-                lastFixed.add((FixedNode) node);
-
                 if (!lastFixed.isEmpty() && lastFixed.element() instanceof FixedWithNextNode) {
                     ((FixedWithNextNode) lastFixed.poll()).setNext((FixedNode) node);
                 }
+
+                lastFixed.add((FixedNode) node);
             }
         }
 
@@ -825,7 +821,6 @@ public final class IsomorphicPackingPhase extends BasePhase<PhaseContext> {
             extend_packlist(packSet);
             combine_packs(packSet);
             schedule(new ArrayList<>(blockToNodesMap.get(currentBlock)), packSet);
-            // return a new basic block with the new instructions scheduled
         }
 
     }
