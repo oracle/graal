@@ -547,6 +547,9 @@ public final class MethodVerifier implements ContextAccess {
         }
     }
 
+    /**
+     * Constructs the initial stack frame table given the stackMapTableAttribute.
+     */
     private void initStackFrames() {
         // First implicit stack frame.
         StackFrame previous = new StackFrame(this);
@@ -735,10 +738,13 @@ public final class MethodVerifier implements ContextAccess {
         } catch (IndexOutOfBoundsException e) {
             throw new VerifyError("Could not construct stackFrames due to invalid maxStack or maxLocals value: " + e.getMessage());
         }
+        // Check that BCIs in exception handlers are legal
         validateExceptionHandlers();
         Stack stack = new Stack(maxStack);
         Locals locals = new Locals(this);
+        // Perform verification of reachable executable code
         startVerify(0, stack, locals);
+        // Performs verification of reachable handlers
         verifyExceptionHandlers();
     }
 
@@ -766,6 +772,13 @@ public final class MethodVerifier implements ContextAccess {
         }
     }
 
+    /**
+     * Verifies actually reachable exception handlers, and the handlers they encounter if they were
+     * not already verified.
+     *
+     * This method reaches a fixed point. After execution, all handler will either have been
+     * verified, or are completely unreachable.
+     */
     private void verifyExceptionHandlers() {
         boolean redo;
         boolean updated;
@@ -791,6 +804,7 @@ public final class MethodVerifier implements ContextAccess {
         Stack stack;
         StackFrame frame = stackFrames[handlerBCI];
         if (frame == null) {
+            // If there is no frameMap when verifying a handler, all locals are illegal.
             Operand[] registers = new Operand[maxLocals];
             Arrays.fill(registers, Invalid);
             locals = new Locals(registers);
@@ -850,6 +864,9 @@ public final class MethodVerifier implements ContextAccess {
         return true;
     }
 
+    /**
+     * Checks that an instruction can merge into all its handlers.
+     */
     private void checkExceptionHandlers(int nextBCI, Locals locals) {
         for (int i = 0; i < exceptionHandlers.length; i++) {
             ExceptionHandler handler = exceptionHandlers[i];
@@ -1240,7 +1257,7 @@ public final class MethodVerifier implements ContextAccess {
                     if (curOpcode == GETFIELD) {
                         Symbol<Type> fieldHolderType = getTypes().fromName(frc.getHolderKlassName(pool));
                         Operand fieldHolder = kindToOperand(fieldHolderType);
-                        Operand receiver = checkInit(stack, stack.popRef(fieldHolder));
+                        Operand receiver = checkInit(stack, stack.popRef(fieldHolder), locals);
                         checkProtectedField(receiver, fieldHolderType, code.readCPI(BCI));
                         if (receiver.isArrayType()) {
                             throw new VerifyError("Trying to access field of an array type: " + receiver);
@@ -1267,7 +1284,7 @@ public final class MethodVerifier implements ContextAccess {
                     }
                     if (curOpcode == PUTFIELD) {
                         Operand fieldHolder = kindToOperand(getTypes().fromName(frc.getHolderKlassName(pool)));
-                        Operand receiver = checkInit(stack, stack.popRef(fieldHolder));
+                        Operand receiver = checkInit(stack, stack.popRef(fieldHolder), locals);
                         if (receiver.isArrayType()) {
                             throw new VerifyError("Trying to access field of an array type: " + receiver);
                         }
@@ -1284,26 +1301,32 @@ public final class MethodVerifier implements ContextAccess {
                     // Checkstyle: resume
                     // @formatter:on
                 {
+                    // Check padding.
                     if (curOpcode == INVOKEINTERFACE && code.readByte(BCI + 3) != 0) {
                         throw new VerifyError("4th byte after INVOKEINTERFACE must be 0.");
                     }
+                    // Check CP validity
                     PoolConstant pc = pool.at(code.readCPI(BCI));
                     if (!(pc instanceof MethodRefConstant)) {
                         throw new VerifyError("Invalid CP constant for a MethodRef: " + pc.getClass().getName());
                     }
                     MethodRefConstant mrc = (MethodRefConstant) pc;
+                    // Check a weird thing
                     if (majorVersion <= 51 && curOpcode == INVOKESPECIAL && mrc.tag() == INTERFACE_METHOD_REF) {
                         throw new VerifyError("Only classfile of version >51 can use INVOKESPECIAL on interface methods");
                     }
                     Symbol<Name> calledMethodName = mrc.getName(pool);
+                    // Check guest is not invoking <clinit>
                     if (calledMethodName == Name.CLINIT) {
                         throw new ClassFormatError("Invocation of class initializer!");
                     }
+                    // Only INVOKESPECIAL can call <init>
                     if (curOpcode != INVOKESPECIAL && calledMethodName == Name.INIT) {
                         throw new VerifyError("Invocation of instance initializer with opcode other than INVOKESPECIAL");
                     }
                     Symbol<Signature> calledMethodSignature = mrc.getSignature(pool);
                     Operand[] parsedSig = getOperandSig(calledMethodSignature);
+                    // Check signature is well formed.
                     if (parsedSig.length == 0) {
                         throw new ClassFormatError("Method ref with no return value !");
                     }
@@ -1330,13 +1353,20 @@ public final class MethodVerifier implements ContextAccess {
 
                             checkProtectedMethod(stackOp, methodHolder, code.readCPI(BCI));
                         } else {
-                            Operand stackOp = checkInit(stack, stack.popRef(methodHolderOp));
+                            Operand stackOp = checkInit(stack, stack.popRef(methodHolderOp), locals);
+                            /**
+                             * 4.10.1.9.invokespecial:
+                             * 
+                             * invokespecial, for other than an instance initialization method, must
+                             * name a method in the current class/interface or a
+                             * superclass/superinterface.
+                             */
                             if (!(stackOp.compliesWith(thisOperand) || checkHostAccess(stackOp))) {
                                 throw new VerifyError("Invalid use of INVOKESPECIAL");
                             }
                         }
                     } else if (curOpcode != INVOKESTATIC) {
-                        checkInit(stack, stack.popRef(methodHolderOp));
+                        checkInit(stack, stack.popRef(methodHolderOp), locals);
                     }
                     Operand returnOp = parsedSig[parsedSig.length - 1];
                     if (!(returnOp == Void)) {
@@ -1410,7 +1440,7 @@ public final class MethodVerifier implements ContextAccess {
                     ClassConstant cc = (ClassConstant) pc;
                     Symbol<Type> type = getTypes().fromName(cc.getName(pool));
                     if (Types.isPrimitive(type)) {
-                        throw new VerifyError("Primitive type for ANEWARRAY: " + type);
+                        throw new VerifyError("Primitive type for CHECKCAST: " + type);
                     }
                     stack.push(spawnFromType(type));
                     break;
@@ -1426,7 +1456,7 @@ public final class MethodVerifier implements ContextAccess {
                     ClassConstant cc = (ClassConstant) pc;
                     Symbol<Type> type = getTypes().fromName(cc.getName(pool));
                     if (Types.isPrimitive(type)) {
-                        throw new VerifyError("Primitive type for ANEWARRAY: " + type);
+                        throw new VerifyError("Primitive type for INSTANCEOF: " + type);
                     }
                     stack.pushInt();
                     break;
@@ -1473,19 +1503,21 @@ public final class MethodVerifier implements ContextAccess {
                 case BREAKPOINT: break;
 
                 case INVOKEDYNAMIC: {
+                    // Check padding
                     if (code.readByte(BCI + 2) != 0 || code.readByte(BCI + 3) != 0) {
                         throw new VerifyError("bytes 3 and 4 after invokedynamic must be 0.");
                     }
                     PoolConstant pc = pool.at(code.readCPI(BCI));
+                    // Check CP validity
                     if (!(pc instanceof InvokeDynamicConstant)) {
                         throw new VerifyError("Invalid CP constant for an InvokeDynamic: " + pc.getClass().getName());
                     }
-
                     InvokeDynamicConstant idc = (InvokeDynamicConstant) pc;
                     if (!(pool.at(idc.getNameAndTypeIndex()).tag() == ConstantPool.Tag.NAME_AND_TYPE)) {
                         throw new ClassFormatError("Invalid constant pool !");
                     }
                     Symbol<Symbol.Name> name = idc.getName(pool);
+                    // Check invokedynamic does not call initializers
                     if (name == Symbol.Name.INIT || name == Symbol.Name.CLINIT) {
                         throw new VerifyError("Invalid bootstrap method name: " + name);
                     }
@@ -1511,11 +1543,15 @@ public final class MethodVerifier implements ContextAccess {
         }
     }
 
+    /**
+     * Anonymous classes defined on the fly can call protected members of other classes that are not
+     * in their hierarchy. Use their host class to check access.
+     */
     private boolean checkHostAccess(Operand stackOp) {
         if (thisOperand.getKlass().getHostClass() != null) {
             return stackOp.getKlass().isAssignableFrom(thisOperand.getKlass().getHostClass());
         }
-        return true;
+        return false;
     }
 
     // Helper methods
@@ -1630,12 +1666,18 @@ public final class MethodVerifier implements ContextAccess {
         return k == Long || k == Double;
     }
 
-    private Operand checkInit(Stack stack, Operand op) {
+    /**
+     * Checks that a given operand is initialized when accessing fields/methods.
+     */
+    private Operand checkInit(Stack stack, Operand op, Locals locals) {
         if (op.isUninit()) {
             if (methodName != Name.INIT) {
                 throw new VerifyError("Accessing field or calling method of an uninitialized reference.");
             }
-            return stack.initUninit((UninitReferenceOperand) op);
+
+            Operand init = stack.initUninit((UninitReferenceOperand) op);
+            locals.initUninit((UninitReferenceOperand) op, init);
+            return init;
         }
         return op;
     }
@@ -1676,6 +1718,9 @@ public final class MethodVerifier implements ContextAccess {
         }
     }
 
+    /**
+     * Generates an operand from a type.
+     */
     private Operand kindToOperand(Symbol<Type> type) {
         // @formatter:off
         // Checkstyle: stop
@@ -1727,6 +1772,13 @@ public final class MethodVerifier implements ContextAccess {
         return (op >= ILOAD && op <= ALOAD) || (op >= ISTORE && op <= ASTORE) || (op == RET) || (op == IINC);
     }
 
+    /**
+     * Computes the merging of the current stack/local status with the stack frame store in the
+     * table.
+     * 
+     * @return if merge succeeds, returns the given stackFrame, else returns a new StackFrame that
+     *         represents the merging.
+     */
     public StackFrame mergeFrames(Stack stack, Locals locals, StackFrame stackMap) {
         if (stackMap == null) {
             if (useStackMaps) {
@@ -1790,7 +1842,7 @@ public final class MethodVerifier implements ContextAccess {
         return new StackFrame(mergedStack, stack.size, stack.top, mergedLocals);
     }
 
-    public static StackFrame spawnStackFrame(Stack stack, Locals locals) {
+    private static StackFrame spawnStackFrame(Stack stack, Locals locals) {
         return new StackFrame(stack, locals);
     }
 }
