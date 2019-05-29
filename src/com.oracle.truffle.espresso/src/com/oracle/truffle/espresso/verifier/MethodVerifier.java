@@ -411,7 +411,6 @@ public final class MethodVerifier implements ContextAccess {
     static private final byte NONVERIFIED = 11;
     static private final byte VERIFIED = 12;
 
-
     /**
      * Construct the data structure to perform verification
      * 
@@ -568,7 +567,6 @@ public final class MethodVerifier implements ContextAccess {
             }
             stackFrames[BCI] = frame;
             previous = frame;
-            first = false;
         }
     }
 
@@ -1780,7 +1778,8 @@ public final class MethodVerifier implements ContextAccess {
                     } else {
                         mergedLocals[i] = result;
                     }
-                }else {
+                } else {
+                    mergedLocals[i] = frameOp;
                     mergedLocals[i] = frameOp;
                 }
             }

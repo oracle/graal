@@ -339,7 +339,7 @@ public final class Method implements TruffleObject, ModifiersProvider, ContextAc
                         }
                     } else {
                         if (codeAttribute == null) {
-                            getMeta().throwExWithMessage(AbstractMethodError.class, "Calling abstract method: "  + getDeclaringKlass().getType() + "." + getName() + " -> " + getRawSignature());
+                            getMeta().throwExWithMessage(AbstractMethodError.class, "Calling abstract method: " + getDeclaringKlass().getType() + "." + getName() + " -> " + getRawSignature());
                         }
                         FrameDescriptor frameDescriptor = initFrameDescriptor(getMaxLocals() + getMaxStackSize());
                         EspressoRootNode rootNode = new EspressoRootNode(this, frameDescriptor, new BytecodeNode(this, frameDescriptor));
