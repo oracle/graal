@@ -30,16 +30,14 @@ import java.util.function.Function;
 import org.graalvm.compiler.core.common.CompilationIdentifier;
 import org.graalvm.compiler.core.common.GraalBailoutException;
 import org.graalvm.compiler.nodes.StructuredGraph;
-import org.graalvm.compiler.truffle.compiler.PartialEvaluator;
 import org.graalvm.compiler.truffle.runtime.OptimizedCallTarget;
 import org.graalvm.compiler.truffle.runtime.OptimizedDirectCallNode;
 import org.graalvm.compiler.truffle.runtime.SharedTruffleRuntimeOptions;
 import org.graalvm.compiler.truffle.runtime.TruffleRuntimeOptions;
-import org.junit.AfterClass;
+import org.junit.After;
 import org.junit.Assert;
 import org.junit.Assume;
 import org.junit.Before;
-import org.junit.BeforeClass;
 import org.junit.Test;
 
 import com.oracle.truffle.api.CompilerAsserts;
@@ -53,7 +51,6 @@ import com.oracle.truffle.api.frame.FrameUtil;
 import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.api.nodes.ExplodeLoop;
 import com.oracle.truffle.api.nodes.RootNode;
-import com.oracle.truffle.api.test.ReflectionUtils;
 
 import org.graalvm.compiler.truffle.compiler.SharedTruffleCompilerOptions;
 import org.graalvm.compiler.truffle.compiler.TruffleCompilerOptions;
@@ -61,32 +58,21 @@ import org.graalvm.compiler.truffle.compiler.TruffleCompilerOptions;
 public class NodeLimitTest extends PartialEvaluationTest {
 
     public NodeLimitTest() {
+        super();
         runtime = Truffle.getRuntime();
     }
 
     static TruffleCompilerOptions.TruffleOptionsOverrideScope performanceWarningsAreFatalScope;
 
-    @BeforeClass
-    public static void beforeClass() {
-        performanceWarningsAreFatalScope = TruffleCompilerOptions.overrideOptions(SharedTruffleCompilerOptions.TrufflePerformanceWarningsAreFatal, false);
-    }
-
-    @AfterClass
-    public static void afterClass() {
-        performanceWarningsAreFatalScope.close();
-        // Reset the 'warningsSeen' flag to not influence other tests.
-        try {
-            Field f = PartialEvaluator.PerformanceInformationHandler.class.getDeclaredField("warningSeen");
-            ReflectionUtils.setAccessible(f, true);
-            f.setBoolean(f, false);
-        } catch (Exception e) {
-            throw new AssertionError(e);
-        }
-    }
-
     @Before
-    public void setUp() throws Exception {
+    public void before() {
+        performanceWarningsAreFatalScope = TruffleCompilerOptions.overrideOptions(SharedTruffleCompilerOptions.TrufflePerformanceWarningsAreFatal, false);
         Assume.assumeFalse(TruffleRuntimeOptions.getValue(SharedTruffleRuntimeOptions.TruffleCompileImmediately));
+    }
+
+    @After
+    public void after() {
+        performanceWarningsAreFatalScope.close();
     }
 
     @Test
