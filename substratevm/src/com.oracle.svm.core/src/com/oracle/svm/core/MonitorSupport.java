@@ -46,6 +46,7 @@ import com.oracle.svm.core.snippets.KnownIntrinsics;
 import com.oracle.svm.core.snippets.SubstrateForeignCallTarget;
 import com.oracle.svm.core.thread.ThreadingSupportImpl.PauseRecurringCallback;
 import com.oracle.svm.core.thread.VMOperation;
+import com.oracle.svm.core.thread.VMOperationControl;
 import com.oracle.svm.core.util.VMError;
 
 //Checkstyle: stop
@@ -99,14 +100,7 @@ public class MonitorSupport {
      */
     @SubstrateForeignCallTarget
     public static void monitorEnter(Object obj) {
-        /*
-         * GR-3655: The guaranteeOkayToBlock ensures that VMOperation cannot deadlock by disallowing
-         * synchronization. Enabling this check is blocked by GR-9200: Lazy creation of
-         * java.lang.Thread objects during deoptimization performs synchronization in the Thread
-         * initialization code.
-         */
-        // VMOperationControl.guaranteeOkayToBlock("No Java synchronization must be performed within
-        // a VMOperation: if the object is already locked, the VM is at a deadlock");
+        VMOperationControl.guaranteeOkayToBlock("No Java synchronization must be performed within a VMOperation: if the object is already locked, the VM is at a deadlock");
 
         monitorEnterWithoutBlockingCheck(obj);
     }
