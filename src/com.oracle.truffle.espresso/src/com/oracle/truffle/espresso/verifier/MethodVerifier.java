@@ -296,6 +296,7 @@ public final class MethodVerifier implements ContextAccess {
     private final StackFrame[] stackFrames;
     private final StackMapTableAttribute stackMapTableAttribute;
     private final ExceptionHandler[] exceptionHandlers;
+    private final byte[] handlerStatus;
 
     Symbol<Type>[] getSig() {
         return sig;
@@ -406,6 +407,11 @@ public final class MethodVerifier implements ContextAccess {
     static private final byte DONE = 2;
     static private final byte JUMP_TARGET = 3;
 
+    static private final byte UNENCOUNTERED = 10;
+    static private final byte NONVERIFIED = 11;
+    static private final byte VERIFIED = 12;
+
+
     /**
      * Construct the data structure to perform verification
      * 
@@ -426,6 +432,8 @@ public final class MethodVerifier implements ContextAccess {
         this.methodName = m.getName();
         this.stackMapTableAttribute = codeAttribute.getStackMapFrame();
         this.exceptionHandlers = m.getExceptionHandlers();
+        this.handlerStatus = new byte[exceptionHandlers.length];
+        Arrays.fill(handlerStatus, UNENCOUNTERED);
         this.majorVersion = codeAttribute.getMajorVersion();
         this.useStackMaps = codeAttribute.useStackMaps();
 
@@ -761,24 +769,40 @@ public final class MethodVerifier implements ContextAccess {
     }
 
     private void verifyExceptionHandlers() {
-        for (ExceptionHandler handler : exceptionHandlers) {
-            int handlerBCI = handler.getHandlerBCI();
-            Locals locals;
-            Stack stack;
-            StackFrame frame = stackFrames[handlerBCI];
-            if (frame == null) {
-                Operand[] registers = new Operand[maxLocals];
-                Arrays.fill(registers, Invalid);
-                locals = new Locals(registers);
-                stack = new Stack(maxStack);
-                stack.push(new ReferenceOperand(handler.getCatchType(), thisKlass));
-            } else {
-                stack = frame.extractStack(maxStack);
-                locals = frame.extractLocals();
+        boolean redo;
+        boolean updated;
+        do {
+            redo = false;
+            updated = false;
+            for (int i = 0; i < exceptionHandlers.length; i++) {
+                ExceptionHandler handler = exceptionHandlers[i];
+                if (handlerStatus[i] == NONVERIFIED) {
+                    updated = redo;
+                    verifyHandler(handler);
+                    handlerStatus[i] = VERIFIED;
+                } else if (handlerStatus[i] == UNENCOUNTERED) {
+                    redo = true;
+                }
             }
+        } while (redo && updated);
+    }
 
-            startVerify(handlerBCI, stack, locals);
+    private void verifyHandler(ExceptionHandler handler) {
+        int handlerBCI = handler.getHandlerBCI();
+        Locals locals;
+        Stack stack;
+        StackFrame frame = stackFrames[handlerBCI];
+        if (frame == null) {
+            Operand[] registers = new Operand[maxLocals];
+            Arrays.fill(registers, Invalid);
+            locals = new Locals(registers);
+            stack = new Stack(maxStack);
+            stack.push(new ReferenceOperand(handler.getCatchType(), thisKlass));
+        } else {
+            stack = frame.extractStack(maxStack);
+            locals = frame.extractLocals();
         }
+        startVerify(handlerBCI, stack, locals);
     }
 
     private void branch(int BCI, Stack stack, Locals locals) {
@@ -829,12 +853,18 @@ public final class MethodVerifier implements ContextAccess {
     }
 
     private void checkExceptionHandlers(int nextBCI, Locals locals) {
-        for (ExceptionHandler handler : exceptionHandlers) {
-            if (handler.getStartBCI() >= nextBCI && handler.getEndBCI() < nextBCI) {
+        for (int i = 0; i < exceptionHandlers.length; i++) {
+            ExceptionHandler handler = exceptionHandlers[i];
+            if (nextBCI >= handler.getStartBCI() && nextBCI < handler.getEndBCI()) {
                 Stack stack = new Stack(1);
                 Symbol<Type> catchType = handler.getCatchType();
                 stack.push(catchType == null ? Throwable : new ReferenceOperand(catchType, thisKlass));
-                stackFrames[handler.getHandlerBCI()] = mergeFrames(stack, locals, stackFrames[handler.getHandlerBCI()]);
+                StackFrame oldFrame = stackFrames[handler.getHandlerBCI()];
+                StackFrame newFrame = mergeFrames(stack, locals, oldFrame);
+                if (handlerStatus[i] == UNENCOUNTERED || oldFrame != newFrame) {
+                    handlerStatus[i] = NONVERIFIED;
+                }
+                stackFrames[handler.getHandlerBCI()] = newFrame;
             }
         }
     }
@@ -1724,6 +1754,8 @@ public final class MethodVerifier implements ContextAccess {
                         throw new VerifyError("Cannot merge " + stackOp + " with " + frameOp);
                     }
                     mergedStack[i] = result;
+                } else {
+                    mergedStack[i] = frameOp;
                 }
             }
         }
@@ -1748,6 +1780,8 @@ public final class MethodVerifier implements ContextAccess {
                     } else {
                         mergedLocals[i] = result;
                     }
+                }else {
+                    mergedLocals[i] = frameOp;
                 }
             }
         }

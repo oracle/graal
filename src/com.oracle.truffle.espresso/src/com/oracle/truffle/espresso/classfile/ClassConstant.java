@@ -114,7 +114,6 @@ public interface ClassConstant extends PoolConstant {
 
             } catch (EspressoException e) {
                 CompilerDirectives.transferToInterpreter();
-                e.printStackTrace();
                 if (pool.getContext().getMeta().ClassNotFoundException.isAssignableFrom(e.getException().getKlass())) {
                     throw pool.getContext().getMeta().throwEx(NoClassDefFoundError.class);
                 }

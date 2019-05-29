@@ -15,11 +15,9 @@ Espresso can run way past HelloWorld; it can run a toy web server, terminal Tetr
   - Standalone native-image via SubstrateVM
 
 ### Not supported (yet)
-  - Threads
-  - InvokeDynamic
   - Modules
   - Interop
-  - Class/bytecode verification/access-checks/error-reporting
+  - Class/access-checks/error-reporting
   - Full Java spec compliance (e.g. class loading and initialization, access checks)
 
 ## _Espresso_ setup
