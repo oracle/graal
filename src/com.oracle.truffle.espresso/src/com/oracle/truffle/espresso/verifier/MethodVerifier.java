@@ -1257,7 +1257,7 @@ public final class MethodVerifier implements ContextAccess {
                     if (curOpcode == GETFIELD) {
                         Symbol<Type> fieldHolderType = getTypes().fromName(frc.getHolderKlassName(pool));
                         Operand fieldHolder = kindToOperand(fieldHolderType);
-                        Operand receiver = checkInit(stack, stack.popRef(fieldHolder), locals);
+                        Operand receiver = stack.popRef(fieldHolder);
                         checkProtectedField(receiver, fieldHolderType, code.readCPI(BCI));
                         if (receiver.isArrayType()) {
                             throw new VerifyError("Trying to access field of an array type: " + receiver);
@@ -1284,7 +1284,7 @@ public final class MethodVerifier implements ContextAccess {
                     }
                     if (curOpcode == PUTFIELD) {
                         Operand fieldHolder = kindToOperand(getTypes().fromName(frc.getHolderKlassName(pool)));
-                        Operand receiver = checkInit(stack, stack.popRef(fieldHolder), locals);
+                        Operand receiver = checkInit(stack.popRef(fieldHolder));
                         if (receiver.isArrayType()) {
                             throw new VerifyError("Trying to access field of an array type: " + receiver);
                         }
@@ -1353,7 +1353,7 @@ public final class MethodVerifier implements ContextAccess {
 
                             checkProtectedMethod(stackOp, methodHolder, code.readCPI(BCI));
                         } else {
-                            Operand stackOp = checkInit(stack, stack.popRef(methodHolderOp), locals);
+                            Operand stackOp = checkInit(stack.popRef(methodHolderOp));
                             /**
                              * 4.10.1.9.invokespecial:
                              * 
@@ -1361,12 +1361,12 @@ public final class MethodVerifier implements ContextAccess {
                              * name a method in the current class/interface or a
                              * superclass/superinterface.
                              */
-                            if (!(stackOp.compliesWith(thisOperand) || checkHostAccess(stackOp))) {
+                            if (!checkSpecialAccess(stackOp)) {
                                 throw new VerifyError("Invalid use of INVOKESPECIAL");
                             }
                         }
                     } else if (curOpcode != INVOKESTATIC) {
-                        checkInit(stack, stack.popRef(methodHolderOp), locals);
+                        checkInit(stack.popRef(methodHolderOp));
                     }
                     Operand returnOp = parsedSig[parsedSig.length - 1];
                     if (!(returnOp == Void)) {
@@ -1543,6 +1543,14 @@ public final class MethodVerifier implements ContextAccess {
         }
     }
 
+    private boolean checkSpecialAccess(Operand stackOp) {
+        return stackOp.compliesWith(thisOperand) || isMagicAccessor() || checkHostAccess(stackOp);
+    }
+
+    private boolean isMagicAccessor() {
+        return getMeta().MagicAccessorImpl.isAssignableFrom(thisOperand.getKlass());
+    }
+
     /**
      * Anonymous classes defined on the fly can call protected members of other classes that are not
      * in their hierarchy. Use their host class to check access.
@@ -1669,15 +1677,11 @@ public final class MethodVerifier implements ContextAccess {
     /**
      * Checks that a given operand is initialized when accessing fields/methods.
      */
-    private Operand checkInit(Stack stack, Operand op, Locals locals) {
+    private Operand checkInit(Operand op) {
         if (op.isUninit()) {
             if (methodName != Name.INIT) {
                 throw new VerifyError("Accessing field or calling method of an uninitialized reference.");
             }
-
-            Operand init = stack.initUninit((UninitReferenceOperand) op);
-            locals.initUninit((UninitReferenceOperand) op, init);
-            return init;
         }
         return op;
     }
