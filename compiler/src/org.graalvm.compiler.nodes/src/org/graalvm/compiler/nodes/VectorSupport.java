@@ -18,17 +18,17 @@ public final class VectorSupport {
     // TODO: Use these for packing
 
     @NodeInfo
-    public static final class VectorToScalarValueNode extends FloatingNode {
+    public static final class VectorUnpackNode extends FloatingNode {
 
-        public static final NodeClass<VectorToScalarValueNode> TYPE = NodeClass.create(VectorToScalarValueNode.class);
+        public static final NodeClass<VectorUnpackNode> TYPE = NodeClass.create(VectorUnpackNode.class);
 
         @Input private ValueNode value;
 
-        public VectorToScalarValueNode(Stamp stamp, ValueNode value) {
+        public VectorUnpackNode(Stamp stamp, ValueNode value) {
             this(TYPE, stamp, value);
         }
 
-        private VectorToScalarValueNode(NodeClass<? extends VectorToScalarValueNode> c, Stamp stamp, ValueNode value) {
+        private VectorUnpackNode(NodeClass<? extends VectorUnpackNode> c, Stamp stamp, ValueNode value) {
             super(c, stamp);
             this.value = value;
         }
@@ -39,23 +39,23 @@ public final class VectorSupport {
 
         @Override
         public boolean verify() {
-            assertTrue(value.isVector(), "VectorToScalarValueNode requires a vector ValueNode input");
+            assertTrue(value.isVector(), "VectorUnpackNode requires a vector ValueNode input");
             return super.verify();
         }
     }
 
     @NodeInfo
-    public static final class ScalarToVectorValueNode extends FloatingNode implements Canonicalizable {
+    public static final class VectorPackNode extends FloatingNode implements Canonicalizable {
 
-        public static final NodeClass<ScalarToVectorValueNode> TYPE = NodeClass.create(ScalarToVectorValueNode.class);
+        public static final NodeClass<VectorPackNode> TYPE = NodeClass.create(VectorPackNode.class);
 
         @Input private NodeInputList<ValueNode> values;
 
-        public ScalarToVectorValueNode(Stamp stamp, List<ValueNode> values) {
+        public VectorPackNode(Stamp stamp, List<ValueNode> values) {
             this(TYPE, stamp, values);
         }
 
-        private ScalarToVectorValueNode(NodeClass<? extends ScalarToVectorValueNode> c, Stamp stamp, List<ValueNode> values) {
+        private VectorPackNode(NodeClass<? extends VectorPackNode> c, Stamp stamp, List<ValueNode> values) {
             super(c, stamp);
             this.values = new NodeInputList<>(this, values);
         }
@@ -66,7 +66,7 @@ public final class VectorSupport {
 
         @Override
         public boolean verify() {
-            assertTrue(values.stream().noneMatch(ValueNode::isVector), "ScalarToVectorValueNode requires scalar inputs");
+            assertTrue(values.stream().noneMatch(ValueNode::isVector), "VectorPackNode requires scalar inputs");
             return super.verify();
         }
 
@@ -84,15 +84,15 @@ public final class VectorSupport {
 
             final Node first = inputs().first();
 
-            // If all values are VectorToScalarValueNode, then we can delete this node and the input node
+            // If all values are VectorUnpackNode, then we can delete this node and the input node
             final boolean allEqual = StreamSupport.stream(inputs().spliterator(), false).allMatch(first::equals);
 
             // Do nothing if not all inputs are equal and instance of VTS
-            if (!allEqual || !(first instanceof VectorToScalarValueNode)) {
+            if (!allEqual || !(first instanceof VectorUnpackNode) || first.getUsageCount() != inputs().count()) {
                 return this;
             }
 
-            final VectorToScalarValueNode firstVTS = (VectorToScalarValueNode) first;
+            final VectorUnpackNode firstVTS = (VectorUnpackNode) first;
 
             // What happens when we return null?
             replaceAtUsages(firstVTS.value);

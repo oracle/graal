@@ -3,7 +3,6 @@ package org.graalvm.compiler.phases.common;
 import jdk.vm.ci.meta.JavaKind;
 import org.graalvm.compiler.core.common.cfg.BlockMap;
 import org.graalvm.compiler.graph.Node;
-import org.graalvm.compiler.graph.NodeInputList;
 import org.graalvm.compiler.graph.NodeMap;
 import org.graalvm.compiler.nodes.*;
 import org.graalvm.compiler.nodes.VectorSupport.*;
@@ -741,6 +740,8 @@ public final class IsomorphicPackingPhase extends BasePhase<PhaseContext> {
             for (Runnable runnable : deferred) {
                 runnable.run();
             }
+
+            System.out.println(String.format("SCHEDULE: %s", scheduled.toString()));
         }
 
         private void schedulePack(Pack<Node> pack, Deque<FixedNode> lastFixed) {
@@ -750,7 +751,7 @@ public final class IsomorphicPackingPhase extends BasePhase<PhaseContext> {
                 final List<ReadNode> nodes = pack.getElements().stream().map(x -> (ReadNode) x).collect(Collectors.toList());
                 final VectorReadNode vectorRead = VectorReadNode.fromPackElements(nodes);
 
-                final VectorToScalarValueNode vts = new VectorToScalarValueNode(vectorRead.stamp().unrestricted(), vectorRead);
+                final VectorUnpackNode vts = new VectorUnpackNode(vectorRead.stamp().unrestricted(), vectorRead);
                 for (ReadNode node : nodes) {
                     node.replaceAtUsagesAndDelete(vts);
                 }
@@ -768,7 +769,7 @@ public final class IsomorphicPackingPhase extends BasePhase<PhaseContext> {
             if (first instanceof WriteNode) {
                 final List<WriteNode> nodes = pack.getElements().stream().map(x -> (WriteNode) x).collect(Collectors.toList());
 
-                final ScalarToVectorValueNode stv = new ScalarToVectorValueNode(nodes.get(0).getAccessStamp().unrestricted(), nodes.stream().map(AbstractWriteNode::value).collect(Collectors.toList()));
+                final VectorPackNode stv = new VectorPackNode(nodes.get(0).getAccessStamp().unrestricted(), nodes.stream().map(AbstractWriteNode::value).collect(Collectors.toList()));
                 final VectorWriteNode vectorWrite = VectorWriteNode.fromPackElements(nodes, stv);
 
                 for (WriteNode node : nodes) {
@@ -789,10 +790,10 @@ public final class IsomorphicPackingPhase extends BasePhase<PhaseContext> {
                 final List<AddNode> nodes = pack.getElements().stream().map(x -> (AddNode) x).collect(Collectors.toList());
 
                 // Input to vector, output to scalar
-                final ScalarToVectorValueNode stvX = new ScalarToVectorValueNode(nodes.get(0).getX().stamp().unrestricted(), nodes.stream().map(BinaryNode::getX).collect(Collectors.toList()));
-                final ScalarToVectorValueNode stvY = new ScalarToVectorValueNode(nodes.get(0).getY().stamp().unrestricted(), nodes.stream().map(BinaryNode::getY).collect(Collectors.toList()));
+                final VectorPackNode stvX = new VectorPackNode(nodes.get(0).getX().stamp().unrestricted(), nodes.stream().map(BinaryNode::getX).collect(Collectors.toList()));
+                final VectorPackNode stvY = new VectorPackNode(nodes.get(0).getY().stamp().unrestricted(), nodes.stream().map(BinaryNode::getY).collect(Collectors.toList()));
                 final VectorAddNode vector = new VectorAddNode(stvX, stvY);
-                final VectorToScalarValueNode vts = new VectorToScalarValueNode(nodes.get(0).stamp(), vector);
+                final VectorUnpackNode vts = new VectorUnpackNode(nodes.get(0).stamp(), vector);
                 for (AddNode node : nodes) {
                     node.replaceAtUsagesAndDelete(vts);
                 }
@@ -820,7 +821,8 @@ public final class IsomorphicPackingPhase extends BasePhase<PhaseContext> {
             find_adj_refs(packSet);
             extend_packlist(packSet);
             combine_packs(packSet);
-            schedule(new ArrayList<>(blockToNodesMap.get(currentBlock)), packSet);
+//            schedule(new ArrayList<>(blockToNodesMap.get(currentBlock)), packSet);
+            schedule(blockToNodesMap.get(currentBlock).stream().filter(x -> !(x instanceof ReturnNode)).collect(Collectors.toList()), packSet);
         }
 
     }
