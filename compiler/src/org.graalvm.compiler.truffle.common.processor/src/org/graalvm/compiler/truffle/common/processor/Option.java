@@ -113,7 +113,7 @@ public class Option {
         option("TruffleMaximumRecursiveInlining")
             .type("Integer")
             .category("EXPERT")
-            .def("4")
+            .def("2")
             .help("Maximum level of recursive inlining"),
 
         option("TruffleSplitting")
