@@ -895,7 +895,7 @@ public class BytecodeNode extends EspressoBaseNode implements CustomNodeCount {
                     if (DEBUG_GENERAL) {
                         reportRuntimeException(e, curBCI, this);
                     }
-                    throw getMeta().throwExWithMessage(e.getClass(), e.getMessage());
+                    throw e;
                 } catch (Exception e) {
                     // TODO(garcia) Do not lose the cause.
                     // There should be no need to wrap exceptions in host language, as they
