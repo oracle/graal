@@ -42,7 +42,7 @@ public abstract class BytecodeSwitch {
         this.stream = stream;
     }
 
-    protected int getAlignedBci(int bci) {
+    public int getAlignedBci(int bci) {
         return (bci + 4) & 0xfffffffc;
     }
 

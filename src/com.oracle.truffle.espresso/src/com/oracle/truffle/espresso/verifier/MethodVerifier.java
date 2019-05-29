@@ -1210,6 +1210,11 @@ public final class MethodVerifier implements ContextAccess {
                 case TABLESWITCH: {
                     stack.popInt();
                     BytecodeTableSwitch switchHelper = code.getBytecodeTableSwitch();
+                    for (int j = BCI + 1; j < switchHelper.getAlignedBci(BCI); j++) {
+                        if (code.readUByte(j) != 0) {
+                            throw new VerifyError("non-zero padding for TABLESWITCH");
+                        }
+                    }
                     int low = switchHelper.lowKey(BCI);
                     int high = switchHelper.highKey(BCI);
                     for (int i = low; i != high + 1; i++) {
@@ -1220,6 +1225,11 @@ public final class MethodVerifier implements ContextAccess {
                 case LOOKUPSWITCH: {
                     stack.popInt();
                     BytecodeLookupSwitch switchHelper = code.getBytecodeLookupSwitch();
+                    for (int j = BCI + 1; j < switchHelper.getAlignedBci(BCI); j++) {
+                        if (code.readUByte(j) != 0) {
+                            throw new VerifyError("non-zero padding for LOOKUPSWITCH");
+                        }
+                    }
                     int low = 0;
                     int high = switchHelper.numberOfCases(BCI) - 1;
                     int previousKey = 0;
