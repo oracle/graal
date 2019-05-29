@@ -745,8 +745,6 @@ public final class IsomorphicPackingPhase extends BasePhase<PhaseContext> {
             for (Runnable runnable : deferred) {
                 runnable.run();
             }
-
-            System.out.println(String.format("SCHEDULE: %s", scheduled.toString()));
         }
 
         private void schedulePack(Pack<Node> pack, Deque<FixedNode> lastFixed) {
