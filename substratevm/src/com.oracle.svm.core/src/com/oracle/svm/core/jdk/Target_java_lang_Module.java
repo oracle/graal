@@ -44,10 +44,9 @@ public final class Target_java_lang_Module {
     }
 
     /*
-     * All implementations of these stubs are completely empty no-op.
-     * This seems appropriate as DynamicHub only references a singleton
-     * Module implementation anyhow, effectively neutering the module system
-     * within JDK11.
+     * All implementations of these stubs are completely empty no-op. This seems appropriate as
+     * DynamicHub only references a singleton Module implementation anyhow, effectively neutering
+     * the module system within JDK11.
      */
 
     @SuppressWarnings({"unused", "static-method"})
