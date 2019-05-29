@@ -25,7 +25,6 @@
 package com.oracle.svm.thirdparty;
 
 import java.util.ArrayList;
-import java.util.Collection;
 import java.util.List;
 import java.util.Set;
 import java.util.function.BooleanSupplier;
@@ -38,6 +37,7 @@ import org.graalvm.nativeimage.hosted.RuntimeClassInitialization;
 import com.oracle.svm.core.annotate.Alias;
 import com.oracle.svm.core.annotate.AutomaticFeature;
 import com.oracle.svm.core.annotate.InjectAccessors;
+import com.oracle.svm.core.annotate.NeverInline;
 import com.oracle.svm.core.annotate.RecomputeFieldValue;
 import com.oracle.svm.core.annotate.RecomputeFieldValue.Kind;
 import com.oracle.svm.core.annotate.Substitute;
@@ -96,7 +96,7 @@ public final class ICU4JFeature implements Feature {
 
         // ClassLoaderHelper is a utility class used in @TargetClass annotated substitutions bellow
         RuntimeClassInitialization.initializeAtBuildTime(ClassLoaderHelper.class);
-        RuntimeClassInitialization.initializeAtBuildTime(access.findClassByName(ClassLoaderHelper.class.getName() + "$1"));
+        RuntimeClassInitialization.initializeAtBuildTime(ClassLoaderHelper.DummyClassLoader.class);
     }
 
     private static Class<?>[] getIcu4jClasses(FeatureAccess access) {
@@ -106,10 +106,16 @@ public final class ICU4JFeature implements Feature {
 }
 
 final class ClassLoaderHelper {
+
+    static final class DummyClassLoader extends ClassLoader {
+        DummyClassLoader(ClassLoader parent) {
+            super(parent);
+        }
+    }
+
     /** Dummy ClassLoader used only for resource loading. */
     // Checkstyle: stop
-    static final ClassLoader DUMMY_LOADER = new ClassLoader(null) {
-    };
+    static final ClassLoader DUMMY_LOADER = new DummyClassLoader(null);
     // CheckStyle: resume
 }
 
@@ -143,27 +149,39 @@ final class Target_com_ibm_icu_impl_ICUBinary {
                         ICU4J_DATA_PATH_ENV_VAR +
                         ", to contain path to your ICU4J icudt directory";
 
-        private static volatile List<?> instance;
+        // once fully populated, the data file list will be kept here
+        private static volatile List<?> instance = null;
+        // helper collection to which the list will be populated
+        private static List<?> populatingDataFiles = null;
 
+        private static final Object lock = new Object();
+
+        @NeverInline("So the lock does not get eliminated.")
         static List<?> get() {
 
             if (instance == null) {
                 // Checkstyle: allow synchronization
-                synchronized (IcuDataFilesAccessors.class) {
+                synchronized (lock) {
                     if (instance == null) {
-
-                        List<?> list = new ArrayList<>();
+                        if (populatingDataFiles == null) {
+                            // the very first call, from "outside"
+                            populatingDataFiles = new ArrayList<>();
+                        } else {
+                            // second, re-entrant, call from the same thread
+                            // comes from the addDataFilesFromPath method invoked bellow
+                            return populatingDataFiles;
+                        }
 
                         String dataPath = System.getProperty(ICU4J_DATA_PATH_SYS_PROP);
                         if (dataPath == null || dataPath.isEmpty()) {
                             dataPath = System.getenv(ICU4J_DATA_PATH_ENV_VAR);
                         }
                         if (dataPath != null && !dataPath.isEmpty()) {
-                            addDataFilesFromPath(dataPath, list);
+                            addDataFilesFromPath(dataPath, populatingDataFiles);
                         } else {
                             System.err.println(NO_DATA_PATH_ERR_MSG);
                         }
-                        instance = list;
+                        instance = populatingDataFiles;
                     }
                 }
                 // Checkstyle: disallow synchronization
