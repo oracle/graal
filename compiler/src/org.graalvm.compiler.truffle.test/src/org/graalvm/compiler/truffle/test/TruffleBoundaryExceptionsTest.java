@@ -46,6 +46,7 @@ public class TruffleBoundaryExceptionsTest extends TestWithSynchronousCompiling 
     @Test
     public void testExceptionOnTruffleBoundaryDeoptsOnce() {
         final int compilationThreshold = TruffleRuntimeOptions.getValue(SharedTruffleRuntimeOptions.TruffleCompilationThreshold);
+        final int invalidationReprofileCount = TruffleRuntimeOptions.getValue(SharedTruffleRuntimeOptions.TruffleInvalidationReprofileCount);
         class DeoptCountingExceptionOverBoundaryRootNode extends RootNode {
 
             protected DeoptCountingExceptionOverBoundaryRootNode() {
@@ -95,7 +96,9 @@ public class TruffleBoundaryExceptionsTest extends TestWithSynchronousCompiling 
         assertEquals("Incorrect number of deopts detected!", 1, rootNode.deoptCounter);
         assertNotCompiled(outerTarget);
         // recompile with exception branch
-        outerTarget.call();
+        for (int i = 0; i < invalidationReprofileCount; i++) {
+            outerTarget.call();
+        }
         assertCompiled(outerTarget);
 
         runtime.addListener(listener);
@@ -105,10 +108,10 @@ public class TruffleBoundaryExceptionsTest extends TestWithSynchronousCompiling 
                 outerTarget.call();
             }
 
-            final int totalExecutions = compilationThreshold + 1 + execCount;
+            final int totalExecutions = compilationThreshold + invalidationReprofileCount + execCount;
             assertEquals("Incorrect number of catch block executions", totalExecutions, rootNode.catchCounter);
 
-            assertEquals("Incorrect number of interpreted executions", compilationThreshold - 1, rootNode.interpretCount);
+            assertEquals("Incorrect number of interpreted executions", (compilationThreshold - 1) + (invalidationReprofileCount - 1), rootNode.interpretCount);
             assertEquals("Incorrect number of deopts detected!", 1, rootNode.deoptCounter);
 
             assertEquals("Compilation happened!", 0, compilationCount[0]);
@@ -171,6 +174,7 @@ public class TruffleBoundaryExceptionsTest extends TestWithSynchronousCompiling 
     @Test
     public void testExceptionOnTruffleBoundaryWithNoCatch() {
         final int compilationThreshold = TruffleRuntimeOptions.getValue(SharedTruffleRuntimeOptions.TruffleCompilationThreshold);
+        final int invalidationReprofileCount = TruffleRuntimeOptions.getValue(SharedTruffleRuntimeOptions.TruffleInvalidationReprofileCount);
         class DeoptCountingExceptionOverBoundaryRootNode extends RootNode {
 
             protected DeoptCountingExceptionOverBoundaryRootNode() {
@@ -214,11 +218,13 @@ public class TruffleBoundaryExceptionsTest extends TestWithSynchronousCompiling 
         assertNotCompiled(outerTarget);
         assertEquals("Incorrect number of deopts detected!", 1, rootNode.deoptCounter);
         // recompile with exception branch
-        try {
-            outerTarget.call();
-            fail();
-        } catch (RuntimeException e) {
-            // do nothing
+        for (int i = 0; i < invalidationReprofileCount; i++) {
+            try {
+                outerTarget.call();
+                fail();
+            } catch (RuntimeException e) {
+                // do nothing
+            }
         }
         assertCompiled(outerTarget);
 
