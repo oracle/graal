@@ -336,34 +336,185 @@ public class AArch64MacroAssembler extends AArch64Assembler {
     }
 
     /**
+     * Generates a 32-bit immediate move code sequence.
+     *
+     * @param dst general purpose register. May not be null, stackpointer or zero-register.
+     * @param imm the value to move into the register.
+     * @param needsImmAnnotation Flag denoting if annotation should be added.
+     */
+    private void mov32(Register dst, int imm, boolean needsImmAnnotation) {
+        int numMovs = 0;
+        int pos = position();
+
+        // Split 32-bit imm into low16 and high16 parts.
+        int low16 = imm & 0xFFFF;
+        int high16 = (imm >>> 16) & 0xFFFF;
+
+        // Generate code sequence with a combination of MOVZ or MOVN with MOVK.
+        if (high16 == 0) {
+            movz(32, dst, low16, 0);
+            numMovs = 1;
+        } else if (high16 == 0xFFFF) {
+            movn(32, dst, low16 ^ 0xFFFF, 0);
+            numMovs = 1;
+        } else if (low16 == 0) {
+            movz(32, dst, high16, 16);
+            numMovs = 1;
+        } else if (low16 == 0xFFFF) {
+            movn(32, dst, high16 ^ 0xFFFF, 16);
+            numMovs = 1;
+        } else {
+            // Neither of the 2 parts is all-0s or all-1s. Generate 2 instructions.
+            movz(32, dst, low16, 0);
+            movk(32, dst, high16, 16);
+            numMovs = 2;
+        }
+        if (needsImmAnnotation) {
+            annotateImmediateMovSequence(pos, numMovs);
+        }
+    }
+
+    /**
      * Generates a 64-bit immediate move code sequence.
      *
      * @param dst general purpose register. May not be null, stackpointer or zero-register.
      * @param imm the value to move into the register
-     * @param annotateImm Flag denoting if annotation should be added.
+     * @param needsImmAnnotation Flag denoting if annotation should be added.
      */
-    private void mov64(Register dst, long imm, boolean annotateImm) {
-        // We have to move all non zero parts of the immediate in 16-bit chunks
+    private void mov64(Register dst, long imm, boolean needsImmAnnotation) {
         int numMovs = 0;
         int pos = position();
-        boolean firstMove = true;
-        for (int offset = 0; offset < 64; offset += 16) {
-            int chunk = (int) (imm >> offset) & NumUtil.getNbitNumberInt(16);
+        int[] chunks = new int[4];
+        int zeroCount = 0;
+        int negCount = 0;
+
+        // Split 64-bit imm into 4 chunks and count the numbers of all-0 and all-1 chunks.
+        for (int i = 0; i < 4; i++) {
+            int chunk = (int) ((imm >>> (i * 16)) & 0xFFFFL);
             if (chunk == 0) {
-                continue;
+                zeroCount++;
+            } else if (chunk == 0xFFFF) {
+                negCount++;
             }
-            if (firstMove) {
-                movz(64, dst, chunk, offset);
-                firstMove = false;
-            } else {
-                movk(64, dst, chunk, offset);
-            }
-            ++numMovs;
+            chunks[i] = chunk;
         }
-        assert !firstMove;
-        if (annotateImm) {
+
+        // Generate code sequence with a combination of MOVZ or MOVN with MOVK.
+        if (zeroCount == 4) {
+            // Generate only one MOVZ.
+            movz(64, dst, 0, 0);
+            numMovs = 1;
+        } else if (negCount == 4) {
+            // Generate only one MOVN.
+            movn(64, dst, 0, 0);
+            numMovs = 1;
+        } else if (zeroCount == 3) {
+            // Generate only one MOVZ.
+            for (int i = 0; i < 4; i++) {
+                if (chunks[i] != 0) {
+                    movz(64, dst, chunks[i], i * 16);
+                    break;
+                }
+            }
+            numMovs = 1;
+        } else if (negCount == 3) {
+            // Generate only one MOVN.
+            for (int i = 0; i < 4; i++) {
+                if (chunks[i] != 0xFFFF) {
+                    movn(64, dst, chunks[i] ^ 0xFFFF, i * 16);
+                    break;
+                }
+            }
+            numMovs = 1;
+        } else if (zeroCount == 2) {
+            // Generate one MOVZ and one MOVK.
+            int i;
+            for (i = 0; i < 4; i++) {
+                if (chunks[i] != 0) {
+                    movz(64, dst, chunks[i], i * 16);
+                    break;
+                }
+            }
+            for (int k = i + 1; k < 4; k++) {
+                if (chunks[k] != 0) {
+                    movk(64, dst, chunks[k], k * 16);
+                    break;
+                }
+            }
+            numMovs = 2;
+        } else if (negCount == 2) {
+            // Generate one MOVN and one MOVK.
+            int i;
+            for (i = 0; i < 4; i++) {
+                if (chunks[i] != 0xFFFF) {
+                    movn(64, dst, chunks[i] ^ 0xFFFF, i * 16);
+                    break;
+                }
+            }
+            for (int k = i + 1; k < 4; k++) {
+                if (chunks[k] != 0xFFFF) {
+                    movk(64, dst, chunks[k], k * 16);
+                    break;
+                }
+            }
+            numMovs = 2;
+        } else if (zeroCount == 1) {
+            // Generate one MOVZ and two MOVKs.
+            int i;
+            for (i = 0; i < 4; i++) {
+                if (chunks[i] != 0) {
+                    movz(64, dst, chunks[i], i * 16);
+                    break;
+                }
+            }
+            int numMovks = 0;
+            for (int k = i + 1; k < 4; k++) {
+                if (chunks[k] != 0) {
+                    movk(64, dst, chunks[k], k * 16);
+                    numMovks++;
+                }
+            }
+            assert numMovks == 2;
+            numMovs = 3;
+        } else if (negCount == 1) {
+            // Generate one MOVN and two MOVKs.
+            int i;
+            for (i = 0; i < 4; i++) {
+                if (chunks[i] != 0xFFFF) {
+                    movn(64, dst, chunks[i] ^ 0xFFFF, i * 16);
+                    break;
+                }
+            }
+            int numMovks = 0;
+            for (int k = i + 1; k < 4; k++) {
+                if (chunks[k] != 0xFFFF) {
+                    movk(64, dst, chunks[k], k * 16);
+                    numMovks++;
+                }
+            }
+            assert numMovks == 2;
+            numMovs = 3;
+        } else {
+            // Generate one MOVZ and three MOVKs
+            movz(64, dst, chunks[0], 0);
+            movk(64, dst, chunks[1], 16);
+            movk(64, dst, chunks[2], 32);
+            movk(64, dst, chunks[3], 48);
+            numMovs = 4;
+        }
+        if (needsImmAnnotation) {
             annotateImmediateMovSequence(pos, numMovs);
         }
+    }
+
+    /**
+     * Loads immediate into register.
+     *
+     * @param dst general purpose register. May not be null, zero-register or stackpointer.
+     * @param imm immediate loaded into register.
+     */
+    public void mov(Register dst, int imm) {
+        mov(dst, imm, false);
     }
 
     /**
@@ -381,13 +532,30 @@ public class AArch64MacroAssembler extends AArch64Assembler {
      *
      * @param dst general purpose register. May not be null, zero-register or stackpointer.
      * @param imm immediate loaded into register.
-     * @param annotateImm Flag to signal of the immediate value should be annotated.
+     * @param needsImmAnnotation Flag to signal of the immediate value should be annotated.
      */
-    public void mov(Register dst, long imm, boolean annotateImm) {
+    public void mov(Register dst, int imm, boolean needsImmAnnotation) {
+        if (imm == 0) {
+            mov(32, dst, zr);
+        } else if (isLogicalImmediate(imm)) {
+            or(32, dst, zr, imm);
+        } else {
+            mov32(dst, imm, needsImmAnnotation);
+        }
+    }
+
+    /**
+     * Loads immediate into register.
+     *
+     * @param dst general purpose register. May not be null, zero-register or stackpointer.
+     * @param imm immediate loaded into register.
+     * @param needsImmAnnotation Flag to signal of the immediate value should be annotated.
+     */
+    public void mov(Register dst, long imm, boolean needsImmAnnotation) {
         assert dst.getRegisterCategory().equals(CPU);
         if (imm == 0L) {
             movx(dst, zr);
-        } else if (LogicalImmediateTable.isRepresentable(true, imm) != LogicalImmediateTable.Representable.NO) {
+        } else if (isLogicalImmediate(imm)) {
             or(64, dst, zr, imm);
         } else if (imm >> 32 == -1L && (int) imm < 0 && LogicalImmediateTable.isRepresentable((int) imm) != LogicalImmediateTable.Representable.NO) {
             // If the higher 32-bit are 1s and the sign bit of the lower 32-bits is set *and* we can
@@ -397,18 +565,8 @@ public class AArch64MacroAssembler extends AArch64Assembler {
             mov(dst, (int) imm);
             sxt(64, 32, dst, dst);
         } else {
-            mov64(dst, imm, annotateImm);
+            mov64(dst, imm, needsImmAnnotation);
         }
-    }
-
-    /**
-     * Loads immediate into register.
-     *
-     * @param dst general purpose register. May not be null, zero-register or stackpointer.
-     * @param imm immediate loaded into register.
-     */
-    public void mov(Register dst, int imm) {
-        mov(dst, imm & 0xFFFF_FFFFL);
     }
 
     /**
@@ -434,9 +592,9 @@ public class AArch64MacroAssembler extends AArch64Assembler {
      *
      * @param dst general purpose register. May not be null, stackpointer or zero-register.
      * @param imm The immediate address
-     * @param annotateImm Flag to signal of the immediate value should be annotated.
+     * @param needsImmAnnotation Flag to signal of the immediate value should be annotated.
      */
-    public void movNativeAddress(Register dst, long imm, boolean annotateImm) {
+    public void movNativeAddress(Register dst, long imm, boolean needsImmAnnotation) {
         assert (imm & 0xFFFF_0000_0000_0000L) == 0;
         // We have to move all non zero parts of the immediate in 16-bit chunks
         boolean firstMove = true;
@@ -450,7 +608,7 @@ public class AArch64MacroAssembler extends AArch64Assembler {
                 movk(64, dst, chunk, offset);
             }
         }
-        if (annotateImm) {
+        if (needsImmAnnotation) {
             annotateImmediateMovSequence(pos, 3);
         }
         assert !firstMove;
