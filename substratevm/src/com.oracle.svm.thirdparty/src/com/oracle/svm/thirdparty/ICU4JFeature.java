@@ -105,6 +105,7 @@ public final class ICU4JFeature implements Feature {
     }
 }
 
+// Checkstyle: stop
 final class ClassLoaderHelper {
 
     static final class DummyClassLoader extends ClassLoader {
@@ -114,10 +115,9 @@ final class ClassLoaderHelper {
     }
 
     /** Dummy ClassLoader used only for resource loading. */
-    // Checkstyle: stop
     static final ClassLoader DUMMY_LOADER = new DummyClassLoader(null);
-    // CheckStyle: resume
 }
+// CheckStyle: resume
 
 @TargetClass(className = "com.ibm.icu.impl.ClassLoaderUtil", onlyWith = ICU4JFeature.IsEnabled.class)
 final class Target_com_ibm_icu_impl_ClassLoaderUtil {
