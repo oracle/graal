@@ -37,6 +37,7 @@ import org.graalvm.compiler.core.common.util.TypeConversion;
 import org.graalvm.compiler.core.common.util.UnsafeArrayTypeWriter;
 import org.graalvm.nativeimage.ImageSingletons;
 
+import com.oracle.svm.core.c.PinnedArrays;
 import com.oracle.svm.core.code.CodeInfoEncoder.Counters;
 import com.oracle.svm.core.code.FrameInfoQueryResult.ValueInfo;
 import com.oracle.svm.core.code.FrameInfoQueryResult.ValueType;
@@ -633,8 +634,10 @@ public class FrameInfoEncoder {
 
     private boolean verifyEncoding() {
         for (FrameData expectedData : allDebugInfos) {
-            FrameInfoQueryResult actualFrame = FrameInfoDecoder.decodeFrameInfo(expectedData.frame.isDeoptEntry, new ReusableTypeReader(frameInfoEncodings, expectedData.indexInEncodings),
-                            frameInfoObjectConstants, frameInfoSourceClasses, frameInfoSourceMethodNames, frameInfoNames,
+            FrameInfoQueryResult actualFrame = FrameInfoDecoder.decodeFrameInfo(expectedData.frame.isDeoptEntry,
+                            new ReusableTypeReader(PinnedArrays.fromImageHeapOrPinnedAllocator(frameInfoEncodings), expectedData.indexInEncodings),
+                            PinnedArrays.fromImageHeapOrPinnedAllocator(frameInfoObjectConstants), PinnedArrays.fromImageHeapOrPinnedAllocator(frameInfoSourceClasses),
+                            PinnedArrays.fromImageHeapOrPinnedAllocator(frameInfoSourceMethodNames), PinnedArrays.fromImageHeapOrPinnedAllocator(frameInfoNames),
                             FrameInfoDecoder.HeapBasedFrameInfoQueryResultAllocator, FrameInfoDecoder.HeapBasedValueInfoAllocator, true);
             FrameInfoVerifier.verifyFrames(expectedData, expectedData.frame, actualFrame);
         }

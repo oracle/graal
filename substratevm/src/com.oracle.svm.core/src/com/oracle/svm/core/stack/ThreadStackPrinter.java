@@ -30,6 +30,7 @@ import org.graalvm.word.Pointer;
 import com.oracle.svm.core.annotate.NeverInline;
 import com.oracle.svm.core.annotate.RestrictHeapAccess;
 import com.oracle.svm.core.annotate.Uninterruptible;
+import com.oracle.svm.core.c.PinnedObjectArray;
 import com.oracle.svm.core.code.AbstractCodeInfo;
 import com.oracle.svm.core.code.CodeInfoTable;
 import com.oracle.svm.core.code.FrameInfoDecoder.FrameInfoQueryResultAllocator;
@@ -87,7 +88,7 @@ public class ThreadStackPrinter {
 
             @RestrictHeapAccess(access = RestrictHeapAccess.Access.NO_ALLOCATION, reason = "Provide allocation-free StackFrameVisitor")
             @Override
-            public void decodeConstant(ValueInfo valueInfo, Object[] frameInfoObjectConstants) {
+            public void decodeConstant(ValueInfo valueInfo, PinnedObjectArray<?> frameInfoObjectConstants) {
             }
         }
 

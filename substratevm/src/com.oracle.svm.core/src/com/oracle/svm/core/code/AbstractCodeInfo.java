@@ -29,21 +29,29 @@ import org.graalvm.word.UnsignedWord;
 import org.graalvm.word.WordFactory;
 
 import com.oracle.svm.core.annotate.Uninterruptible;
+import com.oracle.svm.core.annotate.UnknownObjectField;
 import com.oracle.svm.core.annotate.UnknownPrimitiveField;
+import com.oracle.svm.core.c.PinnedArray;
+import com.oracle.svm.core.c.PinnedArrays;
+import com.oracle.svm.core.c.PinnedObjectArray;
 import com.oracle.svm.core.code.FrameInfoDecoder.FrameInfoQueryResultAllocator;
 import com.oracle.svm.core.code.FrameInfoDecoder.ValueInfoAllocator;
 
 /**
  * Information about a block of memory that contains machine code.
- *
- * This class extends {@link CodeInfoDecoder} instead of using it. This eliminates following one
- * pointer when accessing the information, which happens very frequently during GC and exception
- * handling.
  */
-public abstract class AbstractCodeInfo extends CodeInfoDecoder {
-
+public abstract class AbstractCodeInfo {
     @UnknownPrimitiveField private CodePointer codeStart;
     @UnknownPrimitiveField private UnsignedWord codeSize;
+
+    @UnknownObjectField(types = {byte[].class}) protected byte[] codeInfoIndex;
+    @UnknownObjectField(types = {byte[].class}) protected byte[] codeInfoEncodings;
+    @UnknownObjectField(types = {byte[].class}) protected byte[] referenceMapEncoding;
+    @UnknownObjectField(types = {byte[].class}) protected byte[] frameInfoEncodings;
+    @UnknownObjectField(types = {Object[].class}) protected Object[] frameInfoObjectConstants;
+    @UnknownObjectField(types = {Class[].class}) protected Class<?>[] frameInfoSourceClasses;
+    @UnknownObjectField(types = {String[].class}) protected String[] frameInfoSourceMethodNames;
+    @UnknownObjectField(types = {String[].class}) protected String[] frameInfoNames;
 
     protected void setData(CodePointer codeStart, UnsignedWord codeSize) {
         this.codeStart = codeStart;
@@ -79,9 +87,9 @@ public abstract class AbstractCodeInfo extends CodeInfoDecoder {
     }
 
     public long initFrameInfoReader(CodePointer ip, ReusableTypeReader frameInfoReader) {
-        long entryOffset = lookupCodeInfoEntryOffset(relativeIP(ip));
+        long entryOffset = CodeInfoDecoder.lookupCodeInfoEntryOffset(pa(codeInfoIndex), pa(codeInfoEncodings), relativeIP(ip));
         if (entryOffset >= 0) {
-            if (!initFrameInfoReader(entryOffset, frameInfoReader)) {
+            if (!CodeInfoDecoder.initFrameInfoReader(pa(codeInfoEncodings), pa(frameInfoEncodings), entryOffset, frameInfoReader)) {
                 return -1;
             }
         }
@@ -91,11 +99,57 @@ public abstract class AbstractCodeInfo extends CodeInfoDecoder {
     public FrameInfoQueryResult nextFrameInfo(long entryOffset, ReusableTypeReader frameInfoReader,
                     FrameInfoQueryResultAllocator resultAllocator, ValueInfoAllocator valueInfoAllocator,
                     boolean fetchFirstFrame) {
-        int entryFlags = loadEntryFlags(entryOffset);
-        boolean isDeoptEntry = extractFI(entryFlags) == FI_DEOPT_ENTRY_INDEX_S4;
-        return FrameInfoDecoder.decodeFrameInfo(isDeoptEntry, frameInfoReader, frameInfoObjectConstants, frameInfoSourceClasses,
-                        frameInfoSourceMethodNames, frameInfoNames, resultAllocator, valueInfoAllocator, fetchFirstFrame);
+        int entryFlags = CodeInfoDecoder.loadEntryFlags(pa(codeInfoEncodings), entryOffset);
+        boolean isDeoptEntry = CodeInfoDecoder.extractFI(entryFlags) == CodeInfoDecoder.FI_DEOPT_ENTRY_INDEX_S4;
+        return FrameInfoDecoder.decodeFrameInfo(isDeoptEntry, frameInfoReader, pa(frameInfoObjectConstants), pa(frameInfoSourceClasses),
+                        pa(frameInfoSourceMethodNames), pa(frameInfoNames), resultAllocator, valueInfoAllocator, fetchFirstFrame);
     }
 
     public abstract String getName();
+
+    protected void setData(byte[] codeInfoIndex, byte[] codeInfoEncodings, byte[] referenceMapEncoding, byte[] frameInfoEncodings, Object[] frameInfoObjectConstants,
+                    Class<?>[] frameInfoSourceClasses, String[] frameInfoSourceMethodNames, String[] frameInfoNames) {
+        this.codeInfoIndex = codeInfoIndex;
+        this.codeInfoEncodings = codeInfoEncodings;
+        this.referenceMapEncoding = referenceMapEncoding;
+        this.frameInfoEncodings = frameInfoEncodings;
+        this.frameInfoObjectConstants = frameInfoObjectConstants;
+        this.frameInfoSourceClasses = frameInfoSourceClasses;
+        this.frameInfoSourceMethodNames = frameInfoSourceMethodNames;
+        this.frameInfoNames = frameInfoNames;
+    }
+
+    static PinnedArray<Byte> pa(byte[] array) {
+        return PinnedArrays.fromImageHeapOrPinnedAllocator(array);
+    }
+
+    static <T> PinnedObjectArray<T> pa(T[] array) {
+        return PinnedArrays.fromImageHeapOrPinnedAllocator(array);
+    }
+
+    protected void lookupCodeInfo(long ip, CodeInfoQueryResult codeInfo) {
+        CodeInfoDecoder.lookupCodeInfo(pa(codeInfoEncodings), pa(codeInfoIndex), pa(frameInfoEncodings), pa(frameInfoNames), pa(frameInfoObjectConstants),
+                        pa(frameInfoSourceClasses), pa(frameInfoSourceMethodNames), pa(referenceMapEncoding), ip, codeInfo);
+    }
+
+    public long lookupDeoptimizationEntrypoint(long method, long encodedBci, CodeInfoQueryResult codeInfo) {
+        return CodeInfoDecoder.lookupDeoptimizationEntrypoint(pa(codeInfoEncodings), pa(codeInfoIndex), pa(frameInfoEncodings), pa(frameInfoNames), pa(frameInfoObjectConstants),
+                        pa(frameInfoSourceClasses), pa(frameInfoSourceMethodNames), pa(referenceMapEncoding), method, encodedBci, codeInfo);
+    }
+
+    public long lookupTotalFrameSize(long ip) {
+        return CodeInfoDecoder.lookupTotalFrameSize(pa(codeInfoEncodings), pa(codeInfoIndex), ip);
+    }
+
+    protected long lookupExceptionOffset(long ip) {
+        return CodeInfoDecoder.lookupExceptionOffset(pa(codeInfoEncodings), pa(codeInfoIndex), ip);
+    }
+
+    protected PinnedArray<Byte> getReferenceMapEncoding() {
+        return pa(referenceMapEncoding);
+    }
+
+    protected long lookupReferenceMapIndex(long ip) {
+        return CodeInfoDecoder.lookupReferenceMapIndex(pa(codeInfoEncodings), pa(codeInfoIndex), ip);
+    }
 }

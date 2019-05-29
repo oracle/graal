@@ -39,6 +39,7 @@ import org.graalvm.word.WordFactory;
 import com.oracle.svm.core.SubstrateUtil;
 import com.oracle.svm.core.annotate.Uninterruptible;
 import com.oracle.svm.core.config.ConfigurationValues;
+import com.oracle.svm.core.heap.GC;
 import com.oracle.svm.core.heap.ObjectReferenceVisitor;
 import com.oracle.svm.core.heap.ObjectReferenceWalker;
 import com.oracle.svm.core.hub.DynamicHub;
@@ -64,6 +65,9 @@ public final class PinnedArrays {
     @SuppressWarnings("unchecked")
     @Uninterruptible(reason = "Faux object reference on stack.", callerMustBe = true)
     private static <T> T asObject(PointerBase array) {
+        if (SubstrateUtil.HOSTED) {
+            return (T) ((HostedPinnedArray<?>) array).getArray();
+        }
         return (T) KnownIntrinsics.convertUnknownValue(((Pointer) array).toObject(), Object.class);
     }
 
@@ -87,6 +91,14 @@ public final class PinnedArrays {
         System.arraycopy(asObject(src), srcPos, asObject(dest), destPos, length);
     }
 
+    @SuppressWarnings("unchecked")
+    public static <T extends PinnedArray<?>> T nullArray() {
+        if (SubstrateUtil.HOSTED) {
+            return (T) HostedPinnedArray.NULL_VALUE;
+        }
+        return WordFactory.nullPointer();
+    }
+
     /**
      * Allocates a byte array of the specified length in unmanaged memory. The array must be
      * released manually with {@link #releaseUnmanagedArray}.
@@ -100,9 +112,8 @@ public final class PinnedArrays {
      * Allocates an array of the specified length in unmanaged memory to hold references to objects
      * on the Java heap. In order to ensure that the referenced objects are reachable for garbage
      * collection, the owner of an instance must call {@link #walkUnmanagedObjectArray} on each
-     * array from {@linkplain GC#registerObjectReferenceWalker(ObjectReferenceWalker) a
-     * GC-registered reference walker}. The array must be released manually with
-     * {@link #releaseUnmanagedArray}.
+     * array from {@linkplain GC#registerObjectReferenceWalker a GC-registered reference walker}.
+     * The array must be released manually with {@link #releaseUnmanagedArray}.
      */
     @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
     public static <T> PinnedObjectArray<T> createUnmanagedObjectArray(int length) {
@@ -116,14 +127,17 @@ public final class PinnedArrays {
 
     /** Returns a {@link PinnedArray} for an array of primitives in the image heap. */
     @SuppressWarnings("unchecked")
-    public static <T> PinnedArray<T> fromImageHeap(Object array) {
+    public static <T> PinnedArray<T> fromImageHeapOrPinnedAllocator(Object array) {
+        if (SubstrateUtil.HOSTED) {
+            return (array != null) ? new HostedPinnedArray<>(array) : (PinnedArray<T>) HostedPinnedArray.NULL_VALUE;
+        }
         return (array != null) ? (PinnedArray<T>) Word.objectToUntrackedPointer(array) : WordFactory.nullPointer();
     }
 
     /** Returns a {@link PinnedObjectArray} for an object array in the image heap. */
     @SuppressWarnings("unchecked")
-    public static <T> PinnedObjectArray<T> fromImageHeap(Object[] array) {
-        return (PinnedObjectArray<T>) fromImageHeap((Object) array);
+    public static <T> PinnedObjectArray<T> fromImageHeapOrPinnedAllocator(Object[] array) {
+        return (PinnedObjectArray<T>) fromImageHeapOrPinnedAllocator((Object) array);
     }
 
     @Uninterruptible(reason = "Faux object reference on stack.")

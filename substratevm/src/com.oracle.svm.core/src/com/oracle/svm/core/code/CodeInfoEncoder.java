@@ -44,11 +44,11 @@ import com.oracle.svm.core.code.FrameInfoQueryResult.ValueType;
 import com.oracle.svm.core.config.ConfigurationValues;
 import com.oracle.svm.core.config.ObjectLayout;
 import com.oracle.svm.core.deopt.DeoptEntryInfopoint;
+import com.oracle.svm.core.heap.CodeReferenceMapDecoder;
+import com.oracle.svm.core.heap.CodeReferenceMapEncoder;
 import com.oracle.svm.core.heap.ObjectReferenceVisitor;
 import com.oracle.svm.core.heap.PinnedAllocator;
 import com.oracle.svm.core.heap.ReferenceMapEncoder;
-import com.oracle.svm.core.heap.CodeReferenceMapDecoder;
-import com.oracle.svm.core.heap.CodeReferenceMapEncoder;
 import com.oracle.svm.core.heap.SubstrateReferenceMap;
 import com.oracle.svm.core.hub.DynamicHub;
 import com.oracle.svm.core.hub.LayoutEncoding;
@@ -184,7 +184,7 @@ public class CodeInfoEncoder {
         encodeIPData();
     }
 
-    public void install(CodeInfoDecoder installTarget) {
+    public void install(AbstractCodeInfo installTarget) {
         installTarget.setData(codeInfoIndex, codeInfoEncodings, referenceMapEncoding, frameInfoEncoder.frameInfoEncodings, frameInfoEncoder.frameInfoObjectConstants,
                         frameInfoEncoder.frameInfoSourceClasses, frameInfoEncoder.frameInfoSourceMethodNames, frameInfoEncoder.frameInfoNames);
 
@@ -393,7 +393,12 @@ public class CodeInfoEncoder {
     }
 }
 
-class CodeInfoVerifier extends CodeInfoDecoder {
+class CodeInfoVerifier extends AbstractCodeInfo {
+    @Override
+    public String getName() {
+        return CodeInfoVerifier.class.getSimpleName();
+    }
+
     protected void verifyMethod(CompilationResult compilation, int compilationOffset) {
         for (int relativeIP = 0; relativeIP < compilation.getTargetCodeSize(); relativeIP++) {
             int totalIP = relativeIP + compilationOffset;
@@ -404,7 +409,7 @@ class CodeInfoVerifier extends CodeInfoDecoder {
             assert codeInfo.isEntryPoint() || lookupTotalFrameSize(totalIP) == codeInfo.getTotalFrameSize();
             assert lookupExceptionOffset(totalIP) == codeInfo.getExceptionOffset();
             assert lookupReferenceMapIndex(totalIP) == codeInfo.getReferenceMapIndex();
-            assert getReferenceMapEncoding() == codeInfo.getReferenceMapEncoding();
+            assert getReferenceMapEncoding().equal(codeInfo.getReferenceMapEncoding());
         }
 
         for (Infopoint infopoint : compilation.getInfopoints()) {

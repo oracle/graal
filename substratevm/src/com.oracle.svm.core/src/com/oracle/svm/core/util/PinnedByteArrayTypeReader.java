@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2017, 2017, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2019, 2019, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -22,39 +22,19 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.svm.core.code;
+package com.oracle.svm.core.util;
 
 import org.graalvm.compiler.core.common.util.AbstractTypeReader;
 
 import com.oracle.svm.core.c.PinnedArray;
-import com.oracle.svm.core.c.PinnedArrays;
-import com.oracle.svm.core.util.PinnedByteArrayReader;
-import com.oracle.svm.core.util.VMError;
 
-/**
- * Custom TypeReader that allows reusing the same instance over and over again. Only getSV(),
- * getSVInt(), getUV(), getUVInt() are implemented.
- */
-public final class ReusableTypeReader extends AbstractTypeReader {
+public class PinnedByteArrayTypeReader extends AbstractTypeReader {
+    protected final PinnedArray<Byte> array;
+    protected long byteIndex;
 
-    private PinnedArray<Byte> data;
-    private long byteIndex = -1;
-
-    public ReusableTypeReader() {
-    }
-
-    public ReusableTypeReader(PinnedArray<Byte> data, long byteIndex) {
-        this.data = data;
+    public PinnedByteArrayTypeReader(PinnedArray<Byte> array, long byteIndex) {
+        this.array = array;
         this.byteIndex = byteIndex;
-    }
-
-    public void reset() {
-        data = PinnedArrays.nullArray();
-        byteIndex = -1;
-    }
-
-    public boolean isValid() {
-        return data != null && byteIndex >= 0;
     }
 
     @Override
@@ -67,48 +47,52 @@ public final class ReusableTypeReader extends AbstractTypeReader {
         this.byteIndex = byteIndex;
     }
 
-    public PinnedArray<Byte> getData() {
-        return data;
-    }
-
-    public void setData(PinnedArray<Byte> data) {
-        this.data = data;
-    }
-
     @Override
     public int getS1() {
-        throw VMError.unimplemented();
+        int result = PinnedByteArrayReader.getS1(array, byteIndex);
+        byteIndex += Byte.BYTES;
+        return result;
     }
 
     @Override
     public int getU1() {
-        int result = PinnedByteArrayReader.getU1(data, byteIndex);
+        int result = PinnedByteArrayReader.getU1(array, byteIndex);
         byteIndex += Byte.BYTES;
         return result;
     }
 
     @Override
     public int getS2() {
-        throw VMError.unimplemented();
+        int result = PinnedByteArrayReader.getS2(array, byteIndex);
+        byteIndex += Short.BYTES;
+        return result;
     }
 
     @Override
     public int getU2() {
-        throw VMError.unimplemented();
+        int result = PinnedByteArrayReader.getU2(array, byteIndex);
+        byteIndex += Short.BYTES;
+        return result;
     }
 
     @Override
     public int getS4() {
-        throw VMError.unimplemented();
+        int result = PinnedByteArrayReader.getS4(array, byteIndex);
+        byteIndex += Integer.BYTES;
+        return result;
     }
 
     @Override
     public long getU4() {
-        throw VMError.unimplemented();
+        long result = PinnedByteArrayReader.getU4(array, byteIndex);
+        byteIndex += Integer.BYTES;
+        return result;
     }
 
     @Override
     public long getS8() {
-        throw VMError.unimplemented();
+        long result = PinnedByteArrayReader.getS8(array, byteIndex);
+        byteIndex += Long.BYTES;
+        return result;
     }
 }

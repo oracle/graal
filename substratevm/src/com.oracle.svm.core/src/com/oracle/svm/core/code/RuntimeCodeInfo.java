@@ -24,8 +24,6 @@
  */
 package com.oracle.svm.core.code;
 
-import java.util.Arrays;
-
 import org.graalvm.compiler.options.Option;
 import org.graalvm.nativeimage.ImageSingletons;
 import org.graalvm.nativeimage.Platform;
@@ -251,16 +249,16 @@ public class RuntimeCodeInfo {
          * collected any time soon. By clearing the object arrays, we make sure that we do not keep
          * objects in the regular unpinned heap alive.
          */
-        Arrays.fill(methodInfo.frameInfoObjectConstants, null);
-        if (methodInfo.frameInfoSourceClasses != null) {
-            Arrays.fill(methodInfo.frameInfoSourceClasses, null);
-        }
-        if (methodInfo.frameInfoSourceMethodNames != null) {
-            Arrays.fill(methodInfo.frameInfoSourceMethodNames, null);
-        }
-        if (methodInfo.frameInfoNames != null) {
-            Arrays.fill(methodInfo.frameInfoNames, null);
-        }
+// Arrays.fill(methodInfo.frameInfoObjectConstants, null);
+// if (methodInfo.frameInfoSourceClasses != null) {
+// Arrays.fill(methodInfo.frameInfoSourceClasses, null);
+// }
+// if (methodInfo.frameInfoSourceMethodNames != null) {
+// Arrays.fill(methodInfo.frameInfoSourceMethodNames, null);
+// }
+// if (methodInfo.frameInfoNames != null) {
+// Arrays.fill(methodInfo.frameInfoNames, null);
+// }
 
         methodInfo.allocator.release();
         methodInfo.freeInstalledCode();

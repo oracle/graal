@@ -26,6 +26,7 @@ package com.oracle.svm.core.code;
 
 import org.graalvm.nativeimage.c.function.CodePointer;
 
+import com.oracle.svm.core.c.PinnedArray;
 import com.oracle.svm.core.heap.CodeReferenceMapDecoder;
 import com.oracle.svm.core.heap.CodeReferenceMapEncoder;
 import com.oracle.svm.core.util.VMError;
@@ -70,7 +71,7 @@ public class CodeInfoQueryResult {
     protected CodePointer ip;
     protected long totalFrameSize;
     protected long exceptionOffset;
-    protected byte[] referenceMapEncoding;
+    protected PinnedArray<Byte> referenceMapEncoding;
     protected long referenceMapIndex;
     protected FrameInfoQueryResult frameInfo;
 
@@ -109,7 +110,7 @@ public class CodeInfoQueryResult {
      * {@link #getReferenceMapIndex()}. Encoding is handled by {@link CodeReferenceMapEncoder},
      * decoding is handled by {@link CodeReferenceMapDecoder}.
      */
-    public byte[] getReferenceMapEncoding() {
+    public PinnedArray<Byte> getReferenceMapEncoding() {
         return referenceMapEncoding;
     }
 

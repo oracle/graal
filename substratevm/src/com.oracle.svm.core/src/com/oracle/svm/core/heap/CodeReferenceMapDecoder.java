@@ -34,9 +34,10 @@ import org.graalvm.word.WordFactory;
 
 import com.oracle.svm.core.FrameAccess;
 import com.oracle.svm.core.annotate.AlwaysInline;
+import com.oracle.svm.core.c.PinnedArray;
 import com.oracle.svm.core.code.CodeInfoQueryResult;
 import com.oracle.svm.core.config.ConfigurationValues;
-import com.oracle.svm.core.util.ByteArrayReader;
+import com.oracle.svm.core.util.PinnedByteArrayReader;
 
 public class CodeReferenceMapDecoder {
 
@@ -50,9 +51,9 @@ public class CodeReferenceMapDecoder {
      * @return false if any of the visits returned false, true otherwise.
      */
     @AlwaysInline("de-virtualize calls to ObjectReferenceVisitor")
-    public static boolean walkOffsetsFromPointer(PointerBase baseAddress, byte[] referenceMapEncoding, long referenceMapIndex, ObjectReferenceVisitor visitor) {
+    public static boolean walkOffsetsFromPointer(PointerBase baseAddress, PinnedArray<Byte> referenceMapEncoding, long referenceMapIndex, ObjectReferenceVisitor visitor) {
         assert referenceMapIndex != CodeInfoQueryResult.NO_REFERENCE_MAP;
-        assert referenceMapEncoding != null;
+        assert referenceMapEncoding.isNonNull();
         UnsignedWord uncompressedSize = WordFactory.unsigned(FrameAccess.uncompressedReferenceSize());
         UnsignedWord compressedSize = WordFactory.unsigned(ConfigurationValues.getObjectLayout().getReferenceSize());
 
@@ -67,11 +68,11 @@ public class CodeReferenceMapDecoder {
              */
 
             // Size of gap in bytes (negative means the next pointer has derived pointers)
-            long gap = ByteArrayReader.getU1(referenceMapEncoding, idx++);
+            long gap = PinnedByteArrayReader.getU1(referenceMapEncoding, idx++);
             if (gap >= UnsafeArrayTypeWriter.NUM_LOW_CODES) {
                 long shift = UnsafeArrayTypeWriter.HIGH_WORD_SHIFT;
                 for (int i = 2;; i++) {
-                    long b = ByteArrayReader.getU1(referenceMapEncoding, idx++);
+                    long b = PinnedByteArrayReader.getU1(referenceMapEncoding, idx++);
                     gap += b << shift;
                     if (b < UnsafeArrayTypeWriter.NUM_LOW_CODES || i == UnsafeArrayTypeWriter.MAX_BYTES) {
                         break;
@@ -82,11 +83,11 @@ public class CodeReferenceMapDecoder {
             gap = UnsafeArrayTypeReader.decodeSign(gap);
 
             // Number of pointers (sign distinguishes between compression and uncompression)
-            long count = ByteArrayReader.getU1(referenceMapEncoding, idx++);
+            long count = PinnedByteArrayReader.getU1(referenceMapEncoding, idx++);
             if (count >= UnsafeArrayTypeWriter.NUM_LOW_CODES) {
                 long shift = UnsafeArrayTypeWriter.HIGH_WORD_SHIFT;
                 for (int i = 2;; i++) {
-                    long b = ByteArrayReader.getU1(referenceMapEncoding, idx++);
+                    long b = PinnedByteArrayReader.getU1(referenceMapEncoding, idx++);
                     count += b << shift;
                     if (b < UnsafeArrayTypeWriter.NUM_LOW_CODES || i == UnsafeArrayTypeWriter.MAX_BYTES) {
                         break;
@@ -129,11 +130,11 @@ public class CodeReferenceMapDecoder {
                 /* count in this case is the number of derived references for this base pointer */
                 for (long d = 0; d < count; d++) {
                     /* Offset in words from the base reference to the derived reference */
-                    long refOffset = ByteArrayReader.getU1(referenceMapEncoding, idx++);
+                    long refOffset = PinnedByteArrayReader.getU1(referenceMapEncoding, idx++);
                     if (refOffset >= UnsafeArrayTypeWriter.NUM_LOW_CODES) {
                         long shift = UnsafeArrayTypeWriter.HIGH_WORD_SHIFT;
                         for (int i = 2;; i++) {
-                            long b = ByteArrayReader.getU1(referenceMapEncoding, idx++);
+                            long b = PinnedByteArrayReader.getU1(referenceMapEncoding, idx++);
                             refOffset += b << shift;
                             if (b < UnsafeArrayTypeWriter.NUM_LOW_CODES || i == UnsafeArrayTypeWriter.MAX_BYTES) {
                                 break;

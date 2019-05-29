@@ -83,7 +83,7 @@ public class FrameInfoQueryResult {
         protected long data;
         protected JavaConstant value;
         protected String name;
-        /** The index of {@link #name} in {@link CodeInfoDecoder#frameInfoNames}. */
+        /** Index of {@link #name} in {@link FrameInfoDecoder#decodeFrameInfo frameInfoNames}. */
         protected int nameIndex = -1;
 
         /**
