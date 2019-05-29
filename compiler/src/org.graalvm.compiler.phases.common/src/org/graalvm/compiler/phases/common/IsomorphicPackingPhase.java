@@ -677,10 +677,15 @@ public final class IsomorphicPackingPhase extends BasePhase<PhaseContext> {
          * Have all of the dependencies of node been scheduled?
          * Filters inputs, removing blocks that are not in the current block as well as Begin/End/Return.
          */
-        private boolean deps_scheduled(Node node, List<Node> scheduled) {
+        private boolean deps_scheduled(Node node, List<Node> scheduled, boolean considerControlFlow) {
             return StreamSupport.stream(node.inputs().spliterator(), false)
                     .filter(n -> nodeToBlockMap.get(n) == currentBlock)
-                    .allMatch(scheduled::contains);
+                    .allMatch(scheduled::contains) &&
+                    // AND have all the control flow dependencies been scheduled? (only if considering CF)
+                    (!considerControlFlow || StreamSupport.stream(node.cfgPredecessors().spliterator(), false)
+                            .filter(n -> nodeToBlockMap.get(n) == currentBlock)
+                            .allMatch(scheduled::contains)
+                    );
         }
 
         private Pack<Node> earliest_unscheduled(List<Node> unscheduled, Map<Node, Pack<Node>> nodeToPackMap) {
@@ -712,14 +717,14 @@ public final class IsomorphicPackingPhase extends BasePhase<PhaseContext> {
                     if (nodeToPackMap.containsKey(node)) {
                         final Pack<Node> pack = nodeToPackMap.get(node);
                         // Have the dependencies of statements in the pack been scheduled?
-                        if (pack.getElements().stream().allMatch(n -> deps_scheduled(n, scheduled))) {
+                        if (pack.getElements().stream().allMatch(n -> deps_scheduled(n, scheduled, n == pack.getLeft()))) {
                             // Remove statements from unscheduled
                             scheduled.addAll(pack.getElements());
                             unscheduled.removeAll(pack.getElements());
                             deferred.add(() -> schedulePack(pack, lastFixed));
                             continue outer;
                         }
-                    } else if (deps_scheduled(node, scheduled)) {
+                    } else if (deps_scheduled(node, scheduled, true)) {
                         // Remove statement from unscheduled and schedule
                         scheduled.add(node);
                         unscheduled.remove(node);
@@ -821,8 +826,7 @@ public final class IsomorphicPackingPhase extends BasePhase<PhaseContext> {
             find_adj_refs(packSet);
             extend_packlist(packSet);
             combine_packs(packSet);
-//            schedule(new ArrayList<>(blockToNodesMap.get(currentBlock)), packSet);
-            schedule(blockToNodesMap.get(currentBlock).stream().filter(x -> !(x instanceof ReturnNode)).collect(Collectors.toList()), packSet);
+            schedule(new ArrayList<>(blockToNodesMap.get(currentBlock)), packSet);
         }
 
     }
