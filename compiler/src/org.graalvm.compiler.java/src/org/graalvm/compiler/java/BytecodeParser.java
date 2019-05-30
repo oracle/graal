@@ -1740,10 +1740,7 @@ public class BytecodeParser implements GraphBuilderContext {
             return null;
         }
 
-        JavaType returnType = targetMethod.getSignature().getReturnType(method.getDeclaringClass());
-        if (graphBuilderConfig.eagerResolving() || parsingIntrinsic()) {
-            returnType = returnType.resolve(targetMethod.getDeclaringClass());
-        }
+        JavaType returnType = maybeEagerlyResolve(targetMethod.getSignature().getReturnType(method.getDeclaringClass()), targetMethod.getDeclaringClass());
         if (invokeKind.hasReceiver()) {
             args[0] = maybeEmitExplicitNullCheck(args[0]);
         }
@@ -4328,6 +4325,13 @@ public class BytecodeParser implements GraphBuilderContext {
                 }
             }
         }
+    }
+
+    protected JavaType maybeEagerlyResolve(JavaType type, ResolvedJavaType accessingClass) {
+        if (graphBuilderConfig.eagerResolving() || parsingIntrinsic()) {
+            return type.resolve(accessingClass);
+        }
+        return type;
     }
 
     protected void maybeEagerlyInitialize(ResolvedJavaType resolvedType) {
