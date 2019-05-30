@@ -1001,12 +1001,12 @@ public class NativeImage {
             if (resourceType == MetaInfFileType.Properties) {
                 Map<String, String> properties = loadProperties(Files.newInputStream(resourcePath));
                 forEachPropertyValue(properties.get("Args"), args, resolver);
-                args.apply();
             } else {
                 args.accept(oH(resourceType.optionKey) + resourceRoot.relativize(resourcePath));
-                args.apply();
             }
-            extractionResults.put(classpathEntry, new ArrayList<>(nativeImage.imageBuilderArgs));
+            args.apply();
+            List<String> perEntryResults = extractionResults.computeIfAbsent(classpathEntry, unused -> new ArrayList<>());
+            perEntryResults.addAll(nativeImage.imageBuilderArgs);
         };
         for (String entry : imageClasspath) {
             Path classpathEntry = nativeImage.canonicalize(ImageClassLoader.stringToClasspath(entry), false);
