@@ -52,6 +52,7 @@ import com.oracle.truffle.tools.chromeinspector.types.RemoteObject;
  */
 public final class InspectorExecutionContext {
 
+    public static final String VALUE_NOT_READABLE = "<not readable>";
     private static final AtomicLong LAST_ID = new AtomicLong(0);
 
     private final String name;
@@ -145,8 +146,8 @@ public final class InspectorExecutionContext {
     public ScriptsHandler acquireScriptsHandler() {
         if (sch == null) {
             sch = new ScriptsHandler(inspectInternal);
-            schBinding = env.getInstrumenter().attachLoadSourceListener(SourceFilter.ANY, sch, true);
             schCounter = new AtomicInteger(0);
+            schBinding = env.getInstrumenter().attachLoadSourceListener(SourceFilter.ANY, sch, true);
         }
         schCounter.incrementAndGet();
         return sch;
