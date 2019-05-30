@@ -74,6 +74,7 @@ import com.oracle.svm.core.os.CommittedMemoryProvider;
 import com.oracle.svm.core.snippets.ImplicitExceptions;
 import com.oracle.svm.core.stack.JavaStackWalker;
 import com.oracle.svm.core.stack.ThreadStackPrinter;
+import com.oracle.svm.core.thread.JavaThreads;
 import com.oracle.svm.core.thread.VMOperation;
 import com.oracle.svm.core.thread.VMThreads;
 import com.oracle.svm.core.util.TimeUtils;
@@ -906,7 +907,7 @@ public class GCImpl implements GC {
      * on, and only put out one report per collection.
      */
     void possibleCollectionEpilogue(UnsignedWord requestingEpoch) {
-        if (requestingEpoch.belowThan(getCollectionEpoch())) {
+        if (requestingEpoch.belowThan(getCollectionEpoch()) && JavaThreads.currentJavaThreadInitialized()) {
             SunMiscSupport.drainCleanerQueue();
             visitWatchersReport();
         }
