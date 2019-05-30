@@ -114,7 +114,7 @@ public abstract class AbstractPolyglotImpl {
         }
 
         public abstract ProcessHandler.ProcessCommand newProcessCommand(List<String> cmd, String cwd, Map<String, String> environment, boolean redirectErrorStream,
-                        ProcessHandler.Redirect[] redirects);
+                        ProcessHandler.Redirect inputRedirect, ProcessHandler.Redirect outputRedirect, ProcessHandler.Redirect errorRedirect);
     }
 
     public abstract static class APIAccess {
@@ -695,8 +695,6 @@ public abstract class AbstractPolyglotImpl {
     public abstract Value asValue(Object o);
 
     public abstract <S, T> Object newTargetTypeMapping(Class<S> sourceType, Class<T> targetType, Predicate<S> acceptsValue, Function<S, T> convertValue);
-
-    public abstract SecurityException throwSecurityException(String message);
 
     public static final class EnvironmentConfig {
         private final EnvironmentAccess environmentAccess;

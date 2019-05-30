@@ -380,7 +380,7 @@ public abstract class Accessor {
         public abstract Map<String, String> getProcessEnvironment(Object polyglotLanguageContext);
 
         public abstract ProcessHandler.ProcessCommand newProcessCommand(Object vmObject, List<String> cmd, String cwd, Map<String, String> environment, boolean redirectErrorStream,
-                        ProcessHandler.Redirect[] redirects);
+                        ProcessHandler.Redirect inputRedirect, ProcessHandler.Redirect outputRedirect, ProcessHandler.Redirect errorRedirect);
 
         public abstract ProcessHandler getProcessHandler(Object polylgotLanguageContext);
 

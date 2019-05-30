@@ -325,11 +325,6 @@ public final class PolyglotImpl extends AbstractPolyglotImpl {
         }
     }
 
-    @Override
-    public SecurityException throwSecurityException(String message) {
-        throw VMAccessor.LANGUAGE.throwSecurityException(message);
-    }
-
     org.graalvm.polyglot.Source getPolyglotSource(Source source) {
         org.graalvm.polyglot.Source polyglotSource = VMAccessor.SOURCE.getPolyglotSource(source);
         if (polyglotSource == null) {
@@ -1225,8 +1220,8 @@ public final class PolyglotImpl extends AbstractPolyglotImpl {
 
         @Override
         public ProcessHandler.ProcessCommand newProcessCommand(Object vmObject, List<String> cmd, String cwd, Map<String, String> environment, boolean redirectErrorStream,
-                        ProcessHandler.Redirect[] redirects) {
-            return ((VMObject) vmObject).getImpl().getIO().newProcessCommand(cmd, cwd, environment, redirectErrorStream, redirects);
+                        ProcessHandler.Redirect inputRedirect, ProcessHandler.Redirect outputRedirect, ProcessHandler.Redirect errorRedirect) {
+            return ((VMObject) vmObject).getImpl().getIO().newProcessCommand(cmd, cwd, environment, redirectErrorStream, inputRedirect, outputRedirect, errorRedirect);
         }
 
         @Override

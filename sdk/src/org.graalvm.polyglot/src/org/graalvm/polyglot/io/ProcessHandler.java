@@ -43,31 +43,41 @@ package org.graalvm.polyglot.io;
 import java.io.IOException;
 import java.lang.reflect.Method;
 import java.util.ArrayList;
-import java.util.Arrays;
 import java.util.Collections;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
+import org.graalvm.polyglot.Context.Builder;
 import org.graalvm.polyglot.Engine;
 import org.graalvm.polyglot.impl.AbstractPolyglotImpl;
 
 /**
- * Service-provider for Truffle process builder. This interface allows embedder to intercept
+ * Service-provider for guest languages process builder. This interface allows embedder to intercept
  * subprocess creation done by guest languages.
  *
- * @since 20.0.0 beta 1
+ * @since 20.0.0 beta 2
  */
 public interface ProcessHandler {
 
     /**
      * A request to start a new subprocess with given attributes.
-     *
+     * <p>
+     * The default implementation uses {@link ProcessBuilder} to create the new subprocess. The
+     * subprocess current working directory is set to {@link ProcessCommand#getDirectory()}. The
+     * {@link ProcessCommand#getDirectory()} value was either explicitely set by the guest language
+     * or the {@link FileSystem}'s current working directory is used. The subprocess environment is
+     * set to {@link ProcessCommand#getEnvironment()}, the initial value of
+     * {@link ProcessBuilder#environment()} is cleaned. The {@link ProcessCommand#getEnvironment()}
+     * contains the environment variables set by guest language and possibly also the JVM process
+     * environment depending on value of
+     * {@link Builder#allowEnvironmentAccess(org.graalvm.polyglot.EnvironmentAccess)}.
+     * 
      * @param command the subprocess attributes
      * @return the new subprocess
      * @throws SecurityException if the process creation was forbidden by this handler
      * @throws IOException if the process fails to execute
-     * @since 20.0.0 beta 1
+     * @since 20.0.0 beta 2
      */
     Process start(ProcessCommand command) throws IOException;
 
@@ -75,34 +85,38 @@ public interface ProcessHandler {
      * Subprocess attributes passed to
      * {@link #start(org.graalvm.polyglot.io.ProcessHandler.ProcessCommand) start} method.
      *
-     * @since 20.0.0 beta 1
+     * @since 20.0.0 beta 2
      */
     final class ProcessCommand {
-
-        private static final AbstractPolyglotImpl impl = initImpl();
 
         private List<String> cmd;
         private String cwd;
         private Map<String, String> environment;
         private boolean redirectErrorStream;
-        private Redirect[] redirects;
+        private Redirect inputRedirect;
+        private Redirect outputRedirect;
+        private Redirect errorRedirect;
 
-        private ProcessCommand(List<String> command, String cwd, Map<String, String> environment, boolean redirectErrorStream, Redirect[] redirects) {
+        private ProcessCommand(List<String> command, String cwd, Map<String, String> environment, boolean redirectErrorStream,
+                        Redirect inputRedirect, Redirect outputRedirect, Redirect errorRedirect) {
             Objects.requireNonNull(command, "Command must be non null.");
             Objects.requireNonNull(environment, "Environment must be non null.");
-            Objects.requireNonNull(redirects, "Redirects must be non null.");
+            Objects.requireNonNull(inputRedirect, "InputRedirect must be non null.");
+            Objects.requireNonNull(outputRedirect, "OutputRedirect must be non null.");
+            Objects.requireNonNull(errorRedirect, "ErrorRedirect must be non null.");
             this.cmd = Collections.unmodifiableList(new ArrayList<>(command));
             this.cwd = cwd;
             this.environment = Collections.unmodifiableMap(new HashMap<>(environment));
             this.redirectErrorStream = redirectErrorStream;
-            this.redirects = Arrays.copyOf(redirects, redirects.length);
+            this.inputRedirect = inputRedirect;
+            this.outputRedirect = outputRedirect;
+            this.errorRedirect = errorRedirect;
         }
 
         /**
-         * Returns the subprocess executable and arguments.
+         * Returns the subprocess executable and arguments as an immutable list.
          *
-         * @return the list containing the executable and its arguments
-         * @since 20.0.0 beta 1
+         * @since 20.0.0 beta 2
          */
         public List<String> getCommand() {
             return cmd;
@@ -111,18 +125,16 @@ public interface ProcessHandler {
         /**
          * Returns the subprocess working directory.
          *
-         * @return the working directory
-         * @since 20.0.0 beta 1
+         * @since 20.0.0 beta 2
          */
         public String getDirectory() {
             return cwd;
         }
 
         /**
-         * Returns the subprocess environment.
+         * Returns the subprocess environment as an immutable map.
          *
-         * @return the environment
-         * @since 20.0.0 beta 1
+         * @since 20.0.0 beta 2
          */
         public Map<String, String> getEnvironment() {
             return environment;
@@ -132,7 +144,7 @@ public interface ProcessHandler {
          * Return whether the standard error output should be merged into standard output.
          *
          * @return if {@code true} the standard error output is merged into standard output
-         * @since 20.0.0 beta 1
+         * @since 20.0.0 beta 2
          */
         public boolean isRedirectErrorStream() {
             return redirectErrorStream;
@@ -141,53 +153,36 @@ public interface ProcessHandler {
         /**
          * Returns the standard input source.
          *
-         * @return the standard input source
-         * @since 20.0.0 beta 1
+         * @since 20.0.0 beta 2
          */
         public Redirect getInputRedirect() {
-            return redirects[0];
+            return inputRedirect;
         }
 
         /**
          * Returns the standard output destination.
          *
-         * @return the standard output destination
-         * @since 20.0.0 beta 1
+         * @since 20.0.0 beta 2
          */
         public Redirect getOutputRedirect() {
-            return redirects[1];
+            return outputRedirect;
         }
 
         /**
          * Returns the standard error output destination.
          *
-         * @return the standard error output destination
-         * @since 20.0.0 beta 1
+         * @since 20.0.0 beta 2
          */
         public Redirect getErrorRedirect() {
-            return redirects[2];
+            return errorRedirect;
         }
 
-        /**
-         * Throws a {@link SecurityException} with a given message. The {@link ProcessHandler}
-         * should use this method to throw the {@link SecurityException} when it forbids the
-         * sub-process creation.
-         *
-         * @param message the exception message
-         * @since 20.0.0 beta 1
-         */
-        @SuppressWarnings("static-method")
-        public SecurityException throwSecurityException(String message) {
-            throw impl.throwSecurityException(message);
-        }
-
-        private static AbstractPolyglotImpl initImpl() {
+        static {
             try {
                 Method method = Engine.class.getDeclaredMethod("getImpl");
                 method.setAccessible(true);
                 AbstractPolyglotImpl polyglotImpl = (AbstractPolyglotImpl) method.invoke(null);
                 polyglotImpl.setIO(new IOAccessImpl());
-                return polyglotImpl;
             } catch (Exception e) {
                 throw new IllegalStateException("Failed to initialize execution listener class.", e);
             }
@@ -195,8 +190,9 @@ public interface ProcessHandler {
 
         private static final class IOAccessImpl extends AbstractPolyglotImpl.IOAccess {
             @Override
-            public ProcessCommand newProcessCommand(List<String> cmd, String cwd, Map<String, String> environment, boolean redirectErrorStream, Redirect[] redirects) {
-                return new ProcessCommand(cmd, cwd, environment, redirectErrorStream, redirects);
+            public ProcessCommand newProcessCommand(List<String> cmd, String cwd, Map<String, String> environment, boolean redirectErrorStream,
+                            Redirect inputRedirect, Redirect outputRedirect, Redirect errorRedirect) {
+                return new ProcessCommand(cmd, cwd, environment, redirectErrorStream, inputRedirect, outputRedirect, errorRedirect);
             }
         }
     }
@@ -204,21 +200,21 @@ public interface ProcessHandler {
     /**
      * Represents a source of subprocess input or a destination of subprocess output.
      *
-     * @since 20.0.0 beta 1
+     * @since 20.0.0 beta 2
      */
     final class Redirect {
 
         /**
          * The current Java process creates a pipe to communicate with a subprocess.
          *
-         * @since 20.0.0 beta 1
+         * @since 20.0.0 beta 2
          */
         public static final Redirect PIPE = new Redirect(Type.PIPE);
 
         /**
          * The subprocess inherits input or output from the current Java process.
          *
-         * @since 20.0.0 beta 1
+         * @since 20.0.0 beta 2
          */
         public static final Redirect INHERIT = new Redirect(Type.INHERIT);
 
@@ -232,7 +228,7 @@ public interface ProcessHandler {
         /**
          * {@inheritDoc}
          *
-         * @since 20.0.0 beta 1
+         * @since 20.0.0 beta 2
          */
         @Override
         public String toString() {
@@ -242,7 +238,7 @@ public interface ProcessHandler {
         /**
          * {@inheritDoc}
          *
-         * @since 20.0.0 beta 1
+         * @since 20.0.0 beta 2
          */
         @Override
         public int hashCode() {
@@ -252,7 +248,7 @@ public interface ProcessHandler {
         /**
          * {@inheritDoc}
          *
-         * @since 20.0.0 beta 1
+         * @since 20.0.0 beta 2
          */
         @Override
         public boolean equals(Object obj) {

@@ -1239,7 +1239,7 @@ public final class Context implements AutoCloseable {
          *
          * @param enabled {@code true} to enable external process creation
          * @return the {@link Builder}
-         * @since 20.0.0 beta 1
+         * @since 20.0.0 beta 2
          */
         public Builder allowCreateProcess(boolean enabled) {
             this.allowCreateProcess = enabled;
@@ -1251,7 +1251,7 @@ public final class Context implements AutoCloseable {
          *
          * @param handler the handler to be installed
          * @return the {@link Builder}
-         * @since 20.0.0 beta 1
+         * @since 20.0.0 beta 2
          */
         public Builder processHandler(ProcessHandler handler) {
             Objects.requireNonNull(handler, "Handler must be non null.");
@@ -1267,7 +1267,7 @@ public final class Context implements AutoCloseable {
          *
          * @param accessPolicy the {@link EnvironmentAccess environment access policy}
          * @return the {@link Builder}
-         * @since 20.0.0 beta 1
+         * @since 20.0.0 beta 2
          */
         public Builder allowEnvironmentAccess(EnvironmentAccess accessPolicy) {
             Objects.requireNonNull(accessPolicy, "AccessPolicy must be non null.");
