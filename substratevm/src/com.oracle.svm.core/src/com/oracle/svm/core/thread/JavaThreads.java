@@ -59,6 +59,7 @@ import com.oracle.svm.core.heap.FeebleReferenceList;
 import com.oracle.svm.core.heap.Heap;
 import com.oracle.svm.core.jdk.ManagementSupport;
 import com.oracle.svm.core.jdk.StackTraceUtils;
+import com.oracle.svm.core.jdk.UninterruptibleUtils;
 import com.oracle.svm.core.jdk.UninterruptibleUtils.AtomicReference;
 import com.oracle.svm.core.log.Log;
 import com.oracle.svm.core.nodes.CFunctionEpilogueNode;
@@ -83,7 +84,7 @@ public abstract class JavaThreads {
      * The number of running non-daemon threads. The initial value accounts for the main thread,
      * which is implicitly running when the isolate is created.
      */
-    final AtomicInteger nonDaemonThreads = new AtomicInteger(1);
+    static final UninterruptibleUtils.AtomicInteger nonDaemonThreads = new UninterruptibleUtils.AtomicInteger(1);
 
     /** For Thread.nextThreadID(). */
     final AtomicLong threadSeqNumber = new AtomicLong();
@@ -172,11 +173,8 @@ public abstract class JavaThreads {
      */
     @SuppressWarnings("try")
     public void joinAllNonDaemons() {
-        int expected = Thread.currentThread().isDaemon() ? 0 : 1;
-
-        while (nonDaemonThreads.get() > expected) {
-            awaitThreadListChange();
-        }
+        int expectedNonDaemonThreads = Thread.currentThread().isDaemon() ? 0 : 1;
+        joinAllNonDaemonsTransition(expectedNonDaemonThreads);
     }
 
     /**
@@ -190,18 +188,27 @@ public abstract class JavaThreads {
      * reference objects that are in the image heap.
      */
     @NeverInline("Must not be inlined in a caller that has an exception handler: We only support InvokeNode and not InvokeWithExceptionNode between a CFunctionPrologueNode and CFunctionEpilogueNode")
-    private static void awaitThreadListChange() {
+    private static void joinAllNonDaemonsTransition(int expectedNonDaemonThreads) {
         CFunctionPrologueNode.cFunctionPrologue();
-        awaitThreadListChangeInNative();
+        joinAllNonDaemonsInNative(expectedNonDaemonThreads);
         CFunctionEpilogueNode.cFunctionEpilogue();
     }
 
     @Uninterruptible(reason = "Must not stop while in native.")
     @NeverInline("Provide a return address for the Java frame anchor.")
-    private static void awaitThreadListChangeInNative() {
+    private static void joinAllNonDaemonsInNative(int expectedNonDaemonThreads) {
         VMThreads.THREAD_MUTEX.lockNoTransition();
-        VMThreads.THREAD_LIST_CONDITION.blockNoTransition();
-        VMThreads.THREAD_MUTEX.unlock();
+        try {
+            /*
+             * nonDaemonThreads is allocated during image generation and therefore a never-moving
+             * object in the image heap.
+             */
+            while (nonDaemonThreads.get() > expectedNonDaemonThreads) {
+                VMThreads.THREAD_LIST_CONDITION.blockNoTransition();
+            }
+        } finally {
+            VMThreads.THREAD_MUTEX.unlock();
+        }
     }
 
     /**
@@ -265,7 +272,7 @@ public abstract class JavaThreads {
             toTarget(group).add(thread);
 
             if (!thread.isDaemon()) {
-                singleton().nonDaemonThreads.incrementAndGet();
+                nonDaemonThreads.incrementAndGet();
             }
         }
     }
@@ -311,7 +318,7 @@ public abstract class JavaThreads {
         ParkEvent.detach(getUnsafeParkEvent(thread));
         ParkEvent.detach(getSleepParkEvent(thread));
         if (!thread.isDaemon()) {
-            singleton().nonDaemonThreads.decrementAndGet();
+            nonDaemonThreads.decrementAndGet();
         }
     }
 
