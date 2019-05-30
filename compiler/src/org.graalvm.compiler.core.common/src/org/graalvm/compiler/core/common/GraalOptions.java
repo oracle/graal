@@ -26,6 +26,7 @@ package org.graalvm.compiler.core.common;
 
 import org.graalvm.compiler.options.Option;
 import org.graalvm.compiler.options.OptionKey;
+import org.graalvm.compiler.options.OptionStability;
 import org.graalvm.compiler.options.OptionType;
 
 /**
@@ -270,7 +271,7 @@ public final class GraalOptions {
     @Option(help = "Use a cache for snippet graphs.", type = OptionType.Debug)
     public static final OptionKey<Boolean> UseSnippetGraphCache = new OptionKey<>(true);
 
-    @Option(help = "file:doc-files/TraceInliningHelp.txt", type = OptionType.Debug)
+    @Option(help = "file:doc-files/TraceInliningHelp.txt", type = OptionType.Debug, stability = OptionStability.STABLE)
     public static final OptionKey<Boolean> TraceInlining = new OptionKey<>(false);
 
     @Option(help = "Enable inlining decision tracing in stubs and snippets.", type = OptionType.Debug)
