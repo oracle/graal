@@ -224,7 +224,7 @@ public abstract class NativeImageCodeCache {
             verifyDeoptEntries(imageCodeInfo);
         }
 
-        assert verifyMethods(codeInfoEncoder);
+        assert verifyMethods(imageCodeInfo);
     }
 
     private void verifyDeoptEntries(ImageCodeInfo imageCodeInfo) {
@@ -268,9 +268,9 @@ public abstract class NativeImageCodeCache {
         return true;
     }
 
-    private boolean verifyMethods(CodeInfoEncoder codeInfoEncoder) {
+    private boolean verifyMethods(ImageCodeInfo imageCodeInfo) {
         for (Entry<HostedMethod, CompilationResult> entry : compilations.entrySet()) {
-            codeInfoEncoder.verifyMethod(entry.getValue(), entry.getKey().getCodeAddressOffset());
+            CodeInfoEncoder.verifyMethod(entry.getValue(), entry.getKey().getCodeAddressOffset(), imageCodeInfo);
         }
         return true;
     }

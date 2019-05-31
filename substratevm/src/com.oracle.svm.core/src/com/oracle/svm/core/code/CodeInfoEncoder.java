@@ -385,31 +385,24 @@ public class CodeInfoEncoder {
         }
     }
 
-    public boolean verifyMethod(CompilationResult compilation, int compilationOffset) {
-        CodeInfoVerifier verifier = new CodeInfoVerifier();
-        install(verifier);
-        verifier.verifyMethod(compilation, compilationOffset);
+    public static boolean verifyMethod(CompilationResult compilation, int compilationOffset, AbstractCodeInfo codeInfo) {
+        CodeInfoVerifier.verifyMethod(compilation, compilationOffset, codeInfo);
         return true;
     }
 }
 
-class CodeInfoVerifier extends AbstractCodeInfo {
-    @Override
-    public String getName() {
-        return CodeInfoVerifier.class.getSimpleName();
-    }
-
-    protected void verifyMethod(CompilationResult compilation, int compilationOffset) {
+class CodeInfoVerifier {
+    static void verifyMethod(CompilationResult compilation, int compilationOffset, AbstractCodeInfo codeInfo) {
         for (int relativeIP = 0; relativeIP < compilation.getTargetCodeSize(); relativeIP++) {
             int totalIP = relativeIP + compilationOffset;
-            CodeInfoQueryResult codeInfo = new CodeInfoQueryResult();
-            lookupCodeInfo(totalIP, codeInfo);
-            assert codeInfo.isEntryPoint() || codeInfo.getTotalFrameSize() == compilation.getTotalFrameSize();
+            CodeInfoQueryResult queryResult = new CodeInfoQueryResult();
+            codeInfo.lookupCodeInfo(totalIP, queryResult);
+            assert queryResult.isEntryPoint() || queryResult.getTotalFrameSize() == compilation.getTotalFrameSize();
 
-            assert codeInfo.isEntryPoint() || lookupTotalFrameSize(totalIP) == codeInfo.getTotalFrameSize();
-            assert lookupExceptionOffset(totalIP) == codeInfo.getExceptionOffset();
-            assert lookupReferenceMapIndex(totalIP) == codeInfo.getReferenceMapIndex();
-            assert getReferenceMapEncoding().equal(codeInfo.getReferenceMapEncoding());
+            assert queryResult.isEntryPoint() || codeInfo.lookupTotalFrameSize(totalIP) == queryResult.getTotalFrameSize();
+            assert codeInfo.lookupExceptionOffset(totalIP) == queryResult.getExceptionOffset();
+            assert codeInfo.lookupReferenceMapIndex(totalIP) == queryResult.getReferenceMapIndex();
+            assert codeInfo.getReferenceMapEncoding().equal(queryResult.getReferenceMapEncoding());
         }
 
         for (Infopoint infopoint : compilation.getInfopoints()) {
@@ -417,17 +410,17 @@ class CodeInfoVerifier extends AbstractCodeInfo {
                 int offset = CodeInfoEncoder.getEntryOffset(infopoint);
                 if (offset >= 0) {
                     assert offset < compilation.getTargetCodeSize();
-                    CodeInfoQueryResult codeInfo = new CodeInfoQueryResult();
-                    lookupCodeInfo(offset + compilationOffset, codeInfo);
+                    CodeInfoQueryResult queryResult = new CodeInfoQueryResult();
+                    codeInfo.lookupCodeInfo(offset + compilationOffset, queryResult);
 
                     CollectingObjectReferenceVisitor visitor = new CollectingObjectReferenceVisitor();
-                    CodeReferenceMapDecoder.walkOffsetsFromPointer(WordFactory.zero(), codeInfo.getReferenceMapEncoding(), codeInfo.getReferenceMapIndex(), visitor);
+                    CodeReferenceMapDecoder.walkOffsetsFromPointer(WordFactory.zero(), queryResult.getReferenceMapEncoding(), queryResult.getReferenceMapIndex(), visitor);
                     ReferenceMapEncoder.Input expected = (ReferenceMapEncoder.Input) infopoint.debugInfo.getReferenceMap();
                     visitor.result.verify();
                     assert expected.equals(visitor.result);
 
-                    if (codeInfo.frameInfo != CodeInfoQueryResult.NO_FRAME_INFO) {
-                        verifyFrame(compilation, infopoint.debugInfo.frame(), codeInfo.frameInfo, new BitSet());
+                    if (queryResult.frameInfo != CodeInfoQueryResult.NO_FRAME_INFO) {
+                        verifyFrame(compilation, infopoint.debugInfo.frame(), queryResult.frameInfo, new BitSet());
                     }
                 }
             }
@@ -437,14 +430,14 @@ class CodeInfoVerifier extends AbstractCodeInfo {
             int offset = handler.pcOffset;
             assert offset >= 0 && offset < compilation.getTargetCodeSize();
 
-            long actual = lookupExceptionOffset(offset + compilationOffset);
+            long actual = codeInfo.lookupExceptionOffset(offset + compilationOffset);
             long expected = handler.handlerPos - handler.pcOffset;
             assert expected != 0;
             assert expected == actual;
         }
     }
 
-    private void verifyFrame(CompilationResult compilation, BytecodeFrame expectedFrame, FrameInfoQueryResult actualFrame, BitSet visitedVirtualObjects) {
+    private static void verifyFrame(CompilationResult compilation, BytecodeFrame expectedFrame, FrameInfoQueryResult actualFrame, BitSet visitedVirtualObjects) {
         assert (expectedFrame == null) == (actualFrame == null);
         if (expectedFrame == null || !actualFrame.needLocalValues) {
             return;
@@ -466,7 +459,7 @@ class CodeInfoVerifier extends AbstractCodeInfo {
         }
     }
 
-    private void verifyValue(CompilationResult compilation, JavaValue expectedValue, ValueInfo actualValue, FrameInfoQueryResult actualFrame, BitSet visitedVirtualObjects) {
+    private static void verifyValue(CompilationResult compilation, JavaValue expectedValue, ValueInfo actualValue, FrameInfoQueryResult actualFrame, BitSet visitedVirtualObjects) {
         if (ValueUtil.isIllegalJavaValue(expectedValue)) {
             assert actualValue.getType() == ValueType.Illegal;
 
@@ -495,7 +488,7 @@ class CodeInfoVerifier extends AbstractCodeInfo {
         }
     }
 
-    private void verifyVirtualObject(CompilationResult compilation, VirtualObject expectedObject, ValueInfo[] actualObject, FrameInfoQueryResult actualFrame, BitSet visitedVirtualObjects) {
+    private static void verifyVirtualObject(CompilationResult compilation, VirtualObject expectedObject, ValueInfo[] actualObject, FrameInfoQueryResult actualFrame, BitSet visitedVirtualObjects) {
         if (visitedVirtualObjects.get(expectedObject.getId())) {
             return;
         }
