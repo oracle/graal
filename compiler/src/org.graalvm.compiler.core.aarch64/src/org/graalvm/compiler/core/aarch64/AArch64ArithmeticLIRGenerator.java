@@ -100,6 +100,11 @@ public class AArch64ArithmeticLIRGenerator extends ArithmeticLIRGenerator implem
     }
 
     @Override
+    protected Variable emitVectorAdd(LIRKind resultKind, Value a, Value b, boolean setFlags) {
+        throw GraalError.unimplemented();
+    }
+
+    @Override
     protected Variable emitSub(LIRKind resultKind, Value a, Value b, boolean setFlags) {
         if (isNumericInteger(a.getPlatformKind())) {
             AArch64ArithmeticOp op = setFlags ? AArch64ArithmeticOp.SUBS : AArch64ArithmeticOp.SUB;
@@ -484,6 +489,16 @@ public class AArch64ArithmeticLIRGenerator extends ArithmeticLIRGenerator implem
         Variable result = getLIRGen().newVariable(getLIRGen().toRegisterKind(kind));
         getLIRGen().append(new LoadOp((AArch64Kind) kind.getPlatformKind(), result, loadAddress, state));
         return result;
+    }
+
+    @Override
+    public Variable emitVectorLoad(LIRKind kind, int count, Value address, LIRFrameState state) {
+        throw GraalError.unimplemented();
+    }
+
+    @Override
+    public void emitVectorStore(LIRKind kind, int count, Value address, Value value, LIRFrameState state) {
+        throw GraalError.unimplemented();
     }
 
     @Override

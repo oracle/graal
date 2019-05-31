@@ -1,12 +1,11 @@
 package org.graalvm.compiler.nodes.memory;
 
+import org.graalvm.compiler.core.common.LIRKind;
 import org.graalvm.compiler.core.common.LocationIdentity;
 import org.graalvm.compiler.core.common.type.Stamp;
-import org.graalvm.compiler.debug.GraalError;
 import org.graalvm.compiler.graph.NodeClass;
 import org.graalvm.compiler.nodeinfo.InputType;
 import org.graalvm.compiler.nodeinfo.NodeInfo;
-import org.graalvm.compiler.nodes.VectorFixedAccessNode;
 import org.graalvm.compiler.nodes.extended.GuardingNode;
 import org.graalvm.compiler.nodes.memory.address.AddressNode;
 import org.graalvm.compiler.nodes.spi.LIRLowerable;
@@ -28,9 +27,10 @@ public class VectorReadNode extends VectorFixedAccessNode implements LIRLowerabl
     }
 
     @Override
-    public void generate(NodeLIRBuilderTool generator) {
-        // TODO: Implement
-        throw GraalError.unimplemented();
+    public void generate(NodeLIRBuilderTool gen) {
+        final LIRKind scalarReadKind = gen.getLIRGeneratorTool().getLIRKind(stamp);
+        gen.setResult(this, gen.getLIRGeneratorTool().getArithmetic().emitVectorLoad(scalarReadKind, locations.length, gen.operand(address), null));
+        // TODO(nvangerow): Implement
     }
 
     @Override

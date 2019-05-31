@@ -130,6 +130,11 @@ public abstract class AArch64LIRGenerator extends LIRGenerator {
     }
 
     @Override
+    public <K extends ValueKind<K>> K toVectorKind(K kind, int count) {
+        throw GraalError.unimplemented();
+    }
+
+    @Override
     public void emitNullCheck(Value address, LIRFrameState state) {
         append(new AArch64Move.NullCheckOp(asAddressValue(address), state));
     }

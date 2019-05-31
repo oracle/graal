@@ -1,5 +1,6 @@
 package org.graalvm.compiler.nodes.memory;
 
+import org.graalvm.compiler.core.common.LIRKind;
 import org.graalvm.compiler.core.common.LocationIdentity;
 import org.graalvm.compiler.core.common.type.StampFactory;
 import org.graalvm.compiler.debug.GraalError;
@@ -9,7 +10,6 @@ import org.graalvm.compiler.nodeinfo.InputType;
 import org.graalvm.compiler.nodeinfo.NodeInfo;
 import org.graalvm.compiler.nodes.ValueNode;
 import org.graalvm.compiler.nodes.ValueNodeUtil;
-import org.graalvm.compiler.nodes.VectorFixedAccessNode;
 import org.graalvm.compiler.nodes.memory.address.AddressNode;
 import org.graalvm.compiler.nodes.spi.LIRLowerable;
 import org.graalvm.compiler.nodes.spi.NodeLIRBuilderTool;
@@ -60,9 +60,10 @@ public class VectorWriteNode extends VectorFixedAccessNode implements LIRLowerab
     }
 
     @Override
-    public void generate(NodeLIRBuilderTool generator) {
-        // TODO: Implement
-        throw GraalError.unimplemented();
+    public void generate(NodeLIRBuilderTool gen) {
+        final LIRKind scalarWriteKind = gen.getLIRGeneratorTool().getLIRKind(value.stamp());
+        gen.getLIRGeneratorTool().getArithmetic().emitVectorStore(scalarWriteKind, 4, gen.operand(address), gen.operand(value), null);
+        // TODO(nvangerow): Implement
     }
 
     @Override

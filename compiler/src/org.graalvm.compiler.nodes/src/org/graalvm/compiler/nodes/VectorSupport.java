@@ -18,7 +18,7 @@ public final class VectorSupport {
     // TODO: Use these for packing
 
     @NodeInfo
-    public static final class VectorUnpackNode extends FloatingNode {
+    public static final class VectorUnpackNode extends FloatingNode /* implements LIRLowerable */{
 
         public static final NodeClass<VectorUnpackNode> TYPE = NodeClass.create(VectorUnpackNode.class);
 
@@ -45,7 +45,7 @@ public final class VectorSupport {
     }
 
     @NodeInfo
-    public static final class VectorPackNode extends FloatingNode implements Canonicalizable {
+    public static final class VectorPackNode extends FloatingNode implements Canonicalizable /*, LIRLowerable */ {
 
         public static final NodeClass<VectorPackNode> TYPE = NodeClass.create(VectorPackNode.class);
 

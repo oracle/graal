@@ -103,7 +103,7 @@ import org.graalvm.compiler.lir.ConstantValue;
 import org.graalvm.compiler.lir.LIRFrameState;
 import org.graalvm.compiler.lir.LIRValueUtil;
 import org.graalvm.compiler.lir.Variable;
-import org.graalvm.compiler.lir.amd64.AMD64AddressValue;
+import org.graalvm.compiler.lir.amd64.*;
 import org.graalvm.compiler.lir.amd64.AMD64Arithmetic.FPDivRemOp;
 import org.graalvm.compiler.lir.amd64.AMD64ArithmeticLIRGeneratorTool;
 import org.graalvm.compiler.lir.amd64.AMD64Binary;
@@ -330,6 +330,13 @@ public class AMD64ArithmeticLIRGenerator extends ArithmeticLIRGenerator implemen
             default:
                 throw GraalError.shouldNotReachHere();
         }
+    }
+
+    @Override
+    protected Variable emitVectorAdd(LIRKind resultKind, Value a, Value b, boolean setFlags) {
+        Variable result = getLIRGen().newVariable(resultKind);
+        getLIRGen().append(new AMD64Binary.VectorAddOp(result, getLIRGen().asAllocatable(a), getLIRGen().asAllocatable(b)));
+        return result;
     }
 
     @Override
@@ -1140,6 +1147,20 @@ public class AMD64ArithmeticLIRGenerator extends ArithmeticLIRGenerator implemen
                 throw GraalError.shouldNotReachHere();
         }
         return result;
+    }
+
+    @Override
+    public Variable emitVectorLoad(LIRKind kind, int count, Value address, LIRFrameState state) {
+        AMD64AddressValue loadAddress = getAMD64LIRGen().asAddressValue(address);
+        Variable result = getLIRGen().newVariable(getLIRGen().toVectorKind(getLIRGen().toRegisterKind(kind), count));
+        getLIRGen().append(new AMD64Unary.VectorReadMemory(result, loadAddress));
+        return result;
+    }
+
+    @Override
+    public void emitVectorStore(LIRKind kind, int count, Value address, Value value, LIRFrameState state) {
+        AMD64AddressValue storeAddress = getAMD64LIRGen().asAddressValue(address);
+        getLIRGen().append(new AMD64Unary.VectorWriteMemory(storeAddress, getLIRGen().asAllocatable(value)));
     }
 
     protected void emitStoreConst(AMD64Kind kind, AMD64AddressValue address, ConstantValue value, LIRFrameState state) {

@@ -145,6 +145,11 @@ public interface LIRGeneratorTool extends DiagnosticLIRGeneratorTool, ValueKindF
      */
     <K extends ValueKind<K>> K toRegisterKind(K kind);
 
+    /**
+     * Converts a scalar kind to a vector kind with count elements.
+     */
+    <K extends ValueKind<K>> K toVectorKind(K kind, int count);
+
     AllocatableValue emitLoadConstant(ValueKind<?> kind, Constant constant);
 
     void emitNullCheck(Value address, LIRFrameState state);

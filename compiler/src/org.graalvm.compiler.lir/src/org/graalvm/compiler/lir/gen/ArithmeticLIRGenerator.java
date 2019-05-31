@@ -114,5 +114,13 @@ public abstract class ArithmeticLIRGenerator implements ArithmeticLIRGeneratorTo
         // (value >>> distance) | (value << -distance)
         return emitOr(emitUShr(value, distance), emitShl(value, emitNegate(distance)));
     }
+    
+    
+    protected abstract Variable emitVectorAdd(LIRKind resultKind, Value a, Value b, boolean setFlags);
+    
+    @Override
+    public final Variable emitVectorAdd(Value a, Value b, boolean setFlags) {
+        return emitVectorAdd(a.getValueKind(LIRKind.class), a, b, setFlags);
+    }
 
 }

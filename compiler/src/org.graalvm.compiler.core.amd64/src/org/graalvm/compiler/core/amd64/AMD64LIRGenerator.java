@@ -215,6 +215,78 @@ public abstract class AMD64LIRGenerator extends LIRGenerator {
         }
     }
 
+    @Override
+    public <K extends ValueKind<K>> K toVectorKind(K kind, int count) {
+        final AMD64Kind a64k = (AMD64Kind) kind.getPlatformKind();
+
+        switch (a64k) {
+            case BYTE:
+                if (count <= 4) {
+                    return kind.changeType(AMD64Kind.V32_BYTE);
+                }
+                if (count <= 8) {
+                    return kind.changeType(AMD64Kind.V64_BYTE);
+                }
+                if (count <= 16) {
+                    return kind.changeType(AMD64Kind.V128_BYTE);
+                }
+                if (count <= 32) {
+                    return kind.changeType(AMD64Kind.V256_BYTE);
+                }
+                if (count <= 64) {
+                    return kind.changeType(AMD64Kind.V512_BYTE);
+                }
+                break;
+            case WORD:
+                if (count <= 2)  {
+                    return kind.changeType(AMD64Kind.V32_WORD);
+                }
+                if (count <= 4) {
+                    return kind.changeType(AMD64Kind.V64_WORD);
+                }
+                if (count <= 8) {
+                    return kind.changeType(AMD64Kind.V128_WORD);
+                }
+                if (count <= 16) {
+                    return kind.changeType(AMD64Kind.V256_WORD);
+                }
+                if (count <= 32) {
+                    return kind.changeType(AMD64Kind.V512_WORD);
+                }
+                break;
+            case DWORD:
+                if (count <= 2) {
+                    return kind.changeType(AMD64Kind.V64_DWORD);
+                }
+                if (count <= 4) {
+                    return kind.changeType(AMD64Kind.V128_DWORD);
+                }
+                if (count <= 8) {
+                    return kind.changeType(AMD64Kind.V256_DWORD);
+                }
+                if (count <= 16) {
+                    return kind.changeType(AMD64Kind.V512_DWORD);
+                }
+                break;
+            case QWORD:
+                if (count <= 2) {
+                    return kind.changeType(AMD64Kind.V128_QWORD);
+                }
+                if (count <= 4) {
+                    return kind.changeType(AMD64Kind.V256_QWORD);
+                }
+                if (count <= 8) {
+                    return kind.changeType(AMD64Kind.V512_QWORD);
+                }
+                break;
+            default:
+                break;
+        }
+
+        // TODO: Change this
+        throw GraalError.shouldNotReachHere("can't find a vector type that works");
+    }
+
     private Value emitCompareAndSwap(boolean isLogic, LIRKind accessKind, Value address, Value expectedValue, Value newValue, Value trueValue, Value falseValue) {
         ValueKind<?> kind = newValue.getValueKind();
         assert kind.equals(expectedValue.getValueKind());

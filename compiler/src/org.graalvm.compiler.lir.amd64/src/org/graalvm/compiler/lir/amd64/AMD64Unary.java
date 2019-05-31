@@ -32,6 +32,7 @@ import static org.graalvm.compiler.lir.LIRInstruction.OperandFlag.HINT;
 import static org.graalvm.compiler.lir.LIRInstruction.OperandFlag.REG;
 import static org.graalvm.compiler.lir.LIRInstruction.OperandFlag.STACK;
 
+import jdk.vm.ci.code.Register;
 import org.graalvm.compiler.asm.amd64.AMD64Address;
 import org.graalvm.compiler.asm.amd64.AMD64Assembler.AMD64MOp;
 import org.graalvm.compiler.asm.amd64.AMD64Assembler.AMD64MROp;
@@ -185,5 +186,57 @@ public class AMD64Unary {
             }
             return false;
         }
+    }
+
+    public static class VectorReadMemory extends AMD64LIRInstruction implements ImplicitNullCheck {
+        public static final LIRInstructionClass<VectorReadMemory> TYPE = LIRInstructionClass.create(VectorReadMemory.class);
+
+        @Def({REG})
+        private final AllocatableValue resultValue;
+        @Use({COMPOSITE})
+        private final AMD64AddressValue input;
+
+        public VectorReadMemory(AllocatableValue resultValue, AMD64AddressValue input) {
+            super(TYPE);
+
+            this.resultValue = resultValue;
+            this.input = input;
+        }
+
+        @Override
+        public void emitCode(CompilationResultBuilder crb, AMD64MacroAssembler masm) {
+            final Register result = asRegister(resultValue);
+
+            // TODO: Support different kinds of vector
+            masm.movdqu(result, input.toAddress());
+        }
+
+        @Override
+        public boolean makeNullCheckFor(Value value, LIRFrameState nullCheckState, int implicitNullCheckLimit) {
+            return input.isValidImplicitNullCheckFor(value, implicitNullCheckLimit);
+        }
+    }
+
+    public static class VectorWriteMemory extends AMD64LIRInstruction {
+        public static final LIRInstructionClass<VectorReadMemory> TYPE = LIRInstructionClass.create(VectorReadMemory.class);
+
+        @Def({COMPOSITE}) private final AMD64AddressValue destination;
+        @Use({REG}) private final AllocatableValue inputValue;
+
+        public VectorWriteMemory(AMD64AddressValue destination, AllocatableValue inputValue) {
+            super(TYPE);
+
+            this.destination = destination;
+            this.inputValue = inputValue;
+        }
+
+        @Override
+        public void emitCode(CompilationResultBuilder crb, AMD64MacroAssembler masm) {
+            final Register input = asRegister(inputValue);
+
+            // TODO: Support different kinds of vector
+            masm.movdqu(destination.toAddress(), input);
+        }
+
     }
 }

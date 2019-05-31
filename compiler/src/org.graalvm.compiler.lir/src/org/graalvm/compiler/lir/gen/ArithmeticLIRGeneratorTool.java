@@ -48,6 +48,8 @@ public interface ArithmeticLIRGeneratorTool {
 
     Value emitAdd(Value a, Value b, boolean setFlags);
 
+    Value emitVectorAdd(Value a, Value b, boolean setFlags);
+
     Value emitSub(Value a, Value b, boolean setFlags);
 
     Value emitMul(Value a, Value b, boolean setFlags);
@@ -99,6 +101,10 @@ public interface ArithmeticLIRGeneratorTool {
     Value emitBitScanReverse(Value operand);
 
     Variable emitLoad(LIRKind kind, Value address, LIRFrameState state);
+
+    Variable emitVectorLoad(LIRKind kind, int count, Value address, LIRFrameState state);
+
+    void emitVectorStore(LIRKind kind, int count, Value address, Value value, LIRFrameState state);
 
     void emitStore(ValueKind<?> kind, Value address, Value input, LIRFrameState state);
 
