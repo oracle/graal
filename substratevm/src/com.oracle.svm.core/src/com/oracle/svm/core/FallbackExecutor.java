@@ -85,7 +85,7 @@ public class FallbackExecutor {
         String[] runtimeArgs = Options.FallbackExecutorRuntimeJavaArg.getValue();
         if (runtimeArgs != null) {
             for (String arg : runtimeArgs) {
-                command.add(arg);
+                command.addAll(Arrays.asList(arg.split("\\s+")));
             }
         }
         command.add("-D" + ImageInfo.PROPERTY_IMAGE_KIND_KEY + "=fallback-" + ImageInfo.PROPERTY_IMAGE_KIND_VALUE_EXECUTABLE);
