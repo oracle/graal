@@ -70,6 +70,7 @@ import org.graalvm.nativeimage.ProcessProperties;
 
 import com.oracle.graal.pointsto.api.PointstoOptions;
 import com.oracle.svm.core.FallbackExecutor;
+import com.oracle.svm.core.FallbackExecutor.Options;
 import com.oracle.svm.core.OS;
 import com.oracle.svm.core.SubstrateOptions;
 import com.oracle.svm.core.SubstrateUtil;
@@ -156,6 +157,7 @@ public class NativeImage {
     final String oHOptimize = oH(SubstrateOptions.Optimize);
     final String oHFallbackThreshold = oH(SubstrateOptions.FallbackThreshold);
     final String oHFallbackExecutorJavaArg = oH(FallbackExecutor.Options.FallbackExecutorJavaArg);
+    final String oHRuntimeJavaArg = oH(Options.FallbackExecutorRuntimeJavaArg);
 
     /* List arguments */
     final String oHSubstitutionFiles = oH(ConfigurationFiles.Options.SubstitutionFiles);
@@ -506,6 +508,13 @@ public class NativeImage {
                         .collect(Collectors.toCollection(LinkedHashSet::new));
         for (String property : fallbackSystemProperties) {
             buildArgs.add(oH(FallbackExecutor.Options.FallbackExecutorSystemProperty) + property);
+        }
+
+        List<String> runtimeJavaArgs = imageBuilderArgs.stream()
+                        .filter(s -> s.startsWith(oHRuntimeJavaArg))
+                        .collect(Collectors.toList());
+        for (String runtimeJavaArg : runtimeJavaArgs) {
+            buildArgs.add(runtimeJavaArg);
         }
 
         List<String> fallbackExecutorJavaArgs = imageBuilderArgs.stream()
