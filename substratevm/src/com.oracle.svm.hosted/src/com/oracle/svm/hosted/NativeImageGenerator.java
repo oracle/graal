@@ -125,7 +125,6 @@ import org.graalvm.nativeimage.c.struct.RawStructure;
 import org.graalvm.nativeimage.hosted.Feature;
 import org.graalvm.nativeimage.hosted.Feature.OnAnalysisExitAccess;
 import org.graalvm.nativeimage.impl.CConstantValueSupport;
-import org.graalvm.nativeimage.impl.InternalPlatform;
 import org.graalvm.nativeimage.impl.SizeOfSupport;
 import org.graalvm.word.PointerBase;
 
@@ -302,8 +301,6 @@ public class NativeImageGenerator {
         optionProvider.getRuntimeValues().put(GraalOptions.EagerSnippets, true);
     }
 
-    private static String[] platformPropertyClassPrefixes = {"", Platform.class.getName() + "$", InternalPlatform.class.getName() + "$"};
-
     public static Platform defaultPlatform(ClassLoader classLoader) {
         /*
          * We cannot use a regular hosted option for the platform class: The code that instantiates
@@ -313,16 +310,10 @@ public class NativeImageGenerator {
          */
         String platformClassName = System.getProperty(Platform.PLATFORM_PROPERTY_NAME);
         if (platformClassName != null) {
-            Class<?> platformClass = null;
-            for (String prefix : platformPropertyClassPrefixes) {
-                try {
-                    platformClass = classLoader.loadClass(prefix + platformClassName);
-                    break;
-                } catch (ClassNotFoundException ex) {
-                    continue;
-                }
-            }
-            if (platformClass == null) {
+            Class<?> platformClass;
+            try {
+                platformClass = classLoader.loadClass(platformClassName);
+            } catch (ClassNotFoundException ex) {
                 throw UserError.abort("Could not find platform class " + platformClassName +
                                 " that was specified explicitly on the command line using the system property " + Platform.PLATFORM_PROPERTY_NAME);
             }
