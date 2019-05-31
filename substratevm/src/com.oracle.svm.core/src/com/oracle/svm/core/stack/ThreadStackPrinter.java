@@ -31,7 +31,8 @@ import com.oracle.svm.core.annotate.NeverInline;
 import com.oracle.svm.core.annotate.RestrictHeapAccess;
 import com.oracle.svm.core.annotate.Uninterruptible;
 import com.oracle.svm.core.c.PinnedObjectArray;
-import com.oracle.svm.core.code.AbstractCodeInfo;
+import com.oracle.svm.core.code.CodeInfoAccessor;
+import com.oracle.svm.core.code.CodeInfoHandle;
 import com.oracle.svm.core.code.CodeInfoTable;
 import com.oracle.svm.core.code.FrameInfoDecoder.FrameInfoQueryResultAllocator;
 import com.oracle.svm.core.code.FrameInfoDecoder.ValueInfoAllocator;
@@ -102,21 +103,22 @@ public class ThreadStackPrinter {
             if (deoptFrame != null) {
                 logVirtualFrames(log, sp, ip, deoptFrame);
             } else {
-                AbstractCodeInfo codeInfo = CodeInfoTable.lookupCodeInfo(ip);
-                if (codeInfo != null) {
+                CodeInfoAccessor accessor = CodeInfoTable.lookupCodeInfoAccessor(ip);
+                CodeInfoHandle handle = accessor.lookupCodeInfo(ip);
+                if (!accessor.isNone(handle)) {
                     frameInfoReader.reset();
-                    long entryOffset = codeInfo.initFrameInfoReader(ip, frameInfoReader);
+                    long entryOffset = accessor.initFrameInfoReader(handle, ip, frameInfoReader);
                     if (entryOffset >= 0) {
                         boolean isFirst = true;
                         FrameInfoQueryResult validResult;
                         SingleShotFrameInfoQueryResultAllocator.reload();
-                        while ((validResult = codeInfo.nextFrameInfo(entryOffset, frameInfoReader, SingleShotFrameInfoQueryResultAllocator, DummyValueInfoAllocator, isFirst)) != null) {
+                        while ((validResult = accessor.nextFrameInfo(handle, entryOffset, frameInfoReader, SingleShotFrameInfoQueryResultAllocator, DummyValueInfoAllocator, isFirst)) != null) {
                             SingleShotFrameInfoQueryResultAllocator.reload();
                             if (!isFirst) {
                                 log.newline();
                             }
                             logFrameRaw(log, sp, ip);
-                            logFrameInfo(log, validResult, codeInfo.getName());
+                            logFrameInfo(log, validResult, accessor.getName(handle));
                             isFirst = false;
                         }
                     }

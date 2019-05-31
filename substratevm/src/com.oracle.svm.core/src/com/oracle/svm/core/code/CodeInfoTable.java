@@ -60,6 +60,7 @@ import jdk.vm.ci.code.InstalledCode;
 public class CodeInfoTable {
 
     public static class Options {
+
         @Option(help = "Count accesses to the image and runtime code info table")//
         public static final HostedOptionKey<Boolean> CodeCacheCounters = new HostedOptionKey<>(false);
     }
@@ -68,54 +69,68 @@ public class CodeInfoTable {
         return ImageSingletons.lookup(ImageCodeInfo.class);
     }
 
+    public static CodeInfoAccessor getImageCodeInfoAccessor() {
+        return getImageCodeCache().getAccessor();
+    }
+
     @Fold
     public static RuntimeCodeInfo getRuntimeCodeCache() {
         return ImageSingletons.lookup(RuntimeCodeInfo.class);
     }
 
+    public static CodeInfoAccessor getRuntimeCodeInfoAccessor() {
+        return getRuntimeCodeCache().getAccessor();
+    }
+
     public static CodeInfoQueryResult lookupCodeInfoQueryResult(CodePointer ip) {
         counters().lookupCodeInfoCount.inc();
-        AbstractCodeInfo data = lookupCodeInfo(ip);
-        if (data == null) {
+        CodeInfoAccessor accessor = lookupCodeInfoAccessor(ip);
+        CodeInfoHandle handle = accessor.lookupCodeInfo(ip);
+        if (accessor.isNone(handle)) {
             return null;
         }
         CodeInfoQueryResult result = new CodeInfoQueryResult();
-        result.data = data;
+        result.accessor = accessor;
+        result.handle = handle;
         result.ip = ip;
-        data.lookupCodeInfo(data.relativeIP(ip), result);
+        accessor.lookupCodeInfo(handle, accessor.relativeIP(handle, ip), result);
         return result;
     }
 
     public static CodeInfoQueryResult lookupDeoptimizationEntrypoint(int deoptOffsetInImage, long encodedBci) {
         counters().lookupDeoptimizationEntrypointCount.inc();
         /* Deoptimization entry points are always in the image, i.e., never compiled at run time. */
-        AbstractCodeInfo data = getImageCodeCache();
+        CodeInfoAccessor accessor = getImageCodeInfoAccessor();
+        CodeInfoHandle handle = getImageCodeCache();
         CodeInfoQueryResult result = new CodeInfoQueryResult();
-        long relativeIP = data.lookupDeoptimizationEntrypoint(deoptOffsetInImage, encodedBci, result);
+        long relativeIP = accessor.lookupDeoptimizationEntrypoint(handle, deoptOffsetInImage, encodedBci, result);
         if (relativeIP < 0) {
             return null;
         }
-        result.data = data;
-        result.ip = data.absoluteIP(relativeIP);
+        result.accessor = accessor;
+        result.handle = handle;
+        result.ip = accessor.absoluteIP(handle, relativeIP);
         return result;
     }
 
     public static long lookupTotalFrameSize(CodePointer ip) {
         counters().lookupTotalFrameSizeCount.inc();
-        AbstractCodeInfo data = lookupCodeInfo(ip);
-        if (data == null) {
+        CodeInfoAccessor accessor = lookupCodeInfoAccessor(ip);
+        CodeInfoHandle handle = accessor.lookupCodeInfo(ip);
+        if (accessor.isNone(handle)) {
             return -1;
         }
-        return data.lookupTotalFrameSize(data.relativeIP(ip));
+        return accessor.lookupTotalFrameSize(handle, accessor.relativeIP(handle, ip));
     }
 
     public static long lookupExceptionOffset(CodePointer ip) {
         counters().lookupExceptionOffsetCount.inc();
-        AbstractCodeInfo data = lookupCodeInfo(ip);
-        if (data == null) {
+        CodeInfoAccessor accessor = lookupCodeInfoAccessor(ip);
+        CodeInfoHandle handle = accessor.lookupCodeInfo(ip);
+        if (accessor.isNone(handle)) {
             return -1;
         }
-        return data.lookupExceptionOffset(data.relativeIP(ip));
+        return accessor.lookupExceptionOffset(handle, accessor.relativeIP(handle, ip));
     }
 
     @AlwaysInline("de-virtualize calls to ObjectReferenceVisitor")
@@ -132,19 +147,20 @@ public class CodeInfoTable {
 
         PinnedArray<Byte> referenceMapEncoding = PinnedArrays.nullArray();
         long referenceMapIndex = CodeInfoQueryResult.NO_REFERENCE_MAP;
-        AbstractCodeInfo data = lookupCodeInfo(ip);
-        if (data != null) {
-            referenceMapEncoding = data.getReferenceMapEncoding();
-            referenceMapIndex = data.lookupReferenceMapIndex(data.relativeIP(ip));
+        CodeInfoAccessor accessor = lookupCodeInfoAccessor(ip);
+        CodeInfoHandle handle = accessor.lookupCodeInfo(ip);
+        if (!accessor.isNone(handle)) {
+            referenceMapEncoding = accessor.getReferenceMapEncoding(handle);
+            referenceMapIndex = accessor.lookupReferenceMapIndex(handle, accessor.relativeIP(handle, ip));
         }
 
         if (referenceMapIndex == CodeInfoQueryResult.NO_REFERENCE_MAP) {
-            throw reportNoReferenceMap(sp, ip, deoptimizedFrame, data);
+            throw reportNoReferenceMap(sp, ip, deoptimizedFrame, handle);
         }
         return CodeReferenceMapDecoder.walkOffsetsFromPointer(sp, referenceMapEncoding, referenceMapIndex, visitor);
     }
 
-    private static RuntimeException reportNoReferenceMap(Pointer sp, CodePointer ip, DeoptimizedFrame deoptimizedFrame, AbstractCodeInfo data) {
+    private static RuntimeException reportNoReferenceMap(Pointer sp, CodePointer ip, DeoptimizedFrame deoptimizedFrame, CodeInfoHandle data) {
         Log.log().string("ip: ").hex(ip).string("  sp: ").hex(sp);
         Log.log().string("  deoptFrame: ").object(deoptimizedFrame).string("  data:").object(data).newline();
         throw VMError.shouldNotReachHere("No reference map information found");
@@ -174,21 +190,22 @@ public class CodeInfoTable {
         });
     }
 
-    public static AbstractCodeInfo lookupCodeInfo(CodePointer ip) {
+    public static CodeInfoAccessor lookupCodeInfoAccessor(CodePointer ip) {
         if (getImageCodeCache().contains(ip)) {
-            return getImageCodeCache();
+            return getImageCodeInfoAccessor();
         } else {
-            return getRuntimeCodeCache().lookupMethod(ip);
+            return getRuntimeCodeInfoAccessor();
         }
     }
 
     public static Log logCodeInfoResult(Log log, CodePointer ip) {
-        AbstractCodeInfo data = lookupCodeInfo(ip);
-        if (data == null) {
+        CodeInfoAccessor accessor = lookupCodeInfoAccessor(ip);
+        CodeInfoHandle handle = accessor.lookupCodeInfo(ip);
+        if (accessor.isNone(handle)) {
             return log.string("No CodeInfo for IP ").zhex(ip.rawValue());
         }
-        log.object(data);
-        return log.string(" name = ").string(data.getName());
+        log.object(handle);
+        return log.string(" name = ").string(accessor.getName(handle));
     }
 
     private static CodeInfoTableCounters counters() {
@@ -225,6 +242,9 @@ class CodeInfoFeature implements Feature {
 
     @Override
     public void afterCompilation(AfterCompilationAccess config) {
+        config.registerAsImmutable(CodeInfoTable.getImageCodeInfoAccessor());
+        config.registerAsImmutable(CodeInfoTable.getRuntimeCodeInfoAccessor());
+
         ImageCodeInfo imageInfo = CodeInfoTable.getImageCodeCache();
         config.registerAsImmutable(imageInfo);
         config.registerAsImmutable(imageInfo.codeInfoIndex);

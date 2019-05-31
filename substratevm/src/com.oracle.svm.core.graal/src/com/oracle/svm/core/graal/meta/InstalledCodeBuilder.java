@@ -410,7 +410,7 @@ public class InstalledCodeBuilder {
         codeInfoEncoder.addMethod(method, compilation, 0);
         codeInfoEncoder.encodeAll();
         codeInfoEncoder.install(runtimeMethodInfo);
-        assert CodeInfoEncoder.verifyMethod(compilation, 0, runtimeMethodInfo);
+        assert CodeInfoEncoder.verifyMethod(compilation, 0, CodeInfoTable.getRuntimeCodeInfoAccessor(), runtimeMethodInfo);
 
         DeoptimizationSourcePositionEncoder sourcePositionEncoder = new DeoptimizationSourcePositionEncoder(metaInfoAllocator);
         sourcePositionEncoder.encode(compilation.getDeoptimizationSourcePositions());

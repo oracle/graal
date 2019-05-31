@@ -24,8 +24,6 @@
  */
 package com.oracle.svm.truffle.api;
 
-import com.oracle.svm.core.code.AbstractCodeInfo;
-import com.oracle.svm.core.code.RuntimeMethodInfo;
 import org.graalvm.compiler.truffle.common.CompilableTruffleAST;
 import org.graalvm.compiler.truffle.common.OptimizedAssumptionDependency;
 import org.graalvm.compiler.truffle.common.TruffleCompiler;
@@ -34,7 +32,10 @@ import org.graalvm.nativeimage.c.function.CFunctionPointer;
 import org.graalvm.word.WordFactory;
 
 import com.oracle.svm.core.annotate.InvokeJavaFunctionPointer;
+import com.oracle.svm.core.code.CodeInfoAccessor;
+import com.oracle.svm.core.code.CodeInfoHandle;
 import com.oracle.svm.core.code.CodeInfoTable;
+import com.oracle.svm.core.code.RuntimeCodeInfoAccessor;
 import com.oracle.svm.core.deopt.SubstrateInstalledCode;
 import com.oracle.svm.core.deopt.SubstrateSpeculationLog;
 import com.oracle.svm.core.snippets.KnownIntrinsics;
@@ -88,12 +89,12 @@ public class SubstrateOptimizedCallTarget extends OptimizedCallTarget implements
         if (address0 == 0) {
             return false;
         }
-        AbstractCodeInfo codeInfo = CodeInfoTable.lookupCodeInfo(WordFactory.pointer(address0));
-        if (!(codeInfo instanceof RuntimeMethodInfo)) {
+        CodeInfoAccessor accessor = CodeInfoTable.lookupCodeInfoAccessor(WordFactory.pointer(address0));
+        if (!(accessor instanceof RuntimeCodeInfoAccessor)) {
             return false;
         }
-        RuntimeMethodInfo runtimeCodeInfo = (RuntimeMethodInfo) codeInfo;
-        return runtimeCodeInfo.getTier() == TruffleCompiler.LAST_TIER_INDEX;
+        CodeInfoHandle handle = accessor.lookupCodeInfo(WordFactory.pointer(address0));
+        return ((RuntimeCodeInfoAccessor) accessor).getTier(handle) == TruffleCompiler.LAST_TIER_INDEX;
     }
 
     @Override

@@ -24,11 +24,11 @@
  */
 package com.oracle.svm.core.code;
 
-import org.graalvm.nativeimage.hosted.Feature;
 import org.graalvm.nativeimage.ImageSingletons;
 import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.Platforms;
 import org.graalvm.nativeimage.c.function.CFunctionPointer;
+import org.graalvm.nativeimage.hosted.Feature;
 import org.graalvm.word.UnsignedWord;
 
 import com.oracle.svm.core.MemoryWalker;
@@ -38,8 +38,14 @@ public class ImageCodeInfo extends AbstractCodeInfo {
 
     public static final String CODE_INFO_NAME = "image code";
 
+    private final ImageCodeInfoAccessor accessor = new ImageCodeInfoAccessor(this);
+
     @Platforms(Platform.HOSTED_ONLY.class)
     public ImageCodeInfo() {
+    }
+
+    public ImageCodeInfoAccessor getAccessor() {
+        return accessor;
     }
 
     @Platforms(Platform.HOSTED_ONLY.class)

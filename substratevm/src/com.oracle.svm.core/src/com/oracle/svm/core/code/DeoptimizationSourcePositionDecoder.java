@@ -37,15 +37,16 @@ public class DeoptimizationSourcePositionDecoder {
     static final int NO_CALLER = 0;
 
     public static NodeSourcePosition decode(int deoptId, CodeInfoQueryResult codeInfo) {
-        if (!(codeInfo.data instanceof RuntimeMethodInfo)) {
+        if (!(codeInfo.accessor instanceof RuntimeCodeInfoAccessor)) {
             /*
              * We only store the information for runtime compiled code, not for native image code.
              */
             return null;
         }
-        RuntimeMethodInfo methodInfo = (RuntimeMethodInfo) codeInfo.data;
-
-        return decode(deoptId, methodInfo.deoptimizationStartOffsets, methodInfo.deoptimizationEncodings, methodInfo.deoptimizationObjectConstants);
+        RuntimeCodeInfoAccessor accessor = (RuntimeCodeInfoAccessor) codeInfo.accessor;
+        CodeInfoHandle handle = codeInfo.handle;
+        return decode(deoptId, accessor.getDeoptimizationStartOffsets(handle), accessor.getDeoptimizationEncodings(handle),
+                        accessor.getDeoptimizationObjectConstants(handle));
     }
 
     static NodeSourcePosition decode(int deoptId, int[] deoptimizationStartOffsets, byte[] deoptimizationEncodings, Object[] deoptimizationObjectConstants) {

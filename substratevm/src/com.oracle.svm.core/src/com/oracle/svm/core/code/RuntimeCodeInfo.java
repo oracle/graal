@@ -56,6 +56,8 @@ public class RuntimeCodeInfo {
         public static final RuntimeOptionKey<Boolean> TraceCodeCache = new RuntimeOptionKey<>(false);
     }
 
+    private final RuntimeCodeInfoAccessor accessor = new RuntimeCodeInfoAccessor(this);
+
     private final RingBuffer<String> recentCodeCacheOperations = new RingBuffer<>();
     private long codeCacheOperationSequenceNumber;
 
@@ -74,6 +76,10 @@ public class RuntimeCodeInfo {
 
     @Platforms(Platform.HOSTED_ONLY.class)
     public RuntimeCodeInfo() {
+    }
+
+    public RuntimeCodeInfoAccessor getAccessor() {
+        return accessor;
     }
 
     /** Tear down the heap, return all allocated virtual memory chunks to VirtualMemoryProvider. */

@@ -67,7 +67,8 @@ public class CodeInfoQueryResult {
      */
     protected static final FrameInfoQueryResult NO_FRAME_INFO = null;
 
-    protected AbstractCodeInfo data;
+    protected CodeInfoAccessor accessor;
+    protected CodeInfoHandle handle;
     protected CodePointer ip;
     protected long totalFrameSize;
     protected long exceptionOffset;

@@ -26,7 +26,6 @@ package com.oracle.svm.core.code;
 
 import org.graalvm.nativeimage.c.function.CodePointer;
 import org.graalvm.word.UnsignedWord;
-import org.graalvm.word.WordFactory;
 
 import com.oracle.svm.core.annotate.Uninterruptible;
 import com.oracle.svm.core.annotate.UnknownObjectField;
@@ -40,7 +39,7 @@ import com.oracle.svm.core.code.FrameInfoDecoder.ValueInfoAllocator;
 /**
  * Information about a block of memory that contains machine code.
  */
-public abstract class AbstractCodeInfo {
+public abstract class AbstractCodeInfo implements CodeInfoHandle {
     @UnknownPrimitiveField private CodePointer codeStart;
     @UnknownPrimitiveField private UnsignedWord codeSize;
 
@@ -74,35 +73,26 @@ public abstract class AbstractCodeInfo {
     }
 
     public boolean contains(CodePointer ip) {
-        return ((UnsignedWord) ip).subtract((UnsignedWord) codeStart).belowThan(codeSize);
+        return CodeInfoAccessor.contains(codeStart, codeSize, ip);
     }
 
     public long relativeIP(CodePointer ip) {
-        assert contains(ip);
-        return ((UnsignedWord) ip).subtract((UnsignedWord) codeStart).rawValue();
+        return CodeInfoAccessor.relativeIP(codeStart, codeSize, ip);
     }
 
     public CodePointer absoluteIP(long relativeIP) {
-        return (CodePointer) ((UnsignedWord) codeStart).add(WordFactory.unsigned(relativeIP));
+        return CodeInfoAccessor.absoluteIP(codeStart, relativeIP);
     }
 
     public long initFrameInfoReader(CodePointer ip, ReusableTypeReader frameInfoReader) {
-        long entryOffset = CodeInfoDecoder.lookupCodeInfoEntryOffset(pa(codeInfoIndex), pa(codeInfoEncodings), relativeIP(ip));
-        if (entryOffset >= 0) {
-            if (!CodeInfoDecoder.initFrameInfoReader(pa(codeInfoEncodings), pa(frameInfoEncodings), entryOffset, frameInfoReader)) {
-                return -1;
-            }
-        }
-        return entryOffset;
+        return CodeInfoAccessor.initFrameInfoReader(pa(codeInfoEncodings), pa(codeInfoIndex), pa(frameInfoEncodings), relativeIP(ip), frameInfoReader);
     }
 
     public FrameInfoQueryResult nextFrameInfo(long entryOffset, ReusableTypeReader frameInfoReader,
                     FrameInfoQueryResultAllocator resultAllocator, ValueInfoAllocator valueInfoAllocator,
                     boolean fetchFirstFrame) {
-        int entryFlags = CodeInfoDecoder.loadEntryFlags(pa(codeInfoEncodings), entryOffset);
-        boolean isDeoptEntry = CodeInfoDecoder.extractFI(entryFlags) == CodeInfoDecoder.FI_DEOPT_ENTRY_INDEX_S4;
-        return FrameInfoDecoder.decodeFrameInfo(isDeoptEntry, frameInfoReader, pa(frameInfoObjectConstants), pa(frameInfoSourceClasses),
-                        pa(frameInfoSourceMethodNames), pa(frameInfoNames), resultAllocator, valueInfoAllocator, fetchFirstFrame);
+        return CodeInfoAccessor.nextFrameInfo(pa(codeInfoEncodings), pa(frameInfoNames), pa(frameInfoObjectConstants), pa(frameInfoSourceClasses),
+                        pa(frameInfoSourceMethodNames), entryOffset, frameInfoReader, resultAllocator, valueInfoAllocator, fetchFirstFrame);
     }
 
     public abstract String getName();
