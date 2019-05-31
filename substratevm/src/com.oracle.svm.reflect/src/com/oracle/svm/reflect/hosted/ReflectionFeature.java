@@ -92,6 +92,9 @@ public final class ReflectionFeature implements GraalFeature {
 
     @Override
     public void beforeCompilation(BeforeCompilationAccess access) {
+        if (!ImageSingletons.contains(FallbackFeature.class)) {
+            return;
+        }
         FallbackFeature.FallbackImageRequest reflectionFallback = ImageSingletons.lookup(FallbackFeature.class).reflectionFallback;
         if (reflectionFallback != null && Options.ReflectionConfigurationFiles.getValue() == null && Options.ReflectionConfigurationResources.getValue() == null) {
             throw reflectionFallback;

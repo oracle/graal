@@ -319,6 +319,13 @@ public class NativeImage {
         default List<String> getBuildArgs() {
             throw VMError.unimplemented();
         }
+
+        /**
+         * @return true for fallback image building
+         */
+        default boolean buildFallbackImage() {
+            return false;
+        }
     }
 
     private static class DefaultBuildConfiguration implements BuildConfiguration {
@@ -515,6 +522,8 @@ public class NativeImage {
                     return Collections.emptyList();
                 case "getBuildArgs":
                     return buildArgs;
+                case "buildFallbackImage":
+                    return true;
                 default:
                     return method.invoke(original.config, args);
             }
@@ -815,7 +824,7 @@ public class NativeImage {
         }
 
         /* If no customImageClasspath was specified put "." on classpath */
-        if (customImageClasspath.isEmpty() && queryOption == null) {
+        if (!config.buildFallbackImage() && customImageClasspath.isEmpty() && queryOption == null) {
             addImageProvidedClasspath(Paths.get("."));
         } else {
             imageClasspath.addAll(customImageClasspath);
@@ -920,6 +929,11 @@ public class NativeImage {
         finalImageClasspath.addAll(imageBuilderClasspath);
         finalImageClasspath.addAll(imageProvidedClasspath);
         finalImageClasspath.addAll(imageClasspath);
+
+        if (!config.buildFallbackImage() && imageBuilderArgs.contains(oHFallbackThreshold + FallbackFeature.Options.ForceFallback)) {
+            /* Bypass regular build and proceed with fallback image building */
+            return 2;
+        }
         return buildImage(imageBuilderJavaArgs, imageBuilderBootClasspath, imageBuilderClasspath, imageBuilderArgs, finalImageClasspath);
     }
 

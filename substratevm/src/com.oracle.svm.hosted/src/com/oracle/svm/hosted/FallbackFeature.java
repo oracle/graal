@@ -40,6 +40,7 @@ import com.oracle.graal.pointsto.api.PointstoOptions;
 import com.oracle.graal.pointsto.flow.InvokeTypeFlow;
 import com.oracle.graal.pointsto.meta.AnalysisMetaAccess;
 import com.oracle.graal.pointsto.meta.AnalysisMethod;
+import com.oracle.svm.core.FallbackExecutor;
 import com.oracle.svm.core.annotate.AutomaticFeature;
 import com.oracle.svm.core.option.APIOption;
 import com.oracle.svm.core.option.HostedOptionKey;
@@ -245,6 +246,11 @@ public class FallbackFeature implements Feature {
         private FallbackImageRequest(Iterable<String> messages) {
             super(messages);
         }
+    }
+
+    @Override
+    public boolean isInConfiguration(IsInConfigurationAccess access) {
+        return FallbackExecutor.Options.FallbackExecutorMainClass.getValue() == null;
     }
 
     @Override

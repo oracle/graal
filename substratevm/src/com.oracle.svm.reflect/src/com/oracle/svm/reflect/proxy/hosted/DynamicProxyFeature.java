@@ -93,6 +93,9 @@ public final class DynamicProxyFeature implements Feature {
 
     @Override
     public void beforeCompilation(BeforeCompilationAccess access) {
+        if (!ImageSingletons.contains(FallbackFeature.class)) {
+            return;
+        }
         FallbackFeature.FallbackImageRequest proxyFallback = ImageSingletons.lookup(FallbackFeature.class).proxyFallback;
         if (proxyFallback != null && Options.DynamicProxyConfigurationFiles.getValue() == null && Options.DynamicProxyConfigurationResources.getValue() == null) {
             throw proxyFallback;
