@@ -21,7 +21,10 @@ int main()
 	printf("thread1 returns sum %ld\n", (long) ret1);
 	printf("thread2 returns sum %ld\n", (long) ret2);
 	printf("%ld\n", sum);
-	return sum;
+	if (sum == 42700)
+		return 0;
+	else
+		return 1;
 }
 
 void *add_up_to(void *to)

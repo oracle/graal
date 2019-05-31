@@ -118,26 +118,12 @@ suite = {
       "jacoco" : "include",
     },
 
-    "com.oracle.truffle.llvm.nfi" : {
-      "subDir" : "projects",
-      "sourceDirs" : ["src"],
-      "dependencies" : [
-        "truffle:TRUFFLE_API",
-        "truffle:TRUFFLE_NFI",
-      ],
-      "checkstyle" : "com.oracle.truffle.llvm.runtime",
-      "annotationProcessors" : ["truffle:TRUFFLE_DSL_PROCESSOR"],
-      "javaCompliance" : "1.8",
-      "workingSets" : "Truffle, LLVM",
-      "license" : "BSD-new",
-      "jacoco" : "include",
-    },
-
     "com.oracle.truffle.llvm.runtime" : {
       "subDir" : "projects",
       "sourceDirs" : ["src"],
       "dependencies" : [
         "truffle:TRUFFLE_API",
+        "truffle:TRUFFLE_NFI",
         "com.oracle.truffle.llvm.spi",
         "com.oracle.truffle.llvm.instruments",
       ],
@@ -293,14 +279,12 @@ suite = {
         "bin/libsulong.bc",
         "bin/libsulong++.bc",
         "bin/libsulong-src.tar.gz",
-        "bin/<lib:polyglot-mock>",
       ],
       "headers" : [
         "include/polyglot.h",
       ],
       "buildEnv" : {
         "CFLAGS" : "<clangImplicitArgs>",
-        "LIB_POLYGLOT" : "<lib:polyglot-mock>",
       },
       "license" : "BSD-new",
     },
@@ -334,13 +318,13 @@ suite = {
       "buildRef" : False,
       "buildEnv" : {
         "SUITE_CFLAGS" : "<clangImplicitArgs> -g",
-        "SUITE_CPPFLAGS" : "-I<path:SULONG_LEGACY>/include -I<path:SULONG_HOME>/include -g",
+        "SUITE_CPPFLAGS" : "-I<sulong_include> -I<path:SULONG_LIBS> -g",
       },
       "dependencies" : [
         "SULONG_TEST",
       ],
       "buildDependencies" : [
-        "SULONG_HOME",
+        "SULONG_LIBS",
       ],
       "testProject" : True,
       "defaultBuild" : False,
@@ -352,13 +336,13 @@ suite = {
       "buildRef" : False,
       "buildEnv" : {
         "SUITE_CFLAGS" : "<clangImplicitArgs>",
-        "SUITE_CPPFLAGS" : "-I<path:SULONG_LEGACY>/include -I<path:SULONG_HOME>/include -g",
+        "SUITE_CPPFLAGS" : "-I<sulong_include> -I<path:SULONG_LIBS>",
       },
       "dependencies" : [
         "SULONG_TEST",
       ],
       "buildDependencies" : [
-        "SULONG_HOME",
+        "SULONG_LIBS",
       ],
       "testProject" : True,
       "defaultBuild" : False,
@@ -369,30 +353,13 @@ suite = {
       "variants" : ["O0_MEM2REG"],
       "buildRef" : False,
       "buildEnv" : {
-        "SUITE_CPPFLAGS" : "-I<path:SULONG_LEGACY>/include -I<path:SULONG_HOME>/include -g",
+        "SUITE_CPPFLAGS" : "-I<sulong_include> -I<path:SULONG_LIBS>",
       },
       "dependencies" : [
         "SULONG_TEST",
       ],
       "buildDependencies" : [
-        "SULONG_HOME",
-      ],
-      "testProject" : True,
-      "defaultBuild" : False,
-    },
-    "com.oracle.truffle.llvm.tests.other" : {
-      "subDir" : "tests",
-      "class" : "SulongTestSuite",
-      "variants" : ["O0_MEM2REG"],
-      "buildRef" : False,
-      "buildEnv" : {
-        "SUITE_CPPFLAGS" : "-I<path:SULONG_LEGACY>/include -I<path:SULONG_HOME>/include -g",
-      },
-      "dependencies" : [
-        "SULONG_TEST",
-      ],
-      "buildDependencies" : [
-        "SULONG_HOME",
+        "SULONG_LIBS",
       ],
       "testProject" : True,
       "defaultBuild" : False,
@@ -471,7 +438,7 @@ suite = {
       "class" : "SulongTestSuite",
       "variants" : ["O0"],
       "buildEnv" : {
-        "SUITE_CPPFLAGS" : "-I<path:SULONG_LEGACY>/include",
+        "SUITE_CPPFLAGS" : "-I<sulong_include>",
       },
       "dependencies" : [
         "SULONG_TEST_SUITES",
@@ -485,7 +452,7 @@ suite = {
       "variants" : ["O1"],
       "buildRef" : False,
       "buildEnv" : {
-        "SUITE_CPPFLAGS" : "-I<path:SULONG_LEGACY>/include -lm",
+        "SUITE_CPPFLAGS" : "-I<sulong_include> -lm",
       },
       "dependencies" : [
         "SULONG_TEST",
@@ -509,13 +476,13 @@ suite = {
       ],
       "buildEnv": {
         "SUITE_CFLAGS": "<clangImplicitArgs>",
-        "SUITE_CPPFLAGS": "-I<path:SULONG_LEGACY>/include -I<path:SULONG_HOME>/include",
+        "SUITE_CPPFLAGS": "-I<sulong_include> -I<path:SULONG_LIBS>",
       },
       "dependencies": [
         "SULONG_TEST",
       ],
       "buildDependencies": [
-        "SULONG_HOME",
+        "SULONG_LIBS",
       ],
       "testProject": True,
       "defaultBuild": False,
@@ -530,7 +497,7 @@ suite = {
       "variants" : ["O0"],
       "buildRef" : True,
       "buildEnv" : {
-        "SUITE_CPPFLAGS" : "-I<path:SULONG_LEGACY>/include",
+        "SUITE_CPPFLAGS" : "-I<sulong_include>",
       },
       "dependencies" : [
         "SULONG_TEST",
@@ -551,7 +518,7 @@ suite = {
       "variants" : ["O0"],
       "buildRef" : True,
       "buildEnv" : {
-        "SUITE_CPPFLAGS" : "-I<path:SULONG_LEGACY>/include",
+        "SUITE_CPPFLAGS" : "-I<sulong_include>",
       },
       "dependencies" : [
         "SULONG_TEST",
@@ -575,7 +542,7 @@ suite = {
       "single_job" : True, # problem with parallel builds and temporary module files
       "buildRef" : True,
       "buildEnv" : {
-        "SUITE_CPPFLAGS" : "-I<path:SULONG_LEGACY>/include",
+        "SUITE_CPPFLAGS" : "-I<sulong_include>",
       },
       "dependencies" : [
         "SULONG_TEST",
@@ -598,7 +565,7 @@ suite = {
       "variants" : ["O0"],
       "buildRef" : False,
       "buildEnv" : {
-        "SUITE_CPPFLAGS" : "-I<path:SULONG_LEGACY>/include",
+        "SUITE_CPPFLAGS" : "-I<sulong_include>",
       },
       "dependencies" : [
         "SULONG_TEST",
@@ -620,7 +587,7 @@ suite = {
       "variants" : ["O0"],
       "buildRef" : True,
       "buildEnv" : {
-        "SUITE_CPPFLAGS" : "-I<path:SULONG_LEGACY>/include",
+        "SUITE_CPPFLAGS" : "-I<sulong_include>",
       },
       "dependencies" : [
         "SULONG_TEST",
@@ -643,7 +610,7 @@ suite = {
       "extraLibs" : ["libgmp.so.10"],
       "buildRef" : True,
       "buildEnv" : {
-        "SUITE_CPPFLAGS" : "-I<path:SULONG_LEGACY>/include",
+        "SUITE_CPPFLAGS" : "-I<sulong_include>",
         "SUITE_LDFLAGS" : "-lm -lgmp",
       },
       "dependencies" : [
@@ -666,7 +633,7 @@ suite = {
       "variants" : ["O0"],
       "buildRef" : True,
       "buildEnv" : {
-        "SUITE_CPPFLAGS" : "-I<path:SULONG_LEGACY>/include",
+        "SUITE_CPPFLAGS" : "-I<sulong_include>",
       },
       "dependencies" : [
         "SULONG_TEST",
@@ -687,24 +654,13 @@ suite = {
       ],
       "distDependencies" : [
         "truffle:TRUFFLE_API",
+        "truffle:TRUFFLE_NFI",
         "truffle:ANTLR4",
-        "SULONG_HOME",
+        "SULONG_LIBS",
       ],
       "javaProperties" : {
-        "llvm.home": "<sulong_home>",
+        "llvm.home": "<path:SULONG_LIBS>",
       },
-      "license" : "BSD-new",
-    },
-
-    "SULONG_NFI" : {
-      "subDir" : "projects",
-      "dependencies" : [
-        "com.oracle.truffle.llvm.nfi",
-      ],
-      "distDependencies" : [
-        "truffle:TRUFFLE_NFI",
-        "SULONG",
-      ],
       "license" : "BSD-new",
     },
 
@@ -718,53 +674,17 @@ suite = {
       "license" : "BSD-new",
     },
 
-    # legacy - to be removed
     "SULONG_LIBS" : {
       "native" : True,
       "relpath" : False,
       "platformDependent" : True,
-      "overlaps" : [
-        "SULONG_HOME"
-      ],
       "layout" : {
         "./" : [
           "dependency:com.oracle.truffle.llvm.libraries.bitcode/bin/libsulong.bc",
           "dependency:com.oracle.truffle.llvm.libraries.bitcode/bin/libsulong++.bc",
-          "dependency:com.oracle.truffle.llvm.libraries.bitcode/bin/<lib:polyglot-mock>",
           "dependency:com.oracle.truffle.llvm.libraries.native/bin/*",
           "dependency:com.oracle.truffle.llvm.libraries.bitcode/include/*"
-          ],
-        "./native/lib/" : [
-          "dependency:com.oracle.truffle.llvm.libraries.bitcode/bin/libsulong.bc",
-          "dependency:com.oracle.truffle.llvm.libraries.bitcode/bin/libsulong++.bc",
-          "dependency:com.oracle.truffle.llvm.libraries.bitcode/bin/<lib:polyglot-mock>",
-          "dependency:com.oracle.truffle.llvm.libraries.native/bin/*",
-        ],
-        "./include/" : [
-          "dependency:com.oracle.truffle.llvm.libraries.bitcode/include/*"
-        ],
-      },
-      "dependencies" : [
-        "com.oracle.truffle.llvm.libraries.bitcode",
-        "com.oracle.truffle.llvm.libraries.native",
-      ],
-      "license" : "BSD-new",
-    },
-
-    "SULONG_HOME" : {
-      "native" : True,
-      "relpath" : False,
-      "platformDependent" : True,
-      "layout" : {
-        "./native/lib/" : [
-          "dependency:com.oracle.truffle.llvm.libraries.bitcode/bin/libsulong.bc",
-          "dependency:com.oracle.truffle.llvm.libraries.bitcode/bin/libsulong++.bc",
-          "dependency:com.oracle.truffle.llvm.libraries.bitcode/bin/<lib:polyglot-mock>",
-          "dependency:com.oracle.truffle.llvm.libraries.native/bin/*",
-        ],
-        "./include/" : [
-          "dependency:com.oracle.truffle.llvm.libraries.bitcode/include/*"
-        ]
+          ]
       },
       "dependencies" : [
         "com.oracle.truffle.llvm.libraries.bitcode",
@@ -776,7 +696,7 @@ suite = {
     "SULONG_LIB_SRC" : {
       "native" : True,
       "overlaps" : [
-        "SULONG_HOME"
+        "SULONG_LIBS"
       ],
       "layout" : {
         "./" : "dependency:com.oracle.truffle.llvm.libraries.bitcode/bin/libsulong-src.tar.gz",
@@ -801,8 +721,6 @@ suite = {
         "truffle:TRUFFLE_API",
         "truffle:TRUFFLE_TCK",
         "sulong:SULONG",
-        "sulong:SULONG_NFI",
-        "sulong:SULONG_LEGACY",
         "SULONG_TEST_NATIVE",
       ],
       "javaProperties" : {
@@ -837,7 +755,6 @@ suite = {
         "com.oracle.truffle.llvm.tests.debug",
         "com.oracle.truffle.llvm.tests.irdebug",
         "com.oracle.truffle.llvm.tests.interop",
-        "com.oracle.truffle.llvm.tests.other",
         "com.oracle.truffle.llvm.tests.sulong",
         "com.oracle.truffle.llvm.tests.sulongavx",
         "com.oracle.truffle.llvm.tests.sulongcpp",
@@ -854,15 +771,6 @@ suite = {
         "sulong-doc",
       ],
       "description": "Sulong documentation, license",
-      "license" : "BSD-new",
-    },
-    "SULONG_LEGACY" : {
-      "native" : True,
-      "layout" : {
-        "./include/" : [
-          "file:include/truffle.h",
-        ],
-      },
       "license" : "BSD-new",
     },
     "SULONG_GRAALVM_DOCS" : {

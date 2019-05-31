@@ -31,11 +31,8 @@ package com.oracle.truffle.llvm.runtime;
 
 import java.nio.file.Path;
 import java.nio.file.Paths;
-import java.util.*;
 import java.util.concurrent.ConcurrentHashMap;
-import java.util.concurrent.ConcurrentLinkedQueue;
 import java.util.concurrent.ConcurrentMap;
-import java.util.concurrent.atomic.AtomicInteger;
 import java.security.SecureRandom;
 import java.util.ArrayList;
 import java.util.Collections;

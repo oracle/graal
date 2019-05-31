@@ -12,6 +12,7 @@ import java.util.concurrent.locks.ReentrantReadWriteLock;
 import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.RootCallTarget;
 import com.oracle.truffle.api.Truffle;
+import com.oracle.truffle.api.TruffleLanguage;
 import com.oracle.truffle.api.dsl.NodeChild;
 import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.frame.FrameSlot;
@@ -62,13 +63,15 @@ public class LLVMPThreadIntrinsics {
             // create store node
             if (store == null) {
                 CompilerDirectives.transferToInterpreterAndInvalidate();
-                store = getContextReference().get().getNodeFactory().createStoreNode(LLVMInteropType.ValueKind.I64);
+                store = LLVMLanguage.getLanguage().getContextReference().get().getNodeFactory().createStoreNode(LLVMInteropType.ValueKind.I64);
             }
 
             // create thread for execution of function
-            Thread t = getContextReference().get().getEnv().createThread(() -> {
+            Thread t = LLVMLanguage.getLanguage().getContextReference().get().getEnv().createThread(() -> {
                 CompilerDirectives.transferToInterpreter();
-                RootCallTarget callTarget = Truffle.getRuntime().createCallTarget(new RunNewThreadNode(getLLVMLanguage()));
+                // RootCallTarget callTarget = Truffle.getRuntime().createCallTarget(new RunNewThreadNode(getLLVMLanguage()));
+                RootCallTarget callTarget = Truffle.getRuntime().createCallTarget(new RunNewThreadNode(LLVMLanguage.getLanguage()));
+
                 // pthread_exit throws a control flow exception to stop the thread
                 try {
                     callTarget.call(startRoutine, arg);
@@ -80,7 +83,7 @@ public class LLVMPThreadIntrinsics {
             store.executeWithTarget(thread, t.getId());
 
             // store thread with thread id in context
-            getContextReference().get().threadStorage.put(t.getId(), t);
+            LLVMLanguage.getLanguage().getContextReference().get().threadStorage.put(t.getId(), t);
 
             // start thread
             t.start();
@@ -126,7 +129,9 @@ public class LLVMPThreadIntrinsics {
         public Object execute(VirtualFrame frame) {
             // LLVMStack stack = new LLVMStack(1000); // how big should it really be?
             // LLVMStack.StackPointer sp = stack.newFrame();
-            LLVMStack.StackPointer sp = language.getContextReference().get().getThreadingStack().getStack().newFrame();
+            // LLVMStack.StackPointer sp = language.LLVMLanguage.getLanguage().getContextReference().get().getThreadingStack().getStack().newFrame();
+            LLVMStack.StackPointer sp = LLVMLanguage.getLanguage().getContextReference().get().getThreadingStack().getStack().newFrame();
+
             if (callNode == null) {
                 CompilerDirectives.transferToInterpreterAndInvalidate();
                 functionSlot = frame.getFrameDescriptor().findOrAddFrameSlot("function");
@@ -160,7 +165,7 @@ public class LLVMPThreadIntrinsics {
         @Specialization
         protected int doIntrinsic(VirtualFrame frame, Object retval) {
             // save return value in context for join calls
-            getContextReference().get().retValStorage.put(Thread.currentThread().getId(), retval);
+            LLVMLanguage.getLanguage().getContextReference().get().retValStorage.put(Thread.currentThread().getId(), retval);
             // stop this thread
             throw new ControlFlowException();
         }
@@ -175,16 +180,16 @@ public class LLVMPThreadIntrinsics {
         protected int doIntrinsic(VirtualFrame frame, Object th, Object threadReturn) {
             if (storeNode == null) {
                 CompilerDirectives.transferToInterpreterAndInvalidate();
-                storeNode = getContextReference().get().getNodeFactory().createStoreNode(LLVMInteropType.ValueKind.POINTER);
+                storeNode = LLVMLanguage.getLanguage().getContextReference().get().getNodeFactory().createStoreNode(LLVMInteropType.ValueKind.POINTER);
             }
             long thLong = (long) th;
             try {
                 // join thread
-                Thread thread = (Thread) getContextReference().get().threadStorage.get(thLong);
+                Thread thread = (Thread) LLVMLanguage.getLanguage().getContextReference().get().threadStorage.get(thLong);
                 thread.join();
 
                 // get return value
-                Object retVal = getContextReference().get().retValStorage.get(thLong);
+                Object retVal = LLVMLanguage.getLanguage().getContextReference().get().retValStorage.get(thLong);
 
                 // store return value at ptr
                 // TODO: checkstyle says cast to managed or native pointer
@@ -287,7 +292,7 @@ public class LLVMPThreadIntrinsics {
             // create store node
             if (store == null) {
                 CompilerDirectives.transferToInterpreterAndInvalidate();
-                store = getContextReference().get().getNodeFactory().createStoreNode(LLVMInteropType.ValueKind.I32);
+                store = LLVMLanguage.getLanguage().getContextReference().get().getNodeFactory().createStoreNode(LLVMInteropType.ValueKind.I32);
             }
             // store type in attr var
             if (type == null) {
@@ -305,7 +310,7 @@ public class LLVMPThreadIntrinsics {
         @Specialization
         protected int doIntrinsic(VirtualFrame frame, Object mutex) {
             long mutexAddress = ((LLVMNativePointer) mutex).asNative();
-            getContextReference().get().mutexStorage.remove(mutexAddress);
+            LLVMLanguage.getLanguage().getContextReference().get().mutexStorage.remove(mutexAddress);
             return 0;
         }
     }
@@ -320,13 +325,13 @@ public class LLVMPThreadIntrinsics {
         protected int doIntrinsic(VirtualFrame frame, Object mutex, Object attr) {
             if (read == null) {
                 CompilerDirectives.transferToInterpreterAndInvalidate();
-                read = getContextReference().get().getNodeFactory().createLoadNode(LLVMInteropType.ValueKind.I32);
+                read = LLVMLanguage.getLanguage().getContextReference().get().getNodeFactory().createLoadNode(LLVMInteropType.ValueKind.I32);
             }
             // we can use the address of the native pointer here, bc a mutex
             // must only work when using the original variable, not a copy
             // so the address may never change
             long mutexAddress = ((LLVMNativePointer) mutex).asNative();
-            Object mutObj = getContextReference().get().mutexStorage.get(mutexAddress);
+            Object mutObj = LLVMLanguage.getLanguage().getContextReference().get().mutexStorage.get(mutexAddress);
             int attrValue = (int) read.executeWithTarget(attr);
             Mutex.Type mutexType = Mutex.Type.DEFAULT_NORMAL;
             if (attrValue == 1) {
@@ -335,7 +340,7 @@ public class LLVMPThreadIntrinsics {
                 mutexType = Mutex.Type.ERRORCHECK;
             }
             if (mutObj == null) {
-                getContextReference().get().mutexStorage.put(mutexAddress, new Mutex(mutexType));
+                LLVMLanguage.getLanguage().getContextReference().get().mutexStorage.put(mutexAddress, new Mutex(mutexType));
             }
             return 0;
         }
@@ -346,14 +351,14 @@ public class LLVMPThreadIntrinsics {
         @Specialization
         protected int doIntrinsic(VirtualFrame frame, Object mutex) {
             long mutexAddress = ((LLVMNativePointer) mutex).asNative();
-            Mutex mutexObj = (Mutex) getContextReference().get().mutexStorage.get(mutexAddress);
+            Mutex mutexObj = (Mutex) LLVMLanguage.getLanguage().getContextReference().get().mutexStorage.get(mutexAddress);
             if (mutexObj == null) {
                 // mutex is not initialized
                 // but it works anyway on most implementations
                 // so we will make it work here too, just using default type
                 // set the internLock counter to 1
                 mutexObj = new Mutex(Mutex.Type.DEFAULT_NORMAL);
-                getContextReference().get().mutexStorage.put(mutexAddress, mutexObj);
+                LLVMLanguage.getLanguage().getContextReference().get().mutexStorage.put(mutexAddress, mutexObj);
             }
             // TODO: error code handling
             return mutexObj.lock() ? 0 : 15;
@@ -365,14 +370,14 @@ public class LLVMPThreadIntrinsics {
         @Specialization
         protected int doIntrinsic(VirtualFrame frame, Object mutex) {
             long mutexAddress = ((LLVMNativePointer) mutex).asNative();
-            Mutex mutexObj = (Mutex) getContextReference().get().mutexStorage.get(mutexAddress);
+            Mutex mutexObj = (Mutex) LLVMLanguage.getLanguage().getContextReference().get().mutexStorage.get(mutexAddress);
             if (mutexObj == null) {
                 // mutex is not initialized
                 // but it works anyway on most implementations
                 // so we will make it work here too, just using default type
                 // set the internLock counter to 1
                 mutexObj = new Mutex(Mutex.Type.DEFAULT_NORMAL);
-                getContextReference().get().mutexStorage.put(mutexAddress, mutexObj);
+                LLVMLanguage.getLanguage().getContextReference().get().mutexStorage.put(mutexAddress, mutexObj);
             }
             // TODO: error code stuff
             return mutexObj.tryLock() ? 0 : 15;
@@ -384,7 +389,7 @@ public class LLVMPThreadIntrinsics {
         @Specialization
         protected int doIntrinsic(VirtualFrame frame, Object mutex) {
             long mutexAddress = ((LLVMNativePointer) mutex).asNative();
-            Mutex mutexObj = (Mutex) getContextReference().get().mutexStorage.get(mutexAddress);
+            Mutex mutexObj = (Mutex) LLVMLanguage.getLanguage().getContextReference().get().mutexStorage.get(mutexAddress);
             // TODO: error code stuff
             if (mutexObj == null) {
                 return 5;
@@ -462,7 +467,7 @@ public class LLVMPThreadIntrinsics {
         @Specialization
         protected int doIntrinsic(VirtualFrame frame, Object mutex) {
             long condAddress = ((LLVMNativePointer) mutex).asNative();
-            getContextReference().get().condStorage.remove(condAddress);
+            LLVMLanguage.getLanguage().getContextReference().get().condStorage.remove(condAddress);
             return 0;
         }
     }
@@ -477,9 +482,9 @@ public class LLVMPThreadIntrinsics {
             // must only work when using the original variable, not a copy
             // so the address may never change
             long condAddress = ((LLVMNativePointer) cond).asNative();
-            Object condObj = getContextReference().get().condStorage.get(condAddress);
+            Object condObj = LLVMLanguage.getLanguage().getContextReference().get().condStorage.get(condAddress);
             if (condObj == null) {
-                getContextReference().get().condStorage.put(condAddress, new Cond());
+                LLVMLanguage.getLanguage().getContextReference().get().condStorage.put(condAddress, new Cond());
             }
             return 0;
         }
@@ -490,7 +495,7 @@ public class LLVMPThreadIntrinsics {
         @Specialization
         protected int doIntrinsic(VirtualFrame frame, Object cond) {
             long condAddress = ((LLVMNativePointer) cond).asNative();
-            Cond condObj = (Cond) getContextReference().get().condStorage.get(condAddress);
+            Cond condObj = (Cond) LLVMLanguage.getLanguage().getContextReference().get().condStorage.get(condAddress);
             if (condObj == null) {
                 return 15; // cannot broadcast to cond that does not exist yet
             }
@@ -504,7 +509,7 @@ public class LLVMPThreadIntrinsics {
         @Specialization
         protected int doIntrinsic(VirtualFrame frame, Object cond) {
             long condAddress = ((LLVMNativePointer) cond).asNative();
-            Cond condObj = (Cond) getContextReference().get().condStorage.get(condAddress);
+            Cond condObj = (Cond) LLVMLanguage.getLanguage().getContextReference().get().condStorage.get(condAddress);
             if (condObj == null) {
                 return 15; // cannot signal to cond that does not exist yet
             }
@@ -523,18 +528,18 @@ public class LLVMPThreadIntrinsics {
         protected int doIntrinsic(VirtualFrame frame, Object cond, Object mutex, Object abstime) {
             if (read == null) {
                 CompilerDirectives.transferToInterpreterAndInvalidate();
-                read = getContextReference().get().getNodeFactory().createLoadNode(LLVMInteropType.ValueKind.I64);
+                read = LLVMLanguage.getLanguage().getContextReference().get().getNodeFactory().createLoadNode(LLVMInteropType.ValueKind.I64);
             }
 
             long condAddress = ((LLVMNativePointer) cond).asNative();
             long mutexAddress = ((LLVMNativePointer) mutex).asNative();
 
-            Cond condObj = (Cond) getContextReference().get().condStorage.get(condAddress);
-            Mutex mutexObj = (Mutex) getContextReference().get().mutexStorage.get(mutexAddress);
+            Cond condObj = (Cond) LLVMLanguage.getLanguage().getContextReference().get().condStorage.get(condAddress);
+            Mutex mutexObj = (Mutex) LLVMLanguage.getLanguage().getContextReference().get().mutexStorage.get(mutexAddress);
             if (condObj == null) {
                 // init and then wait
                 condObj = new Cond();
-                getContextReference().get().condStorage.put(condAddress, condObj);
+                LLVMLanguage.getLanguage().getContextReference().get().condStorage.put(condAddress, condObj);
             }
             // TODO: handling of time (nanoseconds possible?)
             // in sulong timespec only comes as long with the seconds as value
@@ -553,12 +558,12 @@ public class LLVMPThreadIntrinsics {
             long condAddress = ((LLVMNativePointer) cond).asNative();
             long mutexAddress = ((LLVMNativePointer) mutex).asNative();
 
-            Cond condObj = (Cond) getContextReference().get().condStorage.get(condAddress);
-            Mutex mutexObj = (Mutex) getContextReference().get().mutexStorage.get(mutexAddress);
+            Cond condObj = (Cond) LLVMLanguage.getLanguage().getContextReference().get().condStorage.get(condAddress);
+            Mutex mutexObj = (Mutex) LLVMLanguage.getLanguage().getContextReference().get().mutexStorage.get(mutexAddress);
             if (condObj == null) {
                 // init and then wait
                 condObj = new Cond();
-                getContextReference().get().condStorage.put(condAddress, condObj);
+                LLVMLanguage.getLanguage().getContextReference().get().condStorage.put(condAddress, condObj);
             }
             condObj.cWait(mutexObj);
             return 0;
@@ -632,7 +637,7 @@ public class LLVMPThreadIntrinsics {
         @Specialization
         protected int doIntrinsic(VirtualFrame frame, Object rwlock) {
             long rwlockAddress = ((LLVMNativePointer) rwlock).asNative();
-            getContextReference().get().condStorage.remove(rwlockAddress);
+            LLVMLanguage.getLanguage().getContextReference().get().condStorage.remove(rwlockAddress);
             return 0;
         }
     }
@@ -646,9 +651,9 @@ public class LLVMPThreadIntrinsics {
             // must only work when using the original variable, not a copy
             // so the address may never change
             long rwlockAddress = ((LLVMNativePointer) rwlock).asNative();
-            Object condObj = getContextReference().get().condStorage.get(rwlockAddress);
+            Object condObj = LLVMLanguage.getLanguage().getContextReference().get().condStorage.get(rwlockAddress);
             if (condObj == null) {
-                getContextReference().get().condStorage.put(rwlockAddress, new RWLock());
+                LLVMLanguage.getLanguage().getContextReference().get().condStorage.put(rwlockAddress, new RWLock());
             }
             return 0;
         }
@@ -659,12 +664,12 @@ public class LLVMPThreadIntrinsics {
         @Specialization
         protected int doIntrinsic(VirtualFrame frame, Object rwlock) {
             long rwlockAddress = ((LLVMNativePointer) rwlock).asNative();
-            RWLock rwlockObj = (RWLock) getContextReference().get().rwlockStorage.get(rwlockAddress);
+            RWLock rwlockObj = (RWLock) LLVMLanguage.getLanguage().getContextReference().get().rwlockStorage.get(rwlockAddress);
             if (rwlockObj == null) {
                 // rwlock is not initialized
                 // but it works anyway on most implementations
                 rwlockObj = new RWLock();
-                getContextReference().get().mutexStorage.put(rwlockAddress, rwlockObj);
+                LLVMLanguage.getLanguage().getContextReference().get().mutexStorage.put(rwlockAddress, rwlockObj);
             }
             rwlockObj.readLock();
             return 0;
@@ -676,12 +681,12 @@ public class LLVMPThreadIntrinsics {
         @Specialization
         protected int doIntrinsic(VirtualFrame frame, Object rwlock) {
             long rwlockAddress = ((LLVMNativePointer) rwlock).asNative();
-            RWLock rwlockObj = (RWLock) getContextReference().get().rwlockStorage.get(rwlockAddress);
+            RWLock rwlockObj = (RWLock) LLVMLanguage.getLanguage().getContextReference().get().rwlockStorage.get(rwlockAddress);
             if (rwlockObj == null) {
                 // rwlock is not initialized
                 // but it works anyway on most implementations
                 rwlockObj = new RWLock();
-                getContextReference().get().mutexStorage.put(rwlockAddress, rwlockObj);
+                LLVMLanguage.getLanguage().getContextReference().get().mutexStorage.put(rwlockAddress, rwlockObj);
             }
             return rwlockObj.tryReadLock() ? 0 : 15;
         }
@@ -692,12 +697,12 @@ public class LLVMPThreadIntrinsics {
         @Specialization
         protected int doIntrinsic(VirtualFrame frame, Object rwlock) {
             long rwlockAddress = ((LLVMNativePointer) rwlock).asNative();
-            RWLock rwlockObj = (RWLock) getContextReference().get().rwlockStorage.get(rwlockAddress);
+            RWLock rwlockObj = (RWLock) LLVMLanguage.getLanguage().getContextReference().get().rwlockStorage.get(rwlockAddress);
             if (rwlockObj == null) {
                 // rwlock is not initialized
                 // but it works anyway on most implementations
                 rwlockObj = new RWLock();
-                getContextReference().get().mutexStorage.put(rwlockAddress, rwlockObj);
+                LLVMLanguage.getLanguage().getContextReference().get().mutexStorage.put(rwlockAddress, rwlockObj);
             }
             rwlockObj.writeLock();
             return 0;
@@ -709,12 +714,12 @@ public class LLVMPThreadIntrinsics {
         @Specialization
         protected int doIntrinsic(VirtualFrame frame, Object rwlock) {
             long rwlockAddress = ((LLVMNativePointer) rwlock).asNative();
-            RWLock rwlockObj = (RWLock) getContextReference().get().rwlockStorage.get(rwlockAddress);
+            RWLock rwlockObj = (RWLock) LLVMLanguage.getLanguage().getContextReference().get().rwlockStorage.get(rwlockAddress);
             if (rwlockObj == null) {
                 // rwlock is not initialized
                 // but it works anyway on most implementations
                 rwlockObj = new RWLock();
-                getContextReference().get().mutexStorage.put(rwlockAddress, rwlockObj);
+                LLVMLanguage.getLanguage().getContextReference().get().mutexStorage.put(rwlockAddress, rwlockObj);
             }
             return rwlockObj.tryWriteLock() ? 0 : 15;
         }
@@ -725,12 +730,12 @@ public class LLVMPThreadIntrinsics {
         @Specialization
         protected int doIntrinsic(VirtualFrame frame, Object rwlock) {
             long rwlockAddress = ((LLVMNativePointer) rwlock).asNative();
-            RWLock rwlockObj = (RWLock) getContextReference().get().rwlockStorage.get(rwlockAddress);
+            RWLock rwlockObj = (RWLock) LLVMLanguage.getLanguage().getContextReference().get().rwlockStorage.get(rwlockAddress);
             if (rwlockObj == null) {
                 // rwlock is not initialized
                 // but it works anyway on most implementations
                 rwlockObj = new RWLock();
-                getContextReference().get().mutexStorage.put(rwlockAddress, rwlockObj);
+                LLVMLanguage.getLanguage().getContextReference().get().mutexStorage.put(rwlockAddress, rwlockObj);
             }
             rwlockObj.unlock();
             return 0;
@@ -746,16 +751,16 @@ public class LLVMPThreadIntrinsics {
         protected int doIntrinsic(VirtualFrame frame, Object rwlock, Object abstime) {
             if (read == null) {
                 CompilerDirectives.transferToInterpreterAndInvalidate();
-                read = getContextReference().get().getNodeFactory().createLoadNode(LLVMInteropType.ValueKind.I64);
+                read = LLVMLanguage.getLanguage().getContextReference().get().getNodeFactory().createLoadNode(LLVMInteropType.ValueKind.I64);
             }
 
             long rwlockAddress = ((LLVMNativePointer) rwlock).asNative();
-            RWLock rwlockObj = (RWLock) getContextReference().get().rwlockStorage.get(rwlockAddress);
+            RWLock rwlockObj = (RWLock) LLVMLanguage.getLanguage().getContextReference().get().rwlockStorage.get(rwlockAddress);
             if (rwlockObj == null) {
                 // rwlock is not initialized
                 // but it works anyway on most implementations
                 rwlockObj = new RWLock();
-                getContextReference().get().mutexStorage.put(rwlockAddress, rwlockObj);
+                LLVMLanguage.getLanguage().getContextReference().get().mutexStorage.put(rwlockAddress, rwlockObj);
             }
             // if lock immediately succeeds, abstime parameter should not be checked
             if (rwlockObj.tryReadLock()) {
@@ -780,16 +785,16 @@ public class LLVMPThreadIntrinsics {
         protected int doIntrinsic(VirtualFrame frame, Object rwlock, Object abstime) {
             if (read == null) {
                 CompilerDirectives.transferToInterpreterAndInvalidate();
-                read = getContextReference().get().getNodeFactory().createLoadNode(LLVMInteropType.ValueKind.I64);
+                read = LLVMLanguage.getLanguage().getContextReference().get().getNodeFactory().createLoadNode(LLVMInteropType.ValueKind.I64);
             }
 
             long rwlockAddress = ((LLVMNativePointer) rwlock).asNative();
-            RWLock rwlockObj = (RWLock) getContextReference().get().rwlockStorage.get(rwlockAddress);
+            RWLock rwlockObj = (RWLock) LLVMLanguage.getLanguage().getContextReference().get().rwlockStorage.get(rwlockAddress);
             if (rwlockObj == null) {
                 // rwlock is not initialized
                 // but it works anyway on most implementations
                 rwlockObj = new RWLock();
-                getContextReference().get().mutexStorage.put(rwlockAddress, rwlockObj);
+                LLVMLanguage.getLanguage().getContextReference().get().mutexStorage.put(rwlockAddress, rwlockObj);
             }
             // if lock immediately succeeds, abstime parameter should not be checked
             if (rwlockObj.tryWriteLock()) {
