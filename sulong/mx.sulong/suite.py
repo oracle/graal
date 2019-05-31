@@ -402,7 +402,7 @@ suite = {
       "class" : "SulongTestSuite",
       "variants" : ["O0", "O0_MISC_OPTS", "O1", "O2", "O3", "gcc_O0"],
       "buildEnv" : {
-        "SUITE_LDFLAGS" : "-lm",
+        "SUITE_LDFLAGS" : "-lm -lpthread",
         "OS" : "<os>",
       },
       "dependencies" : [
