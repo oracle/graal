@@ -25,22 +25,20 @@
 package com.oracle.svm.driver;
 
 import java.io.File;
+import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.util.List;
 import java.util.Queue;
-import java.util.jar.Attributes;
-import java.util.jar.JarFile;
-import java.util.jar.Manifest;
 
 import org.graalvm.compiler.options.OptionType;
 
-import com.oracle.svm.core.util.ClasspathUtils;
 import com.oracle.svm.driver.MacroOption.MacroOptionKind;
 
 class DefaultOptionHandler extends NativeImage.OptionHandler<NativeImage> {
 
     private static final String verboseOption = "--verbose";
+    private static final String requireValidJarFileMessage = "-jar requires a valid jarfile";
 
     static final String helpText = NativeImage.getResource("/Help.txt");
     static final String helpExtraText = NativeImage.getResource("/HelpExtra.txt");
@@ -118,7 +116,7 @@ class DefaultOptionHandler extends NativeImage.OptionHandler<NativeImage> {
                 args.poll();
                 String jarFilePathStr = args.poll();
                 if (jarFilePathStr == null) {
-                    NativeImage.showError("-jar requires jar file specification");
+                    NativeImage.showError(requireValidJarFileMessage);
                 }
                 handleJarFileArg(nativeImage.canonicalize(Paths.get(jarFilePathStr)));
                 nativeImage.setJarOptionMode(true);
@@ -206,46 +204,13 @@ class DefaultOptionHandler extends NativeImage.OptionHandler<NativeImage> {
     }
 
     private void handleJarFileArg(Path filePath) {
-        try (JarFile jarFile = new JarFile(filePath.toFile())) {
-            Manifest manifest = jarFile.getManifest();
-            if (manifest == null) {
-                NativeImage.showError("No manifest in " + filePath);
-            }
-            Attributes mainAttributes = manifest.getMainAttributes();
-            String mainClass = mainAttributes.getValue("Main-Class");
-            if (mainClass == null) {
-                NativeImage.showError("No main manifest attribute, in " + filePath);
-            }
-            nativeImage.addPlainImageBuilderArg(nativeImage.oHClass + mainClass);
-            String jarFileName = filePath.getFileName().toString();
-            String jarSuffix = ".jar";
-            String jarFileNameBase;
-            if (jarFileName.endsWith(jarSuffix)) {
-                jarFileNameBase = jarFileName.substring(0, jarFileName.length() - jarSuffix.length());
-            } else {
-                jarFileNameBase = jarFileName;
-            }
-            if (!jarFileNameBase.isEmpty()) {
-                nativeImage.addPlainImageBuilderArg(nativeImage.oHName + jarFileNameBase);
-            }
-            String classPath = mainAttributes.getValue("Class-Path");
-            /* Missing Class-Path Attribute is tolerable */
-            if (classPath != null) {
-                for (String cp : classPath.split(" +")) {
-                    Path manifestClassPath = ClasspathUtils.stringToClasspath(cp);
-                    if (!manifestClassPath.isAbsolute()) {
-                        /* Resolve relative manifestClassPath against directory containing jar */
-                        manifestClassPath = filePath.getParent().resolve(manifestClassPath);
-                    }
-                    nativeImage.addImageProvidedClasspath(manifestClassPath);
-                }
-            }
-            nativeImage.addCustomImageClasspath(filePath);
-        } catch (NativeImage.NativeImageError ex) {
-            throw ex;
-        } catch (Throwable ex) {
-            throw NativeImage.showError("Invalid or corrupt jarfile " + filePath);
+        if (Files.isDirectory(filePath)) {
+            NativeImage.showError(filePath + " is a directory. (" + requireValidJarFileMessage + ")");
         }
+        if (!NativeImage.processManifestMainAttributes(filePath, nativeImage::handleMainClassAttribute)) {
+            NativeImage.showError("No manifest in " + filePath);
+        }
+        nativeImage.addCustomImageClasspath(filePath);
     }
 
     @Override
