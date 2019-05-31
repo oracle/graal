@@ -261,6 +261,7 @@ import com.oracle.truffle.espresso.classfile.RuntimeConstantPool;
 import com.oracle.truffle.espresso.classfile.StackMapFrame;
 import com.oracle.truffle.espresso.classfile.StackMapTableAttribute;
 import com.oracle.truffle.espresso.classfile.VerificationTypeInfo;
+import com.oracle.truffle.espresso.descriptors.Signatures;
 import com.oracle.truffle.espresso.descriptors.Symbol;
 import com.oracle.truffle.espresso.descriptors.Symbol.Name;
 import com.oracle.truffle.espresso.descriptors.Symbol.Signature;
@@ -282,20 +283,28 @@ import com.oracle.truffle.espresso.runtime.StaticObject;
  * is taken, the type-checking or type-infering verifier is used.
  */
 public final class MethodVerifier implements ContextAccess {
+    // Class info
+    private final Klass thisKlass;
+    private final RuntimeConstantPool pool;
     private final boolean useStackMaps;
     private final int majorVersion;
-    private final Klass thisKlass;
-    private final BytecodeStream code;
-    private final RuntimeConstantPool pool;
-    private final Symbol<Type>[] sig;
+
+    // Method info
     private final Symbol<Name> methodName;
     private final boolean isStatic;
+    private final Symbol<Type>[] sig;
+    private final Symbol<Type> returnType;
+
+    // Code info
+    private final BytecodeStream code;
     private final int maxStack;
     private final int maxLocals;
-    private final byte[] verified;
-    private final StackFrame[] stackFrames;
     private final StackMapTableAttribute stackMapTableAttribute;
     private final ExceptionHandler[] exceptionHandlers;
+
+    // Internal info
+    private final byte[] verified;
+    private final StackFrame[] stackFrames;
     private final byte[] handlerStatus;
 
     Symbol<Type>[] getSig() {
@@ -399,6 +408,7 @@ public final class MethodVerifier implements ContextAccess {
     private final Operand MethodType;
     private final Operand MethodHandle;
     private final Operand Throwable;
+    private final Operand returnOperand;
 
     private final Operand thisOperand;
 
@@ -426,6 +436,7 @@ public final class MethodVerifier implements ContextAccess {
         this.verified = new byte[code.endBCI()];
         this.stackFrames = new StackFrame[code.endBCI()];
         this.sig = m.getParsedSignature();
+        this.returnType = Signatures.returnType(sig);
         this.isStatic = m.isStatic();
         this.thisKlass = m.getDeclaringKlass();
         this.methodName = m.getName();
@@ -443,6 +454,7 @@ public final class MethodVerifier implements ContextAccess {
         Throwable = new ReferenceOperand(Type.Throwable, thisKlass);
 
         thisOperand = new ReferenceOperand(thisKlass, thisKlass);
+        returnOperand = kindToOperand(returnType);
     }
 
     /**
@@ -856,9 +868,7 @@ public final class MethodVerifier implements ContextAccess {
             }
             checkExceptionHandlers(nextBCI, locals);
             nextBCI = verifySafe(nextBCI, stack, locals);
-            if (nextBCI >= code.endBCI()) {
-                throw new VerifyError("Control flow falls through code end");
-            }
+            validateBCI(nextBCI);
         } while (previousBCI != nextBCI);
 
         return true;
@@ -1247,12 +1257,30 @@ public final class MethodVerifier implements ContextAccess {
                     return switchHelper.defaultTarget(BCI);
                 }
                 
-                case IRETURN: stack.popInt(); return BCI;
-                case LRETURN: stack.popLong(); return BCI;
-                case FRETURN: stack.popFloat(); return BCI;
-                case DRETURN: stack.popDouble(); return BCI;
-                case ARETURN: stack.popRef(); return BCI;
-                case RETURN: return BCI; 
+                case IRETURN: { 
+                        stack.pop(Int);
+                        if (!returnOperand.getKind().isStackInt()) {
+                            throw new VerifyError("Found an IRETURN when return type is " + returnOperand);
+                        }
+                        return BCI;
+                    }
+                case LRETURN: 
+                    doReturn(stack, Long);
+                    return BCI;
+                case FRETURN: 
+                    doReturn(stack, Float);
+                    return BCI;
+                case DRETURN: 
+                    doReturn(stack, Double);
+                    return BCI;
+                case ARETURN: 
+                    stack.popRef(returnOperand); 
+                    return BCI;
+                case RETURN: 
+                    if (returnOperand != Void) {
+                        throw new VerifyError("Encountered RETURN, but method return type is not void: " + returnOperand);
+                    }
+                    return BCI; 
                 
                 case GETSTATIC:
                 case GETFIELD: {
@@ -1553,6 +1581,13 @@ public final class MethodVerifier implements ContextAccess {
         }
     }
 
+    private void doReturn(Stack stack, Operand toReturn) {
+        Operand op = stack.pop(toReturn);
+        if (!op.compliesWith(returnOperand)) {
+            throw new VerifyError("Invalid return: " + op + ", expected: " + returnOperand);
+        }
+    }
+
     private boolean checkSpecialAccess(Operand stackOp) {
         return stackOp.compliesWith(thisOperand) || isMagicAccessor() || checkHostAccess(stackOp);
     }
@@ -1716,20 +1751,20 @@ public final class MethodVerifier implements ContextAccess {
     }
 
     Operand[] getOperandSig(Symbol<Type>[] toParse) {
-        Operand[] operandSig = new Operand[toParse.length];
-        for (int i = 0; i < operandSig.length; i++) {
-            Symbol<Type> type = toParse[i];
-            operandSig[i] = kindToOperand(type);
-        }
-        return operandSig;
-    }
-
-    private Operand[] getOperandSig(Symbol<Signature> toParse) {
         try {
-            return getOperandSig(getSignatures().parsed(toParse));
+            Operand[] operandSig = new Operand[toParse.length];
+            for (int i = 0; i < operandSig.length; i++) {
+                Symbol<Type> type = toParse[i];
+                operandSig[i] = kindToOperand(type);
+            }
+            return operandSig;
         } catch (Throwable e) {
             throw new ClassFormatError("Invalid signature: " + e.getMessage());
         }
+    }
+
+    private Operand[] getOperandSig(Symbol<Signature> toParse) {
+        return getOperandSig(getSignatures().parsed(toParse));
     }
 
     /**

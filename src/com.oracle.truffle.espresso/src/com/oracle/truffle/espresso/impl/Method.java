@@ -138,7 +138,13 @@ public final class Method implements TruffleObject, ModifiersProvider, ContextAc
         this.linkedMethod = method.linkedMethod;
 
         this.rawSignature = method.getRawSignature();
-        this.parsedSignature = getSignatures().parsed(this.rawSignature);
+
+        try {
+            this.parsedSignature = getSignatures().parsed(this.rawSignature);
+        } catch (IllegalArgumentException | ClassFormatError e) {
+            CompilerDirectives.transferToInterpreterAndInvalidate();
+            throw getMeta().throwExWithMessage(ClassFormatError.class, e.getMessage());
+        }
 
         this.codeAttribute = method.codeAttribute;
         this.callTarget = method.callTarget;
@@ -157,7 +163,6 @@ public final class Method implements TruffleObject, ModifiersProvider, ContextAc
     }
 
     Method(ObjectKlass declaringKlass, LinkedMethod linkedMethod, Symbol<Signature> rawSignature) {
-
         this.declaringKlass = declaringKlass;
         // TODO(peterssen): Custom constant pool for methods is not supported.
         this.pool = declaringKlass.getConstantPool();
@@ -166,7 +171,13 @@ public final class Method implements TruffleObject, ModifiersProvider, ContextAc
         this.linkedMethod = linkedMethod;
 
         this.rawSignature = rawSignature;
-        this.parsedSignature = getSignatures().parsed(this.rawSignature);
+
+        try {
+            this.parsedSignature = getSignatures().parsed(this.rawSignature);
+        } catch (IllegalArgumentException | ClassFormatError e) {
+            CompilerDirectives.transferToInterpreterAndInvalidate();
+            throw getMeta().throwExWithMessage(ClassFormatError.class, e.getMessage());
+        }
 
         this.codeAttribute = (CodeAttribute) getAttribute(CodeAttribute.NAME);
         this.exceptionsAttribute = (ExceptionsAttribute) getAttribute(ExceptionsAttribute.NAME);

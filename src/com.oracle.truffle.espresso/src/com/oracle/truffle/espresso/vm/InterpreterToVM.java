@@ -221,13 +221,20 @@ public final class InterpreterToVM implements ContextAccess {
 
     @SuppressWarnings({"deprecation"})
     @TruffleBoundary
-    public static void monitorEnter(@Host(Object.class) StaticObject obj) {
+    public static void monitorEnter(@Host(Object.class) Object obj) {
+        assert obj instanceof StaticObject;
         hostUnsafe.monitorEnter(obj);
     }
 
     @SuppressWarnings({"deprecation"})
     @TruffleBoundary
-    public static void monitorExit(@Host(Object.class) StaticObject obj) {
+    public static void monitorExit(@Host(Object.class) Object obj) {
+        assert obj instanceof StaticObject;
+        if (!Thread.holdsLock(obj)) {
+            // No owner checks in SVM. This is a safeguard against unbalanced monitor accesses until
+            // Espresso has its own monitor handling.
+            throw EspressoLanguage.getCurrentContext().getMeta().throwEx(IllegalMonitorStateException.class);
+        }
         hostUnsafe.monitorExit(obj);
     }
     // endregion
