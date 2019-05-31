@@ -76,9 +76,9 @@ import javax.tools.Diagnostic.Kind;
 
 import org.graalvm.options.OptionCategory;
 import org.graalvm.options.OptionDescriptor;
-import org.graalvm.options.NamePredicate;
 import org.graalvm.options.OptionDescriptors;
 import org.graalvm.options.OptionKey;
+import org.graalvm.options.OptionMap;
 import org.graalvm.options.OptionStability;
 
 import com.oracle.truffle.api.Option;
@@ -258,6 +258,13 @@ public class OptionProcessor extends AbstractProcessor {
             return false;
         }
 
+        boolean optionMap = false;
+        TypeMirror optionMapType = ElementUtils.getTypeElement(processingEnv, OptionMap.class.getName()).asType();
+        List<? extends TypeMirror> typeArguments = ((DeclaredType) fieldType).getTypeArguments();
+        if (typeArguments.size() == 1) {
+            optionMap = types.isSubtype(typeArguments.get(0), types.erasure(optionMapType));
+        }
+
         String help = annotation.help();
         if (help.length() != 0) {
             char firstChar = help.charAt(0);
@@ -298,7 +305,7 @@ public class OptionProcessor extends AbstractProcessor {
                     name = group + "." + optionName;
                 }
             }
-            info.options.add(new OptionInfo(name, help, field, elementAnnotation, deprecated, category, stability, annotation.namePredicate()));
+            info.options.add(new OptionInfo(name, help, field, elementAnnotation, deprecated, category, stability, optionMap));
         }
         return true;
     }
@@ -357,7 +364,7 @@ public class OptionProcessor extends AbstractProcessor {
 
         boolean elseIf = false;
         for (OptionInfo info : model.options) {
-            if (info.predicate != NamePredicate.PREFIX) {
+            if (!info.optionMap) {
                 continue;
             }
             elseIf = builder.startIf(elseIf);
@@ -371,7 +378,7 @@ public class OptionProcessor extends AbstractProcessor {
 
         boolean startSwitch = false;
         for (OptionInfo info : model.options) {
-            if (info.predicate != NamePredicate.EXACT) {
+            if (info.optionMap) {
                 continue;
             }
             if (!startSwitch) {
@@ -430,7 +437,7 @@ public class OptionProcessor extends AbstractProcessor {
         builder.startCall("", "help").doubleQuote(info.help).end();
         builder.startCall("", "category").staticReference(context.getType(OptionCategory.class), info.category.name()).end();
         builder.startCall("", "stability").staticReference(context.getType(OptionStability.class), info.stability.name()).end();
-        builder.startCall("", "namePredicate").staticReference(context.getType(NamePredicate.class), info.predicate.name()).end();
+        builder.startCall("", "optionMap").string(Boolean.toString(info.optionMap)).end();
 
         builder.startCall("", "build").end();
         return builder.build();
@@ -442,13 +449,13 @@ public class OptionProcessor extends AbstractProcessor {
         final String name;
         final String help;
         final boolean deprecated;
-        final NamePredicate predicate;
+        final boolean optionMap;
         final VariableElement field;
         final AnnotationMirror annotation;
         final OptionCategory category;
         final OptionStability stability;
 
-        OptionInfo(String name, String help, VariableElement field, AnnotationMirror annotation, boolean deprecated, OptionCategory category, OptionStability stability, NamePredicate namePredicate) {
+        OptionInfo(String name, String help, VariableElement field, AnnotationMirror annotation, boolean deprecated, OptionCategory category, OptionStability stability, boolean optionMap) {
             this.name = name;
             this.help = help;
             this.field = field;
@@ -456,7 +463,7 @@ public class OptionProcessor extends AbstractProcessor {
             this.deprecated = deprecated;
             this.category = category;
             this.stability = stability;
-            this.predicate = namePredicate;
+            this.optionMap = optionMap;
         }
 
         @Override

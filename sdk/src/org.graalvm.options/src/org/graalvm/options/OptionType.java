@@ -261,26 +261,25 @@ public final class OptionType<T> {
         }));
     }
 
-    private static class ReadonlyPropertiesMap<V> extends AbstractMap<String, V> {
+    private static class ReadOnlyOptionMap<V> extends AbstractMap<String, V> implements OptionMap<V> {
 
         final Map<String, V> backingMap;
         final Map<String, V> readonlyMap;
 
-        ReadonlyPropertiesMap(Map<String, V> map) {
+        ReadOnlyOptionMap(Map<String, V> map) {
             this.readonlyMap = Collections.unmodifiableMap(map);
             this.backingMap = map;
+        }
+
+        @Override
+        public V get(String key) {
+            return readonlyMap.get(key);
         }
 
         @Override
         public Set<Entry<String, V>> entrySet() {
             return readonlyMap.entrySet();
         }
-
-        @Override
-        public V get(Object key) {
-            return readonlyMap.get(key);
-        }
-
     }
 
     /**
@@ -295,27 +294,33 @@ public final class OptionType<T> {
     }
 
     /**
-     * Returns the default option type for property maps for the given value class. Returns
+     * Returns the default option type for option maps for the given value class. Returns
      * <code>null</code> if no default option type is available for the value class.
      *
      * @since 19.0
      */
     @SuppressWarnings("unchecked")
-    public static <V> OptionType<Map<String, V>> mapOf(Class<V> valueClass) {
+    public static <V> OptionType<OptionMap<V>> mapOf(Class<V> valueClass) {
         final OptionType<V> valueType = defaultType(valueClass);
         if (valueType == null) {
             return null;
         }
-        return new OptionType<>("Map", new Converter<Map<String, V>>() {
-            public Map<String, V> convert(Map<String, V> previousValue, String key, String value) {
-                Map<String, V> map = previousValue;
-                if (!(map instanceof ReadonlyPropertiesMap)) {
-                    map = new ReadonlyPropertiesMap<>(new HashMap<>(map));
+        return new OptionType<OptionMap<V>>("Map", new Converter<OptionMap<V>>() {
+            public OptionMap<V> convert(OptionMap<V> previousValue, String key, String value) {
+                OptionMap<V> map = previousValue;
+                if (!(map instanceof OptionType.ReadOnlyOptionMap)) {
+
+                    Map<String, V> copy = new HashMap<String, V>();
+                    for (Map.Entry<String, V> entry : previousValue.entrySet()) {
+                        copy.put(entry.getKey(), entry.getValue());
+                    }
+
+                    map = new ReadOnlyOptionMap<V>(copy);
                 }
-                ((ReadonlyPropertiesMap<V>) map).backingMap.put(key, valueType.convert(map.get(key), key, value));
+                ((ReadOnlyOptionMap<V>) map).backingMap.put(key, valueType.convert(map.get(key), key, value));
                 return map;
             }
-        }, (Consumer<Map<String, V>>) EMPTY_VALIDATOR);
+        }, (Consumer<OptionMap<V>>) EMPTY_VALIDATOR);
     }
 
     /**

@@ -54,9 +54,9 @@ import java.util.Map;
 
 import org.graalvm.options.OptionCategory;
 import org.graalvm.options.OptionDescriptor;
-import org.graalvm.options.NamePredicate;
 import org.graalvm.options.OptionDescriptors;
 import org.graalvm.options.OptionKey;
+import org.graalvm.options.OptionMap;
 import org.graalvm.options.OptionStability;
 import org.graalvm.options.OptionType;
 import org.graalvm.options.OptionValues;
@@ -86,6 +86,7 @@ public class OptionProcessorTest {
         descriptor1 = descriptor = descriptors.get("optiontestlang1.StringOption1");
         assertNotNull(descriptor);
         assertTrue(descriptor.isDeprecated());
+        assertFalse(descriptor.isOptionMap());
         assertSame(OptionCategory.USER, descriptor.getCategory());
         assertSame(OptionStability.EXPERIMENTAL, descriptor.getStability());
         assertEquals("StringOption1 help", descriptor.getHelp());
@@ -95,6 +96,7 @@ public class OptionProcessorTest {
         assertNotNull(descriptor);
         assertEquals("StringOption2 help", descriptor.getHelp());
         assertFalse(descriptor.isDeprecated());
+        assertFalse(descriptor.isOptionMap());
         assertSame(OptionCategory.EXPERT, descriptor.getCategory());
         assertSame(OptionTestLang1.StringOption2, descriptor.getKey());
 
@@ -102,6 +104,7 @@ public class OptionProcessorTest {
         assertNotNull(descriptor);
         assertEquals("Help for lowerCaseOption", descriptor.getHelp());
         assertTrue(descriptor.isDeprecated());
+        assertFalse(descriptor.isOptionMap());
         assertSame(OptionCategory.INTERNAL, descriptor.getCategory());
         assertSame(OptionTestLang1.LOWER_CASE_OPTION, descriptor.getKey());
 
@@ -109,6 +112,7 @@ public class OptionProcessorTest {
         assertNotNull(descriptor);
         assertEquals("Stable Option Help", descriptor.getHelp());
         assertFalse(descriptor.isDeprecated());
+        assertFalse(descriptor.isOptionMap());
         assertSame(OptionCategory.USER, descriptor.getCategory());
         assertSame(OptionStability.STABLE, descriptor.getStability());
         assertSame(OptionTestLang1.StableOption, descriptor.getKey());
@@ -141,6 +145,7 @@ public class OptionProcessorTest {
         descriptor1 = descriptor = descriptors.get("optiontestinstr1.StringOption1");
         assertNotNull(descriptor);
         assertTrue(descriptor.isDeprecated());
+        assertFalse(descriptor.isOptionMap());
         assertSame(OptionCategory.USER, descriptor.getCategory());
         assertEquals("StringOption1 help", descriptor.getHelp());
         assertSame(OptionTestInstrument1.StringOption1, descriptor.getKey());
@@ -149,6 +154,7 @@ public class OptionProcessorTest {
         assertNotNull(descriptor);
         assertEquals("StringOption2 help", descriptor.getHelp());
         assertFalse(descriptor.isDeprecated());
+        assertFalse(descriptor.isOptionMap());
         assertSame(OptionCategory.EXPERT, descriptor.getCategory());
         assertSame(OptionTestInstrument1.StringOption2, descriptor.getKey());
 
@@ -205,35 +211,17 @@ public class OptionProcessorTest {
         OptionDescriptor descriptor = descriptors.get("prefix.Prefix.DynamicPropertySetAtRuntimeWhoseNameIsNotKnown");
         assertNotNull(descriptor);
         assertEquals(OptionCategory.USER, descriptor.getCategory());
-        assertEquals(NamePredicate.PREFIX, descriptor.getNamePredicate());
+        assertTrue(descriptor.isOptionMap());
         assertEquals("prefix.Prefix", descriptor.getName());
         assertEquals(OptionStability.STABLE, descriptor.getStability());
         assertEquals("Prefix option help", descriptor.getHelp());
-        assertEquals(Collections.emptyMap(), descriptor.getKey().getDefaultValue());
-
-        OptionDescriptor descriptor2 = descriptors.get("prefix.Prefix2.DynamicPropertySetAtRuntimeWhoseNameIsNotKnown");
-        assertNotNull(descriptor2);
-        assertEquals("prefix.Prefix2", descriptor2.getName());
-        assertEquals(Prefix.NON_EMPTY_DEFAULT_OPTIONS, descriptor2.getKey().getDefaultValue());
+        assertEquals(OptionMap.emptyMap(), descriptor.getKey().getDefaultValue());
     }
 
     @Option.Group("prefix")
     public static class Prefix {
-
-        private static Map<String, String> nonEmptyDefaultOptions() {
-            Map<String, String> options = new HashMap<>();
-            options.put("answer", "42");
-            options.put("OneVMToRuleThemAll", "GraalVM");
-            return Collections.unmodifiableMap(options);
-        }
-
-        public static final Map<String, String> NON_EMPTY_DEFAULT_OPTIONS = nonEmptyDefaultOptions();
-
-        @Option(help = "Prefix option help", category = OptionCategory.USER, stability = OptionStability.STABLE, namePredicate = NamePredicate.PREFIX) //
-        static final OptionKey<Map<String, String>> Prefix = OptionKey.mapOf(String.class);
-
-        @Option(help = "", category = OptionCategory.USER, namePredicate = NamePredicate.PREFIX) //
-        static final OptionKey<Map<String, String>> Prefix2 = new OptionKey<>(NON_EMPTY_DEFAULT_OPTIONS, OptionType.mapOf(String.class));
+        @Option(help = "Prefix option help", category = OptionCategory.USER, stability = OptionStability.STABLE) //
+        static final OptionKey<OptionMap<String>> Prefix = OptionKey.mapOf(String.class);
     }
 
     @Option.Group("foobar")

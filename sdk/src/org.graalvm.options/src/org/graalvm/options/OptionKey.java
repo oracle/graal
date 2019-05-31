@@ -90,12 +90,12 @@ public final class OptionKey<T> {
      * 
      * @since 19.0
      */
-    public static <V> OptionKey<Map<String, V>> mapOf(Class<V> valueClass) {
-        OptionType<Map<String, V>> type = OptionType.mapOf(valueClass);
+    public static <V> OptionKey<OptionMap<V>> mapOf(Class<V> valueClass) {
+        OptionType<OptionMap<V>> type = OptionType.mapOf(valueClass);
         if (type == null) {
             throw new IllegalArgumentException("No default type specified for type " + valueClass.getName());
         }
-        return new OptionKey<>(Collections.emptyMap(), type);
+        return new OptionKey<>(OptionMap.emptyMap(), type);
     }
 
     /**

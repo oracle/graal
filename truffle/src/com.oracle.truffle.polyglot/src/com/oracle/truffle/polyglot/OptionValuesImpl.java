@@ -145,16 +145,10 @@ final class OptionValuesImpl implements OptionValues {
         }
         String name = descriptor.getName();
         String suffix = null;
-        switch (descriptor.getNamePredicate()) {
-            case PREFIX:
-                suffix = key.substring(name.length());
-                assert suffix.startsWith(".");
-                suffix = suffix.substring(1);
-                break;
-            case EXACT:
-                break;
-            default:
-                throw new AssertionError("Unsupported predicate.");
+        if (descriptor.isOptionMap()) {
+            suffix = key.substring(name.length());
+            assert suffix.startsWith(".");
+            suffix = suffix.substring(1);
         }
         values.put(descriptor.getKey(), optionKey.getType().convert(previousValue, suffix, value));
     }

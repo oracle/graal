@@ -126,10 +126,8 @@ class OptionDescriptorsMap implements OptionDescriptors {
 
     OptionDescriptorsMap(List<OptionDescriptor> descriptorList) {
         for (OptionDescriptor descriptor : descriptorList) {
-            switch (descriptor.getNamePredicate()) {
-                case PREFIX:
-                    prefixes.add(descriptor.getName());
-                    break;
+            if (descriptor.isOptionMap()) {
+                prefixes.add(descriptor.getName());
             }
             descriptors.put(descriptor.getName(), descriptor);
         }

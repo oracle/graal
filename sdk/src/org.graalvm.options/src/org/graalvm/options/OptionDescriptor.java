@@ -55,16 +55,16 @@ public final class OptionDescriptor {
     private final OptionCategory category;
     private final OptionStability stability;
     private final boolean deprecated;
-    private final NamePredicate namePredicate;
+    private final boolean optionMap;
 
-    OptionDescriptor(OptionKey<?> key, String name, String help, OptionCategory category, OptionStability stability, boolean deprecated, NamePredicate namePredicate) {
+    OptionDescriptor(OptionKey<?> key, String name, String help, OptionCategory category, OptionStability stability, boolean deprecated, boolean optionMap) {
         this.key = key;
         this.name = name;
         this.help = help;
         this.category = category;
         this.stability = stability;
         this.deprecated = deprecated;
-        this.namePredicate = namePredicate;
+        this.optionMap = optionMap;
     }
 
     /**
@@ -96,12 +96,13 @@ public final class OptionDescriptor {
     }
 
     /**
-     * Returns the type of this option.
+     * Returns <code>true</code> if this option is an option map. Options maps allow to collect
+     * key=value pairs whose keys are unknown beforehand e.g. user defined properties.
      *
      * @since 19.0
      */
-    public NamePredicate getNamePredicate() {
-        return namePredicate;
+    public boolean isOptionMap() {
+        return optionMap;
     }
 
     /**
@@ -150,7 +151,7 @@ public final class OptionDescriptor {
     public int hashCode() {
         final int prime = 31;
         int result = 1;
-        result = prime * result + ((namePredicate == null) ? 0 : namePredicate.hashCode());
+        result = prime * result + (optionMap ? 1231 : 1237);
         result = prime * result + (deprecated ? 1231 : 1237);
         result = prime * result + ((help == null) ? 0 : help.hashCode());
         result = prime * result + ((key == null) ? 0 : key.hashCode());
@@ -193,7 +194,7 @@ public final class OptionDescriptor {
         return EMPTY.new Builder(key, name);
     }
 
-    private static final OptionDescriptor EMPTY = new OptionDescriptor(null, null, null, null, null, false, NamePredicate.EXACT);
+    private static final OptionDescriptor EMPTY = new OptionDescriptor(null, null, null, null, null, false, false);
 
     /**
      * Represents an option descriptor builder.
@@ -208,7 +209,7 @@ public final class OptionDescriptor {
         private OptionCategory category = OptionCategory.INTERNAL;
         private OptionStability stability = OptionStability.EXPERIMENTAL;
         private String help = "";
-        private NamePredicate namePredicate = NamePredicate.EXACT;
+        private boolean optionMap = false;
 
         Builder(OptionKey<?> key, String name) {
             this.key = key;
@@ -266,8 +267,8 @@ public final class OptionDescriptor {
          *
          * @since 19.0
          */
-        public Builder namePredicate(@SuppressWarnings("hiding") NamePredicate namePredicate) {
-            this.namePredicate = namePredicate;
+        public Builder optionMap(@SuppressWarnings("hiding") boolean optionMap) {
+            this.optionMap = optionMap;
             return this;
         }
 
@@ -277,7 +278,7 @@ public final class OptionDescriptor {
          * @since 19.0
          */
         public OptionDescriptor build() {
-            return new OptionDescriptor(key, name, help, category, stability, deprecated, namePredicate);
+            return new OptionDescriptor(key, name, help, category, stability, deprecated, optionMap);
         }
     }
 
