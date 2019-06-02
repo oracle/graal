@@ -26,6 +26,7 @@ package com.oracle.svm.core.code;
 
 import static com.oracle.svm.core.util.VMError.shouldNotReachHere;
 
+import java.nio.ByteBuffer;
 import java.util.BitSet;
 import java.util.TreeMap;
 
@@ -261,8 +262,10 @@ public class CodeInfoEncoder {
             writeDeoptFrameInfo(encodingBuffer, data, entryFlags);
         }
 
-        codeInfoIndex = indexBuffer.toArray(newByteArray(TypeConversion.asU4(indexBuffer.getBytesWritten())));
-        codeInfoEncodings = encodingBuffer.toArray(newByteArray(TypeConversion.asU4(encodingBuffer.getBytesWritten())));
+        codeInfoIndex = newByteArray(TypeConversion.asU4(indexBuffer.getBytesWritten()));
+        indexBuffer.toByteBuffer(ByteBuffer.wrap(codeInfoIndex));
+        codeInfoEncodings = newByteArray(TypeConversion.asU4(encodingBuffer.getBytesWritten()));
+        encodingBuffer.toByteBuffer(ByteBuffer.wrap(codeInfoEncodings));
     }
 
     private byte[] newByteArray(int length) {

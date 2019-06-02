@@ -24,6 +24,7 @@
  */
 package com.oracle.svm.core.code;
 
+import java.nio.ByteBuffer;
 import java.util.List;
 
 import org.graalvm.collections.EconomicMap;
@@ -60,7 +61,8 @@ public class DeoptimizationSourcePositionEncoder {
         deoptimizationStartOffsets = newIntArray(deoptimzationSourcePositions.size());
 
         encodeSourcePositions(deoptimzationSourcePositions, sourcePositionStartOffsets, encodingBuffer);
-        deoptimizationEncodings = encodingBuffer.toArray(newByteArray(TypeConversion.asS4(encodingBuffer.getBytesWritten())));
+        deoptimizationEncodings = newByteArray(TypeConversion.asS4(encodingBuffer.getBytesWritten()));
+        encodingBuffer.toByteBuffer(ByteBuffer.wrap(deoptimizationEncodings));
 
         verifyEncoding(deoptimzationSourcePositions);
     }

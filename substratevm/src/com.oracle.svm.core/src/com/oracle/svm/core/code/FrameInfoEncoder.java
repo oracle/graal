@@ -26,6 +26,7 @@ package com.oracle.svm.core.code;
 
 import static com.oracle.svm.core.util.VMError.shouldNotReachHere;
 
+import java.nio.ByteBuffer;
 import java.util.ArrayList;
 import java.util.BitSet;
 import java.util.List;
@@ -513,7 +514,8 @@ public class FrameInfoEncoder {
             data.indexInEncodings = encodingBuffer.getBytesWritten();
             encodeFrameData(data, encodingBuffer);
         }
-        frameInfoEncodings = encodingBuffer.toArray(newByteArray(TypeConversion.asS4(encodingBuffer.getBytesWritten())));
+        frameInfoEncodings = newByteArray(TypeConversion.asS4(encodingBuffer.getBytesWritten()));
+        encodingBuffer.toByteBuffer(ByteBuffer.wrap(frameInfoEncodings));
     }
 
     private Object[] newObjectArray(int length) {

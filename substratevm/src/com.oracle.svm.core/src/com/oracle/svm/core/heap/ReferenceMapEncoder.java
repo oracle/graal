@@ -24,6 +24,7 @@
  */
 package com.oracle.svm.core.heap;
 
+import java.nio.ByteBuffer;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
@@ -92,7 +93,9 @@ public abstract class ReferenceMapEncoder {
         encodeAll(sortedEntries);
 
         int length = TypeConversion.asS4(writeBuffer.getBytesWritten());
-        return writeBuffer.toArray(newByteArray(allocator, length));
+        byte[] array = newByteArray(allocator, length);
+        writeBuffer.toByteBuffer(ByteBuffer.wrap(array));
+        return array;
     }
 
     public long lookupEncoding(ReferenceMapEncoder.Input referenceMap) {
