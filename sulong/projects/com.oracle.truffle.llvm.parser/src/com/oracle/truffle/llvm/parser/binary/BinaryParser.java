@@ -34,15 +34,15 @@ import com.oracle.truffle.llvm.parser.elf.ElfFile;
 import com.oracle.truffle.llvm.parser.elf.ElfSectionHeaderTable;
 import com.oracle.truffle.llvm.parser.macho.MachOFile;
 import com.oracle.truffle.llvm.parser.macho.Xar;
-import com.oracle.truffle.llvm.parser.model.ModelModule;
 import com.oracle.truffle.llvm.parser.scanner.BitStream;
 import org.graalvm.polyglot.io.ByteSequence;
 
+import java.util.ArrayList;
 import java.util.List;
 
 /**
- * Parses a binary {@linkplain ByteSequence file} and returns the embedded {@linkplain ByteSequence bitcode data}.
- * Supported file types are plain bitcode, ELF files, and Mach-O files.
+ * Parses a binary {@linkplain ByteSequence file} and returns the embedded {@linkplain ByteSequence
+ * bitcode data}. Supported file types are plain bitcode, ELF files, and Mach-O files.
  */
 public final class BinaryParser {
 
@@ -87,19 +87,20 @@ public final class BinaryParser {
         }
     }
 
-    public static ModelModule parse(ByteSequence bytes) {
+    public static BinaryParserResult parse(ByteSequence bytes) {
         assert bytes != null;
 
-        final ModelModule model = new ModelModule();
-        ByteSequence bitcode = parseBitcode(bytes, model);
+        List<String> libraries = new ArrayList<>();
+        List<String> paths = new ArrayList<>();
+        ByteSequence bitcode = parseBitcode(bytes, libraries, paths);
         if (bitcode == null) {
             // unsupported file
             return null;
         }
-        return model;
+        return new BinaryParserResult(libraries, paths, bitcode);
     }
 
-    private static ByteSequence parseBitcode(ByteSequence bytes, ModelModule model) {
+    private static ByteSequence parseBitcode(ByteSequence bytes, List<String> libraries, List<String> paths) {
         BitStream b = BitStream.create(bytes);
         Magic magicWord = Magic.get(b);
         switch (magicWord) {
@@ -122,10 +123,8 @@ public final class BinaryParser {
                 }
                 ElfDynamicSection dynamicSection = elfFile.getDynamicSection();
                 if (dynamicSection != null) {
-                    List<String> libraries = dynamicSection.getDTNeeded();
-                    List<String> paths = dynamicSection.getDTRPath();
-                    model.addLibraries(libraries);
-                    model.addLibraryPaths(paths);
+                    libraries.addAll(dynamicSection.getDTNeeded());
+                    paths.addAll(dynamicSection.getDTRPath());
                 }
                 long elfOffset = llvmbc.getOffset();
                 long elfSize = llvmbc.getSize();
@@ -136,21 +135,20 @@ public final class BinaryParser {
             case MH_CIGAM_64:
                 MachOFile machOFile = MachOFile.create(bytes);
 
-                List<String> libraries = machOFile.getDyLibs();
-                model.addLibraries(libraries);
+                libraries.addAll(machOFile.getDyLibs());
 
                 ByteSequence machoBitcode = machOFile.extractBitcode();
                 if (machoBitcode == null) {
                     return null;
                 }
-                return parseBitcode(machoBitcode, model);
+                return parseBitcode(machoBitcode, libraries, paths);
             case XAR_MAGIC:
                 Xar xarFile = Xar.create(bytes);
                 ByteSequence xarBitcode = xarFile.extractBitcode();
                 if (xarBitcode == null) {
                     return null;
                 }
-                return parseBitcode(xarBitcode, model);
+                return parseBitcode(xarBitcode, libraries, paths);
             default:
                 return null;
         }

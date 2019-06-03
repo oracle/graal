@@ -30,7 +30,6 @@
 package com.oracle.truffle.llvm.parser.model;
 
 import java.util.ArrayList;
-import java.util.Collections;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -46,7 +45,6 @@ import com.oracle.truffle.llvm.parser.model.target.TargetInformation;
 import com.oracle.truffle.llvm.runtime.debug.scope.LLVMSourceSymbol;
 import com.oracle.truffle.llvm.runtime.debug.type.LLVMSourceStaticMemberType;
 import com.oracle.truffle.llvm.runtime.types.Type;
-import org.graalvm.polyglot.io.ByteSequence;
 
 public final class ModelModule {
 
@@ -60,14 +58,11 @@ public final class ModelModule {
     private final ArrayList<FunctionDeclaration> declares = new ArrayList<>();
     private final ArrayList<FunctionDefinition> defines = new ArrayList<>();
     private final ArrayList<TargetInformation> targetInfo = new ArrayList<>();
-    private final ArrayList<String> libraries = new ArrayList<>();
-    private final ArrayList<String> paths = new ArrayList<>();
     private final HashMap<LLVMSourceSymbol, SymbolImpl> sourceGlobals = new HashMap<>();
     private final HashMap<LLVMSourceStaticMemberType, SymbolImpl> sourceStaticMembers = new HashMap<>();
     private final HashMap<FunctionDefinition, LazyFunctionParser> lazyFunctionParsers = new HashMap<>();
     private TargetDataLayout targetDataLayout = defaultLayout;
     private DebugInfoFunctionProcessor functionProcessor = null;
-    private ByteSequence bitcode;
 
     public ModelModule() {
     }
@@ -147,29 +142,5 @@ public final class ModelModule {
     @Override
     public String toString() {
         return String.format("Model (%d defines, %d declares, %d global variables, %d aliases, %d types)", defines.size(), declares.size(), globalVariables.size(), aliases.size(), types.size());
-    }
-
-    public void addLibraries(List<String> l) {
-        this.libraries.addAll(l);
-    }
-
-    public List<String> getLibraries() {
-        return Collections.unmodifiableList(libraries);
-    }
-
-    public void addLibraryPaths(List<String> p) {
-        this.paths.addAll(p);
-    }
-
-    public List<String> getLibraryPaths() {
-        return Collections.unmodifiableList(paths);
-    }
-
-    public ByteSequence getBitcode() {
-        return bitcode;
-    }
-
-    public void setBitcode(ByteSequence bitcode) {
-        this.bitcode = bitcode;
     }
 }
