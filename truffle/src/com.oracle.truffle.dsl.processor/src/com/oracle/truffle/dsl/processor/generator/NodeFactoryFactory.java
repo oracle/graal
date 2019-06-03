@@ -180,7 +180,11 @@ public class NodeFactoryFactory {
         String className = createdFactoryElement.getSimpleName().toString();
         CodeTreeBuilder builder = method.createBuilder();
         builder.startReturn();
-        builder.string(className).string(".").string("UNCACHED");
+        if (node.isGenerateFactory()) {
+            builder.string(className).string(".").string("UNCACHED");
+        } else {
+            builder.string("UNCACHED");
+        }
         builder.end();
         return method;
     }
