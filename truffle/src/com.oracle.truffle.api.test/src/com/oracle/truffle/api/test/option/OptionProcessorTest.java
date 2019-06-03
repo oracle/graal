@@ -219,11 +219,7 @@ public class OptionProcessorTest {
         // A language option was set, not the instrument one. Instrument sees no option set:
         assertFalse(optionValues.hasSetOptions());
 
-        engine = Engine.newBuilder() //
-                        .allowExperimentalOptions(true) //
-                        .option("optiontestinstr1.Thresholds.MaxRetries", "123") //
-                        .option("optiontestinstr1.Thresholds.Capacity", "456") //
-                        .build();
+        engine = Engine.newBuilder().allowExperimentalOptions(true).option("optiontestinstr1.Thresholds.MaxRetries", "123").option("optiontestinstr1.Thresholds.Capacity", "456").build();
         optionValues = engine.getInstruments().get("optiontestinstr1").lookup(OptionValues.class);
         assertTrue(optionValues.hasSetOptions());
         assertNull(descriptors.get("optiontestinstr1.ThresholdsDoesNotMatchPrefix"));
