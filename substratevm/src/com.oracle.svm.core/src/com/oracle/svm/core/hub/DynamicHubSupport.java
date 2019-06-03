@@ -48,7 +48,7 @@ public final class DynamicHubSupport {
     }
 
     public static PinnedArray<Byte> getReferenceMapEncoding() {
-        return PinnedArrays.fromImageHeapOrPinnedAllocator(ImageSingletons.lookup(DynamicHubSupport.class).referenceMapEncoding);
+        return PinnedArrays.fromImageHeap(ImageSingletons.lookup(DynamicHubSupport.class).referenceMapEncoding);
     }
 }
 

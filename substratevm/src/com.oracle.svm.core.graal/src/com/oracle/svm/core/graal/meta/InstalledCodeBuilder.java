@@ -348,7 +348,7 @@ public class InstalledCodeBuilder {
 
             CodeReferenceMapEncoder encoder = new CodeReferenceMapEncoder();
             encoder.add(objectConstants.referenceMap);
-            constantsWalker.referenceMapEncoding = encoder.encodeAll(metaInfoAllocator);
+            constantsWalker.referenceMapEncoding = encoder.encodeAll();
             constantsWalker.referenceMapIndex = encoder.lookupEncoding(objectConstants.referenceMap);
             constantsWalker.baseAddr = code;
             constantsWalker.size = codeSize;
@@ -365,7 +365,7 @@ public class InstalledCodeBuilder {
 
             createCodeChunkInfos();
 
-            InstalledCodeObserver.InstalledCodeObserverHandle[] observerHandles = InstalledCodeObserverSupport.installObservers(codeObservers, metaInfoAllocator);
+            InstalledCodeObserver.InstalledCodeObserverHandle[] observerHandles = InstalledCodeObserverSupport.installObservers(codeObservers);
 
             runtimeMethodInfo.setData((CodePointer) code, WordFactory.unsigned(codeSize), installedCode, tier, constantsWalker, metaInfoAllocator, observerHandles);
         } finally {
@@ -407,13 +407,13 @@ public class InstalledCodeBuilder {
     }
 
     private void createCodeChunkInfos() {
-        CodeInfoEncoder codeInfoEncoder = new CodeInfoEncoder(new FrameInfoEncoder.NamesFromImage(), metaInfoAllocator);
+        CodeInfoEncoder codeInfoEncoder = new CodeInfoEncoder(new FrameInfoEncoder.NamesFromImage());
         codeInfoEncoder.addMethod(method, compilation, 0);
         codeInfoEncoder.encodeAll();
         codeInfoEncoder.install(runtimeMethodInfo);
         assert CodeInfoEncoder.verifyMethod(compilation, 0, CodeInfoTable.getRuntimeCodeInfoAccessor(), runtimeMethodInfo);
 
-        DeoptimizationSourcePositionEncoder sourcePositionEncoder = new DeoptimizationSourcePositionEncoder(metaInfoAllocator);
+        DeoptimizationSourcePositionEncoder sourcePositionEncoder = new DeoptimizationSourcePositionEncoder();
         sourcePositionEncoder.encode(compilation.getDeoptimizationSourcePositions());
         sourcePositionEncoder.install(runtimeMethodInfo);
     }

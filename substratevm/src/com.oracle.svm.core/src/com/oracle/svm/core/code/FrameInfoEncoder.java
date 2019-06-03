@@ -45,7 +45,6 @@ import com.oracle.svm.core.code.FrameInfoQueryResult.ValueInfo;
 import com.oracle.svm.core.code.FrameInfoQueryResult.ValueType;
 import com.oracle.svm.core.config.ConfigurationValues;
 import com.oracle.svm.core.config.ObjectLayout;
-import com.oracle.svm.core.heap.PinnedAllocator;
 import com.oracle.svm.core.hub.LayoutEncoding;
 import com.oracle.svm.core.meta.SharedField;
 import com.oracle.svm.core.meta.SharedMethod;
@@ -174,7 +173,6 @@ public class FrameInfoEncoder {
     }
 
     private final Customization customization;
-    private final PinnedAllocator allocator;
 
     private final List<FrameData> allDebugInfos;
     private final FrequencyEncoder<JavaConstant> objectConstants;
@@ -188,9 +186,8 @@ public class FrameInfoEncoder {
     protected PinnedObjectArray<String> frameInfoSourceMethodNames;
     protected PinnedObjectArray<String> frameInfoNames;
 
-    protected FrameInfoEncoder(Customization customization, PinnedAllocator allocator) {
+    protected FrameInfoEncoder(Customization customization) {
         this.customization = customization;
-        this.allocator = allocator;
         this.allDebugInfos = new ArrayList<>();
         this.objectConstants = FrequencyEncoder.createEqualityEncoder();
         if (FrameInfoDecoder.encodeDebugNames() || FrameInfoDecoder.encodeSourceReferences()) {

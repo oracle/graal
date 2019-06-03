@@ -37,20 +37,17 @@ import org.graalvm.compiler.graph.NodeSourcePosition;
 import com.oracle.svm.core.c.PinnedArray;
 import com.oracle.svm.core.c.PinnedArrays;
 import com.oracle.svm.core.c.PinnedObjectArray;
-import com.oracle.svm.core.heap.PinnedAllocator;
 import com.oracle.svm.core.util.ByteArrayReader;
 
 public class DeoptimizationSourcePositionEncoder {
 
-    private final PinnedAllocator allocator;
     private final FrequencyEncoder<Object> objectConstants;
 
     protected PinnedArray<Integer> deoptimizationStartOffsets;
     protected PinnedArray<Byte> deoptimizationEncodings;
     protected PinnedObjectArray<Object> deoptimizationObjectConstants;
 
-    public DeoptimizationSourcePositionEncoder(PinnedAllocator allocator) {
-        this.allocator = allocator;
+    public DeoptimizationSourcePositionEncoder() {
         this.objectConstants = FrequencyEncoder.createIdentityEncoder();
     }
 

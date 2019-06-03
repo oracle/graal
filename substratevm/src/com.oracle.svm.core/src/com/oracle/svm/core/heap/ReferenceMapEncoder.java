@@ -81,7 +81,7 @@ public abstract class ReferenceMapEncoder {
         usageCounts.put(input, newCount);
     }
 
-    public PinnedArray<Byte> encodeAll(PinnedAllocator allocator) {
+    public PinnedArray<Byte> encodeAll() {
         assert writeBuffer.getBytesWritten() == 0 : "encodeAll() must not be called multiple times";
 
         /*

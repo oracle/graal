@@ -193,7 +193,7 @@ public abstract class NativeImageCodeCache {
     public void buildRuntimeMetadata(CFunctionPointer firstMethod, UnsignedWord codeSize) {
         // Build run-time metadata.
         FrameInfoCustomization frameInfoCustomization = new FrameInfoCustomization();
-        CodeInfoEncoder codeInfoEncoder = new CodeInfoEncoder(frameInfoCustomization, null);
+        CodeInfoEncoder codeInfoEncoder = new CodeInfoEncoder(frameInfoCustomization);
         for (Entry<HostedMethod, CompilationResult> entry : compilations.entrySet()) {
             final HostedMethod method = entry.getKey();
             final CompilationResult compilation = entry.getValue();

@@ -44,6 +44,8 @@ import com.oracle.svm.core.SubstrateUtil;
 import com.oracle.svm.core.annotate.Uninterruptible;
 import com.oracle.svm.core.config.ConfigurationValues;
 import com.oracle.svm.core.heap.GC;
+import com.oracle.svm.core.heap.Heap;
+import com.oracle.svm.core.heap.ObjectHeader;
 import com.oracle.svm.core.heap.ObjectReferenceVisitor;
 import com.oracle.svm.core.heap.ObjectReferenceWalker;
 import com.oracle.svm.core.hub.DynamicHub;
@@ -155,17 +157,18 @@ public final class PinnedArrays {
 
     /** Returns a {@link PinnedArray} for an array of primitives in the image heap. */
     @SuppressWarnings("unchecked")
-    public static <T> PinnedArray<T> fromImageHeapOrPinnedAllocator(Object array) {
+    public static <T> PinnedArray<T> fromImageHeap(Object array) {
         if (SubstrateUtil.HOSTED) {
             return (array != null) ? new HostedPinnedArray<>(array) : (PinnedArray<T>) HostedPinnedArray.NULL_VALUE;
         }
+        assert array == null || Heap.getHeap().getObjectHeader().isNonHeapAllocatedHeader(ObjectHeader.readHeaderFromObject(array));
         return (array != null) ? (PinnedArray<T>) Word.objectToUntrackedPointer(array) : WordFactory.nullPointer();
     }
 
     /** Returns a {@link PinnedObjectArray} for an object array in the image heap. */
     @SuppressWarnings("unchecked")
-    public static <T> PinnedObjectArray<T> fromImageHeapOrPinnedAllocator(Object[] array) {
-        return (PinnedObjectArray<T>) fromImageHeapOrPinnedAllocator((Object) array);
+    public static <T> PinnedObjectArray<T> fromImageHeap(Object[] array) {
+        return (PinnedObjectArray<T>) fromImageHeap((Object) array);
     }
 
     /** During the image build, retrieve the array object that will be pinned. */

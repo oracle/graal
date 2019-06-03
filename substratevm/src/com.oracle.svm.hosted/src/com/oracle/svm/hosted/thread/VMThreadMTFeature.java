@@ -280,7 +280,7 @@ public class VMThreadMTFeature implements GraalFeature {
 
         InstanceReferenceMapEncoder encoder = new InstanceReferenceMapEncoder();
         encoder.add(referenceMap);
-        PinnedArray<Byte> referenceMapEncoding = encoder.encodeAll(null);
+        PinnedArray<Byte> referenceMapEncoding = encoder.encodeAll();
         objectReferenceWalker.vmThreadReferenceMapEncoding = PinnedArrays.getHostedArray(referenceMapEncoding);
         objectReferenceWalker.vmThreadReferenceMapIndex = encoder.lookupEncoding(referenceMap);
         objectReferenceWalker.vmThreadSize = nextOffset;

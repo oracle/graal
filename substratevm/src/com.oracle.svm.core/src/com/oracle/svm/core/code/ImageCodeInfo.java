@@ -67,11 +67,11 @@ public class ImageCodeInfo implements CodeInfo {
     }
 
     static PinnedArray<Byte> pa(byte[] array) {
-        return PinnedArrays.fromImageHeapOrPinnedAllocator(array);
+        return PinnedArrays.fromImageHeap(array);
     }
 
     static <T> PinnedObjectArray<T> pa(T[] array) {
-        return PinnedArrays.fromImageHeapOrPinnedAllocator(array);
+        return PinnedArrays.fromImageHeap(array);
     }
 
     @Platforms(Platform.HOSTED_ONLY.class)

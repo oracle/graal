@@ -49,7 +49,6 @@ import com.oracle.svm.core.deopt.DeoptEntryInfopoint;
 import com.oracle.svm.core.heap.CodeReferenceMapDecoder;
 import com.oracle.svm.core.heap.CodeReferenceMapEncoder;
 import com.oracle.svm.core.heap.ObjectReferenceVisitor;
-import com.oracle.svm.core.heap.PinnedAllocator;
 import com.oracle.svm.core.heap.ReferenceMapEncoder;
 import com.oracle.svm.core.heap.SubstrateReferenceMap;
 import com.oracle.svm.core.hub.DynamicHub;
@@ -103,7 +102,6 @@ public class CodeInfoEncoder {
         protected IPData next;
     }
 
-    private final PinnedAllocator allocator;
     private final TreeMap<Long, IPData> entries;
     private final FrameInfoEncoder frameInfoEncoder;
 
@@ -111,10 +109,9 @@ public class CodeInfoEncoder {
     private PinnedArray<Byte> codeInfoEncodings;
     private PinnedArray<Byte> referenceMapEncoding;
 
-    public CodeInfoEncoder(FrameInfoEncoder.Customization frameInfoCustomization, PinnedAllocator allocator) {
-        this.allocator = allocator;
+    public CodeInfoEncoder(FrameInfoEncoder.Customization frameInfoCustomization) {
         this.entries = new TreeMap<>();
-        this.frameInfoEncoder = new FrameInfoEncoder(frameInfoCustomization, allocator);
+        this.frameInfoEncoder = new FrameInfoEncoder(frameInfoCustomization);
     }
 
     public static int getEntryOffset(Infopoint infopoint) {
@@ -200,7 +197,7 @@ public class CodeInfoEncoder {
         for (IPData data : entries.values()) {
             referenceMapEncoder.add(data.referenceMap);
         }
-        referenceMapEncoding = referenceMapEncoder.encodeAll(allocator);
+        referenceMapEncoding = referenceMapEncoder.encodeAll();
         for (IPData data : entries.values()) {
             data.referenceMapIndex = referenceMapEncoder.lookupEncoding(data.referenceMap);
         }
