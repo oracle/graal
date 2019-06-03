@@ -215,7 +215,7 @@ public abstract class G1WriteBarrierSnippets extends WriteBarrierSnippets implem
                     byte cardByteReload = cardAddress.readByte(0, GC_CARD_LOCATION);
                     if (probability(NOT_FREQUENT_PROBABILITY, cardByteReload != dirtyCardValue())) {
                         log(trace, "[%d] G1-Post Thread: %p Card: %p \n", gcCycle, thread.rawValue(), WordFactory.unsigned((int) cardByte).rawValue());
-                        cardAddress.writeByte(0, (byte) 0, GC_CARD_LOCATION);
+                        cardAddress.writeByte(0, dirtyCardValue(), GC_CARD_LOCATION);
                         counters.g1ExecutedPostWriteBarrierCounter.inc();
 
                         // If the thread local card queue is full, issue a native call which will
@@ -297,7 +297,7 @@ public abstract class G1WriteBarrierSnippets extends WriteBarrierSnippets implem
                 MembarNode.memoryBarrier(STORE_LOAD, GC_CARD_LOCATION);
                 byte cardByteReload = cur.readByte(0, GC_CARD_LOCATION);
                 if (probability(NOT_FREQUENT_PROBABILITY, cardByteReload != dirtyCardValue())) {
-                    cur.writeByte(0, (byte) 0, GC_CARD_LOCATION);
+                    cur.writeByte(0, dirtyCardValue(), GC_CARD_LOCATION);
                     // If the thread local card queue is full, issue a native call which will
                     // initialize a new one and add the card entry.
                     if (probability(FREQUENT_PROBABILITY, indexValue != 0)) {
