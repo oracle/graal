@@ -999,7 +999,7 @@ def build(args, vm=None):
         if not mx.is_windows():
             vm_link = join(svmbuild_dir(), 'vm')
             vm_linkname = os.path.relpath(_vm_home(config), dirname(vm_link))
-            if not os.path.lexists(vm_link):
+            if not os.path.exists(vm_link):
                 rebuild_vm = True
             elif os.readlink(vm_link) != vm_linkname:
                 rebuild_vm = True
