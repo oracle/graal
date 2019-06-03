@@ -134,7 +134,7 @@ ActPars<out List l>		(. LLVMExpressionNode n1=null, n2=null; l = new LinkedList<
 ")"
 .
 
-UnaryExpr<out LLVMExpressionNode n>		(. n=null; int kind=-1; .)
+UnaryExpr<out LLVMExpressionNode n>		(. n=null; int kind=-1; Type typeO=null;.)
 =
 Designator<out n>
 |
@@ -149,7 +149,7 @@ UnaryOp<out kind> CastExpr<out n> 		(. switch(kind) {
 												case 5: /*negate boolean/int*/ break;
 											} .)
 |
-"sizeof" "(" Type ")"
+"sizeof" "(" DType<out typeO> ")"	(. n=NF().createSimpleConstantNoArray(typeO.getBitSize()/8, Type.getIntegerType(32)); .)
 .
 
 UnaryOp<out int kind>		(. kind=-1; .)
@@ -166,10 +166,10 @@ UnaryOp<out int kind>		(. kind=-1; .)
 |
 "!" 						(. kind=5; .)
 .
-CastExpr<out LLVMExpressionNode n>		(. Object typeO=null; .)
+CastExpr<out LLVMExpressionNode n>		(. Type typeO=null; .)
 =
 [
-	IF (IsCast()) "(" Type ")"
+	IF (IsCast()) "(" DType<out typeO> ")"
 ]
 UnaryExpr<out n>
 .
@@ -306,9 +306,9 @@ LogOrExpr<out n>
 ]
 .
 
-Type
+DType<out Type t>	
 =
-BaseType 
+BaseType<out t> 
 (
 	 
 	{
@@ -326,41 +326,41 @@ BaseType
 	 "]"
 }
 .
-BaseType
+BaseType<out Type t> 	(. t=null; boolean signed=true;.)
 =
 "void"
 |
 ident
 |
 (
-	 "signed"
+	 "signed"	(. signed = true; .)
 	|
-	 "unsigned"
+	 "unsigned"	(. signed = false; .)
 )
 [
-	 "char"
+	 "char"		(. if(signed) {t = PrimitiveType.I8;} else {} .)
 	|
-	 "short"
+	 "short"	(. if(signed) {t = PrimitiveType.I16;} else {} .)
 	|
-	 "int"
+	 "int"		(. if(signed) {t = PrimitiveType.I32;} else {} .)
 	|
-	 "long"
+	 "long"		(. if(signed) {t = PrimitiveType.I64;} else {} .)
 ]
 |
-"char"
+"char"			(. t = PrimitiveType.I8;.)
 |
-"short"
+"short"			(. t = PrimitiveType.I16;.)
 |
-"int"
+"int"			(. t = PrimitiveType.I32;.)
 |
-"long" 
+"long" 			(. t = PrimitiveType.I64;.)
 [
-	 "double"
+	 "double"	(. t = PrimitiveType.F128;.)
 ]
 |
-"float"
+"float"			(. t = PrimitiveType.FLOAT;.)
 |
-"double"
+"double"		(. t = PrimitiveType.DOUBLE;.)
 .
 
 

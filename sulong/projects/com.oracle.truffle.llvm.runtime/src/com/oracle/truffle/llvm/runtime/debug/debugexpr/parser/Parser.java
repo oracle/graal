@@ -271,7 +271,7 @@ public NodeFactory NF() {return context.getNodeFactory(); }
 
 	LLVMExpressionNode  UnaryExpr() {
 		LLVMExpressionNode  n;
-		n=null; int kind=-1; 
+		n=null; int kind=-1; Type typeO=null;
 		if (StartOf(3)) {
 			n = Designator();
 		} else if (StartOf(4)) {
@@ -290,8 +290,9 @@ public NodeFactory NF() {return context.getNodeFactory(); }
 		} else if (la.kind == 13) {
 			Get();
 			Expect(6);
-			Type();
+			typeO = DType();
 			Expect(7);
+			n=NF().createSimpleConstantNoArray(typeO.getBitSize()/8, Type.getIntegerType(32)); 
 		} else SynErr(47);
 		return n;
 	}
@@ -337,18 +338,19 @@ public NodeFactory NF() {return context.getNodeFactory(); }
 
 	LLVMExpressionNode  CastExpr() {
 		LLVMExpressionNode  n;
-		Object typeO=null; 
+		Type typeO=null; 
 		if (IsCast()) {
 			Expect(6);
-			Type();
+			typeO = DType();
 			Expect(7);
 		}
 		n = UnaryExpr();
 		return n;
 	}
 
-	void Type() {
-		BaseType();
+	Type  DType() {
+		Type  t;
+		t = BaseType();
 		if (la.kind == 7 || la.kind == 8 || la.kind == 15) {
 			while (la.kind == 15) {
 				Get();
@@ -363,6 +365,7 @@ public NodeFactory NF() {return context.getNodeFactory(); }
 			}
 			Expect(9);
 		}
+		return t;
 	}
 
 	LLVMExpressionNode  MultExpr() {
@@ -527,7 +530,9 @@ public NodeFactory NF() {return context.getNodeFactory(); }
 		return n;
 	}
 
-	void BaseType() {
+	Type  BaseType() {
+		Type  t;
+		t=null; boolean signed=true;
 		switch (la.kind) {
 		case 36: {
 			Get();
@@ -540,51 +545,65 @@ public NodeFactory NF() {return context.getNodeFactory(); }
 		case 37: case 38: {
 			if (la.kind == 37) {
 				Get();
+				signed = true; 
 			} else {
 				Get();
+				signed = false; 
 			}
 			if (StartOf(6)) {
 				if (la.kind == 39) {
 					Get();
+					if(signed) {t = PrimitiveType.I8;} else {} 
 				} else if (la.kind == 40) {
 					Get();
+					if(signed) {t = PrimitiveType.I16;} else {} 
 				} else if (la.kind == 41) {
 					Get();
+					if(signed) {t = PrimitiveType.I32;} else {} 
 				} else {
 					Get();
+					if(signed) {t = PrimitiveType.I64;} else {} 
 				}
 			}
 			break;
 		}
 		case 39: {
 			Get();
+			t = PrimitiveType.I8;
 			break;
 		}
 		case 40: {
 			Get();
+			t = PrimitiveType.I16;
 			break;
 		}
 		case 41: {
 			Get();
+			t = PrimitiveType.I32;
 			break;
 		}
 		case 42: {
 			Get();
+			t = PrimitiveType.I64;
 			if (la.kind == 43) {
 				Get();
+				t = PrimitiveType.F128;
 			}
 			break;
 		}
 		case 44: {
 			Get();
+			t = PrimitiveType.FLOAT;
 			break;
 		}
 		case 43: {
 			Get();
+			t = PrimitiveType.DOUBLE;
 			break;
 		}
 		default: SynErr(50); break;
 		}
+		return t;
 	}
 
 
@@ -724,7 +743,7 @@ class Errors {
 			case 46: s = "invalid PrimExpr"; break;
 			case 47: s = "invalid UnaryExpr"; break;
 			case 48: s = "invalid UnaryOp"; break;
-			case 49: s = "invalid Type"; break;
+			case 49: s = "invalid DType"; break;
 			case 50: s = "invalid BaseType"; break;
 			default: s = "error " + n; break;
 		}
