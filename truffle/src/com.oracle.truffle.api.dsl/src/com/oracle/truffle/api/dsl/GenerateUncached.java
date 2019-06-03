@@ -45,6 +45,7 @@ package com.oracle.truffle.api.dsl;
  * specialize and don't use any profiling state. This allows to store them statically and to use
  * them whenever no specialization/profiling is desired. The uncached version of the node is
  * accessible using a static method called <code>getUncached()</code> on the generated node.
+ * GenerateUncached is inherited to subclasses.
  * <p>
  * The generated code for the uncached version is based on the specialization closure. The
  * specialization closure only includes specializations that were are not replaced by others. This,
