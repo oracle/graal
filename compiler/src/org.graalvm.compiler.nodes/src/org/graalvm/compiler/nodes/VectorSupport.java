@@ -1,6 +1,11 @@
 package org.graalvm.compiler.nodes;
 
+import jdk.vm.ci.meta.Constant;
+import jdk.vm.ci.meta.PrimitiveConstant;
+import jdk.vm.ci.meta.SerializableConstant;
+import org.graalvm.compiler.core.common.LIRKind;
 import org.graalvm.compiler.core.common.type.Stamp;
+import org.graalvm.compiler.debug.GraalError;
 import org.graalvm.compiler.graph.Node;
 import org.graalvm.compiler.graph.NodeClass;
 import org.graalvm.compiler.graph.NodeInputList;
@@ -8,7 +13,11 @@ import org.graalvm.compiler.graph.spi.Canonicalizable;
 import org.graalvm.compiler.graph.spi.CanonicalizerTool;
 import org.graalvm.compiler.nodeinfo.NodeInfo;
 import org.graalvm.compiler.nodes.calc.FloatingNode;
+import org.graalvm.compiler.nodes.spi.LIRLowerable;
+import org.graalvm.compiler.nodes.spi.NodeLIRBuilderTool;
 
+import java.nio.ByteBuffer;
+import java.nio.ByteOrder;
 import java.util.List;
 import java.util.stream.StreamSupport;
 
@@ -45,7 +54,7 @@ public final class VectorSupport {
     }
 
     @NodeInfo
-    public static final class VectorPackNode extends FloatingNode implements Canonicalizable /*, LIRLowerable */ {
+    public static final class VectorPackNode extends FloatingNode implements Canonicalizable, LIRLowerable {
 
         public static final NodeClass<VectorPackNode> TYPE = NodeClass.create(VectorPackNode.class);
 
@@ -94,10 +103,34 @@ public final class VectorSupport {
 
             final VectorUnpackNode firstVTS = (VectorUnpackNode) first;
 
-            // What happens when we return null?
             replaceAtUsages(firstVTS.value);
 
             return null; // to delete the current node
+        }
+
+        @Override
+        public void generate(NodeLIRBuilderTool gen) {
+            // if all the values are constants
+            final boolean allPrimitiveConstant =
+                    values.stream().allMatch(x -> x.getStackKind().isPrimitive() && x.isConstant());
+
+            if (!allPrimitiveConstant) {
+                throw GraalError.shouldNotReachHere("Only primitive constants may be packed.");
+            }
+
+            // TODO: don't hardcode for integers
+            final ByteBuffer byteBuffer = ByteBuffer.allocate(values.count() * 4);
+            // TODO: don't hardcode for Intel
+            byteBuffer.order(ByteOrder.LITTLE_ENDIAN);
+
+            for (ValueNode node : values) {
+                final PrimitiveConstant value = (PrimitiveConstant) ((ConstantNode) node).getValue();
+                value.serialize(byteBuffer);
+            }
+
+            // TODO: don't hardcode for vector size
+            final LIRKind kind = gen.getLIRGeneratorTool().toVectorKind(gen.getLIRGeneratorTool().getLIRKind(stamp), 4);
+            gen.setResult(this, gen.getLIRGeneratorTool().emitPackConst(kind, byteBuffer));
         }
     }
 }

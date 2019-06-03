@@ -38,6 +38,7 @@ import static org.graalvm.compiler.hotspot.meta.HotSpotConstantLoadAction.RESOLV
 import static org.graalvm.compiler.lir.LIRValueUtil.asConstant;
 import static org.graalvm.compiler.lir.LIRValueUtil.isConstantValue;
 
+import java.nio.ByteBuffer;
 import java.util.function.Function;
 
 import org.graalvm.compiler.asm.Label;
@@ -536,6 +537,11 @@ public class AArch64HotSpotLIRGenerator extends AArch64LIRGenerator implements H
 
     public void setDebugInfoBuilder(HotSpotDebugInfoBuilder debugInfoBuilder) {
         this.debugInfoBuilder = debugInfoBuilder;
+    }
+
+    @Override
+    public Variable emitPackConst(LIRKind resultKind, ByteBuffer serializedValues) {
+        throw GraalError.unimplemented();
     }
 
     @Override

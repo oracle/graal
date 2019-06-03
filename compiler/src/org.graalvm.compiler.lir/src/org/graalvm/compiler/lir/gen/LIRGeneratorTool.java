@@ -60,6 +60,8 @@ import jdk.vm.ci.meta.PlatformKind;
 import jdk.vm.ci.meta.Value;
 import jdk.vm.ci.meta.ValueKind;
 
+import java.nio.ByteBuffer;
+
 public interface LIRGeneratorTool extends DiagnosticLIRGeneratorTool, ValueKindFactory<LIRKind> {
 
     /**
@@ -345,4 +347,6 @@ public interface LIRGeneratorTool extends DiagnosticLIRGeneratorTool, ValueKindF
     default Value emitReadReturnAddress(Stamp wordStamp, int returnAddressSize) {
         return emitMove(StackSlot.get(getLIRKind(wordStamp), -returnAddressSize, true));
     }
+    
+    Variable emitPackConst(LIRKind resultKind, ByteBuffer serializedValues);
 }

@@ -87,6 +87,8 @@ import jdk.vm.ci.meta.ValueKind;
 import jdk.vm.ci.sparc.SPARC;
 import jdk.vm.ci.sparc.SPARCKind;
 
+import java.nio.ByteBuffer;
+
 public class SPARCHotSpotLIRGenerator extends SPARCLIRGenerator implements HotSpotLIRGenerator {
 
     final GraalHotSpotVMConfig config;
@@ -395,6 +397,11 @@ public class SPARCHotSpotLIRGenerator extends SPARCLIRGenerator implements HotSp
     @Override
     protected StrategySwitchOp createStrategySwitchOp(AllocatableValue base, SwitchStrategy strategy, LabelRef[] keyTargets, LabelRef defaultTarget, Variable key, Variable scratchValue) {
         return new SPARCHotSpotStrategySwitchOp(base, strategy, keyTargets, defaultTarget, key, scratchValue);
+    }
+
+    @Override
+    public Variable emitPackConst(LIRKind resultKind, ByteBuffer serializedValues) {
+        throw GraalError.unimplemented();
     }
 
     public void setDebugInfoBuilder(HotSpotDebugInfoBuilder debugInfoBuilder) {

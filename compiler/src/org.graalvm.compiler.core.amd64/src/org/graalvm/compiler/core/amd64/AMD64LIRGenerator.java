@@ -113,6 +113,8 @@ import jdk.vm.ci.meta.VMConstant;
 import jdk.vm.ci.meta.Value;
 import jdk.vm.ci.meta.ValueKind;
 
+import java.nio.ByteBuffer;
+
 /**
  * This class implements the AMD64 specific portion of the LIR generator.
  */
@@ -733,6 +735,13 @@ public abstract class AMD64LIRGenerator extends LIRGenerator {
     @Override
     public void emitPause() {
         append(new AMD64PauseOp());
+    }
+
+    @Override
+    public Variable emitPackConst(LIRKind resultKind, ByteBuffer serializedValues) {
+        Variable result = newVariable(resultKind);
+        append(new AMD64Packing.PackConstantsOp(asAllocatable(result), serializedValues));
+        return result;
     }
 
     @Override
