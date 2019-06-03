@@ -32,8 +32,8 @@ package com.oracle.truffle.llvm.parser.macho;
 import java.util.ArrayList;
 import java.util.List;
 
+import com.oracle.truffle.llvm.parser.binary.BinaryParser;
 import com.oracle.truffle.llvm.parser.macho.MachOSegmentCommand.MachOSection;
-import com.oracle.truffle.llvm.parser.scanner.LLVMScanner;
 import com.oracle.truffle.llvm.runtime.except.LLVMParserException;
 import org.graalvm.polyglot.io.ByteSequence;
 
@@ -126,11 +126,11 @@ public final class MachOFile {
     }
 
     public static boolean isMachO32MagicNumber(long magic) {
-        return magic == LLVMScanner.Magic.MH_MAGIC.magic || magic == LLVMScanner.Magic.MH_CIGAM.magic;
+        return magic == BinaryParser.Magic.MH_MAGIC.magic || magic == BinaryParser.Magic.MH_CIGAM.magic;
     }
 
     public static boolean isMachO64MagicNumber(long magic) {
-        return magic == LLVMScanner.Magic.MH_MAGIC_64.magic || magic == LLVMScanner.Magic.MH_CIGAM_64.magic;
+        return magic == BinaryParser.Magic.MH_MAGIC_64.magic || magic == BinaryParser.Magic.MH_CIGAM_64.magic;
     }
 
 }
