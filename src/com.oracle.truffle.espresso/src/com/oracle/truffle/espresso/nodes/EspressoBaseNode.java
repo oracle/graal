@@ -71,11 +71,12 @@ public abstract class EspressoBaseNode extends Node implements ContextAccess, In
             //
             // synchronized (monitor) {
             InterpreterToVM.monitorEnter(monitor);
-            Object result = invokeNaked(frame);
-            if (!Thread.holdsLock(monitor)) {
-                throw getMeta().throwEx(IllegalMonitorStateException.class);
+            Object result;
+            try {
+                result = invokeNaked(frame);
+            } finally {
+                InterpreterToVM.monitorExit(monitor);
             }
-            InterpreterToVM.monitorExit(monitor);
             return result;
             // }
         } else {

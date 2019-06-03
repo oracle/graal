@@ -184,6 +184,9 @@ class ArrayOperand extends Operand {
     ArrayOperand(Operand elemental, int dimensions) {
         super(JavaKind.Object);
         assert !elemental.isArrayType();
+        if (dimensions > 255) {
+            throw new VerifyError("Creating array of dimension > 255");
+        }
         this.dimensions = dimensions;
         this.elemental = elemental;
     }
