@@ -987,12 +987,30 @@ def build(args, vm=None):
     if 'substratevm' in mx.primary_suite().name:
         # build "jvm" config used by native-image and native-image-configure commands
         config = graalvm_jvm_configs[-1]
-        build_native_image_image(config, args=[arg for arg in args if arg != '-f'])
+        rebuild_vm = False
+        mx.ensure_dir_exists(svmbuild_dir())
         if not mx.is_windows():
             vm_link = join(svmbuild_dir(), 'vm')
-            if os.path.lexists(vm_link):
+            vm_linkname = os.path.relpath(_vm_home(config), dirname(vm_link))
+            if not os.path.lexists(vm_link):
+                rebuild_vm = True
+            elif os.readlink(vm_link) != vm_linkname:
+                rebuild_vm = True
                 os.unlink(vm_link)
-            os.symlink(os.path.relpath(_vm_home(config), dirname(vm_link)), vm_link)
+            if rebuild_vm:
+                os.symlink(vm_linkname, vm_link)
+        rev_file_name = join(svmbuild_dir(), 'vm-rev')
+        rev_value = svm_suite().vc.parent(svm_suite().vc_dir)
+        if not os.path.exists(rev_file_name):
+            rebuild_vm = True
+        else:
+            with open(rev_file_name, 'r') as f:
+                if f.read() != rev_value:
+                    rebuild_vm = True
+        if rebuild_vm:
+            with open(rev_file_name, 'w') as f:
+                f.write(rev_value)
+            build_native_image_image(config, args=[arg for arg in args if arg != '-f'])
 
 
 @mx.command(suite.name, 'native-image')
