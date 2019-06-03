@@ -66,6 +66,8 @@ import com.oracle.truffle.api.interop.UnknownIdentifierException;
 import com.oracle.truffle.api.interop.UnsupportedTypeException;
 import com.oracle.truffle.api.library.ExportLibrary;
 import com.oracle.truffle.api.library.ExportMessage;
+import com.oracle.truffle.api.nodes.ExplodeLoop;
+import com.oracle.truffle.api.nodes.ExplodeLoop.LoopExplosionKind;
 import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.api.profiles.BranchProfile;
 
@@ -100,6 +102,7 @@ public abstract class BuiltinObject implements TruffleObject {
     }
 
     @ExportMessage
+    @ExplodeLoop(kind = LoopExplosionKind.FULL_EXPLODE_UNTIL_RETURN)
     final Object readMember(String member,
                     @Shared("descriptor") @Cached(value = "getDescriptorImpl(this)", allowUncached = true) BuiltinDescriptor descriptor)
                     throws UnknownIdentifierException {
@@ -116,6 +119,7 @@ public abstract class BuiltinObject implements TruffleObject {
 
     @ExportMessage(name = "isMemberReadable")
     @ExportMessage(name = "isMemberInvocable")
+    @ExplodeLoop(kind = LoopExplosionKind.FULL_EXPLODE_UNTIL_RETURN)
     final boolean isMemberExisting(String member,
                     @Shared("descriptor") @Cached(value = "getDescriptorImpl(this)", allowUncached = true) BuiltinDescriptor descriptor) {
         int hash = member.hashCode();
@@ -312,6 +316,7 @@ public abstract class BuiltinObject implements TruffleObject {
             this.membersArray = new MembersArray(members);
         }
 
+        @ExplodeLoop(kind = LoopExplosionKind.FULL_EXPLODE_UNTIL_RETURN)
         MemberEntry lookup(String member) {
             int hash = member.hashCode();
             for (int i = 0; i < members.length; i++) {
