@@ -904,7 +904,8 @@ public class NativeImage {
                     /* Resolve relative manifestClassPath against directory containing jar */
                     manifestClassPath = jarFilePath.getParent().resolve(manifestClassPath);
                 }
-                addImageProvidedClasspath(manifestClassPath);
+                /* Invalid entries in Class-Path are allowed (i.e. use strict false) */
+                addImageClasspathEntry(imageClasspath, manifestClassPath, false);
             }
         }
     }
@@ -921,7 +922,7 @@ public class NativeImage {
 
         /* If no customImageClasspath was specified put "." on classpath */
         if (!config.buildFallbackImage() && customImageClasspath.isEmpty() && queryOption == null) {
-            addImageProvidedClasspath(Paths.get("."));
+            addImageClasspath(Paths.get("."));
         } else {
             imageClasspath.addAll(customImageClasspath);
         }
@@ -1254,44 +1255,63 @@ public class NativeImage {
         imageBuilderArgs.add(plainArg);
     }
 
-    void addImageClasspath(Path classpath) {
+    /**
+     * For adding classpath elements that are only on the classpath in the context of native-image
+     * building. I.e. that are not on the classpath when the application would be run with the java
+     * command. (library-support.jar)
+     */
+    private void addImageProvidedClasspath(Path classpath) {
+        VMError.guarantee(imageClasspath.isEmpty() && customImageClasspath.isEmpty());
         Path classpathEntry = canonicalize(classpath);
-        if (imageClasspath.add(classpathEntry)) {
+        if (imageProvidedClasspath.add(classpathEntry)) {
             processManifestMainAttributes(classpathEntry, this::handleClassPathAttribute);
             processClasspathNativeImageMetaInf(classpathEntry);
         }
     }
 
     /**
-     * For adding classpath elements that are not normally on the classpath in the Java version: svm
-     * jars, truffle jars etc.
+     * For adding classpath elements that are automatically put on the image-classpath.
      */
-    void addImageProvidedClasspath(Path classpath) {
-        Path classpathEntry = canonicalize(classpath);
-        if (imageProvidedClasspath.add(classpathEntry) && !imageClasspath.contains(classpathEntry) && !customImageClasspath.contains(classpathEntry)) {
-            processManifestMainAttributes(classpathEntry, this::handleClassPathAttribute);
-            processClasspathNativeImageMetaInf(classpathEntry);
-        }
+    void addImageClasspath(Path classpath) {
+        addImageClasspathEntry(imageClasspath, classpath, true);
     }
 
+    /**
+     * For adding classpath elements that are put *explicitly* on the image-classpath (i.e. when
+     * specified as -cp/-classpath/--class-path entry). This method handles invalid classpath
+     * strings same as java -cp (is tolerant against invalid classpath entries).
+     */
     void addCustomImageClasspath(String classpath) {
-        addCustomImageClasspath(ClasspathUtils.stringToClasspath(classpath));
+        addImageClasspathEntry(customImageClasspath, ClasspathUtils.stringToClasspath(classpath), false);
     }
 
+    /**
+     * For adding classpath elements that are put *explicitly* on the image-classpath (e.g. when
+     * adding a jar-file via -jar).
+     */
     void addCustomImageClasspath(Path classpath) {
+        addImageClasspathEntry(customImageClasspath, classpath, true);
+    }
+
+    private void addImageClasspathEntry(LinkedHashSet<Path> destination, Path classpath, boolean strict) {
         Path classpathEntry;
         try {
             classpathEntry = canonicalize(classpath);
         } catch (NativeImageError e) {
+            if (strict) {
+                throw e;
+            }
+
             if (isVerbose()) {
                 showWarning("Invalid classpath entry: " + classpath);
             }
             /* Allow non-existent classpath entries to comply with `java` command behaviour. */
-            customImageClasspath.add(canonicalize(classpath, false));
+            destination.add(canonicalize(classpath, false));
             return;
         }
 
-        if (customImageClasspath.add(classpathEntry)) {
+        if (!imageClasspath.contains(classpathEntry) && !customImageClasspath.contains(classpathEntry)) {
+            destination.add(classpathEntry);
             processManifestMainAttributes(classpathEntry, this::handleClassPathAttribute);
             processClasspathNativeImageMetaInf(classpathEntry);
         }
