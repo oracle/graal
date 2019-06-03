@@ -25,13 +25,14 @@
 package com.oracle.svm.core.genscavenge;
 
 import org.graalvm.compiler.api.replacements.Fold;
+import org.graalvm.compiler.replacements.nodes.AssertionNode;
 import org.graalvm.compiler.word.Word;
-import org.graalvm.nativeimage.hosted.Feature;
 import org.graalvm.nativeimage.ImageSingletons;
 import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.Platforms;
 import org.graalvm.nativeimage.c.struct.RawStructure;
 import org.graalvm.nativeimage.c.struct.SizeOf;
+import org.graalvm.nativeimage.hosted.Feature;
 import org.graalvm.word.Pointer;
 import org.graalvm.word.UnsignedWord;
 import org.graalvm.word.WordFactory;
@@ -191,11 +192,15 @@ public class UnalignedHeapChunk extends HeapChunk {
      *
      * This has to be fast, because it is used by the post-write barrier.
      */
-    public static void dirtyCardForObjectOfUnalignedHeapChunk(Object obj) {
+    public static void dirtyCardForObjectOfUnalignedHeapChunk(Object obj, boolean verifyOnly) {
         final UnalignedHeader chunk = getEnclosingUnalignedHeapChunk(obj);
-        final Pointer rememberedSetStart = getCardTableStart(chunk);
+        final Pointer cardTableStart = getCardTableStart(chunk);
         final UnsignedWord objectIndex = getObjectIndex();
-        CardTable.dirtyEntryAtIndex(rememberedSetStart, objectIndex);
+        if (verifyOnly) {
+            AssertionNode.assertion(false, CardTable.isDirtyEntryAtIndexUnchecked(cardTableStart, objectIndex), "card must be dirty");
+        } else {
+            CardTable.dirtyEntryAtIndex(cardTableStart, objectIndex);
+        }
     }
 
     /** Verify that there are only clean cards in the remembered set of the given chunk. */

@@ -39,7 +39,6 @@ import org.graalvm.compiler.hotspot.meta.AddressLoweringHotSpotSuitesProvider;
 import org.graalvm.compiler.hotspot.meta.HotSpotConstantFieldProvider;
 import org.graalvm.compiler.hotspot.meta.HotSpotForeignCallsProvider;
 import org.graalvm.compiler.hotspot.meta.HotSpotGCProvider;
-import org.graalvm.compiler.hotspot.meta.HotSpotGraalConstantFieldProvider;
 import org.graalvm.compiler.hotspot.meta.HotSpotGraphBuilderPlugins;
 import org.graalvm.compiler.hotspot.meta.HotSpotLoweringProvider;
 import org.graalvm.compiler.hotspot.meta.HotSpotProviders;
@@ -56,7 +55,6 @@ import org.graalvm.compiler.options.OptionValues;
 import org.graalvm.compiler.phases.common.AddressLoweringPhase;
 import org.graalvm.compiler.phases.tiers.CompilerConfiguration;
 import org.graalvm.compiler.phases.util.Providers;
-import org.graalvm.compiler.replacements.classfile.ClassfileBytecodeProvider;
 import org.graalvm.compiler.replacements.sparc.SPARCGraphBuilderPlugins;
 import org.graalvm.compiler.serviceprovider.ServiceProvider;
 
@@ -73,7 +71,7 @@ import jdk.vm.ci.runtime.JVMCIBackend;
 import jdk.vm.ci.sparc.SPARC;
 
 @ServiceProvider(HotSpotBackendFactory.class)
-public class SPARCHotSpotBackendFactory implements HotSpotBackendFactory {
+public class SPARCHotSpotBackendFactory extends HotSpotBackendFactory {
 
     @Override
     public String getName() {
@@ -96,17 +94,17 @@ public class SPARCHotSpotBackendFactory implements HotSpotBackendFactory {
         HotSpotCodeCacheProvider codeCache = (HotSpotCodeCacheProvider) jvmci.getCodeCache();
         TargetDescription target = codeCache.getTarget();
         HotSpotConstantReflectionProvider constantReflection = (HotSpotConstantReflectionProvider) jvmci.getConstantReflection();
-        HotSpotConstantFieldProvider constantFieldProvider = new HotSpotGraalConstantFieldProvider(config, metaAccess);
+        HotSpotConstantFieldProvider constantFieldProvider = createConstantFieldProvider(config, metaAccess);
         Value[] nativeABICallerSaveRegisters = createNativeABICallerSaveRegisters(config, codeCache.getRegisterConfig());
-        HotSpotWordTypes wordTypes = new HotSpotWordTypes(metaAccess, target.wordJavaKind);
+        HotSpotWordTypes wordTypes = createWordTypes(metaAccess, target);
         HotSpotForeignCallsProvider foreignCalls = new SPARCHotSpotForeignCallsProvider(jvmciRuntime, runtime, metaAccess, codeCache, wordTypes, nativeABICallerSaveRegisters);
         LoweringProvider lowerer = createLowerer(runtime, metaAccess, foreignCalls, registers, constantReflection, target);
-        HotSpotStampProvider stampProvider = new HotSpotStampProvider();
-        HotSpotGCProvider gc = new HotSpotGCProvider(config);
+        HotSpotStampProvider stampProvider = createStampProvider();
+        HotSpotGCProvider gc = createGCProvider(config);
         Providers p = new Providers(metaAccess, codeCache, constantReflection, constantFieldProvider, foreignCalls, lowerer, null, stampProvider, gc);
-        HotSpotSnippetReflectionProvider snippetReflection = new HotSpotSnippetReflectionProvider(runtime, constantReflection, wordTypes);
-        BytecodeProvider bytecodeProvider = new ClassfileBytecodeProvider(metaAccess, snippetReflection);
-        HotSpotReplacementsImpl replacements = new HotSpotReplacementsImpl(p, snippetReflection, bytecodeProvider, target);
+        HotSpotSnippetReflectionProvider snippetReflection = createSnippetReflection(runtime, constantReflection, wordTypes);
+        BytecodeProvider bytecodeProvider = createBytecodeProvider(metaAccess, snippetReflection);
+        HotSpotReplacementsImpl replacements = createReplacements(target, p, snippetReflection, bytecodeProvider);
         Plugins plugins = createGraphBuilderPlugins(compilerConfiguration, config, metaAccess, constantReflection, foreignCalls, snippetReflection, replacements, wordTypes, runtime.getOptions());
         replacements.setGraphBuilderPlugins(plugins);
         HotSpotSuitesProvider suites = createSuites(config, runtime, compilerConfiguration, plugins, replacements);

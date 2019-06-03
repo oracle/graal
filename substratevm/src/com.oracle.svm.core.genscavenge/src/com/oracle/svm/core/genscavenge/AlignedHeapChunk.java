@@ -25,6 +25,7 @@
 package com.oracle.svm.core.genscavenge;
 
 import org.graalvm.compiler.api.replacements.Fold;
+import org.graalvm.compiler.replacements.nodes.AssertionNode;
 import org.graalvm.compiler.word.Word;
 import org.graalvm.nativeimage.ImageSingletons;
 import org.graalvm.nativeimage.Platform;
@@ -256,12 +257,16 @@ public class AlignedHeapChunk extends HeapChunk {
      *
      * This has to be fast, because it is used by the post-write barrier.
      */
-    public static void dirtyCardForObjectOfAlignedHeapChunk(Object object) {
+    public static void dirtyCardForObjectOfAlignedHeapChunk(Object object, boolean verifyOnly) {
         final Pointer objectPointer = Word.objectToUntrackedPointer(object);
         final AlignedHeader chunk = getEnclosingAlignedHeapChunkFromPointer(objectPointer);
         final Pointer cardTableStart = getCardTableStart(chunk);
         final UnsignedWord index = getObjectIndex(chunk, objectPointer);
-        CardTable.dirtyEntryAtIndex(cardTableStart, index);
+        if (verifyOnly) {
+            AssertionNode.assertion(false, CardTable.isDirtyEntryAtIndexUnchecked(cardTableStart, index), "card must be dirty");
+        } else {
+            CardTable.dirtyEntryAtIndex(cardTableStart, index);
+        }
     }
 
     /** Return the offset of an object within the objects part of a chunk. */

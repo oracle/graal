@@ -31,6 +31,7 @@ import org.graalvm.compiler.nodes.memory.address.AddressNode.Address;
 import org.graalvm.compiler.replacements.nodes.AssertionNode;
 import org.graalvm.compiler.word.Word;
 import org.graalvm.word.LocationIdentity;
+import org.graalvm.word.WordFactory;
 
 public abstract class WriteBarrierSnippets {
     public static final LocationIdentity GC_CARD_LOCATION = NamedLocationIdentity.mutable("GC-Card");
@@ -42,16 +43,16 @@ public abstract class WriteBarrierSnippets {
         }
     }
 
-    protected static long getPointerToFirstArrayElement(Address address, int length, int elementStride) {
+    protected static Word getPointerToFirstArrayElement(Address address, int length, int elementStride) {
         long result = Word.fromAddress(address).rawValue();
         if (elementStride < 0) {
             // the address points to the place after the last array element
             result = result + elementStride * length;
         }
-        return result;
+        return WordFactory.unsigned(result);
     }
 
-    protected static long getPointerToLastArrayElement(Address address, int length, int elementStride) {
+    protected static Word getPointerToLastArrayElement(Address address, int length, int elementStride) {
         long result = Word.fromAddress(address).rawValue();
         if (elementStride < 0) {
             // the address points to the place after the last array element
@@ -59,6 +60,6 @@ public abstract class WriteBarrierSnippets {
         } else {
             result = result + (length - 1) * elementStride;
         }
-        return result;
+        return WordFactory.unsigned(result);
     }
 }

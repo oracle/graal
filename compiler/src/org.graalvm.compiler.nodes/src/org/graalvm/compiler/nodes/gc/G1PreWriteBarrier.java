@@ -47,6 +47,7 @@ public final class G1PreWriteBarrier extends ObjectWriteBarrier implements Deopt
 
     public G1PreWriteBarrier(AddressNode address, ValueNode expectedObject, boolean doLoad, boolean nullCheck) {
         super(TYPE, address, expectedObject, true);
+        assert doLoad == (expectedObject == null);
         this.doLoad = doLoad;
         this.nullCheck = nullCheck;
     }

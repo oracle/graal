@@ -31,7 +31,6 @@ import static jdk.vm.ci.common.InitTimer.timer;
 import java.util.ArrayList;
 import java.util.List;
 
-import org.graalvm.compiler.api.replacements.SnippetReflectionProvider;
 import org.graalvm.compiler.bytecode.BytecodeProvider;
 import org.graalvm.compiler.core.aarch64.AArch64AddressLoweringByUse;
 import org.graalvm.compiler.core.aarch64.AArch64LIRKindTool;
@@ -65,7 +64,6 @@ import org.graalvm.compiler.phases.schedule.SchedulePhase;
 import org.graalvm.compiler.phases.tiers.CompilerConfiguration;
 import org.graalvm.compiler.phases.util.Providers;
 import org.graalvm.compiler.replacements.aarch64.AArch64GraphBuilderPlugins;
-import org.graalvm.compiler.replacements.classfile.ClassfileBytecodeProvider;
 import org.graalvm.compiler.serviceprovider.ServiceProvider;
 import org.graalvm.compiler.word.WordTypes;
 
@@ -84,7 +82,7 @@ import jdk.vm.ci.meta.Value;
 import jdk.vm.ci.runtime.JVMCIBackend;
 
 @ServiceProvider(HotSpotBackendFactory.class)
-public class AArch64HotSpotBackendFactory implements HotSpotBackendFactory {
+public class AArch64HotSpotBackendFactory extends HotSpotBackendFactory {
 
     @Override
     public String getName() {
@@ -113,6 +111,8 @@ public class AArch64HotSpotBackendFactory implements HotSpotBackendFactory {
         HotSpotConstantReflectionProvider constantReflection = (HotSpotConstantReflectionProvider) jvmci.getConstantReflection();
         HotSpotConstantFieldProvider constantFieldProvider = new HotSpotGraalConstantFieldProvider(config, metaAccess);
         HotSpotLoweringProvider lowerer;
+        HotSpotStampProvider stampProvider;
+        HotSpotGCProvider gc;
         HotSpotSnippetReflectionProvider snippetReflection;
         HotSpotReplacementsImpl replacements;
         HotSpotSuitesProvider suites;
@@ -127,7 +127,7 @@ public class AArch64HotSpotBackendFactory implements HotSpotBackendFactory {
                 nativeABICallerSaveRegisters = createNativeABICallerSaveRegisters(config, codeCache.getRegisterConfig());
             }
             try (InitTimer rt = timer("create WordTypes")) {
-                wordTypes = new HotSpotWordTypes(metaAccess, target.wordJavaKind);
+                wordTypes = createWordTypes(metaAccess, target);
             }
             try (InitTimer rt = timer("create ForeignCalls provider")) {
                 foreignCalls = createForeignCalls(jvmciRuntime, graalRuntime, metaAccess, codeCache, wordTypes, nativeABICallerSaveRegisters);
@@ -135,18 +135,23 @@ public class AArch64HotSpotBackendFactory implements HotSpotBackendFactory {
             try (InitTimer rt = timer("create Lowerer provider")) {
                 lowerer = createLowerer(graalRuntime, metaAccess, foreignCalls, registers, constantReflection, target);
             }
-            HotSpotStampProvider stampProvider = new HotSpotStampProvider();
-            HotSpotGCProvider gc = new HotSpotGCProvider(config);
+            try (InitTimer rt = timer("create stamp provider")) {
+                stampProvider = createStampProvider();
+            }
+            try (InitTimer rt = timer("create GC provider")) {
+                gc = createGCProvider(config);
+            }
+
             Providers p = new Providers(metaAccess, codeCache, constantReflection, constantFieldProvider, foreignCalls, lowerer, null, stampProvider, gc);
 
             try (InitTimer rt = timer("create SnippetReflection provider")) {
                 snippetReflection = createSnippetReflection(graalRuntime, constantReflection, wordTypes);
             }
             try (InitTimer rt = timer("create Bytecode provider")) {
-                bytecodeProvider = new ClassfileBytecodeProvider(metaAccess, snippetReflection);
+                bytecodeProvider = createBytecodeProvider(metaAccess, snippetReflection);
             }
             try (InitTimer rt = timer("create Replacements provider")) {
-                replacements = createReplacements(p, snippetReflection, bytecodeProvider);
+                replacements = createReplacements(target, p, snippetReflection, bytecodeProvider);
             }
             try (InitTimer rt = timer("create GraphBuilderPhase plugins")) {
                 plugins = createGraphBuilderPlugins(compilerConfiguration, config, constantReflection, foreignCalls, metaAccess, snippetReflection, replacements, wordTypes, graalRuntime.getOptions());
@@ -181,10 +186,6 @@ public class AArch64HotSpotBackendFactory implements HotSpotBackendFactory {
         return new HotSpotRegisters(AArch64HotSpotRegisterConfig.threadRegister, AArch64HotSpotRegisterConfig.heapBaseRegister, sp);
     }
 
-    protected HotSpotReplacementsImpl createReplacements(Providers p, SnippetReflectionProvider snippetReflection, BytecodeProvider bytecodeProvider) {
-        return new HotSpotReplacementsImpl(p, snippetReflection, bytecodeProvider, p.getCodeCache().getTarget());
-    }
-
     protected HotSpotHostForeignCallsProvider createForeignCalls(HotSpotJVMCIRuntime jvmciRuntime, HotSpotGraalRuntimeProvider runtime, HotSpotMetaAccessProvider metaAccess,
                     HotSpotCodeCacheProvider codeCache, WordTypes wordTypes, Value[] nativeABICallerSaveRegisters) {
         return new AArch64HotSpotForeignCallsProvider(jvmciRuntime, runtime, metaAccess, codeCache, wordTypes, nativeABICallerSaveRegisters);
@@ -195,10 +196,6 @@ public class AArch64HotSpotBackendFactory implements HotSpotBackendFactory {
         AArch64SuitesCreator suitesCreator = new AArch64SuitesCreator(compilerConfiguration, plugins, SchedulePhase.class);
         Phase addressLoweringPhase = new AddressLoweringByUsePhase(new AArch64AddressLoweringByUse(new AArch64LIRKindTool()));
         return new AddressLoweringHotSpotSuitesProvider(suitesCreator, config, runtime, addressLoweringPhase);
-    }
-
-    protected HotSpotSnippetReflectionProvider createSnippetReflection(HotSpotGraalRuntimeProvider runtime, HotSpotConstantReflectionProvider constantReflection, WordTypes wordTypes) {
-        return new HotSpotSnippetReflectionProvider(runtime, constantReflection, wordTypes);
     }
 
     protected HotSpotLoweringProvider createLowerer(HotSpotGraalRuntimeProvider runtime, HotSpotMetaAccessProvider metaAccess, HotSpotForeignCallsProvider foreignCalls,
