@@ -24,12 +24,13 @@
  */
 package org.graalvm.compiler.truffle.test;
 
-import java.lang.reflect.Field;
 import java.util.function.Function;
 
 import org.graalvm.compiler.core.common.CompilationIdentifier;
 import org.graalvm.compiler.core.common.GraalBailoutException;
 import org.graalvm.compiler.nodes.StructuredGraph;
+import org.graalvm.compiler.truffle.compiler.SharedTruffleCompilerOptions;
+import org.graalvm.compiler.truffle.compiler.TruffleCompilerOptions;
 import org.graalvm.compiler.truffle.runtime.OptimizedCallTarget;
 import org.graalvm.compiler.truffle.runtime.OptimizedDirectCallNode;
 import org.graalvm.compiler.truffle.runtime.SharedTruffleRuntimeOptions;
@@ -52,9 +53,6 @@ import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.api.nodes.ExplodeLoop;
 import com.oracle.truffle.api.nodes.RootNode;
 
-import org.graalvm.compiler.truffle.compiler.SharedTruffleCompilerOptions;
-import org.graalvm.compiler.truffle.compiler.TruffleCompilerOptions;
-
 public class NodeLimitTest extends PartialEvaluationTest {
 
     public NodeLimitTest() {
@@ -71,7 +69,9 @@ public class NodeLimitTest extends PartialEvaluationTest {
     }
 
     @After
+    @Override
     public void after() {
+        super.after();
         performanceWarningsAreFatalScope.close();
     }
 
