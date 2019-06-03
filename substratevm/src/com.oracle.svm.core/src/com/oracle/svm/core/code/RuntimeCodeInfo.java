@@ -199,7 +199,7 @@ public class RuntimeCodeInfo {
         if (newTableSize < INITIAL_TABLE_SIZE) {
             newTableSize = INITIAL_TABLE_SIZE;
         }
-        PinnedObjectArray<RuntimeMethodInfo> newMethodInfos = PinnedArrays.createUnmanagedObjectArray(newTableSize);
+        PinnedObjectArray<RuntimeMethodInfo> newMethodInfos = PinnedArrays.createObjectArray(newTableSize);
         if (methodInfos.isNonNull()) {
             PinnedArrays.arraycopy(methodInfos, 0, newMethodInfos, 0, PinnedArrays.lengthOf(methodInfos));
             PinnedArrays.releaseUnmanagedArray(methodInfos);

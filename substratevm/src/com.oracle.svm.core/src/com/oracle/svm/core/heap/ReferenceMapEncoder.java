@@ -24,7 +24,6 @@
  */
 package com.oracle.svm.core.heap;
 
-import java.nio.ByteBuffer;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
@@ -37,6 +36,8 @@ import java.util.Set;
 import org.graalvm.compiler.core.common.util.TypeConversion;
 import org.graalvm.compiler.core.common.util.UnsafeArrayTypeWriter;
 
+import com.oracle.svm.core.c.PinnedArray;
+import com.oracle.svm.core.c.PinnedArrays;
 import com.oracle.svm.core.code.CodeInfoQueryResult;
 import com.oracle.svm.core.util.ByteArrayReader;
 
@@ -80,7 +81,7 @@ public abstract class ReferenceMapEncoder {
         usageCounts.put(input, newCount);
     }
 
-    public byte[] encodeAll(PinnedAllocator allocator) {
+    public PinnedArray<Byte> encodeAll(PinnedAllocator allocator) {
         assert writeBuffer.getBytesWritten() == 0 : "encodeAll() must not be called multiple times";
 
         /*
@@ -93,8 +94,8 @@ public abstract class ReferenceMapEncoder {
         encodeAll(sortedEntries);
 
         int length = TypeConversion.asS4(writeBuffer.getBytesWritten());
-        byte[] array = newByteArray(allocator, length);
-        writeBuffer.toByteBuffer(ByteBuffer.wrap(array));
+        PinnedArray<Byte> array = PinnedArrays.createByteArray(length);
+        writeBuffer.toByteBuffer(PinnedArrays.asByteBuffer(array));
         return array;
     }
 
@@ -112,7 +113,4 @@ public abstract class ReferenceMapEncoder {
 
     protected abstract void encodeAll(List<Entry<Input, Long>> sortedEntries);
 
-    private static byte[] newByteArray(PinnedAllocator allocator, int length) {
-        return allocator == null ? new byte[length] : (byte[]) allocator.newArray(byte.class, length);
-    }
 }

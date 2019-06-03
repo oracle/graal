@@ -51,7 +51,6 @@ import org.graalvm.word.WordFactory;
 import com.oracle.svm.core.SubstrateOptions;
 import com.oracle.svm.core.annotate.Uninterruptible;
 import com.oracle.svm.core.c.PinnedArray;
-import com.oracle.svm.core.c.PinnedArrays;
 import com.oracle.svm.core.code.CodeInfoEncoder;
 import com.oracle.svm.core.code.CodeInfoTable;
 import com.oracle.svm.core.code.DeoptimizationSourcePositionEncoder;
@@ -347,7 +346,7 @@ public class InstalledCodeBuilder {
 
             CodeReferenceMapEncoder encoder = new CodeReferenceMapEncoder();
             encoder.add(objectConstants.referenceMap);
-            constantsWalker.referenceMapEncoding = PinnedArrays.fromImageHeapOrPinnedAllocator(encoder.encodeAll(metaInfoAllocator));
+            constantsWalker.referenceMapEncoding = encoder.encodeAll(metaInfoAllocator);
             constantsWalker.referenceMapIndex = encoder.lookupEncoding(objectConstants.referenceMap);
             constantsWalker.baseAddr = code;
             constantsWalker.size = codeSize;

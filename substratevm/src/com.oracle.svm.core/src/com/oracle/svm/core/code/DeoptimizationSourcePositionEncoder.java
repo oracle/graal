@@ -24,7 +24,6 @@
  */
 package com.oracle.svm.core.code;
 
-import java.nio.ByteBuffer;
 import java.util.List;
 
 import org.graalvm.collections.EconomicMap;
@@ -35,6 +34,8 @@ import org.graalvm.compiler.core.common.util.TypeConversion;
 import org.graalvm.compiler.core.common.util.UnsafeArrayTypeWriter;
 import org.graalvm.compiler.graph.NodeSourcePosition;
 
+import com.oracle.svm.core.c.PinnedArray;
+import com.oracle.svm.core.c.PinnedArrays;
 import com.oracle.svm.core.heap.PinnedAllocator;
 import com.oracle.svm.core.util.ByteArrayReader;
 
@@ -43,8 +44,8 @@ public class DeoptimizationSourcePositionEncoder {
     private final PinnedAllocator allocator;
     private final FrequencyEncoder<Object> objectConstants;
 
-    protected int[] deoptimizationStartOffsets;
-    protected byte[] deoptimizationEncodings;
+    protected PinnedArray<Integer> deoptimizationStartOffsets;
+    protected PinnedArray<Byte> deoptimizationEncodings;
     protected Object[] deoptimizationObjectConstants;
 
     public DeoptimizationSourcePositionEncoder(PinnedAllocator allocator) {
@@ -58,19 +59,17 @@ public class DeoptimizationSourcePositionEncoder {
 
         UnsafeArrayTypeWriter encodingBuffer = UnsafeArrayTypeWriter.create(ByteArrayReader.supportsUnalignedMemoryAccess());
         EconomicMap<NodeSourcePosition, Long> sourcePositionStartOffsets = EconomicMap.create(Equivalence.IDENTITY_WITH_SYSTEM_HASHCODE);
-        deoptimizationStartOffsets = newIntArray(deoptimzationSourcePositions.size());
+        deoptimizationStartOffsets = PinnedArrays.createIntArray(deoptimzationSourcePositions.size());
 
         encodeSourcePositions(deoptimzationSourcePositions, sourcePositionStartOffsets, encodingBuffer);
-        deoptimizationEncodings = newByteArray(TypeConversion.asS4(encodingBuffer.getBytesWritten()));
-        encodingBuffer.toByteBuffer(ByteBuffer.wrap(deoptimizationEncodings));
+        deoptimizationEncodings = PinnedArrays.createByteArray(TypeConversion.asS4(encodingBuffer.getBytesWritten()));
+        encodingBuffer.toByteBuffer(PinnedArrays.asByteBuffer(deoptimizationEncodings));
 
         verifyEncoding(deoptimzationSourcePositions);
     }
 
     public void install(RuntimeMethodInfo target) {
-        target.deoptimizationStartOffsets = deoptimizationStartOffsets;
-        target.deoptimizationEncodings = deoptimizationEncodings;
-        target.deoptimizationObjectConstants = deoptimizationObjectConstants;
+        target.setDeoptimizationMetadata(deoptimizationStartOffsets, deoptimizationEncodings, deoptimizationObjectConstants);
     }
 
     private void addObjectConstants(List<NodeSourcePosition> deoptimzationSourcePositions) {
@@ -100,7 +99,7 @@ public class DeoptimizationSourcePositionEncoder {
                 startOffset = TypeConversion.asS4(encodeSourcePositions(sourcePosition, sourcePositionStartOffsets, encodingBuffer));
                 assert startOffset > DeoptimizationSourcePositionDecoder.NO_SOURCE_POSITION;
             }
-            deoptimizationStartOffsets[i] = startOffset;
+            PinnedArrays.setInt(deoptimizationStartOffsets, i, startOffset);
         }
     }
 
@@ -133,14 +132,6 @@ public class DeoptimizationSourcePositionEncoder {
 
     private Object[] newObjectArray(int length) {
         return allocator == null ? new Object[length] : (Object[]) allocator.newArray(Object.class, length);
-    }
-
-    private byte[] newByteArray(int length) {
-        return allocator == null ? new byte[length] : (byte[]) allocator.newArray(byte.class, length);
-    }
-
-    private int[] newIntArray(int length) {
-        return allocator == null ? new int[length] : (int[]) allocator.newArray(int.class, length);
     }
 
     private boolean verifyEncoding(List<NodeSourcePosition> deoptimzationSourcePositions) {

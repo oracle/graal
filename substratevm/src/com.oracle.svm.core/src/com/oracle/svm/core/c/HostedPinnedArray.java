@@ -44,9 +44,8 @@ public final class HostedPinnedArray<T> implements PinnedArray<T>, PinnedObjectA
         this.array = array;
     }
 
-    @SuppressWarnings("unchecked")
-    public <S> S getArray() {
-        return (S) array;
+    Object getArray() {
+        return array;
     }
 
     @Override

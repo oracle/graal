@@ -37,6 +37,8 @@ import com.oracle.svm.core.annotate.Uninterruptible;
 import com.oracle.svm.core.c.PinnedArray;
 import com.oracle.svm.core.c.PinnedArrays;
 import com.oracle.svm.core.c.PinnedObjectArray;
+import com.oracle.svm.core.code.FrameInfoDecoder.FrameInfoQueryResultAllocator;
+import com.oracle.svm.core.code.FrameInfoDecoder.ValueInfoAllocator;
 import com.oracle.svm.core.deopt.SubstrateInstalledCode;
 import com.oracle.svm.core.heap.ObjectReferenceWalker;
 import com.oracle.svm.core.heap.PinnedAllocator;
@@ -49,22 +51,18 @@ public final class RuntimeMethodInfo implements CodeInfo {
     private CodePointer codeStart;
     private UnsignedWord codeSize;
 
-    protected byte[] codeInfoIndex;
-    protected byte[] codeInfoEncodings;
-    protected byte[] referenceMapEncoding;
-    protected byte[] frameInfoEncodings;
+    private PinnedArray<Byte> codeInfoIndex;
+    private PinnedArray<Byte> codeInfoEncodings;
+    private PinnedArray<Byte> referenceMapEncoding;
+    private PinnedArray<Byte> frameInfoEncodings;
     protected Object[] frameInfoObjectConstants;
     protected Class<?>[] frameInfoSourceClasses;
     protected String[] frameInfoSourceMethodNames;
     protected String[] frameInfoNames;
 
-    protected int[] deoptimizationStartOffsets;
-    protected byte[] deoptimizationEncodings;
+    PinnedArray<Integer> deoptimizationStartOffsets;
+    PinnedArray<Byte> deoptimizationEncodings;
     protected Object[] deoptimizationObjectConstants;
-
-    static PinnedArray<Byte> pa(byte[] array) {
-        return PinnedArrays.fromImageHeapOrPinnedAllocator(array);
-    }
 
     static <T> PinnedObjectArray<T> pa(T[] array) {
         return PinnedArrays.fromImageHeapOrPinnedAllocator(array);
@@ -179,20 +177,19 @@ public final class RuntimeMethodInfo implements CodeInfo {
 
     @Override
     public long initFrameInfoReader(CodePointer ip, ReusableTypeReader frameInfoReader) {
-        return CodeInfoAccessor.initFrameInfoReader(pa(codeInfoEncodings), pa(codeInfoIndex), pa(frameInfoEncodings), relativeIP(ip), frameInfoReader);
+        return CodeInfoAccessor.initFrameInfoReader(codeInfoEncodings, codeInfoIndex, frameInfoEncodings, relativeIP(ip), frameInfoReader);
     }
 
     @Override
-    public FrameInfoQueryResult nextFrameInfo(long entryOffset, ReusableTypeReader frameInfoReader,
-                    FrameInfoDecoder.FrameInfoQueryResultAllocator resultAllocator, FrameInfoDecoder.ValueInfoAllocator valueInfoAllocator,
-                    boolean fetchFirstFrame) {
-        return CodeInfoAccessor.nextFrameInfo(pa(codeInfoEncodings), pa(frameInfoNames), pa(frameInfoObjectConstants), pa(frameInfoSourceClasses),
+    public FrameInfoQueryResult nextFrameInfo(long entryOffset, ReusableTypeReader frameInfoReader, FrameInfoQueryResultAllocator resultAllocator,
+                    ValueInfoAllocator valueInfoAllocator, boolean fetchFirstFrame) {
+        return CodeInfoAccessor.nextFrameInfo(codeInfoEncodings, pa(frameInfoNames), pa(frameInfoObjectConstants), pa(frameInfoSourceClasses),
                         pa(frameInfoSourceMethodNames), entryOffset, frameInfoReader, resultAllocator, valueInfoAllocator, fetchFirstFrame);
     }
 
     @Override
-    public void setMetadata(byte[] codeInfoIndex, byte[] codeInfoEncodings, byte[] referenceMapEncoding, byte[] frameInfoEncodings, Object[] frameInfoObjectConstants,
-                    Class<?>[] frameInfoSourceClasses, String[] frameInfoSourceMethodNames, String[] frameInfoNames) {
+    public void setMetadata(PinnedArray<Byte> codeInfoIndex, PinnedArray<Byte> codeInfoEncodings, PinnedArray<Byte> referenceMapEncoding, PinnedArray<Byte> frameInfoEncodings,
+                    Object[] frameInfoObjectConstants, Class<?>[] frameInfoSourceClasses, String[] frameInfoSourceMethodNames, String[] frameInfoNames) {
         this.codeInfoIndex = codeInfoIndex;
         this.codeInfoEncodings = codeInfoEncodings;
         this.referenceMapEncoding = referenceMapEncoding;
@@ -203,35 +200,41 @@ public final class RuntimeMethodInfo implements CodeInfo {
         this.frameInfoNames = frameInfoNames;
     }
 
+    void setDeoptimizationMetadata(PinnedArray<Integer> deoptimizationStartOffsets, PinnedArray<Byte> deoptimizationEncodings, Object[] deoptimizationObjectConstants) {
+        this.deoptimizationStartOffsets = deoptimizationStartOffsets;
+        this.deoptimizationEncodings = deoptimizationEncodings;
+        this.deoptimizationObjectConstants = deoptimizationObjectConstants;
+    }
+
     @Override
     public void lookupCodeInfo(long ip, CodeInfoQueryResult codeInfo) {
-        CodeInfoDecoder.lookupCodeInfo(pa(codeInfoEncodings), pa(codeInfoIndex), pa(frameInfoEncodings), pa(frameInfoNames), pa(frameInfoObjectConstants),
-                        pa(frameInfoSourceClasses), pa(frameInfoSourceMethodNames), pa(referenceMapEncoding), ip, codeInfo);
+        CodeInfoDecoder.lookupCodeInfo(codeInfoEncodings, codeInfoIndex, frameInfoEncodings, pa(frameInfoNames), pa(frameInfoObjectConstants),
+                        pa(frameInfoSourceClasses), pa(frameInfoSourceMethodNames), referenceMapEncoding, ip, codeInfo);
     }
 
     @Override
     public long lookupDeoptimizationEntrypoint(long method, long encodedBci, CodeInfoQueryResult codeInfo) {
-        return CodeInfoDecoder.lookupDeoptimizationEntrypoint(pa(codeInfoEncodings), pa(codeInfoIndex), pa(frameInfoEncodings), pa(frameInfoNames), pa(frameInfoObjectConstants),
-                        pa(frameInfoSourceClasses), pa(frameInfoSourceMethodNames), pa(referenceMapEncoding), method, encodedBci, codeInfo);
+        return CodeInfoDecoder.lookupDeoptimizationEntrypoint(codeInfoEncodings, codeInfoIndex, frameInfoEncodings, pa(frameInfoNames), pa(frameInfoObjectConstants),
+                        pa(frameInfoSourceClasses), pa(frameInfoSourceMethodNames), referenceMapEncoding, method, encodedBci, codeInfo);
     }
 
     @Override
     public long lookupTotalFrameSize(long ip) {
-        return CodeInfoDecoder.lookupTotalFrameSize(pa(codeInfoEncodings), pa(codeInfoIndex), ip);
+        return CodeInfoDecoder.lookupTotalFrameSize(codeInfoEncodings, codeInfoIndex, ip);
     }
 
     @Override
     public long lookupExceptionOffset(long ip) {
-        return CodeInfoDecoder.lookupExceptionOffset(pa(codeInfoEncodings), pa(codeInfoIndex), ip);
+        return CodeInfoDecoder.lookupExceptionOffset(codeInfoEncodings, codeInfoIndex, ip);
     }
 
     @Override
     public PinnedArray<Byte> getReferenceMapEncoding() {
-        return pa(referenceMapEncoding);
+        return referenceMapEncoding;
     }
 
     @Override
     public long lookupReferenceMapIndex(long ip) {
-        return CodeInfoDecoder.lookupReferenceMapIndex(pa(codeInfoEncodings), pa(codeInfoIndex), ip);
+        return CodeInfoDecoder.lookupReferenceMapIndex(codeInfoEncodings, codeInfoIndex, ip);
     }
 }

@@ -42,6 +42,8 @@ import org.graalvm.util.GuardedAnnotationAccess;
 import com.oracle.svm.core.SubstrateOptions;
 import com.oracle.svm.core.annotate.AutomaticFeature;
 import com.oracle.svm.core.annotate.ForceFixedRegisterReads;
+import com.oracle.svm.core.c.PinnedArray;
+import com.oracle.svm.core.c.PinnedArrays;
 import com.oracle.svm.core.graal.GraalFeature;
 import com.oracle.svm.core.graal.nodes.ReadRegisterFixedNode;
 import com.oracle.svm.core.graal.nodes.ReadRegisterFloatingNode;
@@ -278,7 +280,8 @@ public class VMThreadMTFeature implements GraalFeature {
 
         InstanceReferenceMapEncoder encoder = new InstanceReferenceMapEncoder();
         encoder.add(referenceMap);
-        objectReferenceWalker.vmThreadReferenceMapEncoding = encoder.encodeAll(null);
+        PinnedArray<Byte> referenceMapEncoding = encoder.encodeAll(null);
+        objectReferenceWalker.vmThreadReferenceMapEncoding = PinnedArrays.getHostedArray(referenceMapEncoding);
         objectReferenceWalker.vmThreadReferenceMapIndex = encoder.lookupEncoding(referenceMap);
         objectReferenceWalker.vmThreadSize = nextOffset;
 

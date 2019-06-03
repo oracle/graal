@@ -27,9 +27,13 @@ package com.oracle.svm.core.c;
 // Checkstyle: allow reflection
 
 import java.lang.reflect.Array;
+import java.nio.ByteBuffer;
 
 import org.graalvm.compiler.word.Word;
 import org.graalvm.nativeimage.ImageSingletons;
+import org.graalvm.nativeimage.Platform;
+import org.graalvm.nativeimage.Platforms;
+import org.graalvm.nativeimage.c.type.CTypeConversion;
 import org.graalvm.nativeimage.impl.UnmanagedMemorySupport;
 import org.graalvm.word.Pointer;
 import org.graalvm.word.PointerBase;
@@ -44,11 +48,16 @@ import com.oracle.svm.core.heap.ObjectReferenceVisitor;
 import com.oracle.svm.core.heap.ObjectReferenceWalker;
 import com.oracle.svm.core.hub.DynamicHub;
 import com.oracle.svm.core.hub.LayoutEncoding;
+import com.oracle.svm.core.snippets.ImplicitExceptions;
 import com.oracle.svm.core.snippets.KnownIntrinsics;
 
 public final class PinnedArrays {
+    @SuppressWarnings("unchecked")
     @Uninterruptible(reason = "Faux object reference on stack during array initialization.")
-    private static <T extends PinnedArray<?>> T createUnmanagedArray(int length, Class<?> arrayType) {
+    private static <T extends PinnedArray<?>> T createArray(int length, Class<?> arrayType) {
+        if (SubstrateUtil.HOSTED) {
+            return (T) new HostedPinnedArray<>(Array.newInstance(arrayType.getComponentType(), length));
+        }
         int layoutEncoding = SubstrateUtil.cast(arrayType, DynamicHub.class).getLayoutEncoding();
         assert LayoutEncoding.isArray(layoutEncoding);
         UnsignedWord size = LayoutEncoding.getArraySize(layoutEncoding, length);
@@ -66,7 +75,7 @@ public final class PinnedArrays {
     @Uninterruptible(reason = "Faux object reference on stack.", callerMustBe = true)
     private static <T> T asObject(PointerBase array) {
         if (SubstrateUtil.HOSTED) {
-            return (T) ((HostedPinnedArray<?>) array).getArray();
+            return (T) getHostedArray((PinnedArray<?>) array);
         }
         return (T) KnownIntrinsics.convertUnknownValue(((Pointer) array).toObject(), Object.class);
     }
@@ -83,6 +92,9 @@ public final class PinnedArrays {
 
     @Uninterruptible(reason = "Faux object reference on stack.")
     public static int lengthOf(PinnedArray<?> array) {
+        if (SubstrateUtil.HOSTED) {
+            return Array.getLength(getHostedArray(array));
+        }
         return KnownIntrinsics.readArrayLength(asObject(array));
     }
 
@@ -100,24 +112,31 @@ public final class PinnedArrays {
     }
 
     /**
-     * Allocates a byte array of the specified length in unmanaged memory. The array must be
-     * released manually with {@link #releaseUnmanagedArray}.
+     * Allocates a byte array of the specified length.
      */
     @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
-    public static PinnedArray<Byte> createUnmanagedByteArray(int nbytes) {
-        return createUnmanagedArray(nbytes, byte[].class);
+    public static PinnedArray<Byte> createByteArray(int nbytes) {
+        return createArray(nbytes, byte[].class);
     }
 
     /**
-     * Allocates an array of the specified length in unmanaged memory to hold references to objects
-     * on the Java heap. In order to ensure that the referenced objects are reachable for garbage
-     * collection, the owner of an instance must call {@link #walkUnmanagedObjectArray} on each
-     * array from {@linkplain GC#registerObjectReferenceWalker a GC-registered reference walker}.
-     * The array must be released manually with {@link #releaseUnmanagedArray}.
+     * Allocates an integer array of the specified length.
      */
     @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
-    public static <T> PinnedObjectArray<T> createUnmanagedObjectArray(int length) {
-        return createUnmanagedArray(length, Object[].class);
+    public static PinnedArray<Integer> createIntArray(int length) {
+        return createArray(length, int[].class);
+    }
+
+    /**
+     * Allocates an array of the specified length to hold references to objects on the Java heap. In
+     * order to ensure that the referenced objects are reachable for garbage collection, the owner
+     * of an instance must call {@link #walkUnmanagedObjectArray} on each array from
+     * {@linkplain GC#registerObjectReferenceWalker(ObjectReferenceWalker) a GC-registered reference
+     * walker}. The array must be released manually with {@link #releaseUnmanagedArray}.
+     */
+    @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
+    public static <T> PinnedObjectArray<T> createObjectArray(int length) {
+        return createArray(length, Object[].class);
     }
 
     @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
@@ -140,9 +159,39 @@ public final class PinnedArrays {
         return (PinnedObjectArray<T>) fromImageHeapOrPinnedAllocator((Object) array);
     }
 
+    /** During the image build, retrieve the array object that will be pinned. */
+    @Platforms(Platform.HOSTED_ONLY.class)
+    @SuppressWarnings("unchecked")
+    public static <T> T getHostedArray(PinnedArray<?> array) {
+        return (T) ((HostedPinnedArray<?>) array).getArray();
+    }
+
+    public static ByteBuffer asByteBuffer(PinnedArray<Byte> array) {
+        if (SubstrateUtil.HOSTED) {
+            return ByteBuffer.wrap(getHostedArray(array));
+        }
+        return CTypeConversion.asByteBuffer(addressOf(array, 0), lengthOf(array));
+    }
+
     @Uninterruptible(reason = "Faux object reference on stack.")
-    public static int getInt(PinnedArray<?> array, int index) {
-        return Array.getInt(asObject(array), index);
+    public static int getInt(PinnedArray<?> pinnedArray, int index) {
+        Object array = asObject(pinnedArray);
+        if (array instanceof int[]) {
+            return ((int[]) array)[index];
+        }
+        // add support for byte, short, char on demand
+        throw ImplicitExceptions.CACHED_CLASS_CAST_EXCEPTION;
+    }
+
+    @Uninterruptible(reason = "Faux object reference on stack.")
+    public static void setInt(PinnedArray<?> pinnedArray, int index, int value) {
+        Object array = asObject(pinnedArray);
+        // add support for long, float, double on demand
+        if (array instanceof int[]) {
+            ((int[]) array)[index] = value;
+        } else {
+            throw ImplicitExceptions.CACHED_CLASS_CAST_EXCEPTION;
+        }
     }
 
     @SuppressWarnings("unchecked")

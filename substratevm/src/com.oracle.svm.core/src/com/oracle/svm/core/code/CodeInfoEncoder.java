@@ -26,7 +26,6 @@ package com.oracle.svm.core.code;
 
 import static com.oracle.svm.core.util.VMError.shouldNotReachHere;
 
-import java.nio.ByteBuffer;
 import java.util.BitSet;
 import java.util.TreeMap;
 
@@ -40,6 +39,8 @@ import org.graalvm.word.Pointer;
 import org.graalvm.word.UnsignedWord;
 import org.graalvm.word.WordFactory;
 
+import com.oracle.svm.core.c.PinnedArray;
+import com.oracle.svm.core.c.PinnedArrays;
 import com.oracle.svm.core.code.FrameInfoQueryResult.ValueInfo;
 import com.oracle.svm.core.code.FrameInfoQueryResult.ValueType;
 import com.oracle.svm.core.config.ConfigurationValues;
@@ -106,9 +107,9 @@ public class CodeInfoEncoder {
     private final TreeMap<Long, IPData> entries;
     private final FrameInfoEncoder frameInfoEncoder;
 
-    private byte[] codeInfoIndex;
-    private byte[] codeInfoEncodings;
-    private byte[] referenceMapEncoding;
+    private PinnedArray<Byte> codeInfoIndex;
+    private PinnedArray<Byte> codeInfoEncodings;
+    private PinnedArray<Byte> referenceMapEncoding;
 
     public CodeInfoEncoder(FrameInfoEncoder.Customization frameInfoCustomization, PinnedAllocator allocator) {
         this.allocator = allocator;
@@ -190,7 +191,7 @@ public class CodeInfoEncoder {
                         frameInfoEncoder.frameInfoSourceClasses, frameInfoEncoder.frameInfoSourceMethodNames, frameInfoEncoder.frameInfoNames);
 
         ImageSingletons.lookup(Counters.class).frameInfoSize.add(
-                        ConfigurationValues.getObjectLayout().getArrayElementOffset(JavaKind.Byte, frameInfoEncoder.frameInfoEncodings.length) +
+                        ConfigurationValues.getObjectLayout().getArrayElementOffset(JavaKind.Byte, PinnedArrays.lengthOf(frameInfoEncoder.frameInfoEncodings)) +
                                         ConfigurationValues.getObjectLayout().getArrayElementOffset(JavaKind.Object, frameInfoEncoder.frameInfoObjectConstants.length));
     }
 
@@ -262,14 +263,10 @@ public class CodeInfoEncoder {
             writeDeoptFrameInfo(encodingBuffer, data, entryFlags);
         }
 
-        codeInfoIndex = newByteArray(TypeConversion.asU4(indexBuffer.getBytesWritten()));
-        indexBuffer.toByteBuffer(ByteBuffer.wrap(codeInfoIndex));
-        codeInfoEncodings = newByteArray(TypeConversion.asU4(encodingBuffer.getBytesWritten()));
-        encodingBuffer.toByteBuffer(ByteBuffer.wrap(codeInfoEncodings));
-    }
-
-    private byte[] newByteArray(int length) {
-        return allocator == null ? new byte[length] : (byte[]) allocator.newArray(byte.class, length);
+        codeInfoIndex = PinnedArrays.createByteArray(TypeConversion.asU4(indexBuffer.getBytesWritten()));
+        indexBuffer.toByteBuffer(PinnedArrays.asByteBuffer(codeInfoIndex));
+        codeInfoEncodings = PinnedArrays.createByteArray(TypeConversion.asU4(encodingBuffer.getBytesWritten()));
+        encodingBuffer.toByteBuffer(PinnedArrays.asByteBuffer(codeInfoEncodings));
     }
 
     /**

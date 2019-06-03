@@ -24,10 +24,11 @@
  */
 package com.oracle.svm.core.code;
 
-import org.graalvm.compiler.core.common.util.UnsafeArrayTypeReader;
 import org.graalvm.compiler.graph.NodeSourcePosition;
 
-import com.oracle.svm.core.util.ByteArrayReader;
+import com.oracle.svm.core.c.PinnedArray;
+import com.oracle.svm.core.c.PinnedArrays;
+import com.oracle.svm.core.util.PinnedByteArrayTypeReader;
 
 import jdk.vm.ci.meta.ResolvedJavaMethod;
 
@@ -45,25 +46,24 @@ public class DeoptimizationSourcePositionDecoder {
         }
         RuntimeCodeInfoAccessor accessor = (RuntimeCodeInfoAccessor) codeInfo.accessor;
         CodeInfoHandle handle = codeInfo.handle;
-        return decode(deoptId, accessor.getDeoptimizationStartOffsets(handle), accessor.getDeoptimizationEncodings(handle),
-                        accessor.getDeoptimizationObjectConstants(handle));
+        return decode(deoptId, accessor.getDeoptimizationStartOffsets(handle), accessor.getDeoptimizationEncodings(handle), accessor.getDeoptimizationObjectConstants(handle));
     }
 
-    static NodeSourcePosition decode(int deoptId, int[] deoptimizationStartOffsets, byte[] deoptimizationEncodings, Object[] deoptimizationObjectConstants) {
-        if (deoptId < 0 || deoptId >= deoptimizationStartOffsets.length) {
+    static NodeSourcePosition decode(int deoptId, PinnedArray<Integer> deoptimizationStartOffsets, PinnedArray<Byte> deoptimizationEncodings, Object[] deoptimizationObjectConstants) {
+        if (deoptId < 0 || deoptId >= PinnedArrays.lengthOf(deoptimizationStartOffsets)) {
             return null;
         }
 
-        int startOffset = deoptimizationStartOffsets[deoptId];
+        int startOffset = PinnedArrays.getInt(deoptimizationStartOffsets, deoptId);
         if (startOffset == NO_SOURCE_POSITION) {
             return null;
         }
 
-        UnsafeArrayTypeReader readBuffer = UnsafeArrayTypeReader.create(deoptimizationEncodings, 0, ByteArrayReader.supportsUnalignedMemoryAccess());
+        PinnedByteArrayTypeReader readBuffer = new PinnedByteArrayTypeReader(deoptimizationEncodings, 0);
         return decodeSourcePosition(startOffset, deoptimizationObjectConstants, readBuffer);
     }
 
-    private static NodeSourcePosition decodeSourcePosition(long startOffset, Object[] deoptimizationObjectConstants, UnsafeArrayTypeReader readBuffer) {
+    private static NodeSourcePosition decodeSourcePosition(long startOffset, Object[] deoptimizationObjectConstants, PinnedByteArrayTypeReader readBuffer) {
         readBuffer.setByteIndex(startOffset);
         long callerRelativeOffset = readBuffer.getUV();
         int bci = readBuffer.getSVInt();

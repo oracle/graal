@@ -30,6 +30,7 @@ import org.graalvm.word.UnsignedWord;
 
 import com.oracle.svm.core.annotate.AlwaysInline;
 import com.oracle.svm.core.annotate.NeverInline;
+import com.oracle.svm.core.c.PinnedArray;
 import com.oracle.svm.core.heap.InstanceReferenceMapDecoder;
 import com.oracle.svm.core.heap.ObjectHeader;
 import com.oracle.svm.core.heap.ObjectReferenceVisitor;
@@ -76,7 +77,7 @@ public class InteriorObjRefWalker {
             }
         }
 
-        byte[] referenceMapEncoding = DynamicHubSupport.getReferenceMapEncoding();
+        PinnedArray<Byte> referenceMapEncoding = DynamicHubSupport.getReferenceMapEncoding();
         long referenceMapIndex = objHub.getReferenceMapIndex();
 
         // Visit Object reference in the fields of the Object.

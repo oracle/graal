@@ -28,7 +28,6 @@ import org.graalvm.compiler.core.common.NumUtil;
 import org.graalvm.word.Pointer;
 
 import com.oracle.svm.core.SubstrateUtil;
-import com.oracle.svm.core.c.HostedPinnedArray;
 import com.oracle.svm.core.c.PinnedArray;
 import com.oracle.svm.core.c.PinnedArrays;
 
@@ -45,28 +44,28 @@ public class PinnedByteArrayReader {
 
     public static int getS1(PinnedArray<Byte> data, long byteIndex) {
         if (SubstrateUtil.HOSTED) {
-            return ByteArrayReader.getS1(((HostedPinnedArray<Byte>) data).getArray(), byteIndex);
+            return ByteArrayReader.getS1(PinnedArrays.getHostedArray(data), byteIndex);
         }
         return pointerTo(data, byteIndex).readByte(0);
     }
 
     public static int getS2(PinnedArray<Byte> data, long byteIndex) {
         if (SubstrateUtil.HOSTED) {
-            return ByteArrayReader.getS2(((HostedPinnedArray<Byte>) data).getArray(), byteIndex);
+            return ByteArrayReader.getS2(PinnedArrays.getHostedArray(data), byteIndex);
         }
         return pointerTo(data, byteIndex).readShort(0);
     }
 
     public static int getS4(PinnedArray<Byte> data, long byteIndex) {
         if (SubstrateUtil.HOSTED) {
-            return ByteArrayReader.getS4(((HostedPinnedArray<Byte>) data).getArray(), byteIndex);
+            return ByteArrayReader.getS4(PinnedArrays.getHostedArray(data), byteIndex);
         }
         return pointerTo(data, byteIndex).readInt(0);
     }
 
     public static long getS8(PinnedArray<Byte> data, long byteIndex) {
         if (SubstrateUtil.HOSTED) {
-            return ByteArrayReader.getS8(((HostedPinnedArray<Byte>) data).getArray(), byteIndex);
+            return ByteArrayReader.getS8(PinnedArrays.getHostedArray(data), byteIndex);
         }
         return pointerTo(data, byteIndex).readLong(0);
     }

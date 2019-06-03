@@ -24,13 +24,15 @@
  */
 package com.oracle.svm.core.hub;
 
-import org.graalvm.nativeimage.hosted.Feature;
 import org.graalvm.nativeimage.ImageSingletons;
 import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.Platforms;
+import org.graalvm.nativeimage.hosted.Feature;
 
 import com.oracle.svm.core.annotate.AutomaticFeature;
 import com.oracle.svm.core.annotate.UnknownObjectField;
+import com.oracle.svm.core.c.PinnedArray;
+import com.oracle.svm.core.c.PinnedArrays;
 
 public final class DynamicHubSupport {
 
@@ -41,25 +43,19 @@ public final class DynamicHubSupport {
     }
 
     @Platforms(Platform.HOSTED_ONLY.class)
-    public void setData(byte[] referenceMapEncoding) {
-        this.referenceMapEncoding = referenceMapEncoding;
+    public void setData(PinnedArray<Byte> referenceMapEncoding) {
+        this.referenceMapEncoding = PinnedArrays.getHostedArray(referenceMapEncoding);
     }
 
-    public static byte[] getReferenceMapEncoding() {
-        return ImageSingletons.lookup(DynamicHubSupport.class).referenceMapEncoding;
+    public static PinnedArray<Byte> getReferenceMapEncoding() {
+        return PinnedArrays.fromImageHeapOrPinnedAllocator(ImageSingletons.lookup(DynamicHubSupport.class).referenceMapEncoding);
     }
 }
 
 @AutomaticFeature
 class DynamicHubFeature implements Feature {
-
     @Override
     public void afterRegistration(AfterRegistrationAccess access) {
         ImageSingletons.add(DynamicHubSupport.class, new DynamicHubSupport());
-    }
-
-    @Override
-    public void afterCompilation(AfterCompilationAccess config) {
-        config.registerAsImmutable(DynamicHubSupport.getReferenceMapEncoding());
     }
 }
