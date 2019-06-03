@@ -49,7 +49,7 @@ import mx_sdk
 import mx_subst
 from mx_compiler import GraalArchiveParticipant
 from mx_gate import Task
-from mx_substratevm_benchmark import run_js, host_vm_tuple, output_processors, rule_snippets # pylint: disable=unused-import
+from mx_substratevm_benchmark import run_js, host_vm_tuple, output_processors, rule_snippets  # pylint: disable=unused-import
 from mx_unittest import _run_tests, _VMLauncher
 
 GRAAL_COMPILER_FLAGS_BASE = [
@@ -293,7 +293,14 @@ def graalvm_config():
 def build_native_image_image(config=None, args=None):
     config = config or graalvm_config()
     mx.log('Building GraalVM with native-image in ' + _vm_home(config))
-    _mx_vm(['build'] + (args or []), config)
+    env = os.environ.copy()
+    if mx.version < mx.VersionSpec("5.219"):
+        mx.warn("mx version is older than 5.219, SVM's GraalVM build will not be built with links.\nConsider updating mx to improve IDE compile-on-save workflow.")
+    if 'LINKY_LAYOUT' not in env:
+        env['LINKY_LAYOUT'] = '*.jar'
+    else:
+        mx.warn("LINKY_LAYOUT already set")
+    _mx_vm(['build'] + (args or []), config, env=env)
 
 
 def locale_US_args():
