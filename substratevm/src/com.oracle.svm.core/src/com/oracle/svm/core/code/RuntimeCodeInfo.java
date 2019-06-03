@@ -248,6 +248,8 @@ public class RuntimeCodeInfo {
         PinnedArrays.setObject(methodInfos, numMethods, null);
 
         Heap.getHeap().getGC().unregisterObjectReferenceWalker(methodInfo.constantsWalker);
+        Heap.getHeap().getGC().unregisterObjectReferenceWalker(methodInfo);
+        methodInfo.releaseArrays();
 
         /*
          * The arrays are in a pinned chunk that probably still contains metadata for other methods

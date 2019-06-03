@@ -139,6 +139,15 @@ public final class PinnedArrays {
         return createArray(length, Object[].class);
     }
 
+    @SuppressWarnings("unchecked")
+    @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
+    public static <T> PinnedObjectArray<T> copyOfObjectArray(T[] source, int newLength) {
+        PinnedArray<?> array = createArray(newLength, source.getClass());
+        int copyLength = (source.length < newLength) ? source.length : newLength;
+        System.arraycopy(source, 0, asObject(array), 0, copyLength);
+        return (PinnedObjectArray<T>) array;
+    }
+
     @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
     public static void releaseUnmanagedArray(PinnedArray<?> array) {
         ImageSingletons.lookup(UnmanagedMemorySupport.class).free(array);
@@ -216,13 +225,15 @@ public final class PinnedArrays {
     /** @see ObjectReferenceWalker */
     @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true, calleeMustBe = false)
     public static void walkUnmanagedObjectArray(PinnedObjectArray<?> array, ObjectReferenceVisitor visitor) {
-        int refSize = ConfigurationValues.getObjectLayout().getReferenceSize();
-        assert refSize == (1 << readElementShift(array));
-        int length = lengthOf(array);
-        Pointer p = ((Pointer) array).add(readArrayBase(array));
-        for (int i = 0; i < length; i++) {
-            visitor.visitObjectReference(p, true);
-            p = p.add(refSize);
+        if (array.isNonNull()) {
+            int refSize = ConfigurationValues.getObjectLayout().getReferenceSize();
+            assert refSize == (1 << readElementShift(array));
+            int length = lengthOf(array);
+            Pointer p = ((Pointer) array).add(readArrayBase(array));
+            for (int i = 0; i < length; i++) {
+                visitor.visitObjectReference(p, true);
+                p = p.add(refSize);
+            }
         }
     }
 

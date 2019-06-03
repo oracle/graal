@@ -40,13 +40,14 @@ import com.oracle.svm.core.c.PinnedObjectArray;
 import com.oracle.svm.core.code.FrameInfoDecoder.FrameInfoQueryResultAllocator;
 import com.oracle.svm.core.code.FrameInfoDecoder.ValueInfoAllocator;
 import com.oracle.svm.core.deopt.SubstrateInstalledCode;
+import com.oracle.svm.core.heap.ObjectReferenceVisitor;
 import com.oracle.svm.core.heap.ObjectReferenceWalker;
 import com.oracle.svm.core.heap.PinnedAllocator;
 import com.oracle.svm.core.os.CommittedMemoryProvider;
 
 import jdk.vm.ci.code.InstalledCode;
 
-public final class RuntimeMethodInfo implements CodeInfo {
+public final class RuntimeMethodInfo extends ObjectReferenceWalker implements CodeInfo {
 
     private CodePointer codeStart;
     private UnsignedWord codeSize;
@@ -55,18 +56,14 @@ public final class RuntimeMethodInfo implements CodeInfo {
     private PinnedArray<Byte> codeInfoEncodings;
     private PinnedArray<Byte> referenceMapEncoding;
     private PinnedArray<Byte> frameInfoEncodings;
-    protected Object[] frameInfoObjectConstants;
-    protected Class<?>[] frameInfoSourceClasses;
-    protected String[] frameInfoSourceMethodNames;
-    protected String[] frameInfoNames;
+    private PinnedObjectArray<Object> frameInfoObjectConstants;
+    private PinnedObjectArray<Class<?>> frameInfoSourceClasses;
+    private PinnedObjectArray<String> frameInfoSourceMethodNames;
+    private PinnedObjectArray<String> frameInfoNames;
 
     PinnedArray<Integer> deoptimizationStartOffsets;
     PinnedArray<Byte> deoptimizationEncodings;
-    protected Object[] deoptimizationObjectConstants;
-
-    static <T> PinnedObjectArray<T> pa(T[] array) {
-        return PinnedArrays.fromImageHeapOrPinnedAllocator(array);
-    }
+    PinnedObjectArray<Object> deoptimizationObjectConstants;
 
     @Override
     public String getName() {
@@ -183,13 +180,14 @@ public final class RuntimeMethodInfo implements CodeInfo {
     @Override
     public FrameInfoQueryResult nextFrameInfo(long entryOffset, ReusableTypeReader frameInfoReader, FrameInfoQueryResultAllocator resultAllocator,
                     ValueInfoAllocator valueInfoAllocator, boolean fetchFirstFrame) {
-        return CodeInfoAccessor.nextFrameInfo(codeInfoEncodings, pa(frameInfoNames), pa(frameInfoObjectConstants), pa(frameInfoSourceClasses),
-                        pa(frameInfoSourceMethodNames), entryOffset, frameInfoReader, resultAllocator, valueInfoAllocator, fetchFirstFrame);
+        return CodeInfoAccessor.nextFrameInfo(codeInfoEncodings, frameInfoNames, frameInfoObjectConstants, frameInfoSourceClasses,
+                        frameInfoSourceMethodNames, entryOffset, frameInfoReader, resultAllocator, valueInfoAllocator, fetchFirstFrame);
     }
 
     @Override
     public void setMetadata(PinnedArray<Byte> codeInfoIndex, PinnedArray<Byte> codeInfoEncodings, PinnedArray<Byte> referenceMapEncoding, PinnedArray<Byte> frameInfoEncodings,
-                    Object[] frameInfoObjectConstants, Class<?>[] frameInfoSourceClasses, String[] frameInfoSourceMethodNames, String[] frameInfoNames) {
+                    PinnedObjectArray<Object> frameInfoObjectConstants, PinnedObjectArray<Class<?>> frameInfoSourceClasses, PinnedObjectArray<String> frameInfoSourceMethodNames,
+                    PinnedObjectArray<String> frameInfoNames) {
         this.codeInfoIndex = codeInfoIndex;
         this.codeInfoEncodings = codeInfoEncodings;
         this.referenceMapEncoding = referenceMapEncoding;
@@ -200,7 +198,7 @@ public final class RuntimeMethodInfo implements CodeInfo {
         this.frameInfoNames = frameInfoNames;
     }
 
-    void setDeoptimizationMetadata(PinnedArray<Integer> deoptimizationStartOffsets, PinnedArray<Byte> deoptimizationEncodings, Object[] deoptimizationObjectConstants) {
+    void setDeoptimizationMetadata(PinnedArray<Integer> deoptimizationStartOffsets, PinnedArray<Byte> deoptimizationEncodings, PinnedObjectArray<Object> deoptimizationObjectConstants) {
         this.deoptimizationStartOffsets = deoptimizationStartOffsets;
         this.deoptimizationEncodings = deoptimizationEncodings;
         this.deoptimizationObjectConstants = deoptimizationObjectConstants;
@@ -208,14 +206,14 @@ public final class RuntimeMethodInfo implements CodeInfo {
 
     @Override
     public void lookupCodeInfo(long ip, CodeInfoQueryResult codeInfo) {
-        CodeInfoDecoder.lookupCodeInfo(codeInfoEncodings, codeInfoIndex, frameInfoEncodings, pa(frameInfoNames), pa(frameInfoObjectConstants),
-                        pa(frameInfoSourceClasses), pa(frameInfoSourceMethodNames), referenceMapEncoding, ip, codeInfo);
+        CodeInfoDecoder.lookupCodeInfo(codeInfoEncodings, codeInfoIndex, frameInfoEncodings, frameInfoNames, frameInfoObjectConstants,
+                        frameInfoSourceClasses, frameInfoSourceMethodNames, referenceMapEncoding, ip, codeInfo);
     }
 
     @Override
     public long lookupDeoptimizationEntrypoint(long method, long encodedBci, CodeInfoQueryResult codeInfo) {
-        return CodeInfoDecoder.lookupDeoptimizationEntrypoint(codeInfoEncodings, codeInfoIndex, frameInfoEncodings, pa(frameInfoNames), pa(frameInfoObjectConstants),
-                        pa(frameInfoSourceClasses), pa(frameInfoSourceMethodNames), referenceMapEncoding, method, encodedBci, codeInfo);
+        return CodeInfoDecoder.lookupDeoptimizationEntrypoint(codeInfoEncodings, codeInfoIndex, frameInfoEncodings, frameInfoNames, frameInfoObjectConstants,
+                        frameInfoSourceClasses, frameInfoSourceMethodNames, referenceMapEncoding, method, encodedBci, codeInfo);
     }
 
     @Override
@@ -236,5 +234,30 @@ public final class RuntimeMethodInfo implements CodeInfo {
     @Override
     public long lookupReferenceMapIndex(long ip) {
         return CodeInfoDecoder.lookupReferenceMapIndex(codeInfoEncodings, codeInfoIndex, ip);
+    }
+
+    @Override
+    public boolean walk(ObjectReferenceVisitor visitor) {
+        PinnedArrays.walkUnmanagedObjectArray(frameInfoObjectConstants, visitor);
+        PinnedArrays.walkUnmanagedObjectArray(frameInfoSourceClasses, visitor);
+        PinnedArrays.walkUnmanagedObjectArray(frameInfoSourceMethodNames, visitor);
+        PinnedArrays.walkUnmanagedObjectArray(frameInfoNames, visitor);
+        PinnedArrays.walkUnmanagedObjectArray(deoptimizationObjectConstants, visitor);
+        return true;
+    }
+
+    void releaseArrays() {
+        PinnedArrays.releaseUnmanagedArray(codeInfoIndex);
+        PinnedArrays.releaseUnmanagedArray(codeInfoEncodings);
+        PinnedArrays.releaseUnmanagedArray(referenceMapEncoding);
+        PinnedArrays.releaseUnmanagedArray(frameInfoEncodings);
+        PinnedArrays.releaseUnmanagedArray(frameInfoObjectConstants);
+        PinnedArrays.releaseUnmanagedArray(frameInfoSourceClasses);
+        PinnedArrays.releaseUnmanagedArray(frameInfoSourceMethodNames);
+        PinnedArrays.releaseUnmanagedArray(frameInfoNames);
+
+        PinnedArrays.releaseUnmanagedArray(deoptimizationStartOffsets);
+        PinnedArrays.releaseUnmanagedArray(deoptimizationEncodings);
+        PinnedArrays.releaseUnmanagedArray(deoptimizationObjectConstants);
     }
 }

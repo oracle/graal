@@ -27,6 +27,7 @@ package com.oracle.svm.core.code;
 import org.graalvm.nativeimage.c.function.CodePointer;
 
 import com.oracle.svm.core.c.PinnedArray;
+import com.oracle.svm.core.c.PinnedObjectArray;
 
 public class RuntimeCodeInfoAccessor extends AbstractCodeInfoAccessor {
     private final RuntimeCodeInfo codeCache;
@@ -56,7 +57,7 @@ public class RuntimeCodeInfoAccessor extends AbstractCodeInfoAccessor {
         return cast(handle).deoptimizationEncodings;
     }
 
-    Object[] getDeoptimizationObjectConstants(CodeInfoHandle handle) {
+    PinnedObjectArray<Object> getDeoptimizationObjectConstants(CodeInfoHandle handle) {
         return cast(handle).deoptimizationObjectConstants;
     }
 }

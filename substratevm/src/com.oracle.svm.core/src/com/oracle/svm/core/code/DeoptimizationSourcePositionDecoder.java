@@ -28,6 +28,7 @@ import org.graalvm.compiler.graph.NodeSourcePosition;
 
 import com.oracle.svm.core.c.PinnedArray;
 import com.oracle.svm.core.c.PinnedArrays;
+import com.oracle.svm.core.c.PinnedObjectArray;
 import com.oracle.svm.core.util.PinnedByteArrayTypeReader;
 
 import jdk.vm.ci.meta.ResolvedJavaMethod;
@@ -49,7 +50,7 @@ public class DeoptimizationSourcePositionDecoder {
         return decode(deoptId, accessor.getDeoptimizationStartOffsets(handle), accessor.getDeoptimizationEncodings(handle), accessor.getDeoptimizationObjectConstants(handle));
     }
 
-    static NodeSourcePosition decode(int deoptId, PinnedArray<Integer> deoptimizationStartOffsets, PinnedArray<Byte> deoptimizationEncodings, Object[] deoptimizationObjectConstants) {
+    static NodeSourcePosition decode(int deoptId, PinnedArray<Integer> deoptimizationStartOffsets, PinnedArray<Byte> deoptimizationEncodings, PinnedObjectArray<Object> deoptimizationObjectConstants) {
         if (deoptId < 0 || deoptId >= PinnedArrays.lengthOf(deoptimizationStartOffsets)) {
             return null;
         }
@@ -63,11 +64,11 @@ public class DeoptimizationSourcePositionDecoder {
         return decodeSourcePosition(startOffset, deoptimizationObjectConstants, readBuffer);
     }
 
-    private static NodeSourcePosition decodeSourcePosition(long startOffset, Object[] deoptimizationObjectConstants, PinnedByteArrayTypeReader readBuffer) {
+    private static NodeSourcePosition decodeSourcePosition(long startOffset, PinnedObjectArray<Object> deoptimizationObjectConstants, PinnedByteArrayTypeReader readBuffer) {
         readBuffer.setByteIndex(startOffset);
         long callerRelativeOffset = readBuffer.getUV();
         int bci = readBuffer.getSVInt();
-        ResolvedJavaMethod method = (ResolvedJavaMethod) deoptimizationObjectConstants[readBuffer.getUVInt()];
+        ResolvedJavaMethod method = (ResolvedJavaMethod) PinnedArrays.getObject(deoptimizationObjectConstants, readBuffer.getUVInt());
 
         NodeSourcePosition caller = null;
         if (callerRelativeOffset != NO_CALLER) {

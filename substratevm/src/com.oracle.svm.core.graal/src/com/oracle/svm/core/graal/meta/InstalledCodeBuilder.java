@@ -342,6 +342,8 @@ public class InstalledCodeBuilder {
         metaInfoAllocator.open();
         try {
             runtimeMethodInfo = metaInfoAllocator.newInstance(RuntimeMethodInfo.class);
+            Heap.getHeap().getGC().registerObjectReferenceWalker(runtimeMethodInfo);
+
             constantsWalker = metaInfoAllocator.newInstance(ConstantsWalker.class);
 
             CodeReferenceMapEncoder encoder = new CodeReferenceMapEncoder();

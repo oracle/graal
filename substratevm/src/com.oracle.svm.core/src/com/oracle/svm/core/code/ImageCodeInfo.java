@@ -137,15 +137,16 @@ public class ImageCodeInfo implements CodeInfo {
 
     @Override
     public void setMetadata(PinnedArray<Byte> codeInfoIndex, PinnedArray<Byte> codeInfoEncodings, PinnedArray<Byte> referenceMapEncoding, PinnedArray<Byte> frameInfoEncodings,
-                    Object[] frameInfoObjectConstants, Class<?>[] frameInfoSourceClasses, String[] frameInfoSourceMethodNames, String[] frameInfoNames) {
+                    PinnedObjectArray<Object> frameInfoObjectConstants, PinnedObjectArray<Class<?>> frameInfoSourceClasses, PinnedObjectArray<String> frameInfoSourceMethodNames,
+                    PinnedObjectArray<String> frameInfoNames) {
         this.codeInfoIndex = PinnedArrays.getHostedArray(codeInfoIndex);
         this.codeInfoEncodings = PinnedArrays.getHostedArray(codeInfoEncodings);
         this.referenceMapEncoding = PinnedArrays.getHostedArray(referenceMapEncoding);
         this.frameInfoEncodings = PinnedArrays.getHostedArray(frameInfoEncodings);
-        this.frameInfoObjectConstants = frameInfoObjectConstants;
-        this.frameInfoSourceClasses = frameInfoSourceClasses;
-        this.frameInfoSourceMethodNames = frameInfoSourceMethodNames;
-        this.frameInfoNames = frameInfoNames;
+        this.frameInfoObjectConstants = PinnedArrays.getHostedArray(frameInfoObjectConstants);
+        this.frameInfoSourceClasses = PinnedArrays.getHostedArray(frameInfoSourceClasses);
+        this.frameInfoSourceMethodNames = PinnedArrays.getHostedArray(frameInfoSourceMethodNames);
+        this.frameInfoNames = PinnedArrays.getHostedArray(frameInfoNames);
     }
 
     @Override

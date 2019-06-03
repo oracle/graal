@@ -39,6 +39,7 @@ import org.graalvm.nativeimage.ImageSingletons;
 
 import com.oracle.svm.core.c.PinnedArray;
 import com.oracle.svm.core.c.PinnedArrays;
+import com.oracle.svm.core.c.PinnedObjectArray;
 import com.oracle.svm.core.code.CodeInfoEncoder.Counters;
 import com.oracle.svm.core.code.FrameInfoQueryResult.ValueInfo;
 import com.oracle.svm.core.code.FrameInfoQueryResult.ValueType;
@@ -182,10 +183,10 @@ public class FrameInfoEncoder {
     private final FrequencyEncoder<String> names;
 
     protected PinnedArray<Byte> frameInfoEncodings;
-    protected Object[] frameInfoObjectConstants;
-    protected Class<?>[] frameInfoSourceClasses;
-    protected String[] frameInfoSourceMethodNames;
-    protected String[] frameInfoNames;
+    protected PinnedObjectArray<Object> frameInfoObjectConstants;
+    protected PinnedObjectArray<Class<?>> frameInfoSourceClasses;
+    protected PinnedObjectArray<String> frameInfoSourceMethodNames;
+    protected PinnedObjectArray<String> frameInfoNames;
 
     protected FrameInfoEncoder(Customization customization, PinnedAllocator allocator) {
         this.customization = customization;
@@ -491,17 +492,25 @@ public class FrameInfoEncoder {
 
     protected void encodeAll() {
         final JavaConstant[] encodedJavaConstants = objectConstants.encodeAll(new JavaConstant[objectConstants.getLength()]);
-        frameInfoObjectConstants = newObjectArray(encodedJavaConstants.length);
+        frameInfoObjectConstants = PinnedArrays.createObjectArray(encodedJavaConstants.length);
         for (int i = 0; i < encodedJavaConstants.length; i++) {
-            frameInfoObjectConstants[i] = KnownIntrinsics.convertUnknownValue(SubstrateObjectConstant.asObject(encodedJavaConstants[i]), Object.class);
+            PinnedArrays.setObject(frameInfoObjectConstants, i,
+                            KnownIntrinsics.convertUnknownValue(SubstrateObjectConstant.asObject(encodedJavaConstants[i]), Object.class));
         }
 
         final boolean encodeDebugNames = FrameInfoDecoder.encodeDebugNames();
         if (encodeDebugNames || FrameInfoDecoder.encodeSourceReferences()) {
-            frameInfoSourceClasses = sourceClasses.encodeAll(newClassArray(sourceClasses.getLength()));
-            frameInfoSourceMethodNames = sourceMethodNames.encodeAll(newStringArray(sourceMethodNames.getLength()));
+            Class<?>[] infoSourceClasses = sourceClasses.encodeAll(new Class<?>[sourceClasses.getLength()]);
+            frameInfoSourceClasses = PinnedArrays.copyOfObjectArray(infoSourceClasses, infoSourceClasses.length);
+            String[] infoSourceMethodNames = sourceMethodNames.encodeAll(new String[sourceMethodNames.getLength()]);
+            frameInfoSourceMethodNames = PinnedArrays.copyOfObjectArray(infoSourceMethodNames, infoSourceMethodNames.length);
         }
-        frameInfoNames = encodeDebugNames ? names.encodeAll(newStringArray(names.getLength())) : null;
+        if (encodeDebugNames) {
+            String[] infoNames = names.encodeAll(new String[names.getLength()]);
+            frameInfoNames = PinnedArrays.copyOfObjectArray(infoNames, infoNames.length);
+        } else {
+            frameInfoNames = PinnedArrays.nullArray();
+        }
 
         encodeFrameDatas();
 
@@ -516,18 +525,6 @@ public class FrameInfoEncoder {
         }
         frameInfoEncodings = PinnedArrays.createByteArray(TypeConversion.asS4(encodingBuffer.getBytesWritten()));
         encodingBuffer.toByteBuffer(PinnedArrays.asByteBuffer(frameInfoEncodings));
-    }
-
-    private Object[] newObjectArray(int length) {
-        return allocator == null ? new Object[length] : (Object[]) allocator.newArray(Object.class, length);
-    }
-
-    private String[] newStringArray(int length) {
-        return allocator == null ? new String[length] : (String[]) allocator.newArray(String.class, length);
-    }
-
-    private Class<?>[] newClassArray(int length) {
-        return allocator == null ? new Class<?>[length] : (Class<?>[]) allocator.newArray(Class.class, length);
     }
 
     private void encodeFrameData(FrameData data, UnsafeArrayTypeWriter encodingBuffer) {
@@ -634,8 +631,7 @@ public class FrameInfoEncoder {
         for (FrameData expectedData : allDebugInfos) {
             FrameInfoQueryResult actualFrame = FrameInfoDecoder.decodeFrameInfo(expectedData.frame.isDeoptEntry,
                             new ReusableTypeReader(frameInfoEncodings, expectedData.indexInEncodings),
-                            PinnedArrays.fromImageHeapOrPinnedAllocator(frameInfoObjectConstants), PinnedArrays.fromImageHeapOrPinnedAllocator(frameInfoSourceClasses),
-                            PinnedArrays.fromImageHeapOrPinnedAllocator(frameInfoSourceMethodNames), PinnedArrays.fromImageHeapOrPinnedAllocator(frameInfoNames),
+                            frameInfoObjectConstants, frameInfoSourceClasses, frameInfoSourceMethodNames, frameInfoNames,
                             FrameInfoDecoder.HeapBasedFrameInfoQueryResultAllocator, FrameInfoDecoder.HeapBasedValueInfoAllocator, true);
             FrameInfoVerifier.verifyFrames(expectedData, expectedData.frame, actualFrame);
         }

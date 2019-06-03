@@ -192,7 +192,7 @@ public class CodeInfoEncoder {
 
         ImageSingletons.lookup(Counters.class).frameInfoSize.add(
                         ConfigurationValues.getObjectLayout().getArrayElementOffset(JavaKind.Byte, PinnedArrays.lengthOf(frameInfoEncoder.frameInfoEncodings)) +
-                                        ConfigurationValues.getObjectLayout().getArrayElementOffset(JavaKind.Object, frameInfoEncoder.frameInfoObjectConstants.length));
+                                        ConfigurationValues.getObjectLayout().getArrayElementOffset(JavaKind.Object, PinnedArrays.lengthOf(frameInfoEncoder.frameInfoObjectConstants)));
     }
 
     private void encodeReferenceMaps() {

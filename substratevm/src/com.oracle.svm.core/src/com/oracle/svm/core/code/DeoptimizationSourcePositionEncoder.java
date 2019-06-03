@@ -36,6 +36,7 @@ import org.graalvm.compiler.graph.NodeSourcePosition;
 
 import com.oracle.svm.core.c.PinnedArray;
 import com.oracle.svm.core.c.PinnedArrays;
+import com.oracle.svm.core.c.PinnedObjectArray;
 import com.oracle.svm.core.heap.PinnedAllocator;
 import com.oracle.svm.core.util.ByteArrayReader;
 
@@ -46,7 +47,7 @@ public class DeoptimizationSourcePositionEncoder {
 
     protected PinnedArray<Integer> deoptimizationStartOffsets;
     protected PinnedArray<Byte> deoptimizationEncodings;
-    protected Object[] deoptimizationObjectConstants;
+    protected PinnedObjectArray<Object> deoptimizationObjectConstants;
 
     public DeoptimizationSourcePositionEncoder(PinnedAllocator allocator) {
         this.allocator = allocator;
@@ -55,7 +56,8 @@ public class DeoptimizationSourcePositionEncoder {
 
     public void encode(List<NodeSourcePosition> deoptimzationSourcePositions) {
         addObjectConstants(deoptimzationSourcePositions);
-        deoptimizationObjectConstants = objectConstants.encodeAll(newObjectArray(objectConstants.getLength()));
+        Object[] deoptimizationObjectConstants = objectConstants.encodeAll(new Object[objectConstants.getLength()]);
+        this.deoptimizationObjectConstants = PinnedArrays.copyOfObjectArray(deoptimizationObjectConstants, deoptimizationObjectConstants.length);
 
         UnsafeArrayTypeWriter encodingBuffer = UnsafeArrayTypeWriter.create(ByteArrayReader.supportsUnalignedMemoryAccess());
         EconomicMap<NodeSourcePosition, Long> sourcePositionStartOffsets = EconomicMap.create(Equivalence.IDENTITY_WITH_SYSTEM_HASHCODE);
@@ -128,10 +130,6 @@ public class DeoptimizationSourcePositionEncoder {
 
         sourcePositionStartOffsets.put(sourcePosition, startAbsoluteOffset);
         return startAbsoluteOffset;
-    }
-
-    private Object[] newObjectArray(int length) {
-        return allocator == null ? new Object[length] : (Object[]) allocator.newArray(Object.class, length);
     }
 
     private boolean verifyEncoding(List<NodeSourcePosition> deoptimzationSourcePositions) {
