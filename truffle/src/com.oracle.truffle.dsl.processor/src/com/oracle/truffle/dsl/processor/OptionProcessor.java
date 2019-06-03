@@ -368,9 +368,13 @@ public class OptionProcessor extends AbstractProcessor {
                 continue;
             }
             elseIf = builder.startIf(elseIf);
-            // The prefix option check must end with a '.' to differentiate between:
-            // e.g. java.Props.Threshold and java.PropsThreshold
+            // Prefix options must be delimited by a '.' or match exactly.
+            // e.g. for java.Props: java.Props.Threshold and java.Props match, but
+            // java.PropsThreshold doesn't.
             builder.startCall(nameVariableName, "startsWith").doubleQuote(info.name + ".").end();
+            builder.string(" || ");
+            builder.startCall(nameVariableName, "equals").doubleQuote(info.name).end();
+
             builder.end().startBlock();
             builder.startReturn().tree(createBuildOptionDescriptor(context, info)).end();
             builder.end();

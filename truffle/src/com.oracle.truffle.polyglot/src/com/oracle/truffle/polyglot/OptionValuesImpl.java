@@ -147,8 +147,10 @@ final class OptionValuesImpl implements OptionValues {
         String suffix = null;
         if (descriptor.isOptionMap()) {
             suffix = key.substring(name.length());
-            assert suffix.startsWith(".");
-            suffix = suffix.substring(1);
+            assert suffix.isEmpty() || suffix.startsWith(".");
+            if (suffix.startsWith(".")) {
+                suffix = suffix.substring(1);
+            }
         }
         values.put(descriptor.getKey(), optionKey.getType().convert(previousValue, suffix, value));
     }

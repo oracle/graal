@@ -40,8 +40,6 @@
  */
 package org.graalvm.options;
 
-import java.util.Collections;
-import java.util.Map;
 import java.util.Objects;
 
 /**
@@ -88,14 +86,14 @@ public final class OptionKey<T> {
      * Throws {@link IllegalArgumentException} if no default {@link OptionType} could be
      * {@link OptionType#defaultType(Object) resolved} for the value type.
      * 
-     * @since 19.0
+     * @since 20.0
      */
     public static <V> OptionKey<OptionMap<V>> mapOf(Class<V> valueClass) {
         OptionType<OptionMap<V>> type = OptionType.mapOf(valueClass);
         if (type == null) {
             throw new IllegalArgumentException("No default type specified for type " + valueClass.getName());
         }
-        return new OptionKey<>(OptionMap.emptyMap(), type);
+        return new OptionKey<>(OptionMap.empty(), type);
     }
 
     /**

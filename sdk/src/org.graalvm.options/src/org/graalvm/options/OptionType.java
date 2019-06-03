@@ -261,7 +261,7 @@ public final class OptionType<T> {
         }));
     }
 
-    private static class ReadOnlyOptionMap<V> extends AbstractMap<String, V> implements OptionMap<V> {
+    private static class ReadOnlyOptionMap<V> extends OptionMap<V> {
 
         final Map<String, V> backingMap;
         final Map<String, V> readonlyMap;
@@ -277,7 +277,7 @@ public final class OptionType<T> {
         }
 
         @Override
-        public Set<Entry<String, V>> entrySet() {
+        public Set<Map.Entry<String, V>> entrySet() {
             return readonlyMap.entrySet();
         }
     }
@@ -300,7 +300,7 @@ public final class OptionType<T> {
      * @since 19.0
      */
     @SuppressWarnings("unchecked")
-    public static <V> OptionType<OptionMap<V>> mapOf(Class<V> valueClass) {
+    static <V> OptionType<OptionMap<V>> mapOf(Class<V> valueClass) {
         final OptionType<V> valueType = defaultType(valueClass);
         if (valueType == null) {
             return null;

@@ -47,10 +47,7 @@ import static org.junit.Assert.assertNull;
 import static org.junit.Assert.assertSame;
 import static org.junit.Assert.assertTrue;
 
-import java.util.Collections;
-import java.util.HashMap;
 import java.util.Iterator;
-import java.util.Map;
 
 import org.graalvm.options.OptionCategory;
 import org.graalvm.options.OptionDescriptor;
@@ -58,7 +55,6 @@ import org.graalvm.options.OptionDescriptors;
 import org.graalvm.options.OptionKey;
 import org.graalvm.options.OptionMap;
 import org.graalvm.options.OptionStability;
-import org.graalvm.options.OptionType;
 import org.graalvm.options.OptionValues;
 import org.graalvm.polyglot.Engine;
 import org.junit.Test;
@@ -82,6 +78,7 @@ public class OptionProcessorTest {
         OptionDescriptor descriptor2;
         OptionDescriptor descriptor3;
         OptionDescriptor descriptor4;
+        OptionDescriptor descriptor5;
 
         descriptor1 = descriptor = descriptors.get("optiontestlang1.StringOption1");
         assertNotNull(descriptor);
@@ -117,8 +114,16 @@ public class OptionProcessorTest {
         assertSame(OptionStability.STABLE, descriptor.getStability());
         assertSame(OptionTestLang1.StableOption, descriptor.getKey());
 
+        descriptor5 = descriptor = descriptors.get("optiontestlang1.Properties.NotKnownBeforehand");
+        assertNotNull(descriptor);
+        assertEquals("User-defined properties", descriptor.getHelp());
+        assertTrue(descriptor.isOptionMap());
+        assertSame(OptionTestLang1.Properties, descriptor.getKey());
+
         // The options are sorted alphabetically
         Iterator<OptionDescriptor> iterator = descriptors.iterator();
+        assertTrue(iterator.hasNext());
+        assertEquals(descriptor5, iterator.next());
         assertTrue(iterator.hasNext());
         assertEquals(descriptor4, iterator.next());
         assertTrue(iterator.hasNext());
@@ -141,6 +146,7 @@ public class OptionProcessorTest {
         OptionDescriptor descriptor;
         OptionDescriptor descriptor1;
         OptionDescriptor descriptor2;
+        OptionDescriptor descriptor3;
 
         descriptor1 = descriptor = descriptors.get("optiontestinstr1.StringOption1");
         assertNotNull(descriptor);
@@ -158,11 +164,21 @@ public class OptionProcessorTest {
         assertSame(OptionCategory.EXPERT, descriptor.getCategory());
         assertSame(OptionTestInstrument1.StringOption2, descriptor.getKey());
 
+        descriptor3 = descriptor = descriptors.get("optiontestinstr1.Thresholds._");
+        assertNotNull(descriptor);
+        assertEquals("Instrument user-defined thresholds", descriptor.getHelp());
+        assertFalse(descriptor.isDeprecated());
+        assertTrue(descriptor.isOptionMap());
+        assertSame(OptionCategory.EXPERT, descriptor.getCategory());
+        assertSame(OptionTestInstrument1.Thresholds, descriptor.getKey());
+
         Iterator<OptionDescriptor> iterator = descriptors.iterator();
         assertTrue(iterator.hasNext());
         assertEquals(descriptor1, iterator.next());
         assertTrue(iterator.hasNext());
         assertEquals(descriptor2, iterator.next());
+        assertTrue(iterator.hasNext());
+        assertEquals(descriptor3, iterator.next());
         assertFalse(iterator.hasNext());
 
         assertNull(descriptors.get("optiontestinstr1.StringOption3"));
@@ -203,6 +219,23 @@ public class OptionProcessorTest {
         // A language option was set, not the instrument one. Instrument sees no option set:
         assertFalse(optionValues.hasSetOptions());
 
+        engine = Engine.newBuilder() //
+                        .allowExperimentalOptions(true) //
+                        .option("optiontestinstr1.Thresholds.MaxRetries", "123") //
+                        .option("optiontestinstr1.Thresholds.Capacity", "456") //
+                        .build();
+        optionValues = engine.getInstruments().get("optiontestinstr1").lookup(OptionValues.class);
+        assertTrue(optionValues.hasSetOptions());
+        assertNull(descriptors.get("optiontestinstr1.ThresholdsDoesNotMatchPrefix"));
+        optionKey1 = descriptors.get("optiontestinstr1.Thresholds").getKey();
+        optionKey2 = descriptors.get("optiontestinstr1.Thresholds.key").getKey();
+        // Option map keys point to the containing option map descriptor.
+        assertSame(optionKey1, optionKey2);
+        assertTrue(optionValues.hasBeenSet(optionKey1));
+        OptionMap<Integer> thresholds = (OptionMap<Integer>) optionValues.get(optionKey1);
+        assertEquals(123, (int) thresholds.get("MaxRetries"));
+        assertEquals(456, (int) thresholds.get("Capacity"));
+        assertNull(thresholds.get("undefined"));
     }
 
     @Test
@@ -210,17 +243,15 @@ public class OptionProcessorTest {
         OptionDescriptors descriptors = new PrefixOptionDescriptors();
         OptionDescriptor descriptor = descriptors.get("prefix.Prefix.DynamicPropertySetAtRuntimeWhoseNameIsNotKnown");
         assertNotNull(descriptor);
-        assertEquals(OptionCategory.USER, descriptor.getCategory());
         assertTrue(descriptor.isOptionMap());
         assertEquals("prefix.Prefix", descriptor.getName());
-        assertEquals(OptionStability.STABLE, descriptor.getStability());
         assertEquals("Prefix option help", descriptor.getHelp());
-        assertEquals(OptionMap.emptyMap(), descriptor.getKey().getDefaultValue());
+        assertEquals(OptionMap.empty(), descriptor.getKey().getDefaultValue());
     }
 
     @Option.Group("prefix")
     public static class Prefix {
-        @Option(help = "Prefix option help", category = OptionCategory.USER, stability = OptionStability.STABLE) //
+        @Option(help = "Prefix option help", category = OptionCategory.USER) //
         static final OptionKey<OptionMap<String>> Prefix = OptionKey.mapOf(String.class);
     }
 
@@ -276,6 +307,9 @@ public class OptionProcessorTest {
         @Option(help = "Stable Option Help", category = OptionCategory.USER, stability = OptionStability.STABLE) //
         public static final OptionKey<String> StableOption = new OptionKey<>("stable");
 
+        @Option(help = "User-defined properties", category = OptionCategory.USER) //
+        static final OptionKey<OptionMap<String>> Properties = OptionKey.mapOf(String.class);
+
         @Override
         protected OptionDescriptors getOptionDescriptors() {
             return new OptionTestLang1OptionDescriptors();
@@ -305,6 +339,9 @@ public class OptionProcessorTest {
 
         @Option(help = "StringOption2 help", deprecated = false, category = OptionCategory.EXPERT) //
         public static final OptionKey<String> StringOption2 = new OptionKey<>("defaultValue");
+
+        @Option(help = "Instrument user-defined thresholds", deprecated = false, category = OptionCategory.EXPERT) //
+        public static final OptionKey<OptionMap<Integer>> Thresholds = OptionKey.mapOf(Integer.class);
 
         @Override
         protected void onCreate(Env env) {
