@@ -33,8 +33,8 @@ import com.oracle.svm.core.code.FrameInfoDecoder.ValueInfoAllocator;
 
 public abstract class AbstractCodeInfoAccessor implements CodeInfoAccessor {
 
-    private static AbstractCodeInfo cast(CodeInfoHandle handle) {
-        return (AbstractCodeInfo) handle;
+    private static CodeInfo cast(CodeInfoHandle handle) {
+        return (CodeInfo) handle;
     }
 
     @Override

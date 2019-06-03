@@ -34,7 +34,9 @@ import org.graalvm.word.WordFactory;
 
 import com.oracle.svm.core.SubstrateOptions;
 import com.oracle.svm.core.annotate.Uninterruptible;
-import com.oracle.svm.core.annotate.UnknownObjectField;
+import com.oracle.svm.core.c.PinnedArray;
+import com.oracle.svm.core.c.PinnedArrays;
+import com.oracle.svm.core.c.PinnedObjectArray;
 import com.oracle.svm.core.deopt.SubstrateInstalledCode;
 import com.oracle.svm.core.heap.ObjectReferenceWalker;
 import com.oracle.svm.core.heap.PinnedAllocator;
@@ -42,11 +44,31 @@ import com.oracle.svm.core.os.CommittedMemoryProvider;
 
 import jdk.vm.ci.code.InstalledCode;
 
-public final class RuntimeMethodInfo extends AbstractCodeInfo {
+public final class RuntimeMethodInfo implements CodeInfo {
 
-    @UnknownObjectField(types = {int[].class}) protected int[] deoptimizationStartOffsets;
-    @UnknownObjectField(types = {byte[].class}) protected byte[] deoptimizationEncodings;
-    @UnknownObjectField(types = {Object[].class}) protected Object[] deoptimizationObjectConstants;
+    private CodePointer codeStart;
+    private UnsignedWord codeSize;
+
+    protected byte[] codeInfoIndex;
+    protected byte[] codeInfoEncodings;
+    protected byte[] referenceMapEncoding;
+    protected byte[] frameInfoEncodings;
+    protected Object[] frameInfoObjectConstants;
+    protected Class<?>[] frameInfoSourceClasses;
+    protected String[] frameInfoSourceMethodNames;
+    protected String[] frameInfoNames;
+
+    protected int[] deoptimizationStartOffsets;
+    protected byte[] deoptimizationEncodings;
+    protected Object[] deoptimizationObjectConstants;
+
+    static PinnedArray<Byte> pa(byte[] array) {
+        return PinnedArrays.fromImageHeapOrPinnedAllocator(array);
+    }
+
+    static <T> PinnedObjectArray<T> pa(T[] array) {
+        return PinnedArrays.fromImageHeapOrPinnedAllocator(array);
+    }
 
     @Override
     public String getName() {
@@ -101,9 +123,10 @@ public final class RuntimeMethodInfo extends AbstractCodeInfo {
         throw shouldNotReachHere("Must be allocated with PinnedAllocator");
     }
 
-    public void setData(CodePointer codeStart, UnsignedWord codeSize, SubstrateInstalledCode installedCode, int tier, ObjectReferenceWalker constantsWalker, PinnedAllocator allocator,
-                    InstalledCodeObserver.InstalledCodeObserverHandle[] codeObserverHandles) {
-        super.setData(codeStart, codeSize);
+    public void setData(CodePointer codeStart, UnsignedWord codeSize, SubstrateInstalledCode installedCode, int tier, ObjectReferenceWalker constantsWalker,
+                    PinnedAllocator allocator, InstalledCodeObserver.InstalledCodeObserverHandle[] codeObserverHandles) {
+        this.codeStart = codeStart;
+        this.codeSize = codeSize;
         this.name = installedCode.getName();
         this.installedCode = createInstalledCodeReference(installedCode);
         this.tier = tier;
@@ -120,5 +143,95 @@ public final class RuntimeMethodInfo extends AbstractCodeInfo {
     @Uninterruptible(reason = "Called from uninterruptible code", mayBeInlined = true)
     void freeInstalledCode() {
         CommittedMemoryProvider.get().free(getCodeStart(), getCodeSize(), WordFactory.unsigned(SubstrateOptions.codeAlignment()), true);
+    }
+
+    @Override
+    @Uninterruptible(reason = "called from uninterruptible code", mayBeInlined = true)
+    public CodePointer getCodeStart() {
+        return codeStart;
+    }
+
+    @Override
+    @Uninterruptible(reason = "called from uninterruptible code", mayBeInlined = true)
+    public UnsignedWord getCodeSize() {
+        return codeSize;
+    }
+
+    @Uninterruptible(reason = "called from uninterruptible code", mayBeInlined = true)
+    protected CodePointer getCodeEnd() {
+        return (CodePointer) ((UnsignedWord) codeStart).add(codeSize);
+    }
+
+    @Override
+    public boolean contains(CodePointer ip) {
+        return CodeInfoAccessor.contains(codeStart, codeSize, ip);
+    }
+
+    @Override
+    public long relativeIP(CodePointer ip) {
+        return CodeInfoAccessor.relativeIP(codeStart, codeSize, ip);
+    }
+
+    @Override
+    public CodePointer absoluteIP(long relativeIP) {
+        return CodeInfoAccessor.absoluteIP(codeStart, relativeIP);
+    }
+
+    @Override
+    public long initFrameInfoReader(CodePointer ip, ReusableTypeReader frameInfoReader) {
+        return CodeInfoAccessor.initFrameInfoReader(pa(codeInfoEncodings), pa(codeInfoIndex), pa(frameInfoEncodings), relativeIP(ip), frameInfoReader);
+    }
+
+    @Override
+    public FrameInfoQueryResult nextFrameInfo(long entryOffset, ReusableTypeReader frameInfoReader,
+                    FrameInfoDecoder.FrameInfoQueryResultAllocator resultAllocator, FrameInfoDecoder.ValueInfoAllocator valueInfoAllocator,
+                    boolean fetchFirstFrame) {
+        return CodeInfoAccessor.nextFrameInfo(pa(codeInfoEncodings), pa(frameInfoNames), pa(frameInfoObjectConstants), pa(frameInfoSourceClasses),
+                        pa(frameInfoSourceMethodNames), entryOffset, frameInfoReader, resultAllocator, valueInfoAllocator, fetchFirstFrame);
+    }
+
+    @Override
+    public void setMetadata(byte[] codeInfoIndex, byte[] codeInfoEncodings, byte[] referenceMapEncoding, byte[] frameInfoEncodings, Object[] frameInfoObjectConstants,
+                    Class<?>[] frameInfoSourceClasses, String[] frameInfoSourceMethodNames, String[] frameInfoNames) {
+        this.codeInfoIndex = codeInfoIndex;
+        this.codeInfoEncodings = codeInfoEncodings;
+        this.referenceMapEncoding = referenceMapEncoding;
+        this.frameInfoEncodings = frameInfoEncodings;
+        this.frameInfoObjectConstants = frameInfoObjectConstants;
+        this.frameInfoSourceClasses = frameInfoSourceClasses;
+        this.frameInfoSourceMethodNames = frameInfoSourceMethodNames;
+        this.frameInfoNames = frameInfoNames;
+    }
+
+    @Override
+    public void lookupCodeInfo(long ip, CodeInfoQueryResult codeInfo) {
+        CodeInfoDecoder.lookupCodeInfo(pa(codeInfoEncodings), pa(codeInfoIndex), pa(frameInfoEncodings), pa(frameInfoNames), pa(frameInfoObjectConstants),
+                        pa(frameInfoSourceClasses), pa(frameInfoSourceMethodNames), pa(referenceMapEncoding), ip, codeInfo);
+    }
+
+    @Override
+    public long lookupDeoptimizationEntrypoint(long method, long encodedBci, CodeInfoQueryResult codeInfo) {
+        return CodeInfoDecoder.lookupDeoptimizationEntrypoint(pa(codeInfoEncodings), pa(codeInfoIndex), pa(frameInfoEncodings), pa(frameInfoNames), pa(frameInfoObjectConstants),
+                        pa(frameInfoSourceClasses), pa(frameInfoSourceMethodNames), pa(referenceMapEncoding), method, encodedBci, codeInfo);
+    }
+
+    @Override
+    public long lookupTotalFrameSize(long ip) {
+        return CodeInfoDecoder.lookupTotalFrameSize(pa(codeInfoEncodings), pa(codeInfoIndex), ip);
+    }
+
+    @Override
+    public long lookupExceptionOffset(long ip) {
+        return CodeInfoDecoder.lookupExceptionOffset(pa(codeInfoEncodings), pa(codeInfoIndex), ip);
+    }
+
+    @Override
+    public PinnedArray<Byte> getReferenceMapEncoding() {
+        return pa(referenceMapEncoding);
+    }
+
+    @Override
+    public long lookupReferenceMapIndex(long ip) {
+        return CodeInfoDecoder.lookupReferenceMapIndex(pa(codeInfoEncodings), pa(codeInfoIndex), ip);
     }
 }

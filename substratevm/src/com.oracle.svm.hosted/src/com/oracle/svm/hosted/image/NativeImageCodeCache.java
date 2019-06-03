@@ -208,7 +208,7 @@ public abstract class NativeImageCodeCache {
         ImageCodeInfo imageCodeInfo = CodeInfoTable.getImageCodeCache();
         codeInfoEncoder.encodeAll();
         codeInfoEncoder.install(imageCodeInfo);
-        imageCodeInfo.setData(firstMethod, codeSize);
+        imageCodeInfo.setCodeLocation(firstMethod, codeSize);
 
         if (CodeInfoEncoder.Options.CodeInfoEncoderCounters.getValue()) {
             for (Counter counter : ImageSingletons.lookup(CodeInfoEncoder.Counters.class).group.getCounters()) {

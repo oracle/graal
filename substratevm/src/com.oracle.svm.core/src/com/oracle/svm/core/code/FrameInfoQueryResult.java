@@ -186,9 +186,9 @@ public class FrameInfoQueryResult {
 
     /**
      * Returns the offset of the deoptimization target method. The offset is relative to the
-     * {@link AbstractCodeInfo#getCodeStart() code start} of the {@link ImageCodeInfo image}.
-     * Together with the BCI it is used to find the corresponding bytecode frame in the target
-     * method. Note that there is no inlining in target methods, so the method + BCI is unique.
+     * {@link CodeInfoAccessor#getCodeStart code start} of the {@link ImageCodeInfo image}. Together
+     * with the BCI it is used to find the corresponding bytecode frame in the target method. Note
+     * that there is no inlining in target methods, so the method + BCI is unique.
      */
     public int getDeoptMethodOffset() {
         return deoptMethodOffset;
