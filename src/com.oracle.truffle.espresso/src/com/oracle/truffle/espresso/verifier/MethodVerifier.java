@@ -1364,6 +1364,9 @@ public final class MethodVerifier implements ContextAccess {
 
                     // Check guest is not invoking <clinit>
                     if (calledMethodName == Name.CLINIT) {
+                        if (curOpcode == INVOKESTATIC) {
+                            throw new ClassFormatError("Invocation of class initializer!");
+                        }
                         throw new VerifyError("Invocation of class initializer!");
                     }
 
@@ -1414,6 +1417,14 @@ public final class MethodVerifier implements ContextAccess {
                                 if (code.opcode(toInit.newBCI) != NEW) {
                                     throw new VerifyError("There is no NEW bytecode at BCI: " + toInit.newBCI);
                                 }
+                                // according to JCK's "vm/classfmt/ins/instr_03608m1" :
+                                //
+                                // Calling parent's initializer of uninitialized new object is
+                                // illegal, but serialization does just that.
+                                /**
+                                 * if (toInit.getType() != methodHolder) { throw new VerifyError(
+                                 * "Calling wrong initializer for a new object."); }
+                                 */
                             } else {
                                 if (methodName != Name.INIT) {
                                     throw new VerifyError("Encountered UninitializedThis outside of Constructor: " + toInit);
