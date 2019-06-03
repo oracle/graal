@@ -91,7 +91,7 @@ public final class LLVMScanner {
         this.offset = offset;
     }
 
-    public static void parseBitcodeBlock(ByteSequence bitcode, ModelModule model, Source bcSource, LLVMContext context) {
+    public static void parseBitcode(ByteSequence bitcode, ModelModule model, Source bcSource, LLVMContext context) {
         final BitStream bitstream = BitStream.create(bitcode);
         final BCFileRoot fileParser = new BCFileRoot(model, bcSource);
         final LLVMScanner scanner = new LLVMScanner(bitstream, fileParser);

@@ -665,7 +665,7 @@ final class Runner {
                     ExternalLibrary library, ByteSequence bytes) {
         ModelModule module = BinaryParser.parse(bytes);
         if (module != null) {
-            LLVMScanner.parseBitcodeBlock(module.getBitcode(), module, source, context);
+            LLVMScanner.parseBitcode(module.getBitcode(), module, source, context);
             library.setIsNative(false);
             context.addLibraryPaths(module.getLibraryPaths());
             List<String> libraries = module.getLibraries();
