@@ -12,7 +12,6 @@ import java.util.concurrent.locks.ReentrantReadWriteLock;
 import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.RootCallTarget;
 import com.oracle.truffle.api.Truffle;
-import com.oracle.truffle.api.TruffleLanguage;
 import com.oracle.truffle.api.dsl.NodeChild;
 import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.frame.FrameSlot;
@@ -329,7 +328,11 @@ public class LLVMPThreadIntrinsics {
             // so the address may never change
             long mutexAddress = ((LLVMNativePointer) mutex).asNative();
             Object mutObj = LLVMLanguage.getLLVMContextReference().get().mutexStorage.get(mutexAddress);
-            int attrValue = (int) read.executeWithTarget(attr);
+            int attrValue = 0;
+
+            if (!((LLVMPointer) attr).isNull()) {
+                attrValue = (int) read.executeWithTarget(attr);
+            }
             Mutex.Type mutexType = Mutex.Type.DEFAULT_NORMAL;
             if (attrValue == 1) {
                 mutexType = Mutex.Type.RECURSIVE;
