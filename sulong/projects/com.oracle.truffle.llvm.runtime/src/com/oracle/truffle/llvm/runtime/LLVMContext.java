@@ -57,7 +57,6 @@ import com.oracle.truffle.api.frame.FrameDescriptor;
 import com.oracle.truffle.api.frame.FrameSlot;
 import com.oracle.truffle.api.frame.FrameUtil;
 import com.oracle.truffle.api.frame.VirtualFrame;
-import com.oracle.truffle.api.interop.TruffleObject;
 import com.oracle.truffle.api.nodes.ControlFlowException;
 import com.oracle.truffle.api.nodes.DirectCallNode;
 import com.oracle.truffle.api.nodes.RootNode;
@@ -110,9 +109,9 @@ public final class LLVMContext {
 
         private int refcnt;
         private final LLVMNativePointer pointer;
-        private final TruffleObject managed;
+        private final Object managed;
 
-        private Handle(LLVMNativePointer pointer, TruffleObject managed) {
+        private Handle(LLVMNativePointer pointer, Object managed) {
             this.refcnt = 0;
             this.pointer = pointer;
             this.managed = managed;
@@ -120,7 +119,7 @@ public final class LLVMContext {
     }
 
     private final Object handlesLock;
-    private final EconomicMap<TruffleObject, Handle> handleFromManaged;
+    private final EconomicMap<Object, Handle> handleFromManaged;
     private final EconomicMap<LLVMNativePointer, Handle> handleFromPointer;
 
     private final LLVMSourceContext sourceContext;
@@ -323,7 +322,7 @@ public final class LLVMContext {
         return toManagedPointer(new LLVMArgumentArray(result));
     }
 
-    private static LLVMManagedPointer toManagedPointer(TruffleObject value) {
+    private static LLVMManagedPointer toManagedPointer(Object value) {
         return LLVMManagedPointer.create(LLVMTypedForeignObject.createUnknown(value));
     }
 
@@ -387,7 +386,7 @@ public final class LLVMContext {
         // free the space which might have been when putting pointer-type globals into native memory
         for (LLVMPointer pointer : globalsReverseMap.keySet()) {
             if (LLVMManagedPointer.isInstance(pointer)) {
-                TruffleObject object = LLVMManagedPointer.cast(pointer).getObject();
+                Object object = LLVMManagedPointer.cast(pointer).getObject();
                 if (object instanceof LLVMGlobalContainer) {
                     ((LLVMGlobalContainer) object).dispose();
                 }
@@ -579,7 +578,7 @@ public final class LLVMContext {
     }
 
     @TruffleBoundary
-    public TruffleObject getManagedObjectForHandle(LLVMNativePointer address) {
+    public Object getManagedObjectForHandle(LLVMNativePointer address) {
         synchronized (handlesLock) {
             final Handle handle = handleFromPointer.get(address);
 
@@ -607,16 +606,16 @@ public final class LLVMContext {
         }
     }
 
-    public LLVMNativePointer getHandleForManagedObject(LLVMMemory memory, TruffleObject object) {
+    public LLVMNativePointer getHandleForManagedObject(LLVMMemory memory, Object object) {
         return getHandle(memory, object, false).copy();
     }
 
-    public LLVMNativePointer getDerefHandleForManagedObject(LLVMMemory memory, TruffleObject object) {
+    public LLVMNativePointer getDerefHandleForManagedObject(LLVMMemory memory, Object object) {
         return getHandle(memory, object, true).copy();
     }
 
     @TruffleBoundary
-    private LLVMNativePointer getHandle(LLVMMemory memory, TruffleObject object, boolean autoDeref) {
+    private LLVMNativePointer getHandle(LLVMMemory memory, Object object, boolean autoDeref) {
         synchronized (handlesLock) {
             Handle handle = handleFromManaged.get(object);
             if (handle == null) {

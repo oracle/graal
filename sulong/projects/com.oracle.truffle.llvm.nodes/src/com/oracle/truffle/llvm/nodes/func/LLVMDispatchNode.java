@@ -243,7 +243,7 @@ public abstract class LLVMDispatchNode extends LLVMNode {
             this.type = type;
         }
 
-        abstract Object execute(TruffleObject function, LLVMInteropType.Structured interopType, Object[] arguments);
+        abstract Object execute(Object function, LLVMInteropType.Structured interopType, Object[] arguments);
 
         @Specialization(guards = "functionType == cachedType", limit = "5")
         protected Object doCachedType(TruffleObject function, @SuppressWarnings("unused") LLVMInteropType.Function functionType, Object[] arguments,

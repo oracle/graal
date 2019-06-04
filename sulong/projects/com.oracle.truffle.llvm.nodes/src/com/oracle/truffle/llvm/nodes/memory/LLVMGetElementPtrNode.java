@@ -29,12 +29,10 @@
  */
 package com.oracle.truffle.llvm.nodes.memory;
 
-import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.dsl.NodeChild;
 import com.oracle.truffle.api.dsl.NodeField;
 import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.llvm.nodes.memory.LLVMGetElementPtrNodeGen.LLVMIncrementPointerNodeGen;
-import com.oracle.truffle.llvm.runtime.LLVMBoxedPrimitive;
 import com.oracle.truffle.llvm.runtime.LLVMVirtualAllocationAddress;
 import com.oracle.truffle.llvm.runtime.nodes.api.LLVMExpressionNode;
 import com.oracle.truffle.llvm.runtime.nodes.api.LLVMNode;
@@ -94,30 +92,6 @@ public abstract class LLVMGetElementPtrNode extends LLVMExpressionNode {
         @Specialization
         protected LLVMVirtualAllocationAddress doTruffleObject(LLVMVirtualAllocationAddress addr, long incr) {
             return addr.increment(incr);
-        }
-
-        @Specialization
-        protected LLVMNativePointer doLLVMBoxedPrimitive(LLVMBoxedPrimitive addr, int incr) {
-            if (addr.getValue() instanceof Long) {
-                return LLVMNativePointer.create((long) addr.getValue() + incr);
-            } else if (addr.getValue() instanceof Integer) {
-                return LLVMNativePointer.create((long) (int) addr.getValue() + incr);
-            } else {
-                CompilerDirectives.transferToInterpreter();
-                throw new IllegalAccessError("Cannot do pointer arithmetic with address: " + addr.getValue());
-            }
-        }
-
-        @Specialization
-        protected LLVMNativePointer doLLVMBoxedPrimitive(LLVMBoxedPrimitive addr, long incr) {
-            if (addr.getValue() instanceof Long) {
-                return LLVMNativePointer.create((long) addr.getValue() + incr);
-            } else if (addr.getValue() instanceof Integer) {
-                return LLVMNativePointer.create((int) addr.getValue() + incr);
-            } else {
-                CompilerDirectives.transferToInterpreter();
-                throw new IllegalAccessError("Cannot do pointer arithmetic with address: " + addr.getValue());
-            }
         }
     }
 }

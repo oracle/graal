@@ -40,7 +40,6 @@ import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.api.interop.ArityException;
 import com.oracle.truffle.api.interop.InteropLibrary;
-import com.oracle.truffle.api.interop.TruffleObject;
 import com.oracle.truffle.api.interop.UnknownIdentifierException;
 import com.oracle.truffle.api.interop.UnsupportedMessageException;
 import com.oracle.truffle.api.interop.UnsupportedTypeException;
@@ -90,7 +89,7 @@ public abstract class LLVMPolyglotInvoke extends LLVMIntrinsic {
     }
 
     @ExplodeLoop
-    private Object doInvoke(VirtualFrame frame, TruffleObject value, String id, ContextReference<LLVMContext> ctxRef,
+    private Object doInvoke(VirtualFrame frame, Object value, String id, ContextReference<LLVMContext> ctxRef,
                     LLVMGetStackNode getStack) {
         Object[] evaluatedArgs = new Object[args.length];
         for (int i = 0; i < args.length; i++) {
@@ -114,7 +113,7 @@ public abstract class LLVMPolyglotInvoke extends LLVMIntrinsic {
                     @Cached("createReadString()") LLVMReadStringNode readStr,
                     @CachedContext(LLVMLanguage.class) ContextReference<LLVMContext> context,
                     @Cached("create()") LLVMGetStackNode getStack) {
-        TruffleObject foreign = asForeign.execute(value);
+        Object foreign = asForeign.execute(value);
         return doInvoke(frame, foreign, readStr.executeWithTarget(id), context, getStack);
     }
 

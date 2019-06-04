@@ -41,7 +41,6 @@ import com.oracle.truffle.api.dsl.NodeChild;
 import com.oracle.truffle.api.dsl.NodeChildren;
 import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.frame.VirtualFrame;
-import com.oracle.truffle.api.interop.TruffleObject;
 import com.oracle.truffle.api.nodes.DirectCallNode;
 import com.oracle.truffle.api.nodes.RootNode;
 import com.oracle.truffle.api.profiles.ConditionProfile;
@@ -122,9 +121,9 @@ public abstract class LLVMTruffleDecorateFunction extends LLVMIntrinsic {
         @Child private LLVMDispatchNode funcCallNode;
         @Child private DirectCallNode wrapperCallNode;
 
-        private final TruffleObject func;
+        private final Object func;
 
-        protected ForeignDecoratedRoot(TruffleLanguage<?> language, FunctionType type, TruffleObject func, LLVMFunctionDescriptor wrapper) {
+        protected ForeignDecoratedRoot(TruffleLanguage<?> language, FunctionType type, Object func, LLVMFunctionDescriptor wrapper) {
             super(language);
             this.funcCallNode = LLVMDispatchNodeGen.create(type);
             this.func = func;
@@ -205,7 +204,7 @@ public abstract class LLVMTruffleDecorateFunction extends LLVMIntrinsic {
     }
 
     @TruffleBoundary
-    private Object decorateForeign(TruffleObject function, LLVMFunctionDescriptor wrapperFunction) {
+    private Object decorateForeign(Object function, LLVMFunctionDescriptor wrapperFunction) {
         assert function != null && wrapperFunction != null;
         FunctionType newFunctionType = new FunctionType(wrapperFunction.getType().getReturnType(), Type.EMPTY_ARRAY, true);
         DecoratedRoot decoratedRoot = new ForeignDecoratedRoot(lookupLanguageReference(LLVMLanguage.class).get(), newFunctionType, function, wrapperFunction);
@@ -218,7 +217,7 @@ public abstract class LLVMTruffleDecorateFunction extends LLVMIntrinsic {
         return LLVMManagedPointer.create(wrappedFunction);
     }
 
-    protected static boolean isForeignFunction(TruffleObject object) {
+    protected static boolean isForeignFunction(Object object) {
         return object instanceof LLVMTypedForeignObject;
     }
 

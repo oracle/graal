@@ -34,7 +34,6 @@ import java.util.Objects;
 
 import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
-import com.oracle.truffle.api.interop.TruffleObject;
 import com.oracle.truffle.llvm.runtime.LLVMFunctionDescriptor;
 import com.oracle.truffle.llvm.runtime.debug.LLVMDebuggerValue;
 import com.oracle.truffle.llvm.runtime.debug.scope.LLVMSourceLocation;
@@ -151,7 +150,7 @@ public abstract class LLVMDebugObject extends LLVMDebuggerValue {
 
         if (LLVMManagedPointer.isInstance(currentValue)) {
             final LLVMManagedPointer managedPointer = LLVMManagedPointer.cast(currentValue);
-            final TruffleObject target = managedPointer.getObject();
+            final Object target = managedPointer.getObject();
 
             String targetString;
             if (target instanceof LLVMFunctionDescriptor) {

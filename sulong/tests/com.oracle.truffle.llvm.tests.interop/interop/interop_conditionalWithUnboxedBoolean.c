@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2016, 2019, Oracle and/or its affiliates.
+ * Copyright (c) 2017, 2019, Oracle and/or its affiliates.
  *
  * All rights reserved.
  *
@@ -27,36 +27,23 @@
  * NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED
  * OF THE POSSIBILITY OF SUCH DAMAGE.
  */
-package com.oracle.truffle.llvm.nodes.memory.load;
+#include <polyglot.h>
 
-import com.oracle.truffle.api.dsl.Cached;
-import com.oracle.truffle.api.dsl.Specialization;
-import com.oracle.truffle.llvm.runtime.LLVMVirtualAllocationAddress;
-import com.oracle.truffle.llvm.runtime.interop.convert.ForeignToLLVM.ForeignToLLVMType;
-import com.oracle.truffle.llvm.runtime.memory.UnsafeArrayAccess;
-import com.oracle.truffle.llvm.runtime.pointer.LLVMManagedPointer;
-import com.oracle.truffle.llvm.runtime.pointer.LLVMNativePointer;
+int main() {
+  bool boxed_true = polyglot_as_boolean(polyglot_import("boxed_true"));
+  bool boxed_false = polyglot_as_boolean(polyglot_import("boxed_false"));
+  
+  if (boxed_true) {
+    // correct
+  } else {
+    return 1;
+  }
+  
+  if (boxed_false) {
+    return 2;
+  } else {
+    // correct
+  }
 
-public abstract class LLVMI1LoadNode extends LLVMAbstractLoadNode {
-
-    @Specialization
-    protected boolean doI1(LLVMVirtualAllocationAddress address,
-                    @Cached("getUnsafeArrayAccess()") UnsafeArrayAccess memory) {
-        return address.getI1(memory);
-    }
-
-    @Specialization(guards = "!isAutoDerefHandle(addr)")
-    protected boolean doI1Native(LLVMNativePointer addr) {
-        return getLLVMMemoryCached().getI1(addr);
-    }
-
-    @Specialization(guards = "isAutoDerefHandle(addr)")
-    protected boolean doI1DerefHandle(LLVMNativePointer addr) {
-        return doI1Managed(getDerefHandleGetReceiverNode().execute(addr));
-    }
-
-    @Specialization
-    protected boolean doI1Managed(LLVMManagedPointer addr) {
-        return (boolean) getForeignReadNode().executeRead(addr.getObject(), addr.getOffset(), ForeignToLLVMType.I1);
-    }
+  return 0;
 }

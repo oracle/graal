@@ -29,24 +29,24 @@
  */
 package com.oracle.truffle.llvm.nodes.intrinsics.llvm.debug;
 
-import com.oracle.truffle.llvm.runtime.debug.LLDBSupport;
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
-import com.oracle.truffle.llvm.runtime.LLVMBoxedPrimitive;
 import com.oracle.truffle.llvm.runtime.LLVMLanguage;
+import com.oracle.truffle.llvm.runtime.debug.LLDBSupport;
 import com.oracle.truffle.llvm.runtime.debug.value.LLVMDebugTypeConstants;
 import com.oracle.truffle.llvm.runtime.debug.value.LLVMDebugValue;
+import com.oracle.truffle.llvm.runtime.pointer.LLVMManagedPointer;
 
-final class LLDBBoxedPrimitive implements LLVMDebugValue {
+final class LLDBManagedPointer implements LLVMDebugValue {
 
-    private final LLVMBoxedPrimitive boxedValue;
+    private final LLVMManagedPointer pointer;
 
-    LLDBBoxedPrimitive(LLVMBoxedPrimitive boxedValue) {
-        this.boxedValue = boxedValue;
+    LLDBManagedPointer(LLVMManagedPointer pointer) {
+        this.pointer = pointer;
     }
 
     private LLVMDebugValue unbox() {
         final LLVMDebugValue.Builder builder = LLVMLanguage.getLLDBSupport().createDebugValueBuilder();
-        return builder.build(boxedValue.getValue());
+        return builder.build(pointer.getObject());
     }
 
     private static boolean isMatchingSize(Object value, long bitSize) {
@@ -84,7 +84,7 @@ final class LLDBBoxedPrimitive implements LLVMDebugValue {
     @Override
     @TruffleBoundary
     public String describeValue(long bitOffset, int bitSize) {
-        final Object value = boxedValue.getValue();
+        final Object value = pointer.getObject();
         if (bitOffset == 0 && isMatchingSize(value, bitSize)) {
             return "<boxed value: " + value + ">";
         } else if (bitSize == 1) {
@@ -122,9 +122,9 @@ final class LLDBBoxedPrimitive implements LLVMDebugValue {
     @Override
     public Object readAddress(long bitOffset) {
         if (bitOffset == 0) {
-            return "<boxed value: " + boxedValue.getValue() + ">";
+            return "<boxed value: " + pointer.getObject() + ">";
         } else {
-            return "<offset " + LLDBSupport.toSizeString(bitOffset) + " in boxed value: " + boxedValue.getValue() + ">";
+            return "<offset " + LLDBSupport.toSizeString(bitOffset) + " in boxed value: " + pointer.getObject() + ">";
         }
     }
 

@@ -35,7 +35,6 @@ import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.Truffle;
 import com.oracle.truffle.api.frame.FrameDescriptor;
 import com.oracle.truffle.api.frame.VirtualFrame;
-import com.oracle.truffle.api.interop.TruffleObject;
 import com.oracle.truffle.api.nodes.DirectCallNode;
 import com.oracle.truffle.api.nodes.RootNode;
 import com.oracle.truffle.llvm.runtime.LLVMArgumentBuffer;
@@ -78,7 +77,7 @@ public class LLVMGlobalRootNode extends RootNode {
     private Object executeWithoutFrame() {
         try (StackPointer basePointer = getContext().getThreadingStack().getStack().newFrame()) {
             try {
-                TruffleObject appPath = new LLVMArgumentBuffer(applicationPath);
+                Object appPath = new LLVMArgumentBuffer(applicationPath);
                 LLVMManagedPointer applicationPathObj = LLVMManagedPointer.create(LLVMTypedForeignObject.createUnknown(appPath));
                 Object[] realArgs = new Object[]{basePointer, mainFunctionType, applicationPathObj};
                 Object result = startFunction.call(realArgs);
