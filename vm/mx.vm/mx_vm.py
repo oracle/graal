@@ -898,11 +898,13 @@ class NativePropertiesBuildTask(mx.ProjectBuildTask):
             graalvm_home = _get_graalvm_archive_path("")
 
             if isinstance(image_config, mx_sdk.LibraryConfig):
-                suffix = mx.add_lib_suffix("")
+                suffix = _lib_suffix
+                prefix = _lib_prefix
                 build_args.append('--shared')
                 project_name_f = GraalVmNativeImage.project_name
             elif isinstance(image_config, mx_sdk.LauncherConfig):
                 suffix = _exe_suffix
+                prefix = ''
                 project_name_f = GraalVmLauncher.launcher_project_name
             else:
                 raise mx.abort("Unsupported image config type: " + str(type(image_config)))
@@ -927,15 +929,16 @@ class NativePropertiesBuildTask(mx.ProjectBuildTask):
 
             build_args += [mx_subst.string_substitutions.substitute(arg) for arg in image_config.build_args]
 
-            if _extra_image_builder_args():
-                build_args += _extra_image_builder_args()
-
-            requires = [arg[2:] for arg in build_args if arg.startswith('--language:') or arg.startswith('--tool:') or arg.startswith('--macro:')]
-            build_args = [arg for arg in build_args if not (arg.startswith('--language:') or arg.startswith('--tool:') or arg.startswith('--macro:'))]
-
             name = basename(image_config.destination)
             if suffix:
                 name = name[:-len(suffix)]
+            canonical_name = name
+            if prefix:
+                canonical_name = canonical_name[len(prefix):]
+            build_args += _extra_image_builder_args(canonical_name)
+
+            requires = [arg[2:] for arg in build_args if arg.startswith('--language:') or arg.startswith('--tool:') or arg.startswith('--macro:')]
+            build_args = [arg for arg in build_args if not (arg.startswith('--language:') or arg.startswith('--tool:') or arg.startswith('--macro:'))]
 
             if any((' ' in arg for arg in build_args)):
                 mx.abort("Unsupported space in launcher build argument: {} in config for {}".format(image_config.build_args, image_config.destination))
@@ -2195,8 +2198,16 @@ def _excluded_components():
     return excluded.split(',')
 
 
-def _extra_image_builder_args():
-    return mx.get_opts().extra_image_builder_argument or mx.get_env('EXTRA_IMAGE_BUILDER_ARGUMENTS', '').split()
+def _extra_image_builder_args(image):
+    prefix = image + ':'
+    prefix_len = len(prefix)
+    args = []
+    for arg in mx.get_opts().extra_image_builder_argument or mx.get_env('EXTRA_IMAGE_BUILDER_ARGUMENTS', '').split():
+        if arg.startswith(prefix):
+            args.append(arg[prefix_len:])
+        elif arg.startswith('-'):
+            args.append(arg)
+    return args
 
 
 def _with_polyglot_lib_project():
