@@ -34,17 +34,35 @@ import org.graalvm.compiler.truffle.common.TruffleCompilerListener.GraphInfo;
  */
 final class SVMGraphInfo extends SVMObject implements TruffleCompilerListener.GraphInfo {
 
+    /**
+     * Not volatile used for fast failure. When inconsistent exception is thrown by JNI on SVM side.
+     */
+    private boolean valid;
+
     SVMGraphInfo(long handle) {
-        super(handle);
+        super(handle, false);
+        valid = true;
     }
 
     @Override
     public int getNodeCount() {
+        checkValid();
         return HotSpotToSVMCalls.getNodeCount(getIsolateThread(), handle);
     }
 
     @Override
     public String[] getNodeTypes(boolean simpleNames) {
+        checkValid();
         return HotSpotToSVMCalls.getNodeTypes(getIsolateThread(), handle, simpleNames);
+    }
+
+    private void checkValid() {
+        if (!valid) {
+            throw new IllegalStateException("Using GraphInfo outside of the TruffleCompilerListener method.");
+        }
+    }
+
+    void invalidate() {
+        valid = false;
     }
 }

@@ -443,7 +443,12 @@ final class SVMToHotSpotEntryPoints {
 
     @SVMToHotSpot(OnSuccess)
     static void onSuccess(TruffleCompilerListener listener, CompilableTruffleAST compilable, TruffleInliningPlan plan, GraphInfo graphInfo, CompilationResultInfo compilationResultInfo) {
-        listener.onSuccess(compilable, plan, graphInfo, compilationResultInfo);
+        try {
+            listener.onSuccess(compilable, plan, graphInfo, compilationResultInfo);
+        } finally {
+            ((SVMGraphInfo) graphInfo).invalidate();
+            ((SVMCompilationResultInfo) compilationResultInfo).invalidate();
+        }
     }
 
     @SVMToHotSpot(OnFailure)
@@ -453,12 +458,20 @@ final class SVMToHotSpotEntryPoints {
 
     @SVMToHotSpot(OnGraalTierFinished)
     static void onGraalTierFinished(TruffleCompilerListener listener, CompilableTruffleAST compilable, GraphInfo graphInfo) {
-        listener.onGraalTierFinished(compilable, graphInfo);
+        try {
+            listener.onGraalTierFinished(compilable, graphInfo);
+        } finally {
+            ((SVMGraphInfo) graphInfo).invalidate();
+        }
     }
 
     @SVMToHotSpot(OnTruffleTierFinished)
     static void onTruffleTierFinished(TruffleCompilerListener listener, CompilableTruffleAST compilable, TruffleInliningPlan plan, GraphInfo graphInfo) {
-        listener.onTruffleTierFinished(compilable, plan, graphInfo);
+        try {
+            listener.onTruffleTierFinished(compilable, plan, graphInfo);
+        } finally {
+            ((SVMGraphInfo) graphInfo).invalidate();
+        }
     }
 
     @SVMToHotSpot(ShouldInline)

@@ -95,7 +95,8 @@ public interface TruffleCompilerListener {
      * compilation occurs between {@link #onTruffleTierFinished} and code installation.
      *
      * @param compilable the call target that was compiled
-     * @param graph the graph representing {@code compilable}
+     * @param graph the graph representing {@code compilable}. The {@code graphInfo} is valid only
+     *            in {@code onGraalTierFinished} method.
      */
     void onGraalTierFinished(CompilableTruffleAST compilable, GraphInfo graph);
 
@@ -105,7 +106,8 @@ public interface TruffleCompilerListener {
      *
      * @param compilable the call target being compiled
      * @param inliningPlan the inlining plan used during partial evaluation
-     * @param graph the graph representing {@code compilable}
+     * @param graph the graph representing {@code compilable}. The {@code graphInfo} is valid only
+     *            in {@code onTruffleTierFinished} method.
      */
     void onTruffleTierFinished(CompilableTruffleAST compilable, TruffleInliningPlan inliningPlan, GraphInfo graph);
 
@@ -113,6 +115,11 @@ public interface TruffleCompilerListener {
      * Notifies this object when compilation of {@code compilable} succeeds.
      *
      * @param compilable the Truffle AST whose compilation succeeded
+     * @param inliningPlan the inlining plan used during partial evaluation
+     * @param graphInfo the graph representing {@code compilable}. The {@code graphInfo} is valid
+     *            only in {@code onSuccess} method.
+     * @param compilationResultInfo the result of a compilation. The {@code compilationResultInfo}
+     *            is valid only in {@code onSuccess} method.
      */
     void onSuccess(CompilableTruffleAST compilable, TruffleInliningPlan inliningPlan, GraphInfo graphInfo, CompilationResultInfo compilationResultInfo);
 

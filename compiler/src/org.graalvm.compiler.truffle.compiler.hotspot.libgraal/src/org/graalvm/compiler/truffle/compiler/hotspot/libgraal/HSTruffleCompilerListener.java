@@ -24,6 +24,7 @@
  */
 package org.graalvm.compiler.truffle.compiler.hotspot.libgraal;
 
+import java.io.Closeable;
 import static org.graalvm.compiler.truffle.common.hotspot.libgraal.SVMToHotSpot.Id.CreateCompilationResultInfo;
 import static org.graalvm.compiler.truffle.common.hotspot.libgraal.SVMToHotSpot.Id.CreateGraphInfo;
 import static org.graalvm.compiler.truffle.common.hotspot.libgraal.SVMToHotSpot.Id.OnFailure;
@@ -62,9 +63,11 @@ final class HSTruffleCompilerListener extends HSObject implements TruffleCompile
         JObject hsCompilable = ((HSCompilableTruffleAST) compilable).getHandle();
         JObject hsInliningPlan = ((HSTruffleInliningPlan) inliningPlan).getHandle();
         JNIEnv env = HotSpotToSVMScope.env();
-        JObject hsGraphInfo = createHSGraphInfo(graphInfo);
-        JObject hsCompilationResultInfo = createHSCompilationResultInfo(compilationResultInfo);
-        callOnSuccess(env, getHandle(), hsCompilable, hsInliningPlan, hsGraphInfo, hsCompilationResultInfo);
+        try (SVMObjectHandleScope hsGraphInfoScope = createHSGraphInfo(graphInfo)) {
+            try (SVMObjectHandleScope hsCompilationResultInfoScope = createHSCompilationResultInfo(compilationResultInfo)) {
+                callOnSuccess(env, getHandle(), hsCompilable, hsInliningPlan, hsGraphInfoScope.jobject, hsCompilationResultInfoScope.jobject);
+            }
+        }
     }
 
     @SVMToHotSpot(OnTruffleTierFinished)
@@ -73,8 +76,9 @@ final class HSTruffleCompilerListener extends HSObject implements TruffleCompile
         JObject hsCompilable = ((HSCompilableTruffleAST) compilable).getHandle();
         JObject hsInliningPlan = ((HSTruffleInliningPlan) inliningPlan).getHandle();
         JNIEnv env = HotSpotToSVMScope.env();
-        JObject hsGraphInfo = createHSGraphInfo(graph);
-        callOnTruffleTierFinished(env, getHandle(), hsCompilable, hsInliningPlan, hsGraphInfo);
+        try (SVMObjectHandleScope hsGraphInfoScope = createHSGraphInfo(graph)) {
+            callOnTruffleTierFinished(env, getHandle(), hsCompilable, hsInliningPlan, hsGraphInfoScope.jobject);
+        }
 
     }
 
@@ -83,8 +87,9 @@ final class HSTruffleCompilerListener extends HSObject implements TruffleCompile
     public void onGraalTierFinished(CompilableTruffleAST compilable, GraphInfo graph) {
         JObject hsCompilable = ((HSCompilableTruffleAST) compilable).getHandle();
         JNIEnv env = HotSpotToSVMScope.env();
-        JObject hsGraphInfo = createHSGraphInfo(graph);
-        callOnGraalTierFinished(env, getHandle(), hsCompilable, hsGraphInfo);
+        try (SVMObjectHandleScope hsGraphInfoScope = createHSGraphInfo(graph)) {
+            callOnGraalTierFinished(env, getHandle(), hsCompilable, hsGraphInfoScope.jobject);
+        }
     }
 
     @SVMToHotSpot(OnFailure)
@@ -97,9 +102,9 @@ final class HSTruffleCompilerListener extends HSObject implements TruffleCompile
     }
 
     @SVMToHotSpot(CreateGraphInfo)
-    private static JObject createHSGraphInfo(GraphInfo graphInfo) {
+    private static SVMObjectHandleScope createHSGraphInfo(GraphInfo graphInfo) {
         if (graphInfo == null) {
-            return WordFactory.nullPointer();
+            return SVMObjectHandleScope.create(WordFactory.nullPointer(), 0);
         }
         long handle = SVMObjectHandles.create(graphInfo);
         boolean success = false;
@@ -107,7 +112,7 @@ final class HSTruffleCompilerListener extends HSObject implements TruffleCompile
             JNIEnv env = HotSpotToSVMScope.env();
             JObject instance = callCreateGraphInfo(env, handle);
             success = true;
-            return instance;
+            return SVMObjectHandleScope.create(instance, handle);
         } finally {
             if (!success) {
                 SVMObjectHandles.remove(handle);
@@ -116,9 +121,9 @@ final class HSTruffleCompilerListener extends HSObject implements TruffleCompile
     }
 
     @SVMToHotSpot(CreateCompilationResultInfo)
-    private static JObject createHSCompilationResultInfo(CompilationResultInfo compilationResultInfo) {
+    private static SVMObjectHandleScope createHSCompilationResultInfo(CompilationResultInfo compilationResultInfo) {
         if (compilationResultInfo == null) {
-            return WordFactory.nullPointer();
+            return SVMObjectHandleScope.create(WordFactory.nullPointer(), 0);
         }
         long handle = SVMObjectHandles.create(compilationResultInfo);
         boolean success = false;
@@ -126,11 +131,33 @@ final class HSTruffleCompilerListener extends HSObject implements TruffleCompile
             JNIEnv env = HotSpotToSVMScope.env();
             JObject instance = callCreateCompilationResultInfo(env, handle);
             success = true;
-            return instance;
+            return SVMObjectHandleScope.create(instance, handle);
         } finally {
             if (!success) {
                 SVMObjectHandles.remove(handle);
             }
+        }
+    }
+
+    private static final class SVMObjectHandleScope implements Closeable {
+
+        final JObject jobject;
+        private final long handle;
+
+        private SVMObjectHandleScope(JObject jobject, long handle) {
+            this.jobject = jobject;
+            this.handle = handle;
+        }
+
+        @Override
+        public void close() {
+            if (jobject.isNonNull()) {
+                SVMObjectHandles.remove(handle);
+            }
+        }
+
+        static SVMObjectHandleScope create(JObject jobject, long handle) {
+            return new SVMObjectHandleScope(jobject, handle);
         }
     }
 }

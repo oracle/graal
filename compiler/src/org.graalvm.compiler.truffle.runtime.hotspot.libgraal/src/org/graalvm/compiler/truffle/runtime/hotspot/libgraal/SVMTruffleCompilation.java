@@ -57,6 +57,7 @@ final class SVMTruffleCompilation extends SVMObject implements TruffleCompilatio
     public void close() {
         try {
             owner.closeCompilation(this);
+            cachedCompilableTruffleAST = null;
         } finally {
             HotSpotToSVMCalls.closeCompilation(getIsolateThread(), handle);
             scope.close();

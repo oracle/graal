@@ -33,42 +33,65 @@ import org.graalvm.compiler.truffle.common.TruffleCompilerListener;
  */
 final class SVMCompilationResultInfo extends SVMObject implements TruffleCompilerListener.CompilationResultInfo {
 
+    /**
+     * Not volatile used for fast failure. When inconsistent exception is thrown by JNI on SVM side.
+     */
+    private boolean valid;
+
     SVMCompilationResultInfo(long handle) {
-        super(handle);
+        super(handle, false);
+        valid = true;
     }
 
     @Override
     public int getTargetCodeSize() {
+        checkValid();
         return HotSpotToSVMCalls.getTargetCodeSize(getIsolateThread(), handle);
     }
 
     @Override
     public int getTotalFrameSize() {
+        checkValid();
         return HotSpotToSVMCalls.getTotalFrameSize(getIsolateThread(), handle);
     }
 
     @Override
     public int getExceptionHandlersCount() {
+        checkValid();
         return HotSpotToSVMCalls.getExceptionHandlersCount(getIsolateThread(), handle);
     }
 
     @Override
     public int getInfopointsCount() {
+        checkValid();
         return HotSpotToSVMCalls.getInfopointsCount(getIsolateThread(), handle);
     }
 
     @Override
     public String[] getInfopoints() {
+        checkValid();
         return HotSpotToSVMCalls.getInfopoints(getIsolateThread(), handle);
     }
 
     @Override
     public int getMarksCount() {
+        checkValid();
         return HotSpotToSVMCalls.getMarksCount(getIsolateThread(), handle);
     }
 
     @Override
     public int getDataPatchesCount() {
+        checkValid();
         return HotSpotToSVMCalls.getDataPatchesCount(getIsolateThread(), handle);
+    }
+
+    private void checkValid() {
+        if (!valid) {
+            throw new IllegalStateException("Using CompilationResultInfo outside of the TruffleCompilerListener method.");
+        }
+    }
+
+    void invalidate() {
+        valid = false;
     }
 }
