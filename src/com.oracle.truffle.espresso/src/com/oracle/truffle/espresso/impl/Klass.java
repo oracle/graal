@@ -264,7 +264,7 @@ public abstract class Klass implements ModifiersProvider, ContextAccess {
         return other.getHierarchyDepth() >= depth && other.getSuperTypes()[depth] == this;
     }
 
-    public final Klass getClosestCommonSupertype(Klass other) {
+    public final Klass findLeastCommonSupertype(Klass other) {
         if (isPrimitive() || other.isPrimitive()) {
             if (this == other) {
                 return this;
@@ -440,6 +440,7 @@ public abstract class Klass implements ModifiersProvider, ContextAccess {
     private int getHierarchyDepth() {
         int result = hierarchyDepth;
         if (result == -1) {
+            CompilerDirectives.transferToInterpreterAndInvalidate();
             if (getSupertype() == null) {
                 // Primitives or java.lang.Object
                 result = 0;

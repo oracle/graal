@@ -25,6 +25,8 @@ package com.oracle.truffle.espresso.classfile;
 import com.oracle.truffle.espresso.classfile.ConstantPool.Tag;
 import com.oracle.truffle.espresso.descriptors.Signatures;
 import com.oracle.truffle.espresso.descriptors.Symbol;
+import com.oracle.truffle.espresso.descriptors.Symbol.Name;
+import com.oracle.truffle.espresso.descriptors.Symbol.Signature;
 
 public interface InvokeDynamicConstant extends PoolConstant {
 
@@ -32,9 +34,9 @@ public interface InvokeDynamicConstant extends PoolConstant {
 
     int getNameAndTypeIndex();
 
-    Symbol<Symbol.Signature> getSignature(ConstantPool pool);
+    Symbol<Signature> getSignature(ConstantPool pool);
 
-    Symbol<Symbol.Name> getName(ConstantPool pool);
+    Symbol<Name> getName(ConstantPool pool);
 
     default Tag tag() {
         return Tag.INVOKEDYNAMIC;
@@ -60,12 +62,12 @@ public interface InvokeDynamicConstant extends PoolConstant {
         }
 
         @Override
-        public final Symbol<Symbol.Signature> getSignature(ConstantPool pool) {
+        public final Symbol<Signature> getSignature(ConstantPool pool) {
             return Signatures.check(pool.nameAndTypeAt(nameAndTypeIndex).getDescriptor(pool));
         }
 
         @Override
-        public final Symbol<Symbol.Name> getName(ConstantPool pool) {
+        public final Symbol<Name> getName(ConstantPool pool) {
             return pool.nameAndTypeAt(nameAndTypeIndex).getName(pool);
         }
     }

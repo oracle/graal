@@ -449,6 +449,10 @@ public final class MethodVerifier implements ContextAccess {
      * Utility for ease of use in Espresso
      *
      * @param m the method to verify
+     * 
+     * @throws VerifyError
+     * @throws NoClassDefFoundError
+     * @throws ClassFormatError
      */
     public static void verify(Method m) {
         CodeAttribute codeAttribute = m.getCodeAttribute();
@@ -1526,9 +1530,9 @@ public final class MethodVerifier implements ContextAccess {
                     if (!(pool.at(idc.getNameAndTypeIndex()).tag() == ConstantPool.Tag.NAME_AND_TYPE)) {
                         throw new ClassFormatError("Invalid constant pool !");
                     }
-                    Symbol<Symbol.Name> name = idc.getName(pool);
+                    Symbol<Name> name = idc.getName(pool);
                     // Check invokedynamic does not call initializers
-                    if (name == Symbol.Name.INIT || name == Symbol.Name.CLINIT) {
+                    if (name == Name.INIT || name == Name.CLINIT) {
                         throw new VerifyError("Invalid bootstrap method name: " + name);
                     }
                     Operand[] parsedSig = getOperandSig(idc.getSignature(pool));

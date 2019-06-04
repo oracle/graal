@@ -23,11 +23,12 @@
 package com.oracle.truffle.espresso.classfile;
 
 import com.oracle.truffle.espresso.descriptors.Symbol;
+import com.oracle.truffle.espresso.descriptors.Symbol.Name;
 import com.oracle.truffle.espresso.runtime.Attribute;
 
 public class StackMapTableAttribute extends Attribute {
 
-    public static final Symbol<Symbol.Name> NAME = Symbol.Name.StackMapTable;
+    public static final Symbol<Name> NAME = Symbol.Name.StackMapTable;
 
     public StackMapFrame[] getEntries() {
         return entries;
