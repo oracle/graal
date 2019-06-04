@@ -249,7 +249,6 @@ public class RuntimeCodeInfo {
         numMethods--;
         PinnedArrays.setObject(methodInfos, numMethods, null);
 
-        Heap.getHeap().getGC().unregisterObjectReferenceWalker(methodInfo.constantsWalker);
         UnmanagedReferenceWalkers.singleton().unregister(RuntimeMethodInfo.walkReferencesFunction.getFunctionPointer(), Word.objectToUntrackedPointer(methodInfo));
         methodInfo.releaseArrays();
 

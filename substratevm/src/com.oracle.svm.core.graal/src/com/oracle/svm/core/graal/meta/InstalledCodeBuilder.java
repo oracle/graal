@@ -43,7 +43,6 @@ import org.graalvm.compiler.debug.Indent;
 import org.graalvm.compiler.truffle.common.TruffleCompiler;
 import org.graalvm.compiler.word.Word;
 import org.graalvm.nativeimage.ImageSingletons;
-import org.graalvm.nativeimage.c.function.CodePointer;
 import org.graalvm.nativeimage.c.type.CTypeConversion;
 import org.graalvm.word.Pointer;
 import org.graalvm.word.UnsignedWord;
@@ -51,7 +50,6 @@ import org.graalvm.word.WordFactory;
 
 import com.oracle.svm.core.SubstrateOptions;
 import com.oracle.svm.core.annotate.Uninterruptible;
-import com.oracle.svm.core.c.PinnedArray;
 import com.oracle.svm.core.c.UnmanagedReferenceWalkers;
 import com.oracle.svm.core.code.CodeInfoEncoder;
 import com.oracle.svm.core.code.CodeInfoTable;
@@ -64,12 +62,8 @@ import com.oracle.svm.core.config.ConfigurationValues;
 import com.oracle.svm.core.deopt.SubstrateInstalledCode;
 import com.oracle.svm.core.graal.code.NativeImagePatcher;
 import com.oracle.svm.core.graal.code.SubstrateCompilationResult;
-import com.oracle.svm.core.heap.CodeReferenceMapDecoder;
 import com.oracle.svm.core.heap.CodeReferenceMapEncoder;
 import com.oracle.svm.core.heap.Heap;
-import com.oracle.svm.core.heap.NoAllocationVerifier;
-import com.oracle.svm.core.heap.ObjectReferenceVisitor;
-import com.oracle.svm.core.heap.ObjectReferenceWalker;
 import com.oracle.svm.core.heap.PinnedAllocator;
 import com.oracle.svm.core.heap.ReferenceAccess;
 import com.oracle.svm.core.heap.SubstrateReferenceMap;
@@ -119,36 +113,6 @@ public class InstalledCodeBuilder {
     private final PinnedAllocator metaInfoAllocator;
 
     private RuntimeMethodInfo runtimeMethodInfo;
-
-    /**
-     * The walker for the GC to visit object references in the installed code.
-     */
-    public static class ConstantsWalker extends ObjectReferenceWalker {
-        Pointer baseAddr;
-        int size;
-
-        PinnedArray<Byte> referenceMapEncoding;
-        long referenceMapIndex;
-
-        /**
-         * Set to true after everything is set up and GC can operate on the constants area.
-         */
-        boolean pointerMapValid;
-
-        /** Called by the GC to walk over the object references in the constants-area. */
-        @Override
-        public boolean walk(final ObjectReferenceVisitor referenceVisitor) {
-            if (pointerMapValid) {
-                return CodeReferenceMapDecoder.walkOffsetsFromPointer(baseAddr, referenceMapEncoding, referenceMapIndex, referenceVisitor);
-            }
-            return false;
-        }
-    }
-
-    /**
-     * The pointer map for constant references, which are in the code or the data area.
-     */
-    private ConstantsWalker constantsWalker;
 
     private final boolean testTrampolineJumps;
 
@@ -345,30 +309,18 @@ public class InstalledCodeBuilder {
             runtimeMethodInfo = metaInfoAllocator.newInstance(RuntimeMethodInfo.class);
             UnmanagedReferenceWalkers.singleton().register(RuntimeMethodInfo.walkReferencesFunction.getFunctionPointer(), Word.objectToUntrackedPointer(runtimeMethodInfo));
 
-            constantsWalker = metaInfoAllocator.newInstance(ConstantsWalker.class);
+            runtimeMethodInfo.setCodeLocation(code, codeSize);
 
             CodeReferenceMapEncoder encoder = new CodeReferenceMapEncoder();
             encoder.add(objectConstants.referenceMap);
-            constantsWalker.referenceMapEncoding = encoder.encodeAll();
-            constantsWalker.referenceMapIndex = encoder.lookupEncoding(objectConstants.referenceMap);
-            constantsWalker.baseAddr = code;
-            constantsWalker.size = codeSize;
-            Heap.getHeap().getGC().registerObjectReferenceWalker(constantsWalker);
-
-            /*
-             * We now have the constantsWalker initialized and registered, but it is still inactive.
-             * Writing the actual object constants to the code memory needs to be atomic regarding
-             * to GC. After everything is written, we activate the constantsWalker.
-             */
-            try (NoAllocationVerifier verifier = NoAllocationVerifier.factory("InstalledCodeBuilder.install")) {
-                writeObjectConstantsToCode(objectConstants);
-            }
+            runtimeMethodInfo.setCodeConstantsInfo(encoder.encodeAll(), encoder.lookupEncoding(objectConstants.referenceMap));
+            writeObjectConstantsToCode(objectConstants);
 
             createCodeChunkInfos();
 
             InstalledCodeObserver.InstalledCodeObserverHandle[] observerHandles = InstalledCodeObserverSupport.installObservers(codeObservers);
 
-            runtimeMethodInfo.setData((CodePointer) code, WordFactory.unsigned(codeSize), installedCode, tier, constantsWalker, metaInfoAllocator, observerHandles);
+            runtimeMethodInfo.setData(installedCode, tier, metaInfoAllocator, observerHandles);
         } finally {
             metaInfoAllocator.close();
         }
@@ -398,13 +350,12 @@ public class InstalledCodeBuilder {
         throw (E) ex;
     }
 
-    @Uninterruptible(reason = "Operates on raw pointers to objects")
+    @Uninterruptible(reason = "Must be atomic with regard to garbage collection.")
     private void writeObjectConstantsToCode(ObjectConstantsHolder objectConstants) {
         for (int i = 0; i < objectConstants.count; i++) {
             objectConstants.patchers[i].patchData(code, objectConstants.values[i]);
         }
-        /* From now on the constantsWalker will operate on the constants area. */
-        constantsWalker.pointerMapValid = true;
+        runtimeMethodInfo.setCodeConstantsLive();
     }
 
     private void createCodeChunkInfos() {

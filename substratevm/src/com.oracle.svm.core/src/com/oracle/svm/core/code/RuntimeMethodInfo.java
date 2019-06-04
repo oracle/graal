@@ -44,8 +44,8 @@ import com.oracle.svm.core.c.function.JavaMethodLiteral;
 import com.oracle.svm.core.code.FrameInfoDecoder.FrameInfoQueryResultAllocator;
 import com.oracle.svm.core.code.FrameInfoDecoder.ValueInfoAllocator;
 import com.oracle.svm.core.deopt.SubstrateInstalledCode;
+import com.oracle.svm.core.heap.CodeReferenceMapDecoder;
 import com.oracle.svm.core.heap.ObjectReferenceVisitor;
-import com.oracle.svm.core.heap.ObjectReferenceWalker;
 import com.oracle.svm.core.heap.PinnedAllocator;
 import com.oracle.svm.core.os.CommittedMemoryProvider;
 
@@ -66,6 +66,10 @@ public final class RuntimeMethodInfo implements CodeInfo {
     private PinnedObjectArray<Class<?>> frameInfoSourceClasses;
     private PinnedObjectArray<String> frameInfoSourceMethodNames;
     private PinnedObjectArray<String> frameInfoNames;
+
+    private boolean codeConstantsLive = false;
+    private PinnedArray<Byte> objectsReferenceMapEncoding;
+    private long objectsReferenceMapIndex;
 
     PinnedArray<Integer> deoptimizationStartOffsets;
     PinnedArray<Byte> deoptimizationEncodings;
@@ -104,14 +108,6 @@ public final class RuntimeMethodInfo implements CodeInfo {
     protected WeakReference<SubstrateInstalledCode> installedCode;
 
     /**
-     * Provides the GC with the root pointers embedded into the runtime compiled code.
-     *
-     * This object is accessed during garbage collection, so it must be {@link PinnedAllocator
-     * pinned}.
-     */
-    protected ObjectReferenceWalker constantsWalker;
-
-    /**
      * The pinned allocator used to allocate all code meta data that is accessed during garbage
      * collection. It is {@link PinnedAllocator#release() released} only after the code has been
      * invalidated and it is guaranteed that no more stack frame of the code is present.
@@ -124,14 +120,27 @@ public final class RuntimeMethodInfo implements CodeInfo {
         throw shouldNotReachHere("Must be allocated with PinnedAllocator");
     }
 
-    public void setData(CodePointer codeStart, UnsignedWord codeSize, SubstrateInstalledCode installedCode, int tier, ObjectReferenceWalker constantsWalker,
-                    PinnedAllocator allocator, InstalledCodeObserver.InstalledCodeObserverHandle[] codeObserverHandles) {
-        this.codeStart = codeStart;
-        this.codeSize = codeSize;
+    public void setCodeLocation(Pointer start, int size) {
+        codeStart = (CodePointer) start;
+        codeSize = WordFactory.unsigned(size);
+    }
+
+    public void setCodeConstantsInfo(PinnedArray<Byte> refMapEncoding, long refMapIndex) {
+        assert codeStart.isNonNull();
+        objectsReferenceMapEncoding = refMapEncoding;
+        objectsReferenceMapIndex = refMapIndex;
+    }
+
+    @Uninterruptible(reason = "Called from uninterruptible code", mayBeInlined = true)
+    public void setCodeConstantsLive() {
+        assert !codeConstantsLive;
+        codeConstantsLive = true;
+    }
+
+    public void setData(SubstrateInstalledCode installedCode, int tier, PinnedAllocator allocator, InstalledCodeObserver.InstalledCodeObserverHandle[] codeObserverHandles) {
         this.name = installedCode.getName();
         this.installedCode = createInstalledCodeReference(installedCode);
         this.tier = tier;
-        this.constantsWalker = constantsWalker;
         this.allocator = allocator;
         assert codeObserverHandles != null;
         this.codeObserverHandles = codeObserverHandles;
@@ -244,6 +253,9 @@ public final class RuntimeMethodInfo implements CodeInfo {
 
     static void walkReferences(ComparableWord methodInfo, ObjectReferenceVisitor visitor) {
         RuntimeMethodInfo obj = (RuntimeMethodInfo) ((Pointer) methodInfo).toObject();
+        if (obj.codeConstantsLive) {
+            CodeReferenceMapDecoder.walkOffsetsFromPointer(obj.codeStart, obj.objectsReferenceMapEncoding, obj.objectsReferenceMapIndex, visitor);
+        }
         PinnedArrays.walkUnmanagedObjectArray(obj.frameInfoObjectConstants, visitor);
         PinnedArrays.walkUnmanagedObjectArray(obj.frameInfoSourceClasses, visitor);
         PinnedArrays.walkUnmanagedObjectArray(obj.frameInfoSourceMethodNames, visitor);
