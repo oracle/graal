@@ -38,6 +38,7 @@ import org.graalvm.compiler.phases.common.CanonicalizerPhase;
 import org.graalvm.compiler.phases.common.DeadCodeEliminationPhase;
 import org.graalvm.compiler.phases.common.ExpandLogicPhase;
 import org.graalvm.compiler.phases.common.FixReadsPhase;
+import org.graalvm.compiler.phases.common.IsomorphicPackingPhase;
 import org.graalvm.compiler.phases.common.LoweringPhase;
 import org.graalvm.compiler.phases.common.OptimizeDivPhase;
 import org.graalvm.compiler.phases.common.ProfileCompiledMethodsPhase;
@@ -80,6 +81,8 @@ public class LowTier extends PhaseSuite<LowTierContext> {
         appendPhase(new FixReadsPhase(true, new SchedulePhase(GraalOptions.StressTestEarlyReads.getValue(options) ? SchedulingStrategy.EARLIEST : SchedulingStrategy.LATEST_OUT_OF_LOOPS)));
 
         appendPhase(canonicalizerWithoutGVN);
+
+        appendPhase(new IsomorphicPackingPhase(new SchedulePhase(SchedulingStrategy.EARLIEST)));
 
         appendPhase(new UseTrappingNullChecksPhase());
 

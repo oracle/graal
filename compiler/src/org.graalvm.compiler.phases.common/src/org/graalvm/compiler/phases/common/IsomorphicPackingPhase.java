@@ -1,6 +1,8 @@
 package org.graalvm.compiler.phases.common;
 
 import jdk.vm.ci.meta.JavaKind;
+
+import org.graalvm.collections.Pair;
 import org.graalvm.compiler.core.common.cfg.BlockMap;
 import org.graalvm.compiler.graph.Node;
 import org.graalvm.compiler.graph.NodeMap;
@@ -15,8 +17,8 @@ import org.graalvm.compiler.nodes.memory.*;
 import org.graalvm.compiler.nodes.memory.address.AddressNode;
 import org.graalvm.compiler.phases.BasePhase;
 import org.graalvm.compiler.phases.schedule.SchedulePhase;
+import org.graalvm.compiler.phases.tiers.LowTierContext;
 import org.graalvm.compiler.phases.tiers.PhaseContext;
-import org.graalvm.util.Pair;
 
 import java.util.*;
 import java.util.function.Consumer;
@@ -30,7 +32,7 @@ import java.util.stream.StreamSupport;
  * GCC          https://ols.fedoraproject.org/GCC/Reprints-2007/rosen-reprint.pdf
  * INTEL        https://people.apache.org/~xli/papers/npc10_java_vectorization.pdf
  */
-public final class IsomorphicPackingPhase extends BasePhase<PhaseContext> {
+public final class IsomorphicPackingPhase extends BasePhase<LowTierContext> {
 
     // TODO: extract to separate file
     private static class Pack<T extends Node> implements Iterable<T> {
@@ -254,7 +256,7 @@ public final class IsomorphicPackingPhase extends BasePhase<PhaseContext> {
         }
 
         private int data_size(ValueNode node) {
-            return node.stamp().getStackKind().getStackKind().getByteCount();
+            return node.stamp(NodeView.DEFAULT).getStackKind().getStackKind().getByteCount();
         }
 
         private int data_size(LIRLowerableAccess node) {
@@ -754,7 +756,7 @@ public final class IsomorphicPackingPhase extends BasePhase<PhaseContext> {
                 final List<ReadNode> nodes = pack.getElements().stream().map(x -> (ReadNode) x).collect(Collectors.toList());
                 final VectorReadNode vectorRead = VectorReadNode.fromPackElements(nodes);
 
-                final VectorUnpackNode vts = new VectorUnpackNode(vectorRead.stamp().unrestricted(), vectorRead);
+                final VectorUnpackNode vts = new VectorUnpackNode(vectorRead.stamp(NodeView.DEFAULT).unrestricted(), vectorRead);
                 for (ReadNode node : nodes) {
                     node.replaceAtUsagesAndDelete(vts);
                 }
@@ -793,10 +795,10 @@ public final class IsomorphicPackingPhase extends BasePhase<PhaseContext> {
                 final List<AddNode> nodes = pack.getElements().stream().map(x -> (AddNode) x).collect(Collectors.toList());
 
                 // Input to vector, output to scalar
-                final VectorPackNode stvX = new VectorPackNode(nodes.get(0).getX().stamp().unrestricted(), nodes.stream().map(BinaryNode::getX).collect(Collectors.toList()));
-                final VectorPackNode stvY = new VectorPackNode(nodes.get(0).getY().stamp().unrestricted(), nodes.stream().map(BinaryNode::getY).collect(Collectors.toList()));
+                final VectorPackNode stvX = new VectorPackNode(nodes.get(0).getX().stamp(NodeView.DEFAULT).unrestricted(), nodes.stream().map(BinaryNode::getX).collect(Collectors.toList()));
+                final VectorPackNode stvY = new VectorPackNode(nodes.get(0).getY().stamp(NodeView.DEFAULT).unrestricted(), nodes.stream().map(BinaryNode::getY).collect(Collectors.toList()));
                 final VectorAddNode vector = new VectorAddNode(stvX, stvY);
-                final VectorUnpackNode vts = new VectorUnpackNode(nodes.get(0).stamp(), vector);
+                final VectorUnpackNode vts = new VectorUnpackNode(nodes.get(0).stamp(NodeView.DEFAULT), vector);
                 for (AddNode node : nodes) {
                     node.replaceAtUsagesAndDelete(vts);
                 }
@@ -836,7 +838,7 @@ public final class IsomorphicPackingPhase extends BasePhase<PhaseContext> {
     }
 
     @Override
-    protected void run(StructuredGraph graph, PhaseContext context) {
+    protected void run(StructuredGraph graph, LowTierContext context) {
         // Schedule phase is required so that lowered addresses are in the nodeToBlockMap
         schedulePhase.apply(graph);
         ControlFlowGraph cfg = graph.getLastSchedule().getCFG();
