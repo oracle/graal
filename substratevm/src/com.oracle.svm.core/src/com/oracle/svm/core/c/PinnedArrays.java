@@ -38,6 +38,7 @@ import org.graalvm.nativeimage.impl.UnmanagedMemorySupport;
 import org.graalvm.word.Pointer;
 import org.graalvm.word.PointerBase;
 import org.graalvm.word.UnsignedWord;
+import org.graalvm.word.WordBase;
 import org.graalvm.word.WordFactory;
 
 import com.oracle.svm.core.SubstrateUtil;
@@ -130,6 +131,14 @@ public final class PinnedArrays {
     }
 
     /**
+     * Allocates a word array of the specified length.
+     */
+    @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
+    public static <T extends WordBase> PinnedArray<T> createWordArray(int length) {
+        return createArray(length, WordBase[].class);
+    }
+
+    /**
      * Allocates an array of the specified length to hold references to objects on the Java heap. In
      * order to ensure that the referenced objects are reachable for garbage collection, the owner
      * of an instance must call {@link #walkUnmanagedObjectArray} on each array from
@@ -204,6 +213,18 @@ public final class PinnedArrays {
         } else {
             throw ImplicitExceptions.CACHED_CLASS_CAST_EXCEPTION;
         }
+    }
+
+    @Uninterruptible(reason = "Faux object reference on stack.")
+    public static <T extends WordBase> void setWord(PinnedArray<T> pinnedArray, int index, T value) {
+        T[] array = asObject(pinnedArray);
+        array[index] = value;
+    }
+
+    @Uninterruptible(reason = "Faux object reference on stack.")
+    public static <T extends WordBase> T getWord(PinnedArray<T> pinnedArray, int index) {
+        T[] array = asObject(pinnedArray);
+        return array[index];
     }
 
     @SuppressWarnings("unchecked")

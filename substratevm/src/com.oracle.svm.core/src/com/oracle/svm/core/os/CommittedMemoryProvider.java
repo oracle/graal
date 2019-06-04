@@ -33,6 +33,7 @@ import org.graalvm.word.UnsignedWord;
 import org.graalvm.word.WordFactory;
 
 import com.oracle.svm.core.annotate.Uninterruptible;
+import com.oracle.svm.core.c.UnmanagedReferenceWalkers;
 import com.oracle.svm.core.c.function.CEntryPointCreateIsolateParameters;
 
 /**
@@ -117,5 +118,10 @@ public interface CommittedMemoryProvider {
      * @param completeCollection Whether the garbage collector has performed a full collection.
      */
     default void afterGarbageCollection(boolean completeCollection) {
+    }
+
+    @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
+    static void tearDownUnmanagedMemoryConsumers() {
+        UnmanagedReferenceWalkers.singleton().tearDown();
     }
 }

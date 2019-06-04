@@ -28,9 +28,9 @@ import static org.graalvm.word.WordFactory.nullPointer;
 import static org.graalvm.word.WordFactory.zero;
 
 import org.graalvm.nativeimage.CurrentIsolate;
-import org.graalvm.nativeimage.hosted.Feature;
 import org.graalvm.nativeimage.ImageSingletons;
 import org.graalvm.nativeimage.c.type.WordPointer;
+import org.graalvm.nativeimage.hosted.Feature;
 import org.graalvm.word.Pointer;
 import org.graalvm.word.PointerBase;
 import org.graalvm.word.UnsignedWord;
@@ -84,6 +84,7 @@ public class OSCommittedMemoryProvider implements CommittedMemoryProvider {
             return CEntryPointErrors.NO_ERROR;
         }
 
+        CommittedMemoryProvider.tearDownUnmanagedMemoryConsumers();
         tearDownVirtualMemoryConsumers();
 
         PointerBase heapBase = Isolates.getHeapBase(CurrentIsolate.getIsolate());
