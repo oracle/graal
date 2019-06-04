@@ -39,6 +39,7 @@ import java.util.function.Supplier;
 import org.graalvm.compiler.serviceprovider.SpeculationReasonGroup.SpeculationContextObject;
 
 import jdk.vm.ci.code.BytecodePosition;
+import jdk.vm.ci.code.VirtualObject;
 import jdk.vm.ci.meta.ResolvedJavaField;
 import jdk.vm.ci.meta.ResolvedJavaMethod;
 import jdk.vm.ci.meta.ResolvedJavaType;
@@ -462,5 +463,14 @@ public final class GraalServices {
                 }
             }
         }
+    }
+
+    /**
+     * Set the flag in the {@link VirtualObject} that indicates that it is a boxed primitive that
+     * was produced as a result of a call to a {@code valueOf} method.
+     */
+    @SuppressWarnings("unused")
+    public static void markVirtualObjectAsAutoBox(VirtualObject virtualObject) {
+        // Only supported by JDK13
     }
 }

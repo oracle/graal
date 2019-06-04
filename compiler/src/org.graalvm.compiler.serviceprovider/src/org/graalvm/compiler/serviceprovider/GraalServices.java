@@ -28,6 +28,7 @@ import java.io.IOException;
 import java.io.InputStream;
 import java.util.List;
 
+import jdk.vm.ci.code.VirtualObject;
 import jdk.vm.ci.meta.SpeculationLog.SpeculationReason;
 import jdk.vm.ci.services.JVMCIPermission;
 
@@ -220,6 +221,15 @@ public final class GraalServices {
      */
     @SuppressWarnings("unused")
     public static double fma(double a, double b, double c) {
+        throw shouldNotReachHere();
+    }
+
+    /**
+     * Set the flag in the {@link VirtualObject} that indicates that it is a boxed primitive that
+     * was produced as a result of a call to a {@code valueOf} method.
+     */
+    @SuppressWarnings("unused")
+    public static void markVirtualObjectAsAutoBox(VirtualObject virtualObject) {
         throw shouldNotReachHere();
     }
 }
