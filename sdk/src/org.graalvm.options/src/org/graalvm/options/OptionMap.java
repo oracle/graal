@@ -107,10 +107,11 @@ public final class OptionMap<T> {
         return readonlyMap.hashCode();
     }
 
+    @SuppressWarnings("unchecked")
     @Override
     public boolean equals(Object obj) {
         if (obj instanceof OptionMap) {
-            return readonlyMap.equals(((OptionMap) obj).readonlyMap);
+            return readonlyMap.equals(((OptionMap<T>) obj).readonlyMap);
         }
         return false;
     }

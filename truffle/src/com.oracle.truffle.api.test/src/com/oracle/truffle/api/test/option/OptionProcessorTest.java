@@ -42,16 +42,12 @@ package com.oracle.truffle.api.test.option;
 
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertFalse;
-import static org.junit.Assert.assertNotEquals;
 import static org.junit.Assert.assertNotNull;
-import static org.junit.Assert.assertNotSame;
 import static org.junit.Assert.assertNull;
 import static org.junit.Assert.assertSame;
 import static org.junit.Assert.assertTrue;
 
-import java.util.ArrayList;
 import java.util.Iterator;
-import java.util.List;
 
 import org.graalvm.options.OptionCategory;
 import org.graalvm.options.OptionDescriptor;
@@ -248,7 +244,6 @@ public class OptionProcessorTest {
     public void testDescriptorPrefixMatching() {
         Engine engine = Engine.create();
         OptionDescriptors descriptors = engine.getInstruments().get("optiontestinstr1").getOptions();
-        OptionValues optionValues = engine.getInstruments().get("optiontestinstr1").lookup(OptionValues.class);
 
         OptionKey<?> optionKey1 = descriptors.get("optiontestinstr1.ThresholdsSamePrefix").getKey();
         OptionKey<?> optionKey2 = descriptors.get("optiontestinstr1.Thresholds").getKey();

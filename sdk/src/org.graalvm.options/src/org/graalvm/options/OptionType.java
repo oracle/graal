@@ -278,7 +278,7 @@ public final class OptionType<T> {
         if (valueType == null) {
             return null;
         }
-        return new OptionType<OptionMap<V>>("OptionMap", new Converter<OptionMap<V>>() {
+        return new OptionType<>("OptionMap", new Converter<OptionMap<V>>() {
             @Override
             public OptionMap<V> convert(OptionMap<V> previousValue, String key, String value) {
                 OptionMap<V> map = previousValue;
