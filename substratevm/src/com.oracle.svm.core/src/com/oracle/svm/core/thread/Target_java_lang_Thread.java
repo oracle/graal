@@ -41,6 +41,7 @@ import com.oracle.svm.core.annotate.RecomputeFieldValue;
 import com.oracle.svm.core.annotate.Substitute;
 import com.oracle.svm.core.annotate.TargetClass;
 import com.oracle.svm.core.annotate.TargetElement;
+import com.oracle.svm.core.heap.FeebleReferenceList;
 import com.oracle.svm.core.jdk.JDK11OrLater;
 import com.oracle.svm.core.jdk.JDK8OrEarlier;
 import com.oracle.svm.core.jdk.JavaLangSubstitutions;

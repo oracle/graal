@@ -281,8 +281,7 @@ public class DiscoverableReferenceProcessing {
             if (SubstrateOptions.MultiThreaded.getValue()) {
                 trace.string("  broadcasting").newline();
                 /* Notify anyone blocked waiting for FeebleReferences to be available. */
-                FeebleReferenceList.guaranteeIsLocked();
-                FeebleReferenceList.broadcast();
+                FeebleReferenceList.signalWaiters();
             }
             trace.string("]").newline();
         }
