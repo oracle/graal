@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2016, 2018, Oracle and/or its affiliates.
+ * Copyright (c) 2016, 2019, Oracle and/or its affiliates.
  *
  * All rights reserved.
  *
@@ -31,6 +31,7 @@ package com.oracle.truffle.llvm.parser.metadata;
 
 import com.oracle.truffle.llvm.parser.listeners.Metadata;
 import com.oracle.truffle.llvm.parser.model.symbols.constants.integer.IntegerConstant;
+import com.oracle.truffle.llvm.parser.scanner.RecordBuffer;
 import com.oracle.truffle.llvm.runtime.types.PrimitiveType;
 
 public final class MDSubrange implements MDBaseNode {
@@ -64,24 +65,23 @@ public final class MDSubrange implements MDBaseNode {
         }
     }
 
-    private static final int ARGINDEX_VERSION = 0;
+    // private static final int ARGINDEX_VERSION = 0;
     private static final int VERSION_SHIFT = 1;
     private static final long VERSION_MASK = 0b1;
+    // private static final int ARGINDEX_COUNT = 1;
+    // private static final int ARGINDEX_STARTFROM = 2;
 
-    private static final int ARGINDEX_COUNT = 1;
-    private static final int ARGINDEX_STARTFROM = 2;
-
-    public static MDSubrange createNewFormat(long[] args, MetadataValueList md) {
-        final long startFrom = ParseUtil.unrotateSign(args[ARGINDEX_STARTFROM]);
-        final MDSubrange subrange = new MDSubrange(startFrom);
-        final long version = (args[ARGINDEX_VERSION] >> VERSION_SHIFT) & VERSION_MASK;
+    public static MDSubrange createNewFormat(RecordBuffer buffer, MetadataValueList md) {
+        long version = (buffer.read() >> VERSION_SHIFT) & VERSION_MASK;
+        long count = buffer.read();
+        long startFrom = ParseUtil.unrotateSign(buffer.read());
+        MDSubrange subrange = new MDSubrange(startFrom);
         if (version == 1) {
             // in LLVM 7+ the "count" argument is a metadata node index
-            subrange.count = md.getNullable(args[ARGINDEX_COUNT], subrange);
+            subrange.count = md.getNullable(count, subrange);
 
         } else {
             // prior to LLVM 7, the "count argument is a primitive value
-            final long count = args[ARGINDEX_COUNT];
             subrange.count = MDValue.create(new IntegerConstant(PrimitiveType.I64, count));
         }
 

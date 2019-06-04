@@ -36,7 +36,6 @@ import java.util.ArrayList;
 import java.util.Collections;
 import java.util.HashMap;
 import java.util.LinkedHashMap;
-import java.util.LinkedList;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
@@ -104,7 +103,7 @@ public final class LLVMContext {
     @CompilationFinal private LLVMThreadingStack threadingStack;
     private final Object[] mainArguments;
     private final Map<String, String> environment;
-    private final LinkedList<LLVMNativePointer> caughtExceptionStack = new LinkedList<>();
+    private final ArrayList<LLVMNativePointer> caughtExceptionStack = new ArrayList<>();
     private final HashMap<String, Integer> nativeCallStatistics;
 
     private static final class Handle {
@@ -645,7 +644,7 @@ public final class LLVMContext {
         }
     }
 
-    public LinkedList<LLVMNativePointer> getCaughtExceptionStack() {
+    public List<LLVMNativePointer> getCaughtExceptionStack() {
         return caughtExceptionStack;
     }
 
@@ -849,13 +848,7 @@ public final class LLVMContext {
 
         @Override
         public String toString() {
-            StringBuilder result = new StringBuilder(name);
-            if (path != null) {
-                result.append(" (");
-                result.append(path);
-                result.append(")");
-            }
-            return result.toString();
+            return path == null ? name : name + " (" + path + ")";
         }
     }
 

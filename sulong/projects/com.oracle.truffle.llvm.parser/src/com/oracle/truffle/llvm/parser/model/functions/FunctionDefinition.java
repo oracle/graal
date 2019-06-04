@@ -55,14 +55,11 @@ import com.oracle.truffle.llvm.runtime.types.FunctionType;
 import com.oracle.truffle.llvm.runtime.types.Type;
 import com.oracle.truffle.llvm.runtime.types.symbols.LLVMIdentifier;
 
-public final class FunctionDefinition implements Constant, FunctionSymbol, MetadataAttachmentHolder {
+public final class FunctionDefinition extends FunctionSymbol implements Constant, MetadataAttachmentHolder {
 
     private static final InstructionBlock[] EMPTY = new InstructionBlock[0];
 
     private final List<FunctionParameter> parameters = new ArrayList<>();
-    private final FunctionType type;
-    private final AttributesCodeEntry paramAttr;
-    private final Linkage linkage;
     private final Visibility visibility;
 
     private List<MDAttachment> mdAttachments = null;
@@ -70,13 +67,9 @@ public final class FunctionDefinition implements Constant, FunctionSymbol, Metad
 
     private InstructionBlock[] blocks = EMPTY;
     private int currentBlock = 0;
-    private String name;
 
     private FunctionDefinition(FunctionType type, String name, Linkage linkage, Visibility visibility, AttributesCodeEntry paramAttr) {
-        this.type = type;
-        this.name = name;
-        this.paramAttr = paramAttr;
-        this.linkage = linkage;
+        super(type, name, linkage, paramAttr);
         this.visibility = visibility;
     }
 
@@ -97,24 +90,9 @@ public final class FunctionDefinition implements Constant, FunctionSymbol, Metad
         return mdAttachments;
     }
 
-    public Linkage getLinkage() {
-        return linkage;
-    }
-
-    @Override
-    public String getName() {
-        assert name != null;
-        return name;
-    }
-
     public String getSourceName() {
         final String scopeName = sourceFunction.getName();
         return SourceFunction.DEFAULT_SOURCE_NAME.equals(scopeName) ? null : scopeName;
-    }
-
-    @Override
-    public void setName(String name) {
-        this.name = name;
     }
 
     @Override
@@ -139,28 +117,8 @@ public final class FunctionDefinition implements Constant, FunctionSymbol, Metad
         }
     }
 
-    @Override
-    public FunctionType getType() {
-        return type;
-    }
-
-    public AttributesGroup getFunctionAttributesGroup() {
-        CompilerAsserts.neverPartOfCompilation();
-        return paramAttr.getFunctionAttributesGroup();
-    }
-
-    public AttributesGroup getReturnAttributesGroup() {
-        CompilerAsserts.neverPartOfCompilation();
-        return paramAttr.getReturnAttributesGroup();
-    }
-
-    public AttributesGroup getParameterAttributesGroup(int idx) {
-        CompilerAsserts.neverPartOfCompilation();
-        return paramAttr.getParameterAttributesGroup(idx);
-    }
-
     public FunctionParameter createParameter(Type t) {
-        final AttributesGroup attrGroup = paramAttr.getParameterAttributesGroup(parameters.size());
+        final AttributesGroup attrGroup = getParameterAttributesGroup(parameters.size());
         final FunctionParameter parameter = new FunctionParameter(t, attrGroup);
         parameters.add(parameter);
         return parameter;
@@ -176,9 +134,9 @@ public final class FunctionDefinition implements Constant, FunctionSymbol, Metad
             }
         }
 
-        final Set<String> explicitBlockNames = Arrays.stream(blocks).map(InstructionBlock::getName).filter(blockName -> !LLVMIdentifier.UNKNOWN.equals(blockName)).collect(Collectors.toSet());
+        final Set<String> explicitBlockNames = Arrays.stream(blocks).map(InstructionBlock::getName).filter(blockName -> !LLVMIdentifier.isUnknown(blockName)).collect(Collectors.toSet());
         for (final InstructionBlock block : blocks) {
-            if (block.getName().equals(LLVMIdentifier.UNKNOWN)) {
+            if (LLVMIdentifier.isUnknown(block.getName())) {
                 do {
                     block.setName(LLVMIdentifier.toImplicitBlockName(symbolIndex++));
                     // avoid name clashes
@@ -188,7 +146,7 @@ public final class FunctionDefinition implements Constant, FunctionSymbol, Metad
                 final Instruction instruction = block.getInstruction(i);
                 if (instruction instanceof ValueInstruction) {
                     final ValueInstruction value = (ValueInstruction) instruction;
-                    if (value.getName().equals(LLVMIdentifier.UNKNOWN)) {
+                    if (LLVMIdentifier.isUnknown(value.getName())) {
                         value.setName(String.valueOf(symbolIndex++));
                     }
                 }
@@ -243,7 +201,7 @@ public final class FunctionDefinition implements Constant, FunctionSymbol, Metad
     @Override
     public String toString() {
         CompilerAsserts.neverPartOfCompilation();
-        return String.format("%s %s {...}", type.toString(), name);
+        return String.format("%s %s {...}", getType(), getName());
     }
 
     public LLVMSourceLocation getLexicalScope() {
@@ -260,16 +218,16 @@ public final class FunctionDefinition implements Constant, FunctionSymbol, Metad
 
     @Override
     public boolean isExported() {
-        return Linkage.isExported(linkage, visibility);
+        return Linkage.isExported(getLinkage(), visibility);
     }
 
     @Override
     public boolean isOverridable() {
-        return Linkage.isOverridable(linkage, visibility);
+        return Linkage.isOverridable(getLinkage(), visibility);
     }
 
     @Override
     public boolean isExternal() {
-        return Linkage.isExternal(linkage);
+        return Linkage.isExternal(getLinkage());
     }
 }

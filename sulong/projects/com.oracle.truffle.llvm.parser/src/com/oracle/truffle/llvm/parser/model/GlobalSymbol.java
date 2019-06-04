@@ -27,47 +27,38 @@
  * NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED
  * OF THE POSSIBILITY OF SUCH DAMAGE.
  */
-package com.oracle.truffle.llvm.parser.records;
+package com.oracle.truffle.llvm.parser.model;
 
-public final class Records {
+import com.oracle.truffle.llvm.parser.model.enums.Linkage;
 
-    private Records() {
-        // no instances
+public abstract class GlobalSymbol implements ValueSymbol {
+
+    private String name;
+    private final Linkage linkage;
+
+    public GlobalSymbol(String name, Linkage linkage) {
+        this.name = name;
+        this.linkage = linkage;
     }
 
-    public static int[] toIntegers(long[] args) {
-        int[] values = new int[args.length];
-        for (int i = 0; i < values.length; i++) {
-            values[i] = (int) args[i];
-        }
-        return values;
+    public final Linkage getLinkage() {
+        return linkage;
     }
 
-    public static long toSignedValue(long value) {
-        long v = value;
-        if ((v & 1L) == 1L) {
-            v = v >>> 1;
-            return v == 0 ? Long.MIN_VALUE : -v;
-        } else {
-            return v >>> 1;
-        }
+    @Override
+    public final String getName() {
+        assert name != null;
+        return name;
     }
 
-    public static String toString(long[] operands) {
-        return toString(operands, 0, operands.length);
+    @Override
+    public final void setName(String name) {
+        this.name = name;
     }
 
-    public static String toString(long[] operands, int from) {
-        return toString(operands, from, operands.length);
-    }
+    public abstract boolean isExported();
 
-    private static String toString(long[] operands, int from, int to) {
-        StringBuilder string = new StringBuilder();
+    public abstract boolean isOverridable();
 
-        for (int i = from; i < to; i++) {
-            string.append((char) operands[i]);
-        }
-
-        return string.toString();
-    }
+    public abstract boolean isExternal();
 }

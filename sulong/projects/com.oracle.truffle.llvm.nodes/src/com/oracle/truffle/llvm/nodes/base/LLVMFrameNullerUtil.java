@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2016, 2018, Oracle and/or its affiliates.
+ * Copyright (c) 2016, 2019, Oracle and/or its affiliates.
  *
  * All rights reserved.
  *
@@ -66,8 +66,8 @@ public final class LLVMFrameNullerUtil {
             return;
         }
 
+        CompilerAsserts.partialEvaluationConstant(frameSlot);
         FrameSlotKind kind = frame.getFrameDescriptor().getFrameSlotKind(frameSlot);
-        CompilerAsserts.partialEvaluationConstant(kind);
         if (kind == FrameSlotKind.Object) {
             // object frame slots always need to be nulled (otherwise we would impact GC)
             nullObject(frame, frameSlot);
@@ -104,17 +104,12 @@ public final class LLVMFrameNullerUtil {
     }
 
     private static void null80BitFloat(VirtualFrame frame, FrameSlot frameSlot) {
-        frame.setObject(frameSlot, new LLVM80BitFloat(false, 0, 0));
+        frame.setObject(frameSlot, LLVM80BitFloat.createPositiveZero());
     }
 
     private static void nullObject(VirtualFrame frame, FrameSlot frameSlot) {
-        CompilerAsserts.partialEvaluationConstant(frameSlot.getInfo());
-        CompilerAsserts.partialEvaluationConstant(frameSlot.getInfo() == null);
         if (frameSlot.getInfo() != null) {
             Type type = (Type) frameSlot.getInfo();
-            CompilerAsserts.partialEvaluationConstant(type instanceof VectorType);
-            CompilerAsserts.partialEvaluationConstant(type instanceof VariableBitWidthType);
-            CompilerAsserts.partialEvaluationConstant(type instanceof PrimitiveType && ((PrimitiveType) type).getPrimitiveKind() == PrimitiveKind.X86_FP80);
             if (type instanceof VectorType) {
                 nullVector(frame, frameSlot, (VectorType) type);
                 return;

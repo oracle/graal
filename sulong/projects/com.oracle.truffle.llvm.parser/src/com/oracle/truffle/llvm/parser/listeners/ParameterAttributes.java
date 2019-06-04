@@ -35,6 +35,7 @@ import java.util.List;
 import com.oracle.truffle.llvm.parser.model.attributes.Attribute;
 import com.oracle.truffle.llvm.parser.model.attributes.AttributesCodeEntry;
 import com.oracle.truffle.llvm.parser.model.attributes.AttributesGroup;
+import com.oracle.truffle.llvm.parser.scanner.RecordBuffer;
 import com.oracle.truffle.llvm.runtime.except.LLVMParserException;
 
 public class ParameterAttributes implements ParserListener {
@@ -71,18 +72,19 @@ public class ParameterAttributes implements ParserListener {
     }
 
     @Override
-    public void record(long id, long[] args) {
-        switch ((int) id) {
+    public void record(RecordBuffer buffer) {
+        int id = buffer.getId();
+        switch (id) {
             case PARAMATTR_CODE_ENTRY_OLD:
-                decodeOldCodeEntry(args);
+                decodeOldCodeEntry(buffer);
                 break;
 
             case PARAMATTR_CODE_ENTRY:
-                decodeCodeEntry(args);
+                decodeCodeEntry(buffer);
                 break;
 
             case PARAMATTR_GRP_CODE_ENTRY:
-                decodeGroupCodeEntry(args);
+                decodeGroupCodeEntry(buffer);
                 break;
 
             default:
@@ -90,11 +92,11 @@ public class ParameterAttributes implements ParserListener {
         }
     }
 
-    private void decodeOldCodeEntry(long[] args) {
+    private void decodeOldCodeEntry(RecordBuffer buffer) {
         final List<AttributesGroup> attrGroup = new ArrayList<>();
 
-        for (int i = 0; i < args.length; i += 2) {
-            attrGroup.add(decodeOldGroupCodeEntry(args[i], args[i + 1]));
+        for (int i = 0; i < buffer.size(); i += 2) {
+            attrGroup.add(decodeOldGroupCodeEntry(buffer.read(), buffer.read()));
         }
 
         parameterCodeEntry.add(new AttributesCodeEntry(attrGroup));
@@ -178,10 +180,11 @@ public class ParameterAttributes implements ParserListener {
         return group;
     }
 
-    private void decodeCodeEntry(long[] args) {
+    private void decodeCodeEntry(RecordBuffer buffer) {
         final List<AttributesGroup> attrGroup = new ArrayList<>();
 
-        for (long groupId : args) {
+        while (buffer.remaining() > 0) {
+            long groupId = buffer.read();
             for (AttributesGroup attr : attributes) {
                 if (attr.getGroupId() == groupId) {
                     attrGroup.add(attr);
@@ -190,50 +193,45 @@ public class ParameterAttributes implements ParserListener {
             }
         }
 
-        if (attrGroup.size() != args.length) {
+        if (attrGroup.size() != buffer.size()) {
             throw new LLVMParserException("Mismatching number of defined and found attributes in AttributesGroup");
         }
 
         parameterCodeEntry.add(new AttributesCodeEntry(attrGroup));
     }
 
-    private void decodeGroupCodeEntry(long[] args) {
-        int i = 0;
-
-        final long groupId = args[i++];
-        final long paramIdx = args[i++];
+    private void decodeGroupCodeEntry(RecordBuffer buffer) {
+        final long groupId = buffer.read();
+        final long paramIdx = buffer.read();
 
         AttributesGroup group = new AttributesGroup(groupId, paramIdx);
         attributes.add(group);
 
-        while (i < args.length) {
-            long type = args[i++];
+        while (buffer.remaining() > 0) {
+            long type = buffer.read();
             switch ((int) type) {
                 case WELL_KNOWN_ATTRIBUTE_KIND: {
-                    Attribute.Kind attr = Attribute.Kind.decode(args[i++]);
+                    Attribute.Kind attr = Attribute.Kind.decode(buffer.read());
                     group.addAttribute(new Attribute.KnownAttribute(attr));
                     break;
                 }
 
                 case WELL_KNOWN_INTEGER_ATTRIBUTE_KIND: {
-                    Attribute.Kind attr = Attribute.Kind.decode(args[i++]);
-                    group.addAttribute(new Attribute.KnownIntegerValueAttribute(attr, (int) args[i++]));
+                    Attribute.Kind attr = Attribute.Kind.decode(buffer.read());
+                    group.addAttribute(new Attribute.KnownIntegerValueAttribute(attr, buffer.readInt()));
                     break;
                 }
 
                 case STRING_ATTRIBUTE_KIND: {
-                    StringBuilder strAttr = new StringBuilder();
-                    i = readString(i, args, strAttr);
-                    group.addAttribute(new Attribute.StringAttribute(strAttr.toString()));
+                    String strAttr = readString(buffer);
+                    group.addAttribute(new Attribute.StringAttribute(strAttr));
                     break;
                 }
 
                 case STRING_VALUE_ATTRIBUTE_KIND: {
-                    StringBuilder strAttr = new StringBuilder();
-                    i = readString(i, args, strAttr);
-                    StringBuilder strVal = new StringBuilder();
-                    i = readString(i, args, strVal);
-                    group.addAttribute(new Attribute.StringValueAttribute(strAttr.toString(), strVal.toString()));
+                    String strAttr = readString(buffer);
+                    String strVal = readString(buffer);
+                    group.addAttribute(new Attribute.StringValueAttribute(strAttr, strVal));
                     break;
                 }
 
@@ -243,12 +241,15 @@ public class ParameterAttributes implements ParserListener {
         }
     }
 
-    private static int readString(int idx, long[] args, StringBuilder sb) {
-        int i = idx;
-        for (; args[i] != 0; i++) {
-            sb.append((char) args[i]);
+    private static String readString(RecordBuffer buffer) {
+        StringBuilder sb = new StringBuilder();
+        while (true) {
+            long value = buffer.read();
+            if (value == 0) {
+                break;
+            }
+            sb.append((char) value);
         }
-        i++;
-        return i;
+        return sb.toString();
     }
 }

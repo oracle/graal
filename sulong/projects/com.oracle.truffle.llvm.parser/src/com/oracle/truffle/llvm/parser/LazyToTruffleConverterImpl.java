@@ -29,10 +29,13 @@
  */
 package com.oracle.truffle.llvm.parser;
 
+import java.io.PrintStream;
 import java.util.ArrayList;
 import java.util.BitSet;
 import java.util.List;
 import java.util.Map;
+
+import org.graalvm.options.OptionValues;
 
 import com.oracle.truffle.api.CompilerAsserts;
 import com.oracle.truffle.api.RootCallTarget;
@@ -61,6 +64,7 @@ import com.oracle.truffle.llvm.runtime.memory.LLVMStack;
 import com.oracle.truffle.llvm.runtime.memory.LLVMStack.UniquesRegion;
 import com.oracle.truffle.llvm.runtime.nodes.api.LLVMExpressionNode;
 import com.oracle.truffle.llvm.runtime.nodes.api.LLVMStatementNode;
+import com.oracle.truffle.llvm.runtime.options.SulongEngineOption;
 import com.oracle.truffle.llvm.runtime.types.PointerType;
 import com.oracle.truffle.llvm.runtime.types.PrimitiveType;
 import com.oracle.truffle.llvm.runtime.types.StructureType;
@@ -111,7 +115,11 @@ public class LazyToTruffleConverterImpl implements LazyToTruffleConverter {
         UniquesRegion uniquesRegion = new UniquesRegion();
         GetStackSpaceFactory getStackSpaceFactory = GetStackSpaceFactory.createGetUniqueStackSpaceFactory(uniquesRegion);
 
-        LLVMLivenessAnalysisResult liveness = LLVMLivenessAnalysis.computeLiveness(frame, runtime.getContext(), phis, method);
+        OptionValues options = runtime.getContext().getEnv().getOptions();
+        PrintStream logLivenessStream = SulongEngineOption.isTrue(options.get(SulongEngineOption.PRINT_LIFE_TIME_ANALYSIS_STATS))
+                        ? SulongEngineOption.getStream(options.get(SulongEngineOption.PRINT_LIFE_TIME_ANALYSIS_STATS))
+                        : null;
+        LLVMLivenessAnalysisResult liveness = LLVMLivenessAnalysis.computeLiveness(frame, phis, method, logLivenessStream);
         LLVMSymbolReadResolver symbols = new LLVMSymbolReadResolver(runtime, frame, getStackSpaceFactory);
         List<FrameSlot> notNullable = new ArrayList<>();
 

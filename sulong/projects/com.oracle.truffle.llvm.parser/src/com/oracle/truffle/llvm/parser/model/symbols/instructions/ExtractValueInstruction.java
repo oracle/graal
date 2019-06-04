@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2016, 2018, Oracle and/or its affiliates.
+ * Copyright (c) 2016, 2019, Oracle and/or its affiliates.
  *
  * All rights reserved.
  *
@@ -63,6 +63,12 @@ public final class ExtractValueInstruction extends ValueInstruction {
         if (aggregate == original) {
             this.aggregate = replacement;
         }
+    }
+
+    public static ExtractValueInstruction create(SymbolImpl aggreggate, Type type, int index) {
+        final ExtractValueInstruction inst = new ExtractValueInstruction(type, index);
+        inst.aggregate = aggreggate;
+        return inst;
     }
 
     public static ExtractValueInstruction fromSymbols(SymbolTable symbols, Type type, int aggregate, int index) {

@@ -34,27 +34,21 @@ import java.util.List;
 
 import com.oracle.truffle.llvm.parser.metadata.MDAttachment;
 import com.oracle.truffle.llvm.parser.metadata.MetadataAttachmentHolder;
+import com.oracle.truffle.llvm.parser.model.GlobalSymbol;
 import com.oracle.truffle.llvm.parser.model.SymbolImpl;
 import com.oracle.truffle.llvm.parser.model.SymbolTable;
 import com.oracle.truffle.llvm.parser.model.ValueSymbol;
 import com.oracle.truffle.llvm.parser.model.enums.Linkage;
 import com.oracle.truffle.llvm.parser.model.enums.Visibility;
-import com.oracle.truffle.llvm.parser.model.visitors.ModelVisitor;
 import com.oracle.truffle.llvm.runtime.debug.scope.LLVMSourceSymbol;
 import com.oracle.truffle.llvm.runtime.types.PointerType;
 import com.oracle.truffle.llvm.runtime.types.symbols.LLVMIdentifier;
 
-public abstract class GlobalValueSymbol implements ValueSymbol, MetadataAttachmentHolder {
+public abstract class GlobalValueSymbol extends GlobalSymbol implements ValueSymbol, MetadataAttachmentHolder {
 
     private final PointerType type;
 
-    private final int align;
-
-    private String name = LLVMIdentifier.UNKNOWN;
-
     private SymbolImpl value = null;
-
-    private final Linkage linkage;
 
     private final Visibility visibility;
 
@@ -62,20 +56,12 @@ public abstract class GlobalValueSymbol implements ValueSymbol, MetadataAttachme
 
     private LLVMSourceSymbol sourceSymbol;
 
-    GlobalValueSymbol(PointerType type, int align, Linkage linkage, Visibility visibility, SymbolTable symbolTable, int value) {
+    GlobalValueSymbol(PointerType type, Linkage linkage, Visibility visibility, SymbolTable symbolTable, int value) {
+        super(LLVMIdentifier.UNKNOWN, linkage);
         this.type = type;
-        this.align = align;
-        this.linkage = linkage;
         this.visibility = visibility;
         this.value = value > 0 ? symbolTable.getForwardReferenced(value - 1, this) : null;
         this.sourceSymbol = null;
-    }
-
-    public abstract void accept(ModelVisitor visitor);
-
-    @Override
-    public int getAlign() {
-        return align;
     }
 
     public boolean isInitialized() {
@@ -84,15 +70,6 @@ public abstract class GlobalValueSymbol implements ValueSymbol, MetadataAttachme
 
     public int getInitialiser() {
         return isInitialized() ? 1 : 0;
-    }
-
-    public Linkage getLinkage() {
-        return linkage;
-    }
-
-    @Override
-    public String getName() {
-        return name;
     }
 
     @Override
@@ -114,11 +91,6 @@ public abstract class GlobalValueSymbol implements ValueSymbol, MetadataAttachme
 
     public void setSourceSymbol(LLVMSourceSymbol sourceSymbol) {
         this.sourceSymbol = sourceSymbol;
-    }
-
-    @Override
-    public void setName(String name) {
-        this.name = name;
     }
 
     @Override
@@ -146,14 +118,17 @@ public abstract class GlobalValueSymbol implements ValueSymbol, MetadataAttachme
         }
     }
 
+    @Override
     public boolean isExported() {
-        return Linkage.isExported(linkage, visibility);
+        return Linkage.isExported(getLinkage(), visibility);
     }
 
+    @Override
     public boolean isOverridable() {
-        return Linkage.isOverridable(linkage, visibility);
+        return Linkage.isOverridable(getLinkage(), visibility);
     }
 
+    @Override
     public boolean isExternal() {
         return getInitialiser() == 0 && isExported();
     }

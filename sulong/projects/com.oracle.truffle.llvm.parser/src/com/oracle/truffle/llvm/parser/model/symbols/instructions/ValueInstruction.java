@@ -36,35 +36,24 @@ import com.oracle.truffle.llvm.parser.model.ValueSymbol;
 public abstract class ValueInstruction extends Instruction implements ValueSymbol {
 
     private final Type type;
-
     private String name = LLVMIdentifier.UNKNOWN;
-
-    private boolean isSourceVariable = false;
 
     ValueInstruction(Type type) {
         this.type = type;
     }
 
     @Override
-    public String getName() {
-        return name;
-    }
-
-    @Override
-    public Type getType() {
+    public final Type getType() {
         return type;
     }
 
     @Override
-    public void setName(String name) {
+    public final String getName() {
+        return name;
+    }
+
+    @Override
+    public final void setName(String name) {
         this.name = name;
-    }
-
-    public boolean isSourceVariable() {
-        return isSourceVariable;
-    }
-
-    public void setSourceVariable(boolean isSourceVariable) {
-        this.isSourceVariable = isSourceVariable;
     }
 }

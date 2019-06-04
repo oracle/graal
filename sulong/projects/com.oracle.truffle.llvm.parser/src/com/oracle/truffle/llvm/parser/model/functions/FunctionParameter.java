@@ -44,8 +44,6 @@ public final class FunctionParameter implements ValueSymbol {
 
     private final AttributesGroup parameterAttribute;
 
-    private boolean isSourceVariable = false;
-
     FunctionParameter(Type type, AttributesGroup parameterAttribute) {
         this.type = type;
         this.parameterAttribute = parameterAttribute;
@@ -68,14 +66,6 @@ public final class FunctionParameter implements ValueSymbol {
 
     public AttributesGroup getParameterAttribute() {
         return parameterAttribute;
-    }
-
-    public boolean isSourceVariable() {
-        return isSourceVariable;
-    }
-
-    public void setSourceVariable(boolean isSourceVariable) {
-        this.isSourceVariable = isSourceVariable;
     }
 
     @Override

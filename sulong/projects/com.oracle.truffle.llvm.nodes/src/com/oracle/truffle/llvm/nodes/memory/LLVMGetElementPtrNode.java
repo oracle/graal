@@ -69,6 +69,7 @@ public abstract class LLVMGetElementPtrNode extends LLVMExpressionNode {
     }
 
     public abstract static class LLVMIncrementPointerNode extends LLVMNode {
+
         public abstract Object executeWithTarget(Object addr, int val);
 
         public abstract Object executeWithTarget(Object addr, long val);
@@ -77,6 +78,11 @@ public abstract class LLVMGetElementPtrNode extends LLVMExpressionNode {
 
         @Specialization
         protected LLVMPointer doPointer(LLVMPointer addr, int incr) {
+            return addr.increment(incr);
+        }
+
+        @Specialization
+        protected LLVMPointer doPointer(LLVMPointer addr, long incr) {
             return addr.increment(incr);
         }
 
@@ -100,11 +106,6 @@ public abstract class LLVMGetElementPtrNode extends LLVMExpressionNode {
                 CompilerDirectives.transferToInterpreter();
                 throw new IllegalAccessError("Cannot do pointer arithmetic with address: " + addr.getValue());
             }
-        }
-
-        @Specialization
-        protected LLVMPointer doPointer(LLVMPointer addr, long incr) {
-            return addr.increment(incr);
         }
 
         @Specialization
