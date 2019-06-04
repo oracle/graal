@@ -436,6 +436,10 @@ public abstract class DefaultJavaLoweringProvider implements LoweringProvider {
     }
 
     public AddressNode createArrayAddress(StructuredGraph graph, ValueNode array, JavaKind elementKind, ValueNode index) {
+        return createArrayAddress(graph, array, elementKind, elementKind, index);
+    }
+
+    public AddressNode createArrayAddress(StructuredGraph graph, ValueNode array, JavaKind arrayKind, JavaKind elementKind, ValueNode index) {
         ValueNode wordIndex;
         if (target.wordSize > 4) {
             wordIndex = graph.unique(new SignExtendNode(index, target.wordSize * 8));
@@ -447,14 +451,14 @@ public abstract class DefaultJavaLoweringProvider implements LoweringProvider {
         int shift = CodeUtil.log2(metaAccess.getArrayIndexScale(elementKind));
         ValueNode scaledIndex = graph.unique(new LeftShiftNode(wordIndex, ConstantNode.forInt(shift, graph)));
 
-        int base = metaAccess.getArrayBaseOffset(elementKind);
+        int base = metaAccess.getArrayBaseOffset(arrayKind);
         ValueNode offset = graph.unique(new AddNode(scaledIndex, ConstantNode.forIntegerKind(target.wordJavaKind, base, graph)));
 
         return graph.unique(new OffsetAddressNode(array, offset));
     }
 
     protected void lowerIndexAddressNode(IndexAddressNode indexAddress) {
-        AddressNode lowered = createArrayAddress(indexAddress.graph(), indexAddress.getArray(), indexAddress.getElementKind(), indexAddress.getIndex());
+        AddressNode lowered = createArrayAddress(indexAddress.graph(), indexAddress.getArray(), indexAddress.getArrayKind(), indexAddress.getElementKind(), indexAddress.getIndex());
         indexAddress.replaceAndDelete(lowered);
     }
 
