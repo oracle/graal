@@ -198,7 +198,7 @@ public class FrameInfoQueryResult {
      * Returns the entry point address of the deoptimization target method.
      */
     public CodePointer getDeoptMethodAddress() {
-        return CodeInfoTable.getImageCodeCache().absoluteIP(deoptMethodOffset);
+        return CodeInfoTable.getImageCodeInfoAccessor().absoluteIP(ImageCodeInfo.SINGLETON_HANDLE, deoptMethodOffset);
     }
 
     /**

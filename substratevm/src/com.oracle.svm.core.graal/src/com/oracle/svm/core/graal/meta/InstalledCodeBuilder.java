@@ -56,6 +56,7 @@ import com.oracle.svm.core.code.CodeInfoHandle;
 import com.oracle.svm.core.code.CodeInfoTable;
 import com.oracle.svm.core.code.DeoptimizationSourcePositionEncoder;
 import com.oracle.svm.core.code.FrameInfoEncoder;
+import com.oracle.svm.core.code.ImageCodeInfo;
 import com.oracle.svm.core.code.InstalledCodeObserver;
 import com.oracle.svm.core.code.InstalledCodeObserverSupport;
 import com.oracle.svm.core.code.RuntimeCodeInfoAccessor;
@@ -452,7 +453,7 @@ public class InstalledCodeBuilder {
         // (e.g. native) functions.
         // This will change, and we will have to case-split here... but not yet.
         SharedMethod targetMethod = (SharedMethod) callInfo.target;
-        long callTargetStart = CodeInfoTable.getImageCodeCache().absoluteIP(targetMethod.getCodeOffsetInImage()).rawValue();
+        long callTargetStart = CodeInfoTable.getImageCodeInfoAccessor().absoluteIP(ImageCodeInfo.SINGLETON_HANDLE, targetMethod.getCodeOffsetInImage()).rawValue();
 
         if (allInstalledCode != null) {
             InstalledCodeBuilder targetInstalledCodeBuilder = allInstalledCode.get(targetMethod);

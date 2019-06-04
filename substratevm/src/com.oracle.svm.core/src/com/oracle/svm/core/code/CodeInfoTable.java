@@ -101,7 +101,7 @@ public class CodeInfoTable {
         counters().lookupDeoptimizationEntrypointCount.inc();
         /* Deoptimization entry points are always in the image, i.e., never compiled at run time. */
         CodeInfoAccessor accessor = getImageCodeInfoAccessor();
-        CodeInfoHandle handle = getImageCodeCache();
+        CodeInfoHandle handle = ImageCodeInfo.SINGLETON_HANDLE;
         CodeInfoQueryResult result = new CodeInfoQueryResult();
         long relativeIP = accessor.lookupDeoptimizationEntrypoint(handle, deoptOffsetInImage, encodedBci, result);
         if (relativeIP < 0) {
@@ -192,7 +192,7 @@ public class CodeInfoTable {
     }
 
     public static CodeInfoAccessor lookupCodeInfoAccessor(CodePointer ip) {
-        if (getImageCodeCache().contains(ip)) {
+        if (getImageCodeInfoAccessor().contains(ImageCodeInfo.SINGLETON_HANDLE, ip)) {
             return getImageCodeInfoAccessor();
         } else {
             return getRuntimeCodeInfoAccessor();

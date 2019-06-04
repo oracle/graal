@@ -50,6 +50,7 @@ import com.oracle.graal.pointsto.meta.AnalysisMethod;
 import com.oracle.objectfile.ObjectFile;
 import com.oracle.svm.core.code.CodeInfoAccessor;
 import com.oracle.svm.core.code.CodeInfoEncoder;
+import com.oracle.svm.core.code.CodeInfoHandle;
 import com.oracle.svm.core.code.CodeInfoQueryResult;
 import com.oracle.svm.core.code.CodeInfoTable;
 import com.oracle.svm.core.code.FrameInfoDecoder;
@@ -206,11 +207,11 @@ public abstract class NativeImageCodeCache {
             System.out.println("encoded during call entry points           ; " + frameInfoCustomization.numDuringCallEntryPoints);
         }
 
-        CodeInfoAccessor imageCodeInfoAccessor = CodeInfoTable.getImageCodeInfoAccessor();
-        ImageCodeInfo imageCodeInfo = CodeInfoTable.getImageCodeCache();
+        CodeInfoAccessor accessor = CodeInfoTable.getImageCodeInfoAccessor();
+        CodeInfoHandle handle = ImageCodeInfo.SINGLETON_HANDLE;
         codeInfoEncoder.encodeAll();
-        codeInfoEncoder.install(imageCodeInfoAccessor, imageCodeInfo);
-        imageCodeInfo.setCodeLocation(firstMethod, codeSize);
+        codeInfoEncoder.install(accessor, handle);
+        CodeInfoTable.getImageCodeCache().setCodeLocation(firstMethod, codeSize);
 
         if (CodeInfoEncoder.Options.CodeInfoEncoderCounters.getValue()) {
             for (Counter counter : ImageSingletons.lookup(CodeInfoEncoder.Counters.class).group.getCounters()) {
@@ -223,13 +224,13 @@ public abstract class NativeImageCodeCache {
              * Missing deoptimization entry points lead to hard-to-debug transient failures, so we
              * want the verification on all the time and not just when assertions are on.
              */
-            verifyDeoptEntries(imageCodeInfo);
+            verifyDeoptEntries(accessor, handle);
         }
 
-        assert verifyMethods(imageCodeInfo);
+        assert verifyMethods(accessor, handle);
     }
 
-    private void verifyDeoptEntries(ImageCodeInfo imageCodeInfo) {
+    private void verifyDeoptEntries(CodeInfoAccessor accessor, CodeInfoHandle handle) {
         boolean hasError = false;
         List<Entry<AnalysisMethod, Set<Long>>> deoptEntries = new ArrayList<>(CompilationInfoSupport.singleton().getDeoptEntries().entrySet());
         deoptEntries.sort((e1, e2) -> e1.getKey().format("%H.%n(%p)").compareTo(e2.getKey().format("%H.%n(%p)")));
@@ -240,7 +241,7 @@ public abstract class NativeImageCodeCache {
             encodedBcis.sort((v1, v2) -> Long.compare(v1, v2));
 
             for (long encodedBci : encodedBcis) {
-                hasError |= verifyDeoptEntry(imageCodeInfo, method, encodedBci);
+                hasError |= verifyDeoptEntry(accessor, handle, method, encodedBci);
             }
         }
         if (hasError) {
@@ -248,14 +249,14 @@ public abstract class NativeImageCodeCache {
         }
     }
 
-    private static boolean verifyDeoptEntry(ImageCodeInfo imageCodeInfo, HostedMethod method, long encodedBci) {
+    private static boolean verifyDeoptEntry(CodeInfoAccessor accessor, CodeInfoHandle handle, HostedMethod method, long encodedBci) {
         int deoptOffsetInImage = method.getDeoptOffsetInImage();
         if (deoptOffsetInImage <= 0) {
             return error(method, encodedBci, "entry point method not compiled");
         }
 
         CodeInfoQueryResult result = new CodeInfoQueryResult();
-        long relativeIP = imageCodeInfo.lookupDeoptimizationEntrypoint(deoptOffsetInImage, encodedBci, result);
+        long relativeIP = accessor.lookupDeoptimizationEntrypoint(handle, deoptOffsetInImage, encodedBci, result);
         if (relativeIP < 0) {
             return error(method, encodedBci, "entry point not found");
         }
@@ -270,9 +271,9 @@ public abstract class NativeImageCodeCache {
         return true;
     }
 
-    private boolean verifyMethods(ImageCodeInfo imageCodeInfo) {
+    private boolean verifyMethods(CodeInfoAccessor accessor, CodeInfoHandle handle) {
         for (Entry<HostedMethod, CompilationResult> entry : compilations.entrySet()) {
-            CodeInfoEncoder.verifyMethod(entry.getValue(), entry.getKey().getCodeAddressOffset(), CodeInfoTable.getImageCodeInfoAccessor(), imageCodeInfo);
+            CodeInfoEncoder.verifyMethod(entry.getValue(), entry.getKey().getCodeAddressOffset(), accessor, handle);
         }
         return true;
     }

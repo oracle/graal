@@ -33,18 +33,21 @@ import org.graalvm.word.UnsignedWord;
 
 import com.oracle.svm.core.MemoryWalker;
 import com.oracle.svm.core.annotate.AutomaticFeature;
-import com.oracle.svm.core.annotate.Uninterruptible;
 import com.oracle.svm.core.annotate.UnknownObjectField;
 import com.oracle.svm.core.annotate.UnknownPrimitiveField;
 import com.oracle.svm.core.c.PinnedArray;
 import com.oracle.svm.core.c.PinnedArrays;
 import com.oracle.svm.core.c.PinnedObjectArray;
 
-public class ImageCodeInfo implements CodeInfo {
+public class ImageCodeInfo implements CodeInfoAccessor {
+
+    /**
+     * There is only one instance for all image code, so we don't need any handles. However, for
+     * accesses via {@link CodeInfoAccessor}, we provide this handle value.
+     */
+    public static final CodeInfoHandle SINGLETON_HANDLE = null;
 
     public static final String CODE_INFO_NAME = "image code";
-
-    private final ImageCodeInfoAccessor accessor = new ImageCodeInfoAccessor(this);
 
     @UnknownPrimitiveField private CodePointer codeStart;
     @UnknownPrimitiveField private UnsignedWord codeSize;
@@ -59,18 +62,18 @@ public class ImageCodeInfo implements CodeInfo {
     @UnknownObjectField(types = {String[].class}) protected String[] frameInfoNames;
 
     @Platforms(Platform.HOSTED_ONLY.class)
-    public ImageCodeInfo() {
+    ImageCodeInfo() {
     }
 
-    public ImageCodeInfoAccessor getAccessor() {
-        return accessor;
+    public CodeInfoAccessor getAccessor() {
+        return this;
     }
 
-    static PinnedArray<Byte> pa(byte[] array) {
+    private static PinnedArray<Byte> pa(byte[] array) {
         return PinnedArrays.fromImageHeap(array);
     }
 
-    static <T> PinnedObjectArray<T> pa(T[] array) {
+    private static <T> PinnedObjectArray<T> pa(T[] array) {
         return PinnedArrays.fromImageHeap(array);
     }
 
@@ -86,59 +89,48 @@ public class ImageCodeInfo implements CodeInfo {
     }
 
     @Override
-    public String getName() {
+    public String getName(CodeInfoHandle handle) {
         return CODE_INFO_NAME;
     }
 
     @Override
-    @Uninterruptible(reason = "called from uninterruptible code", mayBeInlined = true)
-    public CodePointer getCodeStart() {
+    public CodePointer getCodeStart(CodeInfoHandle handle) {
         return codeStart;
     }
 
     @Override
-    @Uninterruptible(reason = "called from uninterruptible code", mayBeInlined = true)
-    public UnsignedWord getCodeSize() {
+    public UnsignedWord getCodeSize(CodeInfoHandle handle) {
         return codeSize;
     }
 
-    @Uninterruptible(reason = "called from uninterruptible code", mayBeInlined = true)
-    protected CodePointer getCodeEnd() {
-        return (CodePointer) ((UnsignedWord) codeStart).add(codeSize);
-    }
-
     @Override
-    public boolean contains(CodePointer ip) {
+    public boolean contains(CodeInfoHandle handle, CodePointer ip) {
         return CodeInfoAccessor.contains(codeStart, codeSize, ip);
     }
 
     @Override
-    public long relativeIP(CodePointer ip) {
+    public long relativeIP(CodeInfoHandle handle, CodePointer ip) {
         return CodeInfoAccessor.relativeIP(codeStart, codeSize, ip);
     }
 
     @Override
-    public CodePointer absoluteIP(long relativeIP) {
-        return CodeInfoAccessor.absoluteIP(codeStart, relativeIP);
+    public long initFrameInfoReader(CodeInfoHandle handle, CodePointer ip, ReusableTypeReader frameInfoReader) {
+        return CodeInfoAccessor.initFrameInfoReader(pa(codeInfoEncodings), pa(codeInfoIndex), pa(frameInfoEncodings), CodeInfoAccessor.relativeIP(codeStart, codeSize, ip), frameInfoReader);
     }
 
     @Override
-    public long initFrameInfoReader(CodePointer ip, ReusableTypeReader frameInfoReader) {
-        return CodeInfoAccessor.initFrameInfoReader(pa(codeInfoEncodings), pa(codeInfoIndex), pa(frameInfoEncodings), relativeIP(ip), frameInfoReader);
-    }
+    public FrameInfoQueryResult nextFrameInfo(CodeInfoHandle handle, long entryOffset, ReusableTypeReader frameInfoReader,
+                    FrameInfoDecoder.FrameInfoQueryResultAllocator resultAllocator, FrameInfoDecoder.ValueInfoAllocator valueInfoAllocator, boolean fetchFirstFrame) {
 
-    @Override
-    public FrameInfoQueryResult nextFrameInfo(long entryOffset, ReusableTypeReader frameInfoReader,
-                    FrameInfoDecoder.FrameInfoQueryResultAllocator resultAllocator, FrameInfoDecoder.ValueInfoAllocator valueInfoAllocator,
-                    boolean fetchFirstFrame) {
         return CodeInfoAccessor.nextFrameInfo(pa(codeInfoEncodings), pa(frameInfoNames), pa(frameInfoObjectConstants), pa(frameInfoSourceClasses),
                         pa(frameInfoSourceMethodNames), entryOffset, frameInfoReader, resultAllocator, valueInfoAllocator, fetchFirstFrame);
     }
 
     @Override
-    public void setMetadata(PinnedArray<Byte> codeInfoIndex, PinnedArray<Byte> codeInfoEncodings, PinnedArray<Byte> referenceMapEncoding, PinnedArray<Byte> frameInfoEncodings,
-                    PinnedObjectArray<Object> frameInfoObjectConstants, PinnedObjectArray<Class<?>> frameInfoSourceClasses, PinnedObjectArray<String> frameInfoSourceMethodNames,
-                    PinnedObjectArray<String> frameInfoNames) {
+    public void setMetadata(CodeInfoHandle installTarget, PinnedArray<Byte> codeInfoIndex, PinnedArray<Byte> codeInfoEncodings, PinnedArray<Byte> referenceMapEncoding,
+                    PinnedArray<Byte> frameInfoEncodings, PinnedObjectArray<Object> frameInfoObjectConstants, PinnedObjectArray<Class<?>> frameInfoSourceClasses,
+                    PinnedObjectArray<String> frameInfoSourceMethodNames, PinnedObjectArray<String> frameInfoNames) {
+
         this.codeInfoIndex = PinnedArrays.getHostedArray(codeInfoIndex);
         this.codeInfoEncodings = PinnedArrays.getHostedArray(codeInfoEncodings);
         this.referenceMapEncoding = PinnedArrays.getHostedArray(referenceMapEncoding);
@@ -150,35 +142,50 @@ public class ImageCodeInfo implements CodeInfo {
     }
 
     @Override
-    public void lookupCodeInfo(long ip, CodeInfoQueryResult codeInfo) {
+    public void lookupCodeInfo(CodeInfoHandle handle, long ip, CodeInfoQueryResult codeInfo) {
         CodeInfoDecoder.lookupCodeInfo(pa(codeInfoEncodings), pa(codeInfoIndex), pa(frameInfoEncodings), pa(frameInfoNames), pa(frameInfoObjectConstants),
                         pa(frameInfoSourceClasses), pa(frameInfoSourceMethodNames), pa(referenceMapEncoding), ip, codeInfo);
     }
 
     @Override
-    public long lookupDeoptimizationEntrypoint(long method, long encodedBci, CodeInfoQueryResult codeInfo) {
+    public CodeInfoHandle lookupCodeInfo(CodePointer ip) {
+        return SINGLETON_HANDLE;
+    }
+
+    @Override
+    public boolean isNone(CodeInfoHandle handle) {
+        return false;
+    }
+
+    @Override
+    public long lookupExceptionOffset(CodeInfoHandle handle, long ip) {
+        return CodeInfoDecoder.lookupExceptionOffset(pa(codeInfoEncodings), pa(codeInfoIndex), ip);
+    }
+
+    @Override
+    public PinnedArray<Byte> getReferenceMapEncoding(CodeInfoHandle handle) {
+        return pa(referenceMapEncoding);
+    }
+
+    @Override
+    public long lookupReferenceMapIndex(CodeInfoHandle handle, long ip) {
+        return CodeInfoDecoder.lookupReferenceMapIndex(pa(codeInfoEncodings), pa(codeInfoIndex), ip);
+    }
+
+    @Override
+    public CodePointer absoluteIP(CodeInfoHandle handle, long relativeIP) {
+        return CodeInfoAccessor.absoluteIP(codeStart, relativeIP);
+    }
+
+    @Override
+    public long lookupDeoptimizationEntrypoint(CodeInfoHandle handle, long method, long encodedBci, CodeInfoQueryResult codeInfo) {
         return CodeInfoDecoder.lookupDeoptimizationEntrypoint(pa(codeInfoEncodings), pa(codeInfoIndex), pa(frameInfoEncodings), pa(frameInfoNames), pa(frameInfoObjectConstants),
                         pa(frameInfoSourceClasses), pa(frameInfoSourceMethodNames), pa(referenceMapEncoding), method, encodedBci, codeInfo);
     }
 
     @Override
-    public long lookupTotalFrameSize(long ip) {
+    public long lookupTotalFrameSize(CodeInfoHandle handle, long ip) {
         return CodeInfoDecoder.lookupTotalFrameSize(pa(codeInfoEncodings), pa(codeInfoIndex), ip);
-    }
-
-    @Override
-    public long lookupExceptionOffset(long ip) {
-        return CodeInfoDecoder.lookupExceptionOffset(pa(codeInfoEncodings), pa(codeInfoIndex), ip);
-    }
-
-    @Override
-    public PinnedArray<Byte> getReferenceMapEncoding() {
-        return pa(referenceMapEncoding);
-    }
-
-    @Override
-    public long lookupReferenceMapIndex(long ip) {
-        return CodeInfoDecoder.lookupReferenceMapIndex(pa(codeInfoEncodings), pa(codeInfoIndex), ip);
     }
 
     /** Methods for MemoryWalker to access image code information. */
@@ -192,12 +199,12 @@ public class ImageCodeInfo implements CodeInfo {
 
         @Override
         public UnsignedWord getStart(ImageCodeInfo imageCodeInfo) {
-            return (UnsignedWord) imageCodeInfo.getCodeStart();
+            return (UnsignedWord) imageCodeInfo.codeStart;
         }
 
         @Override
         public UnsignedWord getSize(ImageCodeInfo imageCodeInfo) {
-            return imageCodeInfo.getCodeSize();
+            return imageCodeInfo.codeSize;
         }
 
         @Override
