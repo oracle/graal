@@ -42,12 +42,16 @@ package com.oracle.truffle.api.test.option;
 
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertFalse;
+import static org.junit.Assert.assertNotEquals;
 import static org.junit.Assert.assertNotNull;
+import static org.junit.Assert.assertNotSame;
 import static org.junit.Assert.assertNull;
 import static org.junit.Assert.assertSame;
 import static org.junit.Assert.assertTrue;
 
+import java.util.ArrayList;
 import java.util.Iterator;
+import java.util.List;
 
 import org.graalvm.options.OptionCategory;
 import org.graalvm.options.OptionDescriptor;
@@ -147,6 +151,7 @@ public class OptionProcessorTest {
         OptionDescriptor descriptor1;
         OptionDescriptor descriptor2;
         OptionDescriptor descriptor3;
+        OptionDescriptor descriptor4;
 
         descriptor1 = descriptor = descriptors.get("optiontestinstr1.StringOption1");
         assertNotNull(descriptor);
@@ -172,6 +177,8 @@ public class OptionProcessorTest {
         assertSame(OptionCategory.EXPERT, descriptor.getCategory());
         assertSame(OptionTestInstrument1.Thresholds, descriptor.getKey());
 
+        descriptor4 = descriptor = descriptors.get("optiontestinstr1.ThresholdsSamePrefix");
+
         Iterator<OptionDescriptor> iterator = descriptors.iterator();
         assertTrue(iterator.hasNext());
         assertEquals(descriptor1, iterator.next());
@@ -179,6 +186,8 @@ public class OptionProcessorTest {
         assertEquals(descriptor2, iterator.next());
         assertTrue(iterator.hasNext());
         assertEquals(descriptor3, iterator.next());
+        assertTrue(iterator.hasNext());
+        assertEquals(descriptor4, iterator.next());
         assertFalse(iterator.hasNext());
 
         assertNull(descriptors.get("optiontestinstr1.StringOption3"));
@@ -191,6 +200,7 @@ public class OptionProcessorTest {
         assertNotNull(descriptors.get("foobar"));
     }
 
+    @SuppressWarnings("unchecked")
     @Test
     public void testOptionValues() {
         Engine engine = Engine.create();
@@ -232,6 +242,34 @@ public class OptionProcessorTest {
         assertEquals(123, (int) thresholds.get("MaxRetries"));
         assertEquals(456, (int) thresholds.get("Capacity"));
         assertNull(thresholds.get("undefined"));
+    }
+
+    @Test
+    public void testDescriptorPrefixMatching() {
+        Engine engine = Engine.create();
+        OptionDescriptors descriptors = engine.getInstruments().get("optiontestinstr1").getOptions();
+        OptionValues optionValues = engine.getInstruments().get("optiontestinstr1").lookup(OptionValues.class);
+
+        OptionKey<?> optionKey1 = descriptors.get("optiontestinstr1.ThresholdsSamePrefix").getKey();
+        OptionKey<?> optionKey2 = descriptors.get("optiontestinstr1.Thresholds").getKey();
+        assertSame(OptionTestInstrument1.ThresholdsSamePrefix, optionKey1);
+        assertSame(OptionTestInstrument1.Thresholds, optionKey2);
+
+        optionKey1 = descriptors.get("optiontestinstr1.Thresholds.key1").getKey();
+        optionKey2 = descriptors.get("optiontestinstr1.Thresholds.key2").getKey();
+        assertSame(optionKey1, optionKey2);
+        assertSame(OptionTestInstrument1.Thresholds, optionKey1);
+
+        // Empty keys.
+        optionKey1 = descriptors.get("optiontestinstr1.Thresholds.").getKey();
+        optionKey2 = descriptors.get("optiontestinstr1.Thresholds").getKey();
+        assertNotNull(optionKey1);
+        assertNotNull(optionKey2);
+        assertSame(optionKey1, optionKey2);
+        assertSame(OptionTestInstrument1.Thresholds, optionKey1);
+
+        // Incomplete property name.
+        assertNull(descriptors.get("optiontestinstr1.ThresholdsSamePr"));
     }
 
     @Test
@@ -281,6 +319,14 @@ public class OptionProcessorTest {
         @ExpectError("Two options with duplicated resolved descriptor name 'foobar.Duplicate' found.") //
         @Option(help = "A", name = "Duplicate", deprecated = true, category = OptionCategory.USER) //
         static final OptionKey<String> Error8 = new OptionKey<>("defaultValue");
+
+        @ExpectError("Options cannot have a '.' in the name") //
+        @Option(help = "A", name = "Category.SubCategory", deprecated = true, category = OptionCategory.USER) //
+        static final OptionKey<OptionMap<String>> Error9 = OptionKey.mapOf(String.class);
+
+        @ExpectError("Options cannot have a '.' in the name") //
+        @Option(help = "A", name = "Property.SubProperty", deprecated = true, category = OptionCategory.USER) //
+        static final OptionKey<String> Error10 = new OptionKey<>("defaultValue");
 
         @Option(help = "A", name = "", deprecated = true, category = OptionCategory.USER) //
         static final OptionKey<String> EmptyNameAllowed = new OptionKey<>("defaultValue");
@@ -338,6 +384,9 @@ public class OptionProcessorTest {
 
         @Option(help = "Instrument user-defined thresholds", deprecated = false, category = OptionCategory.EXPERT) //
         public static final OptionKey<OptionMap<Integer>> Thresholds = OptionKey.mapOf(Integer.class);
+
+        @Option(help = "Option with common prefix", deprecated = false, category = OptionCategory.EXPERT) //
+        public static final OptionKey<OptionMap<Integer>> ThresholdsSamePrefix = OptionKey.mapOf(Integer.class);
 
         @Override
         protected void onCreate(Env env) {

@@ -137,7 +137,7 @@ class OptionDescriptorsMap implements OptionDescriptors {
     public OptionDescriptor get(String optionName) {
         if (!prefixes.isEmpty()) {
             for (String prefix : prefixes) {
-                if (optionName.startsWith(prefix)) {
+                if (optionName.startsWith(prefix + ".") || optionName.equals(prefix)) {
                     return descriptors.get(prefix);
                 }
             }

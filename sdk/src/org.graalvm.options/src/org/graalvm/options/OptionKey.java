@@ -40,6 +40,8 @@
  */
 package org.graalvm.options;
 
+import org.graalvm.compiler.options.Option;
+
 import java.util.Objects;
 
 /**
@@ -80,9 +82,37 @@ public final class OptionKey<T> {
     }
 
     /**
-     * Constructs a new option key to group options with common prefixes. This type of options allow
-     * to collect key=value pairs whose keys are unknown beforehand e.g. user defined properties.
-     * 
+     * Constructs a new option key to group/accumulate options with common prefixes. This type of
+     * options allow to collect key=value pairs whose keys are unknown beforehand e.g. user defined
+     * properties. See {@link OptionMap}.
+     *
+     * Example usage:
+     * <pre>
+     * &#64;Option.Group("mylang")
+     * public class MiscOptions {
+     *     &#64;Option(help = &quot;User-defined properties&quot;, category = OptionCategory.USER) //
+     *     public static final OptionKey&lt;OptionMap&lt;String&gt;&gt; Properties = OptionKey.mapOf(String.class);
+     *
+     *     ...
+     * }
+     * </pre>
+     *
+     * Keys can be set using the {@code mylang.Properties} prefix.
+     * <pre>
+     * Engine engine = Engine.newBuilder()
+     *     .option(&quot;mylang.Properties.key&quot;, &quot;value&quot;)
+     *     .option(&quot;mylang.Properties.user.name&quot;, &quot;guest&quot;)
+     *     .build();
+     * </pre>
+     *
+     * The option map can be consumed as follows:
+     * <pre>
+     * OptionMap&lt;String&gt; properties = getOptions().get(MiscOptions.Properties);
+     * properties.get(&quot;key&quot;);       // value
+     * properties.get(&quot;user.name&quot;); // guest
+     * properties.get(&quot;undefined&quot;); // null
+     * </pre>
+     *
      * Throws {@link IllegalArgumentException} if no default {@link OptionType} could be
      * {@link OptionType#defaultType(Object) resolved} for the value type.
      * 

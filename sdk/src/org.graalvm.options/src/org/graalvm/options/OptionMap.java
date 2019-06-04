@@ -53,22 +53,16 @@ import java.util.Set;
  *
  * @since 20.0
  */
-public abstract class OptionMap<T> {
+public final class OptionMap<T> {
 
-    private static OptionMap<Object> EMPTY = new OptionMap<Object>() {
-        @Override
-        public Object get(String key) {
-            return null;
-        }
+    private static final OptionMap<?> EMPTY = new OptionMap<>(Collections.emptyMap());
 
-        @Override
-        public Set<Map.Entry<String, Object>> entrySet() {
-            return Collections.emptySet();
-        }
-    };
+    final Map<String, T> backingMap;
+    final Map<String, T> readonlyMap;
 
-    OptionMap() {
-        // no user-provided instances
+    OptionMap(Map<String, T> map) {
+        this.readonlyMap = Collections.unmodifiableMap(map);
+        this.backingMap = map;
     }
 
     /**
@@ -93,7 +87,9 @@ public abstract class OptionMap<T> {
      *
      * @since 20.0
      */
-    public abstract T get(String key);
+    public T get(String key) {
+        return readonlyMap.get(key);
+    }
 
     /**
      * Returns an unmodifiable {@link Set} view of the mappings contained in this map.
@@ -102,17 +98,19 @@ public abstract class OptionMap<T> {
      *
      * @since 20.0
      */
-    public abstract Set<Map.Entry<String, T>> entrySet();
+    public Set<Map.Entry<String, T>> entrySet() {
+        return readonlyMap.entrySet();
+    }
 
     @Override
     public int hashCode() {
-        return entrySet().hashCode();
+        return readonlyMap.hashCode();
     }
 
     @Override
     public boolean equals(Object obj) {
         if (obj instanceof OptionMap) {
-            return entrySet().equals(((OptionMap) obj).entrySet());
+            return readonlyMap.equals(((OptionMap) obj).readonlyMap);
         }
         return false;
     }

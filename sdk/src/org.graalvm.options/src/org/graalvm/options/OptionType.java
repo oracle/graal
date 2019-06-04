@@ -40,12 +40,9 @@
  */
 package org.graalvm.options;
 
-import java.util.AbstractMap;
-import java.util.Collections;
 import java.util.HashMap;
 import java.util.Map;
 import java.util.Objects;
-import java.util.Set;
 import java.util.function.Consumer;
 import java.util.function.Function;
 
@@ -154,7 +151,6 @@ public final class OptionType<T> {
      * @throws IllegalArgumentException if the value is invalid or cannot be converted.
      * @since 19.0
      */
-    @Deprecated
     public T convert(String value) {
         T v = converter.convert(null, null, value);
         validate(v);
@@ -162,8 +158,8 @@ public final class OptionType<T> {
     }
 
     /**
-     * Converts a string value, validates it, and converts it to an object of this type. For prefix
-     * options include the previous value stored for the option, and the name/key of the option.
+     * Converts a string value, validates it, and converts it to an object of this type. For option maps
+     * includes the previous map stored for the option and the key.
      *
      * @param nameSuffix the key for prefix options.
      * @param previousValue the previous value holded by option.
@@ -261,27 +257,6 @@ public final class OptionType<T> {
         }));
     }
 
-    private static class ReadOnlyOptionMap<V> extends OptionMap<V> {
-
-        final Map<String, V> backingMap;
-        final Map<String, V> readonlyMap;
-
-        ReadOnlyOptionMap(Map<String, V> map) {
-            this.readonlyMap = Collections.unmodifiableMap(map);
-            this.backingMap = map;
-        }
-
-        @Override
-        public V get(String key) {
-            return readonlyMap.get(key);
-        }
-
-        @Override
-        public Set<Map.Entry<String, V>> entrySet() {
-            return readonlyMap.entrySet();
-        }
-    }
-
     /**
      * Returns the default option type for a given value. Returns <code>null</code> if no default
      * option type is available for the Java type of this value.
@@ -296,8 +271,6 @@ public final class OptionType<T> {
     /**
      * Returns the default option type for option maps for the given value class. Returns
      * <code>null</code> if no default option type is available for the value class.
-     *
-     * @since 19.0
      */
     @SuppressWarnings("unchecked")
     static <V> OptionType<OptionMap<V>> mapOf(Class<V> valueClass) {
@@ -305,19 +278,14 @@ public final class OptionType<T> {
         if (valueType == null) {
             return null;
         }
-        return new OptionType<OptionMap<V>>("Map", new Converter<OptionMap<V>>() {
+        return new OptionType<OptionMap<V>>("OptionMap", new Converter<OptionMap<V>>() {
+            @Override
             public OptionMap<V> convert(OptionMap<V> previousValue, String key, String value) {
                 OptionMap<V> map = previousValue;
-                if (!(map instanceof OptionType.ReadOnlyOptionMap)) {
-
-                    Map<String, V> copy = new HashMap<String, V>();
-                    for (Map.Entry<String, V> entry : previousValue.entrySet()) {
-                        copy.put(entry.getKey(), entry.getValue());
-                    }
-
-                    map = new ReadOnlyOptionMap<V>(copy);
+                if (map == null || map.entrySet().isEmpty()) {
+                    map = new OptionMap<>(new HashMap<>());
                 }
-                ((ReadOnlyOptionMap<V>) map).backingMap.put(key, valueType.convert(map.get(key), key, value));
+                map.backingMap.put(key, valueType.convert(map.get(key), key, value));
                 return map;
             }
         }, (Consumer<OptionMap<V>>) EMPTY_VALIDATOR);

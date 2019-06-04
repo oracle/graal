@@ -282,6 +282,11 @@ public class OptionProcessor extends AbstractProcessor {
             optionName = annotation.name();
         }
 
+        if (optionName.contains(".")) {
+            error(element, elementAnnotation, "Options cannot have a '.' in the name");
+            return false;
+        }
+
         boolean deprecated = annotation.deprecated();
 
         OptionCategory category = annotation.category();
