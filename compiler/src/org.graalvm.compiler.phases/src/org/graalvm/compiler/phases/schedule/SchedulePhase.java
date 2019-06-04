@@ -228,8 +228,14 @@ public final class SchedulePhase extends Phase {
                     } else {
                         Block latestBlock = null;
 
+                        if (currentBlock.getFirstDominated() == null && !(currentNode instanceof VirtualState)) {
+                            // This block doesn't dominate any other blocks =>
+                            // node must be scheduled in earliest block.
+                            latestBlock = currentBlock;
+                        }
+
                         LocationIdentity constrainingLocation = null;
-                        if (currentNode instanceof FloatingReadNode) {
+                        if (latestBlock == null && currentNode instanceof FloatingReadNode) {
                             // We are scheduling a floating read node => check memory
                             // anti-dependencies.
                             FloatingReadNode floatingReadNode = (FloatingReadNode) currentNode;
