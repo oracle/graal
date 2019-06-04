@@ -292,7 +292,7 @@ public NodeFactory NF() {return context.getNodeFactory(); }
 			Expect(6);
 			typeO = DType();
 			Expect(7);
-			n=NF().createSimpleConstantNoArray(typeO.getBitSize()/8, Type.getIntegerType(32)); 
+			n=new DebugExprSizeofNode(typeO); 
 		} else SynErr(47);
 		return n;
 	}

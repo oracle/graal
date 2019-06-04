@@ -149,7 +149,7 @@ UnaryOp<out kind> CastExpr<out n> 		(. switch(kind) {
 												case 5: /*negate boolean/int*/ break;
 											} .)
 |
-"sizeof" "(" DType<out typeO> ")"	(. n=NF().createSimpleConstantNoArray(typeO.getBitSize()/8, Type.getIntegerType(32)); .)
+"sizeof" "(" DType<out typeO> ")"	(. n=new DebugExprSizeofNode(typeO); .)
 .
 
 UnaryOp<out int kind>		(. kind=-1; .)
