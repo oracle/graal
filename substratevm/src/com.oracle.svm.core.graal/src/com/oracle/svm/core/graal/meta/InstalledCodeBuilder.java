@@ -41,6 +41,7 @@ import org.graalvm.compiler.core.common.NumUtil;
 import org.graalvm.compiler.debug.DebugContext;
 import org.graalvm.compiler.debug.Indent;
 import org.graalvm.compiler.truffle.common.TruffleCompiler;
+import org.graalvm.compiler.word.Word;
 import org.graalvm.nativeimage.ImageSingletons;
 import org.graalvm.nativeimage.c.function.CodePointer;
 import org.graalvm.nativeimage.c.type.CTypeConversion;
@@ -51,6 +52,7 @@ import org.graalvm.word.WordFactory;
 import com.oracle.svm.core.SubstrateOptions;
 import com.oracle.svm.core.annotate.Uninterruptible;
 import com.oracle.svm.core.c.PinnedArray;
+import com.oracle.svm.core.c.UnmanagedReferenceWalkers;
 import com.oracle.svm.core.code.CodeInfoEncoder;
 import com.oracle.svm.core.code.CodeInfoTable;
 import com.oracle.svm.core.code.DeoptimizationSourcePositionEncoder;
@@ -98,7 +100,6 @@ import jdk.vm.ci.meta.JavaKind;
  *
  */
 public class InstalledCodeBuilder {
-
     private final SharedRuntimeMethod method;
     private final SubstrateInstalledCode installedCode;
     private final int tier;
@@ -342,7 +343,7 @@ public class InstalledCodeBuilder {
         metaInfoAllocator.open();
         try {
             runtimeMethodInfo = metaInfoAllocator.newInstance(RuntimeMethodInfo.class);
-            Heap.getHeap().getGC().registerObjectReferenceWalker(runtimeMethodInfo);
+            UnmanagedReferenceWalkers.singleton().register(RuntimeMethodInfo.walkReferencesFunction.getFunctionPointer(), Word.objectToUntrackedPointer(runtimeMethodInfo));
 
             constantsWalker = metaInfoAllocator.newInstance(ConstantsWalker.class);
 

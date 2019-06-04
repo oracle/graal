@@ -29,6 +29,8 @@ import static com.oracle.svm.core.util.VMError.shouldNotReachHere;
 import java.lang.ref.WeakReference;
 
 import org.graalvm.nativeimage.c.function.CodePointer;
+import org.graalvm.word.ComparableWord;
+import org.graalvm.word.Pointer;
 import org.graalvm.word.UnsignedWord;
 import org.graalvm.word.WordFactory;
 
@@ -37,6 +39,8 @@ import com.oracle.svm.core.annotate.Uninterruptible;
 import com.oracle.svm.core.c.PinnedArray;
 import com.oracle.svm.core.c.PinnedArrays;
 import com.oracle.svm.core.c.PinnedObjectArray;
+import com.oracle.svm.core.c.UnmanagedReferenceWalkers.ObjectReferenceWalkerFunction;
+import com.oracle.svm.core.c.function.JavaMethodLiteral;
 import com.oracle.svm.core.code.FrameInfoDecoder.FrameInfoQueryResultAllocator;
 import com.oracle.svm.core.code.FrameInfoDecoder.ValueInfoAllocator;
 import com.oracle.svm.core.deopt.SubstrateInstalledCode;
@@ -47,7 +51,9 @@ import com.oracle.svm.core.os.CommittedMemoryProvider;
 
 import jdk.vm.ci.code.InstalledCode;
 
-public final class RuntimeMethodInfo extends ObjectReferenceWalker implements CodeInfo {
+public final class RuntimeMethodInfo implements CodeInfo {
+    public static final JavaMethodLiteral<ObjectReferenceWalkerFunction> walkReferencesFunction = JavaMethodLiteral.create(
+                    RuntimeMethodInfo.class, "walkReferences", ComparableWord.class, ObjectReferenceVisitor.class);
 
     private CodePointer codeStart;
     private UnsignedWord codeSize;
@@ -236,14 +242,13 @@ public final class RuntimeMethodInfo extends ObjectReferenceWalker implements Co
         return CodeInfoDecoder.lookupReferenceMapIndex(codeInfoEncodings, codeInfoIndex, ip);
     }
 
-    @Override
-    public boolean walk(ObjectReferenceVisitor visitor) {
-        PinnedArrays.walkUnmanagedObjectArray(frameInfoObjectConstants, visitor);
-        PinnedArrays.walkUnmanagedObjectArray(frameInfoSourceClasses, visitor);
-        PinnedArrays.walkUnmanagedObjectArray(frameInfoSourceMethodNames, visitor);
-        PinnedArrays.walkUnmanagedObjectArray(frameInfoNames, visitor);
-        PinnedArrays.walkUnmanagedObjectArray(deoptimizationObjectConstants, visitor);
-        return true;
+    static void walkReferences(ComparableWord methodInfo, ObjectReferenceVisitor visitor) {
+        RuntimeMethodInfo obj = (RuntimeMethodInfo) ((Pointer) methodInfo).toObject();
+        PinnedArrays.walkUnmanagedObjectArray(obj.frameInfoObjectConstants, visitor);
+        PinnedArrays.walkUnmanagedObjectArray(obj.frameInfoSourceClasses, visitor);
+        PinnedArrays.walkUnmanagedObjectArray(obj.frameInfoSourceMethodNames, visitor);
+        PinnedArrays.walkUnmanagedObjectArray(obj.frameInfoNames, visitor);
+        PinnedArrays.walkUnmanagedObjectArray(obj.deoptimizationObjectConstants, visitor);
     }
 
     void releaseArrays() {

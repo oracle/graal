@@ -25,6 +25,7 @@
 package com.oracle.svm.core.code;
 
 import org.graalvm.compiler.options.Option;
+import org.graalvm.compiler.word.Word;
 import org.graalvm.nativeimage.ImageSingletons;
 import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.Platforms;
@@ -37,6 +38,7 @@ import com.oracle.svm.core.annotate.AutomaticFeature;
 import com.oracle.svm.core.annotate.Uninterruptible;
 import com.oracle.svm.core.c.PinnedArrays;
 import com.oracle.svm.core.c.PinnedObjectArray;
+import com.oracle.svm.core.c.UnmanagedReferenceWalkers;
 import com.oracle.svm.core.deopt.Deoptimizer;
 import com.oracle.svm.core.deopt.SubstrateInstalledCode;
 import com.oracle.svm.core.heap.Heap;
@@ -248,7 +250,7 @@ public class RuntimeCodeInfo {
         PinnedArrays.setObject(methodInfos, numMethods, null);
 
         Heap.getHeap().getGC().unregisterObjectReferenceWalker(methodInfo.constantsWalker);
-        Heap.getHeap().getGC().unregisterObjectReferenceWalker(methodInfo);
+        UnmanagedReferenceWalkers.singleton().unregister(RuntimeMethodInfo.walkReferencesFunction.getFunctionPointer(), Word.objectToUntrackedPointer(methodInfo));
         methodInfo.releaseArrays();
 
         /*
