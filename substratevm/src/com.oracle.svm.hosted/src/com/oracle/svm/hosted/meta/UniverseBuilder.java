@@ -66,6 +66,7 @@ import com.oracle.svm.core.SubstrateOptions;
 import com.oracle.svm.core.SubstrateUtil;
 import com.oracle.svm.core.annotate.ExcludeFromReferenceMap;
 import com.oracle.svm.core.c.BoxedRelocatedPointer;
+import com.oracle.svm.core.c.function.JavaMethodLiteral;
 import com.oracle.svm.core.config.ConfigurationValues;
 import com.oracle.svm.core.config.ObjectLayout;
 import com.oracle.svm.core.deopt.DeoptimizedFrame;
@@ -602,6 +603,7 @@ public class UniverseBuilder {
                     String.class,
                     DynamicHub.class,
                     CEntryPointLiteral.class,
+                    JavaMethodLiteral.class,
                     BoxedRelocatedPointer.class,
                     ClassInitializerFunctionPointerHolder.class));
 

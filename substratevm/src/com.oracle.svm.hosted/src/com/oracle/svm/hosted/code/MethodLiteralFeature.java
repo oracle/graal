@@ -32,7 +32,7 @@ import java.util.function.Function;
 import org.graalvm.nativeimage.c.function.CEntryPoint;
 import org.graalvm.nativeimage.c.function.CEntryPointLiteral;
 import org.graalvm.nativeimage.hosted.Feature;
-import org.graalvm.nativeimage.impl.CEntryPointLiteralCodePointer;
+import org.graalvm.nativeimage.impl.MethodLiteralCodePointer;
 
 import com.oracle.graal.pointsto.BigBang;
 import com.oracle.graal.pointsto.infrastructure.UniverseMetaAccess;
@@ -47,14 +47,14 @@ import com.oracle.svm.hosted.meta.MethodPointer;
 import jdk.vm.ci.meta.ResolvedJavaMethod;
 
 @AutomaticFeature
-public class CEntryPointLiteralFeature implements Feature {
+public class MethodLiteralFeature implements Feature {
 
-    class CEntryPointLiteralObjectReplacer implements Function<Object, Object> {
+    class MethodLiteralObjectReplacer implements Function<Object, Object> {
 
         @Override
         public Object apply(Object source) {
-            if (source instanceof CEntryPointLiteralCodePointer) {
-                CEntryPointLiteralCodePointer original = (CEntryPointLiteralCodePointer) source;
+            if (source instanceof MethodLiteralCodePointer) {
+                MethodLiteralCodePointer original = (MethodLiteralCodePointer) source;
 
                 Method reflectionMethod;
                 try {
@@ -66,22 +66,32 @@ public class CEntryPointLiteralFeature implements Feature {
                 ResolvedJavaMethod javaMethod = metaAccess.lookupJavaMethod(reflectionMethod);
                 if (javaMethod instanceof AnalysisMethod) {
                     AnalysisMethod aMethod = (AnalysisMethod) javaMethod;
-                    CEntryPoint annotation = aMethod.getAnnotation(CEntryPoint.class);
-                    UserError.guarantee(annotation != null, "Method referenced by " + CEntryPointLiteral.class.getSimpleName() +
-                                    " must be annotated with @" + CEntryPoint.class.getSimpleName() + ": " + javaMethod.format("%H.%n(%p)"));
-                    CEntryPointCallStubSupport.singleton().registerStubForMethod(aMethod, () -> CEntryPointData.create(aMethod));
+                    if (original.forCCall) {
+                        CEntryPoint annotation = aMethod.getAnnotation(CEntryPoint.class);
+                        UserError.guarantee(annotation != null, "Method referenced by " + CEntryPointLiteral.class.getSimpleName() +
+                                        " must be annotated with @" + CEntryPoint.class.getSimpleName() + ": " + javaMethod.format("%H.%n(%p)"));
+                        CEntryPointCallStubSupport.singleton().registerStubForMethod(aMethod, () -> CEntryPointData.create(aMethod));
+                    } else {
+                        bb.addRootMethod(aMethod).registerAsImplementationInvoked(null);
+                        CompilationInfoSupport.singleton().registerForcedCompilation(aMethod);
+                    }
                 } else if (javaMethod instanceof HostedMethod) {
+                    HostedMethod hTarget;
                     HostedMethod hMethod = (HostedMethod) javaMethod;
-                    AnalysisMethod aMethod = hMethod.getWrapped();
-                    AnalysisMethod aStub = CEntryPointCallStubSupport.singleton().getStubForMethod(aMethod);
-                    HostedMethod hStub = (HostedMethod) metaAccess.getUniverse().lookup(aStub);
-                    assert hStub.wrapped.isEntryPoint();
-                    assert hStub.isCompiled();
+                    if (original.forCCall) {
+                        AnalysisMethod aMethod = hMethod.getWrapped();
+                        AnalysisMethod aStub = CEntryPointCallStubSupport.singleton().getStubForMethod(aMethod);
+                        hTarget = (HostedMethod) metaAccess.getUniverse().lookup(aStub);
+                        assert hTarget.wrapped.isEntryPoint();
+                    } else {
+                        hTarget = hMethod;
+                    }
+                    assert hTarget.isCompiled();
                     /*
                      * Only during compilation and native image writing, we do the actual
                      * replacement.
                      */
-                    return MethodPointer.factory(hStub);
+                    return MethodPointer.factory(hTarget);
                 }
             }
             return source;
@@ -97,7 +107,7 @@ public class CEntryPointLiteralFeature implements Feature {
 
         metaAccess = config.getMetaAccess();
         bb = config.getBigBang();
-        config.registerObjectReplacer(new CEntryPointLiteralObjectReplacer());
+        config.registerObjectReplacer(new MethodLiteralObjectReplacer());
     }
 
     @Override
