@@ -24,16 +24,16 @@
  */
 package com.oracle.svm.core.genscavenge;
 
-import org.graalvm.nativeimage.hosted.Feature;
 import org.graalvm.nativeimage.ImageSingletons;
 import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.Platforms;
+import org.graalvm.nativeimage.hosted.Feature;
 
 import com.oracle.svm.core.MemoryWalker;
 import com.oracle.svm.core.annotate.AutomaticFeature;
 import com.oracle.svm.core.annotate.RestrictHeapAccess;
 import com.oracle.svm.core.code.CodeInfoTable;
-import com.oracle.svm.core.thread.VMOperation;
+import com.oracle.svm.core.thread.JavaVMOperation;
 
 public class MemoryWalkerImpl extends MemoryWalker {
 
@@ -51,13 +51,13 @@ public class MemoryWalkerImpl extends MemoryWalker {
     }
 
     /** A VMOperation that walks memory. */
-    protected static final class MemoryWalkerVMOperation extends VMOperation {
+    protected static final class MemoryWalkerVMOperation extends JavaVMOperation {
 
         private MemoryWalker.Visitor memoryWalkerVisitor;
         private boolean result;
 
         protected MemoryWalkerVMOperation(MemoryWalker.Visitor memoryVisitor) {
-            super("MemoryWalkerImpl.visitMemory", CallerEffect.BLOCKS_CALLER, SystemEffect.CAUSES_SAFEPOINT);
+            super("MemoryWalkerImpl.visitMemory", SystemEffect.CAUSES_SAFEPOINT);
             this.memoryWalkerVisitor = memoryVisitor;
             this.result = false;
         }

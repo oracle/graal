@@ -47,7 +47,7 @@ import com.oracle.svm.core.log.Log;
 import com.oracle.svm.core.option.HostedOptionKey;
 import com.oracle.svm.core.stack.JavaStackWalker;
 import com.oracle.svm.core.stack.ThreadStackPrinter;
-import com.oracle.svm.core.thread.VMOperation;
+import com.oracle.svm.core.thread.JavaVMOperation;
 import com.oracle.svm.core.thread.VMThreads;
 
 import sun.misc.Signal;
@@ -92,7 +92,7 @@ class DumpAllStacks implements SignalHandler {
 
     @Override
     public void handle(Signal arg0) {
-        VMOperation.enqueueBlockingSafepoint("DumpAllStacks", () -> {
+        JavaVMOperation.enqueueBlockingSafepoint("DumpAllStacks", () -> {
             Log log = Log.log();
             for (IsolateThread vmThread = VMThreads.firstThread(); VMThreads.isNonNullThread(vmThread); vmThread = VMThreads.nextThread(vmThread)) {
                 if (vmThread == CurrentIsolate.getCurrentThread()) {
@@ -163,7 +163,7 @@ class DumpRuntimeCompilation implements SignalHandler {
 
     @Override
     public void handle(Signal arg0) {
-        VMOperation.enqueueBlockingSafepoint("DumpRuntimeCompilation", () -> {
+        JavaVMOperation.enqueueBlockingSafepoint("DumpRuntimeCompilation", () -> {
             Log log = Log.log();
             SubstrateUtil.dumpRuntimeCompilation(log);
             log.flush();
