@@ -26,6 +26,7 @@ package com.oracle.svm.core.graal.snippets;
 
 import static com.oracle.svm.core.SubstrateOptions.MultiThreaded;
 import static com.oracle.svm.core.SubstrateOptions.SpawnIsolates;
+import static com.oracle.svm.core.SubstrateOptions.UseDedicatedVMThread;
 import static com.oracle.svm.core.graal.nodes.WriteCurrentVMThreadNode.writeCurrentVMThread;
 import static com.oracle.svm.core.graal.nodes.WriteHeapBaseNode.writeCurrentVMHeapBase;
 import static com.oracle.svm.core.util.VMError.shouldNotReachHere;
@@ -88,6 +89,7 @@ import com.oracle.svm.core.snippets.SubstrateForeignCallTarget;
 import com.oracle.svm.core.stack.StackOverflowCheck;
 import com.oracle.svm.core.thread.JavaThreads;
 import com.oracle.svm.core.thread.Safepoint;
+import com.oracle.svm.core.thread.VMOperationControl;
 import com.oracle.svm.core.thread.VMThreads;
 import com.oracle.svm.core.util.VMError;
 
@@ -205,6 +207,9 @@ public final class CEntryPointSnippets extends SubstrateTemplates implements Sni
         if (!success) {
             return CEntryPointErrors.ISOLATE_INITIALIZATION_FAILED;
         }
+        if (UseDedicatedVMThread.getValue()) {
+            VMOperationControl.startVmThread();
+        }
         return CEntryPointErrors.NO_ERROR;
     }
 
@@ -302,6 +307,9 @@ public final class CEntryPointSnippets extends SubstrateTemplates implements Sni
             RuntimeSupport.executeTearDownHooks();
             if (!JavaThreads.singleton().tearDownVM()) {
                 return CEntryPointErrors.UNSPECIFIED;
+            }
+            if (UseDedicatedVMThread.getValue()) {
+                VMOperationControl.stopVmThread();
             }
             return Isolates.tearDownCurrent();
         } catch (Throwable t) {

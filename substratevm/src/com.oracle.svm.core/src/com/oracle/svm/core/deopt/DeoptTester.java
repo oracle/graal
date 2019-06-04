@@ -103,9 +103,6 @@ public class DeoptTester {
             if (Heap.getHeap().isAllocationDisallowed()) {
                 return;
             }
-            if (VMOperationControl.TestingBackdoor.isLocked()) {
-                return;
-            }
             if (VMOperation.isInProgress()) {
                 return;
             }

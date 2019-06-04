@@ -304,6 +304,16 @@ public class SubstrateOptions {
     @Option(help = "Emit substitutions for UTF16 and latin1 compression", type = OptionType.Debug)//
     public static final HostedOptionKey<Boolean> EmitStringEncodingSubstitutions = new HostedOptionKey<>(true);
 
+    @Option(help = "Determines if VM operations should be executed in a dedicated thread.", type = OptionType.Debug)//
+    public static final HostedOptionKey<Boolean> UseDedicatedVMThread = new HostedOptionKey<Boolean>(false) {
+        @Override
+        protected void onValueUpdate(EconomicMap<OptionKey<?>, Object> values, Boolean oldValue, Boolean newValue) {
+            if (newValue) {
+                MultiThreaded.update(values, true);
+            }
+        }
+    };
+
     @Platforms(Platform.HOSTED_ONLY.class)
     public static Predicate<String> makeFilter(String[] definedFilters) {
         if (definedFilters != null) {

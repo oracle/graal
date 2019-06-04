@@ -61,7 +61,6 @@ public abstract class VMOperation {
         IsolateThread prevExecutingThread = control.getInProgress().getExecutingThread();
 
         control.setInProgress(this, getQueuingThread(data), CurrentIsolate.getCurrentThread());
-        StackOverflowCheck.singleton().makeYellowZoneAvailable();
         try {
             trace.string("[Executing operation ").string(name);
             operate(data);
@@ -70,7 +69,6 @@ public abstract class VMOperation {
             trace.string("[VMOperation.execute caught: ").string(t.getClass().getName()).string("]").newline();
             throw VMError.shouldNotReachHere(t);
         } finally {
-            StackOverflowCheck.singleton().protectYellowZone();
             control.setInProgress(prevOperation, prevQueuingThread, prevExecutingThread);
             setQueuingThread(data, WordFactory.nullPointer());
             setFinished(data, true);
