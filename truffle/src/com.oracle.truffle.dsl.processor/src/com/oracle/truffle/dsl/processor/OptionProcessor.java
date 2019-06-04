@@ -283,7 +283,7 @@ public class OptionProcessor extends AbstractProcessor {
         }
 
         if (optionName.contains(".")) {
-            error(element, elementAnnotation, "Options cannot have a '.' in the name");
+            error(element, elementAnnotation, "Options cannot contain a '.' in the name");
             return false;
         }
 

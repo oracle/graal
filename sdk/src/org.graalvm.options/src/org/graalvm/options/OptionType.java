@@ -158,8 +158,8 @@ public final class OptionType<T> {
     }
 
     /**
-     * Converts a string value, validates it, and converts it to an object of this type. For option maps
-     * includes the previous map stored for the option and the key.
+     * Converts a string value, validates it, and converts it to an object of this type. For option
+     * maps includes the previous map stored for the option and the key.
      *
      * @param nameSuffix the key for prefix options.
      * @param previousValue the previous value holded by option.

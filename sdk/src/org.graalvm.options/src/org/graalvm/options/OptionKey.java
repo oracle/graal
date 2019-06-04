@@ -87,6 +87,7 @@ public final class OptionKey<T> {
      * properties. See {@link OptionMap}.
      *
      * Example usage:
+     * 
      * <pre>
      * &#64;Option.Group("mylang")
      * public class MiscOptions {
@@ -98,14 +99,16 @@ public final class OptionKey<T> {
      * </pre>
      *
      * Keys can be set using the {@code mylang.Properties} prefix.
+     * 
      * <pre>
-     * Engine engine = Engine.newBuilder()
-     *     .option(&quot;mylang.Properties.key&quot;, &quot;value&quot;)
-     *     .option(&quot;mylang.Properties.user.name&quot;, &quot;guest&quot;)
-     *     .build();
+     * Engine engine = Engine.newBuilder() //
+     *                 .option(&quot;mylang.Properties.key&quot;, &quot;value&quot;) //
+     *                 .option(&quot;mylang.Properties.user.name&quot;, &quot;guest&quot;) //
+     *                 .build();
      * </pre>
      *
      * The option map can be consumed as follows:
+     * 
      * <pre>
      * OptionMap&lt;String&gt; properties = getOptions().get(MiscOptions.Properties);
      * properties.get(&quot;key&quot;);       // value
