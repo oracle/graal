@@ -605,7 +605,7 @@ public class NewObjectSnippets implements Snippets {
         } else {
             // Use Word instead of int to avoid extension to long in generated code
             Word off = WordFactory.signed(offset);
-            if (useBulkZeroing && probability(SLOW_PATH_PROBABILITY, size >= getMinimalBulkZeroingSize(INJECTED_OPTIONVALUES))) {
+            if (useBulkZeroing && value == 0 && probability(SLOW_PATH_PROBABILITY, (size - offset) >= getMinimalBulkZeroingSize(INJECTED_OPTIONVALUES))) {
                 if (theCounters != null && theCounters.instanceBulkInit != null) {
                     theCounters.instanceBulkInit.inc();
                 }
@@ -624,7 +624,6 @@ public class NewObjectSnippets implements Snippets {
                 for (; off.rawValue() < size; off = off.add(8)) {
                     memory.initializeLong(off, value, LocationIdentity.init());
                 }
-
             }
         }
     }
