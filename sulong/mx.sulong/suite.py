@@ -343,6 +343,24 @@ suite = {
       "testProject" : True,
       "defaultBuild" : False,
     },
+    "com.oracle.truffle.llvm.tests.debugexpr" : {
+      "subDir" : "tests",
+      "class" : "SulongTestSuite",
+      "variants" : ["O1", "O0", "O0_MEM2REG"],
+      "buildRef" : False,
+      "buildEnv" : {
+        "SUITE_CFLAGS" : "<clangImplicitArgs> -g",
+        "SUITE_CPPFLAGS" : "-I<sulong_include> -I<path:SULONG_LIBS> -g",
+      },
+      "dependencies" : [
+        "SULONG_TEST",
+      ],
+      "buildDependencies" : [
+        "SULONG_LIBS",
+      ],
+      "testProject" : True,
+      "defaultBuild" : False,
+    },
     "com.oracle.truffle.llvm.tests.irdebug" : {
       "subDir" : "tests",
       "class" : "SulongTestSuite",
@@ -779,6 +797,7 @@ suite = {
         "com.oracle.truffle.llvm.tests.bitcode",
         "com.oracle.truffle.llvm.tests.bitcodeformat",
         "com.oracle.truffle.llvm.tests.debug",
+        "com.oracle.truffle.llvm.tests.debugexpr",
         "com.oracle.truffle.llvm.tests.irdebug",
         "com.oracle.truffle.llvm.tests.interop",
         "com.oracle.truffle.llvm.tests.sulong",
