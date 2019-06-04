@@ -296,10 +296,11 @@ def build_native_image_image(config=None, args=None):
     env = os.environ.copy()
     if mx.version < mx.VersionSpec("5.219"):
         mx.warn("mx version is older than 5.219, SVM's GraalVM build will not be built with links.\nConsider updating mx to improve IDE compile-on-save workflow.")
-    if 'LINKY_LAYOUT' not in env:
-        env['LINKY_LAYOUT'] = '*.jar'
-    else:
-        mx.warn("LINKY_LAYOUT already set")
+    if not mx.is_windows():
+        if 'LINKY_LAYOUT' not in env:
+            env['LINKY_LAYOUT'] = '*.jar'
+        elif '*.jar' not in env['LINKY_LAYOUT']:
+            mx.warn("LINKY_LAYOUT already set")
     _mx_vm(['build'] + (args or []), config, env=env)
 
 
@@ -991,33 +992,32 @@ def build(args, vm=None):
 
     orig_command_build(args, vm)
 
-    if 'substratevm' in mx.primary_suite().name:
-        # build "jvm" config used by native-image and native-image-configure commands
-        config = graalvm_jvm_configs[-1]
-        rebuild_vm = False
-        mx.ensure_dir_exists(svmbuild_dir())
-        if not mx.is_windows():
-            vm_link = join(svmbuild_dir(), 'vm')
-            vm_linkname = os.path.relpath(_vm_home(config), dirname(vm_link))
-            if not os.path.exists(vm_link):
-                rebuild_vm = True
-            elif os.readlink(vm_link) != vm_linkname:
-                rebuild_vm = True
-                os.unlink(vm_link)
-            if rebuild_vm:
-                os.symlink(vm_linkname, vm_link)
-        rev_file_name = join(svmbuild_dir(), 'vm-rev')
-        rev_value = svm_suite().vc.parent(svm_suite().vc_dir)
-        if not os.path.exists(rev_file_name):
+
+def _ensure_vm_built():
+    # build "jvm" config used by native-image and native-image-configure commands
+    config = graalvm_jvm_configs[-1]
+    rebuild_vm = False
+    mx.ensure_dir_exists(svmbuild_dir())
+    if not mx.is_windows():
+        vm_link = join(svmbuild_dir(), 'vm')
+        if not os.path.exists(vm_link):
             rebuild_vm = True
-        else:
-            with open(rev_file_name, 'r') as f:
-                if f.read() != rev_value:
-                    rebuild_vm = True
-        if rebuild_vm:
-            with open(rev_file_name, 'w') as f:
-                f.write(rev_value)
-            build_native_image_image(config, args=[arg for arg in args if arg != '-f'])
+            if os.path.lexists(vm_link):
+                os.unlink(vm_link)
+            vm_linkname = os.path.relpath(_vm_home(config), dirname(vm_link))
+            os.symlink(vm_linkname, vm_link)
+    rev_file_name = join(svmbuild_dir(), 'vm-rev')
+    rev_value = svm_suite().vc.parent(svm_suite().vc_dir)
+    if not os.path.exists(rev_file_name):
+        rebuild_vm = True
+    else:
+        with open(rev_file_name, 'r') as f:
+            if f.read() != rev_value:
+                rebuild_vm = True
+    if rebuild_vm:
+        with open(rev_file_name, 'w') as f:
+            f.write(rev_value)
+        build_native_image_image(config)
 
 
 @mx.command(suite.name, 'native-image')
@@ -1029,6 +1029,7 @@ def native_image_on_jvm(args, **kwargs):
         else:
             save_args.append(arg)
 
+    _ensure_vm_built()
     if mx.is_windows():
         config = graalvm_jvm_configs[-1]
         executable = vm_native_image_path(config)
@@ -1042,6 +1043,7 @@ def native_image_on_jvm(args, **kwargs):
 
 @mx.command(suite.name, 'native-image-configure')
 def native_image_configure_on_jvm(args, **kwargs):
+    _ensure_vm_built()
     if mx.is_windows():
         config = graalvm_jvm_configs[-1]
         executable = vm_executable_path('native-image-configure', config)
