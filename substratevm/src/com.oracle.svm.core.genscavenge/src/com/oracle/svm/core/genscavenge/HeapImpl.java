@@ -63,6 +63,7 @@ import com.oracle.svm.core.annotate.TargetClass;
 import com.oracle.svm.core.annotate.Uninterruptible;
 import com.oracle.svm.core.code.CodeInfo;
 import com.oracle.svm.core.heap.GC;
+import com.oracle.svm.core.heap.GCCause;
 import com.oracle.svm.core.heap.Heap;
 import com.oracle.svm.core.heap.NativeImageInfo;
 import com.oracle.svm.core.heap.NoAllocationVerifier;
@@ -75,7 +76,7 @@ import com.oracle.svm.core.jdk.UninterruptibleUtils.AtomicReference;
 import com.oracle.svm.core.log.Log;
 import com.oracle.svm.core.option.RuntimeOptionValues;
 import com.oracle.svm.core.snippets.KnownIntrinsics;
-import com.oracle.svm.core.thread.VMOperation;
+import com.oracle.svm.core.thread.JavaVMOperation;
 import com.oracle.svm.core.util.VMError;
 
 //Checkstyle: stop
@@ -85,11 +86,6 @@ import sun.management.Util;
 /** An implementation of a card remembered set generational heap. */
 public class HeapImpl extends Heap {
 
-    /*
-     * Final state.
-     */
-
-    /* The Generations, etc. */
     private final YoungGeneration youngGeneration;
     private final OldGeneration oldGeneration;
     final HeapChunkProvider chunkProvider;
@@ -97,6 +93,7 @@ public class HeapImpl extends Heap {
     /** A singleton instance, created during image generation. */
     private final GenScavengeGCProvider gcProvider;
     private final MemoryMXBean memoryMXBean;
+    private final ObjectVisitorWalkerOperation objectVisitorWalkerOperation;
 
     /** A list of all the classes, if someone asks for it. */
     private List<Class<?>> classList;
@@ -153,37 +150,32 @@ public class HeapImpl extends Heap {
         ThreadLocalAllocation.disableThreadLocalAllocation(vmThread);
     }
 
-    /*
-     * Other interface methods from Heap.
-     */
-
-    /* Object walking. */
-
-    /* State. */
-    private final ObjectVisitorWalkerOperation objectVisitorWalkerOperation;
-
     private ObjectVisitorWalkerOperation getObjectVisitorWalkerOperation() {
         return objectVisitorWalkerOperation;
     }
 
-    /* Walk the objects of the heap. */
     @Override
     public void walkObjects(ObjectVisitor visitor) {
+        /*
+         * Only one thread at a time enters this method. So, it is fine to use a cached VM
+         * operation.
+         */
         try (ObjectVisitorWalkerOperation operation = getObjectVisitorWalkerOperation().open(visitor)) {
             operation.enqueue();
         }
     }
 
-    static class ObjectVisitorWalkerOperation extends VMOperation implements AutoCloseable {
+    static class ObjectVisitorWalkerOperation extends JavaVMOperation implements AutoCloseable {
 
         /** A lazily-initialized visitor. */
         private ObjectVisitor visitor = null;
 
         ObjectVisitorWalkerOperation() {
-            super("ObjectVisitorWalker", CallerEffect.BLOCKS_CALLER, SystemEffect.CAUSES_SAFEPOINT);
+            super("ObjectVisitorWalker", SystemEffect.CAUSES_SAFEPOINT);
         }
 
         ObjectVisitorWalkerOperation open(ObjectVisitor value) {
+            assert this.visitor == null;
             this.visitor = value;
             return this;
         }
@@ -885,6 +877,6 @@ final class Target_java_lang_Runtime {
      */
     @Substitute
     private void gc() {
-        HeapImpl.getHeapImpl().getHeapPolicy().getUserRequestedGCPolicy().maybeCauseCollection("java.lang.Runtime.gc()");
+        HeapImpl.getHeapImpl().getHeapPolicy().getUserRequestedGCPolicy().maybeCauseCollection(GCCause.JavaLangSystemGC);
     }
 }

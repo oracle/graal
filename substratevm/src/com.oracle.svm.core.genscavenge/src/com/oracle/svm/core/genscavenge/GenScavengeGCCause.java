@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2015, 2017, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2019, 2019, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -22,36 +22,15 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.svm.core.heap;
+package com.oracle.svm.core.genscavenge;
 
-import java.lang.management.GarbageCollectorMXBean;
-import java.util.List;
+import com.oracle.svm.core.heap.GCCause;
 
-public interface GC {
+public final class GenScavengeGCCause extends GCCause {
+    public static final GCCause OnAllocationAlways = new GenScavengeGCCause("CollectOnAllocation.Always");
+    public static final GCCause OnAllocationSometimes = new GenScavengeGCCause("CollectOnAllocation.Sometimes");
 
-    /** Cause a collection of the Heap's choosing. */
-    void collect(GCCause cause);
-
-    /** Cause a full collection. */
-    void collectCompletely(GCCause cause);
-
-    /*
-     * Registered walkers of object reference roots. Since these walkers are used during collection,
-     * they must not move, either by being in the image heap, or by being pinned.
-     */
-
-    void registerObjectReferenceWalker(ObjectReferenceWalker walker);
-
-    void unregisterObjectReferenceWalker(ObjectReferenceWalker walker);
-
-    /*
-     * Registered collection watchers.
-     */
-
-    void registerCollectionWatcher(CollectionWatcher watcher);
-
-    void unregisterCollectionWatcher(CollectionWatcher watcher);
-
-    /** Get the list of GarbageCollectorMXBeans for this collector. */
-    List<GarbageCollectorMXBean> getGarbageCollectorMXBeanList();
+    private GenScavengeGCCause(String name) {
+        super(name);
+    }
 }
