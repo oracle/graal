@@ -26,13 +26,13 @@ package com.oracle.svm.core.posix.pthread;
 
 import org.graalvm.compiler.core.common.NumUtil;
 import org.graalvm.compiler.word.Word;
-import org.graalvm.nativeimage.hosted.Feature;
 import org.graalvm.nativeimage.ImageSingletons;
 import org.graalvm.nativeimage.LogHandler;
 import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.Platforms;
 import org.graalvm.nativeimage.StackValue;
 import org.graalvm.nativeimage.c.struct.SizeOf;
+import org.graalvm.nativeimage.hosted.Feature;
 import org.graalvm.nativeimage.impl.InternalPlatform;
 import org.graalvm.word.UnsignedWord;
 import org.graalvm.word.WordFactory;
@@ -43,11 +43,11 @@ import com.oracle.svm.core.annotate.Uninterruptible;
 import com.oracle.svm.core.annotate.UnknownObjectField;
 import com.oracle.svm.core.config.ConfigurationValues;
 import com.oracle.svm.core.config.ObjectLayout;
+import com.oracle.svm.core.headers.Errno;
 import com.oracle.svm.core.locks.ClassInstanceReplacer;
 import com.oracle.svm.core.locks.VMCondition;
 import com.oracle.svm.core.locks.VMMutex;
 import com.oracle.svm.core.log.Log;
-import com.oracle.svm.core.headers.Errno;
 import com.oracle.svm.core.posix.headers.Pthread;
 import com.oracle.svm.core.posix.headers.Time;
 import com.oracle.svm.core.thread.VMThreads;
@@ -142,11 +142,13 @@ public final class PthreadVMLockSupport {
                 return false;
             }
         }
+
         for (PthreadVMCondition condition : ImageSingletons.lookup(PthreadVMLockSupport.class).conditions) {
             if (PthreadConditionUtils.initCondition(condition.getStructPointer()) != 0) {
                 return false;
             }
         }
+
         return true;
     }
 
@@ -179,29 +181,44 @@ final class PthreadVMMutex extends VMMutex {
 
     @Override
     public VMMutex lock() {
+        assertNotOwner("Recursive locking is not supported");
         PthreadVMLockSupport.checkResult(Pthread.pthread_mutex_lock(getStructPointer()), "pthread_mutex_lock");
-        locked = true;
+        setOwnerToCurrentThread();
         return this;
     }
 
     @Override
-    @Uninterruptible(reason = "Called from uninterruptible code.")
-    public VMMutex lockNoTransition() {
+    @Uninterruptible(reason = "Called from uninterruptible code.", callerMustBe = true)
+    public void lockNoTransition() {
+        assertNotOwner("Recursive locking is not supported");
         PthreadVMLockSupport.checkResult(Pthread.pthread_mutex_lock_no_transition(getStructPointer()), "pthread_mutex_lock");
-        locked = true;
-        return this;
+        setOwnerToCurrentThread();
+    }
+
+    @Override
+    @Uninterruptible(reason = "Called from uninterruptible code.", callerMustBe = true)
+    public void lockNoTransitionUnspecifiedOwner() {
+        PthreadVMLockSupport.checkResult(Pthread.pthread_mutex_lock_no_transition(getStructPointer()), "pthread_mutex_lock");
+        setOwnerToUnspecified();
     }
 
     @Override
     @Uninterruptible(reason = "Called from uninterruptible code.")
     public void unlock() {
-        locked = false;
+        clearCurrentThreadOwner();
+        PthreadVMLockSupport.checkResult(Pthread.pthread_mutex_unlock(getStructPointer()), "pthread_mutex_unlock");
+    }
+
+    @Override
+    @Uninterruptible(reason = "Called from uninterruptible code.")
+    public void unlockNoTransitionUnspecifiedOwner() {
+        clearUnspecifiedOwner();
         PthreadVMLockSupport.checkResult(Pthread.pthread_mutex_unlock(getStructPointer()), "pthread_mutex_unlock");
     }
 
     @Override
     public void unlockWithoutChecks() {
-        locked = false;
+        clearCurrentThreadOwner();
         Pthread.pthread_mutex_unlock(getStructPointer());
     }
 }
@@ -222,13 +239,17 @@ final class PthreadVMCondition extends VMCondition {
 
     @Override
     public void block() {
+        mutex.clearCurrentThreadOwner();
         PthreadVMLockSupport.checkResult(Pthread.pthread_cond_wait(getStructPointer(), ((PthreadVMMutex) getMutex()).getStructPointer()), "pthread_cond_wait");
+        mutex.setOwnerToCurrentThread();
     }
 
     @Override
     @Uninterruptible(reason = "Called from uninterruptible code.")
     public void blockNoTransition() {
+        mutex.clearCurrentThreadOwner();
         PthreadVMLockSupport.checkResult(Pthread.pthread_cond_wait_no_transition(getStructPointer(), ((PthreadVMMutex) getMutex()).getStructPointer()), "pthread_cond_wait");
+        mutex.setOwnerToCurrentThread();
     }
 
     @Override
@@ -236,7 +257,9 @@ final class PthreadVMCondition extends VMCondition {
         Time.timespec deadlineTimespec = StackValue.get(Time.timespec.class);
         PthreadConditionUtils.delayNanosToDeadlineTimespec(waitNanos, deadlineTimespec);
 
+        mutex.clearCurrentThreadOwner();
         final int timedwaitResult = Pthread.pthread_cond_timedwait(getStructPointer(), ((PthreadVMMutex) getMutex()).getStructPointer(), deadlineTimespec);
+        mutex.setOwnerToCurrentThread();
         /* If the timed wait timed out, then I am done blocking. */
         if (timedwaitResult == Errno.ETIMEDOUT()) {
             return 0L;
@@ -252,7 +275,9 @@ final class PthreadVMCondition extends VMCondition {
         Time.timespec deadlineTimespec = StackValue.get(Time.timespec.class);
         PthreadConditionUtils.delayNanosToDeadlineTimespec(waitNanos, deadlineTimespec);
 
+        mutex.clearCurrentThreadOwner();
         final int timedwaitResult = Pthread.pthread_cond_timedwait_no_transition(getStructPointer(), ((PthreadVMMutex) getMutex()).getStructPointer(), deadlineTimespec);
+        mutex.setOwnerToCurrentThread();
         /* If the timed wait timed out, then I am done blocking. */
         if (timedwaitResult == Errno.ETIMEDOUT()) {
             return 0L;

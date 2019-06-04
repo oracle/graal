@@ -40,8 +40,7 @@ import com.oracle.svm.core.util.VMError;
  * consumes resources and contributes to VM startup time.
  */
 public class VMCondition {
-
-    private final VMMutex mutex;
+    protected final VMMutex mutex;
 
     @Platforms(Platform.HOSTED_ONLY.class)
     public VMCondition(VMMutex mutex) {
