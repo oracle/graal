@@ -12,6 +12,12 @@ COMPILER DebugExpr
 
 // Add auxiliary methods and declaration here.
 boolean IsCast() {
+	Token peek = scanner.Peek();
+	if(la.kind==_lpar) {
+	    while(peek.kind==_asterisc) peek=scanner.Peek();
+	    int k = peek.kind;
+	    if(k==_signed||k==_unsigned||k==_int||k==_long||k==_char||k==_short||k==_float||k==_double) return true;
+	}
 	return false;
 }
 
@@ -58,6 +64,16 @@ TOKENS
    floatnumber = digit {digit} "." digit {digit} [ ("e"|"E") ["+"|"-"] digit {digit}].
    charConst = singlecomma (letter|digit) singlecomma.
    stringType = quote {letter|digit} quote.
+   lpar = '('.
+   asterisc = '*'.
+   signed = "signed".
+   unsigned = "unsigned".
+   int = "int".
+   long = "long".
+   short = "short".
+   float = "float".
+   double = "double".
+   char = "char".
 
 PRAGMAS
 // Add pragma declarations here.
@@ -169,7 +185,7 @@ UnaryOp<out int kind>		(. kind=-1; .)
 CastExpr<out LLVMExpressionNode n>		(. Type typeO=null; .)
 =
 [
-	IF (IsCast()) "(" DType<out typeO> ")"
+	IF (IsCast()) "(" DType<out typeO> ")" 
 ]
 UnaryExpr<out n>
 .
@@ -306,9 +322,9 @@ LogOrExpr<out n>
 ]
 .
 
-DType<out Type t>	
+DType<out Type ty>	
 =
-BaseType<out t> 
+BaseType<out ty> 
 (
 	 
 	{
@@ -326,7 +342,7 @@ BaseType<out t>
 	 "]"
 }
 .
-BaseType<out Type t> 	(. t=null; boolean signed=true;.)
+BaseType<out Type ty> 	(. ty=null; boolean signed=true;.)
 =
 "void"
 |
@@ -338,29 +354,29 @@ ident
 	 "unsigned"	(. signed = false; .)
 )
 [
-	 "char"		(. if(signed) {t = PrimitiveType.I8;} else {} .)
+	 "char"		(. if(signed) {ty = PrimitiveType.I8;} else {} .)
 	|
-	 "short"	(. if(signed) {t = PrimitiveType.I16;} else {} .)
+	 "short"	(. if(signed) {ty = PrimitiveType.I16;} else {} .)
 	|
-	 "int"		(. if(signed) {t = PrimitiveType.I32;} else {} .)
+	 "int"		(. if(signed) {ty = PrimitiveType.I32;} else {} .)
 	|
-	 "long"		(. if(signed) {t = PrimitiveType.I64;} else {} .)
+	 "long"		(. if(signed) {ty = PrimitiveType.I64;} else {} .)
 ]
 |
-"char"			(. t = PrimitiveType.I8;.)
+"char"			(. ty = PrimitiveType.I8;.)
 |
-"short"			(. t = PrimitiveType.I16;.)
+"short"			(. ty = PrimitiveType.I16;.)
 |
-"int"			(. t = PrimitiveType.I32;.)
+"int"			(. ty = PrimitiveType.I32;.)
 |
-"long" 			(. t = PrimitiveType.I64;.)
+"long" 			(. ty = PrimitiveType.I64;.)
 [
-	 "double"	(. t = PrimitiveType.F128;.)
+	 "double"	(. ty = PrimitiveType.F128;.)
 ]
 |
-"float"			(. t = PrimitiveType.FLOAT;.)
+"float"			(. ty = PrimitiveType.FLOAT;.)
 |
-"double"		(. t = PrimitiveType.DOUBLE;.)
+"double"		(. ty = PrimitiveType.DOUBLE;.)
 .
 
 

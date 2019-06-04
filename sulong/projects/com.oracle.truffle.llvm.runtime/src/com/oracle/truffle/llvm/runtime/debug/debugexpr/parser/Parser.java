@@ -22,6 +22,16 @@ public class Parser {
 	public static final int _floatnumber = 3;
 	public static final int _charConst = 4;
 	public static final int _stringType = 5;
+	public static final int _lpar = 6;
+	public static final int _asterisc = 7;
+	public static final int _signed = 8;
+	public static final int _unsigned = 9;
+	public static final int _int = 10;
+	public static final int _long = 11;
+	public static final int _short = 12;
+	public static final int _float = 13;
+	public static final int _double = 14;
+	public static final int _char = 15;
 	public static final int maxT = 45;
 
 	static final boolean T = true;
@@ -48,6 +58,12 @@ public class Parser {
 
 
 	boolean IsCast() {
+	Token peek = scanner.Peek();
+	if(la.kind==_lpar) {
+	    while(peek.kind==_asterisc) peek=scanner.Peek();
+	    int k = peek.kind;
+	    if(k==_signed||k==_unsigned||k==_int||k==_long||k==_char||k==_short||k==_float||k==_double) return true;
+	}
 	return false;
 }
 
@@ -182,10 +198,10 @@ public NodeFactory NF() {return context.getNodeFactory(); }
 		LLVMExpressionNode  n;
 		LLVMExpressionNode nThen=null, nElse=null; 
 		n = LogOrExpr();
-		if (la.kind == 34) {
+		if (la.kind == 42) {
 			Get();
 			nThen = Expr();
-			Expect(35);
+			Expect(43);
 			nElse = Expr();
 			n = new DebugExprTernaryNode(n, nThen, nElse);
 		}
@@ -222,7 +238,7 @@ public NodeFactory NF() {return context.getNodeFactory(); }
 		case 6: {
 			Get();
 			n = Expr();
-			Expect(7);
+			Expect(16);
 			break;
 		}
 		default: SynErr(46); break;
@@ -235,13 +251,13 @@ public NodeFactory NF() {return context.getNodeFactory(); }
 		LLVMExpressionNode idx=null; List<LLVMExpressionNode> l; 
 		n = PrimExpr();
 		while (StartOf(1)) {
-			if (la.kind == 8) {
+			if (la.kind == 17) {
 				Get();
 				idx = Expr();
-				Expect(9);
+				Expect(18);
 			} else if (la.kind == 6) {
 				l = ActPars();
-			} else if (la.kind == 10) {
+			} else if (la.kind == 19) {
 				Get();
 				Expect(1);
 			} else {
@@ -259,13 +275,13 @@ public NodeFactory NF() {return context.getNodeFactory(); }
 		if (StartOf(2)) {
 			n1 = Expr();
 			l.add(n1); 
-			while (la.kind == 12) {
+			while (la.kind == 21) {
 				Get();
 				n2 = Expr();
 				l.add(n2); 
 			}
 		}
-		Expect(7);
+		Expect(16);
 		return l;
 	}
 
@@ -287,11 +303,11 @@ public NodeFactory NF() {return context.getNodeFactory(); }
 			case 4: /*flip bits*/ break;
 			case 5: /*negate boolean/int*/ break;
 			} 
-		} else if (la.kind == 13) {
+		} else if (la.kind == 22) {
 			Get();
 			Expect(6);
 			typeO = DType();
-			Expect(7);
+			Expect(16);
 			n=new DebugExprSizeofNode(typeO); 
 		} else SynErr(47);
 		return n;
@@ -301,32 +317,32 @@ public NodeFactory NF() {return context.getNodeFactory(); }
 		int  kind;
 		kind=-1; 
 		switch (la.kind) {
-		case 14: {
+		case 23: {
 			Get();
 			kind=0; 
 			break;
 		}
-		case 15: {
+		case 7: {
 			Get();
 			kind=1; 
 			break;
 		}
-		case 16: {
+		case 24: {
 			Get();
 			kind=2; 
 			break;
 		}
-		case 17: {
+		case 25: {
 			Get();
 			kind=3; 
 			break;
 		}
-		case 18: {
+		case 26: {
 			Get();
 			kind=4; 
 			break;
 		}
-		case 19: {
+		case 27: {
 			Get();
 			kind=5; 
 			break;
@@ -342,42 +358,42 @@ public NodeFactory NF() {return context.getNodeFactory(); }
 		if (IsCast()) {
 			Expect(6);
 			typeO = DType();
-			Expect(7);
+			Expect(16);
 		}
 		n = UnaryExpr();
 		return n;
 	}
 
 	Type  DType() {
-		Type  t;
-		t = BaseType();
-		if (la.kind == 7 || la.kind == 8 || la.kind == 15) {
-			while (la.kind == 15) {
+		Type  ty;
+		ty = BaseType();
+		if (la.kind == 7 || la.kind == 16 || la.kind == 17) {
+			while (la.kind == 7) {
 				Get();
 			}
-		} else if (la.kind == 14) {
+		} else if (la.kind == 23) {
 			Get();
 		} else SynErr(49);
-		while (la.kind == 8) {
+		while (la.kind == 17) {
 			Get();
 			if (la.kind == 2) {
 				Get();
 			}
-			Expect(9);
+			Expect(18);
 		}
-		return t;
+		return ty;
 	}
 
 	LLVMExpressionNode  MultExpr() {
 		LLVMExpressionNode  n;
 		LLVMExpressionNode n1=null; 
 		n = CastExpr();
-		while (la.kind == 15 || la.kind == 20 || la.kind == 21) {
-			if (la.kind == 15) {
+		while (la.kind == 7 || la.kind == 28 || la.kind == 29) {
+			if (la.kind == 7) {
 				Get();
 				n1 = CastExpr();
 				n = NF().createArithmeticOp(ArithmeticOperation.MUL, null, n, n1); 
-			} else if (la.kind == 20) {
+			} else if (la.kind == 28) {
 				Get();
 				n1 = CastExpr();
 				n = NF().createArithmeticOp(ArithmeticOperation.DIV, null, n, n1); 
@@ -394,8 +410,8 @@ public NodeFactory NF() {return context.getNodeFactory(); }
 		LLVMExpressionNode  n;
 		LLVMExpressionNode n1=null; 
 		n = MultExpr();
-		while (la.kind == 16 || la.kind == 17) {
-			if (la.kind == 16) {
+		while (la.kind == 24 || la.kind == 25) {
+			if (la.kind == 24) {
 				Get();
 				n1 = MultExpr();
 				n = NF().createArithmeticOp(ArithmeticOperation.ADD, null, n, n1); 
@@ -412,8 +428,8 @@ public NodeFactory NF() {return context.getNodeFactory(); }
 		LLVMExpressionNode  n;
 		LLVMExpressionNode n1=null; 
 		n = AddExpr();
-		while (la.kind == 22 || la.kind == 23) {
-			if (la.kind == 22) {
+		while (la.kind == 30 || la.kind == 31) {
+			if (la.kind == 30) {
 				Get();
 				n1 = AddExpr();
 				n = NF().createArithmeticOp(ArithmeticOperation.SHL, null, n, n1); 
@@ -431,15 +447,15 @@ public NodeFactory NF() {return context.getNodeFactory(); }
 		LLVMExpressionNode n1=null; 
 		n = ShiftExpr();
 		while (StartOf(5)) {
-			if (la.kind == 24) {
+			if (la.kind == 32) {
 				Get();
 				n1 = ShiftExpr();
 				n = new DebugExprCompareNode(NF(), n, Op.LT, n1); 
-			} else if (la.kind == 25) {
+			} else if (la.kind == 33) {
 				Get();
 				n1 = ShiftExpr();
 				n = new DebugExprCompareNode(NF(), n, Op.GT, n1); 
-			} else if (la.kind == 26) {
+			} else if (la.kind == 34) {
 				Get();
 				n1 = ShiftExpr();
 				n = new DebugExprCompareNode(NF(), n, Op.LE, n1); 
@@ -456,8 +472,8 @@ public NodeFactory NF() {return context.getNodeFactory(); }
 		LLVMExpressionNode  n;
 		LLVMExpressionNode n1=null; 
 		n = RelExpr();
-		while (la.kind == 28 || la.kind == 29) {
-			if (la.kind == 28) {
+		while (la.kind == 36 || la.kind == 37) {
+			if (la.kind == 36) {
 				Get();
 				n1 = RelExpr();
 				n = new DebugExprCompareNode(NF(), n, Op.EQ, n1); 
@@ -474,7 +490,7 @@ public NodeFactory NF() {return context.getNodeFactory(); }
 		LLVMExpressionNode  n;
 		LLVMExpressionNode n1=null; 
 		n = EqExpr();
-		while (la.kind == 14) {
+		while (la.kind == 23) {
 			Get();
 			n1 = EqExpr();
 			n = NF().createArithmeticOp(ArithmeticOperation.AND, null, n, n1); 
@@ -486,7 +502,7 @@ public NodeFactory NF() {return context.getNodeFactory(); }
 		LLVMExpressionNode  n;
 		LLVMExpressionNode n1=null; 
 		n = AndExpr();
-		while (la.kind == 30) {
+		while (la.kind == 38) {
 			Get();
 			n1 = AndExpr();
 			n = NF().createArithmeticOp(ArithmeticOperation.XOR, null, n, n1); 
@@ -498,7 +514,7 @@ public NodeFactory NF() {return context.getNodeFactory(); }
 		LLVMExpressionNode  n;
 		LLVMExpressionNode n1=null; 
 		n = XorExpr();
-		while (la.kind == 31) {
+		while (la.kind == 39) {
 			Get();
 			n1 = XorExpr();
 			n = NF().createArithmeticOp(ArithmeticOperation.OR, null, n, n1); 
@@ -510,7 +526,7 @@ public NodeFactory NF() {return context.getNodeFactory(); }
 		LLVMExpressionNode  n;
 		LLVMExpressionNode n1=null; 
 		n = OrExpr();
-		while (la.kind == 32) {
+		while (la.kind == 40) {
 			Get();
 			n1 = OrExpr();
 			n= new DebugExprSCENode(n, n1, DebugExprSCENode.SCEKind.AND); 
@@ -522,7 +538,7 @@ public NodeFactory NF() {return context.getNodeFactory(); }
 		LLVMExpressionNode  n;
 		LLVMExpressionNode n1=null; 
 		n = LogAndExpr();
-		while (la.kind == 33) {
+		while (la.kind == 41) {
 			Get();
 			n1 = LogAndExpr();
 			n= new DebugExprSCENode(n, n1, DebugExprSCENode.SCEKind.OR); 
@@ -531,10 +547,10 @@ public NodeFactory NF() {return context.getNodeFactory(); }
 	}
 
 	Type  BaseType() {
-		Type  t;
-		t=null; boolean signed=true;
+		Type  ty;
+		ty=null; boolean signed=true;
 		switch (la.kind) {
-		case 36: {
+		case 44: {
 			Get();
 			break;
 		}
@@ -542,8 +558,8 @@ public NodeFactory NF() {return context.getNodeFactory(); }
 			Get();
 			break;
 		}
-		case 37: case 38: {
-			if (la.kind == 37) {
+		case 8: case 9: {
+			if (la.kind == 8) {
 				Get();
 				signed = true; 
 			} else {
@@ -551,59 +567,59 @@ public NodeFactory NF() {return context.getNodeFactory(); }
 				signed = false; 
 			}
 			if (StartOf(6)) {
-				if (la.kind == 39) {
+				if (la.kind == 15) {
 					Get();
-					if(signed) {t = PrimitiveType.I8;} else {} 
-				} else if (la.kind == 40) {
+					if(signed) {ty = PrimitiveType.I8;} else {} 
+				} else if (la.kind == 12) {
 					Get();
-					if(signed) {t = PrimitiveType.I16;} else {} 
-				} else if (la.kind == 41) {
+					if(signed) {ty = PrimitiveType.I16;} else {} 
+				} else if (la.kind == 10) {
 					Get();
-					if(signed) {t = PrimitiveType.I32;} else {} 
+					if(signed) {ty = PrimitiveType.I32;} else {} 
 				} else {
 					Get();
-					if(signed) {t = PrimitiveType.I64;} else {} 
+					if(signed) {ty = PrimitiveType.I64;} else {} 
 				}
 			}
 			break;
 		}
-		case 39: {
+		case 15: {
 			Get();
-			t = PrimitiveType.I8;
+			ty = PrimitiveType.I8;
 			break;
 		}
-		case 40: {
+		case 12: {
 			Get();
-			t = PrimitiveType.I16;
+			ty = PrimitiveType.I16;
 			break;
 		}
-		case 41: {
+		case 10: {
 			Get();
-			t = PrimitiveType.I32;
+			ty = PrimitiveType.I32;
 			break;
 		}
-		case 42: {
+		case 11: {
 			Get();
-			t = PrimitiveType.I64;
-			if (la.kind == 43) {
+			ty = PrimitiveType.I64;
+			if (la.kind == 14) {
 				Get();
-				t = PrimitiveType.F128;
+				ty = PrimitiveType.F128;
 			}
 			break;
 		}
-		case 44: {
+		case 13: {
 			Get();
-			t = PrimitiveType.FLOAT;
+			ty = PrimitiveType.FLOAT;
 			break;
 		}
-		case 43: {
+		case 14: {
 			Get();
-			t = PrimitiveType.DOUBLE;
+			ty = PrimitiveType.DOUBLE;
 			break;
 		}
 		default: SynErr(50); break;
 		}
-		return t;
+		return ty;
 	}
 
 
@@ -619,12 +635,12 @@ public NodeFactory NF() {return context.getNodeFactory(); }
 
 	private static final boolean[][] set = {
 		{T,x,x,x, x,x,x,x, x,x,x,x, x,x,x,x, x,x,x,x, x,x,x,x, x,x,x,x, x,x,x,x, x,x,x,x, x,x,x,x, x,x,x,x, x,x,x},
-		{x,x,x,x, x,x,T,x, T,x,T,T, x,x,x,x, x,x,x,x, x,x,x,x, x,x,x,x, x,x,x,x, x,x,x,x, x,x,x,x, x,x,x,x, x,x,x},
-		{x,T,T,T, T,T,T,x, x,x,x,x, x,T,T,T, T,T,T,T, x,x,x,x, x,x,x,x, x,x,x,x, x,x,x,x, x,x,x,x, x,x,x,x, x,x,x},
+		{x,x,x,x, x,x,T,x, x,x,x,x, x,x,x,x, x,T,x,T, T,x,x,x, x,x,x,x, x,x,x,x, x,x,x,x, x,x,x,x, x,x,x,x, x,x,x},
+		{x,T,T,T, T,T,T,T, x,x,x,x, x,x,x,x, x,x,x,x, x,x,T,T, T,T,T,T, x,x,x,x, x,x,x,x, x,x,x,x, x,x,x,x, x,x,x},
 		{x,T,T,T, T,T,T,x, x,x,x,x, x,x,x,x, x,x,x,x, x,x,x,x, x,x,x,x, x,x,x,x, x,x,x,x, x,x,x,x, x,x,x,x, x,x,x},
-		{x,x,x,x, x,x,x,x, x,x,x,x, x,x,T,T, T,T,T,T, x,x,x,x, x,x,x,x, x,x,x,x, x,x,x,x, x,x,x,x, x,x,x,x, x,x,x},
-		{x,x,x,x, x,x,x,x, x,x,x,x, x,x,x,x, x,x,x,x, x,x,x,x, T,T,T,T, x,x,x,x, x,x,x,x, x,x,x,x, x,x,x,x, x,x,x},
-		{x,x,x,x, x,x,x,x, x,x,x,x, x,x,x,x, x,x,x,x, x,x,x,x, x,x,x,x, x,x,x,x, x,x,x,x, x,x,x,T, T,T,T,x, x,x,x}
+		{x,x,x,x, x,x,x,T, x,x,x,x, x,x,x,x, x,x,x,x, x,x,x,T, T,T,T,T, x,x,x,x, x,x,x,x, x,x,x,x, x,x,x,x, x,x,x},
+		{x,x,x,x, x,x,x,x, x,x,x,x, x,x,x,x, x,x,x,x, x,x,x,x, x,x,x,x, x,x,x,x, T,T,T,T, x,x,x,x, x,x,x,x, x,x,x},
+		{x,x,x,x, x,x,x,x, x,x,T,T, T,x,x,T, x,x,x,x, x,x,x,x, x,x,x,x, x,x,x,x, x,x,x,x, x,x,x,x, x,x,x,x, x,x,x}
 
 	};
  
@@ -700,45 +716,45 @@ class Errors {
 			case 3: s = "floatnumber expected"; break;
 			case 4: s = "charConst expected"; break;
 			case 5: s = "stringType expected"; break;
-			case 6: s = "\"(\" expected"; break;
-			case 7: s = "\")\" expected"; break;
-			case 8: s = "\"[\" expected"; break;
-			case 9: s = "\"]\" expected"; break;
-			case 10: s = "\".\" expected"; break;
-			case 11: s = "\"->\" expected"; break;
-			case 12: s = "\",\" expected"; break;
-			case 13: s = "\"sizeof\" expected"; break;
-			case 14: s = "\"&\" expected"; break;
-			case 15: s = "\"*\" expected"; break;
-			case 16: s = "\"+\" expected"; break;
-			case 17: s = "\"-\" expected"; break;
-			case 18: s = "\"~\" expected"; break;
-			case 19: s = "\"!\" expected"; break;
-			case 20: s = "\"/\" expected"; break;
-			case 21: s = "\"%\" expected"; break;
-			case 22: s = "\"<<\" expected"; break;
-			case 23: s = "\">>\" expected"; break;
-			case 24: s = "\"<\" expected"; break;
-			case 25: s = "\">\" expected"; break;
-			case 26: s = "\"<=\" expected"; break;
-			case 27: s = "\">=\" expected"; break;
-			case 28: s = "\"==\" expected"; break;
-			case 29: s = "\"!=\" expected"; break;
-			case 30: s = "\"^\" expected"; break;
-			case 31: s = "\"|\" expected"; break;
-			case 32: s = "\"&&\" expected"; break;
-			case 33: s = "\"||\" expected"; break;
-			case 34: s = "\"?\" expected"; break;
-			case 35: s = "\":\" expected"; break;
-			case 36: s = "\"void\" expected"; break;
-			case 37: s = "\"signed\" expected"; break;
-			case 38: s = "\"unsigned\" expected"; break;
-			case 39: s = "\"char\" expected"; break;
-			case 40: s = "\"short\" expected"; break;
-			case 41: s = "\"int\" expected"; break;
-			case 42: s = "\"long\" expected"; break;
-			case 43: s = "\"double\" expected"; break;
-			case 44: s = "\"float\" expected"; break;
+			case 6: s = "lpar expected"; break;
+			case 7: s = "asterisc expected"; break;
+			case 8: s = "signed expected"; break;
+			case 9: s = "unsigned expected"; break;
+			case 10: s = "int expected"; break;
+			case 11: s = "long expected"; break;
+			case 12: s = "short expected"; break;
+			case 13: s = "float expected"; break;
+			case 14: s = "double expected"; break;
+			case 15: s = "char expected"; break;
+			case 16: s = "\")\" expected"; break;
+			case 17: s = "\"[\" expected"; break;
+			case 18: s = "\"]\" expected"; break;
+			case 19: s = "\".\" expected"; break;
+			case 20: s = "\"->\" expected"; break;
+			case 21: s = "\",\" expected"; break;
+			case 22: s = "\"sizeof\" expected"; break;
+			case 23: s = "\"&\" expected"; break;
+			case 24: s = "\"+\" expected"; break;
+			case 25: s = "\"-\" expected"; break;
+			case 26: s = "\"~\" expected"; break;
+			case 27: s = "\"!\" expected"; break;
+			case 28: s = "\"/\" expected"; break;
+			case 29: s = "\"%\" expected"; break;
+			case 30: s = "\"<<\" expected"; break;
+			case 31: s = "\">>\" expected"; break;
+			case 32: s = "\"<\" expected"; break;
+			case 33: s = "\">\" expected"; break;
+			case 34: s = "\"<=\" expected"; break;
+			case 35: s = "\">=\" expected"; break;
+			case 36: s = "\"==\" expected"; break;
+			case 37: s = "\"!=\" expected"; break;
+			case 38: s = "\"^\" expected"; break;
+			case 39: s = "\"|\" expected"; break;
+			case 40: s = "\"&&\" expected"; break;
+			case 41: s = "\"||\" expected"; break;
+			case 42: s = "\"?\" expected"; break;
+			case 43: s = "\":\" expected"; break;
+			case 44: s = "\"void\" expected"; break;
 			case 45: s = "??? expected"; break;
 			case 46: s = "invalid PrimExpr"; break;
 			case 47: s = "invalid UnaryExpr"; break;
