@@ -26,34 +26,16 @@ package com.oracle.svm.core.code;
 
 import static com.oracle.svm.core.util.VMError.shouldNotReachHere;
 
-import java.lang.ref.WeakReference;
-
 import org.graalvm.nativeimage.c.function.CodePointer;
-import org.graalvm.word.ComparableWord;
-import org.graalvm.word.Pointer;
 import org.graalvm.word.UnsignedWord;
-import org.graalvm.word.WordFactory;
 
-import com.oracle.svm.core.SubstrateOptions;
 import com.oracle.svm.core.annotate.Uninterruptible;
 import com.oracle.svm.core.c.PinnedArray;
-import com.oracle.svm.core.c.PinnedArrays;
 import com.oracle.svm.core.c.PinnedObjectArray;
-import com.oracle.svm.core.c.UnmanagedReferenceWalkers.ObjectReferenceWalkerFunction;
-import com.oracle.svm.core.c.function.JavaMethodLiteral;
-import com.oracle.svm.core.code.FrameInfoDecoder.FrameInfoQueryResultAllocator;
-import com.oracle.svm.core.code.FrameInfoDecoder.ValueInfoAllocator;
-import com.oracle.svm.core.deopt.SubstrateInstalledCode;
-import com.oracle.svm.core.heap.CodeReferenceMapDecoder;
-import com.oracle.svm.core.heap.ObjectReferenceVisitor;
-import com.oracle.svm.core.heap.PinnedAllocator;
-import com.oracle.svm.core.os.CommittedMemoryProvider;
 
 import jdk.vm.ci.code.InstalledCode;
 
-public final class RuntimeMethodInfo implements CodeInfo {
-    public static final JavaMethodLiteral<ObjectReferenceWalkerFunction> walkReferencesFunction = JavaMethodLiteral.create(
-                    RuntimeMethodInfo.class, "walkReferences", ComparableWord.class, ObjectReferenceVisitor.class);
+public final class RuntimeMethodInfo implements CodeInfoHandle {
 
     private CodePointer codeStart;
     private UnsignedWord codeSize;
@@ -71,210 +53,187 @@ public final class RuntimeMethodInfo implements CodeInfo {
     private PinnedArray<Byte> objectsReferenceMapEncoding;
     private long objectsReferenceMapIndex;
 
-    PinnedArray<Integer> deoptimizationStartOffsets;
-    PinnedArray<Byte> deoptimizationEncodings;
-    PinnedObjectArray<Object> deoptimizationObjectConstants;
+    private PinnedArray<Integer> deoptimizationStartOffsets;
+    private PinnedArray<Byte> deoptimizationEncodings;
+    private PinnedObjectArray<Object> deoptimizationObjectConstants;
 
-    @Override
-    public String getName() {
-        return name;
-    }
+    private int tier;
 
-    public int getTier() {
-        return tier;
-    }
+    private PinnedAllocator allocator;
 
     /**
-     * The {@link InstalledCode#getName() name of the InstalledCode}. Stored in a separate field so
-     * that it is available even after the code is no longer available.
+     * The "object fields" of this class, managed as an array for simplicity.
      *
-     * Note that the String is not {@link PinnedAllocator pinned}, so this field must not be
-     * accessed during garbage collection.
-     */
-    protected String name;
-
-    /**
-     * The index of the compilation tier that was used to compile the respective code.
-     */
-    protected int tier;
-
-    /**
-     * The handle to the compiled code for the outside world. We only have a weak reference to it,
-     * to avoid keeping code alive.
+     * [0] String: The {@linkplain InstalledCode#getName() name of the InstalledCode}. Stored here
+     * so it remains available even after the code is no longer available. Note that the String is
+     * not pinned, so this field must not be accessed during garbage collection.
      *
-     * Note that the both the InstalledCode and the weak reference are not {@link PinnedAllocator
-     * pinned}, so this field must not be accessed during garbage collection.
+     * [1] WeakReference<SubstrateInstalledCode>: The handle to the compiled code for the outside
+     * world. We only have a weak reference to it, to avoid keeping code alive. Note that the both
+     * the InstalledCode and the weak reference are not pinned, so this field must not be accessed
+     * during garbage collection.
+     *
+     * [2] InstalledCodeObserverHandle[]: observers for installation and removal of this code.
      */
-    protected WeakReference<SubstrateInstalledCode> installedCode;
-
-    /**
-     * The pinned allocator used to allocate all code meta data that is accessed during garbage
-     * collection. It is {@link PinnedAllocator#release() released} only after the code has been
-     * invalidated and it is guaranteed that no more stack frame of the code is present.
-     */
-    protected PinnedAllocator allocator;
-
-    protected InstalledCodeObserver.InstalledCodeObserverHandle[] codeObserverHandles;
+    private PinnedObjectArray<?> objectFields;
 
     private RuntimeMethodInfo() {
         throw shouldNotReachHere("Must be allocated with PinnedAllocator");
     }
 
-    public void setCodeLocation(Pointer start, int size) {
-        codeStart = (CodePointer) start;
-        codeSize = WordFactory.unsigned(size);
+    void setObjectFields(PinnedObjectArray<?> objectFields) {
+        this.objectFields = objectFields;
     }
 
-    public void setCodeConstantsInfo(PinnedArray<Byte> refMapEncoding, long refMapIndex) {
-        assert codeStart.isNonNull();
-        objectsReferenceMapEncoding = refMapEncoding;
-        objectsReferenceMapIndex = refMapIndex;
+    PinnedObjectArray<?> getObjectFields() {
+        return objectFields;
     }
 
-    @Uninterruptible(reason = "Called from uninterruptible code", mayBeInlined = true)
-    public void setCodeConstantsLive() {
-        assert !codeConstantsLive;
-        codeConstantsLive = true;
+    int getTier() {
+        return tier;
     }
 
-    public void setData(SubstrateInstalledCode installedCode, int tier, PinnedAllocator allocator, InstalledCodeObserver.InstalledCodeObserverHandle[] codeObserverHandles) {
-        this.name = installedCode.getName();
-        this.installedCode = createInstalledCodeReference(installedCode);
+    void setTier(int tier) {
         this.tier = tier;
-        this.allocator = allocator;
-        assert codeObserverHandles != null;
-        this.codeObserverHandles = codeObserverHandles;
     }
 
-    private static WeakReference<SubstrateInstalledCode> createInstalledCodeReference(SubstrateInstalledCode installedCode) {
-        return new WeakReference<>(installedCode);
-    }
-
-    @Uninterruptible(reason = "Called from uninterruptible code", mayBeInlined = true)
-    void freeInstalledCode() {
-        CommittedMemoryProvider.get().free(getCodeStart(), getCodeSize(), WordFactory.unsigned(SubstrateOptions.codeAlignment()), true);
-    }
-
-    @Override
     @Uninterruptible(reason = "called from uninterruptible code", mayBeInlined = true)
-    public CodePointer getCodeStart() {
+    CodePointer getCodeStart() {
         return codeStart;
     }
 
-    @Override
     @Uninterruptible(reason = "called from uninterruptible code", mayBeInlined = true)
-    public UnsignedWord getCodeSize() {
+    UnsignedWord getCodeSize() {
         return codeSize;
     }
 
-    @Uninterruptible(reason = "called from uninterruptible code", mayBeInlined = true)
-    protected CodePointer getCodeEnd() {
-        return (CodePointer) ((UnsignedWord) codeStart).add(codeSize);
-    }
-
-    @Override
-    public boolean contains(CodePointer ip) {
-        return CodeInfoAccessor.contains(codeStart, codeSize, ip);
-    }
-
-    @Override
-    public long relativeIP(CodePointer ip) {
-        return CodeInfoAccessor.relativeIP(codeStart, codeSize, ip);
-    }
-
-    @Override
-    public CodePointer absoluteIP(long relativeIP) {
-        return CodeInfoAccessor.absoluteIP(codeStart, relativeIP);
-    }
-
-    @Override
-    public long initFrameInfoReader(CodePointer ip, ReusableTypeReader frameInfoReader) {
-        return CodeInfoAccessor.initFrameInfoReader(codeInfoEncodings, codeInfoIndex, frameInfoEncodings, relativeIP(ip), frameInfoReader);
-    }
-
-    @Override
-    public FrameInfoQueryResult nextFrameInfo(long entryOffset, ReusableTypeReader frameInfoReader, FrameInfoQueryResultAllocator resultAllocator,
-                    ValueInfoAllocator valueInfoAllocator, boolean fetchFirstFrame) {
-        return CodeInfoAccessor.nextFrameInfo(codeInfoEncodings, frameInfoNames, frameInfoObjectConstants, frameInfoSourceClasses,
-                        frameInfoSourceMethodNames, entryOffset, frameInfoReader, resultAllocator, valueInfoAllocator, fetchFirstFrame);
-    }
-
-    @Override
-    public void setMetadata(PinnedArray<Byte> codeInfoIndex, PinnedArray<Byte> codeInfoEncodings, PinnedArray<Byte> referenceMapEncoding, PinnedArray<Byte> frameInfoEncodings,
-                    PinnedObjectArray<Object> frameInfoObjectConstants, PinnedObjectArray<Class<?>> frameInfoSourceClasses, PinnedObjectArray<String> frameInfoSourceMethodNames,
-                    PinnedObjectArray<String> frameInfoNames) {
-        this.codeInfoIndex = codeInfoIndex;
-        this.codeInfoEncodings = codeInfoEncodings;
-        this.referenceMapEncoding = referenceMapEncoding;
-        this.frameInfoEncodings = frameInfoEncodings;
-        this.frameInfoObjectConstants = frameInfoObjectConstants;
-        this.frameInfoSourceClasses = frameInfoSourceClasses;
-        this.frameInfoSourceMethodNames = frameInfoSourceMethodNames;
-        this.frameInfoNames = frameInfoNames;
-    }
-
-    void setDeoptimizationMetadata(PinnedArray<Integer> deoptimizationStartOffsets, PinnedArray<Byte> deoptimizationEncodings, PinnedObjectArray<Object> deoptimizationObjectConstants) {
-        this.deoptimizationStartOffsets = deoptimizationStartOffsets;
-        this.deoptimizationEncodings = deoptimizationEncodings;
-        this.deoptimizationObjectConstants = deoptimizationObjectConstants;
-    }
-
-    @Override
-    public void lookupCodeInfo(long ip, CodeInfoQueryResult codeInfo) {
-        CodeInfoDecoder.lookupCodeInfo(codeInfoEncodings, codeInfoIndex, frameInfoEncodings, frameInfoNames, frameInfoObjectConstants,
-                        frameInfoSourceClasses, frameInfoSourceMethodNames, referenceMapEncoding, ip, codeInfo);
-    }
-
-    @Override
-    public long lookupDeoptimizationEntrypoint(long method, long encodedBci, CodeInfoQueryResult codeInfo) {
-        return CodeInfoDecoder.lookupDeoptimizationEntrypoint(codeInfoEncodings, codeInfoIndex, frameInfoEncodings, frameInfoNames, frameInfoObjectConstants,
-                        frameInfoSourceClasses, frameInfoSourceMethodNames, referenceMapEncoding, method, encodedBci, codeInfo);
-    }
-
-    @Override
-    public long lookupTotalFrameSize(long ip) {
-        return CodeInfoDecoder.lookupTotalFrameSize(codeInfoEncodings, codeInfoIndex, ip);
-    }
-
-    @Override
-    public long lookupExceptionOffset(long ip) {
-        return CodeInfoDecoder.lookupExceptionOffset(codeInfoEncodings, codeInfoIndex, ip);
-    }
-
-    @Override
-    public PinnedArray<Byte> getReferenceMapEncoding() {
+    PinnedArray<Byte> getReferenceMapEncoding() {
         return referenceMapEncoding;
     }
 
-    @Override
-    public long lookupReferenceMapIndex(long ip) {
-        return CodeInfoDecoder.lookupReferenceMapIndex(codeInfoEncodings, codeInfoIndex, ip);
+    void setCodeStart(CodePointer codeStart) {
+        this.codeStart = codeStart;
     }
 
-    static void walkReferences(ComparableWord methodInfo, ObjectReferenceVisitor visitor) {
-        RuntimeMethodInfo obj = (RuntimeMethodInfo) ((Pointer) methodInfo).toObject();
-        if (obj.codeConstantsLive) {
-            CodeReferenceMapDecoder.walkOffsetsFromPointer(obj.codeStart, obj.objectsReferenceMapEncoding, obj.objectsReferenceMapIndex, visitor);
-        }
-        PinnedArrays.walkUnmanagedObjectArray(obj.frameInfoObjectConstants, visitor);
-        PinnedArrays.walkUnmanagedObjectArray(obj.frameInfoSourceClasses, visitor);
-        PinnedArrays.walkUnmanagedObjectArray(obj.frameInfoSourceMethodNames, visitor);
-        PinnedArrays.walkUnmanagedObjectArray(obj.frameInfoNames, visitor);
-        PinnedArrays.walkUnmanagedObjectArray(obj.deoptimizationObjectConstants, visitor);
+    void setCodeSize(UnsignedWord codeSize) {
+        this.codeSize = codeSize;
     }
 
-    void releaseArrays() {
-        PinnedArrays.releaseUnmanagedArray(codeInfoIndex);
-        PinnedArrays.releaseUnmanagedArray(codeInfoEncodings);
-        PinnedArrays.releaseUnmanagedArray(referenceMapEncoding);
-        PinnedArrays.releaseUnmanagedArray(frameInfoEncodings);
-        PinnedArrays.releaseUnmanagedArray(frameInfoObjectConstants);
-        PinnedArrays.releaseUnmanagedArray(frameInfoSourceClasses);
-        PinnedArrays.releaseUnmanagedArray(frameInfoSourceMethodNames);
-        PinnedArrays.releaseUnmanagedArray(frameInfoNames);
+    PinnedArray<Byte> getCodeInfoIndex() {
+        return codeInfoIndex;
+    }
 
-        PinnedArrays.releaseUnmanagedArray(deoptimizationStartOffsets);
-        PinnedArrays.releaseUnmanagedArray(deoptimizationEncodings);
-        PinnedArrays.releaseUnmanagedArray(deoptimizationObjectConstants);
+    void setCodeInfoIndex(PinnedArray<Byte> codeInfoIndex) {
+        this.codeInfoIndex = codeInfoIndex;
+    }
+
+    PinnedArray<Byte> getCodeInfoEncodings() {
+        return codeInfoEncodings;
+    }
+
+    void setCodeInfoEncodings(PinnedArray<Byte> codeInfoEncodings) {
+        this.codeInfoEncodings = codeInfoEncodings;
+    }
+
+    void setReferenceMapEncoding(PinnedArray<Byte> referenceMapEncoding) {
+        this.referenceMapEncoding = referenceMapEncoding;
+    }
+
+    PinnedArray<Byte> getFrameInfoEncodings() {
+        return frameInfoEncodings;
+    }
+
+    void setFrameInfoEncodings(PinnedArray<Byte> frameInfoEncodings) {
+        this.frameInfoEncodings = frameInfoEncodings;
+    }
+
+    PinnedObjectArray<Object> getFrameInfoObjectConstants() {
+        return frameInfoObjectConstants;
+    }
+
+    void setFrameInfoObjectConstants(PinnedObjectArray<Object> frameInfoObjectConstants) {
+        this.frameInfoObjectConstants = frameInfoObjectConstants;
+    }
+
+    PinnedObjectArray<Class<?>> getFrameInfoSourceClasses() {
+        return frameInfoSourceClasses;
+    }
+
+    void setFrameInfoSourceClasses(PinnedObjectArray<Class<?>> frameInfoSourceClasses) {
+        this.frameInfoSourceClasses = frameInfoSourceClasses;
+    }
+
+    PinnedObjectArray<String> getFrameInfoSourceMethodNames() {
+        return frameInfoSourceMethodNames;
+    }
+
+    void setFrameInfoSourceMethodNames(PinnedObjectArray<String> frameInfoSourceMethodNames) {
+        this.frameInfoSourceMethodNames = frameInfoSourceMethodNames;
+    }
+
+    PinnedObjectArray<String> getFrameInfoNames() {
+        return frameInfoNames;
+    }
+
+    void setFrameInfoNames(PinnedObjectArray<String> frameInfoNames) {
+        this.frameInfoNames = frameInfoNames;
+    }
+
+    @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
+    boolean isCodeConstantsLive() {
+        return codeConstantsLive;
+    }
+
+    @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
+    void setCodeConstantsLive(boolean codeConstantsLive) {
+        this.codeConstantsLive = codeConstantsLive;
+    }
+
+    PinnedArray<Byte> getObjectsReferenceMapEncoding() {
+        return objectsReferenceMapEncoding;
+    }
+
+    void setObjectsReferenceMapEncoding(PinnedArray<Byte> objectsReferenceMapEncoding) {
+        this.objectsReferenceMapEncoding = objectsReferenceMapEncoding;
+    }
+
+    long getObjectsReferenceMapIndex() {
+        return objectsReferenceMapIndex;
+    }
+
+    void setObjectsReferenceMapIndex(long objectsReferenceMapIndex) {
+        this.objectsReferenceMapIndex = objectsReferenceMapIndex;
+    }
+
+    PinnedArray<Integer> getDeoptimizationStartOffsets() {
+        return deoptimizationStartOffsets;
+    }
+
+    void setDeoptimizationStartOffsets(PinnedArray<Integer> deoptimizationStartOffsets) {
+        this.deoptimizationStartOffsets = deoptimizationStartOffsets;
+    }
+
+    PinnedArray<Byte> getDeoptimizationEncodings() {
+        return deoptimizationEncodings;
+    }
+
+    void setDeoptimizationEncodings(PinnedArray<Byte> deoptimizationEncodings) {
+        this.deoptimizationEncodings = deoptimizationEncodings;
+    }
+
+    PinnedObjectArray<Object> getDeoptimizationObjectConstants() {
+        return deoptimizationObjectConstants;
+    }
+
+    void setDeoptimizationObjectConstants(PinnedObjectArray<Object> deoptimizationObjectConstants) {
+        this.deoptimizationObjectConstants = deoptimizationObjectConstants;
+    }
+
+    PinnedAllocator getAllocator() {
+        return allocator;
+    }
+
+    void setAllocator(PinnedAllocator allocator) {
+        this.allocator = allocator;
     }
 }

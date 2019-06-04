@@ -67,8 +67,8 @@ public class DeoptimizationSourcePositionEncoder {
         verifyEncoding(deoptimzationSourcePositions);
     }
 
-    public void install(RuntimeMethodInfo target) {
-        target.setDeoptimizationMetadata(deoptimizationStartOffsets, deoptimizationEncodings, deoptimizationObjectConstants);
+    public void install(RuntimeCodeInfoAccessor accessor, CodeInfoHandle target) {
+        accessor.setDeoptimizationMetadata(target, deoptimizationStartOffsets, deoptimizationEncodings, deoptimizationObjectConstants);
     }
 
     private void addObjectConstants(List<NodeSourcePosition> deoptimzationSourcePositions) {

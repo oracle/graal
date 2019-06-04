@@ -172,8 +172,9 @@ public class CodeInfoTable {
      */
     public static SubstrateInstalledCode lookupInstalledCode(CodePointer ip) {
         counters().lookupInstalledCodeCount.inc();
-        RuntimeMethodInfo methodInfo = getRuntimeCodeCache().lookupMethod(ip);
-        return methodInfo != null ? methodInfo.installedCode.get() : null;
+        RuntimeCodeInfoAccessor accessor = (RuntimeCodeInfoAccessor) getRuntimeCodeInfoAccessor();
+        CodeInfoHandle handle = accessor.lookupCodeInfo(ip);
+        return accessor.isNone(handle) ? null : accessor.getInstalledCode(handle);
     }
 
     public static void invalidateInstalledCode(SubstrateInstalledCode installedCode) {

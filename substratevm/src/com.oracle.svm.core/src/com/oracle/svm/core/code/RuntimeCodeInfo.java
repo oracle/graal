@@ -88,7 +88,7 @@ public class RuntimeCodeInfo {
     @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
     public final void tearDown() {
         for (int i = 0; i < numMethods; i++) {
-            PinnedArrays.getObject(methodInfos, i).freeInstalledCode();
+            accessor.freeInstalledCode(PinnedArrays.getObject(methodInfos, i));
         }
         PinnedArrays.releaseUnmanagedArray(methodInfos);
     }
@@ -157,9 +157,10 @@ public class RuntimeCodeInfo {
         return -(low + 1);  // key not found.
     }
 
-    public void addMethod(RuntimeMethodInfo methodInfo) {
+    public void addMethod(CodeInfoHandle handle) {
+        RuntimeMethodInfo methodInfo = (RuntimeMethodInfo) handle;
         VMOperation.enqueueBlockingSafepoint("AddMethod", () -> {
-            InstalledCodeObserverSupport.activateObservers(methodInfo.codeObserverHandles);
+            InstalledCodeObserverSupport.activateObservers(accessor.getCodeObserverHandles(handle));
             long num = logMethodOperation(methodInfo, INFO_ADD);
             addMethodOperation(methodInfo);
             logMethodOperationEnd(num);
@@ -172,7 +173,7 @@ public class RuntimeCodeInfo {
         assert verifyTable();
         if (Options.TraceCodeCache.getValue()) {
             Log.log().string("[" + INFO_ADD + " method: ");
-            logMethod(Log.log(), methodInfo);
+            logMethod(Log.log(), accessor, methodInfo);
             Log.log().string("]").newline();
         }
 
@@ -215,11 +216,11 @@ public class RuntimeCodeInfo {
         assert verifyTable();
         if (Options.TraceCodeCache.getValue()) {
             Log.log().string("[" + INFO_INVALIDATE + " method: ");
-            logMethod(Log.log(), methodInfo);
+            logMethod(Log.log(), accessor, methodInfo);
             Log.log().string("]").newline();
         }
 
-        SubstrateInstalledCode installedCode = methodInfo.installedCode.get();
+        SubstrateInstalledCode installedCode = accessor.getInstalledCode(methodInfo);
         if (installedCode != null) {
             assert !installedCode.isValid() || methodInfo.getCodeStart().rawValue() == installedCode.getAddress();
             /*
@@ -230,13 +231,13 @@ public class RuntimeCodeInfo {
             installedCode.clearAddress();
         }
 
-        InstalledCodeObserverSupport.removeObservers(methodInfo.codeObserverHandles);
+        InstalledCodeObserverSupport.removeObservers(accessor.getCodeObserverHandles(methodInfo));
 
         /*
          * Deoptimize all invocations that are on the stack. This performs a stack walk, so all
          * metadata must be intact (even though the method was already marked as non-invokable).
          */
-        Deoptimizer.deoptimizeInRange(methodInfo.getCodeStart(), methodInfo.getCodeEnd(), false);
+        Deoptimizer.deoptimizeInRange(methodInfo.getCodeStart(), accessor.getCodeEnd(methodInfo), false);
         /*
          * Now it is guaranteed that the InstalledCode is not on the stack and cannot be invoked
          * anymore, so we can free the code and all metadata.
@@ -249,8 +250,8 @@ public class RuntimeCodeInfo {
         numMethods--;
         PinnedArrays.setObject(methodInfos, numMethods, null);
 
-        UnmanagedReferenceWalkers.singleton().unregister(RuntimeMethodInfo.walkReferencesFunction.getFunctionPointer(), Word.objectToUntrackedPointer(methodInfo));
-        methodInfo.releaseArrays();
+        UnmanagedReferenceWalkers.singleton().unregister(RuntimeCodeInfoAccessor.walkReferencesFunction.getFunctionPointer(), Word.objectToUntrackedPointer(methodInfo));
+        RuntimeCodeInfoAccessor.releaseArrays(methodInfo);
 
         /*
          * The arrays are in a pinned chunk that probably still contains metadata for other methods
@@ -269,8 +270,8 @@ public class RuntimeCodeInfo {
 // Arrays.fill(methodInfo.frameInfoNames, null);
 // }
 
-        methodInfo.allocator.release();
-        methodInfo.freeInstalledCode();
+        methodInfo.getAllocator().release();
+        accessor.freeInstalledCode(methodInfo);
 
         if (Options.TraceCodeCache.getValue()) {
             logTable();
@@ -292,7 +293,7 @@ public class RuntimeCodeInfo {
             assert methodInfo != null : "a20";
             assert i == 0 || ((UnsignedWord) PinnedArrays.getObject(methodInfos, i - 1).getCodeStart())
                             .belowThan((UnsignedWord) PinnedArrays.getObject(methodInfos, i).getCodeStart()) : "a22";
-            assert i == 0 || ((UnsignedWord) PinnedArrays.getObject(methodInfos, i - 1).getCodeEnd()).belowOrEqual((UnsignedWord) methodInfo.getCodeStart()) : "a23";
+            assert i == 0 || ((UnsignedWord) accessor.getCodeEnd(PinnedArrays.getObject(methodInfos, i - 1))).belowOrEqual((UnsignedWord) methodInfo.getCodeStart()) : "a23";
         }
 
         for (int i = numMethods; i < PinnedArrays.lengthOf(methodInfos); i++) {
@@ -317,14 +318,14 @@ public class RuntimeCodeInfo {
         log.string("== [RuntimeCodeCache: ").signed(numMethods).string(" methods");
         for (int i = 0; i < numMethods; i++) {
             log.newline().hex(PinnedArrays.getObject(methodInfos, i).getCodeStart()).string("  ");
-            logMethod(log, PinnedArrays.getObject(methodInfos, i));
+            logMethod(log, accessor, PinnedArrays.getObject(methodInfos, i));
         }
         log.string("]").newline();
     }
 
-    private static void logMethod(Log log, RuntimeMethodInfo methodInfo) {
-        log.string(methodInfo.name);
-        log.string("  ip: ").hex(methodInfo.getCodeStart()).string(" - ").hex(methodInfo.getCodeEnd());
+    private static void logMethod(Log log, RuntimeCodeInfoAccessor accessor, RuntimeMethodInfo methodInfo) {
+        log.string(accessor.getName(methodInfo));
+        log.string("  ip: ").hex(methodInfo.getCodeStart()).string(" - ").hex(accessor.getCodeEnd(methodInfo));
         log.string("  size: ").unsigned(methodInfo.getCodeSize());
         /*
          * Note that we are not trying to output methodInfo.installedCode. It is not a pinned
@@ -337,7 +338,7 @@ public class RuntimeCodeInfo {
         long current = ++codeCacheOperationSequenceNumber;
         StringBuilderLog log = new StringBuilderLog();
         log.string(kind).string(": ");
-        logMethod(log, methodInfo);
+        logMethod(log, accessor, methodInfo);
         log.string(" ").unsigned(current).string(":{");
         recentCodeCacheOperations.append(log.getResult());
         return current;
@@ -389,17 +390,17 @@ public class RuntimeCodeInfo {
 
         @Override
         public UnsignedWord getStart(RuntimeMethodInfo runtimeMethod) {
-            return (UnsignedWord) runtimeMethod.getCodeStart();
+            return (UnsignedWord) CodeInfoTable.getRuntimeCodeInfoAccessor().getCodeStart(runtimeMethod);
         }
 
         @Override
         public UnsignedWord getSize(RuntimeMethodInfo runtimeMethod) {
-            return runtimeMethod.getCodeSize();
+            return CodeInfoTable.getRuntimeCodeInfoAccessor().getCodeSize(runtimeMethod);
         }
 
         @Override
         public String getName(RuntimeMethodInfo runtimeMethod) {
-            return runtimeMethod.getName();
+            return CodeInfoTable.getRuntimeCodeInfoAccessor().getName(runtimeMethod);
         }
     }
 }

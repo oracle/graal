@@ -48,6 +48,7 @@ import org.graalvm.word.UnsignedWord;
 
 import com.oracle.graal.pointsto.meta.AnalysisMethod;
 import com.oracle.objectfile.ObjectFile;
+import com.oracle.svm.core.code.CodeInfoAccessor;
 import com.oracle.svm.core.code.CodeInfoEncoder;
 import com.oracle.svm.core.code.CodeInfoQueryResult;
 import com.oracle.svm.core.code.CodeInfoTable;
@@ -205,9 +206,10 @@ public abstract class NativeImageCodeCache {
             System.out.println("encoded during call entry points           ; " + frameInfoCustomization.numDuringCallEntryPoints);
         }
 
+        CodeInfoAccessor imageCodeInfoAccessor = CodeInfoTable.getImageCodeInfoAccessor();
         ImageCodeInfo imageCodeInfo = CodeInfoTable.getImageCodeCache();
         codeInfoEncoder.encodeAll();
-        codeInfoEncoder.install(imageCodeInfo);
+        codeInfoEncoder.install(imageCodeInfoAccessor, imageCodeInfo);
         imageCodeInfo.setCodeLocation(firstMethod, codeSize);
 
         if (CodeInfoEncoder.Options.CodeInfoEncoderCounters.getValue()) {

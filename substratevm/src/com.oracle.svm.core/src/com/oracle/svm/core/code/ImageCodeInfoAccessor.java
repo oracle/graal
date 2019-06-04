@@ -26,6 +26,9 @@ package com.oracle.svm.core.code;
 
 import org.graalvm.nativeimage.c.function.CodePointer;
 
+import com.oracle.svm.core.c.PinnedArray;
+import com.oracle.svm.core.c.PinnedObjectArray;
+
 public class ImageCodeInfoAccessor extends AbstractCodeInfoAccessor {
     private final ImageCodeInfo imageCodeCache;
 
@@ -36,5 +39,14 @@ public class ImageCodeInfoAccessor extends AbstractCodeInfoAccessor {
     @Override
     public CodeInfoHandle lookupCodeInfo(CodePointer ip) {
         return imageCodeCache;
+    }
+
+    @Override
+    public void setMetadata(CodeInfoHandle installTarget, PinnedArray<Byte> codeInfoIndex, PinnedArray<Byte> codeInfoEncodings, PinnedArray<Byte> referenceMapEncoding,
+                    PinnedArray<Byte> frameInfoEncodings, PinnedObjectArray<Object> frameInfoObjectConstants, PinnedObjectArray<Class<?>> frameInfoSourceClasses,
+                    PinnedObjectArray<String> frameInfoSourceMethodNames, PinnedObjectArray<String> frameInfoNames) {
+
+        imageCodeCache.setMetadata(codeInfoIndex, codeInfoEncodings, referenceMapEncoding, frameInfoEncodings,
+                        frameInfoObjectConstants, frameInfoSourceClasses, frameInfoSourceMethodNames, frameInfoNames);
     }
 }

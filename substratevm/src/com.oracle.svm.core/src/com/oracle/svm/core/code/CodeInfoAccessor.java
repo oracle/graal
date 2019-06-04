@@ -75,6 +75,10 @@ public interface CodeInfoAccessor {
 
     void lookupCodeInfo(CodeInfoHandle handle, long ip, CodeInfoQueryResult codeInfo);
 
+    void setMetadata(CodeInfoHandle installTarget, PinnedArray<Byte> codeInfoIndex, PinnedArray<Byte> codeInfoEncodings, PinnedArray<Byte> referenceMapEncoding,
+                    PinnedArray<Byte> frameInfoEncodings, PinnedObjectArray<Object> frameInfoObjectConstants, PinnedObjectArray<Class<?>> frameInfoSourceClasses,
+                    PinnedObjectArray<String> frameInfoSourceMethodNames, PinnedObjectArray<String> frameInfoNames);
+
     static boolean contains(CodePointer codeStart, UnsignedWord codeSize, CodePointer ip) {
         return ((UnsignedWord) ip).subtract((UnsignedWord) codeStart).belowThan(codeSize);
     }

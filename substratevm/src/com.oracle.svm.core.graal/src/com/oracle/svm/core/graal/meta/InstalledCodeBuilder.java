@@ -52,11 +52,13 @@ import com.oracle.svm.core.SubstrateOptions;
 import com.oracle.svm.core.annotate.Uninterruptible;
 import com.oracle.svm.core.c.UnmanagedReferenceWalkers;
 import com.oracle.svm.core.code.CodeInfoEncoder;
+import com.oracle.svm.core.code.CodeInfoHandle;
 import com.oracle.svm.core.code.CodeInfoTable;
 import com.oracle.svm.core.code.DeoptimizationSourcePositionEncoder;
 import com.oracle.svm.core.code.FrameInfoEncoder;
 import com.oracle.svm.core.code.InstalledCodeObserver;
 import com.oracle.svm.core.code.InstalledCodeObserverSupport;
+import com.oracle.svm.core.code.RuntimeCodeInfoAccessor;
 import com.oracle.svm.core.code.RuntimeMethodInfo;
 import com.oracle.svm.core.config.ConfigurationValues;
 import com.oracle.svm.core.deopt.SubstrateInstalledCode;
@@ -112,7 +114,8 @@ public class InstalledCodeBuilder {
      */
     private final PinnedAllocator metaInfoAllocator;
 
-    private RuntimeMethodInfo runtimeMethodInfo;
+    private RuntimeCodeInfoAccessor runtimeCodeAccessor;
+    private CodeInfoHandle runtimeMethodInfo;
 
     private final boolean testTrampolineJumps;
 
@@ -274,6 +277,8 @@ public class InstalledCodeBuilder {
 
     @SuppressWarnings("try")
     private void installOperation() {
+        runtimeCodeAccessor = (RuntimeCodeInfoAccessor) CodeInfoTable.getRuntimeCodeInfoAccessor();
+
         /*
          * Object reference constants are stored in this holder first, then written and made visible
          * in a single step that is atomic regarding to GC.
@@ -307,20 +312,20 @@ public class InstalledCodeBuilder {
         metaInfoAllocator.open();
         try {
             runtimeMethodInfo = metaInfoAllocator.newInstance(RuntimeMethodInfo.class);
-            UnmanagedReferenceWalkers.singleton().register(RuntimeMethodInfo.walkReferencesFunction.getFunctionPointer(), Word.objectToUntrackedPointer(runtimeMethodInfo));
+            UnmanagedReferenceWalkers.singleton().register(RuntimeCodeInfoAccessor.walkReferencesFunction.getFunctionPointer(), Word.objectToUntrackedPointer(runtimeMethodInfo));
 
-            runtimeMethodInfo.setCodeLocation(code, codeSize);
+            runtimeCodeAccessor.setCodeLocation(runtimeMethodInfo, code, codeSize);
 
             CodeReferenceMapEncoder encoder = new CodeReferenceMapEncoder();
             encoder.add(objectConstants.referenceMap);
-            runtimeMethodInfo.setCodeConstantsInfo(encoder.encodeAll(), encoder.lookupEncoding(objectConstants.referenceMap));
+            runtimeCodeAccessor.setCodeObjectConstantsInfo(runtimeMethodInfo, encoder.encodeAll(), encoder.lookupEncoding(objectConstants.referenceMap));
             writeObjectConstantsToCode(objectConstants);
 
             createCodeChunkInfos();
 
             InstalledCodeObserver.InstalledCodeObserverHandle[] observerHandles = InstalledCodeObserverSupport.installObservers(codeObservers);
 
-            runtimeMethodInfo.setData(installedCode, tier, metaInfoAllocator, observerHandles);
+            runtimeCodeAccessor.setData(runtimeMethodInfo, installedCode, tier, metaInfoAllocator, observerHandles);
         } finally {
             metaInfoAllocator.close();
         }
@@ -355,19 +360,19 @@ public class InstalledCodeBuilder {
         for (int i = 0; i < objectConstants.count; i++) {
             objectConstants.patchers[i].patchData(code, objectConstants.values[i]);
         }
-        runtimeMethodInfo.setCodeConstantsLive();
+        runtimeCodeAccessor.setCodeConstantsLive(runtimeMethodInfo);
     }
 
     private void createCodeChunkInfos() {
         CodeInfoEncoder codeInfoEncoder = new CodeInfoEncoder(new FrameInfoEncoder.NamesFromImage());
         codeInfoEncoder.addMethod(method, compilation, 0);
         codeInfoEncoder.encodeAll();
-        codeInfoEncoder.install(runtimeMethodInfo);
+        codeInfoEncoder.install(CodeInfoTable.getRuntimeCodeInfoAccessor(), runtimeMethodInfo);
         assert CodeInfoEncoder.verifyMethod(compilation, 0, CodeInfoTable.getRuntimeCodeInfoAccessor(), runtimeMethodInfo);
 
         DeoptimizationSourcePositionEncoder sourcePositionEncoder = new DeoptimizationSourcePositionEncoder();
         sourcePositionEncoder.encode(compilation.getDeoptimizationSourcePositions());
-        sourcePositionEncoder.install(runtimeMethodInfo);
+        sourcePositionEncoder.install(runtimeCodeAccessor, runtimeMethodInfo);
     }
 
     private void patchData(Map<Integer, NativeImagePatcher> patcher, @SuppressWarnings("unused") ObjectConstantsHolder objectConstants) {

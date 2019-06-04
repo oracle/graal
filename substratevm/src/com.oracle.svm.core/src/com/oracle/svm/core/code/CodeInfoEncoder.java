@@ -183,8 +183,8 @@ public class CodeInfoEncoder {
         encodeIPData();
     }
 
-    public void install(CodeInfo installTarget) {
-        installTarget.setMetadata(codeInfoIndex, codeInfoEncodings, referenceMapEncoding, frameInfoEncoder.frameInfoEncodings, frameInfoEncoder.frameInfoObjectConstants,
+    public void install(CodeInfoAccessor accessor, CodeInfoHandle installTarget) {
+        accessor.setMetadata(installTarget, codeInfoIndex, codeInfoEncodings, referenceMapEncoding, frameInfoEncoder.frameInfoEncodings, frameInfoEncoder.frameInfoObjectConstants,
                         frameInfoEncoder.frameInfoSourceClasses, frameInfoEncoder.frameInfoSourceMethodNames, frameInfoEncoder.frameInfoNames);
 
         ImageSingletons.lookup(Counters.class).frameInfoSize.add(
