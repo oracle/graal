@@ -264,7 +264,7 @@ public abstract class Klass implements ModifiersProvider, ContextAccess {
         return other.getHierarchyDepth() >= depth && other.getSuperTypes()[depth] == this;
     }
 
-    public final Klass findLeastCommonSupertype(Klass other) {
+    public final Klass findLeastCommonAncestor(Klass other) {
         if (isPrimitive() || other.isPrimitive()) {
             if (this == other) {
                 return this;
@@ -379,9 +379,6 @@ public abstract class Klass implements ModifiersProvider, ContextAccess {
             } else {
                 throw e;
             }
-        } catch (VerifyError | ClassFormatError | IncompatibleClassChangeError | NoClassDefFoundError e) {
-            ((ObjectKlass) this).setErroneous();
-            throw getMeta().throwExWithMessage(e.getClass(), e.getMessage());
         }
     }
 
