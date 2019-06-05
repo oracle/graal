@@ -36,7 +36,7 @@ import subprocess
 
 from abc import ABCMeta
 from argparse import ArgumentParser
-from os.path import relpath, join, dirname, basename, exists, isfile, normpath
+from os.path import relpath, join, dirname, basename, exists, isfile, normpath, abspath
 from copy import deepcopy
 
 import mx
@@ -234,6 +234,9 @@ class BaseGraalVmLayoutDistribution(mx.LayoutDistribution):
                 _add(layout, _macro_dir, 'dependency:{}'.format(_project_name), component)  # native-image.properties is the main output
                 if isinstance(image_config, mx_sdk.LanguageLauncherConfig):
                     _add(layout, _macro_dir, 'dependency:{}'.format(_project_name) + '/polyglot.config', component)
+                # Add profiles
+                for profile in _image_profile(GraalVmNativeProperties.canonical_image_name(image_config)):
+                    _add(layout, _macro_dir, 'file:{}'.format(abspath(profile)))
 
         def _add_link(_dest, _target, _component=None):
             assert _dest.endswith('/')
@@ -737,6 +740,7 @@ class SvmSupport(object):
     def __init__(self):
         self._svm_supported = has_component('ni', stage1=True)
         self._debug_supported = self._svm_supported and has_component('svmee', stage1=True)
+        self._pgo_supported = self._svm_supported and has_component('svmee', stage1=True)
 
     def is_supported(self):
         return self._svm_supported
@@ -755,6 +759,9 @@ class SvmSupport(object):
         return mx.run(native_image_command, nonZeroIsFatal=nonZeroIsFatal, out=out, err=err)
 
     def is_debug_supported(self):
+        return self._debug_supported
+
+    def is_pgo_supported(self):
         return self._debug_supported
 
 
@@ -778,6 +785,15 @@ class GraalVmNativeProperties(mx.Project):
         :type image_config: mx_sdk.AbstractNativeImageConfig
         """
         return GraalVmNativeProperties.macro_name(image_config) + "_native-image.properties"
+
+    @staticmethod
+    def canonical_image_name(image_config):
+        canonical_name = basename(image_config.destination)
+        if isinstance(image_config, mx_sdk.LauncherConfig):
+            canonical_name = remove_exe_suffix(canonical_name)
+        elif isinstance(image_config, mx_sdk.LibraryConfig):
+            canonical_name = remove_lib_prefix_suffix(canonical_name)
+        return canonical_name
 
     @staticmethod
     def macro_name(image_config):
@@ -899,12 +915,10 @@ class NativePropertiesBuildTask(mx.ProjectBuildTask):
 
             if isinstance(image_config, mx_sdk.LibraryConfig):
                 suffix = _lib_suffix
-                prefix = _lib_prefix
                 build_args.append('--shared')
                 project_name_f = GraalVmNativeImage.project_name
             elif isinstance(image_config, mx_sdk.LauncherConfig):
                 suffix = _exe_suffix
-                prefix = ''
                 project_name_f = GraalVmLauncher.launcher_project_name
             else:
                 raise mx.abort("Unsupported image config type: " + str(type(image_config)))
@@ -932,10 +946,16 @@ class NativePropertiesBuildTask(mx.ProjectBuildTask):
             name = basename(image_config.destination)
             if suffix:
                 name = name[:-len(suffix)]
-            canonical_name = name
-            if prefix:
-                canonical_name = canonical_name[len(prefix):]
+            canonical_name = GraalVmNativeProperties.canonical_image_name(image_config)
             build_args += _extra_image_builder_args(canonical_name)
+            profiles = _image_profile(canonical_name)
+            if profiles:
+                if not _get_svm_support().is_pgo_supported():
+                    raise mx.abort("Image profiles can not be used if PGO is not supported.")
+                basenames = [basename(p) for p in profiles]
+                if len(set(basenames)) != len(profiles):
+                    raise mx.abort("Profiles for an image must have unique filenames.\nThis is not the case for {}: {}.".format(canonical_name, profiles))
+                build_args += ['--pgo=' + ','.join(('${.}/' + n for n in basenames))]
 
             requires = [arg[2:] for arg in build_args if arg.startswith('--language:') or arg.startswith('--tool:') or arg.startswith('--macro:')]
             build_args = [arg for arg in build_args if not (arg.startswith('--language:') or arg.startswith('--tool:') or arg.startswith('--macro:'))]
@@ -2041,7 +2061,11 @@ def graalvm_show(args):
     if launchers:
         mx.log("Launchers:")
         for launcher in launchers:
-            mx.log(" - {} ({})".format(launcher.native_image_name, "native" if launcher.is_native() else "bash"))
+            suffix = ''
+            profile_cnt = len(_image_profile(GraalVmNativeProperties.canonical_image_name(launcher.native_image_config)))
+            if profile_cnt > 0:
+                suffix += " ({} pgo profile file{})".format(profile_cnt, 's' if profile_cnt > 1 else '')
+            mx.log(" - {} ({}){}".format(launcher.native_image_name, "native" if launcher.is_native() else "bash", suffix))
     else:
         mx.log("No launcher")
 
@@ -2049,10 +2073,13 @@ def graalvm_show(args):
     if libraries:
         mx.log("Libraries:")
         for library in libraries:
+            suffix = ''
             if library.is_skipped():
-                mx.log(" - {} (skipped)".format(library.native_image_name))
-            else:
-                mx.log(" - {}".format(library.native_image_name))
+                suffix += " (skipped)"
+            profile_cnt = len(_image_profile(GraalVmNativeProperties.canonical_image_name(library.native_image_config)))
+            if profile_cnt > 0:
+                suffix += " ({} pgo profile file{})".format(profile_cnt, 's' if profile_cnt > 1 else '')
+            mx.log(" - {}{}".format(library.native_image_name, suffix))
     else:
         mx.log("No library")
 
@@ -2174,6 +2201,7 @@ mx.add_argument('--with-debuginfo', action='store_true', help='Generate debuginf
 mx.add_argument('--snapshot-catalog', action='store', help='Change the default URL of the component catalog for snapshots.', default=None)
 mx.add_argument('--release-catalog', action='store', help='Change the default URL of the component catalog for releases.', default=None)
 mx.add_argument('--extra-image-builder-argument', action='append', help='Add extra arguments to the image builder.', default=[])
+mx.add_argument('--image-profile', action='append', help='Add a profile to be used while building a native image.', default=[])
 
 if mx.get_os() == 'windows':
     register_vm_config('ce', ['bjs', 'bnative-image', 'bnative-image-configure', 'bpolyglot', 'cmp', 'gvm', 'ins', 'js', 'nfi', 'ni', 'nil', 'poly', 'polynative', 'pro', 'rgx', 'snative-image-agent', 'svm', 'svml', 'tfl', 'vvm'])
@@ -2208,6 +2236,16 @@ def _extra_image_builder_args(image):
         elif arg.startswith('-'):
             args.append(arg)
     return args
+
+
+def _image_profile(image):
+    prefix = image + ':'
+    prefix_len = len(prefix)
+    profiles = []
+    for arg in mx.get_opts().image_profile or mx.get_env('IMAGE_PROFILES', '').split(';'):
+        if arg.startswith(prefix):
+            profiles += arg[prefix_len:].split(',')
+    return profiles
 
 
 def _with_polyglot_lib_project():
