@@ -65,6 +65,10 @@ public interface StringConstant extends PoolConstant {
         public ResolvedConstant resolve(RuntimeConstantPool pool, int thisIndex, Klass accessingKlass) {
             return new Resolved(pool.getContext().getStrings().intern(getSymbol(pool)));
         }
+
+        public boolean checkValidity(ConstantPool pool) {
+            return pool.at(utf8Index).tag() == Tag.UTF8;
+        }
     }
 
     final class Resolved implements StringConstant, Resolvable.ResolvedConstant {

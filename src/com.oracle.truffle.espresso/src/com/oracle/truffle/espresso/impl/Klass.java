@@ -264,6 +264,23 @@ public abstract class Klass implements ModifiersProvider, ContextAccess {
         return other.getHierarchyDepth() >= depth && other.getSuperTypes()[depth] == this;
     }
 
+    public final Klass findLeastCommonAncestor(Klass other) {
+        if (isPrimitive() || other.isPrimitive()) {
+            if (this == other) {
+                return this;
+            }
+            return null;
+        }
+        Klass[] thisHierarchy = getSuperTypes();
+        Klass[] otherHierarchy = other.getSuperTypes();
+        for (int i = Math.min(getHierarchyDepth(), other.getHierarchyDepth()); i >= 0; i--) {
+            if (thisHierarchy[i] == otherHierarchy[i]) {
+                return thisHierarchy[i];
+            }
+        }
+        throw EspressoError.shouldNotReachHere("Klasses should be either primitives, or have j.l.Object as common supertype.");
+    }
+
     /**
      * Returns the {@link Klass} object representing the host class of this VM anonymous class (as
      * opposed to the unrelated concept specified by {@link Class#isAnonymousClass()}) or
@@ -362,8 +379,6 @@ public abstract class Klass implements ModifiersProvider, ContextAccess {
             } else {
                 throw e;
             }
-        } catch (VerifyError | ClassFormatError | IncompatibleClassChangeError | NoClassDefFoundError e) {
-            throw getMeta().throwExWithMessage(e.getClass(), e.getMessage());
         }
     }
 
@@ -422,6 +437,7 @@ public abstract class Klass implements ModifiersProvider, ContextAccess {
     private int getHierarchyDepth() {
         int result = hierarchyDepth;
         if (result == -1) {
+            CompilerDirectives.transferToInterpreterAndInvalidate();
             if (getSupertype() == null) {
                 // Primitives or java.lang.Object
                 result = 0;
@@ -599,13 +615,9 @@ public abstract class Klass implements ModifiersProvider, ContextAccess {
     public final String getRuntimePackage() {
         String pkg = runtimePackage;
         if (runtimePackage == null) {
+            CompilerDirectives.transferToInterpreterAndInvalidate();
             assert !isArray();
-            String typeString = getType().toString();
-            int lastSlash = typeString.lastIndexOf('/');
-            if (lastSlash < 0)
-                return "";
-            assert typeString.startsWith("L");
-            pkg = typeString.substring(1, lastSlash);
+            pkg = Types.getRuntimePackage(getType());
             assert !pkg.endsWith(";");
             runtimePackage = pkg;
         }

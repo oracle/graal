@@ -130,7 +130,6 @@ public final class Target_java_lang_Thread {
             self.setHiddenField(meta.HIDDEN_HOST_THREAD, hostThread);
             context.putHost2Guest(hostThread, self);
             context.registerThread(hostThread);
-            System.err.println("Starting thread: " + self.getKlass());
             hostThread.setDaemon(self.getBooleanField(meta.Thread_daemon));
             self.setIntField(meta.Thread_state, State.RUNNABLE.value);
             hostThread.start();

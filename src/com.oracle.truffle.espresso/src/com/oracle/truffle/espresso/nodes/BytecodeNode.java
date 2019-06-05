@@ -270,7 +270,7 @@ import com.oracle.truffle.espresso.meta.EspressoError;
 import com.oracle.truffle.espresso.meta.ExceptionHandler;
 import com.oracle.truffle.espresso.meta.JavaKind;
 import com.oracle.truffle.espresso.meta.Meta;
-import com.oracle.truffle.espresso.runtime.BootstrapMethodsAttribute;
+import com.oracle.truffle.espresso.classfile.BootstrapMethodsAttribute;
 import com.oracle.truffle.espresso.runtime.EspressoException;
 import com.oracle.truffle.espresso.runtime.EspressoExitException;
 import com.oracle.truffle.espresso.runtime.MemoryErrorDelegate;
@@ -776,7 +776,9 @@ public class BytecodeNode extends EspressoBaseNode implements CustomNodeCount {
                                 continue loop;
                             }
 
-                            for (int i = low; i <= high; ++i) {
+                            // i could overflow if high == Integer.MAX_VALUE. This loops take that
+                            // into account
+                            for (int i = low; i != high + 1; ++i) {
                                 if (i == index) {
                                     // Key found.
                                     int targetBCI = switchHelper.targetAt(curBCI, i - low);

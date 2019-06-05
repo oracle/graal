@@ -319,4 +319,13 @@ public final class Types {
     public final Symbol<Type> lookup(String type) {
         return symbols.lookup(checkType(type));
     }
+
+    public static String getRuntimePackage(Symbol<Type> symbol) {
+        String typeString = symbol.toString();
+        int lastSlash = typeString.lastIndexOf('/');
+        if (lastSlash < 0)
+            return "";
+        assert typeString.startsWith("L");
+        return typeString.substring(1, lastSlash);
+    }
 }

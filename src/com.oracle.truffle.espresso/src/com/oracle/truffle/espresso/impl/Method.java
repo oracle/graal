@@ -23,6 +23,7 @@
 package com.oracle.truffle.espresso.impl;
 
 import com.oracle.truffle.api.CallTarget;
+import com.oracle.truffle.api.CompilerAsserts;
 import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.CompilerDirectives.CompilationFinal;
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
@@ -55,7 +56,7 @@ import com.oracle.truffle.espresso.nodes.EspressoBaseNode;
 import com.oracle.truffle.espresso.nodes.EspressoRootNode;
 import com.oracle.truffle.espresso.nodes.NativeRootNode;
 import com.oracle.truffle.espresso.runtime.Attribute;
-import com.oracle.truffle.espresso.runtime.BootstrapMethodsAttribute;
+import com.oracle.truffle.espresso.classfile.BootstrapMethodsAttribute;
 import com.oracle.truffle.espresso.runtime.EspressoContext;
 import com.oracle.truffle.espresso.runtime.MethodHandleIntrinsics;
 import com.oracle.truffle.espresso.runtime.StaticObject;
@@ -330,6 +331,15 @@ public final class Method implements TruffleObject, ModifiersProvider, ContextAc
 
                         if (callTarget == null) {
                             if (getDeclaringKlass() == getMeta().MethodHandle && (getName() == Name.invokeExact || getName() == Name.invoke)) {
+                                // Happens only when trying to obtain call target of
+                                // MethodHandle.invoke(Object... args), or
+                                // MethodHandle.invokeExact(Object... args).
+                                //
+                                // The method was obtained through a regular lookup (since it is in
+                                // the declared method). Delegate it to a polysignature method
+                                // lookup.
+                                //
+                                // Redundant callTarget assignment. Better sure than sorry.
                                 this.callTarget = declaringKlass.lookupPolysigMethod(getName(), getRawSignature()).getCallTarget();
                             } else {
                                 System.err.println("Failed to link native method: " + getDeclaringKlass().getType() + "." + getName() + " -> " + getRawSignature());
@@ -337,6 +347,9 @@ public final class Method implements TruffleObject, ModifiersProvider, ContextAc
                             }
                         }
                     } else {
+                        if (codeAttribute == null) {
+                            throw getMeta().throwExWithMessage(AbstractMethodError.class, "Calling abstract method: " + getDeclaringKlass().getType() + "." + getName() + " -> " + getRawSignature());
+                        }
                         FrameDescriptor frameDescriptor = initFrameDescriptor(getMaxLocals() + getMaxStackSize());
                         EspressoRootNode rootNode = new EspressoRootNode(this, frameDescriptor, new BytecodeNode(this, frameDescriptor));
                         callTarget = Truffle.getRuntime().createCallTarget(rootNode);
@@ -548,6 +561,7 @@ public final class Method implements TruffleObject, ModifiersProvider, ContextAc
 
     final void setVTableIndex(int i) {
         assert (vtableIndex == -1 || vtableIndex == i);
+        CompilerAsserts.neverPartOfCompilation();
         this.vtableIndex = i;
     }
 
@@ -557,6 +571,7 @@ public final class Method implements TruffleObject, ModifiersProvider, ContextAc
 
     final void setITableIndex(int i) {
         assert (itableIndex == -1 || itableIndex == i);
+        CompilerAsserts.neverPartOfCompilation();
         this.itableIndex = i;
     }
 

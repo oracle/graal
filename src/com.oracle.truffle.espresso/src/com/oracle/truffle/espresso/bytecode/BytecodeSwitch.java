@@ -42,7 +42,7 @@ public abstract class BytecodeSwitch {
         this.stream = stream;
     }
 
-    protected int getAlignedBci(int bci) {
+    public int getAlignedBci(int bci) {
         return (bci + 4) & 0xfffffffc;
     }
 
@@ -103,5 +103,4 @@ public abstract class BytecodeSwitch {
      * @return the total size in bytes of the switch instruction
      */
     public abstract int size(int bci);
-
 }

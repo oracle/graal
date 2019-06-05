@@ -26,6 +26,8 @@ import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.CompilerDirectives.CompilationFinal;
 import com.oracle.truffle.espresso.meta.EspressoError;
 
+import java.util.Arrays;
+
 /**
  * A utility class that makes iterating over bytecodes and reading operands simpler and less error
  * prone. For example, it handles the {@link Bytecodes#WIDE} instruction and wide variants of
@@ -248,5 +250,9 @@ public final class BytecodeStream {
     @CompilerDirectives.TruffleBoundary
     private static EspressoError error(int opcode) {
         throw EspressoError.shouldNotReachHere("unknown variable-length bytecode: " + opcode);
+    }
+
+    public void printBytecode() {
+        System.err.println(Arrays.toString(code));
     }
 }

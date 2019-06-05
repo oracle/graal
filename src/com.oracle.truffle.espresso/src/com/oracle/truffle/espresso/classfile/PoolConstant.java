@@ -39,6 +39,13 @@ public interface PoolConstant {
 
     String toString(ConstantPool pool);
 
+    // TODO(garcia) call this function after parsing CP to verify each Pool constant is well-formed.
+    // TODO(garcia) implement this for each pool constant.
+    @SuppressWarnings("unused")
+    default boolean checkValidity(ConstantPool pool) {
+        return true;
+    }
+
     static byte u1(int i) {
         assert (byte) i == i;
         return (byte) i;

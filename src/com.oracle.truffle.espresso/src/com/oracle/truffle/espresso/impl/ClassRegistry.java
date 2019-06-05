@@ -61,7 +61,20 @@ public abstract class ClassRegistry implements ContextAccess {
         this.context = context;
     }
 
-    public abstract Klass loadKlass(Symbol<Type> type);
+    public Klass loadKlass(Symbol<Type> type) {
+        return loadKlass(type, null);
+    }
+
+    /**
+     * Queries a registry to load a Klass for us.
+     * 
+     * @param type the symbolic reference to the Klass we want to load
+     * @param instigator Should the loading of a Klass require loading other Klasses (superKlass for
+     *            example), this argument is the symbolic reference to the first Klass we attempted
+     *            to load through the whole loading chain.
+     * @return The Klass corresponding to given type
+     */
+    protected abstract Klass loadKlass(Symbol<Type> type, Symbol<Type> instigator);
 
     public Klass findLoadedKlass(Symbol<Type> type) {
         if (Types.isArray(type)) {
@@ -78,6 +91,10 @@ public abstract class ClassRegistry implements ContextAccess {
     public abstract @Host(ClassLoader.class) StaticObject getClassLoader();
 
     public ObjectKlass defineKlass(Symbol<Type> type, final byte[] bytes) {
+        return defineKlass(type, bytes, null);
+    }
+
+    public ObjectKlass defineKlass(Symbol<Type> type, final byte[] bytes, Symbol<Type> instigator) {
 
         if (classes.containsKey(type)) {
             throw getMeta().throwExWithMessage(LinkageError.class, "Class " + type + " already defined in the BCL");
@@ -87,14 +104,14 @@ public abstract class ClassRegistry implements ContextAccess {
 
         Symbol<Type> superKlassType = parserKlass.getSuperKlass();
 
-        if (type == superKlassType) {
+        if (type == superKlassType || (superKlassType != null && instigator == superKlassType)) {
             throw getMeta().throwEx(ClassCircularityError.class);
         }
 
         // TODO(peterssen): Superclass must be a class, and non-final.
         ObjectKlass superKlass = superKlassType != null
-                        ? (ObjectKlass) loadKlass(superKlassType) // Should only be an ObjectKlass,
-                        // not primitives nor arrays.
+                        // Should only be an ObjectKlass, not primitives nor arrays.
+                        ? (ObjectKlass) loadKlass(superKlassType, (instigator == null) ? type : instigator)
                         : null;
 
         assert superKlass == null || !superKlass.isInterface();

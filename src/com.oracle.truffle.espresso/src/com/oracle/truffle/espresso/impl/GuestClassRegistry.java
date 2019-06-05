@@ -61,8 +61,9 @@ public final class GuestClassRegistry extends ClassRegistry {
         this.ClassLoader_addClass = classLoader.getKlass().lookupMethod(Name.addClass, Signature._void_Class);
     }
 
+    @SuppressWarnings("unused")
     @Override
-    public Klass loadKlass(Symbol<Type> type) {
+    public Klass loadKlass(Symbol<Type> type, Symbol<Type> instigator) {
         if (Types.isArray(type)) {
             Klass elemental = loadKlass(getTypes().getElementalType(type));
             if (elemental == null) {

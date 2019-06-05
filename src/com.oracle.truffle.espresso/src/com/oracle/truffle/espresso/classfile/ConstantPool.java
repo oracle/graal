@@ -125,7 +125,7 @@ public abstract class ConstantPool {
 
     static ClassFormatError unexpectedEntry(int index, ConstantPool.Tag tag, String description, ConstantPool.Tag... expected) {
         CompilerDirectives.transferToInterpreter();
-        throw verifyError("Constant pool entry" + (description == null ? "" : " for " + description) + " at " + index + " is a " + tag + ", expected " + Arrays.toString(expected));
+        throw classFormatError("Constant pool entry" + (description == null ? "" : " for " + description) + " at " + index + " is a " + tag + ", expected " + Arrays.toString(expected));
     }
 
     public final ClassFormatError unexpectedEntry(int index, String description, ConstantPool.Tag... expected) {
@@ -136,6 +136,11 @@ public abstract class ConstantPool {
     static VerifyError verifyError(String message) {
         CompilerDirectives.transferToInterpreter();
         throw new VerifyError(message);
+    }
+
+    static ClassFormatError classFormatError(String message) {
+        CompilerDirectives.transferToInterpreter();
+        throw new ClassFormatError(message);
     }
 
     /**

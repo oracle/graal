@@ -28,10 +28,11 @@ import java.util.List;
 
 import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.CompilerDirectives.CompilationFinal;
+import com.oracle.truffle.api.nodes.ExplodeLoop;
 import com.oracle.truffle.espresso.classfile.ConstantValueAttribute;
 import com.oracle.truffle.espresso.classfile.EnclosingMethodAttribute;
 import com.oracle.truffle.espresso.classfile.InnerClassesAttribute;
-import com.oracle.truffle.espresso.classfile.MethodVerifier;
+import com.oracle.truffle.espresso.verifier.MethodVerifier;
 import com.oracle.truffle.espresso.classfile.RuntimeConstantPool;
 import com.oracle.truffle.espresso.descriptors.Symbol;
 import com.oracle.truffle.espresso.descriptors.Symbol.Name;
@@ -96,6 +97,7 @@ public final class ObjectKlass extends Klass {
     public static final int LINKED = 1;
     public static final int PREPARED = 2;
     public static final int INITIALIZED = 3;
+    public static final int ERRONEOUS = 99;
 
     public final Attribute getAttribute(Symbol<Name> name) {
         return linkedKlass.getAttribute(name);
@@ -192,8 +194,12 @@ public final class ObjectKlass extends Klass {
         return isPrepared() || isInitialized();
     }
 
+    @ExplodeLoop
     private synchronized void actualInit() {
         if (!(isInitializedOrPrepared())) { // Check under lock
+            if (initState == ERRONEOUS) {
+                throw getMeta().throwExWithMessage(NoClassDefFoundError.class, "Erroneous class: " + getName());
+            }
             initState = PREPARED;
             if (getSuperKlass() != null) {
                 getSuperKlass().initialize();
@@ -470,6 +476,7 @@ public final class ObjectKlass extends Klass {
         methodLookupCount.inc();
         Method method = lookupDeclaredMethod(methodName, signature);
         if (method == null) {
+            // Implicit interface methods.
             method = lookupMirandas(methodName, signature);
         }
         if (method == null && getType() == Type.MethodHandle) {
@@ -506,10 +513,15 @@ public final class ObjectKlass extends Klass {
             for (Method m : declaredMethods) {
                 try {
                     MethodVerifier.verify(m);
-                } catch (Throwable e) {
-                    throw e;
+                } catch (VerifyError | ClassFormatError | IncompatibleClassChangeError | NoClassDefFoundError e) {
+                    setErroneous();
+                    throw getMeta().throwExWithMessage(e.getClass(), e.getMessage());
                 }
             }
         }
+    }
+
+    void setErroneous() {
+        initState = ERRONEOUS;
     }
 }

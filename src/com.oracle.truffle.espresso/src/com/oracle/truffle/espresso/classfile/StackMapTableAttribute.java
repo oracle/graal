@@ -5,7 +5,6 @@
  * This code is free software; you can redistribute it and/or modify it
  * under the terms of the GNU General Public License version 2 only, as
  * published by the Free Software Foundation.
- *
  * This code is distributed in the hope that it will be useful, but WITHOUT
  * ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or
  * FITNESS FOR A PARTICULAR PURPOSE.  See the GNU General Public License
@@ -20,49 +19,25 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.truffle.espresso.runtime;
+
+package com.oracle.truffle.espresso.classfile;
 
 import com.oracle.truffle.espresso.descriptors.Symbol;
 import com.oracle.truffle.espresso.descriptors.Symbol.Name;
+import com.oracle.truffle.espresso.runtime.Attribute;
 
-public class BootstrapMethodsAttribute extends Attribute {
+public class StackMapTableAttribute extends Attribute {
 
-    public static final Symbol<Name> NAME = Name.BootstrapMethods;
+    public static final Symbol<Name> NAME = Symbol.Name.StackMapTable;
 
-    public Entry[] getEntries() {
+    public StackMapFrame[] getEntries() {
         return entries;
     }
 
-    public static class Entry {
-        final char bootstrapMethodRef;
-        final char[] bootstrapArguments;
+    private final StackMapFrame[] entries;
 
-        public int numBootstrapArguments() {
-            return bootstrapArguments.length;
-        }
-
-        public Entry(char bootstrapMethodRef, char[] bootstrapArguments) {
-            this.bootstrapMethodRef = bootstrapMethodRef;
-            this.bootstrapArguments = bootstrapArguments;
-        }
-
-        public char argAt(int index) {
-            return bootstrapArguments[index];
-        }
-
-        public char getBootstrapMethodRef() {
-            return bootstrapMethodRef;
-        }
-    }
-
-    private final Entry[] entries;
-
-    public BootstrapMethodsAttribute(Symbol<Name> name, Entry[] entries) {
+    public StackMapTableAttribute(Symbol<Symbol.Name> name, StackMapFrame[] entries) {
         super(name, null);
         this.entries = entries;
-    }
-
-    public Entry at(int index) {
-        return entries[index];
     }
 }

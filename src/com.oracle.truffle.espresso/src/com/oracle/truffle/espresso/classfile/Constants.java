@@ -96,7 +96,9 @@ public final class Constants {
     public static final int SAME_FRAME_BOUND = 64;
     public static final int SAME_LOCALS_1_STACK_ITEM_BOUND = 128;
     public static final int SAME_LOCALS_1_STACK_ITEM_EXTENDED = 247;
+    public static final int CHOP_BOUND = 251;
     public static final int SAME_FRAME_EXTENDED = 251;
+    public static final int APPEND_FRAME_BOUND = 255;
     public static final int FULL_FRAME = 255;
 
     //@formatter:off

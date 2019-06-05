@@ -260,10 +260,11 @@ public final class EspressoContext {
                         t.join();
                     }
                 } catch (InterruptedException e) {
+                    System.err.println("Interrupted while stopping thread in closing context.");
                 }
             }
         }
-        // initiatingThread.interrupt();
+        initiatingThread.interrupt();
     }
 
     private void initVmProperties() {
