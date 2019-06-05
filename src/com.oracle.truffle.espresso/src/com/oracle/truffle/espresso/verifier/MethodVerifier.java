@@ -302,7 +302,7 @@ public final class MethodVerifier implements ContextAccess {
     private final ExceptionHandler[] exceptionHandlers;
 
     // Internal info
-    private final byte[] verified;
+    private final int[] BCIstates;
     private final StackFrame[] stackFrames;
     private final byte[] handlerStatus;
 
@@ -365,8 +365,6 @@ public final class MethodVerifier implements ContextAccess {
         }
     };
 
-    static final Operand ReturnAddress = new PrimitiveOperand(JavaKind.ReturnAddress);
-
     static final Operand Null = new Operand(JavaKind.Object) {
         @Override
         boolean compliesWith(Operand other) {
@@ -416,18 +414,25 @@ public final class MethodVerifier implements ContextAccess {
 
     private final Operand thisOperand;
 
+    // Regular BCI states
     static private final byte UNREACHABLE = 0;
     static private final byte UNSEEN = 1;
     static private final byte DONE = 2;
-    static private final byte JUMP_TARGET = 3;
+    static private final byte JUMP_TARGET = 4;
 
-    static private final byte UNENCOUNTERED = 10;
-    static private final byte NONVERIFIED = 11;
-    static private final byte VERIFIED = 12;
+    // Exception handler target states
+    static private final byte UNENCOUNTERED = 8;
+    static private final byte NONVERIFIED = 16;
+    static private final byte VERIFIED = 32;
+
+    // JSR BCI states
+    static private final byte RETURNED_TO = 64;
+    // This state is accompanied by the BCI of the RET instruction that caused it.
+    // It is of the form (ret_bci << 16) | RETURNED_TO
 
     /**
      * Construct the data structure to perform verification
-     * 
+     *
      * @param codeAttribute the code attribute of the method
      * @param m the Espresso method
      */
@@ -437,7 +442,7 @@ public final class MethodVerifier implements ContextAccess {
         this.maxStack = codeAttribute.getMaxStack();
         this.maxLocals = codeAttribute.getMaxLocals();
         this.pool = m.getRuntimeConstantPool();
-        this.verified = new byte[code.endBCI()];
+        this.BCIstates = new int[code.endBCI()];
         this.stackFrames = new StackFrame[code.endBCI()];
         this.sig = m.getParsedSignature();
         this.isStatic = m.isStatic();
@@ -474,7 +479,7 @@ public final class MethodVerifier implements ContextAccess {
     }
 
     private void initVerifier() {
-        Arrays.fill(verified, UNREACHABLE);
+        Arrays.fill(BCIstates, UNREACHABLE);
         // Mark all reachable code
         int bci = 0;
         int bc;
@@ -483,7 +488,7 @@ public final class MethodVerifier implements ContextAccess {
             if (bc > QUICK) {
                 throw new VerifyError("invalid bytecode: " + bc);
             }
-            verified[bci] = UNSEEN;
+            BCIstates[bci] = UNSEEN;
             bci = code.nextBCI(bci);
             // Check instruction has enough bytes after it
             if (bci - 1 >= code.endBCI()) {
@@ -499,10 +504,10 @@ public final class MethodVerifier implements ContextAccess {
                 bc = code.currentBC(bci);
                 if (Bytecodes.isBranch(bc)) {
                     int target = code.readBranchDest(bci);
-                    if (verified[target] == UNREACHABLE) {
+                    if (BCIstates[target] == UNREACHABLE) {
                         throw new VerifyError("Jump to the middle of an instruction: " + target);
                     }
-                    verified[target] = JUMP_TARGET;
+                    BCIstates[target] = JUMP_TARGET;
                 }
                 if (bc == TABLESWITCH || bc == LOOKUPSWITCH) {
                     initSwitch(bci, bc);
@@ -529,16 +534,16 @@ public final class MethodVerifier implements ContextAccess {
                     init = true;
                     oldKey = newKey;
                     target = switchHelper.targetAt(bci, i - low);
-                    if (verified[target] == UNREACHABLE) {
+                    if (BCIstates[target] == UNREACHABLE) {
                         throw new VerifyError("Jump to the middle of an instruction: " + target);
                     }
-                    verified[target] = JUMP_TARGET;
+                    BCIstates[target] = JUMP_TARGET;
                 }
                 target = switchHelper.defaultTarget(bci);
-                if (verified[target] == UNREACHABLE) {
+                if (BCIstates[target] == UNREACHABLE) {
                     throw new VerifyError("Jump to the middle of an instruction: " + target);
                 }
-                verified[target] = JUMP_TARGET;
+                BCIstates[target] = JUMP_TARGET;
             }
                 return;
             case TABLESWITCH: {
@@ -550,16 +555,16 @@ public final class MethodVerifier implements ContextAccess {
                 // an infinite loop in this case.
                 for (int i = low; i != high + 1; i++) {
                     target = switchHelper.targetAt(bci, i - low);
-                    if (verified[target] == UNREACHABLE) {
+                    if (BCIstates[target] == UNREACHABLE) {
                         throw new VerifyError("Jump to the middle of an instruction: " + target);
                     }
-                    verified[target] = JUMP_TARGET;
+                    BCIstates[target] = JUMP_TARGET;
                 }
                 target = switchHelper.defaultTarget(bci);
-                if (verified[target] == UNREACHABLE) {
+                if (BCIstates[target] == UNREACHABLE) {
                     throw new VerifyError("Jump to the middle of an instruction: " + target);
                 }
-                verified[target] = JUMP_TARGET;
+                BCIstates[target] = JUMP_TARGET;
             }
                 return;
             default:
@@ -714,6 +719,7 @@ public final class MethodVerifier implements ContextAccess {
     }
 
     private Operand getOperandFromVerificationType(VerificationTypeInfo vti) {
+        // Note: JSR/RET is mutually exclusive with stack maps.
         switch (vti.getTag()) {
             case ITEM_Bogus:
                 return Invalid;
@@ -785,7 +791,7 @@ public final class MethodVerifier implements ContextAccess {
                 throw new VerifyError("negative branch target: " + BCI);
             }
             if (endBCI != code.endBCI()) {
-                if (verified[BCI] == UNREACHABLE) {
+                if (BCIstates[BCI] == UNREACHABLE) {
                     throw new VerifyError("Jump to the middle of an instruction: " + BCI);
                 }
             }
@@ -849,7 +855,7 @@ public final class MethodVerifier implements ContextAccess {
         if (BCI < 0) {
             throw new VerifyError("negative branch target: " + BCI);
         }
-        if (verified[BCI] == UNREACHABLE) {
+        if (BCIstates[BCI] == UNREACHABLE) {
             throw new VerifyError("Jump to the middle of an instruction: " + BCI);
         }
     }
@@ -865,16 +871,19 @@ public final class MethodVerifier implements ContextAccess {
 
         do {
             previousBCI = nextBCI;
-            if (stackFrames[nextBCI] != null || verified[nextBCI] == JUMP_TARGET) {
+            if (stackFrames[nextBCI] != null || BCIstates[nextBCI] == JUMP_TARGET) {
                 StackFrame frame = mergeFrames(stack, locals, stackFrames[nextBCI]);
                 if (!(frame == stackFrames[nextBCI])) {
-                    verified[nextBCI] = JUMP_TARGET;
+                    BCIstates[nextBCI] = JUMP_TARGET;
                     stackFrames[nextBCI] = frame;
                 }
                 stack = frame.extractStack(maxStack);
                 locals = frame.extractLocals();
             }
-            if (verified[nextBCI] == DONE) {
+            /**
+             * Return condition: a successful merge into an already verified branch target.
+             */
+            if (stackFrames[nextBCI] != null && BCIstates[nextBCI] == DONE) {
                 return true;
             }
             checkExceptionHandlers(nextBCI, locals);
@@ -942,10 +951,10 @@ public final class MethodVerifier implements ContextAccess {
     }
 
     private int verify(int BCI, Stack stack, Locals locals) {
-        if (verified[BCI] == UNREACHABLE) {
+        if (BCIstates[BCI] == UNREACHABLE) {
             throw new VerifyError("Jump to the middle of an instruction: " + BCI);
         }
-        verified[BCI] = DONE;
+        BCIstates[BCI] = DONE;
         int curOpcode;
         curOpcode = code.opcode(BCI);
         if (!(curOpcode <= QUICK)) {
@@ -1218,25 +1227,35 @@ public final class MethodVerifier implements ContextAccess {
                 
                 case IFNULL: // fall through
                 case IFNONNULL: stack.popRef(); branch(code.readBranchDest(BCI), stack, locals); break;
-                
+                // Checkstyle: resume
+                // @formatter:on
                 case JSR: // fall through
                 case JSR_W: {
                     if (majorVersion >= 51) {
                         throw new VerifyError("JSR/RET bytecode in version >= 51");
                     }
-                    stack.push(ReturnAddress);
+                    stack.push(new ReturnAddressOperand(BCI));
                     branch(code.readBranchDest(BCI), stack, locals);
-                    // RET will need to branch here to finish the job.
+                    BCIstates[BCI] = DONE;
                     return BCI;
                 }
                 case RET: {
                     if (majorVersion >= 51) {
                         throw new VerifyError("JSR/RET bytecode in version >= 51");
                     }
-                    locals.load(code.readLocalIndex(BCI), ReturnAddress);
+                    ReturnAddressOperand ra = locals.loadReturnAddress(code.readLocalIndex(BCI));
+                    for (Integer target : ra.targetBCIs) {
+                        if ((BCIstates[target] & RETURNED_TO) == RETURNED_TO) {
+                            if ((BCIstates[target] >>> 16) != BCI) {
+                                throw new VerifyError("Multiple returns to single jsr ");
+                            }
+                        }
+                        BCIstates[target] = RETURNED_TO | (BCI << 16);
+                        branch(code.nextBCI(target), stack, locals);
+                    }
                     return BCI;
                 }
-                
+
                 case TABLESWITCH: {
                     stack.popInt();
                     BytecodeTableSwitch switchHelper = code.getBytecodeTableSwitch();
@@ -1276,27 +1295,27 @@ public final class MethodVerifier implements ContextAccess {
                     }
                     return switchHelper.defaultTarget(BCI);
                 }
-                
-                case IRETURN: { 
-                        stack.pop(Int);
-                        if (!returnOperand.getKind().isStackInt()) {
-                            throw new VerifyError("Found an IRETURN when return type is " + returnOperand);
-                        }
-                        return BCI;
+
+                case IRETURN: {
+                    stack.pop(Int);
+                    if (!returnOperand.getKind().isStackInt()) {
+                        throw new VerifyError("Found an IRETURN when return type is " + returnOperand);
                     }
-                case LRETURN: 
+                    return BCI;
+                }
+                case LRETURN:
                     doReturn(stack, Long);
                     return BCI;
-                case FRETURN: 
+                case FRETURN:
                     doReturn(stack, Float);
                     return BCI;
-                case DRETURN: 
+                case DRETURN:
                     doReturn(stack, Double);
                     return BCI;
-                case ARETURN: 
-                    stack.popRef(returnOperand); 
+                case ARETURN:
+                    stack.popRef(returnOperand);
                     return BCI;
-                case RETURN: 
+                case RETURN:
                     if (returnOperand != Void) {
                         throw new VerifyError("Encountered RETURN, but method return type is not void: " + returnOperand);
                     }
@@ -1306,12 +1325,10 @@ public final class MethodVerifier implements ContextAccess {
                             throw new VerifyError("Did not called super() of this() in constructor");
                         }
                     }
-                    return BCI; 
-                
+                    return BCI;
+
                 case GETSTATIC:
                 case GETFIELD: {
-                    // Checkstyle: resume
-                    // @formatter:on
                     PoolConstant pc = pool.at(code.readCPI(BCI));
                     if (!(pc instanceof FieldRefConstant)) {
                         throw new VerifyError();
@@ -1976,7 +1993,6 @@ public final class MethodVerifier implements ContextAccess {
                         mergedLocals[i] = result;
                     }
                 } else {
-                    mergedLocals[i] = frameOp;
                     mergedLocals[i] = frameOp;
                 }
             }
