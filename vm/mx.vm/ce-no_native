@@ -1,6 +1,5 @@
 DYNAMIC_IMPORTS=/substratevm,/tools,/sulong,/graal-nodejs
 DISABLE_INSTALLABLES=js,njs,slg,ni,nil,rgx,nfi
 FORCE_BASH_LAUNCHERS=true
-DISABLE_LIBPOLYGLOT=true
 EXCLUDE_COMPONENTS=nju
-SKIP_LIBRARIES=native-image-agent
+SKIP_LIBRARIES=native-image-agent,polyglot
