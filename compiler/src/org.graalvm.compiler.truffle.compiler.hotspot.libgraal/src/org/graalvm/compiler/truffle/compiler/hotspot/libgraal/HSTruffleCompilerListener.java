@@ -25,14 +25,10 @@
 package org.graalvm.compiler.truffle.compiler.hotspot.libgraal;
 
 import java.io.Closeable;
-import static org.graalvm.compiler.truffle.common.hotspot.libgraal.SVMToHotSpot.Id.CreateCompilationResultInfo;
-import static org.graalvm.compiler.truffle.common.hotspot.libgraal.SVMToHotSpot.Id.CreateGraphInfo;
 import static org.graalvm.compiler.truffle.common.hotspot.libgraal.SVMToHotSpot.Id.OnFailure;
 import static org.graalvm.compiler.truffle.common.hotspot.libgraal.SVMToHotSpot.Id.OnGraalTierFinished;
 import static org.graalvm.compiler.truffle.common.hotspot.libgraal.SVMToHotSpot.Id.OnSuccess;
 import static org.graalvm.compiler.truffle.common.hotspot.libgraal.SVMToHotSpot.Id.OnTruffleTierFinished;
-import static org.graalvm.compiler.truffle.compiler.hotspot.libgraal.HSTruffleCompilerListenerGen.callCreateCompilationResultInfo;
-import static org.graalvm.compiler.truffle.compiler.hotspot.libgraal.HSTruffleCompilerListenerGen.callCreateGraphInfo;
 import static org.graalvm.compiler.truffle.compiler.hotspot.libgraal.HSTruffleCompilerListenerGen.callOnFailure;
 import static org.graalvm.compiler.truffle.compiler.hotspot.libgraal.HSTruffleCompilerListenerGen.callOnGraalTierFinished;
 import static org.graalvm.compiler.truffle.compiler.hotspot.libgraal.HSTruffleCompilerListenerGen.callOnSuccess;
@@ -46,7 +42,6 @@ import org.graalvm.compiler.truffle.common.hotspot.libgraal.SVMToHotSpot;
 import org.graalvm.compiler.truffle.compiler.hotspot.libgraal.JNI.JNIEnv;
 import org.graalvm.compiler.truffle.compiler.hotspot.libgraal.JNI.JObject;
 import org.graalvm.compiler.truffle.compiler.hotspot.libgraal.JNI.JString;
-import org.graalvm.word.WordFactory;
 
 /**
  * Proxy for a {@link TruffleCompilerListener} object in the HotSpot heap.
@@ -63,10 +58,8 @@ final class HSTruffleCompilerListener extends HSObject implements TruffleCompile
         JObject hsCompilable = ((HSCompilableTruffleAST) compilable).getHandle();
         JObject hsInliningPlan = ((HSTruffleInliningPlan) inliningPlan).getHandle();
         JNIEnv env = HotSpotToSVMScope.env();
-        try (SVMObjectHandleScope hsGraphInfoScope = createHSGraphInfo(graphInfo)) {
-            try (SVMObjectHandleScope hsCompilationResultInfoScope = createHSCompilationResultInfo(compilationResultInfo)) {
-                callOnSuccess(env, getHandle(), hsCompilable, hsInliningPlan, hsGraphInfoScope.jobject, hsCompilationResultInfoScope.jobject);
-            }
+        try (SVMObjectHandleScope graphInfoScope = SVMObjectHandleScope.forObject(graphInfo); SVMObjectHandleScope compilationResultInfoScope = SVMObjectHandleScope.forObject(compilationResultInfo)) {
+            callOnSuccess(env, getHandle(), hsCompilable, hsInliningPlan, graphInfoScope.getHandle(), compilationResultInfoScope.getHandle());
         }
     }
 
@@ -76,8 +69,8 @@ final class HSTruffleCompilerListener extends HSObject implements TruffleCompile
         JObject hsCompilable = ((HSCompilableTruffleAST) compilable).getHandle();
         JObject hsInliningPlan = ((HSTruffleInliningPlan) inliningPlan).getHandle();
         JNIEnv env = HotSpotToSVMScope.env();
-        try (SVMObjectHandleScope hsGraphInfoScope = createHSGraphInfo(graph)) {
-            callOnTruffleTierFinished(env, getHandle(), hsCompilable, hsInliningPlan, hsGraphInfoScope.jobject);
+        try (SVMObjectHandleScope graphInfoScope = SVMObjectHandleScope.forObject(graph)) {
+            callOnTruffleTierFinished(env, getHandle(), hsCompilable, hsInliningPlan, graphInfoScope.getHandle());
         }
 
     }
@@ -87,8 +80,8 @@ final class HSTruffleCompilerListener extends HSObject implements TruffleCompile
     public void onGraalTierFinished(CompilableTruffleAST compilable, GraphInfo graph) {
         JObject hsCompilable = ((HSCompilableTruffleAST) compilable).getHandle();
         JNIEnv env = HotSpotToSVMScope.env();
-        try (SVMObjectHandleScope hsGraphInfoScope = createHSGraphInfo(graph)) {
-            callOnGraalTierFinished(env, getHandle(), hsCompilable, hsGraphInfoScope.jobject);
+        try (SVMObjectHandleScope graphInfoScope = SVMObjectHandleScope.forObject(graph)) {
+            callOnGraalTierFinished(env, getHandle(), hsCompilable, graphInfoScope.getHandle());
         }
     }
 
@@ -101,63 +94,29 @@ final class HSTruffleCompilerListener extends HSObject implements TruffleCompile
         callOnFailure(env, getHandle(), hsCompilable, hsReason, bailout, permanentBailout);
     }
 
-    @SVMToHotSpot(CreateGraphInfo)
-    private static SVMObjectHandleScope createHSGraphInfo(GraphInfo graphInfo) {
-        if (graphInfo == null) {
-            return SVMObjectHandleScope.create(WordFactory.nullPointer(), 0);
-        }
-        long handle = SVMObjectHandles.create(graphInfo);
-        boolean success = false;
-        try {
-            JNIEnv env = HotSpotToSVMScope.env();
-            JObject instance = callCreateGraphInfo(env, handle);
-            success = true;
-            return SVMObjectHandleScope.create(instance, handle);
-        } finally {
-            if (!success) {
-                SVMObjectHandles.remove(handle);
-            }
-        }
-    }
-
-    @SVMToHotSpot(CreateCompilationResultInfo)
-    private static SVMObjectHandleScope createHSCompilationResultInfo(CompilationResultInfo compilationResultInfo) {
-        if (compilationResultInfo == null) {
-            return SVMObjectHandleScope.create(WordFactory.nullPointer(), 0);
-        }
-        long handle = SVMObjectHandles.create(compilationResultInfo);
-        boolean success = false;
-        try {
-            JNIEnv env = HotSpotToSVMScope.env();
-            JObject instance = callCreateCompilationResultInfo(env, handle);
-            success = true;
-            return SVMObjectHandleScope.create(instance, handle);
-        } finally {
-            if (!success) {
-                SVMObjectHandles.remove(handle);
-            }
-        }
-    }
-
     private static final class SVMObjectHandleScope implements Closeable {
 
-        final JObject jobject;
-        private final long handle;
+        private long handle;
 
-        private SVMObjectHandleScope(JObject jobject, long handle) {
-            this.jobject = jobject;
+        private SVMObjectHandleScope(long handle) {
             this.handle = handle;
         }
 
         @Override
         public void close() {
-            if (jobject.isNonNull()) {
-                SVMObjectHandles.remove(handle);
-            }
+            SVMObjectHandles.remove(handle);
+            handle = 0;
         }
 
-        static SVMObjectHandleScope create(JObject jobject, long handle) {
-            return new SVMObjectHandleScope(jobject, handle);
+        long getHandle() {
+            if (handle == 0) {
+                throw new IllegalStateException("Reading handle from a closed scope.");
+            }
+            return handle;
+        }
+
+        static SVMObjectHandleScope forObject(Object object) {
+            return new SVMObjectHandleScope(SVMObjectHandles.create(object));
         }
     }
 }

@@ -51,30 +51,15 @@ class SVMObject {
     protected final long handle;
 
     /**
-     * Creates a new {@link SVMObject} with cleaner releasing the SVM object handle when this
-     * {@link SVMObject} becomes phantom reachable.
+     * Creates a new {@link SVMObject}.
      *
      * @param handle handle to an SVM object
      */
     SVMObject(long handle) {
-        this(handle, true);
-    }
-
-    /**
-     * Creates a new {@link SVMObject}.
-     *
-     * @param handle handle to an SVM object
-     * @param registerCleaner if {@code true} the SVM object handle is released when this
-     *            {@link SVMObject} becomes phantom reachable. When the {@code registerCleaner} is
-     *            {@code false} the SVM object is responsible for releasing the object handle.
-     */
-    SVMObject(long handle, boolean registerCleaner) {
         cleanHandles();
         this.handle = handle;
-        if (registerCleaner) {
-            Cleaner cref = new Cleaner(this, handle);
-            CLEANERS.add(cref);
-        }
+        Cleaner cref = new Cleaner(this, handle);
+        CLEANERS.add(cref);
     }
 
     /**

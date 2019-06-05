@@ -31,9 +31,7 @@ import static org.graalvm.compiler.truffle.common.hotspot.libgraal.SVMToHotSpot.
 import static org.graalvm.compiler.truffle.common.hotspot.libgraal.SVMToHotSpot.Id.AsJavaConstant;
 import static org.graalvm.compiler.truffle.common.hotspot.libgraal.SVMToHotSpot.Id.CompilableToString;
 import static org.graalvm.compiler.truffle.common.hotspot.libgraal.SVMToHotSpot.Id.ConsumeOptimizedAssumptionDependency;
-import static org.graalvm.compiler.truffle.common.hotspot.libgraal.SVMToHotSpot.Id.CreateCompilationResultInfo;
 import static org.graalvm.compiler.truffle.common.hotspot.libgraal.SVMToHotSpot.Id.CreateException;
-import static org.graalvm.compiler.truffle.common.hotspot.libgraal.SVMToHotSpot.Id.CreateGraphInfo;
 import static org.graalvm.compiler.truffle.common.hotspot.libgraal.SVMToHotSpot.Id.CreateInliningPlan;
 import static org.graalvm.compiler.truffle.common.hotspot.libgraal.SVMToHotSpot.Id.CreateStringSupplier;
 import static org.graalvm.compiler.truffle.common.hotspot.libgraal.SVMToHotSpot.Id.FindDecision;
@@ -96,8 +94,6 @@ import org.graalvm.compiler.truffle.common.CompilableTruffleAST;
 import org.graalvm.compiler.truffle.common.OptimizedAssumptionDependency;
 import org.graalvm.compiler.truffle.common.TruffleCompilationTask;
 import org.graalvm.compiler.truffle.common.TruffleCompilerListener;
-import org.graalvm.compiler.truffle.common.TruffleCompilerListener.CompilationResultInfo;
-import org.graalvm.compiler.truffle.common.TruffleCompilerListener.GraphInfo;
 import org.graalvm.compiler.truffle.common.TruffleCompilerRuntime;
 import org.graalvm.compiler.truffle.common.TruffleInliningPlan;
 import org.graalvm.compiler.truffle.common.TruffleInliningPlan.Decision;
@@ -336,16 +332,6 @@ final class SVMToHotSpotEntryPoints {
         return javaKind;
     }
 
-    @SVMToHotSpot(CreateGraphInfo)
-    static TruffleCompilerListener.GraphInfo createGraphInfo(long handle) {
-        return new SVMGraphInfo(handle);
-    }
-
-    @SVMToHotSpot(CreateCompilationResultInfo)
-    static CompilationResultInfo createCompilationResultInfo(long handle) {
-        return new SVMCompilationResultInfo(handle);
-    }
-
     @SVMToHotSpot(CreateStringSupplier)
     static Supplier<String> createStringSupplier(long handle) {
         return new SVMStringSupplier(handle);
@@ -442,12 +428,14 @@ final class SVMToHotSpotEntryPoints {
     }
 
     @SVMToHotSpot(OnSuccess)
-    static void onSuccess(TruffleCompilerListener listener, CompilableTruffleAST compilable, TruffleInliningPlan plan, GraphInfo graphInfo, CompilationResultInfo compilationResultInfo) {
+    static void onSuccess(TruffleCompilerListener listener, CompilableTruffleAST compilable, TruffleInliningPlan plan, long graphInfoHandle, long compilationResultInfoHandle) {
+        SVMGraphInfo graphInfo = new SVMGraphInfo(graphInfoHandle);
+        SVMCompilationResultInfo compilationResultInfo = new SVMCompilationResultInfo(compilationResultInfoHandle);
         try {
             listener.onSuccess(compilable, plan, graphInfo, compilationResultInfo);
         } finally {
-            ((SVMGraphInfo) graphInfo).invalidate();
-            ((SVMCompilationResultInfo) compilationResultInfo).invalidate();
+            graphInfo.invalidate();
+            compilationResultInfo.invalidate();
         }
     }
 
@@ -457,20 +445,22 @@ final class SVMToHotSpotEntryPoints {
     }
 
     @SVMToHotSpot(OnGraalTierFinished)
-    static void onGraalTierFinished(TruffleCompilerListener listener, CompilableTruffleAST compilable, GraphInfo graphInfo) {
+    static void onGraalTierFinished(TruffleCompilerListener listener, CompilableTruffleAST compilable, long graphInfoHandle) {
+        SVMGraphInfo graphInfo = new SVMGraphInfo(graphInfoHandle);
         try {
             listener.onGraalTierFinished(compilable, graphInfo);
         } finally {
-            ((SVMGraphInfo) graphInfo).invalidate();
+            graphInfo.invalidate();
         }
     }
 
     @SVMToHotSpot(OnTruffleTierFinished)
-    static void onTruffleTierFinished(TruffleCompilerListener listener, CompilableTruffleAST compilable, TruffleInliningPlan plan, GraphInfo graphInfo) {
+    static void onTruffleTierFinished(TruffleCompilerListener listener, CompilableTruffleAST compilable, TruffleInliningPlan plan, long graphInfoHandle) {
+        SVMGraphInfo graphInfo = new SVMGraphInfo(graphInfoHandle);
         try {
             listener.onTruffleTierFinished(compilable, plan, graphInfo);
         } finally {
-            ((SVMGraphInfo) graphInfo).invalidate();
+            graphInfo.invalidate();
         }
     }
 

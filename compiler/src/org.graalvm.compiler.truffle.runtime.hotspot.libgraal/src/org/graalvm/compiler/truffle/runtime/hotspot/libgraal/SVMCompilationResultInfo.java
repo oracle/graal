@@ -31,16 +31,12 @@ import org.graalvm.compiler.truffle.common.TruffleCompilerListener;
 /**
  * Encapsulates a handle to a {@code CompilationResultInfo} object in the SVM heap.
  */
-final class SVMCompilationResultInfo extends SVMObject implements TruffleCompilerListener.CompilationResultInfo {
+final class SVMCompilationResultInfo implements TruffleCompilerListener.CompilationResultInfo {
 
-    /**
-     * Not volatile used for fast failure. When inconsistent exception is thrown by JNI on SVM side.
-     */
-    private boolean valid;
+    private volatile long handle;
 
     SVMCompilationResultInfo(long handle) {
-        super(handle, false);
-        valid = true;
+        this.handle = handle;
     }
 
     @Override
@@ -86,12 +82,12 @@ final class SVMCompilationResultInfo extends SVMObject implements TruffleCompile
     }
 
     private void checkValid() {
-        if (!valid) {
+        if (handle == 0) {
             throw new IllegalStateException("Using CompilationResultInfo outside of the TruffleCompilerListener method.");
         }
     }
 
     void invalidate() {
-        valid = false;
+        handle = 0;
     }
 }
