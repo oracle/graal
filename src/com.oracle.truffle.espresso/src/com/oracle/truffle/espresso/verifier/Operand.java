@@ -139,7 +139,7 @@ class ReturnAddressOperand extends PrimitiveOperand {
                 ra.targetBCIs.add(target);
             }
         }
-        return other;
+        return ra;
     }
 }
 
@@ -201,7 +201,14 @@ class ReferenceOperand extends Operand {
             if (other.getType() == null) {
                 return false;
             }
-            return other.getKlass().isAssignableFrom(getKlass());
+            Klass otherKlass = other.getKlass();
+            if (otherKlass.isInterface()) {
+                /**
+                 * 4.10.1.2. For assignments, interfaces are treated like Object.
+                 */
+                return true;
+            }
+            return otherKlass.isAssignableFrom(getKlass());
         }
         return other == Invalid;
     }
