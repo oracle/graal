@@ -46,6 +46,15 @@ public class ByteArrayList {
         offset++;
     }
 
+    public byte popBack() {
+        offset--;
+        return array[offset];
+    }
+
+    public byte get(int index) {
+        return array[index];
+    }
+
     public int size() {
         return offset;
     }
