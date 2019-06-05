@@ -1,3 +1,5 @@
+// code from https://www.ibm.com/support/knowledgecenter/en/SSLTBW_2.3.0/com.ibm.zos.v2r3.bpxbd00/ptjoin.htm
+
 /* CELEBP32 */
 #define _OPEN_THREADS
 #include <pthread.h>

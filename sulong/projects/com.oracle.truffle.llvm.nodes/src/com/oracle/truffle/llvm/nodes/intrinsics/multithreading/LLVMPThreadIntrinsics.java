@@ -204,6 +204,15 @@ public class LLVMPThreadIntrinsics {
         }
     }
 
+    @NodeChild(type = LLVMExpressionNode.class)
+    @NodeChild(type = LLVMExpressionNode.class)
+    public abstract static class LLVMPThreadEqual extends LLVMBuiltin {
+        @Specialization
+        protected int doIntrinsic(VirtualFrame frame, Object t1, Object t2) {
+            return (long) t1 == (long) t2 ? 0 : 1;
+        }
+    }
+
     public abstract static class LLVMPThreadSelf extends LLVMBuiltin {
         @Specialization
         protected long doIntrinsic(VirtualFrame frame) {
@@ -696,6 +705,7 @@ public class LLVMPThreadIntrinsics {
                 rwlockObj = new RWLock();
                 LLVMLanguage.getLLVMContextReference().get().mutexStorage.put(rwlockAddress, rwlockObj);
             }
+            // TODO: error code stuff, EBUSY should be here
             return rwlockObj.tryReadLock() ? 0 : 15;
         }
     }

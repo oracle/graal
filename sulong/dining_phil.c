@@ -1,3 +1,5 @@
+// code from https://web.mst.edu/~ercal/284/ThreadExamples/Thread-phil.c
+
 /*******************************************************************/ 
 /*   Program Description:                                          */ 
 /*   The main() uses pthread_create() to create 5 threads which    */ 

@@ -29,7 +29,6 @@
  */
 package com.oracle.truffle.llvm.parser.factories;
 
-import static com.oracle.truffle.llvm.runtime.interop.convert.ForeignToLLVM.ForeignToLLVMType.*;
 import static com.oracle.truffle.llvm.runtime.interop.convert.ForeignToLLVM.ForeignToLLVMType.POINTER;
 
 import java.util.AbstractList;
@@ -325,6 +324,7 @@ public class BasicIntrinsicsProvider implements LLVMIntrinsicProvider, ContextEx
 
     private static void registerPThreadIntrinsics() {
         add("@pthread_create", (args, context) -> LLVMPThreadIntrinsicsFactory.LLVMPThreadCreateNodeGen.create(args.get(1), args.get(2), args.get(3), args.get(4), null));
+        add("@pthread_equal", (args, context) -> LLVMPThreadIntrinsicsFactory.LLVMPThreadEqualNodeGen.create(args.get(1), args.get(2), null));
         add("@pthread_exit", (args, context) -> LLVMPThreadIntrinsicsFactory.LLVMPThreadExitNodeGen.create(args.get(1), null));
         add("@pthread_join", (args, context) -> LLVMPThreadIntrinsicsFactory.LLVMPThreadJoinNodeGen.create(args.get(1), args.get(2), null));
         add("@pthread_self", (args, context) -> LLVMPThreadIntrinsicsFactory.LLVMPThreadSelfNodeGen.create(null));
@@ -352,9 +352,6 @@ public class BasicIntrinsicsProvider implements LLVMIntrinsicProvider, ContextEx
         add("@pthread_rwlock_timedrdlock", (args, context) -> LLVMPThreadIntrinsicsFactory.LLVMPThreadRWLockTimedrdlockNodeGen.create(args.get(1), args.get(2), null));
         add("@pthread_rwlock_timedwrlock", (args, context) -> LLVMPThreadIntrinsicsFactory.LLVMPThreadRWLockTimedwrlockNodeGen.create(args.get(1), args.get(2), null));
 
-        // add pthread_equal
-        // add pthread cond vars
-        // add pthread rw locks
     }
 
     private static void registerSulongIntrinsics() {
