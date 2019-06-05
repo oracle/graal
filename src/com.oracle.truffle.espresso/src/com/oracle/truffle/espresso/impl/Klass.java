@@ -549,7 +549,7 @@ public abstract class Klass implements ModifiersProvider, ContextAccess {
 
     private Method findMethodHandleIntrinsic(@SuppressWarnings("unused") Symbol<Name> methodName, Symbol<Signature> signature, MethodHandleIntrinsics.PolySigIntrinsics id) {
         if (id == InvokeGeneric) {
-            return getMeta().invoke.findIntrinsic(signature, new Function<Method, EspressoBaseNode>() {
+            return (methodName == Name.invoke ? getMeta().invoke : getMeta().invokeExact).findIntrinsic(signature, new Function<Method, EspressoBaseNode>() {
                 // TODO(garcia) Create a whole new Node to handle MH invokes.
                 @Override
                 public EspressoBaseNode apply(Method method) {

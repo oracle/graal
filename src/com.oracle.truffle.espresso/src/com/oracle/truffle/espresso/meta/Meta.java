@@ -540,7 +540,7 @@ public final class Meta implements ContextAccess {
 
     public static StaticObject initExWithMessage(ObjectKlass klass, @Host(String.class) StaticObject message) {
         assert klass.getMeta().Throwable.isAssignableFrom(klass);
-        assert klass.getMeta().String.isAssignableFrom(message.getKlass());
+        assert StaticObject.isNull(message) || klass.getMeta().String.isAssignableFrom(message.getKlass());
         StaticObject ex = klass.allocateInstance();
         // Call constructor.
         klass.lookupDeclaredMethod(Name.INIT, Signature._void_String).invokeDirect(ex, message);
@@ -565,7 +565,7 @@ public final class Meta implements ContextAccess {
 
     public StaticObject initExWithCause(java.lang.Class<?> clazz, @Host(Throwable.class) StaticObject cause) {
         assert Throwable.class.isAssignableFrom(clazz);
-        assert Throwable.isAssignableFrom(cause.getKlass());
+        assert StaticObject.isNull(cause) || Throwable.isAssignableFrom(cause.getKlass());
         Klass exKlass = throwableKlass(clazz);
         StaticObject ex = exKlass.allocateInstance();
         exKlass.lookupDeclaredMethod(Name.INIT, Signature._void_Throwable).invokeDirect(ex, cause);
@@ -574,7 +574,7 @@ public final class Meta implements ContextAccess {
 
     public StaticObject initExWithCause(ObjectKlass exKlass, @Host(Throwable.class) StaticObject cause) {
         assert Throwable.isAssignableFrom(exKlass);
-        assert Throwable.isAssignableFrom(cause.getKlass());
+        assert StaticObject.isNull(cause) || Throwable.isAssignableFrom(cause.getKlass());
         StaticObject ex = exKlass.allocateInstance();
         exKlass.lookupDeclaredMethod(Name.INIT, Signature._void_Throwable).invokeDirect(ex, cause);
         return ex;
@@ -582,7 +582,7 @@ public final class Meta implements ContextAccess {
 
     public StaticObject initExWithCauseAndMessage(java.lang.Class<?> clazz, @Host(Throwable.class) StaticObject cause, String message) {
         assert Throwable.class.isAssignableFrom(clazz);
-        assert Throwable.isAssignableFrom(cause.getKlass());
+        assert StaticObject.isNull(cause) || Throwable.isAssignableFrom(cause.getKlass());
         Klass exKlass = throwableKlass(clazz);
         StaticObject ex = exKlass.allocateInstance();
         exKlass.lookupDeclaredMethod(Name.INIT, Signature._void_String_Throwable).invokeDirect(ex, toGuestString(message), cause);
@@ -591,7 +591,7 @@ public final class Meta implements ContextAccess {
 
     public StaticObject initExWithCauseAndMessage(ObjectKlass exKlass, @Host(Throwable.class) StaticObject cause, @Host(String.class) StaticObject message) {
         assert Throwable.isAssignableFrom(exKlass);
-        assert Throwable.isAssignableFrom(cause.getKlass());
+        assert StaticObject.isNull(cause) || Throwable.isAssignableFrom(cause.getKlass());
         StaticObject ex = exKlass.allocateInstance();
         exKlass.lookupDeclaredMethod(Name.INIT, Signature._void_String_Throwable).invokeDirect(ex, message, cause);
         return ex;
@@ -617,35 +617,35 @@ public final class Meta implements ContextAccess {
     @TruffleBoundary
     public EspressoException throwExWithCause(java.lang.Class<?> clazz, @Host(Throwable.class) StaticObject cause) {
         assert Throwable.class.isAssignableFrom(clazz);
-        assert Throwable.isAssignableFrom(cause.getKlass());
+        assert StaticObject.isNull(cause) || Throwable.isAssignableFrom(cause.getKlass());
         throw new EspressoException(initExWithCause(clazz, cause));
     }
 
     @TruffleBoundary
     public EspressoException throwExWithCauseAndMessage(java.lang.Class<?> clazz, @Host(Throwable.class) StaticObject cause, String message) {
         assert Throwable.class.isAssignableFrom(clazz);
-        assert Throwable.isAssignableFrom(cause.getKlass());
+        assert StaticObject.isNull(cause) || Throwable.isAssignableFrom(cause.getKlass());
         throw new EspressoException(initExWithCauseAndMessage(clazz, cause, message));
     }
 
     @TruffleBoundary
     public EspressoException throwExWithMessage(ObjectKlass exKlass, @Host(String.class) StaticObject message) {
         assert Throwable.isAssignableFrom(exKlass);
-        assert String.isAssignableFrom(message.getKlass());
+        assert StaticObject.isNull(message) || String.isAssignableFrom(message.getKlass());
         throw new EspressoException(initExWithMessage(exKlass, message));
     }
 
     @TruffleBoundary
     public EspressoException throwExWithCause(ObjectKlass exKlass, @Host(Throwable.class) StaticObject cause) {
         assert Throwable.isAssignableFrom(exKlass);
-        assert Throwable.isAssignableFrom(cause.getKlass());
+        assert StaticObject.isNull(cause) || Throwable.isAssignableFrom(cause.getKlass());
         throw new EspressoException(initExWithCause(exKlass, cause));
     }
 
     @TruffleBoundary
     public EspressoException throwExWithCauseAndMessage(ObjectKlass exKlass, @Host(Throwable.class) StaticObject cause, @Host(java.lang.String.class) StaticObject message) {
         assert Throwable.isAssignableFrom(exKlass);
-        assert Throwable.isAssignableFrom(cause.getKlass());
+        assert StaticObject.isNull(cause) || Throwable.isAssignableFrom(cause.getKlass());
         throw new EspressoException(initExWithCauseAndMessage(exKlass, cause, message));
     }
 
