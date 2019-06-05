@@ -760,17 +760,18 @@ public final class IsomorphicPackingPhase extends BasePhase<LowTierContext> {
                 final List<ReadNode> nodes = pack.getElements().stream().map(x -> (ReadNode) x).collect(Collectors.toList());
                 final VectorReadNode vectorRead = VectorReadNode.fromPackElements(nodes);
 
-                final VectorUnpackNode vts = new VectorUnpackNode(vectorRead.stamp(NodeView.DEFAULT).unrestricted(), vectorRead);
-
                 for (ReadNode node : nodes) {
                     node.setNext(null);
                 }
-                for (ReadNode node : nodes) {
-                    node.replaceAtUsagesAndDelete(vts);
+                for (int i = 0; i < nodes.size(); i++) {
+                    final ReadNode node = nodes.get(i);
+                    final VectorExtractNode extractNode = new VectorExtractNode(node.getAccessStamp().unrestricted(), vectorRead, i);
+                    node.replaceAtUsagesAndDelete(extractNode);
+
+                    first.graph().addOrUnique(extractNode);
                 }
 
                 first.graph().add(vectorRead);
-                first.graph().addOrUnique(vts);
 
                 if (!lastFixed.isEmpty() && lastFixed.element() instanceof FixedWithNextNode) {
                     ((FixedWithNextNode) lastFixed.poll()).setNext(vectorRead);
@@ -809,16 +810,18 @@ public final class IsomorphicPackingPhase extends BasePhase<LowTierContext> {
                 final VectorPackNode stvX = new VectorPackNode(nodes.get(0).getX().stamp(NodeView.DEFAULT).unrestricted(), nodes.stream().map(BinaryNode::getX).collect(Collectors.toList()));
                 final VectorPackNode stvY = new VectorPackNode(nodes.get(0).getY().stamp(NodeView.DEFAULT).unrestricted(), nodes.stream().map(BinaryNode::getY).collect(Collectors.toList()));
                 final VectorAddNode vector = new VectorAddNode(stvX, stvY);
-                final VectorUnpackNode vts = new VectorUnpackNode(nodes.get(0).stamp(NodeView.DEFAULT), vector);
 
-                for (AddNode node : nodes) {
-                    node.replaceAtUsagesAndDelete(vts);
+                for (int i = 0; i < nodes.size(); i++) {
+                    final AddNode node = nodes.get(i);
+                    final VectorExtractNode extractNode = new VectorExtractNode(node.stamp(NodeView.DEFAULT), vector, i);
+                    node.replaceAtUsagesAndDelete(extractNode);
+
+                    first.graph().addOrUnique(extractNode);
                 }
 
                 first.graph().addOrUnique(stvX);
                 first.graph().addOrUnique(stvY);
                 first.graph().add(vector);
-                first.graph().addOrUnique(vts);
             }
         }
 

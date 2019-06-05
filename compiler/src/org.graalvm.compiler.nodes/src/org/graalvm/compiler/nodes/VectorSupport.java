@@ -17,103 +17,47 @@ import org.graalvm.compiler.nodes.spi.NodeLIRBuilderTool;
 
 import java.nio.ByteBuffer;
 import java.nio.ByteOrder;
+import java.util.ArrayList;
+import java.util.Comparator;
 import java.util.List;
+import java.util.stream.Collectors;
 import java.util.stream.StreamSupport;
 
 public final class VectorSupport {
     private VectorSupport() { }
 
-    // TODO: Use these for packing
-
-    /**
-     * This node is a placeholder node that is either removed by a corresponding pack (no-op)
-     *  or replaced with nodes for each access to a vector element for the given value.
-     *
-     *  This node is not LIR lowerable and must be removed during canonicalization.
-     */
-    @NodeInfo
-    public static final class VectorUnpackNode extends FloatingNode implements Canonicalizable {
-
-        public static final NodeClass<VectorUnpackNode> TYPE = NodeClass.create(VectorUnpackNode.class);
-
-        @Input private ValueNode value;
-
-        public VectorUnpackNode(Stamp stamp, ValueNode value) {
-            this(TYPE, stamp, value);
-        }
-
-        private VectorUnpackNode(NodeClass<? extends VectorUnpackNode> c, Stamp stamp, ValueNode value) {
-            super(c, stamp);
-            this.value = value;
-        }
-
-        public ValueNode value() {
-            return value;
-        }
-
-        @Override
-        public boolean verify() {
-            assertTrue(value.isVector(), "VectorUnpackNode requires a vector ValueNode input");
-            return super.verify();
-        }
-
-        @Override
-        public Node canonical(CanonicalizerTool tool) {
-            if (usages().isEmpty()) {
-                return null;
-            }
-
-            // if all usages are the same vector unpack node, let pack canonicalize
-            final Node first = usages().first();
-            final boolean allEqual = StreamSupport.stream(usages().spliterator(), false).allMatch(first::equals);
-
-            if (allEqual && !(first instanceof VectorPackNode)) {
-                return this;
-            }
-
-            // otherwise, split this packing node
-            final List<Node> usages = usages().snapshot();
-            for (Node usage : usages) {
-                final VectorExtractNode extractNode = new VectorExtractNode(stamp, value);
-                // this should be fine later == init with specific index
-                // how do we figure out the index?
-                graph().addWithoutUnique(extractNode);
-
-                // TODO: force a single replacement until we have indices THIS IS REAL HACKY
-                final int[] rc = { 0 };
-                replaceAtMatchingUsages(extractNode, n -> n == usage && rc[0]++ == 0);
-            }
-
-            return null;
-        }
-    }
-
     /**
      * This node is a node whose input is a vector value and whose output is a scalar element from
      *  that vector.
      */
-    @NodeInfo
+    @NodeInfo(nameTemplate = "VectorExtract@{p#index/s}")
     public static final class VectorExtractNode extends FloatingNode implements LIRLowerable {
         public static final NodeClass<VectorExtractNode> TYPE = NodeClass.create(VectorExtractNode.class);
 
-        @Input private ValueNode value;
+        @Input private ValueNode vectorValue;
+        private final int index;
 
-        public VectorExtractNode(Stamp stamp, ValueNode value) {
-            this(TYPE, stamp, value);
+        public VectorExtractNode(Stamp stamp, ValueNode vectorValue, int index) {
+            this(TYPE, stamp, vectorValue, index);
         }
 
-        private VectorExtractNode(NodeClass<? extends VectorExtractNode> c, Stamp stamp, ValueNode value) {
+        private VectorExtractNode(NodeClass<? extends VectorExtractNode> c, Stamp stamp, ValueNode vectorValue, int index) {
             super(TYPE, stamp);
-            this.value = value;
+            this.vectorValue = vectorValue;
+            this.index = index;
         }
 
         public ValueNode value() {
-            return value;
+            return vectorValue;
+        }
+
+        public int index() {
+            return index;
         }
 
         @Override
         public boolean verify() {
-            assertTrue(value.isVector(), "VectorExtractNode requires a vector ValueNode input");
+            assertTrue(vectorValue.isVector(), "VectorExtractNode requires a vector ValueNode input");
             return super.verify();
         }
 
@@ -123,7 +67,7 @@ public final class VectorSupport {
         }
     }
 
-    @NodeInfo
+    @NodeInfo(nameTemplate = "VectorPack")
     public static final class VectorPackNode extends FloatingNode implements Canonicalizable, LIRLowerable {
 
         public static final NodeClass<VectorPackNode> TYPE = NodeClass.create(VectorPackNode.class);
@@ -161,19 +105,51 @@ public final class VectorSupport {
                 return this;
             }
 
-            final Node first = inputs().first();
+            // All inputs need to be VectorExtractNode
+            // All VectorExtractNode have exactly one usage to be deleted
+            // All inputs need to refer to the same vector
+            // All inputs need to be in increasing order, starting at 0
+            // TODO: Input count needs to be the same as the type of the vector.
+            //       there isn't yet a way to express this.
 
-            // If all values are VectorUnpackNode, then we can delete this node and the input node
-            final boolean allEqual = StreamSupport.stream(inputs().spliterator(), false).allMatch(first::equals);
+            // Obtain the vector value
+            if (!(inputs().first() instanceof VectorExtractNode)) {
+                return this;
+            }
+            final ValueNode vectorValue = ((VectorExtractNode) inputs().first()).value();
 
-            // Do nothing if not all inputs are equal and instance of VTS
-            if (!allEqual || !(first instanceof VectorUnpackNode) || first.getUsageCount() != inputs().count()) {
+            // Ensure that all inputs refer to the same vector
+            final boolean allEqualVector = StreamSupport.stream(inputs().spliterator(), false)
+                    .allMatch(x -> x instanceof VectorExtractNode && ((VectorExtractNode) x).value() == vectorValue);
+            if (!allEqualVector) {
                 return this;
             }
 
-            final VectorUnpackNode firstVTS = (VectorUnpackNode) first;
+            final List<VectorExtractNode> nodes = inputs().snapshot().stream()
+                    .map(x -> (VectorExtractNode) x)
+                    .sorted(Comparator.comparingInt(VectorExtractNode::index))
+                    .collect(Collectors.toList());
 
-            replaceAtUsages(firstVTS.value);
+            // Ensure presence of zero
+            if (nodes.get(0).index() != 0) {
+                return this;
+            }
+
+            // Ensure there are no gaps
+            int lastIndex = 0;
+            for (int i = 1; i < nodes.size(); i++) {
+                if (nodes.get(i).index() - lastIndex > 1) {
+                    return this;
+                }
+                lastIndex = i;
+            }
+
+            replaceAtUsages(vectorValue);
+            for (VectorExtractNode node : nodes) {
+                if (node.getUsageCount() == 1 && node.getUsageAt(0) == this) {
+                    node.safeDelete();
+                }
+            }
 
             return null; // to delete the current node
         }
