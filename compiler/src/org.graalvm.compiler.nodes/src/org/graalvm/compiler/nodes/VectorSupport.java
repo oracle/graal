@@ -7,6 +7,7 @@ import org.graalvm.compiler.debug.GraalError;
 import org.graalvm.compiler.graph.Node;
 import org.graalvm.compiler.graph.NodeClass;
 import org.graalvm.compiler.graph.NodeInputList;
+import org.graalvm.compiler.graph.iterators.NodePredicate;
 import org.graalvm.compiler.graph.spi.Canonicalizable;
 import org.graalvm.compiler.graph.spi.CanonicalizerTool;
 import org.graalvm.compiler.nodeinfo.NodeInfo;
@@ -24,8 +25,14 @@ public final class VectorSupport {
 
     // TODO: Use these for packing
 
+    /**
+     * This node is a placeholder node that is either removed by a corresponding pack (no-op)
+     *  or replaced with nodes for each access to a vector element for the given value.
+     *
+     *  This node is not LIR lowerable and must be removed during canonicalization.
+     */
     @NodeInfo
-    public static final class VectorUnpackNode extends FloatingNode /* implements LIRLowerable */{
+    public static final class VectorUnpackNode extends FloatingNode implements Canonicalizable {
 
         public static final NodeClass<VectorUnpackNode> TYPE = NodeClass.create(VectorUnpackNode.class);
 
@@ -48,6 +55,71 @@ public final class VectorSupport {
         public boolean verify() {
             assertTrue(value.isVector(), "VectorUnpackNode requires a vector ValueNode input");
             return super.verify();
+        }
+
+        @Override
+        public Node canonical(CanonicalizerTool tool) {
+            if (usages().isEmpty()) {
+                return null;
+            }
+
+            // if all usages are the same vector unpack node, let pack canonicalize
+            final Node first = usages().first();
+            final boolean allEqual = StreamSupport.stream(usages().spliterator(), false).allMatch(first::equals);
+
+            if (allEqual && !(first instanceof VectorPackNode)) {
+                return this;
+            }
+
+            // otherwise, split this packing node
+            final List<Node> usages = usages().snapshot();
+            for (Node usage : usages) {
+                final VectorExtractNode extractNode = new VectorExtractNode(stamp, value);
+                // this should be fine later == init with specific index
+                // how do we figure out the index?
+                graph().addWithoutUnique(extractNode);
+
+                // TODO: force a single replacement until we have indices THIS IS REAL HACKY
+                final int[] rc = { 0 };
+                replaceAtMatchingUsages(extractNode, n -> n == usage && rc[0]++ == 0);
+            }
+
+            return null;
+        }
+    }
+
+    /**
+     * This node is a node whose input is a vector value and whose output is a scalar element from
+     *  that vector.
+     */
+    @NodeInfo
+    public static final class VectorExtractNode extends FloatingNode implements LIRLowerable {
+        public static final NodeClass<VectorExtractNode> TYPE = NodeClass.create(VectorExtractNode.class);
+
+        @Input private ValueNode value;
+
+        public VectorExtractNode(Stamp stamp, ValueNode value) {
+            this(TYPE, stamp, value);
+        }
+
+        private VectorExtractNode(NodeClass<? extends VectorExtractNode> c, Stamp stamp, ValueNode value) {
+            super(TYPE, stamp);
+            this.value = value;
+        }
+
+        public ValueNode value() {
+            return value;
+        }
+
+        @Override
+        public boolean verify() {
+            assertTrue(value.isVector(), "VectorExtractNode requires a vector ValueNode input");
+            return super.verify();
+        }
+
+        @Override
+        public void generate(NodeLIRBuilderTool gen) {
+            throw GraalError.unimplemented("vector extraction not yet implemented");
         }
     }
 
