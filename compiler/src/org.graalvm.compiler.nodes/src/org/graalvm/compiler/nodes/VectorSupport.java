@@ -3,6 +3,7 @@ package org.graalvm.compiler.nodes;
 import jdk.vm.ci.meta.PrimitiveConstant;
 import org.graalvm.compiler.core.common.LIRKind;
 import org.graalvm.compiler.core.common.type.Stamp;
+import org.graalvm.compiler.core.common.type.StampFactory;
 import org.graalvm.compiler.debug.GraalError;
 import org.graalvm.compiler.graph.Node;
 import org.graalvm.compiler.graph.NodeClass;
@@ -63,7 +64,8 @@ public final class VectorSupport {
 
         @Override
         public void generate(NodeLIRBuilderTool gen) {
-            throw GraalError.unimplemented("vector extraction not yet implemented");
+            // TODO: don't hardcode for integers
+            gen.setResult(this, gen.getLIRGeneratorTool().emitVectorExtract(gen.getLIRGeneratorTool().getLIRKind(StampFactory.intValue()), gen.operand(vectorValue), index));
         }
     }
 

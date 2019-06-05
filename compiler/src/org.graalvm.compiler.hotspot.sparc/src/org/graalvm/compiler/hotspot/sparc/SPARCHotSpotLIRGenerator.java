@@ -404,6 +404,11 @@ public class SPARCHotSpotLIRGenerator extends SPARCLIRGenerator implements HotSp
         throw GraalError.unimplemented();
     }
 
+    @Override
+    public Variable emitVectorExtract(LIRKind elementKind, Value vector, int index) {
+        throw GraalError.unimplemented();
+    }
+
     public void setDebugInfoBuilder(HotSpotDebugInfoBuilder debugInfoBuilder) {
         this.debugInfoBuilder = debugInfoBuilder;
     }

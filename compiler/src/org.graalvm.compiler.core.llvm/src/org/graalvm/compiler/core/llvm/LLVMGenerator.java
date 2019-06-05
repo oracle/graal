@@ -1041,6 +1041,11 @@ public class LLVMGenerator implements LIRGeneratorTool {
       throw unimplemented();
     }
 
+    @Override
+    public Variable emitVectorExtract(LIRKind elementKind, Value vector, int index) {
+        throw unimplemented();
+    }
+
     public LLVMGenerationResult getLLVMResult() {
         return generationResult;
     }

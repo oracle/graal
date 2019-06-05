@@ -1,10 +1,11 @@
-package org.graalvm.compiler.lir.amd64;
+package org.graalvm.compiler.lir.amd64.vector;
 
 import jdk.vm.ci.meta.AllocatableValue;
 import jdk.vm.ci.meta.PlatformKind;
 import org.graalvm.compiler.asm.amd64.AMD64Address;
 import org.graalvm.compiler.asm.amd64.AMD64MacroAssembler;
 import org.graalvm.compiler.lir.LIRInstructionClass;
+import org.graalvm.compiler.lir.amd64.AMD64LIRInstruction;
 import org.graalvm.compiler.lir.asm.CompilationResultBuilder;
 
 import java.nio.ByteBuffer;
@@ -17,7 +18,7 @@ public class AMD64Packing {
 
     public static final class PackConstantsOp extends AMD64LIRInstruction {
 
-        private static final LIRInstructionClass<PackConstantsOp> TYPE = LIRInstructionClass.create(PackConstantsOp.class);
+        public static final LIRInstructionClass<PackConstantsOp> TYPE = LIRInstructionClass.create(PackConstantsOp.class);
 
         private final ByteBuffer byteBuffer;
 

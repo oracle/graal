@@ -89,12 +89,13 @@ import org.graalvm.compiler.lir.amd64.AMD64Move;
 import org.graalvm.compiler.lir.amd64.AMD64Move.CompareAndSwapOp;
 import org.graalvm.compiler.lir.amd64.AMD64Move.MembarOp;
 import org.graalvm.compiler.lir.amd64.AMD64Move.StackLeaOp;
-import org.graalvm.compiler.lir.amd64.AMD64Packing;
+import org.graalvm.compiler.lir.amd64.vector.AMD64Packing;
 import org.graalvm.compiler.lir.amd64.AMD64PauseOp;
 import org.graalvm.compiler.lir.amd64.AMD64StringLatin1InflateOp;
 import org.graalvm.compiler.lir.amd64.AMD64StringUTF16CompressOp;
 import org.graalvm.compiler.lir.amd64.AMD64ZapRegistersOp;
 import org.graalvm.compiler.lir.amd64.AMD64ZapStackOp;
+import org.graalvm.compiler.lir.amd64.vector.AMD64VectorShuffle;
 import org.graalvm.compiler.lir.gen.LIRGenerationResult;
 import org.graalvm.compiler.lir.gen.LIRGenerator;
 import org.graalvm.compiler.lir.hashing.Hasher;
@@ -742,6 +743,13 @@ public abstract class AMD64LIRGenerator extends LIRGenerator {
     public Variable emitPackConst(LIRKind resultKind, ByteBuffer serializedValues) {
         Variable result = newVariable(resultKind);
         append(new AMD64Packing.PackConstantsOp(asAllocatable(result), serializedValues));
+        return result;
+    }
+
+    @Override
+    public Variable emitVectorExtract(LIRKind elementKind, Value vector, int index) {
+        Variable result = newVariable(elementKind);
+        append(new AMD64VectorShuffle.ExtractIntOp(asAllocatable(result), asAllocatable(vector), index));
         return result;
     }
 

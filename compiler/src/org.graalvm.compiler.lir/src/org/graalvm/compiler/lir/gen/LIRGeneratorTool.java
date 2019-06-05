@@ -349,4 +349,6 @@ public interface LIRGeneratorTool extends DiagnosticLIRGeneratorTool, ValueKindF
     }
     
     Variable emitPackConst(LIRKind resultKind, ByteBuffer serializedValues);
+
+    Variable emitVectorExtract(LIRKind elementKind, Value vector, int index);
 }
