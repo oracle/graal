@@ -48,13 +48,13 @@ public class WasmIfNode extends WasmNode {
     }
 
     @Override
-    public void execute(VirtualFrame frame) {
+    public int execute(VirtualFrame frame) {
         int stackPointer = initialStackPointer - 1;
         int condition = popInt(frame, stackPointer);
         if (condition != 0) {
-            trueBranch.execute(frame);
+            return trueBranch.execute(frame);
         } else {
-            falseBranch.execute(frame);
+            return falseBranch.execute(frame);
         }
     }
 

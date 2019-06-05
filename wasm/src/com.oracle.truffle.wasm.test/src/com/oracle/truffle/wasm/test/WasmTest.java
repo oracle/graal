@@ -276,6 +276,9 @@ public abstract class WasmTest {
                                     expected(100L)),
                     test("(module (func (result i64) (local $l0 i32) i32.const 1 if $l0 i32.const 42 drop end i64.const 100))",
                                     expected(100L)),
+                    test("(module (func (result i32) block $B0 (result i32) i32.const 42 block $B1 (result i32) i32.const 12 br $B1 i32.const 24 i32.add end i32.sub end))", expected(30)),
+                    test("(module (func (result i32) block $B0 (result i32) i32.const 42 block $B1 (result i32) i32.const 12 block $B2 (result i32) i32.const 8 br $B0 end i32.add end i32.add end))", expected(8)),
+                    test("(module (func (result i32) block $B0 (result i32) block $B1 (result i32) i32.const 12 br $B1 i32.const 24 i32.add end block $B2 (result i32) i32.const 2 br $B2 i32.const 1 i32.add end i32.sub end))", expected(10)),
     };
 
     private static TestElement test(String program, TestData data) {

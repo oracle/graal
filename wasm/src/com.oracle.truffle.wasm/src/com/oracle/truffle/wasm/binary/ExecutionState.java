@@ -37,12 +37,14 @@ public class ExecutionState {
     private int maxStackSize;
     private ByteArrayList byteConstants;
     private IntArrayList intConstants;
+    private IntArrayList stackStates;
 
     public ExecutionState() {
         this.stackSize = 0;
         this.maxStackSize = 0;
         this.byteConstants = new ByteArrayList();
         this.intConstants = new IntArrayList();
+        this.stackStates = new IntArrayList();
     }
 
     public void push() {
@@ -60,6 +62,18 @@ public class ExecutionState {
 
     public void useIntConstant(int constant) {
         intConstants.add(constant);
+    }
+
+    public void pushStackState() {
+        stackStates.add(stackSize);
+    }
+
+    public void popStackState() {
+        stackStates.popBack();
+    }
+
+    public int getStackState(int level) {
+        return stackStates.get(stackStates.size() - level - 1);
     }
 
     public int stackSize() {

@@ -40,6 +40,7 @@ public class WasmCodeEntry {
     @CompilationFinal(dimensions = 1) private FrameSlot[] stackSlots;
     @CompilationFinal(dimensions = 1) private byte[] localTypes;
     @CompilationFinal(dimensions = 1) private byte[] byteConstants;
+    @CompilationFinal(dimensions = 1) private int[] intConstants;
 
     public WasmCodeEntry(byte[] data) {
         this.data = data;
@@ -47,6 +48,7 @@ public class WasmCodeEntry {
         this.stackSlots = null;
         this.localTypes = null;
         this.byteConstants = null;
+        this.intConstants = null;
     }
 
     public byte[] data() {
@@ -101,12 +103,20 @@ public class WasmCodeEntry {
         return localTypes[index];
     }
 
-    public byte[] byteConstants() {
-        return byteConstants;
+    public byte byteConstant(int index) {
+        return byteConstants[index];
     }
 
     public void setByteConstants(byte[] byteConstants) {
         this.byteConstants = byteConstants;
+    }
+
+    public int intConstant(int index) {
+        return intConstants[index];
+    }
+
+    public void setIntConstants(int[] intConstants) {
+        this.intConstants = intConstants;
     }
 
     public int numLocals() {

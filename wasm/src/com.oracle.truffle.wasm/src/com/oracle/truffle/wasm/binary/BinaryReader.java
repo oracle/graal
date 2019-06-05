@@ -31,6 +31,7 @@ package com.oracle.truffle.wasm.binary;
 
 
 import static com.oracle.truffle.wasm.binary.Instructions.BLOCK;
+import static com.oracle.truffle.wasm.binary.Instructions.BR;
 import static com.oracle.truffle.wasm.binary.Instructions.DROP;
 import static com.oracle.truffle.wasm.binary.Instructions.ELSE;
 import static com.oracle.truffle.wasm.binary.Instructions.END;
@@ -86,7 +87,18 @@ import static com.oracle.truffle.wasm.binary.Instructions.I64_CONST;
 import static com.oracle.truffle.wasm.binary.Instructions.I64_CTZ;
 import static com.oracle.truffle.wasm.binary.Instructions.I64_DIV_S;
 import static com.oracle.truffle.wasm.binary.Instructions.I64_DIV_U;
+import static com.oracle.truffle.wasm.binary.Instructions.I64_EQ;
+import static com.oracle.truffle.wasm.binary.Instructions.I64_EQZ;
+import static com.oracle.truffle.wasm.binary.Instructions.I64_GE_S;
+import static com.oracle.truffle.wasm.binary.Instructions.I64_GE_U;
+import static com.oracle.truffle.wasm.binary.Instructions.I64_GT_S;
+import static com.oracle.truffle.wasm.binary.Instructions.I64_GT_U;
+import static com.oracle.truffle.wasm.binary.Instructions.I64_LE_S;
+import static com.oracle.truffle.wasm.binary.Instructions.I64_LE_U;
+import static com.oracle.truffle.wasm.binary.Instructions.I64_LT_S;
+import static com.oracle.truffle.wasm.binary.Instructions.I64_LT_U;
 import static com.oracle.truffle.wasm.binary.Instructions.I64_MUL;
+import static com.oracle.truffle.wasm.binary.Instructions.I64_NE;
 import static com.oracle.truffle.wasm.binary.Instructions.I64_OR;
 import static com.oracle.truffle.wasm.binary.Instructions.I64_POPCNT;
 import static com.oracle.truffle.wasm.binary.Instructions.I64_REM_S;
@@ -102,17 +114,6 @@ import static com.oracle.truffle.wasm.binary.Instructions.IF;
 import static com.oracle.truffle.wasm.binary.Instructions.LOCAL_GET;
 import static com.oracle.truffle.wasm.binary.Instructions.LOCAL_SET;
 import static com.oracle.truffle.wasm.binary.Instructions.LOCAL_TEE;
-import static com.oracle.truffle.wasm.binary.Instructions.I64_EQ;
-import static com.oracle.truffle.wasm.binary.Instructions.I64_EQZ;
-import static com.oracle.truffle.wasm.binary.Instructions.I64_GE_S;
-import static com.oracle.truffle.wasm.binary.Instructions.I64_GE_U;
-import static com.oracle.truffle.wasm.binary.Instructions.I64_GT_S;
-import static com.oracle.truffle.wasm.binary.Instructions.I64_GT_U;
-import static com.oracle.truffle.wasm.binary.Instructions.I64_LE_S;
-import static com.oracle.truffle.wasm.binary.Instructions.I64_LE_U;
-import static com.oracle.truffle.wasm.binary.Instructions.I64_LT_S;
-import static com.oracle.truffle.wasm.binary.Instructions.I64_LT_U;
-import static com.oracle.truffle.wasm.binary.Instructions.I64_NE;
 import static com.oracle.truffle.wasm.binary.Instructions.NOP;
 import static com.oracle.truffle.wasm.binary.Instructions.UNREACHABLE;
 import static com.oracle.truffle.wasm.binary.Sections.CODE;
@@ -275,6 +276,7 @@ public class BinaryReader extends BinaryStreamReader {
 
         /* Initialize the Truffle-related components required for execution. */
         codeEntry.setByteConstants(state.byteConstants());
+        codeEntry.setIntConstants(state.intConstants());
         codeEntry.initStackSlots(rootNode.getFrameDescriptor(), state.maxStackSize());
         RootCallTarget callTarget = Truffle.getRuntime().createCallTarget(rootNode);
         wasmModule.symbolTable().function(funcIndex).setCallTarget(callTarget);
@@ -311,11 +313,12 @@ public class BinaryReader extends BinaryStreamReader {
 
     private WasmBlockNode readBlock(WasmCodeEntry codeEntry, ExecutionState state, byte returnTypeId) {
         ArrayList<WasmNode> nestedControlTable = new ArrayList<>();
-        int opcode;
         int startStackSize = state.stackSize();
         int startOffset = offset();
         int startByteConstantOffset = state.byteConstantOffset();
-        WasmBlockNode currentBlock = new WasmBlockNode(codeEntry, startOffset, returnTypeId, state.stackSize(), state.byteConstantOffset());
+        int startIntConstantOffset = state.intConstantOffset();
+        WasmBlockNode currentBlock = new WasmBlockNode(codeEntry, startOffset, returnTypeId, startStackSize, startByteConstantOffset, startIntConstantOffset);
+        int opcode;
         do {
             opcode = read1() & 0xFF;
             switch (opcode) {
@@ -323,19 +326,30 @@ public class BinaryReader extends BinaryStreamReader {
                 case NOP:
                     break;
                 case BLOCK: {
+                    state.pushStackState();
                     WasmBlockNode nestedBlock = readBlock(codeEntry, state);
                     nestedControlTable.add(nestedBlock);
+                    state.popStackState();
                     break;
                 }
                 case IF: {
+                    state.pushStackState();
                     WasmIfNode ifNode = readIf(codeEntry, state);
                     nestedControlTable.add(ifNode);
+                    state.popStackState();
                     break;
                 }
                 case ELSE:
                     break;
                 case END:
                     break;
+                case BR: {
+                    Assert.assertEquals(state.stackSize() - startStackSize, currentBlock.returnTypeLength(), "Invalid stack state on BR instruction");
+                    int unwindLevel = readLabelIndex(bytesConsumed);
+                    state.useByteConstant(bytesConsumed[0]);
+                    state.useIntConstant(state.getStackState(unwindLevel));
+                    break;
+                }
                 case DROP:
                     state.pop();
                     break;
@@ -504,6 +518,7 @@ public class BinaryReader extends BinaryStreamReader {
         currentBlock.nestedControlTable = nestedControlTable.toArray(new WasmNode[nestedControlTable.size()]);
         currentBlock.setByteLength(offset() - startOffset);
         currentBlock.setByteConstantLength(state.byteConstantOffset() - startByteConstantOffset);
+        currentBlock.setIntConstantLength(state.intConstantOffset() - startIntConstantOffset);
         checkValidStateOnBlockExit(returnTypeId, state, startStackSize);
         return currentBlock;
     }
@@ -603,6 +618,14 @@ public class BinaryReader extends BinaryStreamReader {
     }
 
     public int readLocalIndex(byte[] bytesConsumed) {
+        return readUnsignedInt32(bytesConsumed);
+    }
+
+    public int readLabelIndex() {
+        return readUnsignedInt32();
+    }
+
+    public int readLabelIndex(byte[] bytesConsumed) {
         return readUnsignedInt32(bytesConsumed);
     }
 }

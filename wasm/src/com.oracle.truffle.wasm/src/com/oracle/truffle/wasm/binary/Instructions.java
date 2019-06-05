@@ -33,11 +33,21 @@ public class Instructions {
 
     public static final int UNREACHABLE = 0x00;
     public static final int NOP = 0x01;
+
     public static final int BLOCK = 0x02;
     public static final int LOOP = 0x03;
     public static final int IF = 0x04;
     public static final int ELSE = 0x05;
     public static final int END = 0x0B;
+
+    public static final int BR = 0x0C;
+    public static final int BR_IF = 0x0D;
+    public static final int BR_TABLE = 0x0E;
+
+    public static final int RETURN = 0x0F;
+    public static final int CALL = 0x10;
+    public static final int CALL_INDIRECT = 0x11;
+
 
     public static final int DROP = 0x1A;
 
