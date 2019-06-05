@@ -65,6 +65,15 @@ public abstract class ClassRegistry implements ContextAccess {
         return loadKlass(type, null);
     }
 
+    /**
+     * Queries a registry to load a Klass for us.
+     * 
+     * @param type the symbolic reference to the Klass we want to load
+     * @param instigator Should the loading of a Klass require loading other Klasses (superKlass for
+     *            example), this argument is the symbolic reference to the first Klass we attempted
+     *            to load through the whole loading chain.
+     * @return The Klass corresponding to given type
+     */
     protected abstract Klass loadKlass(Symbol<Type> type, Symbol<Type> instigator);
 
     public Klass findLoadedKlass(Symbol<Type> type) {

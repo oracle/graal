@@ -342,6 +342,15 @@ public final class Method implements TruffleObject, ModifiersProvider, ContextAc
 
                         if (callTarget == null) {
                             if (getDeclaringKlass() == getMeta().MethodHandle && (getName() == Name.invokeExact || getName() == Name.invoke)) {
+                                // Happens only when trying to obtain call target of
+                                // MethodHandle.invoke(Object... args), or
+                                // MethodHandle.invokeExact(Object... args).
+                                //
+                                // The method was obtained through a regular lookup (since it is in
+                                // the declared method). Delegate it to a polysignature method
+                                // lookup.
+                                //
+                                // Redundant callTarget assignment. Better sure than sorry.
                                 this.callTarget = declaringKlass.lookupPolysigMethod(getName(), getRawSignature()).getCallTarget();
                             } else {
                                 System.err.println("Failed to link native method: " + getDeclaringKlass().getType() + "." + getName() + " -> " + getRawSignature());
@@ -350,7 +359,7 @@ public final class Method implements TruffleObject, ModifiersProvider, ContextAc
                         }
                     } else {
                         if (codeAttribute == null) {
-                            getMeta().throwExWithMessage(AbstractMethodError.class, "Calling abstract method: " + getDeclaringKlass().getType() + "." + getName() + " -> " + getRawSignature());
+                            throw getMeta().throwExWithMessage(AbstractMethodError.class, "Calling abstract method: " + getDeclaringKlass().getType() + "." + getName() + " -> " + getRawSignature());
                         }
                         FrameDescriptor frameDescriptor = initFrameDescriptor(getMaxLocals() + getMaxStackSize());
                         EspressoRootNode rootNode = new EspressoRootNode(this, frameDescriptor, new BytecodeNode(this, frameDescriptor));

@@ -29,6 +29,7 @@ import java.util.List;
 import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.CompilerDirectives.CompilationFinal;
 import com.oracle.truffle.espresso.bytecode.BytecodeStream;
+import com.oracle.truffle.api.nodes.ExplodeLoop;
 import com.oracle.truffle.espresso.classfile.ConstantValueAttribute;
 import com.oracle.truffle.espresso.classfile.EnclosingMethodAttribute;
 import com.oracle.truffle.espresso.classfile.InnerClassesAttribute;
@@ -194,10 +195,11 @@ public final class ObjectKlass extends Klass {
         return isPrepared() || isInitialized();
     }
 
+    @ExplodeLoop
     private synchronized void actualInit() {
         if (!(isInitializedOrPrepared())) { // Check under lock
             if (initState == ERRONEOUS) {
-                throw new NoClassDefFoundError("Erroneous class: " + getName());
+                throw getMeta().throwExWithMessage(NoClassDefFoundError.class, "Erroneous class: " + getName());
             }
             initState = PREPARED;
             if (getSuperKlass() != null) {
@@ -512,10 +514,11 @@ public final class ObjectKlass extends Klass {
             for (Method m : declaredMethods) {
                 try {
                     MethodVerifier.verify(m);
-                } catch (VerifyError e) {
+                } catch (VerifyError | ClassFormatError | IncompatibleClassChangeError | NoClassDefFoundError e) {
                     System.err.println(getType() + "." + m.getName());
                     new BytecodeStream(m.getCodeAttribute().getCode()).printBytecode(this);
-                    throw e;
+                    setErroneous();
+                    throw getMeta().throwExWithMessage(e.getClass(), e.getMessage());
                 }
             }
 

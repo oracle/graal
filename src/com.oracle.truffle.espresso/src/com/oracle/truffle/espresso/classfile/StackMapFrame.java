@@ -51,7 +51,7 @@ public abstract class StackMapFrame {
     }
 
     public VerificationTypeInfo[] getLocals() {
-        throw EspressoError.shouldNotReachHere("Asking for stack of incompatible stackMap frame");
+        throw EspressoError.shouldNotReachHere("Asking for locals of incompatible stackMap frame");
     }
 
     public abstract int getOffset();

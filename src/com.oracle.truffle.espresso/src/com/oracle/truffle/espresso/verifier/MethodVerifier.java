@@ -469,6 +469,10 @@ public final class MethodVerifier implements ContextAccess {
      * Utility for ease of use in Espresso
      *
      * @param m the method to verify
+     * 
+     * @throws VerifyError
+     * @throws NoClassDefFoundError
+     * @throws ClassFormatError
      */
     public static void verify(Method m) {
         CodeAttribute codeAttribute = m.getCodeAttribute();

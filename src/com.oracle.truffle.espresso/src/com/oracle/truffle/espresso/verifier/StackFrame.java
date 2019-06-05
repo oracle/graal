@@ -8,7 +8,7 @@ import static com.oracle.truffle.espresso.verifier.MethodVerifier.Long;
 import static com.oracle.truffle.espresso.verifier.MethodVerifier.Null;
 import static com.oracle.truffle.espresso.verifier.MethodVerifier.isType2;
 
-import com.oracle.truffle.espresso.descriptors.Symbol;
+import com.oracle.truffle.espresso.descriptors.Symbol.Name;
 
 class StackFrame {
     final Operand[] stack;
@@ -406,7 +406,7 @@ class Locals {
         this.registers = new Operand[mv.getMaxLocals()];
         int index = 0;
         if (!mv.isStatic()) {
-            if (mv.getMethodName() == Symbol.Name.INIT) {
+            if (mv.getMethodName() == Name.INIT) {
                 registers[index++] = new UninitReferenceOperand(mv.getThisKlass(), mv.getThisKlass());
             } else {
                 registers[index++] = new ReferenceOperand(mv.getThisKlass(), mv.getThisKlass());
