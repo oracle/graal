@@ -64,8 +64,9 @@ mx_sdk.register_graalvm_component(mx_sdk.GraalVmJdkComponent(
     dir_name='installer',
     license_files=[],
     third_party_license_files=[],
+    jar_distributions=['vm:INSTALLER'],
     support_distributions=['vm:INSTALLER_GRAALVM_SUPPORT'],
-    provided_executables=['bin/gu'],
+    provided_executables=['bin/<cmd:gu>'],
 ))
 
 mx_sdk.register_graalvm_component(mx_sdk.GraalVmComponent(

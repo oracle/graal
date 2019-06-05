@@ -3,7 +3,7 @@ suite = {
     "version" : "20.0.0-beta.02",
     "release" : False,
     "groupId" : "org.graalvm",
-    "mxversion": "5.216.0",
+    "mxversion": "5.219.3",
     "defaultLicense" : "GPLv2-CPE",
     "imports": {
         "suites": [
@@ -145,10 +145,7 @@ suite = {
             "platformDependent": True,
             "description": "GraalVM Installer support distribution for the GraalVM",
             "layout": {
-                "./": [
-                    "dependency:vm:INSTALLER",
-                ],
-                "bin/": "file:mx.vm/gu",
+                "bin/": "file:mx.vm/<cmd:gu>",
                 "components/polyglot/.registry" : "string:",
             },
             "maven": False,
