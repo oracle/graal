@@ -1,8 +1,6 @@
 package org.graalvm.compiler.nodes;
 
-import jdk.vm.ci.meta.Constant;
 import jdk.vm.ci.meta.PrimitiveConstant;
-import jdk.vm.ci.meta.SerializableConstant;
 import org.graalvm.compiler.core.common.LIRKind;
 import org.graalvm.compiler.core.common.type.Stamp;
 import org.graalvm.compiler.debug.GraalError;

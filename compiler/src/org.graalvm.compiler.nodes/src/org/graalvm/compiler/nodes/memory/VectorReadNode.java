@@ -13,7 +13,7 @@ import org.graalvm.word.LocationIdentity;
 
 import java.util.List;
 
-@NodeInfo(nameTemplate = "VectorRead#{p#locations/s}")
+@NodeInfo(nameTemplate = "VectorRead#{p#locations/s}", shortName = "VectorRead")
 public class VectorReadNode extends VectorFixedAccessNode implements LIRLowerable {
 
     public static final NodeClass<VectorReadNode> TYPE = NodeClass.create(VectorReadNode.class);
