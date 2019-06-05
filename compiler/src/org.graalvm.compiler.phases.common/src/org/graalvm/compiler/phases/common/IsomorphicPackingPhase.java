@@ -719,7 +719,11 @@ public final class IsomorphicPackingPhase extends BasePhase<LowTierContext> {
                     if (nodeToPackMap.containsKey(node)) {
                         final Pack<Node> pack = nodeToPackMap.get(node);
                         // Have the dependencies of statements in the pack been scheduled?
-                        if (pack.getElements().stream().allMatch(n -> deps_scheduled(n, scheduled, n == pack.getLeft()))) {
+
+                        // Use control flow of earliest node in chain
+                        final Node firstInCFPack = unscheduled.stream().filter(x -> pack.getElements().contains(x)).findFirst().get();
+
+                        if (pack.getElements().stream().allMatch(n -> deps_scheduled(n, scheduled, n == firstInCFPack))) {
                             // Remove statements from unscheduled
                             scheduled.addAll(pack.getElements());
                             unscheduled.removeAll(pack.getElements());
@@ -757,6 +761,10 @@ public final class IsomorphicPackingPhase extends BasePhase<LowTierContext> {
                 final VectorReadNode vectorRead = VectorReadNode.fromPackElements(nodes);
 
                 final VectorUnpackNode vts = new VectorUnpackNode(vectorRead.stamp(NodeView.DEFAULT).unrestricted(), vectorRead);
+
+                for (ReadNode node : nodes) {
+                    node.setNext(null);
+                }
                 for (ReadNode node : nodes) {
                     node.replaceAtUsagesAndDelete(vts);
                 }
@@ -777,6 +785,9 @@ public final class IsomorphicPackingPhase extends BasePhase<LowTierContext> {
                 final VectorPackNode stv = new VectorPackNode(nodes.get(0).getAccessStamp().unrestricted(), nodes.stream().map(AbstractWriteNode::value).collect(Collectors.toList()));
                 final VectorWriteNode vectorWrite = VectorWriteNode.fromPackElements(nodes, stv);
 
+                for (WriteNode node : nodes) {
+                  node.setNext(null);
+                }
                 for (WriteNode node : nodes) {
                     node.safeDelete();
                 }
@@ -799,6 +810,7 @@ public final class IsomorphicPackingPhase extends BasePhase<LowTierContext> {
                 final VectorPackNode stvY = new VectorPackNode(nodes.get(0).getY().stamp(NodeView.DEFAULT).unrestricted(), nodes.stream().map(BinaryNode::getY).collect(Collectors.toList()));
                 final VectorAddNode vector = new VectorAddNode(stvX, stvY);
                 final VectorUnpackNode vts = new VectorUnpackNode(nodes.get(0).stamp(NodeView.DEFAULT), vector);
+
                 for (AddNode node : nodes) {
                     node.replaceAtUsagesAndDelete(vts);
                 }
