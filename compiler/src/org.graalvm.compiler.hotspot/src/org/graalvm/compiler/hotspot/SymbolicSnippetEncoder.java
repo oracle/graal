@@ -1055,7 +1055,7 @@ public class SymbolicSnippetEncoder {
         }
 
         @Override
-        protected boolean tryInvocationPlugin(CallTargetNode.InvokeKind invokeKind, ValueNode[] args, ResolvedJavaMethod targetMethod, JavaKind resultType, JavaType returnType) {
+        protected boolean tryInvocationPlugin(CallTargetNode.InvokeKind invokeKind, ValueNode[] args, ResolvedJavaMethod targetMethod, JavaKind resultType) {
             if (intrinsicContext != null && intrinsicContext.isCallToOriginal(targetMethod)) {
                 return false;
             }
@@ -1063,7 +1063,7 @@ public class SymbolicSnippetEncoder {
                 // Always defer Fold until decode time but NodeIntrinsics may fold if they are able.
                 return false;
             }
-            return super.tryInvocationPlugin(invokeKind, args, targetMethod, resultType, returnType);
+            return super.tryInvocationPlugin(invokeKind, args, targetMethod, resultType);
         }
     }
 }
