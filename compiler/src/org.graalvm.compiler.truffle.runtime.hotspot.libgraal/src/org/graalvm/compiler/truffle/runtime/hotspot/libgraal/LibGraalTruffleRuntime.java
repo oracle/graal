@@ -99,7 +99,6 @@ final class LibGraalTruffleRuntime extends AbstractHotSpotTruffleRuntime {
     @SuppressWarnings({"unused", "try"})
     private static void cleanNativeReferences() {
         try (LibGraalScope scope = new LibGraalScope(HotSpotJVMCIRuntime.runtime())) {
-            SVMObject.cleanHandles();
             HotSpotToSVMCalls.cleanReferences(getIsolateThread());
         }
     }

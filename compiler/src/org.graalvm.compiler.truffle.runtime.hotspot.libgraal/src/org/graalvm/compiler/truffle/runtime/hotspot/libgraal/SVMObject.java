@@ -81,7 +81,7 @@ class SVMObject {
      * Processes {@link #CLEANERS_QUEUE} to release any handles whose {@link SVMObject} objects are
      * now unreachable.
      */
-    static void cleanHandles() {
+    private static void cleanHandles() {
         Cleaner cleaner;
         while ((cleaner = (Cleaner) CLEANERS_QUEUE.poll()) != null) {
             CLEANERS.remove(cleaner);
