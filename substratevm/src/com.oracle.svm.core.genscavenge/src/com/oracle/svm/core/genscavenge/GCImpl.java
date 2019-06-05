@@ -907,10 +907,32 @@ public class GCImpl implements GC {
      * on, and only put out one report per collection.
      */
     void possibleCollectionEpilogue(UnsignedWord requestingEpoch) {
-        if (requestingEpoch.belowThan(getCollectionEpoch()) && JavaThreads.currentJavaThreadInitialized()) {
-            SunMiscSupport.drainCleanerQueue();
-            visitWatchersReport();
+        if (requestingEpoch.aboveOrEqual(getCollectionEpoch())) {
+            /* No GC happened, so do not run any epilogue. */
+            return;
+
+        } else if (VMOperation.isInProgress()) {
+            /*
+             * We are inside a VMOperation where we are not allowed to do certain things, e.g.,
+             * perform a synchronization (because it can deadlock when a lock is held outside the
+             * VMOperation).
+             *
+             * Note that the GC operation we are running the epilogue for is no longer in progress,
+             * otherwise this check would always return.
+             */
+            return;
+
+        } else if (!JavaThreads.currentJavaThreadInitialized()) {
+            /*
+             * Too early in the attach sequence of a thread to do anything useful, e.g., perform a
+             * synchronization. Probably the allocation slow path for the first allocation of that
+             * thread caused this epilogue.
+             */
+            return;
         }
+
+        SunMiscSupport.drainCleanerQueue();
+        visitWatchersReport();
     }
 
     /* Collection counting. */
