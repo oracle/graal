@@ -32,7 +32,6 @@ import org.graalvm.compiler.nodes.StructuredGraph;
 import org.graalvm.compiler.truffle.compiler.SharedTruffleCompilerOptions;
 import org.graalvm.compiler.truffle.compiler.TruffleCompilerOptions;
 import org.graalvm.compiler.truffle.runtime.OptimizedCallTarget;
-import org.graalvm.compiler.truffle.runtime.OptimizedDirectCallNode;
 import org.graalvm.compiler.truffle.runtime.SharedTruffleRuntimeOptions;
 import org.graalvm.compiler.truffle.runtime.TruffleRuntimeOptions;
 import org.junit.After;
@@ -50,6 +49,7 @@ import com.oracle.truffle.api.frame.FrameSlot;
 import com.oracle.truffle.api.frame.FrameSlotKind;
 import com.oracle.truffle.api.frame.FrameUtil;
 import com.oracle.truffle.api.frame.VirtualFrame;
+import com.oracle.truffle.api.nodes.DirectCallNode;
 import com.oracle.truffle.api.nodes.ExplodeLoop;
 import com.oracle.truffle.api.nodes.RootNode;
 
@@ -259,7 +259,7 @@ public class NodeLimitTest extends PartialEvaluationTest {
     private static RootNode createRootNodeWithCall(final RootNode rootNode) {
         return new RootNode(null) {
 
-            @Child OptimizedDirectCallNode call = (OptimizedDirectCallNode) runtime.createDirectCallNode(runtime.createCallTarget(rootNode));
+            @Child DirectCallNode call = runtime.createDirectCallNode(runtime.createCallTarget(rootNode));
 
             @Override
             public Object execute(VirtualFrame frame) {
