@@ -38,6 +38,7 @@ import com.oracle.truffle.api.debug.DebugValue;
 import com.oracle.truffle.api.instrumentation.TruffleInstrument;
 import com.oracle.truffle.api.nodes.LanguageInfo;
 import com.oracle.truffle.tools.chromeinspector.InspectorExecutionContext;
+import com.oracle.truffle.tools.chromeinspector.LanguageChecks;
 import com.oracle.truffle.tools.chromeinspector.objects.NullObject;
 import com.oracle.truffle.tools.chromeinspector.types.TypeInfo.TYPE;
 
@@ -95,13 +96,19 @@ public final class RemoteObject {
         }
         PrintWriter err = context != null ? context.getErr() : null;
         this.typeInfo = TypeInfo.fromValue(debugValue, originalLanguage, err);
+        boolean readable = debugValue.isReadable();
         String toString;
         Object rawValue = null;
         String unserializable = null;
         boolean replicableRawValue = true;
         try {
-            toString = debugValue.as(String.class);
-            if (!typeInfo.isObject) {
+            if (readable) {
+                toString = debugValue.as(String.class);
+            } else {
+                toString = InspectorExecutionContext.VALUE_NOT_READABLE;
+                replicableRawValue = false;
+            }
+            if (readable && !typeInfo.isObject) {
                 if ("null".equals(typeInfo.subtype) && TYPE.OBJECT.getId().equals(typeInfo.type)) {
                     replicableRawValue = false;
                 } else if (TYPE.UNDEFINED.getId().equals(typeInfo.type)) {
@@ -145,7 +152,7 @@ public final class RemoteObject {
                 }
             }
         }
-        if (context != null && context.isCustomObjectFormatterEnabled()) {
+        if (readable && context != null && context.isCustomObjectFormatterEnabled()) {
             if (originalLanguage != null) {
                 try {
                     this.customPreview = CustomPreview.create(debugValue, originalLanguage, context);
@@ -235,6 +242,9 @@ public final class RemoteObject {
     }
 
     static String toString(DebugValue value, PrintWriter err) {
+        if (!value.isReadable()) {
+            return InspectorExecutionContext.VALUE_NOT_READABLE;
+        }
         try {
             return value.as(String.class);
         } catch (DebugException ex) {
@@ -254,8 +264,9 @@ public final class RemoteObject {
         JSONObject json = new JSONObject();
         DebugValue metaObject = getMetaObject(debugValue, null, err);
         boolean isObject = TypeInfo.isObject(debugValue, err);
+        boolean isJS = LanguageChecks.isJS(debugValue.getOriginalLanguage());
         String vtype = null;
-        if (metaObject != null) {
+        if (metaObject != null & isJS) {
             try {
                 Collection<DebugValue> properties = metaObject.getProperties();
                 if (properties != null) {
@@ -297,6 +308,9 @@ public final class RemoteObject {
     }
 
     private static Object createJSONValue(DebugValue debugValue, String[] unserializablePtr, PrintWriter err) {
+        if (!debugValue.isReadable()) {
+            return InspectorExecutionContext.VALUE_NOT_READABLE;
+        }
         if (debugValue.isArray()) {
             List<DebugValue> valueArray = debugValue.getArray();
             if (valueArray != null) {
