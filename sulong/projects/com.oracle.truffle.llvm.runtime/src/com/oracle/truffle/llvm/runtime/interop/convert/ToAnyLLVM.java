@@ -31,7 +31,6 @@ package com.oracle.truffle.llvm.runtime.interop.convert;
 
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.dsl.Specialization;
-import com.oracle.truffle.api.interop.TruffleObject;
 import com.oracle.truffle.api.interop.UnsupportedTypeException;
 import com.oracle.truffle.llvm.runtime.interop.LLVMInternalTruffleObject;
 import com.oracle.truffle.llvm.runtime.interop.LLVMTypedForeignObject;
@@ -96,7 +95,7 @@ public abstract class ToAnyLLVM extends ForeignToLLVM {
     }
 
     @Specialization
-    protected LLVMManagedPointer fromInternal(Object object) {
+    protected LLVMManagedPointer fromInternal(LLVMInternalTruffleObject object) {
         return LLVMManagedPointer.create(object);
     }
 
@@ -114,7 +113,7 @@ public abstract class ToAnyLLVM extends ForeignToLLVM {
             return value;
         } else if (value instanceof LLVMInternalTruffleObject) {
             return LLVMManagedPointer.create(value);
-        } else if (value instanceof TruffleObject && notLLVM(value)) {
+        } else if (notLLVM(value)) {
             LLVMTypedForeignObject typed = LLVMTypedForeignObject.createUnknown(value);
             return LLVMManagedPointer.create(typed);
         } else {
