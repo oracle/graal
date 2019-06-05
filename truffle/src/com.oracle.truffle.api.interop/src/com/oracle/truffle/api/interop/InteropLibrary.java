@@ -48,6 +48,7 @@ import static com.oracle.truffle.api.interop.AssertUtils.violationInvariant;
 import static com.oracle.truffle.api.interop.AssertUtils.violationPost;
 
 import com.oracle.truffle.api.CompilerDirectives;
+import com.oracle.truffle.api.impl.Accessor.EngineSupport;
 import com.oracle.truffle.api.interop.InteropLibrary.Asserts;
 import com.oracle.truffle.api.library.ExportLibrary;
 import com.oracle.truffle.api.library.GenerateLibrary;
@@ -996,7 +997,11 @@ public abstract class InteropLibrary extends Library {
         }
 
         private static boolean isMultiThreaded(Object receiver) {
-            return InteropAccessor.ACCESSOR.engineSupport().isMultiThreaded(receiver);
+            EngineSupport engine = InteropAccessor.ACCESSOR.engineSupport();
+            if (engine == null) {
+                return false;
+            }
+            return engine.isMultiThreaded(receiver);
         }
 
         @Override

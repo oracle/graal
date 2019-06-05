@@ -40,11 +40,18 @@
  */
 package com.oracle.truffle.api.dsl;
 
+import java.lang.annotation.ElementType;
+import java.lang.annotation.Retention;
+import java.lang.annotation.RetentionPolicy;
+import java.lang.annotation.Target;
+
 /**
  * Generates an uncached version of a node with specializations. Uncached versions of nodes don't
  * specialize and don't use any profiling state. This allows to store them statically and to use
  * them whenever no specialization/profiling is desired. The uncached version of the node is
  * accessible using a static method called <code>getUncached()</code> on the generated node.
+ * GenerateUncached is inherited to subclasses if {@link #inherit()} is set to <code>true</code>
+ * (default <code>false</code>).
  * <p>
  * The generated code for the uncached version is based on the specialization closure. The
  * specialization closure only includes specializations that were are not replaced by others. This,
@@ -102,6 +109,15 @@ package com.oracle.truffle.api.dsl;
  * @see Cached
  * @since 19.0
  */
+@Retention(RetentionPolicy.CLASS)
+@Target({ElementType.TYPE})
 public @interface GenerateUncached {
+
+    /**
+     * Inherits the semantics of the annotation to subclasses.
+     *
+     * @since 20.0.0 beta 1
+     */
+    boolean inherit() default false;
 
 }

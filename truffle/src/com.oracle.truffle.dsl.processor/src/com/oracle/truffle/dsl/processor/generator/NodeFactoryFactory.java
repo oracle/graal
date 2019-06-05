@@ -101,6 +101,7 @@ public class NodeFactoryFactory {
             clazz.add(createCreateGetExecutionSignature());
             clazz.add(createCreateGetNodeSignatures());
             clazz.add(createCreateNodeMethod());
+            clazz.addOptional(createGetUncached());
             clazz.add(createGetInstanceMethod(visibility));
             clazz.add(createInstanceConstant(clazz.asType()));
             List<ExecutableElement> constructors = GeneratorUtils.findUserConstructors(createdFactoryElement.asType());
@@ -167,6 +168,23 @@ public class NodeFactoryFactory {
         }
         builder.end();
 
+        builder.end();
+        return method;
+    }
+
+    private CodeExecutableElement createGetUncached() {
+        if (!node.isGenerateUncached()) {
+            return null;
+        }
+        CodeExecutableElement method = new CodeExecutableElement(modifiers(PUBLIC), node.getNodeType(), "getUncachedInstance");
+        String className = createdFactoryElement.getSimpleName().toString();
+        CodeTreeBuilder builder = method.createBuilder();
+        builder.startReturn();
+        if (node.isGenerateFactory()) {
+            builder.string(className).string(".").string("UNCACHED");
+        } else {
+            builder.string("UNCACHED");
+        }
         builder.end();
         return method;
     }
@@ -300,14 +318,16 @@ public class NodeFactoryFactory {
         method.setReturnType(node.getNodeType());
         CodeTreeBuilder body = method.createBuilder();
         body.startReturn();
+        TypeMirror type = NodeCodeGenerator.nodeType(node);
         if (node.hasErrors()) {
-            body.startNew(NodeCodeGenerator.nodeType(node));
+            body.startNew(type);
             for (VariableElement var : method.getParameters()) {
                 body.string(var.getSimpleName().toString());
             }
             body.end();
         } else {
-            body.string("UNCACHED");
+            TypeElement typeElement = ElementUtils.castTypeElement(type);
+            body.string(typeElement.getSimpleName().toString(), ".UNCACHED");
         }
         body.end();
         return method;

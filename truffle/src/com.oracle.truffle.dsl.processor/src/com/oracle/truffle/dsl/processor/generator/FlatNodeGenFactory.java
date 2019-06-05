@@ -1328,9 +1328,14 @@ public class FlatNodeGenFactory {
         final Collection<SpecializationData> allSpecializations = node.computeUncachedSpecializations(reachableSpecializations);
         final List<SpecializationData> compatibleSpecializations = filterCompatibleSpecializations(allSpecializations, forType);
 
-        CodeExecutableElement method = new CodeExecutableElement(modifiers(), forType.getReturnType(), forType.getName());
+        CodeExecutableElement method = createExecuteMethod(forType);
         FrameState frameState = FrameState.load(this, forType, Integer.MAX_VALUE, NodeExecutionMode.UNCACHED, method);
-        frameState.addParametersTo(method, Integer.MAX_VALUE);
+        if (forType.getMethod() == null) {
+            frameState.addParametersTo(method, Integer.MAX_VALUE, FRAME_VALUE);
+        } else {
+            renameOriginalParameters(forType, method, frameState);
+        }
+
         method.getAnnotationMirrors().add(new CodeAnnotationMirror(context.getDeclaredType(TruffleBoundary.class)));
 
         if (forType.getMethod() != null) {

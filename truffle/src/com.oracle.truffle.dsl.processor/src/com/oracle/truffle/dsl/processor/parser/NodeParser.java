@@ -317,7 +317,6 @@ public final class NodeParser extends AbstractParser<NodeData> {
         List<TypeElement> lookupTypes = collectSuperClasses(new ArrayList<TypeElement>(), templateType);
 
         NodeData node = parseNodeData(templateType, lookupTypes);
-        node.setGenerateUncached(findAnnotationMirror(node.getTemplateType(), GenerateUncached.class) != null);
 
         List<Element> members = loadMembers(templateType);
         // ensure the processed element has at least one @Specialization annotation.
@@ -987,7 +986,28 @@ public final class NodeParser extends AbstractParser<NodeData> {
             typeSystem = new TypeSystemData(context, templateType, null, true);
         }
         boolean useNodeFactory = findFirstAnnotation(typeHierarchy, GenerateNodeFactory.class) != null;
-        return new NodeData(context, templateType, typeSystem, useNodeFactory);
+
+        AnnotationMirror generateUncachedMirror = null;
+        boolean needsInherit = false;
+        for (Element element : typeHierarchy) {
+            AnnotationMirror mirror = findAnnotationMirror(processingEnv, element, GenerateUncached.class);
+            if (mirror != null) {
+                generateUncachedMirror = mirror;
+                break;
+            }
+            needsInherit = true;
+        }
+        boolean generateUncached;
+        if (generateUncachedMirror != null) {
+            if (needsInherit) {
+                generateUncached = ElementUtils.getAnnotationValue(Boolean.class, generateUncachedMirror, "inherit");
+            } else {
+                generateUncached = true;
+            }
+        } else {
+            generateUncached = false;
+        }
+        return new NodeData(context, templateType, typeSystem, useNodeFactory, generateUncached);
 
     }
 
