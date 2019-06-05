@@ -4,6 +4,8 @@ vm_extra_suites_no_fastr: "truffleruby,graalpython"
 vm_extra_suites: ${vm_extra_suites_no_fastr}",fastr"
 custom_vm_linux: {}
 custom_vm_darwin: {}
+vm_profiles: []
+collect_profiles: []
 
 vm_setup: {
   setup: [
