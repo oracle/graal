@@ -145,7 +145,9 @@ public class InliningData {
         OptionValues options = rootGraph.getOptions();
         if (method == null) {
             return "the method is not resolved";
-        } else if (method.isNative() && (!Intrinsify.getValue(options) || !context.getReplacements().hasSubstitution(method, invokeBci))) {
+        }
+        boolean intrinsifiable = Intrinsify.getValue(options) && context.getReplacements().hasSubstitution(method, invokeBci);
+        if (method.isNative() && !intrinsifiable) {
             return "it is a non-intrinsic native method";
         } else if (method.isAbstract()) {
             return "it is an abstract method";
@@ -155,7 +157,7 @@ public class InliningData {
             return "it is marked non-inlinable";
         } else if (countRecursiveInlining(method) > MaximumRecursiveInlining.getValue(options)) {
             return "it exceeds the maximum recursive inlining depth";
-        } else if (!method.hasBytecodes()) {
+        } else if (!method.hasBytecodes() && !intrinsifiable) {
             return "it has no bytecodes to inline";
         } else {
             if (new OptimisticOptimizations(rootGraph.getProfilingInfo(method), options).lessOptimisticThan(context.getOptimisticOptimizations())) {

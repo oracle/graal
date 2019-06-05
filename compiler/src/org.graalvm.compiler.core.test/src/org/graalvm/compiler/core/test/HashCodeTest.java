@@ -81,10 +81,6 @@ public class HashCodeTest extends GraalCompilerTest {
         return System.identityHashCode(NonOverridingConstant);
     }
 
-    public static final int hashCodeNoFoldOverridingSnippet01(Object o) {
-        return o.hashCode();
-    }
-
     public static final int identityHashCodeFoldOverridingSnippet01() {
         return System.identityHashCode(OverridingConstant);
     }
@@ -117,54 +113,15 @@ public class HashCodeTest extends GraalCompilerTest {
 
     @Test
     public void test05() {
-        checkForGuardedIntrinsicPattern("hashCodeNoFoldOverridingSnippet01");
-
-        Object nullObject = null;
-        test("hashCodeNoFoldOverridingSnippet01", nullObject);
-        test("hashCodeNoFoldOverridingSnippet01", new Object());
-        test("hashCodeNoFoldOverridingSnippet01", new DontOverrideHashCode());
-    }
-
-    @Test
-    public void test06() {
         StructuredGraph g = buildGraphAfterMidTier("identityHashCodeFoldOverridingSnippet01");
         Assert.assertEquals(0, g.getNodes().filter(InvokeNode.class).count());
     }
 
     @Test
-    public void test07() {
+    public void test06() {
         initialize(DontOverrideHashCode.class);
         StructuredGraph g = buildGraphAfterMidTier("dontOverrideHashCodeFinalClass");
         Assert.assertEquals(0, g.getNodes().filter(InvokeNode.class).count());
-    }
-
-    public static final int hashCodeInterface(Appendable o) {
-        return o.hashCode();
-    }
-
-    @Test
-    public void test08() {
-        // This test requires profiling information which does not work reliable across platforms
-        // when running with -Xcomp
-        List<String> commandLine = SubprocessUtil.getVMCommandLine();
-        Assume.assumeTrue(commandLine != null);
-        Assume.assumeFalse(commandLine.contains("-Xcomp"));
-        initialize(Appendable.class);
-        checkForGuardedIntrinsicPattern("hashCodeInterface");
-
-        // Ensure the profile for the dispatch in hashCodeSnippet01
-        // has a receiver type that does not select Object.hashCode intrinsic
-        hashCodeSnippet01(new HashMap<>());
-        checkForGuardedIntrinsicPattern("hashCodeSnippet01");
-    }
-
-    private void checkForGuardedIntrinsicPattern(String name) {
-        StructuredGraph g = parseForCompile(getResolvedJavaMethod(name));
-        int invokeNodeCount = g.getNodes().filter(InvokeNode.class).count();
-        int invokeWithExceptionNodeCount = g.getNodes().filter(InvokeWithExceptionNode.class).count();
-        Assert.assertEquals(1, invokeNodeCount + invokeWithExceptionNodeCount);
-        Assert.assertEquals(1, g.getNodes().filter(LoadHubNode.class).count());
-        Assert.assertEquals(1, g.getNodes().filter(LoadMethodNode.class).count());
     }
 
     @SuppressWarnings("try")

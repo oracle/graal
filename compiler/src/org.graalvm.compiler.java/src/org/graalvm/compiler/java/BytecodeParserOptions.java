@@ -66,8 +66,5 @@ public class BytecodeParserOptions {
 
     @Option(help = "When creating info points hide the methods of the substitutions.", type = OptionType.Debug)
     public static final OptionKey<Boolean> HideSubstitutionStates = new OptionKey<>(false);
-
-    @Option(help = "Use intrinsics guarded by a virtual dispatch test at indirect call sites.", type = OptionType.Debug)
-    public static final OptionKey<Boolean> UseGuardedIntrinsics = new OptionKey<>(true);
     // @formatter:on
 }
