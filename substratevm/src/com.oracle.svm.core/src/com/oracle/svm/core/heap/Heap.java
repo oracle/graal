@@ -61,9 +61,6 @@ public abstract class Heap {
     @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
     public abstract boolean isAllocationDisallowed();
 
-    /** Create a PinnedAllocator. */
-    public abstract PinnedAllocator createPinnedAllocator();
-
     /*
      * Collection methods.
      */

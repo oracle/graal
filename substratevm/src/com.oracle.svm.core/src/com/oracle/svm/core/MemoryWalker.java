@@ -108,9 +108,6 @@ public abstract class MemoryWalker {
 
         /** Return true if the heap chunk is an aligned heap chunk, else false. */
         boolean isAligned(T heapChunk);
-
-        /** Return true if the heap chunk is pinned in memory, else false. */
-        boolean isPinned(T heapChunk);
     }
 
     /** A set of access methods for visiting image code. */
