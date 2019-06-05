@@ -1,3 +1,5 @@
+// code from https://gist.github.com/rtv/4989304
+
 #include <pthread.h>
 #include <stdio.h>
 #include <unistd.h>

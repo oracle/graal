@@ -182,6 +182,10 @@ public class LLVMPThreadIntrinsics {
             try {
                 // join thread
                 Thread thread = (Thread) LLVMLanguage.getLLVMContextReference().get().threadStorage.get(thLong);
+                if (thread == null) {
+                    // TODO: error code handling
+                    return 5;
+                }
                 thread.join();
 
                 // get return value
@@ -394,6 +398,8 @@ public class LLVMPThreadIntrinsics {
             if (mutexObj == null) {
                 return 5;
             }
+            // TODO: unlock currently not locked mutex: ok (0)
+            // TODO: unlock currently by other thread locked mutex: error
             return mutexObj.unlock() ? 0 : 15; // internLock will be changed to int type
         }
     }
