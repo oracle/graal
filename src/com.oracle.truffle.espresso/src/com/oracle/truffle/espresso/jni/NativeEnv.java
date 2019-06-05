@@ -39,7 +39,7 @@ import com.oracle.truffle.api.interop.UnsupportedMessageException;
 import com.oracle.truffle.espresso.meta.EspressoError;
 import com.oracle.truffle.espresso.meta.JavaKind;
 import com.oracle.truffle.espresso.runtime.StaticObject;
-import com.oracle.truffle.nfi.types.NativeSimpleType;
+import com.oracle.truffle.nfi.spi.types.NativeSimpleType;
 
 public abstract class NativeEnv {
 
@@ -47,10 +47,10 @@ public abstract class NativeEnv {
 
     static Map<Class<?>, NativeSimpleType> buildClassToNative() {
         Map<Class<?>, NativeSimpleType> map = new HashMap<>();
-        map.put(boolean.class, NativeSimpleType.UINT8);
+        map.put(boolean.class, NativeSimpleType.SINT8);
         map.put(byte.class, NativeSimpleType.SINT8);
         map.put(short.class, NativeSimpleType.SINT16);
-        map.put(char.class, NativeSimpleType.UINT16);
+        map.put(char.class, NativeSimpleType.SINT16);
         map.put(int.class, NativeSimpleType.SINT32);
         map.put(float.class, NativeSimpleType.FLOAT);
         map.put(long.class, NativeSimpleType.SINT64);

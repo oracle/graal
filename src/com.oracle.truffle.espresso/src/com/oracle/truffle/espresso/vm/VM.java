@@ -55,6 +55,7 @@ import com.oracle.truffle.api.frame.FrameInstance;
 import com.oracle.truffle.api.frame.FrameInstanceVisitor;
 import com.oracle.truffle.api.interop.ArityException;
 import com.oracle.truffle.api.interop.ForeignAccess;
+import com.oracle.truffle.api.interop.InteropLibrary;
 import com.oracle.truffle.api.interop.Message;
 import com.oracle.truffle.api.interop.TruffleObject;
 import com.oracle.truffle.api.interop.UnknownIdentifierException;
@@ -90,7 +91,7 @@ import com.oracle.truffle.espresso.runtime.EspressoProperties;
 import com.oracle.truffle.espresso.runtime.StaticObject;
 import com.oracle.truffle.espresso.substitutions.Host;
 import com.oracle.truffle.espresso.substitutions.SuppressFBWarnings;
-import com.oracle.truffle.nfi.types.NativeSimpleType;
+import com.oracle.truffle.nfi.spi.types.NativeSimpleType;
 
 /**
  * Espresso implementation of the VM interface (libjvm).
@@ -347,6 +348,10 @@ public final class VM extends NativeEnv implements ContextAccess {
 
                     if (ret instanceof Boolean) {
                         return (boolean) ret ? (byte) 1 : (byte) 0;
+                    }
+
+                    if (ret instanceof Character) {
+                        return (short) (char) ret;
                     }
 
                     if (ret == null && !m.getReturnType().isPrimitive()) {
@@ -689,7 +694,7 @@ public final class VM extends NativeEnv implements ContextAccess {
         }
         try {
             TruffleObject function = NativeLibrary.lookup(handle2Lib.get(libHandle), name);
-            long handle = (long) ForeignAccess.sendUnbox(Message.UNBOX.createNode(), function);
+            long handle = InteropLibrary.getFactory().getUncached().asPointer(function);
             handle2Sym.put(handle, function);
             return handle;
         } catch (UnsupportedMessageException e) {

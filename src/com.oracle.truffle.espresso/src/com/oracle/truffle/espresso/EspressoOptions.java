@@ -22,6 +22,7 @@
  */
 package com.oracle.truffle.espresso;
 
+import java.util.Collections;
 import java.util.Map;
 
 import org.graalvm.nativeimage.ImageInfo;
@@ -30,11 +31,14 @@ import org.graalvm.options.OptionDescriptor;
 import org.graalvm.options.OptionKey;
 
 import com.oracle.truffle.api.Option;
+import org.graalvm.options.OptionMap;
+import org.graalvm.options.OptionType;
 
 @Option.Group(EspressoLanguage.ID)
 public final class EspressoOptions {
-    @Option(help = "User-defined system properties.", category = OptionCategory.USER, namePredicate = OptionDescriptor.NamePredicate.PREFIX) //
-    public static final OptionKey<Map<String, String>> Properties = OptionKey.mapOf(String.class);
+
+    @Option(help = "User-defined system properties.", category = OptionCategory.USER) //
+    public static final OptionKey<OptionMap<String>> Properties = OptionKey.mapOf(String.class);
 
     // Injecting java.io.File.pathSeparator is a hack for OptionProcessor.
     @Option(help = "A \" + java.io.File.pathSeparator + \" separated list of directories, JAR files, and ZIP archives to search for boot class files. These are used in place of the boot class files included in the JDK.", category = OptionCategory.USER) //

@@ -22,6 +22,23 @@
  */
 package com.oracle.truffle.espresso.jni;
 
+import java.io.File;
+import java.lang.reflect.InvocationTargetException;
+import java.lang.reflect.Parameter;
+import java.nio.ByteBuffer;
+import java.nio.ByteOrder;
+import java.nio.CharBuffer;
+import java.nio.DoubleBuffer;
+import java.nio.FloatBuffer;
+import java.nio.IntBuffer;
+import java.nio.LongBuffer;
+import java.nio.ShortBuffer;
+import java.util.Arrays;
+import java.util.Collections;
+import java.util.HashMap;
+import java.util.Map;
+import java.util.concurrent.ConcurrentHashMap;
+
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.interop.ArityException;
 import com.oracle.truffle.api.interop.ForeignAccess;
@@ -55,24 +72,7 @@ import com.oracle.truffle.espresso.runtime.StaticObject;
 import com.oracle.truffle.espresso.substitutions.Host;
 import com.oracle.truffle.espresso.substitutions.Substitutions;
 import com.oracle.truffle.espresso.vm.InterpreterToVM;
-import com.oracle.truffle.nfi.types.NativeSimpleType;
-
-import java.io.File;
-import java.lang.reflect.InvocationTargetException;
-import java.lang.reflect.Parameter;
-import java.nio.ByteBuffer;
-import java.nio.ByteOrder;
-import java.nio.CharBuffer;
-import java.nio.DoubleBuffer;
-import java.nio.FloatBuffer;
-import java.nio.IntBuffer;
-import java.nio.LongBuffer;
-import java.nio.ShortBuffer;
-import java.util.Arrays;
-import java.util.Collections;
-import java.util.HashMap;
-import java.util.Map;
-import java.util.concurrent.ConcurrentHashMap;
+import com.oracle.truffle.nfi.spi.types.NativeSimpleType;
 
 public final class JniEnv extends NativeEnv implements ContextAccess {
 
@@ -163,6 +163,10 @@ public final class JniEnv extends NativeEnv implements ContextAccess {
                         if (params[i] == boolean.class) {
                             shiftedArgs[i] = ((byte) shiftedArgs[i]) != 0;
                         }
+                        // TruffleNFI pass chars as short
+                        if (params[i] == char.class) {
+                            shiftedArgs[i] = (char) (short) shiftedArgs[i];
+                        }
                     }
                 }
                 assert args.length - 1 == shiftedArgs.length;
@@ -174,6 +178,10 @@ public final class JniEnv extends NativeEnv implements ContextAccess {
 
                     if (ret instanceof Boolean) {
                         return (boolean) ret ? (byte) 1 : (byte) 0;
+                    }
+
+                    if (ret instanceof Character) {
+                        return (short) (char) ret;
                     }
 
                     if (ret == null && !m.getReturnType().isPrimitive()) {
@@ -284,7 +292,7 @@ public final class JniEnv extends NativeEnv implements ContextAccess {
         @Override
         public char popChar() {
             try {
-                return (char) ForeignAccess.sendExecute(execute, popChar, nativePointer);
+                return (char) (short) ForeignAccess.sendExecute(execute, popChar, nativePointer);
             } catch (UnsupportedTypeException | ArityException | UnsupportedMessageException e) {
                 throw EspressoError.shouldNotReachHere(e);
             }
@@ -405,9 +413,9 @@ public final class JniEnv extends NativeEnv implements ContextAccess {
                             "(env, sint64): void");
 
             // Varargs native bindings.
-            popBoolean = NativeLibrary.lookupAndBind(nespressoLibrary, "pop_boolean", "(sint64): uint8");
-            popByte = NativeLibrary.lookupAndBind(nespressoLibrary, "pop_byte", "(sint64): uint8");
-            popChar = NativeLibrary.lookupAndBind(nespressoLibrary, "pop_char", "(sint64): uint16");
+            popBoolean = NativeLibrary.lookupAndBind(nespressoLibrary, "pop_boolean", "(sint64): sint8");
+            popByte = NativeLibrary.lookupAndBind(nespressoLibrary, "pop_byte", "(sint64): sint8");
+            popChar = NativeLibrary.lookupAndBind(nespressoLibrary, "pop_char", "(sint64): sint16");
             popShort = NativeLibrary.lookupAndBind(nespressoLibrary, "pop_short", "(sint64): sint16");
             popInt = NativeLibrary.lookupAndBind(nespressoLibrary, "pop_int", "(sint64): sint32");
             popFloat = NativeLibrary.lookupAndBind(nespressoLibrary, "pop_float", "(sint64): float");

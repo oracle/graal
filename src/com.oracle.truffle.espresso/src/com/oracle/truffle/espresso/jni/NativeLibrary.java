@@ -41,11 +41,12 @@ public class NativeLibrary {
         // On SVM no need to use dlmopen backend.
         // Prepend "with dlmopen " in HotSpot.
         StringBuilder sb = new StringBuilder();
+        sb.append("load(RTLD_LAZY");
         if (!EspressoOptions.RUNNING_ON_SVM) {
-            sb.append("with dlmopen ");
+            sb.append("|ISOLATED_NAMESPACE");
         }
-        sb.append("load(RTLD_LAZY) '").append(lib).append('\'');
-
+        sb.append(")");
+        sb.append(" '").append(lib).append("'");
         Source source = Source.newBuilder("nfi", sb.toString(), "loadLibrary").build();
         CallTarget target = EspressoLanguage.getCurrentContext().getEnv().parse(source);
         return (TruffleObject) target.call();

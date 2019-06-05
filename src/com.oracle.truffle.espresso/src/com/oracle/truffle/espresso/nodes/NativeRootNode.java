@@ -72,6 +72,9 @@ public final class NativeRootNode extends EspressoBaseNode {
                 if (Signatures.parameterKind(getMethod().getParsedSignature(), i) == JavaKind.Boolean) {
                     args[argIndex] = (boolean) args[argIndex] ? (byte) 1 : (byte) 0;
                 }
+                if (Signatures.parameterKind(getMethod().getParsedSignature(), i) == JavaKind.Char) {
+                    args[argIndex] = (short) (char) args[argIndex];
+                }
             }
             ++argIndex;
         }
@@ -142,7 +145,7 @@ public final class NativeRootNode extends EspressoBaseNode {
             case Byte:
                 return result;
             case Char:
-                return result;
+                return (char) (short) result;
             case Short:
                 return result;
             case Object:
