@@ -24,8 +24,10 @@
  */
 package com.oracle.svm.core.code;
 
+import org.graalvm.word.ComparableWord;
+
 /**
  * A handle to information about a unit of compiled code for use with {@link CodeInfoAccessor}.
  */
-public interface CodeInfoHandle {
+public interface CodeInfoHandle extends ComparableWord {
 }

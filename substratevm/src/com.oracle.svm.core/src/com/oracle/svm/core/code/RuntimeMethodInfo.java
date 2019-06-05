@@ -24,45 +24,21 @@
  */
 package com.oracle.svm.core.code;
 
-import static com.oracle.svm.core.util.VMError.shouldNotReachHere;
-
 import org.graalvm.nativeimage.c.function.CodePointer;
+import org.graalvm.nativeimage.c.struct.RawField;
+import org.graalvm.nativeimage.c.struct.RawStructure;
+import org.graalvm.word.PointerBase;
 import org.graalvm.word.UnsignedWord;
 
-import com.oracle.svm.core.annotate.Uninterruptible;
 import com.oracle.svm.core.c.PinnedArray;
 import com.oracle.svm.core.c.PinnedObjectArray;
 
 import jdk.vm.ci.code.InstalledCode;
 
-public final class RuntimeMethodInfo implements CodeInfoHandle {
-
-    private CodePointer codeStart;
-    private UnsignedWord codeSize;
-
-    private PinnedArray<Byte> codeInfoIndex;
-    private PinnedArray<Byte> codeInfoEncodings;
-    private PinnedArray<Byte> referenceMapEncoding;
-    private PinnedArray<Byte> frameInfoEncodings;
-    private PinnedObjectArray<Object> frameInfoObjectConstants;
-    private PinnedObjectArray<Class<?>> frameInfoSourceClasses;
-    private PinnedObjectArray<String> frameInfoSourceMethodNames;
-    private PinnedObjectArray<String> frameInfoNames;
-
-    private boolean codeConstantsLive = false;
-    private PinnedArray<Byte> objectsReferenceMapEncoding;
-    private long objectsReferenceMapIndex;
-
-    private PinnedArray<Integer> deoptimizationStartOffsets;
-    private PinnedArray<Byte> deoptimizationEncodings;
-    private PinnedObjectArray<Object> deoptimizationObjectConstants;
-
-    private int tier;
-
-    private PinnedAllocator allocator;
-
+@RawStructure
+public interface RuntimeMethodInfo extends PointerBase {
     /**
-     * The "object fields" of this class, managed as an array for simplicity.
+     * The object "fields" of this class, managed as an array for simplicity.
      *
      * [0] String: The {@linkplain InstalledCode#getName() name of the InstalledCode}. Stored here
      * so it remains available even after the code is no longer available. Note that the String is
@@ -75,165 +51,112 @@ public final class RuntimeMethodInfo implements CodeInfoHandle {
      *
      * [2] InstalledCodeObserverHandle[]: observers for installation and removal of this code.
      */
-    private PinnedObjectArray<?> objectFields;
+    @RawField
+    void setObjectFields(PinnedObjectArray<?> fields);
 
-    private RuntimeMethodInfo() {
-        throw shouldNotReachHere("Must be allocated with PinnedAllocator");
-    }
+    /** @see #setObjectFields */
+    @RawField
+    PinnedObjectArray<?> getObjectFields();
 
-    void setObjectFields(PinnedObjectArray<?> objectFields) {
-        this.objectFields = objectFields;
-    }
+    @RawField
+    int getTier();
 
-    PinnedObjectArray<?> getObjectFields() {
-        return objectFields;
-    }
+    @RawField
+    void setTier(int tier);
 
-    int getTier() {
-        return tier;
-    }
+    @RawField
+    CodePointer getCodeStart();
 
-    void setTier(int tier) {
-        this.tier = tier;
-    }
+    @RawField
+    UnsignedWord getCodeSize();
 
-    @Uninterruptible(reason = "called from uninterruptible code", mayBeInlined = true)
-    CodePointer getCodeStart() {
-        return codeStart;
-    }
+    @RawField
+    PinnedArray<Byte> getReferenceMapEncoding();
 
-    @Uninterruptible(reason = "called from uninterruptible code", mayBeInlined = true)
-    UnsignedWord getCodeSize() {
-        return codeSize;
-    }
+    @RawField
+    void setCodeStart(CodePointer codeStart);
 
-    PinnedArray<Byte> getReferenceMapEncoding() {
-        return referenceMapEncoding;
-    }
+    @RawField
+    void setCodeSize(UnsignedWord codeSize);
 
-    void setCodeStart(CodePointer codeStart) {
-        this.codeStart = codeStart;
-    }
+    @RawField
+    PinnedArray<Byte> getCodeInfoIndex();
 
-    void setCodeSize(UnsignedWord codeSize) {
-        this.codeSize = codeSize;
-    }
+    @RawField
+    void setCodeInfoIndex(PinnedArray<Byte> codeInfoIndex);
 
-    PinnedArray<Byte> getCodeInfoIndex() {
-        return codeInfoIndex;
-    }
+    @RawField
+    PinnedArray<Byte> getCodeInfoEncodings();
 
-    void setCodeInfoIndex(PinnedArray<Byte> codeInfoIndex) {
-        this.codeInfoIndex = codeInfoIndex;
-    }
+    @RawField
+    void setCodeInfoEncodings(PinnedArray<Byte> codeInfoEncodings);
 
-    PinnedArray<Byte> getCodeInfoEncodings() {
-        return codeInfoEncodings;
-    }
+    @RawField
+    void setReferenceMapEncoding(PinnedArray<Byte> referenceMapEncoding);
 
-    void setCodeInfoEncodings(PinnedArray<Byte> codeInfoEncodings) {
-        this.codeInfoEncodings = codeInfoEncodings;
-    }
+    @RawField
+    PinnedArray<Byte> getFrameInfoEncodings();
 
-    void setReferenceMapEncoding(PinnedArray<Byte> referenceMapEncoding) {
-        this.referenceMapEncoding = referenceMapEncoding;
-    }
+    @RawField
+    void setFrameInfoEncodings(PinnedArray<Byte> frameInfoEncodings);
 
-    PinnedArray<Byte> getFrameInfoEncodings() {
-        return frameInfoEncodings;
-    }
+    @RawField
+    PinnedObjectArray<Object> getFrameInfoObjectConstants();
 
-    void setFrameInfoEncodings(PinnedArray<Byte> frameInfoEncodings) {
-        this.frameInfoEncodings = frameInfoEncodings;
-    }
+    @RawField
+    void setFrameInfoObjectConstants(PinnedObjectArray<Object> frameInfoObjectConstants);
 
-    PinnedObjectArray<Object> getFrameInfoObjectConstants() {
-        return frameInfoObjectConstants;
-    }
+    @RawField
+    PinnedObjectArray<Class<?>> getFrameInfoSourceClasses();
 
-    void setFrameInfoObjectConstants(PinnedObjectArray<Object> frameInfoObjectConstants) {
-        this.frameInfoObjectConstants = frameInfoObjectConstants;
-    }
+    @RawField
+    void setFrameInfoSourceClasses(PinnedObjectArray<Class<?>> frameInfoSourceClasses);
 
-    PinnedObjectArray<Class<?>> getFrameInfoSourceClasses() {
-        return frameInfoSourceClasses;
-    }
+    @RawField
+    PinnedObjectArray<String> getFrameInfoSourceMethodNames();
 
-    void setFrameInfoSourceClasses(PinnedObjectArray<Class<?>> frameInfoSourceClasses) {
-        this.frameInfoSourceClasses = frameInfoSourceClasses;
-    }
+    @RawField
+    void setFrameInfoSourceMethodNames(PinnedObjectArray<String> frameInfoSourceMethodNames);
 
-    PinnedObjectArray<String> getFrameInfoSourceMethodNames() {
-        return frameInfoSourceMethodNames;
-    }
+    @RawField
+    PinnedObjectArray<String> getFrameInfoNames();
 
-    void setFrameInfoSourceMethodNames(PinnedObjectArray<String> frameInfoSourceMethodNames) {
-        this.frameInfoSourceMethodNames = frameInfoSourceMethodNames;
-    }
+    @RawField
+    void setFrameInfoNames(PinnedObjectArray<String> frameInfoNames);
 
-    PinnedObjectArray<String> getFrameInfoNames() {
-        return frameInfoNames;
-    }
+    @RawField
+    boolean getCodeConstantsLive();
 
-    void setFrameInfoNames(PinnedObjectArray<String> frameInfoNames) {
-        this.frameInfoNames = frameInfoNames;
-    }
+    @RawField
+    void setCodeConstantsLive(boolean codeConstantsLive);
 
-    @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
-    boolean isCodeConstantsLive() {
-        return codeConstantsLive;
-    }
+    @RawField
+    PinnedArray<Byte> getObjectsReferenceMapEncoding();
 
-    @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
-    void setCodeConstantsLive(boolean codeConstantsLive) {
-        this.codeConstantsLive = codeConstantsLive;
-    }
+    @RawField
+    void setObjectsReferenceMapEncoding(PinnedArray<Byte> objectsReferenceMapEncoding);
 
-    PinnedArray<Byte> getObjectsReferenceMapEncoding() {
-        return objectsReferenceMapEncoding;
-    }
+    @RawField
+    long getObjectsReferenceMapIndex();
 
-    void setObjectsReferenceMapEncoding(PinnedArray<Byte> objectsReferenceMapEncoding) {
-        this.objectsReferenceMapEncoding = objectsReferenceMapEncoding;
-    }
+    @RawField
+    void setObjectsReferenceMapIndex(long objectsReferenceMapIndex);
 
-    long getObjectsReferenceMapIndex() {
-        return objectsReferenceMapIndex;
-    }
+    @RawField
+    PinnedArray<Integer> getDeoptimizationStartOffsets();
 
-    void setObjectsReferenceMapIndex(long objectsReferenceMapIndex) {
-        this.objectsReferenceMapIndex = objectsReferenceMapIndex;
-    }
+    @RawField
+    void setDeoptimizationStartOffsets(PinnedArray<Integer> deoptimizationStartOffsets);
 
-    PinnedArray<Integer> getDeoptimizationStartOffsets() {
-        return deoptimizationStartOffsets;
-    }
+    @RawField
+    PinnedArray<Byte> getDeoptimizationEncodings();
 
-    void setDeoptimizationStartOffsets(PinnedArray<Integer> deoptimizationStartOffsets) {
-        this.deoptimizationStartOffsets = deoptimizationStartOffsets;
-    }
+    @RawField
+    void setDeoptimizationEncodings(PinnedArray<Byte> deoptimizationEncodings);
 
-    PinnedArray<Byte> getDeoptimizationEncodings() {
-        return deoptimizationEncodings;
-    }
+    @RawField
+    PinnedObjectArray<Object> getDeoptimizationObjectConstants();
 
-    void setDeoptimizationEncodings(PinnedArray<Byte> deoptimizationEncodings) {
-        this.deoptimizationEncodings = deoptimizationEncodings;
-    }
-
-    PinnedObjectArray<Object> getDeoptimizationObjectConstants() {
-        return deoptimizationObjectConstants;
-    }
-
-    void setDeoptimizationObjectConstants(PinnedObjectArray<Object> deoptimizationObjectConstants) {
-        this.deoptimizationObjectConstants = deoptimizationObjectConstants;
-    }
-
-    PinnedAllocator getAllocator() {
-        return allocator;
-    }
-
-    void setAllocator(PinnedAllocator allocator) {
-        this.allocator = allocator;
-    }
+    @RawField
+    void setDeoptimizationObjectConstants(PinnedObjectArray<Object> deoptimizationObjectConstants);
 }

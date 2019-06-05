@@ -43,7 +43,6 @@ import com.oracle.svm.core.annotate.Uninterruptible;
 import com.oracle.svm.core.c.function.CEntryPointCreateIsolateParameters;
 import com.oracle.svm.core.c.function.CEntryPointErrors;
 import com.oracle.svm.core.c.function.CEntryPointSetup;
-import com.oracle.svm.core.code.CodeInfoTable;
 import com.oracle.svm.core.heap.Heap;
 import com.oracle.svm.core.log.Log;
 import com.oracle.svm.core.os.VirtualMemoryProvider.Access;
@@ -73,7 +72,6 @@ public class OSCommittedMemoryProvider implements CommittedMemoryProvider {
 
     @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
     protected static void tearDownVirtualMemoryConsumers() {
-        CodeInfoTable.getRuntimeCodeCache().tearDown();
         Heap.getHeap().tearDown();
     }
 

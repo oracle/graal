@@ -155,14 +155,15 @@ public class CodeInfoTable {
         }
 
         if (referenceMapIndex == CodeInfoQueryResult.NO_REFERENCE_MAP) {
-            throw reportNoReferenceMap(sp, ip, deoptimizedFrame, handle);
+            throw reportNoReferenceMap(sp, ip, deoptimizedFrame, accessor, handle);
         }
         return CodeReferenceMapDecoder.walkOffsetsFromPointer(sp, referenceMapEncoding, referenceMapIndex, visitor);
     }
 
-    private static RuntimeException reportNoReferenceMap(Pointer sp, CodePointer ip, DeoptimizedFrame deoptimizedFrame, CodeInfoHandle data) {
+    private static RuntimeException reportNoReferenceMap(Pointer sp, CodePointer ip, DeoptimizedFrame deoptimizedFrame, CodeInfoAccessor accessor, CodeInfoHandle data) {
         Log.log().string("ip: ").hex(ip).string("  sp: ").hex(sp);
-        Log.log().string("  deoptFrame: ").object(deoptimizedFrame).string("  data:").object(data).newline();
+        Log.log().string("  deoptFrame: ").object(deoptimizedFrame).string("  data:");
+        accessor.log(data, Log.log()).newline();
         throw VMError.shouldNotReachHere("No reference map information found");
     }
 
@@ -183,9 +184,9 @@ public class CodeInfoTable {
             counters().invalidateInstalledCodeCount.inc();
             if (installedCode.isValid()) {
                 final RuntimeCodeInfo codeCache = getRuntimeCodeCache();
-                RuntimeMethodInfo methodInfo = codeCache.lookupMethod(WordFactory.pointer(installedCode.getAddress()));
-                long num = codeCache.logMethodOperation(methodInfo, RuntimeCodeInfo.INFO_INVALIDATE);
-                codeCache.invalidateMethod(methodInfo);
+                CodeInfoHandle handle = codeCache.lookupMethod(WordFactory.pointer(installedCode.getAddress()));
+                long num = codeCache.logMethodOperation(handle, RuntimeCodeInfo.INFO_INVALIDATE);
+                codeCache.invalidateMethod(handle);
                 codeCache.logMethodOperationEnd(num);
             }
         });
@@ -205,7 +206,7 @@ public class CodeInfoTable {
         if (accessor.isNone(handle)) {
             return log.string("No CodeInfo for IP ").zhex(ip.rawValue());
         }
-        log.object(handle);
+        accessor.log(handle, log);
         return log.string(" name = ").string(accessor.getName(handle));
     }
 

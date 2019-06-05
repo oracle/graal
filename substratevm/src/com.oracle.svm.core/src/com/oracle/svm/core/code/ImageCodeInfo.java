@@ -38,6 +38,7 @@ import com.oracle.svm.core.annotate.UnknownPrimitiveField;
 import com.oracle.svm.core.c.PinnedArray;
 import com.oracle.svm.core.c.PinnedArrays;
 import com.oracle.svm.core.c.PinnedObjectArray;
+import com.oracle.svm.core.log.Log;
 
 public class ImageCodeInfo implements CodeInfoAccessor {
 
@@ -186,6 +187,11 @@ public class ImageCodeInfo implements CodeInfoAccessor {
     @Override
     public long lookupTotalFrameSize(CodeInfoHandle handle, long ip) {
         return CodeInfoDecoder.lookupTotalFrameSize(pa(codeInfoEncodings), pa(codeInfoIndex), ip);
+    }
+
+    @Override
+    public Log log(CodeInfoHandle handle, Log log) {
+        return log.object(this);
     }
 
     /** Methods for MemoryWalker to access image code information. */

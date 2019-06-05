@@ -35,6 +35,7 @@ import org.graalvm.word.WordFactory;
 import com.oracle.svm.core.annotate.Uninterruptible;
 import com.oracle.svm.core.c.UnmanagedReferenceWalkers;
 import com.oracle.svm.core.c.function.CEntryPointCreateIsolateParameters;
+import com.oracle.svm.core.code.CodeInfoTable;
 
 /**
  * A provider of ranges of committed memory, which is virtual memory that is backed by physical
@@ -122,6 +123,7 @@ public interface CommittedMemoryProvider {
 
     @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
     static void tearDownUnmanagedMemoryConsumers() {
+        CodeInfoTable.getRuntimeCodeCache().tearDown();
         UnmanagedReferenceWalkers.singleton().tearDown();
     }
 }

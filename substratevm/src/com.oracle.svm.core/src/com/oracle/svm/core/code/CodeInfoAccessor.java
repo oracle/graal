@@ -28,9 +28,11 @@ import org.graalvm.nativeimage.c.function.CodePointer;
 import org.graalvm.word.UnsignedWord;
 import org.graalvm.word.WordFactory;
 
+import com.oracle.svm.core.annotate.RestrictHeapAccess;
 import com.oracle.svm.core.c.PinnedArray;
 import com.oracle.svm.core.c.PinnedObjectArray;
 import com.oracle.svm.core.code.FrameInfoDecoder.ValueInfoAllocator;
+import com.oracle.svm.core.log.Log;
 
 /**
  * Functionality to lookup and query information about units of compiled code, each represented by a
@@ -78,6 +80,9 @@ public interface CodeInfoAccessor {
     void setMetadata(CodeInfoHandle installTarget, PinnedArray<Byte> codeInfoIndex, PinnedArray<Byte> codeInfoEncodings, PinnedArray<Byte> referenceMapEncoding,
                     PinnedArray<Byte> frameInfoEncodings, PinnedObjectArray<Object> frameInfoObjectConstants, PinnedObjectArray<Class<?>> frameInfoSourceClasses,
                     PinnedObjectArray<String> frameInfoSourceMethodNames, PinnedObjectArray<String> frameInfoNames);
+
+    @RestrictHeapAccess(access = RestrictHeapAccess.Access.NO_ALLOCATION, mayBeInlined = true, reason = "Must not allocate when logging.")
+    Log log(CodeInfoHandle handle, Log log);
 
     static boolean contains(CodePointer codeStart, UnsignedWord codeSize, CodePointer ip) {
         return ((UnsignedWord) ip).subtract((UnsignedWord) codeStart).belowThan(codeSize);

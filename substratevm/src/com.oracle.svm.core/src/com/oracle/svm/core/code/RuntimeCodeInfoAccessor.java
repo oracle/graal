@@ -26,7 +26,10 @@ package com.oracle.svm.core.code;
 
 import java.lang.ref.WeakReference;
 
+import org.graalvm.nativeimage.ImageSingletons;
 import org.graalvm.nativeimage.c.function.CodePointer;
+import org.graalvm.nativeimage.c.struct.SizeOf;
+import org.graalvm.nativeimage.impl.UnmanagedMemorySupport;
 import org.graalvm.word.ComparableWord;
 import org.graalvm.word.Pointer;
 import org.graalvm.word.UnsignedWord;
@@ -43,11 +46,12 @@ import com.oracle.svm.core.code.InstalledCodeObserver.InstalledCodeObserverHandl
 import com.oracle.svm.core.deopt.SubstrateInstalledCode;
 import com.oracle.svm.core.heap.CodeReferenceMapDecoder;
 import com.oracle.svm.core.heap.ObjectReferenceVisitor;
-import com.oracle.svm.core.heap.PinnedAllocator;
+import com.oracle.svm.core.log.Log;
 import com.oracle.svm.core.os.CommittedMemoryProvider;
-import com.oracle.svm.core.snippets.KnownIntrinsics;
 
 public class RuntimeCodeInfoAccessor implements CodeInfoAccessor {
+    public static final CodeInfoHandle NULL_HANDLE = null;
+
     public static final JavaMethodLiteral<UnmanagedReferenceWalkers.ObjectReferenceWalkerFunction> walkReferencesFunction = JavaMethodLiteral.create(
                     RuntimeCodeInfoAccessor.class, "walkReferences", ComparableWord.class, ObjectReferenceVisitor.class);
 
@@ -68,8 +72,9 @@ public class RuntimeCodeInfoAccessor implements CodeInfoAccessor {
     }
 
     @Override
+    @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
     public boolean isNone(CodeInfoHandle handle) {
-        return handle == null;
+        return handle.rawValue() == 0;
     }
 
     public int getTier(CodeInfoHandle handle) {
@@ -89,16 +94,18 @@ public class RuntimeCodeInfoAccessor implements CodeInfoAccessor {
     }
 
     @Override
+    @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
     public CodePointer getCodeStart(CodeInfoHandle handle) {
         return cast(handle).getCodeStart();
     }
 
     @Override
+    @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
     public UnsignedWord getCodeSize(CodeInfoHandle handle) {
         return cast(handle).getCodeSize();
     }
 
-    @Uninterruptible(reason = "called from uninterruptible code", mayBeInlined = true)
+    @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
     CodePointer getCodeEnd(CodeInfoHandle handle) {
         return (CodePointer) ((UnsignedWord) cast(handle).getCodeStart()).add(cast(handle).getCodeSize());
     }
@@ -199,6 +206,11 @@ public class RuntimeCodeInfoAccessor implements CodeInfoAccessor {
         info.setFrameInfoNames(frameInfoNames);
     }
 
+    @Override
+    public Log log(CodeInfoHandle handle, Log log) {
+        return isNone(handle) ? log.string("null") : log.string(RuntimeCodeInfo.class.getName()).string("@").hex(handle);
+    }
+
     public void setCodeLocation(CodeInfoHandle handle, Pointer start, int size) {
         cast(handle).setCodeStart((CodePointer) start);
         cast(handle).setCodeSize(WordFactory.unsigned(size));
@@ -212,7 +224,7 @@ public class RuntimeCodeInfoAccessor implements CodeInfoAccessor {
 
     @Uninterruptible(reason = "Called from uninterruptible code", mayBeInlined = true)
     public void setCodeConstantsLive(CodeInfoHandle handle) {
-        assert !cast(handle).isCodeConstantsLive();
+        assert !cast(handle).getCodeConstantsLive();
         cast(handle).setCodeConstantsLive(true);
     }
 
@@ -223,7 +235,7 @@ public class RuntimeCodeInfoAccessor implements CodeInfoAccessor {
         cast(handle).setDeoptimizationObjectConstants(deoptimizationObjectConstants);
     }
 
-    public void setData(CodeInfoHandle handle, SubstrateInstalledCode installedCode, int tier, PinnedAllocator allocator, InstalledCodeObserverHandle[] codeObserverHandles) {
+    public void setData(CodeInfoHandle handle, SubstrateInstalledCode installedCode, int tier, InstalledCodeObserverHandle[] codeObserverHandles) {
         assert codeObserverHandles != null;
         PinnedObjectArray<Object> objectFields = PinnedArrays.createObjectArray(3);
         PinnedArrays.setObject(objectFields, 0, installedCode.getName());
@@ -231,14 +243,13 @@ public class RuntimeCodeInfoAccessor implements CodeInfoAccessor {
         PinnedArrays.setObject(objectFields, 2, codeObserverHandles);
         cast(handle).setObjectFields(objectFields);
         cast(handle).setTier(tier);
-        cast(handle).setAllocator(allocator);
     }
 
     @SuppressWarnings("unused")
     static void walkReferences(ComparableWord handle, ObjectReferenceVisitor visitor) {
-        RuntimeMethodInfo info = KnownIntrinsics.convertUnknownValue(((Pointer) handle).toObject(), RuntimeMethodInfo.class);
+        RuntimeMethodInfo info = cast((CodeInfoHandle) handle);
         PinnedArrays.walkUnmanagedObjectArray(info.getObjectFields(), visitor);
-        if (info.isCodeConstantsLive()) {
+        if (info.getCodeConstantsLive()) {
             CodeReferenceMapDecoder.walkOffsetsFromPointer(info.getCodeStart(), info.getObjectsReferenceMapEncoding(), info.getObjectsReferenceMapIndex(), visitor);
         }
         PinnedArrays.walkUnmanagedObjectArray(info.getFrameInfoObjectConstants(), visitor);
@@ -248,9 +259,27 @@ public class RuntimeCodeInfoAccessor implements CodeInfoAccessor {
         PinnedArrays.walkUnmanagedObjectArray(info.getDeoptimizationObjectConstants(), visitor);
     }
 
-    static void releaseArrays(RuntimeMethodInfo info) {
-        PinnedArrays.releaseUnmanagedArray(info.getObjectFields());
+    public CodeInfoHandle allocateMethodInfo() {
+        CodeInfoHandle handle = ImageSingletons.lookup(UnmanagedMemorySupport.class).calloc(WordFactory.unsigned(SizeOf.get(RuntimeMethodInfo.class)));
+        UnmanagedReferenceWalkers.singleton().register(walkReferencesFunction.getFunctionPointer(), handle);
+        return handle;
+    }
 
+    void releaseMethodInfo(CodeInfoHandle handle) {
+        UnmanagedReferenceWalkers.singleton().unregister(walkReferencesFunction.getFunctionPointer(), handle);
+        releaseMethodInfoMemory(handle);
+    }
+
+    @Uninterruptible(reason = "Called from uninterruptible code", mayBeInlined = true)
+    void releaseMethodInfoOnTearDown(CodeInfoHandle handle) {
+        // Don't bother with the reference walker on tear-down, this is handled elsewhere
+        releaseMethodInfoMemory(handle);
+    }
+
+    @Uninterruptible(reason = "Called from uninterruptible code", mayBeInlined = true)
+    private static void releaseMethodInfoMemory(CodeInfoHandle handle) {
+        RuntimeMethodInfo info = cast(handle);
+        PinnedArrays.releaseUnmanagedArray(info.getObjectFields());
         PinnedArrays.releaseUnmanagedArray(info.getCodeInfoIndex());
         PinnedArrays.releaseUnmanagedArray(info.getCodeInfoEncodings());
         PinnedArrays.releaseUnmanagedArray(info.getReferenceMapEncoding());
@@ -259,16 +288,18 @@ public class RuntimeCodeInfoAccessor implements CodeInfoAccessor {
         PinnedArrays.releaseUnmanagedArray(info.getFrameInfoSourceClasses());
         PinnedArrays.releaseUnmanagedArray(info.getFrameInfoSourceMethodNames());
         PinnedArrays.releaseUnmanagedArray(info.getFrameInfoNames());
-
         PinnedArrays.releaseUnmanagedArray(info.getDeoptimizationStartOffsets());
         PinnedArrays.releaseUnmanagedArray(info.getDeoptimizationEncodings());
         PinnedArrays.releaseUnmanagedArray(info.getDeoptimizationObjectConstants());
-
         PinnedArrays.releaseUnmanagedArray(info.getObjectsReferenceMapEncoding());
+
+        releaseInstalledCode(info);
+
+        ImageSingletons.lookup(UnmanagedMemorySupport.class).free(info);
     }
 
     @Uninterruptible(reason = "Called from uninterruptible code", mayBeInlined = true)
-    void freeInstalledCode(RuntimeMethodInfo runtimeMethodInfo) {
+    private static void releaseInstalledCode(RuntimeMethodInfo runtimeMethodInfo) {
         CommittedMemoryProvider.get().free(runtimeMethodInfo.getCodeStart(), runtimeMethodInfo.getCodeSize(), WordFactory.unsigned(SubstrateOptions.codeAlignment()), true);
     }
 }
