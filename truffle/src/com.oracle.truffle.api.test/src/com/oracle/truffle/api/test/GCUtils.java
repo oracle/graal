@@ -124,11 +124,6 @@ public final class GCUtils {
                 }
             }
         }
-        try {
-            System.out.println("Not freed...");
-            Thread.sleep(1_000_000);
-        } catch (InterruptedException e) {
-        }
         Assert.fail(message);
     }
 
