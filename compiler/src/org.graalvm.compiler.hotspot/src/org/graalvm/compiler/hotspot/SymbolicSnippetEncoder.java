@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2019, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -110,7 +110,6 @@ import jdk.vm.ci.meta.Constant;
 import jdk.vm.ci.meta.ConstantReflectionProvider;
 import jdk.vm.ci.meta.JavaConstant;
 import jdk.vm.ci.meta.JavaKind;
-import jdk.vm.ci.meta.JavaType;
 import jdk.vm.ci.meta.MemoryAccessProvider;
 import jdk.vm.ci.meta.MethodHandleAccessProvider;
 import jdk.vm.ci.meta.ResolvedJavaField;
@@ -1055,7 +1054,7 @@ public class SymbolicSnippetEncoder {
         }
 
         @Override
-        protected boolean tryInvocationPlugin(CallTargetNode.InvokeKind invokeKind, ValueNode[] args, ResolvedJavaMethod targetMethod, JavaKind resultType, JavaType returnType) {
+        protected boolean tryInvocationPlugin(CallTargetNode.InvokeKind invokeKind, ValueNode[] args, ResolvedJavaMethod targetMethod, JavaKind resultType) {
             if (intrinsicContext != null && intrinsicContext.isCallToOriginal(targetMethod)) {
                 return false;
             }
@@ -1063,7 +1062,7 @@ public class SymbolicSnippetEncoder {
                 // Always defer Fold until decode time but NodeIntrinsics may fold if they are able.
                 return false;
             }
-            return super.tryInvocationPlugin(invokeKind, args, targetMethod, resultType, returnType);
+            return super.tryInvocationPlugin(invokeKind, args, targetMethod, resultType);
         }
     }
 }

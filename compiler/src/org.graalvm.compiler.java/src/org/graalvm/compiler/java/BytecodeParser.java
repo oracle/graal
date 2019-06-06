@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2009, 2018, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2009, 2019, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -35,7 +35,6 @@ import static jdk.vm.ci.meta.DeoptimizationReason.ClassCastException;
 import static jdk.vm.ci.meta.DeoptimizationReason.JavaSubroutineMismatch;
 import static jdk.vm.ci.meta.DeoptimizationReason.NullCheckException;
 import static jdk.vm.ci.meta.DeoptimizationReason.RuntimeConstraint;
-import static jdk.vm.ci.meta.DeoptimizationReason.TypeCheckedInliningViolated;
 import static jdk.vm.ci.meta.DeoptimizationReason.UnreachedCode;
 import static jdk.vm.ci.meta.DeoptimizationReason.Unresolved;
 import static jdk.vm.ci.runtime.JVMCICompiler.INVOCATION_ENTRY_BCI;
@@ -256,8 +255,6 @@ import static org.graalvm.compiler.java.BytecodeParserOptions.InlinePartialIntri
 import static org.graalvm.compiler.java.BytecodeParserOptions.TraceBytecodeParserLevel;
 import static org.graalvm.compiler.java.BytecodeParserOptions.TraceInlineDuringParsing;
 import static org.graalvm.compiler.java.BytecodeParserOptions.TraceParserPlugins;
-import static org.graalvm.compiler.java.BytecodeParserOptions.UseGuardedIntrinsics;
-import static org.graalvm.compiler.nodes.extended.BranchProbabilityNode.LIKELY_PROBABILITY;
 import static org.graalvm.compiler.nodes.extended.BranchProbabilityNode.LUDICROUSLY_FAST_PATH_PROBABILITY;
 import static org.graalvm.compiler.nodes.extended.BranchProbabilityNode.LUDICROUSLY_SLOW_PATH_PROBABILITY;
 import static org.graalvm.compiler.nodes.graphbuilderconf.IntrinsicContext.CompilationContext.INLINE_DURING_PARSING;
@@ -392,7 +389,6 @@ import org.graalvm.compiler.nodes.extended.GuardingNode;
 import org.graalvm.compiler.nodes.extended.IntegerSwitchNode;
 import org.graalvm.compiler.nodes.extended.LoadArrayComponentHubNode;
 import org.graalvm.compiler.nodes.extended.LoadHubNode;
-import org.graalvm.compiler.nodes.extended.LoadMethodNode;
 import org.graalvm.compiler.nodes.extended.MembarNode;
 import org.graalvm.compiler.nodes.extended.StateSplitProxyNode;
 import org.graalvm.compiler.nodes.extended.ValueAnchorNode;
@@ -451,7 +447,6 @@ import jdk.vm.ci.meta.JavaKind;
 import jdk.vm.ci.meta.JavaMethod;
 import jdk.vm.ci.meta.JavaType;
 import jdk.vm.ci.meta.JavaTypeProfile;
-import jdk.vm.ci.meta.JavaTypeProfile.ProfiledType;
 import jdk.vm.ci.meta.LineNumberTable;
 import jdk.vm.ci.meta.MetaAccessProvider;
 import jdk.vm.ci.meta.ProfilingInfo;
@@ -1802,8 +1797,8 @@ public class BytecodeParser implements GraphBuilderContext {
                 return null;
             }
 
-            if (!invokeKind.isIndirect() || (UseGuardedIntrinsics.getValue(options) && !GeneratePIC.getValue(options))) {
-                if (tryInvocationPlugin(invokeKind, args, targetMethod, resultType, returnType)) {
+            if (!invokeKind.isIndirect()) {
+                if (tryInvocationPlugin(invokeKind, args, targetMethod, resultType)) {
                     if (TraceParserPlugins.getValue(options)) {
                         traceWithContext("used invocation plugin for %s", targetMethod.format("%h.%n(%p)"));
                     }
@@ -2079,184 +2074,8 @@ public class BytecodeParser implements GraphBuilderContext {
         }
     }
 
-    protected static class IntrinsicGuard {
-        final FixedWithNextNode lastInstr;
-        final Mark mark;
-        final AbstractBeginNode nonIntrinsicBranch;
-        final ValueNode receiver;
-        final JavaTypeProfile profile;
-
-        public IntrinsicGuard(FixedWithNextNode lastInstr, ValueNode receiver, Mark mark, AbstractBeginNode nonIntrinsicBranch, JavaTypeProfile profile) {
-            this.lastInstr = lastInstr;
-            this.receiver = receiver;
-            this.mark = mark;
-            this.nonIntrinsicBranch = nonIntrinsicBranch;
-            this.profile = profile;
-        }
-    }
-
-    /**
-     * Weaves a test of the receiver type to ensure the dispatch will select {@code targetMethod}
-     * and not another method that overrides it. This should only be called if there is an
-     * {@link InvocationPlugin} for {@code targetMethod} and the invocation is indirect.
-     *
-     * The control flow woven around the intrinsic is as follows:
-     *
-     * <pre>
-     *  if (LoadMethod(LoadHub(receiver)) == targetMethod) {
-     *       <intrinsic for targetMethod>
-     *  } else {
-     *       <virtual call to targetMethod>
-     *  }
-     * </pre>
-     *
-     * The {@code else} branch is woven by {@link #afterInvocationPluginExecution}.
-     *
-     * @return {@code null} if the intrinsic cannot be used otherwise an object to be used by
-     *         {@link #afterInvocationPluginExecution} to weave code for the non-intrinsic branch
-     */
-    protected IntrinsicGuard guardIntrinsic(ValueNode[] args, ResolvedJavaMethod targetMethod, InvocationPluginReceiver pluginReceiver) {
-        ValueNode intrinsicReceiver = args[0];
-        ResolvedJavaType receiverType = StampTool.typeOrNull(intrinsicReceiver);
-        if (receiverType == null) {
-            // The verifier guarantees it to be at least type declaring targetMethod
-            receiverType = targetMethod.getDeclaringClass();
-        }
-        ResolvedJavaMethod resolvedMethod = receiverType.resolveMethod(targetMethod, method.getDeclaringClass());
-        if (resolvedMethod == null || resolvedMethod.equals(targetMethod)) {
-            assert resolvedMethod == null || targetMethod.getDeclaringClass().isAssignableFrom(resolvedMethod.getDeclaringClass());
-            Mark mark = graph.getMark();
-            FixedWithNextNode currentLastInstr = lastInstr;
-            ValueNode nonNullReceiver = pluginReceiver.get();
-            Stamp methodStamp = getStampProvider().createMethodStamp();
-            LoadHubNode hub = graph.unique(new LoadHubNode(getStampProvider(), nonNullReceiver));
-            LoadMethodNode actual = append(new LoadMethodNode(methodStamp, targetMethod, receiverType, method.getDeclaringClass(), hub));
-            ConstantNode expected = graph.unique(ConstantNode.forConstant(methodStamp, targetMethod.getEncoding(), getMetaAccess()));
-            LogicNode compare = graph.addOrUniqueWithInputs(
-                            CompareNode.createCompareNode(getConstantReflection(), getMetaAccess(), options, null, CanonicalCondition.EQ, actual, expected, NodeView.DEFAULT));
-
-            JavaTypeProfile profile = null;
-            if (profilingInfo != null && this.optimisticOpts.useTypeCheckHints(getOptions())) {
-                profile = profilingInfo.getTypeProfile(bci());
-                if (profile != null) {
-                    JavaTypeProfile newProfile = adjustProfileForInvocationPlugin(profile, targetMethod);
-                    if (newProfile != profile) {
-                        if (newProfile.getTypes().length == 0) {
-                            // All profiled types select the intrinsic so
-                            // emit a fixed guard instead of an if-then-else.
-                            lastInstr = append(new FixedGuardNode(compare, TypeCheckedInliningViolated, InvalidateReprofile, false));
-                            return new IntrinsicGuard(currentLastInstr, intrinsicReceiver, mark, null, null);
-                        }
-                    } else {
-                        // No profiled types select the intrinsic so emit a virtual call
-                        return null;
-                    }
-                    profile = newProfile;
-                }
-            }
-
-            AbstractBeginNode intrinsicBranch = graph.add(new BeginNode());
-            AbstractBeginNode nonIntrinsicBranch = graph.add(new BeginNode());
-            // In the adjustment above, we filter out receiver types that select the intrinsic as
-            // virtual call target. This means the recorded types in the adjusted profile will
-            // definitely not call into the intrinsic. Note that the following branch probability is
-            // still not precise -- the previously-not-recorded receiver types in the original
-            // profile might or might not call into the intrinsic. Yet we accumulate them into the
-            // probability of the intrinsic branch, assuming that the not-recorded types will only
-            // be a small fraction.
-            append(new IfNode(compare, intrinsicBranch, nonIntrinsicBranch, profile != null ? profile.getNotRecordedProbability() : LIKELY_PROBABILITY));
-            lastInstr = intrinsicBranch;
-            return new IntrinsicGuard(currentLastInstr, intrinsicReceiver, mark, nonIntrinsicBranch, profile);
-        } else {
-            // Receiver selects an overriding method so emit a virtual call
-            return null;
-        }
-    }
-
-    /**
-     * Adjusts the profile for an indirect invocation of a virtual method for which there is an
-     * intrinsic. The adjustment made by this method is to remove all types from the profile that do
-     * not override {@code targetMethod}.
-     *
-     * @param profile the profile to adjust
-     * @param targetMethod the virtual method for which there is an intrinsic
-     * @return the adjusted profile or the original {@code profile} object if no adjustment was made
-     */
-    protected JavaTypeProfile adjustProfileForInvocationPlugin(JavaTypeProfile profile, ResolvedJavaMethod targetMethod) {
-        if (profile.getTypes().length > 0) {
-            List<ProfiledType> retained = new ArrayList<>();
-            double notRecordedProbability = profile.getNotRecordedProbability();
-            for (ProfiledType ptype : profile.getTypes()) {
-                if (!ptype.getType().resolveMethod(targetMethod, method.getDeclaringClass()).equals(targetMethod)) {
-                    retained.add(ptype);
-                } else {
-                    notRecordedProbability += ptype.getProbability();
-                }
-            }
-            if (!retained.isEmpty()) {
-                if (retained.size() != profile.getTypes().length) {
-                    return new JavaTypeProfile(profile.getNullSeen(), notRecordedProbability, retained.toArray(new ProfiledType[retained.size()]));
-                }
-            } else {
-                return new JavaTypeProfile(profile.getNullSeen(), notRecordedProbability, new ProfiledType[0]);
-            }
-        }
-        return profile;
-    }
-
-    /**
-     * Performs any action required after execution of an invocation plugin. This includes
-     * {@linkplain InvocationPluginAssertions#check checking} invocation plugin invariants as well
-     * as weaving the {@code else} branch of the code woven by {@link #guardIntrinsic} if
-     * {@code guard != null}.
-     */
-    protected void afterInvocationPluginExecution(boolean pluginHandledInvoke, InvocationPluginAssertions assertions, IntrinsicGuard intrinsicGuard,
-                    InvokeKind invokeKind, ValueNode[] args, ResolvedJavaMethod targetMethod, JavaKind resultType, JavaType returnType) {
-        assert assertions.check(pluginHandledInvoke);
-        if (intrinsicGuard != null) {
-            if (pluginHandledInvoke) {
-                if (intrinsicGuard.nonIntrinsicBranch != null) {
-                    // Intrinsic emitted: emit a virtual call to the target method and
-                    // merge it with the intrinsic branch
-                    EndNode intrinsicEnd = append(new EndNode());
-
-                    FrameStateBuilder intrinsicState = null;
-                    FrameStateBuilder nonIntrinisicState = null;
-                    if (resultType != JavaKind.Void) {
-                        intrinsicState = frameState.copy();
-                        frameState.pop(resultType);
-                        nonIntrinisicState = frameState;
-                    }
-
-                    lastInstr = intrinsicGuard.nonIntrinsicBranch;
-                    createNonInlinedInvoke(getActionForInvokeExceptionEdge(null), bci(), args, targetMethod, invokeKind, resultType, returnType, intrinsicGuard.profile);
-
-                    EndNode nonIntrinsicEnd = append(new EndNode());
-                    AbstractMergeNode mergeNode = graph.add(new MergeNode());
-
-                    mergeNode.addForwardEnd(intrinsicEnd);
-                    if (intrinsicState != null) {
-                        intrinsicState.merge(mergeNode, nonIntrinisicState);
-                        frameState = intrinsicState;
-                    }
-                    mergeNode.addForwardEnd(nonIntrinsicEnd);
-                    mergeNode.setStateAfter(frameState.create(stream.nextBCI(), mergeNode));
-
-                    lastInstr = mergeNode;
-                }
-            } else {
-                // Intrinsic was not applied: remove intrinsic guard
-                // and restore the original receiver node in the arguments array
-                intrinsicGuard.lastInstr.setNext(null);
-                GraphUtil.removeNewNodes(graph, intrinsicGuard.mark);
-                lastInstr = intrinsicGuard.lastInstr;
-                args[0] = intrinsicGuard.receiver;
-            }
-        }
-    }
-
     @SuppressWarnings("try")
-    protected boolean tryInvocationPlugin(InvokeKind invokeKind, ValueNode[] args, ResolvedJavaMethod targetMethod, JavaKind resultType, JavaType returnType) {
+    protected boolean tryInvocationPlugin(InvokeKind invokeKind, ValueNode[] args, ResolvedJavaMethod targetMethod, JavaKind resultType) {
         InvocationPlugin plugin = graphBuilderConfig.getPlugins().getInvocationPlugins().lookupInvocation(targetMethod);
         if (plugin != null) {
 
@@ -2266,24 +2085,15 @@ public class BytecodeParser implements GraphBuilderContext {
             }
 
             InvocationPluginReceiver pluginReceiver = invocationPluginReceiver.init(targetMethod, args);
-
-            IntrinsicGuard intrinsicGuard = null;
-            if (invokeKind.isIndirect()) {
-                intrinsicGuard = guardIntrinsic(args, targetMethod, pluginReceiver);
-                if (intrinsicGuard == null) {
-                    return false;
-                } else if (intrinsicGuard.nonIntrinsicBranch == null) {
-                    assert lastInstr instanceof FixedGuardNode;
-                }
-            }
+            assert invokeKind.isDirect() : "Cannot apply invocation plugin on an indirect call site.";
 
             InvocationPluginAssertions assertions = Assertions.assertionsEnabled() ? new InvocationPluginAssertions(plugin, args, targetMethod, resultType) : null;
             try (DebugCloseable context = openNodeContext(targetMethod)) {
                 if (plugin.execute(this, targetMethod, pluginReceiver, args)) {
-                    afterInvocationPluginExecution(true, assertions, intrinsicGuard, invokeKind, args, targetMethod, resultType, returnType);
+                    assert assertions.check(true);
                     return !plugin.isDecorator();
                 } else {
-                    afterInvocationPluginExecution(false, assertions, intrinsicGuard, invokeKind, args, targetMethod, resultType, returnType);
+                    assert assertions.check(false);
                 }
             }
         }
