@@ -31,44 +31,44 @@ import org.graalvm.compiler.truffle.common.TruffleCompilerListener;
 /**
  * Encapsulates a handle to a {@code CompilationResultInfo} object in the SVM heap.
  */
-final class SVMCompilationResultInfo extends SVMObject implements TruffleCompilerListener.CompilationResultInfo {
+final class SVMCompilationResultInfo extends SVMScopedHandle implements TruffleCompilerListener.CompilationResultInfo {
 
     SVMCompilationResultInfo(long handle) {
-        super(handle);
+        super(handle, SVMCompilationResultInfo.class);
     }
 
     @Override
     public int getTargetCodeSize() {
-        return HotSpotToSVMCalls.getTargetCodeSize(getIsolateThread(), handle);
+        return HotSpotToSVMCalls.getTargetCodeSize(getIsolateThread(), getHandle());
     }
 
     @Override
     public int getTotalFrameSize() {
-        return HotSpotToSVMCalls.getTotalFrameSize(getIsolateThread(), handle);
+        return HotSpotToSVMCalls.getTotalFrameSize(getIsolateThread(), getHandle());
     }
 
     @Override
     public int getExceptionHandlersCount() {
-        return HotSpotToSVMCalls.getExceptionHandlersCount(getIsolateThread(), handle);
+        return HotSpotToSVMCalls.getExceptionHandlersCount(getIsolateThread(), getHandle());
     }
 
     @Override
     public int getInfopointsCount() {
-        return HotSpotToSVMCalls.getInfopointsCount(getIsolateThread(), handle);
+        return HotSpotToSVMCalls.getInfopointsCount(getIsolateThread(), getHandle());
     }
 
     @Override
     public String[] getInfopoints() {
-        return HotSpotToSVMCalls.getInfopoints(getIsolateThread(), handle);
+        return HotSpotToSVMCalls.getInfopoints(getIsolateThread(), getHandle());
     }
 
     @Override
     public int getMarksCount() {
-        return HotSpotToSVMCalls.getMarksCount(getIsolateThread(), handle);
+        return HotSpotToSVMCalls.getMarksCount(getIsolateThread(), getHandle());
     }
 
     @Override
     public int getDataPatchesCount() {
-        return HotSpotToSVMCalls.getDataPatchesCount(getIsolateThread(), handle);
+        return HotSpotToSVMCalls.getDataPatchesCount(getIsolateThread(), getHandle());
     }
 }

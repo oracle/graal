@@ -40,10 +40,8 @@
  */
 package com.oracle.truffle.api.test;
 
-import com.oracle.truffle.api.RootCallTarget;
 import com.oracle.truffle.api.Truffle;
 import com.oracle.truffle.api.TruffleRuntime;
-import com.oracle.truffle.api.nodes.RootNode;
 import java.lang.ref.Reference;
 import java.lang.ref.ReferenceQueue;
 import java.lang.ref.WeakReference;
@@ -126,11 +124,6 @@ public final class GCUtils {
                 }
             }
         }
-        try {
-            System.out.println("Not freed...");
-            Thread.sleep(1_000_000);
-        } catch (InterruptedException e) {
-        }
         Assert.fail(message);
     }
 
@@ -148,8 +141,6 @@ public final class GCUtils {
             Method clearNativeReferences = runtime.getClass().getDeclaredMethod("cleanNativeReferences");
             clearNativeReferences.setAccessible(true);
             clearNativeReferences.invoke(null);
-            RootCallTarget cleanSentinel = runtime.createCallTarget(RootNode.createConstantNode(42));
-            cleanSentinel.call();
             return true;
         } catch (ReflectiveOperationException e) {
             return false;

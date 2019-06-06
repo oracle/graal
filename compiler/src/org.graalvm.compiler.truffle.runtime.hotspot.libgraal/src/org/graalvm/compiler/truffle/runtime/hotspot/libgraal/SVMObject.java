@@ -26,8 +26,8 @@ package org.graalvm.compiler.truffle.runtime.hotspot.libgraal;
 
 import static org.graalvm.libgraal.LibGraalScope.getIsolateThread;
 
-import java.lang.ref.PhantomReference;
 import java.lang.ref.ReferenceQueue;
+import java.lang.ref.WeakReference;
 import java.util.Collections;
 import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
@@ -66,7 +66,7 @@ class SVMObject {
      * Processes {@link #CLEANERS_QUEUE} to release any handles whose {@link SVMObject} objects are
      * now unreachable.
      */
-    static void cleanHandles() {
+    private static void cleanHandles() {
         Cleaner cleaner;
         while ((cleaner = (Cleaner) CLEANERS_QUEUE.poll()) != null) {
             CLEANERS.remove(cleaner);
@@ -75,7 +75,7 @@ class SVMObject {
     }
 
     /**
-     * Strong references to the {@link PhantomReference} objects.
+     * Strong references to the {@link WeakReference} objects.
      */
     private static final Set<Cleaner> CLEANERS = Collections.newSetFromMap(new ConcurrentHashMap<>());
 
@@ -85,7 +85,7 @@ class SVMObject {
      */
     private static final ReferenceQueue<SVMObject> CLEANERS_QUEUE = new ReferenceQueue<>();
 
-    private static final class Cleaner extends PhantomReference<SVMObject> {
+    private static final class Cleaner extends WeakReference<SVMObject> {
         private final long handle;
 
         Cleaner(SVMObject referent, long handle) {

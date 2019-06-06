@@ -35,6 +35,7 @@ import org.graalvm.libgraal.LibGraalScope;
 import org.graalvm.libgraal.OptionsEncoder;
 
 import com.oracle.truffle.api.TruffleRuntime;
+import jdk.vm.ci.hotspot.HotSpotConstantReflectionProvider;
 
 import jdk.vm.ci.hotspot.HotSpotJVMCIRuntime;
 import jdk.vm.ci.hotspot.HotSpotResolvedJavaType;
@@ -99,8 +100,8 @@ final class LibGraalTruffleRuntime extends AbstractHotSpotTruffleRuntime {
     @SuppressWarnings({"unused", "try"})
     private static void cleanNativeReferences() {
         try (LibGraalScope scope = new LibGraalScope(HotSpotJVMCIRuntime.runtime())) {
-            SVMObject.cleanHandles();
             HotSpotToSVMCalls.cleanReferences(getIsolateThread());
+            HotSpotJVMCIRuntime.runtime().translate(((HotSpotConstantReflectionProvider) HotSpotJVMCIRuntime.runtime().getHostJVMCIBackend().getConstantReflection()).forObject(new Object()));
         }
     }
 }
