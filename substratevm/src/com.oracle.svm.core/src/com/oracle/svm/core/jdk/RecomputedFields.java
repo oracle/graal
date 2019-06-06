@@ -31,7 +31,6 @@ import static com.oracle.svm.core.annotate.RecomputeFieldValue.Kind.FromAlias;
 import static com.oracle.svm.core.annotate.RecomputeFieldValue.Kind.Reset;
 
 import java.io.FileDescriptor;
-import java.lang.Thread.UncaughtExceptionHandler;
 import java.lang.ref.ReferenceQueue;
 import java.lang.ref.WeakReference;
 import java.lang.reflect.Field;
@@ -42,11 +41,10 @@ import java.nio.charset.CoderResult;
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ConcurrentMap;
+import java.util.concurrent.Executor;
 import java.util.concurrent.ForkJoinPool;
-import java.util.concurrent.ForkJoinPool.ForkJoinWorkerThreadFactory;
 import java.util.concurrent.atomic.AtomicIntegerFieldUpdater;
 import java.util.concurrent.atomic.AtomicLongFieldUpdater;
-import java.util.concurrent.atomic.AtomicReference;
 import java.util.concurrent.atomic.AtomicReferenceFieldUpdater;
 import java.util.concurrent.locks.ReentrantLock;
 import java.util.function.Consumer;
@@ -58,7 +56,6 @@ import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.Platforms;
 import org.graalvm.nativeimage.hosted.Feature;
 
-import com.oracle.svm.core.SubstrateOptions;
 import com.oracle.svm.core.SubstrateUtil;
 import com.oracle.svm.core.annotate.Alias;
 import com.oracle.svm.core.annotate.AutomaticFeature;
@@ -352,127 +349,102 @@ class AtomicFieldUpdaterFeature implements Feature {
 }
 
 @TargetClass(java.util.concurrent.ForkJoinPool.class)
+@SuppressWarnings("unused") //
 final class Target_java_util_concurrent_ForkJoinPool {
 
-    @Alias static /* final */ int MAX_CAP;
-
-    @Alias //
-    @TargetElement(onlyWith = JDK8OrEarlier.class) //
-    static /* final */ int LIFO_QUEUE;
-
-    @Alias static /* final */ ForkJoinWorkerThreadFactory defaultForkJoinWorkerThreadFactory;
-
-    @Alias //
-    @TargetElement(onlyWith = JDK8OrEarlier.class) //
-    @SuppressWarnings("unused") //
-    protected Target_java_util_concurrent_ForkJoinPool(int parallelism, ForkJoinWorkerThreadFactory factory, UncaughtExceptionHandler handler, int mode, String workerNamePrefix) {
-    }
-
-    @Alias //
-    @TargetElement(onlyWith = JDK11OrLater.class) //
-    @SuppressWarnings("unused") //
-    private Target_java_util_concurrent_ForkJoinPool(byte forCommonPoolOnly) {
-    }
-
-    /**
-     * "commonParallelism" is only accessed via this method, so a substitution provides a convenient
-     * place to ensure that it is initialized.
-     */
-    @Substitute
-    public static int getCommonPoolParallelism() {
-        CommonInjector.ensureCommonPoolIsInitialized();
-        return commonParallelism;
-    }
-
     /*
-     * Recomputation of the common pool: we cannot create it during image generation, because it
+     * Recomputation of the common pool: we cannot create it during image generation, because at
      * this time we do not know the number of cores that will be available at run time. Therefore,
      * we create the common pool when it is accessed the first time.
+     *
+     * Note that re-running the class initializer of ForkJoinPool does not work because the class
+     * initializer does several other things that we do not support at run time.
      */
-    @Alias @InjectAccessors(CommonInjector.class) //
-    static /* final */ ForkJoinPool common;
+    @Alias @InjectAccessors(ForkJoinPoolCommonAccessor.class) //
+    static ForkJoinPool common;
 
-    @Alias //
+    @Substitute
+    public static int getCommonPoolParallelism() {
+        /*
+         * The field for common parallelism is only accessed via this method, so a substitution
+         * provides a convenient place to ensure that the common pool is initialized.
+         */
+        return ForkJoinPoolCommonAccessor.get().getParallelism();
+    }
+
+    /* Delete the original static field for common parallelism. */
+    @Delete //
     @TargetElement(onlyWith = JDK8OrEarlier.class) //
-    static /* final */ int commonParallelism;
+    static int commonParallelism;
+    @Delete //
+    @TargetElement(onlyWith = JDK11OrLater.class) //
+    static int COMMON_PARALLELISM;
+
+    @Alias
+    @TargetElement(onlyWith = JDK8OrEarlier.class)
+    static native ForkJoinPool makeCommonPool();
 
     @Alias //
     @TargetElement(onlyWith = JDK11OrLater.class) //
-    static /* final */ int COMMON_PARALLELISM;
+    Target_java_util_concurrent_ForkJoinPool(byte forCommonPoolOnly) {
+    }
+}
+
+/**
+ * An injected field to replace ForkJoinPool.common.
+ *
+ * This class is also a convenient place to handle the initialization of "common" and
+ * "commonParallelism", which can unfortunately be accessed independently.
+ */
+class ForkJoinPoolCommonAccessor {
 
     /**
-     * An injected field to replace ForkJoinPool.common.
-     *
-     * This class is also a convenient place to handle the initialization of "common" and
-     * "commonParallelism", which can unfortunately be accessed independently.
+     * The static field that is used in place of the static field ForkJoinPool.common. This field
+     * set the first time it is accessed, when it transitions from null to something, but does not
+     * change thereafter.
      */
-    protected static class CommonInjector {
+    private static volatile ForkJoinPool injectedCommon;
 
-        /**
-         * The static field that is used in place of the static field ForkJoinPool.common. This
-         * field set the first time it is accessed, when it transitions from null to something, but
-         * does not change thereafter. There is no set method for the field.
-         */
-        protected static AtomicReference<Target_java_util_concurrent_ForkJoinPool> injectedCommon = new AtomicReference<>(null);
+    static volatile int commonParallelism;
 
-        /** The get access method for ForkJoinPool.common. */
-        public static ForkJoinPool getCommon() {
-            ensureCommonPoolIsInitialized();
-            return SubstrateUtil.cast(injectedCommon.get(), ForkJoinPool.class);
+    /** The get access method for ForkJoinPool.common. */
+    static ForkJoinPool get() {
+        ForkJoinPool result = injectedCommon;
+        if (result == null) {
+            result = initializeCommonPool();
         }
+        return result;
+    }
 
-        /** Ensure that the common pool variables are initialized. */
-        protected static void ensureCommonPoolIsInitialized() {
-            if (injectedCommon.get() == null) {
-                if (JavaVersionUtil.JAVA_SPEC <= 8) {
-                    initializeCommonPool_JDK8OrEarlier();
-                } else {
-                    initializeCommonPool_JDK11OrLater();
-                }
+    private static synchronized ForkJoinPool initializeCommonPool() {
+        ForkJoinPool result = injectedCommon;
+        if (result == null) {
+            if (JavaVersionUtil.JAVA_SPEC <= 8) {
+                result = Target_java_util_concurrent_ForkJoinPool.makeCommonPool();
+            } else {
+                result = SubstrateUtil.cast(new Target_java_util_concurrent_ForkJoinPool((byte) 0), ForkJoinPool.class);
             }
+            injectedCommon = result;
         }
+        return result;
+    }
+}
 
-        protected static void initializeCommonPool_JDK8OrEarlier() {
-            /* "common" and "commonParallelism" have to be set together. */
-            /*
-             * This is a simplified version of ForkJoinPool.makeCommonPool(), without the dynamic
-             * class loading for factory and handler based on system properties.
-             */
-            int parallelism = Runtime.getRuntime().availableProcessors() - 1;
-            if (!SubstrateOptions.MultiThreaded.getValue()) {
-                /*
-                 * Using "parallelism = 0" gets me a ForkJoinPool that does not try to start any
-                 * threads, which is what I want if I am not multi-threaded.
-                 */
-                parallelism = 0;
-            }
-            if (parallelism > MAX_CAP) {
-                parallelism = MAX_CAP;
-            }
-            final Target_java_util_concurrent_ForkJoinPool proposedPool = new Target_java_util_concurrent_ForkJoinPool(parallelism, defaultForkJoinWorkerThreadFactory, null, LIFO_QUEUE,
-                            "ForkJoinPool.commonPool-worker-");
-            /* The assignment to "injectedCommon" is atomic to prevent races. */
-            injectedCommon.compareAndSet(null, proposedPool);
-            final ForkJoinPool actualPool = SubstrateUtil.cast(injectedCommon.get(), ForkJoinPool.class);
-            /*
-             * The assignment to "commonParallelism" can race because multiple assignments are
-             * idempotent once "injectedCommon" is set. This code is a copy of the relevant part of
-             * the static initialization block in ForkJoinPool.
-             */
-            commonParallelism = actualPool.getParallelism();
-        }
+@TargetClass(java.util.concurrent.CompletableFuture.class)
+final class Target_java_util_concurrent_CompletableFuture {
 
-        protected static void initializeCommonPool_JDK11OrLater() {
-            /* "common" and "commonParallelism" have to be set together. */
-            /*
-             * TODO: This should be a simplified version of ForkJoinPool(byte), , without the
-             * dynamic class loading for factory and handler based on system properties.
-             *
-             * Among the problems is that the public ForkJoinPool constructor that takes a
-             * `parallelism` argument now throws an `IllegalArgumentException` if passed a `0`.
-             */
-            throw VMError.unsupportedFeature("Target_java_util_concurrent_ForkJoinPool.CommonInjector.initializeCommonPool_JDK11OrLater()");
-        }
+    @Alias @InjectAccessors(CompletableFutureAsyncPoolAccessor.class) //
+    @TargetElement(onlyWith = JDK8OrEarlier.class) //
+    private static Executor asyncPool;
+
+    @Alias @InjectAccessors(CompletableFutureAsyncPoolAccessor.class) //
+    @TargetElement(onlyWith = JDK11OrLater.class) //
+    private static Executor ASYNC_POOL;
+}
+
+class CompletableFutureAsyncPoolAccessor {
+    static Executor get() {
+        return ForkJoinPoolCommonAccessor.get();
     }
 }
 
