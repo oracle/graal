@@ -38,6 +38,7 @@ import org.graalvm.nativeimage.ImageInfo;
 import org.graalvm.nativeimage.ProcessProperties;
 
 import com.oracle.svm.core.option.HostedOptionKey;
+import com.oracle.svm.core.option.RuntimeOptionKey;
 import com.oracle.svm.core.util.VMError;
 
 /**
@@ -63,7 +64,7 @@ public class FallbackExecutor {
         @Option(help = "Internal option used to specify java arguments for FallbackExecutor.")//
         public static final HostedOptionKey<String[]> FallbackExecutorJavaArg = new HostedOptionKey<>(null);
         @Option(help = "Internal option used to specify runtime java arguments for FallbackExecutor.")//
-        public static final HostedOptionKey<String[]> FallbackExecutorRuntimeJavaArg = new HostedOptionKey<>(null);
+        public static final RuntimeOptionKey<String[]> FallbackExecutorRuntimeJavaArg = new RuntimeOptionKey<>(new String[0]);
     }
 
     public static void main(String[] args) {
