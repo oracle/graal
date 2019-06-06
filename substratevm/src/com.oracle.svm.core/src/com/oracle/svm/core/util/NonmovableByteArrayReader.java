@@ -28,57 +28,57 @@ import org.graalvm.compiler.core.common.NumUtil;
 import org.graalvm.word.Pointer;
 
 import com.oracle.svm.core.SubstrateUtil;
-import com.oracle.svm.core.c.PinnedArray;
-import com.oracle.svm.core.c.PinnedArrays;
+import com.oracle.svm.core.c.NonmovableArray;
+import com.oracle.svm.core.c.NonmovableArrays;
 
 /**
- * Provides low-level read access to a byte[] array for signed and unsigned values of size 1, 2, 4,
- * and 8 bytes.
+ * Provides low-level read access to a {@link NonmovableArray} array of bytes for signed and
+ * unsigned values of size 1, 2, 4, and 8 bytes.
  */
-public class PinnedByteArrayReader {
+public class NonmovableByteArrayReader {
 
-    private static Pointer pointerTo(PinnedArray<Byte> data, long byteIndex) {
-        assert byteIndex >= 0 && NumUtil.safeToInt(byteIndex) < PinnedArrays.lengthOf(data);
-        return PinnedArrays.addressOf(data, NumUtil.safeToInt(byteIndex));
+    private static Pointer pointerTo(NonmovableArray<Byte> data, long byteIndex) {
+        assert byteIndex >= 0 && NumUtil.safeToInt(byteIndex) < NonmovableArrays.lengthOf(data);
+        return NonmovableArrays.addressOf(data, NumUtil.safeToInt(byteIndex));
     }
 
-    public static int getS1(PinnedArray<Byte> data, long byteIndex) {
+    public static int getS1(NonmovableArray<Byte> data, long byteIndex) {
         if (SubstrateUtil.HOSTED) {
-            return ByteArrayReader.getS1(PinnedArrays.getHostedArray(data), byteIndex);
+            return ByteArrayReader.getS1(NonmovableArrays.getHostedArray(data), byteIndex);
         }
         return pointerTo(data, byteIndex).readByte(0);
     }
 
-    public static int getS2(PinnedArray<Byte> data, long byteIndex) {
+    public static int getS2(NonmovableArray<Byte> data, long byteIndex) {
         if (SubstrateUtil.HOSTED) {
-            return ByteArrayReader.getS2(PinnedArrays.getHostedArray(data), byteIndex);
+            return ByteArrayReader.getS2(NonmovableArrays.getHostedArray(data), byteIndex);
         }
         return pointerTo(data, byteIndex).readShort(0);
     }
 
-    public static int getS4(PinnedArray<Byte> data, long byteIndex) {
+    public static int getS4(NonmovableArray<Byte> data, long byteIndex) {
         if (SubstrateUtil.HOSTED) {
-            return ByteArrayReader.getS4(PinnedArrays.getHostedArray(data), byteIndex);
+            return ByteArrayReader.getS4(NonmovableArrays.getHostedArray(data), byteIndex);
         }
         return pointerTo(data, byteIndex).readInt(0);
     }
 
-    public static long getS8(PinnedArray<Byte> data, long byteIndex) {
+    public static long getS8(NonmovableArray<Byte> data, long byteIndex) {
         if (SubstrateUtil.HOSTED) {
-            return ByteArrayReader.getS8(PinnedArrays.getHostedArray(data), byteIndex);
+            return ByteArrayReader.getS8(NonmovableArrays.getHostedArray(data), byteIndex);
         }
         return pointerTo(data, byteIndex).readLong(0);
     }
 
-    public static int getU1(PinnedArray<Byte> data, long byteIndex) {
+    public static int getU1(NonmovableArray<Byte> data, long byteIndex) {
         return getS1(data, byteIndex) & 0xFF;
     }
 
-    public static int getU2(PinnedArray<Byte> data, long byteIndex) {
+    public static int getU2(NonmovableArray<Byte> data, long byteIndex) {
         return getS2(data, byteIndex) & 0xFFFF;
     }
 
-    public static long getU4(PinnedArray<Byte> data, long byteIndex) {
+    public static long getU4(NonmovableArray<Byte> data, long byteIndex) {
         return getS4(data, byteIndex) & 0xFFFFFFFFL;
     }
 

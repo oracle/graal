@@ -27,12 +27,12 @@ package com.oracle.svm.core.c;
 /**
  * A non-moving array of Java objects.
  *
- * We use {@link Void} for the type parameter of {@link PinnedArray} to prevent mistakenly assigning
- * a {@link PinnedObjectArray} to a {@link PinnedArray}.
+ * We use {@link Void} for the type parameter of {@link NonmovableArray} to prevent mistakenly
+ * assigning a {@link NonmovableObjectArray} to a {@link NonmovableArray}.
  *
  * @param <T> the type of stored objects, purely for tagging and compile-time checks.
  *
- * @see PinnedArrays
+ * @see NonmovableArrays
  */
-public interface PinnedObjectArray<T> extends PinnedArray<Void> {
+public interface NonmovableObjectArray<T> extends NonmovableArray<Void> {
 }

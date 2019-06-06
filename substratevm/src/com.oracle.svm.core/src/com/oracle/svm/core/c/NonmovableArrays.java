@@ -55,16 +55,16 @@ import com.oracle.svm.core.snippets.ImplicitExceptions;
 import com.oracle.svm.core.snippets.KnownIntrinsics;
 import com.oracle.svm.core.util.VMError;
 
-public final class PinnedArrays {
-    private static final HostedPinnedArray<?> HOSTED_NULL_VALUE = new HostedPinnedObjectArray<>(null);
+public final class NonmovableArrays {
+    private static final HostedNonmovableArray<?> HOSTED_NULL_VALUE = new HostedNonmovableObjectArray<>(null);
 
     @SuppressWarnings("unchecked")
     @Uninterruptible(reason = "Faux object reference on stack during array initialization.")
-    private static <T extends PinnedArray<?>> T createArray(int length, Class<?> arrayType) {
+    private static <T extends NonmovableArray<?>> T createArray(int length, Class<?> arrayType) {
         if (SubstrateUtil.HOSTED) {
             Class<?> componentType = arrayType.getComponentType();
             Object array = Array.newInstance(componentType, length);
-            return (T) (componentType.isPrimitive() ? new HostedPinnedArray<>(array) : new HostedPinnedObjectArray<>(array));
+            return (T) (componentType.isPrimitive() ? new HostedNonmovableArray<>(array) : new HostedNonmovableObjectArray<>(array));
         }
         int layoutEncoding = SubstrateUtil.cast(arrayType, DynamicHub.class).getLayoutEncoding();
         assert LayoutEncoding.isArray(layoutEncoding);
@@ -75,7 +75,7 @@ public final class PinnedArrays {
     }
 
     @Uninterruptible(reason = "Faux object reference on stack.")
-    private static int readLayoutEncoding(PinnedArray<?> array) {
+    private static int readLayoutEncoding(NonmovableArray<?> array) {
         return KnownIntrinsics.readHub(asObject(array)).getLayoutEncoding();
     }
 
@@ -83,23 +83,23 @@ public final class PinnedArrays {
     @Uninterruptible(reason = "Faux object reference on stack.", callerMustBe = true)
     private static <T> T asObject(PointerBase array) {
         if (SubstrateUtil.HOSTED) {
-            return (T) getHostedArray((PinnedArray<?>) array);
+            return (T) getHostedArray((NonmovableArray<?>) array);
         }
         return (T) KnownIntrinsics.convertUnknownValue(((Pointer) array).toObject(), Object.class);
     }
 
     @Uninterruptible(reason = "Faux object reference on stack.")
-    private static int readElementShift(PinnedArray<?> array) {
+    private static int readElementShift(NonmovableArray<?> array) {
         return LayoutEncoding.getArrayIndexShift(readLayoutEncoding(array));
     }
 
     @Uninterruptible(reason = "Faux object reference on stack.")
-    private static int readArrayBase(PinnedArray<?> array) {
+    private static int readArrayBase(NonmovableArray<?> array) {
         return (int) LayoutEncoding.getArrayBaseOffset(readLayoutEncoding(array)).rawValue();
     }
 
     @Uninterruptible(reason = "Faux object reference on stack.")
-    public static int lengthOf(PinnedArray<?> array) {
+    public static int lengthOf(NonmovableArray<?> array) {
         if (SubstrateUtil.HOSTED) {
             return Array.getLength(getHostedArray(array));
         }
@@ -107,17 +107,17 @@ public final class PinnedArrays {
     }
 
     @Uninterruptible(reason = "Faux object reference on stack.")
-    public static UnsignedWord byteSizeOf(PinnedArray<?> array) {
+    public static UnsignedWord byteSizeOf(NonmovableArray<?> array) {
         return array.isNonNull() ? LayoutEncoding.getSizeFromObject(asObject(array)) : WordFactory.zero();
     }
 
     @Uninterruptible(reason = "Faux object references on stack.")
-    public static void arraycopy(PinnedArray<?> src, int srcPos, PinnedArray<?> dest, int destPos, int length) {
+    public static void arraycopy(NonmovableArray<?> src, int srcPos, NonmovableArray<?> dest, int destPos, int length) {
         System.arraycopy(asObject(src), srcPos, asObject(dest), destPos, length);
     }
 
     @SuppressWarnings("unchecked")
-    public static <T extends PinnedArray<?>> T nullArray() {
+    public static <T extends NonmovableArray<?>> T nullArray() {
         if (SubstrateUtil.HOSTED) {
             return (T) HOSTED_NULL_VALUE;
         }
@@ -128,7 +128,7 @@ public final class PinnedArrays {
      * Allocates a byte array of the specified length.
      */
     @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
-    public static PinnedArray<Byte> createByteArray(int nbytes) {
+    public static NonmovableArray<Byte> createByteArray(int nbytes) {
         return createArray(nbytes, byte[].class);
     }
 
@@ -136,7 +136,7 @@ public final class PinnedArrays {
      * Allocates an integer array of the specified length.
      */
     @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
-    public static PinnedArray<Integer> createIntArray(int length) {
+    public static NonmovableArray<Integer> createIntArray(int length) {
         return createArray(length, int[].class);
     }
 
@@ -144,7 +144,7 @@ public final class PinnedArrays {
      * Allocates a word array of the specified length.
      */
     @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
-    public static <T extends WordBase> PinnedArray<T> createWordArray(int length) {
+    public static <T extends WordBase> NonmovableArray<T> createWordArray(int length) {
         return createArray(length, WordBase[].class);
     }
 
@@ -156,55 +156,55 @@ public final class PinnedArrays {
      * walker}. The array must be released manually with {@link #releaseUnmanagedArray}.
      */
     @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
-    public static <T> PinnedObjectArray<T> createObjectArray(int length) {
+    public static <T> NonmovableObjectArray<T> createObjectArray(int length) {
         return createArray(length, Object[].class);
     }
 
     @SuppressWarnings("unchecked")
     @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
-    public static <T> PinnedObjectArray<T> copyOfObjectArray(T[] source, int newLength) {
-        PinnedArray<?> array = createArray(newLength, source.getClass());
+    public static <T> NonmovableObjectArray<T> copyOfObjectArray(T[] source, int newLength) {
+        NonmovableArray<?> array = createArray(newLength, source.getClass());
         int copyLength = (source.length < newLength) ? source.length : newLength;
         System.arraycopy(source, 0, asObject(array), 0, copyLength);
-        return (PinnedObjectArray<T>) array;
+        return (NonmovableObjectArray<T>) array;
     }
 
     @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
-    public static void releaseUnmanagedArray(PinnedArray<?> array) {
+    public static void releaseUnmanagedArray(NonmovableArray<?> array) {
         ImageSingletons.lookup(UnmanagedMemorySupport.class).free(array);
     }
 
-    /** Returns a {@link PinnedArray} for an array of primitives in the image heap. */
+    /** Returns a {@link NonmovableArray} for an array of primitives in the image heap. */
     @SuppressWarnings("unchecked")
-    public static <T> PinnedArray<T> fromImageHeap(Object array) {
+    public static <T> NonmovableArray<T> fromImageHeap(Object array) {
         if (SubstrateUtil.HOSTED) {
             if (array == null) {
-                return (PinnedArray<T>) HOSTED_NULL_VALUE;
+                return (NonmovableArray<T>) HOSTED_NULL_VALUE;
             }
             VMError.guarantee(array.getClass().getComponentType().isPrimitive(), "Must call the method for Object[]");
-            return new HostedPinnedArray<>(array);
+            return new HostedNonmovableArray<>(array);
         }
         assert array == null || Heap.getHeap().getObjectHeader().isNonHeapAllocatedHeader(ObjectHeader.readHeaderFromObject(array));
-        return (array != null) ? (PinnedArray<T>) Word.objectToUntrackedPointer(array) : WordFactory.nullPointer();
+        return (array != null) ? (NonmovableArray<T>) Word.objectToUntrackedPointer(array) : WordFactory.nullPointer();
     }
 
-    /** Returns a {@link PinnedObjectArray} for an object array in the image heap. */
+    /** Returns a {@link NonmovableObjectArray} for an object array in the image heap. */
     @SuppressWarnings({"unchecked", "rawtypes"})
-    public static <T> PinnedObjectArray<T> fromImageHeap(Object[] array) {
+    public static <T> NonmovableObjectArray<T> fromImageHeap(Object[] array) {
         if (SubstrateUtil.HOSTED) {
-            return (array != null) ? new HostedPinnedObjectArray<>(array) : (PinnedObjectArray<T>) HOSTED_NULL_VALUE;
+            return (array != null) ? new HostedNonmovableObjectArray<>(array) : (NonmovableObjectArray<T>) HOSTED_NULL_VALUE;
         }
-        return (PinnedObjectArray) fromImageHeap((Object) array);
+        return (NonmovableObjectArray) fromImageHeap((Object) array);
     }
 
     /** During the image build, retrieve the array object that will be pinned. */
     @Platforms(Platform.HOSTED_ONLY.class)
     @SuppressWarnings("unchecked")
-    public static <T> T getHostedArray(PinnedArray<?> array) {
-        return (T) ((HostedPinnedArray<?>) array).getArray();
+    public static <T> T getHostedArray(NonmovableArray<?> array) {
+        return (T) ((HostedNonmovableArray<?>) array).getArray();
     }
 
-    public static ByteBuffer asByteBuffer(PinnedArray<Byte> array) {
+    public static ByteBuffer asByteBuffer(NonmovableArray<Byte> array) {
         if (SubstrateUtil.HOSTED) {
             return ByteBuffer.wrap(getHostedArray(array));
         }
@@ -212,8 +212,8 @@ public final class PinnedArrays {
     }
 
     @Uninterruptible(reason = "Faux object reference on stack.")
-    public static int getInt(PinnedArray<?> pinnedArray, int index) {
-        Object array = asObject(pinnedArray);
+    public static int getInt(NonmovableArray<?> nonmovableArray, int index) {
+        Object array = asObject(nonmovableArray);
         if (array instanceof int[]) {
             return ((int[]) array)[index];
         }
@@ -222,8 +222,8 @@ public final class PinnedArrays {
     }
 
     @Uninterruptible(reason = "Faux object reference on stack.")
-    public static void setInt(PinnedArray<?> pinnedArray, int index, int value) {
-        Object array = asObject(pinnedArray);
+    public static void setInt(NonmovableArray<?> nonmovableArray, int index, int value) {
+        Object array = asObject(nonmovableArray);
         // add support for long, float, double on demand
         if (array instanceof int[]) {
             ((int[]) array)[index] = value;
@@ -233,39 +233,39 @@ public final class PinnedArrays {
     }
 
     @Uninterruptible(reason = "Faux object reference on stack.")
-    public static <T extends WordBase> void setWord(PinnedArray<T> pinnedArray, int index, T value) {
-        T[] array = asObject(pinnedArray);
+    public static <T extends WordBase> void setWord(NonmovableArray<T> nonmovableArray, int index, T value) {
+        T[] array = asObject(nonmovableArray);
         array[index] = value;
     }
 
     @Uninterruptible(reason = "Faux object reference on stack.")
-    public static <T extends WordBase> T getWord(PinnedArray<T> pinnedArray, int index) {
-        T[] array = asObject(pinnedArray);
+    public static <T extends WordBase> T getWord(NonmovableArray<T> nonmovableArray, int index) {
+        T[] array = asObject(nonmovableArray);
         return array[index];
     }
 
     @SuppressWarnings("unchecked")
     @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
-    public static <T extends PointerBase> T addressOf(PinnedArray<?> array, int index) {
+    public static <T extends PointerBase> T addressOf(NonmovableArray<?> array, int index) {
         assert index >= 0 && index <= lengthOf(array);
         return (T) ((Pointer) array).add(readArrayBase(array) + (index << readElementShift(array)));
     }
 
     @Uninterruptible(reason = "Faux object reference on stack.")
-    public static <T> T getObject(PinnedObjectArray<T> array, int index) {
+    public static <T> T getObject(NonmovableObjectArray<T> array, int index) {
         T[] obj = asObject(array);
         return obj[index];
     }
 
     @Uninterruptible(reason = "Faux object reference on stack.")
-    public static <T> void setObject(PinnedObjectArray<T> array, int index, T value) {
+    public static <T> void setObject(NonmovableObjectArray<T> array, int index, T value) {
         T[] obj = asObject(array);
         obj[index] = value;
     }
 
     /** @see ObjectReferenceWalker */
     @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true, calleeMustBe = false)
-    public static void walkUnmanagedObjectArray(PinnedObjectArray<?> array, ObjectReferenceVisitor visitor) {
+    public static void walkUnmanagedObjectArray(NonmovableObjectArray<?> array, ObjectReferenceVisitor visitor) {
         if (array.isNonNull()) {
             int refSize = ConfigurationValues.getObjectLayout().getReferenceSize();
             assert refSize == (1 << readElementShift(array));
@@ -278,6 +278,6 @@ public final class PinnedArrays {
         }
     }
 
-    private PinnedArrays() {
+    private NonmovableArrays() {
     }
 }

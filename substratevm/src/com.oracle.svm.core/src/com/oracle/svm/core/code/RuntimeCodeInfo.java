@@ -35,8 +35,8 @@ import org.graalvm.word.UnsignedWord;
 import com.oracle.svm.core.MemoryWalker;
 import com.oracle.svm.core.annotate.AutomaticFeature;
 import com.oracle.svm.core.annotate.Uninterruptible;
-import com.oracle.svm.core.c.PinnedArray;
-import com.oracle.svm.core.c.PinnedArrays;
+import com.oracle.svm.core.c.NonmovableArray;
+import com.oracle.svm.core.c.NonmovableArrays;
 import com.oracle.svm.core.deopt.Deoptimizer;
 import com.oracle.svm.core.deopt.SubstrateInstalledCode;
 import com.oracle.svm.core.log.Log;
@@ -68,7 +68,7 @@ public class RuntimeCodeInfo {
 
     private static final int INITIAL_TABLE_SIZE = 100;
 
-    private PinnedArray<CodeInfoHandle> methodInfos;
+    private NonmovableArray<CodeInfoHandle> methodInfos;
     private int numMethods;
 
     @Platforms(Platform.HOSTED_ONLY.class)
@@ -83,9 +83,9 @@ public class RuntimeCodeInfo {
     @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
     public final void tearDown() {
         for (int i = 0; i < numMethods; i++) {
-            accessor.releaseMethodInfoOnTearDown(PinnedArrays.getWord(methodInfos, i));
+            accessor.releaseMethodInfoOnTearDown(NonmovableArrays.getWord(methodInfos, i));
         }
-        PinnedArrays.releaseUnmanagedArray(methodInfos);
+        NonmovableArrays.releaseUnmanagedArray(methodInfos);
     }
 
     protected CodeInfoHandle lookupMethod(CodePointer ip) {
@@ -111,17 +111,17 @@ public class RuntimeCodeInfo {
         int idx = binarySearch(methodInfos, 0, numMethods, ip);
         if (idx >= 0) {
             /* Exact hit, ip is the begin of the method. */
-            return PinnedArrays.getWord(methodInfos, idx);
+            return NonmovableArrays.getWord(methodInfos, idx);
         }
 
         int insertionPoint = -idx - 1;
         if (insertionPoint == 0) {
             /* ip is below the first method, so no hit. */
-            assert ((UnsignedWord) ip).belowThan((UnsignedWord) accessor.getCodeStart(PinnedArrays.getWord(methodInfos, 0)));
+            assert ((UnsignedWord) ip).belowThan((UnsignedWord) accessor.getCodeStart(NonmovableArrays.getWord(methodInfos, 0)));
             return RuntimeCodeInfoAccessor.NULL_HANDLE;
         }
 
-        CodeInfoHandle handle = PinnedArrays.getWord(methodInfos, insertionPoint - 1);
+        CodeInfoHandle handle = NonmovableArrays.getWord(methodInfos, insertionPoint - 1);
         assert ((UnsignedWord) ip).aboveThan((UnsignedWord) accessor.getCodeStart(handle));
         if (((UnsignedWord) ip).subtract((UnsignedWord) accessor.getCodeStart(handle)).aboveOrEqual(accessor.getCodeSize(handle))) {
             /* ip is not within the range of a method. */
@@ -133,13 +133,13 @@ public class RuntimeCodeInfo {
 
     /* Copied and adapted from Arrays.binarySearch. */
     @Uninterruptible(reason = "called from uninterruptible code")
-    private int binarySearch(PinnedArray<CodeInfoHandle> a, int fromIndex, int toIndex, CodePointer key) {
+    private int binarySearch(NonmovableArray<CodeInfoHandle> a, int fromIndex, int toIndex, CodePointer key) {
         int low = fromIndex;
         int high = toIndex - 1;
 
         while (low <= high) {
             int mid = (low + high) >>> 1;
-            CodePointer midVal = accessor.getCodeStart(PinnedArrays.getWord(a, mid));
+            CodePointer midVal = accessor.getCodeStart(NonmovableArrays.getWord(a, mid));
 
             if (((UnsignedWord) midVal).belowThan((UnsignedWord) key)) {
                 low = mid + 1;
@@ -171,18 +171,18 @@ public class RuntimeCodeInfo {
             Log.log().string("]").newline();
         }
 
-        if (methodInfos.isNull() || numMethods >= PinnedArrays.lengthOf(methodInfos)) {
+        if (methodInfos.isNull() || numMethods >= NonmovableArrays.lengthOf(methodInfos)) {
             enlargeTable();
             assert verifyTable();
         }
-        assert numMethods < PinnedArrays.lengthOf(methodInfos);
+        assert numMethods < NonmovableArrays.lengthOf(methodInfos);
 
         int idx = binarySearch(methodInfos, 0, numMethods, accessor.getCodeStart(handle));
         assert idx < 0 : "must not find code already in table";
         int insertionPoint = -idx - 1;
-        PinnedArrays.arraycopy(methodInfos, insertionPoint, methodInfos, insertionPoint + 1, numMethods - insertionPoint);
+        NonmovableArrays.arraycopy(methodInfos, insertionPoint, methodInfos, insertionPoint + 1, numMethods - insertionPoint);
         numMethods++;
-        PinnedArrays.setWord(methodInfos, insertionPoint, handle);
+        NonmovableArrays.setWord(methodInfos, insertionPoint, handle);
 
         if (Options.TraceCodeCache.getValue()) {
             logTable();
@@ -195,10 +195,10 @@ public class RuntimeCodeInfo {
         if (newTableSize < INITIAL_TABLE_SIZE) {
             newTableSize = INITIAL_TABLE_SIZE;
         }
-        PinnedArray<CodeInfoHandle> newMethodInfos = PinnedArrays.createWordArray(newTableSize);
+        NonmovableArray<CodeInfoHandle> newMethodInfos = NonmovableArrays.createWordArray(newTableSize);
         if (methodInfos.isNonNull()) {
-            PinnedArrays.arraycopy(methodInfos, 0, newMethodInfos, 0, PinnedArrays.lengthOf(methodInfos));
-            PinnedArrays.releaseUnmanagedArray(methodInfos);
+            NonmovableArrays.arraycopy(methodInfos, 0, newMethodInfos, 0, NonmovableArrays.lengthOf(methodInfos));
+            NonmovableArrays.releaseUnmanagedArray(methodInfos);
         }
         methodInfos = newMethodInfos;
     }
@@ -239,9 +239,9 @@ public class RuntimeCodeInfo {
         /* Remove handle entry from our table. */
         int idx = binarySearch(methodInfos, 0, numMethods, accessor.getCodeStart(handle));
         assert idx >= 0 : "handle must be in table";
-        PinnedArrays.arraycopy(methodInfos, idx + 1, methodInfos, idx, numMethods - (idx + 1));
+        NonmovableArrays.arraycopy(methodInfos, idx + 1, methodInfos, idx, numMethods - (idx + 1));
         numMethods--;
-        PinnedArrays.setWord(methodInfos, numMethods, RuntimeCodeInfoAccessor.NULL_HANDLE);
+        NonmovableArrays.setWord(methodInfos, numMethods, RuntimeCodeInfoAccessor.NULL_HANDLE);
 
         accessor.releaseMethodInfo(handle);
 
@@ -258,18 +258,18 @@ public class RuntimeCodeInfo {
             return true;
         }
 
-        assert numMethods <= PinnedArrays.lengthOf(methodInfos) : "a11";
+        assert numMethods <= NonmovableArrays.lengthOf(methodInfos) : "a11";
 
         for (int i = 0; i < numMethods; i++) {
-            CodeInfoHandle handle = PinnedArrays.getWord(methodInfos, i);
+            CodeInfoHandle handle = NonmovableArrays.getWord(methodInfos, i);
             assert !accessor.isNone(handle) : "a20";
-            assert i == 0 || ((UnsignedWord) accessor.getCodeStart(PinnedArrays.getWord(methodInfos, i - 1)))
-                            .belowThan((UnsignedWord) accessor.getCodeStart(PinnedArrays.getWord(methodInfos, i))) : "a22";
-            assert i == 0 || ((UnsignedWord) accessor.getCodeEnd(PinnedArrays.getWord(methodInfos, i - 1))).belowOrEqual((UnsignedWord) accessor.getCodeStart(handle)) : "a23";
+            assert i == 0 || ((UnsignedWord) accessor.getCodeStart(NonmovableArrays.getWord(methodInfos, i - 1)))
+                            .belowThan((UnsignedWord) accessor.getCodeStart(NonmovableArrays.getWord(methodInfos, i))) : "a22";
+            assert i == 0 || ((UnsignedWord) accessor.getCodeEnd(NonmovableArrays.getWord(methodInfos, i - 1))).belowOrEqual((UnsignedWord) accessor.getCodeStart(handle)) : "a23";
         }
 
-        for (int i = numMethods; i < PinnedArrays.lengthOf(methodInfos); i++) {
-            assert accessor.isNone(PinnedArrays.getWord(methodInfos, i)) : "a31";
+        for (int i = numMethods; i < NonmovableArrays.lengthOf(methodInfos); i++) {
+            assert accessor.isNone(NonmovableArrays.getWord(methodInfos, i)) : "a31";
         }
         return true;
     }
@@ -289,8 +289,8 @@ public class RuntimeCodeInfo {
     public void logTable(Log log) {
         log.string("== [RuntimeCodeCache: ").signed(numMethods).string(" methods");
         for (int i = 0; i < numMethods; i++) {
-            log.newline().hex(accessor.getCodeStart(PinnedArrays.getWord(methodInfos, i))).string("  ");
-            logMethod(log, accessor, PinnedArrays.getWord(methodInfos, i));
+            log.newline().hex(accessor.getCodeStart(NonmovableArrays.getWord(methodInfos, i))).string("  ");
+            logMethod(log, accessor, NonmovableArrays.getWord(methodInfos, i));
         }
         log.string("]").newline();
     }
@@ -326,7 +326,7 @@ public class RuntimeCodeInfo {
         VMOperation.guaranteeInProgress("Modifying code tables that are used by the GC");
         boolean continueVisiting = true;
         for (int i = 0; (continueVisiting && (i < numMethods)); i += 1) {
-            continueVisiting = visitor.visitRuntimeCompiledMethod(PinnedArrays.getWord(methodInfos, i),
+            continueVisiting = visitor.visitRuntimeCompiledMethod(NonmovableArrays.getWord(methodInfos, i),
                             ImageSingletons.lookup(MemoryWalkerAccessImpl.class));
         }
         return continueVisiting;

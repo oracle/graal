@@ -37,9 +37,9 @@ import org.graalvm.word.WordFactory;
 
 import com.oracle.svm.core.SubstrateOptions;
 import com.oracle.svm.core.annotate.Uninterruptible;
-import com.oracle.svm.core.c.PinnedArray;
-import com.oracle.svm.core.c.PinnedArrays;
-import com.oracle.svm.core.c.PinnedObjectArray;
+import com.oracle.svm.core.c.NonmovableArray;
+import com.oracle.svm.core.c.NonmovableArrays;
+import com.oracle.svm.core.c.NonmovableObjectArray;
 import com.oracle.svm.core.c.UnmanagedReferenceWalkers;
 import com.oracle.svm.core.c.function.JavaMethodLiteral;
 import com.oracle.svm.core.code.InstalledCodeObserver.InstalledCodeObserverHandle;
@@ -81,15 +81,15 @@ public class RuntimeCodeInfoAccessor implements CodeInfoAccessor {
         return cast(handle).getTier();
     }
 
-    PinnedArray<Integer> getDeoptimizationStartOffsets(CodeInfoHandle handle) {
+    NonmovableArray<Integer> getDeoptimizationStartOffsets(CodeInfoHandle handle) {
         return cast(handle).getDeoptimizationStartOffsets();
     }
 
-    PinnedArray<Byte> getDeoptimizationEncodings(CodeInfoHandle handle) {
+    NonmovableArray<Byte> getDeoptimizationEncodings(CodeInfoHandle handle) {
         return cast(handle).getDeoptimizationEncodings();
     }
 
-    PinnedObjectArray<Object> getDeoptimizationObjectConstants(CodeInfoHandle handle) {
+    NonmovableObjectArray<Object> getDeoptimizationObjectConstants(CodeInfoHandle handle) {
         return cast(handle).getDeoptimizationObjectConstants();
     }
 
@@ -140,7 +140,7 @@ public class RuntimeCodeInfoAccessor implements CodeInfoAccessor {
 
     @SuppressWarnings("unchecked")
     private static <T> T getObjectField(CodeInfoHandle handle, int index) {
-        return (T) PinnedArrays.getObject(cast(handle).getObjectFields(), index);
+        return (T) NonmovableArrays.getObject(cast(handle).getObjectFields(), index);
     }
 
     @Override
@@ -174,7 +174,7 @@ public class RuntimeCodeInfoAccessor implements CodeInfoAccessor {
     }
 
     @Override
-    public PinnedArray<Byte> getReferenceMapEncoding(CodeInfoHandle handle) {
+    public NonmovableArray<Byte> getReferenceMapEncoding(CodeInfoHandle handle) {
         return cast(handle).getReferenceMapEncoding();
     }
 
@@ -191,9 +191,9 @@ public class RuntimeCodeInfoAccessor implements CodeInfoAccessor {
     }
 
     @Override
-    public void setMetadata(CodeInfoHandle handle, PinnedArray<Byte> codeInfoIndex, PinnedArray<Byte> codeInfoEncodings, PinnedArray<Byte> referenceMapEncoding,
-                    PinnedArray<Byte> frameInfoEncodings, PinnedObjectArray<Object> frameInfoObjectConstants, PinnedObjectArray<Class<?>> frameInfoSourceClasses,
-                    PinnedObjectArray<String> frameInfoSourceMethodNames, PinnedObjectArray<String> frameInfoNames) {
+    public void setMetadata(CodeInfoHandle handle, NonmovableArray<Byte> codeInfoIndex, NonmovableArray<Byte> codeInfoEncodings, NonmovableArray<Byte> referenceMapEncoding,
+                    NonmovableArray<Byte> frameInfoEncodings, NonmovableObjectArray<Object> frameInfoObjectConstants, NonmovableObjectArray<Class<?>> frameInfoSourceClasses,
+                    NonmovableObjectArray<String> frameInfoSourceMethodNames, NonmovableObjectArray<String> frameInfoNames) {
 
         RuntimeMethodInfo info = cast(handle);
         info.setCodeInfoIndex(codeInfoIndex);
@@ -216,7 +216,7 @@ public class RuntimeCodeInfoAccessor implements CodeInfoAccessor {
         cast(handle).setCodeSize(WordFactory.unsigned(size));
     }
 
-    public void setCodeObjectConstantsInfo(CodeInfoHandle handle, PinnedArray<Byte> refMapEncoding, long refMapIndex) {
+    public void setCodeObjectConstantsInfo(CodeInfoHandle handle, NonmovableArray<Byte> refMapEncoding, long refMapIndex) {
         assert cast(handle).getCodeStart().isNonNull();
         cast(handle).setObjectsReferenceMapEncoding(refMapEncoding);
         cast(handle).setObjectsReferenceMapIndex(refMapIndex);
@@ -228,8 +228,8 @@ public class RuntimeCodeInfoAccessor implements CodeInfoAccessor {
         cast(handle).setCodeConstantsLive(true);
     }
 
-    public void setDeoptimizationMetadata(CodeInfoHandle handle, PinnedArray<Integer> deoptimizationStartOffsets,
-                    PinnedArray<Byte> deoptimizationEncodings, PinnedObjectArray<Object> deoptimizationObjectConstants) {
+    public void setDeoptimizationMetadata(CodeInfoHandle handle, NonmovableArray<Integer> deoptimizationStartOffsets,
+                    NonmovableArray<Byte> deoptimizationEncodings, NonmovableObjectArray<Object> deoptimizationObjectConstants) {
         cast(handle).setDeoptimizationStartOffsets(deoptimizationStartOffsets);
         cast(handle).setDeoptimizationEncodings(deoptimizationEncodings);
         cast(handle).setDeoptimizationObjectConstants(deoptimizationObjectConstants);
@@ -237,10 +237,10 @@ public class RuntimeCodeInfoAccessor implements CodeInfoAccessor {
 
     public void setData(CodeInfoHandle handle, SubstrateInstalledCode installedCode, int tier, InstalledCodeObserverHandle[] codeObserverHandles) {
         assert codeObserverHandles != null;
-        PinnedObjectArray<Object> objectFields = PinnedArrays.createObjectArray(3);
-        PinnedArrays.setObject(objectFields, 0, installedCode.getName());
-        PinnedArrays.setObject(objectFields, 1, new WeakReference<>(installedCode));
-        PinnedArrays.setObject(objectFields, 2, codeObserverHandles);
+        NonmovableObjectArray<Object> objectFields = NonmovableArrays.createObjectArray(3);
+        NonmovableArrays.setObject(objectFields, 0, installedCode.getName());
+        NonmovableArrays.setObject(objectFields, 1, new WeakReference<>(installedCode));
+        NonmovableArrays.setObject(objectFields, 2, codeObserverHandles);
         cast(handle).setObjectFields(objectFields);
         cast(handle).setTier(tier);
     }
@@ -248,15 +248,15 @@ public class RuntimeCodeInfoAccessor implements CodeInfoAccessor {
     @SuppressWarnings("unused")
     static void walkReferences(ComparableWord handle, ObjectReferenceVisitor visitor) {
         RuntimeMethodInfo info = cast((CodeInfoHandle) handle);
-        PinnedArrays.walkUnmanagedObjectArray(info.getObjectFields(), visitor);
+        NonmovableArrays.walkUnmanagedObjectArray(info.getObjectFields(), visitor);
         if (info.getCodeConstantsLive()) {
             CodeReferenceMapDecoder.walkOffsetsFromPointer(info.getCodeStart(), info.getObjectsReferenceMapEncoding(), info.getObjectsReferenceMapIndex(), visitor);
         }
-        PinnedArrays.walkUnmanagedObjectArray(info.getFrameInfoObjectConstants(), visitor);
-        PinnedArrays.walkUnmanagedObjectArray(info.getFrameInfoSourceClasses(), visitor);
-        PinnedArrays.walkUnmanagedObjectArray(info.getFrameInfoSourceMethodNames(), visitor);
-        PinnedArrays.walkUnmanagedObjectArray(info.getFrameInfoNames(), visitor);
-        PinnedArrays.walkUnmanagedObjectArray(info.getDeoptimizationObjectConstants(), visitor);
+        NonmovableArrays.walkUnmanagedObjectArray(info.getFrameInfoObjectConstants(), visitor);
+        NonmovableArrays.walkUnmanagedObjectArray(info.getFrameInfoSourceClasses(), visitor);
+        NonmovableArrays.walkUnmanagedObjectArray(info.getFrameInfoSourceMethodNames(), visitor);
+        NonmovableArrays.walkUnmanagedObjectArray(info.getFrameInfoNames(), visitor);
+        NonmovableArrays.walkUnmanagedObjectArray(info.getDeoptimizationObjectConstants(), visitor);
     }
 
     public CodeInfoHandle allocateMethodInfo() {
@@ -268,19 +268,19 @@ public class RuntimeCodeInfoAccessor implements CodeInfoAccessor {
     UnsignedWord getMetadataCodeSize(CodeInfoHandle handle) {
         RuntimeMethodInfo info = cast(handle);
         return SizeOf.unsigned(RuntimeMethodInfo.class)
-                        .add(PinnedArrays.byteSizeOf(info.getObjectFields()))
-                        .add(PinnedArrays.byteSizeOf(info.getCodeInfoIndex()))
-                        .add(PinnedArrays.byteSizeOf(info.getCodeInfoEncodings()))
-                        .add(PinnedArrays.byteSizeOf(info.getReferenceMapEncoding()))
-                        .add(PinnedArrays.byteSizeOf(info.getFrameInfoEncodings()))
-                        .add(PinnedArrays.byteSizeOf(info.getFrameInfoObjectConstants()))
-                        .add(PinnedArrays.byteSizeOf(info.getFrameInfoSourceClasses()))
-                        .add(PinnedArrays.byteSizeOf(info.getFrameInfoSourceMethodNames()))
-                        .add(PinnedArrays.byteSizeOf(info.getFrameInfoNames()))
-                        .add(PinnedArrays.byteSizeOf(info.getDeoptimizationStartOffsets()))
-                        .add(PinnedArrays.byteSizeOf(info.getDeoptimizationEncodings()))
-                        .add(PinnedArrays.byteSizeOf(info.getDeoptimizationObjectConstants()))
-                        .add(PinnedArrays.byteSizeOf(info.getObjectsReferenceMapEncoding()));
+                        .add(NonmovableArrays.byteSizeOf(info.getObjectFields()))
+                        .add(NonmovableArrays.byteSizeOf(info.getCodeInfoIndex()))
+                        .add(NonmovableArrays.byteSizeOf(info.getCodeInfoEncodings()))
+                        .add(NonmovableArrays.byteSizeOf(info.getReferenceMapEncoding()))
+                        .add(NonmovableArrays.byteSizeOf(info.getFrameInfoEncodings()))
+                        .add(NonmovableArrays.byteSizeOf(info.getFrameInfoObjectConstants()))
+                        .add(NonmovableArrays.byteSizeOf(info.getFrameInfoSourceClasses()))
+                        .add(NonmovableArrays.byteSizeOf(info.getFrameInfoSourceMethodNames()))
+                        .add(NonmovableArrays.byteSizeOf(info.getFrameInfoNames()))
+                        .add(NonmovableArrays.byteSizeOf(info.getDeoptimizationStartOffsets()))
+                        .add(NonmovableArrays.byteSizeOf(info.getDeoptimizationEncodings()))
+                        .add(NonmovableArrays.byteSizeOf(info.getDeoptimizationObjectConstants()))
+                        .add(NonmovableArrays.byteSizeOf(info.getObjectsReferenceMapEncoding()));
     }
 
     void releaseMethodInfo(CodeInfoHandle handle) {
@@ -297,19 +297,19 @@ public class RuntimeCodeInfoAccessor implements CodeInfoAccessor {
     @Uninterruptible(reason = "Called from uninterruptible code", mayBeInlined = true)
     private static void releaseMethodInfoMemory(CodeInfoHandle handle) {
         RuntimeMethodInfo info = cast(handle);
-        PinnedArrays.releaseUnmanagedArray(info.getObjectFields());
-        PinnedArrays.releaseUnmanagedArray(info.getCodeInfoIndex());
-        PinnedArrays.releaseUnmanagedArray(info.getCodeInfoEncodings());
-        PinnedArrays.releaseUnmanagedArray(info.getReferenceMapEncoding());
-        PinnedArrays.releaseUnmanagedArray(info.getFrameInfoEncodings());
-        PinnedArrays.releaseUnmanagedArray(info.getFrameInfoObjectConstants());
-        PinnedArrays.releaseUnmanagedArray(info.getFrameInfoSourceClasses());
-        PinnedArrays.releaseUnmanagedArray(info.getFrameInfoSourceMethodNames());
-        PinnedArrays.releaseUnmanagedArray(info.getFrameInfoNames());
-        PinnedArrays.releaseUnmanagedArray(info.getDeoptimizationStartOffsets());
-        PinnedArrays.releaseUnmanagedArray(info.getDeoptimizationEncodings());
-        PinnedArrays.releaseUnmanagedArray(info.getDeoptimizationObjectConstants());
-        PinnedArrays.releaseUnmanagedArray(info.getObjectsReferenceMapEncoding());
+        NonmovableArrays.releaseUnmanagedArray(info.getObjectFields());
+        NonmovableArrays.releaseUnmanagedArray(info.getCodeInfoIndex());
+        NonmovableArrays.releaseUnmanagedArray(info.getCodeInfoEncodings());
+        NonmovableArrays.releaseUnmanagedArray(info.getReferenceMapEncoding());
+        NonmovableArrays.releaseUnmanagedArray(info.getFrameInfoEncodings());
+        NonmovableArrays.releaseUnmanagedArray(info.getFrameInfoObjectConstants());
+        NonmovableArrays.releaseUnmanagedArray(info.getFrameInfoSourceClasses());
+        NonmovableArrays.releaseUnmanagedArray(info.getFrameInfoSourceMethodNames());
+        NonmovableArrays.releaseUnmanagedArray(info.getFrameInfoNames());
+        NonmovableArrays.releaseUnmanagedArray(info.getDeoptimizationStartOffsets());
+        NonmovableArrays.releaseUnmanagedArray(info.getDeoptimizationEncodings());
+        NonmovableArrays.releaseUnmanagedArray(info.getDeoptimizationObjectConstants());
+        NonmovableArrays.releaseUnmanagedArray(info.getObjectsReferenceMapEncoding());
 
         releaseInstalledCode(info);
 

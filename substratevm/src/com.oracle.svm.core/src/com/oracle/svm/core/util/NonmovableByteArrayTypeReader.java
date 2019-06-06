@@ -26,13 +26,13 @@ package com.oracle.svm.core.util;
 
 import org.graalvm.compiler.core.common.util.AbstractTypeReader;
 
-import com.oracle.svm.core.c.PinnedArray;
+import com.oracle.svm.core.c.NonmovableArray;
 
-public class PinnedByteArrayTypeReader extends AbstractTypeReader {
-    protected final PinnedArray<Byte> array;
+public class NonmovableByteArrayTypeReader extends AbstractTypeReader {
+    protected final NonmovableArray<Byte> array;
     protected long byteIndex;
 
-    public PinnedByteArrayTypeReader(PinnedArray<Byte> array, long byteIndex) {
+    public NonmovableByteArrayTypeReader(NonmovableArray<Byte> array, long byteIndex) {
         this.array = array;
         this.byteIndex = byteIndex;
     }
@@ -49,49 +49,49 @@ public class PinnedByteArrayTypeReader extends AbstractTypeReader {
 
     @Override
     public int getS1() {
-        int result = PinnedByteArrayReader.getS1(array, byteIndex);
+        int result = NonmovableByteArrayReader.getS1(array, byteIndex);
         byteIndex += Byte.BYTES;
         return result;
     }
 
     @Override
     public int getU1() {
-        int result = PinnedByteArrayReader.getU1(array, byteIndex);
+        int result = NonmovableByteArrayReader.getU1(array, byteIndex);
         byteIndex += Byte.BYTES;
         return result;
     }
 
     @Override
     public int getS2() {
-        int result = PinnedByteArrayReader.getS2(array, byteIndex);
+        int result = NonmovableByteArrayReader.getS2(array, byteIndex);
         byteIndex += Short.BYTES;
         return result;
     }
 
     @Override
     public int getU2() {
-        int result = PinnedByteArrayReader.getU2(array, byteIndex);
+        int result = NonmovableByteArrayReader.getU2(array, byteIndex);
         byteIndex += Short.BYTES;
         return result;
     }
 
     @Override
     public int getS4() {
-        int result = PinnedByteArrayReader.getS4(array, byteIndex);
+        int result = NonmovableByteArrayReader.getS4(array, byteIndex);
         byteIndex += Integer.BYTES;
         return result;
     }
 
     @Override
     public long getU4() {
-        long result = PinnedByteArrayReader.getU4(array, byteIndex);
+        long result = NonmovableByteArrayReader.getU4(array, byteIndex);
         byteIndex += Integer.BYTES;
         return result;
     }
 
     @Override
     public long getS8() {
-        long result = PinnedByteArrayReader.getS8(array, byteIndex);
+        long result = NonmovableByteArrayReader.getS8(array, byteIndex);
         byteIndex += Long.BYTES;
         return result;
     }

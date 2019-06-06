@@ -29,8 +29,8 @@ import org.graalvm.word.UnsignedWord;
 import org.graalvm.word.WordFactory;
 
 import com.oracle.svm.core.annotate.RestrictHeapAccess;
-import com.oracle.svm.core.c.PinnedArray;
-import com.oracle.svm.core.c.PinnedObjectArray;
+import com.oracle.svm.core.c.NonmovableArray;
+import com.oracle.svm.core.c.NonmovableObjectArray;
 import com.oracle.svm.core.code.FrameInfoDecoder.ValueInfoAllocator;
 import com.oracle.svm.core.log.Log;
 
@@ -71,15 +71,15 @@ public interface CodeInfoAccessor {
 
     long lookupExceptionOffset(CodeInfoHandle handle, long ip);
 
-    PinnedArray<Byte> getReferenceMapEncoding(CodeInfoHandle handle);
+    NonmovableArray<Byte> getReferenceMapEncoding(CodeInfoHandle handle);
 
     long lookupReferenceMapIndex(CodeInfoHandle handle, long relativeIP);
 
     void lookupCodeInfo(CodeInfoHandle handle, long ip, CodeInfoQueryResult codeInfo);
 
-    void setMetadata(CodeInfoHandle installTarget, PinnedArray<Byte> codeInfoIndex, PinnedArray<Byte> codeInfoEncodings, PinnedArray<Byte> referenceMapEncoding,
-                    PinnedArray<Byte> frameInfoEncodings, PinnedObjectArray<Object> frameInfoObjectConstants, PinnedObjectArray<Class<?>> frameInfoSourceClasses,
-                    PinnedObjectArray<String> frameInfoSourceMethodNames, PinnedObjectArray<String> frameInfoNames);
+    void setMetadata(CodeInfoHandle installTarget, NonmovableArray<Byte> codeInfoIndex, NonmovableArray<Byte> codeInfoEncodings, NonmovableArray<Byte> referenceMapEncoding,
+                    NonmovableArray<Byte> frameInfoEncodings, NonmovableObjectArray<Object> frameInfoObjectConstants, NonmovableObjectArray<Class<?>> frameInfoSourceClasses,
+                    NonmovableObjectArray<String> frameInfoSourceMethodNames, NonmovableObjectArray<String> frameInfoNames);
 
     @RestrictHeapAccess(access = RestrictHeapAccess.Access.NO_ALLOCATION, mayBeInlined = true, reason = "Must not allocate when logging.")
     Log log(CodeInfoHandle handle, Log log);
@@ -97,8 +97,8 @@ public interface CodeInfoAccessor {
         return (CodePointer) ((UnsignedWord) codeStart).add(WordFactory.unsigned(relativeIP));
     }
 
-    static long initFrameInfoReader(PinnedArray<Byte> codeInfoEncodings, PinnedArray<Byte> codeInfoIndex,
-                    PinnedArray<Byte> frameInfoEncodings, long relativeIp, ReusableTypeReader frameInfoReader) {
+    static long initFrameInfoReader(NonmovableArray<Byte> codeInfoEncodings, NonmovableArray<Byte> codeInfoIndex,
+                    NonmovableArray<Byte> frameInfoEncodings, long relativeIp, ReusableTypeReader frameInfoReader) {
         long entryOffset = CodeInfoDecoder.lookupCodeInfoEntryOffset(codeInfoIndex, codeInfoEncodings, relativeIp);
         if (entryOffset >= 0) {
             if (!CodeInfoDecoder.initFrameInfoReader(codeInfoEncodings, frameInfoEncodings, entryOffset, frameInfoReader)) {
@@ -108,9 +108,9 @@ public interface CodeInfoAccessor {
         return entryOffset;
     }
 
-    static FrameInfoQueryResult nextFrameInfo(PinnedArray<Byte> codeInfoEncodings, PinnedObjectArray<String> frameInfoNames,
-                    PinnedObjectArray<Object> frameInfoObjectConstants, PinnedObjectArray<Class<?>> frameInfoSourceClasses,
-                    PinnedObjectArray<String> frameInfoSourceMethodNames, long entryOffset, ReusableTypeReader frameInfoReader,
+    static FrameInfoQueryResult nextFrameInfo(NonmovableArray<Byte> codeInfoEncodings, NonmovableObjectArray<String> frameInfoNames,
+                    NonmovableObjectArray<Object> frameInfoObjectConstants, NonmovableObjectArray<Class<?>> frameInfoSourceClasses,
+                    NonmovableObjectArray<String> frameInfoSourceMethodNames, long entryOffset, ReusableTypeReader frameInfoReader,
                     FrameInfoDecoder.FrameInfoQueryResultAllocator resultAllocator, ValueInfoAllocator valueInfoAllocator, boolean fetchFirstFrame) {
 
         int entryFlags = CodeInfoDecoder.loadEntryFlags(codeInfoEncodings, entryOffset);

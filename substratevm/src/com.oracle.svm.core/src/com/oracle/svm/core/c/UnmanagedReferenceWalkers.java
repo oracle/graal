@@ -64,7 +64,7 @@ public class UnmanagedReferenceWalkers extends ObjectReferenceWalker {
     }
 
     private final ReentrantLock lock = new ReentrantLock();
-    private PinnedArray<ComparableWord> array;
+    private NonmovableArray<ComparableWord> array;
     private int count = 0;
 
     /**
@@ -103,17 +103,17 @@ public class UnmanagedReferenceWalkers extends ObjectReferenceWalker {
     private void register0(ObjectReferenceWalkerFunction function, ComparableWord tag) {
         if (array.isNull()) {
             int capacity = 10;
-            array = PinnedArrays.createWordArray(scale(capacity));
+            array = NonmovableArrays.createWordArray(scale(capacity));
         } else {
-            if (scale(count) == PinnedArrays.lengthOf(array)) {
-                PinnedArray<ComparableWord> oldArray = array;
-                array = PinnedArrays.createWordArray(scale(count << 1));
-                PinnedArrays.arraycopy(oldArray, 0, array, 0, scale(count));
-                PinnedArrays.releaseUnmanagedArray(oldArray);
+            if (scale(count) == NonmovableArrays.lengthOf(array)) {
+                NonmovableArray<ComparableWord> oldArray = array;
+                array = NonmovableArrays.createWordArray(scale(count << 1));
+                NonmovableArrays.arraycopy(oldArray, 0, array, 0, scale(count));
+                NonmovableArrays.releaseUnmanagedArray(oldArray);
             }
         }
-        PinnedArrays.setWord(array, scale(count), function);
-        PinnedArrays.setWord(array, scale(count) + 1, tag);
+        NonmovableArrays.setWord(array, scale(count), function);
+        NonmovableArrays.setWord(array, scale(count) + 1, tag);
         count++;
     }
 
@@ -121,9 +121,9 @@ public class UnmanagedReferenceWalkers extends ObjectReferenceWalker {
     private boolean unregister0(ObjectReferenceWalkerFunction function, ComparableWord tag) {
         if (array.isNonNull()) {
             for (int i = 0; i < count; i++) {
-                ObjectReferenceWalkerFunction fn = (ObjectReferenceWalkerFunction) PinnedArrays.getWord(array, scale(i));
-                if (fn.equal(function) && tag.equal(PinnedArrays.getWord(array, 1 + scale(i)))) {
-                    PinnedArrays.arraycopy(array, scale(i + 1), array, scale(i), scale(count - 1 - i));
+                ObjectReferenceWalkerFunction fn = (ObjectReferenceWalkerFunction) NonmovableArrays.getWord(array, scale(i));
+                if (fn.equal(function) && tag.equal(NonmovableArrays.getWord(array, 1 + scale(i)))) {
+                    NonmovableArrays.arraycopy(array, scale(i + 1), array, scale(i), scale(count - 1 - i));
                     count--;
                     return true;
                 }
@@ -141,8 +141,8 @@ public class UnmanagedReferenceWalkers extends ObjectReferenceWalker {
     public boolean walk(ObjectReferenceVisitor visitor) {
         if (array.isNonNull()) {
             for (int i = 0; i < count; i++) {
-                ObjectReferenceWalkerFunction fun = (ObjectReferenceWalkerFunction) PinnedArrays.getWord(array, scale(i));
-                ComparableWord tag = PinnedArrays.getWord(array, scale(i) + 1);
+                ObjectReferenceWalkerFunction fun = (ObjectReferenceWalkerFunction) NonmovableArrays.getWord(array, scale(i));
+                ComparableWord tag = NonmovableArrays.getWord(array, scale(i) + 1);
                 fun.invoke(tag, visitor);
             }
         }
@@ -152,7 +152,7 @@ public class UnmanagedReferenceWalkers extends ObjectReferenceWalker {
     @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
     public void tearDown() {
         if (array.isNonNull()) {
-            PinnedArrays.releaseUnmanagedArray(array);
+            NonmovableArrays.releaseUnmanagedArray(array);
             array = WordFactory.nullPointer();
         }
     }

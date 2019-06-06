@@ -30,8 +30,8 @@ import org.graalvm.nativeimage.c.struct.RawStructure;
 import org.graalvm.word.PointerBase;
 import org.graalvm.word.UnsignedWord;
 
-import com.oracle.svm.core.c.PinnedArray;
-import com.oracle.svm.core.c.PinnedObjectArray;
+import com.oracle.svm.core.c.NonmovableArray;
+import com.oracle.svm.core.c.NonmovableObjectArray;
 
 import jdk.vm.ci.code.InstalledCode;
 
@@ -52,11 +52,11 @@ public interface RuntimeMethodInfo extends PointerBase {
      * [2] InstalledCodeObserverHandle[]: observers for installation and removal of this code.
      */
     @RawField
-    void setObjectFields(PinnedObjectArray<?> fields);
+    void setObjectFields(NonmovableObjectArray<?> fields);
 
     /** @see #setObjectFields */
     @RawField
-    PinnedObjectArray<?> getObjectFields();
+    NonmovableObjectArray<?> getObjectFields();
 
     @RawField
     int getTier();
@@ -71,7 +71,7 @@ public interface RuntimeMethodInfo extends PointerBase {
     UnsignedWord getCodeSize();
 
     @RawField
-    PinnedArray<Byte> getReferenceMapEncoding();
+    NonmovableArray<Byte> getReferenceMapEncoding();
 
     @RawField
     void setCodeStart(CodePointer codeStart);
@@ -80,49 +80,49 @@ public interface RuntimeMethodInfo extends PointerBase {
     void setCodeSize(UnsignedWord codeSize);
 
     @RawField
-    PinnedArray<Byte> getCodeInfoIndex();
+    NonmovableArray<Byte> getCodeInfoIndex();
 
     @RawField
-    void setCodeInfoIndex(PinnedArray<Byte> codeInfoIndex);
+    void setCodeInfoIndex(NonmovableArray<Byte> codeInfoIndex);
 
     @RawField
-    PinnedArray<Byte> getCodeInfoEncodings();
+    NonmovableArray<Byte> getCodeInfoEncodings();
 
     @RawField
-    void setCodeInfoEncodings(PinnedArray<Byte> codeInfoEncodings);
+    void setCodeInfoEncodings(NonmovableArray<Byte> codeInfoEncodings);
 
     @RawField
-    void setReferenceMapEncoding(PinnedArray<Byte> referenceMapEncoding);
+    void setReferenceMapEncoding(NonmovableArray<Byte> referenceMapEncoding);
 
     @RawField
-    PinnedArray<Byte> getFrameInfoEncodings();
+    NonmovableArray<Byte> getFrameInfoEncodings();
 
     @RawField
-    void setFrameInfoEncodings(PinnedArray<Byte> frameInfoEncodings);
+    void setFrameInfoEncodings(NonmovableArray<Byte> frameInfoEncodings);
 
     @RawField
-    PinnedObjectArray<Object> getFrameInfoObjectConstants();
+    NonmovableObjectArray<Object> getFrameInfoObjectConstants();
 
     @RawField
-    void setFrameInfoObjectConstants(PinnedObjectArray<Object> frameInfoObjectConstants);
+    void setFrameInfoObjectConstants(NonmovableObjectArray<Object> frameInfoObjectConstants);
 
     @RawField
-    PinnedObjectArray<Class<?>> getFrameInfoSourceClasses();
+    NonmovableObjectArray<Class<?>> getFrameInfoSourceClasses();
 
     @RawField
-    void setFrameInfoSourceClasses(PinnedObjectArray<Class<?>> frameInfoSourceClasses);
+    void setFrameInfoSourceClasses(NonmovableObjectArray<Class<?>> frameInfoSourceClasses);
 
     @RawField
-    PinnedObjectArray<String> getFrameInfoSourceMethodNames();
+    NonmovableObjectArray<String> getFrameInfoSourceMethodNames();
 
     @RawField
-    void setFrameInfoSourceMethodNames(PinnedObjectArray<String> frameInfoSourceMethodNames);
+    void setFrameInfoSourceMethodNames(NonmovableObjectArray<String> frameInfoSourceMethodNames);
 
     @RawField
-    PinnedObjectArray<String> getFrameInfoNames();
+    NonmovableObjectArray<String> getFrameInfoNames();
 
     @RawField
-    void setFrameInfoNames(PinnedObjectArray<String> frameInfoNames);
+    void setFrameInfoNames(NonmovableObjectArray<String> frameInfoNames);
 
     @RawField
     boolean getCodeConstantsLive();
@@ -131,10 +131,10 @@ public interface RuntimeMethodInfo extends PointerBase {
     void setCodeConstantsLive(boolean codeConstantsLive);
 
     @RawField
-    PinnedArray<Byte> getObjectsReferenceMapEncoding();
+    NonmovableArray<Byte> getObjectsReferenceMapEncoding();
 
     @RawField
-    void setObjectsReferenceMapEncoding(PinnedArray<Byte> objectsReferenceMapEncoding);
+    void setObjectsReferenceMapEncoding(NonmovableArray<Byte> objectsReferenceMapEncoding);
 
     @RawField
     long getObjectsReferenceMapIndex();
@@ -143,20 +143,20 @@ public interface RuntimeMethodInfo extends PointerBase {
     void setObjectsReferenceMapIndex(long objectsReferenceMapIndex);
 
     @RawField
-    PinnedArray<Integer> getDeoptimizationStartOffsets();
+    NonmovableArray<Integer> getDeoptimizationStartOffsets();
 
     @RawField
-    void setDeoptimizationStartOffsets(PinnedArray<Integer> deoptimizationStartOffsets);
+    void setDeoptimizationStartOffsets(NonmovableArray<Integer> deoptimizationStartOffsets);
 
     @RawField
-    PinnedArray<Byte> getDeoptimizationEncodings();
+    NonmovableArray<Byte> getDeoptimizationEncodings();
 
     @RawField
-    void setDeoptimizationEncodings(PinnedArray<Byte> deoptimizationEncodings);
+    void setDeoptimizationEncodings(NonmovableArray<Byte> deoptimizationEncodings);
 
     @RawField
-    PinnedObjectArray<Object> getDeoptimizationObjectConstants();
+    NonmovableObjectArray<Object> getDeoptimizationObjectConstants();
 
     @RawField
-    void setDeoptimizationObjectConstants(PinnedObjectArray<Object> deoptimizationObjectConstants);
+    void setDeoptimizationObjectConstants(NonmovableObjectArray<Object> deoptimizationObjectConstants);
 }

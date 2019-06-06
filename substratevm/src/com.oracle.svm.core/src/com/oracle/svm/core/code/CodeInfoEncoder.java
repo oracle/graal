@@ -39,8 +39,8 @@ import org.graalvm.word.Pointer;
 import org.graalvm.word.UnsignedWord;
 import org.graalvm.word.WordFactory;
 
-import com.oracle.svm.core.c.PinnedArray;
-import com.oracle.svm.core.c.PinnedArrays;
+import com.oracle.svm.core.c.NonmovableArray;
+import com.oracle.svm.core.c.NonmovableArrays;
 import com.oracle.svm.core.code.FrameInfoQueryResult.ValueInfo;
 import com.oracle.svm.core.code.FrameInfoQueryResult.ValueType;
 import com.oracle.svm.core.config.ConfigurationValues;
@@ -105,9 +105,9 @@ public class CodeInfoEncoder {
     private final TreeMap<Long, IPData> entries;
     private final FrameInfoEncoder frameInfoEncoder;
 
-    private PinnedArray<Byte> codeInfoIndex;
-    private PinnedArray<Byte> codeInfoEncodings;
-    private PinnedArray<Byte> referenceMapEncoding;
+    private NonmovableArray<Byte> codeInfoIndex;
+    private NonmovableArray<Byte> codeInfoEncodings;
+    private NonmovableArray<Byte> referenceMapEncoding;
 
     public CodeInfoEncoder(FrameInfoEncoder.Customization frameInfoCustomization) {
         this.entries = new TreeMap<>();
@@ -188,8 +188,8 @@ public class CodeInfoEncoder {
                         frameInfoEncoder.frameInfoSourceClasses, frameInfoEncoder.frameInfoSourceMethodNames, frameInfoEncoder.frameInfoNames);
 
         ImageSingletons.lookup(Counters.class).frameInfoSize.add(
-                        ConfigurationValues.getObjectLayout().getArrayElementOffset(JavaKind.Byte, PinnedArrays.lengthOf(frameInfoEncoder.frameInfoEncodings)) +
-                                        ConfigurationValues.getObjectLayout().getArrayElementOffset(JavaKind.Object, PinnedArrays.lengthOf(frameInfoEncoder.frameInfoObjectConstants)));
+                        ConfigurationValues.getObjectLayout().getArrayElementOffset(JavaKind.Byte, NonmovableArrays.lengthOf(frameInfoEncoder.frameInfoEncodings)) +
+                                        ConfigurationValues.getObjectLayout().getArrayElementOffset(JavaKind.Object, NonmovableArrays.lengthOf(frameInfoEncoder.frameInfoObjectConstants)));
     }
 
     private void encodeReferenceMaps() {
@@ -260,10 +260,10 @@ public class CodeInfoEncoder {
             writeDeoptFrameInfo(encodingBuffer, data, entryFlags);
         }
 
-        codeInfoIndex = PinnedArrays.createByteArray(TypeConversion.asU4(indexBuffer.getBytesWritten()));
-        indexBuffer.toByteBuffer(PinnedArrays.asByteBuffer(codeInfoIndex));
-        codeInfoEncodings = PinnedArrays.createByteArray(TypeConversion.asU4(encodingBuffer.getBytesWritten()));
-        encodingBuffer.toByteBuffer(PinnedArrays.asByteBuffer(codeInfoEncodings));
+        codeInfoIndex = NonmovableArrays.createByteArray(TypeConversion.asU4(indexBuffer.getBytesWritten()));
+        indexBuffer.toByteBuffer(NonmovableArrays.asByteBuffer(codeInfoIndex));
+        codeInfoEncodings = NonmovableArrays.createByteArray(TypeConversion.asU4(encodingBuffer.getBytesWritten()));
+        encodingBuffer.toByteBuffer(NonmovableArrays.asByteBuffer(codeInfoEncodings));
     }
 
     /**

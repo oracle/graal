@@ -34,18 +34,18 @@ import org.graalvm.compiler.core.common.util.TypeConversion;
 import org.graalvm.compiler.core.common.util.UnsafeArrayTypeWriter;
 import org.graalvm.compiler.graph.NodeSourcePosition;
 
-import com.oracle.svm.core.c.PinnedArray;
-import com.oracle.svm.core.c.PinnedArrays;
-import com.oracle.svm.core.c.PinnedObjectArray;
+import com.oracle.svm.core.c.NonmovableArray;
+import com.oracle.svm.core.c.NonmovableArrays;
+import com.oracle.svm.core.c.NonmovableObjectArray;
 import com.oracle.svm.core.util.ByteArrayReader;
 
 public class DeoptimizationSourcePositionEncoder {
 
     private final FrequencyEncoder<Object> objectConstants;
 
-    protected PinnedArray<Integer> deoptimizationStartOffsets;
-    protected PinnedArray<Byte> deoptimizationEncodings;
-    protected PinnedObjectArray<Object> deoptimizationObjectConstants;
+    protected NonmovableArray<Integer> deoptimizationStartOffsets;
+    protected NonmovableArray<Byte> deoptimizationEncodings;
+    protected NonmovableObjectArray<Object> deoptimizationObjectConstants;
 
     public DeoptimizationSourcePositionEncoder() {
         this.objectConstants = FrequencyEncoder.createIdentityEncoder();
@@ -54,15 +54,15 @@ public class DeoptimizationSourcePositionEncoder {
     public void encode(List<NodeSourcePosition> deoptimzationSourcePositions) {
         addObjectConstants(deoptimzationSourcePositions);
         Object[] deoptimizationObjectConstants = objectConstants.encodeAll(new Object[objectConstants.getLength()]);
-        this.deoptimizationObjectConstants = PinnedArrays.copyOfObjectArray(deoptimizationObjectConstants, deoptimizationObjectConstants.length);
+        this.deoptimizationObjectConstants = NonmovableArrays.copyOfObjectArray(deoptimizationObjectConstants, deoptimizationObjectConstants.length);
 
         UnsafeArrayTypeWriter encodingBuffer = UnsafeArrayTypeWriter.create(ByteArrayReader.supportsUnalignedMemoryAccess());
         EconomicMap<NodeSourcePosition, Long> sourcePositionStartOffsets = EconomicMap.create(Equivalence.IDENTITY_WITH_SYSTEM_HASHCODE);
-        deoptimizationStartOffsets = PinnedArrays.createIntArray(deoptimzationSourcePositions.size());
+        deoptimizationStartOffsets = NonmovableArrays.createIntArray(deoptimzationSourcePositions.size());
 
         encodeSourcePositions(deoptimzationSourcePositions, sourcePositionStartOffsets, encodingBuffer);
-        deoptimizationEncodings = PinnedArrays.createByteArray(TypeConversion.asS4(encodingBuffer.getBytesWritten()));
-        encodingBuffer.toByteBuffer(PinnedArrays.asByteBuffer(deoptimizationEncodings));
+        deoptimizationEncodings = NonmovableArrays.createByteArray(TypeConversion.asS4(encodingBuffer.getBytesWritten()));
+        encodingBuffer.toByteBuffer(NonmovableArrays.asByteBuffer(deoptimizationEncodings));
 
         verifyEncoding(deoptimzationSourcePositions);
     }
@@ -98,7 +98,7 @@ public class DeoptimizationSourcePositionEncoder {
                 startOffset = TypeConversion.asS4(encodeSourcePositions(sourcePosition, sourcePositionStartOffsets, encodingBuffer));
                 assert startOffset > DeoptimizationSourcePositionDecoder.NO_SOURCE_POSITION;
             }
-            PinnedArrays.setInt(deoptimizationStartOffsets, i, startOffset);
+            NonmovableArrays.setInt(deoptimizationStartOffsets, i, startOffset);
         }
     }
 

@@ -36,8 +36,8 @@ import java.util.Set;
 import org.graalvm.compiler.core.common.util.TypeConversion;
 import org.graalvm.compiler.core.common.util.UnsafeArrayTypeWriter;
 
-import com.oracle.svm.core.c.PinnedArray;
-import com.oracle.svm.core.c.PinnedArrays;
+import com.oracle.svm.core.c.NonmovableArray;
+import com.oracle.svm.core.c.NonmovableArrays;
 import com.oracle.svm.core.code.CodeInfoQueryResult;
 import com.oracle.svm.core.util.ByteArrayReader;
 
@@ -81,7 +81,7 @@ public abstract class ReferenceMapEncoder {
         usageCounts.put(input, newCount);
     }
 
-    public PinnedArray<Byte> encodeAll() {
+    public NonmovableArray<Byte> encodeAll() {
         assert writeBuffer.getBytesWritten() == 0 : "encodeAll() must not be called multiple times";
 
         /*
@@ -94,8 +94,8 @@ public abstract class ReferenceMapEncoder {
         encodeAll(sortedEntries);
 
         int length = TypeConversion.asS4(writeBuffer.getBytesWritten());
-        PinnedArray<Byte> array = PinnedArrays.createByteArray(length);
-        writeBuffer.toByteBuffer(PinnedArrays.asByteBuffer(array));
+        NonmovableArray<Byte> array = NonmovableArrays.createByteArray(length);
+        writeBuffer.toByteBuffer(NonmovableArrays.asByteBuffer(array));
         return array;
     }
 

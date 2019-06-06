@@ -35,9 +35,9 @@ import com.oracle.svm.core.MemoryWalker;
 import com.oracle.svm.core.annotate.AutomaticFeature;
 import com.oracle.svm.core.annotate.UnknownObjectField;
 import com.oracle.svm.core.annotate.UnknownPrimitiveField;
-import com.oracle.svm.core.c.PinnedArray;
-import com.oracle.svm.core.c.PinnedArrays;
-import com.oracle.svm.core.c.PinnedObjectArray;
+import com.oracle.svm.core.c.NonmovableArray;
+import com.oracle.svm.core.c.NonmovableArrays;
+import com.oracle.svm.core.c.NonmovableObjectArray;
 import com.oracle.svm.core.log.Log;
 
 public class ImageCodeInfo implements CodeInfoAccessor {
@@ -70,12 +70,12 @@ public class ImageCodeInfo implements CodeInfoAccessor {
         return this;
     }
 
-    private static PinnedArray<Byte> pa(byte[] array) {
-        return PinnedArrays.fromImageHeap(array);
+    private static NonmovableArray<Byte> pa(byte[] array) {
+        return NonmovableArrays.fromImageHeap(array);
     }
 
-    private static <T> PinnedObjectArray<T> pa(T[] array) {
-        return PinnedArrays.fromImageHeap(array);
+    private static <T> NonmovableObjectArray<T> pa(T[] array) {
+        return NonmovableArrays.fromImageHeap(array);
     }
 
     @Platforms(Platform.HOSTED_ONLY.class)
@@ -128,18 +128,18 @@ public class ImageCodeInfo implements CodeInfoAccessor {
     }
 
     @Override
-    public void setMetadata(CodeInfoHandle installTarget, PinnedArray<Byte> codeInfoIndex, PinnedArray<Byte> codeInfoEncodings, PinnedArray<Byte> referenceMapEncoding,
-                    PinnedArray<Byte> frameInfoEncodings, PinnedObjectArray<Object> frameInfoObjectConstants, PinnedObjectArray<Class<?>> frameInfoSourceClasses,
-                    PinnedObjectArray<String> frameInfoSourceMethodNames, PinnedObjectArray<String> frameInfoNames) {
+    public void setMetadata(CodeInfoHandle installTarget, NonmovableArray<Byte> codeInfoIndex, NonmovableArray<Byte> codeInfoEncodings, NonmovableArray<Byte> referenceMapEncoding,
+                    NonmovableArray<Byte> frameInfoEncodings, NonmovableObjectArray<Object> frameInfoObjectConstants, NonmovableObjectArray<Class<?>> frameInfoSourceClasses,
+                    NonmovableObjectArray<String> frameInfoSourceMethodNames, NonmovableObjectArray<String> frameInfoNames) {
 
-        this.codeInfoIndex = PinnedArrays.getHostedArray(codeInfoIndex);
-        this.codeInfoEncodings = PinnedArrays.getHostedArray(codeInfoEncodings);
-        this.referenceMapEncoding = PinnedArrays.getHostedArray(referenceMapEncoding);
-        this.frameInfoEncodings = PinnedArrays.getHostedArray(frameInfoEncodings);
-        this.frameInfoObjectConstants = PinnedArrays.getHostedArray(frameInfoObjectConstants);
-        this.frameInfoSourceClasses = PinnedArrays.getHostedArray(frameInfoSourceClasses);
-        this.frameInfoSourceMethodNames = PinnedArrays.getHostedArray(frameInfoSourceMethodNames);
-        this.frameInfoNames = PinnedArrays.getHostedArray(frameInfoNames);
+        this.codeInfoIndex = NonmovableArrays.getHostedArray(codeInfoIndex);
+        this.codeInfoEncodings = NonmovableArrays.getHostedArray(codeInfoEncodings);
+        this.referenceMapEncoding = NonmovableArrays.getHostedArray(referenceMapEncoding);
+        this.frameInfoEncodings = NonmovableArrays.getHostedArray(frameInfoEncodings);
+        this.frameInfoObjectConstants = NonmovableArrays.getHostedArray(frameInfoObjectConstants);
+        this.frameInfoSourceClasses = NonmovableArrays.getHostedArray(frameInfoSourceClasses);
+        this.frameInfoSourceMethodNames = NonmovableArrays.getHostedArray(frameInfoSourceMethodNames);
+        this.frameInfoNames = NonmovableArrays.getHostedArray(frameInfoNames);
     }
 
     @Override
@@ -164,7 +164,7 @@ public class ImageCodeInfo implements CodeInfoAccessor {
     }
 
     @Override
-    public PinnedArray<Byte> getReferenceMapEncoding(CodeInfoHandle handle) {
+    public NonmovableArray<Byte> getReferenceMapEncoding(CodeInfoHandle handle) {
         return pa(referenceMapEncoding);
     }
 

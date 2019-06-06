@@ -26,9 +26,9 @@ package com.oracle.svm.core.code;
 
 import org.graalvm.compiler.core.common.util.AbstractTypeReader;
 
-import com.oracle.svm.core.c.PinnedArray;
-import com.oracle.svm.core.c.PinnedArrays;
-import com.oracle.svm.core.util.PinnedByteArrayReader;
+import com.oracle.svm.core.c.NonmovableArray;
+import com.oracle.svm.core.c.NonmovableArrays;
+import com.oracle.svm.core.util.NonmovableByteArrayReader;
 import com.oracle.svm.core.util.VMError;
 
 /**
@@ -37,19 +37,19 @@ import com.oracle.svm.core.util.VMError;
  */
 public final class ReusableTypeReader extends AbstractTypeReader {
 
-    private PinnedArray<Byte> data;
+    private NonmovableArray<Byte> data;
     private long byteIndex = -1;
 
     public ReusableTypeReader() {
     }
 
-    public ReusableTypeReader(PinnedArray<Byte> data, long byteIndex) {
+    public ReusableTypeReader(NonmovableArray<Byte> data, long byteIndex) {
         this.data = data;
         this.byteIndex = byteIndex;
     }
 
     public void reset() {
-        data = PinnedArrays.nullArray();
+        data = NonmovableArrays.nullArray();
         byteIndex = -1;
     }
 
@@ -67,11 +67,11 @@ public final class ReusableTypeReader extends AbstractTypeReader {
         this.byteIndex = byteIndex;
     }
 
-    public PinnedArray<Byte> getData() {
+    public NonmovableArray<Byte> getData() {
         return data;
     }
 
-    public void setData(PinnedArray<Byte> data) {
+    public void setData(NonmovableArray<Byte> data) {
         this.data = data;
     }
 
@@ -82,7 +82,7 @@ public final class ReusableTypeReader extends AbstractTypeReader {
 
     @Override
     public int getU1() {
-        int result = PinnedByteArrayReader.getU1(data, byteIndex);
+        int result = NonmovableByteArrayReader.getU1(data, byteIndex);
         byteIndex += Byte.BYTES;
         return result;
     }

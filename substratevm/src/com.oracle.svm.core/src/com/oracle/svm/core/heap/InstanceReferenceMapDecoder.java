@@ -27,18 +27,18 @@ package com.oracle.svm.core.heap;
 import org.graalvm.word.Pointer;
 
 import com.oracle.svm.core.annotate.AlwaysInline;
-import com.oracle.svm.core.c.PinnedArray;
+import com.oracle.svm.core.c.NonmovableArray;
 import com.oracle.svm.core.code.CodeInfoQueryResult;
 import com.oracle.svm.core.config.ConfigurationValues;
-import com.oracle.svm.core.util.PinnedByteArrayReader;
+import com.oracle.svm.core.util.NonmovableByteArrayReader;
 
 public class InstanceReferenceMapDecoder {
     @AlwaysInline("de-virtualize calls to ObjectReferenceVisitor")
-    public static boolean walkOffsetsFromPointer(Pointer baseAddress, PinnedArray<Byte> referenceMapEncoding, long referenceMapIndex, ObjectReferenceVisitor visitor) {
+    public static boolean walkOffsetsFromPointer(Pointer baseAddress, NonmovableArray<Byte> referenceMapEncoding, long referenceMapIndex, ObjectReferenceVisitor visitor) {
         assert referenceMapIndex >= CodeInfoQueryResult.EMPTY_REFERENCE_MAP;
         assert referenceMapEncoding.isNonNull();
 
-        int entryCount = PinnedByteArrayReader.getS4(referenceMapEncoding, referenceMapIndex);
+        int entryCount = NonmovableByteArrayReader.getS4(referenceMapEncoding, referenceMapIndex);
         assert entryCount >= 0;
 
         int referenceSize = ConfigurationValues.getObjectLayout().getReferenceSize();
@@ -46,8 +46,8 @@ public class InstanceReferenceMapDecoder {
 
         long entryStart = referenceMapIndex + InstanceReferenceMapEncoder.MAP_HEADER_SIZE;
         for (long idx = entryStart; idx < entryStart + entryCount * InstanceReferenceMapEncoder.MAP_ENTRY_SIZE; idx += InstanceReferenceMapEncoder.MAP_ENTRY_SIZE) {
-            int offset = PinnedByteArrayReader.getS4(referenceMapEncoding, idx);
-            long count = PinnedByteArrayReader.getU4(referenceMapEncoding, idx + 4);
+            int offset = NonmovableByteArrayReader.getS4(referenceMapEncoding, idx);
+            long count = NonmovableByteArrayReader.getU4(referenceMapEncoding, idx + 4);
 
             Pointer objRef = baseAddress.add(offset);
             for (int c = 0; c < count; c++) {

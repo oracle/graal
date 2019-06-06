@@ -31,9 +31,8 @@ import org.graalvm.word.PointerBase;
  * heap.
  *
  * @param <T> the type of stored objects, purely for tagging and compile-time checks.
- *
- * @see PinnedArrays
- * @see PinnedObjectArray
+ * @see NonmovableArrays
+ * @see NonmovableObjectArray
  */
-public interface PinnedArray<T> extends PointerBase {
+public interface NonmovableArray<T> extends PointerBase {
 }

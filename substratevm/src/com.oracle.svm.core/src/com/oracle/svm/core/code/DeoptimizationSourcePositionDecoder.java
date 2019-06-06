@@ -26,10 +26,10 @@ package com.oracle.svm.core.code;
 
 import org.graalvm.compiler.graph.NodeSourcePosition;
 
-import com.oracle.svm.core.c.PinnedArray;
-import com.oracle.svm.core.c.PinnedArrays;
-import com.oracle.svm.core.c.PinnedObjectArray;
-import com.oracle.svm.core.util.PinnedByteArrayTypeReader;
+import com.oracle.svm.core.c.NonmovableArray;
+import com.oracle.svm.core.c.NonmovableArrays;
+import com.oracle.svm.core.c.NonmovableObjectArray;
+import com.oracle.svm.core.util.NonmovableByteArrayTypeReader;
 
 import jdk.vm.ci.meta.ResolvedJavaMethod;
 
@@ -50,25 +50,26 @@ public class DeoptimizationSourcePositionDecoder {
         return decode(deoptId, accessor.getDeoptimizationStartOffsets(handle), accessor.getDeoptimizationEncodings(handle), accessor.getDeoptimizationObjectConstants(handle));
     }
 
-    static NodeSourcePosition decode(int deoptId, PinnedArray<Integer> deoptimizationStartOffsets, PinnedArray<Byte> deoptimizationEncodings, PinnedObjectArray<Object> deoptimizationObjectConstants) {
-        if (deoptId < 0 || deoptId >= PinnedArrays.lengthOf(deoptimizationStartOffsets)) {
+    static NodeSourcePosition decode(int deoptId, NonmovableArray<Integer> deoptimizationStartOffsets, NonmovableArray<Byte> deoptimizationEncodings,
+                    NonmovableObjectArray<Object> deoptimizationObjectConstants) {
+        if (deoptId < 0 || deoptId >= NonmovableArrays.lengthOf(deoptimizationStartOffsets)) {
             return null;
         }
 
-        int startOffset = PinnedArrays.getInt(deoptimizationStartOffsets, deoptId);
+        int startOffset = NonmovableArrays.getInt(deoptimizationStartOffsets, deoptId);
         if (startOffset == NO_SOURCE_POSITION) {
             return null;
         }
 
-        PinnedByteArrayTypeReader readBuffer = new PinnedByteArrayTypeReader(deoptimizationEncodings, 0);
+        NonmovableByteArrayTypeReader readBuffer = new NonmovableByteArrayTypeReader(deoptimizationEncodings, 0);
         return decodeSourcePosition(startOffset, deoptimizationObjectConstants, readBuffer);
     }
 
-    private static NodeSourcePosition decodeSourcePosition(long startOffset, PinnedObjectArray<Object> deoptimizationObjectConstants, PinnedByteArrayTypeReader readBuffer) {
+    private static NodeSourcePosition decodeSourcePosition(long startOffset, NonmovableObjectArray<Object> deoptimizationObjectConstants, NonmovableByteArrayTypeReader readBuffer) {
         readBuffer.setByteIndex(startOffset);
         long callerRelativeOffset = readBuffer.getUV();
         int bci = readBuffer.getSVInt();
-        ResolvedJavaMethod method = (ResolvedJavaMethod) PinnedArrays.getObject(deoptimizationObjectConstants, readBuffer.getUVInt());
+        ResolvedJavaMethod method = (ResolvedJavaMethod) NonmovableArrays.getObject(deoptimizationObjectConstants, readBuffer.getUVInt());
 
         NodeSourcePosition caller = null;
         if (callerRelativeOffset != NO_CALLER) {

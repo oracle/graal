@@ -37,9 +37,9 @@ import org.graalvm.compiler.core.common.util.TypeConversion;
 import org.graalvm.compiler.core.common.util.UnsafeArrayTypeWriter;
 import org.graalvm.nativeimage.ImageSingletons;
 
-import com.oracle.svm.core.c.PinnedArray;
-import com.oracle.svm.core.c.PinnedArrays;
-import com.oracle.svm.core.c.PinnedObjectArray;
+import com.oracle.svm.core.c.NonmovableArray;
+import com.oracle.svm.core.c.NonmovableArrays;
+import com.oracle.svm.core.c.NonmovableObjectArray;
 import com.oracle.svm.core.code.CodeInfoEncoder.Counters;
 import com.oracle.svm.core.code.FrameInfoQueryResult.ValueInfo;
 import com.oracle.svm.core.code.FrameInfoQueryResult.ValueType;
@@ -180,11 +180,11 @@ public class FrameInfoEncoder {
     private final FrequencyEncoder<String> sourceMethodNames;
     private final FrequencyEncoder<String> names;
 
-    protected PinnedArray<Byte> frameInfoEncodings;
-    protected PinnedObjectArray<Object> frameInfoObjectConstants;
-    protected PinnedObjectArray<Class<?>> frameInfoSourceClasses;
-    protected PinnedObjectArray<String> frameInfoSourceMethodNames;
-    protected PinnedObjectArray<String> frameInfoNames;
+    protected NonmovableArray<Byte> frameInfoEncodings;
+    protected NonmovableObjectArray<Object> frameInfoObjectConstants;
+    protected NonmovableObjectArray<Class<?>> frameInfoSourceClasses;
+    protected NonmovableObjectArray<String> frameInfoSourceMethodNames;
+    protected NonmovableObjectArray<String> frameInfoNames;
 
     protected FrameInfoEncoder(Customization customization) {
         this.customization = customization;
@@ -489,24 +489,24 @@ public class FrameInfoEncoder {
 
     protected void encodeAll() {
         final JavaConstant[] encodedJavaConstants = objectConstants.encodeAll(new JavaConstant[objectConstants.getLength()]);
-        frameInfoObjectConstants = PinnedArrays.createObjectArray(encodedJavaConstants.length);
+        frameInfoObjectConstants = NonmovableArrays.createObjectArray(encodedJavaConstants.length);
         for (int i = 0; i < encodedJavaConstants.length; i++) {
-            PinnedArrays.setObject(frameInfoObjectConstants, i,
+            NonmovableArrays.setObject(frameInfoObjectConstants, i,
                             KnownIntrinsics.convertUnknownValue(SubstrateObjectConstant.asObject(encodedJavaConstants[i]), Object.class));
         }
 
         final boolean encodeDebugNames = FrameInfoDecoder.encodeDebugNames();
         if (encodeDebugNames || FrameInfoDecoder.encodeSourceReferences()) {
             Class<?>[] infoSourceClasses = sourceClasses.encodeAll(new Class<?>[sourceClasses.getLength()]);
-            frameInfoSourceClasses = PinnedArrays.copyOfObjectArray(infoSourceClasses, infoSourceClasses.length);
+            frameInfoSourceClasses = NonmovableArrays.copyOfObjectArray(infoSourceClasses, infoSourceClasses.length);
             String[] infoSourceMethodNames = sourceMethodNames.encodeAll(new String[sourceMethodNames.getLength()]);
-            frameInfoSourceMethodNames = PinnedArrays.copyOfObjectArray(infoSourceMethodNames, infoSourceMethodNames.length);
+            frameInfoSourceMethodNames = NonmovableArrays.copyOfObjectArray(infoSourceMethodNames, infoSourceMethodNames.length);
         }
         if (encodeDebugNames) {
             String[] infoNames = names.encodeAll(new String[names.getLength()]);
-            frameInfoNames = PinnedArrays.copyOfObjectArray(infoNames, infoNames.length);
+            frameInfoNames = NonmovableArrays.copyOfObjectArray(infoNames, infoNames.length);
         } else {
-            frameInfoNames = PinnedArrays.nullArray();
+            frameInfoNames = NonmovableArrays.nullArray();
         }
 
         encodeFrameDatas();
@@ -520,8 +520,8 @@ public class FrameInfoEncoder {
             data.indexInEncodings = encodingBuffer.getBytesWritten();
             encodeFrameData(data, encodingBuffer);
         }
-        frameInfoEncodings = PinnedArrays.createByteArray(TypeConversion.asS4(encodingBuffer.getBytesWritten()));
-        encodingBuffer.toByteBuffer(PinnedArrays.asByteBuffer(frameInfoEncodings));
+        frameInfoEncodings = NonmovableArrays.createByteArray(TypeConversion.asS4(encodingBuffer.getBytesWritten()));
+        encodingBuffer.toByteBuffer(NonmovableArrays.asByteBuffer(frameInfoEncodings));
     }
 
     private void encodeFrameData(FrameData data, UnsafeArrayTypeWriter encodingBuffer) {

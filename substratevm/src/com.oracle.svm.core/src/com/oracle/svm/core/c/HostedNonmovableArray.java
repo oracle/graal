@@ -31,14 +31,14 @@ import org.graalvm.word.ComparableWord;
 import com.oracle.svm.core.util.VMError;
 
 /**
- * Wrapper for arrays that are immutable objects within the image heap and will be pinned, but are
- * accessed as {@link PinnedArray} during the image build.
+ * Wrapper for arrays that will be part of the image heap and be unmovable as such, but are accessed
+ * as {@link NonmovableArray} during the image build.
  */
 @Platforms(Platform.HOSTED_ONLY.class)
-class HostedPinnedArray<T> implements PinnedArray<T> {
+class HostedNonmovableArray<T> implements NonmovableArray<T> {
     private final Object array;
 
-    HostedPinnedArray(Object array) {
+    HostedNonmovableArray(Object array) {
         this.array = array;
     }
 
@@ -48,8 +48,8 @@ class HostedPinnedArray<T> implements PinnedArray<T> {
 
     @Override
     public boolean equal(ComparableWord val) {
-        if (val != this && val instanceof HostedPinnedArray<?>) {
-            return ((HostedPinnedArray<?>) val).array == array;
+        if (val != this && val instanceof HostedNonmovableArray<?>) {
+            return ((HostedNonmovableArray<?>) val).array == array;
         }
         return (val == this);
     }
@@ -74,7 +74,7 @@ class HostedPinnedArray<T> implements PinnedArray<T> {
         /*
          * This method is called when trying to write a word value for this instance to the image.
          *
-         * Supporting direct references to PinnedArray during the image build is tricky. (1) We
+         * Supporting direct references to NonmovableArray during the image build is tricky. (1) We
          * would need to ensure that the actual array object is seen as reachable, despite being
          * referenced through a word type. (2) The word value that is read has to be the address of
          * the actual array object. With compressed references, we cannot use relocations and would
@@ -84,9 +84,9 @@ class HostedPinnedArray<T> implements PinnedArray<T> {
          * We therefore go the route described below. We could also use a boxing type to achieve the
          * same result, at the potential cost of some indirection.
          */
-        throw VMError.shouldNotReachHere("The image heap contains an instance of PinnedArray, which is currently " +
-                        "not supported. Unwrap the actual array object using PinnedArrays.getHostedArray() and reference " +
-                        "it directly, then use PinnedArrays.fromImageHeap() at runtime.");
+        throw VMError.shouldNotReachHere("The image heap contains an instance of NonmovableArray, which is currently " +
+                        "not supported. Unwrap the actual array object using NonmovableArrays.getHostedArray() and reference " +
+                        "it directly, then use NonmovableArrays.fromImageHeap() at runtime.");
     }
 
     @SuppressWarnings("deprecation")
@@ -104,12 +104,12 @@ class HostedPinnedArray<T> implements PinnedArray<T> {
 
 /**
  * Wrapper for object arrays that are immutable objects within the image heap and will be pinned,
- * but are accessed as {@link PinnedObjectArray} during the image build.
+ * but are accessed as {@link NonmovableObjectArray} during the image build.
  */
 @Platforms(Platform.HOSTED_ONLY.class)
-class HostedPinnedObjectArray<T> extends HostedPinnedArray<Void> implements PinnedObjectArray<T> {
+class HostedNonmovableObjectArray<T> extends HostedNonmovableArray<Void> implements NonmovableObjectArray<T> {
 
-    HostedPinnedObjectArray(Object array) {
+    HostedNonmovableObjectArray(Object array) {
         super(array);
     }
 }

@@ -31,8 +31,8 @@ import org.graalvm.nativeimage.hosted.Feature;
 
 import com.oracle.svm.core.annotate.AutomaticFeature;
 import com.oracle.svm.core.annotate.UnknownObjectField;
-import com.oracle.svm.core.c.PinnedArray;
-import com.oracle.svm.core.c.PinnedArrays;
+import com.oracle.svm.core.c.NonmovableArray;
+import com.oracle.svm.core.c.NonmovableArrays;
 
 public final class DynamicHubSupport {
 
@@ -43,12 +43,12 @@ public final class DynamicHubSupport {
     }
 
     @Platforms(Platform.HOSTED_ONLY.class)
-    public void setData(PinnedArray<Byte> referenceMapEncoding) {
-        this.referenceMapEncoding = PinnedArrays.getHostedArray(referenceMapEncoding);
+    public void setData(NonmovableArray<Byte> referenceMapEncoding) {
+        this.referenceMapEncoding = NonmovableArrays.getHostedArray(referenceMapEncoding);
     }
 
-    public static PinnedArray<Byte> getReferenceMapEncoding() {
-        return PinnedArrays.fromImageHeap(ImageSingletons.lookup(DynamicHubSupport.class).referenceMapEncoding);
+    public static NonmovableArray<Byte> getReferenceMapEncoding() {
+        return NonmovableArrays.fromImageHeap(ImageSingletons.lookup(DynamicHubSupport.class).referenceMapEncoding);
     }
 }
 

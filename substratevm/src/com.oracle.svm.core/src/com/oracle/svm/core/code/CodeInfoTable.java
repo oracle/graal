@@ -37,8 +37,8 @@ import org.graalvm.word.WordFactory;
 
 import com.oracle.svm.core.annotate.AlwaysInline;
 import com.oracle.svm.core.annotate.AutomaticFeature;
-import com.oracle.svm.core.c.PinnedArray;
-import com.oracle.svm.core.c.PinnedArrays;
+import com.oracle.svm.core.c.NonmovableArray;
+import com.oracle.svm.core.c.NonmovableArrays;
 import com.oracle.svm.core.deopt.DeoptimizedFrame;
 import com.oracle.svm.core.deopt.SubstrateInstalledCode;
 import com.oracle.svm.core.heap.CodeReferenceMapDecoder;
@@ -145,7 +145,7 @@ public class CodeInfoTable {
             return true;
         }
 
-        PinnedArray<Byte> referenceMapEncoding = PinnedArrays.nullArray();
+        NonmovableArray<Byte> referenceMapEncoding = NonmovableArrays.nullArray();
         long referenceMapIndex = CodeInfoQueryResult.NO_REFERENCE_MAP;
         CodeInfoAccessor accessor = lookupCodeInfoAccessor(ip);
         CodeInfoHandle handle = accessor.lookupCodeInfo(ip);
