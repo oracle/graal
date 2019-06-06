@@ -1,10 +1,11 @@
 package com.oracle.truffle.llvm.runtime.debug.debugexpr.parser;
 
+import java.util.LinkedList;
 import com.oracle.truffle.api.Scope;
+import com.oracle.truffle.api.TruffleLanguage.ContextReference;
 import com.oracle.truffle.llvm.runtime.nodes.api.LLVMExpressionNode;
 import com.oracle.truffle.llvm.runtime.ArithmeticOperation;
 import com.oracle.truffle.llvm.runtime.LLVMContext;
-import com.oracle.truffle.llvm.runtime.NodeFactory;
 import com.oracle.truffle.llvm.runtime.debug.debugexpr.nodes.*;
 import com.oracle.truffle.llvm.runtime.debug.debugexpr.nodes.DebugExprCompareNode.Op;
 import com.oracle.truffle.llvm.runtime.types.Type;
@@ -13,9 +14,7 @@ import com.oracle.truffle.llvm.runtime.types.VoidType;
 import org.graalvm.collections.Pair;
 // Set the name of your grammar here (and at the end of this grammar):
 
-// CheckStyle: start generated
 import java.util.List;
-import java.util.LinkedList;
 
 public class Parser {
 	public static final int _EOF = 0;
@@ -71,16 +70,18 @@ public class Parser {
 
 private Iterable<Scope> scopes;
 private LLVMExpressionNode astRoot=null;
-private LLVMContext context=null;
-public final static DebugExprErrorNode noObjNode = new DebugExprErrorNode("<cannot find expression>");
-public final static DebugExprErrorNode errorObjNode = new DebugExprErrorNode("<cannot evaluate expression>");
+private ContextReference<LLVMContext> contextReference=null;
+private DebugExprNodeFactory NF;
+public final static DebugExprErrorNode noObjNode = DebugExprErrorNode.create("<cannot find expression>");
+public final static DebugExprErrorNode errorObjNode = DebugExprErrorNode.create("<cannot evaluate expression>");
 
 void SetScopes(Iterable<Scope> scopes) {
 	this.scopes = scopes;
 }
 
-void SetContext(LLVMContext context) {
-	this.context = context;
+void SetContextReference(ContextReference<LLVMContext> contextReference) {
+	this.contextReference = contextReference;
+	NF = DebugExprNodeFactory.getInstance(contextReference);
 }
 
 public int GetErrors() {
@@ -88,7 +89,6 @@ public int GetErrors() {
 }
 
 public LLVMExpressionNode GetASTRoot() {return astRoot; }
-public NodeFactory NF() {return context.getNodeFactory(); }
 // If you want your generated compiler case insensitive add the
 // keyword IGNORECASE here.
 
@@ -193,7 +193,7 @@ public NodeFactory NF() {return context.getNodeFactory(); }
 	void DebugExpr() {
 		LLVMExpressionNode n=null; 
 		n = Expr();
-		if(errors.count==0) astRoot =new DebugExprRootNode(n); 
+		if(errors.count==0) astRoot =n; 
 	}
 
 	LLVMExpressionNode  Expr() {
@@ -205,7 +205,7 @@ public NodeFactory NF() {return context.getNodeFactory(); }
 			nThen = Expr();
 			Expect(43);
 			nElse = Expr();
-			n = new DebugExprTernaryNode(n, nThen, nElse);
+			n = NF.createTernaryNode(n, nThen, nElse);
 		}
 		return n;
 	}
@@ -216,17 +216,17 @@ public NodeFactory NF() {return context.getNodeFactory(); }
 		switch (la.kind) {
 		case 1: {
 			Get();
-			n = new DebugExprVarNode(t.val, scopes);
+			n = NF.createVarNode(t.val, scopes);
 			break;
 		}
 		case 2: {
 			Get();
-			n = NF().createSimpleConstantNoArray(Integer.parseInt(t.val), PrimitiveType.I32); 
+			n = NF.createIntegerConstant(Integer.parseInt(t.val)); 
 			break;
 		}
 		case 3: {
 			Get();
-			n = NF().createSimpleConstantNoArray(Float.parseFloat(t.val), PrimitiveType.FLOAT); 
+			n = NF.createFloatConstant(Float.parseFloat(t.val)); 
 			break;
 		}
 		case 4: {
@@ -299,8 +299,8 @@ public NodeFactory NF() {return context.getNodeFactory(); }
 			case 0:/*n = address(n)*/ break;
 			case 1: /*deref(n)*/ break;
 			case 2: default: break;
-			case 3: n = NF().createArithmeticOp(ArithmeticOperation.SUB, null,
-			NF().createSimpleConstantNoArray(0, Type.getIntegerType(32))
+			case 3: n = NF.createArithmeticOp(ArithmeticOperation.SUB, null,
+			NF.createIntegerConstant(0)
 			, n); break;
 			case 4: /*flip bits*/ break;
 			case 5: /*negate boolean/int*/ break;
@@ -310,7 +310,7 @@ public NodeFactory NF() {return context.getNodeFactory(); }
 			Expect(6);
 			typeP = DType();
 			Expect(16);
-			n=new DebugExprSizeofNode((Type)typeP.getLeft()); 
+			n=NF.createSizeofNode((Type)typeP.getLeft()); 
 		} else SynErr(47);
 		return n;
 	}
@@ -365,9 +365,9 @@ public NodeFactory NF() {return context.getNodeFactory(); }
 		n = UnaryExpr();
 		if(typeP!=null) {
 		if((Boolean)typeP.getRight()) {
-			n = NF().createSignedCast(n, (Type) typeP.getLeft());
+			n = NF.createSignedCast(n, (Type) typeP.getLeft());
 		} else {
-			n = NF().createUnsignedCast(n, (Type) typeP.getLeft());
+			n = NF.createUnsignedCast(n, (Type) typeP.getLeft());
 		}
 			} 
 		return n;
@@ -379,12 +379,15 @@ public NodeFactory NF() {return context.getNodeFactory(); }
 		if (la.kind == 7 || la.kind == 16 || la.kind == 17) {
 			while (la.kind == 7) {
 				Get();
+				SemErr("Pointer types are not available yet"); 
 			}
 		} else if (la.kind == 23) {
 			Get();
+			SemErr("Reference types are not available yet"); 
 		} else SynErr(49);
 		while (la.kind == 17) {
 			Get();
+			SemErr("Array types are not available yet"); 
 			if (la.kind == 2) {
 				Get();
 			}
@@ -401,15 +404,15 @@ public NodeFactory NF() {return context.getNodeFactory(); }
 			if (la.kind == 7) {
 				Get();
 				n1 = CastExpr();
-				n = NF().createArithmeticOp(ArithmeticOperation.MUL, null, n, n1); 
+				n = NF.createArithmeticOp(ArithmeticOperation.MUL, null, n, n1); 
 			} else if (la.kind == 28) {
 				Get();
 				n1 = CastExpr();
-				n = NF().createArithmeticOp(ArithmeticOperation.DIV, null, n, n1); 
+				n = NF.createArithmeticOp(ArithmeticOperation.DIV, null, n, n1); 
 			} else {
 				Get();
 				n1 = CastExpr();
-				n = NF().createArithmeticOp(ArithmeticOperation.REM, null, n, n1); 
+				n = NF.createArithmeticOp(ArithmeticOperation.REM, null, n, n1); 
 			}
 		}
 		return n;
@@ -423,11 +426,11 @@ public NodeFactory NF() {return context.getNodeFactory(); }
 			if (la.kind == 24) {
 				Get();
 				n1 = MultExpr();
-				n = NF().createArithmeticOp(ArithmeticOperation.ADD, null, n, n1); 
+				n = NF.createArithmeticOp(ArithmeticOperation.ADD, null, n, n1); 
 			} else {
 				Get();
 				n1 = MultExpr();
-				n = NF().createArithmeticOp(ArithmeticOperation.SUB, null, n, n1); 
+				n = NF.createArithmeticOp(ArithmeticOperation.SUB, null, n, n1); 
 			}
 		}
 		return n;
@@ -441,11 +444,11 @@ public NodeFactory NF() {return context.getNodeFactory(); }
 			if (la.kind == 30) {
 				Get();
 				n1 = AddExpr();
-				n = NF().createArithmeticOp(ArithmeticOperation.SHL, null, n, n1); 
+				n = NF.createArithmeticOp(ArithmeticOperation.SHL, null, n, n1); 
 			} else {
 				Get();
 				n1 = AddExpr();
-				n = NF().createArithmeticOp(ArithmeticOperation.ASHR, null, n, n1); 
+				n = NF.createArithmeticOp(ArithmeticOperation.ASHR, null, n, n1); 
 			}
 		}
 		return n;
@@ -459,19 +462,19 @@ public NodeFactory NF() {return context.getNodeFactory(); }
 			if (la.kind == 32) {
 				Get();
 				n1 = ShiftExpr();
-				n = new DebugExprCompareNode(NF(), n, Op.LT, n1); 
+				n = NF.createCompareNode(n, Op.LT, n1); 
 			} else if (la.kind == 33) {
 				Get();
 				n1 = ShiftExpr();
-				n = new DebugExprCompareNode(NF(), n, Op.GT, n1); 
+				n = NF.createCompareNode(n, Op.GT, n1); 
 			} else if (la.kind == 34) {
 				Get();
 				n1 = ShiftExpr();
-				n = new DebugExprCompareNode(NF(), n, Op.LE, n1); 
+				n = NF.createCompareNode(n, Op.LE, n1); 
 			} else {
 				Get();
 				n1 = ShiftExpr();
-				n = new DebugExprCompareNode(NF(), n, Op.GE, n1); 
+				n = NF.createCompareNode(n, Op.GE, n1); 
 			}
 		}
 		return n;
@@ -485,11 +488,11 @@ public NodeFactory NF() {return context.getNodeFactory(); }
 			if (la.kind == 36) {
 				Get();
 				n1 = RelExpr();
-				n = new DebugExprCompareNode(NF(), n, Op.EQ, n1); 
+				n = NF.createCompareNode(n, Op.EQ, n1); 
 			} else {
 				Get();
 				n1 = RelExpr();
-				n = new DebugExprCompareNode(NF(), n, Op.NE, n1); 
+				n = NF.createCompareNode(n, Op.NE, n1); 
 			}
 		}
 		return n;
@@ -502,7 +505,7 @@ public NodeFactory NF() {return context.getNodeFactory(); }
 		while (la.kind == 23) {
 			Get();
 			n1 = EqExpr();
-			n = NF().createArithmeticOp(ArithmeticOperation.AND, null, n, n1); 
+			n = NF.createArithmeticOp(ArithmeticOperation.AND, null, n, n1); 
 		}
 		return n;
 	}
@@ -514,7 +517,7 @@ public NodeFactory NF() {return context.getNodeFactory(); }
 		while (la.kind == 38) {
 			Get();
 			n1 = AndExpr();
-			n = NF().createArithmeticOp(ArithmeticOperation.XOR, null, n, n1); 
+			n = NF.createArithmeticOp(ArithmeticOperation.XOR, null, n, n1); 
 		}
 		return n;
 	}
@@ -526,7 +529,7 @@ public NodeFactory NF() {return context.getNodeFactory(); }
 		while (la.kind == 39) {
 			Get();
 			n1 = XorExpr();
-			n = NF().createArithmeticOp(ArithmeticOperation.OR, null, n, n1); 
+			n = NF.createArithmeticOp(ArithmeticOperation.OR, null, n, n1); 
 		}
 		return n;
 	}
@@ -538,7 +541,7 @@ public NodeFactory NF() {return context.getNodeFactory(); }
 		while (la.kind == 40) {
 			Get();
 			n1 = OrExpr();
-			n= new DebugExprSCENode(n, n1, DebugExprSCENode.SCEKind.AND); 
+			n= NF.createLogicalAndNode(n, n1); 
 		}
 		return n;
 	}
@@ -550,7 +553,7 @@ public NodeFactory NF() {return context.getNodeFactory(); }
 		while (la.kind == 41) {
 			Get();
 			n1 = LogAndExpr();
-			n= new DebugExprSCENode(n, n1, DebugExprSCENode.SCEKind.OR); 
+			n= NF.createLogicalOrNode(n, n1); 
 		}
 		return n;
 	}

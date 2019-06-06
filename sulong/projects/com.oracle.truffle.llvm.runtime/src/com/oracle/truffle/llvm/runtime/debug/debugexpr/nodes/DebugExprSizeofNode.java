@@ -45,7 +45,7 @@ public class DebugExprSizeofNode extends LLVMExpressionNode {
     @Override
     public Object executeGeneric(VirtualFrame frame) {
         if (type != null)
-            return type.getBitSize() / 4;
+            return type.getBitSize() / 8;
         return Parser.errorObjNode.executeGeneric(frame);
     }
 

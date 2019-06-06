@@ -38,8 +38,12 @@ import com.oracle.truffle.llvm.runtime.nodes.api.LLVMExpressionNode;
 public class DebugExprErrorNode extends LLVMExpressionNode {
     private final Object errorObject;
 
-    public DebugExprErrorNode(Object errorObj) {
+    private DebugExprErrorNode(Object errorObj) {
         this.errorObject = errorObj;
+    }
+
+    public static DebugExprErrorNode create(Object errorObj) {
+        return new DebugExprErrorNode(errorObj);
     }
 
     @Override

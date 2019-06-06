@@ -36,17 +36,21 @@ import com.oracle.truffle.api.Scope;
 import com.oracle.truffle.api.Truffle;
 import com.oracle.truffle.api.TruffleLanguage;
 import com.oracle.truffle.api.debug.DebuggerTags;
+import com.oracle.truffle.api.dsl.UnsupportedSpecializationException;
 import com.oracle.truffle.api.frame.Frame;
 import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.api.instrumentation.ProvidedTags;
 import com.oracle.truffle.api.instrumentation.StandardTags;
 import com.oracle.truffle.api.nodes.ExecutableNode;
 import com.oracle.truffle.api.nodes.Node;
+import com.oracle.truffle.api.nodes.UnexpectedResultException;
 import com.oracle.truffle.api.source.Source;
 import com.oracle.truffle.api.source.SourceSection;
 import com.oracle.truffle.llvm.runtime.debug.LLDBSupport;
 import com.oracle.truffle.llvm.runtime.debug.LLVMDebuggerValue;
+import com.oracle.truffle.llvm.runtime.debug.debugexpr.parser.DebugExprException;
 import com.oracle.truffle.llvm.runtime.debug.debugexpr.parser.DebugExprParser;
+import com.oracle.truffle.llvm.runtime.debug.debugexpr.parser.Parser;
 import com.oracle.truffle.llvm.runtime.debug.scope.LLVMDebuggerScopeFactory;
 import com.oracle.truffle.llvm.runtime.debug.scope.LLVMSourceLocation;
 import com.oracle.truffle.llvm.runtime.debug.type.LLVMSourceType;
@@ -139,17 +143,31 @@ public class LLVMLanguage extends TruffleLanguage<LLVMContext> {
     @Override
     protected ExecutableNode parse(InlineParsingRequest request) throws Exception {
 
-        final DebugExprParser d = new DebugExprParser(request, mainContext);
-        LLVMExpressionNode expressionNode = d.parse();
+        final DebugExprParser d = new DebugExprParser(request, getContextReference());
+        LLVMExpressionNode root = d.parse();
         return new ExecutableNode(this) {
             @Override
             public Object execute(VirtualFrame frame) {
 
                 try {
-                    return expressionNode.executeGeneric(frame);
-                } catch (Exception e) {
-                    System.out.println(e.getClass().getName() + e.getMessage());
-                    throw e;
+                    // for boolean results: convert to a string
+                    boolean result = root.executeI1(frame);
+                    return result ? "true" : "false";
+                } catch (UnsupportedSpecializationException | UnexpectedResultException e) {
+                    // perform normal execution
+                }
+                try {
+                    // try to execute node
+                    return root.executeGeneric(frame);
+                } catch (UnsupportedSpecializationException use) {
+                    // return error string node
+                    return Parser.errorObjNode.executeGeneric(frame);
+                } catch (DebugExprException dee) {
+                    // use existing exception if available
+                    if (dee.exceptionNode == null)
+                        return Parser.errorObjNode.executeGeneric(frame);
+                    else
+                        return dee.exceptionNode.executeGeneric(frame);
                 }
             }
         };
