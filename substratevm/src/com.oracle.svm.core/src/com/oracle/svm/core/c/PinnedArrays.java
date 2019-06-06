@@ -53,13 +53,18 @@ import com.oracle.svm.core.hub.DynamicHub;
 import com.oracle.svm.core.hub.LayoutEncoding;
 import com.oracle.svm.core.snippets.ImplicitExceptions;
 import com.oracle.svm.core.snippets.KnownIntrinsics;
+import com.oracle.svm.core.util.VMError;
 
 public final class PinnedArrays {
+    private static final HostedPinnedArray<?> HOSTED_NULL_VALUE = new HostedPinnedObjectArray<>(null);
+
     @SuppressWarnings("unchecked")
     @Uninterruptible(reason = "Faux object reference on stack during array initialization.")
     private static <T extends PinnedArray<?>> T createArray(int length, Class<?> arrayType) {
         if (SubstrateUtil.HOSTED) {
-            return (T) new HostedPinnedArray<>(Array.newInstance(arrayType.getComponentType(), length));
+            Class<?> componentType = arrayType.getComponentType();
+            Object array = Array.newInstance(componentType, length);
+            return (T) (componentType.isPrimitive() ? new HostedPinnedArray<>(array) : new HostedPinnedObjectArray<>(array));
         }
         int layoutEncoding = SubstrateUtil.cast(arrayType, DynamicHub.class).getLayoutEncoding();
         assert LayoutEncoding.isArray(layoutEncoding);
@@ -114,7 +119,7 @@ public final class PinnedArrays {
     @SuppressWarnings("unchecked")
     public static <T extends PinnedArray<?>> T nullArray() {
         if (SubstrateUtil.HOSTED) {
-            return (T) HostedPinnedArray.NULL_VALUE;
+            return (T) HOSTED_NULL_VALUE;
         }
         return WordFactory.nullPointer();
     }
@@ -173,16 +178,23 @@ public final class PinnedArrays {
     @SuppressWarnings("unchecked")
     public static <T> PinnedArray<T> fromImageHeap(Object array) {
         if (SubstrateUtil.HOSTED) {
-            return (array != null) ? new HostedPinnedArray<>(array) : (PinnedArray<T>) HostedPinnedArray.NULL_VALUE;
+            if (array == null) {
+                return (PinnedArray<T>) HOSTED_NULL_VALUE;
+            }
+            VMError.guarantee(array.getClass().getComponentType().isPrimitive(), "Must call the method for Object[]");
+            return new HostedPinnedArray<>(array);
         }
         assert array == null || Heap.getHeap().getObjectHeader().isNonHeapAllocatedHeader(ObjectHeader.readHeaderFromObject(array));
         return (array != null) ? (PinnedArray<T>) Word.objectToUntrackedPointer(array) : WordFactory.nullPointer();
     }
 
     /** Returns a {@link PinnedObjectArray} for an object array in the image heap. */
-    @SuppressWarnings("unchecked")
+    @SuppressWarnings({"unchecked", "rawtypes"})
     public static <T> PinnedObjectArray<T> fromImageHeap(Object[] array) {
-        return (PinnedObjectArray<T>) fromImageHeap((Object) array);
+        if (SubstrateUtil.HOSTED) {
+            return (array != null) ? new HostedPinnedObjectArray<>(array) : (PinnedObjectArray<T>) HOSTED_NULL_VALUE;
+        }
+        return (PinnedObjectArray) fromImageHeap((Object) array);
     }
 
     /** During the image build, retrieve the array object that will be pinned. */

@@ -35,9 +35,7 @@ import com.oracle.svm.core.util.VMError;
  * accessed as {@link PinnedArray} during the image build.
  */
 @Platforms(Platform.HOSTED_ONLY.class)
-public final class HostedPinnedArray<T> implements PinnedArray<T>, PinnedObjectArray<T> {
-    static final HostedPinnedArray<?> NULL_VALUE = new HostedPinnedArray<>(null);
-
+class HostedPinnedArray<T> implements PinnedArray<T> {
     private final Object array;
 
     HostedPinnedArray(Object array) {
@@ -101,5 +99,17 @@ public final class HostedPinnedArray<T> implements PinnedArray<T>, PinnedObjectA
     @Override
     public int hashCode() {
         throw VMError.shouldNotReachHere("hashCode() not supported on words");
+    }
+}
+
+/**
+ * Wrapper for object arrays that are immutable objects within the image heap and will be pinned,
+ * but are accessed as {@link PinnedObjectArray} during the image build.
+ */
+@Platforms(Platform.HOSTED_ONLY.class)
+class HostedPinnedObjectArray<T> extends HostedPinnedArray<Void> implements PinnedObjectArray<T> {
+
+    HostedPinnedObjectArray(Object array) {
+        super(array);
     }
 }
