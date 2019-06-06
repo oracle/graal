@@ -1262,11 +1262,7 @@ public class BytecodeNode extends EspressoBaseNode implements CustomNodeCount {
                 quick = nodes[bs.readCPI(curBCI)];
             } else {
                 Klass typeToCheck;
-                try {
-                    typeToCheck = resolveType(opCode, bs.readCPI(curBCI));
-                } catch (EspressoException e) {
-                    throw getMeta().throwEx(NoClassDefFoundError.class);
-                }
+                typeToCheck = resolveType(opCode, bs.readCPI(curBCI));
                 quick = injectQuick(curBCI, CheckCastNodeGen.create(typeToCheck));
             }
         }
@@ -1282,11 +1278,7 @@ public class BytecodeNode extends EspressoBaseNode implements CustomNodeCount {
                 quick = nodes[bs.readCPI(curBCI)];
             } else {
                 Klass typeToCheck;
-                try {
-                    typeToCheck = resolveType(opCode, bs.readCPI(curBCI));
-                } catch (EspressoException e) {
-                    throw getMeta().throwEx(NoClassDefFoundError.class);
-                }
+                typeToCheck = resolveType(opCode, bs.readCPI(curBCI));
                 quick = injectQuick(curBCI, InstanceOfNodeGen.create(typeToCheck));
             }
         }

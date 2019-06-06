@@ -28,13 +28,11 @@ import java.util.List;
 
 import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.CompilerDirectives.CompilationFinal;
-import com.oracle.truffle.espresso.EspressoOptions;
-import com.oracle.truffle.espresso.bytecode.BytecodeStream;
 import com.oracle.truffle.api.nodes.ExplodeLoop;
+import com.oracle.truffle.espresso.EspressoOptions;
 import com.oracle.truffle.espresso.classfile.ConstantValueAttribute;
 import com.oracle.truffle.espresso.classfile.EnclosingMethodAttribute;
 import com.oracle.truffle.espresso.classfile.InnerClassesAttribute;
-import com.oracle.truffle.espresso.verifier.MethodVerifier;
 import com.oracle.truffle.espresso.classfile.RuntimeConstantPool;
 import com.oracle.truffle.espresso.descriptors.Symbol;
 import com.oracle.truffle.espresso.descriptors.Symbol.Name;
@@ -45,6 +43,7 @@ import com.oracle.truffle.espresso.runtime.Attribute;
 import com.oracle.truffle.espresso.runtime.EspressoContext;
 import com.oracle.truffle.espresso.runtime.StaticObject;
 import com.oracle.truffle.espresso.substitutions.Host;
+import com.oracle.truffle.espresso.verifier.MethodVerifier;
 
 /**
  * Resolved non-primitive, non-array types in Espresso.
@@ -515,8 +514,6 @@ public final class ObjectKlass extends Klass {
                 try {
                     MethodVerifier.verify(m);
                 } catch (VerifyError | ClassFormatError | IncompatibleClassChangeError | NoClassDefFoundError e) {
-                    System.err.println(getType() + "." + m.getName());
-                    new BytecodeStream(m.getCodeAttribute().getCode()).printBytecode(this);
                     setErroneous();
                     throw getMeta().throwExWithMessage(e.getClass(), e.getMessage());
                 }
@@ -525,7 +522,7 @@ public final class ObjectKlass extends Klass {
         }
     }
 
-    void setErroneous() {
+    private void setErroneous() {
         initState = ERRONEOUS;
     }
 }
