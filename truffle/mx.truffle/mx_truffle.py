@@ -167,7 +167,7 @@ def _path_args(depNames=None):
             cpEntryToModule = {m.dist.path : m for m in modules}
 
             for e in mx.classpath(depNames).split(os.pathsep):
-                if cpEntryToModule.has_key(e):
+                if e in cpEntryToModule:
                     modulepath.append(cpEntryToModule[e].jarpath)
                 else:
                     classpath.append(e)
