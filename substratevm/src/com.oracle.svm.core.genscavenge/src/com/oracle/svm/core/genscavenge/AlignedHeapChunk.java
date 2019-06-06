@@ -588,6 +588,10 @@ public class AlignedHeapChunk extends HeapChunk {
 
 @AutomaticFeature
 class AlignedHeapChunkMemoryWalkerAccessFeature implements Feature {
+    @Override
+    public boolean isInConfiguration(IsInConfigurationAccess access) {
+        return HeapOptions.UseCardRememberedSetHeap.getValue();
+    }
 
     @Override
     public void afterRegistration(AfterRegistrationAccess access) {
