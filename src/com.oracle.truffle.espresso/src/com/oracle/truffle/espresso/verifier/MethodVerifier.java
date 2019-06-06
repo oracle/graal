@@ -1701,6 +1701,34 @@ public final class MethodVerifier implements ContextAccess {
         }
     }
 
+    /**
+     * This is the delicate part for dealing with JSR/RET.
+     * 
+     * The main idea is that multiple JSR can lead to a single RET. It is therefore necessary that
+     * the state of the subroutine is the merging from all JSR that lead to it. However, the
+     * opposite is not true: We do not want to merge the subroutine state directly into the state of
+     * the caller. The semantics of JSR say that execution should resume almost as if the subroutine
+     * did not happen.
+     * 
+     * In practice, that means that variables that were untouched by the subroutine should be used
+     * as-is when returning.
+     * 
+     * Thus, we need to keep track of the variables a subroutine actually modifies, which
+     * corresponds to the subRoutineModifications field in the locals. It is similar to a bit array.
+     * If bit at index i is set, that means that the corresponding subroutine modified local
+     * variable number i.
+     * 
+     * The problem is, what if a subroutine calls another one (In case of multiply nested finally
+     * clauses). In order to take that into account, the data structure used is a stack of bit
+     * arrays. Starting a subroutine pushes a new clean bit array on the stack. When returning, the
+     * bit array is popped (call it b1) to obtain the wanted local variables, and once done, if
+     * there is another bit array on the stack (call it b2), merge the two of them (ie: for each
+     * raised bit in b1, raise the corresponding one in b2).
+     * 
+     * @param target BCI of the JSR instruction we will merge into
+     * @param locals The state of the local variables at the time of the RET instruction
+     * @return the local variables that will be merged into the state at target.
+     */
     private Locals getSubroutineReturnLocals(Integer target, Locals locals) {
         boolean[] subroutineModifs = locals.subRoutineModifications.subRoutineModifications;
         SubroutineModificationStack nested = locals.subRoutineModifications.next;
