@@ -121,6 +121,13 @@ public interface MethodHandleConstant extends PoolConstant {
                             accessingKlass.mirror(), (int) refKind,
                             mklass.mirror(), mname, mtype));
         }
+
+        @Override
+        public void checkValidity(ConstantPool pool) {
+            if (pool.at(refIndex).tag() != Tag.METHOD_REF) {
+                throw new VerifyError("Ill-formed constant: " + tag());
+            }
+        }
     }
 
     final class Resolved implements Resolvable.ResolvedConstant {

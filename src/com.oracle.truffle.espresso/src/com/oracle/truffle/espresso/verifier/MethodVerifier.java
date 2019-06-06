@@ -942,11 +942,7 @@ public final class MethodVerifier implements ContextAccess {
             case LONG:          return Long;
             case DOUBLE:        return Double;
             case CLASS:         return jlClass;
-            case STRING:        
-                if (!pc.checkValidity(pool)) {
-                    throw new VerifyError("StringConstant does not point to UTF8Constant.");
-                }
-                return jlString;
+            case STRING:        return jlString;
             case METHODHANDLE:  return MethodHandle;
             case METHODTYPE:    return MethodType;
             default:
@@ -1003,7 +999,8 @@ public final class MethodVerifier implements ContextAccess {
                     
                 case LDC: 
                 case LDC_W: {
-                    Operand op = ldcFromTag(pool.at(code.readCPI(BCI)));
+                    PoolConstant pc = pool.at(code.readCPI(BCI));Operand op = ldcFromTag(pc);
+                    pc.checkValidity(pool);
                     if (isType2(op)) {
                         throw new VerifyError("Loading Long or Double with LDC or LDC_W, please use LDC2_W.");
                     }
@@ -1014,7 +1011,8 @@ public final class MethodVerifier implements ContextAccess {
                     break;
                 }
                 case LDC2_W: {
-                    Operand op = ldcFromTag(pool.at(code.readCPI(BCI)));
+                    PoolConstant pc = pool.at(code.readCPI(BCI));Operand op = ldcFromTag(pc);
+                    pc.checkValidity(pool);
                     if (!isType2(op)) {
                         throw new VerifyError("Loading non-Long or Double with LDC2_W, please use LDC or LDC_W.");
                     }
@@ -1341,9 +1339,10 @@ public final class MethodVerifier implements ContextAccess {
                 case GETSTATIC:
                 case GETFIELD: {
                     PoolConstant pc = pool.at(code.readCPI(BCI));
-                    if (!(pc instanceof FieldRefConstant)) {
+                    if (pc.tag() != ConstantPool.Tag.FIELD_REF) {
                         throw new VerifyError();
                     }
+                    pc.checkValidity(pool);
                     FieldRefConstant frc = (FieldRefConstant) pc;
                     Symbol<Type> type = frc.getType(pool);
                     if (curOpcode == GETFIELD) {
@@ -1364,9 +1363,10 @@ public final class MethodVerifier implements ContextAccess {
                 case PUTSTATIC:
                 case PUTFIELD: {
                     PoolConstant pc = pool.at(code.readCPI(BCI));
-                    if (!(pc instanceof FieldRefConstant)) {
+                    if (pc.tag() != ConstantPool.Tag.FIELD_REF) {
                         throw new VerifyError();
                     }
+                    pc.checkValidity(pool);
                     FieldRefConstant frc = (FieldRefConstant) pc;
                     Symbol<Type> fieldDesc = frc.getType(pool);
                     Operand toPut = stack.pop(kindToOperand(fieldDesc));
@@ -1406,6 +1406,7 @@ public final class MethodVerifier implements ContextAccess {
                     if (!(pc instanceof MethodRefConstant)) {
                         throw new VerifyError("Invalid CP constant for a MethodRef: " + pc.getClass().getName());
                     }
+                    pc.checkValidity(pool);
                     MethodRefConstant mrc = (MethodRefConstant) pc;
 
                     // Checks versioning

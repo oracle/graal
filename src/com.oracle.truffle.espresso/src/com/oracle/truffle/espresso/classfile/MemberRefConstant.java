@@ -29,6 +29,9 @@ import com.oracle.truffle.espresso.impl.Field;
 import com.oracle.truffle.espresso.impl.Klass;
 import com.oracle.truffle.espresso.impl.Method;
 
+import static com.oracle.truffle.espresso.classfile.ConstantPool.Tag.CLASS;
+import static com.oracle.truffle.espresso.classfile.ConstantPool.Tag.NAME_AND_TYPE;
+
 /**
  * Interface denoting a field or method entry in a constant pool.
  */
@@ -91,8 +94,13 @@ public interface MemberRefConstant extends PoolConstant {
             return pool.nameAndTypeAt(nameAndTypeIndex).getDescriptor(pool);
         }
 
-        public int getHolderClassIndex() {
-            return classIndex;
+        @Override
+        public void checkValidity(ConstantPool pool) {
+            if (pool.at(classIndex).tag() != CLASS || pool.at(nameAndTypeIndex).tag() != NAME_AND_TYPE) {
+                throw new VerifyError("Ill-formed constant: " + tag());
+            }
+            pool.at(classIndex).checkValidity(pool);
+            pool.at(nameAndTypeIndex).checkValidity(pool);
         }
     }
 

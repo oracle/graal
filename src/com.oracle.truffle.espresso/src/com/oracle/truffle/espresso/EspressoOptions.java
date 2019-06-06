@@ -64,9 +64,13 @@ public final class EspressoOptions {
     @Option(help = "Enable system assertions.", category = OptionCategory.USER) //
     public static final OptionKey<Boolean> EnableSystemAssertions = new OptionKey<>(false);
 
+    // Threads are enabled by default.
     public static final boolean ENABLE_THREADS = (System.getProperty("espresso.EnableThreads") == null) || Boolean.getBoolean("espresso.EnableThreads");
+
+    // Bytecode Verification is enabled by default.
+    public static final boolean ENABLE_VERIFICATION = (System.getProperty("espresso.EnableVerify") == null) || Boolean.getBoolean("espresso.EnableVerify");
+
     public static final boolean RUNNING_ON_SVM = ImageInfo.inImageCode();
 
     public static final String INCEPTION_NAME = System.getProperty("espresso.inception.name", "#");
-
 }

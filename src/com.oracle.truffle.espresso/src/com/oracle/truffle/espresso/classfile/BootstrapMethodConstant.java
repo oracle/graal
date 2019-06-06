@@ -27,6 +27,8 @@ import com.oracle.truffle.espresso.descriptors.Symbol;
 import com.oracle.truffle.espresso.descriptors.Symbol.Name;
 import com.oracle.truffle.espresso.descriptors.Symbol.Signature;
 
+import static com.oracle.truffle.espresso.classfile.ConstantPool.Tag.NAME_AND_TYPE;
+
 /**
  * Interface denoting a bootstrap method constant entry in a constant pool.
  */
@@ -66,6 +68,13 @@ public interface BootstrapMethodConstant extends PoolConstant {
         @Override
         public final Symbol<Signature> getSignature(ConstantPool pool) {
             return Signatures.check(pool.nameAndTypeAt(nameAndTypeIndex).getDescriptor(pool));
+        }
+
+        @Override
+        public void checkValidity(ConstantPool pool) {
+            if (pool.at(nameAndTypeIndex).tag() != NAME_AND_TYPE) {
+                throw new VerifyError("ill-formed BootstrapMethodConstant");
+            }
         }
     }
 }
