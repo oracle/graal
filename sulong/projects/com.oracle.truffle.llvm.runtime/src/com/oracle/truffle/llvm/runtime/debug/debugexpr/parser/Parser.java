@@ -9,6 +9,8 @@ import com.oracle.truffle.llvm.runtime.debug.debugexpr.nodes.*;
 import com.oracle.truffle.llvm.runtime.debug.debugexpr.nodes.DebugExprCompareNode.Op;
 import com.oracle.truffle.llvm.runtime.types.Type;
 import com.oracle.truffle.llvm.runtime.types.PrimitiveType;
+import com.oracle.truffle.llvm.runtime.types.VoidType;
+import org.graalvm.collections.Pair;
 // Set the name of your grammar here (and at the end of this grammar):
 
 // CheckStyle: start generated
@@ -287,7 +289,7 @@ public NodeFactory NF() {return context.getNodeFactory(); }
 
 	LLVMExpressionNode  UnaryExpr() {
 		LLVMExpressionNode  n;
-		n=null; int kind=-1; Type typeO=null;
+		n=null; int kind=-1; Pair typeP=null;
 		if (StartOf(3)) {
 			n = Designator();
 		} else if (StartOf(4)) {
@@ -306,9 +308,9 @@ public NodeFactory NF() {return context.getNodeFactory(); }
 		} else if (la.kind == 22) {
 			Get();
 			Expect(6);
-			typeO = DType();
+			typeP = DType();
 			Expect(16);
-			n=new DebugExprSizeofNode(typeO); 
+			n=new DebugExprSizeofNode((Type)typeP.getLeft()); 
 		} else SynErr(47);
 		return n;
 	}
@@ -354,18 +356,25 @@ public NodeFactory NF() {return context.getNodeFactory(); }
 
 	LLVMExpressionNode  CastExpr() {
 		LLVMExpressionNode  n;
-		Type typeO=null; 
+		Pair typeP=null; 
 		if (IsCast()) {
 			Expect(6);
-			typeO = DType();
+			typeP = DType();
 			Expect(16);
 		}
 		n = UnaryExpr();
+		if(typeP!=null) {
+		if((Boolean)typeP.getRight()) {
+			n = NF().createSignedCast(n, (Type) typeP.getLeft());
+		} else {
+			n = NF().createUnsignedCast(n, (Type) typeP.getLeft());
+		}
+			} 
 		return n;
 	}
 
-	Type  DType() {
-		Type  ty;
+	Pair  DType() {
+		Pair  ty;
 		ty = BaseType();
 		if (la.kind == 7 || la.kind == 16 || la.kind == 17) {
 			while (la.kind == 7) {
@@ -546,12 +555,13 @@ public NodeFactory NF() {return context.getNodeFactory(); }
 		return n;
 	}
 
-	Type  BaseType() {
-		Type  ty;
+	Pair  BaseType() {
+		Pair  ty;
 		ty=null; boolean signed=true;
 		switch (la.kind) {
 		case 44: {
 			Get();
+			ty = Pair.create(VoidType.INSTANCE, false); 
 			break;
 		}
 		case 1: {
@@ -569,52 +579,52 @@ public NodeFactory NF() {return context.getNodeFactory(); }
 			if (StartOf(6)) {
 				if (la.kind == 15) {
 					Get();
-					if(signed) {ty = PrimitiveType.I8;} else {} 
+					ty = Pair.create(PrimitiveType.I8, signed); 
 				} else if (la.kind == 12) {
 					Get();
-					if(signed) {ty = PrimitiveType.I16;} else {} 
+					ty = Pair.create(PrimitiveType.I16, signed); 
 				} else if (la.kind == 10) {
 					Get();
-					if(signed) {ty = PrimitiveType.I32;} else {} 
+					ty = Pair.create(PrimitiveType.I32, signed); 
 				} else {
 					Get();
-					if(signed) {ty = PrimitiveType.I64;} else {} 
+					ty = Pair.create(PrimitiveType.I64, signed); 
 				}
 			}
 			break;
 		}
 		case 15: {
 			Get();
-			ty = PrimitiveType.I8;
+			ty = Pair.create(PrimitiveType.I8, false);
 			break;
 		}
 		case 12: {
 			Get();
-			ty = PrimitiveType.I16;
+			ty = Pair.create(PrimitiveType.I16, true);
 			break;
 		}
 		case 10: {
 			Get();
-			ty = PrimitiveType.I32;
+			ty = Pair.create(PrimitiveType.I32, true);
 			break;
 		}
 		case 11: {
 			Get();
-			ty = PrimitiveType.I64;
+			ty = Pair.create(PrimitiveType.I64, true);
 			if (la.kind == 14) {
 				Get();
-				ty = PrimitiveType.F128;
+				ty = Pair.create(PrimitiveType.F128, false);
 			}
 			break;
 		}
 		case 13: {
 			Get();
-			ty = PrimitiveType.FLOAT;
+			ty = Pair.create(PrimitiveType.FLOAT, false);
 			break;
 		}
 		case 14: {
 			Get();
-			ty = PrimitiveType.DOUBLE;
+			ty = Pair.create(PrimitiveType.DOUBLE, false);
 			break;
 		}
 		default: SynErr(50); break;

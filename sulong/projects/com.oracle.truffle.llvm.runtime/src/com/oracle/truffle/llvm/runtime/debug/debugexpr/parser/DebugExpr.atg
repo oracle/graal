@@ -7,6 +7,8 @@ import com.oracle.truffle.llvm.runtime.debug.debugexpr.nodes.*;
 import com.oracle.truffle.llvm.runtime.debug.debugexpr.nodes.DebugExprCompareNode.Op;
 import com.oracle.truffle.llvm.runtime.types.Type;
 import com.oracle.truffle.llvm.runtime.types.PrimitiveType;
+import com.oracle.truffle.llvm.runtime.types.VoidType;
+import org.graalvm.collections.Pair;
 // Set the name of your grammar here (and at the end of this grammar):
 COMPILER DebugExpr
 
@@ -150,7 +152,7 @@ ActPars<out List l>		(. LLVMExpressionNode n1=null, n2=null; l = new LinkedList<
 ")"
 .
 
-UnaryExpr<out LLVMExpressionNode n>		(. n=null; int kind=-1; Type typeO=null;.)
+UnaryExpr<out LLVMExpressionNode n>		(. n=null; int kind=-1; Pair typeP=null;.)
 =
 Designator<out n>
 |
@@ -165,7 +167,7 @@ UnaryOp<out kind> CastExpr<out n> 		(. switch(kind) {
 												case 5: /*negate boolean/int*/ break;
 											} .)
 |
-"sizeof" "(" DType<out typeO> ")"	(. n=new DebugExprSizeofNode(typeO); .)
+"sizeof" "(" DType<out typeP> ")"	(. n=new DebugExprSizeofNode((Type)typeP.getLeft()); .)
 .
 
 UnaryOp<out int kind>		(. kind=-1; .)
@@ -182,12 +184,18 @@ UnaryOp<out int kind>		(. kind=-1; .)
 |
 "!" 						(. kind=5; .)
 .
-CastExpr<out LLVMExpressionNode n>		(. Type typeO=null; .)
+CastExpr<out LLVMExpressionNode n>		(. Pair typeP=null; .)
 =
 [
-	IF (IsCast()) "(" DType<out typeO> ")" 
+	IF (IsCast()) "(" DType<out typeP> ")" 
 ]
-UnaryExpr<out n>
+UnaryExpr<out n>			(. if(typeP!=null) {
+									if((Boolean)typeP.getRight()) {
+										n = NF().createSignedCast(n, (Type) typeP.getLeft());
+									} else {
+										n = NF().createUnsignedCast(n, (Type) typeP.getLeft());
+									}
+										} .)
 .
 
 MultExpr<out LLVMExpressionNode n>		(. LLVMExpressionNode n1=null; .)
@@ -322,7 +330,7 @@ LogOrExpr<out n>
 ]
 .
 
-DType<out Type ty>	
+DType<out Pair ty>	
 =
 BaseType<out ty> 
 (
@@ -342,9 +350,9 @@ BaseType<out ty>
 	 "]"
 }
 .
-BaseType<out Type ty> 	(. ty=null; boolean signed=true;.)
+BaseType<out Pair ty> 	(. ty=null; boolean signed=true;.)
 =
-"void"
+"void"			(. ty = Pair.create(VoidType.INSTANCE, false); .)
 |
 ident
 |
@@ -354,29 +362,29 @@ ident
 	 "unsigned"	(. signed = false; .)
 )
 [
-	 "char"		(. if(signed) {ty = PrimitiveType.I8;} else {} .)
+	 "char"		(. ty = Pair.create(PrimitiveType.I8, signed); .)
 	|
-	 "short"	(. if(signed) {ty = PrimitiveType.I16;} else {} .)
+	 "short"	(. ty = Pair.create(PrimitiveType.I16, signed); .)
 	|
-	 "int"		(. if(signed) {ty = PrimitiveType.I32;} else {} .)
+	 "int"		(. ty = Pair.create(PrimitiveType.I32, signed); .)
 	|
-	 "long"		(. if(signed) {ty = PrimitiveType.I64;} else {} .)
+	 "long"		(. ty = Pair.create(PrimitiveType.I64, signed); .)
 ]
 |
-"char"			(. ty = PrimitiveType.I8;.)
+"char"			(. ty = Pair.create(PrimitiveType.I8, false);.)
 |
-"short"			(. ty = PrimitiveType.I16;.)
+"short"			(. ty = Pair.create(PrimitiveType.I16, true);.)
 |
-"int"			(. ty = PrimitiveType.I32;.)
+"int"			(. ty = Pair.create(PrimitiveType.I32, true);.)
 |
-"long" 			(. ty = PrimitiveType.I64;.)
+"long" 			(. ty = Pair.create(PrimitiveType.I64, true);.)
 [
-	 "double"	(. ty = PrimitiveType.F128;.)
+	 "double"	(. ty = Pair.create(PrimitiveType.F128, false);.)
 ]
 |
-"float"			(. ty = PrimitiveType.FLOAT;.)
+"float"			(. ty = Pair.create(PrimitiveType.FLOAT, false);.)
 |
-"double"		(. ty = PrimitiveType.DOUBLE;.)
+"double"		(. ty = Pair.create(PrimitiveType.DOUBLE, false);.)
 .
 
 
