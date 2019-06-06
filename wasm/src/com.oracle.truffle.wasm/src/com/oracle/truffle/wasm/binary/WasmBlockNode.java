@@ -33,6 +33,7 @@ import static com.oracle.truffle.api.CompilerDirectives.CompilationFinal;
 import static com.oracle.truffle.wasm.binary.Assert.format;
 import static com.oracle.truffle.wasm.binary.Instructions.BLOCK;
 import static com.oracle.truffle.wasm.binary.Instructions.BR;
+import static com.oracle.truffle.wasm.binary.Instructions.BR_IF;
 import static com.oracle.truffle.wasm.binary.Instructions.DROP;
 import static com.oracle.truffle.wasm.binary.Instructions.ELSE;
 import static com.oracle.truffle.wasm.binary.Instructions.END;
@@ -186,7 +187,6 @@ public class WasmBlockNode extends WasmNode {
                 case END:
                     break;
                 case BR: {
-                    // TODO
                     int unwindCounter = BinaryStreamReader.peekUnsignedInt32(codeEntry().data(), offset, null);
                     // Reset the stack pointer to the target block stack pointer.
                     int continuationStackPointer = codeEntry().intConstant(intConstantOffset);
@@ -198,6 +198,27 @@ public class WasmBlockNode extends WasmNode {
                         continuationStackPointer++;
                     }
                     return unwindCounter;
+                }
+                case BR_IF: {
+                    stackPointer--;
+                    int cond = popInt(frame, stackPointer);
+                    int unwindCounter = BinaryStreamReader.peekUnsignedInt32(codeEntry().data(), offset, null);
+                    if (cond != 0) {
+                        // Reset the stack pointer to the target block stack pointer.
+                        int continuationStackPointer = codeEntry().intConstant(intConstantOffset);
+                        // Populate the stack with the return values of the current block (the one we are escaping from).
+                        for (int i = 0; i != returnTypeLength(); ++i) {
+                            stackPointer--;
+                            long value = pop(frame, stackPointer);
+                            push(frame, continuationStackPointer, value);
+                            continuationStackPointer++;
+                        }
+                        return unwindCounter;
+                    }
+                    byte constantLength = codeEntry().byteConstant(byteConstantOffset);
+                    byteConstantOffset++;
+                    offset += constantLength;
+                    break;
                 }
                 case DROP: {
                     stackPointer--;

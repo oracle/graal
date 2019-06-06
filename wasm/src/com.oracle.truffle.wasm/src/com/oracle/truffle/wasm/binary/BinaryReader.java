@@ -32,6 +32,7 @@ package com.oracle.truffle.wasm.binary;
 
 import static com.oracle.truffle.wasm.binary.Instructions.BLOCK;
 import static com.oracle.truffle.wasm.binary.Instructions.BR;
+import static com.oracle.truffle.wasm.binary.Instructions.BR_IF;
 import static com.oracle.truffle.wasm.binary.Instructions.DROP;
 import static com.oracle.truffle.wasm.binary.Instructions.ELSE;
 import static com.oracle.truffle.wasm.binary.Instructions.END;
@@ -344,6 +345,14 @@ public class BinaryReader extends BinaryStreamReader {
                 case END:
                     break;
                 case BR: {
+                    Assert.assertEquals(state.stackSize() - startStackSize, currentBlock.returnTypeLength(), "Invalid stack state on BR instruction");
+                    int unwindLevel = readLabelIndex(bytesConsumed);
+                    state.useByteConstant(bytesConsumed[0]);
+                    state.useIntConstant(state.getStackState(unwindLevel));
+                    break;
+                }
+                case BR_IF: {
+                    state.pop();
                     Assert.assertEquals(state.stackSize() - startStackSize, currentBlock.returnTypeLength(), "Invalid stack state on BR instruction");
                     int unwindLevel = readLabelIndex(bytesConsumed);
                     state.useByteConstant(bytesConsumed[0]);
