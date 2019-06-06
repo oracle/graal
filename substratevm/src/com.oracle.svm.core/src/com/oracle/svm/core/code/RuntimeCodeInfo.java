@@ -327,40 +327,46 @@ public class RuntimeCodeInfo {
         boolean continueVisiting = true;
         for (int i = 0; (continueVisiting && (i < numMethods)); i += 1) {
             continueVisiting = visitor.visitRuntimeCompiledMethod(PinnedArrays.getWord(methodInfos, i),
-                            ImageSingletons.lookup(RuntimeCodeInfo.MemoryWalkerAccessImpl.class));
+                            ImageSingletons.lookup(MemoryWalkerAccessImpl.class));
         }
         return continueVisiting;
     }
+}
 
-    /** Methods for a MemoryWalker to access runtime compiled code. */
-    public static final class MemoryWalkerAccessImpl implements MemoryWalker.RuntimeCompiledMethodAccess<CodeInfoHandle> {
+final class MemoryWalkerAccessImpl implements MemoryWalker.RuntimeCompiledMethodAccess<CodeInfoHandle> {
+    private final RuntimeCodeInfoAccessor accessor;
 
-        @Platforms(Platform.HOSTED_ONLY.class)
-        protected MemoryWalkerAccessImpl() {
-            super();
-        }
+    @Platforms(Platform.HOSTED_ONLY.class)
+    MemoryWalkerAccessImpl(RuntimeCodeInfoAccessor accessor) {
+        this.accessor = accessor;
+    }
 
-        @Override
-        public UnsignedWord getStart(CodeInfoHandle handle) {
-            return (UnsignedWord) CodeInfoTable.getRuntimeCodeInfoAccessor().getCodeStart(handle);
-        }
+    @Override
+    public UnsignedWord getStart(CodeInfoHandle handle) {
+        return (UnsignedWord) accessor.getCodeStart(handle);
+    }
 
-        @Override
-        public UnsignedWord getSize(CodeInfoHandle handle) {
-            return CodeInfoTable.getRuntimeCodeInfoAccessor().getCodeSize(handle);
-        }
+    @Override
+    public UnsignedWord getSize(CodeInfoHandle handle) {
+        return accessor.getCodeSize(handle);
+    }
 
-        @Override
-        public String getName(CodeInfoHandle handle) {
-            return CodeInfoTable.getRuntimeCodeInfoAccessor().getName(handle);
-        }
+    @Override
+    public UnsignedWord getMetadataSize(CodeInfoHandle handle) {
+        return accessor.getMetadataCodeSize(handle);
+    }
+
+    @Override
+    public String getName(CodeInfoHandle handle) {
+        return accessor.getName(handle);
     }
 }
 
 @AutomaticFeature
 class RuntimeCodeInfoMemoryWalkerAccessFeature implements Feature {
     @Override
-    public void afterRegistration(AfterRegistrationAccess access) {
-        ImageSingletons.add(RuntimeCodeInfo.MemoryWalkerAccessImpl.class, new RuntimeCodeInfo.MemoryWalkerAccessImpl());
+    public void duringSetup(DuringSetupAccess access) {
+        RuntimeCodeInfoAccessor accessor = (RuntimeCodeInfoAccessor) CodeInfoTable.getRuntimeCodeInfoAccessor();
+        ImageSingletons.add(MemoryWalkerAccessImpl.class, new MemoryWalkerAccessImpl(accessor));
     }
 }

@@ -62,6 +62,7 @@ import com.oracle.svm.core.annotate.NeverInline;
 import com.oracle.svm.core.annotate.Substitute;
 import com.oracle.svm.core.annotate.TargetClass;
 import com.oracle.svm.core.annotate.Uninterruptible;
+import com.oracle.svm.core.code.CodeInfoHandle;
 import com.oracle.svm.core.heap.GC;
 import com.oracle.svm.core.heap.Heap;
 import com.oracle.svm.core.heap.NativeImageInfo;
@@ -853,11 +854,10 @@ final class MemoryMXBeanMemoryVisitor implements MemoryWalker.Visitor {
     }
 
     @Override
-    public <T> boolean visitRuntimeCompiledMethod(T runtimeMethod, RuntimeCompiledMethodAccess<T> access) {
-        /* Is a runtime method allocated in some larger block of committed memory? */
-        final UnsignedWord size = access.getSize(runtimeMethod);
+    public <T extends CodeInfoHandle> boolean visitRuntimeCompiledMethod(T runtimeMethod, RuntimeCompiledMethodAccess<T> access) {
+        final UnsignedWord size = access.getSize(runtimeMethod).add(access.getMetadataSize(runtimeMethod));
         nonHeapUsed = nonHeapUsed.add(size);
-        nonHeapCommitted = nonHeapUsed.add(size);
+        nonHeapCommitted = nonHeapCommitted.add(size);
         return true;
     }
 }

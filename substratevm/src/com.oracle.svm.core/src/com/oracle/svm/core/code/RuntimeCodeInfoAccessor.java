@@ -265,6 +265,24 @@ public class RuntimeCodeInfoAccessor implements CodeInfoAccessor {
         return handle;
     }
 
+    UnsignedWord getMetadataCodeSize(CodeInfoHandle handle) {
+        RuntimeMethodInfo info = cast(handle);
+        return SizeOf.unsigned(RuntimeMethodInfo.class)
+                        .add(PinnedArrays.byteSizeOf(info.getObjectFields()))
+                        .add(PinnedArrays.byteSizeOf(info.getCodeInfoIndex()))
+                        .add(PinnedArrays.byteSizeOf(info.getCodeInfoEncodings()))
+                        .add(PinnedArrays.byteSizeOf(info.getReferenceMapEncoding()))
+                        .add(PinnedArrays.byteSizeOf(info.getFrameInfoEncodings()))
+                        .add(PinnedArrays.byteSizeOf(info.getFrameInfoObjectConstants()))
+                        .add(PinnedArrays.byteSizeOf(info.getFrameInfoSourceClasses()))
+                        .add(PinnedArrays.byteSizeOf(info.getFrameInfoSourceMethodNames()))
+                        .add(PinnedArrays.byteSizeOf(info.getFrameInfoNames()))
+                        .add(PinnedArrays.byteSizeOf(info.getDeoptimizationStartOffsets()))
+                        .add(PinnedArrays.byteSizeOf(info.getDeoptimizationEncodings()))
+                        .add(PinnedArrays.byteSizeOf(info.getDeoptimizationObjectConstants()))
+                        .add(PinnedArrays.byteSizeOf(info.getObjectsReferenceMapEncoding()));
+    }
+
     void releaseMethodInfo(CodeInfoHandle handle) {
         UnmanagedReferenceWalkers.singleton().unregister(walkReferencesFunction.getFunctionPointer(), handle);
         releaseMethodInfoMemory(handle);

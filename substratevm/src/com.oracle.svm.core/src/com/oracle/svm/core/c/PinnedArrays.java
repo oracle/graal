@@ -101,6 +101,11 @@ public final class PinnedArrays {
         return KnownIntrinsics.readArrayLength(asObject(array));
     }
 
+    @Uninterruptible(reason = "Faux object reference on stack.")
+    public static UnsignedWord byteSizeOf(PinnedArray<?> array) {
+        return array.isNonNull() ? LayoutEncoding.getSizeFromObject(asObject(array)) : WordFactory.zero();
+    }
+
     @Uninterruptible(reason = "Faux object references on stack.")
     public static void arraycopy(PinnedArray<?> src, int srcPos, PinnedArray<?> dest, int destPos, int length) {
         System.arraycopy(asObject(src), srcPos, asObject(dest), destPos, length);

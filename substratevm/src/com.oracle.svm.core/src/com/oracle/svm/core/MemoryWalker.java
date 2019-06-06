@@ -29,6 +29,7 @@ import org.graalvm.word.PointerBase;
 import org.graalvm.word.UnsignedWord;
 
 import com.oracle.svm.core.annotate.RestrictHeapAccess;
+import com.oracle.svm.core.code.CodeInfoHandle;
 
 /** A walker over different kinds of allocated memory. */
 public abstract class MemoryWalker {
@@ -66,7 +67,7 @@ public abstract class MemoryWalker {
          * visiting should continue, else false.
          */
         @RestrictHeapAccess(access = RestrictHeapAccess.Access.NO_ALLOCATION, reason = "Must not allocate while visiting memory.")
-        <T> boolean visitRuntimeCompiledMethod(T runtimeMethod, RuntimeCompiledMethodAccess<T> access);
+        <T extends CodeInfoHandle> boolean visitRuntimeCompiledMethod(T runtimeMethod, RuntimeCompiledMethodAccess<T> access);
     }
 
     /** A set of access methods for visiting regions of the native image heap. */
@@ -124,13 +125,16 @@ public abstract class MemoryWalker {
     }
 
     /** A set of access methods for visiting runtime compiled code memory. */
-    public interface RuntimeCompiledMethodAccess<T> {
+    public interface RuntimeCompiledMethodAccess<T extends CodeInfoHandle> {
 
         /** Return the start of the code of the runtime compiled method. */
         UnsignedWord getStart(T runtimeCompiledMethod);
 
         /** Return the size of the code of the runtime compiled method. */
         UnsignedWord getSize(T runtimeCompiledMethod);
+
+        /** Return the size of the metadata of the runtime compiled method. */
+        UnsignedWord getMetadataSize(T runtimeCompiledMethod);
 
         /** Return the name of the runtime compiled method. */
         String getName(T runtimeCompiledMethod);
