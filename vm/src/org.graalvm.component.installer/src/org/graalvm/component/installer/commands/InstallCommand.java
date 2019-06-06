@@ -144,21 +144,32 @@ public class InstallCommand implements InstallerCommand {
             feedback.output("INSTALL_ParametersMissing");
             return 1;
         }
-        executeStep(this::prepareInstallation, false);
-        if (validateBeforeInstall) {
-            return 0;
+        try {
+            executeStep(this::prepareInstallation, false);
+            if (validateBeforeInstall) {
+                return 0;
+            }
+            executeStep(this::completeInstallers, false);
+            executeStep(this::acceptLicenses, false);
+            executeStep(this::doInstallation, false);
+            // execute the post-install steps for all processed installers
+            executeStep(this::printMessages, true);
+            /*
+             * if (rebuildPolyglot && WARN_REBUILD_IMAGES) { Path p =
+             * SystemUtils.fromCommonString(CommonConstants.PATH_JRE_BIN);
+             * feedback.output("INSTALL_RebuildPolyglotNeeded", File.separator,
+             * input.getGraalHomePath().resolve(p).normalize()); }
+             */
+        } finally {
+            for (Map.Entry<ComponentParam, Installer> e : realInstallers.entrySet()) {
+                ComponentParam p = e.getKey();
+                Installer i = e.getValue();
+                p.close();
+                if (i != null) {
+                    i.close();
+                }
+            }
         }
-        executeStep(this::completeInstallers, false);
-        executeStep(this::acceptLicenses, false);
-        executeStep(this::doInstallation, false);
-        // execute the post-install steps for all processed installers
-        executeStep(this::printMessages, true);
-        /*
-         * if (rebuildPolyglot && WARN_REBUILD_IMAGES) { Path p =
-         * SystemUtils.fromCommonString(CommonConstants.PATH_JRE_BIN);
-         * feedback.output("INSTALL_RebuildPolyglotNeeded", File.separator,
-         * input.getGraalHomePath().resolve(p).normalize()); }
-         */
         return 0;
     }
 

@@ -61,7 +61,7 @@ import org.graalvm.component.installer.persist.MetadataLoader;
  * 
  * @author sdedic
  */
-public class UpgradeProcess {
+public class UpgradeProcess implements AutoCloseable {
     private final CommandInput input;
     private final Feedback feedback;
     private final ComponentCollection catalog;
@@ -189,7 +189,7 @@ public class UpgradeProcess {
                         ed == null ? "UPGRADE_GraalVMDirName@" : "UPGRADE_GraalVMDirNameEdition@",
                         graal.getVersion().displayString(),
                         ed);
-        return base.resolve(dirName);
+        return base.resolve(SystemUtils.fileName(dirName));
     }
 
     /**
@@ -480,6 +480,16 @@ public class UpgradeProcess {
 
         // install all the components
         instCommand.execute();
+    }
+
+    @Override
+    public void close() throws IOException {
+        for (ComponentParam p : allComponents()) {
+            p.close();
+        }
+        if (metaLoader != null) {
+            metaLoader.close();
+        }
     }
 
     class InputDelegate implements CommandInput {

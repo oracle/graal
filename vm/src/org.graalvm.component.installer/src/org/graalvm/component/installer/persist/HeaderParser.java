@@ -583,7 +583,7 @@ public class HeaderParser {
             }
             String type = cut();
 
-            switch (type.toLowerCase()) {
+            switch (type.toLowerCase(Locale.ENGLISH)) {
                 case "version":
                     makeVersion = true;
                     break;
