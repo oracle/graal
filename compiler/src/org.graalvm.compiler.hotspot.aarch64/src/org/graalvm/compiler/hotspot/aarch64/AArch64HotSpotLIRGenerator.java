@@ -39,6 +39,7 @@ import static org.graalvm.compiler.lir.LIRValueUtil.asConstant;
 import static org.graalvm.compiler.lir.LIRValueUtil.isConstantValue;
 
 import java.nio.ByteBuffer;
+import java.util.List;
 import java.util.function.Function;
 
 import org.graalvm.compiler.asm.Label;
@@ -541,6 +542,11 @@ public class AArch64HotSpotLIRGenerator extends AArch64LIRGenerator implements H
 
     @Override
     public Variable emitPackConst(LIRKind resultKind, ByteBuffer serializedValues) {
+        throw GraalError.unimplemented();
+    }
+
+    @Override
+    public Variable emitPack(LIRKind resultKind, List<Value> values) {
         throw GraalError.unimplemented();
     }
 

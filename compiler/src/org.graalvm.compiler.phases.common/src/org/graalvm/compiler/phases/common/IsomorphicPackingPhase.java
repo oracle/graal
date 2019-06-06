@@ -18,7 +18,6 @@ import org.graalvm.compiler.nodes.memory.address.AddressNode;
 import org.graalvm.compiler.phases.BasePhase;
 import org.graalvm.compiler.phases.schedule.SchedulePhase;
 import org.graalvm.compiler.phases.tiers.LowTierContext;
-import org.graalvm.compiler.phases.tiers.PhaseContext;
 
 import java.util.*;
 import java.util.function.Consumer;

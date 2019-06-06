@@ -88,6 +88,7 @@ import jdk.vm.ci.sparc.SPARC;
 import jdk.vm.ci.sparc.SPARCKind;
 
 import java.nio.ByteBuffer;
+import java.util.List;
 
 public class SPARCHotSpotLIRGenerator extends SPARCLIRGenerator implements HotSpotLIRGenerator {
 
@@ -401,6 +402,11 @@ public class SPARCHotSpotLIRGenerator extends SPARCLIRGenerator implements HotSp
 
     @Override
     public Variable emitPackConst(LIRKind resultKind, ByteBuffer serializedValues) {
+        throw GraalError.unimplemented();
+    }
+
+    @Override
+    public Variable emitPack(LIRKind resultKind, List<Value> values) {
         throw GraalError.unimplemented();
     }
 

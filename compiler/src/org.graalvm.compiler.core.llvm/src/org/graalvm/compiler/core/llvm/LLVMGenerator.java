@@ -1042,6 +1042,11 @@ public class LLVMGenerator implements LIRGeneratorTool {
     }
 
     @Override
+    public Variable emitPack(LIRKind resultKind, List<Value> values) {
+        throw unimplemented();
+    }
+
+    @Override
     public Variable emitVectorExtract(LIRKind elementKind, Value vector, int index) {
         throw unimplemented();
     }

@@ -41,8 +41,10 @@ import static org.graalvm.compiler.lir.LIRValueUtil.isConstantValue;
 import static org.graalvm.compiler.lir.LIRValueUtil.isIntConstant;
 import static org.graalvm.compiler.lir.LIRValueUtil.isJavaConstant;
 
+import java.util.List;
 import java.util.Optional;
 
+import org.graalvm.compiler.asm.amd64.AMD64Assembler;
 import org.graalvm.compiler.asm.amd64.AMD64Assembler.AMD64BinaryArithmetic;
 import org.graalvm.compiler.asm.amd64.AMD64Assembler.AMD64MIOp;
 import org.graalvm.compiler.asm.amd64.AMD64Assembler.AMD64RMOp;
@@ -95,6 +97,7 @@ import org.graalvm.compiler.lir.amd64.AMD64StringLatin1InflateOp;
 import org.graalvm.compiler.lir.amd64.AMD64StringUTF16CompressOp;
 import org.graalvm.compiler.lir.amd64.AMD64ZapRegistersOp;
 import org.graalvm.compiler.lir.amd64.AMD64ZapStackOp;
+import org.graalvm.compiler.lir.amd64.vector.AMD64VectorMove;
 import org.graalvm.compiler.lir.amd64.vector.AMD64VectorShuffle;
 import org.graalvm.compiler.lir.gen.LIRGenerationResult;
 import org.graalvm.compiler.lir.gen.LIRGenerator;
@@ -747,9 +750,18 @@ public abstract class AMD64LIRGenerator extends LIRGenerator {
     }
 
     @Override
+    public Variable emitPack(LIRKind resultKind, List<Value> values) {
+        Variable result = newVariable(resultKind);
+        for (int i = 0; i < values.size(); i++) {
+            append(new AMD64VectorShuffle.ShuffleWordOp(AMD64Assembler.VexRMIOp.VPSHUFD, result, asAllocatable(values.get(i)), 4 * i));
+        }
+        return result;
+    }
+
+    @Override
     public Variable emitVectorExtract(LIRKind elementKind, Value vector, int index) {
         Variable result = newVariable(elementKind);
-        append(new AMD64VectorShuffle.ExtractIntOp(asAllocatable(result), asAllocatable(vector), index));
+        append(new AMD64VectorShuffle.ExtractIntOp(asAllocatable(result), asAllocatable(vector), index * 4));
         return result;
     }
 

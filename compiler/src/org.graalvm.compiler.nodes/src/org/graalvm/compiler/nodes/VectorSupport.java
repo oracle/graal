@@ -4,11 +4,9 @@ import jdk.vm.ci.meta.PrimitiveConstant;
 import org.graalvm.compiler.core.common.LIRKind;
 import org.graalvm.compiler.core.common.type.Stamp;
 import org.graalvm.compiler.core.common.type.StampFactory;
-import org.graalvm.compiler.debug.GraalError;
 import org.graalvm.compiler.graph.Node;
 import org.graalvm.compiler.graph.NodeClass;
 import org.graalvm.compiler.graph.NodeInputList;
-import org.graalvm.compiler.graph.iterators.NodePredicate;
 import org.graalvm.compiler.graph.spi.Canonicalizable;
 import org.graalvm.compiler.graph.spi.CanonicalizerTool;
 import org.graalvm.compiler.nodeinfo.NodeInfo;
@@ -18,7 +16,6 @@ import org.graalvm.compiler.nodes.spi.NodeLIRBuilderTool;
 
 import java.nio.ByteBuffer;
 import java.nio.ByteOrder;
-import java.util.ArrayList;
 import java.util.Comparator;
 import java.util.List;
 import java.util.stream.Collectors;
@@ -163,9 +160,13 @@ public final class VectorSupport {
                     values.stream().allMatch(x -> x.getStackKind().isPrimitive() && x.isConstant());
 
             if (!allPrimitiveConstant) {
-                throw GraalError.shouldNotReachHere("Only primitive constants may be packed.");
+                generateForNotPrimitive(gen);
+            } else {
+                generateForPrimitive(gen);
             }
+        }
 
+        private void generateForPrimitive(NodeLIRBuilderTool gen) {
             // TODO: don't hardcode for integers
             final ByteBuffer byteBuffer = ByteBuffer.allocate(values.count() * 4);
             // TODO: don't hardcode for Intel
@@ -179,6 +180,12 @@ public final class VectorSupport {
             // TODO: don't hardcode for vector size
             final LIRKind kind = gen.getLIRGeneratorTool().toVectorKind(gen.getLIRGeneratorTool().getLIRKind(stamp), 4);
             gen.setResult(this, gen.getLIRGeneratorTool().emitPackConst(kind, byteBuffer));
+        }
+
+        private void generateForNotPrimitive(NodeLIRBuilderTool gen) {
+            // TODO: don't hardcode for vector size
+            final LIRKind kind = gen.getLIRGeneratorTool().toVectorKind(gen.getLIRGeneratorTool().getLIRKind(stamp), 4);
+            gen.setResult(this, gen.getLIRGeneratorTool().emitPack(kind, values.stream().map(gen::operand).collect(Collectors.toList())));
         }
     }
 }
