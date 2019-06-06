@@ -49,7 +49,7 @@ import mx_sdk
 import mx_subst
 from mx_compiler import GraalArchiveParticipant
 from mx_gate import Task
-from mx_substratevm_benchmark import run_js, host_vm_tuple, output_processors, rule_snippets # pylint: disable=unused-import
+from mx_substratevm_benchmark import run_js, host_vm_tuple, output_processors, rule_snippets  # pylint: disable=unused-import
 from mx_unittest import _run_tests, _VMLauncher
 
 GRAAL_COMPILER_FLAGS_BASE = [
@@ -215,7 +215,7 @@ class GraalVMConfig(object):
             self.dynamicimports.append('/substratevm')
 
     def mx_args(self):
-        args = []
+        args = ['--disable-installables=true']
         if self.dynamicimports:
             args += ['--dynamicimports', ','.join(self.dynamicimports)]
         if self.disable_libpolyglot:
@@ -290,10 +290,18 @@ def graalvm_config():
     return graalvm_configs[-1]
 
 
-def build_native_image_image(config=None):
+def build_native_image_image(config=None, args=None):
     config = config or graalvm_config()
     mx.log('Building GraalVM with native-image in ' + _vm_home(config))
-    _mx_vm(['build'], config)
+    env = os.environ.copy()
+    if mx.version < mx.VersionSpec("5.219"):
+        mx.warn("mx version is older than 5.219, SVM's GraalVM build will not be built with links.\nConsider updating mx to improve IDE compile-on-save workflow.")
+    if not mx.is_windows():
+        if 'LINKY_LAYOUT' not in env:
+            env['LINKY_LAYOUT'] = '*.jar'
+        elif '*.jar' not in env['LINKY_LAYOUT']:
+            mx.warn("LINKY_LAYOUT already set")
+    _mx_vm(['build'] + (args or []), config, env=env)
 
 
 def locale_US_args():
@@ -946,7 +954,6 @@ def clinittest(args):
     native_image_context_run(build_and_test_clinittest_image, args, build_if_missing=True)
 
 
-
 orig_command_build = mx.command_function('build')
 
 
@@ -985,9 +992,31 @@ def build(args, vm=None):
 
     orig_command_build(args, vm)
 
-    if 'substratevm' in mx.primary_suite().name:
-        # build "jvm" config used by native-image and native-image-configure commands
-        config = graalvm_jvm_configs[-1]
+
+def _ensure_vm_built():
+    # build "jvm" config used by native-image and native-image-configure commands
+    config = graalvm_jvm_configs[-1]
+    rebuild_vm = False
+    mx.ensure_dir_exists(svmbuild_dir())
+    if not mx.is_windows():
+        vm_link = join(svmbuild_dir(), 'vm')
+        if not os.path.exists(vm_link):
+            rebuild_vm = True
+            if os.path.lexists(vm_link):
+                os.unlink(vm_link)
+            vm_linkname = os.path.relpath(_vm_home(config), dirname(vm_link))
+            os.symlink(vm_linkname, vm_link)
+    rev_file_name = join(svmbuild_dir(), 'vm-rev')
+    rev_value = svm_suite().vc.parent(svm_suite().vc_dir)
+    if not os.path.exists(rev_file_name):
+        rebuild_vm = True
+    else:
+        with open(rev_file_name, 'r') as f:
+            if f.read() != rev_value:
+                rebuild_vm = True
+    if rebuild_vm:
+        with open(rev_file_name, 'w') as f:
+            f.write(rev_value)
         build_native_image_image(config)
 
 
@@ -1000,8 +1029,13 @@ def native_image_on_jvm(args, **kwargs):
         else:
             save_args.append(arg)
 
-    config = graalvm_jvm_configs[-1]
-    executable = vm_native_image_path(config)
+    _ensure_vm_built()
+    if mx.is_windows():
+        config = graalvm_jvm_configs[-1]
+        executable = vm_native_image_path(config)
+    else:
+        vm_link = join(svmbuild_dir(), 'vm')
+        executable = join(vm_link, 'bin', 'native-image')
     if not exists(executable):
         mx.abort("Can not find " + executable + "\nDid you forget to build? Try `mx build`")
     mx.run([executable, '-H:CLibraryPath=' + clibrary_libpath()] + save_args, **kwargs)
@@ -1009,8 +1043,13 @@ def native_image_on_jvm(args, **kwargs):
 
 @mx.command(suite.name, 'native-image-configure')
 def native_image_configure_on_jvm(args, **kwargs):
-    config = graalvm_jvm_configs[-1]
-    executable = vm_executable_path('native-image-configure', config)
+    _ensure_vm_built()
+    if mx.is_windows():
+        config = graalvm_jvm_configs[-1]
+        executable = vm_executable_path('native-image-configure', config)
+    else:
+        vm_link = join(svmbuild_dir(), 'vm')
+        executable = join(vm_link, 'bin', 'native-image-configure')
     if not exists(executable):
         mx.abort("Can not find " + executable + "\nDid you forget to build? Try `mx build`")
     mx.run([executable, '-H:CLibraryPath=' + clibrary_libpath()] + args, **kwargs)
