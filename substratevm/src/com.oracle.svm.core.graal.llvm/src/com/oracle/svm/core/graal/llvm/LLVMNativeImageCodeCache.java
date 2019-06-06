@@ -501,7 +501,7 @@ public class LLVMNativeImageCodeCache extends NativeImageCodeCache {
     public NativeTextSectionImpl getTextSectionImpl(RelocatableBuffer buffer, ObjectFile objectFile, NativeImageCodeCache codeCache) {
         return new NativeTextSectionImpl(buffer, objectFile, codeCache) {
             @Override
-            protected void defineMethodSymbol(String name, Element section, HostedMethod method, CompilationResult result) {
+            protected void defineMethodSymbol(String name, boolean global, Element section, HostedMethod method, CompilationResult result) {
                 objectFile.createUndefinedSymbol(name, 0, true);
             }
         };
