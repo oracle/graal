@@ -19,6 +19,7 @@ import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.api.nodes.ControlFlowException;
 import com.oracle.truffle.api.nodes.RootNode;
 import com.oracle.truffle.llvm.nodes.intrinsics.llvm.LLVMBuiltin;
+import com.oracle.truffle.llvm.runtime.LLVMFunctionDescriptor;
 import com.oracle.truffle.llvm.runtime.LLVMLanguage;
 import com.oracle.truffle.llvm.runtime.interop.access.LLVMInteropType;
 import com.oracle.truffle.llvm.runtime.memory.LLVMStack;
@@ -543,6 +544,13 @@ public class LLVMPThreadIntrinsics {
         protected int doIntrinsic(VirtualFrame frame, Object cond, Object mutex, Object abstime) {
             // TODO: functions __sulong_getNanoSeconds and __sulong_getSeconds return the members
             // make use of them somehow
+            int i = 5;
+            RootCallTarget getNanos = LLVMLanguage.getLLVMContextReference().get().getGlobalScope().getFunction("@__sulong_getNanoSeconds").getLLVMIRFunction();
+            LLVMStack.StackPointer sp1 = LLVMLanguage.getLLVMContextReference().get().getThreadingStack().getStack().newFrame();
+            Object nanos = getNanos.call(sp1, abstime);
+            RootCallTarget getSec = LLVMLanguage.getLLVMContextReference().get().getGlobalScope().getFunction("@__sulong_getSeconds").getLLVMIRFunction();
+            LLVMStack.StackPointer sp2 = LLVMLanguage.getLLVMContextReference().get().getThreadingStack().getStack().newFrame();
+            Object seconds = getSec.call(sp2, abstime);
             if (read == null) {
                 CompilerDirectives.transferToInterpreterAndInvalidate();
                 read = LLVMLanguage.getLLVMContextReference().get().getNodeFactory().createLoadNode(LLVMInteropType.ValueKind.I64);
