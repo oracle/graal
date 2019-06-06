@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2019, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -24,27 +24,43 @@
  */
 package org.graalvm.compiler.truffle.runtime.hotspot.libgraal;
 
-import static org.graalvm.libgraal.LibGraalScope.getIsolateThread;
-
-import org.graalvm.compiler.truffle.common.TruffleCompilerListener;
-import org.graalvm.compiler.truffle.common.TruffleCompilerListener.GraphInfo;
-
 /**
- * Encapsulates a handle to a {@link GraphInfo} object in the SVM heap.
+ * Encapsulates a handle to an object in the SVM heap where the handle is only valid within the
+ * scope of a {@link SVMToHotSpotEntryPoints} method.
  */
-final class SVMGraphInfo extends SVMScopedHandle implements TruffleCompilerListener.GraphInfo {
+class SVMScopedHandle implements AutoCloseable {
 
-    SVMGraphInfo(long handle) {
-        super(handle, SVMGraphInfo.class);
+    /**
+     * Handle to an SVM object.
+     */
+    private long handle;
+
+    private final Class<?> handleType;
+
+    /**
+     * Creates a new {@link SVMScopedHandle}.
+     *
+     * @param handle handle to an SVM object
+     */
+    SVMScopedHandle(long handle, Class<?> handleType) {
+        this.handle = handle;
+        this.handleType = handleType;
+    }
+
+    long getHandle() {
+        if (handle == 0L) {
+            throw new IllegalStateException("Using invalid handle to " + handleType.getName() + " object in SVM heap");
+        }
+        return handle;
     }
 
     @Override
-    public int getNodeCount() {
-        return HotSpotToSVMCalls.getNodeCount(getIsolateThread(), getHandle());
+    public void close() {
+        handle = 0L;
     }
 
     @Override
-    public String[] getNodeTypes(boolean simpleNames) {
-        return HotSpotToSVMCalls.getNodeTypes(getIsolateThread(), getHandle(), simpleNames);
+    public String toString() {
+        return String.format("%s@0x%x", handleType.getName(), handle);
     }
 }
