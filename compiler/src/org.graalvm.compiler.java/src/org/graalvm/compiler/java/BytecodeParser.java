@@ -2085,7 +2085,7 @@ public class BytecodeParser implements GraphBuilderContext {
             }
 
             InvocationPluginReceiver pluginReceiver = invocationPluginReceiver.init(targetMethod, args);
-            assert invokeKind.isDirect() : "Cannot apply invocation plugin on an indirect call site where the target method may be subject to the receiver type.";
+            assert invokeKind.isDirect() : "Cannot apply invocation plugin on an indirect call site.";
 
             InvocationPluginAssertions assertions = Assertions.assertionsEnabled() ? new InvocationPluginAssertions(plugin, args, targetMethod, resultType) : null;
             try (DebugCloseable context = openNodeContext(targetMethod)) {
