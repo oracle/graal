@@ -312,6 +312,7 @@ public class NodeFactoryFactory {
     private static CodeExecutableElement createGetUncached(NodeData node, ExecutableElement constructor) {
         CodeExecutableElement method = CodeExecutableElement.clone(constructor);
         method.setSimpleName(CodeNames.of("getUncached"));
+        method.getParameters().clear();
         method.getModifiers().clear();
         method.getModifiers().add(Modifier.PUBLIC);
         method.getModifiers().add(Modifier.STATIC);
