@@ -64,6 +64,17 @@ public class DebugExprCompareNode extends LLVMExpressionNode {
         } catch (UnsupportedSpecializationException e) {
 
         }
+        cop = getFloatingPointOp();
+        if (cop == null)
+            return Parser.errorObjNode.executeGeneric(frame);
+        /* null is passed as type, since a type check is done by the arithmetic node anyway */
+        ret = nodeFactory.createComparison(cop, null, left, right);
+        try {
+            Object executeObj = ret.executeGeneric(frame);
+            return executeObj;
+        } catch (UnsupportedSpecializationException e) {
+
+        }
         // try to do a floating-point comparison
         cop = getFloatingPointOp();
         if (cop == null)
@@ -94,6 +105,25 @@ public class DebugExprCompareNode extends LLVMExpressionNode {
                 return INT_SIGNED_GREATER_THAN;
             case GE:
                 return INT_SIGNED_GREATER_OR_EQUAL;
+            default:
+                return null;
+        }
+    }
+
+    private CompareOperator getUnsignedIntOp() {
+        switch (op) {
+            case EQ:
+                return INT_EQUAL;
+            case NE:
+                return INT_NOT_EQUAL;
+            case LT:
+                return INT_UNSIGNED_LESS_THAN;
+            case LE:
+                return INT_UNSIGNED_LESS_OR_EQUAL;
+            case GT:
+                return INT_UNSIGNED_GREATER_THAN;
+            case GE:
+                return INT_UNSIGNED_GREATER_OR_EQUAL;
             default:
                 return null;
         }

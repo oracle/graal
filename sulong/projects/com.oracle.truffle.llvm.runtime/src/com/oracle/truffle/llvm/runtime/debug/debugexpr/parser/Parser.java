@@ -613,18 +613,18 @@ public NodeFactory NF() {return context.getNodeFactory(); }
 			ty = Pair.create(PrimitiveType.I64, true);
 			if (la.kind == 14) {
 				Get();
-				ty = Pair.create(PrimitiveType.F128, false);
+				ty = Pair.create(PrimitiveType.F128, true);
 			}
 			break;
 		}
 		case 13: {
 			Get();
-			ty = Pair.create(PrimitiveType.FLOAT, false);
+			ty = Pair.create(PrimitiveType.FLOAT, true);
 			break;
 		}
 		case 14: {
 			Get();
-			ty = Pair.create(PrimitiveType.DOUBLE, false);
+			ty = Pair.create(PrimitiveType.DOUBLE, true);
 			break;
 		}
 		default: SynErr(50); break;

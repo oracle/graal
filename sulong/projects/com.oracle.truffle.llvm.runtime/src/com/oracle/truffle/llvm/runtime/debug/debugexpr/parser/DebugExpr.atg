@@ -379,12 +379,12 @@ ident
 |
 "long" 			(. ty = Pair.create(PrimitiveType.I64, true);.)
 [
-	 "double"	(. ty = Pair.create(PrimitiveType.F128, false);.)
+	 "double"	(. ty = Pair.create(PrimitiveType.F128, true);.)
 ]
 |
-"float"			(. ty = Pair.create(PrimitiveType.FLOAT, false);.)
+"float"			(. ty = Pair.create(PrimitiveType.FLOAT, true);.)
 |
-"double"		(. ty = Pair.create(PrimitiveType.DOUBLE, false);.)
+"double"		(. ty = Pair.create(PrimitiveType.DOUBLE, true);.)
 .
 
 
