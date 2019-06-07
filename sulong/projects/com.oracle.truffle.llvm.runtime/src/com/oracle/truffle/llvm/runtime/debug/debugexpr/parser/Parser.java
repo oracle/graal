@@ -289,7 +289,7 @@ public LLVMExpressionNode GetASTRoot() {return astRoot; }
 
 	LLVMExpressionNode  UnaryExpr() {
 		LLVMExpressionNode  n;
-		n=null; int kind=-1; Pair typeP=null;
+		n=null; int kind=-1; DebugExprType typeP=null;
 		if (StartOf(3)) {
 			n = Designator();
 		} else if (StartOf(4)) {
@@ -310,7 +310,7 @@ public LLVMExpressionNode GetASTRoot() {return astRoot; }
 			Expect(6);
 			typeP = DType();
 			Expect(16);
-			n=NF.createSizeofNode((Type)typeP.getLeft()); 
+			n=NF.createSizeofNode(typeP); 
 		} else SynErr(47);
 		return n;
 	}
@@ -356,25 +356,19 @@ public LLVMExpressionNode GetASTRoot() {return astRoot; }
 
 	LLVMExpressionNode  CastExpr() {
 		LLVMExpressionNode  n;
-		Pair typeP=null; 
+		DebugExprType typeP=null; 
 		if (IsCast()) {
 			Expect(6);
 			typeP = DType();
 			Expect(16);
 		}
 		n = UnaryExpr();
-		if(typeP!=null) {
-		if((Boolean)typeP.getRight()) {
-			n = NF.createSignedCast(n, (Type) typeP.getLeft());
-		} else {
-			n = NF.createUnsignedCast(n, (Type) typeP.getLeft());
-		}
-			} 
+		if(typeP!=null) { n = NF.createCast(n, typeP); } 
 		return n;
 	}
 
-	Pair  DType() {
-		Pair  ty;
+	DebugExprType  DType() {
+		DebugExprType  ty;
 		ty = BaseType();
 		if (la.kind == 7 || la.kind == 16 || la.kind == 17) {
 			while (la.kind == 7) {
@@ -426,11 +420,11 @@ public LLVMExpressionNode GetASTRoot() {return astRoot; }
 			if (la.kind == 24) {
 				Get();
 				n1 = MultExpr();
-				n = NF.createArithmeticOp(ArithmeticOperation.ADD, null, n, n1); 
+				n = NF.createAddNode(n, n1); 
 			} else {
 				Get();
 				n1 = MultExpr();
-				n = NF.createArithmeticOp(ArithmeticOperation.SUB, null, n, n1); 
+				n = NF.createSubNode(n, n1); 
 			}
 		}
 		return n;
@@ -558,13 +552,13 @@ public LLVMExpressionNode GetASTRoot() {return astRoot; }
 		return n;
 	}
 
-	Pair  BaseType() {
-		Pair  ty;
-		ty=null; boolean signed=true;
+	DebugExprType  BaseType() {
+		DebugExprType  ty;
+		ty=null; boolean signed=false;
 		switch (la.kind) {
 		case 44: {
 			Get();
-			ty = Pair.create(VoidType.INSTANCE, false); 
+			ty = DebugExprType.getVoidType(); 
 			break;
 		}
 		case 1: {
@@ -582,52 +576,52 @@ public LLVMExpressionNode GetASTRoot() {return astRoot; }
 			if (StartOf(6)) {
 				if (la.kind == 15) {
 					Get();
-					ty = Pair.create(PrimitiveType.I8, signed); 
+					ty = DebugExprType.getIntType(8, signed); 
 				} else if (la.kind == 12) {
 					Get();
-					ty = Pair.create(PrimitiveType.I16, signed); 
+					ty = DebugExprType.getIntType(16, signed); 
 				} else if (la.kind == 10) {
 					Get();
-					ty = Pair.create(PrimitiveType.I32, signed); 
+					ty = DebugExprType.getIntType(32, signed); 
 				} else {
 					Get();
-					ty = Pair.create(PrimitiveType.I64, signed); 
+					ty = DebugExprType.getIntType(64, signed); 
 				}
 			}
 			break;
 		}
 		case 15: {
 			Get();
-			ty = Pair.create(PrimitiveType.I8, false);
+			ty = DebugExprType.getIntType(8, false);
 			break;
 		}
 		case 12: {
 			Get();
-			ty = Pair.create(PrimitiveType.I16, true);
+			ty = DebugExprType.getIntType(16, true);
 			break;
 		}
 		case 10: {
 			Get();
-			ty = Pair.create(PrimitiveType.I32, true);
+			ty = DebugExprType.getIntType(32, true);
 			break;
 		}
 		case 11: {
 			Get();
-			ty = Pair.create(PrimitiveType.I64, true);
+			ty = DebugExprType.getIntType(64, true);
 			if (la.kind == 14) {
 				Get();
-				ty = Pair.create(PrimitiveType.F128, true);
+				ty = DebugExprType.getFloatType(128); 
 			}
 			break;
 		}
 		case 13: {
 			Get();
-			ty = Pair.create(PrimitiveType.FLOAT, true);
+			ty = DebugExprType.getFloatType(32);
 			break;
 		}
 		case 14: {
 			Get();
-			ty = Pair.create(PrimitiveType.DOUBLE, true);
+			ty = DebugExprType.getFloatType(64);
 			break;
 		}
 		default: SynErr(50); break;

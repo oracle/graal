@@ -30,15 +30,15 @@
 package com.oracle.truffle.llvm.runtime.debug.debugexpr.nodes;
 
 import com.oracle.truffle.api.frame.VirtualFrame;
+import com.oracle.truffle.llvm.runtime.debug.debugexpr.parser.DebugExprType;
 import com.oracle.truffle.llvm.runtime.debug.debugexpr.parser.Parser;
 import com.oracle.truffle.llvm.runtime.nodes.api.LLVMExpressionNode;
-import com.oracle.truffle.llvm.runtime.types.Type;
 
 public class DebugExprSizeofNode extends LLVMExpressionNode {
 
-    private Type type;
+    private DebugExprType type;
 
-    public DebugExprSizeofNode(Type type) {
+    public DebugExprSizeofNode(DebugExprType type) {
         this.type = type;
     }
 

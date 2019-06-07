@@ -142,36 +142,38 @@ public class LLVMLanguage extends TruffleLanguage<LLVMContext> {
 
     @Override
     protected ExecutableNode parse(InlineParsingRequest request) throws Exception {
+        try {
+            final DebugExprParser d = new DebugExprParser(request, getContextReference());
+            LLVMExpressionNode root = d.parse();
+            return new ExecutableNode(this) {
+                @Override
+                public Object execute(VirtualFrame frame) {
 
-        final DebugExprParser d = new DebugExprParser(request, getContextReference());
-        LLVMExpressionNode root = d.parse();
-        return new ExecutableNode(this) {
-            @Override
-            public Object execute(VirtualFrame frame) {
-
-                try {
-                    // for boolean results: convert to a string
-                    boolean result = root.executeI1(frame);
-                    return result ? "true" : "false";
-                } catch (UnsupportedSpecializationException | UnexpectedResultException e) {
-                    // perform normal execution
-                }
-                try {
-                    // try to execute node
-                    return root.executeGeneric(frame);
-                } catch (UnsupportedSpecializationException use) {
-                    // return error string node
-                    return Parser.errorObjNode.executeGeneric(frame);
-                } catch (DebugExprException dee) {
-                    // use existing exception if available
-                    if (dee.exceptionNode == null)
+                    try {
+                        // for boolean results: convert to a string
+                        boolean result = root.executeI1(frame);
+                        return result ? "true" : "false";
+                    } catch (UnsupportedSpecializationException | UnexpectedResultException e) {
+                        // perform normal execution
+                    }
+                    try {
+                        // try to execute node
+                        return root.executeGeneric(frame);
+                    } catch (UnsupportedSpecializationException use) {
+                        // return error string node
                         return Parser.errorObjNode.executeGeneric(frame);
-                    else
-                        return dee.exceptionNode.executeGeneric(frame);
+                    } catch (DebugExprException dee) {
+                        // use existing exception if available
+                        if (dee.exceptionNode == null)
+                            return Parser.errorObjNode.executeGeneric(frame);
+                        else
+                            return dee.exceptionNode.executeGeneric(frame);
+                    }
                 }
-            }
-        };
-
+            };
+        } catch (Exception e) {
+            throw e;
+        }
     }
 
     @Override

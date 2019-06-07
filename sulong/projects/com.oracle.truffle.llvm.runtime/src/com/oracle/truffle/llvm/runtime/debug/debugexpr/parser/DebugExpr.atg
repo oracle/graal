@@ -154,7 +154,7 @@ ActPars<out List l>		(. LLVMExpressionNode n1=null, n2=null; l = new LinkedList<
 ")"
 .
 
-UnaryExpr<out LLVMExpressionNode n>		(. n=null; int kind=-1; Pair typeP=null;.)
+UnaryExpr<out LLVMExpressionNode n>		(. n=null; int kind=-1; DebugExprType typeP=null;.)
 =
 Designator<out n>
 |
@@ -169,7 +169,7 @@ UnaryOp<out kind> CastExpr<out n> 		(. switch(kind) {
 												case 5: /*negate boolean/int*/ break;
 											} .)
 |
-"sizeof" "(" DType<out typeP> ")"	(. n=NF.createSizeofNode((Type)typeP.getLeft()); .)
+"sizeof" "(" DType<out typeP> ")"	(. n=NF.createSizeofNode(typeP); .)
 .
 
 UnaryOp<out int kind>		(. kind=-1; .)
@@ -186,18 +186,12 @@ UnaryOp<out int kind>		(. kind=-1; .)
 |
 "!" 						(. kind=5; .)
 .
-CastExpr<out LLVMExpressionNode n>		(. Pair typeP=null; .)
+CastExpr<out LLVMExpressionNode n>		(. DebugExprType typeP=null; .)
 =
 [
 	IF (IsCast()) "(" DType<out typeP> ")" 
 ]
-UnaryExpr<out n>			(. if(typeP!=null) {
-									if((Boolean)typeP.getRight()) {
-										n = NF.createSignedCast(n, (Type) typeP.getLeft());
-									} else {
-										n = NF.createUnsignedCast(n, (Type) typeP.getLeft());
-									}
-										} .)
+UnaryExpr<out n>			(. if(typeP!=null) { n = NF.createCast(n, typeP); } .)
 .
 
 MultExpr<out LLVMExpressionNode n>		(. LLVMExpressionNode n1=null; .)
@@ -221,10 +215,9 @@ AddExpr<out LLVMExpressionNode n>		(. LLVMExpressionNode n1=null; .)
 =
 MultExpr<out n> 
 {
-	 "+" MultExpr<out n1> 				(./*null is passed as type, since a type check is done by the arithmetic node anyway*/ n = NF.createArithmeticOp(ArithmeticOperation.ADD, null, n, n1); .)
-	
+	 "+" MultExpr<out n1> 				(. n = NF.createAddNode(n, n1); .)	
 	|
-	 "-" MultExpr<out n1> 				(./*null is passed as type, since a type check is done by the arithmetic node anyway*/ n = NF.createArithmeticOp(ArithmeticOperation.SUB, null, n, n1); .)
+	 "-" MultExpr<out n1> 				(.n = NF.createSubNode(n, n1); .)
 	
 }
 .
@@ -332,7 +325,7 @@ LogOrExpr<out n>
 ]
 .
 
-DType<out Pair ty>	
+DType<out DebugExprType ty>	
 =
 BaseType<out ty> 
 (
@@ -352,9 +345,9 @@ BaseType<out ty>
 	 "]"
 }
 .
-BaseType<out Pair ty> 	(. ty=null; boolean signed=true;.)
+BaseType<out DebugExprType ty> 	(. ty=null; boolean signed=false;.)
 =
-"void"			(. ty = Pair.create(VoidType.INSTANCE, false); .)
+"void"			(. ty = DebugExprType.getVoidType(); .)
 |
 ident
 |
@@ -364,29 +357,29 @@ ident
 	 "unsigned"	(. signed = false; .)
 )
 [
-	 "char"		(. ty = Pair.create(PrimitiveType.I8, signed); .)
+	 "char"		(. ty = DebugExprType.getIntType(8, signed); .)
 	|
-	 "short"	(. ty = Pair.create(PrimitiveType.I16, signed); .)
+	 "short"	(. ty = DebugExprType.getIntType(16, signed); .)
 	|
-	 "int"		(. ty = Pair.create(PrimitiveType.I32, signed); .)
+	 "int"		(. ty = DebugExprType.getIntType(32, signed); .)
 	|
-	 "long"		(. ty = Pair.create(PrimitiveType.I64, signed); .)
+	 "long"		(. ty = DebugExprType.getIntType(64, signed); .)
 ]
 |
-"char"			(. ty = Pair.create(PrimitiveType.I8, false);.)
+"char"			(. ty = DebugExprType.getIntType(8, false);.)
 |
-"short"			(. ty = Pair.create(PrimitiveType.I16, true);.)
+"short"			(. ty = DebugExprType.getIntType(16, true);.)
 |
-"int"			(. ty = Pair.create(PrimitiveType.I32, true);.)
+"int"			(. ty = DebugExprType.getIntType(32, true);.)
 |
-"long" 			(. ty = Pair.create(PrimitiveType.I64, true);.)
+"long" 			(. ty = DebugExprType.getIntType(64, true);.)
 [
-	 "double"	(. ty = Pair.create(PrimitiveType.F128, true);.)
+	 "double"	(. ty = DebugExprType.getFloatType(128); .)
 ]
 |
-"float"			(. ty = Pair.create(PrimitiveType.FLOAT, true);.)
+"float"			(. ty = DebugExprType.getFloatType(32);.)
 |
-"double"		(. ty = Pair.create(PrimitiveType.DOUBLE, true);.)
+"double"		(. ty = DebugExprType.getFloatType(64);.)
 .
 
 

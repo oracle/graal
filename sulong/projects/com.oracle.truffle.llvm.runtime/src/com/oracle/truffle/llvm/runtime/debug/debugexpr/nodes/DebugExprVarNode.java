@@ -29,6 +29,10 @@
  */
 package com.oracle.truffle.llvm.runtime.debug.debugexpr.nodes;
 
+import java.util.Map.Entry;
+
+import org.graalvm.collections.Pair;
+
 import com.oracle.truffle.api.Scope;
 import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.api.interop.InteropLibrary;
@@ -37,10 +41,11 @@ import com.oracle.truffle.api.interop.UnknownIdentifierException;
 import com.oracle.truffle.api.interop.UnsupportedMessageException;
 import com.oracle.truffle.llvm.runtime.LLVMLanguage;
 import com.oracle.truffle.llvm.runtime.debug.LLVMDebuggerValue;
+import com.oracle.truffle.llvm.runtime.debug.debugexpr.parser.DebugExprType;
 import com.oracle.truffle.llvm.runtime.debug.debugexpr.parser.Parser;
 import com.oracle.truffle.llvm.runtime.nodes.api.LLVMExpressionNode;
 
-public class DebugExprVarNode extends LLVMExpressionNode {
+public class DebugExprVarNode extends DebugExprNode {
 
     private final String name;
     private Iterable<Scope> scopes;
@@ -51,7 +56,7 @@ public class DebugExprVarNode extends LLVMExpressionNode {
     }
 
     @Override
-    public Object executeGeneric(VirtualFrame frame) {
+    public Pair<Object, DebugExprType> executeGenericWithType(VirtualFrame frame) {
         LLVMLanguage.getLLVMContextReference().get();
         for (Scope scope : scopes) {
             Object vars = scope.getVariables();
@@ -68,19 +73,31 @@ public class DebugExprVarNode extends LLVMExpressionNode {
                     LLVMDebuggerValue ldv = (LLVMDebuggerValue) member;
                     Object metaObj = ldv.getMetaObject();
                     if (metaObj == null) {
-                        return member;
+                        return Pair.create(member, DebugExprType.getVoidType());
                     }
                     // System.out.println(name + "|metaObj.toString() = " + metaObj.toString());
                     // System.out.println(name + "|ldv.toString() = " + ldv.toString());
-                    if (metaObj.toString().contentEquals("int")) {
-                        return Integer.parseInt(member.toString());
+                    if (metaObj.toString().contentEquals("short") || metaObj.toString().contentEquals("signed short")) {
+                        return Pair.create(Integer.parseInt(member.toString()), DebugExprType.getIntType(16, true));
+                    } else if (metaObj.toString().contentEquals("unsigned short")) {
+                        return Pair.create(Integer.parseInt(member.toString()), DebugExprType.getIntType(16, false));
+                    } else if (metaObj.toString().contentEquals("int") || metaObj.toString().contentEquals("signed int")) {
+                        return Pair.create(Integer.parseInt(member.toString()), DebugExprType.getIntType(32, true));
+                    } else if (metaObj.toString().contentEquals("unsigned int")) {
+                        return Pair.create(Integer.parseInt(member.toString()), DebugExprType.getIntType(32, false));
+                    } else if (metaObj.toString().contentEquals("long") || metaObj.toString().contentEquals("signed long")) {
+                        return Pair.create(Integer.parseInt(member.toString()), DebugExprType.getIntType(64, true));
+                    } else if (metaObj.toString().contentEquals("unsigned long")) {
+                        return Pair.create(Integer.parseInt(member.toString()), DebugExprType.getIntType(64, false));
                     } else if (metaObj.toString().contentEquals("float")) {
-                        return Float.parseFloat(member.toString());
+                        return Pair.create(Float.parseFloat(member.toString()), DebugExprType.getFloatType(32));
                     } else if (metaObj.toString().contentEquals("double")) {
-                        return Double.parseDouble(member.toString());
+                        return Pair.create(Double.parseDouble(member.toString()), DebugExprType.getFloatType(64));
+                    } else if (metaObj.toString().contentEquals("long double")) {
+                        return Pair.create(Double.parseDouble(member.toString()), DebugExprType.getFloatType(128));
                     }
                     System.out.println("String representation: " + metaObj.toString());
-                    return member;
+                    return Pair.create(member.toString(), DebugExprType.getVoidType());
                 }
             } catch (UnsupportedMessageException e) {
                 // should only happen if hasMembers == false
@@ -90,6 +107,6 @@ public class DebugExprVarNode extends LLVMExpressionNode {
                 // should not happen
             }
         }
-        return Parser.noObjNode.executeGeneric(frame);
+        return Pair.create(Parser.noObjNode.executeGeneric(frame), DebugExprType.getVoidType());
     }
 }

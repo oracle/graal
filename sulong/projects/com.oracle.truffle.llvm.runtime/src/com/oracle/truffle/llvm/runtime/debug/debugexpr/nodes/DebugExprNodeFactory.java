@@ -6,6 +6,7 @@ import com.oracle.truffle.llvm.runtime.ArithmeticOperation;
 import com.oracle.truffle.llvm.runtime.LLVMContext;
 import com.oracle.truffle.llvm.runtime.debug.debugexpr.nodes.DebugExprCompareNode.Op;
 import com.oracle.truffle.llvm.runtime.debug.debugexpr.nodes.DebugExprSCENode.SCEKind;
+import com.oracle.truffle.llvm.runtime.debug.debugexpr.parser.DebugExprType;
 import com.oracle.truffle.llvm.runtime.nodes.api.LLVMExpressionNode;
 import com.oracle.truffle.llvm.runtime.types.PrimitiveType;
 import com.oracle.truffle.llvm.runtime.types.Type;
@@ -30,6 +31,18 @@ public final class DebugExprNodeFactory {
         return contextReference.get().getNodeFactory().createArithmeticOp(op, type, left, right);
     }
 
+    public LLVMExpressionNode createAddNode(LLVMExpressionNode left, LLVMExpressionNode right) {
+        return contextReference.get().getNodeFactory().createArithmeticOp(ArithmeticOperation.ADD, null, left, right);
+    }
+
+    public LLVMExpressionNode createSubNode(LLVMExpressionNode left, LLVMExpressionNode right) {
+        return contextReference.get().getNodeFactory().createArithmeticOp(ArithmeticOperation.SUB, null, left, right);
+    }
+
+    public LLVMExpressionNode createMulNode(LLVMExpressionNode left, LLVMExpressionNode right) {
+        return contextReference.get().getNodeFactory().createArithmeticOp(ArithmeticOperation.MUL, null, left, right);
+    }
+
     @SuppressWarnings("static-method")
     public LLVMExpressionNode createTernaryNode(LLVMExpressionNode condition, LLVMExpressionNode thenNode, LLVMExpressionNode elseNode) {
         return new DebugExprTernaryNode(condition, thenNode, elseNode);
@@ -41,7 +54,7 @@ public final class DebugExprNodeFactory {
     }
 
     @SuppressWarnings("static-method")
-    public LLVMExpressionNode createSizeofNode(Type type) {
+    public LLVMExpressionNode createSizeofNode(DebugExprType type) {
         return new DebugExprSizeofNode(type);
     }
 
@@ -72,12 +85,11 @@ public final class DebugExprNodeFactory {
         return contextReference.get().getNodeFactory().createSimpleConstantNoArray(value, PrimitiveType.FLOAT);
     }
 
-    public LLVMExpressionNode createSignedCast(LLVMExpressionNode node, Type type) {
-        return contextReference.get().getNodeFactory().createSignedCast(node, type);
-    }
-
-    public LLVMExpressionNode createUnsignedCast(LLVMExpressionNode node, Type type) {
-        return contextReference.get().getNodeFactory().createUnsignedCast(node, type);
+    public LLVMExpressionNode createCast(LLVMExpressionNode node, DebugExprType type) {
+        if (type.isUnsigned())
+            return contextReference.get().getNodeFactory().createUnsignedCast(node, type.getLLVMRuntimeType());
+        else
+            return contextReference.get().getNodeFactory().createSignedCast(node, type.getLLVMRuntimeType());
     }
 
 }
