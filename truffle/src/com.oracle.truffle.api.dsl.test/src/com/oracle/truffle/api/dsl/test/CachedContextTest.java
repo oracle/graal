@@ -59,6 +59,7 @@ import com.oracle.truffle.api.dsl.CachedContext;
 import com.oracle.truffle.api.dsl.Fallback;
 import com.oracle.truffle.api.dsl.GenerateUncached;
 import com.oracle.truffle.api.dsl.Introspectable;
+import com.oracle.truffle.api.dsl.NodeChild;
 import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.dsl.UnsupportedSpecializationException;
 import com.oracle.truffle.api.dsl.test.CachedContextTestFactory.CachedWithFallbackNodeGen;
@@ -393,6 +394,22 @@ public class CachedContextTest extends AbstractPolyglotTest {
         @ExportMessage
         final Object m1(@CachedContext(CachedContextTestLanguage.class) ContextReference<Env> env) {
             return "m1";
+        }
+    }
+
+    abstract static class TestBaseNode extends Node {
+
+        abstract Object execute();
+
+    }
+
+    @NodeChild
+    public abstract static class CachedContextInvalidParametersNode extends TestBaseNode {
+
+        @ExpectError("Method signature (Env) does not match to the expected signature: %")
+        @Specialization
+        Object doSomething(@CachedContext(CachedContextTestLanguage.class) Env ctx) {
+            return null;
         }
     }
 
