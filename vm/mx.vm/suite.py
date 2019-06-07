@@ -4,6 +4,18 @@ suite = {
     "release" : False,
     "groupId" : "org.graalvm",
     "mxversion": "5.216.0",
+    "url" : "http://www.graalvm.org/",
+    "developer" : {
+      "name" : "Truffle and Graal developers",
+      "email" : "graalvm-users@oss.oracle.com",
+      "organization" : "Graal",
+      "organizationUrl" : "http://www.graalvm.org/",
+    },
+    "scm" : {
+      "url" : "https://github.com/oracle/graal",
+      "read" : "https://github.com/oracle/graal.git",
+    "  write" : "git@github.com:oracle/graal.git",
+    },
     "defaultLicense" : "GPLv2-CPE",
     "imports": {
         "suites": [
