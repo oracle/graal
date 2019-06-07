@@ -188,7 +188,7 @@ public class WasmBlockNode extends WasmNode {
                 case BLOCK: {
                     WasmNode block = nestedControlTable[nestedControlOffset];
                     int unwindCounter = block.execute(frame);
-                    if (unwindCounter != 0) {
+                    if (unwindCounter > 1) {
                         return unwindCounter - 1;
                     }
                     nestedControlOffset++;
@@ -201,7 +201,7 @@ public class WasmBlockNode extends WasmNode {
                     WasmNode ifNode = nestedControlTable[nestedControlOffset];
                     stackPointer--;
                     int unwindCounter = ifNode.execute(frame);
-                    if (unwindCounter != 0) {
+                    if (unwindCounter > 1) {
                         return unwindCounter - 1;
                     }
                     nestedControlOffset++;
@@ -216,32 +216,36 @@ public class WasmBlockNode extends WasmNode {
                     break;
                 case BR: {
                     int unwindCounter = BinaryStreamReader.peekUnsignedInt32(codeEntry().data(), offset, null);
+
                     // Reset the stack pointer to the target block stack pointer.
                     int continuationStackPointer = codeEntry().intConstant(intConstantOffset);
+                    // Technically, we should increment the intConstantOffset at this point, but since we are returning,
+                    // it does not really matter.
+
                     // Populate the stack with the return values of the current block (the one we are escaping from).
-                    for (int i = 0; i != returnTypeLength(); ++i) {
-                        stackPointer--;
-                        long value = pop(frame, stackPointer);
-                        push(frame, continuationStackPointer, value);
-                        continuationStackPointer++;
-                    }
-                    return unwindCounter;
+                    unwindStack(frame, stackPointer, continuationStackPointer);
+
+                    // We want to avoid returning 0 here, because the value 0 indicates normal block execution (no branch instruction).
+                    // That's why we increment the unwindCounter, so that the min value that we return is 1.
+                    return unwindCounter + 1;
                 }
                 case BR_IF: {
                     stackPointer--;
                     int cond = popInt(frame, stackPointer);
-                    int unwindCounter = BinaryStreamReader.peekUnsignedInt32(codeEntry().data(), offset, null);
                     if (cond != 0) {
+                        int unwindCounter = BinaryStreamReader.peekUnsignedInt32(codeEntry().data(), offset, null);
+
                         // Reset the stack pointer to the target block stack pointer.
                         int continuationStackPointer = codeEntry().intConstant(intConstantOffset);
+                        // Technically, we should increment the intConstantOffset at this point, but since we are returning,
+                        // it does not really matter.
+
                         // Populate the stack with the return values of the current block (the one we are escaping from).
-                        for (int i = 0; i != returnTypeLength(); ++i) {
-                            stackPointer--;
-                            long value = pop(frame, stackPointer);
-                            push(frame, continuationStackPointer, value);
-                            continuationStackPointer++;
-                        }
-                        return unwindCounter;
+                        unwindStack(frame, stackPointer, continuationStackPointer);
+
+                        // We want to avoid returning 0 here, because the value 0 indicates normal block execution (no branch instruction).
+                        // That's why we increment the unwindCounter, so that the min value that we return is 1.
+                        return unwindCounter + 1;
                     }
                     byte constantLength = codeEntry().byteConstant(byteConstantOffset);
                     byteConstantOffset++;
@@ -1238,6 +1242,15 @@ public class WasmBlockNode extends WasmNode {
             }
         }
         return 0;
+    }
+
+    private void unwindStack(VirtualFrame frame, int stackPointer, int continuationStackPointer) {
+        for (int i = 0; i != returnTypeLength(); ++i) {
+            stackPointer--;
+            long value = pop(frame, stackPointer);
+            push(frame, continuationStackPointer, value);
+            continuationStackPointer++;
+        }
     }
 
     @Override
