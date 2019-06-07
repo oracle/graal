@@ -58,6 +58,7 @@ import com.oracle.svm.core.option.APIOption;
 import com.oracle.svm.core.option.HostedOptionKey;
 import com.oracle.svm.core.option.SubstrateOptionsParser;
 import com.oracle.svm.core.util.UserError;
+import com.oracle.svm.hosted.ExceptionSynthesizer;
 import com.oracle.svm.hosted.FeatureImpl;
 import com.oracle.svm.hosted.analysis.Inflation;
 import com.oracle.svm.hosted.meta.MethodPointer;
@@ -308,7 +309,7 @@ public class ClassInitializationFeature implements Feature {
     }
 
     private void buildClassInitializationInfo(FeatureImpl.DuringAnalysisAccessImpl access, AnalysisType type, DynamicHub hub) {
-        ClassInitializationInfo info;
+        ClassInitializationInfo info = null;
         if (classInitializationSupport.shouldInitializeAtRuntime(type)) {
             assert !type.isInitialized();
             AnalysisMethod classInitializer = type.getClassInitializer();
@@ -319,9 +320,30 @@ public class ClassInitializationFeature implements Feature {
                 }
                 info = new ClassInitializationInfo(MethodPointer.factory(classInitializer));
             } else {
-                /* The type failed to link due to verification issues triggered by missing types. */
-                assert classInitializer == null || classInitializer.getCode() == null;
-                info = ClassInitializationInfo.FAILED_INFO_SINGLETON;
+                try {
+                    /*
+                     * Workaround to force linking the type which is not provided by the JVMCI API.
+                     */
+                    type.getDeclaredConstructors();
+                    type.getDeclaredMethods();
+                } catch (VerifyError e) {
+                    /* Synthesize a VerifyError to be thrown at run time. */
+                    AnalysisMethod throwVerifyError = access.getMetaAccess().lookupJavaMethod(ExceptionSynthesizer.throwVerifyErrorMethod);
+                    access.registerAsCompiled(throwVerifyError);
+                    info = new ClassInitializationInfo(MethodPointer.factory(throwVerifyError));
+                } catch (Throwable t) {
+                    // silently ignore other errors
+                }
+
+                if (info == null) {
+                    /*
+                     * The type failed to link due to verification issues triggered by missing
+                     * types.
+                     */
+                    assert classInitializer == null || classInitializer.getCode() == null;
+                    // synthetic <clinit> -> VerifyError
+                    info = ClassInitializationInfo.FAILED_INFO_SINGLETON;
+                }
             }
         } else {
             assert type.isInitialized();
