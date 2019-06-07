@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2016, 2018, Oracle and/or its affiliates.
+ * Copyright (c) 2016, 2019, Oracle and/or its affiliates.
  *
  * All rights reserved.
  *
@@ -29,12 +29,10 @@
  */
 package com.oracle.truffle.llvm.nodes.memory.load;
 
-import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.dsl.Cached;
 import com.oracle.truffle.api.dsl.NodeField;
 import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.nodes.ExplodeLoop;
-import com.oracle.truffle.llvm.runtime.LLVMBoxedPrimitive;
 import com.oracle.truffle.llvm.runtime.LLVMIVarBit;
 import com.oracle.truffle.llvm.runtime.LLVMVirtualAllocationAddress;
 import com.oracle.truffle.llvm.runtime.floating.LLVM80BitFloat;
@@ -119,16 +117,6 @@ public abstract class LLVMDirectLoadNode {
         protected LLVMNativePointer doLLVMByteArrayAddress(LLVMVirtualAllocationAddress address,
                         @Cached("getUnsafeArrayAccess()") UnsafeArrayAccess memory) {
             return LLVMNativePointer.create(address.getI64(memory));
-        }
-
-        @Specialization
-        protected Object doLLVMBoxedPrimitive(LLVMBoxedPrimitive addr) {
-            if (addr.getValue() instanceof Long) {
-                return getLLVMMemoryCached().getPointer((long) addr.getValue());
-            } else {
-                CompilerDirectives.transferToInterpreter();
-                throw new IllegalAccessError("Cannot access memory with address: " + addr.getValue());
-            }
         }
 
         @Specialization

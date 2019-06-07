@@ -33,7 +33,6 @@ import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.dsl.Cached;
 import com.oracle.truffle.api.dsl.NodeChild;
 import com.oracle.truffle.api.dsl.Specialization;
-import com.oracle.truffle.api.interop.TruffleObject;
 import com.oracle.truffle.llvm.nodes.intrinsics.llvm.LLVMIntrinsic;
 import com.oracle.truffle.llvm.runtime.except.LLVMPolyglotException;
 import com.oracle.truffle.llvm.runtime.interop.LLVMAsForeignNode;
@@ -54,7 +53,7 @@ public abstract class LLVMPolyglotAsTyped extends LLVMIntrinsic {
     @Specialization
     LLVMManagedPointer doAsTyped(LLVMManagedPointer object, LLVMInteropType.Structured type,
                     @Cached("create()") LLVMAsForeignNode asForeign) {
-        TruffleObject foreign = asForeign.execute(object);
+        Object foreign = asForeign.execute(object);
         return LLVMManagedPointer.create(LLVMTypedForeignObject.create(foreign, type));
     }
 

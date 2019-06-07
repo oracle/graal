@@ -32,9 +32,7 @@ package com.oracle.truffle.llvm.nodes.intrinsics.llvm.debug;
 import com.oracle.truffle.api.dsl.Fallback;
 import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.interop.InteropLibrary;
-import com.oracle.truffle.api.interop.TruffleObject;
 import com.oracle.truffle.api.interop.UnsupportedMessageException;
-import com.oracle.truffle.llvm.runtime.LLVMBoxedPrimitive;
 import com.oracle.truffle.llvm.runtime.LLVMFunctionDescriptor;
 import com.oracle.truffle.llvm.runtime.LLVMIVarBit;
 import com.oracle.truffle.llvm.runtime.debug.LLDBSupport;
@@ -98,11 +96,6 @@ public abstract class LLVMToDebugValueNode extends LLVMNode implements LLVMDebug
     }
 
     @Specialization
-    protected LLVMDebugValue fromBoxedPrimitive(LLVMBoxedPrimitive value) {
-        return new LLDBBoxedPrimitive(value);
-    }
-
-    @Specialization
     protected LLVMDebugValue fromNativePointer(LLVMNativePointer value) {
         return new LLDBConstant.Pointer(value);
     }
@@ -113,7 +106,7 @@ public abstract class LLVMToDebugValueNode extends LLVMNode implements LLVMDebug
 
     @Specialization
     protected LLVMDebugValue fromManagedPointer(LLVMManagedPointer value) {
-        final TruffleObject target = value.getObject();
+        final Object target = value.getObject();
 
         if (target instanceof LLVMGlobalContainer) {
             return fromGlobalContainer((LLVMGlobalContainer) target);
@@ -132,7 +125,7 @@ public abstract class LLVMToDebugValueNode extends LLVMNode implements LLVMDebug
                 } else {
                     unboxedValue = interop.asDouble(target);
                 }
-                return fromBoxedPrimitive(new LLVMBoxedPrimitive(unboxedValue));
+                return new LLDBManagedPointer(LLVMManagedPointer.cast(unboxedValue));
             }
         } catch (UnsupportedMessageException ignored) {
             // the default case is a sensible fallback for this
@@ -210,11 +203,9 @@ public abstract class LLVMToDebugValueNode extends LLVMNode implements LLVMDebug
         final Object target = value.get();
         if (LLVMPointer.isInstance(target)) {
             return executeWithTarget(target);
-        } else if (target instanceof TruffleObject) {
-            return executeWithTarget(LLVMManagedPointer.create((TruffleObject) target));
         }
 
-        return executeWithTarget(new LLVMBoxedPrimitive(value));
+        return executeWithTarget(LLVMManagedPointer.create(target));
     }
 
     @Specialization

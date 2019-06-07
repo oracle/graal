@@ -29,13 +29,12 @@
  */
 package com.oracle.truffle.llvm.nodes.intrinsics.interop;
 
-import com.oracle.truffle.llvm.runtime.interop.LLVMAsForeignNode;
 import com.oracle.truffle.api.dsl.Cached;
 import com.oracle.truffle.api.dsl.Fallback;
 import com.oracle.truffle.api.dsl.NodeChild;
 import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.llvm.nodes.intrinsics.llvm.LLVMIntrinsic;
-import com.oracle.truffle.llvm.runtime.LLVMBoxedPrimitive;
+import com.oracle.truffle.llvm.runtime.interop.LLVMAsForeignNode;
 import com.oracle.truffle.llvm.runtime.nodes.api.LLVMExpressionNode;
 import com.oracle.truffle.llvm.runtime.pointer.LLVMManagedPointer;
 
@@ -47,11 +46,6 @@ public abstract class LLVMPolyglotIsValue extends LLVMIntrinsic {
     boolean isLLVMManagedPointer(LLVMManagedPointer object,
                     @Cached("createOptional()") LLVMAsForeignNode asForeign) {
         return asForeign.execute(object) != null;
-    }
-
-    @Specialization
-    boolean isBoxedPrimitive(LLVMBoxedPrimitive prim) {
-        return true;
     }
 
     @Specialization

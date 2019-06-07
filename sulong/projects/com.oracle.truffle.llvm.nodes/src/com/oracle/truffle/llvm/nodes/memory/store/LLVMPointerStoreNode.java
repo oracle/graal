@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2017, 2018, Oracle and/or its affiliates.
+ * Copyright (c) 2017, 2019, Oracle and/or its affiliates.
  *
  * All rights reserved.
  *
@@ -29,10 +29,8 @@
  */
 package com.oracle.truffle.llvm.nodes.memory.store;
 
-import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.dsl.Cached;
 import com.oracle.truffle.api.dsl.Specialization;
-import com.oracle.truffle.llvm.runtime.LLVMBoxedPrimitive;
 import com.oracle.truffle.llvm.runtime.LLVMVirtualAllocationAddress;
 import com.oracle.truffle.llvm.runtime.debug.scope.LLVMSourceLocation;
 import com.oracle.truffle.llvm.runtime.interop.convert.ForeignToLLVM.ForeignToLLVMType;
@@ -78,17 +76,6 @@ public abstract class LLVMPointerStoreNode extends LLVMStoreNodeCommon {
                     @Cached("createToNativeWithTarget()") LLVMToNativeNode toNative,
                     @Cached("getUnsafeArrayAccess()") UnsafeArrayAccess memory) {
         address.writeI64(memory, toNative.executeWithTarget(value).asNative());
-    }
-
-    @Specialization
-    protected void doBoxed(LLVMBoxedPrimitive address, Object value,
-                    @Cached("createToNativeWithTarget()") LLVMToNativeNode toNative) {
-        if (address.getValue() instanceof Long) {
-            getLLVMMemoryCached().putPointer((long) address.getValue(), toNative.executeWithTarget(value));
-        } else {
-            CompilerDirectives.transferToInterpreter();
-            throw new IllegalAccessError("Cannot access address: " + address.getValue());
-        }
     }
 
     @Specialization

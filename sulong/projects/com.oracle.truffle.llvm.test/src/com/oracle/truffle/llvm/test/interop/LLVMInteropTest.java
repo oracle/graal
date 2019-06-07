@@ -783,6 +783,16 @@ public class LLVMInteropTest {
             long a1 = ((Value) a.get("b")).asNativePointer();
             Assert.assertEquals(101, a0);
             Assert.assertEquals(102, a1);
+
+            Map<String, Object> b = new HashMap<>();
+            b.put("a", (short) 3);
+            b.put("b", (short) 4);
+            runner.export(ProxyObject.fromMap(b), "foreign");
+            Assert.assertEquals(103, runner.run());
+            short b0 = Value.asValue(b.get("a")).asShort();
+            short b1 = Value.asValue(b.get("b")).asShort();
+            Assert.assertEquals((short) 3, b0);
+            Assert.assertEquals((short) 4, b1);
         }
     }
 
@@ -848,8 +858,17 @@ public class LLVMInteropTest {
     }
 
     @Test
-    public void test068() {
-        try (Runner runner = new Runner("interop068")) {
+    public void testBoxedboolean() {
+        try (Runner runner = new Runner("interop_conditionalWithBoxedBoolean")) {
+            runner.export(true, "boxed_true");
+            runner.export(false, "boxed_false");
+            Assert.assertEquals(0, runner.run());
+        }
+    }
+
+    @Test
+    public void testUnboxedboolean() {
+        try (Runner runner = new Runner("interop_conditionalWithUnboxedBoolean")) {
             runner.export(true, "boxed_true");
             runner.export(false, "boxed_false");
             Assert.assertEquals(0, runner.run());

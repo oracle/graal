@@ -34,7 +34,6 @@ import java.util.Objects;
 import com.oracle.truffle.api.CompilerAsserts;
 import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.CompilerDirectives.ValueType;
-import com.oracle.truffle.api.interop.TruffleObject;
 import com.oracle.truffle.api.library.DynamicDispatchLibrary;
 import com.oracle.truffle.api.library.ExportLibrary;
 import com.oracle.truffle.api.library.ExportMessage;
@@ -46,12 +45,12 @@ class LLVMPointerImpl implements LLVMManagedPointer, LLVMNativePointer {
 
     static final LLVMPointerImpl NULL = new LLVMPointerImpl(null, 0, null);
 
-    final TruffleObject object;
+    final Object object;
     private final long offset;
 
     private final LLVMInteropType exportType;
 
-    LLVMPointerImpl(TruffleObject object, long offset, LLVMInteropType exportType) {
+    LLVMPointerImpl(Object object, long offset, LLVMInteropType exportType) {
         this.object = object;
         this.offset = offset;
         this.exportType = exportType;
@@ -89,7 +88,7 @@ class LLVMPointerImpl implements LLVMManagedPointer, LLVMNativePointer {
     }
 
     @Override
-    public TruffleObject getObject() {
+    public Object getObject() {
         assert isManaged();
         return object;
     }

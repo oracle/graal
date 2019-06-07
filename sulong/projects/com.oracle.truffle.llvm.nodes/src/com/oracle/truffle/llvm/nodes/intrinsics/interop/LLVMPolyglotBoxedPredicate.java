@@ -29,17 +29,15 @@
  */
 package com.oracle.truffle.llvm.nodes.intrinsics.interop;
 
-import com.oracle.truffle.llvm.runtime.interop.LLVMAsForeignNode;
 import com.oracle.truffle.api.dsl.Cached;
 import com.oracle.truffle.api.dsl.Fallback;
 import com.oracle.truffle.api.dsl.NodeChild;
 import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.interop.InteropLibrary;
-import com.oracle.truffle.api.interop.TruffleObject;
 import com.oracle.truffle.api.library.CachedLibrary;
 import com.oracle.truffle.api.profiles.ConditionProfile;
 import com.oracle.truffle.llvm.nodes.intrinsics.llvm.LLVMIntrinsic;
-import com.oracle.truffle.llvm.runtime.LLVMBoxedPrimitive;
+import com.oracle.truffle.llvm.runtime.interop.LLVMAsForeignNode;
 import com.oracle.truffle.llvm.runtime.nodes.api.LLVMExpressionNode;
 import com.oracle.truffle.llvm.runtime.pointer.LLVMManagedPointer;
 
@@ -63,18 +61,12 @@ public abstract class LLVMPolyglotBoxedPredicate extends LLVMIntrinsic {
                     @Cached("createOptional()") LLVMAsForeignNode asForeign,
                     @Cached("createBinaryProfile()") ConditionProfile isForeign,
                     @CachedLibrary(limit = "3") InteropLibrary interop) {
-        TruffleObject foreign = asForeign.execute(object);
+        Object foreign = asForeign.execute(object);
         if (isForeign.profile(foreign != null)) {
             return predicate.match(interop, foreign);
         } else {
             return false;
         }
-    }
-
-    @Specialization(limit = "3")
-    boolean matchBoxedPrimitive(LLVMBoxedPrimitive prim,
-                    @CachedLibrary("prim.getValue()") InteropLibrary interop) {
-        return predicate.match(interop, prim.getValue());
     }
 
     @Specialization(limit = "1")

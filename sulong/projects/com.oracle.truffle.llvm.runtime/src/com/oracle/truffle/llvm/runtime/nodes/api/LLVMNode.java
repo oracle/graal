@@ -36,7 +36,6 @@ import com.oracle.truffle.api.TruffleLanguage.ContextReference;
 import com.oracle.truffle.api.dsl.TypeSystemReference;
 import com.oracle.truffle.api.instrumentation.StandardTags;
 import com.oracle.truffle.api.instrumentation.Tag;
-import com.oracle.truffle.api.interop.TruffleObject;
 import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.api.source.SourceSection;
 import com.oracle.truffle.llvm.runtime.LLVMContext;
@@ -114,11 +113,11 @@ public abstract class LLVMNode extends Node {
         return null;
     }
 
-    protected static boolean isFunctionDescriptor(TruffleObject object) {
+    protected static boolean isFunctionDescriptor(Object object) {
         return object instanceof LLVMFunctionDescriptor;
     }
 
-    protected static LLVMFunctionDescriptor asFunctionDescriptor(TruffleObject object) {
+    protected static LLVMFunctionDescriptor asFunctionDescriptor(Object object) {
         return object instanceof LLVMFunctionDescriptor ? (LLVMFunctionDescriptor) object : null;
     }
 
