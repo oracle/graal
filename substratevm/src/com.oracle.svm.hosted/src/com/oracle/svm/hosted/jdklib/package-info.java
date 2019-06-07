@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2018, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2019, 2019, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -22,24 +22,9 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.svm.core.windows;
+
+@Platforms(Platform.HOSTED_ONLY.class)
+package com.oracle.svm.hosted.jdklib;
 
 import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.Platforms;
-import org.graalvm.nativeimage.c.function.CLibrary;
-
-import com.oracle.svm.core.annotate.AutomaticFeature;
-import com.oracle.svm.core.jdklib.JDKLibZipSubstitutions;
-import com.oracle.svm.hosted.jdklib.JDKLibZipFeature;
-
-@Platforms(Platform.WINDOWS.class)
-@CLibrary(value = JDKLibZipFeature.CLibraryName, requireStatic = true)
-@AutomaticFeature
-class WindowsJavaZipSubstitutionsFeature extends JDKLibZipFeature {
-}
-
-@Platforms(Platform.WINDOWS.class)
-public final class WindowsJavaZipSubstitutions extends JDKLibZipSubstitutions {
-    private WindowsJavaZipSubstitutions() {
-    }
-}

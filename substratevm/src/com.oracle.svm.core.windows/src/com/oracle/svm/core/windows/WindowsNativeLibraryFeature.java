@@ -60,7 +60,17 @@ class WindowsNativeLibrarySupport implements PlatformNativeLibrarySupport {
         if (!WindowsJavaNetSubstitutions.initIDs()) {
             return false;
         }
+        /*
+         * java.dll is normally loaded by the VM. After loading java.dll, the VM then calls
+         * initializeSystemClasses which loads zip.dll.
+         *
+         * We might want to consider calling System.initializeSystemClasses instead of explicitly
+         * loading the builtin zip library.
+         */
         if (!WindowsJavaIOSubstitutions.initIDs()) {
+            return false;
+        }
+        if (!WindowsJavaZipSubstitutions.initIDs()) {
             return false;
         }
         if (!WindowsJavaNIOSubstitutions.initIDs()) {

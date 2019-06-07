@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2018, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2019, 2019, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -22,24 +22,35 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.svm.core.windows;
 
-import org.graalvm.nativeimage.Platform;
-import org.graalvm.nativeimage.Platforms;
-import org.graalvm.nativeimage.c.function.CLibrary;
+package com.oracle.svm.core.jdklib;
 
-import com.oracle.svm.core.annotate.AutomaticFeature;
-import com.oracle.svm.core.jdklib.JDKLibZipSubstitutions;
-import com.oracle.svm.hosted.jdklib.JDKLibZipFeature;
+import com.oracle.svm.core.annotate.Alias;
+import com.oracle.svm.core.annotate.TargetClass;
+import com.oracle.svm.core.log.Log;
 
-@Platforms(Platform.WINDOWS.class)
-@CLibrary(value = JDKLibZipFeature.CLibraryName, requireStatic = true)
-@AutomaticFeature
-class WindowsJavaZipSubstitutionsFeature extends JDKLibZipFeature {
-}
+public class JDKLibZipSubstitutions {
+    public static boolean initIDs() {
+        try {
+            System.loadLibrary("zip");
+            Target_java_util_zip_Inflater.initIDs();
+            Target_java_util_zip_Deflater.initIDs();
+            return true;
+        } catch (UnsatisfiedLinkError e) {
+            Log.log().string("System.loadLibrary failed, " + e).newline();
+            return false;
+        }
+    }
 
-@Platforms(Platform.WINDOWS.class)
-public final class WindowsJavaZipSubstitutions extends JDKLibZipSubstitutions {
-    private WindowsJavaZipSubstitutions() {
+    @TargetClass(className = "java.util.zip.Inflater")
+    static final class Target_java_util_zip_Inflater {
+        @Alias
+        static native void initIDs();
+    }
+
+    @TargetClass(className = "java.util.zip.Deflater")
+    static final class Target_java_util_zip_Deflater {
+        @Alias
+        static native void initIDs();
     }
 }
