@@ -136,17 +136,19 @@ public class UpgradeCommand implements InstallerCommand {
             feedback.output(allowDistUpgrades ? "UPGRADE_Help" : "UPDATE_Help");
             return 0;
         }
-        ComponentInfo info = configureProcess();
-        boolean workDone;
+        try (UpgradeProcess h = this.helper) {
+            ComponentInfo info = configureProcess();
+            boolean workDone;
 
-        if (allowDistUpgrades) {
-            workDone = helper.installGraalCore(info);
-        } else {
-            workDone = false;
-        }
-        helper.installAddedComponents();
-        if (helper.addedComponents().isEmpty()) {
-            return workDone ? 0 : 1;
+            if (allowDistUpgrades) {
+                workDone = h.installGraalCore(info);
+            } else {
+                workDone = false;
+            }
+            h.installAddedComponents();
+            if (h.addedComponents().isEmpty()) {
+                return workDone ? 0 : 1;
+            }
         }
         return 0;
     }

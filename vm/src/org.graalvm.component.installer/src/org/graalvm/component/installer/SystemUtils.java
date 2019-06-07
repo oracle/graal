@@ -49,6 +49,8 @@ public class SystemUtils {
      */
     public static final String DELIMITER = "/"; // NOI18N
 
+    private static final String DOT = "."; // NOI18N
+
     private static final String DOTDOT = ".."; // NOI18N
 
     private static final String SPLIT_DELIMITER = Pattern.quote(DELIMITER);
@@ -93,6 +95,9 @@ public class SystemUtils {
     public static Path fileName(String s) {
         if ((s.indexOf(DELIMITER_CHAR) >= 0) ||
                         ((DELIMITER_CHAR != File.separatorChar) && (s.indexOf(File.separatorChar) >= 0))) {
+            throw new IllegalArgumentException(s);
+        }
+        if (DOT.equals(s) || DOTDOT.equals(s)) {
             throw new IllegalArgumentException(s);
         }
         return Paths.get(s);
