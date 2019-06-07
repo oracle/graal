@@ -116,4 +116,22 @@ public interface InternalPlatform {
         }
 
     }
+
+    /**
+     * Temporary leaf platform that is used to mark classes or methods that are used for DARWIN_JNI
+     * platforms.
+     *
+     * @since 20.0
+     */
+    class DARWIN_JNI_AArch64 implements DARWIN_JNI, DARWIN_AND_JNI, Platform.AArch64 {
+
+        /**
+         * Instantiates a marker instance of this platform.
+         *
+         * @since 20.0
+         */
+        public DARWIN_JNI_AArch64() {
+        }
+
+    }
 }
