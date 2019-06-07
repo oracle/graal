@@ -37,21 +37,48 @@ import static com.oracle.truffle.wasm.binary.Instructions.BR_IF;
 import static com.oracle.truffle.wasm.binary.Instructions.DROP;
 import static com.oracle.truffle.wasm.binary.Instructions.ELSE;
 import static com.oracle.truffle.wasm.binary.Instructions.END;
+import static com.oracle.truffle.wasm.binary.Instructions.F32_ABS;
 import static com.oracle.truffle.wasm.binary.Instructions.F32_ADD;
+import static com.oracle.truffle.wasm.binary.Instructions.F32_CEIL;
 import static com.oracle.truffle.wasm.binary.Instructions.F32_CONST;
+import static com.oracle.truffle.wasm.binary.Instructions.F32_COPYSIGN;
+import static com.oracle.truffle.wasm.binary.Instructions.F32_DIV;
 import static com.oracle.truffle.wasm.binary.Instructions.F32_EQ;
+import static com.oracle.truffle.wasm.binary.Instructions.F32_FLOOR;
 import static com.oracle.truffle.wasm.binary.Instructions.F32_GE;
 import static com.oracle.truffle.wasm.binary.Instructions.F32_GT;
 import static com.oracle.truffle.wasm.binary.Instructions.F32_LE;
 import static com.oracle.truffle.wasm.binary.Instructions.F32_LT;
+import static com.oracle.truffle.wasm.binary.Instructions.F32_MAX;
+import static com.oracle.truffle.wasm.binary.Instructions.F32_MIN;
+import static com.oracle.truffle.wasm.binary.Instructions.F32_MUL;
 import static com.oracle.truffle.wasm.binary.Instructions.F32_NE;
+import static com.oracle.truffle.wasm.binary.Instructions.F32_NEAREST;
+import static com.oracle.truffle.wasm.binary.Instructions.F32_NEG;
+import static com.oracle.truffle.wasm.binary.Instructions.F32_SQRT;
+import static com.oracle.truffle.wasm.binary.Instructions.F32_SUB;
+import static com.oracle.truffle.wasm.binary.Instructions.F32_TRUNC;
+import static com.oracle.truffle.wasm.binary.Instructions.F64_ABS;
+import static com.oracle.truffle.wasm.binary.Instructions.F64_ADD;
+import static com.oracle.truffle.wasm.binary.Instructions.F64_CEIL;
 import static com.oracle.truffle.wasm.binary.Instructions.F64_CONST;
+import static com.oracle.truffle.wasm.binary.Instructions.F64_COPYSIGN;
+import static com.oracle.truffle.wasm.binary.Instructions.F64_DIV;
 import static com.oracle.truffle.wasm.binary.Instructions.F64_EQ;
+import static com.oracle.truffle.wasm.binary.Instructions.F64_FLOOR;
 import static com.oracle.truffle.wasm.binary.Instructions.F64_GE;
 import static com.oracle.truffle.wasm.binary.Instructions.F64_GT;
 import static com.oracle.truffle.wasm.binary.Instructions.F64_LE;
 import static com.oracle.truffle.wasm.binary.Instructions.F64_LT;
+import static com.oracle.truffle.wasm.binary.Instructions.F64_MAX;
+import static com.oracle.truffle.wasm.binary.Instructions.F64_MIN;
+import static com.oracle.truffle.wasm.binary.Instructions.F64_MUL;
 import static com.oracle.truffle.wasm.binary.Instructions.F64_NE;
+import static com.oracle.truffle.wasm.binary.Instructions.F64_NEAREST;
+import static com.oracle.truffle.wasm.binary.Instructions.F64_NEG;
+import static com.oracle.truffle.wasm.binary.Instructions.F64_SQRT;
+import static com.oracle.truffle.wasm.binary.Instructions.F64_SUB;
+import static com.oracle.truffle.wasm.binary.Instructions.F64_TRUNC;
 import static com.oracle.truffle.wasm.binary.Instructions.I32_ADD;
 import static com.oracle.truffle.wasm.binary.Instructions.I32_AND;
 import static com.oracle.truffle.wasm.binary.Instructions.I32_CLZ;
@@ -81,6 +108,7 @@ import static com.oracle.truffle.wasm.binary.Instructions.I32_SHL;
 import static com.oracle.truffle.wasm.binary.Instructions.I32_SHR_S;
 import static com.oracle.truffle.wasm.binary.Instructions.I32_SHR_U;
 import static com.oracle.truffle.wasm.binary.Instructions.I32_SUB;
+import static com.oracle.truffle.wasm.binary.Instructions.I32_WRAP_I64;
 import static com.oracle.truffle.wasm.binary.Instructions.I32_XOR;
 import static com.oracle.truffle.wasm.binary.Instructions.I64_ADD;
 import static com.oracle.truffle.wasm.binary.Instructions.I64_AND;
@@ -974,6 +1002,55 @@ public class WasmBlockNode extends WasmNode {
                     stackPointer++;
                     break;
                 }
+                case F32_ABS: {
+                    stackPointer--;
+                    float x = popAsFloat(frame, stackPointer);
+                    pushFloat(frame, stackPointer, Math.abs(x));
+                    stackPointer++;
+                    break;
+                }
+                case F32_NEG: {
+                    stackPointer--;
+                    float x = popAsFloat(frame, stackPointer);
+                    pushFloat(frame, stackPointer, -x);
+                    stackPointer++;
+                    break;
+                }
+                case F32_CEIL: {
+                    stackPointer--;
+                    float x = popAsFloat(frame, stackPointer);
+                    pushFloat(frame, stackPointer, (float) Math.ceil(x));
+                    stackPointer++;
+                    break;
+                }
+                case F32_FLOOR: {
+                    stackPointer--;
+                    float x = popAsFloat(frame, stackPointer);
+                    pushFloat(frame, stackPointer, (float) Math.floor(x));
+                    stackPointer++;
+                    break;
+                }
+                case F32_TRUNC: {
+                    stackPointer--;
+                    float x = popAsFloat(frame, stackPointer);
+                    pushFloat(frame, stackPointer, (int) x);
+                    stackPointer++;
+                    break;
+                }
+                case F32_NEAREST: {
+                    stackPointer--;
+                    float x = popAsFloat(frame, stackPointer);
+                    pushFloat(frame, stackPointer, Math.round(x));
+                    stackPointer++;
+                    break;
+                }
+                case F32_SQRT: {
+                    stackPointer--;
+                    float x = popAsFloat(frame, stackPointer);
+                    pushFloat(frame, stackPointer, (float) Math.sqrt(x));
+                    stackPointer++;
+                    break;
+                }
                 case F32_ADD: {
                     stackPointer--;
                     float x = popAsFloat(frame, stackPointer);
@@ -983,10 +1060,176 @@ public class WasmBlockNode extends WasmNode {
                     stackPointer++;
                     break;
                 }
+                case F32_SUB: {
+                    stackPointer--;
+                    float x = popAsFloat(frame, stackPointer);
+                    stackPointer--;
+                    float y = popAsFloat(frame, stackPointer);
+                    pushFloat(frame, stackPointer, y - x);
+                    stackPointer++;
+                    break;
+                }
+                case F32_MUL: {
+                    stackPointer--;
+                    float x = popAsFloat(frame, stackPointer);
+                    stackPointer--;
+                    float y = popAsFloat(frame, stackPointer);
+                    pushFloat(frame, stackPointer, y * x);
+                    stackPointer++;
+                    break;
+                }
+                case F32_DIV: {
+                    stackPointer--;
+                    float x = popAsFloat(frame, stackPointer);
+                    stackPointer--;
+                    float y = popAsFloat(frame, stackPointer);
+                    pushFloat(frame, stackPointer, y / x);
+                    stackPointer++;
+                    break;
+                }
+                case F32_MIN: {
+                    stackPointer--;
+                    float x = popAsFloat(frame, stackPointer);
+                    stackPointer--;
+                    float y = popAsFloat(frame, stackPointer);
+                    pushFloat(frame, stackPointer, Math.min(y, x));
+                    stackPointer++;
+                    break;
+                }
+                case F32_MAX: {
+                    stackPointer--;
+                    float x = popAsFloat(frame, stackPointer);
+                    stackPointer--;
+                    float y = popAsFloat(frame, stackPointer);
+                    pushFloat(frame, stackPointer, Math.max(y, x));
+                    stackPointer++;
+                    break;
+                }
+                case F32_COPYSIGN: {
+                    stackPointer--;
+                    float x = popAsFloat(frame, stackPointer);
+                    stackPointer--;
+                    float y = popAsFloat(frame, stackPointer);
+                    pushFloat(frame, stackPointer, Math.copySign(y, x));
+                    stackPointer++;
+                    break;
+                }
                 case F64_CONST: {
                     long value = BinaryStreamReader.peekFloatAsInt64(codeEntry().data(), offset);
                     offset += 8;
                     push(frame, stackPointer, value);
+                    stackPointer++;
+                    break;
+                }
+                case F64_ABS: {
+                    stackPointer--;
+                    double x = popAsDouble(frame, stackPointer);
+                    pushDouble(frame, stackPointer, Math.abs(x));
+                    stackPointer++;
+                    break;
+                }
+                case F64_NEG: {
+                    stackPointer--;
+                    double x = popAsDouble(frame, stackPointer);
+                    pushDouble(frame, stackPointer, -x);
+                    stackPointer++;
+                    break;
+                }
+                case F64_CEIL: {
+                    stackPointer--;
+                    double x = popAsDouble(frame, stackPointer);
+                    pushDouble(frame, stackPointer, Math.ceil(x));
+                    stackPointer++;
+                    break;
+                }
+                case F64_FLOOR: {
+                    stackPointer--;
+                    double x = popAsDouble(frame, stackPointer);
+                    pushDouble(frame, stackPointer, Math.floor(x));
+                    stackPointer++;
+                    break;
+                }
+                case F64_TRUNC: {
+                    stackPointer--;
+                    double x = popAsDouble(frame, stackPointer);
+                    pushDouble(frame, stackPointer, (long) x);
+                    stackPointer++;
+                    break;
+                }
+                case F64_NEAREST: {
+                    stackPointer--;
+                    double x = popAsDouble(frame, stackPointer);
+                    pushDouble(frame, stackPointer, Math.round(x));
+                    stackPointer++;
+                    break;
+                }
+                case F64_SQRT: {
+                    stackPointer--;
+                    double x = popAsDouble(frame, stackPointer);
+                    pushDouble(frame, stackPointer, Math.sqrt(x));
+                    stackPointer++;
+                    break;
+                }
+                case F64_ADD: {
+                    stackPointer--;
+                    double x = popAsDouble(frame, stackPointer);
+                    stackPointer--;
+                    double y = popAsDouble(frame, stackPointer);
+                    pushDouble(frame, stackPointer, y + x);
+                    stackPointer++;
+                    break;
+                }
+                case F64_SUB: {
+                    stackPointer--;
+                    double x = popAsDouble(frame, stackPointer);
+                    stackPointer--;
+                    double y = popAsDouble(frame, stackPointer);
+                    pushDouble(frame, stackPointer, y - x);
+                    stackPointer++;
+                    break;
+                }
+                case F64_MUL: {
+                    stackPointer--;
+                    double x = popAsDouble(frame, stackPointer);
+                    stackPointer--;
+                    double y = popAsDouble(frame, stackPointer);
+                    pushDouble(frame, stackPointer, y * x);
+                    stackPointer++;
+                    break;
+                }
+                case F64_DIV: {
+                    stackPointer--;
+                    double x = popAsDouble(frame, stackPointer);
+                    stackPointer--;
+                    double y = popAsDouble(frame, stackPointer);
+                    pushDouble(frame, stackPointer, y / x);
+                    stackPointer++;
+                    break;
+                }
+                case F64_MIN: {
+                    stackPointer--;
+                    double x = popAsDouble(frame, stackPointer);
+                    stackPointer--;
+                    double y = popAsDouble(frame, stackPointer);
+                    pushDouble(frame, stackPointer, Math.min(y, x));
+                    stackPointer++;
+                    break;
+                }
+                case F64_MAX: {
+                    stackPointer--;
+                    double x = popAsDouble(frame, stackPointer);
+                    stackPointer--;
+                    double y = popAsDouble(frame, stackPointer);
+                    pushDouble(frame, stackPointer, Math.max(y, x));
+                    stackPointer++;
+                    break;
+                }
+                case F64_COPYSIGN: {
+                    stackPointer--;
+                    double x = popAsDouble(frame, stackPointer);
+                    stackPointer--;
+                    double y = popAsDouble(frame, stackPointer);
+                    pushDouble(frame, stackPointer, Math.copySign(y, x));
                     stackPointer++;
                     break;
                 }
