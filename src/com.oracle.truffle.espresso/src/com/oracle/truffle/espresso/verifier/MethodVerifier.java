@@ -247,6 +247,7 @@ import static com.oracle.truffle.espresso.classfile.Constants.SAME_LOCALS_1_STAC
 
 import java.util.Arrays;
 
+import com.oracle.truffle.espresso.EspressoLanguage;
 import com.oracle.truffle.espresso.bytecode.BytecodeLookupSwitch;
 import com.oracle.truffle.espresso.bytecode.BytecodeStream;
 import com.oracle.truffle.espresso.bytecode.BytecodeTableSwitch;
@@ -357,7 +358,7 @@ public final class MethodVerifier implements ContextAccess {
         @Override
         Klass getKlass() {
             if (klass == null) {
-                klass = thisKlass.getMeta().loadKlass(type, StaticObject.NULL);
+                klass = EspressoLanguage.getCurrentContext().getMeta().loadKlass(type, StaticObject.NULL);
                 if (klass == null) {
                     throw new NoClassDefFoundError(type.toString());
                 }
@@ -1253,7 +1254,9 @@ public final class MethodVerifier implements ContextAccess {
                         stackFrames[BCI] = spawnStackFrame(stack, locals);
                     }
                     stack.push(new ReturnAddressOperand(BCI));
+                    // Push bit vector
                     locals.subRoutineModifications = new SubroutineModificationStack(locals.subRoutineModifications, new boolean[maxLocals], BCI);
+
                     branch(code.readBranchDest(BCI), stack, locals);
                     BCIstates[BCI] = DONE;
                     return BCI;
@@ -1262,16 +1265,29 @@ public final class MethodVerifier implements ContextAccess {
                     if (majorVersion >= 51) {
                         throw new VerifyError("JSR/RET bytecode in version >= 51");
                     }
+                    int pos = 0;
                     ReturnAddressOperand ra = locals.loadReturnAddress(code.readLocalIndex(BCI));
-                    for (Integer target : ra.targetBCIs) {
+                    ReturnAddressOperand prev = null;
+                    while (pos < ra.targetBCIs.size()) {
+                        prev = ra;
+                        int target = ra.targetBCIs.get(pos++);
                         if ((BCIstates[target] & RETURNED_TO) == RETURNED_TO) {
                             if ((BCIstates[target] >>> 16) != BCI) {
                                 throw new VerifyError("Multiple returns to single jsr ");
                             }
                         }
                         BCIstates[target] = RETURNED_TO | (BCI << 16);
-                        Locals toMerge = getSubroutineReturnLocals(target, locals);
+                        Locals toMerge;
+                        try {
+                            toMerge = getSubroutineReturnLocals(target, locals);
+                        } catch (Throwable e) {
+                            throw EspressoError.shouldNotReachHere(e.toString());
+                        }
                         branch(code.nextBCI(target), stack, toMerge);
+                        ra = locals.loadReturnAddress(code.readLocalIndex(BCI));
+                        if (ra != prev) {
+                            pos = 0;
+                        }
                     }
                     return BCI;
                 }
@@ -1588,7 +1604,6 @@ public final class MethodVerifier implements ContextAccess {
                     return BCI;
 
                 case CHECKCAST: {
-                    stack.popRef();
                     int CPI = code.readCPI(BCI);
                     PoolConstant pc = pool.at(CPI);
                     if (pc.tag() != CLASS) {
@@ -1600,7 +1615,13 @@ public final class MethodVerifier implements ContextAccess {
                     if (Types.isPrimitive(type)) {
                         throw new VerifyError("Primitive type for CHECKCAST: " + type);
                     }
-                    stack.push(spawnFromType(type));
+                    Operand stacKOp = stack.popRef();
+                    Operand castOp = spawnFromType(type);
+                    if (stacKOp.isUninit() && !castOp.isArrayType()) {
+                        stack.push(new UninitReferenceOperand(type, thisKlass, ((UninitReferenceOperand) stacKOp).newBCI));
+                    } else {
+                        stack.push(castOp);
+                    }
                     break;
                 }
 
@@ -1703,28 +1724,28 @@ public final class MethodVerifier implements ContextAccess {
 
     /**
      * This is the delicate part for dealing with JSR/RET.
-     * 
+     * <p>
      * The main idea is that multiple JSR can lead to a single RET. It is therefore necessary that
      * the state of the subroutine is the merging from all JSR that lead to it. However, the
      * opposite is not true: We do not want to merge the subroutine state directly into the state of
      * the caller. The semantics of JSR say that execution should resume almost as if the subroutine
      * did not happen.
-     * 
+     * <p>
      * In practice, that means that variables that were untouched by the subroutine should be used
      * as-is when returning.
-     * 
+     * <p>
      * Thus, we need to keep track of the variables a subroutine actually modifies, which
      * corresponds to the subRoutineModifications field in the locals. It is similar to a bit array.
      * If bit at index i is set, that means that the corresponding subroutine modified local
      * variable number i.
-     * 
+     * <p>
      * The problem is, what if a subroutine calls another one (In case of multiply nested finally
      * clauses). In order to take that into account, the data structure used is a stack of bit
      * arrays. Starting a subroutine pushes a new clean bit array on the stack. When returning, the
      * bit array is popped (call it b1) to obtain the wanted local variables, and once done, if
      * there is another bit array on the stack (call it b2), merge the two of them (ie: for each
      * raised bit in b1, raise the corresponding one in b2).
-     * 
+     *
      * @param target BCI of the JSR instruction we will merge into
      * @param locals The state of the local variables at the time of the RET instruction
      * @return the local variables that will be merged into the state at target.
@@ -1732,6 +1753,7 @@ public final class MethodVerifier implements ContextAccess {
     private Locals getSubroutineReturnLocals(Integer target, Locals locals) {
         boolean[] subroutineModifs = locals.subRoutineModifications.subRoutineModifications;
         SubroutineModificationStack nested = locals.subRoutineModifications.next;
+
         Locals jsrLocals = stackFrames[target].extractLocals();
         if (subroutineModifs == null) {
             throw new VerifyError("RET outside of a subroutine");
@@ -2067,10 +2089,15 @@ public final class MethodVerifier implements ContextAccess {
                 }
             }
         }
-        if (mergedStack == null || mergedLocals == null) {
+        if (mergedStack == null && mergedLocals == null) {
+            // Merge success
             return stackMap;
         }
-        return new StackFrame(mergedStack, stack.size, stack.top, mergedLocals);
+        // Merge failed
+        if (mergedStack == null) {
+            return new StackFrame(stack, mergedLocals);
+        }
+        return new StackFrame(mergedStack, stack.size, stack.top, mergedLocals == null ? locals.registers : mergedLocals);
     }
 
     private static StackFrame spawnStackFrame(Stack stack, Locals locals) {

@@ -42,7 +42,7 @@ class StackFrame {
         this.lastLocal = last;
     }
 
-    public StackFrame(Operand[] stack, int stackSize, int top, Operand[] locals) {
+    StackFrame(Operand[] stack, int stackSize, int top, Operand[] locals) {
         this.stack = stack;
         this.stackSize = stackSize;
         this.top = top;
@@ -451,12 +451,22 @@ class Locals {
     }
 
     void store(int index, Operand op) {
+        boolean subRoutine = subRoutineModifications != null;
         registers[index] = op;
+        if (subRoutine) {
+            subRoutineModifications.subRoutineModifications[index] = true;
+        }
+        if (index >= 1 && isType2(registers[index - 1])) {
+            registers[index - 1] = Invalid;
+            if (subRoutine) {
+                subRoutineModifications.subRoutineModifications[index - 1] = true;
+            }
+        }
         if (isType2(op)) {
             registers[index + 1] = Invalid;
-        }
-        if (subRoutineModifications != null) {
-            subRoutineModifications.subRoutineModifications[index] = true;
+            if (subRoutine) {
+                subRoutineModifications.subRoutineModifications[index + 1] = true;
+            }
         }
     }
 
@@ -490,5 +500,12 @@ class SubroutineModificationStack {
         this.next = next;
         this.subRoutineModifications = subRoutineModifications;
         this.jsr = bci;
+    }
+
+    static SubroutineModificationStack copy(SubroutineModificationStack tocopy) {
+        if (tocopy == null) {
+            return null;
+        }
+        return new SubroutineModificationStack(tocopy.next, tocopy.subRoutineModifications.clone(), tocopy.jsr);
     }
 }

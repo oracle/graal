@@ -212,7 +212,7 @@ public final class ClassfileStream {
     }
 
     public ClassFormatError classFormatError(String format, Object... args) {
-        throw EspressoLanguage.getCurrentContext().getMeta().throwExWithMessage(ClassFormatError.class, String.format(format, args) + "in classfile " + classfile);
+        throw EspressoLanguage.getCurrentContext().getMeta().throwExWithMessage(ClassFormatError.class, String.format(format, args) + " in classfile " + classfile);
     }
 
     public ClassFormatError ioError(IOException ioException) {

@@ -29,6 +29,8 @@ import com.oracle.truffle.espresso.classfile.MethodRefConstant;
 import com.oracle.truffle.espresso.impl.Klass;
 import com.oracle.truffle.espresso.meta.EspressoError;
 
+import java.util.Arrays;
+
 /**
  * A utility class that makes iterating over bytecodes and reading operands simpler and less error
  * prone. For example, it handles the {@link Bytecodes#WIDE} instruction and wide variants of
@@ -286,5 +288,9 @@ public final class BytecodeStream {
         } catch (Throwable e) {
             System.err.println("Exception arised during bytecode printing, aborting...");
         }
+    }
+
+    public void printRawBytecode() {
+        System.err.println(Arrays.toString(code));
     }
 }

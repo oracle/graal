@@ -514,8 +514,12 @@ public final class ObjectKlass extends Klass {
                 try {
                     MethodVerifier.verify(m);
                 } catch (VerifyError | ClassFormatError | IncompatibleClassChangeError | NoClassDefFoundError e) {
+                    // new BytecodeStream(m.getCodeAttribute().getCode()).printBytecode(this);
                     setErroneous();
                     throw getMeta().throwExWithMessage(e.getClass(), e.getMessage());
+                } catch (Throwable e) {
+                    e.printStackTrace();
+                    throw EspressoError.shouldNotReachHere(e.toString());
                 }
             }
 
