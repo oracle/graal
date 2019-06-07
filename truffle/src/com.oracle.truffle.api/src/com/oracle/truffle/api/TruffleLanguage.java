@@ -2159,8 +2159,10 @@ public abstract class TruffleLanguage<C> {
 
         /**
          * Returns an unmodifiable map of the process environment. When the {@code Context} is
-         * configured with {@link EnvironmentAccess#INHERIT} it returns {@link System#getenv()}, for
-         * {@link EnvironmentAccess#NONE} an empty map is returned.
+         * configured with {@link EnvironmentAccess#INHERIT} it returns the {@link System#getenv()}
+         * and the environment variables configured on the {@code Context}. For the
+         * {@link EnvironmentAccess#NONE} only the environment variables configured on the
+         * {@code Context} are returned.
          *
          * @return the process environment as a map of variable names to values
          * @since 20.0.0 beta 2

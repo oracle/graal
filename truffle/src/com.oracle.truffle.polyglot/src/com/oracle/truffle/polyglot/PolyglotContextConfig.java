@@ -53,7 +53,8 @@ import org.graalvm.polyglot.PolyglotAccess;
 import org.graalvm.polyglot.io.FileSystem;
 
 import com.oracle.truffle.api.CompilerDirectives.CompilationFinal;
-import org.graalvm.polyglot.impl.AbstractPolyglotImpl;
+import java.util.Collections;
+import org.graalvm.polyglot.EnvironmentAccess;
 import org.graalvm.polyglot.io.ProcessHandler;
 
 final class PolyglotContextConfig {
@@ -76,17 +77,20 @@ final class PolyglotContextConfig {
     final Handler logHandler;
     final PolyglotAccess polyglotAccess;
     final ProcessHandler processHandler;
-    final AbstractPolyglotImpl.EnvironmentConfig environmentConfig;
+    final EnvironmentAccess environmentAccess;
+    private final Map<String, String> environment;
+    private volatile Map<String, String> configuredEnvironement;
 
     PolyglotContextConfig(PolyglotEngineImpl engine, OutputStream out, OutputStream err, InputStream in,
                     boolean hostLookupAllowed, PolyglotAccess polyglotAccess, boolean nativeAccessAllowed, boolean createThreadAllowed,
                     boolean hostClassLoadingAllowed, boolean allowExperimentalOptions,
                     Predicate<String> classFilter, Map<String, String[]> applicationArguments,
                     Set<String> allowedPublicLanguages, Map<String, String> options, FileSystem fileSystem, Handler logHandler,
-                    boolean createProcessAllowed, ProcessHandler processHandler, AbstractPolyglotImpl.EnvironmentConfig environmentConfig) {
+                    boolean createProcessAllowed, ProcessHandler processHandler, EnvironmentAccess environmentAccess, Map<String, String> environment) {
         assert out != null;
         assert err != null;
         assert in != null;
+        assert environmentAccess != null;
         this.out = out;
         this.err = err;
         this.in = in;
@@ -119,7 +123,8 @@ final class PolyglotContextConfig {
             languageOptions.put(optionKey, options.get(optionKey), allowExperimentalOptions);
         }
         this.processHandler = processHandler;
-        this.environmentConfig = environmentConfig;
+        this.environmentAccess = environmentAccess;
+        this.environment = environment == null ? Collections.emptyMap() : environment;
     }
 
     boolean isAccessPermitted(PolyglotLanguage from, PolyglotLanguage to) {
@@ -164,6 +169,31 @@ final class PolyglotContextConfig {
             values = lang.getOptionValues();
         }
         return values.copy();
+    }
+
+    Map<String, String> getEnvironment() {
+        Map<String, String> result = configuredEnvironement;
+        if (result == null) {
+            synchronized (this) {
+                result = configuredEnvironement;
+                if (result == null) {
+                    if (environmentAccess == EnvironmentAccess.NONE) {
+                        result = Collections.unmodifiableMap(environment);
+                    } else if (environmentAccess == EnvironmentAccess.INHERIT) {
+                        result = System.getenv();  // System.getenv returns unmodifiable map.
+                        if (!environment.isEmpty()) {
+                            result = new HashMap<>(result);
+                            result.putAll(environment);
+                            result = Collections.unmodifiableMap(result);
+                        }
+                    } else {
+                        throw new IllegalStateException(String.format("Unsupported EnvironmentAccess: %s", environmentAccess));
+                    }
+                    configuredEnvironement = result;
+                }
+            }
+        }
+        return result;
     }
 
     private static PolyglotLanguage findLanguageForOption(PolyglotEngineImpl engine, final String optionKey, String group) {

@@ -163,35 +163,65 @@ public class ProcessBuilderTest extends AbstractPolyglotTest {
     @Test
     public void testEnvironment() throws Exception {
         Assert.assertEquals(Collections.emptyMap(), envFromContext(EnvironmentAccess.NONE));
+        Map<String, String> expected = pairsAsMap("k1", "v1", "k2", "v2");
+        Assert.assertEquals(expected, envFromContext(EnvironmentAccess.NONE, "k1", "v1", "k2", "v2"));
         Assert.assertEquals(System.getenv(), envFromContext(EnvironmentAccess.INHERIT));
-        Map<String, String> expected = pairsAsMap("k3", "v3", "k4", "v4");
+        expected = new HashMap<>(System.getenv());
+        expected.putAll(pairsAsMap("k1", "v1", "k2", "v2"));
+        Assert.assertEquals(expected, envFromContext(EnvironmentAccess.INHERIT, "k1", "v1", "k2", "v2"));
+
+        expected = pairsAsMap("k3", "v3", "k4", "v4");
         Assert.assertEquals(expected, envExtendedByProcessBuilder(EnvironmentAccess.NONE));
+        expected = pairsAsMap("k1", "v1", "k2", "v2", "k3", "v3", "k4", "v4");
+        Assert.assertEquals(expected, envExtendedByProcessBuilder(EnvironmentAccess.NONE, "k1", "v1", "k2", "v2"));
         expected = new HashMap<>(System.getenv());
         expected.putAll(pairsAsMap("k3", "v3", "k4", "v4"));
         Assert.assertEquals(expected, envExtendedByProcessBuilder(EnvironmentAccess.INHERIT));
+        expected = new HashMap<>(System.getenv());
+        expected.putAll(pairsAsMap("k1", "v1", "k2", "v2", "k3", "v3", "k4", "v4"));
+        Assert.assertEquals(expected, envExtendedByProcessBuilder(EnvironmentAccess.INHERIT, "k1", "v1", "k2", "v2"));
+
         String newValue = "override";
-        Assert.assertEquals(Collections.emptyMap(), envOverridenByProcessBuilder(EnvironmentAccess.NONE, newValue));
+        Assert.assertEquals(Collections.emptyMap(), envOverridenByProcessBuilder(EnvironmentAccess.NONE, null, newValue));
+        expected = pairsAsMap("k1", "v1", "k2", newValue);
+        Assert.assertEquals(expected, envOverridenByProcessBuilder(EnvironmentAccess.NONE, "k2", newValue, "k1", "v1", "k2", "v2"));
         expected = new HashMap<>();
         for (Map.Entry<String, String> e : System.getenv().entrySet()) {
             expected.put(e.getKey(), newValue);
         }
-        Assert.assertEquals(expected, envOverridenByProcessBuilder(EnvironmentAccess.INHERIT, newValue));
+        Assert.assertEquals(expected, envOverridenByProcessBuilder(EnvironmentAccess.INHERIT, null, newValue));
         expected = pairsAsMap("k3", "v3", "k4", "v4");
         Assert.assertEquals(expected, envCleanedByProcessBuilder(EnvironmentAccess.NONE));
+        Assert.assertEquals(expected, envCleanedByProcessBuilder(EnvironmentAccess.NONE, "k1", "v1", "k2", "v2"));
         Assert.assertEquals(expected, envCleanedByProcessBuilder(EnvironmentAccess.INHERIT));
+        Assert.assertEquals(expected, envCleanedByProcessBuilder(EnvironmentAccess.INHERIT, "k1", "v1", "k2", "v2"));
     }
 
-    private Map<String, String> envFromContext(EnvironmentAccess envAccess) throws IOException {
+    private Map<String, String> envFromContext(EnvironmentAccess envAccess, String... envKeyValuePairs) throws IOException {
+        if ((envKeyValuePairs.length & 1) == 1) {
+            throw new IllegalArgumentException("The envKeyValuePairs length must be even");
+        }
         MockProcessHandler testHandler = new MockProcessHandler();
-        setupEnv(Context.newBuilder().allowCreateProcess(true).processHandler(testHandler).allowEnvironmentAccess(envAccess).build());
+        Context.Builder builder = Context.newBuilder().allowCreateProcess(true).processHandler(testHandler).allowEnvironmentAccess(envAccess);
+        for (int i = 0; i < envKeyValuePairs.length; i += 2) {
+            builder.environment(envKeyValuePairs[i], envKeyValuePairs[i + 1]);
+        }
+        setupEnv(builder.build());
         languageEnv.newProcessBuilder("process").start();
         ProcessHandler.ProcessCommand command = testHandler.getAndCleanLastCommand();
         return command.getEnvironment();
     }
 
-    private Map<String, String> envExtendedByProcessBuilder(EnvironmentAccess envAccess) throws IOException {
+    private Map<String, String> envExtendedByProcessBuilder(EnvironmentAccess envAccess, String... envKeyValuePairs) throws IOException {
+        if ((envKeyValuePairs.length & 1) == 1) {
+            throw new IllegalArgumentException("The envKeyValuePairs length must be even");
+        }
         MockProcessHandler testHandler = new MockProcessHandler();
-        setupEnv(Context.newBuilder().allowCreateProcess(true).processHandler(testHandler).allowEnvironmentAccess(envAccess).build());
+        Context.Builder contextBuilder = Context.newBuilder().allowCreateProcess(true).processHandler(testHandler).allowEnvironmentAccess(envAccess);
+        for (int i = 0; i < envKeyValuePairs.length; i += 2) {
+            contextBuilder.environment(envKeyValuePairs[i], envKeyValuePairs[i + 1]);
+        }
+        setupEnv(contextBuilder.build());
         TruffleProcessBuilder builder = languageEnv.newProcessBuilder("process");
         builder.environment(pairsAsMap("k3", "v3", "k4", "v4"));
         builder.start();
@@ -199,23 +229,41 @@ public class ProcessBuilderTest extends AbstractPolyglotTest {
         return command.getEnvironment();
     }
 
-    private Map<String, String> envOverridenByProcessBuilder(EnvironmentAccess envAccess, String value) throws IOException {
-        MockProcessHandler testHandler = new MockProcessHandler();
-        setupEnv(Context.newBuilder().allowCreateProcess(true).processHandler(testHandler).allowEnvironmentAccess(envAccess).build());
-        TruffleProcessBuilder builder = languageEnv.newProcessBuilder("process");
-        Map<String, String> newEnv = new HashMap<>();
-        for (String key : languageEnv.getEnvironment().keySet()) {
-            newEnv.put(key, value);
+    private Map<String, String> envOverridenByProcessBuilder(EnvironmentAccess envAccess, String toOverride, String value, String... envKeyValuePairs) throws IOException {
+        if ((envKeyValuePairs.length & 1) == 1) {
+            throw new IllegalArgumentException("The envKeyValuePairs length must be even");
         }
-        builder.environment(newEnv);
+        MockProcessHandler testHandler = new MockProcessHandler();
+        Context.Builder contextBuilder = Context.newBuilder().allowCreateProcess(true).processHandler(testHandler).allowEnvironmentAccess(envAccess);
+        for (int i = 0; i < envKeyValuePairs.length; i += 2) {
+            contextBuilder.environment(envKeyValuePairs[i], envKeyValuePairs[i + 1]);
+        }
+        setupEnv(contextBuilder.build());
+        TruffleProcessBuilder builder = languageEnv.newProcessBuilder("process");
+        if (toOverride != null) {
+            builder.environment(toOverride, value);
+        } else {
+            Map<String, String> newEnv = new HashMap<>();
+            for (String key : languageEnv.getEnvironment().keySet()) {
+                newEnv.put(key, value);
+            }
+            builder.environment(newEnv);
+        }
         builder.start();
         ProcessHandler.ProcessCommand command = testHandler.getAndCleanLastCommand();
         return command.getEnvironment();
     }
 
-    private Map<String, String> envCleanedByProcessBuilder(EnvironmentAccess envAccess) throws IOException {
+    private Map<String, String> envCleanedByProcessBuilder(EnvironmentAccess envAccess, String... envKeyValuePairs) throws IOException {
+        if ((envKeyValuePairs.length & 1) == 1) {
+            throw new IllegalArgumentException("The envKeyValuePairs length must be even");
+        }
         MockProcessHandler testHandler = new MockProcessHandler();
-        setupEnv(Context.newBuilder().allowCreateProcess(true).processHandler(testHandler).allowEnvironmentAccess(envAccess).build());
+        Context.Builder contextBuilder = Context.newBuilder().allowCreateProcess(true).processHandler(testHandler).allowEnvironmentAccess(envAccess);
+        for (int i = 0; i < envKeyValuePairs.length; i += 2) {
+            contextBuilder.environment(envKeyValuePairs[i], envKeyValuePairs[i + 1]);
+        }
+        setupEnv(contextBuilder.build());
         TruffleProcessBuilder builder = languageEnv.newProcessBuilder("process");
         builder.clearEnvironment(true);
         builder.environment(pairsAsMap("k3", "v3", "k4", "v4"));

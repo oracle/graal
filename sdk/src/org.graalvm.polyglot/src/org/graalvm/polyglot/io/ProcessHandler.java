@@ -42,6 +42,7 @@ package org.graalvm.polyglot.io;
 
 import java.io.IOException;
 import java.lang.reflect.Method;
+import java.nio.file.Paths;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.HashMap;
@@ -72,9 +73,10 @@ public interface ProcessHandler {
      * contains the environment variables set by guest language and possibly also the JVM process
      * environment depending on value of
      * {@link Builder#allowEnvironmentAccess(org.graalvm.polyglot.EnvironmentAccess)}.
-     * 
+     * <p>
+     * Implementation example: {@link ProcessHandlerSnippets#example}
+     *
      * @param command the subprocess attributes
-     * @return the new subprocess
      * @throws SecurityException if the process creation was forbidden by this handler
      * @throws IOException if the process fails to execute
      * @since 20.0.0 beta 2
@@ -143,7 +145,6 @@ public interface ProcessHandler {
         /**
          * Return whether the standard error output should be merged into standard output.
          *
-         * @return if {@code true} the standard error output is merged into standard output
          * @since 20.0.0 beta 2
          */
         public boolean isRedirectErrorStream() {
@@ -205,14 +206,15 @@ public interface ProcessHandler {
     final class Redirect {
 
         /**
-         * The current Java process creates a pipe to communicate with a subprocess.
+         * Indicates that subprocess I/O will be connected to the current Java process using a pipe.
          *
          * @since 20.0.0 beta 2
          */
         public static final Redirect PIPE = new Redirect(Type.PIPE);
 
         /**
-         * The subprocess inherits input or output from the current Java process.
+         * Indicates that subprocess I/O source or destination will be the same as those of the
+         * current process.
          *
          * @since 20.0.0 beta 2
          */
@@ -264,6 +266,40 @@ public interface ProcessHandler {
         private enum Type {
             PIPE,
             INHERIT
+        }
+    }
+}
+
+final class ProcessHandlerSnippets implements ProcessHandler {
+
+    @Override
+    // @formatter:off
+    // BEGIN: ProcessHandlerSnippets#example
+    public Process start(ProcessCommand command) throws IOException {
+        ProcessBuilder builder = new ProcessBuilder(command.getCommand())
+            .redirectErrorStream(command.isRedirectErrorStream())
+            .redirectInput(asProcessBuilderRedirect(command.getInputRedirect()))
+            .redirectOutput(asProcessBuilderRedirect(command.getOutputRedirect()))
+            .redirectError(asProcessBuilderRedirect(command.getErrorRedirect()));
+        Map<String, String> env = builder.environment();
+        env.clear();
+        env.putAll(command.getEnvironment());
+        String cwd = command.getDirectory();
+        if (cwd != null) {
+            builder.directory(Paths.get(cwd).toFile());
+        }
+        return builder.start();
+    }
+    // END: ProcessHandlerSnippets#example
+    // @formatter:on
+
+    private static java.lang.ProcessBuilder.Redirect asProcessBuilderRedirect(ProcessHandler.Redirect redirect) {
+        if (redirect == ProcessHandler.Redirect.PIPE) {
+            return java.lang.ProcessBuilder.Redirect.PIPE;
+        } else if (redirect == ProcessHandler.Redirect.INHERIT) {
+            return java.lang.ProcessBuilder.Redirect.INHERIT;
+        } else {
+            throw new IllegalStateException("Unsupported redirect: " + redirect);
         }
     }
 }

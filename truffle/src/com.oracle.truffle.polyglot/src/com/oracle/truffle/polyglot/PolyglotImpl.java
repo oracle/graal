@@ -1215,7 +1215,7 @@ public final class PolyglotImpl extends AbstractPolyglotImpl {
 
         @Override
         public Map<String, String> getProcessEnvironment(Object polyglotLanguageContext) {
-            return ((PolyglotLanguageContext) polyglotLanguageContext).context.config.environmentConfig.getEnvironment();
+            return ((PolyglotLanguageContext) polyglotLanguageContext).context.config.getEnvironment();
         }
 
         @Override

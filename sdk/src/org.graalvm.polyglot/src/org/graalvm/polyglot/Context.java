@@ -50,7 +50,6 @@ import java.util.Objects;
 import java.util.function.Predicate;
 import java.util.logging.Handler;
 import java.util.logging.Level;
-import org.graalvm.polyglot.impl.AbstractPolyglotImpl;
 
 import org.graalvm.polyglot.impl.AbstractPolyglotImpl.AbstractContextImpl;
 import org.graalvm.polyglot.io.FileSystem;
@@ -765,6 +764,7 @@ public final class Context implements AutoCloseable {
         private Boolean allowCreateProcess;
         private ProcessHandler processHandler;
         private EnvironmentAccess environmentAcceess;
+        private Map<String, String> environment;
 
         Builder(String... onlyLanguages) {
             Objects.requireNonNull(onlyLanguages);
@@ -909,6 +909,9 @@ public final class Context implements AutoCloseable {
          * bindings}.
          * <li>Unrestricted {@link #allowIO(boolean) IO operations} on host system.
          * <li>Passing {@link #allowExperimentalOptions(boolean) experimental options}.
+         * <li>The {@link #allowCreateProcess(boolean) creation} and use of new sub-processes.
+         * <li>The {@link #allowEnvironmentAccess(org.graalvm.polyglot.EnvironmentAccess) access} to
+         * process environment variables.
          * </ul>
          *
          * @param enabled <code>true</code> for all access by default.
@@ -1238,7 +1241,6 @@ public final class Context implements AutoCloseable {
          * <code>true</code>, then process creation is enabled if not denied explicitly.
          *
          * @param enabled {@code true} to enable external process creation
-         * @return the {@link Builder}
          * @since 20.0.0 beta 2
          */
         public Builder allowCreateProcess(boolean enabled) {
@@ -1250,7 +1252,6 @@ public final class Context implements AutoCloseable {
          * Installs a {@link ProcessHandler} responsible for external process creation.
          *
          * @param handler the handler to be installed
-         * @return the {@link Builder}
          * @since 20.0.0 beta 2
          */
         public Builder processHandler(ProcessHandler handler) {
@@ -1266,12 +1267,44 @@ public final class Context implements AutoCloseable {
          * access policy must not be {@code null}.
          *
          * @param accessPolicy the {@link EnvironmentAccess environment access policy}
-         * @return the {@link Builder}
          * @since 20.0.0 beta 2
          */
         public Builder allowEnvironmentAccess(EnvironmentAccess accessPolicy) {
             Objects.requireNonNull(accessPolicy, "AccessPolicy must be non null.");
             this.environmentAcceess = accessPolicy;
+            return this;
+        }
+
+        /**
+         * Sets an environment variable.
+         *
+         * @param name the environment variable name
+         * @param value the environment variable value
+         * @since 20.0.0 beta 2
+         */
+        public Builder environment(String name, String value) {
+            Objects.requireNonNull(name, "Name must be non null.");
+            Objects.requireNonNull(value, "Value must be non null.");
+            if (this.environment == null) {
+                this.environment = new HashMap<>();
+            }
+            this.environment.put(name, value);
+            return this;
+        }
+
+        /**
+         * Shortcut for setting multiple {@link #environment(String, String) environment variables}
+         * using a map. All values of the provided map must be non-null.
+         *
+         * @param env environment variables
+         * @see #environment(String, String) To set a single environment variable.
+         * @since 20.0.0 beta 2
+         */
+        public Builder environment(Map<String, String> env) {
+            Objects.requireNonNull(env, "Env must be non null.");
+            for (Map.Entry<String, String> e : env.entrySet()) {
+                environment(e.getKey(), e.getValue());
+            }
             return this;
         }
 
@@ -1328,7 +1361,6 @@ public final class Context implements AutoCloseable {
             if (environmentAcceess == null) {
                 environmentAcceess = this.allowAllAccess ? EnvironmentAccess.INHERIT : EnvironmentAccess.NONE;
             }
-            AbstractPolyglotImpl.EnvironmentConfig envConfig = new AbstractPolyglotImpl.EnvironmentConfig(environmentAcceess);
             if (!io && customFileSystem != null) {
                 throw new IllegalStateException("Cannot install custom FileSystem when IO is disabled.");
             }
@@ -1358,7 +1390,7 @@ public final class Context implements AutoCloseable {
                 return engine.impl.createContext(null, null, null, hostClassLookupEnabled, hostAccess, polyglotAccess, nativeAccess, createThread,
                                 io, hostClassLoading, experimentalOptions,
                                 localHostLookupFilter, Collections.emptyMap(), arguments == null ? Collections.emptyMap() : arguments,
-                                onlyLanguages, customFileSystem, customLogHandler, createProcess, processHandler, envConfig);
+                                onlyLanguages, customFileSystem, customLogHandler, createProcess, processHandler, environmentAcceess, environment);
             } else {
                 if (messageTransport != null) {
                     throw new IllegalStateException("Cannot use MessageTransport in a context that shares an Engine.");
@@ -1366,7 +1398,7 @@ public final class Context implements AutoCloseable {
                 return engine.impl.createContext(out, err, in, hostClassLookupEnabled, hostAccess, polyglotAccess, nativeAccess, createThread,
                                 io, hostClassLoading, experimentalOptions,
                                 localHostLookupFilter, options == null ? Collections.emptyMap() : options, arguments == null ? Collections.emptyMap() : arguments,
-                                onlyLanguages, customFileSystem, customLogHandler, createProcess, processHandler, envConfig);
+                                onlyLanguages, customFileSystem, customLogHandler, createProcess, processHandler, environmentAcceess, environment);
             }
         }
 

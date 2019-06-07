@@ -40,6 +40,7 @@
  */
 package com.oracle.truffle.api.test.polyglot;
 
+import java.util.HashMap;
 import java.util.Map;
 import org.graalvm.polyglot.Context;
 import org.graalvm.polyglot.EnvironmentAccess;
@@ -59,6 +60,15 @@ public class ProcessEnvironmentTest extends AbstractPolyglotTest {
         } catch (UnsupportedOperationException e) {
             // expected
         }
+        setupEnv(Context.newBuilder().allowEnvironmentAccess(EnvironmentAccess.NONE).environment("k1", "v1").environment("k2", "v2").build());
+        env = languageEnv.getEnvironment();
+        Map<String, String> expected = new HashMap<>();
+        expected.put("k1", "v1");
+        expected.put("k2", "v2");
+        Assert.assertEquals(expected, env);
+        setupEnv(Context.newBuilder().allowEnvironmentAccess(EnvironmentAccess.NONE).environment(expected).build());
+        env = languageEnv.getEnvironment();
+        Assert.assertEquals(expected, env);
     }
 
     @Test
@@ -73,5 +83,16 @@ public class ProcessEnvironmentTest extends AbstractPolyglotTest {
         } catch (UnsupportedOperationException e) {
             // expected
         }
+        setupEnv(Context.newBuilder().allowEnvironmentAccess(EnvironmentAccess.INHERIT).environment("k1", "v1").environment("k2", "v2").build());
+        env = languageEnv.getEnvironment();
+        Map<String, String> contextEnv = new HashMap<>();
+        contextEnv.put("k1", "v1");
+        contextEnv.put("k2", "v2");
+        expected = new HashMap<>(System.getenv());
+        expected.putAll(contextEnv);
+        Assert.assertEquals(expected, env);
+        setupEnv(Context.newBuilder().allowEnvironmentAccess(EnvironmentAccess.INHERIT).environment(contextEnv).build());
+        env = languageEnv.getEnvironment();
+        Assert.assertEquals(expected, env);
     }
 }

@@ -65,7 +65,7 @@ import org.graalvm.polyglot.io.ProcessHandler.Redirect;
  *
  * @since 20.0.0 beta 2
  */
-public class TruffleProcessBuilder {
+public final class TruffleProcessBuilder {
 
     private final Object polyglotLanguageContext;
     private final FileSystem fileSystem;
