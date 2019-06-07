@@ -75,6 +75,8 @@ public abstract class NativeBootImageViaCC extends NativeBootImage {
         BinutilsCCLinkerInvocation() {
             additionalPreOptions.add("-z");
             additionalPreOptions.add("noexecstack");
+            /* Perform garbage collection of unused input sections. */
+            additionalPreOptions.add("-Wl,--gc-sections");
         }
 
         @Override
