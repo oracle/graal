@@ -68,7 +68,7 @@ public interface ClassInitializationSupport extends RuntimeClassInitializationSu
      * Initializes the class during image building, and reports an error if the user requested to
      * delay initialization to runtime.
      */
-    void forceInitializeHosted(Class<?> clazz, String reason);
+    void forceInitializeHosted(Class<?> clazz, String reason, boolean allowInitializationErrors);
 
     /**
      * Check that all registered classes are here, regardless if the AnalysisType got actually

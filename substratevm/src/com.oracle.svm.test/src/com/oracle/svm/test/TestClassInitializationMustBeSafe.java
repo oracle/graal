@@ -158,10 +158,32 @@ class PureSubclassInheritsDelayedDefaultInterfaceMustBeDelayed implements Interf
     static int v = 1;
 }
 
+class ImplicitExceptionInInitializerMustBeDelayed {
+
+    static int a = 10;
+    static int b = 0;
+    static int res;
+
+    static {
+        res = a / b;
+    }
+}
+
+class PureDependsOnImplicitExceptionMustBeDelayed {
+
+    static int a;
+
+    static {
+        a = ImplicitExceptionInInitializerMustBeDelayed.res;
+    }
+}
+
 /**
  * Suffixes MustBeSafe and MustBeDelayed are parsed by an external script in the tests after the
  * image is built. Every class that ends with `MustBeSafe` should be eagerly initialized and every
  * class that ends with `MustBeDelayed` should be initialized at runtime.
+ *
+ * NOTE: using assert in a method will make a class initialized at runtime.
  */
 public class TestClassInitializationMustBeSafe {
     static int pure() {
@@ -191,6 +213,20 @@ public class TestClassInitializationMustBeSafe {
             System.out.println(ThrowsAnExceptionMustBeDelayed.v);
         } catch (Throwable t) {
             System.out.println(CreatesAnExceptionMustBeDelayed.e.getMessage());
+        }
+        try {
+            System.out.println(ImplicitExceptionInInitializerMustBeDelayed.res);
+            throw new RuntimeException("should not reach here");
+        } catch (ExceptionInInitializerError ae) {
+            if (!(ae.getCause() instanceof ArithmeticException)) {
+                throw new RuntimeException("should not reach here");
+            }
+        }
+        try {
+            System.out.println(PureDependsOnImplicitExceptionMustBeDelayed.a);
+            throw new RuntimeException("should not reach here");
+        } catch (NoClassDefFoundError ae) {
+            /* This is OK */
         }
     }
 }
