@@ -129,11 +129,12 @@ public class ConfigurableClassInitialization implements ClassInitializationSuppo
             UNSAFE.ensureClassInitialized(clazz);
             return InitKind.BUILD_TIME;
         } catch (NoClassDefFoundError ex) {
-            if (NativeImageOptions.AllowIncompleteClasspath.getValue()) {
+            if (NativeImageOptions.AllowIncompleteClasspath.getValue() || NativeImageOptions.ReportUnsupportedElementsAtRuntime.getValue()) {
                 if (!allowErrors) {
                     System.out.println("Warning: class initialization of class " + clazz.getTypeName() + " failed with exception " +
                                     ex.getClass().getTypeName() + (ex.getMessage() == null ? "" : ": " + ex.getMessage()) + ". This class will be initialized at run time because option " +
-                                    SubstrateOptionsParser.commandArgument(NativeImageOptions.AllowIncompleteClasspath, "+") + " is used for image building. " +
+                                    SubstrateOptionsParser.commandArgument(NativeImageOptions.AllowIncompleteClasspath, "+") + " or " +
+                                    SubstrateOptionsParser.commandArgument(NativeImageOptions.ReportUnsupportedElementsAtRuntime, "+") + "is used for image building. " +
                                     instructionsToInitializeAtRuntime(clazz));
                 }
                 return InitKind.RUN_TIME;
