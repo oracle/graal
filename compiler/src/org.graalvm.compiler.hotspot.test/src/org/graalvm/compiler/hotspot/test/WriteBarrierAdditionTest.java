@@ -55,8 +55,6 @@ import org.graalvm.compiler.phases.common.inlining.policy.InlineEverythingPolicy
 import org.graalvm.compiler.phases.tiers.HighTierContext;
 import org.graalvm.compiler.phases.tiers.MidTierContext;
 import org.graalvm.compiler.replacements.NodeIntrinsificationProvider;
-import org.graalvm.compiler.word.Word;
-import org.graalvm.word.WordFactory;
 import org.junit.Assert;
 import org.junit.Test;
 
@@ -255,34 +253,6 @@ public class WriteBarrierAdditionTest extends HotSpotGraalCompilerTest {
     @Test
     public void test11() throws Exception {
         test2("testArrayCopy", src, dst, dst.length);
-    }
-
-    public static class WordContainer {
-        public Word word;
-    }
-
-    public static void testWordFieldSnippet() {
-        WordContainer wordContainer = new WordContainer();
-        wordContainer.word = WordFactory.signed(42);
-    }
-
-    @Test
-    public void testWordField() throws Exception {
-        testHelper("testWordFieldSnippet", 0);
-    }
-
-    public static Word[] testWordArraySnippet(int length) {
-        Word fortyTwo = WordFactory.signed(42);
-        Word[] words = new Word[length];
-        for (int i = 0; i < length; i++) {
-            words[i] = fortyTwo;
-        }
-        return words;
-    }
-
-    @Test
-    public void testWordArray() throws Exception {
-        testHelper("testWordArraySnippet", 0);
     }
 
     public static Object testUnsafeLoad(Unsafe theUnsafe, Object a, Object b, Object c) throws Exception {
