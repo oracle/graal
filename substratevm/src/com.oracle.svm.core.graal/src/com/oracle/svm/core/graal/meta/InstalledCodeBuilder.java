@@ -347,13 +347,11 @@ public class InstalledCodeBuilder {
     private void createCodeChunkInfos() {
         CodeInfoEncoder codeInfoEncoder = new CodeInfoEncoder(new FrameInfoEncoder.NamesFromImage());
         codeInfoEncoder.addMethod(method, compilation, 0);
-        codeInfoEncoder.encodeAll();
-        codeInfoEncoder.install(CodeInfoTable.getRuntimeCodeInfoAccessor(), runtimeMethodHandle);
+        codeInfoEncoder.encodeAllAndInstall(CodeInfoTable.getRuntimeCodeInfoAccessor(), runtimeMethodHandle);
         assert CodeInfoEncoder.verifyMethod(compilation, 0, CodeInfoTable.getRuntimeCodeInfoAccessor(), runtimeMethodHandle);
 
         DeoptimizationSourcePositionEncoder sourcePositionEncoder = new DeoptimizationSourcePositionEncoder();
-        sourcePositionEncoder.encode(compilation.getDeoptimizationSourcePositions());
-        sourcePositionEncoder.install(runtimeCodeAccessor, runtimeMethodHandle);
+        sourcePositionEncoder.encodeAndInstall(compilation.getDeoptimizationSourcePositions(), runtimeCodeAccessor, runtimeMethodHandle);
     }
 
     private void patchData(Map<Integer, NativeImagePatcher> patcher, @SuppressWarnings("unused") ObjectConstantsHolder objectConstants) {

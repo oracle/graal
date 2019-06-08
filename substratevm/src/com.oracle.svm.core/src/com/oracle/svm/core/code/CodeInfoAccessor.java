@@ -77,9 +77,10 @@ public interface CodeInfoAccessor {
 
     void lookupCodeInfo(CodeInfoHandle handle, long ip, CodeInfoQueryResult codeInfo);
 
-    void setMetadata(CodeInfoHandle installTarget, NonmovableArray<Byte> codeInfoIndex, NonmovableArray<Byte> codeInfoEncodings, NonmovableArray<Byte> referenceMapEncoding,
-                    NonmovableArray<Byte> frameInfoEncodings, NonmovableObjectArray<Object> frameInfoObjectConstants, NonmovableObjectArray<Class<?>> frameInfoSourceClasses,
-                    NonmovableObjectArray<String> frameInfoSourceMethodNames, NonmovableObjectArray<String> frameInfoNames);
+    void setFrameInfo(CodeInfoHandle installTarget, NonmovableArray<Byte> encodings, NonmovableObjectArray<Object> objectConstants,
+                    NonmovableObjectArray<Class<?>> sourceClasses, NonmovableObjectArray<String> sourceMethodNames, NonmovableObjectArray<String> names);
+
+    void setCodeInfo(CodeInfoHandle installTarget, NonmovableArray<Byte> index, NonmovableArray<Byte> encodings, NonmovableArray<Byte> referenceMapEncoding);
 
     @RestrictHeapAccess(access = RestrictHeapAccess.Access.NO_ALLOCATION, mayBeInlined = true, reason = "Must not allocate when logging.")
     Log log(CodeInfoHandle handle, Log log);

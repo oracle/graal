@@ -191,19 +191,22 @@ public class RuntimeCodeInfoAccessor implements CodeInfoAccessor {
     }
 
     @Override
-    public void setMetadata(CodeInfoHandle handle, NonmovableArray<Byte> codeInfoIndex, NonmovableArray<Byte> codeInfoEncodings, NonmovableArray<Byte> referenceMapEncoding,
-                    NonmovableArray<Byte> frameInfoEncodings, NonmovableObjectArray<Object> frameInfoObjectConstants, NonmovableObjectArray<Class<?>> frameInfoSourceClasses,
-                    NonmovableObjectArray<String> frameInfoSourceMethodNames, NonmovableObjectArray<String> frameInfoNames) {
+    public void setCodeInfo(CodeInfoHandle handle, NonmovableArray<Byte> index, NonmovableArray<Byte> encodings, NonmovableArray<Byte> referenceMapEncoding) {
+        cast(handle).setCodeInfoIndex(index);
+        cast(handle).setCodeInfoEncodings(encodings);
+        cast(handle).setReferenceMapEncoding(referenceMapEncoding);
+    }
 
-        RuntimeMethodInfo info = cast(handle);
-        info.setCodeInfoIndex(codeInfoIndex);
-        info.setCodeInfoEncodings(codeInfoEncodings);
-        info.setReferenceMapEncoding(referenceMapEncoding);
-        info.setFrameInfoEncodings(frameInfoEncodings);
-        info.setFrameInfoObjectConstants(frameInfoObjectConstants);
-        info.setFrameInfoSourceClasses(frameInfoSourceClasses);
-        info.setFrameInfoSourceMethodNames(frameInfoSourceMethodNames);
-        info.setFrameInfoNames(frameInfoNames);
+    @Override
+    @Uninterruptible(reason = "Nonmovable object arrays are not visible to GC until installed.")
+    public void setFrameInfo(CodeInfoHandle handle, NonmovableArray<Byte> encodings, NonmovableObjectArray<Object> objectConstants,
+                    NonmovableObjectArray<Class<?>> sourceClasses, NonmovableObjectArray<String> sourceMethodNames, NonmovableObjectArray<String> names) {
+
+        cast(handle).setFrameInfoEncodings(encodings);
+        cast(handle).setFrameInfoObjectConstants(objectConstants);
+        cast(handle).setFrameInfoSourceClasses(sourceClasses);
+        cast(handle).setFrameInfoSourceMethodNames(sourceMethodNames);
+        cast(handle).setFrameInfoNames(names);
     }
 
     @Override
@@ -228,11 +231,11 @@ public class RuntimeCodeInfoAccessor implements CodeInfoAccessor {
         cast(handle).setCodeConstantsLive(true);
     }
 
-    public void setDeoptimizationMetadata(CodeInfoHandle handle, NonmovableArray<Integer> deoptimizationStartOffsets,
-                    NonmovableArray<Byte> deoptimizationEncodings, NonmovableObjectArray<Object> deoptimizationObjectConstants) {
-        cast(handle).setDeoptimizationStartOffsets(deoptimizationStartOffsets);
-        cast(handle).setDeoptimizationEncodings(deoptimizationEncodings);
-        cast(handle).setDeoptimizationObjectConstants(deoptimizationObjectConstants);
+    @Uninterruptible(reason = "Nonmovable object arrays are not visible to GC until installed.")
+    void setDeoptimizationMetadata(CodeInfoHandle handle, NonmovableArray<Integer> startOffsets, NonmovableArray<Byte> encodings, NonmovableObjectArray<Object> objectConstants) {
+        cast(handle).setDeoptimizationStartOffsets(startOffsets);
+        cast(handle).setDeoptimizationEncodings(encodings);
+        cast(handle).setDeoptimizationObjectConstants(objectConstants);
     }
 
     public void setData(CodeInfoHandle handle, SubstrateInstalledCode installedCode, int tier, InstalledCodeObserverHandle[] codeObserverHandles) {

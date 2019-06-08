@@ -37,6 +37,7 @@ import org.graalvm.compiler.core.common.util.TypeConversion;
 import org.graalvm.compiler.core.common.util.UnsafeArrayTypeWriter;
 import org.graalvm.nativeimage.ImageSingletons;
 
+import com.oracle.svm.core.annotate.Uninterruptible;
 import com.oracle.svm.core.c.NonmovableArray;
 import com.oracle.svm.core.c.NonmovableArrays;
 import com.oracle.svm.core.c.NonmovableObjectArray;
@@ -179,12 +180,6 @@ public class FrameInfoEncoder {
     private final FrequencyEncoder<Class<?>> sourceClasses;
     private final FrequencyEncoder<String> sourceMethodNames;
     private final FrequencyEncoder<String> names;
-
-    protected NonmovableArray<Byte> frameInfoEncodings;
-    protected NonmovableObjectArray<Object> frameInfoObjectConstants;
-    protected NonmovableObjectArray<Class<?>> frameInfoSourceClasses;
-    protected NonmovableObjectArray<String> frameInfoSourceMethodNames;
-    protected NonmovableObjectArray<String> frameInfoNames;
 
     protected FrameInfoEncoder(Customization customization) {
         this.customization = customization;
@@ -487,41 +482,61 @@ public class FrameInfoEncoder {
         return result;
     }
 
-    protected void encodeAll() {
+    protected void encodeAllAndInstall(CodeInfoAccessor accessor, CodeInfoHandle handle) {
         final JavaConstant[] encodedJavaConstants = objectConstants.encodeAll(new JavaConstant[objectConstants.getLength()]);
-        frameInfoObjectConstants = NonmovableArrays.createObjectArray(encodedJavaConstants.length);
+        Object[] objectConstantsArray = new Object[encodedJavaConstants.length];
         for (int i = 0; i < encodedJavaConstants.length; i++) {
-            NonmovableArrays.setObject(frameInfoObjectConstants, i,
-                            KnownIntrinsics.convertUnknownValue(SubstrateObjectConstant.asObject(encodedJavaConstants[i]), Object.class));
+            objectConstantsArray[i] = KnownIntrinsics.convertUnknownValue(SubstrateObjectConstant.asObject(encodedJavaConstants[i]), Object.class);
         }
-
+        Class<?>[] sourceClassesArray = null;
+        String[] sourceMethodNamesArray = null;
+        String[] namesArray = null;
         final boolean encodeDebugNames = FrameInfoDecoder.encodeDebugNames();
         if (encodeDebugNames || FrameInfoDecoder.encodeSourceReferences()) {
-            Class<?>[] infoSourceClasses = sourceClasses.encodeAll(new Class<?>[sourceClasses.getLength()]);
-            frameInfoSourceClasses = NonmovableArrays.copyOfObjectArray(infoSourceClasses, infoSourceClasses.length);
-            String[] infoSourceMethodNames = sourceMethodNames.encodeAll(new String[sourceMethodNames.getLength()]);
-            frameInfoSourceMethodNames = NonmovableArrays.copyOfObjectArray(infoSourceMethodNames, infoSourceMethodNames.length);
+            sourceClassesArray = sourceClasses.encodeAll(new Class<?>[sourceClasses.getLength()]);
+            sourceMethodNamesArray = sourceMethodNames.encodeAll(new String[sourceMethodNames.getLength()]);
         }
         if (encodeDebugNames) {
-            String[] infoNames = names.encodeAll(new String[names.getLength()]);
-            frameInfoNames = NonmovableArrays.copyOfObjectArray(infoNames, infoNames.length);
-        } else {
-            frameInfoNames = NonmovableArrays.nullArray();
+            namesArray = names.encodeAll(new String[names.getLength()]);
         }
-
-        encodeFrameDatas();
-
-        assert verifyEncoding();
+        NonmovableArray<Byte> frameInfoEncodings = encodeFrameDatas();
+        install(accessor, handle, frameInfoEncodings, objectConstantsArray, sourceClassesArray, sourceMethodNamesArray, namesArray);
     }
 
-    private void encodeFrameDatas() {
+    @Uninterruptible(reason = "Nonmovable object arrays are not visible to GC until installed in target.")
+    private void install(CodeInfoAccessor accessor, CodeInfoHandle handle, NonmovableArray<Byte> frameInfoEncodings, Object[] objectConstantsArray,
+                    Class<?>[] sourceClassesArray, String[] sourceMethodNamesArray, String[] namesArray) {
+
+        NonmovableObjectArray<Object> frameInfoObjectConstants = NonmovableArrays.copyOfObjectArray(objectConstantsArray);
+        NonmovableObjectArray<Class<?>> frameInfoSourceClasses = (sourceClassesArray != null) ? NonmovableArrays.copyOfObjectArray(sourceClassesArray) : NonmovableArrays.nullArray();
+        NonmovableObjectArray<String> frameInfoSourceMethodNames = (sourceMethodNamesArray != null) ? NonmovableArrays.copyOfObjectArray(sourceMethodNamesArray) : NonmovableArrays.nullArray();
+        NonmovableObjectArray<String> frameInfoNames = (namesArray != null) ? NonmovableArrays.copyOfObjectArray(namesArray) : NonmovableArrays.nullArray();
+
+        accessor.setFrameInfo(handle, frameInfoEncodings, frameInfoObjectConstants, frameInfoSourceClasses, frameInfoSourceMethodNames, frameInfoNames);
+
+        afterInstallation(frameInfoEncodings, frameInfoObjectConstants, frameInfoSourceClasses, frameInfoSourceMethodNames, frameInfoNames);
+    }
+
+    @Uninterruptible(reason = "Safe for GC, but called from uninterruptible code.", calleeMustBe = false)
+    private void afterInstallation(NonmovableArray<Byte> frameInfoEncodings, NonmovableObjectArray<Object> frameInfoObjectConstants, NonmovableObjectArray<Class<?>> frameInfoSourceClasses,
+                    NonmovableObjectArray<String> frameInfoSourceMethodNames, NonmovableObjectArray<String> frameInfoNames) {
+
+        assert verifyEncoding(frameInfoEncodings, frameInfoObjectConstants, frameInfoSourceClasses, frameInfoSourceMethodNames, frameInfoNames);
+
+        ImageSingletons.lookup(Counters.class).frameInfoSize.add(
+                        ConfigurationValues.getObjectLayout().getArrayElementOffset(JavaKind.Byte, NonmovableArrays.lengthOf(frameInfoEncodings)) +
+                                        ConfigurationValues.getObjectLayout().getArrayElementOffset(JavaKind.Object, NonmovableArrays.lengthOf(frameInfoObjectConstants)));
+    }
+
+    private NonmovableArray<Byte> encodeFrameDatas() {
         UnsafeArrayTypeWriter encodingBuffer = UnsafeArrayTypeWriter.create(ByteArrayReader.supportsUnalignedMemoryAccess());
         for (FrameData data : allDebugInfos) {
             data.indexInEncodings = encodingBuffer.getBytesWritten();
             encodeFrameData(data, encodingBuffer);
         }
-        frameInfoEncodings = NonmovableArrays.createByteArray(TypeConversion.asS4(encodingBuffer.getBytesWritten()));
+        NonmovableArray<Byte> frameInfoEncodings = NonmovableArrays.createByteArray(TypeConversion.asS4(encodingBuffer.getBytesWritten()));
         encodingBuffer.toByteBuffer(NonmovableArrays.asByteBuffer(frameInfoEncodings));
+        return frameInfoEncodings;
     }
 
     private void encodeFrameData(FrameData data, UnsafeArrayTypeWriter encodingBuffer) {
@@ -624,7 +639,8 @@ public class FrameInfoEncoder {
         return (((long) bci) << FrameInfoDecoder.BCI_SHIFT) | (duringCall ? FrameInfoDecoder.DURING_CALL_MASK : 0) | (rethrowException ? FrameInfoDecoder.RETHROW_EXCEPTION_MASK : 0);
     }
 
-    private boolean verifyEncoding() {
+    private boolean verifyEncoding(NonmovableArray<Byte> frameInfoEncodings, NonmovableObjectArray<Object> frameInfoObjectConstants, NonmovableObjectArray<Class<?>> frameInfoSourceClasses,
+                    NonmovableObjectArray<String> frameInfoSourceMethodNames, NonmovableObjectArray<String> frameInfoNames) {
         for (FrameData expectedData : allDebugInfos) {
             FrameInfoQueryResult actualFrame = FrameInfoDecoder.decodeFrameInfo(expectedData.frame.isDeoptEntry,
                             new ReusableTypeReader(frameInfoEncodings, expectedData.indexInEncodings),
@@ -649,8 +665,6 @@ class FrameInfoVerifier {
                 assert expectedFrame.deoptMethod == null && actualFrame.deoptMethod == null ||
                                 ((expectedFrame.deoptMethod != null) && expectedFrame.deoptMethod.equals(actualFrame.deoptMethod));
                 assert expectedFrame.deoptMethodOffset == actualFrame.deoptMethodOffset;
-                assert expectedFrame.encodedBci == actualFrame.encodedBci;
-                assert expectedFrame.isDeoptEntry == actualFrame.isDeoptEntry;
                 assert expectedFrame.numLocals == actualFrame.numLocals;
                 assert expectedFrame.numStack == actualFrame.numStack;
                 assert expectedFrame.numLocks == actualFrame.numLocks;

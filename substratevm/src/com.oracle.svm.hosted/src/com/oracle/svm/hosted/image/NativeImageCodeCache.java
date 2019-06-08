@@ -209,8 +209,7 @@ public abstract class NativeImageCodeCache {
 
         CodeInfoAccessor accessor = CodeInfoTable.getImageCodeInfoAccessor();
         CodeInfoHandle handle = ImageCodeInfo.SINGLETON_HANDLE;
-        codeInfoEncoder.encodeAll();
-        codeInfoEncoder.install(accessor, handle);
+        codeInfoEncoder.encodeAllAndInstall(accessor, handle);
         CodeInfoTable.getImageCodeCache().setCodeLocation(firstMethod, codeSize);
 
         if (CodeInfoEncoder.Options.CodeInfoEncoderCounters.getValue()) {

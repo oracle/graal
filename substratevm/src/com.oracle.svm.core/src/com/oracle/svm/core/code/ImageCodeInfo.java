@@ -128,18 +128,22 @@ public class ImageCodeInfo implements CodeInfoAccessor {
     }
 
     @Override
-    public void setMetadata(CodeInfoHandle installTarget, NonmovableArray<Byte> codeInfoIndex, NonmovableArray<Byte> codeInfoEncodings, NonmovableArray<Byte> referenceMapEncoding,
-                    NonmovableArray<Byte> frameInfoEncodings, NonmovableObjectArray<Object> frameInfoObjectConstants, NonmovableObjectArray<Class<?>> frameInfoSourceClasses,
-                    NonmovableObjectArray<String> frameInfoSourceMethodNames, NonmovableObjectArray<String> frameInfoNames) {
+    public void setCodeInfo(CodeInfoHandle installTarget, NonmovableArray<Byte> index, NonmovableArray<Byte> encodings, NonmovableArray<Byte> referenceMapEncoding) {
 
-        this.codeInfoIndex = NonmovableArrays.getHostedArray(codeInfoIndex);
-        this.codeInfoEncodings = NonmovableArrays.getHostedArray(codeInfoEncodings);
+        this.codeInfoIndex = NonmovableArrays.getHostedArray(index);
+        this.codeInfoEncodings = NonmovableArrays.getHostedArray(encodings);
         this.referenceMapEncoding = NonmovableArrays.getHostedArray(referenceMapEncoding);
-        this.frameInfoEncodings = NonmovableArrays.getHostedArray(frameInfoEncodings);
-        this.frameInfoObjectConstants = NonmovableArrays.getHostedArray(frameInfoObjectConstants);
-        this.frameInfoSourceClasses = NonmovableArrays.getHostedArray(frameInfoSourceClasses);
-        this.frameInfoSourceMethodNames = NonmovableArrays.getHostedArray(frameInfoSourceMethodNames);
-        this.frameInfoNames = NonmovableArrays.getHostedArray(frameInfoNames);
+    }
+
+    @Override
+    public void setFrameInfo(CodeInfoHandle installTarget, NonmovableArray<Byte> encodings, NonmovableObjectArray<Object> objectConstants,
+                    NonmovableObjectArray<Class<?>> sourceClasses, NonmovableObjectArray<String> sourceMethodNames, NonmovableObjectArray<String> names) {
+
+        this.frameInfoEncodings = NonmovableArrays.getHostedArray(encodings);
+        this.frameInfoObjectConstants = NonmovableArrays.getHostedArray(objectConstants);
+        this.frameInfoSourceClasses = NonmovableArrays.getHostedArray(sourceClasses);
+        this.frameInfoSourceMethodNames = NonmovableArrays.getHostedArray(sourceMethodNames);
+        this.frameInfoNames = NonmovableArrays.getHostedArray(names);
     }
 
     @Override

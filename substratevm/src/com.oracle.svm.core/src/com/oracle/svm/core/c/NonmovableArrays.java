@@ -117,6 +117,7 @@ public final class NonmovableArrays {
     }
 
     @SuppressWarnings("unchecked")
+    @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
     public static <T extends NonmovableArray<?>> T nullArray() {
         if (SubstrateUtil.HOSTED) {
             return (T) HOSTED_NULL_VALUE;
@@ -167,6 +168,11 @@ public final class NonmovableArrays {
         int copyLength = (source.length < newLength) ? source.length : newLength;
         System.arraycopy(source, 0, asObject(array), 0, copyLength);
         return (NonmovableObjectArray<T>) array;
+    }
+
+    @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
+    public static <T> NonmovableObjectArray<T> copyOfObjectArray(T[] source) {
+        return copyOfObjectArray(source, source.length);
     }
 
     @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)

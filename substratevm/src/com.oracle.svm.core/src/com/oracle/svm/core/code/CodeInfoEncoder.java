@@ -177,19 +177,16 @@ public class CodeInfoEncoder {
         return result;
     }
 
-    public void encodeAll() {
+    public void encodeAllAndInstall(CodeInfoAccessor accessor, CodeInfoHandle handle) {
         encodeReferenceMaps();
-        frameInfoEncoder.encodeAll();
+        frameInfoEncoder.encodeAllAndInstall(accessor, handle);
         encodeIPData();
+
+        install(accessor, handle);
     }
 
-    public void install(CodeInfoAccessor accessor, CodeInfoHandle installTarget) {
-        accessor.setMetadata(installTarget, codeInfoIndex, codeInfoEncodings, referenceMapEncoding, frameInfoEncoder.frameInfoEncodings, frameInfoEncoder.frameInfoObjectConstants,
-                        frameInfoEncoder.frameInfoSourceClasses, frameInfoEncoder.frameInfoSourceMethodNames, frameInfoEncoder.frameInfoNames);
-
-        ImageSingletons.lookup(Counters.class).frameInfoSize.add(
-                        ConfigurationValues.getObjectLayout().getArrayElementOffset(JavaKind.Byte, NonmovableArrays.lengthOf(frameInfoEncoder.frameInfoEncodings)) +
-                                        ConfigurationValues.getObjectLayout().getArrayElementOffset(JavaKind.Object, NonmovableArrays.lengthOf(frameInfoEncoder.frameInfoObjectConstants)));
+    private void install(CodeInfoAccessor accessor, CodeInfoHandle installTarget) {
+        accessor.setCodeInfo(installTarget, codeInfoIndex, codeInfoEncodings, referenceMapEncoding);
     }
 
     private void encodeReferenceMaps() {
