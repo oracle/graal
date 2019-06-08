@@ -91,6 +91,7 @@ import com.oracle.truffle.llvm.nodes.intrinsics.llvm.arith.LLVMComplexDoubleDiv;
 import com.oracle.truffle.llvm.nodes.intrinsics.llvm.arith.LLVMComplexDoubleMul;
 import com.oracle.truffle.llvm.nodes.intrinsics.llvm.arith.LLVMComplexFloatDiv;
 import com.oracle.truffle.llvm.nodes.intrinsics.llvm.arith.LLVMComplexFloatMul;
+import com.oracle.truffle.llvm.nodes.intrinsics.multithreading.LLVMPThreadThreadIntrinsicsFactory;
 import com.oracle.truffle.llvm.nodes.intrinsics.rust.LLVMPanicNodeGen;
 import com.oracle.truffle.llvm.nodes.intrinsics.rust.LLVMStartFactory.LLVMLangStartInternalNodeGen;
 import com.oracle.truffle.llvm.nodes.intrinsics.rust.LLVMStartFactory.LLVMLangStartNodeGen;
@@ -323,11 +324,11 @@ public class BasicIntrinsicsProvider implements LLVMIntrinsicProvider, ContextEx
     }
 
     private static void registerPThreadIntrinsics() {
-        add("@pthread_create", (args, context) -> LLVMPThreadIntrinsicsFactory.LLVMPThreadCreateNodeGen.create(args.get(1), args.get(2), args.get(3), args.get(4), null));
-        add("@pthread_equal", (args, context) -> LLVMPThreadIntrinsicsFactory.LLVMPThreadEqualNodeGen.create(args.get(1), args.get(2), null));
-        add("@pthread_exit", (args, context) -> LLVMPThreadIntrinsicsFactory.LLVMPThreadExitNodeGen.create(args.get(1), null));
-        add("@pthread_join", (args, context) -> LLVMPThreadIntrinsicsFactory.LLVMPThreadJoinNodeGen.create(args.get(1), args.get(2), null));
-        add("@pthread_self", (args, context) -> LLVMPThreadIntrinsicsFactory.LLVMPThreadSelfNodeGen.create(null));
+        add("@pthread_create", (args, context) -> LLVMPThreadThreadIntrinsicsFactory.LLVMPThreadCreateNodeGen.create(args.get(1), args.get(2), args.get(3), args.get(4), null));
+        add("@pthread_equal", (args, context) -> LLVMPThreadThreadIntrinsicsFactory.LLVMPThreadEqualNodeGen.create(args.get(1), args.get(2), null));
+        add("@pthread_exit", (args, context) -> LLVMPThreadThreadIntrinsicsFactory.LLVMPThreadExitNodeGen.create(args.get(1), null));
+        add("@pthread_join", (args, context) -> LLVMPThreadThreadIntrinsicsFactory.LLVMPThreadJoinNodeGen.create(args.get(1), args.get(2), null));
+        add("@pthread_self", (args, context) -> LLVMPThreadThreadIntrinsicsFactory.LLVMPThreadSelfNodeGen.create(null));
         add("@pthread_my_test", (args, context) -> LLVMPThreadIntrinsicsFactory.LLVMPThreadMyTestNodeGen.create(args.get(1), null));
         add("@pthread_mutexattr_init", (args, context) -> LLVMPThreadIntrinsicsFactory.LLVMPThreadMutexattrInitNodeGen.create(args.get(1), null));
         add("@pthread_mutexattr_settype", (args, context) -> LLVMPThreadIntrinsicsFactory.LLVMPThreadMutexattrSettypeNodeGen.create(args.get(1), args.get(2), null));

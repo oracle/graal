@@ -30,6 +30,7 @@
 #include <sys/types.h>
 #include <unistd.h>
 #include <pthread.h>
+#include <errno.h>
 #include <time.h>
 
 #include "unsupported.h"
@@ -38,6 +39,12 @@
 // mutexattr_init, mutexattr_settype
 // cond_init, cond_broadcast, cond_signal, cond_timedwait, cond_wait, cond_destroy
 // rwlock_destroy, rwlock_init, rwlock_rdlock, rwlock_tryrdlock, rwlock_wrlock, rwlock_trywrlock, rwlock_unlock
+int __sulong_getEbusy() {
+	return EBUSY;
+}
+int __sulong_getEinval() {
+	return EINVAL;
+}
 int __sulong_test() {
 	return 15;
 }
