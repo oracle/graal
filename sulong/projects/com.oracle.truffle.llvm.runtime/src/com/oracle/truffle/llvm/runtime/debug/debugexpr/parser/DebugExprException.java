@@ -33,9 +33,6 @@ import com.oracle.truffle.llvm.runtime.debug.debugexpr.nodes.DebugExprErrorNode;
 
 public class DebugExprException extends RuntimeException {
 
-    /**
-     *
-     */
     private static final long serialVersionUID = -5083864640686842678L;
 
     public final DebugExprErrorNode exceptionNode;

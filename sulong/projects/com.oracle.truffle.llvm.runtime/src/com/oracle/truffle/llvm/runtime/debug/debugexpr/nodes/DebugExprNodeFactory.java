@@ -13,16 +13,20 @@ import com.oracle.truffle.llvm.runtime.types.Type;
 
 public final class DebugExprNodeFactory {
     private ContextReference<LLVMContext> contextReference;
+    public final static DebugExprErrorNode noObjNode = DebugExprErrorNode.create("<cannot find expression>");
+    public final static DebugExprErrorNode errorObjNode = DebugExprErrorNode.create("<cannot evaluate expression>");
+    private Iterable<Scope> scopes;
 
-    private DebugExprNodeFactory(ContextReference<LLVMContext> contextReference) {
+    private DebugExprNodeFactory(ContextReference<LLVMContext> contextReference, Iterable<Scope> scopes) {
         this.contextReference = contextReference;
+        this.scopes = scopes;
     }
 
     private static DebugExprNodeFactory INSTANCE = null;
 
-    public static DebugExprNodeFactory getInstance(ContextReference<LLVMContext> contextReference) {
+    public static DebugExprNodeFactory getInstance(ContextReference<LLVMContext> contextReference, Iterable<Scope> scopes) {
         if (INSTANCE == null || contextReference != INSTANCE.contextReference) {
-            INSTANCE = new DebugExprNodeFactory(contextReference);
+            INSTANCE = new DebugExprNodeFactory(contextReference, scopes);
         }
         return INSTANCE;
     }
@@ -49,7 +53,7 @@ public final class DebugExprNodeFactory {
     }
 
     @SuppressWarnings("static-method")
-    public LLVMExpressionNode createVarNode(String name, Iterable<Scope> scopes) {
+    public LLVMExpressionNode createVarNode(String name) {
         return new DebugExprVarNode(name, scopes);
     }
 

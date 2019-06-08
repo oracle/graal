@@ -151,8 +151,7 @@ public class LLVMLanguage extends TruffleLanguage<LLVMContext> {
 
                     try {
                         // for boolean results: convert to a string
-                        boolean result = root.executeI1(frame);
-                        return result ? "true" : "false";
+                        return String.valueOf(root.executeI1(frame));
                     } catch (UnsupportedSpecializationException | UnexpectedResultException e) {
                         // perform normal execution
                     }

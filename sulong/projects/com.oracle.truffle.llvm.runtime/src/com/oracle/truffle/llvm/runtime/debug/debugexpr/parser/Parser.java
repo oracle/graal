@@ -1,17 +1,10 @@
 package com.oracle.truffle.llvm.runtime.debug.debugexpr.parser;
 
 import java.util.LinkedList;
-import com.oracle.truffle.api.Scope;
-import com.oracle.truffle.api.TruffleLanguage.ContextReference;
 import com.oracle.truffle.llvm.runtime.nodes.api.LLVMExpressionNode;
 import com.oracle.truffle.llvm.runtime.ArithmeticOperation;
-import com.oracle.truffle.llvm.runtime.LLVMContext;
 import com.oracle.truffle.llvm.runtime.debug.debugexpr.nodes.*;
 import com.oracle.truffle.llvm.runtime.debug.debugexpr.nodes.DebugExprCompareNode.Op;
-import com.oracle.truffle.llvm.runtime.types.Type;
-import com.oracle.truffle.llvm.runtime.types.PrimitiveType;
-import com.oracle.truffle.llvm.runtime.types.VoidType;
-import org.graalvm.collections.Pair;
 // Set the name of your grammar here (and at the end of this grammar):
 
 import java.util.List;
@@ -68,20 +61,13 @@ public class Parser {
 	return false;
 }
 
-private Iterable<Scope> scopes;
 private LLVMExpressionNode astRoot=null;
-private ContextReference<LLVMContext> contextReference=null;
-private DebugExprNodeFactory NF;
+private DebugExprNodeFactory NF=null;
 public final static DebugExprErrorNode noObjNode = DebugExprErrorNode.create("<cannot find expression>");
 public final static DebugExprErrorNode errorObjNode = DebugExprErrorNode.create("<cannot evaluate expression>");
 
-void SetScopes(Iterable<Scope> scopes) {
-	this.scopes = scopes;
-}
-
-void SetContextReference(ContextReference<LLVMContext> contextReference) {
-	this.contextReference = contextReference;
-	NF = DebugExprNodeFactory.getInstance(contextReference);
+public void setNodeFactory(DebugExprNodeFactory nodeFactory) {
+	if(NF==null) NF=nodeFactory;
 }
 
 public int GetErrors() {
@@ -216,7 +202,7 @@ public LLVMExpressionNode GetASTRoot() {return astRoot; }
 		switch (la.kind) {
 		case 1: {
 			Get();
-			n = NF.createVarNode(t.val, scopes);
+			n = NF.createVarNode(t.val);
 			break;
 		}
 		case 2: {

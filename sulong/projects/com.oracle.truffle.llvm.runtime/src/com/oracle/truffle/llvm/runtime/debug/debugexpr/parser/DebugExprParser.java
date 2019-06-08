@@ -33,6 +33,7 @@ import com.oracle.truffle.api.Scope;
 import com.oracle.truffle.api.TruffleLanguage.ContextReference;
 import com.oracle.truffle.api.TruffleLanguage.InlineParsingRequest;
 import com.oracle.truffle.llvm.runtime.LLVMContext;
+import com.oracle.truffle.llvm.runtime.debug.debugexpr.nodes.DebugExprNodeFactory;
 import com.oracle.truffle.llvm.runtime.debug.scope.LLVMDebuggerScopeFactory;
 import com.oracle.truffle.llvm.runtime.nodes.api.LLVMExpressionNode;
 
@@ -41,19 +42,14 @@ public class DebugExprParser {
     private final Scanner scanner;
     private final CocoInputStream cis;
 
-    public DebugExprParser(CharSequence cs) {
-        cis = new CocoInputStream(cs);
-        scanner = new Scanner(cis);
-        parser = new Parser(scanner);
-    }
-
     public DebugExprParser(InlineParsingRequest request, ContextReference<LLVMContext> contextReference) {
         cis = new CocoInputStream(request.getSource().getCharacters());
         scanner = new Scanner(cis);
         parser = new Parser(scanner);
+
         final Iterable<Scope> scopes = LLVMDebuggerScopeFactory.createSourceLevelScope(request.getLocation(), request.getFrame(), contextReference.get());
-        parser.SetScopes(scopes);
-        parser.SetContextReference(contextReference);
+        DebugExprNodeFactory nodeFactory = DebugExprNodeFactory.getInstance(contextReference, scopes);
+        parser.setNodeFactory(nodeFactory);
     }
 
     public LLVMExpressionNode parse() throws Exception {

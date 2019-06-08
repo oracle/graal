@@ -1,15 +1,8 @@
 import java.util.LinkedList;
-import com.oracle.truffle.api.Scope;
-import com.oracle.truffle.api.TruffleLanguage.ContextReference;
 import com.oracle.truffle.llvm.runtime.nodes.api.LLVMExpressionNode;
 import com.oracle.truffle.llvm.runtime.ArithmeticOperation;
-import com.oracle.truffle.llvm.runtime.LLVMContext;
 import com.oracle.truffle.llvm.runtime.debug.debugexpr.nodes.*;
 import com.oracle.truffle.llvm.runtime.debug.debugexpr.nodes.DebugExprCompareNode.Op;
-import com.oracle.truffle.llvm.runtime.types.Type;
-import com.oracle.truffle.llvm.runtime.types.PrimitiveType;
-import com.oracle.truffle.llvm.runtime.types.VoidType;
-import org.graalvm.collections.Pair;
 // Set the name of your grammar here (and at the end of this grammar):
 COMPILER DebugExpr
 
@@ -24,20 +17,13 @@ boolean IsCast() {
 	return false;
 }
 
-private Iterable<Scope> scopes;
 private LLVMExpressionNode astRoot=null;
-private ContextReference<LLVMContext> contextReference=null;
-private DebugExprNodeFactory NF;
+private DebugExprNodeFactory NF=null;
 public final static DebugExprErrorNode noObjNode = DebugExprErrorNode.create("<cannot find expression>");
 public final static DebugExprErrorNode errorObjNode = DebugExprErrorNode.create("<cannot evaluate expression>");
 
-void SetScopes(Iterable<Scope> scopes) {
-	this.scopes = scopes;
-}
-
-void SetContextReference(ContextReference<LLVMContext> contextReference) {
-	this.contextReference = contextReference;
-	NF = DebugExprNodeFactory.getInstance(contextReference);
+public void setNodeFactory(DebugExprNodeFactory nodeFactory) {
+	if(NF==null) NF=nodeFactory;
 }
 
 public int GetErrors() {
@@ -112,7 +98,7 @@ Expr<out n> 	(. if(errors.count==0) astRoot =n; .)
 
 PrimExpr<out LLVMExpressionNode n>		(. n=errorObjNode; .)
 =
-ident 								(. n = NF.createVarNode(t.val, scopes);.)
+ident 								(. n = NF.createVarNode(t.val);.)
 |
 number 								(. n = NF.createIntegerConstant(Integer.parseInt(t.val)); .)
 |
