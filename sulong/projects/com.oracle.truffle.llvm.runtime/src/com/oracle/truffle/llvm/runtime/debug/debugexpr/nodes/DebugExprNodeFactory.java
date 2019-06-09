@@ -3,9 +3,9 @@ package com.oracle.truffle.llvm.runtime.debug.debugexpr.nodes;
 import com.oracle.truffle.api.Scope;
 import com.oracle.truffle.api.TruffleLanguage.ContextReference;
 import com.oracle.truffle.llvm.runtime.ArithmeticOperation;
+import com.oracle.truffle.llvm.runtime.CompareOperator;
 import com.oracle.truffle.llvm.runtime.LLVMContext;
 import com.oracle.truffle.llvm.runtime.debug.debugexpr.nodes.DebugExprBitFlipNodeFactory.BitFlipNodeGen;
-import com.oracle.truffle.llvm.runtime.debug.debugexpr.nodes.DebugExprCompareNode.Op;
 import com.oracle.truffle.llvm.runtime.debug.debugexpr.nodes.DebugExprNotNodeFactory.NotNodeGen;
 import com.oracle.truffle.llvm.runtime.debug.debugexpr.nodes.DebugExprShortCircuitEvaluationNodeFactory.DebugExprLogicalAndNodeGen;
 import com.oracle.truffle.llvm.runtime.debug.debugexpr.nodes.DebugExprShortCircuitEvaluationNodeFactory.DebugExprLogicalOrNodeGen;
@@ -138,9 +138,20 @@ public final class DebugExprNodeFactory {
         return DebugExprErrorNode.create(errorObj);
     }
 
-    public DebugExpressionPair createCompareNode(DebugExpressionPair left, Op op, DebugExpressionPair right) {
-        LLVMExpressionNode node = new DebugExprCompareNode(contextReference.get().getNodeFactory(), left.getNode(), op, right.getNode());
-        return DebugExpressionPair.create(node, DebugExprType.getIntType(1, false));
+    public DebugExpressionPair createCompareNode(DebugExpressionPair left, CompareKind op, DebugExpressionPair right) {
+        DebugExprType commonType = DebugExprType.commonType(left.getType(), right.getType());
+        DebugExpressionPair leftPair = createCastIfNecessary(left, commonType);
+        DebugExpressionPair rightPair = createCastIfNecessary(right, commonType);
+        CompareOperator cop;
+        if (commonType.isFloatingType()) {
+            cop = getFloatingCompareOperator(op);
+        } else if (commonType.isUnsigned()) {
+            cop = getUnsignedCompareOperator(op);
+        } else {
+            cop = getSignedCompareOperator(op);
+        }
+        LLVMExpressionNode node = contextReference.get().getNodeFactory().createComparison(cop, null, leftPair.getNode(), rightPair.getNode());
+        return DebugExpressionPair.create(node, DebugExprType.getBoolType());
     }
 
     public DebugExpressionPair createIntegerConstant(int value) {
@@ -167,6 +178,72 @@ public final class DebugExprNodeFactory {
         else
             node = contextReference.get().getNodeFactory().createSignedCast(pair.getNode(), type.getLLVMRuntimeType());
         return DebugExpressionPair.create(node, type);
+    }
+
+    public enum CompareKind {
+        EQ,
+        NE,
+        LT,
+        LE,
+        GT,
+        GE
+    }
+
+    private static CompareOperator getSignedCompareOperator(CompareKind kind) {
+        switch (kind) {
+            case EQ:
+                return CompareOperator.INT_EQUAL;
+            case GE:
+                return CompareOperator.INT_SIGNED_GREATER_OR_EQUAL;
+            case GT:
+                return CompareOperator.INT_SIGNED_GREATER_THAN;
+            case LE:
+                return CompareOperator.INT_SIGNED_LESS_OR_EQUAL;
+            case LT:
+                return CompareOperator.INT_SIGNED_LESS_THAN;
+            case NE:
+                return CompareOperator.INT_NOT_EQUAL;
+            default:
+                return CompareOperator.INT_EQUAL;
+        }
+    }
+
+    private static CompareOperator getUnsignedCompareOperator(CompareKind kind) {
+        switch (kind) {
+            case EQ:
+                return CompareOperator.INT_EQUAL;
+            case GE:
+                return CompareOperator.INT_UNSIGNED_GREATER_OR_EQUAL;
+            case GT:
+                return CompareOperator.INT_UNSIGNED_GREATER_THAN;
+            case LE:
+                return CompareOperator.INT_UNSIGNED_LESS_OR_EQUAL;
+            case LT:
+                return CompareOperator.INT_UNSIGNED_LESS_THAN;
+            case NE:
+                return CompareOperator.INT_NOT_EQUAL;
+            default:
+                return CompareOperator.INT_EQUAL;
+        }
+    }
+
+    private static CompareOperator getFloatingCompareOperator(CompareKind kind) {
+        switch (kind) {
+            case EQ:
+                return CompareOperator.FP_ORDERED_EQUAL;
+            case GE:
+                return CompareOperator.FP_ORDERED_GREATER_OR_EQUAL;
+            case GT:
+                return CompareOperator.FP_ORDERED_GREATER_THAN;
+            case LE:
+                return CompareOperator.FP_ORDERED_LESS_OR_EQUAL;
+            case LT:
+                return CompareOperator.FP_ORDERED_LESS_THAN;
+            case NE:
+                return CompareOperator.FP_ORDERED_NOT_EQUAL;
+            default:
+                return CompareOperator.FP_FALSE;
+        }
     }
 
 }

@@ -2,7 +2,7 @@ import java.util.LinkedList;
 import com.oracle.truffle.llvm.runtime.nodes.api.LLVMExpressionNode;
 import com.oracle.truffle.llvm.runtime.ArithmeticOperation;
 import com.oracle.truffle.llvm.runtime.debug.debugexpr.nodes.*;
-import com.oracle.truffle.llvm.runtime.debug.debugexpr.nodes.DebugExprCompareNode.Op;
+import com.oracle.truffle.llvm.runtime.debug.debugexpr.nodes.DebugExprNodeFactory.CompareKind;
 // Set the name of your grammar here (and at the end of this grammar):
 COMPILER DebugExpr
 
@@ -200,16 +200,16 @@ RelExpr<out DebugExpressionPair p>		(. DebugExpressionPair p1=null; .)
 =
 ShiftExpr<out p> 
 {
-	 "<" ShiftExpr<out p1> 				(. p = NF.createCompareNode(p, Op.LT, p1); .)
+	 "<" ShiftExpr<out p1> 				(. p = NF.createCompareNode(p, CompareKind.LT, p1); .)
 	
 	|
-	 ">" ShiftExpr<out p1> 				(. p = NF.createCompareNode(p, Op.GT, p1); .)
+	 ">" ShiftExpr<out p1> 				(. p = NF.createCompareNode(p, CompareKind.GT, p1); .)
 	
 	|
-	 "<=" ShiftExpr<out p1> 			(. p = NF.createCompareNode(p, Op.LE, p1); .)
+	 "<=" ShiftExpr<out p1> 			(. p = NF.createCompareNode(p, CompareKind.LE, p1); .)
 	
 	|
-	 ">=" ShiftExpr<out p1> 			(. p = NF.createCompareNode(p, Op.GE, p1); .)
+	 ">=" ShiftExpr<out p1> 			(. p = NF.createCompareNode(p, CompareKind.GE, p1); .)
 	
 }
 .
@@ -217,10 +217,10 @@ EqExpr<out DebugExpressionPair p>	(. DebugExpressionPair p1=null; .)
 =
 RelExpr<out p> 
 {
-	 "==" RelExpr<out p1> 			(. p = NF.createCompareNode(p, Op.EQ, p1); .)
+	 "==" RelExpr<out p1> 			(. p = NF.createCompareNode(p, CompareKind.EQ, p1); .)
 	
 	|
-	 "!=" RelExpr<out p1> 			(. p = NF.createCompareNode(p, Op.NE, p1); .)
+	 "!=" RelExpr<out p1> 			(. p = NF.createCompareNode(p, CompareKind.NE, p1); .)
 	
 }
 .

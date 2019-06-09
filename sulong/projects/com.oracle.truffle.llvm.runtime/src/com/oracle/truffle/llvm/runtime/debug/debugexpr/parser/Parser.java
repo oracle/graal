@@ -4,7 +4,7 @@ import java.util.LinkedList;
 import com.oracle.truffle.llvm.runtime.nodes.api.LLVMExpressionNode;
 import com.oracle.truffle.llvm.runtime.ArithmeticOperation;
 import com.oracle.truffle.llvm.runtime.debug.debugexpr.nodes.*;
-import com.oracle.truffle.llvm.runtime.debug.debugexpr.nodes.DebugExprCompareNode.Op;
+import com.oracle.truffle.llvm.runtime.debug.debugexpr.nodes.DebugExprNodeFactory.CompareKind;
 // Set the name of your grammar here (and at the end of this grammar):
 
 import java.util.List;
@@ -428,19 +428,19 @@ public LLVMExpressionNode GetASTRoot() {return astRoot; }
 			if (la.kind == 32) {
 				Get();
 				p1 = ShiftExpr();
-				p = NF.createCompareNode(p, Op.LT, p1); 
+				p = NF.createCompareNode(p, CompareKind.LT, p1); 
 			} else if (la.kind == 33) {
 				Get();
 				p1 = ShiftExpr();
-				p = NF.createCompareNode(p, Op.GT, p1); 
+				p = NF.createCompareNode(p, CompareKind.GT, p1); 
 			} else if (la.kind == 34) {
 				Get();
 				p1 = ShiftExpr();
-				p = NF.createCompareNode(p, Op.LE, p1); 
+				p = NF.createCompareNode(p, CompareKind.LE, p1); 
 			} else {
 				Get();
 				p1 = ShiftExpr();
-				p = NF.createCompareNode(p, Op.GE, p1); 
+				p = NF.createCompareNode(p, CompareKind.GE, p1); 
 			}
 		}
 		return p;
@@ -454,11 +454,11 @@ public LLVMExpressionNode GetASTRoot() {return astRoot; }
 			if (la.kind == 36) {
 				Get();
 				p1 = RelExpr();
-				p = NF.createCompareNode(p, Op.EQ, p1); 
+				p = NF.createCompareNode(p, CompareKind.EQ, p1); 
 			} else {
 				Get();
 				p1 = RelExpr();
-				p = NF.createCompareNode(p, Op.NE, p1); 
+				p = NF.createCompareNode(p, CompareKind.NE, p1); 
 			}
 		}
 		return p;
