@@ -177,42 +177,42 @@ public LLVMExpressionNode GetASTRoot() {return astRoot; }
 	}
 	
 	void DebugExpr() {
-		LLVMExpressionNode n=null; 
-		n = Expr();
-		if(errors.count==0) astRoot =n; 
+		DebugExpressionPair p=null; 
+		p = Expr();
+		if(errors.count==0) astRoot =p.getNode(); 
 	}
 
-	LLVMExpressionNode  Expr() {
-		LLVMExpressionNode  n;
-		LLVMExpressionNode nThen=null, nElse=null; 
-		n = LogOrExpr();
+	DebugExpressionPair  Expr() {
+		DebugExpressionPair  p;
+		DebugExpressionPair pThen=null, pElse=null; 
+		p = LogOrExpr();
 		if (la.kind == 42) {
 			Get();
-			nThen = Expr();
+			pThen = Expr();
 			Expect(43);
-			nElse = Expr();
-			n = NF.createTernaryNode(n, nThen, nElse);
+			pElse = Expr();
+			p = NF.createTernaryNode(p, pThen, pElse);
 		}
-		return n;
+		return p;
 	}
 
-	LLVMExpressionNode  PrimExpr() {
-		LLVMExpressionNode  n;
-		n=errorObjNode; 
+	DebugExpressionPair  PrimExpr() {
+		DebugExpressionPair  p;
+		p=NF.errorObjPair; 
 		switch (la.kind) {
 		case 1: {
 			Get();
-			n = NF.createVarNode(t.val);
+			p = NF.createVarNode(t.val);
 			break;
 		}
 		case 2: {
 			Get();
-			n = NF.createIntegerConstant(Integer.parseInt(t.val)); 
+			p = NF.createIntegerConstant(Integer.parseInt(t.val)); 
 			break;
 		}
 		case 3: {
 			Get();
-			n = NF.createFloatConstant(Float.parseFloat(t.val)); 
+			p = NF.createFloatConstant(Float.parseFloat(t.val)); 
 			break;
 		}
 		case 4: {
@@ -225,23 +225,23 @@ public LLVMExpressionNode GetASTRoot() {return astRoot; }
 		}
 		case 6: {
 			Get();
-			n = Expr();
+			p = Expr();
 			Expect(16);
 			break;
 		}
 		default: SynErr(46); break;
 		}
-		return n;
+		return p;
 	}
 
-	LLVMExpressionNode  Designator() {
-		LLVMExpressionNode  n;
-		LLVMExpressionNode idx=null; List<LLVMExpressionNode> l; 
-		n = PrimExpr();
+	DebugExpressionPair  Designator() {
+		DebugExpressionPair  p;
+		DebugExpressionPair idxPair=null; List<DebugExpressionPair> l; 
+		p = PrimExpr();
 		while (StartOf(1)) {
 			if (la.kind == 17) {
 				Get();
-				idx = Expr();
+				idxPair = Expr();
 				Expect(18);
 			} else if (la.kind == 6) {
 				l = ActPars();
@@ -253,43 +253,43 @@ public LLVMExpressionNode GetASTRoot() {return astRoot; }
 				Expect(1);
 			}
 		}
-		return n;
+		return p;
 	}
 
 	List  ActPars() {
 		List  l;
-		LLVMExpressionNode n1=null, n2=null; l = new LinkedList<LLVMExpressionNode>(); 
+		DebugExpressionPair p1=null, p2=null; l = new LinkedList<DebugExpressionPair>(); 
 		Expect(6);
 		if (StartOf(2)) {
-			n1 = Expr();
-			l.add(n1); 
+			p1 = Expr();
+			l.add(p1); 
 			while (la.kind == 21) {
 				Get();
-				n2 = Expr();
-				l.add(n2); 
+				p2 = Expr();
+				l.add(p2); 
 			}
 		}
 		Expect(16);
 		return l;
 	}
 
-	LLVMExpressionNode  UnaryExpr() {
-		LLVMExpressionNode  n;
-		n=null; char kind='\0'; DebugExprType typeP=null;
+	DebugExpressionPair  UnaryExpr() {
+		DebugExpressionPair  p;
+		p=null; char kind='\0'; DebugExprType typeP=null;
 		if (StartOf(3)) {
-			n = Designator();
+			p = Designator();
 		} else if (StartOf(4)) {
 			kind = UnaryOp();
-			n = CastExpr();
-			n = NF.createUnaryOpNode(n, kind); 
+			p = CastExpr();
+			p = NF.createUnaryOpNode(p, kind); 
 		} else if (la.kind == 22) {
 			Get();
 			Expect(6);
 			typeP = DType();
 			Expect(16);
-			n=NF.createSizeofNode(typeP); 
+			p=NF.createSizeofNode(typeP); 
 		} else SynErr(47);
-		return n;
+		return p;
 	}
 
 	char  UnaryOp() {
@@ -326,17 +326,17 @@ public LLVMExpressionNode GetASTRoot() {return astRoot; }
 		return kind;
 	}
 
-	LLVMExpressionNode  CastExpr() {
-		LLVMExpressionNode  n;
+	DebugExpressionPair  CastExpr() {
+		DebugExpressionPair  p;
 		DebugExprType typeP=null; 
 		if (IsCast()) {
 			Expect(6);
 			typeP = DType();
 			Expect(16);
 		}
-		n = UnaryExpr();
-		if(typeP!=null) { n = NF.createCast(n, typeP); } 
-		return n;
+		p = UnaryExpr();
+		if(typeP!=null) { p = NF.createCastIfNecessary(p, typeP); } 
+		return p;
 	}
 
 	DebugExprType  DType() {
@@ -362,166 +362,166 @@ public LLVMExpressionNode GetASTRoot() {return astRoot; }
 		return ty;
 	}
 
-	LLVMExpressionNode  MultExpr() {
-		LLVMExpressionNode  n;
-		LLVMExpressionNode n1=null; 
-		n = CastExpr();
+	DebugExpressionPair  MultExpr() {
+		DebugExpressionPair  p;
+		DebugExpressionPair p1=null; 
+		p = CastExpr();
 		while (la.kind == 7 || la.kind == 28 || la.kind == 29) {
 			if (la.kind == 7) {
 				Get();
-				n1 = CastExpr();
-				n = NF.createArithmeticOp(ArithmeticOperation.MUL, null, n, n1); 
+				p1 = CastExpr();
+				p = NF.createArithmeticOp(ArithmeticOperation.MUL, p, p1); 
 			} else if (la.kind == 28) {
 				Get();
-				n1 = CastExpr();
-				n = NF.createArithmeticOp(ArithmeticOperation.DIV, null, n, n1); 
+				p1 = CastExpr();
+				p = NF.createDivNode(p, p1); 
 			} else {
 				Get();
-				n1 = CastExpr();
-				n = NF.createArithmeticOp(ArithmeticOperation.REM, null, n, n1); 
+				p1 = CastExpr();
+				p = NF.createRemNode(p, p1); 
 			}
 		}
-		return n;
+		return p;
 	}
 
-	LLVMExpressionNode  AddExpr() {
-		LLVMExpressionNode  n;
-		LLVMExpressionNode n1=null; 
-		n = MultExpr();
+	DebugExpressionPair  AddExpr() {
+		DebugExpressionPair  p;
+		DebugExpressionPair p1=null; 
+		p = MultExpr();
 		while (la.kind == 24 || la.kind == 25) {
 			if (la.kind == 24) {
 				Get();
-				n1 = MultExpr();
-				n = NF.createAddNode(n, n1); 
+				p1 = MultExpr();
+				p = NF.createArithmeticOp(ArithmeticOperation.ADD, p, p1); 
 			} else {
 				Get();
-				n1 = MultExpr();
-				n = NF.createSubNode(n, n1); 
+				p1 = MultExpr();
+				p = NF.createArithmeticOp(ArithmeticOperation.SUB, p, p1); 
 			}
 		}
-		return n;
+		return p;
 	}
 
-	LLVMExpressionNode  ShiftExpr() {
-		LLVMExpressionNode  n;
-		LLVMExpressionNode n1=null; 
-		n = AddExpr();
+	DebugExpressionPair  ShiftExpr() {
+		DebugExpressionPair  p;
+		DebugExpressionPair p1=null; 
+		p = AddExpr();
 		while (la.kind == 30 || la.kind == 31) {
 			if (la.kind == 30) {
 				Get();
-				n1 = AddExpr();
-				n = NF.createArithmeticOp(ArithmeticOperation.SHL, null, n, n1); 
+				p1 = AddExpr();
+				p = NF.createShiftLeft(p, p1); 
 			} else {
 				Get();
-				n1 = AddExpr();
-				n = NF.createArithmeticOp(ArithmeticOperation.ASHR, null, n, n1); 
+				p1 = AddExpr();
+				p = NF.createShiftRight(p, p1); 
 			}
 		}
-		return n;
+		return p;
 	}
 
-	LLVMExpressionNode  RelExpr() {
-		LLVMExpressionNode  n;
-		LLVMExpressionNode n1=null; 
-		n = ShiftExpr();
+	DebugExpressionPair  RelExpr() {
+		DebugExpressionPair  p;
+		DebugExpressionPair p1=null; 
+		p = ShiftExpr();
 		while (StartOf(5)) {
 			if (la.kind == 32) {
 				Get();
-				n1 = ShiftExpr();
-				n = NF.createCompareNode(n, Op.LT, n1); 
+				p1 = ShiftExpr();
+				p = NF.createCompareNode(p, Op.LT, p1); 
 			} else if (la.kind == 33) {
 				Get();
-				n1 = ShiftExpr();
-				n = NF.createCompareNode(n, Op.GT, n1); 
+				p1 = ShiftExpr();
+				p = NF.createCompareNode(p, Op.GT, p1); 
 			} else if (la.kind == 34) {
 				Get();
-				n1 = ShiftExpr();
-				n = NF.createCompareNode(n, Op.LE, n1); 
+				p1 = ShiftExpr();
+				p = NF.createCompareNode(p, Op.LE, p1); 
 			} else {
 				Get();
-				n1 = ShiftExpr();
-				n = NF.createCompareNode(n, Op.GE, n1); 
+				p1 = ShiftExpr();
+				p = NF.createCompareNode(p, Op.GE, p1); 
 			}
 		}
-		return n;
+		return p;
 	}
 
-	LLVMExpressionNode  EqExpr() {
-		LLVMExpressionNode  n;
-		LLVMExpressionNode n1=null; 
-		n = RelExpr();
+	DebugExpressionPair  EqExpr() {
+		DebugExpressionPair  p;
+		DebugExpressionPair p1=null; 
+		p = RelExpr();
 		while (la.kind == 36 || la.kind == 37) {
 			if (la.kind == 36) {
 				Get();
-				n1 = RelExpr();
-				n = NF.createCompareNode(n, Op.EQ, n1); 
+				p1 = RelExpr();
+				p = NF.createCompareNode(p, Op.EQ, p1); 
 			} else {
 				Get();
-				n1 = RelExpr();
-				n = NF.createCompareNode(n, Op.NE, n1); 
+				p1 = RelExpr();
+				p = NF.createCompareNode(p, Op.NE, p1); 
 			}
 		}
-		return n;
+		return p;
 	}
 
-	LLVMExpressionNode  AndExpr() {
-		LLVMExpressionNode  n;
-		LLVMExpressionNode n1=null; 
-		n = EqExpr();
+	DebugExpressionPair  AndExpr() {
+		DebugExpressionPair  p;
+		DebugExpressionPair p1=null; 
+		p = EqExpr();
 		while (la.kind == 23) {
 			Get();
-			n1 = EqExpr();
-			n = NF.createArithmeticOp(ArithmeticOperation.AND, null, n, n1); 
+			p1 = EqExpr();
+			p = NF.createArithmeticOp(ArithmeticOperation.AND, p, p1); 
 		}
-		return n;
+		return p;
 	}
 
-	LLVMExpressionNode  XorExpr() {
-		LLVMExpressionNode  n;
-		LLVMExpressionNode n1=null; 
-		n = AndExpr();
+	DebugExpressionPair  XorExpr() {
+		DebugExpressionPair  p;
+		DebugExpressionPair p1=null; 
+		p = AndExpr();
 		while (la.kind == 38) {
 			Get();
-			n1 = AndExpr();
-			n = NF.createArithmeticOp(ArithmeticOperation.XOR, null, n, n1); 
+			p1 = AndExpr();
+			p = NF.createArithmeticOp(ArithmeticOperation.XOR, p, p1); 
 		}
-		return n;
+		return p;
 	}
 
-	LLVMExpressionNode  OrExpr() {
-		LLVMExpressionNode  n;
-		LLVMExpressionNode n1=null; 
-		n = XorExpr();
+	DebugExpressionPair  OrExpr() {
+		DebugExpressionPair  p;
+		DebugExpressionPair p1=null; 
+		p = XorExpr();
 		while (la.kind == 39) {
 			Get();
-			n1 = XorExpr();
-			n = NF.createArithmeticOp(ArithmeticOperation.OR, null, n, n1); 
+			p1 = XorExpr();
+			p = NF.createArithmeticOp(ArithmeticOperation.OR, p, p1); 
 		}
-		return n;
+		return p;
 	}
 
-	LLVMExpressionNode  LogAndExpr() {
-		LLVMExpressionNode  n;
-		LLVMExpressionNode n1=null; 
-		n = OrExpr();
+	DebugExpressionPair  LogAndExpr() {
+		DebugExpressionPair  p;
+		DebugExpressionPair p1=null; 
+		p = OrExpr();
 		while (la.kind == 40) {
 			Get();
-			n1 = OrExpr();
-			n= NF.createLogicalAndNode(n, n1); 
+			p1 = OrExpr();
+			p= NF.createLogicalAndNode(p, p1); 
 		}
-		return n;
+		return p;
 	}
 
-	LLVMExpressionNode  LogOrExpr() {
-		LLVMExpressionNode  n;
-		LLVMExpressionNode n1=null; 
-		n = LogAndExpr();
+	DebugExpressionPair  LogOrExpr() {
+		DebugExpressionPair  p;
+		DebugExpressionPair p1=null; 
+		p = LogAndExpr();
 		while (la.kind == 41) {
 			Get();
-			n1 = LogAndExpr();
-			n= NF.createLogicalOrNode(n, n1); 
+			p = LogAndExpr();
+			p= NF.createLogicalOrNode(p, p1); 
 		}
-		return n;
+		return p;
 	}
 
 	DebugExprType  BaseType() {

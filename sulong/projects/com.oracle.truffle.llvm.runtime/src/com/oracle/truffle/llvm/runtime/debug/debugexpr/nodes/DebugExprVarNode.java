@@ -87,6 +87,10 @@ public class DebugExprVarNode extends LLVMExpressionNode {
         value = null;
     }
 
+    public DebugExprType getType() {
+        return type;
+    }
+
     @Override
     public Object executeGeneric(VirtualFrame frame) {
         if (value == null)

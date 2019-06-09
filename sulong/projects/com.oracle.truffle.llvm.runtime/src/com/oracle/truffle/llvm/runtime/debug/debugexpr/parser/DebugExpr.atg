@@ -91,31 +91,31 @@ PRODUCTIONS
 // Example:
 //   Empty = "BEGIN" { Statement } "END".
 //   Statement = ident "=" number { "+" number } .
-DebugExpr		(. LLVMExpressionNode n=null; .)
+DebugExpr		(. DebugExpressionPair p=null; .)
 =
-Expr<out n> 	(. if(errors.count==0) astRoot =n; .)
+Expr<out p> 	(. if(errors.count==0) astRoot =p.getNode(); .)
 .
 
-PrimExpr<out LLVMExpressionNode n>		(. n=errorObjNode; .)
+PrimExpr<out DebugExpressionPair p>		(. p=NF.errorObjPair; .)
 =
-ident 								(. n = NF.createVarNode(t.val);.)
+ident 								(. p = NF.createVarNode(t.val);.)
 |
-number 								(. n = NF.createIntegerConstant(Integer.parseInt(t.val)); .)
+number 								(. p = NF.createIntegerConstant(Integer.parseInt(t.val)); .)
 |
-floatnumber							(. n = NF.createFloatConstant(Float.parseFloat(t.val)); .)					
+floatnumber							(. p = NF.createFloatConstant(Float.parseFloat(t.val)); .)					
 |
 charConst
 |
 stringType
 |
-"(" Expr<out n> ")"
+"(" Expr<out p> ")"
 .
 
-Designator<out LLVMExpressionNode n>	(. LLVMExpressionNode idx=null; List<LLVMExpressionNode> l; .)
+Designator<out DebugExpressionPair p>	(. DebugExpressionPair idxPair=null; List<DebugExpressionPair> l; .)
 =
-PrimExpr<out n> 
+PrimExpr<out p> 
 {
-	 "[" Expr<out idx> "]"
+	 "[" Expr<out idxPair> "]"
 	|
 	 ActPars<out l>
 	|
@@ -125,14 +125,14 @@ PrimExpr<out n>
 }
 .
 
-ActPars<out List l>		(. LLVMExpressionNode n1=null, n2=null; l = new LinkedList<LLVMExpressionNode>(); .)
+ActPars<out List l>		(. DebugExpressionPair p1=null, p2=null; l = new LinkedList<DebugExpressionPair>(); .)
 =
 "(" 
 [
-	 Expr<out n1> 		(. l.add(n1); .)
+	 Expr<out p1> 		(. l.add(p1); .)
 	 
 	{
-		 "," Expr<out n2> (. l.add(n2); .)
+		 "," Expr<out p2> (. l.add(p2); .)
 		
 	}
 	
@@ -140,154 +140,140 @@ ActPars<out List l>		(. LLVMExpressionNode n1=null, n2=null; l = new LinkedList<
 ")"
 .
 
-UnaryExpr<out LLVMExpressionNode n>		(. n=null; char kind='\0'; DebugExprType typeP=null;.)
+UnaryExpr<out DebugExpressionPair p>		(. p=null; char kind='\0'; DebugExprType typeP=null;.)
 =
-Designator<out n>
+Designator<out p>
 |
-UnaryOp<out kind> CastExpr<out n> 		(. n = NF.createUnaryOpNode(n, kind); .)
+UnaryOp<out kind> CastExpr<out p> 		(. p = NF.createUnaryOpNode(p, kind); .)
 |
-"sizeof" "(" DType<out typeP> ")"	(. n=NF.createSizeofNode(typeP); .)
+"sizeof" "(" DType<out typeP> ")"	(. p=NF.createSizeofNode(typeP); .)
 .
 
 UnaryOp<out char kind>		(. kind='\0'; .)
 =
  ( "&"  | "*" | "+" | "-"  | "~"  | "!" ) (. kind = t.val.charAt(0); .) 						
 .
-CastExpr<out LLVMExpressionNode n>		(. DebugExprType typeP=null; .)
+CastExpr<out DebugExpressionPair p>		(. DebugExprType typeP=null; .)
 =
 [
 	IF (IsCast()) "(" DType<out typeP> ")" 
 ]
-UnaryExpr<out n>			(. if(typeP!=null) { n = NF.createCast(n, typeP); } .)
+UnaryExpr<out p>			(. if(typeP!=null) { p = NF.createCastIfNecessary(p, typeP); } .)
 .
 
-MultExpr<out LLVMExpressionNode n>		(. LLVMExpressionNode n1=null; .)
+MultExpr<out DebugExpressionPair p>		(. DebugExpressionPair p1=null; .)
 =
-CastExpr<out n> 
+CastExpr<out p> 
 {
-	 "*" CastExpr<out n1> 				(./*null is passed as type, since a type check is done by the arithmetic node anyway*/
-											n = NF.createArithmeticOp(ArithmeticOperation.MUL, null, n, n1); .)
+	 "*" CastExpr<out p1> 				(. p = NF.createArithmeticOp(ArithmeticOperation.MUL, p, p1); .)
 	
 	|
-	 "/" CastExpr<out n1> 				(./*null is passed as type, since a type check is done by the arithmetic node anyway*/
-											n = NF.createArithmeticOp(ArithmeticOperation.DIV, null, n, n1); .)
+	 "/" CastExpr<out p1> 				(. p = NF.createDivNode(p, p1); .)
 	
 	|
-	 "%" CastExpr<out n1> 				(./*null is passed as type, since a type check is done by the arithmetic node anyway*/
-											n = NF.createArithmeticOp(ArithmeticOperation.REM, null, n, n1); .)
+	 "%" CastExpr<out p1> 				(. p = NF.createRemNode(p, p1); .)
 	
 }
 .
-AddExpr<out LLVMExpressionNode n>		(. LLVMExpressionNode n1=null; .)
+AddExpr<out DebugExpressionPair p>		(. DebugExpressionPair p1=null; .)
 =
-MultExpr<out n> 
+MultExpr<out p> 
 {
-	 "+" MultExpr<out n1> 				(. n = NF.createAddNode(n, n1); .)	
+	 "+" MultExpr<out p1> 				(. p = NF.createArithmeticOp(ArithmeticOperation.ADD, p, p1); .)	
 	|
-	 "-" MultExpr<out n1> 				(.n = NF.createSubNode(n, n1); .)
+	 "-" MultExpr<out p1> 				(.p = NF.createArithmeticOp(ArithmeticOperation.SUB, p, p1); .)
 	
 }
 .
-ShiftExpr<out LLVMExpressionNode n>		(. LLVMExpressionNode n1=null; .)
+ShiftExpr<out DebugExpressionPair p>		(. DebugExpressionPair p1=null; .)
 =
-AddExpr<out n> 
+AddExpr<out p> 
 {
-	 "<<" AddExpr<out n1> 				(./*null is passed as type, since a type check is done by the arithmetic node anyway*/
-											n = NF.createArithmeticOp(ArithmeticOperation.SHL, null, n, n1); .)
+	 "<<" AddExpr<out p1> 				(.p = NF.createShiftLeft(p, p1); .)
 	
 	|
-	 ">>" AddExpr<out n1> 				(./*null is passed as type, since a type check is done by the arithmetic node anyway*/
-											n = NF.createArithmeticOp(ArithmeticOperation.ASHR, null, n, n1); .)
+	 ">>" AddExpr<out p1> 				(.p = NF.createShiftRight(p, p1); .)
 	
 }
 .
-RelExpr<out LLVMExpressionNode n>		(. LLVMExpressionNode n1=null; .)
+RelExpr<out DebugExpressionPair p>		(. DebugExpressionPair p1=null; .)
 =
-ShiftExpr<out n> 
+ShiftExpr<out p> 
 {
-	 "<" ShiftExpr<out n1> 				(./*null is passed as type, since a type check is done by the compare node anyway*/
-	 										n = NF.createCompareNode(n, Op.LT, n1); .)
+	 "<" ShiftExpr<out p1> 				(. p = NF.createCompareNode(p, Op.LT, p1); .)
 	
 	|
-	 ">" ShiftExpr<out n1> 				(./*null is passed as type, since a type check is done by the compare node anyway*/
-											n = NF.createCompareNode(n, Op.GT, n1); .)
+	 ">" ShiftExpr<out p1> 				(. p = NF.createCompareNode(p, Op.GT, p1); .)
 	
 	|
-	 "<=" ShiftExpr<out n1> 			(./*null is passed as type, since a type check is done by the compare node anyway*/
-											n = NF.createCompareNode(n, Op.LE, n1); .)
+	 "<=" ShiftExpr<out p1> 			(. p = NF.createCompareNode(p, Op.LE, p1); .)
 	
 	|
-	 ">=" ShiftExpr<out n1> 			(./*null is passed as type, since a type check is done by the compare node anyway*/
-											n = NF.createCompareNode(n, Op.GE, n1); .)
+	 ">=" ShiftExpr<out p1> 			(. p = NF.createCompareNode(p, Op.GE, p1); .)
 	
 }
 .
-EqExpr<out LLVMExpressionNode n>	(. LLVMExpressionNode n1=null; .)
+EqExpr<out DebugExpressionPair p>	(. DebugExpressionPair p1=null; .)
 =
-RelExpr<out n> 
+RelExpr<out p> 
 {
-	 "==" RelExpr<out n1> 			(./*null is passed as type, since a type check is done by the compare node anyway*/
-										n = NF.createCompareNode(n, Op.EQ, n1); .)
+	 "==" RelExpr<out p1> 			(. p = NF.createCompareNode(p, Op.EQ, p1); .)
 	
 	|
-	 "!=" RelExpr<out n1> 			(./*null is passed as type, since a type check is done by the compare node anyway*/
-										n = NF.createCompareNode(n, Op.NE, n1); .)
+	 "!=" RelExpr<out p1> 			(. p = NF.createCompareNode(p, Op.NE, p1); .)
 	
 }
 .
-AndExpr<out LLVMExpressionNode n>		(. LLVMExpressionNode n1=null; .)
+AndExpr<out DebugExpressionPair p>		(. DebugExpressionPair p1=null; .)
 =
-EqExpr<out n> 
+EqExpr<out p> 
 {
-	 "&" EqExpr<out n1> 				(./*null is passed as type, since a type check is done by the arithmetic node anyway*/
-											n = NF.createArithmeticOp(ArithmeticOperation.AND, null, n, n1); .)
+	 "&" EqExpr<out p1> 				(. p = NF.createArithmeticOp(ArithmeticOperation.AND, p, p1); .)
 	
 }
 .
 
-XorExpr<out LLVMExpressionNode n>		(. LLVMExpressionNode n1=null; .)
+XorExpr<out DebugExpressionPair p>		(. DebugExpressionPair p1=null; .)
 =
-AndExpr<out n> 
+AndExpr<out p> 
 {
-	 "^" AndExpr<out n1> 				(./*null is passed as type, since a type check is done by the arithmetic node anyway*/
-											n = NF.createArithmeticOp(ArithmeticOperation.XOR, null, n, n1); .)
+	 "^" AndExpr<out p1> 				(.	p = NF.createArithmeticOp(ArithmeticOperation.XOR, p, p1); .)
 	
 }
 .
 
-OrExpr<out LLVMExpressionNode n>	(. LLVMExpressionNode n1=null; .)
+OrExpr<out DebugExpressionPair p>	(. DebugExpressionPair p1=null; .)
 =
-XorExpr<out n> 
+XorExpr<out p> 
 {
-	 "|" XorExpr<out n1> 			(. /*null is passed as type, since a type check is done by the arithmetic node anyway*/
-										n = NF.createArithmeticOp(ArithmeticOperation.OR, null, n, n1); .)
+	 "|" XorExpr<out p1> 			(.  p = NF.createArithmeticOp(ArithmeticOperation.OR, p, p1); .)
 	
 }
 .
 
-LogAndExpr<out LLVMExpressionNode n>	(. LLVMExpressionNode n1=null; .)
+LogAndExpr<out DebugExpressionPair p>	(. DebugExpressionPair p1=null; .)
 =
-OrExpr<out n> 
+OrExpr<out p> 
 {
-	 "&&" OrExpr<out n1> 				(. n= NF.createLogicalAndNode(n, n1); .)
+	 "&&" OrExpr<out p1> 				(. p= NF.createLogicalAndNode(p, p1); .)
 	
 }
 .
 
-LogOrExpr<out LLVMExpressionNode n>		(. LLVMExpressionNode n1=null; .)
+LogOrExpr<out DebugExpressionPair p>		(. DebugExpressionPair p1=null; .)
 =
-LogAndExpr<out n> 
+LogAndExpr<out p> 
 {
-	 "||" LogAndExpr<out n1> 			(. n= NF.createLogicalOrNode(n, n1); .)
+	 "||" LogAndExpr<out p> 			(. p= NF.createLogicalOrNode(p, p1); .)
 	
 }
 .
 
-Expr<out LLVMExpressionNode n>					(. LLVMExpressionNode nThen=null, nElse=null; .)
+Expr<out DebugExpressionPair p>					(. DebugExpressionPair pThen=null, pElse=null; .)
 =
-LogOrExpr<out n> 
+LogOrExpr<out p> 
 [
-	 "?" Expr<out nThen> ":" Expr<out nElse> (. n = NF.createTernaryNode(n, nThen, nElse);.)
+	 "?" Expr<out pThen> ":" Expr<out pElse> (. p = NF.createTernaryNode(p, pThen, pElse);.)
 	
 ]
 .

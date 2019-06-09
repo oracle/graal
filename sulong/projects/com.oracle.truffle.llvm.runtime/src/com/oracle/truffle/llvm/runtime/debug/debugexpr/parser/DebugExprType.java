@@ -30,6 +30,34 @@ public class DebugExprType {
         }
     }
 
+    public boolean isIntegerType() {
+        switch (kind) {
+            case UNSIGNED_CHAR:
+            case UNSIGNED_INT:
+            case UNSIGNED_LONG:
+            case UNSIGNED_SHORT:
+            case SIGNED_CHAR:
+            case SIGNED_INT:
+            case SIGNED_LONG:
+            case SIGNED_SHORT:
+            case BOOL:
+                return true;
+            default:
+                return false;
+        }
+    }
+
+    public boolean isFloatingType() {
+        switch (kind) {
+            case FLOAT:
+            case DOUBLE:
+            case LONG_DOUBLE:
+                return true;
+            default:
+                return false;
+        }
+    }
+
     public Type getLLVMRuntimeType() {
         switch (kind) {
             case VOID:
@@ -57,6 +85,28 @@ public class DebugExprType {
             default:
                 return VoidType.INSTANCE;
         }
+    }
+
+    public static DebugExprType commonType(DebugExprType t1, DebugExprType t2) {
+        if (t1 == t2)
+            return t1;
+        else if (t1 == getVoidType() || t2 == getVoidType())
+            return getVoidType();
+        else if (t1.isFloatingType() && t2.isFloatingType()) {
+            return getFloatType(Math.max(t1.getBitSize(), t2.getBitSize()));
+        } else if (t1.isIntegerType() && t2.isIntegerType()) {
+            if (t1.isUnsigned() ^ t2.isUnsigned()) {
+                // return unsigned type
+                return getIntType(Math.max(t1.getBitSize(), t2.getBitSize()), false);
+            } else {
+                return getIntType(Math.max(t1.getBitSize(), t2.getBitSize()), !t1.isUnsigned());
+            }
+        } else if (t1.isIntegerType() && t2.isFloatingType()) {
+            return t2;
+        } else if (t1.isFloatingType() && t2.isIntegerType()) {
+            return t2;
+        }
+        return getVoidType();
     }
 
     public int getBitSize() {
@@ -116,6 +166,14 @@ public class DebugExprType {
             return map.get(Kind.VOID);
         DebugExprType t = new DebugExprType(Kind.VOID, null);
         map.put(Kind.VOID, t);
+        return t;
+    }
+
+    public static DebugExprType getBoolType() {
+        if (map.containsKey(Kind.BOOL))
+            return map.get(Kind.BOOL);
+        DebugExprType t = new DebugExprType(Kind.BOOL, null);
+        map.put(Kind.BOOL, t);
         return t;
     }
 
