@@ -140,37 +140,18 @@ ActPars<out List l>		(. LLVMExpressionNode n1=null, n2=null; l = new LinkedList<
 ")"
 .
 
-UnaryExpr<out LLVMExpressionNode n>		(. n=null; int kind=-1; DebugExprType typeP=null;.)
+UnaryExpr<out LLVMExpressionNode n>		(. n=null; char kind='\0'; DebugExprType typeP=null;.)
 =
 Designator<out n>
 |
-UnaryOp<out kind> CastExpr<out n> 		(. switch(kind) {
-												case 0:/*n = address(n)*/ break;
-												case 1: /*deref(n)*/ break;
-												case 2: default: break;
-												case 3: n = NF.createArithmeticOp(ArithmeticOperation.SUB, null,
-												NF.createIntegerConstant(0)
-												, n); break;
-												case 4: /*flip bits*/ break;
-												case 5: /*negate boolean/int*/ break;
-											} .)
+UnaryOp<out kind> CastExpr<out n> 		(. n = NF.createUnaryOpNode(n, kind); .)
 |
 "sizeof" "(" DType<out typeP> ")"	(. n=NF.createSizeofNode(typeP); .)
 .
 
-UnaryOp<out int kind>		(. kind=-1; .)
+UnaryOp<out char kind>		(. kind='\0'; .)
 =
-"&" 						(. kind=0; .)
-|
-"*" 						(. kind=1; .)
-|
-"+" 						(. kind=2; .)
-|
-"-" 						(. kind=3; .)
-|
-"~" 						(. kind=4; .)
-|
-"!" 						(. kind=5; .)
+ ( "&"  | "*" | "+" | "-"  | "~"  | "!" ) (. kind = t.val.charAt(0); .) 						
 .
 CastExpr<out LLVMExpressionNode n>		(. DebugExprType typeP=null; .)
 =

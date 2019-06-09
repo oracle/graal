@@ -4,8 +4,11 @@ import com.oracle.truffle.api.Scope;
 import com.oracle.truffle.api.TruffleLanguage.ContextReference;
 import com.oracle.truffle.llvm.runtime.ArithmeticOperation;
 import com.oracle.truffle.llvm.runtime.LLVMContext;
+import com.oracle.truffle.llvm.runtime.debug.debugexpr.nodes.DebugExprBitFlipNodeFactory.BitFlipNodeGen;
 import com.oracle.truffle.llvm.runtime.debug.debugexpr.nodes.DebugExprCompareNode.Op;
-import com.oracle.truffle.llvm.runtime.debug.debugexpr.nodes.DebugExprSCENode.SCEKind;
+import com.oracle.truffle.llvm.runtime.debug.debugexpr.nodes.DebugExprNotNodeFactory.NotNodeGen;
+import com.oracle.truffle.llvm.runtime.debug.debugexpr.nodes.DebugExprShortCircuitEvaluationNodeFactory.DebugExprLogicalAndNodeGen;
+import com.oracle.truffle.llvm.runtime.debug.debugexpr.nodes.DebugExprShortCircuitEvaluationNodeFactory.DebugExprLogicalOrNodeGen;
 import com.oracle.truffle.llvm.runtime.debug.debugexpr.parser.DebugExprType;
 import com.oracle.truffle.llvm.runtime.nodes.api.LLVMExpressionNode;
 import com.oracle.truffle.llvm.runtime.types.PrimitiveType;
@@ -52,6 +55,24 @@ public final class DebugExprNodeFactory {
         return new DebugExprTernaryNode(condition, thenNode, elseNode);
     }
 
+    public LLVMExpressionNode createUnaryOpNode(LLVMExpressionNode node, char unaryOp) {
+        switch (unaryOp) {
+            case '&':
+            case '*':
+                return errorObjNode;
+            case '+':
+                return node;
+            case '-':
+                return createSubNode(createIntegerConstant(0), node);
+            case '~':
+                return BitFlipNodeGen.create(node);
+            case '!':
+                return NotNodeGen.create(node);
+            default:
+                return errorObjNode;
+        }
+    }
+
     @SuppressWarnings("static-method")
     public LLVMExpressionNode createVarNode(String name) {
         return new DebugExprVarNode(name, scopes);
@@ -64,12 +85,12 @@ public final class DebugExprNodeFactory {
 
     @SuppressWarnings("static-method")
     public LLVMExpressionNode createLogicalAndNode(LLVMExpressionNode left, LLVMExpressionNode right) {
-        return new DebugExprSCENode(left, right, SCEKind.AND);
+        return DebugExprLogicalAndNodeGen.create(left, right);
     }
 
     @SuppressWarnings("static-method")
     public LLVMExpressionNode createLogicalOrNode(LLVMExpressionNode left, LLVMExpressionNode right) {
-        return new DebugExprSCENode(left, right, SCEKind.OR);
+        return DebugExprLogicalOrNodeGen.create(left, right);
     }
 
     @SuppressWarnings("static-method")

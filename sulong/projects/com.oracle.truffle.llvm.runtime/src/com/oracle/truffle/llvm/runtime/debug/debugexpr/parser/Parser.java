@@ -275,22 +275,13 @@ public LLVMExpressionNode GetASTRoot() {return astRoot; }
 
 	LLVMExpressionNode  UnaryExpr() {
 		LLVMExpressionNode  n;
-		n=null; int kind=-1; DebugExprType typeP=null;
+		n=null; char kind='\0'; DebugExprType typeP=null;
 		if (StartOf(3)) {
 			n = Designator();
 		} else if (StartOf(4)) {
 			kind = UnaryOp();
 			n = CastExpr();
-			switch(kind) {
-			case 0:/*n = address(n)*/ break;
-			case 1: /*deref(n)*/ break;
-			case 2: default: break;
-			case 3: n = NF.createArithmeticOp(ArithmeticOperation.SUB, null,
-			NF.createIntegerConstant(0)
-			, n); break;
-			case 4: /*flip bits*/ break;
-			case 5: /*negate boolean/int*/ break;
-			} 
+			n = NF.createUnaryOpNode(n, kind); 
 		} else if (la.kind == 22) {
 			Get();
 			Expect(6);
@@ -301,42 +292,37 @@ public LLVMExpressionNode GetASTRoot() {return astRoot; }
 		return n;
 	}
 
-	int  UnaryOp() {
-		int  kind;
-		kind=-1; 
+	char  UnaryOp() {
+		char  kind;
+		kind='\0'; 
 		switch (la.kind) {
 		case 23: {
 			Get();
-			kind=0; 
 			break;
 		}
 		case 7: {
 			Get();
-			kind=1; 
 			break;
 		}
 		case 24: {
 			Get();
-			kind=2; 
 			break;
 		}
 		case 25: {
 			Get();
-			kind=3; 
 			break;
 		}
 		case 26: {
 			Get();
-			kind=4; 
 			break;
 		}
 		case 27: {
 			Get();
-			kind=5; 
 			break;
 		}
 		default: SynErr(48); break;
 		}
+		kind = t.val.charAt(0); 
 		return kind;
 	}
 
