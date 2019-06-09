@@ -31,7 +31,6 @@ import org.graalvm.compiler.core.common.util.CompilationAlarm;
 import org.graalvm.compiler.debug.DebugContext;
 import org.graalvm.compiler.graph.Graph.NodeEventScope;
 import org.graalvm.compiler.graph.Node;
-import org.graalvm.compiler.graph.spi.Simplifiable;
 import org.graalvm.compiler.nodes.StructuredGraph;
 import org.graalvm.compiler.nodes.StructuredGraph.ScheduleResult;
 import org.graalvm.compiler.nodes.cfg.ControlFlowGraph;
@@ -99,21 +98,15 @@ public abstract class EffectsPhase<CoreProvidersT extends CoreProviders> extends
                         EconomicSetNodeEventListener listener = new EconomicSetNodeEventListener();
                         try (NodeEventScope nes = graph.trackNodeEvents(listener)) {
                             closure.applyEffects();
-                        }
 
-                        if (debug.isDumpEnabled(DebugContext.VERBOSE_LEVEL)) {
-                            debug.dump(DebugContext.VERBOSE_LEVEL, graph, "%s iteration", getName());
-                        }
-
-                        new DeadCodeEliminationPhase(Required).apply(graph);
-
-                        EconomicSet<Node> changedNodes = listener.getNodes();
-                        for (Node node : graph.getNodes()) {
-                            if (node instanceof Simplifiable) {
-                                changedNodes.add(node);
+                            if (debug.isDumpEnabled(DebugContext.VERBOSE_LEVEL)) {
+                                debug.dump(DebugContext.VERBOSE_LEVEL, graph, "%s iteration", getName());
                             }
+
+                            new DeadCodeEliminationPhase(Required).apply(graph);
                         }
-                        postIteration(graph, context, changedNodes);
+
+                        postIteration(graph, context, listener.getNodes());
                     }
 
                     if (closure.hasChanged()) {

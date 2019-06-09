@@ -56,6 +56,7 @@ import org.graalvm.compiler.nodes.AbstractBeginNode;
 import org.graalvm.compiler.nodes.AbstractMergeNode;
 import org.graalvm.compiler.nodes.BinaryOpLogicNode;
 import org.graalvm.compiler.nodes.ConditionAnchorNode;
+import org.graalvm.compiler.nodes.DeoptimizeNode;
 import org.graalvm.compiler.nodes.DeoptimizingGuard;
 import org.graalvm.compiler.nodes.EndNode;
 import org.graalvm.compiler.nodes.FixedGuardNode;
@@ -339,18 +340,22 @@ public class ConditionalEliminationPhase extends BasePhase<CoreProviders> {
                         rebuildPiNodes((DeoptimizingGuard) guard);
                     }
                 } else {
-                    /*
-                     * Don't kill this branch immediately because `killCFG` can have complex
-                     * implications in the presence of loops: it might replace or delete nodes in
-                     * other branches or even above the kill point. Instead of killing immediately,
-                     * just leave the graph in a state that is easy to simplify by a subsequent
-                     * canonicalizer phase.
-                     */
-                    FixedGuardNode deopt = new FixedGuardNode(LogicConstantNode.forBoolean(result, node.graph()), node.getReason(), node.getAction(), node.getSpeculation(), node.isNegated(),
-                                    node.getNodeSourcePosition());
                     AbstractBeginNode beginNode = (AbstractBeginNode) node.getAnchor();
-                    graph.addAfterFixed(beginNode, node.graph().add(deopt));
 
+                    if (beginNode.next() instanceof DeoptimizeNode) {
+                        // This branch is already dead.
+                    } else {
+                        /*
+                         * Don't kill this branch immediately because `killCFG` can have complex
+                         * implications in the presence of loops: it might replace or delete nodes
+                         * in other branches or even above the kill point. Instead of killing
+                         * immediately, just leave the graph in a state that is easy to simplify by
+                         * a subsequent canonicalizer phase.
+                         */
+                        FixedGuardNode deopt = new FixedGuardNode(LogicConstantNode.forBoolean(result, node.graph()), node.getReason(), node.getAction(), node.getSpeculation(), node.isNegated(),
+                                        node.getNodeSourcePosition());
+                        graph.addAfterFixed(beginNode, node.graph().add(deopt));
+                    }
                 }
                 return true;
             })) {

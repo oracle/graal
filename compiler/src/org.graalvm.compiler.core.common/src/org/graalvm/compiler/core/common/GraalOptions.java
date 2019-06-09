@@ -168,6 +168,9 @@ public final class GraalOptions {
     public static final OptionKey<Boolean> ConditionalElimination = new OptionKey<>(true);
 
     @Option(help = "", type = OptionType.Debug)
+    public static final OptionKey<Integer> ConditionalEliminationMaxIterations = new OptionKey<>(4);
+
+    @Option(help = "", type = OptionType.Debug)
     public static final OptionKey<Boolean> RawConditionalElimination = new OptionKey<>(true);
 
     @Option(help = "", type = OptionType.Debug)
