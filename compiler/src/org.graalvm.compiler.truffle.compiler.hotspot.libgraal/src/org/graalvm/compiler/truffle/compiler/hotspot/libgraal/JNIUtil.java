@@ -50,7 +50,7 @@ final class JNIUtil {
     // Checkstyle: stop
     static boolean IsSameObject(JNIEnv env, JObject ref1, JObject ref2) {
         traceJNI("IsSameObject");
-        return (env.getFunctions().getIsSameObject().call(env, ref1, ref2) & 0xff) != 0;
+        return env.getFunctions().getIsSameObject().call(env, ref1, ref2);
     }
 
     static void DeleteLocalRef(JNIEnv env, JObject ref) {
@@ -130,7 +130,7 @@ final class JNIUtil {
 
     static boolean ExceptionCheck(JNIEnv env) {
         traceJNI("ExceptionCheck");
-        return (env.getFunctions().getExceptionCheck().call(env) & 0xff) != 0;
+        return env.getFunctions().getExceptionCheck().call(env);
     }
 
     static void ExceptionClear(JNIEnv env) {
