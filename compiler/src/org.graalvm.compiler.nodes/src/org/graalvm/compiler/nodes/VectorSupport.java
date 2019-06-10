@@ -62,7 +62,7 @@ public final class VectorSupport {
         @Override
         public void generate(NodeLIRBuilderTool gen) {
             // TODO: don't hardcode for integers
-            gen.setResult(this, gen.getLIRGeneratorTool().emitVectorExtract(gen.getLIRGeneratorTool().getLIRKind(StampFactory.intValue()), gen.operand(vectorValue), index));
+            gen.setResult(this, gen.getLIRGeneratorTool().emitExtract(gen.getLIRGeneratorTool().getLIRKind(StampFactory.intValue()), gen.operand(vectorValue), index));
         }
     }
 

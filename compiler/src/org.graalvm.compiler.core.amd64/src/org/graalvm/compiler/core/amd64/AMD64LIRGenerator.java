@@ -759,7 +759,7 @@ public abstract class AMD64LIRGenerator extends LIRGenerator {
     }
 
     @Override
-    public Variable emitVectorExtract(LIRKind elementKind, Value vector, int index) {
+    public Variable emitExtract(LIRKind elementKind, Value vector, int index) {
         Variable result = newVariable(elementKind);
         append(new AMD64VectorShuffle.ExtractIntOp(asAllocatable(result), asAllocatable(vector), index * 4));
         return result;
