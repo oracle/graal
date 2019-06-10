@@ -37,7 +37,7 @@ import mx
 import sys
 
 if sys.version_info[0] < 3:
-    _long = long
+    _long = long # pylint: disable=undefined-variable
 else:
     _long = int
 

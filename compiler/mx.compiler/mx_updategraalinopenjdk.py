@@ -63,7 +63,7 @@ def _find_version_base_project(versioned_project):
 
 def _is_git_repo(jdkrepo):
     git_dir = join(jdkrepo, '.git')
-    return True if exists(git_dir) else False
+    return exists(git_dir)
 
 SuiteJDKInfo = namedtuple('SuiteJDKInfo', 'name includes excludes')
 GraalJDKModule = namedtuple('GraalJDKModule', 'name suites')

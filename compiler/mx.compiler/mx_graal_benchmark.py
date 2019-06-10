@@ -46,9 +46,13 @@ import sys
 if sys.version_info[0] < 3:
     from ConfigParser import ConfigParser
     from StringIO import StringIO
+    def _configparser_read_file(configp, fp):
+        configp.readfp(fp)
 else:
     from configparser import ConfigParser
     from io import StringIO
+    def _configparser_read_file(configp, fp):
+        configp.read_file(fp)
 
 
 _suite = mx.suite('compiler')
@@ -1243,7 +1247,7 @@ class SpecJbb2005BenchmarkSuite(mx_benchmark.JavaBenchmarkSuite, HeapSettingsMix
             runArgs)
 
     def after(self, bmSuiteArgs):
-        if self.prop_tmp_file != None and os.path.exists(self.prop_tmp_file):
+        if self.prop_tmp_file is not None and os.path.exists(self.prop_tmp_file):
             os.unlink(self.prop_tmp_file)
 
     def getDefaultProperties(self, benchmarks, bmSuiteArgs):
@@ -1254,7 +1258,7 @@ class SpecJbb2005BenchmarkSuite(mx_benchmark.JavaBenchmarkSuite, HeapSettingsMix
             config.write(f.read())
         config.seek(0, os.SEEK_SET)
         configp = ConfigParser()
-        configp.readfp(config)
+        _configparser_read_file(configp, config)
         return dict(configp.items("root"))
 
     def benchmarkList(self, bmSuiteArgs):
@@ -1898,10 +1902,7 @@ class SparkSqlPerfBenchmarkSuite(mx_benchmark.JavaBenchmarkSuite, mx_benchmark.A
                 return
             pos = match.start()
             decoder = json.JSONDecoder()
-            try:
-                part, pos = decoder.raw_decode(content, pos)
-            except json.JSONDecodeError:
-                raise
+            part, pos = decoder.raw_decode(content, pos)
             yield part
 
     def getExtraIterationCount(self, iterations):

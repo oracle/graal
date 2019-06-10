@@ -63,7 +63,7 @@ import glob
 # Temporary imports and (re)definitions while porting mx from Python 2 to Python 3
 if sys.version_info[0] < 3:
     from StringIO import StringIO
-    _unicode = unicode
+    _unicode = unicode # pylint: disable=undefined-variable
     def _decode(x):
         return x
     def _encode(x):
@@ -945,7 +945,6 @@ class StdoutUnstripping:
                                 mx.log('<<<< END UNSTRIPPED OUTPUT')
             except BaseException as e:
                 mx.log('Error unstripping output from VM execution with stripped jars: ' + str(e))
-        return None
 
 def run_java(args, nonZeroIsFatal=True, out=None, err=None, cwd=None, timeout=None, env=None, addDefaultArgs=True):
     args = ['-XX:+UnlockExperimentalVMOptions', '-XX:+EnableJVMCI'] + _parseVmArgs(args, addDefaultArgs=addDefaultArgs)
