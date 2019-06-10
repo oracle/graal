@@ -33,6 +33,6 @@ public class HotSpotGraalServices {
      */
     @SuppressWarnings("unused")
     public static byte[] getImplicitExceptionBytes(HotSpotMetaData metaData) {
-        return ((HotSpotMetaData) metaData).implicitExceptionBytes();
+        return metaData.implicitExceptionBytes();
     }
 }

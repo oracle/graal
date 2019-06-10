@@ -143,11 +143,11 @@ final class MetadataBuilder {
                 NativeOrderOutputStream.PatchableInt scopeOffset = metadataStream.patchableInt();
                 NativeOrderOutputStream.PatchableInt relocationOffset = metadataStream.patchableInt();
                 NativeOrderOutputStream.PatchableInt exceptionOffset = metadataStream.patchableInt();
-                NativeOrderOutputStream.PatchableInt oopMapOffset = metadataStream.patchableInt();
-                NativeOrderOutputStream.PatchableInt implictTableOFfset = null;
+                NativeOrderOutputStream.PatchableInt implictTableOffset = null;
                 if (implicitExceptionBytes != null) {
-                    implictTableOFfset = metadataStream.patchableInt();
+                    implictTableOffset = metadataStream.patchableInt();
                 }
+                NativeOrderOutputStream.PatchableInt oopMapOffset = metadataStream.patchableInt();
                 metadataStream.align(8);
 
                 pcDescOffset.set(metadataStream.position());
@@ -163,7 +163,7 @@ final class MetadataBuilder {
                 metadataStream.put(metaData.exceptionBytes()).align(8);
 
                 if (implicitExceptionBytes != null) {
-                    implictTableOFfset.set(metadataStream.position());
+                    implictTableOffset.set(metadataStream.position());
                     metadataStream.put(implicitExceptionBytes).align(8);
                 }
 
