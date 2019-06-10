@@ -36,10 +36,14 @@ public interface LIRKindTool {
      */
     LIRKind getIntegerKind(int bits);
 
+    LIRKind getVectorIntegerKind(int bits, int elementCount);
+
     /**
      * Get an architecture specific floating point kind of a certain size.
      */
     LIRKind getFloatingKind(int bits);
+
+    LIRKind getVectorFloatingKind(int bits, int elementCount);
 
     /**
      * Get the architecture specific kind used to represent Java objects.

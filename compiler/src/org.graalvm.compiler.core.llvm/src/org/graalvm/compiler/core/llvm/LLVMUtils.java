@@ -37,6 +37,7 @@ import org.graalvm.compiler.core.common.LIRKind;
 import org.graalvm.compiler.core.common.NumUtil;
 import org.graalvm.compiler.core.common.calc.Condition;
 import org.graalvm.compiler.core.common.spi.LIRKindTool;
+import org.graalvm.compiler.debug.GraalError;
 import org.graalvm.compiler.lir.ConstantValue;
 import org.graalvm.compiler.lir.Variable;
 import org.graalvm.compiler.lir.VirtualStackSlot;
@@ -236,6 +237,11 @@ public class LLVMUtils {
         }
 
         @Override
+        public LIRKind getVectorIntegerKind(int bits, int elementCount) {
+            throw GraalError.unimplemented();
+        }
+
+        @Override
         public LIRKind getFloatingKind(int bits) {
             switch (bits) {
                 case 32:
@@ -245,6 +251,11 @@ public class LLVMUtils {
                 default:
                     throw shouldNotReachHere("invalid float type");
             }
+        }
+
+        @Override
+        public LIRKind getVectorFloatingKind(int bits, int elementCount) {
+            throw GraalError.unimplemented();
         }
 
         @Override
