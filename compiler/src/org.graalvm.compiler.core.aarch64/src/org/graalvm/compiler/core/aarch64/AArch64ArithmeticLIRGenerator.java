@@ -100,11 +100,6 @@ public class AArch64ArithmeticLIRGenerator extends ArithmeticLIRGenerator implem
     }
 
     @Override
-    protected Variable emitVectorAdd(LIRKind resultKind, Value a, Value b, boolean setFlags) {
-        throw GraalError.unimplemented();
-    }
-
-    @Override
     protected Variable emitSub(LIRKind resultKind, Value a, Value b, boolean setFlags) {
         if (isNumericInteger(a.getPlatformKind())) {
             AArch64ArithmeticOp op = setFlags ? AArch64ArithmeticOp.SUBS : AArch64ArithmeticOp.SUB;

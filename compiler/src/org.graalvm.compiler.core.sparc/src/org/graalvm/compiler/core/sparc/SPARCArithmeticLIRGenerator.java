@@ -247,11 +247,6 @@ public class SPARCArithmeticLIRGenerator extends ArithmeticLIRGenerator {
     }
 
     @Override
-    protected Variable emitVectorAdd(LIRKind resultKind, Value a, Value b, boolean setFlags) {
-        throw GraalError.unimplemented();
-    }
-
-    @Override
     public Variable emitSub(LIRKind resultKind, Value a, Value b, boolean setFlags) {
         if (isNumericInteger(a.getPlatformKind())) {
             return emitBinary(resultKind, setFlags ? Subcc : Sub, a, b);

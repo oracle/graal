@@ -48,8 +48,6 @@ public interface ArithmeticLIRGeneratorTool {
 
     Value emitAdd(Value a, Value b, boolean setFlags);
 
-    Value emitVectorAdd(Value a, Value b, boolean setFlags);
-
     Value emitSub(Value a, Value b, boolean setFlags);
 
     Value emitMul(Value a, Value b, boolean setFlags);

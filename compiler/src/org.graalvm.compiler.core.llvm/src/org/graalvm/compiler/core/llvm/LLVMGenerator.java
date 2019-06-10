@@ -1074,11 +1074,6 @@ public class LLVMGenerator implements LIRGeneratorTool {
         }
 
         @Override
-        public Value emitVectorAdd(Value a, Value b, boolean setFlags) {
-            throw unimplemented();
-        }
-
-        @Override
         public Value emitSub(Value a, Value b, boolean setFlags) {
             LLVMValueRef sub = builder.buildSub(getVal(a), getVal(b));
             return new LLVMVariable(sub);

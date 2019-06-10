@@ -333,13 +333,6 @@ public class AMD64ArithmeticLIRGenerator extends ArithmeticLIRGenerator implemen
     }
 
     @Override
-    protected Variable emitVectorAdd(LIRKind resultKind, Value a, Value b, boolean setFlags) {
-        Variable result = getLIRGen().newVariable(resultKind);
-        getLIRGen().append(new AMD64Binary.VectorAddOp(result, getLIRGen().asAllocatable(a), getLIRGen().asAllocatable(b)));
-        return result;
-    }
-
-    @Override
     public Variable emitSub(LIRKind resultKind, Value a, Value b, boolean setFlags) {
         boolean isAvx = supportAVX();
         switch ((AMD64Kind) a.getPlatformKind()) {
