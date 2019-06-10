@@ -27,6 +27,7 @@ package org.graalvm.compiler.nodes.graphbuilderconf;
 import java.util.Arrays;
 import java.util.Collections;
 import java.util.List;
+import java.util.Optional;
 
 import org.graalvm.compiler.core.common.type.StampPair;
 
@@ -196,6 +197,8 @@ public final class GraphBuilderConfiguration {
 
     private final boolean eagerResolving;
     private final boolean unresolvedIsError;
+    // Optional due to visibility of NativeImageOptions
+    private final Optional<Boolean> allowIncompleteClasspath;
     private final BytecodeExceptionMode bytecodeExceptionMode;
     private final boolean omitAssertions;
     private final List<ResolvedJavaType> skippedExceptionTypes;
@@ -226,6 +229,7 @@ public final class GraphBuilderConfiguration {
 
     private GraphBuilderConfiguration(boolean eagerResolving,
                     boolean unresolvedIsError,
+                    Optional<Boolean> allowIncompleteClasspath,
                     BytecodeExceptionMode bytecodeExceptionMode,
                     boolean omitAssertions,
                     boolean insertFullInfopoints,
@@ -236,6 +240,7 @@ public final class GraphBuilderConfiguration {
         this.eagerResolving = eagerResolving;
         this.unresolvedIsError = unresolvedIsError;
         this.bytecodeExceptionMode = bytecodeExceptionMode;
+        this.allowIncompleteClasspath = allowIncompleteClasspath;
         this.omitAssertions = omitAssertions;
         this.insertFullInfopoints = insertFullInfopoints;
         this.trackNodeSourcePosition = trackNodeSourcePosition;
@@ -254,6 +259,7 @@ public final class GraphBuilderConfiguration {
         GraphBuilderConfiguration result = new GraphBuilderConfiguration(
                         eagerResolving,
                         unresolvedIsError,
+                        allowIncompleteClasspath,
                         bytecodeExceptionMode,
                         omitAssertions,
                         insertFullInfopoints,
@@ -274,6 +280,21 @@ public final class GraphBuilderConfiguration {
         return new GraphBuilderConfiguration(
                         eagerResolving,
                         newUnresolvedIsError,
+                        allowIncompleteClasspath,
+                        bytecodeExceptionMode,
+                        omitAssertions,
+                        insertFullInfopoints,
+                        trackNodeSourcePosition,
+                        retainLocalVariables,
+                        skippedExceptionTypes,
+                        plugins);
+    }
+
+    public GraphBuilderConfiguration withAllowIncompleteClasspath(boolean newAllowIncompleteClasspath) {
+        return new GraphBuilderConfiguration(
+                        eagerResolving,
+                        unresolvedIsError,
+                        Optional.of(newAllowIncompleteClasspath),
                         bytecodeExceptionMode,
                         omitAssertions,
                         insertFullInfopoints,
@@ -287,6 +308,7 @@ public final class GraphBuilderConfiguration {
         return new GraphBuilderConfiguration(
                         newEagerResolving,
                         unresolvedIsError,
+                        allowIncompleteClasspath,
                         bytecodeExceptionMode,
                         omitAssertions,
                         insertFullInfopoints,
@@ -300,6 +322,7 @@ public final class GraphBuilderConfiguration {
         return new GraphBuilderConfiguration(
                         eagerResolving,
                         unresolvedIsError,
+                        allowIncompleteClasspath,
                         bytecodeExceptionMode,
                         omitAssertions,
                         insertFullInfopoints,
@@ -312,6 +335,7 @@ public final class GraphBuilderConfiguration {
     public GraphBuilderConfiguration withBytecodeExceptionMode(BytecodeExceptionMode newBytecodeExceptionMode) {
         return new GraphBuilderConfiguration(eagerResolving,
                         unresolvedIsError,
+                        allowIncompleteClasspath,
                         newBytecodeExceptionMode,
                         omitAssertions,
                         insertFullInfopoints,
@@ -325,6 +349,7 @@ public final class GraphBuilderConfiguration {
         return new GraphBuilderConfiguration(
                         eagerResolving,
                         unresolvedIsError,
+                        allowIncompleteClasspath,
                         bytecodeExceptionMode,
                         newOmitAssertions,
                         insertFullInfopoints,
@@ -338,6 +363,7 @@ public final class GraphBuilderConfiguration {
         return new GraphBuilderConfiguration(
                         eagerResolving,
                         unresolvedIsError,
+                        allowIncompleteClasspath,
                         bytecodeExceptionMode,
                         omitAssertions,
                         newInsertFullInfopoints,
@@ -351,6 +377,7 @@ public final class GraphBuilderConfiguration {
         return new GraphBuilderConfiguration(
                         eagerResolving,
                         unresolvedIsError,
+                        allowIncompleteClasspath,
                         bytecodeExceptionMode,
                         omitAssertions,
                         insertFullInfopoints,
@@ -364,6 +391,7 @@ public final class GraphBuilderConfiguration {
         return new GraphBuilderConfiguration(
                         eagerResolving,
                         unresolvedIsError,
+                        allowIncompleteClasspath,
                         bytecodeExceptionMode,
                         omitAssertions,
                         insertFullInfopoints,
@@ -405,6 +433,7 @@ public final class GraphBuilderConfiguration {
         return new GraphBuilderConfiguration(
                         /* eagerResolving: */ false,
                         /* unresolvedIsError: */ false,
+                        /* allowIncompleteClasspath (defer to NativeImageOptions): */ Optional.empty(),
                         BytecodeExceptionMode.Profile,
                         /* omitAssertions: */ false,
                         /* insertFullInfopoints: */ false,
@@ -418,6 +447,7 @@ public final class GraphBuilderConfiguration {
         return new GraphBuilderConfiguration(
                         /* eagerResolving: */ true,
                         /* unresolvedIsError: */ true,
+                        /* allowIncompleteClasspath (defer to NativeImageOptions): */Optional.empty(),
                         BytecodeExceptionMode.OmitAll,
                         /* omitAssertions: */ false,
                         /* insertFullInfopoints: */ false,
@@ -430,6 +460,10 @@ public final class GraphBuilderConfiguration {
     /** Returns {@code true} if it is an error for a class/field/method resolution to fail. */
     public boolean unresolvedIsError() {
         return unresolvedIsError;
+    }
+
+    public boolean allowIncompleteClasspath(boolean defaultValue) {
+        return allowIncompleteClasspath.orElse(defaultValue);
     }
 
     public Plugins getPlugins() {

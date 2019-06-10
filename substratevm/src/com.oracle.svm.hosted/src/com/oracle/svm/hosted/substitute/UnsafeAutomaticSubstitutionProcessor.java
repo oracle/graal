@@ -302,6 +302,7 @@ public class UnsafeAutomaticSubstitutionProcessor extends SubstitutionProcessor 
         if (hostType.isArray()) {
             return;
         }
+
         /* Detect field offset computation in static initializers. */
         ResolvedJavaMethod clinit = hostType.getClassInitializer();
 
@@ -897,7 +898,8 @@ public class UnsafeAutomaticSubstitutionProcessor extends SubstitutionProcessor 
         HighTierContext context = new HighTierContext(GraalAccess.getOriginalProviders(), null, OptimisticOptimizations.NONE);
         graph.setGuardsStage(GuardsStage.FIXED_DEOPTS);
 
-        GraphBuilderPhase.Instance builderPhase = new ClassInitializerGraphBuilderPhase(context, GraphBuilderConfiguration.getDefault(plugins).withEagerResolving(true),
+        GraphBuilderPhase.Instance builderPhase = new ClassInitializerGraphBuilderPhase(context,
+                        GraphBuilderConfiguration.getDefault(plugins).withEagerResolving(true).withAllowIncompleteClasspath(true),
                         context.getOptimisticOptimizations());
         builderPhase.apply(graph, context);
 
