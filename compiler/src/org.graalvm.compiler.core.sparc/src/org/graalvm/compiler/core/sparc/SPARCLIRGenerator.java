@@ -156,11 +156,6 @@ public abstract class SPARCLIRGenerator extends LIRGenerator {
         }
     }
 
-    @Override
-    public <K extends ValueKind<K>> K toVectorKind(K kind, int count) {
-        throw GraalError.unimplemented();
-    }
-
     public SPARCAddressValue asAddressValue(Value address) {
         if (address instanceof SPARCAddressValue) {
             return (SPARCAddressValue) address;

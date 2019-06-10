@@ -394,11 +394,6 @@ public class LLVMGenerator implements LIRGeneratorTool {
     }
 
     @Override
-    public <K extends ValueKind<K>> K toVectorKind(K kind, int count) {
-      throw unimplemented();
-    }
-
-    @Override
     public AllocatableValue emitLoadConstant(ValueKind<?> kind, Constant constant) {
         LLVMValueRef value = builder.buildLoad(getLLVMPlaceholderForConstant(constant), ((LLVMKind) kind.getPlatformKind()).get());
         return new LLVMVariable(value);
