@@ -210,8 +210,9 @@ builds += [
     run: [
       ${mx_vm_installables} [--dynamicimports, ${vm_extra_suites}, "--exclude-components=nju", build]
       ${mx_vm_installables} [--dynamicimports, ${vm_extra_suites}, "--exclude-components=nju"] ${maven_deploy_vm}
-      ${mx_vm_common} [build]
-      ${mx_vm_common} ${maven_deploy_vm}
+    ] ${collect_profiles} [
+      ${mx_vm_common} ${vm_profiles} [build]
+      ${mx_vm_common} ${vm_profiles} ${maven_deploy_vm}
       ${notify-nexus-deploy}
       [set-export, GRAALVM_HOME, ${mx_vm_common} [graalvm-home]]
     ] ${scan_malware.run}
@@ -238,9 +239,9 @@ builds += [
     name: deploy-vm-installable-darwin-amd64
   }
   ${full_vm_build_darwin} ${darwin-deploy} ${deploy_daily_vm_darwin} {
-    run: [
-      ${mx_vm_common} [build]
-      ${mx_vm_common} ${maven_deploy_vm}
+    run: ${collect_profiles} [
+      ${mx_vm_common} ${vm_profiles} [build]
+      ${mx_vm_common} ${vm_profiles} ${maven_deploy_vm}
       ${notify-nexus-deploy}
     ]
     timelimit: "1:45:00"
