@@ -1,6 +1,7 @@
 package org.graalvm.compiler.nodes.calc;
 
 import org.graalvm.compiler.core.common.type.Stamp;
+import org.graalvm.compiler.core.common.type.VectorPrimitiveStamp;
 import org.graalvm.compiler.graph.NodeClass;
 import org.graalvm.compiler.nodeinfo.NodeInfo;
 import org.graalvm.compiler.nodes.NodeView;
@@ -29,8 +30,8 @@ public class VectorAddNode extends ValueNode implements LIRLowerable {
 
     @Override
     public boolean verify() {
-        assertTrue(x.isVector(), "[+] x input needs to be vector");
-        assertTrue(y.isVector(), "[+] y input needs to be vector");
+        assertTrue(x.stamp(NodeView.DEFAULT) instanceof VectorPrimitiveStamp, "[+] x input needs to be vector");
+        assertTrue(y.stamp(NodeView.DEFAULT) instanceof VectorPrimitiveStamp, "[+] y input needs to be vector");
         return super.verify();
     }
 

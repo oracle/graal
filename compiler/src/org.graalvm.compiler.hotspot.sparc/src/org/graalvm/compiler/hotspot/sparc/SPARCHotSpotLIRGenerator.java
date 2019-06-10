@@ -411,7 +411,7 @@ public class SPARCHotSpotLIRGenerator extends SPARCLIRGenerator implements HotSp
     }
 
     @Override
-    public Variable emitExtract(LIRKind elementKind, Value vector, int index) {
+    public Variable emitExtract(LIRKind vectorKind, Value vector, int index) {
         throw GraalError.unimplemented();
     }
 

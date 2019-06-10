@@ -8,6 +8,11 @@ import jdk.vm.ci.meta.MetaAccessProvider;
 
 public class VectorIntegerStamp extends VectorPrimitiveStamp {
 
+    public static VectorIntegerStamp create(IntegerStamp scalar, int elementCount) {
+        // TODO: Figure out OPS
+        return new VectorIntegerStamp(scalar, elementCount, IntegerStamp.OPS);
+    }
+
     private VectorIntegerStamp(IntegerStamp scalar, int elementCount, ArithmeticOpTable ops) {
         super(scalar, elementCount, ops);
     }
@@ -36,7 +41,7 @@ public class VectorIntegerStamp extends VectorPrimitiveStamp {
         final int newElementCount = Math.max(getElementCount(), other.getElementCount());
 
         // TODO: Figure out OPS
-        return new VectorIntegerStamp((IntegerStamp) getScalar().meet(other.getScalar()), newElementCount, null);
+        return VectorIntegerStamp.create((IntegerStamp) getScalar().meet(other.getScalar()), newElementCount);
     }
 
     @Override
@@ -48,20 +53,17 @@ public class VectorIntegerStamp extends VectorPrimitiveStamp {
         final VectorIntegerStamp other = (VectorIntegerStamp) otherStamp;
         final int newElementCount = Math.min(getElementCount(), other.getElementCount());
 
-        // TODO: Figure out OPS
-        return new VectorIntegerStamp(getScalar().join(other.getScalar()), newElementCount, null);
+        return VectorIntegerStamp.create(getScalar().join(other.getScalar()), newElementCount);
     }
 
     @Override
     public Stamp unrestricted() {
-        // TODO: Figure out OPS
-        return new VectorIntegerStamp(getScalar().unrestricted(), getElementCount(), null);
+        return VectorIntegerStamp.create(getScalar().unrestricted(), getElementCount());
     }
 
     @Override
     public Stamp empty() {
-        // TODO: Figure out OPS
-        return new VectorIntegerStamp(getScalar().empty(), getElementCount(), null);
+        return VectorIntegerStamp.create(getScalar().empty(), getElementCount());
     }
 
     @Override
@@ -92,18 +94,6 @@ public class VectorIntegerStamp extends VectorPrimitiveStamp {
     @Override
     public boolean hasValues() {
         return getScalar().hasValues() && getElementCount() > 0;
-    }
-
-    @Override
-    public String toString() {
-        final StringBuilder str = new StringBuilder();
-        if (hasValues()) {
-            str.append("vector of ");
-            str.append(getScalar().toString());
-        } else {
-            str.append("<empty>");
-        }
-        return str.toString();
     }
 
 }

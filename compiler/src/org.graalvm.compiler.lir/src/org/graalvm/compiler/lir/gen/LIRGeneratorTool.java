@@ -347,5 +347,5 @@ public interface LIRGeneratorTool extends DiagnosticLIRGeneratorTool, ValueKindF
 
     Variable emitPack(LIRKind resultKind, List<Value> values);
 
-    Variable emitExtract(LIRKind elementKind, Value vector, int index);
+    Variable emitExtract(LIRKind vectorKind, Value vector, int index);
 }

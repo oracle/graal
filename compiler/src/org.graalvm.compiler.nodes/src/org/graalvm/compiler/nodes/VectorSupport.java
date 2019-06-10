@@ -4,6 +4,7 @@ import jdk.vm.ci.meta.PrimitiveConstant;
 import org.graalvm.compiler.core.common.LIRKind;
 import org.graalvm.compiler.core.common.type.Stamp;
 import org.graalvm.compiler.core.common.type.StampFactory;
+import org.graalvm.compiler.core.common.type.VectorPrimitiveStamp;
 import org.graalvm.compiler.graph.Node;
 import org.graalvm.compiler.graph.NodeClass;
 import org.graalvm.compiler.graph.NodeInputList;
@@ -18,6 +19,7 @@ import java.nio.ByteBuffer;
 import java.nio.ByteOrder;
 import java.util.Comparator;
 import java.util.List;
+import java.util.Vector;
 import java.util.stream.Collectors;
 import java.util.stream.StreamSupport;
 
@@ -55,14 +57,13 @@ public final class VectorSupport {
 
         @Override
         public boolean verify() {
-            assertTrue(vectorValue.isVector(), "VectorExtractNode requires a vector ValueNode input");
+            assertTrue(vectorValue.stamp instanceof VectorPrimitiveStamp, "VectorExtractNode requires a vector ValueNode input");
             return super.verify();
         }
 
         @Override
         public void generate(NodeLIRBuilderTool gen) {
-            // TODO: don't hardcode for integers
-            gen.setResult(this, gen.getLIRGeneratorTool().emitExtract(gen.getLIRGeneratorTool().getLIRKind(StampFactory.intValue()), gen.operand(vectorValue), index));
+            gen.setResult(this, gen.getLIRGeneratorTool().emitExtract(gen.getLIRGeneratorTool().getLIRKind(vectorValue.stamp), gen.operand(vectorValue), index));
         }
     }
 
@@ -73,11 +74,11 @@ public final class VectorSupport {
 
         @Input private NodeInputList<ValueNode> values;
 
-        public VectorPackNode(Stamp stamp, List<ValueNode> values) {
+        public VectorPackNode(VectorPrimitiveStamp stamp, List<ValueNode> values) {
             this(TYPE, stamp, values);
         }
 
-        private VectorPackNode(NodeClass<? extends VectorPackNode> c, Stamp stamp, List<ValueNode> values) {
+        private VectorPackNode(NodeClass<? extends VectorPackNode> c, VectorPrimitiveStamp stamp, List<ValueNode> values) {
             super(c, stamp);
             this.values = new NodeInputList<>(this, values);
         }
@@ -88,7 +89,7 @@ public final class VectorSupport {
 
         @Override
         public boolean verify() {
-            assertTrue(values.stream().noneMatch(ValueNode::isVector), "VectorPackNode requires scalar inputs");
+            assertTrue(values.stream().noneMatch(x -> x.stamp instanceof VectorPrimitiveStamp), "VectorPackNode requires scalar inputs");
             return super.verify();
         }
 
@@ -162,8 +163,9 @@ public final class VectorSupport {
         }
 
         private void generateForPrimitive(NodeLIRBuilderTool gen) {
-            // TODO: don't hardcode for integers
-            final ByteBuffer byteBuffer = ByteBuffer.allocate(values.count() * 4);
+            final LIRKind kind = gen.getLIRGeneratorTool().getLIRKind(stamp);
+
+            final ByteBuffer byteBuffer = ByteBuffer.allocate(kind.getPlatformKind().getSizeInBytes());
             // TODO: don't hardcode for Intel
             byteBuffer.order(ByteOrder.LITTLE_ENDIAN);
 
@@ -173,13 +175,11 @@ public final class VectorSupport {
             }
 
             // TODO: don't hardcode for vector size
-            final LIRKind kind = gen.getLIRGeneratorTool().toVectorKind(gen.getLIRGeneratorTool().getLIRKind(stamp), 4);
             gen.setResult(this, gen.getLIRGeneratorTool().emitPackConst(kind, byteBuffer));
         }
 
         private void generateForNotPrimitive(NodeLIRBuilderTool gen) {
-            // TODO: don't hardcode for vector size
-            final LIRKind kind = gen.getLIRGeneratorTool().toVectorKind(gen.getLIRGeneratorTool().getLIRKind(stamp), 4);
+            final LIRKind kind = gen.getLIRGeneratorTool().getLIRKind(stamp);
             gen.setResult(this, gen.getLIRGeneratorTool().emitPack(kind, values.stream().map(gen::operand).collect(Collectors.toList())));
         }
     }

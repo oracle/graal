@@ -2,6 +2,8 @@ package org.graalvm.compiler.nodes.memory;
 
 import org.graalvm.compiler.core.common.LIRKind;
 import org.graalvm.compiler.core.common.type.StampFactory;
+import org.graalvm.compiler.core.common.type.VectorIntegerStamp;
+import org.graalvm.compiler.core.common.type.VectorPrimitiveStamp;
 import org.graalvm.compiler.debug.GraalError;
 import org.graalvm.compiler.graph.Node;
 import org.graalvm.compiler.graph.NodeClass;
@@ -62,9 +64,10 @@ public class VectorWriteNode extends VectorFixedAccessNode implements LIRLowerab
 
     @Override
     public void generate(NodeLIRBuilderTool gen) {
-        final LIRKind scalarWriteKind = gen.getLIRGeneratorTool().getLIRKind(value.stamp(NodeView.DEFAULT));
-        gen.getLIRGeneratorTool().getArithmetic().emitVectorStore(scalarWriteKind, 4, gen.operand(address), gen.operand(value), null);
-        // TODO(nvangerow): Implement
+        final VectorPrimitiveStamp vectorStamp = (VectorPrimitiveStamp) value.stamp(NodeView.DEFAULT);
+        final LIRKind scalarWriteKind = gen.getLIRGeneratorTool().getLIRKind(vectorStamp.getScalar());
+
+        gen.getLIRGeneratorTool().getArithmetic().emitVectorStore(scalarWriteKind, vectorStamp.getElementCount(), gen.operand(address), gen.operand(value), null);
     }
 
     @Override
@@ -74,13 +77,13 @@ public class VectorWriteNode extends VectorFixedAccessNode implements LIRLowerab
 
     @Override
     public boolean verify() {
-        assertTrue(value.isVector(), "VectorWriteNode value needs to be vector");
+        assertTrue(value.stamp(NodeView.DEFAULT) instanceof VectorPrimitiveStamp, "VectorWriteNode value needs to be vector");
         return super.verify();
     }
 
     public static VectorWriteNode fromPackElements(List<WriteNode> nodes, ValueNode value) {
         assert nodes.size() != 0 : "pack empty";
-        assert value.isVector() : "value not vector";
+        assert value.stamp(NodeView.DEFAULT) instanceof VectorPrimitiveStamp : "value not vector";
         // Pre: nodes all have the same guard.
         // Pre: nodes are contiguous
         // Pre: nodes are from the same memory region

@@ -70,4 +70,18 @@ public abstract class VectorPrimitiveStamp extends ArithmeticStamp {
     public int hashCode() {
         return Objects.hash(super.hashCode(), scalar, elementCount);
     }
+
+    @Override
+    public String toString() {
+        final StringBuilder str = new StringBuilder();
+        if (hasValues()) {
+            str.append("v");
+            str.append(getElementCount());
+            str.append(" of ");
+            str.append(getScalar().toString());
+        } else {
+            str.append("<empty>");
+        }
+        return str.toString();
+    }
 }

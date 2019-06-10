@@ -97,7 +97,6 @@ import org.graalvm.compiler.lir.amd64.AMD64StringLatin1InflateOp;
 import org.graalvm.compiler.lir.amd64.AMD64StringUTF16CompressOp;
 import org.graalvm.compiler.lir.amd64.AMD64ZapRegistersOp;
 import org.graalvm.compiler.lir.amd64.AMD64ZapStackOp;
-import org.graalvm.compiler.lir.amd64.vector.AMD64VectorMove;
 import org.graalvm.compiler.lir.amd64.vector.AMD64VectorShuffle;
 import org.graalvm.compiler.lir.gen.LIRGenerationResult;
 import org.graalvm.compiler.lir.gen.LIRGenerator;
@@ -687,9 +686,10 @@ public abstract class AMD64LIRGenerator extends LIRGenerator {
     }
 
     @Override
-    public Variable emitExtract(LIRKind elementKind, Value vector, int index) {
-        Variable result = newVariable(elementKind);
-        append(new AMD64VectorShuffle.ExtractIntOp(asAllocatable(result), asAllocatable(vector), index * 4));
+    public Variable emitExtract(LIRKind vectorKind, Value vector, int index) {
+        final AMD64Kind scalarKind = ((AMD64Kind) vectorKind.getPlatformKind()).getScalar();
+        Variable result = newVariable(LIRKind.value(scalarKind));
+        append(new AMD64VectorShuffle.ExtractIntOp(asAllocatable(result), asAllocatable(vector), index * scalarKind.getSizeInBytes()));
         return result;
     }
 

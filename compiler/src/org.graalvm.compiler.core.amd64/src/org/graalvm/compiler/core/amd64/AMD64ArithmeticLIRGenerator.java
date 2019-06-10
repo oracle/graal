@@ -1150,9 +1150,9 @@ public class AMD64ArithmeticLIRGenerator extends ArithmeticLIRGenerator implemen
     }
 
     @Override
-    public Variable emitVectorLoad(LIRKind kind, int count, Value address, LIRFrameState state) {
+    public Variable emitVectorLoad(LIRKind vectorKind, int count, Value address, LIRFrameState state) {
         AMD64AddressValue loadAddress = getAMD64LIRGen().asAddressValue(address);
-        Variable result = getLIRGen().newVariable(getLIRGen().toVectorKind(getLIRGen().toRegisterKind(kind), count));
+        Variable result = getLIRGen().newVariable(vectorKind);
         getLIRGen().append(new AMD64Unary.VectorReadMemory(result, loadAddress));
         return result;
     }

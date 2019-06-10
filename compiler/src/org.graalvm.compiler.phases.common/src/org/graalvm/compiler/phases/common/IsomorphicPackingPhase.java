@@ -4,6 +4,9 @@ import jdk.vm.ci.meta.JavaKind;
 
 import org.graalvm.collections.Pair;
 import org.graalvm.compiler.core.common.cfg.BlockMap;
+import org.graalvm.compiler.core.common.type.IntegerStamp;
+import org.graalvm.compiler.core.common.type.VectorIntegerStamp;
+import org.graalvm.compiler.core.common.type.VectorPrimitiveStamp;
 import org.graalvm.compiler.graph.Node;
 import org.graalvm.compiler.graph.NodeMap;
 import org.graalvm.compiler.nodes.*;
@@ -782,7 +785,9 @@ public final class IsomorphicPackingPhase extends BasePhase<LowTierContext> {
             if (first instanceof WriteNode) {
                 final List<WriteNode> nodes = pack.getElements().stream().map(x -> (WriteNode) x).collect(Collectors.toList());
 
-                final VectorPackNode stv = new VectorPackNode(nodes.get(0).getAccessStamp().unrestricted(), nodes.stream().map(AbstractWriteNode::value).collect(Collectors.toList()));
+                // TODO: don't hardcode for specific stamp type
+                final VectorPrimitiveStamp vectorInputStamp = VectorIntegerStamp.create((IntegerStamp) nodes.get(0).getAccessStamp().unrestricted(), nodes.size());
+                final VectorPackNode stv = new VectorPackNode(vectorInputStamp, nodes.stream().map(AbstractWriteNode::value).collect(Collectors.toList()));
                 final VectorWriteNode vectorWrite = VectorWriteNode.fromPackElements(nodes, stv);
 
                 for (WriteNode node : nodes) {
@@ -806,8 +811,10 @@ public final class IsomorphicPackingPhase extends BasePhase<LowTierContext> {
                 final List<AddNode> nodes = pack.getElements().stream().map(x -> (AddNode) x).collect(Collectors.toList());
 
                 // Input to vector, output to scalar
-                final VectorPackNode stvX = new VectorPackNode(nodes.get(0).getX().stamp(NodeView.DEFAULT).unrestricted(), nodes.stream().map(BinaryNode::getX).collect(Collectors.toList()));
-                final VectorPackNode stvY = new VectorPackNode(nodes.get(0).getY().stamp(NodeView.DEFAULT).unrestricted(), nodes.stream().map(BinaryNode::getY).collect(Collectors.toList()));
+                // TODO: don't hardcodoe for specific stamp type
+                final VectorPrimitiveStamp vectorInputStamp = VectorIntegerStamp.create((IntegerStamp) nodes.get(0).getX().stamp(NodeView.DEFAULT).unrestricted(), nodes.size());
+                final VectorPackNode stvX = new VectorPackNode(vectorInputStamp, nodes.stream().map(BinaryNode::getX).collect(Collectors.toList()));
+                final VectorPackNode stvY = new VectorPackNode(vectorInputStamp, nodes.stream().map(BinaryNode::getY).collect(Collectors.toList()));
                 final VectorAddNode vector = new VectorAddNode(stvX, stvY);
 
                 for (int i = 0; i < nodes.size(); i++) {

@@ -1,7 +1,10 @@
 package org.graalvm.compiler.nodes.memory;
 
 import org.graalvm.compiler.core.common.LIRKind;
+import org.graalvm.compiler.core.common.type.IntegerStamp;
 import org.graalvm.compiler.core.common.type.Stamp;
+import org.graalvm.compiler.core.common.type.VectorIntegerStamp;
+import org.graalvm.compiler.core.common.type.VectorPrimitiveStamp;
 import org.graalvm.compiler.graph.NodeClass;
 import org.graalvm.compiler.nodeinfo.InputType;
 import org.graalvm.compiler.nodeinfo.NodeInfo;
@@ -28,9 +31,8 @@ public class VectorReadNode extends VectorFixedAccessNode implements LIRLowerabl
 
     @Override
     public void generate(NodeLIRBuilderTool gen) {
-        final LIRKind scalarReadKind = gen.getLIRGeneratorTool().getLIRKind(stamp);
-        gen.setResult(this, gen.getLIRGeneratorTool().getArithmetic().emitVectorLoad(scalarReadKind, locations.length, gen.operand(address), null));
-        // TODO(nvangerow): Implement
+        final LIRKind vectorReadKind = gen.getLIRGeneratorTool().getLIRKind(stamp);
+        gen.setResult(this, gen.getLIRGeneratorTool().getArithmetic().emitVectorLoad(vectorReadKind, locations.length, gen.operand(address), null));
     }
 
     @Override
@@ -49,6 +51,8 @@ public class VectorReadNode extends VectorFixedAccessNode implements LIRLowerabl
         final AddressNode address = anchor.getAddress();
         final LocationIdentity[] locations = nodes.stream().map(ReadNode::getLocationIdentity).toArray(LocationIdentity[]::new);
 
-        return new VectorReadNode(TYPE, address, locations, anchor.getAccessStamp(), anchor.getGuard(), anchor.getBarrierType(), anchor.getNullCheck());
+        // TODO: don't hardcode for IntegerStamp
+        final Stamp stamp = VectorIntegerStamp.create((IntegerStamp) anchor.getAccessStamp(), locations.length);
+        return new VectorReadNode(TYPE, address, locations, stamp, anchor.getGuard(), anchor.getBarrierType(), anchor.getNullCheck());
     }
 }

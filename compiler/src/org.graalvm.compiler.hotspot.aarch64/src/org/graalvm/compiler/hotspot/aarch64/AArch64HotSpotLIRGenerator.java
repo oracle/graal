@@ -551,7 +551,7 @@ public class AArch64HotSpotLIRGenerator extends AArch64LIRGenerator implements H
     }
 
     @Override
-    public Variable emitExtract(LIRKind elementKind, Value vector, int index) {
+    public Variable emitExtract(LIRKind vectorKind, Value vector, int index) {
         throw GraalError.unimplemented();
     }
 

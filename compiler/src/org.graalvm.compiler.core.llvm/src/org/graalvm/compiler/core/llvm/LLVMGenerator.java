@@ -1042,7 +1042,7 @@ public class LLVMGenerator implements LIRGeneratorTool {
     }
 
     @Override
-    public Variable emitExtract(LIRKind elementKind, Value vector, int index) {
+    public Variable emitExtract(LIRKind vectorKind, Value vector, int index) {
         throw unimplemented();
     }
 
@@ -1351,7 +1351,7 @@ public class LLVMGenerator implements LIRGeneratorTool {
         }
 
         @Override
-        public Variable emitVectorLoad(LIRKind kind, int count, Value address, LIRFrameState state) {
+        public Variable emitVectorLoad(LIRKind vectorKind, int count, Value address, LIRFrameState state) {
             throw unimplemented();
         }
 

@@ -492,7 +492,7 @@ public class AArch64ArithmeticLIRGenerator extends ArithmeticLIRGenerator implem
     }
 
     @Override
-    public Variable emitVectorLoad(LIRKind kind, int count, Value address, LIRFrameState state) {
+    public Variable emitVectorLoad(LIRKind vectorKind, int count, Value address, LIRFrameState state) {
         throw GraalError.unimplemented();
     }
 
