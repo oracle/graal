@@ -41,6 +41,16 @@ import mx_compiler
 from mx_benchmark import ParserEntry
 from argparse import ArgumentParser
 
+import sys
+
+if sys.version_info[0] < 3:
+    from ConfigParser import ConfigParser
+    from StringIO import StringIO
+else:
+    from configparser import ConfigParser
+    from io import StringIO
+
+
 _suite = mx.suite('compiler')
 
 # Short-hand commands used to quickly run common benchmarks.
@@ -584,7 +594,7 @@ class BaseDaCapoBenchmarkSuite(mx_benchmark.JavaBenchmarkSuite, mx_benchmark.Ave
         partialResults.append(datapoint)
 
     def benchmarkList(self, bmSuiteArgs):
-        return [key for key, value in self.daCapoIterations().iteritems() if value != -1]
+        return [key for key, value in self.daCapoIterations().items() if value != -1]
 
     def daCapoSuiteTitle(self):
         """Title string used in the output next to the performance result."""
@@ -1222,7 +1232,7 @@ class SpecJbb2005BenchmarkSuite(mx_benchmark.JavaBenchmarkSuite, HeapSettingsMix
             jbbprops.update(self.extractSuiteArgs(bmSuiteArgs))
             fd, self.prop_tmp_file = mkstemp(prefix="specjbb2005", suffix=".props")
             with os.fdopen(fd, "w") as f:
-                f.write("\n".join(["{}={}".format(key, value) for key, value in jbbprops.iteritems()]))
+                f.write("\n".join(["{}={}".format(key, value) for key, value in jbbprops.items()]))
 
         propArgs = ["-propfile", self.prop_tmp_file]
         vmArgs = self.vmArgs(bmSuiteArgs)
@@ -1237,10 +1247,8 @@ class SpecJbb2005BenchmarkSuite(mx_benchmark.JavaBenchmarkSuite, HeapSettingsMix
             os.unlink(self.prop_tmp_file)
 
     def getDefaultProperties(self, benchmarks, bmSuiteArgs):
-        from ConfigParser import ConfigParser
-        import StringIO
         configfile = join(self.workingDirectory(benchmarks, bmSuiteArgs), "SPECjbb.props")
-        config = StringIO.StringIO()
+        config = StringIO()
         config.write("[root]\n")
         with open(configfile, "r") as f:
             config.write(f.read())

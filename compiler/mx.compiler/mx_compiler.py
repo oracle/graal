@@ -62,15 +62,21 @@ import glob
 
 # Temporary imports and (re)definitions while porting mx from Python 2 to Python 3
 if sys.version_info[0] < 3:
+    from StringIO import StringIO
+    _unicode = unicode
     def _decode(x):
         return x
     def _encode(x):
         return x
 else:
+    from io import StringIO
+    _unicode = str
     def _decode(x):
         return x.decode()
     def _encode(x):
         return x.encode()
+
+_basestring = (str, _unicode)
 
 _suite = mx.suite('compiler')
 
@@ -201,7 +207,7 @@ def _is_jvmci_enabled(vmargs):
 
 def _nodeCostDump(args, extraVMarguments=None):
     """list the costs associated with each Node type"""
-    import csv, StringIO
+    import csv
     parser = ArgumentParser(prog='mx nodecostdump')
     parser.add_argument('--regex', action='store', help="Node Name Regex", default=False, metavar='<regex>')
     parser.add_argument('--markdown', action='store_const', const=True, help="Format to Markdown table", default=False)
@@ -214,7 +220,7 @@ def _nodeCostDump(args, extraVMarguments=None):
         regex = args.regex
     run_vm(vmargs + _remove_empty_entries(extraVMarguments) + [regex], out=out)
     if args.markdown:
-        stringIO = StringIO.StringIO(out.data)
+        stringIO = StringIO(out.data)
         reader = csv.reader(stringIO, delimiter=';', lineterminator="\n")
         firstRow = True
         maxLen = 0
@@ -402,7 +408,7 @@ class BootstrapTest:
         self.args = args
         self.suppress = suppress
         self.tags = tags
-        if tags is not None and (not isinstance(tags, list) or all(not isinstance(x, str) for x in tags)):
+        if tags is not None and (not isinstance(tags, list) or all(not isinstance(x, _basestring) for x in tags)):
             mx.abort("Gate tag argument must be a list of strings, tag argument:" + str(tags))
 
     def run(self, tasks, extraVMarguments=None):
@@ -570,7 +576,7 @@ def compiler_gate_benchmark_runner(tasks, extraVMarguments=None, prefix=''):
         'pmd':        1,
         'sunflow':    2,
     }
-    for name, iterations in sorted(dacapos.iteritems()):
+    for name, iterations in sorted(dacapos.items()):
         with Task(prefix + 'DaCapo:' + name, tasks, tags=GraalTags.benchmarktest) as t:
             if t: _gate_dacapo(name, iterations, _remove_empty_entries(extraVMarguments) +
                                ['-XX:+UseJVMCICompiler', '-Dgraal.TrackNodeSourcePosition=true', '-esa', '-da:java.util.logging...'])
@@ -596,7 +602,7 @@ def compiler_gate_benchmark_runner(tasks, extraVMarguments=None, prefix=''):
         mx.warn('Removing scaladacapo:actors from benchmarks because corba has been removed since JDK11 (http://openjdk.java.net/jeps/320)')
         del scala_dacapos['actors']
 
-    for name, iterations in sorted(scala_dacapos.iteritems()):
+    for name, iterations in sorted(scala_dacapos.items()):
         with Task(prefix + 'ScalaDaCapo:' + name, tasks, tags=GraalTags.benchmarktest) as t:
             if t: _gate_scala_dacapo(name, iterations, _remove_empty_entries(extraVMarguments) +
                                      ['-XX:+UseJVMCICompiler', '-Dgraal.TrackNodeSourcePosition=true', '-esa', '-da:java.util.logging...'])
