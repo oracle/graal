@@ -93,11 +93,6 @@ public final class VectorSupport {
         }
 
         @Override
-        public boolean isVector() {
-            return true;
-        }
-
-        @Override
         public Node canonical(CanonicalizerTool tool) {
             // Do nothing if no inputs
             if (inputs().isEmpty()) {

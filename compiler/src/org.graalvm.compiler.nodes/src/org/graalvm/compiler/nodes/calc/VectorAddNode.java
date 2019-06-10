@@ -35,11 +35,6 @@ public class VectorAddNode extends ValueNode implements LIRLowerable {
     }
 
     @Override
-    public boolean isVector() {
-        return true;
-    }
-
-    @Override
     public void generate(NodeLIRBuilderTool gen) {
         gen.setResult(this, gen.getLIRGeneratorTool().getArithmetic().emitVectorAdd(gen.operand(x), gen.operand(y), false));
         // TODO(nvangerow): Implement
