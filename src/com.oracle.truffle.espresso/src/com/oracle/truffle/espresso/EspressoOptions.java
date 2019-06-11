@@ -22,14 +22,10 @@
  */
 package com.oracle.truffle.espresso;
 
-import java.util.Collections;
-import java.util.Map;
-
 import org.graalvm.nativeimage.ImageInfo;
 import org.graalvm.options.OptionCategory;
 import org.graalvm.options.OptionKey;
 import org.graalvm.options.OptionMap;
-import org.graalvm.options.OptionType;
 
 import com.oracle.truffle.api.Option;
 
