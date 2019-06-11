@@ -1211,7 +1211,7 @@ def makegraaljdk(args):
                     # with a suffix denoting the commit of each Graal jar.
                     # For example:
                     # Java HotSpot(TM) 64-Bit Graal:compiler_88847fb25d1a62977a178331a5e78fa5f8fcbb1a (build 25.71-b01-internal-jvmci-0.34, mixed mode)
-                    print('name=' + m.group(1) + vmName, file=fp)
+                    fp.write(_encode('name=' + m.group(1) + vmName + '\n'))
                 line = True
                 break
         if line is not True:
