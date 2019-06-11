@@ -61,7 +61,7 @@ def _timedelta(name, out=print):
     yield
     end = time.time()
     elapsed = end - start
-    lf = '' if out == print else '\n'
+    lf = '' if out == print else '\n' # pylint: disable=comparison-with-callable
     out('INFO: TIMEDELTA: ' + name + '%0.2f' % elapsed + lf)
 
 
@@ -70,7 +70,7 @@ def _bench_result(benchmark, metric_name, metric_value, metric_unit, better="low
     if extra is None:
         extra = {}
     unit = {"metric.unit": metric_unit} if metric_unit else {}
-    return dict({
+    return dict(list({
                     "benchmark": benchmark,
                     "metric.name": metric_name,
                     "metric.type": m_type,
@@ -78,7 +78,7 @@ def _bench_result(benchmark, metric_name, metric_value, metric_unit, better="low
                     "metric.score-function": "id",
                     "metric.better": better,
                     "metric.iteration": m_iteration
-                }.items() + unit.items() + extra.items())
+                }.items()) + list(unit.items()) + list(extra.items()))
 
 
 def _get_bench_conf(args):
