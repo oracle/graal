@@ -1344,13 +1344,20 @@ public class FlatNodeGenFactory {
         }
 
         CodeTreeBuilder builder = method.createBuilder();
-
-        SpecializationGroup group = SpecializationGroup.create(compatibleSpecializations);
-        FrameState originalFrameState = frameState.copy();
-        builder.tree(visitSpecializationGroup(builder, null, group, forType, frameState, allSpecializations));
-        if (group.hasFallthrough()) {
-            builder.tree(createThrowUnsupported(builder, originalFrameState));
+        if (forType.getEvaluatedCount() != node.getExecutionCount()) {
+            builder.startThrow().startNew(context.getType(AssertionError.class));
+            builder.doubleQuote("This execute method cannot be used for uncached node versions as it requires child nodes to be present. " +
+                            "Use an execute method that takes all arguments as parameters.");
+            builder.end().end();
+        } else {
+            SpecializationGroup group = SpecializationGroup.create(compatibleSpecializations);
+            FrameState originalFrameState = frameState.copy();
+            builder.tree(visitSpecializationGroup(builder, null, group, forType, frameState, allSpecializations));
+            if (group.hasFallthrough()) {
+                builder.tree(createThrowUnsupported(builder, originalFrameState));
+            }
         }
+
         return method;
     }
 
@@ -1648,7 +1655,7 @@ public class FlatNodeGenFactory {
         for (NodeExecutionData execution : node.getChildExecutions()) {
             NodeChildData child = execution.getChild();
             LocalVariable var = frameState.getValue(execution);
-            if (child != null) {
+            if (child != null && !frameState.getMode().isUncached()) {
                 builder.string(accessNodeField(execution));
             } else {
                 builder.string("null");

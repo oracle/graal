@@ -322,7 +322,7 @@ public class NodeFactoryFactory {
         if (node.hasErrors()) {
             body.startNew(type);
             for (VariableElement var : method.getParameters()) {
-                body.string(var.getSimpleName().toString());
+                body.defaultValue(var.asType());
             }
             body.end();
         } else {
@@ -330,6 +330,7 @@ public class NodeFactoryFactory {
             body.string(typeElement.getSimpleName().toString(), ".UNCACHED");
         }
         body.end();
+        method.getParameters().clear();
         return method;
     }
 
