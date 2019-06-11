@@ -98,7 +98,7 @@ public class SubstrateSpeculationLog implements SpeculationLog {
 
     @Override
     public synchronized boolean maySpeculate(SpeculationReason reason) {
-        return failedSpeculations != null && !failedSpeculations.containsKey(reason);
+        return failedSpeculations == null || !failedSpeculations.containsKey(reason);
     }
 
     @Override
