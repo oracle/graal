@@ -298,7 +298,7 @@ class NativeImageBuildBenchmarkSuite(mx_benchmark.VmBenchmarkSuite):
         return self._name
 
     def benchmarkList(self, bmSuiteArgs):
-        return self._benchmarks.keys()
+        return list(self._benchmarks.keys())
 
     def createVmCommandLineArgs(self, benchmarks, runArgs):
         if not benchmarks:

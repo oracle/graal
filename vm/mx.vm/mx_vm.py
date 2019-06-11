@@ -45,7 +45,40 @@ import mx_sdk
 import mx_subst
 import mx_vm_gate
 import mx_vm_benchmark
-from mx import StringIO
+
+import sys
+
+if sys.version_info[0] < 3:
+    from StringIO import StringIO
+    _unicode = unicode # pylint: disable=undefined-variable
+    def _decode(x):
+        return x
+else:
+    from io import StringIO
+    _unicode = str
+    def _decode(x):
+        return x.decode()
+
+def _with_metaclass(meta, *bases):
+    """Create a base class with a metaclass."""
+
+    # Copyright (c) 2010-2018 Benjamin Peterson
+    # Taken from six, Python compatibility library
+    # MIT license
+
+    # This requires a bit of explanation: the basic idea is to make a dummy
+    # metaclass for one level of class instantiation that replaces itself with
+    # the actual metaclass.
+    class MetaClass(type):
+
+        def __new__(mcs, name, this_bases, d):
+            return meta(name, bases, d)
+
+        @classmethod
+        def __prepare__(mcs, name, this_bases):
+            return meta.__prepare__(name, bases)
+    return type.__new__(MetaClass, '_with_metaclass({}, {})'.format(meta, bases), (), {}) #pylint: disable=unused-variable
+
 
 _suite = mx.suite('vm')
 """:type: mx.SourceSuite | mx.Suite"""
@@ -128,9 +161,7 @@ def _get_component_type_base(c, apply_substitutions=False):
     return result
 
 
-class BaseGraalVmLayoutDistribution(mx.LayoutDistribution):
-    __metaclass__ = ABCMeta
-
+class BaseGraalVmLayoutDistribution(_with_metaclass(ABCMeta, mx.LayoutDistribution)):
     def __init__(self, suite, name, deps, components, is_graalvm, exclLibs, platformDependent, theLicense, testDistribution,
                  add_jdk_base=False,
                  base_dir=None,
@@ -182,8 +213,8 @@ class BaseGraalVmLayoutDistribution(mx.LayoutDistribution):
             if not dest.endswith('/') and dest in _layout:
                 if dest not in _layout_provenance or _layout_provenance[dest] is None:
                     mx.abort(
-                        "Can not override '{}' which is part of the base GraalVM layout. ({} tried to set {}<-{})".format(
-                            dest, component.name if component else None, dest, src))
+                        "Can not override '{dest}' which is part of the base GraalVM layout. ({component} tried to set {dest}<-{src})".format(
+                            dest=dest, src=src, component=component.name if component else None))
                 previous_component = _layout_provenance[dest]
                 if not component:
                     mx.abort(
@@ -438,7 +469,7 @@ class BaseGraalVmLayoutDistribution(mx.LayoutDistribution):
                     _add(layout, _library_dest, source_type + ':' + GraalVmNativeImage.project_name(_library_config), _component)
                 _add_native_image_macro(_library_config, _component)
             for _provided_executable in _component.provided_executables:
-                if _component.short_name is 'vvm':
+                if _component.short_name == 'vvm':
                     _add(layout, _jdk_jre_bin, 'extracted-dependency:tools:VISUALVM_PLATFORM_SPECIFIC/./' + _provided_executable, _component)
                 else:
                     _link_dest = _component_base + _provided_executable
@@ -1015,20 +1046,20 @@ class NativePropertiesBuildTask(mx.ProjectBuildTask):
             self._contents = u""
 
             def _write_ln(s):
-                self._contents += s.decode('utf-8') + u"\n"
+                self._contents += s + u"\n"
 
             myself = basename(__file__)
             if myself.endswith('.pyc'):
                 myself = myself[:-1]
-            _write_ln(u"# Generated with \u2764 by ".encode('utf-8') + myself)
-            _write_ln('ImageName=' + _java_properties_escape(name))
-            _write_ln('ImagePath=' + _java_properties_escape("${.}/" + relpath(dirname(graalvm_image_destination), graalvm_location).replace(os.sep, '/')))
+            _write_ln(u"# Generated with \u2764 by " + myself)
+            _write_ln(u'ImageName=' + _java_properties_escape(name))
+            _write_ln(u'ImagePath=' + _java_properties_escape("${.}/" + relpath(dirname(graalvm_image_destination), graalvm_location).replace(os.sep, '/')))
             if requires:
-                _write_ln('Requires=' + _java_properties_escape(' '.join(requires), ' ', len('Requires')))
+                _write_ln(u'Requires=' + _java_properties_escape(' '.join(requires), ' ', len('Requires')))
             if isinstance(image_config, mx_sdk.LauncherConfig):
-                _write_ln('ImageClass=' + _java_properties_escape(image_config.main_class))
-            _write_ln('ImageClasspath=' + _java_properties_escape(':'.join(("${.}/" + e.replace(os.sep, '/') for e in location_classpath)), ':', len('ImageClasspath')))
-            _write_ln('Args=' + _java_properties_escape(' '.join(build_args), ' ', len('Args')))
+                _write_ln(u'ImageClass=' + _java_properties_escape(image_config.main_class))
+            _write_ln(u'ImageClasspath=' + _java_properties_escape(':'.join(("${.}/" + e.replace(os.sep, '/') for e in location_classpath)), ':', len('ImageClasspath')))
+            _write_ln(u'Args=' + _java_properties_escape(' '.join(build_args), ' ', len('Args')))
         return self._contents
 
     def build(self):
@@ -1057,7 +1088,7 @@ class NativePropertiesBuildTask(mx.ProjectBuildTask):
             return "{} is older than {}".format(ts, newest_input)
         with open(filepath, 'r') as f:
             on_disk = f.read()
-            if not isinstance(on_disk, unicode):
+            if not isinstance(on_disk, _unicode):
                 on_disk = on_disk.decode('utf-8')
         if contents_getter() != on_disk:
             # print(self.contents(), type(self.contents()))
@@ -1075,9 +1106,7 @@ class NativePropertiesBuildTask(mx.ProjectBuildTask):
             os.unlink(self.subject.polyglot_config_output_file())
 
 
-class GraalVmNativeImage(GraalVmProject):
-    __metaclass__ = ABCMeta
-
+class GraalVmNativeImage(_with_metaclass(ABCMeta, GraalVmProject)):
     def __init__(self, component, name, deps, native_image_config, **kw_args):
         """
         :type component: mx_sdk.GraalVmComponent | None
@@ -1141,9 +1170,7 @@ class GraalVmNativeImage(GraalVmProject):
         return True
 
 
-class GraalVmLauncher(GraalVmNativeImage):
-    __metaclass__ = ABCMeta
-
+class GraalVmLauncher(_with_metaclass(ABCMeta, GraalVmNativeImage)):
     def __init__(self, component, name, deps, native_image_config, stage1=False, **kw_args):
         """
         :type native_image_config: mx_sdk.LauncherConfig
@@ -1249,9 +1276,7 @@ class GraalVmLanguageLauncher(GraalVmLauncher): #pylint: disable=too-many-ancest
         super(GraalVmLanguageLauncher, self).__init__(component, GraalVmLauncher.launcher_project_name(native_image_config, stage1=stage1), [], native_image_config, stage1=stage1, **kw_args)
 
 
-class GraalVmNativeImageBuildTask(mx.ProjectBuildTask):
-    __metaclass__ = ABCMeta
-
+class GraalVmNativeImageBuildTask(_with_metaclass(ABCMeta, mx.ProjectBuildTask)):
     def needsBuild(self, newestInput):
         sup = super(GraalVmNativeImageBuildTask, self).needsBuild(newestInput)
         if sup[0]:
@@ -2032,7 +2057,7 @@ def get_component(name, fatalIfMissing=False, stage1=False):
     :rtype: mx_sdk.GraalVmComponent | None
     """
     for c in registered_graalvm_components(stage1=stage1):
-        if c.short_name == name or c.name == name:
+        if name in (c.short_name, c.name):
             return c
     if fatalIfMissing:
         mx.abort("'{}' is not registered as GraalVM component. Did you forget to dynamically import it?".format(name))
@@ -2217,7 +2242,7 @@ def check_versions(jdk_dir, graalvm_version_regex, expect_graalvm, check_jvmci):
         mx.log_error(out.data)
         mx.abort("'{}' is not a JVMCI-enabled JDK ('java -XX:+JVMCIPrintProperties' fails).\n{}.".format(jdk_dir, check_env))
 
-    out = subprocess.check_output([java, '-version'], stderr=subprocess.STDOUT).rstrip()
+    out = _decode(subprocess.check_output([java, '-version'], stderr=subprocess.STDOUT)).rstrip()
 
     jdk_version = mx.JDKConfig(jdk_dir).version
     if jdk_version < mx.VersionSpec('1.8') or mx.VersionSpec('9') <= jdk_version < mx.VersionSpec('11'):
@@ -2227,7 +2252,7 @@ def check_versions(jdk_dir, graalvm_version_regex, expect_graalvm, check_jvmci):
     if expect_graalvm and match is None:
         mx.abort("'{}' is not a GraalVM. Its version string:\n{}\ndoes not match:\n{}".format(jdk_dir, out, graalvm_version_regex.pattern))
     elif expect_graalvm and match.group('graalvm_version') != _suite.release_version():
-        mx.abort("'{}' has a wrong GraalVM version:\n{}\nexpected:\n{}".format(match.group('graalvm_version'), _suite.release_version()))
+        mx.abort("'{}' has a wrong GraalVM version:\n{}\nexpected:\n{}".format(jdk_dir, match.group('graalvm_version'), _suite.release_version()))
     elif not expect_graalvm and match:
         mx.abort("GraalVM cannot be built using a GraalVM as base-JDK ('{}').\n{}.".format(jdk_dir, check_env))
 
@@ -2246,7 +2271,7 @@ def graalvm_vm_name(graalvm_dist, jdk_home):
     :rtype str:
     """
     java = join(jdk_home, 'bin', 'java')
-    out = subprocess.check_output([java, '-version'], stderr=subprocess.STDOUT).rstrip()
+    out = _decode(subprocess.check_output([java, '-version'], stderr=subprocess.STDOUT)).rstrip()
     match = re.search(r'^(?P<base_vm_name>[a-zA-Z() ]+64-Bit )Server VM', out.split('\n')[-1])
     vm_name = match.group('base_vm_name') if match else ''
     vm_name += '{} {}'.format(graalvm_dist.base_name, graalvm_dist.vm_config_name.upper()) if graalvm_dist.vm_config_name else graalvm_dist.base_name
