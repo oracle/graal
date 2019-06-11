@@ -31,6 +31,7 @@ import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.Truffle;
 import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.api.nodes.RootNode;
+import java.util.concurrent.atomic.AtomicBoolean;
 import org.graalvm.compiler.truffle.runtime.OptimizedCallTarget;
 import org.graalvm.compiler.truffle.runtime.SharedTruffleRuntimeOptions;
 import org.graalvm.compiler.truffle.runtime.TruffleRuntimeOptions;
@@ -44,7 +45,9 @@ public class InvalidationCountTest {
 
     @Before
     public void setUp() {
-        optionScope = TruffleRuntimeOptions.overrideOptions(SharedTruffleRuntimeOptions.TruffleBackgroundCompilation, false);
+        optionScope = TruffleRuntimeOptions.overrideOptions(
+                        SharedTruffleRuntimeOptions.TruffleBackgroundCompilation, false,
+                        SharedTruffleRuntimeOptions.TruffleCompilationThreshold, 10);
     }
 
     @After
@@ -56,87 +59,111 @@ public class InvalidationCountTest {
 
     @Test
     public void testTransferToInterpreterAndInvalidate() throws Exception {
+        AtomicBoolean invalidate = new AtomicBoolean();
         RootNode rootNode = new RootNode(null) {
             @Override
             public Object execute(VirtualFrame frame) {
-                int param = (Integer) frame.getArguments()[0];
-                enter();
-                switch (param) {
-                    case 0:
-                        break;
-                    case 1:
-                        CompilerDirectives.transferToInterpreterAndInvalidate();
-                        break;
-                    default:
-                        throw new IllegalArgumentException("Invalid param: " + param);
+                if (invalidate.get()) {
+                    CompilerDirectives.transferToInterpreterAndInvalidate();
                 }
-                return param;
-            }
-
-            @CompilerDirectives.TruffleBoundary
-            private void enter() {
+                return true;
             }
         };
         OptimizedCallTarget callTarget = (OptimizedCallTarget) Truffle.getRuntime().createCallTarget(rootNode);
-        warmUp(callTarget, 0);
+        warmUp(callTarget);
         assertEquals(0, callTarget.getCompilationProfile().getInvalidationCount());
-        callTarget.call(0);
+        callTarget.call();
         assertEquals(0, callTarget.getCompilationProfile().getInvalidationCount());
-        callTarget.call(1);
+        invalidate.set(true);
+        callTarget.call();
         assertEquals(1, callTarget.getCompilationProfile().getInvalidationCount());
-        callTarget.call(0);
+        invalidate.set(false);
+        callTarget.call();
         assertEquals(1, callTarget.getCompilationProfile().getInvalidationCount());
+        reprofile(callTarget);
+        invalidate.set(true);
+        callTarget.call();
+        invalidate.set(false);
+        assertEquals(2, callTarget.getCompilationProfile().getInvalidationCount());
+    }
+
+    @Test
+    public void testTransferToInterpreter() throws Exception {
+        AtomicBoolean transferToInterpreter = new AtomicBoolean();
+        RootNode rootNode = new RootNode(null) {
+            @Override
+            public Object execute(VirtualFrame frame) {
+                if (transferToInterpreter.get()) {
+                    CompilerDirectives.transferToInterpreter();
+                    return false;
+                }
+                return false;
+            }
+        };
+        OptimizedCallTarget callTarget = (OptimizedCallTarget) Truffle.getRuntime().createCallTarget(rootNode);
+        warmUp(callTarget);
+        assertEquals(0, callTarget.getCompilationProfile().getInvalidationCount());
+        transferToInterpreter.set(true);
+        reprofile(callTarget);
+        int afterReprofileInvalidationCount = callTarget.getCompilationProfile().getInvalidationCount();
+        callTarget.call();
+        assertEquals(afterReprofileInvalidationCount, callTarget.getCompilationProfile().getInvalidationCount());
+        callTarget.call();
+        assertEquals(afterReprofileInvalidationCount, callTarget.getCompilationProfile().getInvalidationCount());
     }
 
     @Test
     public void testCallAssumptionInvalidation() throws Exception {
+        AtomicBoolean invalidate = new AtomicBoolean();
         RootNode rootNode = new RootNode(null) {
 
             @CompilerDirectives.CompilationFinal private Assumption assumption = Truffle.getRuntime().createAssumption();
 
             @Override
             public Object execute(VirtualFrame frame) {
-                int param = (Integer) frame.getArguments()[0];
-                switch (param) {
-                    case 0:
-                        if (!assumption.isValid()) {
-                            throw new IllegalStateException("Invalid assumption");
-                        }
-                        break;
-                    case 1:
-                        if (!assumption.isValid()) {
-                            throw new IllegalStateException("Invalid assumption");
-                        }
-                        assumption.invalidate();
-                        break;
-                    case 2:
-                        if (assumption.isValid()) {
-                            throw new IllegalStateException("Valid assumption");
-                        }
-                        break;
-                    default:
-                        throw new IllegalArgumentException("Invalid param: " + param);
+                if (invalidate.get()) {
+                    if (!assumption.isValid()) {
+                        throw new IllegalStateException("Invalid assumption");
+                    }
+                    assumption.invalidate();
+                    assumption = Truffle.getRuntime().createAssumption();
                 }
-                return param;
+                return true;
             }
         };
 
         OptimizedCallTarget callTarget = (OptimizedCallTarget) Truffle.getRuntime().createCallTarget(rootNode);
-        warmUp(callTarget, 0);
+        warmUp(callTarget);
         assertEquals(0, callTarget.getCompilationProfile().getInvalidationCount());
-        assertEquals(0, callTarget.call(0));
+        callTarget.call();
         assertEquals(0, callTarget.getCompilationProfile().getInvalidationCount());
-        assertEquals(1, callTarget.call(1));
+        invalidate.set(true);
+        callTarget.call();
+        invalidate.set(false);
         // Incremented twice, once by OptimizedAssumption.invalidateImpl and ence by
         // OptimizedCallTarget.callProxy
         assertEquals(2, callTarget.getCompilationProfile().getInvalidationCount());
-        assertEquals(2, callTarget.call(2));
+        callTarget.call();
         assertEquals(2, callTarget.getCompilationProfile().getInvalidationCount());
+        reprofile(callTarget);
+        invalidate.set(true);
+        callTarget.call();
+        invalidate.set(false);
+        assertEquals(4, callTarget.getCompilationProfile().getInvalidationCount());
     }
 
     private static void warmUp(OptimizedCallTarget callTarget, Object... args) {
         final int compilationThreshold = TruffleRuntimeOptions.getValue(SharedTruffleRuntimeOptions.TruffleCompilationThreshold);
-        for (int i = 0; i < compilationThreshold; i++) {
+        execute(callTarget, compilationThreshold, args);
+    }
+
+    private static void reprofile(OptimizedCallTarget callTarget, Object... args) {
+        final int reprofileThreshold = TruffleRuntimeOptions.getValue(SharedTruffleRuntimeOptions.TruffleInvalidationReprofileCount);
+        execute(callTarget, reprofileThreshold, args);
+    }
+
+    private static void execute(OptimizedCallTarget callTarget, int repeat, Object... args) {
+        for (int i = 0; i < repeat; i++) {
             callTarget.call(args);
         }
     }
