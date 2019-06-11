@@ -170,26 +170,7 @@ public final class MachOObjectFile extends ObjectFile {
     @Override
     public Symbol createDefinedSymbol(String name, Element baseSection, long position, int size, boolean isCode, boolean isGlobal) {
         MachOSymtab symtab = (MachOSymtab) getOrCreateSymbolTable();
-        /*
-         * FIXME: Mach-O symbol visibility has an unfortunate interaction with relocation addends.
-         * Specifically, relocation against local symbols is recorded in the relocation record by
-         * using only the *section number* of the relocation's target. This means you have to use
-         * the addend to encode the offset from the section start. This is really annoying! (See
-         * r_symbolnum in relocation_info in the Mach-O documentation.)
-         *
-         * As a consequence, I always create global symbols here. The same Mach-O documentation
-         * bizarrely implies that x86-64 compilers don't generate local relocs anyway, viz.:
-         *
-         * "Note: In the OS X x86-64 environment scattered relocations are not used.
-         * Compiler-generated code uses mostly external relocations, in which the r_extern bit is
-         * set to 1 and the r_symbolnum field contains the symbol-table index of the target label."
-         *
-         * Note that abstaining from scattered relocations is completely irrelevant here. You can
-         * have non-scattered non-extern relocations, and the salient point is that *these* are not
-         * generated.
-         */
-        boolean globalFlagToPass = true; // override "isGlobal"
-        return symtab.newDefinedEntry(name, (MachOSection) baseSection, position, size, globalFlagToPass, isCode);
+        return symtab.newDefinedEntry(name, (MachOSection) baseSection, position, size, isGlobal, isCode);
     }
 
     @Override
