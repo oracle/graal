@@ -154,6 +154,7 @@ svm-common-linux-amd64: ${svm-common} ${linux-amd64} {
   packages: {
     make: ">=3.83"
     gcc-build-essentials: ">=4.9.1" # GCC 4.9.0 fails on cluster
+    binutils: ">=2.30"
     ruby: ">=2.1.0"
     valgrind: ">=3.9.0"
   }
