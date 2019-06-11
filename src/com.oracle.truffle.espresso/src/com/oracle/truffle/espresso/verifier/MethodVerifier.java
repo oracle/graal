@@ -444,22 +444,26 @@ public final class MethodVerifier implements ContextAccess {
      */
 
     private MethodVerifier(CodeAttribute codeAttribute, Method m) {
+        // Extract info from codeAttribute
         this.code = new BytecodeStream(codeAttribute.getCode());
         this.maxStack = codeAttribute.getMaxStack();
         this.maxLocals = codeAttribute.getMaxLocals();
-        this.pool = m.getRuntimeConstantPool();
         this.BCIstates = new int[code.endBCI()];
         this.stackFrames = new StackFrame[code.endBCI()];
+        this.stackMapTableAttribute = codeAttribute.getStackMapFrame();
+        this.majorVersion = codeAttribute.getMajorVersion();
+        this.useStackMaps = codeAttribute.useStackMaps();
+
+        // Extract method info
+        this.pool = m.getRuntimeConstantPool();
         this.sig = m.getParsedSignature();
         this.isStatic = m.isStatic();
         this.thisKlass = m.getDeclaringKlass();
         this.methodName = m.getName();
-        this.stackMapTableAttribute = codeAttribute.getStackMapFrame();
         this.exceptionHandlers = m.getExceptionHandlers();
+
         this.handlerStatus = new byte[exceptionHandlers.length];
         Arrays.fill(handlerStatus, UNENCOUNTERED);
-        this.majorVersion = codeAttribute.getMajorVersion();
-        this.useStackMaps = codeAttribute.useStackMaps();
 
         jlClass = new ReferenceOperand(Type.Class, thisKlass);
         jlString = new ReferenceOperand(Type.String, thisKlass);
@@ -492,11 +496,11 @@ public final class MethodVerifier implements ContextAccess {
         Arrays.fill(BCIstates, UNREACHABLE);
         // Mark all reachable code
         int bci = 0;
-        int bc;
+        int opcode;
         while (bci < code.endBCI()) {
-            bc = code.currentBC(bci);
-            if (bc > QUICK) {
-                throw new VerifyError("invalid bytecode: " + bc);
+            opcode = code.currentBC(bci);
+            if (opcode > QUICK) {
+                throw new VerifyError("invalid bytecode: " + opcode);
             }
             BCIstates[bci] = UNSEEN;
             bci = code.nextBCI(bci);
@@ -511,16 +515,16 @@ public final class MethodVerifier implements ContextAccess {
             // targets have one stack frame declared in the attribute, and if it doesn't, we will
             // see it later.
             while (bci < code.endBCI()) {
-                bc = code.currentBC(bci);
-                if (Bytecodes.isBranch(bc)) {
+                opcode = code.currentBC(bci);
+                if (Bytecodes.isBranch(opcode)) {
                     int target = code.readBranchDest(bci);
                     if (BCIstates[target] == UNREACHABLE) {
                         throw new VerifyError("Jump to the middle of an instruction: " + target);
                     }
                     BCIstates[target] = JUMP_TARGET;
                 }
-                if (bc == TABLESWITCH || bc == LOOKUPSWITCH) {
-                    initSwitch(bci, bc);
+                if (opcode == TABLESWITCH || opcode == LOOKUPSWITCH) {
+                    initSwitch(bci, opcode);
                 }
                 bci = code.nextBCI(bci);
             }
