@@ -39,6 +39,7 @@ import java.util.HashMap;
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
 
+import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.interop.ArityException;
 import com.oracle.truffle.api.interop.InteropLibrary;
@@ -239,6 +240,7 @@ public final class JniEnv extends NativeEnv implements ContextAccess {
                                 new Callback(1, new Callback.Function() {
                                     @Override
                                     public Object call(Object... args) {
+                                        CompilerDirectives.transferToInterpreter();
                                         System.err.println("Calling unimplemented JNI method: " + methodName);
                                         throw EspressoError.unimplemented("JNI method: " + methodName);
                                     }

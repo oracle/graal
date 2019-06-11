@@ -46,6 +46,7 @@ import java.util.Properties;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.function.IntFunction;
 
+import com.oracle.truffle.api.CompilerDirectives;
 import org.graalvm.options.OptionValues;
 
 import com.oracle.truffle.api.CallTarget;
@@ -225,6 +226,7 @@ public final class VM extends NativeEnv implements ContextAccess {
                                 new Callback(1, new Callback.Function() {
                                     @Override
                                     public Object call(Object... args) {
+                                        CompilerDirectives.transferToInterpreter();
                                         System.err.println("Calling unimplemented VM method: " + methodName);
                                         throw EspressoError.unimplemented("VM method: " + methodName);
                                     }
