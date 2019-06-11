@@ -48,7 +48,7 @@ public abstract class VectorPrimitiveStamp extends ArithmeticStamp {
 
     @Override
     public JavaKind getStackKind() {
-        throw GraalError.shouldNotReachHere("vector does not have stack kind");
+        return JavaKind.Illegal;
     }
 
     @Override
