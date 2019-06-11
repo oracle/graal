@@ -283,6 +283,9 @@ import com.oracle.truffle.espresso.runtime.StaticObject;
 /**
  * Should be a complete bytecode verifier. Given the version of the classfile from which the method
  * is taken, the type-checking or type-infering verifier is used.
+ * 
+ * Note that stack map tables are used only for classfile version >= 50, and even if stack maps are
+ * given for lesser versions, they are ignored. No fallback for classfile v.50
  */
 public final class MethodVerifier implements ContextAccess {
     // Class info
@@ -343,7 +346,6 @@ public final class MethodVerifier implements ContextAccess {
     // TODO(garcia) intern Operands.
 
     // Define all operands that can appear on the stack / locals.
-
     static final PrimitiveOperand Int = new PrimitiveOperand(JavaKind.Int);
     static final PrimitiveOperand Byte = new PrimitiveOperand(JavaKind.Byte);
     static final PrimitiveOperand Char = new PrimitiveOperand(JavaKind.Char);
@@ -412,8 +414,10 @@ public final class MethodVerifier implements ContextAccess {
     private final Operand MethodType;
     private final Operand MethodHandle;
     private final Operand Throwable;
-    private final Operand returnOperand;
 
+    // Return type of the method
+    private final Operand returnOperand;
+    // Declaring Klass of the method (already loaded)
     private final Operand thisOperand;
 
     // Regular BCI states
@@ -428,9 +432,9 @@ public final class MethodVerifier implements ContextAccess {
     static private final byte VERIFIED = 32;
 
     // JSR BCI states
-    static private final byte RETURNED_TO = 64;
     // This state is accompanied by the BCI of the RET instruction that caused it.
     // It is of the form (ret_bci << 16) | RETURNED_TO
+    static private final byte RETURNED_TO = 64;
 
     /**
      * Construct the data structure to perform verification
@@ -472,9 +476,9 @@ public final class MethodVerifier implements ContextAccess {
      *
      * @param m the method to verify
      * 
-     * @throws VerifyError
-     * @throws NoClassDefFoundError
-     * @throws ClassFormatError
+     * @throws VerifyError if verification fails
+     * @throws NoClassDefFoundError if Class loading of an operand fails at any point
+     * @throws ClassFormatError if classfile is malformed
      */
     public static void verify(Method m) {
         CodeAttribute codeAttribute = m.getCodeAttribute();
@@ -523,6 +527,7 @@ public final class MethodVerifier implements ContextAccess {
         }
     }
 
+    // Traverses the switch to mark jump targets. Also checks that lookup switch keys are sorted.
     private void initSwitch(int bci, int opCode) {
         switch (opCode) {
             case LOOKUPSWITCH: {
@@ -579,7 +584,9 @@ public final class MethodVerifier implements ContextAccess {
     }
 
     /**
-     * Constructs the initial stack frame table given the stackMapTableAttribute.
+     * Constructs the initial stack frame table given the stackMapTableAttribute. If no such
+     * attribute exists, it still constructs the first implicit StackFrame, with the method
+     * arguments in the locals and an empty stack.
      */
     private void initStackFrames() {
         // First implicit stack frame.
@@ -604,8 +611,10 @@ public final class MethodVerifier implements ContextAccess {
         }
     }
 
-    // Constructs a StackFrame object for the verifier from a StackMapFrame obtained from the
-    // parser.
+    /**
+     * Constructs a StackFrame object for the verifier from a StackMapFrame obtained from the
+     * parser.
+     */
     private StackFrame getStackFrame(StackMapFrame smf, StackFrame previous) {
         int frameType = smf.getFrameType();
         if (frameType < SAME_FRAME_BOUND) {
@@ -757,13 +766,13 @@ public final class MethodVerifier implements ContextAccess {
      * Performs the verification for the method associated with this
      */
     private synchronized void verify() {
+        if (code.endBCI() == 0) {
+            throw new VerifyError("Control flow falls through code end");
+        }
         try {
             initVerifier();
         } catch (IndexOutOfBoundsException e) {
             throw new VerifyError("Invalid jump: " + e.getMessage() + " in method " + thisKlass.getName() + "." + methodName);
-        }
-        if (code.endBCI() == 0) {
-            throw new VerifyError("Control flow falls through code end");
         }
         try {
             initStackFrames();
@@ -772,10 +781,12 @@ public final class MethodVerifier implements ContextAccess {
         }
         // Check that BCIs in exception handlers are legal
         validateExceptionHandlers();
+
+        // Perform verification of reachable executable code
         Stack stack = new Stack(maxStack);
         Locals locals = new Locals(this);
-        // Perform verification of reachable executable code
         startVerify(0, stack, locals);
+
         // Performs verification of reachable handlers
         verifyExceptionHandlers();
     }
@@ -807,7 +818,7 @@ public final class MethodVerifier implements ContextAccess {
     /**
      * Verifies actually reachable exception handlers, and the handlers they encounter if they were
      * not already verified.
-     *
+     * <p>
      * This method reaches a fixed point. After execution, all handler will either have been
      * verified, or are completely unreachable.
      */
@@ -866,7 +877,14 @@ public final class MethodVerifier implements ContextAccess {
         }
     }
 
-    private boolean startVerify(int BCI, Stack stack_, Locals locals_) {
+    /**
+     * Performs the verification loop. starting from BCI, it
+     * 
+     * @param BCI
+     * @param stack_
+     * @param locals_
+     */
+    private void startVerify(int BCI, Stack stack_, Locals locals_) {
         Stack stack = stack_;
         Locals locals = locals_;
         int nextBCI = BCI;
@@ -878,21 +896,22 @@ public final class MethodVerifier implements ContextAccess {
         do {
             previousBCI = nextBCI;
             if (stackFrames[nextBCI] != null || BCIstates[nextBCI] == JUMP_TARGET) {
+                // Try merge
                 StackFrame frame = mergeFrames(stack, locals, stackFrames[nextBCI]);
                 if (!(frame == stackFrames[nextBCI])) {
+                    // merge failed, mark the BCI as not yet verified as state changed
                     BCIstates[nextBCI] = JUMP_TARGET;
                     stackFrames[nextBCI] = frame;
                 }
+                // Always use the stack frame state
                 stack = frame.extractStack(maxStack);
                 locals = frame.extractLocals();
-                // Propagate subroutine modifications
+                // Propagate subroutine modifications (here, arrays are shared).
                 locals.subRoutineModifications = locals_.subRoutineModifications;
             }
-            /**
-             * Return condition: a successful merge into an already verified branch target.
-             */
+            // Return condition: a successful merge into an already verified branch target.
             if (stackFrames[nextBCI] != null && BCIstates[nextBCI] == DONE) {
-                return true;
+                return;
             }
             checkExceptionHandlers(nextBCI, locals);
             nextBCI = verifySafe(nextBCI, stack, locals);
@@ -902,7 +921,7 @@ public final class MethodVerifier implements ContextAccess {
             // Reset constructor status.
             calledConstructor = false;
         }
-        return true;
+        return;
     }
 
     /**
@@ -962,6 +981,16 @@ public final class MethodVerifier implements ContextAccess {
         // @formatter:on
     }
 
+    /**
+     * Core of the verifier. Performs verification for a single BCI, according (mostly) to the JVM
+     * specs
+     * 
+     * @param BCI The BCI of the opcode being verified
+     * @param stack The current state of the stack at the point of verification
+     * @param locals The current state of the local variables at the point of verification
+     * @return The index of the next opcode to verify, or BCI if there is no next opcode to verify
+     *         (in case of a return bytecode, for example).
+     */
     private int verify(int BCI, Stack stack, Locals locals) {
         if (BCIstates[BCI] == UNREACHABLE) {
             throw new VerifyError("Jump to the middle of an instruction: " + BCI);
@@ -1127,6 +1156,7 @@ public final class MethodVerifier implements ContextAccess {
                     if (array != Null && !array.getComponent().isReference()) {
                         throw new VerifyError("Trying to store " + toStore + " in " + array);
                     }
+                    // Other checks are done at runtime
                     break;
                 }
                 
@@ -1277,13 +1307,11 @@ public final class MethodVerifier implements ContextAccess {
                             }
                         }
                         BCIstates[target] = RETURNED_TO | (BCI << 16);
-                        Locals toMerge;
-                        try {
-                            toMerge = getSubroutineReturnLocals(target, locals);
-                        } catch (Throwable e) {
-                            throw EspressoError.shouldNotReachHere(e.toString());
-                        }
+                        Locals toMerge = getSubroutineReturnLocals(target, locals);
                         branch(code.nextBCI(target), stack, toMerge);
+
+                        // Sanity check: branching did not overwrite the return address being
+                        // verified
                         ra = locals.loadReturnAddress(code.readLocalIndex(BCI));
                         if (ra != prev) {
                             pos = 0;
@@ -1295,6 +1323,7 @@ public final class MethodVerifier implements ContextAccess {
                 case TABLESWITCH: {
                     stack.popInt();
                     BytecodeTableSwitch switchHelper = code.getBytecodeTableSwitch();
+                    // Padding checks
                     for (int j = BCI + 1; j < switchHelper.getAlignedBci(BCI); j++) {
                         if (code.readUByte(j) != 0) {
                             throw new VerifyError("non-zero padding for TABLESWITCH");
@@ -1310,6 +1339,7 @@ public final class MethodVerifier implements ContextAccess {
                 case LOOKUPSWITCH: {
                     stack.popInt();
                     BytecodeLookupSwitch switchHelper = code.getBytecodeLookupSwitch();
+                    // Padding checks
                     for (int j = BCI + 1; j < switchHelper.getAlignedBci(BCI); j++) {
                         if (code.readUByte(j) != 0) {
                             throw new VerifyError("non-zero padding for LOOKUPSWITCH");
@@ -1459,8 +1489,9 @@ public final class MethodVerifier implements ContextAccess {
                         throw new ClassFormatError("Method ref with no return value !");
                     }
 
-                    // Check signature conforms with count argument
+                    // Pop arguments
                     if (curOpcode == INVOKEINTERFACE) {
+                        // Check signature conforms with count argument
                         int count = code.readUByte(BCI + 3);
                         if (count <= 0) {
                             throw new VerifyError("Invalid count argument for INVOKEINTERFACE: " + count);
@@ -1751,16 +1782,17 @@ public final class MethodVerifier implements ContextAccess {
      * @return the local variables that will be merged into the state at target.
      */
     private Locals getSubroutineReturnLocals(Integer target, Locals locals) {
-        boolean[] subroutineModifs = locals.subRoutineModifications.subRoutineModifications;
-        SubroutineModificationStack nested = locals.subRoutineModifications.next;
-
-        Locals jsrLocals = stackFrames[target].extractLocals();
-        if (subroutineModifs == null) {
+        SubroutineModificationStack subRoutineModifications = locals.subRoutineModifications;
+        if (subRoutineModifications == null) {
             throw new VerifyError("RET outside of a subroutine");
         }
+        boolean[] subroutineBitArray = subRoutineModifications.subRoutineModifications;
+        SubroutineModificationStack nested = subRoutineModifications.next;
+
+        Locals jsrLocals = stackFrames[target].extractLocals();
         Operand[] registers = new Operand[maxLocals];
         for (int i = 0; i < maxLocals; i++) {
-            if (subroutineModifs[i]) {
+            if (subroutineBitArray[i]) {
                 registers[i] = locals.registers[i];
                 if (nested != null) {
                     nested.subRoutineModifications[i] = true;
@@ -1774,6 +1806,8 @@ public final class MethodVerifier implements ContextAccess {
         return res;
     }
 
+    // Various access checks
+
     private boolean checkReceiverSpecialAccess(Operand stackOp) {
         return stackOp.compliesWith(thisOperand) || isMagicAccessor() || checkReceiverHostAccess(stackOp);
     }
@@ -1783,13 +1817,6 @@ public final class MethodVerifier implements ContextAccess {
             return thisKlass.getHostClass().isAssignableFrom(stackOp.getKlass());
         }
         return false;
-    }
-
-    private void doReturn(Stack stack, Operand toReturn) {
-        Operand op = stack.pop(toReturn);
-        if (!op.compliesWith(returnOperand)) {
-            throw new VerifyError("Invalid return: " + op + ", expected: " + returnOperand);
-        }
     }
 
     private boolean checkMethodSpecialAccess(Operand methodHolder) {
@@ -1913,6 +1940,15 @@ public final class MethodVerifier implements ContextAccess {
                 return;
             }
             superKlass = superKlass.getSuperKlass();
+        }
+    }
+
+    // various helper methods
+
+    private void doReturn(Stack stack, Operand toReturn) {
+        Operand op = stack.pop(toReturn);
+        if (!op.compliesWith(returnOperand)) {
+            throw new VerifyError("Invalid return: " + op + ", expected: " + returnOperand);
         }
     }
 
@@ -2070,7 +2106,7 @@ public final class MethodVerifier implements ContextAccess {
             if (useStackMaps) {
                 throw new VerifyError("Wrong local map frames in class file: " + thisKlass + '.' + methodName);
             }
-            // We can ALWAYS merge locals.
+
             mergedLocals = new Operand[maxLocals];
             Operand[] frameLocals = stackMap.locals;
             System.arraycopy(frameLocals, 0, mergedLocals, 0, mergeIndex);
@@ -2080,6 +2116,7 @@ public final class MethodVerifier implements ContextAccess {
                 if (!localsOp.compliesWith(frameOp)) {
                     Operand result = localsOp.mergeWith(frameOp);
                     if (result == null) {
+                        // We can ALWAYS merge locals. just put Invalid if failure
                         mergedLocals[i] = Invalid;
                     } else {
                         mergedLocals[i] = result;
