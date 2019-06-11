@@ -54,9 +54,7 @@ import com.oracle.truffle.api.Truffle;
 import com.oracle.truffle.api.frame.FrameInstance;
 import com.oracle.truffle.api.frame.FrameInstanceVisitor;
 import com.oracle.truffle.api.interop.ArityException;
-import com.oracle.truffle.api.interop.ForeignAccess;
 import com.oracle.truffle.api.interop.InteropLibrary;
-import com.oracle.truffle.api.interop.Message;
 import com.oracle.truffle.api.interop.TruffleObject;
 import com.oracle.truffle.api.interop.UnknownIdentifierException;
 import com.oracle.truffle.api.interop.UnsupportedMessageException;
@@ -146,7 +144,7 @@ public final class VM extends NativeEnv implements ContextAccess {
                             "(env): sint64");
 
             Callback lookupVmImplCallback = Callback.wrapInstanceMethod(this, "lookupVmImpl", String.class);
-            this.vmPtr = (long) ForeignAccess.sendExecute(Message.EXECUTE.createNode(), initializeMokapotContext, jniEnv.getNativePointer(), lookupVmImplCallback);
+            this.vmPtr = (long) InteropLibrary.getFactory().getUncached().execute(initializeMokapotContext, jniEnv.getNativePointer(), lookupVmImplCallback);
 
             assert this.vmPtr != 0;
 
@@ -162,7 +160,7 @@ public final class VM extends NativeEnv implements ContextAccess {
 
     public long getJavaVM() {
         try {
-            return (long) ForeignAccess.sendExecute(Message.EXECUTE.createNode(), getJavaVM);
+            return (long) InteropLibrary.getFactory().getUncached().execute(getJavaVM);
         } catch (UnsupportedTypeException | ArityException | UnsupportedMessageException e) {
             throw EspressoError.shouldNotReachHere("getJavaVM failed");
         }
@@ -223,7 +221,7 @@ public final class VM extends NativeEnv implements ContextAccess {
             // Dummy placeholder for unimplemented/unknown methods.
             if (m == null) {
                 // System.err.println("Fetching unknown/unimplemented VM method: " + methodName);
-                return (TruffleObject) ForeignAccess.sendExecute(Message.EXECUTE.createNode(), jniEnv.dupClosureRefAndCast("(pointer): void"),
+                return (TruffleObject) InteropLibrary.getFactory().getUncached().execute(jniEnv.dupClosureRefAndCast("(pointer): void"),
                                 new Callback(1, new Callback.Function() {
                                     @Override
                                     public Object call(Object... args) {
@@ -235,7 +233,7 @@ public final class VM extends NativeEnv implements ContextAccess {
 
             String signature = vmNativeSignature(m);
             Callback target = vmMethodWrapper(m);
-            return (TruffleObject) ForeignAccess.sendExecute(Message.EXECUTE.createNode(), jniEnv.dupClosureRefAndCast(signature), target);
+            return (TruffleObject) InteropLibrary.getFactory().getUncached().execute(jniEnv.dupClosureRefAndCast(signature), target);
 
         } catch (UnsupportedTypeException | ArityException | UnsupportedMessageException e) {
             throw EspressoError.shouldNotReachHere(e);
@@ -326,7 +324,7 @@ public final class VM extends NativeEnv implements ContextAccess {
                     // we must convert to Espresso null.
                     // FIXME(peterssen): Also, do use proper nodes.
                     if (args[i] instanceof TruffleObject) {
-                        if (ForeignAccess.sendIsNull(Message.IS_NULL.createNode(), (TruffleObject) args[i])) {
+                        if (InteropLibrary.getFactory().getUncached().isNull(args[i])) {
                             if (StaticObject.class.isAssignableFrom(params[i])) {
                                 args[i] = StaticObject.NULL;
                             } else {
@@ -722,7 +720,7 @@ public final class VM extends NativeEnv implements ContextAccess {
     public void dispose() {
         assert vmPtr != 0L : "Mokapot already disposed";
         try {
-            ForeignAccess.sendExecute(Message.EXECUTE.createNode(), disposeMokapotContext, vmPtr);
+            InteropLibrary.getFactory().getUncached().execute(disposeMokapotContext, vmPtr);
             this.vmPtr = 0L;
         } catch (UnsupportedTypeException | ArityException | UnsupportedMessageException e) {
             throw EspressoError.shouldNotReachHere("Cannot dispose Espresso libjvm (mokapot).");

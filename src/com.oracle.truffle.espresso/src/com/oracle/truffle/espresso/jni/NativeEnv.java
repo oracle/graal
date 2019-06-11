@@ -32,8 +32,7 @@ import java.util.Collections;
 import java.util.HashMap;
 import java.util.Map;
 
-import com.oracle.truffle.api.interop.ForeignAccess;
-import com.oracle.truffle.api.interop.Message;
+import com.oracle.truffle.api.interop.InteropLibrary;
 import com.oracle.truffle.api.interop.TruffleObject;
 import com.oracle.truffle.api.interop.UnsupportedMessageException;
 import com.oracle.truffle.espresso.meta.EspressoError;
@@ -62,7 +61,7 @@ public abstract class NativeEnv {
 
     public static long unwrapPointer(Object nativePointer) {
         try {
-            return ForeignAccess.sendAsPointer(Message.AS_POINTER.createNode(), (TruffleObject) nativePointer);
+            return InteropLibrary.getFactory().getUncached().asPointer(nativePointer);
         } catch (UnsupportedMessageException e) {
             throw new RuntimeException(e);
         }

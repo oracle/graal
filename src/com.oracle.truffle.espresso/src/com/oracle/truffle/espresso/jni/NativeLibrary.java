@@ -24,8 +24,7 @@ package com.oracle.truffle.espresso.jni;
 
 import com.oracle.truffle.api.CallTarget;
 import com.oracle.truffle.api.interop.ArityException;
-import com.oracle.truffle.api.interop.ForeignAccess;
-import com.oracle.truffle.api.interop.Message;
+import com.oracle.truffle.api.interop.InteropLibrary;
 import com.oracle.truffle.api.interop.TruffleObject;
 import com.oracle.truffle.api.interop.UnknownIdentifierException;
 import com.oracle.truffle.api.interop.UnsupportedMessageException;
@@ -54,7 +53,7 @@ public class NativeLibrary {
 
     public static TruffleObject lookup(TruffleObject library, String method) throws UnknownIdentifierException {
         try {
-            return (TruffleObject) ForeignAccess.sendRead(Message.READ.createNode(), library, method);
+            return (TruffleObject) InteropLibrary.getFactory().getUncached().readMember(library, method);
         } catch (UnsupportedMessageException e) {
             throw EspressoError.shouldNotReachHere("Cannot find " + method);
         }
@@ -62,7 +61,7 @@ public class NativeLibrary {
 
     public static TruffleObject bind(TruffleObject symbol, String signature) {
         try {
-            return (TruffleObject) ForeignAccess.sendInvoke(Message.INVOKE.createNode(), symbol, "bind", signature);
+            return (TruffleObject) InteropLibrary.getFactory().getUncached().invokeMember(symbol, "bind", signature);
         } catch (UnsupportedTypeException | ArityException | UnknownIdentifierException | UnsupportedMessageException e) {
             throw EspressoError.shouldNotReachHere("Cannot bind " + signature);
         }
@@ -70,11 +69,11 @@ public class NativeLibrary {
 
     public static TruffleObject lookupAndBind(TruffleObject library, String method, String signature) throws UnknownIdentifierException {
         try {
-            TruffleObject symbol = (TruffleObject) ForeignAccess.sendRead(Message.READ.createNode(), library, method);
-            if (ForeignAccess.sendIsNull(Message.IS_NULL.createNode(), symbol)) {
-                throw UnknownIdentifierException.raise(method);
+            TruffleObject symbol = (TruffleObject) InteropLibrary.getFactory().getUncached().readMember(library, method);
+            if (InteropLibrary.getFactory().getUncached().isNull(symbol)) {
+                throw UnknownIdentifierException.create(method);
             }
-            return (TruffleObject) ForeignAccess.sendInvoke(Message.INVOKE.createNode(), symbol, "bind", signature);
+            return (TruffleObject) InteropLibrary.getFactory().getUncached().invokeMember(symbol, "bind", signature);
         } catch (UnsupportedTypeException | ArityException | UnsupportedMessageException e) {
             throw EspressoError.shouldNotReachHere("Cannot bind " + method);
         }
