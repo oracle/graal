@@ -102,7 +102,6 @@ public class LayoutEncoding {
         return encoding > LAST_SPECIAL_VALUE;
     }
 
-    @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
     public static UnsignedWord getInstanceSize(int encoding) {
         return WordFactory.unsigned(encoding);
     }
@@ -113,6 +112,7 @@ public class LayoutEncoding {
         return encoding < NEUTRAL_VALUE;
     }
 
+    @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
     public static boolean isPrimitiveArray(int encoding) {
         return UnsignedMath.aboveOrEqual(encoding, ARRAY_TAG_PRIMITIVE_VALUE << ARRAY_TAG_SHIFT);
     }
@@ -147,7 +147,6 @@ public class LayoutEncoding {
         return getArrayElementOffset(encoding, length).add(alignmentMask).and(~alignmentMask);
     }
 
-    @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
     public static UnsignedWord getSizeFromObject(Object obj) {
         int encoding = KnownIntrinsics.readHub(obj).getLayoutEncoding();
         if (isArray(encoding)) {

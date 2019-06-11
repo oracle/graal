@@ -24,6 +24,7 @@
  */
 package com.oracle.svm.core.heap;
 
+import org.graalvm.compiler.api.replacements.Fold;
 import org.graalvm.compiler.word.ObjectAccess;
 import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.Platforms;
@@ -73,6 +74,7 @@ public abstract class ObjectHeader {
      * enabled, the specified address must be the uncompressed absolute address of the object in
      * memory.
      */
+    @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
     public static UnsignedWord readHeaderFromPointer(Pointer objectPointer) {
         if (getReferenceSize() == Integer.BYTES) {
             return WordFactory.unsigned(objectPointer.readInt(getHubOffset()));
@@ -120,12 +122,13 @@ public abstract class ObjectHeader {
     }
 
     /** Decode a DynamicHub from an Object header. */
+    @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
     public static DynamicHub dynamicHubFromObjectHeader(UnsignedWord header) {
         // Turn the Unsigned header into a Pointer, and then to an Object of type DynamicHub.
         final UnsignedWord pointerBits = clearBits(header);
         final Object objectValue;
         if (ReferenceAccess.singleton().haveCompressedReferences()) {
-            UnsignedWord compressedBits = pointerBits.unsignedShiftRight(ReferenceAccess.singleton().getCompressEncoding().getShift());
+            UnsignedWord compressedBits = pointerBits.unsignedShiftRight(getCompressionShift());
             objectValue = ReferenceAccess.singleton().uncompressReference(compressedBits);
         } else {
             objectValue = ((Pointer) pointerBits).toObject();
@@ -133,11 +136,15 @@ public abstract class ObjectHeader {
         return KnownIntrinsics.convertUnknownValue(objectValue, DynamicHub.class);
     }
 
+    /** Get the object header for an object with the provided hub, without heap-specific bits. */
+    public abstract WordBase formatHubRaw(DynamicHub hub);
+
     /*
      * Unpacking methods.
      */
 
     /** Clear the object header bits from a header. */
+    @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
     public static UnsignedWord clearBits(UnsignedWord header) {
         return header.and(BITS_CLEAR);
     }
@@ -195,6 +202,11 @@ public abstract class ObjectHeader {
     @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
     protected static int getHubOffset() {
         return ConfigurationValues.getObjectLayout().getHubOffset();
+    }
+
+    @Fold
+    static int getCompressionShift() {
+        return ReferenceAccess.singleton().getCompressEncoding().getShift();
     }
 
     /*

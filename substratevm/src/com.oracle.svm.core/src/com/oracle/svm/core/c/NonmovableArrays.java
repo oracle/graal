@@ -41,6 +41,7 @@ import org.graalvm.word.UnsignedWord;
 import org.graalvm.word.WordBase;
 import org.graalvm.word.WordFactory;
 
+import com.oracle.svm.core.MemoryUtil;
 import com.oracle.svm.core.SubstrateUtil;
 import com.oracle.svm.core.annotate.Uninterruptible;
 import com.oracle.svm.core.config.ConfigurationValues;
@@ -49,9 +50,9 @@ import com.oracle.svm.core.heap.Heap;
 import com.oracle.svm.core.heap.ObjectHeader;
 import com.oracle.svm.core.heap.ObjectReferenceVisitor;
 import com.oracle.svm.core.heap.ObjectReferenceWalker;
+import com.oracle.svm.core.heap.ReferenceAccess;
 import com.oracle.svm.core.hub.DynamicHub;
 import com.oracle.svm.core.hub.LayoutEncoding;
-import com.oracle.svm.core.snippets.ImplicitExceptions;
 import com.oracle.svm.core.snippets.KnownIntrinsics;
 import com.oracle.svm.core.util.VMError;
 
@@ -59,61 +60,67 @@ public final class NonmovableArrays {
     private static final HostedNonmovableArray<?> HOSTED_NULL_VALUE = new HostedNonmovableObjectArray<>(null);
 
     @SuppressWarnings("unchecked")
-    @Uninterruptible(reason = "Faux object reference on stack during array initialization.")
+    @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
     private static <T extends NonmovableArray<?>> T createArray(int length, Class<?> arrayType) {
         if (SubstrateUtil.HOSTED) {
             Class<?> componentType = arrayType.getComponentType();
             Object array = Array.newInstance(componentType, length);
             return (T) (componentType.isPrimitive() ? new HostedNonmovableArray<>(array) : new HostedNonmovableObjectArray<>(array));
         }
-        int layoutEncoding = SubstrateUtil.cast(arrayType, DynamicHub.class).getLayoutEncoding();
-        assert LayoutEncoding.isArray(layoutEncoding);
-        UnsignedWord size = LayoutEncoding.getArraySize(layoutEncoding, length);
-        T array = ImageSingletons.lookup(UnmanagedMemorySupport.class).calloc(size);
-        KnownIntrinsics.formatArray((Pointer) array, arrayType, length, false, false);
-        return array;
+        DynamicHub hub = SubstrateUtil.cast(arrayType, DynamicHub.class);
+        assert LayoutEncoding.isArray(hub.getLayoutEncoding());
+        UnsignedWord size = LayoutEncoding.getArraySize(hub.getLayoutEncoding(), length);
+        Pointer array = ImageSingletons.lookup(UnmanagedMemorySupport.class).calloc(size);
+        WordBase header = Heap.getHeap().getObjectHeader().formatHubRaw(hub);
+        ObjectHeader.initializeHeaderOfNewObject(array, header);
+        array.writeInt(ConfigurationValues.getObjectLayout().getArrayLengthOffset(), length);
+        // already zero-initialized thanks to calloc()
+        return (T) array;
     }
 
-    @Uninterruptible(reason = "Faux object reference on stack.")
+    @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
+    private static DynamicHub readHub(NonmovableArray<?> array) {
+        UnsignedWord header = ObjectHeader.readHeaderFromPointer((Pointer) array);
+        return ObjectHeader.dynamicHubFromObjectHeader(header);
+    }
+
+    @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
     private static int readLayoutEncoding(NonmovableArray<?> array) {
-        return KnownIntrinsics.readHub(asObject(array)).getLayoutEncoding();
+        return readHub(array).getLayoutEncoding();
     }
 
-    @SuppressWarnings("unchecked")
-    @Uninterruptible(reason = "Faux object reference on stack.", callerMustBe = true)
-    private static <T> T asObject(PointerBase array) {
-        if (SubstrateUtil.HOSTED) {
-            return (T) getHostedArray((NonmovableArray<?>) array);
-        }
-        return (T) KnownIntrinsics.convertUnknownValue(((Pointer) array).toObject(), Object.class);
-    }
-
-    @Uninterruptible(reason = "Faux object reference on stack.")
+    @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
     private static int readElementShift(NonmovableArray<?> array) {
         return LayoutEncoding.getArrayIndexShift(readLayoutEncoding(array));
     }
 
-    @Uninterruptible(reason = "Faux object reference on stack.")
+    @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
     private static int readArrayBase(NonmovableArray<?> array) {
         return (int) LayoutEncoding.getArrayBaseOffset(readLayoutEncoding(array)).rawValue();
     }
 
-    @Uninterruptible(reason = "Faux object reference on stack.")
+    @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
     public static int lengthOf(NonmovableArray<?> array) {
         if (SubstrateUtil.HOSTED) {
             return Array.getLength(getHostedArray(array));
         }
-        return KnownIntrinsics.readArrayLength(asObject(array));
+        return ((Pointer) array).readInt(ConfigurationValues.getObjectLayout().getArrayLengthOffset());
     }
 
-    @Uninterruptible(reason = "Faux object reference on stack.")
+    @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
     public static UnsignedWord byteSizeOf(NonmovableArray<?> array) {
-        return array.isNonNull() ? LayoutEncoding.getSizeFromObject(asObject(array)) : WordFactory.zero();
+        return array.isNonNull() ? LayoutEncoding.getArraySize(readLayoutEncoding(array), lengthOf(array)) : WordFactory.zero();
     }
 
-    @Uninterruptible(reason = "Faux object references on stack.")
+    @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
     public static void arraycopy(NonmovableArray<?> src, int srcPos, NonmovableArray<?> dest, int destPos, int length) {
-        System.arraycopy(asObject(src), srcPos, asObject(dest), destPos, length);
+        if (SubstrateUtil.HOSTED) {
+            System.arraycopy(getHostedArray(src), srcPos, getHostedArray(dest), destPos, length);
+            return;
+        }
+        assert srcPos >= 0 && destPos >= 0 && length >= 0 && srcPos + length <= lengthOf(src) && destPos + length <= lengthOf(dest);
+        assert readHub(src) == readHub(dest) : "copying is only allowed with same component types";
+        MemoryUtil.copyConjointMemoryAtomic(addressOf(src, srcPos), addressOf(dest, destPos), WordFactory.unsigned(length << readElementShift(dest)));
     }
 
     @SuppressWarnings("unchecked")
@@ -161,13 +168,14 @@ public final class NonmovableArrays {
         return createArray(length, Object[].class);
     }
 
-    @SuppressWarnings("unchecked")
     @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
     public static <T> NonmovableObjectArray<T> copyOfObjectArray(T[] source, int newLength) {
-        NonmovableArray<?> array = createArray(newLength, source.getClass());
+        NonmovableObjectArray<T> array = createArray(newLength, source.getClass());
         int copyLength = (source.length < newLength) ? source.length : newLength;
-        System.arraycopy(source, 0, asObject(array), 0, copyLength);
-        return (NonmovableObjectArray<T>) array;
+        for (int i = 0; i < copyLength; i++) {
+            setObject(array, i, source[i]);
+        }
+        return array;
     }
 
     @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
@@ -217,37 +225,43 @@ public final class NonmovableArrays {
         return CTypeConversion.asByteBuffer(addressOf(array, 0), lengthOf(array));
     }
 
-    @Uninterruptible(reason = "Faux object reference on stack.")
-    public static int getInt(NonmovableArray<?> nonmovableArray, int index) {
-        Object array = asObject(nonmovableArray);
-        if (array instanceof int[]) {
-            return ((int[]) array)[index];
+    @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
+    private static boolean matches(NonmovableArray<?> array, boolean primitive, int elementSize) {
+        int encoding = readLayoutEncoding(array);
+        return (primitive == LayoutEncoding.isPrimitiveArray(encoding) && (1 << LayoutEncoding.getArrayIndexShift(encoding)) == elementSize);
+    }
+
+    @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
+    public static int getInt(NonmovableArray<Integer> array, int index) {
+        if (SubstrateUtil.HOSTED) {
+            int[] hosted = getHostedArray(array);
+            return hosted[index];
         }
-        // add support for byte, short, char on demand
-        throw ImplicitExceptions.CACHED_CLASS_CAST_EXCEPTION;
+        assert DynamicHub.toClass(readHub(array)) == int[].class;
+        return ((Pointer) addressOf(array, index)).readInt(0);
     }
 
-    @Uninterruptible(reason = "Faux object reference on stack.")
-    public static void setInt(NonmovableArray<?> nonmovableArray, int index, int value) {
-        Object array = asObject(nonmovableArray);
-        // add support for long, float, double on demand
-        if (array instanceof int[]) {
-            ((int[]) array)[index] = value;
-        } else {
-            throw ImplicitExceptions.CACHED_CLASS_CAST_EXCEPTION;
+    @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
+    public static void setInt(NonmovableArray<Integer> array, int index, int value) {
+        if (SubstrateUtil.HOSTED) {
+            int[] hosted = getHostedArray(array);
+            hosted[index] = value;
+            return;
         }
+        assert DynamicHub.toClass(readHub(array)) == int[].class;
+        ((Pointer) addressOf(array, index)).writeInt(0, value);
     }
 
-    @Uninterruptible(reason = "Faux object reference on stack.")
-    public static <T extends WordBase> void setWord(NonmovableArray<T> nonmovableArray, int index, T value) {
-        T[] array = asObject(nonmovableArray);
-        array[index] = value;
+    @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
+    public static <T extends WordBase> void setWord(NonmovableArray<T> array, int index, T value) {
+        assert matches(array, true, ConfigurationValues.getTarget().wordSize);
+        ((Pointer) addressOf(array, index)).writeWord(0, value);
     }
 
-    @Uninterruptible(reason = "Faux object reference on stack.")
-    public static <T extends WordBase> T getWord(NonmovableArray<T> nonmovableArray, int index) {
-        T[] array = asObject(nonmovableArray);
-        return array[index];
+    @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
+    public static <T extends WordBase> T getWord(NonmovableArray<T> array, int index) {
+        assert matches(array, true, ConfigurationValues.getTarget().wordSize);
+        return ((Pointer) addressOf(array, index)).readWord(0);
     }
 
     @SuppressWarnings("unchecked")
@@ -257,16 +271,26 @@ public final class NonmovableArrays {
         return (T) ((Pointer) array).add(readArrayBase(array) + (index << readElementShift(array)));
     }
 
-    @Uninterruptible(reason = "Faux object reference on stack.")
+    @SuppressWarnings("unchecked")
+    @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
     public static <T> T getObject(NonmovableObjectArray<T> array, int index) {
-        T[] obj = asObject(array);
-        return obj[index];
+        if (SubstrateUtil.HOSTED) {
+            Object[] hosted = getHostedArray(array);
+            return (T) hosted[index];
+        }
+        assert matches(array, false, ConfigurationValues.getObjectLayout().getReferenceSize());
+        return (T) KnownIntrinsics.convertUnknownValue(ReferenceAccess.singleton().readObjectAt(addressOf(array, index), true), Object.class);
     }
 
-    @Uninterruptible(reason = "Faux object reference on stack.")
+    @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
     public static <T> void setObject(NonmovableObjectArray<T> array, int index, T value) {
-        T[] obj = asObject(array);
-        obj[index] = value;
+        if (SubstrateUtil.HOSTED) {
+            Object[] hosted = getHostedArray(array);
+            hosted[index] = value;
+            return;
+        }
+        assert matches(array, false, ConfigurationValues.getObjectLayout().getReferenceSize());
+        ReferenceAccess.singleton().writeObjectAt(addressOf(array, index), value, true);
     }
 
     /** @see ObjectReferenceWalker */

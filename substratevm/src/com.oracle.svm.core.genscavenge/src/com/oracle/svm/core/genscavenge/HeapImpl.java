@@ -246,8 +246,9 @@ public class HeapImpl extends Heap {
     private final ObjectHeaderImpl objectHeaderImpl;
 
     @Override
+    @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
     public ObjectHeader getObjectHeader() {
-        return getObjectHeaderImpl();
+        return objectHeaderImpl;
     }
 
     public ObjectHeaderImpl getObjectHeaderImpl() {

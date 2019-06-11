@@ -86,6 +86,7 @@ public abstract class Heap {
      *
      * TODO: Would an "Unsigned getBootImageObjectHeaderBits()" method be sufficient?
      */
+    @Uninterruptible(reason = "Called from uninterruptible code.")
     public abstract ObjectHeader getObjectHeader();
 
     /** Get the MemoryMXBean for this heap. */

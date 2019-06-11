@@ -231,6 +231,12 @@ public class ObjectHeaderImpl extends ObjectHeader {
         return result;
     }
 
+    @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
+    @Override
+    public WordBase formatHubRaw(DynamicHub hub) {
+        return formatHub(hub, false, false);
+    }
+
     /*
      * Access methods for the "enum" values.
      *
