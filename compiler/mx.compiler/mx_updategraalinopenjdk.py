@@ -362,10 +362,14 @@ def updategraalinopenjdk(args):
     overwritten = ''
     if not git_repo:
         mx.log('Adding new files to HG...')
+        m_src_dirs = []
+        for m in graal_modules:
+            m_src_dirs.append(join('src', m.name))
+        out = run_output(['hg', 'log', '-r', 'last(keyword("Update Graal"))', '--template', '{rev}'] + m_src_dirs, cwd=jdkrepo)
+        last_graal_update = out.strip()
+
         for m in graal_modules:
             m_src_dir = join('src', m.name)
-            out = run_output(['hg', 'log', '-r', 'last(keyword("Update Graal"))', '--template', '{rev}', m_src_dir], cwd=jdkrepo)
-            last_graal_update = out.strip()
             if last_graal_update:
                 overwritten += run_output(['hg', 'diff', '-r', last_graal_update, '-r', 'tip', m_src_dir], cwd=jdkrepo)
             mx.run(['hg', 'add', m_src_dir], cwd=jdkrepo)
