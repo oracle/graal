@@ -75,6 +75,7 @@ public interface BootstrapMethodConstant extends PoolConstant {
             if (pool.at(nameAndTypeIndex).tag() != NAME_AND_TYPE) {
                 throw new VerifyError("ill-formed BootstrapMethodConstant");
             }
+            pool.at(nameAndTypeIndex).checkValidity(pool);
         }
     }
 }

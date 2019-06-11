@@ -78,6 +78,7 @@ public interface InvokeDynamicConstant extends PoolConstant {
             if (pool.at(nameAndTypeIndex).tag() != NAME_AND_TYPE) {
                 throw new VerifyError("Ill-formed constant: " + tag());
             }
+            pool.at(nameAndTypeIndex).checkValidity(pool);
         }
     }
 

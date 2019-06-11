@@ -127,6 +127,7 @@ public interface MethodHandleConstant extends PoolConstant {
             if (pool.at(refIndex).tag() != Tag.METHOD_REF) {
                 throw new VerifyError("Ill-formed constant: " + tag());
             }
+            pool.at(refIndex).checkValidity(pool);
         }
     }
 

@@ -103,6 +103,8 @@ public interface NameAndTypeConstant extends PoolConstant {
             if (pool.at(nameIndex).tag() != UTF8 || pool.at(typeIndex).tag() != UTF8) {
                 throw new VerifyError("Ill-formed constant: " + tag());
             }
+            pool.at(nameIndex).checkValidity(pool);
+            pool.at(typeIndex).checkValidity(pool);
         }
     }
 }

@@ -76,6 +76,7 @@ public interface MethodTypeConstant extends PoolConstant {
             if (pool.at(descriptorIndex).tag() != UTF8) {
                 throw new VerifyError("Invalid pool constant: " + tag());
             }
+            pool.at(descriptorIndex).checkValidity(pool);
         }
     }
 
