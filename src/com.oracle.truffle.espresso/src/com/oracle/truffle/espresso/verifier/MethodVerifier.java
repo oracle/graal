@@ -878,11 +878,20 @@ public final class MethodVerifier implements ContextAccess {
     }
 
     /**
-     * Performs the verification loop. starting from BCI, it
+     * Performs the verification loop, starting from BCI.
      * 
-     * @param BCI
-     * @param stack_
-     * @param locals_
+     * for each verified bytecode, three verifications are performed:
+     * <p>
+     * - Current stack and locals can merge into the stack frame corresponding to current bytecode.
+     * If not, compute the merge if classfile version < 50
+     * <p>
+     * - Current locals can merge into all current bytecode's exception handlers.
+     * <p>
+     * - Stack and Locals state are legal according to the bytecode.
+     * 
+     * @param BCI The BCI at which we wish to start performing verification
+     * @param stack_ the state of the stack at BCI
+     * @param locals_ the state of the local variables at BCI
      */
     private void startVerify(int BCI, Stack stack_, Locals locals_) {
         Stack stack = stack_;
