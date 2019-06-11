@@ -14,6 +14,20 @@ vm_setup: {
   ]
 }
 
+maven_base: ${linux-deploy} {
+  downloads: {
+    JAVA_HOME: ${jdks.openjdk11},
+    EXTRA_JAVA_HOMES: ${jdks.openjdk8}
+  }
+  mx_cmd_base: [mx, --dynamicimports, "/tools,/graal-js"]
+  build: [
+    ${maven_base.mx_cmd_base} [sforceimports]
+    [cd, ../compiler]
+    ${maven_base.mx_cmd_base} [build]
+  ]
+  deploy: ${maven_base.mx_cmd_base} [maven-deploy, --all-suites, --all-distribution-types, --validate, full, --licenses, "UPL,MIT"]
+}
+
 builds += [
   ${gate_vm_linux} {
     run: [
@@ -21,5 +35,17 @@ builds += [
       [mx, unittest, --suite, vm]
     ]
     name: gate-vm-unittest-linux-amd64
+  }
+  ${gate_vm_linux} ${maven_base} {
+    run: ${maven_base.build} [
+      ${maven_base.deploy} [--dry-run, ${binaries-repository}]
+    ]
+    name: gate-vm-maven-dry-run-jdk11-linux-amd64
+  }
+  ${deploy_vm_linux} ${maven_base} {
+    run: ${maven_base.build} [
+      ${maven_base.deploy} [${binaries-repository}]
+    ]
+    name: deploy-vm-maven-jdk11-linux-amd64
   }
 ]

@@ -65,7 +65,7 @@ suite = {
     "lafo" : {
       "snapshotsUrl" : "https://curio.ssw.jku.at/nexus/content/repositories/snapshots",
       "releasesUrl": "https://curio.ssw.jku.at/nexus/content/repositories/releases",
-      "licenses" : ["GPLv2-CPE", "UPL", "BSD-new"]
+      "licenses" : ["GPLv2-CPE", "UPL", "BSD-new", "MIT"]
     },
   },
   "snippetsPattern" : ".*(Snippets|doc-files).*",
