@@ -91,12 +91,11 @@ public final class CodeInfoDecoder {
 
     static void lookupCodeInfo(NonmovableArray<Byte> codeInfoEncodings, NonmovableArray<Byte> codeInfoIndex, NonmovableArray<Byte> frameInfoEncodings,
                     NonmovableObjectArray<String> frameInfoNames, NonmovableObjectArray<?> frameInfoObjectConstants, NonmovableObjectArray<Class<?>> frameInfoSourceClasses,
-                    NonmovableObjectArray<String> frameInfoSourceMethodNames, NonmovableArray<Byte> referenceMapEncoding, long ip, CodeInfoQueryResult codeInfo) {
+                    NonmovableObjectArray<String> frameInfoSourceMethodNames, long ip, CodeInfoQueryResult codeInfo) {
 
         codeInfo.exceptionOffset = CodeInfoQueryResult.NO_EXCEPTION_OFFSET;
         codeInfo.referenceMapIndex = CodeInfoQueryResult.NO_REFERENCE_MAP;
         codeInfo.frameInfo = CodeInfoQueryResult.NO_FRAME_INFO;
-        codeInfo.referenceMapEncoding = referenceMapEncoding;
 
         long sizeEncoding = initialSizeEncoding();
         long entryIP = lookupEntryIP(ip);
@@ -121,7 +120,7 @@ public final class CodeInfoDecoder {
 
     static long lookupDeoptimizationEntrypoint(NonmovableArray<Byte> codeInfoEncodings, NonmovableArray<Byte> codeInfoIndex, NonmovableArray<Byte> frameInfoEncodings,
                     NonmovableObjectArray<String> frameInfoNames, NonmovableObjectArray<?> frameInfoObjectConstants, NonmovableObjectArray<Class<?>> frameInfoSourceClasses,
-                    NonmovableObjectArray<String> frameInfoSourceMethodNames, NonmovableArray<Byte> referenceMapEncoding, long method, long encodedBci, CodeInfoQueryResult codeInfo) {
+                    NonmovableObjectArray<String> frameInfoSourceMethodNames, long method, long encodedBci, CodeInfoQueryResult codeInfo) {
 
         long sizeEncoding = initialSizeEncoding();
         long entryIP = lookupEntryIP(method);
@@ -155,7 +154,6 @@ public final class CodeInfoDecoder {
             if (isDeoptEntryPoint(codeInfoEncodings, frameInfoEncodings, entryOffset, entryFlags, encodedBci)) {
                 codeInfo.totalFrameSize = decodeTotalFrameSize(sizeEncoding);
                 codeInfo.exceptionOffset = loadExceptionOffset(codeInfoEncodings, entryOffset, entryFlags);
-                codeInfo.referenceMapEncoding = referenceMapEncoding;
                 codeInfo.referenceMapIndex = loadReferenceMapIndex(codeInfoEncodings, entryOffset, entryFlags);
                 codeInfo.frameInfo = loadFrameInfo(codeInfoEncodings, frameInfoEncodings, frameInfoNames, frameInfoObjectConstants,
                                 frameInfoSourceClasses, frameInfoSourceMethodNames, entryOffset, entryFlags);

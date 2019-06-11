@@ -25,6 +25,7 @@
 package com.oracle.svm.core.code;
 
 import org.graalvm.compiler.graph.NodeSourcePosition;
+import org.graalvm.nativeimage.c.function.CodePointer;
 
 import com.oracle.svm.core.c.NonmovableArray;
 import com.oracle.svm.core.c.NonmovableArrays;
@@ -38,15 +39,17 @@ public class DeoptimizationSourcePositionDecoder {
     static final int NO_SOURCE_POSITION = -1;
     static final int NO_CALLER = 0;
 
-    public static NodeSourcePosition decode(int deoptId, CodeInfoQueryResult codeInfo) {
-        if (!(codeInfo.accessor instanceof RuntimeCodeInfoAccessor)) {
-            /*
-             * We only store the information for runtime compiled code, not for native image code.
-             */
+    public static NodeSourcePosition decode(int deoptId, CodePointer ip) {
+        CodeInfoAccessor accessorObj = CodeInfoTable.lookupCodeInfoAccessor(ip);
+        if (!(accessorObj instanceof RuntimeCodeInfoAccessor)) {
+            /* We only have information for runtime compiled code, not for native image code. */
             return null;
         }
-        RuntimeCodeInfoAccessor accessor = (RuntimeCodeInfoAccessor) codeInfo.accessor;
-        CodeInfoHandle handle = codeInfo.handle;
+        RuntimeCodeInfoAccessor accessor = (RuntimeCodeInfoAccessor) accessorObj;
+        CodeInfoHandle handle = accessor.lookupCodeInfo(ip);
+        if (accessor.isNone(handle)) {
+            return null;
+        }
         return decode(deoptId, accessor.getDeoptimizationStartOffsets(handle), accessor.getDeoptimizationEncodings(handle), accessor.getDeoptimizationObjectConstants(handle));
     }
 

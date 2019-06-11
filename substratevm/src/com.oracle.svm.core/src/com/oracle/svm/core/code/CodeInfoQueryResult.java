@@ -26,7 +26,6 @@ package com.oracle.svm.core.code;
 
 import org.graalvm.nativeimage.c.function.CodePointer;
 
-import com.oracle.svm.core.c.NonmovableArray;
 import com.oracle.svm.core.heap.CodeReferenceMapDecoder;
 import com.oracle.svm.core.heap.CodeReferenceMapEncoder;
 import com.oracle.svm.core.util.VMError;
@@ -67,12 +66,9 @@ public class CodeInfoQueryResult {
      */
     protected static final FrameInfoQueryResult NO_FRAME_INFO = null;
 
-    protected CodeInfoAccessor accessor;
-    protected CodeInfoHandle handle;
     protected CodePointer ip;
     protected long totalFrameSize;
     protected long exceptionOffset;
-    protected NonmovableArray<Byte> referenceMapEncoding;
     protected long referenceMapIndex;
     protected FrameInfoQueryResult frameInfo;
 
@@ -107,16 +103,9 @@ public class CodeInfoQueryResult {
     }
 
     /**
-     * Returns the encoded reference map information, to be used together with
-     * {@link #getReferenceMapIndex()}. Encoding is handled by {@link CodeReferenceMapEncoder},
-     * decoding is handled by {@link CodeReferenceMapDecoder}.
-     */
-    public NonmovableArray<Byte> getReferenceMapEncoding() {
-        return referenceMapEncoding;
-    }
-
-    /**
-     * Index into the {@link #getReferenceMapEncoding() encoded reference map} for the IP.
+     * Index into the {@link CodeInfoAccessor#getReferenceMapEncoding(CodeInfoHandle)} encoded
+     * reference map} for the code. Encoding is handled by {@link CodeReferenceMapEncoder}, decoding
+     * is handled by {@link CodeReferenceMapDecoder}.
      */
     public long getReferenceMapIndex() {
         return referenceMapIndex;

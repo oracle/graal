@@ -148,8 +148,8 @@ public class ImageCodeInfo implements CodeInfoAccessor {
 
     @Override
     public void lookupCodeInfo(CodeInfoHandle handle, long ip, CodeInfoQueryResult codeInfo) {
-        CodeInfoDecoder.lookupCodeInfo(pa(codeInfoEncodings), pa(codeInfoIndex), pa(frameInfoEncodings), pa(frameInfoNames), pa(frameInfoObjectConstants),
-                        pa(frameInfoSourceClasses), pa(frameInfoSourceMethodNames), pa(referenceMapEncoding), ip, codeInfo);
+        CodeInfoDecoder.lookupCodeInfo(pa(codeInfoEncodings), pa(codeInfoIndex), pa(frameInfoEncodings), pa(frameInfoNames),
+                        pa(frameInfoObjectConstants), pa(frameInfoSourceClasses), pa(frameInfoSourceMethodNames), ip, codeInfo);
     }
 
     @Override
@@ -184,8 +184,8 @@ public class ImageCodeInfo implements CodeInfoAccessor {
 
     @Override
     public long lookupDeoptimizationEntrypoint(CodeInfoHandle handle, long method, long encodedBci, CodeInfoQueryResult codeInfo) {
-        return CodeInfoDecoder.lookupDeoptimizationEntrypoint(pa(codeInfoEncodings), pa(codeInfoIndex), pa(frameInfoEncodings), pa(frameInfoNames), pa(frameInfoObjectConstants),
-                        pa(frameInfoSourceClasses), pa(frameInfoSourceMethodNames), pa(referenceMapEncoding), method, encodedBci, codeInfo);
+        return CodeInfoDecoder.lookupDeoptimizationEntrypoint(pa(codeInfoEncodings), pa(codeInfoIndex), pa(frameInfoEncodings), pa(frameInfoNames),
+                        pa(frameInfoObjectConstants), pa(frameInfoSourceClasses), pa(frameInfoSourceMethodNames), method, encodedBci, codeInfo);
     }
 
     @Override

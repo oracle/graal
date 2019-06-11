@@ -396,7 +396,6 @@ class CodeInfoVerifier {
             assert queryResult.isEntryPoint() || accessor.lookupTotalFrameSize(handle, totalIP) == queryResult.getTotalFrameSize();
             assert accessor.lookupExceptionOffset(handle, totalIP) == queryResult.getExceptionOffset();
             assert accessor.lookupReferenceMapIndex(handle, totalIP) == queryResult.getReferenceMapIndex();
-            assert accessor.getReferenceMapEncoding(handle).equal(queryResult.getReferenceMapEncoding());
         }
 
         for (Infopoint infopoint : compilation.getInfopoints()) {
@@ -408,7 +407,7 @@ class CodeInfoVerifier {
                     accessor.lookupCodeInfo(handle, offset + compilationOffset, queryResult);
 
                     CollectingObjectReferenceVisitor visitor = new CollectingObjectReferenceVisitor();
-                    CodeReferenceMapDecoder.walkOffsetsFromPointer(WordFactory.zero(), queryResult.getReferenceMapEncoding(), queryResult.getReferenceMapIndex(), visitor);
+                    CodeReferenceMapDecoder.walkOffsetsFromPointer(WordFactory.zero(), accessor.getReferenceMapEncoding(handle), queryResult.getReferenceMapIndex(), visitor);
                     ReferenceMapEncoder.Input expected = (ReferenceMapEncoder.Input) infopoint.debugInfo.getReferenceMap();
                     visitor.result.verify();
                     assert expected.equals(visitor.result);

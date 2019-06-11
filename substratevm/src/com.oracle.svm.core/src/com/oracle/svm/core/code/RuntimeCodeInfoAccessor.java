@@ -158,9 +158,9 @@ public class RuntimeCodeInfoAccessor implements CodeInfoAccessor {
 
     @Override
     public long lookupDeoptimizationEntrypoint(CodeInfoHandle handle, long method, long encodedBci, CodeInfoQueryResult codeInfo) {
-        return CodeInfoDecoder.lookupDeoptimizationEntrypoint(cast(handle).getCodeInfoEncodings(), cast(handle).getCodeInfoIndex(), cast(handle).getFrameInfoEncodings(),
-                        cast(handle).getFrameInfoNames(), cast(handle).getFrameInfoObjectConstants(), cast(handle).getFrameInfoSourceClasses(),
-                        cast(handle).getFrameInfoSourceMethodNames(), cast(handle).getReferenceMapEncoding(), method, encodedBci, codeInfo);
+        return CodeInfoDecoder.lookupDeoptimizationEntrypoint(cast(handle).getCodeInfoEncodings(), cast(handle).getCodeInfoIndex(),
+                        cast(handle).getFrameInfoEncodings(), cast(handle).getFrameInfoNames(), cast(handle).getFrameInfoObjectConstants(),
+                        cast(handle).getFrameInfoSourceClasses(), cast(handle).getFrameInfoSourceMethodNames(), method, encodedBci, codeInfo);
     }
 
     @Override
@@ -185,9 +185,8 @@ public class RuntimeCodeInfoAccessor implements CodeInfoAccessor {
 
     @Override
     public void lookupCodeInfo(CodeInfoHandle handle, long ip, CodeInfoQueryResult codeInfo) {
-        CodeInfoDecoder.lookupCodeInfo(cast(handle).getCodeInfoEncodings(), cast(handle).getCodeInfoIndex(), cast(handle).getFrameInfoEncodings(),
-                        cast(handle).getFrameInfoNames(), cast(handle).getFrameInfoObjectConstants(), cast(handle).getFrameInfoSourceClasses(),
-                        cast(handle).getFrameInfoSourceMethodNames(), cast(handle).getReferenceMapEncoding(), ip, codeInfo);
+        CodeInfoDecoder.lookupCodeInfo(cast(handle).getCodeInfoEncodings(), cast(handle).getCodeInfoIndex(), cast(handle).getFrameInfoEncodings(), cast(handle).getFrameInfoNames(),
+                        cast(handle).getFrameInfoObjectConstants(), cast(handle).getFrameInfoSourceClasses(), cast(handle).getFrameInfoSourceMethodNames(), ip, codeInfo);
     }
 
     @Override

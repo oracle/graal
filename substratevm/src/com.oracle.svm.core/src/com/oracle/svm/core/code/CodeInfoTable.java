@@ -90,8 +90,6 @@ public class CodeInfoTable {
             return null;
         }
         CodeInfoQueryResult result = new CodeInfoQueryResult();
-        result.accessor = accessor;
-        result.handle = handle;
         result.ip = ip;
         accessor.lookupCodeInfo(handle, accessor.relativeIP(handle, ip), result);
         return result;
@@ -107,8 +105,6 @@ public class CodeInfoTable {
         if (relativeIP < 0) {
             return null;
         }
-        result.accessor = accessor;
-        result.handle = handle;
         result.ip = accessor.absoluteIP(handle, relativeIP);
         return result;
     }
