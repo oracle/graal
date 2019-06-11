@@ -144,28 +144,6 @@ public class AMD64Binary {
 
     }
 
-    public static class VectorAddOp extends AMD64LIRInstruction {
-
-        public static final LIRInstructionClass<VectorAddOp> TYPE = LIRInstructionClass.create(VectorAddOp.class);
-
-        @Def({REG}) protected AllocatableValue result;
-        @Alive({REG}) protected AllocatableValue x;
-        @Alive({REG}) protected AllocatableValue y;
-
-        public VectorAddOp(AllocatableValue result, AllocatableValue x, AllocatableValue y) {
-            super(TYPE);
-            this.result = result;
-            this.x = x;
-            this.y = y;
-        }
-
-        @Override
-        public void emitCode(CompilationResultBuilder crb, AMD64MacroAssembler masm) {
-            masm.movdqu(asRegister(result), asRegister(x));
-            masm.paddq(asRegister(result), asRegister(y));
-        }
-    }
-
     /**
      * Instruction that has one {@link AllocatableValue} operand and one 32-bit immediate operand.
      */

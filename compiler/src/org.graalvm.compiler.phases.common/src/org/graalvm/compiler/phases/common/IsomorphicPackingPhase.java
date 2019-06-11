@@ -12,8 +12,8 @@ import org.graalvm.compiler.graph.NodeMap;
 import org.graalvm.compiler.nodes.*;
 import org.graalvm.compiler.nodes.VectorSupport.*;
 import org.graalvm.compiler.nodes.calc.AddNode;
+import org.graalvm.compiler.nodes.calc.BinaryArithmeticNode;
 import org.graalvm.compiler.nodes.calc.BinaryNode;
-import org.graalvm.compiler.nodes.calc.VectorAddNode;
 import org.graalvm.compiler.nodes.cfg.Block;
 import org.graalvm.compiler.nodes.cfg.ControlFlowGraph;
 import org.graalvm.compiler.nodes.memory.*;
@@ -808,26 +808,30 @@ public final class IsomorphicPackingPhase extends BasePhase<LowTierContext> {
             }
 
             if (first instanceof AddNode) {
+                final AddNode firstBAN = (AddNode) first;
+
                 final List<AddNode> nodes = pack.getElements().stream().map(x -> (AddNode) x).collect(Collectors.toList());
 
-                // Input to vector, output to scalar
-                // TODO: don't hardcodoe for specific stamp type
-                final VectorPrimitiveStamp vectorInputStamp = VectorIntegerStamp.create((IntegerStamp) nodes.get(0).getX().stamp(NodeView.DEFAULT).unrestricted(), nodes.size());
-                final VectorPackNode stvX = new VectorPackNode(vectorInputStamp, nodes.stream().map(BinaryNode::getX).collect(Collectors.toList()));
-                final VectorPackNode stvY = new VectorPackNode(vectorInputStamp, nodes.stream().map(BinaryNode::getY).collect(Collectors.toList()));
-                final VectorAddNode vector = new VectorAddNode(stvX, stvY);
+                // TODO: don't hardcode for specific stamp type
+                final VectorPrimitiveStamp vectorInputStamp = VectorIntegerStamp.create((IntegerStamp) firstBAN.getX().stamp(NodeView.DEFAULT).unrestricted(), nodes.size());
+
+                final VectorPackNode packX = new VectorPackNode(vectorInputStamp, nodes.stream().map(BinaryNode::getX).collect(Collectors.toList()));
+                final VectorPackNode packY = new VectorPackNode(vectorInputStamp, nodes.stream().map(BinaryNode::getY).collect(Collectors.toList()));
+
+                final AddNode newBinaryNode = new AddNode(packX, packY);
+//                newBinaryNode.setStamp(vectorInputStamp);
 
                 for (int i = 0; i < nodes.size(); i++) {
                     final AddNode node = nodes.get(i);
-                    final VectorExtractNode extractNode = new VectorExtractNode(node.stamp(NodeView.DEFAULT), vector, i);
+                    final VectorExtractNode extractNode = new VectorExtractNode(node.stamp(NodeView.DEFAULT), newBinaryNode, i);
                     node.replaceAtUsagesAndDelete(extractNode);
 
                     first.graph().addOrUnique(extractNode);
                 }
 
-                first.graph().addOrUnique(stvX);
-                first.graph().addOrUnique(stvY);
-                first.graph().add(vector);
+                first.graph().addOrUnique(packX);
+                first.graph().addOrUnique(packY);
+                first.graph().addOrUnique(newBinaryNode);
             }
         }
 

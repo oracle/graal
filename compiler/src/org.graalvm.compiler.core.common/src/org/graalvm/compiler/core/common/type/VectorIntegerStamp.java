@@ -6,11 +6,55 @@ import org.graalvm.compiler.core.common.spi.LIRKindTool;
 import jdk.vm.ci.meta.Constant;
 import jdk.vm.ci.meta.MetaAccessProvider;
 
+import org.graalvm.compiler.core.common.type.ArithmeticOpTable.BinaryOp;
+
 public class VectorIntegerStamp extends VectorPrimitiveStamp {
+
+    public static final ArithmeticOpTable OPS = new ArithmeticOpTable(
+            null,
+            new BinaryOp.Add(true, true) {
+                @Override
+                public Constant foldConstant(Constant a, Constant b) {
+                    return null;
+                }
+
+                @Override
+                public Stamp foldStamp(Stamp a, Stamp b) {
+                    if (a.isEmpty()) {
+                        return a;
+                    }
+
+                    if (b.isEmpty()) {
+                        return b;
+                    }
+
+                    // Can only be unrestricted so return a
+                    return a;
+                }
+            },
+            null,
+            null,
+            null,
+            null,
+            null,
+            null,
+            null,
+            null,
+            null,
+            null,
+            null,
+            null,
+            null,
+            null,
+            null,
+            null,
+            null,
+            null
+    );
 
     public static VectorIntegerStamp create(IntegerStamp scalar, int elementCount) {
         // TODO: Figure out OPS
-        return new VectorIntegerStamp(scalar, elementCount, IntegerStamp.OPS);
+        return new VectorIntegerStamp(scalar, elementCount, OPS);
     }
 
     private VectorIntegerStamp(IntegerStamp scalar, int elementCount, ArithmeticOpTable ops) {
