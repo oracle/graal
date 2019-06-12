@@ -27,6 +27,7 @@ package org.graalvm.compiler.hotspot;
 import static org.graalvm.compiler.debug.GraalError.shouldNotReachHere;
 
 import jdk.vm.ci.hotspot.HotSpotMetaData;
+import jdk.vm.ci.meta.JavaConstant;
 
 /**
  * Interface to HotSpot specific functionality that abstracts over which JDK version Graal is
@@ -39,6 +40,33 @@ public class HotSpotGraalServices {
      */
     @SuppressWarnings("unused")
     public static byte[] getImplicitExceptionBytes(HotSpotMetaData metaData) {
+        throw shouldNotReachHere();
+    }
+
+    /**
+     * Enters the global context. This is useful to escape a local context for execution that will
+     * create foreign object references that need to outlive the local context.
+     *
+     * Foreign object references encapsulated by {@link JavaConstant}s created in the global context
+     * are only subject to reclamation once the {@link JavaConstant} wrapper dies.
+     *
+     * @return {@code null} if the current runtime does not support remote object references or if
+     *         this thread is currently in the global context
+     */
+    public static CompilationContext enterGlobalCompilationContext() {
+        throw shouldNotReachHere();
+    }
+
+    /**
+     * Opens a local context that upon closing, will release foreign object references encapsulated
+     * by {@link JavaConstant}s created in the context.
+     *
+     * @param description an non-null object whose {@link Object#toString()} value describes the
+     *            context being opened
+     * @return {@code null} if the current runtime does not support remote object references
+     */
+    @SuppressWarnings("unused")
+    public static CompilationContext openLocalCompilationContext(Object description) {
         throw shouldNotReachHere();
     }
 }

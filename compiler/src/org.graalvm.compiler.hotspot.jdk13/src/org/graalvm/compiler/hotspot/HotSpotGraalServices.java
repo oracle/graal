@@ -35,4 +35,13 @@ public class HotSpotGraalServices {
     public static byte[] getImplicitExceptionBytes(HotSpotMetaData metaData) {
         return metaData.implicitExceptionBytes();
     }
+
+    public static CompilationContext enterGlobalCompilationContext() {
+        return null;
+    }
+
+    @SuppressWarnings("unused")
+    public static CompilationContext openLocalCompilationContext(Object description) {
+        return null;
+    }
 }

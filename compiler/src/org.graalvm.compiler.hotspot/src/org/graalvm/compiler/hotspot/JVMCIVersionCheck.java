@@ -41,8 +41,8 @@ import java.util.Properties;
  */
 public final class JVMCIVersionCheck {
 
-    private static final int JVMCI8_MIN_MAJOR_VERSION = 19;
-    private static final int JVMCI8_MIN_MINOR_VERSION = 1;
+    private static final int JVMCI8_MIN_MAJOR_VERSION = 20;
+    private static final int JVMCI8_MIN_MINOR_VERSION = 4;
 
     private static void failVersionCheck(Map<String, String> props, boolean exit, String reason, Object... args) {
         Formatter errorMessage = new Formatter().format(reason, args);
