@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2016, 2018, Oracle and/or its affiliates.
+ * Copyright (c) 2016, 2019, Oracle and/or its affiliates.
  *
  * All rights reserved.
  *
@@ -38,6 +38,6 @@ public abstract class LLVMTrap extends LLVMBuiltin {
     protected Object doVoid() {
         // see
         // http://stackoverflow.com/questions/2862731/when-assert-fails-what-is-the-program-exit-code
-        throw LLVMExitException.abort();
+        throw LLVMExitException.abort(this);
     }
 }

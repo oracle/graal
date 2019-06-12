@@ -89,7 +89,7 @@ public class LLVMGlobalRootNode extends RootNode {
                 // cleanup was already done
                 context.setCleanupNecessary(false);
                 context.awaitThreadTermination();
-                return e.getReturnCode();
+                return e.getExitStatus();
             } finally {
                 // if not done already, we want at least call a shutdown command
                 getContext().shutdownThreads();
