@@ -78,7 +78,6 @@ public class SubstrateOptions {
 
     public static final String IMAGE_CLASSPATH_PREFIX = "-imagecp";
     public static final String WATCHPID_PREFIX = "-watchpid";
-
     private static ValueUpdateHandler optimizeValueUpdateHandler;
 
     @Option(help = "Show available options based on comma-separated option-types (allowed categories: User, Expert, Debug).")//
@@ -307,4 +306,9 @@ public class SubstrateOptions {
         }
         return javaName -> true;
     }
+
+    @Option(help = "Use linker option to prevent unreferenced symbols in image.")//
+    public static final HostedOptionKey<Boolean> RemoveUnusedSymbols = new HostedOptionKey<>(true);
+    @Option(help = "Use linker option to remove all local symbols from image.")//
+    public static final HostedOptionKey<Boolean> DeleteLocalSymbols = new HostedOptionKey<>(true);
 }
