@@ -24,18 +24,18 @@ package com.oracle.truffle.espresso;
 
 import com.oracle.truffle.espresso.meta.EspressoError;
 import com.oracle.truffle.espresso.meta.JavaKind;
-import com.oracle.truffle.nfi.types.NativeSimpleType;
+import com.oracle.truffle.nfi.spi.types.NativeSimpleType;
 
 public final class Utils {
 
     public static NativeSimpleType kindToType(JavaKind kind, boolean javaToNative) {
         switch (kind) {
             case Boolean:
-                return NativeSimpleType.UINT8; // ?
+                return NativeSimpleType.SINT8; // ?
             case Short:
                 return NativeSimpleType.SINT16;
             case Char:
-                return NativeSimpleType.UINT16;
+                return NativeSimpleType.SINT16;
             case Long:
                 return NativeSimpleType.SINT64;
             case Float:

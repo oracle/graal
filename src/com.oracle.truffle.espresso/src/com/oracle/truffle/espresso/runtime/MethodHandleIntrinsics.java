@@ -22,15 +22,15 @@
  */
 package com.oracle.truffle.espresso.runtime;
 
+import java.util.concurrent.ConcurrentHashMap;
+import java.util.function.Function;
+
 import com.oracle.truffle.api.CompilerAsserts;
 import com.oracle.truffle.espresso.descriptors.Symbol;
 import com.oracle.truffle.espresso.impl.ContextAccess;
 import com.oracle.truffle.espresso.impl.Method;
 import com.oracle.truffle.espresso.meta.EspressoError;
 import com.oracle.truffle.espresso.nodes.EspressoBaseNode;
-
-import java.util.concurrent.ConcurrentHashMap;
-import java.util.function.Function;
 
 public final class MethodHandleIntrinsics implements ContextAccess {
     public enum PolySigIntrinsics {

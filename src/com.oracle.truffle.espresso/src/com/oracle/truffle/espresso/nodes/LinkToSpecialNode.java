@@ -1,9 +1,9 @@
 package com.oracle.truffle.espresso.nodes;
 
+import static com.oracle.truffle.espresso.runtime.MethodHandleIntrinsics.PolySigIntrinsics.LinkToSpecial;
+
 import com.oracle.truffle.espresso.descriptors.Signatures;
 import com.oracle.truffle.espresso.impl.Method;
-
-import static com.oracle.truffle.espresso.runtime.MethodHandleIntrinsics.PolySigIntrinsics.LinkToSpecial;
 
 public class LinkToSpecialNode extends MHLinkToNode {
     LinkToSpecialNode(Method method) {

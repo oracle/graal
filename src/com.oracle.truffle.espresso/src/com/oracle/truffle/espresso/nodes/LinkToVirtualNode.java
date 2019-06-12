@@ -1,11 +1,11 @@
 package com.oracle.truffle.espresso.nodes;
 
+import static com.oracle.truffle.espresso.classfile.Constants.REF_invokeSpecial;
+import static com.oracle.truffle.espresso.runtime.MethodHandleIntrinsics.PolySigIntrinsics.LinkToVirtual;
+
 import com.oracle.truffle.espresso.descriptors.Signatures;
 import com.oracle.truffle.espresso.impl.Method;
 import com.oracle.truffle.espresso.runtime.StaticObject;
-
-import static com.oracle.truffle.espresso.classfile.Constants.REF_invokeSpecial;
-import static com.oracle.truffle.espresso.runtime.MethodHandleIntrinsics.PolySigIntrinsics.LinkToVirtual;
 
 public class LinkToVirtualNode extends MHLinkToNode {
     LinkToVirtualNode(Method method) {

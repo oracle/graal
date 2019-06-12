@@ -22,6 +22,32 @@
  */
 package com.oracle.truffle.espresso.substitutions;
 
+import static com.oracle.truffle.espresso.classfile.Constants.ACC_NATIVE;
+import static com.oracle.truffle.espresso.classfile.Constants.ACC_VARARGS;
+import static com.oracle.truffle.espresso.classfile.Constants.REF_getField;
+import static com.oracle.truffle.espresso.classfile.Constants.REF_getStatic;
+import static com.oracle.truffle.espresso.classfile.Constants.REF_invokeInterface;
+import static com.oracle.truffle.espresso.classfile.Constants.REF_invokeSpecial;
+import static com.oracle.truffle.espresso.classfile.Constants.REF_invokeStatic;
+import static com.oracle.truffle.espresso.classfile.Constants.REF_invokeVirtual;
+import static com.oracle.truffle.espresso.classfile.Constants.REF_putField;
+import static com.oracle.truffle.espresso.classfile.Constants.REF_putStatic;
+import static com.oracle.truffle.espresso.runtime.MethodHandleIntrinsics.firstStaticSigPoly;
+import static com.oracle.truffle.espresso.runtime.MethodHandleIntrinsics.lastSigPoly;
+import static com.oracle.truffle.espresso.runtime.MethodHandleIntrinsics.PolySigIntrinsics.InvokeBasic;
+import static com.oracle.truffle.espresso.runtime.MethodHandleIntrinsics.PolySigIntrinsics.InvokeGeneric;
+import static com.oracle.truffle.espresso.runtime.MethodHandleIntrinsics.PolySigIntrinsics.LinkToInterface;
+import static com.oracle.truffle.espresso.runtime.MethodHandleIntrinsics.PolySigIntrinsics.LinkToSpecial;
+import static com.oracle.truffle.espresso.runtime.MethodHandleIntrinsics.PolySigIntrinsics.LinkToStatic;
+import static com.oracle.truffle.espresso.runtime.MethodHandleIntrinsics.PolySigIntrinsics.LinkToVirtual;
+import static com.oracle.truffle.espresso.runtime.MethodHandleIntrinsics.PolySigIntrinsics.None;
+import static java.lang.Math.max;
+
+import java.lang.invoke.CallSite;
+import java.lang.invoke.MethodHandle;
+import java.util.ArrayList;
+import java.util.List;
+
 import com.oracle.truffle.espresso.descriptors.Signatures;
 import com.oracle.truffle.espresso.descriptors.Symbol;
 import com.oracle.truffle.espresso.descriptors.Symbol.Name;
@@ -35,32 +61,6 @@ import com.oracle.truffle.espresso.meta.Meta;
 import com.oracle.truffle.espresso.runtime.EspressoContext;
 import com.oracle.truffle.espresso.runtime.MethodHandleIntrinsics;
 import com.oracle.truffle.espresso.runtime.StaticObject;
-
-import java.lang.invoke.CallSite;
-import java.lang.invoke.MethodHandle;
-import java.util.ArrayList;
-import java.util.List;
-
-import static com.oracle.truffle.espresso.classfile.Constants.ACC_NATIVE;
-import static com.oracle.truffle.espresso.classfile.Constants.ACC_VARARGS;
-import static com.oracle.truffle.espresso.classfile.Constants.REF_getField;
-import static com.oracle.truffle.espresso.classfile.Constants.REF_getStatic;
-import static com.oracle.truffle.espresso.classfile.Constants.REF_invokeInterface;
-import static com.oracle.truffle.espresso.classfile.Constants.REF_invokeSpecial;
-import static com.oracle.truffle.espresso.classfile.Constants.REF_invokeStatic;
-import static com.oracle.truffle.espresso.classfile.Constants.REF_invokeVirtual;
-import static com.oracle.truffle.espresso.classfile.Constants.REF_putField;
-import static com.oracle.truffle.espresso.classfile.Constants.REF_putStatic;
-import static com.oracle.truffle.espresso.runtime.MethodHandleIntrinsics.PolySigIntrinsics.InvokeBasic;
-import static com.oracle.truffle.espresso.runtime.MethodHandleIntrinsics.PolySigIntrinsics.InvokeGeneric;
-import static com.oracle.truffle.espresso.runtime.MethodHandleIntrinsics.PolySigIntrinsics.LinkToInterface;
-import static com.oracle.truffle.espresso.runtime.MethodHandleIntrinsics.PolySigIntrinsics.LinkToSpecial;
-import static com.oracle.truffle.espresso.runtime.MethodHandleIntrinsics.PolySigIntrinsics.LinkToStatic;
-import static com.oracle.truffle.espresso.runtime.MethodHandleIntrinsics.PolySigIntrinsics.LinkToVirtual;
-import static com.oracle.truffle.espresso.runtime.MethodHandleIntrinsics.PolySigIntrinsics.None;
-import static com.oracle.truffle.espresso.runtime.MethodHandleIntrinsics.firstStaticSigPoly;
-import static com.oracle.truffle.espresso.runtime.MethodHandleIntrinsics.lastSigPoly;
-import static java.lang.Math.max;
 
 @EspressoSubstitutions
 public final class Target_java_lang_invoke_MethodHandleNatives {

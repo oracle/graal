@@ -22,11 +22,17 @@
  */
 package com.oracle.truffle.espresso.runtime;
 
+import static com.oracle.truffle.espresso.vm.InterpreterToVM.instanceOf;
+
+import java.lang.reflect.Array;
+
 import com.oracle.truffle.api.CompilerAsserts;
 import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
-import com.oracle.truffle.api.interop.ForeignAccess;
+import com.oracle.truffle.api.interop.InteropLibrary;
 import com.oracle.truffle.api.interop.TruffleObject;
+import com.oracle.truffle.api.library.ExportLibrary;
+import com.oracle.truffle.api.library.ExportMessage;
 import com.oracle.truffle.api.nodes.ExplodeLoop;
 import com.oracle.truffle.espresso.EspressoLanguage;
 import com.oracle.truffle.espresso.descriptors.Symbol;
@@ -38,11 +44,8 @@ import com.oracle.truffle.espresso.meta.EspressoError;
 import com.oracle.truffle.espresso.meta.JavaKind;
 import com.oracle.truffle.espresso.meta.Meta;
 import com.oracle.truffle.espresso.meta.MetaUtil;
+
 import sun.misc.Unsafe;
-
-import java.lang.reflect.Array;
-
-import static com.oracle.truffle.espresso.vm.InterpreterToVM.instanceOf;
 
 /**
  * Jumbo class that does everything for any type of object, while maintaining same performance,
@@ -50,7 +53,28 @@ import static com.oracle.truffle.espresso.vm.InterpreterToVM.instanceOf;
  *
  * This does not come for free, however, as the implementation is pretty ugly.
  */
+@ExportLibrary(InteropLibrary.class)
 public final class StaticObject implements TruffleObject {
+
+    // region Interop
+
+    @ExportMessage
+    public static boolean isNull(StaticObject object) {
+        assert object != null;
+        return object == StaticObject.NULL;
+    }
+
+    @ExportMessage
+    public boolean isString() {
+        return StaticObject.notNull(this) && getKlass() == getKlass().getMeta().String;
+    }
+
+    @ExportMessage
+    public String asString() {
+        return Meta.toHostString(this);
+    }
+
+    // endregion
 
     private static final Unsafe U;
 
@@ -148,11 +172,6 @@ public final class StaticObject implements TruffleObject {
 
     public final Klass getKlass() {
         return klass;
-    }
-
-    public static boolean isNull(StaticObject object) {
-        assert object != null;
-        return object == StaticObject.NULL;
     }
 
     public static boolean notNull(StaticObject object) {
@@ -635,10 +654,6 @@ public final class StaticObject implements TruffleObject {
     public Object getHiddenField(Field hiddenField) {
         assert hiddenField.isHidden();
         return getUnsafeField(hiddenField.getFieldIndex());
-    }
-
-    public ForeignAccess getForeignAccess() {
-        return StaticObjectMessageResolutionForeign.ACCESS;
     }
 
     /**

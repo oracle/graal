@@ -3,4 +3,6 @@
 DYNAMIC_IMPORTS=/vm,/substratevm
 DISABLE_POLYGLOT=true
 DISABLE_LIBPOLYGLOT=true
-FORCE_BASH_LAUNCHERS=native-image
+DISABLE_INSTALLABLES=true
+FORCE_BASH_LAUNCHERS=native-image,native-image-configure
+SKIP_LIBRARIES=native-image-agent

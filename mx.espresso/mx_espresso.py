@@ -95,7 +95,8 @@ mx_sdk.register_graalvm_component(mx_sdk.GraalVmLanguage(
             destination='bin/<exe:espresso>',
             jar_distributions=['espresso:ESPRESSO_LAUNCHER'],
             main_class='com.oracle.truffle.espresso.launcher.EspressoLauncher',
-            build_args=['--language:java']
+            build_args=['--language:java'],
+            language='java',
         )
     ],
 ))
