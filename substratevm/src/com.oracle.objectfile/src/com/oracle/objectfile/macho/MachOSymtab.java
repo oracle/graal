@@ -239,6 +239,7 @@ public final class MachOSymtab extends MachOObjectFile.LinkEditElement implement
         }
 
         public String getNameInObject() {
+            /* On Mach-O symbols are prefixed with underscore */
             return "_" + name;
         }
 
