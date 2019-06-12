@@ -21,7 +21,6 @@ import com.oracle.truffle.llvm.runtime.types.PointerType;
 import com.oracle.truffle.llvm.runtime.types.Type;
 
 public class LLVMPThreadThreadIntrinsics {
-
     @NodeChild(type = LLVMExpressionNode.class, value = "thread")
     @NodeChild(type = LLVMExpressionNode.class, value = "attr")
     @NodeChild(type = LLVMExpressionNode.class, value = "startRoutine")
