@@ -30,6 +30,7 @@ import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.CompilerDirectives.CompilationFinal;
 import com.oracle.truffle.api.nodes.ExplodeLoop;
 import com.oracle.truffle.espresso.EspressoOptions;
+import com.oracle.truffle.espresso.bytecode.BytecodeStream;
 import com.oracle.truffle.espresso.classfile.ConstantValueAttribute;
 import com.oracle.truffle.espresso.classfile.EnclosingMethodAttribute;
 import com.oracle.truffle.espresso.classfile.InnerClassesAttribute;
@@ -510,19 +511,20 @@ public final class ObjectKlass extends Klass {
 
     private void verifyKlass() {
         if (EspressoOptions.ENABLE_VERIFICATION) {
-            for (Method m : declaredMethods) {
-                try {
-                    MethodVerifier.verify(m);
-                } catch (VerifyError | ClassFormatError | IncompatibleClassChangeError | NoClassDefFoundError e) {
-                    // new BytecodeStream(m.getCodeAttribute().getCode()).printBytecode(this);
-                    setErroneous();
-                    throw getMeta().throwExWithMessage(e.getClass(), e.getMessage());
-                } catch (Throwable e) {
-                    e.printStackTrace();
-                    throw EspressoError.shouldNotReachHere(e.toString());
+            // Do not verify BootClassLoader classes, they are trusted.
+            if (!StaticObject.isNull(getDefiningClassLoader())) {
+                for (Method m : declaredMethods) {
+                    try {
+                        MethodVerifier.verify(m);
+                    } catch (VerifyError | ClassFormatError | IncompatibleClassChangeError | NoClassDefFoundError e) {
+                        setErroneous();
+                        throw getMeta().throwExWithMessage(e.getClass(), e.getMessage());
+                    } catch (Throwable e) {
+                        e.printStackTrace();
+                        throw EspressoError.shouldNotReachHere(e.toString());
+                    }
                 }
             }
-
         }
     }
 
