@@ -29,10 +29,10 @@ import java.util.List;
 import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.CompilerDirectives.CompilationFinal;
 import com.oracle.truffle.api.nodes.ExplodeLoop;
+import com.oracle.truffle.espresso.EspressoOptions;
 import com.oracle.truffle.espresso.classfile.ConstantValueAttribute;
 import com.oracle.truffle.espresso.classfile.EnclosingMethodAttribute;
 import com.oracle.truffle.espresso.classfile.InnerClassesAttribute;
-import com.oracle.truffle.espresso.verifier.MethodVerifier;
 import com.oracle.truffle.espresso.classfile.RuntimeConstantPool;
 import com.oracle.truffle.espresso.descriptors.Symbol;
 import com.oracle.truffle.espresso.descriptors.Symbol.Name;
@@ -43,13 +43,13 @@ import com.oracle.truffle.espresso.runtime.Attribute;
 import com.oracle.truffle.espresso.runtime.EspressoContext;
 import com.oracle.truffle.espresso.runtime.StaticObject;
 import com.oracle.truffle.espresso.substitutions.Host;
+import com.oracle.truffle.espresso.verifier.MethodVerifier;
 
 /**
  * Resolved non-primitive, non-array types in Espresso.
  */
 public final class ObjectKlass extends Klass {
 
-    public static final boolean VERIFY = true;
     public static final ObjectKlass[] EMPTY_ARRAY = new ObjectKlass[0];
 
     private final EnclosingMethodAttribute enclosingMethod;
@@ -509,19 +509,24 @@ public final class ObjectKlass extends Klass {
     }
 
     private void verifyKlass() {
-        if (VERIFY) {
+        if (EspressoOptions.ENABLE_VERIFICATION) {
             for (Method m : declaredMethods) {
                 try {
                     MethodVerifier.verify(m);
                 } catch (VerifyError | ClassFormatError | IncompatibleClassChangeError | NoClassDefFoundError e) {
+                    // new BytecodeStream(m.getCodeAttribute().getCode()).printBytecode(this);
                     setErroneous();
                     throw getMeta().throwExWithMessage(e.getClass(), e.getMessage());
+                } catch (Throwable e) {
+                    e.printStackTrace();
+                    throw EspressoError.shouldNotReachHere(e.toString());
                 }
             }
+
         }
     }
 
-    void setErroneous() {
+    private void setErroneous() {
         initState = ERRONEOUS;
     }
 }

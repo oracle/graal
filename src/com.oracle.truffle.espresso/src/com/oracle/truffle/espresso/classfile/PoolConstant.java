@@ -40,10 +40,15 @@ public interface PoolConstant {
     String toString(ConstantPool pool);
 
     // TODO(garcia) call this function after parsing CP to verify each Pool constant is well-formed.
-    // TODO(garcia) implement this for each pool constant.
+
+    /**
+     * Throws VerifyError if the constant is ill-formed (/ex: a StringConstant does not refer to an
+     * UTF8Constant
+     * 
+     * @param pool The constant pool in which this constant appears.
+     */
     @SuppressWarnings("unused")
-    default boolean checkValidity(ConstantPool pool) {
-        return true;
+    default void checkValidity(ConstantPool pool) {
     }
 
     static byte u1(int i) {

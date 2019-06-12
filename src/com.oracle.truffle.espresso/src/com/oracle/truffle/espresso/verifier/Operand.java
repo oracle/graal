@@ -1,11 +1,13 @@
 package com.oracle.truffle.espresso.verifier;
 
+import static com.oracle.truffle.espresso.verifier.MethodVerifier.Invalid;
+import static com.oracle.truffle.espresso.verifier.MethodVerifier.jlObject;
+
+import java.util.ArrayList;
+
 import com.oracle.truffle.espresso.descriptors.Symbol;
 import com.oracle.truffle.espresso.impl.Klass;
 import com.oracle.truffle.espresso.meta.JavaKind;
-
-import static com.oracle.truffle.espresso.verifier.MethodVerifier.Invalid;
-import static com.oracle.truffle.espresso.verifier.MethodVerifier.jlObject;
 
 abstract class Operand {
     static public Operand[] EMPTY_ARRAY = new Operand[0];
@@ -29,6 +31,10 @@ abstract class Operand {
     }
 
     boolean isPrimitive() {
+        return false;
+    }
+
+    boolean isReturnAddress() {
         return false;
     }
 
@@ -78,7 +84,7 @@ class PrimitiveOperand extends Operand {
 
     @Override
     boolean compliesWith(Operand other) {
-        return (other == Invalid) || (other.isPrimitive() && other.getKind() == this.kind);
+        return (other == Invalid) || other == this;
     }
 
     @Override
@@ -89,6 +95,51 @@ class PrimitiveOperand extends Operand {
     @Override
     public String toString() {
         return kind.toString();
+    }
+}
+
+class ReturnAddressOperand extends PrimitiveOperand {
+    ArrayList<Integer> targetBCIs = new ArrayList<>();
+
+    ReturnAddressOperand(int target) {
+        super(JavaKind.ReturnAddress);
+        targetBCIs.add(target);
+    }
+
+    @Override
+    boolean isReturnAddress() {
+        return true;
+    }
+
+    @Override
+    boolean compliesWith(Operand other) {
+        if (other == Invalid) {
+            return true;
+        }
+        if (other.isReturnAddress()) {
+            ReturnAddressOperand ra = (ReturnAddressOperand) other;
+            for (Integer target : targetBCIs) {
+                if (!ra.targetBCIs.contains(target)) {
+                    return false;
+                }
+            }
+            return true;
+        }
+        return false;
+    }
+
+    @Override
+    Operand mergeWith(Operand other) {
+        if (!other.isReturnAddress()) {
+            return null;
+        }
+        ReturnAddressOperand ra = (ReturnAddressOperand) other;
+        for (Integer target : targetBCIs) {
+            if (!ra.targetBCIs.contains(target)) {
+                ra.targetBCIs.add(target);
+            }
+        }
+        return ra;
     }
 }
 
@@ -150,7 +201,14 @@ class ReferenceOperand extends Operand {
             if (other.getType() == null) {
                 return false;
             }
-            return other.getKlass().isAssignableFrom(getKlass());
+            Klass otherKlass = other.getKlass();
+            if (otherKlass.isInterface()) {
+                /**
+                 * 4.10.1.2. For assignments, interfaces are treated like Object.
+                 */
+                return true;
+            }
+            return otherKlass.isAssignableFrom(getKlass());
         }
         return other == Invalid;
     }
@@ -184,6 +242,9 @@ class ArrayOperand extends Operand {
     ArrayOperand(Operand elemental, int dimensions) {
         super(JavaKind.Object);
         assert !elemental.isArrayType();
+        if (dimensions > 255) {
+            throw new VerifyError("Creating array of dimension > 255");
+        }
         this.dimensions = dimensions;
         this.elemental = elemental;
     }

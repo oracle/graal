@@ -6,7 +6,6 @@ import static com.oracle.truffle.espresso.verifier.MethodVerifier.Int;
 import static com.oracle.truffle.espresso.verifier.MethodVerifier.Invalid;
 import static com.oracle.truffle.espresso.verifier.MethodVerifier.Long;
 import static com.oracle.truffle.espresso.verifier.MethodVerifier.Null;
-import static com.oracle.truffle.espresso.verifier.MethodVerifier.ReturnAddress;
 import static com.oracle.truffle.espresso.verifier.MethodVerifier.isType2;
 
 import com.oracle.truffle.espresso.descriptors.Symbol.Name;
@@ -43,7 +42,7 @@ class StackFrame {
         this.lastLocal = last;
     }
 
-    public StackFrame(Operand[] stack, int stackSize, int top, Operand[] locals) {
+    StackFrame(Operand[] stack, int stackSize, int top, Operand[] locals) {
         this.stack = stack;
         this.stackSize = stackSize;
         this.top = top;
@@ -135,6 +134,9 @@ class Stack {
     Operand popRef(Operand kind) {
         procSize(-(isType2(kind) ? 2 : 1));
         Operand op = stack[--top];
+        if (!op.isReference()) {
+            throw new VerifyError("Popped " + op + " when a reference was expected!");
+        }
         if (!op.compliesWith(kind)) {
             throw new VerifyError("Type check error: " + op + " cannot be merged into " + kind);
         }
@@ -177,21 +179,22 @@ class Stack {
     Operand popObjOrRA() {
         procSize(-1);
         Operand op = stack[--top];
-        if (!(op.isReference() || op == ReturnAddress)) {
-            throw new VerifyError(op + " on stack, required: A or ReturnAddress");
+        if (!(op.isReference() || op.isReturnAddress())) {
+            throw new VerifyError(op + " on stack, required: Reference or ReturnAddress");
         }
         return op;
     }
 
-    void pop(Operand k) {
+    Operand pop(Operand k) {
         if (!k.getKind().isStackInt() || k == Int) {
             procSize((isType2(k) ? -2 : -1));
             Operand op = stack[--top];
             if (!(op.compliesWith(k))) {
                 throw new VerifyError(stack[top] + " on stack, required: " + k);
             }
+            return op;
         } else {
-            pop(Int);
+            return pop(Int);
         }
     }
 
@@ -376,6 +379,10 @@ class Stack {
 class Locals {
     Operand[] registers;
 
+    // Created an inherited in the verifier.
+    // Will stay null in most cases.
+    SubroutineModificationStack subRoutineModifications;
+
     Locals(MethodVerifier mv) {
         Operand[] parsedSig = mv.getOperandSig(mv.getSig());
         if (parsedSig.length - (mv.isStatic() ? 1 : 0) > mv.getMaxLocals()) {
@@ -435,10 +442,31 @@ class Locals {
         return op;
     }
 
+    ReturnAddressOperand loadReturnAddress(int index) {
+        Operand op = registers[index];
+        if (!op.isReturnAddress()) {
+            throw new VerifyError("Incompatible register type. Expected a ReturnAddress, found: " + op);
+        }
+        return (ReturnAddressOperand) op;
+    }
+
     void store(int index, Operand op) {
+        boolean subRoutine = subRoutineModifications != null;
         registers[index] = op;
+        if (subRoutine) {
+            subRoutineModifications.subRoutineModifications[index] = true;
+        }
+        if (index >= 1 && isType2(registers[index - 1])) {
+            registers[index - 1] = Invalid;
+            if (subRoutine) {
+                subRoutineModifications.subRoutineModifications[index - 1] = true;
+            }
+        }
         if (isType2(op)) {
             registers[index + 1] = Invalid;
+            if (subRoutine) {
+                subRoutineModifications.subRoutineModifications[index + 1] = true;
+            }
         }
     }
 
@@ -460,5 +488,24 @@ class Locals {
                 registers[i] = stackOp;
             }
         }
+    }
+}
+
+class SubroutineModificationStack {
+    SubroutineModificationStack next;
+    boolean[] subRoutineModifications;
+    int jsr;
+
+    SubroutineModificationStack(SubroutineModificationStack next, boolean[] subRoutineModifications, int bci) {
+        this.next = next;
+        this.subRoutineModifications = subRoutineModifications;
+        this.jsr = bci;
+    }
+
+    static SubroutineModificationStack copy(SubroutineModificationStack tocopy) {
+        if (tocopy == null) {
+            return null;
+        }
+        return new SubroutineModificationStack(tocopy.next, tocopy.subRoutineModifications.clone(), tocopy.jsr);
     }
 }

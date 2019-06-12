@@ -22,11 +22,14 @@
  */
 package com.oracle.truffle.espresso.bytecode;
 
+import java.util.Arrays;
+
 import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.CompilerDirectives.CompilationFinal;
+import com.oracle.truffle.espresso.classfile.ConstantPool;
+import com.oracle.truffle.espresso.classfile.MethodRefConstant;
+import com.oracle.truffle.espresso.impl.Klass;
 import com.oracle.truffle.espresso.meta.EspressoError;
-
-import java.util.Arrays;
 
 /**
  * A utility class that makes iterating over bytecodes and reading operands simpler and less error
@@ -252,7 +255,60 @@ public final class BytecodeStream {
         throw EspressoError.shouldNotReachHere("unknown variable-length bytecode: " + opcode);
     }
 
-    public void printBytecode() {
+    public void printBytecode(Klass klass) {
+        try {
+            int bci = 0;
+            int nextBCI = 0;
+            while (nextBCI < endBCI()) {
+                StringBuilder str = new StringBuilder();
+                bci = nextBCI;
+                int opcode = currentBC(bci);
+                str.append(bci).append(": ").append(Bytecodes.nameOf(opcode)).append(" ");
+                nextBCI = nextBCI(bci);
+                if (Bytecodes.isBranch(opcode)) {
+                    str.append(readBranchDest(bci));
+                } else if (Bytecodes.isInvoke(opcode)) {
+                    int CPI = readCPI(bci);
+                    ConstantPool pool = klass.getConstantPool();
+                    MethodRefConstant mrc = (MethodRefConstant) pool.at(CPI);
+                    str.append(mrc.getHolderKlassName(pool)).append(".").append(mrc.getName(pool)).append(":").append(mrc.getDescriptor(pool));
+                } else if (opcode == Bytecodes.TABLESWITCH) {
+                    str.append('\n');
+                    BytecodeTableSwitch helper = getBytecodeTableSwitch();
+                    int low = helper.lowKey(bci);
+                    int high = helper.highKey(bci);
+                    for (int i = low; i != high + 1; i++) {
+                        str.append('\t').append(i).append(": ").append(helper.targetAt(bci, i)).append('\n');
+                    }
+                    str.append("\tdefault: ").append(helper.defaultTarget(bci));
+                } else if (opcode == Bytecodes.LOOKUPSWITCH) {
+                    str.append('\n');
+                    BytecodeLookupSwitch helper = getBytecodeLookupSwitch();
+                    int low = 0;
+                    int high = helper.numberOfCases(bci) - 1;
+                    for (int i = low; i <= high; i++) {
+                        str.append('\t').append(helper.keyAt(bci, i)).append(": ").append(helper.targetAt(bci, i));
+                    }
+                    str.append("\tdefault: ").append(helper.defaultTarget(bci));
+                } else {
+                    if (nextBCI - bci == 2) {
+                        str.append(readUByte(bci + 1));
+                    }
+                    if (nextBCI - bci == 3) {
+                        str.append(readShort(bci));
+                    }
+                    if (nextBCI - bci == 5) {
+                        str.append(readInt(bci + 1));
+                    }
+                }
+                System.err.println(str.toString());
+            }
+        } catch (Throwable e) {
+            System.err.println("Exception arised during bytecode printing, aborting...");
+        }
+    }
+
+    public void printRawBytecode() {
         System.err.println(Arrays.toString(code));
     }
 }

@@ -22,6 +22,7 @@
  */
 package com.oracle.truffle.espresso.classfile;
 
+import static com.oracle.truffle.espresso.classfile.ConstantPool.Tag.UTF8;
 import static com.oracle.truffle.espresso.nodes.BytecodeNode.resolveKlassCount;
 
 import java.util.Objects;
@@ -144,6 +145,14 @@ public interface ClassConstant extends PoolConstant {
                 return true;
             }
             return (klass.getMeta().MagicAccessorImpl.isAssignableFrom(accessingKlass));
+        }
+
+        @Override
+        public void checkValidity(ConstantPool pool) {
+            if (pool.at(classNameIndex).tag() != UTF8) {
+                throw new VerifyError("Ill-formed constant: " + tag());
+            }
+            pool.at(classNameIndex).checkValidity(pool);
         }
     }
 

@@ -902,7 +902,7 @@ public class BytecodeNode extends EspressoBaseNode implements CustomNodeCount {
                     // should be handled one way or another by espresso itself.
                     CompilerDirectives.transferToInterpreterAndInvalidate();
                     e.printStackTrace();
-                    throw EspressoError.shouldNotReachHere("Shouldn't see host exceptions here");
+                    throw EspressoError.shouldNotReachHere("Shouldn't see host exceptions here" + e);
                     // throw getMeta().throwExWithMessage(e.getClass(), e.getMessage())
                 }
             } catch (EspressoException e) {
@@ -1262,11 +1262,7 @@ public class BytecodeNode extends EspressoBaseNode implements CustomNodeCount {
                 quick = nodes[bs.readCPI(curBCI)];
             } else {
                 Klass typeToCheck;
-                try {
-                    typeToCheck = resolveType(opCode, bs.readCPI(curBCI));
-                } catch (EspressoException e) {
-                    throw getMeta().throwEx(NoClassDefFoundError.class);
-                }
+                typeToCheck = resolveType(opCode, bs.readCPI(curBCI));
                 quick = injectQuick(curBCI, CheckCastNodeGen.create(typeToCheck));
             }
         }
@@ -1282,11 +1278,7 @@ public class BytecodeNode extends EspressoBaseNode implements CustomNodeCount {
                 quick = nodes[bs.readCPI(curBCI)];
             } else {
                 Klass typeToCheck;
-                try {
-                    typeToCheck = resolveType(opCode, bs.readCPI(curBCI));
-                } catch (EspressoException e) {
-                    throw getMeta().throwEx(NoClassDefFoundError.class);
-                }
+                typeToCheck = resolveType(opCode, bs.readCPI(curBCI));
                 quick = injectQuick(curBCI, InstanceOfNodeGen.create(typeToCheck));
             }
         }
