@@ -33,6 +33,7 @@ import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.security.SecureRandom;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.Collections;
 import java.util.HashMap;
 import java.util.LinkedHashMap;
@@ -88,6 +89,7 @@ public final class LLVMContext {
     private final List<Path> libraryPaths = new ArrayList<>();
     @CompilationFinal private Path internalLibraryPath;
     private final List<ExternalLibrary> externalLibraries = new ArrayList<>();
+    private final List<String> internalLibraryNames = new ArrayList<>();
 
     // map that contains all non-native globals, needed for pointer->global lookups
     private final HashMap<LLVMPointer, LLVMGlobal> globalsReverseMap = new HashMap<>();
@@ -441,10 +443,27 @@ public final class LLVMContext {
      */
     public ExternalLibrary addExternalLibrary(String lib, boolean isNative) {
         CompilerAsserts.neverPartOfCompilation();
+        if (isInternalLibrary(lib)) {
+            // Disallow loading internal libraries explicitly.
+            return null;
+        }
         Path path = locateExternalLibrary(lib);
         ExternalLibrary newLib = ExternalLibrary.external(path, isNative);
         ExternalLibrary existingLib = addExternalLibrary(newLib);
         return existingLib == newLib ? newLib : null;
+    }
+
+    private boolean isInternalLibrary(String lib) {
+        if (internalLibraryNames.isEmpty()) {
+            internalLibraryNames.addAll(Arrays.asList(language.getContextExtension(SystemContextExtension.class).getSulongDefaultLibraries()));
+            assert !internalLibraryNames.isEmpty() : "No internal libraries?";
+        }
+        for (String interalLibs : internalLibraryNames) {
+            if (interalLibs.equals(lib)) {
+                return true;
+            }
+        }
+        return false;
     }
 
     private ExternalLibrary addExternalLibrary(ExternalLibrary externalLib) {
