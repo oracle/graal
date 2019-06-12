@@ -23,16 +23,25 @@
  * questions.
  */
 
-package com.oracle.svm.core.jdklib;
+package com.oracle.svm.core.jdk;
+
+import org.graalvm.nativeimage.Platform;
+import org.graalvm.nativeimage.Platforms;
+import org.graalvm.nativeimage.c.function.CLibrary;
+import org.graalvm.nativeimage.impl.InternalPlatform;
 
 import com.oracle.svm.core.annotate.Alias;
 import com.oracle.svm.core.annotate.TargetClass;
 import com.oracle.svm.core.log.Log;
 
+@Platforms({InternalPlatform.LINUX_JNI.class, InternalPlatform.DARWIN_JNI.class, Platform.WINDOWS.class})
+@CLibrary(value = JDKLibZipSubstitutions.CLibraryName, requireStatic = true)
 public class JDKLibZipSubstitutions {
+    static final String CLibraryName = "zip";
+
     public static boolean initIDs() {
         try {
-            System.loadLibrary("zip");
+            System.loadLibrary(CLibraryName);
             Target_java_util_zip_Inflater.initIDs();
             Target_java_util_zip_Deflater.initIDs();
             return true;

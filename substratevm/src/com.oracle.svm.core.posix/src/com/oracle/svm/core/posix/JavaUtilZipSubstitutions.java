@@ -30,26 +30,21 @@ import org.graalvm.nativeimage.PinnedObject;
 import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.Platforms;
 import org.graalvm.nativeimage.StackValue;
-import org.graalvm.nativeimage.c.function.CLibrary;
 import org.graalvm.nativeimage.c.struct.SizeOf;
 import org.graalvm.nativeimage.c.type.CCharPointer;
 import org.graalvm.nativeimage.c.type.CTypeConversion;
-import org.graalvm.nativeimage.impl.InternalPlatform;
 import org.graalvm.word.WordFactory;
 
 import com.oracle.svm.core.SubstrateUtil;
 import com.oracle.svm.core.annotate.Alias;
-import com.oracle.svm.core.annotate.AutomaticFeature;
 import com.oracle.svm.core.annotate.Substitute;
 import com.oracle.svm.core.annotate.TargetClass;
 import com.oracle.svm.core.annotate.TargetElement;
 import com.oracle.svm.core.jdk.JDK11OrLater;
 import com.oracle.svm.core.jdk.JDK8OrEarlier;
-import com.oracle.svm.core.jdklib.JDKLibZipSubstitutions;
 import com.oracle.svm.core.posix.headers.LibC;
 import com.oracle.svm.core.posix.headers.ZLib;
 import com.oracle.svm.core.posix.headers.ZLib.z_stream;
-import com.oracle.svm.hosted.jdklib.JDKLibZipFeature;
 
 @Platforms({Platform.LINUX.class, Platform.DARWIN.class})
 public final class JavaUtilZipSubstitutions {
@@ -740,17 +735,5 @@ public final class JavaUtilZipSubstitutions {
             }
             throw new InternalError(CTypeConversion.toJavaString(strm.msg()));
         }
-    }
-}
-
-@Platforms({InternalPlatform.LINUX_JNI.class, InternalPlatform.DARWIN_JNI.class})
-@CLibrary(value = JDKLibZipFeature.CLibraryName, requireStatic = true)
-@AutomaticFeature
-class PosixUtilZipSubstitutionsFeature extends JDKLibZipFeature {
-}
-
-@Platforms({InternalPlatform.LINUX_JNI.class, InternalPlatform.DARWIN_JNI.class})
-final class PosixUtilZipSubstitutions extends JDKLibZipSubstitutions {
-    private PosixUtilZipSubstitutions() {
     }
 }
