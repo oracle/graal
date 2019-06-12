@@ -723,6 +723,11 @@ public final class Safepoint {
                 final int result = atSafepoint + inNative;
                 return result;
             }
+
+            @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
+            public static int getCurrentThreadSafepointRequestedCount() {
+                return getSafepointRequested(CurrentIsolate.getCurrentThread());
+            }
         }
     }
 
