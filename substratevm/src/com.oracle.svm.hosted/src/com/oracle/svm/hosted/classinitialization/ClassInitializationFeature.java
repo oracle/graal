@@ -323,6 +323,8 @@ public class ClassInitializationFeature implements Feature {
                 try {
                     /*
                      * Workaround to force linking the type which is not provided by the JVMCI API.
+                     * This throws verification errors even if linking was attempted and had failed
+                     * beforehand
                      */
                     type.getDeclaredConstructors();
                     type.getDeclaredMethods();
@@ -341,7 +343,6 @@ public class ClassInitializationFeature implements Feature {
                      * types.
                      */
                     assert classInitializer == null || classInitializer.getCode() == null;
-                    // synthetic <clinit> -> VerifyError
                     info = ClassInitializationInfo.FAILED_INFO_SINGLETON;
                 }
             }
