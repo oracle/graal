@@ -284,4 +284,9 @@ public class ImplicitExceptions {
     public static void throwNoSuchMethodError(String message) throws NoSuchMethodError {
         throw new NoSuchMethodError(message);
     }
+
+    public static void throwVerifyError() {
+        throw new VerifyError();
+    }
+
 }
