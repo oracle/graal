@@ -25,7 +25,6 @@
 package org.graalvm.compiler.truffle.compiler.hotspot.libgraal;
 
 import static jdk.vm.ci.hotspot.HotSpotJVMCIRuntime.runtime;
-import static org.graalvm.compiler.truffle.common.hotspot.libgraal.HotSpotToSVM.Id.CleanReferences;
 import static org.graalvm.compiler.truffle.common.hotspot.libgraal.HotSpotToSVM.Id.CloseCompilation;
 import static org.graalvm.compiler.truffle.common.hotspot.libgraal.HotSpotToSVM.Id.CloseDebugContext;
 import static org.graalvm.compiler.truffle.common.hotspot.libgraal.HotSpotToSVM.Id.CloseDebugContextScope;
@@ -126,6 +125,7 @@ import org.graalvm.nativeimage.c.type.CTypeConversion;
 import org.graalvm.nativeimage.c.type.VoidPointer;
 import org.graalvm.word.WordFactory;
 
+import jdk.vm.ci.hotspot.HotSpotObjectConstantScope;
 import jdk.vm.ci.meta.ResolvedJavaType;
 
 /**
@@ -241,14 +241,16 @@ final class HotSpotToSVMEntryPoints {
                     JObject hsTask,
                     JObject hsListener) {
         try (HotSpotToSVMScope scope = new HotSpotToSVMScope(DoCompile, env)) {
-            HotSpotTruffleCompilerImpl compiler = SVMObjectHandles.resolve(compilerHandle, HotSpotTruffleCompilerImpl.class);
-            TruffleDebugContext debugContext = SVMObjectHandles.resolve(debugContextHandle, TruffleDebugContext.class);
             TruffleCompilationIdentifier compilation = SVMObjectHandles.resolve(compilationHandle, TruffleCompilationIdentifier.class);
-            Map<String, Object> options = decodeOptions(env, hsOptions);
-            TruffleInliningPlan inlining = new HSTruffleInliningPlan(scope, hsInlining);
-            TruffleCompilationTask task = hsTask.isNull() ? null : new HSTruffleCompilationTask(scope, hsTask);
-            TruffleCompilerListener listener = hsListener.isNull() ? null : new HSTruffleCompilerListener(scope, hsListener);
-            compiler.doCompile(debugContext, compilation, options, inlining, task, listener);
+            try (HotSpotObjectConstantScope hotSpotObjectConstantScope = HotSpotObjectConstantScope.openLocalScope(compilation)) {
+                HotSpotTruffleCompilerImpl compiler = SVMObjectHandles.resolve(compilerHandle, HotSpotTruffleCompilerImpl.class);
+                TruffleDebugContext debugContext = SVMObjectHandles.resolve(debugContextHandle, TruffleDebugContext.class);
+                Map<String, Object> options = decodeOptions(env, hsOptions);
+                TruffleInliningPlan inlining = new HSTruffleInliningPlan(scope, hsInlining);
+                TruffleCompilationTask task = hsTask.isNull() ? null : new HSTruffleCompilationTask(scope, hsTask);
+                TruffleCompilerListener listener = hsListener.isNull() ? null : new HSTruffleCompilerListener(scope, hsListener);
+                compiler.doCompile(debugContext, compilation, options, inlining, task, listener);
+            }
         } catch (Throwable t) {
             JNIExceptionWrapper.throwInHotSpot(env, t);
         }
@@ -363,17 +365,6 @@ final class HotSpotToSVMEntryPoints {
             return WordFactory.nullPointer();
         }
         return scope.getObjectResult();
-    }
-
-    @HotSpotToSVM(CleanReferences)
-    @SuppressWarnings({"unused", "try"})
-    @CEntryPoint(name = "Java_org_graalvm_compiler_truffle_runtime_hotspot_libgraal_HotSpotToSVMCalls_cleanReferences")
-    public static void cleanReferences(JNIEnv env, JClass hsClazz, @CEntryPoint.IsolateThreadContext long isolateThreadId) {
-        try (HotSpotToSVMScope s = new HotSpotToSVMScope(CleanReferences, env)) {
-            System.gc();
-        } catch (Throwable t) {
-            JNIExceptionWrapper.throwInHotSpot(env, t);
-        }
     }
 
     private static Map<String, Object> decodeOptions(JNIEnv env, JByteArray hsOptions) {
