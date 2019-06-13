@@ -1260,6 +1260,12 @@ void JVM_GetVersionInfo(JNIEnv *env, jvm_version_info *info, size_t info_size) {
 
 }
 
+void JVM_CopySwapMemory(JNIEnv *env, jobject srcObj, jlong srcOffset,
+									 jobject dstObj, jlong dstOffset, 
+									 jlong size,     jlong elemSize) {
+  UNIMPLEMENTED(JVM_CopySwapMemory);
+}
+
 int jio_vsnprintf(char *str, size_t count, const char *fmt, va_list args) {
     NATIVE(jio_vsnprintf);
     return vsnprintf(str, count, fmt, args);
