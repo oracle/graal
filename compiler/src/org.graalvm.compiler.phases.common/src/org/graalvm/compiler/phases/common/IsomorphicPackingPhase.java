@@ -7,11 +7,11 @@ import org.graalvm.compiler.core.common.cfg.BlockMap;
 import org.graalvm.compiler.core.common.type.IntegerStamp;
 import org.graalvm.compiler.core.common.type.VectorIntegerStamp;
 import org.graalvm.compiler.core.common.type.VectorPrimitiveStamp;
+import org.graalvm.compiler.debug.GraalError;
 import org.graalvm.compiler.graph.Node;
 import org.graalvm.compiler.graph.NodeMap;
 import org.graalvm.compiler.nodes.*;
 import org.graalvm.compiler.nodes.VectorSupport.*;
-import org.graalvm.compiler.nodes.calc.AddNode;
 import org.graalvm.compiler.nodes.calc.BinaryArithmeticNode;
 import org.graalvm.compiler.nodes.calc.BinaryNode;
 import org.graalvm.compiler.nodes.cfg.Block;
@@ -780,13 +780,15 @@ public final class IsomorphicPackingPhase extends BasePhase<LowTierContext> {
                 }
 
                 lastFixed.add(vectorRead);
+                return;
             }
 
             if (first instanceof WriteNode) {
                 final List<WriteNode> nodes = pack.getElements().stream().map(x -> (WriteNode) x).collect(Collectors.toList());
 
                 // TODO: don't hardcode for specific stamp type
-                final VectorPrimitiveStamp vectorInputStamp = VectorIntegerStamp.create((IntegerStamp) nodes.get(0).getAccessStamp().unrestricted(), nodes.size());
+                // TODO: perhaps store scalar type somewhere rather than using first element
+                final VectorPrimitiveStamp vectorInputStamp = VectorIntegerStamp.create((IntegerStamp) nodes.get(1).getAccessStamp().unrestricted(), nodes.size());
                 final VectorPackNode stv = new VectorPackNode(vectorInputStamp, nodes.stream().map(AbstractWriteNode::value).collect(Collectors.toList()));
                 final VectorWriteNode vectorWrite = VectorWriteNode.fromPackElements(nodes, stv);
 
@@ -805,34 +807,51 @@ public final class IsomorphicPackingPhase extends BasePhase<LowTierContext> {
                 }
 
                 lastFixed.add(vectorWrite);
+                return;
             }
 
-            if (first instanceof AddNode) {
-                final AddNode firstBAN = (AddNode) first;
+            if (first instanceof BinaryArithmeticNode<?>) {
+                final BinaryArithmeticNode<?> firstBAN = (BinaryArithmeticNode<?>) first;
+                // firstBAN can also be repurposed to be the vector op node
 
-                final List<AddNode> nodes = pack.getElements().stream().map(x -> (AddNode) x).collect(Collectors.toList());
+                final List<BinaryArithmeticNode<?>> nodes = pack.getElements().stream()
+                        .map(x -> (BinaryArithmeticNode<?>) x)
+                        .collect(Collectors.toList());
 
-                // TODO: don't hardcode for specific stamp type
-                final VectorPrimitiveStamp vectorInputStamp = VectorIntegerStamp.create((IntegerStamp) firstBAN.getX().stamp(NodeView.DEFAULT).unrestricted(), nodes.size());
 
-                final VectorPackNode packX = new VectorPackNode(vectorInputStamp, nodes.stream().map(BinaryNode::getX).collect(Collectors.toList()));
-                final VectorPackNode packY = new VectorPackNode(vectorInputStamp, nodes.stream().map(BinaryNode::getY).collect(Collectors.toList()));
+                // Link up firstBAN
+                {
+                    // TODO: don't hardcode for specific stamp type
+                    final VectorPrimitiveStamp vectorInputStamp = VectorIntegerStamp.create((IntegerStamp) firstBAN.getX().stamp(NodeView.DEFAULT).unrestricted(), nodes.size());
 
-                final AddNode newBinaryNode = new AddNode(packX, packY);
-//                newBinaryNode.setStamp(vectorInputStamp);
+                    final VectorPackNode packX = new VectorPackNode(vectorInputStamp, nodes.stream().map(BinaryNode::getX).collect(Collectors.toList()));
+                    final VectorPackNode packY = new VectorPackNode(vectorInputStamp, nodes.stream().map(BinaryNode::getY).collect(Collectors.toList()));
+                    final VectorExtractNode extractNode = new VectorExtractNode(firstBAN.stamp(NodeView.DEFAULT), firstBAN, 0);
 
-                for (int i = 0; i < nodes.size(); i++) {
-                    final AddNode node = nodes.get(i);
-                    final VectorExtractNode extractNode = new VectorExtractNode(node.stamp(NodeView.DEFAULT), newBinaryNode, i);
+                    first.replaceAtUsages(extractNode);
+                    first.graph().addOrUnique(extractNode);
+
+                    firstBAN.setStamp(vectorInputStamp);
+
+                    firstBAN.setX(packX);
+                    firstBAN.setY(packY);
+
+                    first.graph().addOrUnique(packX);
+                    first.graph().addOrUnique(packY);
+                }
+
+                // Link up the rest
+                for (int i = 1; i < nodes.size(); i++) {
+                    final BinaryArithmeticNode<?> node = nodes.get(i);
+                    final VectorExtractNode extractNode = new VectorExtractNode(node.stamp(NodeView.DEFAULT), firstBAN, i);
                     node.replaceAtUsagesAndDelete(extractNode);
 
                     first.graph().addOrUnique(extractNode);
                 }
-
-                first.graph().addOrUnique(packX);
-                first.graph().addOrUnique(packY);
-                first.graph().addOrUnique(newBinaryNode);
+                return;
             }
+
+            throw GraalError.shouldNotReachHere("I don't know how to vectorize pack.");
         }
 
         private void scheduleStmt(Node node, Deque<FixedNode> lastFixed) {
