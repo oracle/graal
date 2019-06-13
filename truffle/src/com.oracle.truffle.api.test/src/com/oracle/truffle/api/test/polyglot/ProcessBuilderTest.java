@@ -43,9 +43,13 @@ package com.oracle.truffle.api.test.polyglot;
 import com.oracle.truffle.api.TruffleException;
 import com.oracle.truffle.api.TruffleFile;
 import com.oracle.truffle.api.io.TruffleProcessBuilder;
+import java.io.ByteArrayOutputStream;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.OutputStream;
+import java.io.UnsupportedEncodingException;
+import java.net.URISyntaxException;
+import java.net.URL;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
@@ -97,6 +101,26 @@ public class ProcessBuilderTest extends AbstractPolyglotTest {
         if (!p.waitFor(5, TimeUnit.SECONDS)) {
             p.destroy();
         }
+    }
+
+    @Test
+    public void testRedirectToStream() throws Exception {
+        Path javaExecutable = getJavaExecutable();
+        Assume.assumeNotNull(javaExecutable);
+        Path cp = getLocation();
+        Assume.assumeNotNull(cp);
+        setupEnv(Context.newBuilder().allowAllAccess(true).build());
+        ByteArrayOutputStream stdout = new ByteArrayOutputStream();
+        ByteArrayOutputStream stderr = new ByteArrayOutputStream();
+        Process p = languageEnv.newProcessBuilder(javaExecutable.toString(), "-cp", cp.toString(), Main.class.getName()).redirectOutput(ProcessHandler.Redirect.stream(stdout)).redirectError(
+                        ProcessHandler.Redirect.stream(stderr)).start();
+        if (!p.waitFor(10, TimeUnit.SECONDS)) {
+            p.destroy();
+            Assert.fail("Process did not finish in expected time.");
+        }
+        Assert.assertEquals(0, p.exitValue());
+        Assert.assertArrayEquals(Main.expectedStdOut(), stdout.toByteArray());
+        Assert.assertArrayEquals(Main.expectedStdErr(), stderr.toByteArray());
     }
 
     @Test
@@ -339,6 +363,11 @@ public class ProcessBuilderTest extends AbstractPolyglotTest {
         return Files.exists(java) ? java.toAbsolutePath() : null;
     }
 
+    private static Path getLocation() throws URISyntaxException {
+        URL location = ProcessBuilderTest.class.getProtectionDomain().getCodeSource().getLocation();
+        return Paths.get(location.toURI());
+    }
+
     private static boolean isWindows() {
         String name = System.getProperty("os.name");
         return name.startsWith("Windows");
@@ -425,6 +454,32 @@ public class ProcessBuilderTest extends AbstractPolyglotTest {
                     throw new IOException("Closed stream");
                 }
             }
+        }
+    }
+
+    public static final class Main {
+        private static final String STDOUT = "stdout";
+        private static final String STDERR = "stderr";
+
+        public static void main(String[] args) throws IOException {
+            System.out.write(expectedStdOut());
+            System.err.write(expectedStdErr());
+        }
+
+        static byte[] expectedStdOut() throws UnsupportedEncodingException {
+            return repeat(STDOUT, 10_000).getBytes("UTF-8");
+        }
+
+        static byte[] expectedStdErr() throws UnsupportedEncodingException {
+            return repeat(STDERR, 10_000).getBytes("UTF-8");
+        }
+
+        private static String repeat(String pattern, int count) {
+            StringBuilder sb = new StringBuilder();
+            for (int i = 0; i < count; i++) {
+                sb.append(pattern);
+            }
+            return sb.toString();
         }
     }
 }

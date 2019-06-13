@@ -41,6 +41,7 @@
 package org.graalvm.polyglot.io;
 
 import java.io.IOException;
+import java.io.OutputStream;
 import java.lang.reflect.Method;
 import java.nio.file.Paths;
 import java.util.ArrayList;
@@ -210,7 +211,7 @@ public interface ProcessHandler {
          *
          * @since 20.0.0 beta 2
          */
-        public static final Redirect PIPE = new Redirect(Type.PIPE);
+        public static final Redirect PIPE = new Redirect(Type.PIPE, null);
 
         /**
          * Indicates that subprocess I/O source or destination will be the same as those of the
@@ -218,13 +219,56 @@ public interface ProcessHandler {
          *
          * @since 20.0.0 beta 2
          */
-        public static final Redirect INHERIT = new Redirect(Type.INHERIT);
+        public static final Redirect INHERIT = new Redirect(Type.INHERIT, null);
+
+        /**
+         * Returns a redirect to write into the given {@link OutputStream}.
+         * <p>
+         * It is guaranteed that the process output (error output) is copied into the given stream
+         * before the call to {@link Process#waitFor()} method ends.
+         * <p>
+         * The stream is not closed when the process terminates.
+         *
+         * @param stream the {@link OutputStream} to write into
+         * @throws NullPointerException if the given stream is {@code null}
+         * @since 20.0.0 beta 2
+         */
+        public static Redirect stream(OutputStream stream) {
+            Objects.requireNonNull("Stream must be non null.");
+            return new Redirect(Type.STREAM, stream);
+        }
 
         private final Type type;
+        private final OutputStream stream;
 
-        private Redirect(Type type) {
+        private Redirect(Type type, OutputStream stream) {
             Objects.requireNonNull(type, "Type must be non null.");
             this.type = type;
+            this.stream = stream;
+        }
+
+        /**
+         * Returns the type of this {@code Redirect}.
+         * 
+         * @since 20.0.0 beta 2
+         */
+        public Type getType() {
+            return type;
+        }
+
+        /**
+         * Returns the {@link OutputStream} associated with this redirect, or {@code null} if there
+         * is no such an {@code OutputStream}. The {@code OutputStream} is associated only with
+         * {@link Redirect#stream(java.io.OutputStream) stream redirects}.
+         *
+         * @since 20.0.0 beta 2
+         */
+        public OutputStream getOutputStream() {
+            if (type == Type.STREAM) {
+                return stream;
+            } else {
+                return null;
+            }
         }
 
         /**
@@ -263,9 +307,30 @@ public interface ProcessHandler {
             return type.equals(((Redirect) obj).type);
         }
 
-        private enum Type {
+        /**
+         * Redirect type.
+         *
+         * @since 20.0.0 beta 2
+         */
+        public enum Type {
+            /**
+             * The type of {@link Redirect#PIPE Redirect.PIPE}.
+             *
+             * @since 20.0.0 beta 2
+             */
             PIPE,
-            INHERIT
+            /**
+             * The type of {@link Redirect#INHERIT Redirect.INHERIT}.
+             *
+             * @since 20.0.0 beta 2
+             */
+            INHERIT,
+            /**
+             * The type of {@link Redirect#stream(java.io.OutputStream) Redirect.stream}.
+             *
+             * @since 20.0.0 beta 2
+             */
+            STREAM
         }
     }
 }

@@ -7,6 +7,9 @@ This changelog summarizes major changes between GraalVM SDK versions. The main f
 * Added a possibility to control sub-process creation using a custom [ProcessHandler](http://www.graalvm.org/sdk/javadoc/org/graalvm/polyglot/io/ProcessHandler.html) implementation. Use `Context.newBuilder().processHandler(handler)` to install a custom `ProcessHandler`.
 * Restricting access to the host environment variables via [EnvironmentAccess](http://www.graalvm.org/sdk/javadoc/org/graalvm/polyglot/EnvironmentAccess.html) configurations. Use `EnvironmentAccess.INHERIT` to allow guest langauges to read process environment variables.
 * Deprecated `OptionValues#set`, [OptionValues](https://www.graalvm.org/sdk/javadoc/org/graalvm/options/OptionValues.html) should be read-only. If the value needs to be changed, it can be stored in the language or instrument and read from there.
+* Added sub-process output (error output) [redirection into OutputStream](http://www.graalvm.org/sdk/javadoc/org/graalvm/polyglot/io/ProcessHandler.Redirect.html#stream-java.io.OutputStream-).
+
+## Version 20.0.0 Beta 1
 * Removed deprecated `OptionCategory.DEBUG` (use `OptionCategory.INTERNAL` instead).
 * The path separator can now be configured by [FileSystem](http://www.graalvm.org/sdk/javadoc/org/graalvm/polyglot/io/FileSystem.html#getPathSeparator--).
 
