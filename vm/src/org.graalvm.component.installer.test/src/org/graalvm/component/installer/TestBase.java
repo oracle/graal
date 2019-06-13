@@ -75,6 +75,9 @@ public class TestBase implements Feedback {
     @Rule public TemporaryFolder testFolder = new TemporaryFolder();
     @Rule public TestName testName = new TestName();
 
+    public TestBase() {
+    }
+
     static class ClassTempFolder extends TemporaryFolder {
         ThreadLocal<File> root = new ThreadLocal<>();
 

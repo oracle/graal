@@ -349,7 +349,8 @@ public class InstallCommand implements InstallerCommand {
             feedback.output("INSTALL_InstallNewComponent",
                             info.getId(), info.getName(), info.getVersionString());
         } else {
-            Uninstaller uninstaller = new Uninstaller(feedback, oldInfo, input.getLocalRegistry());
+            Uninstaller uninstaller = new Uninstaller(feedback,
+                            input.getFileOperations(), oldInfo, input.getLocalRegistry());
             uninstaller.setInstallPath(input.getGraalHomePath());
             uninstaller.setDryRun(input.optValue(Commands.OPTION_DRY_RUN) != null);
             uninstaller.setPreservePaths(
@@ -401,7 +402,9 @@ public class InstallCommand implements InstallerCommand {
             a = ldr.getArchive();
             a.verifyIntegrity(input);
         }
-        Installer inst = new Installer(feedback, partialInfo, input.getLocalRegistry(),
+        Installer inst = new Installer(feedback,
+                        input.getFileOperations(),
+                        partialInfo, input.getLocalRegistry(),
                         input.getRegistry(), a);
         inst.setPermissions(ldr.loadPermissions());
         inst.setSymlinks(ldr.loadSymlinks());

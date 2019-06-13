@@ -220,13 +220,16 @@ public final class ComponentInstaller {
             err("ERROR_MissingCommand"); // NOI18N
         }
         parameters = go.getPositionalParameters();
-
+        int retcode = 0;
+        FileOperations fops = null;
         try {
             env = new Environment(command, parameters, optValues);
             finddGraalHome();
             env.setGraalHome(graalHomePath);
             env.setLocalRegistry(new ComponentRegistry(env, new DirectoryStorage(
                             env, storagePath, graalHomePath)));
+            fops = FileOperations.createPlatformInstance(env, env.getGraalHomePath());
+            env.setFileOperations(fops);
 
             forSoftwareChannels(true, (ch) -> {
                 ch.init(env, env);
@@ -270,7 +273,7 @@ public final class ComponentInstaller {
                 env.setFileIterable(new CatalogIterable(env, env, col, downloader));
             }
             cmdHandler.init(env, env.withBundle(cmdHandler.getClass()));
-            return cmdHandler.execute();
+            retcode = cmdHandler.execute();
         } catch (FileAlreadyExistsException ex) {
             env.error("INSTALLER_FileExists", ex, ex.getLocalizedMessage()); // NOI18N
             return 2;
@@ -298,7 +301,20 @@ public final class ComponentInstaller {
         } catch (RuntimeException ex) {
             env.error("INSTALLER_InternalError", ex, ex.getLocalizedMessage()); // NOI18N
             return 3;
+        } finally {
+            if (env != null) {
+                env.close();
+            }
+            if (fops != null) {
+                try {
+                    if (fops.flush()) {
+                        retcode = 11;
+                    }
+                } catch (IOException ex) {
+                }
+            }
         }
+        return retcode;
     }
 
     /**

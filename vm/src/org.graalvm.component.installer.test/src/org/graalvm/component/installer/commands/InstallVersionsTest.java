@@ -86,7 +86,7 @@ public class InstallVersionsTest extends CommandTestBase {
         partialInfo = ldr.getComponentInfo();
         ldr.loadPaths();
         Archive a = null;
-        Installer inst = new Installer(this, partialInfo, getLocalRegistry(),
+        Installer inst = new Installer(this, getFileOperations(), partialInfo, getLocalRegistry(),
                         getRegistry(), a);
         inst.setPermissions(ldr.loadPermissions());
         inst.setSymlinks(ldr.loadSymlinks());
