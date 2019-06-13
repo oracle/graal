@@ -1602,7 +1602,19 @@ public class LanguageSPITest {
         assertNull(scopes[2].values.get("foo"));
         ValueAssert.assertValue(bindings, ValueAssert.Trait.MEMBERS);
 
+        // test it does not insert early before already existing member
+        scopes[0].insertable = true;
+        ValueAssert.assertFails(() -> bindings.putMember("foo", "baz"), UnsupportedOperationException.class);
+        scopes[1].modifiable = true;
+        // does not insert in 1 but modifies foo in 2
+        bindings.putMember("foo", "baz");
+        assertNull(scopes[0].values.get("foo"));
+        assertEquals("baz", scopes[1].values.get("foo"));
+        assertEquals("baz", bindings.getMember("foo").asString());
+
         // test check for existing keys for remove
+        scopes[1].values.clear();
+        scopes[1].values.put("foo", "bar");
         scopes[2].removable = true;
         scopes[2].values.put("foo", "baz");
         scopes[2].values.put("bar", "baz");
