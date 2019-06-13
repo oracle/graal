@@ -1199,6 +1199,7 @@ mx_benchmark.add_bm_suite(SpecJvm2008BenchmarkSuite())
 _SpecJbb_specific_vmArgs = [
     "-XX:+UseNUMA",
     "-XX:+UseLargePages",
+    "-XX:+AlwaysPreTouch",
     "-XX:-UseAdaptiveSizePolicy",
     "-XX:-UseAdaptiveNUMAChunkSizing"
 ]
