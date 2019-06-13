@@ -22,10 +22,10 @@
 
 package com.oracle.truffle.espresso.classfile;
 
-import com.oracle.truffle.espresso.meta.EspressoError;
-
 import static com.oracle.truffle.espresso.classfile.Constants.CHOP_BOUND;
 import static com.oracle.truffle.espresso.classfile.Constants.SAME_FRAME_BOUND;
+
+import com.oracle.truffle.espresso.meta.EspressoError;
 
 public abstract class StackMapFrame {
     protected final int frameType;

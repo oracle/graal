@@ -22,6 +22,14 @@
  */
 package com.oracle.truffle.espresso.impl;
 
+import static com.oracle.truffle.espresso.classfile.Constants.REF_invokeInterface;
+import static com.oracle.truffle.espresso.classfile.Constants.REF_invokeSpecial;
+import static com.oracle.truffle.espresso.classfile.Constants.REF_invokeStatic;
+import static com.oracle.truffle.espresso.classfile.Constants.REF_invokeVirtual;
+
+import java.lang.reflect.Modifier;
+import java.util.function.Function;
+
 import com.oracle.truffle.api.CallTarget;
 import com.oracle.truffle.api.CompilerAsserts;
 import com.oracle.truffle.api.CompilerDirectives;
@@ -29,10 +37,10 @@ import com.oracle.truffle.api.CompilerDirectives.CompilationFinal;
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.Truffle;
 import com.oracle.truffle.api.frame.FrameDescriptor;
-import com.oracle.truffle.api.interop.ForeignAccess;
 import com.oracle.truffle.api.interop.TruffleObject;
 import com.oracle.truffle.api.interop.UnknownIdentifierException;
 import com.oracle.truffle.espresso.Utils;
+import com.oracle.truffle.espresso.classfile.BootstrapMethodsAttribute;
 import com.oracle.truffle.espresso.classfile.CodeAttribute;
 import com.oracle.truffle.espresso.classfile.ConstantPool;
 import com.oracle.truffle.espresso.classfile.Constants;
@@ -56,19 +64,10 @@ import com.oracle.truffle.espresso.nodes.EspressoBaseNode;
 import com.oracle.truffle.espresso.nodes.EspressoRootNode;
 import com.oracle.truffle.espresso.nodes.NativeRootNode;
 import com.oracle.truffle.espresso.runtime.Attribute;
-import com.oracle.truffle.espresso.classfile.BootstrapMethodsAttribute;
 import com.oracle.truffle.espresso.runtime.EspressoContext;
 import com.oracle.truffle.espresso.runtime.MethodHandleIntrinsics;
 import com.oracle.truffle.espresso.runtime.StaticObject;
-import com.oracle.truffle.nfi.types.NativeSimpleType;
-
-import java.lang.reflect.Modifier;
-import java.util.function.Function;
-
-import static com.oracle.truffle.espresso.classfile.Constants.REF_invokeInterface;
-import static com.oracle.truffle.espresso.classfile.Constants.REF_invokeSpecial;
-import static com.oracle.truffle.espresso.classfile.Constants.REF_invokeStatic;
-import static com.oracle.truffle.espresso.classfile.Constants.REF_invokeVirtual;
+import com.oracle.truffle.nfi.spi.types.NativeSimpleType;
 
 public final class Method implements TruffleObject, ModifiersProvider, ContextAccess {
     public static final Method[] EMPTY_ARRAY = new Method[0];
@@ -492,7 +491,7 @@ public final class Method implements TruffleObject, ModifiersProvider, ContextAc
     /**
      * Invokes a guest method without parameter/return type conversions. There's no parameter
      * casting, widening nor narrowing based on the method signature.
-     *
+     * <p>
      * e.g. Host (boxed) Integer represents int, guest Integer doesn't.
      */
     @TruffleBoundary
@@ -624,9 +623,5 @@ public final class Method implements TruffleObject, ModifiersProvider, ContextAc
 
     public final String report() {
         return "at " + MetaUtil.internalNameToJava(getDeclaringKlass().getType().toString(), true, false) + "." + getName() + "(unknown source)";
-    }
-
-    public final ForeignAccess getForeignAccess() {
-        return EspressoMethodMessageResolutionForeign.ACCESS;
     }
 }

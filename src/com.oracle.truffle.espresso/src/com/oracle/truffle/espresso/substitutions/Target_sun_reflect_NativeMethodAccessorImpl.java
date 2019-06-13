@@ -22,6 +22,8 @@
  */
 package com.oracle.truffle.espresso.substitutions;
 
+import java.lang.reflect.InvocationTargetException;
+
 import com.oracle.truffle.espresso.EspressoLanguage;
 import com.oracle.truffle.espresso.descriptors.Signatures;
 import com.oracle.truffle.espresso.descriptors.Symbol;
@@ -35,8 +37,6 @@ import com.oracle.truffle.espresso.meta.JavaKind;
 import com.oracle.truffle.espresso.meta.Meta;
 import com.oracle.truffle.espresso.runtime.EspressoException;
 import com.oracle.truffle.espresso.runtime.StaticObject;
-
-import java.lang.reflect.InvocationTargetException;
 
 /**
  * This substitution is merely for performance reasons, to avoid the deep-dive to native. libjava

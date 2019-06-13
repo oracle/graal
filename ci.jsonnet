@@ -1,13 +1,13 @@
 {
-  local labsjdk8 = {
-    name: 'labsjdk',
-    version: '8u192-jvmci-0.54',
+  local oraclejdk8 = {
+    name: 'oraclejdk',
+    version: '8u212-jvmci-20-b03',
     platformspecific: true,
   },
 
   local jdk8 = {
     downloads: {
-      JAVA_HOME: labsjdk8,
+      JAVA_HOME: oraclejdk8,
       JDT: {name: 'ecj', version: '4.6.1', platformspecific: false},
     },
   },

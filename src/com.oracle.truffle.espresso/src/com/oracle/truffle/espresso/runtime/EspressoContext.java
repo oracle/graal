@@ -22,6 +22,14 @@
  */
 package com.oracle.truffle.espresso.runtime;
 
+import java.io.InputStream;
+import java.io.OutputStream;
+import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.Collections;
+import java.util.Set;
+import java.util.concurrent.ConcurrentHashMap;
+
 import com.oracle.truffle.api.CompilerAsserts;
 import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.CompilerDirectives.CompilationFinal;
@@ -44,14 +52,6 @@ import com.oracle.truffle.espresso.meta.Meta;
 import com.oracle.truffle.espresso.substitutions.Substitutions;
 import com.oracle.truffle.espresso.vm.InterpreterToVM;
 import com.oracle.truffle.espresso.vm.VM;
-
-import java.io.InputStream;
-import java.io.OutputStream;
-import java.util.ArrayList;
-import java.util.Arrays;
-import java.util.Collections;
-import java.util.Set;
-import java.util.concurrent.ConcurrentHashMap;
 
 public final class EspressoContext {
 

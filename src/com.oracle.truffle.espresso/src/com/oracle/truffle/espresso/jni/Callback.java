@@ -28,11 +28,14 @@ import java.lang.reflect.Modifier;
 
 import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.interop.ArityException;
-import com.oracle.truffle.api.interop.ForeignAccess;
+import com.oracle.truffle.api.interop.InteropLibrary;
 import com.oracle.truffle.api.interop.TruffleObject;
+import com.oracle.truffle.api.library.ExportLibrary;
+import com.oracle.truffle.api.library.ExportMessage;
 import com.oracle.truffle.espresso.meta.EspressoError;
 import com.oracle.truffle.espresso.runtime.EspressoException;
 
+@ExportLibrary(InteropLibrary.class)
 public class Callback implements TruffleObject {
 
     private final int arity;
@@ -43,19 +46,20 @@ public class Callback implements TruffleObject {
         this.function = function;
     }
 
-    @CompilerDirectives.TruffleBoundary
-    Object call(Object... args) {
-        if (args.length == arity) {
-            Object ret = function.call(args);
-            return ret;
-        } else {
-            throw ArityException.raise(arity, args.length);
-        }
+    @ExportMessage
+    public boolean isExecutable() {
+        return true;
     }
 
-    @Override
-    public ForeignAccess getForeignAccess() {
-        return CallbackMessageResolutionForeign.ACCESS;
+    @ExportMessage
+    public Object execute(Object... arguments) throws ArityException {
+        if (arguments.length == arity) {
+            Object ret = function.call(arguments);
+            return ret;
+        } else {
+            CompilerDirectives.transferToInterpreter();
+            throw ArityException.create(arity, arguments.length);
+        }
     }
 
     public interface Function {

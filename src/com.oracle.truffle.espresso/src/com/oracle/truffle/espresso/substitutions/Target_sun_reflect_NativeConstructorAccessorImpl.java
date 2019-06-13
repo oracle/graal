@@ -1,12 +1,12 @@
 package com.oracle.truffle.espresso.substitutions;
 
+import java.lang.reflect.Constructor;
+
 import com.oracle.truffle.espresso.EspressoLanguage;
 import com.oracle.truffle.espresso.impl.Klass;
 import com.oracle.truffle.espresso.impl.Method;
 import com.oracle.truffle.espresso.meta.Meta;
 import com.oracle.truffle.espresso.runtime.StaticObject;
-
-import java.lang.reflect.Constructor;
 
 @EspressoSubstitutions
 public class Target_sun_reflect_NativeConstructorAccessorImpl {

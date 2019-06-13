@@ -1,9 +1,9 @@
 package com.oracle.truffle.espresso.nodes;
 
+import static com.oracle.truffle.espresso.runtime.MethodHandleIntrinsics.PolySigIntrinsics.LinkToStatic;
+
 import com.oracle.truffle.espresso.descriptors.Signatures;
 import com.oracle.truffle.espresso.impl.Method;
-
-import static com.oracle.truffle.espresso.runtime.MethodHandleIntrinsics.PolySigIntrinsics.LinkToStatic;
 
 public class LinkToStaticNode extends MHLinkToNode {
     LinkToStaticNode(Method method) {

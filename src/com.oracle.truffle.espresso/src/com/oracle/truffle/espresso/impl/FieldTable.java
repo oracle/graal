@@ -22,12 +22,12 @@
  */
 package com.oracle.truffle.espresso.impl;
 
-import com.oracle.truffle.espresso.descriptors.Symbol;
-import com.oracle.truffle.espresso.descriptors.Symbol.Type;
-import com.oracle.truffle.espresso.descriptors.Symbol.Name;
-
 import java.util.ArrayList;
 import java.util.Arrays;
+
+import com.oracle.truffle.espresso.descriptors.Symbol;
+import com.oracle.truffle.espresso.descriptors.Symbol.Name;
+import com.oracle.truffle.espresso.descriptors.Symbol.Type;
 
 class FieldTable {
     static class CreationResult {

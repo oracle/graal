@@ -23,6 +23,22 @@
 
 package com.oracle.truffle.espresso.classfile;
 
+import static com.oracle.truffle.espresso.classfile.Constants.ACC_ABSTRACT;
+import static com.oracle.truffle.espresso.classfile.Constants.ACC_INTERFACE;
+import static com.oracle.truffle.espresso.classfile.Constants.APPEND_FRAME_BOUND;
+import static com.oracle.truffle.espresso.classfile.Constants.CHOP_BOUND;
+import static com.oracle.truffle.espresso.classfile.Constants.FULL_FRAME;
+import static com.oracle.truffle.espresso.classfile.Constants.ITEM_InitObject;
+import static com.oracle.truffle.espresso.classfile.Constants.ITEM_NewObject;
+import static com.oracle.truffle.espresso.classfile.Constants.ITEM_Object;
+import static com.oracle.truffle.espresso.classfile.Constants.JVM_RECOGNIZED_CLASS_MODIFIERS;
+import static com.oracle.truffle.espresso.classfile.Constants.SAME_FRAME_BOUND;
+import static com.oracle.truffle.espresso.classfile.Constants.SAME_FRAME_EXTENDED;
+import static com.oracle.truffle.espresso.classfile.Constants.SAME_LOCALS_1_STACK_ITEM_BOUND;
+import static com.oracle.truffle.espresso.classfile.Constants.SAME_LOCALS_1_STACK_ITEM_EXTENDED;
+
+import java.util.Objects;
+
 import com.oracle.truffle.espresso.classfile.ConstantPool.Tag;
 import com.oracle.truffle.espresso.descriptors.Symbol;
 import com.oracle.truffle.espresso.descriptors.Symbol.Name;
@@ -37,22 +53,6 @@ import com.oracle.truffle.espresso.runtime.Attribute;
 import com.oracle.truffle.espresso.runtime.ClasspathFile;
 import com.oracle.truffle.espresso.runtime.EspressoContext;
 import com.oracle.truffle.espresso.runtime.StaticObject;
-
-import java.util.Objects;
-
-import static com.oracle.truffle.espresso.classfile.Constants.ACC_ABSTRACT;
-import static com.oracle.truffle.espresso.classfile.Constants.ACC_INTERFACE;
-import static com.oracle.truffle.espresso.classfile.Constants.APPEND_FRAME_BOUND;
-import static com.oracle.truffle.espresso.classfile.Constants.CHOP_BOUND;
-import static com.oracle.truffle.espresso.classfile.Constants.FULL_FRAME;
-import static com.oracle.truffle.espresso.classfile.Constants.ITEM_InitObject;
-import static com.oracle.truffle.espresso.classfile.Constants.ITEM_NewObject;
-import static com.oracle.truffle.espresso.classfile.Constants.ITEM_Object;
-import static com.oracle.truffle.espresso.classfile.Constants.JVM_RECOGNIZED_CLASS_MODIFIERS;
-import static com.oracle.truffle.espresso.classfile.Constants.SAME_FRAME_BOUND;
-import static com.oracle.truffle.espresso.classfile.Constants.SAME_FRAME_EXTENDED;
-import static com.oracle.truffle.espresso.classfile.Constants.SAME_LOCALS_1_STACK_ITEM_BOUND;
-import static com.oracle.truffle.espresso.classfile.Constants.SAME_LOCALS_1_STACK_ITEM_EXTENDED;
 
 public final class ClassfileParser {
 
