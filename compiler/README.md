@@ -1,9 +1,10 @@
-Graal is a dynamic compiler written in Java that integrates with the HotSpot JVM. It has a focus on high performance and extensibility.
-In addition, it provides optimized performance for [Truffle](https://github.com/graalvm/graal/tree/master/truffle)-based languages running on the JVM.
+The GraalVM compiler is a dynamic compiler written in Java that integrates with the HotSpot JVM. It has a focus on high performance and extensibility.
+In addition, it provides optimized performance for languages implemented with [Truffle Framework](https://github.com/graalvm/graal/tree/master/truffle)-based languages running on the JVM.
+For brevity, the GraalVM compiler is often referred to as "the compiler" below.
 
 ## Setup
 
-Working with Graal will mean cloning more than one repository and so it's
+Working with the GraalVM compiler will mean cloning more than one repository and so it's
 recommended to create and use a separate directory:
 
 ```
@@ -11,9 +12,9 @@ mkdir graal
 cd graal
 ```
 
-## Building Graal
+## Building the GraalVM compiler
 
-To simplify Graal development, a separate Python tool called [mx](https://github.com/graalvm/mx) has been co-developed.
+To simplify development, a separate Python tool called [mx](https://github.com/graalvm/mx) has been co-developed.
 This tool must be downloaded and put onto your PATH:
 
 ```
@@ -21,18 +22,19 @@ git clone https://github.com/graalvm/mx.git
 export PATH=$PWD/mx:$PATH
 ```
 
-Graal depends on a JDK that supports a compatible version of JVMCI ([JVM Compiler Interface](https://bugs.openjdk.java.net/browse/JDK-8062493)).
+The compiler depends on a JDK that supports a compatible version of JVMCI ([JVM Compiler Interface](https://bugs.openjdk.java.net/browse/JDK-8062493)).
 There is a JVMCI [port](https://github.com/graalvm/graal-jvmci-8) for JDK 8 and the required JVMCI version is built into the JDK as of JDK 11.
-To develop Graal you need either a JVMCI-enabled JDK 8 (download from [OTN](http://www.oracle.com/technetwork/oracle-labs/program-languages/downloads/index.html) or [build](#building-jvmci-jdk8) yourself)
-or JDK 11 (build 20 or later).
+A JVMCI-enabled JDK 8 can be downloaded from [OTN](https://www.oracle.com/technetwork/graalvm/downloads/index.html)
+or [GitHub](https://github.com/graalvm/openjdk8-jvmci-builder/releases)
+or you can [build](#building-jvmci-jdk8) it yourself.
 
-Most Graal sources are compliant with Java 8. Some sources use API specific to JDK 8 or only introduced in JDK 9.
+Most compiler sources are compliant with Java 8. Some sources use API specific to JDK 8 or only introduced in JDK 9.
 These sources are in [versioned projects](https://github.com/graalvm/mx#versioning-sources-for-different-jdk-releases).
 If you don't have a JDK that satisfies the requirement of a versioned project, the project is ignored by mx.
 
-If you only want to develop Graal for a single JDK version, you only need to define `JAVA_HOME`. For example:
+If you want to develop on a single JDK version, you only need to define `JAVA_HOME`. For example:
 ```
-export JAVA_HOME=/usr/lib/jvm/labsjdk1.8.0_172-jvmci-0.46
+export JAVA_HOME=/usr/lib/jvm/oraclejdk1.8.0_212-jvmci-20-b01
 ```
 or:
 ```
@@ -40,15 +42,15 @@ export JAVA_HOME=/usr/lib/jvm/jdk-11
 ```
 
 If you want to ensure your changes will pass both JDK 8 and JDK 11 gates, you can specify the secondary JDK(s) in `EXTRA_JAVA_HOMES`.
-For example, to develop Graal for JDK 8 while ensuring `mx build` still works with the JDK 11 specific sources:
+For example, to develop for JDK 8 while ensuring `mx build` still works with the JDK 11 specific sources:
 
 ```
-export JAVA_HOME=/usr/lib/jvm/labsjdk1.8.0_172-jvmci-0.46
+export JAVA_HOME=/usr/lib/jvm/oraclejdk1.8.0_212-jvmci-20-b01
 export EXTRA_JAVA_HOMES=/usr/lib/jvm/jdk-11
 ```
 And on macOS:
 ```
-export JAVA_HOME=/Library/Java/JavaVirtualMachines/labsjdk1.8.0_172-jvmci-0.46/Contents/Home
+export JAVA_HOME=/Library/Java/JavaVirtualMachines/oraclejdk1.8.0_212-jvmci-20-b01/Contents/Home
 export EXTRA_JAVA_HOMES=/Library/Java/JavaVirtualMachines/jdk-11.jdk/Contents/Home
 ```
 If you omit `EXTRA_JAVA_HOMES` in the above examples, versioned projects depending on the specified JDK(s) will be ignored.
@@ -59,19 +61,19 @@ Now change to the `graal/compiler` directory:
 cd graal/compiler
 ```
 
-Changing to the `graal/compiler` directory informs mx that the focus of development (called the _primary suite_) is Graal.
+Changing to the `graal/compiler` directory informs mx that the focus of development (called the _primary suite_) is the GraalVM compiler.
 All subsequent mx commands should be executed from this directory.
 
-Here's the recipe for building and running Graal:
+Here's the recipe for building and running the GraalVM compiler:
 
 ```
 mx build
 mx vm
 ```
 
-By default, Graal is only used for hosted compilation (i.e., the VM still uses C2 for compilation).
-To make the VM use Graal as the top tier JIT compiler, add the `-XX:+UseJVMCICompiler` option to the command line.
-To disable use of Graal altogether, use `-XX:-EnableJVMCI`.
+By default, the GraalVM compiler is only used for hosted compilation (i.e., the VM still uses C2 for compilation).
+To make the VM use the GraalVM compiler as the top tier JIT compiler, add the `-XX:+UseJVMCICompiler` option to the command line.
+To disable use of the GraalVM compiler altogether, use `-XX:-EnableJVMCI`.
 
 ### Windows Specifics
 
@@ -88,13 +90,14 @@ mx ideinit
 This will generate Eclipse, IntelliJ, and NetBeans project configurations.
 Further information on how to import these project configurations into individual IDEs can be found on the [IDEs](docs/IDEs.md) page.
 
-The Graal code base includes the [Ideal Graph Visualizer](http://ssw.jku.at/General/Staff/TW/igv.html) which is very useful in terms of visualizing Graal's intermediate representation (IR).
+The [Ideal Graph Visualizer](https://www.graalvm.org/docs/reference-manual/tools/#ideal-graph-visualizer)(IGV) is very useful in terms of visualizing the compiler's intermediate representation (IR).
+IGV is available on [OTN](https://www.oracle.com/technetwork/graalvm/downloads/index.html).
 You can get a quick insight into this tool by running the commands below.
-The first command launches the tool and the second runs one of the unit tests included in the Graal code base with extra options to make Graal dump the IR for all methods it compiles.
+The first command launches the tool and the second runs one of the unit tests included in the code base with extra options to dump the compiler IR for all methods compiled.
 You should wait for the GUI to appear before running the second command.
 
 ```
-mx igv &
+$GRAALVM_EE_HOME/bin/idealgraphvisualizer &
 mx unittest -Dgraal.Dump BC_athrow0
 ```
 
@@ -105,33 +108,33 @@ Further information can be found on the [Debugging](docs/Debugging.md) page.
 
 ## libgraal
 
-Building Graal as described above enables it to be used in HotSpot as Java code
-called from the VM. In this mode, Graal is executed in the same way as any
+Building the GraalVM compiler as described above means it is executed in the same way as any
 other Java code in the VM; it allocates in the HotSpot heap and it starts execution
 in the interpreter with hot parts being subsequently JIT compiled.
-The advantage of this mode is that Graal can be debugged with a Java debugger.
+The advantage of this mode is that it can be debugged with a Java debugger.
 
-However, it has some disadvantages. Firstly, since Graal uses the object heap, it can
+However, it has some disadvantages. Firstly, since it uses the object heap, it can
 reduce application object locality and increase GC pause times. Additionally, it can
 complicate fine tuning options such as `-Xmx` and `-Xms` which now need to take the
-heap usage of Graal needs to be taken into account. Secondly, Graal will initially be executed
+heap usage of the compiler into account. Secondly, the compiler will initially be executed
 in the interpreter and only get faster over time as its hot methods are JIT
-compiled. This is mitigated to some degree by forcing Graal (and JVMCI)
-to only be compiled by C1 but this comes at the cost of lower peak performance for Graal.
+compiled. This is mitigated to some degree by forcing the GraalVM compiler
+to only be compiled by C1 (i.e., `-Dgraal.CompileGraalWithC1Only=true`) but this comes at the cost
+of slower compilation speed.
 
-To address these issues, Graal can be deployed as a native shared library. The shared
-library is produced using [SubstrateVM](../substratevm/README.md) to ahead-of-time compile Graal. In this mode,
-Graal uses memory separate from the HotSpot heap and it runs compiled
+To address these issues, the GraalVM compiler can be deployed as a native shared library. The shared
+library is a native image produced using [SubstrateVM](../substratevm/README.md). In this mode,
+the GraalVM compiler uses memory separate from the HotSpot heap and it runs compiled
 from the start. That is, it has execution properties similar to other native HotSpot
 compilers such as C1 and C2.
 
-To build a GraalVM image with libgraal:
+To build libgraal:
 
 ```
 cd graal/vm
 mx --env libgraal build
 ```
-The newly built GraalVM image is available at:
+The newly built GraalVM image containing libgraal is available at:
 ```
 mx --env libgraal graalvm-home
 ```
@@ -161,7 +164,7 @@ Without leaving the `graal/vm` directory, you can now run libgraal as follows:
 
 ## Publications and Presentations
 
-For video tutorials, presentations and publications on Graal visit the [Publications](../docs/Publications.md) page.
+For video tutorials, presentations and publications on the GraalVM compiiler visit the [Publications](../docs/Publications.md) page.
 
 ## Building JVMCI JDK 8
 
@@ -175,10 +178,10 @@ mx --java-home /path/to/jdk8 unittest
 export JAVA_HOME=$(mx --java-home /path/to/jdk8 jdkhome)
 ```
 
-You need to use the same JDK the [OTN](http://www.oracle.com/technetwork/oracle-labs/program-languages/downloads/index.html) downloads are based on as the argument to `--java-home` in the above commands.
+You need to use the same JDK the [OTN](https://www.oracle.com/technetwork/graalvm/downloads/index.html) downloads are based on as the argument to `--java-home` in the above commands.
 The build step above should work on all [supported JDK 8 build platforms](https://wiki.openjdk.java.net/display/Build/Supported+Build+Platforms).
 It should also work on other platforms (such as Oracle Linux, CentOS and Fedora as described [here](http://mail.openjdk.java.net/pipermail/graal-dev/2015-December/004050.html)).
-If you run into build problems, send a message to the [Graal mailing list](http://mail.openjdk.java.net/mailman/listinfo/graal-dev).
+If you run into build problems, send a message to http://mail.openjdk.java.net/mailman/listinfo/graal-dev.
 
 ### Windows Specifics
 
@@ -200,4 +203,4 @@ You will also need an *MSVC 2010 SP1* compiler. The following tool chain is reco
 
 ## License
 
-The Graal compiler is licensed under the [GPL 2](LICENSE.md).
+The GraalVM compiler is licensed under the [GPL 2](LICENSE.md).

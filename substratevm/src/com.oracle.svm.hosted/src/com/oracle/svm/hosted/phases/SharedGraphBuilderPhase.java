@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2013, 2017, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2013, 2019, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -34,10 +34,9 @@ import org.graalvm.compiler.nodes.StructuredGraph;
 import org.graalvm.compiler.nodes.ValueNode;
 import org.graalvm.compiler.nodes.graphbuilderconf.GraphBuilderConfiguration;
 import org.graalvm.compiler.nodes.graphbuilderconf.IntrinsicContext;
-import org.graalvm.compiler.nodes.graphbuilderconf.InvocationPlugins.InvocationPluginReceiver;
 import org.graalvm.compiler.nodes.java.MethodCallTargetNode;
+import org.graalvm.compiler.nodes.spi.CoreProviders;
 import org.graalvm.compiler.phases.OptimisticOptimizations;
-import org.graalvm.compiler.phases.util.Providers;
 import org.graalvm.compiler.word.WordTypes;
 
 import com.oracle.graal.pointsto.constraints.UnresolvedElementException;
@@ -57,11 +56,12 @@ import jdk.vm.ci.meta.JavaMethod;
 import jdk.vm.ci.meta.JavaType;
 import jdk.vm.ci.meta.JavaTypeProfile;
 import jdk.vm.ci.meta.ResolvedJavaMethod;
+import jdk.vm.ci.meta.ResolvedJavaType;
 
 public abstract class SharedGraphBuilderPhase extends GraphBuilderPhase.Instance {
     final WordTypes wordTypes;
 
-    public SharedGraphBuilderPhase(Providers providers, GraphBuilderConfiguration graphBuilderConfig, OptimisticOptimizations optimisticOpts, IntrinsicContext initialIntrinsicContext,
+    public SharedGraphBuilderPhase(CoreProviders providers, GraphBuilderConfiguration graphBuilderConfig, OptimisticOptimizations optimisticOpts, IntrinsicContext initialIntrinsicContext,
                     WordTypes wordTypes) {
         super(providers, graphBuilderConfig, optimisticOpts, initialIntrinsicContext);
         this.wordTypes = wordTypes;
@@ -85,8 +85,12 @@ public abstract class SharedGraphBuilderPhase extends GraphBuilderPhase.Instance
             throw super.throwParserError(e);
         }
 
-        protected WordTypes getWordTypes() {
+        private WordTypes getWordTypes() {
             return ((SharedGraphBuilderPhase) getGraphBuilderInstance()).wordTypes;
+        }
+
+        private boolean checkWordTypes() {
+            return getWordTypes() != null;
         }
 
         @Override
@@ -103,6 +107,21 @@ public abstract class SharedGraphBuilderPhase extends GraphBuilderPhase.Instance
                 } else {
                     throw e;
                 }
+            }
+        }
+
+        @Override
+        protected JavaType maybeEagerlyResolve(JavaType type, ResolvedJavaType accessingClass) {
+            try {
+                return super.maybeEagerlyResolve(type, accessingClass);
+            } catch (NoClassDefFoundError e) {
+                /*
+                 * Type resolution fails if the type is missing. Just erase the type by returning
+                 * the Object type. This is the same handling as in WrappedConstantPool, which is
+                 * not triggering when parsing is done with the HotSpot universe instead of the
+                 * AnalysisUniverse.
+                 */
+                return getMetaAccess().lookupJavaType(Object.class);
             }
         }
 
@@ -224,9 +243,11 @@ public abstract class SharedGraphBuilderPhase extends GraphBuilderPhase.Instance
 
         @Override
         protected void genIf(ValueNode x, Condition cond, ValueNode y) {
-            if ((x.getStackKind() == JavaKind.Object && y.getStackKind() == getWordTypes().getWordKind()) ||
-                            (x.getStackKind() == getWordTypes().getWordKind() && y.getStackKind() == JavaKind.Object)) {
-                throw UserError.abort("Should not compare Word to Object in condition at " + method.format("%H.%n(%p)") + " in " + method.asStackTraceElement(bci()));
+            if (checkWordTypes()) {
+                if ((x.getStackKind() == JavaKind.Object && y.getStackKind() == getWordTypes().getWordKind()) ||
+                                (x.getStackKind() == getWordTypes().getWordKind() && y.getStackKind() == JavaKind.Object)) {
+                    throw UserError.abort("Should not compare Word to Object in condition at " + method.format("%H.%n(%p)") + " in " + method.asStackTraceElement(bci()));
+                }
             }
 
             super.genIf(x, cond, y);
@@ -268,7 +289,7 @@ public abstract class SharedGraphBuilderPhase extends GraphBuilderPhase.Instance
         }
 
         private void checkWordType(ValueNode value, JavaType expectedType, String reason) {
-            if (expectedType.getJavaKind() == JavaKind.Object) {
+            if (expectedType.getJavaKind() == JavaKind.Object && checkWordTypes()) {
                 boolean isWordTypeExpected = getWordTypes().isWord(expectedType);
                 boolean isWordValue = value.getStackKind() == getWordTypes().getWordKind();
 
@@ -293,12 +314,6 @@ public abstract class SharedGraphBuilderPhase extends GraphBuilderPhase.Instance
         @Override
         public boolean needsExplicitException() {
             return explicitExceptionEdges && !parsingIntrinsic();
-        }
-
-        @Override
-        protected IntrinsicGuard guardIntrinsic(ValueNode[] args, ResolvedJavaMethod targetMethod, InvocationPluginReceiver pluginReceiver) {
-            /* Currently not supported on Substrate VM, because we do not support LoadMethodNode. */
-            return null;
         }
 
         @Override

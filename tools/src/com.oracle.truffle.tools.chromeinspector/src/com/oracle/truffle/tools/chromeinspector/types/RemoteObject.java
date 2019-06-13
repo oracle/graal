@@ -38,6 +38,7 @@ import com.oracle.truffle.api.debug.DebugValue;
 import com.oracle.truffle.api.instrumentation.TruffleInstrument;
 import com.oracle.truffle.api.nodes.LanguageInfo;
 import com.oracle.truffle.tools.chromeinspector.InspectorExecutionContext;
+import com.oracle.truffle.tools.chromeinspector.LanguageChecks;
 import com.oracle.truffle.tools.chromeinspector.objects.NullObject;
 import com.oracle.truffle.tools.chromeinspector.types.TypeInfo.TYPE;
 
@@ -53,6 +54,7 @@ public final class RemoteObject {
     private final boolean generatePreview;
     private final String objectId;
     private final InspectorExecutionContext context;
+    private final IndexRange indexRange;
     private TypeInfo typeInfo;
     private Object value;
     private boolean replicableValue;
@@ -67,10 +69,15 @@ public final class RemoteObject {
     }
 
     public RemoteObject(DebugValue debugValue, boolean readEagerly, boolean generatePreview, InspectorExecutionContext context) {
+        this(debugValue, readEagerly, generatePreview, context, null);
+    }
+
+    public RemoteObject(DebugValue debugValue, boolean readEagerly, boolean generatePreview, InspectorExecutionContext context, IndexRange indexRange) {
         this.valueValue = debugValue;
         this.valueScope = null;
         this.generatePreview = generatePreview;
         this.context = context;
+        this.indexRange = indexRange;
         if (!debugValue.hasReadSideEffects() || readEagerly) {
             boolean isObject = initFromValue();
             objectId = (isObject) ? Long.toString(LAST_ID.incrementAndGet()) : null;
@@ -89,13 +96,19 @@ public final class RemoteObject {
         }
         PrintWriter err = context != null ? context.getErr() : null;
         this.typeInfo = TypeInfo.fromValue(debugValue, originalLanguage, err);
+        boolean readable = debugValue.isReadable();
         String toString;
         Object rawValue = null;
         String unserializable = null;
         boolean replicableRawValue = true;
         try {
-            toString = debugValue.as(String.class);
-            if (!typeInfo.isObject) {
+            if (readable) {
+                toString = debugValue.as(String.class);
+            } else {
+                toString = InspectorExecutionContext.VALUE_NOT_READABLE;
+                replicableRawValue = false;
+            }
+            if (readable && !typeInfo.isObject) {
                 if ("null".equals(typeInfo.subtype) && TYPE.OBJECT.getId().equals(typeInfo.type)) {
                     replicableRawValue = false;
                 } else if (TYPE.UNDEFINED.getId().equals(typeInfo.type)) {
@@ -139,7 +152,7 @@ public final class RemoteObject {
                 }
             }
         }
-        if (context != null && context.isCustomObjectFormatterEnabled()) {
+        if (readable && context != null && context.isCustomObjectFormatterEnabled()) {
             if (originalLanguage != null) {
                 try {
                     this.customPreview = CustomPreview.create(debugValue, originalLanguage, context);
@@ -163,6 +176,7 @@ public final class RemoteObject {
         this.valueScope = scope;
         this.generatePreview = false;
         this.context = null;
+        this.indexRange = null;
         this.typeInfo = new TypeInfo(TYPE.OBJECT.getId(), null, null, null, true, false);
         this.value = null;
         this.replicableValue = false;
@@ -177,6 +191,7 @@ public final class RemoteObject {
         this.valueScope = null;
         this.generatePreview = false;
         this.context = null;
+        this.indexRange = null;
         this.typeInfo = new TypeInfo(type, subtype, className, null, true, false);
         this.value = null;
         this.replicableValue = false;
@@ -227,6 +242,9 @@ public final class RemoteObject {
     }
 
     static String toString(DebugValue value, PrintWriter err) {
+        if (!value.isReadable()) {
+            return InspectorExecutionContext.VALUE_NOT_READABLE;
+        }
         try {
             return value.as(String.class);
         } catch (DebugException ex) {
@@ -246,8 +264,9 @@ public final class RemoteObject {
         JSONObject json = new JSONObject();
         DebugValue metaObject = getMetaObject(debugValue, null, err);
         boolean isObject = TypeInfo.isObject(debugValue, err);
+        boolean isJS = LanguageChecks.isJS(debugValue.getOriginalLanguage());
         String vtype = null;
-        if (metaObject != null) {
+        if (metaObject != null & isJS) {
             try {
                 Collection<DebugValue> properties = metaObject.getProperties();
                 if (properties != null) {
@@ -289,6 +308,9 @@ public final class RemoteObject {
     }
 
     private static Object createJSONValue(DebugValue debugValue, String[] unserializablePtr, PrintWriter err) {
+        if (!debugValue.isReadable()) {
+            return InspectorExecutionContext.VALUE_NOT_READABLE;
+        }
         if (debugValue.isArray()) {
             List<DebugValue> valueArray = debugValue.getArray();
             if (valueArray != null) {
@@ -366,6 +388,10 @@ public final class RemoteObject {
         return valueScope;
     }
 
+    public IndexRange getIndexRange() {
+        return indexRange;
+    }
+
     private static boolean isFinite(Number n) {
         if (n instanceof Double) {
             Double d = (Double) n;
@@ -382,5 +408,29 @@ public final class RemoteObject {
      */
     public static void resetIDs() {
         LAST_ID.set(0);
+    }
+
+    public static final class IndexRange {
+        private int start;
+        private int end;
+        private boolean named;
+
+        public IndexRange(int start, int end, boolean named) {
+            this.start = start;
+            this.end = end;
+            this.named = named;
+        }
+
+        public boolean isNamed() {
+            return named;
+        }
+
+        public int start() {
+            return start;
+        }
+
+        public int end() {
+            return end;
+        }
     }
 }

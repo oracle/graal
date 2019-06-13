@@ -28,13 +28,13 @@ import java.io.IOException;
 
 import org.graalvm.compiler.serviceprovider.JavaVersionUtil;
 import org.graalvm.nativeimage.ImageSingletons;
-import org.graalvm.nativeimage.hosted.Feature;
 import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.Platforms;
 import org.graalvm.nativeimage.StackValue;
 import org.graalvm.nativeimage.c.struct.SizeOf;
 import org.graalvm.nativeimage.c.type.CCharPointer;
 import org.graalvm.nativeimage.c.type.CIntPointer;
+import org.graalvm.nativeimage.hosted.Feature;
 import org.graalvm.nativeimage.impl.RuntimeClassInitializationSupport;
 import org.graalvm.word.WordFactory;
 
@@ -42,9 +42,9 @@ import com.oracle.svm.core.annotate.AutomaticFeature;
 import com.oracle.svm.core.annotate.Substitute;
 import com.oracle.svm.core.annotate.TargetClass;
 import com.oracle.svm.core.annotate.TargetElement;
-import com.oracle.svm.core.jdk.JDK8OrEarlier;
-import com.oracle.svm.core.jdk.JDK9OrLater;
 import com.oracle.svm.core.headers.Errno;
+import com.oracle.svm.core.jdk.JDK11OrLater;
+import com.oracle.svm.core.jdk.JDK8OrEarlier;
 import com.oracle.svm.core.posix.headers.Socket;
 import com.oracle.svm.core.posix.headers.Time;
 import com.oracle.svm.core.posix.headers.Unistd;
@@ -114,7 +114,7 @@ public final class LinuxNIOSubstitutions {
         /* } Do not reformat commented-out code: @formatter:on */
 
         @Substitute //
-        @TargetElement(onlyWith = JDK9OrLater.class) //
+        @TargetElement(onlyWith = JDK11OrLater.class) //
         @SuppressWarnings({"unused"})
         static int create() throws IOException {
             throw VMError.unsupportedFeature("LinuxNIOSubstitutions.Target_sun_nio_ch_EPoll.create");
@@ -148,7 +148,7 @@ public final class LinuxNIOSubstitutions {
         /* } Do not reformat commented-out code: @formatter:on */
 
         @Substitute //
-        @TargetElement(onlyWith = JDK9OrLater.class) //
+        @TargetElement(onlyWith = JDK11OrLater.class) //
         @SuppressWarnings({"unused"})
         static int ctl(int epfd, int opcode, int fd, int events) {
             throw VMError.unsupportedFeature("LinuxNIOSubstitutions.Target_sun_nio_ch_EPoll.ctl");
@@ -182,7 +182,7 @@ public final class LinuxNIOSubstitutions {
         /* } Do not reformat commented-out code: @formatter:on */
 
         @Substitute //
-        @TargetElement(onlyWith = JDK9OrLater.class) //
+        @TargetElement(onlyWith = JDK11OrLater.class) //
         @SuppressWarnings({"unused"})
         static int wait(int epfd, long address, int numfds, int timeout) throws IOException {
             throw VMError.unsupportedFeature("LinuxNIOSubstitutions.Target_sun_nio_ch_EPoll.wait");
@@ -430,7 +430,7 @@ public final class LinuxNIOSubstitutions {
 
         @Override
         public void duringSetup(DuringSetupAccess access) {
-            if (JavaVersionUtil.Java8OrEarlier) {
+            if (JavaVersionUtil.JAVA_SPEC <= 8) {
                 /* This class only exists on JDK-8 and earlier platforms. */
                 ImageSingletons.lookup(RuntimeClassInitializationSupport.class).rerunInitialization(access.findClassByName("sun.nio.ch.EPollArrayWrapper"), "required for substitutions");
             }

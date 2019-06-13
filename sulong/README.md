@@ -49,7 +49,7 @@ GraalVM native image.
 - `--vm.<option>` passes VM options to GraalVM.
 List available JVM options with `--help:vm`.
 
-- `--vm.Dgraal.<property>=<value>` passes settings to the Graal compiler.
+- `--vm.Dgraal.<property>=<value>` passes settings to the GraalVM compiler.
 For example, `--vm.Dgraal.DumpOnError=true` sends the compiler intermediate
 representation (IR) to dump handlers if errors occur.
 
@@ -173,14 +173,14 @@ Next, use git to clone the Sulong project and its dependencies:
     git clone https://github.com/oracle/graal
 
 Next, you need to download a recent
-[labsjdk](http://www.oracle.com/technetwork/oracle-labs/program-languages/downloads/index.html).
+[JVMCI-enabled JDK 8](https://www.oracle.com/technetwork/graalvm/downloads/index.html).
 Extract it inside the `sulong-dev` directory:
 
-    tar -zxf labsjdk-8u172-jvmci-0.54-linux-amd64.tar.gz
+    tar -zxf oraclejdk-8u212-jvmci-20-b01-linux-amd64.tar.gz
 
-Set `JAVA_HOME` to point to the extracted labsjdk from above:
+Set `JAVA_HOME` to point to the extracted JDK from above:
 
-    echo JAVA_HOME=`pwd`/labsjdk1.8.0_172-jvmci-0.54 > graal/sulong/mx.sulong/env
+    echo JAVA_HOME=`pwd`/oraclejdk1.8.0_212-jvmci-20-b01 > graal/sulong/mx.sulong/env
 
 Sulong partially consists of C/C++ code that is compiled using `make`. To speed
 up the build process you can edit the `MAKEFLAGS` environment variable:
@@ -212,7 +212,7 @@ multiple arguments separated by `:`.
 
     mx lli -Dpolyglot.llvm.libraryPath=lib -Dpolyglot.llvm.libraries=liba.so test.bc
 
-#### Running with the Graal compiler
+#### Running with the GraalVM compiler
 
 In contrast to GraalVM, `mx lli` will by default  *not* optimize your program.
 If you are interested in high performance, you might want to import the Graal

@@ -24,20 +24,23 @@
  */
 package org.graalvm.compiler.truffle.runtime.hotspot.libgraal;
 
-import static org.graalvm.libgraal.LibGraal.getIsolateThread;
+import static org.graalvm.libgraal.LibGraalScope.getIsolateThread;
 
 import org.graalvm.compiler.truffle.common.CompilableTruffleAST;
 import org.graalvm.compiler.truffle.common.TruffleCompilation;
+import org.graalvm.libgraal.LibGraalScope;
 
 final class SVMTruffleCompilation extends SVMObject implements TruffleCompilation {
 
     private final SVMHotSpotTruffleCompiler owner;
     private volatile CompilableTruffleAST cachedCompilableTruffleAST;
     private volatile String cachedId;
+    private final LibGraalScope scope;
 
-    SVMTruffleCompilation(SVMHotSpotTruffleCompiler owner, long handle) {
+    SVMTruffleCompilation(SVMHotSpotTruffleCompiler owner, long handle, LibGraalScope scope) {
         super(handle);
         this.owner = owner;
+        this.scope = scope;
     }
 
     @Override
@@ -54,8 +57,10 @@ final class SVMTruffleCompilation extends SVMObject implements TruffleCompilatio
     public void close() {
         try {
             owner.closeCompilation(this);
+            cachedCompilableTruffleAST = null;
         } finally {
             HotSpotToSVMCalls.closeCompilation(getIsolateThread(), handle);
+            scope.close();
         }
     }
 

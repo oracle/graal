@@ -155,7 +155,7 @@ public final class Debugger {
      * Returns the number of active debugger sessions. This is useful, for instance, in deciding
      * whether to open a new debugger session, depending on whether there is an existing one or not.
      *
-     * @since 1.0
+     * @since 19.0
      */
     public synchronized int getSessionCount() {
         return sessions.size();
@@ -167,6 +167,7 @@ public final class Debugger {
             for (Breakpoint b : breakpoints) {
                 b.sessionClosed(session);
             }
+            alwaysHaltBreakpoint.sessionClosed(session);
         }
     }
 
@@ -259,7 +260,7 @@ public final class Debugger {
      * list of breakpoints}. The reported breakpoint is not {@link Breakpoint#isModifiable()
      * modifiable}.
      *
-     * @since 1.0
+     * @since 19.0
      */
     public void addBreakpointAddedListener(Consumer<Breakpoint> listener) {
         breakpointAddedListeners.add(listener);
@@ -268,7 +269,7 @@ public final class Debugger {
     /**
      * Remove a listener that was added by {@link #addBreakpointAddedListener(Consumer)}.
      *
-     * @since 1.0
+     * @since 19.0
      */
     public void removeBreakpointAddedListener(Consumer<Breakpoint> listener) {
         breakpointAddedListeners.remove(listener);
@@ -279,7 +280,7 @@ public final class Debugger {
      * list of breakpoints}. The reported breakpoint is not {@link Breakpoint#isModifiable()
      * modifiable}.
      *
-     * @since 1.0
+     * @since 19.0
      */
     public void addBreakpointRemovedListener(Consumer<Breakpoint> listener) {
         breakpointRemovedListeners.add(listener);
@@ -288,7 +289,7 @@ public final class Debugger {
     /**
      * Remove a listener that was added by {@link #addBreakpointRemovedListener(Consumer)}.
      *
-     * @since 1.0
+     * @since 19.0
      */
     public void removeBreakpointRemovedListener(Consumer<Breakpoint> listener) {
         breakpointRemovedListeners.remove(listener);
@@ -314,7 +315,7 @@ public final class Debugger {
      *
      * @param env the instrument environment to find debugger for
      * @return an instance of associated debugger, never <code>null</code>
-     * @since 1.0
+     * @since 19.0
      */
     public static Debugger find(TruffleInstrument.Env env) {
         return env.lookup(env.getInstruments().get("debugger"), Debugger.class);
@@ -325,7 +326,7 @@ public final class Debugger {
      *
      * @param engine the engine to find debugger for
      * @return an instance of associated debugger, never <code>null</code>
-     * @since 1.0
+     * @since 19.0
      */
     public static Debugger find(Engine engine) {
         return engine.getInstruments().get("debugger").lookup(Debugger.class);

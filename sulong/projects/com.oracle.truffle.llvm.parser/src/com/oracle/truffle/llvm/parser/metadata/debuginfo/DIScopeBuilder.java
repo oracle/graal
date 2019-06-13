@@ -171,7 +171,8 @@ final class DIScopeBuilder {
                 if (file.exists()) {
                     return file;
                 }
-            } catch (InvalidPathException ex) {
+            } catch (InvalidPathException | SecurityException ex) {
+                // can not or not allowed to access source file
                 // ignore, try next entry in search path
             }
         }
@@ -185,7 +186,8 @@ final class DIScopeBuilder {
                 if (file.exists()) {
                     return file;
                 }
-            } catch (InvalidPathException ex) {
+            } catch (InvalidPathException | SecurityException ex) {
+                // can not or not allowed to access source file
                 // ignore, return relative path
             }
         }
@@ -534,8 +536,8 @@ final class DIScopeBuilder {
             SourceBuilder builder = Source.newBuilder("llvm", sourceFile).mimeType(mimeType);
             try {
                 source = builder.build();
-            } catch (IOException ex) {
-                // can't load the source file: fall back to CONTENT_NONE
+            } catch (IOException | SecurityException ex) {
+                // can't or not allowed to load the source file: fall back to CONTENT_NONE
                 source = builder.content(Source.CONTENT_NONE).build();
             }
         } else {

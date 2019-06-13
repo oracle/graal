@@ -55,6 +55,7 @@ import com.oracle.svm.core.util.VMError;
 import com.oracle.svm.hosted.FeatureImpl.DuringAnalysisAccessImpl;
 import com.oracle.svm.hosted.substitute.DeletedElementException;
 import com.oracle.svm.hosted.substitute.SubstitutionReflectivityFilter;
+import com.oracle.svm.util.ReflectionUtil;
 
 public class ReflectionDataBuilder implements RuntimeReflectionSupport {
 
@@ -74,7 +75,8 @@ public class ReflectionDataBuilder implements RuntimeReflectionSupport {
     private static DynamicHub.ReflectionData getArrayReflectionData() {
         Method[] publicArrayMethods;
         try {
-            Method getPublicMethodsMethod = findMethod(Class.class, "privateGetPublicMethods");
+            Class<?>[] parameterTypes = {};
+            Method getPublicMethodsMethod = ReflectionUtil.lookupMethod(Class.class, "privateGetPublicMethods", parameterTypes);
             publicArrayMethods = (Method[]) getPublicMethodsMethod.invoke(Object[].class);
         } catch (ReflectiveOperationException e) {
             throw VMError.shouldNotReachHere(e);
@@ -141,17 +143,18 @@ public class ReflectionDataBuilder implements RuntimeReflectionSupport {
         }
         modified = false;
         access.requireAnalysisIteration();
+        Class<?>[] parameterTypes = {};
 
-        Method reflectionDataMethod = findMethod(Class.class, "reflectionData");
+        Method reflectionDataMethod = ReflectionUtil.lookupMethod(Class.class, "reflectionData", parameterTypes);
         Class<?> originalReflectionDataClass = access.getImageClassLoader().findClassByName("java.lang.Class$ReflectionData");
-        Field declaredFieldsField = findField(originalReflectionDataClass, "declaredFields");
-        Field publicFieldsField = findField(originalReflectionDataClass, "publicFields");
-        Field declaredMethodsField = findField(originalReflectionDataClass, "declaredMethods");
-        Field publicMethodsField = findField(originalReflectionDataClass, "publicMethods");
-        Field declaredConstructorsField = findField(originalReflectionDataClass, "declaredConstructors");
-        Field publicConstructorsField = findField(originalReflectionDataClass, "publicConstructors");
-        Field declaredPublicFieldsField = findField(originalReflectionDataClass, "declaredPublicFields");
-        Field declaredPublicMethodsField = findField(originalReflectionDataClass, "declaredPublicMethods");
+        Field declaredFieldsField = ReflectionUtil.lookupField(originalReflectionDataClass, "declaredFields");
+        Field publicFieldsField = ReflectionUtil.lookupField(originalReflectionDataClass, "publicFields");
+        Field declaredMethodsField = ReflectionUtil.lookupField(originalReflectionDataClass, "declaredMethods");
+        Field publicMethodsField = ReflectionUtil.lookupField(originalReflectionDataClass, "publicMethods");
+        Field declaredConstructorsField = ReflectionUtil.lookupField(originalReflectionDataClass, "declaredConstructors");
+        Field publicConstructorsField = ReflectionUtil.lookupField(originalReflectionDataClass, "publicConstructors");
+        Field declaredPublicFieldsField = ReflectionUtil.lookupField(originalReflectionDataClass, "declaredPublicFields");
+        Field declaredPublicMethodsField = ReflectionUtil.lookupField(originalReflectionDataClass, "declaredPublicMethods");
 
         Set<Class<?>> allClasses = new HashSet<>(reflectionClasses);
         reflectionMethods.stream().map(method -> method.getDeclaringClass()).forEach(clazz -> allClasses.add(clazz));
@@ -234,7 +237,7 @@ public class ReflectionDataBuilder implements RuntimeReflectionSupport {
                     reflectionData = new DynamicHub.ReflectionData(
                                     filterFields(declaredFieldsField.get(originalReflectionData), reflectionFields.keySet(), access.getMetaAccess()),
                                     filterFields(publicFieldsField.get(originalReflectionData), reflectionFields.keySet(), access.getMetaAccess()),
-                                    filterFields(publicFieldsField.get(originalReflectionData), f -> reflectionFields.containsKey(f) && !isShadowedIn(f, clazz), access.getMetaAccess()),
+                                    filterFields(publicFieldsField.get(originalReflectionData), f -> reflectionFields.containsKey(f) && !isHiddenIn(f, clazz), access.getMetaAccess()),
                                     filterMethods(declaredMethodsField.get(originalReflectionData), reflectionMethods, access.getMetaAccess()),
                                     filterMethods(publicMethodsField.get(originalReflectionData), reflectionMethods, access.getMetaAccess()),
                                     filterConstructors(declaredConstructorsField.get(originalReflectionData), reflectionMethods, access.getMetaAccess()),
@@ -309,7 +312,7 @@ public class ReflectionDataBuilder implements RuntimeReflectionSupport {
         return filterFields(fields, filterSet::contains, metaAccess);
     }
 
-    private static boolean isShadowedIn(Field field, Class<?> clazz) {
+    private static boolean isHiddenIn(Field field, Class<?> clazz) {
         try {
             return !clazz.getField(field.getName()).equals(field);
         } catch (NoSuchFieldException e) {
@@ -359,26 +362,6 @@ public class ReflectionDataBuilder implements RuntimeReflectionSupport {
             }
         }
         return result.toArray(new Class<?>[0]);
-    }
-
-    private static Method findMethod(Class<?> declaringClass, String methodName, Class<?>... parameterTypes) {
-        try {
-            Method result = declaringClass.getDeclaredMethod(methodName, parameterTypes);
-            result.setAccessible(true);
-            return result;
-        } catch (NoSuchMethodException ex) {
-            throw VMError.shouldNotReachHere(ex);
-        }
-    }
-
-    private static Field findField(Class<?> declaringClass, String fieldName) {
-        try {
-            Field result = declaringClass.getDeclaredField(fieldName);
-            result.setAccessible(true);
-            return result;
-        } catch (NoSuchFieldException ex) {
-            throw VMError.shouldNotReachHere(ex);
-        }
     }
 
     boolean inspectFinalFieldWritableForAnalysis(Field field) {

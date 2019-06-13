@@ -18,8 +18,9 @@ jdk:
 
 env:
   global:
-    - JVMCI_VERSION="jvmci-0.59"
-    - JDK8_UPDATE_VERSION="202"
+    - JVMCI_VERSION="jvmci-20-b03"
+    - JDK8_UPDATE_VERSION="212"
+    - JDK8_UPDATE_VERSION_SUFFIX="_1"
 
 matrix:
   include:
@@ -37,7 +38,7 @@ matrix:
           - clang-format-3.8
           - libc++1
           - libc++-dev
-  - env: JDK="jdk8" GATE="build,sulong" PRIMARY="vm" DYNAMIC_IMPORTS="/sulong,/substratevm" LLVM_VERSION="6.0" DISABLE_POLYGLOT=true DISABLE_LIBPOLYGLOT=true NATIVE_IMAGE_TESTING=true
+  - env: JDK="jdk8" GATE="build,sulong" PRIMARY="vm" DYNAMIC_IMPORTS="/sulong,/substratevm" LLVM_VERSION="6.0" DISABLE_POLYGLOT=true DISABLE_LIBPOLYGLOT=true
     addons:
       apt:
         sources:
@@ -88,7 +89,7 @@ install:
       if [ "${JDK}" == "jdk8" ]
       then
         JDK_TAR=${TRAVIS_BUILD_DIR}/../jdk.tar.gz
-        wget https://github.com/graalvm/openjdk8-jvmci-builder/releases/download/${JVMCI_VERSION}/openjdk-8u${JDK8_UPDATE_VERSION}-${JVMCI_VERSION}-linux-amd64.tar.gz -O ${JDK_TAR}
+        wget https://github.com/graalvm/openjdk8-jvmci-builder/releases/download/${JVMCI_VERSION}/openjdk-8u${JDK8_UPDATE_VERSION}${JDK8_UPDATE_VERSION_SUFFIX}-${JVMCI_VERSION}-linux-amd64.tar.gz -O ${JDK_TAR}
         tar -C ${TRAVIS_BUILD_DIR}/.. -xzf ${JDK_TAR}
         export JAVA_HOME=${TRAVIS_BUILD_DIR}/../openjdk1.8.0_${JDK8_UPDATE_VERSION}-${JVMCI_VERSION}
       fi

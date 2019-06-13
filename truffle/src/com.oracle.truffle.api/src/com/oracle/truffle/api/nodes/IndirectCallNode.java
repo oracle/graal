@@ -87,7 +87,7 @@ public abstract class IndirectCallNode extends Node {
      * node use the {@link NodeUtil#getCurrentEncapsulatingNode() current encapsulating node} as
      * source location.
      *
-     * @since 1.0
+     * @since 19.0
      */
     public static IndirectCallNode getUncached() {
         return UNCACHED;

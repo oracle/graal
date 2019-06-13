@@ -32,8 +32,6 @@ package com.oracle.truffle.llvm.nodes.intrinsics.llvm.debug;
 import java.math.BigInteger;
 
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
-import com.oracle.truffle.api.interop.TruffleObject;
-import com.oracle.truffle.llvm.runtime.LLVMBoxedPrimitive;
 import com.oracle.truffle.llvm.runtime.LLVMFunctionDescriptor;
 import com.oracle.truffle.llvm.runtime.LLVMIVarBit;
 import com.oracle.truffle.llvm.runtime.LLVMLanguage;
@@ -343,7 +341,7 @@ abstract class LLDBConstant implements LLVMDebugValue {
                     return false;
                 }
 
-                final TruffleObject target = managedPointer.getObject();
+                final Object target = managedPointer.getObject();
                 return LLVMManagedPointer.isInstance(target);
             }
 
@@ -362,7 +360,7 @@ abstract class LLDBConstant implements LLVMDebugValue {
         @Override
         public Object asInteropValue() {
             if (isInteropValue()) {
-                TruffleObject foreign = null;
+                Object foreign = null;
 
                 if (LLVMNativePointer.isInstance(pointer)) {
                     foreign = LLVMLanguage.getLLVMContextReference().get().getManagedObjectForHandle(LLVMNativePointer.cast(pointer));
@@ -388,7 +386,7 @@ abstract class LLDBConstant implements LLVMDebugValue {
                 return LLVMLanguage.getLLVMContextReference().get().isHandle(LLVMNativePointer.cast(pointer));
 
             } else if (LLVMManagedPointer.isInstance(pointer)) {
-                final TruffleObject target = LLVMManagedPointer.cast(pointer).getObject();
+                final Object target = LLVMManagedPointer.cast(pointer).getObject();
 
                 if (LLVMPointer.isInstance(target)) {
                     return false;
@@ -397,7 +395,7 @@ abstract class LLDBConstant implements LLVMDebugValue {
                     return false;
 
                 } else {
-                    return !(target instanceof LLVMBoxedPrimitive);
+                    return !(target instanceof LLVMTypedForeignObject);
                 }
             } else {
                 throw new IllegalStateException("Unsupported Pointer: " + pointer);

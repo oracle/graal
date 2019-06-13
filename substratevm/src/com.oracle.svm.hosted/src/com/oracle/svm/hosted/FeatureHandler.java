@@ -24,8 +24,6 @@
  */
 package com.oracle.svm.hosted;
 
-import java.lang.reflect.Constructor;
-import java.lang.reflect.InvocationTargetException;
 import java.util.ArrayList;
 import java.util.HashSet;
 import java.util.function.Consumer;
@@ -41,8 +39,9 @@ import com.oracle.svm.core.option.APIOption;
 import com.oracle.svm.core.option.HostedOptionKey;
 import com.oracle.svm.core.option.OptionUtils;
 import com.oracle.svm.core.util.UserError;
-import com.oracle.svm.core.util.VMError;
 import com.oracle.svm.hosted.FeatureImpl.IsInConfigurationAccessImpl;
+import com.oracle.svm.util.ReflectionUtil;
+import com.oracle.svm.util.ReflectionUtil.ReflectionUtilError;
 
 /**
  * Handles the registration and iterations of {@link Feature features}.
@@ -76,7 +75,7 @@ public class FeatureHandler {
     public void registerFeatures(ImageClassLoader loader, DebugContext debug) {
         IsInConfigurationAccessImpl access = new IsInConfigurationAccessImpl(this, loader, debug);
 
-        for (Class<?> automaticFeature : loader.findAnnotatedClasses(AutomaticFeature.class)) {
+        for (Class<?> automaticFeature : loader.findAnnotatedClasses(AutomaticFeature.class, true)) {
             registerFeature(automaticFeature, access);
         }
 
@@ -111,14 +110,13 @@ public class FeatureHandler {
 
         Feature feature;
         try {
-            Constructor<?> constructor = featureClass.getDeclaredConstructor();
-            constructor.setAccessible(true);
-            feature = (Feature) constructor.newInstance();
-            if (!feature.isInConfiguration(access)) {
-                return;
-            }
-        } catch (NoSuchMethodException | InvocationTargetException | InstantiationException | IllegalAccessException ex) {
-            throw VMError.shouldNotReachHere(ex);
+            feature = (Feature) ReflectionUtil.newInstance(featureClass);
+        } catch (ReflectionUtilError ex) {
+            throw UserError.abort("Error instantiating Feature class " + featureClass.getTypeName() + ". Ensure the class is not abstract and has a no-argument constructor.", ex.getCause());
+        }
+
+        if (!feature.isInConfiguration(access)) {
+            return;
         }
 
         /*

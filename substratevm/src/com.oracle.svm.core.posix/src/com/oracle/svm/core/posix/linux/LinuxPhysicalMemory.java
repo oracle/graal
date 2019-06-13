@@ -40,6 +40,7 @@ import com.oracle.svm.core.annotate.RestrictHeapAccess.Access;
 import com.oracle.svm.core.heap.Heap;
 import com.oracle.svm.core.heap.PhysicalMemory;
 import com.oracle.svm.core.posix.headers.Unistd;
+import com.oracle.svm.core.thread.JavaThreads;
 import com.oracle.svm.core.util.UnsignedUtils;
 
 @Platforms(InternalPlatform.LINUX_AND_JNI.class)
@@ -61,7 +62,7 @@ class LinuxPhysicalMemory extends PhysicalMemory {
                 return getSize();
             }
             /* If I can not allocate, return MAX_VALUE. */
-            if (Heap.getHeap().isAllocationDisallowed()) {
+            if (Heap.getHeap().isAllocationDisallowed() || !JavaThreads.currentJavaThreadInitialized()) {
                 return UnsignedUtils.MAX_VALUE;
             }
             /* Compute and cache the physical memory size. Races are idempotent. */

@@ -222,37 +222,34 @@ public final class InspectorDebugger extends DebuggerDomain {
             int l1 = start.getLine();
             int c1 = start.getColumn();
             if (c1 <= 0) {
-                c1 = -1;
+                c1 = 1;
             }
             int l2;
             int c2;
             if (end != null) {
-                if (source.hasCharacters()) {
-                    int lc = source.getLineCount();
-                    if (end.getLine() > lc) {
-                        l2 = lc;
+                int lc = source.getLineCount();
+                if (end.getLine() > lc) {
+                    l2 = lc;
+                    c2 = source.getLineLength(l2);
+                } else {
+                    c2 = end.getColumn();
+                    if (c2 <= 1) {
+                        l2 = end.getLine() - 1;
+                        if (l2 <= 0) {
+                            l2 = 1;
+                        }
+                        c2 = source.getLineLength(l2);
                     } else {
                         l2 = end.getLine();
+                        c2 = c2 - 1;
                     }
-                } else {
-                    l2 = end.getLine();
-                }
-                c2 = end.getColumn();
-                if (c2 <= 0) {
-                    c2 = -1;
                 }
                 if (l1 > l2) {
                     l1 = l2;
                 }
             } else {
                 l2 = l1;
-                if (c1 == -1) {
-                    c2 = -1;
-                } else if (source.hasCharacters()) {
-                    c2 = source.getLineLength(l2);
-                } else {
-                    c2 = c1 + 1;
-                }
+                c2 = source.getLineLength(l2);
             }
             SourceSection range = source.createSection(l1, c1, l2, c2);
             Iterable<SourceSection> locations = SuspendableLocationFinder.findSuspendableLocations(range, restrictToFunction, ds, context.getEnv());

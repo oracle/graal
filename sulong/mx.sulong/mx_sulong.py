@@ -701,14 +701,15 @@ mx_sdk.register_graalvm_component(mx_sdk.GraalVmLanguage(
             destination='bin/<exe:lli>',
             jar_distributions=['sulong:SULONG_LAUNCHER'],
             main_class='com.oracle.truffle.llvm.launcher.LLVMLauncher',
-            build_args=['--language:llvm']
+            build_args=[],
+            language='llvm',
         )
     ],
 ))
 
 COPYRIGHT_HEADER_BSD = """\
 /*
- * Copyright (c) 2016, 2018, Oracle and/or its affiliates.
+ * Copyright (c) 2016, 2019, Oracle and/or its affiliates.
  *
  * All rights reserved.
  *

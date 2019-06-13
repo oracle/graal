@@ -232,7 +232,7 @@ import com.oracle.truffle.llvm.nodes.vars.LLVMWriteNodeFactory.LLVMWriteI1NodeGe
 import com.oracle.truffle.llvm.nodes.vars.LLVMWriteNodeFactory.LLVMWriteI64NodeGen;
 import com.oracle.truffle.llvm.nodes.vars.LLVMWriteNodeFactory.LLVMWritePointerNodeGen;
 import com.oracle.truffle.llvm.nodes.vars.StructLiteralNodeGen;
-import com.oracle.truffle.llvm.runtime.LLVMContext;
+import com.oracle.truffle.llvm.runtime.LLVMLanguage;
 import com.oracle.truffle.llvm.runtime.LLVMUnsupportedException;
 import com.oracle.truffle.llvm.runtime.LLVMUnsupportedException.UnsupportedReason;
 import com.oracle.truffle.llvm.runtime.NodeFactory;
@@ -271,13 +271,13 @@ class AsmFactory {
 
     private String currentPrefix;
 
-    private final LLVMContext context;
+    private final LLVMLanguage language;
     private final NodeFactory nodeFactory;
     private final LLVMSourceLocation sourceLocation;
 
-    AsmFactory(LLVMContext context, LLVMSourceLocation sourceLocation, Type[] argTypes, String asmFlags, Type retType, Type[] retTypes, int[] retOffsets) {
-        this.context = context;
-        this.nodeFactory = context.getNodeFactory();
+    AsmFactory(LLVMLanguage language, LLVMSourceLocation sourceLocation, Type[] argTypes, String asmFlags, Type retType, Type[] retTypes, int[] retOffsets) {
+        this.language = language;
+        this.nodeFactory = language.getNodeFactory();
         this.sourceLocation = sourceLocation;
         this.argTypes = argTypes;
         this.asmFlags = asmFlags;
@@ -406,7 +406,7 @@ class AsmFactory {
 
     LLVMInlineAssemblyRootNode finishInline() {
         getArguments();
-        return new LLVMInlineAssemblyRootNode(context.getLanguage(), sourceLocation, frameDescriptor, statements.toArray(LLVMStatementNode.NO_STATEMENTS), arguments, result);
+        return new LLVMInlineAssemblyRootNode(language, sourceLocation, frameDescriptor, statements.toArray(LLVMStatementNode.NO_STATEMENTS), arguments, result);
     }
 
     void setPrefix(String prefix) {

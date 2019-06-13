@@ -24,6 +24,7 @@
  */
 package com.oracle.svm.configure.trace;
 
+import java.util.Arrays;
 import java.util.function.Supplier;
 
 public class AccessAdvisor {
@@ -41,8 +42,7 @@ public class AccessAdvisor {
 
     private static boolean isInternalClass(String qualifiedClass) {
         assert qualifiedClass == null || qualifiedClass.indexOf('/') == -1 : "expecting Java-format qualifiers, not internal format";
-        return qualifiedClass != null && (qualifiedClass.startsWith("java.") || qualifiedClass.startsWith("javax.") || qualifiedClass.startsWith("sun.") ||
-                        qualifiedClass.startsWith("com.sun.") || qualifiedClass.startsWith("jdk."));
+        return qualifiedClass != null && Arrays.asList("java.", "javax.", "sun.", "com.sun.", "jdk.", "org.graalvm.compiler.").stream().anyMatch(qualifiedClass::startsWith);
     }
 
     public boolean shouldIgnore(Supplier<String> callerClass) {

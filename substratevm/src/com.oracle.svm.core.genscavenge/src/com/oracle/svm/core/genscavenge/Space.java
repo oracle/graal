@@ -590,7 +590,6 @@ public class Space {
         final AlignedHeapChunk.AlignedHeader chunk = AlignedHeapChunk.getEnclosingAlignedHeapChunk(original);
         trace.string("  chunk: ").hex(chunk).string("  this: ").string(getName());
         final Space originalSpace = chunk.getSpace();
-        assert promoteAlignedObjectSpaceAssert(originalSpace, chunk, original) : "Space.promoteAlignedObject: originalSpace is not valid.";
         if (trace.isEnabled()) {
             /* No other uses of fields of originalSpace, so do not get name unless tracing. */
             trace.string("  originalSpace: ").string(originalSpace.getName());
@@ -619,24 +618,9 @@ public class Space {
         return copy;
     }
 
-    /** An assert for the original Space in promoteAlignedObject. For GR-9912. */
-    private static boolean promoteAlignedObjectSpaceAssert(Space thatSpace, AlignedHeapChunk.AlignedHeader chunk, Object object) {
-        final boolean result = HeapImpl.getHeapImpl().isValidSpace(thatSpace);
-        if (!result) {
-            /* I am about to fail an assert, but first log some things about that Space. */
-            final Log failureLog = Log.log().string("[! Space.promoteAlignedObjectAssert:");
-            failureLog.string("  space: ").hex(Word.objectToUntrackedPointer(thatSpace))
-                            .string("  chunk: ").hex(chunk)
-                            .string("  original: ").hex(Word.objectToUntrackedPointer(object));
-            failureLog.string(" !]").newline();
-        }
-        return result;
-    }
-
     /** Copy an Object into the given memory. */
     private Object copyAlignedObject(Object originalObj) {
         VMOperation.guaranteeInProgress("Should only be called from the collector.");
-        assert copyAlignedObjectAssert(originalObj) : "Space.copyAlignedObject: originalObj hub fails to verify.";
         assert ObjectHeaderImpl.getObjectHeaderImpl().isAlignedObject(originalObj);
         final Log trace = Log.noopLog().string("[SpaceImpl.copyAlignedObject:");
         trace.string("  originalObj: ").object(originalObj);
@@ -673,18 +657,6 @@ public class Space {
         setAlignedRememberedSet(copyObj);
         trace.string("  copyObj: ").object(copyObj).string("]").newline();
         return copyObj;
-    }
-
-    /** Assert that the hub of obj is well-formed. For GR-9912. */
-    private static boolean copyAlignedObjectAssert(Object obj) {
-        if (GCImpl.runtimeAssertions() && !HeapImpl.getHeapImpl().assertHubOfObject(obj)) {
-            /* I am about to fail an assert, but first log some things about the object. */
-            final Log failureLog = Log.log().string("[! Space.copyAlignedObjectAssert:").indent(true);
-            ObjectHeaderImpl.getObjectHeaderImpl().objectHeaderToLog(obj, failureLog);
-            failureLog.string(" !]").indent(false);
-            return false;
-        }
-        return true;
     }
 
     /** Promote an AlignedHeapChunk by moving it to this space, if necessary. */

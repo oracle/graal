@@ -34,6 +34,7 @@ import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.dsl.Cached;
 import com.oracle.truffle.api.dsl.NodeChild;
 import com.oracle.truffle.api.dsl.Specialization;
+import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.llvm.nodes.intrinsics.llvm.LLVMIntrinsic;
 import com.oracle.truffle.llvm.runtime.LLVMExitException;
 import com.oracle.truffle.llvm.runtime.LLVMLanguage;
@@ -62,7 +63,7 @@ public abstract class LLVMPanic extends LLVMIntrinsic {
                     @Cached("createPanicLocation()") PanicLocType panicLoc,
                     @Cached("getLLVMMemory()") LLVMMemory memory) {
         LLVMNativePointer pointer = toNative.executeWithTarget(panicLocVar);
-        throw panicLoc.read(memory, pointer.asNative());
+        throw panicLoc.read(memory, pointer.asNative(), this);
     }
 
     static final class PanicLocType {
@@ -80,13 +81,13 @@ public abstract class LLVMPanic extends LLVMIntrinsic {
         }
 
         @TruffleBoundary
-        LLVMExitException read(LLVMMemory memory, long address) {
+        LLVMExitException read(LLVMMemory memory, long address, Node location) {
             String desc = strslice.read(memory, address);
             String filename = strslice.read(memory, address + offsetFilename);
             int linenr = memory.getI32(address + offsetLineNr);
             System.err.printf("thread '%s' panicked at '%s', %s:%d%n", Thread.currentThread().getName(), desc, filename, linenr);
             System.err.print("note: No backtrace available");
-            return LLVMExitException.exit(EXIT_CODE_PANIC);
+            return LLVMExitException.exit(EXIT_CODE_PANIC, location);
         }
 
         static PanicLocType create(DataLayout dataLayout) {

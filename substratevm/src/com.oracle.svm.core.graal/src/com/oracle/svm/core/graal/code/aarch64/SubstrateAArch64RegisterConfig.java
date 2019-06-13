@@ -25,7 +25,6 @@
 package com.oracle.svm.core.graal.code.aarch64;
 
 import static com.oracle.svm.core.util.VMError.shouldNotReachHere;
-import static com.oracle.svm.core.util.VMError.unimplemented;
 import static jdk.vm.ci.aarch64.AArch64.allRegisters;
 import static jdk.vm.ci.aarch64.AArch64.r0;
 import static jdk.vm.ci.aarch64.AArch64.r1;
@@ -62,6 +61,7 @@ import static jdk.vm.ci.aarch64.AArch64.zr;
 import java.util.ArrayList;
 
 import org.graalvm.nativeimage.hosted.Feature;
+import com.oracle.svm.core.util.VMError;
 import org.graalvm.nativeimage.ImageSingletons;
 import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.Platforms;
@@ -121,6 +121,7 @@ public class SubstrateAArch64RegisterConfig implements SubstrateRegisterConfig {
     private final MetaAccessProvider metaAccess;
     private final Register threadRegister;
     private final Register heapBaseRegister;
+    private final RegisterArray javaGeneralParameterRegisters;
 
     public SubstrateAArch64RegisterConfig(ConfigKind config, MetaAccessProvider metaAccess, TargetDescription target) {
         this.target = target;
@@ -129,6 +130,8 @@ public class SubstrateAArch64RegisterConfig implements SubstrateRegisterConfig {
         // This is the Linux 64-bit ABI for parameters.
         generalParameterRegs = new RegisterArray(r0, r1, r2, r3, r4, r5, r6, r7);
         xmmParameterRegs = new RegisterArray(v0, v1, v2, v3, v4, v5, v6, v7);
+
+        javaGeneralParameterRegisters = new RegisterArray(r1, r2, r3, r4, r5, r6, r7, r0);
 
         nativeParamsStackOffset = 0;
 
@@ -223,9 +226,23 @@ public class SubstrateAArch64RegisterConfig implements SubstrateRegisterConfig {
     }
 
     @Override
-    public RegisterArray getCallingConventionRegisters(Type type, JavaKind kind) {
-        throw unimplemented();
-        // return null;
+    public RegisterArray getCallingConventionRegisters(Type t, JavaKind kind) {
+        SubstrateCallingConventionType type = (SubstrateCallingConventionType) t;
+        switch (kind) {
+            case Boolean:
+            case Byte:
+            case Short:
+            case Char:
+            case Int:
+            case Long:
+            case Object:
+                return (type.nativeABI ? generalParameterRegs : javaGeneralParameterRegisters);
+            case Float:
+            case Double:
+                return xmmParameterRegs;
+            default:
+                throw VMError.shouldNotReachHere();
+        }
     }
 
     @Override
@@ -296,4 +313,5 @@ public class SubstrateAArch64RegisterConfig implements SubstrateRegisterConfig {
 
         return new RegisterArray(list);
     }
+
 }

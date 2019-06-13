@@ -40,6 +40,7 @@
  */
 package com.oracle.truffle.api;
 
+import com.oracle.truffle.api.io.TruffleProcessBuilder;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.OutputStream;
@@ -90,6 +91,7 @@ import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.api.nodes.RootNode;
 import com.oracle.truffle.api.source.Source;
 import com.oracle.truffle.api.source.SourceSection;
+import org.graalvm.polyglot.EnvironmentAccess;
 
 /**
  * A Truffle language implementation contains all the services a language should provide to make it
@@ -311,7 +313,7 @@ public abstract class TruffleLanguage<C> {
          * @see Language#getDefaultMimeType()
          * @see #characterMimeTypes()
          * @see #byteMimeTypes()
-         * @since 1.0
+         * @since 19.0
          */
         String defaultMimeType() default "";
 
@@ -328,7 +330,7 @@ public abstract class TruffleLanguage<C> {
          * @return array of MIME types assigned to your language files
          * @see #defaultMimeType()
          * @see #byteMimeTypes()
-         * @since 1.0
+         * @since 19.0
          */
         String[] characterMimeTypes() default {};
 
@@ -345,7 +347,7 @@ public abstract class TruffleLanguage<C> {
          * @return array of MIME types assigned to your language files
          * @see #defaultMimeType()
          * @see #characterMimeTypes()
-         * @since 1.0
+         * @since 19.0
          */
         String[] byteMimeTypes() default {};
 
@@ -416,7 +418,7 @@ public abstract class TruffleLanguage<C> {
          * be used with policy {@link ContextPolicy#SHARED}.
          *
          * @see TruffleLanguage#parse(ParsingRequest)
-         * @since 1.0
+         * @since 19.0
          */
         ContextPolicy contextPolicy() default ContextPolicy.EXCLUSIVE;
 
@@ -430,7 +432,7 @@ public abstract class TruffleLanguage<C> {
          * {@link Env#lookup(com.oracle.truffle.api.nodes.LanguageInfo, java.lang.Class) service is
          * requested}.
          *
-         * @since 1.0
+         * @since 19.0
          * @return list of service types that this language can provide
          */
         Class<?>[] services() default {};
@@ -443,7 +445,7 @@ public abstract class TruffleLanguage<C> {
          * {@link TruffleFile.FileTypeDetector file type detectors}.
          *
          * @return list of file type detectors
-         * @since 1.0
+         * @since 19.0
          */
         Class<? extends TruffleFile.FileTypeDetector>[] fileTypeDetectors() default {};
     }
@@ -474,7 +476,7 @@ public abstract class TruffleLanguage<C> {
      * @param newOptions the options that will be used for the new context, never <code>null</code>
      * @see ContextPolicy
      * @see #parse(ParsingRequest)
-     * @since 1.0
+     * @since 19.0
      */
     protected boolean areOptionsCompatible(OptionValues firstOptions, OptionValues newOptions) {
         return true;
@@ -553,7 +555,7 @@ public abstract class TruffleLanguage<C> {
     }
 
     /**
-     * @since 1.0
+     * @since 19.0
      * @deprecated in 1.0. Got renamed to {@link #initializeMultipleContexts()} instead. Instead of
      *             returning a boolean configure {@link Registration#contextPolicy() context policy}
      *             .
@@ -584,7 +586,7 @@ public abstract class TruffleLanguage<C> {
      *
      * @see #areOptionsCompatible(OptionValues, OptionValues)
      * @see ContextPolicy
-     * @since 1.0
+     * @since 19.0
      */
     protected void initializeMultipleContexts() {
     }
@@ -1125,26 +1127,6 @@ public abstract class TruffleLanguage<C> {
     }
 
     /**
-     * Looks an additional language service up. By default it checks if the language itself is
-     * implementing the requested class and if so, it returns <code>this</code>.
-     * <p>
-     * In future this method can be made protected and overridable by language implementors to
-     * create more dynamic service system.
-     *
-     * @param <T> the type to request
-     * @param clazz
-     * @return
-     */
-    final /* protected */ <T> T lookup(Class<T> clazz) {
-        if (clazz.isInterface()) {
-            if (clazz.isInstance(this)) {
-                return clazz.cast(this);
-            }
-        }
-        return null;
-    }
-
-    /**
      * Find a meta-object of a value, if any. The meta-object represents a description of the
      * object, reveals it's kind and it's features. Some information that a meta-object might define
      * includes the base object's type, interface, class, methods, attributes, etc.
@@ -1282,7 +1264,7 @@ public abstract class TruffleLanguage<C> {
      * the location of the language files in the default GraalVM distribution layout. executable or
      * shared library.
      *
-     * @since 1.0
+     * @since 19.0
      */
     protected final String getLanguageHome() {
         return AccessAPI.engineAccess().getLanguageHome(AccessAPI.nodesAccess().getEngineObject(languageInfo));
@@ -1565,7 +1547,7 @@ public abstract class TruffleLanguage<C> {
          * entry must not be <code>null</code>.
          *
          * @throws SecurityException if the file is not {@link TruffleFile#isReadable() readable}.
-         * @since 1.0
+         * @since 19.0
          */
         @TruffleBoundary
         public void addToHostClassPath(TruffleFile entry) {
@@ -1593,7 +1575,7 @@ public abstract class TruffleLanguage<C> {
          * Truffle interop.
          *
          * @see #asHostObject(Object)
-         * @since 1.0
+         * @since 19.0
          */
         @SuppressWarnings("static-method")
         public boolean isHostObject(Object value) {
@@ -1605,7 +1587,7 @@ public abstract class TruffleLanguage<C> {
          * host language object. Throws {@link ClassCastException} if the provided argument is not a
          * {@link #isHostObject(Object) host object}.
          *
-         * @since 1.0
+         * @since 19.0
          */
         public Object asHostObject(Object value) {
             if (!isHostObject(value)) {
@@ -1629,7 +1611,7 @@ public abstract class TruffleLanguage<C> {
          * class filters}.
          *
          * @param hostObject the host object to convert
-         * @since 1.0
+         * @since 19.0
          */
         public Object asGuestValue(Object hostObject) {
             return AccessAPI.engineAccess().toGuestValue(hostObject, vmObject);
@@ -1648,7 +1630,7 @@ public abstract class TruffleLanguage<C> {
          * @throws IllegalArgumentException if value is an invalid interop value.
          * @param guestObject the primitive guest value to box
          * @see #asGuestValue(Object)
-         * @since 1.0
+         * @since 19.0
          */
         public Object asBoxedGuestValue(Object guestObject) {
             return AccessAPI.engineAccess().asBoxedGuestValue(guestObject, vmObject);
@@ -1658,7 +1640,7 @@ public abstract class TruffleLanguage<C> {
          * Returns <code>true</code> if the argument is a Java host language function wrapped using
          * Truffle interop.
          *
-         * @since 1.0
+         * @since 19.0
          */
         @SuppressWarnings("static-method")
         public boolean isHostFunction(Object value) {
@@ -1676,7 +1658,7 @@ public abstract class TruffleLanguage<C> {
          * {@link String}.
          *
          * @param value the value to find the meta object for.
-         * @since 1.0
+         * @since 19.0
          */
         public Object findMetaObject(Object value) {
             return AccessAPI.engineAccess().findMetaObjectForLanguage(vmObject, value);
@@ -1695,7 +1677,7 @@ public abstract class TruffleLanguage<C> {
          * @return {@code true} if the {@code exception} is a host exception, {@code false}
          *         otherwise
          * @see #asHostException(Throwable)
-         * @since 1.0
+         * @since 19.0
          */
         @SuppressWarnings("static-method")
         public boolean isHostException(Throwable exception) {
@@ -1714,7 +1696,7 @@ public abstract class TruffleLanguage<C> {
          * @return the original Java exception
          * @throws IllegalArgumentException if the {@code exception} is not a host exception
          * @see #isHostException(Throwable)
-         * @since 1.0
+         * @since 19.0
          */
         @SuppressWarnings("static-method")
         public Throwable asHostException(Throwable exception) {
@@ -1726,7 +1708,7 @@ public abstract class TruffleLanguage<C> {
          * static members of a Java class, as obtained by e.g. {@link #lookupHostSymbol}.
          *
          * @see #lookupHostSymbol(String)
-         * @since 1.0
+         * @since 19.0
          */
         @SuppressWarnings("static-method")
         public boolean isHostSymbol(Object guestObject) {
@@ -1739,7 +1721,7 @@ public abstract class TruffleLanguage<C> {
          * used with Truffle or guest language classes.
          *
          * @see #lookupHostSymbol(String)
-         * @since 1.0
+         * @since 19.0
          */
         @TruffleBoundary
         public Object asHostSymbol(Class<?> symbolClass) {
@@ -1750,7 +1732,7 @@ public abstract class TruffleLanguage<C> {
          * Returns <code>true</code> if access to native code is generally allowed. If this method
          * returns <code>false</code> then loading native libraries with the Truffle NFI will fail.
          *
-         * @since 1.0
+         * @since 19.0
          */
         @TruffleBoundary
         public boolean isNativeAccessAllowed() {
@@ -1766,7 +1748,7 @@ public abstract class TruffleLanguage<C> {
          * {@link Registration#internal() internal languages}.
          *
          * @see org.graalvm.polyglot.Context.Builder#allowPolyglotAccess(org.graalvm.polyglot.PolyglotAccess)
-         * @since 1.0
+         * @since 19.0
          */
         public boolean isPolyglotAccessAllowed() {
             return AccessAPI.engineAccess().isPolyglotAccessAllowed(vmObject);
@@ -1904,7 +1886,7 @@ public abstract class TruffleLanguage<C> {
          * @param type the class of the requested type
          * @return the registered service or <code>null</code> if none is found
          * @since 0.26
-         * @since 1.0 supports services registered by {@link Env#registerService(java.lang.Object)
+         * @since 19.0 supports services registered by {@link Env#registerService(java.lang.Object)
          *        registerService}
          */
         @TruffleBoundary
@@ -1913,13 +1895,7 @@ public abstract class TruffleLanguage<C> {
                 throw new IllegalArgumentException("Cannot request services from the current language.");
             }
             Objects.requireNonNull(language);
-            S result = AccessAPI.engineAccess().lookupService(vmObject, language, this.getSpi().languageInfo, type);
-            if (result != null) {
-                return result;
-            }
-            // Legacy behaviour - deprecate and remove
-            Env otherEnv = AccessAPI.engineAccess().getLanguageEnv(vmObject, language);
-            return otherEnv == null ? null : otherEnv.getSpi().lookup(type);
+            return AccessAPI.engineAccess().lookupService(vmObject, language, this.getSpi().languageInfo, type);
         }
 
         /**
@@ -1978,7 +1954,7 @@ public abstract class TruffleLanguage<C> {
          *
          * @see #initializeContext(Object)
          * @see #patchContext(Object, Env)
-         * @since 1.0
+         * @since 19.0
          */
         @TruffleBoundary
         public boolean isPreInitialization() {
@@ -1990,7 +1966,7 @@ public abstract class TruffleLanguage<C> {
          *
          * @param path the absolute or relative path to create {@link TruffleFile} for
          * @return {@link TruffleFile}
-         * @since 1.0
+         * @since 19.0
          */
         @TruffleBoundary
         public TruffleFile getTruffleFile(String path) {
@@ -2009,7 +1985,7 @@ public abstract class TruffleLanguage<C> {
          *
          * @param uri the {@link URI} to create {@link TruffleFile} for
          * @return {@link TruffleFile}
-         * @since 1.0
+         * @since 19.0
          */
         @TruffleBoundary
         public TruffleFile getTruffleFile(URI uri) {
@@ -2030,7 +2006,7 @@ public abstract class TruffleLanguage<C> {
          * @return the current working directory
          * @throws SecurityException if the {@link FileSystem filesystem} denies reading of the
          *             current working directory
-         * @since 1.0
+         * @since 19.0
          */
         @TruffleBoundary
         public TruffleFile getCurrentWorkingDirectory() {
@@ -2047,7 +2023,7 @@ public abstract class TruffleLanguage<C> {
          * @throws IllegalArgumentException if the {@code currentWorkingDirectory} is not a valid
          *             current working directory
          * @throws SecurityException if {@code currentWorkingDirectory} is not readable
-         * @since 1.0
+         * @since 19.0
          */
         @TruffleBoundary
         public void setCurrentWorkingDirectory(TruffleFile currentWorkingDirectory) {
@@ -2072,13 +2048,30 @@ public abstract class TruffleLanguage<C> {
          * Returns the name separator used to separate names in {@link TruffleFile}'s path string.
          *
          * @return the name separator
-         * @since 1.0
+         * @since 19.0
          */
         @TruffleBoundary
         public String getFileNameSeparator() {
             checkDisposed();
             try {
                 return fileSystemContext.fileSystem.getSeparator();
+            } catch (Throwable t) {
+                throw TruffleFile.wrapHostException(t, fileSystemContext.fileSystem);
+            }
+        }
+
+        /**
+         * Returns the path separator used to separate filenames in a path list. On UNIX the path
+         * separator is {@code ':'}. On Windows it's {@code ';'}.
+         *
+         * @return the path separator
+         * @since 20.0.0 beta 1
+         */
+        @TruffleBoundary
+        public String getPathSeparator() {
+            checkDisposed();
+            try {
+                return fileSystemContext.fileSystem.getPathSeparator();
             } catch (Throwable t) {
                 throw TruffleFile.wrapHostException(t, fileSystemContext.fileSystem);
             }
@@ -2101,13 +2094,56 @@ public abstract class TruffleLanguage<C> {
          *            lookup method}
          * @throws IllegalStateException if the method is called outside of
          *             {@link #createContext(com.oracle.truffle.api.TruffleLanguage.Env)} method
-         * @since 1.0
+         * @since 19.0
          */
         public void registerService(Object service) {
             if (languageServicesCollector == null) {
                 throw new IllegalStateException("The registerService method can only be called during the execution of the Env.createContext method.");
             }
             languageServicesCollector.add(service);
+        }
+
+        /**
+         * Returns {@code true} if the creation of a sub-process is allowed in the current
+         * environment.
+         *
+         * @see #newProcessBuilder(java.lang.String...)
+         * @since 20.0.0 beta 2
+         */
+        public boolean isCreateProcessAllowed() {
+            return AccessAPI.engineAccess().isCreateProcessAllowed(vmObject);
+        }
+
+        /**
+         * Creates a new process builder with the specified operating program and arguments.
+         *
+         * @param command the executable and its arguments
+         * @throws SecurityException when process creation is not allowed
+         * @since 20.0.0 beta 2
+         */
+        @TruffleBoundary
+        public TruffleProcessBuilder newProcessBuilder(String... command) {
+            if (!isCreateProcessAllowed()) {
+                throw new TruffleSecurityException("Process creation is not allowed, to enable it set Context.Builder.allowCreateProcess(true).");
+            }
+            List<String> cmd = new ArrayList<>(command.length);
+            Collections.addAll(cmd, command);
+            return AccessAPI.ioAccess().createProcessBuilder(vmObject, fileSystemContext.fileSystem, cmd);
+        }
+
+        /**
+         * Returns an unmodifiable map of the process environment. When the {@code Context} is
+         * configured with {@link EnvironmentAccess#INHERIT} it returns the {@link System#getenv()}
+         * and the environment variables configured on the {@code Context}. For the
+         * {@link EnvironmentAccess#NONE} only the environment variables configured on the
+         * {@code Context} are returned.
+         *
+         * @return the process environment as a map of variable names to values
+         * @since 20.0.0 beta 2
+         */
+        @TruffleBoundary
+        public Map<String, String> getEnvironment() {
+            return AccessAPI.engineAccess().getProcessEnvironment(vmObject);
         }
 
         @SuppressWarnings("rawtypes")
@@ -2245,7 +2281,7 @@ public abstract class TruffleLanguage<C> {
      * The current language might vary between {@link RootNode#execute(VirtualFrame) executions} if
      * the reference is used with interoperability APIs in the AST of a foreign language.
      *
-     * @since 1.0
+     * @since 19.0
      */
     @SuppressWarnings("rawtypes")
     public abstract static class LanguageReference<L extends TruffleLanguage> {
@@ -2253,7 +2289,7 @@ public abstract class TruffleLanguage<C> {
         /**
          * Constructors for subclasses.
          *
-         * @since 1.0
+         * @since 19.0
          */
         protected LanguageReference() {
         }
@@ -2267,7 +2303,7 @@ public abstract class TruffleLanguage<C> {
          * The current language might vary between {@link RootNode#execute(VirtualFrame) executions}
          * if the reference is used with interoperability APIs in the AST of a foreign language.
          *
-         * @since 1.0
+         * @since 19.0
          */
         public abstract L get();
 
@@ -2288,7 +2324,7 @@ public abstract class TruffleLanguage<C> {
         /**
          * Constructors for subclasses.
          *
-         * @since 1.0
+         * @since 19.0
          */
         protected ContextReference() {
         }
@@ -2325,7 +2361,7 @@ public abstract class TruffleLanguage<C> {
      *
      * @see Registration#contextPolicy() To configure context policy for a language.
      * @see TruffleLanguage#parse(ParsingRequest)
-     * @since 1.0
+     * @since 19.0
      */
     public enum ContextPolicy {
 
@@ -2347,7 +2383,7 @@ public abstract class TruffleLanguage<C> {
          * invoked.
          * </ul>
          *
-         * @since 1.0
+         * @since 19.0
          */
         EXCLUSIVE,
 
@@ -2375,7 +2411,7 @@ public abstract class TruffleLanguage<C> {
          * be shared across multiple contexts.
          * </ul>
          *
-         * @since 1.0
+         * @since 19.0
          */
         REUSE,
 
@@ -2399,7 +2435,7 @@ public abstract class TruffleLanguage<C> {
          * synchronized to support concurrent access.
          * </ul>
          *
-         * @since 1.0
+         * @since 19.0
          */
         SHARED;
 
@@ -2423,6 +2459,10 @@ public abstract class TruffleLanguage<C> {
 
         static InteropSupport interopAccess() {
             return API.interopSupport();
+        }
+
+        static IOSupport ioAccess() {
+            return API.ioSupport();
         }
 
         @Override
@@ -2648,11 +2688,6 @@ public abstract class TruffleLanguage<C> {
         }
 
         @Override
-        public <S> S lookup(TruffleLanguage<?> language, Class<S> type) {
-            return language.lookup(type);
-        }
-
-        @Override
         public Iterable<Scope> findLocalScopes(Env env, Node node, Frame frame) {
             return env.findLocalScopes(node, frame);
         }
@@ -2812,6 +2847,11 @@ public abstract class TruffleLanguage<C> {
         @Override
         public TruffleLogger getLogger(String id, String loggerName, Object loggers) {
             return TruffleLogger.getLogger(id, loggerName, (TruffleLogger.LoggerCache) loggers);
+        }
+
+        @Override
+        public SecurityException throwSecurityException(String message) {
+            throw new TruffleSecurityException(message);
         }
     }
 }

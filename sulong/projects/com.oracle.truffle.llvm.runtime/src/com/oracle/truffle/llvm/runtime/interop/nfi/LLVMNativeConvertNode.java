@@ -232,7 +232,7 @@ public abstract class LLVMNativeConvertNode extends LLVMNode {
         protected NullPointerNode createNullPointerNode() {
             CompilerAsserts.neverPartOfCompilation();
             LLVMContext context = lookupContextReference(LLVMLanguage.class).get();
-            return context.getContextExtension(NFIContextExtension.class).getNativeSulongFunctions().createNullPointerNode(context);
+            return context.getLanguage().getContextExtension(NFIContextExtension.class).getNativeSulongFunctions().createNullPointerNode(context);
         }
 
         protected static TruffleObject createNativeWrapper(LLVMFunctionDescriptor descriptor) {

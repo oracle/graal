@@ -26,7 +26,7 @@ package com.oracle.svm.configure.config;
 
 import java.util.List;
 
-import com.oracle.svm.hosted.config.ReflectionConfigurationParserDelegate;
+import com.oracle.svm.core.configure.ReflectionConfigurationParserDelegate;
 
 public class ParserConfigurationAdapter implements ReflectionConfigurationParserDelegate<ConfigurationType> {
 

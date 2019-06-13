@@ -72,12 +72,12 @@ import com.oracle.truffle.api.CompilerAsserts;
 import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.CompilerDirectives.CompilationFinal;
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
-import com.oracle.truffle.api.impl.Accessor.CastUnsafe;
 import com.oracle.truffle.api.Truffle;
 import com.oracle.truffle.api.TruffleContext;
 import com.oracle.truffle.api.TruffleLanguage;
-import com.oracle.truffle.api.TruffleOptions;
+import com.oracle.truffle.api.impl.Accessor.CastUnsafe;
 import com.oracle.truffle.polyglot.HostLanguage.HostContext;
+import org.graalvm.polyglot.EnvironmentAccess;
 
 final class PolyglotContextImpl extends AbstractContextImpl implements com.oracle.truffle.polyglot.PolyglotImpl.VMObject {
 
@@ -430,7 +430,7 @@ final class PolyglotContextImpl extends AbstractContextImpl implements com.oracl
     Object enter() {
         Object context;
         PolyglotThreadInfo info = getCachedThreadInfo();
-        if (CompilerDirectives.injectBranchProbability(CompilerDirectives.LIKELY_PROBABILITY, info.thread == (TruffleOptions.AOT ? ContextThreadLocal.currentThread() : Thread.currentThread()))) {
+        if (CompilerDirectives.injectBranchProbability(CompilerDirectives.LIKELY_PROBABILITY, info.thread == Thread.currentThread())) {
             // fast-path -> same thread
             context = singleContextState.contextThreadLocal.setReturnParent(this);
             info.enter();
@@ -448,7 +448,7 @@ final class PolyglotContextImpl extends AbstractContextImpl implements com.oracl
     void leave(Object prev) {
         assert current() == this : "Cannot leave context that is currently not entered. Forgot to enter or leave a context?";
         PolyglotThreadInfo info = getCachedThreadInfo();
-        if (CompilerDirectives.injectBranchProbability(CompilerDirectives.LIKELY_PROBABILITY, info.thread == (TruffleOptions.AOT ? ContextThreadLocal.currentThread() : Thread.currentThread()))) {
+        if (CompilerDirectives.injectBranchProbability(CompilerDirectives.LIKELY_PROBABILITY, info.thread == Thread.currentThread())) {
             info.leave();
         } else {
             if (singleThreaded.isValid()) {
@@ -1225,7 +1225,8 @@ final class PolyglotContextImpl extends AbstractContextImpl implements com.oracl
                         Collections.emptyMap(),
                         engine.getLanguages().keySet(),
                         Collections.emptyMap(),
-                        fs, engine.logHandler);
+                        fs, engine.logHandler, true, ProcessHandlers.newDefaultProcessHandler(),
+                        EnvironmentAccess.INHERIT, null);
         final PolyglotContextImpl context = new PolyglotContextImpl(engine, config);
         try {
             final String optionValue = engine.engineOptionValues.get(PolyglotEngineOptions.PreinitializeContexts);

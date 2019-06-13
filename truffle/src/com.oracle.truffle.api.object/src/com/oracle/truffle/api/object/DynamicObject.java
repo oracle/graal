@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2013, 2018, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2013, 2019, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -46,6 +46,7 @@ import com.oracle.truffle.api.CompilerAsserts;
 import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.dsl.Cached;
 import com.oracle.truffle.api.dsl.Cached.Shared;
+import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.interop.TruffleObject;
 import com.oracle.truffle.api.library.DynamicDispatchLibrary;
 import com.oracle.truffle.api.library.ExportLibrary;
@@ -77,7 +78,7 @@ public abstract class DynamicObject implements TruffleObject {
     /**
      * Constructor for subclasses.
      *
-     * @since 1.0
+     * @since 19.0
      */
     protected DynamicObject(Shape shape) {
         verifyShape(shape, this.getClass());
@@ -93,16 +94,37 @@ public abstract class DynamicObject implements TruffleObject {
     }
 
     @ExportMessage
-    final boolean accepts(
-                    @Shared("objectType") @Cached(value = "this.getShape().getObjectType()", allowUncached = true) ObjectType objectType) {
-        return objectType == getShape().getObjectType();
+    static class Accepts {
+
+        @Specialization(limit = "1", guards = "cachedShape == receiver.getShape()")
+        @SuppressWarnings("unused")
+        static boolean doCachedShape(DynamicObject receiver,
+                        @Shared("cachedShape") @Cached("receiver.getShape()") Shape cachedShape) {
+            return true;
+        }
+
+        @Specialization(replaces = "doCachedShape")
+        static boolean doCachedTypeClass(DynamicObject receiver,
+                        @Shared("cachedTypeClass") @Cached(value = "receiver.getShape().getObjectType().getClass()", allowUncached = true) Class<? extends ObjectType> typeClass) {
+            return typeClass == receiver.getShape().getObjectType().getClass();
+        }
     }
 
-    @SuppressWarnings("static-method")
     @ExportMessage
-    final Class<?> dispatch(
-                    @Shared("objectType") @Cached(value = "this.getShape().getObjectType()", allowUncached = true) ObjectType objectType) {
-        return objectType.dispatch();
+    static class Dispatch {
+
+        @Specialization(limit = "1", guards = "cachedShape == receiver.getShape()")
+        static Class<?> doCachedShape(@SuppressWarnings("unused") DynamicObject receiver,
+                        @Shared("cachedShape") @Cached("receiver.getShape()") Shape cachedShape) {
+            return cachedShape.getObjectType().dispatch();
+        }
+
+        @Specialization(replaces = "doCachedShape")
+        static Class<?> doCachedTypeClass(DynamicObject receiver,
+                        @Shared("cachedTypeClass") @Cached(value = "receiver.getShape().getObjectType().getClass()", allowUncached = true) Class<? extends ObjectType> typeClass) {
+            ObjectType objectType = CompilerDirectives.castExact(receiver.getShape().getObjectType(), typeClass);
+            return objectType.dispatch();
+        }
     }
 
     /**

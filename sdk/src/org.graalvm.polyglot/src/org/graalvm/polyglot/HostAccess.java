@@ -79,7 +79,7 @@ import org.graalvm.collections.MapCursor;
  * Custom host access policies can be created using {@link #newBuilder()}. The builder allows to
  * specify a custom export annotation and allowed and denied methods or fields.
  *
- * @since 1.0
+ * @since 19.0
  */
 public final class HostAccess {
 
@@ -111,7 +111,7 @@ public final class HostAccess {
      *                 allowImplementationsAnnotatedBy(HostAccess.Implementable.class).build();
      * </pre>
      *
-     * @since 1.0
+     * @since 19.0
      */
     public static final HostAccess EXPLICIT = newBuilder().//
                     allowAccessAnnotatedBy(HostAccess.Export.class).//
@@ -133,7 +133,7 @@ public final class HostAccess {
      *                 allowArrayAccess(true).allowListAccess(true).build();
      * </pre>
      *
-     * @since 1.0
+     * @since 19.0
      */
     public static final HostAccess ALL = newBuilder().allowPublicAccess(true).allowAllImplementations(true).allowArrayAccess(true).allowListAccess(true).name("HostAccess.ALL").build();
 
@@ -146,7 +146,7 @@ public final class HostAccess {
      * HostAccess.newBuilder().build();
      * </pre>
      *
-     * @since 1.0
+     * @since 19.0
      */
     public static final HostAccess NONE = newBuilder().name("HostAccess.NONE").build();
 
@@ -187,7 +187,7 @@ public final class HostAccess {
      * Creates a new builder that allows to create a custom host access policy. The builder
      * configuration needs to be completed using the {@link Builder#build() method}.
      *
-     * @since 1.0
+     * @since 19.0
      */
     public static Builder newBuilder() {
         return EMPTY.new Builder();
@@ -199,7 +199,7 @@ public final class HostAccess {
      * buidler. The builder configuration needs to be completed using the {@link Builder#build()
      * method}.
      *
-     * @since 1.0
+     * @since 19.0
      */
     public static Builder newBuilder(HostAccess conf) {
         Objects.requireNonNull(conf);
@@ -264,7 +264,7 @@ public final class HostAccess {
     /**
      * {@inheritDoc}
      *
-     * @since 1.0
+     * @since 19.0
      */
     @Override
     public String toString() {
@@ -329,7 +329,7 @@ public final class HostAccess {
      *
      * @see Context.Builder#allowHostAccess(HostAccess)
      * @see HostAccess#EXPLICIT
-     * @since 1.0
+     * @since 19.0
      */
     @Target({ElementType.CONSTRUCTOR, ElementType.FIELD, ElementType.METHOD})
     @Retention(RetentionPolicy.RUNTIME)
@@ -346,7 +346,7 @@ public final class HostAccess {
      * @see Context.Builder#allowHostAccess(HostAccess)
      * @see Value#as(Class)
      * @see HostAccess#EXPLICIT
-     * @since 1.0
+     * @since 19.0
      */
     @Retention(RetentionPolicy.RUNTIME)
     @Target({ElementType.TYPE})
@@ -356,7 +356,7 @@ public final class HostAccess {
     /**
      * Builder to create a custom {@link HostAccess host access policy}.
      *
-     * @since 1.0
+     * @since 19.0
      */
     public final class Builder {
         private EconomicSet<Class<? extends Annotation>> accessAnnotations;
@@ -394,7 +394,7 @@ public final class HostAccess {
          * Allows access to public constructors, methods or fields of public classes that were
          * annotated by the given annotation class.
          *
-         * @since 1.0
+         * @since 19.0
          */
         public Builder allowAccessAnnotatedBy(Class<? extends Annotation> annotation) {
             Objects.requireNonNull(annotation);
@@ -411,7 +411,7 @@ public final class HostAccess {
          * discouraged from using this option in environments where the guest application is not
          * fully trusted.
          *
-         * @since 1.0
+         * @since 19.0
          */
         public Builder allowPublicAccess(boolean allow) {
             allowPublic = allow;
@@ -422,7 +422,7 @@ public final class HostAccess {
          * Allows access to a given constructor or method. Note that the method or constructor must
          * be public in order to have any effect.
          *
-         * @since 1.0
+         * @since 19.0
          */
         public Builder allowAccess(Executable element) {
             Objects.requireNonNull(element);
@@ -437,7 +437,7 @@ public final class HostAccess {
          * Allows access to a given field. Note that the field must be public in order to have any
          * effect.
          *
-         * @since 1.0
+         * @since 19.0
          */
         public Builder allowAccess(Field element) {
             Objects.requireNonNull(element);
@@ -453,7 +453,7 @@ public final class HostAccess {
          *
          * @param clazz the class to deny access to
          * @return this builder
-         * @since 1.0
+         * @since 19.0
          */
         public Builder denyAccess(Class<?> clazz) {
             return denyAccess(clazz, true);
@@ -465,7 +465,7 @@ public final class HostAccess {
          * @param clazz the class to deny access to
          * @param includeSubclasses should subclasses be excuded as well?
          * @return this builder
-         * @since 1.0
+         * @since 19.0
          */
         public Builder denyAccess(Class<?> clazz, boolean includeSubclasses) {
             Objects.requireNonNull(clazz);
@@ -480,7 +480,7 @@ public final class HostAccess {
          * Allow guest languages to implement any Java interface.
          *
          * @see HostAccess#ALL
-         * @since 1.0
+         * @since 19.0
          */
         public Builder allowAllImplementations(boolean allow) {
             this.allowAllImplementations = allow;
@@ -493,7 +493,7 @@ public final class HostAccess {
          * annotation is configured for this purpose.
          *
          * @see HostAccess.Implementable
-         * @since 1.0
+         * @since 19.0
          */
         public Builder allowImplementationsAnnotatedBy(Class<? extends Annotation> annotation) {
             Objects.requireNonNull(annotation);
@@ -507,7 +507,7 @@ public final class HostAccess {
         /**
          * Allow implementations of this type by the guest language.
          *
-         * @since 1.0
+         * @since 19.0
          */
         public Builder allowImplementations(Class<?> interfaceClass) {
             Objects.requireNonNull(interfaceClass);
@@ -523,7 +523,7 @@ public final class HostAccess {
          * {@link Value#hasArrayElements() array elements}. By default no array access is allowed.
          *
          * @see Value#hasArrayElements()
-         * @since 1.0
+         * @since 19.0
          */
         public Builder allowArrayAccess(boolean arrayAccess) {
             this.allowArrayAccess = arrayAccess;
@@ -535,7 +535,7 @@ public final class HostAccess {
          * {@link Value#hasArrayElements() array elements}. By default no array access is allowed.
          *
          * @see Value#hasArrayElements()
-         * @since 1.0
+         * @since 19.0
          */
         public Builder allowListAccess(boolean listAccess) {
             this.allowListAccess = listAccess;
@@ -643,7 +643,7 @@ public final class HostAccess {
          *            <code>null</code>. May throw {@link ClassCastException} if the source value is
          *            not convertible.
          * @throws IllegalArgumentException for primitive target types.
-         * @since 1.0
+         * @since 19.0
          */
         public <S, T> Builder targetTypeMapping(Class<S> sourceType, Class<T> targetType, Predicate<S> accepts, Function<S, T> converter) {
             Objects.requireNonNull(sourceType);
@@ -667,7 +667,7 @@ public final class HostAccess {
         /**
          * Creates an instance of the custom host access configuration.
          *
-         * @since 1.0
+         * @since 19.0
          */
         public HostAccess build() {
             return new HostAccess(accessAnnotations, excludeTypes, members, implementationAnnotations, implementableTypes, targetMappings, name, allowPublic, allowAllImplementations, allowArrayAccess,

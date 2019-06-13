@@ -33,22 +33,20 @@ import java.util.List;
 import java.util.Objects;
 import java.util.Set;
 
-import org.graalvm.compiler.options.Option;
 import org.graalvm.nativeimage.hosted.Feature;
 
 import com.oracle.graal.pointsto.api.PointstoOptions;
 import com.oracle.graal.pointsto.flow.InvokeTypeFlow;
 import com.oracle.graal.pointsto.meta.AnalysisMetaAccess;
 import com.oracle.graal.pointsto.meta.AnalysisMethod;
+import com.oracle.svm.core.FallbackExecutor;
+import com.oracle.svm.core.SubstrateOptions;
 import com.oracle.svm.core.annotate.AutomaticFeature;
-import com.oracle.svm.core.option.APIOption;
-import com.oracle.svm.core.option.HostedOptionKey;
 import com.oracle.svm.core.option.SubstrateOptionsParser;
 import com.oracle.svm.core.util.UserError;
 import com.oracle.svm.core.util.VMError;
 import com.oracle.svm.hosted.FeatureImpl.AfterAnalysisAccessImpl;
 import com.oracle.svm.hosted.FeatureImpl.BeforeAnalysisAccessImpl;
-import com.oracle.svm.hosted.image.AbstractBootImage;
 
 import jdk.vm.ci.meta.ResolvedJavaMethod;
 
@@ -214,22 +212,10 @@ public class FallbackFeature implements Feature {
     }
 
     static UserError.UserException reportAsFallback(RuntimeException original) {
-        if (Options.FallbackThreshold.getValue() == Options.NoFallback) {
+        if (SubstrateOptions.FallbackThreshold.getValue() == SubstrateOptions.NoFallback) {
             throw UserError.abort(original.getMessage(), original);
         }
         throw reportFallback(ABORT_MSG_PREFIX + ". " + original.getMessage(), original);
-    }
-
-    public static class Options {
-        public static final int ForceFallback = 10;
-        public static final int Automatic = 5;
-        public static final int NoFallback = 0;
-
-        @APIOption(name = "force-fallback", fixedValue = "" + ForceFallback, customHelp = "force building of fallback image") //
-        @APIOption(name = "auto-fallback", fixedValue = "" + Automatic, customHelp = "build stand-alone image if possible") //
-        @APIOption(name = "no-fallback", fixedValue = "" + NoFallback, customHelp = "build stand-alone image or report failure") //
-        @Option(help = "Define when fallback-image generation should be used.")//
-        public static final HostedOptionKey<Integer> FallbackThreshold = new HostedOptionKey<>(Automatic);
     }
 
     @SuppressWarnings("serial")
@@ -244,10 +230,14 @@ public class FallbackFeature implements Feature {
     }
 
     @Override
+    public boolean isInConfiguration(IsInConfigurationAccess access) {
+        return FallbackExecutor.Options.FallbackExecutorMainClass.getValue() == null;
+    }
+
+    @Override
     public void afterRegistration(AfterRegistrationAccess a) {
-        if (Options.FallbackThreshold.getValue() == Options.ForceFallback) {
-            String fallbackArgument = SubstrateOptionsParser.commandArgument(Options.FallbackThreshold, "" + Options.FallbackThreshold.getValue());
-            reportFallback(ABORT_MSG_PREFIX + " due to native-image option " + fallbackArgument);
+        if (SubstrateOptions.FallbackThreshold.getValue() == SubstrateOptions.ForceFallback) {
+            reportFallback(ABORT_MSG_PREFIX + " due to native-image option --" + SubstrateOptions.OptionNameForceFallback);
         }
     }
 
@@ -266,10 +256,10 @@ public class FallbackFeature implements Feature {
 
     @Override
     public void afterAnalysis(AfterAnalysisAccess a) {
-        if (Options.FallbackThreshold.getValue() == Options.NoFallback ||
+        if (SubstrateOptions.FallbackThreshold.getValue() == SubstrateOptions.NoFallback ||
                         NativeImageOptions.ReportUnsupportedElementsAtRuntime.getValue() ||
                         NativeImageOptions.AllowIncompleteClasspath.getValue() ||
-                        !AbstractBootImage.NativeImageKind.EXECUTABLE.name().equals(NativeImageOptions.Kind.getValue())) {
+                        SubstrateOptions.SharedLibrary.getValue()) {
             /*
              * Any of the above ensures we unconditionally allow stand-alone image to be generated.
              */

@@ -371,7 +371,6 @@ final class HotSpotToSVMEntryPoints {
     public static void cleanReferences(JNIEnv env, JClass hsClazz, @CEntryPoint.IsolateThreadContext long isolateThreadId) {
         try (HotSpotToSVMScope s = new HotSpotToSVMScope(CleanReferences, env)) {
             System.gc();
-            HSObject.cleanHandles(env);
         } catch (Throwable t) {
             JNIExceptionWrapper.throwInHotSpot(env, t);
         }
@@ -383,7 +382,7 @@ final class HotSpotToSVMEntryPoints {
         CCharPointer optionsCPointer = GetByteArrayElements(env, hsOptions, WordFactory.nullPointer());
         try {
             byte[] optionsBuffer = new byte[len];
-            CTypeConversion.asByteBuffer(optionsCPointer, len).put(optionsBuffer);
+            CTypeConversion.asByteBuffer(optionsCPointer, len).get(optionsBuffer);
             options = OptionsEncoder.decode(optionsBuffer);
         } finally {
             ReleaseByteArrayElements(env, hsOptions, optionsCPointer, JArray.MODE_RELEASE);

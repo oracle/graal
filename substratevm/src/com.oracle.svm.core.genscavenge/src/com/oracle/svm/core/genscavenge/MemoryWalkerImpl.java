@@ -89,6 +89,10 @@ public class MemoryWalkerImpl extends MemoryWalker {
 
 @AutomaticFeature
 class MemoryWalkerFeature implements Feature {
+    @Override
+    public boolean isInConfiguration(IsInConfigurationAccess access) {
+        return HeapOptions.UseCardRememberedSetHeap.getValue();
+    }
 
     @Override
     public void afterRegistration(AfterRegistrationAccess access) {

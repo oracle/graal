@@ -112,7 +112,7 @@ final class LLVMRuntimeDebugInformation {
         private void visitFrameValue(String name) {
             final FrameSlot slot = frame.findFrameSlot(name);
             assert slot != null;
-            final LLVMFrameValueAccess valueAccess = context.getNodeFactory().createDebugFrameValue(slot, isDeclaration);
+            final LLVMFrameValueAccess valueAccess = context.getLanguage().getNodeFactory().createDebugFrameValue(slot, isDeclaration);
             context.getSourceContext().registerFrameValue(symbol, valueAccess);
             notNullableSlots.add(slot);
             variable.addStaticValue();
@@ -121,7 +121,7 @@ final class LLVMRuntimeDebugInformation {
         private void visitSimpleConstant(SymbolImpl constant) {
             final LLVMExpressionNode node = symbols.resolve(constant);
             assert node != null;
-            final LLVMDebugObjectBuilder value = context.getNodeFactory().createDebugStaticValue(node, false);
+            final LLVMDebugObjectBuilder value = context.getLanguage().getNodeFactory().createDebugStaticValue(node, false);
             context.getSourceContext().registerStatic(symbol, value);
             variable.addStaticValue();
         }
@@ -205,7 +205,7 @@ final class LLVMRuntimeDebugInformation {
                 }
 
                 final LLVMSourceSymbol symbol = local.getSymbol();
-                final LLVMFrameValueAccess alloc = context.getNodeFactory().createDebugFrameValue(frameSlot, true);
+                final LLVMFrameValueAccess alloc = context.getLanguage().getNodeFactory().createDebugFrameValue(frameSlot, true);
                 notNullableSlots.add(frameSlot);
                 context.getSourceContext().registerFrameValue(symbol, alloc);
                 local.addStaticValue();
@@ -246,7 +246,7 @@ final class LLVMRuntimeDebugInformation {
             }
         }
 
-        return context.getNodeFactory().createDebugValueInit(targetSlot, offsets, lengths);
+        return context.getLanguage().getNodeFactory().createDebugValueInit(targetSlot, offsets, lengths);
     }
 
     private static final int[] CLEAR_NONE = new int[0];
@@ -320,8 +320,8 @@ final class LLVMRuntimeDebugInformation {
         final boolean mustDereference = isDeclaration || mustDereferenceValue(expression, variable.getSourceType(), value);
 
         final FrameSlot targetSlot = frame.findOrAddFrameSlot(variable.getSymbol(), MetaType.DEBUG, FrameSlotKind.Object);
-        final LLVMExpressionNode containerRead = context.getNodeFactory().createFrameRead(MetaType.DEBUG, targetSlot);
-        return context.getNodeFactory().createDebugValueUpdate(mustDereference, valueRead, targetSlot, containerRead, partIndex, clearParts);
+        final LLVMExpressionNode containerRead = context.getLanguage().getNodeFactory().createFrameRead(MetaType.DEBUG, targetSlot);
+        return context.getLanguage().getNodeFactory().createDebugValueUpdate(mustDereference, valueRead, targetSlot, containerRead, partIndex, clearParts);
     }
 
 }

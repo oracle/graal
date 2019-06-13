@@ -24,16 +24,18 @@
  */
 package org.graalvm.compiler.truffle.runtime.hotspot.libgraal;
 
-import static org.graalvm.libgraal.LibGraal.getIsolateThread;
+import static org.graalvm.libgraal.LibGraalScope.getIsolateThread;
 
 import java.util.Map;
 
 import org.graalvm.compiler.truffle.common.hotspot.HotSpotTruffleCompiler;
 import org.graalvm.compiler.truffle.runtime.hotspot.AbstractHotSpotTruffleRuntime;
 import org.graalvm.libgraal.LibGraal;
+import org.graalvm.libgraal.LibGraalScope;
 import org.graalvm.libgraal.OptionsEncoder;
 
 import com.oracle.truffle.api.TruffleRuntime;
+import jdk.vm.ci.hotspot.HotSpotConstantReflectionProvider;
 
 import jdk.vm.ci.hotspot.HotSpotJVMCIRuntime;
 import jdk.vm.ci.hotspot.HotSpotResolvedJavaType;
@@ -46,43 +48,60 @@ final class LibGraalTruffleRuntime extends AbstractHotSpotTruffleRuntime {
 
     private final long handle;
 
+    @SuppressWarnings("try")
     LibGraalTruffleRuntime() {
         HotSpotJVMCIRuntime runtime = HotSpotJVMCIRuntime.runtime();
         runtime.registerNativeMethods(HotSpotToSVMCalls.class);
         MetaAccessProvider metaAccess = runtime.getHostJVMCIBackend().getMetaAccess();
         HotSpotResolvedJavaType type = (HotSpotResolvedJavaType) metaAccess.lookupJavaType(getClass());
-        long classLoaderDelegate = LibGraal.translate(runtime, type);
-        handle = HotSpotToSVMCalls.initializeRuntime(getIsolateThread(), this, classLoaderDelegate);
+        try (LibGraalScope scope = new LibGraalScope(runtime)) {
+            long classLoaderDelegate = LibGraal.translate(runtime, type);
+            handle = HotSpotToSVMCalls.initializeRuntime(getIsolateThread(), this, classLoaderDelegate);
+        }
     }
 
+    @SuppressWarnings("try")
     @Override
     public HotSpotTruffleCompiler newTruffleCompiler() {
-        return new SVMHotSpotTruffleCompiler(HotSpotToSVMCalls.initializeCompiler(getIsolateThread(), handle));
+        try (LibGraalScope scope = new LibGraalScope(HotSpotJVMCIRuntime.runtime())) {
+            return new SVMHotSpotTruffleCompiler(HotSpotToSVMCalls.initializeCompiler(getIsolateThread(), handle));
+        }
     }
 
+    @SuppressWarnings("try")
     @Override
     protected String initLazyCompilerConfigurationName() {
-        return HotSpotToSVMCalls.getCompilerConfigurationFactoryName(getIsolateThread());
+        try (LibGraalScope scope = new LibGraalScope(HotSpotJVMCIRuntime.runtime())) {
+            return HotSpotToSVMCalls.getCompilerConfigurationFactoryName(getIsolateThread());
+        }
     }
 
+    @SuppressWarnings("try")
     @Override
     protected Map<String, Object> createInitialOptions() {
-        byte[] serializedOptions = HotSpotToSVMCalls.getInitialOptions(getIsolateThread(), handle);
-        return OptionsEncoder.decode(serializedOptions);
+        try (LibGraalScope scope = new LibGraalScope(HotSpotJVMCIRuntime.runtime())) {
+            byte[] serializedOptions = HotSpotToSVMCalls.getInitialOptions(getIsolateThread(), handle);
+            return OptionsEncoder.decode(serializedOptions);
+        }
     }
 
+    @SuppressWarnings("try")
     @Override
     public void log(String message) {
-        HotSpotToSVMCalls.log(getIsolateThread(), message);
+        try (LibGraalScope scope = new LibGraalScope(HotSpotJVMCIRuntime.runtime())) {
+            HotSpotToSVMCalls.log(getIsolateThread(), message);
+        }
     }
 
     /**
      * Clears JNI GlobalReferences to HotSpot objects held by object on SVM heap. NOTE: This method
      * is called reflectively by Truffle tests.
      */
-    @SuppressWarnings("unused")
+    @SuppressWarnings({"unused", "try"})
     private static void cleanNativeReferences() {
-        SVMObject.cleanHandles();
-        HotSpotToSVMCalls.cleanReferences(getIsolateThread());
+        try (LibGraalScope scope = new LibGraalScope(HotSpotJVMCIRuntime.runtime())) {
+            HotSpotToSVMCalls.cleanReferences(getIsolateThread());
+            HotSpotJVMCIRuntime.runtime().translate(((HotSpotConstantReflectionProvider) HotSpotJVMCIRuntime.runtime().getHostJVMCIBackend().getConstantReflection()).forObject(new Object()));
+        }
     }
 }

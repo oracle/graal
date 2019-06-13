@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, Oracle and/or its affiliates.
+ * Copyright (c) 2018, 2019, Oracle and/or its affiliates.
  *
  * All rights reserved.
  *
@@ -39,6 +39,7 @@ import org.junit.Test;
 public class TypedExportTest extends InteropTestBase {
 
     private static Value allocPoint;
+    private static Value allocPointUninitialized;
     private static Value readPoint;
     private static Value freePoint;
 
@@ -56,6 +57,7 @@ public class TypedExportTest extends InteropTestBase {
     public static void loadTestBitcode() {
         Value testLibrary = InteropTestBase.loadTestBitcodeValue("typedExport");
         allocPoint = testLibrary.getMember("allocPoint");
+        allocPointUninitialized = testLibrary.getMember("allocPointUninitialized");
         readPoint = testLibrary.getMember("readPoint");
         freePoint = testLibrary.getMember("freePoint");
 
@@ -110,6 +112,22 @@ public class TypedExportTest extends InteropTestBase {
 
             Value ret = readPoint.execute(point);
             Assert.assertEquals("readPoint", 12034, ret.asInt());
+        } finally {
+            freePoint.execute(point);
+        }
+    }
+
+    @Test
+    public void testAllocUnitialized() {
+        Value point = allocPointUninitialized.execute();
+        try {
+            point.putMember("x", 5);
+            point.putMember("y", 7);
+
+            checkPoint(point, 5, 7);
+
+            Value ret = readPoint.execute(point);
+            Assert.assertEquals("readPoint", 5007, ret.asInt());
         } finally {
             freePoint.execute(point);
         }

@@ -50,6 +50,7 @@ public class ExceptionSynthesizer {
     public static final Method throwNoClassDefFoundErrorMethod;
     public static final Method throwNoSuchFieldErrorMethod;
     public static final Method throwNoSuchMethodErrorMethod;
+    public static final Method throwVerifyErrorMethod;
 
     static {
         try {
@@ -59,6 +60,7 @@ public class ExceptionSynthesizer {
             throwNoClassDefFoundErrorMethod = ImplicitExceptions.class.getDeclaredMethod("throwNoClassDefFoundError", String.class);
             throwNoSuchFieldErrorMethod = ImplicitExceptions.class.getDeclaredMethod("throwNoSuchFieldError", String.class);
             throwNoSuchMethodErrorMethod = ImplicitExceptions.class.getDeclaredMethod("throwNoSuchMethodError", String.class);
+            throwVerifyErrorMethod = ImplicitExceptions.class.getDeclaredMethod("throwVerifyError");
         } catch (NoSuchMethodException ex) {
             throw VMError.shouldNotReachHere(ex);
         }

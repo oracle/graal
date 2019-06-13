@@ -29,8 +29,7 @@
  */
 package com.oracle.truffle.llvm.parser.macho;
 
-import java.util.LinkedList;
-import java.util.List;
+import java.util.ArrayList;
 
 public final class MachOLoadCommandTable {
 
@@ -57,7 +56,7 @@ public final class MachOLoadCommandTable {
 
     public static MachOLoadCommandTable create(MachOHeader header, MachOReader reader) {
         MachOLoadCommand[] loadCommands = new MachOLoadCommand[header.getNCmds()];
-        List<MachOSegmentCommand> segmentCommands = new LinkedList<>();
+        ArrayList<MachOSegmentCommand> segmentCommands = new ArrayList<>();
 
         for (int i = 0; i < header.getNCmds(); i++) {
             loadCommands[i] = parseLoadCommand(reader);

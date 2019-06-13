@@ -79,8 +79,7 @@ public abstract class LLVMDispatchNode extends LLVMNode {
         if (signature == null) {
             CompilerDirectives.transferToInterpreterAndInvalidate();
             try {
-                LLVMContext context = lookupContextReference(LLVMLanguage.class).get();
-                NFIContextExtension nfiContextExtension = context.getContextExtension(NFIContextExtension.class);
+                NFIContextExtension nfiContextExtension = LLVMLanguage.getLanguage().getContextExtension(NFIContextExtension.class);
                 this.signature = nfiContextExtension.getNativeSignature(type, LLVMCallNode.USER_ARGUMENT_OFFSET);
             } catch (UnsupportedNativeTypeException ex) {
                 CompilerDirectives.transferToInterpreter();
@@ -244,7 +243,7 @@ public abstract class LLVMDispatchNode extends LLVMNode {
             this.type = type;
         }
 
-        abstract Object execute(TruffleObject function, LLVMInteropType.Structured interopType, Object[] arguments);
+        abstract Object execute(Object function, LLVMInteropType.Structured interopType, Object[] arguments);
 
         @Specialization(guards = "functionType == cachedType", limit = "5")
         protected Object doCachedType(TruffleObject function, @SuppressWarnings("unused") LLVMInteropType.Function functionType, Object[] arguments,

@@ -275,6 +275,9 @@ public final class Deoptimizer {
     }
 
     /** Deoptimize a specific method on all thread stacks. */
+    @NeverInline("Starting a stack walk in the caller frame. " +
+                    "Note that we could start the stack frame also further down the stack, because VM operation frames never need deoptimization. " +
+                    "But we don't store stack frame information for the first frame we would need to process.")
     private static void deoptimizeInRangeOperation(CodePointer fromIp, CodePointer toIp, boolean deoptAll) {
         VMOperation.guaranteeInProgress("Deoptimizer.deoptimizeInRangeOperation, but not in VMOperation.");
         /* Handle my own thread specially, because I do not have a JavaFrameAnchor. */
@@ -671,7 +674,7 @@ public final class Deoptimizer {
                      * the same object can be re-locked multiple times, we change the thread after
                      * all virtual frames have been reconstructed.
                      */
-                    ImageSingletons.lookup(MonitorSupport.class).setExclusiveOwnerThread(lockee, JavaThreads.singleton().createIfNotExisting(currentThread));
+                    ImageSingletons.lookup(MonitorSupport.class).setExclusiveOwnerThread(lockee, JavaThreads.fromVMThread(currentThread));
                 }
             }
         }
@@ -843,7 +846,7 @@ public final class Deoptimizer {
             Object lockee = KnownIntrinsics.convertUnknownValue(SubstrateObjectConstant.asObject(valueConstant), Object.class);
             int lockeeIndex = TypeConversion.asS4(valueInfo.getData());
             assert lockee == materializedObjects[lockeeIndex];
-            MonitorSupport.monitorEnter(lockee);
+            MonitorSupport.monitorEnterWithoutBlockingCheck(lockee);
 
             if (relockedObjects == null) {
                 relockedObjects = new Object[sourceFrame.getVirtualObjects().length];

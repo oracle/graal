@@ -29,8 +29,6 @@ import jdk.vm.ci.meta.Value;
 
 public interface SubstrateLIRGenerator {
 
-    Value emitReadInstructionPointer();
-
     void emitFarReturn(AllocatableValue result, Value sp, Value ip);
 
     void emitDeadEnd();

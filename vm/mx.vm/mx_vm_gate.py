@@ -62,14 +62,12 @@ class VmGateTasks:
 
 def gate_body(args, tasks):
     with Task('Vm: Basic GraalVM Tests', tasks, tags=[VmGateTasks.compiler]) as t:
-        if t and mx_vm.has_component('Graal compiler'):
+        if t and mx_vm.has_component('GraalVM compiler'):
             # 1. a full open-source build should be built with an open-source JDK but we allow Oracle JDK in non-strict mode as it is common on developer machines
             # 2. the build must be a GraalVM
-            # 3. the build must be JVMCI-enabled since the 'Graal compiler' component is registered
+            # 3. the build must be JVMCI-enabled since the 'GraalVM compiler' component is registered
             version_regex = mx_vm.openjdk_version_regex if args.strict_mode else mx_vm.anyjdk_version_regex
             mx_vm.check_versions(mx_vm.graalvm_output(), version_regex, graalvm_version_regex=mx_vm.graalvm_version_regex, expect_graalvm=True, check_jvmci=True)
-
-
 
     if mx_vm.has_component('LibGraal'):
         libgraal_location = mx_vm.get_native_image_locations('LibGraal', 'jvmcicompiler')
@@ -144,7 +142,7 @@ def gate_substratevm(tasks):
     with Task('Run Truffle host interop tests on SVM', tasks, tags=[VmGateTasks.substratevm]) as t:
         if t:
             tests = ['ValueHostInteropTest', 'ValueHostConversionTest']
-            truffle_no_compilation = ['--initialize-at-build-time', '--tool:truffle',
+            truffle_no_compilation = ['--initialize-at-build-time', '--macro:truffle',
                                       '-Dtruffle.TruffleRuntime=com.oracle.truffle.api.impl.DefaultTruffleRuntime']
             truffle_dir = mx.suite('truffle').dir
             args = ['--build-args'] + truffle_no_compilation + [

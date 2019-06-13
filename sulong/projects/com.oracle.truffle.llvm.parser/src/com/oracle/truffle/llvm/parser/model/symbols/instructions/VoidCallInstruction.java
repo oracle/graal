@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2016, 2018, Oracle and/or its affiliates.
+ * Copyright (c) 2016, 2019, Oracle and/or its affiliates.
  *
  * All rights reserved.
  *
@@ -35,7 +35,7 @@ import com.oracle.truffle.llvm.parser.model.attributes.AttributesCodeEntry;
 import com.oracle.truffle.llvm.parser.model.attributes.AttributesGroup;
 import com.oracle.truffle.llvm.parser.model.visitors.SymbolVisitor;
 
-public final class VoidCallInstruction extends VoidInstruction implements FunctionStart {
+public final class VoidCallInstruction extends VoidInstruction implements Call {
 
     private SymbolImpl target;
 
@@ -93,12 +93,12 @@ public final class VoidCallInstruction extends VoidInstruction implements Functi
     public static VoidCallInstruction fromSymbols(IRScope scope, int targetIndex, int[] arguments, AttributesCodeEntry paramAttr) {
         final VoidCallInstruction inst = new VoidCallInstruction(paramAttr, arguments.length);
         inst.target = scope.getSymbols().getForwardReferenced(targetIndex, inst);
-        FunctionStart.parseArguments(scope, inst.target, inst, inst.arguments, arguments);
+        Call.parseArguments(scope, inst.target, inst, inst.arguments, arguments);
         return inst;
     }
 
     @Override
     public String toString() {
-        return FunctionStart.asString(target, arguments);
+        return Call.asString(target, arguments);
     }
 }

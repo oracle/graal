@@ -140,12 +140,6 @@ public class InstalledCodeBuilder {
             }
             return false;
         }
-
-        /** For verification: Does the memory known to this walker contain this pointer? */
-        @Override
-        public boolean containsPointer(final Pointer p) {
-            return baseAddr.belowOrEqual(p) && p.belowThan(baseAddr.add(size));
-        }
     }
 
     /**

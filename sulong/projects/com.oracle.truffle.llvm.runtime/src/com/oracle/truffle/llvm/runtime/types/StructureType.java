@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2017, 2018, Oracle and/or its affiliates.
+ * Copyright (c) 2017, 2019, Oracle and/or its affiliates.
  *
  * All rights reserved.
  *
@@ -44,6 +44,7 @@ public final class StructureType extends AggregateType {
     private final String name;
     private final boolean isPacked;
     @CompilationFinal(dimensions = 1) private final Type[] types;
+    private int size = -1;
 
     public StructureType(String name, boolean isPacked, Type[] types) {
         this.name = name;
@@ -100,6 +101,9 @@ public final class StructureType extends AggregateType {
 
     @Override
     public int getSize(DataLayout targetDataLayout) {
+        if (size != -1) {
+            return size;
+        }
         int sumByte = 0;
         for (final Type elementType : types) {
             if (!isPacked) {
@@ -112,14 +116,8 @@ public final class StructureType extends AggregateType {
         if (!isPacked && sumByte != 0) {
             padding = Type.getPadding(sumByte, getAlignment(targetDataLayout));
         }
-
-        return sumByte + padding;
-    }
-
-    @Override
-    public Type shallowCopy() {
-        final StructureType copy = new StructureType(name, isPacked, types);
-        return copy;
+        size = sumByte + padding;
+        return size;
     }
 
     @Override

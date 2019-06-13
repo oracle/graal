@@ -27,6 +27,8 @@ package com.oracle.svm.core.jdk;
 // Checkstyle: allow reflection
 
 import java.lang.ref.ReferenceQueue;
+import java.lang.reflect.InvocationTargetException;
+import java.lang.reflect.Method;
 import java.util.function.Function;
 
 import org.graalvm.compiler.nodes.extended.MembarNode;
@@ -50,7 +52,6 @@ import com.oracle.svm.core.hub.DynamicHub;
 import com.oracle.svm.core.hub.LayoutEncoding;
 import com.oracle.svm.core.log.Log;
 import com.oracle.svm.core.os.VirtualMemoryProvider;
-import com.oracle.svm.core.snippets.KnownIntrinsics;
 
 import jdk.vm.ci.code.MemoryBarriers;
 import sun.misc.Unsafe;
@@ -72,7 +73,7 @@ final class Target_Unsafe_Core {
         return result.rawValue();
     }
 
-    @TargetElement(onlyWith = JDK9OrLater.class)
+    @TargetElement(onlyWith = JDK11OrLater.class)
     @Substitute
     private long allocateMemory0(long bytes) {
         return UnmanagedMemory.malloc(WordFactory.unsigned(bytes)).rawValue();
@@ -98,7 +99,7 @@ final class Target_Unsafe_Core {
         return result.rawValue();
     }
 
-    @TargetElement(onlyWith = JDK9OrLater.class)
+    @TargetElement(onlyWith = JDK11OrLater.class)
     @Substitute
     private long reallocateMemory0(long address, long bytes) {
         return UnmanagedMemory.realloc(WordFactory.unsigned(address), WordFactory.unsigned(bytes)).rawValue();
@@ -112,7 +113,7 @@ final class Target_Unsafe_Core {
         }
     }
 
-    @TargetElement(onlyWith = JDK9OrLater.class)
+    @TargetElement(onlyWith = JDK11OrLater.class)
     @Substitute
     private void freeMemory0(long address) {
         UnmanagedMemory.free(WordFactory.unsigned(address));
@@ -128,7 +129,7 @@ final class Target_Unsafe_Core {
                         WordFactory.unsigned(bytes));
     }
 
-    @TargetElement(onlyWith = JDK9OrLater.class)
+    @TargetElement(onlyWith = JDK11OrLater.class)
     @Substitute
     @Uninterruptible(reason = "Converts Object to Pointer.")
     private void copyMemory0(Object srcBase, long srcOffset, Object destBase, long destOffset, long bytes) {
@@ -138,7 +139,7 @@ final class Target_Unsafe_Core {
                         WordFactory.unsigned(bytes));
     }
 
-    @TargetElement(onlyWith = JDK9OrLater.class)
+    @TargetElement(onlyWith = JDK11OrLater.class)
     @Substitute
     @Uninterruptible(reason = "Converts Object to Pointer.")
     private void copySwapMemory0(Object srcBase, long srcOffset, Object destBase, long destOffset, long bytes, long elemSize) {
@@ -157,7 +158,7 @@ final class Target_Unsafe_Core {
                         WordFactory.unsigned(bytes), bvalue);
     }
 
-    @TargetElement(onlyWith = JDK9OrLater.class)
+    @TargetElement(onlyWith = JDK11OrLater.class)
     @Substitute
     @Uninterruptible(reason = "Converts Object to Pointer.")
     private void setMemory0(Object destBase, long destOffset, long bytes, byte bvalue) {
@@ -170,7 +171,7 @@ final class Target_Unsafe_Core {
     @Substitute
     private int addressSize() {
         /*
-         * No substitution necessary for JDK 9 or later because there the method is already
+         * No substitution necessary for JDK 11 or later because there the method is already
          * implemented exactly like this.
          */
         return Unsafe.ADDRESS_SIZE;
@@ -193,9 +194,8 @@ final class Target_Unsafe_Core {
     }
 
     @Substitute
-    private void throwException(Throwable t) {
-        /* Make the Java compiler happy by pretending we are throwing a non-checked exception. */
-        throw KnownIntrinsics.unsafeCast(t, RuntimeException.class);
+    private void throwException(Throwable t) throws Throwable {
+        throw t;
     }
 
     @Substitute
@@ -251,7 +251,7 @@ final class Target_sun_misc_MessageUtils {
 class Package_jdk_internal_ref implements Function<TargetClass, String> {
     @Override
     public String apply(TargetClass annotation) {
-        if (JavaVersionUtil.Java8OrEarlier) {
+        if (JavaVersionUtil.JAVA_SPEC <= 8) {
             return "sun.misc." + annotation.className();
         } else {
             return "jdk.internal.ref." + annotation.className();
@@ -283,7 +283,7 @@ final class Target_jdk_internal_ref_Cleaner {
     native void clean();
 }
 
-@TargetClass(className = "jdk.internal.ref.CleanerImpl", onlyWith = JDK9OrLater.class)
+@TargetClass(className = "jdk.internal.ref.CleanerImpl", onlyWith = JDK11OrLater.class)
 final class Target_jdk_internal_ref_CleanerImpl {
 
     @Alias @RecomputeFieldValue(kind = RecomputeFieldValue.Kind.NewInstance, declClassName = "jdk.internal.ref.CleanerImpl$PhantomCleanableRef")//
@@ -299,15 +299,15 @@ final class Target_jdk_internal_ref_CleanerImpl {
     ReferenceQueue<Object> queue;
 }
 
-@TargetClass(className = "jdk.internal.ref.PhantomCleanable", onlyWith = JDK9OrLater.class)
+@TargetClass(className = "jdk.internal.ref.PhantomCleanable", onlyWith = JDK11OrLater.class)
 final class Target_jdk_internal_ref_PhantomCleanable {
 }
 
-@TargetClass(className = "jdk.internal.ref.WeakCleanable", onlyWith = JDK9OrLater.class)
+@TargetClass(className = "jdk.internal.ref.WeakCleanable", onlyWith = JDK11OrLater.class)
 final class Target_jdk_internal_ref_WeakCleanable {
 }
 
-@TargetClass(className = "jdk.internal.ref.SoftCleanable", onlyWith = JDK9OrLater.class)
+@TargetClass(className = "jdk.internal.ref.SoftCleanable", onlyWith = JDK11OrLater.class)
 final class Target_jdk_internal_ref_SoftCleanable {
 }
 
@@ -315,7 +315,7 @@ final class Target_jdk_internal_ref_SoftCleanable {
 class Package_jdk_internal_perf implements Function<TargetClass, String> {
     @Override
     public String apply(TargetClass annotation) {
-        if (JavaVersionUtil.Java8OrEarlier) {
+        if (JavaVersionUtil.JAVA_SPEC <= 8) {
             return "sun.misc." + annotation.className();
         } else {
             return "jdk.internal.perf." + annotation.className();
@@ -342,27 +342,27 @@ final class Target_jdk_internal_perf_PerfCounter {
     }
 }
 
-@TargetClass(classNameProvider = Package_jdk_internal_misc.class, className = "SharedSecrets")
-final class Target_jdk_internal_misc_SharedSecrets {
+@TargetClass(classNameProvider = Package_jdk_internal_access.class, className = "SharedSecrets")
+final class Target_jdk_internal_access_SharedSecrets {
     @Substitute
-    private static Target_jdk_internal_misc_JavaAWTAccess getJavaAWTAccess() {
+    private static Target_jdk_internal_access_JavaAWTAccess getJavaAWTAccess() {
         return null;
     }
 }
 
-@TargetClass(classNameProvider = Package_jdk_internal_misc.class, className = "JavaAWTAccess")
-final class Target_jdk_internal_misc_JavaAWTAccess {
+@TargetClass(classNameProvider = Package_jdk_internal_access.class, className = "JavaAWTAccess")
+final class Target_jdk_internal_access_JavaAWTAccess {
 }
 
-@TargetClass(classNameProvider = Package_jdk_internal_misc.class, className = "JavaLangAccess")
-final class Target_jdk_internal_misc_JavaLangAccess {
+@TargetClass(classNameProvider = Package_jdk_internal_access.class, className = "JavaLangAccess")
+final class Target_jdk_internal_access_JavaLangAccess {
 }
 
 @Platforms(Platform.HOSTED_ONLY.class)
 class Package_jdk_internal_loader implements Function<TargetClass, String> {
     @Override
     public String apply(TargetClass annotation) {
-        if (JavaVersionUtil.Java8OrEarlier) {
+        if (JavaVersionUtil.JAVA_SPEC <= 8) {
             return "sun.misc." + annotation.className();
         } else {
             return "jdk.internal.loader." + annotation.className();
@@ -373,6 +373,14 @@ class Package_jdk_internal_loader implements Function<TargetClass, String> {
 @TargetClass(classNameProvider = Package_jdk_internal_loader.class, className = "URLClassPath", innerClass = "JarLoader")
 @Delete
 final class Target_sun_misc_URLClassPath_JarLoader {
+}
+
+@TargetClass(className = "sun.reflect.misc.MethodUtil")
+final class Target_sun_reflect_misc_MethodUtil {
+    @Substitute
+    private static Object invoke(Method m, Object obj, Object[] params) throws InvocationTargetException, IllegalAccessException {
+        return m.invoke(obj, params);
+    }
 }
 
 /** Dummy class to have a class with the file's name. */

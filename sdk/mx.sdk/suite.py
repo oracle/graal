@@ -41,7 +41,7 @@
 suite = {
   "mxversion" : "5.210.2",
   "name" : "sdk",
-  "version" : "1.0.0-rc18",
+  "version" : "20.0.0-beta.02",
   "release" : False,
   "sourceinprojectwhitelist" : [],
   "url" : "https://github.com/oracle/graal",
@@ -65,7 +65,7 @@ suite = {
     "lafo" : {
       "snapshotsUrl" : "https://curio.ssw.jku.at/nexus/content/repositories/snapshots",
       "releasesUrl": "https://curio.ssw.jku.at/nexus/content/repositories/releases",
-      "licenses" : ["GPLv2-CPE", "UPL", "BSD-new"]
+      "licenses" : ["GPLv2-CPE", "UPL", "BSD-new", "MIT"]
     },
   },
   "snippetsPattern" : ".*(Snippets|doc-files).*",

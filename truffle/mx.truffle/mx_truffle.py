@@ -449,11 +449,14 @@ def _tck(args):
     if len(tests) == 0:
         tests = ["com.oracle.truffle.tck.tests"]
     index = len(args_no_tests)
+    has_separator_arg = False
     for arg in reversed(args_no_tests):
         if arg.startswith("--"):
+            if arg == "--":
+                has_separator_arg = True
             break
         index = index - 1
-    unitTestOptions = args_no_tests[0:max(index-1, 0)]
+    unitTestOptions = args_no_tests[0:max(index - (1 if has_separator_arg else 0), 0)]
     jvmOptions = args_no_tests[index:len(args_no_tests)]
     if tckConfiguration == "default":
         unittest(unitTestOptions + ["--"] + jvmOptions + tests)
@@ -703,19 +706,18 @@ class LibffiBuildTask(mx.AbstractNativeBuildTask):
         mx.rmtree(self.subject.out_dir, ignore_errors=True)
 
 
-mx_sdk.register_graalvm_component(mx_sdk.GraalVmTool(
+mx_sdk.register_graalvm_component(mx_sdk.GraalVMSvmMacro(
     suite=_suite,
     name='Truffle',
     short_name='tfl',
     dir_name='truffle',
     license_files=[],
     third_party_license_files=[],
-    truffle_jars=[],
     support_distributions=['truffle:TRUFFLE_GRAALVM_SUPPORT']
 ))
 
 
-mx_sdk.register_graalvm_component(mx_sdk.GraalVmTool(
+mx_sdk.register_graalvm_component(mx_sdk.GraalVmLanguage(
     suite=_suite,
     name='Truffle NFI',
     short_name='nfi',

@@ -64,7 +64,7 @@ public final class AArch64CGlobalDataLoadAddressOp extends AArch64LIRInstruction
                 // Pure symbol reference: the data contains the symbol's address, load it
                 Register resultRegister = asRegister(result);
                 AArch64Address address = AArch64Address.createScaledImmediateAddress(resultRegister, 0x0);
-                masm.adrAddRel(64, resultRegister, address);
+                masm.adrpLdr(64, resultRegister, address);
                 crb.compilationResult.recordDataPatch(before, new CGlobalDataReference(dataInfo));
             } else {
                 // Data: load its address

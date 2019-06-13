@@ -49,7 +49,7 @@ import java.util.function.Function;
 /**
  * Represents a type of an option that allows to convert string values to Java values.
  *
- * @since 1.0
+ * @since 19.0
  */
 public final class OptionType<T> {
 
@@ -67,7 +67,7 @@ public final class OptionType<T> {
      * @param validator used for validating the option value. Throws
      *            {@link IllegalArgumentException} if the value is invalid.
      *
-     * @since 1.0
+     * @since 19.0
      */
     public OptionType(String name, Function<String, T> stringConverter, Consumer<T> validator) {
         Objects.requireNonNull(name);
@@ -86,7 +86,7 @@ public final class OptionType<T> {
      * @param stringConverter a function that converts a string value to the option value. Can throw
      *            {@link IllegalArgumentException} to indicate an invalid string.
      *
-     * @since 1.0
+     * @since 19.0
      */
     public OptionType(String name, Function<String, T> stringConverter) {
         this(name, stringConverter, new Consumer<T>() {
@@ -97,7 +97,7 @@ public final class OptionType<T> {
 
     /**
      * @deprecated Use {@link #OptionType(String, Function, Consumer)}
-     * @since 1.0
+     * @since 19.0
      */
     @Deprecated
     @SuppressWarnings("unused")
@@ -107,7 +107,7 @@ public final class OptionType<T> {
 
     /**
      * @deprecated Use {@link #OptionType(String, Function)}
-     * @since 1.0
+     * @since 19.0
      */
     @Deprecated
     @SuppressWarnings("unused")
@@ -117,7 +117,7 @@ public final class OptionType<T> {
 
     /**
      * @deprecated
-     * @since 1.0
+     * @since 19.0
      */
     @Deprecated
     public T getDefaultValue() {
@@ -127,7 +127,7 @@ public final class OptionType<T> {
     /**
      * Returns the name of this type.
      *
-     * @since 1.0
+     * @since 19.0
      */
     public String getName() {
         return name;
@@ -137,7 +137,7 @@ public final class OptionType<T> {
      * Converts a string value, validates it, and converts it to an object of this type.
      *
      * @throws IllegalArgumentException if the value is invalid or cannot be converted.
-     * @since 1.0
+     * @since 19.0
      */
     public T convert(String value) {
         T v = stringConverter.apply(value);
@@ -150,14 +150,14 @@ public final class OptionType<T> {
      * invalid.
      *
      * @throws IllegalArgumentException if the value is invalid or cannot be converted.
-     * @since 1.0
+     * @since 19.0
      */
     public void validate(T value) {
         validator.accept(value);
     }
 
     /**
-     * @since 1.0
+     * @since 19.0
      */
     @Override
     public String toString() {
@@ -233,7 +233,7 @@ public final class OptionType<T> {
      * Returns the default option type for a given value. Returns <code>null</code> if no default
      * option type is available for the Java type of this value.
      *
-     * @since 1.0
+     * @since 19.0
      */
     @SuppressWarnings("unchecked")
     public static <T> OptionType<T> defaultType(T value) {
@@ -244,7 +244,7 @@ public final class OptionType<T> {
      * Returns the default option type for a class. Returns <code>null</code> if no default option
      * type is available for this Java type.
      *
-     * @since 1.0
+     * @since 19.0
      */
     @SuppressWarnings("unchecked")
     public static <T> OptionType<T> defaultType(Class<T> clazz) {

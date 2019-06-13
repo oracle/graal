@@ -47,7 +47,7 @@ import com.oracle.svm.hosted.jni.JNIRuntimeAccess;
 
 @Platforms(Platform.WINDOWS.class)
 @AutomaticFeature
-@CLibrary("java")
+@CLibrary(value = "java", requireStatic = true)
 class WindowsJavaIOSubstituteFeature implements Feature {
 
     @Override

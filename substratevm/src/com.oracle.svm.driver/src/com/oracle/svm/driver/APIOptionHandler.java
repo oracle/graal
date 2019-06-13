@@ -24,9 +24,7 @@
  */
 package com.oracle.svm.driver;
 
-import java.lang.reflect.Constructor;
 import java.lang.reflect.Field;
-import java.lang.reflect.InvocationTargetException;
 import java.nio.file.Paths;
 import java.util.ArrayList;
 import java.util.Arrays;
@@ -41,10 +39,10 @@ import java.util.stream.Collectors;
 
 import org.graalvm.compiler.options.OptionDescriptor;
 import org.graalvm.compiler.options.OptionDescriptors;
-import org.graalvm.nativeimage.hosted.Feature;
 import org.graalvm.nativeimage.ImageSingletons;
 import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.Platforms;
+import org.graalvm.nativeimage.hosted.Feature;
 
 import com.oracle.svm.core.annotate.AutomaticFeature;
 import com.oracle.svm.core.option.APIOption;
@@ -53,6 +51,8 @@ import com.oracle.svm.core.option.SubstrateOptionsParser;
 import com.oracle.svm.core.util.VMError;
 import com.oracle.svm.hosted.FeatureImpl;
 import com.oracle.svm.hosted.option.HostedOptionParser;
+import com.oracle.svm.util.ReflectionUtil;
+import com.oracle.svm.util.ReflectionUtil.ReflectionUtilError;
 
 class APIOptionHandler extends NativeImage.OptionHandler<NativeImage> {
 
@@ -161,12 +161,10 @@ class APIOptionHandler extends NativeImage.OptionHandler<NativeImage> {
                 List<Function<Object, Object>> valueTransformers = new ArrayList<>(apiAnnotation.valueTransformer().length);
                 for (Class<? extends Function<Object, Object>> transformerClass : apiAnnotation.valueTransformer()) {
                     try {
-                        Constructor<? extends Function<Object, Object>> constructor = transformerClass.getDeclaredConstructor();
-                        constructor.setAccessible(true);
-                        valueTransformers.add(constructor.newInstance());
-                    } catch (NoSuchMethodException | InstantiationException | IllegalAccessException | IllegalArgumentException | InvocationTargetException ex) {
+                        valueTransformers.add(ReflectionUtil.newInstance(transformerClass));
+                    } catch (ReflectionUtilError ex) {
                         throw VMError.shouldNotReachHere(
-                                        "Class specified as valueTransformer for @APIOption " + apiOptionName + " cannot be loaded or instantiated: " + transformerClass.getTypeName(), ex);
+                                        "Class specified as valueTransformer for @APIOption " + apiOptionName + " cannot be loaded or instantiated: " + transformerClass.getTypeName(), ex.getCause());
                     }
                 }
                 apiOptions.put(apiOptionName,
@@ -253,7 +251,7 @@ final class APIOptionCollector implements Feature {
     @Override
     public void duringSetup(DuringSetupAccess access) {
         FeatureImpl.DuringSetupAccessImpl accessImpl = (FeatureImpl.DuringSetupAccessImpl) access;
-        List<Class<? extends OptionDescriptors>> optionClasses = accessImpl.getImageClassLoader().findSubclasses(OptionDescriptors.class);
+        List<Class<? extends OptionDescriptors>> optionClasses = accessImpl.getImageClassLoader().findSubclasses(OptionDescriptors.class, true);
         options = APIOptionHandler.extractOptions(optionClasses);
     }
 }

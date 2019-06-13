@@ -29,7 +29,7 @@ suite = {
 
   "name" : "regex",
 
-  "version" : "1.0.0-rc18",
+  "version" : "20.0.0-beta.02",
   "release" : False,
   "groupId" : "org.graalvm.regex",
   "url" : "http://www.graalvm.org/",
@@ -108,6 +108,7 @@ suite = {
     },
 
     "TREGEX_UNIT_TESTS" : {
+      "subDir": "src",
       "dependencies" : [
         "com.oracle.truffle.regex.test",
       ],

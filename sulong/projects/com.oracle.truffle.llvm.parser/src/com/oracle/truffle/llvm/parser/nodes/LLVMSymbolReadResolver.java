@@ -418,7 +418,7 @@ public final class LLVMSymbolReadResolver {
     public LLVMSymbolReadResolver(LLVMParserRuntime runtime, FrameDescriptor frame, GetStackSpaceFactory getStackSpaceFactory) {
         this.runtime = runtime;
         this.context = runtime.getContext();
-        this.nodeFactory = context.getNodeFactory();
+        this.nodeFactory = context.getLanguage().getNodeFactory();
         this.frame = frame;
         this.getStackSpaceFactory = getStackSpaceFactory;
     }

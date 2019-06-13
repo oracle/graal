@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2017, 2018, Oracle and/or its affiliates.
+ * Copyright (c) 2017, 2019, Oracle and/or its affiliates.
  *
  * All rights reserved.
  *
@@ -29,14 +29,14 @@
  */
 package com.oracle.truffle.llvm.runtime;
 
-import com.oracle.truffle.llvm.runtime.debug.scope.LLVMSourceLocation;
-
-import java.util.LinkedList;
+import java.util.ArrayList;
 import java.util.List;
+
+import com.oracle.truffle.llvm.runtime.debug.scope.LLVMSourceLocation;
 
 public final class SulongStackTrace {
 
-    private final LinkedList<Element> trace = new LinkedList<>();
+    private final ArrayList<Element> trace = new ArrayList<>();
     private final String summary;
 
     public SulongStackTrace(String summary) {
@@ -110,11 +110,11 @@ public final class SulongStackTrace {
     }
 
     public void addStackTraceElement(String sourceFunctionName, LLVMSourceLocation sourceLocation, String irFunctionName, String irSourceName, String irBlock) {
-        trace.addLast(new Element(sourceFunctionName, sourceLocation, irFunctionName, irSourceName, irBlock));
+        trace.add(new Element(sourceFunctionName, sourceLocation, irFunctionName, irSourceName, irBlock));
     }
 
     public void addStackTraceElement(String irFunctionName, String irSourceName, String irBlock) {
-        trace.addLast(new Element(irFunctionName, irSourceName, irBlock));
+        trace.add(new Element(irFunctionName, irSourceName, irBlock));
     }
 
     @Override
@@ -131,9 +131,5 @@ public final class SulongStackTrace {
 
     public List<Element> getTrace() {
         return java.util.Collections.unmodifiableList(trace);
-    }
-
-    public void printCStackTrace() {
-        System.err.println(this.toString());
     }
 }

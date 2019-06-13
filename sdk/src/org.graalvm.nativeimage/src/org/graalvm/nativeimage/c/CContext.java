@@ -54,7 +54,7 @@ import org.graalvm.nativeimage.c.function.CLibrary;
  * to be imported, the C macros that need to be defined to properly configure these headers, and
  * additional flags that should be passed to the C compiler when analyzing the definitions.
  *
- * @since 1.0
+ * @since 19.0
  */
 @Retention(RetentionPolicy.RUNTIME)
 @Target({ElementType.TYPE})
@@ -63,14 +63,14 @@ public @interface CContext {
     /**
      * Specifies which directives are used with the annotated element.
      *
-     * @since 1.0
+     * @since 19.0
      */
     Class<? extends Directives> value();
 
     /**
      * Describes a C context.
      *
-     * @since 1.0
+     * @since 19.0
      */
     interface Directives {
 
@@ -79,7 +79,7 @@ public @interface CContext {
          * part of the configuration or not. If this method returns false, all elements registered
          * inside this context are ignored.
          *
-         * @since 1.0
+         * @since 19.0
          */
         default boolean isInConfiguration() {
             return true;
@@ -90,7 +90,7 @@ public @interface CContext {
          * surrounded with &lt;...&gt;, or "...". One of them must be used for every element in the
          * returned list.
          *
-         * @since 1.0
+         * @since 19.0
          */
         default List<String> getHeaderFiles() {
             return Collections.emptyList();
@@ -100,7 +100,7 @@ public @interface CContext {
          * Unparameterized macro-definitions. Each entry is in the form of <macro-name> or
          * <macro-name> <macro-value>.
          *
-         * @since 1.0
+         * @since 19.0
          */
         default List<String> getMacroDefinitions() {
             return Collections.emptyList();
@@ -110,7 +110,7 @@ public @interface CContext {
          * Returns options to be passed to the C compiler when processing the directives. For
          * example, the option "-Ipath" can be used to add a path for the lookup of header files.
          *
-         * @since 1.0
+         * @since 19.0
          */
         default List<String> getOptions() {
             return Collections.emptyList();
@@ -120,7 +120,7 @@ public @interface CContext {
          * Returns a collection of libraries. They are treated the same way as libraries added via
          * the {@link CLibrary} annotation.
          *
-         * @since 1.0
+         * @since 19.0
          */
         default List<String> getLibraries() {
             return Collections.emptyList();
@@ -129,7 +129,7 @@ public @interface CContext {
         /**
          * Returns a list of library paths.
          *
-         * @since 1.0
+         * @since 19.0
          */
         default List<String> getLibraryPaths() {
             return Collections.emptyList();

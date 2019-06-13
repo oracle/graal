@@ -30,7 +30,6 @@ import java.nio.channels.ByteChannel;
 import java.nio.file.Files;
 import java.nio.file.LinkOption;
 import java.nio.file.Path;
-import java.nio.file.Paths;
 import java.nio.file.StandardCopyOption;
 import java.nio.file.attribute.PosixFileAttributeView;
 import java.nio.file.attribute.PosixFilePermission;
@@ -45,7 +44,6 @@ import java.util.Set;
 import java.util.logging.Level;
 import java.util.logging.Logger;
 import org.graalvm.component.installer.Archive;
-import org.graalvm.component.installer.BundleConstants;
 import org.graalvm.component.installer.CommonConstants;
 import org.graalvm.component.installer.ComponentCollection;
 import org.graalvm.component.installer.model.ComponentRegistry;
@@ -119,15 +117,8 @@ public class Installer extends AbstractInstaller {
 
     Path translateTargetPath(Path base, String n) {
         Path rel;
-        if (BundleConstants.PATH_LICENSE.equals(n)) {
-            rel = getLicenseRelativePath();
-            if (rel == null) {
-                rel = Paths.get(n);
-            }
-        } else {
-            // assert relative path
-            rel = SystemUtils.fromCommonRelative(base, n);
-        }
+        // assert relative path
+        rel = SystemUtils.fromCommonRelative(base, n);
         Path p = getInstallPath().resolve(rel).normalize();
         // confine into graalvm subdir
         if (!p.startsWith(getInstallPath())) {

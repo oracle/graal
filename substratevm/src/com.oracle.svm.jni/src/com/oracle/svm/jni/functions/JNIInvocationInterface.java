@@ -64,7 +64,8 @@ import com.oracle.svm.jni.JNIJavaVMList;
 import com.oracle.svm.jni.JNIObjectHandles;
 import com.oracle.svm.jni.JNIThreadLocalEnvironment;
 import com.oracle.svm.jni.JNIThreadOwnedMonitors;
-import com.oracle.svm.jni.functions.JNIFunctions.Support.JNIJavaVMEnterAttachThreadPrologue;
+import com.oracle.svm.jni.functions.JNIFunctions.Support.JNIJavaVMEnterAttachThreadEnsureJavaThreadPrologue;
+import com.oracle.svm.jni.functions.JNIFunctions.Support.JNIJavaVMEnterAttachThreadManualJavaThreadPrologue;
 import com.oracle.svm.jni.functions.JNIInvocationInterface.Support.JNIGetEnvPrologue;
 import com.oracle.svm.jni.nativeapi.JNIEnvironmentPointer;
 import com.oracle.svm.jni.nativeapi.JNIErrors;
@@ -173,7 +174,7 @@ final class JNIInvocationInterface {
      * jint AttachCurrentThread(JavaVM *vm, void **p_env, void *thr_args);
      */
     @CEntryPoint
-    @CEntryPointOptions(prologue = JNIJavaVMEnterAttachThreadPrologue.class, publishAs = Publish.NotPublished, include = CEntryPointOptions.NotIncludedAutomatically.class)
+    @CEntryPointOptions(prologue = JNIJavaVMEnterAttachThreadManualJavaThreadPrologue.class, publishAs = Publish.NotPublished, include = CEntryPointOptions.NotIncludedAutomatically.class)
     static int AttachCurrentThread(JNIJavaVM vm, JNIEnvironmentPointer penv, JNIJavaVMAttachArgs args) {
         return Support.attachCurrentThread(vm, penv, args, false);
     }
@@ -182,7 +183,7 @@ final class JNIInvocationInterface {
      * jint AttachCurrentThreadAsDaemon(JavaVM *vm, void **p_env, void *thr_args);
      */
     @CEntryPoint
-    @CEntryPointOptions(prologue = JNIJavaVMEnterAttachThreadPrologue.class, publishAs = Publish.NotPublished, include = CEntryPointOptions.NotIncludedAutomatically.class)
+    @CEntryPointOptions(prologue = JNIJavaVMEnterAttachThreadManualJavaThreadPrologue.class, publishAs = Publish.NotPublished, include = CEntryPointOptions.NotIncludedAutomatically.class)
     static int AttachCurrentThreadAsDaemon(JNIJavaVM vm, JNIEnvironmentPointer penv, JNIJavaVMAttachArgs args) {
         return Support.attachCurrentThread(vm, penv, args, true);
     }
@@ -191,7 +192,7 @@ final class JNIInvocationInterface {
      * jint DetachCurrentThread(JavaVM *vm);
      */
     @CEntryPoint
-    @CEntryPointOptions(prologue = JNIJavaVMEnterAttachThreadPrologue.class, epilogue = LeaveDetachThreadEpilogue.class, publishAs = Publish.NotPublished, include = CEntryPointOptions.NotIncludedAutomatically.class)
+    @CEntryPointOptions(prologue = JNIJavaVMEnterAttachThreadEnsureJavaThreadPrologue.class, epilogue = LeaveDetachThreadEpilogue.class, publishAs = Publish.NotPublished, include = CEntryPointOptions.NotIncludedAutomatically.class)
     static int DetachCurrentThread(JNIJavaVM vm) {
         int result = JNIErrors.JNI_OK();
         if (!vm.equal(JNIFunctionTables.singleton().getGlobalJavaVM())) {
@@ -206,7 +207,7 @@ final class JNIInvocationInterface {
      * jint DestroyJavaVM(JavaVM *vm);
      */
     @CEntryPoint
-    @CEntryPointOptions(prologue = JNIJavaVMEnterAttachThreadPrologue.class, epilogue = LeaveTearDownIsolateEpilogue.class, publishAs = Publish.NotPublished, include = CEntryPointOptions.NotIncludedAutomatically.class)
+    @CEntryPointOptions(prologue = JNIJavaVMEnterAttachThreadEnsureJavaThreadPrologue.class, epilogue = LeaveTearDownIsolateEpilogue.class, publishAs = Publish.NotPublished, include = CEntryPointOptions.NotIncludedAutomatically.class)
     @SuppressWarnings("unused")
     static int DestroyJavaVM(JNIJavaVM vm) {
         JavaThreads.singleton().joinAllNonDaemons();
@@ -267,7 +268,7 @@ final class JNIInvocationInterface {
                         }
                     }
                 }
-                JavaThreads.singleton().assignJavaThread(name, group, asDaemon);
+
                 /*
                  * Ignore if a Thread object has already been assigned: "If the thread has already
                  * been attached via either AttachCurrentThread or AttachCurrentThreadAsDaemon, this
@@ -275,6 +276,8 @@ final class JNIInvocationInterface {
                  * thread. In this case neither AttachCurrentThread nor this routine have any effect
                  * on the daemon status of the thread."
                  */
+                JavaThreads.ensureJavaThread(name, group, asDaemon);
+
                 return JNIErrors.JNI_OK();
             }
             return JNIErrors.JNI_ERR();

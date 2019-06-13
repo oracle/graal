@@ -63,11 +63,16 @@ import org.graalvm.compiler.replacements.Snippets;
 import org.graalvm.nativeimage.c.function.CodePointer;
 import org.graalvm.word.Pointer;
 
+import com.oracle.svm.core.annotate.NeverInline;
+
 import jdk.vm.ci.meta.JavaKind;
 
 public final class ExceptionSnippets extends SubstrateTemplates implements Snippets {
 
     @Snippet
+    @NeverInline("All methods accessing caller frame must have this annotation. " +
+                    "The requirement would not be necessary for a snippet, but the annotation does not matter on the snippet root method, " +
+                    "so having the annotation is easier than coding an exception to the annotation checker.")
     protected static void unwindSnippet(Throwable exception) {
         Pointer callerSP = readCallerStackPointer();
         CodePointer callerIP = readReturnAddress();

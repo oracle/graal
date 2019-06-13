@@ -67,6 +67,7 @@ import java.util.logging.LogManager;
 import java.util.stream.Collectors;
 
 import org.graalvm.collections.EconomicSet;
+import org.graalvm.compiler.serviceprovider.JavaVersionUtil;
 
 import com.oracle.svm.core.util.UserError;
 import com.oracle.svm.core.util.VMError;
@@ -74,6 +75,7 @@ import com.oracle.svm.hosted.ImageBuildTask;
 import com.oracle.svm.hosted.NativeImageClassLoader;
 import com.oracle.svm.hosted.NativeImageGeneratorRunner;
 import com.oracle.svm.hosted.server.SubstrateServerMessage.ServerCommand;
+import com.oracle.svm.util.ReflectionUtil;
 
 /**
  * A server for SVM image building that keeps the classpath and JIT compiler code caches warm over
@@ -116,7 +118,9 @@ public final class NativeImageBuildServer {
         /*
          * Set the right classloader in the process reaper
          */
-        withGlobalStaticField("java.lang.UNIXProcess", "processReaperExecutor", f -> {
+        String executorClassHolder = JavaVersionUtil.JAVA_SPEC <= 8 ? "java.lang.UNIXProcess" : "java.lang.ProcessHandleImpl";
+
+        withGlobalStaticField(executorClassHolder, "processReaperExecutor", f -> {
             ThreadPoolExecutor executor = (ThreadPoolExecutor) f.get(null);
             final ThreadFactory factory = executor.getThreadFactory();
             executor.setThreadFactory(r -> {
@@ -443,20 +447,22 @@ public final class NativeImageBuildServer {
     }
 
     private static boolean isSystemLoaderLogLevelEntry(Entry<?, ?> e) {
-        return ((List<?>) e.getValue()).stream()
-                        .map(x -> getFieldValueOfObject("java.util.logging.Level$KnownLevel", "levelObject", x))
-                        .allMatch(NativeImageBuildServer::isSystemClassLoader);
+        if (JavaVersionUtil.JAVA_SPEC <= 8) {
+            return ((List<?>) e.getValue()).stream()
+                            .map(x -> getFieldValueOfObject("java.util.logging.Level$KnownLevel", "levelObject", x))
+                            .allMatch(NativeImageBuildServer::isSystemClassLoader);
+        } else {
+            return ((List<?>) e.getValue()).stream()
+                            .map(x -> getFieldValueOfObject("java.util.logging.Level$KnownLevel", "mirroredLevel", x))
+                            .allMatch(NativeImageBuildServer::isSystemClassLoader);
+        }
     }
 
     private static Object getFieldValueOfObject(String className, String fieldName, Object o) {
         try {
-            Field field = Class.forName(className).getDeclaredField(fieldName);
-            field.setAccessible(true);
-            Object res = field.get(o);
-            field.setAccessible(false);
-            return res;
-        } catch (NoSuchFieldException | ClassNotFoundException | IllegalAccessException e) {
-            throw VMError.shouldNotReachHere("Static field " + fieldName + " of class " + className + " can't be reset. Underlying exception: " + e.getMessage());
+            return ReflectionUtil.readField(Class.forName(className), fieldName, o);
+        } catch (ClassNotFoundException ex) {
+            throw VMError.shouldNotReachHere(ex);
         }
     }
 
@@ -472,12 +478,10 @@ public final class NativeImageBuildServer {
 
     private static void withGlobalStaticField(String className, String fieldName, FieldAction action) {
         try {
-            Field field = Class.forName(className).getDeclaredField(fieldName);
-            field.setAccessible(true);
+            Field field = ReflectionUtil.lookupField(Class.forName(className), fieldName);
             action.perform(field);
-            field.setAccessible(false);
-        } catch (NoSuchFieldException | ClassNotFoundException | IllegalAccessException e) {
-            throw VMError.shouldNotReachHere("Static field " + fieldName + " of class " + className + " can't be reset. Underlying exception: " + e.getMessage());
+        } catch (ClassNotFoundException | IllegalAccessException ex) {
+            throw VMError.shouldNotReachHere(ex);
         }
     }
 

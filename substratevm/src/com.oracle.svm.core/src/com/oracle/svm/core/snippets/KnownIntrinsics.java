@@ -27,6 +27,7 @@ package com.oracle.svm.core.snippets;
 import org.graalvm.nativeimage.c.function.CodePointer;
 import org.graalvm.word.Pointer;
 
+import com.oracle.svm.core.annotate.NeverInline;
 import com.oracle.svm.core.hub.DynamicHub;
 
 /**
@@ -62,12 +63,6 @@ public class KnownIntrinsics {
     public static native Object formatArray(Pointer memory, Class<?> hub, int length, boolean rememberedSet, boolean unaligned);
 
     /**
-     * Casts the result to a new static type without any type checking. The caller is responsible
-     * for type safety.
-     */
-    public static native <T> T unsafeCast(Object obj, Class<T> toType);
-
-    /**
      * Narrow down the range of values to exclude 0 as the possible pointer value.
      *
      * @param pointer that we are narrowing to non-null
@@ -81,17 +76,18 @@ public class KnownIntrinsics {
     public static native Pointer readStackPointer();
 
     /**
-     * Returns the value of the native instruction pointer.
-     */
-    public static native CodePointer readInstructionPointer();
-
-    /**
      * Returns the value of the native stack pointer for the physical caller frame.
+     *
+     * The caller of this method must be annotated with {@link NeverInline} to ensure that the
+     * physical caller frame is deterministic.
      */
     public static native Pointer readCallerStackPointer();
 
     /**
      * Returns the value of the native instruction pointer for the physical caller frame.
+     *
+     * The caller of this method must be annotated with {@link NeverInline} to ensure that the
+     * physical caller frame is deterministic.
      */
     public static native CodePointer readReturnAddress();
 

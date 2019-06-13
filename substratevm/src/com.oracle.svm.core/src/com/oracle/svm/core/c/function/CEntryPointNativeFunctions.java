@@ -102,7 +102,7 @@ public final class CEntryPointNativeFunctions {
                     "the thread's isolate thread structure."})
     @CEntryPointOptions(prologue = NoPrologue.class, epilogue = NoEpilogue.class, nameTransformation = NameTransformation.class)
     public static int attachThread(Isolate isolate, IsolateThreadPointer thread) {
-        int result = CEntryPointActions.enterAttachThread(isolate);
+        int result = CEntryPointActions.enterAttachThread(isolate, true);
         if (result == 0) {
             thread.write(CurrentIsolate.getCurrentThread());
             result = CEntryPointActions.leave();

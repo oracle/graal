@@ -58,7 +58,7 @@ public final class Target_java_lang_Shutdown {
     }
 
     @Substitute
-    @TargetElement(onlyWith = JDK9OrLater.class)
+    @TargetElement(onlyWith = JDK11OrLater.class)
     static void beforeHalt() {
     }
 

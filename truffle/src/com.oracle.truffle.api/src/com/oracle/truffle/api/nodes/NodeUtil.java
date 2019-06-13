@@ -236,7 +236,7 @@ public final class NodeUtil {
     /**
      * Returns the current encapsulating node for non {@link Node#isAdoptable() adoptable} nodes.
      *
-     * @since 1.0
+     * @since 19.0
      */
     @TruffleBoundary
     public static Node getCurrentEncapsulatingNode() {
@@ -247,7 +247,7 @@ public final class NodeUtil {
      * Utility to push the current encapsulating Node for nodes that are not
      * {@link Node#isAdoptable() adoptable}.
      *
-     * @since 1.0
+     * @since 19.0
      */
     @TruffleBoundary
     public static Node pushEncapsulatingNode(Node node) {
@@ -262,7 +262,7 @@ public final class NodeUtil {
      * Utility to push the pop encapsulating Node for nodes that are not {@link Node#isAdoptable()
      * adoptable}.
      *
-     * @since 1.0
+     * @since 19.0
      */
     @TruffleBoundary
     public static void popEncapsulatingNode(Node prev) {
@@ -765,12 +765,15 @@ public final class NodeUtil {
                     return nodeClass.getFieldName(field);
                 }
             } else if (nodeClass.isChildrenField(field)) {
-                int index = 0;
-                for (Object arrayNode : (Object[]) nodeClass.getFieldObject(field, parent)) {
-                    if (arrayNode == node) {
-                        return nodeClass.getFieldName(field) + "[" + index + "]";
+                Object[] arrayNodes = (Object[]) nodeClass.getFieldObject(field, parent);
+                if (arrayNodes != null) {
+                    int index = 0;
+                    for (Object arrayNode : arrayNodes) {
+                        if (arrayNode == node) {
+                            return nodeClass.getFieldName(field) + "[" + index + "]";
+                        }
+                        index++;
                     }
-                    index++;
                 }
             } else if (nodeClass.nodeFieldsOrderedByKind()) {
                 break;

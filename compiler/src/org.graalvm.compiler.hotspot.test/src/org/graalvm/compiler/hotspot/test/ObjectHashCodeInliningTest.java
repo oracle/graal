@@ -74,8 +74,9 @@ public class ObjectHashCodeInliningTest extends GraalCompilerTest {
     }
 
     @Override
-    protected boolean checkHighTierGraph(StructuredGraph graph) {
-        return containsForeignCallToIdentityHashCode(graph) && containsReadStringHash(graph);
+    protected void checkHighTierGraph(StructuredGraph graph) {
+        assert containsForeignCallToIdentityHashCode(graph) : "expected a foreign call to identity_hashcode";
+        assert containsReadStringHash(graph) : "expected a read from String.hash";
     }
 
 }

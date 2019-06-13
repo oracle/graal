@@ -174,14 +174,14 @@ public class VMThreadSTFeature implements GraalFeature {
     private boolean handleGet(GraphBuilderContext b, ResolvedJavaMethod targetMethod, Receiver receiver) {
         VMThreadLocalInfo info = threadLocalCollector.findInfo(b, receiver.get());
         VMThreadLocalSTHolderNode holder = b.add(new VMThreadLocalSTHolderNode(info));
-        b.addPush(targetMethod.getSignature().getReturnKind(), new LoadVMThreadLocalNode(b.getMetaAccess(), info, holder, BarrierType.PRECISE));
+        b.addPush(targetMethod.getSignature().getReturnKind(), new LoadVMThreadLocalNode(b.getMetaAccess(), info, holder, BarrierType.ARRAY));
         return true;
     }
 
     private boolean handleSet(GraphBuilderContext b, Receiver receiver, ValueNode valueNode) {
         VMThreadLocalInfo info = threadLocalCollector.findInfo(b, receiver.get());
         VMThreadLocalSTHolderNode holder = b.add(new VMThreadLocalSTHolderNode(info));
-        b.add(new StoreVMThreadLocalNode(info, holder, valueNode, BarrierType.PRECISE));
+        b.add(new StoreVMThreadLocalNode(info, holder, valueNode, BarrierType.ARRAY));
         return true;
     }
 
