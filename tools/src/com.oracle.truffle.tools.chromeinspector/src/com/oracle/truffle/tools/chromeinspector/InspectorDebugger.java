@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2017, 2018, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2017, 2019, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -128,12 +128,12 @@ public final class InspectorDebugger extends DebuggerDomain {
             }
         });
         if (suspend) {
-            doEnable();
+            startSession();
             ds.suspendNextExecution();
         }
     }
 
-    private void doEnable() {
+    private void startSession() {
         Debugger tdbg = context.getEnv().lookup(context.getEnv().getInstruments().get("debugger"), Debugger.class);
         ds = tdbg.startSession(new SuspendedCallbackImpl(), SourceElement.ROOT, SourceElement.STATEMENT);
         ds.setSourcePath(context.getSourcePath());
@@ -144,27 +144,26 @@ public final class InspectorDebugger extends DebuggerDomain {
     }
 
     @Override
-    public void enable() {
+    public void doEnable() {
         if (ds == null) {
-            doEnable();
+            startSession();
         }
         slh.addLoadScriptListener(new LoadScriptListenerImpl());
     }
 
     @Override
-    public void disable() {
-        if (ds != null) {
-            slh.setDebuggerSession(null);
-            ds.close();
-            ds = null;
-            context.releaseScriptsHandler();
-            slh = null;
-            bph = null;
-            synchronized (suspendLock) {
-                if (!running) {
-                    running = true;
-                    suspendLock.notifyAll();
-                }
+    public void doDisable() {
+        assert ds != null;
+        slh.setDebuggerSession(null);
+        ds.close();
+        ds = null;
+        context.releaseScriptsHandler();
+        slh = null;
+        bph = null;
+        synchronized (suspendLock) {
+            if (!running) {
+                running = true;
+                suspendLock.notifyAll();
             }
         }
     }

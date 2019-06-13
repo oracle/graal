@@ -118,30 +118,28 @@ public final class InspectorRuntime extends RuntimeDomain {
     }
 
     @Override
-    public void enable() {
-        if (contextListener == null) {
-            slh = context.acquireScriptsHandler();
-            contextListener = new ContextListener();
-            context.addListener(contextListener);
-            InstrumentInfo instrumentInfo = context.getEnv().getInstruments().get(OutputConsumerInstrument.ID);
-            enabler = context.getEnv().lookup(instrumentInfo, Enabler.class);
-            enabler.enable();
-            OutputHandler oh = context.getEnv().lookup(instrumentInfo, OutputHandler.Provider.class).getOutputHandler();
-            oh.setOutListener(new ConsoleOutputListener("log"));
-            oh.setErrListener(new ConsoleOutputListener("error"));
-        }
+    public void doEnable() {
+        assert contextListener == null;
+        slh = context.acquireScriptsHandler();
+        contextListener = new ContextListener();
+        context.addListener(contextListener);
+        InstrumentInfo instrumentInfo = context.getEnv().getInstruments().get(OutputConsumerInstrument.ID);
+        enabler = context.getEnv().lookup(instrumentInfo, Enabler.class);
+        enabler.enable();
+        OutputHandler oh = context.getEnv().lookup(instrumentInfo, OutputHandler.Provider.class).getOutputHandler();
+        oh.setOutListener(new ConsoleOutputListener("log"));
+        oh.setErrListener(new ConsoleOutputListener("error"));
     }
 
     @Override
-    public void disable() {
-        if (contextListener != null) {
-            context.removeListener(contextListener);
-            contextListener = null;
-            enabler.disable();
-            enabler = null;
-            slh = null;
-            context.releaseScriptsHandler();
-        }
+    public void doDisable() {
+        assert contextListener != null;
+        context.removeListener(contextListener);
+        contextListener = null;
+        enabler.disable();
+        enabler = null;
+        slh = null;
+        context.releaseScriptsHandler();
     }
 
     private Source createSource(String expression, String sourceURL) {
