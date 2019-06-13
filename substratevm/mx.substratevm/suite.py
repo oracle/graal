@@ -224,7 +224,7 @@ suite = {
             "subDir": "src",
             "sourceDirs": ["src"],
             "dependencies": [
-                "com.oracle.svm.hosted",
+                "com.oracle.svm.core",
             ],
             "checkstyle": "com.oracle.svm.core",
             "javaCompliance": "8+",
@@ -241,7 +241,7 @@ suite = {
             "subDir": "src",
             "sourceDirs": ["src"],
             "dependencies": [
-                "com.oracle.svm.hosted",
+                "com.oracle.svm.core",
             ],
             "checkstyle": "com.oracle.svm.core",
             "javaCompliance": "8+",
