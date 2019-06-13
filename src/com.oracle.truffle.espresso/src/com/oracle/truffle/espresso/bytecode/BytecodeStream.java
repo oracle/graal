@@ -26,12 +26,11 @@ import java.util.Arrays;
 
 import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.CompilerDirectives.CompilationFinal;
-import com.oracle.truffle.espresso.classfile.BootstrapMethodsAttribute;
+import com.oracle.truffle.espresso.classfile.ClassConstant;
 import com.oracle.truffle.espresso.classfile.ConstantPool;
 import com.oracle.truffle.espresso.classfile.InvokeDynamicConstant;
 import com.oracle.truffle.espresso.classfile.MethodRefConstant;
 import com.oracle.truffle.espresso.impl.Klass;
-import com.oracle.truffle.espresso.impl.Method;
 import com.oracle.truffle.espresso.meta.EspressoError;
 
 /**
@@ -263,8 +262,9 @@ public final class BytecodeStream {
             ConstantPool pool = klass.getConstantPool();
             int bci = 0;
             int nextBCI = 0;
+            StringBuilder str = new StringBuilder();
             while (nextBCI < endBCI()) {
-                StringBuilder str = new StringBuilder();
+                str.setLength(0);
                 bci = nextBCI;
                 int opcode = currentBC(bci);
                 str.append(bci).append(": ").append(Bytecodes.nameOf(opcode)).append(" ");
@@ -272,6 +272,11 @@ public final class BytecodeStream {
                 if (Bytecodes.isBranch(opcode)) {
                     // {bci}: {branch bytecode} {target}
                     str.append(readBranchDest(bci));
+                } else if (opcode == Bytecodes.NEW) {
+                    // {bci}: new {class name}
+                    int CPI = readCPI(bci);
+                    ClassConstant cc = (ClassConstant) pool.at(CPI);
+                    str.append(cc.getName(pool));
                 } else if (opcode == Bytecodes.INVOKEDYNAMIC) {
                     // {bci}: #{bootstrap method index} -> {name}:{signature}
                     int CPI = readCPI(bci);

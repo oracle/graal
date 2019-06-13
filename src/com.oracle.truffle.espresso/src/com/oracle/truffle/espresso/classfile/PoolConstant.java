@@ -43,7 +43,7 @@ public interface PoolConstant {
 
     /**
      * Throws VerifyError if the constant is ill-formed (/ex: a StringConstant does not refer to an
-     * UTF8Constant
+     * UTF8Constant)
      * 
      * @param pool The constant pool in which this constant appears.
      */
