@@ -25,14 +25,20 @@
 
 package com.oracle.svm.core.jdk;
 
+import org.graalvm.nativeimage.ImageSingletons;
 import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.Platforms;
 import org.graalvm.nativeimage.c.function.CLibrary;
+import org.graalvm.nativeimage.hosted.Feature;
 import org.graalvm.nativeimage.impl.InternalPlatform;
+import org.graalvm.nativeimage.impl.RuntimeClassInitializationSupport;
 
 import com.oracle.svm.core.annotate.Alias;
+import com.oracle.svm.core.annotate.AutomaticFeature;
 import com.oracle.svm.core.annotate.TargetClass;
+import com.oracle.svm.core.jni.JNIRuntimeAccess;
 import com.oracle.svm.core.log.Log;
+import com.oracle.svm.core.util.VMError;
 
 @Platforms({InternalPlatform.LINUX_JNI.class, InternalPlatform.DARWIN_JNI.class, Platform.WINDOWS.class})
 @CLibrary(value = JDKLibZipSubstitutions.CLibraryName, requireStatic = true)
@@ -61,6 +67,39 @@ public class JDKLibZipSubstitutions {
     static final class Target_java_util_zip_Deflater {
         @Alias
         static native void initIDs();
+    }
+}
+
+@Platforms({InternalPlatform.LINUX_JNI.class, InternalPlatform.DARWIN_JNI.class, Platform.WINDOWS.class})
+@AutomaticFeature
+class JDKLibZipFeature implements Feature {
+    @Override
+    public void duringSetup(DuringSetupAccess access) {
+        ImageSingletons.lookup(RuntimeClassInitializationSupport.class).rerunInitialization(access.findClassByName("java.util.zip.ZipFile"), "required for substitutions");
+        ImageSingletons.lookup(RuntimeClassInitializationSupport.class).rerunInitialization(access.findClassByName("java.util.zip.Inflater"), "required for substitutions");
+        ImageSingletons.lookup(RuntimeClassInitializationSupport.class).rerunInitialization(access.findClassByName("java.util.zip.Deflater"), "required for substitutions");
+    }
+
+    @Override
+    public void beforeAnalysis(BeforeAnalysisAccess access) {
+        try {
+            JNIRuntimeAccess.register(java.util.zip.Inflater.class.getDeclaredField("needDict"));
+            JNIRuntimeAccess.register(java.util.zip.Inflater.class.getDeclaredField("finished"));
+            JNIRuntimeAccess.register(java.util.zip.Inflater.class.getDeclaredField("buf"));
+            JNIRuntimeAccess.register(java.util.zip.Inflater.class.getDeclaredField("off"));
+            JNIRuntimeAccess.register(java.util.zip.Inflater.class.getDeclaredField("len"));
+
+            JNIRuntimeAccess.register(java.util.zip.Deflater.class.getDeclaredField("level"));
+            JNIRuntimeAccess.register(java.util.zip.Deflater.class.getDeclaredField("strategy"));
+            JNIRuntimeAccess.register(java.util.zip.Deflater.class.getDeclaredField("setParams"));
+            JNIRuntimeAccess.register(java.util.zip.Deflater.class.getDeclaredField("finish"));
+            JNIRuntimeAccess.register(java.util.zip.Deflater.class.getDeclaredField("finished"));
+            JNIRuntimeAccess.register(java.util.zip.Deflater.class.getDeclaredField("buf"));
+            JNIRuntimeAccess.register(java.util.zip.Deflater.class.getDeclaredField("off"));
+            JNIRuntimeAccess.register(java.util.zip.Deflater.class.getDeclaredField("len"));
+        } catch (NoSuchFieldException e) {
+            VMError.shouldNotReachHere("LibZipFeature: Error in registering jni access:", e);
+        }
     }
 }
 
