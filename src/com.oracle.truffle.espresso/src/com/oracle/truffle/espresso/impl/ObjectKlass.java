@@ -30,7 +30,6 @@ import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.CompilerDirectives.CompilationFinal;
 import com.oracle.truffle.api.nodes.ExplodeLoop;
 import com.oracle.truffle.espresso.EspressoOptions;
-import com.oracle.truffle.espresso.bytecode.BytecodeStream;
 import com.oracle.truffle.espresso.classfile.ConstantValueAttribute;
 import com.oracle.truffle.espresso.classfile.EnclosingMethodAttribute;
 import com.oracle.truffle.espresso.classfile.InnerClassesAttribute;
@@ -202,10 +201,10 @@ public final class ObjectKlass extends Klass {
                 throw getMeta().throwExWithMessage(NoClassDefFoundError.class, "Erroneous class: " + getName());
             }
             initState = PREPARED;
+            verifyKlass();
             if (getSuperKlass() != null) {
                 getSuperKlass().initialize();
             }
-            verifyKlass();
             /**
              * Spec fragment: Then, initialize each final static field of C with the constant value
              * in its ConstantValue attribute (§4.7.2), in the order the fields appear in the
@@ -509,6 +508,7 @@ public final class ObjectKlass extends Klass {
         return null;
     }
 
+    @CompilerDirectives.TruffleBoundary
     private void verifyKlass() {
         if (EspressoOptions.ENABLE_VERIFICATION) {
             // Do not verify BootClassLoader classes, they are trusted.
@@ -517,8 +517,7 @@ public final class ObjectKlass extends Klass {
                     try {
                         MethodVerifier.verify(m);
                     } catch (VerifyError | ClassFormatError | IncompatibleClassChangeError | NoClassDefFoundError e) {
-                        new BytecodeStream(m.getCodeAttribute().getCode()).printBytecode(this);
-
+                        // new BytecodeStream(m.getCodeAttribute().getCode()).printBytecode(this);
                         setErroneous();
                         throw getMeta().throwExWithMessage(e.getClass(), e.getMessage());
                     } catch (Throwable e) {

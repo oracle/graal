@@ -137,6 +137,7 @@ public final class JniEnv extends NativeEnv implements ContextAccess {
     public Callback jniMethodWrapper(java.lang.reflect.Method m) {
         return new Callback(m.getParameterCount() + 1, new Callback.Function() {
             @Override
+            @TruffleBoundary
             public Object call(Object... args) {
                 assert (long) args[0] == JniEnv.this.getNativePointer() : "Calling " + m + " from alien JniEnv";
                 Object[] shiftedArgs = Arrays.copyOfRange(args, 1, args.length);

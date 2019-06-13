@@ -304,6 +304,7 @@ public final class VM extends NativeEnv implements ContextAccess {
 
         return new Callback(m.getParameterCount() + extraArg, new Callback.Function() {
             @Override
+            @CompilerDirectives.TruffleBoundary
             public Object call(Object... rawArgs) {
 
                 boolean isJni = (m.getAnnotation(JniImpl.class) != null);
