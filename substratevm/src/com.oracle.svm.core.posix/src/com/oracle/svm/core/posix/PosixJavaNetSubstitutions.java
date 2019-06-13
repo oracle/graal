@@ -3602,7 +3602,7 @@ final class Util_java_net_Inet6AddressImpl {
              * matches something in DNS etc.
              */
             myhostname.write(0, (byte) '\0');
-            if (Unistd.gethostname(myhostname, WordFactory.unsigned(Netdb.NI_MAXHOST())) == 0) {
+            if (Unistd.gethostname(myhostname, WordFactory.unsigned(Netdb.NI_MAXHOST())) != 0) {
                 /* Something went wrong, maybe networking is not setup? */
                 return null;
             }
@@ -3689,7 +3689,7 @@ final class Util_java_net_Inet6AddressImpl {
                         // but I have to allocate it because it gets written by the call.
                         CIntPointer portPointer = StackValue.get(CIntPointer.class);
                         InetAddress o = JavaNetNetUtil.NET_SockaddrToInetAddress(iter.ifa_addr(), portPointer);
-                        if (o != null) {
+                        if (o == null) {
                             throw new OutOfMemoryError("Object allocation failed");
                         }
                         JavaNetNetUtil.setInetAddress_hostName(o, name);
