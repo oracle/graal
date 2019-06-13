@@ -1201,7 +1201,8 @@ _SpecJbb_specific_vmArgs = [
     "-XX:+UseLargePages",
     "-XX:+AlwaysPreTouch",
     "-XX:-UseAdaptiveSizePolicy",
-    "-XX:-UseAdaptiveNUMAChunkSizing"
+    "-XX:-UseAdaptiveNUMAChunkSizing",
+    "-XX:+PrintGCDetails"
 ]
 
 
