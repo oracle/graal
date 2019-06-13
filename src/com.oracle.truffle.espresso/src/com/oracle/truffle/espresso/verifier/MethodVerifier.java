@@ -278,7 +278,6 @@ import com.oracle.truffle.espresso.meta.ExceptionHandler;
 import com.oracle.truffle.espresso.meta.JavaKind;
 import com.oracle.truffle.espresso.runtime.EspressoContext;
 import com.oracle.truffle.espresso.runtime.EspressoException;
-import com.oracle.truffle.espresso.runtime.StaticObject;
 
 /**
  * Should be a complete bytecode verifier. Given the version of the classfile from which the method
@@ -356,16 +355,14 @@ public final class MethodVerifier implements ContextAccess {
     static final PrimitiveOperand Void = new PrimitiveOperand(JavaKind.Void);
     static final PrimitiveOperand Invalid = new PrimitiveOperand(JavaKind.Illegal);
 
+    // We want to be able to share this instance between context, so its resolution must be
+    // context-agnostic.
     static final ReferenceOperand jlObject = new ReferenceOperand(Type.Object, null) {
         @Override
         Klass getKlass() {
-            if (klass == null) {
-                klass = EspressoLanguage.getCurrentContext().getMeta().loadKlass(type, StaticObject.NULL);
-                if (klass == null) {
-                    throw new NoClassDefFoundError(type.toString());
-                }
-            }
-            return klass;
+            // this particular j.l.Object instance does not cache its resolved klass, as most
+            // getKlass calls checks beforehand for Type Object.
+            return EspressoLanguage.getCurrentContext().getMeta().Object;
         }
     };
 
@@ -427,9 +424,11 @@ public final class MethodVerifier implements ContextAccess {
     static private final byte JUMP_TARGET = 4;
 
     // Exception handler target states
-    static private final byte UNENCOUNTERED = 8;
-    static private final byte NONVERIFIED = 16;
-    static private final byte VERIFIED = 32;
+    static private final byte UNENCOUNTERED = 1;
+    static private final byte NONVERIFIED = 2;
+    static private final byte VERIFIED = 4;
+    static private final byte CALLEDCONSTRUCTOR = 8;
+    static private final byte NOCONSTRUCTORCALLED = 16;
 
     // JSR BCI states
     // This state is accompanied by the BCI of the RET instruction that caused it.
@@ -819,6 +818,28 @@ public final class MethodVerifier implements ContextAccess {
         }
     }
 
+    // Exception handler status management
+    static private byte setStatus(byte oldStatus, byte newStatus) {
+        return (byte) (newStatus | (oldStatus & (CALLEDCONSTRUCTOR | NOCONSTRUCTORCALLED)));
+    }
+
+    static private boolean isStatus(byte status, byte toCheck) {
+        return (status & toCheck) != 0;
+    }
+
+    static private byte setConstructorStatus(byte oldStatus, byte constructorStatus) {
+        // If there is a path to the handler that has not called a constructor, consider the handler
+        // to have an uninitialized this.
+        if ((oldStatus & NOCONSTRUCTORCALLED) > 0) {
+            return oldStatus;
+        }
+        return (byte) (oldStatus | constructorStatus);
+    }
+
+    static private boolean isCalledConstructor(byte status) {
+        return (status & CALLEDCONSTRUCTOR) > 0;
+    }
+
     /**
      * Verifies actually reachable exception handlers, and the handlers they encounter if they were
      * not already verified.
@@ -834,11 +855,16 @@ public final class MethodVerifier implements ContextAccess {
             updated = false;
             for (int i = 0; i < exceptionHandlers.length; i++) {
                 ExceptionHandler handler = exceptionHandlers[i];
-                if (handlerStatus[i] == NONVERIFIED) {
+                if (isStatus(handlerStatus[i], NONVERIFIED)) {
                     updated = redo;
+                    boolean constructorStatus = calledConstructor;
+                    if (isCalledConstructor(handlerStatus[i])) {
+                        calledConstructor = true;
+                    }
                     verifyHandler(handler);
-                    handlerStatus[i] = VERIFIED;
-                } else if (handlerStatus[i] == UNENCOUNTERED) {
+                    calledConstructor = constructorStatus;
+                    handlerStatus[i] = setStatus(handlerStatus[i], VERIFIED);
+                } else if (isStatus(handlerStatus[i], UNENCOUNTERED)) {
                     redo = true;
                 }
             }
@@ -905,7 +931,6 @@ public final class MethodVerifier implements ContextAccess {
 
         // Check if constructor was called prior to this branch.
         boolean constructorCalledStatus = calledConstructor;
-
         do {
             previousBCI = nextBCI;
             if (stackFrames[nextBCI] != null || BCIstates[nextBCI] == JUMP_TARGET) {
@@ -924,17 +949,16 @@ public final class MethodVerifier implements ContextAccess {
             }
             // Return condition: a successful merge into an already verified branch target.
             if (stackFrames[nextBCI] != null && BCIstates[nextBCI] == DONE) {
+                // Reset constructor status.
+                calledConstructor = constructorCalledStatus;
                 return;
             }
             checkExceptionHandlers(nextBCI, locals);
             nextBCI = verifySafe(nextBCI, stack, locals);
             validateBCI(nextBCI);
         } while (previousBCI != nextBCI);
-        if (!constructorCalledStatus) {
-            // Reset constructor status.
-            calledConstructor = false;
-        }
-        return;
+        // Reset constructor status.
+        calledConstructor = constructorCalledStatus;
     }
 
     /**
@@ -949,8 +973,13 @@ public final class MethodVerifier implements ContextAccess {
                 stack.push(catchType == null ? Throwable : new ReferenceOperand(catchType, thisKlass));
                 StackFrame oldFrame = stackFrames[handler.getHandlerBCI()];
                 StackFrame newFrame = mergeFrames(stack, locals, oldFrame);
-                if (handlerStatus[i] == UNENCOUNTERED || oldFrame != newFrame) {
-                    handlerStatus[i] = NONVERIFIED;
+                if (isStatus(handlerStatus[i], UNENCOUNTERED) || oldFrame != newFrame) {
+                    handlerStatus[i] = setStatus(handlerStatus[i], NONVERIFIED);
+                }
+                if (calledConstructor) {
+                    handlerStatus[i] = setConstructorStatus(handlerStatus[i], CALLEDCONSTRUCTOR);
+                } else {
+                    handlerStatus[i] = setConstructorStatus(handlerStatus[i], NOCONSTRUCTORCALLED);
                 }
                 stackFrames[handler.getHandlerBCI()] = newFrame;
             }
@@ -1401,7 +1430,7 @@ public final class MethodVerifier implements ContextAccess {
                     // Only j.l.Object.<init> can omit calling another initializer.
                     if (methodName == Name.INIT && thisKlass.getType() != Type.Object) {
                         if (!calledConstructor) {
-                            throw new VerifyError("Did not called super() of this() in constructor");
+                            throw new VerifyError("Did not call super() or this() in constructor " + thisKlass.getType() + "." + methodName);
                         }
                     }
                     return BCI;
@@ -1534,7 +1563,12 @@ public final class MethodVerifier implements ContextAccess {
                                 throw new VerifyError("<init> method with non-void return type.");
                             }
                             UninitReferenceOperand toInit = (UninitReferenceOperand) stack.popUninitRef(methodHolderOp);
-                            if (toInit.newBCI != -1) {
+                            if (toInit.isUninitThis()) {
+                                if (methodName != Name.INIT) {
+                                    throw new VerifyError("Encountered UninitializedThis outside of Constructor: " + toInit);
+                                }
+                                calledConstructor = true;
+                            } else {
                                 if (code.opcode(toInit.newBCI) != NEW) {
                                     throw new VerifyError("There is no NEW bytecode at BCI: " + toInit.newBCI);
                                 }
@@ -1553,11 +1587,6 @@ public final class MethodVerifier implements ContextAccess {
                                  * if (toInit.getType() != methodHolder) { throw new VerifyError(
                                  * "Calling wrong initializer for a new object."); }
                                  */
-                            } else {
-                                if (methodName != Name.INIT) {
-                                    throw new VerifyError("Encountered UninitializedThis outside of Constructor: " + toInit);
-                                }
-                                calledConstructor = true;
                             }
                             Operand stackOp = stack.initUninit(toInit);
                             locals.initUninit(toInit, stackOp);

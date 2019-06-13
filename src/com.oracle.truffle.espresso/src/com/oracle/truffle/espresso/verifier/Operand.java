@@ -6,6 +6,7 @@ import static com.oracle.truffle.espresso.verifier.MethodVerifier.jlObject;
 import java.util.ArrayList;
 
 import com.oracle.truffle.espresso.descriptors.Symbol;
+import com.oracle.truffle.espresso.descriptors.Symbol.Type;
 import com.oracle.truffle.espresso.impl.Klass;
 import com.oracle.truffle.espresso.meta.JavaKind;
 
@@ -46,7 +47,7 @@ abstract class Operand {
         return null;
     }
 
-    Symbol<Symbol.Type> getType() {
+    Symbol<Type> getType() {
         return null;
     }
 
@@ -144,13 +145,13 @@ class ReturnAddressOperand extends PrimitiveOperand {
 }
 
 class ReferenceOperand extends Operand {
-    protected Symbol<Symbol.Type> type;
+    protected Symbol<Type> type;
     Klass thisKlass;
 
     // Load if needed.
     protected Klass klass = null;
 
-    ReferenceOperand(Symbol<Symbol.Type> type, Klass thisKlass) {
+    ReferenceOperand(Symbol<Type> type, Klass thisKlass) {
         super(JavaKind.Object);
         this.type = type;
         this.thisKlass = thisKlass;
@@ -169,7 +170,7 @@ class ReferenceOperand extends Operand {
     }
 
     @Override
-    Symbol<Symbol.Type> getType() {
+    Symbol<Type> getType() {
         return type;
     }
 
@@ -195,7 +196,7 @@ class ReferenceOperand extends Operand {
     @Override
     boolean compliesWith(Operand other) {
         if (other.isReference()) {
-            if (type == null || other.getType() == this.type || other.getType() == Symbol.Type.Object) {
+            if (type == null || other.getType() == this.type || other.getType() == Type.Object) {
                 return true;
             }
             if (other.getType() == null) {
@@ -257,13 +258,13 @@ class ArrayOperand extends Operand {
     boolean compliesWith(Operand other) {
         if (other.isArrayType()) {
             if (other.getDimensions() < getDimensions()) {
-                return other.getElemental().isReference() && other.getElemental().getType() == Symbol.Type.Object;
+                return other.getElemental().isReference() && other.getElemental().getType() == Type.Object;
             } else if (other.getDimensions() == getDimensions()) {
                 return elemental.compliesWith(other.getElemental());
             }
             return false;
         }
-        return (other == Invalid) || (other.isReference() && other.getType() == Symbol.Type.Object);
+        return (other == Invalid) || (other.isReference() && other.getType() == Type.Object);
     }
 
     @Override
@@ -296,7 +297,7 @@ class ArrayOperand extends Operand {
         if (smallestElemental.isPrimitive()) {
             return new ArrayOperand(jlObject, Math.min(thisDim, otherDim));
         }
-        if (smallestElemental.getType() == Symbol.Type.Cloneable || smallestElemental.getType() == Symbol.Type.Serializable) {
+        if (smallestElemental.getType() == Type.Cloneable || smallestElemental.getType() == Type.Serializable) {
             return new ArrayOperand(smallestElemental, Math.min(thisDim, otherDim));
         }
         return new ArrayOperand(jlObject, Math.min(thisDim, otherDim));
@@ -346,12 +347,12 @@ class ArrayOperand extends Operand {
 class UninitReferenceOperand extends ReferenceOperand {
     final int newBCI;
 
-    UninitReferenceOperand(Symbol<Symbol.Type> type, Klass thisKlass) {
+    UninitReferenceOperand(Symbol<Type> type, Klass thisKlass) {
         super(type, thisKlass);
         this.newBCI = -1;
     }
 
-    UninitReferenceOperand(Symbol<Symbol.Type> type, Klass thisKlass, int newBCI) {
+    UninitReferenceOperand(Symbol<Type> type, Klass thisKlass, int newBCI) {
         super(type, thisKlass);
         this.newBCI = newBCI;
     }
@@ -372,5 +373,9 @@ class UninitReferenceOperand extends ReferenceOperand {
         } else {
             return new ReferenceOperand(klass, thisKlass);
         }
+    }
+
+    boolean isUninitThis() {
+        return newBCI == -1;
     }
 }

@@ -201,10 +201,10 @@ public final class ObjectKlass extends Klass {
                 throw getMeta().throwExWithMessage(NoClassDefFoundError.class, "Erroneous class: " + getName());
             }
             initState = PREPARED;
+            verifyKlass();
             if (getSuperKlass() != null) {
                 getSuperKlass().initialize();
             }
-            verifyKlass();
             /**
              * Spec fragment: Then, initialize each final static field of C with the constant value
              * in its ConstantValue attribute (§4.7.2), in the order the fields appear in the
@@ -508,21 +508,24 @@ public final class ObjectKlass extends Klass {
         return null;
     }
 
+    @CompilerDirectives.TruffleBoundary
     private void verifyKlass() {
         if (EspressoOptions.ENABLE_VERIFICATION) {
-            for (Method m : declaredMethods) {
-                try {
-                    MethodVerifier.verify(m);
-                } catch (VerifyError | ClassFormatError | IncompatibleClassChangeError | NoClassDefFoundError e) {
-                    // new BytecodeStream(m.getCodeAttribute().getCode()).printBytecode(this);
-                    setErroneous();
-                    throw getMeta().throwExWithMessage(e.getClass(), e.getMessage());
-                } catch (Throwable e) {
-                    e.printStackTrace();
-                    throw EspressoError.shouldNotReachHere(e.toString());
+            // Do not verify BootClassLoader classes, they are trusted.
+            if (!StaticObject.isNull(getDefiningClassLoader())) {
+                for (Method m : declaredMethods) {
+                    try {
+                        MethodVerifier.verify(m);
+                    } catch (VerifyError | ClassFormatError | IncompatibleClassChangeError | NoClassDefFoundError e) {
+                        // new BytecodeStream(m.getCodeAttribute().getCode()).printBytecode(this);
+                        setErroneous();
+                        throw getMeta().throwExWithMessage(e.getClass(), e.getMessage());
+                    } catch (Throwable e) {
+                        e.printStackTrace();
+                        throw EspressoError.shouldNotReachHere(e.toString());
+                    }
                 }
             }
-
         }
     }
 

@@ -26,7 +26,9 @@ import java.util.Arrays;
 
 import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.CompilerDirectives.CompilationFinal;
+import com.oracle.truffle.espresso.classfile.ClassConstant;
 import com.oracle.truffle.espresso.classfile.ConstantPool;
+import com.oracle.truffle.espresso.classfile.InvokeDynamicConstant;
 import com.oracle.truffle.espresso.classfile.MethodRefConstant;
 import com.oracle.truffle.espresso.impl.Klass;
 import com.oracle.truffle.espresso.meta.EspressoError;
@@ -257,22 +259,45 @@ public final class BytecodeStream {
 
     public void printBytecode(Klass klass) {
         try {
+            ConstantPool pool = klass.getConstantPool();
             int bci = 0;
             int nextBCI = 0;
+            StringBuilder str = new StringBuilder();
             while (nextBCI < endBCI()) {
-                StringBuilder str = new StringBuilder();
+                str.setLength(0);
                 bci = nextBCI;
                 int opcode = currentBC(bci);
                 str.append(bci).append(": ").append(Bytecodes.nameOf(opcode)).append(" ");
                 nextBCI = nextBCI(bci);
                 if (Bytecodes.isBranch(opcode)) {
+                    // {bci}: {branch bytecode} {target}
                     str.append(readBranchDest(bci));
-                } else if (Bytecodes.isInvoke(opcode)) {
+                } else if (opcode == Bytecodes.NEW) {
+                    // {bci}: new {class name}
                     int CPI = readCPI(bci);
-                    ConstantPool pool = klass.getConstantPool();
+                    ClassConstant cc = (ClassConstant) pool.at(CPI);
+                    str.append(cc.getName(pool));
+                } else if (opcode == Bytecodes.INVOKEDYNAMIC) {
+                    // {bci}: #{bootstrap method index} -> {name}:{signature}
+                    int CPI = readCPI(bci);
+                    InvokeDynamicConstant idc = (InvokeDynamicConstant) pool.at(CPI);
+                    str.append("#").append(idc.getBootstrapMethodAttrIndex()).append(" -> ").append(idc.getName(pool)).append(":").append(idc.getSignature(pool));
+                } else if (Bytecodes.isInvoke(opcode)) {
+                    // {bci}: invoke{} {class}.{method name}:{method signature}
+                    int CPI = readCPI(bci);
                     MethodRefConstant mrc = (MethodRefConstant) pool.at(CPI);
                     str.append(mrc.getHolderKlassName(pool)).append(".").append(mrc.getName(pool)).append(":").append(mrc.getDescriptor(pool));
                 } else if (opcode == Bytecodes.TABLESWITCH) {
+                    // @formatter:off
+                    // checkstyle: stop
+
+                    // {bci}: tableswitch
+                    //      {key1}: {target1}
+                    //      ...
+                    //      {keyN}: {targetN}
+
+                    // @formatter:on
+                    // Checkstyle: resume
                     str.append('\n');
                     BytecodeTableSwitch helper = getBytecodeTableSwitch();
                     int low = helper.lowKey(bci);
@@ -282,6 +307,16 @@ public final class BytecodeStream {
                     }
                     str.append("\tdefault: ").append(helper.defaultTarget(bci));
                 } else if (opcode == Bytecodes.LOOKUPSWITCH) {
+                    // @formatter:off
+                    // checkstyle: stop
+
+                    // {bci}: lookupswitch
+                    //      {key1}: {target1}
+                    //      ...
+                    //      {keyN}: {targetN}
+
+                    // @formatter:on
+                    // Checkstyle: resume
                     str.append('\n');
                     BytecodeLookupSwitch helper = getBytecodeLookupSwitch();
                     int low = 0;
@@ -291,6 +326,7 @@ public final class BytecodeStream {
                     }
                     str.append("\tdefault: ").append(helper.defaultTarget(bci));
                 } else {
+                    // {bci}: {opcode} {corresponding value}
                     if (nextBCI - bci == 2) {
                         str.append(readUByte(bci + 1));
                     }
