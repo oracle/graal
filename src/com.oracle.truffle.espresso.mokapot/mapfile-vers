@@ -254,6 +254,9 @@ SUNWprivate_1.1 {
                 JVM_Yield;
                 JVM_handle_linux_signal;
 
+                # Added in jdk8_201
+                JVM_CopySwapMemory;
+
                 # miscellaneous functions
                 jio_fprintf;
                 jio_printf;

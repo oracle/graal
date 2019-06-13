@@ -1414,6 +1414,15 @@ JNIEXPORT jintArray JNICALL
 JVM_GetResourceLookupCache(JNIEnv *env, jobject loader, const char *resource_name);
 
 
+/*
+ * Copies a region of memory to another region, while reversing the bytes of
+ * each individual element of the source region.
+ */  
+JNIEXPORT void JNICALL
+JVM_CopySwapMemory(JNIEnv *env, jobject srcObj, jlong srcOffset,
+							    jobject dstObj, jlong dstOffset, 
+							    jlong size,     jlong elemSize);
+
 /* =========================================================================
  * The following defines a private JVM interface that the JDK can query
  * for the JVM version and capabilities.  sun.misc.Version defines

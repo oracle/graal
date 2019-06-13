@@ -239,7 +239,8 @@ enum OSReturn {
     V(JVM_KnownToNotExist) \
     V(JVM_GetResourceLookupCacheURLs) \
     V(JVM_GetResourceLookupCache) \
-    V(JVM_GetVersionInfo)
+    V(JVM_GetVersionInfo) \
+    V(JVM_CopySwapMemory)
 
 #ifdef __cplusplus
 extern "C" {
@@ -677,6 +678,10 @@ jobjectArray (*JVM_GetResourceLookupCacheURLs)(JNIEnv *env, jobject loader);
 jintArray (*JVM_GetResourceLookupCache)(JNIEnv *env, jobject loader, const char *resource_name);
 
 void (*JVM_GetVersionInfo)(JNIEnv* env, jvm_version_info* info, size_t info_size);
+
+void (*JVM_CopySwapMemory)(JNIEnv *env, jobject srcObj, jlong srcOffset,
+									 jobject dstObj, jlong dstOffset, 
+									 jlong size,     jlong elemSize);
 
 void (*Mokapot_SetJNIEnv)(JNIEnv* env);
 
