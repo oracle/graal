@@ -36,7 +36,6 @@ import com.oracle.svm.core.nodes.CFunctionPrologueNode;
 import com.oracle.svm.core.thread.JavaThreads;
 import com.oracle.svm.core.thread.ThreadStatus;
 import com.oracle.svm.core.thread.VMOperation;
-import com.oracle.svm.core.thread.VMOperationControl;
 import com.oracle.svm.core.util.TimeUtils;
 
 /** A feeble version of java.lang.ref.ReferenceQueue. */
@@ -47,9 +46,9 @@ public final class FeebleReferenceList<T> {
     private final UninterruptibleUtils.AtomicReference<FeebleReference<? extends T>> head;
 
     /**
-     * This mutex is used by the GC and the application. The application must use this mutex only in
-     * uninterruptible code to prevent the case that a safepoint is initiated while waiting on the
-     * lock. Otherwise, we risk deadlocks between the application and the GC.
+     * This mutex is used by the GC and the application. The application must hold this mutex only
+     * in uninterruptible code to prevent the case that a safepoint can be initiated while the
+     * application holds the mutex. Otherwise, we risk deadlocks between the application and the GC.
      */
     private static final VMMutex REF_MUTEX = new VMMutex();
     private static final VMCondition REF_CONDITION = new VMCondition(REF_MUTEX);
@@ -335,7 +334,7 @@ public final class FeebleReferenceList<T> {
         return result;
     }
 
-    @Uninterruptible(reason = "No GC is allowed while holding the lock - otherwise the application and the GC would deadlock.")
+    @Uninterruptible(reason = "No GC is allowed while holding the lock - otherwise the application and the GC could deadlock.")
     public static void interruptWaiters() {
         REF_MUTEX.lockNoTransition();
         try {
@@ -346,7 +345,7 @@ public final class FeebleReferenceList<T> {
     }
 
     public static void signalWaiters() {
-        assert VMOperationControl.isAtSafepoint() : "must only be called by the GC";
+        assert VMOperation.isInProgress() : "must only be called by the GC";
         REF_MUTEX.lock();
         try {
             REF_CONDITION.broadcast();

@@ -22,45 +22,10 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.svm.core.thread;
+package com.oracle.svm.core.util;
 
-import org.graalvm.nativeimage.IsolateThread;
-import org.graalvm.nativeimage.c.struct.RawField;
-import org.graalvm.nativeimage.c.struct.RawStructure;
-import org.graalvm.word.PointerBase;
+import org.graalvm.word.WordBase;
 
-import com.oracle.svm.core.c.struct.PinnedObjectField;
-
-/**
- * Holds the mutable state that is necessary for the execution of a {@linkplain NativeVMOperation}.
- * This is used in places where we can't allocate Java objects (e.g., when a garbage collection is
- * required).
- */
-@RawStructure
-public interface NativeVMOperationData extends PointerBase {
-    @PinnedObjectField
-    @RawField
-    void setNativeVMOperation(NativeVMOperation value);
-
-    @PinnedObjectField
-    @RawField
-    NativeVMOperation getNativeVMOperation();
-
-    @RawField
-    NativeVMOperationData getNext();
-
-    @RawField
-    void setNext(NativeVMOperationData value);
-
-    @RawField
-    IsolateThread getQueuingThread();
-
-    @RawField
-    void setQueuingThread(IsolateThread value);
-
-    @RawField
-    boolean getFinished();
-
-    @RawField
-    void setFinished(boolean value);
+public interface WordPredicate<T extends WordBase> {
+    boolean test(T t);
 }

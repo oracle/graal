@@ -26,12 +26,18 @@ package com.oracle.svm.core.thread;
 
 import org.graalvm.nativeimage.IsolateThread;
 
+import com.oracle.svm.core.SubstrateOptions;
 import com.oracle.svm.core.SubstrateUtil.Thunk;
 import com.oracle.svm.core.annotate.RestrictHeapAccess;
 
 /**
- * The abstract base class of all VM operations that are allocated on the Java heap. Allocating the
+ * The abstract base class for all VM operations that are allocated on the Java heap. Allocating the
  * VM operation on the Java heap is preferable but not always possible.
+ *
+ * <p>
+ * Do <b>NOT</b> create singleton objects that might get enqueued by multiple threads. If
+ * {@linkplain SubstrateOptions#UseDedicatedVMThread} is enabled, this can result in race
+ * conditions.
  */
 public abstract class JavaVMOperation extends VMOperation implements VMOperationControl.JavaAllocationFreeQueue.Element<JavaVMOperation> {
     protected IsolateThread queuingThread;
@@ -49,7 +55,6 @@ public abstract class JavaVMOperation extends VMOperation implements VMOperation
 
     @Override
     public void setNext(JavaVMOperation value) {
-        assert next == null || value == null : "Must not change next abruptly.";
         next = value;
     }
 

@@ -44,6 +44,7 @@ import com.oracle.svm.core.snippets.SnippetRuntime.SubstrateForeignCallDescripto
 import com.oracle.svm.core.snippets.SubstrateForeignCallTarget;
 import com.oracle.svm.core.stack.JavaStackWalker;
 import com.oracle.svm.core.stack.StackFrameVisitor;
+import com.oracle.svm.core.thread.ThreadingSupportImpl;
 import com.oracle.svm.core.thread.VMOperation;
 import com.oracle.svm.core.util.VMError;
 
@@ -100,6 +101,9 @@ public class DeoptTester {
         try {
 
             if (Heap.getHeap().isAllocationDisallowed()) {
+                return;
+            }
+            if (ThreadingSupportImpl.isRecurringCallbackPaused()) {
                 return;
             }
             if (VMOperation.isInProgress()) {

@@ -326,7 +326,7 @@ public class SubstrateUtil {
             dumpException(log, "dumpStacktrace", e);
         }
 
-        if (VMOperationControl.isAtSafepoint()) {
+        if (VMOperationControl.isFrozen()) {
             for (IsolateThread vmThread = VMThreads.firstThread(); vmThread != VMThreads.nullThread(); vmThread = VMThreads.nextThread(vmThread)) {
                 if (vmThread == CurrentIsolate.getCurrentThread()) {
                     continue;

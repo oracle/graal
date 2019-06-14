@@ -53,6 +53,7 @@ import org.graalvm.word.PointerBase;
 
 import com.oracle.svm.core.SubstrateOptions;
 import com.oracle.svm.core.annotate.NeverInline;
+import com.oracle.svm.core.annotate.RestrictHeapAccess;
 import com.oracle.svm.core.annotate.Uninterruptible;
 import com.oracle.svm.core.heap.FeebleReferenceList;
 import com.oracle.svm.core.heap.Heap;
@@ -65,6 +66,7 @@ import com.oracle.svm.core.log.Log;
 import com.oracle.svm.core.nodes.CFunctionEpilogueNode;
 import com.oracle.svm.core.nodes.CFunctionPrologueNode;
 import com.oracle.svm.core.thread.ParkEvent.WaitResult;
+import com.oracle.svm.core.thread.VMThreads.StatusSupport;
 import com.oracle.svm.core.threadlocal.FastThreadLocalFactory;
 import com.oracle.svm.core.threadlocal.FastThreadLocalObject;
 import com.oracle.svm.core.util.TimeUtils;
@@ -171,7 +173,6 @@ public abstract class JavaThreads {
      * Joins all non-daemon threads. If the current thread is itself a non-daemon thread, it does
      * not attempt to join itself.
      */
-    @SuppressWarnings("try")
     public void joinAllNonDaemons() {
         int expectedNonDaemonThreads = Thread.currentThread().isDaemon() ? 0 : 1;
         joinAllNonDaemonsTransition(expectedNonDaemonThreads);
@@ -301,51 +302,40 @@ public abstract class JavaThreads {
 
     /**
      * Detach the provided Java thread.
+     *
+     * When this method is being executed, we expect that the current thread owns
+     * {@linkplain VMThreads#THREAD_MUTEX}. This is fine even though this method is not
+     * {@linkplain Uninterruptible} because the executed code is guaranteed to be free of VM
+     * operations, Java allocations, and safepoints.
      */
+    @RestrictHeapAccess(access = RestrictHeapAccess.Access.NO_ALLOCATION, reason = "Must not allocate while detaching a thread.")
     public static void detachThread(IsolateThread vmThread) {
-        /*
-         * Caller must hold the lock or I, and my callees, would have to be annotated as
-         * Uninterruptible.
-         *
-         * This is potentially dangerous as it is only allowed to execute uninterruptable code while
-         * holding that mutex.
-         */
-        VMThreads.THREAD_MUTEX.assertIsOwner("Should hold the VMThreads mutex.");
+        VMThreads.THREAD_MUTEX.assertIsOwner("Must hold the VMThreads mutex");
+        assert StatusSupport.isStatusIgnoreSafepoints(vmThread);
 
         Heap.getHeap().disableAllocation(vmThread);
 
         // Detach ParkEvents for this thread, if any.
-
         final Thread thread = currentThread.get(vmThread);
-
         ParkEvent.detach(getUnsafeParkEvent(thread));
         ParkEvent.detach(getSleepParkEvent(thread));
+
         if (!thread.isDaemon()) {
             nonDaemonThreads.decrementAndGet();
         }
     }
 
     /** Have each thread, except this one, tear itself down. */
-    @SuppressWarnings("try")
     private static boolean tearDownIsolateThreads() {
         final Log trace = Log.noopLog().string("[JavaThreads.tearDownIsolateThreads:").newline().flush();
         /* Prevent new threads from starting. */
         VMThreads.setTearingDown();
-        /* Interrupt the other threads. */
-        interruptAllOtherApplicationThreads();
 
-        final boolean result = waitForTearDown();
-        trace.string("  returns: ").bool(result).string("]").newline().flush();
-        return result;
-    }
-
-    @SuppressWarnings("try")
-    private static void interruptAllOtherApplicationThreads() {
+        /* Fetch all running application threads and interrupt them. */
         ArrayList<Thread> threads = new ArrayList<>();
         FetchApplicationThreadsOperation operation = new FetchApplicationThreadsOperation(threads);
         operation.enqueue();
 
-        /* Interrupt all other application threads. */
         for (Thread thread : threads) {
             if (thread == Thread.currentThread()) {
                 continue;
@@ -355,6 +345,10 @@ public abstract class JavaThreads {
                 thread.interrupt();
             }
         }
+
+        final boolean result = waitForTearDown();
+        trace.string("  returns: ").bool(result).string("]").newline().flush();
+        return result;
     }
 
     /** Wait (im)patiently for the VMThreads list to drain. */
@@ -397,7 +391,6 @@ public abstract class JavaThreads {
         }
     }
 
-    @Uninterruptible(reason = "Called from uninterruptible code.")
     private static boolean isApplicationThread(IsolateThread isolateThread) {
         return !VMOperationControl.isDedicatedVmThread(isolateThread);
     }

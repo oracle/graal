@@ -29,10 +29,9 @@ import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.Platforms;
 
 /**
- * A VM operation without mutable state. {@link NativeVMOperation} objects must be immutable and
- * they must live in the image heap. All mutable state must be kept in native memory (see
- * {@link NativeVMOperationData}). This construct is used in situations where we can't allocate any
- * Java objects (e.g., when we need to do a GC).
+ * An immutable VM operation that lives in the image heap. All mutable state is kept in native
+ * memory (see {@linkplain NativeVMOperationData}). This construct is used in places where we can't
+ * allocate any Java objects (e.g., when we need to do a GC).
  */
 public abstract class NativeVMOperation extends VMOperation {
     @Platforms(value = Platform.HOSTED_ONLY.class)

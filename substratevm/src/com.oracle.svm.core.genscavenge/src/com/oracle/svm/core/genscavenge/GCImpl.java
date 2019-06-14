@@ -207,12 +207,7 @@ public class GCImpl implements GC {
                         .string("  requestingEpoch: ").unsigned(requestingEpoch)
                         .newline();
         VMOperation.guaranteeInProgress("Collection should be a VMOperation.");
-
-        /* if there has been a collection since the requesting epoch, then just return. */
-        if (getCollectionEpoch().aboveThan(requestingEpoch)) {
-            trace.string("  epoch has moved on]").newline();
-            return false;
-        }
+        assert getCollectionEpoch().equal(requestingEpoch);
 
         /* Stop the mutator timer. */
         mutatorTimer.close();
@@ -1521,6 +1516,12 @@ public class GCImpl implements GC {
             } finally {
                 ImplicitExceptions.deactivateImplicitExceptionsAreFatal();
             }
+        }
+
+        @Override
+        protected boolean hasWork(NativeVMOperationData data) {
+            CollectionVMOperationData d = (CollectionVMOperationData) data;
+            return HeapImpl.getHeapImpl().getGCImpl().getCollectionEpoch().equal(d.getRequestingEpoch());
         }
     }
 

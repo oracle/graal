@@ -27,7 +27,6 @@ package com.oracle.svm.core.thread;
 import org.graalvm.nativeimage.CurrentIsolate;
 import org.graalvm.nativeimage.ImageSingletons;
 import org.graalvm.nativeimage.IsolateThread;
-import org.graalvm.word.WordFactory;
 
 import com.oracle.svm.core.SubstrateOptions;
 import com.oracle.svm.core.annotate.RestrictHeapAccess;
@@ -36,6 +35,10 @@ import com.oracle.svm.core.log.Log;
 import com.oracle.svm.core.thread.VMOperationControl.OpInProgress;
 import com.oracle.svm.core.util.VMError;
 
+/**
+ * Only one thread at a time can execute {@linkplain VMOperation}s (see
+ * {@linkplain VMOperationControl}).
+ */
 public abstract class VMOperation {
     private final String name;
     private final SystemEffect systemEffect;
@@ -54,7 +57,19 @@ public abstract class VMOperation {
     }
 
     protected final void execute(NativeVMOperationData data) {
+        assert VMOperationControl.mayExecuteVmOperations();
+        assert !isFinished(data);
+
         final Log trace = SubstrateOptions.TraceVMOperations.getValue() ? Log.log() : Log.noopLog();
+        if (!hasWork(data)) {
+            /*
+             * The caller already does some filtering but it can still happen that we reach this
+             * code even though no work needs to be done.
+             */
+            trace.string("[Skipping operation ").string(name).string("]");
+            return;
+        }
+
         VMOperationControl control = ImageSingletons.lookup(VMOperationControl.class);
         VMOperation prevOperation = control.getInProgress().getOperation();
         IsolateThread prevQueuingThread = control.getInProgress().getQueuingThread();
@@ -70,8 +85,6 @@ public abstract class VMOperation {
             throw VMError.shouldNotReachHere(t);
         } finally {
             control.setInProgress(prevOperation, prevQueuingThread, prevExecutingThread);
-            setQueuingThread(data, WordFactory.nullPointer());
-            setFinished(data, true);
         }
     }
 
@@ -93,6 +106,11 @@ public abstract class VMOperation {
         if (isInProgress()) {
             throw VMError.shouldNotReachHere(message);
         }
+    }
+
+    /** Used to determine if a VMOperation must be executed or if it can be skipped. */
+    protected boolean hasWork(@SuppressWarnings("unused") NativeVMOperationData data) {
+        return true;
     }
 
     protected abstract IsolateThread getQueuingThread(NativeVMOperationData data);

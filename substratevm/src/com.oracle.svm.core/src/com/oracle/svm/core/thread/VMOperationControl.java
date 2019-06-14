@@ -24,7 +24,8 @@
  */
 package com.oracle.svm.core.thread;
 
-import static com.oracle.svm.core.SubstrateOptions.UseDedicatedVmThread;
+import static com.oracle.svm.core.SubstrateOptions.MultiThreaded;
+import static com.oracle.svm.core.SubstrateOptions.UseDedicatedVMThread;
 
 import java.util.Collections;
 import java.util.List;
@@ -45,21 +46,42 @@ import com.oracle.svm.core.locks.VMCondition;
 import com.oracle.svm.core.locks.VMMutex;
 import com.oracle.svm.core.log.Log;
 import com.oracle.svm.core.stack.StackOverflowCheck;
-import com.oracle.svm.core.thread.Safepoint.SafepointRequestValues;
-import com.oracle.svm.core.thread.VMThreads.StatusSupport;
 import com.oracle.svm.core.util.VMError;
 
 /**
- * Only one thread at a time can execute {@link VMOperation}s. This mimics HotSpot's single
- * "VMThread", which probably saves a lot of locking or atomics.
- *
- * Depending on the option {@link SubstrateOptions#UseDedicatedVmThread}, VM operations are either
- * executed by a dedicated VM thread or by the application thread that queued the VM operation
- * (i.e., a temporary VM thread).
+ * Only one thread at a time can execute {@linkplain VMOperation}s. This mimics HotSpot's single
+ * "VMThread", which probably saves a lot of locking or atomics. The execution order of VM
+ * operations is not defined (the only exception are recursive VM operations, see below).
+ * <p>
+ * At the moment, we support three different processing modes:
+ * <ul>
+ * <li>Single threaded: if multi-threading is disabled (see
+ * {@linkplain SubstrateOptions#MultiThreaded}), the single application thread can always directly
+ * execute VM operations. Neither locking nor initiating a safepoint is necessary.</li>
+ * <li>Temporary VM threads: if multi-threading is enabled, but no dedicated VM thread is used (see
+ * {@linkplain SubstrateOptions#UseDedicatedVMThread}), VM operations are executed by the
+ * application thread that queued the VM operation. For the time of the execution, the application
+ * thread holds a lock to guarantee that it is the single temporary VM thread.</li>
+ * <li>Dedicated VM thread: if {@linkplain SubstrateOptions#UseDedicatedVMThread} is enabled, a
+ * dedicated VM thread is spawned during isolate startup and used for the execution of all VM
+ * operations.</li>
+ * </ul>
  *
  * It is possible that the execution of a VM operation triggers another VM operation explicitly or
  * implicitly (e.g. a GC). Such recursive VM operations are executed immediately (see
  * {@link #immediateQueues}).
+ * <p>
+ * If a VM operation was queued successfully, it is guaranteed that the VM operation will get
+ * executed at some point in time. This is crucial for {@linkplain NativeVMOperation}s as their
+ * mutable state (see {@linkplain NativeVMOperationData}) could be allocated on the stack.
+ * <p>
+ * To avoid unexpected exceptions, we do the following before queuing and executing a VM operation:
+ * <ul>
+ * <li>We make the yellow zone of the stack accessible. This avoids {@linkplain StackOverflowError}s
+ * (especially if no dedicated VM thread is used).</li>
+ * <li>We pause recurring callbacks because they can execute arbitrary Java code that can throw
+ * exceptions.</li>
+ * </ul>
  */
 public final class VMOperationControl {
     private static VMThread dedicatedVmThread = null;
@@ -67,7 +89,6 @@ public final class VMOperationControl {
     private final WorkQueues mainQueues;
     private final WorkQueues immediateQueues;
     private final OpInProgress inProgress;
-    private IsolateThread temporaryVmThread;
 
     @Platforms(Platform.HOSTED_ONLY.class)
     VMOperationControl() {
@@ -81,7 +102,7 @@ public final class VMOperationControl {
     }
 
     public static void startVmThread() {
-        assert UseDedicatedVmThread.getValue();
+        assert UseDedicatedVMThread.getValue();
         assert get().mainQueues.isEmpty();
 
         dedicatedVmThread = new VMThread();
@@ -92,7 +113,7 @@ public final class VMOperationControl {
     }
 
     public static void stopVmThread() {
-        assert UseDedicatedVmThread.getValue();
+        assert UseDedicatedVMThread.getValue();
         JavaVMOperation.enqueueBlockingNoSafepoint("Stop VMThread", () -> {
             dedicatedVmThread.stop();
         });
@@ -106,31 +127,19 @@ public final class VMOperationControl {
 
     @Uninterruptible(reason = "Called from uninterruptible code.")
     public static boolean isDedicatedVmThread(IsolateThread thread) {
-        if (UseDedicatedVmThread.getValue()) {
+        if (UseDedicatedVMThread.getValue()) {
             return thread == dedicatedVmThread.getIsolateThread();
         }
         return false;
     }
 
-    public static boolean isTemporaryVmThread() {
-        if (!UseDedicatedVmThread.getValue()) {
-            return get().temporaryVmThread == CurrentIsolate.getCurrentThread();
-        }
-        return false;
-    }
-
-    private static IsolateThread getTemporaryVmThread() {
-        return get().temporaryVmThread;
-    }
-
-    private static void setTemporaryVmThread(IsolateThread value) {
-        VMOperationControl control = VMOperationControl.get();
-        if (UseDedicatedVmThread.getValue()) {
-            assert control.temporaryVmThread.isNull();
-            assert isDedicatedVmThread(value);
+    public static boolean mayExecuteVmOperations() {
+        if (!MultiThreaded.getValue()) {
+            return true;
+        } else if (UseDedicatedVMThread.getValue()) {
+            return isDedicatedVmThread();
         } else {
-            assert value.isNull() || control.temporaryVmThread.isNull() || control.temporaryVmThread == value;
-            control.temporaryVmThread = value;
+            return get().mainQueues.mutex.isOwner();
         }
     }
 
@@ -156,11 +165,12 @@ public final class VMOperationControl {
         return inProgress;
     }
 
+    @Uninterruptible(reason = "Set the current VM operation as atomically as possible - this is mainly relevant for deopt test cases")
     void setInProgress(VMOperation operation, IsolateThread queueingThread, IsolateThread executingThread) {
         assert operation != null && queueingThread.isNonNull() && executingThread.isNonNull() || operation == null && queueingThread.isNull() && executingThread.isNull();
+        inProgress.executingThread = executingThread;
         inProgress.operation = operation;
         inProgress.queueingThread = queueingThread;
-        inProgress.executingThread = executingThread;
     }
 
     void enqueue(JavaVMOperation operation) {
@@ -173,29 +183,28 @@ public final class VMOperationControl {
 
     /**
      * Enqueues a {@link VMOperation} and returns as soon as the operation was executed.
-     *
-     * Here, we must make the yellow zone available. Otherwise, {@link StackOverflowError}s can
-     * happen within the VM operation queuing and processing logic. This can have pretty nasty side
-     * effects. E.g., a VM operation could be queued but neither processed nor remove from the
-     * queue.
      */
     private void enqueue(VMOperation operation, NativeVMOperationData data) {
         StackOverflowCheck.singleton().makeYellowZoneAvailable();
         try {
             log().string("[VMOperationControl.enqueue:").string("  operation: ").string(operation.getName());
-            if (!SubstrateOptions.MultiThreaded.getValue()) {
+            if (!MultiThreaded.getValue()) {
                 // no safepoint is needed, so we can always directly execute the operation
-                assert !UseDedicatedVmThread.getValue();
-                assert !ThreadingSupportImpl.singleton().needsCallbackOnSafepointCheckSlowpath() : "single threaded execution does not support recurring callbacks";
-                operation.execute(data);
-            } else if (isDedicatedVmThread() || isTemporaryVmThread()) {
+                assert !UseDedicatedVMThread.getValue();
+                markAsQueued(operation, data);
+                try {
+                    operation.execute(data);
+                } finally {
+                    markAsFinished(operation, data, null);
+                }
+            } else if (mayExecuteVmOperations()) {
                 // a recursive VM operation (either triggered implicitly or explicitly) -> execute
                 // it right away
                 immediateQueues.enqueueAndExecute(operation, data);
-            } else if (UseDedicatedVmThread.getValue()) {
+            } else if (UseDedicatedVMThread.getValue()) {
                 // a thread queues an operation that the VM thread will execute
                 assert !isDedicatedVmThread() : "the dedicated VM thread must execute and not queue VM operations";
-                assert dedicatedVmThread.isRunning() : "must not queue a VM operation before the VM thread is started";
+                assert dedicatedVmThread.isRunning() : "must not queue VM operations before the VM thread is started or after it is shut down";
                 VMThreads.THREAD_MUTEX.guaranteeNotOwner("could result in deadlocks otherwise");
                 mainQueues.enqueueAndWait(operation, data);
             } else {
@@ -210,17 +219,37 @@ public final class VMOperationControl {
         }
     }
 
+    private static void markAsQueued(VMOperation operation, NativeVMOperationData data) {
+        operation.setQueuingThread(data, CurrentIsolate.getCurrentThread());
+        operation.setFinished(data, false);
+    }
+
+    private static void markAsFinished(VMOperation operation, NativeVMOperationData data, VMCondition operationFinished) {
+        operation.setFinished(data, true);
+        operation.setQueuingThread(data, WordFactory.nullPointer());
+        if (operationFinished != null) {
+            operationFinished.broadcast();
+        }
+    }
+
     /** Check if it is okay for this thread to block. */
     public static void guaranteeOkayToBlock(String message) {
         /* If the system is frozen at a safepoint, then it is not okay to block. */
-        if (isAtSafepoint()) {
+        if (isFrozen()) {
             Log.log().string(message).newline();
             VMError.shouldNotReachHere("Should not reach here: Not okay to block.");
         }
     }
 
-    public static boolean isAtSafepoint() {
-        return Safepoint.Master.singleton().isFrozen();
+    /**
+     * This method returns true if the application is currently stopped at a safepoint. This method
+     * always returns false if {@linkplain SubstrateOptions#MultiThreaded} is disabled as no
+     * safepoints are needed in that case.
+     */
+    public static boolean isFrozen() {
+        boolean result = Safepoint.Master.singleton().isFrozen();
+        assert !result || MultiThreaded.getValue();
+        return result;
     }
 
     private static Log log() {
@@ -229,9 +258,8 @@ public final class VMOperationControl {
 
     /**
      * A dedicated VM thread that executes {@link VMOperation}s. If the option
-     * {@link SubstrateOptions#UseDedicatedVmThread} is enabled, then this thread is the only one
-     * that may initiate a safepoint. Therefore, it never gets blocked at a safepoint and does not
-     * support recurring callbacks.
+     * {@link SubstrateOptions#UseDedicatedVMThread} is enabled, then this thread is the only one
+     * that may initiate a safepoint. Therefore, it never gets blocked at a safepoint.
      */
     private static class VMThread implements Runnable {
         private volatile IsolateThread isolateThread;
@@ -244,14 +272,12 @@ public final class VMOperationControl {
 
         @Override
         public void run() {
-            StatusSupport.setStatusIgnoreSafepoints();
             this.isolateThread = CurrentIsolate.getCurrentThread();
 
             VMOperationControl control = VMOperationControl.get();
             WorkQueues queues = control.mainQueues;
             while (!stopped) {
                 try {
-                    assert !ThreadingSupportImpl.singleton().needsCallbackOnSafepointCheckSlowpath() : "VM thread does not participate in any safepoint logic";
                     queues.waitForWorkAndExecute();
                 } catch (Throwable e) {
                     log().string("[VMOperation.execute caught: ").string(e.getClass().getName()).string("]").newline();
@@ -310,7 +336,7 @@ public final class VMOperationControl {
             this.nativeSafepointOperations = new NativeVMOperationQueue(prefix + "NativeSafepointOperations");
             this.javaNonSafepointOperations = new JavaVMOperationQueue(prefix + "JavaNonSafepointOperations");
             this.javaSafepointOperations = new JavaVMOperationQueue(prefix + "JavaSafepointOperations");
-            this.mutex = createLock(needsLocking);
+            this.mutex = createMutex(needsLocking);
             this.operationQueued = createCondition();
             this.operationFinished = createCondition();
         }
@@ -319,54 +345,58 @@ public final class VMOperationControl {
             return nativeNonSafepointOperations.isEmpty() && nativeSafepointOperations.isEmpty() && javaNonSafepointOperations.isEmpty() && javaSafepointOperations.isEmpty();
         }
 
-        void enqueueAndWait(VMOperation operation, NativeVMOperationData data) {
-            assert UseDedicatedVmThread.getValue();
-            lock();
-            try {
-                enqueue(operation, data);
-                operationQueued.broadcast();
-                while (!operation.isFinished(data)) {
-                    operationFinished.block();
-                }
-            } finally {
-                unlock();
-            }
-        }
-
         void waitForWorkAndExecute() {
             assert isDedicatedVmThread();
+            assert !ThreadingSupportImpl.isRecurringCallbackRegistered(CurrentIsolate.getCurrentThread());
             lock();
             try {
                 while (isEmpty()) {
                     operationQueued.block();
                 }
-
                 executeAllQueuedVMOperations();
             } finally {
                 unlock();
             }
         }
 
-        void enqueueAndExecute(VMOperation operation, NativeVMOperationData data) {
-            lock();
+        void enqueueAndWait(VMOperation operation, NativeVMOperationData data) {
+            assert UseDedicatedVMThread.getValue();
+            ThreadingSupportImpl.pauseRecurringCallback();
             try {
-                IsolateThread prevTempVmThread = getTemporaryVmThread();
-                setTemporaryVmThread(CurrentIsolate.getCurrentThread());
+                lock();
+                try {
+                    enqueue(operation, data);
+                    operationQueued.broadcast();
+                    while (!operation.isFinished(data)) {
+                        operationFinished.block();
+                    }
+                } finally {
+                    unlock();
+                }
+            } finally {
+                ThreadingSupportImpl.resumeRecurringCallback();
+            }
+        }
+
+        void enqueueAndExecute(VMOperation operation, NativeVMOperationData data) {
+            ThreadingSupportImpl.pauseRecurringCallback();
+            try {
+                lock();
                 try {
                     enqueue(operation, data);
                     executeAllQueuedVMOperations();
                 } finally {
-                    setTemporaryVmThread(prevTempVmThread);
-                    assert isEmpty();
+                    assert isEmpty() : "all queued VM operations must have been processed";
+                    unlock();
                 }
             } finally {
-                unlock();
+                ThreadingSupportImpl.resumeRecurringCallback();
             }
         }
 
         private void enqueue(VMOperation operation, NativeVMOperationData data) {
             assertIsLocked();
-            operation.setQueuingThread(data, CurrentIsolate.getCurrentThread());
+            markAsQueued(operation, data);
             if (operation instanceof JavaVMOperation) {
                 if (operation.getCausesSafepoint()) {
                     javaSafepointOperations.push((JavaVMOperation) operation);
@@ -392,36 +422,20 @@ public final class VMOperationControl {
             drain(nativeNonSafepointOperations);
             drain(javaNonSafepointOperations);
 
-            // Drain the safepoint queue.
+            // Filter operations that need a safepoint but don't have any work to do.
+            nativeSafepointOperations.filterUnnecessary();
+            javaSafepointOperations.filterUnnecessary();
+
+            // Drain the safepoint queues.
             if (!nativeSafepointOperations.isEmpty() || !javaSafepointOperations.isEmpty()) {
-                /*
-                 * During a safepoint, periodic callbacks and safepoint checks are suspended because
-                 * we cannot let arbitrary user code run, e.g., during GC. We save the state here
-                 * before initiating the safepoint so that the values can be used when the safepoint
-                 * ends. The safepoint logic contains very similar logic for the periodic callbacks,
-                 * which triggers for all threads that are blocked due to the safepoint.
-                 */
                 String safepointReason = null;
                 boolean startedSafepoint = false;
                 boolean lockedForSafepoint = false;
-                boolean needsCallback = false;
-                long callbackTime = 0;
-                int callbackValue = 0;
 
                 Safepoint.Master master = Safepoint.Master.singleton();
                 if (!master.isFrozen()) {
                     startedSafepoint = true;
                     safepointReason = getSafepointReason(nativeSafepointOperations, javaSafepointOperations);
-
-                    assert !(isDedicatedVmThread() && ThreadingSupportImpl.singleton().needsCallbackOnSafepointCheckSlowpath());
-                    needsCallback = !UseDedicatedVmThread.getValue() && ThreadingSupportImpl.singleton().needsCallbackOnSafepointCheckSlowpath();
-                    if (needsCallback) {
-                        callbackTime = System.nanoTime();
-                        callbackValue = Safepoint.getSafepointRequested(CurrentIsolate.getCurrentThread());
-                        log().string("set safepoint requested").newline();
-                        Safepoint.setSafepointRequested(CurrentIsolate.getCurrentThread(), SafepointRequestValues.RESET);
-                    }
-
                     lockedForSafepoint = master.freeze(safepointReason);
                 }
 
@@ -431,10 +445,6 @@ public final class VMOperationControl {
                 } finally {
                     if (startedSafepoint) {
                         master.thaw(safepointReason, lockedForSafepoint);
-
-                        if (needsCallback) {
-                            ThreadingSupportImpl.singleton().onSafepointCheckSlowpath(callbackTime, callbackValue);
-                        }
                     }
                 }
             }
@@ -454,14 +464,15 @@ public final class VMOperationControl {
         private void drain(NativeVMOperationQueue workQueue) {
             assertIsLocked();
             if (!workQueue.isEmpty()) {
-                final Log trace = log();
+                Log trace = log();
                 trace.string("[Worklist.drain:  queue: ").string(workQueue.name);
                 while (!workQueue.isEmpty()) {
                     NativeVMOperationData data = workQueue.pop();
+                    VMOperation operation = data.getNativeVMOperation();
                     try {
-                        data.getNativeVMOperation().execute(data);
+                        operation.execute(data);
                     } finally {
-                        operationFinished();
+                        markAsFinished(operation, data, operationFinished);
                     }
                 }
                 trace.string("]").newline();
@@ -471,14 +482,14 @@ public final class VMOperationControl {
         private void drain(JavaVMOperationQueue workQueue) {
             assertIsLocked();
             if (!workQueue.isEmpty()) {
-                final Log trace = log();
+                Log trace = log();
                 trace.string("[Worklist.drain:  queue: ").string(workQueue.name);
                 while (!workQueue.isEmpty()) {
                     JavaVMOperation operation = workQueue.pop();
                     try {
                         operation.execute(WordFactory.nullPointer());
                     } finally {
-                        operationFinished();
+                        markAsFinished(operation, WordFactory.nullPointer(), operationFinished);
                     }
                 }
                 trace.string("]").newline();
@@ -497,12 +508,6 @@ public final class VMOperationControl {
             }
         }
 
-        private void operationFinished() {
-            if (operationFinished != null) {
-                operationFinished.broadcast();
-            }
-        }
-
         private void assertIsLocked() {
             if (mutex != null) {
                 mutex.assertIsOwner("must be locked");
@@ -510,7 +515,7 @@ public final class VMOperationControl {
         }
 
         @Platforms(value = Platform.HOSTED_ONLY.class)
-        private static VMMutex createLock(boolean needsLocking) {
+        private static VMMutex createMutex(boolean needsLocking) {
             if (needsLocking) {
                 return new VMMutex();
             }
@@ -519,7 +524,7 @@ public final class VMOperationControl {
 
         @Platforms(value = Platform.HOSTED_ONLY.class)
         private VMCondition createCondition() {
-            if (mutex != null && UseDedicatedVmThread.getValue()) {
+            if (mutex != null && UseDedicatedVMThread.getValue()) {
                 return new VMCondition(mutex);
             }
             return null;
@@ -537,10 +542,8 @@ public final class VMOperationControl {
 
         abstract void push(T element);
 
-        /** Pop an element from the queue, or null if the queue is empty. */
         abstract T pop();
 
-        /** Returns the element that will be popped next. */
         abstract T peek();
     }
 
@@ -548,7 +551,7 @@ public final class VMOperationControl {
      * A queue that does not allocate because each element has a next pointer. This queue is
      * <em>not</em> multi-thread safe.
      */
-    protected static class JavaAllocationFreeQueue<T extends JavaAllocationFreeQueue.Element<T>> extends AllocationFreeQueue<T> {
+    protected abstract static class JavaAllocationFreeQueue<T extends JavaAllocationFreeQueue.Element<T>> extends AllocationFreeQueue<T> {
         private T head;
         private T tail; // can point to an incorrect value if head is null
 
@@ -563,7 +566,7 @@ public final class VMOperationControl {
 
         @Override
         public void push(T element) {
-            assert element.getNext() == null;
+            assert element.getNext() == null : "must not already be queued";
             if (head == null) {
                 head = element;
             } else {
@@ -575,7 +578,7 @@ public final class VMOperationControl {
         @Override
         public T pop() {
             if (head == null) {
-                return head;
+                return null;
             }
             T resultElement = head;
             head = resultElement.getNext();
@@ -588,6 +591,26 @@ public final class VMOperationControl {
             return head;
         }
 
+        public void filterUnnecessary() {
+            T prev = null;
+            T op = head;
+            while (op != null) {
+                if (isUnnecessary(op)) {
+                    if (prev == null) {
+                        assert head == op;
+                        head = op;
+                    } else {
+                        prev.setNext(op.getNext());
+                    }
+                } else {
+                    prev = op;
+                }
+                op = op.getNext();
+            }
+        }
+
+        protected abstract boolean isUnnecessary(T op);
+
         /** An element for an allocation-free queue. An element can be in at most one queue. */
         public interface Element<T extends Element<T>> {
             T getNext();
@@ -599,6 +622,11 @@ public final class VMOperationControl {
     protected static class JavaVMOperationQueue extends JavaAllocationFreeQueue<JavaVMOperation> {
         JavaVMOperationQueue(String name) {
             super(name);
+        }
+
+        @Override
+        protected boolean isUnnecessary(JavaVMOperation op) {
+            return !op.hasWork(WordFactory.nullPointer());
         }
     }
 
@@ -622,7 +650,7 @@ public final class VMOperationControl {
 
         @Override
         public void push(NativeVMOperationData element) {
-            assert element.getNext().isNull();
+            assert element.getNext().isNull() : "must not already be queued";
             if (head.isNull()) {
                 head = element;
             } else {
@@ -634,7 +662,7 @@ public final class VMOperationControl {
         @Override
         public NativeVMOperationData pop() {
             if (head.isNull()) {
-                return head;
+                return WordFactory.nullPointer();
             }
             NativeVMOperationData resultElement = head;
             head = resultElement.getNext();
@@ -646,6 +674,28 @@ public final class VMOperationControl {
         public NativeVMOperationData peek() {
             return head;
         }
+
+        public void filterUnnecessary() {
+            NativeVMOperationData prev = WordFactory.nullPointer();
+            NativeVMOperationData data = head;
+            while (data.isNonNull()) {
+                if (isUnnecessary(data)) {
+                    if (prev.isNull()) {
+                        assert head == data;
+                        head = data;
+                    } else {
+                        prev.setNext(data.getNext());
+                    }
+                } else {
+                    prev = data;
+                }
+                data = data.getNext();
+            }
+        }
+
+        private static boolean isUnnecessary(NativeVMOperationData data) {
+            return !data.getNativeVMOperation().hasWork(data);
+        }
     }
 
     /**
@@ -655,9 +705,9 @@ public final class VMOperationControl {
      * memory that can be freed when the operation finishes).
      */
     protected static class OpInProgress {
-        private VMOperation operation;
-        private IsolateThread queueingThread;
-        private IsolateThread executingThread;
+        VMOperation operation;
+        IsolateThread queueingThread;
+        IsolateThread executingThread;
 
         public VMOperation getOperation() {
             return operation;

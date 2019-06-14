@@ -277,7 +277,6 @@ final class WindowsVMCondition extends VMCondition {
         long endTimeInNanos = startTimeInNanos + waitNanos;
         int dwMilliseconds = (int) (waitNanos / WindowsUtils.NANOSECS_PER_MILLISEC);
 
-        mutex.assertIsOwner("Blocking on not owned mutex");
         mutex.clearCurrentThreadOwner();
         final int timedwaitResult = Process.SleepConditionVariableCSNoTrans(getStructPointer(), ((WindowsVMMutex) getMutex()).getStructPointer(), dwMilliseconds);
         mutex.setOwnerToCurrentThread();
