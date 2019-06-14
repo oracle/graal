@@ -378,7 +378,12 @@ public class NativeImageMojo extends AbstractMojo {
                 jvmciJars = Collections.emptyList();
             } else {
                 try {
-                    jvmciJars = Files.list(getJavaHome().resolve("lib/jvmci")).collect(Collectors.toList());
+                    jvmciJars = Files.list(getJavaHome().resolve("lib/jvmci"))
+                            .filter(path -> {
+                                String jvmciJarCandidate = path.getFileName().toString().toLowerCase();
+                                return jvmciJarCandidate.startsWith("jvmci-") && jvmciJarCandidate.endsWith(".jar");
+                            })
+                            .collect(Collectors.toList());
                 } catch (IOException e) {
                     throw new MojoExecutionException("JVM in " + getJavaHome() + " does not support JVMCI interface", e);
                 }
