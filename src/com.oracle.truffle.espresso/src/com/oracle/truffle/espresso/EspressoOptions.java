@@ -22,10 +22,13 @@
  */
 package com.oracle.truffle.espresso;
 
+import java.util.function.Function;
+
 import org.graalvm.nativeimage.ImageInfo;
 import org.graalvm.options.OptionCategory;
 import org.graalvm.options.OptionKey;
 import org.graalvm.options.OptionMap;
+import org.graalvm.options.OptionType;
 
 import com.oracle.truffle.api.Option;
 
@@ -63,11 +66,29 @@ public final class EspressoOptions {
     @Option(help = "Enable system assertions.", category = OptionCategory.USER) //
     public static final OptionKey<Boolean> EnableSystemAssertions = new OptionKey<>(false);
 
+    public enum VerifyMode {
+        NONE,
+        REMOTE, // Verifies all bytecodes not loaded by the bootstrap class loader.
+        ALL
+    }
+
+    static final OptionType<VerifyMode> VERIFY_MODE_OPTION_TYPE = new OptionType<>("VerifyMode",
+                    new Function<String, VerifyMode>() {
+                        @Override
+                        public VerifyMode apply(String s) {
+                            try {
+                                return VerifyMode.valueOf(s.toUpperCase());
+                            } catch (IllegalArgumentException e) {
+                                throw new IllegalArgumentException("-Xverify: Mode can be 'none', 'remote' or 'all'.");
+                            }
+                        }
+                    });
+
+    @Option(help = "Sets the mode of the bytecode verifier.", category = OptionCategory.EXPERT) //
+    public static final OptionKey<VerifyMode> Verify = new OptionKey<>(VerifyMode.REMOTE, VERIFY_MODE_OPTION_TYPE);
+
     // Threads are enabled by default.
     public static final boolean ENABLE_THREADS = (System.getProperty("espresso.EnableThreads") == null) || Boolean.getBoolean("espresso.EnableThreads");
-
-    // Bytecode Verification is enabled by default.
-    public static final boolean ENABLE_VERIFICATION = (System.getProperty("espresso.EnableVerify") == null) || Boolean.getBoolean("espresso.EnableVerify");
 
     public static final boolean RUNNING_ON_SVM = ImageInfo.inImageCode();
 
