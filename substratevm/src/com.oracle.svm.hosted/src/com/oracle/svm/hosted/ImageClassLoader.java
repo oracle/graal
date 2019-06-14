@@ -164,8 +164,17 @@ public final class ImageClassLoader {
             if (Files.isRegularFile(path)) {
                 try {
                     URI jarURI = new URI("jar:" + path.toAbsolutePath().toUri());
-                    try (FileSystem jarFileSystem = FileSystems.newFileSystem(jarURI, Collections.emptyMap())) {
-                        initAllClasses(jarFileSystem.getPath("/"), Collections.emptySet(), executor);
+                    FileSystem probeJarFileSystem;
+                    try {
+                        probeJarFileSystem = FileSystems.newFileSystem(jarURI, Collections.emptyMap());
+                    } catch (UnsupportedOperationException e) {
+                        /* Silently ignore invalid jar-files on image-classpath */
+                        probeJarFileSystem = null;
+                    }
+                    if (probeJarFileSystem != null) {
+                        try (FileSystem jarFileSystem = probeJarFileSystem) {
+                            initAllClasses(jarFileSystem.getPath("/"), Collections.emptySet(), executor);
+                        }
                     }
                 } catch (ClosedByInterruptException ignored) {
                     throw new InterruptImageBuilding();
