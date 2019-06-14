@@ -1840,8 +1840,7 @@ suite = {
         "org.graalvm.compiler.truffle.common.hotspot.libgraal",
       ],
       "checkstyle" : "org.graalvm.compiler.graph",
-      "javaCompliance" : "8+",
-      "javaVersionExclusion" : "11",
+      "javaCompliance" : "8,14+",
       "annotationProcessors" : [
         "truffle:TRUFFLE_DSL_PROCESSOR",
       ],
@@ -1862,8 +1861,7 @@ suite = {
         "org.graalvm.compiler.truffle.compiler.hotspot.TruffleCallBoundaryInstrumentationFactory",
       ],
       "checkstyle" : "org.graalvm.compiler.graph",
-      "javaCompliance" : "8+",
-      "javaVersionExclusion" : "11",
+      "javaCompliance" : "8,14+",
       "annotationProcessors" : [
         "GRAAL_OPTIONS_PROCESSOR",
         "TRUFFLE_LIBGRAAL_PROCESSOR",
@@ -1880,8 +1878,7 @@ suite = {
         "org.graalvm.compiler.truffle.common.hotspot.libgraal",
       ],
       "checkstyle" : "org.graalvm.compiler.graph",
-      "javaCompliance" : "8+",
-      "javaVersionExclusion" : "11",
+      "javaCompliance" : "8,14+",
       "workingSets" : "Graal,Truffle",
     },
 
