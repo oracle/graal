@@ -24,6 +24,7 @@
  */
 package com.oracle.svm.core.code;
 
+import org.graalvm.compiler.api.replacements.Fold;
 import org.graalvm.nativeimage.ImageSingletons;
 import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.Platforms;
@@ -32,15 +33,22 @@ import org.graalvm.nativeimage.hosted.Feature;
 import org.graalvm.word.UnsignedWord;
 
 import com.oracle.svm.core.MemoryWalker;
+import com.oracle.svm.core.SubstrateOptions;
 import com.oracle.svm.core.annotate.AutomaticFeature;
+import com.oracle.svm.core.annotate.Uninterruptible;
 import com.oracle.svm.core.annotate.UnknownObjectField;
 import com.oracle.svm.core.annotate.UnknownPrimitiveField;
 import com.oracle.svm.core.c.NonmovableArray;
 import com.oracle.svm.core.c.NonmovableArrays;
 import com.oracle.svm.core.c.NonmovableObjectArray;
+import com.oracle.svm.core.jdk.UninterruptibleUtils;
 import com.oracle.svm.core.log.Log;
 
 public class ImageCodeInfo implements CodeInfoAccessor {
+    @Fold
+    static boolean haveAssertions() {
+        return SubstrateOptions.getRuntimeAssertionsForClass(ImageCodeInfo.class.getName());
+    }
 
     /**
      * There is only one instance for all image code, so we don't need any handles. However, for
@@ -49,6 +57,8 @@ public class ImageCodeInfo implements CodeInfoAccessor {
     public static final CodeInfoHandle SINGLETON_HANDLE = null;
 
     public static final String CODE_INFO_NAME = "image code";
+
+    private final Object tether = haveAssertions() ? new UninterruptibleUtils.AtomicInteger(0) : null;
 
     @UnknownPrimitiveField private CodePointer codeStart;
     @UnknownPrimitiveField private UnsignedWord codeSize;
@@ -153,11 +163,37 @@ public class ImageCodeInfo implements CodeInfoAccessor {
     }
 
     @Override
+    @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
     public CodeInfoHandle lookupCodeInfo(CodePointer ip) {
         return SINGLETON_HANDLE;
     }
 
     @Override
+    @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
+    public Object acquireTether(CodeInfoHandle handle) {
+        assert ((UninterruptibleUtils.AtomicInteger) tether).incrementAndGet() > 0;
+        return tether;
+    }
+
+    @Override
+    @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
+    public boolean isTethered(CodeInfoHandle handle) {
+        return !haveAssertions() || ((UninterruptibleUtils.AtomicInteger) tether).get() > 0;
+    }
+
+    @Override
+    @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
+    public void releaseTether(CodeInfoHandle handle, Object tetherObj) {
+        /*
+         * NOTE: without assertions, the entire tether mechanism in the caller could be eliminated
+         * as dead code, but since our data is persisted in the image heap, it doesn't matter.
+         */
+        assert tetherObj == this.tether;
+        assert ((UninterruptibleUtils.AtomicInteger) tetherObj).getAndDecrement() > 0;
+    }
+
+    @Override
+    @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
     public boolean isNone(CodeInfoHandle handle) {
         return false;
     }

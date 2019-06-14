@@ -297,7 +297,7 @@ public class InstalledCodeBuilder {
             objectConstants.add(new DataSectionPatcher(constantsOffset + position), (SubstrateObjectConstant) constant);
         });
 
-        runtimeMethodHandle = runtimeCodeAccessor.allocateMethodInfo();
+        runtimeMethodHandle = RuntimeCodeInfoAccessor.allocateMethodInfo();
         runtimeCodeAccessor.setCodeLocation(runtimeMethodHandle, code, codeSize);
 
         CodeReferenceMapEncoder encoder = new CodeReferenceMapEncoder();

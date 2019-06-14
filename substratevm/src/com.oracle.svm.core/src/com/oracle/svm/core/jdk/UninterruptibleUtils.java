@@ -79,6 +79,11 @@ public class UninterruptibleUtils {
         }
 
         @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
+        public int getAndDecrement() {
+            return UNSAFE.getAndAddInt(this, VALUE_OFFSET, -1);
+        }
+
+        @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
         public int decrementAndGet() {
             return UNSAFE.getAndAddInt(this, VALUE_OFFSET, -1) - 1;
         }

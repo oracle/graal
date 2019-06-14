@@ -24,8 +24,13 @@
  */
 package com.oracle.svm.core.code;
 
-import java.lang.ref.WeakReference;
+// Checkstyle: allow reflection
 
+import java.lang.ref.WeakReference;
+import java.lang.reflect.Method;
+
+import org.graalvm.compiler.api.replacements.Fold;
+import org.graalvm.compiler.serviceprovider.JavaVersionUtil;
 import org.graalvm.nativeimage.ImageSingletons;
 import org.graalvm.nativeimage.c.function.CodePointer;
 import org.graalvm.nativeimage.c.struct.SizeOf;
@@ -36,6 +41,10 @@ import org.graalvm.word.UnsignedWord;
 import org.graalvm.word.WordFactory;
 
 import com.oracle.svm.core.SubstrateOptions;
+<<<<<<< HEAD
+=======
+import com.oracle.svm.core.annotate.NeverInline;
+>>>>>>> 885e76ca2a5... Support retaining code information with a Cleaner object.
 import com.oracle.svm.core.annotate.Uninterruptible;
 import com.oracle.svm.core.c.NonmovableArray;
 import com.oracle.svm.core.c.NonmovableArrays;
@@ -46,10 +55,17 @@ import com.oracle.svm.core.code.InstalledCodeObserver.InstalledCodeObserverHandl
 import com.oracle.svm.core.deopt.SubstrateInstalledCode;
 import com.oracle.svm.core.heap.CodeReferenceMapDecoder;
 import com.oracle.svm.core.heap.ObjectReferenceVisitor;
+import com.oracle.svm.core.jdk.UninterruptibleUtils;
 import com.oracle.svm.core.log.Log;
 import com.oracle.svm.core.os.CommittedMemoryProvider;
+import com.oracle.svm.core.util.VMError;
 
 public class RuntimeCodeInfoAccessor implements CodeInfoAccessor {
+    @Fold
+    static boolean haveAssertions() {
+        return SubstrateOptions.getRuntimeAssertionsForClass(RuntimeCodeInfoAccessor.class.getName());
+    }
+
     public static final CodeInfoHandle NULL_HANDLE = null;
 
     public static final JavaMethodLiteral<UnmanagedReferenceWalkers.ObjectReferenceWalkerFunction> walkReferencesFunction = JavaMethodLiteral.create(
@@ -67,8 +83,31 @@ public class RuntimeCodeInfoAccessor implements CodeInfoAccessor {
     }
 
     @Override
+    @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
     public CodeInfoHandle lookupCodeInfo(CodePointer ip) {
         return codeCache.lookupMethod(ip);
+    }
+
+    @Override
+    @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
+    public Object acquireTether(CodeInfoHandle handle) {
+        Object tether = getObjectField(handle, 0);
+        assert ((UninterruptibleUtils.AtomicInteger) tether).incrementAndGet() > 0;
+        return tether;
+    }
+
+    @Override
+    @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
+    public boolean isTethered(CodeInfoHandle handle) {
+        return !haveAssertions() || ((UninterruptibleUtils.AtomicInteger) getObjectField(handle, 0)).get() > 0;
+    }
+
+    @Override
+    @NeverInline("Prevent elimination of object reference in caller.")
+    @Uninterruptible(reason = "Called from uninterruptible code.")
+    public void releaseTether(CodeInfoHandle handle, Object tether) {
+        assert tether == getObjectField(handle, 0) || getObjectField(handle, 0) == null;
+        assert ((UninterruptibleUtils.AtomicInteger) tether).getAndDecrement() > 0;
     }
 
     @Override
@@ -139,21 +178,22 @@ public class RuntimeCodeInfoAccessor implements CodeInfoAccessor {
     }
 
     @SuppressWarnings("unchecked")
+    @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
     private static <T> T getObjectField(CodeInfoHandle handle, int index) {
         return (T) NonmovableArrays.getObject(cast(handle).getObjectFields(), index);
     }
 
     @Override
     public String getName(CodeInfoHandle handle) {
-        return getObjectField(handle, 0);
+        return getObjectField(handle, 1);
     }
 
     SubstrateInstalledCode getInstalledCode(CodeInfoHandle handle) {
-        return RuntimeCodeInfoAccessor.<WeakReference<SubstrateInstalledCode>> getObjectField(handle, 1).get();
+        return RuntimeCodeInfoAccessor.<WeakReference<SubstrateInstalledCode>> getObjectField(handle, 2).get();
     }
 
     InstalledCodeObserverHandle[] getCodeObserverHandles(CodeInfoHandle handle) {
-        return getObjectField(handle, 2);
+        return getObjectField(handle, 3);
     }
 
     @Override
@@ -239,11 +279,10 @@ public class RuntimeCodeInfoAccessor implements CodeInfoAccessor {
 
     public void setData(CodeInfoHandle handle, SubstrateInstalledCode installedCode, int tier, InstalledCodeObserverHandle[] codeObserverHandles) {
         assert codeObserverHandles != null;
-        NonmovableObjectArray<Object> objectFields = NonmovableArrays.createObjectArray(3);
-        NonmovableArrays.setObject(objectFields, 0, installedCode.getName());
-        NonmovableArrays.setObject(objectFields, 1, new WeakReference<>(installedCode));
-        NonmovableArrays.setObject(objectFields, 2, codeObserverHandles);
-        cast(handle).setObjectFields(objectFields);
+        NonmovableObjectArray<Object> objectFields = cast(handle).getObjectFields();
+        NonmovableArrays.setObject(objectFields, 1, installedCode.getName());
+        NonmovableArrays.setObject(objectFields, 2, new WeakReference<>(installedCode));
+        NonmovableArrays.setObject(objectFields, 3, codeObserverHandles);
         cast(handle).setTier(tier);
     }
 
@@ -261,10 +300,50 @@ public class RuntimeCodeInfoAccessor implements CodeInfoAccessor {
         NonmovableArrays.walkUnmanagedObjectArray(info.getDeoptimizationObjectConstants(), visitor);
     }
 
-    public CodeInfoHandle allocateMethodInfo() {
+    public static CodeInfoHandle allocateMethodInfo() {
         CodeInfoHandle handle = ImageSingletons.lookup(UnmanagedMemorySupport.class).calloc(WordFactory.unsigned(SizeOf.get(RuntimeMethodInfo.class)));
         UnmanagedReferenceWalkers.singleton().register(walkReferencesFunction.getFunctionPointer(), handle);
+        NonmovableObjectArray<Object> objectFields = NonmovableArrays.createObjectArray(4);
+        Object obj = haveAssertions() ? new UninterruptibleUtils.AtomicInteger(0) : new Object();
+        NonmovableArrays.setObject(objectFields, 0, obj);
+        cast(handle).setObjectFields(objectFields);
+        createCleaner(handle, obj);
         return handle;
+    }
+
+    private static final Method CLEANER_CREATE_METHOD;
+    static {
+        try { /* Cleaner class moved after JDK 8 */
+            // Checkstyle: stop
+            Class<?> clazz = (JavaVersionUtil.JAVA_SPEC <= 8) ? Class.forName("sun.misc.Cleaner") : Class.forName("jdk.internal.ref.Cleaner");
+            // Checkstyle: resume
+            CLEANER_CREATE_METHOD = clazz.getDeclaredMethod("create", Object.class, Runnable.class);
+        } catch (ReflectiveOperationException e) {
+            throw VMError.shouldNotReachHere(e);
+        }
+    }
+
+    private static void createCleaner(CodeInfoHandle handle, Object obj) {
+        try {
+            CLEANER_CREATE_METHOD.invoke(null, obj, new RuntimeMethodInfoCleaner(handle));
+        } catch (ReflectiveOperationException e) {
+            throw VMError.shouldNotReachHere(e);
+        }
+    }
+
+    private static final class RuntimeMethodInfoCleaner implements Runnable {
+        private final CodeInfoHandle handle;
+
+        private RuntimeMethodInfoCleaner(CodeInfoHandle handle) {
+            this.handle = handle;
+        }
+
+        @Override
+        public void run() {
+            boolean unregistered = UnmanagedReferenceWalkers.singleton().unregister(walkReferencesFunction.getFunctionPointer(), handle);
+            assert unregistered : "must have been present";
+            releaseMethodInfoMemory(handle);
+        }
     }
 
     UnsignedWord getMetadataCodeSize(CodeInfoHandle handle) {
@@ -285,9 +364,21 @@ public class RuntimeCodeInfoAccessor implements CodeInfoAccessor {
                         .add(NonmovableArrays.byteSizeOf(info.getObjectsReferenceMapEncoding()));
     }
 
-    void releaseMethodInfo(CodeInfoHandle handle) {
-        UnmanagedReferenceWalkers.singleton().unregister(walkReferencesFunction.getFunctionPointer(), handle);
-        releaseMethodInfoMemory(handle);
+    void releaseInstalledCodeAndTether(CodeInfoHandle handle) {
+        assert NonmovableArrays.getObject(cast(handle).getObjectFields(), 0) != null : "already released";
+
+        cast(handle).setCodeConstantsLive(false);
+        releaseInstalledCode(cast(handle));
+
+        /*
+         * Set our reference to the tether object to null so that the Cleaner object can free our
+         * memory as soon as any other references, e.g. from ongoing stack walks, are gone.
+         */
+        NonmovableArrays.setObject(cast(handle).getObjectFields(), 0, null);
+    }
+
+    private static void releaseInstalledCode(RuntimeMethodInfo runtimeMethodInfo) {
+        CommittedMemoryProvider.get().free(runtimeMethodInfo.getCodeStart(), runtimeMethodInfo.getCodeSize(), WordFactory.unsigned(SubstrateOptions.codeAlignment()), true);
     }
 
     @Uninterruptible(reason = "Called from uninterruptible code", mayBeInlined = true)
@@ -313,13 +404,6 @@ public class RuntimeCodeInfoAccessor implements CodeInfoAccessor {
         NonmovableArrays.releaseUnmanagedArray(info.getDeoptimizationObjectConstants());
         NonmovableArrays.releaseUnmanagedArray(info.getObjectsReferenceMapEncoding());
 
-        releaseInstalledCode(info);
-
         ImageSingletons.lookup(UnmanagedMemorySupport.class).free(info);
-    }
-
-    @Uninterruptible(reason = "Called from uninterruptible code", mayBeInlined = true)
-    private static void releaseInstalledCode(RuntimeMethodInfo runtimeMethodInfo) {
-        CommittedMemoryProvider.get().free(runtimeMethodInfo.getCodeStart(), runtimeMethodInfo.getCodeSize(), WordFactory.unsigned(SubstrateOptions.codeAlignment()), true);
     }
 }

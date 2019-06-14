@@ -210,6 +210,7 @@ public class SubstrateUtil {
      * @return true if assertions are enabled.
      */
     @SuppressWarnings("all")
+    @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
     public static boolean assertionsEnabled() {
         boolean assertionsEnabled = false;
         assert assertionsEnabled = true;

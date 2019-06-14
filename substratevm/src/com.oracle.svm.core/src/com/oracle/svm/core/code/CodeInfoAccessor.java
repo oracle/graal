@@ -29,22 +29,60 @@ import org.graalvm.word.UnsignedWord;
 import org.graalvm.word.WordFactory;
 
 import com.oracle.svm.core.annotate.RestrictHeapAccess;
+import com.oracle.svm.core.annotate.Uninterruptible;
 import com.oracle.svm.core.c.NonmovableArray;
 import com.oracle.svm.core.c.NonmovableObjectArray;
 import com.oracle.svm.core.code.FrameInfoDecoder.ValueInfoAllocator;
 import com.oracle.svm.core.log.Log;
+import com.oracle.svm.core.thread.VMOperation;
 
 /**
  * Functionality to lookup and query information about units of compiled code, each represented by a
  * {@link CodeInfoHandle}.
+ * <p>
+ * Callers of these methods must take into account that frames on the stack can be deoptimized at
+ * any safepoint check, that is, anywhere in code that is not annotated with {@link Uninterruptible}
+ * unless it is running in a {@linkplain VMOperation VM operation in a safepoint}. When a method is
+ * deoptimized, its code can also be {@linkplain CodeInfoTable#invalidateInstalledCode invalidated},
+ * successive {@linkplain #lookupCodeInfo(CodePointer) lookups of instruction pointers} within the
+ * code can fail, and any existing handles become invalid and accesses with them lead to a crash.
+ * <p>
+ * This can be avoided by {@linkplain Uninterruptible uninterruptibly} reading a current instruction
+ * pointer from the stack, calling {@link #lookupCodeInfo} on it to obtain a handle, and then
+ * {@linkplain #acquireTether acquiring a "tether" object for the handle} to ensure that the handle
+ * and its data remain accessible. At that point, processing can continue in interruptible code
+ * (calling a separate method with {@link Uninterruptible#calleeMustBe()} == false is recommended).
+ * Note however that the frame on the stack can nevertheless be deoptimized at a safepoint check.
+ * Eventually, the tether must be {@link #releaseTether(CodeInfoHandle, Object)}, and its reference
+ * should be set to null. (See usages of these methods for concrete code examples.)
  */
 public interface CodeInfoAccessor {
     /**
      * For the unit of compiled code at the given instruction pointer, provides a handle that can be
      * used for further queries.
      */
+    @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
     CodeInfoHandle lookupCodeInfo(CodePointer ip);
 
+    /**
+     * Acquire a tether object for the specified handle, which ensures that the handle remains valid
+     * and its associated data remains accessible until {@link #releaseTether} is called.
+     */
+    @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
+    Object acquireTether(CodeInfoHandle handle);
+
+    /** For assertions: whether a handle is currently tethered. */
+    @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
+    boolean isTethered(CodeInfoHandle handle);
+
+    /**
+     * Release the tether object for the specified handle, after which the handle may become invalid
+     * or its associated data becomes unavailable.
+     */
+    @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
+    void releaseTether(CodeInfoHandle handle, Object tether);
+
+    @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
     boolean isNone(CodeInfoHandle handle);
 
     CodePointer getCodeStart(CodeInfoHandle handle);

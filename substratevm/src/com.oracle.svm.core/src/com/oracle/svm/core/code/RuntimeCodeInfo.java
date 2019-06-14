@@ -243,7 +243,7 @@ public class RuntimeCodeInfo {
         numMethods--;
         NonmovableArrays.setWord(methodInfos, numMethods, RuntimeCodeInfoAccessor.NULL_HANDLE);
 
-        accessor.releaseMethodInfo(handle);
+        accessor.releaseInstalledCodeAndTether(handle);
 
         if (Options.TraceCodeCache.getValue()) {
             logTable();

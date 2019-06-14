@@ -38,25 +38,32 @@ import jdk.vm.ci.code.InstalledCode;
 @RawStructure
 public interface RuntimeMethodInfo extends PointerBase {
     /**
-     * The object "fields" of this class, managed as an array for simplicity.
+     * The object "fields" of this structure, managed as an array for simplicity.
      *
-     * [0] String: The {@linkplain InstalledCode#getName() name of the InstalledCode}. Stored here
+     * [0] Object: a "tether" object for which a {@code Cleaner} object is registered. Once the
+     * tether object is no longer referenced from anywhere, the cleaner will release the memory of
+     * this {@link RuntimeMethodInfo} during garbage collection. This reference field is set to
+     * {@code null} on code invalidation. At that point, the tether object can still be
+     * {@linkplain CodeInfoAccessor#acquireTether referenced} from stack walks or other code to keep
+     * the code information alive (prevent the cleaner from running) until it is no longer needed.
+     *
+     * [1] String: The {@linkplain InstalledCode#getName() name of the InstalledCode}. Stored here
      * so it remains available even after the code is no longer available. Note that the String is
      * not pinned, so this field must not be accessed during garbage collection.
      *
-     * [1] WeakReference<SubstrateInstalledCode>: The handle to the compiled code for the outside
+     * [2] WeakReference<SubstrateInstalledCode>: The handle to the compiled code for the outside
      * world. We only have a weak reference to it, to avoid keeping code alive. Note that the both
      * the InstalledCode and the weak reference are not pinned, so this field must not be accessed
      * during garbage collection.
      *
-     * [2] InstalledCodeObserverHandle[]: observers for installation and removal of this code.
+     * [3] InstalledCodeObserverHandle[]: observers for installation and removal of this code.
      */
     @RawField
-    void setObjectFields(NonmovableObjectArray<?> fields);
+    void setObjectFields(NonmovableObjectArray<Object> fields);
 
     /** @see #setObjectFields */
     @RawField
-    NonmovableObjectArray<?> getObjectFields();
+    NonmovableObjectArray<Object> getObjectFields();
 
     @RawField
     int getTier();
