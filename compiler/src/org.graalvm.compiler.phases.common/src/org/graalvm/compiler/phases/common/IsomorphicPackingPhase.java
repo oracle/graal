@@ -37,86 +37,14 @@ import java.util.stream.StreamSupport;
  */
 public final class IsomorphicPackingPhase extends BasePhase<LowTierContext> {
 
-    // Alignments, enum with associated values
-    static class Alignment {
-        private enum Type {
-            TOP,    // these are alignments that have not yet been determined
-            BOTTOM, // these are invalid/nonexistent alignments
-            VALUE   // these are valid alignments, with an associated value
-        }
-
-        private final Type type;
-        private final int value;
-
-        private Alignment(Type type, int value) {
-            this.type = type;
-            this.value = value;
-        }
-
-        public int getValue() {
-            return value;
-        }
-
-        public boolean isValue() {
-            return type == Type.VALUE;
-        }
-
-        public boolean isBottom() {
-            return type == Type.BOTTOM;
-        }
-
-        public boolean isTop() {
-            return type == Type.TOP;
-        }
-
-        public Alignment addValue(int delta) {
-            if (isValue()) {
-                return Alignment.value(value + delta);
-            }
-
-            return bottom();
-        }
-
-        @Override
-        public boolean equals(Object o) {
-            if (this == o) return true;
-            if (o == null || getClass() != o.getClass()) return false;
-            Alignment alignment = (Alignment) o;
-            return value == alignment.value &&
-                    type == alignment.type;
-        }
-
-        @Override
-        public int hashCode() {
-            return Objects.hash(type, value);
-        }
-
-        private final static Alignment top = new Alignment(Type.TOP, -1);
-        private final static Alignment bottom = new Alignment(Type.BOTTOM, -666);
-        private final static HashMap<Integer, Alignment> alignments = new HashMap<>();
-
-        static Alignment top() {
-            return top;
-        }
-
-        static Alignment bottom() {
-            return bottom;
-        }
-
-        static Alignment value(int value) {
-            if (value == -1) return top;
-            if (value < 0) return bottom;
-
-            return alignments.computeIfAbsent(value, v -> new Alignment(Type.VALUE, v));
-        }
-    }
+    private static final int ALIGNMENT_BOTTOM = -666;
 
     // Class to encapsulate state used by functions in the algorithm
     private static class Instance {
         private final NodeMap<Block> nodeToBlockMap;
         private final BlockMap<List<Node>> blockToNodesMap;
         private final Block currentBlock;
-        private final Map<Node, Alignment> alignmentMap = new HashMap<>();
+        private final Map<Node, Integer> alignmentMap = new HashMap<>();
 
         private Instance(NodeMap<Block> nodeToBlockMap, BlockMap<List<Node>> blockToNodesMap, Block currentBlock) {
             this.nodeToBlockMap = nodeToBlockMap;
@@ -125,6 +53,14 @@ public final class IsomorphicPackingPhase extends BasePhase<LowTierContext> {
         }
 
         // Utilities
+
+        private boolean isAlignedTop(Node node) {
+            return !alignmentMap.containsKey(node);
+        }
+
+        private boolean isAlignedBottom(Node node) {
+            return alignmentMap.getOrDefault(node, -1) == ALIGNMENT_BOTTOM;
+        }
 
         /**
          * Check whether the node is not in the current basic block
@@ -166,37 +102,37 @@ public final class IsomorphicPackingPhase extends BasePhase<LowTierContext> {
         /**
          * Get the alignment of a vector memory reference
          */
-        private <T extends FixedAccessNode & LIRLowerableAccess> Alignment memoryAlignment(T access, int iv_adjust) {
+        private <T extends FixedAccessNode & LIRLowerableAccess> int memoryAlignment(T access, int iv_adjust) {
             final int byteCount = access.getAccessStamp().getStackKind().getByteCount();
             // TODO: velt may be different to type at address
             final int vectorElementWidthInBytes = byteCount * vectorWidth(access);
 
             // If each vector element is less than 2 bytes, no need to vectorize
             if (vectorElementWidthInBytes < 2) {
-                return Alignment.bottom();
+                return ALIGNMENT_BOTTOM;
             }
 
             final int offset = (int) access.getAddress().getMaxConstantDisplacement() + iv_adjust * byteCount;
             final int offset_remainder = offset % vectorElementWidthInBytes;
 
-            return Alignment.value(offset_remainder >= 0 ? offset_remainder : offset_remainder + vectorElementWidthInBytes);
+            return offset_remainder >= 0 ? offset_remainder : offset_remainder + vectorElementWidthInBytes;
         }
 
-        private void setAlignment(Node s1, Node s2, Alignment align) {
+        private void setAlignment(Node s1, Node s2, int align) {
             setAlignment(s1, align);
-            if (align.isTop() || align.isBottom()) {
+            if (align == ALIGNMENT_BOTTOM) {
                 setAlignment(s2, align);
             } else {
-                setAlignment(s2, align.addValue(data_size(s1)));
+                setAlignment(s2, align + data_size(s1));
             }
         }
 
-        private void setAlignment(Node node, Alignment alignment) {
+        private void setAlignment(Node node, int alignment) {
             alignmentMap.put(node, alignment);
         }
 
-        private Alignment getAlignment(Node node) {
-            return alignmentMap.getOrDefault(node, Alignment.top());
+        private Optional<Integer> getAlignment(Node node) {
+            return Optional.ofNullable(alignmentMap.get(node));
         }
 
         /**
@@ -339,19 +275,20 @@ public final class IsomorphicPackingPhase extends BasePhase<LowTierContext> {
             return s2a.getMaxConstantDisplacement() - s1a.getMaxConstantDisplacement() == s1k.getByteCount();
         }
 
-        private boolean stmts_can_pack(Set<Pack<Node>> packSet, Node s1, Node s2, Alignment align) {
+        private boolean stmts_can_pack(Set<Pack<Node>> packSet, Node s1, Node s2, int align) {
             // Also make sure that the platform supports vectors of the primitive type of this candidate pack
             if (isomorphic(s1, s2) && independent(s1, s2) && packSet.stream().noneMatch(p -> p.match(s1, s2))) {
-                final Alignment align_s1 = getAlignment(s1);
-                final Alignment align_s2 = getAlignment(s2);
+                final Optional<Integer> align_s1 = getAlignment(s1);
+                final Optional<Integer> align_s2 = getAlignment(s2);
 
                 final int s2_data_size = data_size(s2);
                 boolean offset = false;
                 if (s2_data_size >= 0) {
-                    offset = align_s2.equals(align.addValue(s2_data_size));
+                    offset = align_s2.map(v -> v == s2_data_size + align).orElse(false);
                 }
 
-                return (align_s1.isTop() || align_s1.equals(align)) && (align_s2.isTop() || offset);
+                return (!align_s1.isPresent() || align_s1.get().equals(align)) &&
+                        (!align_s2.isPresent() || offset);
             }
 
             return false;
@@ -367,7 +304,7 @@ public final class IsomorphicPackingPhase extends BasePhase<LowTierContext> {
 
             final Node left = pack.getLeft();
             final Node right = pack.getRight();
-            final Alignment align = getAlignment(left);
+            final Optional<Integer> align = getAlignment(left);
 
             // TODO: bail if left is load (why?)
 
@@ -384,14 +321,14 @@ public final class IsomorphicPackingPhase extends BasePhase<LowTierContext> {
                     if (notInBlock(leftInput) || notInBlock(rightInput)) continue outer;
 
                     // If the statements cannot be packed, bail
-                    if (!stmts_can_pack(packSet, leftInput, rightInput, align)) continue outer;
+                    if (!align.isPresent() || !stmts_can_pack(packSet, leftInput, rightInput, align.get())) continue outer;
 
                     // If there are no savings to be gained, bail
                     // NB: here this is basically useless, as <s>our</s> Oracle's formula does not allow for negative savings
                     if (est_savings(packSet, leftInput, rightInput) < 0) continue outer;
 
                     changed |= packSet.add(Pack.pair(leftInput, rightInput));
-                    setAlignment(left, right, align);
+                    setAlignment(left, right, align.get());
                 }
             }
 
@@ -406,7 +343,7 @@ public final class IsomorphicPackingPhase extends BasePhase<LowTierContext> {
         private boolean follow_def_uses(Set<Pack<Node>> packSet, Pack<Node> pack) {
             final Node left = pack.getLeft();
             final Node right = pack.getRight();
-            final Alignment align = getAlignment(left);
+            final Optional<Integer> align = getAlignment(left);
 
             int savings = -1;
             Pack<Node> bestPack = null;
@@ -420,7 +357,7 @@ public final class IsomorphicPackingPhase extends BasePhase<LowTierContext> {
                     if (leftUsage == rightUsage || notInBlock(right)) continue;
 
                     // TODO: Rather than adding the first, add the best
-                    if (stmts_can_pack(packSet, leftUsage, rightUsage, align)) {
+                    if (!align.isPresent() || stmts_can_pack(packSet, leftUsage, rightUsage, align.get())) {
                         final int currentSavings = est_savings(packSet, leftUsage, rightUsage);
                         if (currentSavings > savings) {
                             savings = currentSavings;
@@ -431,7 +368,13 @@ public final class IsomorphicPackingPhase extends BasePhase<LowTierContext> {
             }
 
             if (savings >= 0) {
-                setAlignment(bestPack.getLeft(), bestPack.getRight(), align);
+                if (align.isPresent()) {
+                    setAlignment(bestPack.getLeft(), bestPack.getRight(), align.get());
+                } else {
+                    alignmentMap.remove(bestPack.getLeft());
+                    alignmentMap.remove(bestPack.getRight());
+                }
+
                 return packSet.add(bestPack);
             }
 
@@ -508,7 +451,7 @@ public final class IsomorphicPackingPhase extends BasePhase<LowTierContext> {
                     StreamSupport.stream(currentBlock.getNodes().spliterator(), false)
                             .filter(x -> x instanceof FixedAccessNode && x instanceof LIRLowerableAccess)
                             .map(x -> (FixedAccessNode & LIRLowerableAccess) x)
-                            .filter(x -> x.getAccessStamp().getStackKind().isPrimitive() && !memoryAlignment(x, 0).isBottom())
+                            .filter(x -> x.getAccessStamp().getStackKind().isPrimitive() && memoryAlignment(x, 0) != ALIGNMENT_BOTTOM)
                             .collect(Collectors.toList());
 
             // TODO: Align relative to best reference rather than setting alignment for all
@@ -518,8 +461,11 @@ public final class IsomorphicPackingPhase extends BasePhase<LowTierContext> {
 
             for (FixedAccessNode s1 : memoryNodes) {
                 for (FixedAccessNode s2 : memoryNodes) {
-                    if (adjacent(s1, s2) && stmts_can_pack(packSet, s1, s2, getAlignment(s1))) {
-                        packSet.add(Pack.pair(s1, s2));
+                    if (adjacent(s1, s2)) {
+                        final Optional<Integer> align_s1 = getAlignment(s1);
+                        if (align_s1.isPresent() && stmts_can_pack(packSet, s1, s2, align_s1.get())) {
+                            packSet.add(Pack.pair(s1, s2));
+                        }
                     }
                 }
             }
