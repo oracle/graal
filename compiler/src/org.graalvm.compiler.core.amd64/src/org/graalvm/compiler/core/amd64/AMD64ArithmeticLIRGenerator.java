@@ -61,6 +61,10 @@ import static org.graalvm.compiler.asm.amd64.AMD64Assembler.VexRVMOp.VMULSD;
 import static org.graalvm.compiler.asm.amd64.AMD64Assembler.VexRVMOp.VMULSS;
 import static org.graalvm.compiler.asm.amd64.AMD64Assembler.VexRVMOp.VORPD;
 import static org.graalvm.compiler.asm.amd64.AMD64Assembler.VexRVMOp.VORPS;
+import static org.graalvm.compiler.asm.amd64.AMD64Assembler.VexRVMOp.VPADDD;
+import static org.graalvm.compiler.asm.amd64.AMD64Assembler.VexRVMOp.VPADDQ;
+import static org.graalvm.compiler.asm.amd64.AMD64Assembler.VexRVMOp.VPSUBD;
+import static org.graalvm.compiler.asm.amd64.AMD64Assembler.VexRVMOp.VPSUBQ;
 import static org.graalvm.compiler.asm.amd64.AMD64Assembler.VexRVMOp.VSUBSD;
 import static org.graalvm.compiler.asm.amd64.AMD64Assembler.VexRVMOp.VSUBSS;
 import static org.graalvm.compiler.asm.amd64.AMD64Assembler.VexRVMOp.VXORPD;
@@ -327,6 +331,15 @@ public class AMD64ArithmeticLIRGenerator extends ArithmeticLIRGenerator implemen
                 } else {
                     return emitBinary(resultKind, SSEOp.ADD, SD, true, a, b);
                 }
+            // TODO: Support more types
+            case V64_DWORD:
+                if (isAvx) {
+                    return emitBinary(resultKind, VPADDD, a, b);
+                }
+            case V128_DWORD:
+                if (isAvx) {
+                    return emitBinary(resultKind, VPADDQ, a, b);
+                }
             default:
                 throw GraalError.shouldNotReachHere();
         }
@@ -351,6 +364,15 @@ public class AMD64ArithmeticLIRGenerator extends ArithmeticLIRGenerator implemen
                     return emitBinary(resultKind, VSUBSD, a, b);
                 } else {
                     return emitBinary(resultKind, SSEOp.SUB, SD, false, a, b);
+                }
+            // TODO: Support more types
+            case V64_DWORD:
+                if (isAvx) {
+                    return emitBinary(resultKind, VPSUBD, a, b);
+                }
+            case V128_DWORD:
+                if (isAvx) {
+                    return emitBinary(resultKind, VPSUBQ, a, b);
                 }
             default:
                 throw GraalError.shouldNotReachHere();
