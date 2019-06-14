@@ -55,11 +55,14 @@ import com.oracle.svm.core.SubstrateOptions;
 import com.oracle.svm.core.annotate.NeverInline;
 import com.oracle.svm.core.annotate.Specialize;
 import com.oracle.svm.core.annotate.Uninterruptible;
+import com.oracle.svm.core.code.CodeInfoAccessor;
+import com.oracle.svm.core.code.CodeInfoHandle;
 import com.oracle.svm.core.code.CodeInfoQueryResult;
 import com.oracle.svm.core.code.CodeInfoTable;
 import com.oracle.svm.core.code.FrameInfoQueryResult;
 import com.oracle.svm.core.code.FrameInfoQueryResult.ValueInfo;
 import com.oracle.svm.core.code.FrameInfoQueryResult.ValueType;
+import com.oracle.svm.core.code.ImageCodeInfo;
 import com.oracle.svm.core.config.ConfigurationValues;
 import com.oracle.svm.core.config.ObjectLayout;
 import com.oracle.svm.core.deopt.DeoptimizedFrame.VirtualFrame;
@@ -225,6 +228,7 @@ public final class Deoptimizer {
      * Checks if a physical stack frame (identified by the stack pointer) was deoptimized, and
      * returns the {@link DeoptimizedFrame} in that case.
      */
+    @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
     public static DeoptimizedFrame checkDeoptimized(Pointer sourceSp) {
         CodePointer returnAddress = FrameAccess.singleton().readReturnAddress(sourceSp);
         /* A frame is deoptimized when the return address was patched to the deoptStub. */
@@ -283,8 +287,7 @@ public final class Deoptimizer {
         /* Handle my own thread specially, because I do not have a JavaFrameAnchor. */
         StackFrameVisitor currentThreadDeoptVisitor = getStackFrameVisitor((Pointer) fromIp, (Pointer) toIp, deoptAll, CurrentIsolate.getCurrentThread());
         Pointer sp = KnownIntrinsics.readCallerStackPointer();
-        CodePointer ip = KnownIntrinsics.readReturnAddress();
-        JavaStackWalker.walkCurrentThread(sp, ip, currentThreadDeoptVisitor);
+        JavaStackWalker.walkCurrentThread(sp, currentThreadDeoptVisitor);
         /* If I am multi-threaded, deoptimize this method on all the other stacks. */
         if (SubstrateOptions.MultiThreaded.getValue()) {
             for (IsolateThread vmThread = VMThreads.firstThread(); VMThreads.isNonNullThread(vmThread); vmThread = VMThreads.nextThread(vmThread)) {
@@ -301,10 +304,11 @@ public final class Deoptimizer {
     }
 
     private static StackFrameVisitor getStackFrameVisitor(Pointer fromIp, Pointer toIp, boolean deoptAll, IsolateThread thread) {
-        return (frameSp, frameIp, deoptFrame) -> {
+        return (frameSp, frameIp, accessor, handle, deoptFrame) -> {
             Pointer ip = (Pointer) frameIp;
             if (deoptFrame == null && ((ip.aboveOrEqual(fromIp) && ip.belowThan(toIp)) || deoptAll)) {
-                Deoptimizer deoptimizer = new Deoptimizer(frameSp, CodeInfoTable.lookupCodeInfoQueryResult(frameIp));
+                CodeInfoQueryResult codeInfo = CodeInfoTable.lookupCodeInfoQueryResult(accessor, handle, frameIp);
+                Deoptimizer deoptimizer = new Deoptimizer(frameSp, codeInfo);
                 deoptimizer.deoptSourceFrame(frameIp, deoptAll, thread);
             }
             return true;
@@ -332,7 +336,9 @@ public final class Deoptimizer {
     private static void deoptimizeFrameOperation(Pointer sourceSp, boolean ignoreNonDeoptimizable, SpeculationReason speculation, IsolateThread currentThread) {
         VMOperation.guaranteeInProgress("doDeoptimizeFrame");
         CodePointer returnAddress = FrameAccess.singleton().readReturnAddress(sourceSp);
-        CodeInfoQueryResult info = CodeInfoTable.lookupCodeInfoQueryResult(returnAddress);
+        CodeInfoAccessor accessor = CodeInfoTable.lookupCodeInfoAccessor(returnAddress);
+        CodeInfoHandle handle = accessor.lookupCodeInfo(returnAddress);
+        CodeInfoQueryResult info = CodeInfoTable.lookupCodeInfoQueryResult(accessor, handle, returnAddress);
         Deoptimizer deoptimizer = new Deoptimizer(sourceSp, info);
         DeoptimizedFrame sourceFrame = deoptimizer.deoptSourceFrame(returnAddress, ignoreNonDeoptimizable, currentThread);
         if (sourceFrame != null) {
@@ -427,7 +433,9 @@ public final class Deoptimizer {
         this.sourceChunk = sourceChunk;
         /* Lazily initialize constant values I can only get at run time. */
         if (deoptStubFrameSize == 0L) {
-            deoptStubFrameSize = CodeInfoTable.lookupTotalFrameSize(DeoptimizationSupport.getDeoptStubPointer());
+            CodeInfoAccessor accessor = CodeInfoTable.getImageCodeInfoAccessor();
+            CodeInfoHandle handle = ImageCodeInfo.SINGLETON_HANDLE;
+            deoptStubFrameSize = accessor.lookupTotalFrameSize(handle, accessor.relativeIP(handle, DeoptimizationSupport.getDeoptStubPointer()));
         }
     }
 

@@ -33,6 +33,8 @@ import org.graalvm.word.Pointer;
 
 import com.oracle.svm.core.SubstrateUtil;
 import com.oracle.svm.core.annotate.NeverInline;
+import com.oracle.svm.core.code.CodeInfoAccessor;
+import com.oracle.svm.core.code.CodeInfoHandle;
 import com.oracle.svm.core.code.CodeInfoQueryResult;
 import com.oracle.svm.core.code.CodeInfoTable;
 import com.oracle.svm.core.code.FrameInfoQueryResult;
@@ -72,10 +74,9 @@ public class SubstrateStackIntrospection implements StackIntrospection {
 
         /* Stack walking starts at the physical caller frame of this method. */
         Pointer startSP = KnownIntrinsics.readCallerStackPointer();
-        CodePointer startIP = KnownIntrinsics.readReturnAddress();
 
         PhysicalStackFrameVisitor<T> physicalFrameVisitor = new PhysicalStackFrameVisitor<>(initialMethods, matchingMethods, initialSkip, visitor);
-        JavaStackWalker.walkCurrentThread(startSP, startIP, physicalFrameVisitor);
+        JavaStackWalker.walkCurrentThread(startSP, physicalFrameVisitor);
         return physicalFrameVisitor.result;
     }
 }
@@ -97,7 +98,7 @@ class PhysicalStackFrameVisitor<T> implements StackFrameVisitor {
     }
 
     @Override
-    public boolean visitFrame(Pointer sp, CodePointer ip, DeoptimizedFrame deoptimizedFrame) {
+    public boolean visitFrame(Pointer sp, CodePointer ip, CodeInfoAccessor accessor, CodeInfoHandle handle, DeoptimizedFrame deoptimizedFrame) {
         VirtualFrame virtualFrame = null;
         CodeInfoQueryResult info = null;
         FrameInfoQueryResult deoptInfo = null;
@@ -105,11 +106,11 @@ class PhysicalStackFrameVisitor<T> implements StackFrameVisitor {
         if (deoptimizedFrame != null) {
             virtualFrame = deoptimizedFrame.getTopFrame();
         } else {
-            info = CodeInfoTable.lookupCodeInfoQueryResult(ip);
+            info = CodeInfoTable.lookupCodeInfoQueryResult(accessor, handle, ip);
             if (info == null || info.getFrameInfo() == null) {
                 /*
                  * We do not have detailed information about this physical frame. It does not
-                 * contain Java frames that we care about, so we can go to the caller.
+                 * contain Java frames that we care about, so we can move on to the caller.
                  */
                 return true;
             }

@@ -47,7 +47,8 @@ import org.graalvm.word.WordFactory;
 import com.oracle.svm.core.SubstrateOptions;
 import com.oracle.svm.core.annotate.RestrictHeapAccess;
 import com.oracle.svm.core.annotate.Uninterruptible;
-import com.oracle.svm.core.code.CodeInfoTable;
+import com.oracle.svm.core.code.CodeInfoAccessor;
+import com.oracle.svm.core.code.CodeInfoHandle;
 import com.oracle.svm.core.deopt.DeoptimizedFrame;
 import com.oracle.svm.core.jdk.JDKUtils;
 import com.oracle.svm.core.log.Log;
@@ -208,7 +209,7 @@ public class SnippetRuntime {
         @Uninterruptible(reason = "Set currentException atomically with regard to the safepoint mechanism", calleeMustBe = false)
         @RestrictHeapAccess(access = RestrictHeapAccess.Access.NO_ALLOCATION, reason = "Must not allocate when unwinding the stack.")
         @Override
-        public boolean visitFrame(Pointer sp, CodePointer ip, DeoptimizedFrame deoptFrame) {
+        public boolean visitFrame(Pointer sp, CodePointer ip, CodeInfoAccessor accessor, CodeInfoHandle handle, DeoptimizedFrame deoptFrame) {
             CodePointer handlerIP;
             if (deoptFrame != null) {
                 /* Deoptimization entry points always have an exception handler. */
@@ -216,7 +217,7 @@ public class SnippetRuntime {
                 handlerIP = ip;
 
             } else {
-                long handler = CodeInfoTable.lookupExceptionOffset(ip);
+                long handler = accessor.lookupExceptionOffset(handle, accessor.relativeIP(handle, ip));
                 if (handler == 0) {
                     /* No handler found in this frame, walk to caller frame. */
                     return true;
@@ -260,7 +261,7 @@ public class SnippetRuntime {
     @SubstrateForeignCallTarget
     @Uninterruptible(reason = "Set currentException atomically with regard to the safepoint mechanism", calleeMustBe = false)
     @RestrictHeapAccess(access = RestrictHeapAccess.Access.NO_ALLOCATION, reason = "Must not allocate when unwinding the stack.")
-    private static void unwindException(Throwable exception, Pointer callerSP, CodePointer callerIP) {
+    private static void unwindException(Throwable exception, Pointer callerSP) {
         StackOverflowCheck.singleton().makeYellowZoneAvailable();
 
         if (currentException.get() != null) {
@@ -286,7 +287,7 @@ public class SnippetRuntime {
          * exception. So we can start looking for the exception handler immediately in that frame,
          * without skipping any frames in between.
          */
-        ImageSingletons.lookup(ExceptionUnwind.class).unwindException(callerSP, callerIP);
+        ImageSingletons.lookup(ExceptionUnwind.class).unwindException(callerSP);
 
         /*
          * The stack walker does not return if an exception handler is found, but instead performs a
@@ -299,8 +300,8 @@ public class SnippetRuntime {
     public static class ExceptionUnwind {
         private static final ExceptionStackFrameVisitor stackFrameVisitor = new ExceptionStackFrameVisitor();
 
-        public void unwindException(Pointer callerSP, CodePointer callerIP) {
-            JavaStackWalker.walkCurrentThread(callerSP, callerIP, stackFrameVisitor);
+        public void unwindException(Pointer callerSP) {
+            JavaStackWalker.walkCurrentThread(callerSP, stackFrameVisitor);
         }
     }
 

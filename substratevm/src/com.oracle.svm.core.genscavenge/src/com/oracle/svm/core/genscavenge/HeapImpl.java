@@ -586,7 +586,7 @@ public class HeapImpl extends Heap {
         }
         if (getVerifyStackBeforeGC()) {
             assert stackVerifier != null : "No stack verifier!";
-            if (!stackVerifier.verifyInAllThreads(KnownIntrinsics.readCallerStackPointer(), KnownIntrinsics.readReturnAddress(), "before collection")) {
+            if (!stackVerifier.verifyInAllThreads(KnownIntrinsics.readCallerStackPointer(), "before collection")) {
                 Log.log().string("[HeapImpl.verifyBeforeGC:").string("  cause: ").string(cause).string("  stack fails to verify epoch: ").unsigned(epoch).string("]").newline();
                 assert false;
             }
@@ -605,7 +605,7 @@ public class HeapImpl extends Heap {
         }
         if (getVerifyStackAfterGC()) {
             assert stackVerifier != null : "No stack verifier!";
-            if (!stackVerifier.verifyInAllThreads(KnownIntrinsics.readCallerStackPointer(), KnownIntrinsics.readReturnAddress(), "after collection")) {
+            if (!stackVerifier.verifyInAllThreads(KnownIntrinsics.readCallerStackPointer(), "after collection")) {
                 Log.log().string("[HeapImpl.verifyAfterGC:").string("  cause: ").string(cause).string("  stack fails to verify after epoch: ").unsigned(epoch).string("]").newline();
                 assert false;
             }

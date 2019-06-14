@@ -707,7 +707,7 @@ public class GCImpl implements GC {
             trace.string("[blackenStackRoots:").string("  sp: ").hex(sp);
             CodePointer ip = readReturnAddress();
             trace.string("  ip: ").hex(ip).newline();
-            JavaStackWalker.walkCurrentThread(sp, ip, frameWalker);
+            JavaStackWalker.walkCurrentThread(sp, frameWalker);
             if (SubstrateOptions.MultiThreaded.getValue()) {
                 /*
                  * Scan the stacks of all the threads. Other threads will be blocked at a safepoint

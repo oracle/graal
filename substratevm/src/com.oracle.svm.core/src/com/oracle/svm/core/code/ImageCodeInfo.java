@@ -76,6 +76,7 @@ public class ImageCodeInfo implements CodeInfoAccessor {
     ImageCodeInfo() {
     }
 
+    @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
     public CodeInfoAccessor getAccessor() {
         return this;
     }
@@ -115,11 +116,13 @@ public class ImageCodeInfo implements CodeInfoAccessor {
     }
 
     @Override
+    @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
     public boolean contains(CodeInfoHandle handle, CodePointer ip) {
         return CodeInfoAccessor.contains(codeStart, codeSize, ip);
     }
 
     @Override
+    @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
     public long relativeIP(CodeInfoHandle handle, CodePointer ip) {
         return CodeInfoAccessor.relativeIP(codeStart, codeSize, ip);
     }

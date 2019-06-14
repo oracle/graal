@@ -116,6 +116,7 @@ public class RuntimeCodeInfoAccessor implements CodeInfoAccessor {
         return handle.rawValue() == 0;
     }
 
+    @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
     public int getTier(CodeInfoHandle handle) {
         return cast(handle).getTier();
     }
@@ -155,6 +156,7 @@ public class RuntimeCodeInfoAccessor implements CodeInfoAccessor {
     }
 
     @Override
+    @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
     public long relativeIP(CodeInfoHandle handle, CodePointer ip) {
         return CodeInfoAccessor.relativeIP(cast(handle).getCodeStart(), cast(handle).getCodeSize(), ip);
     }

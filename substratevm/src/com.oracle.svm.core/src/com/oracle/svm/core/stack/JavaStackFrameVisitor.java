@@ -27,6 +27,8 @@ package com.oracle.svm.core.stack;
 import org.graalvm.nativeimage.c.function.CodePointer;
 import org.graalvm.word.Pointer;
 
+import com.oracle.svm.core.code.CodeInfoAccessor;
+import com.oracle.svm.core.code.CodeInfoHandle;
 import com.oracle.svm.core.code.CodeInfoQueryResult;
 import com.oracle.svm.core.code.CodeInfoTable;
 import com.oracle.svm.core.code.FrameInfoQueryResult;
@@ -35,7 +37,7 @@ import com.oracle.svm.core.deopt.DeoptimizedFrame;
 public abstract class JavaStackFrameVisitor implements StackFrameVisitor {
 
     @Override
-    public final boolean visitFrame(Pointer sp, CodePointer ip, DeoptimizedFrame deoptimizedFrame) {
+    public final boolean visitFrame(Pointer sp, CodePointer ip, CodeInfoAccessor accessor, CodeInfoHandle handle, DeoptimizedFrame deoptimizedFrame) {
         if (deoptimizedFrame != null) {
             for (DeoptimizedFrame.VirtualFrame frame = deoptimizedFrame.getTopFrame(); frame != null; frame = frame.getCaller()) {
                 if (!visitFrame(frame.getFrameInfo())) {
@@ -43,7 +45,7 @@ public abstract class JavaStackFrameVisitor implements StackFrameVisitor {
                 }
             }
         } else {
-            CodeInfoQueryResult codeInfo = CodeInfoTable.lookupCodeInfoQueryResult(ip);
+            CodeInfoQueryResult codeInfo = CodeInfoTable.lookupCodeInfoQueryResult(accessor, handle, ip);
             for (FrameInfoQueryResult frameInfo = codeInfo.getFrameInfo(); frameInfo != null; frameInfo = frameInfo.getCaller()) {
                 if (!visitFrame(frameInfo)) {
                     return false;

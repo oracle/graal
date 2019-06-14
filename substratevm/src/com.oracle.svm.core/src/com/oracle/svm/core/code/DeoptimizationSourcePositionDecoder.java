@@ -27,6 +27,7 @@ package com.oracle.svm.core.code;
 import org.graalvm.compiler.graph.NodeSourcePosition;
 import org.graalvm.nativeimage.c.function.CodePointer;
 
+import com.oracle.svm.core.annotate.Uninterruptible;
 import com.oracle.svm.core.c.NonmovableArray;
 import com.oracle.svm.core.c.NonmovableArrays;
 import com.oracle.svm.core.c.NonmovableObjectArray;
@@ -39,6 +40,7 @@ public class DeoptimizationSourcePositionDecoder {
     static final int NO_SOURCE_POSITION = -1;
     static final int NO_CALLER = 0;
 
+    @Uninterruptible(reason = "Prevent invalidation of code while in this method.")
     public static NodeSourcePosition decode(int deoptId, CodePointer ip) {
         CodeInfoAccessor accessorObj = CodeInfoTable.lookupCodeInfoAccessor(ip);
         if (!(accessorObj instanceof RuntimeCodeInfoAccessor)) {
@@ -50,6 +52,16 @@ public class DeoptimizationSourcePositionDecoder {
         if (accessor.isNone(handle)) {
             return null;
         }
+        Object tether = accessor.acquireTether(handle);
+        try {
+            return decode0(deoptId, accessor, handle);
+        } finally {
+            accessor.releaseTether(handle, tether);
+        }
+    }
+
+    @Uninterruptible(reason = "Wrap the now safe call to interruptibly decode the source position.", calleeMustBe = false)
+    private static NodeSourcePosition decode0(int deoptId, RuntimeCodeInfoAccessor accessor, CodeInfoHandle handle) {
         return decode(deoptId, accessor.getDeoptimizationStartOffsets(handle), accessor.getDeoptimizationEncodings(handle), accessor.getDeoptimizationObjectConstants(handle));
     }
 

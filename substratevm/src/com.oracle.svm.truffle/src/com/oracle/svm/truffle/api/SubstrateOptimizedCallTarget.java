@@ -32,6 +32,7 @@ import org.graalvm.nativeimage.c.function.CFunctionPointer;
 import org.graalvm.word.WordFactory;
 
 import com.oracle.svm.core.annotate.InvokeJavaFunctionPointer;
+import com.oracle.svm.core.annotate.Uninterruptible;
 import com.oracle.svm.core.code.CodeInfoAccessor;
 import com.oracle.svm.core.code.CodeInfoHandle;
 import com.oracle.svm.core.code.CodeInfoTable;
@@ -86,15 +87,19 @@ public class SubstrateOptimizedCallTarget extends OptimizedCallTarget implements
     @Override
     public boolean isValidLastTier() {
         long address0 = getAddress();
-        if (address0 == 0) {
-            return false;
-        }
+        return (address0 != 0) && isValidLastTier0(address0);
+    }
+
+    @Uninterruptible(reason = "Prevent invalidation of code while in this method.")
+    private static boolean isValidLastTier0(long address0) {
         CodeInfoAccessor accessor = CodeInfoTable.lookupCodeInfoAccessor(WordFactory.pointer(address0));
-        if (!(accessor instanceof RuntimeCodeInfoAccessor)) {
-            return false;
+        if (accessor instanceof RuntimeCodeInfoAccessor) {
+            CodeInfoHandle handle = accessor.lookupCodeInfo(WordFactory.pointer(address0));
+            if (!accessor.isNone(handle)) {
+                return ((RuntimeCodeInfoAccessor) accessor).getTier(handle) == TruffleCompiler.LAST_TIER_INDEX;
+            }
         }
-        CodeInfoHandle handle = accessor.lookupCodeInfo(WordFactory.pointer(address0));
-        return ((RuntimeCodeInfoAccessor) accessor).getTier(handle) == TruffleCompiler.LAST_TIER_INDEX;
+        return false;
     }
 
     @Override

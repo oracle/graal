@@ -75,6 +75,7 @@ public class RuntimeCodeInfo {
     public RuntimeCodeInfo() {
     }
 
+    @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
     public RuntimeCodeInfoAccessor getAccessor() {
         return accessor;
     }
@@ -88,11 +89,6 @@ public class RuntimeCodeInfo {
         NonmovableArrays.releaseUnmanagedArray(methodInfos);
     }
 
-    protected CodeInfoHandle lookupMethod(CodePointer ip) {
-        lookupMethodCount.inc();
-        return lookupMethodUninterruptible(ip);
-    }
-
     /**
      * Looking up a method is lock-free: it is called frequently during stack walking, so locking or
      * even a {@link VMOperation} would be too slow. The lookup must access the {@link #methodInfos}
@@ -102,7 +98,8 @@ public class RuntimeCodeInfo {
      * concurrent modification.
      */
     @Uninterruptible(reason = "methodInfos is accessed without holding a lock, so must not be interrupted by a safepoint that can add/remove code")
-    private CodeInfoHandle lookupMethodUninterruptible(CodePointer ip) {
+    protected CodeInfoHandle lookupMethod(CodePointer ip) {
+        lookupMethodCount.inc();
         assert verifyTable();
         if (numMethods == 0) {
             return RuntimeCodeInfoAccessor.NULL_HANDLE;

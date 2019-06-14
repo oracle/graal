@@ -30,6 +30,11 @@ import org.graalvm.nativeimage.c.struct.RawStructure;
 import org.graalvm.word.Pointer;
 import org.graalvm.word.PointerBase;
 
+import com.oracle.svm.core.annotate.Uninterruptible;
+import com.oracle.svm.core.c.struct.PinnedObjectField;
+import com.oracle.svm.core.code.CodeInfoAccessor;
+import com.oracle.svm.core.code.CodeInfoHandle;
+
 /**
  * An in-progress Java stack walk.
  */
@@ -41,11 +46,29 @@ public interface JavaStackWalk extends PointerBase {
     @RawField
     void setSP(Pointer sp);
 
+    /**
+     * The IP can be stale (outdated) if since its retrieval, {@linkplain Uninterruptible
+     * interruptible} code has executed, during which a deoptimization can have happened.
+     */
     @RawField
-    CodePointer getIP();
+    CodePointer getPossiblyStaleIP();
 
     @RawField
-    void setIP(CodePointer ip);
+    void setPossiblyStaleIP(CodePointer ip);
+
+    @RawField
+    CodeInfoHandle getIPCodeInfo();
+
+    @RawField
+    void setIPCodeInfo(CodeInfoHandle handle);
+
+    @RawField
+    @PinnedObjectField
+    CodeInfoAccessor getIPCodeInfoAccessor();
+
+    @RawField
+    @PinnedObjectField
+    void setIPCodeInfoAccessor(CodeInfoAccessor accessor);
 
     @RawField
     JavaFrameAnchor getAnchor();

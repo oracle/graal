@@ -91,6 +91,7 @@ public interface CodeInfoAccessor {
 
     boolean contains(CodeInfoHandle handle, CodePointer ip);
 
+    @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
     long relativeIP(CodeInfoHandle handle, CodePointer ip);
 
     CodePointer absoluteIP(CodeInfoHandle handle, long relativeIP);
@@ -123,10 +124,12 @@ public interface CodeInfoAccessor {
     @RestrictHeapAccess(access = RestrictHeapAccess.Access.NO_ALLOCATION, mayBeInlined = true, reason = "Must not allocate when logging.")
     Log log(CodeInfoHandle handle, Log log);
 
+    @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
     static boolean contains(CodePointer codeStart, UnsignedWord codeSize, CodePointer ip) {
         return ((UnsignedWord) ip).subtract((UnsignedWord) codeStart).belowThan(codeSize);
     }
 
+    @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
     static long relativeIP(CodePointer codeStart, UnsignedWord codeSize, CodePointer ip) {
         assert contains(codeStart, codeSize, ip);
         return ((UnsignedWord) ip).subtract((UnsignedWord) codeStart).rawValue();

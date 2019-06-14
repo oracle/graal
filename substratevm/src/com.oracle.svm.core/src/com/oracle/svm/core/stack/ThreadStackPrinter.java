@@ -33,7 +33,6 @@ import com.oracle.svm.core.annotate.Uninterruptible;
 import com.oracle.svm.core.c.NonmovableObjectArray;
 import com.oracle.svm.core.code.CodeInfoAccessor;
 import com.oracle.svm.core.code.CodeInfoHandle;
-import com.oracle.svm.core.code.CodeInfoTable;
 import com.oracle.svm.core.code.FrameInfoDecoder.FrameInfoQueryResultAllocator;
 import com.oracle.svm.core.code.FrameInfoDecoder.ValueInfoAllocator;
 import com.oracle.svm.core.code.FrameInfoQueryResult;
@@ -45,7 +44,7 @@ import com.oracle.svm.core.log.Log;
 
 public class ThreadStackPrinter {
 
-    public static class AllocationFreeStackFrameVisitor extends Stage1StackFrameVisitor {
+    public static class AllocationFreeStackFrameVisitor extends Stage1StackFrameVisitor implements StackFrameVisitor {
 
         private static class SingleShotFrameInfoQueryResultAllocator implements FrameInfoQueryResultAllocator {
             private static FrameInfoQueryResult frameInfoQueryResult = new FrameInfoQueryResult();
@@ -99,12 +98,10 @@ public class ThreadStackPrinter {
         private static DummyValueInfoAllocator DummyValueInfoAllocator = new DummyValueInfoAllocator();
 
         @Override
-        protected void logFrame(Log log, Pointer sp, CodePointer ip, DeoptimizedFrame deoptFrame) {
+        protected void logFrame(Log log, Pointer sp, CodePointer ip, CodeInfoAccessor accessor, CodeInfoHandle handle, DeoptimizedFrame deoptFrame) {
             if (deoptFrame != null) {
                 logVirtualFrames(log, sp, ip, deoptFrame);
             } else {
-                CodeInfoAccessor accessor = CodeInfoTable.lookupCodeInfoAccessor(ip);
-                CodeInfoHandle handle = accessor.lookupCodeInfo(ip);
                 if (!accessor.isNone(handle)) {
                     frameInfoReader.reset();
                     long entryOffset = accessor.initFrameInfoReader(handle, ip, frameInfoReader);
@@ -127,20 +124,20 @@ public class ThreadStackPrinter {
         }
     }
 
-    public static class Stage0StackFrameVisitor implements StackFrameVisitor {
+    public static class Stage0StackFrameVisitor implements BasicStackFrameVisitor {
         @RestrictHeapAccess(access = RestrictHeapAccess.Access.NO_ALLOCATION, reason = "Provide allocation-free StackFrameVisitor")
         @Override
-        public boolean visitFrame(Pointer sp, CodePointer ip, DeoptimizedFrame deoptFrame) {
+        public boolean visitFrame(Pointer sp, CodePointer ip, CodeInfoAccessor accessor, CodeInfoHandle handle, DeoptimizedFrame deoptFrame) {
             Log log = Log.log();
-            logFrame(log, sp, ip, deoptFrame);
+            logFrame(log, sp, ip, accessor, handle, deoptFrame);
             log.newline();
             return true;
         }
 
         @SuppressWarnings("unused")
-        protected void logFrame(Log log, Pointer sp, CodePointer ip, DeoptimizedFrame deoptFrame) {
+        protected void logFrame(Log log, Pointer sp, CodePointer ip, CodeInfoAccessor accessor, CodeInfoHandle handle, DeoptimizedFrame deoptFrame) {
             logFrameRaw(log, sp, ip);
-            Log.log().string(" FrameSize ").signed(CodeInfoTable.lookupTotalFrameSize(ip));
+            Log.log().string(" FrameSize ").signed(accessor.lookupTotalFrameSize(handle, accessor.relativeIP(handle, ip)));
         }
 
         protected static void logFrameRaw(Log log, Pointer sp, CodePointer ip) {
@@ -170,13 +167,14 @@ public class ThreadStackPrinter {
         }
 
         @Override
-        protected void logFrame(Log log, Pointer sp, CodePointer ip, DeoptimizedFrame deoptFrame) {
+        protected void logFrame(Log log, Pointer sp, CodePointer ip, CodeInfoAccessor accessor, CodeInfoHandle handle, DeoptimizedFrame deoptFrame) {
             if (deoptFrame != null) {
                 logVirtualFrames(log, sp, ip, deoptFrame);
             } else {
                 logFrameRaw(log, sp, ip);
                 log.spaces(2);
-                CodeInfoTable.logCodeInfoResult(log, ip);
+                accessor.log(handle, log);
+                log.string(" name = ").string(accessor.getName(handle));
             }
         }
     }
@@ -193,6 +191,6 @@ public class ThreadStackPrinter {
     @RestrictHeapAccess(access = RestrictHeapAccess.Access.NO_ALLOCATION, reason = "Provide allocation-free Stacktrace printing")
     @Uninterruptible(reason = "Must be uninterruptible until it gets immune to safepoints", calleeMustBe = false)
     public static void printStacktrace(Pointer startSP, CodePointer startIP) {
-        JavaStackWalker.walkCurrentThread(startSP, startIP, AllocationFreeStackFrameVisitor);
+        JavaStackWalker.walkCurrentThreadWithForcedIP(startSP, startIP, AllocationFreeStackFrameVisitor);
     }
 }

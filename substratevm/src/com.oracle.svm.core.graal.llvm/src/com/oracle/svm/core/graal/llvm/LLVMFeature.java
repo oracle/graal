@@ -50,7 +50,6 @@ import org.graalvm.nativeimage.ImageSingletons;
 import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.Platforms;
 import org.graalvm.nativeimage.c.function.CLibrary;
-import org.graalvm.nativeimage.c.function.CodePointer;
 import org.graalvm.nativeimage.hosted.Feature;
 import org.graalvm.word.Pointer;
 
@@ -124,7 +123,7 @@ public class LLVMFeature implements Feature, GraalFeature {
 
         ImageSingletons.add(SnippetRuntime.ExceptionUnwind.class, new SnippetRuntime.ExceptionUnwind() {
             @Override
-            public void unwindException(Pointer callerSP, CodePointer callerIP) {
+            public void unwindException(Pointer callerSP) {
                 LLVMPersonalityFunction.raiseException();
             }
         });
