@@ -48,18 +48,18 @@ public class DebugExprParser {
         parser = new Parser(scanner);
 
         final Iterable<Scope> scopes = LLVMDebuggerScopeFactory.createSourceLevelScope(request.getLocation(), request.getFrame(), contextReference.get());
-        DebugExprNodeFactory nodeFactory = DebugExprNodeFactory.getInstance(contextReference, scopes);
+        DebugExprNodeFactory nodeFactory = DebugExprNodeFactory.getInstance(contextReference, scopes, parser);
         parser.setNodeFactory(nodeFactory);
     }
 
-    public LLVMExpressionNode parse() throws Exception {
+    public LLVMExpressionNode parse() throws DebugExprException {
         try {
             parser.Parse();
             LLVMExpressionNode root = parser.GetASTRoot();
             if (parser.errors.count == 0) { // parsed correctly
                 return root;
             } else {
-                throw new DebugExprException(Parser.errorObjNode);
+                throw new DebugExprException(DebugExprNodeFactory.errorObjNode);
             }
         } catch (DebugExprException d) {
             if (d.exceptionNode == null)

@@ -29,34 +29,21 @@
  */
 package com.oracle.truffle.llvm.runtime.debug.debugexpr.nodes;
 
-import com.oracle.truffle.api.frame.VirtualFrame;
-import com.oracle.truffle.api.nodes.UnexpectedResultException;
-import com.oracle.truffle.llvm.runtime.debug.debugexpr.parser.Parser;
+import com.oracle.truffle.api.dsl.NodeChild;
+import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.llvm.runtime.nodes.api.LLVMExpressionNode;
 
-public class DebugExprTernaryNode extends LLVMExpressionNode {
+@NodeChild("condition")
+@NodeChild("leftNode")
+@NodeChild("rightNode")
+public abstract class DebugExprTernaryNode extends LLVMExpressionNode {
+    public abstract Object executeWithTarget(Object cond, Object left, Object right);
 
-    @Child protected LLVMExpressionNode condition, thenNode, elseNode;
-
-    public DebugExprTernaryNode(LLVMExpressionNode condition, LLVMExpressionNode thenNode, LLVMExpressionNode elseNode) {
-        this.condition = condition;
-        this.thenNode = thenNode;
-        this.elseNode = elseNode;
-    }
-
-    @Override
-    public Object executeGeneric(VirtualFrame frame) {
-        boolean cond;
-        try {
-            cond = condition.executeI1(frame);
-        } catch (UnexpectedResultException e) {
-            return Parser.errorObjNode.executeGeneric(frame);
+    public abstract static class DebugExprConditionalNode extends DebugExprTernaryNode {
+        @Specialization
+        protected Object and(boolean condition, Object left, Object right) {
+            return condition ? left : right;
         }
-        if (cond)
-            return thenNode.executeGeneric(frame);
-        else
-            return elseNode.executeGeneric(frame);
-
     }
 
 }

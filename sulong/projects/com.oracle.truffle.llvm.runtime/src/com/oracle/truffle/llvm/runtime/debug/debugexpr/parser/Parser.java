@@ -63,8 +63,6 @@ public class Parser {
 
 private LLVMExpressionNode astRoot=null;
 private DebugExprNodeFactory NF=null;
-public final static DebugExprErrorNode noObjNode = DebugExprErrorNode.create("<cannot find expression>");
-public final static DebugExprErrorNode errorObjNode = DebugExprErrorNode.create("<cannot evaluate expression>");
 
 public void setNodeFactory(DebugExprNodeFactory nodeFactory) {
 	if(NF==null) NF=nodeFactory;

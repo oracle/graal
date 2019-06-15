@@ -29,12 +29,17 @@
  */
 package com.oracle.truffle.llvm.runtime.debug.debugexpr.nodes;
 
+import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
+import com.oracle.truffle.api.TruffleLanguage.ContextReference;
+import com.oracle.truffle.api.dsl.CachedContext;
+import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.frame.VirtualFrame;
+import com.oracle.truffle.llvm.runtime.LLVMContext;
+import com.oracle.truffle.llvm.runtime.LLVMLanguage;
 import com.oracle.truffle.llvm.runtime.debug.debugexpr.parser.DebugExprType;
-import com.oracle.truffle.llvm.runtime.debug.debugexpr.parser.Parser;
 import com.oracle.truffle.llvm.runtime.nodes.api.LLVMExpressionNode;
 
-public class DebugExprSizeofNode extends LLVMExpressionNode {
+public abstract class DebugExprSizeofNode extends LLVMExpressionNode {
 
     private DebugExprType type;
 
@@ -42,11 +47,14 @@ public class DebugExprSizeofNode extends LLVMExpressionNode {
         this.type = type;
     }
 
-    @Override
-    public Object executeGeneric(VirtualFrame frame) {
-        if (type != null)
-            return type.getBitSize() / 8;
-        return Parser.errorObjNode.executeGeneric(frame);
+    @Specialization
+    protected Object doGeneric(VirtualFrame frame, @CachedContext(LLVMLanguage.class) ContextReference<LLVMContext> ref) {
+        return getSizeInformation(ref);
+    }
+
+    @TruffleBoundary
+    protected int getSizeInformation(ContextReference<LLVMContext> ref) {
+        return ref.get().getByteSize(type.getLLVMRuntimeType());
     }
 
 }

@@ -32,12 +32,12 @@ package com.oracle.truffle.llvm.runtime.debug.debugexpr.nodes;
 import com.oracle.truffle.api.Scope;
 import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.api.interop.InteropLibrary;
+import com.oracle.truffle.api.interop.InvalidArrayIndexException;
 import com.oracle.truffle.api.interop.UnknownIdentifierException;
 import com.oracle.truffle.api.interop.UnsupportedMessageException;
 import com.oracle.truffle.llvm.runtime.LLVMLanguage;
 import com.oracle.truffle.llvm.runtime.debug.LLVMDebuggerValue;
 import com.oracle.truffle.llvm.runtime.debug.debugexpr.parser.DebugExprType;
-import com.oracle.truffle.llvm.runtime.debug.debugexpr.parser.Parser;
 import com.oracle.truffle.llvm.runtime.nodes.api.LLVMExpressionNode;
 
 public class DebugExprVarNode extends LLVMExpressionNode {
@@ -83,6 +83,7 @@ public class DebugExprVarNode extends LLVMExpressionNode {
                 // should not happen
             }
         }
+        System.out.println(name + " not found");
         type = DebugExprType.getVoidType();
         value = null;
     }
@@ -94,7 +95,7 @@ public class DebugExprVarNode extends LLVMExpressionNode {
     @Override
     public Object executeGeneric(VirtualFrame frame) {
         if (value == null)
-            return Parser.noObjNode.executeGeneric(frame);
+            return DebugExprNodeFactory.noObjNode.executeGeneric(frame);
         return value;
     }
 }

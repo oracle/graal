@@ -48,9 +48,9 @@ import com.oracle.truffle.api.source.Source;
 import com.oracle.truffle.api.source.SourceSection;
 import com.oracle.truffle.llvm.runtime.debug.LLDBSupport;
 import com.oracle.truffle.llvm.runtime.debug.LLVMDebuggerValue;
+import com.oracle.truffle.llvm.runtime.debug.debugexpr.nodes.DebugExprNodeFactory;
 import com.oracle.truffle.llvm.runtime.debug.debugexpr.parser.DebugExprException;
 import com.oracle.truffle.llvm.runtime.debug.debugexpr.parser.DebugExprParser;
-import com.oracle.truffle.llvm.runtime.debug.debugexpr.parser.Parser;
 import com.oracle.truffle.llvm.runtime.debug.scope.LLVMDebuggerScopeFactory;
 import com.oracle.truffle.llvm.runtime.debug.scope.LLVMSourceLocation;
 import com.oracle.truffle.llvm.runtime.debug.type.LLVMSourceType;
@@ -160,11 +160,11 @@ public class LLVMLanguage extends TruffleLanguage<LLVMContext> {
                         return root.executeGeneric(frame);
                     } catch (UnsupportedSpecializationException use) {
                         // return error string node
-                        return Parser.errorObjNode.executeGeneric(frame);
+                        return DebugExprNodeFactory.errorObjNode.executeGeneric(frame);
                     } catch (DebugExprException dee) {
                         // use existing exception if available
                         if (dee.exceptionNode == null)
-                            return Parser.errorObjNode.executeGeneric(frame);
+                            return DebugExprNodeFactory.errorObjNode.executeGeneric(frame);
                         else
                             return dee.exceptionNode.executeGeneric(frame);
                     }

@@ -19,8 +19,6 @@ boolean IsCast() {
 
 private LLVMExpressionNode astRoot=null;
 private DebugExprNodeFactory NF=null;
-public final static DebugExprErrorNode noObjNode = DebugExprErrorNode.create("<cannot find expression>");
-public final static DebugExprErrorNode errorObjNode = DebugExprErrorNode.create("<cannot evaluate expression>");
 
 public void setNodeFactory(DebugExprNodeFactory nodeFactory) {
 	if(NF==null) NF=nodeFactory;
@@ -91,18 +89,18 @@ PRODUCTIONS
 // Example:
 //   Empty = "BEGIN" { Statement } "END".
 //   Statement = ident "=" number { "+" number } .
-DebugExpr		(. DebugExpressionPair p=null; .)
+DebugExpr											(. DebugExpressionPair p=null; .)
 =
-Expr<out p> 	(. if(errors.count==0) astRoot =p.getNode(); .)
+Expr<out p> 										(. if(errors.count==0) astRoot =p.getNode(); .)
 .
 
-PrimExpr<out DebugExpressionPair p>		(. p=NF.errorObjPair; .)
+PrimExpr<out DebugExpressionPair p>					(. p=NF.errorObjPair; .)
 =
-ident 								(. p = NF.createVarNode(t.val);.)
+ident 												(. p = NF.createVarNode(t.val);.)
 |
-number 								(. p = NF.createIntegerConstant(Integer.parseInt(t.val)); .)
+number 												(. p = NF.createIntegerConstant(Integer.parseInt(t.val)); .)
 |
-floatnumber							(. p = NF.createFloatConstant(Float.parseFloat(t.val)); .)					
+floatnumber 										(. p = NF.createFloatConstant(Float.parseFloat(t.val)); .)
 |
 charConst
 |
@@ -111,7 +109,7 @@ stringType
 "(" Expr<out p> ")"
 .
 
-Designator<out DebugExpressionPair p>	(. DebugExpressionPair idxPair=null; List<DebugExpressionPair> l; .)
+Designator<out DebugExpressionPair p>				(. DebugExpressionPair idxPair=null; List<DebugExpressionPair> l; .)
 =
 PrimExpr<out p> 
 {
@@ -125,14 +123,14 @@ PrimExpr<out p>
 }
 .
 
-ActPars<out List l>		(. DebugExpressionPair p1=null, p2=null; l = new LinkedList<DebugExpressionPair>(); .)
+ActPars<out List l>									(. DebugExpressionPair p1=null, p2=null; l = new LinkedList<DebugExpressionPair>(); .)
 =
 "(" 
 [
-	 Expr<out p1> 		(. l.add(p1); .)
+	 Expr<out p1> 									(. l.add(p1); .)
 	 
 	{
-		 "," Expr<out p2> (. l.add(p2); .)
+		 "," Expr<out p2> 							(. l.add(p2); .)
 		
 	}
 	
@@ -140,199 +138,223 @@ ActPars<out List l>		(. DebugExpressionPair p1=null, p2=null; l = new LinkedList
 ")"
 .
 
-UnaryExpr<out DebugExpressionPair p>		(. p=null; char kind='\0'; DebugExprType typeP=null;.)
+UnaryExpr<out DebugExpressionPair p>				(. p=null; char kind='\0'; DebugExprType typeP=null;.)
 =
 Designator<out p>
 |
-UnaryOp<out kind> CastExpr<out p> 		(. p = NF.createUnaryOpNode(p, kind); .)
+UnaryOp<out kind> CastExpr<out p> 					(. p = NF.createUnaryOpNode(p, kind); .)
 |
-"sizeof" "(" DType<out typeP> ")"	(. p=NF.createSizeofNode(typeP); .)
+"sizeof" "(" DType<out typeP> ")" 					(. p=NF.createSizeofNode(typeP); .)
 .
 
-UnaryOp<out char kind>		(. kind='\0'; .)
+UnaryOp<out char kind>								(. kind='\0'; .)
 =
- ( "&"  | "*" | "+" | "-"  | "~"  | "!" ) (. kind = t.val.charAt(0); .) 						
+(
+	 "&"
+	|
+	 "*"
+	|
+	 "+"
+	|
+	 "-"
+	|
+	 "~"
+	|
+	 "!"
+)
+													(. kind = t.val.charAt(0); .)
 .
-CastExpr<out DebugExpressionPair p>		(. DebugExprType typeP=null; .)
+CastExpr<out DebugExpressionPair p>					(. DebugExprType typeP=null; .)
 =
 [
-	IF (IsCast()) "(" DType<out typeP> ")" 
+	IF (IsCast()) "(" DType<out typeP> ")"
 ]
-UnaryExpr<out p>			(. if(typeP!=null) { p = NF.createCastIfNecessary(p, typeP); } .)
+UnaryExpr<out p> 								(. if(typeP!=null) { p = NF.createCastIfNecessary(p, typeP); } .)
 .
 
-MultExpr<out DebugExpressionPair p>		(. DebugExpressionPair p1=null; .)
+MultExpr<out DebugExpressionPair p>					(. DebugExpressionPair p1=null; .)
 =
 CastExpr<out p> 
 {
-	 "*" CastExpr<out p1> 				(. p = NF.createArithmeticOp(ArithmeticOperation.MUL, p, p1); .)
+	 "*" CastExpr<out p1> 							(. p = NF.createArithmeticOp(ArithmeticOperation.MUL, p, p1); .)
 	
 	|
-	 "/" CastExpr<out p1> 				(. p = NF.createDivNode(p, p1); .)
+	 "/" CastExpr<out p1> 							(. p = NF.createDivNode(p, p1); .)
 	
 	|
-	 "%" CastExpr<out p1> 				(. p = NF.createRemNode(p, p1); .)
+	 "%" CastExpr<out p1> 							(. p = NF.createRemNode(p, p1); .)
 	
 }
 .
-AddExpr<out DebugExpressionPair p>		(. DebugExpressionPair p1=null; .)
+AddExpr<out DebugExpressionPair p>					(. DebugExpressionPair p1=null; .)
 =
 MultExpr<out p> 
 {
-	 "+" MultExpr<out p1> 				(. p = NF.createArithmeticOp(ArithmeticOperation.ADD, p, p1); .)	
+	 "+" MultExpr<out p1> 							(. p = NF.createArithmeticOp(ArithmeticOperation.ADD, p, p1); .)
+	
 	|
-	 "-" MultExpr<out p1> 				(.p = NF.createArithmeticOp(ArithmeticOperation.SUB, p, p1); .)
+	 "-" MultExpr<out p1> 							(.p = NF.createArithmeticOp(ArithmeticOperation.SUB, p, p1); .)
 	
 }
 .
-ShiftExpr<out DebugExpressionPair p>		(. DebugExpressionPair p1=null; .)
+ShiftExpr<out DebugExpressionPair p>				(. DebugExpressionPair p1=null; .)
 =
 AddExpr<out p> 
 {
-	 "<<" AddExpr<out p1> 				(.p = NF.createShiftLeft(p, p1); .)
+	 "<<" AddExpr<out p1> 							(.p = NF.createShiftLeft(p, p1); .)
 	
 	|
-	 ">>" AddExpr<out p1> 				(.p = NF.createShiftRight(p, p1); .)
+	 ">>" AddExpr<out p1> 							(.p = NF.createShiftRight(p, p1); .)
 	
 }
 .
-RelExpr<out DebugExpressionPair p>		(. DebugExpressionPair p1=null; .)
+RelExpr<out DebugExpressionPair p>					(. DebugExpressionPair p1=null; .)
 =
 ShiftExpr<out p> 
 {
-	 "<" ShiftExpr<out p1> 				(. p = NF.createCompareNode(p, CompareKind.LT, p1); .)
+	 "<" ShiftExpr<out p1> 							(. p = NF.createCompareNode(p, CompareKind.LT, p1); .)
 	
 	|
-	 ">" ShiftExpr<out p1> 				(. p = NF.createCompareNode(p, CompareKind.GT, p1); .)
+	 ">" ShiftExpr<out p1> 							(. p = NF.createCompareNode(p, CompareKind.GT, p1); .)
 	
 	|
-	 "<=" ShiftExpr<out p1> 			(. p = NF.createCompareNode(p, CompareKind.LE, p1); .)
+	 "<=" ShiftExpr<out p1> 						(. p = NF.createCompareNode(p, CompareKind.LE, p1); .)
 	
 	|
-	 ">=" ShiftExpr<out p1> 			(. p = NF.createCompareNode(p, CompareKind.GE, p1); .)
+	 ">=" ShiftExpr<out p1> 						(. p = NF.createCompareNode(p, CompareKind.GE, p1); .)
 	
 }
 .
-EqExpr<out DebugExpressionPair p>	(. DebugExpressionPair p1=null; .)
+EqExpr<out DebugExpressionPair p>					(. DebugExpressionPair p1=null; .)
 =
 RelExpr<out p> 
 {
-	 "==" RelExpr<out p1> 			(. p = NF.createCompareNode(p, CompareKind.EQ, p1); .)
+	 "==" RelExpr<out p1> 							(. p = NF.createCompareNode(p, CompareKind.EQ, p1); .)
 	
 	|
-	 "!=" RelExpr<out p1> 			(. p = NF.createCompareNode(p, CompareKind.NE, p1); .)
+	 "!=" RelExpr<out p1> 							(. p = NF.createCompareNode(p, CompareKind.NE, p1); .)
 	
 }
 .
-AndExpr<out DebugExpressionPair p>		(. DebugExpressionPair p1=null; .)
+AndExpr<out DebugExpressionPair p>					(. DebugExpressionPair p1=null; .)
 =
 EqExpr<out p> 
 {
-	 "&" EqExpr<out p1> 				(. p = NF.createArithmeticOp(ArithmeticOperation.AND, p, p1); .)
+	 "&" EqExpr<out p1> 							(. p = NF.createArithmeticOp(ArithmeticOperation.AND, p, p1); .)
 	
 }
 .
 
-XorExpr<out DebugExpressionPair p>		(. DebugExpressionPair p1=null; .)
+XorExpr<out DebugExpressionPair p>					(. DebugExpressionPair p1=null; .)
 =
 AndExpr<out p> 
 {
-	 "^" AndExpr<out p1> 				(.	p = NF.createArithmeticOp(ArithmeticOperation.XOR, p, p1); .)
+	 "^" AndExpr<out p1> 							(.	p = NF.createArithmeticOp(ArithmeticOperation.XOR, p, p1); .)
 	
 }
 .
 
-OrExpr<out DebugExpressionPair p>	(. DebugExpressionPair p1=null; .)
+OrExpr<out DebugExpressionPair p>					(. DebugExpressionPair p1=null; .)
 =
 XorExpr<out p> 
 {
-	 "|" XorExpr<out p1> 			(.  p = NF.createArithmeticOp(ArithmeticOperation.OR, p, p1); .)
+	 "|" XorExpr<out p1> 							(.  p = NF.createArithmeticOp(ArithmeticOperation.OR, p, p1); .)
 	
 }
 .
 
-LogAndExpr<out DebugExpressionPair p>	(. DebugExpressionPair p1=null; .)
+LogAndExpr<out DebugExpressionPair p>				(. DebugExpressionPair p1=null; .)
 =
 OrExpr<out p> 
 {
-	 "&&" OrExpr<out p1> 				(. p= NF.createLogicalAndNode(p, p1); .)
+	 "&&" OrExpr<out p1> 							(. p= NF.createLogicalAndNode(p, p1); .)
 	
 }
 .
 
-LogOrExpr<out DebugExpressionPair p>		(. DebugExpressionPair p1=null; .)
+LogOrExpr<out DebugExpressionPair p>				(. DebugExpressionPair p1=null; .)
 =
 LogAndExpr<out p> 
 {
-	 "||" LogAndExpr<out p> 			(. p= NF.createLogicalOrNode(p, p1); .)
+	 "||" LogAndExpr<out p> 						(. p= NF.createLogicalOrNode(p, p1); .)
 	
 }
 .
 
-Expr<out DebugExpressionPair p>					(. DebugExpressionPair pThen=null, pElse=null; .)
+Expr<out DebugExpressionPair p>						(. DebugExpressionPair pThen=null, pElse=null; .)
 =
 LogOrExpr<out p> 
 [
-	 "?" Expr<out pThen> ":" Expr<out pElse> (. p = NF.createTernaryNode(p, pThen, pElse);.)
+	 "?" Expr<out pThen> ":" Expr<out pElse> 		(. p = NF.createTernaryNode(p, pThen, pElse);.)
 	
 ]
 .
 
-DType<out DebugExprType ty>	
+DType<out DebugExprType ty>
 =
 BaseType<out ty> 
 (
 	 
 	{
-		 "*"	(. SemErr("Pointer types are not available yet"); .)
-	}
+		 "*" 										(. SemErr("Pointer types are not available yet"); .)
 		
+	}
+	
 	|
-	 "&"	(. SemErr("Reference types are not available yet"); .)
+	 "&" 											(. SemErr("Reference types are not available yet"); .)
+	
 )
 {
-	 "[" 	(. SemErr("Array types are not available yet"); .)
+	 "[" 											(. SemErr("Array types are not available yet"); .)
+	 
 	[
 		 number
 	]
 	 "]"
 }
 .
-BaseType<out DebugExprType ty> 	(. ty=null; boolean signed=false;.)
+BaseType<out DebugExprType ty>						(. ty=null; boolean signed=false;.)
 =
-"void"			(. ty = DebugExprType.getVoidType(); .)
+"void" 												(. ty = DebugExprType.getVoidType(); .)
 |
 ident
 |
 (
-	 "signed"	(. signed = true; .)
+	 "signed" 										(. signed = true; .)
+	
 	|
-	 "unsigned"	(. signed = false; .)
+	 "unsigned" 									(. signed = false; .)
+	
 )
 [
-	 "char"		(. ty = DebugExprType.getIntType(8, signed); .)
+	 "char" 										(. ty = DebugExprType.getIntType(8, signed); .)
+	
 	|
-	 "short"	(. ty = DebugExprType.getIntType(16, signed); .)
+	 "short" 										(. ty = DebugExprType.getIntType(16, signed); .)
+	
 	|
-	 "int"		(. ty = DebugExprType.getIntType(32, signed); .)
+	 "int" 											(. ty = DebugExprType.getIntType(32, signed); .)
+	
 	|
-	 "long"		(. ty = DebugExprType.getIntType(64, signed); .)
+	 "long" 										(. ty = DebugExprType.getIntType(64, signed); .)
+	
 ]
 |
-"char"			(. ty = DebugExprType.getIntType(8, false);.)
+"char" 												(. ty = DebugExprType.getIntType(8, false);.)
 |
-"short"			(. ty = DebugExprType.getIntType(16, true);.)
+"short" 											(. ty = DebugExprType.getIntType(16, true);.)
 |
-"int"			(. ty = DebugExprType.getIntType(32, true);.)
+"int" 												(. ty = DebugExprType.getIntType(32, true);.)
 |
-"long" 			(. ty = DebugExprType.getIntType(64, true);.)
+"long" 												(. ty = DebugExprType.getIntType(64, true);.)
 [
-	 "double"	(. ty = DebugExprType.getFloatType(128); .)
+	 "double" 										(. ty = DebugExprType.getFloatType(128); .)
+	
 ]
 |
-"float"			(. ty = DebugExprType.getFloatType(32);.)
+"float" 											(. ty = DebugExprType.getFloatType(32);.)
 |
-"double"		(. ty = DebugExprType.getFloatType(64);.)
+"double" 											(. ty = DebugExprType.getFloatType(64);.)
 .
 
 

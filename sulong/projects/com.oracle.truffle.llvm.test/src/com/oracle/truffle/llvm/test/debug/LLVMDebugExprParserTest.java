@@ -193,7 +193,7 @@ public final class LLVMDebugExprParserTest {
             for (Entry<String, String> kv : textExpressionMap.entrySet()) {
                 String actual = frame.eval(kv.getKey()).as(String.class);
                 System.out.println("\"" + kv.getValue() + "\" vs. \"" + actual + "\"");
-                assertEquals("Expressions are not equal", kv.getValue(), actual);
+                assertEquals("Evaluation of expression \"" + kv.getKey() + "\" produced unexpected result: ", kv.getValue(), actual);
             }
         }
 
