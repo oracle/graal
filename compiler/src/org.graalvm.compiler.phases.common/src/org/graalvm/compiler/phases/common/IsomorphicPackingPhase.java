@@ -24,7 +24,6 @@ import org.graalvm.compiler.phases.schedule.SchedulePhase;
 import org.graalvm.compiler.phases.tiers.LowTierContext;
 
 import java.util.*;
-import java.util.function.Consumer;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
 import java.util.stream.StreamSupport;
@@ -275,9 +274,11 @@ public final class IsomorphicPackingPhase extends BasePhase<LowTierContext> {
             return s2a.getMaxConstantDisplacement() - s1a.getMaxConstantDisplacement() == s1k.getByteCount();
         }
 
-        private boolean stmts_can_pack(Set<Pack<Node>> packSet, Node s1, Node s2, int align) {
+        private boolean stmts_can_pack(Set<Pair<Node, Node>> packSet, Node s1, Node s2, int align) {
             // Also make sure that the platform supports vectors of the primitive type of this candidate pack
-            if (isomorphic(s1, s2) && independent(s1, s2) && packSet.stream().noneMatch(p -> p.match(s1, s2))) {
+
+            if (isomorphic(s1, s2) && independent(s1, s2) &&
+                    packSet.stream().noneMatch(p -> p.getLeft().equals(s1) || p.getRight().equals(s2))) {
                 final Optional<Integer> align_s1 = getAlignment(s1);
                 final Optional<Integer> align_s2 = getAlignment(s2);
 
@@ -299,9 +300,7 @@ public final class IsomorphicPackingPhase extends BasePhase<LowTierContext> {
          * @param packSet Pack set
          * @param pack The pack to use for operand definitions
          */
-        private boolean follow_use_defs(Set<Pack<Node>> packSet, Pack<Node> pack) {
-            assert pack.isPair(); // the pack should be a pair
-
+        private boolean follow_use_defs(Set<Pair<Node, Node>> packSet, Pair<Node, Node> pack) {
             final Node left = pack.getLeft();
             final Node right = pack.getRight();
             final Optional<Integer> align = getAlignment(left);
@@ -327,7 +326,7 @@ public final class IsomorphicPackingPhase extends BasePhase<LowTierContext> {
                     // NB: here this is basically useless, as <s>our</s> Oracle's formula does not allow for negative savings
                     if (est_savings(packSet, leftInput, rightInput) < 0) continue outer;
 
-                    changed |= packSet.add(Pack.pair(leftInput, rightInput));
+                    changed |= packSet.add(Pair.create(leftInput, rightInput));
                     setAlignment(left, right, align.get());
                 }
             }
@@ -340,13 +339,13 @@ public final class IsomorphicPackingPhase extends BasePhase<LowTierContext> {
          * @param packSet Pack set
          * @param pack The pack to use for nodes to find usages of
          */
-        private boolean follow_def_uses(Set<Pack<Node>> packSet, Pack<Node> pack) {
+        private boolean follow_def_uses(Set<Pair<Node, Node>> packSet, Pair<Node, Node> pack) {
             final Node left = pack.getLeft();
             final Node right = pack.getRight();
             final Optional<Integer> align = getAlignment(left);
 
             int savings = -1;
-            Pack<Node> bestPack = null;
+            Pair<Node, Node> bestPack = null;
 
             // TODO: bail if left is store (why?)
 
@@ -361,7 +360,7 @@ public final class IsomorphicPackingPhase extends BasePhase<LowTierContext> {
                         final int currentSavings = est_savings(packSet, leftUsage, rightUsage);
                         if (currentSavings > savings) {
                             savings = currentSavings;
-                            bestPack = Pack.pair(leftUsage, rightUsage);
+                            bestPack = Pair.create(leftUsage, rightUsage);
                         }
                     }
                 }
@@ -388,7 +387,7 @@ public final class IsomorphicPackingPhase extends BasePhase<LowTierContext> {
          * @param packSet PackSet, for membership checks
          * @return Savings in an arbitrary unit and can be negative.
          */
-        private int est_savings(Set<Pack<Node>> packSet, Node s1, Node s2) {
+        private int est_savings(Set<Pair<Node, Node>> packSet, Node s1, Node s2) {
             // Savings originating from inputs
             int saveIn = 1; // Save 1 instruction as executing 2 in parallel.
 
@@ -403,7 +402,7 @@ public final class IsomorphicPackingPhase extends BasePhase<LowTierContext> {
                     if (adjacent(leftInput, rightInput)) {
                         // Inputs are adjacent in memory, this is good.
                         saveIn += 2; // Not necessarily packed, but good because packing is easy.
-                    } else if (packSet.contains(Pack.pair(leftInput, rightInput))) {
+                    } else if (packSet.contains(Pair.create(leftInput, rightInput))) {
                         saveIn += 2; // Inputs already packed, so we don't need to pack these.
                     } else {
                         saveIn -= 2; // Not adjacent, not packed. Inputs need to be packed in a vector for candidate.
@@ -415,7 +414,7 @@ public final class IsomorphicPackingPhase extends BasePhase<LowTierContext> {
             int ct = 0; // the number of usages that are packed
             int saveUse = 0;
             for (Node s1Usage : s1.usages()) {
-                for (Pack<Node> pack : packSet) {
+                for (Pair<Node, Node> pack : packSet) {
                     if (pack.getLeft()!=s1Usage) continue;
 
                     for (Node s2Usage : s2.usages()) {
@@ -445,7 +444,7 @@ public final class IsomorphicPackingPhase extends BasePhase<LowTierContext> {
          * TODO: CHECK THAT VECTOR ELEMENT TYPE IS THE SAME
          * @param packSet PackSet to populate
          */
-        private void find_adj_refs(Set<Pack<Node>> packSet) {
+        private void find_adj_refs(Set<Pair<Node, Node>> packSet) {
             // Create initial seed set containing memory operations
             List<FixedAccessNode> memoryNodes = // Candidate list of memory nodes
                     StreamSupport.stream(currentBlock.getNodes().spliterator(), false)
@@ -464,7 +463,7 @@ public final class IsomorphicPackingPhase extends BasePhase<LowTierContext> {
                     if (adjacent(s1, s2)) {
                         final Optional<Integer> align_s1 = getAlignment(s1);
                         if (align_s1.isPresent() && stmts_can_pack(packSet, s1, s2, align_s1.get())) {
-                            packSet.add(Pack.pair(s1, s2));
+                            packSet.add(Pair.create(s1, s2));
                         }
                     }
                 }
@@ -475,15 +474,15 @@ public final class IsomorphicPackingPhase extends BasePhase<LowTierContext> {
          * Extend the packset by following use->def and def->use links from pack members until the set does not change
          * @param packSet PackSet to populate
          */
-        private void extend_packlist(Set<Pack<Node>> packSet) {
-            Set<Pack<Node>> iterationPackSet;
+        private void extend_packlist(Set<Pair<Node, Node>> packSet) {
+            Set<Pair<Node, Node>> iterationPackSet;
 
             boolean changed;
             do {
                 changed = false;
                 iterationPackSet = new HashSet<>(packSet);
 
-                for (Pack<Node> pack : iterationPackSet) {
+                for (Pair<Node, Node> pack : iterationPackSet) {
                     changed |= follow_use_defs(packSet, pack);
                     changed |= follow_def_uses(packSet, pack);
                 }
@@ -491,25 +490,26 @@ public final class IsomorphicPackingPhase extends BasePhase<LowTierContext> {
         }
 
         // Combine packs where right = left
-        private void combine_packs(Set<Pack<Node>> packSet) {
+        private void combine_packs(Set<Pair<Node, Node>> packSet, Set<Pack<Node>> combinedPackSet) {
             boolean changed;
             do {
                 changed = false;
 
-                Deque<Pack<Node>> remove = new ArrayDeque<>();
+                Deque<Pair<Node, Node>> remove = new ArrayDeque<>();
                 Deque<Pack<Node>> add = new ArrayDeque<>();
 
-                for (Pack<Node> leftPack : packSet) {
+                for (Pair<Node, Node> leftPack : packSet) {
                     if (remove.contains(leftPack)) continue;
 
-                    for (Pack<Node> rightPack : packSet) {
+                    for (Pair<Node, Node> rightPack : packSet) {
                         if (remove.contains(leftPack) || remove.contains(rightPack)) continue;
 
                         if (leftPack != rightPack && leftPack.getRight().equals(rightPack.getLeft())) {
                             remove.push(leftPack);
                             remove.push(rightPack);
 
-                            add.push(Pack.combine(leftPack, rightPack));
+                            add.push(Pack.create(Stream.of(leftPack.getLeft(), rightPack.getLeft(), rightPack.getRight())
+                                    .collect(Collectors.toList())));
 
                             changed = true;
                         }
@@ -517,7 +517,7 @@ public final class IsomorphicPackingPhase extends BasePhase<LowTierContext> {
                 }
 
                 packSet.removeAll(remove);
-                packSet.addAll(add);
+                combinedPackSet.addAll(add);
             } while (changed);
         }
 
@@ -600,7 +600,7 @@ public final class IsomorphicPackingPhase extends BasePhase<LowTierContext> {
         }
 
         private void schedulePack(Pack<Node> pack, Deque<FixedNode> lastFixed) {
-            final Node first = pack.getLeft();
+            final Node first = pack.getElements().get(0);
 
             if (first instanceof ReadNode) {
                 final List<ReadNode> nodes = pack.getElements().stream().map(x -> (ReadNode) x).collect(Collectors.toList());
@@ -710,11 +710,16 @@ public final class IsomorphicPackingPhase extends BasePhase<LowTierContext> {
 
         // Main
         void SLP_extract() {
-            Set<Pack<Node>> packSet = new HashSet<>();
+            final Set<Pair<Node, Node>> packSet = new HashSet<>();
+            final Set<Pack<Node>> combinedPackSet = new HashSet<>();
+
             find_adj_refs(packSet);
             extend_packlist(packSet);
-            combine_packs(packSet);
-            schedule(new ArrayList<>(blockToNodesMap.get(currentBlock)), packSet);
+
+            // after this it's not a packset anymore
+            combine_packs(packSet, combinedPackSet);
+
+            schedule(new ArrayList<>(blockToNodesMap.get(currentBlock)), combinedPackSet);
         }
 
     }
