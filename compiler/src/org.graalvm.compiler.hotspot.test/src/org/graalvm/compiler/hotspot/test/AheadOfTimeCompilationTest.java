@@ -179,7 +179,7 @@ public class AheadOfTimeCompilationTest extends HotSpotGraalCompilerTest {
         StructuredGraph result = compile("getBoxedBoolean", true);
 
         assertDeepEquals(0, result.getNodes().filter(FloatingReadNode.class).count());
-        assertDeepEquals(0, result.getNodes(PiNode.TYPE).count());
+        assertDeepEquals(0, result.getNodes().filter(PiNode.class).count());
         assertDeepEquals(1, getConstantNodes(result).count());
         ConstantNode constant = getConstantNodes(result).first();
         assertDeepEquals(JavaKind.Object, constant.getStackKind());
@@ -192,7 +192,7 @@ public class AheadOfTimeCompilationTest extends HotSpotGraalCompilerTest {
     public void testBoxedBoolean() {
         StructuredGraph result = compile("getBoxedBoolean", false);
         assertDeepEquals(0, result.getNodes().filter(FloatingReadNode.class).count());
-        assertDeepEquals(0, result.getNodes(PiNode.TYPE).count());
+        assertDeepEquals(0, result.getNodes().filter(PiNode.class).count());
         assertDeepEquals(1, getConstantNodes(result).count());
         ConstantNode constant = getConstantNodes(result).first();
         assertDeepEquals(JavaKind.Object, constant.getStackKind());

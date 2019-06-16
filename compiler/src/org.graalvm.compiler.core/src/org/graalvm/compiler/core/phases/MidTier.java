@@ -55,6 +55,7 @@ import org.graalvm.compiler.phases.common.IterativeConditionalEliminationPhase;
 import org.graalvm.compiler.phases.common.LockEliminationPhase;
 import org.graalvm.compiler.phases.common.LoopSafepointInsertionPhase;
 import org.graalvm.compiler.phases.common.LoweringPhase;
+import org.graalvm.compiler.phases.common.OptimizeDivPhase;
 import org.graalvm.compiler.phases.common.VerifyHeapAtReturnPhase;
 import org.graalvm.compiler.phases.common.WriteBarrierAdditionPhase;
 import org.graalvm.compiler.phases.tiers.MidTierContext;
@@ -92,6 +93,8 @@ public class MidTier extends PhaseSuite<MidTierContext> {
         }
 
         appendPhase(new LoweringPhase(canonicalizer, LoweringTool.StandardLoweringStage.MID_TIER));
+
+        appendPhase(new OptimizeDivPhase());
 
         appendPhase(new FrameStateAssignmentPhase());
 
