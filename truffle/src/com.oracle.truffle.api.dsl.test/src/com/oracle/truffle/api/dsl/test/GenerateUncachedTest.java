@@ -44,6 +44,7 @@ import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.fail;
 
+import com.oracle.truffle.api.frame.VirtualFrame;
 import org.junit.Test;
 
 import com.oracle.truffle.api.Assumption;
@@ -745,6 +746,8 @@ public class GenerateUncachedTest {
 
         public abstract Object execute();
 
+        public abstract Object execute(VirtualFrame frame);
+
         public abstract Object execute(Object... o);
 
         @Specialization(guards = "i == 0")
@@ -763,6 +766,13 @@ public class GenerateUncachedTest {
     public void testNodeChild1() {
         try {
             NodeChildTest1NodeGen.getUncached().execute();
+            fail();
+        } catch (AssertionError e) {
+            assertEquals("This execute method cannot be used for uncached node versions as it requires child nodes to be present. " +
+                            "Use an execute method that takes all arguments as parameters.", e.getMessage());
+        }
+        try {
+            NodeChildTest1NodeGen.getUncached().execute((VirtualFrame) null);
             fail();
         } catch (AssertionError e) {
             assertEquals("This execute method cannot be used for uncached node versions as it requires child nodes to be present. " +
