@@ -688,7 +688,7 @@ public final class GraalFeature implements Feature {
 
     private static void registerDeoptEntries(CallTreeNode node) {
         for (FrameState frameState : node.graph.getNodes(FrameState.TYPE)) {
-            if (node.level > 0 && frameState.usages().count() == 1 && frameState.usages().first() == node.graph.start()) {
+            if (node.level > 0 && frameState.hasExactlyOneUsage() && frameState.usages().first() == node.graph.start()) {
                 /*
                  * During method inlining, the FrameState associated with the StartNode disappears.
                  * Therefore, this frame state cannot be a deoptimization target.

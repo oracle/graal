@@ -2479,8 +2479,9 @@ public class BytecodeParser implements GraphBuilderContext {
         FixedWithNextNode calleeBeforeUnwindNode = null;
         ValueNode calleeUnwindValue = null;
 
-        try (InliningScope s = parsingIntrinsic() ? null : (calleeIntrinsicContext != null ? new IntrinsicScope(this, targetMethod, args)
-                        : new InliningScope(this, targetMethod, args))) {
+        try (InliningScope s = parsingIntrinsic() ? null
+                        : (calleeIntrinsicContext != null ? new IntrinsicScope(this, targetMethod, args)
+                                        : new InliningScope(this, targetMethod, args))) {
             BytecodeParser parser = graphBuilderInstance.createBytecodeParser(graph, this, targetMethod, INVOCATION_ENTRY_BCI, calleeIntrinsicContext);
             FrameStateBuilder startFrameState = new FrameStateBuilder(parser, parser.code, graph, graphBuilderConfig.retainLocalVariables());
             if (!targetMethod.isStatic()) {
@@ -2593,7 +2594,7 @@ public class BytecodeParser implements GraphBuilderContext {
                 if (stateSplit.hasSideEffect()) {
                     assert stateSplit != null;
                     if (stateAfter.bci == BytecodeFrame.AFTER_BCI) {
-                        assert stateAfter.usages().count() == 1;
+                        assert stateAfter.hasExactlyOneUsage();
                         assert stateAfter.usages().first() == stateSplit;
                         FrameState state;
                         if (returnVal.getStackKind() == JavaKind.Illegal) {
