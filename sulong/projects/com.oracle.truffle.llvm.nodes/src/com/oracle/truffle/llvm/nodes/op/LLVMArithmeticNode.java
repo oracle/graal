@@ -33,12 +33,15 @@ import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.dsl.Cached;
 import com.oracle.truffle.api.dsl.NodeChild;
 import com.oracle.truffle.api.dsl.Specialization;
+import com.oracle.truffle.api.library.CachedLibrary;
 import com.oracle.truffle.llvm.nodes.op.arith.floating.LLVMArithmeticFactory;
 import com.oracle.truffle.llvm.runtime.ArithmeticOperation;
 import com.oracle.truffle.llvm.runtime.LLVMIVarBit;
 import com.oracle.truffle.llvm.runtime.floating.LLVM80BitFloat;
+import com.oracle.truffle.llvm.runtime.library.LLVMNativeLibrary;
 import com.oracle.truffle.llvm.runtime.nodes.api.LLVMArithmetic.LLVMArithmeticOpNode;
 import com.oracle.truffle.llvm.runtime.nodes.api.LLVMExpressionNode;
+import com.oracle.truffle.llvm.runtime.pointer.LLVMPointer;
 
 @NodeChild("leftNode")
 @NodeChild("rightNode")
@@ -175,6 +178,25 @@ public abstract class LLVMArithmeticNode extends LLVMExpressionNode {
         @Specialization
         long doLong(long left, long right) {
             return op.doLong(left, right);
+        }
+
+        @Specialization(limit = "3")
+        long doPointer(long left, LLVMPointer right,
+                        @CachedLibrary("right") LLVMNativeLibrary rightLib) {
+            return op.doLong(left, rightLib.toNativePointer(right).asNative());
+        }
+
+        @Specialization(limit = "3")
+        long doPointer(LLVMPointer left, long right,
+                        @CachedLibrary("left") LLVMNativeLibrary leftLib) {
+            return op.doLong(leftLib.toNativePointer(left).asNative(), right);
+        }
+
+        @Specialization(limit = "3")
+        long doPointer(LLVMPointer left, LLVMPointer right,
+                        @CachedLibrary("left") LLVMNativeLibrary leftLib,
+                        @CachedLibrary("right") LLVMNativeLibrary rightLib) {
+            return op.doLong(leftLib.toNativePointer(left).asNative(), rightLib.toNativePointer(right).asNative());
         }
     }
 
