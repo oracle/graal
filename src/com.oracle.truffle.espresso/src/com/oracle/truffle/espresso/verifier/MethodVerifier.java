@@ -1971,6 +1971,10 @@ public final class MethodVerifier implements ContextAccess {
                     return;
                 }
                 if (!thisKlass.getRuntimePackage().equals(Types.getRuntimePackage(methodHolderType))) {
+                    if (stackOp.isArrayType() && methodHolderType == Type.Object && method.getName() == Name.clone) {
+                        // Special case: Arrays pretend to implement Object.clone().
+                        return;
+                    }
                     if (!stackOp.compliesWith(thisOperand)) {
                         /**
                          * Otherwise, use of a member of an object of type Target requires that
