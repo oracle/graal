@@ -37,6 +37,7 @@ import tarfile
 import subprocess
 import tempfile
 import shutil
+import sys
 
 import mx_truffle
 import mx_sdk
@@ -58,6 +59,18 @@ import mx_graal_tools #pylint: disable=unused-import
 import argparse
 import shlex
 import glob
+
+# Temporary imports and (re)definitions while porting mx from Python 2 to Python 3
+if sys.version_info[0] < 3:
+    def _decode(x):
+        return x
+    def _encode(x):
+        return x
+else:
+    def _decode(x):
+        return x.decode()
+    def _encode(x):
+        return x.encode()
 
 _suite = mx.suite('compiler')
 
@@ -979,7 +992,7 @@ class GraalArchiveParticipant:
                 pass
             else:
                 provider = m.group(2)
-                for service in mx._decode(contents).strip().split(os.linesep):
+                for service in _decode(contents).strip().split(os.linesep):
                     assert service
                     version = m.group(1)
                     if version is None:

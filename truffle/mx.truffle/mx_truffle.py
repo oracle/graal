@@ -41,6 +41,7 @@
 import os
 import re
 import tempfile
+import sys
 import zipfile
 from argparse import ArgumentParser, RawDescriptionHelpFormatter
 from collections import OrderedDict
@@ -57,6 +58,21 @@ from mx_jackpot import jackpot
 from mx_javamodules import as_java_module, get_java_module_info
 from mx_sigtest import sigtest
 from mx_unittest import unittest
+
+# Temporary imports and (re)definitions while porting mx from Python 2 to Python 3
+if sys.version_info[0] < 3:
+    from urlparse import urljoin as _urllib_urljoin
+    def _decode(x):
+        return x
+    def _encode(x):
+        return x
+else:
+    from urllib.parse import urljoin as _urllib_urljoin # pylint: disable=unused-import,no-name-in-module
+    def _decode(x):
+        return x.decode()
+    def _encode(x):
+        return x.encode()
+
 
 _suite = mx.suite('truffle')
 
@@ -93,7 +109,7 @@ def checkLinks(javadocDir):
                 html = os.path.join(root, f)
                 content = open(html, 'r').read()
                 for url in href.findall(content):
-                    full = mx._urllib_parse.urljoin(html, url)
+                    full = _urllib_urljoin(html, url)
                     sectionIndex = full.find('#')
                     questionIndex = full.find('?')
                     minIndex = sectionIndex
@@ -344,7 +360,7 @@ class TruffleArchiveParticipant:
         if metainfFile:
             propertyRe = TruffleArchiveParticipant.PROPERTY_RE
             properties = {}
-            for line in mx._decode(contents).strip().split('\n'):
+            for line in _decode(contents).strip().split('\n'):
                 if not line.startswith('#'):
                     m = propertyRe.match(line)
                     assert m, 'line in ' + arcname + ' does not match ' + propertyRe.pattern + ': ' + line
