@@ -42,6 +42,7 @@ import org.graalvm.compiler.graph.spi.Canonicalizable;
 import org.graalvm.compiler.graph.spi.Canonicalizable.BinaryCommutative;
 import org.graalvm.compiler.graph.spi.SimplifierTool;
 import org.graalvm.compiler.nodeinfo.InputType;
+import org.graalvm.compiler.nodes.AbstractBeginNode;
 import org.graalvm.compiler.nodes.AbstractMergeNode;
 import org.graalvm.compiler.nodes.ConstantNode;
 import org.graalvm.compiler.nodes.ControlSinkNode;
@@ -207,12 +208,14 @@ public class CanonicalizerPhase extends BasePhase<CoreProviders> {
             if (!wholeGraph) {
                 workList.addAll(graph.getNewNodes(newNodesMark));
             }
+
             tool = new Tool(graph.getAssumptions(), graph.getOptions());
             processWorkSet(graph);
         }
 
         @SuppressWarnings("try")
-        private void processWorkSet(StructuredGraph graph) {
+        private int processWorkSet(StructuredGraph graph) {
+            int sum = 0;
             NodeEventListener listener = new NodeEventListener() {
 
                 @Override
@@ -226,6 +229,13 @@ public class CanonicalizerPhase extends BasePhase<CoreProviders> {
                     if (node instanceof IndirectCanonicalization) {
                         for (Node usage : node.usages()) {
                             workList.add(usage);
+                        }
+                    }
+
+                    if (node instanceof AbstractBeginNode) {
+                        AbstractBeginNode abstractBeginNode = (AbstractBeginNode) node;
+                        if (abstractBeginNode.predecessor() != null) {
+                            workList.add(abstractBeginNode.predecessor());
                         }
                     }
                 }
@@ -242,8 +252,10 @@ public class CanonicalizerPhase extends BasePhase<CoreProviders> {
                     if (changed && debug.isDumpEnabled(DebugContext.DETAILED_LEVEL)) {
                         debug.dump(DebugContext.DETAILED_LEVEL, graph, "CanonicalizerPhase %s", n);
                     }
+                    ++sum;
                 }
             }
+            return sum;
         }
 
         /**
