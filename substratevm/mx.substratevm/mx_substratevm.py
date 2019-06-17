@@ -121,8 +121,12 @@ java_base_opens_packages = [
     'java.base/jdk.internal.ref',
     # Reflective access to jdk.internal.reflect.MethodAccessor.
     'java.base/jdk.internal.reflect',
+    # Reflective access to java.io.ExpiringCache
+    'java.base/java.io',
     # Reflective access to private fields of java.lang.Class.
     'java.base/java.lang',
+    # Reflective access to java.lang.reflect.ProxyGenerator.generateProxyClass
+    'java.base/java.lang.reflect',
     # Reflective access to java.lang.invoke.VarHandle*.
     'java.base/java.lang.invoke',
     # Reflective access to java.lang.Reference.referent.
@@ -131,6 +135,12 @@ java_base_opens_packages = [
     'java.base/java.net',
     # Reflective access to java.nio.MappedByteBuffer.fd.
     'java.base/java.nio',
+    # Reflective access to java.nio.files.FileTypeDetector
+    'java.base/java.nio.file',
+    # Reflective access to java.security.Provider.knownEngines
+    'java.base/java.security',
+    # Reflective access javax.crypto.JceSecurity.getVerificationResult
+    'java.base/javax.crypto',
     # Reflective access to java.util.Bits.words.
     'java.base/java.util',
     'java.base/jdk.internal.logger',]
