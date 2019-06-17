@@ -39,6 +39,7 @@ import org.graalvm.component.installer.BundleConstants;
 import org.graalvm.component.installer.CommonConstants;
 import org.graalvm.component.installer.ComponentCollection;
 import org.graalvm.component.installer.Feedback;
+import org.graalvm.component.installer.FileOperations;
 import org.graalvm.component.installer.SystemUtils;
 import org.graalvm.component.installer.Version;
 import org.graalvm.component.installer.model.ComponentInfo;
@@ -55,9 +56,9 @@ public class GraalVMInstaller extends Installer {
     private Path currentInstallPath;
     private boolean createSymlink;
 
-    public GraalVMInstaller(Feedback feedback, ComponentRegistry current,
+    public GraalVMInstaller(Feedback feedback, FileOperations fops, ComponentRegistry current,
                     ComponentInfo componentInfo, ComponentCollection collection, Archive a) {
-        super(feedback, componentInfo,
+        super(feedback, fops, componentInfo,
                         new ComponentRegistry(feedback,
                                         new TransientStorage(
                                                         componentInfo.getVersion(),

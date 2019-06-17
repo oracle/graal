@@ -163,6 +163,17 @@ public class SystemUtils {
         return Paths.get(s, comps);
     }
 
+    public static Path resolveRelative(Path baseDir, String p) {
+        if (baseDir == null) {
+            return null;
+        }
+        if (p == null) {
+            return null;
+        }
+        String[] comps = checkRelativePath(baseDir, p);
+        return baseDir.resolve(fromArray(comps));
+    }
+
     public static Path fromCommonRelative(Path base, String p) {
         if (p == null) {
             return null;

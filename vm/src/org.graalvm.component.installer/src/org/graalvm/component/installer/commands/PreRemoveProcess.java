@@ -27,12 +27,8 @@ package org.graalvm.component.installer.commands;
 import java.io.File;
 import java.io.IOException;
 import java.io.UncheckedIOException;
-import java.nio.file.AccessDeniedException;
 import java.nio.file.Files;
 import java.nio.file.Path;
-import java.nio.file.attribute.PosixFileAttributeView;
-import java.nio.file.attribute.PosixFilePermission;
-import java.nio.file.attribute.PosixFilePermissions;
 import java.util.ArrayList;
 import java.util.Comparator;
 import java.util.HashSet;
@@ -42,6 +38,7 @@ import java.util.stream.Stream;
 import org.graalvm.component.installer.CommonConstants;
 import static org.graalvm.component.installer.CommonConstants.WARN_REBUILD_IMAGES;
 import org.graalvm.component.installer.Feedback;
+import org.graalvm.component.installer.FileOperations;
 import org.graalvm.component.installer.SystemUtils;
 import org.graalvm.component.installer.model.ComponentInfo;
 
@@ -50,20 +47,21 @@ import org.graalvm.component.installer.model.ComponentInfo;
  * @author sdedic
  */
 public class PreRemoveProcess {
-    private static final Set<PosixFilePermission> ALL_WRITE_PERMS = PosixFilePermissions.fromString("rwxrwxrwx");
-
     private final Path installPath;
     private final Feedback feedback;
     private final List<ComponentInfo> infos = new ArrayList<>();
+    private final FileOperations fileOps;
+
     private boolean rebuildPolyglot;
 
     private boolean dryRun;
     private boolean ignoreFailedDeletions;
     private Set<String> knownPaths;
 
-    public PreRemoveProcess(Path instPath, Feedback fb) {
+    public PreRemoveProcess(Path instPath, FileOperations fops, Feedback fb) {
         this.feedback = fb.withBundle(PreRemoveProcess.class);
         installPath = instPath;
+        fileOps = fops;
     }
 
     public boolean isDryRun() {
@@ -112,7 +110,7 @@ public class PreRemoveProcess {
      */
     void deleteOneFile(Path p) throws IOException {
         try {
-            deleteOneFile0(p);
+            fileOps.deleteFile(p);
         } catch (IOException ex) {
             if (ignoreFailedDeletions) {
                 if (Files.isDirectory(p)) {
@@ -124,50 +122,6 @@ public class PreRemoveProcess {
             }
             throw ex;
             // throw new UncheckedIOException(ex);
-        }
-    }
-
-    private void deleteOneFile0(Path p) throws IOException {
-        try {
-            if (p.equals(installPath)) {
-                return;
-            }
-            Files.deleteIfExists(p);
-        } catch (AccessDeniedException ex) {
-            // try again to adjust permissions for the file AND the containing
-            // directory AND try again:
-            PosixFileAttributeView attrs = Files.getFileAttributeView(
-                            p, PosixFileAttributeView.class);
-            Set<PosixFilePermission> restoreDirPermissions = null;
-            if (attrs != null) {
-                Files.setPosixFilePermissions(p, ALL_WRITE_PERMS);
-                Path d = p.normalize().getParent();
-                // set the parent directory's permissions, but do not
-                // alter permissions outside the to-be-deleted tree:
-                if (d == null) {
-                    throw new IOException("Cannot determine parent of " + p);
-                }
-                if (d.startsWith(installPath) && !d.equals(installPath)) {
-                    restoreDirPermissions = Files.getPosixFilePermissions(d);
-                    Files.setPosixFilePermissions(d, ALL_WRITE_PERMS);
-                }
-                try {
-                    // 2nd try
-                    Files.deleteIfExists(p);
-                } catch (IOException ex2) {
-                    // report the original access denied
-                    throw ex;
-                } finally {
-                    if (restoreDirPermissions != null) {
-                        try {
-                            Files.setPosixFilePermissions(d, restoreDirPermissions);
-                        } catch (IOException ex2) {
-                            // do not obscure the result with this exception
-                            feedback.error("UNINSTALL_ErrorRestoringPermissions", ex2, p, ex2.getLocalizedMessage());
-                        }
-                    }
-                }
-            }
         }
     }
 
@@ -184,7 +138,7 @@ public class PreRemoveProcess {
         try (Stream<Path> paths = Files.walk(rootPath)) {
             paths.sorted(Comparator.reverseOrder()).forEach((p) -> {
                 try {
-                    if (shouldDeletePath(p)) {
+                    if (!p.equals(rootPath) && shouldDeletePath(p)) {
                         deleteOneFile(p);
                     }
                 } catch (IOException ex) {
@@ -208,7 +162,7 @@ public class PreRemoveProcess {
         if (Files.isDirectory(toDelete)) {
             relString += "/"; // NOI18N
         }
-        return !knownPaths.contains(relString);
+        return knownPaths == null || !knownPaths.contains(relString);
     }
 
     void processComponent(ComponentInfo ci) throws IOException {

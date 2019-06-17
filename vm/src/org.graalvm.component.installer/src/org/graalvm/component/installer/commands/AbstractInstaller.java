@@ -34,6 +34,7 @@ import java.util.Set;
 import org.graalvm.component.installer.Archive;
 import org.graalvm.component.installer.ComponentCollection;
 import org.graalvm.component.installer.Feedback;
+import org.graalvm.component.installer.FileOperations;
 import org.graalvm.component.installer.Version;
 import org.graalvm.component.installer.model.ComponentInfo;
 import org.graalvm.component.installer.model.ComponentRegistry;
@@ -51,6 +52,7 @@ public abstract class AbstractInstaller implements Closeable {
     protected final ComponentRegistry registry;
     protected final ComponentCollection catalog;
     protected final Archive archive;
+    protected final FileOperations fileOps;
 
     private Map<String, String> permissions = Collections.emptyMap();
     private Map<String, String> symlinks = Collections.emptyMap();
@@ -65,13 +67,14 @@ public abstract class AbstractInstaller implements Closeable {
     private Path installPath;
     private boolean allowUpgrades;
 
-    public AbstractInstaller(Feedback fb, ComponentInfo info,
+    public AbstractInstaller(Feedback fb, FileOperations fops, ComponentInfo info,
                     ComponentRegistry reg, ComponentCollection cat, Archive a) {
         this.feedback = fb;
         this.componentInfo = info;
         this.registry = reg;
         this.archive = a;
         this.catalog = cat;
+        this.fileOps = fops;
     }
 
     public boolean isAllowUpgrades() {

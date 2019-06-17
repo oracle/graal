@@ -1,7 +1,7 @@
 ::
 :: ----------------------------------------------------------------------------------------------------
 ::
-:: Copyright (c) 2019, Oracle and/or its affiliates. All rights reserved.
+:: Copyright (c) 2019, 2019, Oracle and/or its affiliates. All rights reserved.
 :: DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
 ::
 :: This code is free software; you can redistribute it and/or modify it
@@ -38,7 +38,30 @@ for %%i in ("%relcp%") do (
   set delim=;
 )
 
+set unique=%temp%\%~nx0
+set GU_POST_DELETE_LIST=%unique%.delete
+set GU_POST_COPY_CONTENTS=%unique%.copy
+
+DEL /f /q %GU_POST_DELETE_LIST% >NUL
+DEL /f /q %GU_POST_COPY_CONTENTS% >NUL
 
 if "%VERBOSE_GRAALVM_LAUNCHERS%"=="true" echo on
 
-"%root_dir%\bin\java" -cp "%realcp%" "-DGRAAL_HOME=%root_dir%" org.graalvm.component.installer.ComponentInstaller %*
+"%root_dir%\bin\java" %GU_OPTS% -cp "%realcp%" "-DGRAAL_HOME=%root_dir%" org.graalvm.component.installer.ComponentInstaller %*
+
+if errorlevel 11 (
+  echo Retrying operations on locked files...
+  for /f "delims=|" %%F in (%GU_POST_DELETE_LIST%) DO (
+    DEL /F /S /Q "%%F" >NUL
+    IF EXIST "%%F\" (
+      RD /S /Q "%%F" >NUL
+    )
+  )
+
+  for /f "delims=| tokens=1,2" %%F in (%GU_POST_COPY_CONTENTS%) DO (
+    COPY /Y /B "%%G\*.*" "%%F" >NUL
+    DEL /F /S /Q "%%G" >NUL
+    RD /S /Q "%%G" >NUL
+  )
+)
+:end

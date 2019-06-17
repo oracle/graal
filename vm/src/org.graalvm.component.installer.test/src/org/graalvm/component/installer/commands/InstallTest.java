@@ -32,6 +32,7 @@ import java.nio.file.Files;
 import java.nio.file.LinkOption;
 import java.nio.file.Path;
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.List;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.logging.Level;
@@ -411,6 +412,49 @@ public class InstallTest extends CommandTestBase {
         exception.expectMessage("ADMIN");
 
         inst.execute();
+    }
+
+    private static final String BLOCKED_CONTENT = "This is a blocked file"; // NOI18N
+    private static final String INSTALL_CONTENT = "#!/usr/bin/env bash"; // NOI18N
+
+    /**
+     * Checks that in the 'replace' scenario, the locked file is first scheduled for delete and then
+     * the new version for copy/moe to the original place.
+     */
+    @Test
+    public void testReplaceExistingComponentWithLockedFiles() throws IOException {
+        options.put(Commands.OPTION_REPLACE_COMPONENTS, "");
+        inst = new InstallCommand();
+        inst.init(this, withBundle(InstallCommand.class));
+
+        inst.execute();
+
+        Path blockedFile = targetPath.resolve(SystemUtils.fromCommonString("jre/languages/ruby/bin/rake"));
+        Path copyDir = targetPath.resolve(SystemUtils.fromCommonString("jre/languages/ruby/bin.new"));
+        Path copyFile = copyDir.resolve("rake");
+
+        Files.write(blockedFile, Collections.singletonList(BLOCKED_CONTENT));
+
+        BlockedFileOps blockedOps = new BlockedFileOps();
+        fileOps = blockedOps;
+        fileOps.init(this);
+        fileOps.setRootPath(targetPath);
+
+        blockedOps.blockedPaths.add(blockedFile);
+        Path delayDeletes = folder.newFile("delayDeletes").toPath();
+        Path copiedFiles = folder.newFile("copiedDirs").toPath();
+        blockedOps.setDelayDeletedList(delayDeletes);
+        blockedOps.setCopyContents(copiedFiles);
+
+        inst = new InstallCommand();
+        inst.init(this, withBundle(InstallCommand.class));
+        files.add(dataFile("truffleruby3.jar").toFile());
+
+        inst.execute();
+
+        // check that the original blocked file was not replaced:
+        assertEquals(BLOCKED_CONTENT, Files.readAllLines(blockedFile).get(0));
+        assertEquals(INSTALL_CONTENT, Files.readAllLines(copyFile).get(0));
     }
 
 }

@@ -134,7 +134,8 @@ public class UninstallCommand implements InstallerCommand {
     }
 
     void uninstallSingleComponent(ComponentInfo info) throws IOException {
-        Uninstaller inst = new Uninstaller(feedback, info, input.getLocalRegistry());
+        Uninstaller inst = new Uninstaller(feedback, input.getFileOperations(),
+                        info, input.getLocalRegistry());
         configureInstaller(inst);
 
         feedback.output("UNINSTALL_UninstallingComponent",
