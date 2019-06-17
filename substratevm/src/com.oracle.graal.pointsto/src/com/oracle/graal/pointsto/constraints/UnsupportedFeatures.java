@@ -143,7 +143,7 @@ public class UnsupportedFeatures {
     public void checkMethod(AnalysisMethod method, StructuredGraph graph) {
         if (method.isEntryPoint() && !Modifier.isStatic(graph.method().getModifiers())) {
             ValueNode receiver = graph.start().stateAfter().localAt(0);
-            if (receiver != null && receiver.usages().count() > 0) {
+            if (receiver != null && receiver.hasUsages()) {
                 /*
                  * Entry point methods should be static. However, for unit testing we also use JUnit
                  * test methods as entry points, and they are by convention non-static. If the

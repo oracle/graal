@@ -387,7 +387,7 @@ public class AMD64NodeMatchRules extends NodeMatchRules {
     @MatchRule("(If (IntegerEquals=compare value ValueCompareAndSwap=cas))")
     public ComplexMatchResult ifCompareValueCas(IfNode root, CompareNode compare, ValueNode value, ValueCompareAndSwapNode cas) {
         assert compare.condition() == CanonicalCondition.EQ;
-        if (value == cas.getExpectedValue() && cas.usages().count() == 1) {
+        if (value == cas.getExpectedValue() && cas.hasExactlyOneUsage()) {
             return builder -> {
                 LIRKind kind = getLirKind(cas);
                 LabelRef trueLabel = getLIRBlock(root.trueSuccessor());
@@ -410,7 +410,7 @@ public class AMD64NodeMatchRules extends NodeMatchRules {
     public ComplexMatchResult ifCompareLogicCas(IfNode root, CompareNode compare, ValueNode value, LogicCompareAndSwapNode cas) {
         JavaConstant constant = value.asJavaConstant();
         assert compare.condition() == CanonicalCondition.EQ;
-        if (constant != null && cas.usages().count() == 1) {
+        if (constant != null && cas.hasExactlyOneUsage()) {
             long constantValue = constant.asLong();
             boolean successIsTrue;
             if (constantValue == 0) {
