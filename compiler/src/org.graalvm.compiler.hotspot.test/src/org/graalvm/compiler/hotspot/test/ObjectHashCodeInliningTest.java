@@ -42,7 +42,7 @@ public class ObjectHashCodeInliningTest extends GraalCompilerTest {
     @Test
     public void testInstallCodeInvalidation() {
         for (int i = 0; i < 100000; i++) {
-            getHash(i % 1000 == 0 ? new Object() : "");
+            getHash(i % 10 == 0 ? new Object() : "");
         }
 
         ResolvedJavaMethod method = getResolvedJavaMethod("getHash");
