@@ -1150,7 +1150,7 @@ def makegraaljdk(args):
             assert exists(jvmlib), jvmlib + ' does not exist'
 
         with open(join(jvmciDir, 'compiler-name'), 'w') as fp:
-            print >> fp, 'graal'
+            print('graal', file=fp)
         vmName = 'Graal'
         mapFiles = set()
         for e in _jvmci_classpath:
@@ -1162,7 +1162,7 @@ def makegraaljdk(args):
             with open(join(dstJdk, 'release'), 'a') as fp:
                 d = e.dist()
                 s = d.suite
-                print >> fp, '{}={}'.format(d.name, s.vc.parent(s.dir))
+                print('{}={}'.format(d.name, s.vc.parent(s.dir)), file=fp)
                 vmName = vmName + ':' + s.name + '_' + s.version()
             shutil.copyfile(e.get_path(), join(jvmciDir, src))
         for e in _bootclasspath_appends:
@@ -1178,7 +1178,7 @@ def makegraaljdk(args):
 
             with open(join(dstJdk, 'release'), 'a') as fp:
                 s = e.suite
-                print >> fp, '{}={}'.format(e.name, s.vc.parent(s.dir))
+                print('{}={}'.format(e.name, s.vc.parent(s.dir)), file=fp)
             shutil.copyfile(e.classpath_repr(), join(dstDir, src))
 
         out = mx.LinesOutputCapture()
@@ -1193,7 +1193,7 @@ def makegraaljdk(args):
                     # with a suffix denoting the commit of each Graal jar.
                     # For example:
                     # Java HotSpot(TM) 64-Bit Graal:compiler_88847fb25d1a62977a178331a5e78fa5f8fcbb1a (build 25.71-b01-internal-jvmci-0.34, mixed mode)
-                    print >> fp, 'name=' + m.group(1) + vmName
+                    print('name=' + m.group(1) + vmName, file=fp)
                 line = True
                 break
         if line is not True:
