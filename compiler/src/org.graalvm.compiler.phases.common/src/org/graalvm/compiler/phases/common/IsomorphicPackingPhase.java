@@ -53,14 +53,6 @@ public final class IsomorphicPackingPhase extends BasePhase<LowTierContext> {
 
         // Utilities
 
-        private boolean isAlignedTop(Node node) {
-            return !alignmentMap.containsKey(node);
-        }
-
-        private boolean isAlignedBottom(Node node) {
-            return alignmentMap.getOrDefault(node, -1) == ALIGNMENT_BOTTOM;
-        }
-
         /**
          * Check whether the node is not in the current basic block
          * @param node Node to check the block membership of
