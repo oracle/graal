@@ -45,7 +45,6 @@ import zipfile
 from argparse import ArgumentParser, RawDescriptionHelpFormatter
 from collections import OrderedDict
 from os.path import exists
-from urlparse import urljoin
 
 import mx
 import mx_benchmark
@@ -94,7 +93,7 @@ def checkLinks(javadocDir):
                 html = os.path.join(root, f)
                 content = open(html, 'r').read()
                 for url in href.findall(content):
-                    full = urljoin(html, url)
+                    full = mx._urllib_parse.urljoin(html, url)
                     sectionIndex = full.find('#')
                     questionIndex = full.find('?')
                     minIndex = sectionIndex
@@ -345,7 +344,7 @@ class TruffleArchiveParticipant:
         if metainfFile:
             propertyRe = TruffleArchiveParticipant.PROPERTY_RE
             properties = {}
-            for line in contents.strip().split('\n'):
+            for line in mx._decode(contents).strip().split('\n'):
                 if not line.startswith('#'):
                     m = propertyRe.match(line)
                     assert m, 'line in ' + arcname + ' does not match ' + propertyRe.pattern + ': ' + line
@@ -361,12 +360,12 @@ class TruffleArchiveParticipant:
         return False
 
     def __closing__(self):
-        for metainfFile, propertiesList in self.settings.iteritems():
+        for metainfFile, propertiesList in self.settings.items():
             arcname = 'META-INF/truffle/' + metainfFile
             lines = []
             counter = 1
             for properties in propertiesList:
-                for enum in sorted(properties.viewkeys()):
+                for enum in sorted(properties.keys()):
                     assert enum.startswith(metainfFile)
                     newEnum = metainfFile + str(counter)
                     counter += 1

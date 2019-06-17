@@ -53,7 +53,7 @@ def run_netbeans_app(app_name, env=None, args=None):
 
     if mx.get_os() != 'windows':
         # Make sure that execution is allowed. The zip file does not always specfiy that correctly
-        os.chmod(executable, 0777)
+        os.chmod(executable, 0o777)
     launch = [executable]
     if not mx.get_opts().verbose:
         launch.append('-J-Dnetbeans.logger.console=false')
