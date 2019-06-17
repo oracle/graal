@@ -39,7 +39,7 @@ bench-specjvm2008-Single-jfr: ${bench-common} ${large-heap} ${jfr-bench-notifica
   timelimit: "3:30:00"
 }
 
-bench-specjbb2015-jfr: ${bench-common} ${large-heap} ${jfr-bench-notifications} {
+bench-specjbb2015-jfr: ${bench-common} ${specjbb-large-heap} ${jfr-bench-notifications} {
   environment : {
     BENCH_SUITE : "specjbb2015"
   }

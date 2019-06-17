@@ -95,6 +95,7 @@ linux-aarch64 : ${linux} {
 
 DEFAULT_HEAP_SIZE : "8G"
 LARGE_HEAP_SIZE : "31G"
+LARGE_YOUNG_GEN_SIZE : "27G"
 
 eclipse : {
   downloads : {

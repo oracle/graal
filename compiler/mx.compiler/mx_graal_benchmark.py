@@ -1196,7 +1196,46 @@ class SpecJvm2008BenchmarkSuite(mx_benchmark.JavaBenchmarkSuite):
 mx_benchmark.add_bm_suite(SpecJvm2008BenchmarkSuite())
 
 
-class SpecJbb2005BenchmarkSuite(mx_benchmark.JavaBenchmarkSuite):
+_SpecJbb_specific_vmArgs = [
+    "-XX:+UseNUMA",
+    "-XX:+AlwaysPreTouch",
+    "-XX:+UseTransparentHugePages",
+    "-XX:+UseLargePagesInMetaspace",
+    "-XX:-UseAdaptiveSizePolicy",
+    "-XX:-UseAdaptiveNUMAChunkSizing",
+    "-XX:+PrintGCDetails"
+]
+
+
+class HeapSettingsMixin(object):
+
+    def vmArgshHeapFromEnv(self, vmArgs):
+        xmx_is_set = any([arg.startswith("-Xmx") for arg in vmArgs])
+        xms_is_set = any([arg.startswith("-Xms") for arg in vmArgs])
+        xmn_is_set = any([arg.startswith("-Xmn") for arg in vmArgs])
+
+        heap_args = []
+
+        xms = mx.get_env("XMS", default="")
+        xmx = mx.get_env("XMX", default="")
+        xmn = mx.get_env("XMN", default="")
+
+        if xms and not xms_is_set:
+            heap_args.append("-Xms{}".format(xms))
+            mx.log("Setting initial heap size based on XMS env var to -Xms{}".format(xms))
+
+        if xmx and not xmx_is_set:
+            heap_args.append("-Xmx{}".format(xmx))
+            mx.log("Setting maximum heap size based on XMX env var to -Xmx{}".format(xmx))
+
+        if xmn and not xmn_is_set:
+            heap_args.append("-Xmn{}".format(xmn))
+            mx.log("Setting young generation size based on XMN env var to -Xmn{}".format(xmn))
+
+        return vmArgs + heap_args
+
+
+class SpecJbb2005BenchmarkSuite(mx_benchmark.JavaBenchmarkSuite, HeapSettingsMixin):
     """SPECjbb2005 benchmark suite implementation.
 
     This suite has only a single benchmark, and does not allow setting a specific
@@ -1214,6 +1253,10 @@ class SpecJbb2005BenchmarkSuite(mx_benchmark.JavaBenchmarkSuite):
 
     def subgroup(self):
         return "graal-compiler"
+
+    def vmArgs(self, bmSuiteArgs):
+        vmArgs = self.vmArgshHeapFromEnv(super(SpecJbb2005BenchmarkSuite, self).vmArgs(bmSuiteArgs))
+        return _SpecJbb_specific_vmArgs + vmArgs
 
     def specJbbClassPath(self):
         specjbb2005 = mx.get_env("SPECJBB2005")
@@ -1336,7 +1379,7 @@ class SpecJbb2005BenchmarkSuite(mx_benchmark.JavaBenchmarkSuite):
 mx_benchmark.add_bm_suite(SpecJbb2005BenchmarkSuite())
 
 
-class SpecJbb2013BenchmarkSuite(mx_benchmark.JavaBenchmarkSuite):
+class SpecJbb2013BenchmarkSuite(mx_benchmark.JavaBenchmarkSuite, HeapSettingsMixin):
     """SPECjbb2013 benchmark suite implementation.
 
     This suite has only a single benchmark, and does not allow setting a specific
@@ -1350,6 +1393,10 @@ class SpecJbb2013BenchmarkSuite(mx_benchmark.JavaBenchmarkSuite):
 
     def subgroup(self):
         return "graal-compiler"
+
+    def vmArgs(self, bmSuiteArgs):
+        vmArgs = self.vmArgshHeapFromEnv(super(SpecJbb2013BenchmarkSuite, self).vmArgs(bmSuiteArgs))
+        return _SpecJbb_specific_vmArgs + vmArgs
 
     def specJbbClassPath(self):
         specjbb2013 = mx.get_env("SPECJBB2013")
@@ -1435,7 +1482,7 @@ class SpecJbb2013BenchmarkSuite(mx_benchmark.JavaBenchmarkSuite):
 mx_benchmark.add_bm_suite(SpecJbb2013BenchmarkSuite())
 
 
-class SpecJbb2015BenchmarkSuite(mx_benchmark.JavaBenchmarkSuite):
+class SpecJbb2015BenchmarkSuite(mx_benchmark.JavaBenchmarkSuite, HeapSettingsMixin):
     """SPECjbb2015 benchmark suite implementation.
 
     This suite has only a single benchmark, and does not allow setting a specific
@@ -1449,6 +1496,10 @@ class SpecJbb2015BenchmarkSuite(mx_benchmark.JavaBenchmarkSuite):
 
     def subgroup(self):
         return "graal-compiler"
+
+    def vmArgs(self, bmSuiteArgs):
+        vmArgs = self.vmArgshHeapFromEnv(super(SpecJbb2015BenchmarkSuite, self).vmArgs(bmSuiteArgs))
+        return _SpecJbb_specific_vmArgs + vmArgs
 
     def specJbbClassPath(self):
         specjbb2015 = mx.get_env("SPECJBB2015")

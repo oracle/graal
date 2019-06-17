@@ -119,7 +119,7 @@ bench-renaissance-legacy-hwloc-forks-c2-batch3 : ${bench-renaissance-legacy-hwlo
 bench-specjbb2005-forks-c2 : ${bench-specjbb2005} ${weeklys-bench-notifications} {
   targets: [bench, weekly],
   setup: ${fork-counts.setup} ${bench-specjbb2005.setup}
-  timelimit: "08:00:00"
+  timelimit: "20:00:00"
   environment : ${bench-specjbb2005.environment} ${fork-counts.environment} ${bench-perftag.environment} {
     FORK_COUNT_FILE: "${FORK_COUNTS_DIRECTORY}/specjbb2005_forks.json"
   }
@@ -128,7 +128,7 @@ bench-specjbb2005-forks-c2 : ${bench-specjbb2005} ${weeklys-bench-notifications}
 bench-specjbb2015-forks-c2 : ${bench-specjbb2015} ${weeklys-bench-notifications} {
   targets: [bench, weekly],
   setup: ${fork-counts.setup} ${bench-specjbb2015.setup}
-  timelimit: "08:00:00"
+  timelimit: "20:00:00"
   environment : ${bench-specjbb2015.environment} ${fork-counts.environment} ${bench-perftag.environment} {
     FORK_COUNT_FILE: "${FORK_COUNTS_DIRECTORY}/specjbb2015_forks.json"
   }
