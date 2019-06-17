@@ -68,6 +68,7 @@ suite = {
       "javaCompliance" : "1.8",
       "javaProperties" : {
         "test.sulongtest.lib" : "<path:SULONG_TEST_NATIVE>/<lib:sulongtest>",
+        "test.sulongtest.lib.path" : "<path:SULONG_TEST_NATIVE>",
       },
       "workingSets" : "Truffle, LLVM",
       "license" : "BSD-new",
@@ -83,6 +84,7 @@ suite = {
       ],
       "buildEnv" : {
         "LIBSULONGTEST" : "<lib:sulongtest>",
+        "OS" : "<os>",
       },
       "license" : "BSD-new",
       "testProject" : True,
@@ -293,14 +295,13 @@ suite = {
         "bin/libsulong.bc",
         "bin/libsulong++.bc",
         "bin/libsulong-src.tar.gz",
-        "bin/<lib:polyglot-mock>",
       ],
       "headers" : [
         "include/polyglot.h",
       ],
       "buildEnv" : {
         "CFLAGS" : "<clangImplicitArgs>",
-        "LIB_POLYGLOT" : "<lib:polyglot-mock>",
+        "OS" : "<os>",
       },
       "license" : "BSD-new",
     },
@@ -310,13 +311,16 @@ suite = {
       "vpath" : True,
       "results" : [
         "bin/<lib:sulong>",
+        "bin/<lib:polyglot-mock>",
       ],
       "buildDependencies" : [
         "truffle:TRUFFLE_NFI_NATIVE",
+        "com.oracle.truffle.llvm.libraries.bitcode",
       ],
       "buildEnv" : {
         "LIBSULONG" : "<lib:sulong>",
-        "CPPFLAGS" : "-I<path:truffle:TRUFFLE_NFI_NATIVE>/include",
+        "LIBPOLYGLOT" : "<lib:polyglot-mock>",
+        "CPPFLAGS" : "-I<path:truffle:TRUFFLE_NFI_NATIVE>/include -I<path:com.oracle.truffle.llvm.libraries.bitcode>/include",
         "OS" : "<os>",
       },
       "license" : "BSD-new",
@@ -368,14 +372,33 @@ suite = {
       "class" : "SulongTestSuite",
       "variants" : ["O0_MEM2REG"],
       "buildRef" : False,
+      "buildSharedObject" : True,
       "buildEnv" : {
         "SUITE_CPPFLAGS" : "-I<path:SULONG_LEGACY>/include -I<path:SULONG_HOME>/include -g",
+        "OS" : "<os>",
+      },
+      "os_arch" : {
+        "darwin": {
+          "<others>" : {
+            "buildEnv" : {
+              "SUITE_LDFLAGS" : "-lpolyglot-mock -L<path:SULONG_HOME>/native/lib -lsulongtest -L<path:SULONG_TEST_NATIVE>",
+            },
+          },
+        },
+        "<others>": {
+          "<others>": {
+            "buildEnv" : {
+              "SUITE_LDFLAGS" : "--no-undefined -lpolyglot-mock -L<path:SULONG_HOME>/native/lib -Wl,--undefined=callbackPointerArgTest -lsulongtest -L<path:SULONG_TEST_NATIVE>",
+            },
+          },
+        },
       },
       "dependencies" : [
         "SULONG_TEST",
       ],
       "buildDependencies" : [
         "SULONG_HOME",
+        "SULONG_TEST_NATIVE",
       ],
       "testProject" : True,
       "defaultBuild" : False,
@@ -730,14 +753,12 @@ suite = {
         "./" : [
           "dependency:com.oracle.truffle.llvm.libraries.bitcode/bin/libsulong.bc",
           "dependency:com.oracle.truffle.llvm.libraries.bitcode/bin/libsulong++.bc",
-          "dependency:com.oracle.truffle.llvm.libraries.bitcode/bin/<lib:polyglot-mock>",
           "dependency:com.oracle.truffle.llvm.libraries.native/bin/*",
           "dependency:com.oracle.truffle.llvm.libraries.bitcode/include/*"
           ],
         "./native/lib/" : [
           "dependency:com.oracle.truffle.llvm.libraries.bitcode/bin/libsulong.bc",
           "dependency:com.oracle.truffle.llvm.libraries.bitcode/bin/libsulong++.bc",
-          "dependency:com.oracle.truffle.llvm.libraries.bitcode/bin/<lib:polyglot-mock>",
           "dependency:com.oracle.truffle.llvm.libraries.native/bin/*",
         ],
         "./include/" : [
@@ -759,7 +780,6 @@ suite = {
         "./native/lib/" : [
           "dependency:com.oracle.truffle.llvm.libraries.bitcode/bin/libsulong.bc",
           "dependency:com.oracle.truffle.llvm.libraries.bitcode/bin/libsulong++.bc",
-          "dependency:com.oracle.truffle.llvm.libraries.bitcode/bin/<lib:polyglot-mock>",
           "dependency:com.oracle.truffle.llvm.libraries.native/bin/*",
         ],
         "./include/" : [

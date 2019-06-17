@@ -41,12 +41,12 @@ import com.oracle.truffle.api.library.CachedLibrary;
 import com.oracle.truffle.api.library.ExportLibrary;
 import com.oracle.truffle.api.library.ExportMessage;
 import com.oracle.truffle.llvm.runtime.LLVMLanguage;
+import com.oracle.truffle.llvm.runtime.NFIContextExtension;
 import com.oracle.truffle.llvm.test.interop.values.ArrayObject;
 import com.oracle.truffle.llvm.test.interop.values.BoxedIntValue;
 import com.oracle.truffle.llvm.test.options.TestOptions;
 import java.io.File;
 import java.nio.file.Path;
-import java.util.Collections;
 import java.util.HashMap;
 import java.util.Map;
 
@@ -1005,7 +1005,7 @@ public class LLVMInteropTest {
 
     @Test
     public void test076() {
-        try (Runner runner = new Runner("interop076", getSulongTestLibContextOptions())) {
+        try (Runner runner = new Runner("interop076")) {
             Assert.assertEquals(0, runner.run());
         }
     }
@@ -1184,7 +1184,7 @@ public class LLVMInteropTest {
 
     @Test
     public void testHandleFromNativeCallback() {
-        try (Runner runner = new Runner("handleFromNativeCallback", getSulongTestLibContextOptions())) {
+        try (Runner runner = new Runner("handleFromNativeCallback")) {
             runner.run();
             Value testHandleFromNativeCallback = runner.findGlobalSymbol("testHandleFromNativeCallback");
             Value ret = testHandleFromNativeCallback.execute(ProxyObject.fromMap(makeObjectA()));
@@ -1212,7 +1212,7 @@ public class LLVMInteropTest {
 
     @Test
     public void testPointerThroughNativeCallback() {
-        try (Runner runner = new Runner("pointerThroughNativeCallback", getSulongTestLibContextOptions())) {
+        try (Runner runner = new Runner("pointerThroughNativeCallback")) {
             int result = runner.run();
             Assert.assertEquals(42, result);
         }
@@ -1414,13 +1414,6 @@ public class LLVMInteropTest {
         return values;
     }
 
-    protected Map<String, String> getSulongTestLibContextOptions() {
-        Map<String, String> map = new HashMap<>();
-        String lib = System.getProperty("test.sulongtest.lib");
-        map.put("llvm.libraries", lib);
-        return map;
-    }
-
     public static final class ClassC {
         public boolean valueBool = true;
         public byte valueB = 1;
@@ -1477,7 +1470,14 @@ public class LLVMInteropTest {
     }
 
     private static final Path TEST_DIR = new File(TestOptions.TEST_SUITE_PATH, "interop").toPath();
-    private static final String FILENAME = "O0_MEM2REG.bc";
+    public static final String FILENAME = "O0_MEM2REG." + NFIContextExtension.getNativeLibrarySuffix();
+
+    protected static Map<String, String> getSulongTestLibContextOptions() {
+        Map<String, String> map = new HashMap<>();
+        String lib = System.getProperty("test.sulongtest.lib.path");
+        map.put("llvm.libraryPath", lib);
+        return map;
+    }
 
     private static final class Runner implements AutoCloseable {
         private final String testName;
@@ -1486,7 +1486,7 @@ public class LLVMInteropTest {
         private Value library;
 
         Runner(String testName) {
-            this(testName, Collections.emptyMap());
+            this(testName, getSulongTestLibContextOptions());
         }
 
         Runner(String testName, Map<String, String> options) {
