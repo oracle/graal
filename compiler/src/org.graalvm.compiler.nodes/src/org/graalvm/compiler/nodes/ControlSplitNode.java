@@ -25,6 +25,7 @@
 package org.graalvm.compiler.nodes;
 
 import org.graalvm.compiler.core.common.type.Stamp;
+import org.graalvm.compiler.graph.Node;
 import org.graalvm.compiler.graph.NodeClass;
 import org.graalvm.compiler.nodeinfo.NodeInfo;
 import org.graalvm.compiler.nodes.ProfileData.BranchProbabilityData;
@@ -50,6 +51,22 @@ public abstract class ControlSplitNode extends FixedNode {
      * {@code profileData}'s profile source.
      */
     public abstract boolean setProbability(AbstractBeginNode successor, BranchProbabilityData profileData);
+
+    /**
+     * Returns an array containing the successors' probabilities. The positions in the array
+     * correspond to the order of iteration over the successors.
+     *
+     * @return the array of successor probabilities
+     */
+    public double[] successorProbabilities() {
+        double[] probabilities = new double[getSuccessorCount()];
+        int index = 0;
+        for (Node succ : successors()) {
+            probabilities[index++] = probability((AbstractBeginNode) succ);
+        }
+        assert index == getSuccessorCount();
+        return probabilities;
+    }
 
     /**
      * Primary successor of the control split. Data dependencies on the node have to be scheduled in

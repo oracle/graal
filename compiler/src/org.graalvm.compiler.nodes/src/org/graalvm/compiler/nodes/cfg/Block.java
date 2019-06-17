@@ -448,7 +448,7 @@ public final class Block extends AbstractBlockBase<Block> {
                     newPredSuccs[i] = predSuccs[i];
                 }
             }
-            pred.setSuccessors(newPredSuccs);
+            pred.setSuccessors(newPredSuccs, pred.getSuccessorProbabilities());
 
             if (isLoopEnd()) {
                 // The predecessor becomes a loop end.

@@ -26,13 +26,18 @@ package org.graalvm.compiler.core.common.cfg;
 
 import java.util.Comparator;
 
+import org.graalvm.compiler.debug.GraalError;
+
 public abstract class AbstractBlockBase<T extends AbstractBlockBase<T>> {
+    public static final double[] EMPTY_PROBABILITY_ARRAY = new double[0];
+    public static final double[] SINGLETON_PROBABILITY_ARRAY = new double[]{1.0};
 
     protected int id;
     protected int domDepth;
 
     protected T[] predecessors;
     protected T[] successors;
+    protected double[] successorProbabilities;
 
     private T dominator;
     private T firstDominated;
@@ -88,6 +93,29 @@ public abstract class AbstractBlockBase<T extends AbstractBlockBase<T>> {
 
     public void setSuccessors(T[] successors) {
         this.successors = successors;
+        // Set successor probabilities, assuming all successors are equally probable.
+        if (successors.length == 0) {
+            successorProbabilities = EMPTY_PROBABILITY_ARRAY;
+        } else if (successors.length == 1) {
+            successorProbabilities = SINGLETON_PROBABILITY_ARRAY;
+        } else {
+            throw GraalError.shouldNotReachHere("use setSuccessors(T[], double[]) for more than one successor");
+        }
+    }
+
+    public void setSuccessors(T[] successors, double[] successorProbabilities) {
+        assert successors.length == successorProbabilities.length;
+        this.successors = successors;
+        this.successorProbabilities = successorProbabilities;
+    }
+
+    public double[] getSuccessorProbabilities() {
+        return successorProbabilities;
+    }
+
+    public void setSuccessorProbabilities(double[] successorProbabilities) {
+        assert successors.length == successorProbabilities.length;
+        this.successorProbabilities = successorProbabilities;
     }
 
     public T getDominator() {
