@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2009, 2018, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2009, 2019, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -57,13 +57,12 @@ import org.graalvm.compiler.graph.spi.Simplifiable;
 import org.graalvm.compiler.graph.spi.SimplifierTool;
 import org.graalvm.compiler.nodeinfo.InputType;
 import org.graalvm.compiler.nodeinfo.NodeInfo;
+import org.graalvm.compiler.nodes.calc.AddNode;
 import org.graalvm.compiler.nodes.calc.CompareNode;
 import org.graalvm.compiler.nodes.calc.ConditionalNode;
-import org.graalvm.compiler.nodes.calc.FloatLessThanNode;
 import org.graalvm.compiler.nodes.calc.IntegerBelowNode;
 import org.graalvm.compiler.nodes.calc.IntegerEqualsNode;
 import org.graalvm.compiler.nodes.calc.IntegerLessThanNode;
-import org.graalvm.compiler.nodes.calc.IntegerLowerThanNode;
 import org.graalvm.compiler.nodes.calc.IsNullNode;
 import org.graalvm.compiler.nodes.calc.NormalizeCompareNode;
 import org.graalvm.compiler.nodes.calc.ObjectEqualsNode;
@@ -951,16 +950,18 @@ public final class IfNode extends ControlSplitNode implements Simplifiable, LIRL
             if (constant.isJavaConstant() && conditional.trueValue().isJavaConstant() && conditional.falseValue().isJavaConstant() && condition() instanceof CompareNode &&
                             conditional.condition() instanceof CompareNode) {
 
-                Condition cond1 = ((CompareNode) condition()).condition().asCondition();
+                CompareNode condition1 = (CompareNode) condition();
+                Condition cond1 = condition1.condition().asCondition();
                 if (negateCondition) {
                     cond1 = cond1.negate();
                 }
                 // cond1 is EQ, NE, LT, or GE
-                Condition cond2 = ((CompareNode) conditional.condition()).condition().asCondition();
-                ValueNode x = ((CompareNode) condition()).getX();
-                ValueNode y = ((CompareNode) condition()).getY();
-                ValueNode x2 = ((CompareNode) conditional.condition()).getX();
-                ValueNode y2 = ((CompareNode) conditional.condition()).getY();
+                CompareNode condition2 = (CompareNode) conditional.condition();
+                Condition cond2 = condition2.condition().asCondition();
+                ValueNode x = condition1.getX();
+                ValueNode y = condition1.getY();
+                ValueNode x2 = condition2.getX();
+                ValueNode y2 = condition2.getY();
                 // `x cond1 y ? c1 : (x2 cond2 y2 ? c2 : c3)`
                 boolean sameVars = x == x2 && y == y2;
                 if (!sameVars && x == y2 && y == x2) {
@@ -968,58 +969,83 @@ public final class IfNode extends ControlSplitNode implements Simplifiable, LIRL
                     cond2 = cond2.mirror();
                 }
                 if (sameVars) {
+
                     JavaKind stackKind = conditional.trueValue().stamp(NodeView.from(tool)).getStackKind();
                     assert !stackKind.isNumericFloat();
 
-                    ValueNode v1 = constant;
-                    ValueNode v2 = conditional.trueValue();
-                    ValueNode v3 = conditional.falseValue();
+                    long c1 = constant.asJavaConstant().asLong();
+                    long c2 = conditional.trueValue().asJavaConstant().asLong();
+                    long c3 = conditional.falseValue().asJavaConstant().asLong();
 
-                    long c1 = v1.asJavaConstant().asLong();
-                    long c2 = v2.asJavaConstant().asLong();
-                    long c3 = v3.asJavaConstant().asLong();
-
-                    if (cond1 == Condition.LT && cond2 == Condition.EQ && c1 == -1 && c2 == 0 && c3 == 1) {
-                        // x < y ? -1 : (x == y ? 0 : 1) => x cmp y
-                        return graph().unique(new NormalizeCompareNode(x, y, stackKind, false));
-                    } else if (cond1 == Condition.LT && cond2 == Condition.EQ && c1 == 1 && c2 == 0 && c3 == -1) {
-                        // x < y ? 1 : (x == y ? 0 : -1) => y cmp x
-                        return graph().unique(new NormalizeCompareNode(y, x, stackKind, true));
-                    } else if (cond1 == Condition.EQ && cond2 == Condition.LT && c1 == 0 && c2 == -1 && c3 == 1) {
-                        // x == y ? 0 : (x < y ? -1 : 1) => x cmp y
-                        return graph().unique(new NormalizeCompareNode(x, y, stackKind, false));
-                    } else if (cond1 == Condition.EQ && cond2 == Condition.LT && c1 == 0 && c2 == 1 && c3 == -1) {
-                        // x == y ? 0 : (x < y ? 1 : -1) => y cmp x
-                        return graph().unique(new NormalizeCompareNode(y, x, stackKind, true));
-                    } else if (cond1 == Condition.EQ && cond2 == Condition.GT && c1 == 0 && c2 == -1 && c3 == 1) {
-                        // x == y ? 0 : (x > y ? -1 : 1) => y cmp x
-                        return graph().unique(new NormalizeCompareNode(y, x, stackKind, false));
-                    } else if (cond1 == Condition.EQ && cond2 == Condition.GT && c1 == 0 && c2 == 1 && c3 == -1) {
-                        // x == y ? 0 : (x > y ? 1 : -1) => x cmp y
-                        return graph().unique(new NormalizeCompareNode(x, y, stackKind, true));
-                    } else {
-                        boolean floatComparisonWithoutNaN = condition() instanceof FloatLessThanNode &&
-                                        ((FloatStamp) x.stamp(NodeView.from(tool))).isNonNaN() &&
-                                        ((FloatStamp) y.stamp(NodeView.from(tool))).isNonNaN();
-                        if (condition() instanceof IntegerLowerThanNode || floatComparisonWithoutNaN) {
-                            if (cond1 == Condition.LT && cond2 == Condition.GT && c1 == 1 && c2 == -1 && c3 == 0) {
-                                // x < y ? 1 : (x > y ? -1 : 0) => y cmp x
-                                return graph().unique(new NormalizeCompareNode(y, x, stackKind, false));
-                            } else if (cond1 == Condition.LT && cond2 == Condition.GT && c1 == -1 && c2 == 1 && c3 == 0) {
-                                // x < y ? -1 : (x > y ? 1 : 0) => x cmp y
-                                return graph().unique(new NormalizeCompareNode(x, y, stackKind, false));
-                            }
-                        }
+                    // canonicalize cond2
+                    cond2 = cond2.join(cond1.negate());
+                    if (cond2 == null) {
+                        // mixing signed and unsigned cases, or useless combination of conditions
+                        return null;
                     }
+                    // derive cond3 from cond1 and cond2
+                    Condition cond3 = cond1.negate().join(cond2.negate());
+                    if (cond3 == null) {
+                        // mixing signed and unsigned cases, or useless combination of conditions
+                        return null;
+                    }
+                    boolean unsigned = cond1.isUnsigned() || cond2.isUnsigned();
+
+                    long expected1 = expectedConstantForNormalize(cond1);
+                    long expected2 = expectedConstantForNormalize(cond2);
+                    long expected3 = expectedConstantForNormalize(cond3);
+
+                    if (c1 == expected1 && c2 == expected2 && c3 == expected3) {
+                        // normal order
+                    } else if (c1 == 0 - expected1 && c2 == 0 - expected2 && c3 == 0 - expected3) {
+                        // reverse order
+                        ValueNode tmp = x;
+                        x = y;
+                        y = tmp;
+                    } else {
+                        // cannot be expressed by NormalizeCompareNode
+                        return null;
+                    }
+                    if (unsigned) {
+                        // for unsigned comparisons, we need to add MIN_VALUE (see
+                        // Long.compareUnsigned)
+                        ValueNode minValue = graph().unique(ConstantNode.forIntegerStamp(x.stamp,
+                                        x.stamp.getStackKind().getMinValue()));
+                        x = graph().unique(new AddNode(x, minValue));
+                        y = graph().unique(new AddNode(y, minValue));
+                    }
+                    boolean unorderedLess = false;
+                    if (x.stamp instanceof FloatStamp && (((FloatStamp) x.stamp).canBeNaN() || ((FloatStamp) y.stamp).canBeNaN())) {
+                        // we may encounter NaNs, check the unordered value
+                        // (following the original condition's "unorderedIsTrue" path)
+                        long unorderedValue = condition1.unorderedIsTrue() ? c1 : condition2.unorderedIsTrue() ? c2 : c3;
+                        if (unorderedValue == 0) {
+                            // returning "0" for unordered is not possible
+                            return null;
+                        }
+                        unorderedLess = unorderedValue == -1;
+                    }
+                    return graph().unique(new NormalizeCompareNode(x, y, stackKind, unorderedLess));
                 }
             }
         }
         return null;
     }
 
+    private static long expectedConstantForNormalize(Condition condition) {
+        if (condition == Condition.EQ) {
+            return 0;
+        } else if (condition == Condition.LT || condition == Condition.BT) {
+            return -1;
+        } else {
+            assert condition == Condition.GT || condition == Condition.AT;
+            return 1;
+        }
+    }
+
     /**
      * Take an if that is immediately dominated by a merge with a single phi and split off any paths
-     * where the test would be statically decidable creating a new merge below the approriate side
+     * where the test would be statically decidable creating a new merge below the appropriate side
      * of the IfNode. Any undecidable tests will continue to use the original IfNode.
      *
      * @param tool
