@@ -284,8 +284,15 @@ public class SubstrateOptions {
     public static final HostedOptionKey<String> CompilerBackend = new HostedOptionKey<String>("lir") {
         @Override
         protected void onValueUpdate(EconomicMap<OptionKey<?>, Object> values, String oldValue, String newValue) {
-            if ("llvm".equals(newValue) && JavaVersionUtil.JAVA_SPEC > 8) {
-                EmitStringEncodingSubstitutions.update(values, false);
+            if ("llvm".equals(newValue)) {
+                if (JavaVersionUtil.JAVA_SPEC > 8) {
+                    EmitStringEncodingSubstitutions.update(values, false);
+                }
+                /*
+                 * The code information is filled before linking, which means that stripping dead
+                 * functions makes it incoherent with the executable.
+                 */
+                RemoveUnusedSymbols.update(values, false);
             }
         }
     };

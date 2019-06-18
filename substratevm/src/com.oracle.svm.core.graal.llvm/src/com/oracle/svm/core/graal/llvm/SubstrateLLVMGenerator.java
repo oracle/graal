@@ -24,10 +24,9 @@
  */
 package com.oracle.svm.core.graal.llvm;
 
-import static org.graalvm.compiler.core.llvm.LLVMUtils.getVal;
+import static com.oracle.svm.core.util.VMError.unimplemented;
 
 import org.bytedeco.javacpp.LLVM.LLVMContextRef;
-import org.bytedeco.javacpp.LLVM.LLVMValueRef;
 import org.graalvm.compiler.core.common.spi.ForeignCallDescriptor;
 import org.graalvm.compiler.core.llvm.LLVMGenerationResult;
 import org.graalvm.compiler.core.llvm.LLVMGenerator;
@@ -66,17 +65,8 @@ public class SubstrateLLVMGenerator extends LLVMGenerator implements SubstrateLI
 
     @Override
     public void emitFarReturn(AllocatableValue result, Value sp, Value setjmpBuffer) {
-        LLVMValueRef exceptionHolder = builder.getUniqueGlobal("__svm_exception_object", builder.objectType(), true);
-        LLVMValueRef exceptionObject = getVal(result);
-        builder.buildStore(exceptionObject, exceptionHolder);
-
-        LLVMValueRef buffer = builder.buildIntToPtr(getVal(setjmpBuffer), builder.pointerType(builder.arrayType(builder.longType(), 5), false));
-
-        LLVMValueRef spAddr = builder.buildGEP(buffer, builder.constantInt(0), builder.constantInt(2));
-        builder.buildStore(getVal(sp), spAddr);
-
-        builder.buildLongjmp(builder.buildBitcast(buffer, builder.rawPointerType()));
-        builder.buildUnreachable();
+        /* Exception unwinding is handled by libunwind */
+        throw unimplemented();
     }
 
     @Override
