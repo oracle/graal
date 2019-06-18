@@ -1105,6 +1105,34 @@ final class PolyglotEngineImpl extends AbstractPolyglotImpl.AbstractEngineImpl i
         return Truffle.getRuntime().getName();
     }
 
+    private static final String DISABLE_PRIVILEGES_PROPERTY = "org.graalvm.polyglot.Context.DisablePrivileges";
+    private static final String DISABLE_PRIVILEGES_VALUE = System.getProperty(DISABLE_PRIVILEGES_PROPERTY, "");
+    private static final String[] DISABLED_PRIVILEGES = DISABLE_PRIVILEGES_VALUE.isEmpty() ? new String[0] : DISABLE_PRIVILEGES_VALUE.split(",");
+
+    // reflectively read from TruffleFeature
+    private static final boolean ALLOW_CREATE_PROCESS;
+    private static final boolean ALLOW_IO;
+    static {
+        boolean createProcess = true;
+        boolean io = true;
+
+        for (String privilege : DISABLED_PRIVILEGES) {
+            switch (privilege) {
+                case "createProcess":
+                    createProcess = false;
+                    break;
+                case "io":
+                    io = false;
+                    break;
+                default:
+                    throw new Error("Invalid privilege name for " + DISABLE_PRIVILEGES_PROPERTY + ": " + privilege);
+            }
+        }
+
+        ALLOW_CREATE_PROCESS = createProcess;
+        ALLOW_IO = io;
+    }
+
     @Override
     @SuppressWarnings({"all"})
     public synchronized Context createContext(OutputStream configOut, OutputStream configErr, InputStream configIn, boolean allowHostLookup,
@@ -1129,6 +1157,9 @@ final class PolyglotEngineImpl extends AbstractPolyglotImpl.AbstractEngineImpl i
         }
         final FileSystem fs;
         if (allowHostIO) {
+            if (!ALLOW_IO) {
+                throw new IllegalArgumentException("Cannot allowIO() because the privilege is removed at image build time");
+            }
             fs = fileSystem != null ? fileSystem : FileSystems.newDefaultFileSystem();
         } else {
             fs = FileSystems.newNoIOFileSystem();
@@ -1157,6 +1188,9 @@ final class PolyglotEngineImpl extends AbstractPolyglotImpl.AbstractEngineImpl i
 
         ProcessHandler useProcessHandler;
         if (allowCreateProcess) {
+            if (!ALLOW_CREATE_PROCESS) {
+                throw new IllegalArgumentException("Cannot allowCreateProcess() because the privilege is removed at image build time");
+            }
             useProcessHandler = processHandler != null ? processHandler : ProcessHandlers.newDefaultProcessHandler();
         } else {
             useProcessHandler = null;
