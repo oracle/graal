@@ -968,7 +968,7 @@ public class UnsafeAutomaticSubstitutionProcessor extends SubstitutionProcessor 
     static class ClassInitializerBytecodeParser extends SharedBytecodeParser {
         ClassInitializerBytecodeParser(GraphBuilderPhase.Instance graphBuilderInstance, StructuredGraph graph, BytecodeParser parent, ResolvedJavaMethod method, int entryBCI,
                         IntrinsicContext intrinsicContext) {
-            super(graphBuilderInstance, graph, parent, method, entryBCI, intrinsicContext, true);
+            super(graphBuilderInstance, graph, parent, method, entryBCI, intrinsicContext, true, true);
         }
     }
 }
