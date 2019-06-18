@@ -1243,5 +1243,10 @@ public final class PolyglotImpl extends AbstractPolyglotImpl {
         public ProcessHandler.Redirect createRedirectToOutputStream(Object vmObject, OutputStream stream) {
             return ((VMObject) vmObject).getImpl().getIO().createRedirectToStream(stream);
         }
+
+        @Override
+        public boolean isIOAllowed() {
+            return PolyglotEngineImpl.ALLOW_IO;
+        }
     }
 }

@@ -1111,7 +1111,7 @@ final class PolyglotEngineImpl extends AbstractPolyglotImpl.AbstractEngineImpl i
 
     // reflectively read from TruffleFeature
     private static final boolean ALLOW_CREATE_PROCESS;
-    private static final boolean ALLOW_IO;
+    static final boolean ALLOW_IO;
     static {
         boolean createProcess = true;
         boolean io = true;

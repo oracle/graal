@@ -1015,6 +1015,10 @@ public abstract class Source {
                     0x31, 0x44, 0x50, 0xB4, 0x8F, 0xED, 0x1F, 0x1A, 0xDB, 0x99, 0x8D, 0x33, 0x9F, 0x11, 0x83, 0x14
     };
 
+    static class AccessAllowIO {
+        private static final boolean ALLOW_IO = SourceAccessor.ACCESSOR.engineSupport().isIOAllowed();
+    }
+
     static Source buildSource(String language, Object origin, String name, String mimeType, Object content, URI uri, Charset encoding,
                     boolean internal, boolean interactive, boolean cached, boolean legacy, Supplier<Object> fileSystemContext) throws IOException {
         String useName = name;
@@ -1092,7 +1096,7 @@ public abstract class Source {
                     }
                 }
             } catch (FileSystemNotFoundException fsnf) {
-                if (SourceAccessor.isDefaultFileSystem(fileSystemContext.get())) {
+                if (AccessAllowIO.ALLOW_IO && SourceAccessor.isDefaultFileSystem(fileSystemContext.get())) {
                     // Not a recognized by FileSystem, fall back to URLConnection only for allowed
                     // IO without a custom FileSystem
                     URLConnection connection = useUrl.openConnection();
