@@ -42,6 +42,8 @@ public class SubstrateNodeLLVMBuilder extends NodeLLVMBuilder implements Substra
 
     protected SubstrateNodeLLVMBuilder(StructuredGraph graph, LLVMGenerator gen) {
         super(graph, gen, SubstrateDebugInfoBuilder::new);
+
+        gen.getBuilder().setPersonalityFunction(gen.getFunction(LLVMFeature.getPersonalityStub()));
     }
 
     @Override
