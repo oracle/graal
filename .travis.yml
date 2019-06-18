@@ -28,7 +28,7 @@ matrix:
   - env: JDK="jdk8" GATE="build,test" PRIMARY="compiler"
   - env: JDK="jdk8" GATE="build,test,helloworld" PRIMARY="substratevm"
   - env: JDK="jdk8" GATE="build,bootstraplite" PRIMARY="compiler"
-  - env: JDK="jdk8" GATE="style,fullbuild,sulongBasic" PRIMARY="sulong" LLVM_VERSION="3.8"
+  - env: JDK="jdk8" GATE="style,fullbuild,sulongBasic" PRIMARY="sulong" LLVM_VERSION="3.8" NO_FEMBED_BITCODE="true"
     addons:
       apt:
         packages:
