@@ -35,17 +35,14 @@ import org.graalvm.compiler.nodes.java.AbstractCompareAndSwapNode;
 import org.graalvm.compiler.nodes.java.LoweredAtomicReadAndWriteNode;
 import org.graalvm.compiler.nodes.memory.FixedAccessNode;
 import org.graalvm.compiler.nodes.memory.HeapAccess;
+import org.graalvm.compiler.nodes.memory.HeapAccess.BarrierType;
 import org.graalvm.compiler.nodes.memory.ReadNode;
 import org.graalvm.compiler.nodes.memory.WriteNode;
-import org.graalvm.compiler.nodes.memory.HeapAccess.BarrierType;
 import org.graalvm.compiler.nodes.memory.address.AddressNode;
 import org.graalvm.compiler.nodes.type.StampTool;
 
 public class G1BarrierSet implements BarrierSet {
-    private final boolean useDeferredInitBarriers;
-
-    public G1BarrierSet(boolean useDeferredInitBarriers) {
-        this.useDeferredInitBarriers = useDeferredInitBarriers;
+    public G1BarrierSet() {
     }
 
     @Override
@@ -93,7 +90,7 @@ public class G1BarrierSet implements BarrierSet {
                         // be explicitly skipped when this is an initializing store.
                         addG1PreWriteBarrier(node, node.getAddress(), expectedValue, doLoad, nullCheck, graph);
                     }
-                    if (!init || !useDeferredInitBarriers) {
+                    if (writeRequiresPostBarrier(node, writtenValue)) {
                         boolean precise = barrierType != HeapAccess.BarrierType.FIELD;
                         addG1PostWriteBarrier(node, node.getAddress(), writtenValue, precise, graph);
                     }
@@ -102,6 +99,12 @@ public class G1BarrierSet implements BarrierSet {
             default:
                 throw new GraalError("unexpected barrier type: " + barrierType);
         }
+    }
+
+    @SuppressWarnings("unused")
+    protected boolean writeRequiresPostBarrier(FixedAccessNode initializingWrite, ValueNode writtenValue) {
+        // Without help from the runtime all writes require an explicit post barrier.
+        return true;
     }
 
     private static void addArrayRangeBarriers(ArrayRangeWrite write) {
