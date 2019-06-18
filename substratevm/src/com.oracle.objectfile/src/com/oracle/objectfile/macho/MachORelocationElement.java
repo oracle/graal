@@ -220,15 +220,8 @@ final class RelocationInfo implements RelocationRecord, RelocationMethod {
             symbolNum = relocatedSection.getOwner().getSymbolTable().indexOf(sym);
         } else {
             // we're local, so use the section
-            // symbolNum = relocatedSection.getOwner().getSymbolTable(isDynamic()).indexOf(sym);
             symbolNum = relocatedSection.getOwner().getSections().indexOf(sym.getDefinedSection());
-            /*
-             * HACK: in the case of relocating against a local symbol, we can only reference its
-             * section, so we insist that its offset from the section base is zero. We should catch
-             * this earlier, when the relocation is created. (You're supposed to use the addend to
-             * encode the offset in this case, apparently.)
-             */
-            assert sym.getDefinedOffset() == 0;
+            assert sym.getDefinedOffset() == 0 : "Relocation for non-external symbol with section base offset != 0 not supported";
         }
         if (log2length < 0 || log2length >= 4) {
             throw new IllegalArgumentException("length must be in {1,2,4,8} bytes, so log2length must be in [0,3]");

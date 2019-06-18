@@ -22,18 +22,18 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.svm.hosted.jni;
+package com.oracle.svm.core.jni;
 
 // Checkstyle: allow reflection
 
 import java.lang.reflect.Executable;
 import java.lang.reflect.Field;
 
-import com.oracle.svm.core.SubstrateOptions;
 import org.graalvm.nativeimage.ImageSingletons;
 import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.Platforms;
 
+import com.oracle.svm.core.SubstrateOptions;
 import com.oracle.svm.core.option.SubstrateOptionsParser;
 import com.oracle.svm.core.util.UserError;
 
@@ -43,7 +43,6 @@ import com.oracle.svm.core.util.UserError;
  */
 @Platforms(Platform.HOSTED_ONLY.class)
 public final class JNIRuntimeAccess {
-
     private JNIRuntimeAccess() {
     }
 

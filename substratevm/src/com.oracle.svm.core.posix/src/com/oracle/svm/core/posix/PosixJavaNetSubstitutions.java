@@ -80,6 +80,7 @@ import com.oracle.svm.core.headers.Errno;
 import com.oracle.svm.core.jdk.JDK11OrEarlier;
 import com.oracle.svm.core.jdk.JDK11OrLater;
 import com.oracle.svm.core.jdk.JDK8OrEarlier;
+import com.oracle.svm.core.jni.JNIRuntimeAccess;
 import com.oracle.svm.core.os.IsDefined;
 import com.oracle.svm.core.posix.JavaNetNetworkInterface.PlatformSupport;
 import com.oracle.svm.core.posix.headers.Fcntl;
@@ -94,7 +95,6 @@ import com.oracle.svm.core.posix.headers.Socket;
 import com.oracle.svm.core.posix.headers.Unistd;
 import com.oracle.svm.core.util.Utf8;
 import com.oracle.svm.core.util.VMError;
-import com.oracle.svm.hosted.jni.JNIRuntimeAccess;
 
 @Platforms({InternalPlatform.LINUX_JNI.class, InternalPlatform.DARWIN_JNI.class})
 @AutomaticFeature

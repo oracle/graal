@@ -24,17 +24,18 @@
  */
 package com.oracle.svm.core.posix;
 
-import org.graalvm.nativeimage.hosted.Feature;
 import org.graalvm.nativeimage.ImageSingletons;
 import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.Platforms;
 import org.graalvm.nativeimage.c.type.CTypeConversion;
 import org.graalvm.nativeimage.c.type.CTypeConversion.CCharPointerHolder;
+import org.graalvm.nativeimage.hosted.Feature;
 import org.graalvm.nativeimage.impl.InternalPlatform;
 import org.graalvm.word.PointerBase;
 import org.graalvm.word.WordFactory;
 
 import com.oracle.svm.core.annotate.AutomaticFeature;
+import com.oracle.svm.core.jdk.JDKLibZipSubstitutions;
 import com.oracle.svm.core.jdk.Jvm;
 import com.oracle.svm.core.jdk.PlatformNativeLibrarySupport;
 import com.oracle.svm.core.posix.headers.Dlfcn;
@@ -59,6 +60,9 @@ class PosixNativeLibrarySupport implements PlatformNativeLibrarySupport {
         if (Platform.includedIn(InternalPlatform.LINUX_JNI.class) ||
                         Platform.includedIn(InternalPlatform.DARWIN_JNI.class)) {
             if (!PosixJavaIOSubstitutions.initIDs()) {
+                return false;
+            }
+            if (!JDKLibZipSubstitutions.initIDs()) {
                 return false;
             }
             if (!PosixJavaLangSubstitutions.initIDs()) {
