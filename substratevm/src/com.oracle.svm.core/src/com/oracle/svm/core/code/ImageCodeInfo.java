@@ -43,6 +43,7 @@ import com.oracle.svm.core.c.NonmovableArrays;
 import com.oracle.svm.core.c.NonmovableObjectArray;
 import com.oracle.svm.core.jdk.UninterruptibleUtils;
 import com.oracle.svm.core.log.Log;
+import com.oracle.svm.core.thread.VMOperation;
 
 public class ImageCodeInfo implements CodeInfoAccessor {
     @Fold
@@ -174,14 +175,18 @@ public class ImageCodeInfo implements CodeInfoAccessor {
     @Override
     @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
     public Object acquireTether(CodeInfoHandle handle) {
-        assert ((UninterruptibleUtils.AtomicInteger) tether).incrementAndGet() > 0;
+        /*
+         * Do not interact with the tether object during VM ops, it could be during GC while the
+         * reference is not safe to access (e.g. forwarded). Tethering is not needed then, either.
+         */
+        assert VMOperation.isInProgress() || ((UninterruptibleUtils.AtomicInteger) tether).incrementAndGet() > 0;
         return tether;
     }
 
     @Override
     @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
     public boolean isTethered(CodeInfoHandle handle) {
-        return !haveAssertions() || ((UninterruptibleUtils.AtomicInteger) tether).get() > 0;
+        return !haveAssertions() || VMOperation.isInProgress() || ((UninterruptibleUtils.AtomicInteger) tether).get() > 0;
     }
 
     @Override
@@ -192,7 +197,7 @@ public class ImageCodeInfo implements CodeInfoAccessor {
          * as dead code, but since our data is persisted in the image heap, it doesn't matter.
          */
         assert tetherObj == this.tether;
-        assert ((UninterruptibleUtils.AtomicInteger) tetherObj).getAndDecrement() > 0;
+        assert VMOperation.isInProgress() || ((UninterruptibleUtils.AtomicInteger) tetherObj).getAndDecrement() > 0;
     }
 
     @Override

@@ -58,6 +58,7 @@ import com.oracle.svm.core.heap.ObjectReferenceVisitor;
 import com.oracle.svm.core.jdk.UninterruptibleUtils;
 import com.oracle.svm.core.log.Log;
 import com.oracle.svm.core.os.CommittedMemoryProvider;
+import com.oracle.svm.core.thread.VMOperation;
 import com.oracle.svm.core.util.VMError;
 
 public class RuntimeCodeInfoAccessor implements CodeInfoAccessor {
@@ -92,14 +93,18 @@ public class RuntimeCodeInfoAccessor implements CodeInfoAccessor {
     @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
     public Object acquireTether(CodeInfoHandle handle) {
         Object tether = getObjectField(handle, 0);
-        assert ((UninterruptibleUtils.AtomicInteger) tether).incrementAndGet() > 0;
+        /*
+         * Do not interact with the tether object during VM ops, it could be during GC while the
+         * reference is not safe to access (e.g. forwarded). Tethering is not needed then, either.
+         */
+        assert VMOperation.isInProgress() || ((UninterruptibleUtils.AtomicInteger) tether).incrementAndGet() > 0;
         return tether;
     }
 
     @Override
     @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
     public boolean isTethered(CodeInfoHandle handle) {
-        return !haveAssertions() || ((UninterruptibleUtils.AtomicInteger) getObjectField(handle, 0)).get() > 0;
+        return !haveAssertions() || VMOperation.isInProgress() || ((UninterruptibleUtils.AtomicInteger) getObjectField(handle, 0)).get() > 0;
     }
 
     @Override
@@ -107,7 +112,7 @@ public class RuntimeCodeInfoAccessor implements CodeInfoAccessor {
     @Uninterruptible(reason = "Called from uninterruptible code.")
     public void releaseTether(CodeInfoHandle handle, Object tether) {
         assert tether == getObjectField(handle, 0) || getObjectField(handle, 0) == null;
-        assert ((UninterruptibleUtils.AtomicInteger) tether).getAndDecrement() > 0;
+        assert VMOperation.isInProgress() || ((UninterruptibleUtils.AtomicInteger) tether).getAndDecrement() > 0;
     }
 
     @Override
