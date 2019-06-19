@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2015, 2018, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2015, 2019, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -44,6 +44,14 @@ import java.lang.reflect.Array;
 import java.lang.reflect.GenericArrayType;
 import java.lang.reflect.ParameterizedType;
 import java.lang.reflect.Type;
+import java.time.Duration;
+import java.time.Instant;
+import java.time.LocalDate;
+import java.time.LocalDateTime;
+import java.time.LocalTime;
+import java.time.ZoneId;
+import java.time.ZonedDateTime;
+import java.util.Date;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
@@ -267,6 +275,18 @@ abstract class ToHostNode extends Node {
                 return interop.hasMembers(value);
             } else if (targetType.isArray()) {
                 return interop.hasArrayElements(value);
+            } else if (targetType == LocalDate.class) {
+                return interop.isDate(value);
+            } else if (targetType == LocalTime.class) {
+                return interop.isTime(value);
+            } else if (targetType == LocalDateTime.class) {
+                return interop.isDate(value) && interop.isTime(value);
+            } else if (targetType == ZonedDateTime.class || targetType == Date.class || targetType == Instant.class) {
+                return interop.isInstant(value);
+            } else if (targetType == ZoneId.class) {
+                return interop.isTimeZone(value);
+            } else if (targetType == Duration.class) {
+                return interop.isDuration(value);
             } else if (priority < HOST_PROXY && HostObject.isInstance(value)) {
                 return false;
             } else {
@@ -412,6 +432,92 @@ abstract class ToHostNode extends Node {
             } else {
                 throw HostInteropErrors.cannotConvert(languageContext, value, targetType, "Value must have array elements.");
             }
+        } else if (targetType == LocalDate.class) {
+            if (interop.isDate(value)) {
+                try {
+                    obj = interop.asDate(value);
+                } catch (UnsupportedMessageException e) {
+                    throw new AssertionError(e);
+                }
+            } else {
+                throw HostInteropErrors.cannotConvert(languageContext, value, targetType, "Value must have date and time information.");
+            }
+        } else if (targetType == LocalTime.class) {
+            if (interop.isTime(value)) {
+                try {
+                    obj = interop.asTime(value);
+                } catch (UnsupportedMessageException e) {
+                    throw new AssertionError(e);
+                }
+            } else {
+                throw HostInteropErrors.cannotConvert(languageContext, value, targetType, "Value must have date and time information.");
+            }
+        } else if (targetType == LocalDateTime.class) {
+            if (interop.isDate(value) && interop.isTime(value)) {
+                LocalDate date;
+                LocalTime time;
+                try {
+                    date = interop.asDate(value);
+                    time = interop.asTime(value);
+                } catch (UnsupportedMessageException e) {
+                    throw new AssertionError(e);
+                }
+                obj = createDateTime(date, time);
+            } else {
+                throw HostInteropErrors.cannotConvert(languageContext, value, targetType, "Value must have date and time information.");
+            }
+        } else if (targetType == ZonedDateTime.class) {
+            if (interop.isDate(value) && interop.isTime(value) && interop.isTimeZone(value)) {
+                LocalDate date;
+                LocalTime time;
+                ZoneId timeZone;
+                try {
+                    date = interop.asDate(value);
+                    time = interop.asTime(value);
+                    timeZone = interop.asTimeZone(value);
+                } catch (UnsupportedMessageException e) {
+                    throw new AssertionError(e);
+                }
+                obj = createZonedDateTime(date, time, timeZone);
+            } else {
+                throw HostInteropErrors.cannotConvert(languageContext, value, targetType, "Value must have date, time and time-zone information.");
+            }
+        } else if (targetType == ZoneId.class) {
+            if (interop.isTimeZone(value)) {
+                try {
+                    obj = interop.asTimeZone(value);
+                } catch (UnsupportedMessageException e) {
+                    throw new AssertionError(e);
+                }
+            } else {
+                throw HostInteropErrors.cannotConvert(languageContext, value, targetType, "Value must have time-zone information.");
+            }
+        } else if (targetType == Instant.class || targetType == Date.class) {
+            if (interop.isDate(value) && interop.isTime(value) && interop.isTimeZone(value)) {
+                Instant instantValue;
+                try {
+                    instantValue = interop.asInstant(value);
+                } catch (UnsupportedMessageException e) {
+                    throw new AssertionError(e);
+                }
+                if (targetType == Date.class) {
+                    obj = Date.from(instantValue);
+                } else {
+                    obj = targetType.cast(instantValue);
+                }
+            } else {
+                throw HostInteropErrors.cannotConvert(languageContext, value, targetType, "Value must have date, time and time-zone information.");
+            }
+        } else if (targetType == Duration.class) {
+            if (interop.isDuration(value)) {
+                try {
+                    obj = interop.asDuration(value);
+                } catch (UnsupportedMessageException e) {
+                    throw new AssertionError(e);
+                }
+            } else {
+                throw HostInteropErrors.cannotConvert(languageContext, value, targetType, "Value must have duration information.");
+            }
         } else if (allowsImplementation && targetType.isInterface()) {
             if (HostInteropReflect.isFunctionalInterface(targetType) && (interop.isExecutable(value) || interop.isInstantiable(value))) {
                 obj = HostInteropReflect.asJavaFunction(targetType, value, languageContext);
@@ -423,9 +529,18 @@ abstract class ToHostNode extends Node {
         } else {
             throw HostInteropErrors.cannotConvert(languageContext, value, targetType, "Unsupported target type.");
         }
-
         assert targetType.isInstance(obj);
         return targetType.cast(obj);
+    }
+
+    @TruffleBoundary
+    private static ZonedDateTime createZonedDateTime(LocalDate date, LocalTime time, ZoneId timeZone) {
+        return ZonedDateTime.of(date, time, timeZone);
+    }
+
+    @TruffleBoundary
+    private static LocalDateTime createDateTime(LocalDate date, LocalTime time) {
+        return LocalDateTime.of(date, time);
     }
 
     private static boolean shouldImplementFunction(Object truffleObject, InteropLibrary interop) {

@@ -42,6 +42,11 @@ package com.oracle.truffle.polyglot;
 
 import static com.oracle.truffle.polyglot.VMAccessor.LANGUAGE;
 
+import java.time.Duration;
+import java.time.Instant;
+import java.time.LocalDate;
+import java.time.LocalTime;
+import java.time.ZoneId;
 import java.util.AbstractSet;
 import java.util.Arrays;
 import java.util.Collections;
@@ -75,7 +80,12 @@ import com.oracle.truffle.api.profiles.BranchProfile;
 import com.oracle.truffle.polyglot.PolyglotLanguageContext.ToGuestValueNode;
 import com.oracle.truffle.polyglot.PolyglotLanguageContext.ToGuestValuesNode;
 import com.oracle.truffle.polyglot.PolyglotLanguageContext.ToHostValueNode;
+import com.oracle.truffle.polyglot.PolyglotValueFactory.InteropCodeCacheFactory.AsDateNodeGen;
+import com.oracle.truffle.polyglot.PolyglotValueFactory.InteropCodeCacheFactory.AsDurationNodeGen;
+import com.oracle.truffle.polyglot.PolyglotValueFactory.InteropCodeCacheFactory.AsInstantNodeGen;
 import com.oracle.truffle.polyglot.PolyglotValueFactory.InteropCodeCacheFactory.AsNativePointerNodeGen;
+import com.oracle.truffle.polyglot.PolyglotValueFactory.InteropCodeCacheFactory.AsTimeNodeGen;
+import com.oracle.truffle.polyglot.PolyglotValueFactory.InteropCodeCacheFactory.AsTimeZoneNodeGen;
 import com.oracle.truffle.polyglot.PolyglotValueFactory.InteropCodeCacheFactory.CanExecuteNodeGen;
 import com.oracle.truffle.polyglot.PolyglotValueFactory.InteropCodeCacheFactory.CanInstantiateNodeGen;
 import com.oracle.truffle.polyglot.PolyglotValueFactory.InteropCodeCacheFactory.CanInvokeNodeGen;
@@ -86,8 +96,12 @@ import com.oracle.truffle.polyglot.PolyglotValueFactory.InteropCodeCacheFactory.
 import com.oracle.truffle.polyglot.PolyglotValueFactory.InteropCodeCacheFactory.HasArrayElementsNodeGen;
 import com.oracle.truffle.polyglot.PolyglotValueFactory.InteropCodeCacheFactory.HasMemberNodeGen;
 import com.oracle.truffle.polyglot.PolyglotValueFactory.InteropCodeCacheFactory.HasMembersNodeGen;
+import com.oracle.truffle.polyglot.PolyglotValueFactory.InteropCodeCacheFactory.IsDateNodeGen;
+import com.oracle.truffle.polyglot.PolyglotValueFactory.InteropCodeCacheFactory.IsDurationNodeGen;
 import com.oracle.truffle.polyglot.PolyglotValueFactory.InteropCodeCacheFactory.IsNativePointerNodeGen;
 import com.oracle.truffle.polyglot.PolyglotValueFactory.InteropCodeCacheFactory.IsNullNodeGen;
+import com.oracle.truffle.polyglot.PolyglotValueFactory.InteropCodeCacheFactory.IsTimeNodeGen;
+import com.oracle.truffle.polyglot.PolyglotValueFactory.InteropCodeCacheFactory.IsTimeZoneNodeGen;
 import com.oracle.truffle.polyglot.PolyglotValueFactory.InteropCodeCacheFactory.NewInstanceNodeGen;
 import com.oracle.truffle.polyglot.PolyglotValueFactory.InteropCodeCacheFactory.PutMemberNodeGen;
 import com.oracle.truffle.polyglot.PolyglotValueFactory.InteropCodeCacheFactory.RemoveArrayElementNodeGen;
@@ -327,6 +341,51 @@ abstract class PolyglotValue extends AbstractValueImpl {
     @Override
     public Object asProxyObject(Object receiver) {
         throw cannotConvert(languageContext, receiver, null, "asProxyObject()", "isProxyObject()", "Value is not a proxy object.");
+    }
+
+    @Override
+    public LocalDate asDate(Object receiver) {
+        if (isNull(receiver)) {
+            return null;
+        } else {
+            throw cannotConvert(languageContext, receiver, null, "asDate()", "isDate()", "Value does not contain date information.");
+        }
+    }
+
+    @Override
+    public LocalTime asTime(Object receiver) {
+        if (isNull(receiver)) {
+            return null;
+        } else {
+            throw cannotConvert(languageContext, receiver, null, "asTime()", "isTime()", "Value does not contain time information.");
+        }
+    }
+
+    @Override
+    public ZoneId asTimeZone(Object receiver) {
+        if (isNull(receiver)) {
+            return null;
+        } else {
+            throw cannotConvert(languageContext, receiver, null, "asTimeZone()", "isTimeZone()", "Value does not contain time zone information.");
+        }
+    }
+
+    @Override
+    public Instant asInstant(Object receiver) {
+        if (isNull(receiver)) {
+            return null;
+        } else {
+            throw cannotConvert(languageContext, receiver, null, "asInstant()", "isInstant()", "Value does not contain instant information.");
+        }
+    }
+
+    @Override
+    public Duration asDuration(Object receiver) {
+        if (isNull(receiver)) {
+            return null;
+        } else {
+            throw cannotConvert(languageContext, receiver, null, "asDuration()", "isDuration()", "Value does not contain duration information.");
+        }
     }
 
     @Override
@@ -706,6 +765,15 @@ abstract class PolyglotValue extends AbstractValueImpl {
         final CallTarget invoke;
         final CallTarget invokeNoArgs;
         final CallTarget getMemberKeys;
+        final CallTarget isDate;
+        final CallTarget asDate;
+        final CallTarget isTime;
+        final CallTarget asTime;
+        final CallTarget isTimeZone;
+        final CallTarget asTimeZone;
+        final CallTarget asInstant;
+        final CallTarget isDuration;
+        final CallTarget asDuration;
 
         final boolean isProxy;
         final boolean isHost;
@@ -747,6 +815,272 @@ abstract class PolyglotValue extends AbstractValueImpl {
             this.isProxy = PolyglotProxy.isProxyGuestObject(receiverObject);
             this.isHost = HostObject.isInstance(receiverObject);
             this.getMemberKeys = createTarget(GetMemberKeysNodeGen.create(this));
+            this.isDate = createTarget(IsDateNodeGen.create(this));
+            this.asDate = createTarget(AsDateNodeGen.create(this));
+            this.isTime = createTarget(IsTimeNodeGen.create(this));
+            this.asTime = createTarget(AsTimeNodeGen.create(this));
+            this.isTimeZone = createTarget(IsTimeZoneNodeGen.create(this));
+            this.asTimeZone = createTarget(AsTimeZoneNodeGen.create(this));
+            this.asInstant = createTarget(AsInstantNodeGen.create(this));
+            this.isDuration = createTarget(IsDurationNodeGen.create(this));
+            this.asDuration = createTarget(AsDurationNodeGen.create(this));
+        }
+
+        abstract static class IsDateNode extends InteropNode {
+
+            protected IsDateNode(InteropCodeCache interop) {
+                super(interop);
+            }
+
+            @Override
+            protected Class<?>[] getArgumentTypes() {
+                return new Class<?>[]{PolyglotLanguageContext.class, polyglot.receiverType};
+            }
+
+            @Override
+            protected String getOperationName() {
+                return "isDate";
+            }
+
+            @Specialization(limit = "CACHE_LIMIT")
+            static Object doCached(PolyglotLanguageContext context, Object receiver, Object[] args, //
+                            @CachedLibrary("receiver") InteropLibrary objects) {
+                return objects.isDate(receiver);
+            }
+        }
+
+        abstract static class AsDateNode extends InteropNode {
+
+            protected AsDateNode(InteropCodeCache interop) {
+                super(interop);
+            }
+
+            @Override
+            protected Class<?>[] getArgumentTypes() {
+                return new Class<?>[]{PolyglotLanguageContext.class, polyglot.receiverType};
+            }
+
+            @Override
+            protected String getOperationName() {
+                return "asDate";
+            }
+
+            @Specialization(limit = "CACHE_LIMIT")
+            static Object doCached(PolyglotLanguageContext context, Object receiver, Object[] args, //
+                            @CachedLibrary("receiver") InteropLibrary objects,
+                            @Cached BranchProfile unsupported) {
+                try {
+                    return objects.asDate(receiver);
+                } catch (UnsupportedMessageException e) {
+                    unsupported.enter();
+                    if (objects.isNull(receiver)) {
+                        return null;
+                    } else {
+                        throw cannotConvert(context, receiver, null, "asDate()", "isDate()", "Value does not contain date information.");
+                    }
+                }
+            }
+        }
+
+        abstract static class IsTimeNode extends InteropNode {
+
+            protected IsTimeNode(InteropCodeCache interop) {
+                super(interop);
+            }
+
+            @Override
+            protected Class<?>[] getArgumentTypes() {
+                return new Class<?>[]{PolyglotLanguageContext.class, polyglot.receiverType};
+            }
+
+            @Override
+            protected String getOperationName() {
+                return "isTime";
+            }
+
+            @Specialization(limit = "CACHE_LIMIT")
+            static Object doCached(PolyglotLanguageContext context, Object receiver, Object[] args, //
+                            @CachedLibrary("receiver") InteropLibrary objects) {
+                return objects.isTime(receiver);
+            }
+        }
+
+        abstract static class AsTimeNode extends InteropNode {
+
+            protected AsTimeNode(InteropCodeCache interop) {
+                super(interop);
+            }
+
+            @Override
+            protected Class<?>[] getArgumentTypes() {
+                return new Class<?>[]{PolyglotLanguageContext.class, polyglot.receiverType};
+            }
+
+            @Override
+            protected String getOperationName() {
+                return "asTime";
+            }
+
+            @Specialization(limit = "CACHE_LIMIT")
+            static Object doCached(PolyglotLanguageContext context, Object receiver, Object[] args, //
+                            @CachedLibrary("receiver") InteropLibrary objects,
+                            @Cached BranchProfile unsupported) {
+                try {
+                    return objects.asTime(receiver);
+                } catch (UnsupportedMessageException e) {
+                    unsupported.enter();
+                    if (objects.isNull(receiver)) {
+                        return null;
+                    } else {
+                        throw cannotConvert(context, receiver, null, "asTime()", "isTime()", "Value does not contain time information.");
+                    }
+                }
+            }
+        }
+
+        abstract static class IsTimeZoneNode extends InteropNode {
+
+            protected IsTimeZoneNode(InteropCodeCache interop) {
+                super(interop);
+            }
+
+            @Override
+            protected Class<?>[] getArgumentTypes() {
+                return new Class<?>[]{PolyglotLanguageContext.class, polyglot.receiverType};
+            }
+
+            @Override
+            protected String getOperationName() {
+                return "isTimeZone";
+            }
+
+            @Specialization(limit = "CACHE_LIMIT")
+            static Object doCached(PolyglotLanguageContext context, Object receiver, Object[] args, //
+                            @CachedLibrary("receiver") InteropLibrary objects) {
+                return objects.isTimeZone(receiver);
+            }
+        }
+
+        abstract static class AsTimeZoneNode extends InteropNode {
+
+            protected AsTimeZoneNode(InteropCodeCache interop) {
+                super(interop);
+            }
+
+            @Override
+            protected Class<?>[] getArgumentTypes() {
+                return new Class<?>[]{PolyglotLanguageContext.class, polyglot.receiverType};
+            }
+
+            @Override
+            protected String getOperationName() {
+                return "asTimeZone";
+            }
+
+            @Specialization(limit = "CACHE_LIMIT")
+            static Object doCached(PolyglotLanguageContext context, Object receiver, Object[] args, //
+                            @CachedLibrary("receiver") InteropLibrary objects,
+                            @Cached BranchProfile unsupported) {
+                try {
+                    return objects.asTimeZone(receiver);
+                } catch (UnsupportedMessageException e) {
+                    unsupported.enter();
+                    if (objects.isNull(receiver)) {
+                        return null;
+                    } else {
+                        throw cannotConvert(context, receiver, null, "asTimeZone()", "isTimeZone()", "Value does not contain time-zone information.");
+                    }
+                }
+            }
+        }
+
+        abstract static class IsDurationNode extends InteropNode {
+
+            protected IsDurationNode(InteropCodeCache interop) {
+                super(interop);
+            }
+
+            @Override
+            protected Class<?>[] getArgumentTypes() {
+                return new Class<?>[]{PolyglotLanguageContext.class, polyglot.receiverType};
+            }
+
+            @Override
+            protected String getOperationName() {
+                return "isDuration";
+            }
+
+            @Specialization(limit = "CACHE_LIMIT")
+            static Object doCached(PolyglotLanguageContext context, Object receiver, Object[] args, //
+                            @CachedLibrary("receiver") InteropLibrary objects) {
+                return objects.isDuration(receiver);
+            }
+        }
+
+        abstract static class AsDurationNode extends InteropNode {
+
+            protected AsDurationNode(InteropCodeCache interop) {
+                super(interop);
+            }
+
+            @Override
+            protected Class<?>[] getArgumentTypes() {
+                return new Class<?>[]{PolyglotLanguageContext.class, polyglot.receiverType};
+            }
+
+            @Override
+            protected String getOperationName() {
+                return "asDuration";
+            }
+
+            @Specialization(limit = "CACHE_LIMIT")
+            static Object doCached(PolyglotLanguageContext context, Object receiver, Object[] args, //
+                            @CachedLibrary("receiver") InteropLibrary objects,
+                            @Cached BranchProfile unsupported) {
+                try {
+                    return objects.asDuration(receiver);
+                } catch (UnsupportedMessageException e) {
+                    unsupported.enter();
+                    if (objects.isNull(receiver)) {
+                        return null;
+                    } else {
+                        throw cannotConvert(context, receiver, null, "asDuration()", "isDuration()", "Value does not contain duration information.");
+                    }
+                }
+            }
+        }
+
+        abstract static class AsInstantNode extends InteropNode {
+
+            protected AsInstantNode(InteropCodeCache interop) {
+                super(interop);
+            }
+
+            @Override
+            protected Class<?>[] getArgumentTypes() {
+                return new Class<?>[]{PolyglotLanguageContext.class, polyglot.receiverType};
+            }
+
+            @Override
+            protected String getOperationName() {
+                return "getInstant";
+            }
+
+            @Specialization(limit = "CACHE_LIMIT")
+            static Object doCached(PolyglotLanguageContext context, Object receiver, Object[] args, //
+                            @CachedLibrary("receiver") InteropLibrary objects,
+                            @Cached BranchProfile unsupported) {
+                try {
+                    return objects.asInstant(receiver);
+                } catch (UnsupportedMessageException e) {
+                    unsupported.enter();
+                    if (objects.isNull(receiver)) {
+                        return null;
+                    } else {
+                        throw cannotConvert(context, receiver, null, "asInstant()", "hasInstant()", "Value does not contain instant information.");
+                    }
+                }
+            }
         }
 
         private static class AsClassLiteralNode extends InteropNode {
@@ -1953,6 +2287,51 @@ abstract class PolyglotValue extends AbstractValueImpl {
         @Override
         public long asNativePointer(Object receiver) {
             return (long) CALL_PROFILED.call(cache.asNativePointer, languageContext, receiver);
+        }
+
+        @Override
+        public boolean isDate(Object receiver) {
+            return (boolean) CALL_PROFILED.call(cache.isDate, languageContext, receiver);
+        }
+
+        @Override
+        public LocalDate asDate(Object receiver) {
+            return (LocalDate) CALL_PROFILED.call(cache.asDate, languageContext, receiver);
+        }
+
+        @Override
+        public boolean isTime(Object receiver) {
+            return (boolean) CALL_PROFILED.call(cache.isTime, languageContext, receiver);
+        }
+
+        @Override
+        public LocalTime asTime(Object receiver) {
+            return (LocalTime) CALL_PROFILED.call(cache.asTime, languageContext, receiver);
+        }
+
+        @Override
+        public boolean isTimeZone(Object receiver) {
+            return (boolean) CALL_PROFILED.call(cache.isTimeZone, languageContext, receiver);
+        }
+
+        @Override
+        public ZoneId asTimeZone(Object receiver) {
+            return (ZoneId) CALL_PROFILED.call(cache.asTimeZone, languageContext, receiver);
+        }
+
+        @Override
+        public Instant asInstant(Object receiver) {
+            return (Instant) CALL_PROFILED.call(cache.asInstant, languageContext, receiver);
+        }
+
+        @Override
+        public boolean isDuration(Object receiver) {
+            return (boolean) CALL_PROFILED.call(cache.isDuration, languageContext, receiver);
+        }
+
+        @Override
+        public Duration asDuration(Object receiver) {
+            return (Duration) CALL_PROFILED.call(cache.asDuration, languageContext, receiver);
         }
 
         @Override

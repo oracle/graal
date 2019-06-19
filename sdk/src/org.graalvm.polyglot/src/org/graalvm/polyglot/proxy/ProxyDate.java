@@ -40,49 +40,37 @@
  */
 package org.graalvm.polyglot.proxy;
 
-import org.graalvm.polyglot.PolyglotException;
+import java.time.LocalDate;
+
+import org.graalvm.polyglot.Value;
 
 /**
- * Proxy interfaces allow to mimic guest language objects, arrays, executables, primitives and
- * native objects in Graal languages. Every Graal language will treat instances of proxies like an
- * object of that particular language. Multiple proxy interfaces can be implemented at the same
- * time. For example, it is useful to provide proxy values that are objects with members and arrays
- * at the same time.
- * <p>
- * Exceptions thrown by proxies are wrapped with a {@link PolyglotException} when the proxy is
- * invoked in a guest language. It is possible to unwrap the {@link PolyglotException} using
- * {@link PolyglotException#asHostException()}.
- * <p>
- * The interfaces {@link Proxy}, {@link ProxyArray}, {@link ProxyExecutable},
- * {@link ProxyInstantiable}, {@link ProxyNativeObject}, {@link ProxyObject} can be used in
- * combination with any other proxy interfaces.
- * <p>
- * The following proxy interface combinations are exclusive and throw an {@link AssertionError} if
- * used together:
- * <ul>
- * <li>{@link ProxyDuration}
- * <li>{@link ProxyInstant}, {@link ProxyDate}, {@link ProxyTime} or {@link ProxyTimeZone}.
- * </ul>
+ * Interface to be implemented to mimic guest language objects that represents dates.
  *
- * The following proxy interface combinations are invalid and throw an {@link AssertionError} if
- * used:
- * <ul>
- * <li>If {@link ProxyTimeZone} and {@link ProxyDate} without {@link ProxyTime}
- * <li>If {@link ProxyTimeZone} and {@link ProxyTime} without {@link ProxyDate}.
- * </ul>
- *
- * @see ProxyArray to mimic arrays
- * @see ProxyObject to mimic objects with members
- * @see ProxyExecutable to mimic objects that can be executed
- * @see ProxyNativeObject to mimic native objects
- * @see ProxyDate to mimic date objects
- * @see ProxyTime to mimic time objects
- * @see ProxyTimeZone to mimic timezone objects
- * @see ProxyDuration to mimic duration objects
- * @see ProxyInstant to mimic timestamp objects
- *
- * @since 19.0
+ * @see Proxy
+ * @see Value
+ * @since 20.0.0 beta 2
  */
-public interface Proxy {
+public interface ProxyDate extends Proxy {
 
+    /**
+     * Returns the date information. The returned value must not be <code>null</code>.
+     *
+     * @since 20.0.0 beta 2
+     */
+    LocalDate asDate();
+
+    /**
+     * Creates a proxy date from a local date.
+     *
+     * @since 20.0.0 beta 2
+     */
+    static ProxyDate from(LocalDate date) {
+        return new ProxyDate() {
+            @Override
+            public LocalDate asDate() {
+                return date;
+            }
+        };
+    }
 }

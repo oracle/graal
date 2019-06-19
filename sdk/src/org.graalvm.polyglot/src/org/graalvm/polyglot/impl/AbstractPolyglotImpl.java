@@ -52,6 +52,12 @@ import java.net.URI;
 import java.net.URL;
 import java.nio.charset.Charset;
 import java.nio.file.Path;
+import java.time.Duration;
+import java.time.Instant;
+import java.time.LocalDate;
+import java.time.LocalTime;
+import java.time.ZoneId;
+import java.time.ZonedDateTime;
 import java.util.Collection;
 import java.util.Collections;
 import java.util.List;
@@ -430,7 +436,7 @@ public abstract class AbstractPolyglotImpl {
                         boolean allowNativeAccess, boolean allowCreateThread, boolean allowHostIO, boolean allowHostClassLoading, boolean allowExperimentalOptions, Predicate<String> classFilter,
                         Map<String, String> options,
                         Map<String, String[]> arguments, String[] onlyLanguages, FileSystem fileSystem, Object logHandlerOrStream, boolean allowCreateProcess, ProcessHandler processHandler,
-                        EnvironmentAccess environmentAccess, Map<String, String> environment);
+                        EnvironmentAccess environmentAccess, Map<String, String> environment, ZoneId zone);
 
         public abstract String getImplementationName();
 
@@ -682,6 +688,32 @@ public abstract class AbstractPolyglotImpl {
         public abstract <T> T as(Object receiver, TypeLiteral<T> targetType);
 
         public abstract SourceSection getSourceLocation(Object receiver);
+
+        public boolean isDate(Object receiver) {
+            return false;
+        }
+
+        public abstract LocalDate asDate(Object receiver);
+
+        public boolean isTime(Object receiver) {
+            return false;
+        }
+
+        public abstract LocalTime asTime(Object receiver);
+
+        public abstract Instant asInstant(Object receiver);
+
+        public boolean isTimeZone(Object receiver) {
+            return false;
+        }
+
+        public abstract ZoneId asTimeZone(Object receiver);
+
+        public boolean isDuration(Object receiver) {
+            return false;
+        }
+
+        public abstract Duration asDuration(Object receiver);
     }
 
     public abstract Class<?> loadLanguageClass(String className);

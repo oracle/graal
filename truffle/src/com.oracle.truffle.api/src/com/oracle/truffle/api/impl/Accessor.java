@@ -47,6 +47,7 @@ import java.io.OutputStream;
 import java.net.URI;
 import java.net.URL;
 import java.nio.charset.Charset;
+import java.time.ZoneId;
 import java.util.Collection;
 import java.util.Map;
 import java.util.Set;
@@ -385,6 +386,8 @@ public abstract class Accessor {
         public abstract ProcessHandler.Redirect createRedirectToOutputStream(Object vmObject, OutputStream stream);
 
         public abstract boolean isIOAllowed();
+
+        public abstract ZoneId getTimeZone(Object vmObject);
     }
 
     public abstract static class LanguageSupport {
