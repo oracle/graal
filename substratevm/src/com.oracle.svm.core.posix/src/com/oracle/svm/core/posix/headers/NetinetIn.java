@@ -93,6 +93,28 @@ public class NetinetIn {
     @CConstant
     public static native int IP_MULTICAST_TTL();
 
+    @CConstant
+    public static native int IP_ADD_MEMBERSHIP();
+
+    @CConstant
+    public static native int IP_DROP_MEMBERSHIP();
+
+    @Platforms({LINUX.class})
+    @CConstant
+    public static native int IPV6_ADD_MEMBERSHIP();
+
+    @Platforms({LINUX.class})
+    @CConstant
+    public static native int IPV6_DROP_MEMBERSHIP();
+
+    @Platforms({DARWIN.class})
+    @CConstant
+    public static native int IPV6_JOIN_GROUP();
+
+    @Platforms({DARWIN.class})
+    @CConstant
+    public static native int IPV6_LEAVE_GROUP();
+
     // @formatter:off
     // sys/_types/_sa_family_t.h:typedef __uint8_t      sa_family_t;
     // sys/_types/_in_port_t.h:typedef  __uint16_t      in_port_t;
@@ -323,6 +345,49 @@ public class NetinetIn {
         assert ((0 <= whichByte) && (whichByte <= 3)) : "Which byte not in [0..3]";
         assert ((0 <= value) && (value <= 255)) : "Value not in [0..255]";
         return (value << (whichByte * 8));
+    }
+
+    // @formatter:off
+    // struct ip_mreq
+    //  {
+    //    /* IP multicast address of group.  */
+    //    struct in_addr imr_multiaddr;
+    //
+    //    /* Local IP address of interface.  */
+    //    struct in_addr imr_interface;
+    //  };
+    // @formatter:on
+    @CStruct(addStructKeyword = true)
+    public interface ip_mreq extends PointerBase {
+
+        @CFieldAddress
+        in_addr imr_multiaddr();
+
+        @CFieldAddress
+        in_addr imr_interface();
+    }
+
+    // @formatter:off
+    // struct ipv6_mreq
+    //  {
+    //    /* IP multicast address of group.  */
+    //    struct in6_addr ipv6mr_multiaddr;
+    //
+    //    /* Local IPv6 address of interface.  */
+    //    int ipv6mr_ifindex;
+    //  };
+    // @formatter:on
+    @CStruct(addStructKeyword = true)
+    public interface ipv6_mreq extends PointerBase {
+
+        @CFieldAddress
+        in6_addr ipv6mr_multiaddr();
+
+        @CField
+        int ipv6mr_interface();
+
+        @CField
+        void set_ipv6mr_interface(int value);
     }
 }
 
