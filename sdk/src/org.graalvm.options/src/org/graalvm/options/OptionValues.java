@@ -63,19 +63,26 @@ public interface OptionValues {
      *             associated {@link #getDescriptors() descriptors}.
      *
      * @since 19.0
+     * @deprecated {@link OptionValues} should be read-only. If the value of an option needs to be
+     *             altered after options are set, then the new value should be stored in the
+     *             language's context or instrument fields and read from there.
      */
+    @Deprecated
     <T> void set(OptionKey<T> optionKey, T value);
 
     /**
-     * Returns the value of a given option.
+     * Returns the value of a given option. {@link #hasBeenSet(OptionKey)} can be used to know
+     * whether the value was explicitly set, or is the {@link OptionKey#getDefaultValue() default
+     * value}.
      *
      * @since 19.0
      */
     <T> T get(OptionKey<T> optionKey);
 
     /**
-     * Determines if a value for {@code optionKey} has been {@link #set} in this set of option
-     * values.
+     * Determines if a value for {@code optionKey} has been set explicitly by the {@code Context} or
+     * {@code Engine}, and therefore {@link #get(OptionKey)} does not call
+     * {@link OptionKey#getDefaultValue()}.
      *
      * @since 19.0
      */
@@ -83,7 +90,7 @@ public interface OptionValues {
 
     /**
      * Determines if a value for any of the option keys in {@link #getDescriptors() option
-     * descriptors} has been {@link #set} in this set of option values.
+     * descriptors} {@link #hasBeenSet(OptionKey) has been set}.
      *
      * @since 19.0
      */
