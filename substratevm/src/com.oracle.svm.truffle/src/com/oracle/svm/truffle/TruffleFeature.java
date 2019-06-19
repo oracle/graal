@@ -59,6 +59,7 @@ import java.util.function.BooleanSupplier;
 import java.util.function.Predicate;
 import java.util.stream.Collectors;
 
+import com.oracle.svm.core.annotate.Delete;
 import org.graalvm.compiler.api.replacements.SnippetReflectionProvider;
 import org.graalvm.compiler.nodes.ConstantNode;
 import org.graalvm.compiler.nodes.StructuredGraph;
@@ -159,6 +160,32 @@ public final class TruffleFeature implements com.oracle.svm.core.graal.GraalFeat
         @Override
         public boolean getAsBoolean() {
             return ImageSingletons.contains(TruffleFeature.class);
+        }
+    }
+
+    public static final class IsCreateProcessDisabled implements BooleanSupplier {
+        static boolean query() {
+            try {
+                // Checkstyle: stop
+                Class<?> clazz = Class.forName("com.oracle.truffle.polyglot.PolyglotEngineImpl");
+                // Checkstyle: resume
+                String[] disabledPrivileges = ReflectionUtil.readField(clazz, "DISABLED_PRIVILEGES", null);
+                for (String privilege : disabledPrivileges) {
+                    if (privilege.equals("createProcess")) {
+                        return true;
+                    }
+                }
+            } catch (ReflectiveOperationException e) {
+                throw VMError.shouldNotReachHere(e);
+            }
+            return false;
+        }
+
+        static final boolean ALLOW_CREATE_PROCESS = query();
+
+        @Override
+        public boolean getAsBoolean() {
+            return ALLOW_CREATE_PROCESS;
         }
     }
 
@@ -779,4 +806,9 @@ final class Target_com_oracle_truffle_polyglot_PolyglotContextImpl {
 
 @TargetClass(className = "com.oracle.truffle.polyglot.PolyglotContextImpl$SingleContextState", onlyWith = TruffleFeature.IsEnabled.class)
 final class Target_com_oracle_truffle_polyglot_PolyglotContextImpl_SingleContextState {
+}
+
+@Delete
+@TargetClass(className = "java.lang.ProcessBuilder", onlyWith = {TruffleFeature.IsEnabled.class, TruffleFeature.IsCreateProcessDisabled.class})
+final class Target_java_lang_ProcessBuilder {
 }
