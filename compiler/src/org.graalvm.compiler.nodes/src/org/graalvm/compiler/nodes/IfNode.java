@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2009, 2018, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2009, 2019, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -793,6 +793,7 @@ public final class IfNode extends ControlSplitNode implements Simplifiable, LIRL
             ValueNode trueValue = trueEnd.result();
             ValueNode falseValue = falseEnd.result();
             ValueNode value = null;
+            boolean needsProxy = false;
             if (trueValue != null) {
                 if (trueValue == falseValue) {
                     value = trueValue;
@@ -801,8 +802,20 @@ public final class IfNode extends ControlSplitNode implements Simplifiable, LIRL
                     if (value == null) {
                         return false;
                     }
+                    needsProxy = true;
                 }
             }
+
+            if (trueSuccessor() instanceof LoopExitNode) {
+                LoopBeginNode loopBegin = ((LoopExitNode) trueSuccessor()).loopBegin();
+                assert loopBegin == ((LoopExitNode) falseSuccessor()).loopBegin();
+                LoopExitNode loopExitNode = graph().add(new LoopExitNode(loopBegin));
+                graph().addBeforeFixed(this, loopExitNode);
+                if (graph().hasValueProxies() && needsProxy) {
+                    value = graph().addOrUnique(new ValueProxyNode(value, loopExitNode));
+                }
+            }
+
             ReturnNode newReturn = graph().add(new ReturnNode(value));
             replaceAtPredecessor(newReturn);
             GraphUtil.killCFG(this);
@@ -838,7 +851,7 @@ public final class IfNode extends ControlSplitNode implements Simplifiable, LIRL
                  * we can collapse all proxy nodes on one loop exit, the surviving one, which will
                  * be the true successor
                  */
-                if (falseSuccessor.anchored().isEmpty() && falseSuccessor.usages().isNotEmpty()) {
+                if (falseSuccessor.anchored().isEmpty() && falseSuccessor.hasUsages()) {
                     for (Node n : falseSuccessor.usages().snapshot()) {
                         assert n instanceof ProxyNode;
                         ((ProxyNode) n).setProxyPoint((LoopExitNode) trueSuccessor);
@@ -848,7 +861,7 @@ public final class IfNode extends ControlSplitNode implements Simplifiable, LIRL
                  * The true successor (surviving loop exit) can have usages, namely proxy nodes, the
                  * false successor however, must not have usages any more after the code above
                  */
-                assert trueSuccessor.anchored().isEmpty() && falseSuccessor.usages().isEmpty();
+                assert trueSuccessor.anchored().isEmpty() && falseSuccessor.hasNoUsages();
                 return this.graph().addOrUnique(new ValueProxyNode(replacement, (LoopExitNode) trueSuccessor));
             }
         }
