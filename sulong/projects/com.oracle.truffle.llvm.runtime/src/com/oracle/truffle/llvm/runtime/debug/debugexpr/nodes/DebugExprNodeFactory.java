@@ -30,13 +30,8 @@ public final class DebugExprNodeFactory {
         this.parser = parser;
     }
 
-    private static DebugExprNodeFactory INSTANCE = null;
-
-    public static DebugExprNodeFactory getInstance(ContextReference<LLVMContext> contextReference, Iterable<Scope> scopes, Parser parser) {
-        if (INSTANCE == null || contextReference != INSTANCE.contextReference) {
-            INSTANCE = new DebugExprNodeFactory(contextReference, scopes, parser);
-        }
-        return INSTANCE;
+    public static DebugExprNodeFactory create(ContextReference<LLVMContext> contextReference, Iterable<Scope> scopes, Parser parser) {
+        return new DebugExprNodeFactory(contextReference, scopes, parser);
     }
 
     private boolean isErrorPair(DebugExpressionPair p) {

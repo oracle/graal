@@ -48,7 +48,7 @@ public class DebugExprParser {
         parser = new Parser(scanner);
 
         final Iterable<Scope> scopes = LLVMDebuggerScopeFactory.createSourceLevelScope(request.getLocation(), request.getFrame(), contextReference.get());
-        DebugExprNodeFactory nodeFactory = DebugExprNodeFactory.getInstance(contextReference, scopes, parser);
+        DebugExprNodeFactory nodeFactory = DebugExprNodeFactory.create(contextReference, scopes, parser);
         parser.setNodeFactory(nodeFactory);
     }
 
