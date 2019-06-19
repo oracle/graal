@@ -793,6 +793,7 @@ public final class IfNode extends ControlSplitNode implements Simplifiable, LIRL
             ValueNode trueValue = trueEnd.result();
             ValueNode falseValue = falseEnd.result();
             ValueNode value = null;
+            boolean needsProxy = false;
             if (trueValue != null) {
                 if (trueValue == falseValue) {
                     value = trueValue;
@@ -801,15 +802,16 @@ public final class IfNode extends ControlSplitNode implements Simplifiable, LIRL
                     if (value == null) {
                         return false;
                     }
+                    needsProxy = true;
                 }
             }
 
             if (trueSuccessor() instanceof LoopExitNode) {
                 LoopBeginNode loopBegin = ((LoopExitNode) trueSuccessor()).loopBegin();
-                assert falseSuccessor() instanceof LoopExitNode && loopBegin == ((LoopExitNode) falseSuccessor()).loopBegin();
+                assert loopBegin == ((LoopExitNode) falseSuccessor()).loopBegin();
                 LoopExitNode loopExitNode = graph().add(new LoopExitNode(loopBegin));
                 graph().addBeforeFixed(this, loopExitNode);
-                if (graph().hasValueProxies() && !(value instanceof ConstantNode)) {
+                if (graph().hasValueProxies() && needsProxy) {
                     value = graph().addOrUnique(new ValueProxyNode(value, loopExitNode));
                 }
             }
