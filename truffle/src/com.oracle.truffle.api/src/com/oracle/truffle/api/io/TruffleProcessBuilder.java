@@ -40,10 +40,6 @@
  */
 package com.oracle.truffle.api.io;
 
-import com.oracle.truffle.api.TruffleException;
-import com.oracle.truffle.api.TruffleFile;
-import com.oracle.truffle.api.TruffleLanguage.Env;
-import com.oracle.truffle.api.impl.Accessor;
 import java.io.IOException;
 import java.io.OutputStream;
 import java.util.ArrayList;
@@ -52,10 +48,16 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
+
 import org.graalvm.polyglot.Context;
 import org.graalvm.polyglot.io.FileSystem;
 import org.graalvm.polyglot.io.ProcessHandler;
 import org.graalvm.polyglot.io.ProcessHandler.Redirect;
+
+import com.oracle.truffle.api.TruffleException;
+import com.oracle.truffle.api.TruffleFile;
+import com.oracle.truffle.api.TruffleLanguage.Env;
+import com.oracle.truffle.api.impl.Accessor;
 
 /**
  * A builder used to create an external subprocess. The {@code TruffleProcessBuilder} instance
