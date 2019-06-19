@@ -270,7 +270,7 @@ public class ValueAssert {
                             assertNotNull(value.asInstant());
                             assertEquals(value.as(ZonedDateTime.class).toLocalDate(), value.as(LocalDate.class));
                             assertNotNull(value.as(Instant.class));
-                            assertEquals(value.as(Date.class).toInstant(), value.as(Instant.class));
+                            assertNotNull(value.as(Date.class));
                         }
                     }
                     break;
