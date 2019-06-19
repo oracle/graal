@@ -807,7 +807,11 @@ public final class IfNode extends ControlSplitNode implements Simplifiable, LIRL
             if (trueSuccessor() instanceof LoopExitNode) {
                 LoopBeginNode loopBegin = ((LoopExitNode) trueSuccessor()).loopBegin();
                 assert falseSuccessor() instanceof LoopExitNode && loopBegin == ((LoopExitNode) falseSuccessor()).loopBegin();
-                graph().addBeforeFixed(this, graph().add(new LoopExitNode(loopBegin)));
+                LoopExitNode loopExitNode = graph().add(new LoopExitNode(loopBegin));
+                graph().addBeforeFixed(this, loopExitNode);
+                if (graph().hasValueProxies() && !(value instanceof ConstantNode)) {
+                    value = graph().addOrUnique(new ValueProxyNode(value, loopExitNode));
+                }
             }
 
             ReturnNode newReturn = graph().add(new ReturnNode(value));
@@ -845,7 +849,7 @@ public final class IfNode extends ControlSplitNode implements Simplifiable, LIRL
                  * we can collapse all proxy nodes on one loop exit, the surviving one, which will
                  * be the true successor
                  */
-                if (falseSuccessor.anchored().isEmpty() && falseSuccessor.usages().isNotEmpty()) {
+                if (falseSuccessor.anchored().isEmpty() && falseSuccessor.hasUsages()) {
                     for (Node n : falseSuccessor.usages().snapshot()) {
                         assert n instanceof ProxyNode;
                         ((ProxyNode) n).setProxyPoint((LoopExitNode) trueSuccessor);
@@ -855,7 +859,7 @@ public final class IfNode extends ControlSplitNode implements Simplifiable, LIRL
                  * The true successor (surviving loop exit) can have usages, namely proxy nodes, the
                  * false successor however, must not have usages any more after the code above
                  */
-                assert trueSuccessor.anchored().isEmpty() && falseSuccessor.usages().isEmpty();
+                assert trueSuccessor.anchored().isEmpty() && falseSuccessor.hasNoUsages();
                 return this.graph().addOrUnique(new ValueProxyNode(replacement, (LoopExitNode) trueSuccessor));
             }
         }
