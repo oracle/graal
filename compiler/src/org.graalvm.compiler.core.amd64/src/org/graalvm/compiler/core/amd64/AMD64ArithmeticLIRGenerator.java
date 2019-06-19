@@ -126,6 +126,7 @@ import org.graalvm.compiler.lir.amd64.AMD64Ternary;
 import org.graalvm.compiler.lir.amd64.AMD64Unary;
 import org.graalvm.compiler.lir.amd64.AMD64ZeroMemoryOp;
 import org.graalvm.compiler.lir.amd64.vector.AMD64VectorBinary;
+import org.graalvm.compiler.lir.amd64.vector.AMD64VectorBinary.AVXBinaryConstFloatOp;
 import org.graalvm.compiler.lir.amd64.vector.AMD64VectorBinary.AVXBinaryOp;
 import org.graalvm.compiler.lir.amd64.vector.AMD64VectorUnary;
 import org.graalvm.compiler.lir.gen.ArithmeticLIRGenerator;
@@ -1362,7 +1363,12 @@ public class AMD64ArithmeticLIRGenerator extends ArithmeticLIRGenerator implemen
 
     private Variable emitBinary(LIRKind resultKind, VexRVMOp op, Value a, Value b) {
         Variable result = getLIRGen().newVariable(resultKind);
-        getLIRGen().append(new AVXBinaryOp(op, getRegisterSize(result), result, asAllocatable(a), asAllocatable(b)));
+        assert b.getPlatformKind() == AMD64Kind.SINGLE || b.getPlatformKind() == AMD64Kind.DOUBLE;
+        if (b instanceof ConstantValue) {
+            getLIRGen().append(new AVXBinaryConstFloatOp(op, getRegisterSize(result), result, asAllocatable(a), (ConstantValue) b));
+        } else {
+            getLIRGen().append(new AVXBinaryOp(op, getRegisterSize(result), result, asAllocatable(a), asAllocatable(b)));
+        }
         return result;
     }
 
