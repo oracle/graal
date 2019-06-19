@@ -302,7 +302,7 @@ import com.oracle.truffle.llvm.nodes.op.LLVMCompareNodeFactory.LLVMUnorderedNode
 import com.oracle.truffle.llvm.nodes.op.LLVMCompareNodeFactory.LLVMUnsignedLeNodeGen;
 import com.oracle.truffle.llvm.nodes.op.LLVMCompareNodeFactory.LLVMUnsignedLtNodeGen;
 import com.oracle.truffle.llvm.nodes.op.LLVMPointerCompareNode;
-import com.oracle.truffle.llvm.nodes.op.LLVMPointerCompareNodeGen.LLVMNegateNodeGen;
+import com.oracle.truffle.llvm.nodes.op.LLVMPointerCompareNode.LLVMNegateNode;
 import com.oracle.truffle.llvm.nodes.op.LLVMVectorArithmeticNodeGen;
 import com.oracle.truffle.llvm.nodes.op.LLVMVectorCompareNodeGen;
 import com.oracle.truffle.llvm.nodes.others.LLVMAccessGlobalVariableStorageNode;
@@ -985,17 +985,17 @@ public class BasicNodeFactory implements NodeFactory {
             case INT_NOT_EQUAL:
                 return LLVMPointerCompareNode.create(LLVMPointerCompareNode.Kind.NEQ, lhs, rhs);
             case INT_UNSIGNED_GREATER_THAN:
-                return LLVMNegateNodeGen.create(LLVMPointerCompareNode.create(LLVMPointerCompareNode.Kind.ULE, null, null), lhs, rhs);
+                return LLVMNegateNode.create(LLVMPointerCompareNode.create(LLVMPointerCompareNode.Kind.ULE, lhs, rhs));
             case INT_UNSIGNED_GREATER_OR_EQUAL:
-                return LLVMNegateNodeGen.create(LLVMPointerCompareNode.create(LLVMPointerCompareNode.Kind.ULT, null, null), lhs, rhs);
+                return LLVMNegateNode.create(LLVMPointerCompareNode.create(LLVMPointerCompareNode.Kind.ULT, lhs, rhs));
             case INT_UNSIGNED_LESS_THAN:
                 return LLVMPointerCompareNode.create(LLVMPointerCompareNode.Kind.ULT, lhs, rhs);
             case INT_UNSIGNED_LESS_OR_EQUAL:
                 return LLVMPointerCompareNode.create(LLVMPointerCompareNode.Kind.ULE, lhs, rhs);
             case INT_SIGNED_GREATER_THAN:
-                return LLVMNegateNodeGen.create(LLVMPointerCompareNode.create(LLVMPointerCompareNode.Kind.SLE, null, null), lhs, rhs);
+                return LLVMNegateNode.create(LLVMPointerCompareNode.create(LLVMPointerCompareNode.Kind.SLE, lhs, rhs));
             case INT_SIGNED_GREATER_OR_EQUAL:
-                return LLVMNegateNodeGen.create(LLVMPointerCompareNode.create(LLVMPointerCompareNode.Kind.SLT, null, null), lhs, rhs);
+                return LLVMNegateNode.create(LLVMPointerCompareNode.create(LLVMPointerCompareNode.Kind.SLT, lhs, rhs));
             case INT_SIGNED_LESS_THAN:
                 return LLVMPointerCompareNode.create(LLVMPointerCompareNode.Kind.SLT, lhs, rhs);
             case INT_SIGNED_LESS_OR_EQUAL:
@@ -1044,17 +1044,17 @@ public class BasicNodeFactory implements NodeFactory {
             case INT_NOT_EQUAL:
                 return LLVMNeNodeGen.create(lhs, rhs);
             case INT_UNSIGNED_GREATER_THAN:
-                return LLVMNegateNodeGen.create(LLVMUnsignedLeNodeGen.create(null, null), lhs, rhs);
+                return LLVMNegateNode.create(LLVMUnsignedLeNodeGen.create(lhs, rhs));
             case INT_UNSIGNED_GREATER_OR_EQUAL:
-                return LLVMNegateNodeGen.create(LLVMUnsignedLtNodeGen.create(null, null), lhs, rhs);
+                return LLVMNegateNode.create(LLVMUnsignedLtNodeGen.create(lhs, rhs));
             case INT_UNSIGNED_LESS_THAN:
                 return LLVMUnsignedLtNodeGen.create(lhs, rhs);
             case INT_UNSIGNED_LESS_OR_EQUAL:
                 return LLVMUnsignedLeNodeGen.create(lhs, rhs);
             case INT_SIGNED_GREATER_THAN:
-                return LLVMNegateNodeGen.create(LLVMSignedLeNodeGen.create(null, null), lhs, rhs);
+                return LLVMNegateNode.create(LLVMSignedLeNodeGen.create(lhs, rhs));
             case INT_SIGNED_GREATER_OR_EQUAL:
-                return LLVMNegateNodeGen.create(LLVMSignedLtNodeGen.create(null, null), lhs, rhs);
+                return LLVMNegateNode.create(LLVMSignedLtNodeGen.create(lhs, rhs));
             case INT_SIGNED_LESS_THAN:
                 return LLVMSignedLtNodeGen.create(lhs, rhs);
             case INT_SIGNED_LESS_OR_EQUAL:
