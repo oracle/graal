@@ -606,7 +606,7 @@ public abstract class TruffleCompilerImpl implements TruffleCompiler {
         }
 
         @Override
-        protected DebugContext createRetryDebugContext(OptionValues options, PrintStream logStream) {
+        protected DebugContext createRetryDebugContext(DebugContext initialDebug, OptionValues options, PrintStream logStream) {
             return createDebugContext(options, compilationId, compilable, logStream);
         }
 
