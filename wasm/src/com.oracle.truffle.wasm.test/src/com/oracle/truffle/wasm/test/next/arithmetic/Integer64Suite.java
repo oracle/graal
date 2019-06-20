@@ -30,10 +30,12 @@
 
 package com.oracle.truffle.wasm.test.next.arithmetic;
 
+import java.io.IOException;
 import java.util.Arrays;
 import java.util.Collection;
 
 import com.oracle.truffle.wasm.test.next.WasmSuiteBase;
+import org.junit.Test;
 
 public class Integer64Suite extends WasmSuiteBase {
     private WasmStringTestCase[] testCases = {
@@ -164,5 +166,11 @@ public class Integer64Suite extends WasmSuiteBase {
     @Override
     protected Collection<? extends WasmTestCase> collectStringTestCases() {
         return Arrays.asList(testCases);
+    }
+
+    @Test
+    public void test() throws IOException {
+        // This is here just to make mx aware of the test suite class.
+        super.test();
     }
 }

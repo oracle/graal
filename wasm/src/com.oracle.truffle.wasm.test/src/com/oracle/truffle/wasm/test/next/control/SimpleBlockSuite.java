@@ -29,15 +29,23 @@
  */
 package com.oracle.truffle.wasm.test.next.control;
 
+import java.io.IOException;
 import java.nio.file.Path;
 import java.nio.file.Paths;
 
 import com.oracle.truffle.wasm.test.next.WasmSuiteBase;
 import com.oracle.truffle.wasm.test.next.options.WasmTestOptions;
+import org.junit.Test;
 
 public class SimpleBlockSuite extends WasmSuiteBase {
     @Override
     protected Path testDirectory() {
         return Paths.get(WasmTestOptions.TEST_SOURCE_PATH, "SimpleBlock");
+    }
+
+    @Test
+    public void test() throws IOException {
+        // This is here just to make mx aware of the test suite class.
+        super.test();
     }
 }
