@@ -217,8 +217,7 @@ final class PolyglotEngineImpl extends AbstractPolyglotImpl.AbstractEngineImpl i
 
         OptionDescriptors engineOptionDescriptors = new PolyglotEngineOptionsOptionDescriptors();
         OptionDescriptors compilerOptionDescriptors = VMAccessor.SPI.getCompilerOptions();
-        ImageBuildTimeOptionsOptionDescriptors imageBuildTimeDescriptors = new ImageBuildTimeOptionsOptionDescriptors();
-        this.engineOptions = OptionDescriptors.createUnion(engineOptionDescriptors, compilerOptionDescriptors, imageBuildTimeDescriptors);
+        this.engineOptions = OptionDescriptors.createUnion(engineOptionDescriptors, compilerOptionDescriptors);
         this.engineOptionValues = new OptionValuesImpl(this, engineOptions);
 
         Map<String, Language> publicLanguages = new LinkedHashMap<>();
