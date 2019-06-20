@@ -169,16 +169,11 @@ public final class TruffleFeature implements com.oracle.svm.core.graal.GraalFeat
                 // Checkstyle: stop
                 Class<?> clazz = Class.forName("com.oracle.truffle.polyglot.PolyglotEngineImpl");
                 // Checkstyle: resume
-                String[] disabledPrivileges = ReflectionUtil.readField(clazz, "DISABLED_PRIVILEGES", null);
-                for (String privilege : disabledPrivileges) {
-                    if (privilege.equals("createProcess")) {
-                        return true;
-                    }
-                }
+                final boolean allowCreateProcess = ReflectionUtil.readField(clazz, "ALLOW_CREATE_PROCESS", null);
+                return !allowCreateProcess;
             } catch (ReflectiveOperationException e) {
                 throw VMError.shouldNotReachHere(e);
             }
-            return false;
         }
 
         static final boolean ALLOW_CREATE_PROCESS = query();
