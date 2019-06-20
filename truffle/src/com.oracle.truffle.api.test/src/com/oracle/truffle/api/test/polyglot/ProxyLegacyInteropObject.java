@@ -53,7 +53,6 @@ import com.oracle.truffle.api.interop.UnknownIdentifierException;
 import com.oracle.truffle.api.interop.UnsupportedMessageException;
 import com.oracle.truffle.api.interop.UnsupportedTypeException;
 import com.oracle.truffle.api.nodes.RootNode;
-import com.oracle.truffle.api.test.polyglot.ProxySPITest.TestFunction;
 
 /**
  * Helper class for tests to simplify the declaration of interop objects.
