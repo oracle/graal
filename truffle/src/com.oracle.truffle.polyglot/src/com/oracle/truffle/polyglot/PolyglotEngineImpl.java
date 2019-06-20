@@ -1111,15 +1111,20 @@ final class PolyglotEngineImpl extends AbstractPolyglotImpl.AbstractEngineImpl i
 
     // reflectively read from TruffleFeature
     private static final boolean ALLOW_CREATE_PROCESS;
+    static final boolean ALLOW_ENVIRONMENT_ACCESS;
     static final boolean ALLOW_IO;
     static {
         boolean createProcess = true;
+        boolean environmentAccess = true;
         boolean io = true;
 
         for (String privilege : DISABLED_PRIVILEGES) {
             switch (privilege) {
                 case "createProcess":
                     createProcess = false;
+                    break;
+                case "environmentAccess":
+                    environmentAccess = false;
                     break;
                 case "io":
                     io = false;
@@ -1130,6 +1135,7 @@ final class PolyglotEngineImpl extends AbstractPolyglotImpl.AbstractEngineImpl i
         }
 
         ALLOW_CREATE_PROCESS = createProcess;
+        ALLOW_ENVIRONMENT_ACCESS = environmentAccess;
         ALLOW_IO = io;
     }
 
@@ -1188,7 +1194,7 @@ final class PolyglotEngineImpl extends AbstractPolyglotImpl.AbstractEngineImpl i
 
         final InputStream useIn = configIn == null ? this.in : configIn;
 
-        ProcessHandler useProcessHandler;
+        final ProcessHandler useProcessHandler;
         if (allowCreateProcess) {
             if (!ALLOW_CREATE_PROCESS) {
                 throw new IllegalArgumentException("Cannot allowCreateProcess() because the privilege is removed at image build time");
@@ -1197,6 +1203,11 @@ final class PolyglotEngineImpl extends AbstractPolyglotImpl.AbstractEngineImpl i
         } else {
             useProcessHandler = null;
         }
+
+        if (!ALLOW_ENVIRONMENT_ACCESS && environmentAccess != EnvironmentAccess.NONE) {
+            throw new IllegalArgumentException("Cannot allow EnvironmentAccess because the privilege is removed at image build time");
+        }
+
         PolyglotContextConfig config = new PolyglotContextConfig(this, useOut, useErr, useIn,
                         allowHostLookup, polyglotAccess, allowNativeAccess, allowCreateThread, allowHostClassLoading,
                         allowExperimentalOptions, classFilter, arguments, allowedLanguages, options, fs, useHandler, allowCreateProcess, useProcessHandler,

@@ -179,7 +179,7 @@ final class PolyglotContextConfig {
                 if (result == null) {
                     if (environmentAccess == EnvironmentAccess.NONE) {
                         result = Collections.unmodifiableMap(environment);
-                    } else if (environmentAccess == EnvironmentAccess.INHERIT) {
+                    } else if (PolyglotEngineImpl.ALLOW_ENVIRONMENT_ACCESS && environmentAccess == EnvironmentAccess.INHERIT) {
                         result = System.getenv();  // System.getenv returns unmodifiable map.
                         if (!environment.isEmpty()) {
                             result = new HashMap<>(result);
