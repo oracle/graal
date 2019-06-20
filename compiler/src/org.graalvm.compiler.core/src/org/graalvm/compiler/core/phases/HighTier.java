@@ -38,6 +38,7 @@ import static org.graalvm.compiler.phases.common.DeadCodeEliminationPhase.Option
 import org.graalvm.compiler.loop.DefaultLoopPolicies;
 import org.graalvm.compiler.loop.LoopPolicies;
 import org.graalvm.compiler.loop.phases.LoopFullUnrollPhase;
+import org.graalvm.compiler.loop.phases.LoopPartialUnrollPhase;
 import org.graalvm.compiler.loop.phases.LoopPeelingPhase;
 import org.graalvm.compiler.loop.phases.LoopUnswitchingPhase;
 import org.graalvm.compiler.nodes.spi.LoweringTool;
@@ -103,6 +104,8 @@ public class HighTier extends PhaseSuite<HighTierContext> {
         if (FullUnroll.getValue(options)) {
             appendPhase(new LoopFullUnrollPhase(canonicalizer, loopPolicies));
         }
+
+        appendPhase(new LoopPartialUnrollPhase(loopPolicies, canonicalizer));
 
         if (OptLoopTransform.getValue(options)) {
             if (LoopPeeling.getValue(options)) {
