@@ -401,7 +401,7 @@ final class PolyglotEngineImpl extends AbstractPolyglotImpl.AbstractEngineImpl i
                 throw new IllegalArgumentException("Image build-time option '" + key + "' cannot be set at runtime");
             }
 
-            if (group.equals(PolyglotEngineImpl.OPTION_GROUP_LOG)) {
+            if (group.equals(OPTION_GROUP_LOG)) {
                 logOptions.put(parseLoggerName(key), Level.parse(value));
                 continue;
             }
