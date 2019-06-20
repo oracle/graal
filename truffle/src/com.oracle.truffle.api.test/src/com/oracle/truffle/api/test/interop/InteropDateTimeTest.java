@@ -145,39 +145,39 @@ public final class InteropDateTimeTest extends InteropLibraryBaseTest {
 
     @ExportLibrary(InteropLibrary.class)
     @SuppressWarnings("static-method")
-    static class InstantDefault implements TruffleObject {
+    public static class InstantDefault implements TruffleObject {
 
         final LocalDateTime dateTime = LocalDateTime.now();
 
         @ExportMessage
-        final boolean isDate() {
+        protected final boolean isDate() {
             return true;
         }
 
         @ExportMessage
-        final boolean isTime() {
+        protected final boolean isTime() {
             return true;
         }
 
         @ExportMessage
-        final boolean isTimeZone() {
+        protected final boolean isTimeZone() {
             return true;
         }
 
         @ExportMessage
         @TruffleBoundary
-        final ZoneId asTimeZone() {
+        protected final ZoneId asTimeZone() {
             return ZoneId.of("UTC");
         }
 
         @ExportMessage
         @TruffleBoundary
-        final LocalDate asDate() {
+        protected final LocalDate asDate() {
             return dateTime.toLocalDate();
         }
 
         @ExportMessage
-        final LocalTime asTime() {
+        protected final LocalTime asTime() {
             return dateTime.toLocalTime();
         }
 
