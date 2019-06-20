@@ -139,14 +139,27 @@ public abstract class WasmSuiteBase extends WasmTestBase {
         System.out.println("");
     }
 
-    protected abstract Collection<? extends WasmTestCase> collectTestCases() throws IOException;
+    protected Path testDirectory() {
+        return null;
+    }
+
+    protected Collection<? extends WasmTestCase> collectTestCases() throws IOException {
+        return Stream.concat(collectStringTestCases().stream(), collectFileTestCases(testDirectory()).stream()).collect(Collectors.toList());
+    }
+
+    protected Collection<? extends WasmTestCase> collectStringTestCases() {
+        return new ArrayList<>();
+    }
 
     protected Collection<WasmTestCase> collectFileTestCases(Path path) throws IOException {
         Collection<WasmTestCase> collectedCases = new ArrayList<>();
+        if (path == null) {
+            return collectedCases;
+        }
         try (Stream<Path> walk = Files.list(path)) {
             List<Path> testFiles = walk.filter(isWatFile).collect(Collectors.toList());
             for (Path f : testFiles) {
-                String baseFileName = f.toAbsolutePath().toString().split("\\.(?=[^\\.]+$)")[0];
+                String baseFileName = f.toAbsolutePath().toString().split("\\.(?=[^.]+$)")[0];
                 String testName = Paths.get(baseFileName).getFileName().toString().toUpperCase();
                 Path resultPath = Paths.get(baseFileName + ".result");
                 String resultSpec = Files.lines(resultPath).limit(1).collect(Collectors.joining());

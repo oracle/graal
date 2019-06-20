@@ -161,7 +161,7 @@ public class Integer32Suite extends WasmSuiteBase {
     };
 
     @Override
-    protected Collection<? extends WasmTestCase> collectTestCases() {
+    protected Collection<? extends WasmTestCase> collectStringTestCases() {
         return Arrays.asList(testCases);
     }
 }

@@ -29,27 +29,15 @@
  */
 package com.oracle.truffle.wasm.test.next.control;
 
-import java.io.File;
-import java.io.IOException;
 import java.nio.file.Path;
-import java.util.Arrays;
-import java.util.Collection;
-import java.util.stream.Collectors;
-import java.util.stream.Stream;
+import java.nio.file.Paths;
 
 import com.oracle.truffle.wasm.test.next.WasmSuiteBase;
 import com.oracle.truffle.wasm.test.next.options.WasmTestOptions;
 
 public class SimpleBlockSuite extends WasmSuiteBase {
-    private static Path testDirectory = new File(WasmTestOptions.TEST_SOURCE_PATH).toPath();
-
-    private static WasmStringTestCase[] testCases = {
-            testCase("PRODUCE_CONST_VALUE", expected(32),
-                        "(module (func (result i32) block $B0 (result i32) i32.const 11 end i32.const 21 i32.add))"),
-    };
-
     @Override
-    protected Collection<? extends WasmTestCase> collectTestCases() throws IOException {
-        return Stream.concat(Arrays.stream(testCases), collectFileTestCases(testDirectory).stream()).collect(Collectors.toList());
+    protected Path testDirectory() {
+        return Paths.get(WasmTestOptions.TEST_SOURCE_PATH, "SimpleBlock");
     }
 }
