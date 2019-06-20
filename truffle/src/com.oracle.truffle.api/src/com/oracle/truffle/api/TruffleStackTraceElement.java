@@ -40,8 +40,6 @@
  */
 package com.oracle.truffle.api;
 
-import java.util.List;
-
 import com.oracle.truffle.api.frame.Frame;
 import com.oracle.truffle.api.frame.FrameInstance;
 import com.oracle.truffle.api.nodes.Node;

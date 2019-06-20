@@ -31,6 +31,7 @@
       <property name="format" value="^[A-Z][_a-zA-Z0-9]*$"/>
     </module>
     <module name="RedundantImport"/>
+    <module name="UnusedImports"/>
     <module name="LineLength">
       <property name="max" value="250"/>
     </module>
