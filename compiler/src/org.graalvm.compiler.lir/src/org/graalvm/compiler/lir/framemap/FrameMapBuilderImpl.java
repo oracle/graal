@@ -44,7 +44,6 @@ import org.graalvm.compiler.lir.gen.LIRGenerationResult;
 import jdk.vm.ci.code.CallingConvention;
 import jdk.vm.ci.code.CodeCacheProvider;
 import jdk.vm.ci.code.RegisterConfig;
-import jdk.vm.ci.meta.JavaKind;
 import jdk.vm.ci.meta.Value;
 import jdk.vm.ci.meta.ValueKind;
 
@@ -82,7 +81,7 @@ public class FrameMapBuilderImpl extends FrameMapBuilderTool {
         if (slots == 0) {
             return null;
         }
-        VirtualStackSlotRange slot = new VirtualStackSlotRange(numStackSlots++, slots, LIRKind.fromJavaKind(frameMap.getTarget().arch, JavaKind.Object));
+        VirtualStackSlotRange slot = new VirtualStackSlotRange(numStackSlots++, slots, LIRKind.value(frameMap.getTarget().arch.getWordKind()));
         stackSlots.add(slot);
         return slot;
     }
