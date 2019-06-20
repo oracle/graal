@@ -354,35 +354,9 @@ public class TruffleGraphBuilderPlugins {
     public static void registerCompilerAssertsPlugins(InvocationPlugins plugins, MetaAccessProvider metaAccess, boolean canDelayIntrinsification) {
         final ResolvedJavaType compilerAssertsType = TruffleCompilerRuntime.getRuntime().resolveType(metaAccess, "com.oracle.truffle.api.CompilerAsserts");
         Registration r = new Registration(plugins, new ResolvedJavaSymbol(compilerAssertsType));
-        r.register1("partialEvaluationConstant", Object.class, new InvocationPlugin() {
-            @Override
-            public boolean apply(GraphBuilderContext b, ResolvedJavaMethod targetMethod, Receiver receiver, ValueNode value) {
-                ValueNode curValue = value;
-                if (curValue instanceof BoxNode) {
-                    BoxNode boxNode = (BoxNode) curValue;
-                    curValue = boxNode.getValue();
-                }
-                if (curValue.isConstant()) {
-                    return true;
-                } else if (canDelayIntrinsification) {
-                    return false;
-                } else {
-                    StringBuilder sb = new StringBuilder();
-                    sb.append(curValue);
-                    if (curValue instanceof ValuePhiNode) {
-                        ValuePhiNode valuePhi = (ValuePhiNode) curValue;
-                        sb.append(" (");
-                        for (Node n : valuePhi.inputs()) {
-                            sb.append(n);
-                            sb.append("; ");
-                        }
-                        sb.append(")");
-                    }
-                    value.getDebug().dump(DebugContext.VERBOSE_LEVEL, value.graph(), "Graph before bailout at node %s", sb);
-                    throw b.bailout("Partial evaluation did not reduce value to a constant, is a regular compiler node: " + sb);
-                }
-            }
-        });
+        PEConstantPlugin peConstantPlugin = new PEConstantPlugin(canDelayIntrinsification);
+        r.register1("partialEvaluationConstant", Object.class, peConstantPlugin);
+        r.register1("partialEvaluationConstant", int.class, peConstantPlugin);
         r.register0("neverPartOfCompilation", new InvocationPlugin() {
             @Override
             public boolean apply(GraphBuilderContext b, ResolvedJavaMethod targetMethod, Receiver receiver) {
@@ -723,6 +697,42 @@ public class TruffleGraphBuilderPlugins {
             debug.dump(DebugContext.VERBOSE_LEVEL, graph, "perf warn: location argument not PE-constant: %s", location);
         } catch (Throwable t) {
             debug.handle(t);
+        }
+    }
+
+    private static class PEConstantPlugin implements InvocationPlugin {
+        private final boolean canDelayIntrinsification;
+
+        private PEConstantPlugin(boolean canDelayIntrinsification) {
+            this.canDelayIntrinsification = canDelayIntrinsification;
+        }
+
+        @Override
+        public boolean apply(GraphBuilderContext b, ResolvedJavaMethod targetMethod, Receiver receiver, ValueNode value) {
+            ValueNode curValue = value;
+            if (curValue instanceof BoxNode) {
+                BoxNode boxNode = (BoxNode) curValue;
+                curValue = boxNode.getValue();
+            }
+            if (curValue.isConstant()) {
+                return true;
+            } else if (canDelayIntrinsification) {
+                return false;
+            } else {
+                StringBuilder sb = new StringBuilder();
+                sb.append(curValue);
+                if (curValue instanceof ValuePhiNode) {
+                    ValuePhiNode valuePhi = (ValuePhiNode) curValue;
+                    sb.append(" (");
+                    for (Node n : valuePhi.inputs()) {
+                        sb.append(n);
+                        sb.append("; ");
+                    }
+                    sb.append(")");
+                }
+                value.getDebug().dump(DebugContext.VERBOSE_LEVEL, value.graph(), "Graph before bailout at node %s", sb);
+                throw b.bailout("Partial evaluation did not reduce value to a constant, is a regular compiler node: " + sb);
+            }
         }
     }
 }

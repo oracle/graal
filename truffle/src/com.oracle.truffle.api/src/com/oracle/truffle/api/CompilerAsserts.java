@@ -96,4 +96,14 @@ public final class CompilerAsserts {
      */
     public static <T> void partialEvaluationConstant(Object value) {
     }
+
+    /**
+     * Assertion that the corresponding primitive int value is reduced to a constant during the
+     * initial partial evaluation phase.
+     *
+     * @param value the value that must be constant during partial evaluation.
+     * @since ...
+     */
+    public static <T> void partialEvaluationConstant(int value) {
+    }
 }
