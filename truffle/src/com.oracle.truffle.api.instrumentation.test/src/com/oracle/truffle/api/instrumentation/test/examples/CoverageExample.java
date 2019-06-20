@@ -52,9 +52,9 @@ import com.oracle.truffle.api.instrumentation.ExecutionEventNode;
 import com.oracle.truffle.api.instrumentation.ExecutionEventNodeFactory;
 import com.oracle.truffle.api.instrumentation.Instrumenter;
 import com.oracle.truffle.api.instrumentation.SourceSectionFilter;
+import com.oracle.truffle.api.instrumentation.StandardTags.ExpressionTag;
 import com.oracle.truffle.api.instrumentation.TruffleInstrument;
 import com.oracle.truffle.api.instrumentation.TruffleInstrument.Registration;
-import static com.oracle.truffle.api.instrumentation.test.InstrumentationTestLanguage.EXPRESSION;
 import com.oracle.truffle.api.source.SourceSection;
 
 /**
@@ -76,7 +76,7 @@ public final class CoverageExample extends TruffleInstrument {
     @Override
     protected void onCreate(final Env env) {
         SourceSectionFilter.Builder builder = SourceSectionFilter.newBuilder();
-        SourceSectionFilter filter = builder.tagIs(EXPRESSION).build();
+        SourceSectionFilter filter = builder.tagIs(ExpressionTag.class).build();
         Instrumenter instrumenter = env.getInstrumenter();
         instrumenter.attachExecutionEventFactory(filter,
                         new CoverageEventFactory(env));
