@@ -31,17 +31,23 @@ package com.oracle.truffle.wasm.test.next;
 
 import java.io.File;
 import java.io.IOException;
+import java.nio.file.Files;
+import java.nio.file.Path;
+import java.nio.file.Paths;
+import java.util.ArrayList;
 import java.util.Collection;
 import java.util.LinkedHashMap;
+import java.util.List;
 import java.util.Map;
 import java.util.function.Consumer;
+import java.util.stream.Collectors;
+import java.util.stream.Stream;
 
 import org.graalvm.polyglot.Context;
 import org.graalvm.polyglot.PolyglotException;
 import org.graalvm.polyglot.Source;
 import org.graalvm.polyglot.Value;
 import org.graalvm.polyglot.io.ByteSequence;
-import org.hamcrest.CoreMatchers;
 import org.junit.Assert;
 
 import com.oracle.truffle.api.Truffle;
@@ -67,34 +73,36 @@ public abstract class WasmSuiteBase extends WasmTestBase {
                     function.execute();
                 }
             }
-            validateResult(testCase.name, testCase.data.resultValidator, function.execute());
+            validateResult(testCase.data.resultValidator, function.execute());
         } catch (InterruptedException | IOException e) {
             Assert.fail(String.format("Test %s failed.", testCase.name));
             e.printStackTrace();
         } catch (PolyglotException e) {
-            validateThrown(testCase.name, testCase.data.expectedException, e);
+            validateThrown(testCase.data.expectedErrorMessage, e);
         }
         return WasmTestStatus.OK;
     }
 
-    private static void validateResult(String testName, Consumer<Value> validator, Value result) {
+    private static void validateResult(Consumer<Value> validator, Value result) {
         if (validator != null) {
             validator.accept(result);
         } else {
-            Assert.fail(String.format("Test %s was not expected to return a value.", testName));
+            Assert.fail("Test was not expected to return a value.");
         }
     }
 
-    private static void validateThrown(String testName, Class<? extends PolyglotException> expected, PolyglotException e) throws PolyglotException{
-        if (expected != null) {
-            Assert.assertThat(String.format("Test %s threw an unexpected exception (%s instead of %s).", testName, e.toString(), expected.toString()), e, CoreMatchers.instanceOf(expected));
+    private static void validateThrown(String expectedErrorMessage, PolyglotException e) throws PolyglotException{
+        if (expectedErrorMessage != null) {
+            if (!expectedErrorMessage.equals(e.getMessage())){
+                throw e;
+            }
         } else {
-            Assert.fail(String.format("Test %s was not expected to throw an exception.", testName));
+            throw e;
         }
     }
 
     @Override
-    public void test() {
+    public void test() throws IOException {
         Collection<? extends WasmTestCase> testCases = collectTestCases();
         Map<WasmTestCase, Throwable> errors = new LinkedHashMap<>();
         System.out.println("");
@@ -131,7 +139,41 @@ public abstract class WasmSuiteBase extends WasmTestBase {
         System.out.println("");
     }
 
-    protected abstract Collection<? extends WasmTestCase> collectTestCases();
+    protected abstract Collection<? extends WasmTestCase> collectTestCases() throws IOException;
+
+    protected Collection<WasmTestCase> collectFileTestCases(Path path) throws IOException {
+        Collection<WasmTestCase> collectedCases = new ArrayList<>();
+        try (Stream<Path> walk = Files.list(path)) {
+            List<Path> testFiles = walk.filter(isWatFile).collect(Collectors.toList());
+            for (Path f : testFiles) {
+                String baseFileName = f.toAbsolutePath().toString().split("\\.(?=[^\\.]+$)")[0];
+                String testName = Paths.get(baseFileName).getFileName().toString().toUpperCase();
+                Path resultPath = Paths.get(baseFileName + ".result");
+                String resultSpec = Files.lines(resultPath).limit(1).collect(Collectors.joining());
+                String[] resultTypeValue = resultSpec.split("\\s+");
+                String resultType = resultTypeValue[0];
+                String resultValue = resultTypeValue[1];
+                switch (resultType) {
+                    case "int":
+                        collectedCases.add(testCase(testName, expected(Integer.parseInt(resultValue)), f.toFile()));
+                        break;
+                    case "long":
+                        collectedCases.add(testCase(testName, expected(Long.parseLong(resultValue)), f.toFile()));
+                        break;
+                    case "float":
+                        collectedCases.add(testCase(testName, expected(Float.parseFloat(resultValue), 0.0001f), f.toFile()));
+                        break;
+                    case "double":
+                        collectedCases.add(testCase(testName, expected(Double.parseDouble(resultValue), 0.0001f), f.toFile()));
+                        break;
+                    default:
+                        collectedCases.add(testCase(testName, expectedThrows(resultValue), f.toFile()));
+                        break;
+                }
+            }
+        }
+        return collectedCases;
+    }
 
     protected String suiteName() {
         return getClass().getSimpleName();
@@ -157,8 +199,8 @@ public abstract class WasmSuiteBase extends WasmTestBase {
         return new WasmTestCaseData((Value result) -> Assert.assertEquals("Failure", expectedValue, result.as(Double.class), delta));
     }
 
-    protected static WasmTestCaseData expectedThrows(Class<? extends PolyglotException> expectedExceptionClass) {
-        return new WasmTestCaseData(expectedExceptionClass);
+    protected static WasmTestCaseData expectedThrows(String expectedErrorMessage) {
+        return new WasmTestCaseData(expectedErrorMessage);
     }
 
     protected static abstract class WasmTestCase {

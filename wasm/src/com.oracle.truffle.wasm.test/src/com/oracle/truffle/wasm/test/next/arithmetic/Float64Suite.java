@@ -29,10 +29,10 @@
  */
 package com.oracle.truffle.wasm.test.next.arithmetic;
 
-import com.oracle.truffle.wasm.test.next.WasmSuiteBase;
-
 import java.util.Arrays;
 import java.util.Collection;
+
+import com.oracle.truffle.wasm.test.next.WasmSuiteBase;
 
 public class Float64Suite extends WasmSuiteBase {
     private WasmStringTestCase[] testCases = {

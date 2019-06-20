@@ -31,20 +31,19 @@ package com.oracle.truffle.wasm.test.next;
 
 import java.util.function.Consumer;
 
-import org.graalvm.polyglot.PolyglotException;
 import org.graalvm.polyglot.Value;
 
 class WasmTestCaseData {
     Consumer<Value> resultValidator;
-    Class<? extends PolyglotException> expectedException;
+    String expectedErrorMessage;
 
     WasmTestCaseData(Consumer<Value> resultValidator) {
         this.resultValidator = resultValidator;
-        this.expectedException = null;
+        this.expectedErrorMessage = null;
     }
 
-    public WasmTestCaseData(Class<? extends PolyglotException> expectedException) {
+    public WasmTestCaseData(String expectedErrorMessage) {
         this.resultValidator = null;
-        this.expectedException = expectedException;
+        this.expectedErrorMessage = expectedErrorMessage;
     }
 }

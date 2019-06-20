@@ -29,6 +29,8 @@
  */
 package com.oracle.truffle.wasm.test.next;
 
+import java.io.IOException;
+import java.nio.file.Path;
 import java.util.function.Predicate;
 
 import org.junit.Test;
@@ -36,6 +38,9 @@ import org.junit.Test;
 import com.oracle.truffle.wasm.test.next.options.WasmTestOptions;
 
 public abstract class WasmTestBase {
+    protected static final Predicate<? super Path> isWatFile = f -> f.getFileName().toString().endsWith(".wat");
+    protected static final Predicate<? super Path> isResultFile = f -> f.getFileName().toString().endsWith(".result");
+
     protected static Predicate<String> filterTestName() {
         if (WasmTestOptions.TEST_FILTER != null && !WasmTestOptions.TEST_FILTER.isEmpty()) {
             return name -> name.matches(WasmTestOptions.TEST_FILTER);
@@ -45,5 +50,5 @@ public abstract class WasmTestBase {
     }
 
     @Test
-    public abstract void test();
+    public abstract void test() throws IOException;
 }

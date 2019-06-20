@@ -27,29 +27,29 @@
  *  NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED
  *  OF THE POSSIBILITY OF SUCH DAMAGE.
  */
-package com.oracle.truffle.wasm.test.next;
+package com.oracle.truffle.wasm.test.next.control;
 
-import org.junit.Test;
-import org.junit.runner.RunWith;
-import org.junit.runners.Suite;
+import java.io.File;
+import java.io.IOException;
+import java.nio.file.Path;
+import java.util.Arrays;
+import java.util.Collection;
+import java.util.stream.Collectors;
+import java.util.stream.Stream;
 
-import com.oracle.truffle.wasm.test.next.arithmetic.Float32Suite;
-import com.oracle.truffle.wasm.test.next.arithmetic.Float64Suite;
-import com.oracle.truffle.wasm.test.next.arithmetic.Integer32Suite;
-import com.oracle.truffle.wasm.test.next.arithmetic.Integer64Suite;
-import com.oracle.truffle.wasm.test.next.control.SimpleBlockSuite;
+import com.oracle.truffle.wasm.test.next.WasmSuiteBase;
+import com.oracle.truffle.wasm.test.next.options.WasmTestOptions;
 
-@RunWith(Suite.class)
-@Suite.SuiteClasses({
-        Integer32Suite.class,
-        Integer64Suite.class,
-        Float32Suite.class,
-        Float64Suite.class,
-        SimpleBlockSuite.class,
-})
-public class WasmTestSuite {
-    @Test
-    public void test() {
-        // This is here just to make mx aware of the test suite class.
+public class SimpleBlockSuite extends WasmSuiteBase {
+    private static Path testDirectory = new File(WasmTestOptions.TEST_SOURCE_PATH).toPath();
+
+    private static WasmStringTestCase[] testCases = {
+            testCase("PRODUCE_CONST_VALUE", expected(32),
+                        "(module (func (result i32) block $B0 (result i32) i32.const 11 end i32.const 21 i32.add))"),
+    };
+
+    @Override
+    protected Collection<? extends WasmTestCase> collectTestCases() throws IOException {
+        return Stream.concat(Arrays.stream(testCases), collectFileTestCases(testDirectory).stream()).collect(Collectors.toList());
     }
 }
