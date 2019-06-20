@@ -146,11 +146,10 @@ public final class IsomorphicPackingPhase extends BasePhase<LowTierContext> {
             // Conservatively bail if we have a FAN and non-FAN
             if (left instanceof FixedAccessNode != right instanceof FixedAccessNode) return false;
 
-            // Ensure that FixedAccessNodes are dominated by the same controlSplit node
+            // Ensure that both fixed access nodes are accessing the same array
             if (left instanceof FixedAccessNode &&
-                    ((FixedAccessNode) left).getGuard() != null &&
-                    ((FixedAccessNode) right).getGuard() != null &&
-                    !((FixedAccessNode) left).getGuard().equals(((FixedAccessNode) right).getGuard())) return false;
+                    !((FixedAccessNode) left).getAddress().getBase().equals(((FixedAccessNode) right).getAddress().getBase()))
+                return false;
 
             return true;
         }
@@ -704,6 +703,7 @@ public final class IsomorphicPackingPhase extends BasePhase<LowTierContext> {
 
         // Main
         void SLP_extract() {
+            // TODO: don't operate on blocks that contain changes in control flow
             final Set<Pair<Node, Node>> packSet = new HashSet<>();
             final Set<Pack<Node>> combinedPackSet = new HashSet<>();
 

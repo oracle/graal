@@ -80,6 +80,9 @@ public class MidTier extends PhaseSuite<MidTierContext> {
 
         appendPhase(new LoopSafepointInsertionPhase());
 
+        LoopPolicies loopPolicies = createLoopPolicies();
+        appendPhase(new LoopPartialUnrollPhase(loopPolicies, canonicalizer));
+
         appendPhase(new GuardLoweringPhase());
 
         if (MitigateSpeculativeExecutionAttacks.getValue(options) == GuardTargets || MitigateSpeculativeExecutionAttacks.getValue(options) == NonDeoptGuardTargets) {
@@ -94,7 +97,6 @@ public class MidTier extends PhaseSuite<MidTierContext> {
 
         appendPhase(new FrameStateAssignmentPhase());
 
-        LoopPolicies loopPolicies = createLoopPolicies();
         if (OptLoopTransform.getValue(options)) {
             if (PartialUnroll.getValue(options)) {
                 appendPhase(new LoopPartialUnrollPhase(loopPolicies, canonicalizer));

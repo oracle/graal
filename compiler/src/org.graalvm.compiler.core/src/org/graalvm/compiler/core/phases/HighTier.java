@@ -105,8 +105,6 @@ public class HighTier extends PhaseSuite<HighTierContext> {
             appendPhase(new LoopFullUnrollPhase(canonicalizer, loopPolicies));
         }
 
-        appendPhase(new LoopPartialUnrollPhase(loopPolicies, canonicalizer));
-
         if (OptLoopTransform.getValue(options)) {
             if (LoopPeeling.getValue(options)) {
                 appendPhase(new LoopPeelingPhase(loopPolicies));
