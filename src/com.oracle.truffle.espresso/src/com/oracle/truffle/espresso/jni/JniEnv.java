@@ -928,14 +928,22 @@ public final class JniEnv extends NativeEnv implements ContextAccess {
     // region Call*Method
 
     private Object callVirtualMethodGeneric(StaticObject receiver, long methodHandle, long varargsPtr) {
+        assert !receiver.getKlass().isInterface();
         Method resolutionSeed = methodIds.getObject(methodHandle);
         assert !resolutionSeed.isStatic();
+        assert resolutionSeed.getDeclaringKlass().isAssignableFrom(receiver.getKlass());
         Object[] args = popVarArgs(varargsPtr, resolutionSeed.getParsedSignature());
-        // System.err.println("callVirtualMethod " + resolutionSeed + " " + Arrays.toString(args));
-        Method m = receiver.getKlass().vtableLookup(resolutionSeed.getVTableIndex());
-        assert m != null;
-        assert m.getName() == resolutionSeed.getName() && resolutionSeed.getRawSignature() == m.getRawSignature();
-        return m.invokeDirect(receiver, args);
+
+        Method target;
+        if (resolutionSeed.getDeclaringKlass().isInterface()) {
+            target = ((ObjectKlass) receiver.getKlass()).itableLookup(resolutionSeed.getDeclaringKlass(), resolutionSeed.getITableIndex());
+        } else {
+            target = receiver.getKlass().vtableLookup(resolutionSeed.getVTableIndex());
+        }
+
+        assert target != null;
+        assert target.getName() == resolutionSeed.getName() && resolutionSeed.getRawSignature() == target.getRawSignature();
+        return target.invokeDirect(receiver, args);
     }
 
     @JniImpl
