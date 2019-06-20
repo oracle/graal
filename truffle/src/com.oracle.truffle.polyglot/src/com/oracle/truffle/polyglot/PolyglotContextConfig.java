@@ -109,7 +109,7 @@ final class PolyglotContextConfig {
         this.logLevels = new HashMap<>(engine.logLevels);
         for (String optionKey : options.keySet()) {
             final String group = PolyglotEngineImpl.parseOptionGroup(optionKey);
-            if (group.equals(PolyglotEngineOptions.OPTION_GROUP_LOG)) {
+            if (group.equals(PolyglotEngineImpl.OPTION_GROUP_LOG)) {
                 logLevels.put(PolyglotEngineImpl.parseLoggerName(optionKey), Level.parse(options.get(optionKey)));
                 continue;
             }

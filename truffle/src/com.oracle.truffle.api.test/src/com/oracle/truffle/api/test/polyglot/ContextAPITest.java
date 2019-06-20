@@ -224,6 +224,13 @@ public class ContextAPITest {
     }
 
     @Test
+    public void testImageBuildTimeOptionAtRuntime() {
+        ValueAssert.assertFails(() -> Context.newBuilder().option("image-build-time.DisablePrivileges", "createProcess").build(), IllegalArgumentException.class, e -> {
+            assertEquals("Image build-time option 'image-build-time.DisablePrivileges' cannot be set at runtime", e.getMessage());
+        });
+    }
+
+    @Test
     public void testInstrumentOptionAsContext() {
         // Instrument options are refused by context builders with an existing engine:
         Context.Builder contextBuilder = Context.newBuilder();

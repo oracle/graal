@@ -114,11 +114,13 @@ final class PolyglotEngineImpl extends AbstractPolyglotImpl.AbstractEngineImpl i
     static final String HOST_LANGUAGE_ID = "host";
 
     static final String OPTION_GROUP_ENGINE = "engine";
+    static final String OPTION_GROUP_LOG = "log";
+    static final String OPTION_GROUP_IMAGE_BUILD_TIME = "image-build-time";
 
     // also update list in LanguageRegistrationProcessor
     private static final Set<String> RESERVED_IDS = new HashSet<>(
-                    Arrays.asList(HOST_LANGUAGE_ID, "graal", "truffle", "engine", "language", "instrument", "graalvm", "context", "polyglot", "compiler", "vm",
-                                    PolyglotEngineOptions.OPTION_GROUP_LOG));
+                    Arrays.asList(HOST_LANGUAGE_ID, "graal", "truffle", "language", "instrument", "graalvm", "context", "polyglot", "compiler", "vm",
+                                    OPTION_GROUP_ENGINE, OPTION_GROUP_LOG, OPTION_GROUP_IMAGE_BUILD_TIME));
 
     private static final Map<PolyglotEngineImpl, Void> ENGINES = Collections.synchronizedMap(new WeakHashMap<>());
     private static volatile boolean shutdownHookInitialized = false;
@@ -215,7 +217,8 @@ final class PolyglotEngineImpl extends AbstractPolyglotImpl.AbstractEngineImpl i
 
         OptionDescriptors engineOptionDescriptors = new PolyglotEngineOptionsOptionDescriptors();
         OptionDescriptors compilerOptionDescriptors = VMAccessor.SPI.getCompilerOptions();
-        this.engineOptions = OptionDescriptors.createUnion(engineOptionDescriptors, compilerOptionDescriptors);
+        ImageBuildTimeOptionsOptionDescriptors imageBuildTimeDescriptors = new ImageBuildTimeOptionsOptionDescriptors();
+        this.engineOptions = OptionDescriptors.createUnion(engineOptionDescriptors, compilerOptionDescriptors, imageBuildTimeDescriptors);
         this.engineOptionValues = new OptionValuesImpl(this, engineOptions);
 
         Map<String, Language> publicLanguages = new LinkedHashMap<>();
@@ -351,9 +354,13 @@ final class PolyglotEngineImpl extends AbstractPolyglotImpl.AbstractEngineImpl i
                 for (Object systemKey : properties.keySet()) {
                     String key = (String) systemKey;
                     if (key.startsWith(OptionValuesImpl.SYSTEM_PROPERTY_PREFIX)) {
-                        String engineKey = key.substring(OptionValuesImpl.SYSTEM_PROPERTY_PREFIX.length(), key.length());
-                        if (!options.containsKey(engineKey)) {
-                            optionsWithSystemProperties.put(engineKey, System.getProperty(key));
+                        String optionKey = key.substring(OptionValuesImpl.SYSTEM_PROPERTY_PREFIX.length());
+                        // Context options override system properties options
+                        if (!options.containsKey(optionKey)) {
+                            // Image build time options are not set in runtime options
+                            if (!optionKey.startsWith(OPTION_GROUP_IMAGE_BUILD_TIME)) {
+                                optionsWithSystemProperties.put(optionKey, System.getProperty(key));
+                            }
                         }
                     }
                 }
@@ -391,7 +398,11 @@ final class PolyglotEngineImpl extends AbstractPolyglotImpl.AbstractEngineImpl i
                 continue;
             }
 
-            if (group.equals(PolyglotEngineOptions.OPTION_GROUP_LOG)) {
+            if (group.equals(OPTION_GROUP_IMAGE_BUILD_TIME)) {
+                throw new IllegalArgumentException("Image build-time option '" + key + "' cannot be set at runtime");
+            }
+
+            if (group.equals(PolyglotEngineImpl.OPTION_GROUP_LOG)) {
                 logOptions.put(parseLoggerName(key), Level.parse(value));
                 continue;
             }
@@ -1103,8 +1114,7 @@ final class PolyglotEngineImpl extends AbstractPolyglotImpl.AbstractEngineImpl i
         return Truffle.getRuntime().getName();
     }
 
-    private static final String DISABLE_PRIVILEGES_PROPERTY = "org.graalvm.polyglot.Context.DisablePrivileges";
-    private static final String DISABLE_PRIVILEGES_VALUE = System.getProperty(DISABLE_PRIVILEGES_PROPERTY, "");
+    private static final String DISABLE_PRIVILEGES_VALUE = ImageBuildTimeOptions.get(ImageBuildTimeOptions.DISABLE_PRIVILEGES_NAME);
     private static final String[] DISABLED_PRIVILEGES = DISABLE_PRIVILEGES_VALUE.isEmpty() ? new String[0] : DISABLE_PRIVILEGES_VALUE.split(",");
 
     // reflectively read from TruffleFeature
@@ -1128,7 +1138,7 @@ final class PolyglotEngineImpl extends AbstractPolyglotImpl.AbstractEngineImpl i
                     io = false;
                     break;
                 default:
-                    throw new Error("Invalid privilege name for " + DISABLE_PRIVILEGES_PROPERTY + ": " + privilege);
+                    throw new Error("Invalid privilege name for " + ImageBuildTimeOptions.DISABLE_PRIVILEGES_NAME + ": " + privilege);
             }
         }
 

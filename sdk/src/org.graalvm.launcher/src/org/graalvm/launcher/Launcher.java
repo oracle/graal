@@ -598,7 +598,14 @@ public abstract class Launcher {
     }
 
     private static void printEngineOptions(Engine engine, OptionCategory optionCategory) {
-        List<PrintableOption> engineOptions = filterOptions(engine.getOptions(), optionCategory);
+        final OptionDescriptors allEngineOptions = engine.getOptions();
+        List<OptionDescriptor> optionsWithoutImageBuildTime = new ArrayList<>();
+        for (OptionDescriptor option : allEngineOptions) {
+            if (!option.getName().startsWith("image-build-time.")) {
+                optionsWithoutImageBuildTime.add(option);
+            }
+        }
+        List<PrintableOption> engineOptions = filterOptions(OptionDescriptors.create(optionsWithoutImageBuildTime), optionCategory);
         if (!engineOptions.isEmpty()) {
             System.out.println();
             printOptions(engineOptions, optionsTitle("engine", optionCategory), 2);
@@ -822,6 +829,7 @@ public abstract class Launcher {
         switch (group) {
             case "compiler":
             case "engine":
+            case "image-build-time":
                 descriptors = getTempEngine().getOptions();
                 break;
             default:

@@ -285,8 +285,9 @@ import org.graalvm.polyglot.proxy.Proxy;
  * native compilation.
  * <p>
  * The context pre-initialization is enabled by setting the system property
- * {@code polyglot.engine.PreinitializeContexts} to a comma separated list of language ids which
- * should be pre-initialized, for example: {@code -Dpolyglot.engine.PreinitializeContexts=js,python}
+ * {@code polyglot.image-build-time.PreinitializeContexts} to a comma separated list of language ids
+ * which should be pre-initialized, for example:
+ * {@code -Dpolyglot.image-build-time.PreinitializeContexts=js,python}
  * <p>
  * See
  * {@code com.oracle.truffle.api.TruffleLanguage.patchContext(java.lang.Object, com.oracle.truffle.api.TruffleLanguage.Env)}

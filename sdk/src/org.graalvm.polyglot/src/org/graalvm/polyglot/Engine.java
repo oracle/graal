@@ -160,6 +160,8 @@ public final class Engine implements AutoCloseable {
      * {@link OptionDescriptor#getKey() groups}:
      * <ul>
      * <li><b>engine</b>: options to configure the behavior of this engine.
+     * <li><b>image-build-time</b>: options to configure the behavior during image building with
+     * Native Image. These options cannot be set at runtime.
      * </ul>
      * The language and instrument specific options need to be retrieved using
      * {@link Instrument#getOptions()} or {@link Language#getOptions()}.

@@ -705,7 +705,8 @@ public class NativeImage {
             addImageBuilderJavaArgs(oXmx + memRequirements);
         }
 
-        consolidateListArgs(imageBuilderJavaArgs, "-Dpolyglot.engine.PreinitializeContexts=", ",", Function.identity());
+        consolidateListArgs(imageBuilderJavaArgs, "-Dpolyglot.engine.PreinitializeContexts=", ",", Function.identity()); // legacy
+        consolidateListArgs(imageBuilderJavaArgs, "-Dpolyglot.image-build-time.PreinitializeContexts=", ",", Function.identity());
     }
 
     protected static String consolidateSingleValueArg(Collection<String> args, String argPrefix) {
