@@ -24,6 +24,14 @@ public class Pack<T extends Node> implements Iterable<T> {
        return elements;
    }
 
+   public T getFirst() {
+       return elements.get(0);
+   }
+
+   public T getLast() {
+       return elements.get(elements.size() - 1);
+   }
+
    @Override
    public boolean equals(Object o) {
        if (this == o) return true;
@@ -64,11 +72,10 @@ public class Pack<T extends Node> implements Iterable<T> {
        return new Pack<T>(Stream.of(pair.getLeft(), pair.getRight()).collect(Collectors.toList()));
    }
 
-   public static <T extends Node> Pack<T> create(List<T> elements) {
-       if (elements.size() < 2)
-           throw new IllegalArgumentException("cannot construct pack consisting of single element");
-
-       return new Pack<>(elements);
+   public static <T extends Node> Pack<T> combine(Pack<T> left, Pack<T> right) {
+       T rightLeft = right.getFirst();
+       return new Pack<>(Stream.concat(
+               left.elements.stream().filter(x -> !x.equals(rightLeft)),
+               right.elements.stream()).collect(Collectors.toList()));
    }
-
 }

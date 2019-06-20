@@ -483,32 +483,34 @@ public final class IsomorphicPackingPhase extends BasePhase<LowTierContext> {
 
         // Combine packs where right = left
         private void combine_packs(Set<Pair<Node, Node>> packSet, Set<Pack<Node>> combinedPackSet) {
+            combinedPackSet.addAll(packSet.stream().map(Pack::create).collect(Collectors.toList()));
+            packSet.clear();
+
             boolean changed;
             do {
                 changed = false;
 
-                Deque<Pair<Node, Node>> remove = new ArrayDeque<>();
+                Deque<Pack<Node>> remove = new ArrayDeque<>();
                 Deque<Pack<Node>> add = new ArrayDeque<>();
 
-                for (Pair<Node, Node> leftPack : packSet) {
+                for (Pack<Node> leftPack : combinedPackSet) {
                     if (remove.contains(leftPack)) continue;
 
-                    for (Pair<Node, Node> rightPack : packSet) {
+                    for (Pack<Node> rightPack : combinedPackSet) {
                         if (remove.contains(leftPack) || remove.contains(rightPack)) continue;
 
-                        if (leftPack != rightPack && leftPack.getRight().equals(rightPack.getLeft())) {
+
+                        if (leftPack != rightPack && leftPack.getLast().equals(rightPack.getFirst())) {
                             remove.push(leftPack);
                             remove.push(rightPack);
 
-                            add.push(Pack.create(Stream.of(leftPack.getLeft(), rightPack.getLeft(), rightPack.getRight())
-                                    .collect(Collectors.toList())));
-
+                            add.push(Pack.combine(leftPack, rightPack));
                             changed = true;
                         }
                     }
                 }
 
-                packSet.removeAll(remove);
+                combinedPackSet.removeAll(remove);
                 combinedPackSet.addAll(add);
             } while (changed);
         }
