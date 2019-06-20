@@ -29,6 +29,8 @@
  */
 package com.oracle.truffle.wasm.test.next;
 
+import com.oracle.truffle.wasm.test.next.arithmetic.Float32Suite;
+import com.oracle.truffle.wasm.test.next.arithmetic.Float64Suite;
 import org.junit.Test;
 import org.junit.runner.RunWith;
 import org.junit.runners.Suite;
@@ -40,6 +42,8 @@ import com.oracle.truffle.wasm.test.next.arithmetic.Integer64Suite;
 @Suite.SuiteClasses({
         Integer32Suite.class,
         Integer64Suite.class,
+        Float32Suite.class,
+        Float64Suite.class,
 })
 public class WasmTestSuite {
     @Test
