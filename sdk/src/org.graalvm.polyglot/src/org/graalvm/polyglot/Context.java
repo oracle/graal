@@ -756,14 +756,14 @@ public final class Context implements AutoCloseable {
         private Boolean allowHostClassLoading;
         private Boolean allowExperimentalOptions;
         private Boolean allowHostAccess;
-        private PolyglotAccess polylgotAccess;
+        private PolyglotAccess polyglotAccess;
         private HostAccess hostAccess;
         private FileSystem customFileSystem;
         private MessageTransport messageTransport;
         private Object customLogHandler;
         private Boolean allowCreateProcess;
         private ProcessHandler processHandler;
-        private EnvironmentAccess environmentAcceess;
+        private EnvironmentAccess environmentAccess;
         private Map<String, String> environment;
 
         Builder(String... onlyLanguages) {
@@ -1033,7 +1033,7 @@ public final class Context implements AutoCloseable {
          */
         public Builder allowPolyglotAccess(PolyglotAccess accessPolicy) {
             Objects.requireNonNull(accessPolicy);
-            this.polylgotAccess = accessPolicy;
+            this.polyglotAccess = accessPolicy;
             return this;
         }
 
@@ -1271,7 +1271,7 @@ public final class Context implements AutoCloseable {
          */
         public Builder allowEnvironmentAccess(EnvironmentAccess accessPolicy) {
             Objects.requireNonNull(accessPolicy, "AccessPolicy must be non null.");
-            this.environmentAcceess = accessPolicy;
+            this.environmentAccess = accessPolicy;
             return this;
         }
 
@@ -1340,7 +1340,7 @@ public final class Context implements AutoCloseable {
                 hostAccess = this.allowAllAccess ? HostAccess.ALL : HostAccess.EXPLICIT;
             }
 
-            PolyglotAccess polyglotAccess = this.polylgotAccess;
+            PolyglotAccess polyglotAccess = this.polyglotAccess;
             if (polyglotAccess == null) {
                 polyglotAccess = this.allowAllAccess ? PolyglotAccess.ALL : PolyglotAccess.NONE;
             }
@@ -1358,8 +1358,8 @@ public final class Context implements AutoCloseable {
             }
 
             boolean createProcess = orAllAccess(allowCreateProcess);
-            if (environmentAcceess == null) {
-                environmentAcceess = this.allowAllAccess ? EnvironmentAccess.INHERIT : EnvironmentAccess.NONE;
+            if (environmentAccess == null) {
+                environmentAccess = this.allowAllAccess ? EnvironmentAccess.INHERIT : EnvironmentAccess.NONE;
             }
             if (!io && customFileSystem != null) {
                 throw new IllegalStateException("Cannot install custom FileSystem when IO is disabled.");
@@ -1390,7 +1390,7 @@ public final class Context implements AutoCloseable {
                 return engine.impl.createContext(null, null, null, hostClassLookupEnabled, hostAccess, polyglotAccess, nativeAccess, createThread,
                                 io, hostClassLoading, experimentalOptions,
                                 localHostLookupFilter, Collections.emptyMap(), arguments == null ? Collections.emptyMap() : arguments,
-                                onlyLanguages, customFileSystem, customLogHandler, createProcess, processHandler, environmentAcceess, environment);
+                                onlyLanguages, customFileSystem, customLogHandler, createProcess, processHandler, environmentAccess, environment);
             } else {
                 if (messageTransport != null) {
                     throw new IllegalStateException("Cannot use MessageTransport in a context that shares an Engine.");
@@ -1398,7 +1398,7 @@ public final class Context implements AutoCloseable {
                 return engine.impl.createContext(out, err, in, hostClassLookupEnabled, hostAccess, polyglotAccess, nativeAccess, createThread,
                                 io, hostClassLoading, experimentalOptions,
                                 localHostLookupFilter, options == null ? Collections.emptyMap() : options, arguments == null ? Collections.emptyMap() : arguments,
-                                onlyLanguages, customFileSystem, customLogHandler, createProcess, processHandler, environmentAcceess, environment);
+                                onlyLanguages, customFileSystem, customLogHandler, createProcess, processHandler, environmentAccess, environment);
             }
         }
 
