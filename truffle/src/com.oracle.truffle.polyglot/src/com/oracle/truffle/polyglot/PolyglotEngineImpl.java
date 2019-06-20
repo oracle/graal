@@ -113,6 +113,8 @@ final class PolyglotEngineImpl extends AbstractPolyglotImpl.AbstractEngineImpl i
     static final int HOST_LANGUAGE_INDEX = 0;
     static final String HOST_LANGUAGE_ID = "host";
 
+    static final String OPTION_GROUP_ENGINE = "engine";
+
     // also update list in LanguageRegistrationProcessor
     private static final Set<String> RESERVED_IDS = new HashSet<>(
                     Arrays.asList(HOST_LANGUAGE_ID, "graal", "truffle", "engine", "language", "instrument", "graalvm", "context", "polyglot", "compiler", "vm",
@@ -384,7 +386,7 @@ final class PolyglotEngineImpl extends AbstractPolyglotImpl.AbstractEngineImpl i
                 continue;
             }
 
-            if (group.equals(PolyglotImpl.OPTION_GROUP_ENGINE)) {
+            if (group.equals(OPTION_GROUP_ENGINE)) {
                 originalEngineOptions.put(key, value);
                 continue;
             }
@@ -402,7 +404,7 @@ final class PolyglotEngineImpl extends AbstractPolyglotImpl.AbstractEngineImpl i
      * given options.
      */
     boolean isEngineGroup(String group) {
-        return idToPublicInstrument.containsKey(group) || group.equals(PolyglotImpl.OPTION_GROUP_ENGINE);
+        return idToPublicInstrument.containsKey(group) || group.equals(OPTION_GROUP_ENGINE);
     }
 
     static String parseOptionGroup(String key) {

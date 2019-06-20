@@ -46,7 +46,7 @@ import org.graalvm.options.OptionType;
 
 import com.oracle.truffle.api.Option;
 
-@Option.Group(PolyglotImpl.OPTION_GROUP_ENGINE)
+@Option.Group(PolyglotEngineImpl.OPTION_GROUP_ENGINE)
 final class PolyglotEngineOptions {
     static final String OPTION_GROUP_LOG = "log";
     static final String PREINITIALIZE_CONTEXT_NAME = "PreinitializeContexts";

@@ -118,8 +118,6 @@ public final class PolyglotImpl extends AbstractPolyglotImpl {
 
     static final Object[] EMPTY_ARGS = new Object[0];
 
-    static final String OPTION_GROUP_ENGINE = "engine";
-
     @SuppressWarnings("serial") private static final HostException STACKOVERFLOW_ERROR = new HostException(new StackOverflowError() {
         @SuppressWarnings("sync-override")
         @Override
