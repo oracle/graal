@@ -1156,10 +1156,12 @@ final class PolyglotEngineImpl extends AbstractPolyglotImpl.AbstractEngineImpl i
             allowedLanguages = new HashSet<>(Arrays.asList(onlyLanguages));
         }
         final FileSystem fs;
-        if (allowHostIO) {
-            if (!ALLOW_IO) {
-                throw new IllegalArgumentException("Cannot allowIO() because the privilege is removed at image build time");
+        if (!ALLOW_IO) {
+            if (fileSystem == null) {
+                throw new IllegalArgumentException("A FileSystem must be provided when the allowIO() privilege is removed at image build time");
             }
+            fs = fileSystem;
+        } else if (allowHostIO) {
             fs = fileSystem != null ? fileSystem : FileSystems.newDefaultFileSystem();
         } else {
             fs = FileSystems.newNoIOFileSystem();
