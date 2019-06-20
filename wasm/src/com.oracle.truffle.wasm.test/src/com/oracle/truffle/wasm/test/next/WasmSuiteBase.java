@@ -99,7 +99,7 @@ public abstract class WasmSuiteBase extends WasmTestBase {
         Map<WasmTestCase, Throwable> errors = new LinkedHashMap<>();
         System.out.println("");
         System.out.println("--------------------------------------------------------------------------------");
-        System.out.println(String.format("Running: %s (%d tests)", suiteName(), testCases.size()));
+        System.out.println(String.format("Running: %s (%d %s)", suiteName(), testCases.size(), testCases.size() == 1 ? "test" : "tests"));
         System.out.println("--------------------------------------------------------------------------------");
         System.out.println("Using runtime: " + Truffle.getRuntime().toString());
         for (WasmTestCase testCase : testCases) {
