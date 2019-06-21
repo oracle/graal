@@ -788,24 +788,22 @@ public final class IsomorphicPackingPhase extends BasePhase<LowTierContext> {
 
 
                 // Link up firstBAN
-                {
-                    final VectorPrimitiveStamp vectorInputStamp = firstBAN.getX().stamp(view).unrestricted().asVector(nodes.size());
+                final VectorPrimitiveStamp vectorInputStamp = firstBAN.getX().stamp(view).unrestricted().asVector(nodes.size());
 
-                    final VectorPackNode packX = new VectorPackNode(vectorInputStamp, nodes.stream().map(BinaryNode::getX).collect(Collectors.toList()));
-                    final VectorPackNode packY = new VectorPackNode(vectorInputStamp, nodes.stream().map(BinaryNode::getY).collect(Collectors.toList()));
-                    final VectorExtractNode extractNode = new VectorExtractNode(firstBAN.stamp(view), firstBAN, 0);
+                final VectorPackNode packX = new VectorPackNode(vectorInputStamp, nodes.stream().map(BinaryNode::getX).collect(Collectors.toList()));
+                final VectorPackNode packY = new VectorPackNode(vectorInputStamp, nodes.stream().map(BinaryNode::getY).collect(Collectors.toList()));
+                final VectorExtractNode firstBANExtractNode = new VectorExtractNode(firstBAN.stamp(view), firstBAN, 0);
 
-                    first.replaceAtUsages(extractNode);
-                    first.graph().addOrUnique(extractNode);
+                first.replaceAtUsages(firstBANExtractNode);
+                first.graph().addOrUnique(firstBANExtractNode);
 
-                    firstBAN.setStamp(vectorInputStamp);
+                firstBAN.setStamp(vectorInputStamp);
 
-                    firstBAN.setX(packX);
-                    firstBAN.setY(packY);
+                firstBAN.setX(packX);
+                firstBAN.setY(packY);
 
-                    first.graph().addOrUnique(packX);
-                    first.graph().addOrUnique(packY);
-                }
+                first.graph().addOrUnique(packX);
+                first.graph().addOrUnique(packY);
 
                 // Link up the rest
                 for (int i = 1; i < nodes.size(); i++) {
