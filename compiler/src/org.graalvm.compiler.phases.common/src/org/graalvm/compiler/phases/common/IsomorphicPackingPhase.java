@@ -177,9 +177,7 @@ public final class IsomorphicPackingPhase extends BasePhase<LowTierContext> {
 
             // Ensure that both fixed access nodes are accessing the same array
             if (left instanceof FixedAccessNode &&
-                            ((FixedAccessNode) left).getGuard() != null &&
-                            ((FixedAccessNode) right).getGuard() != null &&
-                            !((FixedAccessNode) left).getGuard().equals(((FixedAccessNode) right).getGuard()))
+                            !((FixedAccessNode) left).getAddress().getBase().equals(((FixedAccessNode) right).getAddress().getBase()))
                 return false;
 
             return true;
