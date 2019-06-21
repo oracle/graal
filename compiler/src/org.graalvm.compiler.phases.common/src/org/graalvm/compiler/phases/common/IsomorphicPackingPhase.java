@@ -40,10 +40,6 @@ import java.util.stream.StreamSupport;
 
 import org.graalvm.collections.Pair;
 import org.graalvm.compiler.core.common.cfg.BlockMap;
-import org.graalvm.compiler.core.common.type.FloatStamp;
-import org.graalvm.compiler.core.common.type.IntegerStamp;
-import org.graalvm.compiler.core.common.type.PrimitiveStamp;
-import org.graalvm.compiler.core.common.type.Stamp;
 import org.graalvm.compiler.core.common.type.VectorPrimitiveStamp;
 import org.graalvm.compiler.debug.GraalError;
 import org.graalvm.compiler.graph.Node;
@@ -85,11 +81,13 @@ import jdk.vm.ci.meta.JavaKind;
 public final class IsomorphicPackingPhase extends BasePhase<LowTierContext> {
 
     private static final int ALIGNMENT_BOTTOM = -666;
-    private static final Set<Class<? extends Node>> supportedNodes = new HashSet<>(Stream.of(
+    private static final Set<Class<? extends Node>> supportedNodes =
+            new HashSet<>(Stream.of(
                     WriteNode.class,
                     ReadNode.class,
                     AddNode.class,
-                    SubNode.class).collect(Collectors.toSet()));
+                    SubNode.class
+            ).collect(Collectors.toSet()));
 
     // Class to encapsulate state used by functions in the algorithm
     private static final class Instance {
