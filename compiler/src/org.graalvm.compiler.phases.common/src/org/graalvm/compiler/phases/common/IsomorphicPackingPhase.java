@@ -175,8 +175,8 @@ public final class IsomorphicPackingPhase extends BasePhase<LowTierContext> {
         }
 
         /**
-         * <<<<<<< b30ed5b8bdb5b880c0c734146030b0b16b2eecb2 Predicate to determine whether a
-         * specific node is supported for vectorization, based on its type.
+         * Predicate to determine whether a specific node is supported for
+         * vectorization, based on its type.
          *
          * @param node Vectorization candidate.
          * @return Whether this is a supported node.
@@ -186,13 +186,8 @@ public final class IsomorphicPackingPhase extends BasePhase<LowTierContext> {
         }
 
         /**
-         * Check whether the left and right node of a potential pack are isomorphic. "Isomorphic
-         * statements are those that contain the same operations in the same order." ======= Check
-         * whether the left and right node of a potential pack are isomorphic. "Isomorphic
-         * statements are those that contain the same operations in the same order."
-         *
-         * >>>>>>> Added VectorDescription, a new class to provide backend-specific vectorization
-         * info.
+         * Check whether the left and right node of a potential pack are isomorphic.
+         * "Isomorphic statements are those that contain the same operations in the same order."
          *
          * @param left Left node of the potential pack
          * @param right Right node of the potential pack
