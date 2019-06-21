@@ -1,9 +1,42 @@
+/*
+ * Copyright (c) 2019, Oracle and/or its affiliates. All rights reserved.
+ * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
+ *
+ * This code is free software; you can redistribute it and/or modify it
+ * under the terms of the GNU General Public License version 2 only, as
+ * published by the Free Software Foundation.  Oracle designates this
+ * particular file as subject to the "Classpath" exception as provided
+ * by Oracle in the LICENSE file that accompanied this code.
+ *
+ * This code is distributed in the hope that it will be useful, but WITHOUT
+ * ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or
+ * FITNESS FOR A PARTICULAR PURPOSE.  See the GNU General Public License
+ * version 2 for more details (a copy is included in the LICENSE file that
+ * accompanied this code).
+ *
+ * You should have received a copy of the GNU General Public License version
+ * 2 along with this work; if not, write to the Free Software Foundation,
+ * Inc., 51 Franklin St, Fifth Floor, Boston, MA 02110-1301 USA.
+ *
+ * Please contact Oracle, 500 Oracle Parkway, Redwood Shores, CA 94065 USA
+ * or visit www.oracle.com if you need additional information or have any
+ * questions.
+ */
 package org.graalvm.compiler.phases.common;
 
-import jdk.vm.ci.amd64.AMD64;
-import jdk.vm.ci.amd64.AMD64.CPUFeature;
-import jdk.vm.ci.code.TargetDescription;
-import jdk.vm.ci.meta.JavaKind;
+import java.util.ArrayDeque;
+import java.util.ArrayList;
+import java.util.Deque;
+import java.util.HashMap;
+import java.util.HashSet;
+import java.util.Iterator;
+import java.util.List;
+import java.util.Map;
+import java.util.Optional;
+import java.util.Set;
+import java.util.stream.Collectors;
+import java.util.stream.Stream;
+import java.util.stream.StreamSupport;
 
 import org.graalvm.collections.Pair;
 import org.graalvm.compiler.core.common.cfg.BlockMap;
@@ -15,31 +48,39 @@ import org.graalvm.compiler.core.common.type.VectorPrimitiveStamp;
 import org.graalvm.compiler.debug.GraalError;
 import org.graalvm.compiler.graph.Node;
 import org.graalvm.compiler.graph.NodeMap;
-import org.graalvm.compiler.nodes.*;
-import org.graalvm.compiler.nodes.VectorSupport.*;
+import org.graalvm.compiler.nodes.FixedNode;
+import org.graalvm.compiler.nodes.FixedWithNextNode;
+import org.graalvm.compiler.nodes.NodeView;
+import org.graalvm.compiler.nodes.StructuredGraph;
+import org.graalvm.compiler.nodes.ValueNode;
+import org.graalvm.compiler.nodes.VectorSupport.VectorExtractNode;
+import org.graalvm.compiler.nodes.VectorSupport.VectorPackNode;
 import org.graalvm.compiler.nodes.calc.AddNode;
 import org.graalvm.compiler.nodes.calc.BinaryArithmeticNode;
 import org.graalvm.compiler.nodes.calc.BinaryNode;
 import org.graalvm.compiler.nodes.calc.SubNode;
 import org.graalvm.compiler.nodes.cfg.Block;
 import org.graalvm.compiler.nodes.cfg.ControlFlowGraph;
-import org.graalvm.compiler.nodes.memory.*;
+import org.graalvm.compiler.nodes.memory.AbstractWriteNode;
+import org.graalvm.compiler.nodes.memory.FixedAccessNode;
+import org.graalvm.compiler.nodes.memory.LIRLowerableAccess;
+import org.graalvm.compiler.nodes.memory.ReadNode;
+import org.graalvm.compiler.nodes.memory.VectorReadNode;
+import org.graalvm.compiler.nodes.memory.VectorWriteNode;
+import org.graalvm.compiler.nodes.memory.WriteNode;
 import org.graalvm.compiler.nodes.memory.address.AddressNode;
 import org.graalvm.compiler.phases.BasePhase;
 import org.graalvm.compiler.phases.common.util.Pack;
 import org.graalvm.compiler.phases.schedule.SchedulePhase;
 import org.graalvm.compiler.phases.tiers.LowTierContext;
 
-import java.util.*;
-import java.util.stream.Collectors;
-import java.util.stream.Stream;
-import java.util.stream.StreamSupport;
+import jdk.vm.ci.meta.JavaKind;
 
 /**
- * A phase to identify isomorphisms within basic blocks MIT (basis)
- * http://groups.csail.mit.edu/cag/slp/SLP-PLDI-2000.pdf GCC
- * https://ols.fedoraproject.org/GCC/Reprints-2007/rosen-reprint.pdf INTEL
- * https://people.apache.org/~xli/papers/npc10_java_vectorization.pdf
+ * A phase to identify isomorphisms within basic blocks.
+ * MIT (basis)  http://groups.csail.mit.edu/cag/slp/SLP-PLDI-2000.pdf
+ * GCC          https://ols.fedoraproject.org/GCC/Reprints-2007/rosen-reprint.pdf
+ * INTEL        https://people.apache.org/~xli/papers/npc10_java_vectorization.pdf
  */
 public final class IsomorphicPackingPhase extends BasePhase<LowTierContext> {
 
@@ -51,56 +92,68 @@ public final class IsomorphicPackingPhase extends BasePhase<LowTierContext> {
                     SubNode.class).collect(Collectors.toSet()));
 
     // Class to encapsulate state used by functions in the algorithm
-    private static class Instance {
+    private static final class Instance {
+        private final LowTierContext context;
         private final NodeMap<Block> nodeToBlockMap;
         private final BlockMap<List<Node>> blockToNodesMap;
         private final Block currentBlock;
-        private final Map<Node, Integer> alignmentMap = new HashMap<>();
         private final NodeView view;
-        private final LowTierContext context;
+
+        private final Map<Node, Integer> alignmentMap = new HashMap<>();
 
         private Instance(LowTierContext context, NodeMap<Block> nodeToBlockMap, BlockMap<List<Node>> blockToNodesMap, Block currentBlock, NodeView view) {
+            this.context = context;
             this.nodeToBlockMap = nodeToBlockMap;
             this.blockToNodesMap = blockToNodesMap;
             this.currentBlock = currentBlock;
-            this.context = context;
             this.view = view;
         }
 
         // Utilities
 
         /**
-         * Check whether the node is not in the current basic block
-         *
-         * @param node Node to check the block membership of
-         * @return True if the provided node is not in the current basic block
+         * Check whether the node is not in the current basic block.
+         * @param node Node to check the block membership of.
+         * @return True if the provided node is not in the current basic block.
          */
         private boolean notInBlock(Node node) {
             return nodeToBlockMap.get(node) != currentBlock;
         }
 
-        private int data_size(Node node) {
-            if (node instanceof LIRLowerableAccess)
-                return data_size((LIRLowerableAccess) node);
+        /**
+         * Get the width of a vector, measured in the number of underlying elements.
+         * Returns either the loop stride or max vector size (for particular node type).
+         * Loop stride depends on unroll factor
+         * TODO: don't hardcode vector width
+         */
+        private int vectorWidth(Node node) {
+            return 4;
+        }
 
-            if (node instanceof ValueNode)
-                return data_size((ValueNode) node);
+        private int dataSize(Node node) {
+            if (node instanceof LIRLowerableAccess) {
+                return dataSize((LIRLowerableAccess) node);
+            }
+
+            if (node instanceof ValueNode) {
+                return dataSize((ValueNode) node);
+            }
 
             return -1;
         }
 
-        private int data_size(ValueNode node) {
+        private int dataSize(ValueNode node) {
             return node.stamp(view).getStackKind().getByteCount();
         }
 
-        private int data_size(LIRLowerableAccess node) {
+        private int dataSize(LIRLowerableAccess node) {
             return node.getAccessStamp().getStackKind().getByteCount();
         }
 
         /**
-         * Get the alignment of a vector memory reference
+         * Get the alignment of a vector memory reference.
          */
-        private <T extends FixedAccessNode & LIRLowerableAccess> int memoryAlignment(T access, int iv_adjust) {
+        private <T extends FixedAccessNode & LIRLowerableAccess> int memoryAlignment(T access, int ivAdjust) {
             final int byteCount = access.getAccessStamp().getStackKind().getByteCount();
             // TODO: velt may be different to type at address
             final int vectorElementWidthInBytes = byteCount * context.getTargetProvider().getVectorDescription().maxVectorWidth(access.getAccessStamp());
@@ -110,10 +163,10 @@ public final class IsomorphicPackingPhase extends BasePhase<LowTierContext> {
                 return ALIGNMENT_BOTTOM;
             }
 
-            final int offset = (int) access.getAddress().getMaxConstantDisplacement() + iv_adjust * byteCount;
-            final int offset_remainder = offset % vectorElementWidthInBytes;
+            final int offset = (int) access.getAddress().getMaxConstantDisplacement() + ivAdjust * byteCount;
+            final int offsetRemainder = offset % vectorElementWidthInBytes;
 
-            return offset_remainder >= 0 ? offset_remainder : offset_remainder + vectorElementWidthInBytes;
+            return offsetRemainder >= 0 ? offsetRemainder : offsetRemainder + vectorElementWidthInBytes;
         }
 
         private void setAlignment(Node s1, Node s2, int align) {
@@ -121,7 +174,7 @@ public final class IsomorphicPackingPhase extends BasePhase<LowTierContext> {
             if (align == ALIGNMENT_BOTTOM) {
                 setAlignment(s2, align);
             } else {
-                setAlignment(s2, align + data_size(s1));
+                setAlignment(s2, align + dataSize(s1));
             }
         }
 
@@ -160,25 +213,30 @@ public final class IsomorphicPackingPhase extends BasePhase<LowTierContext> {
          */
         private boolean isomorphic(Node left, Node right) {
             // Trivial case, isomorphic if the same
-            if (left == right || left.equals(right))
+            if (left == right || left.equals(right)) {
                 return true;
+            }
 
             // Are left & right the same action?
-            if (!left.getNodeClass().equals(right.getNodeClass()))
+            if (!left.getNodeClass().equals(right.getNodeClass())) {
                 return false; // TODO: support subclasses
+            }
 
             // Is the input count the same? (accounts for inputs that are null)
-            if (left.inputs().count() != right.inputs().count())
+            if (left.inputs().count() != right.inputs().count()) {
                 return false;
+            }
 
             // Conservatively bail if we have a FAN and non-FAN
-            if (left instanceof FixedAccessNode != right instanceof FixedAccessNode)
+            if (left instanceof FixedAccessNode != right instanceof FixedAccessNode) {
                 return false;
+            }
 
             // Ensure that both fixed access nodes are accessing the same array
             if (left instanceof FixedAccessNode &&
-                            !((FixedAccessNode) left).getAddress().getBase().equals(((FixedAccessNode) right).getAddress().getBase()))
+                    !((FixedAccessNode) left).getAddress().getBase().equals(((FixedAccessNode) right).getAddress().getBase())) {
                 return false;
+            }
 
             return true;
         }
@@ -200,8 +258,9 @@ public final class IsomorphicPackingPhase extends BasePhase<LowTierContext> {
         }
 
         private boolean hasNoPath(Node shallow, Node deep, int iterationDepth) {
-            if (iterationDepth >= 1000)
+            if (iterationDepth >= 1000) {
                 return false; // Stop infinite/deep recursion
+            }
 
             // TODO: pre-compute depth information
             // TODO: calcluate depth information to avoid recursing too far, doing unnecessary
@@ -209,14 +268,17 @@ public final class IsomorphicPackingPhase extends BasePhase<LowTierContext> {
             // TODO: verify that at this stage it's even possible to get dependency cycles
 
             for (Node pred : deep.inputs()) {
-                if (notInBlock(pred)) // ensure that the predecessor is in the block
+                if (notInBlock(pred)) { // ensure that the predecessor is in the block
                     continue;
+                }
 
-                if (shallow == pred)
+                if (shallow == pred) {
                     return false;
+                }
 
-                if (/* pred is below shallow && */ !hasNoPath(shallow, pred, iterationDepth + 1))
+                if (/* pred is below shallow && */ !hasNoPath(shallow, pred, iterationDepth + 1)) {
                     return false;
+                }
             }
 
             return true;
@@ -235,8 +297,9 @@ public final class IsomorphicPackingPhase extends BasePhase<LowTierContext> {
             final int leftDepth = findDepth(left);
             final int rightDepth = findDepth(right);
 
-            if (leftDepth == rightDepth)
+            if (leftDepth == rightDepth) {
                 return !left.equals(right);
+            }
 
             int shallowDepth = Math.min(leftDepth, rightDepth);
             Node deep = leftDepth == shallowDepth ? right : left;
@@ -285,55 +348,56 @@ public final class IsomorphicPackingPhase extends BasePhase<LowTierContext> {
          * @return Boolean indicating whether s1 is immediately before s2 in memory
          */
         private boolean adjacent(FixedAccessNode s1, FixedAccessNode s2, JavaKind s1k, JavaKind s2k) {
-            final AddressNode s1a = s1.getAddress(), s2a = s2.getAddress();
+            final AddressNode s1a = s1.getAddress();
+            final AddressNode s2a = s2.getAddress();
 
             // Only use superword on primitives
-            if (!s1k.isPrimitive() || !s2k.isPrimitive())
+            if (!s1k.isPrimitive() || !s2k.isPrimitive()) {
                 return false;
+            }
 
             // Only use superword on nodes in the current block
-            if (notInBlock(s1) || notInBlock(s2))
+            if (notInBlock(s1) || notInBlock(s2)) {
                 return false;
+            }
 
             // Only use superword on types that are comparable
-            // TODO: Evaluate whether graph guarantees that pointers for same collection have same
-            // base
-            if (!s1a.getBase().equals(s2a.getBase()))
+            // TODO: Evaluate whether graph guarantees that pointers for same collection have same base
+            if (!s1a.getBase().equals(s2a.getBase())) {
                 return false;
+            }
 
             return s2a.getMaxConstantDisplacement() - s1a.getMaxConstantDisplacement() == s1k.getByteCount();
         }
 
-        private boolean stmts_can_pack(Set<Pair<Node, Node>> packSet, Node s1, Node s2, int align) {
-            // TODO: Also make sure that the platform supports vectors of the primitive type of this
-            // candidate pack
+        private boolean stmtsCanPack(Set<Pair<Node, Node>> packSet, Node s1, Node s2, int align) {
+            // TODO: Also make sure that the platform supports vectors of the primitive type of this candidate pack
 
             if (supported(s1) && supported(s2) &&
-                            isomorphic(s1, s2) && independent(s1, s2) &&
-                            packSet.stream().noneMatch(p -> p.getLeft().equals(s1) || p.getRight().equals(s2))) {
-                final Optional<Integer> align_s1 = getAlignment(s1);
-                final Optional<Integer> align_s2 = getAlignment(s2);
+                isomorphic(s1, s2) && independent(s1, s2) &&
+                packSet.stream().noneMatch(p -> p.getLeft().equals(s1) || p.getRight().equals(s2))) {
+                final Optional<Integer> alignS1 = getAlignment(s1);
+                final Optional<Integer> alignS2 = getAlignment(s2);
 
-                final int s2_data_size = data_size(s2);
+                final int s2DataSize = dataSize(s2);
                 boolean offset = false;
-                if (s2_data_size >= 0) {
-                    offset = align_s2.map(v -> v == s2_data_size + align).orElse(false);
+                if (s2DataSize >= 0) {
+                    offset = alignS2.map(v -> v == s2DataSize + align).orElse(false);
                 }
 
-                return (!align_s1.isPresent() || align_s1.get().equals(align)) &&
-                                (!align_s2.isPresent() || offset);
+                return (!alignS1.isPresent() || alignS1.get().equals(align)) &&
+                        (!alignS2.isPresent() || offset);
             }
 
             return false;
         }
 
         /**
-         * Extend the packset by visiting operand definitions of nodes inside the provided pack
-         *
-         * @param packSet Pack set
-         * @param pack The pack to use for operand definitions
+         * Extend the packset by visiting operand definitions of nodes inside the provided pack.
+         * @param packSet Pack set.
+         * @param pack The pack to use for operand definitions.
          */
-        private boolean follow_use_defs(Set<Pair<Node, Node>> packSet, Pair<Node, Node> pack) {
+        private boolean followUseDefs(Set<Pair<Node, Node>> packSet, Pair<Node, Node> pack) {
             final Node left = pack.getLeft();
             final Node right = pack.getRight();
             final Optional<Integer> align = getAlignment(left);
@@ -350,20 +414,21 @@ public final class IsomorphicPackingPhase extends BasePhase<LowTierContext> {
                     final Node leftInput = leftInputIt.next();
                     final Node rightInput = rightInputIt.next();
 
-                    // Check block membership, bail if nodes not in block (prevent analysis beyond
-                    // block)
-                    if (notInBlock(leftInput) || notInBlock(rightInput))
+                    // Check block membership, bail if nodes not in block (prevent analysis beyond block)
+                    if (notInBlock(leftInput) || notInBlock(rightInput)) {
                         continue outer;
+                    }
 
                     // If the statements cannot be packed, bail
-                    if (!align.isPresent() || !stmts_can_pack(packSet, leftInput, rightInput, align.get()))
+                    if (!align.isPresent() || !stmtsCanPack(packSet, leftInput, rightInput, align.get())) {
                         continue outer;
+                    }
 
                     // If there are no savings to be gained, bail
-                    // NB: here this is basically useless, as <s>our</s> Oracle's formula does not
-                    // allow for negative savings
-                    if (est_savings(packSet, leftInput, rightInput) < 0)
+                    // NB: here this is basically useless, as <s>our</s> the C2 formula does not allow for negative savings
+                    if (estSavings(packSet, leftInput, rightInput) < 0) {
                         continue outer;
+                    }
 
                     changed |= packSet.add(Pair.create(leftInput, rightInput));
                     setAlignment(left, right, align.get());
@@ -374,12 +439,11 @@ public final class IsomorphicPackingPhase extends BasePhase<LowTierContext> {
         }
 
         /**
-         * Extend the packset by visiting uses of nodes in the provided pack
-         *
-         * @param packSet Pack set
-         * @param pack The pack to use for nodes to find usages of
+         * Extend the packset by visiting uses of nodes in the provided pack.
+         * @param packSet Pack set.
+         * @param pack The pack to use for nodes to find usages of.
          */
-        private boolean follow_def_uses(Set<Pair<Node, Node>> packSet, Pair<Node, Node> pack) {
+        private boolean followDefUses(Set<Pair<Node, Node>> packSet, Pair<Node, Node> pack) {
             final Node left = pack.getLeft();
             final Node right = pack.getRight();
             final Optional<Integer> align = getAlignment(left);
@@ -390,16 +454,18 @@ public final class IsomorphicPackingPhase extends BasePhase<LowTierContext> {
             // TODO: bail if left is store (why?)
 
             for (Node leftUsage : left.usages()) {
-                if (notInBlock(left))
+                if (notInBlock(left)) {
                     continue;
+                }
 
                 for (Node rightUsage : right.usages()) {
-                    if (leftUsage == rightUsage || notInBlock(right))
+                    if (leftUsage == rightUsage || notInBlock(right)) {
                         continue;
+                    }
 
                     // TODO: Rather than adding the first, add the best
-                    if (!align.isPresent() || stmts_can_pack(packSet, leftUsage, rightUsage, align.get())) {
-                        final int currentSavings = est_savings(packSet, leftUsage, rightUsage);
+                    if (!align.isPresent() || stmtsCanPack(packSet, leftUsage, rightUsage, align.get())) {
+                        final int currentSavings = estSavings(packSet, leftUsage, rightUsage);
                         if (currentSavings > savings) {
                             savings = currentSavings;
                             bestPack = Pair.create(leftUsage, rightUsage);
@@ -430,7 +496,7 @@ public final class IsomorphicPackingPhase extends BasePhase<LowTierContext> {
          * @param packSet PackSet, for membership checks
          * @return Savings in an arbitrary unit and can be negative.
          */
-        private int est_savings(Set<Pair<Node, Node>> packSet, Node s1, Node s2) {
+        private int estSavings(Set<Pair<Node, Node>> packSet, Node s1, Node s2) {
             // Savings originating from inputs
             int saveIn = 1; // Save 1 instruction as executing 2 in parallel.
 
@@ -440,8 +506,9 @@ public final class IsomorphicPackingPhase extends BasePhase<LowTierContext> {
                     final Node leftInput = leftInputIt.next();
                     final Node rightInput = rightInputIt.next();
 
-                    if (leftInput == rightInput)
+                    if (leftInput == rightInput) {
                         continue outer;
+                    }
 
                     if (adjacent(leftInput, rightInput)) {
                         // Inputs are adjacent in memory, this is good.
@@ -460,12 +527,14 @@ public final class IsomorphicPackingPhase extends BasePhase<LowTierContext> {
             int saveUse = 0;
             for (Node s1Usage : s1.usages()) {
                 for (Pair<Node, Node> pack : packSet) {
-                    if (pack.getLeft() != s1Usage)
+                    if (pack.getLeft() != s1Usage) {
                         continue;
+                    }
 
                     for (Node s2Usage : s2.usages()) {
-                        if (pack.getRight() != s2Usage)
+                        if (pack.getRight() != s2Usage) {
                             continue;
+                        }
 
                         ct++;
 
@@ -477,10 +546,12 @@ public final class IsomorphicPackingPhase extends BasePhase<LowTierContext> {
             }
 
             // idk, c2 does this though
-            if (ct < s1.getUsageCount())
+            if (ct < s1.getUsageCount()) {
                 saveUse += 1;
-            if (ct < s2.getUsageCount())
+            }
+            if (ct < s2.getUsageCount()) {
                 saveUse += 1;
+            }
 
             // TODO: investigate this formula - can't have negative savings
             return Math.max(saveIn, saveUse);
@@ -489,17 +560,18 @@ public final class IsomorphicPackingPhase extends BasePhase<LowTierContext> {
         // Core
 
         /**
-         * Create the initial seed packSet of operations that are adjacent TODO: CHECK THAT VECTOR
-         * ELEMENT TYPE IS THE SAME
-         *
-         * @param packSet PackSet to populate
+         * Create the initial seed packSet of operations that are adjacent.
+         * TODO: CHECK THAT VECTOR ELEMENT TYPE IS THE SAME
+         * @param packSet PackSet to populate.
          */
-        private void find_adj_refs(Set<Pair<Node, Node>> packSet) {
+        private void findAdjRefs(Set<Pair<Node, Node>> packSet) {
             // Create initial seed set containing memory operations
             List<FixedAccessNode> memoryNodes = // Candidate list of memory nodes
-                            StreamSupport.stream(currentBlock.getNodes().spliterator(), false).filter(x -> x instanceof FixedAccessNode && x instanceof LIRLowerableAccess).map(
-                                            x -> (FixedAccessNode & LIRLowerableAccess) x).filter(
-                                                            x -> x.getAccessStamp().getStackKind().isPrimitive() && memoryAlignment(x, 0) != ALIGNMENT_BOTTOM).collect(Collectors.toList());
+                    StreamSupport.stream(currentBlock.getNodes().spliterator(), false).
+                            filter(x -> x instanceof FixedAccessNode && x instanceof LIRLowerableAccess).
+                            map(x -> (FixedAccessNode & LIRLowerableAccess) x).
+                            filter(x -> x.getAccessStamp().getStackKind().isPrimitive() && memoryAlignment(x, 0) != ALIGNMENT_BOTTOM).
+                            collect(Collectors.toList());
 
             // TODO: Align relative to best reference rather than setting alignment for all
             for (FixedAccessNode node : memoryNodes) {
@@ -509,8 +581,8 @@ public final class IsomorphicPackingPhase extends BasePhase<LowTierContext> {
             for (FixedAccessNode s1 : memoryNodes) {
                 for (FixedAccessNode s2 : memoryNodes) {
                     if (adjacent(s1, s2)) {
-                        final Optional<Integer> align_s1 = getAlignment(s1);
-                        if (align_s1.isPresent() && stmts_can_pack(packSet, s1, s2, align_s1.get())) {
+                        final Optional<Integer> alignS1 = getAlignment(s1);
+                        if (alignS1.isPresent() && stmtsCanPack(packSet, s1, s2, alignS1.get())) {
                             packSet.add(Pair.create(s1, s2));
                         }
                     }
@@ -519,12 +591,10 @@ public final class IsomorphicPackingPhase extends BasePhase<LowTierContext> {
         }
 
         /**
-         * Extend the packset by following use->def and def->use links from pack members until the
-         * set does not change
-         *
-         * @param packSet PackSet to populate
+         * Extend the packset by following use->def and def->use links from pack members until the set does not change.
+         * @param packSet PackSet to populate.
          */
-        private void extend_packlist(Set<Pair<Node, Node>> packSet) {
+        private void extendPacklist(Set<Pair<Node, Node>> packSet) {
             Set<Pair<Node, Node>> iterationPackSet;
 
             boolean changed;
@@ -533,14 +603,14 @@ public final class IsomorphicPackingPhase extends BasePhase<LowTierContext> {
                 iterationPackSet = new HashSet<>(packSet);
 
                 for (Pair<Node, Node> pack : iterationPackSet) {
-                    changed |= follow_use_defs(packSet, pack);
-                    changed |= follow_def_uses(packSet, pack);
+                    changed |= followUseDefs(packSet, pack);
+                    changed |= followDefUses(packSet, pack);
                 }
             } while (changed);
         }
 
         // Combine packs where right = left
-        private void combine_packs(Set<Pair<Node, Node>> packSet, Set<Pack<Node>> combinedPackSet) {
+        private void combinePacks(Set<Pair<Node, Node>> packSet, Set<Pack<Node>> combinedPackSet) {
             combinedPackSet.addAll(packSet.stream().map(Pack::create).collect(Collectors.toList()));
             packSet.clear();
 
@@ -552,12 +622,15 @@ public final class IsomorphicPackingPhase extends BasePhase<LowTierContext> {
                 Deque<Pack<Node>> add = new ArrayDeque<>();
 
                 for (Pack<Node> leftPack : combinedPackSet) {
-                    if (remove.contains(leftPack))
+                    if (remove.contains(leftPack)) {
                         continue;
+                    }
 
                     for (Pack<Node> rightPack : combinedPackSet) {
-                        if (remove.contains(leftPack) || remove.contains(rightPack))
+                        if (remove.contains(leftPack) || remove.contains(rightPack)) {
                             continue;
+                        }
+
 
                         if (leftPack != rightPack && leftPack.getLast().equals(rightPack.getFirst())) {
                             remove.push(leftPack);
@@ -578,15 +651,18 @@ public final class IsomorphicPackingPhase extends BasePhase<LowTierContext> {
          * Have all of the dependencies of node been scheduled? Filters inputs, removing blocks that
          * are not in the current block as well as Begin/End/Return.
          */
-        private boolean deps_scheduled(Node node, List<Node> scheduled, boolean considerControlFlow) {
-            return StreamSupport.stream(node.inputs().spliterator(), false).filter(n -> nodeToBlockMap.get(n) == currentBlock).allMatch(scheduled::contains) &&
-                            // AND have all the control flow dependencies been scheduled? (only if
-                            // considering CF)
-                            (!considerControlFlow ||
-                                            StreamSupport.stream(node.cfgPredecessors().spliterator(), false).filter(n -> nodeToBlockMap.get(n) == currentBlock).allMatch(scheduled::contains));
+        private boolean depsScheduled(Node node, List<Node> scheduled, boolean considerControlFlow) {
+            return StreamSupport.stream(node.inputs().spliterator(), false).
+                    filter(n -> nodeToBlockMap.get(n) == currentBlock).
+                    allMatch(scheduled::contains) &&
+                    // AND have all the control flow dependencies been scheduled? (only if considering CF)
+                    (!considerControlFlow || StreamSupport.stream(node.cfgPredecessors().spliterator(), false).
+                            filter(n -> nodeToBlockMap.get(n) == currentBlock).
+                            allMatch(scheduled::contains)
+                    );
         }
 
-        private Pack<Node> earliest_unscheduled(List<Node> unscheduled, Map<Node, Pack<Node>> nodeToPackMap) {
+        private Pack<Node> earliestUnscheduled(List<Node> unscheduled, Map<Node, Pack<Node>> nodeToPackMap) {
             for (Node node : unscheduled) {
                 if (nodeToPackMap.containsKey(node)) {
                     return nodeToPackMap.get(node);
@@ -601,8 +677,9 @@ public final class IsomorphicPackingPhase extends BasePhase<LowTierContext> {
             final Deque<FixedNode> lastFixed = new ArrayDeque<>();
 
             // Populate a nodeToPackMap
-            final Map<Node, Pack<Node>> nodeToPackMap = packSet.stream().flatMap(pack -> pack.getElements().stream().map(node -> Pair.create(node, pack))).collect(
-                            Collectors.toMap(Pair::getLeft, Pair::getRight));
+            final Map<Node, Pack<Node>> nodeToPackMap = packSet.stream().
+                    flatMap(pack -> pack.getElements().stream().map(node -> Pair.create(node, pack))).
+                    collect(Collectors.toMap(Pair::getLeft, Pair::getRight));
 
             final List<Runnable> deferred = new ArrayList<>();
 
@@ -617,14 +694,14 @@ public final class IsomorphicPackingPhase extends BasePhase<LowTierContext> {
                         // Use control flow of earliest node in chain
                         final Node firstInCFPack = unscheduled.stream().filter(x -> pack.getElements().contains(x)).findFirst().get();
 
-                        if (pack.getElements().stream().allMatch(n -> deps_scheduled(n, scheduled, n == firstInCFPack))) {
+                        if (pack.getElements().stream().allMatch(n -> depsScheduled(n, scheduled, n == firstInCFPack))) {
                             // Remove statements from unscheduled
                             scheduled.addAll(pack.getElements());
                             unscheduled.removeAll(pack.getElements());
                             deferred.add(() -> schedulePack(pack, lastFixed));
                             continue outer;
                         }
-                    } else if (deps_scheduled(node, scheduled, true)) {
+                    } else if (depsScheduled(node, scheduled, true)) {
                         // Remove statement from unscheduled and schedule
                         scheduled.add(node);
                         unscheduled.remove(node);
@@ -635,7 +712,7 @@ public final class IsomorphicPackingPhase extends BasePhase<LowTierContext> {
 
                 // We only reach here if there is a grouped statement dependency violation.
                 // These are broken by removing one of the packs.
-                Pack<Node> packToRemove = earliest_unscheduled(unscheduled, nodeToPackMap);
+                Pack<Node> packToRemove = earliestUnscheduled(unscheduled, nodeToPackMap);
                 assert packToRemove != null : "there no are unscheduled statements in packs";
                 for (Node packNode : packToRemove.getElements()) {
                     nodeToPackMap.remove(packNode); // Remove all references for these statements to
@@ -705,7 +782,10 @@ public final class IsomorphicPackingPhase extends BasePhase<LowTierContext> {
                 final BinaryArithmeticNode<?> firstBAN = (BinaryArithmeticNode<?>) first;
                 // firstBAN can also be repurposed to be the vector op node
 
-                final List<BinaryArithmeticNode<?>> nodes = pack.getElements().stream().map(x -> (BinaryArithmeticNode<?>) x).collect(Collectors.toList());
+                final List<BinaryArithmeticNode<?>> nodes = pack.getElements().stream().
+                        map(x -> (BinaryArithmeticNode<?>) x).
+                        collect(Collectors.toList());
+
 
                 // Link up firstBAN
                 {
@@ -752,16 +832,16 @@ public final class IsomorphicPackingPhase extends BasePhase<LowTierContext> {
         }
 
         // Main
-        void SLP_extract() {
+        void slpExtract() {
             // TODO: don't operate on blocks that contain changes in control flow
             final Set<Pair<Node, Node>> packSet = new HashSet<>();
             final Set<Pack<Node>> combinedPackSet = new HashSet<>();
 
-            find_adj_refs(packSet);
-            extend_packlist(packSet);
+            findAdjRefs(packSet);
+            extendPacklist(packSet);
 
             // after this it's not a packset anymore
-            combine_packs(packSet, combinedPackSet);
+            combinePacks(packSet, combinedPackSet);
 
             schedule(new ArrayList<>(blockToNodesMap.get(currentBlock)), combinedPackSet);
         }
@@ -786,7 +866,7 @@ public final class IsomorphicPackingPhase extends BasePhase<LowTierContext> {
         schedulePhase.apply(graph);
         ControlFlowGraph cfg = graph.getLastSchedule().getCFG();
         for (Block block : cfg.reversePostOrder()) {
-            new Instance(context, graph.getLastSchedule().getNodeToBlockMap(), graph.getLastSchedule().getBlockToNodesMap(), block, view).SLP_extract();
+            new Instance(context, graph.getLastSchedule().getNodeToBlockMap(), graph.getLastSchedule().getBlockToNodesMap(), block, view).slpExtract();
         }
     }
 }

@@ -342,7 +342,7 @@ public interface LIRGeneratorTool extends DiagnosticLIRGeneratorTool, ValueKindF
     default Value emitReadReturnAddress(Stamp wordStamp, int returnAddressSize) {
         return emitMove(StackSlot.get(getLIRKind(wordStamp), -returnAddressSize, true));
     }
-    
+
     Variable emitPackConst(LIRKind resultKind, ByteBuffer serializedValues);
 
     Variable emitPack(LIRKind resultKind, List<Value> values);
