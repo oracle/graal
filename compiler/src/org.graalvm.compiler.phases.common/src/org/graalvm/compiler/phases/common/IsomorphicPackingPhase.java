@@ -44,11 +44,13 @@ public final class IsomorphicPackingPhase extends BasePhase<LowTierContext> {
         private final BlockMap<List<Node>> blockToNodesMap;
         private final Block currentBlock;
         private final Map<Node, Integer> alignmentMap = new HashMap<>();
+        private final NodeView view;
 
-        private Instance(NodeMap<Block> nodeToBlockMap, BlockMap<List<Node>> blockToNodesMap, Block currentBlock) {
+        private Instance(NodeMap<Block> nodeToBlockMap, BlockMap<List<Node>> blockToNodesMap, Block currentBlock, NodeView view) {
             this.nodeToBlockMap = nodeToBlockMap;
             this.blockToNodesMap = blockToNodesMap;
             this.currentBlock = currentBlock;
+            this.view = view;
         }
 
         // Utilities
@@ -83,7 +85,7 @@ public final class IsomorphicPackingPhase extends BasePhase<LowTierContext> {
         }
 
         private int data_size(ValueNode node) {
-            return node.stamp(NodeView.DEFAULT).getStackKind().getByteCount();
+            return node.stamp(view).getStackKind().getByteCount();
         }
 
         private int data_size(LIRLowerableAccess node) {
@@ -659,11 +661,11 @@ public final class IsomorphicPackingPhase extends BasePhase<LowTierContext> {
                 // Link up firstBAN
                 {
                     // TODO: don't hardcode for specific stamp type
-                    final VectorPrimitiveStamp vectorInputStamp = VectorIntegerStamp.create((IntegerStamp) firstBAN.getX().stamp(NodeView.DEFAULT).unrestricted(), nodes.size());
+                    final VectorPrimitiveStamp vectorInputStamp = VectorIntegerStamp.create((IntegerStamp) firstBAN.getX().stamp(view).unrestricted(), nodes.size());
 
                     final VectorPackNode packX = new VectorPackNode(vectorInputStamp, nodes.stream().map(BinaryNode::getX).collect(Collectors.toList()));
                     final VectorPackNode packY = new VectorPackNode(vectorInputStamp, nodes.stream().map(BinaryNode::getY).collect(Collectors.toList()));
-                    final VectorExtractNode extractNode = new VectorExtractNode(firstBAN.stamp(NodeView.DEFAULT), firstBAN, 0);
+                    final VectorExtractNode extractNode = new VectorExtractNode(firstBAN.stamp(view), firstBAN, 0);
 
                     first.replaceAtUsages(extractNode);
                     first.graph().addOrUnique(extractNode);
@@ -680,7 +682,7 @@ public final class IsomorphicPackingPhase extends BasePhase<LowTierContext> {
                 // Link up the rest
                 for (int i = 1; i < nodes.size(); i++) {
                     final BinaryArithmeticNode<?> node = nodes.get(i);
-                    final VectorExtractNode extractNode = new VectorExtractNode(node.stamp(NodeView.DEFAULT), firstBAN, i);
+                    final VectorExtractNode extractNode = new VectorExtractNode(node.stamp(view), firstBAN, i);
                     node.replaceAtUsagesAndDelete(extractNode);
 
                     first.graph().addOrUnique(extractNode);
@@ -719,9 +721,15 @@ public final class IsomorphicPackingPhase extends BasePhase<LowTierContext> {
     }
 
     private final SchedulePhase schedulePhase;
+    private final NodeView view;
 
     public IsomorphicPackingPhase(SchedulePhase schedulePhase) {
+        this(schedulePhase, NodeView.DEFAULT);
+    }
+
+    public IsomorphicPackingPhase(SchedulePhase schedulePhase, NodeView view) {
         this.schedulePhase = schedulePhase;
+        this.view = view;
     }
 
     @Override
@@ -730,7 +738,7 @@ public final class IsomorphicPackingPhase extends BasePhase<LowTierContext> {
         schedulePhase.apply(graph);
         ControlFlowGraph cfg = graph.getLastSchedule().getCFG();
         for (Block block : cfg.reversePostOrder()) {
-            new Instance(graph.getLastSchedule().getNodeToBlockMap(), graph.getLastSchedule().getBlockToNodesMap(), block).SLP_extract();
+            new Instance(graph.getLastSchedule().getNodeToBlockMap(), graph.getLastSchedule().getBlockToNodesMap(), block, view).SLP_extract();
         }
     }
 }
