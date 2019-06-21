@@ -121,6 +121,7 @@ public final class LLVMGlobalContainerReadNode extends LLVMNode implements LLVMO
             case POINTER:
                 return memory.getPointer(address);
             default:
+                CompilerDirectives.transferToInterpreter();
                 throw new IllegalStateException("unexpected type " + type);
         }
     }
