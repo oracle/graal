@@ -35,7 +35,6 @@ import java.nio.ByteOrder;
 import java.util.Arrays;
 import java.util.BitSet;
 
-import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.CompilerDirectives.CompilationFinal;
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.CompilerDirectives.ValueType;
@@ -44,17 +43,10 @@ import com.oracle.truffle.api.CompilerDirectives.ValueType;
 @ValueType
 public final class LLVMIVarBit {
 
-    private static final LLVMIVarBit NULL = new LLVMIVarBit();
-
     private final int bits;
 
     // represents value as big-endian two's-complement
     @CompilationFinal(dimensions = 1) private final byte[] array;
-
-    private LLVMIVarBit() {
-        this.bits = 0;
-        this.array = new byte[0];
-    }
 
     private LLVMIVarBit(int bits, byte[] arr, int arrBits, boolean signExtend) {
         this.bits = bits;
@@ -95,14 +87,6 @@ public final class LLVMIVarBit {
 
     public static LLVMIVarBit create(int bitWidth, byte[] loadedBytes, int loadedArrBits, boolean signExtend) {
         return new LLVMIVarBit(bitWidth, loadedBytes, loadedArrBits, signExtend);
-    }
-
-    public static LLVMIVarBit createNull() {
-        if (CompilerDirectives.inCompiledCode()) {
-            return new LLVMIVarBit();
-        } else {
-            return NULL;
-        }
     }
 
     public static LLVMIVarBit createZeroExt(int bits, byte from) {
