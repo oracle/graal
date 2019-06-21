@@ -112,8 +112,8 @@ public class ProcessBuilderTest extends AbstractPolyglotTest {
         setupEnv(Context.newBuilder().allowAllAccess(true).build());
         ByteArrayOutputStream stdout = new ByteArrayOutputStream();
         ByteArrayOutputStream stderr = new ByteArrayOutputStream();
-        Process p = languageEnv.newProcessBuilder(javaExecutable.toString(), "-cp", cp.toString(), Main.class.getName()).redirectOutput(ProcessHandler.Redirect.stream(stdout)).redirectError(
-                        ProcessHandler.Redirect.stream(stderr)).start();
+        TruffleProcessBuilder builder = languageEnv.newProcessBuilder(javaExecutable.toString(), "-cp", cp.toString(), Main.class.getName());
+        Process p = builder.redirectOutput(builder.createRedirectToStream(stdout)).redirectError(builder.createRedirectToStream(stderr)).start();
         if (!p.waitFor(10, TimeUnit.SECONDS)) {
             p.destroy();
             Assert.fail("Process did not finish in expected time.");
@@ -121,6 +121,27 @@ public class ProcessBuilderTest extends AbstractPolyglotTest {
         Assert.assertEquals(0, p.exitValue());
         Assert.assertArrayEquals(Main.expectedStdOut(), stdout.toByteArray());
         Assert.assertArrayEquals(Main.expectedStdErr(), stderr.toByteArray());
+    }
+
+    @Test
+    public void testUnfinishedSubProcess() throws Exception {
+        Path javaExecutable = getJavaExecutable();
+        Assume.assumeNotNull(javaExecutable);
+        Path cp = getLocation();
+        Assume.assumeNotNull(cp);
+        setupEnv(Context.newBuilder().allowAllAccess(true).build());
+        Process p = languageEnv.newProcessBuilder(javaExecutable.toString(), "-cp", cp.toString(), Main2.class.getName()).start();
+        Context ctx = context;
+        context = null;
+        ctx.leave();
+        try {
+            ctx.close();
+            Assert.fail("Expected IllegalArgumentException");
+        } catch (IllegalStateException e) {
+            // Expected exception
+        } finally {
+            p.destroyForcibly();
+        }
     }
 
     @Test
@@ -480,6 +501,18 @@ public class ProcessBuilderTest extends AbstractPolyglotTest {
                 sb.append(pattern);
             }
             return sb.toString();
+        }
+    }
+
+    public static final class Main2 {
+        public static void main(String[] args) {
+            while (!Thread.currentThread().isInterrupted()) {
+                try {
+                    Thread.sleep(1_000);
+                } catch (InterruptedException ie) {
+                    break;
+                }
+            }
         }
     }
 }

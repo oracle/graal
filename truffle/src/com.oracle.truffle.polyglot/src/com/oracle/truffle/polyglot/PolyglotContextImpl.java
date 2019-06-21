@@ -155,6 +155,7 @@ final class PolyglotContextImpl extends AbstractContextImpl implements com.oracl
     final PolyglotLanguage creator; // creator for internal contexts
     final Map<String, Object> creatorArguments; // special arguments for internal contexts
     final ContextWeakReference weakReference;
+    final Set<ProcessHandlers.ProcessDecorator> subProcesses = Collections.synchronizedSet(new HashSet<>());
 
     @CompilationFinal PolyglotContextConfig config; // effectively final
 
@@ -855,6 +856,7 @@ final class PolyglotContextImpl extends AbstractContextImpl implements com.oracl
             throw new PolyglotIllegalStateException(String.format("The context is currently executing on another thread. " +
                             "Set cancelIfExecuting to true to stop the execution on this thread."));
         }
+        checkSubProcessFinished();
         if (engine.boundEngine && parent == null) {
             try {
                 engine.ensureClosed(cancelIfExecuting, false);
@@ -1207,6 +1209,17 @@ final class PolyglotContextImpl extends AbstractContextImpl implements com.oracl
             leave(prev);
         }
         return true;
+    }
+
+    void checkSubProcessFinished() {
+        synchronized (subProcesses) {
+            for (ProcessHandlers.ProcessDecorator process : subProcesses) {
+                if (process.isAlive()) {
+                    throw new PolyglotIllegalStateException(String.format("The context has an alive sub-process %s created by %s.",
+                                    process.getCommand(), process.getOwner().language.getId()));
+                }
+            }
+        }
     }
 
     static PolyglotContextImpl preInitialize(final PolyglotEngineImpl engine) {

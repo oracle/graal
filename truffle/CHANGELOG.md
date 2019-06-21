@@ -11,6 +11,7 @@ This changelog summarizes major changes between Truffle versions relevant to lan
 * `@GenerateUncached` can now be used in combination with `@NodeChild` if execute signatures for all arguments are present.
 * Removed deprecated automatic registration of the language class as a service.
 * Added sub-process output (error output) [redirection into OutputStream](https://www.graalvm.org/truffle/javadoc/org/graalvm/polyglot/io/ProcessHandler.Redirect.html#stream-java.io.OutputStream-).
+* Added sub-process output (error output) [redirection into OutputStream](https://www.graalvm.org/truffle/javadoc/com/oracle/truffle/api/io/TruffleProcessBuilder.html#createRedirectToStream-java.io.OutputStream-).
 
 ## Version 20.0.0 Beta 1
 * The [LanguageProvider](https://www.graalvm.org/truffle/javadoc/org/graalvm/polyglot/tck/LanguageProvider.html#createIdentityFunctionSnippet-org.graalvm.polyglot.Context-) can override the default verfication of the TCK `IdentityFunctionTest`.
