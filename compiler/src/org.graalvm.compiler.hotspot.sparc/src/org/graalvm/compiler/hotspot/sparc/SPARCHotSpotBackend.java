@@ -539,7 +539,7 @@ public class SPARCHotSpotBackend extends HotSpotHostBackend implements LIRGenera
 
         @Override
         protected int maxVectorWidth(PrimitiveStamp stamp) {
-            // TODO: ARM vectorization support
+            // TODO: SPARC vectorization support
             return 1;
         }
     }

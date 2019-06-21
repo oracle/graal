@@ -352,31 +352,37 @@ public class AMD64HotSpotBackend extends HotSpotHostBackend implements LIRGenera
 
         @Override
         protected int maxVectorWidth(PrimitiveStamp stamp) {
-            boolean isFloat = stamp instanceof FloatStamp, isInt = stamp instanceof IntegerStamp, isNumeric = isFloat || isInt;
-            int bytes = stamp.getBits() / 8;
+            final boolean isFloat = stamp instanceof FloatStamp;
+            final boolean isInt = stamp instanceof IntegerStamp;
+            final boolean isNumeric = isFloat || isInt;
+
+            final int bytes = stamp.getBits() / 8;
             int result = bytes;
 
             // AMD64 modes
             EnumSet<AMD64.CPUFeature> features = ((AMD64) getTarget().arch).getFeatures();
 
             if (features.contains(CPUFeature.SSE)) {
-                if (isNumeric && bytes == 4)
+                if (isNumeric && bytes == 4) {
                     result = 16;
-                // Other sizes of data types are only properly supported in SSE2 and beyond.
-                else if (isNumeric && features.contains(CPUFeature.SSE2))
+                } else if (isNumeric && features.contains(CPUFeature.SSE2)) {
+                    // Other sizes of data types are only properly supported in SSE2 and beyond.
                     result = 16;
+                }
             }
 
             if (features.contains(CPUFeature.AVX)) {
-                if (isFloat)
+                if (isFloat) {
                     result = 32;
+                }
             }
 
             if (features.contains(CPUFeature.AVX2)) {
                 // AVX2 adds proper support to integer operations from AVX. Every numeric type
                 // should be supported.
-                if (isNumeric)
+                if (isNumeric) {
                     result = 32;
+                }
             }
 
             // TODO: re-enable these when AVX 512 is supported elsewhere.
@@ -386,7 +392,7 @@ public class AMD64HotSpotBackend extends HotSpotHostBackend implements LIRGenera
              * if (features.contains(CPUFeature.AVX512BW)) { if (isInt) result = 64; }
              */
 
-            return 4;// result / bytes;
+            return result;
         }
     }
 
