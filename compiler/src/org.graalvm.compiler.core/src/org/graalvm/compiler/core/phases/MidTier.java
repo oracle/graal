@@ -38,6 +38,7 @@ import static org.graalvm.compiler.core.common.GraalOptions.VerifyHeapAtReturn;
 
 import org.graalvm.compiler.loop.DefaultLoopPolicies;
 import org.graalvm.compiler.loop.LoopPolicies;
+import org.graalvm.compiler.loop.VectorizationLoopPolicies;
 import org.graalvm.compiler.loop.phases.LoopPartialUnrollPhase;
 import org.graalvm.compiler.loop.phases.LoopSafepointEliminationPhase;
 import org.graalvm.compiler.loop.phases.ReassociateInvariantPhase;
@@ -80,8 +81,7 @@ public class MidTier extends PhaseSuite<MidTierContext> {
 
         appendPhase(new LoopSafepointInsertionPhase());
 
-        LoopPolicies loopPolicies = createLoopPolicies();
-        appendPhase(new LoopPartialUnrollPhase(loopPolicies, canonicalizer));
+        appendPhase(new LoopPartialUnrollPhase(new VectorizationLoopPolicies(), canonicalizer));
 
         appendPhase(new GuardLoweringPhase());
 
@@ -97,6 +97,7 @@ public class MidTier extends PhaseSuite<MidTierContext> {
 
         appendPhase(new FrameStateAssignmentPhase());
 
+        LoopPolicies loopPolicies = createLoopPolicies();
         if (OptLoopTransform.getValue(options)) {
             if (PartialUnroll.getValue(options)) {
                 appendPhase(new LoopPartialUnrollPhase(loopPolicies, canonicalizer));
