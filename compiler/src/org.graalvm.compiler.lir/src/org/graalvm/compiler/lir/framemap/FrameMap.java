@@ -218,18 +218,6 @@ public abstract class FrameMap {
     }
 
     /**
-     * Reserves a new spill slot in the frame of the method being compiled. The returned slot is
-     * aligned on its natural alignment, i.e., an 8-byte spill slot is aligned at an 8-byte
-     * boundary.
-     *
-     * @param kind The kind of the spill slot to be reserved.
-     * @return A spill slot denoting the reserved memory area.
-     */
-    protected StackSlot allocateNewSpillSlot(ValueKind<?> kind) {
-        return StackSlot.get(kind, -spillSize, true);
-    }
-
-    /**
      * Returns the spill slot size for the given {@link ValueKind}. The default value is the size in
      * bytes for the target architecture.
      *
@@ -252,7 +240,11 @@ public abstract class FrameMap {
         assert frameSize == -1 : "frame size must not yet be fixed";
         int size = spillSlotSize(kind);
         spillSize = NumUtil.roundUp(spillSize + size, size);
-        return allocateNewSpillSlot(kind);
+        return newStackSlot(kind);
+    }
+
+    private StackSlot newStackSlot(ValueKind<?> kind) {
+        return StackSlot.get(kind, -spillSize, true);
     }
 
     /**
@@ -277,8 +269,8 @@ public abstract class FrameMap {
         if (slots == 0) {
             return null;
         }
-        spillSize += spillSlotRangeSize(slots);
-        return allocateNewSpillSlot(LIRKind.value(getTarget().arch.getWordKind()));
+        spillSize = NumUtil.roundUp(spillSize + spillSlotRangeSize(slots), getTarget().wordSize);
+        return newStackSlot(LIRKind.value(getTarget().arch.getWordKind()));
     }
 
     public ReferenceMapBuilder newReferenceMapBuilder() {
