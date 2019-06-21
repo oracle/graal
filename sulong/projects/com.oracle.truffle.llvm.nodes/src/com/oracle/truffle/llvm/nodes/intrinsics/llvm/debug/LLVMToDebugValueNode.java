@@ -42,7 +42,6 @@ import com.oracle.truffle.llvm.runtime.debug.value.LLVMDebugValue;
 import com.oracle.truffle.llvm.runtime.floating.LLVM80BitFloat;
 import com.oracle.truffle.llvm.runtime.global.LLVMGlobal;
 import com.oracle.truffle.llvm.runtime.global.LLVMGlobalContainer;
-import com.oracle.truffle.llvm.runtime.interop.convert.ToPointer;
 import com.oracle.truffle.llvm.runtime.nodes.api.LLVMNode;
 import com.oracle.truffle.llvm.runtime.pointer.LLVMManagedPointer;
 import com.oracle.truffle.llvm.runtime.pointer.LLVMNativePointer;
@@ -100,10 +99,6 @@ public abstract class LLVMToDebugValueNode extends LLVMNode implements LLVMDebug
         return new LLDBConstant.Pointer(value);
     }
 
-    protected static ToPointer createToPointer() {
-        return ToPointer.create();
-    }
-
     @Specialization
     protected LLVMDebugValue fromManagedPointer(LLVMManagedPointer value) {
         final Object target = value.getObject();
@@ -115,17 +110,29 @@ public abstract class LLVMToDebugValueNode extends LLVMNode implements LLVMDebug
         try {
             /*
              * We're using the uncached library here because this node is only used from the slow
-             * path, and usually not adopted in an AST.
+             * path.
              */
             InteropLibrary interop = InteropLibrary.getFactory().getUncached();
-            if (interop.isNumber(target)) {
+            if (interop.isBoolean(target)) {
+                return new LLDBBoxedPrimitive(interop.asBoolean(target));
+            } else if (interop.isNumber(target)) {
                 Object unboxedValue;
-                if (interop.fitsInLong(target)) {
+                if (interop.fitsInByte(target)) {
+                    unboxedValue = interop.asByte(target);
+                } else if (interop.fitsInShort(target)) {
+                    unboxedValue = interop.asShort(target);
+                } else if (interop.fitsInInt(target)) {
+                    unboxedValue = interop.asInt(target);
+                } else if (interop.fitsInLong(target)) {
                     unboxedValue = interop.asLong(target);
-                } else {
+                } else if (interop.fitsInFloat(target)) {
+                    unboxedValue = interop.asFloat(target);
+                } else if (interop.fitsInDouble(target)) {
                     unboxedValue = interop.asDouble(target);
+                } else {
+                    return LLVMDebugValue.UNAVAILABLE;
                 }
-                return new LLDBManagedPointer(LLVMManagedPointer.cast(unboxedValue));
+                return new LLDBBoxedPrimitive(unboxedValue);
             }
         } catch (UnsupportedMessageException ignored) {
             // the default case is a sensible fallback for this

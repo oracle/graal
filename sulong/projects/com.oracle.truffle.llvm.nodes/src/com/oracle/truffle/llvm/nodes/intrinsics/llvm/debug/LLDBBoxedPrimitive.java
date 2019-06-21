@@ -34,19 +34,18 @@ import com.oracle.truffle.llvm.runtime.LLVMLanguage;
 import com.oracle.truffle.llvm.runtime.debug.LLDBSupport;
 import com.oracle.truffle.llvm.runtime.debug.value.LLVMDebugTypeConstants;
 import com.oracle.truffle.llvm.runtime.debug.value.LLVMDebugValue;
-import com.oracle.truffle.llvm.runtime.pointer.LLVMManagedPointer;
 
-final class LLDBManagedPointer implements LLVMDebugValue {
+final class LLDBBoxedPrimitive implements LLVMDebugValue {
 
-    private final LLVMManagedPointer pointer;
+    private final Object boxedValue;
 
-    LLDBManagedPointer(LLVMManagedPointer pointer) {
-        this.pointer = pointer;
+    LLDBBoxedPrimitive(Object boxedValue) {
+        this.boxedValue = boxedValue;
     }
 
     private LLVMDebugValue unbox() {
         final LLVMDebugValue.Builder builder = LLVMLanguage.getLLDBSupport().createDebugValueBuilder();
-        return builder.build(pointer.getObject());
+        return builder.build(boxedValue);
     }
 
     private static boolean isMatchingSize(Object value, long bitSize) {
@@ -84,13 +83,12 @@ final class LLDBManagedPointer implements LLVMDebugValue {
     @Override
     @TruffleBoundary
     public String describeValue(long bitOffset, int bitSize) {
-        final Object value = pointer.getObject();
-        if (bitOffset == 0 && isMatchingSize(value, bitSize)) {
-            return "<boxed value: " + value + ">";
+        if (bitOffset == 0 && isMatchingSize(boxedValue, bitSize)) {
+            return "<boxed value: " + boxedValue + ">";
         } else if (bitSize == 1) {
-            return "<bit at offset " + LLDBSupport.toSizeString(bitOffset) + " in boxed value: " + value + ">";
+            return "<bit at offset " + LLDBSupport.toSizeString(bitOffset) + " in boxed value: " + boxedValue + ">";
         } else {
-            return "<" + LLDBSupport.toSizeString(bitSize) + " at offset " + LLDBSupport.toSizeString(bitOffset) + " in boxed value: " + value + ">";
+            return "<" + LLDBSupport.toSizeString(bitSize) + " at offset " + LLDBSupport.toSizeString(bitOffset) + " in boxed value: " + boxedValue + ">";
         }
     }
 
@@ -122,9 +120,9 @@ final class LLDBManagedPointer implements LLVMDebugValue {
     @Override
     public Object readAddress(long bitOffset) {
         if (bitOffset == 0) {
-            return "<boxed value: " + pointer.getObject() + ">";
+            return "<boxed value: " + boxedValue + ">";
         } else {
-            return "<offset " + LLDBSupport.toSizeString(bitOffset) + " in boxed value: " + pointer.getObject() + ">";
+            return "<offset " + LLDBSupport.toSizeString(bitOffset) + " in boxed value: " + boxedValue + ">";
         }
     }
 
