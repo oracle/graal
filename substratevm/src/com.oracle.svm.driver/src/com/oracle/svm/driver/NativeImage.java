@@ -804,11 +804,17 @@ public class NativeImage {
                 }
 
                 for (Path jarFile : jarFileMatches) {
+                    String fileName = jarFile.getFileName().toString().toLowerCase();
+                    if (!(fileName.endsWith(".jar") || fileName.endsWith(".zip"))) {
+                        // not a .jar or .zip
+                        continue;
+                    }
                     URI jarFileURI = URI.create("jar:" + jarFile.toUri());
                     try (FileSystem jarFS = FileSystems.newFileSystem(jarFileURI, Collections.emptyMap())) {
                         Path nativeImageMetaInfBase = jarFS.getPath("/" + nativeImageMetaInf);
                         processNativeImageMetaInf(jarFile, nativeImageMetaInfBase, metaInfProcessor);
                     }
+
                 }
             }
         } catch (IOException | FileSystemNotFoundException e) {
@@ -865,6 +871,11 @@ public class NativeImage {
 
     static boolean processManifestMainAttributes(Path jarFilePath, BiConsumer<Path, Attributes> manifestConsumer) {
         if (Files.isDirectory(jarFilePath)) {
+            return false;
+        }
+        String fileName = jarFilePath.getFileName().toString().toLowerCase();
+        if (!(fileName.endsWith(".jar") || fileName.endsWith(".zip"))) {
+            // not a .jar or .zip
             return false;
         }
         try (JarFile jarFile = new JarFile(jarFilePath.toFile())) {

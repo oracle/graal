@@ -44,6 +44,7 @@ import java.nio.file.FileVisitor;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
+import java.nio.file.ProviderNotFoundException;
 import java.nio.file.SimpleFileVisitor;
 import java.nio.file.attribute.BasicFileAttributes;
 import java.util.ArrayList;
@@ -163,6 +164,11 @@ public final class ImageClassLoader {
         if (Files.exists(path)) {
             if (Files.isRegularFile(path)) {
                 try {
+                    String fileName = path.getFileName().toString().toLowerCase();
+                    if (!(fileName.endsWith(".jar") || fileName.endsWith(".zip"))) {
+                        // ignore entries that aren't .jar or .zip
+                        return;
+                    }
                     URI jarURI = new URI("jar:" + path.toAbsolutePath().toUri());
                     FileSystem probeJarFileSystem;
                     try {
