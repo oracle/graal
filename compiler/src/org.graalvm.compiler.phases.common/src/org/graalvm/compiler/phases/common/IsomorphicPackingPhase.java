@@ -12,8 +12,10 @@ import org.graalvm.compiler.graph.Node;
 import org.graalvm.compiler.graph.NodeMap;
 import org.graalvm.compiler.nodes.*;
 import org.graalvm.compiler.nodes.VectorSupport.*;
+import org.graalvm.compiler.nodes.calc.AddNode;
 import org.graalvm.compiler.nodes.calc.BinaryArithmeticNode;
 import org.graalvm.compiler.nodes.calc.BinaryNode;
+import org.graalvm.compiler.nodes.calc.SubNode;
 import org.graalvm.compiler.nodes.cfg.Block;
 import org.graalvm.compiler.nodes.cfg.ControlFlowGraph;
 import org.graalvm.compiler.nodes.memory.*;
@@ -37,6 +39,13 @@ import java.util.stream.StreamSupport;
 public final class IsomorphicPackingPhase extends BasePhase<LowTierContext> {
 
     private static final int ALIGNMENT_BOTTOM = -666;
+    private static final Set<Class<? extends Node>> supportedNodes =
+            new HashSet<>(Stream.of(
+                    WriteNode.class,
+                    ReadNode.class,
+                    AddNode.class,
+                    SubNode.class
+            ).collect(Collectors.toSet()));
 
     // Class to encapsulate state used by functions in the algorithm
     private static class Instance {
@@ -126,6 +135,16 @@ public final class IsomorphicPackingPhase extends BasePhase<LowTierContext> {
 
         private Optional<Integer> getAlignment(Node node) {
             return Optional.ofNullable(alignmentMap.get(node));
+        }
+
+        /**
+         * Predicate to determine whether a specific node is supported
+         * for vectorization, based on its type.
+         * @param node Vectorization candidate.
+         * @return Whether this is a supported node.
+         */
+        private boolean supported(Node node) {
+            return supportedNodes.contains(node.getClass());
         }
 
         /**
@@ -268,10 +287,11 @@ public final class IsomorphicPackingPhase extends BasePhase<LowTierContext> {
         }
 
         private boolean stmts_can_pack(Set<Pair<Node, Node>> packSet, Node s1, Node s2, int align) {
-            // Also make sure that the platform supports vectors of the primitive type of this candidate pack
+            // TODO: Also make sure that the platform supports vectors of the primitive type of this candidate pack
 
-            if (isomorphic(s1, s2) && independent(s1, s2) &&
-                    packSet.stream().noneMatch(p -> p.getLeft().equals(s1) || p.getRight().equals(s2))) {
+            if (supported(s1) && supported(s2) &&
+                isomorphic(s1, s2) && independent(s1, s2) &&
+                packSet.stream().noneMatch(p -> p.getLeft().equals(s1) || p.getRight().equals(s2))) {
                 final Optional<Integer> align_s1 = getAlignment(s1);
                 final Optional<Integer> align_s2 = getAlignment(s2);
 
