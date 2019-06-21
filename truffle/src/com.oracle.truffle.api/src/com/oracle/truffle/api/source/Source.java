@@ -1372,7 +1372,7 @@ public abstract class Source {
             // swallow and go on
         }
 
-        if (!SourceAccessor.isDefaultFileSystem(fileSystemContext)) {
+        if (!AccessAllowIO.ALLOW_IO || !SourceAccessor.isDefaultFileSystem(fileSystemContext)) {
             throw new SecurityException("Reading of URL " + url + " is not allowed.");
         }
 
