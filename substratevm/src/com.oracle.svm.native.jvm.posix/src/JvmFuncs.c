@@ -308,8 +308,19 @@ JNIEXPORT jlong JVM_NanoTime(void *env, void * ignored) {
 }
 
 JNIEXPORT jlong JVM_GetNanoTimeAdjustment(void *env, void * ignored, jlong offset_secs) {
-    printf("JVM_GetNanoTimeAdjustment called: not implemented, return 0\n");
-    return 0;
+    long maxDiffSecs = 0x0100000000L;
+    long minDiffSecs = -maxDiffSecs;
+    struct timeval time;
+    int status = gettimeofday(&time, NULL);
+    
+    long seconds = time.tv_sec;
+    long nanos = time.tv_usec * 1000;
+    
+    long diff = seconds - offset_secs;
+    if (diff >= maxDiffSecs || diff <= minDiffSecs) {
+        return -1;
+    }
+    return diff * 1000000000 + nanos;
 }
 
 JNIEXPORT jlong Java_jdk_internal_misc_VM_getNanoTimeAdjustment(void *env, void * ignored, jlong offset_secs) {
