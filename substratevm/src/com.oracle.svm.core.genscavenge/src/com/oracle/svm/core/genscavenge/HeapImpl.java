@@ -722,7 +722,7 @@ public class HeapImpl extends Heap {
         private final BarrierSet barrierSet;
 
         GenScavengeGCProvider() {
-            this.barrierSet = new CardTableBarrierSet(false);
+            this.barrierSet = new CardTableBarrierSet();
         }
 
         @Override
