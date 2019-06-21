@@ -1,10 +1,7 @@
 package org.graalvm.compiler.nodes.memory;
 
 import org.graalvm.compiler.core.common.LIRKind;
-import org.graalvm.compiler.core.common.type.IntegerStamp;
 import org.graalvm.compiler.core.common.type.Stamp;
-import org.graalvm.compiler.core.common.type.VectorIntegerStamp;
-import org.graalvm.compiler.core.common.type.VectorPrimitiveStamp;
 import org.graalvm.compiler.graph.NodeClass;
 import org.graalvm.compiler.nodeinfo.InputType;
 import org.graalvm.compiler.nodeinfo.NodeInfo;
@@ -51,8 +48,7 @@ public class VectorReadNode extends VectorFixedAccessNode implements LIRLowerabl
         final AddressNode address = anchor.getAddress();
         final LocationIdentity[] locations = nodes.stream().map(ReadNode::getLocationIdentity).toArray(LocationIdentity[]::new);
 
-        // TODO: don't hardcode for IntegerStamp
-        final Stamp stamp = VectorIntegerStamp.create((IntegerStamp) anchor.getAccessStamp(), locations.length);
+        final Stamp stamp = anchor.getAccessStamp().asVector(locations.length);
         return new VectorReadNode(TYPE, address, locations, stamp, anchor.getGuard(), anchor.getBarrierType(), anchor.getNullCheck());
     }
 }

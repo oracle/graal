@@ -4,8 +4,6 @@ import jdk.vm.ci.meta.JavaKind;
 
 import org.graalvm.collections.Pair;
 import org.graalvm.compiler.core.common.cfg.BlockMap;
-import org.graalvm.compiler.core.common.type.IntegerStamp;
-import org.graalvm.compiler.core.common.type.VectorIntegerStamp;
 import org.graalvm.compiler.core.common.type.VectorPrimitiveStamp;
 import org.graalvm.compiler.debug.GraalError;
 import org.graalvm.compiler.graph.Node;
@@ -645,9 +643,7 @@ public final class IsomorphicPackingPhase extends BasePhase<LowTierContext> {
             if (first instanceof WriteNode) {
                 final List<WriteNode> nodes = pack.getElements().stream().map(x -> (WriteNode) x).collect(Collectors.toList());
 
-                // TODO: don't hardcode for specific stamp type
-                // TODO: perhaps store scalar type somewhere rather than using first element
-                final VectorPrimitiveStamp vectorInputStamp = VectorIntegerStamp.create((IntegerStamp) nodes.get(1).getAccessStamp().unrestricted(), nodes.size());
+                final VectorPrimitiveStamp vectorInputStamp = nodes.get(1).getAccessStamp().unrestricted().asVector(nodes.size());
                 final VectorPackNode stv = new VectorPackNode(vectorInputStamp, nodes.stream().map(AbstractWriteNode::value).collect(Collectors.toList()));
                 final VectorWriteNode vectorWrite = VectorWriteNode.fromPackElements(nodes, stv);
 
@@ -680,8 +676,7 @@ public final class IsomorphicPackingPhase extends BasePhase<LowTierContext> {
 
                 // Link up firstBAN
                 {
-                    // TODO: don't hardcode for specific stamp type
-                    final VectorPrimitiveStamp vectorInputStamp = VectorIntegerStamp.create((IntegerStamp) firstBAN.getX().stamp(view).unrestricted(), nodes.size());
+                    final VectorPrimitiveStamp vectorInputStamp = firstBAN.getX().stamp(view).unrestricted().asVector(nodes.size());
 
                     final VectorPackNode packX = new VectorPackNode(vectorInputStamp, nodes.stream().map(BinaryNode::getX).collect(Collectors.toList()));
                     final VectorPackNode packY = new VectorPackNode(vectorInputStamp, nodes.stream().map(BinaryNode::getY).collect(Collectors.toList()));

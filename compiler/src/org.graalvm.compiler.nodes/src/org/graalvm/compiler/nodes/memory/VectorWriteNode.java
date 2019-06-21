@@ -2,7 +2,6 @@ package org.graalvm.compiler.nodes.memory;
 
 import org.graalvm.compiler.core.common.LIRKind;
 import org.graalvm.compiler.core.common.type.StampFactory;
-import org.graalvm.compiler.core.common.type.VectorIntegerStamp;
 import org.graalvm.compiler.core.common.type.VectorPrimitiveStamp;
 import org.graalvm.compiler.debug.GraalError;
 import org.graalvm.compiler.graph.Node;
