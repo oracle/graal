@@ -118,16 +118,6 @@ public final class IsomorphicPackingPhase extends BasePhase<LowTierContext> {
             return nodeToBlockMap.get(node) != currentBlock;
         }
 
-        /**
-         * Get the width of a vector, measured in the number of underlying elements.
-         * Returns either the loop stride or max vector size (for particular node type).
-         * Loop stride depends on unroll factor
-         * TODO: don't hardcode vector width
-         */
-        private int vectorWidth(Node node) {
-            return 4;
-        }
-
         private int dataSize(Node node) {
             if (node instanceof LIRLowerableAccess) {
                 return dataSize((LIRLowerableAccess) node);
