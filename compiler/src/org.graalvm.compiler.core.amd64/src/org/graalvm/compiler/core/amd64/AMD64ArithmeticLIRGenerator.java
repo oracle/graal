@@ -107,7 +107,7 @@ import org.graalvm.compiler.lir.ConstantValue;
 import org.graalvm.compiler.lir.LIRFrameState;
 import org.graalvm.compiler.lir.LIRValueUtil;
 import org.graalvm.compiler.lir.Variable;
-import org.graalvm.compiler.lir.amd64.*;
+import org.graalvm.compiler.lir.amd64.AMD64AddressValue;
 import org.graalvm.compiler.lir.amd64.AMD64Arithmetic.FPDivRemOp;
 import org.graalvm.compiler.lir.amd64.AMD64ArithmeticLIRGeneratorTool;
 import org.graalvm.compiler.lir.amd64.AMD64Binary;
@@ -331,14 +331,18 @@ public class AMD64ArithmeticLIRGenerator extends ArithmeticLIRGenerator implemen
                 } else {
                     return emitBinary(resultKind, SSEOp.ADD, SD, true, a, b);
                 }
-            // TODO: Support more types
+                // TODO: Support more types
             case V64_DWORD:
                 if (isAvx) {
                     return emitBinary(resultKind, VPADDD, a, b);
+                } else {
+                    throw GraalError.shouldNotReachHere("AVX must be supported for V64 operands!");
                 }
             case V128_DWORD:
                 if (isAvx) {
                     return emitBinary(resultKind, VPADDQ, a, b);
+                } else {
+                    throw GraalError.shouldNotReachHere("AVX must be supported for V128 operands!");
                 }
             default:
                 throw GraalError.shouldNotReachHere();
@@ -365,14 +369,18 @@ public class AMD64ArithmeticLIRGenerator extends ArithmeticLIRGenerator implemen
                 } else {
                     return emitBinary(resultKind, SSEOp.SUB, SD, false, a, b);
                 }
-            // TODO: Support more types
+                // TODO: Support more types
             case V64_DWORD:
                 if (isAvx) {
                     return emitBinary(resultKind, VPSUBD, a, b);
+                } else {
+                    throw GraalError.shouldNotReachHere("AVX must be supported for V64 operands!");
                 }
             case V128_DWORD:
                 if (isAvx) {
                     return emitBinary(resultKind, VPSUBQ, a, b);
+                } else {
+                    throw GraalError.shouldNotReachHere("AVX must be supported for V128 operands!");
                 }
             default:
                 throw GraalError.shouldNotReachHere();

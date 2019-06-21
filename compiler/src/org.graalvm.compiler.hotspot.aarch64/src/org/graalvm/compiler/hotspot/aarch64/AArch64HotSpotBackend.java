@@ -48,6 +48,9 @@ import org.graalvm.compiler.core.common.CompilationIdentifier;
 import org.graalvm.compiler.core.common.LIRKind;
 import org.graalvm.compiler.core.common.alloc.RegisterAllocationConfig;
 import org.graalvm.compiler.core.common.spi.ForeignCallLinkage;
+import org.graalvm.compiler.core.common.spi.LIRKindTool;
+import org.graalvm.compiler.core.common.type.PrimitiveStamp;
+import org.graalvm.compiler.core.common.type.Stamp;
 import org.graalvm.compiler.core.gen.LIRGenerationProvider;
 import org.graalvm.compiler.hotspot.GraalHotSpotVMConfig;
 import org.graalvm.compiler.hotspot.HotSpotDataBuilder;
@@ -72,6 +75,7 @@ import org.graalvm.compiler.lir.gen.LIRGenerationResult;
 import org.graalvm.compiler.lir.gen.LIRGeneratorTool;
 import org.graalvm.compiler.nodes.StructuredGraph;
 import org.graalvm.compiler.nodes.spi.NodeLIRBuilderTool;
+import org.graalvm.compiler.phases.tiers.VectorDescription;
 
 import jdk.vm.ci.aarch64.AArch64Kind;
 import jdk.vm.ci.code.CallingConvention;
@@ -121,7 +125,9 @@ public class AArch64HotSpotBackend extends HotSpotHostBackend implements LIRGene
         AArch64MacroAssembler masm = (AArch64MacroAssembler) crb.asm;
         try (ScratchRegister sc = masm.getScratchRegister()) {
             Register scratch = sc.getRegister();
-            AArch64Address address = masm.makeAddress(sp, -bangOffset, scratch, 8, /* allowOverwrite */false);
+            AArch64Address address = masm.makeAddress(sp, -bangOffset, scratch, 8, /*
+                                                                                    * allowOverwrite
+                                                                                    */false);
             masm.str(64, zr, address);
         }
     }
@@ -370,5 +376,20 @@ public class AArch64HotSpotBackend extends HotSpotHostBackend implements LIRGene
     @Override
     public EconomicSet<Register> translateToCallerRegisters(EconomicSet<Register> calleeRegisters) {
         return calleeRegisters;
+    }
+
+    class AArch64VectorDescription extends VectorDescription {
+
+        @Override
+        protected int maxVectorWidth(PrimitiveStamp stamp) {
+            // TODO: ARM vectorization support
+            return 1;
+        }
+    }
+
+    @Override
+    public VectorDescription getVectorDescription() {
+        // TODO: ARM vectorization support
+        return new AArch64VectorDescription();
     }
 }

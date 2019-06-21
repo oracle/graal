@@ -63,6 +63,8 @@ import org.graalvm.compiler.code.DataSection.Data;
 import org.graalvm.compiler.core.common.CompilationIdentifier;
 import org.graalvm.compiler.core.common.alloc.RegisterAllocationConfig;
 import org.graalvm.compiler.core.common.cfg.AbstractBlockBase;
+import org.graalvm.compiler.core.common.type.PrimitiveStamp;
+import org.graalvm.compiler.core.common.type.Stamp;
 import org.graalvm.compiler.core.gen.LIRGenerationProvider;
 import org.graalvm.compiler.core.sparc.SPARCNodeMatchRules;
 import org.graalvm.compiler.debug.CounterKey;
@@ -98,6 +100,7 @@ import org.graalvm.compiler.lir.sparc.SPARCTailDelayedLIRInstruction;
 import org.graalvm.compiler.nodes.StructuredGraph;
 import org.graalvm.compiler.nodes.spi.NodeLIRBuilderTool;
 import org.graalvm.compiler.options.OptionValues;
+import org.graalvm.compiler.phases.tiers.VectorDescription;
 
 import jdk.vm.ci.code.CallingConvention;
 import jdk.vm.ci.code.Register;
@@ -530,5 +533,20 @@ public class SPARCHotSpotBackend extends HotSpotHostBackend implements LIRGenera
     private Register translateInputToOutputRegister(Register register) {
         assert i0.number <= register.number && register.number <= i7.number : "Not an input register " + register;
         return getTarget().arch.getRegisters().get(o0.number + register.number - i0.number);
+    }
+
+    class SPARCVectorDescription extends VectorDescription {
+
+        @Override
+        protected int maxVectorWidth(PrimitiveStamp stamp) {
+            // TODO: ARM vectorization support
+            return 1;
+        }
+    }
+
+    @Override
+    public VectorDescription getVectorDescription() {
+        // TODO: SPARC vectorization support
+        return new SPARCVectorDescription();
     }
 }

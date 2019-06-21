@@ -32,6 +32,8 @@ import static org.graalvm.compiler.lir.LIRInstruction.OperandFlag.HINT;
 import static org.graalvm.compiler.lir.LIRInstruction.OperandFlag.REG;
 import static org.graalvm.compiler.lir.LIRInstruction.OperandFlag.STACK;
 
+import jdk.vm.ci.amd64.AMD64;
+import jdk.vm.ci.amd64.AMD64.CPUFeature;
 import jdk.vm.ci.code.Register;
 import org.graalvm.compiler.asm.amd64.AMD64Address;
 import org.graalvm.compiler.asm.amd64.AMD64Assembler.AMD64MOp;
@@ -46,6 +48,7 @@ import org.graalvm.compiler.lir.StandardOp.ImplicitNullCheck;
 import org.graalvm.compiler.lir.asm.CompilationResultBuilder;
 
 import jdk.vm.ci.meta.AllocatableValue;
+import jdk.vm.ci.meta.PlatformKind;
 import jdk.vm.ci.meta.Value;
 
 /**
@@ -191,10 +194,8 @@ public class AMD64Unary {
     public static class VectorReadMemory extends AMD64LIRInstruction implements ImplicitNullCheck {
         public static final LIRInstructionClass<VectorReadMemory> TYPE = LIRInstructionClass.create(VectorReadMemory.class);
 
-        @Def({REG})
-        private final AllocatableValue resultValue;
-        @Use({COMPOSITE})
-        private final AMD64AddressValue input;
+        @Def({REG}) private final AllocatableValue resultValue;
+        @Use({COMPOSITE}) private final AMD64AddressValue input;
 
         public VectorReadMemory(AllocatableValue resultValue, AMD64AddressValue input) {
             super(TYPE);
@@ -206,9 +207,13 @@ public class AMD64Unary {
         @Override
         public void emitCode(CompilationResultBuilder crb, AMD64MacroAssembler masm) {
             final Register result = asRegister(resultValue);
+            boolean isAvx = ((AMD64) masm.target.arch).getFeatures().contains(CPUFeature.AVX);
 
-            // TODO: Support different kinds of vector
-            masm.movdqu(result, input.toAddress());
+            if (isAvx) {
+                masm.vmovdqu(result, input.toAddress());
+            } else {
+                masm.movdqu(result, input.toAddress());
+            }
         }
 
         @Override
@@ -233,9 +238,15 @@ public class AMD64Unary {
         @Override
         public void emitCode(CompilationResultBuilder crb, AMD64MacroAssembler masm) {
             final Register input = asRegister(inputValue);
+            PlatformKind kind = inputValue.getPlatformKind();
 
+            boolean isAvx = ((AMD64) masm.target.arch).getFeatures().contains(CPUFeature.AVX);
             // TODO: Support different kinds of vector
-            masm.movdqu(destination.toAddress(), input);
+            if (isAvx) {
+                masm.vmovdqu(destination.toAddress(), input);
+            } else {
+                masm.movdqu(destination.toAddress(), input);
+            }
         }
 
     }
