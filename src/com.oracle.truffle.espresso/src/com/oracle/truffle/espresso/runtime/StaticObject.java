@@ -102,6 +102,10 @@ public final class StaticObject implements TruffleObject {
      * example), which would require reading 16 bytes and concatenating them, call Unsafe which can
      * directly read a long.
      */
+    // Note: For the time being, Graal does not allow virtualization of byte arrays with access
+    // kinds bigger than a byte. To still benefit from virtualization, we use a long array until
+    // support for byte arrays is live.
+    // @see: VirtualizerToolImpl.setVirtualEntry
     private final long[] primitiveFields;
 
     // Dedicated constructor for VOID and NULL pseudo-singletons
