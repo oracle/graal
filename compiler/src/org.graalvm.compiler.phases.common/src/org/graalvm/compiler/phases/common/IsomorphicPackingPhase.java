@@ -83,7 +83,7 @@ public final class IsomorphicPackingPhase extends BasePhase<LowTierContext> {
         }
 
         private int data_size(ValueNode node) {
-            return node.stamp(NodeView.DEFAULT).getStackKind().getStackKind().getByteCount();
+            return node.stamp(NodeView.DEFAULT).getStackKind().getByteCount();
         }
 
         private int data_size(LIRLowerableAccess node) {
