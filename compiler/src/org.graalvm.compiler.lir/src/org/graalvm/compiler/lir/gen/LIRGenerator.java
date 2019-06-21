@@ -235,8 +235,8 @@ public abstract class LIRGenerator implements LIRGeneratorTool {
     }
 
     @Override
-    public Value emitConstant(LIRKind kind, Constant constant) {
-        if (moveFactory.canInlineConstant(constant)) {
+    public Value emitConstant(LIRKind kind, Constant constant, boolean mayEmbedConstantLoadPrerequisite) {
+        if (moveFactory.canInlineConstant(constant) || moveFactory.mayEmbedConstantLoad(constant, mayEmbedConstantLoadPrerequisite)) {
             return new ConstantValue(toRegisterKind(kind), constant);
         } else {
             return emitLoadConstant(toRegisterKind(kind), constant);
@@ -245,7 +245,7 @@ public abstract class LIRGenerator implements LIRGeneratorTool {
 
     @Override
     public Value emitJavaConstant(JavaConstant constant) {
-        return emitConstant(getValueKind(constant.getJavaKind()), constant);
+        return emitConstant(getValueKind(constant.getJavaKind()), constant, true);
     }
 
     @Override

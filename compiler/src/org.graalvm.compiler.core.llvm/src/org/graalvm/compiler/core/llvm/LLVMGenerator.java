@@ -337,7 +337,7 @@ public class LLVMGenerator implements LIRGeneratorTool {
     }
 
     @Override
-    public Value emitConstant(LIRKind kind, Constant constant) {
+    public Value emitConstant(LIRKind kind, Constant constant, boolean mayEmbedConstantLoadPrerequisite) {
         LLVMValueRef value = emitLLVMConstant(((LLVMKind) kind.getPlatformKind()).get(), (JavaConstant) constant);
         return new LLVMConstant(value, constant);
     }

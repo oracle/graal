@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2009, 2018, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2009, 2019, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -629,7 +629,7 @@ public class SPARCArithmeticLIRGenerator extends ArithmeticLIRGenerator {
         if (fromBits == 32) {
             getLIRGen().append(new SPARCOP3Op(Srl, inputAllocatable, g0.asValue(), result));
         } else {
-            Value mask = getLIRGen().emitConstant(LIRKind.value(XWORD), forLong(mask(fromBits)));
+            Value mask = getLIRGen().emitConstant(LIRKind.value(XWORD), forLong(mask(fromBits)), true);
             getLIRGen().append(new SPARCOP3Op(And, inputAllocatable, mask, result));
         }
         return result;
