@@ -72,6 +72,7 @@ import jdk.vm.ci.code.StackSlot;
 import jdk.vm.ci.meta.AllocatableValue;
 import jdk.vm.ci.meta.Constant;
 import jdk.vm.ci.meta.JavaConstant;
+import jdk.vm.ci.meta.PlatformKind;
 import jdk.vm.ci.meta.Value;
 
 public class AMD64Move {
@@ -557,7 +558,7 @@ public class AMD64Move {
             }
         } else if (isJavaConstant(input)) {
             if (isRegister(result)) {
-                const2reg(crb, masm, asRegister(result), asJavaConstant(input));
+                const2reg(crb, masm, asRegister(result), asJavaConstant(input), input.getPlatformKind());
             } else if (isStackSlot(result)) {
                 const2stack(crb, masm, result, asJavaConstant(input));
             } else {
@@ -646,6 +647,10 @@ public class AMD64Move {
     }
 
     public static void const2reg(CompilationResultBuilder crb, AMD64MacroAssembler masm, Register result, JavaConstant input) {
+        const2reg(crb, masm, result, input, null);
+    }
+
+    public static void const2reg(CompilationResultBuilder crb, AMD64MacroAssembler masm, Register result, JavaConstant input, PlatformKind inputPlatformKind) {
         /*
          * Note: we use the kind of the input operand (and not the kind of the result operand)
          * because they don't match in all cases. For example, an object constant can be loaded to a
@@ -700,11 +705,14 @@ public class AMD64Move {
                     } else {
                         masm.movslq(result, 0);
                     }
-                } else if (crb.target.inlineObjects) {
-                    crb.recordInlineDataInCode(input);
-                    masm.movq(result, 0xDEADDEADDEADDEADL, true);
                 } else {
-                    masm.movq(result, (AMD64Address) crb.recordDataReferenceInCode(input, 0));
+                    assert inputPlatformKind == null || inputPlatformKind.getSizeInBytes() == 8 : "expected " + input + " to be 8 bytes but was " + inputPlatformKind.getSizeInBytes();
+                    if (crb.target.inlineObjects) {
+                        crb.recordInlineDataInCode(input);
+                        masm.movq(result, 0xDEADDEADDEADDEADL, true);
+                    } else {
+                        masm.movq(result, (AMD64Address) crb.recordDataReferenceInCode(input, 0));
+                    }
                 }
                 break;
             default:

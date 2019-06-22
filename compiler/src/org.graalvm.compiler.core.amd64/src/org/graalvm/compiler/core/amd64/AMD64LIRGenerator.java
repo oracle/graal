@@ -391,6 +391,7 @@ public abstract class AMD64LIRGenerator extends LIRGenerator {
         } else if (isFloatComparison) {
             append(new FloatCondMoveOp(result, finalCondition, unorderedIsTrue, load(finalTrueValue), load(finalFalseValue)));
         } else {
+            // TODO: handle narrow oop in finalFalseValue
             append(new CondMoveOp(result, finalCondition, load(finalTrueValue), loadNonConst(finalFalseValue)));
         }
         return result;
