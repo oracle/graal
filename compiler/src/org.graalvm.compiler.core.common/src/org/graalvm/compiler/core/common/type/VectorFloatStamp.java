@@ -31,7 +31,7 @@ import org.graalvm.compiler.core.common.type.ArithmeticOpTable.BinaryOp;
 import jdk.vm.ci.meta.Constant;
 import jdk.vm.ci.meta.MetaAccessProvider;
 
-public final class VectorIntegerStamp extends VectorPrimitiveStamp {
+public final class VectorFloatStamp extends VectorPrimitiveStamp {
 
     public static final ArithmeticOpTable OPS = new ArithmeticOpTable(
             null,
@@ -94,22 +94,22 @@ public final class VectorIntegerStamp extends VectorPrimitiveStamp {
             null
     );
 
-    public static VectorIntegerStamp create(IntegerStamp scalar, int elementCount) {
-        return new VectorIntegerStamp(scalar, elementCount, OPS);
+    public static VectorFloatStamp create(FloatStamp scalar, int elementCount) {
+        return new VectorFloatStamp(scalar, elementCount, OPS);
     }
 
-    private VectorIntegerStamp(IntegerStamp scalar, int elementCount, ArithmeticOpTable ops) {
+    private VectorFloatStamp(FloatStamp scalar, int elementCount, ArithmeticOpTable ops) {
         super(scalar, elementCount, ops);
     }
 
     @Override
-    public IntegerStamp getScalar() {
-        return (IntegerStamp) super.getScalar();
+    public FloatStamp getScalar() {
+        return (FloatStamp) super.getScalar();
     }
 
     @Override
     public LIRKind getLIRKind(LIRKindTool tool) {
-        return tool.getVectorIntegerKind(getScalar().getBits(), getElementCount());
+        return tool.getVectorFloatingKind(getScalar().getBits(), getElementCount());
     }
 
     @Override
@@ -122,10 +122,10 @@ public final class VectorIntegerStamp extends VectorPrimitiveStamp {
             return otherStamp;
         }
 
-        final VectorIntegerStamp other = (VectorIntegerStamp) otherStamp;
+        final VectorFloatStamp other = (VectorFloatStamp) otherStamp;
         final int newElementCount = Math.max(getElementCount(), other.getElementCount());
 
-        return VectorIntegerStamp.create((IntegerStamp) getScalar().meet(other.getScalar()), newElementCount);
+        return VectorFloatStamp.create((FloatStamp) getScalar().meet(other.getScalar()), newElementCount);
     }
 
     @Override
@@ -134,20 +134,20 @@ public final class VectorIntegerStamp extends VectorPrimitiveStamp {
             return this;
         }
 
-        final VectorIntegerStamp other = (VectorIntegerStamp) otherStamp;
+        final VectorFloatStamp other = (VectorFloatStamp) otherStamp;
         final int newElementCount = Math.min(getElementCount(), other.getElementCount());
 
-        return VectorIntegerStamp.create(getScalar().join(other.getScalar()), newElementCount);
+        return VectorFloatStamp.create(getScalar().join(other.getScalar()), newElementCount);
     }
 
     @Override
     public Stamp unrestricted() {
-        return VectorIntegerStamp.create(getScalar().unrestricted(), getElementCount());
+        return VectorFloatStamp.create(getScalar().unrestricted(), getElementCount());
     }
 
     @Override
     public Stamp empty() {
-        return VectorIntegerStamp.create(getScalar().empty(), getElementCount());
+        return VectorFloatStamp.create(getScalar().empty(), getElementCount());
     }
 
     @Override
@@ -162,8 +162,8 @@ public final class VectorIntegerStamp extends VectorPrimitiveStamp {
             return true;
         }
 
-        if (stamp instanceof VectorIntegerStamp) {
-            final VectorIntegerStamp other = (VectorIntegerStamp) stamp;
+        if (stamp instanceof VectorFloatStamp) {
+            final VectorFloatStamp other = (VectorFloatStamp) stamp;
             return getScalar().isCompatible(other.getScalar()) && getElementCount() == other.getElementCount();
         }
 

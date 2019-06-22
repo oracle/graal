@@ -135,6 +135,7 @@ public abstract class AMD64LIRKindTool implements LIRKindTool {
 
     @Override
     public LIRKind getVectorFloatingKind(int bits, int elementCount) {
+        // TODO: implement getVectorFloatingKind
         return null;
     }
 

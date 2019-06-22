@@ -69,12 +69,12 @@ public class FloatStamp extends PrimitiveStamp {
     }
 
     @Override
-    public Stamp unrestricted() {
+    public FloatStamp unrestricted() {
         return new FloatStamp(getBits());
     }
 
     @Override
-    public Stamp empty() {
+    public FloatStamp empty() {
         return new FloatStamp(getBits(), Double.POSITIVE_INFINITY, Double.NEGATIVE_INFINITY, true);
     }
 
@@ -227,7 +227,7 @@ public class FloatStamp extends PrimitiveStamp {
     }
 
     @Override
-    public Stamp join(Stamp otherStamp) {
+    public FloatStamp join(Stamp otherStamp) {
         if (otherStamp == this) {
             return this;
         }
@@ -312,6 +312,11 @@ public class FloatStamp extends PrimitiveStamp {
             }
         }
         return null;
+    }
+
+    @Override
+    public VectorPrimitiveStamp asVector(int elementCount) {
+        return VectorFloatStamp.create(this, elementCount);
     }
 
     private boolean isConstant() {

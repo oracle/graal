@@ -763,7 +763,6 @@ public final class IsomorphicPackingPhase extends BasePhase<LowTierContext> {
 
             if (first instanceof BinaryArithmeticNode<?>) {
                 final BinaryArithmeticNode<?> firstBAN = (BinaryArithmeticNode<?>) first;
-                // firstBAN can also be repurposed to be the vector op node
 
                 final List<BinaryArithmeticNode<?>> nodes = pack.getElements().stream().
                         map(x -> (BinaryArithmeticNode<?>) x).
