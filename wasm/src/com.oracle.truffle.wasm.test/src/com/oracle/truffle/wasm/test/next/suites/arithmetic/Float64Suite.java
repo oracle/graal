@@ -27,7 +27,7 @@
  *  NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED
  *  OF THE POSSIBILITY OF SUCH DAMAGE.
  */
-package com.oracle.truffle.wasm.test.next.arithmetic;
+package com.oracle.truffle.wasm.test.next.suites.arithmetic;
 
 import java.io.IOException;
 import java.util.Arrays;

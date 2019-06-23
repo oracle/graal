@@ -28,7 +28,7 @@
  *  OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 
-package com.oracle.truffle.wasm.test.next.control;
+package com.oracle.truffle.wasm.test.next.suites.control;
 
 import com.oracle.truffle.wasm.test.next.WasmSuiteBase;
 import com.oracle.truffle.wasm.test.next.options.WasmTestOptions;

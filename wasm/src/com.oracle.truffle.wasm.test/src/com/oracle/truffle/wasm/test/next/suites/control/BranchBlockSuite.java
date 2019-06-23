@@ -27,31 +27,26 @@
  *  NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED
  *  OF THE POSSIBILITY OF SUCH DAMAGE.
  */
-package com.oracle.truffle.wasm.test.next;
 
+package com.oracle.truffle.wasm.test.next.suites.control;
+
+import com.oracle.truffle.wasm.test.next.WasmSuiteBase;
+import com.oracle.truffle.wasm.test.next.options.WasmTestOptions;
 import org.junit.Test;
-import org.junit.runner.RunWith;
-import org.junit.runners.Suite;
 
-import com.oracle.truffle.wasm.test.next.suites.arithmetic.Float32Suite;
-import com.oracle.truffle.wasm.test.next.suites.arithmetic.Float64Suite;
-import com.oracle.truffle.wasm.test.next.suites.arithmetic.Integer32Suite;
-import com.oracle.truffle.wasm.test.next.suites.arithmetic.Integer64Suite;
-import com.oracle.truffle.wasm.test.next.suites.control.BlockWithLocalsSuite;
-import com.oracle.truffle.wasm.test.next.suites.control.SimpleBlockSuite;
+import java.io.IOException;
+import java.nio.file.Path;
+import java.nio.file.Paths;
 
-@RunWith(Suite.class)
-@Suite.SuiteClasses({
-        Integer32Suite.class,
-        Integer64Suite.class,
-        Float32Suite.class,
-        Float64Suite.class,
-        SimpleBlockSuite.class,
-        BlockWithLocalsSuite.class,
-})
-public class WasmTestSuite {
+public class BranchBlockSuite extends WasmSuiteBase {
+    @Override
+    protected Path testDirectory() {
+        return Paths.get(WasmTestOptions.TEST_SOURCE_PATH, "BranchBlock");
+    }
+
     @Test
-    public void test() {
+    public void test() throws IOException {
         // This is here just to make mx aware of the test suite class.
+        super.test();
     }
 }
