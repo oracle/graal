@@ -33,8 +33,9 @@ import java.io.IOException;
 import java.util.Arrays;
 import java.util.Collection;
 
-import com.oracle.truffle.wasm.test.next.WasmSuiteBase;
 import org.junit.Test;
+
+import com.oracle.truffle.wasm.test.next.WasmSuiteBase;
 
 public class Float32Suite extends WasmSuiteBase {
     private WasmStringTestCase[] testCases = {

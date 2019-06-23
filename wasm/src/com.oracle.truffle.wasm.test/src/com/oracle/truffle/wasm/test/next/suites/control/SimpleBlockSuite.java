@@ -33,9 +33,10 @@ import java.io.IOException;
 import java.nio.file.Path;
 import java.nio.file.Paths;
 
+import org.junit.Test;
+
 import com.oracle.truffle.wasm.test.next.WasmSuiteBase;
 import com.oracle.truffle.wasm.test.next.options.WasmTestOptions;
-import org.junit.Test;
 
 public class SimpleBlockSuite extends WasmSuiteBase {
     @Override
