@@ -241,14 +241,18 @@ public LLVMExpressionNode GetASTRoot() {return astRoot; }
 				Get();
 				idxPair = Expr();
 				Expect(18);
+				p = NF.errorObjPair; 
 			} else if (la.kind == 6) {
 				l = ActPars();
+				p = NF.createFunctionCall(p, l); 
 			} else if (la.kind == 19) {
 				Get();
 				Expect(1);
+				p = NF.errorObjPair; 
 			} else {
 				Get();
 				Expect(1);
+				p = NF.errorObjPair; 
 			}
 		}
 		return p;

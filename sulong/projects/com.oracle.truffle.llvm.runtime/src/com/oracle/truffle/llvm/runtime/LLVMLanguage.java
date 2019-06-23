@@ -43,7 +43,6 @@ import com.oracle.truffle.api.instrumentation.ProvidedTags;
 import com.oracle.truffle.api.instrumentation.StandardTags;
 import com.oracle.truffle.api.nodes.ExecutableNode;
 import com.oracle.truffle.api.nodes.Node;
-import com.oracle.truffle.api.nodes.UnexpectedResultException;
 import com.oracle.truffle.api.source.Source;
 import com.oracle.truffle.api.source.SourceSection;
 import com.oracle.truffle.llvm.runtime.debug.LLDBSupport;
@@ -143,21 +142,16 @@ public class LLVMLanguage extends TruffleLanguage<LLVMContext> {
     @Override
     protected ExecutableNode parse(InlineParsingRequest request) throws Exception {
         try {
-            final DebugExprParser d = new DebugExprParser(request, getContextReference());
+            Iterable<Scope> globalScopes = findTopScopes(getContextReference().get());
+            final DebugExprParser d = new DebugExprParser(request, getContextReference(), globalScopes);
             LLVMExpressionNode root = d.parse();
             return new ExecutableNode(this) {
                 @Override
                 public Object execute(VirtualFrame frame) {
 
                     try {
-                        // for boolean results: convert to a string
-                        return String.valueOf(root.executeI1(frame));
-                    } catch (UnsupportedSpecializationException | UnexpectedResultException e) {
-                        // perform normal execution
-                    }
-                    try {
                         // try to execute node
-                        return root.executeGeneric(frame);
+                        return String.valueOf(root.executeGeneric(frame));
                     } catch (UnsupportedSpecializationException use) {
                         // return error string node
                         return DebugExprNodeFactory.errorObjNode.executeGeneric(frame);
