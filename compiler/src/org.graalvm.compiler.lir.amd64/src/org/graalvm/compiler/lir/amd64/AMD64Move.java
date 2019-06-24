@@ -702,7 +702,7 @@ public class AMD64Move {
                 // flags and interfere with the Jcc.
                 if (input.isNull()) {
                     if (crb.mustReplaceWithNullRegister(input)) {
-                        if (Objects.equals(moveKind, AMD64Kind.DWORD)) {
+                        if (moveKind == AMD64Kind.DWORD) {
                             // Support for narrow oops
                             masm.movl(result, crb.nullRegister);
                         } else {
@@ -715,14 +715,14 @@ public class AMD64Move {
                 } else {
                     if (crb.target.inlineObjects) {
                         crb.recordInlineDataInCode(input);
-                        if (Objects.equals(moveKind, AMD64Kind.DWORD)) {
+                        if (moveKind == AMD64Kind.DWORD) {
                             // Support for narrow oops
                             masm.movl(result, 0xDEADDEAD, true);
                         } else {
                             masm.movq(result, 0xDEADDEADDEADDEADL, true);
                         }
                     } else {
-                        if (Objects.equals(moveKind, AMD64Kind.DWORD)) {
+                        if (moveKind == AMD64Kind.DWORD) {
                             // Support for narrow oops
                             masm.movl(result, (AMD64Address) crb.recordDataReferenceInCode(input, 0));
                         } else {
