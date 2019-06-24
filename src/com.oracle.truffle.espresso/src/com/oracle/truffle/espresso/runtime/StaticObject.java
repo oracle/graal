@@ -78,6 +78,8 @@ public final class StaticObject implements TruffleObject {
 
     private static final Unsafe U;
 
+    public static final StaticObject[] EMPTY_ARRAY = new StaticObject[0];
+
     public static final StaticObject VOID = new StaticObject();
     public static final StaticObject NULL = new StaticObject();
     static {
@@ -246,7 +248,6 @@ public final class StaticObject implements TruffleObject {
     }
 
     // Start non primitive field handling.
-    @TruffleBoundary
     public final StaticObject getFieldVolatile(Field field) {
         assert field.getDeclaringKlass().isAssignableFrom(getKlass());
         return (StaticObject) U.getObjectVolatile(fields, Unsafe.ARRAY_OBJECT_BASE_OFFSET + Unsafe.ARRAY_OBJECT_INDEX_SCALE * field.getFieldIndex());
@@ -271,7 +272,6 @@ public final class StaticObject implements TruffleObject {
         return U.getObject(fields, (long) Unsafe.ARRAY_OBJECT_BASE_OFFSET + Unsafe.ARRAY_OBJECT_INDEX_SCALE * fieldIndex);
     }
 
-    @TruffleBoundary
     public final void setFieldVolatile(Field field, Object value) {
         assert field.getDeclaringKlass().isAssignableFrom(getKlass());
         U.putObjectVolatile(fields, (long) Unsafe.ARRAY_OBJECT_BASE_OFFSET + Unsafe.ARRAY_OBJECT_INDEX_SCALE * field.getFieldIndex(), value);
@@ -312,7 +312,6 @@ public final class StaticObject implements TruffleObject {
         }
     }
 
-    @TruffleBoundary
     public byte getByteFieldVolatile(Field field) {
         assert field.getDeclaringKlass().isAssignableFrom(getKlass());
         return U.getByteVolatile(primitiveFields, (long) Unsafe.ARRAY_BYTE_BASE_OFFSET + Unsafe.ARRAY_BYTE_INDEX_SCALE * field.getFieldIndex());
@@ -338,7 +337,6 @@ public final class StaticObject implements TruffleObject {
         }
     }
 
-    @TruffleBoundary
     public char getCharFieldVolatile(Field field) {
         assert field.getDeclaringKlass().isAssignableFrom(getKlass());
         return U.getCharVolatile(primitiveFields, (long) Unsafe.ARRAY_BYTE_BASE_OFFSET + Unsafe.ARRAY_BYTE_INDEX_SCALE * field.getFieldIndex());
@@ -354,7 +352,6 @@ public final class StaticObject implements TruffleObject {
         }
     }
 
-    @TruffleBoundary
     public short getShortFieldVolatile(Field field) {
         assert field.getDeclaringKlass().isAssignableFrom(getKlass());
         return U.getShortVolatile(primitiveFields, (long) Unsafe.ARRAY_BYTE_BASE_OFFSET + Unsafe.ARRAY_BYTE_INDEX_SCALE * field.getFieldIndex());
@@ -370,7 +367,6 @@ public final class StaticObject implements TruffleObject {
         }
     }
 
-    @TruffleBoundary
     public int getIntFieldVolatile(Field field) {
         assert field.getDeclaringKlass().isAssignableFrom(getKlass());
         return U.getIntVolatile(primitiveFields, (long) Unsafe.ARRAY_BYTE_BASE_OFFSET + Unsafe.ARRAY_BYTE_INDEX_SCALE * field.getFieldIndex());
@@ -386,7 +382,6 @@ public final class StaticObject implements TruffleObject {
         }
     }
 
-    @TruffleBoundary
     public float getFloatFieldVolatile(Field field) {
         assert field.getDeclaringKlass().isAssignableFrom(getKlass());
         return U.getFloatVolatile(primitiveFields, (long) Unsafe.ARRAY_BYTE_BASE_OFFSET + Unsafe.ARRAY_BYTE_INDEX_SCALE * field.getFieldIndex());
@@ -402,7 +397,6 @@ public final class StaticObject implements TruffleObject {
         }
     }
 
-    @TruffleBoundary
     public double getDoubleFieldVolatile(Field field) {
         assert field.getDeclaringKlass().isAssignableFrom(getKlass());
         return U.getDoubleVolatile(primitiveFields, (long) Unsafe.ARRAY_BYTE_BASE_OFFSET + Unsafe.ARRAY_BYTE_INDEX_SCALE * field.getFieldIndex());
@@ -490,7 +484,6 @@ public final class StaticObject implements TruffleObject {
         }
     }
 
-    @TruffleBoundary
     public void setDoubleFieldVolatile(Field field, double value) {
         assert field.getDeclaringKlass().isAssignableFrom(getKlass());
         U.putDoubleVolatile(primitiveFields, (long) Unsafe.ARRAY_BYTE_BASE_OFFSET + Unsafe.ARRAY_BYTE_INDEX_SCALE * field.getFieldIndex(), value);
@@ -506,7 +499,6 @@ public final class StaticObject implements TruffleObject {
         }
     }
 
-    @TruffleBoundary
     public void setFloatFieldVolatile(Field field, float value) {
         assert field.getDeclaringKlass().isAssignableFrom(getKlass());
         U.putFloatVolatile(primitiveFields, (long) Unsafe.ARRAY_BYTE_BASE_OFFSET + Unsafe.ARRAY_BYTE_INDEX_SCALE * field.getFieldIndex(), value);
@@ -528,7 +520,6 @@ public final class StaticObject implements TruffleObject {
         }
     }
 
-    @TruffleBoundary
     public void setWordFieldVolatile(Field field, int value) {
         assert field.getDeclaringKlass().isAssignableFrom(getKlass());
         switch (field.getKind()) {
@@ -591,7 +582,6 @@ public final class StaticObject implements TruffleObject {
         }
     }
 
-    @TruffleBoundary
     public final void setLongFieldVolatile(Field field, long value) {
         assert field.getDeclaringKlass().isAssignableFrom(getKlass());
         U.putLongVolatile(primitiveFields, (long) Unsafe.ARRAY_BYTE_BASE_OFFSET + Unsafe.ARRAY_BYTE_INDEX_SCALE * field.getFieldIndex(), value);

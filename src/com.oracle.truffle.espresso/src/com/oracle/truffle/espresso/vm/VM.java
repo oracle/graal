@@ -47,6 +47,7 @@ import java.util.concurrent.ConcurrentHashMap;
 import java.util.function.IntFunction;
 
 import com.oracle.truffle.api.CompilerDirectives;
+import com.oracle.truffle.espresso.runtime.MethodHandleIntrinsics;
 import org.graalvm.options.OptionValues;
 
 import com.oracle.truffle.api.CallTarget;
@@ -738,6 +739,11 @@ public final class VM extends NativeEnv implements ContextAccess {
     }
 
     @VmImpl
+    public static long JVM_MaxMemory() {
+        return Runtime.getRuntime().maxMemory();
+    }
+
+    @VmImpl
     public static void JVM_GC() {
         System.gc();
     }
@@ -841,6 +847,45 @@ public final class VM extends NativeEnv implements ContextAccess {
         }
 
         throw EspressoError.shouldNotReachHere();
+    }
+
+    @VmImpl
+    @JniImpl
+    public @Host(Class[].class) StaticObject JVM_GetClassContext() {
+        // TODO(garcia) This must only be called from SecurityManager.getClassContext
+        ArrayList<StaticObject> result = new ArrayList<>();
+        Truffle.getRuntime().iterateFrames(
+                        new FrameInstanceVisitor<Object>() {
+                            @Override
+                            public Object visitFrame(FrameInstance frameInstance) {
+                                if (frameInstance.getCallTarget() instanceof RootCallTarget) {
+                                    RootCallTarget callTarget = (RootCallTarget) frameInstance.getCallTarget();
+                                    RootNode rootNode = callTarget.getRootNode();
+                                    if (rootNode instanceof EspressoRootNode) {
+                                        Method m = ((EspressoRootNode) rootNode).getMethod();
+                                        if (!isIgnoredBySecurityStackWalk(m, getMeta()) && !m.isNative()) {
+                                            result.add(m.getDeclaringKlass().mirror());
+                                        }
+                                    }
+                                }
+                                return null;
+                            }
+                        });
+        return new StaticObject(getMeta().Class_Array, result.toArray(StaticObject.EMPTY_ARRAY));
+    }
+
+    private static boolean isIgnoredBySecurityStackWalk(Method m, Meta meta) {
+        Klass holderKlass = m.getDeclaringKlass();
+        if (holderKlass == meta.Method && m.getName() == Name.invoke) {
+            return true;
+        }
+        if (meta.MethodAccessorImpl.isAssignableFrom(holderKlass)) {
+            return true;
+        }
+        if (MethodHandleIntrinsics.isMethodHandleIntrinsic(m, meta)) {
+            return true;
+        }
+        return false;
     }
 
     @VmImpl
@@ -1037,5 +1082,17 @@ public final class VM extends NativeEnv implements ContextAccess {
         }
         String fileName = getRegistries().getBootClassRegistry().getPackagePath(hostPkgName);
         return getMeta().toGuestString(fileName);
+    }
+
+    @VmImpl
+    @JniImpl
+    public @Host(String[].class) StaticObject JVM_GetSystemPackages() {
+        String[] packages = getRegistries().getBootClassRegistry().getPackagePaths();
+        StaticObject[] array = new StaticObject[packages.length];
+        for (int i = 0; i < packages.length; i++) {
+            array[i] = getMeta().toGuestString(packages[i]);
+        }
+        StaticObject result = new StaticObject(getMeta().String.getArrayClass(), array);
+        return result;
     }
 }

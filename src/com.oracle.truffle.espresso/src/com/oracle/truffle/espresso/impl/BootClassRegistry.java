@@ -97,6 +97,10 @@ public final class BootClassRegistry extends ClassRegistry {
         return result;
     }
 
+    public String[] getPackagePaths() {
+        return packageMap.values().toArray(new String[0]);
+    }
+
     @Override
     public @Host(ClassLoader.class) StaticObject getClassLoader() {
         return StaticObject.NULL;
