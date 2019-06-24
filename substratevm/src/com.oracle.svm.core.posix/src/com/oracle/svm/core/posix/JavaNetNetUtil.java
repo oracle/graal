@@ -152,6 +152,22 @@ class JavaNetNetUtil {
         return IPv6_available;
     }
 
+    // ported from: ./src/java.base/share/native/libnet/net_util.c
+    // 36 static int REUSEPORT_available;
+    static Boolean REUSEPORT_available;
+
+    /* @formatter:off */
+    //    48  JNIEXPORT jint JNICALL reuseport_available()
+    static boolean reuseport_available() {
+        //    50      return REUSEPORT_available;
+        if ( REUSEPORT_available == null ) {
+            // Initialized here as StackValue.get isn't available during static init of native-image generation.
+            REUSEPORT_available = JavaNetNetUtilMD.reuseport_supported();
+        }
+        return REUSEPORT_available;
+    }
+    /* @formatter:on */
+
     // 226 JNIEXPORT jobject JNICALL
     // 227 NET_SockaddrToInetAddress(JNIEnv *env, struct sockaddr *him, int *port) {
     @SuppressWarnings({"unused"})
@@ -892,6 +908,42 @@ class JavaNetNetUtilMD {
         // 152 return (a->s6_bytes[0] == 0xfe
         // 153         && a->s6_bytes[1] == 0x80);
         return ((a.s6_addr().read(0) == (byte) 0xfe) && (a.s6_addr().read(1) == (byte) 0x80));
+    }
+    /* @formatter:on */
+
+    /* @formatter:off */
+    // ported from: ./src/java.base//unix/native/libnet/net_util_md.c
+    //   408  jint reuseport_supported()
+    static boolean reuseport_supported() {
+        //   409  {
+        //   410      /* Do a simple dummy call, and try to figure out from that */
+        //   411      int one = 1;
+        CIntPointer one = StackValue.get(CIntPointer.class);
+        one.write(1);
+        //   412      int rv, s;
+        int rv, s;
+        //   413      s = socket(PF_INET, SOCK_STREAM, 0);
+        s = Socket.socket(Socket.PF_INET(), Socket.SOCK_STREAM(), 0);
+        //   414      if (s < 0) {
+        if (s < 0) {
+            //   415          return JNI_FALSE;
+            return false;
+        }
+        //   417      rv = setsockopt(s, SOL_SOCKET, SO_REUSEPORT, (void *)&one, sizeof(one));
+        rv = Socket.setsockopt(s, Socket.SOL_SOCKET(), Socket.SO_REUSEPORT(), one, SizeOf.get(CIntPointer.class));
+        //   418      if (rv != 0) {
+        try {
+            if (rv != 0) {
+                //   419          rv = JNI_FALSE;
+                return false;
+            } else {
+                //   421          rv = JNI_TRUE;
+                return true;
+            }
+        } finally {
+            //   423      close(s);
+            Unistd.close(s);
+        }
     }
     /* @formatter:on */
 
