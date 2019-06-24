@@ -33,6 +33,7 @@ import org.graalvm.nativeimage.c.type.CCharPointer;
 import org.graalvm.word.ComparableWord;
 import org.graalvm.word.WordFactory;
 
+import com.oracle.svm.core.annotate.ForceFixedRegisterReads;
 import com.oracle.svm.core.annotate.Uninterruptible;
 import com.oracle.svm.core.jdk.UninterruptibleUtils;
 import com.oracle.svm.core.locks.VMCondition;
@@ -395,6 +396,7 @@ public abstract class VMThreads {
 
         /** A guarded transition from native to Java. */
         @Uninterruptible(reason = "Called from uninterruptible code.")
+        @ForceFixedRegisterReads
         public static boolean compareAndSetNativeToJava() {
             return statusTL.compareAndSet(STATUS_IN_NATIVE, STATUS_IN_JAVA);
         }

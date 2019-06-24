@@ -40,7 +40,6 @@ import com.oracle.svm.core.FrameAccess;
 import com.oracle.svm.core.graal.meta.SubstrateRegisterConfig;
 
 import jdk.vm.ci.code.Register;
-import jdk.vm.ci.code.RegisterValue;
 
 /**
  * Reads the value of a specific register.
@@ -75,7 +74,7 @@ public class ReadRegisterFixedNode extends FixedWithNextNode implements LIRLower
         LIRGeneratorTool tool = gen.getLIRGeneratorTool();
         SubstrateRegisterConfig registerConfig = (SubstrateRegisterConfig) tool.getRegisterConfig();
         LIRKind lirKind = tool.getLIRKind(FrameAccess.getWordStamp());
-        RegisterValue value = registerSupplier.apply(registerConfig).asValue(lirKind);
-        gen.setResult(this, tool.emitMove(value));
+        Register register = registerSupplier.apply(registerConfig);
+        gen.setResult(this, tool.emitReadRegister(register, lirKind));
     }
 }

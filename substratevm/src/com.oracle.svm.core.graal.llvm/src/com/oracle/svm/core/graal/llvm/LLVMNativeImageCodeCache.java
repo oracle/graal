@@ -56,6 +56,7 @@ import org.bytedeco.javacpp.LLVM.LLVMSymbolIteratorRef;
 import org.bytedeco.javacpp.Pointer;
 import org.graalvm.compiler.code.CompilationResult;
 import org.graalvm.compiler.core.common.NumUtil;
+import org.graalvm.compiler.core.llvm.LLVMUtils;
 import org.graalvm.compiler.debug.DebugContext;
 import org.graalvm.compiler.debug.GraalError;
 import org.graalvm.compiler.debug.Indent;
@@ -196,10 +197,20 @@ public class LLVMNativeImageCodeCache extends NativeImageCodeCache {
 
     private void storeMethodOffsets(long codeSize) throws IOException {
         List<Integer> sortedMethodOffsets = textSymbolOffsets.values().stream().distinct().sorted().collect(Collectors.toList());
-        Integer gcRegisterOffset = textSymbolOffsets.get(SYMBOL_PREFIX + "__svm_gc_register");
-        if (gcRegisterOffset != null) {
-            sortedMethodOffsets.remove(gcRegisterOffset);
-        }
+
+        /*
+         * Functions added by the LLVM backend have to be removed before computing function offsets,
+         * because as they are not linked to a function known to Native Image, keeping them would
+         * create gaps in the CodeInfoTable. Removing these offsets includes them as part of the
+         * previously defined function instead. Stack walking will never see an address belonging to
+         * one of these LLVM functions, as these are executing in native mode, so this will not
+         * cause incorrect queries at runtime.
+         */
+        textSymbolOffsets.forEach((symbol, offset) -> {
+            if (symbol.startsWith(SYMBOL_PREFIX + LLVMUtils.JNI_WRAPPER_PREFIX)) {
+                sortedMethodOffsets.remove(offset);
+            }
+        });
 
         sortedMethodOffsets.add(NumUtil.safeToInt(codeSize));
 
@@ -251,6 +262,8 @@ public class LLVMNativeImageCodeCache extends NativeImageCodeCache {
             if (stackMapDump != null) {
                 patchpointsDump = new StringBuilder();
                 patchpointsDump.append(methodSymbolName);
+                patchpointsDump.append(" -> f");
+                patchpointsDump.append(id);
                 patchpointsDump.append(" (");
                 patchpointsDump.append(totalFrameSize);
                 patchpointsDump.append(")\n");
@@ -453,11 +466,10 @@ public class LLVMNativeImageCodeCache extends NativeImageCodeCache {
              * Mem2reg has to be run before rewriting statepoints as it promotes allocas, which are
              * not supported for statepoints.
              */
-            if (Platform.AMD64.class.isInstance(targetPlatform)) {
-                cmd.add("-mem2reg");
-                cmd.add("-rewrite-statepoints-for-gc");
-                cmd.add("-always-inline");
-            }
+            cmd.add("-mem2reg");
+            cmd.add("-rewrite-statepoints-for-gc");
+            cmd.add("-always-inline");
+
             cmd.add("-o");
             cmd.add(outputPath);
             cmd.add(inputPath);
@@ -486,11 +498,8 @@ public class LLVMNativeImageCodeCache extends NativeImageCodeCache {
             cmd.add("-relocation-model=pic");
 
             /* X86 call frame optimization causes variable sized stack frames */
-            if (Platform.AMD64.class.isInstance(targetPlatform)) {
+            if (targetPlatform instanceof Platform.AMD64) {
                 cmd.add("-no-x86-call-frame-opt");
-            }
-            if (Platform.AArch64.class.isInstance(targetPlatform)) {
-                cmd.add("-march=arm64");
             }
             cmd.add("-O2");
             cmd.add("-filetype=obj");
