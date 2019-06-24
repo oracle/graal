@@ -809,8 +809,10 @@ public class NativeImage {
                     try {
                         probeJarFS = FileSystems.newFileSystem(jarFileURI, Collections.emptyMap());
                     } catch (UnsupportedOperationException e) {
-                        /* Silently ignore invalid jar-files on image-classpath */
                         probeJarFS = null;
+                        if (isVerbose()) {
+                            showWarning(ClasspathUtils.classpathToString(classpathEntry) + " does not describe valid jarfile" + (jarFileMatches.size() > 1 ? "s" : ""));
+                        }
                     }
                     if (probeJarFS != null) {
                         try (FileSystem jarFS = probeJarFS) {
