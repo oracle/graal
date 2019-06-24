@@ -431,7 +431,6 @@ public class BinaryReader extends BinaryStreamReader {
                     Assert.assertLess(localIndex, codeEntry.numLocals(), "Invalid local index for local.tee");
                     // Assert there is a value on the top of the stack.
                     Assert.assertLarger(state.stackSize(), 0, "local.tee requires at least one element in the stack");
-                    state.push();
                     break;
                 }
                 case I32_CONST:
@@ -609,8 +608,7 @@ public class BinaryReader extends BinaryStreamReader {
         currentBlock.setByteLength(offset() - startOffset);
         currentBlock.setByteConstantLength(state.byteConstantOffset() - startByteConstantOffset);
         currentBlock.setIntConstantLength(state.intConstantOffset() - startIntConstantOffset);
-        // TODO: restore check
-        // checkValidStateOnBlockExit(returnTypeId, state, startStackSize);
+        checkValidStateOnBlockExit(returnTypeId, state, startStackSize);
         return currentBlock;
     }
 
