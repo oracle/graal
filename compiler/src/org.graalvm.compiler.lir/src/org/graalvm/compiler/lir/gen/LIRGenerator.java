@@ -230,6 +230,16 @@ public abstract class LIRGenerator implements LIRGeneratorTool {
     }
 
     @Override
+    public Variable emitReadRegister(Register register, ValueKind<?> kind) {
+        return emitMove(register.asValue(kind));
+    }
+
+    @Override
+    public void emitWriteRegister(Register dst, Value src, ValueKind<?> kind) {
+        emitMove(dst.asValue(kind), src);
+    }
+
+    @Override
     public void emitMoveConstant(AllocatableValue dst, Constant src) {
         append(moveFactory.createLoad(dst, src));
     }

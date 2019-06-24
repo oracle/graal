@@ -52,7 +52,7 @@ public class WriteHeapBaseNode extends FixedWithNextNode implements LIRLowerable
     @Override
     public void generate(NodeLIRBuilderTool gen) {
         LIRGeneratorTool tool = gen.getLIRGeneratorTool();
-        tool.emitMove(((SubstrateRegisterConfig) tool.getResult().getRegisterConfig()).getHeapBaseRegister().asValue(tool.getLIRKind(FrameAccess.getWordStamp())), gen.operand(value));
+        tool.emitWriteRegister(((SubstrateRegisterConfig) tool.getResult().getRegisterConfig()).getHeapBaseRegister(), gen.operand(value), tool.getLIRKind(FrameAccess.getWordStamp()));
     }
 
     @NodeIntrinsic
