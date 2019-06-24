@@ -59,6 +59,7 @@ public class LocationTest {
     final Layout layout = new DefaultLayoutFactory().createLayout(Layout.newLayout());
     final Shape rootShape = layout.createShape(new ObjectType());
 
+    @SuppressWarnings("deprecation")
     static Class<?> getLocationType(Location location) {
         return ((com.oracle.truffle.api.object.TypedLocation) location).getType();
     }

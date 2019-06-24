@@ -83,6 +83,7 @@ public class ImplicitCastTest {
         this.otherPrimClass = otherPrimClass;
     }
 
+    @SuppressWarnings("deprecation")
     private static Class<?> getLocationType(Location location) {
         return ((com.oracle.truffle.api.object.TypedLocation) location).getType();
     }

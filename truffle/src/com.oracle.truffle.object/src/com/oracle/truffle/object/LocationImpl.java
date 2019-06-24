@@ -156,6 +156,7 @@ public abstract class LocationImpl extends Location {
     }
 
     /** @since 0.17 or earlier */
+    @SuppressWarnings("deprecation")
     @Override
     public String toString() {
         String finalString = isFinal() ? "f" : "";
@@ -221,7 +222,9 @@ public abstract class LocationImpl extends Location {
      * usually know more about the value to be set.
      *
      * @since 0.17 or earlier
+     * @deprecated equivalent to {@link java.util.Objects#equals(Object, Object)}
      */
+    @Deprecated
     public static boolean valueEquals(Object val1, Object val2) {
         return val1 == val2 || (val1 != null && val1.equals(val2));
     }

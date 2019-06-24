@@ -43,6 +43,7 @@ package com.oracle.truffle.api.object;
 import java.util.EnumSet;
 import java.util.ServiceLoader;
 
+import com.oracle.truffle.api.CompilerAsserts;
 import com.oracle.truffle.api.Truffle;
 import com.oracle.truffle.api.object.Shape.Allocator;
 
@@ -85,6 +86,7 @@ public abstract class Layout {
      * @since 0.8 or earlier
      */
     public static Builder newLayout() {
+        CompilerAsserts.neverPartOfCompilation();
         return new Builder();
     }
 

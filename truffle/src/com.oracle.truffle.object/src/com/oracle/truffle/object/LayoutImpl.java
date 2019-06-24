@@ -41,6 +41,7 @@
 package com.oracle.truffle.object;
 
 import java.util.EnumSet;
+import java.util.Objects;
 
 import com.oracle.truffle.api.object.DynamicObject;
 import com.oracle.truffle.api.object.Layout;
@@ -61,11 +62,15 @@ public abstract class LayoutImpl extends Layout {
     private final int allowedImplicitCasts;
 
     /** @since 0.17 or earlier */
-    protected LayoutImpl(EnumSet<ImplicitCast> allowedImplicitCasts, Class<? extends DynamicObjectImpl> clazz, LayoutStrategy strategy) {
+    protected LayoutImpl(EnumSet<ImplicitCast> allowedImplicitCasts, Class<? extends DynamicObject> clazz, LayoutStrategy strategy) {
         this.strategy = strategy;
-        this.clazz = clazz;
+        this.clazz = Objects.requireNonNull(clazz);
 
-        this.allowedImplicitCasts = (allowedImplicitCasts.contains(ImplicitCast.IntToDouble) ? INT_TO_DOUBLE_FLAG : 0) | (allowedImplicitCasts.contains(ImplicitCast.IntToLong) ? INT_TO_LONG_FLAG : 0);
+        this.allowedImplicitCasts = implicitCastFlags(allowedImplicitCasts);
+    }
+
+    static int implicitCastFlags(EnumSet<ImplicitCast> allowedImplicitCasts) {
+        return (allowedImplicitCasts.contains(ImplicitCast.IntToDouble) ? INT_TO_DOUBLE_FLAG : 0) | (allowedImplicitCasts.contains(ImplicitCast.IntToLong) ? INT_TO_LONG_FLAG : 0);
     }
 
     /** @since 0.17 or earlier */
