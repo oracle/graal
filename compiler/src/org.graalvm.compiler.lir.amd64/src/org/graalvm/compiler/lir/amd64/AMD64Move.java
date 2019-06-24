@@ -42,6 +42,8 @@ import static org.graalvm.compiler.lir.LIRInstruction.OperandFlag.UNINITIALIZED;
 import static org.graalvm.compiler.lir.LIRValueUtil.asJavaConstant;
 import static org.graalvm.compiler.lir.LIRValueUtil.isJavaConstant;
 
+import java.util.Objects;
+
 import org.graalvm.compiler.asm.Label;
 import org.graalvm.compiler.asm.amd64.AMD64Address;
 import org.graalvm.compiler.asm.amd64.AMD64Assembler.AMD64MIOp;
@@ -72,7 +74,6 @@ import jdk.vm.ci.code.StackSlot;
 import jdk.vm.ci.meta.AllocatableValue;
 import jdk.vm.ci.meta.Constant;
 import jdk.vm.ci.meta.JavaConstant;
-import jdk.vm.ci.meta.PlatformKind;
 import jdk.vm.ci.meta.Value;
 
 public class AMD64Move {
@@ -558,7 +559,7 @@ public class AMD64Move {
             }
         } else if (isJavaConstant(input)) {
             if (isRegister(result)) {
-                const2reg(crb, masm, asRegister(result), asJavaConstant(input), input.getPlatformKind());
+                const2reg(crb, masm, asRegister(result), asJavaConstant(input), moveKind);
             } else if (isStackSlot(result)) {
                 const2stack(crb, masm, result, asJavaConstant(input));
             } else {
@@ -650,7 +651,7 @@ public class AMD64Move {
         const2reg(crb, masm, result, input, null);
     }
 
-    public static void const2reg(CompilationResultBuilder crb, AMD64MacroAssembler masm, Register result, JavaConstant input, PlatformKind inputPlatformKind) {
+    public static void const2reg(CompilationResultBuilder crb, AMD64MacroAssembler masm, Register result, JavaConstant input, AMD64Kind moveKind) {
         /*
          * Note: we use the kind of the input operand (and not the kind of the result operand)
          * because they don't match in all cases. For example, an object constant can be loaded to a
@@ -701,17 +702,36 @@ public class AMD64Move {
                 // flags and interfere with the Jcc.
                 if (input.isNull()) {
                     if (crb.mustReplaceWithNullRegister(input)) {
-                        masm.movq(result, crb.nullRegister);
+                        if (Objects.equals(moveKind, AMD64Kind.DWORD)) {
+                            // Support for narrow oops
+                            masm.movl(result, crb.nullRegister);
+                        } else {
+                            masm.movq(result, crb.nullRegister);
+                        }
                     } else {
-                        masm.movslq(result, 0);
+                        if (Objects.equals(moveKind, AMD64Kind.DWORD)) {
+                            // Support for narrow oops
+                            masm.movl(result, 0);
+                        } else {
+                            masm.movslq(result, 0);
+                        }
                     }
                 } else {
-                    assert inputPlatformKind == null || inputPlatformKind.getSizeInBytes() == 8 : "expected " + input + " to be 8 bytes but was " + inputPlatformKind.getSizeInBytes();
                     if (crb.target.inlineObjects) {
                         crb.recordInlineDataInCode(input);
-                        masm.movq(result, 0xDEADDEADDEADDEADL, true);
+                        if (Objects.equals(moveKind, AMD64Kind.DWORD)) {
+                            // Support for narrow oops
+                            masm.movl(result, 0xDEADDEAD, true);
+                        } else {
+                            masm.movq(result, 0xDEADDEADDEADDEADL, true);
+                        }
                     } else {
-                        masm.movq(result, (AMD64Address) crb.recordDataReferenceInCode(input, 0));
+                        if (Objects.equals(moveKind, AMD64Kind.DWORD)) {
+                            // Support for narrow oops
+                            masm.movl(result, (AMD64Address) crb.recordDataReferenceInCode(input, 0));
+                        } else {
+                            masm.movq(result, (AMD64Address) crb.recordDataReferenceInCode(input, 0));
+                        }
                     }
                 }
                 break;
@@ -766,7 +786,7 @@ public class AMD64Move {
                     }
                     imm = 0;
                 } else {
-                    throw GraalError.shouldNotReachHere("Non-null object constants must be in register");
+                    throw GraalError.shouldNotReachHere("Non-null object constants must be in a register");
                 }
                 break;
             default:
