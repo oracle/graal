@@ -72,6 +72,7 @@ import jdk.vm.ci.code.StackSlot;
 import jdk.vm.ci.meta.AllocatableValue;
 import jdk.vm.ci.meta.Constant;
 import jdk.vm.ci.meta.JavaConstant;
+import jdk.vm.ci.meta.JavaKind;
 import jdk.vm.ci.meta.Value;
 
 public class AMD64Move {
@@ -646,6 +647,7 @@ public class AMD64Move {
     }
 
     public static void const2reg(CompilationResultBuilder crb, AMD64MacroAssembler masm, Register result, JavaConstant input) {
+        assert input.getJavaKind().getStackKind() != JavaKind.Object : "a nun-null moveKind is required for loading an object constant";
         const2reg(crb, masm, result, input, null);
     }
 
@@ -695,6 +697,7 @@ public class AMD64Move {
                 }
                 break;
             case Object:
+                assert moveKind != null : "a nun-null moveKind is required for loading an object constant";
                 // Do not optimize with an XOR as this instruction may be between
                 // a CMP and a Jcc in which case the XOR will modify the condition
                 // flags and interfere with the Jcc.
