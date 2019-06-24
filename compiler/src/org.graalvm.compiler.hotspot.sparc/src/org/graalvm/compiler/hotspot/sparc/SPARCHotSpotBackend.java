@@ -535,8 +535,6 @@ public class SPARCHotSpotBackend extends HotSpotHostBackend implements LIRGenera
         return getTarget().arch.getRegisters().get(o0.number + register.number - i0.number);
     }
 
-    private final VectorDescription vectorDescription = new SPARCVectorDescription();
-
     class SPARCVectorDescription extends VectorDescription {
 
         @Override
@@ -545,6 +543,8 @@ public class SPARCHotSpotBackend extends HotSpotHostBackend implements LIRGenera
             return 1;
         }
     }
+
+    private final VectorDescription vectorDescription = new SPARCVectorDescription();
 
     @Override
     public VectorDescription getVectorDescription() {
