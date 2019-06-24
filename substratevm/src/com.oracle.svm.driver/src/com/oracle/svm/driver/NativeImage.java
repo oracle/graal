@@ -805,9 +805,20 @@ public class NativeImage {
 
                 for (Path jarFile : jarFileMatches) {
                     URI jarFileURI = URI.create("jar:" + jarFile.toUri());
-                    try (FileSystem jarFS = FileSystems.newFileSystem(jarFileURI, Collections.emptyMap())) {
-                        Path nativeImageMetaInfBase = jarFS.getPath("/" + nativeImageMetaInf);
-                        processNativeImageMetaInf(jarFile, nativeImageMetaInfBase, metaInfProcessor);
+                    FileSystem probeJarFS;
+                    try {
+                        probeJarFS = FileSystems.newFileSystem(jarFileURI, Collections.emptyMap());
+                    } catch (UnsupportedOperationException e) {
+                        probeJarFS = null;
+                        if (isVerbose()) {
+                            showWarning(ClasspathUtils.classpathToString(classpathEntry) + " does not describe valid jarfile" + (jarFileMatches.size() > 1 ? "s" : ""));
+                        }
+                    }
+                    if (probeJarFS != null) {
+                        try (FileSystem jarFS = probeJarFS) {
+                            Path nativeImageMetaInfBase = jarFS.getPath("/" + nativeImageMetaInf);
+                            processNativeImageMetaInf(jarFile, nativeImageMetaInfBase, metaInfProcessor);
+                        }
                     }
                 }
             }
