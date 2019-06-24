@@ -316,7 +316,7 @@ public final class Symbol<T> extends ByteSequence {
 
         // MagicAccessorImpl is not public.
         public static final Symbol<Type> MagicAccessorImpl = StaticSymbols.putType("Lsun/reflect/MagicAccessorImpl;");
-        // MagicAccessorImpl is not public.
+        // MethodAccessorImpl is not public.
         public static final Symbol<Type> MethodAccessorImpl = StaticSymbols.putType("Lsun/reflect/MethodAccessorImpl;");
 
         public static final Symbol<Type> Serializable = StaticSymbols.putType(java.io.Serializable.class);

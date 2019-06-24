@@ -200,7 +200,7 @@ jlong JVM_FreeMemory(void) {
 }
 
 jlong JVM_MaxMemory(void) {
-  UNIMPLEMENTED(JVM_MaxMemory);
+  IMPLEMENTED(JVM_MaxMemory);
   return (*getEnv())->JVM_MaxMemory();
 }
 
@@ -388,8 +388,8 @@ jobject JVM_CurrentClassLoader(JNIEnv *env) {
 }
 
 jobjectArray JVM_GetClassContext(JNIEnv *env) {
-	IMPLEMENTED(JVM_GetClassContext);
-	return (*getEnv())->JVM_GetClassContext(env);
+  IMPLEMENTED(JVM_GetClassContext);
+  return (*getEnv())->JVM_GetClassContext(env);
 }
 
 jint JVM_ClassDepth(JNIEnv *env, jstring name) {
