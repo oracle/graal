@@ -42,8 +42,6 @@ import static org.graalvm.compiler.lir.LIRInstruction.OperandFlag.UNINITIALIZED;
 import static org.graalvm.compiler.lir.LIRValueUtil.asJavaConstant;
 import static org.graalvm.compiler.lir.LIRValueUtil.isJavaConstant;
 
-import java.util.Objects;
-
 import org.graalvm.compiler.asm.Label;
 import org.graalvm.compiler.asm.amd64.AMD64Address;
 import org.graalvm.compiler.asm.amd64.AMD64Assembler.AMD64MIOp;
@@ -701,13 +699,8 @@ public class AMD64Move {
                 // a CMP and a Jcc in which case the XOR will modify the condition
                 // flags and interfere with the Jcc.
                 if (input.isNull()) {
-                    if (crb.mustReplaceWithNullRegister(input)) {
-                        if (moveKind == AMD64Kind.DWORD) {
-                            // Support for narrow oops
-                            masm.movl(result, crb.nullRegister);
-                        } else {
-                            masm.movq(result, crb.nullRegister);
-                        }
+                    if (moveKind == AMD64Kind.QWORD && crb.mustReplaceWithNullRegister(input)) {
+                        masm.movq(result, crb.nullRegister);
                     } else {
                         // Upper bits will be zeroed so this also works for narrow oops
                         masm.movslq(result, 0);
