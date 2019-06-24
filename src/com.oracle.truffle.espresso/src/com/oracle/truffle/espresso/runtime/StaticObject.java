@@ -107,6 +107,7 @@ public final class StaticObject implements TruffleObject {
     // kinds bigger than a byte. To still benefit from virtualization, we use a long array until
     // support for byte arrays is live.
     // @see: VirtualizerToolImpl.setVirtualEntry
+    // TODO(garcia): Revert to byte[] once Graal supports it.
     private final long[] primitiveFields;
 
     // Dedicated constructor for VOID and NULL pseudo-singletons
