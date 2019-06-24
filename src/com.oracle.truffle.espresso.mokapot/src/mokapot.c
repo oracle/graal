@@ -195,8 +195,8 @@ jlong JVM_TotalMemory(void) {
 }
 
 jlong JVM_FreeMemory(void) {
-  UNIMPLEMENTED(JVM_FreeMemory);
-  return 0;
+  IMPLEMENTED(JVM_FreeMemory);
+  return (*getEnv())->JVM_FreeMemory();
 }
 
 jlong JVM_MaxMemory(void) {

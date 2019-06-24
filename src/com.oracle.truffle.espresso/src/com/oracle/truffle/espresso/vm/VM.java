@@ -1095,4 +1095,9 @@ public final class VM extends NativeEnv implements ContextAccess {
         StaticObject result = new StaticObject(getMeta().String.getArrayClass(), array);
         return result;
     }
+
+    @VmImpl
+    public static long JVM_FreeMemory() {
+        return Runtime.getRuntime().freeMemory();
+    }
 }
