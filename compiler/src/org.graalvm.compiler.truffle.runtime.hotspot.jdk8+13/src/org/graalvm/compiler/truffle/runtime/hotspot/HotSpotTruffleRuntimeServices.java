@@ -30,7 +30,7 @@ import jdk.vm.ci.hotspot.HotSpotSpeculationLog;
 import jdk.vm.ci.meta.SpeculationLog;
 
 /**
- * JDK 8 version of {@link HotSpotTruffleRuntimeServices}.
+ * JDK 8, 13+ version of {@link HotSpotTruffleRuntimeServices}.
  */
 class HotSpotTruffleRuntimeServices {
 

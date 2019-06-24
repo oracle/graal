@@ -1906,7 +1906,7 @@ suite = {
       "workingSets" : "Graal,Truffle",
     },
 
-    "org.graalvm.compiler.truffle.runtime.hotspot.jdk8" : {
+    "org.graalvm.compiler.truffle.runtime.hotspot.jdk8+13" : {
       "subDir" : "src",
       "sourceDirs" : ["src"],
       "dependencies" : [
@@ -1915,7 +1915,7 @@ suite = {
       ],
       "checkPackagePrefix" : "false",
       "checkstyle" : "org.graalvm.compiler.graph",
-      "javaCompliance" : "8",
+      "javaCompliance" : "8,13+",
       "overlayTarget" : "org.graalvm.compiler.truffle.runtime.hotspot",
       "workingSets" : "Graal,Truffle",
     },
