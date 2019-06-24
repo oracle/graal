@@ -110,6 +110,8 @@ import java.io.FileDescriptor;
 import java.io.IOException;
 import java.net.InetAddress;
 import java.net.InetSocketAddress;
+import java.net.PortUnreachableException;
+import java.net.SocketAddress;
 import java.net.SocketException;
 import java.nio.file.FileSystem;
 import java.nio.file.FileSystems;
@@ -3973,6 +3975,378 @@ public final class PosixJavaNIOSubstitutions {
 
         /* } Allow names with underscores: Checkstyle: resume. */
         /* } Do not format quoted code: @formatter:on */
+    }
+
+    @SuppressWarnings({"unused", "static-method"})
+    @TargetClass(className = "sun.nio.ch.DatagramChannelImpl")
+    @Platforms({Platform.DARWIN.class, Platform.LINUX.class})
+    static final class Target_sun_nio_ch_DatagramChannelImpl {
+
+        @Alias //
+        private InetAddress cachedSenderInetAddress;
+
+        @Alias //
+        private int cachedSenderPort;
+
+        @Alias //
+        private SocketAddress sender;
+
+        @Substitute
+        private static void initIDs() {
+            // no operation
+        }
+
+        /* Do not re-format commented out code: @formatter:off */
+        //    83  JNIEXPORT void JNICALL
+        //    84  Java_sun_nio_ch_DatagramChannelImpl_disconnect0(JNIEnv *env, jobject this,
+        //    85                                                  jobject fdo, jboolean isIPv6)
+        //    86  {
+        @Substitute
+        private static void disconnect0(FileDescriptor fdo, boolean isIPv6) throws IOException {
+            //    87      jint fd = fdval(env, fdo);
+            int fd = PosixUtils.getFD(fdo);
+            //    88      int rv;
+            int rv = 0;
+            //    89
+            //    90  #ifdef __solaris__
+            if (IsDefined.__solaris__()) {
+                //    91      rv = connect(fd, 0, 0);
+                rv = Socket.connect(fd, WordFactory.nullPointer(), 0);
+                //    92  #endif
+            }
+            //    93
+            //    94  #if defined(__linux__) || defined(_ALLBSD_SOURCE) || defined(_AIX)
+            if (IsDefined.__linux__() || IsDefined._ALLBSD_SOURCE() || IsDefined._AIX()) {
+                //    95      {
+                {
+                    //    96          int len;
+                    int len;
+                    //    97          SOCKADDR sa;
+                    Socket.sockaddr sa = StackValue.get(JavaNetNetUtilMD.SOCKADDR_LEN());
+                    //    98
+                    //    99          memset(&sa, 0, sizeof(sa));
+                    LibC.memset(sa, WordFactory.signed(0), WordFactory.unsigned(JavaNetNetUtilMD.SOCKADDR_LEN()));
+                    //   100
+                    //   101  #ifdef AF_INET6
+                    if (IsDefined.socket_AF_INET6()) {
+                        //   102          if (isIPv6) {
+                        if (isIPv6) {
+                            //   103              struct sockaddr_in6 *him6 = (struct sockaddr_in6 *)&sa;
+                            NetinetIn.sockaddr_in6 him6 = (NetinetIn.sockaddr_in6) sa;
+                            //   104  #if defined(_ALLBSD_SOURCE)
+                            if (IsDefined._ALLBSD_SOURCE()) {
+                                //   105              him6->sin6_family = AF_INET6;
+                                him6.set_sin6_family(Socket.AF_INET6());
+                                //   106  #else
+                            } else {
+                                //   107              him6->sin6_family = AF_UNSPEC;
+                                him6.set_sin6_family(Socket.AF_UNSPEC());
+                                //   108  #endif
+                            }
+                            //   109              len = sizeof(struct sockaddr_in6);
+                            len = SizeOf.get(NetinetIn.sockaddr_in6.class);
+                            //   110          } else
+                        } else
+                        //   111  #endif
+                        // we cannot split an `if` statement with `ifdef` so duplicate the following lines instead
+                        //   112          {
+                        {
+                            //   113              struct sockaddr_in *him4 = (struct sockaddr_in*)&sa;
+                            NetinetIn.sockaddr_in him4 = (NetinetIn.sockaddr_in) sa;
+                            //   114  #if defined(_ALLBSD_SOURCE)
+                            if (IsDefined._ALLBSD_SOURCE()) {
+                                //   115              him4->sin_family = AF_INET;
+                                him4.set_sin_family(Socket.AF_INET());
+                                //   116  #else
+                            } else {
+                                //   117              him4->sin_family = AF_UNSPEC;
+                                him4.set_sin_family(Socket.AF_UNSPEC());
+                                //   118  #endif
+                            }
+                            //   119              len = sizeof(struct sockaddr_in);
+                            len = SizeOf.get(NetinetIn.sockaddr_in.class);
+                            //   120          }
+                        }
+                    } else
+                    // here is the duplicate...
+                    //   112          {
+                    {
+                        //   113              struct sockaddr_in *him4 = (struct sockaddr_in*)&sa;
+                        NetinetIn.sockaddr_in him4 = StackValue.get(NetinetIn.sockaddr_in.class);
+                        // from line 99
+                        LibC.memset(him4, WordFactory.signed(0), SizeOf.unsigned(NetinetIn.sockaddr_in.class));
+                        //   114  #if defined(_ALLBSD_SOURCE)
+                        if (IsDefined._ALLBSD_SOURCE()) {
+                            //   115              him4->sin_family = AF_INET;
+                            him4.set_sin_family(Socket.AF_INET());
+                            //   116  #else
+                        } else {
+                            //   117              him4->sin_family = AF_UNSPEC;
+                            him4.set_sin_family(Socket.AF_UNSPEC());
+                            //   118  #endif
+                        }
+                        //   119              len = sizeof(struct sockaddr_in);
+                        len = SizeOf.get(NetinetIn.sockaddr_in.class);
+                        //   120          }
+                    }
+                    //   121
+                    //   122          rv = connect(fd, (struct sockaddr *)&sa, len);
+                    rv = Socket.connect(fd, sa, len);
+                    //   123
+                    //   124  #if defined(_ALLBSD_SOURCE)
+                    if (IsDefined._ALLBSD_SOURCE()) {
+                        //   125          if (rv < 0 && errno == EADDRNOTAVAIL)
+                        if (rv < 0 && Errno.errno() == Errno.EADDRNOTAVAIL()) {
+                            //   126                  rv = errno = 0;
+                            Errno.set_errno(0);
+                            rv = 0;
+                            // original `if` statement has no {}
+                        }
+                        //   127  #endif
+                    }
+                    //   128  #if defined(_AIX)
+                    if (IsDefined._AIX()) {
+                        //   129          /* See W. Richard Stevens, "UNIX Network Programming, Volume 1", p. 254:
+                        //   130           * 'Setting the address family to AF_UNSPEC might return EAFNOSUPPORT
+                        //   131           * but that is acceptable.
+                        //   132           */
+                        //   133          if (rv < 0 && errno == EAFNOSUPPORT)
+                        if (rv < 0 && Errno.errno() == Errno.EAFNOSUPPORT()) {
+                            //   134              rv = errno = 0;
+                            Errno.set_errno(0);
+                            rv = 0;
+                            // original `if` statement has no {}
+                        }
+                        //   135  #endif
+                    }
+                    //   136      }
+                }
+                //   137  #endif
+            }
+            //   138
+            //   139      if (rv < 0)
+            if (rv < 0) {
+                //   140          handleSocketError(env, errno);
+                PosixJavaNIOSubstitutions.Util_sun_nio_ch_Net.handleSocketError(rv);
+            }
+            //   141
+            //   142  }
+        }
+        // @formatter:on
+
+        /* Do not re-format commented out code: @formatter:off */
+        //   144  JNIEXPORT jint JNICALL
+        //   145  Java_sun_nio_ch_DatagramChannelImpl_receive0(JNIEnv *env, jobject this,
+        //   146                                               jobject fdo, jlong address,
+        //   147                                               jint len, jboolean connected)
+        //   148  {
+        @Substitute
+        private int receive0(FileDescriptor fdo, long address, int len, boolean connected) throws IOException {
+            //   149      jint fd = fdval(env, fdo);
+            int fd = PosixUtils.getFD(fdo);
+            //   150      void *buf = (void *)jlong_to_ptr(address);
+            PointerBase buf = WordFactory.pointer(address);
+            //   151      SOCKADDR sa;
+            Socket.sockaddr sa = StackValue.get(JavaNetNetUtilMD.SOCKADDR_LEN());
+            //   152      socklen_t sa_len = SOCKADDR_LEN;
+            CIntPointer sa_len = StackValue.get(CIntPointer.class);
+            sa_len.write(JavaNetNetUtilMD.SOCKADDR_LEN());
+            //   153      jboolean retry = JNI_FALSE;
+            boolean retry; // initializer is redundant
+            //   154      jint n = 0;
+            int n; // redundant initializer
+            //   155      jobject senderAddr;
+            InetAddress senderAddr;
+            //   156
+            //   157      if (len > MAX_PACKET_LEN) {
+            if (len > JavaNetNetUtil.MAX_PACKET_LEN()) {
+                //   158          len = MAX_PACKET_LEN;
+                len = JavaNetNetUtil.MAX_PACKET_LEN();
+                //   159      }
+            }
+            //   160
+            //   161      do {
+            do {
+                //   162          retry = JNI_FALSE;
+                retry = false;
+                //   163          n = recvfrom(fd, buf, len, 0, (struct sockaddr *)&sa, &sa_len);
+                n = (int) Socket.recvfrom(fd, buf, WordFactory.unsigned(len), 0, sa, sa_len).rawValue();
+                //   164          if (n < 0) {
+                if (n < 0) {
+                    //   165              if (errno == EWOULDBLOCK) {
+                    // We don't have any tricks to force these to be the same
+                    if (Errno.errno() == Errno.EWOULDBLOCK() || Errno.errno() == Errno.EAGAIN()) {
+                        //   166                  return IOS_UNAVAILABLE;
+                        return PosixJavaNIOSubstitutions.Target_sun_nio_ch_IOStatus.IOS_UNAVAILABLE;
+                        //   167              }
+                    }
+                    //   168              if (errno == EINTR) {
+                    if (Errno.errno() == Errno.EINTR()) {
+                        //   169                  return IOS_INTERRUPTED;
+                        return PosixJavaNIOSubstitutions.Target_sun_nio_ch_IOStatus.IOS_INTERRUPTED;
+                        //   170              }
+                    }
+                    //   171              if (errno == ECONNREFUSED) {
+                    if (Errno.errno() == Errno.ECONNREFUSED()) {
+                        //   172                  if (connected == JNI_FALSE) {
+                        if (! connected) {
+                            //   173                      retry = JNI_TRUE;
+                            retry = true;
+                            //   174                  } else {
+                        } else {
+                            //   175                      JNU_ThrowByName(env, JNU_JAVANETPKG
+                            //   176                                      "PortUnreachableException", 0);
+                            throw new PortUnreachableException();
+                            //   177                      return IOS_THROWN;
+                            // not reached
+                            //   178                  }
+                        }
+                        //   179              } else {
+                    } else {
+                        //   180                  return handleSocketError(env, errno);
+                        return PosixJavaNIOSubstitutions.Util_sun_nio_ch_Net.handleSocketError(Errno.errno());
+                        //   181              }
+                    }
+                    //   182          }
+                }
+                //   183      } while (retry == JNI_TRUE);
+            } while (retry);
+            //   184
+            //   185      /*
+            //   186       * If the source address and port match the cached address
+            //   187       * and port in DatagramChannelImpl then we don't need to
+            //   188       * create InetAddress and InetSocketAddress objects.
+            //   189       */
+            //   190      senderAddr = (*env)->GetObjectField(env, this, dci_senderAddrID);
+            senderAddr = cachedSenderInetAddress;
+            //   191      if (senderAddr != NULL) {
+            if (senderAddr != null) {
+                //   192          if (!NET_SockaddrEqualsInetAddress(env, (struct sockaddr *)&sa,
+                //   193                                             senderAddr)) {
+                if (! JavaNetNetUtil.NET_SockaddrEqualsInetAddress(sa, senderAddr)) {
+                    //   194              senderAddr = NULL;
+                    senderAddr = null;
+                    //   195          } else {
+                } else {
+                    //   196              jint port = (*env)->GetIntField(env, this, dci_senderPortID);
+                    int port = cachedSenderPort;
+                    //   197              if (port != NET_GetPortFromSockaddr((struct sockaddr *)&sa)) {
+                    if (port != JavaNetNetUtilMD.NET_GetPortFromSockaddr(sa)) {
+                        //   198                  senderAddr = NULL;
+                        senderAddr = null;
+                        //   199              }
+                    }
+                    //   200          }
+                }
+                //   201      }
+            }
+            //   202      if (senderAddr == NULL) {
+            if (senderAddr == null) {
+                //   203          jobject isa = NULL;
+                InetSocketAddress isa = null;
+                //   204          int port = 0;
+                CIntPointer port = StackValue.get(CIntPointer.class);
+                port.write(0);
+                //   205          jobject ia = NET_SockaddrToInetAddress(env, (struct sockaddr *)&sa, &port);
+                final InetAddress ia = JavaNetNetUtil.NET_SockaddrToInetAddress(sa, port);
+                //   206          if (ia != NULL) {
+                if (ia != null) {
+                    //   207              isa = (*env)->NewObject(env, isa_class, isa_ctorID, ia, port);
+                    isa = new InetSocketAddress(ia, port.read());
+                    //   208          }
+                }
+                //   209          CHECK_NULL_RETURN(isa, IOS_THROWN);
+                if (isa == null) {
+                    // probably not really reachable
+                    return PosixJavaNIOSubstitutions.Target_sun_nio_ch_IOStatus.IOS_THROWN;
+                }
+                //   210
+                //   211          (*env)->SetObjectField(env, this, dci_senderAddrID, ia);
+                cachedSenderInetAddress = ia;
+                //   212          (*env)->SetIntField(env, this, dci_senderPortID,
+                //   213                              NET_GetPortFromSockaddr((struct sockaddr *)&sa));
+                cachedSenderPort = JavaNetNetUtilMD.NET_GetPortFromSockaddr(sa);
+                //   214          (*env)->SetObjectField(env, this, dci_senderID, isa);
+                sender = isa;
+                //   215      }
+            }
+            //   216      return n;
+            return n;
+            //   217  }
+        }
+        // @formatter:on
+
+        /* Do not re-format commented out code: @formatter:off */
+        //   219  JNIEXPORT jint JNICALL
+        //   220  Java_sun_nio_ch_DatagramChannelImpl_send0(JNIEnv *env, jobject this,
+        //   221                                            jboolean preferIPv6, jobject fdo, jlong address,
+        //   222                                            jint len, jobject destAddress, jint destPort)
+        //   223  {
+        @Substitute
+        private int send0(boolean preferIPv6, FileDescriptor fdo, long address, int len, InetAddress destAddress, int destPort) throws IOException {
+            //   224      jint fd = fdval(env, fdo);
+            int fd = PosixUtils.getFD(fdo);
+            //   225      void *buf = (void *)jlong_to_ptr(address);
+            PointerBase buf = WordFactory.pointer(address);
+            //   226      SOCKADDR sa;
+            Socket.sockaddr sa = StackValue.get(JavaNetNetUtilMD.SOCKADDR_LEN());
+            //   227      int sa_len = SOCKADDR_LEN;
+            CIntPointer sa_len = StackValue.get(CIntPointer.class);
+            sa_len.write(JavaNetNetUtilMD.SOCKADDR_LEN());
+            //   228      jint n = 0;
+            int n; // redundant initializer
+            //   229
+            //   230      if (len > MAX_PACKET_LEN) {
+            if (len > JavaNetNetUtil.MAX_PACKET_LEN()) {
+                //   231          len = MAX_PACKET_LEN;
+                len = JavaNetNetUtil.MAX_PACKET_LEN();
+                //   232      }
+            }
+            //   233
+            //   234      if (NET_InetAddressToSockaddr(env, destAddress, destPort,
+            //   235                                    (struct sockaddr *)&sa,
+            //   236                                    &sa_len, preferIPv6) != 0) {
+            if (JavaNetNetUtilMD.NET_InetAddressToSockaddr(destAddress, destPort, sa, sa_len, preferIPv6) != 0) {
+                //   237        return IOS_THROWN;
+                // probably not really reachable
+                return PosixJavaNIOSubstitutions.Target_sun_nio_ch_IOStatus.IOS_THROWN;
+                //   238      }
+            }
+            //   239
+            //   240      n = sendto(fd, buf, len, 0, (struct sockaddr *)&sa, sa_len);
+            n = (int) Socket.sendto(fd, buf, WordFactory.unsigned(len), 0, sa, sa_len.read()).rawValue();
+            //   241      if (n < 0) {
+            if (n < 0) {
+                //   242          if (errno == EAGAIN) {
+                // We don't have any tricks to force these to be the same
+                if (Errno.errno() == Errno.EWOULDBLOCK() || Errno.errno() == Errno.EAGAIN()) {
+                    //   243              return IOS_UNAVAILABLE;
+                    return PosixJavaNIOSubstitutions.Target_sun_nio_ch_IOStatus.IOS_UNAVAILABLE;
+                    //   244          }
+                }
+                //   245          if (errno == EINTR) {
+                if (Errno.errno() == Errno.EINTR()) {
+                    //   246              return IOS_INTERRUPTED;
+                    return PosixJavaNIOSubstitutions.Target_sun_nio_ch_IOStatus.IOS_INTERRUPTED;
+                    //   247          }
+                }
+                //   248          if (errno == ECONNREFUSED) {
+                if (Errno.errno() == Errno.ECONNREFUSED()) {
+                    //   249              JNU_ThrowByName(env, JNU_JAVANETPKG "PortUnreachableException", 0);
+                    throw new PortUnreachableException();
+                    //   250              return IOS_THROWN;
+                    // not reached
+                    //   251          }
+                }
+                //   252          return handleSocketError(env, errno);
+                return PosixJavaNIOSubstitutions.Util_sun_nio_ch_Net.handleSocketError(Errno.errno());
+                //   253      }
+            }
+            //   254      return n;
+            return n;
+            //   255  }
+        }
+        // @formatter:on
     }
 }
 
