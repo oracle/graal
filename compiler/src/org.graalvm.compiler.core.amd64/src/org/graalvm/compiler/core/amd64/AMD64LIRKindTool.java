@@ -37,7 +37,7 @@ public abstract class AMD64LIRKindTool implements LIRKindTool {
         return LIRKind.value(getIntegerAMD64Kind(bits));
     }
 
-    private AMD64Kind getIntegerAMD64Kind(int bits) {
+    private static AMD64Kind getIntegerAMD64Kind(int bits) {
         if (bits <= 8) {
             return AMD64Kind.BYTE;
         } else if (bits <= 16) {
@@ -126,14 +126,14 @@ public abstract class AMD64LIRKindTool implements LIRKindTool {
         return LIRKind.value(getFloatingAMD64Kind(bits));
     }
 
-    private AMD64Kind getFloatingAMD64Kind(int bits) {
+    private static AMD64Kind getFloatingAMD64Kind(int bits) {
         switch (bits) {
             case 32:
                 return AMD64Kind.SINGLE;
             case 64:
                 return AMD64Kind.DOUBLE;
             default:
-                throw GraalError.shouldNotReachHere();
+                throw GraalError.shouldNotReachHere("could not find floating type with bit length " + bits);
         }
     }
 
