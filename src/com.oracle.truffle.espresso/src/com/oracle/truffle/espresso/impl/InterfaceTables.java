@@ -206,7 +206,7 @@ class InterfaceTables {
                     break;
             }
             Method interfMethod = interfMethods[i];
-            if (!virtualMethod.hasCode() || checkDefaultConflict(virtualMethod, interfMethod)) {
+            if (virtualMethod.hasCode() && checkDefaultConflict(virtualMethod, interfMethod)) {
                 Method result = resolveMaximallySpecific(virtualMethod, interfMethod);
                 if (result != virtualMethod) {
                     if (entry.loc == Location.MIRANDAS) {
