@@ -387,9 +387,10 @@ public class AArch64HotSpotBackend extends HotSpotHostBackend implements LIRGene
         }
     }
 
+    private final VectorDescription vectorDescription = new AArch64VectorDescription();
+
     @Override
     public VectorDescription getVectorDescription() {
-        // TODO: ARM vectorization support
-        return new AArch64VectorDescription();
+        return vectorDescription;
     }
 }

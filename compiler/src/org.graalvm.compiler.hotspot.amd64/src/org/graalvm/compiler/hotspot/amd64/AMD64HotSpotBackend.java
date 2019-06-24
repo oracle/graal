@@ -396,9 +396,10 @@ public class AMD64HotSpotBackend extends HotSpotHostBackend implements LIRGenera
         }
     }
 
+    private final VectorDescription vectorDescription = new AMD64VectorDescription();
+
     @Override
     public VectorDescription getVectorDescription() {
-        // TODO: ARM vectorization support
-        return new AMD64VectorDescription();
+        return vectorDescription;
     }
 }
