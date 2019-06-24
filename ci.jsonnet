@@ -19,6 +19,10 @@
       'git': '>=1.8.3',
       'pip:astroid': '==1.1.0',
       'pip:pylint': '==1.1.0',
+
+      'make': '>=3.83',
+      'gcc-build-essentials': '>=4.9.1', # GCC 4.9.0 fails on cluster
+      'binutils': '>=2.30',
     },
     setup+: [
       ['mx', 'sversions'],
