@@ -60,7 +60,9 @@ public abstract class VMThreads {
      *
      * <ol type="a">
      * <li>Acquire the mutex within a VM operation: this is safe because it fixes the order in which
-     * the mutexes are acquired (VMOperation queue mutex first, {@link #THREAD_MUTEX} second).</li>
+     * the mutexes are acquired (VMOperation queue mutex first, {@link #THREAD_MUTEX} second). If
+     * the VM operation causes a safepoint, then it is possible that the {@link #THREAD_MUTEX} was
+     * already acquired for safepoint reasons.</li>
      * <li>Acquire the mutex outside of a VM operation but only execute uninterruptible code. This
      * is safe as the uninterruptible code cannot trigger a safepoint.</li>
      * <li>Acquire the mutex from code that is allocation, VM operation, and safepoint free (e.g., a

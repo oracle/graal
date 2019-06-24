@@ -82,6 +82,15 @@ public abstract class JavaVMOperation extends VMOperation implements VMOperation
         finished = value;
     }
 
+    @Override
+    protected final boolean hasWork(NativeVMOperationData data) {
+        return hasWork();
+    }
+
+    protected boolean hasWork() {
+        return true;
+    }
+
     /** Convenience method for thunks that can be run by allocating a VMOperation. */
     public static void enqueueBlockingSafepoint(String name, Thunk thunk) {
         ThunkOperation vmOperation = new ThunkOperation(name, SystemEffect.CAUSES_SAFEPOINT, thunk);

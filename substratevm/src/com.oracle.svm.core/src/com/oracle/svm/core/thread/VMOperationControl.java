@@ -423,8 +423,8 @@ public final class VMOperationControl {
             drain(javaNonSafepointOperations);
 
             // Filter operations that need a safepoint but don't have any work to do.
-            nativeSafepointOperations.filterUnnecessary();
-            javaSafepointOperations.filterUnnecessary();
+            filterUnnecessary(nativeSafepointOperations);
+            filterUnnecessary(javaSafepointOperations);
 
             // Drain the safepoint queues.
             if (!nativeSafepointOperations.isEmpty() || !javaSafepointOperations.isEmpty()) {
@@ -496,6 +496,41 @@ public final class VMOperationControl {
             }
         }
 
+        private void filterUnnecessary(JavaVMOperationQueue workQueue) {
+            Log trace = log();
+            JavaVMOperation prev = null;
+            JavaVMOperation op = workQueue.peek();
+            while (op != null) {
+                JavaVMOperation next = op.getNext();
+                if (!op.hasWork(WordFactory.nullPointer())) {
+                    trace.string("[Skipping unnecessary operation in queue ").string(workQueue.name).string(": ").string(op.getName());
+                    workQueue.remove(prev, op);
+                    markAsFinished(op, WordFactory.nullPointer(), operationFinished);
+                } else {
+                    prev = op;
+                }
+                op = next;
+            }
+        }
+
+        private void filterUnnecessary(NativeVMOperationQueue workQueue) {
+            Log trace = log();
+            NativeVMOperationData prev = WordFactory.nullPointer();
+            NativeVMOperationData data = workQueue.peek();
+            while (data.isNonNull()) {
+                NativeVMOperation op = data.getNativeVMOperation();
+                NativeVMOperationData next = data.getNext();
+                if (!op.hasWork(data)) {
+                    trace.string("[Skipping unnecessary operation in queue ").string(workQueue.name).string(": ").string(op.getName());
+                    workQueue.remove(prev, data);
+                    markAsFinished(op, data, operationFinished);
+                } else {
+                    prev = data;
+                }
+                data = next;
+            }
+        }
+
         private void lock() {
             if (mutex != null) {
                 mutex.lock();
@@ -545,6 +580,8 @@ public final class VMOperationControl {
         abstract T pop();
 
         abstract T peek();
+
+        abstract void remove(T prev, T remove);
     }
 
     /**
@@ -591,25 +628,16 @@ public final class VMOperationControl {
             return head;
         }
 
-        public void filterUnnecessary() {
-            T prev = null;
-            T op = head;
-            while (op != null) {
-                if (isUnnecessary(op)) {
-                    if (prev == null) {
-                        assert head == op;
-                        head = op;
-                    } else {
-                        prev.setNext(op.getNext());
-                    }
-                } else {
-                    prev = op;
-                }
-                op = op.getNext();
+        @Override
+        void remove(T prev, T remove) {
+            if (prev == null) {
+                assert head == remove;
+                head = remove.getNext();
+                remove.setNext(null);
+            } else {
+                prev.setNext(remove.getNext());
             }
         }
-
-        protected abstract boolean isUnnecessary(T op);
 
         /** An element for an allocation-free queue. An element can be in at most one queue. */
         public interface Element<T extends Element<T>> {
@@ -622,11 +650,6 @@ public final class VMOperationControl {
     protected static class JavaVMOperationQueue extends JavaAllocationFreeQueue<JavaVMOperation> {
         JavaVMOperationQueue(String name) {
             super(name);
-        }
-
-        @Override
-        protected boolean isUnnecessary(JavaVMOperation op) {
-            return !op.hasWork(WordFactory.nullPointer());
         }
     }
 
@@ -675,26 +698,15 @@ public final class VMOperationControl {
             return head;
         }
 
-        public void filterUnnecessary() {
-            NativeVMOperationData prev = WordFactory.nullPointer();
-            NativeVMOperationData data = head;
-            while (data.isNonNull()) {
-                if (isUnnecessary(data)) {
-                    if (prev.isNull()) {
-                        assert head == data;
-                        head = data;
-                    } else {
-                        prev.setNext(data.getNext());
-                    }
-                } else {
-                    prev = data;
-                }
-                data = data.getNext();
+        @Override
+        void remove(NativeVMOperationData prev, NativeVMOperationData remove) {
+            if (prev.isNull()) {
+                assert head == remove;
+                head = remove.getNext();
+                remove.setNext(WordFactory.nullPointer());
+            } else {
+                prev.setNext(remove.getNext());
             }
-        }
-
-        private static boolean isUnnecessary(NativeVMOperationData data) {
-            return !data.getNativeVMOperation().hasWork(data);
         }
     }
 
