@@ -84,7 +84,11 @@ public final class LLVMDebuggerScopeFactory {
         final LLVMDebuggerScopeEntries entries = new LLVMDebuggerScopeEntries();
         for (final FrameSlot slot : frame.getFrameDescriptor().getSlots()) {
             final String identifier = String.valueOf(slot.getIdentifier());
-            final TruffleObject value = wrapperFactory.toGenericDebuggerValue(slot.getInfo(), frame.getValue(slot));
+            Object slotValue = frame.getValue(slot);
+            if (slotValue == null) { // slots are null if they are cleared by LLVMFrameNuller
+                slotValue = "<unavailable>";
+            }
+            final TruffleObject value = wrapperFactory.toGenericDebuggerValue(slot.getInfo(), slotValue);
             entries.add(convertIdentifier(identifier, context), value);
         }
 
