@@ -79,8 +79,6 @@ mx_sdk.register_graalvm_component(mx_sdk.GraalVmComponent(
     support_distributions=['vm:VM_GRAALVM_SUPPORT']
 ))
 
-anyjdk_version_regex = re.compile(r'(openjdk|java) version \"(?P<jvm_version>[0-9a-z_\-.]+)\".*\n(OpenJDK|Java\(TM\) SE) Runtime Environment( AdoptOpenJDK)? [ 0-9.]*\(build [0-9a-zA-Z_\-.+]+\)')
-openjdk_version_regex = re.compile(r'openjdk version \"(?P<jvm_version>[0-9a-z_\-.]+)\".*\nOpenJDK Runtime Environment( AdoptOpenJDK)? [ 0-9.]*\(build [0-9a-z_\-.+]+\)')
 graalvm_version_regex = re.compile(r'.*\n.*\n[0-9a-zA-Z()\- ]+GraalVM[a-zA-Z_ ]+(?P<graalvm_version>[0-9a-z_\-.+]+) \(build [0-9a-z\-.+]+, mixed mode\)')
 
 _registered_graalvm_components = {}
@@ -262,7 +260,7 @@ class BaseGraalVmLayoutDistribution(mx.LayoutDistribution):
             if stage1:
                 # 1. we do not want a GraalVM to be used as base-JDK
                 # 2. we don't need to check if the base JDK is JVMCI-enabled, since JVMCIVersionCheck takes care of that when the GraalVM compiler is a registered component
-                check_versions(join(_jdk_dir, _src_jdk_base), anyjdk_version_regex, graalvm_version_regex=graalvm_version_regex, expect_graalvm=False, check_jvmci=False)
+                check_versions(join(_jdk_dir, _src_jdk_base), graalvm_version_regex=graalvm_version_regex, expect_graalvm=False, check_jvmci=False)
 
             # Add base JDK
             exclude_base = _jdk_dir
@@ -2131,10 +2129,9 @@ def _str_to_bool(val):
     return val
 
 
-def check_versions(jdk_dir, jdk_version_regex, graalvm_version_regex, expect_graalvm, check_jvmci):
+def check_versions(jdk_dir, graalvm_version_regex, expect_graalvm, check_jvmci):
     """
     :type jdk_dir: str
-    :type jdk_version_regex: typing.Pattern
     :type graalvm_version_regex: typing.Pattern
     :type expect_graalvm: bool
     :type check_jvmci: bool
@@ -2149,11 +2146,9 @@ def check_versions(jdk_dir, jdk_version_regex, graalvm_version_regex, expect_gra
 
     out = subprocess.check_output([java, '-version'], stderr=subprocess.STDOUT).rstrip()
 
-    match = jdk_version_regex.match(out)
-    if match is None:
-        mx.abort("'{}' has an unexpected version string:\n{}\ndoes not match:\n{}".format(jdk_dir, out, jdk_version_regex.pattern))
-    elif not (match.group('jvm_version').startswith("1.8.0") or match.group('jvm_version').startswith("11") or match.group('jvm_version').startswith("13")):
-        mx.abort("GraalVM requires a JDK8 or JDK11 as base-JDK, while the selected JDK ('{}') is '{}':\n{}\n{}.".format(jdk_dir, match.group('jvm_version'), out, check_env))
+    jdk_version = mx.JDKConfig(jdk_dir).version
+    if jdk_version < mx.VersionSpec('1.8') or mx.VersionSpec('9') <= jdk_version < mx.VersionSpec('11'):
+        mx.abort("GraalVM requires JDK8 or >=JDK11 as base-JDK, while the selected JDK ('{}') is '{}':\n{}\n\n{}.".format(jdk_dir, jdk_version, out, check_env))
 
     match = graalvm_version_regex.match(out)
     if expect_graalvm and match is None:
