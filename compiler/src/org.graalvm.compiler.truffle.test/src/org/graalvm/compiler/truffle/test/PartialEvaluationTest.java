@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2013, 2018, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2013, 2019, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -154,6 +154,9 @@ public abstract class PartialEvaluationTest extends TruffleCompilerImplTest {
         try (DebugContext.Scope s = debug.scope("TruffleCompilation", new TruffleDebugJavaMethod(compilable))) {
             TruffleInlining inliningDecision = new TruffleInlining(compilable, new DefaultInliningPolicy());
             SpeculationLog speculationLog = compilable.getCompilationSpeculationLog();
+            if (speculationLog != null) {
+                speculationLog.collectFailedSpeculations();
+            }
             return truffleCompiler.getPartialEvaluator().createGraph(debug, compilable, inliningDecision, allowAssumptions, compilationId, speculationLog, null);
         } catch (Throwable e) {
             throw debug.handle(e);
