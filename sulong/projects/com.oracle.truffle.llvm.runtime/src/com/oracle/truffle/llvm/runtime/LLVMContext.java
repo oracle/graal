@@ -251,16 +251,25 @@ public final class LLVMContext {
     }
 
     private static long parseStackSize(String v) {
-        String valueString = v.trim().toLowerCase();
+        String valueString = v.trim();
         long scale = 1;
-        if (valueString.endsWith("k")) {
-            scale = 1024L;
-        } else if (valueString.endsWith("m")) {
-            scale = 1024L * 1024L;
-        } else if (valueString.endsWith("g")) {
-            scale = 1024L * 1024L * 1024L;
-        } else if (valueString.endsWith("t")) {
-            scale = 1024L * 1024L * 1024L * 1024L;
+        switch (valueString.charAt(valueString.length() - 1)) {
+            case 'k':
+            case 'K':
+                scale = 1024L;
+                break;
+            case 'm':
+            case 'M':
+                scale = 1024L * 1024L;
+                break;
+            case 'g':
+            case 'G':
+                scale = 1024L * 1024L * 1024L;
+                break;
+            case 't':
+            case 'T':
+                scale = 1024L * 1024L * 1024L * 1024L;
+                break;
         }
 
         if (scale != 1) {
