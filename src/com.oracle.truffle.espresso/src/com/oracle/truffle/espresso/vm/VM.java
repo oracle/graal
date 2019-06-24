@@ -640,8 +640,10 @@ public final class VM extends NativeEnv implements ContextAccess {
         // TODO(peterssen): Name is in binary form, but separator can be either / or . .
         Symbol<Type> type = getTypes().fromClassGetName(name);
 
-        StaticObject klass = getContext().getRegistries().defineKlass(type, bytes, loader).mirror();
-        return klass;
+        StaticObject clazz = getContext().getRegistries().defineKlass(type, bytes, loader).mirror();
+        assert pd != null;
+        clazz.setHiddenField(getMeta().HIDDEN_PROTECTION_DOMAIN, pd);
+        return clazz;
     }
 
     @VmImpl
