@@ -60,9 +60,9 @@ import org.graalvm.compiler.lir.StandardOp;
 import org.graalvm.compiler.lir.StandardOp.BlockEndOp;
 import org.graalvm.compiler.lir.StandardOp.LabelOp;
 import org.graalvm.compiler.lir.StandardOp.SaveRegistersOp;
-import org.graalvm.compiler.lir.hashing.Hasher;
 import org.graalvm.compiler.lir.SwitchStrategy;
 import org.graalvm.compiler.lir.Variable;
+import org.graalvm.compiler.lir.hashing.Hasher;
 import org.graalvm.compiler.options.Option;
 import org.graalvm.compiler.options.OptionKey;
 import org.graalvm.compiler.options.OptionType;
@@ -235,8 +235,8 @@ public abstract class LIRGenerator implements LIRGeneratorTool {
     }
 
     @Override
-    public Value emitConstant(LIRKind kind, Constant constant, boolean mayEmbedConstantLoadPrerequisite) {
-        if (moveFactory.canInlineConstant(constant) || moveFactory.mayEmbedConstantLoad(constant, mayEmbedConstantLoadPrerequisite)) {
+    public Value emitConstant(LIRKind kind, Constant constant) {
+        if (moveFactory.canInlineConstant(constant)) {
             return new ConstantValue(toRegisterKind(kind), constant);
         } else {
             return emitLoadConstant(toRegisterKind(kind), constant);
@@ -245,7 +245,7 @@ public abstract class LIRGenerator implements LIRGeneratorTool {
 
     @Override
     public Value emitJavaConstant(JavaConstant constant) {
-        return emitConstant(getValueKind(constant.getJavaKind()), constant, true);
+        return emitConstant(getValueKind(constant.getJavaKind()), constant);
     }
 
     @Override

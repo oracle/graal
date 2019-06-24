@@ -68,7 +68,7 @@ public interface LIRGeneratorTool extends DiagnosticLIRGeneratorTool, ValueKindF
          * Checks whether the loading of the supplied constant can be deferred until usage.
          */
         @SuppressWarnings("unused")
-        default boolean mayEmbedConstantLoad(Constant constant, boolean mayEmbedPrerequisite) {
+        default boolean mayEmbedConstantLoad(Constant constant) {
             return false;
         }
 
@@ -138,7 +138,7 @@ public interface LIRGeneratorTool extends DiagnosticLIRGeneratorTool, ValueKindF
 
     BlockScope getBlockScope(AbstractBlockBase<?> block);
 
-    Value emitConstant(LIRKind kind, Constant constant, boolean mayEmbedConstantLoadPrerequisite);
+    Value emitConstant(LIRKind kind, Constant constant);
 
     Value emitJavaConstant(JavaConstant constant);
 

@@ -629,7 +629,7 @@ public class SPARCArithmeticLIRGenerator extends ArithmeticLIRGenerator {
         if (fromBits == 32) {
             getLIRGen().append(new SPARCOP3Op(Srl, inputAllocatable, g0.asValue(), result));
         } else {
-            Value mask = getLIRGen().emitConstant(LIRKind.value(XWORD), forLong(mask(fromBits)), true);
+            Value mask = getLIRGen().emitConstant(LIRKind.value(XWORD), forLong(mask(fromBits)));
             getLIRGen().append(new SPARCOP3Op(And, inputAllocatable, mask, result));
         }
         return result;

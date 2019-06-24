@@ -60,11 +60,6 @@ public abstract class AMD64MoveFactory extends AMD64MoveFactoryBase {
     }
 
     @Override
-    public boolean mayEmbedConstantLoad(Constant constant, boolean mayEmbedPrerequisite) {
-        return mayEmbedPrerequisite && (constant instanceof PrimitiveConstant && ((PrimitiveConstant) constant).getJavaKind().isNumericFloat());
-    }
-
-    @Override
     public boolean canInlineConstant(Constant con) {
         if (con instanceof JavaConstant) {
             JavaConstant c = (JavaConstant) con;
@@ -81,6 +76,12 @@ public abstract class AMD64MoveFactory extends AMD64MoveFactoryBase {
             }
         }
         return false;
+    }
+
+    @Override
+    public boolean mayEmbedConstantLoad(Constant constant) {
+        // Only consider not inlineable constants here.
+        return constant instanceof PrimitiveConstant && ((PrimitiveConstant) constant).getJavaKind().isNumericFloat();
     }
 
     @Override

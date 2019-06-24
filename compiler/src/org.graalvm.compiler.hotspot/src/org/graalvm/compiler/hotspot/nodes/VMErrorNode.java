@@ -79,8 +79,8 @@ public final class VMErrorNode extends DeoptimizingStubCall implements LIRLowera
         }
 
         LIRKind wordKind = gen.getLIRGeneratorTool().getLIRKind(StampFactory.pointer());
-        Value whereArg = gen.getLIRGeneratorTool().emitConstant(wordKind, new CStringConstant(whereString), true);
-        Value formatArg = gen.getLIRGeneratorTool().emitConstant(wordKind, new CStringConstant(format), true);
+        Value whereArg = gen.getLIRGeneratorTool().emitConstant(wordKind, new CStringConstant(whereString));
+        Value formatArg = gen.getLIRGeneratorTool().emitConstant(wordKind, new CStringConstant(format));
 
         ForeignCallLinkage linkage = gen.getLIRGeneratorTool().getForeignCalls().lookupForeignCall(VM_ERROR);
         gen.getLIRGeneratorTool().emitForeignCall(linkage, null, whereArg, formatArg, gen.operand(value));

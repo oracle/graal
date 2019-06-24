@@ -557,7 +557,7 @@ public abstract class NodeLIRBuilder implements NodeLIRBuilderTool, LIRGeneratio
 
     private void emitNullCheckBranch(IsNullNode node, LabelRef trueSuccessor, LabelRef falseSuccessor, double trueSuccessorProbability) {
         LIRKind kind = gen.getLIRKind(node.getValue().stamp(NodeView.DEFAULT));
-        Value nullValue = gen.emitConstant(kind, node.nullConstant(), true);
+        Value nullValue = gen.emitConstant(kind, node.nullConstant());
         gen.emitCompareBranch(kind.getPlatformKind(), operand(node.getValue()), nullValue, Condition.EQ, false, trueSuccessor, falseSuccessor, trueSuccessorProbability);
     }
 
@@ -587,7 +587,7 @@ public abstract class NodeLIRBuilder implements NodeLIRBuilderTool, LIRGeneratio
         if (node instanceof IsNullNode) {
             IsNullNode isNullNode = (IsNullNode) node;
             LIRKind kind = gen.getLIRKind(isNullNode.getValue().stamp(NodeView.DEFAULT));
-            Value nullValue = gen.emitConstant(kind, isNullNode.nullConstant(), true);
+            Value nullValue = gen.emitConstant(kind, isNullNode.nullConstant());
             return gen.emitConditionalMove(kind.getPlatformKind(), operand(isNullNode.getValue()), nullValue, Condition.EQ, false, trueValue, falseValue);
         } else if (node instanceof CompareNode) {
             CompareNode compare = (CompareNode) node;
@@ -680,7 +680,7 @@ public abstract class NodeLIRBuilder implements NodeLIRBuilderTool, LIRGeneratio
                 assert defaultTarget != null;
                 double probability = x.probability(x.keySuccessor(0));
                 LIRKind kind = gen.getLIRKind(x.value().stamp(NodeView.DEFAULT));
-                Value key = gen.emitConstant(kind, x.keyAt(0), true);
+                Value key = gen.emitConstant(kind, x.keyAt(0));
                 gen.emitCompareBranch(kind.getPlatformKind(), gen.load(operand(x.value())), key, Condition.EQ, false, getLIRBlock(x.keySuccessor(0)), defaultTarget, probability);
             } else if (x instanceof IntegerSwitchNode && x.isSorted()) {
                 IntegerSwitchNode intSwitch = (IntegerSwitchNode) x;
