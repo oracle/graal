@@ -65,7 +65,7 @@ public final class ArrayKlass extends Klass {
 
     @Override
     public boolean isInstanceClass() {
-        return !isArray() && !isInterface();
+        return false;
     }
 
     @Override
