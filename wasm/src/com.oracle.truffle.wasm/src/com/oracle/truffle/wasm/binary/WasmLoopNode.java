@@ -27,26 +27,30 @@
  *  NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED
  *  OF THE POSSIBILITY OF SUCH DAMAGE.
  */
-package com.oracle.truffle.wasm.test.next.suites.control;
+package com.oracle.truffle.wasm.binary;
 
-import java.io.IOException;
-import java.nio.file.Path;
-import java.nio.file.Paths;
+import static com.oracle.truffle.api.CompilerDirectives.CompilationFinal;
 
-import org.junit.Test;
+import com.oracle.truffle.api.Truffle;
+import com.oracle.truffle.api.frame.VirtualFrame;
+import com.oracle.truffle.api.nodes.LoopNode;
 
-import com.oracle.truffle.wasm.test.next.WasmSuiteBase;
-import com.oracle.truffle.wasm.test.next.options.WasmTestOptions;
+public class WasmLoopNode extends WasmNode {
+    @CompilationFinal private final LoopNode loopNode;
 
-public class BranchBlockSuite extends WasmSuiteBase {
-    @Override
-    protected Path testDirectory() {
-        return Paths.get(WasmTestOptions.TEST_SOURCE_PATH, "branch-block");
+    WasmLoopNode(WasmBlockNode block) {
+        super(block.codeEntry(), block.byteLength(), block.byteConstantLength());
+        this.loopNode = Truffle.getRuntime().createLoopNode(block);
     }
 
-    @Test
-    public void test() throws IOException {
-        // This is here just to make mx aware of the test suite class.
-        super.test();
+    @Override
+    public int execute(VirtualFrame frame) {
+        this.loopNode.executeLoop(frame);
+        return -1;
+    }
+
+    @Override
+    public byte returnTypeId() {
+        return 0;
     }
 }

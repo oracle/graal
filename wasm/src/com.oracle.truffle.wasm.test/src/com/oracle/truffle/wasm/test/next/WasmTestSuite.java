@@ -39,6 +39,7 @@ import com.oracle.truffle.wasm.test.next.suites.arithmetic.Integer32Suite;
 import com.oracle.truffle.wasm.test.next.suites.arithmetic.Integer64Suite;
 import com.oracle.truffle.wasm.test.next.suites.control.BlockWithLocalsSuite;
 import com.oracle.truffle.wasm.test.next.suites.control.BranchBlockSuite;
+import com.oracle.truffle.wasm.test.next.suites.control.LoopBlockSuite;
 import com.oracle.truffle.wasm.test.next.suites.control.SimpleBlockSuite;
 
 @RunWith(Suite.class)
@@ -50,6 +51,7 @@ import com.oracle.truffle.wasm.test.next.suites.control.SimpleBlockSuite;
         SimpleBlockSuite.class,
         BlockWithLocalsSuite.class,
         BranchBlockSuite.class,
+        LoopBlockSuite.class,
 })
 public class WasmTestSuite {
     @Test

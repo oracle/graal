@@ -38,10 +38,10 @@ import org.junit.Test;
 import com.oracle.truffle.wasm.test.next.WasmSuiteBase;
 import com.oracle.truffle.wasm.test.next.options.WasmTestOptions;
 
-public class BranchBlockSuite extends WasmSuiteBase {
+public class LoopBlockSuite extends WasmSuiteBase {
     @Override
     protected Path testDirectory() {
-        return Paths.get(WasmTestOptions.TEST_SOURCE_PATH, "branch-block");
+        return Paths.get(WasmTestOptions.TEST_SOURCE_PATH, "LoopBlock");
     }
 
     @Test
