@@ -556,8 +556,10 @@ public final class Target_java_lang_Class {
     }
 
     @Substitution(hasReceiver = true)
-    public static @Host(ProtectionDomain.class) StaticObject getProtectionDomain0(@SuppressWarnings("unused") StaticObject self) {
-        return StaticObject.NULL;
+    public static @Host(ProtectionDomain.class) StaticObject getProtectionDomain0(StaticObject self) {
+        StaticObject pd = (StaticObject) self.getHiddenField(self.getKlass().getMeta().HIDDEN_PROTECTION_DOMAIN);
+        // The protection domain is not always set e.g. bootstrap (classloader) classes.
+        return pd == null ? StaticObject.NULL : pd;
     }
 
     @Substitution(hasReceiver = true)

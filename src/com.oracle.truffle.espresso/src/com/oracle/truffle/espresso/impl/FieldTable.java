@@ -133,6 +133,7 @@ class FieldTable {
         } else if (type == Type.Class) {
             tmpTable.add(new Field(thisKlass, tmpTable.size(), fieldIndex + c++, Name.HIDDEN_SIGNERS));
             tmpTable.add(new Field(thisKlass, tmpTable.size(), fieldIndex + c++, Name.HIDDEN_MIRROR_KLASS));
+            tmpTable.add(new Field(thisKlass, tmpTable.size(), fieldIndex + c++, Name.HIDDEN_PROTECTION_DOMAIN));
             return c;
         } else {
             return c;

@@ -631,8 +631,7 @@ public final class VM extends NativeEnv implements ContextAccess {
     @VmImpl
     @JniImpl
     public @Host(Class.class) StaticObject JVM_DefineClass(String name, @Host(ClassLoader.class) StaticObject loader, long bufPtr, int len,
-                    @SuppressWarnings("unused") @Host(ProtectionDomain.class) StaticObject pd) {
-        // TODO(peterssen): The protection domain is unused.
+                    @Host(ProtectionDomain.class) StaticObject pd) {
         ByteBuffer buf = JniEnv.directByteBuffer(bufPtr, len, JavaKind.Byte);
         final byte[] bytes = new byte[len];
         buf.get(bytes);
@@ -640,8 +639,10 @@ public final class VM extends NativeEnv implements ContextAccess {
         // TODO(peterssen): Name is in binary form, but separator can be either / or . .
         Symbol<Type> type = getTypes().fromClassGetName(name);
 
-        StaticObject klass = getContext().getRegistries().defineKlass(type, bytes, loader).mirror();
-        return klass;
+        StaticObject clazz = getContext().getRegistries().defineKlass(type, bytes, loader).mirror();
+        assert pd != null;
+        clazz.setHiddenField(getMeta().HIDDEN_PROTECTION_DOMAIN, pd);
+        return clazz;
     }
 
     @VmImpl
@@ -1094,5 +1095,10 @@ public final class VM extends NativeEnv implements ContextAccess {
         }
         StaticObject result = new StaticObject(getMeta().String.getArrayClass(), array);
         return result;
+    }
+
+    @VmImpl
+    public static long JVM_FreeMemory() {
+        return Runtime.getRuntime().freeMemory();
     }
 }
