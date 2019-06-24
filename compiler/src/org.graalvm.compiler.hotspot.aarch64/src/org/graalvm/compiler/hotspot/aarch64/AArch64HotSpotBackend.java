@@ -24,16 +24,6 @@
  */
 package org.graalvm.compiler.hotspot.aarch64;
 
-import static java.lang.reflect.Modifier.isStatic;
-import static jdk.vm.ci.aarch64.AArch64.lr;
-import static jdk.vm.ci.aarch64.AArch64.r10;
-import static jdk.vm.ci.aarch64.AArch64.sp;
-import static jdk.vm.ci.aarch64.AArch64.zr;
-import static jdk.vm.ci.code.ValueUtil.asRegister;
-import static jdk.vm.ci.hotspot.aarch64.AArch64HotSpotRegisterConfig.fp;
-import static org.graalvm.compiler.core.common.GraalOptions.GeneratePIC;
-import static org.graalvm.compiler.core.common.GraalOptions.ZapStackOnMethodEntry;
-
 import org.graalvm.collections.EconomicSet;
 import org.graalvm.compiler.asm.Assembler;
 import org.graalvm.compiler.asm.BranchTargetOutOfBoundsException;
@@ -46,11 +36,10 @@ import org.graalvm.compiler.code.CompilationResult;
 import org.graalvm.compiler.core.aarch64.AArch64NodeMatchRules;
 import org.graalvm.compiler.core.common.CompilationIdentifier;
 import org.graalvm.compiler.core.common.LIRKind;
+import org.graalvm.compiler.core.common.VectorDescription;
 import org.graalvm.compiler.core.common.alloc.RegisterAllocationConfig;
 import org.graalvm.compiler.core.common.spi.ForeignCallLinkage;
-import org.graalvm.compiler.core.common.spi.LIRKindTool;
 import org.graalvm.compiler.core.common.type.PrimitiveStamp;
-import org.graalvm.compiler.core.common.type.Stamp;
 import org.graalvm.compiler.core.gen.LIRGenerationProvider;
 import org.graalvm.compiler.hotspot.GraalHotSpotVMConfig;
 import org.graalvm.compiler.hotspot.HotSpotDataBuilder;
@@ -75,7 +64,6 @@ import org.graalvm.compiler.lir.gen.LIRGenerationResult;
 import org.graalvm.compiler.lir.gen.LIRGeneratorTool;
 import org.graalvm.compiler.nodes.StructuredGraph;
 import org.graalvm.compiler.nodes.spi.NodeLIRBuilderTool;
-import org.graalvm.compiler.phases.tiers.VectorDescription;
 
 import jdk.vm.ci.aarch64.AArch64Kind;
 import jdk.vm.ci.code.CallingConvention;
@@ -88,6 +76,18 @@ import jdk.vm.ci.hotspot.aarch64.AArch64HotSpotRegisterConfig;
 import jdk.vm.ci.meta.JavaKind;
 import jdk.vm.ci.meta.JavaType;
 import jdk.vm.ci.meta.ResolvedJavaMethod;
+
+import static java.lang.reflect.Modifier.isStatic;
+
+import static org.graalvm.compiler.core.common.GraalOptions.GeneratePIC;
+import static org.graalvm.compiler.core.common.GraalOptions.ZapStackOnMethodEntry;
+
+import static jdk.vm.ci.aarch64.AArch64.lr;
+import static jdk.vm.ci.aarch64.AArch64.r10;
+import static jdk.vm.ci.aarch64.AArch64.sp;
+import static jdk.vm.ci.aarch64.AArch64.zr;
+import static jdk.vm.ci.code.ValueUtil.asRegister;
+import static jdk.vm.ci.hotspot.aarch64.AArch64HotSpotRegisterConfig.fp;
 
 /**
  * HotSpot AArch64 specific backend.

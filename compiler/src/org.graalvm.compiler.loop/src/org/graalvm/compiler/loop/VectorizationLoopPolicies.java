@@ -26,6 +26,7 @@ package org.graalvm.compiler.loop;
 
 import java.util.List;
 
+import org.graalvm.compiler.core.common.VectorDescription;
 import org.graalvm.compiler.debug.GraalError;
 import org.graalvm.compiler.nodes.ControlSplitNode;
 import org.graalvm.compiler.nodes.cfg.ControlFlowGraph;
@@ -44,7 +45,7 @@ public class VectorizationLoopPolicies implements LoopPolicies {
     }
 
     @Override
-    public boolean shouldPartiallyUnroll(LoopEx loop) {
+    public boolean shouldPartiallyUnroll(LoopEx loop, VectorDescription vectorDescription) {
         return loop.loopBegin().getUnrollFactor() < 4;
     }
 

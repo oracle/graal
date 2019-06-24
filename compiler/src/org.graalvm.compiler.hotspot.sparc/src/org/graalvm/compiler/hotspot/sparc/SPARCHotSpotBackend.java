@@ -24,25 +24,6 @@
  */
 package org.graalvm.compiler.hotspot.sparc;
 
-import static jdk.vm.ci.code.ValueUtil.asRegister;
-import static jdk.vm.ci.code.ValueUtil.isRegister;
-import static jdk.vm.ci.sparc.SPARC.g0;
-import static jdk.vm.ci.sparc.SPARC.g5;
-import static jdk.vm.ci.sparc.SPARC.i0;
-import static jdk.vm.ci.sparc.SPARC.i7;
-import static jdk.vm.ci.sparc.SPARC.l0;
-import static jdk.vm.ci.sparc.SPARC.l7;
-import static jdk.vm.ci.sparc.SPARC.o0;
-import static jdk.vm.ci.sparc.SPARC.o7;
-import static jdk.vm.ci.sparc.SPARC.sp;
-import static org.graalvm.compiler.asm.sparc.SPARCAssembler.BPCC;
-import static org.graalvm.compiler.asm.sparc.SPARCAssembler.isGlobalRegister;
-import static org.graalvm.compiler.asm.sparc.SPARCAssembler.Annul.NOT_ANNUL;
-import static org.graalvm.compiler.asm.sparc.SPARCAssembler.BranchPredict.PREDICT_NOT_TAKEN;
-import static org.graalvm.compiler.asm.sparc.SPARCAssembler.CC.Xcc;
-import static org.graalvm.compiler.asm.sparc.SPARCAssembler.ConditionFlag.NotEqual;
-import static org.graalvm.compiler.core.common.GraalOptions.ZapStackOnMethodEntry;
-
 import java.util.ArrayList;
 import java.util.HashSet;
 import java.util.Set;
@@ -61,10 +42,10 @@ import org.graalvm.compiler.code.CompilationResult;
 import org.graalvm.compiler.code.DataSection;
 import org.graalvm.compiler.code.DataSection.Data;
 import org.graalvm.compiler.core.common.CompilationIdentifier;
+import org.graalvm.compiler.core.common.VectorDescription;
 import org.graalvm.compiler.core.common.alloc.RegisterAllocationConfig;
 import org.graalvm.compiler.core.common.cfg.AbstractBlockBase;
 import org.graalvm.compiler.core.common.type.PrimitiveStamp;
-import org.graalvm.compiler.core.common.type.Stamp;
 import org.graalvm.compiler.core.gen.LIRGenerationProvider;
 import org.graalvm.compiler.core.sparc.SPARCNodeMatchRules;
 import org.graalvm.compiler.debug.CounterKey;
@@ -100,7 +81,6 @@ import org.graalvm.compiler.lir.sparc.SPARCTailDelayedLIRInstruction;
 import org.graalvm.compiler.nodes.StructuredGraph;
 import org.graalvm.compiler.nodes.spi.NodeLIRBuilderTool;
 import org.graalvm.compiler.options.OptionValues;
-import org.graalvm.compiler.phases.tiers.VectorDescription;
 
 import jdk.vm.ci.code.CallingConvention;
 import jdk.vm.ci.code.Register;
@@ -109,6 +89,26 @@ import jdk.vm.ci.code.StackSlot;
 import jdk.vm.ci.hotspot.HotSpotCallingConventionType;
 import jdk.vm.ci.meta.JavaType;
 import jdk.vm.ci.meta.ResolvedJavaMethod;
+
+import static org.graalvm.compiler.asm.sparc.SPARCAssembler.Annul.NOT_ANNUL;
+import static org.graalvm.compiler.asm.sparc.SPARCAssembler.BPCC;
+import static org.graalvm.compiler.asm.sparc.SPARCAssembler.BranchPredict.PREDICT_NOT_TAKEN;
+import static org.graalvm.compiler.asm.sparc.SPARCAssembler.CC.Xcc;
+import static org.graalvm.compiler.asm.sparc.SPARCAssembler.ConditionFlag.NotEqual;
+import static org.graalvm.compiler.asm.sparc.SPARCAssembler.isGlobalRegister;
+import static org.graalvm.compiler.core.common.GraalOptions.ZapStackOnMethodEntry;
+
+import static jdk.vm.ci.code.ValueUtil.asRegister;
+import static jdk.vm.ci.code.ValueUtil.isRegister;
+import static jdk.vm.ci.sparc.SPARC.g0;
+import static jdk.vm.ci.sparc.SPARC.g5;
+import static jdk.vm.ci.sparc.SPARC.i0;
+import static jdk.vm.ci.sparc.SPARC.i7;
+import static jdk.vm.ci.sparc.SPARC.l0;
+import static jdk.vm.ci.sparc.SPARC.l7;
+import static jdk.vm.ci.sparc.SPARC.o0;
+import static jdk.vm.ci.sparc.SPARC.o7;
+import static jdk.vm.ci.sparc.SPARC.sp;
 
 /**
  * HotSpot SPARC specific backend.

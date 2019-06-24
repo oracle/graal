@@ -38,7 +38,6 @@ import static org.graalvm.compiler.phases.common.DeadCodeEliminationPhase.Option
 import org.graalvm.compiler.loop.DefaultLoopPolicies;
 import org.graalvm.compiler.loop.LoopPolicies;
 import org.graalvm.compiler.loop.phases.LoopFullUnrollPhase;
-import org.graalvm.compiler.loop.phases.LoopPartialUnrollPhase;
 import org.graalvm.compiler.loop.phases.LoopPeelingPhase;
 import org.graalvm.compiler.loop.phases.LoopUnswitchingPhase;
 import org.graalvm.compiler.nodes.spi.LoweringTool;

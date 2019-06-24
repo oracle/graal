@@ -30,6 +30,7 @@ import static org.graalvm.compiler.core.common.GraalOptions.MinimumPeelProbabili
 
 import java.util.List;
 
+import org.graalvm.compiler.core.common.VectorDescription;
 import org.graalvm.compiler.core.common.util.UnsignedLong;
 import org.graalvm.compiler.debug.CounterKey;
 import org.graalvm.compiler.debug.DebugContext;
@@ -137,7 +138,7 @@ public class DefaultLoopPolicies implements LoopPolicies {
     }
 
     @Override
-    public boolean shouldPartiallyUnroll(LoopEx loop) {
+    public boolean shouldPartiallyUnroll(LoopEx loop, VectorDescription vectorDescription) {
         LoopBeginNode loopBegin = loop.loopBegin();
         if (!loop.isCounted()) {
             loopBegin.getDebug().log(DebugContext.VERBOSE_LEVEL, "shouldPartiallyUnroll %s isn't counted", loopBegin);

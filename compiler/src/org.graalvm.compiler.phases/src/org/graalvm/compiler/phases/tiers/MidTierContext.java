@@ -24,6 +24,7 @@
  */
 package org.graalvm.compiler.phases.tiers;
 
+import org.graalvm.compiler.core.common.VectorDescription;
 import org.graalvm.compiler.phases.OptimisticOptimizations;
 import org.graalvm.compiler.phases.util.Providers;
 
@@ -45,6 +46,10 @@ public class MidTierContext extends PhaseContext {
 
     public TargetDescription getTarget() {
         return target.getTarget();
+    }
+
+    public VectorDescription getVectorDescription() {
+        return target.getVectorDescription();
     }
 
     public TargetProvider getTargetProvider() {

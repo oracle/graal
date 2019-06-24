@@ -28,7 +28,7 @@ import org.graalvm.compiler.loop.LoopPolicies;
 import org.graalvm.compiler.phases.BasePhase;
 import org.graalvm.compiler.phases.tiers.PhaseContext;
 
-public abstract class LoopPhase<P extends LoopPolicies> extends BasePhase<PhaseContext> {
+public abstract class LoopPhase<P extends LoopPolicies, C> extends BasePhase<C> {
     private P policies;
 
     public LoopPhase(P policies) {

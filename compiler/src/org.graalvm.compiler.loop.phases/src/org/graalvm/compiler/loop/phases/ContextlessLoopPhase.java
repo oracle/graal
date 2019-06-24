@@ -28,7 +28,7 @@ import org.graalvm.compiler.loop.LoopPolicies;
 import org.graalvm.compiler.nodes.StructuredGraph;
 import org.graalvm.compiler.phases.tiers.PhaseContext;
 
-public abstract class ContextlessLoopPhase<P extends LoopPolicies> extends LoopPhase<P> {
+public abstract class ContextlessLoopPhase<P extends LoopPolicies> extends LoopPhase<P, PhaseContext> {
 
     public ContextlessLoopPhase(P policies) {
         super(policies);

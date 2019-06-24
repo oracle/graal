@@ -33,7 +33,7 @@ import org.graalvm.compiler.nodes.StructuredGraph;
 import org.graalvm.compiler.phases.common.CanonicalizerPhase;
 import org.graalvm.compiler.phases.tiers.PhaseContext;
 
-public class LoopFullUnrollPhase extends LoopPhase<LoopPolicies> {
+public class LoopFullUnrollPhase extends LoopPhase<LoopPolicies, PhaseContext> {
 
     private static final CounterKey FULLY_UNROLLED_LOOPS = DebugContext.counter("FullUnrolls");
     private final CanonicalizerPhase canonicalizer;

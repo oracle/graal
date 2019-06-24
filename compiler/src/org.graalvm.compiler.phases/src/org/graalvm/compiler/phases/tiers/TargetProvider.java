@@ -24,6 +24,8 @@
  */
 package org.graalvm.compiler.phases.tiers;
 
+import org.graalvm.compiler.core.common.VectorDescription;
+
 import jdk.vm.ci.code.TargetDescription;
 
 public interface TargetProvider {

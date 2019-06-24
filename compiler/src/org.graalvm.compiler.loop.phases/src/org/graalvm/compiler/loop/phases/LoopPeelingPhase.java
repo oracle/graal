@@ -31,7 +31,7 @@ import org.graalvm.compiler.loop.LoopsData;
 import org.graalvm.compiler.nodes.StructuredGraph;
 import org.graalvm.compiler.phases.tiers.PhaseContext;
 
-public class LoopPeelingPhase extends LoopPhase<LoopPolicies> {
+public class LoopPeelingPhase extends LoopPhase<LoopPolicies, PhaseContext> {
 
     public LoopPeelingPhase(LoopPolicies policies) {
         super(policies);

@@ -26,6 +26,7 @@ package org.graalvm.compiler.loop;
 
 import java.util.List;
 
+import org.graalvm.compiler.core.common.VectorDescription;
 import org.graalvm.compiler.nodes.ControlSplitNode;
 import org.graalvm.compiler.nodes.cfg.ControlFlowGraph;
 
@@ -36,7 +37,7 @@ public interface LoopPolicies {
 
     boolean shouldFullUnroll(LoopEx loop);
 
-    boolean shouldPartiallyUnroll(LoopEx loop);
+    boolean shouldPartiallyUnroll(LoopEx loop, VectorDescription vectorDescription);
 
     boolean shouldTryUnswitch(LoopEx loop);
 

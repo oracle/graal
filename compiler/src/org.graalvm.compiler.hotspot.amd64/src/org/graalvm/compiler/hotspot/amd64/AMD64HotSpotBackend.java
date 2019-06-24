@@ -24,14 +24,6 @@
  */
 package org.graalvm.compiler.hotspot.amd64;
 
-import static jdk.vm.ci.amd64.AMD64.r10;
-import static jdk.vm.ci.amd64.AMD64.rax;
-import static jdk.vm.ci.amd64.AMD64.rsp;
-import static jdk.vm.ci.code.ValueUtil.asRegister;
-import static org.graalvm.compiler.core.common.GraalOptions.CanOmitFrame;
-import static org.graalvm.compiler.core.common.GraalOptions.GeneratePIC;
-import static org.graalvm.compiler.core.common.GraalOptions.ZapStackOnMethodEntry;
-
 import java.util.EnumSet;
 
 import org.graalvm.collections.EconomicSet;
@@ -44,11 +36,11 @@ import org.graalvm.compiler.code.CompilationResult;
 import org.graalvm.compiler.core.amd64.AMD64NodeMatchRules;
 import org.graalvm.compiler.core.common.CompilationIdentifier;
 import org.graalvm.compiler.core.common.LIRKind;
+import org.graalvm.compiler.core.common.VectorDescription;
 import org.graalvm.compiler.core.common.alloc.RegisterAllocationConfig;
 import org.graalvm.compiler.core.common.type.FloatStamp;
 import org.graalvm.compiler.core.common.type.IntegerStamp;
 import org.graalvm.compiler.core.common.type.PrimitiveStamp;
-import org.graalvm.compiler.core.common.type.Stamp;
 import org.graalvm.compiler.core.gen.LIRGenerationProvider;
 import org.graalvm.compiler.debug.DebugContext;
 import org.graalvm.compiler.hotspot.GraalHotSpotVMConfig;
@@ -75,11 +67,10 @@ import org.graalvm.compiler.lir.gen.LIRGeneratorTool;
 import org.graalvm.compiler.nodes.StructuredGraph;
 import org.graalvm.compiler.nodes.spi.NodeLIRBuilderTool;
 import org.graalvm.compiler.options.OptionValues;
-import org.graalvm.compiler.phases.tiers.VectorDescription;
 
 import jdk.vm.ci.amd64.AMD64;
-import jdk.vm.ci.amd64.AMD64Kind;
 import jdk.vm.ci.amd64.AMD64.CPUFeature;
+import jdk.vm.ci.amd64.AMD64Kind;
 import jdk.vm.ci.code.CallingConvention;
 import jdk.vm.ci.code.Register;
 import jdk.vm.ci.code.RegisterConfig;
@@ -89,6 +80,15 @@ import jdk.vm.ci.hotspot.HotSpotSentinelConstant;
 import jdk.vm.ci.meta.JavaKind;
 import jdk.vm.ci.meta.JavaType;
 import jdk.vm.ci.meta.ResolvedJavaMethod;
+
+import static org.graalvm.compiler.core.common.GraalOptions.CanOmitFrame;
+import static org.graalvm.compiler.core.common.GraalOptions.GeneratePIC;
+import static org.graalvm.compiler.core.common.GraalOptions.ZapStackOnMethodEntry;
+
+import static jdk.vm.ci.amd64.AMD64.r10;
+import static jdk.vm.ci.amd64.AMD64.rax;
+import static jdk.vm.ci.amd64.AMD64.rsp;
+import static jdk.vm.ci.code.ValueUtil.asRegister;
 
 /**
  * HotSpot AMD64 specific backend.
