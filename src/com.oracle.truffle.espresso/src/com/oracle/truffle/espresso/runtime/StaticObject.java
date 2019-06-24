@@ -22,6 +22,7 @@
  */
 package com.oracle.truffle.espresso.runtime;
 
+import static com.oracle.truffle.api.CompilerDirectives.castExact;
 import static com.oracle.truffle.espresso.vm.InterpreterToVM.instanceOf;
 
 import java.lang.reflect.Array;
@@ -295,7 +296,8 @@ public final class StaticObject implements TruffleObject {
         if (field.isVolatile()) {
             setFieldVolatile(field, value);
         } else {
-            setUnsafeField(field.getFieldIndex(), value);
+            Object[] fieldArray = castExact(fields, Object[].class);
+            fieldArray[field.getFieldIndex()] = value;
         }
     }
 
@@ -650,6 +652,31 @@ public final class StaticObject implements TruffleObject {
             return "mirror: " + getMirrorKlass().toString();
         }
         return getKlass().getType().toString();
+    }
+
+    @TruffleBoundary
+    public String toVerboseString() {
+        if (this == VOID) {
+            return "void";
+        }
+        if (this == NULL) {
+            return "null";
+        }
+        if (getKlass() == getKlass().getMeta().String) {
+            return Meta.toHostString(this);
+        }
+        if (isArray()) {
+            return unwrap().toString();
+        }
+        if (getKlass() == getKlass().getMeta().Class) {
+            return "mirror: " + getMirrorKlass().toString();
+        }
+        StringBuilder str = new StringBuilder(getKlass().getType().toString());
+        for (Field f : ((ObjectKlass) getKlass()).getFieldTable()) {
+            // Also prints hidden fields
+            str.append("\n    ").append(f.getName()).append(": ").append(f.get(this).toString());
+        }
+        return str.toString();
     }
 
     public void setHiddenField(Field hiddenField, Object value) {
