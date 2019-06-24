@@ -59,6 +59,7 @@ import com.oracle.truffle.api.object.Shape;
  * @see DynamicObject
  * @since 0.17 or earlier
  */
+@Deprecated
 public abstract class Locations {
     /**
      * @since 0.17 or earlier
@@ -107,6 +108,7 @@ public abstract class Locations {
         }
 
         /** @since 0.17 or earlier */
+        @SuppressWarnings("deprecation")
         @Override
         public boolean canStore(Object val) {
             return valueEquals(this.value, val);

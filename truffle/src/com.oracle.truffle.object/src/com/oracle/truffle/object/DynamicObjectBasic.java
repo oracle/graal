@@ -38,17 +38,16 @@
  * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
  * SOFTWARE.
  */
-package com.oracle.truffle.object.basic;
+package com.oracle.truffle.object;
 
 import java.io.PrintStream;
 
 import com.oracle.truffle.api.object.DynamicObject;
 import com.oracle.truffle.api.object.Shape;
-import com.oracle.truffle.object.DynamicObjectImpl;
-import com.oracle.truffle.object.ShapeImpl;
-import com.oracle.truffle.object.basic.BasicLocations.SimpleLongFieldLocation;
-import com.oracle.truffle.object.basic.BasicLocations.SimpleObjectFieldLocation;
+import com.oracle.truffle.object.CoreLocations.SimpleLongFieldLocation;
+import com.oracle.truffle.object.CoreLocations.SimpleObjectFieldLocation;
 
+@SuppressWarnings("deprecation")
 public class DynamicObjectBasic extends DynamicObjectImpl {
 
     private long primitive1;
@@ -243,111 +242,143 @@ public class DynamicObjectBasic extends DynamicObjectImpl {
         assert checkExtensionArrayInvariants(newShape);
     }
 
-    static final SimpleObjectFieldLocation[] OBJECT_FIELD_LOCATIONS;
-    static final SimpleLongFieldLocation[] PRIMITIVE_FIELD_LOCATIONS;
+    static final BasicObjectFieldLocation[] OBJECT_FIELD_LOCATIONS;
+    static final BasicLongFieldLocation[] PRIMITIVE_FIELD_LOCATIONS;
 
-    static final SimpleObjectFieldLocation OBJECT_ARRAY_LOCATION;
-    static final SimpleObjectFieldLocation PRIMITIVE_ARRAY_LOCATION;
+    static final BasicObjectFieldLocation OBJECT_ARRAY_LOCATION;
+    static final BasicObjectFieldLocation PRIMITIVE_ARRAY_LOCATION;
+
+    abstract static class BasicLongFieldLocation extends SimpleLongFieldLocation {
+        protected BasicLongFieldLocation(int index) {
+            super(index);
+        }
+
+        @Override
+        public final Class<? extends DynamicObject> getDeclaringClass() {
+            return DynamicObjectBasic.class;
+        }
+
+        @Override
+        public final int primitiveFieldCount() {
+            return 1;
+        }
+
+        @Override
+        public final void accept(LocationVisitor locationVisitor) {
+            locationVisitor.visitPrimitiveField(getIndex(), 1);
+        }
+    }
+
+    abstract static class BasicObjectFieldLocation extends SimpleObjectFieldLocation {
+        protected BasicObjectFieldLocation(int index) {
+            super(index);
+        }
+
+        @Override
+        public final Class<? extends DynamicObject> getDeclaringClass() {
+            return DynamicObjectBasic.class;
+        }
+    }
 
     static {
         int index;
 
         index = 0;
-        PRIMITIVE_FIELD_LOCATIONS = new SimpleLongFieldLocation[]{new SimpleLongFieldLocation(index++) {
+        PRIMITIVE_FIELD_LOCATIONS = new BasicLongFieldLocation[]{new BasicLongFieldLocation(index++) {
             @Override
             public long getLong(DynamicObject store, boolean condition) {
                 return ((DynamicObjectBasic) store).primitive1;
             }
 
             @Override
-            public void setLongInternal(DynamicObject store, long value) {
+            public void setLong(DynamicObject store, long value, boolean condition) {
                 ((DynamicObjectBasic) store).primitive1 = value;
             }
-        }, new SimpleLongFieldLocation(index++) {
+        }, new BasicLongFieldLocation(index++) {
             @Override
             public long getLong(DynamicObject store, boolean condition) {
                 return ((DynamicObjectBasic) store).primitive2;
             }
 
             @Override
-            public void setLongInternal(DynamicObject store, long value) {
+            public void setLong(DynamicObject store, long value, boolean condition) {
                 ((DynamicObjectBasic) store).primitive2 = value;
             }
-        }, new SimpleLongFieldLocation(index++) {
+        }, new BasicLongFieldLocation(index++) {
             @Override
             public long getLong(DynamicObject store, boolean condition) {
                 return ((DynamicObjectBasic) store).primitive3;
             }
 
             @Override
-            public void setLongInternal(DynamicObject store, long value) {
+            public void setLong(DynamicObject store, long value, boolean condition) {
                 ((DynamicObjectBasic) store).primitive3 = value;
             }
         }};
 
         index = 0;
-        OBJECT_FIELD_LOCATIONS = new SimpleObjectFieldLocation[]{new SimpleObjectFieldLocation(index++) {
+        OBJECT_FIELD_LOCATIONS = new BasicObjectFieldLocation[]{new BasicObjectFieldLocation(index++) {
             @Override
             public Object get(DynamicObject store, boolean condition) {
                 return ((DynamicObjectBasic) store).object1;
             }
 
             @Override
-            public void setInternal(DynamicObject store, Object value) {
+            public void setInternal(DynamicObject store, Object value, boolean condition) {
                 ((DynamicObjectBasic) store).object1 = value;
             }
-        }, new SimpleObjectFieldLocation(index++) {
+        }, new BasicObjectFieldLocation(index++) {
             @Override
             public Object get(DynamicObject store, boolean condition) {
                 return ((DynamicObjectBasic) store).object2;
             }
 
             @Override
-            public void setInternal(DynamicObject store, Object value) {
+            public void setInternal(DynamicObject store, Object value, boolean condition) {
                 ((DynamicObjectBasic) store).object2 = value;
             }
-        }, new SimpleObjectFieldLocation(index++) {
+        }, new BasicObjectFieldLocation(index++) {
             @Override
             public Object get(DynamicObject store, boolean condition) {
                 return ((DynamicObjectBasic) store).object3;
             }
 
             @Override
-            public void setInternal(DynamicObject store, Object value) {
+            public void setInternal(DynamicObject store, Object value, boolean condition) {
                 ((DynamicObjectBasic) store).object3 = value;
             }
-        }, new SimpleObjectFieldLocation(index++) {
+        }, new BasicObjectFieldLocation(index++) {
             @Override
             public Object get(DynamicObject store, boolean condition) {
                 return ((DynamicObjectBasic) store).object4;
             }
 
             @Override
-            public void setInternal(DynamicObject store, Object value) {
+            public void setInternal(DynamicObject store, Object value, boolean condition) {
                 ((DynamicObjectBasic) store).object4 = value;
             }
         }};
 
-        OBJECT_ARRAY_LOCATION = new SimpleObjectFieldLocation(index++) {
+        OBJECT_ARRAY_LOCATION = new BasicObjectFieldLocation(index++) {
             @Override
             public Object[] get(DynamicObject store, boolean condition) {
                 return ((DynamicObjectBasic) store).objext;
             }
 
             @Override
-            public void setInternal(DynamicObject store, Object value) {
+            public void setInternal(DynamicObject store, Object value, boolean condition) {
                 ((DynamicObjectBasic) store).objext = (Object[]) value;
             }
         };
 
-        PRIMITIVE_ARRAY_LOCATION = new SimpleObjectFieldLocation(index++) {
+        PRIMITIVE_ARRAY_LOCATION = new BasicObjectFieldLocation(index++) {
             @Override
             public long[] get(DynamicObject store, boolean condition) {
                 return ((DynamicObjectBasic) store).primext;
             }
 
             @Override
-            public void setInternal(DynamicObject store, Object value) {
+            public void setInternal(DynamicObject store, Object value, boolean condition) {
                 ((DynamicObjectBasic) store).primext = (long[]) value;
             }
         };

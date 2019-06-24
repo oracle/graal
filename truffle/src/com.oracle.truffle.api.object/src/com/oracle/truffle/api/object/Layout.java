@@ -127,11 +127,11 @@ public abstract class Layout {
      *
      * @param objectType that describes the object instance with this shape.
      * @param sharedData for language-specific use
-     * @param id for language-specific use
+     * @param flags for language-specific use, must be in the range 0-255.
      * @return new instance of a shape
      * @since 0.8 or earlier
      */
-    public abstract Shape createShape(ObjectType objectType, Object sharedData, int id);
+    public abstract Shape createShape(ObjectType objectType, Object sharedData, int flags);
 
     /**
      * Create an allocator for static property creation. Reserves all array extension slots.

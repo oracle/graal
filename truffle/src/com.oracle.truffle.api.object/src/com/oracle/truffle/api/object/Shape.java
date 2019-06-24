@@ -244,7 +244,7 @@ public abstract class Shape {
     public abstract int getPropertyCount();
 
     /**
-     * Get the shape's operations.
+     * Get the shape's object type info.
      *
      * @since 0.8 or earlier
      */
@@ -258,7 +258,7 @@ public abstract class Shape {
     public abstract Shape getRoot();
 
     /**
-     * Check whether this shape is identical to the given shape.
+     * Checks whether the given object's shape is identical to this shape.
      *
      * @since 0.8 or earlier
      */

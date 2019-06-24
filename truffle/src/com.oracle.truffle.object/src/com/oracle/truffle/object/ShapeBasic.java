@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2014, 2018, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2012, 2018, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -38,28 +38,23 @@
  * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
  * SOFTWARE.
  */
-package com.oracle.truffle.object.basic;
+package com.oracle.truffle.object;
 
 import com.oracle.truffle.api.object.Layout;
-import com.oracle.truffle.api.object.LayoutFactory;
-import com.oracle.truffle.api.object.Location;
-import com.oracle.truffle.api.object.Property;
-import com.oracle.truffle.object.PropertyImpl;
+import com.oracle.truffle.api.object.ObjectType;
 
-public class DefaultLayoutFactory implements LayoutFactory {
-    public Layout createLayout(Layout.Builder layoutBuilder) {
-        return BasicLayout.createLayoutImpl(layoutBuilder, new DefaultStrategy());
+public final class ShapeBasic extends ShapeImpl {
+    ShapeBasic(Layout layout, Object sharedData, ObjectType objectType, int flags) {
+        super(layout, objectType, sharedData, flags);
     }
 
-    public Property createProperty(Object id, Location location) {
-        return createProperty(id, location, 0);
+    ShapeBasic(Layout layout, Object sharedData, ShapeImpl parent, ObjectType objectType, PropertyMap propertyMap, Transition transition, Allocator allocator, int flags) {
+        super(layout, parent, objectType, sharedData, propertyMap, transition, allocator, flags);
     }
 
-    public Property createProperty(Object id, Location location, int flags) {
-        return new PropertyImpl(id, location, flags);
-    }
-
-    public int getPriority() {
-        return 10;
+    @SuppressWarnings("hiding")
+    @Override
+    protected ShapeImpl createShape(Layout layout, Object sharedData, ShapeImpl parent, ObjectType objectType, PropertyMap propertyMap, Transition transition, Allocator allocator, int flags) {
+        return new ShapeBasic(layout, sharedData, parent, objectType, propertyMap, transition, allocator, flags);
     }
 }

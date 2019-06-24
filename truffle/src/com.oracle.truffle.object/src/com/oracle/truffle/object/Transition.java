@@ -292,4 +292,39 @@ public abstract class Transition {
             return true;
         }
     }
+
+    static final class ObjectFlagsTransition extends Transition {
+        private final int objectFlags;
+
+        ObjectFlagsTransition(int newFlags) {
+            this.objectFlags = newFlags;
+        }
+
+        public int getObjectFlags() {
+            return objectFlags;
+        }
+
+        @Override
+        public boolean equals(Object other) {
+            return super.equals(other) && (this.objectFlags == ((ObjectFlagsTransition) other).objectFlags);
+        }
+
+        @Override
+        public int hashCode() {
+            final int prime = 31;
+            int result = super.hashCode();
+            result = prime * result + objectFlags;
+            return result;
+        }
+
+        @Override
+        public boolean isDirect() {
+            return true;
+        }
+
+        @Override
+        public String toString() {
+            return String.format("objectFlags(%s)", getObjectFlags());
+        }
+    }
 }

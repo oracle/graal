@@ -137,7 +137,7 @@ public abstract class DynamicObjectImpl extends DynamicObject implements Cloneab
     /** @since 0.17 or earlier */
     protected abstract void growPrimitiveStore(Shape oldShape, Shape newShape);
 
-    private void resizeStore(Shape oldShape, Shape newShape) {
+    protected void resizeStore(Shape oldShape, Shape newShape) {
         resizeObjectStore(oldShape, newShape);
         if (((ShapeImpl) newShape).hasPrimitiveArray) {
             resizePrimitiveStore(oldShape, newShape);

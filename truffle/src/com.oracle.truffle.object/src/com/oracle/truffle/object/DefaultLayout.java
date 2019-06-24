@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2012, 2018, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2012, 2019, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -38,47 +38,40 @@
  * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
  * SOFTWARE.
  */
-package com.oracle.truffle.object.basic;
+package com.oracle.truffle.object;
 
 import java.util.EnumSet;
 
 import com.oracle.truffle.api.object.DynamicObject;
-import com.oracle.truffle.api.object.Layout;
-import com.oracle.truffle.api.object.Location;
-import com.oracle.truffle.api.object.ObjectLocation;
 import com.oracle.truffle.api.object.ObjectType;
 import com.oracle.truffle.api.object.Shape;
 import com.oracle.truffle.api.object.Shape.Allocator;
-import com.oracle.truffle.object.LayoutImpl;
-import com.oracle.truffle.object.LayoutStrategy;
-import com.oracle.truffle.object.LocationImpl.InternalLongLocation;
+import com.oracle.truffle.object.CoreLocations.LongLocation;
+import com.oracle.truffle.object.CoreLocations.ObjectLocation;
 
-public class BasicLayout extends LayoutImpl {
+class DefaultLayout extends LayoutImpl {
     private final ObjectLocation[] objectFields;
-    private final InternalLongLocation[] primitiveFields;
-    private final Location objectArrayLocation;
-    private final Location primitiveArrayLocation;
+    private final LongLocation[] primitiveFields;
+    private final CoreLocation objectArrayLocation;
+    private final CoreLocation primitiveArrayLocation;
 
-    BasicLayout(EnumSet<ImplicitCast> allowedImplicitCasts, LayoutStrategy strategy) {
-        super(allowedImplicitCasts, DynamicObjectBasic.class, strategy);
+    DefaultLayout(EnumSet<ImplicitCast> allowedImplicitCasts, Class<? extends DynamicObject> dynamicObjectClass, LayoutStrategy strategy) {
+        super(allowedImplicitCasts, dynamicObjectClass, strategy);
+        assert dynamicObjectClass == DynamicObjectBasic.class;
         this.objectFields = DynamicObjectBasic.OBJECT_FIELD_LOCATIONS;
         this.primitiveFields = DynamicObjectBasic.PRIMITIVE_FIELD_LOCATIONS;
         this.primitiveArrayLocation = DynamicObjectBasic.PRIMITIVE_ARRAY_LOCATION;
         this.objectArrayLocation = DynamicObjectBasic.OBJECT_ARRAY_LOCATION;
     }
 
-    static LayoutImpl createLayoutImpl(Layout.Builder builder, LayoutStrategy strategy) {
-        return new BasicLayout(getAllowedImplicitCasts(builder), strategy);
-    }
-
     @Override
     public DynamicObject newInstance(Shape shape) {
-        return new DynamicObjectBasic(shape);
+        throw new UnsupportedOperationException();
     }
 
     @Override
-    public Shape createShape(ObjectType objectType, Object sharedData, int id) {
-        return new ShapeBasic(this, sharedData, objectType, id);
+    protected Shape newShape(Object objectType, Object sharedData, int flags) {
+        return new ShapeBasic(this, sharedData, (ObjectType) objectType, flags);
     }
 
     @Override
@@ -102,12 +95,12 @@ public class BasicLayout extends LayoutImpl {
     }
 
     @Override
-    protected Location getObjectArrayLocation() {
+    protected CoreLocation getObjectArrayLocation() {
         return objectArrayLocation;
     }
 
     @Override
-    protected Location getPrimitiveArrayLocation() {
+    protected CoreLocation getPrimitiveArrayLocation() {
         return primitiveArrayLocation;
     }
 
@@ -115,14 +108,17 @@ public class BasicLayout extends LayoutImpl {
         return objectFields[index];
     }
 
-    protected InternalLongLocation getPrimitiveFieldLocation(int index) {
+    protected LongLocation getPrimitiveFieldLocation(int index) {
         return primitiveFields[index];
+    }
+
+    protected int getLongFieldSize() {
+        return CoreLocations.LONG_FIELD_SIZE;
     }
 
     @Override
     public Allocator createAllocator() {
         LayoutImpl layout = this;
-        Allocator allocator = getStrategy().createAllocator(layout);
-        return allocator;
+        return getStrategy().createAllocator(layout);
     }
 }

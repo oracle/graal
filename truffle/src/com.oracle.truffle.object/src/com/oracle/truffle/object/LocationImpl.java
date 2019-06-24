@@ -48,6 +48,7 @@ import com.oracle.truffle.api.object.LongLocation;
 import com.oracle.truffle.api.object.Shape;
 
 /** @since 0.17 or earlier */
+@SuppressWarnings("deprecation")
 public abstract class LocationImpl extends Location {
     /**
      * @since 0.17 or earlier
@@ -156,7 +157,6 @@ public abstract class LocationImpl extends Location {
     }
 
     /** @since 0.17 or earlier */
-    @SuppressWarnings("deprecation")
     @Override
     public String toString() {
         String finalString = isFinal() ? "f" : "";
