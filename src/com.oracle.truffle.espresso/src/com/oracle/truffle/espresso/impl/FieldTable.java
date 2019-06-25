@@ -272,12 +272,22 @@ class FieldTable {
             int i = 0;
 
             while (holeSize > 0 && i < N_PRIMITIVES) {
-                if (counts[i] > 0 && order[i].getByteCount() <= holeSize) {
-                    while (counts[i] > 0 && order[i].getByteCount() <= holeSize) {
+                int byteCount = order[i].getByteCount();
+                if (counts[i] > 0 && byteCount <= holeSize) {
+                    while (counts[i] > 0 && byteCount <= holeSize) {
                         counts[i]--;
-                        end -= order[i].getByteCount();
-                        holeSize -= order[i].getByteCount();
-                        schedule.add(new ScheduleEntry(order[i], end));
+                        int newEnd = end - byteCount;
+                        if (newEnd % byteCount != 0) {
+                            int misalignment = newEnd % byteCount;
+                            int aligned = newEnd - misalignment;
+                            schedule.add(new ScheduleEntry(order[i], aligned));
+                            // We created a new hole of size `misaligned`. Try to fill it.
+                            scheduleHole(end - misalignment, end, counts, schedule, nextHoles);
+                        } else {
+                            end -= byteCount;
+                            holeSize -= byteCount;
+                            schedule.add(new ScheduleEntry(order[i], end));
+                        }
                     }
                 }
                 i++;
