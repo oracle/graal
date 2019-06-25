@@ -72,7 +72,6 @@ import jdk.vm.ci.code.StackSlot;
 import jdk.vm.ci.meta.AllocatableValue;
 import jdk.vm.ci.meta.Constant;
 import jdk.vm.ci.meta.JavaConstant;
-import jdk.vm.ci.meta.JavaKind;
 import jdk.vm.ci.meta.Value;
 
 public class AMD64Move {
@@ -157,7 +156,7 @@ public class AMD64Move {
         @Override
         public void emitCode(CompilationResultBuilder crb, AMD64MacroAssembler masm) {
             if (isRegister(result)) {
-                const2reg(crb, masm, asRegister(result), input);
+                const2reg(crb, masm, asRegister(result), input, (AMD64Kind) result.getPlatformKind());
             } else {
                 assert isStackSlot(result);
                 const2stack(crb, masm, result, input);
@@ -644,11 +643,6 @@ public class AMD64Move {
             default:
                 throw GraalError.shouldNotReachHere();
         }
-    }
-
-    public static void const2reg(CompilationResultBuilder crb, AMD64MacroAssembler masm, Register result, JavaConstant input) {
-        assert input.getJavaKind().getStackKind() != JavaKind.Object : "a nun-null moveKind is required for loading an object constant";
-        const2reg(crb, masm, result, input, null);
     }
 
     public static void const2reg(CompilationResultBuilder crb, AMD64MacroAssembler masm, Register result, JavaConstant input, AMD64Kind moveKind) {
