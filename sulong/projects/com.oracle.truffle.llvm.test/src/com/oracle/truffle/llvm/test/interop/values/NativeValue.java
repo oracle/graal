@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2019, Oracle and/or its affiliates.
+ * Copyright (c) 2019, Oracle and/or its affiliates.
  *
  * All rights reserved.
  *
@@ -36,15 +36,26 @@ import com.oracle.truffle.api.library.ExportMessage;
 
 @ExportLibrary(InteropLibrary.class)
 @SuppressWarnings("static-method")
-public final class NullValue implements TruffleObject {
+public final class NativeValue implements TruffleObject {
+
+    final long ptrValue;
+
+    public NativeValue(long ptrValue) {
+        this.ptrValue = ptrValue;
+    }
 
     @ExportMessage
-    boolean isNull() {
+    boolean isPointer() {
         return true;
+    }
+
+    @ExportMessage
+    long asPointer() {
+        return ptrValue;
     }
 
     @Override
     public String toString() {
-        return "null";
+        return "native:" + ptrValue;
     }
 }
