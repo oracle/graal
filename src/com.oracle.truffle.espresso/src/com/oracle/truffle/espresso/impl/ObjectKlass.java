@@ -56,7 +56,7 @@ public final class ObjectKlass extends Klass {
 
     public static final ObjectKlass[] EMPTY_ARRAY = new ObjectKlass[0];
 
-    public static final JavaKind FIELD_REPRESENTATION = JavaKind.Long;
+    public static final JavaKind FIELD_REPRESENTATION = JavaKind.Byte;
 
     private final EnclosingMethodAttribute enclosingMethod;
 
@@ -73,9 +73,7 @@ public final class ObjectKlass extends Klass {
     @CompilationFinal(dimensions = 1) private final Field[] fieldTable;
 
     private final int primitiveFieldTotalByteCount;
-    private final int surplusPrimitiveField;
     private final int primitiveStaticFieldTotalByteCount;
-    private final int surplusPrimitiveStaticField;
 
     private final int objectFields;
     private final int staticObjectFields;
@@ -138,9 +136,7 @@ public final class ObjectKlass extends Klass {
         this.declaredFields = fieldCR.declaredFields;
 
         this.primitiveFieldTotalByteCount = fieldCR.primitiveFieldTotalByteCount;
-        this.surplusPrimitiveField = (this.primitiveFieldTotalByteCount % FIELD_REPRESENTATION.getByteCount() == 0) ? 0 : 1;
         this.primitiveStaticFieldTotalByteCount = fieldCR.primitiveStaticFieldTotalByteCount;
-        this.surplusPrimitiveStaticField = (this.primitiveStaticFieldTotalByteCount % FIELD_REPRESENTATION.getByteCount() == 0) ? 0 : 1;
         this.objectFields = fieldCR.objectFields;
         this.staticObjectFields = fieldCR.staticObjectFields;
 
@@ -392,28 +388,12 @@ public final class ObjectKlass extends Klass {
         return primitiveFieldTotalByteCount;
     }
 
-    public int getPrimitiveFieldSize() {
-        return primitiveFieldTotalByteCount / FIELD_REPRESENTATION.getByteCount() + surplusPrimitiveField;
-    }
-
     public int getStaticObjectFieldsCount() {
         return staticObjectFields;
     }
 
     public int getPrimitiveStaticFieldTotalByteCount() {
         return primitiveStaticFieldTotalByteCount;
-    }
-
-    public int getPrimitiveStaticFieldSize() {
-        return primitiveStaticFieldTotalByteCount / FIELD_REPRESENTATION.getByteCount() + surplusPrimitiveStaticField;
-    }
-
-    public int getSurplusPrimitiveField() {
-        return surplusPrimitiveField;
-    }
-
-    public int getSurplusPrimitiveStaticField() {
-        return surplusPrimitiveStaticField;
     }
 
     @Override
