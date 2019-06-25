@@ -27,6 +27,8 @@ package com.oracle.svm.jni.hosted;
 import java.util.Collections;
 import java.util.List;
 
+import com.oracle.svm.hosted.FallbackFeature;
+import org.graalvm.nativeimage.ImageSingletons;
 import org.graalvm.nativeimage.hosted.Feature;
 
 import com.oracle.svm.core.SubstrateOptions;
@@ -48,4 +50,17 @@ public class JNIAutomaticFeature implements Feature {
     public List<Class<? extends Feature>> getRequiredFeatures() {
         return Collections.singletonList(JNIFeature.class);
     }
+
+    @Override
+    public void beforeCompilation(BeforeCompilationAccess access) {
+        if (!ImageSingletons.contains(FallbackFeature.class)) {
+            return;
+        }
+        FallbackFeature.FallbackImageRequest jniFallback = ImageSingletons.lookup(FallbackFeature.class).jniFallback;
+        if (jniFallback != null && ConfigurationFiles.Options.JNIConfigurationFiles.getValue() == null &&
+                        ConfigurationFiles.Options.JNIConfigurationResources.getValue() == null) {
+            throw jniFallback;
+        }
+    }
+
 }
