@@ -259,7 +259,7 @@ public final class StaticObject implements TruffleObject {
     // Start non primitive field handling.
 
     private static long getObjectFieldIndex(int index) {
-        return (long) Unsafe.ARRAY_OBJECT_BASE_OFFSET + Unsafe.ARRAY_OBJECT_INDEX_SCALE * index;
+        return Unsafe.ARRAY_OBJECT_BASE_OFFSET + Unsafe.ARRAY_OBJECT_INDEX_SCALE * (long) index;
     }
 
     public final StaticObject getFieldVolatile(Field field) {
@@ -318,7 +318,7 @@ public final class StaticObject implements TruffleObject {
     // when kind is known beforehand.
 
     private static long getPrimitiveFieldIndex(int index) {
-        return (long) Unsafe.ARRAY_LONG_BASE_OFFSET + Unsafe.ARRAY_BYTE_INDEX_SCALE * index;
+        return Unsafe.ARRAY_LONG_BASE_OFFSET + Unsafe.ARRAY_BYTE_INDEX_SCALE * (long) index;
     }
 
     public final boolean getBooleanField(Field field) {

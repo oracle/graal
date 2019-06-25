@@ -38,16 +38,20 @@ class FieldTable {
         Field[] staticFieldTable;
         Field[] declaredFields;
 
+        int[][] leftoverHoles;
+
         int primitiveFieldTotalByteCount;
         int primitiveStaticFieldTotalByteCount;
         int objectFields;
         int staticObjectFields;
 
-        CreationResult(Field[] fieldTable, Field[] staticFieldTable, Field[] declaredFields, int primitiveFieldTotalByteCount, int primitiveStaticFieldTotalByteCount, int objectFields,
+        CreationResult(Field[] fieldTable, Field[] staticFieldTable, Field[] declaredFields, int[][] leftoverHoles, int primitiveFieldTotalByteCount, int primitiveStaticFieldTotalByteCount,
+                        int objectFields,
                         int staticObjectFields) {
             this.fieldTable = fieldTable;
             this.staticFieldTable = staticFieldTable;
             this.declaredFields = declaredFields;
+            this.leftoverHoles = leftoverHoles;
             this.primitiveFieldTotalByteCount = primitiveFieldTotalByteCount;
             this.primitiveStaticFieldTotalByteCount = primitiveStaticFieldTotalByteCount;
             this.objectFields = objectFields;
@@ -90,12 +94,15 @@ class FieldTable {
         int[] primitiveCounts = new int[N_PRIMITIVES];
         int[] staticPrimitiveCounts = new int[N_PRIMITIVES];
 
+        int[][] leftoverHoles = new int[0][];
+
         if (superKlass != null) {
             tmpFields = new ArrayList<>(Arrays.asList(superKlass.getFieldTable()));
             superTotalByteCount = superKlass.getPrimitiveFieldTotalByteCount();
             superTotalStaticByteCount = superKlass.getPrimitiveStaticFieldTotalByteCount();
             objectFields = superKlass.getObjectFieldsCount();
             staticObjectFields = superKlass.getStaticObjectFieldsCount();
+            leftoverHoles = superKlass.getLeftoverHoles();
         } else {
             tmpFields = new ArrayList<>();
         }
@@ -133,12 +140,12 @@ class FieldTable {
         int staticStartOffset = startOffset(superTotalStaticByteCount, staticPrimitiveCounts);
         staticPrimitiveOffsets[0] = staticStartOffset;
 
-        FillingSchedule schedule = FillingSchedule.create(superTotalByteCount, startOffset, primitiveCounts);
+        FillingSchedule schedule = FillingSchedule.create(superTotalByteCount, startOffset, primitiveCounts, leftoverHoles);
         FillingSchedule staticSchedule = FillingSchedule.create(superTotalStaticByteCount, staticStartOffset, staticPrimitiveCounts);
 
         for (int i = 1; i < N_PRIMITIVES; i++) {
-            primitiveOffsets[i] = primitiveOffsets[i - 1] + (primitiveCounts[i - 1] - schedule.scheduleCounts[i - 1]) * order[i - 1].getByteCount();
-            staticPrimitiveOffsets[i] = staticPrimitiveOffsets[i - 1] + (staticPrimitiveCounts[i - 1] - staticSchedule.scheduleCounts[i - 1]) * order[i - 1].getByteCount();
+            primitiveOffsets[i] = primitiveOffsets[i - 1] + primitiveCounts[i - 1] * order[i - 1].getByteCount();
+            staticPrimitiveOffsets[i] = staticPrimitiveOffsets[i - 1] + staticPrimitiveCounts[i - 1] * order[i - 1].getByteCount();
         }
 
         for (Field f : fields) {
@@ -165,7 +172,7 @@ class FieldTable {
 
         objectFields += setHiddenFields(thisKlass.getType(), tmpFields, thisKlass, objectFields);
 
-        return new CreationResult(tmpFields.toArray(Field.EMPTY_ARRAY), tmpStatics.toArray(Field.EMPTY_ARRAY), fields,
+        return new CreationResult(tmpFields.toArray(Field.EMPTY_ARRAY), tmpStatics.toArray(Field.EMPTY_ARRAY), fields, schedule.nextLeftoverHoles,
                         primitiveOffsets[N_PRIMITIVES - 1], staticPrimitiveOffsets[N_PRIMITIVES - 1], objectFields, staticObjectFields);
     }
 
@@ -232,22 +239,63 @@ class FieldTable {
      * byte, byte, byte, byte, byte, byte, byte})
      */
     static class FillingSchedule {
-        List<ScheduleEntry> schedule;
-        int[] scheduleCounts;
+        static final int[][] EMPTY_INT_ARRAY_ARRAY = new int[0][];
 
+        List<ScheduleEntry> schedule;
+        int[][] nextLeftoverHoles;
+
+        static FillingSchedule create(int holeStart, int holeEnd, int[] counts, int[][] leftoverHoles) {
+            List<ScheduleEntry> schedule = new ArrayList<>();
+            List<int[]> nextHoles = new ArrayList<>();
+
+            scheduleHole(holeStart, holeEnd, counts, schedule, nextHoles);
+            for (int[] hole : leftoverHoles) {
+                scheduleHole(hole[0], hole[1], counts, schedule, nextHoles);
+            }
+
+            return new FillingSchedule(schedule, nextHoles);
+        }
+
+        // packing static fields is not as interesting as instance fields. Only schedule for direct
+        // parent.
         static FillingSchedule create(int holeStart, int holeEnd, int[] counts) {
+            List<ScheduleEntry> schedule = new ArrayList<>();
+
+            scheduleHole(holeStart, holeEnd, counts, schedule);
+
+            return new FillingSchedule(schedule);
+        }
+
+        private static void scheduleHole(int holeStart, int holeEnd, int[] counts, List<ScheduleEntry> schedule, List<int[]> nextHoles) {
             int end = holeEnd;
             int holeSize = holeEnd - holeStart;
             int i = 0;
-            List<ScheduleEntry> schedule = new ArrayList<>();
-            int[] scheduleCounts = new int[N_PRIMITIVES];
 
             while (holeSize > 0 && i < N_PRIMITIVES) {
                 if (counts[i] > 0 && order[i].getByteCount() <= holeSize) {
-                    int count = counts[i];
-                    while (count > 0 && order[i].getByteCount() <= holeSize) {
-                        scheduleCounts[i]++;
-                        count--;
+                    while (counts[i] > 0 && order[i].getByteCount() <= holeSize) {
+                        counts[i]--;
+                        end -= order[i].getByteCount();
+                        holeSize -= order[i].getByteCount();
+                        schedule.add(new ScheduleEntry(order[i], end));
+                    }
+                }
+                i++;
+            }
+            if (holeSize > 0) {
+                nextHoles.add(new int[]{holeStart, end});
+            }
+        }
+
+        private static void scheduleHole(int holeStart, int holeEnd, int[] counts, List<ScheduleEntry> schedule) {
+            int end = holeEnd;
+            int holeSize = holeEnd - holeStart;
+            int i = 0;
+
+            while (holeSize > 0 && i < N_PRIMITIVES) {
+                if (counts[i] > 0 && order[i].getByteCount() <= holeSize) {
+                    while (counts[i] > 0 && order[i].getByteCount() <= holeSize) {
+                        counts[i]--;
                         end -= order[i].getByteCount();
                         holeSize -= order[i].getByteCount();
                         schedule.add(new ScheduleEntry(order[i], end));
@@ -256,12 +304,15 @@ class FieldTable {
                 i++;
             }
             assert holeSize >= 0;
-            return new FillingSchedule(schedule, scheduleCounts);
         }
 
-        private FillingSchedule(List<ScheduleEntry> schedule, int[] scheduleCounts) {
+        private FillingSchedule(List<ScheduleEntry> schedule) {
             this.schedule = schedule;
-            this.scheduleCounts = scheduleCounts;
+        }
+
+        private FillingSchedule(List<ScheduleEntry> schedule, List<int[]> nextHoles) {
+            this.schedule = schedule;
+            this.nextLeftoverHoles = nextHoles.toArray(EMPTY_INT_ARRAY_ARRAY);
         }
 
         ScheduleEntry query(JavaKind kind) {

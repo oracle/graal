@@ -70,6 +70,7 @@ public final class ObjectKlass extends Klass {
     @CompilationFinal(dimensions = 1) //
     private Field[] declaredFields;
 
+    @CompilationFinal(dimensions = 2) private final int[][] leftoverHoles;
     @CompilationFinal(dimensions = 1) private final Field[] fieldTable;
 
     private final int primitiveFieldTotalByteCount;
@@ -139,6 +140,8 @@ public final class ObjectKlass extends Klass {
         this.primitiveStaticFieldTotalByteCount = fieldCR.primitiveStaticFieldTotalByteCount;
         this.objectFields = fieldCR.objectFields;
         this.staticObjectFields = fieldCR.staticObjectFields;
+
+        this.leftoverHoles = fieldCR.leftoverHoles;
 
         LinkedMethod[] linkedMethods = linkedKlass.getLinkedMethods();
         Method[] methods = new Method[linkedMethods.length];
@@ -539,5 +542,9 @@ public final class ObjectKlass extends Klass {
 
     private void setErroneous() {
         initState = ERRONEOUS;
+    }
+
+    public int[][] getLeftoverHoles() {
+        return leftoverHoles;
     }
 }
