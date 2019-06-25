@@ -196,7 +196,7 @@ public class BinaryReader extends BinaryStreamReader {
             byte sectionID = read1();
             int size = readUnsignedInt32();
             int startOffset = offset;
-            switch(sectionID) {
+            switch (sectionID) {
                 case CUSTOM:
                     readCustomSection();
                     break;
@@ -247,7 +247,7 @@ public class BinaryReader extends BinaryStreamReader {
         int numTypes = readVectorLength();
         for (int t = 0; t != numTypes; ++t) {
             byte type = read1();
-            switch(type) {
+            switch (type) {
                 case 0x60:
                     readFunctionType();
                     break;
