@@ -250,7 +250,7 @@ public final class IsomorphicPackingPhase extends BasePhase<LowTierContext> {
             }
 
             // TODO: pre-compute depth information
-            // TODO: calcluate depth information to avoid recursing too far, doing unnecessary
+            // TODO: calculate depth information to avoid recursing too far, doing unnecessary
             // calculations
             // TODO: verify that at this stage it's even possible to get dependency cycles
 
