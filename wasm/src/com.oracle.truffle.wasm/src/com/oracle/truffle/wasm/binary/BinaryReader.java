@@ -163,7 +163,6 @@ import java.util.ArrayList;
 
 import com.oracle.truffle.api.RootCallTarget;
 import com.oracle.truffle.api.Truffle;
-import com.oracle.truffle.api.nodes.LoopNode;
 import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.wasm.collection.ByteArrayList;
 
@@ -178,21 +177,21 @@ public class BinaryReader extends BinaryStreamReader {
     private WasmModule wasmModule;
     private byte[] bytesConsumed;
 
-    public BinaryReader(WasmLanguage wasmLanguage, String moduleName, byte[] data) {
+    BinaryReader(WasmLanguage wasmLanguage, String moduleName, byte[] data) {
         super(data);
         this.wasmLanguage = wasmLanguage;
         this.wasmModule = new WasmModule(moduleName);
         this.bytesConsumed = new byte[1];
     }
 
-    public void readModule() {
+    void readModule() {
         Assert.assertEquals(read4(), MAGIC, "Invalid MAGIC number");
         Assert.assertEquals(read4(), VERSION, "Invalid VERSION number");
         readSections();
         wasmLanguage.getContextReference().get().registerModule(wasmModule);
     }
 
-    public void readSections() {
+    private void readSections() {
         while (!isEOF()) {
             byte sectionID = read1();
             int size = readUnsignedInt32();
@@ -241,10 +240,10 @@ public class BinaryReader extends BinaryStreamReader {
         }
     }
 
-    public void readCustomSection() {
+    private void readCustomSection() {
     }
 
-    public void readTypeSection() {
+    private void readTypeSection() {
         int numTypes = readVectorLength();
         for (int t = 0; t != numTypes; ++t) {
             byte type = read1();
@@ -258,11 +257,11 @@ public class BinaryReader extends BinaryStreamReader {
         }
     }
 
-    public void readImportSection() {
+    private void readImportSection() {
 
     }
 
-    public void readFunctionSection() {
+    private void readFunctionSection() {
         int numFunctionTypeIdxs = readVectorLength();
         for (byte t = 0; t != numFunctionTypeIdxs; ++t) {
             int funcTypeIdx = readUnsignedInt32();
@@ -270,10 +269,10 @@ public class BinaryReader extends BinaryStreamReader {
         }
     }
 
-    public void readTableSection() {
+    private void readTableSection() {
     }
 
-    public void readMemorySection() {
+    private void readMemorySection() {
     }
 
     private void readDataSection() {
@@ -664,7 +663,7 @@ public class BinaryReader extends BinaryStreamReader {
     private void readGlobalSection() {
     }
 
-    public void readFunctionType() {
+    private void readFunctionType() {
         int paramsLength = readVectorLength();
         int resultLength = peekUnsignedInt32(paramsLength);
         resultLength = (resultLength == 0x40) ? 0 : resultLength;
@@ -673,7 +672,7 @@ public class BinaryReader extends BinaryStreamReader {
         readResultList(idx);
     }
 
-    public void readParameterList(int funcTypeIdx, int numParams) {
+    private void readParameterList(int funcTypeIdx, int numParams) {
         for (int paramIdx = 0; paramIdx != numParams; ++paramIdx) {
             byte type = readValueType();
             wasmModule.symbolTable().registerFunctionTypeParameter(funcTypeIdx, paramIdx, type);
@@ -683,7 +682,7 @@ public class BinaryReader extends BinaryStreamReader {
     // Specification seems ambiguous: https://webassembly.github.io/spec/core/binary/types.html#result-types
     // According to the spec, the result type can only be 0x40 (void) or 0xtt, where tt is a value type.
     // However, the Wasm binary compiler produces binaries with either 0x00 or 0x01 0xtt. Therefore, we support both.
-    public void readResultList(int funcTypeIdx) {
+    private void readResultList(int funcTypeIdx) {
         byte b = read1();
         switch (b) {
             case VOID_TYPE:  // special byte indicating empty return type (same as above)
@@ -699,11 +698,11 @@ public class BinaryReader extends BinaryStreamReader {
         }
     }
 
-    public boolean isEOF() {
+    private boolean isEOF() {
         return offset == data.length;
     }
 
-    public int readVectorLength() {
+    private int readVectorLength() {
         return readUnsignedInt32();
     }
 
@@ -711,7 +710,7 @@ public class BinaryReader extends BinaryStreamReader {
         return readUnsignedInt32();
     }
 
-    public int readLocalIndex(byte[] bytesConsumed) {
+    private int readLocalIndex(byte[] bytesConsumed) {
         return readUnsignedInt32(bytesConsumed);
     }
 
@@ -719,7 +718,7 @@ public class BinaryReader extends BinaryStreamReader {
         return readUnsignedInt32();
     }
 
-    public int readLabelIndex(byte[] bytesConsumed) {
+    private int readLabelIndex(byte[] bytesConsumed) {
         return readUnsignedInt32(bytesConsumed);
     }
 }
