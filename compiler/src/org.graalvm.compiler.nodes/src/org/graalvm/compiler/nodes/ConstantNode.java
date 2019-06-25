@@ -148,9 +148,10 @@ public final class ConstantNode extends FloatingNode implements LIRLowerable, Ar
     public void generate(NodeLIRBuilderTool gen) {
         LIRGeneratorTool lirTool = gen.getLIRGeneratorTool();
         LIRKind kind = lirTool.getLIRKind(stamp(NodeView.DEFAULT));
-        if (onlyUsedInVirtualState() || lirTool.getMoveFactory().canInlineConstant(value) ||
-                        (lirTool.getMoveFactory().mayEmbedConstantLoad(value) && hasExactlyOneUsage() && onlyUsedInCurrentBlock())) {
+        if (onlyUsedInVirtualState()) {
             gen.setResult(this, new ConstantValue(kind, value));
+        } else if (lirTool.canInlineConstant(value) || (lirTool.mayEmbedConstantLoad(value) && hasExactlyOneUsage() && onlyUsedInCurrentBlock())) {
+            gen.setResult(this, new ConstantValue(lirTool.toRegisterKind(kind), value));
         } else {
             gen.setResult(this, gen.getLIRGeneratorTool().emitConstant(kind, value));
         }

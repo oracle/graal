@@ -235,6 +235,16 @@ public abstract class LIRGenerator implements LIRGeneratorTool {
     }
 
     @Override
+    public boolean canInlineConstant(Constant constant) {
+        return moveFactory.canInlineConstant(constant);
+    }
+
+    @Override
+    public boolean mayEmbedConstantLoad(Constant constant) {
+        return moveFactory.mayEmbedConstantLoad(constant);
+    }
+
+    @Override
     public Value emitConstant(LIRKind kind, Constant constant) {
         if (moveFactory.canInlineConstant(constant)) {
             return new ConstantValue(toRegisterKind(kind), constant);

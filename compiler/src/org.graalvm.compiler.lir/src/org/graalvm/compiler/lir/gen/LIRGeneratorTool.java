@@ -76,11 +76,11 @@ public interface LIRGeneratorTool extends DiagnosticLIRGeneratorTool, ValueKindF
          * Checks whether the supplied constant can be used without loading it into a register for
          * most operations, i.e., for commonly used arithmetic, logical, and comparison operations.
          *
-         * @param c The constant to check.
+         * @param constant The constant to check.
          * @return True if the constant can be used directly, false if the constant needs to be in a
          *         register.
          */
-        boolean canInlineConstant(Constant c);
+        boolean canInlineConstant(Constant constant);
 
         /**
          * @param constant The constant that might be moved to a stack slot.
@@ -137,6 +137,10 @@ public interface LIRGeneratorTool extends DiagnosticLIRGeneratorTool, ValueKindF
     MoveFactory getSpillMoveFactory();
 
     BlockScope getBlockScope(AbstractBlockBase<?> block);
+
+    boolean canInlineConstant(Constant constant);
+
+    boolean mayEmbedConstantLoad(Constant constant);
 
     Value emitConstant(LIRKind kind, Constant constant);
 
