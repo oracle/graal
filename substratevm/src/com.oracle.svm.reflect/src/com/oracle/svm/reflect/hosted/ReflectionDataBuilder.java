@@ -35,6 +35,7 @@ import java.lang.reflect.Modifier;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
+import java.util.EnumSet;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
@@ -58,6 +59,12 @@ import com.oracle.svm.hosted.substitute.SubstitutionReflectivityFilter;
 import com.oracle.svm.util.ReflectionUtil;
 
 public class ReflectionDataBuilder implements RuntimeReflectionSupport {
+    private enum FieldFlag {
+        FINAL_BUT_WRITABLE,
+        UNSAFE_ACCESSIBLE,
+    }
+
+    private static final EnumSet<FieldFlag> NO_FIELD_FLAGS = EnumSet.noneOf(FieldFlag.class);
 
     private boolean modified;
     private boolean sealed;
@@ -65,7 +72,7 @@ public class ReflectionDataBuilder implements RuntimeReflectionSupport {
     private final DynamicHub.ReflectionData arrayReflectionData;
     private Set<Class<?>> reflectionClasses = Collections.newSetFromMap(new ConcurrentHashMap<>());
     private Set<Executable> reflectionMethods = Collections.newSetFromMap(new ConcurrentHashMap<>());
-    private Map<Field, Boolean> reflectionFields = new ConcurrentHashMap<>();
+    private Map<Field, EnumSet<FieldFlag>> reflectionFields = new ConcurrentHashMap<>();
     private Set<Field> analyzedFinalFields = Collections.newSetFromMap(new ConcurrentHashMap<>());
 
     public ReflectionDataBuilder() {
@@ -116,15 +123,18 @@ public class ReflectionDataBuilder implements RuntimeReflectionSupport {
     }
 
     @Override
-    public void register(boolean finalIsWritable, Field... fields) {
+    public void register(boolean finalIsWritable, boolean allowUnsafeAccess, Field... fields) {
         checkNotSealed();
         for (Field field : fields) {
             boolean writable = finalIsWritable || !Modifier.isFinal(field.getModifiers());
-            reflectionFields.compute(field, (key, existingWritable) -> {
-                if (writable && (existingWritable == null || !existingWritable)) {
-                    UserError.guarantee(!analyzedFinalFields.contains(field), "A field that was already processed by the analysis cannot be re-registered as writable: " + field.toString());
+            EnumSet<FieldFlag> flags = (writable && allowUnsafeAccess) ? EnumSet.of(FieldFlag.FINAL_BUT_WRITABLE, FieldFlag.UNSAFE_ACCESSIBLE) : //
+                            (writable ? EnumSet.of(FieldFlag.FINAL_BUT_WRITABLE) : (allowUnsafeAccess ? EnumSet.of(FieldFlag.UNSAFE_ACCESSIBLE) : NO_FIELD_FLAGS));
+            reflectionFields.compute(field, (key, existingFlags) -> {
+                if (writable && (existingFlags == null || !existingFlags.contains(FieldFlag.FINAL_BUT_WRITABLE))) {
+                    UserError.guarantee(!analyzedFinalFields.contains(field),
+                                    "A field that was already processed by the analysis cannot be re-registered as writable: " + field.toString());
                 }
-                return writable;
+                return flags;
             });
         }
     }
@@ -157,8 +167,13 @@ public class ReflectionDataBuilder implements RuntimeReflectionSupport {
         Field declaredPublicMethodsField = ReflectionUtil.lookupField(originalReflectionDataClass, "declaredPublicMethods");
 
         Set<Class<?>> allClasses = new HashSet<>(reflectionClasses);
-        reflectionMethods.stream().map(method -> method.getDeclaringClass()).forEach(clazz -> allClasses.add(clazz));
-        reflectionFields.keySet().stream().map(field -> field.getDeclaringClass()).forEach(clazz -> allClasses.add(clazz));
+        reflectionMethods.stream().map(Executable::getDeclaringClass).forEach(allClasses::add);
+        reflectionFields.forEach((field, flags) -> {
+            if (flags.contains(FieldFlag.UNSAFE_ACCESSIBLE)) {
+                access.registerAsUnsafeAccessed(field);
+            }
+            allClasses.add(field.getDeclaringClass());
+        });
 
         /*
          * We need to find all classes that have an enclosingMethod or enclosingConstructor.
@@ -366,8 +381,8 @@ public class ReflectionDataBuilder implements RuntimeReflectionSupport {
 
     boolean inspectFinalFieldWritableForAnalysis(Field field) {
         assert Modifier.isFinal(field.getModifiers());
-        boolean writable = reflectionFields.getOrDefault(field, false);
+        EnumSet<FieldFlag> flags = reflectionFields.getOrDefault(field, NO_FIELD_FLAGS);
         analyzedFinalFields.add(field);
-        return writable;
+        return flags.contains(FieldFlag.FINAL_BUT_WRITABLE);
     }
 }

@@ -137,7 +137,8 @@ public class JNIAccessFeature implements Feature {
         }
 
         @Override
-        public void register(boolean finalIsWritable, Field... fields) {
+        public void register(boolean finalIsWritable, boolean allowUnsafeAccess, Field... fields) {
+            UserError.guarantee(!allowUnsafeAccess, "Unsafe access cannot be controlled through JNI configuration.");
             abortIfSealed();
             for (Field field : fields) {
                 boolean writable = finalIsWritable || !Modifier.isFinal(field.getModifiers());
