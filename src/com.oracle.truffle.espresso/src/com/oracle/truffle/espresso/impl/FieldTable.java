@@ -233,14 +233,14 @@ class FieldTable {
      */
     static class FillingSchedule {
         List<ScheduleEntry> schedule;
-        byte[] scheduleCounts;
+        int[] scheduleCounts;
 
         static FillingSchedule create(int holeStart, int holeEnd, int[] counts) {
             int end = holeEnd;
             int holeSize = holeEnd - holeStart;
             int i = 0;
             List<ScheduleEntry> schedule = new ArrayList<>();
-            byte[] scheduleCounts = new byte[N_PRIMITIVES];
+            int[] scheduleCounts = new int[N_PRIMITIVES];
 
             while (holeSize > 0 && i < N_PRIMITIVES) {
                 if (counts[i] > 0 && order[i].getByteCount() <= holeSize) {
@@ -259,7 +259,7 @@ class FieldTable {
             return new FillingSchedule(schedule, scheduleCounts);
         }
 
-        private FillingSchedule(List<ScheduleEntry> schedule, byte[] scheduleCounts) {
+        private FillingSchedule(List<ScheduleEntry> schedule, int[] scheduleCounts) {
             this.schedule = schedule;
             this.scheduleCounts = scheduleCounts;
         }
