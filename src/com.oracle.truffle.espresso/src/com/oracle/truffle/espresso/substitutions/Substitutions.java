@@ -92,7 +92,8 @@ public final class Substitutions implements ContextAccess {
                     Target_sun_misc_VM.class,
                     Target_sun_reflect_NativeConstructorAccessorImpl.class,
                     Target_sun_reflect_NativeMethodAccessorImpl.class,
-                    Target_java_lang_invoke_MethodHandleNatives.class));
+                    Target_java_lang_invoke_MethodHandleNatives.class,
+                    Target_com_oracle_truffle_espresso_InternalUtils.class));
 
     static {
         for (Class<?> clazz : ESPRESSO_SUBSTITUTIONS) {

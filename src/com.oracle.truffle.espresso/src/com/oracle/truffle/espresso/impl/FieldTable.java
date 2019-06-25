@@ -24,6 +24,7 @@ package com.oracle.truffle.espresso.impl;
 
 import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.List;
 
 import com.oracle.truffle.espresso.descriptors.Symbol;
 import com.oracle.truffle.espresso.descriptors.Symbol.Name;
@@ -54,7 +55,9 @@ class FieldTable {
         }
     }
 
-    private static int N_PRIMITIVES = 8;
+    private static final int N_PRIMITIVES = 8;
+
+    private static final JavaKind[] order = {JavaKind.Long, JavaKind.Double, JavaKind.Int, JavaKind.Float, JavaKind.Short, JavaKind.Char, JavaKind.Byte, JavaKind.Boolean};
 
     private static int indexFromKind(JavaKind kind) {
         // @formatter:off
@@ -79,19 +82,18 @@ class FieldTable {
         ArrayList<Field> tmpFields;
         ArrayList<Field> tmpStatics = new ArrayList<>();
 
-        int primitiveFieldTotalByteCount = 0;
-        int primitiveStaticFieldTotalByteCount = 0;
+        int superTotalByteCount = 0;
+        int superTotalStaticByteCount = 0;
         int objectFields = 0;
         int staticObjectFields = 0;
 
         int[] primitiveCounts = new int[N_PRIMITIVES];
-
-        // TODO Locally count each primitive kind
+        int[] staticPrimitiveCounts = new int[N_PRIMITIVES];
 
         if (superKlass != null) {
             tmpFields = new ArrayList<>(Arrays.asList(superKlass.getFieldTable()));
-            primitiveFieldTotalByteCount = superKlass.getPrimitiveFieldTotalByteCount();
-            primitiveStaticFieldTotalByteCount = superKlass.getPrimitiveStaticFieldTotalByteCount();
+            superTotalByteCount = superKlass.getPrimitiveFieldTotalByteCount();
+            superTotalStaticByteCount = superKlass.getPrimitiveStaticFieldTotalByteCount();
             objectFields = superKlass.getObjectFieldsCount();
             staticObjectFields = superKlass.getStaticObjectFieldsCount();
         } else {
@@ -106,8 +108,7 @@ class FieldTable {
             if (f.isStatic()) {
                 f.setSlot(tmpStatics.size());
                 if (f.getKind().isPrimitive()) {
-                    f.setFieldIndex(primitiveStaticFieldTotalByteCount);
-                    primitiveStaticFieldTotalByteCount += f.getKind().getByteCount();
+                    staticPrimitiveCounts[indexFromKind(f.getKind())]++;
                 } else {
                     f.setFieldIndex(staticObjectFields++);
                 }
@@ -115,8 +116,7 @@ class FieldTable {
             } else {
                 f.setSlot(tmpFields.size());
                 if (f.getKind().isPrimitive()) {
-                    f.setFieldIndex(primitiveFieldTotalByteCount);
-                    primitiveFieldTotalByteCount += f.getKind().getByteCount();
+                    primitiveCounts[indexFromKind(f.getKind())]++;
                 } else {
                     f.setFieldIndex(objectFields++);
                 }
@@ -124,13 +124,65 @@ class FieldTable {
             }
         }
 
-        // TODO Balance field loadout by filling superKlass' table holes. Should be no need to
-        // synchronize.
+        int[] primitiveOffsets = new int[N_PRIMITIVES];
+        int[] staticPrimitiveOffsets = new int[N_PRIMITIVES];
+
+        int startOffset = startOffset(superTotalByteCount, primitiveCounts);
+        primitiveOffsets[0] = startOffset;
+
+        int staticStartOffset = startOffset(superTotalStaticByteCount, staticPrimitiveCounts);
+        staticPrimitiveOffsets[0] = staticStartOffset;
+
+        FillingSchedule schedule = FillingSchedule.create(superTotalByteCount, startOffset, primitiveCounts);
+        FillingSchedule staticSchedule = FillingSchedule.create(superTotalStaticByteCount, staticStartOffset, staticPrimitiveCounts);
+
+        for (int i = 1; i < N_PRIMITIVES; i++) {
+            primitiveOffsets[i] = primitiveOffsets[i - 1] + (primitiveCounts[i - 1] - schedule.scheduleCounts[i - 1]) * order[i - 1].getByteCount();
+            staticPrimitiveOffsets[i] = staticPrimitiveOffsets[i - 1] + (staticPrimitiveCounts[i - 1] - staticSchedule.scheduleCounts[i - 1]) * order[i - 1].getByteCount();
+        }
+
+        for (Field f : fields) {
+            if (f.getKind().isPrimitive()) {
+                if (f.isStatic()) {
+                    ScheduleEntry entry = staticSchedule.query(f.getKind());
+                    if (entry != null) {
+                        f.setFieldIndex(entry.offset);
+                    } else {
+                        f.setFieldIndex(staticPrimitiveOffsets[indexFromKind(f.getKind())]);
+                        staticPrimitiveOffsets[indexFromKind(f.getKind())] += f.getKind().getByteCount();
+                    }
+                } else {
+                    ScheduleEntry entry = schedule.query(f.getKind());
+                    if (entry != null) {
+                        f.setFieldIndex(entry.offset);
+                    } else {
+                        f.setFieldIndex(primitiveOffsets[indexFromKind(f.getKind())]);
+                        primitiveOffsets[indexFromKind(f.getKind())] += f.getKind().getByteCount();
+                    }
+                }
+            }
+        }
 
         objectFields += setHiddenFields(thisKlass.getType(), tmpFields, thisKlass, objectFields);
 
         return new CreationResult(tmpFields.toArray(Field.EMPTY_ARRAY), tmpStatics.toArray(Field.EMPTY_ARRAY), fields,
-                        primitiveFieldTotalByteCount, primitiveStaticFieldTotalByteCount, objectFields, staticObjectFields);
+                        primitiveOffsets[N_PRIMITIVES - 1], staticPrimitiveOffsets[N_PRIMITIVES - 1], objectFields, staticObjectFields);
+    }
+
+    // Find first primitive to set, and align on it.
+    private static int startOffset(int superTotalByteCount, int[] primitiveCounts) {
+        int i = 0;
+        while (i < N_PRIMITIVES && primitiveCounts[i] == 0) {
+            i++;
+        }
+        if (i == N_PRIMITIVES) {
+            return superTotalByteCount;
+        }
+        int r = superTotalByteCount % order[i].getByteCount();
+        if (r == 0) {
+            return superTotalByteCount;
+        }
+        return superTotalByteCount + order[i].getByteCount() - r;
     }
 
     private static int setHiddenFields(Symbol<Type> type, ArrayList<Field> tmpTable, ObjectKlass thisKlass, int fieldIndex) {
@@ -168,6 +220,68 @@ class FieldTable {
             return c;
         } else {
             return c;
+        }
+    }
+
+    // TODO(garcia) Fill holes in parent's parents.
+
+    /**
+     * Greedily tries to fill the space between a parent's fields and its child.
+     * 
+     * At most seven entries in the schedule (parent has {long, byte} field, and child has {long,
+     * byte, byte, byte, byte, byte, byte, byte})
+     */
+    static class FillingSchedule {
+        List<ScheduleEntry> schedule;
+        byte[] scheduleCounts;
+
+        static FillingSchedule create(int holeStart, int holeEnd, int[] counts) {
+            int end = holeEnd;
+            int holeSize = holeEnd - holeStart;
+            int i = 0;
+            List<ScheduleEntry> schedule = new ArrayList<>();
+            byte[] scheduleCounts = new byte[N_PRIMITIVES];
+
+            while (holeSize > 0 && i < N_PRIMITIVES) {
+                if (counts[i] > 0 && order[i].getByteCount() <= holeSize) {
+                    int count = counts[i];
+                    while (count > 0 && order[i].getByteCount() <= holeSize) {
+                        scheduleCounts[i]++;
+                        count--;
+                        end -= order[i].getByteCount();
+                        holeSize -= order[i].getByteCount();
+                        schedule.add(new ScheduleEntry(order[i], end));
+                    }
+                }
+                i++;
+            }
+            assert holeSize >= 0;
+            return new FillingSchedule(schedule, scheduleCounts);
+        }
+
+        private FillingSchedule(List<ScheduleEntry> schedule, byte[] scheduleCounts) {
+            this.schedule = schedule;
+            this.scheduleCounts = scheduleCounts;
+        }
+
+        ScheduleEntry query(JavaKind kind) {
+            for (ScheduleEntry e : schedule) {
+                if (e.kind == kind) {
+                    schedule.remove(e);
+                    return e;
+                }
+            }
+            return null;
+        }
+    }
+
+    static class ScheduleEntry {
+        final JavaKind kind;
+        final int offset;
+
+        ScheduleEntry(JavaKind kind, int offset) {
+            this.kind = kind;
+            this.offset = offset;
         }
     }
 }

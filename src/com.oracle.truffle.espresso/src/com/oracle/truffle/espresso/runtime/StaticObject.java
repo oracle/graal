@@ -108,6 +108,10 @@ public final class StaticObject implements TruffleObject {
     // @see: VirtualizerToolImpl.setVirtualEntry
     private final byte[] primitiveFields;
 
+    public byte[] cloneFields() {
+        return primitiveFields.clone();
+    }
+
     // Dedicated constructor for VOID and NULL pseudo-singletons
     private StaticObject() {
         this.klass = null;
