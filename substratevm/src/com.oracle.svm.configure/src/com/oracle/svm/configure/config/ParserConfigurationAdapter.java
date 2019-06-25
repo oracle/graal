@@ -49,7 +49,7 @@ public class ParserConfigurationAdapter implements ReflectionConfigurationParser
 
     @Override
     public void registerField(ConfigurationType type, String fieldName, boolean allowWrite, boolean allowUnsafeAccess) {
-        type.addField(fieldName, ConfigurationMemberKind.PRESENT);
+        type.addField(fieldName, ConfigurationMemberKind.PRESENT, allowUnsafeAccess);
     }
 
     @Override

@@ -98,7 +98,7 @@ class JniProcessor extends AbstractProcessor {
             case "GetStaticFieldID": {
                 expectSize(args, 2);
                 String name = (String) args.get(0);
-                config.getOrCreateType(declaringClassOrClazz).addField(name, memberKind);
+                config.getOrCreateType(declaringClassOrClazz).addField(name, memberKind, false);
                 break;
             }
             case "ThrowNew": {
@@ -115,7 +115,7 @@ class JniProcessor extends AbstractProcessor {
             case "FromReflectedField": {
                 expectSize(args, 1);
                 String name = (String) args.get(0);
-                config.getOrCreateType(declaringClassOrClazz).addField(name, memberKind);
+                config.getOrCreateType(declaringClassOrClazz).addField(name, memberKind, false);
                 break;
             }
             case "ToReflectedMethod":

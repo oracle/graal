@@ -94,6 +94,12 @@ public class TypeAccessChecker {
             }
         }
         return false;
+
+    }
+
+    public boolean isFieldUnsafeAccessible(Supplier<String> name, JNIObjectHandle declaring) {
+        ConfigurationType declaringType = getType(declaring);
+        return declaringType != null && declaringType.hasIndividualUnsafeAccessField(name.get());
     }
 
     public boolean isMethodAccessible(JNIEnvironment env, JNIObjectHandle clazz, String name, Supplier<String> signature, JNIMethodId method, JNIObjectHandle declaring) {
