@@ -25,11 +25,18 @@
 package org.graalvm.compiler.loop;
 
 import java.util.List;
+import java.util.stream.StreamSupport;
 
 import org.graalvm.compiler.core.common.VectorDescription;
+import org.graalvm.compiler.core.common.type.PrimitiveStamp;
 import org.graalvm.compiler.debug.GraalError;
+import org.graalvm.compiler.graph.iterators.NodePredicates;
 import org.graalvm.compiler.nodes.ControlSplitNode;
+import org.graalvm.compiler.nodes.NodeView;
+import org.graalvm.compiler.nodes.ValueNode;
 import org.graalvm.compiler.nodes.cfg.ControlFlowGraph;
+import org.graalvm.compiler.nodes.memory.Access;
+import org.graalvm.compiler.nodes.memory.WriteNode;
 
 import jdk.vm.ci.meta.MetaAccessProvider;
 
@@ -46,7 +53,20 @@ public class VectorizationLoopPolicies implements LoopPolicies {
 
     @Override
     public boolean shouldPartiallyUnroll(LoopEx loop, VectorDescription vectorDescription) {
-        return loop.loopBegin().getUnrollFactor() < 4;
+        final int minWidth = StreamSupport.stream(loop.whole().nodes().
+                filter(NodePredicates.isA(ValueNode.class)).spliterator(), false).
+                filter(x -> x instanceof Access).
+                map(x -> {
+                    if (x instanceof WriteNode) {
+                        return ((WriteNode) x).getAccessStamp();
+                    } else {
+                        return ((ValueNode) x).stamp(NodeView.DEFAULT);
+                    }
+                }).
+                filter(x -> x instanceof PrimitiveStamp).
+                mapToInt(vectorDescription::maxVectorWidth).min().orElse(0);
+
+        return loop.loopBegin().getUnrollFactor() < minWidth;
     }
 
     @Override
