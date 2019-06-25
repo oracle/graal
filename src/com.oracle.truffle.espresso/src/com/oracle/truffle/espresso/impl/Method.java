@@ -551,6 +551,7 @@ public final class Method implements TruffleObject, ModifiersProvider, ContextAc
     }
 
     public static Method getHostReflectiveMethodRoot(StaticObject seed) {
+        assert seed.getKlass().getMeta().Method.isAssignableFrom(seed.getKlass());
         Meta meta = seed.getKlass().getMeta();
         StaticObject curMethod = seed;
         Method target = null;
@@ -558,6 +559,20 @@ public final class Method implements TruffleObject, ModifiersProvider, ContextAc
             target = (Method) curMethod.getHiddenField(meta.HIDDEN_METHOD_KEY);
             if (target == null) {
                 curMethod = (StaticObject) meta.Method_root.get(curMethod);
+            }
+        }
+        return target;
+    }
+
+    public static Method getHostReflectiveConstructorRoot(StaticObject seed) {
+        assert seed.getKlass().getMeta().Constructor.isAssignableFrom(seed.getKlass());
+        Meta meta = seed.getKlass().getMeta();
+        StaticObject curMethod = seed;
+        Method target = null;
+        while (target == null) {
+            target = (Method) curMethod.getHiddenField(meta.HIDDEN_CONSTRUCTOR_KEY);
+            if (target == null) {
+                curMethod = (StaticObject) meta.Constructor_root.get(curMethod);
             }
         }
         return target;

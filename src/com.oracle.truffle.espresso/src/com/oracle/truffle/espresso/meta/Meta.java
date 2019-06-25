@@ -178,6 +178,7 @@ public final class Meta implements ContextAccess {
         ClassLoader_getSystemClassLoader = ClassLoader.lookupDeclaredMethod(Name.getSystemClassLoader, Signature.ClassLoader);
 
         // Guest reflection.
+        Executable = knownKlass(Type.Executable);
         Constructor = knownKlass(Type.Constructor);
         HIDDEN_CONSTRUCTOR_KEY = Constructor.lookupHiddenField(Name.HIDDEN_CONSTRUCTOR_KEY);
         HIDDEN_CONSTRUCTOR_RUNTIME_VISIBLE_TYPE_ANNOTATIONS = Constructor.lookupHiddenField(Name.HIDDEN_CONSTRUCTOR_RUNTIME_VISIBLE_TYPE_ANNOTATIONS);
@@ -352,6 +353,8 @@ public final class Meta implements ContextAccess {
     public final ObjectKlass ClassLoader;
     public final Method ClassLoader_findNative;
     public final Method ClassLoader_getSystemClassLoader;
+
+    public final ObjectKlass Executable;
 
     public final ObjectKlass Constructor;
     public final Field HIDDEN_CONSTRUCTOR_RUNTIME_VISIBLE_TYPE_ANNOTATIONS;
