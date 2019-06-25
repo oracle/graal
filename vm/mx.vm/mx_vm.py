@@ -897,6 +897,7 @@ class NativePropertiesBuildTask(mx.ProjectBuildTask):
             build_args = [
                 '--no-fallback',
                 '--initialize-at-build-time',
+                '-H:-RemoveUnusedSymbols',  # workaround issue with some `ld` versions
                 '-H:+EnforceMaxRuntimeCompileMethods',
                 '-Dorg.graalvm.version={}'.format(_suite.release_version()),
             ]
