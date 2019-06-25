@@ -392,7 +392,7 @@ public class AMD64HotSpotBackend extends HotSpotHostBackend implements LIRGenera
              * if (features.contains(CPUFeature.AVX512BW)) { if (isInt) result = 64; }
              */
 
-            return result / bytes;
+            return result;
         }
     }
 

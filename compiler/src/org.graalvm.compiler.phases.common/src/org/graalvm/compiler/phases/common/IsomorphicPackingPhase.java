@@ -54,9 +54,6 @@ import org.graalvm.compiler.nodes.VectorSupport.VectorPackNode;
 import org.graalvm.compiler.nodes.calc.AddNode;
 import org.graalvm.compiler.nodes.calc.BinaryArithmeticNode;
 import org.graalvm.compiler.nodes.calc.BinaryNode;
-import org.graalvm.compiler.nodes.calc.FloatDivNode;
-import org.graalvm.compiler.nodes.calc.MulNode;
-import org.graalvm.compiler.nodes.calc.SignedDivNode;
 import org.graalvm.compiler.nodes.calc.SubNode;
 import org.graalvm.compiler.nodes.cfg.Block;
 import org.graalvm.compiler.nodes.cfg.ControlFlowGraph;
@@ -76,22 +73,21 @@ import org.graalvm.compiler.phases.tiers.LowTierContext;
 import jdk.vm.ci.meta.JavaKind;
 
 /**
- * A phase to identify isomorphisms within basic blocks. MIT (basis)
- * http://groups.csail.mit.edu/cag/slp/SLP-PLDI-2000.pdf GCC
- * https://ols.fedoraproject.org/GCC/Reprints-2007/rosen-reprint.pdf INTEL
- * https://people.apache.org/~xli/papers/npc10_java_vectorization.pdf
+ * A phase to identify isomorphisms within basic blocks.
+ * MIT (basis)  http://groups.csail.mit.edu/cag/slp/SLP-PLDI-2000.pdf
+ * GCC          https://ols.fedoraproject.org/GCC/Reprints-2007/rosen-reprint.pdf
+ * INTEL        https://people.apache.org/~xli/papers/npc10_java_vectorization.pdf
  */
 public final class IsomorphicPackingPhase extends BasePhase<LowTierContext> {
 
     private static final int ALIGNMENT_BOTTOM = -666;
-    private static final Set<Class<? extends Node>> supportedNodes = new HashSet<>(Stream.of(
+    private static final Set<Class<? extends Node>> supportedNodes =
+            new HashSet<>(Stream.of(
                     WriteNode.class,
                     ReadNode.class,
                     AddNode.class,
-                    SubNode.class,
-                    MulNode.class,
-                    SignedDivNode.class,
-                    FloatDivNode.class).collect(Collectors.toSet()));
+                    SubNode.class
+            ).collect(Collectors.toSet()));
 
     // Class to encapsulate state used by functions in the algorithm
     private static final class Instance {
@@ -115,7 +111,6 @@ public final class IsomorphicPackingPhase extends BasePhase<LowTierContext> {
 
         /**
          * Check whether the node is not in the current basic block.
-         *
          * @param node Node to check the block membership of.
          * @return True if the provided node is not in the current basic block.
          */
@@ -180,8 +175,8 @@ public final class IsomorphicPackingPhase extends BasePhase<LowTierContext> {
         }
 
         /**
-         * Predicate to determine whether a specific node is supported for vectorization, based on
-         * its type.
+         * Predicate to determine whether a specific node is supported for
+         * vectorization, based on its type.
          *
          * @param node Vectorization candidate.
          * @return Whether this is a supported node.
@@ -191,8 +186,8 @@ public final class IsomorphicPackingPhase extends BasePhase<LowTierContext> {
         }
 
         /**
-         * Check whether the left and right node of a potential pack are isomorphic. "Isomorphic
-         * statements are those that contain the same operations in the same order."
+         * Check whether the left and right node of a potential pack are isomorphic.
+         * "Isomorphic statements are those that contain the same operations in the same order."
          *
          * @param left Left node of the potential pack
          * @param right Right node of the potential pack
@@ -350,8 +345,7 @@ public final class IsomorphicPackingPhase extends BasePhase<LowTierContext> {
             }
 
             // Only use superword on types that are comparable
-            // TODO: Evaluate whether graph guarantees that pointers for same collection have same
-            // base
+            // TODO: Evaluate whether graph guarantees that pointers for same collection have same base
             if (!s1a.getBase().equals(s2a.getBase())) {
                 return false;
             }
@@ -383,7 +377,6 @@ public final class IsomorphicPackingPhase extends BasePhase<LowTierContext> {
 
         /**
          * Extend the packset by visiting operand definitions of nodes inside the provided pack.
-         *
          * @param packSet Pack set.
          * @param pack The pack to use for operand definitions.
          */
@@ -404,8 +397,7 @@ public final class IsomorphicPackingPhase extends BasePhase<LowTierContext> {
                     final Node leftInput = leftInputIt.next();
                     final Node rightInput = rightInputIt.next();
 
-                    // Check block membership, bail if nodes not in block (prevent analysis beyond
-                    // block)
+                    // Check block membership, bail if nodes not in block (prevent analysis beyond block)
                     if (notInBlock(leftInput) || notInBlock(rightInput)) {
                         continue outer;
                     }
@@ -416,8 +408,7 @@ public final class IsomorphicPackingPhase extends BasePhase<LowTierContext> {
                     }
 
                     // If there are no savings to be gained, bail
-                    // NB: here this is basically useless, as <s>our</s> the C2 formula does not
-                    // allow for negative savings
+                    // NB: here this is basically useless, as <s>our</s> the C2 formula does not allow for negative savings
                     if (estSavings(packSet, leftInput, rightInput) < 0) {
                         continue outer;
                     }
@@ -432,7 +423,6 @@ public final class IsomorphicPackingPhase extends BasePhase<LowTierContext> {
 
         /**
          * Extend the packset by visiting uses of nodes in the provided pack.
-         *
          * @param packSet Pack set.
          * @param pack The pack to use for nodes to find usages of.
          */
@@ -584,9 +574,7 @@ public final class IsomorphicPackingPhase extends BasePhase<LowTierContext> {
         }
 
         /**
-         * Extend the packset by following use->def and def->use links from pack members until the
-         * set does not change.
-         *
+         * Extend the packset by following use->def and def->use links from pack members until the set does not change.
          * @param packSet PackSet to populate.
          */
         private void extendPacklist(Set<Pair<Node, Node>> packSet) {

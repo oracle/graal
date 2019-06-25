@@ -319,6 +319,10 @@ public class AMD64ArithmeticLIRGenerator extends ArithmeticLIRGenerator implemen
         }
 
         VexRVMOp getOp(AMD64Kind scalarKind, int size) {
+            Function<Integer, VexRVMOp> fn = getters.get(scalarKind);
+            if (fn == null) {
+                GraalError.shouldNotReachHere("Unsupported vector operation on kind " + scalarKind.name() + ".");
+            }
             return getters.get(scalarKind).apply(size);
         }
     }
