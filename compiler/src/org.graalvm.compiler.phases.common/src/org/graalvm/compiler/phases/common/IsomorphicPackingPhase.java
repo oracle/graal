@@ -144,17 +144,17 @@ public final class IsomorphicPackingPhase extends BasePhase<LowTierContext> {
         private <T extends FixedAccessNode & LIRLowerableAccess> int memoryAlignment(T access, int ivAdjust) {
             final int byteCount = access.getAccessStamp().getStackKind().getByteCount();
             // TODO: velt may be different to type at address
-            final int vectorElementWidthInBytes = byteCount * context.getTargetProvider().getVectorDescription().maxVectorWidth(access.getAccessStamp());
+            final int vectorWidthInBytes = byteCount * context.getTargetProvider().getVectorDescription().maxVectorWidth(access.getAccessStamp());
 
             // If each vector element is less than 2 bytes, no need to vectorize
-            if (vectorElementWidthInBytes < 2) {
+            if (vectorWidthInBytes < 2) {
                 return ALIGNMENT_BOTTOM;
             }
 
             final int offset = (int) access.getAddress().getMaxConstantDisplacement() + ivAdjust * byteCount;
-            final int offsetRemainder = offset % vectorElementWidthInBytes;
+            final int offsetRemainder = offset % vectorWidthInBytes;
 
-            return offsetRemainder >= 0 ? offsetRemainder : offsetRemainder + vectorElementWidthInBytes;
+            return offsetRemainder >= 0 ? offsetRemainder : offsetRemainder + vectorWidthInBytes;
         }
 
         private void setAlignment(Node s1, Node s2, int align) {
