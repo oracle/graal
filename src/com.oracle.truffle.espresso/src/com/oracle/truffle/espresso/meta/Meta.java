@@ -194,6 +194,8 @@ public final class Meta implements ContextAccess {
         Method_override = Method.lookupDeclaredField(Name.override, Type._boolean);
         Method_parameterTypes = Method.lookupDeclaredField(Name.parameterTypes, Type.Class_array);
 
+        MethodAccessorImpl = knownKlass(Type.MethodAccessorImpl);
+
         Parameter = knownKlass(Type.Parameter);
 
         Field = knownKlass(Type.Field);
@@ -366,6 +368,8 @@ public final class Meta implements ContextAccess {
     public final Field Method_clazz;
     public final Field Method_override;
     public final Field Method_parameterTypes;
+
+    public final ObjectKlass MethodAccessorImpl;
 
     public final ObjectKlass Parameter;
 

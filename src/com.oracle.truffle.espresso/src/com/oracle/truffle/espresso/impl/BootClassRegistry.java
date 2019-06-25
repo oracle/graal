@@ -23,8 +23,8 @@
 
 package com.oracle.truffle.espresso.impl;
 
-import java.util.HashMap;
 import java.util.Map;
+import java.util.concurrent.ConcurrentHashMap;
 
 import com.oracle.truffle.espresso.descriptors.Symbol;
 import com.oracle.truffle.espresso.descriptors.Symbol.Type;
@@ -46,7 +46,7 @@ public final class BootClassRegistry extends ClassRegistry {
     static final DebugCounter loadKlassCount = DebugCounter.create("BCL loadKlassCount");
     static final DebugCounter loadKlassCacheHits = DebugCounter.create("BCL loadKlassCacheHits");
 
-    private final Map<String, String> packageMap = new HashMap<>();
+    private final Map<String, String> packageMap = new ConcurrentHashMap<>();
 
     public BootClassRegistry(EspressoContext context) {
         super(context);
@@ -95,6 +95,10 @@ public final class BootClassRegistry extends ClassRegistry {
     public String getPackagePath(String pkgName) {
         String result = packageMap.get(pkgName);
         return result;
+    }
+
+    public String[] getPackagePaths() {
+        return packageMap.values().toArray(new String[0]);
     }
 
     @Override

@@ -200,8 +200,8 @@ jlong JVM_FreeMemory(void) {
 }
 
 jlong JVM_MaxMemory(void) {
-  UNIMPLEMENTED(JVM_MaxMemory);
-  return 0;
+  IMPLEMENTED(JVM_MaxMemory);
+  return (*getEnv())->JVM_MaxMemory();
 }
 
 jint JVM_ActiveProcessorCount(void) {
@@ -388,8 +388,8 @@ jobject JVM_CurrentClassLoader(JNIEnv *env) {
 }
 
 jobjectArray JVM_GetClassContext(JNIEnv *env) {
-  UNIMPLEMENTED(JVM_GetClassContext);
-  return NULL;
+  IMPLEMENTED(JVM_GetClassContext);
+  return (*getEnv())->JVM_GetClassContext(env);
 }
 
 jint JVM_ClassDepth(JNIEnv *env, jstring name) {
@@ -408,8 +408,8 @@ jstring JVM_GetSystemPackage(JNIEnv *env, jstring name) {
 }
 
 jobjectArray JVM_GetSystemPackages(JNIEnv *env) {
-  UNIMPLEMENTED(JVM_GetSystemPackages);
-  return NULL;
+  IMPLEMENTED(JVM_GetSystemPackages);
+  return (*getEnv())->JVM_GetSystemPackages(env);
 }
 
 jobject JVM_AllocateNewObject(JNIEnv *env, jobject obj, jclass currClass, jclass initClass) {
@@ -1257,7 +1257,6 @@ jintArray JVM_GetResourceLookupCache(JNIEnv *env, jobject loader, const char *re
 
 void JVM_GetVersionInfo(JNIEnv *env, jvm_version_info *info, size_t info_size) {
   UNIMPLEMENTED(JVM_GetVersionInfo);
-
 }
 
 void JVM_CopySwapMemory(JNIEnv *env, jobject srcObj, jlong srcOffset,
