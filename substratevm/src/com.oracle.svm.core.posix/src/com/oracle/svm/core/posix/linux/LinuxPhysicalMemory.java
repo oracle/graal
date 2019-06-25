@@ -26,7 +26,6 @@ package com.oracle.svm.core.posix.linux;
 
 import java.io.FileInputStream;
 import java.io.IOException;
-import java.util.concurrent.atomic.AtomicBoolean;
 
 import org.graalvm.nativeimage.ImageSingletons;
 import org.graalvm.nativeimage.Platforms;
@@ -40,6 +39,7 @@ import com.oracle.svm.core.annotate.RestrictHeapAccess;
 import com.oracle.svm.core.annotate.RestrictHeapAccess.Access;
 import com.oracle.svm.core.heap.Heap;
 import com.oracle.svm.core.heap.PhysicalMemory;
+import com.oracle.svm.core.jdk.UninterruptibleUtils.AtomicInteger;
 import com.oracle.svm.core.posix.headers.Unistd;
 import com.oracle.svm.core.thread.JavaThreads;
 import com.oracle.svm.core.util.UnsignedUtils;
@@ -52,7 +52,7 @@ class LinuxPhysicalMemory extends PhysicalMemory {
         /** A sentinel unset value. */
         static final long UNSET_SENTINEL = Long.MIN_VALUE;
         /** Prevent recursive invocation of size() from initializeSize(). */
-        static AtomicBoolean initializeSize = new AtomicBoolean();
+        static AtomicInteger initializeSize = new AtomicInteger(0);
 
         /** The cached size of physical memory, or an unset value. */
         long cachedSize = UNSET_SENTINEL;
@@ -65,12 +65,12 @@ class LinuxPhysicalMemory extends PhysicalMemory {
                 return getSize();
             }
             /* If I can not allocate, return MAX_VALUE. */
-            if (Heap.getHeap().isAllocationDisallowed() || !JavaThreads.currentJavaThreadInitialized() || !initializeSize.compareAndSet(false, true)) {
+            if (Heap.getHeap().isAllocationDisallowed() || !JavaThreads.currentJavaThreadInitialized() || !initializeSize.compareAndSet(0, 1)) {
                 return UnsignedUtils.MAX_VALUE;
             }
             /* Compute and cache the physical memory size. Races are idempotent. */
             initializeSize();
-            initializeSize.set(false);
+            initializeSize.set(0);
             return getSize();
         }
 
