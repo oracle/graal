@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2016, 2018, Oracle and/or its affiliates.
+ * Copyright (c) 2016, 2019, Oracle and/or its affiliates.
  *
  * All rights reserved.
  *
@@ -121,6 +121,7 @@ public final class LLVMGlobalContainerReadNode extends LLVMNode implements LLVMO
             case POINTER:
                 return memory.getPointer(address);
             default:
+                CompilerDirectives.transferToInterpreter();
                 throw new IllegalStateException("unexpected type " + type);
         }
     }

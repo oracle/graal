@@ -77,18 +77,22 @@ public abstract class LLVMNode extends Node {
     }
 
     public static LLVMMemory getLLVMMemory() {
+        CompilerAsserts.neverPartOfCompilation();
         return LLVMLanguage.getLanguage().getCapability(LLVMMemory.class);
     }
 
     public static UnsafeArrayAccess getUnsafeArrayAccess() {
+        CompilerAsserts.neverPartOfCompilation();
         return LLVMLanguage.getLanguage().getCapability(UnsafeArrayAccess.class);
     }
 
     protected static PrintStream nativeCallStatisticsStream(ContextReference<LLVMContext> context) {
+        CompilerAsserts.neverPartOfCompilation();
         return SulongEngineOption.getStream(context.get().getEnv().getOptions().get(SulongEngineOption.NATIVE_CALL_STATS));
     }
 
     protected static boolean nativeCallStatisticsEnabled(ContextReference<LLVMContext> context) {
+        CompilerAsserts.neverPartOfCompilation();
         return SulongEngineOption.isTrue(context.get().getEnv().getOptions().get(SulongEngineOption.NATIVE_CALL_STATS));
     }
 
