@@ -218,7 +218,7 @@ public final class HoverRequestHandler extends AbstractRequestHandler {
             String resultObjectString = evalResultObject instanceof String ? "\"" + result + "\"" : result;
             contents.add(Either.forLeft(resultObjectString));
         }
-        String detailText = completionHandler.createCompletionDetail(textAtHoverPosition, evalResultObject, langInfo);
+        String detailText = completionHandler.createCompletionDetail(evalResultObject, langInfo);
         contents.add(Either.forLeft("meta-object: " + detailText));
 
         Either<String, MarkupContent> documentation = completionHandler.getDocumentation(evalResultObject, langInfo);

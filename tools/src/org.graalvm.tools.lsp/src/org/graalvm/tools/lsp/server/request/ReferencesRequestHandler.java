@@ -34,7 +34,6 @@ import org.eclipse.lsp4j.DocumentHighlight;
 import org.eclipse.lsp4j.Location;
 import org.eclipse.lsp4j.Range;
 import org.graalvm.tools.lsp.api.ContextAwareExecutor;
-import org.graalvm.tools.lsp.interop.ObjectStructures.MessageNodes;
 import org.graalvm.tools.lsp.server.utils.InteropUtils;
 import org.graalvm.tools.lsp.server.utils.SourceUtils;
 import org.graalvm.tools.lsp.server.utils.TextDocumentSurrogate;
@@ -53,12 +52,10 @@ import com.oracle.truffle.api.source.SourceSection;
 public final class ReferencesRequestHandler extends AbstractRequestHandler {
 
     private final HighlightRequestHandler highlightHandler;
-    private final MessageNodes messageNodes;
 
-    public ReferencesRequestHandler(Env env, TextDocumentSurrogateMap surrogateMap, ContextAwareExecutor contextAwareExecutor, HighlightRequestHandler highlightHandler, MessageNodes messageNodes) {
+    public ReferencesRequestHandler(Env env, TextDocumentSurrogateMap surrogateMap, ContextAwareExecutor contextAwareExecutor, HighlightRequestHandler highlightHandler) {
         super(env, surrogateMap, contextAwareExecutor);
         this.highlightHandler = highlightHandler;
-        this.messageNodes = messageNodes;
     }
 
     public List<? extends Location> referencesWithEnteredContext(URI uri, int line, int character) {
@@ -79,7 +76,7 @@ public final class ReferencesRequestHandler extends AbstractRequestHandler {
         List<Location> locations = new ArrayList<>();
         SourceSection sourceSection = ((Node) nodeAtCaret).getSourceSection();
         String symbol = sourceSection.getCharacters().toString();
-        String normalizedSymbolToFindRef = InteropUtils.getNormalizedSymbolName(nodeAtCaret.getNodeObject(), symbol, messageNodes);
+        String normalizedSymbolToFindRef = InteropUtils.getNormalizedSymbolName(nodeAtCaret.getNodeObject(), symbol);
         SourcePredicate srcPredicate = newDefaultSourcePredicateBuilder().language(surrogate.getLanguageInfo()).build();
 
         env.getInstrumenter().attachLoadSourceSectionListener(
@@ -93,7 +90,7 @@ public final class ReferencesRequestHandler extends AbstractRequestHandler {
 
                                 Node node = event.getNode();
                                 String sectionText = node.getSourceSection().getCharacters().toString();
-                                String normalizedSymbol = InteropUtils.getNormalizedSymbolName(((InstrumentableNode) node).getNodeObject(), sectionText, messageNodes);
+                                String normalizedSymbol = InteropUtils.getNormalizedSymbolName(((InstrumentableNode) node).getNodeObject(), sectionText);
                                 if (normalizedSymbolToFindRef.equals(normalizedSymbol)) {
                                     Range range = SourceUtils.sourceSectionToRange(node.getSourceSection());
                                     URI fixedUri = SourceUtils.getOrFixFileUri(node.getSourceSection().getSource());

@@ -24,6 +24,7 @@
  */
 package org.graalvm.tools.lsp.test.server;
 
+import java.io.File;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertSame;
 import static org.junit.Assert.assertTrue;
@@ -58,7 +59,9 @@ public class ParsingTest extends TruffleLSPTest {
 
     @Test(expected = UnknownLanguageException.class)
     public void unknownlanguage() throws Throwable {
-        URI uri = URI.create("file:///tmp/truffle-lsp-test-file-unknown-lang-id");
+        File testFile = File.createTempFile("truffle-lsp-test-file-unknown-lang-id", "");
+        testFile.deleteOnExit();
+        URI uri = testFile.toURI();
 
         Future<?> future = truffleAdapter.parse("", "unknown-lang-id", uri);
         try {

@@ -41,14 +41,13 @@
 package com.oracle.truffle.sl.nodes.interop;
 
 import com.oracle.truffle.api.CompilerDirectives;
-import com.oracle.truffle.api.interop.ForeignAccess;
-import com.oracle.truffle.api.interop.MessageResolution;
-import com.oracle.truffle.api.interop.Resolve;
+import com.oracle.truffle.api.interop.InteropLibrary;
+import com.oracle.truffle.api.interop.InvalidArrayIndexException;
 import com.oracle.truffle.api.interop.TruffleObject;
-import com.oracle.truffle.api.interop.UnknownIdentifierException;
-import com.oracle.truffle.api.nodes.Node;
+import com.oracle.truffle.api.library.ExportLibrary;
+import com.oracle.truffle.api.library.ExportMessage;
 
-@MessageResolution(receiverType = NodeObjectDescriptorKeys.class)
+@ExportLibrary(InteropLibrary.class)
 public final class NodeObjectDescriptorKeys implements TruffleObject {
 
     private final boolean hasKind;
@@ -57,20 +56,32 @@ public final class NodeObjectDescriptorKeys implements TruffleObject {
         this.hasKind = hasKind;
     }
 
-    @Override
-    public ForeignAccess getForeignAccess() {
-        return NodeObjectDescriptorKeysForeign.ACCESS;
+    @ExportMessage
+    @SuppressWarnings("static-method")
+    boolean hasArrayElements() {
+        return true;
     }
 
-    public Object getKeyAt(int index) {
-        if (index < 0 || index >= size()) {
+    @ExportMessage
+    boolean isArrayElementReadable(long index) {
+        return index >= 0 && index < size();
+    }
+
+    @ExportMessage
+    long getArraySize() {
+        return size();
+    }
+
+    @ExportMessage
+    Object readArrayElement(long index) throws InvalidArrayIndexException {
+        if (!isArrayElementReadable(index)) {
             CompilerDirectives.transferToInterpreter();
-            throw UnknownIdentifierException.raise(Integer.toString(index));
+            throw InvalidArrayIndexException.create(index);
         }
         return index == 0 ? NodeObjectDescriptor.NAME : NodeObjectDescriptor.KIND;
     }
 
-    public int size() {
+    private int size() {
         return hasKind ? 2 : 1;
     }
 
@@ -78,27 +89,4 @@ public final class NodeObjectDescriptorKeys implements TruffleObject {
         return object instanceof NodeObjectDescriptorKeys;
     }
 
-    @Resolve(message = "READ")
-    abstract static class Read extends Node {
-
-        public Object access(NodeObjectDescriptorKeys target, Number index) {
-            return target.getKeyAt(index.intValue());
-        }
-    }
-
-    @Resolve(message = "HAS_SIZE")
-    abstract static class HasSize extends Node {
-
-        public boolean access(@SuppressWarnings("unused") NodeObjectDescriptorKeys target) {
-            return true;
-        }
-    }
-
-    @Resolve(message = "GET_SIZE")
-    abstract static class GetSize extends Node {
-
-        public Object access(NodeObjectDescriptorKeys target) {
-            return target.size();
-        }
-    }
 }

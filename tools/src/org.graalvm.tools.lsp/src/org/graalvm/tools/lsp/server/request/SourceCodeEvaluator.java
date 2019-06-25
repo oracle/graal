@@ -70,9 +70,7 @@ import com.oracle.truffle.api.instrumentation.SourceSectionFilter.Builder;
 import com.oracle.truffle.api.instrumentation.SourceSectionFilter.IndexRange;
 import com.oracle.truffle.api.instrumentation.StandardTags;
 import com.oracle.truffle.api.instrumentation.TruffleInstrument;
-import com.oracle.truffle.api.interop.ForeignAccess;
-import com.oracle.truffle.api.interop.KeyInfo;
-import com.oracle.truffle.api.interop.Message;
+import com.oracle.truffle.api.interop.InteropLibrary;
 import com.oracle.truffle.api.interop.TruffleObject;
 import com.oracle.truffle.api.interop.UnknownIdentifierException;
 import com.oracle.truffle.api.interop.UnsupportedMessageException;
@@ -85,9 +83,7 @@ import com.oracle.truffle.api.source.SourceSection;
 
 public final class SourceCodeEvaluator extends AbstractRequestHandler {
     private static final TruffleLogger LOG = TruffleLogger.getLogger(LSPInstrument.ID, SourceCodeEvaluator.class);
-
-    private final Node nodeInfo = Message.KEY_INFO.createNode();
-    private final Node nodeRead = Message.READ.createNode();
+    private static final InteropLibrary INTEROP = InteropLibrary.getFactory().getUncached();
 
     public SourceCodeEvaluator(TruffleInstrument.Env env, TextDocumentSurrogateMap surrogateMap, ContextAwareExecutor executor) {
         super(env, surrogateMap, executor);
@@ -144,12 +140,12 @@ public final class SourceCodeEvaluator extends AbstractRequestHandler {
         return globalScopeEvalResult;
     }
 
-    private EvaluationResult evalLiteral(Node nearestNode) {
+    private static EvaluationResult evalLiteral(Node nearestNode) {
         Object nodeObject = ((InstrumentableNode) nearestNode).getNodeObject();
         if (nodeObject instanceof TruffleObject) {
             try {
-                if (KeyInfo.isReadable(ForeignAccess.sendKeyInfo(nodeInfo, (TruffleObject) nodeObject, "literal"))) {
-                    Object result = ForeignAccess.sendRead(nodeRead, (TruffleObject) nodeObject, "literal");
+                if (INTEROP.isMemberReadable(nodeObject, "literal")) {
+                    Object result = INTEROP.readMember(nodeObject, "literal");
                     if (result instanceof TruffleObject || InteropUtils.isPrimitive(result)) {
                         return EvaluationResult.createResult(result);
                     } else {

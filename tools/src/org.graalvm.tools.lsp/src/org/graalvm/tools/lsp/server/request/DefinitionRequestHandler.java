@@ -39,7 +39,6 @@ import org.eclipse.lsp4j.Range;
 import org.eclipse.lsp4j.SymbolInformation;
 import org.graalvm.tools.lsp.api.ContextAwareExecutor;
 import org.graalvm.tools.lsp.instrument.LSPInstrument;
-import org.graalvm.tools.lsp.interop.ObjectStructures.MessageNodes;
 import org.graalvm.tools.lsp.server.utils.EvaluationResult;
 import org.graalvm.tools.lsp.server.utils.InteropUtils;
 import org.graalvm.tools.lsp.server.utils.SourceUtils;
@@ -61,14 +60,12 @@ public final class DefinitionRequestHandler extends AbstractRequestHandler {
     private static final TruffleLogger LOG = TruffleLogger.getLogger(LSPInstrument.ID, DefinitionRequestHandler.class);
 
     final SourceCodeEvaluator sourceCodeEvaluator;
-    private final MessageNodes messageNodes;
     private final SymbolRequestHandler symbolHandler;
 
     public DefinitionRequestHandler(Env env, TextDocumentSurrogateMap surrogateMap, ContextAwareExecutor contextAwareExecutor, SourceCodeEvaluator evaluator,
-                    SymbolRequestHandler documentSymbolHandler, MessageNodes messageNodes) {
+                    SymbolRequestHandler documentSymbolHandler) {
         super(env, surrogateMap, contextAwareExecutor);
         this.sourceCodeEvaluator = evaluator;
-        this.messageNodes = messageNodes;
         this.symbolHandler = documentSymbolHandler;
     }
 
@@ -89,7 +86,7 @@ public final class DefinitionRequestHandler extends AbstractRequestHandler {
     }
 
     private List<? extends Location> definitionOfVariableNode(TextDocumentSurrogate surrogate, InstrumentableNode definitionSearchNode) {
-        String readVariableName = InteropUtils.getNodeObjectName(definitionSearchNode, messageNodes);
+        String readVariableName = InteropUtils.getNodeObjectName(definitionSearchNode);
         if (readVariableName != null) {
             LinkedList<Scope> scopesOuterToInner = getScopesOuterToInner(surrogate, definitionSearchNode);
             List<Node> writeNodes = new ArrayList<>();
@@ -101,7 +98,7 @@ public final class DefinitionRequestHandler extends AbstractRequestHandler {
                         public boolean visit(Node node) {
                             if (node instanceof InstrumentableNode) {
                                 if (((InstrumentableNode) node).hasTag(StandardTags.WriteVariableTag.class)) {
-                                    String name = InteropUtils.getNodeObjectName((InstrumentableNode) node, messageNodes);
+                                    String name = InteropUtils.getNodeObjectName((InstrumentableNode) node);
                                     if (name.equals(readVariableName)) {
                                         writeNodes.add(node);
                                     }
@@ -155,7 +152,7 @@ public final class DefinitionRequestHandler extends AbstractRequestHandler {
         // Fallback: Static String-based name matching of symbols
         LOG.fine("Trying static symbol matching...");
         String definitionSearchSymbol = definitionSearchSection.getCharacters().toString();
-        definitionSearchSymbol = InteropUtils.getNormalizedSymbolName(definitionSearchNode.getNodeObject(), definitionSearchSymbol, messageNodes);
+        definitionSearchSymbol = InteropUtils.getNormalizedSymbolName(definitionSearchNode.getNodeObject(), definitionSearchSymbol);
         return findMatchingSymbols(surrogate, definitionSearchSymbol);
     }
 

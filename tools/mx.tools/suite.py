@@ -159,6 +159,7 @@ suite = {
                 "truffle:TRUFFLE_API"
             ],
             "checkstyle": "com.oracle.truffle.tools.chromeinspector",
+            "annotationProcessors" : ["truffle:TRUFFLE_DSL_PROCESSOR"],
             "javaCompliance": "1.8",
             "workingSets": "LSP"
         },

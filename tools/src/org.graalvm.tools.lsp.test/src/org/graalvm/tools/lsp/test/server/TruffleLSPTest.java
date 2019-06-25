@@ -92,7 +92,7 @@ public abstract class TruffleLSPTest {
 
     @Before
     public void setup() {
-        engine = Engine.newBuilder().option("lspTestInstrument", "true").build();
+        engine = Engine.newBuilder().option("lspTestInstrument", "true").allowExperimentalOptions(true).build();
         Instrument instrument = engine.getInstruments().get("lspTestInstrument");
         VirtualLanguageServerFileProvider lspFileProvider = instrument.lookup(VirtualLanguageServerFileProvider.class);
 

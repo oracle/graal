@@ -34,7 +34,6 @@ import org.eclipse.lsp4j.DocumentHighlight;
 import org.eclipse.lsp4j.DocumentHighlightKind;
 import org.eclipse.lsp4j.Range;
 import org.graalvm.tools.lsp.api.ContextAwareExecutor;
-import org.graalvm.tools.lsp.interop.ObjectStructures.MessageNodes;
 import org.graalvm.tools.lsp.server.utils.InteropUtils;
 import org.graalvm.tools.lsp.server.utils.SourceUtils;
 import org.graalvm.tools.lsp.server.utils.TextDocumentSurrogate;
@@ -50,11 +49,8 @@ import com.oracle.truffle.api.source.SourceSection;
 
 public final class HighlightRequestHandler extends AbstractRequestHandler {
 
-    private final MessageNodes messageNodes;
-
-    public HighlightRequestHandler(TruffleInstrument.Env env, TextDocumentSurrogateMap surrogateMap, ContextAwareExecutor executor, MessageNodes messageNodes) {
+    public HighlightRequestHandler(TruffleInstrument.Env env, TextDocumentSurrogateMap surrogateMap, ContextAwareExecutor executor) {
         super(env, surrogateMap, executor);
-        this.messageNodes = messageNodes;
     }
 
     public List<? extends DocumentHighlight> highlightWithEnteredContext(URI uri, int line, int character) {
@@ -69,7 +65,7 @@ public final class HighlightRequestHandler extends AbstractRequestHandler {
     }
 
     List<? extends DocumentHighlight> findOtherReadOrWrites(TextDocumentSurrogate surrogate, InstrumentableNode nodeAtCaret) {
-        String variableName = InteropUtils.getNodeObjectName(nodeAtCaret, messageNodes);
+        String variableName = InteropUtils.getNodeObjectName(nodeAtCaret);
         if (variableName != null) {
             LinkedList<Scope> scopesOuterToInner = getScopesOuterToInner(surrogate, nodeAtCaret);
             List<DocumentHighlight> highlights = new ArrayList<>();
@@ -83,7 +79,7 @@ public final class HighlightRequestHandler extends AbstractRequestHandler {
                                 InstrumentableNode instrumentableNode = (InstrumentableNode) node;
                                 if (instrumentableNode.hasTag(StandardTags.WriteVariableTag.class) ||
                                                 instrumentableNode.hasTag(StandardTags.ReadVariableTag.class)) {
-                                    String name = InteropUtils.getNodeObjectName(instrumentableNode, messageNodes);
+                                    String name = InteropUtils.getNodeObjectName(instrumentableNode);
                                     if (name.equals(variableName)) {
                                         SourceSection sourceSection = node.getSourceSection();
                                         if (SourceUtils.isValidSourceSection(sourceSection, env.getOptions())) {

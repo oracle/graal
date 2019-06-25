@@ -42,18 +42,16 @@ package com.oracle.truffle.sl.nodes.interop;
 
 import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.instrumentation.StandardTags;
-import com.oracle.truffle.api.interop.ForeignAccess;
-import com.oracle.truffle.api.interop.KeyInfo;
-import com.oracle.truffle.api.interop.MessageResolution;
-import com.oracle.truffle.api.interop.Resolve;
+import com.oracle.truffle.api.interop.InteropLibrary;
 import com.oracle.truffle.api.interop.TruffleObject;
 import com.oracle.truffle.api.interop.UnknownIdentifierException;
-import com.oracle.truffle.api.nodes.Node;
+import com.oracle.truffle.api.library.ExportLibrary;
+import com.oracle.truffle.api.library.ExportMessage;
 
 /**
  * A container class used to store per-node attributes used by the instrumentation framework.
  */
-@MessageResolution(receiverType = NodeObjectDescriptor.class)
+@ExportLibrary(InteropLibrary.class)
 public final class NodeObjectDescriptor implements TruffleObject {
 
     static final String NAME = "name";
@@ -69,28 +67,33 @@ public final class NodeObjectDescriptor implements TruffleObject {
         this.kind = kind;
     }
 
-    @Override
-    public ForeignAccess getForeignAccess() {
-        return NodeObjectDescriptorForeign.ACCESS;
+    @ExportMessage
+    @SuppressWarnings("static-method")
+    boolean hasMembers() {
+        return true;
     }
 
-    public Object getProperty(String key) {
-        switch (key) {
+    @ExportMessage
+    Object readMember(String member) throws UnknownIdentifierException {
+        switch (member) {
             case NAME:
                 return name;
             case KIND:
                 if (kind != null) {
                     return kind;
                 } else {
-                    throw UnknownIdentifierException.raise(key);
+                    CompilerDirectives.transferToInterpreter();
+                    throw UnknownIdentifierException.create(member);
                 }
             default:
-                throw UnknownIdentifierException.raise(key);
+                CompilerDirectives.transferToInterpreter();
+                throw UnknownIdentifierException.create(member);
         }
     }
 
-    public boolean hasProperty(String key) {
-        switch (key) {
+    @ExportMessage
+    boolean isMemberReadable(String member) {
+        switch (member) {
             case NAME:
                 return true;
             case KIND:
@@ -100,7 +103,8 @@ public final class NodeObjectDescriptor implements TruffleObject {
         }
     }
 
-    public TruffleObject getPropertyNames() {
+    @ExportMessage
+    Object getMembers(@SuppressWarnings("unused") boolean includeInternal) {
         if (keys == null) {
             CompilerDirectives.transferToInterpreterAndInvalidate();
             keys = new NodeObjectDescriptorKeys(kind != null);
@@ -110,39 +114,5 @@ public final class NodeObjectDescriptor implements TruffleObject {
 
     static boolean isInstance(TruffleObject object) {
         return object instanceof NodeObjectDescriptor;
-    }
-
-    @Resolve(message = "READ")
-    abstract static class Read extends Node {
-        public Object access(NodeObjectDescriptor target, String key) {
-            return target.getProperty(key);
-        }
-    }
-
-    @Resolve(message = "HAS_KEYS")
-    abstract static class HasKeys extends Node {
-
-        public Object access(@SuppressWarnings("unused") Object target) {
-            return true;
-        }
-    }
-
-    @Resolve(message = "KEYS")
-    abstract static class Keys extends Node {
-        public Object access(NodeObjectDescriptor target) {
-            return target.getPropertyNames();
-        }
-    }
-
-    @Resolve(message = "KEY_INFO")
-    abstract static class KeyInfoMR extends Node {
-
-        public Object access(NodeObjectDescriptor target, Object key) {
-            if (key instanceof String && target.hasProperty((String) key)) {
-                return KeyInfo.READABLE;
-            } else {
-                return KeyInfo.NONE;
-            }
-        }
     }
 }

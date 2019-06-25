@@ -24,28 +24,11 @@
  */
 package org.graalvm.tools.lsp.hacks;
 
-import java.util.Map;
-
-import org.graalvm.tools.lsp.interop.ObjectStructures;
-
 import com.oracle.truffle.api.instrumentation.StandardTags;
-import com.oracle.truffle.api.interop.TruffleObject;
 import com.oracle.truffle.api.nodes.LanguageInfo;
 
 public final class LanguageSpecificHacks {
     public static boolean enableLanguageSpecificHacks = true;
-
-    public static String getDocumentation(Object metaObject, String langId) {
-        if (enableLanguageSpecificHacks) {
-            if (metaObject != null) {
-                if (langId.equals("js")) {
-                    Map<Object, Object> map = ObjectStructures.asMap((TruffleObject) metaObject, new ObjectStructures.MessageNodes());
-                    return "" + (map.containsKey("description") ? map.get("description") : "");
-                }
-            }
-        }
-        return null;
-    }
 
     public static String normalizeSymbol(String definitionSearchSymbol) {
         if (enableLanguageSpecificHacks) {

@@ -27,10 +27,7 @@ package org.graalvm.tools.lsp.server.request;
 import java.net.URI;
 import java.util.Arrays;
 import java.util.HashSet;
-import java.util.LinkedHashMap;
 import java.util.List;
-import java.util.Map;
-import java.util.Map.Entry;
 import java.util.Set;
 import java.util.concurrent.Future;
 import java.util.logging.Level;
@@ -51,11 +48,10 @@ import org.graalvm.tools.lsp.api.ContextAwareExecutor;
 import org.graalvm.tools.lsp.exceptions.DiagnosticsNotification;
 import org.graalvm.tools.lsp.hacks.LanguageSpecificHacks;
 import org.graalvm.tools.lsp.instrument.LSPInstrument;
-import org.graalvm.tools.lsp.api.interop.LSPMessage;
-import org.graalvm.tools.lsp.interop.ObjectStructures;
-import org.graalvm.tools.lsp.interop.ObjectStructures.MessageNodes;
+import org.graalvm.tools.lsp.api.interop.LSPLibrary;
 import org.graalvm.tools.lsp.server.utils.CoverageData;
 import org.graalvm.tools.lsp.server.utils.EvaluationResult;
+import org.graalvm.tools.lsp.server.utils.InteropUtils;
 import org.graalvm.tools.lsp.server.utils.NearestNode;
 import org.graalvm.tools.lsp.server.utils.NearestSectionsFinder;
 import org.graalvm.tools.lsp.server.utils.NearestSectionsFinder.NodeLocationType;
@@ -74,9 +70,8 @@ import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.api.instrumentation.InstrumentableNode;
 import com.oracle.truffle.api.instrumentation.StandardTags;
 import com.oracle.truffle.api.instrumentation.TruffleInstrument;
-import com.oracle.truffle.api.interop.ForeignAccess;
 import com.oracle.truffle.api.interop.InteropException;
-import com.oracle.truffle.api.interop.Message;
+import com.oracle.truffle.api.interop.InteropLibrary;
 import com.oracle.truffle.api.interop.TruffleObject;
 import com.oracle.truffle.api.interop.UnsupportedMessageException;
 import com.oracle.truffle.api.interop.UnsupportedTypeException;
@@ -88,6 +83,8 @@ import com.oracle.truffle.api.source.SourceSection;
 public final class CompletionRequestHandler extends AbstractRequestHandler {
 
     private static final TruffleLogger LOG = TruffleLogger.getLogger(LSPInstrument.ID, CompletionRequestHandler.class);
+    private static final InteropLibrary INTEROP = InteropLibrary.getFactory().getUncached();
+    private static final LSPLibrary LSP_INTEROP = LSPLibrary.getFactory().getUncached();
 
     private static boolean isInstrumentable(Node node) {
         return node instanceof InstrumentableNode && ((InstrumentableNode) node).isInstrumentable();
@@ -101,23 +98,14 @@ public final class CompletionRequestHandler extends AbstractRequestHandler {
 
     public final CompletionList emptyList = new CompletionList();
 
-    private final MessageNodes messageNodes;
-    private final Node nodeIsInstantiable = Message.IS_INSTANTIABLE.createNode();
-    private final Node nodeIsExecutable = Message.IS_EXECUTABLE.createNode();
-    private final Node nodeInvoke = Message.INVOKE.createNode();
-    private final Node nodeGetSignature = LSPMessage.GET_SIGNATURE.createNode();
-    private final Node nodeGetDocumentation = LSPMessage.GET_DOCUMENTATION.createNode();
-    private final Node nodeIsNull = Message.IS_NULL.createNode();
-
     private static final int SORTING_PRIORITY_LOCALS = 1;
     private static final int SORTING_PRIORITY_GLOBALS = 2;
 
     private final SourceCodeEvaluator sourceCodeEvaluator;
 
     public CompletionRequestHandler(TruffleInstrument.Env env, TextDocumentSurrogateMap surrogateMap, ContextAwareExecutor executor,
-                    SourceCodeEvaluator sourceCodeEvaluator, MessageNodes messageNodes) {
+                    SourceCodeEvaluator sourceCodeEvaluator) {
         super(env, surrogateMap, executor);
-        this.messageNodes = messageNodes;
         this.sourceCodeEvaluator = sourceCodeEvaluator;
     }
 
@@ -316,27 +304,43 @@ public final class CompletionRequestHandler extends AbstractRequestHandler {
     private void fillCompletionsWithScopesValues(TextDocumentSurrogate surrogate, CompletionList completions, Iterable<Scope> scopes,
                     CompletionItemKind completionItemKindDefault, int displayPriority) {
         LanguageInfo langInfo = surrogate.getLanguageInfo();
-        LinkedHashMap<Scope, Map<Object, Object>> scopeMap = scopesToObjectMap(scopes);
         String[] existingCompletions = completions.getItems().stream().map((item) -> item.getLabel()).toArray(String[]::new);
         // Filter duplicates
         Set<String> completionKeys = new HashSet<>(Arrays.asList(existingCompletions));
         int scopeCounter = 0;
-        for (Entry<Scope, Map<Object, Object>> scopeEntry : scopeMap.entrySet()) {
+        for (Scope scope : scopes) {
             ++scopeCounter;
-            for (Entry<Object, Object> entry : scopeEntry.getValue().entrySet()) {
-                String key = entry.getKey().toString();
-                if (completionKeys.contains(key)) {
-                    // Scopes are provided from inner to outer, so we need to detect duplicate keys
-                    // and only take those from the most inner scope
+            Object variables = scope.getVariables();
+            Object keys;
+            long size;
+            try {
+                keys = INTEROP.getMembers(variables, false);
+                boolean hasSize = INTEROP.hasArrayElements(keys);
+                if (!hasSize) {
                     continue;
-                } else {
-                    completionKeys.add(key);
                 }
-
+                size = INTEROP.getArraySize(keys);
+            } catch (Exception ex) {
+                LOG.log(Level.INFO, ex.getLocalizedMessage(), ex);
+                continue;
+            }
+            for (long i = 0; i < size; i++) {
+                String key;
                 Object object;
                 try {
-                    object = entry.getValue();
-                } catch (Exception e) {
+                    key = INTEROP.readArrayElement(keys, i).toString();
+                    if (completionKeys.contains(key)) {
+                        // Scopes are provided from inner to outer, so we need to detect duplicate
+                        // keys and only take those from the most inner scope
+                        continue;
+                    } else {
+                        completionKeys.add(key);
+                    }
+                    object = INTEROP.readMember(variables, key);
+                } catch (ThreadDeath td) {
+                    throw td;
+                } catch (Throwable t) {
+                    LOG.log(Level.CONFIG, variables.toString(), t);
                     continue;
                 }
                 CompletionItem completion = new CompletionItem(key);
@@ -345,27 +349,21 @@ public final class CompletionRequestHandler extends AbstractRequestHandler {
                 completion.setSortText(String.format("%d.%04d.%s", displayPriority, scopeCounter, key));
                 CompletionItemKind completionItemKind = findCompletionItemKind(object);
                 completion.setKind(completionItemKind != null ? completionItemKind : completionItemKindDefault);
-                completion.setDetail(createCompletionDetail(entry.getKey(), object, langInfo));
-                completion.setDocumentation(createDocumentation(object, surrogate.getLanguageInfo(), "in " + scopeEntry.getKey().getName()));
+                completion.setDetail(createCompletionDetail(object, langInfo));
+                completion.setDocumentation(createDocumentation(object, surrogate.getLanguageInfo(), "in " + scope.getName()));
 
                 completions.getItems().add(completion);
             }
         }
     }
 
-    private CompletionItemKind findCompletionItemKind(Object object) {
-        if (object instanceof TruffleObject) {
-            TruffleObject truffleObjVal = (TruffleObject) object;
-            boolean isExecutable = ForeignAccess.sendIsExecutable(nodeIsExecutable, truffleObjVal);
-            boolean isInstatiatable = ForeignAccess.sendIsInstantiable(nodeIsInstantiable, truffleObjVal);
-            if (isInstatiatable) {
-                return CompletionItemKind.Class;
-            }
-            if (isExecutable) {
-                return CompletionItemKind.Function;
-            }
+    private static CompletionItemKind findCompletionItemKind(Object object) {
+        if (INTEROP.isInstantiable(object)) {
+            return CompletionItemKind.Class;
         }
-
+        if (INTEROP.isExecutable(object)) {
+            return CompletionItemKind.Function;
+        }
         return null;
     }
 
@@ -378,45 +376,60 @@ public final class CompletionRequestHandler extends AbstractRequestHandler {
             return false;
         }
 
-        Map<Object, Object> map = null;
-        if (object instanceof TruffleObject) {
-            map = ObjectStructures.asMap((TruffleObject) object, messageNodes);
-        } else {
-            Object boxedObject = env.boxPrimitive(langInfo.getId(), object);
-            if (boxedObject instanceof TruffleObject) {
-                map = ObjectStructures.asMap((TruffleObject) boxedObject, messageNodes);
-            } else {
-                LOG.fine("Result is no TruffleObject: " + object.getClass());
+        Object boxedObject;
+        Object keys = null;
+        if (InteropUtils.isPrimitive(object)) {
+            boxedObject = env.boxPrimitive(langInfo.getId(), object);
+            if (boxedObject == null) {
+                LOG.fine("No completions for primitive: " + object + ", no boxed object in language " + langInfo.getId());
+                return false;
             }
+        } else {
+            boxedObject = object;
+        }
+        try {
+            keys = INTEROP.getMembers(boxedObject);
+        } catch (UnsupportedMessageException ex) {
+            // No members
         }
 
-        if (map == null || map.isEmpty()) {
-            LOG.fine("No completions found for object: " + object);
+        if (keys == null || !INTEROP.hasArrayElements(keys)) {
+            LOG.fine("No completions found for object: " + boxedObject);
             return false;
         }
 
         int counter = 0;
-        for (Entry<Object, Object> entry : map.entrySet()) {
+        long size;
+        try {
+            size = INTEROP.getArraySize(keys);
+        } catch (UnsupportedMessageException ex) {
+            size = 0;
+        }
+        for (long i = 0; i < size; i++) {
+            String key;
             Object value;
             try {
-                value = entry.getValue();
-            } catch (Exception e) {
+                key = INTEROP.readArrayElement(keys, i).toString();
+                value = INTEROP.readMember(boxedObject, key);
+            } catch (ThreadDeath td) {
+                throw td;
+            } catch (Throwable t) {
+                LOG.log(Level.CONFIG, boxedObject.toString(), t);
                 continue;
             }
-            String key = entry.getKey().toString();
             CompletionItem completion = new CompletionItem(key);
             ++counter;
             // Keep the order in which the keys were provided
             completion.setSortText(String.format("%06d.%s", counter, key));
             CompletionItemKind kind = findCompletionItemKind(value);
             completion.setKind(kind != null ? kind : CompletionItemKind.Property);
-            completion.setDetail(createCompletionDetail(entry.getKey(), value, langInfo));
+            completion.setDetail(createCompletionDetail(value, langInfo));
             completion.setDocumentation(createDocumentation(value, langInfo, "of meta object: `" + metaObject + "`"));
 
             completions.getItems().add(completion);
         }
 
-        return !map.isEmpty();
+        return counter > 0;
     }
 
     private Either<String, MarkupContent> createDocumentation(Object value, LanguageInfo langInfo, String scopeInformation) {
@@ -444,13 +457,13 @@ public final class CompletionRequestHandler extends AbstractRequestHandler {
     }
 
     @SuppressWarnings("all") // The parameter langInfo should not be assigned
-    public String createCompletionDetail(Object key, Object obj, LanguageInfo langInfo) {
+    public String createCompletionDetail(Object obj, LanguageInfo langInfo) {
         String detailText = "";
 
         TruffleObject truffleObj = null;
         if (obj instanceof TruffleObject) {
             truffleObj = (TruffleObject) obj;
-            if (ForeignAccess.sendIsNull(nodeIsNull, truffleObj)) {
+            if (INTEROP.isNull(truffleObj)) {
                 return "";
             }
             langInfo = getObjectLanguageInfo(langInfo, obj);
@@ -461,7 +474,7 @@ public final class CompletionRequestHandler extends AbstractRequestHandler {
             }
         }
 
-        if (truffleObj != null && key != null) {
+        if (truffleObj != null) {
             String formattedSignature = getFormattedSignature(truffleObj, langInfo);
             detailText = formattedSignature != null ? formattedSignature : "";
         }
@@ -478,12 +491,11 @@ public final class CompletionRequestHandler extends AbstractRequestHandler {
     }
 
     public Either<String, MarkupContent> getDocumentation(Object value, LanguageInfo langInfo) {
-        if (!(value instanceof TruffleObject) || ForeignAccess.sendIsNull(nodeIsNull, (TruffleObject) value)) {
+        if (!(value instanceof TruffleObject) || INTEROP.isNull(value)) {
             return null;
         }
-        TruffleObject truffleObj = (TruffleObject) value;
         try {
-            Object docu = ForeignAccess.send(nodeGetDocumentation, truffleObj);
+            Object docu = LSP_INTEROP.getDocumentation(value);
             if (docu instanceof String && !((String) docu).isEmpty()) {
                 return Either.forLeft((String) docu);
             } else {
@@ -491,10 +503,10 @@ public final class CompletionRequestHandler extends AbstractRequestHandler {
                     TruffleObject markup = (TruffleObject) docu;
                     MarkupContent content = new MarkupContent();
                     try {
-                        docu = ForeignAccess.sendInvoke(nodeInvoke, markup, MarkupKind.MARKDOWN);
+                        docu = INTEROP.invokeMember(markup, MarkupKind.MARKDOWN);
                         content.setKind(MarkupKind.MARKDOWN);
                     } catch (InteropException e) {
-                        docu = ForeignAccess.sendInvoke(nodeInvoke, markup, MarkupKind.PLAINTEXT);
+                        docu = INTEROP.invokeMember(markup, MarkupKind.PLAINTEXT);
                         content.setKind(MarkupKind.PLAINTEXT);
                     }
                     content.setValue(env.toString(langInfo, docu));
@@ -511,12 +523,10 @@ public final class CompletionRequestHandler extends AbstractRequestHandler {
 
     public String getFormattedSignature(TruffleObject truffleObj, LanguageInfo langInfo) {
         try {
-            Object signature = ForeignAccess.send(nodeGetSignature, truffleObj);
+            Object signature = LSP_INTEROP.getSignature(truffleObj);
             return env.toString(langInfo, signature);
-        } catch (UnsupportedMessageException | UnsupportedTypeException e) {
+        } catch (UnsupportedMessageException e) {
             // GET_SIGNATURE message is not supported
-        } catch (InteropException e) {
-            e.printStackTrace(err);
         }
         return null;
     }
@@ -540,25 +550,4 @@ public final class CompletionRequestHandler extends AbstractRequestHandler {
         }
     }
 
-    private LinkedHashMap<Scope, Map<Object, Object>> scopesToObjectMap(Iterable<Scope> scopes) {
-        LinkedHashMap<Scope, Map<Object, Object>> map = new LinkedHashMap<>();
-        for (Scope scope : scopes) {
-            Object variables = scope.getVariables();
-            if (variables instanceof TruffleObject) {
-                TruffleObject truffleObj = (TruffleObject) variables;
-                try {
-                    TruffleObject keys = ForeignAccess.sendKeys(messageNodes.keys, truffleObj, false);
-                    boolean hasSize = ForeignAccess.sendHasSize(messageNodes.hasSize, keys);
-                    if (!hasSize) {
-                        continue;
-                    }
-
-                    map.put(scope, ObjectStructures.asMap(truffleObj, messageNodes));
-                } catch (UnsupportedMessageException e) {
-                    throw new RuntimeException(e);
-                }
-            }
-        }
-        return map;
-    }
 }

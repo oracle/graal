@@ -56,7 +56,6 @@ import org.graalvm.tools.lsp.api.VirtualLanguageServerFileProvider;
 import org.graalvm.tools.lsp.exceptions.DiagnosticsNotification;
 import org.graalvm.tools.lsp.exceptions.UnknownLanguageException;
 import org.graalvm.tools.lsp.instrument.LSPInstrument;
-import org.graalvm.tools.lsp.interop.ObjectStructures.MessageNodes;
 import org.graalvm.tools.lsp.server.request.AbstractRequestHandler;
 import org.graalvm.tools.lsp.server.request.CompletionRequestHandler;
 import org.graalvm.tools.lsp.server.request.CoverageRequestHandler;
@@ -119,16 +118,15 @@ public final class TruffleAdapter implements VirtualLanguageServerFileProvider, 
     }
 
     private void createLSPRequestHandlers() {
-        MessageNodes messageNodes = new MessageNodes();
         this.sourceCodeEvaluator = new SourceCodeEvaluator(env, surrogateMap, contextAwareExecutor);
-        this.completionHandler = new CompletionRequestHandler(env, surrogateMap, contextAwareExecutor, sourceCodeEvaluator, messageNodes);
-        this.symbolHandler = new SymbolRequestHandler(env, surrogateMap, contextAwareExecutor, messageNodes);
-        this.definitionHandler = new DefinitionRequestHandler(env, surrogateMap, contextAwareExecutor, sourceCodeEvaluator, symbolHandler, messageNodes);
+        this.completionHandler = new CompletionRequestHandler(env, surrogateMap, contextAwareExecutor, sourceCodeEvaluator);
+        this.symbolHandler = new SymbolRequestHandler(env, surrogateMap, contextAwareExecutor);
+        this.definitionHandler = new DefinitionRequestHandler(env, surrogateMap, contextAwareExecutor, sourceCodeEvaluator, symbolHandler);
         this.hoverHandler = new HoverRequestHandler(env, surrogateMap, contextAwareExecutor, completionHandler);
-        this.signatureHelpHandler = new SignatureHelpRequestHandler(env, surrogateMap, contextAwareExecutor, sourceCodeEvaluator, completionHandler, messageNodes);
+        this.signatureHelpHandler = new SignatureHelpRequestHandler(env, surrogateMap, contextAwareExecutor, sourceCodeEvaluator, completionHandler);
         this.coverageHandler = new CoverageRequestHandler(env, surrogateMap, contextAwareExecutor, sourceCodeEvaluator);
-        this.highlightHandler = new HighlightRequestHandler(env, surrogateMap, contextAwareExecutor, messageNodes);
-        this.referencesHandler = new ReferencesRequestHandler(env, surrogateMap, contextAwareExecutor, highlightHandler, messageNodes);
+        this.highlightHandler = new HighlightRequestHandler(env, surrogateMap, contextAwareExecutor);
+        this.referencesHandler = new ReferencesRequestHandler(env, surrogateMap, contextAwareExecutor, highlightHandler);
     }
 
     private void initSurrogateMap() {

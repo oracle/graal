@@ -30,7 +30,6 @@ import java.util.Arrays;
 import java.util.Collection;
 import java.util.LinkedHashSet;
 import java.util.List;
-import java.util.Map;
 import java.util.Set;
 
 import org.eclipse.lsp4j.DocumentSymbol;
@@ -40,8 +39,6 @@ import org.eclipse.lsp4j.SymbolInformation;
 import org.eclipse.lsp4j.SymbolKind;
 import org.eclipse.lsp4j.jsonrpc.messages.Either;
 import org.graalvm.tools.lsp.api.ContextAwareExecutor;
-import org.graalvm.tools.lsp.interop.ObjectStructures;
-import org.graalvm.tools.lsp.interop.ObjectStructures.MessageNodes;
 import org.graalvm.tools.lsp.server.utils.SourceUtils;
 import org.graalvm.tools.lsp.server.utils.TextDocumentSurrogateMap;
 
@@ -53,16 +50,18 @@ import com.oracle.truffle.api.instrumentation.SourceSectionFilter.SourcePredicat
 import com.oracle.truffle.api.instrumentation.StandardTags;
 import com.oracle.truffle.api.instrumentation.StandardTags.DeclarationTag;
 import com.oracle.truffle.api.instrumentation.TruffleInstrument.Env;
+import com.oracle.truffle.api.interop.InteropLibrary;
 import com.oracle.truffle.api.interop.TruffleObject;
+import com.oracle.truffle.api.interop.UnknownIdentifierException;
+import com.oracle.truffle.api.interop.UnsupportedMessageException;
 import com.oracle.truffle.api.nodes.Node;
 
 public final class SymbolRequestHandler extends AbstractRequestHandler {
 
-    private final MessageNodes messageNodes;
+    private static final InteropLibrary INTEROP = InteropLibrary.getFactory().getUncached();
 
-    public SymbolRequestHandler(Env env, TextDocumentSurrogateMap surrogateMap, ContextAwareExecutor contextAwareExecutor, MessageNodes messageNodes) {
+    public SymbolRequestHandler(Env env, TextDocumentSurrogateMap surrogateMap, ContextAwareExecutor contextAwareExecutor) {
         super(env, surrogateMap, contextAwareExecutor);
-        this.messageNodes = messageNodes;
     }
 
     public List<Either<SymbolInformation, DocumentSymbol>> documentSymbolWithEnteredContext(URI uri) {
@@ -90,14 +89,21 @@ public final class SymbolRequestHandler extends AbstractRequestHandler {
                                 }
                                 InstrumentableNode instrumentableNode = (InstrumentableNode) node;
                                 Object nodeObject = instrumentableNode.getNodeObject();
-                                if (!(nodeObject instanceof TruffleObject)) {
+                                if (!(nodeObject instanceof TruffleObject) || !INTEROP.isMemberReadable(nodeObject, DeclarationTag.NAME)) {
                                     return;
                                 }
-                                Map<Object, Object> map = ObjectStructures.asMap((TruffleObject) nodeObject, messageNodes);
-                                String name = map.get(DeclarationTag.NAME).toString();
-                                SymbolKind kind = map.containsKey(DeclarationTag.KIND) ? declarationKindToSmybolKind(map.get(DeclarationTag.KIND)) : null;
-                                Range range = SourceUtils.sourceSectionToRange(node.getSourceSection());
-                                String container = map.containsKey(DeclarationTag.CONTAINER) ? map.get(DeclarationTag.CONTAINER).toString() : "";
+                                String name;
+                                SymbolKind kind;
+                                Range range;
+                                String container;
+                                try {
+                                    name = INTEROP.readMember(nodeObject, DeclarationTag.NAME).toString();
+                                    kind = INTEROP.isMemberReadable(nodeObject, DeclarationTag.KIND) ? declarationKindToSmybolKind(INTEROP.readMember(nodeObject, DeclarationTag.KIND)) : null;
+                                    range = SourceUtils.sourceSectionToRange(node.getSourceSection());
+                                    container = INTEROP.isMemberReadable(nodeObject, DeclarationTag.CONTAINER) ? INTEROP.readMember(nodeObject, DeclarationTag.CONTAINER).toString() : "";
+                                } catch (UnknownIdentifierException | UnsupportedMessageException e) {
+                                    return;
+                                }
                                 URI fixedUri = SourceUtils.getOrFixFileUri(node.getSourceSection().getSource());
                                 SymbolInformation si = new SymbolInformation(name, kind != null ? kind : SymbolKind.Null, new Location(fixedUri.toString(), range),
                                                 container);

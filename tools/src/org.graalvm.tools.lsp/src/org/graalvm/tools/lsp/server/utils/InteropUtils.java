@@ -24,40 +24,52 @@
  */
 package org.graalvm.tools.lsp.server.utils;
 
-import java.util.Map;
+import java.util.logging.Level;
 
-import org.graalvm.tools.lsp.hacks.LanguageSpecificHacks;
-import org.graalvm.tools.lsp.interop.ObjectStructures;
-import org.graalvm.tools.lsp.interop.ObjectStructures.MessageNodes;
-
+import com.oracle.truffle.api.TruffleLogger;
 import com.oracle.truffle.api.instrumentation.InstrumentableNode;
 import com.oracle.truffle.api.instrumentation.StandardTags.DeclarationTag;
+import com.oracle.truffle.api.interop.InteropLibrary;
 import com.oracle.truffle.api.interop.TruffleObject;
 
+import org.graalvm.tools.lsp.hacks.LanguageSpecificHacks;
+import org.graalvm.tools.lsp.instrument.LSPInstrument;
+
 public final class InteropUtils {
+
+    private static final TruffleLogger LOG = TruffleLogger.getLogger(LSPInstrument.ID, InteropUtils.class);
+    private static final InteropLibrary INTEROP = InteropLibrary.getFactory().getUncached();
 
     private InteropUtils() {
         assert false;
     }
 
-    public static String getNormalizedSymbolName(Object nodeObject, String symbol, MessageNodes messageNodes) {
+    public static String getNormalizedSymbolName(Object nodeObject, String symbol) {
         if (!(nodeObject instanceof TruffleObject)) {
             return LanguageSpecificHacks.normalizeSymbol(symbol);
         } else {
-            Map<Object, Object> map = ObjectStructures.asMap((TruffleObject) nodeObject, messageNodes);
-            if (map.containsKey(DeclarationTag.NAME)) {
-                return map.get(DeclarationTag.NAME).toString();
+            if (INTEROP.isMemberReadable(nodeObject, DeclarationTag.NAME)) {
+                try {
+                    return INTEROP.readMember(nodeObject, DeclarationTag.NAME).toString();
+                } catch (ThreadDeath td) {
+                    throw td;
+                } catch (Throwable t) {
+                    LOG.log(Level.INFO, nodeObject.toString(), t);
+                }
             }
         }
         return symbol;
     }
 
-    public static Integer getNumberOfArguments(Object nodeObject, MessageNodes messageNodes) {
-        if (nodeObject instanceof TruffleObject) {
-            Map<Object, Object> map = ObjectStructures.asMap((TruffleObject) nodeObject, messageNodes);
-            if (map.containsKey("numberOfArguments")) {
-                Object object = map.get("numberOfArguments");
-                return object instanceof Integer ? (Integer) object : null;
+    public static Integer getNumberOfArguments(Object nodeObject) {
+        if (nodeObject instanceof TruffleObject && INTEROP.isMemberReadable(nodeObject, "numberOfArguments")) {
+            try {
+                Object object = INTEROP.readMember(nodeObject, "numberOfArguments");
+                return object instanceof Number ? ((Number) object).intValue() : null;
+            } catch (ThreadDeath td) {
+                throw td;
+            } catch (Throwable t) {
+                LOG.log(Level.INFO, nodeObject.toString(), t);
             }
         }
         return null;
@@ -76,12 +88,15 @@ public final class InteropUtils {
                         clazz == String.class);
     }
 
-    public static String getNodeObjectName(InstrumentableNode node, MessageNodes messageNodes) {
+    public static String getNodeObjectName(InstrumentableNode node) {
         Object nodeObject = node.getNodeObject();
-        if (nodeObject instanceof TruffleObject) {
-            Map<Object, Object> map = ObjectStructures.asMap((TruffleObject) nodeObject, messageNodes);
-            if (map.containsKey("name")) {
-                return map.get("name").toString();
+        if (nodeObject instanceof TruffleObject && INTEROP.isMemberReadable(nodeObject, "name")) {
+            try {
+                return INTEROP.readMember(nodeObject, "name").toString();
+            } catch (ThreadDeath td) {
+                throw td;
+            } catch (Throwable t) {
+                LOG.log(Level.INFO, node.getClass().getCanonicalName(), t);
             }
         }
         return null;

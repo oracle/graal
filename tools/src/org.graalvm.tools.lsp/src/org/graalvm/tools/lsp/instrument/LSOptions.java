@@ -27,6 +27,7 @@ package org.graalvm.tools.lsp.instrument;
 import java.net.InetAddress;
 import java.net.InetSocketAddress;
 import java.net.UnknownHostException;
+import java.util.function.Consumer;
 
 import org.graalvm.options.OptionCategory;
 import org.graalvm.options.OptionKey;
@@ -54,7 +55,7 @@ public final class LSOptions {
     private static final int DEFAULT_PORT = 8123;
     private static final HostAndPort DEFAULT_ADDRESS = new HostAndPort(null, DEFAULT_PORT);
 
-    static final OptionType<HostAndPort> ADDRESS_OR_BOOLEAN = new OptionType<>("[[host:]port]", DEFAULT_ADDRESS, (address) -> {
+    static final OptionType<HostAndPort> ADDRESS_OR_BOOLEAN = new OptionType<>("[[host:]port]", (address) -> {
         if (address.isEmpty() || address.equals("true")) {
             return DEFAULT_ADDRESS;
         } else {
@@ -70,7 +71,7 @@ public final class LSOptions {
             }
             return new HostAndPort(host, port);
         }
-    }, (address) -> address.verify());
+    }, (Consumer<HostAndPort>) (address) -> address.verify());
 
     @Option(name = "", help = "Start the Language Server on [[host:]port]. (default: <loopback address>:" + DEFAULT_PORT + ")", category = OptionCategory.USER) //
     static final OptionKey<HostAndPort> Lsp = new OptionKey<>(DEFAULT_ADDRESS, ADDRESS_OR_BOOLEAN);
