@@ -220,19 +220,22 @@ class InterfaceTables {
     }
 
     private static void updateEntry(Method[] vtable, Method[] mirandas, Entry entry, int index, Method virtualMethod, Method toPut) {
-        if (entry.loc == Location.MIRANDAS) {
-            Method newMiranda = new Method(toPut);
-            int vtableIndex = virtualMethod.getVTableIndex();
-            vtable[vtableIndex] = newMiranda;
-            mirandas[index] = newMiranda;
-            newMiranda.setVTableIndex(vtableIndex);
-        }
-        if (entry.loc == Location.SUPERVTABLE) {
-            vtable[index] = toPut;
-            toPut.setVTableIndex(index);
-        } else {
-            vtable[virtualMethod.getVTableIndex()] = toPut;
-            toPut.setVTableIndex(virtualMethod.getVTableIndex());
+        switch (entry.loc) {
+            case SUPERVTABLE:
+                vtable[index] = toPut;
+                toPut.setVTableIndex(index);
+                break;
+            case DECLARED:
+                vtable[virtualMethod.getVTableIndex()] = toPut;
+                toPut.setVTableIndex(virtualMethod.getVTableIndex());
+                break;
+            case MIRANDAS:
+                Method newMiranda = new Method(toPut);
+                int vtableIndex = virtualMethod.getVTableIndex();
+                vtable[vtableIndex] = newMiranda;
+                mirandas[index] = newMiranda;
+                newMiranda.setVTableIndex(vtableIndex);
+                break;
         }
     }
 
