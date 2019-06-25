@@ -42,6 +42,11 @@ public final class EspressoException extends RuntimeException implements Truffle
     }
 
     @Override
+    public Throwable fillInStackTrace() {
+        return this;
+    }
+
+    @Override
     public String getMessage() {
         return getMessage(exception);
     }
