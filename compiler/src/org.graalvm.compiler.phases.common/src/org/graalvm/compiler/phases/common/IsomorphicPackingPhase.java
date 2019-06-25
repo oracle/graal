@@ -146,7 +146,8 @@ public final class IsomorphicPackingPhase extends BasePhase<LowTierContext> {
          * Get the alignment of a vector memory reference.
          */
         private <T extends FixedAccessNode & LIRLowerableAccess> int memoryAlignment(T access, int ivAdjust) {
-            final int byteCount = access.getAccessStamp().getStackKind().getByteCount();
+            final JavaKind accessJavaKind = access.getAccessStamp().getStackKind();
+            final int byteCount = accessJavaKind.getByteCount();
             // TODO: velt may be different to type at address
             final int vectorWidthInBytes = byteCount * context.getTargetProvider().getVectorDescription().maxVectorWidth(access.getAccessStamp());
 
@@ -155,9 +156,15 @@ public final class IsomorphicPackingPhase extends BasePhase<LowTierContext> {
                 return ALIGNMENT_BOTTOM;
             }
 
+            final int baseOffset = context.getMetaAccess().getArrayBaseOffset(accessJavaKind);
             final int offset = (int) access.getAddress().getMaxConstantDisplacement() + ivAdjust * byteCount;
-            final int offsetRemainder = offset % vectorWidthInBytes;
 
+            // Access is to the array header rather than elements of the array
+            if (offset < baseOffset) {
+                return ALIGNMENT_BOTTOM;
+            }
+
+            final int offsetRemainder = (offset - baseOffset) % vectorWidthInBytes;
             return offsetRemainder >= 0 ? offsetRemainder : offsetRemainder + vectorWidthInBytes;
         }
 
