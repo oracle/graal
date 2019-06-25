@@ -51,7 +51,7 @@ class LinuxPhysicalMemory extends PhysicalMemory {
 
         /** A sentinel unset value. */
         static final long UNSET_SENTINEL = Long.MIN_VALUE;
-        /** Prevent recursive invocation of size() from initializeSize() */
+        /** Prevent recursive invocation of size() from initializeSize(). */
         static AtomicBoolean initializeSize = new AtomicBoolean();
 
         /** The cached size of physical memory, or an unset value. */
