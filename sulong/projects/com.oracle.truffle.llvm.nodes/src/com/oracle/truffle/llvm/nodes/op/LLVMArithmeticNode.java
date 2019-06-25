@@ -29,7 +29,6 @@
  */
 package com.oracle.truffle.llvm.nodes.op;
 
-import com.oracle.truffle.api.CompilerAsserts;
 import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.dsl.Cached;
 import com.oracle.truffle.api.dsl.NodeChild;
@@ -46,11 +45,6 @@ import com.oracle.truffle.llvm.runtime.nodes.api.LLVMExpressionNode;
 public abstract class LLVMArithmeticNode extends LLVMExpressionNode {
 
     public abstract Object executeWithTarget(Object left, Object right);
-
-    protected static ToComparableValue createToComparable() {
-        CompilerAsserts.neverPartOfCompilation();
-        return ToComparableValueNodeGen.create();
-    }
 
     private abstract static class LLVMArithmeticOp {
 
@@ -76,7 +70,7 @@ public abstract class LLVMArithmeticNode extends LLVMExpressionNode {
         abstract LLVMArithmeticOpNode createFP80Node();
     }
 
-    private final LLVMArithmeticOp op;
+    final LLVMArithmeticOp op;
 
     LLVMArithmeticNode(ArithmeticOperation op) {
         switch (op) {
@@ -124,63 +118,129 @@ public abstract class LLVMArithmeticNode extends LLVMExpressionNode {
         }
     }
 
-    @Specialization
-    boolean doBoolean(boolean left, boolean right) {
-        return op.doBoolean(left, right);
+    public abstract static class LLVMI1ArithmeticNode extends LLVMArithmeticNode {
+
+        LLVMI1ArithmeticNode(ArithmeticOperation op) {
+            super(op);
+        }
+
+        @Specialization
+        boolean doBoolean(boolean left, boolean right) {
+            return op.doBoolean(left, right);
+        }
     }
 
-    @Specialization
-    byte doByte(byte left, byte right) {
-        return op.doByte(left, right);
+    public abstract static class LLVMI8ArithmeticNode extends LLVMArithmeticNode {
+
+        LLVMI8ArithmeticNode(ArithmeticOperation op) {
+            super(op);
+        }
+
+        @Specialization
+        byte doByte(byte left, byte right) {
+            return op.doByte(left, right);
+        }
     }
 
-    @Specialization
-    short doShort(short left, short right) {
-        return op.doShort(left, right);
+    public abstract static class LLVMI16ArithmeticNode extends LLVMArithmeticNode {
+
+        LLVMI16ArithmeticNode(ArithmeticOperation op) {
+            super(op);
+        }
+
+        @Specialization
+        short doShort(short left, short right) {
+            return op.doShort(left, right);
+        }
     }
 
-    @Specialization
-    int doInt(int left, int right) {
-        return op.doInt(left, right);
+    public abstract static class LLVMI32ArithmeticNode extends LLVMArithmeticNode {
+
+        LLVMI32ArithmeticNode(ArithmeticOperation op) {
+            super(op);
+        }
+
+        @Specialization
+        int doInt(int left, int right) {
+            return op.doInt(left, right);
+        }
     }
 
-    @Specialization
-    long doLong(long left, long right) {
-        return op.doLong(left, right);
+    public abstract static class LLVMI64ArithmeticNode extends LLVMArithmeticNode {
+
+        LLVMI64ArithmeticNode(ArithmeticOperation op) {
+            super(op);
+        }
+
+        @Specialization
+        long doLong(long left, long right) {
+            return op.doLong(left, right);
+        }
     }
 
-    @Specialization
-    LLVMIVarBit doVarBit(LLVMIVarBit left, LLVMIVarBit right) {
-        return op.doVarBit(left, right);
+    public abstract static class LLVMIVarBitArithmeticNode extends LLVMArithmeticNode {
+
+        LLVMIVarBitArithmeticNode(ArithmeticOperation op) {
+            super(op);
+        }
+
+        @Specialization
+        LLVMIVarBit doVarBit(LLVMIVarBit left, LLVMIVarBit right) {
+            return op.doVarBit(left, right);
+        }
     }
 
-    boolean isFPOp() {
-        CompilerAsserts.neverPartOfCompilation();
-        return op instanceof LLVMFPArithmeticOp;
+    public abstract static class LLVMFloatingArithmeticNode extends LLVMArithmeticNode {
+
+        LLVMFloatingArithmeticNode(ArithmeticOperation op) {
+            super(op);
+            assert this.op instanceof LLVMFPArithmeticOp;
+        }
+
+        LLVMFPArithmeticOp fpOp() {
+            return (LLVMFPArithmeticOp) op;
+        }
     }
 
-    LLVMFPArithmeticOp fpOp() {
-        return (LLVMFPArithmeticOp) op;
+    public abstract static class LLVMFloatArithmeticNode extends LLVMFloatingArithmeticNode {
+
+        LLVMFloatArithmeticNode(ArithmeticOperation op) {
+            super(op);
+        }
+
+        @Specialization
+        float doFloat(float left, float right) {
+            return fpOp().doFloat(left, right);
+        }
     }
 
-    @Specialization(guards = "isFPOp()")
-    float doFloat(float left, float right) {
-        return fpOp().doFloat(left, right);
+    public abstract static class LLVMDoubleArithmeticNode extends LLVMFloatingArithmeticNode {
+
+        LLVMDoubleArithmeticNode(ArithmeticOperation op) {
+            super(op);
+        }
+
+        @Specialization
+        double doDouble(double left, double right) {
+            return fpOp().doDouble(left, right);
+        }
     }
 
-    @Specialization(guards = "isFPOp()")
-    double doDouble(double left, double right) {
-        return fpOp().doDouble(left, right);
-    }
+    public abstract static class LLVMFP80ArithmeticNode extends LLVMFloatingArithmeticNode {
 
-    LLVMArithmeticOpNode createFP80Node() {
-        return fpOp().createFP80Node();
-    }
+        LLVMFP80ArithmeticNode(ArithmeticOperation op) {
+            super(op);
+        }
 
-    @Specialization(guards = "isFPOp()")
-    LLVM80BitFloat do80BitFloat(LLVM80BitFloat left, LLVM80BitFloat right,
-                    @Cached("createFP80Node()") LLVMArithmeticOpNode node) {
-        return (LLVM80BitFloat) node.execute(left, right);
+        LLVMArithmeticOpNode createFP80Node() {
+            return fpOp().createFP80Node();
+        }
+
+        @Specialization
+        LLVM80BitFloat do80BitFloat(LLVM80BitFloat left, LLVM80BitFloat right,
+                        @Cached("createFP80Node()") LLVMArithmeticOpNode node) {
+            return (LLVM80BitFloat) node.execute(left, right);
+        }
     }
 
     private static final LLVMFPArithmeticOp ADD = new LLVMFPArithmeticOp() {
