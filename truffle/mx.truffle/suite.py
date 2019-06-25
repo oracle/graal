@@ -421,7 +421,7 @@ suite = {
       "sourceDirs" : ["src"],
       "dependencies" : [
         "com.oracle.truffle.api.object",
-        "com.oracle.truffle.object.basic",
+        "com.oracle.truffle.object",
         "com.oracle.truffle.object.dsl.processor",
         "mx:JUNIT",
       ],
@@ -463,20 +463,11 @@ suite = {
       "workingSets" : "Truffle",
     },
 
-    "com.oracle.truffle.object.basic" : {
-      "subDir" : "src",
-      "sourceDirs" : ["src"],
-      "dependencies" : ["com.oracle.truffle.object"],
-      "checkstyle" : "com.oracle.truffle.api",
-      "javaCompliance" : "8+",
-      "workingSets" : "Truffle",
-    },
-
     "com.oracle.truffle.object.basic.test" : {
       "subDir" : "src",
       "sourceDirs" : ["src"],
       "dependencies" : [
-        "com.oracle.truffle.object.basic",
+        "com.oracle.truffle.object",
         "mx:JUNIT"
       ],
       "checkstyle" : "com.oracle.truffle.dsl.processor",
@@ -799,7 +790,7 @@ suite = {
         "com.oracle.truffle.api.profiles",
         "com.oracle.truffle.api.debug",
         "com.oracle.truffle.api.utilities",
-        "com.oracle.truffle.object.basic",
+        "com.oracle.truffle.object",
         "com.oracle.truffle.api.object.dsl",
         "com.oracle.truffle.polyglot",
       ],
