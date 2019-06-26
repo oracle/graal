@@ -55,12 +55,13 @@ final class Target_java_lang_reflect_Proxy {
     }
 
     /** We have our own proxy cache so mark the original one as deleted. */
-    @Delete
-    @TargetElement(onlyWith = JDK11OrLater.class)
+    @Delete //
+    @TargetElement(onlyWith = JDK11OrLater.class) //
     private static Target_jdk_internal_loader_ClassLoaderValue proxyCache;
 
     @Substitute
     @TargetElement(onlyWith = JDK11OrLater.class)
+    @SuppressWarnings("unused")
     private static Constructor<?> getProxyConstructor(Class<?> caller, ClassLoader loader, Class<?>... interfaces) {
         final Class<?> cl = ImageSingletons.lookup(DynamicProxyRegistry.class).getProxyClass(interfaces);
         try {
