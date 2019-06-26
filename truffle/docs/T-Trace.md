@@ -27,7 +27,7 @@ Apply the **T-Trace** insights to scripts running in *node.js* or
 is possible and ready to be explored.
 
 GraalVM comes with a unified set of prepackaged high performance **T-Trace** 
-insights at your convenice. In addition to that one can easily create own
+insights at your convenience. In addition to that one can easily create own
 **T-Trace** insights in a language of one's choice. The insights are well
 crafted code that, when enabled, gets automatically spread around the codebase 
 of one's application and is applied at critical tracing pointcuts.
@@ -77,7 +77,7 @@ Industry well known tools like
 remotely running applications and the **T-Trace** insights dynamically 
 applied to each of them. Enlist available *HotSpot* or *native-image* based
 virtual machines. Connect to them on demand. Apply selected insights. Let
-them gather their data. Obtain the data and analyse them with the integrated
+them gather their data. Obtain the data and analysis them with the integrated
 graphical tools. Disable the insights and disconnect. Let the application run
 at the original full speed.
 
