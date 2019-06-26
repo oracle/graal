@@ -2,6 +2,9 @@
 
 This changelog summarizes major changes between Truffle versions relevant to languages implementors building upon the Truffle framework. The main focus is on APIs exported by Truffle.
 
+## Version 19.2.0
+* Added sub-process output (error output) [redirection into OutputStream](https://www.graalvm.org/truffle/javadoc/org/graalvm/polyglot/io/ProcessHandler.Redirect.html#stream-java.io.OutputStream-).
+
 ## Version 19.1.0
 * `@GenerateUncached` is now inherited by subclasses.
 * `NodeFactory` now supports `getUncachedInstance` that returns the uncached singleton.  

@@ -377,12 +377,12 @@ public abstract class Accessor {
 
         public abstract Map<String, String> getProcessEnvironment(Object polyglotLanguageContext);
 
-        public abstract ProcessHandler.ProcessCommand newProcessCommand(Object vmObject, List<String> cmd, String cwd, Map<String, String> environment, boolean redirectErrorStream,
-                        ProcessHandler.Redirect inputRedirect, ProcessHandler.Redirect outputRedirect, ProcessHandler.Redirect errorRedirect);
+        public abstract Process createSubProcess(Object polyglotLanguageContext, List<String> cmd, String cwd, Map<String, String> environment, boolean redirectErrorStream,
+                        ProcessHandler.Redirect inputRedirect, ProcessHandler.Redirect outputRedirect, ProcessHandler.Redirect errorRedirect) throws IOException;
 
-        public abstract ProcessHandler getProcessHandler(Object polylgotLanguageContext);
+        public abstract boolean hasDefaultProcessHandler(Object polyglotLanguageContext);
 
-        public abstract boolean isDefaultProcessHandler(ProcessHandler handler);
+        public abstract ProcessHandler.Redirect createRedirectToOutputStream(Object vmObject, OutputStream stream);
     }
 
     public abstract static class LanguageSupport {

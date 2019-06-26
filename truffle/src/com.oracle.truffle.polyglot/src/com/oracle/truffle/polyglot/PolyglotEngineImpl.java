@@ -787,6 +787,7 @@ final class PolyglotEngineImpl extends AbstractPolyglotImpl.AbstractEngineImpl i
                             stillRunning = true;
                         }
                     }
+                    context.checkSubProcessFinished();
                 } catch (Throwable e) {
                     if (!ignoreCloseFailure) {
                         throw e;
