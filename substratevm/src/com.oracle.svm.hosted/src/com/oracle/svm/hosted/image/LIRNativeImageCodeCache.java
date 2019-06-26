@@ -31,12 +31,14 @@ import java.util.Map.Entry;
 
 import org.graalvm.compiler.code.CompilationResult;
 import org.graalvm.compiler.code.CompilationResult.CodeAnnotation;
+import org.graalvm.compiler.core.common.GraalOptions;
 import org.graalvm.compiler.core.common.NumUtil;
 import org.graalvm.compiler.debug.DebugContext;
 import org.graalvm.compiler.debug.Indent;
 import org.graalvm.word.WordFactory;
 
 import com.oracle.objectfile.ObjectFile;
+import com.oracle.svm.core.option.HostedOptionValues;
 import com.oracle.svm.core.util.VMError;
 import com.oracle.svm.hosted.code.HostedPatcher;
 import com.oracle.svm.hosted.image.NativeBootImage.NativeTextSectionImpl;
@@ -50,7 +52,6 @@ import jdk.vm.ci.code.site.Reference;
 
 public class LIRNativeImageCodeCache extends NativeImageCodeCache {
 
-    public static final int CODE_ALIGNMENT = 16;
     private static final byte CODE_FILLER_BYTE = (byte) 0xCC;
 
     private int codeCacheSize;
@@ -83,7 +84,7 @@ public class LIRNativeImageCodeCache extends NativeImageCodeCache {
                 CompilationResult compilation = entry.getValue();
                 compilationsByStart.put(codeCacheSize, compilation);
                 method.setCodeAddressOffset(codeCacheSize);
-                codeCacheSize = NumUtil.roundUp(codeCacheSize + compilation.getTargetCodeSize(), CODE_ALIGNMENT);
+                codeCacheSize = NumUtil.roundUp(codeCacheSize + compilation.getTargetCodeSize(), codeAlignment());
             }
 
             buildRuntimeMetadata(MethodPointer.factory(firstMethod), WordFactory.unsigned(codeCacheSize));
@@ -191,7 +192,7 @@ public class LIRNativeImageCodeCache extends NativeImageCodeCache {
             int codeSize = compilation.getTargetCodeSize();
             buffer.putBytes(compilation.getTargetCode(), 0, codeSize);
 
-            for (int i = codeSize; i < NumUtil.roundUp(codeSize, CODE_ALIGNMENT); i++) {
+            for (int i = codeSize; i < NumUtil.roundUp(codeSize, codeAlignment()); i++) {
                 buffer.putByte(CODE_FILLER_BYTE);
             }
         }
@@ -213,5 +214,9 @@ public class LIRNativeImageCodeCache extends NativeImageCodeCache {
     public String[] getCCInputFiles(Path tempDirectory, String imageName) {
         String relocatableFileName = tempDirectory.resolve(imageName + ObjectFile.getFilenameSuffix()).toString();
         return new String[]{relocatableFileName};
+    }
+
+    private static int codeAlignment() {
+        return GraalOptions.LoopHeaderAlignment.getValue(HostedOptionValues.singleton());
     }
 }
