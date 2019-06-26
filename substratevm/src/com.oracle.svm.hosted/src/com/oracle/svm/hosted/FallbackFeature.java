@@ -58,6 +58,7 @@ public class FallbackFeature implements Feature {
 
     private final List<String> reflectionCalls = new ArrayList<>();
     private final List<String> resourceCalls = new ArrayList<>();
+    private final List<String> jniCalls = new ArrayList<>();
     private final List<String> proxyCalls = new ArrayList<>();
 
     private static class AutoProxyInvoke {
@@ -170,6 +171,8 @@ public class FallbackFeature implements Feature {
 
             addCheck(Proxy.class.getMethod("getProxyClass", ClassLoader.class, Class[].class), this::collectProxyInvokes);
             addCheck(Proxy.class.getMethod("newProxyInstance", ClassLoader.class, Class[].class, InvocationHandler.class), this::collectProxyInvokes);
+
+            addCheck(System.class.getMethod("loadLibrary", String.class), this::collectJNIInvokes);
         } catch (NoSuchMethodException e) {
             throw VMError.shouldNotReachHere("Registering ReflectionInvocationChecks failed", e);
         }
@@ -181,6 +184,10 @@ public class FallbackFeature implements Feature {
 
     private void collectResourceInvokes(ReflectionInvocationCheck check, InvokeTypeFlow invoke) {
         resourceCalls.add("Resource access method " + check.locationString(invoke));
+    }
+
+    private void collectJNIInvokes(ReflectionInvocationCheck check, InvokeTypeFlow invoke) {
+        jniCalls.add("System method " + check.locationString(invoke));
     }
 
     private void collectProxyInvokes(ReflectionInvocationCheck check, InvokeTypeFlow invoke) {
@@ -252,6 +259,7 @@ public class FallbackFeature implements Feature {
 
     public FallbackImageRequest reflectionFallback = null;
     public FallbackImageRequest resourceFallback = null;
+    public FallbackImageRequest jniFallback = null;
     public FallbackImageRequest proxyFallback = null;
 
     @Override
@@ -286,6 +294,10 @@ public class FallbackFeature implements Feature {
         if (!resourceCalls.isEmpty()) {
             resourceCalls.add(ABORT_MSG_PREFIX + " due to accessing resources without configuration.");
             resourceFallback = new FallbackImageRequest(resourceCalls);
+        }
+        if (!jniCalls.isEmpty()) {
+            jniCalls.add(ABORT_MSG_PREFIX + " due to loading native libraries without configuration.");
+            jniFallback = new FallbackImageRequest(jniCalls);
         }
         if (!proxyCalls.isEmpty()) {
             proxyCalls.add(ABORT_MSG_PREFIX + " due to dynamic proxy use without configuration.");
