@@ -283,14 +283,15 @@ class FieldTable {
                             i++;
                             continue mainloop;
                         }
+                        schedule.add(new ScheduleEntry(order[i], aligned));
+                        counts[i]--;
                         // We created a new hole of size `misaligned`. Try to fill it.
                         scheduleHole(end - misalignment, end, counts, schedule, nextHoles);
-                        schedule.add(new ScheduleEntry(order[i], aligned));
                         newEnd = aligned;
                     } else {
+                        counts[i]--;
                         schedule.add(new ScheduleEntry(order[i], newEnd));
                     }
-                    counts[i]--;
                     end = newEnd;
                     holeSize = end - holeStart;
                 }

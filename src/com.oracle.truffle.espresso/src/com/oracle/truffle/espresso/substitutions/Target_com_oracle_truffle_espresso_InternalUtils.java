@@ -1,17 +1,56 @@
 package com.oracle.truffle.espresso.substitutions;
 
+import com.oracle.truffle.espresso.impl.Field;
 import com.oracle.truffle.espresso.impl.Klass;
 import com.oracle.truffle.espresso.impl.ObjectKlass;
 import com.oracle.truffle.espresso.meta.JavaKind;
+import com.oracle.truffle.espresso.meta.Meta;
 import com.oracle.truffle.espresso.runtime.StaticObject;
 import sun.misc.Unsafe;
+
+import java.util.Arrays;
 
 @EspressoSubstitutions
 public class Target_com_oracle_truffle_espresso_InternalUtils {
 
     @Substitution
-    public static @Host(byte[].class) StaticObject getUnderlyingFieldArray(@Host(Object.class) StaticObject self) {
-        return new StaticObject(self.getKlass().getMeta().Byte.getArrayClass(), self.cloneFields());
+    public static @Host(String[].class) StaticObject getUnderlyingPrimitiveFieldArray(@Host(Class.class) StaticObject clazz) {
+        int i = 0;
+        Klass k = clazz.getMirrorKlass();
+        int maxLen;
+        if (k instanceof ObjectKlass) {
+            maxLen = ((ObjectKlass) k).getPrimitiveFieldTotalByteCount();
+        } else {
+            return new StaticObject(k.getMeta().String.getArrayClass(), StaticObject.EMPTY_ARRAY);
+        }
+        StaticObject[] result = new StaticObject[maxLen];
+        Meta meta = k.getMeta();
+        StaticObject unused = meta.toGuestString("<>");
+        Arrays.fill(result, unused);
+        try {
+            while (true) {
+                Field f = k.lookupFieldTable(i);
+                if (!f.isStatic() && f.getKind().isPrimitive()) {
+                    for (int j = f.getFieldIndex(); j < f.getFieldIndex() + f.getKind().getByteCount(); j++) {
+                        result[j] = meta.toGuestString(f.getName());
+                    }
+                }
+                i++;
+            }
+        } catch (AssertionError | IndexOutOfBoundsException e) {
+
+        }
+        return new StaticObject(k.getMeta().String.getArrayClass(), result);
+    }
+
+    @Substitution
+    public static int getPrimitiveFieldByteCount(@Host(Class.class) StaticObject clazz) {
+        Klass k = clazz.getMirrorKlass();
+        if (k instanceof ObjectKlass) {
+            return ((ObjectKlass) k).getPrimitiveFieldTotalByteCount();
+        } else {
+            return 0;
+        }
     }
 
     @Substitution

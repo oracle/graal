@@ -9,14 +9,22 @@ import com.oracle.truffle.espresso.runtime.StaticObject;
  * @see StaticObject
  */
 public class InternalUtils {
-    public static final byte[] EMPTY_BYTE_ARRAY = new byte[0];
+    public static final String[] EMPTY_BYTE_ARRAY = new String[0];
 
     /**
-     * @param obj the object you want to see the underlying representation of primitive fields.
+     * @param clazz the class you want to see the underlying representation of primitive fields.
      * @return a copy of how primitive fields are represented in memory.
      */
-    public static byte[] getUnderlyingFieldArray(@SuppressWarnings("unused") Object obj) {
+    public static String[] getUnderlyingPrimitiveFieldArray(@SuppressWarnings("unused") Class<?> clazz) {
         return EMPTY_BYTE_ARRAY;
+    }
+
+    /**
+     * @param clazz The class you want to know how many bytes are required for the primitive fields.
+     * @return the requested number of bytes
+     */
+    public static int getPrimitiveFieldByteCount(@SuppressWarnings("unused") Class<?> clazz) {
+        return 0;
     }
 
     /**
