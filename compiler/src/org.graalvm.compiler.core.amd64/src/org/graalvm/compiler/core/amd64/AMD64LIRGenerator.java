@@ -97,6 +97,7 @@ import org.graalvm.compiler.lir.amd64.AMD64StringLatin1InflateOp;
 import org.graalvm.compiler.lir.amd64.AMD64StringUTF16CompressOp;
 import org.graalvm.compiler.lir.amd64.AMD64ZapRegistersOp;
 import org.graalvm.compiler.lir.amd64.AMD64ZapStackOp;
+import org.graalvm.compiler.lir.amd64.vector.AMD64VectorMove;
 import org.graalvm.compiler.lir.amd64.vector.AMD64VectorShuffle;
 import org.graalvm.compiler.lir.gen.LIRGenerationResult;
 import org.graalvm.compiler.lir.gen.LIRGenerator;
@@ -689,7 +690,38 @@ public abstract class AMD64LIRGenerator extends LIRGenerator {
     public Variable emitExtract(LIRKind vectorKind, Value vector, int index) {
         final AMD64Kind scalarKind = ((AMD64Kind) vectorKind.getPlatformKind()).getScalar();
         Variable result = newVariable(LIRKind.value(scalarKind));
-        append(new AMD64VectorShuffle.ExtractIntOp(asAllocatable(result), asAllocatable(vector), index * scalarKind.getSizeInBytes()));
+
+        int vectorSize = vectorKind.getPlatformKind().getSizeInBytes();
+        int vectorLength = vectorKind.getPlatformKind().getVectorLength();
+
+        final int XMM_LENGTH_IN_ELEMENTS = 16 / scalarKind.getSizeInBytes();
+
+        if (index >= XMM_LENGTH_IN_ELEMENTS) {
+            int extractDepth = index / XMM_LENGTH_IN_ELEMENTS;
+            index %= XMM_LENGTH_IN_ELEMENTS;
+            Variable temp = newVariable(vectorKind);
+            append(new AMD64VectorShuffle.Extract128Op(asAllocatable(temp), asAllocatable(vector), extractDepth));
+        } else switch (scalarKind) {
+            case BYTE:
+                append(new AMD64VectorShuffle.ExtractByteOp(asAllocatable(result), asAllocatable(vector), index));
+                break;
+            case WORD:
+                append(new AMD64VectorShuffle.ExtractShortOp(asAllocatable(result), asAllocatable(vector), index));
+                break;
+            case DWORD:
+                append(new AMD64VectorShuffle.ExtractIntOp(asAllocatable(result), asAllocatable(vector), index));
+                break;
+            case QWORD:
+                append(new AMD64VectorShuffle.ExtractLongOp(asAllocatable(result), asAllocatable(vector), index));
+                break;
+            case SINGLE:
+                append(new AMD64VectorShuffle.ExtractFloatOp(asAllocatable(result), asAllocatable(vector), index));
+                break;
+            case DOUBLE:
+                append(new AMD64VectorShuffle.ExtractDoubleOp(asAllocatable(result), asAllocatable(vector), index));
+                break;
+        }
+
         return result;
     }
 

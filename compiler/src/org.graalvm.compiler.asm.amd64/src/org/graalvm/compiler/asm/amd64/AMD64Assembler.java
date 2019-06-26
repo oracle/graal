@@ -1180,6 +1180,7 @@ public class AMD64Assembler extends AMD64BaseAssembler {
         // @formatter:off
         public static final VexMRIOp VEXTRACTF128 = new VexMRIOp("VEXTRACTF128", P_66, M_0F3A, W0, 0x19, VEXOpAssertion.AVX1_256ONLY);
         public static final VexMRIOp VEXTRACTI128 = new VexMRIOp("VEXTRACTI128", P_66, M_0F3A, W0, 0x39, VEXOpAssertion.AVX2_256ONLY);
+        public static final VexMRIOp VEXTRACTPS   = new VexMRIOp("VEXTRACTPS",   P_66, M_0F3A, WIG,0x17, VEXOpAssertion.XMM_CPU);
         public static final VexMRIOp VPEXTRB      = new VexMRIOp("VPEXTRB",      P_66, M_0F3A, W0, 0x14, VEXOpAssertion.XMM_CPU);
         public static final VexMRIOp VPEXTRW      = new VexMRIOp("VPEXTRW",      P_66, M_0F3A, W0, 0x15, VEXOpAssertion.XMM_CPU);
         public static final VexMRIOp VPEXTRD      = new VexMRIOp("VPEXTRD",      P_66, M_0F3A, W0, 0x16, VEXOpAssertion.XMM_CPU);
