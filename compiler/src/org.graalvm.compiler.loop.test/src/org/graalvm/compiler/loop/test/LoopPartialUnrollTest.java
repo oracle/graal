@@ -218,16 +218,13 @@ public class LoopPartialUnrollTest extends GraalCompilerTest {
         test("testSignExtensionSnippet", 9L);
     }
 
-    static final Object CONSTANT = new Object();
-    static int sum = 0;
-
     public static Object objectPhi(int n) {
-        Integer v = new Integer(n);
-        GraalDirectives.blackhole(v);
+        Integer v = Integer.valueOf(200);
+        GraalDirectives.blackhole(v); // Prevents PEA
         Integer r = 1;
 
         for (int i = 0; iterationCount(100, i < n); i++) {
-            sum += r;
+            GraalDirectives.blackhole(r); // Create a phi of two loop invariants
             r = v;
         }
 
