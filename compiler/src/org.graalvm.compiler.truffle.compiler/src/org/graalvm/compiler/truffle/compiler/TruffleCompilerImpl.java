@@ -551,6 +551,14 @@ public abstract class TruffleCompilerImpl implements TruffleCompiler {
     }
 
     /**
+     * Calls {@link System#exit(int)} in the runtime embedding the Graal compiler. This will be a
+     * different runtime than Graal's runtime in the case of libgraal.
+     */
+    protected void exitHostVM(int status) {
+        System.exit(status);
+    }
+
+    /**
      * Creates the {@link CompilationResult} to be used for a Truffle compilation.
      */
     protected abstract CompilationResult createCompilationResult(String name, CompilationIdentifier compilationIdentifier, CompilableTruffleAST compilable);
@@ -611,6 +619,11 @@ public abstract class TruffleCompilerImpl implements TruffleCompiler {
         @Override
         protected DebugContext createRetryDebugContext(DebugContext initialDebug, OptionValues options, PrintStream logStream) {
             return createDebugContext(options, compilationId, compilable, logStream);
+        }
+
+        @Override
+        protected void exitHostVM(int status) {
+            TruffleCompilerImpl.this.exitHostVM(status);
         }
 
         @Override

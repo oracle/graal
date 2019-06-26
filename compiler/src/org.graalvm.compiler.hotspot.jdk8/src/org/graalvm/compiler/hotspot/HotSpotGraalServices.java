@@ -26,18 +26,16 @@ package org.graalvm.compiler.hotspot;
 
 import java.util.Objects;
 
+import jdk.vm.ci.hotspot.HotSpotJVMCIRuntime;
 import jdk.vm.ci.hotspot.HotSpotMetaData;
 import jdk.vm.ci.hotspot.HotSpotObjectConstantScope;
+import jdk.vm.ci.services.Services;
 
 /**
- * Interface to HotSpot specific functionality that abstracts over which JDK version Graal is
- * running on.
+ * JDK 8 version of {@code HotSpotGraalServices}.
  */
 public class HotSpotGraalServices {
 
-    /**
-     * Get the implicit exceptions section of a {@code HotSpotMetaData} if it exists.
-     */
     @SuppressWarnings("unused")
     public static byte[] getImplicitExceptionBytes(HotSpotMetaData metaData) {
         // Only supported by JDK13
@@ -52,5 +50,13 @@ public class HotSpotGraalServices {
     public static CompilationContext openLocalCompilationContext(Object description) {
         HotSpotObjectConstantScope impl = HotSpotObjectConstantScope.openLocalScope(Objects.requireNonNull(description));
         return impl == null ? null : new CompilationContext(impl);
+    }
+
+    public static void exit(int status) {
+        if (Services.IS_IN_NATIVE_IMAGE) {
+            HotSpotJVMCIRuntime.runtime().exitHotSpot(status);
+        } else {
+            System.exit(status);
+        }
     }
 }

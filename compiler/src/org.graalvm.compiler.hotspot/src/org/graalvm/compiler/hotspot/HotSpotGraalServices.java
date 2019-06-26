@@ -69,4 +69,13 @@ public class HotSpotGraalServices {
     public static CompilationContext openLocalCompilationContext(Object description) {
         throw shouldNotReachHere();
     }
+
+    /**
+     * Exits Graal's runtime. This calls {@link System#exit(int)} in HotSpot's runtime if possible
+     * otherwise calls {@link System#exit(int)} in the current runtime.
+     */
+    @SuppressWarnings("unused")
+    public static void exit(int status) {
+        throw shouldNotReachHere();
+    }
 }
