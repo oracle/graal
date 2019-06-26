@@ -281,7 +281,7 @@ public final class PosixJavaNetSubstitutions {
 }
 
 /* { Allow names with non-standard names: Checkstyle: stop */
-@TargetClass(className = "java.net.PlainDatagramSocketImpl")
+@TargetClass(className = "java.net.PlainDatagramSocketImpl", onlyWith = JDK11OrEarlier.class)
 @Platforms({Platform.LINUX.class, Platform.DARWIN.class})
 final class Target_java_net_PlainDatagramSocketImpl {
 
@@ -3146,6 +3146,7 @@ final class Target_java_net_Inet6Address {
 
     @Alias static int INADDRSZ;
 
+    @TargetElement(onlyWith = JDK11OrEarlier.class) //
     @Alias int cached_scope_id;
 
     @Alias Target_java_net_Inet6Address_Inet6AddressHolder holder6;
