@@ -137,7 +137,7 @@ public final class TruffleProcessBuilder {
      *
      * @param enabled enables merging of standard error output into standard output
      * @return this {@link TruffleProcessBuilder builder}
-     * @since 20.0.0 beta 2
+     * @since 19.2.0
      */
     public TruffleProcessBuilder redirectErrorStream(boolean enabled) {
         this.redirectErrorStream = enabled;

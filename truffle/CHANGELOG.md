@@ -2,6 +2,9 @@
 
 This changelog summarizes major changes between Truffle versions relevant to languages implementors building upon the Truffle framework. The main focus is on APIs exported by Truffle.
 
+## Version 19.2.0
+* Added sub-process output (error output) [redirection into OutputStream](https://www.graalvm.org/truffle/javadoc/org/graalvm/polyglot/io/ProcessHandler.Redirect.html#stream-java.io.OutputStream-).
+
 ## Version 19.1.0
 * `@GenerateUncached` is now inherited by subclasses.
 * `NodeFactory` now supports `getUncachedInstance` that returns the uncached singleton.  
@@ -10,10 +13,6 @@ This changelog summarizes major changes between Truffle versions relevant to lan
 * `NodeFactory` now supports `getUncachedInstance` that returns the uncached singleton. 
 * `@GenerateUncached` can now be used in combination with `@NodeChild` if execute signatures for all arguments are present.
 * Removed deprecated automatic registration of the language class as a service.
-* Added sub-process output (error output) [redirection into OutputStream](https://www.graalvm.org/truffle/javadoc/org/graalvm/polyglot/io/ProcessHandler.Redirect.html#stream-java.io.OutputStream-).
-* Added sub-process output (error output) [redirection into OutputStream](https://www.graalvm.org/truffle/javadoc/com/oracle/truffle/api/io/TruffleProcessBuilder.html#createRedirectToStream-java.io.OutputStream-).
-
-## Version 20.0.0 Beta 1
 * The [LanguageProvider](https://www.graalvm.org/truffle/javadoc/org/graalvm/polyglot/tck/LanguageProvider.html#createIdentityFunctionSnippet-org.graalvm.polyglot.Context-) can override the default verfication of the TCK `IdentityFunctionTest`.
 * Removed deprecated and misspelled method `TruffleStackTrace#getStacktrace`.
 * Removed deprecated methods`TruffleStackTraceElement#getStackTrace` and `TruffleStackTraceElement#fillIn` (use methods of `TruffleStackTrace` instead).
