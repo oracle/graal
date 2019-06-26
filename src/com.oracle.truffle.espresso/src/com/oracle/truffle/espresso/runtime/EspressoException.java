@@ -41,6 +41,7 @@ public final class EspressoException extends RuntimeException implements Truffle
         this.exception = exception;
     }
 
+    @SuppressWarnings("sync-override")
     @Override
     public Throwable fillInStackTrace() {
         return this;
