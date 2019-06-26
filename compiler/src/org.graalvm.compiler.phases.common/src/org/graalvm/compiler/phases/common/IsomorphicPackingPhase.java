@@ -257,8 +257,7 @@ public final class IsomorphicPackingPhase extends BasePhase<LowTierContext> {
             }
 
             // TODO: pre-compute depth information
-            // TODO: calculate depth information to avoid recursing too far, doing unnecessary
-            // calculations
+            // TODO: calculate depth information to avoid recursing too far, doing unnecessary calculations
             // TODO: verify that at this stage it's even possible to get dependency cycles
 
             for (Node pred : deep.inputs()) {
@@ -725,6 +724,7 @@ public final class IsomorphicPackingPhase extends BasePhase<LowTierContext> {
             if (first instanceof ReadNode) {
                 final List<ReadNode> nodes = pack.getElements().stream().map(x -> (ReadNode) x).collect(Collectors.toList());
                 final VectorReadNode vectorRead = VectorReadNode.fromPackElements(nodes);
+                first.graph().add(vectorRead);
 
                 for (ReadNode node : nodes) {
                     node.setNext(null);
@@ -732,12 +732,14 @@ public final class IsomorphicPackingPhase extends BasePhase<LowTierContext> {
                 for (int i = 0; i < nodes.size(); i++) {
                     final ReadNode node = nodes.get(i);
                     final VectorExtractNode extractNode = new VectorExtractNode(node.getAccessStamp().unrestricted(), vectorRead, i);
+
+                    if (node.predecessor() != null) {
+                        node.predecessor().replaceFirstSuccessor(node, null);
+                    }
                     node.replaceAtUsagesAndDelete(extractNode);
 
                     first.graph().addOrUnique(extractNode);
                 }
-
-                first.graph().add(vectorRead);
 
                 if (!lastFixed.isEmpty() && lastFixed.element() instanceof FixedWithNextNode) {
                     ((FixedWithNextNode) lastFixed.poll()).setNext(vectorRead);
@@ -785,18 +787,16 @@ public final class IsomorphicPackingPhase extends BasePhase<LowTierContext> {
 
                 final VectorPackNode packX = new VectorPackNode(vectorInputStamp, nodes.stream().map(BinaryNode::getX).collect(Collectors.toList()));
                 final VectorPackNode packY = new VectorPackNode(vectorInputStamp, nodes.stream().map(BinaryNode::getY).collect(Collectors.toList()));
-                final VectorExtractNode firstBANExtractNode = new VectorExtractNode(firstBAN.stamp(view), firstBAN, 0);
+                first.graph().addOrUnique(packX);
+                first.graph().addOrUnique(packY);
 
+                final VectorExtractNode firstBANExtractNode = new VectorExtractNode(firstBAN.stamp(view), firstBAN, 0);
                 first.replaceAtUsages(firstBANExtractNode);
                 first.graph().addOrUnique(firstBANExtractNode);
 
-                firstBAN.setStamp(vectorInputStamp);
-
                 firstBAN.setX(packX);
                 firstBAN.setY(packY);
-
-                first.graph().addOrUnique(packX);
-                first.graph().addOrUnique(packY);
+                firstBAN.inferStamp();
 
                 // Link up the rest
                 for (int i = 1; i < nodes.size(); i++) {

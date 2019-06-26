@@ -194,8 +194,8 @@ public class AMD64Unary {
     public static class VectorReadMemory extends AMD64LIRInstruction implements ImplicitNullCheck {
         public static final LIRInstructionClass<VectorReadMemory> TYPE = LIRInstructionClass.create(VectorReadMemory.class);
 
-        @Def({REG}) private final AllocatableValue resultValue;
-        @Use({COMPOSITE}) private final AMD64AddressValue input;
+        @Def({REG}) private AllocatableValue resultValue;
+        @Use({COMPOSITE}) private AMD64AddressValue input;
 
         public VectorReadMemory(AllocatableValue resultValue, AMD64AddressValue input) {
             super(TYPE);
@@ -207,8 +207,8 @@ public class AMD64Unary {
         @Override
         public void emitCode(CompilationResultBuilder crb, AMD64MacroAssembler masm) {
             final Register result = asRegister(resultValue);
-            boolean isAvx = ((AMD64) masm.target.arch).getFeatures().contains(CPUFeature.AVX);
 
+            final boolean isAvx = ((AMD64) masm.target.arch).getFeatures().contains(CPUFeature.AVX);
             if (isAvx) {
                 masm.vmovdqu(result, input.toAddress());
             } else {
@@ -223,10 +223,10 @@ public class AMD64Unary {
     }
 
     public static class VectorWriteMemory extends AMD64LIRInstruction {
-        public static final LIRInstructionClass<VectorReadMemory> TYPE = LIRInstructionClass.create(VectorReadMemory.class);
+        public static final LIRInstructionClass<VectorWriteMemory> TYPE = LIRInstructionClass.create(VectorWriteMemory.class);
 
-        @Def({COMPOSITE}) private final AMD64AddressValue destination;
-        @Use({REG}) private final AllocatableValue inputValue;
+        @Use({COMPOSITE}) private AMD64AddressValue destination;
+        @Use({REG}) private AllocatableValue inputValue;
 
         public VectorWriteMemory(AMD64AddressValue destination, AllocatableValue inputValue) {
             super(TYPE);
@@ -238,9 +238,8 @@ public class AMD64Unary {
         @Override
         public void emitCode(CompilationResultBuilder crb, AMD64MacroAssembler masm) {
             final Register input = asRegister(inputValue);
-            PlatformKind kind = inputValue.getPlatformKind();
 
-            boolean isAvx = ((AMD64) masm.target.arch).getFeatures().contains(CPUFeature.AVX);
+            final boolean isAvx = ((AMD64) masm.target.arch).getFeatures().contains(CPUFeature.AVX);
             // TODO: Support different kinds of vector
             if (isAvx) {
                 masm.vmovdqu(destination.toAddress(), input);

@@ -164,6 +164,7 @@ public final class VectorSupport {
             replaceAtUsages(vectorValue);
             for (VectorExtractNode node : nodes) {
                 if (node.getUsageCount() == 1 && node.getUsageAt(0) == this) {
+                    node.removeUsage(this);
                     node.safeDelete();
                 }
             }
