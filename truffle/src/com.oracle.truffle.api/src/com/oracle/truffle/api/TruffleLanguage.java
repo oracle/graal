@@ -2065,7 +2065,7 @@ public abstract class TruffleLanguage<C> {
          * separator is {@code ':'}. On Windows it's {@code ';'}.
          *
          * @return the path separator
-         * @since 20.0.0 beta 1
+         * @since 19.1.0
          */
         @TruffleBoundary
         public String getPathSeparator() {
@@ -2108,7 +2108,7 @@ public abstract class TruffleLanguage<C> {
          * environment.
          *
          * @see #newProcessBuilder(java.lang.String...)
-         * @since 20.0.0 beta 2
+         * @since 19.1.0
          */
         public boolean isCreateProcessAllowed() {
             return AccessAPI.engineAccess().isCreateProcessAllowed(vmObject);
@@ -2119,7 +2119,7 @@ public abstract class TruffleLanguage<C> {
          *
          * @param command the executable and its arguments
          * @throws SecurityException when process creation is not allowed
-         * @since 20.0.0 beta 2
+         * @since 19.1.0
          */
         @TruffleBoundary
         public TruffleProcessBuilder newProcessBuilder(String... command) {
@@ -2139,7 +2139,7 @@ public abstract class TruffleLanguage<C> {
          * {@code Context} are returned.
          *
          * @return the process environment as a map of variable names to values
-         * @since 20.0.0 beta 2
+         * @since 19.1.0
          */
         @TruffleBoundary
         public Map<String, String> getEnvironment() {
