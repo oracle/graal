@@ -86,8 +86,10 @@ import org.graalvm.compiler.core.common.CompilationIdentifier;
 import org.graalvm.compiler.debug.DebugContext;
 import org.graalvm.compiler.debug.DebugOptions;
 import org.graalvm.compiler.debug.TTY;
+import org.graalvm.compiler.hotspot.CompilationContext;
 import org.graalvm.compiler.hotspot.CompilerConfigurationFactory;
 import org.graalvm.compiler.hotspot.HotSpotGraalOptionValues;
+import org.graalvm.compiler.hotspot.HotSpotGraalServices;
 import org.graalvm.compiler.options.OptionValues;
 import org.graalvm.compiler.truffle.common.CompilableTruffleAST;
 import org.graalvm.compiler.truffle.common.TruffleCompilation;
@@ -125,7 +127,6 @@ import org.graalvm.nativeimage.c.type.CTypeConversion;
 import org.graalvm.nativeimage.c.type.VoidPointer;
 import org.graalvm.word.WordFactory;
 
-import jdk.vm.ci.hotspot.HotSpotObjectConstantScope;
 import jdk.vm.ci.meta.ResolvedJavaType;
 
 /**
@@ -242,7 +243,7 @@ final class HotSpotToSVMEntryPoints {
                     JObject hsListener) {
         try (HotSpotToSVMScope scope = new HotSpotToSVMScope(DoCompile, env)) {
             TruffleCompilationIdentifier compilation = SVMObjectHandles.resolve(compilationHandle, TruffleCompilationIdentifier.class);
-            try (HotSpotObjectConstantScope hotSpotObjectConstantScope = HotSpotObjectConstantScope.openLocalScope(compilation)) {
+            try (CompilationContext hotSpotObjectConstantScope = HotSpotGraalServices.openLocalCompilationContext(compilation)) {
                 HotSpotTruffleCompilerImpl compiler = SVMObjectHandles.resolve(compilerHandle, HotSpotTruffleCompilerImpl.class);
                 TruffleDebugContext debugContext = SVMObjectHandles.resolve(debugContextHandle, TruffleDebugContext.class);
                 Map<String, Object> options = decodeOptions(env, hsOptions);
