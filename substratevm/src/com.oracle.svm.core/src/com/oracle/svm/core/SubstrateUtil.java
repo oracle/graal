@@ -222,9 +222,7 @@ public class SubstrateUtil {
     @NodeIntrinsic(BreakpointNode.class)
     public static native void breakpoint(Object arg0);
 
-    /**
-     * Fast power of 2 test.
-     */
+    @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
     public static boolean isPowerOf2(long value) {
         return (value & (value - 1)) == 0;
     }

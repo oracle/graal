@@ -489,6 +489,7 @@ public final class DynamicHub implements JavaKind.FormatWithToString, AnnotatedE
         return monitorOffset;
     }
 
+    @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
     public int getHashCodeOffset() {
         return hashCodeOffset;
     }

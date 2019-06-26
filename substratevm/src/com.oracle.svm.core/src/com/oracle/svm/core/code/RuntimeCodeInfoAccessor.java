@@ -50,7 +50,7 @@ import com.oracle.svm.core.c.NonmovableArray;
 import com.oracle.svm.core.c.NonmovableArrays;
 import com.oracle.svm.core.c.NonmovableObjectArray;
 import com.oracle.svm.core.c.UnmanagedReferenceWalkers;
-import com.oracle.svm.core.c.function.JavaMethodLiteral;
+import com.oracle.svm.core.c.UnmanagedReferenceWalkers.UnmanagedObjectReferenceWalker;
 import com.oracle.svm.core.code.InstalledCodeObserver.InstalledCodeObserverHandle;
 import com.oracle.svm.core.deopt.SubstrateInstalledCode;
 import com.oracle.svm.core.heap.CodeReferenceMapDecoder;
@@ -67,10 +67,10 @@ public class RuntimeCodeInfoAccessor implements CodeInfoAccessor {
         return SubstrateOptions.getRuntimeAssertionsForClass(RuntimeCodeInfoAccessor.class.getName());
     }
 
-    public static final CodeInfoHandle NULL_HANDLE = null;
+    /** Reference walker. A constant field so we always use the exact same object, do not inline! */
+    private static final UnmanagedObjectReferenceWalker REFERENCE_WALKER = RuntimeCodeInfoAccessor::walkReferences;
 
-    public static final JavaMethodLiteral<UnmanagedReferenceWalkers.ObjectReferenceWalkerFunction> walkReferencesFunction = JavaMethodLiteral.create(
-                    RuntimeCodeInfoAccessor.class, "walkReferences", ComparableWord.class, ObjectReferenceVisitor.class);
+    public static final CodeInfoHandle NULL_HANDLE = null;
 
     private final RuntimeCodeInfo codeCache;
 
@@ -293,7 +293,6 @@ public class RuntimeCodeInfoAccessor implements CodeInfoAccessor {
         cast(handle).setTier(tier);
     }
 
-    @SuppressWarnings("unused")
     static void walkReferences(ComparableWord handle, ObjectReferenceVisitor visitor) {
         RuntimeMethodInfo info = cast((CodeInfoHandle) handle);
         NonmovableArrays.walkUnmanagedObjectArray(info.getObjectFields(), visitor);
@@ -309,7 +308,7 @@ public class RuntimeCodeInfoAccessor implements CodeInfoAccessor {
 
     public static CodeInfoHandle allocateMethodInfo() {
         CodeInfoHandle handle = ImageSingletons.lookup(UnmanagedMemorySupport.class).calloc(WordFactory.unsigned(SizeOf.get(RuntimeMethodInfo.class)));
-        UnmanagedReferenceWalkers.singleton().register(walkReferencesFunction.getFunctionPointer(), handle);
+        UnmanagedReferenceWalkers.singleton().register(REFERENCE_WALKER, handle);
         NonmovableObjectArray<Object> objectFields = NonmovableArrays.createObjectArray(4);
         Object obj = haveAssertions() ? new UninterruptibleUtils.AtomicInteger(0) : new Object();
         NonmovableArrays.setObject(objectFields, 0, obj);
@@ -347,7 +346,7 @@ public class RuntimeCodeInfoAccessor implements CodeInfoAccessor {
 
         @Override
         public void run() {
-            boolean unregistered = UnmanagedReferenceWalkers.singleton().unregister(walkReferencesFunction.getFunctionPointer(), handle);
+            boolean unregistered = UnmanagedReferenceWalkers.singleton().unregister(REFERENCE_WALKER, handle);
             assert unregistered : "must have been present";
             releaseMethodInfoMemory(handle);
         }
