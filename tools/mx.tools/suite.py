@@ -161,8 +161,8 @@ suite = {
                 },
                 "windows" : {
                     "amd64" : {
-                        "urls" : ["https://lafo.ssw.uni-linz.ac.at/pub/graal-external-deps/visualvm/visualvm-19_0_0-11-1-windows-amd64.tar.gz"],
-                        "sha1" : "81e54a59dfa7b182de147f17ac89cd608c7e58f7",
+                        "urls" : ["https://lafo.ssw.uni-linz.ac.at/pub/graal-external-deps/visualvm/visualvm-19_0_0-11-2-windows-amd64.tar.gz"],
+                        "sha1" : "4cf41228f9530ed65e477aa99f41c52f65dbf9e2",
                     }
                 },
             }
