@@ -39,4 +39,13 @@ public class InternalUtils {
     public static int bytesUsed(Class<?> clazz) {
         return 0;
     }
+
+    /**
+     * Checks whether or not we are running in espresso.
+     * 
+     * @return true iff we are running in Espresso.
+     */
+    public static boolean inEspresso() {
+        return false;
+    }
 }

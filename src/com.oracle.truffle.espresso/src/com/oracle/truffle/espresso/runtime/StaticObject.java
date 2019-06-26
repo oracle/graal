@@ -844,7 +844,7 @@ public final class StaticObject implements TruffleObject {
     }
 
     public static long getArrayByteOffset(int index) {
-        return (long) Unsafe.ARRAY_INT_BASE_OFFSET + Unsafe.ARRAY_BYTE_INDEX_SCALE * index;
+        return Unsafe.ARRAY_INT_BASE_OFFSET + Unsafe.ARRAY_BYTE_INDEX_SCALE * (long) index;
     }
 
     public void setArrayByte(byte value, int index, Meta meta) {

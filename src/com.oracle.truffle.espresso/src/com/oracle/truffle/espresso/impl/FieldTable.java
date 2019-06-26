@@ -230,8 +230,6 @@ class FieldTable {
         }
     }
 
-    // TODO(garcia) Fill holes in parent's parents.
-
     /**
      * Greedily tries to fill the space between a parent's fields and its child.
      * 
@@ -249,8 +247,10 @@ class FieldTable {
             List<int[]> nextHoles = new ArrayList<>();
 
             scheduleHole(holeStart, holeEnd, counts, schedule, nextHoles);
-            for (int[] hole : leftoverHoles) {
-                scheduleHole(hole[0], hole[1], counts, schedule, nextHoles);
+            if (leftoverHoles != null) {
+                for (int[] hole : leftoverHoles) {
+                    scheduleHole(hole[0], hole[1], counts, schedule, nextHoles);
+                }
             }
 
             return new FillingSchedule(schedule, nextHoles);
@@ -278,13 +278,13 @@ class FieldTable {
                     if (newEnd % byteCount != 0) {
                         int misalignment = newEnd % byteCount;
                         int aligned = newEnd - misalignment;
-                        // We created a new hole of size `misaligned`. Try to fill it.
-                        scheduleHole(end - misalignment, end, counts, schedule, nextHoles);
                         if (aligned < holeStart) {
                             // re-aligning the store makes it overlap with somethig else: abort.
                             i++;
                             continue mainloop;
                         }
+                        // We created a new hole of size `misaligned`. Try to fill it.
+                        scheduleHole(end - misalignment, end, counts, schedule, nextHoles);
                         schedule.add(new ScheduleEntry(order[i], aligned));
                         newEnd = aligned;
                     } else {
@@ -326,7 +326,7 @@ class FieldTable {
 
         private FillingSchedule(List<ScheduleEntry> schedule, List<int[]> nextHoles) {
             this.schedule = schedule;
-            this.nextLeftoverHoles = nextHoles.toArray(EMPTY_INT_ARRAY_ARRAY);
+            this.nextLeftoverHoles = nextHoles.isEmpty() ? null : nextHoles.toArray(EMPTY_INT_ARRAY_ARRAY);
         }
 
         ScheduleEntry query(JavaKind kind) {
