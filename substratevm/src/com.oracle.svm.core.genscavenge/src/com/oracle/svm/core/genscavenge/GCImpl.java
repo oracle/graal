@@ -551,12 +551,6 @@ public class GCImpl implements GC {
         final Log trace = Log.noopLog().string("[GCImpl.cheneyScanFromRoots:").newline();
 
         try (Timer csfrt = cheneyScanFromRootsTimer.open()) {
-            /* Prepare to use the GreyToBlack visitors. */
-            final boolean objectVisitorPrologue = greyToBlackObjectVisitor.prologue();
-            assert objectVisitorPrologue : "greyToBlackObjectVisitor prologue fails";
-            final boolean objRefVisitorPrologue = greyToBlackObjRefVisitor.prologue();
-            assert objRefVisitorPrologue : "greyToBlackObjRefVisitor prologue fails";
-
             /* Take a snapshot of the heap so that I can visit all the promoted Objects. */
             /*
              * Debugging tip: I could move the taking of the snapshot and the scanning of grey
@@ -589,11 +583,8 @@ public class GCImpl implements GC {
             /* Visit all the Objects promoted since the snapshot. */
             scanGreyObjects();
 
-            /* Reset the GreyToBlackVisitors. */
-            final boolean objRefVisitorEpilogue = greyToBlackObjRefVisitor.epilogue();
-            assert objRefVisitorEpilogue : "greyToBlackObjRefVisitor epilogue fails";
-            final boolean objectVisitorEpilogue = greyToBlackObjectVisitor.epilogue();
-            assert objectVisitorEpilogue : "greyToBlackObjectVisitor epilogue fails";
+            /* Reset the GreyToBlackVisitor. */
+            greyToBlackObjectVisitor.reset();
         }
 
         trace.string("]").newline();
@@ -613,12 +604,6 @@ public class GCImpl implements GC {
         try (Timer csfdrt = cheneyScanFromDirtyRootsTimer.open()) {
 
             oldGen.emptyFromSpaceIntoToSpace();
-
-            /* Prepare to use the GreyToBlack visitors. */
-            final boolean objectVisitorPrologue = greyToBlackObjectVisitor.prologue();
-            assert objectVisitorPrologue : "greyToBlackObjectVisitor prologue fails";
-            final boolean objRefVisitorPrologue = greyToBlackObjRefVisitor.prologue();
-            assert objRefVisitorPrologue : "greyToBlackObjRefVisitor prologue fails";
 
             /* Take a snapshot of the heap so that I can visit all the promoted Objects. */
             /*
@@ -661,11 +646,8 @@ public class GCImpl implements GC {
             /* Visit all the Objects promoted since the snapshot, transitively. */
             scanGreyObjects();
 
-            /* Reset the GreyToBlackVisitors. */
-            final boolean objRefVisitorEpilogue = greyToBlackObjRefVisitor.epilogue();
-            assert objRefVisitorEpilogue : "greyToBlackObjRefVisitor epilogue fails";
-            final boolean objectVisitorEpilogue = greyToBlackObjectVisitor.epilogue();
-            assert objectVisitorEpilogue : "greyToBlackObjectVisitor epilogue fails";
+            /* Reset the GreyToBlackVisitor. */
+            greyToBlackObjectVisitor.reset();
         }
 
         trace.string("]").newline();

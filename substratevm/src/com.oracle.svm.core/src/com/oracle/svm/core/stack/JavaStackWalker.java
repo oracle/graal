@@ -212,12 +212,8 @@ public final class JavaStackWalker {
         throw VMError.shouldNotReachHere("Stack walk must walk only frames of known code");
     }
 
-    public static boolean walkCurrentThread(Pointer startSP, StackFrameVisitor visitor) {
-        return visitor.prologue() && walkCurrentThread0(startSP, visitor) && visitor.epilogue();
-    }
-
     @Uninterruptible(reason = "Prevent deoptimization of stack frames while in this method.")
-    private static boolean walkCurrentThread0(Pointer startSP, StackFrameVisitor visitor) {
+    public static boolean walkCurrentThread(Pointer startSP, StackFrameVisitor visitor) {
         CodePointer startIP = FrameAccess.singleton().readReturnAddress(startSP);
         return walkCurrentThreadWithForcedIP(startSP, startIP, visitor);
     }
@@ -227,14 +223,14 @@ public final class JavaStackWalker {
      * value from the stack. Intended for specific cases only, such as signal handlers.
      */
     @Uninterruptible(reason = "Prevent deoptimization of stack frames while in this method.")
-    public static boolean walkCurrentThreadWithForcedIP(Pointer startSP, CodePointer startIP, BasicStackFrameVisitor visitor) {
+    public static boolean walkCurrentThreadWithForcedIP(Pointer startSP, CodePointer startIP, StackFrameVisitor visitor) {
         JavaStackWalk walk = StackValue.get(JavaStackWalk.class);
         boolean hasFrames = initWalk(walk, startSP, startIP);
         return doWalkCurrentThread(walk, visitor, hasFrames);
     }
 
     @Uninterruptible(reason = "Prevent deoptimization of stack frames while in this method.", callerMustBe = true)
-    private static boolean doWalkCurrentThread(JavaStackWalk walk, BasicStackFrameVisitor visitor, boolean hasFrames) {
+    private static boolean doWalkCurrentThread(JavaStackWalk walk, StackFrameVisitor visitor, boolean hasFrames) {
         if (hasFrames) {
             while (true) {
                 CodeInfoAccessor accessor = KnownIntrinsics.convertUnknownValue(walk.getIPCodeInfoAccessor(), CodeInfoAccessor.class);
@@ -258,7 +254,7 @@ public final class JavaStackWalker {
     }
 
     @Uninterruptible(reason = "Wraps the now safe call to the possibly interruptible visitor.", calleeMustBe = false)
-    private static boolean callVisitor(JavaStackWalk walk, BasicStackFrameVisitor visitor) {
+    private static boolean callVisitor(JavaStackWalk walk, StackFrameVisitor visitor) {
         CodeInfoAccessor accessor = KnownIntrinsics.convertUnknownValue(walk.getIPCodeInfoAccessor(), CodeInfoAccessor.class);
         return visitor.visitFrame(walk.getSP(), walk.getPossiblyStaleIP(), accessor, walk.getIPCodeInfo(), Deoptimizer.checkDeoptimized(walk.getSP()));
     }
@@ -272,9 +268,6 @@ public final class JavaStackWalker {
 
     @AlwaysInline("avoid virtual call to visitor")
     private static boolean doWalkThread(JavaStackWalk walk, StackFrameVisitor visitor, boolean hasFrames) {
-        if (!visitor.prologue()) {
-            return false;
-        }
         if (hasFrames) {
             do {
                 CodeInfoAccessor accessor = KnownIntrinsics.convertUnknownValue(walk.getIPCodeInfoAccessor(), CodeInfoAccessor.class);
@@ -283,6 +276,6 @@ public final class JavaStackWalker {
                 }
             } while (continueWalk(walk));
         }
-        return visitor.epilogue();
+        return true;
     }
 }

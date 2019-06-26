@@ -69,10 +69,10 @@ import com.oracle.svm.core.deopt.DeoptimizationSupport;
 import com.oracle.svm.core.deopt.DeoptimizedFrame;
 import com.oracle.svm.core.deopt.Deoptimizer;
 import com.oracle.svm.core.log.Log;
-import com.oracle.svm.core.stack.BasicStackFrameVisitor;
 import com.oracle.svm.core.stack.JavaFrameAnchor;
 import com.oracle.svm.core.stack.JavaFrameAnchors;
 import com.oracle.svm.core.stack.JavaStackWalker;
+import com.oracle.svm.core.stack.StackFrameVisitor;
 import com.oracle.svm.core.stack.ThreadStackPrinter;
 import com.oracle.svm.core.thread.JavaThreads;
 import com.oracle.svm.core.thread.VMOperationControl;
@@ -237,9 +237,9 @@ public class SubstrateUtil {
         void invoke();
     }
 
-    private static final BasicStackFrameVisitor Stage0Visitor = new ThreadStackPrinter.Stage0StackFrameVisitor();
+    private static final StackFrameVisitor Stage0Visitor = new ThreadStackPrinter.Stage0StackFrameVisitor();
 
-    private static final BasicStackFrameVisitor Stage1Visitor = new ThreadStackPrinter.Stage1StackFrameVisitor();
+    private static final StackFrameVisitor Stage1Visitor = new ThreadStackPrinter.Stage1StackFrameVisitor();
 
     private static volatile boolean diagnosticsInProgress = false;
 

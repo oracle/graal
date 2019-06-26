@@ -124,7 +124,7 @@ public class ThreadStackPrinter {
         }
     }
 
-    public static class Stage0StackFrameVisitor implements BasicStackFrameVisitor {
+    public static class Stage0StackFrameVisitor implements StackFrameVisitor {
         @RestrictHeapAccess(access = RestrictHeapAccess.Access.NO_ALLOCATION, reason = "Provide allocation-free StackFrameVisitor")
         @Override
         public boolean visitFrame(Pointer sp, CodePointer ip, CodeInfoAccessor accessor, CodeInfoHandle handle, DeoptimizedFrame deoptFrame) {

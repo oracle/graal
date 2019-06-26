@@ -44,24 +44,13 @@ public class FramePointerMapWalker implements StackFrameVisitor {
     }
 
     @Override
-    public boolean prologue() {
-        return visitor.prologue();
-    }
-
-    @Override
     public boolean visitFrame(Pointer sp, CodePointer ip, CodeInfoAccessor accessor, CodeInfoHandle handle, DeoptimizedFrame deoptimizedFrame) {
         return CodeInfoTable.visitObjectReferences(sp, ip, accessor, handle, deoptimizedFrame, visitor);
-    }
-
-    @Override
-    public boolean epilogue() {
-        return visitor.epilogue();
     }
 
     protected FramePointerMapWalker(final ObjectReferenceVisitor objRefVisitor) {
         this.visitor = objRefVisitor;
     }
 
-    /** State. */
     private final ObjectReferenceVisitor visitor;
 }

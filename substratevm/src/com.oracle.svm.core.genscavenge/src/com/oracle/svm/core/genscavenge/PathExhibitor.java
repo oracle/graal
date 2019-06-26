@@ -134,8 +134,8 @@ public class PathExhibitor {
         stackFrameVisitor.initialize(obj);
         Pointer sp = readCallerStackPointer();
         JavaStackWalker.walkCurrentThread(sp, stackFrameVisitor);
-        final StackElement result = frameSlotVisitor.getElement();
-        return result;
+        stackFrameVisitor.reset();
+        return frameSlotVisitor.getElement();
     }
 
     protected PathElement findPathInBootImageHeap(final Object targetObject) {
@@ -182,8 +182,7 @@ public class PathExhibitor {
         heapObjectVisitor.initialize(obj);
         final HeapImpl heap = HeapImpl.getHeapImpl();
         heap.walkObjects(heapObjectVisitor);
-        final HeapElement result = heapObjRefVisitor.getElement();
-        return result;
+        return heapObjRefVisitor.getElement();
     }
 
     protected boolean checkForCycles(final Object currentObject) {
@@ -241,8 +240,6 @@ public class PathExhibitor {
         protected Pointer targetPointer;
 
         protected FrameVisitor() {
-            super();
-            // All other state is lazily initialized.
         }
 
         public void initialize(final Object targetObject) {
@@ -269,10 +266,8 @@ public class PathExhibitor {
             return result;
         }
 
-        @Override
-        public boolean epilogue() {
+        public void reset() {
             targetPointer = WordFactory.nullPointer();
-            return true;
         }
     }
 
@@ -350,15 +345,6 @@ public class PathExhibitor {
         protected BootImageHeapElement element;
 
         protected BootImageHeapObjRefVisitor() {
-            super();
-            // All other state is initialized lazily.
-        }
-
-        @Override
-        public boolean prologue() {
-            targetPointer = WordFactory.nullPointer();
-            element = null;
-            return true;
         }
 
         public void initialize(final Pointer container, final Pointer target) {
@@ -399,12 +385,6 @@ public class PathExhibitor {
             // All other state is initialized lazily.
         }
 
-        @Override
-        public boolean prologue() {
-            targetPointer = WordFactory.nullPointer();
-            return true;
-        }
-
         public void initialize(final Object targetObject) {
             targetPointer = Word.objectToUntrackedPointer(targetObject);
         }
@@ -436,16 +416,6 @@ public class PathExhibitor {
         protected HeapElement element;
 
         protected HeapObjRefVisitor() {
-            super();
-            // All other state is initialized lazily.
-        }
-
-        @Override
-        public boolean prologue() {
-            // Reset lazily-initialized state.
-            containerPointer = WordFactory.nullPointer();
-            targetPointer = WordFactory.nullPointer();
-            return true;
         }
 
         public void initialize(final Pointer container, final Pointer target) {
