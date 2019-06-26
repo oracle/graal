@@ -48,15 +48,13 @@ import org.graalvm.word.ComparableWord;
  * reference. During native image generation, this object gets replaced with the actual pointer to
  * the method, and the necessary relocation information is generated.
  */
-public class MethodLiteralCodePointer implements CFunctionPointer {
+public class CEntryPointLiteralCodePointer implements CFunctionPointer {
 
-    public final boolean forCCall;
     public final Class<?> definingClass;
     public final String methodName;
     public final Class<?>[] parameterTypes;
 
-    public MethodLiteralCodePointer(boolean forCCall, Class<?> definingClass, String methodName, Class<?>... parameterTypes) {
-        this.forCCall = forCCall;
+    public CEntryPointLiteralCodePointer(Class<?> definingClass, String methodName, Class<?>... parameterTypes) {
         this.definingClass = definingClass;
         this.methodName = methodName;
         this.parameterTypes = parameterTypes;

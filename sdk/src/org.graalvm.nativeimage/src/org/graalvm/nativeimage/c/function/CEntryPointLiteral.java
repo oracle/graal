@@ -42,7 +42,7 @@ package org.graalvm.nativeimage.c.function;
 
 import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.Platforms;
-import org.graalvm.nativeimage.impl.MethodLiteralCodePointer;
+import org.graalvm.nativeimage.impl.CEntryPointLiteralCodePointer;
 
 /**
  * A function pointer to an {@link CEntryPoint entry point method} that can be, for example, handed
@@ -89,7 +89,7 @@ public final class CEntryPointLiteral<T extends CFunctionPointer> {
     private CFunctionPointer functionPointer;
 
     private CEntryPointLiteral(Class<?> definingClass, String methodName, Class<?>... parameterTypes) {
-        this.functionPointer = new MethodLiteralCodePointer(true, definingClass, methodName, parameterTypes);
+        this.functionPointer = new CEntryPointLiteralCodePointer(definingClass, methodName, parameterTypes);
     }
 
     /**
