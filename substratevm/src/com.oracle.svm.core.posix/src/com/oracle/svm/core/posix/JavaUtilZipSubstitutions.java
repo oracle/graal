@@ -682,10 +682,10 @@ final class Util_java_util_zip_Inflater_JDK11OrLater {
 
         if (ret == ZLib.Z_STREAM_END() || ret == ZLib.Z_OK()) {
             if (ret == ZLib.Z_STREAM_END()) {
-                finished = 1;
-                inputUsed = inputLen - strm.avail_in();
-                outputUsed = outputLen - strm.avail_out();
+                finished = 1; 
             }
+            inputUsed = inputLen - strm.avail_in();
+            outputUsed = outputLen - strm.avail_out();
         } else if (ret == ZLib.Z_NEED_DICT()) {
             needDict = 1;
             inputUsed = inputLen - strm.avail_in();
