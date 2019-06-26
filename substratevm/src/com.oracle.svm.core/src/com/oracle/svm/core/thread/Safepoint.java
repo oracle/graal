@@ -492,7 +492,7 @@ public final class Safepoint {
 
         /** Send each of the threads (except myself) a request to come to a safepoint. */
         private static void requestSafepoints(String reason) {
-            VMThreads.THREAD_MUTEX.assertIsOwner("must hold mutex while requesting a safepoint");
+            VMThreads.THREAD_MUTEX.assertIsOwner("Must hold mutex while requesting a safepoint.");
             final Log trace = Log.noopLog().string("[Safepoint.Master.requestSafepoints:  reason: ").string(reason);
 
             // Walk the threads list and ask each thread (except myself) to come to a safepoint.
@@ -524,7 +524,7 @@ public final class Safepoint {
         /** Wait for there to be no threads (except myself) still waiting to reach a safepoint. */
         private static void waitForSafepoints(String reason) {
             final Log trace = Log.noopLog().string("[Safepoint.Master.waitForSafepoints:  reason: ").string(reason).newline();
-            VMThreads.THREAD_MUTEX.assertIsOwner("Should hold mutex while waiting for safepoints.");
+            VMThreads.THREAD_MUTEX.assertIsOwner("Must hold mutex while waiting for safepoints.");
             final long startNanos = System.nanoTime();
             long loopNanos = startNanos;
 
@@ -606,7 +606,7 @@ public final class Safepoint {
         /** Release each thread at a safepoint. */
         private static void releaseSafepoints(String reason) {
             final Log trace = Log.noopLog().string("[Safepoint.Master.releaseSafepoints:").string("  reason: ").string(reason).newline();
-            VMThreads.THREAD_MUTEX.assertIsOwner("Should hold mutex when releasing safepoints.");
+            VMThreads.THREAD_MUTEX.assertIsOwner("Must hold mutex when releasing safepoints.");
             // Set all the thread statuses that are at safepoint back to being in native code.
             for (IsolateThread vmThread = VMThreads.firstThread(); VMThreads.isNonNullThread(vmThread); vmThread = VMThreads.nextThread(vmThread)) {
                 if (!isMyself(vmThread)) {
@@ -685,11 +685,12 @@ public final class Safepoint {
 
             public static int countingVMOperation() {
                 final Log trace = Log.log().string("[Safepoint.Master.TestingBackdoor.countingVMOperation:").newline();
-                VMOperation.guaranteeInProgress("Should hold mutex while simulating safepoint operation.");
                 int atSafepoint = 0;
                 int inNative = 0;
                 int ignoreSafepoints = 0;
                 int notAtSafepoint = 0;
+
+                VMThreads.guaranteeOwnsThreadMutex("Must own the threads mutex while iterating the threads.");
                 for (IsolateThread vmThread = VMThreads.firstThread(); vmThread != VMThreads.nullThread(); vmThread = VMThreads.nextThread(vmThread)) {
                     // Check if the thread is at a safepoint or in native code.
                     if (VMThreads.StatusSupport.isStatusSafepoint(vmThread)) {

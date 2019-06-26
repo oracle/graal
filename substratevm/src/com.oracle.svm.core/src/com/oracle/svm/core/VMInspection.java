@@ -94,6 +94,7 @@ class DumpAllStacks implements SignalHandler {
     public void handle(Signal arg0) {
         JavaVMOperation.enqueueBlockingSafepoint("DumpAllStacks", () -> {
             Log log = Log.log();
+            VMThreads.guaranteeOwnsThreadMutex("Must own the threads mutex while iterating the threads.");
             for (IsolateThread vmThread = VMThreads.firstThread(); VMThreads.isNonNullThread(vmThread); vmThread = VMThreads.nextThread(vmThread)) {
                 if (vmThread == CurrentIsolate.getCurrentThread()) {
                     /* Skip the signal handler stack */
