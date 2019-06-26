@@ -266,13 +266,13 @@ import com.oracle.truffle.llvm.nodes.memory.store.LLVMStoreVectorNodeGen;
 import com.oracle.truffle.llvm.nodes.memory.store.LLVMStructStoreNodeGen;
 import com.oracle.truffle.llvm.nodes.op.LLVMAbstractCompareNode;
 import com.oracle.truffle.llvm.nodes.op.LLVMArithmeticNode;
+import com.oracle.truffle.llvm.nodes.op.LLVMArithmeticNode.LLVMAbstractI64ArithmeticNode;
 import com.oracle.truffle.llvm.nodes.op.LLVMArithmeticNodeFactory.LLVMDoubleArithmeticNodeGen;
 import com.oracle.truffle.llvm.nodes.op.LLVMArithmeticNodeFactory.LLVMFP80ArithmeticNodeGen;
 import com.oracle.truffle.llvm.nodes.op.LLVMArithmeticNodeFactory.LLVMFloatArithmeticNodeGen;
 import com.oracle.truffle.llvm.nodes.op.LLVMArithmeticNodeFactory.LLVMI16ArithmeticNodeGen;
 import com.oracle.truffle.llvm.nodes.op.LLVMArithmeticNodeFactory.LLVMI1ArithmeticNodeGen;
 import com.oracle.truffle.llvm.nodes.op.LLVMArithmeticNodeFactory.LLVMI32ArithmeticNodeGen;
-import com.oracle.truffle.llvm.nodes.op.LLVMArithmeticNodeFactory.LLVMI64ArithmeticNodeGen;
 import com.oracle.truffle.llvm.nodes.op.LLVMArithmeticNodeFactory.LLVMI8ArithmeticNodeGen;
 import com.oracle.truffle.llvm.nodes.op.LLVMArithmeticNodeFactory.LLVMIVarBitArithmeticNodeGen;
 import com.oracle.truffle.llvm.nodes.op.LLVMCompareNodeFactory.LLVMEqNodeGen;
@@ -1275,7 +1275,7 @@ public class BasicNodeFactory implements NodeFactory {
                 case I32:
                     return LLVMI32ArithmeticNodeGen.create(op, left, right);
                 case I64:
-                    return LLVMI64ArithmeticNodeGen.create(op, left, right);
+                    return LLVMAbstractI64ArithmeticNode.create(op, left, right);
                 case FLOAT:
                     return LLVMFloatArithmeticNodeGen.create(op, left, right);
                 case DOUBLE:

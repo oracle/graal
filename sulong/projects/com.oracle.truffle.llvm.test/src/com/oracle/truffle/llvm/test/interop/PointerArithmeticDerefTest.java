@@ -32,6 +32,7 @@ package com.oracle.truffle.llvm.test.interop;
 import com.oracle.truffle.api.CallTarget;
 import com.oracle.truffle.api.interop.InteropLibrary;
 import com.oracle.truffle.api.interop.TruffleObject;
+import com.oracle.truffle.api.interop.UnsupportedMessageException;
 import com.oracle.truffle.api.library.ExportLibrary;
 import com.oracle.truffle.api.library.ExportMessage;
 import com.oracle.truffle.llvm.test.interop.values.NativeValue;
@@ -182,5 +183,17 @@ public class PointerArithmeticDerefTest extends InteropTestBase {
         derefPointer.call(neg);
         // 0 - (p ^ -1) == p + 1
         obj.verify(1);
+    }
+
+    @Test
+    public void testSubtractCancel(
+                    @Inject(TestPointerAddNode.class) CallTarget testPointerAdd,
+                    @Inject(TestPointerSubNode.class) CallTarget testPointerSub) throws UnsupportedMessageException {
+        DerefableObject obj = new DerefableObject();
+        Object ptr1 = testPointerAdd.call(obj, ptr(27));
+        Object ptr2 = testPointerAdd.call(obj, ptr(12));
+        Object diff = testPointerSub.call(ptr1, ptr2);
+
+        Assert.assertEquals("diff", 15, InteropLibrary.getFactory().getUncached().asPointer(diff));
     }
 }

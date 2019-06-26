@@ -38,11 +38,14 @@ import com.oracle.truffle.api.interop.UnsupportedMessageException;
 import com.oracle.truffle.api.library.CachedLibrary;
 import com.oracle.truffle.api.nodes.UnexpectedResultException;
 import com.oracle.truffle.api.profiles.ValueProfile;
+import com.oracle.truffle.llvm.nodes.op.LLVMArithmeticNodeFactory.LLVMI64ArithmeticNodeGen;
+import com.oracle.truffle.llvm.nodes.op.LLVMArithmeticNodeFactory.LLVMI64SubNodeGen;
 import com.oracle.truffle.llvm.nodes.op.LLVMArithmeticNodeFactory.ManagedAndNodeGen;
 import com.oracle.truffle.llvm.nodes.op.LLVMArithmeticNodeFactory.ManagedMulNodeGen;
 import com.oracle.truffle.llvm.nodes.op.LLVMArithmeticNodeFactory.ManagedSubNodeGen;
 import com.oracle.truffle.llvm.nodes.op.LLVMArithmeticNodeFactory.ManagedXorNodeGen;
 import com.oracle.truffle.llvm.nodes.op.LLVMArithmeticNodeFactory.PointerToI64NodeGen;
+import com.oracle.truffle.llvm.nodes.op.LLVMPointerCompareNode.LLVMPointToSameObjectNode;
 import com.oracle.truffle.llvm.nodes.op.arith.floating.LLVMArithmeticFactory;
 import com.oracle.truffle.llvm.runtime.ArithmeticOperation;
 import com.oracle.truffle.llvm.runtime.LLVMIVarBit;
@@ -261,11 +264,19 @@ public abstract class LLVMArithmeticNode extends LLVMExpressionNode {
      * usually not be converted to i64. Even if the foreign object implements the pointer messages,
      * the conversion is usually one-way.
      */
-    public abstract static class LLVMI64ArithmeticNode extends LLVMArithmeticNode {
+    public abstract static class LLVMAbstractI64ArithmeticNode extends LLVMArithmeticNode {
 
         public abstract long executeLongWithTarget(long left, long right);
 
-        LLVMI64ArithmeticNode(ArithmeticOperation op) {
+        public static LLVMAbstractI64ArithmeticNode create(ArithmeticOperation op, LLVMExpressionNode left, LLVMExpressionNode right) {
+            if (op == ArithmeticOperation.SUB) {
+                return LLVMI64SubNodeGen.create(left, right);
+            } else {
+                return LLVMI64ArithmeticNodeGen.create(op, left, right);
+            }
+        }
+
+        protected LLVMAbstractI64ArithmeticNode(ArithmeticOperation op) {
             super(op);
         }
 
@@ -275,7 +286,7 @@ public abstract class LLVMArithmeticNode extends LLVMExpressionNode {
         }
 
         @Specialization
-        long doLong(long left, long right) {
+        protected long doLong(long left, long right) {
             return op.doLong(left, right);
         }
 
@@ -308,15 +319,22 @@ public abstract class LLVMArithmeticNode extends LLVMExpressionNode {
         }
 
         @Specialization(limit = "3", guards = "!canDoManaged(left)")
-        long doPointer(long left, LLVMPointer right,
+        long doPointerRight(long left, LLVMPointer right,
                         @CachedLibrary("right") LLVMNativeLibrary rightLib) {
             return op.doLong(left, rightLib.toNativePointer(right).asNative());
         }
 
         @Specialization(limit = "3", guards = "!canDoManaged(right)")
-        long doPointer(LLVMPointer left, long right,
+        long doPointerLeft(LLVMPointer left, long right,
                         @CachedLibrary("left") LLVMNativeLibrary leftLib) {
             return op.doLong(leftLib.toNativePointer(left).asNative(), right);
+        }
+    }
+
+    abstract static class LLVMI64ArithmeticNode extends LLVMAbstractI64ArithmeticNode {
+
+        protected LLVMI64ArithmeticNode(ArithmeticOperation op) {
+            super(op);
         }
 
         @Specialization(limit = "3")
@@ -324,6 +342,27 @@ public abstract class LLVMArithmeticNode extends LLVMExpressionNode {
                         @CachedLibrary("left") LLVMNativeLibrary leftLib,
                         @CachedLibrary("right") LLVMNativeLibrary rightLib) {
             return op.doLong(leftLib.toNativePointer(left).asNative(), rightLib.toNativePointer(right).asNative());
+        }
+    }
+
+    abstract static class LLVMI64SubNode extends LLVMAbstractI64ArithmeticNode {
+
+        protected LLVMI64SubNode() {
+            super(ArithmeticOperation.SUB);
+        }
+
+        @Specialization(limit = "3", guards = "sameObject.execute(left, right)")
+        long doSameObjectLong(LLVMManagedPointer left, LLVMManagedPointer right,
+                        @SuppressWarnings("unused") @Cached LLVMPointToSameObjectNode sameObject) {
+            return left.getOffset() - right.getOffset();
+        }
+
+        @Specialization(limit = "3", guards = "!sameObject.execute(left, right)")
+        long doNotSameObject(LLVMPointer left, LLVMPointer right,
+                        @SuppressWarnings("unused") @Cached LLVMPointToSameObjectNode sameObject,
+                        @CachedLibrary("left") LLVMNativeLibrary leftLib,
+                        @CachedLibrary("right") LLVMNativeLibrary rightLib) {
+            return leftLib.toNativePointer(left).asNative() - rightLib.toNativePointer(right).asNative();
         }
     }
 
