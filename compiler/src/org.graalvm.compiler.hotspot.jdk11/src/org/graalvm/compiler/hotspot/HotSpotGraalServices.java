@@ -40,4 +40,13 @@ public class HotSpotGraalServices {
         // Only supported by JDK13
         return null;
     }
+
+    public static CompilationContext enterGlobalCompilationContext() {
+        return null;
+    }
+
+    @SuppressWarnings("unused")
+    public static CompilationContext openLocalCompilationContext(Object description) {
+        return null;
+    }
 }

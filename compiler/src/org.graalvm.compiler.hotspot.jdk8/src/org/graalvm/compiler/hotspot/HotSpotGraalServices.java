@@ -24,7 +24,10 @@
  */
 package org.graalvm.compiler.hotspot;
 
+import java.util.Objects;
+
 import jdk.vm.ci.hotspot.HotSpotMetaData;
+import jdk.vm.ci.hotspot.HotSpotObjectConstantScope;
 
 /**
  * Interface to HotSpot specific functionality that abstracts over which JDK version Graal is
@@ -39,5 +42,15 @@ public class HotSpotGraalServices {
     public static byte[] getImplicitExceptionBytes(HotSpotMetaData metaData) {
         // Only supported by JDK13
         return null;
+    }
+
+    public static CompilationContext enterGlobalCompilationContext() {
+        HotSpotObjectConstantScope impl = HotSpotObjectConstantScope.enterGlobalScope();
+        return impl == null ? null : new CompilationContext(impl);
+    }
+
+    public static CompilationContext openLocalCompilationContext(Object description) {
+        HotSpotObjectConstantScope impl = HotSpotObjectConstantScope.openLocalScope(Objects.requireNonNull(description));
+        return impl == null ? null : new CompilationContext(impl);
     }
 }

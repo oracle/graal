@@ -41,8 +41,8 @@ import java.util.Properties;
  */
 public final class JVMCIVersionCheck {
 
-    private static final int JVMCI8_MIN_MAJOR_VERSION = 19;
-    private static final int JVMCI8_MIN_MINOR_VERSION = 1;
+    private static final int JVMCI8_MIN_MAJOR_VERSION = 20;
+    private static final int JVMCI8_MIN_MINOR_VERSION = 4;
 
     private static void failVersionCheck(Map<String, String> props, boolean exit, String reason, Object... args) {
         Formatter errorMessage = new Formatter().format(reason, args);
@@ -54,7 +54,6 @@ public final class JVMCIVersionCheck {
         errorMessage.format("Currently used VM configuration is: %s%n", vmName);
         if (props.get("java.specification.version").compareTo("1.9") < 0) {
             errorMessage.format("Download the latest JVMCI JDK 8 from " +
-                            "https://www.oracle.com/technetwork/graalvm/downloads/index.html or " +
                             "https://github.com/graalvm/openjdk8-jvmci-builder/releases");
         } else {
             errorMessage.format("Download JDK 11 or later.");
