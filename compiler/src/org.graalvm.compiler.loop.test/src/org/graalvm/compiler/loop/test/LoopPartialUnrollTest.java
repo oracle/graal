@@ -26,7 +26,9 @@ package org.graalvm.compiler.loop.test;
 
 import java.util.ListIterator;
 
+import org.graalvm.compiler.api.directives.GraalDirectives;
 import org.graalvm.compiler.core.common.CompilationIdentifier;
+import org.graalvm.compiler.core.common.GraalOptions;
 import org.graalvm.compiler.core.test.GraalCompilerTest;
 import org.graalvm.compiler.debug.DebugContext;
 import org.graalvm.compiler.graph.iterators.NodeIterable;
@@ -214,6 +216,28 @@ public class LoopPartialUnrollTest extends GraalCompilerTest {
     @Test
     public void testSignExtension() {
         test("testSignExtensionSnippet", 9L);
+    }
+
+    static final Object CONSTANT = new Object();
+    static int sum = 0;
+
+    public static Object objectPhi(int n) {
+        Integer v = new Integer(n);
+        GraalDirectives.blackhole(v);
+        Integer r = 1;
+
+        for (int i = 0; iterationCount(100, i < n); i++) {
+            sum += r;
+            r = v;
+        }
+
+        return r;
+    }
+
+    @Test
+    public void testObjectPhi() {
+        OptionValues options = new OptionValues(getInitialOptions(), GraalOptions.LoopPeeling, false);
+        test(options, "objectPhi", 1);
     }
 
     @Override
