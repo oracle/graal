@@ -142,27 +142,27 @@ suite = {
             }
         },
         "VISUALVM_COMMON" : {
-            "urls" : ["https://lafo.ssw.uni-linz.ac.at/pub/graal-external-deps/visualvm/visualvm-683.tar.gz"],
-            "sha1" : "28b4ffc31ca729c93be77f6e66d9c5c67032c12f",
+            "urls" : ["https://lafo.ssw.uni-linz.ac.at/pub/graal-external-deps/visualvm/visualvm-19_0_0-11.tar.gz"],
+            "sha1" : "158ba6f2b346469b5f8083d1700c3f55b8b9082c",
         },
         "VISUALVM_PLATFORM_SPECIFIC" : {
             "os_arch" : {
                 "linux" : {
                     "amd64" : {
-                        "urls" : ["https://lafo.ssw.uni-linz.ac.at/pub/graal-external-deps/visualvm/visualvm-683-linux-amd64.tar.gz"],
-                        "sha1" : "9598ec2f792d42ff95a398e2d8af448bb6707449",
+                        "urls" : ["https://lafo.ssw.uni-linz.ac.at/pub/graal-external-deps/visualvm/visualvm-19_0_0-11-linux-amd64.tar.gz"],
+                        "sha1" : "eb5ffa476ed2f6fac0ecd4bb2ae32741f9646932",
                     }
                 },
                 "darwin" : {
                     "amd64" : {
-                        "urls" : ["https://lafo.ssw.uni-linz.ac.at/pub/graal-external-deps/visualvm/visualvm-683-macosx-x86_64.tar.gz"],
-                        "sha1" : "7428020503044bd6652eeb292aead587b0508984",
+                        "urls" : ["https://lafo.ssw.uni-linz.ac.at/pub/graal-external-deps/visualvm/visualvm-19_0_0-11-macosx-x86_64.tar.gz"],
+                        "sha1" : "8b4b56cafb8ddc257305d0b68801e46e9fa53c14",
                     }
                 },
                 "windows" : {
                     "amd64" : {
-                        "urls" : ["https://lafo.ssw.uni-linz.ac.at/pub/graal-external-deps/visualvm/visualvm-683-windows-amd64.tar.gz"],
-                        "sha1" : "f7c7c67a887002a208cff79a11088aa75c9defcc",
+                        "urls" : ["https://lafo.ssw.uni-linz.ac.at/pub/graal-external-deps/visualvm/visualvm-19_0_0-11-windows-amd64.tar.gz"],
+                        "sha1" : "4effd423bb73e1a3435a1b5cc67e8b1629d8425f",
                     }
                 },
             }
