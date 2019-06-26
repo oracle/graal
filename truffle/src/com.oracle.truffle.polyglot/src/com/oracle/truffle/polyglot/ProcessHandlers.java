@@ -69,7 +69,9 @@ final class ProcessHandlers {
     static Process decorate(PolyglotLanguageContext owner, List<? extends String> cmd, Process process,
                     OutputStream out, OutputStream err) {
         ProcessDecorator decorator = new ProcessDecorator(owner, cmd.get(0), process, out, err);
-        owner.context.subProcesses.add(decorator);
+        synchronized (owner.context) {
+            owner.context.subProcesses.add(decorator);
+        }
         return decorator;
     }
 
@@ -217,7 +219,9 @@ final class ProcessHandlers {
         private void removeFromActiveSubProcesses() {
             PolyglotLanguageContext languageContext = owner.get();
             if (languageContext != null) {
-                languageContext.context.subProcesses.add(this);
+                synchronized (languageContext.context) {
+                    languageContext.context.subProcesses.remove(this);
+                }
             }
         }
 

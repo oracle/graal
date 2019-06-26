@@ -155,7 +155,7 @@ final class PolyglotContextImpl extends AbstractContextImpl implements com.oracl
     final PolyglotLanguage creator; // creator for internal contexts
     final Map<String, Object> creatorArguments; // special arguments for internal contexts
     final ContextWeakReference weakReference;
-    final Set<ProcessHandlers.ProcessDecorator> subProcesses = Collections.synchronizedSet(new HashSet<>());
+    final Set<ProcessHandlers.ProcessDecorator> subProcesses;
 
     @CompilationFinal PolyglotContextConfig config; // effectively final
 
@@ -178,6 +178,7 @@ final class PolyglotContextImpl extends AbstractContextImpl implements com.oracl
         this.creator = null;
         this.creatorArguments = null;
         this.weakReference = null;
+        this.subProcesses = new HashSet<>();
     }
 
     /*
@@ -200,6 +201,7 @@ final class PolyglotContextImpl extends AbstractContextImpl implements com.oracl
         }
         PolyglotLanguageContext hostContext = getContextInitialized(engine.hostLanguage, null);
         this.polyglotHostBindings = getAPIAccess().newValue(polyglotBindings, new PolyglotBindingsValue(hostContext));
+        this.subProcesses = new HashSet<>();
         notifyContextCreated();
         PolyglotContextImpl.initializeStaticContext(this);
     }
@@ -227,6 +229,7 @@ final class PolyglotContextImpl extends AbstractContextImpl implements com.oracl
         this.contexts = createContextArray();
 
         this.polyglotHostBindings = getAPIAccess().newValue(polyglotBindings, new PolyglotBindingsValue(getHostContext()));
+        this.subProcesses = new HashSet<>();
         // notifyContextCreated() is called after spiContext.impl is set to this.
         this.engine.noInnerContexts.invalidate();
         initializeStaticContext(this);
@@ -1211,13 +1214,12 @@ final class PolyglotContextImpl extends AbstractContextImpl implements com.oracl
         return true;
     }
 
-    void checkSubProcessFinished() {
-        synchronized (subProcesses) {
-            for (ProcessHandlers.ProcessDecorator process : subProcesses) {
-                if (process.isAlive()) {
-                    throw new PolyglotIllegalStateException(String.format("The context has an alive sub-process %s created by %s.",
-                                    process.getCommand(), process.getOwner().language.getId()));
-                }
+    synchronized void checkSubProcessFinished() {
+        ProcessHandlers.ProcessDecorator[] processes = subProcesses.toArray(new ProcessHandlers.ProcessDecorator[subProcesses.size()]);
+        for (ProcessHandlers.ProcessDecorator process : processes) {
+            if (process.isAlive()) {
+                throw new PolyglotIllegalStateException(String.format("The context has an alive sub-process %s created by %s.",
+                                process.getCommand(), process.getOwner().language.getId()));
             }
         }
     }
