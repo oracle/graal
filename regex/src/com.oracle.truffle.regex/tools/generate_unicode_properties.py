@@ -320,7 +320,7 @@ class UnicodePropertyData {
     static final EconomicMap<String, String> GENERAL_CATEGORY_ALIASES = EconomicMap.create(%d);
     static final EconomicMap<String, String> SCRIPT_ALIASES = EconomicMap.create(%d);
     private static final EconomicMap<String, CodePointSet> SET_ENCODINGS = EconomicMap.create(%d);
-    
+
     public static CodePointSet retrieveProperty(String propertySpec) {
         if (!SET_ENCODINGS.containsKey(propertySpec)) {
             throw new IllegalArgumentException("Unsupported Unicode character property escape");
