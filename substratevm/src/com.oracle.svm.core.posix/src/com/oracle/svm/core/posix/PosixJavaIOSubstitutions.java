@@ -160,6 +160,10 @@ class PosixJavaIOSubstituteFeature implements Feature {
     public void beforeAnalysis(BeforeAnalysisAccess access) {
         try {
             JNIRuntimeAccess.register(java.lang.String.class);
+            JNIRuntimeAccess.register(java.lang.System.class);
+            JNIRuntimeAccess.register(java.lang.System.class.getDeclaredMethod("getProperty", String.class));
+            JNIRuntimeAccess.register(java.nio.charset.Charset.class);
+            JNIRuntimeAccess.register(java.nio.charset.Charset.class.getDeclaredMethod("isSupported", String.class));
             JNIRuntimeAccess.register(access.findClassByName("java.lang.String").getDeclaredConstructor(byte[].class, String.class));
             JNIRuntimeAccess.register(access.findClassByName("java.lang.String").getDeclaredMethod("getBytes", String.class));
             JNIRuntimeAccess.register(java.io.File.class);

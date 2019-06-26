@@ -33,10 +33,10 @@ import java.util.Deque;
 import java.util.List;
 import java.util.concurrent.locks.ReentrantLock;
 
-import org.graalvm.nativeimage.hosted.Feature;
 import org.graalvm.nativeimage.ImageSingletons;
 import org.graalvm.nativeimage.Platform.HOSTED_ONLY;
 import org.graalvm.nativeimage.Platforms;
+import org.graalvm.nativeimage.hosted.Feature;
 import org.graalvm.word.PointerBase;
 import org.graalvm.word.WordFactory;
 
@@ -89,11 +89,6 @@ public final class NativeLibrarySupport {
     }
 
     public void loadLibrary(String name, boolean isAbsolute) {
-        if (paths == null) {
-            String[] tokens = SubstrateUtil.split(System.getProperty("java.library.path", ""), File.pathSeparator);
-            paths = Arrays.stream(tokens).map(t -> t.isEmpty() ? "." : t).toArray(String[]::new);
-        }
-
         if (isAbsolute) {
             if (loadLibrary0(new File(name), false)) {
                 return;
@@ -105,6 +100,10 @@ public final class NativeLibrarySupport {
             return;
         }
         String libname = System.mapLibraryName(name);
+        if (paths == null) {
+            String[] tokens = SubstrateUtil.split(System.getProperty("java.library.path", ""), File.pathSeparator);
+            paths = Arrays.stream(tokens).map(t -> t.isEmpty() ? "." : t).toArray(String[]::new);
+        }
         for (String path : paths) {
             File libpath = new File(path, libname);
             if (loadLibrary0(libpath, false)) {
