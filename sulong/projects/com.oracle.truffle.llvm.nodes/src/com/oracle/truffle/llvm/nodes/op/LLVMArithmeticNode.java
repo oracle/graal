@@ -31,16 +31,29 @@ package com.oracle.truffle.llvm.nodes.op;
 
 import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.dsl.Cached;
+import com.oracle.truffle.api.dsl.CreateCast;
 import com.oracle.truffle.api.dsl.NodeChild;
 import com.oracle.truffle.api.dsl.Specialization;
+import com.oracle.truffle.api.interop.UnsupportedMessageException;
 import com.oracle.truffle.api.library.CachedLibrary;
+import com.oracle.truffle.api.nodes.UnexpectedResultException;
+import com.oracle.truffle.api.profiles.ValueProfile;
+import com.oracle.truffle.llvm.nodes.op.LLVMArithmeticNodeFactory.ManagedAndNodeGen;
+import com.oracle.truffle.llvm.nodes.op.LLVMArithmeticNodeFactory.ManagedMulNodeGen;
+import com.oracle.truffle.llvm.nodes.op.LLVMArithmeticNodeFactory.ManagedSubNodeGen;
+import com.oracle.truffle.llvm.nodes.op.LLVMArithmeticNodeFactory.ManagedXorNodeGen;
+import com.oracle.truffle.llvm.nodes.op.LLVMArithmeticNodeFactory.PointerToI64NodeGen;
 import com.oracle.truffle.llvm.nodes.op.arith.floating.LLVMArithmeticFactory;
 import com.oracle.truffle.llvm.runtime.ArithmeticOperation;
 import com.oracle.truffle.llvm.runtime.LLVMIVarBit;
 import com.oracle.truffle.llvm.runtime.floating.LLVM80BitFloat;
+import com.oracle.truffle.llvm.runtime.interop.LLVMNegatedForeignObject;
 import com.oracle.truffle.llvm.runtime.library.LLVMNativeLibrary;
 import com.oracle.truffle.llvm.runtime.nodes.api.LLVMArithmetic.LLVMArithmeticOpNode;
 import com.oracle.truffle.llvm.runtime.nodes.api.LLVMExpressionNode;
+import com.oracle.truffle.llvm.runtime.nodes.api.LLVMNode;
+import com.oracle.truffle.llvm.runtime.nodes.api.LLVMTypesGen;
+import com.oracle.truffle.llvm.runtime.pointer.LLVMManagedPointer;
 import com.oracle.truffle.llvm.runtime.pointer.LLVMPointer;
 
 @NodeChild("leftNode")
@@ -62,6 +75,14 @@ public abstract class LLVMArithmeticNode extends LLVMExpressionNode {
         abstract long doLong(long left, long right);
 
         abstract LLVMIVarBit doVarBit(LLVMIVarBit left, LLVMIVarBit right);
+
+        boolean canDoManaged(@SuppressWarnings("unused") long operand) {
+            return false;
+        }
+
+        ManagedArithmeticNode createManagedNode() {
+            return null;
+        }
     }
 
     private abstract static class LLVMFPArithmeticOp extends LLVMArithmeticOp {
@@ -73,9 +94,41 @@ public abstract class LLVMArithmeticNode extends LLVMExpressionNode {
         abstract LLVMArithmeticOpNode createFP80Node();
     }
 
+    abstract static class ManagedArithmeticNode extends LLVMNode {
+
+        abstract Object execute(LLVMManagedPointer left, long right);
+
+        abstract Object execute(long left, LLVMManagedPointer right);
+
+        long executeLong(LLVMManagedPointer left, long right) throws UnexpectedResultException {
+            return LLVMTypesGen.expectLong(execute(left, right));
+        }
+
+        long executeLong(long left, LLVMManagedPointer right) throws UnexpectedResultException {
+            return LLVMTypesGen.expectLong(execute(left, right));
+        }
+    }
+
+    abstract static class ManagedCommutativeArithmeticNode extends ManagedArithmeticNode {
+
+        @Override
+        final Object execute(long left, LLVMManagedPointer right) {
+            return execute(right, left);
+        }
+
+        @Override
+        final long executeLong(long left, LLVMManagedPointer right) throws UnexpectedResultException {
+            return executeLong(right, left);
+        }
+    }
+
     final LLVMArithmeticOp op;
 
-    LLVMArithmeticNode(ArithmeticOperation op) {
+    protected boolean canDoManaged(long operand) {
+        return op.canDoManaged(operand);
+    }
+
+    protected LLVMArithmeticNode(ArithmeticOperation op) {
         switch (op) {
             case ADD:
                 this.op = ADD;
@@ -169,10 +222,56 @@ public abstract class LLVMArithmeticNode extends LLVMExpressionNode {
         }
     }
 
+    @NodeChild
+    public abstract static class PointerToI64Node extends LLVMExpressionNode {
+
+        @Specialization
+        long doLong(long l) {
+            return l;
+        }
+
+        @Specialization(limit = "3", guards = "lib.isPointer(ptr)", rewriteOn = UnsupportedMessageException.class)
+        long doPointer(Object ptr,
+                        @CachedLibrary("ptr") LLVMNativeLibrary lib) throws UnsupportedMessageException {
+            return lib.asPointer(ptr);
+        }
+
+        @Specialization(limit = "3", guards = "!lib.isPointer(ptr)")
+        Object doManaged(Object ptr,
+                        @SuppressWarnings("unused") @CachedLibrary("ptr") LLVMNativeLibrary lib) {
+            return ptr;
+        }
+
+        @Specialization(limit = "5", replaces = {"doLong", "doPointer", "doManaged"})
+        Object doGeneric(Object ptr,
+                        @CachedLibrary("ptr") LLVMNativeLibrary lib) {
+            if (lib.isPointer(ptr)) {
+                try {
+                    return lib.asPointer(ptr);
+                } catch (UnsupportedMessageException ex) {
+                    // ignore
+                }
+            }
+            return ptr;
+        }
+    }
+
+    /**
+     * We try to preserve pointers as good as possible because pointers to foreign objects can
+     * usually not be converted to i64. Even if the foreign object implements the pointer messages,
+     * the conversion is usually one-way.
+     */
     public abstract static class LLVMI64ArithmeticNode extends LLVMArithmeticNode {
+
+        public abstract long executeLongWithTarget(long left, long right);
 
         LLVMI64ArithmeticNode(ArithmeticOperation op) {
             super(op);
+        }
+
+        @CreateCast({"leftNode", "rightNode"})
+        PointerToI64Node createCast(LLVMExpressionNode child) {
+            return PointerToI64NodeGen.create(child);
         }
 
         @Specialization
@@ -180,13 +279,41 @@ public abstract class LLVMArithmeticNode extends LLVMExpressionNode {
             return op.doLong(left, right);
         }
 
-        @Specialization(limit = "3")
+        ManagedArithmeticNode createManagedNode() {
+            return op.createManagedNode();
+        }
+
+        @Specialization(guards = "canDoManaged(right)", rewriteOn = UnexpectedResultException.class)
+        long doManagedLeftLong(LLVMManagedPointer left, long right,
+                        @Cached("createManagedNode()") ManagedArithmeticNode node) throws UnexpectedResultException {
+            return node.executeLong(left, right);
+        }
+
+        @Specialization(guards = "canDoManaged(right)", replaces = "doManagedLeftLong")
+        Object doManagedLeft(LLVMManagedPointer left, long right,
+                        @Cached("createManagedNode()") ManagedArithmeticNode node) {
+            return node.execute(left, right);
+        }
+
+        @Specialization(guards = "canDoManaged(left)", rewriteOn = UnexpectedResultException.class)
+        long doManagedRightLong(long left, LLVMManagedPointer right,
+                        @Cached("createManagedNode()") ManagedArithmeticNode node) throws UnexpectedResultException {
+            return node.executeLong(left, right);
+        }
+
+        @Specialization(guards = "canDoManaged(left)", replaces = "doManagedRightLong")
+        Object doManagedRight(long left, LLVMManagedPointer right,
+                        @Cached("createManagedNode()") ManagedArithmeticNode node) {
+            return node.execute(left, right);
+        }
+
+        @Specialization(limit = "3", guards = "!canDoManaged(left)")
         long doPointer(long left, LLVMPointer right,
                         @CachedLibrary("right") LLVMNativeLibrary rightLib) {
             return op.doLong(left, rightLib.toNativePointer(right).asNative());
         }
 
-        @Specialization(limit = "3")
+        @Specialization(limit = "3", guards = "!canDoManaged(right)")
         long doPointer(LLVMPointer left, long right,
                         @CachedLibrary("left") LLVMNativeLibrary leftLib) {
             return op.doLong(leftLib.toNativePointer(left).asNative(), right);
@@ -265,6 +392,14 @@ public abstract class LLVMArithmeticNode extends LLVMExpressionNode {
         }
     }
 
+    static final class ManagedAddNode extends ManagedCommutativeArithmeticNode {
+
+        @Override
+        Object execute(LLVMManagedPointer left, long right) {
+            return left.increment(right);
+        }
+    }
+
     private static final LLVMFPArithmeticOp ADD = new LLVMFPArithmeticOp() {
 
         @Override
@@ -293,6 +428,16 @@ public abstract class LLVMArithmeticNode extends LLVMExpressionNode {
         }
 
         @Override
+        boolean canDoManaged(long op) {
+            return true;
+        }
+
+        @Override
+        ManagedArithmeticNode createManagedNode() {
+            return new ManagedAddNode();
+        }
+
+        @Override
         LLVMIVarBit doVarBit(LLVMIVarBit left, LLVMIVarBit right) {
             return left.add(right);
         }
@@ -312,6 +457,30 @@ public abstract class LLVMArithmeticNode extends LLVMExpressionNode {
             return LLVMArithmeticFactory.createAddNode();
         }
     };
+
+    abstract static class ManagedMulNode extends ManagedCommutativeArithmeticNode {
+
+        @Specialization(guards = "right == 1")
+        LLVMManagedPointer doIdentity(LLVMManagedPointer left, @SuppressWarnings("unused") long right) {
+            return left;
+        }
+
+        @Specialization(guards = "right == 0")
+        @SuppressWarnings("unused")
+        long doZero(LLVMManagedPointer left, long right) {
+            return 0;
+        }
+
+        static boolean isMinusOne(long v) {
+            return v == -1L;
+        }
+
+        @Specialization(guards = "isMinusOne(right)")
+        LLVMManagedPointer doNegate(LLVMManagedPointer left, @SuppressWarnings("unused") long right) {
+            Object negated = LLVMNegatedForeignObject.negate(left.getObject());
+            return LLVMManagedPointer.create(negated, -left.getOffset());
+        }
+    }
 
     private static final LLVMFPArithmeticOp MUL = new LLVMFPArithmeticOp() {
 
@@ -341,6 +510,16 @@ public abstract class LLVMArithmeticNode extends LLVMExpressionNode {
         }
 
         @Override
+        boolean canDoManaged(long op) {
+            return op == 1 || op == -1 || op == 0;
+        }
+
+        @Override
+        ManagedArithmeticNode createManagedNode() {
+            return ManagedMulNodeGen.create();
+        }
+
+        @Override
         LLVMIVarBit doVarBit(LLVMIVarBit left, LLVMIVarBit right) {
             return left.mul(right);
         }
@@ -360,6 +539,23 @@ public abstract class LLVMArithmeticNode extends LLVMExpressionNode {
             return LLVMArithmeticFactory.createMulNode();
         }
     };
+
+    abstract static class ManagedSubNode extends ManagedArithmeticNode {
+
+        @Specialization
+        LLVMManagedPointer doLeft(LLVMManagedPointer left, long right) {
+            return left.increment(-right);
+        }
+
+        @Specialization
+        LLVMManagedPointer doRight(long left, LLVMManagedPointer right,
+                        @Cached("createClassProfile()") ValueProfile type) {
+            // type profile to be able to do fast-path negate-negate
+            Object foreign = type.profile(right.getObject());
+            Object negated = LLVMNegatedForeignObject.negate(foreign);
+            return LLVMManagedPointer.create(negated, left - right.getOffset());
+        }
+    }
 
     private static final LLVMFPArithmeticOp SUB = new LLVMFPArithmeticOp() {
 
@@ -386,6 +582,16 @@ public abstract class LLVMArithmeticNode extends LLVMExpressionNode {
         @Override
         long doLong(long left, long right) {
             return left - right;
+        }
+
+        @Override
+        boolean canDoManaged(long op) {
+            return true;
+        }
+
+        @Override
+        ManagedArithmeticNode createManagedNode() {
+            return ManagedSubNodeGen.create();
         }
 
         @Override
@@ -587,6 +793,40 @@ public abstract class LLVMArithmeticNode extends LLVMExpressionNode {
         }
     };
 
+    abstract static class ManagedAndNode extends ManagedCommutativeArithmeticNode {
+
+        /*
+         * For doing certain pointer arithmetics on managed pointers, we assume that a pointer
+         * consists of n offset and m pointer identity bits. As long as the pointer offset bits are
+         * manipulated, the pointer still points to the same managed object. If the pointer identity
+         * bits are changed, we assume that the pointer will point to a different object, i.e., that
+         * the pointer is destroyed.
+         */
+        private static final int POINTER_OFFSET_BITS = 32;
+
+        static boolean highBitsSet(long op) {
+            // if the high bits are all set, this AND is used for alignment
+            long highBits = op >> POINTER_OFFSET_BITS;
+            return highBits == -1L;
+        }
+
+        @Specialization(guards = "highBitsSet(right)")
+        LLVMManagedPointer doAlign(LLVMManagedPointer left, long right) {
+            return LLVMManagedPointer.create(left.getObject(), left.getOffset() & right);
+        }
+
+        static boolean highBitsClear(long op) {
+            // if the high bits are all clear, this AND drops the base of the pointer
+            long highBits = op >> POINTER_OFFSET_BITS;
+            return highBits == 0L;
+        }
+
+        @Specialization(guards = "highBitsClear(right)")
+        long doMask(LLVMManagedPointer left, long right) {
+            return left.getOffset() & right;
+        }
+    }
+
     private static final LLVMArithmeticOp AND = new LLVMArithmeticOp() {
 
         @Override
@@ -612,6 +852,16 @@ public abstract class LLVMArithmeticNode extends LLVMExpressionNode {
         @Override
         long doLong(long left, long right) {
             return left & right;
+        }
+
+        @Override
+        boolean canDoManaged(long op) {
+            return ManagedAndNode.highBitsSet(op) || ManagedAndNode.highBitsClear(op);
+        }
+
+        @Override
+        ManagedArithmeticNode createManagedNode() {
+            return ManagedAndNodeGen.create();
         }
 
         @Override
@@ -653,6 +903,22 @@ public abstract class LLVMArithmeticNode extends LLVMExpressionNode {
         }
     };
 
+    abstract static class ManagedXorNode extends ManagedCommutativeArithmeticNode {
+
+        @Specialization
+        LLVMManagedPointer doXor(LLVMManagedPointer left, long right,
+                        @Cached("createClassProfile()") ValueProfile type) {
+            // type profile to be able to do fast-path negate-negate
+            Object foreign = type.profile(left.getObject());
+
+            assert right == -1L;
+            // -a is the two's complement, i.e. -a == (a ^ -1) + 1
+            // therefore, (a ^ -1) == -a - 1
+            Object negated = LLVMNegatedForeignObject.negate(foreign);
+            return LLVMManagedPointer.create(negated, -left.getOffset() - 1);
+        }
+    }
+
     private static final LLVMArithmeticOp XOR = new LLVMArithmeticOp() {
 
         @Override
@@ -678,6 +944,16 @@ public abstract class LLVMArithmeticNode extends LLVMExpressionNode {
         @Override
         long doLong(long left, long right) {
             return left ^ right;
+        }
+
+        @Override
+        boolean canDoManaged(long op) {
+            return op == -1L;
+        }
+
+        @Override
+        ManagedArithmeticNode createManagedNode() {
+            return ManagedXorNodeGen.create();
         }
 
         @Override
