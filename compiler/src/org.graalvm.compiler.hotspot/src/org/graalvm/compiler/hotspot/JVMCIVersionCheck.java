@@ -54,7 +54,6 @@ public final class JVMCIVersionCheck {
         errorMessage.format("Currently used VM configuration is: %s%n", vmName);
         if (props.get("java.specification.version").compareTo("1.9") < 0) {
             errorMessage.format("Download the latest JVMCI JDK 8 from " +
-                            "https://www.oracle.com/technetwork/graalvm/downloads/index.html or " +
                             "https://github.com/graalvm/openjdk8-jvmci-builder/releases");
         } else {
             errorMessage.format("Download JDK 11 or later.");
