@@ -1,6 +1,6 @@
 # T-Trace: The Ultimate Tracing and Insights Gathering Platform
 
-*For release in Feb 2020*
+*Future Press Release: For release in Feb 2020*
 
 OracleLabs proudly presents **T-Trace** - the ultimate multi-language,
 multi-instrument, multi-purpose tracing and insights gathering framework for
@@ -15,7 +15,7 @@ code once, apply your insights anytime, anywhere!
 
 ## Tracing in any Language and any Framework
 
-The traditional tracing solution requires every developer to modify own code 
+The traditional tracing solution requires every developer to modify their own code 
 with manually added traces. **T-Trace** brings such experience to another 
 level by using the powerful instrumentation capabilities built 
 into any GraalVM language (JavaScript, Python, Ruby, R)
@@ -49,6 +49,11 @@ and collecting and presenting it in unrestricted ways. The **T-Trace** insights
 allow one to modify computed values, interrupt execution and 
 quickly experiment with behavioral changes without modifying the
 application code.
+
+The applicability of **T-Trace** isn't limited only only to scripting
+languages. Any language written using Truffle API can be a target of
+**T-Trace** insights including static languages handled by Sulong
+(e.g. C, C++, Rust, Fortran, etc.).
 
 **T-Trace** framework brings powerful cross-language yet language agnostic
 metaprogramming features into hands of every researcher and practitioner.
