@@ -77,13 +77,14 @@ public class DebugExprFunctionCallNode extends LLVMExpressionNode {
                 continue;
             try {
                 member = library.readMember(vars, functionName);
-                if (library.isMemberInvocable(vars, functionName)) {
+                if (library.isExecutable(member)) {
                     try {
-                        return library.invokeMember(vars, functionName, arguments.toArray());
-                    } catch (ArityException e) {
+                        Object[] argumentArr = arguments.stream().map(dp -> dp.getNode().executeGeneric(frame)).toArray();
+                        return library.execute(member, argumentArr);
+                    } catch (UnsupportedTypeException e) {
                         // TODO Auto-generated catch block
                         e.printStackTrace();
-                    } catch (UnsupportedTypeException e) {
+                    } catch (ArityException e) {
                         // TODO Auto-generated catch block
                         e.printStackTrace();
                     }

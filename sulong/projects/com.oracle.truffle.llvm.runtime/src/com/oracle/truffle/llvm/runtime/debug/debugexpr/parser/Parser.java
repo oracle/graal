@@ -248,7 +248,7 @@ public LLVMExpressionNode GetASTRoot() {return astRoot; }
 			} else if (la.kind == 19) {
 				Get();
 				Expect(1);
-				p = NF.errorObjPair; 
+				p = NF.createObjectMember(p, t.val); 
 			} else {
 				Get();
 				Expect(1);

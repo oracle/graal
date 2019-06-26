@@ -4,7 +4,7 @@ import com.oracle.truffle.api.dsl.NodeChild;
 import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.llvm.runtime.nodes.api.LLVMExpressionNode;
 
-@NodeChild("child")
+@NodeChild(value = "child", type = LLVMExpressionNode.class)
 public abstract class DebugExprBitFlipNode extends LLVMExpressionNode {
     public abstract Object executeWithTarget(Object child);
 

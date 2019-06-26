@@ -41,70 +41,50 @@ public class DebugExprObjectMemberNode extends LLVMExpressionNode {
 
     private final String fieldName;
     private DebugExprType type;
-    private Object value;
-    private LLVMExpressionNode baseNode;
     private Object member;
-    private Object metaObj;
+    private Object baseMember;
 
-    public DebugExprObjectMemberNode(String fieldName, LLVMExpressionNode baseNode) {
+    public DebugExprObjectMemberNode(String fieldName, Object baseMember) {
         this.fieldName = fieldName;
+        this.baseMember = baseMember;
         this.type = null;
-        this.value = null;
-        this.baseNode = baseNode;
         findMemberAndType();
-    }
-
-    private Object getBaseMember() {
-        if (baseNode instanceof DebugExprVarNode) {
-            return ((DebugExprVarNode) baseNode).getMember();
-        } else if (baseNode instanceof DebugExprObjectMemberNode) {
-            return ((DebugExprObjectMemberNode) baseNode).getMember();
-        }
-        return DebugExprNodeFactory.noObjNode;
-    }
-
-    private void findMemberAndType() {
-        InteropLibrary library = InteropLibrary.getFactory().getUncached();
-        // TODO fetch member and metaObj from baseMember/name
-        Object baseMember = getBaseMember();
-        if (library.isMemberExisting(baseMember, fieldName)) {
-            System.out.println("member " + fieldName + " exists!");
-            try {
-                member = library.readMember(baseMember, fieldName);
-                LLVMDebuggerValue ldv = (LLVMDebuggerValue) member;
-                metaObj = ldv.getMetaObject();
-                type = DebugExprType.getTypeFromSymbolTableMetaObject(metaObj);
-            } catch (UnsupportedMessageException e) {
-                // TODO Auto-generated catch block
-                e.printStackTrace();
-            } catch (UnknownIdentifierException e) {
-                // TODO Auto-generated catch block
-                e.printStackTrace();
-            }
-        } else {
-            System.out.println("member " + fieldName + "does not exist!");
-        }
     }
 
     public DebugExprType getType() {
         return type;
     }
 
-    private void findValue() {
-        if (type != null) {
-            value = type.parseString(member.toString());
-        }
-    }
-
     public Object getMember() {
         return member;
     }
 
+    private void findMemberAndType() {
+        InteropLibrary library = InteropLibrary.getFactory().getUncached();
+
+        if (library.isMemberExisting(baseMember, fieldName)) {
+            try {
+                member = library.readMember(baseMember, fieldName);
+                LLVMDebuggerValue ldv = (LLVMDebuggerValue) member;
+                Object metaObj = ldv.getMetaObject();
+                type = DebugExprType.getTypeFromSymbolTableMetaObject(metaObj);
+                return;
+            } catch (UnsupportedMessageException e1) {
+                // TODO Auto-generated catch block
+                e1.printStackTrace();
+            } catch (UnknownIdentifierException e1) {
+                // TODO Auto-generated catch block
+                e1.printStackTrace();
+            }
+        } else {
+            System.out.println(baseMember + " has no existing field of " + fieldName);
+            type = DebugExprNodeFactory.noObjPair.getType();
+            member = null;
+        }
+    }
+
     @Override
     public Object executeGeneric(VirtualFrame frame) {
-        findValue();
-        if (value == null)
-            return DebugExprNodeFactory.noObjNode.executeGeneric(frame);
-        return value;
+        return member == null ? "field " + fieldName + " not found" : type.parseString(member.toString());
     }
 }

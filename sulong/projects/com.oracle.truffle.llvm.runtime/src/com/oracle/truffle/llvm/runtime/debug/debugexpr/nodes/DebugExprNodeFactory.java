@@ -212,9 +212,15 @@ public final class DebugExprNodeFactory {
     }
 
     @SuppressWarnings("static-method")
-    public DebugExpressionPair createObjectMember(DebugExpressionPair receiver, String memberName) {
-        if (receiver.getNode() instanceof DebugExprVarNode || receiver.getNode() instanceof DebugExprObjectMemberNode) {
-            DebugExprObjectMemberNode node = new DebugExprObjectMemberNode(memberName, receiver.getNode());
+    public DebugExpressionPair createObjectMember(DebugExpressionPair receiver, String fieldName) {
+        Object baseMember = null;
+        if (receiver.getNode() instanceof DebugExprVarNode) {
+            baseMember = ((DebugExprVarNode) (receiver.getNode())).getMember();
+        } else if (receiver.getNode() instanceof DebugExprObjectMemberNode) {
+            baseMember = ((DebugExprObjectMemberNode) (receiver.getNode())).getMember();
+        }
+        if (baseMember != null) {
+            DebugExprObjectMemberNode node = new DebugExprObjectMemberNode(fieldName, baseMember);
             return DebugExpressionPair.create(node, node.getType());
         }
         return errorObjPair;

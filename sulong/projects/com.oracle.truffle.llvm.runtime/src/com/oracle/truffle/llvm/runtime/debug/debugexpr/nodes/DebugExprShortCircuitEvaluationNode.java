@@ -4,8 +4,8 @@ import com.oracle.truffle.api.dsl.NodeChild;
 import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.llvm.runtime.nodes.api.LLVMExpressionNode;
 
-@NodeChild("leftNode")
-@NodeChild("rightNode")
+@NodeChild(value = "leftNode", type = LLVMExpressionNode.class)
+@NodeChild(value = "rightNode", type = LLVMExpressionNode.class)
 public abstract class DebugExprShortCircuitEvaluationNode extends LLVMExpressionNode {
     public abstract Object executeWithTarget(Object left, Object right);
 

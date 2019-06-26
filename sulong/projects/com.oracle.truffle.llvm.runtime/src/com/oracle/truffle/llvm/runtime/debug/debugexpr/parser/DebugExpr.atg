@@ -117,7 +117,7 @@ PrimExpr<out p>
 	|
 	 ActPars<out l>									(. p = NF.createFunctionCall(p, l); .)
 	|
-	 "." ident										(. p = NF.errorObjPair; .)
+	 "." ident										(. p = NF.createObjectMember(p, t.val); .)
 	|
 	 "->" ident										(. p = NF.errorObjPair; .)
 }

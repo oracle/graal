@@ -33,9 +33,9 @@ import com.oracle.truffle.api.dsl.NodeChild;
 import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.llvm.runtime.nodes.api.LLVMExpressionNode;
 
-@NodeChild("condition")
-@NodeChild("leftNode")
-@NodeChild("rightNode")
+@NodeChild(value = "condition", type = LLVMExpressionNode.class)
+@NodeChild(value = "leftNode", type = LLVMExpressionNode.class)
+@NodeChild(value = "rightNode", type = LLVMExpressionNode.class)
 public abstract class DebugExprTernaryNode extends LLVMExpressionNode {
     public abstract Object executeWithTarget(Object cond, Object left, Object right);
 
