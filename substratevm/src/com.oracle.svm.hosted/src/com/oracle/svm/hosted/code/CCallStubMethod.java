@@ -40,7 +40,6 @@ import org.graalvm.compiler.nodes.extended.BranchProbabilityNode;
 import org.graalvm.compiler.nodes.java.NewInstanceNode;
 import org.graalvm.nativeimage.c.constant.CEnum;
 import org.graalvm.nativeimage.c.constant.CEnumLookup;
-import org.graalvm.nativeimage.c.constant.CEnumValue;
 
 import com.oracle.graal.pointsto.meta.HostedProviders;
 import com.oracle.svm.core.meta.SharedMethod;
@@ -49,7 +48,7 @@ import com.oracle.svm.hosted.annotation.CustomSubstitutionMethod;
 import com.oracle.svm.hosted.c.NativeLibraries;
 import com.oracle.svm.hosted.c.info.ElementInfo;
 import com.oracle.svm.hosted.c.info.EnumInfo;
-import com.oracle.svm.hosted.c.info.EnumValueInfo;
+import com.oracle.svm.hosted.c.info.EnumLookupInfo;
 import com.oracle.svm.hosted.phases.CInterfaceEnumTool;
 import com.oracle.svm.hosted.phases.HostedGraphKit;
 
@@ -109,11 +108,6 @@ public abstract class CCallStubMethod extends CustomSubstitutionMethod {
             if (!isPrimitiveOrWord(providers, parameterTypes[i])) {
                 ElementInfo typeInfo = nativeLibraries.findElementInfo((ResolvedJavaType) parameterTypes[i]);
                 if (typeInfo instanceof EnumInfo) {
-                    UserError.guarantee(typeInfo.getChildren().stream().anyMatch(EnumValueInfo.class::isInstance), "Enum class " +
-                                    returnType.toJavaName() + " needs a method that is annotated with @" + CEnumValue.class.getSimpleName() +
-                                    " because it is used as a parameter of a method annotated with @" + getCorrespondingAnnotationName() + ": " +
-                                    getOriginal().format("%H.%n(%p)"));
-
                     ValueNode argumentValue = arguments.get(i);
 
                     IsNullNode isNull = kit.unique(new IsNullNode(argumentValue));
@@ -153,7 +147,7 @@ public abstract class CCallStubMethod extends CustomSubstitutionMethod {
         }
         ElementInfo typeInfo = nativeLibraries.findElementInfo((ResolvedJavaType) declaredReturnType);
         if (typeInfo instanceof EnumInfo) {
-            UserError.guarantee(typeInfo.getChildren().stream().anyMatch(EnumValueInfo.class::isInstance), "Enum class " +
+            UserError.guarantee(typeInfo.getChildren().stream().anyMatch(EnumLookupInfo.class::isInstance), "Enum class " +
                             declaredReturnType.toJavaName() + " needs a method that is annotated with @" + CEnumLookup.class.getSimpleName() +
                             " because it is used as the return type of a method annotated with @" + getCorrespondingAnnotationName() +
                             ": " + getOriginal().format("%H.%n(%p)"));
