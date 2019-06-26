@@ -355,7 +355,7 @@ public interface FileSystem {
      * separator is {@code ':'}. On Windows it's {@code ';'}.
      *
      * @return the path separator
-     * @since 20.0.0 beta 1
+     * @since 19.1.0
      */
     default String getPathSeparator() {
         return File.pathSeparator;

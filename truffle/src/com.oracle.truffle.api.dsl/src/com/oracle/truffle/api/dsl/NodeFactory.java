@@ -91,7 +91,7 @@ public interface NodeFactory<T> {
      * Returns the uncached version of this node or <code>null</code> if {@link GenerateUncached}
      * was not applied to the node.
      *
-     * @since 20.0.0 beta 2
+     * @since 19.1.0
      */
     default T getUncachedInstance() {
         return null;

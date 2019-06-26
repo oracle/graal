@@ -45,7 +45,7 @@ import org.graalvm.polyglot.Context.Builder;
 /**
  * Represents an access policy to the process environment for the guest languages of a context.
  *
- * @since 20.0.0 beta 2
+ * @since 19.1.0
  */
 public final class EnvironmentAccess {
 
@@ -54,7 +54,7 @@ public final class EnvironmentAccess {
      * visible for reading. The {@code NONE} is a default value for {@link Context}s created without
      * {@link Builder#allowAllAccess(boolean) all access}.
      *
-     * @since 20.0.0 beta 2
+     * @since 19.1.0
      */
     public static EnvironmentAccess NONE = new EnvironmentAccess();
 
@@ -63,7 +63,7 @@ public final class EnvironmentAccess {
      * value for {@link Context}s created with {@link Builder#allowAllAccess(boolean) all access}
      * set to {@code true}.
      *
-     * @since 20.0.0 beta 2
+     * @since 19.1.0
      */
     public static EnvironmentAccess INHERIT = new EnvironmentAccess();
 

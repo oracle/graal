@@ -1241,7 +1241,7 @@ public final class Context implements AutoCloseable {
          * <code>true</code>, then process creation is enabled if not denied explicitly.
          *
          * @param enabled {@code true} to enable external process creation
-         * @since 20.0.0 beta 2
+         * @since 19.1.0
          */
         public Builder allowCreateProcess(boolean enabled) {
             this.allowCreateProcess = enabled;
@@ -1252,7 +1252,7 @@ public final class Context implements AutoCloseable {
          * Installs a {@link ProcessHandler} responsible for external process creation.
          *
          * @param handler the handler to be installed
-         * @since 20.0.0 beta 2
+         * @since 19.1.0
          */
         public Builder processHandler(ProcessHandler handler) {
             Objects.requireNonNull(handler, "Handler must be non null.");
@@ -1267,7 +1267,7 @@ public final class Context implements AutoCloseable {
          * access policy must not be {@code null}.
          *
          * @param accessPolicy the {@link EnvironmentAccess environment access policy}
-         * @since 20.0.0 beta 2
+         * @since 19.1.0
          */
         public Builder allowEnvironmentAccess(EnvironmentAccess accessPolicy) {
             Objects.requireNonNull(accessPolicy, "AccessPolicy must be non null.");
@@ -1280,7 +1280,7 @@ public final class Context implements AutoCloseable {
          *
          * @param name the environment variable name
          * @param value the environment variable value
-         * @since 20.0.0 beta 2
+         * @since 19.1.0
          */
         public Builder environment(String name, String value) {
             Objects.requireNonNull(name, "Name must be non null.");
@@ -1298,7 +1298,7 @@ public final class Context implements AutoCloseable {
          *
          * @param env environment variables
          * @see #environment(String, String) To set a single environment variable.
-         * @since 20.0.0 beta 2
+         * @since 19.1.0
          */
         public Builder environment(Map<String, String> env) {
             Objects.requireNonNull(env, "Env must be non null.");
