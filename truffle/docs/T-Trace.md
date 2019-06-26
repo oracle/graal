@@ -50,10 +50,11 @@ allow one to modify computed values, interrupt execution and
 quickly experiment with behavioral changes without modifying the
 application code.
 
-The applicability of **T-Trace** isn't limited only only to scripting
+The applicability of **T-Trace** isn't limited only to scripting
 languages. Any language written using Truffle API can be a target of
 **T-Trace** insights including static languages handled by Sulong
-(e.g. C, C++, Rust, Fortran, etc.).
+(e.g. C, C++, Rust, Fortran, etc.). Enrich your static code behavior 
+by attaching your insights written in dynamic languages.
 
 **T-Trace** framework brings powerful cross-language yet language agnostic
 metaprogramming features into hands of every researcher and practitioner.
@@ -82,9 +83,9 @@ Industry well known tools like
 remotely running applications and the **T-Trace** insights dynamically 
 applied to each of them. Enlist available *HotSpot* or *native-image* based
 virtual machines. Connect to them on demand. Apply selected insights. Let
-them gather their data. Obtain the data and analysis them with the integrated
+them gather their data. Obtain the data and analyze them with the integrated
 graphical tools. Disable the insights and disconnect. Let the application run
-at the original full speed.
+at its original full speed.
 
 The flexibility and the power of standard as well as hand written
 **T-Trace** insights makes them an excellent choice for vendors of cloud
