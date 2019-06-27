@@ -66,7 +66,18 @@ mx_sdk.register_graalvm_component(mx_sdk.GraalVmJdkComponent(
     third_party_license_files=[],
     jar_distributions=['vm:INSTALLER'],
     support_distributions=['vm:INSTALLER_GRAALVM_SUPPORT'],
-    provided_executables=['bin/<cmd:gu>'],
+    launcher_configs=[
+        mx_sdk.LauncherConfig(
+            destination="bin/<exe:gu>",
+            jar_distributions=["vm:INSTALLER"],
+            main_class="org.graalvm.component.installer.ComponentInstaller",
+            build_args=[],
+            # Please see META-INF/native-image in the project for custom build options for native-image
+            is_sdk_launcher=True,
+            custom_bash_launcher="mx.vm/gu",
+            add_graalvm_jars=False
+        ),
+    ],
 ))
 
 mx_sdk.register_graalvm_component(mx_sdk.GraalVmComponent(
@@ -387,7 +398,8 @@ class BaseGraalVmLayoutDistribution(mx.LayoutDistribution):
             _jre_bin_names = []
 
             for _launcher_config in _get_launcher_configs(_component):
-                _add(layout, '<jre_base>/lib/graalvm/', ['dependency:' + d for d in _launcher_config.jar_distributions], _component, with_sources=True)
+                if _launcher_config.add_graalvm_jars:
+                    _add(layout, '<jre_base>/lib/graalvm/', ['dependency:' + d for d in _launcher_config.jar_distributions], _component, with_sources=True)
                 _launcher_dest = _component_base + GraalVmLauncher.get_launcher_destination(_launcher_config, stage1)
                 # add `LauncherConfig.destination` to the layout
                 _add(layout, _launcher_dest, 'dependency:' + GraalVmLauncher.launcher_project_name(_launcher_config, stage1), _component)
@@ -1240,10 +1252,16 @@ class GraalVmBashLauncherBuildTask(GraalVmNativeImageBuildTask):
         """
         super(GraalVmBashLauncherBuildTask, self).__init__(args, 1, subject)
 
-    @staticmethod
-    def _template_file():
+    def _template_file(self):
         ext = 'cmd' if mx.get_os() == 'windows' else 'sh'
         jdk = _get_jdk()
+        _custom_launcher = self.subject.native_image_config.custom_bash_launcher
+        if _custom_launcher:
+            if jdk.version.parts[0] >= 11:
+                tmpl = join(self.subject.suite.dir, _custom_launcher + "_modules." +ext)
+                if os.path.isfile(tmpl):
+                    return tmpl
+            return join(self.subject.suite.dir, _custom_launcher + "." + ext)
         if jdk.version.parts[0] >= 11:
             return join(_suite.mxDir, 'launcher_template_modules.' + ext)
         else:
