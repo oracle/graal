@@ -37,7 +37,6 @@ import java.util.Set;
 
 import org.graalvm.compiler.code.CompilationResult;
 import org.graalvm.compiler.code.CompilationResult.CodeAnnotation;
-import org.graalvm.compiler.core.common.GraalOptions;
 import org.graalvm.compiler.core.common.NumUtil;
 import org.graalvm.compiler.debug.DebugContext;
 import org.graalvm.compiler.debug.Indent;
@@ -49,6 +48,7 @@ import org.graalvm.word.Pointer;
 import org.graalvm.word.UnsignedWord;
 import org.graalvm.word.WordFactory;
 
+import com.oracle.svm.core.SubstrateOptions;
 import com.oracle.svm.core.annotate.Uninterruptible;
 import com.oracle.svm.core.code.CodeInfoEncoder;
 import com.oracle.svm.core.code.CodeInfoTable;
@@ -61,19 +61,18 @@ import com.oracle.svm.core.config.ConfigurationValues;
 import com.oracle.svm.core.deopt.SubstrateInstalledCode;
 import com.oracle.svm.core.graal.code.NativeImagePatcher;
 import com.oracle.svm.core.graal.code.SubstrateCompilationResult;
+import com.oracle.svm.core.heap.CodeReferenceMapDecoder;
+import com.oracle.svm.core.heap.CodeReferenceMapEncoder;
 import com.oracle.svm.core.heap.Heap;
 import com.oracle.svm.core.heap.NoAllocationVerifier;
 import com.oracle.svm.core.heap.ObjectReferenceVisitor;
 import com.oracle.svm.core.heap.ObjectReferenceWalker;
 import com.oracle.svm.core.heap.PinnedAllocator;
 import com.oracle.svm.core.heap.ReferenceAccess;
-import com.oracle.svm.core.heap.CodeReferenceMapDecoder;
-import com.oracle.svm.core.heap.CodeReferenceMapEncoder;
 import com.oracle.svm.core.heap.SubstrateReferenceMap;
 import com.oracle.svm.core.log.Log;
 import com.oracle.svm.core.meta.SharedMethod;
 import com.oracle.svm.core.meta.SubstrateObjectConstant;
-import com.oracle.svm.core.option.RuntimeOptionValues;
 import com.oracle.svm.core.os.CommittedMemoryProvider;
 import com.oracle.svm.core.snippets.KnownIntrinsics;
 import com.oracle.svm.core.thread.VMOperation;
@@ -514,7 +513,7 @@ public class InstalledCodeBuilder {
         final Log trace = Log.noopLog();
         trace.string("[SubstrateInstalledCode.allocateAlignedMemory:");
         trace.string("  size: ").unsigned(size);
-        final Pointer result = CommittedMemoryProvider.get().allocate(size, codeAlignment(), true);
+        final Pointer result = CommittedMemoryProvider.get().allocate(size, WordFactory.unsigned(SubstrateOptions.codeAlignment()), true);
         trace.string("  returns: ").hex(result);
         trace.string("]").newline();
         if (result.isNull()) {
@@ -528,11 +527,7 @@ public class InstalledCodeBuilder {
         trace.string("[SubstrateInstalledCode.freeOSMemory:");
         trace.string("  start: ").hex(start);
         trace.string("  size: ").unsigned(size);
-        CommittedMemoryProvider.get().free(start, size, codeAlignment(), true);
+        CommittedMemoryProvider.get().free(start, size, WordFactory.unsigned(SubstrateOptions.codeAlignment()), true);
         trace.string("]").newline();
-    }
-
-    private static UnsignedWord codeAlignment() {
-        return WordFactory.unsigned(GraalOptions.LoopHeaderAlignment.getValue(RuntimeOptionValues.singleton()));
     }
 }

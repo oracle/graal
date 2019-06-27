@@ -30,6 +30,7 @@ import java.util.function.Predicate;
 
 import org.graalvm.collections.EconomicMap;
 import org.graalvm.compiler.api.replacements.Fold;
+import org.graalvm.compiler.core.common.GraalOptions;
 import org.graalvm.compiler.options.Option;
 import org.graalvm.compiler.options.OptionKey;
 import org.graalvm.compiler.options.OptionType;
@@ -40,6 +41,7 @@ import org.graalvm.nativeimage.Platforms;
 import com.oracle.svm.core.jdk.JavaNetSubstitutions;
 import com.oracle.svm.core.option.APIOption;
 import com.oracle.svm.core.option.HostedOptionKey;
+import com.oracle.svm.core.option.HostedOptionValues;
 import com.oracle.svm.core.option.OptionUtils;
 import com.oracle.svm.core.option.RuntimeOptionKey;
 
@@ -311,4 +313,14 @@ public class SubstrateOptions {
     public static final HostedOptionKey<Boolean> RemoveUnusedSymbols = new HostedOptionKey<>(true);
     @Option(help = "Use linker option to remove all local symbols from image.")//
     public static final HostedOptionKey<Boolean> DeleteLocalSymbols = new HostedOptionKey<>(true);
+
+    /**
+     * The alignment for AOT and JIT compiled methods. The value is constant folded during image
+     * generation, i.e., cannot be changed at run time, so that it can be used in uninterruptible
+     * code.
+     */
+    @Fold
+    public static int codeAlignment() {
+        return GraalOptions.LoopHeaderAlignment.getValue(HostedOptionValues.singleton());
+    }
 }
