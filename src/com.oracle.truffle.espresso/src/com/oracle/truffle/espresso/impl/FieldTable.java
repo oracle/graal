@@ -232,9 +232,6 @@ class FieldTable {
 
     /**
      * Greedily tries to fill the space between a parent's fields and its child.
-     * 
-     * At most seven entries in the schedule (parent has {long, byte} field, and child has {long,
-     * byte, byte, byte, byte, byte, byte, byte})
      */
     static class FillingSchedule {
         static final int[][] EMPTY_INT_ARRAY_ARRAY = new int[0][];
@@ -256,7 +253,8 @@ class FieldTable {
             return new FillingSchedule(schedule, nextHoles);
         }
 
-        // packing static fields is not as interesting as instance fields. Only schedule for direct
+        // packing static fields is not as interesting as instance fields: the array created to
+        // remember the hole would be bigger than what we would gain. Only schedule for direct
         // parent.
         static FillingSchedule create(int holeStart, int holeEnd, int[] counts) {
             List<ScheduleEntry> schedule = new ArrayList<>();

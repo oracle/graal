@@ -158,6 +158,11 @@ public final class StaticObject implements TruffleObject {
         initFields(klass, isStatic);
     }
 
+    // Use an explicit method to create array, avoids confusion.
+    public static StaticObject createArray(ArrayKlass klass, Object array) {
+        return new StaticObject(klass, array);
+    }
+
     /**
      * Constructor for Array objects.
      *
@@ -169,7 +174,7 @@ public final class StaticObject implements TruffleObject {
      * behavior and avoid casting to Object[] (a non-leaf cast), we perform field accesses with
      * Unsafe operations.
      */
-    public StaticObject(ArrayKlass klass, Object array) {
+    private StaticObject(ArrayKlass klass, Object array) {
         this.klass = klass;
         assert klass.isArray();
         assert array != null;

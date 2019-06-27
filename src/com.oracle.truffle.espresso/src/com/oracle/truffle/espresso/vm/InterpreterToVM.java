@@ -319,7 +319,7 @@ public final class InterpreterToVM implements ContextAccess {
         assert length >= 0;
         StaticObject[] arr = new StaticObject[length];
         Arrays.fill(arr, StaticObject.NULL);
-        return new StaticObject(componentType.getArrayClass(), arr);
+        return StaticObject.createArray(componentType.getArrayClass(), arr);
     }
 
     @TruffleBoundary

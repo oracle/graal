@@ -872,7 +872,7 @@ public final class VM extends NativeEnv implements ContextAccess {
                                 return null;
                             }
                         });
-        return new StaticObject(getMeta().Class_Array, result.toArray(StaticObject.EMPTY_ARRAY));
+        return StaticObject.createArray(getMeta().Class_Array, result.toArray(StaticObject.EMPTY_ARRAY));
     }
 
     private static boolean isIgnoredBySecurityStackWalk(Method m, Meta meta) {
@@ -1101,7 +1101,7 @@ public final class VM extends NativeEnv implements ContextAccess {
         for (int i = 0; i < packages.length; i++) {
             array[i] = getMeta().toGuestString(packages[i]);
         }
-        StaticObject result = new StaticObject(getMeta().String.getArrayClass(), array);
+        StaticObject result = StaticObject.createArray(getMeta().String.getArrayClass(), array);
         return result;
     }
 

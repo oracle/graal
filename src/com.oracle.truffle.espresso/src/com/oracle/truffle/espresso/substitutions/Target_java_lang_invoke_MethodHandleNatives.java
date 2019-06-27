@@ -213,7 +213,7 @@ public final class Target_java_lang_invoke_MethodHandleNatives {
             result[1] = self;
         }
 
-        return new StaticObject(meta.Object_array, result);
+        return StaticObject.createArray(meta.Object_array, result);
     }
 
     /**

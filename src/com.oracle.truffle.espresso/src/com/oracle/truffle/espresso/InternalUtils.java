@@ -35,8 +35,12 @@ public class InternalUtils {
     public static final String[] EMPTY_BYTE_ARRAY = new String[0];
 
     /**
+     * Returns a representation of how the primitive fields are stored in memory. If
+     * {@code fieldName} appears at index i in the returned array, it means that, in class clazz,
+     * the field named {@code fieldName} uses the i-th byte. A field can use multiple entries.
+     * 
      * @param clazz the class you want to see the underlying representation of primitive fields.
-     * @return a copy of how primitive fields are represented in memory.
+     * @return the layout in memory of the primitive fields.
      */
     public static String[] getUnderlyingPrimitiveFieldArray(@SuppressWarnings("unused") Class<?> clazz) {
         return EMPTY_BYTE_ARRAY;
