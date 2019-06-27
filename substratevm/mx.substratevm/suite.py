@@ -751,6 +751,7 @@ suite = {
                 "com.oracle.svm.core",
                 "com.oracle.svm.core.graal",
                 "com.oracle.svm.core.graal.amd64",
+                "com.oracle.svm.core.graal.aarch64",
                 "com.oracle.svm.core.genscavenge",
             ],
             "distDependencies": [

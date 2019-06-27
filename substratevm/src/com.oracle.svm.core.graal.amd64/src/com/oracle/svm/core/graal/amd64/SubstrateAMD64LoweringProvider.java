@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2019, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2019, 2019, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -22,14 +22,19 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.svm.core.graal.code.aarch64;
+package com.oracle.svm.core.graal.amd64;
 
-import org.graalvm.compiler.core.aarch64.AArch64AddressLoweringByUse;
+import org.graalvm.compiler.core.amd64.AMD64LoweringProviderMixin;
+import org.graalvm.compiler.core.common.spi.ForeignCallsProvider;
 
-import com.oracle.svm.core.graal.code.aarch64.SubstrateAArch64Backend.SubstrateAArch64LIRKindTool;
+import com.oracle.svm.core.graal.meta.SubstrateBasicLoweringProvider;
 
-public class SubstrateAArch64AddressLowering extends AArch64AddressLoweringByUse {
-    public SubstrateAArch64AddressLowering() {
-        super(new SubstrateAArch64LIRKindTool());
+import jdk.vm.ci.code.TargetDescription;
+import jdk.vm.ci.meta.MetaAccessProvider;
+
+public class SubstrateAMD64LoweringProvider extends SubstrateBasicLoweringProvider implements AMD64LoweringProviderMixin {
+
+    public SubstrateAMD64LoweringProvider(MetaAccessProvider metaAccess, ForeignCallsProvider foreignCalls, TargetDescription target) {
+        super(metaAccess, foreignCalls, target);
     }
 }
