@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2017, 2018, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2019, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -42,21 +42,24 @@ package com.oracle.truffle.polyglot;
 
 import org.graalvm.options.OptionCategory;
 import org.graalvm.options.OptionKey;
+import org.graalvm.options.OptionType;
 
 import com.oracle.truffle.api.Option;
 
-@Option.Group(PolyglotEngineImpl.OPTION_GROUP_ENGINE)
-final class PolyglotEngineOptions {
-    static final String PREINITIALIZE_CONTEXT_NAME = "PreinitializeContexts";
-    private static final String INSTRUMENT_EXCEPTIONS_ARE_THROWN_NAME = "InstrumentExceptionsAreThrown";
+@Option.Group(PolyglotEngineImpl.OPTION_GROUP_IMAGE_BUILD_TIME)
+final class ImageBuildTimeOptions {
 
-    @Option(name = PREINITIALIZE_CONTEXT_NAME, category = OptionCategory.EXPERT, deprecated = true, help = "Preinitialize language contexts for given languages.")//
-    static final OptionKey<String> PreinitializeContexts = new OptionKey<>("");
+    static final String PREINITIALIZE_CONTEXTS_NAME = "PreinitializeContexts";
+    @Option(name = PREINITIALIZE_CONTEXTS_NAME, category = OptionCategory.EXPERT, help = "Pre-initialize language contexts for the given languages.")//
+    static final OptionKey<String> PreinitializeContexts = new OptionKey<>(null, OptionType.defaultType(String.class));
 
-    /**
-     * When the option is set the exceptions thrown by instruments are propagated rather than logged
-     * into err.
-     */
-    @Option(name = INSTRUMENT_EXCEPTIONS_ARE_THROWN_NAME, category = OptionCategory.INTERNAL, help = "Propagates exceptions thrown by instruments.")//
-    static final OptionKey<Boolean> InstrumentExceptionsAreThrown = new OptionKey<>(false);
+    static final String DISABLE_PRIVILEGES_NAME = "DisablePrivileges";
+    @Option(name = DISABLE_PRIVILEGES_NAME, category = OptionCategory.EXPERT, help = "Disable Context privileges so the related code can be excluded from the image.")//
+    static final OptionKey<String> DisablePrivileges = new OptionKey<>("");
+
+    static String get(String optionName) {
+        String property = OptionValuesImpl.SYSTEM_PROPERTY_PREFIX + PolyglotEngineImpl.OPTION_GROUP_IMAGE_BUILD_TIME + "." + optionName;
+        return System.getProperty(property, "");
+    }
+
 }

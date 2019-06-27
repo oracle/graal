@@ -109,7 +109,7 @@ final class PolyglotContextConfig {
         this.logLevels = new HashMap<>(engine.logLevels);
         for (String optionKey : options.keySet()) {
             final String group = PolyglotEngineImpl.parseOptionGroup(optionKey);
-            if (group.equals(PolyglotEngineOptions.OPTION_GROUP_LOG)) {
+            if (group.equals(PolyglotEngineImpl.OPTION_GROUP_LOG)) {
                 logLevels.put(PolyglotEngineImpl.parseLoggerName(optionKey), Level.parse(options.get(optionKey)));
                 continue;
             }
@@ -179,7 +179,7 @@ final class PolyglotContextConfig {
                 if (result == null) {
                     if (environmentAccess == EnvironmentAccess.NONE) {
                         result = Collections.unmodifiableMap(environment);
-                    } else if (environmentAccess == EnvironmentAccess.INHERIT) {
+                    } else if (PolyglotEngineImpl.ALLOW_ENVIRONMENT_ACCESS && environmentAccess == EnvironmentAccess.INHERIT) {
                         result = System.getenv();  // System.getenv returns unmodifiable map.
                         if (!environment.isEmpty()) {
                             result = new HashMap<>(result);

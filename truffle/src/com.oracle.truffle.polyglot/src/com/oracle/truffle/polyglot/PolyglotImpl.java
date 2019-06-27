@@ -118,8 +118,6 @@ public final class PolyglotImpl extends AbstractPolyglotImpl {
 
     static final Object[] EMPTY_ARGS = new Object[0];
 
-    static final String OPTION_GROUP_ENGINE = "engine";
-
     @SuppressWarnings("serial") private static final HostException STACKOVERFLOW_ERROR = new HostException(new StackOverflowError() {
         @SuppressWarnings("sync-override")
         @Override
@@ -1242,6 +1240,11 @@ public final class PolyglotImpl extends AbstractPolyglotImpl {
         @Override
         public ProcessHandler.Redirect createRedirectToOutputStream(Object vmObject, OutputStream stream) {
             return ((VMObject) vmObject).getImpl().getIO().createRedirectToStream(stream);
+        }
+
+        @Override
+        public boolean isIOAllowed() {
+            return PolyglotEngineImpl.ALLOW_IO;
         }
     }
 }

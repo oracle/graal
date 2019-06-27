@@ -56,7 +56,7 @@ public final class EnvironmentAccess {
      *
      * @since 19.1.0
      */
-    public static EnvironmentAccess NONE = new EnvironmentAccess();
+    public static final EnvironmentAccess NONE = new EnvironmentAccess();
 
     /**
      * Provides guest languages read access to process environment. The {@code INHERIT} is a default
@@ -65,7 +65,7 @@ public final class EnvironmentAccess {
      *
      * @since 19.1.0
      */
-    public static EnvironmentAccess INHERIT = new EnvironmentAccess();
+    public static final EnvironmentAccess INHERIT = new EnvironmentAccess();
 
     private EnvironmentAccess() {
     }

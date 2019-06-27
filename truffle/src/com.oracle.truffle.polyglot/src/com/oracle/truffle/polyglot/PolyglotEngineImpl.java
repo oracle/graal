@@ -113,10 +113,14 @@ final class PolyglotEngineImpl extends AbstractPolyglotImpl.AbstractEngineImpl i
     static final int HOST_LANGUAGE_INDEX = 0;
     static final String HOST_LANGUAGE_ID = "host";
 
+    static final String OPTION_GROUP_ENGINE = "engine";
+    static final String OPTION_GROUP_LOG = "log";
+    static final String OPTION_GROUP_IMAGE_BUILD_TIME = "image-build-time";
+
     // also update list in LanguageRegistrationProcessor
     private static final Set<String> RESERVED_IDS = new HashSet<>(
-                    Arrays.asList(HOST_LANGUAGE_ID, "graal", "truffle", "engine", "language", "instrument", "graalvm", "context", "polyglot", "compiler", "vm",
-                                    PolyglotEngineOptions.OPTION_GROUP_LOG));
+                    Arrays.asList(HOST_LANGUAGE_ID, "graal", "truffle", "language", "instrument", "graalvm", "context", "polyglot", "compiler", "vm",
+                                    OPTION_GROUP_ENGINE, OPTION_GROUP_LOG, OPTION_GROUP_IMAGE_BUILD_TIME));
 
     private static final Map<PolyglotEngineImpl, Void> ENGINES = Collections.synchronizedMap(new WeakHashMap<>());
     private static volatile boolean shutdownHookInitialized = false;
@@ -349,9 +353,13 @@ final class PolyglotEngineImpl extends AbstractPolyglotImpl.AbstractEngineImpl i
                 for (Object systemKey : properties.keySet()) {
                     String key = (String) systemKey;
                     if (key.startsWith(OptionValuesImpl.SYSTEM_PROPERTY_PREFIX)) {
-                        String engineKey = key.substring(OptionValuesImpl.SYSTEM_PROPERTY_PREFIX.length(), key.length());
-                        if (!options.containsKey(engineKey)) {
-                            optionsWithSystemProperties.put(engineKey, System.getProperty(key));
+                        String optionKey = key.substring(OptionValuesImpl.SYSTEM_PROPERTY_PREFIX.length());
+                        // Context options override system properties options
+                        if (!options.containsKey(optionKey)) {
+                            // Image build time options are not set in runtime options
+                            if (!optionKey.startsWith(OPTION_GROUP_IMAGE_BUILD_TIME)) {
+                                optionsWithSystemProperties.put(optionKey, System.getProperty(key));
+                            }
                         }
                     }
                 }
@@ -384,12 +392,16 @@ final class PolyglotEngineImpl extends AbstractPolyglotImpl.AbstractEngineImpl i
                 continue;
             }
 
-            if (group.equals(PolyglotImpl.OPTION_GROUP_ENGINE)) {
+            if (group.equals(OPTION_GROUP_ENGINE)) {
                 originalEngineOptions.put(key, value);
                 continue;
             }
 
-            if (group.equals(PolyglotEngineOptions.OPTION_GROUP_LOG)) {
+            if (group.equals(OPTION_GROUP_IMAGE_BUILD_TIME)) {
+                throw new IllegalArgumentException("Image build-time option '" + key + "' cannot be set at runtime");
+            }
+
+            if (group.equals(OPTION_GROUP_LOG)) {
                 logOptions.put(parseLoggerName(key), Level.parse(value));
                 continue;
             }
@@ -402,7 +414,7 @@ final class PolyglotEngineImpl extends AbstractPolyglotImpl.AbstractEngineImpl i
      * given options.
      */
     boolean isEngineGroup(String group) {
-        return idToPublicInstrument.containsKey(group) || group.equals(PolyglotImpl.OPTION_GROUP_ENGINE);
+        return idToPublicInstrument.containsKey(group) || group.equals(OPTION_GROUP_ENGINE);
     }
 
     static String parseOptionGroup(String key) {
@@ -955,10 +967,6 @@ final class PolyglotEngineImpl extends AbstractPolyglotImpl.AbstractEngineImpl i
         return hostClassCache;
     }
 
-    HostClassDesc findHostClassDesc(Class<?> clazz) {
-        return hostClassCache.forClass(clazz);
-    }
-
     private static final class PolyglotShutDownHook implements Runnable {
 
         public void run() {
@@ -1105,10 +1113,43 @@ final class PolyglotEngineImpl extends AbstractPolyglotImpl.AbstractEngineImpl i
         return Truffle.getRuntime().getName();
     }
 
+    private static final String DISABLE_PRIVILEGES_VALUE = ImageBuildTimeOptions.get(ImageBuildTimeOptions.DISABLE_PRIVILEGES_NAME);
+    private static final String[] DISABLED_PRIVILEGES = DISABLE_PRIVILEGES_VALUE.isEmpty() ? new String[0] : DISABLE_PRIVILEGES_VALUE.split(",");
+
+    // reflectively read from TruffleFeature
+    private static final boolean ALLOW_CREATE_PROCESS;
+    static final boolean ALLOW_ENVIRONMENT_ACCESS;
+    static final boolean ALLOW_IO;
+    static {
+        boolean createProcess = true;
+        boolean environmentAccess = true;
+        boolean io = true;
+
+        for (String privilege : DISABLED_PRIVILEGES) {
+            switch (privilege) {
+                case "createProcess":
+                    createProcess = false;
+                    break;
+                case "environmentAccess":
+                    environmentAccess = false;
+                    break;
+                case "io":
+                    io = false;
+                    break;
+                default:
+                    throw new Error("Invalid privilege name for " + ImageBuildTimeOptions.DISABLE_PRIVILEGES_NAME + ": " + privilege);
+            }
+        }
+
+        ALLOW_CREATE_PROCESS = createProcess;
+        ALLOW_ENVIRONMENT_ACCESS = environmentAccess;
+        ALLOW_IO = io;
+    }
+
     @Override
     @SuppressWarnings({"all"})
     public synchronized Context createContext(OutputStream configOut, OutputStream configErr, InputStream configIn, boolean allowHostLookup,
-                    HostAccess access,
+                    HostAccess hostAccess,
                     PolyglotAccess polyglotAccess, boolean allowNativeAccess, boolean allowCreateThread, boolean allowHostIO,
                     boolean allowHostClassLoading, boolean allowExperimentalOptions, Predicate<String> classFilter, Map<String, String> options,
                     Map<String, String[]> arguments, String[] onlyLanguages, FileSystem fileSystem, Object logHandlerOrStream, boolean allowCreateProcess, ProcessHandler processHandler,
@@ -1119,7 +1160,7 @@ final class PolyglotEngineImpl extends AbstractPolyglotImpl.AbstractEngineImpl i
                             "Use Engine.newBuilder().build() to construct a new engine and pass it using Context.newBuilder().engine(engine).build().");
         }
 
-        initializeHostAccess(access);
+        initializeHostAccess(hostAccess);
 
         Set<String> allowedLanguages;
         if (onlyLanguages.length == 0) {
@@ -1128,7 +1169,12 @@ final class PolyglotEngineImpl extends AbstractPolyglotImpl.AbstractEngineImpl i
             allowedLanguages = new HashSet<>(Arrays.asList(onlyLanguages));
         }
         final FileSystem fs;
-        if (allowHostIO) {
+        if (!ALLOW_IO) {
+            if (fileSystem == null) {
+                throw new IllegalArgumentException("A FileSystem must be provided when the allowIO() privilege is removed at image build time");
+            }
+            fs = fileSystem;
+        } else if (allowHostIO) {
             fs = fileSystem != null ? fileSystem : FileSystems.newDefaultFileSystem();
         } else {
             fs = FileSystems.newNoIOFileSystem();
@@ -1155,12 +1201,20 @@ final class PolyglotEngineImpl extends AbstractPolyglotImpl.AbstractEngineImpl i
 
         final InputStream useIn = configIn == null ? this.in : configIn;
 
-        ProcessHandler useProcessHandler;
+        final ProcessHandler useProcessHandler;
         if (allowCreateProcess) {
+            if (!ALLOW_CREATE_PROCESS) {
+                throw new IllegalArgumentException("Cannot allowCreateProcess() because the privilege is removed at image build time");
+            }
             useProcessHandler = processHandler != null ? processHandler : ProcessHandlers.newDefaultProcessHandler();
         } else {
             useProcessHandler = null;
         }
+
+        if (!ALLOW_ENVIRONMENT_ACCESS && environmentAccess != EnvironmentAccess.NONE) {
+            throw new IllegalArgumentException("Cannot allow EnvironmentAccess because the privilege is removed at image build time");
+        }
+
         PolyglotContextConfig config = new PolyglotContextConfig(this, useOut, useErr, useIn,
                         allowHostLookup, polyglotAccess, allowNativeAccess, allowCreateThread, allowHostClassLoading,
                         allowExperimentalOptions, classFilter, arguments, allowedLanguages, options, fs, useHandler, allowCreateProcess, useProcessHandler,

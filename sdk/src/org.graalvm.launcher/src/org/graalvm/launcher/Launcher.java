@@ -820,7 +820,6 @@ public abstract class Launcher {
     private OptionDescriptor findPolyglotOptionDescriptor(String group, String key) {
         OptionDescriptors descriptors = null;
         switch (group) {
-            case "compiler":
             case "engine":
                 descriptors = getTempEngine().getOptions();
                 break;

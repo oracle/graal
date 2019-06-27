@@ -383,6 +383,8 @@ public abstract class Accessor {
         public abstract boolean hasDefaultProcessHandler(Object polyglotLanguageContext);
 
         public abstract ProcessHandler.Redirect createRedirectToOutputStream(Object vmObject, OutputStream stream);
+
+        public abstract boolean isIOAllowed();
     }
 
     public abstract static class LanguageSupport {
