@@ -89,23 +89,26 @@ mx.update_commands(_suite, {
     ],
 })
 
-_image_jmh_benchmark_args = [
+_IMAGE_JMH_BENCHMARK_ARGS = [
     # JMH does not support forks with native-image. In the distant future we can capture this case.
     '-Dnative-image.benchmark.extra-run-arg=-f0',
 
+    # GR-17177 should remove this from args.
+    '-Dnative-image.benchmark.extra-image-build-argument=--initialize-at-build-time=org.openjdk.jmh'
+
     # Don't waste time and energy collecting reflection config.
+    '-Dnative-image.benchmark.extra-agent-run-arg=-f0',
     '-Dnative-image.benchmark.extra-agent-run-arg=-wi',
     '-Dnative-image.benchmark.extra-agent-run-arg=1',
     '-Dnative-image.benchmark.extra-agent-run-arg=-i1',
 
     # Don't waste time profiling the same code but still wait for compilation on HotSpot.
+    '-Dnative-image.benchmark.extra-profile-run-arg=-f0',
     '-Dnative-image.benchmark.extra-profile-run-arg=-wi',
     '-Dnative-image.benchmark.extra-profile-run-arg=1',
     '-Dnative-image.benchmark.extra-profile-run-arg=-i5',
-
-    # GR-16656: should make this argument unnecessary.
-    '-Dnative-image.benchmark.extra-image-build-argument=--initialize-at-build-time=org.openjdk.jmh'
 ]
+
 
 def createBenchmarkShortcut(benchSuite, args):
     if not args:
@@ -1534,7 +1537,7 @@ class JMHRunnerGraalCoreBenchmarkSuite(mx_benchmark.JMHRunnerBenchmarkSuite): # 
         return "graal-compiler"
 
     def extraVmArgs(self):
-        return ['-XX:-UseJVMCIClassLoader'] + super(JMHRunnerGraalCoreBenchmarkSuite, self).extraVmArgs() + _image_jmh_benchmark_args
+        return ['-XX:-UseJVMCIClassLoader'] + super(JMHRunnerGraalCoreBenchmarkSuite, self).extraVmArgs() + _IMAGE_JMH_BENCHMARK_ARGS
 
 
 mx_benchmark.add_bm_suite(JMHRunnerGraalCoreBenchmarkSuite())
@@ -1543,7 +1546,7 @@ mx_benchmark.add_bm_suite(JMHRunnerGraalCoreBenchmarkSuite())
 class JMHJarGraalCoreBenchmarkSuite(mx_benchmark.JMHJarBenchmarkSuite):
 
     def extraVmArgs(self):
-        return super(JMHJarGraalCoreBenchmarkSuite, self).extraVmArgs() + _image_jmh_benchmark_args
+        return super(JMHJarGraalCoreBenchmarkSuite, self).extraVmArgs() + _IMAGE_JMH_BENCHMARK_ARGS
 
     def name(self):
         return "jmh-jar"
@@ -1561,7 +1564,7 @@ mx_benchmark.add_bm_suite(JMHJarGraalCoreBenchmarkSuite())
 class JMHDistGraalCoreBenchmarkSuite(mx_benchmark.JMHDistBenchmarkSuite):
 
     def extraVmArgs(self):
-        return super(JMHDistGraalCoreBenchmarkSuite, self).extraVmArgs() + _image_jmh_benchmark_args
+        return super(JMHDistGraalCoreBenchmarkSuite, self).extraVmArgs() + _IMAGE_JMH_BENCHMARK_ARGS
 
     def name(self):
         return "jmh-dist"

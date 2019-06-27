@@ -208,24 +208,25 @@ class NativeImageVM(GraalVm):
             # Agent configuration and/or HotSpot profiling
             needs_config = (config.config_dir is None) and config.needs_config
             if needs_config or self.hotspot_pgo:
-                config_vm_args = []
-                profiling_vm_args = []
-                config_run_args = []
-                profiling_run_args = []
+                hotspot_vm_args = []
+                hotspot_run_args = []
 
                 if needs_config:
                     config.config_dir = mx.mkdtemp(suffix='config', prefix='native-image')
-                    config_vm_args += ['-agentlib:native-image-agent=config-output-dir=' + str(config.config_dir)]
-                    config_run_args += config.extra_agent_run_args
+                    hotspot_vm_args += ['-agentlib:native-image-agent=config-output-dir=' + str(config.config_dir)]
 
                 if self.hotspot_pgo:
-                    profiling_vm_args += ['-Dgraal.ProfilesCollectExperimental=true']
-                    config_run_args = []
-                    profiling_run_args = config.extra_profile_run_args
+                    hotspot_vm_args += ['-Dgraal.ProfilesCollectExperimental=true']
 
-                agent_run_args = config_vm_args + profiling_vm_args + original_java_run_args + config.extra_run_args + config_run_args + profiling_run_args
+                if config.extra_agent_run_args:
+                    hotspot_run_args += config.extra_profile_run_args if self.hotspot_pgo else config.extra_agent_run_args
+                else:
+                    hotspot_run_args += image_run_args
+
+                hotspot_args = hotspot_vm_args + classpath_arguments + executable + system_properties + hotspot_run_args
+
                 mx.log('Running with HotSpot to get the configuration files and profiles. This could take a while:')
-                super(NativeImageVM, self).run_java(agent_run_args,
+                super(NativeImageVM, self).run_java(hotspot_args,
                                                     out=None, err=None, cwd=cwd, nonZeroIsFatal=nonZeroIsFatal)
 
             base_image_build_args = [os.path.join(mx_vm.graalvm_home(fatalIfMissing=True), 'bin', 'native-image')]
@@ -249,7 +250,12 @@ class NativeImageVM(GraalVm):
                 mx.log(' ' + ' '.join([pipes.quote(str(arg)) for arg in instrument_image_build_args]))
                 mx.run(instrument_image_build_args, out=None, err=None, cwd=cwd, nonZeroIsFatal=nonZeroIsFatal)
 
-                image_run_cmd = [os.path.abspath(executable_name)] + image_run_args + config.extra_run_args + config.extra_profile_run_args
+                image_run_cmd = [os.path.abspath(executable_name)]
+                if config.extra_profile_run_args:
+                    image_run_cmd += config.extra_profile_run_args
+                else:
+                    image_run_cmd += image_run_args + config.extra_run_args
+
                 mx.log('Running the instrumented image with: ')
                 mx.log(' ' + ' '.join([pipes.quote(str(arg)) for arg in image_run_cmd]))
                 mx.run(image_run_cmd, out=out, err=err, cwd=cwd, nonZeroIsFatal=nonZeroIsFatal)
