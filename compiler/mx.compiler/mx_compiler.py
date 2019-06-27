@@ -26,6 +26,7 @@
 #
 # ----------------------------------------------------------------------------------------------------
 
+from __future__ import print_function
 import os
 from os.path import join, exists, getmtime, basename, isdir
 from argparse import ArgumentParser, RawDescriptionHelpFormatter
@@ -36,6 +37,7 @@ import tarfile
 import subprocess
 import tempfile
 import shutil
+import sys
 
 import mx_truffle
 import mx_sdk
@@ -57,6 +59,18 @@ import mx_graal_tools #pylint: disable=unused-import
 import argparse
 import shlex
 import glob
+
+# Temporary imports and (re)definitions while porting mx from Python 2 to Python 3
+if sys.version_info[0] < 3:
+    def _decode(x):
+        return x
+    def _encode(x):
+        return x
+else:
+    def _decode(x):
+        return x.decode()
+    def _encode(x):
+        return x.encode()
 
 _suite = mx.suite('compiler')
 
@@ -215,16 +229,16 @@ def _nodeCostDump(args, extraVMarguments=None):
                 nrOfCols = len(row)
                 for col in row:
                     s = s + col + "|"
-                print s
+                print(s)
                 s = '|'
                 for _ in range(nrOfCols):
                     s = s + ('-' * maxLen) + '|'
             else:
                 for col in row:
                     s = s + col + "|"
-            print s
+            print(s)
     else:
-        print out.data
+        print(out.data)
 
 def _ctw_jvmci_export_args():
     """
@@ -388,7 +402,7 @@ class BootstrapTest:
         self.args = args
         self.suppress = suppress
         self.tags = tags
-        if tags is not None and (not isinstance(tags, list) or all(not isinstance(x, basestring) for x in tags)):
+        if tags is not None and (not isinstance(tags, list) or all(not isinstance(x, str) for x in tags)):
             mx.abort("Gate tag argument must be a list of strings, tag argument:" + str(tags))
 
     def run(self, tasks, extraVMarguments=None):
@@ -978,7 +992,7 @@ class GraalArchiveParticipant:
                 pass
             else:
                 provider = m.group(2)
-                for service in contents.strip().split(os.linesep):
+                for service in _decode(contents).strip().split(os.linesep):
                     assert service
                     version = m.group(1)
                     if version is None:
@@ -1149,7 +1163,7 @@ def makegraaljdk(args):
             assert exists(jvmlib), jvmlib + ' does not exist'
 
         with open(join(jvmciDir, 'compiler-name'), 'w') as fp:
-            print >> fp, 'graal'
+            print('graal', file=fp)
         vmName = 'Graal'
         mapFiles = set()
         for e in _jvmci_classpath:
@@ -1161,7 +1175,7 @@ def makegraaljdk(args):
             with open(join(dstJdk, 'release'), 'a') as fp:
                 d = e.dist()
                 s = d.suite
-                print >> fp, '{}={}'.format(d.name, s.vc.parent(s.dir))
+                print('{}={}'.format(d.name, s.vc.parent(s.dir)), file=fp)
                 vmName = vmName + ':' + s.name + '_' + s.version()
             shutil.copyfile(e.get_path(), join(jvmciDir, src))
         for e in _bootclasspath_appends:
@@ -1177,7 +1191,7 @@ def makegraaljdk(args):
 
             with open(join(dstJdk, 'release'), 'a') as fp:
                 s = e.suite
-                print >> fp, '{}={}'.format(e.name, s.vc.parent(s.dir))
+                print('{}={}'.format(e.name, s.vc.parent(s.dir)), file=fp)
             shutil.copyfile(e.classpath_repr(), join(dstDir, src))
 
         out = mx.LinesOutputCapture()
@@ -1192,7 +1206,7 @@ def makegraaljdk(args):
                     # with a suffix denoting the commit of each Graal jar.
                     # For example:
                     # Java HotSpot(TM) 64-Bit Graal:compiler_88847fb25d1a62977a178331a5e78fa5f8fcbb1a (build 25.71-b01-internal-jvmci-0.34, mixed mode)
-                    print >> fp, 'name=' + m.group(1) + vmName
+                    print('name=' + m.group(1) + vmName, file=fp)
                 line = True
                 break
         if line is not True:

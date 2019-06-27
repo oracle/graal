@@ -41,6 +41,7 @@
 package org.graalvm.polyglot.io;
 
 import java.io.IOException;
+import java.io.OutputStream;
 import java.lang.reflect.Method;
 import java.nio.file.Paths;
 import java.util.ArrayList;
@@ -195,6 +196,17 @@ public interface ProcessHandler {
                             Redirect inputRedirect, Redirect outputRedirect, Redirect errorRedirect) {
                 return new ProcessCommand(cmd, cwd, environment, redirectErrorStream, inputRedirect, outputRedirect, errorRedirect);
             }
+
+            @Override
+            public Redirect createRedirectToStream(OutputStream stream) {
+                Objects.requireNonNull("Stream must be non null.");
+                return new Redirect(Redirect.Type.STREAM, stream);
+            }
+
+            @Override
+            public OutputStream getOutputStream(Redirect redirect) {
+                return redirect.getOutputStream();
+            }
         }
     }
 
@@ -210,7 +222,7 @@ public interface ProcessHandler {
          *
          * @since 19.1.0
          */
-        public static final Redirect PIPE = new Redirect(Type.PIPE);
+        public static final Redirect PIPE = new Redirect(Type.PIPE, null);
 
         /**
          * Indicates that subprocess I/O source or destination will be the same as those of the
@@ -218,13 +230,19 @@ public interface ProcessHandler {
          *
          * @since 19.1.0
          */
-        public static final Redirect INHERIT = new Redirect(Type.INHERIT);
+        public static final Redirect INHERIT = new Redirect(Type.INHERIT, null);
 
         private final Type type;
+        private final OutputStream stream;
 
-        private Redirect(Type type) {
+        Redirect(Type type, OutputStream stream) {
             Objects.requireNonNull(type, "Type must be non null.");
             this.type = type;
+            this.stream = stream;
+        }
+
+        OutputStream getOutputStream() {
+            return stream;
         }
 
         /**
@@ -264,8 +282,18 @@ public interface ProcessHandler {
         }
 
         private enum Type {
+            /**
+             * The type of {@link Redirect#PIPE Redirect.PIPE}.
+             */
             PIPE,
-            INHERIT
+            /**
+             * The type of {@link Redirect#INHERIT Redirect.INHERIT}.
+             */
+            INHERIT,
+            /**
+             * The type of {@link Redirect#stream(java.io.OutputStream) Redirect.stream}.
+             */
+            STREAM
         }
     }
 }

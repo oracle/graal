@@ -45,6 +45,7 @@ import com.oracle.truffle.api.TruffleFile;
 import com.oracle.truffle.api.TruffleLanguage.Env;
 import com.oracle.truffle.api.impl.Accessor;
 import java.io.IOException;
+import java.io.OutputStream;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.HashMap;
@@ -262,6 +263,22 @@ public final class TruffleProcessBuilder {
     }
 
     /**
+     * Creates a redirect to write into the given {@link OutputStream}.
+     * <p>
+     * It is guaranteed that the process output (error output) is copied into the given stream
+     * before the call to {@link Process#waitFor()} method ends.
+     * <p>
+     * The stream is not closed when the process terminates.
+     *
+     * @param stream the {@link OutputStream} to write into
+     * @throws NullPointerException if the given stream is {@code null}
+     * @since 19.2.0
+     */
+    public Redirect createRedirectToStream(OutputStream stream) {
+        return AccessIO.engineAccess().createRedirectToOutputStream(polyglotLanguageContext, stream);
+    }
+
+    /**
      * Starts a new subprocess using the attributes of this builder. The new process invokes the
      * command with arguments given by {@link #command(java.lang.String...)}, in a working directory
      * given by {@link #directory(com.oracle.truffle.api.TruffleFile)}, with a process environment
@@ -309,18 +326,16 @@ public final class TruffleProcessBuilder {
         } else {
             useCwd = fileSystem.toAbsolutePath(fileSystem.parsePath("")).toString();
         }
-        ProcessHandler.ProcessCommand processCommand = AccessIO.engineAccess().newProcessCommand(
-                        polyglotLanguageContext,
-                        useCmd,
-                        useCwd,
-                        useEnv,
-                        redirectErrorStream,
-                        inputRedirect,
-                        outputRedirect,
-                        errorRedirect);
-        ProcessHandler handler = AccessIO.engineAccess().getProcessHandler(polyglotLanguageContext);
         try {
-            return handler.start(processCommand);
+            return AccessIO.engineAccess().createSubProcess(
+                            polyglotLanguageContext,
+                            useCmd,
+                            useCwd,
+                            useEnv,
+                            redirectErrorStream,
+                            inputRedirect,
+                            outputRedirect,
+                            errorRedirect);
         } catch (IOException ioe) {
             throw ioe;
         } catch (SecurityException se) {
@@ -330,12 +345,12 @@ public final class TruffleProcessBuilder {
                 throw AccessIO.languageAccess().throwSecurityException(se.getMessage());
             }
         } catch (Throwable t) {
-            throw wrapHostException(handler, t);
+            throw wrapHostException(t);
         }
     }
 
-    private <T extends Throwable> RuntimeException wrapHostException(ProcessHandler handler, T t) {
-        if (AccessIO.engineAccess().isDefaultProcessHandler(handler)) {
+    private <T extends Throwable> RuntimeException wrapHostException(T t) {
+        if (AccessIO.engineAccess().hasDefaultProcessHandler(polyglotLanguageContext)) {
             throw sthrow(t);
         }
         throw AccessIO.engineAccess().wrapHostException(null, polyglotLanguageContext, t);

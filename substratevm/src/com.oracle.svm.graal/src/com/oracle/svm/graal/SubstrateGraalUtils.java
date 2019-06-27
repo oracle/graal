@@ -30,7 +30,6 @@ import java.io.PrintStream;
 import java.util.EnumMap;
 import java.util.Map;
 
-import jdk.vm.ci.code.Architecture;
 import org.graalvm.compiler.code.CompilationResult;
 import org.graalvm.compiler.core.CompilationWrapper;
 import org.graalvm.compiler.core.CompilationWrapper.ExceptionAction;
@@ -60,6 +59,7 @@ import com.oracle.svm.core.option.RuntimeOptionKey;
 import com.oracle.svm.graal.meta.SubstrateInstalledCodeImpl;
 import com.oracle.svm.graal.meta.SubstrateMethod;
 
+import jdk.vm.ci.code.Architecture;
 import jdk.vm.ci.code.InstalledCode;
 
 public class SubstrateGraalUtils {
@@ -161,6 +161,11 @@ public class SubstrateGraalUtils {
             @Override
             protected DebugContext createRetryDebugContext(DebugContext initialDebug, OptionValues options, PrintStream logStream) {
                 return GraalSupport.get().openDebugContext(options, compilationId, method, logStream);
+            }
+
+            @Override
+            protected void exitHostVM(int status) {
+                System.exit(status);
             }
         }.run(initialDebug);
     }

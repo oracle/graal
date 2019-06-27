@@ -41,8 +41,15 @@
 package com.oracle.truffle.polyglot;
 
 import java.io.IOException;
+import java.io.InputStream;
+import java.io.OutputStream;
+import java.lang.ref.Reference;
+import java.lang.ref.WeakReference;
 import java.nio.file.Paths;
+import java.util.List;
 import java.util.Map;
+import java.util.Objects;
+import java.util.concurrent.TimeUnit;
 import org.graalvm.polyglot.io.ProcessHandler;
 
 final class ProcessHandlers {
@@ -57,6 +64,15 @@ final class ProcessHandlers {
 
     static boolean isDefault(ProcessHandler handler) {
         return handler instanceof DefaultProcessHandler;
+    }
+
+    static Process decorate(PolyglotLanguageContext owner, List<? extends String> cmd, Process process,
+                    OutputStream out, OutputStream err) {
+        ProcessDecorator decorator = new ProcessDecorator(owner, cmd.get(0), process, out, err);
+        synchronized (owner.context) {
+            owner.context.subProcesses.add(decorator);
+        }
+        return decorator;
     }
 
     private static final class DefaultProcessHandler implements ProcessHandler {
@@ -76,14 +92,177 @@ final class ProcessHandlers {
         }
 
         private static java.lang.ProcessBuilder.Redirect translateRedirect(ProcessHandler.Redirect redirect) {
-            if (redirect == ProcessHandler.Redirect.PIPE) {
+            if (redirect == Redirect.PIPE) {
                 return java.lang.ProcessBuilder.Redirect.PIPE;
-            } else if (redirect == ProcessHandler.Redirect.INHERIT) {
+            } else if (redirect == Redirect.INHERIT) {
                 return java.lang.ProcessBuilder.Redirect.INHERIT;
             } else {
                 throw new IllegalStateException("Unsupported redirect: " + redirect);
             }
         }
+    }
 
+    static final class ProcessDecorator extends Process {
+
+        private final Reference<PolyglotLanguageContext> owner;
+        private final String command;
+        private final Process delegate;
+        private final Thread outCopier;
+        private final Thread errCopier;
+
+        private ProcessDecorator(
+                        PolyglotLanguageContext owner,
+                        String command,
+                        Process delegate,
+                        OutputStream out,
+                        OutputStream err) {
+            Objects.requireNonNull(owner, "Owner must be non null");
+            Objects.requireNonNull(command, "Command muset be non null");
+            Objects.requireNonNull(delegate, "Delegate must be non null.");
+            this.owner = new WeakReference<>(owner);
+            this.command = command;
+            this.delegate = delegate;
+            this.outCopier = out == null ? null : new CopierThread(createThreadName(owner, command, "stdout"), delegate.getInputStream(), out);
+            this.errCopier = err == null ? null : new CopierThread(createThreadName(owner, command, "stderr"), delegate.getErrorStream(), err);
+            if (outCopier != null) {
+                outCopier.start();
+            }
+            if (errCopier != null) {
+                errCopier.start();
+            }
+        }
+
+        PolyglotLanguageContext getOwner() {
+            return owner.get();
+        }
+
+        String getCommand() {
+            return command;
+        }
+
+        @Override
+        public OutputStream getOutputStream() {
+            return delegate.getOutputStream();
+        }
+
+        @Override
+        public InputStream getInputStream() {
+            if (outCopier == null) {
+                return delegate.getInputStream();
+            }
+            return null;
+        }
+
+        @Override
+        public InputStream getErrorStream() {
+            if (errCopier == null) {
+                return delegate.getErrorStream();
+            }
+            return null;
+        }
+
+        @Override
+        public int waitFor() throws InterruptedException {
+            int res = delegate.waitFor();
+            waitForCopiers();
+            removeFromActiveSubProcesses();
+            return res;
+        }
+
+        @Override
+        public int exitValue() {
+            int result = delegate.exitValue();
+            removeFromActiveSubProcesses();
+            return result;
+        }
+
+        @Override
+        public void destroy() {
+            delegate.destroy();
+        }
+
+        @Override
+        public Process destroyForcibly() {
+            Process result = delegate.destroyForcibly();
+            assert result == delegate;
+            return this;
+        }
+
+        @Override
+        public boolean isAlive() {
+            boolean result = delegate.isAlive();
+            if (!result) {
+                removeFromActiveSubProcesses();
+            }
+            return result;
+        }
+
+        @Override
+        public boolean waitFor(long timeout, TimeUnit unit) throws InterruptedException {
+            boolean res = delegate.waitFor(timeout, unit);
+            if (res) {
+                waitForCopiers();
+                removeFromActiveSubProcesses();
+            }
+            return res;
+        }
+
+        private void waitForCopiers() throws InterruptedException {
+            if (outCopier != null) {
+                outCopier.join();
+            }
+            if (errCopier != null) {
+                errCopier.join();
+            }
+        }
+
+        private void removeFromActiveSubProcesses() {
+            PolyglotLanguageContext languageContext = owner.get();
+            if (languageContext != null) {
+                synchronized (languageContext.context) {
+                    languageContext.context.subProcesses.remove(this);
+                }
+            }
+        }
+
+        private static String createThreadName(PolyglotLanguageContext creator, String command, String suffix) {
+            return "Polyglot-" + creator.language.getId() + "-" + command + "-" + suffix;
+        }
+    }
+
+    private static final class CopierThread extends Thread {
+
+        private static final int BUFSIZE = 8192;
+
+        private final InputStream in;
+        private final OutputStream out;
+        private final byte[] buffer;
+
+        CopierThread(String name, InputStream in, OutputStream out) {
+            Objects.requireNonNull(name, "Name must be non null.");
+            Objects.requireNonNull(in, "In must be non null.");
+            Objects.requireNonNull(out, "Out must be non null.");
+            setName(name);
+            this.in = in;
+            this.out = out;
+            this.buffer = new byte[BUFSIZE];
+        }
+
+        @Override
+        public void run() {
+            try {
+                while (true) {
+                    if (isInterrupted()) {
+                        return;
+                    }
+                    int read = in.read(buffer, 0, buffer.length);
+                    if (read == -1) {
+                        return;
+                    }
+                    out.write(buffer, 0, read);
+                }
+            } catch (IOException e) {
+            }
+        }
     }
 }

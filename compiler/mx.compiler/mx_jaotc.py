@@ -25,6 +25,8 @@
 # questions.
 #
 # ----------------------------------------------------------------------------------------------------
+from __future__ import print_function
+
 import os
 import shutil
 import tempfile
@@ -90,9 +92,9 @@ def jaotc_test(args):
     args = parser.parse_args(args)
 
     if args.list:
-        print "The following jaotc tests are available:\n"
+        print("The following jaotc tests are available:\n")
         for name in all_tests:
-            print "  " + name
+            print("  " + name)
         return
 
     tests = args.tests or all_tests

@@ -37,6 +37,7 @@ import java.util.Set;
 
 import org.graalvm.compiler.code.CompilationResult;
 import org.graalvm.compiler.code.CompilationResult.CodeAnnotation;
+import org.graalvm.compiler.core.common.GraalOptions;
 import org.graalvm.compiler.core.common.NumUtil;
 import org.graalvm.compiler.debug.DebugContext;
 import org.graalvm.compiler.debug.Indent;
@@ -72,6 +73,7 @@ import com.oracle.svm.core.heap.SubstrateReferenceMap;
 import com.oracle.svm.core.log.Log;
 import com.oracle.svm.core.meta.SharedMethod;
 import com.oracle.svm.core.meta.SubstrateObjectConstant;
+import com.oracle.svm.core.option.RuntimeOptionValues;
 import com.oracle.svm.core.os.CommittedMemoryProvider;
 import com.oracle.svm.core.snippets.KnownIntrinsics;
 import com.oracle.svm.core.thread.VMOperation;
@@ -512,7 +514,7 @@ public class InstalledCodeBuilder {
         final Log trace = Log.noopLog();
         trace.string("[SubstrateInstalledCode.allocateAlignedMemory:");
         trace.string("  size: ").unsigned(size);
-        final Pointer result = CommittedMemoryProvider.get().allocate(size, CommittedMemoryProvider.UNALIGNED, true);
+        final Pointer result = CommittedMemoryProvider.get().allocate(size, codeAlignment(), true);
         trace.string("  returns: ").hex(result);
         trace.string("]").newline();
         if (result.isNull()) {
@@ -526,7 +528,11 @@ public class InstalledCodeBuilder {
         trace.string("[SubstrateInstalledCode.freeOSMemory:");
         trace.string("  start: ").hex(start);
         trace.string("  size: ").unsigned(size);
-        CommittedMemoryProvider.get().free(start, size, CommittedMemoryProvider.UNALIGNED, true);
+        CommittedMemoryProvider.get().free(start, size, codeAlignment(), true);
         trace.string("]").newline();
+    }
+
+    private static UnsignedWord codeAlignment() {
+        return WordFactory.unsigned(GraalOptions.LoopHeaderAlignment.getValue(RuntimeOptionValues.singleton()));
     }
 }

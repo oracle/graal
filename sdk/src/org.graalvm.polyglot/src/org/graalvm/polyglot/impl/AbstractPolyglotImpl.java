@@ -111,6 +111,10 @@ public abstract class AbstractPolyglotImpl {
 
         public abstract ProcessHandler.ProcessCommand newProcessCommand(List<String> cmd, String cwd, Map<String, String> environment, boolean redirectErrorStream,
                         ProcessHandler.Redirect inputRedirect, ProcessHandler.Redirect outputRedirect, ProcessHandler.Redirect errorRedirect);
+
+        public abstract ProcessHandler.Redirect createRedirectToStream(OutputStream stream);
+
+        public abstract OutputStream getOutputStream(ProcessHandler.Redirect redirect);
     }
 
     public abstract static class APIAccess {

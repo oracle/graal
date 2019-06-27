@@ -24,8 +24,7 @@ export PATH=$PWD/mx:$PATH
 
 The compiler depends on a JDK that supports a compatible version of JVMCI ([JVM Compiler Interface](https://bugs.openjdk.java.net/browse/JDK-8062493)).
 There is a JVMCI [port](https://github.com/graalvm/graal-jvmci-8) for JDK 8 and the required JVMCI version is built into the JDK as of JDK 11.
-A JVMCI-enabled JDK 8 can be downloaded from [OTN](https://www.oracle.com/technetwork/graalvm/downloads/index.html)
-or [GitHub](https://github.com/graalvm/openjdk8-jvmci-builder/releases)
+A JVMCI-enabled JDK 8 can be downloaded from [GitHub](https://github.com/graalvm/openjdk8-jvmci-builder/releases)
 or you can [build](#building-jvmci-jdk8) it yourself.
 
 Most compiler sources are compliant with Java 8. Some sources use API specific to JDK 8 or only introduced in JDK 9.
@@ -178,7 +177,7 @@ mx --java-home /path/to/jdk8 unittest
 export JAVA_HOME=$(mx --java-home /path/to/jdk8 jdkhome)
 ```
 
-You need to use the same JDK the [OTN](https://www.oracle.com/technetwork/graalvm/downloads/index.html) downloads are based on as the argument to `--java-home` in the above commands.
+You need to use the same JDK the [GitHub](https://github.com/graalvm/openjdk8-jvmci-builder/releases) downloads are based on as the argument to `--java-home` in the above commands.
 The build step above should work on all [supported JDK 8 build platforms](https://wiki.openjdk.java.net/display/Build/Supported+Build+Platforms).
 It should also work on other platforms (such as Oracle Linux, CentOS and Fedora as described [here](http://mail.openjdk.java.net/pipermail/graal-dev/2015-December/004050.html)).
 If you run into build problems, send a message to http://mail.openjdk.java.net/mailman/listinfo/graal-dev.
