@@ -83,8 +83,13 @@ import com.oracle.svm.core.util.LazyFinalReference;
 import com.oracle.svm.core.util.VMError;
 import com.oracle.svm.util.ReflectionUtil;
 import com.oracle.svm.util.ReflectionUtil.ReflectionUtilError;
+import java.io.File;
+import java.net.MalformedURLException;
+import java.security.CodeSource;
+import java.security.cert.Certificate;
 
 import jdk.vm.ci.meta.JavaKind;
+import org.graalvm.nativeimage.ProcessProperties;
 import sun.security.util.SecurityConstants;
 
 @Hybrid
@@ -272,7 +277,18 @@ public final class DynamicHub implements JavaKind.FormatWithToString, AnnotatedE
     private static final LazyFinalReference<java.security.ProtectionDomain> allPermDomainReference = new LazyFinalReference<>(() -> {
         java.security.Permissions perms = new java.security.Permissions();
         perms.add(SecurityConstants.ALL_PERMISSION);
-        return new java.security.ProtectionDomain(null, perms);
+        CodeSource cs;
+        try {
+            // Try to use executable image's name as code source for the class.
+            // The file location can be used by Java code to determine its location on disk, similar
+            // to argv[0].
+            cs = new CodeSource(new File(ProcessProperties.getExecutableName()).toURI().toURL(), (Certificate[]) null);
+        } catch (MalformedURLException ex) {
+            // This should not really happen; the file is cannonicalized, absolute, so it should
+            // always have file:// URL.
+            cs = null;
+        }
+        return new java.security.ProtectionDomain(cs, perms);
     });
 
     public static final LazyFinalReference<Target_java_lang_Module> singleModuleReference = new LazyFinalReference<>(Target_java_lang_Module::new);
