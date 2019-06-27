@@ -233,6 +233,9 @@ public final class ImageClassLoader {
 
     private void handleClassFileName(String unversionedClassFileName, char fileSystemSeparatorChar) {
         String unversionedClassFileNameWithoutSuffix = unversionedClassFileName.substring(0, unversionedClassFileName.length() - CLASS_EXTENSION_LENGTH);
+        if (unversionedClassFileNameWithoutSuffix.equals("module-info")) {
+            return;
+        }
         String className = unversionedClassFileNameWithoutSuffix.replace(fileSystemSeparatorChar, '.');
         try {
             handleClass(forName(className));
