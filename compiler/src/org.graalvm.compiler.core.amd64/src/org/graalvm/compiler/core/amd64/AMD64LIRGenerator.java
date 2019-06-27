@@ -97,6 +97,7 @@ import org.graalvm.compiler.lir.amd64.AMD64StringLatin1InflateOp;
 import org.graalvm.compiler.lir.amd64.AMD64StringUTF16CompressOp;
 import org.graalvm.compiler.lir.amd64.AMD64ZapRegistersOp;
 import org.graalvm.compiler.lir.amd64.AMD64ZapStackOp;
+import org.graalvm.compiler.lir.amd64.vector.AMD64VectorClearOp;
 import org.graalvm.compiler.lir.amd64.vector.AMD64VectorMove;
 import org.graalvm.compiler.lir.amd64.vector.AMD64VectorShuffle;
 import org.graalvm.compiler.lir.gen.LIRGenerationResult;
@@ -680,9 +681,50 @@ public abstract class AMD64LIRGenerator extends LIRGenerator {
     @Override
     public Variable emitPack(LIRKind resultKind, List<Value> values) {
         Variable result = newVariable(resultKind);
+        if (values.size() == 0) return result;
+
+        final AMD64Kind scalarKind = ((AMD64Kind) values.get(0).getPlatformKind());
+
+        final int XMM_LENGTH_IN_ELEMENTS = 16 / scalarKind.getSizeInBytes();
+        final int numOverflows = values.size() / XMM_LENGTH_IN_ELEMENTS;
+
+        Variable target = numOverflows > 0 ? newVariable(resultKind) : result;
+
         for (int i = 0; i < values.size(); i++) {
-            append(new AMD64VectorShuffle.ShuffleWordOp(AMD64Assembler.VexRMIOp.VPSHUFD, result, asAllocatable(values.get(i)), 4 * i));
+            // If we've filled up the bottom 128 bits.
+            if (i > 0 && i % XMM_LENGTH_IN_ELEMENTS == 0) {
+                append(new AMD64VectorShuffle.Insert128Op(asAllocatable(result), asAllocatable(target), asAllocatable(result), i / XMM_LENGTH_IN_ELEMENTS));
+            }
+
+            int targetIndex = i % XMM_LENGTH_IN_ELEMENTS;
+
+            switch(scalarKind) {
+                case BYTE:
+                    append(new AMD64VectorShuffle.InsertByteOp(asAllocatable(target), asAllocatable(values.get(i)), targetIndex));
+                    break;
+                case WORD:
+                    append(new AMD64VectorShuffle.InsertShortOp(asAllocatable(target), asAllocatable(values.get(i)), targetIndex));
+                    break;
+                case DWORD:
+                    append(new AMD64VectorShuffle.InsertIntOp(asAllocatable(target), asAllocatable(values.get(i)), targetIndex));
+                    break;
+                case QWORD:
+                    append(new AMD64VectorShuffle.InsertLongOp(asAllocatable(target), asAllocatable(values.get(i)), targetIndex));
+                    break;
+                case SINGLE:
+                    append(new AMD64VectorShuffle.InsertFloatOp(asAllocatable(target), asAllocatable(values.get(i)), targetIndex));
+                    break;
+                case DOUBLE:
+                    append(new AMD64VectorShuffle.InsertDoubleOp(asAllocatable(target), asAllocatable(values.get(i)), targetIndex));
+                    break;
+            }
         }
+
+        // If we're using a scratch register, write it into the result.
+        if (numOverflows > 0) {
+            append(new AMD64VectorShuffle.Insert128Op(asAllocatable(result), asAllocatable(target), asAllocatable(result), numOverflows));
+        }
+
         return result;
     }
 

@@ -1145,10 +1145,15 @@ public class AMD64Assembler extends AMD64BaseAssembler {
      */
     public static final class VexRMIOp extends VexOp implements VexRRIOp {
         // @formatter:off
-        public static final VexRMIOp VPERMQ   = new VexRMIOp("VPERMQ",   P_66, M_0F3A, W1,  0x00, VEXOpAssertion.AVX2_256ONLY);
-        public static final VexRMIOp VPSHUFLW = new VexRMIOp("VPSHUFLW", P_F2, M_0F,   WIG, 0x70, VEXOpAssertion.AVX1_2);
-        public static final VexRMIOp VPSHUFHW = new VexRMIOp("VPSHUFHW", P_F3, M_0F,   WIG, 0x70, VEXOpAssertion.AVX1_2);
-        public static final VexRMIOp VPSHUFD  = new VexRMIOp("VPSHUFD",  P_66, M_0F,   WIG, 0x70, VEXOpAssertion.AVX1_2);
+        public static final VexRMIOp VPERMQ   = new VexRMIOp("VPERMQ",     P_66, M_0F3A, W1,  0x00, VEXOpAssertion.AVX2_256ONLY);
+        public static final VexRMIOp VPSHUFLW = new VexRMIOp("VPSHUFLW",   P_F2, M_0F,   WIG, 0x70, VEXOpAssertion.AVX1_2);
+        public static final VexRMIOp VPSHUFHW = new VexRMIOp("VPSHUFHW",   P_F3, M_0F,   WIG, 0x70, VEXOpAssertion.AVX1_2);
+        public static final VexRMIOp VPSHUFD  = new VexRMIOp("VPSHUFD",    P_66, M_0F,   WIG, 0x70, VEXOpAssertion.AVX1_2);
+        public static final VexRMIOp VPINSRB  = new VexRMIOp("VPINSRB",    P_66, M_0F3A, W0,  0x20, VEXOpAssertion.XMM_CPU);
+        public static final VexRMIOp VPINSRW  = new VexRMIOp("VPINSRW",    P_66, M_0F,   W0,  0xC4, VEXOpAssertion.XMM_CPU);
+        public static final VexRMIOp VPINSRD  = new VexRMIOp("VPINSRD",    P_66, M_0F3A, W0,  0x22, VEXOpAssertion.XMM_CPU);
+        public static final VexRMIOp VPINSRQ  = new VexRMIOp("VPINSRQ",    P_66, M_0F3A, W1,  0x22, VEXOpAssertion.XMM_CPU);
+        public static final VexRMIOp VINSERTPS= new VexRMIOp("VINSERTPS",  P_66, M_0F3A, WIG, 0x21, VEXOpAssertion.XMM_CPU);
         // @formatter:on
 
         private VexRMIOp(String opcode, int pp, int mmmmm, int w, int op, VEXOpAssertion assertion) {
