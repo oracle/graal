@@ -24,13 +24,12 @@
  */
 package com.oracle.truffle.regex.tregex.parser;
 
+import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.source.SourceSection;
-import com.oracle.truffle.regex.charset.CodePointSetBuilder;
+import com.oracle.truffle.regex.charset.CodePointSet;
 import com.oracle.truffle.regex.tregex.util.json.Json;
 import com.oracle.truffle.regex.tregex.util.json.JsonConvertible;
 import com.oracle.truffle.regex.tregex.util.json.JsonObject;
-
-import static com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 
 public class Token implements JsonConvertible {
 
@@ -46,7 +45,7 @@ public class Token implements JsonConvertible {
         return new Quantifier(min, max, greedy);
     }
 
-    public static Token createCharClass(CodePointSetBuilder codePointSet) {
+    public static Token createCharClass(CodePointSet codePointSet) {
         return new CharacterClass(codePointSet);
     }
 
@@ -142,9 +141,9 @@ public class Token implements JsonConvertible {
 
     public static final class CharacterClass extends Token {
 
-        private final CodePointSetBuilder codePointSet;
+        private final CodePointSet codePointSet;
 
-        public CharacterClass(CodePointSetBuilder codePointSet) {
+        public CharacterClass(CodePointSet codePointSet) {
             super(Kind.charClass);
             this.codePointSet = codePointSet;
         }
@@ -155,7 +154,7 @@ public class Token implements JsonConvertible {
             return super.toJson().append(Json.prop("codePointSet", codePointSet));
         }
 
-        public CodePointSetBuilder getCodePointSet() {
+        public CodePointSet getCodePointSet() {
             return codePointSet;
         }
     }

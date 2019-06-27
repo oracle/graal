@@ -26,134 +26,265 @@ package com.oracle.truffle.regex.charset;
 
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.regex.chardata.CharacterSet;
-import com.oracle.truffle.regex.tregex.buffer.CompilationBuffer;
 import com.oracle.truffle.regex.tregex.util.DebugUtil;
 
-public abstract class SortedListOfRanges implements ListOfRanges, CharacterSet {
+/**
+ * A storage-agnostic implementation of a sorted list of disjoint integer ranges with inclusive
+ * lower and upper bounds. Holds the invariant {@link #rangesAreSortedAndDisjoint()}.
+ */
+public interface SortedListOfRanges extends CharacterSet {
 
-    protected abstract <T extends SortedListOfRanges> T createEmpty();
+    /**
+     * Returns the inclusive lower bound of the range stored at index {@code i}.
+     */
+    int getLo(int i);
 
-    protected abstract <T extends SortedListOfRanges> T createFull();
+    /**
+     * Returns the inclusive upper bound of the range stored at index {@code i}.
+     */
+    int getHi(int i);
 
-    protected abstract <T extends SortedListOfRanges> T create(RangesBuffer buffer);
+    /**
+     * Returns the number of disjoint ranges contained in this list.
+     */
+    int size();
 
-    protected abstract int getMinValue();
+    /**
+     * Returns the minimum value that may be contained in an instance of this list.
+     */
+    int getMinValue();
 
-    protected abstract int getMaxValue();
+    /**
+     * Returns the maximum value that may be contained in an instance of this list.
+     */
+    int getMaxValue();
 
-    protected abstract RangesBuffer getBuffer1(CompilationBuffer compilationBuffer);
+    /**
+     * Append all ranges from {@code startIndex} (inclusive) to {@code endIndex} (exclusive) to the
+     * given {@code buffer}. The caller is responsible for not violating the target buffer's
+     * sortedness; This effectively means that the range at {@code startIndex} must be
+     * {@link #rightOf(int, int, int) rightOf} the buffer's last range.
+     */
+    void appendRangesTo(RangesBuffer buffer, int startIndex, int endIndex);
 
-    protected abstract RangesBuffer getBuffer2(CompilationBuffer compilationBuffer);
-
-    protected abstract RangesBuffer getBuffer3(CompilationBuffer compilationBuffer);
-
-    protected abstract RangesBuffer createTempBuffer();
-
-    protected abstract void addRangeBulkTo(RangesBuffer buffer, int startIndex, int endIndex);
-
-    protected abstract boolean equalsBuffer(RangesBuffer buffer);
-
-    protected boolean isSingle(int ia) {
-        return getLo(ia) == getHi(ia);
+    default boolean isEmpty() {
+        return size() == 0;
     }
 
-    protected int size(int ia) {
-        return (getHi(ia) - getLo(ia)) + 1;
+    /**
+     * Returns {@code true} if the range at index {@code i} consists of a single value, i.e.
+     * {@code getLo(i) == getHi(i)}.
+     */
+    default boolean isSingle(int i) {
+        return getLo(i) == getHi(i);
     }
 
-    protected static boolean contains(int aLo, int aHi, int bLo, int bHi) {
+    /**
+     * Returns the number of values contained in the range at index {@code i}.
+     */
+    default int size(int i) {
+        return (getHi(i) - getLo(i)) + 1;
+    }
+
+    /**
+     * Returns the number of disjoint ranges contained in the inverse (as defined by
+     * {@link ImmutableSortedListOfRanges#createInverse()}) of this list.
+     */
+    default int sizeOfInverse() {
+        if (isEmpty()) {
+            return 1;
+        }
+        return (getLo(0) == getMinValue() ? 0 : 1) + size() - (getHi(size() - 1) == getMaxValue() ? 1 : 0);
+    }
+
+    /**
+     * Returns {@code true} if the range {@code [aLo, aHi]} contains the range {@code [bLo, bHi]}.
+     */
+    static boolean contains(int aLo, int aHi, int bLo, int bHi) {
         return aLo <= bLo && aHi >= bHi;
     }
 
-    protected boolean contains(int ia, SortedListOfRanges o, int ib) {
+    /**
+     * Returns {@code true} if the range at index {@code ia} contains the range in list {@code o} at
+     * index {@code ib}.
+     */
+    default boolean contains(int ia, SortedListOfRanges o, int ib) {
         return contains(getLo(ia), getHi(ia), o.getLo(ib), o.getHi(ib));
     }
 
-    protected boolean contains(int ia, int bLo, int bHi) {
+    /**
+     * Returns {@code true} if the range at index {@code ia} contains the range {@code [bLo, bHi]}.
+     */
+    default boolean contains(int ia, int bLo, int bHi) {
         return contains(getLo(ia), getHi(ia), bLo, bHi);
     }
 
-    protected boolean containedBy(int ia, int bLo, int bHi) {
+    /**
+     * Returns {@code true} if the range {@code [bLo, bHi]} contains the range at index {@code ia}.
+     */
+    default boolean containedBy(int ia, int bLo, int bHi) {
         return contains(bLo, bHi, getLo(ia), getHi(ia));
     }
 
-    protected static boolean intersects(int aLo, int aHi, int bLo, int bHi) {
+    /**
+     * Returns {@code true} if the range {@code [aLo, aHi]} intersects with the range
+     * {@code [bLo, bHi]}.
+     */
+    static boolean intersects(int aLo, int aHi, int bLo, int bHi) {
         return aLo <= bHi && bLo <= aHi;
     }
 
-    protected boolean intersects(int ia, SortedListOfRanges o, int ib) {
+    /**
+     * Returns {@code true} if the range at index {@code ia} intersects with the range in list
+     * {@code o} at index {@code ib}.
+     */
+    default boolean intersects(int ia, SortedListOfRanges o, int ib) {
         return intersects(getLo(ia), getHi(ia), o.getLo(ib), o.getHi(ib));
     }
 
-    protected boolean intersects(int ia, int bLo, int bHi) {
+    /**
+     * Returns {@code true} if the range at index {@code ia} intersects with the range
+     * {@code [bLo, bHi]}.
+     */
+    default boolean intersects(int ia, int bLo, int bHi) {
         return intersects(getLo(ia), getHi(ia), bLo, bHi);
     }
 
+    /**
+     * Returns {@code true} if the range {@code [aLo, aHi]} is "left of" the range
+     * {@code [bLo, bHi]}, where "left of" means "all values of range a are less than all values of
+     * range b" - i.e. {code aHi < bLo}.
+     */
     @SuppressWarnings("unused")
-    protected static boolean leftOf(int aLo, int aHi, int bLo, int bHi) {
+    static boolean leftOf(int aLo, int aHi, int bLo, int bHi) {
         return aHi < bLo;
     }
 
-    protected static boolean leftOf(int aHi, int bLo) {
+    /**
+     * Variant of {@link #leftOf(int, int, int, int)} without the unnecessary parameters.
+     */
+    static boolean leftOf(int aHi, int bLo) {
         return aHi < bLo;
     }
 
-    protected boolean leftOf(int ia, SortedListOfRanges o, int ib) {
+    /**
+     * Returns {@code true} if the range at index {@code ia} is "left of" the range in list
+     * {@code o} at index {@code ib}.
+     *
+     * @see #leftOf(int, int, int, int)
+     */
+    default boolean leftOf(int ia, SortedListOfRanges o, int ib) {
         return leftOf(getHi(ia), o.getLo(ib));
     }
 
+    /**
+     * Returns {@code true} if the range at index {@code ia} is "left of" the range
+     * {@code [bLo, bHi]}.
+     *
+     * @see #leftOf(int, int, int, int)
+     */
     @SuppressWarnings("unused")
-    protected boolean leftOf(int ia, int oLo, int oHi) {
-        return leftOf(getHi(ia), oLo);
+    default boolean leftOf(int ia, int bLo, int bHi) {
+        return leftOf(getHi(ia), bLo);
     }
 
+    /**
+     * Returns {@code true} if the range {@code [aLo, aHi]} is "right of" the range
+     * {@code [bLo, bHi]}, where "right of" means "all values of range a are greater than all values
+     * of range b" - i.e. {code aLo > bHi}.
+     */
     @SuppressWarnings("unused")
-    protected static boolean rightOf(int aLo, int aHi, int bLo, int bHi) {
+    static boolean rightOf(int aLo, int aHi, int bLo, int bHi) {
         return aLo > bHi;
     }
 
-    protected boolean rightOf(int ia, SortedListOfRanges o, int ib) {
-        return rightOf(getLo(ia), getHi(ia), o.getLo(ib), o.getHi(ib));
+    /**
+     * Variant of {@link #rightOf(int, int, int, int)} without the unnecessary parameters.
+     */
+    static boolean rightOf(int aLo, int bHi) {
+        return aLo > bHi;
     }
 
-    protected boolean rightOf(int ia, int bLo, int bHi) {
-        return rightOf(getLo(ia), getHi(ia), bLo, bHi);
+    /**
+     * Returns {@code true} if the range at index {@code ia} is "right of" the range in list
+     * {@code o} at index {@code ib}.
+     *
+     * @see #rightOf(int, int, int, int)
+     */
+    default boolean rightOf(int ia, SortedListOfRanges o, int ib) {
+        return rightOf(getLo(ia), o.getHi(ib));
     }
 
-    protected static boolean adjacent(int aLo, int aHi, int bLo, int bHi) {
+    /**
+     * Returns {@code true} if the range at index {@code ia} is "right of" the range
+     * {@code [bLo, bHi]}.
+     *
+     * @see #rightOf(int, int, int, int)
+     */
+    @SuppressWarnings("unused")
+    default boolean rightOf(int ia, int bLo, int bHi) {
+        return rightOf(getLo(ia), bHi);
+    }
+
+    /**
+     * Returns {@code true} if the ranges {@code [aLo, aHi]} and {@code [bLo, bHi]} are adjacent to
+     * each other, meaning that the lower bound of one range immediately follows the upper bound of
+     * the other.
+     */
+    static boolean adjacent(int aLo, int aHi, int bLo, int bHi) {
         return aHi + 1 == bLo || aLo - 1 == bHi;
     }
 
-    protected boolean adjacent(int ia, SortedListOfRanges o, int ib) {
+    /**
+     * Returns {@code true} if the range at index {@code ia} is adjacent to the range in list
+     * {@code o} at index {@code ib}.
+     *
+     * @see #adjacent(int, int, int, int)
+     */
+    default boolean adjacent(int ia, SortedListOfRanges o, int ib) {
         return adjacent(getLo(ia), getHi(ia), o.getLo(ib), o.getHi(ib));
     }
 
-    protected boolean adjacent(int ia, int bLo, int bHi) {
+    /**
+     * Returns {@code true} if the range at index {@code ia} is adjacent to the range
+     * {@code [bLo, bHi]}.
+     *
+     * @see #adjacent(int, int, int, int)
+     */
+    default boolean adjacent(int ia, int bLo, int bHi) {
         return adjacent(getLo(ia), getHi(ia), bLo, bHi);
     }
 
-    protected boolean equal(int ia, ListOfRanges o, int ib) {
+    /**
+     * Returns {@code true} if the range at index {@code ia} is equal to the range in list {@code o}
+     * at index {@code ib}.
+     */
+    default boolean equal(int ia, SortedListOfRanges o, int ib) {
         return equal(ia, o.getLo(ib), o.getHi(ib));
     }
 
-    protected boolean equal(int ia, int oLo, int oHi) {
-        return getLo(ia) == oLo && getHi(ia) == oHi;
+    /**
+     * Returns {@code true} if the range at index {@code ia} is equal to the range
+     * {@code [bLo, bHi]}.
+     */
+    default boolean equal(int ia, int bLo, int bHi) {
+        return getLo(ia) == bLo && getHi(ia) == bHi;
     }
 
-    protected void intersect(int ia, SortedListOfRanges o, int ib, RangesBuffer result) {
-        assert intersects(ia, o, ib);
-        result.addRange(Math.max(getLo(ia), o.getLo(ib)), Math.min(getHi(ia), o.getHi(ib)));
-    }
-
-    protected int binarySearch(int key) {
+    /**
+     * Performs a binary search for a range with the given lower bound ({@code keyLo}), in the same
+     * way as {@link java.util.Arrays#binarySearch(int[], int)} would behave on an array containing
+     * only the lower bounds of all ranges in this list.
+     */
+    default int binarySearch(int keyLo) {
         int low = 0;
         int high = size() - 1;
         while (low <= high) {
             int mid = (low + high) >>> 1;
             int midVal = getLo(mid);
-            if (midVal < key) {
+            if (midVal < keyLo) {
                 low = mid + 1;
-            } else if (midVal > key) {
+            } else if (midVal > keyLo) {
                 high = mid - 1;
             } else {
                 return mid; // key found
@@ -162,50 +293,113 @@ public abstract class SortedListOfRanges implements ListOfRanges, CharacterSet {
         return -(low + 1);  // key not found.
     }
 
-    protected boolean binarySearchExactMatch(int searchResult, SortedListOfRanges o, int oI) {
-        return binarySearchExactMatch(searchResult, o.getLo(oI), o.getHi(oI));
+    /**
+     * Returns {@code true} if a given binary search result is equals to the range in list {@code o}
+     * at index {@code ib}.
+     *
+     * @param searchResult the result of a call to {@link #binarySearch(int)} with
+     *            {@code o.getLo(ib)} as the parameter.
+     */
+    default boolean binarySearchExactMatch(int searchResult, SortedListOfRanges o, int ib) {
+        return binarySearchExactMatch(searchResult, o.getLo(ib), o.getHi(ib));
     }
 
-    protected boolean binarySearchExactMatch(int searchResult, int oLo, int oHi) {
-        return searchResult >= 0 && equal(searchResult, oLo, oHi);
+    /**
+     * Returns {@code true} if a given binary search result is equals to the range
+     * {@code [bLo, bHi]}.
+     *
+     * @param searchResult the result of a call to {@link #binarySearch(int)} with {@code bLo} as
+     *            the parameter.
+     */
+    default boolean binarySearchExactMatch(int searchResult, int bLo, int bHi) {
+        return searchResult >= 0 && equal(searchResult, bLo, bHi);
     }
 
-    protected int binarySearchGetFirstIntersecting(int searchResult, SortedListOfRanges o, int oI) {
-        assert o.rangesAreSortedAndDisjoint();
-        return binarySearchGetFirstIntersecting(searchResult, o.getLo(oI), o.getHi(oI));
+    /**
+     * If there was no {@link #binarySearchExactMatch(int, int, int) exact match} in a
+     * {@link #binarySearch(int) binary search}, this method will return the index of the first
+     * range that intersects with the range in {@code o} at index {@code ib}, or {@link #size()}.
+     *
+     * @param searchResult the result of a call to {@link #binarySearch(int)} with
+     *            {@code o.getLo(ib)} as the parameter.
+     */
+    default int binarySearchGetFirstIntersecting(int searchResult, SortedListOfRanges o, int ib) {
+        return binarySearchGetFirstIntersecting(searchResult, o.getLo(ib), o.getHi(ib));
     }
 
-    protected int binarySearchGetFirstIntersecting(int searchResult, int oLo, int oHi) {
+    /**
+     * If there was no {@link #binarySearchExactMatch(int, int, int) exact match} in a
+     * {@link #binarySearch(int) binary search}, this method will return the index of the first
+     * range that intersects with the range {@code [bLo, bHi]}, or {@link #size()}.
+     *
+     * @param searchResult the result of a call to {@link #binarySearch(int)} with {@code bLo} as
+     *            the parameter.
+     */
+    default int binarySearchGetFirstIntersecting(int searchResult, int bLo, int bHi) {
+        return binarySearchGetFirstIntersectingOrAdjacent(searchResult, bLo, bHi, false);
+    }
+
+    /**
+     * If there was no {@link #binarySearchExactMatch(int, int, int) exact match} in a
+     * {@link #binarySearch(int) binary search}, this method will return the index of the first
+     * range that intersects with or is adjacent to the range {@code [bLo, bHi]}, or {@link #size()}
+     * .
+     *
+     * @param searchResult the result of a call to {@link #binarySearch(int)} with {@code bLo} as
+     *            the parameter.
+     */
+    default int binarySearchGetFirstIntersectingOrAdjacent(int searchResult, int bLo, int bHi) {
+        return binarySearchGetFirstIntersectingOrAdjacent(searchResult, bLo, bHi, true);
+    }
+
+    default int binarySearchGetFirstIntersectingOrAdjacent(int searchResult, int oLo, int oHi, boolean includeAdjacent) {
         if (searchResult >= 0) {
             assert !equal(searchResult, oLo, oHi);
             return searchResult;
         }
         int insertionPoint = (searchResult + 1) * (-1);
-        if (insertionPoint > 0 && intersects(insertionPoint - 1, oLo, oHi)) {
+        if (insertionPoint > 0 && (intersects(insertionPoint - 1, oLo, oHi) || (includeAdjacent && adjacent(insertionPoint - 1, oLo, oHi)))) {
             return insertionPoint - 1;
         }
         return insertionPoint;
     }
 
-    protected boolean binarySearchNoIntersectingFound(int firstIntersecting) {
+    /**
+     * Returns {@code true} if no intersecting range was found by a call to
+     * {@link #binarySearchGetFirstIntersecting(int, int, int)} or one if its variants.
+     *
+     * @param firstIntersecting the result of a call to
+     *            {@link #binarySearchGetFirstIntersecting(int, int, int)} or one if its variants.
+     */
+    default boolean binarySearchNoIntersectingFound(int firstIntersecting) {
         return firstIntersecting == size();
     }
 
-    protected void addRangeTo(RangesBuffer buffer, int i) {
-        buffer.addRange(getLo(i), getHi(i));
+    /**
+     * Appends the range at index {@code i} to the given {@code buffer}.
+     */
+    default void addRangeTo(RangesBuffer buffer, int i) {
+        buffer.appendRange(getLo(i), getHi(i));
     }
 
-    protected boolean rangesAreSortedAndDisjoint() {
+    /**
+     * Returns {@code true} if this list is sorted and all of its ranges are disjoint and
+     * non-adjacent. This property must hold at all times.
+     */
+    default boolean rangesAreSortedAndDisjoint() {
         for (int i = 1; i < size(); i++) {
-            if ((!leftOf(i - 1, this, i)) || intersects(i - 1, this, i)) {
+            if ((!leftOf(i - 1, this, i)) || intersects(i - 1, this, i) || adjacent(i - 1, this, i)) {
                 return false;
             }
         }
         return true;
     }
 
+    /**
+     * Returns {@code true} if this list contains the given {@code codePoint}.
+     */
     @Override
-    public boolean contains(int codePoint) {
+    default boolean contains(int codePoint) {
         int low = 0;
         int high = size() - 1;
         while (low <= high) {
@@ -221,7 +415,10 @@ public abstract class SortedListOfRanges implements ListOfRanges, CharacterSet {
         return false;
     }
 
-    public boolean contains(SortedListOfRanges o) {
+    /**
+     * Returns {@code true} if this list contains all values of {@code o}.
+     */
+    default boolean contains(SortedListOfRanges o) {
         assert !matchesNothing() && !o.matchesNothing();
         int ia = 0;
         int ib = 0;
@@ -244,334 +441,115 @@ public abstract class SortedListOfRanges implements ListOfRanges, CharacterSet {
         }
     }
 
-    @SuppressWarnings("unchecked")
-    public <T extends SortedListOfRanges> T createIntersection(T o, CompilationBuffer compilationBuffer) {
-        RangesBuffer intersectionRanges = getBuffer1(compilationBuffer);
-        for (int ia = 0; ia < size(); ia++) {
-            int search = o.binarySearch(getLo(ia));
-            if (o.binarySearchExactMatch(search, this, ia)) {
-                addRangeTo(intersectionRanges, ia);
-                continue;
-            }
-            int firstIntersection = o.binarySearchGetFirstIntersecting(search, this, ia);
-            for (int ib = firstIntersection; ib < o.size(); ib++) {
-                if (o.rightOf(ib, this, ia)) {
-                    break;
-                }
-                intersect(ia, o, ib, intersectionRanges);
-            }
-        }
-        if (equalsBuffer(intersectionRanges)) {
-            return (T) this;
-        }
-        if (o.equalsBuffer(intersectionRanges)) {
-            return o;
-        }
-        return create(intersectionRanges);
-    }
-
-    public <T extends SortedListOfRanges> T createInverse() {
-        return createInverse(createTempBuffer());
-    }
-
-    public <T extends SortedListOfRanges> T createInverse(CompilationBuffer compilationBuffer) {
-        return createInverse(getBuffer1(compilationBuffer));
-    }
-
-    private <T extends SortedListOfRanges> T createInverse(RangesBuffer invRanges) {
-        if (matchesNothing()) {
-            return createFull();
-        }
-        if (getLo(0) > getMinValue()) {
-            invRanges.addRange(getMinValue(), getLo(0) - 1);
-        }
-        for (int ia = 1; ia < size(); ia++) {
-            invRanges.addRange(getHi(ia - 1) + 1, getLo(ia) - 1);
-        }
-        if (getHi(size() - 1) < getMaxValue()) {
-            invRanges.addRange(getHi(size() - 1) + 1, getMaxValue());
-        }
-        return create(invRanges);
-    }
-
-    @SuppressWarnings("unchecked")
-    public <T extends SortedListOfRanges> T subtract(T o, CompilationBuffer compilationBuffer) {
-        RangesBuffer subtractionRanges = getBuffer1(compilationBuffer);
+    /**
+     * Converts {@code target} to the union of {@code a} and {@code b}.
+     */
+    static void union(SortedListOfRanges a, SortedListOfRanges b, RangesBuffer target) {
+        target.clear();
         int tmpLo;
         int tmpHi;
-        boolean unchanged = true;
-        for (int ia = 0; ia < size(); ia++) {
-            int search = o.binarySearch(getLo(ia));
-            if (o.binarySearchExactMatch(search, this, ia)) {
-                unchanged = false;
-                continue;
-            }
-            int firstIntersection = o.binarySearchGetFirstIntersecting(search, this, ia);
-            if (o.binarySearchNoIntersectingFound(firstIntersection)) {
-                addRangeTo(subtractionRanges, ia);
-                continue;
-            }
-            unchanged = false;
-            tmpLo = getLo(ia);
-            tmpHi = getHi(ia);
-            boolean rest = true;
-            for (int ib = firstIntersection; ib < o.size(); ib++) {
-                if (o.rightOf(ib, tmpLo, tmpHi)) {
-                    break;
-                }
-                if (o.intersects(ib, tmpLo, tmpHi)) {
-                    if (o.contains(ib, tmpLo, tmpHi)) {
-                        rest = false;
-                        break;
-                    } else if (o.containedBy(ib, tmpLo, tmpHi) && tmpLo != o.getLo(ib) && tmpHi != o.getHi(ib)) {
-                        subtractionRanges.addRange(tmpLo, o.getLo(ib) - 1);
-                        tmpLo = o.getHi(ib) + 1;
-                    } else if (tmpLo < o.getLo(ib)) {
-                        tmpHi = o.getLo(ib) - 1;
-                    } else {
-                        tmpLo = o.getHi(ib) + 1;
-                    }
-                }
-            }
-            if (rest) {
-                subtractionRanges.addRange(tmpLo, tmpHi);
-            }
-        }
-        if (unchanged) {
-            assert equalsBuffer(subtractionRanges);
-            return (T) this;
-        }
-        return create(subtractionRanges);
-    }
-
-    /**
-     * Calculates the intersection and the "rest" of this and another {@link SortedListOfRanges}.
-     *
-     * @param o MatcherBuilder to intersect with.
-     * @param result Array of results, where index 0 is equal to this.subtract(intersection), index
-     *            1 is equal to o.subtract(intersection) and index 2 is equal to
-     *            this.createIntersection(o).
-     */
-    @SuppressWarnings("unchecked")
-    public <T extends SortedListOfRanges> void intersectAndSubtract(T o, CompilationBuffer compilationBuffer, T[] result) {
-        if (matchesNothing() || o.matchesNothing()) {
-            result[0] = (T) this;
-            result[1] = o;
-            result[2] = createEmpty();
-            return;
-        }
-        RangesBuffer subtractedA = getBuffer1(compilationBuffer);
-        RangesBuffer subtractedB = getBuffer2(compilationBuffer);
-        RangesBuffer intersectionRanges = getBuffer3(compilationBuffer);
         int ia = 0;
         int ib = 0;
-        boolean noIntersection = false;
-        while (true) {
-            if (leftOf(ia, o, ib)) {
+        while (ia < a.size() && ib < b.size()) {
+            int iaInit = ia;
+            while (ia < a.size() && a.leftOf(ia, b, ib) && !a.adjacent(ia, b, ib)) {
                 ia++;
-                if (ia >= size()) {
-                    noIntersection = true;
-                    break;
-                }
-                continue;
             }
-            if (o.leftOf(ib, this, ia)) {
-                ib++;
-                if (ib >= o.size()) {
-                    noIntersection = true;
-                    break;
-                }
-                continue;
-            }
-            break;
-        }
-        if (noIntersection) {
-            result[0] = (T) this;
-            result[1] = o;
-            result[2] = createEmpty();
-            return;
-        }
-        addRangeBulkTo(subtractedA, 0, ia);
-        o.addRangeBulkTo(subtractedB, 0, ib);
-        int raLo = getLo(ia);
-        int raHi = getHi(ia);
-        int rbLo = o.getLo(ib);
-        int rbHi = o.getHi(ib);
-        assert intersects(raLo, raHi, rbLo, rbHi);
-        ia++;
-        ib++;
-        boolean advanceA = false;
-        boolean advanceB = false;
-        boolean finish = false;
-        while (true) {
-            if (advanceA) {
-                advanceA = false;
-                if (ia < size()) {
-                    raLo = getLo(ia);
-                    raHi = getHi(ia);
-                    ia++;
-                } else {
-                    if (!advanceB) {
-                        subtractedB.addRange(rbLo, rbHi);
-                    }
-                    o.addRangeBulkTo(subtractedB, ib, o.size());
-                    finish = true;
-                }
-            }
-            if (advanceB) {
-                advanceB = false;
-                if (ib < o.size()) {
-                    rbLo = o.getLo(ib);
-                    rbHi = o.getHi(ib);
-                    ib++;
-                } else {
-                    if (!finish) {
-                        subtractedA.addRange(raLo, raHi);
-                    }
-                    addRangeBulkTo(subtractedA, ia, size());
-                    finish = true;
-                }
-            }
-            if (finish) {
+            a.appendRangesTo(target, iaInit, ia);
+            if (ia == a.size()) {
                 break;
             }
-            if (leftOf(raLo, raHi, rbLo, rbHi)) {
-                subtractedA.addRange(raLo, raHi);
-                advanceA = true;
-                continue;
-            }
-            if (leftOf(rbLo, rbHi, raLo, raHi)) {
-                subtractedB.addRange(rbLo, rbHi);
-                advanceB = true;
-                continue;
-            }
-            assert intersects(raLo, raHi, rbLo, rbHi);
-            int intersectionLo = Math.max(raLo, rbLo);
-            int intersectionHi = Math.min(raHi, rbHi);
-            intersectionRanges.addRange(intersectionLo, intersectionHi);
-            if (raLo < intersectionLo) {
-                subtractedA.addRange(raLo, intersectionLo - 1);
-            }
-            if (raHi > intersectionHi) {
-                raLo = intersectionHi + 1;
-            } else {
-                advanceA = true;
-            }
-            if (rbLo < intersectionLo) {
-                subtractedB.addRange(rbLo, intersectionLo - 1);
-            }
-            if (rbHi > intersectionHi) {
-                rbLo = intersectionHi + 1;
-            } else {
-                advanceB = true;
-            }
-        }
-        result[0] = create(subtractedA);
-        result[1] = create(subtractedB);
-        if (subtractedA.isEmpty()) {
-            assert equalsBuffer(intersectionRanges);
-            result[2] = (T) this;
-        } else if (subtractedB.isEmpty()) {
-            assert o.equalsBuffer(intersectionRanges);
-            result[2] = o;
-        } else {
-            result[2] = create(intersectionRanges);
-        }
-    }
-
-    public <T extends SortedListOfRanges> T union(T o) {
-        return union(o, createTempBuffer());
-    }
-
-    public <T extends SortedListOfRanges> T union(T o, CompilationBuffer compilationBuffer) {
-        return union(o, getBuffer1(compilationBuffer));
-    }
-
-    @SuppressWarnings("unchecked")
-    public <T extends SortedListOfRanges> T union(T o, RangesBuffer unionRanges) {
-        if (matchesNothing() || o.matchesEverything()) {
-            return o;
-        }
-        if (matchesEverything() || o.matchesNothing()) {
-            return (T) this;
-        }
-        int tmpLo;
-        int tmpHi;
-        int ia = 0;
-        int ib = 0;
-        outer: while (ia < size() && ib < o.size()) {
-            while (leftOf(ia, o, ib) && !adjacent(ia, o, ib)) {
-                addRangeTo(unionRanges, ia);
-                ia++;
-                if (ia == size()) {
-                    break outer;
-                }
-            }
-            while (o.leftOf(ib, this, ia) && !adjacent(ia, o, ib)) {
-                o.addRangeTo(unionRanges, ib);
+            int ibInit = ib;
+            while (ib < b.size() && b.leftOf(ib, a, ia) && !a.adjacent(ia, b, ib)) {
                 ib++;
-                if (ib == o.size()) {
-                    break outer;
-                }
             }
-            if (intersects(ia, o, ib) || adjacent(ia, o, ib)) {
-                tmpLo = Math.min(getLo(ia), o.getLo(ib));
-                tmpHi = Math.max(getHi(ia), o.getHi(ib));
+            b.appendRangesTo(target, ibInit, ib);
+            if (ib == b.size()) {
+                break;
+            }
+            if (a.intersects(ia, b, ib) || a.adjacent(ia, b, ib)) {
+                tmpLo = Math.min(a.getLo(ia), b.getLo(ib));
+                tmpHi = Math.max(a.getHi(ia), b.getHi(ib));
                 ia++;
                 ib++;
                 while (true) {
-                    if (ia < size() && (intersects(ia, tmpLo, tmpHi) || adjacent(ia, tmpLo, tmpHi))) {
-                        tmpLo = Math.min(getLo(ia), tmpLo);
-                        tmpHi = Math.max(getHi(ia), tmpHi);
+                    if (ia < a.size() && (a.intersects(ia, tmpLo, tmpHi) || a.adjacent(ia, tmpLo, tmpHi))) {
+                        tmpLo = Math.min(a.getLo(ia), tmpLo);
+                        tmpHi = Math.max(a.getHi(ia), tmpHi);
                         ia++;
-                    } else if (ib < o.size() && (o.intersects(ib, tmpLo, tmpHi) || o.adjacent(ib, tmpLo, tmpHi))) {
-                        tmpLo = Math.min(o.getLo(ib), tmpLo);
-                        tmpHi = Math.max(o.getHi(ib), tmpHi);
+                    } else if (ib < b.size() && (b.intersects(ib, tmpLo, tmpHi) || b.adjacent(ib, tmpLo, tmpHi))) {
+                        tmpLo = Math.min(b.getLo(ib), tmpLo);
+                        tmpHi = Math.max(b.getHi(ib), tmpHi);
                         ib++;
                     } else {
                         break;
                     }
                 }
-                unionRanges.addRange(tmpLo, tmpHi);
+                target.appendRange(tmpLo, tmpHi);
             } else {
-                if (rightOf(ia, o, ib)) {
-                    o.addRangeTo(unionRanges, ib);
+                if (a.rightOf(ia, b, ib)) {
+                    b.addRangeTo(target, ib);
                     ib++;
                 } else {
-                    assert o.rightOf(ib, this, ia);
-                    addRangeTo(unionRanges, ia);
+                    assert b.rightOf(ib, a, ia);
+                    a.addRangeTo(target, ia);
                     ia++;
                 }
             }
         }
-        if (ia < size()) {
-            addRangeBulkTo(unionRanges, ia, size());
+        if (ia < a.size()) {
+            a.appendRangesTo(target, ia, a.size());
         }
-        if (ib < o.size()) {
-            o.addRangeBulkTo(unionRanges, ib, o.size());
+        if (ib < b.size()) {
+            b.appendRangesTo(target, ib, b.size());
         }
-        if (equalsBuffer(unionRanges)) {
-            return (T) this;
-        }
-        if (o.equalsBuffer(unionRanges)) {
-            return o;
-        }
-        return create(unionRanges);
     }
 
-    public boolean matchesNothing() {
+    /**
+     * Returns {@code true} if this list is empty.
+     */
+    default boolean matchesNothing() {
         return size() == 0;
     }
 
-    public boolean matchesSomething() {
+    /**
+     * Returns {@code true} if this list is non-empty.
+     */
+    default boolean matchesSomething() {
         return !matchesNothing();
     }
 
-    public boolean matchesSingleChar() {
+    /**
+     * Returns {@code true} if this list contains just one single value.
+     */
+    default boolean matchesSingleChar() {
         return size() == 1 && isSingle(0);
     }
 
-    public int charCount() {
+    /**
+     * Returns {@code true} if this list contains just one single value which is less than 128.
+     */
+    default boolean matchesSingleAscii() {
+        return matchesSingleChar() && getLo(0) < 128;
+    }
+
+    /**
+     * Returns {@code true} if this list consists of two values whose binary representations differ
+     * in only a single bit.
+     */
+    default boolean matches2CharsWith1BitDifference() {
+        if (matchesNothing() || size() > 2 || valueCount() != 2) {
+            return false;
+        }
+        int c1 = getLo(0);
+        int c2 = size() == 1 ? getHi(0) : getLo(1);
+        return Integer.bitCount(c1 ^ c2) == 1;
+    }
+
+    /**
+     * Returns the total number of values contained in this list.
+     */
+    default int valueCount() {
         int charSize = 0;
         for (int i = 0; i < size(); i++) {
             charSize += size(i);
@@ -579,37 +557,24 @@ public abstract class SortedListOfRanges implements ListOfRanges, CharacterSet {
         return charSize;
     }
 
-    public int inverseCharCount() {
-        return getMaxValue() + 1 - charCount();
+    /**
+     * Returns the total number of values (from {@link #getMinValue()} to {@link #getMaxValue()})
+     * <i>not</i> contained in this list.
+     */
+    default int inverseValueCount() {
+        return (getMaxValue() - getMinValue()) + 1 - valueCount();
     }
 
-    public char[] inverseToCharArray() {
-        char[] array = new char[inverseCharCount()];
-        int index = 0;
-        int lastHi = -1;
-        for (int i = 0; i < size(); i++) {
-            for (int j = lastHi + 1; j < getLo(i); j++) {
-                array[index++] = (char) j;
-            }
-            lastHi = getHi(i);
-        }
-        for (int j = lastHi + 1; j <= getMaxValue(); j++) {
-            array[index++] = (char) j;
-        }
-        return array;
-    }
-
-    public boolean matchesEverything() {
+    /**
+     * Returns {@code true} if this list is equal to [{@link #getMinValue()} {@link #getMaxValue()}
+     * ].
+     */
+    default boolean matchesEverything() {
         // ranges should be consolidated to one
         return size() == 1 && getLo(0) == getMinValue() && getHi(0) == getMaxValue();
     }
 
-    @Override
-    public boolean equals(Object obj) {
-        return obj instanceof ListOfRanges && equals((ListOfRanges) obj);
-    }
-
-    public boolean equals(ListOfRanges o) {
+    default boolean equals(SortedListOfRanges o) {
         if (o == null || size() != o.size()) {
             return false;
         }
@@ -621,24 +586,8 @@ public abstract class SortedListOfRanges implements ListOfRanges, CharacterSet {
         return true;
     }
 
-    @Override
-    public int hashCode() {
-        int result = 1;
-        for (int i = 0; i < size(); i++) {
-            result = 31 * result + getLo(i);
-            result = 31 * result + getHi(i);
-        }
-        return result;
-    }
-
-    @Override
     @TruffleBoundary
-    public String toString() {
-        return toString(true);
-    }
-
-    @TruffleBoundary
-    protected String toString(boolean addBrackets) {
+    default String defaultToString() {
         if (equals(Constants.DOT)) {
             return ".";
         }
@@ -672,19 +621,15 @@ public abstract class SortedListOfRanges implements ListOfRanges, CharacterSet {
         if (matchesSingleChar()) {
             return rangeToString(getLo(0), getHi(0));
         }
-        SortedListOfRanges inverse = createInverse(new CompilationBuffer());
-        if (inverse.size() < size()) {
-            return "[^" + inverse.toString(false) + "]";
-        }
-        if (addBrackets) {
-            return "[" + rangesToString() + "]";
+        if (getLo(0) == getMinValue() || getHi(size() - 1) == getMaxValue()) {
+            return "[^" + inverseRangesToString() + "]";
         } else {
-            return rangesToString();
+            return "[" + rangesToString() + "]";
         }
     }
 
     @TruffleBoundary
-    public static String rangeToString(int lo, int hi) {
+    static String rangeToString(int lo, int hi) {
         if (lo == hi) {
             return DebugUtil.charToString(lo);
         }
@@ -692,10 +637,29 @@ public abstract class SortedListOfRanges implements ListOfRanges, CharacterSet {
     }
 
     @TruffleBoundary
-    private String rangesToString() {
+    default String rangesToString() {
         StringBuilder sb = new StringBuilder();
         for (int i = 0; i < size(); i++) {
             sb.append(rangeToString(getLo(i), getHi(i)));
+        }
+        return sb.toString();
+    }
+
+    @TruffleBoundary
+    default String inverseRangesToString() {
+        StringBuilder sb = new StringBuilder();
+        if (matchesNothing()) {
+            sb.append(rangeToString(getMinValue(), getMaxValue()));
+            return sb.toString();
+        }
+        if (getLo(0) > getMinValue()) {
+            sb.append(rangeToString(getMinValue(), getLo(0) - 1));
+        }
+        for (int ia = 1; ia < size(); ia++) {
+            sb.append(rangeToString(getHi(ia - 1) + 1, getLo(ia) - 1));
+        }
+        if (getHi(size() - 1) < getMaxValue()) {
+            sb.append(rangeToString(getHi(size() - 1) + 1, getMaxValue()));
         }
         return sb.toString();
     }
