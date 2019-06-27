@@ -5,7 +5,7 @@ suite = {
 
     "groupId" : "org.graalvm.tools",
     "version" : "19.1.0",
-    "release" : False,
+    "release" : True,
     "url" : "http://openjdk.java.net/projects/graal",
     "developer" : {
       "name" : "Truffle and Graal developers",
