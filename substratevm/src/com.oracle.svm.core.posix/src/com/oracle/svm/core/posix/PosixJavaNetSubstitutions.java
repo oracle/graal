@@ -163,7 +163,9 @@ class PosixJavaNetSubstitutionsFeature implements Feature {
 
             JNIRuntimeAccess.register(access.findClassByName("java.net.Inet6Address"));
             JNIRuntimeAccess.register(access.findClassByName("java.net.Inet6Address").getDeclaredField("holder6"));
-            JNIRuntimeAccess.register(access.findClassByName("java.net.Inet6Address").getDeclaredField("cached_scope_id"));
+            if (JavaVersionUtil.JAVA_SPEC <= 11) {
+                JNIRuntimeAccess.register(access.findClassByName("java.net.Inet6Address").getDeclaredField("cached_scope_id"));
+            }
             JNIRuntimeAccess.register(access.findClassByName("java.net.Inet6Address").getDeclaredConstructor());
             JNIRuntimeAccess.register(access.findClassByName("java.net.Inet6Address$Inet6AddressHolder"));
             JNIRuntimeAccess.register(access.findClassByName("java.net.Inet6Address$Inet6AddressHolder").getDeclaredField("ipaddress"));
@@ -403,6 +405,7 @@ final class Target_java_net_PlainDatagramSocketImpl {
     //    360  Java_java_net_PlainDatagramSocketImpl_send(JNIEnv *env, jobject this,
     //    361                                             jobject packet)
     @Substitute
+    @TargetElement(onlyWith = JDK11OrEarlier.class) //
     @SuppressWarnings({"static-method", "unused"})
     protected void send(DatagramPacket packet) throws IOException {
         //   363      char BUF[MAX_BUFFER_LEN];
