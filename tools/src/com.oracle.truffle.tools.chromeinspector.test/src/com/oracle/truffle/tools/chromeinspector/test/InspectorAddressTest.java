@@ -30,6 +30,7 @@ import org.junit.After;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertTrue;
 import static org.junit.Assert.fail;
+import org.junit.Assume;
 import org.junit.Before;
 import org.junit.Test;
 
@@ -64,6 +65,7 @@ public class InspectorAddressTest {
 
     @Test
     public void testHost() {
+        Assume.assumeTrue(System.getProperty("os.name").contains("Linux")); // Extra IPs are used
         context = Context.newBuilder().option("inspect", "127.0.0.2").err(errorOutput).build();
         String[] wsAddress = parseWSAddress(errorOutput.toString());
         assertAddress("127.0.0.2", "9229", "?", wsAddress);
@@ -99,6 +101,7 @@ public class InspectorAddressTest {
 
     @Test
     public void testHostPort() {
+        Assume.assumeTrue(System.getProperty("os.name").contains("Linux")); // Extra IPs are used
         context = Context.newBuilder().option("inspect", "127.0.0.2:2992").err(errorOutput).build();
         String[] wsAddress = parseWSAddress(errorOutput.toString());
         assertAddress("127.0.0.2", "2992", "?", wsAddress);
