@@ -53,7 +53,7 @@ public abstract class VMOperation {
     }
 
     public final boolean getCausesSafepoint() {
-        return systemEffect == SystemEffect.CAUSES_SAFEPOINT;
+        return systemEffect == SystemEffect.SAFEPOINT;
     }
 
     protected final void execute(NativeVMOperationData data) {
@@ -108,7 +108,11 @@ public abstract class VMOperation {
         }
     }
 
-    /** Used to determine if a VMOperation must be executed or if it can be skipped. */
+    /**
+     * Used to determine if a VM operation must be executed or if it can be skipped. Regardless of
+     * the {@linkplain SystemEffect} that was specified for the VM operation, this method might be
+     * called before or after a safepoint was initiated.
+     */
     protected boolean hasWork(@SuppressWarnings("unused") NativeVMOperationData data) {
         return true;
     }
@@ -125,7 +129,7 @@ public abstract class VMOperation {
     protected abstract void operate(NativeVMOperationData data);
 
     public enum SystemEffect {
-        DOES_NOT_CAUSE_SAFEPOINT,
-        CAUSES_SAFEPOINT
+        NONE,
+        SAFEPOINT
     }
 }

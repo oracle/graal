@@ -305,14 +305,7 @@ public class SubstrateOptions {
     public static final HostedOptionKey<Boolean> EmitStringEncodingSubstitutions = new HostedOptionKey<>(true);
 
     @Option(help = "Determines if VM operations should be executed in a dedicated thread.", type = OptionType.Debug)//
-    public static final HostedOptionKey<Boolean> UseDedicatedVMThread = new HostedOptionKey<Boolean>(false) {
-        @Override
-        protected void onValueUpdate(EconomicMap<OptionKey<?>, Object> values, Boolean oldValue, Boolean newValue) {
-            if (newValue) {
-                MultiThreaded.update(values, true);
-            }
-        }
-    };
+    public static final HostedOptionKey<Boolean> UseDedicatedVMOperationThread = new HostedOptionKey<>(false);
 
     @Platforms(Platform.HOSTED_ONLY.class)
     public static Predicate<String> makeFilter(String[] definedFilters) {

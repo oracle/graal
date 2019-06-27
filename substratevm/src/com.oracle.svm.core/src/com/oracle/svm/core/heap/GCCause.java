@@ -50,9 +50,11 @@ public class GCCause {
 
     @Platforms(Platform.HOSTED_ONLY.class)
     protected GCCause(String name) {
-        this.id = HostedGCCauseList.size();
-        this.name = name;
-        HostedGCCauseList.add(this);
+        synchronized (HostedGCCauseList) {
+            this.id = HostedGCCauseList.size();
+            this.name = name;
+            HostedGCCauseList.add(this);
+        }
     }
 
     public String getName() {

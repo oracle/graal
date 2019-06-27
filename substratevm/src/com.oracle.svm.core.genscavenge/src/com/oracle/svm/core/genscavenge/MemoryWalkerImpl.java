@@ -57,7 +57,7 @@ public class MemoryWalkerImpl extends MemoryWalker {
         private boolean result;
 
         protected MemoryWalkerVMOperation(MemoryWalker.Visitor memoryVisitor) {
-            super("MemoryWalkerImpl.visitMemory", SystemEffect.CAUSES_SAFEPOINT);
+            super("MemoryWalkerImpl.visitMemory", SystemEffect.SAFEPOINT);
             this.memoryWalkerVisitor = memoryVisitor;
             this.result = false;
         }

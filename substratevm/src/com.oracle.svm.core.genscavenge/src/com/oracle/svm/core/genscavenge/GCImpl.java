@@ -1493,7 +1493,7 @@ public class GCImpl implements GC {
 
     private static class CollectionVMOperation extends NativeVMOperation {
         protected CollectionVMOperation() {
-            super("Garbage collection", SystemEffect.CAUSES_SAFEPOINT);
+            super("Garbage collection", SystemEffect.SAFEPOINT);
         }
 
         @Override

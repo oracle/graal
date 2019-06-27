@@ -182,7 +182,7 @@ public class HeapVerifierImpl implements HeapVerifier {
         private boolean result;
 
         VerifyVMOperation(String message, HeapVerifierImpl verifier, HeapVerifier.Occasion occasion) {
-            super("HeapVerification", SystemEffect.CAUSES_SAFEPOINT);
+            super("HeapVerification", SystemEffect.SAFEPOINT);
             this.message = message;
             this.verifier = verifier;
             this.occasion = occasion;

@@ -26,7 +26,7 @@ package com.oracle.svm.core.graal.snippets;
 
 import static com.oracle.svm.core.SubstrateOptions.MultiThreaded;
 import static com.oracle.svm.core.SubstrateOptions.SpawnIsolates;
-import static com.oracle.svm.core.SubstrateOptions.UseDedicatedVMThread;
+import static com.oracle.svm.core.SubstrateOptions.UseDedicatedVMOperationThread;
 import static com.oracle.svm.core.graal.nodes.WriteCurrentVMThreadNode.writeCurrentVMThread;
 import static com.oracle.svm.core.graal.nodes.WriteHeapBaseNode.writeCurrentVMHeapBase;
 import static com.oracle.svm.core.util.VMError.shouldNotReachHere;
@@ -207,8 +207,8 @@ public final class CEntryPointSnippets extends SubstrateTemplates implements Sni
         if (!success) {
             return CEntryPointErrors.ISOLATE_INITIALIZATION_FAILED;
         }
-        if (UseDedicatedVMThread.getValue()) {
-            VMOperationControl.startVmThread();
+        if (UseDedicatedVMOperationThread.getValue()) {
+            VMOperationControl.startVMOperationThread();
         }
         return CEntryPointErrors.NO_ERROR;
     }
@@ -308,8 +308,8 @@ public final class CEntryPointSnippets extends SubstrateTemplates implements Sni
             if (!JavaThreads.singleton().tearDownVM()) {
                 return CEntryPointErrors.UNSPECIFIED;
             }
-            if (UseDedicatedVMThread.getValue()) {
-                VMOperationControl.stopVmThread();
+            if (UseDedicatedVMOperationThread.getValue()) {
+                VMOperationControl.stopVMOperationThread();
             }
             return Isolates.tearDownCurrent();
         } catch (Throwable t) {

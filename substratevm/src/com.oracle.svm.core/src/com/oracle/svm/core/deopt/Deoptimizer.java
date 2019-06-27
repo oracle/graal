@@ -594,7 +594,7 @@ public final class Deoptimizer {
         private IsolateThread thread;
 
         DeoptSourceFrameOperation(Deoptimizer receiver, CodePointer pc, boolean ignoreNonDeoptimizable, IsolateThread thread) {
-            super("DeoptSourceFrameOperation", SystemEffect.CAUSES_SAFEPOINT);
+            super("DeoptSourceFrameOperation", SystemEffect.SAFEPOINT);
             this.receiver = receiver;
             this.pc = pc;
             this.ignoreNonDeoptimizable = ignoreNonDeoptimizable;

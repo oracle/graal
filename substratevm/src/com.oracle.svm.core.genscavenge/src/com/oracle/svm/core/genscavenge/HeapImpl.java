@@ -171,7 +171,7 @@ public class HeapImpl extends Heap {
         private ObjectVisitor visitor = null;
 
         ObjectVisitorWalkerOperation() {
-            super("ObjectVisitorWalker", SystemEffect.CAUSES_SAFEPOINT);
+            super("ObjectVisitorWalker", SystemEffect.SAFEPOINT);
         }
 
         ObjectVisitorWalkerOperation open(ObjectVisitor value) {

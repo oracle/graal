@@ -35,9 +35,11 @@ import com.oracle.svm.core.annotate.RestrictHeapAccess;
  * VM operation on the Java heap is preferable but not always possible.
  *
  * <p>
- * Do <b>NOT</b> create singleton objects that might get enqueued by multiple threads. If
- * {@linkplain SubstrateOptions#UseDedicatedVMThread} is enabled, this can result in race
- * conditions.
+ * {@link JavaVMOperation} objects should be short lived and only enqueued/executed once. It is
+ * possible to reuse {@link JavaVMOperation} objects for multiple executions but it requires extra
+ * care: when a VM operation is enqueued, then it must be guaranteed that it is executed before it
+ * is enqueued again. Otherwise, this could result in various race conditions (especially if
+ * {@linkplain SubstrateOptions#UseDedicatedVMOperationThread} is enabled).
  */
 public abstract class JavaVMOperation extends VMOperation implements VMOperationControl.JavaAllocationFreeQueue.Element<JavaVMOperation> {
     protected IsolateThread queuingThread;
@@ -93,13 +95,13 @@ public abstract class JavaVMOperation extends VMOperation implements VMOperation
 
     /** Convenience method for thunks that can be run by allocating a VMOperation. */
     public static void enqueueBlockingSafepoint(String name, Thunk thunk) {
-        ThunkOperation vmOperation = new ThunkOperation(name, SystemEffect.CAUSES_SAFEPOINT, thunk);
+        ThunkOperation vmOperation = new ThunkOperation(name, SystemEffect.SAFEPOINT, thunk);
         vmOperation.enqueue();
     }
 
     /** Convenience method for thunks that can be run by allocating a VMOperation. */
     public static void enqueueBlockingNoSafepoint(String name, Thunk thunk) {
-        ThunkOperation vmOperation = new ThunkOperation(name, SystemEffect.DOES_NOT_CAUSE_SAFEPOINT, thunk);
+        ThunkOperation vmOperation = new ThunkOperation(name, SystemEffect.NONE, thunk);
         vmOperation.enqueue();
     }
 

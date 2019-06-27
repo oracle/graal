@@ -392,7 +392,7 @@ public abstract class JavaThreads {
     }
 
     private static boolean isApplicationThread(IsolateThread isolateThread) {
-        return !VMOperationControl.isDedicatedVmThread(isolateThread);
+        return !VMOperationControl.isDedicatedVMOperationThread(isolateThread);
     }
 
     @SuppressFBWarnings(value = "NN", justification = "notifyAll is necessary for Java semantics, no shared state needs to be modified beforehand")
@@ -710,7 +710,7 @@ public abstract class JavaThreads {
         private final List<Thread> list;
 
         FetchApplicationThreadsOperation(List<Thread> list) {
-            super("FetchApplicationThreads", SystemEffect.DOES_NOT_CAUSE_SAFEPOINT);
+            super("FetchApplicationThreads", SystemEffect.NONE);
             this.list = list;
         }
 
@@ -742,7 +742,7 @@ public abstract class JavaThreads {
         private int count;
 
         CountApplicationThreadsOperation(Log trace, AtomicBoolean printLaggards) {
-            super("VMThreadCounterOperation", SystemEffect.DOES_NOT_CAUSE_SAFEPOINT);
+            super("VMThreadCounterOperation", SystemEffect.NONE);
             this.trace = trace;
             this.printLaggards = printLaggards;
             this.count = 0;

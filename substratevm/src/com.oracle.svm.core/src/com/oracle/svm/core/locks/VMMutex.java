@@ -78,7 +78,7 @@ public class VMMutex implements AutoCloseable {
      * <li>Thread A calls mutex.lockNoTransition() and acquires the mutex</li>
      * <li>Thread B calls mutex.lockNoTransition() and is blocked</li>
      * <li>Thread A still holds the mutex but needs to trigger a GC. However, the safepoint can't be
-     * initiated as Thread A is still in the Java state but blocked in native code.</li>
+     * initiated as Thread B is still in the Java state but blocked in native code.</li>
      * </ul>
      */
     @Uninterruptible(reason = "Called from uninterruptible code.", callerMustBe = true)

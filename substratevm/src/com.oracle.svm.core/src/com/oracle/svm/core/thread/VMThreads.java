@@ -87,8 +87,8 @@ public abstract class VMThreads {
      * <li>Thread A acquires the {@link #THREAD_MUTEX}.</li>
      * <li>Thread A allocates an object and the allocation wants to trigger a GC. So, a VM operation
      * is queued and thread A blocks until the VM operation is completed.</li>
-     * <li>The dedicated VM thread needs to initiate a safepoint for the execution of the VM
-     * operation. So, it tries to acquire {@link #THREAD_MUTEX} and is blocked because thread A
+     * <li>The dedicated VM operation thread needs to initiate a safepoint for the execution of the
+     * VM operation. So, it tries to acquire {@link #THREAD_MUTEX} and is blocked because thread A
      * still holds that mutex.</li>
      * </ul>
      */

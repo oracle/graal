@@ -443,8 +443,8 @@ public final class Safepoint {
          * Have each of the threads (except myself!) stop at a safepoint.
          *
          * Locking {@linkplain VMThreads#THREAD_MUTEX} in this method is fine because the method is
-         * only executed by the VM thread. Therefore, no other thread can initiate a safepoint and
-         * Java allocations are disabled as well.
+         * only executed by the VM operation thread. Therefore, no other thread can initiate a
+         * safepoint and Java allocations are disabled as well.
          */
         @RestrictHeapAccess(access = RestrictHeapAccess.Access.NO_ALLOCATION, mayBeInlined = true, reason = "The safepoint logic must not allocate.")
         protected boolean freeze(String reason) {

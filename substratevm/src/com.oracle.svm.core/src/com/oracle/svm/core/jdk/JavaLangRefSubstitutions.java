@@ -198,13 +198,13 @@ final class Target_java_lang_ref_ReferenceQueue {
 
     @Substitute
     public Object remove() throws InterruptedException {
-        VMOperation.guaranteeNotInProgress("Calling ReferenceQueue.remove() inside a VMOperation could block the VM thread and cause a deadlock.");
+        VMOperation.guaranteeNotInProgress("Calling ReferenceQueue.remove() inside a VMOperation could block the VM operation thread and cause a deadlock.");
         return ReferenceWrapper.unwrap(feeble.remove());
     }
 
     @Substitute
     public Object remove(long timeoutMillis) throws InterruptedException {
-        VMOperation.guaranteeNotInProgress("Calling ReferenceQueue.remove(long) inside a VMOperation could block the VM thread and cause a deadlock.");
+        VMOperation.guaranteeNotInProgress("Calling ReferenceQueue.remove(long) inside a VMOperation could block the VM operation thread and cause a deadlock.");
         return ReferenceWrapper.unwrap(feeble.remove(timeoutMillis));
     }
 
