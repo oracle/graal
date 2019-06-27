@@ -1742,7 +1742,7 @@ public final class TruffleFile {
      * @throws UnsupportedOperationException when the filesystem does not support given attribute
      * @throws IllegalArgumentException when the attribute value has an inappropriate value
      * @throws SecurityException if the {@link FileSystem} denied the operation
-     * @since 20.0.0 beta 1
+     * @since 19.1.0
      */
     @TruffleBoundary
     public <T> void setAttribute(AttributeDescriptor<T> attribute, T value, LinkOption... linkOptions) throws IOException {

@@ -63,7 +63,7 @@ import org.graalvm.polyglot.io.ProcessHandler.Redirect;
  * instance with those attributes. The {@link #start()} method can be invoked repeatedly from the
  * same instance to create new subprocesses with the same attributes.
  *
- * @since 20.0.0 beta 2
+ * @since 19.1.0
  */
 public final class TruffleProcessBuilder {
 
@@ -96,7 +96,7 @@ public final class TruffleProcessBuilder {
      *
      * @param command the list containing the executable and its arguments
      * @return this {@link TruffleProcessBuilder builder}
-     * @since 20.0.0 beta 2
+     * @since 19.1.0
      */
     public TruffleProcessBuilder command(List<String> command) {
         Objects.requireNonNull(command, "Command must be non null.");
@@ -109,7 +109,7 @@ public final class TruffleProcessBuilder {
      *
      * @param command the string array containing the executable and its arguments
      * @return this {@link TruffleProcessBuilder builder}
-     * @since 20.0.0 beta 2
+     * @since 19.1.0
      */
     public TruffleProcessBuilder command(String... command) {
         Objects.requireNonNull(command, "Command must be non null.");
@@ -125,7 +125,7 @@ public final class TruffleProcessBuilder {
      *
      * @param currentWorkingDirectory the new current working directory
      * @return this {@link TruffleProcessBuilder builder}
-     * @since 20.0.0 beta 2
+     * @since 19.1.0
      */
     public TruffleProcessBuilder directory(TruffleFile currentWorkingDirectory) {
         this.cwd = currentWorkingDirectory;
@@ -137,7 +137,7 @@ public final class TruffleProcessBuilder {
      *
      * @param enabled enables merging of standard error output into standard output
      * @return this {@link TruffleProcessBuilder builder}
-     * @since 19.2.0
+     * @since 19.1.0
      */
     public TruffleProcessBuilder redirectErrorStream(boolean enabled) {
         this.redirectErrorStream = enabled;
@@ -155,7 +155,7 @@ public final class TruffleProcessBuilder {
      *
      * @param source the new standard input source
      * @return this {@link TruffleProcessBuilder builder}
-     * @since 20.0.0 beta 2
+     * @since 19.1.0
      */
     public TruffleProcessBuilder redirectInput(Redirect source) {
         Objects.requireNonNull(source, "Source must be non null.");
@@ -175,7 +175,7 @@ public final class TruffleProcessBuilder {
      *
      * @param destination the new standard output destination
      * @return this {@link TruffleProcessBuilder builder}
-     * @since 20.0.0 beta 2
+     * @since 19.1.0
      */
     public TruffleProcessBuilder redirectOutput(Redirect destination) {
         Objects.requireNonNull(destination, "Destination must be non null.");
@@ -195,7 +195,7 @@ public final class TruffleProcessBuilder {
      *
      * @param destination the new error output destination
      * @return this {@link TruffleProcessBuilder builder}
-     * @since 20.0.0 beta 2
+     * @since 19.1.0
      */
     public TruffleProcessBuilder redirectError(Redirect destination) {
         Objects.requireNonNull(destination, "Destination must be non null.");
@@ -209,7 +209,7 @@ public final class TruffleProcessBuilder {
      *
      * @param enabled enables standard I/O inheritance
      * @return this {@link TruffleProcessBuilder builder}
-     * @since 20.0.0 beta 2
+     * @since 19.1.0
      */
     public TruffleProcessBuilder inheritIO(boolean enabled) {
         this.inheritIO = enabled;
@@ -221,7 +221,7 @@ public final class TruffleProcessBuilder {
      *
      * @param clear disables inheritance of environment variables
      * @return this {@link TruffleProcessBuilder builder}
-     * @since 20.0.0 beta 2
+     * @since 19.1.0
      */
     public TruffleProcessBuilder clearEnvironment(boolean clear) {
         this.clearEnvironment = clear;
@@ -234,7 +234,7 @@ public final class TruffleProcessBuilder {
      * @param name the variable name
      * @param value the value
      * @return this {@link TruffleProcessBuilder builder}
-     * @since 20.0.0 beta 2
+     * @since 19.1.0
      */
     public TruffleProcessBuilder environment(String name, String value) {
         Objects.requireNonNull(name, "Name must be non null.");
@@ -253,7 +253,7 @@ public final class TruffleProcessBuilder {
      * @param environment environment variables
      * @see #environment(String, String) To set a single environment variable.
      * @return this {@link TruffleProcessBuilder builder}
-     * @since 20.0.0 beta 2
+     * @since 19.1.0
      */
     public TruffleProcessBuilder environment(Map<String, String> environment) {
         for (Map.Entry<String, String> e : environment.entrySet()) {
@@ -272,7 +272,7 @@ public final class TruffleProcessBuilder {
      *
      * @param stream the {@link OutputStream} to write into
      * @throws NullPointerException if the given stream is {@code null}
-     * @since 20.0.0 beta 2
+     * @since 19.2.0
      */
     public Redirect createRedirectToStream(OutputStream stream) {
         return AccessIO.engineAccess().createRedirectToOutputStream(polyglotLanguageContext, stream);
@@ -290,7 +290,7 @@ public final class TruffleProcessBuilder {
      * @throws IndexOutOfBoundsException if the command is an empty list
      * @throws SecurityException when process creation is forbidden by {@link ProcessHandler}
      * @throws IOException if the process fails to execute
-     * @since 20.0.0 beta 2
+     * @since 19.1.0
      */
     public Process start() throws IOException {
         List<String> useCmd = new ArrayList<>();

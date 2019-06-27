@@ -179,7 +179,7 @@ public interface ResultVerifier extends Consumer<ResultVerifier.SnippetRun> {
      * {@link ResultVerifier} tests that the identity function does not change the parameter type.
      *
      * @return the default {@link ResultVerifier} for {@code IdentityFunctionTest}.
-     * @since 20.0.0 beta 1
+     * @since 19.1.0
      */
     static ResultVerifier getIdentityFunctionDefaultResultVerifier() {
         return IdentityFunctionResultVerifier.INSTANCE;

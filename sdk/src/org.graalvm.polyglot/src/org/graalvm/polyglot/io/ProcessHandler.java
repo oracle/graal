@@ -58,7 +58,7 @@ import org.graalvm.polyglot.impl.AbstractPolyglotImpl;
  * Service-provider for guest languages process builder. This interface allows embedder to intercept
  * subprocess creation done by guest languages.
  *
- * @since 20.0.0 beta 2
+ * @since 19.1.0
  */
 public interface ProcessHandler {
 
@@ -80,7 +80,7 @@ public interface ProcessHandler {
      * @param command the subprocess attributes
      * @throws SecurityException if the process creation was forbidden by this handler
      * @throws IOException if the process fails to execute
-     * @since 20.0.0 beta 2
+     * @since 19.1.0
      */
     Process start(ProcessCommand command) throws IOException;
 
@@ -88,7 +88,7 @@ public interface ProcessHandler {
      * Subprocess attributes passed to
      * {@link #start(org.graalvm.polyglot.io.ProcessHandler.ProcessCommand) start} method.
      *
-     * @since 20.0.0 beta 2
+     * @since 19.1.0
      */
     final class ProcessCommand {
 
@@ -119,7 +119,7 @@ public interface ProcessHandler {
         /**
          * Returns the subprocess executable and arguments as an immutable list.
          *
-         * @since 20.0.0 beta 2
+         * @since 19.1.0
          */
         public List<String> getCommand() {
             return cmd;
@@ -128,7 +128,7 @@ public interface ProcessHandler {
         /**
          * Returns the subprocess working directory.
          *
-         * @since 20.0.0 beta 2
+         * @since 19.1.0
          */
         public String getDirectory() {
             return cwd;
@@ -137,7 +137,7 @@ public interface ProcessHandler {
         /**
          * Returns the subprocess environment as an immutable map.
          *
-         * @since 20.0.0 beta 2
+         * @since 19.1.0
          */
         public Map<String, String> getEnvironment() {
             return environment;
@@ -146,7 +146,7 @@ public interface ProcessHandler {
         /**
          * Return whether the standard error output should be merged into standard output.
          *
-         * @since 20.0.0 beta 2
+         * @since 19.1.0
          */
         public boolean isRedirectErrorStream() {
             return redirectErrorStream;
@@ -155,7 +155,7 @@ public interface ProcessHandler {
         /**
          * Returns the standard input source.
          *
-         * @since 20.0.0 beta 2
+         * @since 19.1.0
          */
         public Redirect getInputRedirect() {
             return inputRedirect;
@@ -164,7 +164,7 @@ public interface ProcessHandler {
         /**
          * Returns the standard output destination.
          *
-         * @since 20.0.0 beta 2
+         * @since 19.1.0
          */
         public Redirect getOutputRedirect() {
             return outputRedirect;
@@ -173,7 +173,7 @@ public interface ProcessHandler {
         /**
          * Returns the standard error output destination.
          *
-         * @since 20.0.0 beta 2
+         * @since 19.1.0
          */
         public Redirect getErrorRedirect() {
             return errorRedirect;
@@ -213,14 +213,14 @@ public interface ProcessHandler {
     /**
      * Represents a source of subprocess input or a destination of subprocess output.
      *
-     * @since 20.0.0 beta 2
+     * @since 19.1.0
      */
     final class Redirect {
 
         /**
          * Indicates that subprocess I/O will be connected to the current Java process using a pipe.
          *
-         * @since 20.0.0 beta 2
+         * @since 19.1.0
          */
         public static final Redirect PIPE = new Redirect(Type.PIPE, null);
 
@@ -228,7 +228,7 @@ public interface ProcessHandler {
          * Indicates that subprocess I/O source or destination will be the same as those of the
          * current process.
          *
-         * @since 20.0.0 beta 2
+         * @since 19.1.0
          */
         public static final Redirect INHERIT = new Redirect(Type.INHERIT, null);
 
@@ -248,7 +248,7 @@ public interface ProcessHandler {
         /**
          * {@inheritDoc}
          *
-         * @since 20.0.0 beta 2
+         * @since 19.1.0
          */
         @Override
         public String toString() {
@@ -258,7 +258,7 @@ public interface ProcessHandler {
         /**
          * {@inheritDoc}
          *
-         * @since 20.0.0 beta 2
+         * @since 19.1.0
          */
         @Override
         public int hashCode() {
@@ -268,7 +268,7 @@ public interface ProcessHandler {
         /**
          * {@inheritDoc}
          *
-         * @since 20.0.0 beta 2
+         * @since 19.1.0
          */
         @Override
         public boolean equals(Object obj) {

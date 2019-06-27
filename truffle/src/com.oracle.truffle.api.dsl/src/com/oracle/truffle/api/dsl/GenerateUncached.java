@@ -116,7 +116,7 @@ public @interface GenerateUncached {
     /**
      * Inherits the semantics of the annotation to subclasses.
      *
-     * @since 20.0.0 beta 1
+     * @since 19.1.0
      */
     boolean inherit() default false;
 
