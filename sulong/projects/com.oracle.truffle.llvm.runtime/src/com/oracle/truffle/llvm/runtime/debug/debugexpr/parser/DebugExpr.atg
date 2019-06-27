@@ -113,7 +113,7 @@ Designator<out DebugExpressionPair p>				(. DebugExpressionPair idxPair=null; Li
 =
 PrimExpr<out p> 
 {
-	 "[" Expr<out idxPair> "]"						(. p = NF.errorObjPair; .)
+	 "[" Expr<out idxPair> "]"						(. p = NF.createArrayElement(p, idxPair); .)
 	|
 	 ActPars<out l>									(. p = NF.createFunctionCall(p, l); .)
 	|

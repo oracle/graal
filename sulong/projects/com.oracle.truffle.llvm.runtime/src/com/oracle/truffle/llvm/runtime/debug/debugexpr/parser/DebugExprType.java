@@ -2,6 +2,7 @@ package com.oracle.truffle.llvm.runtime.debug.debugexpr.parser;
 
 import java.util.HashMap;
 
+import com.oracle.truffle.llvm.runtime.debug.type.LLVMSourceArrayLikeType;
 import com.oracle.truffle.llvm.runtime.debug.type.LLVMSourceBasicType;
 import com.oracle.truffle.llvm.runtime.types.PrimitiveType;
 import com.oracle.truffle.llvm.runtime.types.Type;
@@ -11,11 +12,15 @@ public class DebugExprType {
 
     private final Kind kind;
     private DebugExprType innerType; // used for arrays, pointers, ...
-    private static HashMap<Kind, DebugExprType> map = new HashMap<>();;
+    private static HashMap<Kind, DebugExprType> map = new HashMap<>();
 
     private DebugExprType(Kind kind, DebugExprType innerType) {
         this.kind = kind;
         this.innerType = innerType;
+    }
+
+    public DebugExprType getInnerType() {
+        return innerType;
     }
 
     public boolean isUnsigned() {
@@ -194,7 +199,7 @@ public class DebugExprType {
     }
 
     public static DebugExprType getTypeFromSymbolTableMetaObject(Object metaObj) {
-        try {
+        if (metaObj instanceof LLVMSourceBasicType) {
             LLVMSourceBasicType basicType = (LLVMSourceBasicType) metaObj;
             LLVMSourceBasicType.Kind typeKind = basicType.getKind();
             long typeSize = basicType.getSize();
@@ -213,12 +218,15 @@ public class DebugExprType {
                 case FLOATING:
                     return DebugExprType.getFloatType(typeSize);
                 default:
+                    System.out.println("metaObj.getClass() = " + metaObj.getClass().getName());
                     // TODO for pointers
                     return DebugExprType.getVoidType();
             }
-        } catch (ClassCastException e) {
-            // metaObj was no LLVMSourceBasicType, but represents a more complex object (e.g.
-            // struct)
+        } else if (metaObj instanceof LLVMSourceArrayLikeType) {
+            LLVMSourceArrayLikeType arrayType = (LLVMSourceArrayLikeType) metaObj;
+            DebugExprType innerType = getTypeFromSymbolTableMetaObject(arrayType.getElementType(0));
+            return new DebugExprType(Kind.ARRAY, innerType);
+        } else {
             return DebugExprType.getVoidType();
         }
     }

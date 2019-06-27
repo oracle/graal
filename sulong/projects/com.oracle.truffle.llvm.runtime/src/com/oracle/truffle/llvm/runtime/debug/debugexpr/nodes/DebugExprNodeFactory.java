@@ -237,6 +237,24 @@ public final class DebugExprNodeFactory {
         return errorObjPair;
     }
 
+    @SuppressWarnings("static-method")
+    public DebugExpressionPair createArrayElement(DebugExpressionPair array, DebugExpressionPair index) {
+        Object baseMember = null;
+        DebugExprType baseType = null;
+        if (array.getNode() instanceof DebugExprVarNode) {
+            baseMember = ((DebugExprVarNode) (array.getNode())).getMember();
+            baseType = ((DebugExprVarNode) (array.getNode())).getType();
+        } else if (array.getNode() instanceof DebugExprObjectMemberNode) {
+            baseMember = ((DebugExprObjectMemberNode) (array.getNode())).getMember();
+            baseType = ((DebugExprObjectMemberNode) (array.getNode())).getType();
+        }
+        if (baseMember != null) {
+            DebugExprArrayElementNode node = new DebugExprArrayElementNode(baseMember, index.getNode(), baseType);
+            return DebugExpressionPair.create(node, baseType);
+        }
+        return errorObjPair;
+    }
+
     public enum CompareKind {
         EQ,
         NE,
