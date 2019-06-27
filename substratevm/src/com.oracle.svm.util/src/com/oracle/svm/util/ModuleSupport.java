@@ -37,7 +37,7 @@ public final class ModuleSupport {
      * Provide a list of all resources in the JVMCI module.
      */
     @SuppressWarnings("unused")
-    public static List<String> getJCMVIModuleResources() {
+    public static List<String> getJVMCIModuleResources() {
         /* Nothing to do in JDK 8 version. JDK 11 version provides a proper implementation. */
         assert JavaVersionUtil.JAVA_SPEC <= 8;
         return Collections.emptyList();

@@ -39,7 +39,7 @@ public final class ModuleSupport {
     private ModuleSupport() {
     }
 
-    public static List<String> getJCMVIModuleResources() {
+    public static List<String> getJVMCIModuleResources() {
         Module jvmciModule = Services.class.getModule();
         Optional<ModuleReference> moduleReference = ModuleFinder.ofSystem().find(jvmciModule.getName());
         assert moduleReference.isPresent() : "Unable access ModuleReference of JVMCI module";

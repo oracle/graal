@@ -129,12 +129,10 @@ public final class ImageClassLoader {
         final ForkJoinPool executor = new ForkJoinPool(Runtime.getRuntime().availableProcessors());
 
         if (JavaVersionUtil.JAVA_SPEC > 8) {
-            for (String moduleResource : ModuleSupport.getJCMVIModuleResources()) {
-                executor.execute(() -> {
-                    if (moduleResource.endsWith(CLASS_EXTENSION)) {
-                        handleClassFileName(moduleResource, '/');
-                    }
-                });
+            for (String moduleResource : ModuleSupport.getJVMCIModuleResources()) {
+                if (moduleResource.endsWith(CLASS_EXTENSION)) {
+                    executor.execute(() -> handleClassFileName(moduleResource, '/'));
+                }
             }
         }
 
@@ -261,12 +259,10 @@ public final class ImageClassLoader {
                 if (excludes.contains(file.getParent())) {
                     return FileVisitResult.SKIP_SIBLINGS;
                 }
-                executor.execute(() -> {
-                    String fileName = root.relativize(file).toString();
-                    if (fileName.endsWith(CLASS_EXTENSION)) {
-                        handleClassFileName(unversionedFileName(fileName), fileSystemSeparatorChar);
-                    }
-                });
+                String fileName = root.relativize(file).toString();
+                if (fileName.endsWith(CLASS_EXTENSION)) {
+                    executor.execute(() -> handleClassFileName(unversionedFileName(fileName), fileSystemSeparatorChar));
+                }
                 return FileVisitResult.CONTINUE;
             }
 
