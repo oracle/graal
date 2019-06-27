@@ -31,56 +31,85 @@ package com.oracle.truffle.llvm.runtime;
 
 import java.math.BigInteger;
 import java.nio.ByteBuffer;
-import java.nio.ByteOrder;
-import java.util.Arrays;
-import java.util.BitSet;
 
-import com.oracle.truffle.api.CompilerDirectives.CompilationFinal;
-import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
-import com.oracle.truffle.api.CompilerDirectives.ValueType;
+/**
+ * Abstract type for variable width integers. Depending on the concrete bit width, either the
+ * {@link LLVMIVarBitSmall} or {@link LLVMIVarBitLarge} types will be used.
+ */
+public abstract class LLVMIVarBit {
 
-// see https://bugs.chromium.org/p/nativeclient/issues/detail?id=3360 for use cases where variable ints arise
-@ValueType
-public final class LLVMIVarBit {
+    public abstract LLVMIVarBit copy();
 
-    private final int bits;
+    public abstract byte getByteValue();
 
-    // represents value as big-endian two's-complement
-    @CompilationFinal(dimensions = 1) private final byte[] array;
+    public abstract byte getZeroExtendedByteValue();
 
-    private LLVMIVarBit(int bits, byte[] arr) {
-        this.bits = bits;
-        this.array = arr;
+    public abstract short getShortValue();
 
-        assert getByteSize() == arr.length;
-    }
+    public abstract short getZeroExtendedShortValue();
 
-    private LLVMIVarBit(int bits, byte[] arr, int arrBits, boolean signExtend) {
-        this.bits = bits;
+    public abstract int getIntValue();
 
-        this.array = new byte[getByteSize()];
-        if (getByteSize() >= arr.length) {
-            System.arraycopy(arr, 0, this.array, getByteSize() - arr.length, arr.length);
+    public abstract int getZeroExtendedIntValue();
+
+    public abstract long getLongValue();
+
+    public abstract long getZeroExtendedLongValue();
+
+    public abstract int getBitSize();
+
+    public abstract byte[] getBytes();
+
+    public abstract LLVMIVarBit add(LLVMIVarBit right);
+
+    public abstract LLVMIVarBit mul(LLVMIVarBit right);
+
+    public abstract LLVMIVarBit sub(LLVMIVarBit right);
+
+    public abstract LLVMIVarBit div(LLVMIVarBit right);
+
+    public abstract LLVMIVarBit rem(LLVMIVarBit right);
+
+    public abstract LLVMIVarBit unsignedRem(LLVMIVarBit right);
+
+    public abstract LLVMIVarBit unsignedDiv(LLVMIVarBit right);
+
+    public abstract boolean isEqual(LLVMIVarBit o);
+
+    public abstract LLVMIVarBit and(LLVMIVarBit right);
+
+    public abstract LLVMIVarBit or(LLVMIVarBit right);
+
+    public abstract LLVMIVarBit xor(LLVMIVarBit right);
+
+    public abstract LLVMIVarBit leftShift(LLVMIVarBit right);
+
+    public abstract LLVMIVarBit logicalRightShift(LLVMIVarBit right);
+
+    public abstract LLVMIVarBit arithmeticRightShift(LLVMIVarBit right);
+
+    public abstract int signedCompare(LLVMIVarBit other);
+
+    public abstract int unsignedCompare(LLVMIVarBit other);
+
+    public abstract boolean isZero();
+
+    public abstract BigInteger getDebugValue(boolean signed);
+
+    public static LLVMIVarBit create(int bits, byte[] loadedBytes, int loadedArrBits, boolean signExtend) {
+        if (bits <= LLVMIVarBitSmall.MAX_SIZE) {
+            return new LLVMIVarBitSmall(bits, loadedBytes, loadedArrBits, signExtend);
         } else {
-            System.arraycopy(arr, arr.length - getByteSize(), this.array, 0, this.array.length);
+            return new LLVMIVarBitLarge(bits, loadedBytes, loadedArrBits, signExtend);
         }
-
-        if (bits > arrBits && (bits % Byte.SIZE) != 0) {
-            // we don't need to do sign/zero extension if we truncate bits
-
-            boolean isNegative = signExtend && ((arr[0] & (1 << ((bits - 1) % Byte.SIZE))) != 0);
-            if (isNegative) {
-                this.array[0] |= 0xFF << (bits % Byte.SIZE);
-            } else {
-                this.array[0] &= 0xFF >>> (8 - (bits % Byte.SIZE));
-            }
-        }
-
-        assert getByteSize() == arr.length;
     }
 
-    public static LLVMIVarBit create(int bitWidth, byte[] loadedBytes, int loadedArrBits, boolean signExtend) {
-        return new LLVMIVarBit(bitWidth, loadedBytes, loadedArrBits, signExtend);
+    public static LLVMIVarBit create(int bits, long loadedValue, int loadedArrBits, boolean signExtend) {
+        if (bits <= LLVMIVarBitSmall.MAX_SIZE) {
+            return new LLVMIVarBitSmall(bits, loadedValue);
+        } else {
+            return new LLVMIVarBitLarge(bits, ByteBuffer.allocate(Long.BYTES).putLong(loadedValue).array(), loadedArrBits, signExtend);
+        }
     }
 
     public static LLVMIVarBit createZeroExt(int bits, byte from) {
@@ -100,7 +129,8 @@ public final class LLVMIVarBit {
     }
 
     public static LLVMIVarBit fromBigInteger(int bits, BigInteger from) {
-        return asIVar(bits, from);
+        assert bits > LLVMIVarBitSmall.MAX_SIZE;
+        return LLVMIVarBitLarge.asIVar(bits, from);
     }
 
     public static LLVMIVarBit fromByte(int bits, byte from) {
@@ -119,333 +149,4 @@ public final class LLVMIVarBit {
         return create(bits, ByteBuffer.allocate(Long.BYTES).putLong(from).array(), Long.SIZE, true);
     }
 
-    private int getByteSize() {
-        return getByteSize(bits);
-    }
-
-    public static int getByteSize(int bits) {
-        assert bits > 0;
-        return (bits + Byte.SIZE - 1) / Byte.SIZE;
-    }
-
-    @TruffleBoundary
-    private static BigInteger asBigInteger(LLVMIVarBit right) {
-        return new BigInteger(right.getBytes());
-    }
-
-    @TruffleBoundary
-    public BigInteger asUnsignedBigInteger() {
-        if (array.length == 0) {
-            return BigInteger.ZERO;
-        }
-        byte[] newArr = new byte[array.length + 1];
-        System.arraycopy(array, 0, newArr, 1, array.length);
-        return new BigInteger(newArr);
-    }
-
-    @TruffleBoundary
-    public BigInteger asBigInteger() {
-        if (array.length != 0) {
-            return new BigInteger(array);
-        } else {
-            return BigInteger.ZERO;
-        }
-    }
-
-    @TruffleBoundary
-    private ByteBuffer getByteBuffer(int minSizeBytes, boolean signExtend) {
-        int allocationSize = Math.max(minSizeBytes, getByteSize());
-        ByteBuffer bb = ByteBuffer.allocate(allocationSize).order(ByteOrder.BIG_ENDIAN);
-        boolean truncation = bits > minSizeBytes * Byte.SIZE;
-        boolean shouldAddLeadingOnes = signExtend && mostSignificantBit();
-        if (!truncation) {
-            int bytesToFillUp = minSizeBytes - getByteSize();
-            if (shouldAddLeadingOnes) {
-                for (int i = 0; i < bytesToFillUp; i++) {
-                    bb.put((byte) -1);
-                }
-            } else {
-                for (int i = 0; i < bytesToFillUp; i++) {
-                    bb.put((byte) 0);
-                }
-            }
-        }
-        if (bits % Byte.SIZE == 0) {
-            bb.put(array, 0, getByteSize());
-        } else {
-            BitSet bitSet = new BitSet(Byte.SIZE);
-            int bitsToSet = bits % Byte.SIZE;
-            for (int i = 0; i < bitsToSet; i++) {
-                boolean isBitSet = ((array[0] >> i) & 1) == 1;
-                if (isBitSet) {
-                    bitSet.set(i);
-                }
-            }
-
-            if (shouldAddLeadingOnes) {
-                for (int i = bitsToSet; i < Byte.SIZE; i++) {
-                    bitSet.set(i);
-                }
-            }
-            byte firstByteResult;
-            if (bitSet.isEmpty()) {
-                firstByteResult = 0;
-            } else {
-                firstByteResult = bitSet.toByteArray()[0];
-            }
-            // FIXME actually need to truncate or sign extend individual bits
-            bb.put(firstByteResult);
-            for (int i = 1; i < array.length; i++) {
-                bb.put(array[i]);
-            }
-        }
-
-        bb.position(Math.max(0, getByteSize() - minSizeBytes));
-        return bb;
-    }
-
-    private boolean mostSignificantBit() {
-        return getBit(bits - 1);
-    }
-
-    private boolean getBit(int pos) {
-        int selectedBytePos = array.length - 1 - (pos / Byte.SIZE);
-        byte selectedByte = array[selectedBytePos];
-        int selectedBitPos = pos % Byte.SIZE;
-        return ((selectedByte >> selectedBitPos) & 1) == 1;
-    }
-
-    @TruffleBoundary
-    public byte getByteValue() {
-        return getByteBuffer(Byte.BYTES, true).get();
-    }
-
-    @TruffleBoundary
-    public byte getZeroExtendedByteValue() {
-        return getByteBuffer(Byte.BYTES, false).get();
-    }
-
-    @TruffleBoundary
-    public short getShortValue() {
-        return getByteBuffer(Short.BYTES, true).getShort();
-    }
-
-    @TruffleBoundary
-    public short getZeroExtendedShortValue() {
-        return getByteBuffer(Short.BYTES, false).getShort();
-    }
-
-    @TruffleBoundary
-    public int getIntValue() {
-        return getByteBuffer(Integer.BYTES, true).getInt();
-    }
-
-    @TruffleBoundary
-    public int getZeroExtendedIntValue() {
-        return getByteBuffer(Integer.BYTES, false).getInt();
-    }
-
-    @TruffleBoundary
-    public long getLongValue() {
-        return getByteBuffer(Long.BYTES, true).getLong();
-    }
-
-    @TruffleBoundary
-    public long getZeroExtendedLongValue() {
-        return getByteBuffer(Long.BYTES, false).getLong();
-    }
-
-    public int getBitSize() {
-        return bits;
-    }
-
-    public byte[] getBytes() {
-        assert array.length == getByteSize() : array.length + " " + getByteSize();
-        return array;
-    }
-
-    @TruffleBoundary
-    public byte[] getSignExtendedBytes() {
-        return getByteBuffer(array.length, true).array();
-    }
-
-    @TruffleBoundary
-    public LLVMIVarBit add(LLVMIVarBit right) {
-        return asIVar(asBigInteger().add(asBigInteger(right)));
-    }
-
-    @TruffleBoundary
-    public LLVMIVarBit mul(LLVMIVarBit right) {
-        return asIVar(asBigInteger().multiply(asBigInteger(right)));
-    }
-
-    @TruffleBoundary
-    public LLVMIVarBit sub(LLVMIVarBit right) {
-        return asIVar(asBigInteger().subtract(asBigInteger(right)));
-    }
-
-    @TruffleBoundary
-    public LLVMIVarBit div(LLVMIVarBit right) {
-        return asIVar(asBigInteger().divide(asBigInteger(right)));
-    }
-
-    @TruffleBoundary
-    public LLVMIVarBit rem(LLVMIVarBit right) {
-        return asIVar(asBigInteger().remainder(asBigInteger(right)));
-    }
-
-    @TruffleBoundary
-    public LLVMIVarBit unsignedRem(LLVMIVarBit right) {
-        return asIVar(asUnsignedBigInteger().remainder(asBigInteger(right)));
-    }
-
-    @TruffleBoundary
-    public LLVMIVarBit unsignedDiv(LLVMIVarBit right) {
-        return asIVar(asUnsignedBigInteger().divide(asBigInteger(right)));
-    }
-
-    public int compare(LLVMIVarBit other) {
-        int thisWidth = bits;
-        int otherWidth = other.bits;
-        if (thisWidth != otherWidth) {
-            return thisWidth - otherWidth;
-        }
-        byte[] otherArr = other.getBytes();
-        for (int i = 0; i < getByteSize() - 1; i++) {
-            int diff = array[i] - otherArr[i];
-            if (diff != 0) {
-                return diff;
-            }
-        }
-        byte thisByte = array[getByteSize() - 1];
-        byte otherByte = otherArr[getByteSize() - 1];
-        int maskLength = Byte.SIZE - (getByteSize() * Byte.SIZE - bits);
-        byte mask = (byte) (((1 << maskLength) - 1) & 0xFF);
-        return (thisByte & mask) - (otherByte & mask);
-    }
-
-    private interface SimpleOp {
-        byte op(byte a, byte b);
-    }
-
-    private LLVMIVarBit performOp(LLVMIVarBit right, SimpleOp op) {
-        assert bits == right.bits;
-        byte[] newArr = new byte[getByteSize()];
-        byte[] other = right.getBytes();
-        assert array.length == other.length : Arrays.toString(array) + " " + Arrays.toString(other);
-        for (int i = 0; i < newArr.length; i++) {
-            newArr[i] = op.op(array[i], other[i]);
-        }
-        return new LLVMIVarBit(bits, newArr);
-    }
-
-    @TruffleBoundary
-    public LLVMIVarBit and(LLVMIVarBit right) {
-        return performOp(right, (byte a, byte b) -> (byte) (a & b));
-    }
-
-    @TruffleBoundary
-    public LLVMIVarBit or(LLVMIVarBit right) {
-        return performOp(right, (byte a, byte b) -> (byte) (a | b));
-    }
-
-    @TruffleBoundary
-    public LLVMIVarBit xor(LLVMIVarBit right) {
-        return performOp(right, (byte a, byte b) -> (byte) (a ^ b));
-    }
-
-    @TruffleBoundary
-    public LLVMIVarBit leftShift(LLVMIVarBit right) {
-        BigInteger result = asBigInteger().shiftLeft(right.getIntValue());
-        return asIVar(bits, result);
-    }
-
-    @TruffleBoundary
-    private LLVMIVarBit asIVar(BigInteger result) {
-        return asIVar(bits, result);
-    }
-
-    private static LLVMIVarBit asIVar(int bitSize, BigInteger result) {
-        byte[] newArr = new byte[getByteSize(bitSize)];
-        byte[] bigIntArr = result.toByteArray();
-
-        if (newArr.length > bigIntArr.length) {
-            int diff = newArr.length - bigIntArr.length;
-            for (int j = diff; j < newArr.length; j++) {
-                newArr[j] = bigIntArr[j - diff];
-            }
-            for (int j = 0; j < diff; j++) {
-                newArr[j] = bigIntArr[0] < 0 ? (byte) -1 : 0;
-            }
-        } else {
-            int diff = bigIntArr.length - newArr.length;
-            for (int j = 0; j < newArr.length; j++) {
-                newArr[j] = bigIntArr[j + diff];
-            }
-        }
-        int resultLengthIncludingSign = result.bitLength() + (result.signum() == -1 ? 1 : 0);
-        return new LLVMIVarBit(bitSize, newArr, resultLengthIncludingSign, result.signum() == -1);
-    }
-
-    @TruffleBoundary
-    public LLVMIVarBit logicalRightShift(LLVMIVarBit right) {
-        int shiftAmount = right.getIntValue();
-        BigInteger mask = BigInteger.valueOf(-1).shiftLeft(bits - shiftAmount).not();
-        BigInteger result = new BigInteger(array).shiftRight(shiftAmount).and(mask);
-        return asIVar(result);
-    }
-
-    @TruffleBoundary
-    public LLVMIVarBit arithmeticRightShift(LLVMIVarBit right) {
-        BigInteger result = asBigInteger().shiftRight(right.getIntValue());
-        return asIVar(result);
-    }
-
-    @TruffleBoundary
-    public int signedCompare(LLVMIVarBit other) {
-        return asBigInteger().compareTo(other.asBigInteger());
-    }
-
-    @TruffleBoundary
-    public int unsignedCompare(LLVMIVarBit other) {
-        return asUnsignedBigInteger().compareTo(other.asUnsignedBigInteger());
-    }
-
-    @TruffleBoundary
-    public boolean isZero() {
-        return array.length == 0 || BigInteger.ZERO.equals(asBigInteger());
-    }
-
-    @Override
-    @TruffleBoundary
-    public String toString() {
-        if (isZero()) {
-            return Integer.toString(0);
-        }
-        return String.format("i%d %s", getBitSize(), asBigInteger().toString());
-    }
-
-    @Override
-    public int hashCode() {
-        final int prime = 31;
-        int result = 1;
-        result = prime * result + Arrays.hashCode(array);
-        result = prime * result + bits;
-        return result;
-    }
-
-    @Override
-    public boolean equals(Object obj) {
-        if (this == obj) {
-            return true;
-        }
-        if (obj == null) {
-            return false;
-        }
-        if (getClass() != obj.getClass()) {
-            return false;
-        }
-        LLVMIVarBit other = (LLVMIVarBit) obj;
-        return compare(other) == 0;
-    }
 }

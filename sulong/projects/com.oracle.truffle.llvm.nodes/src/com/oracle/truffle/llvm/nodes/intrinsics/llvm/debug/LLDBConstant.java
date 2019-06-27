@@ -206,12 +206,7 @@ abstract class LLDBConstant implements LLVMDebugValue {
                 }
             }
 
-            if (signed) {
-                return result.asBigInteger();
-
-            } else {
-                return result.asUnsignedBigInteger();
-            }
+            return result.getDebugValue(signed);
         }
 
         @Override

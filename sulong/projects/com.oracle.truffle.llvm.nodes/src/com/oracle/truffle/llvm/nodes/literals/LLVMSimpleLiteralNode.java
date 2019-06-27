@@ -48,7 +48,7 @@ public class LLVMSimpleLiteralNode {
 
         @Override
         public LLVMIVarBit executeLLVMIVarBit(VirtualFrame frame) {
-            return literal;
+            return literal.copy();
         }
 
         @Override
