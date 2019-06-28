@@ -30,7 +30,9 @@ import java.lang.ref.WeakReference;
 
 import org.graalvm.nativeimage.c.function.CodePointer;
 import org.graalvm.word.UnsignedWord;
+import org.graalvm.word.WordFactory;
 
+import com.oracle.svm.core.SubstrateOptions;
 import com.oracle.svm.core.annotate.Uninterruptible;
 import com.oracle.svm.core.annotate.UnknownObjectField;
 import com.oracle.svm.core.deopt.SubstrateInstalledCode;
@@ -117,6 +119,6 @@ public final class RuntimeMethodInfo extends AbstractCodeInfo {
 
     @Uninterruptible(reason = "Called from uninterruptible code", mayBeInlined = true)
     void freeInstalledCode() {
-        CommittedMemoryProvider.get().free(getCodeStart(), getCodeSize(), CommittedMemoryProvider.UNALIGNED, true);
+        CommittedMemoryProvider.get().free(getCodeStart(), getCodeSize(), WordFactory.unsigned(SubstrateOptions.codeAlignment()), true);
     }
 }
