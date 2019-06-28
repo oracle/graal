@@ -48,8 +48,7 @@ public interface InternalPlatform {
      *
      * @since 19.0
      */
-    interface LINUX_JNI extends Platform {
-
+    interface LINUX_JNI extends Platform.PLATFORM_JNI {
     }
 
     /**
@@ -57,8 +56,7 @@ public interface InternalPlatform {
      *
      * @since 19.0
      */
-    interface DARWIN_JNI extends Platform {
-
+    interface DARWIN_JNI extends Platform.PLATFORM_JNI {
     }
 
     /**
