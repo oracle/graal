@@ -159,7 +159,7 @@ public class SubstrateOptions {
     public static final HostedOptionKey<Boolean> SpawnIsolates = new HostedOptionKey<>(true);
 
     @Option(help = "Trace VMOperation execution.")//
-    public static final RuntimeOptionKey<Boolean> TraceVMOperations = new RuntimeOptionKey<>(false);
+    public static final HostedOptionKey<Boolean> TraceVMOperations = new HostedOptionKey<>(false);
 
     @Option(help = "Instrument code to trace and report class initialization.")//
     public static final HostedOptionKey<Boolean> TraceClassInitialization = new HostedOptionKey<>(false);

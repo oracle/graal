@@ -276,14 +276,21 @@ public final class VMOperationControl {
 
             VMOperationControl control = VMOperationControl.get();
             WorkQueues queues = control.mainQueues;
-            while (!stopped) {
-                try {
-                    queues.waitForWorkAndExecute();
-                } catch (Throwable e) {
-                    log().string("[VMOperation.execute caught: ").string(e.getClass().getName()).string("]").newline();
-                    throw VMError.shouldNotReachHere(e);
+
+            queues.mutex.lock();
+            try {
+                while (!stopped) {
+                    try {
+                        queues.waitForWorkAndExecute();
+                    } catch (Throwable e) {
+                        log().string("[VMOperation.execute caught: ").string(e.getClass().getName()).string("]").newline();
+                        throw VMError.shouldNotReachHere(e);
+                    }
                 }
+            } finally {
+                queues.mutex.unlock();
             }
+
             this.isolateThread = WordFactory.nullPointer();
         }
 
@@ -348,15 +355,13 @@ public final class VMOperationControl {
         void waitForWorkAndExecute() {
             assert isDedicatedVMOperationThread();
             assert !ThreadingSupportImpl.isRecurringCallbackRegistered(CurrentIsolate.getCurrentThread());
-            lock();
-            try {
-                while (isEmpty()) {
-                    operationQueued.block();
-                }
-                executeAllQueuedVMOperations();
-            } finally {
-                unlock();
+            assert mutex != null;
+            mutex.guaranteeIsOwner("Must already be locked.");
+
+            while (isEmpty()) {
+                operationQueued.block();
             }
+            executeAllQueuedVMOperations();
         }
 
         void enqueueAndWait(VMOperation operation, NativeVMOperationData data) {

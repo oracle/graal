@@ -77,6 +77,7 @@ import com.oracle.svm.core.log.Log;
 import com.oracle.svm.core.option.RuntimeOptionValues;
 import com.oracle.svm.core.snippets.KnownIntrinsics;
 import com.oracle.svm.core.thread.JavaVMOperation;
+import com.oracle.svm.core.thread.VMOperationControl;
 import com.oracle.svm.core.util.VMError;
 
 //Checkstyle: stop
@@ -93,7 +94,6 @@ public class HeapImpl extends Heap {
     /** A singleton instance, created during image generation. */
     private final GenScavengeGCProvider gcProvider;
     private final MemoryMXBean memoryMXBean;
-    private final ObjectVisitorWalkerOperation objectVisitorWalkerOperation;
 
     /** A list of all the classes, if someone asks for it. */
     private List<Class<?>> classList;
@@ -116,7 +116,6 @@ public class HeapImpl extends Heap {
             this.stackVerifier = null;
         }
         chunkProvider = new HeapChunkProvider();
-        this.objectVisitorWalkerOperation = new ObjectVisitorWalkerOperation();
         this.gcProvider = new GenScavengeGCProvider();
         this.memoryMXBean = new HeapImplMemoryMXBean();
         this.classList = null;
@@ -150,45 +149,30 @@ public class HeapImpl extends Heap {
         ThreadLocalAllocation.disableThreadLocalAllocation(vmThread);
     }
 
-    private ObjectVisitorWalkerOperation getObjectVisitorWalkerOperation() {
-        return objectVisitorWalkerOperation;
-    }
-
     @Override
     public void walkObjects(ObjectVisitor visitor) {
-        /*
-         * Only one thread at a time enters this method. So, it is fine to use a cached VM
-         * operation.
-         */
-        try (ObjectVisitorWalkerOperation operation = getObjectVisitorWalkerOperation().open(visitor)) {
-            operation.enqueue();
+        if (VMOperationControl.isFrozen()) {
+            // we can't (but also don't need to) allocate a JavaVMOperation if this method is called
+            // from within a garbage collection
+            HeapImpl.getHeapImpl().doWalkObjects(visitor);
+        } else {
+            ObjectVisitorWalkerOperation op = new ObjectVisitorWalkerOperation(visitor);
+            op.enqueue();
         }
     }
 
-    static class ObjectVisitorWalkerOperation extends JavaVMOperation implements AutoCloseable {
+    static class ObjectVisitorWalkerOperation extends JavaVMOperation {
+        private final ObjectVisitor visitor;
 
-        /** A lazily-initialized visitor. */
-        private ObjectVisitor visitor = null;
-
-        ObjectVisitorWalkerOperation() {
+        ObjectVisitorWalkerOperation(ObjectVisitor visitor) {
             super("ObjectVisitorWalker", SystemEffect.SAFEPOINT);
-        }
-
-        ObjectVisitorWalkerOperation open(ObjectVisitor value) {
-            assert this.visitor == null;
-            this.visitor = value;
-            return this;
+            this.visitor = visitor;
         }
 
         @Override
         public void operate() {
             assert visitor != null : "HeapImpl.ObjectVisitorWalkerOperation.operate: null visitor";
             HeapImpl.getHeapImpl().doWalkObjects(visitor);
-        }
-
-        @Override
-        public void close() {
-            visitor = null;
         }
     }
 

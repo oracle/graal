@@ -65,9 +65,8 @@ public abstract class VMThreads {
      * already acquired for safepoint reasons.</li>
      * <li>Acquire the mutex outside of a VM operation but only execute uninterruptible code. This
      * is safe as the uninterruptible code cannot trigger a safepoint.</li>
-     * <li>Acquire the mutex from code that is allocation, VM operation, and safepoint free (e.g., a
-     * thread for which allocations were disabled and
-     * {@link StatusSupport#setStatusIgnoreSafepoints()} was called).</li>
+     * <li>Acquire the mutex from a thread that previously called
+     * {@link StatusSupport#setStatusIgnoreSafepoints()}.</li>
      * </ol>
      *
      * Deadlock example 1:

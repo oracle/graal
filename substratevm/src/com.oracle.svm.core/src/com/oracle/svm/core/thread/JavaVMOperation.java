@@ -27,19 +27,23 @@ package com.oracle.svm.core.thread;
 import org.graalvm.nativeimage.IsolateThread;
 
 import com.oracle.svm.core.SubstrateOptions;
+import com.oracle.svm.core.SubstrateUtil;
 import com.oracle.svm.core.SubstrateUtil.Thunk;
 import com.oracle.svm.core.annotate.RestrictHeapAccess;
+import com.oracle.svm.core.util.VMError;
 
 /**
  * The abstract base class for all VM operations that are allocated on the Java heap. Allocating the
- * VM operation on the Java heap is preferable but not always possible.
- *
+ * VM operation on the Java heap is preferable but not always possible (see
+ * {@link NativeVMOperation}). {@link JavaVMOperation} objects should be short lived and only
+ * enqueued/executed once. For increased thread safety, it is prohibited to allocate
+ * {@link JavaVMOperation}s that live in the image heap (see note below).
  * <p>
- * {@link JavaVMOperation} objects should be short lived and only enqueued/executed once. It is
- * possible to reuse {@link JavaVMOperation} objects for multiple executions but it requires extra
- * care: when a VM operation is enqueued, then it must be guaranteed that it is executed before it
- * is enqueued again. Otherwise, this could result in various race conditions (especially if
- * {@linkplain SubstrateOptions#UseDedicatedVMOperationThread} is enabled).
+ * Note: the VM operation infrastructure supports that {@link JavaVMOperation}s are reused and
+ * executed multiple times. However, extra care must be taken as each VM operation object can only
+ * be in the VM operation queue once. Therefore, it must be guaranteed that the VM operation is
+ * executed before it is enqueued again. Otherwise, this could result in various race conditions,
+ * especially if {@linkplain SubstrateOptions#UseDedicatedVMOperationThread} is enabled.
  */
 public abstract class JavaVMOperation extends VMOperation implements VMOperationControl.JavaAllocationFreeQueue.Element<JavaVMOperation> {
     protected IsolateThread queuingThread;
@@ -48,6 +52,7 @@ public abstract class JavaVMOperation extends VMOperation implements VMOperation
 
     protected JavaVMOperation(String name, SystemEffect systemEffect) {
         super(name, systemEffect);
+        VMError.guarantee(!SubstrateUtil.HOSTED, "must not be created at image build time");
     }
 
     @Override
