@@ -47,8 +47,7 @@ public class TRegexLazyFindStartRootNode extends RegexBodyNode {
         final Object input = args[0];
         final int fromIndexArg = (int) args[1];
         final int max = (int) args[2];
-        entryNode.execute(frame, input, max, fromIndexArg, Math.max(-1, max - 1 - prefixLength));
-        return entryNode.getExecutor().getResultInt(frame);
+        return (int) entryNode.execute(input, max, fromIndexArg, Math.max(-1, max - 1 - prefixLength));
     }
 
     @Override
