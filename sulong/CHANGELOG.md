@@ -1,3 +1,15 @@
+# Version 19.1.0
+
+Fixes:
+
+* Calling exit(...) in an embedded context is now a catchable PolyglotException.
+* Skip source path entries that we're not allowed to access.
+  Previously, when running in an embedded context with restricted access to the
+  file system, the LLVM engine threw an exception when it could not read the
+  source files, even if no debugger was attached. Now it will still run. Only
+  when a debugger is attached, an error is reported when the source file can't
+  be accessed.
+
 # Version 19.0.0
 
 Changes:
