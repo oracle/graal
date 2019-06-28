@@ -356,7 +356,7 @@ public final class IsomorphicPackingPhase extends BasePhase<LowTierContext> {
 
             // Only use superword on types that are comparable
             // TODO: Evaluate whether graph guarantees that pointers for same collection have same base
-            if (!s1a.getBase().equals(s2a.getBase())) {
+            if (s1a.getBase() != null && s2a.getBase() != null && !s1a.getBase().equals(s2a.getBase())) {
                 return false;
             }
 
