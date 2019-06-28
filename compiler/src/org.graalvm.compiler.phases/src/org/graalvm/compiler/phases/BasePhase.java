@@ -179,7 +179,8 @@ public abstract class BasePhase<C> implements PhaseSizeContract {
     protected final void apply(final StructuredGraph graph, final C context, final boolean dumpGraph) {
         graph.checkCancellation();
         DebugContext debug = graph.getDebug();
-        try (DebugCloseable a = timer.start(debug); DebugContext.Scope s = debug.scope(getClass(), this); DebugCloseable c = memUseTracker.start(debug)) {
+
+        try (DebugCloseable a = timer.start(debug); DebugContext.Scope s = debug.scope(getClass(), graph, this); DebugCloseable c = memUseTracker.start(debug)) {
             int sizeBefore = 0;
             Mark before = null;
             OptionValues options = graph.getOptions();
