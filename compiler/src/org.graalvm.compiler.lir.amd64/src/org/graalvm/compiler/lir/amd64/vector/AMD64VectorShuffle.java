@@ -572,7 +572,7 @@ public class AMD64VectorShuffle {
         public void emitCode(CompilationResultBuilder crb, AMD64MacroAssembler masm) {
             if (isRegister(result)) {
                 if (selector == 0) {
-                    VMOVD.emitReverse(masm, XMM, asRegister(result), asRegister(source));
+                    VMOVD.emit(masm, XMM, asRegister(result), asRegister(source));
                 } else {
                     VPINSRD.emit(masm, XMM, asRegister(result), asRegister(source), selector);
                 }
@@ -606,7 +606,7 @@ public class AMD64VectorShuffle {
         public void emitCode(CompilationResultBuilder crb, AMD64MacroAssembler masm) {
             if (isRegister(result)) {
                 if (selector == 0) {
-                    VMOVQ.emitReverse(masm, XMM, asRegister(result), asRegister(source));
+                    VMOVQ.emit(masm, XMM, asRegister(result), asRegister(source));
                 } else {
                     VPINSRQ.emit(masm, XMM, asRegister(result), asRegister(source), selector);
                 }
@@ -640,7 +640,7 @@ public class AMD64VectorShuffle {
         public void emitCode(CompilationResultBuilder crb, AMD64MacroAssembler masm) {
             if (isRegister(result)) {
                 if (selector == 0) {
-                    VMOVSS.emitReverse(masm, XMM, asRegister(result), asRegister(source));
+                    VMOVSS.emit(masm, XMM, asRegister(result), asRegister(source));
                 } else {
                     VINSERTPS.emit(masm, XMM, asRegister(result), asRegister(source), selector);
                 }
@@ -674,7 +674,7 @@ public class AMD64VectorShuffle {
         public void emitCode(CompilationResultBuilder crb, AMD64MacroAssembler masm) {
             if (isRegister(result)) {
                 if (selector == 0) {
-                    VMOVSD.emitReverse(masm, XMM, asRegister(result), asRegister(source));
+                    VMOVSD.emit(masm, XMM, asRegister(result), asRegister(source));
                 } else {
                     VPINSRQ.emit(masm, XMM, asRegister(result), asRegister(source), selector);
                 }
