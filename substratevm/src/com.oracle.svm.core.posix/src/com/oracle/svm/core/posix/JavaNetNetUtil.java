@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2015, 2017, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2015, 2019, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -35,6 +35,7 @@ import java.net.StandardProtocolFamily;
 import java.nio.channels.DatagramChannel;
 
 import org.graalvm.compiler.api.replacements.Fold;
+import org.graalvm.compiler.serviceprovider.JavaVersionUtil;
 import org.graalvm.nativeimage.ImageSingletons;
 import org.graalvm.nativeimage.PinnedObject;
 import org.graalvm.nativeimage.Platform;
@@ -772,8 +773,8 @@ class JavaNetNetUtilMD {
                     // 840 int cached_scope_id = 0, scope_id = 0;
                     int cached_scope_id = 0;
                     int scope_id = 0;
-                    /* I am assuming that the field "Inet6Address.cached_scope_id" always exists. */
-                    final boolean ia6_cachedscopeidID = true;
+                    /* The field "Inet6Address.cached_scope_id" was removed in JDK13 */
+                    final boolean ia6_cachedscopeidID = JavaVersionUtil.JAVA_SPEC <= 11;
                     // 842 if (ia6_cachedscopeidID) {
                     if (ia6_cachedscopeidID) {
                         // 843     cached_scope_id = (int)(*env)->GetIntField(env, iaObj, ia6_cachedscopeidID);

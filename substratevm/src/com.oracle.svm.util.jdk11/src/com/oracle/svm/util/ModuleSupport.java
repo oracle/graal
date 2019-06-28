@@ -24,10 +24,30 @@
  */
 package com.oracle.svm.util;
 
-import jdk.internal.module.Modules;
+import java.io.IOException;
+import java.lang.module.ModuleFinder;
+import java.lang.module.ModuleReader;
+import java.lang.module.ModuleReference;
+import java.util.List;
+import java.util.Optional;
+import java.util.stream.Collectors;
 
-final class ModuleSupport {
+import jdk.internal.module.Modules;
+import jdk.vm.ci.services.Services;
+
+public final class ModuleSupport {
     private ModuleSupport() {
+    }
+
+    public static List<String> getJVMCIModuleResources() {
+        Module jvmciModule = Services.class.getModule();
+        Optional<ModuleReference> moduleReference = ModuleFinder.ofSystem().find(jvmciModule.getName());
+        assert moduleReference.isPresent() : "Unable access ModuleReference of JVMCI module";
+        try (ModuleReader moduleReader = moduleReference.get().open()) {
+            return moduleReader.list().collect(Collectors.toList());
+        } catch (IOException e) {
+            throw new RuntimeException("Unable get list of resources in JVMCI module", e);
+        }
     }
 
     static void openModule(Class<?> declaringClass, Class<?> accessingClass) {

@@ -39,6 +39,7 @@ class DefaultOptionHandler extends NativeImage.OptionHandler<NativeImage> {
 
     private static final String verboseOption = "--verbose";
     private static final String requireValidJarFileMessage = "-jar requires a valid jarfile";
+    private static final String newStyleClasspathOptionName = "--class-path";
 
     static final String helpText = NativeImage.getResource("/Help.txt");
     static final String helpExtraText = NativeImage.getResource("/HelpExtra.txt");
@@ -90,17 +91,13 @@ class DefaultOptionHandler extends NativeImage.OptionHandler<NativeImage> {
                 return true;
             case "-cp":
             case "-classpath":
-            case "--class-path":
+            case newStyleClasspathOptionName:
                 args.poll();
                 String cpArgs = args.poll();
                 if (cpArgs == null) {
                     NativeImage.showError(headArg + " requires class path specification");
                 }
-                for (String cp : cpArgs.split(File.pathSeparator, Integer.MAX_VALUE)) {
-                    /* Conform to `java` command empty cp entry handling. */
-                    String cpEntry = cp.isEmpty() ? "." : cp;
-                    nativeImage.addCustomImageClasspath(cpEntry);
-                }
+                processClasspathArgs(cpArgs);
                 return true;
             case "--configurations-path":
                 args.poll();
@@ -159,6 +156,15 @@ class DefaultOptionHandler extends NativeImage.OptionHandler<NativeImage> {
             return true;
         }
 
+        String singleArgClasspathPrefix = newStyleClasspathOptionName + "=";
+        if (headArg.startsWith(singleArgClasspathPrefix)) {
+            String cpArgs = args.poll().substring(singleArgClasspathPrefix.length());
+            if (cpArgs.isEmpty()) {
+                NativeImage.showError(headArg + " requires class path specification");
+            }
+            processClasspathArgs(cpArgs);
+            return true;
+        }
         if (headArg.startsWith(NativeImage.oH) || headArg.startsWith(NativeImage.oR)) {
             args.poll();
             nativeImage.addCustomImageBuilderArgs(headArg);
@@ -201,6 +207,14 @@ class DefaultOptionHandler extends NativeImage.OptionHandler<NativeImage> {
             return true;
         }
         return false;
+    }
+
+    private void processClasspathArgs(String cpArgs) {
+        for (String cp : cpArgs.split(File.pathSeparator, Integer.MAX_VALUE)) {
+            /* Conform to `java` command empty cp entry handling. */
+            String cpEntry = cp.isEmpty() ? "." : cp;
+            nativeImage.addCustomImageClasspath(cpEntry);
+        }
     }
 
     private void handleJarFileArg(Path filePath) {
