@@ -249,8 +249,8 @@ public final class DebugExprNodeFactory {
             baseType = ((DebugExprObjectMemberNode) (array.getNode())).getType();
         }
         if (baseMember != null) {
-            DebugExprArrayElementNode node = new DebugExprArrayElementNode(baseMember, index.getNode(), baseType);
-            return DebugExpressionPair.create(node, baseType);
+            DebugExprArrayElementNode node = new DebugExprArrayElementNode(baseMember, index.getNode(), baseType.getInnerType());
+            return DebugExpressionPair.create(node, baseType.getInnerType());
         }
         return errorObjPair;
     }

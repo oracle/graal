@@ -65,8 +65,13 @@ public class DebugExprArrayElementNode extends LLVMExpressionNode {
         try {
             idx = indexNode.executeI32(frame);
         } catch (UnexpectedResultException e) {
-            System.out.println("array index produced unexpected result " + e.getResult());
-            return DebugExprNodeFactory.errorObjNode.executeGeneric(frame);
+            try {
+                // in case of a complex expression as index (e.g. outerArray[innerArray[2]]), the
+                // index (=e.getResult()) is no Integer but a LLVMDebugObject$Primitive instead
+                idx = Integer.parseInt(e.getResult().toString());
+            } catch (NumberFormatException e1) {
+                return DebugExprNodeFactory.errorObjNode.executeGeneric(frame);
+            }
         }
         InteropLibrary library = InteropLibrary.getFactory().getUncached();
         if (library.hasMembers(baseMember)) {
