@@ -681,22 +681,24 @@ public abstract class AMD64LIRGenerator extends LIRGenerator {
     @Override
     public Variable emitPack(LIRKind resultKind, List<Value> values) {
         Variable result = newVariable(resultKind);
-        if (values.size() == 0) return result;
+        if (values.size() == 0) {
+            return result;
+        }
 
         final AMD64Kind scalarKind = ((AMD64Kind) values.get(0).getPlatformKind());
 
-        final int XMM_LENGTH_IN_ELEMENTS = 16 / scalarKind.getSizeInBytes();
-        final int numOverflows = values.size() / XMM_LENGTH_IN_ELEMENTS;
+        final int xmmLengthInElements = 16 / scalarKind.getSizeInBytes();
+        final int numOverflows = values.size() / xmmLengthInElements;
 
         Variable target = numOverflows > 0 ? newVariable(resultKind) : result;
 
         for (int i = 0; i < values.size(); i++) {
             // If we've filled up the bottom 128 bits.
-            if (i > 0 && i % XMM_LENGTH_IN_ELEMENTS == 0) {
-                append(new AMD64VectorShuffle.Insert128Op(asAllocatable(result), asAllocatable(target), asAllocatable(result), i / XMM_LENGTH_IN_ELEMENTS));
+            if (i > 0 && i % xmmLengthInElements == 0) {
+                append(new AMD64VectorShuffle.Insert128Op(asAllocatable(result), asAllocatable(target), asAllocatable(result), i / xmmLengthInElements));
             }
 
-            int targetIndex = i % XMM_LENGTH_IN_ELEMENTS;
+            int targetIndex = i % xmmLengthInElements;
 
             switch(scalarKind) {
                 case BYTE:
@@ -733,35 +735,34 @@ public abstract class AMD64LIRGenerator extends LIRGenerator {
         final AMD64Kind scalarKind = ((AMD64Kind) vectorKind.getPlatformKind()).getScalar();
         Variable result = newVariable(LIRKind.value(scalarKind));
 
-        int vectorSize = vectorKind.getPlatformKind().getSizeInBytes();
-        int vectorLength = vectorKind.getPlatformKind().getVectorLength();
+        final int xmmLengthInElements = 16 / scalarKind.getSizeInBytes();
 
-        final int XMM_LENGTH_IN_ELEMENTS = 16 / scalarKind.getSizeInBytes();
-
-        if (index >= XMM_LENGTH_IN_ELEMENTS) {
-            int extractDepth = index / XMM_LENGTH_IN_ELEMENTS;
-            index %= XMM_LENGTH_IN_ELEMENTS;
+        if (index >= xmmLengthInElements) {
+            int extractDepth = index / xmmLengthInElements;
+            index %= xmmLengthInElements;
             Variable temp = newVariable(vectorKind);
             append(new AMD64VectorShuffle.Extract128Op(asAllocatable(temp), asAllocatable(vector), extractDepth));
-        } else switch (scalarKind) {
-            case BYTE:
-                append(new AMD64VectorShuffle.ExtractByteOp(asAllocatable(result), asAllocatable(vector), index));
-                break;
-            case WORD:
-                append(new AMD64VectorShuffle.ExtractShortOp(asAllocatable(result), asAllocatable(vector), index));
-                break;
-            case DWORD:
-                append(new AMD64VectorShuffle.ExtractIntOp(asAllocatable(result), asAllocatable(vector), index));
-                break;
-            case QWORD:
-                append(new AMD64VectorShuffle.ExtractLongOp(asAllocatable(result), asAllocatable(vector), index));
-                break;
-            case SINGLE:
-                append(new AMD64VectorShuffle.ExtractFloatOp(asAllocatable(result), asAllocatable(vector), index));
-                break;
-            case DOUBLE:
-                append(new AMD64VectorShuffle.ExtractDoubleOp(asAllocatable(result), asAllocatable(vector), index));
-                break;
+        } else {
+            switch (scalarKind) {
+                case BYTE:
+                    append(new AMD64VectorShuffle.ExtractByteOp(asAllocatable(result), asAllocatable(vector), index));
+                    break;
+                case WORD:
+                    append(new AMD64VectorShuffle.ExtractShortOp(asAllocatable(result), asAllocatable(vector), index));
+                    break;
+                case DWORD:
+                    append(new AMD64VectorShuffle.ExtractIntOp(asAllocatable(result), asAllocatable(vector), index));
+                    break;
+                case QWORD:
+                    append(new AMD64VectorShuffle.ExtractLongOp(asAllocatable(result), asAllocatable(vector), index));
+                    break;
+                case SINGLE:
+                    append(new AMD64VectorShuffle.ExtractFloatOp(asAllocatable(result), asAllocatable(vector), index));
+                    break;
+                case DOUBLE:
+                    append(new AMD64VectorShuffle.ExtractDoubleOp(asAllocatable(result), asAllocatable(vector), index));
+                    break;
+            }
         }
 
         return result;
