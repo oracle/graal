@@ -84,6 +84,14 @@ public interface Platform {
         return platformGroup.isInstance(ImageSingletons.lookup(Platform.class));
     }
 
+    /**
+     * Used for all platforms that make use of static JNI JDK libraries (libjava.a, libnio.a, ...).
+     *
+     * @since 19.2
+     */
+    interface PLATFORM_JNI extends Platform {
+    }
+
     /*
      * The standard architectures that are supported.
      */
@@ -131,8 +139,7 @@ public interface Platform {
      *
      * @since 19.0
      */
-    interface WINDOWS extends Platform {
-
+    interface WINDOWS extends PLATFORM_JNI {
     }
 
     /*

@@ -308,7 +308,7 @@ public class SubstrateOptions {
     }
 
     @Option(help = "Use linker option to prevent unreferenced symbols in image.")//
-    public static final HostedOptionKey<Boolean> RemoveUnusedSymbols = new HostedOptionKey<>(true);
+    public static final HostedOptionKey<Boolean> RemoveUnusedSymbols = new HostedOptionKey<>(false);
     @Option(help = "Use linker option to remove all local symbols from image.")//
     public static final HostedOptionKey<Boolean> DeleteLocalSymbols = new HostedOptionKey<>(true);
 }

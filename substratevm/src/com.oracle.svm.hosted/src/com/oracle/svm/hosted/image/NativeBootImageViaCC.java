@@ -70,13 +70,20 @@ public abstract class NativeBootImageViaCC extends NativeBootImage {
         return kind;
     }
 
+    private static boolean removeUnusedSymbols() {
+        if (SubstrateOptions.RemoveUnusedSymbols.hasBeenSet()) {
+            return SubstrateOptions.RemoveUnusedSymbols.getValue();
+        }
+        return Platform.includedIn(Platform.PLATFORM_JNI.class);
+    }
+
     class BinutilsCCLinkerInvocation extends CCLinkerInvocation {
 
         BinutilsCCLinkerInvocation() {
             additionalPreOptions.add("-z");
             additionalPreOptions.add("noexecstack");
 
-            if (SubstrateOptions.RemoveUnusedSymbols.getValue()) {
+            if (removeUnusedSymbols()) {
                 /* Perform garbage collection of unused input sections. */
                 additionalPreOptions.add("-Wl,--gc-sections");
             }
@@ -113,7 +120,7 @@ public abstract class NativeBootImageViaCC extends NativeBootImage {
     class DarwinCCLinkerInvocation extends CCLinkerInvocation {
 
         DarwinCCLinkerInvocation() {
-            if (SubstrateOptions.RemoveUnusedSymbols.getValue()) {
+            if (removeUnusedSymbols()) {
                 /* Remove functions and data unreachable by entry points. */
                 additionalPreOptions.add("-Wl,-dead_strip");
             }
@@ -183,7 +190,7 @@ public abstract class NativeBootImageViaCC extends NativeBootImage {
             // Add debugging info
             cmd.add("/Zi");
 
-            if (SubstrateOptions.RemoveUnusedSymbols.getValue()) {
+            if (removeUnusedSymbols()) {
                 additionalPreOptions.add("/OPT:REF");
             }
 
