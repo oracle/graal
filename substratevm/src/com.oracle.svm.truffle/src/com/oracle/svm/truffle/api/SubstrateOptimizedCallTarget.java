@@ -33,10 +33,9 @@ import org.graalvm.word.WordFactory;
 
 import com.oracle.svm.core.annotate.InvokeJavaFunctionPointer;
 import com.oracle.svm.core.annotate.Uninterruptible;
-import com.oracle.svm.core.code.CodeInfoAccessor;
-import com.oracle.svm.core.code.CodeInfoHandle;
+import com.oracle.svm.core.code.CodeInfo;
+import com.oracle.svm.core.code.CodeInfoAccess;
 import com.oracle.svm.core.code.CodeInfoTable;
-import com.oracle.svm.core.code.RuntimeCodeInfoAccessor;
 import com.oracle.svm.core.deopt.SubstrateInstalledCode;
 import com.oracle.svm.core.deopt.SubstrateSpeculationLog;
 import com.oracle.svm.core.snippets.KnownIntrinsics;
@@ -92,12 +91,9 @@ public class SubstrateOptimizedCallTarget extends OptimizedCallTarget implements
 
     @Uninterruptible(reason = "Prevent invalidation of code while in this method.")
     private static boolean isValidLastTier0(long address0) {
-        CodeInfoAccessor accessor = CodeInfoTable.lookupCodeInfoAccessor(WordFactory.pointer(address0));
-        if (accessor instanceof RuntimeCodeInfoAccessor) {
-            CodeInfoHandle handle = accessor.lookupCodeInfo(WordFactory.pointer(address0));
-            if (!accessor.isNone(handle)) {
-                return ((RuntimeCodeInfoAccessor) accessor).getTier(handle) == TruffleCompiler.LAST_TIER_INDEX;
-            }
+        CodeInfo codeInfo = CodeInfoTable.lookupCodeInfo(WordFactory.pointer(address0));
+        if (codeInfo.isNonNull() && codeInfo.notEqual(CodeInfoTable.getImageCodeInfo())) {
+            return CodeInfoAccess.getTier(codeInfo) == TruffleCompiler.LAST_TIER_INDEX;
         }
         return false;
     }
@@ -112,9 +108,6 @@ public class SubstrateOptimizedCallTarget extends OptimizedCallTarget implements
         return getAddress();
     }
 
-    /**
-     * @param method
-     */
     @Override
     public void setAddress(long address, ResolvedJavaMethod method) {
         this.address = address;

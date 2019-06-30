@@ -29,11 +29,10 @@ import org.graalvm.nativeimage.ImageSingletons;
 import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.Platforms;
 import org.graalvm.nativeimage.c.function.CodePointer;
-import org.graalvm.nativeimage.hosted.Feature;
 import org.graalvm.word.UnsignedWord;
+import org.graalvm.word.WordFactory;
 
 import com.oracle.svm.core.MemoryWalker;
-import com.oracle.svm.core.annotate.AutomaticFeature;
 import com.oracle.svm.core.annotate.Uninterruptible;
 import com.oracle.svm.core.c.NonmovableArray;
 import com.oracle.svm.core.c.NonmovableArrays;
@@ -53,8 +52,6 @@ public class RuntimeCodeInfo {
         public static final RuntimeOptionKey<Boolean> TraceCodeCache = new RuntimeOptionKey<>(false);
     }
 
-    private final RuntimeCodeInfoAccessor accessor = new RuntimeCodeInfoAccessor(this);
-
     private final RingBuffer<String> recentCodeCacheOperations = new RingBuffer<>();
     private long codeCacheOperationSequenceNumber;
 
@@ -68,23 +65,18 @@ public class RuntimeCodeInfo {
 
     private static final int INITIAL_TABLE_SIZE = 100;
 
-    private NonmovableArray<CodeInfoHandle> methodInfos;
+    private NonmovableArray<CodeInfo> methodInfos;
     private int numMethods;
 
     @Platforms(Platform.HOSTED_ONLY.class)
     public RuntimeCodeInfo() {
     }
 
-    @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
-    public RuntimeCodeInfoAccessor getAccessor() {
-        return accessor;
-    }
-
     /** Tear down the heap, return all allocated virtual memory chunks to VirtualMemoryProvider. */
     @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
     public final void tearDown() {
         for (int i = 0; i < numMethods; i++) {
-            accessor.releaseMethodInfoOnTearDown(NonmovableArrays.getWord(methodInfos, i));
+            RuntimeMethodInfoAccess.releaseMethodInfoOnTearDown(NonmovableArrays.getWord(methodInfos, i));
         }
         NonmovableArrays.releaseUnmanagedArray(methodInfos);
     }
@@ -98,11 +90,11 @@ public class RuntimeCodeInfo {
      * concurrent modification.
      */
     @Uninterruptible(reason = "methodInfos is accessed without holding a lock, so must not be interrupted by a safepoint that can add/remove code")
-    protected CodeInfoHandle lookupMethod(CodePointer ip) {
+    protected CodeInfo lookupMethod(CodePointer ip) {
         lookupMethodCount.inc();
         assert verifyTable();
         if (numMethods == 0) {
-            return RuntimeCodeInfoAccessor.NULL_HANDLE;
+            return WordFactory.nullPointer();
         }
 
         int idx = binarySearch(methodInfos, 0, numMethods, ip);
@@ -114,29 +106,29 @@ public class RuntimeCodeInfo {
         int insertionPoint = -idx - 1;
         if (insertionPoint == 0) {
             /* ip is below the first method, so no hit. */
-            assert ((UnsignedWord) ip).belowThan((UnsignedWord) accessor.getCodeStart(NonmovableArrays.getWord(methodInfos, 0)));
-            return RuntimeCodeInfoAccessor.NULL_HANDLE;
+            assert ((UnsignedWord) ip).belowThan((UnsignedWord) CodeInfoAccess.getCodeStart(NonmovableArrays.getWord(methodInfos, 0)));
+            return WordFactory.nullPointer();
         }
 
-        CodeInfoHandle handle = NonmovableArrays.getWord(methodInfos, insertionPoint - 1);
-        assert ((UnsignedWord) ip).aboveThan((UnsignedWord) accessor.getCodeStart(handle));
-        if (((UnsignedWord) ip).subtract((UnsignedWord) accessor.getCodeStart(handle)).aboveOrEqual(accessor.getCodeSize(handle))) {
+        CodeInfo info = NonmovableArrays.getWord(methodInfos, insertionPoint - 1);
+        assert ((UnsignedWord) ip).aboveThan((UnsignedWord) CodeInfoAccess.getCodeStart(info));
+        if (((UnsignedWord) ip).subtract((UnsignedWord) CodeInfoAccess.getCodeStart(info)).aboveOrEqual(CodeInfoAccess.getCodeSize(info))) {
             /* ip is not within the range of a method. */
-            return RuntimeCodeInfoAccessor.NULL_HANDLE;
+            return WordFactory.nullPointer();
         }
 
-        return handle;
+        return info;
     }
 
     /* Copied and adapted from Arrays.binarySearch. */
     @Uninterruptible(reason = "called from uninterruptible code")
-    private int binarySearch(NonmovableArray<CodeInfoHandle> a, int fromIndex, int toIndex, CodePointer key) {
+    private static int binarySearch(NonmovableArray<CodeInfo> a, int fromIndex, int toIndex, CodePointer key) {
         int low = fromIndex;
         int high = toIndex - 1;
 
         while (low <= high) {
             int mid = (low + high) >>> 1;
-            CodePointer midVal = accessor.getCodeStart(NonmovableArrays.getWord(a, mid));
+            CodePointer midVal = CodeInfoAccess.getCodeStart(NonmovableArrays.getWord(a, mid));
 
             if (((UnsignedWord) midVal).belowThan((UnsignedWord) key)) {
                 low = mid + 1;
@@ -149,22 +141,22 @@ public class RuntimeCodeInfo {
         return -(low + 1);  // key not found.
     }
 
-    public void addMethod(CodeInfoHandle handle) {
+    public void addMethod(CodeInfo info) {
         VMOperation.enqueueBlockingSafepoint("AddMethod", () -> {
-            InstalledCodeObserverSupport.activateObservers(accessor.getCodeObserverHandles(handle));
-            long num = logMethodOperation(handle, INFO_ADD);
-            addMethodOperation(handle);
+            InstalledCodeObserverSupport.activateObservers(RuntimeMethodInfoAccess.getCodeObserverHandles(info));
+            long num = logMethodOperation(info, INFO_ADD);
+            addMethodOperation(info);
             logMethodOperationEnd(num);
         });
     }
 
-    private void addMethodOperation(CodeInfoHandle handle) {
+    private void addMethodOperation(CodeInfo info) {
         VMOperation.guaranteeInProgress("Modifying code tables that are used by the GC");
         addMethodCount.inc();
         assert verifyTable();
         if (Options.TraceCodeCache.getValue()) {
             Log.log().string("[" + INFO_ADD + " method: ");
-            logMethod(Log.log(), accessor, handle);
+            logMethod(Log.log(), info);
             Log.log().string("]").newline();
         }
 
@@ -174,12 +166,12 @@ public class RuntimeCodeInfo {
         }
         assert numMethods < NonmovableArrays.lengthOf(methodInfos);
 
-        int idx = binarySearch(methodInfos, 0, numMethods, accessor.getCodeStart(handle));
+        int idx = binarySearch(methodInfos, 0, numMethods, CodeInfoAccess.getCodeStart(info));
         assert idx < 0 : "must not find code already in table";
         int insertionPoint = -idx - 1;
         NonmovableArrays.arraycopy(methodInfos, insertionPoint, methodInfos, insertionPoint + 1, numMethods - insertionPoint);
         numMethods++;
-        NonmovableArrays.setWord(methodInfos, insertionPoint, handle);
+        NonmovableArrays.setWord(methodInfos, insertionPoint, info);
 
         if (Options.TraceCodeCache.getValue()) {
             logTable();
@@ -192,7 +184,7 @@ public class RuntimeCodeInfo {
         if (newTableSize < INITIAL_TABLE_SIZE) {
             newTableSize = INITIAL_TABLE_SIZE;
         }
-        NonmovableArray<CodeInfoHandle> newMethodInfos = NonmovableArrays.createWordArray(newTableSize);
+        NonmovableArray<CodeInfo> newMethodInfos = NonmovableArrays.createWordArray(newTableSize);
         if (methodInfos.isNonNull()) {
             NonmovableArrays.arraycopy(methodInfos, 0, newMethodInfos, 0, NonmovableArrays.lengthOf(methodInfos));
             NonmovableArrays.releaseUnmanagedArray(methodInfos);
@@ -200,19 +192,19 @@ public class RuntimeCodeInfo {
         methodInfos = newMethodInfos;
     }
 
-    protected void invalidateMethod(CodeInfoHandle handle) {
+    protected void invalidateMethod(CodeInfo info) {
         VMOperation.guaranteeInProgress("Modifying code tables that are used by the GC");
         invalidateMethodCount.inc();
         assert verifyTable();
         if (Options.TraceCodeCache.getValue()) {
             Log.log().string("[" + INFO_INVALIDATE + " method: ");
-            logMethod(Log.log(), accessor, handle);
+            logMethod(Log.log(), info);
             Log.log().string("]").newline();
         }
 
-        SubstrateInstalledCode installedCode = accessor.getInstalledCode(handle);
+        SubstrateInstalledCode installedCode = RuntimeMethodInfoAccess.getInstalledCode(info);
         if (installedCode != null) {
-            assert !installedCode.isValid() || accessor.getCodeStart(handle).rawValue() == installedCode.getAddress();
+            assert !installedCode.isValid() || CodeInfoAccess.getCodeStart(info).rawValue() == installedCode.getAddress();
             /*
              * Until this point, the InstalledCode is valid. It can be invoked, and frames can be on
              * the stack. All the metadata must be valid until this point. Make it non-entrant,
@@ -221,26 +213,26 @@ public class RuntimeCodeInfo {
             installedCode.clearAddress();
         }
 
-        InstalledCodeObserverSupport.removeObservers(accessor.getCodeObserverHandles(handle));
+        InstalledCodeObserverSupport.removeObservers(RuntimeMethodInfoAccess.getCodeObserverHandles(info));
 
         /*
          * Deoptimize all invocations that are on the stack. This performs a stack walk, so all
          * metadata must be intact (even though the method was already marked as non-invokable).
          */
-        Deoptimizer.deoptimizeInRange(accessor.getCodeStart(handle), accessor.getCodeEnd(handle), false);
+        Deoptimizer.deoptimizeInRange(CodeInfoAccess.getCodeStart(info), CodeInfoAccess.getCodeEnd(info), false);
         /*
          * Now it is guaranteed that the InstalledCode is not on the stack and cannot be invoked
          * anymore, so we can free the code and all metadata.
          */
 
-        /* Remove handle entry from our table. */
-        int idx = binarySearch(methodInfos, 0, numMethods, accessor.getCodeStart(handle));
-        assert idx >= 0 : "handle must be in table";
+        /* Remove info entry from our table. */
+        int idx = binarySearch(methodInfos, 0, numMethods, CodeInfoAccess.getCodeStart(info));
+        assert idx >= 0 : "info must be in table";
         NonmovableArrays.arraycopy(methodInfos, idx + 1, methodInfos, idx, numMethods - (idx + 1));
         numMethods--;
-        NonmovableArrays.setWord(methodInfos, numMethods, RuntimeCodeInfoAccessor.NULL_HANDLE);
+        NonmovableArrays.setWord(methodInfos, numMethods, WordFactory.nullPointer());
 
-        accessor.releaseInstalledCodeAndTether(handle);
+        RuntimeMethodInfoAccess.releaseInstalledCodeAndTether(info);
 
         if (Options.TraceCodeCache.getValue()) {
             logTable();
@@ -258,15 +250,15 @@ public class RuntimeCodeInfo {
         assert numMethods <= NonmovableArrays.lengthOf(methodInfos) : "a11";
 
         for (int i = 0; i < numMethods; i++) {
-            CodeInfoHandle handle = NonmovableArrays.getWord(methodInfos, i);
-            assert !accessor.isNone(handle) : "a20";
-            assert i == 0 || ((UnsignedWord) accessor.getCodeStart(NonmovableArrays.getWord(methodInfos, i - 1)))
-                            .belowThan((UnsignedWord) accessor.getCodeStart(NonmovableArrays.getWord(methodInfos, i))) : "a22";
-            assert i == 0 || ((UnsignedWord) accessor.getCodeEnd(NonmovableArrays.getWord(methodInfos, i - 1))).belowOrEqual((UnsignedWord) accessor.getCodeStart(handle)) : "a23";
+            CodeInfo info = NonmovableArrays.getWord(methodInfos, i);
+            assert info.isNonNull() : "a20";
+            assert i == 0 || ((UnsignedWord) CodeInfoAccess.getCodeStart(NonmovableArrays.getWord(methodInfos, i - 1)))
+                            .belowThan((UnsignedWord) CodeInfoAccess.getCodeStart(NonmovableArrays.getWord(methodInfos, i))) : "a22";
+            assert i == 0 || ((UnsignedWord) CodeInfoAccess.getCodeEnd(NonmovableArrays.getWord(methodInfos, i - 1))).belowOrEqual((UnsignedWord) CodeInfoAccess.getCodeStart(info)) : "a23";
         }
 
         for (int i = numMethods; i < NonmovableArrays.lengthOf(methodInfos); i++) {
-            assert accessor.isNone(NonmovableArrays.getWord(methodInfos, i)) : "a31";
+            assert NonmovableArrays.getWord(methodInfos, i).isNull() : "a31";
         }
         return true;
     }
@@ -286,16 +278,17 @@ public class RuntimeCodeInfo {
     public void logTable(Log log) {
         log.string("== [RuntimeCodeCache: ").signed(numMethods).string(" methods");
         for (int i = 0; i < numMethods; i++) {
-            log.newline().hex(accessor.getCodeStart(NonmovableArrays.getWord(methodInfos, i))).string("  ");
-            logMethod(log, accessor, NonmovableArrays.getWord(methodInfos, i));
+            CodeInfo info = NonmovableArrays.getWord(methodInfos, i);
+            log.newline().hex(CodeInfoAccess.getCodeStart(info)).string("  ");
+            logMethod(log, info);
         }
         log.string("]").newline();
     }
 
-    private static void logMethod(Log log, RuntimeCodeInfoAccessor accessor, CodeInfoHandle handle) {
-        log.string(accessor.getName(handle));
-        log.string("  ip: ").hex(accessor.getCodeStart(handle)).string(" - ").hex(accessor.getCodeEnd(handle));
-        log.string("  size: ").unsigned(accessor.getCodeSize(handle));
+    private static void logMethod(Log log, CodeInfo info) {
+        log.string(CodeInfoAccess.getName(info));
+        log.string("  ip: ").hex(CodeInfoAccess.getCodeStart(info)).string(" - ").hex(CodeInfoAccess.getCodeEnd(info));
+        log.string("  size: ").unsigned(CodeInfoAccess.getCodeSize(info));
         /*
          * Note that we are not trying to output the InstalledCode object. It is not a pinned
          * object, so when log printing (for, e.g., a fatal error) occurs during a GC, then the VM
@@ -303,11 +296,11 @@ public class RuntimeCodeInfo {
          */
     }
 
-    long logMethodOperation(CodeInfoHandle handle, String kind) {
+    long logMethodOperation(CodeInfo info, String kind) {
         long current = ++codeCacheOperationSequenceNumber;
         StringBuilderLog log = new StringBuilderLog();
         log.string(kind).string(": ");
-        logMethod(log, accessor, handle);
+        logMethod(log, info);
         log.string(" ").unsigned(current).string(":{");
         recentCodeCacheOperations.append(log.getResult());
         return current;
@@ -323,47 +316,9 @@ public class RuntimeCodeInfo {
         VMOperation.guaranteeInProgress("Modifying code tables that are used by the GC");
         boolean continueVisiting = true;
         for (int i = 0; (continueVisiting && (i < numMethods)); i += 1) {
-            continueVisiting = visitor.visitRuntimeCompiledMethod(NonmovableArrays.getWord(methodInfos, i),
-                            ImageSingletons.lookup(MemoryWalkerAccessImpl.class));
+            continueVisiting = visitor.visitCode(NonmovableArrays.getWord(methodInfos, i),
+                            ImageSingletons.lookup(CodeInfoMemoryWalker.class));
         }
         return continueVisiting;
-    }
-}
-
-final class MemoryWalkerAccessImpl implements MemoryWalker.RuntimeCompiledMethodAccess<CodeInfoHandle> {
-    private final RuntimeCodeInfoAccessor accessor;
-
-    @Platforms(Platform.HOSTED_ONLY.class)
-    MemoryWalkerAccessImpl(RuntimeCodeInfoAccessor accessor) {
-        this.accessor = accessor;
-    }
-
-    @Override
-    public UnsignedWord getStart(CodeInfoHandle handle) {
-        return (UnsignedWord) accessor.getCodeStart(handle);
-    }
-
-    @Override
-    public UnsignedWord getSize(CodeInfoHandle handle) {
-        return accessor.getCodeSize(handle);
-    }
-
-    @Override
-    public UnsignedWord getMetadataSize(CodeInfoHandle handle) {
-        return accessor.getMetadataCodeSize(handle);
-    }
-
-    @Override
-    public String getName(CodeInfoHandle handle) {
-        return accessor.getName(handle);
-    }
-}
-
-@AutomaticFeature
-class RuntimeCodeInfoMemoryWalkerAccessFeature implements Feature {
-    @Override
-    public void duringSetup(DuringSetupAccess access) {
-        RuntimeCodeInfoAccessor accessor = (RuntimeCodeInfoAccessor) CodeInfoTable.getRuntimeCodeInfoAccessor();
-        ImageSingletons.add(MemoryWalkerAccessImpl.class, new MemoryWalkerAccessImpl(accessor));
     }
 }

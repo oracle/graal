@@ -33,20 +33,19 @@ import org.graalvm.word.WordFactory;
 import com.oracle.svm.core.FrameAccess;
 import com.oracle.svm.core.annotate.AlwaysInline;
 import com.oracle.svm.core.annotate.Uninterruptible;
-import com.oracle.svm.core.code.CodeInfoAccessor;
-import com.oracle.svm.core.code.CodeInfoHandle;
+import com.oracle.svm.core.code.CodeInfo;
+import com.oracle.svm.core.code.CodeInfoAccess;
 import com.oracle.svm.core.code.CodeInfoQueryResult;
 import com.oracle.svm.core.code.CodeInfoTable;
 import com.oracle.svm.core.deopt.DeoptimizedFrame;
 import com.oracle.svm.core.deopt.Deoptimizer;
 import com.oracle.svm.core.log.Log;
-import com.oracle.svm.core.snippets.KnownIntrinsics;
 import com.oracle.svm.core.thread.VMOperation;
 import com.oracle.svm.core.util.VMError;
 
 /**
  * Applies a {@link StackFrameVisitor} to each of the Java frames in a thread stack. It skips native
- * frames, i.e., it only visits frames where {@link CodeInfoAccessor#lookupTotalFrameSize Java frame
+ * frames, i.e., it only visits frames where {@link CodeInfoAccess#lookupTotalFrameSize Java frame
  * information} is available.
  * <p>
  * The stack walking code is allocation free (so that it can be used during garbage collection) and
@@ -75,12 +74,9 @@ public final class JavaStackWalker {
         walk.setStartIP(startIP);
         walk.setAnchor(JavaFrameAnchors.getFrameAnchor());
         if (startIP.isNonNull()) {
-            CodeInfoAccessor accessor = CodeInfoTable.lookupCodeInfoAccessor(startIP);
-            walk.setIPCodeInfoAccessor(accessor);
-            walk.setIPCodeInfo(accessor.lookupCodeInfo(startIP));
+            walk.setIPCodeInfo(CodeInfoTable.lookupCodeInfo(startIP));
         } else { // will be read from the stack later
             walk.setIPCodeInfo(WordFactory.nullPointer());
-            walk.setIPCodeInfoAccessor(null);
         }
         return true;
     }
@@ -109,9 +105,7 @@ public final class JavaStackWalker {
         walk.setStartSP(sp);
         walk.setStartIP(ip);
         walk.setAnchor(anchor);
-        CodeInfoAccessor accessor = CodeInfoTable.lookupCodeInfoAccessor(ip);
-        walk.setIPCodeInfo(accessor.lookupCodeInfo(ip));
-        walk.setIPCodeInfoAccessor(accessor);
+        walk.setIPCodeInfo(CodeInfoTable.lookupCodeInfo(ip));
 
         return result;
     }
@@ -139,10 +133,9 @@ public final class JavaStackWalker {
             totalFrameSize = deoptFrame.getSourceTotalFrameSize();
         } else {
             CodePointer ip = walk.getPossiblyStaleIP(); // no deopt since last call: still current
-            CodeInfoAccessor accessor = KnownIntrinsics.convertUnknownValue(walk.getIPCodeInfoAccessor(), CodeInfoAccessor.class);
-            CodeInfoHandle handle = walk.getIPCodeInfo();
-            assert accessor.isTethered(handle) || VMOperation.isInProgress() : "Caller must provide safe access for the handle";
-            totalFrameSize = lookupTotalFrameSize0(accessor, handle, ip);
+            CodeInfo info = walk.getIPCodeInfo();
+            assert CodeInfoAccess.isTethered(info) || VMOperation.isInProgress() : "Caller must provide safe access for code information";
+            totalFrameSize = lookupTotalFrameSize0(info, ip);
         }
 
         if (totalFrameSize == -1) {
@@ -157,9 +150,7 @@ public final class JavaStackWalker {
             walk.setSP(sp);
             walk.setPossiblyStaleIP(ip);
 
-            CodeInfoAccessor accessor = CodeInfoTable.lookupCodeInfoAccessor(ip);
-            walk.setIPCodeInfoAccessor(accessor);
-            walk.setIPCodeInfo(accessor.lookupCodeInfo(ip));
+            walk.setIPCodeInfo(CodeInfoTable.lookupCodeInfo(ip));
             return true;
 
         } else {
@@ -178,9 +169,8 @@ public final class JavaStackWalker {
                 walk.setPossiblyStaleIP(anchor.getLastJavaIP());
                 walk.setAnchor(anchor.getPreviousAnchor());
 
-                CodeInfoAccessor accessor = CodeInfoTable.lookupCodeInfoAccessor(anchor.getLastJavaIP());
-                walk.setIPCodeInfoAccessor(accessor);
-                walk.setIPCodeInfo(accessor.lookupCodeInfo(anchor.getLastJavaIP()));
+                anchor.getLastJavaIP();
+                walk.setIPCodeInfo(CodeInfoTable.lookupCodeInfo(anchor.getLastJavaIP()));
                 return true;
 
             } else {
@@ -194,8 +184,8 @@ public final class JavaStackWalker {
     }
 
     @Uninterruptible(reason = "Wraps the now safe call to look up the frame size.", calleeMustBe = false)
-    private static long lookupTotalFrameSize0(CodeInfoAccessor accessor, CodeInfoHandle handle, CodePointer ip) {
-        return accessor.lookupTotalFrameSize(handle, accessor.relativeIP(handle, ip));
+    private static long lookupTotalFrameSize0(CodeInfo info, CodePointer ip) {
+        return CodeInfoAccess.lookupTotalFrameSize(info, CodeInfoAccess.relativeIP(info, ip));
         /*
          * NOTE: the frame could have been deoptimized during this call, but the frame size must
          * remain the same, and we will move on to the next frame anyway.
@@ -233,9 +223,8 @@ public final class JavaStackWalker {
     private static boolean doWalkCurrentThread(JavaStackWalk walk, StackFrameVisitor visitor, boolean hasFrames) {
         if (hasFrames) {
             while (true) {
-                CodeInfoAccessor accessor = KnownIntrinsics.convertUnknownValue(walk.getIPCodeInfoAccessor(), CodeInfoAccessor.class);
-                CodeInfoHandle handle = walk.getIPCodeInfo();
-                Object tether = (accessor != null) ? accessor.acquireTether(handle) : null;
+                CodeInfo info = walk.getIPCodeInfo();
+                Object tether = CodeInfoAccess.acquireTether(info);
                 try {
                     if (!callVisitor(walk, visitor)) {
                         return false;
@@ -244,9 +233,7 @@ public final class JavaStackWalker {
                         break;
                     }
                 } finally {
-                    if (accessor != null) {
-                        accessor.releaseTether(handle, tether);
-                    }
+                    CodeInfoAccess.releaseTether(info, tether);
                 }
             }
         }
@@ -255,8 +242,7 @@ public final class JavaStackWalker {
 
     @Uninterruptible(reason = "Wraps the now safe call to the possibly interruptible visitor.", calleeMustBe = false)
     private static boolean callVisitor(JavaStackWalk walk, StackFrameVisitor visitor) {
-        CodeInfoAccessor accessor = KnownIntrinsics.convertUnknownValue(walk.getIPCodeInfoAccessor(), CodeInfoAccessor.class);
-        return visitor.visitFrame(walk.getSP(), walk.getPossiblyStaleIP(), accessor, walk.getIPCodeInfo(), Deoptimizer.checkDeoptimized(walk.getSP()));
+        return visitor.visitFrame(walk.getSP(), walk.getPossiblyStaleIP(), walk.getIPCodeInfo(), Deoptimizer.checkDeoptimized(walk.getSP()));
     }
 
     @AlwaysInline("avoid virtual call to visitor")
@@ -270,8 +256,7 @@ public final class JavaStackWalker {
     private static boolean doWalkThread(JavaStackWalk walk, StackFrameVisitor visitor, boolean hasFrames) {
         if (hasFrames) {
             do {
-                CodeInfoAccessor accessor = KnownIntrinsics.convertUnknownValue(walk.getIPCodeInfoAccessor(), CodeInfoAccessor.class);
-                if (!visitor.visitFrame(walk.getSP(), walk.getPossiblyStaleIP(), accessor, walk.getIPCodeInfo(), Deoptimizer.checkDeoptimized(walk.getSP()))) {
+                if (!visitor.visitFrame(walk.getSP(), walk.getPossiblyStaleIP(), walk.getIPCodeInfo(), Deoptimizer.checkDeoptimized(walk.getSP()))) {
                     return false;
                 }
             } while (continueWalk(walk));

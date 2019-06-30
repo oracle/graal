@@ -186,7 +186,7 @@ public class FrameInfoQueryResult {
 
     /**
      * Returns the offset of the deoptimization target method. The offset is relative to the
-     * {@link CodeInfoAccessor#getCodeStart code start} of the {@link ImageCodeInfo image}. Together
+     * {@link CodeInfoAccess#getCodeStart code start} of the {@link ImageCodeInfo image}. Together
      * with the BCI it is used to find the corresponding bytecode frame in the target method. Note
      * that there is no inlining in target methods, so the method + BCI is unique.
      */
@@ -198,7 +198,7 @@ public class FrameInfoQueryResult {
      * Returns the entry point address of the deoptimization target method.
      */
     public CodePointer getDeoptMethodAddress() {
-        return CodeInfoTable.getImageCodeInfoAccessor().absoluteIP(ImageCodeInfo.SINGLETON_HANDLE, deoptMethodOffset);
+        return CodeInfoAccess.absoluteIP(CodeInfoTable.getImageCodeInfo(), deoptMethodOffset);
     }
 
     /**

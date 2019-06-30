@@ -67,8 +67,8 @@ import com.oracle.svm.core.annotate.AutomaticFeature;
 import com.oracle.svm.core.annotate.RestrictHeapAccess;
 import com.oracle.svm.core.annotate.RestrictHeapAccess.Access;
 import com.oracle.svm.core.annotate.Uninterruptible;
+import com.oracle.svm.core.code.CodeInfoAccess;
 import com.oracle.svm.core.code.CodeInfoTable;
-import com.oracle.svm.core.code.ImageCodeInfo;
 import com.oracle.svm.core.graal.GraalFeature;
 import com.oracle.svm.core.graal.meta.RuntimeConfiguration;
 import com.oracle.svm.core.graal.meta.SubstrateForeignCallLinkage;
@@ -426,7 +426,7 @@ final class StackOverflowCheckSnippets extends SubstrateTemplates implements Sni
         }
 
         long outerFrameSize = state.outerFrameState() == null ? 0 : computeDeoptFrameSize(state.outerFrameState(), deoptFrameSizeCache);
-        long myFrameSize = CodeInfoTable.getImageCodeInfoAccessor().lookupTotalFrameSize(ImageCodeInfo.SINGLETON_HANDLE, ((SharedMethod) state.getMethod()).getDeoptOffsetInImage());
+        long myFrameSize = CodeInfoAccess.lookupTotalFrameSize(CodeInfoTable.getImageCodeInfo(), ((SharedMethod) state.getMethod()).getDeoptOffsetInImage());
 
         long result = outerFrameSize + myFrameSize;
         deoptFrameSizeCache.put(state, result);

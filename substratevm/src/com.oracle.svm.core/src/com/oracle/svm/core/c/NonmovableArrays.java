@@ -229,6 +229,7 @@ public final class NonmovableArrays {
 
     /** Returns a {@link NonmovableArray} for an array of primitives in the image heap. */
     @SuppressWarnings("unchecked")
+    @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
     public static <T> NonmovableArray<T> fromImageHeap(Object array) {
         if (SubstrateUtil.HOSTED) {
             if (array == null) {
@@ -243,6 +244,7 @@ public final class NonmovableArrays {
 
     /** Returns a {@link NonmovableObjectArray} for an object array in the image heap. */
     @SuppressWarnings({"unchecked", "rawtypes"})
+    @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
     public static <T> NonmovableObjectArray<T> fromImageHeap(Object[] array) {
         if (SubstrateUtil.HOSTED) {
             return (array != null) ? new HostedNonmovableObjectArray<>(array) : (NonmovableObjectArray<T>) HOSTED_NULL_VALUE;

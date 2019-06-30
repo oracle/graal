@@ -47,8 +47,8 @@ import org.graalvm.word.WordFactory;
 import com.oracle.svm.core.SubstrateOptions;
 import com.oracle.svm.core.annotate.RestrictHeapAccess;
 import com.oracle.svm.core.annotate.Uninterruptible;
-import com.oracle.svm.core.code.CodeInfoAccessor;
-import com.oracle.svm.core.code.CodeInfoHandle;
+import com.oracle.svm.core.code.CodeInfo;
+import com.oracle.svm.core.code.CodeInfoAccess;
 import com.oracle.svm.core.deopt.DeoptimizedFrame;
 import com.oracle.svm.core.jdk.JDKUtils;
 import com.oracle.svm.core.log.Log;
@@ -209,7 +209,7 @@ public class SnippetRuntime {
         @Uninterruptible(reason = "Set currentException atomically with regard to the safepoint mechanism", calleeMustBe = false)
         @RestrictHeapAccess(access = RestrictHeapAccess.Access.NO_ALLOCATION, reason = "Must not allocate when unwinding the stack.")
         @Override
-        public boolean visitFrame(Pointer sp, CodePointer ip, CodeInfoAccessor accessor, CodeInfoHandle handle, DeoptimizedFrame deoptFrame) {
+        public boolean visitFrame(Pointer sp, CodePointer ip, CodeInfo codeInfo, DeoptimizedFrame deoptFrame) {
             CodePointer handlerIP;
             if (deoptFrame != null) {
                 /* Deoptimization entry points always have an exception handler. */
@@ -217,7 +217,7 @@ public class SnippetRuntime {
                 handlerIP = ip;
 
             } else {
-                long handler = accessor.lookupExceptionOffset(handle, accessor.relativeIP(handle, ip));
+                long handler = CodeInfoAccess.lookupExceptionOffset(codeInfo, CodeInfoAccess.relativeIP(codeInfo, ip));
                 if (handler == 0) {
                     /* No handler found in this frame, walk to caller frame. */
                     return true;

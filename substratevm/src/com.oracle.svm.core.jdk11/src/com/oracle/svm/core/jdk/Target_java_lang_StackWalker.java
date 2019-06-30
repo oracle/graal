@@ -44,8 +44,8 @@ import com.oracle.svm.core.annotate.NeverInline;
 import com.oracle.svm.core.annotate.Substitute;
 import com.oracle.svm.core.annotate.TargetClass;
 import com.oracle.svm.core.annotate.Uninterruptible;
-import com.oracle.svm.core.code.CodeInfoAccessor;
-import com.oracle.svm.core.code.CodeInfoHandle;
+import com.oracle.svm.core.code.CodeInfo;
+import com.oracle.svm.core.code.CodeInfoAccess;
 import com.oracle.svm.core.code.CodeInfoTable;
 import com.oracle.svm.core.code.FrameInfoQueryResult;
 import com.oracle.svm.core.deopt.DeoptimizedFrame;
@@ -190,28 +190,25 @@ final class Target_java_lang_StackWalker {
             DeoptimizedFrame deoptimizedFrame = Deoptimizer.checkDeoptimized(walk.getSP());
             if (deoptimizedFrame != null) {
                 curDeoptimizedFrame = deoptimizedFrame.getTopFrame();
-                walk.setIPCodeInfoAccessor(null);
                 walk.setIPCodeInfo(WordFactory.nullPointer());
                 JavaStackWalker.continueWalk(walk);
 
             } else {
-                CodeInfoAccessor accessor = CodeInfoTable.lookupCodeInfoAccessor(ip);
-                CodeInfoHandle handle = accessor.lookupCodeInfo(ip);
-                walk.setIPCodeInfoAccessor(accessor);
-                walk.setIPCodeInfo(handle);
-                Object tether = accessor.acquireTether(handle);
+                CodeInfo info = CodeInfoTable.lookupCodeInfo(ip);
+                walk.setIPCodeInfo(info);
+                Object tether = CodeInfoAccess.acquireTether(info);
                 try {
-                    curRegularFrame = queryFrameInfo(accessor, handle, ip);
+                    curRegularFrame = queryFrameInfo(info, ip);
                     JavaStackWalker.continueWalk(walk);
                 } finally {
-                    accessor.releaseTether(handle, tether);
+                    CodeInfoAccess.releaseTether(info, tether);
                 }
             }
         }
 
         @Uninterruptible(reason = "Wraps the now safe call to query frame information.", calleeMustBe = false)
-        private FrameInfoQueryResult queryFrameInfo(CodeInfoAccessor accessor, CodeInfoHandle handle, CodePointer ip) {
-            return CodeInfoTable.lookupCodeInfoQueryResult(accessor, handle, ip).getFrameInfo();
+        private FrameInfoQueryResult queryFrameInfo(CodeInfo info, CodePointer ip) {
+            return CodeInfoTable.lookupCodeInfoQueryResult(info, ip).getFrameInfo();
         }
 
         @Override

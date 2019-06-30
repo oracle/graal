@@ -55,14 +55,13 @@ import com.oracle.svm.core.SubstrateOptions;
 import com.oracle.svm.core.annotate.NeverInline;
 import com.oracle.svm.core.annotate.Specialize;
 import com.oracle.svm.core.annotate.Uninterruptible;
-import com.oracle.svm.core.code.CodeInfoAccessor;
-import com.oracle.svm.core.code.CodeInfoHandle;
+import com.oracle.svm.core.code.CodeInfo;
+import com.oracle.svm.core.code.CodeInfoAccess;
 import com.oracle.svm.core.code.CodeInfoQueryResult;
 import com.oracle.svm.core.code.CodeInfoTable;
 import com.oracle.svm.core.code.FrameInfoQueryResult;
 import com.oracle.svm.core.code.FrameInfoQueryResult.ValueInfo;
 import com.oracle.svm.core.code.FrameInfoQueryResult.ValueType;
-import com.oracle.svm.core.code.ImageCodeInfo;
 import com.oracle.svm.core.config.ConfigurationValues;
 import com.oracle.svm.core.config.ObjectLayout;
 import com.oracle.svm.core.deopt.DeoptimizedFrame.VirtualFrame;
@@ -304,11 +303,11 @@ public final class Deoptimizer {
     }
 
     private static StackFrameVisitor getStackFrameVisitor(Pointer fromIp, Pointer toIp, boolean deoptAll, IsolateThread thread) {
-        return (frameSp, frameIp, accessor, handle, deoptFrame) -> {
+        return (frameSp, frameIp, codeInfo, deoptFrame) -> {
             Pointer ip = (Pointer) frameIp;
             if (deoptFrame == null && ((ip.aboveOrEqual(fromIp) && ip.belowThan(toIp)) || deoptAll)) {
-                CodeInfoQueryResult codeInfo = CodeInfoTable.lookupCodeInfoQueryResult(accessor, handle, frameIp);
-                Deoptimizer deoptimizer = new Deoptimizer(frameSp, codeInfo);
+                CodeInfoQueryResult queryResult = CodeInfoTable.lookupCodeInfoQueryResult(codeInfo, frameIp);
+                Deoptimizer deoptimizer = new Deoptimizer(frameSp, queryResult);
                 deoptimizer.deoptSourceFrame(frameIp, deoptAll, thread);
             }
             return true;
@@ -336,10 +335,9 @@ public final class Deoptimizer {
     private static void deoptimizeFrameOperation(Pointer sourceSp, boolean ignoreNonDeoptimizable, SpeculationReason speculation, IsolateThread currentThread) {
         VMOperation.guaranteeInProgress("doDeoptimizeFrame");
         CodePointer returnAddress = FrameAccess.singleton().readReturnAddress(sourceSp);
-        CodeInfoAccessor accessor = CodeInfoTable.lookupCodeInfoAccessor(returnAddress);
-        CodeInfoHandle handle = accessor.lookupCodeInfo(returnAddress);
-        CodeInfoQueryResult info = CodeInfoTable.lookupCodeInfoQueryResult(accessor, handle, returnAddress);
-        Deoptimizer deoptimizer = new Deoptimizer(sourceSp, info);
+        CodeInfo info = CodeInfoTable.lookupCodeInfo(returnAddress);
+        CodeInfoQueryResult queryResult = CodeInfoTable.lookupCodeInfoQueryResult(info, returnAddress);
+        Deoptimizer deoptimizer = new Deoptimizer(sourceSp, queryResult);
         DeoptimizedFrame sourceFrame = deoptimizer.deoptSourceFrame(returnAddress, ignoreNonDeoptimizable, currentThread);
         if (sourceFrame != null) {
             registerSpeculationFailure(sourceFrame.getSourceInstalledCode(), speculation);
@@ -433,9 +431,8 @@ public final class Deoptimizer {
         this.sourceChunk = sourceChunk;
         /* Lazily initialize constant values I can only get at run time. */
         if (deoptStubFrameSize == 0L) {
-            CodeInfoAccessor accessor = CodeInfoTable.getImageCodeInfoAccessor();
-            CodeInfoHandle handle = ImageCodeInfo.SINGLETON_HANDLE;
-            deoptStubFrameSize = accessor.lookupTotalFrameSize(handle, accessor.relativeIP(handle, DeoptimizationSupport.getDeoptStubPointer()));
+            CodeInfo info = CodeInfoTable.getImageCodeInfo();
+            deoptStubFrameSize = CodeInfoAccess.lookupTotalFrameSize(info, CodeInfoAccess.relativeIP(info, DeoptimizationSupport.getDeoptStubPointer()));
         }
     }
 

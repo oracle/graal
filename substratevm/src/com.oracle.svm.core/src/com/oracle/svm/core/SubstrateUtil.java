@@ -62,8 +62,8 @@ import com.oracle.svm.core.annotate.RecomputeFieldValue.Kind;
 import com.oracle.svm.core.annotate.RestrictHeapAccess;
 import com.oracle.svm.core.annotate.TargetClass;
 import com.oracle.svm.core.annotate.Uninterruptible;
-import com.oracle.svm.core.code.CodeInfoAccessor;
-import com.oracle.svm.core.code.CodeInfoHandle;
+import com.oracle.svm.core.code.CodeInfo;
+import com.oracle.svm.core.code.CodeInfoAccess;
 import com.oracle.svm.core.code.CodeInfoTable;
 import com.oracle.svm.core.deopt.DeoptimizationSupport;
 import com.oracle.svm.core.deopt.DeoptimizedFrame;
@@ -411,24 +411,21 @@ public class SubstrateUtil {
         if (deoptFrame != null) {
             return deoptFrame.getSourceTotalFrameSize();
         }
-        CodeInfoAccessor accessor = CodeInfoTable.lookupCodeInfoAccessor(ip);
-        if (accessor != null) {
-            CodeInfoHandle handle = accessor.lookupCodeInfo(ip);
-            if (!accessor.isNone(handle)) {
-                Object tether = accessor.acquireTether(handle);
-                try {
-                    return getTotalFrameSize0(ip, accessor, handle);
-                } finally {
-                    accessor.releaseTether(handle, tether);
-                }
+        CodeInfo codeInfo = CodeInfoTable.lookupCodeInfo(ip);
+        if (codeInfo.isNonNull()) {
+            Object tether = CodeInfoAccess.acquireTether(codeInfo);
+            try {
+                return getTotalFrameSize0(ip, codeInfo);
+            } finally {
+                CodeInfoAccess.releaseTether(codeInfo, tether);
             }
         }
         return -1;
     }
 
     @Uninterruptible(reason = "Wrap the now safe call to interruptibly look up the frame size.", calleeMustBe = false)
-    private static long getTotalFrameSize0(CodePointer ip, CodeInfoAccessor accessor, CodeInfoHandle handle) {
-        return accessor.lookupTotalFrameSize(handle, accessor.relativeIP(handle, ip));
+    private static long getTotalFrameSize0(CodePointer ip, CodeInfo codeInfo) {
+        return CodeInfoAccess.lookupTotalFrameSize(codeInfo, CodeInfoAccess.relativeIP(codeInfo, ip));
     }
 
     @NeverInline("catch implicit exceptions")

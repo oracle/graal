@@ -103,9 +103,9 @@ public class CodeInfoQueryResult {
     }
 
     /**
-     * Index into the {@link CodeInfoAccessor#getReferenceMapEncoding(CodeInfoHandle)} encoded
-     * reference map} for the code. Encoding is handled by {@link CodeReferenceMapEncoder}, decoding
-     * is handled by {@link CodeReferenceMapDecoder}.
+     * Index into the {@link CodeInfoAccess#getReferenceMapEncoding(CodeInfo)} encoded reference
+     * map} for the code. Encoding is handled by {@link CodeReferenceMapEncoder}, decoding is
+     * handled by {@link CodeReferenceMapDecoder}.
      */
     public long getReferenceMapIndex() {
         return referenceMapIndex;

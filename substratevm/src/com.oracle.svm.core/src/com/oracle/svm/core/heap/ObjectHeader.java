@@ -98,6 +98,7 @@ public abstract class ObjectHeader {
     /**
      * Read the header of the specified object.
      */
+    @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
     public static UnsignedWord readHeaderFromObject(Object o) {
         if (getReferenceSize() == Integer.BYTES) {
             return WordFactory.unsigned(ObjectAccess.readInt(o, getHubOffset()));
@@ -182,6 +183,7 @@ public abstract class ObjectHeader {
 
     protected abstract boolean isHeapAllocated(Object o);
 
+    @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
     public abstract boolean isNonHeapAllocatedHeader(UnsignedWord header);
 
     protected abstract boolean isNonHeapAllocated(Object o);

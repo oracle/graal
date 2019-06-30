@@ -24,10 +24,46 @@
  */
 package com.oracle.svm.core.code;
 
-import org.graalvm.word.ComparableWord;
+import org.graalvm.nativeimage.ImageSingletons;
+import org.graalvm.nativeimage.Platform;
+import org.graalvm.nativeimage.Platforms;
+import org.graalvm.nativeimage.hosted.Feature;
+import org.graalvm.word.UnsignedWord;
 
-/**
- * A handle to information about a unit of compiled code for use with {@link CodeInfoAccessor}.
- */
-public interface CodeInfoHandle extends ComparableWord {
+import com.oracle.svm.core.MemoryWalker;
+import com.oracle.svm.core.annotate.AutomaticFeature;
+
+final class CodeInfoMemoryWalker implements MemoryWalker.CodeAccess<CodeInfo> {
+
+    @Platforms(Platform.HOSTED_ONLY.class)
+    CodeInfoMemoryWalker() {
+    }
+
+    @Override
+    public UnsignedWord getStart(CodeInfo codeInfo) {
+        return (UnsignedWord) CodeInfoAccess.getCodeStart(codeInfo);
+    }
+
+    @Override
+    public UnsignedWord getSize(CodeInfo codeInfo) {
+        return CodeInfoAccess.getCodeSize(codeInfo);
+    }
+
+    @Override
+    public UnsignedWord getMetadataSize(CodeInfo codeInfo) {
+        return CodeInfoAccess.getMetadataSize(codeInfo);
+    }
+
+    @Override
+    public String getName(CodeInfo codeInfo) {
+        return CodeInfoAccess.getName(codeInfo);
+    }
+}
+
+@AutomaticFeature
+class CodeInfoMemoryWalkerFeature implements Feature {
+    @Override
+    public void beforeAnalysis(BeforeAnalysisAccess access) {
+        ImageSingletons.add(CodeInfoMemoryWalker.class, new CodeInfoMemoryWalker());
+    }
 }

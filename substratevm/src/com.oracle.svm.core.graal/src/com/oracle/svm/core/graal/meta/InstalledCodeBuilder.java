@@ -49,15 +49,15 @@ import org.graalvm.word.WordFactory;
 
 import com.oracle.svm.core.SubstrateOptions;
 import com.oracle.svm.core.annotate.Uninterruptible;
+import com.oracle.svm.core.code.CodeInfo;
+import com.oracle.svm.core.code.CodeInfoAccess;
 import com.oracle.svm.core.code.CodeInfoEncoder;
-import com.oracle.svm.core.code.CodeInfoHandle;
 import com.oracle.svm.core.code.CodeInfoTable;
 import com.oracle.svm.core.code.DeoptimizationSourcePositionEncoder;
 import com.oracle.svm.core.code.FrameInfoEncoder;
-import com.oracle.svm.core.code.ImageCodeInfo;
 import com.oracle.svm.core.code.InstalledCodeObserver;
 import com.oracle.svm.core.code.InstalledCodeObserverSupport;
-import com.oracle.svm.core.code.RuntimeCodeInfoAccessor;
+import com.oracle.svm.core.code.RuntimeMethodInfoAccess;
 import com.oracle.svm.core.config.ConfigurationValues;
 import com.oracle.svm.core.deopt.SubstrateInstalledCode;
 import com.oracle.svm.core.graal.code.NativeImagePatcher;
@@ -104,8 +104,7 @@ public class InstalledCodeBuilder {
     private SubstrateCompilationResult compilation;
     private byte[] compiledBytes;
 
-    private RuntimeCodeInfoAccessor runtimeCodeAccessor;
-    private CodeInfoHandle runtimeMethodHandle;
+    private CodeInfo runtimeMethodInfo;
 
     private final boolean testTrampolineJumps;
 
@@ -266,8 +265,6 @@ public class InstalledCodeBuilder {
 
     @SuppressWarnings("try")
     private void installOperation() {
-        runtimeCodeAccessor = (RuntimeCodeInfoAccessor) CodeInfoTable.getRuntimeCodeInfoAccessor();
-
         /*
          * Object reference constants are stored in this holder first, then written and made visible
          * in a single step that is atomic regarding to GC.
@@ -297,24 +294,24 @@ public class InstalledCodeBuilder {
             objectConstants.add(new DataSectionPatcher(constantsOffset + position), (SubstrateObjectConstant) constant);
         });
 
-        runtimeMethodHandle = RuntimeCodeInfoAccessor.allocateMethodInfo();
-        runtimeCodeAccessor.setCodeLocation(runtimeMethodHandle, code, codeSize);
+        runtimeMethodInfo = RuntimeMethodInfoAccess.allocateMethodInfo();
+        RuntimeMethodInfoAccess.setCodeLocation(runtimeMethodInfo, code, codeSize);
 
         CodeReferenceMapEncoder encoder = new CodeReferenceMapEncoder();
         encoder.add(objectConstants.referenceMap);
-        runtimeCodeAccessor.setCodeObjectConstantsInfo(runtimeMethodHandle, encoder.encodeAll(), encoder.lookupEncoding(objectConstants.referenceMap));
+        RuntimeMethodInfoAccess.setCodeObjectConstantsInfo(runtimeMethodInfo, encoder.encodeAll(), encoder.lookupEncoding(objectConstants.referenceMap));
         writeObjectConstantsToCode(objectConstants);
 
         createCodeChunkInfos();
 
         InstalledCodeObserver.InstalledCodeObserverHandle[] observerHandles = InstalledCodeObserverSupport.installObservers(codeObservers);
 
-        runtimeCodeAccessor.setData(runtimeMethodHandle, installedCode, tier, observerHandles);
+        RuntimeMethodInfoAccess.setData(runtimeMethodInfo, installedCode, tier, observerHandles);
 
         Throwable[] errorBox = {null};
         VMOperation.enqueueBlockingSafepoint("Install code", () -> {
             try {
-                CodeInfoTable.getRuntimeCodeCache().addMethod(runtimeMethodHandle);
+                CodeInfoTable.getRuntimeCodeCache().addMethod(runtimeMethodInfo);
                 /*
                  * This call makes the new code visible, i.e., other threads can start executing it
                  * immediately. So all metadata must be registered at this point.
@@ -341,17 +338,17 @@ public class InstalledCodeBuilder {
         for (int i = 0; i < objectConstants.count; i++) {
             objectConstants.patchers[i].patchData(code, objectConstants.values[i]);
         }
-        runtimeCodeAccessor.setCodeConstantsLive(runtimeMethodHandle);
+        RuntimeMethodInfoAccess.setCodeConstantsLive(runtimeMethodInfo);
     }
 
     private void createCodeChunkInfos() {
         CodeInfoEncoder codeInfoEncoder = new CodeInfoEncoder(new FrameInfoEncoder.NamesFromImage());
         codeInfoEncoder.addMethod(method, compilation, 0);
-        codeInfoEncoder.encodeAllAndInstall(CodeInfoTable.getRuntimeCodeInfoAccessor(), runtimeMethodHandle);
-        assert CodeInfoEncoder.verifyMethod(compilation, 0, CodeInfoTable.getRuntimeCodeInfoAccessor(), runtimeMethodHandle);
+        codeInfoEncoder.encodeAllAndInstall(runtimeMethodInfo);
+        assert CodeInfoEncoder.verifyMethod(compilation, 0, runtimeMethodInfo);
 
         DeoptimizationSourcePositionEncoder sourcePositionEncoder = new DeoptimizationSourcePositionEncoder();
-        sourcePositionEncoder.encodeAndInstall(compilation.getDeoptimizationSourcePositions(), runtimeCodeAccessor, runtimeMethodHandle);
+        sourcePositionEncoder.encodeAndInstall(compilation.getDeoptimizationSourcePositions(), runtimeMethodInfo);
     }
 
     private void patchData(Map<Integer, NativeImagePatcher> patcher, @SuppressWarnings("unused") ObjectConstantsHolder objectConstants) {
@@ -431,7 +428,7 @@ public class InstalledCodeBuilder {
         // (e.g. native) functions.
         // This will change, and we will have to case-split here... but not yet.
         SharedMethod targetMethod = (SharedMethod) callInfo.target;
-        long callTargetStart = CodeInfoTable.getImageCodeInfoAccessor().absoluteIP(ImageCodeInfo.SINGLETON_HANDLE, targetMethod.getCodeOffsetInImage()).rawValue();
+        long callTargetStart = CodeInfoAccess.absoluteIP(CodeInfoTable.getImageCodeInfo(), targetMethod.getCodeOffsetInImage()).rawValue();
 
         if (allInstalledCode != null) {
             InstalledCodeBuilder targetInstalledCodeBuilder = allInstalledCode.get(targetMethod);

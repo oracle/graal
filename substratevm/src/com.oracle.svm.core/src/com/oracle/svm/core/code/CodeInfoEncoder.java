@@ -177,16 +177,16 @@ public class CodeInfoEncoder {
         return result;
     }
 
-    public void encodeAllAndInstall(CodeInfoAccessor accessor, CodeInfoHandle handle) {
+    public void encodeAllAndInstall(CodeInfo target) {
         encodeReferenceMaps();
-        frameInfoEncoder.encodeAllAndInstall(accessor, handle);
+        frameInfoEncoder.encodeAllAndInstall(target);
         encodeIPData();
 
-        install(accessor, handle);
+        install(target);
     }
 
-    private void install(CodeInfoAccessor accessor, CodeInfoHandle installTarget) {
-        accessor.setCodeInfo(installTarget, codeInfoIndex, codeInfoEncodings, referenceMapEncoding);
+    private void install(CodeInfo target) {
+        CodeInfoAccess.setCodeInfo(target, codeInfoIndex, codeInfoEncodings, referenceMapEncoding);
     }
 
     private void encodeReferenceMaps() {
@@ -379,23 +379,23 @@ public class CodeInfoEncoder {
         }
     }
 
-    public static boolean verifyMethod(CompilationResult compilation, int compilationOffset, CodeInfoAccessor accessor, CodeInfoHandle handle) {
-        CodeInfoVerifier.verifyMethod(compilation, compilationOffset, accessor, handle);
+    public static boolean verifyMethod(CompilationResult compilation, int compilationOffset, CodeInfo info) {
+        CodeInfoVerifier.verifyMethod(compilation, compilationOffset, info);
         return true;
     }
 }
 
 class CodeInfoVerifier {
-    static void verifyMethod(CompilationResult compilation, int compilationOffset, CodeInfoAccessor accessor, CodeInfoHandle handle) {
+    static void verifyMethod(CompilationResult compilation, int compilationOffset, CodeInfo info) {
         for (int relativeIP = 0; relativeIP < compilation.getTargetCodeSize(); relativeIP++) {
             int totalIP = relativeIP + compilationOffset;
             CodeInfoQueryResult queryResult = new CodeInfoQueryResult();
-            accessor.lookupCodeInfo(handle, totalIP, queryResult);
+            CodeInfoAccess.lookupCodeInfo(info, totalIP, queryResult);
             assert queryResult.isEntryPoint() || queryResult.getTotalFrameSize() == compilation.getTotalFrameSize();
 
-            assert queryResult.isEntryPoint() || accessor.lookupTotalFrameSize(handle, totalIP) == queryResult.getTotalFrameSize();
-            assert accessor.lookupExceptionOffset(handle, totalIP) == queryResult.getExceptionOffset();
-            assert accessor.lookupReferenceMapIndex(handle, totalIP) == queryResult.getReferenceMapIndex();
+            assert queryResult.isEntryPoint() || CodeInfoAccess.lookupTotalFrameSize(info, totalIP) == queryResult.getTotalFrameSize();
+            assert CodeInfoAccess.lookupExceptionOffset(info, totalIP) == queryResult.getExceptionOffset();
+            assert CodeInfoAccess.lookupReferenceMapIndex(info, totalIP) == queryResult.getReferenceMapIndex();
         }
 
         for (Infopoint infopoint : compilation.getInfopoints()) {
@@ -404,10 +404,10 @@ class CodeInfoVerifier {
                 if (offset >= 0) {
                     assert offset < compilation.getTargetCodeSize();
                     CodeInfoQueryResult queryResult = new CodeInfoQueryResult();
-                    accessor.lookupCodeInfo(handle, offset + compilationOffset, queryResult);
+                    CodeInfoAccess.lookupCodeInfo(info, offset + compilationOffset, queryResult);
 
                     CollectingObjectReferenceVisitor visitor = new CollectingObjectReferenceVisitor();
-                    CodeReferenceMapDecoder.walkOffsetsFromPointer(WordFactory.zero(), accessor.getReferenceMapEncoding(handle), queryResult.getReferenceMapIndex(), visitor);
+                    CodeReferenceMapDecoder.walkOffsetsFromPointer(WordFactory.zero(), CodeInfoAccess.getReferenceMapEncoding(info), queryResult.getReferenceMapIndex(), visitor);
                     ReferenceMapEncoder.Input expected = (ReferenceMapEncoder.Input) infopoint.debugInfo.getReferenceMap();
                     visitor.result.verify();
                     assert expected.equals(visitor.result);
@@ -423,7 +423,7 @@ class CodeInfoVerifier {
             int offset = handler.pcOffset;
             assert offset >= 0 && offset < compilation.getTargetCodeSize();
 
-            long actual = accessor.lookupExceptionOffset(handle, offset + compilationOffset);
+            long actual = CodeInfoAccess.lookupExceptionOffset(info, offset + compilationOffset);
             long expected = handler.handlerPos - handler.pcOffset;
             assert expected != 0;
             assert expected == actual;

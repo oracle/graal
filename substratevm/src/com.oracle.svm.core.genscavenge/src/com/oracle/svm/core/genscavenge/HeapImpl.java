@@ -52,17 +52,16 @@ import org.graalvm.word.UnsignedWord;
 import org.graalvm.word.WordFactory;
 
 import com.oracle.svm.core.MemoryWalker;
+import com.oracle.svm.core.MemoryWalker.CodeAccess;
 import com.oracle.svm.core.MemoryWalker.HeapChunkAccess;
-import com.oracle.svm.core.MemoryWalker.ImageCodeAccess;
 import com.oracle.svm.core.MemoryWalker.NativeImageHeapRegionAccess;
-import com.oracle.svm.core.MemoryWalker.RuntimeCompiledMethodAccess;
 import com.oracle.svm.core.SubstrateOptions;
 import com.oracle.svm.core.SubstrateUtil;
 import com.oracle.svm.core.annotate.NeverInline;
 import com.oracle.svm.core.annotate.Substitute;
 import com.oracle.svm.core.annotate.TargetClass;
 import com.oracle.svm.core.annotate.Uninterruptible;
-import com.oracle.svm.core.code.CodeInfoHandle;
+import com.oracle.svm.core.code.CodeInfo;
 import com.oracle.svm.core.heap.GC;
 import com.oracle.svm.core.heap.Heap;
 import com.oracle.svm.core.heap.NativeImageInfo;
@@ -847,16 +846,8 @@ final class MemoryMXBeanMemoryVisitor implements MemoryWalker.Visitor {
     }
 
     @Override
-    public <T> boolean visitImageCode(T imageCode, ImageCodeAccess<T> access) {
-        final UnsignedWord size = access.getSize(imageCode);
-        nonHeapUsed = nonHeapUsed.add(size);
-        nonHeapCommitted = nonHeapCommitted.add(size);
-        return true;
-    }
-
-    @Override
-    public <T extends CodeInfoHandle> boolean visitRuntimeCompiledMethod(T runtimeMethod, RuntimeCompiledMethodAccess<T> access) {
-        final UnsignedWord size = access.getSize(runtimeMethod).add(access.getMetadataSize(runtimeMethod));
+    public <T extends CodeInfo> boolean visitCode(T codeInfo, CodeAccess<T> access) {
+        final UnsignedWord size = access.getSize(codeInfo).add(access.getMetadataSize(codeInfo));
         nonHeapUsed = nonHeapUsed.add(size);
         nonHeapCommitted = nonHeapCommitted.add(size);
         return true;

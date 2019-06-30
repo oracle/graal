@@ -31,9 +31,7 @@ import org.graalvm.word.Pointer;
 import org.graalvm.word.PointerBase;
 
 import com.oracle.svm.core.annotate.Uninterruptible;
-import com.oracle.svm.core.c.struct.PinnedObjectField;
-import com.oracle.svm.core.code.CodeInfoAccessor;
-import com.oracle.svm.core.code.CodeInfoHandle;
+import com.oracle.svm.core.code.CodeInfo;
 
 /**
  * An in-progress Java stack walk.
@@ -57,18 +55,10 @@ public interface JavaStackWalk extends PointerBase {
     void setPossiblyStaleIP(CodePointer ip);
 
     @RawField
-    CodeInfoHandle getIPCodeInfo();
+    CodeInfo getIPCodeInfo();
 
     @RawField
-    void setIPCodeInfo(CodeInfoHandle handle);
-
-    @RawField
-    @PinnedObjectField
-    CodeInfoAccessor getIPCodeInfoAccessor();
-
-    @RawField
-    @PinnedObjectField
-    void setIPCodeInfoAccessor(CodeInfoAccessor accessor);
+    void setIPCodeInfo(CodeInfo codeInfo);
 
     @RawField
     JavaFrameAnchor getAnchor();

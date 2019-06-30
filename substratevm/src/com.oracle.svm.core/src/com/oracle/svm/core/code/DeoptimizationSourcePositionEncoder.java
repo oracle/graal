@@ -48,7 +48,7 @@ public class DeoptimizationSourcePositionEncoder {
         this.objectConstants = FrequencyEncoder.createIdentityEncoder();
     }
 
-    public void encodeAndInstall(List<NodeSourcePosition> deoptimzationSourcePositions, RuntimeCodeInfoAccessor accessor, CodeInfoHandle handle) {
+    public void encodeAndInstall(List<NodeSourcePosition> deoptimzationSourcePositions, CodeInfo target) {
         addObjectConstants(deoptimzationSourcePositions);
         Object[] encodedObjectConstants = objectConstants.encodeAll(new Object[objectConstants.getLength()]);
 
@@ -60,15 +60,15 @@ public class DeoptimizationSourcePositionEncoder {
         NonmovableArray<Byte> deoptimizationEncodings = NonmovableArrays.createByteArray(TypeConversion.asS4(encodingBuffer.getBytesWritten()));
         encodingBuffer.toByteBuffer(NonmovableArrays.asByteBuffer(deoptimizationEncodings));
 
-        install(accessor, handle, deoptimizationStartOffsets, deoptimizationEncodings, encodedObjectConstants, deoptimzationSourcePositions);
+        install(target, deoptimizationStartOffsets, deoptimizationEncodings, encodedObjectConstants, deoptimzationSourcePositions);
     }
 
     @Uninterruptible(reason = "Nonmovable object arrays are not visible to GC until installed in target.")
-    private static void install(RuntimeCodeInfoAccessor accessor, CodeInfoHandle target, NonmovableArray<Integer> deoptimizationStartOffsets,
-                    NonmovableArray<Byte> deoptimizationEncodings, Object[] encodedObjectConstants, List<NodeSourcePosition> deoptimizationSourcePositions) {
+    private static void install(CodeInfo target, NonmovableArray<Integer> deoptimizationStartOffsets, NonmovableArray<Byte> deoptimizationEncodings,
+                    Object[] encodedObjectConstants, List<NodeSourcePosition> deoptimizationSourcePositions) {
 
         NonmovableObjectArray<Object> deoptimizationObjectConstants = NonmovableArrays.copyOfObjectArray(encodedObjectConstants);
-        accessor.setDeoptimizationMetadata(target, deoptimizationStartOffsets, deoptimizationEncodings, deoptimizationObjectConstants);
+        RuntimeMethodInfoAccess.setDeoptimizationMetadata(target, deoptimizationStartOffsets, deoptimizationEncodings, deoptimizationObjectConstants);
 
         afterInstallation(deoptimizationStartOffsets, deoptimizationEncodings, deoptimizationSourcePositions, deoptimizationObjectConstants);
     }

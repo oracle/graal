@@ -37,11 +37,10 @@ import org.graalvm.word.WordFactory;
 
 import com.oracle.svm.core.FrameAccess;
 import com.oracle.svm.core.annotate.Uninterruptible;
-import com.oracle.svm.core.code.CodeInfoAccessor;
-import com.oracle.svm.core.code.CodeInfoHandle;
+import com.oracle.svm.core.code.CodeInfo;
+import com.oracle.svm.core.code.CodeInfoAccess;
 import com.oracle.svm.core.code.CodeInfoTable;
 import com.oracle.svm.core.code.FrameInfoQueryResult;
-import com.oracle.svm.core.code.ImageCodeInfo;
 import com.oracle.svm.core.config.ConfigurationValues;
 import com.oracle.svm.core.deopt.Deoptimizer.TargetContent;
 import com.oracle.svm.core.heap.FeebleReference;
@@ -387,9 +386,8 @@ public final class DeoptimizedFrame {
      */
     public void takeException() {
         ReturnAddress firstAddressEntry = topFrame.returnAddress;
-        CodeInfoAccessor accessor = CodeInfoTable.getImageCodeInfoAccessor();
-        CodeInfoHandle handle = ImageCodeInfo.SINGLETON_HANDLE;
-        long handler = accessor.lookupExceptionOffset(handle, accessor.relativeIP(handle, WordFactory.pointer(firstAddressEntry.returnAddress)));
+        CodeInfo info = CodeInfoTable.getImageCodeInfo();
+        long handler = CodeInfoAccess.lookupExceptionOffset(info, CodeInfoAccess.relativeIP(info, WordFactory.pointer(firstAddressEntry.returnAddress)));
         assert handler != 0 : "no exception handler registered for deopt target";
         firstAddressEntry.returnAddress += handler;
     }

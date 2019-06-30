@@ -59,9 +59,11 @@ import jdk.vm.ci.code.InstalledCode;
  * code compiled at runtime}.
  * <p>
  * Users of this class must take special care because code can be invalidated at arbitrary times and
- * their metadata can be freed, see notes on {@link CodeInfoAccessor}.
+ * their metadata can be freed, see notes on {@link CodeInfoAccess}.
  */
 public class CodeInfoTable {
+
+    private static CodeInfo imageCodeInfo;
 
     public static class Options {
 
@@ -74,48 +76,50 @@ public class CodeInfoTable {
         return ImageSingletons.lookup(ImageCodeInfo.class);
     }
 
-    @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
-    public static CodeInfoAccessor getImageCodeInfoAccessor() {
-        return getImageCodeCache().getAccessor();
-    }
-
     @Fold
     public static RuntimeCodeInfo getRuntimeCodeCache() {
         return ImageSingletons.lookup(RuntimeCodeInfo.class);
     }
 
-    @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
-    public static CodeInfoAccessor getRuntimeCodeInfoAccessor() {
-        return getRuntimeCodeCache().getAccessor();
+    @Uninterruptible(reason = "Executes during isolate creation.")
+    public static void prepareImageCodeInfo() {
+        // Stored in this class because ImageCodeInfo is immutable
+        imageCodeInfo = getImageCodeCache().prepareCodeInfo();
+        assert imageCodeInfo.notEqual(WordFactory.zero());
     }
 
-    public static CodeInfoQueryResult lookupCodeInfoQueryResult(CodeInfoAccessor accessor, CodeInfoHandle handle, CodePointer absoluteIP) {
+    @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
+    public static CodeInfo getImageCodeInfo() {
+        assert imageCodeInfo.notEqual(WordFactory.zero()) : "uninitialized";
+        return imageCodeInfo;
+    }
+
+    public static CodeInfoQueryResult lookupCodeInfoQueryResult(CodeInfo info, CodePointer absoluteIP) {
         counters().lookupCodeInfoCount.inc();
-        if (accessor.isNone(handle)) {
+        if (info.isNull()) {
             return null;
         }
         CodeInfoQueryResult result = new CodeInfoQueryResult();
         result.ip = absoluteIP;
-        accessor.lookupCodeInfo(handle, accessor.relativeIP(handle, absoluteIP), result);
+        CodeInfoAccess.lookupCodeInfo(info, CodeInfoAccess.relativeIP(info, absoluteIP), result);
         return result;
     }
 
     public static CodeInfoQueryResult lookupDeoptimizationEntrypoint(int deoptOffsetInImage, long encodedBci) {
         counters().lookupDeoptimizationEntrypointCount.inc();
         /* Deoptimization entry points are always in the image, i.e., never compiled at run time. */
-        CodeInfoAccessor accessor = getImageCodeInfoAccessor();
-        CodeInfoHandle handle = ImageCodeInfo.SINGLETON_HANDLE;
+        CodeInfo info = getImageCodeInfo();
         CodeInfoQueryResult result = new CodeInfoQueryResult();
-        long relativeIP = accessor.lookupDeoptimizationEntrypoint(handle, deoptOffsetInImage, encodedBci, result);
+        long relativeIP = CodeInfoAccess.lookupDeoptimizationEntrypoint(info, deoptOffsetInImage, encodedBci, result);
         if (relativeIP < 0) {
             return null;
         }
-        result.ip = accessor.absoluteIP(handle, relativeIP);
+        result.ip = CodeInfoAccess.absoluteIP(info, relativeIP);
         return result;
     }
 
     @AlwaysInline("de-virtualize calls to ObjectReferenceVisitor")
-    public static boolean visitObjectReferences(Pointer sp, CodePointer ip, CodeInfoAccessor accessor, CodeInfoHandle handle, DeoptimizedFrame deoptimizedFrame, ObjectReferenceVisitor visitor) {
+    public static boolean visitObjectReferences(Pointer sp, CodePointer ip, CodeInfo info, DeoptimizedFrame deoptimizedFrame, ObjectReferenceVisitor visitor) {
         counters().visitObjectReferencesCount.inc();
 
         if (deoptimizedFrame != null) {
@@ -134,21 +138,20 @@ public class CodeInfoTable {
 
         NonmovableArray<Byte> referenceMapEncoding = NonmovableArrays.nullArray();
         long referenceMapIndex = CodeInfoQueryResult.NO_REFERENCE_MAP;
-        if (!accessor.isNone(handle)) {
-            referenceMapEncoding = accessor.getReferenceMapEncoding(handle);
-            referenceMapIndex = accessor.lookupReferenceMapIndex(handle, accessor.relativeIP(handle, ip));
+        if (info.isNonNull()) {
+            referenceMapEncoding = CodeInfoAccess.getReferenceMapEncoding(info);
+            referenceMapIndex = CodeInfoAccess.lookupReferenceMapIndex(info, CodeInfoAccess.relativeIP(info, ip));
         }
-
         if (referenceMapIndex == CodeInfoQueryResult.NO_REFERENCE_MAP) {
-            throw reportNoReferenceMap(sp, ip, deoptimizedFrame, accessor, handle);
+            throw reportNoReferenceMap(sp, ip, deoptimizedFrame, info);
         }
         return CodeReferenceMapDecoder.walkOffsetsFromPointer(sp, referenceMapEncoding, referenceMapIndex, visitor);
     }
 
-    private static RuntimeException reportNoReferenceMap(Pointer sp, CodePointer ip, DeoptimizedFrame deoptimizedFrame, CodeInfoAccessor accessor, CodeInfoHandle data) {
+    private static RuntimeException reportNoReferenceMap(Pointer sp, CodePointer ip, DeoptimizedFrame deoptimizedFrame, CodeInfo info) {
         Log.log().string("ip: ").hex(ip).string("  sp: ").hex(sp);
-        Log.log().string("  deoptFrame: ").object(deoptimizedFrame).string("  data:");
-        accessor.log(data, Log.log()).newline();
+        Log.log().string("  deoptFrame: ").object(deoptimizedFrame).string("  info:");
+        CodeInfoAccess.log(info, Log.log()).newline();
         throw VMError.shouldNotReachHere("No reference map information found");
     }
 
@@ -159,22 +162,21 @@ public class CodeInfoTable {
     @Uninterruptible(reason = "Prevent invalidation of code while in this method.")
     public static SubstrateInstalledCode lookupInstalledCode(CodePointer ip) {
         counters().lookupInstalledCodeCount.inc();
-        RuntimeCodeInfoAccessor accessor = (RuntimeCodeInfoAccessor) getRuntimeCodeInfoAccessor();
-        CodeInfoHandle handle = accessor.lookupCodeInfo(ip);
-        if (accessor.isNone(handle)) {
-            return null;
+        CodeInfo info = lookupCodeInfo(ip);
+        if (info.isNull() || info.equal(getImageCodeInfo())) {
+            return null; // not within a runtime-compiled method
         }
-        Object tether = accessor.acquireTether(handle);
+        Object tether = CodeInfoAccess.acquireTether(info);
         try {
-            return getInstalledCode0(accessor, handle);
+            return getInstalledCode0(info);
         } finally {
-            accessor.releaseTether(handle, tether);
+            CodeInfoAccess.releaseTether(info, tether);
         }
     }
 
     @Uninterruptible(reason = "Wrap the now safe call to interruptibly retrieve InstalledCode.", calleeMustBe = false)
-    private static SubstrateInstalledCode getInstalledCode0(RuntimeCodeInfoAccessor accessor, CodeInfoHandle handle) {
-        return accessor.getInstalledCode(handle);
+    private static SubstrateInstalledCode getInstalledCode0(CodeInfo info) {
+        return RuntimeMethodInfoAccess.getInstalledCode(info);
     }
 
     public static void invalidateInstalledCode(SubstrateInstalledCode installedCode) {
@@ -183,21 +185,21 @@ public class CodeInfoTable {
             counters().invalidateInstalledCodeCount.inc();
             if (installedCode.isValid()) {
                 final RuntimeCodeInfo codeCache = getRuntimeCodeCache();
-                CodeInfoHandle handle = codeCache.lookupMethod(WordFactory.pointer(installedCode.getAddress()));
-                long num = codeCache.logMethodOperation(handle, RuntimeCodeInfo.INFO_INVALIDATE);
-                codeCache.invalidateMethod(handle);
+                CodeInfo info = codeCache.lookupMethod(WordFactory.pointer(installedCode.getAddress()));
+                long num = codeCache.logMethodOperation(info, RuntimeCodeInfo.INFO_INVALIDATE);
+                codeCache.invalidateMethod(info);
                 codeCache.logMethodOperationEnd(num);
             }
         });
     }
 
     @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
-    public static CodeInfoAccessor lookupCodeInfoAccessor(CodePointer ip) {
-        counters().lookupCodeInfoAccessorCount.inc();
-        if (getImageCodeInfoAccessor().contains(ImageCodeInfo.SINGLETON_HANDLE, ip)) {
-            return getImageCodeInfoAccessor();
+    public static CodeInfo lookupCodeInfo(CodePointer ip) {
+        counters().lookupCodeInfoCount.inc();
+        if (CodeInfoAccess.contains(getImageCodeInfo(), ip)) {
+            return getImageCodeInfo();
         } else {
-            return getRuntimeCodeInfoAccessor();
+            return getRuntimeCodeCache().lookupMethod(ip);
         }
     }
 
@@ -209,7 +211,6 @@ public class CodeInfoTable {
 
 class CodeInfoTableCounters {
     private final Counter.Group counters = new Counter.Group(CodeInfoTable.Options.CodeCacheCounters, "CodeInfoTable");
-    final Counter lookupCodeInfoAccessorCount = new Counter(counters, "lookupCodeInfoAccessor", "");
     final Counter lookupCodeInfoCount = new Counter(counters, "lookupCodeInfo", "");
     final Counter lookupDeoptimizationEntrypointCount = new Counter(counters, "lookupDeoptimizationEntrypoint", "");
     final Counter visitObjectReferencesCount = new Counter(counters, "visitObjectReferences", "");
@@ -225,7 +226,7 @@ class CodeInfoFeature implements Feature {
     }
 
     @Override
-    public void afterRegistration(AfterRegistrationAccess access) {
+    public void duringSetup(DuringSetupAccess access) {
         ImageSingletons.add(CodeInfoTableCounters.class, new CodeInfoTableCounters());
         ImageSingletons.add(CodeInfoDecoderCounters.class, new CodeInfoDecoderCounters());
         ImageSingletons.add(CodeInfoEncoder.Counters.class, new CodeInfoEncoder.Counters());
@@ -235,9 +236,6 @@ class CodeInfoFeature implements Feature {
 
     @Override
     public void afterCompilation(AfterCompilationAccess config) {
-        config.registerAsImmutable(CodeInfoTable.getImageCodeInfoAccessor());
-        config.registerAsImmutable(CodeInfoTable.getRuntimeCodeInfoAccessor());
-
         ImageCodeInfo imageInfo = CodeInfoTable.getImageCodeCache();
         config.registerAsImmutable(imageInfo);
         config.registerAsImmutable(imageInfo.codeInfoIndex);

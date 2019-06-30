@@ -42,31 +42,26 @@ public class DeoptimizationSourcePositionDecoder {
 
     @Uninterruptible(reason = "Prevent invalidation of code while in this method.")
     public static NodeSourcePosition decode(int deoptId, CodePointer ip) {
-        CodeInfoAccessor accessorObj = CodeInfoTable.lookupCodeInfoAccessor(ip);
-        if (!(accessorObj instanceof RuntimeCodeInfoAccessor)) {
+        CodeInfo info = CodeInfoTable.lookupCodeInfo(ip);
+        if (info.isNull() || info.equal(CodeInfoTable.getImageCodeInfo())) {
             /* We only have information for runtime compiled code, not for native image code. */
             return null;
         }
-        RuntimeCodeInfoAccessor accessor = (RuntimeCodeInfoAccessor) accessorObj;
-        CodeInfoHandle handle = accessor.lookupCodeInfo(ip);
-        if (accessor.isNone(handle)) {
-            return null;
-        }
-        Object tether = accessor.acquireTether(handle);
+        Object tether = CodeInfoAccess.acquireTether(info);
         try {
-            return decode0(deoptId, accessor, handle);
+            return decode0(deoptId, info);
         } finally {
-            accessor.releaseTether(handle, tether);
+            CodeInfoAccess.releaseTether(info, tether);
         }
     }
 
     @Uninterruptible(reason = "Wrap the now safe call to interruptibly decode the source position.", calleeMustBe = false)
-    private static NodeSourcePosition decode0(int deoptId, RuntimeCodeInfoAccessor accessor, CodeInfoHandle handle) {
-        return decode(deoptId, accessor.getDeoptimizationStartOffsets(handle), accessor.getDeoptimizationEncodings(handle), accessor.getDeoptimizationObjectConstants(handle));
+    private static NodeSourcePosition decode0(int deoptId, CodeInfo info) {
+        return decode(deoptId, CodeInfoAccess.getDeoptimizationStartOffsets(info), CodeInfoAccess.getDeoptimizationEncodings(info), CodeInfoAccess.getDeoptimizationObjectConstants(info));
     }
 
-    static NodeSourcePosition decode(int deoptId, NonmovableArray<Integer> deoptimizationStartOffsets, NonmovableArray<Byte> deoptimizationEncodings,
-                    NonmovableObjectArray<Object> deoptimizationObjectConstants) {
+    static NodeSourcePosition decode(int deoptId, NonmovableArray<Integer> deoptimizationStartOffsets,
+                    NonmovableArray<Byte> deoptimizationEncodings, NonmovableObjectArray<Object> deoptimizationObjectConstants) {
         if (deoptId < 0 || deoptId >= NonmovableArrays.lengthOf(deoptimizationStartOffsets)) {
             return null;
         }

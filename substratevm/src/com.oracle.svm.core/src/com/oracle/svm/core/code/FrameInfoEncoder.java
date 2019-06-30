@@ -482,7 +482,7 @@ public class FrameInfoEncoder {
         return result;
     }
 
-    protected void encodeAllAndInstall(CodeInfoAccessor accessor, CodeInfoHandle handle) {
+    protected void encodeAllAndInstall(CodeInfo target) {
         final JavaConstant[] encodedJavaConstants = objectConstants.encodeAll(new JavaConstant[objectConstants.getLength()]);
         Object[] objectConstantsArray = new Object[encodedJavaConstants.length];
         for (int i = 0; i < encodedJavaConstants.length; i++) {
@@ -500,11 +500,11 @@ public class FrameInfoEncoder {
             namesArray = names.encodeAll(new String[names.getLength()]);
         }
         NonmovableArray<Byte> frameInfoEncodings = encodeFrameDatas();
-        install(accessor, handle, frameInfoEncodings, objectConstantsArray, sourceClassesArray, sourceMethodNamesArray, namesArray);
+        install(target, frameInfoEncodings, objectConstantsArray, sourceClassesArray, sourceMethodNamesArray, namesArray);
     }
 
     @Uninterruptible(reason = "Nonmovable object arrays are not visible to GC until installed in target.")
-    private void install(CodeInfoAccessor accessor, CodeInfoHandle handle, NonmovableArray<Byte> frameInfoEncodings, Object[] objectConstantsArray,
+    private void install(CodeInfo target, NonmovableArray<Byte> frameInfoEncodings, Object[] objectConstantsArray,
                     Class<?>[] sourceClassesArray, String[] sourceMethodNamesArray, String[] namesArray) {
 
         NonmovableObjectArray<Object> frameInfoObjectConstants = NonmovableArrays.copyOfObjectArray(objectConstantsArray);
@@ -512,7 +512,7 @@ public class FrameInfoEncoder {
         NonmovableObjectArray<String> frameInfoSourceMethodNames = (sourceMethodNamesArray != null) ? NonmovableArrays.copyOfObjectArray(sourceMethodNamesArray) : NonmovableArrays.nullArray();
         NonmovableObjectArray<String> frameInfoNames = (namesArray != null) ? NonmovableArrays.copyOfObjectArray(namesArray) : NonmovableArrays.nullArray();
 
-        accessor.setFrameInfo(handle, frameInfoEncodings, frameInfoObjectConstants, frameInfoSourceClasses, frameInfoSourceMethodNames, frameInfoNames);
+        CodeInfoAccess.setFrameInfo(target, frameInfoEncodings, frameInfoObjectConstants, frameInfoSourceClasses, frameInfoSourceMethodNames, frameInfoNames);
 
         afterInstallation(frameInfoEncodings, frameInfoObjectConstants, frameInfoSourceClasses, frameInfoSourceMethodNames, frameInfoNames);
     }

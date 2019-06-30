@@ -29,7 +29,7 @@ import org.graalvm.word.PointerBase;
 import org.graalvm.word.UnsignedWord;
 
 import com.oracle.svm.core.annotate.RestrictHeapAccess;
-import com.oracle.svm.core.code.CodeInfoHandle;
+import com.oracle.svm.core.code.CodeInfo;
 
 /** A walker over different kinds of allocated memory. */
 public abstract class MemoryWalker {
@@ -59,15 +59,12 @@ public abstract class MemoryWalker {
         @RestrictHeapAccess(access = RestrictHeapAccess.Access.NO_ALLOCATION, reason = "Must not allocate while visiting memory.")
         <T extends PointerBase> boolean visitHeapChunk(T heapChunk, HeapChunkAccess<T> access);
 
-        @RestrictHeapAccess(access = RestrictHeapAccess.Access.NO_ALLOCATION, reason = "Must not allocate while visiting memory.")
-        <T> boolean visitImageCode(T imageCode, ImageCodeAccess<T> access);
-
         /**
-         * Visit a runtime compiled method, using the provided access methods. Return true if
-         * visiting should continue, else false.
+         * Visit compiled code, using the provided access methods. Return true if visiting should
+         * continue, else false.
          */
         @RestrictHeapAccess(access = RestrictHeapAccess.Access.NO_ALLOCATION, reason = "Must not allocate while visiting memory.")
-        <T extends CodeInfoHandle> boolean visitRuntimeCompiledMethod(T runtimeMethod, RuntimeCompiledMethodAccess<T> access);
+        <T extends CodeInfo> boolean visitCode(T codeInfo, CodeAccess<T> access);
     }
 
     /** A set of access methods for visiting regions of the native image heap. */
@@ -111,32 +108,15 @@ public abstract class MemoryWalker {
         boolean isAligned(T heapChunk);
     }
 
-    /** A set of access methods for visiting image code. */
-    public interface ImageCodeAccess<T> {
+    /** A set of access methods for visiting code memory. */
+    public interface CodeAccess<T extends CodeInfo> {
 
-        /** Return the start of the image code. */
-        UnsignedWord getStart(T imageCode);
+        UnsignedWord getStart(T codeInfo);
 
-        /** Return the size of the image code. */
-        UnsignedWord getSize(T imageCode);
+        UnsignedWord getSize(T codeInfo);
 
-        /** Return the name of the image code region. */
-        String getRegion(T imageCode);
-    }
+        UnsignedWord getMetadataSize(T codeInfo);
 
-    /** A set of access methods for visiting runtime compiled code memory. */
-    public interface RuntimeCompiledMethodAccess<T extends CodeInfoHandle> {
-
-        /** Return the start of the code of the runtime compiled method. */
-        UnsignedWord getStart(T runtimeCompiledMethod);
-
-        /** Return the size of the code of the runtime compiled method. */
-        UnsignedWord getSize(T runtimeCompiledMethod);
-
-        /** Return the size of the metadata of the runtime compiled method. */
-        UnsignedWord getMetadataSize(T runtimeCompiledMethod);
-
-        /** Return the name of the runtime compiled method. */
-        String getName(T runtimeCompiledMethod);
+        String getName(T codeInfo);
     }
 }

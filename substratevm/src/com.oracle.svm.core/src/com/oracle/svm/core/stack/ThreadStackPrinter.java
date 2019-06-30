@@ -31,8 +31,8 @@ import com.oracle.svm.core.annotate.NeverInline;
 import com.oracle.svm.core.annotate.RestrictHeapAccess;
 import com.oracle.svm.core.annotate.Uninterruptible;
 import com.oracle.svm.core.c.NonmovableObjectArray;
-import com.oracle.svm.core.code.CodeInfoAccessor;
-import com.oracle.svm.core.code.CodeInfoHandle;
+import com.oracle.svm.core.code.CodeInfo;
+import com.oracle.svm.core.code.CodeInfoAccess;
 import com.oracle.svm.core.code.FrameInfoDecoder.FrameInfoQueryResultAllocator;
 import com.oracle.svm.core.code.FrameInfoDecoder.ValueInfoAllocator;
 import com.oracle.svm.core.code.FrameInfoQueryResult;
@@ -98,26 +98,24 @@ public class ThreadStackPrinter {
         private static DummyValueInfoAllocator DummyValueInfoAllocator = new DummyValueInfoAllocator();
 
         @Override
-        protected void logFrame(Log log, Pointer sp, CodePointer ip, CodeInfoAccessor accessor, CodeInfoHandle handle, DeoptimizedFrame deoptFrame) {
+        protected void logFrame(Log log, Pointer sp, CodePointer ip, CodeInfo codeInfo, DeoptimizedFrame deoptFrame) {
             if (deoptFrame != null) {
                 logVirtualFrames(log, sp, ip, deoptFrame);
-            } else {
-                if (!accessor.isNone(handle)) {
-                    frameInfoReader.reset();
-                    long entryOffset = accessor.initFrameInfoReader(handle, ip, frameInfoReader);
-                    if (entryOffset >= 0) {
-                        boolean isFirst = true;
-                        FrameInfoQueryResult validResult;
+            } else if (codeInfo.isNonNull()) {
+                frameInfoReader.reset();
+                long entryOffset = CodeInfoAccess.initFrameInfoReader(codeInfo, ip, frameInfoReader);
+                if (entryOffset >= 0) {
+                    boolean isFirst = true;
+                    FrameInfoQueryResult validResult;
+                    SingleShotFrameInfoQueryResultAllocator.reload();
+                    while ((validResult = CodeInfoAccess.nextFrameInfo(codeInfo, entryOffset, frameInfoReader, SingleShotFrameInfoQueryResultAllocator, DummyValueInfoAllocator, isFirst)) != null) {
                         SingleShotFrameInfoQueryResultAllocator.reload();
-                        while ((validResult = accessor.nextFrameInfo(handle, entryOffset, frameInfoReader, SingleShotFrameInfoQueryResultAllocator, DummyValueInfoAllocator, isFirst)) != null) {
-                            SingleShotFrameInfoQueryResultAllocator.reload();
-                            if (!isFirst) {
-                                log.newline();
-                            }
-                            logFrameRaw(log, sp, ip);
-                            logFrameInfo(log, validResult, accessor.getName(handle));
-                            isFirst = false;
+                        if (!isFirst) {
+                            log.newline();
                         }
+                        logFrameRaw(log, sp, ip);
+                        logFrameInfo(log, validResult, CodeInfoAccess.getName(codeInfo));
+                        isFirst = false;
                     }
                 }
             }
@@ -127,17 +125,17 @@ public class ThreadStackPrinter {
     public static class Stage0StackFrameVisitor implements StackFrameVisitor {
         @RestrictHeapAccess(access = RestrictHeapAccess.Access.NO_ALLOCATION, reason = "Provide allocation-free StackFrameVisitor")
         @Override
-        public boolean visitFrame(Pointer sp, CodePointer ip, CodeInfoAccessor accessor, CodeInfoHandle handle, DeoptimizedFrame deoptFrame) {
+        public boolean visitFrame(Pointer sp, CodePointer ip, CodeInfo codeInfo, DeoptimizedFrame deoptFrame) {
             Log log = Log.log();
-            logFrame(log, sp, ip, accessor, handle, deoptFrame);
+            logFrame(log, sp, ip, codeInfo, deoptFrame);
             log.newline();
             return true;
         }
 
         @SuppressWarnings("unused")
-        protected void logFrame(Log log, Pointer sp, CodePointer ip, CodeInfoAccessor accessor, CodeInfoHandle handle, DeoptimizedFrame deoptFrame) {
+        protected void logFrame(Log log, Pointer sp, CodePointer ip, CodeInfo codeInfo, DeoptimizedFrame deoptFrame) {
             logFrameRaw(log, sp, ip);
-            Log.log().string(" FrameSize ").signed(accessor.lookupTotalFrameSize(handle, accessor.relativeIP(handle, ip)));
+            Log.log().string(" FrameSize ").signed(CodeInfoAccess.lookupTotalFrameSize(codeInfo, CodeInfoAccess.relativeIP(codeInfo, ip)));
         }
 
         protected static void logFrameRaw(Log log, Pointer sp, CodePointer ip) {
@@ -167,14 +165,14 @@ public class ThreadStackPrinter {
         }
 
         @Override
-        protected void logFrame(Log log, Pointer sp, CodePointer ip, CodeInfoAccessor accessor, CodeInfoHandle handle, DeoptimizedFrame deoptFrame) {
+        protected void logFrame(Log log, Pointer sp, CodePointer ip, CodeInfo codeInfo, DeoptimizedFrame deoptFrame) {
             if (deoptFrame != null) {
                 logVirtualFrames(log, sp, ip, deoptFrame);
             } else {
                 logFrameRaw(log, sp, ip);
                 log.spaces(2);
-                accessor.log(handle, log);
-                log.string(" name = ").string(accessor.getName(handle));
+                CodeInfoAccess.log(codeInfo, log);
+                log.string(" name = ").string(CodeInfoAccess.getName(codeInfo));
             }
         }
     }

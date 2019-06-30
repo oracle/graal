@@ -37,8 +37,7 @@ import org.graalvm.word.WordFactory;
 
 import com.oracle.svm.core.annotate.NeverInline;
 import com.oracle.svm.core.annotate.RestrictHeapAccess;
-import com.oracle.svm.core.code.CodeInfoAccessor;
-import com.oracle.svm.core.code.CodeInfoHandle;
+import com.oracle.svm.core.code.CodeInfo;
 import com.oracle.svm.core.code.CodeInfoTable;
 import com.oracle.svm.core.deopt.DeoptimizedFrame;
 import com.oracle.svm.core.heap.NativeImageInfo;
@@ -252,7 +251,7 @@ public class PathExhibitor {
 
         @Override
         @RestrictHeapAccess(access = RestrictHeapAccess.Access.NO_ALLOCATION, reason = "Must not allocate while verifying the heap.")
-        public boolean visitFrame(Pointer sp, CodePointer ip, CodeInfoAccessor accessor, CodeInfoHandle handle, DeoptimizedFrame deoptimizedFrame) {
+        public boolean visitFrame(Pointer sp, CodePointer ip, CodeInfo codeInfo, DeoptimizedFrame deoptimizedFrame) {
             final Log trace = Log.noopLog();
             trace.string("[PathExhibitor.FrameVisitor.visitFrame:").newline();
             trace.string("  sp: ").hex(sp);
@@ -260,7 +259,7 @@ public class PathExhibitor {
             trace.string("  deoptFrame: ").object(deoptimizedFrame);
             trace.newline();
             frameSlotVisitor.initialize(ip, deoptimizedFrame, targetPointer);
-            boolean result = CodeInfoTable.visitObjectReferences(sp, ip, accessor, handle, deoptimizedFrame, frameSlotVisitor);
+            boolean result = CodeInfoTable.visitObjectReferences(sp, ip, codeInfo, deoptimizedFrame, frameSlotVisitor);
             trace.string("  returns: ").bool(result);
             trace.string("]").newline();
             return result;
