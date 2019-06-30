@@ -340,7 +340,6 @@ public class BasicIntrinsicsProvider implements LLVMIntrinsicProvider, ContextEx
         add("@pthread_cond_init", (args, context) -> LLVMPThreadCondIntrinsicsFactory.LLVMPThreadCondInitNodeGen.create(args.get(1), args.get(2), null));
         add("@pthread_cond_broadcast", (args, context) -> LLVMPThreadCondIntrinsicsFactory.LLVMPThreadCondBroadcastNodeGen.create(args.get(1), null));
         add("@pthread_cond_signal", (args, context) -> LLVMPThreadCondIntrinsicsFactory.LLVMPThreadCondSignalNodeGen.create(args.get(1), null));
-        add("@pthread_cond_timedwait", (args, context) -> LLVMPThreadCondIntrinsicsFactory.LLVMPThreadCondTimedwaitNodeGen.create(args.get(1), args.get(2), args.get(3), null));
         add("@pthread_cond_wait", (args, context) -> LLVMPThreadCondIntrinsicsFactory.LLVMPThreadCondWaitNodeGen.create(args.get(1), args.get(2), null));
         add("@pthread_rwlock_destroy", (args, context) -> LLVMPThreadRWLockIntrinsicsFactory.LLVMPThreadRWLockDestroyNodeGen.create(args.get(1), null));
         add("@pthread_rwlock_init", (args, context) -> LLVMPThreadRWLockIntrinsicsFactory.LLVMPThreadRWLockInitNodeGen.create(args.get(1), args.get(2), null));
@@ -349,8 +348,6 @@ public class BasicIntrinsicsProvider implements LLVMIntrinsicProvider, ContextEx
         add("@pthread_rwlock_wrlock", (args, context) -> LLVMPThreadRWLockIntrinsicsFactory.LLVMPThreadRWLockWrlockNodeGen.create(args.get(1), null));
         add("@pthread_rwlock_trywrlock", (args, context) -> LLVMPThreadRWLockIntrinsicsFactory.LLVMPThreadRWLockTrywrlockNodeGen.create(args.get(1), null));
         add("@pthread_rwlock_unlock", (args, context) -> LLVMPThreadRWLockIntrinsicsFactory.LLVMPThreadRWLockUnlockNodeGen.create(args.get(1), null));
-        add("@pthread_rwlock_timedrdlock", (args, context) -> LLVMPThreadRWLockIntrinsicsFactory.LLVMPThreadRWLockTimedrdlockNodeGen.create(args.get(1), args.get(2), null));
-        add("@pthread_rwlock_timedwrlock", (args, context) -> LLVMPThreadRWLockIntrinsicsFactory.LLVMPThreadRWLockTimedwrlockNodeGen.create(args.get(1), args.get(2), null));
 
     }
 

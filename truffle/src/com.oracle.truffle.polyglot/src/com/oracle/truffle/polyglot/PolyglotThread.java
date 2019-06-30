@@ -82,4 +82,5 @@ final class PolyglotThread extends Thread {
     }
 
     private static final AtomicInteger THREAD_INIT_NUMBER = new AtomicInteger(0);
+
 }

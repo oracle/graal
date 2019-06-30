@@ -3,6 +3,8 @@ package com.oracle.truffle.llvm.nodes.intrinsics.multithreading;
 import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.RootCallTarget;
 import com.oracle.truffle.api.Truffle;
+import com.oracle.truffle.api.TruffleLanguage;
+import com.oracle.truffle.api.dsl.CachedContext;
 import com.oracle.truffle.api.dsl.NodeChild;
 import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.frame.FrameSlot;
@@ -10,6 +12,7 @@ import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.api.nodes.ControlFlowException;
 import com.oracle.truffle.api.nodes.RootNode;
 import com.oracle.truffle.llvm.nodes.intrinsics.llvm.LLVMBuiltin;
+import com.oracle.truffle.llvm.runtime.LLVMContext;
 import com.oracle.truffle.llvm.runtime.LLVMLanguage;
 import com.oracle.truffle.llvm.runtime.interop.access.LLVMInteropType;
 import com.oracle.truffle.llvm.runtime.memory.LLVMStack;
@@ -31,31 +34,21 @@ public class LLVMPThreadThreadIntrinsics {
         LLVMStoreNode store = null;
 
         @Specialization
-        protected int doIntrinsic(VirtualFrame frame, Object thread, Object attr, Object startRoutine, Object arg) {
+        //+++ @CompilerDirectives.TruffleBoundary
+        protected int doIntrinsic(VirtualFrame frame, Object thread, Object attr, Object startRoutine, Object arg, @CachedContext(LLVMLanguage.class) TruffleLanguage.ContextReference<LLVMContext> ctxRef) {
             // create store node
             if (store == null) {
                 CompilerDirectives.transferToInterpreterAndInvalidate();
-                store = LLVMLanguage.getLLVMContextReference().get().getNodeFactory().createStoreNode(LLVMInteropType.ValueKind.I64);
+                store = ctxRef.get().getNodeFactory().createStoreNode(LLVMInteropType.ValueKind.I64);
             }
 
             // create thread for execution of function
-            Thread t = LLVMLanguage.getLLVMContextReference().get().getEnv().createThread(() -> {
-                CompilerDirectives.transferToInterpreter();
-                // RootCallTarget callTarget = Truffle.getRuntime().createCallTarget(new RunNewThreadNode(getLLVMLanguage()));
-                RootCallTarget callTarget = Truffle.getRuntime().createCallTarget(new RunNewThreadNode(LLVMLanguage.getLanguage()));
-
-                // pthread_exit throws a control flow exception to stop the thread
-                try {
-                    callTarget.call(startRoutine, arg);
-                } catch (ControlFlowException e) {
-
-                }
-            });
+            Thread t = ctxRef.get().getEnv().createThread(new InitStartOfNewThread(startRoutine, arg, ctxRef));
             // store cur id in thread var
             store.executeWithTarget(thread, t.getId());
 
             // store thread with thread id in context
-            LLVMLanguage.getLLVMContextReference().get().threadStorage.put(t.getId(), t);
+            ctxRef.get().threadStorage.put(t.getId(), t);
             // start thread
             t.start();
 
@@ -63,8 +56,33 @@ public class LLVMPThreadThreadIntrinsics {
         }
     }
 
+    static class InitStartOfNewThread implements Runnable {
+        private Object startRoutine;
+        private Object arg;
+        private TruffleLanguage.ContextReference<LLVMContext> ctxRef;
+
+        public InitStartOfNewThread(Object startRoutine, Object arg, TruffleLanguage.ContextReference<LLVMContext> ctxRef) {
+            this.startRoutine = startRoutine;
+            this.arg = arg;
+            this.ctxRef = ctxRef;
+        }
+
+        @Override
+        public void run() {
+            if (ctxRef.get().pthreadCallTarget == null) {
+                ctxRef.get().pthreadCallTarget = Truffle.getRuntime().createCallTarget(new RunNewThreadNode(LLVMLanguage.getLanguage()));
+            }
+            // pthread_exit throws a control flow exception to stop the thread
+            try {
+                ctxRef.get().pthreadCallTarget.call(startRoutine, arg);
+            } catch (PThreadExitException e) {
+
+            }
+        }
+    }
+
     static final class MyArgNode extends LLVMExpressionNode {
-        private FrameSlot slot;
+        private final FrameSlot slot;
 
         private MyArgNode(FrameSlot slot) {
             this.slot = slot;
@@ -75,6 +93,8 @@ public class LLVMPThreadThreadIntrinsics {
             return frame.getValue(slot);
         }
     }
+
+
 
     private static class RunNewThreadNode extends RootNode {
         @Child
@@ -132,11 +152,12 @@ public class LLVMPThreadThreadIntrinsics {
     @NodeChild(type = LLVMExpressionNode.class, value = "retval")
     public abstract static class LLVMPThreadExit extends LLVMBuiltin {
         @Specialization
-        protected int doIntrinsic(VirtualFrame frame, Object retval) {
+        //+++ @CompilerDirectives.TruffleBoundary
+        protected int doIntrinsic(VirtualFrame frame, Object retval, @CachedContext(LLVMLanguage.class) TruffleLanguage.ContextReference<LLVMContext> ctxRef) {
             // save return value in context for join calls
-            LLVMLanguage.getLLVMContextReference().get().retValStorage.put(Thread.currentThread().getId(), retval);
+            ctxRef.get().retValStorage.put(Thread.currentThread().getId(), retval);
             // stop this thread
-            throw new ControlFlowException();
+            throw new PThreadExitException();
         }
     }
 
@@ -146,15 +167,16 @@ public class LLVMPThreadThreadIntrinsics {
         @Child LLVMStoreNode storeNode;
 
         @Specialization
-        protected int doIntrinsic(VirtualFrame frame, Object th, Object threadReturn) {
+        //+++ @CompilerDirectives.TruffleBoundary
+        protected int doIntrinsic(VirtualFrame frame, long th, Object threadReturn, @CachedContext(LLVMLanguage.class) TruffleLanguage.ContextReference<LLVMContext> ctxRef) {
             if (storeNode == null) {
                 CompilerDirectives.transferToInterpreterAndInvalidate();
-                storeNode = LLVMLanguage.getLLVMContextReference().get().getNodeFactory().createStoreNode(LLVMInteropType.ValueKind.POINTER);
+                storeNode = ctxRef.get().getNodeFactory().createStoreNode(LLVMInteropType.ValueKind.POINTER);
             }
-            long thLong = (long) th;
+
             try {
                 // join thread
-                Thread thread = (Thread) LLVMLanguage.getLLVMContextReference().get().threadStorage.get(thLong);
+                Thread thread = ctxRef.get().threadStorage.get(th);
                 if (thread == null) {
                     // TODO: error code handling
                     return 5;
@@ -162,7 +184,7 @@ public class LLVMPThreadThreadIntrinsics {
                 thread.join();
 
                 // get return value
-                Object retVal = LLVMLanguage.getLLVMContextReference().get().retValStorage.get(thLong);
+                Object retVal = ctxRef.get().retValStorage.get(th);
 
                 // store return value at ptr
                 // TODO: checkstyle says cast to managed or native pointer
@@ -181,8 +203,8 @@ public class LLVMPThreadThreadIntrinsics {
     @NodeChild(type = LLVMExpressionNode.class, value = "t2")
     public abstract static class LLVMPThreadEqual extends LLVMBuiltin {
         @Specialization
-        protected int doIntrinsic(VirtualFrame frame, Object t1, Object t2) {
-            return (long) t1 == (long) t2 ? 0 : 1;
+        protected int doIntrinsic(VirtualFrame frame, long t1, long t2) {
+            return t1 == t2 ? 0 : 1;
         }
     }
 

@@ -47,7 +47,7 @@ import org.junit.runners.Parameterized.Parameter;
 import org.junit.runners.Parameterized.Parameters;
 
 @RunWith(Parameterized.class)
-public final class TypeCheckTest extends InteropTestBase {
+public final class MutexTypeCheckTest extends InteropTestBase {
 
     private static Value checkTypes;
 

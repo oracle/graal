@@ -48,7 +48,7 @@ import com.oracle.truffle.api.library.ExportMessage;
 import com.oracle.truffle.llvm.spi.NativeTypeLibrary;
 import com.oracle.truffle.llvm.test.interop.values.ArrayObject;
 
-public class DynamicTypeCastInteropTest extends InteropTestBase {
+public class DynamicMutexTypeCastInteropTest extends InteropTestBase {
 
     private static TruffleObject testLibraryInternal;
     private static Value testLibrary;

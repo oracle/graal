@@ -90,12 +90,12 @@ import com.oracle.truffle.llvm.runtime.types.Type;
 
 public final class LLVMContext {
     // my code start
-    // is object ok here?
-    public final ConcurrentMap<Long, Object> condStorage;
-    public final ConcurrentMap<Long, Object> mutexStorage;
-    public final ConcurrentMap<Long, Object> rwlockStorage;
+    public final ConcurrentMap<Object, Object> condStorage;
+    public final ConcurrentMap<Object, Object> mutexStorage;
+    public final ConcurrentMap<Object, Object> rwlockStorage;
     public final ConcurrentMap<Long, Object> retValStorage;
-    public final ConcurrentMap<Long, Object> threadStorage;
+    public final ConcurrentMap<Long, Thread> threadStorage;
+    public CallTarget pthreadCallTarget = null;
     // my code end
 
     private final List<Path> libraryPaths = new ArrayList<>();
