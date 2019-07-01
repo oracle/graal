@@ -40,18 +40,22 @@
  */
 package com.oracle.truffle.api.interop;
 
+import static com.oracle.truffle.api.interop.AssertUtils.preCondition;
+import static com.oracle.truffle.api.interop.AssertUtils.validArgument;
+import static com.oracle.truffle.api.interop.AssertUtils.validArguments;
+import static com.oracle.truffle.api.interop.AssertUtils.validReturn;
+import static com.oracle.truffle.api.interop.AssertUtils.violationInvariant;
+import static com.oracle.truffle.api.interop.AssertUtils.violationPost;
+
 import java.time.Duration;
 import java.time.Instant;
 import java.time.LocalDate;
-import java.time.LocalDateTime;
 import java.time.LocalTime;
-import java.time.OffsetTime;
 import java.time.ZoneId;
 import java.time.ZonedDateTime;
 
 import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
-import com.oracle.truffle.api.TruffleLanguage;
 import com.oracle.truffle.api.impl.Accessor.EngineSupport;
 import com.oracle.truffle.api.interop.InteropLibrary.Asserts;
 import com.oracle.truffle.api.library.ExportLibrary;
@@ -62,13 +66,6 @@ import com.oracle.truffle.api.library.Library;
 import com.oracle.truffle.api.library.LibraryFactory;
 import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.api.nodes.RootNode;
-
-import static com.oracle.truffle.api.interop.AssertUtils.preCondition;
-import static com.oracle.truffle.api.interop.AssertUtils.validArgument;
-import static com.oracle.truffle.api.interop.AssertUtils.validArguments;
-import static com.oracle.truffle.api.interop.AssertUtils.validReturn;
-import static com.oracle.truffle.api.interop.AssertUtils.violationInvariant;
-import static com.oracle.truffle.api.interop.AssertUtils.violationPost;
 
 /**
  * Represents the library that specifies the interoperability message protocol between Truffle
@@ -151,8 +148,6 @@ import static com.oracle.truffle.api.interop.AssertUtils.violationPost;
 @DefaultExport(DefaultTruffleObjectExports.class)
 @SuppressWarnings("unused")
 public abstract class InteropLibrary extends Library {
-
-    private static final ZoneId UTC = ZoneId.of("UTC");
 
     /**
      * @since 19.0
@@ -991,7 +986,7 @@ public abstract class InteropLibrary extends Library {
      * ZoneId zone = getTimeZone(receiver);
      * LocalDate date = getDate(receiver);
      * LocalTime time = getTime(receiver);
-     * assert ZonedDateTime.of(date, time, zone).equals(getInstant(receiver));
+     * assert ZonedDateTime.of(date, time, zone).toInstant().equals(getInstant(receiver));
      * </pre>
      *
      * @see #isDate(Object)
@@ -2015,5 +2010,4 @@ public abstract class InteropLibrary extends Library {
         }
 
     }
-
 }

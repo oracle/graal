@@ -1110,7 +1110,7 @@ public final class Value {
      * ZoneId zone = getTimeZone(receiver);
      * LocalDate date = getDate(receiver);
      * LocalTime time = getTime(receiver);
-     * assert ZonedDateTime.of(date, time, zone).equals(getInstant(receiver));
+     * assert ZonedDateTime.of(date, time, zone).toInstant().equals(getInstant(receiver));
      * </pre>
      *
      * @throws ClassCastException if polyglot value could not be mapped to the target type.

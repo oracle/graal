@@ -4,6 +4,8 @@ This changelog summarizes major changes between Truffle versions relevant to lan
 
 ## Version 19.2.0
 * Added sub-process output (error output) [redirection into OutputStream](https://www.graalvm.org/truffle/javadoc/org/graalvm/polyglot/io/ProcessHandler.Redirect.html#stream-java.io.OutputStream-).
+* Added methods to identify date, time, timezone, instant and duration values in `InteropLibrary` and TCK `TypeDescriptor`.
+* Added ability to read the default time zone from the language Environment with `Env.getTimeZone()`.
 
 ## Version 19.1.0
 * `@GenerateUncached` is now inherited by subclasses.
@@ -13,9 +15,6 @@ This changelog summarizes major changes between Truffle versions relevant to lan
 * `NodeFactory` now supports `getUncachedInstance` that returns the uncached singleton. 
 * `@GenerateUncached` can now be used in combination with `@NodeChild` if execute signatures for all arguments are present.
 * Removed deprecated automatic registration of the language class as a service.
-* Added methods to identify date, time, timezone, instant and duration values in `InteropLibrary` and TCK `TypeDescriptor.
-
-## Version 20.0.0 Beta 1
 * The [LanguageProvider](https://www.graalvm.org/truffle/javadoc/org/graalvm/polyglot/tck/LanguageProvider.html#createIdentityFunctionSnippet-org.graalvm.polyglot.Context-) can override the default verfication of the TCK `IdentityFunctionTest`.
 * Removed deprecated and misspelled method `TruffleStackTrace#getStacktrace`.
 * Removed deprecated methods`TruffleStackTraceElement#getStackTrace` and `TruffleStackTraceElement#fillIn` (use methods of `TruffleStackTrace` instead).
