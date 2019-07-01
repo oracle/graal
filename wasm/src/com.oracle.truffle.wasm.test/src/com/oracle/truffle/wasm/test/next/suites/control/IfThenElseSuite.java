@@ -42,7 +42,7 @@ import com.oracle.truffle.wasm.test.next.options.WasmTestOptions;
 public class IfThenElseSuite extends WasmSuiteBase {
     @Override
     protected Path testDirectory() {
-        return Paths.get(WasmTestOptions.TEST_SOURCE_PATH, "IfThenElse");
+        return Paths.get(WasmTestOptions.TEST_SOURCE_PATH, "if-then-else");
     }
 
     @Test

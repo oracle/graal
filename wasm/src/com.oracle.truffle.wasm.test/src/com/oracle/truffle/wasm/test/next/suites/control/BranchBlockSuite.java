@@ -42,7 +42,7 @@ import com.oracle.truffle.wasm.test.next.options.WasmTestOptions;
 public class BranchBlockSuite extends WasmSuiteBase {
     @Override
     protected Path testDirectory() {
-        return Paths.get(WasmTestOptions.TEST_SOURCE_PATH, "BranchBlock");
+        return Paths.get(WasmTestOptions.TEST_SOURCE_PATH, "branch-block");
     }
 
     @Test

@@ -41,7 +41,7 @@ import com.oracle.truffle.wasm.test.next.options.WasmTestOptions;
 public class SimpleBlockSuite extends WasmSuiteBase {
     @Override
     protected Path testDirectory() {
-        return Paths.get(WasmTestOptions.TEST_SOURCE_PATH, "SimpleBlock");
+        return Paths.get(WasmTestOptions.TEST_SOURCE_PATH, "simple-block");
     }
 
     @Test

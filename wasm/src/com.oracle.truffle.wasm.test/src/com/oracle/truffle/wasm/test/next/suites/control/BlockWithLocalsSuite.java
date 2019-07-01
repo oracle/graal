@@ -43,7 +43,7 @@ import com.oracle.truffle.wasm.test.next.options.WasmTestOptions;
 public class BlockWithLocalsSuite extends WasmSuiteBase {
     @Override
     protected Path testDirectory() {
-        return Paths.get(WasmTestOptions.TEST_SOURCE_PATH, "BlockWithLocals");
+        return Paths.get(WasmTestOptions.TEST_SOURCE_PATH, "block-with-locals");
     }
 
     @Test
