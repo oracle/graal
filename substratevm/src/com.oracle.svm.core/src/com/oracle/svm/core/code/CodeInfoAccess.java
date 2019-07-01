@@ -74,7 +74,7 @@ public final class CodeInfoAccess {
 
     @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
     public static Object acquireTether(CodeInfo info) {
-        Object tether = getObjectField(info, 0);
+        Object tether = getObjectField(info, CodeInfo.TETHER_OBJFIELD);
         /*
          * Do not interact with the tether object during VM ops, it could be during GC while the
          * reference is not safe to access (e.g. forwarded). Tethering is not needed then, either.
@@ -85,13 +85,13 @@ public final class CodeInfoAccess {
 
     @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
     public static boolean isTethered(CodeInfo info) {
-        return !haveAssertions() || VMOperation.isInProgress() || ((UninterruptibleUtils.AtomicInteger) getObjectField(info, 0)).get() > 0;
+        return !haveAssertions() || VMOperation.isInProgress() || ((UninterruptibleUtils.AtomicInteger) getObjectField(info, CodeInfo.TETHER_OBJFIELD)).get() > 0;
     }
 
     @NeverInline("Prevent elimination of object reference in caller.")
     @Uninterruptible(reason = "Called from uninterruptible code.")
     public static void releaseTether(CodeInfo info, Object tether) {
-        assert tether == getObjectField(info, 0) || getObjectField(info, 0) == null;
+        assert tether == getObjectField(info, CodeInfo.TETHER_OBJFIELD) || getObjectField(info, CodeInfo.TETHER_OBJFIELD) == null;
         assert VMOperation.isInProgress() || ((UninterruptibleUtils.AtomicInteger) tether).getAndDecrement() > 0;
     }
 
@@ -162,7 +162,7 @@ public final class CodeInfoAccess {
     }
 
     public static String getName(CodeInfo info) {
-        return getObjectField(info, 1);
+        return getObjectField(info, CodeInfo.NAME_OBJFIELD);
     }
 
     public static long lookupDeoptimizationEntrypoint(CodeInfo info, long method, long encodedBci, CodeInfoQueryResult codeInfo) {

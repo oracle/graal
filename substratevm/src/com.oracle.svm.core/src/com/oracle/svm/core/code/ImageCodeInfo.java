@@ -78,9 +78,9 @@ public class ImageCodeInfo {
         CodeInfo info = NonmovableArrays.addressOf(NonmovableArrays.fromImageHeap(runtimeCodeInfoData), 0);
         assert info.getCodeStart().isNull() : "already initialized";
 
-        NonmovableObjectArray<Object> objectFields = NonmovableArrays.createObjectArray(4);
-        NonmovableArrays.setObject(objectFields, 0, tether);
-        NonmovableArrays.setObject(objectFields, 1, CODE_INFO_NAME);
+        NonmovableObjectArray<Object> objectFields = NonmovableArrays.createObjectArray(CodeInfo.OBJFIELDS_COUNT);
+        NonmovableArrays.setObject(objectFields, CodeInfo.TETHER_OBJFIELD, tether);
+        NonmovableArrays.setObject(objectFields, CodeInfo.NAME_OBJFIELD, CODE_INFO_NAME);
         // no InstalledCode or observer handles for image code
         info.setObjectFields(objectFields);
 

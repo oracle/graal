@@ -24,6 +24,8 @@
  */
 package com.oracle.svm.core.code;
 
+import java.lang.ref.WeakReference;
+
 import org.graalvm.nativeimage.c.function.CodePointer;
 import org.graalvm.nativeimage.c.struct.RawField;
 import org.graalvm.nativeimage.c.struct.RawStructure;
@@ -32,31 +34,55 @@ import org.graalvm.word.UnsignedWord;
 
 import com.oracle.svm.core.c.NonmovableArray;
 import com.oracle.svm.core.c.NonmovableObjectArray;
+import com.oracle.svm.core.code.InstalledCodeObserver.InstalledCodeObserverHandle;
+import com.oracle.svm.core.deopt.SubstrateInstalledCode;
 
 import jdk.vm.ci.code.InstalledCode;
 
 @RawStructure
 public interface CodeInfo extends PointerBase {
     /**
+     * Index of element in {@link #getObjectFields}: a "tether" object for which a {@code Cleaner}
+     * object is registered. Once the tether object is no longer referenced from anywhere, the
+     * cleaner will release the memory of this {@link CodeInfo} during garbage collection. This
+     * reference field is set to {@code null} on code invalidation. At that point, the tether object
+     * can still be {@linkplain CodeInfoAccess#acquireTether referenced} from stack walks or other
+     * code to keep the code information alive (prevent the cleaner from running) until it is no
+     * longer needed.
+     */
+    int TETHER_OBJFIELD = 0;
+
+    /**
+     * Index of element of type {@link String} in {@link #getObjectFields}: the
+     * {@linkplain InstalledCode#getName() name of the InstalledCode}. Stored here * so it remains
+     * available even after the code is no longer available. Note that the String is * not pinned,
+     * so this field must not be accessed during garbage collection.
+     */
+    int NAME_OBJFIELD = TETHER_OBJFIELD + 1;
+
+    /**
+     * Index of element of type {@link WeakReference} to {@link SubstrateInstalledCode} in
+     * {@link #getObjectFields}: The handle to the compiled code for the outside world. We only have
+     * a weak reference to it, to avoid keeping code alive. Note that the both the InstalledCode and
+     * the weak reference are not pinned, so this field must not be accessed during garbage
+     * collection.
+     */
+    int INSTALLEDCODE_OBJFIELD = NAME_OBJFIELD + 1;
+
+    /**
+     * Index of element of type {@link InstalledCodeObserverHandle}[] in {@link #getObjectFields}:
+     * observers for installation and removal of this code.
+     */
+    int OBSERVERS_OBJFIELD = INSTALLEDCODE_OBJFIELD + 1;
+
+    /** The size of the array in {@link #getObjectFields}. */
+    int OBJFIELDS_COUNT = OBSERVERS_OBJFIELD + 1;
+
+    /**
      * The object "fields" of this structure, managed as an array for simplicity.
      *
-     * [0] Object: a "tether" object for which a {@code Cleaner} object is registered. Once the
-     * tether object is no longer referenced from anywhere, the cleaner will release the memory of
-     * this {@link CodeInfo} during garbage collection. This reference field is set to {@code null}
-     * on code invalidation. At that point, the tether object can still be
-     * {@linkplain CodeInfoAccess#acquireTether referenced} from stack walks or other code to keep
-     * the code information alive (prevent the cleaner from running) until it is no longer needed.
-     *
-     * [1] String: The {@linkplain InstalledCode#getName() name of the InstalledCode}. Stored here
-     * so it remains available even after the code is no longer available. Note that the String is
-     * not pinned, so this field must not be accessed during garbage collection.
-     *
-     * [2] WeakReference<SubstrateInstalledCode>: The handle to the compiled code for the outside
-     * world. We only have a weak reference to it, to avoid keeping code alive. Note that the both
-     * the InstalledCode and the weak reference are not pinned, so this field must not be accessed
-     * during garbage collection.
-     *
-     * [3] InstalledCodeObserverHandle[]: observers for installation and removal of this code.
+     * @see #TETHER_OBJFIELD
+     * @see #OBJFIELDS_COUNT
      */
     @RawField
     void setObjectFields(NonmovableObjectArray<Object> fields);

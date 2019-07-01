@@ -60,11 +60,11 @@ public final class RuntimeMethodInfoAccess {
     }
 
     static SubstrateInstalledCode getInstalledCode(CodeInfo info) {
-        return CodeInfoAccess.<WeakReference<SubstrateInstalledCode>> getObjectField(info, 2).get();
+        return CodeInfoAccess.<WeakReference<SubstrateInstalledCode>> getObjectField(info, CodeInfo.INSTALLEDCODE_OBJFIELD).get();
     }
 
     static InstalledCodeObserverHandle[] getCodeObserverHandles(CodeInfo info) {
-        return CodeInfoAccess.getObjectField(info, 3);
+        return CodeInfoAccess.getObjectField(info, CodeInfo.OBSERVERS_OBJFIELD);
     }
 
     public static void setCodeLocation(CodeInfo info, Pointer start, int size) {
@@ -94,9 +94,9 @@ public final class RuntimeMethodInfoAccess {
     public static void setData(CodeInfo info, SubstrateInstalledCode installedCode, int tier, InstalledCodeObserverHandle[] codeObserverHandles) {
         assert codeObserverHandles != null;
         NonmovableObjectArray<Object> objectFields = info.getObjectFields();
-        NonmovableArrays.setObject(objectFields, 1, installedCode.getName());
-        NonmovableArrays.setObject(objectFields, 2, new WeakReference<>(installedCode));
-        NonmovableArrays.setObject(objectFields, 3, codeObserverHandles);
+        NonmovableArrays.setObject(objectFields, CodeInfo.NAME_OBJFIELD, installedCode.getName());
+        NonmovableArrays.setObject(objectFields, CodeInfo.INSTALLEDCODE_OBJFIELD, new WeakReference<>(installedCode));
+        NonmovableArrays.setObject(objectFields, CodeInfo.OBSERVERS_OBJFIELD, codeObserverHandles);
         info.setTier(tier);
     }
 
@@ -116,9 +116,9 @@ public final class RuntimeMethodInfoAccess {
     public static CodeInfo allocateMethodInfo() {
         CodeInfo info = ImageSingletons.lookup(UnmanagedMemorySupport.class).calloc(WordFactory.unsigned(SizeOf.get(CodeInfo.class)));
         UnmanagedReferenceWalkers.singleton().register(REFERENCE_WALKER, info);
-        NonmovableObjectArray<Object> objectFields = NonmovableArrays.createObjectArray(4);
+        NonmovableObjectArray<Object> objectFields = NonmovableArrays.createObjectArray(CodeInfo.OBJFIELDS_COUNT);
         Object obj = CodeInfoAccess.haveAssertions() ? new UninterruptibleUtils.AtomicInteger(0) : new Object();
-        NonmovableArrays.setObject(objectFields, 0, obj);
+        NonmovableArrays.setObject(objectFields, CodeInfo.TETHER_OBJFIELD, obj);
         info.setObjectFields(objectFields);
         createCleaner(info, obj);
         return info;
@@ -160,7 +160,7 @@ public final class RuntimeMethodInfoAccess {
     }
 
     static void releaseInstalledCodeAndTether(CodeInfo info) {
-        assert NonmovableArrays.getObject(info.getObjectFields(), 0) != null : "already released";
+        assert NonmovableArrays.getObject(info.getObjectFields(), CodeInfo.TETHER_OBJFIELD) != null : "already released";
 
         info.setCodeConstantsLive(false);
         releaseInstalledCode(info);
@@ -169,7 +169,7 @@ public final class RuntimeMethodInfoAccess {
          * Set our reference to the tether object to null so that the Cleaner object can free our
          * memory as soon as any other references, e.g. from ongoing stack walks, are gone.
          */
-        NonmovableArrays.setObject(info.getObjectFields(), 0, null);
+        NonmovableArrays.setObject(info.getObjectFields(), CodeInfo.TETHER_OBJFIELD, null);
     }
 
     private static void releaseInstalledCode(CodeInfo codeInfo) {
