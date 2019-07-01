@@ -177,11 +177,12 @@ public final class IntegerSwitchNode extends SwitchNode implements LIRLowerable,
         return false;
     }
 
-    private void mergeIn(List<KeyData> keyData, List<AbstractBeginNode> newSuccessors, double[] cumulative) {
+    private void mergeIn(List<KeyData> keyData, List<AbstractBeginNode> newSuccessors, double[] cumulative, List<AbstractBeginNode> unreachable) {
         for (int i = 0; i < keyCount(); i++) {
             int key = keys[i];
             if (isDuplicateKey(key, keyData)) {
-                // Unreachable key.
+                // Unreachable key: kill it manually at the end
+                unreachable.add(keySuccessor(i));
                 return;
             }
             double keyProbability = cumulative[0] * keyProbability(i);
@@ -205,6 +206,7 @@ public final class IntegerSwitchNode extends SwitchNode implements LIRLowerable,
         ValueNode switchValue = value();
         List<KeyData> newKeyData = new ArrayList<>();
         List<AbstractBeginNode> newSuccessors = new ArrayList<>();
+        List<AbstractBeginNode> unreachable = new ArrayList<>();
 
         Node iteratingSwitch = this;
         IntegerSwitchNode topSwitchNode = this;
@@ -225,7 +227,7 @@ public final class IntegerSwitchNode extends SwitchNode implements LIRLowerable,
         // Go down and merge
         while (iteratingSwitch instanceof IntegerSwitchNode && canMerge((IntegerSwitchNode) iteratingSwitch, switchValue)) {
             lastSwitch = (IntegerSwitchNode) iteratingSwitch;
-            lastSwitch.mergeIn(newKeyData, newSuccessors, cumulative);
+            lastSwitch.mergeIn(newKeyData, newSuccessors, cumulative, unreachable);
             iteratingSwitch = lastSwitch.defaultSuccessor().next();
         }
         if (topSwitchNode == lastSwitch) {
@@ -283,6 +285,9 @@ public final class IntegerSwitchNode extends SwitchNode implements LIRLowerable,
         }
 
         GraphUtil.killCFG(topSwitchNode);
+        for (AbstractBeginNode duplicate : unreachable) {
+            GraphUtil.killCFG(duplicate);
+        }
 
         return true;
     }

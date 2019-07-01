@@ -463,7 +463,7 @@ public final class IfNode extends ControlSplitNode implements Simplifiable, LIRL
     }
 
     private static boolean maybeIsInSwitch(LogicNode condition) {
-        return condition instanceof IntegerEqualsNode && ((IntegerEqualsNode) condition).getY().isConstant();
+        return condition instanceof IntegerEqualsNode && ((IntegerEqualsNode) condition).getY().isJavaConstant();
     }
 
     private static boolean sameSwitchValue(LogicNode condition, ValueNode switchValue) {
@@ -471,17 +471,15 @@ public final class IfNode extends ControlSplitNode implements Simplifiable, LIRL
     }
 
     private static Node getParentSwitchNode(Node node, ValueNode switchValue) {
-        Node temp = node.predecessor();
-        if (temp instanceof AbstractBeginNode) {
-            temp = temp.predecessor();
-            if (temp instanceof IfNode) {
-                IfNode potentialResult = (IfNode) temp;
+        if (node.predecessor() instanceof AbstractBeginNode) {
+            if (node.predecessor().predecessor() instanceof IfNode) {
+                IfNode potentialResult = (IfNode) node.predecessor().predecessor();
                 if (maybeIsInSwitch(potentialResult.condition()) && sameSwitchValue(potentialResult.condition(), switchValue)) {
                     return potentialResult;
                 }
             }
-        } else if (temp instanceof FixedGuardNode) {
-            FixedGuardNode potentialResult = (FixedGuardNode) temp;
+        } else if (node.predecessor() instanceof FixedGuardNode) {
+            FixedGuardNode potentialResult = (FixedGuardNode) node.predecessor();
             if (maybeIsInSwitch(potentialResult.condition()) && sameSwitchValue(potentialResult.condition(), switchValue)) {
                 return potentialResult;
             }
@@ -514,19 +512,21 @@ public final class IfNode extends ControlSplitNode implements Simplifiable, LIRL
         return null;
     }
 
-    private static boolean updateSwitchData(Node node, List<KeyData> keyData, List<AbstractBeginNode> successors, double[] cumulative) {
+    private static boolean updateSwitchData(Node node, List<KeyData> keyData, List<AbstractBeginNode> successors, double[] cumulative, List<AbstractBeginNode> duplicates) {
         if (node instanceof IfNode) {
             IfNode ifnode = (IfNode) node;
-            double keyProbability = ifnode.getTrueSuccessorProbability() * cumulative[0];
-            cumulative[0] *= 1.0d - ifnode.getTrueSuccessorProbability();
             long key = ((IntegerEqualsNode) ifnode.condition()).getY().asJavaConstant().asLong();
             if (!isValidKey(key)) {
                 return false;
             }
             if (isDuplicateKey((int) key, keyData)) {
-                // Unreachable
+                // Unreachable: will be manually killed.
+                duplicates.add(ifnode.trueSuccessor());
                 return true;
             }
+            double keyProbability = ifnode.getTrueSuccessorProbability() * cumulative[0];
+            cumulative[0] *= 1.0d - ifnode.getTrueSuccessorProbability();
+
             keyData.add(new KeyData((int) key, keyProbability, successors.size()));
             successors.add(ifnode.trueSuccessor());
             return true;
@@ -538,18 +538,20 @@ public final class IfNode extends ControlSplitNode implements Simplifiable, LIRL
                 return false;
             }
             if (isDuplicateKey((int) key, keyData)) {
-                // Unreachable
+                // Unreachable.
                 return true;
             }
             keyData.add(new KeyData((int) key, keyProbability, successors.size()));
             DeoptimizeNode deopt = new DeoptimizeNode(guardNode.getAction(), guardNode.getReason(), guardNode.getSpeculation());
             deopt.setNodeSourcePosition(guardNode.getNodeSourcePosition());
-            node.graph().add(deopt);
-            AbstractBeginNode begin = BeginNode.begin(deopt);
+            AbstractBeginNode begin = new BeginNode();
+            // Link the two nodes, but do not add them to the graph yet, so we do not need to remove
+            // them on an abort.
+            begin.next = deopt;
             successors.add(begin);
             return true;
         }
-        return false; // Should never happen
+        throw GraalError.shouldNotReachHere();
     }
 
     private static void cutOffIfNode(Node node) {
@@ -600,15 +602,6 @@ public final class IfNode extends ControlSplitNode implements Simplifiable, LIRL
         }
     }
 
-    private static void abortSwitchOpt(List<AbstractBeginNode> successors) {
-        for (AbstractBeginNode begin : successors) {
-            if (begin.predecessor() == null) {
-                // newly spawned node
-                GraphUtil.killCFG(begin);
-            }
-        }
-    }
-
     /**
      * Transforms a cascade of ifs into a switch.
      */
@@ -633,6 +626,7 @@ public final class IfNode extends ControlSplitNode implements Simplifiable, LIRL
             }
             List<KeyData> keyData = new ArrayList<>();
             List<AbstractBeginNode> successors = new ArrayList<>();
+            List<AbstractBeginNode> unreachable = new ArrayList<>();
 
             iteratingNode = topMostSwitchNode;
             Node lowestSwitchNode = topMostSwitchNode;
@@ -641,15 +635,13 @@ public final class IfNode extends ControlSplitNode implements Simplifiable, LIRL
             // Go down the if cascade
             while (iteratingNode != null) {
                 lowestSwitchNode = iteratingNode;
-                if (!updateSwitchData(iteratingNode, keyData, successors, cumulative)) {
-                    abortSwitchOpt(successors);
+                if (!updateSwitchData(iteratingNode, keyData, successors, cumulative, unreachable)) {
                     return false;
                 }
                 iteratingNode = getChildSwitchNode(iteratingNode, switchValue);
             }
 
             if (keyData.size() < 4) {
-                abortSwitchOpt(successors);
                 return false;
             }
 
@@ -679,7 +671,6 @@ public final class IfNode extends ControlSplitNode implements Simplifiable, LIRL
             }
             if (lowestSwitchNode instanceof FixedGuardNode) {
                 FixedNode defaultNode = ((FixedGuardNode) lowestSwitchNode).next();
-                lowestSwitchNode.clearSuccessors();
                 successors.add(BeginNode.begin(defaultNode));
             }
 
@@ -708,10 +699,18 @@ public final class IfNode extends ControlSplitNode implements Simplifiable, LIRL
 
             int pos = 0;
             for (AbstractBeginNode begin : successors) {
+                if (!begin.isAlive()) {
+                    graph().add(begin.next);
+                    graph().add(begin);
+                    begin.setNext(begin.next);
+                }
                 toInsert.setBlockSuccessor(pos++, begin);
             }
 
             GraphUtil.killCFG((FixedNode) topMostSwitchNode);
+            for (AbstractBeginNode duplicate : unreachable) {
+                GraphUtil.killCFG(duplicate);
+            }
 
             tool.addToWorkList(toInsert);
             return true;
