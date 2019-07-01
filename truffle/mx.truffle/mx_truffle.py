@@ -459,7 +459,7 @@ def _execute_debugger_test(testFilter, logFile, testEvaluation=False, unitTestOp
     args = args + testFilter
     unittest(args)
 
-def execute_tck(graalvm_home, mode='default', language_filter=None, values_filter=None, tests_filter=None, vm_args=[]):
+def execute_tck(graalvm_home, mode='default', language_filter=None, values_filter=None, tests_filter=None, vm_args=None):
     """
     Executes Truffle TCK with all TCK providers reachable from the primary suite and all languages installed in the given GraalVM.
 

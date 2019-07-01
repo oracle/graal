@@ -1,3 +1,43 @@
+#
+# Copyright (c) 2019, Oracle and/or its affiliates. All rights reserved.
+# DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
+#
+# The Universal Permissive License (UPL), Version 1.0
+#
+# Subject to the condition set forth below, permission is hereby granted to any
+# person obtaining a copy of this software, associated documentation and/or
+# data (collectively the "Software"), free of charge and under any and all
+# copyright rights in the Software, and any and all patent rights owned or
+# freely licensable by each licensor hereunder covering either (i) the
+# unmodified Software as contributed to or provided by such licensor, or (ii)
+# the Larger Works (as defined below), to deal in both
+#
+# (a) the Software, and
+#
+# (b) any piece of software and/or hardware listed in the lrgrwrks.txt file if
+# one is included with the Software each a "Larger Work" to which the Software
+# is contributed by such licensors),
+#
+# without restriction, including without limitation the rights to copy, create
+# derivative works of, display, perform, and distribute the Software and make,
+# use, sell, offer for sale, import, export, have made, and have sold the
+# Software and the Larger Work(s), and to sublicense the foregoing rights on
+# either these or other terms.
+#
+# This license is subject to the following condition:
+#
+# The above copyright notice and either this complete permission notice or at a
+# minimum a reference to the UPL must be included in all copies or substantial
+# portions of the Software.
+#
+# THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+# IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+# FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+# AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+# LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+# OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
+# SOFTWARE.
+#
 import argparse
 import os
 import os.path
@@ -8,6 +48,7 @@ import zipfile
 
 class Abort(RuntimeError):
     def __init__(self, message, retCode=-1):
+        RuntimeError.__init__(self)
         self.message = message
         self.retCode = retCode
 
@@ -23,9 +64,9 @@ class Mode:
     _default = None
     _compile = None
 
-    def __init__(self, name, vm_args=[]):
+    def __init__(self, name, vm_args=None):
         self.name = name
-        self.vm_args = vm_args
+        self.vm_args = vm_args if vm_args else []
 
     def __str__(self):
         return self.name
@@ -59,9 +100,9 @@ class LogLevel:
     """
     Log level constants to enable verbose output.
     """
-    OFF     = 1<<31
-    INFO    = 800
-    FINE    = 500
+    OFF = 1<<31
+    INFO = 800
+    FINE = 500
 
 _log_level = LogLevel.INFO
 
@@ -143,26 +184,30 @@ class _MvnClassPathEntry(_ClassPathEntry):
                     raise Abort('Value of ' + name + ' is not valid:  ' + value)
         return (None, None)
 
-def _log(level, message, args=[]):
+def _log(level, message, args=None):
     if level != LogLevel.OFF and level >= _log_level:
-        print(message.format(args))
+        print message.format(args if args else [])
 
 def _is_windows():
     return sys.platform.startswith('win32')
 
-def _rmdir_recursive(file):
-    if os.path.isdir(file):
-        for child in os.listdir(file):
-            _rmdir_recursive(os.path.join(file, child))
-        os.rmdir(file)
+def _rmdir_recursive(to_delete):
+    if os.path.isdir(to_delete):
+        for child in os.listdir(to_delete):
+            _rmdir_recursive(os.path.join(to_delete, child))
+        os.rmdir(to_delete)
     else:
-        os.unlink(file)
+        os.unlink(to_delete)
 
 def _run(args, log_level=False):
     _log(LogLevel.FINE, "exec({0})", ', '.join(['"' + a + '"' for a in args]))
     return subprocess.Popen(args)
 
-def _run_java(javaHome, mainClass, cp=None, truffleCp=None , bootCp=None, vmArgs=[], args=[], dbgPort=None):
+def _run_java(javaHome, mainClass, cp=None, truffleCp=None, bootCp=None, vmArgs=None, args=None, dbgPort=None):
+    if not vmArgs:
+        vmArgs = []
+    if not args:
+        args = []
     if cp:
         vmArgs.append('-cp')
         vmArgs.append(os.pathsep.join([e.path for e in cp]))
@@ -179,12 +224,12 @@ def _run_java(javaHome, mainClass, cp=None, truffleCp=None , bootCp=None, vmArgs
     return _run([java_cmd] + vmArgs + [mainClass] + args)
 
 def _split_VM_args_and_filters(args):
-    jvm_space_separated_args = ['-cp','-classpath','-mp', '-modulepath', '-limitmods', '-addmods', '-upgrademodulepath', '-m',
+    jvm_space_separated_args = ['-cp', '-classpath', '-mp', '-modulepath', '-limitmods', '-addmods', '-upgrademodulepath', '-m',
                         '--module-path', '--limit-modules', '--add-modules', '--upgrade-module-path',
                         '--module', '--module-source-path', '--add-exports', '--add-reads',
                         '--patch-module', '--boot-class-path', '--source-path']
     for i, e in enumerate(args):
-        if not e.startswith('-') and (i == 0 or not (args[i - 1] in jvm_space_separated_args)):
+        if not e.startswith('-') and (i == 0 or not args[i - 1] in jvm_space_separated_args):
             return args[:i], args[i:]
     return args, []
 
@@ -206,10 +251,10 @@ def _find_unit_tests(cp, pkgs=None):
     for e in cp:
         path = e.path
         if zipfile.is_zipfile(path):
-            with zipfile.ZipFile(path) as zip:
-                for name in zip.namelist():
+            with zipfile.ZipFile(path) as zf:
+                for name in zf.namelist():
                     if name.endswith('Test.class'):
-                        name = name[:len(name) - 6].replace('/','.')
+                        name = name[:len(name) - 6].replace('/', '.')
                         if includes(name):
                             tests.append(name)
     return tests
@@ -233,7 +278,7 @@ def _execute_tck_impl(graalvm_home, mode, language_filter, values_filter, tests_
     return ret_code
 
 
-def execute_tck(graalvm_home, mode=Mode.default(), language_filter=None, values_filter=None, tests_filter=None, cp=[], truffle_cp=[], boot_cp=[], vm_args=[], debug_port=None):
+def execute_tck(graalvm_home, mode=Mode.default(), language_filter=None, values_filter=None, tests_filter=None, cp=None, truffle_cp=None, boot_cp=None, vm_args=None, debug_port=None):
     """
     Executes Truffle TCK with given TCK providers and languages using GraalVM installed in graalvm_home
 
@@ -248,6 +293,15 @@ def execute_tck(graalvm_home, mode=Mode.default(), language_filter=None, values_
     :param vm_args: an iterable containing additional Java VM args
     :param debug_port: a port the Java VM should listen on for debugger connection
     """
+    if not cp:
+        cp = []
+    if not truffle_cp:
+        truffle_cp = []
+    if not boot_cp:
+        boot_cp = []
+    if not vm_args:
+        vm_args = []
+
     if tests_filter and type(tests_filter) is str:
         tests_filter = [tests_filter]
 
@@ -269,15 +323,15 @@ def set_log_level(log_level):
 
 _MVN_DEPENDENCIES = {
     'JUNIT' : [
-        {'groupId':'junit','artifactId':'junit','version':'4.12'},
-        {'groupId':'org/hamcrest','artifactId':'hamcrest-all','version':'1.3'}
+        {'groupId':'junit', 'artifactId':'junit', 'version':'4.12'},
+        {'groupId':'org/hamcrest', 'artifactId':'hamcrest-all', 'version':'1.3'}
     ],
     'TCK' : [
-        {'groupId':'org.graalvm.sdk','artifactId':'polyglot-tck'},
-        {'groupId':'org.graalvm.truffle','artifactId':'truffle-tck-common'},
+        {'groupId':'org.graalvm.sdk', 'artifactId':'polyglot-tck'},
+        {'groupId':'org.graalvm.truffle', 'artifactId':'truffle-tck-common'},
     ],
     'INSTRUMENTS' : [
-        {'groupId':'org.graalvm.truffle','artifactId':'truffle-tck-instrumentation'},
+        {'groupId':'org.graalvm.truffle', 'artifactId':'truffle-tck-instrumentation'},
     ]
 }
 
@@ -309,8 +363,8 @@ def _main(argv):
     parser.add_argument('-d', action='store_const', const=8000, dest='dbg_port', help='alias for "-dbg 8000"')
     parser.add_argument('--tck-version', type=str, dest='tck_version', help='maven TCK version, default is LATEST', default='LATEST', metavar='<version>')
     parser.add_argument('--tck-values', type=str, dest='tck_values', help="language ids of value providers to use, separated by ','", metavar='<value providers>')
-    parser.add_argument('-cp','--class-path', type=str, dest='class_path', help='classpath containing additional TCK provider(s)', metavar='<classpath>')
-    parser.add_argument('-lp','--language-path', type=str, dest='truffle_path', help='classpath containing additinal language jar(s)', metavar='<classpath>')
+    parser.add_argument('-cp', '--class-path', type=str, dest='class_path', help='classpath containing additional TCK provider(s)', metavar='<classpath>')
+    parser.add_argument('-lp', '--language-path', type=str, dest='truffle_path', help='classpath containing additinal language jar(s)', metavar='<classpath>')
 
     usage = parser.format_usage().strip()
     if usage.startswith('usage: '):
@@ -350,7 +404,7 @@ def _main(argv):
                 truffle_cp.append(_ClassPathEntry(os.path.abspath(e)))
         for entry in boot + cp + truffle_cp:
             entry.install(cache_folder)
-        ret_code = _execute_tck_impl(parsed_args.graalvm_home, mode, language, None, tests_filter, cp, truffle_cp, boot, vm_args, parsed_args.dbg_port)
+        ret_code = _execute_tck_impl(parsed_args.graalvm_home, mode, language, values, tests_filter, cp, truffle_cp, boot, vm_args, parsed_args.dbg_port)
         sys.exit(ret_code)
     except Abort as abort:
         sys.stderr.write(abort.message)
