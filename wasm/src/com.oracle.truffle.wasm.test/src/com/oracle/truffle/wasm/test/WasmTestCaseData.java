@@ -27,37 +27,23 @@
  * NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED
  * OF THE POSSIBILITY OF SUCH DAMAGE.
  */
-package com.oracle.truffle.wasm.test.parser;
+package com.oracle.truffle.wasm.test;
 
-import java.io.IOException;
+import java.util.function.Consumer;
 
-import org.graalvm.polyglot.Context;
-import org.graalvm.polyglot.Source;
-import org.graalvm.polyglot.io.ByteSequence;
-import org.junit.Test;
+import org.graalvm.polyglot.Value;
 
-import com.oracle.truffle.wasm.binary.Assert;
-import com.oracle.truffle.wasm.test.WasmTest;
-import com.oracle.truffle.wasm.test.WasmTestToolkit;
+class WasmTestCaseData {
+    Consumer<Value> resultValidator;
+    String expectedErrorMessage;
 
-public class WasmParserTest extends WasmTest {
-
-    @Override
-    @Test
-    public void runTests() throws InterruptedException {
-        super.runTests();
+    WasmTestCaseData(Consumer<Value> resultValidator) {
+        this.resultValidator = resultValidator;
+        this.expectedErrorMessage = null;
     }
 
-    @Override
-    protected void runTest(TestElement element) {
-        try {
-            byte[] binary = WasmTestToolkit.compileWat(element.program);
-            Context context = Context.create();
-            Source source = Source.newBuilder("wasm", ByteSequence.create(binary), "test").build();
-            context.eval(source);
-        } catch (IOException | InterruptedException e) {
-            Assert.fail(String.format("WasmParserTest failed for program: %s", element.program));
-            e.printStackTrace();
-        }
+    public WasmTestCaseData(String expectedErrorMessage) {
+        this.resultValidator = null;
+        this.expectedErrorMessage = expectedErrorMessage;
     }
 }

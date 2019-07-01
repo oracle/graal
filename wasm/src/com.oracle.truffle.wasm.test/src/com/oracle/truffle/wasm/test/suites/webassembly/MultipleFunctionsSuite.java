@@ -27,23 +27,25 @@
  * NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED
  * OF THE POSSIBILITY OF SUCH DAMAGE.
  */
-package com.oracle.truffle.wasm.test;
+package com.oracle.truffle.wasm.test.suites.webassembly;
 
-import java.util.function.Consumer;
+import com.oracle.truffle.wasm.test.WasmSuiteBase;
+import com.oracle.truffle.wasm.test.options.WasmTestOptions;
+import org.junit.Test;
 
-import org.graalvm.polyglot.Value;
+import java.io.IOException;
+import java.nio.file.Path;
+import java.nio.file.Paths;
 
-public class TestData {
-    public Consumer<Value> validator;
-    public String expectedErrorMessage;
-
-    public TestData(Consumer<Value> validator) {
-        this.validator = validator;
-        this.expectedErrorMessage = null;
+public class MultipleFunctionsSuite extends WasmSuiteBase {
+    @Override
+    protected Path testDirectory() {
+        return Paths.get(WasmTestOptions.TEST_SOURCE_PATH, "MultipleFunctions");
     }
 
-    public TestData(String expectedErrorMessage) {
-        this.validator = null;
-        this.expectedErrorMessage = expectedErrorMessage;
+    @Test
+    public void test() throws IOException {
+        // This is here just to make mx aware of the test suite class.
+        super.test();
     }
 }

@@ -27,28 +27,11 @@
  *  NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED
  *  OF THE POSSIBILITY OF SUCH DAMAGE.
  */
-package com.oracle.truffle.wasm.test.next;
+package com.oracle.truffle.wasm.test.options;
 
-import java.io.IOException;
-import java.nio.file.Path;
-import java.util.function.Predicate;
-
-import org.junit.Test;
-
-import com.oracle.truffle.wasm.test.next.options.WasmTestOptions;
-
-public abstract class WasmTestBase {
-    protected static final Predicate<? super Path> isWatFile = f -> f.getFileName().toString().endsWith(".wat");
-    protected static final Predicate<? super Path> isResultFile = f -> f.getFileName().toString().endsWith(".result");
-
-    protected static Predicate<String> filterTestName() {
-        if (WasmTestOptions.TEST_FILTER != null && !WasmTestOptions.TEST_FILTER.isEmpty()) {
-            return name -> name.matches(WasmTestOptions.TEST_FILTER);
-        } else {
-            return name -> true;
-        }
-    }
-
-    @Test
-    public abstract void test() throws IOException;
+public final class WasmTestOptions {
+    public static final String WAT_TO_WASM_EXECUTABLE = System.getProperty("wasmtest.watToWasmExecutable");
+    public static final String TEST_SOURCE_PATH = System.getProperty("wasmtest.testSourcePath");
+    public static final String TEST_FILTER = System.getProperty("wasmtest.testFilter");
+    public static final boolean TRIGGER_GRAAL = Boolean.parseBoolean(System.getProperty("wasmtest.triggerGraal"));
 }

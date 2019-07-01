@@ -27,7 +27,8 @@
  *  NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED
  *  OF THE POSSIBILITY OF SUCH DAMAGE.
  */
-package com.oracle.truffle.wasm.test.next.suites.control;
+
+package com.oracle.truffle.wasm.test.suites.control;
 
 import java.io.IOException;
 import java.nio.file.Path;
@@ -35,13 +36,14 @@ import java.nio.file.Paths;
 
 import org.junit.Test;
 
-import com.oracle.truffle.wasm.test.next.WasmSuiteBase;
-import com.oracle.truffle.wasm.test.next.options.WasmTestOptions;
+import com.oracle.truffle.wasm.test.WasmSuiteBase;
+import com.oracle.truffle.wasm.test.options.WasmTestOptions;
 
-public class BranchBlockSuite extends WasmSuiteBase {
+
+public class BlockWithLocalsSuite extends WasmSuiteBase {
     @Override
     protected Path testDirectory() {
-        return Paths.get(WasmTestOptions.TEST_SOURCE_PATH, "branch-block");
+        return Paths.get(WasmTestOptions.TEST_SOURCE_PATH, "block-with-locals");
     }
 
     @Test

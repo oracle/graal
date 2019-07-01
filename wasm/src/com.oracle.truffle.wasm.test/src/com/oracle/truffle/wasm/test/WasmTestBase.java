@@ -27,13 +27,28 @@
  * NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED
  * OF THE POSSIBILITY OF SUCH DAMAGE.
  */
-package com.oracle.truffle.wasm.test.parser;
+package com.oracle.truffle.wasm.test;
 
-import com.oracle.truffle.wasm.binary.BinaryStreamReader;
+import java.io.IOException;
+import java.nio.file.Path;
+import java.util.function.Predicate;
 
-public class TestStreamReader extends BinaryStreamReader {
+import org.junit.Test;
 
-    public TestStreamReader(byte[] data) {
-        super(data);
+import com.oracle.truffle.wasm.test.options.WasmTestOptions;
+
+public abstract class WasmTestBase {
+    protected static final Predicate<? super Path> isWatFile = f -> f.getFileName().toString().endsWith(".wat");
+    protected static final Predicate<? super Path> isResultFile = f -> f.getFileName().toString().endsWith(".result");
+
+    protected static Predicate<String> filterTestName() {
+        if (WasmTestOptions.TEST_FILTER != null && !WasmTestOptions.TEST_FILTER.isEmpty()) {
+            return name -> name.matches(WasmTestOptions.TEST_FILTER);
+        } else {
+            return name -> true;
+        }
     }
+
+    @Test
+    public abstract void test() throws IOException;
 }

@@ -27,43 +27,33 @@
  * NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED
  * OF THE POSSIBILITY OF SUCH DAMAGE.
  */
-package com.oracle.truffle.wasm.test.execution;
+package com.oracle.truffle.wasm.test;
 
-import java.io.IOException;
-
-import com.oracle.truffle.api.TruffleException;
-import org.graalvm.polyglot.Context;
-import org.graalvm.polyglot.PolyglotException;
-import org.graalvm.polyglot.Source;
-import org.graalvm.polyglot.Value;
-import org.graalvm.polyglot.io.ByteSequence;
-import org.junit.Assert;
 import org.junit.Test;
+import org.junit.runner.RunWith;
+import org.junit.runners.Suite;
 
-import com.oracle.truffle.wasm.test.WasmTest;
-import com.oracle.truffle.wasm.test.WasmTestToolkit;
+import com.oracle.truffle.wasm.test.suites.arithmetic.Float32Suite;
+import com.oracle.truffle.wasm.test.suites.arithmetic.Float64Suite;
+import com.oracle.truffle.wasm.test.suites.arithmetic.Integer32Suite;
+import com.oracle.truffle.wasm.test.suites.arithmetic.Integer64Suite;
+import com.oracle.truffle.wasm.test.suites.control.BlockWithLocalsSuite;
+import com.oracle.truffle.wasm.test.suites.control.BranchBlockSuite;
+import com.oracle.truffle.wasm.test.suites.control.SimpleBlockSuite;
 
-public class WasmInterpretationTest extends WasmTest {
-    @Override
+@RunWith(Suite.class)
+@Suite.SuiteClasses({
+        Integer32Suite.class,
+        Integer64Suite.class,
+        Float32Suite.class,
+        Float64Suite.class,
+        SimpleBlockSuite.class,
+        BlockWithLocalsSuite.class,
+        BranchBlockSuite.class,
+})
+public class WasmTestSuite {
     @Test
-    public void runTests() throws InterruptedException {
-        super.runTests();
-    }
-
-    @Override
-    protected void runTest(TestElement element) throws Throwable {
-        try {
-            byte[] binary = WasmTestToolkit.compileWat(element.program);
-            Context context = Context.create();
-            Source source = Source.newBuilder("wasm", ByteSequence.create(binary), "test").build();
-            context.eval(source);
-            Value result = context.getBindings("wasm").getMember("0").execute();
-            validateResult(element.data, result);
-        } catch (IOException | InterruptedException e) {
-            Assert.fail(String.format("WasmInterpretationTest failed for program: %s", element.program));
-            e.printStackTrace();
-        } catch (PolyglotException e) {
-            validateThrown(element.data, e);
-        }
+    public void test() {
+        // This is here just to make mx aware of the test suite class.
     }
 }

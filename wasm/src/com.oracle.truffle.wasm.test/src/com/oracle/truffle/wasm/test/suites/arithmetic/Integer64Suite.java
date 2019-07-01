@@ -28,7 +28,7 @@
  *  OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 
-package com.oracle.truffle.wasm.test.next.suites.arithmetic;
+package com.oracle.truffle.wasm.test.suites.arithmetic;
 
 import java.io.IOException;
 import java.util.Arrays;
@@ -36,7 +36,7 @@ import java.util.Collection;
 
 import org.junit.Test;
 
-import com.oracle.truffle.wasm.test.next.WasmSuiteBase;
+import com.oracle.truffle.wasm.test.WasmSuiteBase;
 
 public class Integer64Suite extends WasmSuiteBase {
     private WasmStringTestCase[] testCases = {
