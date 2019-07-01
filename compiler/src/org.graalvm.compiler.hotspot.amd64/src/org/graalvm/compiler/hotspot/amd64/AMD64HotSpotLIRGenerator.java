@@ -330,15 +330,19 @@ public class AMD64HotSpotLIRGenerator extends AMD64LIRGenerator implements HotSp
     /**
      * Adds a node to the graph that saves all allocatable registers to the stack.
      *
-     * @param supportsRemove determines if registers can be pruned
      * @return the register save node
      */
-    private AMD64SaveRegistersOp emitSaveAllRegisters(Register[] savedRegisters, boolean supportsRemove) {
+    private AMD64SaveRegistersOp emitSaveAllRegisters() {
+        Register[] savedRegisters = getSaveableRegisters();
         AllocatableValue[] savedRegisterLocations = new AllocatableValue[savedRegisters.length];
         for (int i = 0; i < savedRegisters.length; i++) {
             savedRegisterLocations[i] = allocateSaveRegisterLocation(savedRegisters[i]);
         }
-        return emitSaveRegisters(savedRegisters, savedRegisterLocations, supportsRemove);
+        return emitSaveRegisters(savedRegisters, savedRegisterLocations, true);
+    }
+
+    protected Register[] getSaveableRegisters() {
+        return getRegisterConfig().getAllocatableRegisters().toArray();
     }
 
     protected void emitRestoreRegisters(AMD64SaveRegistersOp save) {
@@ -369,11 +373,8 @@ public class AMD64HotSpotLIRGenerator extends AMD64LIRGenerator implements HotSp
 
         AMD64SaveRegistersOp save = null;
         Stub stub = getStub();
-        if (destroysRegisters) {
-            if (stub != null && stub.preservesRegisters()) {
-                Register[] savedRegisters = getRegisterConfig().getAllocatableRegisters().toArray();
-                save = emitSaveAllRegisters(savedRegisters, true);
-            }
+        if (destroysRegisters && stub != null && stub.shouldSaveRegistersAroundCalls()) {
+            save = emitSaveAllRegisters();
         }
 
         Variable result;
@@ -392,19 +393,15 @@ public class AMD64HotSpotLIRGenerator extends AMD64LIRGenerator implements HotSp
             result = super.emitForeignCall(hotspotLinkage, debugInfo, args);
         }
 
-        if (destroysRegisters) {
-            if (stub != null) {
-                if (stub.preservesRegisters()) {
-                    HotSpotLIRGenerationResult generationResult = getResult();
-                    LIRFrameState key = currentRuntimeCallInfo;
-                    if (key == null) {
-                        key = LIRFrameState.NO_STATE;
-                    }
-                    assert !generationResult.getCalleeSaveInfo().containsKey(key);
-                    generationResult.getCalleeSaveInfo().put(key, save);
-                    emitRestoreRegisters(save);
-                }
+        if (save != null) {
+            HotSpotLIRGenerationResult generationResult = getResult();
+            LIRFrameState key = currentRuntimeCallInfo;
+            if (key == null) {
+                key = LIRFrameState.NO_STATE;
             }
+            assert !generationResult.getCalleeSaveInfo().containsKey(key);
+            generationResult.getCalleeSaveInfo().put(key, save);
+            emitRestoreRegisters(save);
         }
 
         return result;

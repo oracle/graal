@@ -64,15 +64,6 @@ public class UnwindExceptionToCallerStub extends SnippetStub {
         super("unwindExceptionToCaller", options, providers, linkage);
     }
 
-    /**
-     * The current frame is unwound by this stub. Therefore, it does not need to save any registers
-     * as HotSpot uses a caller save convention.
-     */
-    @Override
-    public boolean preservesRegisters() {
-        return false;
-    }
-
     @Override
     protected Object getConstantParameterValue(int index, String name) {
         if (index == 2) {

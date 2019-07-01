@@ -68,7 +68,7 @@ import org.graalvm.compiler.hotspot.stubs.Stub;
 import org.graalvm.compiler.lir.LIRFrameState;
 import org.graalvm.compiler.lir.LIRInstruction;
 import org.graalvm.compiler.lir.LabelRef;
-import org.graalvm.compiler.lir.StandardOp.SaveRegistersOp;
+import org.graalvm.compiler.lir.StandardOp.ZapRegistersOp;
 import org.graalvm.compiler.lir.SwitchStrategy;
 import org.graalvm.compiler.lir.Variable;
 import org.graalvm.compiler.lir.VirtualStackSlot;
@@ -347,11 +347,9 @@ public class AArch64HotSpotLIRGenerator extends AArch64LIRGenerator implements H
 
         AArch64SaveRegistersOp save = null;
         Stub stub = getStub();
-        if (destroysRegisters) {
-            if (stub != null && stub.preservesRegisters()) {
-                Register[] savedRegisters = getRegisterConfig().getAllocatableRegisters().toArray();
-                save = emitSaveAllRegisters(savedRegisters, true);
-            }
+        if (destroysRegisters && stub != null && stub.shouldSaveRegistersAroundCalls()) {
+            Register[] savedRegisters = getRegisterConfig().getAllocatableRegisters().toArray();
+            save = emitSaveAllRegisters(savedRegisters, true);
         }
 
         Variable result;
@@ -379,19 +377,15 @@ public class AArch64HotSpotLIRGenerator extends AArch64LIRGenerator implements H
             result = super.emitForeignCall(hotspotLinkage, debugInfo, args);
         }
 
-        if (destroysRegisters) {
-            if (stub != null) {
-                if (stub.preservesRegisters()) {
-                    HotSpotLIRGenerationResult generationResult = getResult();
-                    LIRFrameState key = currentRuntimeCallInfo;
-                    if (key == null) {
-                        key = LIRFrameState.NO_STATE;
-                    }
-                    assert !generationResult.getCalleeSaveInfo().containsKey(key);
-                    generationResult.getCalleeSaveInfo().put(key, save);
-                    emitRestoreRegisters(save);
-                }
+        if (save != null) {
+            HotSpotLIRGenerationResult generationResult = getResult();
+            LIRFrameState key = currentRuntimeCallInfo;
+            if (key == null) {
+                key = LIRFrameState.NO_STATE;
             }
+            assert !generationResult.getCalleeSaveInfo().containsKey(key);
+            generationResult.getCalleeSaveInfo().put(key, save);
+            emitRestoreRegisters(save);
         }
 
         return result;
@@ -539,7 +533,7 @@ public class AArch64HotSpotLIRGenerator extends AArch64LIRGenerator implements H
     }
 
     @Override
-    public SaveRegistersOp createZapRegisters(Register[] zappedRegisters, JavaConstant[] zapValues) {
+    public ZapRegistersOp createZapRegisters(Register[] zappedRegisters, JavaConstant[] zapValues) {
         throw GraalError.unimplemented();
     }
 

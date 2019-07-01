@@ -121,12 +121,8 @@ public abstract class Stub {
         return destroyedCallerRegisters;
     }
 
-    /**
-     * Determines if this stub preserves all registers apart from those it
-     * {@linkplain #getDestroyedCallerRegisters() destroys}.
-     */
-    public boolean preservesRegisters() {
-        return true;
+    public boolean shouldSaveRegistersAroundCalls() {
+        return false;
     }
 
     protected final OptionValues options;

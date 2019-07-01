@@ -26,7 +26,8 @@ package org.graalvm.compiler.hotspot.meta;
 
 import static jdk.vm.ci.hotspot.HotSpotCallingConventionType.JavaCall;
 import static jdk.vm.ci.hotspot.HotSpotCallingConventionType.JavaCallee;
-import static org.graalvm.compiler.hotspot.HotSpotForeignCallLinkage.RegisterEffect.PRESERVES_REGISTERS;
+import static org.graalvm.compiler.hotspot.HotSpotForeignCallLinkage.RegisterEffect.COMPUTES_REGISTERS_KILLED;
+import static org.graalvm.compiler.hotspot.HotSpotForeignCallLinkage.RegisterEffect.DESTROYS_ALL_CALLER_SAVE_REGISTERS;
 import static org.graalvm.compiler.hotspot.HotSpotForeignCallLinkage.Transition.SAFEPOINT;
 
 import java.util.ArrayList;
@@ -120,7 +121,7 @@ public abstract class HotSpotForeignCallsProviderImpl implements HotSpotForeignC
                         wordTypes,
                         this,
                         descriptor,
-                        0L, PRESERVES_REGISTERS,
+                        0L, COMPUTES_REGISTERS_KILLED,
                         JavaCall,
                         JavaCallee,
                         transition,
@@ -129,13 +130,13 @@ public abstract class HotSpotForeignCallsProviderImpl implements HotSpotForeignC
     }
 
     /**
-     * Creates and registers the linkage for a foreign call.
+     * Creates and registers the linkage for a foreign call. All foreign calls are assumed to have
+     * the effect {@link RegisterEffect#DESTROYS_ALL_CALLER_SAVE_REGISTERS} since they are outside
+     * of Graal's knowledge.
      *
      * @param descriptor the signature of the foreign call
      * @param address the address of the code to call (must be non-zero)
      * @param outgoingCcType outgoing (caller) calling convention type
-     * @param effect specifies if the call destroys or preserves all registers (apart from
-     *            temporaries which are always destroyed)
      * @param transition specifies if this is a {@linkplain Transition#LEAF leaf} call
      * @param reexecutability specifies if the foreign call can be re-executed without (meaningful)
      *            side effects. Deoptimization will not return to a point before a foreign call that
@@ -146,7 +147,6 @@ public abstract class HotSpotForeignCallsProviderImpl implements HotSpotForeignC
                     ForeignCallDescriptor descriptor,
                     long address,
                     CallingConvention.Type outgoingCcType,
-                    RegisterEffect effect,
                     Transition transition,
                     Reexecutability reexecutability,
                     LocationIdentity... killedLocations) {
@@ -159,7 +159,7 @@ public abstract class HotSpotForeignCallsProviderImpl implements HotSpotForeignC
                         this,
                         descriptor,
                         address,
-                        effect,
+                        DESTROYS_ALL_CALLER_SAVE_REGISTERS,
                         outgoingCcType,
                         null, // incomingCcType
                         transition,
