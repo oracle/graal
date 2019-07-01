@@ -41,7 +41,7 @@ import com.oracle.truffle.wasm.test.options.WasmTestOptions;
 public class LoopBlockSuite extends WasmSuiteBase {
     @Override
     protected Path testDirectory() {
-        return Paths.get(WasmTestOptions.TEST_SOURCE_PATH, "LoopBlock");
+        return Paths.get(WasmTestOptions.TEST_SOURCE_PATH, "loop-block");
     }
 
     @Test
