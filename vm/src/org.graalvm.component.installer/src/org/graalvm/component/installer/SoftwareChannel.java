@@ -25,13 +25,11 @@
 package org.graalvm.component.installer;
 
 import java.io.IOException;
-import java.nio.file.Path;
 import java.util.Collections;
 import java.util.Map;
 import org.graalvm.component.installer.model.ComponentInfo;
 import org.graalvm.component.installer.model.ComponentStorage;
 import org.graalvm.component.installer.remote.FileDownloader;
-import org.graalvm.component.installer.persist.MetadataLoader;
 
 /**
  * An abstraction of software delivery channel. The channel provides a Registry of available
@@ -58,15 +56,6 @@ public interface SoftwareChannel {
      * @return the downloader instance.
      */
     FileDownloader configureDownloader(ComponentInfo info, FileDownloader dn);
-
-    /**
-     * Creates metadata + archive loader from a downloaded file.
-     * 
-     * @param localFile the local file.
-     * @verify if true, verify archives
-     * @return loader instance
-     */
-    MetadataLoader createLocalFileLoader(ComponentInfo info, Path localFile, boolean verify) throws IOException;
 
     /*
      * Checks if the Component can be installed by native tools. In that case, the installer will
