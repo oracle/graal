@@ -514,18 +514,17 @@ public class FrameInfoEncoder {
 
         CodeInfoAccess.setFrameInfo(target, frameInfoEncodings, frameInfoObjectConstants, frameInfoSourceClasses, frameInfoSourceMethodNames, frameInfoNames);
 
-        afterInstallation(frameInfoEncodings, frameInfoObjectConstants, frameInfoSourceClasses, frameInfoSourceMethodNames, frameInfoNames);
+        afterInstallation(target);
     }
 
     @Uninterruptible(reason = "Safe for GC, but called from uninterruptible code.", calleeMustBe = false)
-    private void afterInstallation(NonmovableArray<Byte> frameInfoEncodings, NonmovableObjectArray<Object> frameInfoObjectConstants, NonmovableObjectArray<Class<?>> frameInfoSourceClasses,
-                    NonmovableObjectArray<String> frameInfoSourceMethodNames, NonmovableObjectArray<String> frameInfoNames) {
+    private void afterInstallation(CodeInfo info) {
 
-        assert verifyEncoding(frameInfoEncodings, frameInfoObjectConstants, frameInfoSourceClasses, frameInfoSourceMethodNames, frameInfoNames);
+        assert verifyEncoding(info);
 
         ImageSingletons.lookup(Counters.class).frameInfoSize.add(
-                        ConfigurationValues.getObjectLayout().getArrayElementOffset(JavaKind.Byte, NonmovableArrays.lengthOf(frameInfoEncodings)) +
-                                        ConfigurationValues.getObjectLayout().getArrayElementOffset(JavaKind.Object, NonmovableArrays.lengthOf(frameInfoObjectConstants)));
+                        ConfigurationValues.getObjectLayout().getArrayElementOffset(JavaKind.Byte, NonmovableArrays.lengthOf(info.getFrameInfoEncodings())) +
+                                        ConfigurationValues.getObjectLayout().getArrayElementOffset(JavaKind.Object, NonmovableArrays.lengthOf(info.getFrameInfoObjectConstants())));
     }
 
     private NonmovableArray<Byte> encodeFrameDatas() {
@@ -639,13 +638,10 @@ public class FrameInfoEncoder {
         return (((long) bci) << FrameInfoDecoder.BCI_SHIFT) | (duringCall ? FrameInfoDecoder.DURING_CALL_MASK : 0) | (rethrowException ? FrameInfoDecoder.RETHROW_EXCEPTION_MASK : 0);
     }
 
-    private boolean verifyEncoding(NonmovableArray<Byte> frameInfoEncodings, NonmovableObjectArray<Object> frameInfoObjectConstants, NonmovableObjectArray<Class<?>> frameInfoSourceClasses,
-                    NonmovableObjectArray<String> frameInfoSourceMethodNames, NonmovableObjectArray<String> frameInfoNames) {
+    private boolean verifyEncoding(CodeInfo info) {
         for (FrameData expectedData : allDebugInfos) {
-            FrameInfoQueryResult actualFrame = FrameInfoDecoder.decodeFrameInfo(expectedData.frame.isDeoptEntry,
-                            new ReusableTypeReader(frameInfoEncodings, expectedData.indexInEncodings),
-                            frameInfoObjectConstants, frameInfoSourceClasses, frameInfoSourceMethodNames, frameInfoNames,
-                            FrameInfoDecoder.HeapBasedFrameInfoQueryResultAllocator, FrameInfoDecoder.HeapBasedValueInfoAllocator, true);
+            FrameInfoQueryResult actualFrame = FrameInfoDecoder.decodeFrameInfo(expectedData.frame.isDeoptEntry, new ReusableTypeReader(info.getFrameInfoEncodings(), expectedData.indexInEncodings),
+                            info, FrameInfoDecoder.HeapBasedFrameInfoQueryResultAllocator, FrameInfoDecoder.HeapBasedValueInfoAllocator, true);
             FrameInfoVerifier.verifyFrames(expectedData, expectedData.frame, actualFrame);
         }
         return true;

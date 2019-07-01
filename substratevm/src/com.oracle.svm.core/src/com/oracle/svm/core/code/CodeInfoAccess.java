@@ -138,10 +138,9 @@ public final class CodeInfoAccess {
     }
 
     public static long initFrameInfoReader(CodeInfo info, CodePointer ip, ReusableTypeReader frameInfoReader) {
-        NonmovableArray<Byte> codeInfoEncodings = info.getCodeInfoEncodings();
-        long entryOffset = CodeInfoDecoder.lookupCodeInfoEntryOffset(info.getCodeInfoIndex(), codeInfoEncodings, relativeIP(info, ip));
+        long entryOffset = CodeInfoDecoder.lookupCodeInfoEntryOffset(info, relativeIP(info, ip));
         if (entryOffset >= 0) {
-            if (!CodeInfoDecoder.initFrameInfoReader(codeInfoEncodings, info.getFrameInfoEncodings(), entryOffset, frameInfoReader)) {
+            if (!CodeInfoDecoder.initFrameInfoReader(info, entryOffset, frameInfoReader)) {
                 return -1;
             }
         }
@@ -151,10 +150,9 @@ public final class CodeInfoAccess {
     public static FrameInfoQueryResult nextFrameInfo(CodeInfo info, long entryOffset, ReusableTypeReader frameInfoReader,
                     FrameInfoDecoder.FrameInfoQueryResultAllocator resultAllocator, ValueInfoAllocator valueInfoAllocator, boolean fetchFirstFrame) {
 
-        int entryFlags = CodeInfoDecoder.loadEntryFlags(info.getCodeInfoEncodings(), entryOffset);
+        int entryFlags = CodeInfoDecoder.loadEntryFlags(info, entryOffset);
         boolean isDeoptEntry = CodeInfoDecoder.extractFI(entryFlags) == CodeInfoDecoder.FI_DEOPT_ENTRY_INDEX_S4;
-        return FrameInfoDecoder.decodeFrameInfo(isDeoptEntry, frameInfoReader, info.getFrameInfoObjectConstants(), info.getFrameInfoSourceClasses(),
-                        info.getFrameInfoSourceMethodNames(), info.getFrameInfoNames(), resultAllocator, valueInfoAllocator, fetchFirstFrame);
+        return FrameInfoDecoder.decodeFrameInfo(isDeoptEntry, frameInfoReader, info, resultAllocator, valueInfoAllocator, fetchFirstFrame);
     }
 
     @SuppressWarnings("unchecked")
@@ -168,17 +166,15 @@ public final class CodeInfoAccess {
     }
 
     public static long lookupDeoptimizationEntrypoint(CodeInfo info, long method, long encodedBci, CodeInfoQueryResult codeInfo) {
-        return CodeInfoDecoder.lookupDeoptimizationEntrypoint(info.getCodeInfoEncodings(), info.getCodeInfoIndex(),
-                        info.getFrameInfoEncodings(), info.getFrameInfoNames(), info.getFrameInfoObjectConstants(),
-                        info.getFrameInfoSourceClasses(), info.getFrameInfoSourceMethodNames(), method, encodedBci, codeInfo);
+        return CodeInfoDecoder.lookupDeoptimizationEntrypoint(info, method, encodedBci, codeInfo);
     }
 
     public static long lookupTotalFrameSize(CodeInfo info, long ip) {
-        return CodeInfoDecoder.lookupTotalFrameSize(info.getCodeInfoEncodings(), info.getCodeInfoIndex(), ip);
+        return CodeInfoDecoder.lookupTotalFrameSize(info, ip);
     }
 
     public static long lookupExceptionOffset(CodeInfo info, long ip) {
-        return CodeInfoDecoder.lookupExceptionOffset(info.getCodeInfoEncodings(), info.getCodeInfoIndex(), ip);
+        return CodeInfoDecoder.lookupExceptionOffset(info, ip);
     }
 
     public static NonmovableArray<Byte> getReferenceMapEncoding(CodeInfo info) {
@@ -186,12 +182,11 @@ public final class CodeInfoAccess {
     }
 
     public static long lookupReferenceMapIndex(CodeInfo info, long ip) {
-        return CodeInfoDecoder.lookupReferenceMapIndex(info.getCodeInfoEncodings(), info.getCodeInfoIndex(), ip);
+        return CodeInfoDecoder.lookupReferenceMapIndex(info, ip);
     }
 
     public static void lookupCodeInfo(CodeInfo info, long ip, CodeInfoQueryResult codeInfo) {
-        CodeInfoDecoder.lookupCodeInfo(info.getCodeInfoEncodings(), info.getCodeInfoIndex(), info.getFrameInfoEncodings(), info.getFrameInfoNames(),
-                        info.getFrameInfoObjectConstants(), info.getFrameInfoSourceClasses(), info.getFrameInfoSourceMethodNames(), ip, codeInfo);
+        CodeInfoDecoder.lookupCodeInfo(info, ip, codeInfo);
     }
 
     @Uninterruptible(reason = "Nonmovable object arrays are not visible to GC until installed.")
