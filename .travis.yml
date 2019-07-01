@@ -14,7 +14,7 @@ sudo: required
 dist: trusty
 
 jdk:
-    - oraclejdk11
+    - openjdk11
 
 env:
   global:
