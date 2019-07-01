@@ -686,7 +686,7 @@ public abstract class AMD64LIRGenerator extends LIRGenerator {
     @Override
     public Variable emitExtract(LIRKind vectorKind, Value vector, int index) {
         final AMD64Kind scalarKind = ((AMD64Kind) vectorKind.getPlatformKind()).getScalar();
-        final Variable result = newVariable(LIRKind.value(scalarKind));
+        final Variable result = newVariable(toRegisterKind(LIRKind.value(scalarKind)));
         final AllocatableValue resultValue = asAllocatable(result);
 
         final int xmmLengthInElements = 16 / scalarKind.getSizeInBytes();
