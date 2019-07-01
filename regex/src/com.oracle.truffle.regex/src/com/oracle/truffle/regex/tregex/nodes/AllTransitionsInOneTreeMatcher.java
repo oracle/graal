@@ -28,7 +28,6 @@ import static com.oracle.truffle.api.CompilerDirectives.CompilationFinal;
 import static com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 
 import com.oracle.truffle.api.CompilerAsserts;
-import com.oracle.truffle.api.frame.VirtualFrame;
 
 /**
  * This class provides an alternative way of calculating the next transition - instead of checking
@@ -61,83 +60,83 @@ public final class AllTransitionsInOneTreeMatcher {
         this.rangeTreeSuccessors = rangeTreeSuccessors;
     }
 
-    public int checkMatchTree1(VirtualFrame frame, TRegexDFAExecutorNode executor, DFAStateNode stateNode, char c) {
+    public int checkMatchTree1(TRegexDFAExecutorLocals locals, TRegexDFAExecutorNode executor, DFAStateNode stateNode, char c) {
         CompilerAsserts.partialEvaluationConstant(this);
         CompilerAsserts.partialEvaluationConstant(stateNode);
-        return checkMatchTree1(frame, executor, stateNode, 0, sortedRanges.length - 1, c);
+        return checkMatchTree1(locals, executor, stateNode, 0, sortedRanges.length - 1, c);
     }
 
-    private int checkMatchTree1(VirtualFrame frame, TRegexDFAExecutorNode executor, DFAStateNode stateNode, int fromIndex, int toIndex, char c) {
+    private int checkMatchTree1(TRegexDFAExecutorLocals locals, TRegexDFAExecutorNode executor, DFAStateNode stateNode, int fromIndex, int toIndex, char c) {
         CompilerAsserts.partialEvaluationConstant(stateNode);
         CompilerAsserts.partialEvaluationConstant(fromIndex);
         CompilerAsserts.partialEvaluationConstant(toIndex);
         if (fromIndex > toIndex) {
             final short successor = rangeTreeSuccessors[fromIndex];
             if (stateNode instanceof CGTrackingDFAStateNode && successor != DFAStateNode.FS_RESULT_NO_SUCCESSOR) {
-                ((CGTrackingDFAStateNode) stateNode).successorFound1(frame, executor, successor);
+                ((CGTrackingDFAStateNode) stateNode).successorFound1(locals, executor, successor);
             }
             return successor;
         }
         final int mid = (fromIndex + toIndex) >>> 1;
         CompilerAsserts.partialEvaluationConstant(mid);
         if (c < sortedRanges[mid]) {
-            return checkMatchTree1(frame, executor, stateNode, fromIndex, mid - 1, c);
+            return checkMatchTree1(locals, executor, stateNode, fromIndex, mid - 1, c);
         } else {
-            return checkMatchTree1(frame, executor, stateNode, mid + 1, toIndex, c);
+            return checkMatchTree1(locals, executor, stateNode, mid + 1, toIndex, c);
         }
     }
 
-    public int checkMatchTree2(VirtualFrame frame, TRegexDFAExecutorNode executor, CGTrackingDFAStateNode stateNode, char c) {
+    public int checkMatchTree2(TRegexDFAExecutorLocals locals, TRegexDFAExecutorNode executor, CGTrackingDFAStateNode stateNode, char c) {
         CompilerAsserts.partialEvaluationConstant(this);
         CompilerAsserts.partialEvaluationConstant(stateNode);
-        return checkMatchTree2(frame, executor, stateNode, 0, sortedRanges.length - 1, c);
+        return checkMatchTree2(locals, executor, stateNode, 0, sortedRanges.length - 1, c);
     }
 
-    private int checkMatchTree2(VirtualFrame frame, TRegexDFAExecutorNode executor, CGTrackingDFAStateNode stateNode, int fromIndex, int toIndex, char c) {
+    private int checkMatchTree2(TRegexDFAExecutorLocals locals, TRegexDFAExecutorNode executor, CGTrackingDFAStateNode stateNode, int fromIndex, int toIndex, char c) {
         CompilerAsserts.partialEvaluationConstant(fromIndex);
         CompilerAsserts.partialEvaluationConstant(toIndex);
         if (fromIndex > toIndex) {
             final short successor = rangeTreeSuccessors[fromIndex];
             if (successor == DFAStateNode.FS_RESULT_NO_SUCCESSOR) {
-                stateNode.noSuccessor2(frame, executor);
+                stateNode.noSuccessor2(locals, executor);
             } else if (!stateNode.isLoopToSelf(successor)) {
-                stateNode.successorFound2(frame, executor, successor);
+                stateNode.successorFound2(locals, executor, successor);
             }
             return successor;
         }
         final int mid = (fromIndex + toIndex) >>> 1;
         CompilerAsserts.partialEvaluationConstant(mid);
         if (c < sortedRanges[mid]) {
-            return checkMatchTree2(frame, executor, stateNode, fromIndex, mid - 1, c);
+            return checkMatchTree2(locals, executor, stateNode, fromIndex, mid - 1, c);
         } else {
-            return checkMatchTree2(frame, executor, stateNode, mid + 1, toIndex, c);
+            return checkMatchTree2(locals, executor, stateNode, mid + 1, toIndex, c);
         }
     }
 
-    public int checkMatchTree3(VirtualFrame frame, TRegexDFAExecutorNode executor, CGTrackingDFAStateNode stateNode, char c, int preLoopIndex) {
+    public int checkMatchTree3(TRegexDFAExecutorLocals locals, TRegexDFAExecutorNode executor, CGTrackingDFAStateNode stateNode, char c, int preLoopIndex) {
         CompilerAsserts.partialEvaluationConstant(this);
         CompilerAsserts.partialEvaluationConstant(stateNode);
-        return checkMatchTree3(frame, executor, stateNode, 0, sortedRanges.length - 1, c, preLoopIndex);
+        return checkMatchTree3(locals, executor, stateNode, 0, sortedRanges.length - 1, c, preLoopIndex);
     }
 
-    private int checkMatchTree3(VirtualFrame frame, TRegexDFAExecutorNode executor, CGTrackingDFAStateNode stateNode, int fromIndex, int toIndex, char c, int preLoopIndex) {
+    private int checkMatchTree3(TRegexDFAExecutorLocals locals, TRegexDFAExecutorNode executor, CGTrackingDFAStateNode stateNode, int fromIndex, int toIndex, char c, int preLoopIndex) {
         CompilerAsserts.partialEvaluationConstant(fromIndex);
         CompilerAsserts.partialEvaluationConstant(toIndex);
         if (fromIndex > toIndex) {
             final short successor = rangeTreeSuccessors[fromIndex];
             if (successor == DFAStateNode.FS_RESULT_NO_SUCCESSOR) {
-                stateNode.noSuccessor3(frame, executor, preLoopIndex);
+                stateNode.noSuccessor3(locals, executor, preLoopIndex);
             } else if (!stateNode.isLoopToSelf(successor)) {
-                stateNode.successorFound3(frame, executor, successor, preLoopIndex);
+                stateNode.successorFound3(locals, executor, successor, preLoopIndex);
             }
             return successor;
         }
         final int mid = (fromIndex + toIndex) >>> 1;
         CompilerAsserts.partialEvaluationConstant(mid);
         if (c < sortedRanges[mid]) {
-            return checkMatchTree3(frame, executor, stateNode, fromIndex, mid - 1, c, preLoopIndex);
+            return checkMatchTree3(locals, executor, stateNode, fromIndex, mid - 1, c, preLoopIndex);
         } else {
-            return checkMatchTree3(frame, executor, stateNode, mid + 1, toIndex, c, preLoopIndex);
+            return checkMatchTree3(locals, executor, stateNode, mid + 1, toIndex, c, preLoopIndex);
         }
     }
 

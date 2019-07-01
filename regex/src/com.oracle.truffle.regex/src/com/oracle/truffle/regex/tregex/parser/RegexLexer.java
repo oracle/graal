@@ -251,9 +251,9 @@ public final class RegexLexer {
             case '.':
                 return Token.createCharClass(flags.isDotAll() ? Constants.DOT_ALL : Constants.DOT);
             case '^':
-                return Token.create(Token.Kind.caret);
+                return Token.createCaret();
             case '$':
-                return Token.create(Token.Kind.dollar);
+                return Token.createDollar();
             case '{':
             case '*':
             case '+':
@@ -269,11 +269,11 @@ public final class RegexLexer {
                 }
                 return charClass(c);
             case '|':
-                return Token.create(Token.Kind.alternation);
+                return Token.createAlternation();
             case '(':
                 return parseGroupBegin();
             case ')':
-                return Token.create(Token.Kind.groupEnd);
+                return Token.createGroupEnd();
             case '[':
                 return parseCharClass();
             case ']':
@@ -330,9 +330,9 @@ public final class RegexLexer {
                     return charClass(c);
                 }
             case 'b':
-                return Token.create(Token.Kind.wordBoundary);
+                return Token.createWordBoundary();
             case 'B':
-                return Token.create(Token.Kind.nonWordBoundary);
+                return Token.createNonWordBoundary();
             default:
                 // Here we differentiate the case when parsing one of the six basic pre-defined
                 // character classes (\w, \W, \d, \D, \s, \S) and Unicode character property
@@ -359,14 +359,14 @@ public final class RegexLexer {
         } else if (consumingLookahead("?<!")) {
             return Token.createLookBehindAssertionBegin(true);
         } else if (consumingLookahead("?:")) {
-            return Token.create(Token.Kind.nonCaptureGroupBegin);
+            return Token.createNonCaptureGroupBegin();
         } else if (consumingLookahead("?<")) {
             String groupName = parseGroupName();
             registerNamedCaptureGroup(groupName);
-            return Token.create(Token.Kind.captureGroupBegin);
+            return Token.createCaptureGroupBegin();
         } else {
             registerCaptureGroup();
-            return Token.create(Token.Kind.captureGroupBegin);
+            return Token.createCaptureGroupBegin();
         }
     }
 

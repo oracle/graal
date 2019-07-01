@@ -28,10 +28,10 @@ import java.lang.reflect.Field;
 
 import com.oracle.truffle.api.dsl.Cached;
 import com.oracle.truffle.api.dsl.Specialization;
-import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.api.interop.TruffleObject;
 import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.api.profiles.ValueProfile;
+
 import sun.misc.Unsafe;
 
 /**
@@ -100,37 +100,33 @@ public abstract class TRegexDFAExecutorEntryNode extends Node {
         return executor;
     }
 
-    public abstract void execute(VirtualFrame frame, Object input, int fromIndex, int index, int maxIndex);
+    public abstract Object execute(Object input, int fromIndex, int index, int maxIndex);
 
     @Specialization(guards = "isCompactString(input)")
-    void doStringCompact(VirtualFrame frame, String input, int fromIndex, int index, int maxIndex) {
-        executor.setInput(frame, input);
-        executor.setFromIndex(frame, fromIndex);
-        executor.setIndex(frame, index);
-        executor.setMaxIndex(frame, maxIndex);
-        executor.execute(frame, true);
+    Object doStringCompact(String input, int fromIndex, int index, int maxIndex) {
+        return executor.execute(new TRegexDFAExecutorLocals(input, fromIndex, index, maxIndex, createCGData()), true);
     }
 
     @Specialization(guards = "!isCompactString(input)")
-    void doStringNonCompact(VirtualFrame frame, String input, int fromIndex, int index, int maxIndex) {
-        executor.setInput(frame, input);
-        executor.setFromIndex(frame, fromIndex);
-        executor.setIndex(frame, index);
-        executor.setMaxIndex(frame, maxIndex);
-        executor.execute(frame, false);
+    Object doStringNonCompact(String input, int fromIndex, int index, int maxIndex) {
+        return executor.execute(new TRegexDFAExecutorLocals(input, fromIndex, index, maxIndex, createCGData()), false);
     }
 
     @Specialization
-    void doTruffleObject(VirtualFrame frame, TruffleObject input, int fromIndex, int index, int maxIndex,
+    Object doTruffleObject(TruffleObject input, int fromIndex, int index, int maxIndex,
                     @Cached("createClassProfile()") ValueProfile inputClassProfile) {
-        executor.setInput(frame, inputClassProfile.profile(input));
-        executor.setFromIndex(frame, fromIndex);
-        executor.setIndex(frame, index);
-        executor.setMaxIndex(frame, maxIndex);
         // conservatively disable compact string optimizations.
         // TODO: maybe add an interface for TruffleObjects to announce if they are compact / ascii
         // strings?
-        executor.execute(frame, false);
+        return executor.execute(new TRegexDFAExecutorLocals(inputClassProfile.profile(input), fromIndex, index, maxIndex, createCGData()), false);
+    }
+
+    private DFACaptureGroupTrackingData createCGData() {
+        if (executor.getProperties().isTrackCaptureGroups()) {
+            return new DFACaptureGroupTrackingData(executor.getMaxNumberOfNFAStates(), executor.getProperties().getNumberOfCaptureGroups());
+        } else {
+            return null;
+        }
     }
 
     static boolean isCompactString(String str) {
