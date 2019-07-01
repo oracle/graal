@@ -175,7 +175,8 @@ final class InstrumentationHandler {
         assert root.getLanguageInfo() != null;
         if (hasSourceBindings) {
             final Source[] rootSources;
-            sourceBindingsLock.readLock().lock();
+            Lock lock = sourceBindingsLock.readLock();
+            lock.lock();
             try {
                 if (!sourceBindings.isEmpty() || collectingSources) {
                     // we'll add to the sourcesList, so it needs to be initialized
@@ -213,7 +214,7 @@ final class InstrumentationHandler {
                     }
                 }
             } finally {
-                sourceBindingsLock.readLock().unlock();
+                lock.unlock();
             }
         } else {
             loadedRoots.add(root);
@@ -295,7 +296,8 @@ final class InstrumentationHandler {
         assert root.getLanguageInfo() != null;
         if (hasSourceExecutedBindings) {
             final Source[] rootSources;
-            sourceExecutedBindingsLock.readLock().lock();
+            Lock lock = sourceExecutedBindingsLock.readLock();
+            lock.lock();
             try {
                 if (!sourceExecutedBindings.isEmpty() || collectingSourcesExecuted) {
                     // we'll add to the sourcesExecutedList, so it needs to be initialized
@@ -343,7 +345,7 @@ final class InstrumentationHandler {
                     }
                 }
             } finally {
-                sourceExecutedBindingsLock.readLock().unlock();
+                lock.unlock();
             }
         } else {
             executedRoots.add(root);
@@ -495,7 +497,8 @@ final class InstrumentationHandler {
             this.hasSourceBindings = true;
             lazyInitializeSourcesList();
         }
-        sourceBindingsLock.writeLock().lock();
+        Lock lock = sourceBindingsLock.writeLock();
+        lock.lock();
         try {
             this.sourceBindings.add(binding);
             this.hasSourceBindings = true;
@@ -506,7 +509,7 @@ final class InstrumentationHandler {
                 }
             }
         } finally {
-            sourceBindingsLock.writeLock().unlock();
+            lock.unlock();
         }
 
         if (TRACE) {
@@ -526,7 +529,8 @@ final class InstrumentationHandler {
             this.hasSourceExecutedBindings = true;
             lazyInitializeSourcesExecutedList();
         }
-        sourceExecutedBindingsLock.writeLock().lock();
+        Lock lock = sourceExecutedBindingsLock.writeLock();
+        lock.lock();
         try {
             this.sourceExecutedBindings.add(binding);
             this.hasSourceExecutedBindings = true;
@@ -537,7 +541,7 @@ final class InstrumentationHandler {
                 }
             }
         } finally {
-            sourceExecutedBindingsLock.writeLock().unlock();
+            lock.unlock();
         }
 
         if (TRACE) {
