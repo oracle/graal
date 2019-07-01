@@ -387,6 +387,10 @@ public class BinaryReader extends BinaryStreamReader {
                     break;
                 case BR: {
                     // TODO: restore check
+                    // This check was here to validate the stack size before branching and make sure that the block that
+                    // is currently executing produced as many values as it was meant to before branching.
+                    // We now have to postpone this check, as the target of a branch instruction may be more than one
+                    // levels up, so the amount of values it should leave in the stack depends on the branch target.
                     // Assert.assertEquals(state.stackSize() - startStackSize, currentBlock.returnTypeLength(), "Invalid stack state on BR instruction");
                     int unwindLevel = readLabelIndex(bytesConsumed);
                     state.useByteConstant(bytesConsumed[0]);
@@ -396,6 +400,10 @@ public class BinaryReader extends BinaryStreamReader {
                 case BR_IF: {
                     state.pop();
                     // TODO: restore check
+                    // This check was here to validate the stack size before branching and make sure that the block that
+                    // is currently executing produced as many values as it was meant to before branching.
+                    // We now have to postpone this check, as the target of a branch instruction may be more than one
+                    // levels up, so the amount of values it should leave in the stack depends on the branch target.
                     // Assert.assertEquals(state.stackSize() - startStackSize, currentBlock.returnTypeLength(), "Invalid stack state on BR instruction");
                     int unwindLevel = readLabelIndex(bytesConsumed);
                     state.useByteConstant(bytesConsumed[0]);

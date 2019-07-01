@@ -41,6 +41,7 @@ public class WasmEmptyNode extends WasmNode {
 
     @Override
     public int execute(VirtualFrame frame) {
+        // A return value of -1 means no branch to be taken.
         return -1;
     }
 

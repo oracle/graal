@@ -59,6 +59,14 @@ public abstract class WasmNode extends Node implements WasmNodeInterface {
         this.byteConstantLength = byteConstantLength;
     }
 
+    /**
+     * Execute the current node within the given frame and return the branch target.
+     *
+     * @param frame The frame to use for execution.
+     * @return The return value of this method indicates whether a branch is to be executed, in case of nested blocks.
+     * A return value of -1 means no branch, whereas a return value n greater than or equal to 0 means that
+     * the execution engine has to branch n levels up the block execution stack.
+     */
     public abstract int execute(VirtualFrame frame);
 
     public abstract byte returnTypeId();

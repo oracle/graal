@@ -201,8 +201,20 @@ public class WasmBlockNode extends WasmNode implements RepeatingNode {
                 case LOOP: {
                     WasmNode loopNode = nestedControlTable[nestedControlOffset];
 
-                    // Truffle takes care of this.
-                    loopNode.execute(frame);
+                    /**
+                     * The loopNode is a {@link WasmLoopNode} instance containing an instance of the {@link com.oracle.truffle.api.nodes.LoopNode}.
+                     * The LoopNode instance is created based on the {@link WasmBlockNode} (which implements {@link RepeatingNode})
+                     * for the loop block. When the execute method below is called, a call is made to the Truffle loop
+                     * node {@link com.oracle.truffle.api.nodes.LoopNode#executeLoop(VirtualFrame)} method,
+                     * which executes the loop as long as the return value of the
+                     * {@link WasmBlockNode#execute(VirtualFrame)} method is not -1
+                     * (see the {@link WasmBlockNode#executeRepeating(VirtualFrame)}} method).
+                     */
+                    int unwindCounter = loopNode.execute(frame);
+
+                    // The return value of the above call (unwindCounter) will normally indicate where we need to
+                    // branch to after the loop completion (i.e. to the code just after the loop or further out).
+                    // This is not supported yet.
 
                     nestedControlOffset++;
                     offset += loopNode.byteLength();
