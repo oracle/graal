@@ -36,6 +36,7 @@ import org.graalvm.compiler.core.common.type.IntegerStamp;
 import org.graalvm.compiler.core.common.type.PrimitiveStamp;
 import org.graalvm.compiler.core.common.type.Stamp;
 import org.graalvm.compiler.core.common.type.StampFactory;
+import org.graalvm.compiler.graph.Node;
 import org.graalvm.compiler.graph.NodeClass;
 import org.graalvm.compiler.graph.spi.Simplifiable;
 import org.graalvm.compiler.graph.spi.SimplifierTool;
@@ -44,6 +45,7 @@ import org.graalvm.compiler.nodes.AbstractBeginNode;
 import org.graalvm.compiler.nodes.ConstantNode;
 import org.graalvm.compiler.nodes.FixedGuardNode;
 import org.graalvm.compiler.nodes.FixedWithNextNode;
+import org.graalvm.compiler.nodes.IfNode;
 import org.graalvm.compiler.nodes.LogicNode;
 import org.graalvm.compiler.nodes.NodeView;
 import org.graalvm.compiler.nodes.ValueNode;
@@ -148,6 +150,8 @@ public final class IntegerSwitchNode extends SwitchNode implements LIRLowerable,
             return;
         } else if (tryRemoveUnreachableKeys(tool, value().stamp(view))) {
             return;
+        } else if (tryMergeSwitch(tool)) {
+            return;
         }
     }
 
@@ -161,6 +165,126 @@ public final class IntegerSwitchNode extends SwitchNode implements LIRLowerable,
             this.keyProbability = keyProbability;
             this.keySuccessor = keySuccessor;
         }
+    }
+
+    private static boolean isDuplicateKey(int key, List<KeyData> keyData) {
+        for (KeyData kd : keyData) {
+            if (kd.key == key) {
+                // No duplicates
+                return true;
+            }
+        }
+        return false;
+    }
+
+    private void mergeIn(List<KeyData> keyData, List<AbstractBeginNode> newSuccessors, double[] cumulative) {
+        for (int i = 0; i < keyCount(); i++) {
+            int key = keys[i];
+            if (isDuplicateKey(key, keyData)) {
+                // Unreachable key.
+                return;
+            }
+            double keyProbability = cumulative[0] * keyProbability(i);
+            keyData.add(new KeyData(key, keyProbability, newSuccessors.size()));
+            newSuccessors.add(keySuccessor(i));
+        }
+        cumulative[0] *= defaultProbability();
+    }
+
+    private static boolean canMerge(IntegerSwitchNode switchNode, ValueNode switchValue) {
+        return switchNode.value() == switchValue;
+    }
+
+    public boolean tryMergeSwitch(SimplifierTool tool) {
+        if (defaultSuccessor().next() instanceof IfNode) {
+            defaultSuccessor().next().simplify(tool);
+        }
+        if (!(defaultSuccessor().next() instanceof IntegerSwitchNode || (predecessor() instanceof AbstractBeginNode && predecessor().predecessor() instanceof IntegerSwitchNode))) {
+            return false;
+        }
+        ValueNode switchValue = value();
+        List<KeyData> newKeyData = new ArrayList<>();
+        List<AbstractBeginNode> newSuccessors = new ArrayList<>();
+
+        Node iteratingSwitch = this;
+        IntegerSwitchNode topSwitchNode = this;
+
+        // Go up
+        while (iteratingSwitch instanceof IntegerSwitchNode && canMerge((IntegerSwitchNode) iteratingSwitch, switchValue)) {
+            topSwitchNode = (IntegerSwitchNode) iteratingSwitch;
+            if (!(iteratingSwitch.predecessor() instanceof AbstractBeginNode)) {
+                break;
+            }
+            iteratingSwitch = predecessor().predecessor();
+        }
+
+        double[] cumulative = {1.0d};
+
+        iteratingSwitch = topSwitchNode;
+        IntegerSwitchNode lastSwitch = topSwitchNode;
+        // Go down and merge
+        while (iteratingSwitch instanceof IntegerSwitchNode && canMerge((IntegerSwitchNode) iteratingSwitch, switchValue)) {
+            lastSwitch = (IntegerSwitchNode) iteratingSwitch;
+            lastSwitch.mergeIn(newKeyData, newSuccessors, cumulative);
+            iteratingSwitch = lastSwitch.defaultSuccessor().next();
+        }
+        if (topSwitchNode == lastSwitch) {
+            return false;
+        }
+
+        // Commit starting from here.
+        newKeyData.sort(Comparator.comparingInt(k -> k.key));
+
+        // Spawn the required data structures
+        int newKeyCount = newKeyData.size();
+        int[] newKeys = new int[newKeyCount];
+        double[] newKeyProbabilities = new double[newKeyCount + 1];
+        int[] newKeySuccessors = new int[newKeyCount + 1];
+
+        for (int i = 0; i < newKeyCount; i++) {
+            KeyData data = newKeyData.get(i);
+            newKeys[i] = data.key;
+            newKeyProbabilities[i] = data.keyProbability;
+            newKeySuccessors[i] = data.keySuccessor;
+        }
+
+        // Add default
+        newKeyProbabilities[newKeyCount] = cumulative[0];
+        newKeySuccessors[newKeyCount] = newSuccessors.size();
+        newSuccessors.add(lastSwitch.defaultSuccessor());
+
+        // Spawn the switch node
+        IntegerSwitchNode toInsert = new IntegerSwitchNode(switchValue, newSuccessors.size(), newKeys, newKeyProbabilities, newKeySuccessors);
+        graph().add(toInsert);
+
+        IntegerSwitchNode goingUp = lastSwitch;
+
+        while (goingUp != topSwitchNode) {
+            AbstractBeginNode defaultSuccessor = goingUp.defaultSuccessor();
+            goingUp.clearSuccessors();
+            if (goingUp != lastSwitch) {
+                goingUp.successors.add(defaultSuccessor);
+            }
+            if (!(goingUp.predecessor() instanceof AbstractBeginNode)) {
+                break;
+            }
+            goingUp = (IntegerSwitchNode) goingUp.predecessor().predecessor();
+        }
+        AbstractBeginNode defaultSuccessor = goingUp.defaultSuccessor();
+        goingUp.clearSuccessors();
+        goingUp.successors.add(defaultSuccessor);
+
+        topSwitchNode.replaceAtPredecessor(toInsert);
+        topSwitchNode.replaceAtUsages(toInsert);
+
+        int pos = 0;
+        for (AbstractBeginNode begin : newSuccessors) {
+            toInsert.setBlockSuccessor(pos++, begin);
+        }
+
+        GraphUtil.killCFG(topSwitchNode);
+
+        return true;
     }
 
     /**

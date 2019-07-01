@@ -29,6 +29,7 @@ import static org.graalvm.compiler.nodeinfo.NodeSize.SIZE_2;
 
 import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.Comparator;
 import java.util.Iterator;
 import java.util.List;
 import java.util.Objects;
@@ -42,6 +43,7 @@ import org.graalvm.compiler.bytecode.ResolvedJavaMethodBytecode;
 import org.graalvm.compiler.core.common.calc.Condition;
 import org.graalvm.compiler.core.common.type.FloatStamp;
 import org.graalvm.compiler.core.common.type.IntegerStamp;
+import org.graalvm.compiler.core.common.type.PrimitiveStamp;
 import org.graalvm.compiler.core.common.type.Stamp;
 import org.graalvm.compiler.core.common.type.StampFactory;
 import org.graalvm.compiler.debug.CounterKey;
@@ -66,6 +68,8 @@ import org.graalvm.compiler.nodes.calc.IntegerLessThanNode;
 import org.graalvm.compiler.nodes.calc.IsNullNode;
 import org.graalvm.compiler.nodes.calc.NormalizeCompareNode;
 import org.graalvm.compiler.nodes.calc.ObjectEqualsNode;
+import org.graalvm.compiler.nodes.calc.SignExtendNode;
+import org.graalvm.compiler.nodes.extended.IntegerSwitchNode;
 import org.graalvm.compiler.nodes.extended.UnboxNode;
 import org.graalvm.compiler.nodes.java.InstanceOfNode;
 import org.graalvm.compiler.nodes.java.LoadFieldNode;
@@ -297,6 +301,10 @@ public final class IfNode extends ControlSplitNode implements Simplifiable, LIRL
             return;
         }
 
+        if (switchTransformationOptimization(tool)) {
+            return;
+        }
+
         if (falseSuccessor().hasNoUsages() && (!(falseSuccessor() instanceof LoopExitNode)) && falseSuccessor().next() instanceof IfNode &&
                         !(((IfNode) falseSuccessor().next()).falseSuccessor() instanceof LoopExitNode)) {
             AbstractBeginNode intermediateBegin = falseSuccessor();
@@ -452,6 +460,263 @@ public final class IfNode extends ControlSplitNode implements Simplifiable, LIRL
         setCondition(graph().addOrUniqueWithInputs(LogicConstantNode.contradiction()));
 
         return true;
+    }
+
+    private static boolean maybeIsInSwitch(LogicNode condition) {
+        return condition instanceof IntegerEqualsNode && ((IntegerEqualsNode) condition).getY().isConstant();
+    }
+
+    private static boolean sameSwitchValue(LogicNode condition, ValueNode switchValue) {
+        return ((IntegerEqualsNode) condition).getX() == switchValue;
+    }
+
+    private static Node getParentSwitchNode(Node node, ValueNode switchValue) {
+        Node temp = node.predecessor();
+        if (temp instanceof AbstractBeginNode) {
+            temp = temp.predecessor();
+            if (temp instanceof IfNode) {
+                IfNode potentialResult = (IfNode) temp;
+                if (maybeIsInSwitch(potentialResult.condition()) && sameSwitchValue(potentialResult.condition(), switchValue)) {
+                    return potentialResult;
+                }
+            }
+        } else if (temp instanceof FixedGuardNode) {
+            FixedGuardNode potentialResult = (FixedGuardNode) temp;
+            if (maybeIsInSwitch(potentialResult.condition()) && sameSwitchValue(potentialResult.condition(), switchValue)) {
+                return potentialResult;
+            }
+        }
+        return null;
+    }
+
+    private static boolean isInSwitch(Node node, ValueNode switchValue) {
+        if (node instanceof IfNode) {
+            IfNode ifnode = (IfNode) node;
+            return maybeIsInSwitch(ifnode.condition()) && sameSwitchValue(ifnode.condition(), switchValue);
+        } else if (node instanceof FixedGuardNode) {
+            FixedGuardNode ifnode = (FixedGuardNode) node;
+            return maybeIsInSwitch(ifnode.condition()) && sameSwitchValue(ifnode.condition(), switchValue);
+        }
+        return false;
+    }
+
+    private static Node getChildSwitchNode(Node node, ValueNode switchValue) {
+        Node potentialResult = null;
+        if (node instanceof IfNode) {
+            potentialResult = ((IfNode) node).falseSuccessor().next();
+
+        } else if (node instanceof FixedGuardNode) {
+            potentialResult = ((FixedGuardNode) node).next();
+        }
+        if (potentialResult != null && isInSwitch(potentialResult, switchValue)) {
+            return potentialResult;
+        }
+        return null;
+    }
+
+    private static boolean updateSwitchData(Node node, List<KeyData> keyData, List<AbstractBeginNode> successors, double[] cumulative) {
+        if (node instanceof IfNode) {
+            IfNode ifnode = (IfNode) node;
+            double keyProbability = ifnode.getTrueSuccessorProbability() * cumulative[0];
+            cumulative[0] *= 1.0d - ifnode.getTrueSuccessorProbability();
+            long key = ((IntegerEqualsNode) ifnode.condition()).getY().asJavaConstant().asLong();
+            if (!isValidKey(key)) {
+                return false;
+            }
+            if (isDuplicateKey((int) key, keyData)) {
+                // Unreachable
+                return true;
+            }
+            keyData.add(new KeyData((int) key, keyProbability, successors.size()));
+            successors.add(ifnode.trueSuccessor());
+            return true;
+        } else if (node instanceof FixedGuardNode) {
+            FixedGuardNode guardNode = (FixedGuardNode) node;
+            double keyProbability = 0.0d;
+            long key = ((IntegerEqualsNode) guardNode.condition()).getY().asJavaConstant().asLong();
+            if (!isValidKey(key)) {
+                return false;
+            }
+            if (isDuplicateKey((int) key, keyData)) {
+                // Unreachable
+                return true;
+            }
+            keyData.add(new KeyData((int) key, keyProbability, successors.size()));
+            DeoptimizeNode deopt = new DeoptimizeNode(guardNode.getAction(), guardNode.getReason(), guardNode.getSpeculation());
+            deopt.setNodeSourcePosition(guardNode.getNodeSourcePosition());
+            node.graph().add(deopt);
+            AbstractBeginNode begin = BeginNode.begin(deopt);
+            successors.add(begin);
+            return true;
+        }
+        return false; // Should never happen
+    }
+
+    private static void cutOffIfNode(Node node) {
+        if (node instanceof IfNode) {
+            IfNode ifnode = (IfNode) node;
+            ifnode.setTrueSuccessor(null);
+        }
+    }
+
+    private static void cutOffLowestIfNode(Node node) {
+        if (node instanceof IfNode) {
+            IfNode ifnode = (IfNode) node;
+            ifnode.setFalseSuccessor(null);
+            ifnode.setTrueSuccessor(null);
+        }
+        if (node instanceof FixedGuardNode) {
+            FixedGuardNode guardNode = (FixedGuardNode) node;
+            guardNode.setNext(null);
+        }
+    }
+
+    private static boolean isValidKey(long key) {
+        if (key != (int) key) {
+            return false;
+        }
+        return true;
+    }
+
+    private static boolean isDuplicateKey(int key, List<KeyData> keyData) {
+        for (KeyData kd : keyData) {
+            if (kd.key == key) {
+                // No duplicates
+                return true;
+            }
+        }
+        return false;
+    }
+
+    static final class KeyData {
+        final int key;
+        final double keyProbability;
+        final int keySuccessor;
+
+        KeyData(int key, double keyProbability, int keySuccessor) {
+            this.key = key;
+            this.keyProbability = keyProbability;
+            this.keySuccessor = keySuccessor;
+        }
+    }
+
+    private static void abortSwitchOpt(List<AbstractBeginNode> successors) {
+        for (AbstractBeginNode begin : successors) {
+            if (begin.predecessor() == null) {
+                // newly spawned node
+                GraphUtil.killCFG(begin);
+            }
+        }
+    }
+
+    /**
+     * Transforms a cascade of ifs into a switch.
+     */
+    private boolean switchTransformationOptimization(SimplifierTool tool) {
+        if (maybeIsInSwitch(condition())) {
+            Node topMostSwitchNode = this;
+            ValueNode switchValue = ((IntegerEqualsNode) condition()).getX();
+
+            Stamp switchStamp = switchValue.stamp(NodeView.DEFAULT);
+            if (!(switchStamp instanceof IntegerStamp)) {
+                return false;
+            }
+            if (PrimitiveStamp.getBits(switchStamp) > 32) {
+                return false;
+            }
+
+            Node iteratingNode = this; // PlaceHolder.
+
+            while (iteratingNode != null) {
+                topMostSwitchNode = iteratingNode;
+                iteratingNode = getParentSwitchNode(iteratingNode, switchValue);
+            }
+            List<KeyData> keyData = new ArrayList<>();
+            List<AbstractBeginNode> successors = new ArrayList<>();
+
+            iteratingNode = topMostSwitchNode;
+            Node lowestSwitchNode = topMostSwitchNode;
+            double[] cumulative = {1.0d};
+
+            // Go down the if cascade
+            while (iteratingNode != null) {
+                lowestSwitchNode = iteratingNode;
+                if (!updateSwitchData(iteratingNode, keyData, successors, cumulative)) {
+                    abortSwitchOpt(successors);
+                    return false;
+                }
+                iteratingNode = getChildSwitchNode(iteratingNode, switchValue);
+            }
+
+            if (keyData.size() < 4) {
+                abortSwitchOpt(successors);
+                return false;
+            }
+
+            // At that point, we will commit the optimization.
+
+            // Sort the keys
+            keyData.sort(Comparator.comparingInt(k -> k.key));
+
+            // Spawn the required data structures
+            int newKeyCount = keyData.size();
+            int[] keys = new int[newKeyCount];
+            double[] keyProbabilities = new double[newKeyCount + 1];
+            int[] keySuccessors = new int[newKeyCount + 1];
+
+            for (int i = 0; i < newKeyCount; i++) {
+                KeyData data = keyData.get(i);
+                keys[i] = data.key;
+                keyProbabilities[i] = data.keyProbability;
+                keySuccessors[i] = data.keySuccessor;
+            }
+
+            // Add default
+            keyProbabilities[newKeyCount] = cumulative[0];
+            keySuccessors[newKeyCount] = successors.size();
+            if (lowestSwitchNode instanceof IfNode) {
+                successors.add(((IfNode) lowestSwitchNode).falseSuccessor());
+            }
+            if (lowestSwitchNode instanceof FixedGuardNode) {
+                FixedNode defaultNode = ((FixedGuardNode) lowestSwitchNode).next();
+                lowestSwitchNode.clearSuccessors();
+                successors.add(BeginNode.begin(defaultNode));
+            }
+
+            ValueNode adapter = null;
+            if (((IntegerStamp) switchStamp).getBits() < 32) {
+                adapter = new SignExtendNode(switchValue, 32);
+                graph().addOrUnique(adapter);
+            } else {
+                adapter = switchValue;
+            }
+
+            // Spawn the switch node
+            IntegerSwitchNode toInsert = new IntegerSwitchNode(adapter, successors.size(), keys, keyProbabilities, keySuccessors);
+            graph().add(toInsert);
+
+            // Remove the If cascade.
+            cutOffLowestIfNode(lowestSwitchNode);
+            iteratingNode = lowestSwitchNode;
+            while (iteratingNode != null) {
+                cutOffIfNode(iteratingNode);
+                iteratingNode = getParentSwitchNode(iteratingNode, switchValue);
+            }
+
+            topMostSwitchNode.replaceAtPredecessor(toInsert);
+            topMostSwitchNode.replaceAtUsages(toInsert);
+
+            int pos = 0;
+            for (AbstractBeginNode begin : successors) {
+                toInsert.setBlockSuccessor(pos++, begin);
+            }
+
+            GraphUtil.killCFG((FixedNode) topMostSwitchNode);
+
+            tool.addToWorkList(toInsert);
+            return true;
+        }
+        return false;
     }
 
     /**
