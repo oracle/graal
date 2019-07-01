@@ -53,13 +53,14 @@ public class DumpPathTest extends GraalCompilerTest {
         String[] extensions = new String[]{".cfg", ".bgv", ".graph-strings"};
         EconomicMap<OptionKey<?>, Object> overrides = OptionValues.newOptionMap();
         overrides.put(DebugOptions.DumpPath, dumpDirectoryPath.toString());
+        overrides.put(DebugOptions.PrintCFG, true);
         overrides.put(DebugOptions.PrintGraph, PrintGraphTarget.File);
         overrides.put(DebugOptions.PrintCanonicalGraphStrings, true);
         overrides.put(DebugOptions.Dump, "*");
 
         // Generate dump files.
         test(new OptionValues(getInitialOptions(), overrides), "snippet");
-        // Check that Ideal files got created, in the right place.
+        // Check that IGV files got created, in the right place.
         checkForFiles(dumpDirectoryPath, extensions);
 
         // Clean up the generated files.

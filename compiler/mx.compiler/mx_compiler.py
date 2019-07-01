@@ -1140,7 +1140,7 @@ def makegraaljdk(args):
                     shutil.rmtree(dstJdk)
                 else:
                     mx.abort('Use --force to overwrite existing directory ' + dstJdk)
-                    mx.log('Creating {} from {}'.format(dstJdk, srcJdk))
+            mx.log('Creating {} from {}'.format(dstJdk, srcJdk))
             shutil.copytree(srcJdk, dstJdk)
 
         bootDir = mx.ensure_dir_exists(join(dstJdk, 'jre', 'lib', 'boot'))
