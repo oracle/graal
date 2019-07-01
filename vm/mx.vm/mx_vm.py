@@ -157,7 +157,6 @@ class BaseGraalVmLayoutDistribution(mx.LayoutDistribution):
         else:
             self.jre_base = self.jdk_base
 
-
         path_substitutions = mx_subst.SubstitutionEngine(mx_subst.path_substitutions)
         path_substitutions.register_no_arg('jdk_base', lambda: self.jdk_base)
         path_substitutions.register_no_arg('jre_base', lambda: self.jre_base)
@@ -1341,16 +1340,23 @@ class GraalVmBashLauncherBuildTask(GraalVmNativeImageBuildTask):
         if jdk.version.parts[0] >= 11:
             start = script_destination_directory
 
-            graal_sdk = relpath(graal_vm.find_single_source_location('dependency:sdk:GRAAL_SDK'), start)
-            truffle_api = relpath(graal_vm.find_single_source_location('dependency:truffle:TRUFFLE_API'), start)
-            graal_jar = relpath(graal_vm.find_single_source_location('dependency:compiler:GRAAL'), start)
-            graal_management_jar = relpath(graal_vm.find_single_source_location('dependency:compiler:GRAAL_MANAGEMENT'), start)
+            module_path = [
+                relpath(graal_vm.find_single_source_location('dependency:sdk:GRAAL_SDK'), start),
+                relpath(graal_vm.find_single_source_location('dependency:truffle:TRUFFLE_API'), start),
+            ]
+            upgrade_module_path = []
+            graal_jar = graal_vm.find_single_source_location('dependency:compiler:GRAAL', fatal_if_missing=False)
+            if graal_jar:
+                upgrade_module_path.append(relpath(graal_jar, start))
+            graal_management_jar = graal_vm.find_single_source_location('dependency:compiler:GRAAL_MANAGEMENT', fatal_if_missing=False)
+            if graal_management_jar:
+                upgrade_module_path.append(relpath(graal_management_jar, start))
 
             def _get_module_path():
-                return graal_sdk + ":" + truffle_api
+                return os.pathsep.join(module_path)
 
             def _get_upgrade_module_path():
-                return graal_jar + ":" + graal_management_jar
+                return os.pathsep.join(upgrade_module_path)
 
             _template_subst.register_no_arg('module_path', _get_module_path)
             _template_subst.register_no_arg('upgrade_module_path', _get_upgrade_module_path)
