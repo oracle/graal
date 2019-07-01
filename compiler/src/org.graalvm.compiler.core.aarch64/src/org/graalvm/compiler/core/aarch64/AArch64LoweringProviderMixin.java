@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2019, 2019, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2019, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -22,13 +22,20 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.svm.core.graal.code;
 
-import org.graalvm.compiler.core.common.CompressEncoding;
-import org.graalvm.compiler.phases.Phase;
+package org.graalvm.compiler.core.aarch64;
 
-import com.oracle.svm.core.graal.meta.SubstrateRegisterConfig;
+import org.graalvm.compiler.nodes.spi.LoweringProvider;
 
-public interface SubstrateAddressLoweringPhaseFactory {
-    Phase newAddressLowering(CompressEncoding encoding, SubstrateRegisterConfig registerConfig);
+public interface AArch64LoweringProviderMixin extends LoweringProvider {
+
+    @Override
+    default Integer smallestCompareWidth() {
+        return 32;
+    }
+
+    @Override
+    default boolean supportBulkZeroing() {
+        return false;
+    }
 }

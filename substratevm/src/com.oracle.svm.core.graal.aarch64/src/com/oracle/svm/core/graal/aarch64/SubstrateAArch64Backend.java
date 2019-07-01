@@ -22,7 +22,7 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.svm.core.graal.code.aarch64;
+package com.oracle.svm.core.graal.aarch64;
 
 import static com.oracle.svm.core.util.VMError.shouldNotReachHere;
 import static com.oracle.svm.core.util.VMError.unimplemented;
@@ -102,21 +102,16 @@ import org.graalvm.compiler.phases.Phase;
 import org.graalvm.compiler.phases.common.AddressLoweringByUsePhase;
 import org.graalvm.compiler.phases.tiers.SuitesProvider;
 import org.graalvm.compiler.phases.util.Providers;
-import org.graalvm.nativeimage.hosted.Feature;
 import org.graalvm.nativeimage.ImageSingletons;
-import org.graalvm.nativeimage.Platform;
-import org.graalvm.nativeimage.Platforms;
 
 import com.oracle.svm.core.FrameAccess;
 import com.oracle.svm.core.SubstrateOptions;
 import com.oracle.svm.core.SubstrateUtil;
-import com.oracle.svm.core.annotate.AutomaticFeature;
 import com.oracle.svm.core.config.ConfigurationValues;
 import com.oracle.svm.core.deopt.DeoptimizedFrame;
 import com.oracle.svm.core.deopt.Deoptimizer;
 import com.oracle.svm.core.graal.code.PatchConsumerFactory;
 import com.oracle.svm.core.graal.code.SubstrateBackend;
-import com.oracle.svm.core.graal.code.SubstrateBackendFactory;
 import com.oracle.svm.core.graal.code.SubstrateCallingConventionType;
 import com.oracle.svm.core.graal.code.SubstrateCompiledCode;
 import com.oracle.svm.core.graal.code.SubstrateDataBuilder;
@@ -156,25 +151,6 @@ import jdk.vm.ci.meta.JavaKind;
 import jdk.vm.ci.meta.JavaType;
 import jdk.vm.ci.meta.ResolvedJavaMethod;
 import jdk.vm.ci.meta.Value;
-
-@AutomaticFeature
-@Platforms(Platform.AArch64.class)
-class SubstrateAArch64BackendFeature implements Feature {
-    @Override
-    public boolean isInConfiguration(IsInConfigurationAccess access) {
-        return Platform.includedIn(Platform.AArch64.class) && SubstrateOptions.CompilerBackend.getValue().equals("lir");
-    }
-
-    @Override
-    public void afterRegistration(AfterRegistrationAccess access) {
-        ImageSingletons.add(SubstrateBackendFactory.class, new SubstrateBackendFactory() {
-            @Override
-            public SubstrateBackend newBackend(Providers newProviders) {
-                return new SubstrateAArch64Backend(newProviders);
-            }
-        });
-    }
-}
 
 public class SubstrateAArch64Backend extends SubstrateBackend implements LIRGenerationProvider {
 

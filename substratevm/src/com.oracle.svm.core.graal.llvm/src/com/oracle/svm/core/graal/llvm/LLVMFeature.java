@@ -33,14 +33,16 @@ import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
 
+import org.graalvm.compiler.core.common.spi.ForeignCallsProvider;
 import org.graalvm.compiler.phases.util.Providers;
+import org.graalvm.compiler.replacements.DefaultJavaLoweringProvider;
 import org.graalvm.compiler.replacements.Snippets;
-import org.graalvm.nativeimage.hosted.Feature;
 import org.graalvm.nativeimage.ImageSingletons;
 import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.Platforms;
 import org.graalvm.nativeimage.c.function.CLibrary;
 import org.graalvm.nativeimage.c.function.CodePointer;
+import org.graalvm.nativeimage.hosted.Feature;
 import org.graalvm.word.Pointer;
 import org.graalvm.word.WordFactory;
 
@@ -48,6 +50,7 @@ import com.oracle.svm.core.annotate.AutomaticFeature;
 import com.oracle.svm.core.graal.GraalFeature;
 import com.oracle.svm.core.graal.code.SubstrateBackend;
 import com.oracle.svm.core.graal.code.SubstrateBackendFactory;
+import com.oracle.svm.core.graal.code.SubstrateLoweringProviderFactory;
 import com.oracle.svm.core.snippets.SnippetRuntime;
 import com.oracle.svm.core.util.UserError;
 import com.oracle.svm.hosted.c.util.FileUtils;
@@ -55,6 +58,9 @@ import com.oracle.svm.hosted.code.CompileQueue;
 import com.oracle.svm.hosted.image.NativeImageCodeCache;
 import com.oracle.svm.hosted.image.NativeImageCodeCacheFactory;
 import com.oracle.svm.hosted.image.NativeImageHeap;
+
+import jdk.vm.ci.code.TargetDescription;
+import jdk.vm.ci.meta.MetaAccessProvider;
 
 @AutomaticFeature
 @CLibrary("m")
@@ -76,12 +82,21 @@ public class LLVMFeature implements Feature, GraalFeature, Snippets {
                 return new SubstrateLLVMBackend(newProviders);
             }
         });
+
+        ImageSingletons.add(SubstrateLoweringProviderFactory.class, new SubstrateLoweringProviderFactory() {
+            @Override
+            public DefaultJavaLoweringProvider newLoweringProvider(MetaAccessProvider metaAccess, ForeignCallsProvider foreignCalls, TargetDescription target) {
+                return new SubstrateLLVMLoweringProvider(metaAccess, foreignCalls, target);
+            }
+        });
+
         ImageSingletons.add(NativeImageCodeCacheFactory.class, new NativeImageCodeCacheFactory() {
             @Override
             public NativeImageCodeCache newCodeCache(CompileQueue compileQueue, NativeImageHeap heap, Platform platform) {
                 return new LLVMNativeImageCodeCache(compileQueue.getCompilations(), heap, platform);
             }
         });
+
         ImageSingletons.add(SnippetRuntime.ExceptionStackFrameVisitor.class, new SnippetRuntime.ExceptionStackFrameVisitor() {
             @Override
             public CodePointer getExceptionHandlerPointer(CodePointer ip, Pointer sp, long handlerOffset) {
