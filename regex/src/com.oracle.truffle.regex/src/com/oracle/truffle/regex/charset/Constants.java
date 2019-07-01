@@ -26,11 +26,8 @@ package com.oracle.truffle.regex.charset;
 
 public final class Constants {
 
-    public static final int MIN_CODEPOINT = 0;
-    public static final int MAX_CODEPOINT = 0x10FFFF;
-
-    public static final CodePointRange BMP_RANGE = new CodePointRange(MIN_CODEPOINT, 0xFFFF);
-    public static final CodePointRange TRAIL_SURROGATE_RANGE = new CodePointRange(0xDC00, 0xDFFF);
+    public static final CodePointSet BMP_RANGE = CodePointSet.createNoDedup(Character.MIN_VALUE, Character.MAX_VALUE);
+    public static final CodePointSet TRAIL_SURROGATE_RANGE = CodePointSet.createNoDedup(0xDC00, 0xDFFF);
 
     public static final CodePointSet BMP_WITHOUT_SURROGATES = CodePointSet.createNoDedup(
                     0x0000, 0xd7ff,
@@ -187,7 +184,7 @@ public final class Constants {
                     0x000e, 0x2027,
                     0x202a, 0x10ffff);
 
-    public static final CodePointSet DOT_ALL = CodePointSet.createNoDedup(MIN_CODEPOINT, MAX_CODEPOINT);
+    public static final CodePointSet DOT_ALL = CodePointSet.createNoDedup(Character.MIN_CODE_POINT, Character.MAX_CODE_POINT);
 
     // [A-Fa-f0-9]
     public static final CodePointSet HEX_CHARS = CodePointSet.createNoDedup(

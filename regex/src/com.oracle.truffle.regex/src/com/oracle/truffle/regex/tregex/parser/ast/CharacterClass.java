@@ -75,6 +75,11 @@ public class CharacterClass extends Term {
         return ast.register(new CharacterClass(this));
     }
 
+    @Override
+    public Sequence getParent() {
+        return (Sequence) super.getParent();
+    }
+
     /**
      * Returns the {@link CharSet} representing the set of characters that can be matched by this
      * {@link CharacterClass}.

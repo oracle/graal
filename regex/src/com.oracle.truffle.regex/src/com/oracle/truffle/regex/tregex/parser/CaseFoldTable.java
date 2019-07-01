@@ -24,12 +24,11 @@
  */
 package com.oracle.truffle.regex.tregex.parser;
 
-import com.oracle.truffle.regex.charset.CodePointRange;
-import com.oracle.truffle.regex.charset.CodePointSetBuilder;
 import com.oracle.truffle.regex.charset.CodePointSet;
+import com.oracle.truffle.regex.charset.RangesAccumulator;
 import com.oracle.truffle.regex.charset.RangesBuffer;
 import com.oracle.truffle.regex.charset.SortedListOfRanges;
-import com.oracle.truffle.regex.tregex.buffer.CompilationBuffer;
+import com.oracle.truffle.regex.tregex.buffer.IntRangesBuffer;
 
 public class CaseFoldTable {
 
@@ -55,8 +54,8 @@ public class CaseFoldTable {
         }
     }
 
-    public static CodePointSetBuilder applyCaseFold(CodePointSetBuilder codePointSet, CaseFoldingAlgorithm algorithm) {
-        return getTable(algorithm).applyCaseFold(codePointSet);
+    public static void applyCaseFold(RangesAccumulator<IntRangesBuffer> codePointSet, CaseFoldingAlgorithm algorithm) {
+        getTable(algorithm).applyCaseFold(codePointSet);
     }
 
     private static CodePointSet rangeSet(int... ranges) {
@@ -68,7 +67,7 @@ public class CaseFoldTable {
     private static final int ALTERNATING_UL = 3;
     private static final int ALTERNATING_AL = 4;
 
-    private static final class CaseFoldTableImpl extends SortedListOfRanges {
+    private static final class CaseFoldTableImpl implements SortedListOfRanges {
 
         private final int[] ranges;
 
@@ -76,53 +75,56 @@ public class CaseFoldTable {
             this.ranges = ranges;
         }
 
-        CodePointSetBuilder applyCaseFold(CodePointSetBuilder codePointSet) {
-            CodePointSetBuilder result = codePointSet.copy();
-            for (CodePointRange r : codePointSet.getRanges()) {
-                int search = binarySearch(r.lo);
-                if (binarySearchExactMatch(search, r.lo, r.hi)) {
-                    apply(result, search, r.lo, r.hi);
+        void applyCaseFold(RangesAccumulator<IntRangesBuffer> acc) {
+            IntRangesBuffer copy = acc.getTmp();
+            copy.clear();
+            acc.get().appendRangesTo(copy, 0, acc.get().size());
+            for (int i = 0; i < copy.size(); i++) {
+                int search = binarySearch(copy.getLo(i));
+                if (binarySearchExactMatch(search, copy, i)) {
+                    apply(acc.get(), search, copy.getLo(i), copy.getHi(i));
                     continue;
                 }
-                int firstIntersection = binarySearchGetFirstIntersecting(search, r.lo, r.hi);
+                int firstIntersection = binarySearchGetFirstIntersecting(search, copy, i);
                 if (binarySearchNoIntersectingFound(firstIntersection)) {
                     continue;
                 }
-                for (int i = firstIntersection; i < size(); i++) {
-                    if (rightOf(i, r.lo, r.hi)) {
+                for (int j = firstIntersection; j < size(); j++) {
+                    if (rightOf(j, copy, i)) {
                         break;
                     }
-                    assert intersects(i, r.lo, r.hi);
-                    int intersectionLo = Math.max(getLo(i), r.lo);
-                    int intersectionHi = Math.min(getHi(i), r.hi);
-                    apply(result, i, intersectionLo, intersectionHi);
+                    assert intersects(j, copy, i);
+                    int intersectionLo = Math.max(getLo(j), copy.getLo(i));
+                    int intersectionHi = Math.min(getHi(j), copy.getHi(i));
+                    apply(acc.get(), j, intersectionLo, intersectionHi);
                 }
             }
-            return result;
         }
 
-        private void apply(CodePointSetBuilder codePointSetBuilder, int tblEntryIndex, int intersectionLo, int intersectionHi) {
+        private void apply(IntRangesBuffer codePointSet, int tblEntryIndex, int intersectionLo, int intersectionHi) {
             switch (ranges[tblEntryIndex * 4 + 2]) {
                 case INTEGER_OFFSET:
                     int delta = ranges[tblEntryIndex * 4 + 3];
-                    codePointSetBuilder.addRange(new CodePointRange(intersectionLo + delta, intersectionHi + delta));
+                    codePointSet.addRange(intersectionLo + delta, intersectionHi + delta);
                     break;
                 case DIRECT_MAPPING:
                     CodePointSet set = CHARACTER_SET_TABLE[ranges[tblEntryIndex * 4 + 3]];
                     for (int i = 0; i < set.size(); i++) {
-                        codePointSetBuilder.addRange(new CodePointRange(set.getLo(i), set.getHi(i)));
+                        codePointSet.addRange(set.getLo(i), set.getHi(i));
                     }
                     break;
                 case ALTERNATING_UL:
-                    final CodePointRange unAlignedRange = CodePointRange.fromUnordered(((intersectionLo - 1) ^ 1) + 1, ((intersectionHi - 1) ^ 1) + 1);
-                    if (!contains(intersectionLo, intersectionHi, unAlignedRange.lo, unAlignedRange.hi)) {
-                        codePointSetBuilder.addRange(unAlignedRange);
+                    int loUL = Math.min(((intersectionLo - 1) ^ 1) + 1, ((intersectionHi - 1) ^ 1) + 1);
+                    int hiUL = Math.max(((intersectionLo - 1) ^ 1) + 1, ((intersectionHi - 1) ^ 1) + 1);
+                    if (!SortedListOfRanges.contains(intersectionLo, intersectionHi, loUL, hiUL)) {
+                        codePointSet.addRange(loUL, hiUL);
                     }
                     break;
                 case ALTERNATING_AL:
-                    final CodePointRange alignedRange = CodePointRange.fromUnordered(intersectionLo ^ 1, intersectionHi ^ 1);
-                    if (!contains(intersectionLo, intersectionHi, alignedRange.lo, alignedRange.hi)) {
-                        codePointSetBuilder.addRange(alignedRange);
+                    int loAL = Math.min(intersectionLo ^ 1, intersectionHi ^ 1);
+                    int hiAL = Math.max(intersectionLo ^ 1, intersectionHi ^ 1);
+                    if (!SortedListOfRanges.contains(intersectionLo, intersectionHi, loAL, hiAL)) {
+                        codePointSet.addRange(loAL, hiAL);
                     }
                     break;
                 default:
@@ -146,57 +148,17 @@ public class CaseFoldTable {
         }
 
         @Override
-        protected <T extends SortedListOfRanges> T createEmpty() {
-            throw new UnsupportedOperationException();
-        }
-
-        @Override
-        protected <T extends SortedListOfRanges> T createFull() {
-            throw new UnsupportedOperationException();
-        }
-
-        @Override
-        protected <T extends SortedListOfRanges> T create(RangesBuffer buffer) {
-            throw new UnsupportedOperationException();
-        }
-
-        @Override
-        protected int getMinValue() {
+        public int getMinValue() {
             return 0;
         }
 
         @Override
-        protected int getMaxValue() {
+        public int getMaxValue() {
             return 0x10ffff;
         }
 
         @Override
-        protected RangesBuffer getBuffer1(CompilationBuffer compilationBuffer) {
-            throw new UnsupportedOperationException();
-        }
-
-        @Override
-        protected RangesBuffer getBuffer2(CompilationBuffer compilationBuffer) {
-            throw new UnsupportedOperationException();
-        }
-
-        @Override
-        protected RangesBuffer getBuffer3(CompilationBuffer compilationBuffer) {
-            throw new UnsupportedOperationException();
-        }
-
-        @Override
-        protected RangesBuffer createTempBuffer() {
-            throw new UnsupportedOperationException();
-        }
-
-        @Override
-        protected void addRangeBulkTo(RangesBuffer buffer, int startIndex, int endIndex) {
-            throw new UnsupportedOperationException();
-        }
-
-        @Override
-        protected boolean equalsBuffer(RangesBuffer buffer) {
+        public void appendRangesTo(RangesBuffer buffer, int startIndex, int endIndex) {
             throw new UnsupportedOperationException();
         }
     }

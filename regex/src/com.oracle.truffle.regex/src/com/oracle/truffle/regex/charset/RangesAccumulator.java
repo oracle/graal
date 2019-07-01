@@ -24,15 +24,42 @@
  */
 package com.oracle.truffle.regex.charset;
 
-public interface ListOfRanges {
+public class RangesAccumulator<T extends RangesBuffer> {
 
-    int getLo(int i);
+    private T acc;
+    private T tmp;
 
-    int getHi(int i);
+    public RangesAccumulator(T acc) {
+        this.acc = acc;
+    }
 
-    int size();
+    public T get() {
+        return acc;
+    }
 
-    default boolean isEmpty() {
-        return size() == 0;
+    public T getTmp() {
+        if (tmp == null) {
+            tmp = acc.create();
+        }
+        return tmp;
+    }
+
+    public void addRange(int lo, int hi) {
+        acc.addRange(lo, hi);
+    }
+
+    public void appendRange(int lo, int hi) {
+        acc.appendRange(lo, hi);
+    }
+
+    public void addSet(SortedListOfRanges set) {
+        T t = getTmp();
+        tmp = acc;
+        acc = t;
+        SortedListOfRanges.union(tmp, set, acc);
+    }
+
+    public void clear() {
+        acc.clear();
     }
 }
