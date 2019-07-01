@@ -582,13 +582,14 @@ public abstract class GraalTruffleRuntime implements TruffleRuntime, TruffleComp
 
     @SuppressFBWarnings(value = "", justification = "Cache that does not need to use equals to compare.")
     final boolean acceptForCompilation(RootNode rootNode) {
-        if (!getValue(TruffleCompilation)) {
+        OptimizedCallTarget callTarget = (OptimizedCallTarget) rootNode.getCallTarget();
+        if (!callTarget.getOptionValue(PolyglotCompilerOptions.Compilation)) {
             return false;
         }
-        String includesExcludes = getValue(TruffleCompileOnly);
+        String includesExcludes = callTarget.getOptionValue(PolyglotCompilerOptions.CompileOnly);
         if (includesExcludes != null) {
             if (cachedIncludesExcludes != includesExcludes) {
-                parseCompileOnly();
+                parseCompileOnly(includesExcludes);
                 this.cachedIncludesExcludes = includesExcludes;
             }
 
@@ -615,11 +616,11 @@ public abstract class GraalTruffleRuntime implements TruffleRuntime, TruffleComp
         return true;
     }
 
-    protected void parseCompileOnly() {
+    protected void parseCompileOnly(String includesExcludes) {
         ArrayList<String> includesList = new ArrayList<>();
         ArrayList<String> excludesList = new ArrayList<>();
 
-        String[] items = getValue(TruffleCompileOnly).split(",");
+        String[] items = includesExcludes.split(",");
         for (String item : items) {
             if (item.startsWith("~")) {
                 excludesList.add(item.substring(1));

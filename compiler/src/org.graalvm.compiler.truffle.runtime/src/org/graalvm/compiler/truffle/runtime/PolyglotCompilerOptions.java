@@ -106,6 +106,17 @@ public final class PolyglotCompilerOptions {
                     category = OptionCategory.EXPERT)
     public static final OptionKey<Boolean> Splitting = new OptionKey<>(true);
 
+    // INTERNAL OPTIONS
+
+    @Option(help = "Enable or disable Truffle compilation.", category = OptionCategory.INTERNAL)
+    public static final OptionKey<Boolean> Compilation = new OptionKey<>(true);
+
+    @Option(help = "Restrict compilation to ','-separated list of includes (or excludes prefixed with '~').", category = OptionCategory.INTERNAL)
+    public static final OptionKey<String> CompileOnly = new OptionKey<>(null, OptionType.defaultType(String.class));
+
+    @Option(help = "Compile immediately to test Truffle compilation", category = OptionCategory.INTERNAL)
+    public static final OptionKey<Boolean> CompileImmediately = new OptionKey<>(false);
+
     /*
      * TODO planned options (GR-13444):
      *
@@ -138,6 +149,10 @@ public final class PolyglotCompilerOptions {
         POLYGLOT_TO_TRUFFLE.put(InliningNodeBudget, SharedTruffleRuntimeOptions.TruffleInliningMaxCallerSize);
         POLYGLOT_TO_TRUFFLE.put(InliningRecursionDepth, SharedTruffleRuntimeOptions.TruffleMaximumRecursiveInlining);
         POLYGLOT_TO_TRUFFLE.put(Splitting, SharedTruffleRuntimeOptions.TruffleSplitting);
+
+        POLYGLOT_TO_TRUFFLE.put(Compilation, SharedTruffleRuntimeOptions.TruffleCompilation);
+        POLYGLOT_TO_TRUFFLE.put(CompileOnly, SharedTruffleRuntimeOptions.TruffleCompileOnly);
+        POLYGLOT_TO_TRUFFLE.put(CompileImmediately, SharedTruffleRuntimeOptions.TruffleCompileImmediately);
     }
 
     static OptionValues getPolyglotValues(RootNode root) {

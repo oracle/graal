@@ -39,19 +39,22 @@ public class Option {
             .category("INTERNAL")
             .def("null")
             .help("Restrict compilation to comma-separated list of includes (or excludes prefixed with tilde).",
-                  "EBNF format of argument value:  CompileOnly = Element, { ',', Element } ;"),
+                  "EBNF format of argument value:  CompileOnly = Element, { ',', Element } ;")
+            .javadocExtra("Deprecated: Use {@code PolyglotCompilerOptions.CompileOnly} instead."),
 
         option("TruffleCompilation")
             .type("Boolean")
             .category("INTERNAL")
             .def("true")
-            .help("Enable or disable truffle compilation."),
+            .help("Enable or disable truffle compilation.")
+            .javadocExtra("Deprecated: Use {@code PolyglotCompilerOptions.Compilation} instead."),
 
         option("TruffleCompileImmediately")
             .type("Boolean")
             .category("INTERNAL")
             .def("false")
-            .help("Compile immediately to test truffle compiler"),
+            .help("Compile immediately to test truffle compiler")
+            .javadocExtra("Deprecated: Use {@code PolyglotCompilerOptions.CompileImmediately} instead."),
 
         option("TruffleCompilationThreshold")
             .type("Integer")
