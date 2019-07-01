@@ -88,9 +88,25 @@ public abstract class VMOperation {
         }
     }
 
+    /**
+     * Returns true if the current thread is currently executing a VM operation.
+     */
     @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
     public static boolean isInProgress() {
         OpInProgress inProgress = VMOperationControl.get().getInProgress();
+        return isInProgress(inProgress);
+    }
+
+    /**
+     * Returns true if the current thread is currently executing a VM operation that causes a
+     * safepoint.
+     */
+    public static boolean isInProgressAtSafepoint() {
+        OpInProgress inProgress = VMOperationControl.get().getInProgress();
+        return isInProgress(inProgress) && inProgress.operation.getCausesSafepoint();
+    }
+
+    private static boolean isInProgress(OpInProgress inProgress) {
         return inProgress.getExecutingThread() == CurrentIsolate.getCurrentThread();
     }
 
@@ -104,6 +120,12 @@ public abstract class VMOperation {
     /** Check that there is not a VMOperation in progress. */
     public static void guaranteeNotInProgress(String message) {
         if (isInProgress()) {
+            throw VMError.shouldNotReachHere(message);
+        }
+    }
+
+    public static void guaranteeInProgressAtSafepoint(String message) {
+        if (!isInProgressAtSafepoint()) {
             throw VMError.shouldNotReachHere(message);
         }
     }

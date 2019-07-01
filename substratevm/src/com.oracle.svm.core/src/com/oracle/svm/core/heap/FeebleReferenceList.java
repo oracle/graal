@@ -345,7 +345,7 @@ public final class FeebleReferenceList<T> {
     }
 
     public static void signalWaiters() {
-        assert VMOperation.isInProgress() : "must only be called by the GC";
+        assert VMOperation.isInProgressAtSafepoint() : "must only be called by the GC";
         REF_MUTEX.lock();
         try {
             REF_CONDITION.broadcast();

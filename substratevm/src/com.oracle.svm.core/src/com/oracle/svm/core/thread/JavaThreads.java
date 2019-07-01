@@ -305,14 +305,13 @@ public abstract class JavaThreads {
      *
      * When this method is being executed, we expect that the current thread owns
      * {@linkplain VMThreads#THREAD_MUTEX}. This is fine even though this method is not
-     * {@linkplain Uninterruptible} because the executed code is guaranteed to be free of VM
-     * operations, Java allocations, and safepoints
-     * ({@linkplain StatusSupport#setStatusIgnoreSafepoints()} was called).
+     * {@linkplain Uninterruptible} because this method is either executed as part of a VM operation
+     * or {@linkplain StatusSupport#setStatusIgnoreSafepoints()} was called.
      */
     @RestrictHeapAccess(access = RestrictHeapAccess.Access.NO_ALLOCATION, reason = "Must not allocate while detaching a thread.")
     public static void detachThread(IsolateThread vmThread) {
         VMThreads.THREAD_MUTEX.assertIsOwner("Must hold the VMThreads mutex");
-        assert StatusSupport.isStatusIgnoreSafepoints(vmThread);
+        assert StatusSupport.isStatusIgnoreSafepoints(vmThread) || VMOperation.isInProgress();
 
         Heap.getHeap().disableAllocation(vmThread);
 

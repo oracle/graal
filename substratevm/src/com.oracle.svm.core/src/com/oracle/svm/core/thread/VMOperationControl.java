@@ -316,7 +316,7 @@ public final class VMOperationControl {
         }
 
         void stop() {
-            assert VMOperation.isInProgress() : "must only be called from a VM operation";
+            VMOperation.guaranteeInProgress("must only be called from a VM operation");
             this.stopped = true;
         }
     }

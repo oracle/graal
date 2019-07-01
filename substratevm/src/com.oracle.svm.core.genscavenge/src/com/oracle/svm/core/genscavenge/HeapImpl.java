@@ -76,8 +76,7 @@ import com.oracle.svm.core.jdk.UninterruptibleUtils.AtomicReference;
 import com.oracle.svm.core.log.Log;
 import com.oracle.svm.core.option.RuntimeOptionValues;
 import com.oracle.svm.core.snippets.KnownIntrinsics;
-import com.oracle.svm.core.thread.JavaVMOperation;
-import com.oracle.svm.core.thread.VMOperationControl;
+import com.oracle.svm.core.thread.VMOperation;
 import com.oracle.svm.core.util.VMError;
 
 //Checkstyle: stop
@@ -151,29 +150,8 @@ public class HeapImpl extends Heap {
 
     @Override
     public void walkObjects(ObjectVisitor visitor) {
-        if (VMOperationControl.isFrozen()) {
-            // we can't (but also don't need to) allocate a JavaVMOperation if this method is called
-            // from within a garbage collection
-            HeapImpl.getHeapImpl().doWalkObjects(visitor);
-        } else {
-            ObjectVisitorWalkerOperation op = new ObjectVisitorWalkerOperation(visitor);
-            op.enqueue();
-        }
-    }
-
-    static class ObjectVisitorWalkerOperation extends JavaVMOperation {
-        private final ObjectVisitor visitor;
-
-        ObjectVisitorWalkerOperation(ObjectVisitor visitor) {
-            super("ObjectVisitorWalker", SystemEffect.SAFEPOINT);
-            this.visitor = visitor;
-        }
-
-        @Override
-        public void operate() {
-            assert visitor != null : "HeapImpl.ObjectVisitorWalkerOperation.operate: null visitor";
-            HeapImpl.getHeapImpl().doWalkObjects(visitor);
-        }
+        VMOperation.guaranteeInProgressAtSafepoint("must only be executed by the GC");
+        HeapImpl.getHeapImpl().doWalkObjects(visitor);
     }
 
     private void doWalkObjects(ObjectVisitor visitor) {
