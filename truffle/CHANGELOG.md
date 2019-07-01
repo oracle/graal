@@ -5,6 +5,8 @@ This changelog summarizes major changes between Truffle versions relevant to lan
 ## Version 19.2.0
 * Added sub-process output (error output) [redirection into OutputStream](https://www.graalvm.org/truffle/javadoc/org/graalvm/polyglot/io/ProcessHandler.Redirect.html#stream-java.io.OutputStream-).
 * Added `RootNode.getQualifiedName()` for a better distinction when printing stack traces. Languages are encouraged to implement it, in case it differs from the root name.
+* Added methods to identify date, time, timezone, instant and duration values in `InteropLibrary` and TCK `TypeDescriptor`.
+* Added ability to read the default time zone from the language Environment with `Env.getTimeZone()`.
 
 ## Version 19.1.0
 * `@GenerateUncached` is now inherited by subclasses.

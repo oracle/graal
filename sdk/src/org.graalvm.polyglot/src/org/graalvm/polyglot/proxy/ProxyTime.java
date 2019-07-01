@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2019, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2017, 2018, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -38,44 +38,38 @@
  * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
  * SOFTWARE.
  */
-package com.oracle.truffle.object.basic.test;
+package org.graalvm.polyglot.proxy;
 
-import static org.junit.Assert.assertNotNull;
-import static org.junit.Assert.assertNull;
+import java.time.LocalTime;
 
-import java.lang.ref.WeakReference;
-import java.util.ArrayList;
-import java.util.List;
+import org.graalvm.polyglot.Value;
 
-import org.junit.Test;
+/**
+ * Interface to be implemented to mimic guest language objects that represents times.
+ *
+ * @see Proxy
+ * @see Value
+ * @since 20.0.0 beta 2
+ */
+public interface ProxyTime extends Proxy {
 
-import com.oracle.truffle.api.object.DynamicObject;
-import com.oracle.truffle.api.object.Layout;
-import com.oracle.truffle.api.object.ObjectType;
-import com.oracle.truffle.api.object.Shape;
+    /**
+     * Returns the time information. The returned value must not be <code>null</code>.
+     *
+     * @since 20.0.0 beta 2
+     */
+    LocalTime asTime();
 
-public class LeakCheckTest {
-    static final Layout LAYOUT = Layout.createLayout();
-
-    @Test
-    public void leakCheck() {
-        Shape emptyShape = LAYOUT.createShape(new ObjectType());
-        List<WeakReference<Shape>> fullShapeRefs = new ArrayList<>();
-
-        for (int i = 0; i < 100; i++) {
-            DynamicObject obj = emptyShape.newInstance();
-            for (int j = 0; j < 1000; j++) {
-                obj.define("a" + Math.random(), Math.random());
-                obj.define("b" + Math.random(), Math.random());
-                obj.define("c" + Math.random(), Math.random());
+    /**
+     * Creates a proxy time from a local time.
+     *
+     * @since 20.0.0 beta 2
+     */
+    static ProxyTime from(LocalTime time) {
+        return new ProxyTime() {
+            public LocalTime asTime() {
+                return time;
             }
-            fullShapeRefs.add(new WeakReference<>(obj.getShape()));
-        }
-
-        System.gc();
-        for (WeakReference<Shape> fullShapeRef : fullShapeRefs) {
-            assertNull("Shape should have been garbage-collected", fullShapeRef.get());
-        }
-        assertNotNull(emptyShape); // keep alive
+        };
     }
 }

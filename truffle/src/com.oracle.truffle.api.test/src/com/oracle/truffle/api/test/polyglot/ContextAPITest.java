@@ -48,6 +48,7 @@ import static org.junit.Assert.assertSame;
 import static org.junit.Assert.assertTrue;
 import static org.junit.Assert.fail;
 
+import java.time.ZoneId;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.HashMap;
@@ -691,4 +692,26 @@ public class ContextAPITest {
             context.leave();
         }
     }
+
+    @Test
+    public void testTimeZone() {
+        ZoneId zone = ZoneId.of("UTC+1");
+        Context context = Context.newBuilder().timeZone(zone).build();
+        context.initialize(ProxyLanguage.ID);
+        context.enter();
+        assertEquals(zone, ProxyLanguage.getCurrentContext().getEnv().getTimeZone());
+        context.leave();
+        context.close();
+    }
+
+    @Test
+    public void testDefaultTimeZone() {
+        Context context = Context.create();
+        context.initialize(ProxyLanguage.ID);
+        context.enter();
+        assertEquals(ZoneId.systemDefault(), ProxyLanguage.getCurrentContext().getEnv().getTimeZone());
+        context.leave();
+        context.close();
+    }
+
 }

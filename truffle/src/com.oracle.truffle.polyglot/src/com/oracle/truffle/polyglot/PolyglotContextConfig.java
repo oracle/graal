@@ -42,6 +42,7 @@ package com.oracle.truffle.polyglot;
 
 import java.io.InputStream;
 import java.io.OutputStream;
+import java.time.ZoneId;
 import java.util.HashMap;
 import java.util.Map;
 import java.util.Set;
@@ -80,13 +81,14 @@ final class PolyglotContextConfig {
     final EnvironmentAccess environmentAccess;
     private final Map<String, String> environment;
     private volatile Map<String, String> configuredEnvironement;
+    private volatile ZoneId timeZone;
 
     PolyglotContextConfig(PolyglotEngineImpl engine, OutputStream out, OutputStream err, InputStream in,
                     boolean hostLookupAllowed, PolyglotAccess polyglotAccess, boolean nativeAccessAllowed, boolean createThreadAllowed,
                     boolean hostClassLoadingAllowed, boolean allowExperimentalOptions,
                     Predicate<String> classFilter, Map<String, String[]> applicationArguments,
                     Set<String> allowedPublicLanguages, Map<String, String> options, FileSystem fileSystem, Handler logHandler,
-                    boolean createProcessAllowed, ProcessHandler processHandler, EnvironmentAccess environmentAccess, Map<String, String> environment) {
+                    boolean createProcessAllowed, ProcessHandler processHandler, EnvironmentAccess environmentAccess, Map<String, String> environment, ZoneId timeZone) {
         assert out != null;
         assert err != null;
         assert in != null;
@@ -106,6 +108,7 @@ final class PolyglotContextConfig {
         this.fileSystem = fileSystem;
         this.optionsByLanguage = new HashMap<>();
         this.logHandler = logHandler;
+        this.timeZone = timeZone;
         this.logLevels = new HashMap<>(engine.logLevels);
         for (String optionKey : options.keySet()) {
             final String group = PolyglotEngineImpl.parseOptionGroup(optionKey);
@@ -125,6 +128,14 @@ final class PolyglotContextConfig {
         this.processHandler = processHandler;
         this.environmentAccess = environmentAccess;
         this.environment = environment == null ? Collections.emptyMap() : environment;
+    }
+
+    public ZoneId getTimeZone() {
+        ZoneId zone = this.timeZone;
+        if (zone == null) {
+            zone = timeZone = ZoneId.systemDefault();
+        }
+        return zone;
     }
 
     boolean isAccessPermitted(PolyglotLanguage from, PolyglotLanguage to) {

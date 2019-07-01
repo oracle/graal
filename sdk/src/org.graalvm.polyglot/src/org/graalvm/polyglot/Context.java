@@ -42,6 +42,7 @@ package org.graalvm.polyglot;
 
 import java.io.InputStream;
 import java.io.OutputStream;
+import java.time.ZoneId;
 import java.util.Collections;
 import java.util.HashMap;
 import java.util.List;
@@ -766,6 +767,7 @@ public final class Context implements AutoCloseable {
         private ProcessHandler processHandler;
         private EnvironmentAccess environmentAccess;
         private Map<String, String> environment;
+        private ZoneId zone;
 
         Builder(String... onlyLanguages) {
             Objects.requireNonNull(onlyLanguages);
@@ -1204,6 +1206,20 @@ public final class Context implements AutoCloseable {
         }
 
         /**
+         * Sets the default time zone to be used for this context. If not set, or explicitly set to
+         * <code>null</code> then the {@link ZoneId#systemDefault() system default} zone will be
+         * used.
+         *
+         * @return the {@link Builder}
+         * @see ZoneId#systemDefault()
+         * @since 20.0.0 beta 2
+         */
+        public Builder timeZone(final ZoneId zone) {
+            this.zone = zone;
+            return this;
+        }
+
+        /**
          * Installs a new logging {@link Handler} using given {@link OutputStream}. The logger's
          * {@link Level} configuration is done using the {@link #options(java.util.Map) Context's
          * options}. The level option key has the following format:
@@ -1391,7 +1407,7 @@ public final class Context implements AutoCloseable {
                 return engine.impl.createContext(null, null, null, hostClassLookupEnabled, hostAccess, polyglotAccess, nativeAccess, createThread,
                                 io, hostClassLoading, experimentalOptions,
                                 localHostLookupFilter, Collections.emptyMap(), arguments == null ? Collections.emptyMap() : arguments,
-                                onlyLanguages, customFileSystem, customLogHandler, createProcess, processHandler, environmentAccess, environment);
+                                onlyLanguages, customFileSystem, customLogHandler, createProcess, processHandler, environmentAccess, environment, zone);
             } else {
                 if (messageTransport != null) {
                     throw new IllegalStateException("Cannot use MessageTransport in a context that shares an Engine.");
@@ -1399,7 +1415,7 @@ public final class Context implements AutoCloseable {
                 return engine.impl.createContext(out, err, in, hostClassLookupEnabled, hostAccess, polyglotAccess, nativeAccess, createThread,
                                 io, hostClassLoading, experimentalOptions,
                                 localHostLookupFilter, options == null ? Collections.emptyMap() : options, arguments == null ? Collections.emptyMap() : arguments,
-                                onlyLanguages, customFileSystem, customLogHandler, createProcess, processHandler, environmentAccess, environment);
+                                onlyLanguages, customFileSystem, customLogHandler, createProcess, processHandler, environmentAccess, environment, zone);
             }
         }
 

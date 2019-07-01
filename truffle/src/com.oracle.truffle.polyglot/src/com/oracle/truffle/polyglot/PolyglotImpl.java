@@ -48,6 +48,7 @@ import java.io.InputStream;
 import java.io.OutputStream;
 import java.net.URI;
 import java.nio.file.Path;
+import java.time.ZoneId;
 import java.util.Collection;
 import java.util.Collections;
 import java.util.HashMap;
@@ -497,6 +498,11 @@ public final class PolyglotImpl extends AbstractPolyglotImpl {
         @Override
         public boolean isPolyglotAccessAllowed(Object vmObject) {
             return ((PolyglotLanguageContext) vmObject).context.config.polyglotAccess == PolyglotAccess.ALL;
+        }
+
+        @Override
+        public ZoneId getTimeZone(Object vmObject) {
+            return ((PolyglotLanguageContext) vmObject).context.config.getTimeZone();
         }
 
         @Override

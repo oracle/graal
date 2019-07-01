@@ -42,6 +42,8 @@ package com.oracle.truffle.api.test.polyglot;
 
 import static com.oracle.truffle.api.test.polyglot.ValueAssert.Trait.ARRAY_ELEMENTS;
 import static com.oracle.truffle.api.test.polyglot.ValueAssert.Trait.BOOLEAN;
+import static com.oracle.truffle.api.test.polyglot.ValueAssert.Trait.DATE;
+import static com.oracle.truffle.api.test.polyglot.ValueAssert.Trait.DURATION;
 import static com.oracle.truffle.api.test.polyglot.ValueAssert.Trait.EXECUTABLE;
 import static com.oracle.truffle.api.test.polyglot.ValueAssert.Trait.HOST_OBJECT;
 import static com.oracle.truffle.api.test.polyglot.ValueAssert.Trait.INSTANTIABLE;
@@ -51,6 +53,8 @@ import static com.oracle.truffle.api.test.polyglot.ValueAssert.Trait.NULL;
 import static com.oracle.truffle.api.test.polyglot.ValueAssert.Trait.NUMBER;
 import static com.oracle.truffle.api.test.polyglot.ValueAssert.Trait.PROXY_OBJECT;
 import static com.oracle.truffle.api.test.polyglot.ValueAssert.Trait.STRING;
+import static com.oracle.truffle.api.test.polyglot.ValueAssert.Trait.TIME;
+import static com.oracle.truffle.api.test.polyglot.ValueAssert.Trait.TIMEZONE;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertNotEquals;
@@ -61,8 +65,17 @@ import static org.junit.Assert.assertTrue;
 import static org.junit.Assert.fail;
 
 import java.lang.reflect.Modifier;
+import java.time.Duration;
+import java.time.Instant;
+import java.time.LocalDate;
+import java.time.LocalDateTime;
+import java.time.LocalTime;
+import java.time.ZoneId;
+import java.time.ZoneOffset;
+import java.time.ZonedDateTime;
 import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.Date;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
@@ -72,9 +85,9 @@ import java.util.concurrent.Callable;
 import java.util.function.Consumer;
 import java.util.function.Function;
 
+import org.graalvm.polyglot.HostAccess.Implementable;
 import org.graalvm.polyglot.TypeLiteral;
 import org.graalvm.polyglot.Value;
-import org.graalvm.polyglot.HostAccess.Implementable;
 import org.graalvm.polyglot.proxy.Proxy;
 
 public class ValueAssert {
@@ -244,6 +257,51 @@ public class ValueAssert {
                     assertTrue(msg, value.isNativePointer());
                     value.asNativePointer();
                     break;
+                case DATE:
+                    assertFalse(value.isNull());
+                    assertTrue(value.isDate());
+                    assertNotNull(value.asDate());
+                    assertNotNull(value.as(LocalDate.class));
+
+                    if (value.isTime()) {
+                        assertEquals(value.as(LocalDateTime.class).toLocalDate(), value.as(LocalDate.class));
+                        assertEquals(value.as(LocalDateTime.class).toLocalTime(), value.as(LocalTime.class));
+                        if (value.isTimeZone()) {
+                            assertNotNull(value.asInstant());
+                            assertEquals(value.as(ZonedDateTime.class).toLocalDate(), value.as(LocalDate.class));
+                            assertNotNull(value.as(Instant.class));
+                            assertNotNull(value.as(Date.class));
+                        }
+                    }
+                    break;
+                case TIME:
+                    assertTrue(value.isTime());
+                    assertNotNull(value.asTime());
+                    assertNotNull(value.as(LocalTime.class));
+
+                    if (value.isDate()) {
+                        // asserted by DATE trait
+                    } else {
+                        if (value.isTimeZone()) {
+                            // invalid combination
+                            assertFails(() -> value.asTime(), AssertionError.class);
+                            assertFails(() -> value.asTimeZone(), AssertionError.class);
+                        }
+                    }
+                    break;
+                case TIMEZONE:
+                    assertTrue(value.isTimeZone());
+                    assertNotNull(value.asTimeZone());
+                    assertNotNull(value.as(ZoneId.class));
+                    break;
+                case DURATION:
+                    assertTrue(value.isDuration());
+                    assertNotNull(value.asDuration());
+                    assertNotNull(value.as(Duration.class));
+
+                    break;
+                default:
+                    throw new AssertionError();
             }
         }
 
@@ -445,9 +503,76 @@ public class ValueAssert {
                     assertFalse(value.isNativePointer());
                     assertFails(() -> value.asNativePointer(), ClassCastException.class);
                     break;
+                case DATE:
+                    assertFalse(value.isDate());
 
+                    if (value.isNull()) {
+                        assertNull(value.asDate());
+                        assertNull(value.asInstant());
+                        assertNull(value.as(LocalDateTime.class));
+                        assertNull(value.as(LocalDate.class));
+                        assertNull(value.as(ZonedDateTime.class));
+                        assertNull(value.as(Date.class));
+                    } else {
+                        assertFails(() -> value.asDate(), ClassCastException.class);
+                        assertFails(() -> value.asInstant(), ClassCastException.class);
+                        assertFails(() -> value.as(LocalDateTime.class), ClassCastException.class);
+                        assertFails(() -> value.as(LocalDate.class), ClassCastException.class);
+                        assertFails(() -> value.as(ZonedDateTime.class), ClassCastException.class);
+                        assertFails(() -> value.as(Date.class), ClassCastException.class);
+                    }
+                    break;
+                case TIME:
+                    assertFalse(value.isTime());
+
+                    if (value.isNull()) {
+                        assertNull(value.asTime());
+                        assertNull(value.asInstant());
+                        assertNull(value.as(LocalDateTime.class));
+                        assertNull(value.as(LocalTime.class));
+                        assertNull(value.as(ZonedDateTime.class));
+                        assertNull(value.as(Date.class));
+                    } else {
+                        assertFails(() -> value.asTime(), ClassCastException.class);
+                        assertFails(() -> value.asInstant(), ClassCastException.class);
+                        assertFails(() -> value.as(LocalDateTime.class), ClassCastException.class);
+                        assertFails(() -> value.as(LocalTime.class), ClassCastException.class);
+                        assertFails(() -> value.as(ZonedDateTime.class), ClassCastException.class);
+                        assertFails(() -> value.as(Date.class), ClassCastException.class);
+                    }
+                    break;
+                case TIMEZONE:
+                    assertFalse(value.isTimeZone());
+
+                    if (value.isNull()) {
+                        assertNull(value.asTimeZone());
+                        assertNull(value.asInstant());
+                        assertNull(value.as(ZoneId.class));
+                        assertNull(value.as(ZoneOffset.class));
+                        assertNull(value.as(ZonedDateTime.class));
+                        assertNull(value.as(Date.class));
+                    } else {
+                        assertFails(() -> value.asTimeZone(), ClassCastException.class);
+                        assertFails(() -> value.asInstant(), ClassCastException.class);
+                        assertFails(() -> value.as(ZoneId.class), ClassCastException.class);
+                        assertFails(() -> value.as(ZoneOffset.class), ClassCastException.class);
+                        assertFails(() -> value.as(ZonedDateTime.class), ClassCastException.class);
+                        assertFails(() -> value.as(Date.class), ClassCastException.class);
+                    }
+                    break;
+                case DURATION:
+                    assertFalse(value.isDuration());
+                    if (value.isNull()) {
+                        assertNull(value.asDuration());
+                        assertNull(value.as(Duration.class));
+                    } else {
+                        assertFails(() -> value.asDuration(), ClassCastException.class);
+                        assertFails(() -> value.as(Duration.class), ClassCastException.class);
+                    }
+                    break;
+                default:
+                    throw new AssertionError();
             }
-
         }
     }
 
@@ -707,6 +832,18 @@ public class ValueAssert {
         if (value.isProxyObject()) {
             valueTypes.add(PROXY_OBJECT);
         }
+        if (value.isDate()) {
+            valueTypes.add(DATE);
+        }
+        if (value.isTime()) {
+            valueTypes.add(TIME);
+        }
+        if (value.isTimeZone()) {
+            valueTypes.add(TIMEZONE);
+        }
+        if (value.isDuration()) {
+            valueTypes.add(DURATION);
+        }
         return valueTypes.toArray(new Trait[0]);
     }
 
@@ -722,8 +859,11 @@ public class ValueAssert {
         EXECUTABLE,
         INSTANTIABLE,
         MEMBERS,
-        ARRAY_ELEMENTS
-
+        ARRAY_ELEMENTS,
+        DATE,
+        TIME,
+        TIMEZONE,
+        DURATION,
     }
 
 }

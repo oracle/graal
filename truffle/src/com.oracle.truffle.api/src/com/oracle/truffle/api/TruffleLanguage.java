@@ -51,6 +51,7 @@ import java.lang.annotation.Target;
 import java.net.URI;
 import java.nio.charset.Charset;
 import java.nio.file.FileSystemNotFoundException;
+import java.time.ZoneId;
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.Collections;
@@ -1920,6 +1921,19 @@ public abstract class TruffleLanguage<C> {
         @TruffleBoundary
         public Map<String, InstrumentInfo> getInstruments() {
             return AccessAPI.engineAccess().getInstruments(vmObject);
+        }
+
+        /**
+         * Returns the default time zone of this environment. If the time-zone was not explicitly
+         * set by the embedder then the {@link ZoneId#systemDefault() system default} time-zone will
+         * be returned.
+         *
+         * @see ZoneId#systemDefault()
+         * @since 20.0.0 beta 2.
+         */
+        public ZoneId getTimeZone() {
+            checkDisposed();
+            return AccessAPI.engineAccess().getTimeZone(vmObject);
         }
 
         /**
