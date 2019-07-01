@@ -27,9 +27,7 @@ package com.oracle.svm.core.code;
 // Checkstyle: allow reflection
 
 import java.lang.ref.WeakReference;
-import java.lang.reflect.Method;
 
-import org.graalvm.compiler.serviceprovider.JavaVersionUtil;
 import org.graalvm.nativeimage.ImageSingletons;
 import org.graalvm.nativeimage.c.function.CodePointer;
 import org.graalvm.nativeimage.c.struct.SizeOf;
@@ -48,9 +46,9 @@ import com.oracle.svm.core.code.InstalledCodeObserver.InstalledCodeObserverHandl
 import com.oracle.svm.core.deopt.SubstrateInstalledCode;
 import com.oracle.svm.core.heap.CodeReferenceMapDecoder;
 import com.oracle.svm.core.heap.ObjectReferenceVisitor;
+import com.oracle.svm.core.jdk.Target_jdk_internal_ref_Cleaner;
 import com.oracle.svm.core.jdk.UninterruptibleUtils;
 import com.oracle.svm.core.os.CommittedMemoryProvider;
-import com.oracle.svm.core.util.VMError;
 
 public final class RuntimeMethodInfoAccess {
     /** Reference walker. A constant field so we always use the exact same object, do not inline! */
@@ -124,24 +122,8 @@ public final class RuntimeMethodInfoAccess {
         return info;
     }
 
-    private static final Method CLEANER_CREATE_METHOD;
-    static {
-        try { /* Cleaner class moved after JDK 8 */
-            // Checkstyle: stop
-            Class<?> clazz = (JavaVersionUtil.JAVA_SPEC <= 8) ? Class.forName("sun.misc.Cleaner") : Class.forName("jdk.internal.ref.Cleaner");
-            // Checkstyle: resume
-            CLEANER_CREATE_METHOD = clazz.getDeclaredMethod("create", Object.class, Runnable.class);
-        } catch (ReflectiveOperationException e) {
-            throw VMError.shouldNotReachHere(e);
-        }
-    }
-
-    private static void createCleaner(CodeInfo info, Object obj) {
-        try {
-            CLEANER_CREATE_METHOD.invoke(null, obj, new RuntimeMethodInfoCleaner(info));
-        } catch (ReflectiveOperationException e) {
-            throw VMError.shouldNotReachHere(e);
-        }
+    private static void createCleaner(CodeInfo info, Object tether) {
+        Target_jdk_internal_ref_Cleaner.create(tether, new RuntimeMethodInfoCleaner(info));
     }
 
     private static final class RuntimeMethodInfoCleaner implements Runnable {
