@@ -102,13 +102,3 @@ class JDKLibZipFeature implements Feature {
         }
     }
 }
-
-/**
- * Temporary workaround for DARWIN_JNI. Contrary to Linux, on Darwin libzip.a does currently NOT
- * contain the zlib object files it depends on. This requires that we link to the system-provided
- * zlib also for DARWIN_JNI. Once GR-16462 is implemented (and JDKs updated) this can be removed.
- */
-@Platforms({InternalPlatform.DARWIN_JNI.class})
-@CLibrary("z")
-class ZLib {
-}
