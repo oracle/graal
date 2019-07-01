@@ -42,17 +42,13 @@ public class InternalUtils {
      * @param clazz the class you want to see the underlying representation of primitive fields.
      * @return the layout in memory of the primitive fields.
      */
-    public static String[] getUnderlyingPrimitiveFieldArray(@SuppressWarnings("unused") Class<?> clazz) {
-        return EMPTY_BYTE_ARRAY;
-    }
+    public native static String[] getUnderlyingPrimitiveFieldArray(@SuppressWarnings("unused") Class<?> clazz);
 
     /**
      * @param clazz The class you want to know how many bytes are required for the primitive fields.
      * @return the requested number of bytes
      */
-    public static int getPrimitiveFieldByteCount(@SuppressWarnings("unused") Class<?> clazz) {
-        return 0;
-    }
+    public native static int getPrimitiveFieldByteCount(@SuppressWarnings("unused") Class<?> clazz);
 
     /**
      * Returns a String representing all (even private ones) known fields in obj, except for hidden
@@ -61,9 +57,7 @@ public class InternalUtils {
      * @param obj the object you want to represent.
      * @return The representation of the obj.
      */
-    public static String toVerboseString(@SuppressWarnings("unused") Object obj) {
-        return obj.toString();
-    }
+    public native static String toVerboseString(@SuppressWarnings("unused") Object obj);
 
     /**
      * Returns the total number of bytes an instance of clazz takes up in memory.
@@ -71,16 +65,12 @@ public class InternalUtils {
      * @param clazz the class you want to know the memory consumption of
      * @return the total number of bytes used by an instance of clazz.
      */
-    public static int bytesUsed(Class<?> clazz) {
-        return 0;
-    }
+    public native static int bytesUsed(Class<?> clazz);
 
     /**
      * Checks whether or not we are running in espresso.
      * 
      * @return true iff we are running in Espresso.
      */
-    public static boolean inEspresso() {
-        return false;
-    }
+    public native static boolean inEspresso();
 }
