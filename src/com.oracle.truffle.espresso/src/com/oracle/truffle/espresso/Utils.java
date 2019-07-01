@@ -26,6 +26,13 @@ import com.oracle.truffle.espresso.meta.EspressoError;
 import com.oracle.truffle.espresso.meta.JavaKind;
 import com.oracle.truffle.nfi.spi.types.NativeSimpleType;
 
+import java.io.File;
+import java.nio.file.Path;
+import java.nio.file.Paths;
+import java.util.Arrays;
+import java.util.List;
+import java.util.stream.Collectors;
+
 public final class Utils {
 
     public static NativeSimpleType kindToType(JavaKind kind, boolean javaToNative) {
@@ -60,4 +67,10 @@ public final class Utils {
                 throw EspressoError.shouldNotReachHere();
         }
     }
+
+    public static List<Path> parsePaths(String paths) {
+        return Arrays.stream(paths.split(File.pathSeparator)).map(Paths::get).collect(Collectors.toList());
+    }
+
+
 }

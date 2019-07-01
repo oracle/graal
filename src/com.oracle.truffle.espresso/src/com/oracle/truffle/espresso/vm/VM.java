@@ -35,6 +35,8 @@ import java.lang.reflect.InvocationTargetException;
 import java.lang.reflect.Parameter;
 import java.nio.ByteBuffer;
 import java.nio.LongBuffer;
+import java.nio.file.Path;
+import java.nio.file.Paths;
 import java.security.ProtectionDomain;
 import java.util.ArrayList;
 import java.util.Arrays;
@@ -45,6 +47,7 @@ import java.util.Map;
 import java.util.Properties;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.function.IntFunction;
+import java.util.stream.Collectors;
 
 import org.graalvm.options.OptionValues;
 
@@ -126,13 +129,14 @@ public final class VM extends NativeEnv implements ContextAccess {
         try {
             EspressoProperties props = getContext().getVmProperties();
 
-            List<String> libjavaSearchPaths = new ArrayList<>(Arrays.asList(props.getBootLibraryPath().split(File.pathSeparator)));
-            libjavaSearchPaths.addAll(Arrays.asList(props.getJavaLibraryPath().split(File.pathSeparator)));
+            List<Path> libjavaSearchPaths = new ArrayList<>();
+            libjavaSearchPaths.addAll(props.bootLibraryPath());
+            libjavaSearchPaths.addAll(props.javaLibraryPath());
 
-            mokapotLibrary = loadLibrary(props.getEspressoLibraryPath().split(File.pathSeparator), "mokapot");
+            mokapotLibrary = loadLibrary(props.espressoLibraryPath(), "mokapot");
 
             assert mokapotLibrary != null;
-            javaLibrary = loadLibrary(libjavaSearchPaths.toArray(new String[0]), "java");
+            javaLibrary = loadLibrary(libjavaSearchPaths, "java");
 
             initializeMokapotContext = NativeLibrary.lookupAndBind(mokapotLibrary,
                             "initializeMokapotContext", "(env, sint64, (string): pointer): sint64");
@@ -672,7 +676,7 @@ public final class VM extends NativeEnv implements ContextAccess {
     @VmImpl
     public long JVM_LoadLibrary(String name) {
         try {
-            TruffleObject lib = NativeLibrary.loadLibrary(name);
+            TruffleObject lib = NativeLibrary.loadLibrary(Paths.get(name));
             Field f = lib.getClass().getDeclaredField("handle");
             f.setAccessible(true);
             long handle = (long) f.get(lib);
@@ -773,16 +777,17 @@ public final class VM extends NativeEnv implements ContextAccess {
             setProperty.invokeWithConversions(properties, entry.getKey(), entry.getValue());
         }
 
+        EspressoProperties props = getContext().getVmProperties();
+
         // TODO(peterssen): Use EspressoProperties to store classpath.
         EspressoError.guarantee(options.hasBeenSet(EspressoOptions.Classpath), "Classpath must be defined.");
-        setProperty.invokeWithConversions(properties, "java.class.path", options.get(EspressoOptions.Classpath));
+        setProperty.invokeWithConversions(properties, "java.class.path", props.classpath().stream().map(Path::toString).collect(Collectors.joining(File.pathSeparator)));
 
-        EspressoProperties props = getContext().getVmProperties();
-        setProperty.invokeWithConversions(properties, "java.home", props.getJavaHome());
-        setProperty.invokeWithConversions(properties, "sun.boot.class.path", props.getBootClasspath());
-        setProperty.invokeWithConversions(properties, "java.library.path", props.getJavaLibraryPath());
-        setProperty.invokeWithConversions(properties, "sun.boot.library.path", props.getBootLibraryPath());
-        setProperty.invokeWithConversions(properties, "java.ext.dirs", props.getExtDirs());
+        setProperty.invokeWithConversions(properties, "java.home", props.javaHome().toString());
+        setProperty.invokeWithConversions(properties, "sun.boot.class.path", props.bootClasspath().stream().map(Path::toString).collect(Collectors.joining(File.pathSeparator)));
+        setProperty.invokeWithConversions(properties, "java.library.path", props.javaLibraryPath().stream().map(Path::toString).collect(Collectors.joining(File.pathSeparator)));
+        setProperty.invokeWithConversions(properties, "sun.boot.library.path", props.bootLibraryPath().stream().map(Path::toString).collect(Collectors.joining(File.pathSeparator)));
+        setProperty.invokeWithConversions(properties, "java.ext.dirs", props.extDirs().stream().map(Path::toString).collect(Collectors.joining(File.pathSeparator)));
 
         return properties;
     }

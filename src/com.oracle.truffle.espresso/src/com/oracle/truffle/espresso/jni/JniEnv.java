@@ -22,7 +22,6 @@
  */
 package com.oracle.truffle.espresso.jni;
 
-import java.io.File;
 import java.lang.reflect.InvocationTargetException;
 import java.lang.reflect.Parameter;
 import java.nio.ByteBuffer;
@@ -400,7 +399,7 @@ public final class JniEnv extends NativeEnv implements ContextAccess {
         try {
             EspressoProperties props = context.getVmProperties();
             this.context = context;
-            nespressoLibrary = loadLibrary(props.getEspressoLibraryPath().split(File.pathSeparator), "nespresso");
+            nespressoLibrary = loadLibrary(props.espressoLibraryPath(), "nespresso");
             dupClosureRef = NativeLibrary.lookup(nespressoLibrary, "dupClosureRef");
 
             initializeNativeContext = NativeLibrary.lookupAndBind(nespressoLibrary,

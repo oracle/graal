@@ -22,253 +22,266 @@
  */
 package com.oracle.truffle.espresso.runtime;
 
-import java.io.File;
+import java.nio.file.Path;
+import java.nio.file.Paths;
+import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.Collections;
+import java.util.List;
+import java.util.Objects;
+import java.util.stream.Collectors;
+import java.util.stream.Stream;
 
 import org.graalvm.options.OptionValues;
 import org.graalvm.polyglot.Engine;
 
-import com.oracle.truffle.espresso.EspressoLanguage;
 import com.oracle.truffle.espresso.EspressoOptions;
+import com.oracle.truffle.espresso.Utils;
+import com.oracle.truffle.espresso.meta.EspressoError;
 
 public interface EspressoProperties {
-    String getJavaHome();
+    Path javaHome();
 
-    String getBootClasspath();
+    List<Path> classpath();
 
-    String getJavaLibraryPath();
+    List<Path> bootClasspath();
 
-    String getBootLibraryPath();
+    List<Path> javaLibraryPath();
 
-    String getExtDirs();
+    List<Path> bootLibraryPath();
 
-    String getEspressoLibraryPath();
+    List<Path> extDirs();
 
-    static EspressoProperties getDefault() {
-        if (EspressoOptions.RUNNING_ON_SVM) {
-            return new EspressoPropertiesSVM();
+    List<Path> espressoLibraryPath();
+
+    final class Builder {
+
+        private Path javaHome;
+        private List<Path> espressoLibraryPath;
+        private List<Path> classpath;
+        private List<Path> bootClasspath;
+        private List<Path> javaLibraryPath;
+        private List<Path> bootLibraryPath;
+        private List<Path> extDirs;
+
+        private final Path SYS_EXT_DIR = Paths.get("/usr/java/packages");
+        private final Path EXTENSIONS_DIR = Paths.get("/lib/ext");
+        private final List<Path> DEFAULT_LIBPATH = Arrays.asList(
+                        Paths.get("/usr/lib64"),
+                        Paths.get("/lib64"),
+                        Paths.get("/lib"),
+                        Paths.get("/usr/lib"));
+
+        private final String CPU_ARCH = "amd64";
+
+        public Builder javaHome(Path newJavaHome) {
+            this.javaHome = newJavaHome;
+            return this;
         }
-        return new EspressoPropertiesHotSpot();
-    }
 
-    default EspressoProperties processOptions(OptionValues options) {
+        public Path javaHome() {
+            return javaHome != null
+                            ? javaHome
+                            : Engine.findHome().resolve("jre");
+        }
 
-        Builder builder = new Builder(this);
+        public Builder bootClasspath(List<Path> newBootClasspath) {
+            this.bootClasspath = newBootClasspath;
+            return this;
+        }
 
-        {
-            // Process boot classpath + append and prepend options.
-            String bootClasspath = getBootClasspath();
-            if (options.hasBeenSet(EspressoOptions.BootClasspath)) {
-                bootClasspath = options.get(EspressoOptions.BootClasspath);
+        public List<Path> bootClasspath() {
+            return bootClasspath != null
+                            ? bootClasspath
+                            : Stream.of(
+                                            Paths.get("lib", "resources.jar"),
+                                            Paths.get("lib", "rt.jar"),
+                                            Paths.get("lib", "sunrsasign.jar"),
+                                            Paths.get("lib", "jsse.jar"),
+                                            Paths.get("lib", "jce.jar"),
+                                            Paths.get("lib", "charsets.jar"),
+                                            Paths.get("lib", "jfr.jar"),
+                                            Paths.get("classes")).map(p -> javaHome().resolve(p)).collect(Collectors.toList());
+        }
+
+        public Builder classpath(List<Path> newClasspath) {
+            this.classpath = newClasspath;
+            return this;
+        }
+
+        public List<Path> classpath() {
+            return classpath;
+
+        }
+
+        public Builder javaLibraryPath(List<Path> newJavaLibraryPath) {
+            this.javaLibraryPath = newJavaLibraryPath;
+            return this;
+        }
+
+        public List<Path> javaLibraryPath() {
+            if (javaLibraryPath != null) {
+                return javaLibraryPath;
             }
-            if (options.hasBeenSet(EspressoOptions.BootClasspathAppend)) {
-                bootClasspath = bootClasspath + File.separator + options.get(EspressoOptions.BootClasspathAppend);
-            }
-            if (options.hasBeenSet(EspressoOptions.BootClasspathPrepend)) {
-                bootClasspath = options.get(EspressoOptions.BootClasspathPrepend) + File.pathSeparator + bootClasspath;
-            }
-            builder.setBootClasspath(bootClasspath);
+            List<Path> paths = new ArrayList<>();
+            paths.add(SYS_EXT_DIR.resolve("lib").resolve(CPU_ARCH));
+            paths.addAll(DEFAULT_LIBPATH);
+            return paths;
+
         }
 
-        if (options.hasBeenSet(EspressoOptions.JavaHome)) {
-            builder.setJavaHome(options.get(EspressoOptions.JavaHome));
-        }
-
-        return builder.build();
-    }
-
-    class Builder {
-
-        private String javaHome;
-        private String bootClasspath;
-        private String javaLibraryPath;
-        private String bootLibraryPath;
-        private String extDirs;
-        private String espressoLibraryPath;
-
-        private final EspressoProperties fallback;
-
-        Builder(EspressoProperties fallback) {
-            this.fallback = fallback;
-        }
-
-        public Builder setJavaHome(String javaHome) {
-            this.javaHome = javaHome;
+        public Builder bootLibraryPath(List<Path> newBootLibraryPath) {
+            this.bootLibraryPath = newBootLibraryPath;
             return this;
         }
 
-        public Builder setBootClasspath(String bootClasspath) {
-            this.bootClasspath = bootClasspath;
+        public List<Path> bootLibraryPath() {
+            return bootLibraryPath != null
+                            ? bootLibraryPath
+                            : Collections.singletonList(javaHome().resolve("lib").resolve(CPU_ARCH));
+        }
+
+        public Builder extDirs(List<Path> newExtDirs) {
+            this.extDirs = newExtDirs;
             return this;
         }
 
-        public Builder setJavaLibraryPath(String javaLibraryPath) {
-            this.javaLibraryPath = javaLibraryPath;
+        public List<Path> extDirs() {
+            return extDirs != null
+                            ? extDirs
+                            : Arrays.asList(
+                                            javaHome().resolve(EXTENSIONS_DIR),
+                                            SYS_EXT_DIR.resolve(EXTENSIONS_DIR));
+        }
+
+        public Builder espressoLibraryPath(List<Path> newEspressoLibraryPath) {
+            this.espressoLibraryPath = newEspressoLibraryPath;
             return this;
         }
 
-        public Builder setBootLibraryPath(String bootLibraryPath) {
-            this.bootLibraryPath = bootLibraryPath;
-            return this;
-        }
-
-        public Builder setExtDirs(String extDirs) {
-            this.extDirs = extDirs;
-            return this;
-        }
-
-        public Builder setEspressoLibraryPath(String espressoLibraryPath) {
-            this.espressoLibraryPath = espressoLibraryPath;
-            return this;
+        public List<Path> espressoLibraryPath() {
+            return espressoLibraryPath;
         }
 
         public EspressoProperties build() {
-            if ((javaHome == null || javaHome.equals(fallback.getJavaHome())) &&
-                            (bootClasspath == null || bootClasspath.equals(fallback.getBootClasspath())) &&
-                            (javaLibraryPath == null || javaLibraryPath.equals(fallback.getJavaLibraryPath())) &&
-                            (bootLibraryPath == null || bootLibraryPath.equals(fallback.getBootLibraryPath())) &&
-                            (extDirs == null || extDirs.equals(fallback.getExtDirs())) &&
-                            (espressoLibraryPath == null || espressoLibraryPath.equals(fallback.getEspressoLibraryPath()))) {
-                // No overrides.
-                return fallback;
+            return new EspressoProps(this);
+        }
+
+        public Builder processOptions(OptionValues options) {
+
+            if (options.hasBeenSet(EspressoOptions.JavaHome)) {
+                javaHome(options.get(EspressoOptions.JavaHome));
             }
 
-            return new EspressoProperties() {
-                @Override
-                public String getJavaHome() {
-                    return javaHome != null ? javaHome : fallback.getJavaHome();
-                }
+            if (options.hasBeenSet(EspressoOptions.EspressoLibraryPath)) {
+                espressoLibraryPath(options.get(EspressoOptions.EspressoLibraryPath));
+            }
 
-                @Override
-                public String getBootClasspath() {
-                    return bootClasspath != null ? bootClasspath : fallback.getBootClasspath();
-                }
+            EspressoError.guarantee(options.hasBeenSet(EspressoOptions.Classpath), "Classpath must be defined");
+            classpath(options.get(EspressoOptions.Classpath));
 
-                @Override
-                public String getJavaLibraryPath() {
-                    return javaLibraryPath != null ? javaLibraryPath : fallback.getJavaLibraryPath();
+            {
+                // Process boot classpath + append and prepend options.
+                List<Path> bootClasspath_ = new ArrayList<>(bootClasspath());
+                if (options.hasBeenSet(EspressoOptions.BootClasspath)) {
+                    bootClasspath_ = options.get(EspressoOptions.BootClasspath);
                 }
+                if (options.hasBeenSet(EspressoOptions.BootClasspathAppend)) {
+                    bootClasspath_.addAll(options.get(EspressoOptions.BootClasspathAppend));
+                }
+                if (options.hasBeenSet(EspressoOptions.BootClasspathPrepend)) {
+                    bootClasspath_.addAll(0, options.get(EspressoOptions.BootClasspathPrepend));
+                }
+                bootClasspath(bootClasspath_);
+            }
 
-                @Override
-                public String getBootLibraryPath() {
-                    return bootLibraryPath != null ? bootLibraryPath : fallback.getBootLibraryPath();
-                }
+            if (options.hasBeenSet(EspressoOptions.JavaLibraryPath)) {
+                javaLibraryPath(options.get(EspressoOptions.JavaLibraryPath));
+            }
 
-                @Override
-                public String getExtDirs() {
-                    return extDirs != null ? extDirs : fallback.getExtDirs();
-                }
+            if (options.hasBeenSet(EspressoOptions.ExtDirs)) {
+                extDirs(options.get(EspressoOptions.ExtDirs));
+            }
 
-                @Override
-                public String getEspressoLibraryPath() {
-                    return espressoLibraryPath != null ? espressoLibraryPath : fallback.getEspressoLibraryPath();
-                }
-            };
+            if (options.hasBeenSet(EspressoOptions.BootLibraryPath)) {
+                bootLibraryPath(options.get(EspressoOptions.BootLibraryPath));
+            }
+
+            if (options.hasBeenSet(EspressoOptions.EspressoLibraryPath)) {
+                espressoLibraryPath(options.get(EspressoOptions.EspressoLibraryPath));
+            }
+
+            if (options.hasBeenSet(EspressoOptions.EspressoLibraryPath)) {
+                espressoLibraryPath(options.get(EspressoOptions.EspressoLibraryPath));
+            }
+
+            return this;
         }
     }
+
+    static Builder inheritFromHostVM() {
+        return new Builder() //
+                        .javaHome(Paths.get(System.getProperty("java.home"))) //
+                        .bootClasspath(Utils.parsePaths(System.getProperty("sun.boot.class.path"))) //
+                        .javaLibraryPath(Utils.parsePaths(System.getProperty("java.library.path"))) //
+                        .bootLibraryPath(Utils.parsePaths(System.getProperty("sun.boot.library.path"))) //
+                        .extDirs(Utils.parsePaths(System.getProperty("java.ext.dirs"))) //
+                        .espressoLibraryPath(Utils.parsePaths(System.getProperty("espresso.library.path")));
+    }
 }
 
-class EspressoPropertiesHotSpot implements EspressoProperties {
+final class EspressoProps implements EspressoProperties {
+    private final Path javaHome;
+    private final List<Path> classpath;
+    private final List<Path> bootClasspath;
+    private final List<Path> javaLibraryPath;
+    private final List<Path> bootLibraryPath;
+    private final List<Path> extDirs;
+    private final List<Path> espressoLibraryPath;
 
-    private final String javaHome = System.getProperty("java.home");
-    private final String bootClasspath = System.getProperty("sun.boot.class.path");
-    private final String javaLibraryPath = System.getProperty("java.library.path");
-    private final String bootLibraryPath = System.getProperty("sun.boot.library.path");
-    private final String extDirs = System.getProperty("java.ext.dirs");
-    private final String espressoLibraryPath = System.getProperty("espresso.library.path");
+    EspressoProps(Builder builder) {
+        this.javaHome = Objects.requireNonNull(builder.javaHome());
+        // TODO(peterssen): Immutable.
+        this.classpath = Objects.requireNonNull(builder.classpath());
+        this.bootClasspath = Objects.requireNonNull(builder.bootClasspath());
+        this.javaLibraryPath = Objects.requireNonNull(builder.javaLibraryPath());
+        this.bootLibraryPath = Objects.requireNonNull(builder.bootLibraryPath());
+        this.extDirs = Objects.requireNonNull(builder.extDirs());
+        this.espressoLibraryPath = Objects.requireNonNull(builder.espressoLibraryPath());
+    }
 
     @Override
-    public String getJavaHome() {
+    public Path javaHome() {
         return javaHome;
     }
 
     @Override
-    public String getBootClasspath() {
+    public List<Path> classpath() {
+        return classpath;
+    }
+
+    @Override
+    public List<Path> bootClasspath() {
         return bootClasspath;
     }
 
     @Override
-    public String getJavaLibraryPath() {
+    public List<Path> javaLibraryPath() {
         return javaLibraryPath;
     }
 
     @Override
-    public String getBootLibraryPath() {
+    public List<Path> bootLibraryPath() {
         return bootLibraryPath;
     }
 
     @Override
-    public String getExtDirs() {
+    public List<Path> extDirs() {
         return extDirs;
     }
 
     @Override
-    public String getEspressoLibraryPath() {
-        return espressoLibraryPath;
-    }
-}
-
-class EspressoPropertiesSVM implements EspressoProperties {
-
-    private final String javaHome;
-    private final String bootClasspath;
-    private final String javaLibraryPath;
-    private final String bootLibraryPath;
-    private final String extDirs;
-    private final String espressoLibraryPath;
-
-    public EspressoPropertiesSVM() {
-        String espressoHome = EspressoLanguage.getCurrentContext().getLanguage().getEspressoHome();
-        espressoLibraryPath = espressoHome + "/lib";
-        // Extensions directories.
-        // Base path of extensions installed on the system.
-        final String SYS_EXT_DIR = "/usr/java/packages";
-        final String EXTENSIONS_DIR = "/lib/ext";
-        final String DEFAULT_LIBPATH = "/usr/lib64:/lib64:/lib:/usr/lib";
-        final String cpuArch = "amd64";
-
-        String graalVmHome = Engine.findHome().toString();
-        javaHome = graalVmHome + "/jre";
-        bootClasspath = String.join(File.pathSeparator,
-                        javaHome + "/lib/resources.jar",
-                        javaHome + "/lib/rt.jar",
-                        javaHome + "/lib/sunrsasign.jar",
-                        javaHome + "/lib/jsse.jar",
-                        javaHome + "/lib/jce.jar",
-                        javaHome + "/lib/charsets.jar",
-                        javaHome + "/lib/jfr.jar",
-                        javaHome + "/classes");
-        extDirs = javaHome + EXTENSIONS_DIR + File.pathSeparator + SYS_EXT_DIR + EXTENSIONS_DIR;
-        javaLibraryPath = SYS_EXT_DIR + "/lib/" + cpuArch + ":" + DEFAULT_LIBPATH;
-        bootLibraryPath = javaHome + "/lib/" + cpuArch;
-    }
-
-    @Override
-    public String getJavaHome() {
-        return javaHome;
-    }
-
-    @Override
-    public String getBootClasspath() {
-        return bootClasspath;
-    }
-
-    @Override
-    public String getJavaLibraryPath() {
-        return javaLibraryPath;
-    }
-
-    @Override
-    public String getBootLibraryPath() {
-        return bootLibraryPath;
-    }
-
-    @Override
-    public String getExtDirs() {
-        return extDirs;
-    }
-
-    @Override
-    public String getEspressoLibraryPath() {
+    public List<Path> espressoLibraryPath() {
         return espressoLibraryPath;
     }
 }
