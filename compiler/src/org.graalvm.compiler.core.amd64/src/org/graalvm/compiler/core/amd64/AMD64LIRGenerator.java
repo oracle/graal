@@ -123,6 +123,7 @@ import jdk.vm.ci.meta.Value;
 import jdk.vm.ci.meta.ValueKind;
 
 import java.nio.ByteBuffer;
+import java.util.stream.Collectors;
 
 /**
  * This class implements the AMD64 specific portion of the LIR generator.
@@ -684,52 +685,7 @@ public abstract class AMD64LIRGenerator extends LIRGenerator {
     @Override
     public Variable emitPack(LIRKind resultKind, List<Value> values) {
         Variable result = newVariable(resultKind);
-        if (values.size() == 0) {
-            return result;
-        }
-
-        final AMD64Kind scalarKind = ((AMD64Kind) values.get(0).getPlatformKind());
-
-        final int xmmLengthInElements = 16 / scalarKind.getSizeInBytes();
-        final int numOverflows = values.size() / xmmLengthInElements;
-
-        Variable target = numOverflows > 0 ? newVariable(resultKind) : result;
-
-        for (int i = 0; i < values.size(); i++) {
-            // If we've filled up the bottom 128 bits.
-            if (i > 0 && i % xmmLengthInElements == 0) {
-                append(new AMD64VectorShuffle.Insert128Op(asAllocatable(result), asAllocatable(target), asAllocatable(result), i / xmmLengthInElements));
-            }
-
-            int targetIndex = i % xmmLengthInElements;
-
-            switch(scalarKind) {
-                case BYTE:
-                    append(new AMD64VectorShuffle.InsertByteOp(asAllocatable(target), asAllocatable(values.get(i)), targetIndex));
-                    break;
-                case WORD:
-                    append(new AMD64VectorShuffle.InsertShortOp(asAllocatable(target), asAllocatable(values.get(i)), targetIndex));
-                    break;
-                case DWORD:
-                    append(new AMD64VectorShuffle.InsertIntOp(asAllocatable(target), asAllocatable(values.get(i)), targetIndex));
-                    break;
-                case QWORD:
-                    append(new AMD64VectorShuffle.InsertLongOp(asAllocatable(target), asAllocatable(values.get(i)), targetIndex));
-                    break;
-                case SINGLE:
-                    append(new AMD64VectorShuffle.InsertFloatOp(asAllocatable(target), asAllocatable(values.get(i)), targetIndex));
-                    break;
-                case DOUBLE:
-                    append(new AMD64VectorShuffle.InsertDoubleOp(asAllocatable(target), asAllocatable(values.get(i)), targetIndex));
-                    break;
-            }
-        }
-
-        // If we're using a scratch register, write it into the result.
-        if (numOverflows > 0) {
-            append(new AMD64VectorShuffle.Insert128Op(asAllocatable(result), asAllocatable(target), asAllocatable(result), numOverflows));
-        }
-
+        append(new AMD64Packing.PackOp(this, asAllocatable(result), values.stream().map(this::asAllocatable).collect(Collectors.toList())));
         return result;
     }
 
