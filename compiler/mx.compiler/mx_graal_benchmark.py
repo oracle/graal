@@ -431,93 +431,6 @@ class DaCapoTimingBenchmarkMixin(TimingBenchmarkMixin, CounterBenchmarkMixin, Me
         return self.removeWarmup(results)
 
 
-class MoveProfilingBenchmarkMixin(object):
-    """Benchmark-mixin for measuring the number of dynamically executed move instructions.
-
-    See org.graalvm.compiler.lir.profiling.MoveProfilingPhase for more details.
-    """
-    benchmark_counters_file = 'benchmark-counters.csv'
-
-    def vmArgs(self, bmSuiteArgs):
-        vmArgs = [
-                  self.get_dynamic_counters_argument(),
-                  '-XX:JVMCICounterSize=10',
-                  '-Dgraal.LIRProfileMoves=true',
-                  '-Dgraal.DynamicCountersPrintGroupSeparator=false',
-                  '-Dgraal.BenchmarkCountersFile=' + MoveProfilingBenchmarkMixin.benchmark_counters_file] + super(MoveProfilingBenchmarkMixin, self).vmArgs(bmSuiteArgs)
-        return vmArgs
-
-    def get_dynamic_counters_argument(self):
-        """ The argument to select the desired dynamic counters mode. Possible values are
-        `-Dgraal.GenericDynamicCounters=...`, `-Dgraal.TimedDynamicCounters=...` or
-        `-Dgraal.BenchmarkDynamicCounters=...`. See org.graalvm.compiler.hotspot.debug.BenchmarkCounters
-        for more information.
-        """
-        raise NotImplementedError()
-
-    def getBenchmarkName(self):
-        raise NotImplementedError()
-
-    def benchSuiteName(self):
-        raise NotImplementedError()
-
-    def name(self):
-        return self.benchSuiteName() + "-move-profiling"
-
-    def shorten_flags(self, args):
-        def _shorten(x):
-            if any(p in x for p in ["DynamicCounter", "BenchmarkCounter"]):
-                return "..."
-            return x
-
-        arg_str = " ".join((_shorten(x) for x in args))
-        return mx_benchmark.Rule.crop_back("...")(arg_str)
-
-    def rules(self, out, benchmarks, bmSuiteArgs):
-        return [
-          mx_benchmark.CSVStdOutFileRule(
-            pattern="Writing benchmark counters to '(?P<name>[^']*)'",
-            match_name="name",
-            colnames=['type', 'group', 'name', 'value'],
-            replacement={
-              "benchmark": self.getBenchmarkName(),
-              "bench-suite": self.benchSuiteName(),
-              "vm": "jvmci",
-              "config.name": "default",
-              "config.vm-flags": self.shorten_flags(self.vmArgs(bmSuiteArgs)),
-              "metric.object": ("<name>", str),
-              "metric.name": ("dynamic-moves", str),
-              "metric.value": ("<value>", int),
-              "metric.unit": "#",
-              "metric.type": "numeric",
-              "metric.score-function": "id",
-              "metric.better": "lower",
-              "metric.iteration": 0
-            },
-            delimiter=';', quotechar='"', escapechar='\\'
-          ),
-        ]
-
-
-class DaCapoMoveProfilingBenchmarkMixin(MoveProfilingBenchmarkMixin):
-
-    def vmArgs(self, bmSuiteArgs):
-        # we need to boostrap to eagerly initialize Graal otherwise we cannot intercept
-        # stdio since it is rerouted by the dacapo harness
-        return ['-XX:+BootstrapJVMCI', '-Dgraal.BootstrapInitializeOnly=true'] +  super(DaCapoMoveProfilingBenchmarkMixin, self).vmArgs(bmSuiteArgs)
-
-    def get_dynamic_counters_argument(self):
-        # we only count the moves executed during the last (the measurement) iteration
-        return '-Dgraal.BenchmarkDynamicCounters=err, starting ====, PASSED in '
-
-    def postprocessRunArgs(self, benchname, runArgs):
-        self.currentBenchname = benchname
-        return super(DaCapoMoveProfilingBenchmarkMixin, self).postprocessRunArgs(benchname, runArgs)
-
-    def getBenchmarkName(self):
-        return self.currentBenchname
-
-
 class TemporaryWorkdirMixin(mx_benchmark.VmBenchmarkSuite):
     def before(self, bmSuiteArgs):
         parser = mx_benchmark.parsers["temporary_workdir_parser"].parser
@@ -819,15 +732,6 @@ class DaCapoTimingBenchmarkSuite(DaCapoTimingBenchmarkMixin, DaCapoBenchmarkSuit
 mx_benchmark.add_bm_suite(DaCapoTimingBenchmarkSuite())
 
 
-class DaCapoMoveProfilingBenchmarkSuite(DaCapoMoveProfilingBenchmarkMixin, DaCapoBenchmarkSuite): # pylint: disable=too-many-ancestors
-    """DaCapo 9.12 (Bach) benchmark suite implementation."""
-
-    def benchSuiteName(self):
-        return "dacapo"
-
-
-mx_benchmark.add_bm_suite(DaCapoMoveProfilingBenchmarkSuite())
-
 class DaCapoD3SBenchmarkSuite(DaCapoBenchmarkSuite): # pylint: disable=too-many-ancestors
     """DaCapo 9.12 Bach benchmark suite implementation with D3S modifications."""
 
@@ -1055,16 +959,6 @@ class ScalaDaCapoTimingBenchmarkSuite(DaCapoTimingBenchmarkMixin, ScalaDaCapoBen
 
 
 mx_benchmark.add_bm_suite(ScalaDaCapoTimingBenchmarkSuite())
-
-
-class ScalaDaCapoMoveProfilingBenchmarkSuite(DaCapoMoveProfilingBenchmarkMixin, ScalaDaCapoBenchmarkSuite): # pylint: disable=too-many-ancestors
-    """Scala DaCapo benchmark suite implementation."""
-
-    def benchSuiteName(self):
-        return "scala-dacapo"
-
-
-mx_benchmark.add_bm_suite(ScalaDaCapoMoveProfilingBenchmarkSuite())
 
 
 _allSpecJVM2008Benches = [
