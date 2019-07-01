@@ -95,18 +95,20 @@ def add_graalvm_hostvm_config(name, java_args=None, launcher_args=None, priority
 class AbstractNativeImageConfig(object):
     __metaclass__ = ABCMeta
 
-    def __init__(self, destination, jar_distributions, build_args, links=None, is_polyglot=False):
+    def __init__(self, destination, jar_distributions, build_args, links=None, is_polyglot=False, dir_jars=False):
         """
         :type destination: str
         :type jar_distributions: list[str]
         :type build_args: list[str]
         :type links: list[str]
+        :param bool dir_jars: If true, all jars in the component directory are added to the classpath.
         """
         self.destination = mx_subst.path_substitutions.substitute(destination)
         self.jar_distributions = jar_distributions
         self.build_args = build_args
         self.links = [mx_subst.path_substitutions.substitute(link) for link in links] if links else []
         self.is_polyglot = is_polyglot
+        self.dir_jars = dir_jars
 
         assert isinstance(self.jar_distributions, list)
         assert isinstance(self.build_args, list)
@@ -121,7 +123,7 @@ class AbstractNativeImageConfig(object):
 class LauncherConfig(AbstractNativeImageConfig):
     def __init__(self, destination, jar_distributions, main_class, build_args, links=None, is_main_launcher=True,
                  default_symlinks=True, is_sdk_launcher=False, is_polyglot=False, custom_bash_launcher=None,
-                 add_graalvm_jars=True):
+                 add_graalvm_jars=True, dir_jars=False):
         """
         :param custom_bash_launcher: Uses custom bash launcher, unless compiled as native image
         :param add_graalvm_jars: Do not include jar distributions in jre/lib/graalvm; default True = do include.
@@ -130,7 +132,7 @@ class LauncherConfig(AbstractNativeImageConfig):
         :type custom_bash_launcher: str
         :type graalvm_jre_launcher: bool
         """
-        super(LauncherConfig, self).__init__(destination, jar_distributions, build_args, links, is_polyglot)
+        super(LauncherConfig, self).__init__(destination, jar_distributions, build_args, links, is_polyglot, dir_jars)
         self.main_class = main_class
         self.is_main_launcher = is_main_launcher
         self.default_symlinks = default_symlinks
@@ -141,19 +143,19 @@ class LauncherConfig(AbstractNativeImageConfig):
 
 class LanguageLauncherConfig(LauncherConfig):
     def __init__(self, destination, jar_distributions, main_class, build_args, language, links=None, is_main_launcher=True,
-                 default_symlinks=True, is_sdk_launcher=True, custom_bash_launcher=None, add_graalvm_jars=True):
+                 default_symlinks=True, is_sdk_launcher=True, custom_bash_launcher=None, add_graalvm_jars=True, dir_jars=False):
         super(LanguageLauncherConfig, self).__init__(destination, jar_distributions, main_class, build_args, links,
                                                      is_main_launcher, default_symlinks, is_sdk_launcher, False,
-                                                     custom_bash_launcher, add_graalvm_jars)
+                                                     custom_bash_launcher, add_graalvm_jars, dir_jars)
         self.language = language
 
 
 class LibraryConfig(AbstractNativeImageConfig):
-    def __init__(self, destination, jar_distributions, build_args, links=None, jvm_library=False, is_polyglot=False):
+    def __init__(self, destination, jar_distributions, build_args, links=None, jvm_library=False, is_polyglot=False, dir_jars=False):
         """
         :type jvm_library: bool
         """
-        super(LibraryConfig, self).__init__(destination, jar_distributions, build_args, links, is_polyglot)
+        super(LibraryConfig, self).__init__(destination, jar_distributions, build_args, links, is_polyglot, dir_jars)
         self.jvm_library = jvm_library
 
 
