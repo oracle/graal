@@ -69,13 +69,13 @@ mx_sdk.register_graalvm_component(mx_sdk.GraalVmJdkComponent(
     launcher_configs=[
         mx_sdk.LauncherConfig(
             destination="bin/<exe:gu>",
-            jar_distributions=["vm:INSTALLER"],
+            jar_distributions=[],
+            dir_jars=True,
             main_class="org.graalvm.component.installer.ComponentInstaller",
             build_args=[],
             # Please see META-INF/native-image in the project for custom build options for native-image
             is_sdk_launcher=True,
-            custom_bash_launcher="mx.vm/gu",
-            add_graalvm_jars=False
+            custom_bash_launcher="mx.vm/gu" if mx.is_windows() else None,
         ),
     ],
 ))
@@ -1294,7 +1294,7 @@ class GraalVmBashLauncherBuildTask(GraalVmNativeImageBuildTask):
         _custom_launcher = self.subject.native_image_config.custom_bash_launcher
         if _custom_launcher:
             if jdk.version.parts[0] >= 11:
-                tmpl = join(self.subject.suite.dir, _custom_launcher + "_modules." +ext)
+                tmpl = join(self.subject.get_origin_suite().dir, _custom_launcher + "_modules." + ext)
                 if os.path.isfile(tmpl):
                     return tmpl
             return join(self.subject.suite.dir, _custom_launcher + "." + ext)
