@@ -24,10 +24,8 @@
  */
 package org.graalvm.compiler.lir.amd64.vector;
 
-import jdk.vm.ci.amd64.AMD64Kind;
-import jdk.vm.ci.meta.AllocatableValue;
-import jdk.vm.ci.meta.PlatformKind;
-import jdk.vm.ci.meta.Value;
+import java.nio.ByteBuffer;
+import java.util.List;
 
 import org.graalvm.compiler.asm.amd64.AMD64Address;
 import org.graalvm.compiler.asm.amd64.AMD64MacroAssembler;
@@ -36,9 +34,9 @@ import org.graalvm.compiler.lir.amd64.AMD64LIRInstruction;
 import org.graalvm.compiler.lir.asm.CompilationResultBuilder;
 import org.graalvm.compiler.lir.gen.LIRGeneratorTool;
 
-import java.nio.ByteBuffer;
-import java.util.Collections;
-import java.util.List;
+import jdk.vm.ci.amd64.AMD64Kind;
+import jdk.vm.ci.meta.AllocatableValue;
+import jdk.vm.ci.meta.PlatformKind;
 
 import static org.graalvm.compiler.lir.LIRInstruction.OperandFlag.REG;
 import static org.graalvm.compiler.lir.LIRInstruction.OperandFlag.STACK;

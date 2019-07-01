@@ -25,34 +25,17 @@
 
 package org.graalvm.compiler.core.amd64;
 
-import static jdk.vm.ci.code.ValueUtil.asRegister;
-import static jdk.vm.ci.code.ValueUtil.isAllocatableValue;
-import static jdk.vm.ci.code.ValueUtil.isRegister;
-import static org.graalvm.compiler.asm.amd64.AMD64Assembler.AMD64BinaryArithmetic.CMP;
-import static org.graalvm.compiler.asm.amd64.AMD64BaseAssembler.OperandSize.DWORD;
-import static org.graalvm.compiler.asm.amd64.AMD64BaseAssembler.OperandSize.PD;
-import static org.graalvm.compiler.asm.amd64.AMD64BaseAssembler.OperandSize.PS;
-import static org.graalvm.compiler.asm.amd64.AMD64BaseAssembler.OperandSize.QWORD;
-import static org.graalvm.compiler.core.common.GraalOptions.GeneratePIC;
-import static org.graalvm.compiler.lir.LIRInstruction.OperandFlag.REG;
-import static org.graalvm.compiler.lir.LIRInstruction.OperandFlag.STACK;
-import static org.graalvm.compiler.lir.LIRValueUtil.asConstant;
-import static org.graalvm.compiler.lir.LIRValueUtil.asConstantValue;
-import static org.graalvm.compiler.lir.LIRValueUtil.asJavaConstant;
-import static org.graalvm.compiler.lir.LIRValueUtil.isConstantValue;
-import static org.graalvm.compiler.lir.LIRValueUtil.isIntConstant;
-import static org.graalvm.compiler.lir.LIRValueUtil.isJavaConstant;
-
+import java.nio.ByteBuffer;
 import java.util.List;
 import java.util.Optional;
+import java.util.stream.Collectors;
 
-import org.graalvm.compiler.asm.amd64.AMD64Assembler;
 import org.graalvm.compiler.asm.amd64.AMD64Assembler.AMD64BinaryArithmetic;
 import org.graalvm.compiler.asm.amd64.AMD64Assembler.AMD64MIOp;
 import org.graalvm.compiler.asm.amd64.AMD64Assembler.AMD64RMOp;
 import org.graalvm.compiler.asm.amd64.AMD64Assembler.ConditionFlag;
-import org.graalvm.compiler.asm.amd64.AMD64BaseAssembler.OperandSize;
 import org.graalvm.compiler.asm.amd64.AMD64Assembler.SSEOp;
+import org.graalvm.compiler.asm.amd64.AMD64BaseAssembler.OperandSize;
 import org.graalvm.compiler.core.common.LIRKind;
 import org.graalvm.compiler.core.common.NumUtil;
 import org.graalvm.compiler.core.common.calc.Condition;
@@ -84,29 +67,26 @@ import org.graalvm.compiler.lir.amd64.AMD64ControlFlow.CondSetOp;
 import org.graalvm.compiler.lir.amd64.AMD64ControlFlow.FloatBranchOp;
 import org.graalvm.compiler.lir.amd64.AMD64ControlFlow.FloatCondMoveOp;
 import org.graalvm.compiler.lir.amd64.AMD64ControlFlow.FloatCondSetOp;
+import org.graalvm.compiler.lir.amd64.AMD64ControlFlow.HashTableSwitchOp;
 import org.graalvm.compiler.lir.amd64.AMD64ControlFlow.ReturnOp;
 import org.graalvm.compiler.lir.amd64.AMD64ControlFlow.StrategySwitchOp;
 import org.graalvm.compiler.lir.amd64.AMD64ControlFlow.TableSwitchOp;
-import org.graalvm.compiler.lir.amd64.AMD64ControlFlow.HashTableSwitchOp;
 import org.graalvm.compiler.lir.amd64.AMD64LFenceOp;
 import org.graalvm.compiler.lir.amd64.AMD64Move;
 import org.graalvm.compiler.lir.amd64.AMD64Move.CompareAndSwapOp;
 import org.graalvm.compiler.lir.amd64.AMD64Move.MembarOp;
 import org.graalvm.compiler.lir.amd64.AMD64Move.StackLeaOp;
-import org.graalvm.compiler.lir.amd64.vector.AMD64Packing;
 import org.graalvm.compiler.lir.amd64.AMD64PauseOp;
 import org.graalvm.compiler.lir.amd64.AMD64StringLatin1InflateOp;
 import org.graalvm.compiler.lir.amd64.AMD64StringUTF16CompressOp;
 import org.graalvm.compiler.lir.amd64.AMD64ZapRegistersOp;
 import org.graalvm.compiler.lir.amd64.AMD64ZapStackOp;
-import org.graalvm.compiler.lir.amd64.vector.AMD64VectorClearOp;
-import org.graalvm.compiler.lir.amd64.vector.AMD64VectorMove;
+import org.graalvm.compiler.lir.amd64.vector.AMD64Packing;
 import org.graalvm.compiler.lir.amd64.vector.AMD64VectorShuffle;
 import org.graalvm.compiler.lir.gen.LIRGenerationResult;
 import org.graalvm.compiler.lir.gen.LIRGenerator;
 import org.graalvm.compiler.lir.hashing.Hasher;
 import org.graalvm.compiler.phases.util.Providers;
-import org.graalvm.compiler.lir.amd64.AMD64LIRInstruction;
 
 import jdk.vm.ci.amd64.AMD64;
 import jdk.vm.ci.amd64.AMD64Kind;
@@ -122,8 +102,22 @@ import jdk.vm.ci.meta.VMConstant;
 import jdk.vm.ci.meta.Value;
 import jdk.vm.ci.meta.ValueKind;
 
-import java.nio.ByteBuffer;
-import java.util.stream.Collectors;
+import static org.graalvm.compiler.asm.amd64.AMD64Assembler.AMD64BinaryArithmetic.CMP;
+import static org.graalvm.compiler.asm.amd64.AMD64BaseAssembler.OperandSize.DWORD;
+import static org.graalvm.compiler.asm.amd64.AMD64BaseAssembler.OperandSize.PD;
+import static org.graalvm.compiler.asm.amd64.AMD64BaseAssembler.OperandSize.PS;
+import static org.graalvm.compiler.asm.amd64.AMD64BaseAssembler.OperandSize.QWORD;
+import static org.graalvm.compiler.core.common.GraalOptions.GeneratePIC;
+import static org.graalvm.compiler.lir.LIRValueUtil.asConstant;
+import static org.graalvm.compiler.lir.LIRValueUtil.asConstantValue;
+import static org.graalvm.compiler.lir.LIRValueUtil.asJavaConstant;
+import static org.graalvm.compiler.lir.LIRValueUtil.isConstantValue;
+import static org.graalvm.compiler.lir.LIRValueUtil.isIntConstant;
+import static org.graalvm.compiler.lir.LIRValueUtil.isJavaConstant;
+
+import static jdk.vm.ci.code.ValueUtil.asRegister;
+import static jdk.vm.ci.code.ValueUtil.isAllocatableValue;
+import static jdk.vm.ci.code.ValueUtil.isRegister;
 
 /**
  * This class implements the AMD64 specific portion of the LIR generator.

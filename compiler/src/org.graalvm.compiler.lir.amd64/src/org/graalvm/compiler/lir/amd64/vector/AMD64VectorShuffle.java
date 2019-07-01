@@ -24,34 +24,6 @@
  */
 package org.graalvm.compiler.lir.amd64.vector;
 
-import static jdk.vm.ci.code.ValueUtil.asRegister;
-import static jdk.vm.ci.code.ValueUtil.isRegister;
-import static jdk.vm.ci.code.ValueUtil.isStackSlot;
-import static org.graalvm.compiler.asm.amd64.AMD64Assembler.VexMRIOp.VEXTRACTF128;
-import static org.graalvm.compiler.asm.amd64.AMD64Assembler.VexMRIOp.VEXTRACTI128;
-import static org.graalvm.compiler.asm.amd64.AMD64Assembler.VexMRIOp.VEXTRACTPS;
-import static org.graalvm.compiler.asm.amd64.AMD64Assembler.VexMRIOp.VPEXTRB;
-import static org.graalvm.compiler.asm.amd64.AMD64Assembler.VexMRIOp.VPEXTRD;
-import static org.graalvm.compiler.asm.amd64.AMD64Assembler.VexMRIOp.VPEXTRQ;
-import static org.graalvm.compiler.asm.amd64.AMD64Assembler.VexMRIOp.VPEXTRW;
-import static org.graalvm.compiler.asm.amd64.AMD64Assembler.VexRRMIOp.VINSERTPS;
-import static org.graalvm.compiler.asm.amd64.AMD64Assembler.VexRRMIOp.VPINSRB;
-import static org.graalvm.compiler.asm.amd64.AMD64Assembler.VexRRMIOp.VPINSRD;
-import static org.graalvm.compiler.asm.amd64.AMD64Assembler.VexRRMIOp.VPINSRQ;
-import static org.graalvm.compiler.asm.amd64.AMD64Assembler.VexRRMIOp.VPINSRW;
-import static org.graalvm.compiler.asm.amd64.AMD64Assembler.VexMoveOp.VMOVD;
-import static org.graalvm.compiler.asm.amd64.AMD64Assembler.VexMoveOp.VMOVQ;
-import static org.graalvm.compiler.asm.amd64.AMD64Assembler.VexMoveOp.VMOVSS;
-import static org.graalvm.compiler.asm.amd64.AMD64Assembler.VexMoveOp.VMOVSD;
-import static org.graalvm.compiler.asm.amd64.AMD64Assembler.VexRVMIOp.VINSERTF128;
-import static org.graalvm.compiler.asm.amd64.AMD64Assembler.VexRVMIOp.VINSERTI128;
-import static org.graalvm.compiler.asm.amd64.AMD64Assembler.VexRVMIOp.VSHUFPD;
-import static org.graalvm.compiler.asm.amd64.AMD64Assembler.VexRVMIOp.VSHUFPS;
-import static org.graalvm.compiler.asm.amd64.AMD64Assembler.VexRVMOp.VPSHUFB;
-import static org.graalvm.compiler.asm.amd64.AVXKind.AVXSize.XMM;
-import static org.graalvm.compiler.lir.LIRInstruction.OperandFlag.REG;
-import static org.graalvm.compiler.lir.LIRInstruction.OperandFlag.STACK;
-
 import org.graalvm.compiler.asm.amd64.AMD64Address;
 import org.graalvm.compiler.asm.amd64.AMD64Assembler.VexMRIOp;
 import org.graalvm.compiler.asm.amd64.AMD64Assembler.VexRMIOp;
@@ -67,6 +39,35 @@ import jdk.vm.ci.amd64.AMD64;
 import jdk.vm.ci.amd64.AMD64.CPUFeature;
 import jdk.vm.ci.amd64.AMD64Kind;
 import jdk.vm.ci.meta.AllocatableValue;
+
+import static org.graalvm.compiler.asm.amd64.AMD64Assembler.VexMRIOp.VEXTRACTF128;
+import static org.graalvm.compiler.asm.amd64.AMD64Assembler.VexMRIOp.VEXTRACTI128;
+import static org.graalvm.compiler.asm.amd64.AMD64Assembler.VexMRIOp.VEXTRACTPS;
+import static org.graalvm.compiler.asm.amd64.AMD64Assembler.VexMRIOp.VPEXTRB;
+import static org.graalvm.compiler.asm.amd64.AMD64Assembler.VexMRIOp.VPEXTRD;
+import static org.graalvm.compiler.asm.amd64.AMD64Assembler.VexMRIOp.VPEXTRQ;
+import static org.graalvm.compiler.asm.amd64.AMD64Assembler.VexMRIOp.VPEXTRW;
+import static org.graalvm.compiler.asm.amd64.AMD64Assembler.VexMoveOp.VMOVD;
+import static org.graalvm.compiler.asm.amd64.AMD64Assembler.VexMoveOp.VMOVQ;
+import static org.graalvm.compiler.asm.amd64.AMD64Assembler.VexMoveOp.VMOVSD;
+import static org.graalvm.compiler.asm.amd64.AMD64Assembler.VexMoveOp.VMOVSS;
+import static org.graalvm.compiler.asm.amd64.AMD64Assembler.VexRRMIOp.VINSERTPS;
+import static org.graalvm.compiler.asm.amd64.AMD64Assembler.VexRRMIOp.VPINSRB;
+import static org.graalvm.compiler.asm.amd64.AMD64Assembler.VexRRMIOp.VPINSRD;
+import static org.graalvm.compiler.asm.amd64.AMD64Assembler.VexRRMIOp.VPINSRQ;
+import static org.graalvm.compiler.asm.amd64.AMD64Assembler.VexRRMIOp.VPINSRW;
+import static org.graalvm.compiler.asm.amd64.AMD64Assembler.VexRVMIOp.VINSERTF128;
+import static org.graalvm.compiler.asm.amd64.AMD64Assembler.VexRVMIOp.VINSERTI128;
+import static org.graalvm.compiler.asm.amd64.AMD64Assembler.VexRVMIOp.VSHUFPD;
+import static org.graalvm.compiler.asm.amd64.AMD64Assembler.VexRVMIOp.VSHUFPS;
+import static org.graalvm.compiler.asm.amd64.AMD64Assembler.VexRVMOp.VPSHUFB;
+import static org.graalvm.compiler.asm.amd64.AVXKind.AVXSize.XMM;
+import static org.graalvm.compiler.lir.LIRInstruction.OperandFlag.REG;
+import static org.graalvm.compiler.lir.LIRInstruction.OperandFlag.STACK;
+
+import static jdk.vm.ci.code.ValueUtil.asRegister;
+import static jdk.vm.ci.code.ValueUtil.isRegister;
+import static jdk.vm.ci.code.ValueUtil.isStackSlot;
 
 public class AMD64VectorShuffle {
 
