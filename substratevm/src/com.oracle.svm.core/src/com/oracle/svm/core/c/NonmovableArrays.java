@@ -299,6 +299,11 @@ public final class NonmovableArrays {
     /** Writes the value at the given index in an array of {@linkplain WordBase words}. */
     @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
     public static <T extends WordBase> void setWord(NonmovableArray<T> array, int index, T value) {
+        if (SubstrateUtil.HOSTED) {
+            T[] hosted = getHostedArray(array);
+            hosted[index] = value;
+            return;
+        }
         assert matches(array, true, ConfigurationValues.getTarget().wordSize);
         ((Pointer) addressOf(array, index)).writeWord(0, value);
     }
@@ -306,6 +311,10 @@ public final class NonmovableArrays {
     /** Reads the value at the given index in an array of {@linkplain WordBase words}. */
     @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
     public static <T extends WordBase> T getWord(NonmovableArray<T> array, int index) {
+        if (SubstrateUtil.HOSTED) {
+            T[] hosted = getHostedArray(array);
+            return hosted[index];
+        }
         assert matches(array, true, ConfigurationValues.getTarget().wordSize);
         return ((Pointer) addressOf(array, index)).readWord(0);
     }
