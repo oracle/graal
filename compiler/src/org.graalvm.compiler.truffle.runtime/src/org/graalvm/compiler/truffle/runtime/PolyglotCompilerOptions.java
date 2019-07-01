@@ -100,7 +100,7 @@ public final class PolyglotCompilerOptions {
     public static final OptionKey<Integer> InliningNodeBudget = new OptionKey<>(2250);
 
     @Option(help = "Maximum depth for recursive inlining.", category = OptionCategory.EXPERT)
-    public static final OptionKey<Integer> InliningRecursionDepth = new OptionKey<>(4);
+    public static final OptionKey<Integer> InliningRecursionDepth = new OptionKey<>(2);
 
     @Option(help = "Enable automatic duplication of compilation profiles (splitting).",
                     category = OptionCategory.EXPERT)
