@@ -151,7 +151,7 @@ public final class ImageClassLoader {
         Path entry = ClasspathUtils.stringToClasspath(classPathEntry);
         if (entry.endsWith(ClasspathUtils.cpWildcardSubstitute)) {
             try {
-                return Files.list(entry.getParent()).filter(Files::isRegularFile);
+                return Files.list(entry.getParent()).filter(ClasspathUtils::isJar);
             } catch (IOException e) {
                 return Stream.empty();
             }
