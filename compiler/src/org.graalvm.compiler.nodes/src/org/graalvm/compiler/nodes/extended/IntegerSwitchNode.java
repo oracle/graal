@@ -42,10 +42,10 @@ import org.graalvm.compiler.graph.spi.Simplifiable;
 import org.graalvm.compiler.graph.spi.SimplifierTool;
 import org.graalvm.compiler.nodeinfo.NodeInfo;
 import org.graalvm.compiler.nodes.AbstractBeginNode;
+import org.graalvm.compiler.nodes.BeginNode;
 import org.graalvm.compiler.nodes.ConstantNode;
 import org.graalvm.compiler.nodes.FixedGuardNode;
 import org.graalvm.compiler.nodes.FixedWithNextNode;
-import org.graalvm.compiler.nodes.IfNode;
 import org.graalvm.compiler.nodes.LogicNode;
 import org.graalvm.compiler.nodes.NodeView;
 import org.graalvm.compiler.nodes.ValueNode;
@@ -196,10 +196,7 @@ public final class IntegerSwitchNode extends SwitchNode implements LIRLowerable,
         return switchNode.value() == switchValue;
     }
 
-    public boolean tryMergeSwitch(SimplifierTool tool) {
-        if (defaultSuccessor().next() instanceof IfNode) {
-            defaultSuccessor().next().simplify(tool);
-        }
+    public boolean tryMergeSwitch(@SuppressWarnings("unused") SimplifierTool tool) {
         if (!(defaultSuccessor().next() instanceof IntegerSwitchNode || (predecessor() instanceof AbstractBeginNode && predecessor().predecessor() instanceof IntegerSwitchNode))) {
             return false;
         }
@@ -214,7 +211,7 @@ public final class IntegerSwitchNode extends SwitchNode implements LIRLowerable,
         // Go up
         while (iteratingSwitch instanceof IntegerSwitchNode && canMerge((IntegerSwitchNode) iteratingSwitch, switchValue)) {
             topSwitchNode = (IntegerSwitchNode) iteratingSwitch;
-            if (!(iteratingSwitch.predecessor() instanceof AbstractBeginNode)) {
+            if (!(iteratingSwitch.predecessor() instanceof BeginNode && iteratingSwitch.predecessor().hasNoUsages())) {
                 break;
             }
             iteratingSwitch = predecessor().predecessor();
@@ -228,6 +225,9 @@ public final class IntegerSwitchNode extends SwitchNode implements LIRLowerable,
         while (iteratingSwitch instanceof IntegerSwitchNode && canMerge((IntegerSwitchNode) iteratingSwitch, switchValue)) {
             lastSwitch = (IntegerSwitchNode) iteratingSwitch;
             lastSwitch.mergeIn(newKeyData, newSuccessors, cumulative, unreachable);
+            if (!(lastSwitch.defaultSuccessor() instanceof BeginNode && lastSwitch.defaultSuccessor().hasNoUsages())) {
+                break;
+            }
             iteratingSwitch = lastSwitch.defaultSuccessor().next();
         }
         if (topSwitchNode == lastSwitch) {
@@ -265,6 +265,7 @@ public final class IntegerSwitchNode extends SwitchNode implements LIRLowerable,
             AbstractBeginNode defaultSuccessor = goingUp.defaultSuccessor();
             goingUp.clearSuccessors();
             if (goingUp != lastSwitch) {
+                // Keep the link between the merged switches, for easier deletion.
                 goingUp.successors.add(defaultSuccessor);
             }
             if (!(goingUp.predecessor() instanceof AbstractBeginNode)) {
