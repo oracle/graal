@@ -40,6 +40,18 @@ import com.oracle.truffle.espresso.Utils;
 import com.oracle.truffle.espresso.meta.EspressoError;
 
 public interface EspressoProperties {
+
+    String CPU_ARCH = System.getProperty("os.arch");
+
+    String VM_SPECIFICATION_VERSION = "1.8";
+    String VM_SPECIFICATION_NAME = "Java Virtual Machine Specification";
+    String VM_SPECIFICATION_VENDOR = "Oracle Corporation";
+
+    String VM_VERSION = "1.8.0_212";
+    String VM_VENDOR = "Oracle Corporation";
+    String VM_NAME = "Espresso 64-Bit VM";
+    String VM_INFO = "mixed mode";
+
     Path javaHome();
 
     List<Path> classpath();
@@ -71,8 +83,6 @@ public interface EspressoProperties {
                         Paths.get("/lib64"),
                         Paths.get("/lib"),
                         Paths.get("/usr/lib"));
-
-        private final String CPU_ARCH = "amd64";
 
         public Builder javaHome(Path newJavaHome) {
             this.javaHome = newJavaHome;
@@ -168,7 +178,7 @@ public interface EspressoProperties {
         }
 
         public Builder processOptions(OptionValues options) {
-
+            // Always set JavaHome first.
             if (options.hasBeenSet(EspressoOptions.JavaHome)) {
                 javaHome(options.get(EspressoOptions.JavaHome));
             }

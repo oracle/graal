@@ -72,6 +72,7 @@ public final class Meta implements ContextAccess {
         String = knownKlass(Type.String);
         Class_Array = Class.array();
         Class_forName_String = Class.lookupDeclaredMethod(Name.forName, Signature.Class_String);
+        Class_forName_String_boolean_ClassLoader = Class.lookupDeclaredMethod(Name.forName, Signature.Class_String_boolean_ClassLoader);
         HIDDEN_PROTECTION_DOMAIN = Class.lookupHiddenField(Name.HIDDEN_PROTECTION_DOMAIN);
 
         Object_array = Object.array();
@@ -155,6 +156,7 @@ public final class Meta implements ContextAccess {
         IllegalArgumentException = knownKlass(Type.IllegalArgumentException);
         NullPointerException = knownKlass(Type.NullPointerException);
         ClassNotFoundException = knownKlass(Type.ClassNotFoundException);
+        NoClassDefFoundError = knownKlass(Type.NoClassDefFoundError);
         InterruptedException = knownKlass(Type.InterruptedException);
         RuntimeException = knownKlass(Type.RuntimeException);
 
@@ -210,6 +212,11 @@ public final class Meta implements ContextAccess {
 
         Shutdown = knownKlass(Type.Shutdown);
         Shutdown_shutdown = Shutdown.lookupDeclaredMethod(Name.shutdown, Signature._void);
+
+        Buffer = knownKlass(Type.Buffer);
+        sun_nio_ch_DirectBuffer = knownKlass(Type.sun_nio_ch_DirectBuffer);
+        Buffer_address = Buffer.lookupDeclaredField(Name.address, Type._long);
+        Buffer_capacity = Buffer.lookupDeclaredField(Name.capacity, Type._int);
 
         ByteBuffer = knownKlass(Type.ByteBuffer);
         ByteBuffer_wrap = ByteBuffer.lookupDeclaredMethod(Name.wrap, Signature.ByteBuffer_byte_array);
@@ -300,6 +307,7 @@ public final class Meta implements ContextAccess {
     public final Field HIDDEN_SIGNERS;
     public final ArrayKlass Class_Array;
     public final Method Class_forName_String;
+    public final Method Class_forName_String_boolean_ClassLoader;
 
     // Primitives.
     public final PrimitiveKlass _boolean;
@@ -409,6 +417,7 @@ public final class Meta implements ContextAccess {
     public final ObjectKlass IllegalArgumentException;
     public final ObjectKlass NullPointerException;
     public final ObjectKlass ClassNotFoundException;
+    public final ObjectKlass NoClassDefFoundError;
     public final ObjectKlass InterruptedException;
     public final ObjectKlass RuntimeException;
     public final ObjectKlass StackOverflowError;
@@ -436,6 +445,11 @@ public final class Meta implements ContextAccess {
     // Array support.
     public final ObjectKlass Cloneable;
     public final ObjectKlass Serializable;
+
+    public final ObjectKlass sun_nio_ch_DirectBuffer;
+    public final ObjectKlass Buffer;
+    public final Field Buffer_address;
+    public final Field Buffer_capacity;
 
     public final ObjectKlass ByteBuffer;
     public final Method ByteBuffer_wrap;
