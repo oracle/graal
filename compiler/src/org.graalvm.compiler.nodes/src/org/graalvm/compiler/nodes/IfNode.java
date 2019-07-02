@@ -465,7 +465,7 @@ public final class IfNode extends ControlSplitNode implements Simplifiable, LIRL
     }
 
     @Override
-    public boolean updateSwitchData(List<SwitchFoldable.KeyData> keyData, List<AbstractBeginNode> successors, double[] cumulative, List<AbstractBeginNode> duplicates) {
+    public boolean updateSwitchData(QuickQueryKeyData keyData, List<AbstractBeginNode> successors, double[] cumulative, List<AbstractBeginNode> duplicates) {
         long key = ((IntegerEqualsNode) condition()).getY().asJavaConstant().asInt();
         if (SwitchFoldable.isDuplicateKey((int) key, keyData)) {
             // Unreachable: will be manually killed.

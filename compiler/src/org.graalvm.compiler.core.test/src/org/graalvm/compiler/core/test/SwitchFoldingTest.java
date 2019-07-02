@@ -33,6 +33,7 @@ import org.junit.Test;
 public class SwitchFoldingTest extends GraalCompilerTest {
 
     private static final String REFERENCE_SNIPPET = "referenceSnippet";
+    private static final String REFERENCE_SNIPPET_2 = "reference2Snippet";
 
     public static int referenceSnippet(int a) {
         switch (a) {
@@ -56,6 +57,20 @@ public class SwitchFoldingTest extends GraalCompilerTest {
                 return 7;
             default:
                 return 6;
+        }
+    }
+
+    public static int reference2Snippet(int a) {
+        switch (a) {
+            case 0:
+                return 4;
+            case 1:
+            case 2:
+                return 1;
+            case 3:
+                return 6;
+            default:
+                return 7;
         }
     }
 
@@ -85,7 +100,7 @@ public class SwitchFoldingTest extends GraalCompilerTest {
 
     @Test
     public void test1() {
-        test("test1Snippet");
+        test1("test1Snippet");
     }
 
     public static int test2Snippet(int a) {
@@ -118,7 +133,7 @@ public class SwitchFoldingTest extends GraalCompilerTest {
 
     @Test
     public void test2() {
-        test("test2Snippet");
+        test1("test2Snippet");
     }
 
     public static int test3Snippet(int a) {
@@ -172,7 +187,7 @@ public class SwitchFoldingTest extends GraalCompilerTest {
 
     @Test
     public void test3() {
-        test("test3Snippet");
+        test1("test3Snippet");
     }
 
     public static int test4Snippet(int a) {
@@ -204,7 +219,7 @@ public class SwitchFoldingTest extends GraalCompilerTest {
 
     @Test
     public void test4() {
-        test("test4Snippet");
+        test1("test4Snippet");
     }
 
     public static int test5Snippet(int a) {
@@ -254,7 +269,7 @@ public class SwitchFoldingTest extends GraalCompilerTest {
 
     @Test
     public void test5() {
-        test("test5Snippet");
+        test1("test5Snippet");
     }
 
     public static int test6Snippet(int a) {
@@ -294,15 +309,44 @@ public class SwitchFoldingTest extends GraalCompilerTest {
 
     @Test
     public void test6() {
-        test("test6Snippet");
+        test1("test6Snippet");
     }
 
-    private void test(String snippet) {
+    public static int test7Snippet(int a) {
+        if (a == 0) {
+            return 4;
+        } else {
+            switch (a) {
+                case 1:
+                case 2:
+                    return 1;
+                case 3:
+                    return 6;
+                default:
+                    return 7;
+            }
+        }
+    }
+
+    @Test
+    public void test7() {
+        test2("test7Snippet");
+    }
+
+    private void test1(String snippet) {
+        test(snippet, REFERENCE_SNIPPET);
+    }
+
+    private void test2(String snippet) {
+        test(snippet, REFERENCE_SNIPPET_2);
+    }
+
+    private void test(String snippet, String ref) {
         StructuredGraph graph = parseEager(snippet, StructuredGraph.AllowAssumptions.YES);
         DebugContext debug = graph.getDebug();
         debug.dump(DebugContext.BASIC_LEVEL, graph, "Graph");
         new CanonicalizerPhase().apply(graph, getProviders());
-        StructuredGraph referenceGraph = parseEager(REFERENCE_SNIPPET, StructuredGraph.AllowAssumptions.YES);
+        StructuredGraph referenceGraph = parseEager(ref, StructuredGraph.AllowAssumptions.YES);
         assertEquals(referenceGraph, graph);
     }
 }

@@ -25,13 +25,18 @@
 
 package org.graalvm.compiler.nodes.spi;
 
+import java.util.AbstractList;
 import java.util.ArrayList;
 import java.util.Comparator;
+import java.util.HashMap;
+import java.util.HashSet;
 import java.util.List;
+import java.util.Set;
 
 import org.graalvm.compiler.core.common.type.IntegerStamp;
 import org.graalvm.compiler.core.common.type.PrimitiveStamp;
 import org.graalvm.compiler.core.common.type.Stamp;
+import org.graalvm.compiler.debug.TTY;
 import org.graalvm.compiler.graph.Graph;
 import org.graalvm.compiler.graph.Node;
 import org.graalvm.compiler.graph.NodeInterface;
@@ -54,7 +59,7 @@ public interface SwitchFoldable extends NodeInterface {
 
     ValueNode switchValue();
 
-    boolean updateSwitchData(List<KeyData> keyData, List<AbstractBeginNode> successors, double[] cumulative, List<AbstractBeginNode> duplicates);
+    boolean updateSwitchData(QuickQueryKeyData keyData, List<AbstractBeginNode> successors, double[] cumulative, List<AbstractBeginNode> duplicates);
 
     void addDefault(List<AbstractBeginNode> successors);
 
@@ -83,18 +88,71 @@ public interface SwitchFoldable extends NodeInterface {
         }
     }
 
+    final class QuickQueryList<T> extends AbstractList<T> {
+        private final List<T> list = new ArrayList<>();
+        private final HashMap<T, Integer> set = new HashMap<>();
+
+        @Override
+        public int indexOf(Object begin) {
+            return set.getOrDefault(begin, -1);
+        }
+
+        @Override
+        public boolean contains(Object o) {
+            return set.containsKey(o);
+        }
+
+        @Override
+        public T get(int index) {
+            return list.get(index);
+        }
+
+        @Override
+        public boolean add(T item) {
+            assert !contains(item);
+            set.put(item, list.size());
+            return list.add(item);
+        }
+
+        @Override
+        public int size() {
+            return list.size();
+        }
+    }
+
+    final class QuickQueryKeyData {
+        private final List<KeyData> list = new ArrayList<>();
+        private final Set<Integer> set = new HashSet<>();
+
+        public void add(KeyData key) {
+            assert !set.contains(key.key);
+            list.add(key);
+            set.add(key.key);
+        }
+
+        public boolean contains(int key) {
+            return set.contains(key);
+        }
+
+        public KeyData get(int index) {
+            return list.get(index);
+        }
+
+        public int size() {
+            return list.size();
+        }
+    }
+
     static void sort(List<KeyData> keyData) {
         keyData.sort(sorter);
     }
 
-    static boolean isDuplicateKey(int key, List<KeyData> keyData) {
-        for (KeyData kd : keyData) {
-            if (kd.key == key) {
-                // No duplicates
-                return true;
-            }
-        }
-        return false;
+    static boolean isDuplicateKey(int key, QuickQueryKeyData keyData) {
+        return keyData.contains(key);
+    }
+
+    static int duplicateIndex(AbstractBeginNode begin, List<AbstractBeginNode> successors) {
+        return successors.indexOf(begin);
     }
 
     static Node skipUpBegins(Node node) {
@@ -165,8 +223,8 @@ public interface SwitchFoldable extends NodeInterface {
             topMostSwitchNode = iteratingNode;
             iteratingNode = iteratingNode.getParentSwitchNode(switchValue);
         }
-        List<SwitchFoldable.KeyData> keyData = new ArrayList<>();
-        List<AbstractBeginNode> successors = new ArrayList<>();
+        QuickQueryKeyData keyData = new QuickQueryKeyData();
+        List<AbstractBeginNode> successors = new QuickQueryList<>();
         List<AbstractBeginNode> unreachable = new ArrayList<>();
         double[] cumulative = {1.0d};
 
@@ -197,10 +255,11 @@ public interface SwitchFoldable extends NodeInterface {
         Graph graph = asNode().graph();
 
         // Sort the keys
-        sort(keyData);
+        sort(keyData.list);
 
         // Spawn the required data structures
-        int newKeyCount = keyData.size();
+        int newKeyCount = keyData.list.size();
+        TTY.println("vroom: " + newKeyCount);
         int[] keys = new int[newKeyCount];
         double[] keyProbabilities = new double[newKeyCount + 1];
         int[] keySuccessors = new int[newKeyCount + 1];

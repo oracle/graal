@@ -127,7 +127,7 @@ public final class FixedGuardNode extends AbstractFixedGuardNode implements Lowe
     }
 
     @Override
-    public boolean updateSwitchData(List<KeyData> keyData, List<AbstractBeginNode> successors, double[] cumulative, List<AbstractBeginNode> duplicates) {
+    public boolean updateSwitchData(QuickQueryKeyData keyData, List<AbstractBeginNode> successors, double[] cumulative, List<AbstractBeginNode> duplicates) {
         double keyProbability = 0.0d;
         long key = ((IntegerEqualsNode) condition()).getY().asJavaConstant().asInt();
         if (SwitchFoldable.isDuplicateKey((int) key, keyData)) {
