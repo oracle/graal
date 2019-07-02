@@ -107,10 +107,11 @@ public class SharedTruffleOptionsProcessor extends AbstractProcessor {
                 out.println(" * and re-build. For Eclipse, this means restarting the IDE given");
                 out.println(" * that an annotation processor is not reloaded when the jar");
                 out.println(" * containing the annotation processor is updated.");
+                out.println(" *");
+                out.println(" * GENERATED CONTENT - DO NOT EDIT");
+                out.println(" * GeneratedBy: {@link " + getClass().getName() + "}");
+                out.println(" * SpecifiedBy: {@link " + Option.class.getName() + "}");
                 out.println(" */");
-                out.println("// GENERATED CONTENT - DO NOT EDIT");
-                out.println("// GeneratedBy: " + getClass().getName());
-                out.println("// SpecifiedBy: " + Option.class.getName());
                 out.println("public abstract class " + className + " {");
 
                 for (Option option : Option.options) {
