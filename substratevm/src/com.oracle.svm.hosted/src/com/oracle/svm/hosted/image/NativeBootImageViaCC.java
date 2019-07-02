@@ -74,7 +74,7 @@ public abstract class NativeBootImageViaCC extends NativeBootImage {
         if (SubstrateOptions.RemoveUnusedSymbols.hasBeenSet()) {
             return SubstrateOptions.RemoveUnusedSymbols.getValue();
         }
-        return Platform.includedIn(Platform.PLATFORM_JNI.class);
+        return Platform.includedIn(InternalPlatform.PLATFORM_JNI.class);
     }
 
     class BinutilsCCLinkerInvocation extends CCLinkerInvocation {
