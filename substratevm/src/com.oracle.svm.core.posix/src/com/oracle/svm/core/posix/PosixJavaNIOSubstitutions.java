@@ -3457,7 +3457,7 @@ public final class PosixJavaNIOSubstitutions {
                 // 143         if (mime != NULL) {
                 if (mime.isNonNull()) {
                     // 144             jsize len = strlen(mime);
-                    int len = (int) LibC.strlen(mime).rawValue();
+                    int len = (int) SubstrateUtil.strlen(mime).rawValue();
                     // 145             result = (*env)->NewByteArray(env, len);
                     result = new byte[len];
                     // 146             if (result != NULL) {
@@ -3554,7 +3554,7 @@ public final class PosixJavaNIOSubstitutions {
                 // 196         jbyteArray result;
                 byte[] result;
                 // 197         jsize len = strlen(mime);
-                int len = (int) LibC.strlen(mime).rawValue();
+                int len = (int) SubstrateUtil.strlen(mime).rawValue();
                 // 198         result = (*env)->NewByteArray(env, len);
                 result = new byte[len];
                 // 199         if (result != NULL) {
@@ -3868,7 +3868,7 @@ public final class PosixJavaNIOSubstitutions {
                     // 096             if (type != NULL) {
                     if (type.isNonNull()) {
                         // 097                 jsize len = strlen(type);
-                        int len = (int) LibC.strlen(type).rawValue();
+                        int len = (int) SubstrateUtil.strlen(type).rawValue();
                         // 098                 result = (*env)->NewByteArray(env, len);
                         result = new byte[len];
                         // 099                 if (result != NULL) {

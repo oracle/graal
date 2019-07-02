@@ -42,9 +42,10 @@ import org.graalvm.nativeimage.c.type.CTypeConversion;
 import org.graalvm.word.PointerBase;
 import org.graalvm.word.WordFactory;
 
+import com.oracle.svm.core.SubstrateUtil;
+import com.oracle.svm.core.headers.Errno;
 import com.oracle.svm.core.log.Log;
 import com.oracle.svm.core.os.IsDefined;
-import com.oracle.svm.core.headers.Errno;
 import com.oracle.svm.core.posix.headers.LibC;
 import com.oracle.svm.core.posix.headers.NetIf;
 import com.oracle.svm.core.posix.headers.NetinetIn;
@@ -736,7 +737,7 @@ public class JavaNetNetworkInterface {
         // 948      * Deal with virtual interface with colon notation e.g. eth0:1
         // 949      */
         // 950     name_colonP = strchr(name, ':');
-        name_colonP = LibC.strchr(name, ':');
+        name_colonP = SubstrateUtil.strchr(name, (int) ':');
         // 951     if (name_colonP != NULL) {
         if (name_colonP.isNonNull()) {
             // 952       /**
