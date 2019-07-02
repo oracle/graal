@@ -333,7 +333,7 @@ public class Option {
 
         option("TruffleMultiTier")
             .type("Boolean")
-            .category("USER")
+            .category("EXPERT")
             .def("false")
             .help("Whether to use multiple Truffle compilation tiers by default."),
     };
