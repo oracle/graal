@@ -252,6 +252,51 @@ public class SwitchFoldingTest extends GraalCompilerTest {
         }
     }
 
+    @Test
+    public void test5() {
+        test("test5Snippet");
+    }
+
+    public static int test6Snippet(int a) {
+        if (a == 0) {
+            return 10;
+        } else {
+            switch (a) {
+                case 1:
+                    return 5;
+                default:
+                    if (a == 2) {
+                        return 3;
+                    } else if (a == 3) {
+                        return 11;
+                    } else {
+                        switch (a) {
+                            case 4:
+                                return 14;
+                            case 5:
+                                return 2;
+                            case 6:
+                                return 1;
+                            default:
+                                if (a == 7) {
+                                    return 0;
+                                } else if (a == 8) {
+                                    return 7;
+                                } else {
+                                    return 6;
+                                }
+                        }
+                    }
+
+            }
+        }
+    }
+
+    @Test
+    public void test6() {
+        test("test6Snippet");
+    }
+
     private void test(String snippet) {
         StructuredGraph graph = parseEager(snippet, StructuredGraph.AllowAssumptions.YES);
         DebugContext debug = graph.getDebug();

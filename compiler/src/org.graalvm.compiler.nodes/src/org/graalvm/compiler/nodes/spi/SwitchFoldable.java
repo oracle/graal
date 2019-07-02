@@ -47,7 +47,7 @@ import java.util.ArrayList;
 import java.util.Comparator;
 import java.util.List;
 
-public interface SwitchFoldable extends NodeInterface, Simplifiable {
+public interface SwitchFoldable extends NodeInterface {
     Comparator<KeyData> sorter = Comparator.comparingInt((KeyData k) -> k.key);
 
     Node getNext();
@@ -135,13 +135,14 @@ public interface SwitchFoldable extends NodeInterface, Simplifiable {
      */
     default boolean switchTransformationOptimization() {
         if (switchValue() == null || (getParentSwitchNode(switchValue()) == null && getChildSwitchNode(switchValue()) == null)) {
+            // Don't bother trying if there is nothing to do.
             return false;
         }
         SwitchFoldable topMostSwitchNode = this;
         ValueNode switchValue = switchValue();
-        Graph graph = asNode().graph();
-
         Stamp switchStamp = switchValue.stamp(NodeView.DEFAULT);
+
+        // Abort if we do not have an int
         if (!(switchStamp instanceof IntegerStamp)) {
             return false;
         }
@@ -149,8 +150,10 @@ public interface SwitchFoldable extends NodeInterface, Simplifiable {
             return false;
         }
 
-        SwitchFoldable iteratingNode = this; // PlaceHolder.
+        // PlaceHolder for cascade traversal.
+        SwitchFoldable iteratingNode = this;
 
+        // Find top-most foldable.
         while (iteratingNode != null) {
             topMostSwitchNode = iteratingNode;
             iteratingNode = iteratingNode.getParentSwitchNode(switchValue);
@@ -163,7 +166,7 @@ public interface SwitchFoldable extends NodeInterface, Simplifiable {
         iteratingNode = topMostSwitchNode;
         SwitchFoldable lowestSwitchNode = topMostSwitchNode;
 
-        // Go down the if cascade
+        // Go down the if cascade, collecting necessary data
         while (iteratingNode != null) {
             lowestSwitchNode = iteratingNode;
             if (!(iteratingNode.updateSwitchData(keyData, successors, cumulative, unreachable))) {
@@ -172,21 +175,22 @@ public interface SwitchFoldable extends NodeInterface, Simplifiable {
             iteratingNode = iteratingNode.getChildSwitchNode(switchValue);
         }
 
-        if (keyData.size() < 4) {
+        if (keyData.size() < 4 || lowestSwitchNode == topMostSwitchNode) {
+            // Abort if it's not worth the hassle
             return false;
         }
 
         // At that point, we will commit the optimization.
+        Graph graph = asNode().graph();
 
         // Sort the keys
-        SwitchFoldable.sort(keyData);
+        sort(keyData);
 
         // Spawn the required data structures
         int newKeyCount = keyData.size();
         int[] keys = new int[newKeyCount];
         double[] keyProbabilities = new double[newKeyCount + 1];
         int[] keySuccessors = new int[newKeyCount + 1];
-
         for (int i = 0; i < newKeyCount; i++) {
             SwitchFoldable.KeyData data = keyData.get(i);
             keys[i] = data.key;
@@ -199,6 +203,7 @@ public interface SwitchFoldable extends NodeInterface, Simplifiable {
         keySuccessors[newKeyCount] = successors.size();
         lowestSwitchNode.addDefault(successors);
 
+        // Spin an adapter if the value is narrower than an int
         ValueNode adapter = null;
         if (((IntegerStamp) switchStamp).getBits() < 32) {
             adapter = new SignExtendNode(switchValue, 32);
@@ -211,7 +216,7 @@ public interface SwitchFoldable extends NodeInterface, Simplifiable {
         IntegerSwitchNode toInsert = new IntegerSwitchNode(adapter, successors.size(), keys, keyProbabilities, keySuccessors);
         graph.add(toInsert);
 
-        // Remove the If cascade.
+        // Detach the cascade from the graph
         lowestSwitchNode.cutOffLowestCascadeNode();
         iteratingNode = lowestSwitchNode;
         while (iteratingNode != null) {
@@ -221,14 +226,17 @@ public interface SwitchFoldable extends NodeInterface, Simplifiable {
             iteratingNode = iteratingNode.getParentSwitchNode(switchValue);
         }
 
+        // Place the new Switch node
         topMostSwitchNode.asNode().replaceAtPredecessor(toInsert);
         topMostSwitchNode.asNode().replaceAtUsages(toInsert);
-        GraphUtil.killCFG((FixedNode) topMostSwitchNode);
 
+        // Remove the cascade and unreachable code
+        GraphUtil.killCFG((FixedNode) topMostSwitchNode);
         for (AbstractBeginNode duplicate : unreachable) {
             GraphUtil.killCFG(duplicate);
         }
 
+        // Attach the branches to the switch.
         int pos = 0;
         for (AbstractBeginNode begin : successors) {
             if (!begin.isAlive()) {
