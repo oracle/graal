@@ -24,6 +24,7 @@
  */
 package org.graalvm.compiler.core.llvm;
 
+import static org.graalvm.compiler.core.llvm.LLVMIRBuilder.isVoidType;
 import static org.graalvm.compiler.core.llvm.LLVMIRBuilder.typeOf;
 import static org.graalvm.compiler.core.llvm.LLVMUtils.dumpValues;
 import static org.graalvm.compiler.debug.GraalError.shouldNotReachHere;
@@ -37,6 +38,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.function.BiFunction;
 
+import org.bytedeco.javacpp.LLVM;
 import org.bytedeco.javacpp.LLVM.LLVMBasicBlockRef;
 import org.bytedeco.javacpp.LLVM.LLVMTypeRef;
 import org.bytedeco.javacpp.LLVM.LLVMValueRef;
@@ -94,6 +96,7 @@ import org.graalvm.compiler.nodes.spi.NodeValueMap;
 
 import jdk.vm.ci.code.CallingConvention;
 import jdk.vm.ci.code.DebugInfo;
+import jdk.vm.ci.code.Register;
 import jdk.vm.ci.meta.JavaConstant;
 import jdk.vm.ci.meta.JavaKind;
 import jdk.vm.ci.meta.ResolvedJavaMethod;
@@ -108,7 +111,6 @@ public class NodeLLVMBuilder implements NodeLIRBuilderTool {
 
     private Map<ValuePhiNode, LLVMValueRef> backwardsPhi = new HashMap<>();
     private long startPatchpointID = -1L;
-    private LLVMValueRef setjmpBuffer = null;
 
     protected NodeLLVMBuilder(StructuredGraph graph, LLVMGenerator gen, BiFunction<NodeValueMap, DebugContext, DebugInfoBuilder> debugInfoProvider) {
         this.gen = gen;
@@ -139,13 +141,7 @@ public class NodeLLVMBuilder implements NodeLIRBuilderTool {
 
             startPatchpointID = LLVMIRBuilder.nextPatchpointId.getAndIncrement();
             gen.getLLVMResult().setStartPatchpointID(startPatchpointID);
-            if (graph.getNodes(InvokeWithExceptionNode.TYPE).count() > 0) {
-                setjmpBuffer = builder.buildArrayAlloca(5);
-                builder.buildStackmap(builder.constantLong(startPatchpointID), setjmpBuffer);
-                setjmpBuffer = builder.buildBitcast(setjmpBuffer, builder.pointerType(builder.arrayType(builder.longType(), 5), false));
-            } else {
-                builder.buildStackmap(builder.constantLong(startPatchpointID));
-            }
+            builder.buildStackmap(builder.constantLong(startPatchpointID));
 
             for (ParameterNode param : graph.getNodes(ParameterNode.TYPE)) {
                 LLVMValueRef paramValue = builder.getParam(param.index());
@@ -393,9 +389,12 @@ public class NodeLLVMBuilder implements NodeLIRBuilderTool {
         LIRFrameState state = state(i);
         state.initDebugInfo(null, false);
         DebugInfo debugInfo = state.debugInfo();
+
+        boolean isVoid;
         long patchpointId = LLVMIRBuilder.nextPatchpointId.getAndIncrement();
         if (callTarget instanceof DirectCallTargetNode) {
             callee = gen.getFunction(targetMethod);
+            isVoid = isVoidType(gen.getLLVMFunctionReturnType(targetMethod));
             gen.getLLVMResult().recordDirectCall(targetMethod, patchpointId, debugInfo);
         } else if (callTarget instanceof IndirectCallTargetNode) {
             LLVMValueRef computedAddress = llvmOperand(((IndirectCallTargetNode) callTarget).computedAddress());
@@ -405,8 +404,10 @@ public class NodeLLVMBuilder implements NodeLIRBuilderTool {
             if (targetMethod != null) {
                 callee = builder.buildIntToPtr(computedAddress,
                                 builder.pointerType(gen.getLLVMFunctionType(targetMethod), false));
+                isVoid = isVoidType(gen.getLLVMFunctionReturnType(targetMethod));
             } else {
                 LLVMTypeRef returnType = gen.getLLVMType(callTarget.returnStamp().getTrustedStamp());
+                isVoid = isVoidType(returnType);
                 LLVMTypeRef[] argTypes = Arrays.stream(callTarget.signature()).map(argType -> builder.getLLVMStackType(gen.getTypeKind(argType.resolve(null)))).toArray(LLVMTypeRef[]::new);
                 assert args.length == argTypes.length;
 
@@ -428,33 +429,28 @@ public class NodeLLVMBuilder implements NodeLIRBuilderTool {
             LLVMBasicBlockRef successor = gen.getBlock(invokeWithExceptionNode.next());
             LLVMBasicBlockRef handler = gen.getBlock(invokeWithExceptionNode.exceptionEdge());
 
-            Block currentBlock = (Block) gen.getCurrentBlock();
-            LLVMBasicBlockRef callBlock = builder.appendBasicBlock(currentBlock.toString() + "_invoke");
-            gen.splitBlockEndMap.put(currentBlock, callBlock);
-
-            LLVMValueRef fpAddr = builder.buildGEP(setjmpBuffer, builder.constantInt(0), builder.constantInt(0));
-            LLVMValueRef framePointer = builder.buildFrameAddress(builder.constantInt(0));
-            builder.buildStore(framePointer, fpAddr);
-
-            LLVMValueRef status = builder.buildSetjmp(builder.buildBitcast(setjmpBuffer, builder.rawPointerType()));
-            LLVMValueRef zeroStatus = builder.buildICmp(Condition.EQ, status, builder.constantInt(0));
-            builder.buildIf(zeroStatus, callBlock, handler);
-
-            builder.positionAtEnd(callBlock);
-            call = builder.buildCall(callee, patchpointId, args);
-            builder.buildBranch(successor);
-
-            gen.getLLVMResult().recordExceptionHandler(patchpointId, startPatchpointID);
+            call = builder.buildInvoke(callee, successor, handler, patchpointId, args);
         } else {
             call = builder.buildCall(callee, patchpointId, args);
         }
 
-        setResult(i.asNode(), call);
+        if (!isVoid) {
+            setResult(i.asNode(), call);
+        }
     }
 
     @Override
     public void emitReadExceptionObject(ValueNode node) {
-        setResult(node, builder.buildLoad(builder.getUniqueGlobal("__svm_exception_object", builder.objectType(), true), builder.objectType()));
+        builder.buildLandingPad();
+
+        Register exceptionRegister = gen.getRegisterConfig().getReturnRegister(JavaKind.Object);
+        LLVMTypeRef asmType = builder.functionType(builder.longType());
+        LLVMValueRef inlineAsm = builder.buildInlineAsm(asmType, "movq %" + exceptionRegister.name + ", $0", "={" + exceptionRegister.name + "}", false, false);
+
+        LLVMValueRef exception = builder.buildCall(inlineAsm);
+        builder.setCallSiteAttribute(exception, LLVM.LLVMAttributeFunctionIndex, "gc-leaf-function");
+
+        setResult(node, builder.buildRegisterObject(builder.buildIntToPtr(exception, builder.rawPointerType())));
     }
 
     @Override

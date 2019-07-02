@@ -24,6 +24,7 @@
  */
 package com.oracle.svm.core.graal.llvm;
 
+import static com.oracle.svm.core.util.VMError.shouldNotReachHere;
 import static com.oracle.svm.hosted.image.NativeBootImage.RWDATA_CGLOBALS_PARTITION_OFFSET;
 import static org.graalvm.compiler.core.llvm.LLVMUtils.FALSE;
 import static org.graalvm.compiler.core.llvm.LLVMUtils.TRUE;
@@ -87,7 +88,6 @@ import com.oracle.svm.hosted.meta.MethodPointer;
 import jdk.vm.ci.code.site.Call;
 import jdk.vm.ci.code.site.DataPatch;
 import jdk.vm.ci.code.site.DataSectionReference;
-import jdk.vm.ci.code.site.ExceptionHandler;
 import jdk.vm.ci.code.site.Infopoint;
 import jdk.vm.ci.code.site.InfopointReason;
 
@@ -288,33 +288,6 @@ public class LLVMNativeImageCodeCache extends NativeImageCodeCache {
 
             newInfopoints.forEach(compilation::addInfopoint);
 
-            Map<Integer, Integer> newExceptionHandlers = new HashMap<>();
-            for (ExceptionHandler handler : compilation.getExceptionHandlers()) {
-                for (int actualPCOffset : info.getPatchpointOffsets(handler.pcOffset)) {
-                    assert handler.handlerPos == startPatchpointID;
-                    int handlerOffset = info.getAllocaOffset(handler.handlerPos);
-                    assert handlerOffset >= 0 && handlerOffset < info.getFunctionStackSize(startPatchpointID);
-
-                    if (stackMapDump != null) {
-                        patchpointsDump.append("  {");
-                        patchpointsDump.append(actualPCOffset);
-                        patchpointsDump.append("} -> ");
-                        patchpointsDump.append(handlerOffset);
-                        patchpointsDump.append("\n");
-                    }
-
-                    /*
-                     * handlerPos is the position of the setjmp buffer relative to the stack
-                     * pointer, plus 1 to avoid having 0 as an offset.
-                     */
-                    newExceptionHandlers.put(actualPCOffset, actualPCOffset + handlerOffset + 1);
-                }
-            }
-
-            compilation.clearExceptionHandlers();
-
-            newExceptionHandlers.forEach(compilation::recordExceptionHandler);
-
             if (stackMapDump != null) {
                 try {
                     stackMapDump.write(patchpointsDump.toString());
@@ -329,24 +302,24 @@ public class LLVMNativeImageCodeCache extends NativeImageCodeCache {
         return basePath.resolve(getBitcodeFilename(id));
     }
 
-    private static String getBitcodeFilename(int id) {
+    private String getBitcodeFilename(int id) {
         return "f" + id + ".bc";
     }
 
-    private static String getBatchBitcodeFilename(int id) {
-        return "b" + id + ".bc";
+    private String getBatchBitcodeFilename(int id) {
+        return ((batchSize == 1) ? "f" : "b") + id + ".bc";
     }
 
-    private static String getBatchOptimizedFilename(int id) {
-        return "b" + id + "o.bc";
+    private String getBatchOptimizedFilename(int id) {
+        return ((batchSize == 1) ? "f" : "b") + id + "o.bc";
     }
 
     private Path getBatchCompiledPath(int id) {
         return basePath.resolve(getBatchCompiledFilename(id));
     }
 
-    private static String getBatchCompiledFilename(int id) {
-        return "b" + id + ".o";
+    private String getBatchCompiledFilename(int id) {
+        return ((batchSize == 1) ? "f" : "b") + id + ".o";
     }
 
     private Path getLinkedPath() {
@@ -434,15 +407,18 @@ public class LLVMNativeImageCodeCache extends NativeImageCodeCache {
         }
 
         batchSize = methodIndex.length / numBatches + ((methodIndex.length % numBatches == 0) ? 0 : 1);
-        /* Avoid empty batches with small batch sizes */
-        numBatches -= (numBatches * batchSize - methodIndex.length) / batchSize;
 
-        IntStream.range(0, numBatches).parallel()
-                        .forEach(batchId -> {
-                            List<String> batchInputs = IntStream.range(getBatchStart(batchId), getBatchEnd(batchId)).mapToObj(LLVMNativeImageCodeCache::getBitcodeFilename)
-                                            .collect(Collectors.toList());
-                            llvmLink(debug, getBatchBitcodeFilename(batchId), batchInputs);
-                        });
+        if (parallelismLevel != -1) {
+            /* Avoid empty batches with small batch sizes */
+            numBatches -= (numBatches * batchSize - methodIndex.length) / batchSize;
+
+            IntStream.range(0, numBatches).parallel()
+                            .forEach(batchId -> {
+                                List<String> batchInputs = IntStream.range(getBatchStart(batchId), getBatchEnd(batchId)).mapToObj(this::getBitcodeFilename)
+                                                .collect(Collectors.toList());
+                                llvmLink(debug, getBatchBitcodeFilename(batchId), batchInputs);
+                            });
+        }
 
         return numBatches;
     }
@@ -462,7 +438,7 @@ public class LLVMNativeImageCodeCache extends NativeImageCodeCache {
     }
 
     private void linkCompiledBatches(DebugContext debug, int numBatches) throws IOException {
-        List<String> compiledBatches = IntStream.range(0, numBatches).mapToObj(LLVMNativeImageCodeCache::getBatchCompiledFilename).collect(Collectors.toList());
+        List<String> compiledBatches = IntStream.range(0, numBatches).mapToObj(this::getBatchCompiledFilename).collect(Collectors.toList());
         nativeLink(debug, getLinkedFilename(), compiledBatches);
 
         long codeSize = readSection(getLinkedPath(), SectionName.TEXT, this::readTextSection);
@@ -496,7 +472,7 @@ public class LLVMNativeImageCodeCache extends NativeImageCodeCache {
             int status = p.waitFor();
             if (status != 0) {
                 debug.log("%s", output.toString());
-                throw new GraalError("LLVM optimization failed for " + inputPath + ": " + status);
+                throw new GraalError("LLVM optimization failed for " + getFunctionName(inputPath) + ": " + status);
             }
         } catch (IOException | InterruptedException e) {
             throw new GraalError(e);
@@ -532,7 +508,7 @@ public class LLVMNativeImageCodeCache extends NativeImageCodeCache {
             int status = p.waitFor();
             if (status != 0) {
                 debug.log("%s", output.toString());
-                throw new GraalError("LLVM compilation failed for " + inputPath + ": " + status);
+                throw new GraalError("LLVM compilation failed for " + getFunctionName(inputPath) + ": " + status);
             }
         } catch (IOException | InterruptedException e) {
             throw new GraalError(e);
@@ -559,7 +535,7 @@ public class LLVMNativeImageCodeCache extends NativeImageCodeCache {
             int status = p.waitFor();
             if (status != 0) {
                 debug.log("%s", output.toString());
-                throw new GraalError("LLVM linking failed into " + outputPath + ": " + status);
+                throw new GraalError("LLVM linking failed into " + getFunctionName(outputPath) + ": " + status);
             }
         } catch (IOException | InterruptedException e) {
             throw new GraalError(e);
@@ -586,11 +562,37 @@ public class LLVMNativeImageCodeCache extends NativeImageCodeCache {
             int status = p.waitFor();
             if (status != 0) {
                 debug.log("%s", output.toString());
-                throw new GraalError("Native linking failed into " + outputPath + ": " + status);
+                throw new GraalError("Native linking failed into " + getFunctionName(outputPath) + ": " + status);
             }
         } catch (IOException | InterruptedException e) {
             throw new GraalError(e);
         }
+    }
+
+    private String getFunctionName(String fileName) {
+        String function;
+        if (fileName.equals("llvm.o")) {
+            function = "the final object file";
+        } else {
+            char type = fileName.charAt(0);
+            String idString = fileName.substring(1, fileName.indexOf('.'));
+            if (idString.charAt(idString.length() - 1) == 'o') {
+                idString = idString.substring(0, idString.length() - 1);
+            }
+            int id = Integer.parseInt(idString);
+
+            switch (type) {
+                case 'f':
+                    function = methodIndex[id].getQualifiedName();
+                    break;
+                case 'b':
+                    function = "batch " + id + " (f" + getBatchStart(id) + "-f" + getBatchEnd(id) + "). Use -H:LLVMBatchesPerThread=-1 to compile each method individually.";
+                    break;
+                default:
+                    throw shouldNotReachHere();
+            }
+        }
+        return function + " (" + basePath.resolve(fileName).toString() + ")";
     }
 
     @Override
