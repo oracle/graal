@@ -17,7 +17,6 @@ import java.util.concurrent.locks.ReentrantReadWriteLock;
 
 public class LLVMPThreadRWLockIntrinsics {
     public static class RWLock {
-        // TODO: add timed stuff
         private final ReadWriteLock readWriteLock;
 
         public RWLock() {
@@ -66,7 +65,7 @@ public class LLVMPThreadRWLockIntrinsics {
         //+++ @CompilerDirectives.TruffleBoundary
         protected int doIntrinsic(VirtualFrame frame, Object rwlock, @CachedContext(LLVMLanguage.class) TruffleLanguage.ContextReference<LLVMContext> ctxRef) {
             long rwlockAddress = ((LLVMNativePointer) rwlock).asNative();
-            ctxRef.get().rwlockStorage.remove(rwlockAddress);
+            UtilAccess.removeObjObj(ctxRef.get().rwlockStorage, rwlockAddress);
             return 0;
         }
     }
@@ -81,9 +80,9 @@ public class LLVMPThreadRWLockIntrinsics {
             // must only work when using the original variable, not a copy
             // so the address may never change
             long rwlockAddress = ((LLVMNativePointer) rwlock).asNative();
-            RWLock lock = (RWLock) ctxRef.get().rwlockStorage.get(rwlockAddress);
+            RWLock lock = (RWLock) UtilAccess.getObjObj(ctxRef.get().rwlockStorage, rwlockAddress);
             if (lock == null) {
-                ctxRef.get().rwlockStorage.put(rwlockAddress, new RWLock());
+                UtilAccess.putObjObj(ctxRef.get().rwlockStorage, rwlockAddress, new RWLock());
             }
             return 0;
         }
@@ -95,12 +94,12 @@ public class LLVMPThreadRWLockIntrinsics {
         //+++ @CompilerDirectives.TruffleBoundary
         protected int doIntrinsic(VirtualFrame frame, Object rwlock, @CachedContext(LLVMLanguage.class) TruffleLanguage.ContextReference<LLVMContext> ctxRef) {
             long rwlockAddress = ((LLVMNativePointer) rwlock).asNative();
-            RWLock rwlockObj = (RWLock) ctxRef.get().rwlockStorage.get(rwlockAddress);
+            RWLock rwlockObj = (RWLock) UtilAccess.getObjObj(ctxRef.get().rwlockStorage, rwlockAddress);
             if (rwlockObj == null) {
                 // rwlock is not initialized
                 // but it works anyway on most implementations
                 rwlockObj = new RWLock();
-                ctxRef.get().rwlockStorage.put(rwlockAddress, rwlockObj);
+                UtilAccess.putObjObj(ctxRef.get().rwlockStorage, rwlockAddress, rwlockObj);
             }
             rwlockObj.readLock();
             return 0;
@@ -113,12 +112,12 @@ public class LLVMPThreadRWLockIntrinsics {
         //+++ @CompilerDirectives.TruffleBoundary
         protected int doIntrinsic(VirtualFrame frame, Object rwlock, @CachedContext(LLVMLanguage.class) TruffleLanguage.ContextReference<LLVMContext> ctxRef) {
             long rwlockAddress = ((LLVMNativePointer) rwlock).asNative();
-            RWLock rwlockObj = (RWLock) ctxRef.get().rwlockStorage.get(rwlockAddress);
+            RWLock rwlockObj = (RWLock) UtilAccess.getObjObj(ctxRef.get().rwlockStorage, rwlockAddress);
             if (rwlockObj == null) {
                 // rwlock is not initialized
                 // but it works anyway on most implementations
                 rwlockObj = new RWLock();
-                ctxRef.get().rwlockStorage.put(rwlockAddress, rwlockObj);
+                UtilAccess.putObjObj(ctxRef.get().rwlockStorage, rwlockAddress, rwlockObj);
             }
             // TODO: error code stuff, EBUSY should be here
             return rwlockObj.tryReadLock() ? 0 : 15;
@@ -131,12 +130,12 @@ public class LLVMPThreadRWLockIntrinsics {
         //+++ @CompilerDirectives.TruffleBoundary
         protected int doIntrinsic(VirtualFrame frame, Object rwlock, @CachedContext(LLVMLanguage.class) TruffleLanguage.ContextReference<LLVMContext> ctxRef) {
             long rwlockAddress = ((LLVMNativePointer) rwlock).asNative();
-            RWLock rwlockObj = (RWLock) ctxRef.get().rwlockStorage.get(rwlockAddress);
+            RWLock rwlockObj = (RWLock) UtilAccess.getObjObj(ctxRef.get().rwlockStorage, rwlockAddress);
             if (rwlockObj == null) {
                 // rwlock is not initialized
                 // but it works anyway on most implementations
                 rwlockObj = new RWLock();
-                ctxRef.get().rwlockStorage.put(rwlockAddress, rwlockObj);
+                UtilAccess.putObjObj(ctxRef.get().rwlockStorage, rwlockAddress, rwlockObj);
             }
             rwlockObj.writeLock();
             return 0;
@@ -149,13 +148,15 @@ public class LLVMPThreadRWLockIntrinsics {
         //+++ @CompilerDirectives.TruffleBoundary
         protected int doIntrinsic(VirtualFrame frame, Object rwlock, @CachedContext(LLVMLanguage.class) TruffleLanguage.ContextReference<LLVMContext> ctxRef) {
             long rwlockAddress = ((LLVMNativePointer) rwlock).asNative();
-            RWLock rwlockObj = (RWLock) ctxRef.get().rwlockStorage.get(rwlockAddress);
+            // TODO: handle managed pointers
+            RWLock rwlockObj = (RWLock) UtilAccess.getObjObj(ctxRef.get().rwlockStorage, rwlockAddress);
             if (rwlockObj == null) {
                 // rwlock is not initialized
                 // but it works anyway on most implementations
                 rwlockObj = new RWLock();
-                ctxRef.get().rwlockStorage.put(rwlockAddress, rwlockObj);
+                UtilAccess.putObjObj(ctxRef.get().rwlockStorage, rwlockAddress, rwlockObj);
             }
+            // TODO: error code stuff
             return rwlockObj.tryWriteLock() ? 0 : 15;
         }
     }
@@ -166,12 +167,13 @@ public class LLVMPThreadRWLockIntrinsics {
         //+++ @CompilerDirectives.TruffleBoundary
         protected int doIntrinsic(VirtualFrame frame, Object rwlock, @CachedContext(LLVMLanguage.class) TruffleLanguage.ContextReference<LLVMContext> ctxRef) {
             long rwlockAddress = ((LLVMNativePointer) rwlock).asNative();
-            RWLock rwlockObj = (RWLock) ctxRef.get().rwlockStorage.get(rwlockAddress);
+            // TODO: handle managed pointers from sandbox
+            RWLock rwlockObj = (RWLock) UtilAccess.getObjObj(ctxRef.get().rwlockStorage, rwlockAddress);
             if (rwlockObj == null) {
                 // rwlock is not initialized
                 // but it works anyway on most implementations
                 rwlockObj = new RWLock();
-                ctxRef.get().rwlockStorage.put(rwlockAddress, rwlockObj);
+                UtilAccess.putObjObj(ctxRef.get().rwlockStorage, rwlockAddress, rwlockObj);
             }
             rwlockObj.unlock();
             return 0;

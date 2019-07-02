@@ -120,7 +120,8 @@ public class LLVMPThreadMutexIntrinsics {
         //+++ @CompilerDirectives.TruffleBoundary
         protected int doIntrinsic(VirtualFrame frame, Object mutex, @CachedContext(LLVMLanguage.class) TruffleLanguage.ContextReference<LLVMContext> ctxRef) {
             long mutexAddress = ((LLVMNativePointer) mutex).asNative();
-            ctxRef.get().mutexStorage.remove(mutexAddress);
+            // TODO: what if sandbox mode and managed pointer?
+            UtilAccess.removeObjObj(ctxRef.get().mutexStorage, mutexAddress);
             return 0;
         }
     }
@@ -142,7 +143,7 @@ public class LLVMPThreadMutexIntrinsics {
             // must only work when using the original variable, not a copy
             // so the address may never change
             long mutexAddress = ((LLVMNativePointer) mutex).asNative();
-            Object mutObj = ctxRef.get().mutexStorage.get(mutexAddress);
+            Object mutObj = UtilAccess.getObjObj(ctxRef.get().mutexStorage, mutexAddress);
             int attrValue = 0;
 
             if (!((LLVMPointer) attr).isNull()) {
@@ -155,7 +156,7 @@ public class LLVMPThreadMutexIntrinsics {
                 mutexType = Mutex.MutexType.ERRORCHECK;
             }
             if (mutObj == null) {
-                ctxRef.get().mutexStorage.put(mutexAddress, new Mutex(mutexType));
+                UtilAccess.putObjObj(ctxRef.get().mutexStorage, mutexAddress, new Mutex(mutexType));
             }
             return 0;
         }
@@ -167,14 +168,15 @@ public class LLVMPThreadMutexIntrinsics {
         //+++ @CompilerDirectives.TruffleBoundary
         protected int doIntrinsic(VirtualFrame frame, Object mutex, @CachedContext(LLVMLanguage.class) TruffleLanguage.ContextReference<LLVMContext> ctxRef) {
             long mutexAddress = ((LLVMNativePointer) mutex).asNative();
-            Mutex mutexObj = (Mutex) ctxRef.get().mutexStorage.get(mutexAddress);
+            // TODO: handle managed pointers too
+            Mutex mutexObj = (Mutex) UtilAccess.getObjObj(ctxRef.get().mutexStorage, mutexAddress);
             if (mutexObj == null) {
                 // mutex is not initialized
                 // but it works anyway on most implementations
                 // so we will make it work here too, just using default type
                 // set the internLock counter to 1
                 mutexObj = new Mutex(Mutex.MutexType.DEFAULT_NORMAL);
-                ctxRef.get().mutexStorage.put(mutexAddress, mutexObj);
+                UtilAccess.putObjObj(ctxRef.get().mutexStorage, mutexAddress, mutexObj);
             }
             // TODO: error code handling
             return mutexObj.lock() ? 0 : 15;
@@ -187,14 +189,14 @@ public class LLVMPThreadMutexIntrinsics {
         //+++ @CompilerDirectives.TruffleBoundary
         protected int doIntrinsic(VirtualFrame frame, Object mutex, @CachedContext(LLVMLanguage.class) TruffleLanguage.ContextReference<LLVMContext> ctxRef) {
             long mutexAddress = ((LLVMNativePointer) mutex).asNative();
-            Mutex mutexObj = (Mutex) ctxRef.get().mutexStorage.get(mutexAddress);
+            Mutex mutexObj = (Mutex) UtilAccess.getObjObj(ctxRef.get().mutexStorage, mutexAddress);
             if (mutexObj == null) {
                 // mutex is not initialized
                 // but it works anyway on most implementations
                 // so we will make it work here too, just using default type
                 // set the internLock counter to 1
                 mutexObj = new Mutex(Mutex.MutexType.DEFAULT_NORMAL);
-                ctxRef.get().mutexStorage.put(mutexAddress, mutexObj);
+                UtilAccess.putObjObj(ctxRef.get().mutexStorage, mutexAddress, mutexObj);
             }
             // TODO: error code stuff
             return mutexObj.tryLock() ? 0 : 15;
@@ -207,7 +209,7 @@ public class LLVMPThreadMutexIntrinsics {
         //+++ @CompilerDirectives.TruffleBoundary
         protected int doIntrinsic(VirtualFrame frame, Object mutex, @CachedContext(LLVMLanguage.class) TruffleLanguage.ContextReference<LLVMContext> ctxRef) {
             long mutexAddress = ((LLVMNativePointer) mutex).asNative();
-            Mutex mutexObj = (Mutex) ctxRef.get().mutexStorage.get(mutexAddress);
+            Mutex mutexObj = (Mutex) UtilAccess.getObjObj(ctxRef.get().mutexStorage, mutexAddress);
             // TODO: error code stuff
             if (mutexObj == null) {
                 return 5;

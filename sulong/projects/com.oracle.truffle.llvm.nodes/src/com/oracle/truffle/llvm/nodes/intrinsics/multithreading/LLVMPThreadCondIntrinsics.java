@@ -61,13 +61,13 @@ public class LLVMPThreadCondIntrinsics {
         }
     }
 
-    @NodeChild(type = LLVMExpressionNode.class, value = "mutex")
+    @NodeChild(type = LLVMExpressionNode.class, value = "cond")
     public abstract static class LLVMPThreadCondDestroy extends LLVMBuiltin {
         @Specialization
         //+++ @CompilerDirectives.TruffleBoundary
-        protected int doIntrinsic(VirtualFrame frame, Object mutex, @CachedContext(LLVMLanguage.class) TruffleLanguage.ContextReference<LLVMContext> ctxRef) {
-            long condAddress = ((LLVMNativePointer) mutex).asNative();
-            ctxRef.get().condStorage.remove(condAddress);
+        protected int doIntrinsic(VirtualFrame frame, Object cond, @CachedContext(LLVMLanguage.class) TruffleLanguage.ContextReference<LLVMContext> ctxRef) {
+            long condAddress = ((LLVMNativePointer) cond).asNative();
+            UtilAccess.removeObjObj(ctxRef.get().condStorage, condAddress);
             return 0;
         }
     }
@@ -83,9 +83,9 @@ public class LLVMPThreadCondIntrinsics {
             // must only work when using the original variable, not a copy
             // so the address may never change
             long condAddress = ((LLVMNativePointer) cond).asNative();
-            Object condObj = ctxRef.get().condStorage.get(condAddress);
+            Object condObj = UtilAccess.getObjObj(ctxRef.get().condStorage, condAddress);
             if (condObj == null) {
-                ctxRef.get().condStorage.put(condAddress, new Cond());
+                UtilAccess.putObjObj(ctxRef.get().condStorage, condAddress, new Cond());
             }
             return 0;
         }
@@ -97,7 +97,7 @@ public class LLVMPThreadCondIntrinsics {
         //+++ @CompilerDirectives.TruffleBoundary
         protected int doIntrinsic(VirtualFrame frame, Object cond, @CachedContext(LLVMLanguage.class) TruffleLanguage.ContextReference<LLVMContext> ctxRef) {
             long condAddress = ((LLVMNativePointer) cond).asNative();
-            Cond condObj = (Cond) ctxRef.get().condStorage.get(condAddress);
+            Cond condObj = (Cond) UtilAccess.getObjObj(ctxRef.get().condStorage, condAddress);
             if (condObj == null) {
                 // TODO: error code handling
                 return 15; // cannot broadcast to cond that does not exist yet
@@ -113,7 +113,7 @@ public class LLVMPThreadCondIntrinsics {
         //+++ @CompilerDirectives.TruffleBoundary
         protected int doIntrinsic(VirtualFrame frame, Object cond, @CachedContext(LLVMLanguage.class) TruffleLanguage.ContextReference<LLVMContext> ctxRef) {
             long condAddress = ((LLVMNativePointer) cond).asNative();
-            Cond condObj = (Cond) ctxRef.get().condStorage.get(condAddress);
+            Cond condObj = (Cond) UtilAccess.getObjObj(ctxRef.get().condStorage, condAddress);
             if (condObj == null) {
                 // TODO: error code handling
                 return 15; // cannot signal to cond that does not exist yet
@@ -132,12 +132,12 @@ public class LLVMPThreadCondIntrinsics {
             long condAddress = ((LLVMNativePointer) cond).asNative();
             long mutexAddress = ((LLVMNativePointer) mutex).asNative();
 
-            Cond condObj = (Cond) ctxRef.get().condStorage.get(condAddress);
-            LLVMPThreadMutexIntrinsics.Mutex mutexObj = (LLVMPThreadMutexIntrinsics.Mutex) ctxRef.get().mutexStorage.get(mutexAddress);
+            Cond condObj = (Cond) UtilAccess.getObjObj(ctxRef.get().condStorage, condAddress);
+            LLVMPThreadMutexIntrinsics.Mutex mutexObj = (LLVMPThreadMutexIntrinsics.Mutex) UtilAccess.getObjObj(ctxRef.get().mutexStorage, mutexAddress);
             if (condObj == null) {
                 // init and then wait
                 condObj = new Cond();
-                ctxRef.get().condStorage.put(condAddress, condObj);
+                UtilAccess.putObjObj(ctxRef.get().condStorage, condAddress, condObj);
             }
             condObj.cWait(mutexObj);
             return 0;

@@ -23,6 +23,8 @@ import com.oracle.truffle.llvm.runtime.types.FunctionType;
 import com.oracle.truffle.llvm.runtime.types.PointerType;
 import com.oracle.truffle.llvm.runtime.types.Type;
 
+import javax.rmi.CORBA.Util;
+
 public class LLVMPThreadThreadIntrinsics {
     @NodeChild(type = LLVMExpressionNode.class, value = "thread")
     @NodeChild(type = LLVMExpressionNode.class, value = "attr")
@@ -48,7 +50,7 @@ public class LLVMPThreadThreadIntrinsics {
             store.executeWithTarget(thread, t.getId());
 
             // store thread with thread id in context
-            ctxRef.get().threadStorage.put(t.getId(), t);
+            UtilAccess.putLongThread(ctxRef.get().threadStorage, t.getId(), t);
             // start thread
             t.start();
 
@@ -155,7 +157,7 @@ public class LLVMPThreadThreadIntrinsics {
         //+++ @CompilerDirectives.TruffleBoundary
         protected int doIntrinsic(VirtualFrame frame, Object retval, @CachedContext(LLVMLanguage.class) TruffleLanguage.ContextReference<LLVMContext> ctxRef) {
             // save return value in context for join calls
-            ctxRef.get().retValStorage.put(Thread.currentThread().getId(), retval);
+            UtilAccess.putLongObj(ctxRef.get().retValStorage, Thread.currentThread().getId(), retval);
             // stop this thread
             throw new PThreadExitException();
         }
@@ -176,7 +178,7 @@ public class LLVMPThreadThreadIntrinsics {
 
             try {
                 // join thread
-                Thread thread = ctxRef.get().threadStorage.get(th);
+                Thread thread = UtilAccess.getLongThread(ctxRef.get().threadStorage, th);
                 if (thread == null) {
                     // TODO: error code handling
                     return 5;
@@ -184,7 +186,7 @@ public class LLVMPThreadThreadIntrinsics {
                 thread.join();
 
                 // get return value
-                Object retVal = ctxRef.get().retValStorage.get(th);
+                Object retVal = UtilAccess.getLongObj(ctxRef.get().retValStorage, th);
 
                 // store return value at ptr
                 // TODO: checkstyle says cast to managed or native pointer
