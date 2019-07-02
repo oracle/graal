@@ -46,6 +46,7 @@ import java.util.HashMap;
 import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
+import java.util.Objects;
 
 import org.graalvm.options.OptionDescriptor;
 import org.graalvm.options.OptionDescriptors;
@@ -68,6 +69,7 @@ final class OptionValuesImpl implements OptionValues {
     private final Map<OptionKey<?>, Object> values;
 
     OptionValuesImpl(PolyglotEngineImpl engine, OptionDescriptors descriptors) {
+        Objects.requireNonNull(descriptors);
         this.engine = engine;
         this.descriptors = descriptors;
         this.values = new HashMap<>();
@@ -76,7 +78,7 @@ final class OptionValuesImpl implements OptionValues {
     @Override
     public int hashCode() {
         int result = 31 + descriptors.hashCode();
-        result = 31 * result + engine.hashCode();
+        result = 31 * result + Objects.hashCode(engine);
         result = 31 * result + values.hashCode();
         return result;
     }
