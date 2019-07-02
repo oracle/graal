@@ -109,7 +109,7 @@ public enum ELFMachine/* implements Integral */ {
                         switch (sizeInBytes) {
                             case 8:
                                 return ELFAArch64Relocation.R_AARCH64_ABS64;
-                            case 6:
+                            case 4:
                                 return ELFAArch64Relocation.R_AARCH64_ABS32;
                             case 2:
                                 return ELFAArch64Relocation.R_AARCH64_ABS16;
