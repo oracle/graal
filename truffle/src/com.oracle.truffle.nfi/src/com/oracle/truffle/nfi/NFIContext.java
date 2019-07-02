@@ -40,14 +40,15 @@
  */
 package com.oracle.truffle.nfi;
 
+import org.graalvm.collections.EconomicMap;
+
+import com.oracle.truffle.api.TruffleException;
 import com.oracle.truffle.api.TruffleLanguage.Env;
 import com.oracle.truffle.api.nodes.LanguageInfo;
 import com.oracle.truffle.api.source.Source;
 import com.oracle.truffle.nfi.spi.NFIBackend;
 import com.oracle.truffle.nfi.spi.NFIBackendFactory;
 import com.oracle.truffle.nfi.spi.NFIBackendTools;
-import org.graalvm.collections.EconomicMap;
-import org.graalvm.polyglot.PolyglotException;
 
 final class NFIContext {
 
@@ -98,11 +99,16 @@ final class NFIContext {
                     // force initialization of the backend language
                     Source source = Source.newBuilder(language.getId(), "", "").build();
                     try {
-                        env.parse(source);
-                    } catch (PolyglotException ex) {
-                        if (ex.isIncompleteSource() || ex.isSyntaxError()) {
-                            // ignore
-                        } else {
+                        env.parsePublic(source);
+                    } catch (Exception ex) {
+                        boolean rethrow = true;
+                        if (ex instanceof TruffleException) {
+                            TruffleException te = (TruffleException) ex;
+                            if (te.isIncompleteSource() || te.isSyntaxError()) {
+                                rethrow = false;
+                            }
+                        }
+                        if (rethrow) {
                             throw ex;
                         }
                     }
