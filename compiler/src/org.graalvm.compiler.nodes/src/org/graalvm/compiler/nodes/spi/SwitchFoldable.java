@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2019, 2019, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2019, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -25,13 +25,17 @@
 
 package org.graalvm.compiler.nodes.spi;
 
+import java.util.ArrayList;
+import java.util.Comparator;
+import java.util.List;
+
 import org.graalvm.compiler.core.common.type.IntegerStamp;
 import org.graalvm.compiler.core.common.type.PrimitiveStamp;
 import org.graalvm.compiler.core.common.type.Stamp;
 import org.graalvm.compiler.graph.Graph;
 import org.graalvm.compiler.graph.Node;
 import org.graalvm.compiler.graph.NodeInterface;
-import org.graalvm.compiler.graph.spi.Simplifiable;
+import org.graalvm.compiler.graph.spi.SimplifierTool;
 import org.graalvm.compiler.nodes.AbstractBeginNode;
 import org.graalvm.compiler.nodes.BeginNode;
 import org.graalvm.compiler.nodes.FixedNode;
@@ -42,10 +46,6 @@ import org.graalvm.compiler.nodes.calc.IntegerEqualsNode;
 import org.graalvm.compiler.nodes.calc.SignExtendNode;
 import org.graalvm.compiler.nodes.extended.IntegerSwitchNode;
 import org.graalvm.compiler.nodes.util.GraphUtil;
-
-import java.util.ArrayList;
-import java.util.Comparator;
-import java.util.List;
 
 public interface SwitchFoldable extends NodeInterface {
     Comparator<KeyData> sorter = Comparator.comparingInt((KeyData k) -> k.key);
@@ -63,6 +63,13 @@ public interface SwitchFoldable extends NodeInterface {
     void cutOffCascadeNode();
 
     void cutOffLowestCascadeNode();
+
+    /**
+     * Heuristics that tries to determine whether or not a foldable node was profiled.
+     */
+    default boolean isNonInitializedProfile() {
+        return false;
+    }
 
     final class KeyData {
         public final int key;
@@ -91,7 +98,7 @@ public interface SwitchFoldable extends NodeInterface {
     }
 
     static Node skipUpBegins(Node node) {
-        Node result = node.predecessor();
+        Node result = node;
         while (result instanceof BeginNode && result.hasNoUsages()) {
             result = result.predecessor();
         }
@@ -115,7 +122,7 @@ public interface SwitchFoldable extends NodeInterface {
     }
 
     default SwitchFoldable getParentSwitchNode(ValueNode switchValue) {
-        Node result = skipUpBegins(asNode());
+        Node result = skipUpBegins(asNode().predecessor());
         if (result instanceof SwitchFoldable && ((SwitchFoldable) result).isInSwitch(switchValue)) {
             return (SwitchFoldable) result;
         }
@@ -133,7 +140,7 @@ public interface SwitchFoldable extends NodeInterface {
     /**
      * Collapses a cascade of foldables (IfNode, FixedGuard and IntegerSwitch) into a single switch.
      */
-    default boolean switchTransformationOptimization() {
+    default boolean switchTransformationOptimization(SimplifierTool tool) {
         if (switchValue() == null || (getParentSwitchNode(switchValue()) == null && getChildSwitchNode(switchValue()) == null)) {
             // Don't bother trying if there is nothing to do.
             return false;
@@ -166,11 +173,17 @@ public interface SwitchFoldable extends NodeInterface {
         iteratingNode = topMostSwitchNode;
         SwitchFoldable lowestSwitchNode = topMostSwitchNode;
 
+        // If this stays true, we will need to spawn an uniform distribution.
+        boolean uninitializedProfiles = true;
+
         // Go down the if cascade, collecting necessary data
         while (iteratingNode != null) {
             lowestSwitchNode = iteratingNode;
             if (!(iteratingNode.updateSwitchData(keyData, successors, cumulative, unreachable))) {
                 return false;
+            }
+            if (!iteratingNode.isNonInitializedProfile()) {
+                uninitializedProfiles = false;
             }
             iteratingNode = iteratingNode.getChildSwitchNode(switchValue);
         }
@@ -191,15 +204,16 @@ public interface SwitchFoldable extends NodeInterface {
         int[] keys = new int[newKeyCount];
         double[] keyProbabilities = new double[newKeyCount + 1];
         int[] keySuccessors = new int[newKeyCount + 1];
+        double uniform = 1 / (double) (newKeyCount + 1);
         for (int i = 0; i < newKeyCount; i++) {
             SwitchFoldable.KeyData data = keyData.get(i);
             keys[i] = data.key;
-            keyProbabilities[i] = data.keyProbability;
+            keyProbabilities[i] = uninitializedProfiles ? uniform : data.keyProbability;
             keySuccessors[i] = data.keySuccessor;
         }
 
         // Add default
-        keyProbabilities[newKeyCount] = cumulative[0];
+        keyProbabilities[newKeyCount] = uninitializedProfiles ? uniform : cumulative[0];
         keySuccessors[newKeyCount] = successors.size();
         lowestSwitchNode.addDefault(successors);
 
@@ -246,6 +260,8 @@ public interface SwitchFoldable extends NodeInterface {
             }
             toInsert.setBlockSuccessor(pos++, begin);
         }
+
+        tool.addToWorkList(toInsert);
 
         return true;
     }

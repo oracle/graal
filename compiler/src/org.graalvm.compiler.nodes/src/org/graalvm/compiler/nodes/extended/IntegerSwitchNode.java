@@ -157,7 +157,7 @@ public final class IntegerSwitchNode extends SwitchNode implements LIRLowerable,
             return;
         } else if (tryRemoveUnreachableKeys(tool, value().stamp(view))) {
             return;
-        } else if (switchTransformationOptimization()) {
+        } else if (switchTransformationOptimization(tool)) {
             return;
         }
     }
@@ -183,7 +183,6 @@ public final class IntegerSwitchNode extends SwitchNode implements LIRLowerable,
             keyData.add(new SwitchFoldable.KeyData(key, keyProbability, newSuccessors.size()));
             newSuccessors.add(keySuccessor(i));
         }
-        cumulative[0] *= defaultProbability();
         return true;
     }
 
@@ -212,6 +211,22 @@ public final class IntegerSwitchNode extends SwitchNode implements LIRLowerable,
     @Override
     public ValueNode switchValue() {
         return value();
+    }
+
+    @Override
+    public boolean isNonInitializedProfile() {
+        int nbSuccessors = getSuccessorCount();
+        double prob = 0.0d;
+        for (int i = 0; i < nbSuccessors; i++) {
+            if (keyProbabilities[i] > 0.0d) {
+                if (prob == 0.0d) {
+                    prob = keyProbabilities[i];
+                } else if (keyProbabilities[i] != prob) {
+                    return false;
+                }
+            }
+        }
+        return true;
     }
 
     static final class KeyData {
