@@ -646,7 +646,7 @@ public final class IsomorphicPackingPhase extends BasePhase<LowTierContext> {
          */
         private boolean depsScheduled(Node node, List<Node> scheduled, boolean considerControlFlow) {
             return StreamSupport.stream(node.inputs().spliterator(), false).
-                    filter(n -> nodeToBlockMap.get(n) == currentBlock).
+                    filter(n -> !nodeToBlockMap.isNew(n) && nodeToBlockMap.get(n) == currentBlock).
                     allMatch(scheduled::contains) &&
                     // AND have all the control flow dependencies been scheduled? (only if considering CF)
                     (!considerControlFlow || StreamSupport.stream(node.cfgPredecessors().spliterator(), false).
