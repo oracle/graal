@@ -40,35 +40,35 @@ public class Option {
             .def("null")
             .help("Restrict compilation to comma-separated list of includes (or excludes prefixed with tilde).",
                   "EBNF format of argument value:  CompileOnly = Element, { ',', Element } ;")
-            .javadocExtra("Deprecated: Use {@code PolyglotCompilerOptions.CompileOnly} instead."),
+            .deprecatedBy("CompileOnly"),
 
         option("TruffleCompilation")
             .type("Boolean")
             .category("INTERNAL")
             .def("true")
             .help("Enable or disable truffle compilation.")
-            .javadocExtra("Deprecated: Use {@code PolyglotCompilerOptions.Compilation} instead."),
+            .deprecatedBy("Compilation"),
 
         option("TruffleCompileImmediately")
             .type("Boolean")
             .category("INTERNAL")
             .def("false")
             .help("Compile immediately to test truffle compiler")
-            .javadocExtra("Deprecated: Use {@code PolyglotCompilerOptions.CompileImmediately} instead."),
+            .deprecatedBy("CompileImmediately"),
 
         option("TruffleCompilationThreshold")
             .type("Integer")
             .category("USER")
             .def("1000")
             .help("Compile call target when call count exceeds this threshold.")
-            .javadocExtra("Deprecated: Use {@code PolyglotCompilerOptions.CompilationThreshold} instead."),
+            .deprecatedBy("CompilationThreshold"),
 
         option("TruffleFirstTierCompilationThreshold")
             .type("Integer")
             .category("EXPERT")
             .def("100")
             .help("Compile call target in the first tier when call count exceeds this threshold.")
-            .javadocExtra("Deprecated: Use {@code PolyglotCompilerOptions.FirstTierCompilationThreshold} instead."),
+            .deprecatedBy("FirstTierCompilationThreshold"),
 
         option("TruffleFirstTierMinInvokeThreshold")
             .type("Integer")
@@ -81,7 +81,7 @@ public class Option {
             .category("USER")
             .def("50000")
             .help("Defines the maximum timespan in milliseconds that is required for a call target to be queued for compilation.")
-            .javadocExtra("Deprecated: Use {@code PolyglotCompilerOptions.QueueTimeThreshold} instead."),
+            .deprecatedBy("QueueTimeThreshold"),
 
         option("TruffleMinInvokeThreshold")
             .type("Integer")
@@ -106,28 +106,28 @@ public class Option {
             .category("INTERNAL")
             .def("true")
             .help("Enable automatic inlining of call targets")
-            .javadocExtra("Deprecated: Use {@code PolyglotCompilerOptions.Inlining} instead."), // COMPILER
+            .deprecatedBy("Inlining"), // COMPILER
 
         option("TruffleInliningMaxCallerSize")
             .type("Integer")
             .category("EXPERT")
             .def("2250")
             .help("Stop inlining if caller's cumulative tree size would exceed this limit")
-            .javadocExtra("Deprecated: Use {@code PolyglotCompilerOptions.InliningNodeBudget} instead."),
+            .deprecatedBy("InliningNodeBudget"),
 
         option("TruffleMaximumRecursiveInlining")
             .type("Integer")
             .category("EXPERT")
             .def("2")
             .help("Maximum level of recursive inlining")
-            .javadocExtra("Deprecated: Use {@code PolyglotCompilerOptions.InliningRecursionDepth} instead."),
+            .deprecatedBy("InliningRecursionDepth"),
 
         option("TruffleSplitting")
             .type("Boolean")
             .category("EXPERT")
             .def("true")
             .help("Enable call target splitting")
-            .javadocExtra("Deprecated: Use {@code PolyglotCompilerOptions.Splitting} instead."),
+            .deprecatedBy("Splitting"),
 
         option("TruffleOSR")
             .type("Boolean")
@@ -222,14 +222,14 @@ public class Option {
             .category("INTERNAL")
             .def("false")
             .help("Print information for compilation results")
-            .javadocExtra("Deprecated: Use {@code PolyglotCompilerOptions.TraceCompilation} instead."),
+            .deprecatedBy("TraceCompilation"),
 
         option("TraceTruffleCompilationDetails")
             .type("Boolean")
             .category("INTERNAL")
             .def("false")
             .help("Print information for compilation queuing")
-            .javadocExtra("Deprecated: Use {@code PolyglotCompilerOptions.TraceCompilationDetails} instead."),
+            .deprecatedBy("TraceCompilationDetails"),
 
         option("TraceTruffleCompilationPolymorphism")
             .type("Boolean")
@@ -284,14 +284,14 @@ public class Option {
             .category("INTERNAL")
             .def("false")
             .help("Print information for inlining for each compilation.")
-            .javadocExtra("Deprecated: Use {@code PolyglotCompilerOptions.TraceInlining} instead."),
+            .deprecatedBy("TraceInlining"),
 
         option("TraceTruffleSplitting")
             .type("Boolean")
             .category("INTERNAL")
             .def("false")
             .help("Print information for each splitted call site.")
-            .javadocExtra("Deprecated: Use {@code PolyglotCompilerOptions.TraceSplitting} instead."),
+            .deprecatedBy("TraceSplitting"),
 
         option("TraceTruffleAssumptions")
             .type("Boolean")
@@ -342,7 +342,7 @@ public class Option {
     String type;
     String defaultValue;
     String[] help = {""};
-    String[] javadocExtra;
+    String deprecatedBy;
 
     Option name(String value) {
         name = value;
@@ -369,8 +369,8 @@ public class Option {
         return this;
     }
 
-    Option javadocExtra(String... lines) {
-        javadocExtra = lines;
+    Option deprecatedBy(String replacement) {
+        deprecatedBy = replacement;
         return this;
     }
 

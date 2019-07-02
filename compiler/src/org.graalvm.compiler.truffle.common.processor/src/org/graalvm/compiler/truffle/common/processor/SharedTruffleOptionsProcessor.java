@@ -115,12 +115,16 @@ public class SharedTruffleOptionsProcessor extends AbstractProcessor {
 
                 for (Option option : Option.options) {
                     String defaultValue = option.defaultValue;
+
+                    String deprecatedByText = null;
+                    if (option.deprecatedBy != null) {
+                        deprecatedByText = "Deprecated by {@link org.graalvm.compiler.truffle.runtime.PolyglotCompilerOptions." + option.deprecatedBy + "}.";
+                    }
+
                     if (isRuntime) {
-                        if (option.javadocExtra != null) {
+                        if (deprecatedByText != null) {
                             out.printf("    /**\n");
-                            for (String line : option.javadocExtra) {
-                                out.printf("     * %s\n", line);
-                            }
+                            out.printf("     * %s\n", deprecatedByText);
                             out.printf("     */\n");
                         }
                         String help;
@@ -159,11 +163,9 @@ public class SharedTruffleOptionsProcessor extends AbstractProcessor {
                         }
                         out.printf("     * OptionType: %s\n", optionType);
 
-                        if (option.javadocExtra != null) {
+                        if (deprecatedByText != null) {
                             out.printf("     *\n");
-                            for (String line : option.javadocExtra) {
-                                out.printf("     * %s\n", line);
-                            }
+                            out.printf("     * %s\n", deprecatedByText);
                         }
                         out.printf("     */\n");
 
