@@ -90,8 +90,7 @@ public final class IsomorphicPackingPhase extends BasePhase<LowTierContext> {
                     AddNode.class,
                     SubNode.class,
                     MulNode.class,
-                    FloatDivNode.class,
-                    SignedDivNode.class).collect(Collectors.toSet()));
+                    FloatDivNode.class).collect(Collectors.toSet()));
 
     // Class to encapsulate state used by functions in the algorithm
     private static final class Instance {
