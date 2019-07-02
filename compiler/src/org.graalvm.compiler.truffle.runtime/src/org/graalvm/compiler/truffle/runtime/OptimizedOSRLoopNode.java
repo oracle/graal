@@ -75,7 +75,7 @@ public abstract class OptimizedOSRLoopNode extends LoopNode implements ReplaceOb
         this.repeatableNode = repeatableNode;
     }
 
-    protected abstract int getInvalidationBackoff();
+    protected abstract int getInvalidationBackoff(OptimizedCallTarget target);
 
     /**
      * @param rootFrameDescriptor may be {@code null}.
@@ -254,7 +254,7 @@ public abstract class OptimizedOSRLoopNode extends LoopNode implements ReplaceOb
             public void run() {
                 OptimizedCallTarget target = compiledOSRLoop;
                 if (target != null) {
-                    int invalidationBackoff = getInvalidationBackoff();
+                    int invalidationBackoff = getInvalidationBackoff(target);
                     if (invalidationBackoff < 0) {
                         throw new IllegalArgumentException("Invalid OSR invalidation backoff.");
                     }
@@ -332,8 +332,8 @@ public abstract class OptimizedOSRLoopNode extends LoopNode implements ReplaceOb
         }
 
         @Override
-        protected int getInvalidationBackoff() {
-            return TruffleRuntimeOptions.getValue(SharedTruffleRuntimeOptions.TruffleInvalidationReprofileCount);
+        protected int getInvalidationBackoff(OptimizedCallTarget target) {
+            return target.getOptionValue(PolyglotCompilerOptions.InvalidationReprofileCount);
         }
 
         @Override
@@ -370,7 +370,7 @@ public abstract class OptimizedOSRLoopNode extends LoopNode implements ReplaceOb
         }
 
         @Override
-        public int getInvalidationBackoff() {
+        public int getInvalidationBackoff(OptimizedCallTarget target) {
             return invalidationBackoff;
         }
 

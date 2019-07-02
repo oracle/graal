@@ -54,6 +54,7 @@ public final class OptimizedCompilationProfile {
     private final int lastTierCompilationCallAndLoopThreshold;
     private final boolean multiTierEnabled;
     private final long timestamp;
+    private final OptionValues options;
 
     /**
      * The values below must only be written under lock, or in the constructor,
@@ -83,6 +84,7 @@ public final class OptimizedCompilationProfile {
     @CompilationFinal private boolean callProfiled;
 
     public OptimizedCompilationProfile(OptionValues options) {
+        this.options = options;
         boolean compileImmediately = PolyglotCompilerOptions.getValue(options, PolyglotCompilerOptions.CompileImmediately);
         int callThreshold = PolyglotCompilerOptions.getValue(options, PolyglotCompilerOptions.MinInvokeThreshold);
         int callAndLoopThreshold = PolyglotCompilerOptions.getValue(options, PolyglotCompilerOptions.CompilationThreshold);
@@ -294,13 +296,13 @@ public final class OptimizedCompilationProfile {
 
     void reportInvalidated() {
         invalidationCount++;
-        int reprofile = TruffleRuntimeOptions.getValue(SharedTruffleRuntimeOptions.TruffleInvalidationReprofileCount);
+        int reprofile = PolyglotCompilerOptions.getValue(options, PolyglotCompilerOptions.InvalidationReprofileCount);
         ensureProfiling(reprofile, reprofile);
     }
 
     void reportNodeReplaced() {
         // delay compilation until tree is deemed stable enough
-        int replaceBackoff = TruffleRuntimeOptions.getValue(SharedTruffleRuntimeOptions.TruffleReplaceReprofileCount);
+        int replaceBackoff = PolyglotCompilerOptions.getValue(options, PolyglotCompilerOptions.ReplaceReprofileCount);
         ensureProfiling(1, replaceBackoff);
     }
 
