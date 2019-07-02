@@ -74,7 +74,8 @@ public class Option {
             .type("Integer")
             .category("EXPERT")
             .def("1")
-            .help("Minimum number of calls before a call target is compiled in the first tier."),
+            .help("Minimum number of calls before a call target is compiled in the first tier.")
+            .deprecatedBy("FirstTierMinInvokeThreshold"),
 
         option("TruffleTimeThreshold")
             .type("Integer")
@@ -87,7 +88,8 @@ public class Option {
             .type("Integer")
             .category("EXPERT")
             .def("3")
-            .help("Minimum number of calls before a call target is compiled"),
+            .help("Minimum number of calls before a call target is compiled")
+            .deprecatedBy("MinInvokeThreshold"),
 
         option("TruffleInvalidationReprofileCount")
             .type("Integer")
