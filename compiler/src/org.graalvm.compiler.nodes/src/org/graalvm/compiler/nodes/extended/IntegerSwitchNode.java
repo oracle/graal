@@ -177,7 +177,9 @@ public final class IntegerSwitchNode extends SwitchNode implements LIRLowerable,
             int key = intKeyAt(i);
             if (SwitchFoldable.isDuplicateKey(key, keyData)) {
                 // Unreachable key: kill it manually at the end
-                duplicates.add(keySuccessor(i));
+                if (!newSuccessors.contains(keySuccessor(i))) {
+                    duplicates.add(keySuccessor(i));
+                }
             }
             double keyProbability = cumulative[0] * keyProbability(i);
             int pos = SwitchFoldable.duplicateIndex(keySuccessor(i), newSuccessors);
@@ -209,8 +211,13 @@ public final class IntegerSwitchNode extends SwitchNode implements LIRLowerable,
     }
 
     @Override
-    public void addDefault(List<AbstractBeginNode> newSuccessors) {
-        newSuccessors.add(defaultSuccessor());
+    public int addDefault(List<AbstractBeginNode> newSuccessors) {
+        int index = successors.indexOf(defaultSuccessor());
+        if (index == -1) {
+            successors.add(defaultSuccessor());
+            return successors.size() - 1;
+        }
+        return index;
     }
 
     @Override

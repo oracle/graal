@@ -61,7 +61,10 @@ public interface SwitchFoldable extends NodeInterface {
 
     boolean updateSwitchData(QuickQueryKeyData keyData, List<AbstractBeginNode> successors, double[] cumulative, List<AbstractBeginNode> duplicates);
 
-    void addDefault(List<AbstractBeginNode> successors);
+    /**
+     * adds the default branch to the successors, and returns the index at which it is.
+     */
+    int addDefault(List<AbstractBeginNode> successors);
 
     boolean isInSwitch(ValueNode switchValue);
 
@@ -112,6 +115,15 @@ public interface SwitchFoldable extends NodeInterface {
             assert !contains(item);
             set.put(item, list.size());
             return list.add(item);
+        }
+
+        /**
+         * Adds an object, known to be unique beforehand.
+         */
+        @Override
+        public void add(int index, T item) {
+            assert index == -1;
+            list.add(item);
         }
 
         @Override
@@ -273,8 +285,8 @@ public interface SwitchFoldable extends NodeInterface {
 
         // Add default
         keyProbabilities[newKeyCount] = uninitializedProfiles ? uniform : cumulative[0];
-        keySuccessors[newKeyCount] = successors.size();
-        lowestSwitchNode.addDefault(successors);
+        keySuccessors[newKeyCount] = lowestSwitchNode.addDefault(successors);
+        ;
 
         // Spin an adapter if the value is narrower than an int
         ValueNode adapter = null;

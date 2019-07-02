@@ -141,7 +141,7 @@ public final class FixedGuardNode extends AbstractFixedGuardNode implements Lowe
         // Link the two nodes, but do not add them to the graph yet, so we do not need to remove
         // them on an abort.
         begin.next = deopt;
-        successors.add(begin);
+        successors.add(-1, begin);
         return true;
     }
 
@@ -161,10 +161,11 @@ public final class FixedGuardNode extends AbstractFixedGuardNode implements Lowe
     }
 
     @Override
-    public void addDefault(List<AbstractBeginNode> successors) {
+    public int addDefault(List<AbstractBeginNode> successors) {
         FixedNode defaultNode = next();
         clearSuccessors();
         successors.add(BeginNode.begin(defaultNode));
+        return successors.size() - 1;
     }
 
     @Override

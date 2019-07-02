@@ -469,7 +469,9 @@ public final class IfNode extends ControlSplitNode implements Simplifiable, LIRL
         long key = ((IntegerEqualsNode) condition()).getY().asJavaConstant().asInt();
         if (SwitchFoldable.isDuplicateKey((int) key, keyData)) {
             // Unreachable: will be manually killed.
-            duplicates.add(trueSuccessor());
+            if (!successors.contains(trueSuccessor())) {
+                duplicates.add(trueSuccessor());
+            }
             return true;
         }
         double keyProbability = getTrueSuccessorProbability() * cumulative[0];
@@ -497,8 +499,13 @@ public final class IfNode extends ControlSplitNode implements Simplifiable, LIRL
     }
 
     @Override
-    public void addDefault(List<AbstractBeginNode> successors) {
-        successors.add(falseSuccessor());
+    public int addDefault(List<AbstractBeginNode> successors) {
+        int index = successors.indexOf(falseSuccessor());
+        if (index == -1) {
+            successors.add(falseSuccessor());
+            return successors.size() - 1;
+        }
+        return index;
     }
 
     @Override
