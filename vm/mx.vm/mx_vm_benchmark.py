@@ -243,7 +243,7 @@ class NativeImageVM(GraalVm):
             # PGO instrumentation
             i = 0
             while i < self.pgo_instrumented_iterations:
-                instrument_args = ['--pgo-instrument'] + [] if i is 0 and not self.hotspot_pgo else ['--pgo']
+                instrument_args = ['--pgo-instrument'] + ([] if i == 0 and not self.hotspot_pgo else ['--pgo'])
                 instrument_image_build_args = base_image_build_args + instrument_args
                 mx.log('Building the instrumentation image with: ')
                 mx.log(' ' + ' '.join([pipes.quote(str(arg)) for arg in instrument_image_build_args]))
