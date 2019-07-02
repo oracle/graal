@@ -95,9 +95,7 @@ public interface PlatformNativeLibrarySupport {
     };
 
     default boolean isBuiltinPkgNative(String name) {
-        if (Platform.includedIn(InternalPlatform.LINUX_JNI.class) ||
-                        Platform.includedIn(InternalPlatform.DARWIN_JNI.class) ||
-                        Platform.includedIn(Platform.WINDOWS.class)) {
+        if (Platform.includedIn(InternalPlatform.PLATFORM_JNI.class)) {
             // Do a quick check first
             if (name.startsWith("Java_")) {
                 for (String str : builtInPkgNatives) {
