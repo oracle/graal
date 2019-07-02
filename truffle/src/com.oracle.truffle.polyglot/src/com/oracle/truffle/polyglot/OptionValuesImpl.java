@@ -161,7 +161,18 @@ final class OptionValuesImpl implements OptionValues {
         this.descriptors = copy.descriptors;
     }
 
+    private <T> boolean contains(OptionKey<T> optionKey) {
+        for (OptionDescriptor descriptor : descriptors) {
+            if (descriptor.getKey() == optionKey) {
+                return true;
+            }
+        }
+        return false;
+    }
+
+    @Override
     public boolean hasBeenSet(OptionKey<?> optionKey) {
+        assert contains(optionKey);
         return values.containsKey(optionKey);
     }
 
@@ -176,6 +187,7 @@ final class OptionValuesImpl implements OptionValues {
     @SuppressWarnings("unchecked")
     @Override
     public <T> T get(OptionKey<T> optionKey) {
+        assert contains(optionKey);
         Object value = values.get(optionKey);
         if (value == null) {
             return optionKey.getDefaultValue();
@@ -186,6 +198,7 @@ final class OptionValuesImpl implements OptionValues {
     @SuppressWarnings("deprecation")
     @Override
     public <T> void set(OptionKey<T> optionKey, T value) {
+        assert contains(optionKey);
         optionKey.getType().validate(value);
         values.put(optionKey, value);
     }
