@@ -953,9 +953,9 @@ public class JavaNetNetworkInterface {
     }
 
     @SuppressWarnings({"unused"})
-    static int openSocketWithFallback(CCharPointer ifname) throws SocketException {
+    public static int openSocketWithFallback(CCharPointer ifname) throws SocketException {
         //  1050  #ifdef AF_INET6
-        if (JavaNetNetUtil.ipv6_available()) {
+        if (IsDefined.socket_AF_INET6()) {
             //  1051  static int openSocketWithFallback(JNIEnv *env, const char *ifname){
             //  1052      int sock;
             int sock;
