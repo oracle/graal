@@ -40,6 +40,15 @@ import mx_buildtools
 
 import mx_sulong
 
+import sys
+
+if sys.version_info[0] < 3:
+    _unicode = unicode # pylint: disable=undefined-variable
+else:
+    _unicode = str
+
+_basestring = (str, _unicode)
+
 
 def run(vmArgs, unittests, extraOption=None, extraLibs=None):
     if not isinstance(unittests, list):
@@ -48,7 +57,7 @@ def run(vmArgs, unittests, extraOption=None, extraLibs=None):
         extraOption = []
     if mx.get_opts().verbose:
         command = mx_sulong.getCommonOptions(True, extraLibs) + extraOption + vmArgs + ['--very-verbose'] + unittests
-        print ('Running mx unittests ' + ' '.join(command))
+        print('Running mx unittests ' + ' '.join(command))
         return mx_unittest.unittest(command)
     else:
         command = mx_sulong.getCommonOptions(True, extraLibs) + extraOption + vmArgs + unittests
@@ -175,7 +184,7 @@ class ExternalTestSuite(SulongTestSuite):  # pylint: disable=too-many-ancestors
         else:
             self.testDir = ''
         if hasattr(self, 'fileExts'):
-            self.fileExts = self.fileExts if not isinstance(self.fileExts, basestring) else [self.fileExts]
+            self.fileExts = self.fileExts if not isinstance(self.fileExts, _basestring) else [self.fileExts]
         else:
             self.fileExts = ['.c', '.cpp', '.C']
         if not hasattr(self, 'configDir'):
