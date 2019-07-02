@@ -81,6 +81,9 @@ public final class PolyglotCompilerOptions {
     @Option(help = "Minimum number of calls before a call target is compiled", category = OptionCategory.EXPERT)
     public static final OptionKey<Integer> MinInvokeThreshold = new OptionKey<>(SharedTruffleRuntimeOptions.TruffleMinInvokeThreshold.getDefaultValue());
 
+    @Option(help = "Whether to use multiple Truffle compilation tiers by default.", category = OptionCategory.EXPERT)
+    public static final OptionKey<Boolean> MultiTier = new OptionKey<>(false);
+
     @Option(help = "Minimum number of invocations or loop iterations needed to compile a guest language root in low tier mode.",
             category = OptionCategory.EXPERT)
     public static final OptionKey<Integer> FirstTierCompilationThreshold = new OptionKey<>(SharedTruffleRuntimeOptions.TruffleFirstTierCompilationThreshold.getDefaultValue());
@@ -150,6 +153,8 @@ public final class PolyglotCompilerOptions {
     private static void initializePolyglotToGraalMapping() {
         POLYGLOT_TO_TRUFFLE.put(CompilationThreshold, SharedTruffleRuntimeOptions.TruffleCompilationThreshold);
         POLYGLOT_TO_TRUFFLE.put(MinInvokeThreshold, SharedTruffleRuntimeOptions.TruffleMinInvokeThreshold);
+
+        POLYGLOT_TO_TRUFFLE.put(MultiTier, SharedTruffleRuntimeOptions.TruffleMultiTier);
         POLYGLOT_TO_TRUFFLE.put(FirstTierCompilationThreshold, SharedTruffleRuntimeOptions.TruffleFirstTierCompilationThreshold);
         POLYGLOT_TO_TRUFFLE.put(FirstTierMinInvokeThreshold, SharedTruffleRuntimeOptions.TruffleFirstTierMinInvokeThreshold);
 

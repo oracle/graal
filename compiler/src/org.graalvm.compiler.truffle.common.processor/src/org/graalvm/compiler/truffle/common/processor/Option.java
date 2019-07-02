@@ -335,7 +335,8 @@ public class Option {
             .type("Boolean")
             .category("EXPERT")
             .def("false")
-            .help("Whether to use multiple Truffle compilation tiers by default."),
+            .help("Whether to use multiple Truffle compilation tiers by default.")
+            .deprecatedBy("MultiTier"),
     };
     // @formatter:on
 

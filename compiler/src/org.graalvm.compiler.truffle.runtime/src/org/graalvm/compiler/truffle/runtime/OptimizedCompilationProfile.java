@@ -86,7 +86,7 @@ public final class OptimizedCompilationProfile {
         int callAndLoopThreshold = PolyglotCompilerOptions.getValue(options, PolyglotCompilerOptions.CompilationThreshold);
         assert callThreshold >= 0;
         assert callAndLoopThreshold >= 0;
-        this.multiTierEnabled = TruffleRuntimeOptions.getValue(SharedTruffleRuntimeOptions.TruffleMultiTier);
+        this.multiTierEnabled = PolyglotCompilerOptions.getValue(options, PolyglotCompilerOptions.MultiTier);
         this.compilationCallThreshold = compileImmediately ? 0 : Math.min(callThreshold, callAndLoopThreshold);
         this.compilationCallAndLoopThreshold = compileImmediately ? 0 : callAndLoopThreshold;
         this.lastTierCompilationCallAndLoopThreshold = this.compilationCallAndLoopThreshold;
