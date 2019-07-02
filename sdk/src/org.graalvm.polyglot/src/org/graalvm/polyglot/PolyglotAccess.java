@@ -230,6 +230,13 @@ public final class PolyglotAccess {
             return this;
         }
 
+        /**
+         * Denies access from one language to another. This method only denies one-way access. Every
+         * language has always access to itself. This access may but does cannot be denied.
+         *
+         * @see #denyAccessBetween(String...)
+         * @since 19.2
+         */
         public Builder denyAccess(String from, String to) {
             Objects.requireNonNull(from);
             Objects.requireNonNull(to);
