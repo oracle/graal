@@ -161,8 +161,8 @@ class NativeImageVM(GraalVm):
         i = 0
         while i < len(args):
             arg = args[i]
-            if arg is '-jar':
-                return args[:i], args[i:i + 1], args[i + 1:]
+            if arg == '-jar':
+                return args[:i], args[i:i + 2], args[i + 2:]
             elif not arg.startswith('-'):
                 return args[:i], [args[i]], args[i + 1:]
             elif arg in NativeImageVM._VM_OPTS_SPACE_SEPARATED_ARG:
@@ -233,7 +233,7 @@ class NativeImageVM(GraalVm):
             base_image_build_args += ['-J-ea', '-J-esa']
             base_image_build_args += system_properties
             base_image_build_args += classpath_arguments
-            executable_name = (executable[1] if executable[0] is '-jar' else executable[0]).lower()
+            executable_name = (executable[1] if executable[0] == '-jar' else executable[0]).lower()
             base_image_build_args += executable
             base_image_build_args += ['-H:Name=' + executable_name]
             if needs_config:
@@ -268,17 +268,6 @@ class NativeImageVM(GraalVm):
             mx.log('Running the produced native executable with: ')
             mx.log(' ' + ' '.join([pipes.quote(str(arg)) for arg in image_run_cmd]))
             mx.run(image_run_cmd, out=out, err=err, cwd=cwd, nonZeroIsFatal=nonZeroIsFatal)
-
-    def config_name(self):
-        suffix = ''
-        output_capture = mx.LinesOutputCapture()
-        image_path = os.path.join(mx_vm.graalvm_home(fatalIfMissing=False), 'bin', 'native-image')
-        if os.path.exists(image_path):
-            mx.run([image_path, '--version'], out=output_capture, err=output_capture, cwd=None, nonZeroIsFatal=True)
-            assert len(output_capture.lines) == 1, 'Should be one line in a version got: ' + str(output_capture.lines)
-            suffix = 'ee' if mx_vm.has_component('svmee', stage1=True) else 'ce'
-
-        return super(NativeImageVM, self).config_name() + '-' + suffix
 
 
 class NativeImageBuildVm(GraalVm):
@@ -355,9 +344,13 @@ def register_graalvm_vms():
         _native_image_vm_registry.add_vm(NativeImageBuildVm(graalvm_hostvm_name, 'default', [], []), _suite, 10)
         _gu_vm_registry.add_vm(GuVm(graalvm_hostvm_name, 'default', [], []), _suite, 10)
 
-        mx_benchmark.add_java_vm(NativeImageVM('native-image', 'default', None, None, 0, False), _suite, 10)
-        mx_benchmark.add_java_vm(NativeImageVM('native-image', 'pgo', None, None, 1, False), _suite, 10)
-        mx_benchmark.add_java_vm(NativeImageVM('native-image', 'pgo-hotspot', None, None, 0, True), _suite, 10)
+    # We support only EE and CE configuration for native-image benchmarks
+    for suffix in ['ee', 'ce']:
+        if any(component.short_name == 'svm' + suffix for component in mx_vm.registered_graalvm_components()):
+            mx_benchmark.add_java_vm(NativeImageVM('native-image', 'default-' + suffix, None, None, 0, False), _suite, 10)
+            mx_benchmark.add_java_vm(NativeImageVM('native-image', 'pgo-' + suffix, None, None, 1, False), _suite, 10)
+            mx_benchmark.add_java_vm(NativeImageVM('native-image', 'pgo-hotspot-' + suffix, None, None, 0, True), _suite, 10)
+            break
 
 # Add VMs for libgraal
     if mx_vm.has_component('LibGraal', fatalIfMissing=False):
