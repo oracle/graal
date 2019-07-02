@@ -1,3 +1,12 @@
+# Version 19.2.0
+
+Improvements:
+
+* Improved display of pointers to foreign objects in the LLVM debugger.
+  When inspecting pointer values that point somewhere inside a foreign object,
+  the debugger now allows inspecting the original foreign object, not just the
+  contents of the pointer itself.
+
 # Version 19.1.0
 
 Fixes:
