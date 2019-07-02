@@ -42,7 +42,6 @@ import org.graalvm.compiler.graph.spi.Simplifiable;
 import org.graalvm.compiler.graph.spi.SimplifierTool;
 import org.graalvm.compiler.nodeinfo.NodeInfo;
 import org.graalvm.compiler.nodes.AbstractBeginNode;
-import org.graalvm.compiler.nodes.BeginNode;
 import org.graalvm.compiler.nodes.ConstantNode;
 import org.graalvm.compiler.nodes.FixedGuardNode;
 import org.graalvm.compiler.nodes.FixedWithNextNode;
@@ -53,6 +52,7 @@ import org.graalvm.compiler.nodes.calc.IntegerBelowNode;
 import org.graalvm.compiler.nodes.java.LoadIndexedNode;
 import org.graalvm.compiler.nodes.spi.LIRLowerable;
 import org.graalvm.compiler.nodes.spi.NodeLIRBuilderTool;
+import org.graalvm.compiler.nodes.spi.SwitchFoldable;
 import org.graalvm.compiler.nodes.util.GraphUtil;
 
 import jdk.vm.ci.meta.DeoptimizationAction;
@@ -65,7 +65,7 @@ import jdk.vm.ci.meta.JavaKind;
  * values. The actual implementation of the switch will be decided by the backend.
  */
 @NodeInfo
-public final class IntegerSwitchNode extends SwitchNode implements LIRLowerable, Simplifiable {
+public final class IntegerSwitchNode extends SwitchNode implements LIRLowerable, Simplifiable, SwitchFoldable {
     public static final NodeClass<IntegerSwitchNode> TYPE = NodeClass.create(IntegerSwitchNode.class);
 
     protected final int[] keys;
@@ -157,13 +157,61 @@ public final class IntegerSwitchNode extends SwitchNode implements LIRLowerable,
             return;
         } else if (tryRemoveUnreachableKeys(tool, value().stamp(view))) {
             return;
-        } else if (tryMergeSwitch(tool)) {
+        } else if (switchTransformationOptimization()) {
             return;
         }
     }
 
-    public void addSuccessorForDeletion(AbstractBeginNode defaultNode) {
+    private void addSuccessorForDeletion(AbstractBeginNode defaultNode) {
         successors.add(defaultNode);
+    }
+
+    @Override
+    public Node getNext() {
+        return defaultSuccessor();
+    }
+
+    @Override
+    public boolean updateSwitchData(List<SwitchFoldable.KeyData> keyData, List<AbstractBeginNode> newSuccessors, double[] cumulative, List<AbstractBeginNode> duplicates) {
+        for (int i = 0; i < keyCount(); i++) {
+            int key = intKeyAt(i);
+            if (SwitchFoldable.isDuplicateKey(key, keyData)) {
+                // Unreachable key: kill it manually at the end
+                duplicates.add(keySuccessor(i));
+            }
+            double keyProbability = cumulative[0] * keyProbability(i);
+            keyData.add(new SwitchFoldable.KeyData(key, keyProbability, newSuccessors.size()));
+            newSuccessors.add(keySuccessor(i));
+        }
+        cumulative[0] *= defaultProbability();
+        return true;
+    }
+
+    @Override
+    public boolean isInSwitch(ValueNode switchValue) {
+        return value == switchValue;
+    }
+
+    @Override
+    public void cutOffCascadeNode() {
+        AbstractBeginNode defaultNode = defaultSuccessor();
+        clearSuccessors();
+        addSuccessorForDeletion(defaultNode);
+    }
+
+    @Override
+    public void cutOffLowestCascadeNode() {
+        clearSuccessors();
+    }
+
+    @Override
+    public void addDefault(List<AbstractBeginNode> newSuccessors) {
+        newSuccessors.add(defaultSuccessor());
+    }
+
+    @Override
+    public ValueNode switchValue() {
+        return value();
     }
 
     static final class KeyData {
@@ -176,132 +224,6 @@ public final class IntegerSwitchNode extends SwitchNode implements LIRLowerable,
             this.keyProbability = keyProbability;
             this.keySuccessor = keySuccessor;
         }
-    }
-
-    private static boolean isDuplicateKey(int key, List<KeyData> keyData) {
-        for (KeyData kd : keyData) {
-            if (kd.key == key) {
-                // No duplicates
-                return true;
-            }
-        }
-        return false;
-    }
-
-    private void mergeIn(List<KeyData> keyData, List<AbstractBeginNode> newSuccessors, double[] cumulative, List<AbstractBeginNode> unreachable) {
-        for (int i = 0; i < keyCount(); i++) {
-            int key = keys[i];
-            if (isDuplicateKey(key, keyData)) {
-                // Unreachable key: kill it manually at the end
-                unreachable.add(keySuccessor(i));
-                return;
-            }
-            double keyProbability = cumulative[0] * keyProbability(i);
-            keyData.add(new KeyData(key, keyProbability, newSuccessors.size()));
-            newSuccessors.add(keySuccessor(i));
-        }
-        cumulative[0] *= defaultProbability();
-    }
-
-    private static boolean canMerge(IntegerSwitchNode switchNode, ValueNode switchValue) {
-        return switchNode.value() == switchValue;
-    }
-
-    public boolean tryMergeSwitch(@SuppressWarnings("unused") SimplifierTool tool) {
-        if (!(defaultSuccessor().next() instanceof IntegerSwitchNode || (predecessor() instanceof AbstractBeginNode && predecessor().predecessor() instanceof IntegerSwitchNode))) {
-            return false;
-        }
-        ValueNode switchValue = value();
-        List<KeyData> newKeyData = new ArrayList<>();
-        List<AbstractBeginNode> newSuccessors = new ArrayList<>();
-        List<AbstractBeginNode> unreachable = new ArrayList<>();
-
-        Node iteratingSwitch = this;
-        IntegerSwitchNode topSwitchNode = this;
-
-        // Go up
-        while (iteratingSwitch instanceof IntegerSwitchNode && canMerge((IntegerSwitchNode) iteratingSwitch, switchValue)) {
-            topSwitchNode = (IntegerSwitchNode) iteratingSwitch;
-            if (!(iteratingSwitch.predecessor() instanceof BeginNode && iteratingSwitch.predecessor().hasNoUsages())) {
-                break;
-            }
-            iteratingSwitch = predecessor().predecessor();
-        }
-
-        double[] cumulative = {1.0d};
-
-        iteratingSwitch = topSwitchNode;
-        IntegerSwitchNode lastSwitch = topSwitchNode;
-        // Go down and merge
-        while (iteratingSwitch instanceof IntegerSwitchNode && canMerge((IntegerSwitchNode) iteratingSwitch, switchValue)) {
-            lastSwitch = (IntegerSwitchNode) iteratingSwitch;
-            lastSwitch.mergeIn(newKeyData, newSuccessors, cumulative, unreachable);
-            if (!(lastSwitch.defaultSuccessor() instanceof BeginNode && lastSwitch.defaultSuccessor().hasNoUsages())) {
-                break;
-            }
-            iteratingSwitch = lastSwitch.defaultSuccessor().next();
-        }
-        if (topSwitchNode == lastSwitch) {
-            return false;
-        }
-
-        // Commit starting from here.
-        newKeyData.sort(Comparator.comparingInt(k -> k.key));
-
-        // Spawn the required data structures
-        int newKeyCount = newKeyData.size();
-        int[] newKeys = new int[newKeyCount];
-        double[] newKeyProbabilities = new double[newKeyCount + 1];
-        int[] newKeySuccessors = new int[newKeyCount + 1];
-
-        for (int i = 0; i < newKeyCount; i++) {
-            KeyData data = newKeyData.get(i);
-            newKeys[i] = data.key;
-            newKeyProbabilities[i] = data.keyProbability;
-            newKeySuccessors[i] = data.keySuccessor;
-        }
-
-        // Add default
-        newKeyProbabilities[newKeyCount] = cumulative[0];
-        newKeySuccessors[newKeyCount] = newSuccessors.size();
-        newSuccessors.add(lastSwitch.defaultSuccessor());
-
-        // Spawn the switch node
-        IntegerSwitchNode toInsert = new IntegerSwitchNode(switchValue, newSuccessors.size(), newKeys, newKeyProbabilities, newKeySuccessors);
-        graph().add(toInsert);
-
-        IntegerSwitchNode goingUp = lastSwitch;
-
-        while (goingUp != topSwitchNode) {
-            AbstractBeginNode defaultSuccessor = goingUp.defaultSuccessor();
-            goingUp.clearSuccessors();
-            if (goingUp != lastSwitch) {
-                // Keep the link between the merged switches, for easier deletion.
-                goingUp.addSuccessorForDeletion(defaultSuccessor);
-            }
-            if (!(goingUp.predecessor() instanceof AbstractBeginNode)) {
-                break;
-            }
-            goingUp = (IntegerSwitchNode) goingUp.predecessor().predecessor();
-        }
-        AbstractBeginNode defaultSuccessor = goingUp.defaultSuccessor();
-        goingUp.clearSuccessors();
-        goingUp.successors.add(defaultSuccessor);
-
-        topSwitchNode.replaceAtPredecessor(toInsert);
-        topSwitchNode.replaceAtUsages(toInsert);
-
-        int pos = 0;
-        for (AbstractBeginNode begin : newSuccessors) {
-            toInsert.setBlockSuccessor(pos++, begin);
-        }
-
-        GraphUtil.killCFG(topSwitchNode);
-        for (AbstractBeginNode duplicate : unreachable) {
-            GraphUtil.killCFG(duplicate);
-        }
-
-        return true;
     }
 
     /**
@@ -349,7 +271,7 @@ public final class IntegerSwitchNode extends SwitchNode implements LIRLowerable,
      * because {@link Enum#ordinal()} can change when recompiling an enum, it cannot be used
      * directly as the value that is switched on. An intermediate int[] array, which is initialized
      * once at run time based on the actual {@link Enum#ordinal()} values, is used.
-     *
+     * <p>
      * The {@link ConstantFieldProvider} of Graal already detects the int[] arrays and marks them as
      * {@link ConstantNode#isDefaultStable() stable}, i.e., the array elements are constant. The
      * code in this method detects array loads from such a stable array and re-wires the switch to
