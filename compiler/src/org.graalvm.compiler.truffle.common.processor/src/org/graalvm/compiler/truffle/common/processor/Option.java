@@ -77,13 +77,6 @@ public class Option {
             .help("Minimum number of calls before a call target is compiled in the first tier.")
             .deprecatedBy("FirstTierMinInvokeThreshold"),
 
-        option("TruffleTimeThreshold")
-            .type("Integer")
-            .category("USER")
-            .def("50000")
-            .help("Defines the maximum timespan in milliseconds that is required for a call target to be queued for compilation.")
-            .deprecatedBy("QueueTimeThreshold"),
-
         option("TruffleMinInvokeThreshold")
             .type("Integer")
             .category("EXPERT")
