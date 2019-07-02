@@ -138,37 +138,7 @@ class PosixJavaIOSubstituteFeature implements Feature {
 
     @Override
     public void beforeAnalysis(BeforeAnalysisAccess access) {
-        try {
-            JNIRuntimeAccess.register(java.lang.String.class);
-            JNIRuntimeAccess.register(java.lang.System.class);
-            JNIRuntimeAccess.register(java.lang.System.class.getDeclaredMethod("getProperty", String.class));
-            JNIRuntimeAccess.register(java.nio.charset.Charset.class);
-            JNIRuntimeAccess.register(java.nio.charset.Charset.class.getDeclaredMethod("isSupported", String.class));
-            JNIRuntimeAccess.register(access.findClassByName("java.lang.String").getDeclaredConstructor(byte[].class, String.class));
-            JNIRuntimeAccess.register(access.findClassByName("java.lang.String").getDeclaredMethod("getBytes", String.class));
-            JNIRuntimeAccess.register(java.io.File.class);
-            JNIRuntimeAccess.register(java.io.File.class.getDeclaredField("path"));
-            JNIRuntimeAccess.register(java.io.FileOutputStream.class);
-            JNIRuntimeAccess.register(java.io.FileOutputStream.class.getDeclaredField("fd"));
-            JNIRuntimeAccess.register(java.io.FileInputStream.class);
-            JNIRuntimeAccess.register(java.io.FileInputStream.class.getDeclaredField("fd"));
-            JNIRuntimeAccess.register(java.io.FileDescriptor.class);
-            JNIRuntimeAccess.register(java.io.FileDescriptor.class.getDeclaredField("fd"));
-            if (JavaVersionUtil.JAVA_SPEC > 8) {
-                JNIRuntimeAccess.register(java.io.FileDescriptor.class.getDeclaredField("append"));
-            }
-            JNIRuntimeAccess.register(java.io.RandomAccessFile.class);
-            JNIRuntimeAccess.register(java.io.RandomAccessFile.class.getDeclaredField("fd"));
-            JNIRuntimeAccess.register(java.io.IOException.class);
-            JNIRuntimeAccess.register(java.io.IOException.class.getDeclaredConstructor(String.class));
-            JNIRuntimeAccess.register(access.findClassByName("java.io.UnixFileSystem"));
-            if (JavaVersionUtil.JAVA_SPEC >= 11) {
-                JNIRuntimeAccess.register(java.util.zip.Inflater.class.getDeclaredField("inputConsumed"));
-                JNIRuntimeAccess.register(java.util.zip.Inflater.class.getDeclaredField("outputConsumed"));
-            }
-        } catch (NoSuchFieldException | NoSuchMethodException e) {
-            VMError.shouldNotReachHere("PosixJavaIOSubstitutionFeature: Error registering class or method: ", e);
-        }
+        JNIRuntimeAccess.register(access.findClassByName("java.io.UnixFileSystem"));
     }
 }
 
