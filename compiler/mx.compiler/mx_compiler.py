@@ -924,8 +924,8 @@ class StdoutUnstripping:
     def __exit__(self, exc_type, exc_value, traceback):
         if self.mapFiles:
             try:
-                with tempfile.NamedTemporaryFile() as inputFile:
-                    with tempfile.NamedTemporaryFile() as mapFile:
+                with tempfile.NamedTemporaryFile(mode='w') as inputFile:
+                    with tempfile.NamedTemporaryFile(mode='w') as mapFile:
                         if len(self.capture.data) != 0:
                             inputFile.write(self.capture.data)
                             inputFile.flush()
