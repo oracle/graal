@@ -24,7 +24,7 @@
  */
 package org.graalvm.compiler.truffle.runtime;
 
-import java.util.function.Supplier;
+import java.util.function.Function;
 
 import org.graalvm.options.OptionDescriptors;
 import org.graalvm.options.OptionValues;
@@ -138,7 +138,7 @@ final class GraalTVMCI extends TVMCI {
     }
 
     @Override
-    protected <T> T getOrCreateRuntimeData(RootNode rootNode, Supplier<T> constructor) {
+    protected <T> T getOrCreateRuntimeData(RootNode rootNode, Function<OptionValues, T> constructor) {
         return super.getOrCreateRuntimeData(rootNode, constructor);
     }
 

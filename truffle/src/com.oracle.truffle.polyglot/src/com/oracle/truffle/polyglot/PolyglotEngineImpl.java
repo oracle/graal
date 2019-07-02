@@ -216,9 +216,7 @@ final class PolyglotEngineImpl extends AbstractPolyglotImpl.AbstractEngineImpl i
             }
         }
 
-        OptionDescriptors engineOptionDescriptors = new PolyglotEngineOptionsOptionDescriptors();
-        OptionDescriptors compilerOptionDescriptors = EngineAccessor.ACCESSOR.getCompilerOptions();
-        this.engineOptions = OptionDescriptors.createUnion(engineOptionDescriptors, compilerOptionDescriptors);
+        this.engineOptions = createEngineOptionDescriptors();
         this.engineOptionValues = new OptionValuesImpl(this, engineOptions);
 
         Map<String, Language> publicLanguages = new LinkedHashMap<>();
@@ -257,6 +255,12 @@ final class PolyglotEngineImpl extends AbstractPolyglotImpl.AbstractEngineImpl i
             createInstruments(instrumentsOptions, allowExperimentalOptions);
             registerShutDownHook();
         }
+    }
+
+    private static OptionDescriptors createEngineOptionDescriptors() {
+        OptionDescriptors engineOptionDescriptors = new PolyglotEngineOptionsOptionDescriptors();
+        OptionDescriptors compilerOptionDescriptors = EngineAccessor.ACCESSOR.getCompilerOptions();
+        return OptionDescriptors.createUnion(engineOptionDescriptors, compilerOptionDescriptors);
     }
 
     static Collection<Engine> findActiveEngines() {
@@ -348,23 +352,9 @@ final class PolyglotEngineImpl extends AbstractPolyglotImpl.AbstractEngineImpl i
                     Map<String, Level> logOptions) {
         final Map<String, String> optionsWithSystemProperties;
         if (useSystemProperties) {
-            Properties properties = System.getProperties();
-            optionsWithSystemProperties = new HashMap<>(options);
-            synchronized (properties) {
-                for (Object systemKey : properties.keySet()) {
-                    String key = (String) systemKey;
-                    if (key.startsWith(OptionValuesImpl.SYSTEM_PROPERTY_PREFIX)) {
-                        String optionKey = key.substring(OptionValuesImpl.SYSTEM_PROPERTY_PREFIX.length());
-                        // Context options override system properties options
-                        if (!options.containsKey(optionKey)) {
-                            // Image build time options are not set in runtime options
-                            if (!optionKey.startsWith(OPTION_GROUP_IMAGE_BUILD_TIME)) {
-                                optionsWithSystemProperties.put(optionKey, System.getProperty(key));
-                            }
-                        }
-                    }
-                }
-            }
+            optionsWithSystemProperties = readOptionsFromSystemProperties();
+            // Context options override system properties options
+            optionsWithSystemProperties.putAll(options);
         } else {
             optionsWithSystemProperties = options;
         }
@@ -408,6 +398,40 @@ final class PolyglotEngineImpl extends AbstractPolyglotImpl.AbstractEngineImpl i
             }
             throw OptionValuesImpl.failNotFound(getAllOptions(), key);
         }
+    }
+
+    static OptionValuesImpl getEngineOptionsWithNoEngine() {
+        OptionValuesImpl optionValues = new OptionValuesImpl(null, createEngineOptionDescriptors());
+        Map<String, String> options = readOptionsFromSystemProperties();
+
+        for (String key : options.keySet()) {
+            String group = parseOptionGroup(key);
+            String value = options.get(key);
+
+            if (group.equals(OPTION_GROUP_ENGINE)) {
+                optionValues.put(key, value, true);
+            }
+        }
+
+        return optionValues;
+    }
+
+    private static Map<String, String> readOptionsFromSystemProperties() {
+        Map<String, String> options = new HashMap<>();
+        Properties properties = System.getProperties();
+        synchronized (properties) {
+            for (Object systemKey : properties.keySet()) {
+                String key = (String) systemKey;
+                if (key.startsWith(OptionValuesImpl.SYSTEM_PROPERTY_PREFIX)) {
+                    final String optionKey = key.substring(OptionValuesImpl.SYSTEM_PROPERTY_PREFIX.length());
+                    // Image build time options are not set in runtime options
+                    if (!optionKey.startsWith(OPTION_GROUP_IMAGE_BUILD_TIME)) {
+                        options.put(optionKey, System.getProperty(key));
+                    }
+                }
+            }
+        }
+        return options;
     }
 
     /**

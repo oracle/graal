@@ -199,7 +199,7 @@ public final class PolyglotCompilerOptions {
     }
 
     static <T> T getValue(RootNode rootNode, OptionKey<T> key) {
-        OptionValues polyglotValues = OptimizedCallTarget.runtime().getTvmci().getCompilerOptionValues(rootNode);
+        OptionValues polyglotValues = getPolyglotValues(rootNode);
         return getValue(polyglotValues, key);
     }
 

@@ -49,6 +49,7 @@ import java.util.Collections;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
+import java.util.function.Function;
 import java.util.function.Supplier;
 import java.util.logging.Handler;
 import java.util.logging.Level;
@@ -664,13 +665,15 @@ final class EngineAccessor extends Accessor {
 
         @SuppressWarnings("unchecked")
         @Override
-        public <T> T getOrCreateRuntimeData(Object sourceVM, Supplier<T> constructor) {
-            if (!(sourceVM instanceof PolyglotImpl.VMObject)) {
-                return null;
+        public <T> T getOrCreateRuntimeData(Object sourceVM, Function<OptionValues, T> constructor) {
+            if (sourceVM == null) {
+                OptionValues engineOptionValues = PolyglotEngineImpl.getEngineOptionsWithNoEngine();
+                return constructor.apply(engineOptionValues);
             }
+
             final PolyglotEngineImpl engine = getEngine(sourceVM);
             if (engine.runtimeData == null) {
-                engine.runtimeData = constructor.get();
+                engine.runtimeData = constructor.apply(engine.engineOptionValues);
             }
             return (T) engine.runtimeData;
         }

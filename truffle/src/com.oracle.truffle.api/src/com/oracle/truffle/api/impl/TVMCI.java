@@ -42,7 +42,7 @@ package com.oracle.truffle.api.impl;
 
 import java.io.Closeable;
 import java.util.Objects;
-import java.util.function.Supplier;
+import java.util.function.Function;
 
 import org.graalvm.options.OptionDescriptors;
 import org.graalvm.options.OptionValues;
@@ -286,29 +286,22 @@ public abstract class TVMCI {
 
     private static volatile Object fallbackEngineData;
 
-    protected <T> T getOrCreateRuntimeData(RootNode rootNode, Supplier<T> constructor) {
+    @SuppressWarnings("unchecked")
+    protected <T> T getOrCreateRuntimeData(RootNode rootNode, Function<OptionValues, T> constructor) {
+        Objects.requireNonNull(rootNode);
         Objects.requireNonNull(constructor);
         final Accessor.NodeSupport nodesAccess = TVMCIAccessor.nodesAccess();
         final EngineSupport engineAccess = TVMCIAccessor.engineAccess();
-        if (rootNode != null && nodesAccess != null && engineAccess != null) {
-            final Object sourceVM = nodesAccess.getSourceVM(rootNode);
-            if (sourceVM != null) {
-                final T runtimeData = engineAccess.getOrCreateRuntimeData(sourceVM, constructor);
-                if (runtimeData != null) {
-                    return runtimeData;
-                }
+
+        final Object sourceVM = nodesAccess.getSourceVM(rootNode);
+        if (sourceVM != null) {
+            return engineAccess.getOrCreateRuntimeData(sourceVM, constructor);
+        } else {
+            if (fallbackEngineData == null) {
+                fallbackEngineData = engineAccess.getOrCreateRuntimeData(null, constructor);
             }
-
+            return (T) fallbackEngineData;
         }
-        return getOrCreateFallbackEngineData(constructor);
-    }
-
-    @SuppressWarnings("unchecked")
-    private static <T> T getOrCreateFallbackEngineData(Supplier<T> constructor) {
-        if (fallbackEngineData == null) {
-            fallbackEngineData = constructor.get();
-        }
-        return (T) fallbackEngineData;
     }
 
     @SuppressWarnings("unused")
