@@ -57,7 +57,9 @@ import java.util.concurrent.ConcurrentHashMap;
 import java.util.function.Function;
 import java.util.logging.Level;
 
-import org.graalvm.polyglot.PolyglotAccess;
+import org.graalvm.collections.EconomicSet;
+import org.graalvm.collections.Equivalence;
+import org.graalvm.collections.UnmodifiableEconomicSet;
 import org.graalvm.polyglot.Value;
 import org.graalvm.polyglot.impl.AbstractPolyglotImpl.APIAccess;
 import org.graalvm.polyglot.proxy.Proxy;
@@ -111,21 +113,24 @@ final class PolyglotLanguageContext implements PolyglotImpl.VMObject {
             if (thisLanguage.isHost()) {
                 return languageInstance.getEngine().idToInternalLanguageInfo;
             }
-            boolean embedderAllAccess = config.allowedPublicLanguages.size() == 0;
-            boolean polyglotAllAccess = config.polyglotAccess == PolyglotAccess.ALL;
+            boolean embedderAllAccess = config.allowedPublicLanguages.isEmpty();
             PolyglotEngineImpl engine = languageInstance.getEngine();
-            Set<String> resolveLanguages;
+            UnmodifiableEconomicSet<String> configuredAccess = engine.getAPIAccess().getAccessibleLanguages(config.polyglotAccess, thisLanguage.getId());
+
+            EconomicSet<String> resolveLanguages;
             if (embedderAllAccess) {
-                if (polyglotAllAccess) {
-                    return languageInstance.getEngine().idToInternalLanguageInfo;
+                if (configuredAccess == null) {
+                    return engine.idToInternalLanguageInfo;
                 } else {
-                    resolveLanguages = Collections.singleton(thisLanguage.getId());
+                    resolveLanguages = EconomicSet.create(Equivalence.DEFAULT, configuredAccess);
+                    resolveLanguages.add(thisLanguage.getId());
                 }
             } else {
-                if (polyglotAllAccess) {
+                if (configuredAccess == null) {
                     resolveLanguages = config.allowedPublicLanguages;
                 } else {
-                    resolveLanguages = Collections.singleton(thisLanguage.getId());
+                    resolveLanguages = EconomicSet.create(Equivalence.DEFAULT, configuredAccess);
+                    resolveLanguages.add(thisLanguage.getId());
                 }
             }
             Map<String, LanguageInfo> resolvedLanguages = new LinkedHashMap<>();

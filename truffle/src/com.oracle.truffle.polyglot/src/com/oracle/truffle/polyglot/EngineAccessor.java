@@ -54,6 +54,15 @@ import java.util.logging.Handler;
 import java.util.logging.Level;
 import java.util.logging.LogRecord;
 
+import org.graalvm.options.OptionDescriptors;
+import org.graalvm.options.OptionValues;
+import org.graalvm.polyglot.PolyglotAccess;
+import org.graalvm.polyglot.PolyglotException;
+import org.graalvm.polyglot.Value;
+import org.graalvm.polyglot.io.FileSystem;
+import org.graalvm.polyglot.io.ProcessHandler;
+
+import com.oracle.truffle.api.CallTarget;
 import com.oracle.truffle.api.CompilerAsserts;
 import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.InstrumentInfo;
@@ -61,8 +70,11 @@ import com.oracle.truffle.api.Scope;
 import com.oracle.truffle.api.TruffleContext;
 import com.oracle.truffle.api.TruffleFile;
 import com.oracle.truffle.api.TruffleLanguage;
+import com.oracle.truffle.api.TruffleLanguage.Env;
 import com.oracle.truffle.api.TruffleLogger;
+import com.oracle.truffle.api.TruffleOptions;
 import com.oracle.truffle.api.frame.Frame;
+import com.oracle.truffle.api.impl.Accessor;
 import com.oracle.truffle.api.instrumentation.ContextsListener;
 import com.oracle.truffle.api.instrumentation.ThreadsListener;
 import com.oracle.truffle.api.interop.InteropLibrary;
@@ -72,17 +84,6 @@ import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.api.nodes.RootNode;
 import com.oracle.truffle.api.source.Source;
 import com.oracle.truffle.api.source.SourceSection;
-import org.graalvm.options.OptionDescriptors;
-
-import com.oracle.truffle.api.CallTarget;
-import com.oracle.truffle.api.TruffleOptions;
-import com.oracle.truffle.api.impl.Accessor;
-import org.graalvm.options.OptionValues;
-import org.graalvm.polyglot.PolyglotAccess;
-import org.graalvm.polyglot.PolyglotException;
-import org.graalvm.polyglot.Value;
-import org.graalvm.polyglot.io.FileSystem;
-import org.graalvm.polyglot.io.ProcessHandler;
 
 final class EngineAccessor extends Accessor {
 
@@ -175,18 +176,18 @@ final class EngineAccessor extends Accessor {
         }
 
         @Override
-        public CallTarget parseForLanguage(Object vmObject, Source source, String[] argumentNames) {
-            PolyglotLanguageContext sourceContext = (PolyglotLanguageContext) vmObject;
-            PolyglotLanguage targetLanguage = sourceContext.context.engine.findLanguage(source.getLanguage(), source.getMimeType(), true);
+        public CallTarget parseForLanguage(Object sourceLanguageContext, Source source, String[] argumentNames, boolean allowInternal) {
+            PolyglotLanguageContext sourceContext = (PolyglotLanguageContext) sourceLanguageContext;
+            PolyglotLanguage targetLanguage = sourceContext.context.engine.findLanguage(sourceContext, source.getLanguage(), source.getMimeType(), true, allowInternal);
             PolyglotLanguageContext targetContext = sourceContext.context.getContextInitialized(targetLanguage, sourceContext.language);
             targetContext.checkAccess(sourceContext.getLanguageInstance().language);
             return targetContext.parseCached(sourceContext.language, source, argumentNames);
         }
 
         @Override
-        public TruffleLanguage.Env getEnvForInstrument(Object vmObject, String languageId, String mimeType) {
+        public Env getEnvForInstrument(Object vmObject, String languageId, String mimeType) {
             PolyglotContextImpl context = PolyglotContextImpl.requireContext();
-            PolyglotLanguage foundLanguage = context.engine.findLanguage(languageId, mimeType, true);
+            PolyglotLanguage foundLanguage = context.engine.findLanguage(null, languageId, mimeType, true, true);
             return context.getContextInitialized(foundLanguage, null).env;
         }
 
@@ -640,7 +641,7 @@ final class EngineAccessor extends Accessor {
             if (pc == null) {
                 return null;
             }
-            PolyglotLanguage language = pc.engine.findLanguage(languageId, null, true);
+            PolyglotLanguage language = pc.engine.findLanguage(null, languageId, null, true, true);
             PolyglotLanguageContext languageContext = pc.getContextInitialized(language, null);
             return (PolyglotException) PolyglotImpl.wrapGuestException(languageContext, e);
         }

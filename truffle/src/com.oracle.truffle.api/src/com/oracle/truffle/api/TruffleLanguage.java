@@ -1766,21 +1766,88 @@ public abstract class TruffleLanguage<C> {
         }
 
         /**
-         * Evaluates source of (potentially different) language. The {@link Source#getMimeType()
-         * MIME type} is used to identify the {@link TruffleLanguage} to use to perform the
-         * {@link #parse(com.oracle.truffle.api.TruffleLanguage.ParsingRequest)} . The names of
+         * @since 0.8 or earlier
+         * @deprecated use {@link #parseInternal(Source, String...)} or
+         *             {@link #parsePublic(Source, String...)} instead.
+         */
+        @TruffleBoundary
+        @Deprecated
+        public CallTarget parse(Source source, String... argumentNames) {
+            CompilerAsserts.neverPartOfCompilation();
+            checkDisposed();
+            return AccessAPI.engineAccess().parseForLanguage(vmObject, source, argumentNames, true);
+        }
+
+        /**
+         * Parses the source of a public or internal language and returns the parse result as
+         * {@link CallTarget}. The {@link Source#getLanguage() language id} is used to identify the
+         * {@link TruffleLanguage} to use to perform the
+         * {@link #parse(com.oracle.truffle.api.TruffleLanguage.ParsingRequest)}. The names of
          * arguments are parameters for the resulting {#link CallTarget} that allow the
          * <code>source</code> to reference the actual parameters passed to
          * {@link CallTarget#call(java.lang.Object...)}.
+         * <p>
+         * Compared to {@link #parsePublic(Source, String...)} this method provides also access to
+         * {@link TruffleLanguage.Registration#internal() internal} languages in addition to public
+         * languages. The provided source must be {@link Source#isInternal() internal}, as internal
+         * languages naturally can only take internal sources, otherwise an
+         * {@link IllegalArgumentException} is thrown. For example, in JavaScript, a call to the
+         * eval builtin should forward to {@link #parsePublic(Source, String...)} as it contains
+         * code provided by the guest language user. Parsing regular expressions with the internal
+         * regular expression engine should call {@link #parseInternal(Source, String...)} instead,
+         * as this is considered an implementation detail of the language.
+         * <p>
+         * It is recommended that the language uses parse even for sources of the current language
+         * in order to support code caching with {@link ContextPolicy#SHARED} and
+         * {@link ContextPolicy#REUSE}.
          *
          * @param source the source to evaluate
          * @param argumentNames the names of {@link CallTarget#call(java.lang.Object...)} arguments
          *            that can be referenced from the source
          * @return the call target representing the parsed result
-         * @since 0.8 or earlier
+         * @see #parsePublic(Source, String...)
+         * @since 19.2
          */
         @TruffleBoundary
-        public CallTarget parse(Source source, String... argumentNames) {
+        public CallTarget parseInternal(Source source, String... argumentNames) {
+            CompilerAsserts.neverPartOfCompilation();
+            checkDisposed();
+            if (!source.isInternal()) {
+                throw new IllegalArgumentException("Provided source must return true for isInternal() but returns false.");
+            }
+            return AccessAPI.engineAccess().parseForLanguage(vmObject, source, argumentNames, true);
+        }
+
+        /**
+         * Parses the source of a public language and returns the parse result as
+         * {@link CallTarget}. The {@link Source#getLanguage() language id} is used to identify the
+         * {@link TruffleLanguage} to use to perform the
+         * {@link #parse(com.oracle.truffle.api.TruffleLanguage.ParsingRequest)}. The names of
+         * arguments are parameters for the resulting {#link CallTarget} that allow the
+         * <code>source</code> to reference the actual parameters passed to
+         * {@link CallTarget#call(java.lang.Object...)}.
+         * <p>
+         * Compared to {@link #parseInternal(Source, String...)} this method does only provide
+         * access to non internal or public languages. The provided source can be either
+         * {@link Source#isInternal() internal} or non-internal. For example, in JavaScript, a call
+         * to the eval builtin should forward to {@link #parsePublic(Source, String...)} as it
+         * contains code provided by the guest language user. Parsing regular expressions with the
+         * internal regular expression engine should call {@link #parseInternal(Source, String...)}
+         * instead, as this is considered an implementation detail of the language.
+         * <p>
+         * It is recommended that the language uses parse even for sources of the current language
+         * in order to support code caching with {@link ContextPolicy#SHARED} and
+         * {@link ContextPolicy#REUSE}.
+         *
+         * @param source the source to evaluate
+         * @param argumentNames the names of {@link CallTarget#call(java.lang.Object...)} arguments
+         *            that can be referenced from the source
+         * @return the call target representing the parsed result
+         * @see #parseInternal(Source, String...)
+         * @since 19.2
+         */
+        @TruffleBoundary
+        public CallTarget parsePublic(Source source, String... argumentNames) {
             CompilerAsserts.neverPartOfCompilation();
             checkDisposed();
             return LanguageAccessor.engineAccess().parseForLanguage(vmObject, source, argumentNames);
