@@ -579,6 +579,35 @@ public final class IfNode extends ControlSplitNode implements Simplifiable, LIRL
         return false;
     }
 
+    public static void extractSwitch(IntegerSwitchNode switchNode, List<KeyData> keyData, List<AbstractBeginNode> newSuccessors, double[] cumulative, List<AbstractBeginNode> unreachable) {
+        for (int i = 0; i < switchNode.keyCount(); i++) {
+            int key = switchNode.intKeyAt(i);
+            if (isDuplicateKey(key, keyData)) {
+                // Unreachable key: kill it manually at the end
+                unreachable.add(switchNode.keySuccessor(i));
+                return;
+            }
+            double keyProbability = cumulative[0] * switchNode.keyProbability(i);
+            keyData.add(new KeyData(key, keyProbability, newSuccessors.size()));
+            newSuccessors.add(switchNode.keySuccessor(i));
+        }
+        cumulative[0] *= switchNode.defaultProbability();
+    }
+
+    private static IntegerSwitchNode checkAndAddDominatingSwitch(Node node, ValueNode switchValue, List<KeyData> keyData, List<AbstractBeginNode> successors, List<AbstractBeginNode> unreachable,
+                    double[] cumulative) {
+        if (node.predecessor() instanceof BeginNode && node.predecessor().hasNoUsages()) {
+            if (node.predecessor().predecessor() instanceof IntegerSwitchNode) {
+                IntegerSwitchNode switchNode = (IntegerSwitchNode) node.predecessor().predecessor();
+                if (switchNode.value() == switchValue) {
+                    extractSwitch(switchNode, keyData, successors, cumulative, unreachable);
+                    return switchNode;
+                }
+            }
+        }
+        return null;
+    }
+
     static final class KeyData {
         final int key;
         final double keyProbability;
@@ -616,10 +645,11 @@ public final class IfNode extends ControlSplitNode implements Simplifiable, LIRL
             List<KeyData> keyData = new ArrayList<>();
             List<AbstractBeginNode> successors = new ArrayList<>();
             List<AbstractBeginNode> unreachable = new ArrayList<>();
+            double[] cumulative = {1.0d};
+            IntegerSwitchNode dominatingSwitch = checkAndAddDominatingSwitch(topMostSwitchNode, switchValue, keyData, successors, unreachable, cumulative);
 
             iteratingNode = topMostSwitchNode;
             Node lowestSwitchNode = topMostSwitchNode;
-            double[] cumulative = {1.0d};
 
             // Go down the if cascade
             while (iteratingNode != null) {
@@ -684,8 +714,22 @@ public final class IfNode extends ControlSplitNode implements Simplifiable, LIRL
                 iteratingNode = getParentSwitchNode(iteratingNode, switchValue);
             }
 
-            topMostSwitchNode.replaceAtPredecessor(toInsert);
-            topMostSwitchNode.replaceAtUsages(toInsert);
+            if (dominatingSwitch != null) {
+                AbstractBeginNode defaultNode = dominatingSwitch.defaultSuccessor();
+                dominatingSwitch.clearSuccessors();
+                dominatingSwitch.replaceAtPredecessor(toInsert);
+                dominatingSwitch.replaceAtUsages(toInsert);
+                dominatingSwitch.addSuccessorForDeletion(defaultNode);
+                GraphUtil.killCFG(dominatingSwitch);
+            } else {
+                topMostSwitchNode.replaceAtPredecessor(toInsert);
+                topMostSwitchNode.replaceAtUsages(toInsert);
+                GraphUtil.killCFG((FixedNode) topMostSwitchNode);
+            }
+
+            for (AbstractBeginNode duplicate : unreachable) {
+                GraphUtil.killCFG(duplicate);
+            }
 
             int pos = 0;
             for (AbstractBeginNode begin : successors) {
@@ -697,13 +741,10 @@ public final class IfNode extends ControlSplitNode implements Simplifiable, LIRL
                 toInsert.setBlockSuccessor(pos++, begin);
             }
 
-            GraphUtil.killCFG((FixedNode) topMostSwitchNode);
-            for (AbstractBeginNode duplicate : unreachable) {
-                GraphUtil.killCFG(duplicate);
-            }
             tool.addToWorkList(toInsert.predecessor());
             tool.addToWorkList(toInsert.defaultSuccessor());
             tool.addToWorkList(toInsert);
+
             return true;
         }
         return false;

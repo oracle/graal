@@ -106,6 +106,13 @@ public final class IntegerSwitchNode extends SwitchNode implements LIRLowerable,
         return JavaConstant.forInt(keys[i]);
     }
 
+    /**
+     * Gets the key at the specified index, as a java int.
+     */
+    public int intKeyAt(int i) {
+        return keys[i];
+    }
+
     @Override
     public int keyCount() {
         return keys.length;
@@ -153,6 +160,10 @@ public final class IntegerSwitchNode extends SwitchNode implements LIRLowerable,
         } else if (tryMergeSwitch(tool)) {
             return;
         }
+    }
+
+    public void addSuccessorForDeletion(AbstractBeginNode defaultNode) {
+        successors.add(defaultNode);
     }
 
     static final class KeyData {
@@ -266,7 +277,7 @@ public final class IntegerSwitchNode extends SwitchNode implements LIRLowerable,
             goingUp.clearSuccessors();
             if (goingUp != lastSwitch) {
                 // Keep the link between the merged switches, for easier deletion.
-                goingUp.successors.add(defaultSuccessor);
+                goingUp.addSuccessorForDeletion(defaultSuccessor);
             }
             if (!(goingUp.predecessor() instanceof AbstractBeginNode)) {
                 break;

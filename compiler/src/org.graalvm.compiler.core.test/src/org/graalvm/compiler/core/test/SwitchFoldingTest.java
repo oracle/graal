@@ -121,6 +121,92 @@ public class SwitchFoldingTest extends GraalCompilerTest {
         test("test2Snippet");
     }
 
+    public static int test3Snippet(int a) {
+        switch (a) {
+            case 0:
+                return 10;
+            default:
+                switch (a) {
+                    case 1:
+                        return 5;
+                    default:
+                        switch (a) {
+                            case 2:
+                                return 3;
+                            default:
+                                switch (a) {
+                                    case 3:
+                                        return 11;
+                                    default:
+                                        switch (a) {
+                                            case 4:
+                                                return 14;
+                                            default:
+                                                switch (a) {
+                                                    case 5:
+                                                        return 2;
+                                                    default:
+                                                        switch (a) {
+                                                            case 6:
+                                                                return 1;
+                                                            default:
+                                                                switch (a) {
+                                                                    case 7:
+                                                                        return 0;
+                                                                    default:
+                                                                        switch (a) {
+                                                                            case 8:
+                                                                                return 7;
+                                                                            default:
+                                                                                return 6;
+                                                                        }
+                                                                }
+                                                        }
+                                                }
+                                        }
+                                }
+                        }
+                }
+        }
+    }
+
+    @Test
+    public void test3() {
+        test("test3Snippet");
+    }
+
+    public static int test4Snippet(int a) {
+        switch (a) {
+            case 0:
+                return 10;
+            case 1:
+                return 5;
+            case 2:
+                return 3;
+            case 3:
+                return 11;
+            case 4:
+                return 14;
+            case 5:
+                return 2;
+            case 6:
+                return 1;
+            default:
+                if (a == 7) {
+                    return 0;
+                } else if (a == 8) {
+                    return 7;
+                } else {
+                    return 6;
+                }
+        }
+    }
+
+    @Test
+    public void test4() {
+        test("test4Snippet");
+    }
+
     private void test(String snippet) {
         StructuredGraph graph = parseEager(snippet, StructuredGraph.AllowAssumptions.YES);
         DebugContext debug = graph.getDebug();
