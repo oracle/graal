@@ -48,15 +48,17 @@ public final class OptimizedCompilationProfile {
      * Number of times an installed code for this tree was seen invalidated.
      */
     private int invalidationCount;
-
     private int callCount;
     private int callAndLoopCount;
-    private int lastTierCompilationCallAndLoopThreshold;
-    private boolean multiTierEnabled;
 
-    private long timestamp;
+    private final int lastTierCompilationCallAndLoopThreshold;
+    private final boolean multiTierEnabled;
+    private final long timestamp;
 
-    // The values below must only be written under lock, or in the constructor.
+    /**
+     * The values below must only be written under lock, or in the constructor,
+     * because they are modified by {@link #ensureProfiling(int, int)}.
+     */
     private int compilationCallThreshold;
     private int compilationCallAndLoopThreshold;
 
