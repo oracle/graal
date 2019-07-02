@@ -644,9 +644,10 @@ def _cinterfacetutorial(native_image, args=None):
 def _helloworld(native_image, javac_command, path, args):
     mkpath(path)
     hello_file = os.path.join(path, 'HelloWorld.java')
+    envkey = 'HELLO_WORLD_MESSAGE'
     output = 'Hello from native-image!'
     with open(hello_file, 'w') as fp:
-        fp.write('public class HelloWorld { public static void main(String[] args) { System.out.println("' + output + '"); } }')
+        fp.write('public class HelloWorld { public static void main(String[] args) { System.out.println(System.getenv("' + envkey + '")); } }')
         fp.flush()
     mx.run(javac_command + [hello_file])
 
@@ -670,6 +671,7 @@ def _helloworld(native_image, javac_command, path, args):
             pout, pin = os.pipe()
             os.dup2(pin, 1)  # connect stdout to pipe
             run_main = 'run_main' if mx.get_os() != 'windows' else 'main'
+            os.environ[envkey] = output
             getattr(lib, run_main)(1, 'dummy')  # call run_main of shared lib
             call_stdout = os.read(pout, 120)  # get pipe contents
             actual_output.append(call_stdout)
@@ -677,10 +679,13 @@ def _helloworld(native_image, javac_command, path, args):
             mx.log("Stdout from calling {} in shared object {}:".format(run_main, so_name))
             mx.log(call_stdout)
         finally:
+            del os.environ[envkey]
             os.close(pin)
             os.close(pout)
     else:
-        mx.run([join(path, 'helloworld')], out=_collector)
+        env = os.environ.copy()
+        env[envkey] = output
+        mx.run([join(path, 'helloworld')], out=_collector, env=env)
 
     if actual_output != expected_output:
         raise Exception('Unexpected output: ' + str(actual_output) + "  !=  " + str(expected_output))
