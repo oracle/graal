@@ -492,11 +492,11 @@ public abstract class TruffleLanguage<C> {
      * <p>
      * This method shouldn't perform any complex operations. The runtime system is just being
      * initialized and for example making
-     * {@link Env#parse(com.oracle.truffle.api.source.Source, java.lang.String...) calls into other
-     * languages} and assuming your language is already initialized and others can see it would be
-     * wrong - until you return from this method, the initialization isn't over. The same is true
-     * for instrumentation, the instruments cannot receive any meta data about code executed during
-     * context creation. Should there be a need to perform complex initialization, do it by
+     * {@link Env#parsePublic(com.oracle.truffle.api.source.Source, java.lang.String...) calls into
+     * other languages} and assuming your language is already initialized and others can see it
+     * would be wrong - until you return from this method, the initialization isn't over. The same
+     * is true for instrumentation, the instruments cannot receive any meta data about code executed
+     * during context creation. Should there be a need to perform complex initialization, do it by
      * overriding the {@link #initializeContext(java.lang.Object)} method.
      * <p>
      * Additional services provided by the language must be
@@ -1754,7 +1754,7 @@ public abstract class TruffleLanguage<C> {
          * written in a language with a given MIME type.
          *
          * @see Source#getMimeType()
-         * @see #parse(Source, String...)
+         * @see #parsePublic(Source, String...)
          *
          * @return a boolean that indicates if the MIME type is supported
          * @since 0.11
@@ -2580,7 +2580,7 @@ class TruffleLanguageSnippets {
             Source source = Source.newBuilder("js",
                                 "function(x, y) x * y",
                                 "mul.js").build();
-            context.mul = context.env.parse(source);
+            context.mul = context.env.parsePublic(source);
         }
     }
     // END: TruffleLanguageSnippets.PostInitLanguage#createContext
@@ -2652,7 +2652,7 @@ class TruffleLanguageSnippets {
         Source multiply = Source.newBuilder("js",
                         "a * b",
                         "mul.js").build();
-        CallTarget method = env.parse(multiply, "a", "b");
+        CallTarget method = env.parsePublic(multiply, "a", "b");
         Number fortyTwo = (Number) method.call(6, 7);
         assert 42 == fortyTwo.intValue();
         Number ten = (Number) method.call(2, 5);
