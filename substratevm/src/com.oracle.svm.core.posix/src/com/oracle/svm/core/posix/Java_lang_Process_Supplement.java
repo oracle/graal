@@ -180,7 +180,7 @@ public final class Java_lang_Process_Supplement {
                 actualEnvp = LibCHelper.getEnviron();
             }
 
-            if (SubstrateUtil.strchr(file, (int) '/').isNonNull()) {
+            if (SubstrateUtil.strchr(file, '/').isNonNull()) {
                 UnistdNoTransitions.execve(argv.read(0), argv, actualEnvp);
             } else {
                 // Scan PATH for the file to execute. We cannot use execvpe()

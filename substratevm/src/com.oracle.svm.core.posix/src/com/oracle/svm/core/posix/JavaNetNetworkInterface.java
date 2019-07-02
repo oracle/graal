@@ -737,7 +737,7 @@ public class JavaNetNetworkInterface {
         // 948      * Deal with virtual interface with colon notation e.g. eth0:1
         // 949      */
         // 950     name_colonP = strchr(name, ':');
-        name_colonP = SubstrateUtil.strchr(name, (int) ':');
+        name_colonP = SubstrateUtil.strchr(name, ':');
         // 951     if (name_colonP != NULL) {
         if (name_colonP.isNonNull()) {
             // 952       /**
