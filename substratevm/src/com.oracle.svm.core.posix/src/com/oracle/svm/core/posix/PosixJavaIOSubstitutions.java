@@ -94,7 +94,6 @@ import java.util.List;
 import java.util.concurrent.locks.ReentrantLock;
 
 import org.graalvm.compiler.serviceprovider.JavaVersionUtil;
-import org.graalvm.nativeimage.ImageSingletons;
 import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.Platforms;
 import org.graalvm.nativeimage.StackValue;
@@ -106,7 +105,6 @@ import org.graalvm.nativeimage.c.type.CTypeConversion;
 import org.graalvm.nativeimage.c.type.CTypeConversion.CCharPointerHolder;
 import org.graalvm.nativeimage.hosted.Feature;
 import org.graalvm.nativeimage.impl.InternalPlatform;
-import org.graalvm.nativeimage.impl.RuntimeClassInitializationSupport;
 import org.graalvm.word.SignedWord;
 import org.graalvm.word.WordFactory;
 
@@ -137,24 +135,6 @@ import com.oracle.svm.core.util.VMError;
 @AutomaticFeature
 @CLibrary(value = "java", requireStatic = true)
 class PosixJavaIOSubstituteFeature implements Feature {
-
-    @Override
-    public void duringSetup(DuringSetupAccess access) {
-        // Can't re-initialize the classes list below:
-        // Error: com.oracle.graal.pointsto.constraints.UnsupportedFeatureException: No instances
-        // are allowed in the image heap for a class
-        // that is initialized or reinitialized at image runtime: java.io.XXX.
-        //
-        // RuntimeClassInitialization.rerun(access.findClassByName("java.io.FileDescriptor"));
-        // RuntimeClassInitialization.rerun(access.findClassByName("java.io.FileInputStream"));
-        // RuntimeClassInitialization.rerun(access.findClassByName("java.io.FileOutputStream"));
-        // RuntimeClassInitialization.rerun(access.findClassByName("java.io.UnixFileSystem"));
-
-        ImageSingletons.lookup(RuntimeClassInitializationSupport.class).rerunInitialization(access.findClassByName("java.io.RandomAccessFile"), "required for substitutions");
-        ImageSingletons.lookup(RuntimeClassInitializationSupport.class).rerunInitialization(access.findClassByName("java.util.zip.ZipFile"), "required for substitutions");
-        ImageSingletons.lookup(RuntimeClassInitializationSupport.class).rerunInitialization(access.findClassByName("java.util.zip.Inflater"), "required for substitutions");
-        ImageSingletons.lookup(RuntimeClassInitializationSupport.class).rerunInitialization(access.findClassByName("java.util.zip.Deflater"), "required for substitutions");
-    }
 
     @Override
     public void beforeAnalysis(BeforeAnalysisAccess access) {
