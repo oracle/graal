@@ -137,7 +137,8 @@ public class Option {
             .type("Integer")
             .category("INTERNAL")
             .def("100000")
-            .help("Number of loop iterations until on-stack-replacement compilation is triggered."),
+            .help("Number of loop iterations until on-stack-replacement compilation is triggered.")
+            .deprecatedBy("OSRCompilationThreshold"),
 
         option("TruffleSplittingMaxCalleeSize")
             .type("Integer")

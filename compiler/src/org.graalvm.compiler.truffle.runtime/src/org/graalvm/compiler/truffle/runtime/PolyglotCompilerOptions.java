@@ -171,10 +171,12 @@ public final class PolyglotCompilerOptions {
     @Option(help = "Enable automatic on-stack-replacement of loops.", category = OptionCategory.EXPERT)
     public static final OptionKey<Boolean> OSR = new OptionKey<>(true);
 
+    @Option(help = "Number of loop iterations until on-stack-replacement compilation is triggered.", category = OptionCategory.INTERNAL)
+    public static final OptionKey<Integer> OSRCompilationThreshold = new OptionKey<>(SharedTruffleRuntimeOptions.TruffleOSRCompilationThreshold.getDefaultValue());
+
     /*
      * TODO planned options (GR-13444):
      *
-
     @Option(help = "Trace deoptimization of compilation units.",
                     category = OptionCategory.EXPERT)
     public static final OptionKey<Boolean> TraceDeoptimization = new OptionKey<>(false);
@@ -221,6 +223,7 @@ public final class PolyglotCompilerOptions {
         POLYGLOT_TO_TRUFFLE.put(SplittingAllowForcedSplits, SharedTruffleRuntimeOptions.TruffleSplittingAllowForcedSplits);
 
         POLYGLOT_TO_TRUFFLE.put(OSR, SharedTruffleRuntimeOptions.TruffleOSR);
+        POLYGLOT_TO_TRUFFLE.put(OSRCompilationThreshold, SharedTruffleRuntimeOptions.TruffleOSRCompilationThreshold);
     }
 
     /**
