@@ -35,7 +35,6 @@ import java.util.Set;
 import org.graalvm.compiler.core.common.type.IntegerStamp;
 import org.graalvm.compiler.core.common.type.PrimitiveStamp;
 import org.graalvm.compiler.core.common.type.Stamp;
-import org.graalvm.compiler.debug.TTY;
 import org.graalvm.compiler.graph.Graph;
 import org.graalvm.compiler.graph.Node;
 import org.graalvm.compiler.graph.NodeInterface;
@@ -54,10 +53,32 @@ import org.graalvm.compiler.nodes.util.GraphUtil;
 public interface SwitchFoldable extends NodeInterface {
     Comparator<KeyData> sorter = Comparator.comparingInt((KeyData k) -> k.key);
 
-    Node getNext();
+    /**
+     * Returns the direct successor in the branch to check for SwitchFoldability, or null if the
+     * folding should stop.
+     */
+    Node getNextSwitchFoldableBranch();
 
+    /**
+     * Returns the value that will be used as the switch input. This value should be an int.
+     */
     ValueNode switchValue();
 
+    /**
+     * Updates the current state of the IntegerSwitch that will be spawned. That means:
+     * <p>
+     * - Checking for duplicate keys: add the duplicate key's branch to duplicates
+     * <p>
+     * - For branches of non-duplicate keys: add them to successors and update the keyData
+     * accordingly
+     * <p>
+     * - Update the value of the cumulative probability, ie, multiply it by the probability of
+     * taking the next branch (according to {@link SwitchFoldable#getNextSwitchFoldableBranch})
+     * <p>
+     *
+     * @see QuickQueryList
+     * @see QuickQueryKeyData
+     */
     boolean updateSwitchData(QuickQueryKeyData keyData, QuickQueryList<AbstractBeginNode> successors, double[] cumulative, List<AbstractBeginNode> duplicates);
 
     /**
@@ -65,10 +86,22 @@ public interface SwitchFoldable extends NodeInterface {
      */
     int addDefault(QuickQueryList<AbstractBeginNode> successors);
 
+    /**
+     * @param switchValue the value of the switch that will spawn through this folding attempt.
+     * @return true if this node should be folded in the current folding attempt, false otherwise.
+     * @see SwitchFoldable#maybeIsInSwitch(LogicNode)
+     * @see SwitchFoldable#sameSwitchValue(LogicNode, ValueNode)
+     */
     boolean isInSwitch(ValueNode switchValue);
 
+    /**
+     * Removes the successors of this node, while keeping it linked to the rest of the cascade.
+     */
     void cutOffCascadeNode();
 
+    /**
+     * Completely removes all successors from this node.
+     */
     void cutOffLowestCascadeNode();
 
     /**
@@ -192,7 +225,7 @@ public interface SwitchFoldable extends NodeInterface {
     }
 
     default SwitchFoldable getChildSwitchNode(ValueNode switchValue) {
-        Node result = skipDownBegins(getNext());
+        Node result = skipDownBegins(getNextSwitchFoldableBranch());
         if (result instanceof SwitchFoldable && ((SwitchFoldable) result).isInSwitch(switchValue)) {
             return (SwitchFoldable) result;
         }
@@ -214,7 +247,7 @@ public interface SwitchFoldable extends NodeInterface {
      */
     default boolean switchTransformationOptimization(SimplifierTool tool) {
         ValueNode switchValue = switchValue();
-        if (switchValue == null || (getParentSwitchNode(switchValue) == null && getChildSwitchNode(switchValue) == null)) {
+        if (!asNode().isAlive() || switchValue == null || (getParentSwitchNode(switchValue) == null && getChildSwitchNode(switchValue) == null)) {
             // Don't bother trying if there is nothing to do.
             return false;
         }
@@ -273,7 +306,6 @@ public interface SwitchFoldable extends NodeInterface {
 
         // Spawn the required data structures
         int newKeyCount = keyData.list.size();
-        TTY.println("vroom: " + newKeyCount);
         int[] keys = new int[newKeyCount];
         double[] keyProbabilities = new double[newKeyCount + 1];
         int[] keySuccessors = new int[newKeyCount + 1];
@@ -326,7 +358,7 @@ public interface SwitchFoldable extends NodeInterface {
         // Attach the branches to the switch.
         int pos = 0;
         for (AbstractBeginNode begin : successors.list) {
-            if (!begin.isAlive()) {
+            if (begin.isUnregistered()) {
                 graph.add(begin.next());
                 graph.add(begin);
                 begin.setNext(begin.next());

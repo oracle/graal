@@ -122,7 +122,7 @@ public final class FixedGuardNode extends AbstractFixedGuardNode implements Lowe
     }
 
     @Override
-    public Node getNext() {
+    public Node getNextSwitchFoldableBranch() {
         return next();
     }
 
@@ -152,7 +152,7 @@ public final class FixedGuardNode extends AbstractFixedGuardNode implements Lowe
 
     @Override
     public void cutOffCascadeNode() {
-        return;
+        /* nop */
     }
 
     @Override
