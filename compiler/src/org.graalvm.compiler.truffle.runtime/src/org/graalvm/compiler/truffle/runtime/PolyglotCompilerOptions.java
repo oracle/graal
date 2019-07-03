@@ -218,6 +218,9 @@ public final class PolyglotCompilerOptions {
         POLYGLOT_TO_TRUFFLE.put(CompileImmediately, SharedTruffleRuntimeOptions.TruffleCompileImmediately);
     }
 
+    /**
+     * Uses the --engine option if set, otherwise fallback on the -Dgraal option.
+     */
     @SuppressWarnings("unchecked")
     static <T> T getValue(OptionValues polyglotValues, OptionKey<T> key) {
         if (polyglotValues != null && polyglotValues.hasBeenSet(key)) {
