@@ -132,11 +132,6 @@ final class GraalTVMCI extends TVMCI {
         return OptimizedIndirectCallNode.createUncached();
     }
 
-    @Override
-    protected <T> T getOrCreateRuntimeData(RootNode rootNode, Function<OptionValues, T> constructor) {
-        return super.getOrCreateRuntimeData(rootNode, constructor);
-    }
-
     EngineData getEngineData(RootNode rootNode) {
         return getOrCreateRuntimeData(rootNode, EngineData.ENGINE_DATA_SUPPLIER);
     }
