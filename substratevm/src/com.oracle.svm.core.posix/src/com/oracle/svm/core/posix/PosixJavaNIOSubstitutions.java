@@ -3977,6 +3977,7 @@ public final class PosixJavaNIOSubstitutions {
         /* } Do not format quoted code: @formatter:on */
     }
 
+    /* { Allow names with non-standard names: Checkstyle: stop */
     @SuppressWarnings({"unused", "static-method"})
     @TargetClass(className = "sun.nio.ch.DatagramChannelImpl")
     @Platforms({Platform.DARWIN.class, Platform.LINUX.class})
@@ -4141,7 +4142,8 @@ public final class PosixJavaNIOSubstitutions {
         //   147                                               jint len, jboolean connected)
         //   148  {
         @Substitute
-        private int receive0(FileDescriptor fdo, long address, int len, boolean connected) throws IOException {
+        private int receive0(FileDescriptor fdo, long address, int lenIn, boolean connected) throws IOException {
+            int len = lenIn;
             //   149      jint fd = fdval(env, fdo);
             int fd = PosixUtils.getFD(fdo);
             //   150      void *buf = (void *)jlong_to_ptr(address);
@@ -4283,7 +4285,8 @@ public final class PosixJavaNIOSubstitutions {
         //   222                                            jint len, jobject destAddress, jint destPort)
         //   223  {
         @Substitute
-        private int send0(boolean preferIPv6, FileDescriptor fdo, long address, int len, InetAddress destAddress, int destPort) throws IOException {
+        private int send0(boolean preferIPv6, FileDescriptor fdo, long address, int lenIn, InetAddress destAddress, int destPort) throws IOException {
+            int len = lenIn;
             //   224      jint fd = fdval(env, fdo);
             int fd = PosixUtils.getFD(fdo);
             //   225      void *buf = (void *)jlong_to_ptr(address);
@@ -4348,6 +4351,7 @@ public final class PosixJavaNIOSubstitutions {
         }
         // @formatter:on
     }
+    /* } Allow names with non-standard names: Checkstyle: resume */
 }
 
 /**

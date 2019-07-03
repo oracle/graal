@@ -65,7 +65,8 @@ public class DatagramChannelTest {
                     Assert.assertNull("Received " + comparison.position() + " unexpected bytes", a.receive(comparison));
                     Assert.assertNull("Received " + comparison.position() + " unexpected bytes", b.receive(comparison));
 
-                    // here's where it gets tricky: UDP is unreliable, so we need to avoid false negatives...
+                    // here's where it gets tricky: UDP is unreliable, so we need to avoid false
+                    // negatives...
 
                     InetSocketAddress src;
                     int retry = 0;
@@ -76,9 +77,9 @@ public class DatagramChannelTest {
                         int innerRetry = 0;
                         do {
                             src = (InetSocketAddress) a.receive(comparison);
-                        } while (src == null && ++ innerRetry < 16);
+                        } while (src == null && ++innerRetry < 16);
                         payload.rewind();
-                    } while (src == null && ++ retry < 16);
+                    } while (src == null && ++retry < 16);
 
                     Assert.assertNotNull(src);
 
