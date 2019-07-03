@@ -147,12 +147,12 @@ public final class OptimizedDirectCallNode extends DirectCallNode {
 
             if (callCount >= 1) {
                 currentTarget.decrementKnownCallSites();
-                if (!TruffleRuntimeOptions.getValue(SharedTruffleRuntimeOptions.TruffleLegacySplitting)) {
+                if (!currentTarget.getOptionValue(PolyglotCompilerOptions.LegacySplitting)) {
                     currentTarget.removeKnownCallSite(this);
                 }
                 splitTarget.incrementKnownCallSites();
             }
-            if (!TruffleRuntimeOptions.getValue(SharedTruffleRuntimeOptions.TruffleLegacySplitting)) {
+            if (!currentTarget.getOptionValue(PolyglotCompilerOptions.LegacySplitting)) {
                 splitTarget.addKnownCallNode(this);
             }
 

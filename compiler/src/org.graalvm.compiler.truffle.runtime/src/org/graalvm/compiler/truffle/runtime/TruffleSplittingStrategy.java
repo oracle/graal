@@ -290,7 +290,7 @@ final class TruffleSplittingStrategy {
 
         SplitStatisticsReporter(EngineData engineData) {
             this.engineData = engineData;
-            if (TruffleRuntimeOptions.getValue(SharedTruffleRuntimeOptions.TruffleTraceSplittingSummary)) {
+            if (engineData.options.isTraceSplittingSummary()) {
                 Runtime.getRuntime().addShutdownHook(this);
             }
         }
