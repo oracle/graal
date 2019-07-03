@@ -283,12 +283,17 @@ public abstract class TVMCI {
      */
     @SuppressWarnings("unchecked")
     protected static <T> T getOrCreateRuntimeData(RootNode rootNode, Function<OptionValues, T> constructor) {
-        Objects.requireNonNull(rootNode);
         Objects.requireNonNull(constructor);
         final Accessor.NodeSupport nodesAccess = TVMCIAccessor.nodesAccess();
         final EngineSupport engineAccess = TVMCIAccessor.engineAccess();
 
-        final Object sourceVM = nodesAccess.getSourceVM(rootNode);
+        final Object sourceVM;
+        if (rootNode == null) {
+            sourceVM = engineAccess.getCurrentVM();
+        } else {
+            sourceVM = nodesAccess.getSourceVM(rootNode);
+        }
+
         if (sourceVM != null) {
             return engineAccess.getOrCreateRuntimeData(sourceVM, constructor);
         } else {

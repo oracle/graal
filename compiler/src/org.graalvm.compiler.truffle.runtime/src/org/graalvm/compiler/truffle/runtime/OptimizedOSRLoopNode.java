@@ -42,6 +42,7 @@ import com.oracle.truffle.api.nodes.RootNode;
 import com.oracle.truffle.api.source.SourceSection;
 
 import jdk.vm.ci.meta.SpeculationLog;
+import org.graalvm.options.OptionValues;
 
 /**
  * Loop node implementation that supports on-stack-replacement with compiled code.
@@ -271,9 +272,12 @@ public abstract class OptimizedOSRLoopNode extends LoopNode implements ReplaceOb
      * disabled {@link OptimizedLoopNode} will be used instead.
      */
     public static LoopNode create(RepeatingNode repeat) {
+        // No RootNode accessible here, as repeat is not adopted.
+        OptionValues engineOptions = OptimizedCallTarget.runtime().getTvmci().getEngineData(null).engineOptions;
+
         // using static methods with LoopNode return type ensures
         // that only one loop node implementation gets loaded.
-        if (TruffleRuntimeOptions.getValue(SharedTruffleRuntimeOptions.TruffleOSR)) {
+        if (PolyglotCompilerOptions.getValue(engineOptions, PolyglotCompilerOptions.OSR)) {
             return createDefault(repeat);
         } else {
             return OptimizedLoopNode.create(repeat);
