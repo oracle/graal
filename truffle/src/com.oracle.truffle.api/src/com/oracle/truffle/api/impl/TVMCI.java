@@ -282,7 +282,7 @@ public abstract class TVMCI {
      * The resulting instance is cached in the Engine.
      */
     @SuppressWarnings("unchecked")
-    protected <T> T getOrCreateRuntimeData(RootNode rootNode, Function<OptionValues, T> constructor) {
+    protected static <T> T getOrCreateRuntimeData(RootNode rootNode, Function<OptionValues, T> constructor) {
         Objects.requireNonNull(rootNode);
         Objects.requireNonNull(constructor);
         final Accessor.NodeSupport nodesAccess = TVMCIAccessor.nodesAccess();
