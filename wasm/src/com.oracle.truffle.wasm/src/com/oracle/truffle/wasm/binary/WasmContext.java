@@ -40,14 +40,18 @@ import com.oracle.truffle.api.Scope;
 import com.oracle.truffle.api.source.Source;
 
 public class WasmContext {
+    private static final long DEFAULT_MEMORY_SIZE = 1 << 25;
+
     private Env env;
     private WasmLanguage language;
     private Map<String, WasmModule> modules;
+    private WasmMemory memory;
 
     public WasmContext(Env env, WasmLanguage language) {
         this.env = env;
         this.language = language;
         this.modules = new HashMap<>();
+        this.memory = new UnsafeWasmMemory(DEFAULT_MEMORY_SIZE);
     }
 
     public CallTarget parse(Source source) {

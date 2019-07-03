@@ -67,7 +67,7 @@ public abstract class WasmNode extends Node implements WasmNodeInterface {
      * A return value of -1 means no branch, whereas a return value n greater than or equal to 0 means that
      * the execution engine has to branch n levels up the block execution stack.
      */
-    public abstract int execute(VirtualFrame frame);
+    public abstract int execute(WasmContext context, VirtualFrame frame);
 
     public abstract byte returnTypeId();
 

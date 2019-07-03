@@ -44,7 +44,7 @@ public class WasmLoopNode extends WasmNode {
     }
 
     @Override
-    public int execute(VirtualFrame frame) {
+    public int execute(WasmContext context, VirtualFrame frame) {
         this.loopNode.executeLoop(frame);
         return -1;
     }

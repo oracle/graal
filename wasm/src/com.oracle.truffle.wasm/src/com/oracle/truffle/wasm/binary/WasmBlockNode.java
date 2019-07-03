@@ -171,7 +171,7 @@ public class WasmBlockNode extends WasmNode implements RepeatingNode {
     }
 
     @ExplodeLoop
-    public int execute(VirtualFrame frame) {
+    public int execute(WasmContext context, VirtualFrame frame) {
         int nestedControlOffset = 0;
         int byteConstantOffset = initialByteConstantOffset;
         int intConstantOffset = initialIntConstantOffset;
@@ -188,7 +188,7 @@ public class WasmBlockNode extends WasmNode implements RepeatingNode {
                     break;
                 case BLOCK: {
                     WasmNode block = nestedControlTable[nestedControlOffset];
-                    int unwindCounter = block.execute(frame);
+                    int unwindCounter = block.execute(context, frame);
                     if (unwindCounter > 0) {
                         return unwindCounter - 1;
                     }
@@ -210,7 +210,7 @@ public class WasmBlockNode extends WasmNode implements RepeatingNode {
                      * {@link WasmBlockNode#execute(VirtualFrame)} method is not -1
                      * (see the {@link WasmBlockNode#executeRepeating(VirtualFrame)}} method).
                      */
-                    int unwindCounter = loopNode.execute(frame);
+                    int unwindCounter = loopNode.execute(context, frame);
 
                     // The return value of the above call (unwindCounter) will normally indicate where we need to
                     // branch to after the loop completion (i.e. to the code just after the loop or further out).
@@ -225,7 +225,7 @@ public class WasmBlockNode extends WasmNode implements RepeatingNode {
                 case IF: {
                     WasmNode ifNode = nestedControlTable[nestedControlOffset];
                     stackPointer--;
-                    int unwindCounter = ifNode.execute(frame);
+                    int unwindCounter = ifNode.execute(context, frame);
                     if (unwindCounter > 1) {
                         return unwindCounter - 1;
                     }
@@ -1276,7 +1276,8 @@ public class WasmBlockNode extends WasmNode implements RepeatingNode {
 
     @Override
     public boolean executeRepeating(VirtualFrame frame) {
-        return execute(frame) != -1;
+        WasmContext context = null; // TODO: Read the context from a thread-local.
+        return execute(context, frame) != -1;
     }
 
     @Override

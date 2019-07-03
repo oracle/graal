@@ -29,26 +29,50 @@
  */
 package com.oracle.truffle.wasm.binary;
 
-import static com.oracle.truffle.wasm.binary.ValueTypes.VOID_TYPE;
+public abstract class WasmMemory {
+    public abstract int load_i32(long address);
 
-import com.oracle.truffle.api.frame.VirtualFrame;
+    public abstract long load_i64(long address);
 
-public class WasmEmptyNode extends WasmNode {
+    public abstract float load_f32(long address);
 
-    public WasmEmptyNode(WasmCodeEntry codeEntry, int byteLength) {
-        super(codeEntry, byteLength, 0);
-    }
+    public abstract double load_f64(long address);
 
-    @Override
-    public int execute(WasmContext context, VirtualFrame frame) {
-        // A return value of -1 means no branch to be taken.
-        return -1;
-    }
+    public abstract int load_i32_8s(long address);
 
-    @Override
-    public byte returnTypeId() {
-        return VOID_TYPE;
-    }
+    public abstract int load_i32_8u(long address);
 
+    public abstract int load_i32_16s(long address);
+
+    public abstract int load_i32_16u(long address);
+
+    public abstract long load_i64_8s(long address);
+
+    public abstract long load_i64_8u(long address);
+
+    public abstract long load_i64_16s(long address);
+
+    public abstract long load_i64_16u(long address);
+
+    public abstract long load_i64_32s(long address);
+
+    public abstract long load_i64_32u(long address);
+
+    public abstract void store_i32(long address, int value);
+
+    public abstract void store_i64(long address, long value);
+
+    public abstract void store_f32(long address, float value);
+
+    public abstract void store_f64(long address, double value);
+
+    public abstract void store_i32_8(long address, int value);
+
+    public abstract void store_i32_16(long address, int value);
+
+    public abstract void store_i64_8(long address, long value);
+
+    public abstract void store_i64_16(long address, long value);
+
+    public abstract void store_i64_32(long address, long value);
 }
-
