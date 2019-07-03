@@ -121,6 +121,9 @@ public interface SwitchFoldable extends NodeInterface {
         return 1;
     }
 
+    /**
+     * Should be overridden if getDefault() has side effects.
+     */
     default boolean isDefaultSuccessor(AbstractBeginNode successor) {
         return successor == getDefault();
     }
@@ -153,13 +156,14 @@ public interface SwitchFoldable extends NodeInterface {
             int key = intKeyAt(i);
             double keyProbability = cumulative[0] * keyProbability(i);
             KeyData data;
+            AbstractBeginNode keySuccessor = keySuccessor(i);
             if (isDuplicateKey(key, keyData)) {
                 // Key was already seen
                 data = keyData.fromKey(key);
                 if (data.keySuccessor != KeyData.KEY_UNKNOWN) {
                     // Unreachable key: kill it manually at the end
-                    if (!newSuccessors.contains(keySuccessor(i))) {
-                        duplicates.add(keySuccessor(i));
+                    if (!newSuccessors.contains(keySuccessor)) {
+                        duplicates.add(keySuccessor);
                     }
                     return true;
                 }
@@ -173,7 +177,6 @@ public interface SwitchFoldable extends NodeInterface {
                 data = new KeyData(key, keyProbability, KeyData.KEY_UNKNOWN);
                 keyData.add(data);
             }
-            AbstractBeginNode keySuccessor = keySuccessor(i);
 
             int pos = duplicateIndex(keySuccessor, newSuccessors);
             if (pos != -1) {

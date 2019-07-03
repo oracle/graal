@@ -140,6 +140,11 @@ public final class FixedGuardNode extends AbstractFixedGuardNode implements Lowe
     }
 
     @Override
+    public boolean isDefaultSuccessor(AbstractBeginNode beginNode) {
+        return beginNode == next();
+    }
+
+    @Override
     public AbstractBeginNode getDefault() {
         FixedNode defaultNode = next();
         setNext(null);
