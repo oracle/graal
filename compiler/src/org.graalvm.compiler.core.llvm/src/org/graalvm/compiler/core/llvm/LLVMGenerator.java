@@ -338,6 +338,16 @@ public class LLVMGenerator implements LIRGeneratorTool {
     }
 
     @Override
+    public boolean canInlineConstant(Constant constant) {
+        return false;
+    }
+
+    @Override
+    public boolean mayEmbedConstantLoad(Constant constant) {
+        return false;
+    }
+
+    @Override
     public Value emitConstant(LIRKind kind, Constant constant) {
         LLVMValueRef value = emitLLVMConstant(((LLVMKind) kind.getPlatformKind()).get(), (JavaConstant) constant);
         return new LLVMConstant(value, constant);
