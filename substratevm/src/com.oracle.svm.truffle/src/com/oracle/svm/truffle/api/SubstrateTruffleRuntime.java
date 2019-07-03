@@ -114,7 +114,7 @@ public final class SubstrateTruffleRuntime extends GraalTruffleRuntime {
         }
         if (TruffleRuntimeOptions.getValue(SharedTruffleRuntimeOptions.TraceTruffleTransferToInterpreter)) {
             if (!SubstrateOptions.IncludeNodeSourcePositions.getValue()) {
-                System.out.println("Warning: TraceTruffleTransferToInterpreter cannot print stack traces. Build image with -H:+IncludeNodeSourcePositions to enable stack traces.");
+                Log.log().string("Warning: TraceTruffleTransferToInterpreter cannot print stack traces. Build image with -H:+IncludeNodeSourcePositions to enable stack traces.").newline();
             }
             RuntimeOptionValues.singleton().update(Deoptimizer.Options.TraceDeoptimization, true);
         }

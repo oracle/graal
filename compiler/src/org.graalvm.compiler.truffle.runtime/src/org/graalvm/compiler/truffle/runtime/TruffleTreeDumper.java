@@ -77,7 +77,7 @@ public final class TruffleTreeDumper {
     private static void dumpASTAndCallTrees(TruffleDebugContext debug, OptimizedCallTarget callTarget, TruffleInlining inlining) throws IOException {
         if (callTarget.getRootNode() != null) {
             AST ast = new AST(callTarget);
-            final GraphOutput<AST, ?> astOutput = debug.buildOutput(GraphOutput.newBuilder(AST_DUMP_STRUCTURE).blocks(AST_DUMP_STRUCTURE).protocolVersion(6, 0));
+            final GraphOutput<AST, ?> astOutput = debug.buildOutput(GraphOutput.newBuilder(AST_DUMP_STRUCTURE).blocks(AST_DUMP_STRUCTURE).protocolVersion(6, 1));
 
             astOutput.beginGroup(ast, "AST", "AST", null, 0, debug.getVersionProperties());
 
@@ -91,7 +91,7 @@ public final class TruffleTreeDumper {
             astOutput.close();
 
             CallTree callTree = new CallTree(callTarget, null);
-            final GraphOutput<CallTree, ?> callTreeOutput = debug.buildOutput(GraphOutput.newBuilder(CALL_GRAPH_DUMP_STRUCTURE).blocks(CALL_GRAPH_DUMP_STRUCTURE).protocolVersion(6, 0));
+            final GraphOutput<CallTree, ?> callTreeOutput = debug.buildOutput(GraphOutput.newBuilder(CALL_GRAPH_DUMP_STRUCTURE).blocks(CALL_GRAPH_DUMP_STRUCTURE).protocolVersion(6, 1));
             callTreeOutput.beginGroup(null, "Call Tree", "Call Tree", null, 0, debug.getVersionProperties());
             callTreeOutput.print(callTree, null, 0, AFTER_PROFILING);
             if (inlining.countInlinedCalls() > 0) {

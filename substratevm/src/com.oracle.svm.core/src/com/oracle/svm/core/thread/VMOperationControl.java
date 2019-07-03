@@ -28,10 +28,12 @@ import java.util.Collections;
 import java.util.List;
 
 import org.graalvm.nativeimage.CurrentIsolate;
-import org.graalvm.nativeimage.Feature;
+import org.graalvm.nativeimage.hosted.Feature;
 import org.graalvm.nativeimage.ImageSingletons;
+import org.graalvm.nativeimage.IsolateThread;
 import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.Platforms;
+import org.graalvm.word.WordFactory;
 
 import com.oracle.svm.core.SubstrateOptions;
 import com.oracle.svm.core.annotate.AutomaticFeature;
@@ -39,15 +41,13 @@ import com.oracle.svm.core.annotate.Uninterruptible;
 import com.oracle.svm.core.locks.VMMutex;
 import com.oracle.svm.core.log.Log;
 import com.oracle.svm.core.thread.Safepoint.SafepointRequestValues;
-import com.oracle.svm.core.threadlocal.FastThreadLocalFactory;
-import com.oracle.svm.core.threadlocal.FastThreadLocalInt;
 import com.oracle.svm.core.util.VMError;
 
 /** A multiplex of VMOperation queues. */
 public final class VMOperationControl {
 
     /** Is this thread the owner of the VMOperation lock. */
-    private static final FastThreadLocalInt isLockOwner = FastThreadLocalFactory.createInt();
+    private static IsolateThread lockOwner = null;
 
     /**
      * The lists of pending VMOperations of various kinds.
@@ -245,19 +245,19 @@ public final class VMOperationControl {
 
     @Uninterruptible(reason = "Called from Uninterruptible code", mayBeInlined = true)
     protected static boolean isLockOwner() {
-        return isLockOwner.get() == 1;
+        return lockOwner == CurrentIsolate.getCurrentThread();
     }
 
     /** Note that this thread is the owner of the VMOperation lock. */
     private static void setLockOwner() {
-        assert (!isLockOwner()) : "VMOperationControl.setOwner, but already owner.";
-        isLockOwner.set(1);
+        assert lockOwner.isNull() : "VMOperationControl.setOwner, but already owner.";
+        lockOwner = CurrentIsolate.getCurrentThread();
     }
 
     /** Note that this thread is not the owner of the VMOperation lock. */
     private static void unsetLockOwner() {
         assert isLockOwner() : "VMOperationControl.unsetOwner, but not owner.";
-        isLockOwner.set(0);
+        lockOwner = WordFactory.nullPointer();
     }
 
     /** Check if it is okay for this thread to block. */

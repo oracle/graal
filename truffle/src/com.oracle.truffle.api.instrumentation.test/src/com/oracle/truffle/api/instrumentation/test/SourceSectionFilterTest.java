@@ -930,7 +930,7 @@ public class SourceSectionFilterTest extends AbstractPolyglotTest {
                         isInstrumented(internalFilter, root, createNode(internalSource.createSection(1))));
         // Non-internal RootNode
         root = createRootNode(nonInternalSource.createSection(0, 23), false);
-        Assert.assertTrue(
+        Assert.assertFalse(
                         isInstrumented(internalFilter, root, createNode(internalSource.createSection(1))));
     }
 

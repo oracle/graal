@@ -47,9 +47,9 @@ import org.graalvm.compiler.nodes.ValueNode;
 import org.graalvm.compiler.nodes.calc.AddNode;
 import org.graalvm.compiler.nodes.java.LoadIndexedNode;
 import org.graalvm.compiler.nodes.java.StoreIndexedNode;
+import org.graalvm.compiler.nodes.spi.CoreProviders;
 import org.graalvm.compiler.options.OptionValues;
 import org.graalvm.compiler.phases.BasePhase;
-import org.graalvm.compiler.phases.tiers.PhaseContext;
 import org.graalvm.compiler.truffle.compiler.TruffleCompilerOptions;
 
 import jdk.vm.ci.code.CodeUtil;
@@ -57,7 +57,7 @@ import jdk.vm.ci.meta.JavaConstant;
 import jdk.vm.ci.meta.JavaKind;
 import jdk.vm.ci.meta.MetaUtil;
 
-public abstract class InstrumentPhase extends BasePhase<PhaseContext> {
+public abstract class InstrumentPhase extends BasePhase<CoreProviders> {
 
     private static boolean checkMethodExists(String declaringClassName, String methodName) {
         try {
@@ -108,7 +108,7 @@ public abstract class InstrumentPhase extends BasePhase<PhaseContext> {
         return TruffleCompilerOptions.TruffleInstrumentFilter.getValue(options);
     }
 
-    protected static void insertCounter(StructuredGraph graph, PhaseContext context, JavaConstant tableConstant,
+    protected static void insertCounter(StructuredGraph graph, CoreProviders context, JavaConstant tableConstant,
                     FixedWithNextNode targetNode, int slotIndex) {
         assert (tableConstant != null);
         TypeReference typeRef = TypeReference.createExactTrusted(context.getMetaAccess().lookupJavaType(tableConstant));
@@ -129,7 +129,7 @@ public abstract class InstrumentPhase extends BasePhase<PhaseContext> {
     }
 
     @Override
-    protected void run(StructuredGraph graph, PhaseContext context) {
+    protected void run(StructuredGraph graph, CoreProviders context) {
         JavaConstant tableConstant = snippetReflection.forObject(instrumentation.getAccessTable());
         try {
             instrumentGraph(graph, context, tableConstant);
@@ -138,7 +138,7 @@ public abstract class InstrumentPhase extends BasePhase<PhaseContext> {
         }
     }
 
-    protected abstract void instrumentGraph(StructuredGraph graph, PhaseContext context, JavaConstant tableConstant);
+    protected abstract void instrumentGraph(StructuredGraph graph, CoreProviders context, JavaConstant tableConstant);
 
     protected abstract int instrumentationPointSlotCount();
 

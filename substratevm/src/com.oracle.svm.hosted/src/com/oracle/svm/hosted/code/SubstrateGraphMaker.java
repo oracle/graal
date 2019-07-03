@@ -53,13 +53,13 @@ public class SubstrateGraphMaker extends GraphMaker {
 
     @Override
     protected Instance createGraphBuilder(Providers providers, GraphBuilderConfiguration graphBuilderConfig, OptimisticOptimizations optimisticOpts, IntrinsicContext initialIntrinsicContext) {
-        return new SubstrateGraphBuilderPhase(providers, graphBuilderConfig, optimisticOpts, initialIntrinsicContext, wordTypes, null);
+        return new SubstrateGraphBuilderPhase(providers, graphBuilderConfig, optimisticOpts, initialIntrinsicContext, wordTypes);
     }
 
     @Override
     protected StructuredGraph buildInitialGraph(DebugContext debug, BytecodeProvider bytecodeProvider, ResolvedJavaMethod methodToParse, Object[] args, boolean trackNodeSourcePosition,
-                    NodeSourcePosition replaceePosition) {
-        StructuredGraph graph = super.buildInitialGraph(debug, bytecodeProvider, methodToParse, args, trackNodeSourcePosition, replaceePosition);
+                    NodeSourcePosition replaceePosition, IntrinsicContext.CompilationContext context) {
+        StructuredGraph graph = super.buildInitialGraph(debug, bytecodeProvider, methodToParse, args, trackNodeSourcePosition, replaceePosition, context);
         graph.setGuardsStage(GuardsStage.FIXED_DEOPTS);
         return graph;
     }

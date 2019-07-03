@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2019, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -58,6 +58,11 @@ public interface RegexFlavorProcessor {
      *             ECMAScript pattern
      */
     RegexSource toECMAScriptRegex() throws RegexSyntaxException, UnsupportedRegexException;
+
+    /**
+     * Returns the number of capture groups contained in the expression, including capture group 0.
+     */
+    int getNumberOfCaptureGroups();
 
     /**
      * Returns a map from the names of capture groups to their indices. If the regular expression

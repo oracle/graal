@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2017, 2018, Oracle and/or its affiliates.
+ * Copyright (c) 2017, 2019, Oracle and/or its affiliates.
  *
  * All rights reserved.
  *
@@ -121,12 +121,6 @@ public final class VariableBitWidthType extends Type {
     @Override
     public int getSize(DataLayout targetDataLayout) {
         return targetDataLayout.getSize(this);
-    }
-
-    @Override
-    public Type shallowCopy() {
-        final VariableBitWidthType copy = new VariableBitWidthType(bitWidth, constant);
-        return copy;
     }
 
     @Override

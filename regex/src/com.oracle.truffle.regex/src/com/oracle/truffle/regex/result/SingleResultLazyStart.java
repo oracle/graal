@@ -32,7 +32,7 @@ public final class SingleResultLazyStart extends LazyResult {
     private final CallTarget findStartCallTarget;
 
     public SingleResultLazyStart(Object input, int fromIndex, int end, CallTarget findStartCallTarget) {
-        super(input, fromIndex, end, 1);
+        super(input, fromIndex, end);
         this.findStartCallTarget = findStartCallTarget;
     }
 

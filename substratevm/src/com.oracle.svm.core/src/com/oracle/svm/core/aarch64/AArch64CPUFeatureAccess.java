@@ -26,7 +26,7 @@ package com.oracle.svm.core.aarch64;
 
 import java.util.EnumSet;
 
-import org.graalvm.nativeimage.Feature;
+import org.graalvm.nativeimage.hosted.Feature;
 import org.graalvm.nativeimage.ImageSingletons;
 import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.Platforms;
@@ -56,5 +56,12 @@ public class AArch64CPUFeatureAccess implements CPUFeatureAccess {
     @Override
     public void verifyHostSupportsArchitecture(Architecture imageArchitecture) {
 
+    }
+
+    @Override
+    public void enableFeatures(Architecture runtimeArchitecture) {
+        AArch64 architecture = (AArch64) runtimeArchitecture;
+        EnumSet<AArch64.CPUFeature> features = determineHostCPUFeatures();
+        architecture.getFeatures().addAll(features);
     }
 }

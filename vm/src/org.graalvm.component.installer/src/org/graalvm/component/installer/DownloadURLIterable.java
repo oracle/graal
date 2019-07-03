@@ -31,6 +31,7 @@ import java.net.URL;
 import java.nio.file.Path;
 import java.util.Iterator;
 import org.graalvm.component.installer.FileIterable.FileComponent;
+import org.graalvm.component.installer.model.ComponentInfo;
 import org.graalvm.component.installer.persist.MetadataLoader;
 
 public class DownloadURLIterable implements ComponentIterable {
@@ -39,7 +40,7 @@ public class DownloadURLIterable implements ComponentIterable {
     private boolean verifyJars;
 
     public DownloadURLIterable(Feedback feedback, CommandInput input) {
-        this.feedback = feedback;
+        this.feedback = feedback.withBundle(DownloadURLIterable.class);
         this.input = input;
         this.verifyJars = false;
     }
@@ -51,7 +52,17 @@ public class DownloadURLIterable implements ComponentIterable {
 
     @Override
     public void setVerifyJars(boolean verify) {
-        throw new UnsupportedOperationException("Not supported yet.");
+        verifyJars = verify;
+    }
+
+    @Override
+    public ComponentIterable matchVersion(Version.Match m) {
+        return this;
+    }
+
+    @Override
+    public ComponentIterable allowIncompatible() {
+        return this;
     }
 
     class It implements Iterator<ComponentParam> {
@@ -77,6 +88,11 @@ public class DownloadURLIterable implements ComponentIterable {
         }
     }
 
+    @Override
+    public ComponentParam createParam(String cmdString, ComponentInfo info) {
+        return null;
+    }
+
     static class DownloadURLParam extends RemoteComponentParam {
 
         DownloadURLParam(URL remoteURL, String dispName, String spec, Feedback feedback, boolean progress) {
@@ -91,8 +107,8 @@ public class DownloadURLIterable implements ComponentIterable {
         }
 
         @Override
-        public MetadataLoader completeMetadata() throws IOException {
-            return createFileLoader();
+        public ComponentInfo completeMetadata() throws IOException {
+            return createFileLoader().completeMetadata();
         }
     }
 

@@ -129,7 +129,7 @@ public @interface Option {
      * Defines the stability of this option. The default value is
      * {@link OptionStability#EXPERIMENTAL}.
      *
-     * @since 1.0
+     * @since 19.0
      */
     OptionStability stability() default OptionStability.EXPERIMENTAL;
 

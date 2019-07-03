@@ -42,7 +42,6 @@ import org.graalvm.compiler.options.OptionValues;
 import org.graalvm.compiler.phases.common.CanonicalizerPhase;
 import org.graalvm.compiler.phases.common.LoweringPhase;
 import org.graalvm.compiler.phases.common.RemoveValueProxyPhase;
-import org.graalvm.compiler.phases.tiers.PhaseContext;
 import org.graalvm.compiler.replacements.SnippetTemplate;
 import org.graalvm.compiler.replacements.Snippets;
 
@@ -84,7 +83,7 @@ public abstract class SnippetStub extends Stub implements Snippets {
     }
 
     protected void registerSnippet() {
-        providers.getReplacements().registerSnippet(method, null, null, false);
+        providers.getReplacements().registerSnippet(method, null, null, false, options);
     }
 
     @Override
@@ -104,9 +103,8 @@ public abstract class SnippetStub extends Stub implements Snippets {
             new RemoveValueProxyPhase().apply(graph);
             graph.setGuardsStage(GuardsStage.FLOATING_GUARDS);
             CanonicalizerPhase canonicalizer = new CanonicalizerPhase();
-            PhaseContext context = new PhaseContext(providers);
-            canonicalizer.apply(graph, context);
-            new LoweringPhase(canonicalizer, LoweringTool.StandardLoweringStage.HIGH_TIER).apply(graph, context);
+            canonicalizer.apply(graph, providers);
+            new LoweringPhase(canonicalizer, LoweringTool.StandardLoweringStage.HIGH_TIER).apply(graph, providers);
         } catch (Throwable e) {
             throw debug.handle(e);
         }
@@ -115,7 +113,7 @@ public abstract class SnippetStub extends Stub implements Snippets {
     }
 
     protected StructuredGraph buildInitialGraph(DebugContext debug, CompilationIdentifier compilationId, Object[] args) {
-        return providers.getReplacements().getSnippet(method, args, false, null).copyWithIdentifier(compilationId, debug);
+        return providers.getReplacements().getSnippet(method, null, args, false, null, options).copyWithIdentifier(compilationId, debug);
     }
 
     protected boolean checkConstArg(int index, String expectedName) {

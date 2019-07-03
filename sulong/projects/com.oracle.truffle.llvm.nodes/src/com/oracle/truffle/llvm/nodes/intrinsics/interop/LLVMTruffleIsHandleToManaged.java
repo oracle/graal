@@ -37,7 +37,6 @@ import com.oracle.truffle.api.dsl.Fallback;
 import com.oracle.truffle.api.dsl.NodeChild;
 import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.llvm.nodes.intrinsics.llvm.LLVMIntrinsic;
-import com.oracle.truffle.llvm.runtime.LLVMBoxedPrimitive;
 import com.oracle.truffle.llvm.runtime.LLVMContext;
 import com.oracle.truffle.llvm.runtime.LLVMLanguage;
 import com.oracle.truffle.llvm.runtime.memory.LLVMMemory;
@@ -62,16 +61,6 @@ public abstract class LLVMTruffleIsHandleToManaged extends LLVMIntrinsic {
             return context.get().isHandle(a);
         }
         return false;
-    }
-
-    @Specialization
-    protected boolean doLLVMBoxedPrimitive(LLVMBoxedPrimitive from,
-                    @CachedContext(LLVMLanguage.class) ContextReference<LLVMContext> context) {
-        if (from.getValue() instanceof Long) {
-            return doLongCase((long) from.getValue(), context);
-        } else {
-            return false;
-        }
     }
 
     private boolean canBeHandle(LLVMNativePointer a) {

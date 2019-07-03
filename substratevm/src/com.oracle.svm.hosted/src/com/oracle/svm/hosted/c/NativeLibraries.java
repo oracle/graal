@@ -24,24 +24,25 @@
  */
 package com.oracle.svm.hosted.c;
 
+import java.io.IOException;
 import java.lang.reflect.AnnotatedElement;
-import java.lang.reflect.Constructor;
-import java.lang.reflect.InvocationTargetException;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.HashMap;
+import java.util.LinkedHashMap;
+import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.stream.Collectors;
 
 import org.graalvm.compiler.api.replacements.SnippetReflectionProvider;
 import org.graalvm.nativeimage.c.CContext;
-import org.graalvm.nativeimage.c.CContext.Directives;
 import org.graalvm.nativeimage.c.constant.CConstant;
 import org.graalvm.nativeimage.c.constant.CEnum;
+import org.graalvm.nativeimage.c.function.CFunction;
 import org.graalvm.nativeimage.c.struct.CPointerTo;
 import org.graalvm.nativeimage.c.struct.CStruct;
 import org.graalvm.nativeimage.c.struct.RawStructure;
@@ -58,6 +59,9 @@ import com.oracle.svm.core.jdk.PlatformNativeLibrarySupport;
 import com.oracle.svm.core.option.OptionUtils;
 import com.oracle.svm.core.util.UserError;
 import com.oracle.svm.hosted.c.info.ElementInfo;
+import com.oracle.svm.hosted.classinitialization.ClassInitializationSupport;
+import com.oracle.svm.util.ReflectionUtil;
+import com.oracle.svm.util.ReflectionUtil.ReflectionUtilError;
 
 import jdk.vm.ci.code.TargetDescription;
 import jdk.vm.ci.meta.ConstantReflectionProvider;
@@ -71,6 +75,7 @@ public final class NativeLibraries {
 
     private final SnippetReflectionProvider snippetReflection;
     private final TargetDescription target;
+    private ClassInitializationSupport classInitializationSupport;
 
     private final Map<Object, ElementInfo> elementToInfo;
     private final Map<Class<? extends CContext.Directives>, NativeCodeContext> compilationUnitToContext;
@@ -84,19 +89,22 @@ public final class NativeLibraries {
     private final ResolvedJavaType enumType;
     private final ResolvedJavaType locationIdentityType;
 
-    private final List<String> libraries;
-    private final List<String> libraryPaths;
+    private final LinkedHashSet<String> libraries;
+    private final LinkedHashSet<String> staticLibraries;
+    private final LinkedHashSet<String> libraryPaths;
 
     private final List<CInterfaceError> errors;
     private final ConstantReflectionProvider constantReflection;
 
     private final CAnnotationProcessorCache cache;
 
-    public NativeLibraries(ConstantReflectionProvider constantReflection, MetaAccessProvider metaAccess, SnippetReflectionProvider snippetReflection, TargetDescription target) {
+    public NativeLibraries(ConstantReflectionProvider constantReflection, MetaAccessProvider metaAccess, SnippetReflectionProvider snippetReflection, TargetDescription target,
+                    ClassInitializationSupport classInitializationSupport) {
         this.metaAccess = metaAccess;
         this.constantReflection = constantReflection;
         this.snippetReflection = snippetReflection;
         this.target = target;
+        this.classInitializationSupport = classInitializationSupport;
 
         elementToInfo = new HashMap<>();
         errors = new ArrayList<>();
@@ -111,7 +119,8 @@ public final class NativeLibraries {
         enumType = metaAccess.lookupJavaType(Enum.class);
         locationIdentityType = metaAccess.lookupJavaType(LocationIdentity.class);
 
-        libraries = new ArrayList<>();
+        libraries = new LinkedHashSet<>();
+        staticLibraries = new LinkedHashSet<>();
         libraryPaths = initCLibraryPath();
 
         this.cache = new CAnnotationProcessorCache();
@@ -129,8 +138,11 @@ public final class NativeLibraries {
         return target;
     }
 
-    private static List<String> initCLibraryPath() {
-        List<String> libraryPaths = new ArrayList<>();
+    private static final String libPrefix = OS.getCurrent() == OS.WINDOWS ? "" : "lib";
+    private static final String libSuffix = OS.getCurrent() == OS.WINDOWS ? ".lib" : ".a";
+
+    private static LinkedHashSet<String> initCLibraryPath() {
+        LinkedHashSet<String> libraryPaths = new LinkedHashSet<>();
 
         Path staticLibsDir = null;
 
@@ -143,8 +155,6 @@ public final class NativeLibraries {
                         return false;
                     }
                     String libName = path.getFileName().toString();
-                    String libPrefix = OS.getCurrent() == OS.WINDOWS ? "" : "lib";
-                    String libSuffix = OS.getCurrent() == OS.WINDOWS ? ".lib" : ".a";
                     if (!(libName.startsWith(libPrefix) && libName.endsWith(libSuffix))) {
                         return false;
                     }
@@ -195,6 +205,8 @@ public final class NativeLibraries {
             /* Nothing to do, all elements in context are ignored. */
         } else if (method.getAnnotation(CConstant.class) != null) {
             context.appendConstantAccessor(method);
+        } else if (method.getAnnotation(CFunction.class) != null) {
+            /* Nothing to do, handled elsewhere but the NativeCodeContext above is important. */
         } else {
             addError("Method is not annotated with supported C interface annotation", method);
         }
@@ -218,31 +230,56 @@ public final class NativeLibraries {
         }
     }
 
-    public void addLibrary(String library) {
-        libraries.add(library);
+    public void addLibrary(String library, boolean requireStatic) {
+        (requireStatic ? staticLibraries : libraries).add(library);
     }
 
     public Collection<String> getLibraries() {
         return libraries;
     }
 
-    public List<String> getLibraryPaths() {
+    public Collection<Path> getStaticLibraries() {
+        Map<Path, Path> allStaticLibs = new LinkedHashMap<>();
+        for (String libraryPath : getLibraryPaths()) {
+            try {
+                Files.list(Paths.get(libraryPath))
+                                .filter(Files::isRegularFile)
+                                .filter(path -> path.getFileName().toString().endsWith(libSuffix))
+                                .forEachOrdered(candidate -> allStaticLibs.put(candidate.getFileName(), candidate));
+            } catch (IOException e) {
+                UserError.abort("Invalid library path " + libraryPath, e);
+            }
+        }
+        List<Path> staticLibs = new ArrayList<>();
+        for (String staticLibraryName : staticLibraries) {
+            Path libraryPath = allStaticLibs.get(Paths.get(libPrefix + staticLibraryName + libSuffix));
+            if (libraryPath == null) {
+                continue;
+            }
+            staticLibs.add(libraryPath);
+        }
+        return staticLibs;
+    }
+
+    public Collection<String> getLibraryPaths() {
         return libraryPaths;
     }
 
     private NativeCodeContext makeContext(Class<? extends CContext.Directives> compilationUnit) {
         NativeCodeContext result = compilationUnitToContext.get(compilationUnit);
         if (result == null) {
+            CContext.Directives unit;
             try {
-                Constructor<? extends Directives> constructor = compilationUnit.getDeclaredConstructor();
-                constructor.setAccessible(true);
-                CContext.Directives unit = constructor.newInstance();
-                result = new NativeCodeContext(unit);
-                compilationUnitToContext.put(compilationUnit, result);
-            } catch (NoSuchMethodException | SecurityException | InstantiationException | IllegalAccessException | IllegalArgumentException | InvocationTargetException e) {
-                e.printStackTrace();
-                throw UserError.abort("can't construct compilation unit " + compilationUnit.getCanonicalName() + ": " + e);
+                unit = ReflectionUtil.newInstance(compilationUnit);
+            } catch (ReflectionUtilError ex) {
+                throw UserError.abort("can't construct compilation unit " + compilationUnit.getCanonicalName(), ex.getCause());
             }
+
+            if (classInitializationSupport != null) {
+                classInitializationSupport.initializeAtBuildTime(unit.getClass(), "CContext.Directives must be eagerly initialized");
+            }
+            result = new NativeCodeContext(unit);
+            compilationUnitToContext.put(compilationUnit, result);
         }
         return result;
     }
@@ -277,12 +314,7 @@ public final class NativeLibraries {
     }
 
     private Class<? extends CContext.Directives> getDirectives(ResolvedJavaMethod method) {
-        CContext useUnit = method.getAnnotation(CContext.class);
-        if (useUnit != null) {
-            return getDirectives(useUnit);
-        } else {
-            return getDirectives(method.getDeclaringClass());
-        }
+        return getDirectives(method.getDeclaringClass());
     }
 
     private Class<? extends CContext.Directives> getDirectives(ResolvedJavaType type) {

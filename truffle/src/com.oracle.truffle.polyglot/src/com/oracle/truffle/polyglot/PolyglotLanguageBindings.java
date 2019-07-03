@@ -174,13 +174,17 @@ final class PolyglotLanguageBindings implements TruffleObject {
                     @Shared("interop") @CachedLibrary(limit = "5") InteropLibrary interop,
                     @Shared("lenghtProfile") @Cached("createIdentityProfile()") IntValueProfile lengthProfile) {
         int length = lengthProfile.profile(scopes.length);
+        boolean wasInsertable = false;
         for (int i = 0; i < length; i++) {
             Object scope = this.scopes[i];
+            if (interop.isMemberExisting(scope, member)) {
+                return false;
+            }
             if (interop.isMemberInsertable(scope, member)) {
-                return true;
+                wasInsertable = true;
             }
         }
-        return false;
+        return wasInsertable;
     }
 
     @ExportMessage
@@ -188,16 +192,32 @@ final class PolyglotLanguageBindings implements TruffleObject {
                     @Shared("interop") @CachedLibrary(limit = "5") InteropLibrary interop,
                     @Shared("lenghtProfile") @Cached("createIdentityProfile()") IntValueProfile lengthProfile)
                     throws UnsupportedMessageException, UnknownIdentifierException, UnsupportedTypeException {
+
         int length = lengthProfile.profile(scopes.length);
+        Object firstInsertableScope = null;
         for (int i = 0; i < length; i++) {
             Object scope = this.scopes[i];
-            if (interop.isMemberWritable(scope, member)) {
-                interop.writeMember(scope, member, value);
-                return;
+            if (interop.isMemberExisting(scope, member)) {
+                // existed therefore it cannot be insertable any more
+                if (interop.isMemberModifiable(scope, member)) {
+                    interop.writeMember(scope, member, value);
+                    return;
+                } else {
+                    // we cannot modify nor insert
+                    throw UnsupportedMessageException.create();
+                }
+            }
+            if (interop.isMemberInsertable(scope, member) && firstInsertableScope == null) {
+                firstInsertableScope = scope;
             }
         }
-        throw UnsupportedMessageException.create();
 
+        if (firstInsertableScope != null) {
+            interop.writeMember(firstInsertableScope, member, value);
+            return;
+        }
+
+        throw UnsupportedMessageException.create();
     }
 
     @ExportMessage

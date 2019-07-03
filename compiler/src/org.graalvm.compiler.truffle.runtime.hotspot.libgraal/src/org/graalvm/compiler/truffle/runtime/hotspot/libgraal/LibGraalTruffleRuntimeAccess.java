@@ -25,6 +25,7 @@
 package org.graalvm.compiler.truffle.runtime.hotspot.libgraal;
 
 import org.graalvm.compiler.truffle.runtime.hotspot.AbstractHotSpotTruffleRuntimeAccess;
+import org.graalvm.libgraal.LibGraal;
 
 import com.oracle.truffle.api.TruffleRuntime;
 
@@ -40,7 +41,7 @@ public class LibGraalTruffleRuntimeAccess extends AbstractHotSpotTruffleRuntimeA
 
     @Override
     public int getPriority() {
-        if (LibGraalTruffleRuntime.isAvailable()) {
+        if (LibGraal.isAvailable()) {
             return Integer.MAX_VALUE;
         }
         return Integer.MIN_VALUE;

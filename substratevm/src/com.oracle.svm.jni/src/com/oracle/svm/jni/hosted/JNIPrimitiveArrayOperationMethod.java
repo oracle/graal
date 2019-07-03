@@ -48,7 +48,6 @@ import com.oracle.svm.core.c.function.CEntryPointOptions.NoEpilogue;
 import com.oracle.svm.core.c.function.CEntryPointOptions.NoPrologue;
 import com.oracle.svm.core.c.function.CEntryPointOptions.Publish;
 import com.oracle.svm.core.graal.nodes.CEntryPointEnterNode;
-import com.oracle.svm.core.graal.nodes.CEntryPointEnterNode.EnterAction;
 import com.oracle.svm.core.graal.nodes.CEntryPointLeaveNode;
 import com.oracle.svm.core.graal.nodes.CEntryPointLeaveNode.LeaveAction;
 import com.oracle.svm.core.util.VMError;
@@ -162,7 +161,7 @@ public final class JNIPrimitiveArrayOperationMethod extends JNIGeneratedMethod {
         state.initializeForMethodStart(null, true, providers.getGraphBuilderPlugins());
 
         ValueNode vmThread = kit.loadLocal(0, signature.getParameterKind(0));
-        kit.append(new CEntryPointEnterNode(EnterAction.Enter, vmThread));
+        kit.append(CEntryPointEnterNode.enter(vmThread));
 
         List<ValueNode> arguments = kit.loadArguments(signature.toParameterTypes(null));
 

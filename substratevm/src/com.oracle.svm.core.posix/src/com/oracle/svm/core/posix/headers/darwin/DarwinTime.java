@@ -24,12 +24,12 @@
  */
 package com.oracle.svm.core.posix.headers.darwin;
 
-import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.Platforms;
 import org.graalvm.nativeimage.c.CContext;
 import org.graalvm.nativeimage.c.function.CFunction;
 import org.graalvm.nativeimage.c.struct.CField;
 import org.graalvm.nativeimage.c.struct.CStruct;
+import org.graalvm.nativeimage.impl.InternalPlatform;
 import org.graalvm.word.PointerBase;
 
 import com.oracle.svm.core.posix.headers.PosixDirectives;
@@ -37,7 +37,7 @@ import com.oracle.svm.core.posix.headers.PosixDirectives;
 //Checkstyle: stop
 
 @CContext(PosixDirectives.class)
-@Platforms(Platform.DARWIN_AND_JNI.class)
+@Platforms(InternalPlatform.DARWIN_AND_JNI.class)
 public class DarwinTime {
 
     @CStruct("struct mach_timebase_info")

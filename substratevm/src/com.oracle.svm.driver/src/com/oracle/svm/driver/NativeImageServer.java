@@ -60,7 +60,7 @@ import org.graalvm.nativeimage.ProcessProperties;
 import org.graalvm.word.WordFactory;
 
 import com.oracle.svm.core.option.SubstrateOptionsParser;
-import com.oracle.svm.hosted.ImageClassLoader;
+import com.oracle.svm.core.util.ClasspathUtils;
 import com.oracle.svm.hosted.server.NativeImageBuildClient;
 import com.oracle.svm.hosted.server.NativeImageBuildServer;
 import com.oracle.svm.hosted.server.SubstrateServerMessage.ServerCommand;
@@ -82,9 +82,12 @@ final class NativeImageServer extends NativeImage {
     private volatile Server building = null;
     private final List<FileChannel> openFileChannels = new ArrayList<>();
 
+    private final ServerOptionHandler serverOptionHandler;
+
     private NativeImageServer(BuildConfiguration buildConfiguration) {
         super(buildConfiguration);
-        registerOptionHandler(new ServerOptionHandler(this));
+        serverOptionHandler = new ServerOptionHandler(this);
+        registerOptionHandler(serverOptionHandler);
     }
 
     static NativeImage create(BuildConfiguration config) {
@@ -149,7 +152,7 @@ final class NativeImageServer extends NativeImage {
         private LinkedHashSet<Path> readClasspath(String rawClasspathString) {
             LinkedHashSet<Path> result = new LinkedHashSet<>();
             for (String pathStr : rawClasspathString.split(" ")) {
-                result.add(ImageClassLoader.stringToClasspath(pathStr));
+                result.add(ClasspathUtils.stringToClasspath(pathStr));
             }
             return result;
         }
@@ -167,7 +170,8 @@ final class NativeImageServer extends NativeImage {
             return exitCode;
         }
 
-        void sendBuildRequest(LinkedHashSet<Path> imageCP, LinkedHashSet<String> imageArgs) {
+        int sendBuildRequest(LinkedHashSet<Path> imageCP, LinkedHashSet<String> imageArgs) {
+            int[] requestStatus = {1};
             withLockDirFileChannel(serverDir, lockFileChannel -> {
                 boolean abortedOnce = false;
                 boolean finished = false;
@@ -213,20 +217,18 @@ final class NativeImageServer extends NativeImage {
                             throw showError("Could not read/write into build-request log file", e);
                         }
                         // Checkstyle: stop
-                        int requestStatus = sendRequest(
+                        requestStatus[0] = sendRequest(
                                         byteStreamToByteConsumer(System.out),
                                         byteStreamToByteConsumer(System.err),
                                         ServerCommand.BUILD_IMAGE,
                                         command.toArray(new String[command.size()]));
                         // Checkstyle: resume
-                        if (requestStatus != NativeImageBuildClient.EXIT_SUCCESS) {
-                            throw showError("Processing image build request failed");
-                        }
                     } catch (IOException e) {
                         throw showError("Error while trying to lock ServerDir " + serverDir, e);
                     }
                 }
             });
+            return requestStatus[0];
         }
 
         boolean isAlive() {
@@ -639,8 +641,8 @@ final class NativeImageServer extends NativeImage {
         sp.setProperty(Server.pKeyPort, String.valueOf(port));
         sp.setProperty(Server.pKeyPID, String.valueOf(pid));
         sp.setProperty(Server.pKeyJavaArgs, String.join(" ", javaArgs));
-        sp.setProperty(Server.pKeyBCP, bootClasspath.stream().map(ImageClassLoader::classpathToString).collect(Collectors.joining(" ")));
-        sp.setProperty(Server.pKeyCP, classpath.stream().map(ImageClassLoader::classpathToString).collect(Collectors.joining(" ")));
+        sp.setProperty(Server.pKeyBCP, bootClasspath.stream().map(ClasspathUtils::classpathToString).collect(Collectors.joining(" ")));
+        sp.setProperty(Server.pKeyCP, classpath.stream().map(ClasspathUtils::classpathToString).collect(Collectors.joining(" ")));
         Path serverPropertiesPath = serverDir.resolve(Server.serverProperties);
         try (OutputStream os = Files.newOutputStream(serverPropertiesPath)) {
             sp.store(os, "");
@@ -670,7 +672,7 @@ final class NativeImageServer extends NativeImage {
         }
     }
 
-    private FileLock lockFileChannel(FileChannel channel) throws IOException {
+    private static FileLock lockFileChannel(FileChannel channel) throws IOException {
         Thread lockWatcher = new Thread(() -> {
             try {
                 Thread.sleep(TimeUnit.MINUTES.toMillis(10));
@@ -732,7 +734,7 @@ final class NativeImageServer extends NativeImage {
     }
 
     @Override
-    protected void buildImage(List<String> javaArgs, LinkedHashSet<Path> bcp, LinkedHashSet<Path> cp, LinkedHashSet<String> imageArgs, LinkedHashSet<Path> imagecp) {
+    protected int buildImage(List<String> javaArgs, LinkedHashSet<Path> bcp, LinkedHashSet<Path> cp, LinkedHashSet<String> imageArgs, LinkedHashSet<Path> imagecp) {
         boolean printFlags = imageArgs.stream().anyMatch(arg -> arg.contains(enablePrintFlags));
         if (useServer && !printFlags && !javaArgs.contains("-Xdebug")) {
             AbortBuildSignalHandler signalHandler = new AbortBuildSignalHandler();
@@ -745,15 +747,15 @@ final class NativeImageServer extends NativeImage {
                 /* Send image build job to server */
                 showMessage("Build on " + server);
                 building = server;
-                server.sendBuildRequest(imagecp, imageArgs);
+                int status = server.sendBuildRequest(imagecp, imageArgs);
                 if (!server.isAlive()) {
                     /* If server does not respond after image-build -> cleanup */
                     cleanupServers(false, false, true);
                 }
-                return;
+                return status;
             }
         }
-        super.buildImage(javaArgs, bcp, cp, imageArgs, imagecp);
+        return super.buildImage(javaArgs, bcp, cp, imageArgs, imagecp);
     }
 
     private static String imageServerUID(List<String> vmArgs, List<Collection<Path>> builderPaths) {
@@ -796,6 +798,10 @@ final class NativeImageServer extends NativeImage {
         useServer = val;
     }
 
+    boolean useServer() {
+        return useServer;
+    }
+
     @Override
     protected void setDryRun(boolean val) {
         super.setDryRun(val);
@@ -804,6 +810,10 @@ final class NativeImageServer extends NativeImage {
 
     void setVerboseServer(boolean val) {
         verboseServer = val;
+    }
+
+    boolean verboseServer() {
+        return verboseServer;
     }
 
     void setSessionName(String val) {

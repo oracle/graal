@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2016, 2018, Oracle and/or its affiliates.
+ * Copyright (c) 2016, 2019, Oracle and/or its affiliates.
  *
  * All rights reserved.
  *
@@ -61,9 +61,6 @@ public final class StackManager {
 
         for (FunctionParameter parameter : function.getParameters()) {
             Type type = parameter.getType();
-            if (parameter.isSourceVariable()) {
-                type = type.shallowCopy();
-            }
             frame.addFrameSlot(parameter.getName(), type, Type.getFrameSlotKind(type));
         }
 
@@ -83,17 +80,8 @@ public final class StackManager {
 
         @Override
         public void visitValueInstruction(ValueInstruction valueInstruction) {
-            final String slotName = valueInstruction.getName();
-
             Type type = valueInstruction.getType();
-            final FrameSlotKind slotKind = Type.getFrameSlotKind(type);
-
-            if (valueInstruction.isSourceVariable()) {
-                // when we set the sourcetype at runtime this type needs to be distinct
-                type = type.shallowCopy();
-            }
-
-            frame.addFrameSlot(slotName, type, slotKind);
+            frame.addFrameSlot(valueInstruction.getName(), type, Type.getFrameSlotKind(type));
         }
 
         @Override

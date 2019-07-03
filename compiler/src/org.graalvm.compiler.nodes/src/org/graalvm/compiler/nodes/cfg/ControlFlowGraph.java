@@ -210,7 +210,7 @@ public final class ControlFlowGraph implements AbstractControlFlowGraph<Block> {
     public static void addDeferredExit(DeferredExit[] deferredExits, Block b) {
         Loop<Block> outermostExited = b.getDominator().getLoop();
         Loop<Block> exitBlockLoop = b.getLoop();
-        assert outermostExited != null;
+        assert outermostExited != null : "Dominator must be in a loop. Possible cause is a missing loop exit node.";
         while (outermostExited.getParent() != null && outermostExited.getParent() != exitBlockLoop) {
             outermostExited = outermostExited.getParent();
         }
@@ -317,6 +317,9 @@ public final class ControlFlowGraph implements AbstractControlFlowGraph<Block> {
                     dominator = ((dominator == null) ? pred : commonDominatorRaw(dominator, pred));
                 }
             }
+            // Fortify: Suppress Null Dereference false positive (every block apart from the first
+            // is guaranteed to have a predecessor)
+            assert dominator != null;
 
             // Set dominator.
             block.setDominator(dominator);

@@ -26,6 +26,7 @@ package org.graalvm.component.installer;
 
 import java.util.ArrayList;
 import java.util.HashMap;
+import java.util.Iterator;
 import java.util.Map;
 import java.util.ResourceBundle;
 import org.junit.Assert;
@@ -115,6 +116,8 @@ public class ComponentInstallerTest extends TestBase {
             String optString = l.substring(oS + 1, oE);
             if (optString.startsWith("-")) {
                 optString = optString.substring(1);
+            } else {
+                optString = "";
             }
             for (int a = 0; a < optString.length(); a++) {
                 char o = optString.charAt(a);
@@ -138,6 +141,13 @@ public class ComponentInstallerTest extends TestBase {
             }
             if (message.length() > 0) {
                 Assert.fail("Options not documented: " + message.toString());
+            }
+        }
+        // filter out "system" commands
+        for (Iterator<String> it = allCmds.keySet().iterator(); it.hasNext();) {
+            String cmd = it.next();
+            if (cmd.startsWith("#")) {
+                it.remove();
             }
         }
         if (!allCmds.isEmpty()) {

@@ -35,13 +35,14 @@ import com.oracle.graal.pointsto.meta.AnalysisField;
 import com.oracle.graal.pointsto.meta.AnalysisType;
 import com.oracle.graal.pointsto.meta.AnalysisUniverse;
 import com.oracle.svm.core.SubstrateOptions;
+import com.oracle.svm.core.annotate.InjectAccessors;
 import com.oracle.svm.core.graal.meta.SharedConstantReflectionProvider;
 import com.oracle.svm.core.hub.DynamicHub;
 import com.oracle.svm.core.meta.ReadableJavaField;
 import com.oracle.svm.core.meta.SubstrateObjectConstant;
 import com.oracle.svm.core.util.VMError;
-import com.oracle.svm.hosted.ClassInitializationSupport;
 import com.oracle.svm.hosted.SVMHost;
+import com.oracle.svm.hosted.classinitialization.ClassInitializationSupport;
 
 import jdk.vm.ci.meta.Constant;
 import jdk.vm.ci.meta.ConstantReflectionProvider;
@@ -102,11 +103,25 @@ public class AnalysisConstantReflectionProvider extends SharedConstantReflection
     public JavaConstant interceptValue(AnalysisField field, JavaConstant value) {
         JavaConstant result = value;
         if (result != null) {
+            result = filterInjectedAccessor(field, result);
             result = replaceObject(result);
             result = interceptAssertionStatus(field, result);
             result = interceptWordType(field, result);
         }
         return result;
+    }
+
+    private static JavaConstant filterInjectedAccessor(AnalysisField field, JavaConstant value) {
+        if (field.getAnnotation(InjectAccessors.class) != null) {
+            /*
+             * Fields whose accesses are intercepted by injected accessors are not actually present
+             * in the image. Ideally they should never be read, but there are corner cases where
+             * this happens. We intercept the value and return 0 / null.
+             */
+            assert !field.isAccessed();
+            return JavaConstant.defaultForKind(value.getJavaKind());
+        }
+        return value;
     }
 
     /**
@@ -189,6 +204,7 @@ public class AnalysisConstantReflectionProvider extends SharedConstantReflection
     @Override
     public JavaConstant asJavaClass(ResolvedJavaType type) {
         DynamicHub dynamicHub = getHostVM().dynamicHub(type);
+        assert dynamicHub != null : type.toClassName() + " has a null dynamicHub.";
         registerHub(getHostVM(), dynamicHub);
         return SubstrateObjectConstant.forObject(dynamicHub);
     }
@@ -198,6 +214,7 @@ public class AnalysisConstantReflectionProvider extends SharedConstantReflection
     }
 
     protected static void registerHub(SVMHost hostVM, DynamicHub dynamicHub) {
+        assert dynamicHub != null;
         /* Make sure that the DynamicHub of this type ends up in the native image. */
         AnalysisType valueType = hostVM.lookupType(dynamicHub);
         if (!valueType.isInTypeCheck()) {

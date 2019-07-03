@@ -433,7 +433,10 @@ public class AArch64Move {
     }
 
     static void reg2stack(CompilationResultBuilder crb, AArch64MacroAssembler masm, AllocatableValue result, AllocatableValue input) {
-        AArch64Address dest = loadStackSlotAddress(crb, masm, asStackSlot(result), Value.ILLEGAL);
+        AArch64Address dest;
+        try (ScratchRegister scratch = masm.getScratchRegister()) {
+            dest = loadStackSlotAddress(crb, masm, asStackSlot(result), scratch.getRegister());
+        }
         Register src = asRegister(input);
         // use the slot kind to define the operand size
         AArch64Kind kind = (AArch64Kind) result.getPlatformKind();
@@ -497,7 +500,12 @@ public class AArch64Move {
                         masm.fmov(32, dst, scratch);
                     }
                 } else {
-                    masm.fldr(32, dst, (AArch64Address) crb.asFloatConstRef(input));
+                    try (ScratchRegister scr = masm.getScratchRegister()) {
+                        Register scratch = scr.getRegister();
+                        crb.asFloatConstRef(input);
+                        masm.addressOf(scratch);
+                        masm.fldr(32, dst, AArch64Address.createBaseRegisterOnlyAddress(scratch));
+                    }
                 }
                 break;
             case Double:
@@ -510,13 +518,18 @@ public class AArch64Move {
                         masm.fmov(64, dst, scratch);
                     }
                 } else {
-                    masm.fldr(64, dst, (AArch64Address) crb.asDoubleConstRef(input));
+                    try (ScratchRegister scr = masm.getScratchRegister()) {
+                        Register scratch = scr.getRegister();
+                        crb.asDoubleConstRef(input);
+                        masm.addressOf(scratch);
+                        masm.fldr(64, dst, AArch64Address.createBaseRegisterOnlyAddress(scratch));
+                    }
                 }
                 break;
             case Object:
                 if (input.isNull()) {
-                    if (crb.mustReplaceWithNullRegister(input)) {
-                        masm.mov(64, dst, crb.nullRegister);
+                    if (crb.mustReplaceWithUncompressedNullRegister(input)) {
+                        masm.mov(64, dst, crb.uncompressedNullRegister);
                     } else {
                         masm.mov(dst, 0);
                     }
@@ -697,6 +710,73 @@ public class AArch64Move {
                 masm.add(64, resultRegister, base, resultRegister, AArch64Assembler.ShiftType.LSL, encoding.getShift());
                 masm.bind(done);
             }
+        }
+    }
+
+    private abstract static class ZeroNullConversionOp extends AArch64LIRInstruction {
+        @Def({REG, HINT}) protected AllocatableValue result;
+        @Use({REG}) protected AllocatableValue input;
+
+        protected ZeroNullConversionOp(LIRInstructionClass<? extends ZeroNullConversionOp> type, AllocatableValue result, AllocatableValue input) {
+            super(type);
+            this.result = result;
+            this.input = input;
+        }
+
+        @Override
+        public void emitCode(CompilationResultBuilder crb, AArch64MacroAssembler masm) {
+            Register nullRegister = crb.uncompressedNullRegister;
+            if (!nullRegister.equals(Register.None)) {
+                emitConversion(asRegister(result), asRegister(input), nullRegister, masm);
+            }
+        }
+
+        protected abstract void emitConversion(Register resultRegister, Register inputRegister, Register nullRegister, AArch64MacroAssembler masm);
+    }
+
+    public static class ConvertNullToZeroOp extends ZeroNullConversionOp {
+        public static final LIRInstructionClass<ConvertNullToZeroOp> TYPE = LIRInstructionClass.create(ConvertNullToZeroOp.class);
+
+        public ConvertNullToZeroOp(AllocatableValue result, AllocatableValue input) {
+            super(TYPE, result, input);
+        }
+
+        @Override
+        protected final void emitConversion(Register resultRegister, Register inputRegister, Register nullRegister, AArch64MacroAssembler masm) {
+            if (inputRegister.equals(resultRegister)) {
+                masm.subs(64, inputRegister, inputRegister, nullRegister);
+                Label done = new Label();
+                masm.branchConditionally(AArch64Assembler.ConditionFlag.EQ, done);
+                masm.add(64, inputRegister, inputRegister, nullRegister);
+                masm.bind(done);
+            } else {
+                masm.subs(64, resultRegister, resultRegister, resultRegister);
+                masm.cmp(64, inputRegister, nullRegister);
+                Label done = new Label();
+                masm.branchConditionally(AArch64Assembler.ConditionFlag.EQ, done);
+                masm.movx(resultRegister, inputRegister);
+                masm.bind(done);
+            }
+        }
+    }
+
+    public static class ConvertZeroToNullOp extends ZeroNullConversionOp {
+        public static final LIRInstructionClass<ConvertZeroToNullOp> TYPE = LIRInstructionClass.create(ConvertZeroToNullOp.class);
+
+        public ConvertZeroToNullOp(AllocatableValue result, AllocatableValue input) {
+            super(TYPE, result, input);
+        }
+
+        @Override
+        protected final void emitConversion(Register resultRegister, Register inputRegister, Register nullRegister, AArch64MacroAssembler masm) {
+            if (!inputRegister.equals(resultRegister)) {
+                masm.movx(resultRegister, inputRegister);
+            }
+            Label done = new Label();
+            masm.ands(64, zr, inputRegister, inputRegister);
+            masm.branchConditionally(AArch64Assembler.ConditionFlag.NE, done);
+            masm.movx(resultRegister, nullRegister);
+            masm.bind(done);
         }
     }
 

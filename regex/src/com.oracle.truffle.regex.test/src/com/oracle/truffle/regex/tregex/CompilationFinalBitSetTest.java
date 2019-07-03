@@ -112,6 +112,30 @@ public class CompilationFinalBitSetTest {
 
     @Test
     public void testSetRange() {
+        checkSetRange(0, 63);
+        reset();
+        checkSetRange(0, 64);
+        reset();
+        checkSetRange(0, 65);
+        reset();
+        checkSetRange(1, 63);
+        reset();
+        checkSetRange(1, 64);
+        reset();
+        checkSetRange(1, 65);
+        reset();
+        checkSetRange(0, 127);
+        reset();
+        checkSetRange(0, 128);
+        reset();
+        checkSetRange(0, 129);
+        reset();
+        checkSetRange(1, 127);
+        reset();
+        checkSetRange(1, 128);
+        reset();
+        checkSetRange(1, 129);
+        reset();
         checkSetRange(50, 70);
         checkSetRange(0, 35);
         checkSetRange(200, 255);

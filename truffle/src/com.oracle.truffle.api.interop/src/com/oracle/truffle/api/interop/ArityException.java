@@ -63,7 +63,7 @@ public final class ArityException extends InteropException {
     /**
      * {@inheritDoc}
      *
-     * @since 1.0
+     * @since 19.0
      */
     @Override
     public String getMessage() {
@@ -96,7 +96,7 @@ public final class ArityException extends InteropException {
      *
      * @param expectedArity the number of arguments expected by the foreign object
      * @param actualArity the number of provided by the foreign access
-     * @since 1.0
+     * @since 19.0
      */
     public static ArityException create(int expectedArity, int actualArity) {
         CompilerDirectives.transferToInterpreter();

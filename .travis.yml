@@ -14,12 +14,13 @@ sudo: required
 dist: trusty
 
 jdk:
-    - oraclejdk11
+    - openjdk11
 
 env:
   global:
-    - JVMCI_VERSION="jvmci-0.57"
-    - JDK8_UPDATE_VERSION="202"
+    - JVMCI_VERSION="jvmci-20-b04"
+    - JDK8_UPDATE_VERSION="212"
+    - JDK8_UPDATE_VERSION_SUFFIX=""
 
 matrix:
   include:
@@ -27,7 +28,7 @@ matrix:
   - env: JDK="jdk8" GATE="build,test" PRIMARY="compiler"
   - env: JDK="jdk8" GATE="build,test,helloworld" PRIMARY="substratevm"
   - env: JDK="jdk8" GATE="build,bootstraplite" PRIMARY="compiler"
-  - env: JDK="jdk8" GATE="style,fullbuild,sulongBasic" PRIMARY="sulong" LLVM_VERSION="3.8"
+  - env: JDK="jdk8" GATE="style,fullbuild,sulongBasic" PRIMARY="sulong" LLVM_VERSION="3.8" NO_FEMBED_BITCODE="true"
     addons:
       apt:
         packages:
@@ -37,7 +38,7 @@ matrix:
           - clang-format-3.8
           - libc++1
           - libc++-dev
-  - env: JDK="jdk8" GATE="build,sulong" PRIMARY="vm" DYNAMIC_IMPORTS="/sulong,/substratevm" LLVM_VERSION="6.0" DISABLE_POLYGLOT=true DISABLE_LIBPOLYGLOT=true NATIVE_IMAGE_TESTING=true
+  - env: JDK="jdk8" GATE="build,sulong" PRIMARY="vm" DYNAMIC_IMPORTS="/sulong,/substratevm" LLVM_VERSION="6.0" DISABLE_POLYGLOT=true DISABLE_LIBPOLYGLOT=true
     addons:
       apt:
         sources:
@@ -67,7 +68,7 @@ install:
         pip install pylint==1.1.0
 
         export ECLIPSE_TAR=${TRAVIS_BUILD_DIR}/../eclipse.tar.gz
-        wget http://archive.eclipse.org/eclipse/downloads/drops4/R-4.5.2-201602121500/eclipse-SDK-4.5.2-linux-gtk-x86_64.tar.gz -O ${ECLIPSE_TAR}
+        wget https://archive.eclipse.org/eclipse/downloads/drops4/R-4.5.2-201602121500/eclipse-SDK-4.5.2-linux-gtk-x86_64.tar.gz -O ${ECLIPSE_TAR}
         tar -C ${TRAVIS_BUILD_DIR}/.. -xzf ${ECLIPSE_TAR}
         export ECLIPSE_EXE=${TRAVIS_BUILD_DIR}/../eclipse/eclipse
 
@@ -81,14 +82,14 @@ install:
         if [ "${JDK}" == "jdk8" ]
         then
           export JDT=${MX_PATH}/ecj.jar
-          wget http://archive.eclipse.org/eclipse/downloads/drops4/R-4.5.2-201602121500/ecj-4.5.2.jar -O ${JDT}
+          wget https://archive.eclipse.org/eclipse/downloads/drops4/R-4.5.2-201602121500/ecj-4.5.2.jar -O ${JDT}
         fi
       fi
   - |
       if [ "${JDK}" == "jdk8" ]
       then
         JDK_TAR=${TRAVIS_BUILD_DIR}/../jdk.tar.gz
-        wget https://github.com/graalvm/openjdk8-jvmci-builder/releases/download/${JVMCI_VERSION}/openjdk-8u${JDK8_UPDATE_VERSION}-${JVMCI_VERSION}-linux-amd64.tar.gz -O ${JDK_TAR}
+        wget https://github.com/graalvm/openjdk8-jvmci-builder/releases/download/${JVMCI_VERSION}/openjdk-8u${JDK8_UPDATE_VERSION}${JDK8_UPDATE_VERSION_SUFFIX}-${JVMCI_VERSION}-linux-amd64.tar.gz -O ${JDK_TAR}
         tar -C ${TRAVIS_BUILD_DIR}/.. -xzf ${JDK_TAR}
         export JAVA_HOME=${TRAVIS_BUILD_DIR}/../openjdk1.8.0_${JDK8_UPDATE_VERSION}-${JVMCI_VERSION}
       fi

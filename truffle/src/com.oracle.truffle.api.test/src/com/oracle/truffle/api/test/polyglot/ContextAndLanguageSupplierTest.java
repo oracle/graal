@@ -93,6 +93,7 @@ public class ContextAndLanguageSupplierTest extends AbstractPolyglotTest {
         ContextSupplierTestNode() {
             try {
                 lookupContextReference(ProxyLanguage.class);
+                fail();
             } catch (IllegalStateException e) {
             }
         }
@@ -120,7 +121,6 @@ public class ContextAndLanguageSupplierTest extends AbstractPolyglotTest {
                 Env value = supplier.get();
                 assertSame(Language1.getContext(language), value);
                 assertSame(value, supplier.get());
-                assertSame(supplier, lookupContextReference(language));
             }
 
             assertSame(currentSupplier, lookupContextReference(ProxyLanguage.class));
@@ -132,6 +132,7 @@ public class ContextAndLanguageSupplierTest extends AbstractPolyglotTest {
         LanguageSupplierTestNode() {
             try {
                 lookupLanguageReference(ProxyLanguage.class);
+                fail();
             } catch (IllegalStateException e) {
             }
         }
@@ -158,7 +159,6 @@ public class ContextAndLanguageSupplierTest extends AbstractPolyglotTest {
                 Language1 value = supplier.get();
                 assertSame(Language1.getLanguage(language), value);
                 assertSame(value, supplier.get());
-                assertSame(supplier, lookupLanguageReference(language));
             }
         }
     }

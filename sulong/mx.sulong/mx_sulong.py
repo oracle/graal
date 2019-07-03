@@ -108,26 +108,6 @@ clangFormatVersions = [
 ]
 
 
-# Temporary set environment variables. By default LC_ALL, LANGUAGE, and LANG are set.
-class TemporaryEnv(object):
-    def __init__(self, **kwargs):
-        self.old_env = None
-        self.extra_env = dict(
-            LC_ALL='C',
-            LANGUAGE='en_US:en',
-            LANG='en_US.UTF-8',
-        )
-        self.extra_env.update(kwargs)
-
-    def __enter__(self):
-        self.old_env = os.environ.copy()
-        os.environ.update(self.extra_env)
-
-    def __exit__(self, ex_type, value, traceback):
-        os.environ.clear()
-        os.environ.update(self.old_env)
-        self.old_env = None
-
 def _sulong_gate_testdist(title, test_dist, tasks, args, tags=None, testClasses=None, vmArgs=None):
     if tags is None:
         tags = [test_dist]
@@ -168,31 +148,31 @@ def _sulong_gate_sulongsuite_unittest(title, tasks, args, tags=None, testClasses
     _sulong_gate_unittest(title, test_suite, tasks, args, tags=tags, testClasses=testClasses)
 
 def _sulong_gate_runner(args, tasks):
-    with TemporaryEnv():
-        with Task('CheckCopyright', tasks, tags=['style']) as t:
-            if t:
-                if mx.checkcopyrights(['--primary']) != 0:
-                    t.abort('Copyright errors found. Please run "mx checkcopyrights --primary -- --fix" to fix them.')
-        with Task('ClangFormat', tasks, tags=['style', 'clangformat']) as t:
-            if t: clangformatcheck()
-        _sulong_gate_testsuite('Benchmarks', 'shootout', tasks, args, tags=['benchmarks', 'sulongMisc'])
-        _sulong_gate_unittest('Types', 'com.oracle.truffle.llvm.types.test', tasks, args, tags=['type', 'sulongMisc', 'sulongCoverage'], testClasses=['com.oracle.truffle.llvm.types.floating.test'])
-        _sulong_gate_unittest('Pipe', 'com.oracle.truffle.llvm.test', tasks, args, tags=['pipe', 'sulongMisc', 'sulongCoverage'], testClasses=['CaptureOutputTest'])
-        _sulong_gate_testsuite('LLVM', 'llvm', tasks, args, tags=['llvm', 'sulongCoverage'])
-        _sulong_gate_testsuite('NWCC', 'nwcc', tasks, args, tags=['nwcc', 'sulongCoverage'])
-        _sulong_gate_testsuite('GCCParserTorture', 'parserTorture', tasks, args, tags=['parser', 'sulongCoverage'], vmArgs=['-Dpolyglot.llvm.parseOnly=true'])
-        _sulong_gate_testsuite('GCC_C', 'gcc_c', tasks, args, tags=['gcc_c', 'sulongCoverage'])
-        _sulong_gate_testsuite('GCC_CPP', 'gcc_cpp', tasks, args, tags=['gcc_cpp', 'sulongCoverage'])
-        _sulong_gate_testsuite('GCC_Fortran', 'gcc_fortran', tasks, args, tags=['gcc_fortran', 'sulongCoverage'])
-        _sulong_gate_sulongsuite_unittest('Sulong', tasks, args, testClasses='SulongSuite', tags=['sulong', 'sulongBasic', 'sulongCoverage'])
-        _sulong_gate_sulongsuite_unittest('Interop', tasks, args, testClasses='com.oracle.truffle.llvm.test.interop', tags=['interop', 'sulongBasic', 'sulongCoverage'])
-        _sulong_gate_sulongsuite_unittest('Debug', tasks, args, testClasses='LLVMDebugTest', tags=['debug', 'sulongBasic', 'sulongCoverage'])
-        _sulong_gate_sulongsuite_unittest('IRDebug', tasks, args, testClasses='LLVMIRDebugTest', tags=['irdebug', 'sulongBasic', 'sulongCoverage'])
-        _sulong_gate_sulongsuite_unittest('BitcodeFormat', tasks, args, testClasses='BitcodeFormatTest', tags=['bitcodeFormat', 'sulongBasic', 'sulongCoverage'])
-        _sulong_gate_testsuite('Assembly', 'inlineassemblytests', tasks, args, testClasses='InlineAssemblyTest', tags=['assembly', 'sulongCoverage'])
-        _sulong_gate_testsuite('Args', 'other', tasks, args, tags=['args', 'sulongMisc', 'sulongCoverage'], testClasses=['com.oracle.truffle.llvm.test.MainArgsTest'])
-        _sulong_gate_testsuite('Callback', 'other', tasks, args, tags=['callback', 'sulongMisc', 'sulongCoverage'], testClasses=['com.oracle.truffle.llvm.test.CallbackTest'])
-        _sulong_gate_testsuite('Varargs', 'other', tasks, args, tags=['vaargs', 'sulongMisc', 'sulongCoverage'], testClasses=['com.oracle.truffle.llvm.test.VAArgsTest'])
+    with Task('CheckCopyright', tasks, tags=['style']) as t:
+        if t:
+            if mx.checkcopyrights(['--primary']) != 0:
+                t.abort('Copyright errors found. Please run "mx checkcopyrights --primary -- --fix" to fix them.')
+    with Task('ClangFormat', tasks, tags=['style', 'clangformat']) as t:
+        if t: clangformatcheck()
+    _sulong_gate_testsuite('Benchmarks', 'shootout', tasks, args, tags=['benchmarks', 'sulongMisc'])
+    _sulong_gate_unittest('Types', 'com.oracle.truffle.llvm.types.test', tasks, args, tags=['type', 'sulongMisc', 'sulongCoverage'], testClasses=['com.oracle.truffle.llvm.types.floating.test'])
+    _sulong_gate_unittest('Pipe', 'com.oracle.truffle.llvm.test', tasks, args, tags=['pipe', 'sulongMisc', 'sulongCoverage'], testClasses=['CaptureOutputTest'])
+    _sulong_gate_testsuite('LLVM', 'llvm', tasks, args, tags=['llvm', 'sulongCoverage'])
+    _sulong_gate_testsuite('NWCC', 'nwcc', tasks, args, tags=['nwcc', 'sulongCoverage'])
+    _sulong_gate_testsuite('GCCParserTorture', 'parserTorture', tasks, args, tags=['parser', 'sulongCoverage'], vmArgs=['-Dpolyglot.llvm.parseOnly=true'])
+    _sulong_gate_testsuite('GCC_C', 'gcc_c', tasks, args, tags=['gcc_c', 'sulongCoverage'])
+    _sulong_gate_testsuite('GCC_CPP', 'gcc_cpp', tasks, args, tags=['gcc_cpp', 'sulongCoverage'])
+    _sulong_gate_testsuite('GCC_Fortran', 'gcc_fortran', tasks, args, tags=['gcc_fortran', 'sulongCoverage'])
+    _sulong_gate_sulongsuite_unittest('Sulong', tasks, args, testClasses='SulongSuite', tags=['sulong', 'sulongBasic', 'sulongCoverage'])
+    _sulong_gate_sulongsuite_unittest('Interop', tasks, args, testClasses='com.oracle.truffle.llvm.test.interop', tags=['interop', 'sulongBasic', 'sulongCoverage'])
+    _sulong_gate_sulongsuite_unittest('Debug', tasks, args, testClasses='LLVMDebugTest', tags=['debug', 'sulongBasic', 'sulongCoverage'])
+    _sulong_gate_sulongsuite_unittest('IRDebug', tasks, args, testClasses='LLVMIRDebugTest', tags=['irdebug', 'sulongBasic', 'sulongCoverage'])
+    _sulong_gate_sulongsuite_unittest('BitcodeFormat', tasks, args, testClasses='BitcodeFormatTest', tags=['bitcodeFormat', 'sulongBasic', 'sulongCoverage'])
+    _sulong_gate_sulongsuite_unittest('OtherTests', tasks, args, testClasses='com.oracle.truffle.llvm.test.other', tags=['otherTests', 'sulongBasic', 'sulongCoverage'])
+    _sulong_gate_testsuite('Assembly', 'inlineassemblytests', tasks, args, testClasses='InlineAssemblyTest', tags=['assembly', 'sulongCoverage'])
+    _sulong_gate_testsuite('Args', 'other', tasks, args, tags=['args', 'sulongMisc', 'sulongCoverage'], testClasses=['com.oracle.truffle.llvm.test.MainArgsTest'])
+    _sulong_gate_testsuite('Callback', 'other', tasks, args, tags=['callback', 'sulongMisc', 'sulongCoverage'], testClasses=['com.oracle.truffle.llvm.test.CallbackTest'])
+    _sulong_gate_testsuite('Varargs', 'other', tasks, args, tags=['vaargs', 'sulongMisc', 'sulongCoverage'], testClasses=['com.oracle.truffle.llvm.test.VAArgsTest'])
 
 
 add_gate_runner(_suite, _sulong_gate_runner)
@@ -206,7 +186,7 @@ def testLLVMImage(image, imageArgs=None, testFilter=None, libPath=True, test=Non
     args = ['-Dsulongtest.testAOTImage=' + image]
     aotArgs = []
     if libPath:
-        aotArgs += [mx_subst.path_substitutions.substitute('-Dllvm.home=<path:SULONG_LIBS>')]
+        aotArgs += [mx_subst.path_substitutions.substitute('<sulong_home>')]
     if imageArgs is not None:
         aotArgs += imageArgs
     if aotArgs:
@@ -249,7 +229,8 @@ def runLLVMUnittests(unittest_runner):
 
     run_args = [libpath, libs] + java_run_props
     build_args = ['--language:llvm'] + java_run_props
-    unittest_runner(['com.oracle.truffle.llvm.test.interop', '--run-args'] + run_args + ['--build-args'] + build_args)
+    unittest_runner(['com.oracle.truffle.llvm.test.interop', '--run-args'] + run_args +
+                    ['--build-args', '--initialize-at-build-time'] + build_args)
 
 
 def clangformatcheck(args=None):
@@ -542,13 +523,13 @@ def getLLVMVersion(llvmProgram):
         return printLLVMVersion.group(3)
 
 # the makefiles do not check which version of clang they invoke
-clang_versions_need_optnone = ['5', '6', '7', '8']
+versions_dont_have_optnone = ['3', '4']
 def getLLVMExplicitArgs(mainLLVMVersion):
     if mainLLVMVersion:
-        for ver in clang_versions_need_optnone:
+        for ver in versions_dont_have_optnone:
             if mainLLVMVersion.startswith(ver):
-                return ["-Xclang", "-disable-O0-optnone"]
-    return []
+                return []
+    return ["-Xclang", "-disable-O0-optnone"]
 
 def getClangImplicitArgs():
     mainLLVMVersion = getLLVMVersion(mx_buildtools.ClangCompiler.CLANG)
@@ -639,6 +620,21 @@ def ensureLLVMBinariesExist():
             raise Exception(llvmBinary + ' not found')
 
 
+def _get_sulong_home():
+    return mx_subst.path_substitutions.substitute('<path:SULONG_HOME>')
+
+_the_get_sulong_home = _get_sulong_home
+
+def get_sulong_home():
+    return _the_get_sulong_home()
+
+def update_sulong_home(new_home):
+    global _the_get_sulong_home
+    _the_get_sulong_home = new_home
+
+mx_subst.path_substitutions.register_no_arg('sulong_home', get_sulong_home)
+
+
 def runLLVM(args=None, out=None, get_classpath_options=getClasspathOptions):
     """uses Sulong to execute a LLVM IR file"""
     vmArgs, sulongArgs = truffle_extract_VM_args(args)
@@ -697,7 +693,7 @@ mx_sdk.register_graalvm_component(mx_sdk.GraalVmLanguage(
     third_party_license_files=[],
     truffle_jars=['sulong:SULONG'],
     support_distributions=[
-        'sulong:SULONG_LIBS',
+        'sulong:SULONG_HOME',
         'sulong:SULONG_GRAALVM_DOCS',
     ],
     launcher_configs=[
@@ -705,14 +701,15 @@ mx_sdk.register_graalvm_component(mx_sdk.GraalVmLanguage(
             destination='bin/<exe:lli>',
             jar_distributions=['sulong:SULONG_LAUNCHER'],
             main_class='com.oracle.truffle.llvm.launcher.LLVMLauncher',
-            build_args=['--language:llvm']
+            build_args=[],
+            language='llvm',
         )
     ],
 ))
 
 COPYRIGHT_HEADER_BSD = """\
 /*
- * Copyright (c) 2016, 2018, Oracle and/or its affiliates.
+ * Copyright (c) 2016, 2019, Oracle and/or its affiliates.
  *
  * All rights reserved.
  *

@@ -26,10 +26,11 @@ package org.graalvm.compiler.core.common;
 
 import org.graalvm.compiler.options.Option;
 import org.graalvm.compiler.options.OptionKey;
+import org.graalvm.compiler.options.OptionStability;
 import org.graalvm.compiler.options.OptionType;
 
 /**
- * This class encapsulates options that control the behavior of the Graal compiler.
+ * This class encapsulates options that control the behavior of the GraalVM compiler.
  */
 // @formatter:off
 public final class GraalOptions {
@@ -167,6 +168,9 @@ public final class GraalOptions {
     public static final OptionKey<Boolean> ConditionalElimination = new OptionKey<>(true);
 
     @Option(help = "", type = OptionType.Debug)
+    public static final OptionKey<Integer> ConditionalEliminationMaxIterations = new OptionKey<>(4);
+
+    @Option(help = "", type = OptionType.Debug)
     public static final OptionKey<Boolean> RawConditionalElimination = new OptionKey<>(true);
 
     @Option(help = "", type = OptionType.Debug)
@@ -238,9 +242,6 @@ public final class GraalOptions {
     public static final OptionKey<Boolean> OptImplicitNullChecks = new OptionKey<>(true);
 
     @Option(help = "", type = OptionType.Debug)
-    public static final OptionKey<Boolean> OptClearNonLiveLocals = new OptionKey<>(true);
-
-    @Option(help = "", type = OptionType.Debug)
     public static final OptionKey<Boolean> OptLoopTransform = new OptionKey<>(true);
 
     @Option(help = "", type = OptionType.Debug)
@@ -273,13 +274,21 @@ public final class GraalOptions {
     @Option(help = "Use a cache for snippet graphs.", type = OptionType.Debug)
     public static final OptionKey<Boolean> UseSnippetGraphCache = new OptionKey<>(true);
 
-    @Option(help = "file:doc-files/TraceInliningHelp.txt", type = OptionType.Debug)
+    @Option(help = "file:doc-files/TraceInliningHelp.txt", type = OptionType.Debug, stability = OptionStability.STABLE)
     public static final OptionKey<Boolean> TraceInlining = new OptionKey<>(false);
 
     @Option(help = "Enable inlining decision tracing in stubs and snippets.", type = OptionType.Debug)
     public static final OptionKey<Boolean> TraceInliningForStubsAndSnippets = new OptionKey<>(false);
 
-    @Option(help = "Use Graal-generated stubs for complicated LIR operations instead of embedding all the emitted code.")
+    @Option(help = "Use Graal-generated stubs for complicated LIR operations instead of embedding all the emitted code.", type = OptionType.Expert)
     public static final OptionKey<Boolean> UseGraalStubs = new OptionKey<>(true);
 
+    @Option(help = "Encode and decode snippets and substitutions before parsing to test libgraal code path. This option is ignored in the context of libgraal.")
+    public static final OptionKey<Boolean> UseEncodedGraphs = new OptionKey<>(false);
+
+    @Option(help = "If applicable, use bulk zeroing instructions when the zeroing size in bytes exceeds this threshold.", type = OptionType.Expert)
+    public static final OptionKey<Integer> MinimalBulkZeroingSize = new OptionKey<>(2048);
+
+    @Option(help = "Alignment in bytes for loop header blocks.", type = OptionType.Expert)
+    public static final OptionKey<Integer> LoopHeaderAlignment = new OptionKey<>(16);
 }

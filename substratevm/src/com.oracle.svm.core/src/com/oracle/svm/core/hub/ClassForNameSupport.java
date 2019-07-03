@@ -27,13 +27,12 @@ package com.oracle.svm.core.hub;
 import java.util.HashMap;
 import java.util.Map;
 
-import org.graalvm.nativeimage.Feature;
 import org.graalvm.nativeimage.ImageSingletons;
 import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.Platforms;
+import org.graalvm.nativeimage.hosted.Feature;
 
 import com.oracle.svm.core.annotate.AutomaticFeature;
-import com.oracle.svm.core.annotate.Substitute;
 
 public final class ClassForNameSupport {
 
@@ -44,9 +43,19 @@ public final class ClassForNameSupport {
         ImageSingletons.lookup(ClassForNameSupport.class).knownClasses.put(clazz.getName(), clazz);
     }
 
-    @Substitute
-    public static Class<?> forName(String className) throws ClassNotFoundException {
+    public static Class<?> forNameOrNull(String className, boolean initialize) {
         Class<?> result = ImageSingletons.lookup(ClassForNameSupport.class).knownClasses.get(className);
+        if (result == null) {
+            return null;
+        }
+        if (initialize) {
+            DynamicHub.fromClass(result).ensureInitialized();
+        }
+        return result;
+    }
+
+    public static Class<?> forName(String className, boolean initialize) throws ClassNotFoundException {
+        Class<?> result = forNameOrNull(className, initialize);
         if (result == null) {
             throw new ClassNotFoundException(className);
         }

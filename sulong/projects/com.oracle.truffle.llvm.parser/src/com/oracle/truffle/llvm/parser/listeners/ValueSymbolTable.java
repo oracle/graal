@@ -30,7 +30,7 @@
 package com.oracle.truffle.llvm.parser.listeners;
 
 import com.oracle.truffle.llvm.parser.model.IRScope;
-import com.oracle.truffle.llvm.parser.records.Records;
+import com.oracle.truffle.llvm.parser.scanner.RecordBuffer;
 
 public final class ValueSymbolTable implements ParserListener {
 
@@ -46,21 +46,21 @@ public final class ValueSymbolTable implements ParserListener {
     }
 
     @Override
-    public void record(long id, long[] args) {
-        switch ((int) id) {
+    public void record(RecordBuffer buffer) {
+        int id = buffer.getId();
+        int index = buffer.readInt();
+        switch (id) {
             case VALUE_SYMTAB_ENTRY:
-                final String entryName = Records.toString(args, 1);
-                container.nameSymbol((int) args[0], entryName);
+                container.nameSymbol(index, buffer.readString());
                 break;
 
             case VALUE_SYMTAB_BASIC_BLOCK_ENTRY:
-                final String blockName = Records.toString(args, 1);
-                container.nameBlock((int) args[0], blockName);
+                container.nameBlock(index, buffer.readString());
                 break;
 
             case VALUE_SYMTAB_FUNCTION_ENTRY:
-                final String functionName = Records.toString(args, 2);
-                container.nameSymbol((int) args[0], functionName);
+                buffer.skip(); // ignored
+                container.nameSymbol(index, buffer.readString());
                 break;
 
             default:

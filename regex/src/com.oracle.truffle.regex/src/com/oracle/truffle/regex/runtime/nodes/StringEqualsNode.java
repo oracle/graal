@@ -48,7 +48,7 @@ public abstract class StringEqualsNode extends Node {
     }
 
     @Specialization(replaces = "cacheIdentity")
-    static boolean isInvocable(String a, String b) {
+    static boolean doEquals(String a, String b) {
         CompilerAsserts.compilationConstant(b);
         return b.equals(a);
     }

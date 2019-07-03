@@ -33,11 +33,13 @@ import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.dsl.GenerateUncached;
 import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.interop.TruffleObject;
-import com.oracle.truffle.llvm.runtime.LLVMBoxedPrimitive;
+import com.oracle.truffle.api.object.DynamicObject;
 import com.oracle.truffle.llvm.runtime.LLVMIVarBit;
 import com.oracle.truffle.llvm.runtime.LLVMVirtualAllocationAddress;
 import com.oracle.truffle.llvm.runtime.interop.access.LLVMInteropType;
+import com.oracle.truffle.llvm.runtime.nodes.api.LLVMExpressionNode;
 import com.oracle.truffle.llvm.runtime.nodes.api.LLVMNode;
+import com.oracle.truffle.llvm.runtime.nodes.api.LLVMObjectAccess;
 import com.oracle.truffle.llvm.runtime.pointer.LLVMManagedPointer;
 import com.oracle.truffle.llvm.runtime.pointer.LLVMNativePointer;
 import com.oracle.truffle.llvm.runtime.pointer.LLVMPointer;
@@ -112,11 +114,6 @@ public abstract class LLVMDataEscapeNode extends LLVMNode {
     }
 
     @Specialization
-    static Object escapingBoxed(LLVMBoxedPrimitive escapingValue, @SuppressWarnings("unused") LLVMInteropType.Structured type) {
-        return escapingValue.getValue();
-    }
-
-    @Specialization
     static TruffleObject escapingType(LLVMInteropType escapingValue, @SuppressWarnings("unused") LLVMInteropType.Structured type) {
         return escapingValue;
     }
@@ -177,19 +174,38 @@ public abstract class LLVMDataEscapeNode extends LLVMNode {
         throw new IllegalStateException("Exporting VarBit is not yet supported!");
     }
 
-    protected static boolean isForeign(LLVMPointer pointer) {
-        if (LLVMManagedPointer.isInstance(pointer)) {
-            LLVMManagedPointer managed = LLVMManagedPointer.cast(pointer);
-            return managed.getOffset() == 0 && managed.getObject() instanceof LLVMTypedForeignObject;
+    protected static boolean isForeign(LLVMPointer address) {
+        if (LLVMManagedPointer.isInstance(address)) {
+            LLVMManagedPointer managed = LLVMManagedPointer.cast(address);
+            boolean isForeignObject = managed.getObject() instanceof LLVMTypedForeignObject;
+
+            if (managed.getObject() instanceof LLVMObjectAccess && !(isForeignObject)) {
+                return false;
+            } else if (managed.getObject() instanceof DynamicObject) {
+                if (((DynamicObject) managed.getObject()).getShape().getObjectType() instanceof LLVMObjectAccess) {
+                    return false;
+                }
+            }
+            return managed.getOffset() == 0 && (LLVMExpressionNode.notLLVM(managed.getObject()) || isForeignObject);
         } else {
             return false;
         }
     }
 
-    @Specialization(guards = "isForeign(address)")
-    static TruffleObject escapingForeign(LLVMManagedPointer address, @SuppressWarnings("unused") LLVMInteropType.Structured type) {
-        LLVMTypedForeignObject typedForeign = (LLVMTypedForeignObject) address.getObject();
-        return typedForeign.getForeign();
+    @Specialization
+    static Object escapingForeign(LLVMTypedForeignObject escapingValue, @SuppressWarnings("unused") LLVMInteropType.Structured type) {
+        return escapingValue.getForeign();
+    }
+
+    @Specialization(guards = {"isForeign(address)"})
+    static Object escapingManaged(LLVMManagedPointer address, @SuppressWarnings("unused") LLVMInteropType.Structured type) {
+        Object object = address.getObject();
+
+        if (object instanceof LLVMTypedForeignObject) {
+            return escapingForeign((LLVMTypedForeignObject) object, type);
+        }
+
+        return object;
     }
 
     @Specialization(guards = {"!isForeign(address)", "type != null"})

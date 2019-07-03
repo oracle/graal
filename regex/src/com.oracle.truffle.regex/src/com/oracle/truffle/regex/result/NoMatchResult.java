@@ -26,14 +26,13 @@ package com.oracle.truffle.regex.result;
 
 public final class NoMatchResult extends RegexResult {
 
-    private static final NoMatchResult INSTANCE = new NoMatchResult(0);
+    private static final NoMatchResult INSTANCE = new NoMatchResult();
 
     public static NoMatchResult getInstance() {
         return INSTANCE;
     }
 
-    private NoMatchResult(int groupCount) {
-        super(groupCount);
+    private NoMatchResult() {
     }
 
     @Override

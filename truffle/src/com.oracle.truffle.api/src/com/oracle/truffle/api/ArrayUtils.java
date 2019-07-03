@@ -44,7 +44,7 @@ package com.oracle.truffle.api;
  * This class provides additional operations for {@link String} as well as character and byte
  * arrays, which may be intrinsified by a compiler.
  *
- * @since 1.0
+ * @since 19.0
  */
 public final class ArrayUtils {
 
@@ -58,7 +58,7 @@ public final class ArrayUtils {
      * @return the index of the first occurrence of any character contained in {@code needle} in
      *         {@code haystack} that is greater than or equal to {@code fromIndex} and less than
      *         {@code maxIndex}, or {@code -1} if none of the characters occur.
-     * @since 1.0
+     * @since 19.0
      */
     public static int indexOf(String haystack, int fromIndex, int maxIndex, char... needle) {
         checkArgs(haystack.length(), fromIndex, maxIndex, needle.length);
@@ -83,7 +83,7 @@ public final class ArrayUtils {
      * @return the index of the first occurrence of any character contained in {@code needle} in
      *         {@code haystack} that is greater than or equal to {@code fromIndex} and less than
      *         {@code maxIndex}, or {@code -1} if none of the characters occur.
-     * @since 1.0
+     * @since 19.0
      */
     public static int indexOf(char[] haystack, int fromIndex, int maxIndex, char... needle) {
         checkArgs(haystack.length, fromIndex, maxIndex, needle.length);
@@ -108,7 +108,7 @@ public final class ArrayUtils {
      * @return the index of the first occurrence of any byte contained in {@code needle} in
      *         {@code haystack} that is greater than or equal to {@code fromIndex} and less than
      *         {@code maxIndex}, or {@code -1} if none of the needle occur.
-     * @since 1.0
+     * @since 19.0
      */
     public static int indexOf(byte[] haystack, int fromIndex, int maxIndex, byte... needle) {
         checkArgs(haystack.length, fromIndex, maxIndex, needle.length);

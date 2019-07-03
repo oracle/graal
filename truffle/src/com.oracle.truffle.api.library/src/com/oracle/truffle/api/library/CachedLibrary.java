@@ -123,7 +123,7 @@ import com.oracle.truffle.api.dsl.Specialization;
  *
  * @see LibraryFactory for manually instantiating libraries
  * @see com.oracle.truffle.api.library Truffle Library reference documentation
- * @since 1.0
+ * @since 19.0
  */
 @Retention(RetentionPolicy.CLASS)
 @Target({ElementType.PARAMETER})
@@ -134,7 +134,7 @@ public @interface CachedLibrary {
      * applies as for {@link Cached} value expressions.
      *
      * @see CachedLibrary for usage examples.
-     * @since 1.0
+     * @since 19.0
      */
     String value() default "";
 
@@ -144,7 +144,7 @@ public @interface CachedLibrary {
      * {@link LibraryFactory#getUncached() uncached} version of the library will be used.
      *
      * @see CachedLibrary for usage examples.
-     * @since 1.0
+     * @since 19.0
      */
     String limit() default "";
 

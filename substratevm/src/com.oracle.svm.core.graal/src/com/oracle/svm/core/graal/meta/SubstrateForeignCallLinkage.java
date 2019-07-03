@@ -99,7 +99,7 @@ public class SubstrateForeignCallLinkage implements ForeignCallLinkage {
 
     @Override
     public boolean needsDebugInfo() {
-        return true;
+        return descriptor.needsDebugInfo();
     }
 
     @Override

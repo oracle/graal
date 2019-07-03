@@ -242,12 +242,26 @@ public abstract class ShapeImpl extends Shape {
     private static int capacityFromSize(int size) {
         if (size == 0) {
             return 0;
-        } else if (size < 4) {
+        } else if (size <= 4) {
             return 4;
-        } else if (size < 32) {
-            return ((size + 7) / 8) * 8;
+        } else if (size <= 8) {
+            return 8;
         } else {
-            return ((size + 15) / 16) * 16;
+            // round up to (3/2) * highestOneBit or the next power of 2, alternately;
+            // i.e., the next in the sequence: 8, 12, 16, 24, 32, 48, 64, 96, 128, ...
+            int hi = Integer.highestOneBit(size);
+            int cap = hi;
+            if (cap < size) {
+                cap = hi + (hi >>> 1);
+                if (cap < size) {
+                    cap = hi << 1;
+                    if (cap < size) {
+                        // handle potential overflow
+                        cap = size;
+                    }
+                }
+            }
+            return cap;
         }
     }
 

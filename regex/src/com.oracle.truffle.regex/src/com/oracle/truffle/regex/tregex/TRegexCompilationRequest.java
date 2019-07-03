@@ -32,11 +32,11 @@ import static com.oracle.truffle.regex.tregex.util.DebugUtil.LOG_TREGEX_COMPILAT
 import java.util.logging.Level;
 
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
-import com.oracle.truffle.api.frame.FrameDescriptor;
-import com.oracle.truffle.api.frame.FrameSlot;
-import com.oracle.truffle.api.frame.FrameSlotKind;
+import com.oracle.truffle.api.TruffleFile;
+import com.oracle.truffle.api.TruffleLanguage.Env;
 import com.oracle.truffle.regex.CompiledRegexObject;
 import com.oracle.truffle.regex.RegexExecRootNode;
+import com.oracle.truffle.regex.RegexLanguage;
 import com.oracle.truffle.regex.RegexOptions;
 import com.oracle.truffle.regex.RegexSource;
 import com.oracle.truffle.regex.UnsupportedRegexException;
@@ -122,7 +122,7 @@ final class TRegexCompilationRequest {
             preCalculatedResults = new PreCalculatedResultFactory[]{PreCalcResultVisitor.createResultFactory(ast)};
         }
         createNFA();
-        if (preCalculatedResults == null && TRegexOptions.TRegexEnableTraceFinder && !properties.hasLoops()) {
+        if (preCalculatedResults == null && TRegexOptions.TRegexEnableTraceFinder && !ast.getRoot().hasLoops()) {
             try {
                 phaseStart("TraceFinder NFA");
                 traceFinderNFA = NFATraceFinderGenerator.generateTraceFinder(nfa);
@@ -230,29 +230,7 @@ final class TRegexCompilationRequest {
     }
 
     private TRegexDFAExecutorProperties createExecutorProperties(NFA nfaArg, boolean forward, boolean searching, boolean trackCaptureGroups) {
-        FrameDescriptor frameDescriptor = new FrameDescriptor();
-        FrameSlot inputFS = frameDescriptor.addFrameSlot("input", FrameSlotKind.Object);
-        FrameSlot fromIndexFS = frameDescriptor.addFrameSlot("fromIndex", FrameSlotKind.Int);
-        FrameSlot indexFS = frameDescriptor.addFrameSlot("index", FrameSlotKind.Int);
-        FrameSlot maxIndexFS = frameDescriptor.addFrameSlot("maxIndex", FrameSlotKind.Int);
-        FrameSlot curMaxIndexFS = frameDescriptor.addFrameSlot("curMaxIndex", FrameSlotKind.Int);
-        FrameSlot successorIndexFS = frameDescriptor.addFrameSlot("successorIndex", FrameSlotKind.Int);
-        FrameSlot resultFS = frameDescriptor.addFrameSlot("result", FrameSlotKind.Int);
-        FrameSlot captureGroupResultFS = frameDescriptor.addFrameSlot("captureGroupResult", FrameSlotKind.Object);
-        FrameSlot lastTransitionFS = frameDescriptor.addFrameSlot("lastTransition", FrameSlotKind.Int);
-        FrameSlot cgDataFS = frameDescriptor.addFrameSlot("cgData", FrameSlotKind.Object);
         return new TRegexDFAExecutorProperties(
-                        frameDescriptor,
-                        inputFS,
-                        fromIndexFS,
-                        indexFS,
-                        maxIndexFS,
-                        curMaxIndexFS,
-                        successorIndexFS,
-                        resultFS,
-                        captureGroupResultFS,
-                        lastTransitionFS,
-                        cgDataFS,
                         forward,
                         searching,
                         trackCaptureGroups,
@@ -263,31 +241,45 @@ final class TRegexCompilationRequest {
 
     private void debugAST() {
         if (tRegexCompiler.getOptions().isDumpAutomata()) {
-            ASTLaTexExportVisitor.exportLatex(ast, "./ast.tex");
-            ast.getWrappedRoot().toJson().dump("ast.json");
+            Env env = RegexLanguage.getCurrentContext().getEnv();
+            TruffleFile file = env.getTruffleFile("./ast.tex");
+            ASTLaTexExportVisitor.exportLatex(ast, file);
+            file = env.getTruffleFile("ast.json");
+            ast.getWrappedRoot().toJson().dump(file);
         }
     }
 
     private void debugNFA() {
         if (tRegexCompiler.getOptions().isDumpAutomata()) {
-            NFAExport.exportDot(nfa, "./nfa.gv", true, false);
-            NFAExport.exportLaTex(nfa, "./nfa.tex", false, true);
-            NFAExport.exportDotReverse(nfa, "./nfa_reverse.gv", true, false);
-            nfa.toJson().dump("nfa.json");
+            Env env = RegexLanguage.getCurrentContext().getEnv();
+            TruffleFile file = env.getTruffleFile("./nfa.gv");
+            NFAExport.exportDot(nfa, file, true, false);
+            file = env.getTruffleFile("./nfa.tex");
+            NFAExport.exportLaTex(nfa, file, false, true);
+            file = env.getTruffleFile("./nfa_reverse.gv");
+            NFAExport.exportDotReverse(nfa, file, true, false);
+            file = env.getTruffleFile("nfa.json");
+            nfa.toJson().dump(file);
         }
     }
 
     private void debugTraceFinder() {
         if (tRegexCompiler.getOptions().isDumpAutomata()) {
-            NFAExport.exportDotReverse(traceFinderNFA, "./trace_finder.gv", true, false);
-            traceFinderNFA.toJson().dump("nfa_trace_finder.json");
+            Env env = RegexLanguage.getCurrentContext().getEnv();
+            TruffleFile file = env.getTruffleFile("./trace_finder.gv");
+            NFAExport.exportDotReverse(traceFinderNFA, file, true, false);
+            file = env.getTruffleFile("nfa_trace_finder.json");
+            traceFinderNFA.toJson().dump(file);
         }
     }
 
     private void debugDFA(DFAGenerator dfa) {
         if (tRegexCompiler.getOptions().isDumpAutomata()) {
-            DFAExport.exportDot(dfa, "dfa_" + dfa.getDebugDumpName() + ".gv", false);
-            Json.obj(Json.prop("dfa", dfa.toJson())).dump("dfa_" + dfa.getDebugDumpName() + ".json");
+            Env env = RegexLanguage.getCurrentContext().getEnv();
+            TruffleFile file = env.getTruffleFile("dfa_" + dfa.getDebugDumpName() + ".gv");
+            DFAExport.exportDot(dfa, file, false);
+            file = env.getTruffleFile("dfa_" + dfa.getDebugDumpName() + ".json");
+            Json.obj(Json.prop("dfa", dfa.toJson())).dump(file);
         }
     }
 

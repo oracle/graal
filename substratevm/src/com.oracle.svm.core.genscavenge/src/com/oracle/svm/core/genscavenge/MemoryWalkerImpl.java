@@ -24,7 +24,7 @@
  */
 package com.oracle.svm.core.genscavenge;
 
-import org.graalvm.nativeimage.Feature;
+import org.graalvm.nativeimage.hosted.Feature;
 import org.graalvm.nativeimage.ImageSingletons;
 import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.Platforms;
@@ -89,6 +89,10 @@ public class MemoryWalkerImpl extends MemoryWalker {
 
 @AutomaticFeature
 class MemoryWalkerFeature implements Feature {
+    @Override
+    public boolean isInConfiguration(IsInConfigurationAccess access) {
+        return HeapOptions.UseCardRememberedSetHeap.getValue();
+    }
 
     @Override
     public void afterRegistration(AfterRegistrationAccess access) {

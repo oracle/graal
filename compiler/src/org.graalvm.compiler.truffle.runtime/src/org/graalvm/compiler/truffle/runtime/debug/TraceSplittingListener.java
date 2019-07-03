@@ -24,9 +24,6 @@
  */
 package org.graalvm.compiler.truffle.runtime.debug;
 
-import java.io.File;
-import java.nio.file.Path;
-import java.nio.file.Paths;
 import java.util.Map;
 
 import org.graalvm.compiler.truffle.common.TruffleCompilerRuntime;
@@ -34,8 +31,7 @@ import org.graalvm.compiler.truffle.runtime.GraalTruffleRuntime;
 import org.graalvm.compiler.truffle.runtime.GraalTruffleRuntimeListener;
 import org.graalvm.compiler.truffle.runtime.OptimizedCallTarget;
 import org.graalvm.compiler.truffle.runtime.OptimizedDirectCallNode;
-import org.graalvm.compiler.truffle.runtime.TruffleRuntimeOptions;
-import org.graalvm.compiler.truffle.runtime.SharedTruffleRuntimeOptions;
+import org.graalvm.compiler.truffle.runtime.PolyglotCompilerOptions;
 
 import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.api.nodes.RootNode;
@@ -47,9 +43,7 @@ public final class TraceSplittingListener implements GraalTruffleRuntimeListener
     }
 
     public static void install(GraalTruffleRuntime runtime) {
-        if (TruffleRuntimeOptions.getValue(SharedTruffleRuntimeOptions.TraceTruffleSplitting)) {
-            runtime.addListener(new TraceSplittingListener());
-        }
+        runtime.addListener(new TraceSplittingListener());
     }
 
     private int splitCount;
@@ -57,10 +51,12 @@ public final class TraceSplittingListener implements GraalTruffleRuntimeListener
     @Override
     public void onCompilationSplit(OptimizedDirectCallNode callNode) {
         OptimizedCallTarget callTarget = callNode.getCallTarget();
-        String label = String.format("split %3s-%-4s-%-4s ", splitCount++, Integer.toHexString(callNode.getCurrentCallTarget().hashCode()), callNode.getCallCount());
-        final Map<String, Object> debugProperties = callTarget.getDebugProperties(null);
-        debugProperties.put("SourceSection", extractSourceSection(callNode));
-        TruffleCompilerRuntime.getRuntime().logEvent(0, label, callTarget.toString(), debugProperties);
+        if (callTarget.getOptionValue(PolyglotCompilerOptions.TraceSplitting)) {
+            String label = String.format("split %3s-%-4s-%-4s ", splitCount++, Integer.toHexString(callNode.getCurrentCallTarget().hashCode()), callNode.getCallCount());
+            final Map<String, Object> debugProperties = callTarget.getDebugProperties(null);
+            debugProperties.put("SourceSection", extractSourceSection(callNode));
+            TruffleCompilerRuntime.getRuntime().logEvent(0, label, callTarget.toString(), debugProperties);
+        }
     }
 
     private static String extractSourceSection(OptimizedDirectCallNode node) {
@@ -84,14 +80,7 @@ public final class TraceSplittingListener implements GraalTruffleRuntimeListener
         if (sourceSection.getSource().getPath() == null) {
             b.append(sourceSection.getSource().getName());
         } else {
-            Path pathAbsolute = Paths.get(sourceSection.getSource().getPath());
-            Path pathBase = new File("").getAbsoluteFile().toPath();
-            try {
-                Path pathRelative = pathBase.relativize(pathAbsolute);
-                b.append(pathRelative.toFile());
-            } catch (IllegalArgumentException e) {
-                b.append(sourceSection.getSource().getName());
-            }
+            b.append(sourceSection.getSource().getPath());
         }
 
         b.append("~").append(formatIndices(sourceSection, true));

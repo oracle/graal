@@ -49,7 +49,7 @@ import java.lang.annotation.Target;
  * Denotes an external library that needs to be linked in. The annotation can be placed on any
  * element, and the same library can be referenced by multiple annotations.
  *
- * @since 1.0
+ * @since 19.0
  */
 @Retention(RetentionPolicy.RUNTIME)
 @Target({ElementType.TYPE, ElementType.METHOD})
@@ -58,7 +58,14 @@ public @interface CLibrary {
     /**
      * The name of the library.
      *
-     * @since 1.0
+     * @since 19.0
      */
     String value();
+
+    /**
+     * Specifies if static linking is required.
+     *
+     * @since 19.1.0
+     */
+    boolean requireStatic() default false;
 }

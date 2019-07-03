@@ -112,7 +112,7 @@ final class ASTSuccessor implements JsonConvertible {
     private void addAllIntersecting(ASTTransitionCanonicalizer canonicalizer, TransitionBuilder<ASTTransitionSet> state, ASTStep lookAround, ArrayList<TransitionBuilder<ASTTransitionSet>> result) {
         for (ASTSuccessor successor : lookAround.getSuccessors()) {
             for (TransitionBuilder<ASTTransitionSet> lookAroundState : successor.getMergedStates(canonicalizer)) {
-                CharSet intersection = state.getMatcherBuilder().createIntersectionMatcher(lookAroundState.getMatcherBuilder(), compilationBuffer);
+                CharSet intersection = state.getMatcherBuilder().createIntersection(lookAroundState.getMatcherBuilder(), compilationBuffer);
                 if (intersection.matchesSomething()) {
                     result.add(state.createMerged(lookAroundState, intersection));
                 }

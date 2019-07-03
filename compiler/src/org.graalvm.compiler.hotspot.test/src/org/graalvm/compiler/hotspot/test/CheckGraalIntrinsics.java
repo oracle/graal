@@ -272,10 +272,6 @@ public class CheckGraalIntrinsics extends GraalTest {
                             "jdk/jfr/internal/JVM.getClassId(Ljava/lang/Class;)J");
 
             add(toBeInvestigated,
-                            // HotSpot MacroAssembler-based intrinsic
-                            "java/lang/Math.fma(DDD)D",
-                            // HotSpot MacroAssembler-based intrinsic
-                            "java/lang/Math.fma(FFF)F",
                             // Just check if the argument is a compile time constant
                             "java/lang/invoke/MethodHandleImpl.isCompileConstant(Ljava/lang/Object;)Z",
                             // Only used as a marker for vectorization?
@@ -371,6 +367,15 @@ public class CheckGraalIntrinsics extends GraalTest {
                 add(ignore,
                                 "sun/security/provider/DigestBase.implCompressMultiBlock0([BII)I");
             }
+            if (!config.useFMAIntrinsics) {
+                add(ignore,
+                                "java/lang/Math.fma(DDD)D",
+                                "java/lang/Math.fma(FFF)F");
+            } else if (!(arch instanceof AMD64)) {
+                add(toBeInvestigated,
+                                "java/lang/Math.fma(DDD)D",
+                                "java/lang/Math.fma(FFF)F");
+            }
         }
 
         if (isJDK10OrHigher()) {
@@ -381,20 +386,21 @@ public class CheckGraalIntrinsics extends GraalTest {
         if (isJDK11OrHigher()) {
             // Relevant for Java flight recorder
             add(toBeInvestigated,
-                            "java/util/Base64$Encoder.encodeBlock([BII[BIZ)V",
-                            "jdk/jfr/internal/JVM.getEventWriter()Ljava/lang/Object;");
-        }
-
-        if (isJDK12OrHigher()) {
-            add(toBeInvestigated,
                             "java/lang/CharacterDataLatin1.isDigit(I)Z",
                             "java/lang/CharacterDataLatin1.isLowerCase(I)Z",
                             "java/lang/CharacterDataLatin1.isUpperCase(I)Z",
-                            "java/lang/CharacterDataLatin1.isWhitespace(I)Z");
+                            "java/lang/CharacterDataLatin1.isWhitespace(I)Z",
+                            "jdk/jfr/internal/JVM.getEventWriter()Ljava/lang/Object;");
+            if (!config.useBase64Intrinsics()) {
+                add(ignore,
+                                "java/util/Base64$Encoder.encodeBlock([BII[BIZ)V");
+            }
         }
 
         if (isJDK13OrHigher()) {
             add(toBeInvestigated,
+                            "java/lang/Math.abs(I)I",
+                            "java/lang/Math.abs(J)J",
                             "java/lang/Math.max(DD)D",
                             "java/lang/Math.max(FF)F",
                             "java/lang/Math.min(DD)D",
@@ -558,23 +564,23 @@ public class CheckGraalIntrinsics extends GraalTest {
     }
 
     private static boolean isJDK9OrHigher() {
-        return JavaVersionUtil.JAVA_SPECIFICATION_VERSION >= 9;
+        return JavaVersionUtil.JAVA_SPEC >= 9;
     }
 
     private static boolean isJDK10OrHigher() {
-        return JavaVersionUtil.JAVA_SPECIFICATION_VERSION >= 10;
+        return JavaVersionUtil.JAVA_SPEC >= 10;
     }
 
     private static boolean isJDK11OrHigher() {
-        return JavaVersionUtil.JAVA_SPECIFICATION_VERSION >= 11;
+        return JavaVersionUtil.JAVA_SPEC >= 11;
     }
 
     private static boolean isJDK12OrHigher() {
-        return JavaVersionUtil.JAVA_SPECIFICATION_VERSION >= 12;
+        return JavaVersionUtil.JAVA_SPEC >= 12;
     }
 
     private static boolean isJDK13OrHigher() {
-        return JavaVersionUtil.JAVA_SPECIFICATION_VERSION >= 13;
+        return JavaVersionUtil.JAVA_SPEC >= 13;
     }
 
     public interface Refiner {

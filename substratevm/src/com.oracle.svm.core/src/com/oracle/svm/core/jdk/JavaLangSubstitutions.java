@@ -26,7 +26,6 @@ package com.oracle.svm.core.jdk;
 
 import static com.oracle.svm.core.annotate.RecomputeFieldValue.Kind.Reset;
 import static com.oracle.svm.core.snippets.KnownIntrinsics.readHub;
-import static com.oracle.svm.core.snippets.KnownIntrinsics.unsafeCast;
 
 import java.io.File;
 import java.io.InputStream;
@@ -48,6 +47,7 @@ import java.util.function.Predicate;
 import org.graalvm.compiler.api.replacements.Fold;
 import org.graalvm.compiler.core.common.SuppressFBWarnings;
 import org.graalvm.compiler.serviceprovider.GraalUnsafeAccess;
+import org.graalvm.compiler.serviceprovider.JavaVersionUtil;
 import org.graalvm.compiler.word.ObjectAccess;
 import org.graalvm.compiler.word.Word;
 import org.graalvm.nativeimage.ImageSingletons;
@@ -55,14 +55,17 @@ import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.Platforms;
 import org.graalvm.nativeimage.c.function.CFunction;
 import org.graalvm.nativeimage.c.function.CLibrary;
-import org.graalvm.nativeimage.c.function.CodePointer;
-import org.graalvm.word.Pointer;
+import org.graalvm.nativeimage.hosted.Feature;
+import org.graalvm.nativeimage.impl.InternalPlatform;
+import org.graalvm.nativeimage.impl.RuntimeClassInitializationSupport;
 import org.graalvm.word.UnsignedWord;
 import org.graalvm.word.WordFactory;
 
 import com.oracle.svm.core.MonitorSupport;
 import com.oracle.svm.core.SubstrateOptions;
+import com.oracle.svm.core.SubstrateUtil;
 import com.oracle.svm.core.annotate.Alias;
+import com.oracle.svm.core.annotate.AutomaticFeature;
 import com.oracle.svm.core.annotate.Delete;
 import com.oracle.svm.core.annotate.KeepOriginal;
 import com.oracle.svm.core.annotate.NeverInline;
@@ -72,9 +75,9 @@ import com.oracle.svm.core.annotate.Substitute;
 import com.oracle.svm.core.annotate.TargetClass;
 import com.oracle.svm.core.annotate.TargetElement;
 import com.oracle.svm.core.hub.DynamicHub;
+import com.oracle.svm.core.jni.JNIRuntimeAccess;
 import com.oracle.svm.core.log.Log;
 import com.oracle.svm.core.snippets.KnownIntrinsics;
-import com.oracle.svm.core.stack.JavaStackWalker;
 import com.oracle.svm.core.util.VMError;
 
 import jdk.vm.ci.meta.MetaAccessProvider;
@@ -82,6 +85,12 @@ import jdk.vm.ci.meta.ResolvedJavaField;
 
 @TargetClass(java.lang.Object.class)
 final class Target_java_lang_Object {
+
+    @Substitute
+    @TargetElement(name = "registerNatives")
+    private static void registerNativesSubst() {
+        /* We reimplemented all native methods, so nothing to do. */
+    }
 
     @Substitute
     @TargetElement(name = "getClass")
@@ -135,7 +144,11 @@ final class Target_java_lang_Enum {
          * The original implementation creates and caches a HashMap to make the lookup faster. For
          * simplicity, we do a linear search for now.
          */
-        for (Enum<?> e : unsafeCast(enumType, DynamicHub.class).getEnumConstantsShared()) {
+        Enum<?>[] enumConstants = DynamicHub.fromClass(enumType).getEnumConstantsShared();
+        if (enumConstants == null) {
+            throw new IllegalArgumentException(enumType.getName() + " is not an enum type");
+        }
+        for (Enum<?> e : enumConstants) {
             if (e.name().equals(name)) {
                 return e;
             }
@@ -153,7 +166,7 @@ final class Target_java_lang_String {
 
     @Substitute
     public String intern() {
-        String thisStr = unsafeCast(this, String.class);
+        String thisStr = SubstrateUtil.cast(this, String.class);
         return ImageSingletons.lookup(StringInternSupport.class).intern(thisStr);
     }
 }
@@ -183,15 +196,9 @@ final class Target_java_lang_Throwable {
     }
 
     @Substitute
-    @NeverInline("Prevent inlining in Truffle compilations")
+    @NeverInline("Starting a stack walk in the caller frame")
     private Object fillInStackTrace() {
-        Pointer sp = KnownIntrinsics.readCallerStackPointer();
-        CodePointer ip = KnownIntrinsics.readReturnAddress();
-
-        StackTraceBuilder stackTraceBuilder = new StackTraceBuilder(true);
-        JavaStackWalker.walkCurrentThread(sp, ip, stackTraceBuilder);
-        this.stackTrace = stackTraceBuilder.getTrace();
-
+        stackTrace = StackTraceUtils.getStackTrace(true, KnownIntrinsics.readCallerStackPointer(), KnownIntrinsics.readReturnAddress());
         return this;
     }
 
@@ -244,7 +251,7 @@ final class Target_java_lang_Runtime {
     }
 
     @Substitute
-    @Platforms({Platform.LINUX_JNI.class, Platform.DARWIN_JNI.class, Platform.WINDOWS.class})
+    @Platforms(InternalPlatform.PLATFORM_JNI.class)
     private int availableProcessors() {
         if (SubstrateOptions.MultiThreaded.getValue()) {
             return Jvm.JVM_ActiveProcessorCount();
@@ -384,7 +391,7 @@ final class Target_java_lang_System {
 }
 
 @TargetClass(java.lang.StrictMath.class)
-@CLibrary("strictmath")
+@CLibrary(value = "strictmath", requireStatic = true)
 final class Target_java_lang_StrictMath {
     // Checkstyle: stop
 
@@ -705,9 +712,55 @@ final class Target_java_lang_Package {
             name = name.substring(0, i);
             Target_java_lang_Package pkg = new Target_java_lang_Package(name, null, null, null,
                             null, null, null, null, null);
-            return KnownIntrinsics.unsafeCast(pkg, Package.class);
+            return SubstrateUtil.cast(pkg, Package.class);
         } else {
             return null;
+        }
+    }
+}
+
+@Platforms(InternalPlatform.PLATFORM_JNI.class)
+@AutomaticFeature
+class JavaLangSubstituteFeature implements Feature {
+    @Override
+    public void duringSetup(DuringSetupAccess access) {
+        ImageSingletons.lookup(RuntimeClassInitializationSupport.class).rerunInitialization(access.findClassByName("java.io.RandomAccessFile"), "required for substitutions");
+        ImageSingletons.lookup(RuntimeClassInitializationSupport.class).rerunInitialization(access.findClassByName("java.lang.ProcessEnvironment"), "ensure runtime environment");
+    }
+
+    @Override
+    public void beforeAnalysis(BeforeAnalysisAccess access) {
+        JNIRuntimeAccess.register(byte[].class); /* used by ProcessEnvironment.environ() */
+
+        try {
+            JNIRuntimeAccess.register(java.lang.String.class);
+            JNIRuntimeAccess.register(java.lang.System.class);
+            JNIRuntimeAccess.register(java.lang.System.class.getDeclaredMethod("getProperty", String.class));
+            JNIRuntimeAccess.register(java.nio.charset.Charset.class);
+            JNIRuntimeAccess.register(java.nio.charset.Charset.class.getDeclaredMethod("isSupported", String.class));
+            JNIRuntimeAccess.register(access.findClassByName("java.lang.String").getDeclaredConstructor(byte[].class, String.class));
+            JNIRuntimeAccess.register(access.findClassByName("java.lang.String").getDeclaredMethod("getBytes", String.class));
+            JNIRuntimeAccess.register(java.io.File.class);
+            JNIRuntimeAccess.register(java.io.File.class.getDeclaredField("path"));
+            JNIRuntimeAccess.register(java.io.FileOutputStream.class);
+            JNIRuntimeAccess.register(java.io.FileOutputStream.class.getDeclaredField("fd"));
+            JNIRuntimeAccess.register(java.io.FileInputStream.class);
+            JNIRuntimeAccess.register(java.io.FileInputStream.class.getDeclaredField("fd"));
+            JNIRuntimeAccess.register(java.io.FileDescriptor.class);
+            JNIRuntimeAccess.register(java.io.FileDescriptor.class.getDeclaredField("fd"));
+            if (JavaVersionUtil.JAVA_SPEC > 8) {
+                JNIRuntimeAccess.register(java.io.FileDescriptor.class.getDeclaredField("append"));
+            }
+            JNIRuntimeAccess.register(java.io.RandomAccessFile.class);
+            JNIRuntimeAccess.register(java.io.RandomAccessFile.class.getDeclaredField("fd"));
+            JNIRuntimeAccess.register(java.io.IOException.class);
+            JNIRuntimeAccess.register(java.io.IOException.class.getDeclaredConstructor(String.class));
+            if (JavaVersionUtil.JAVA_SPEC >= 11) {
+                JNIRuntimeAccess.register(java.util.zip.Inflater.class.getDeclaredField("inputConsumed"));
+                JNIRuntimeAccess.register(java.util.zip.Inflater.class.getDeclaredField("outputConsumed"));
+            }
+        } catch (NoSuchFieldException | NoSuchMethodException e) {
+            VMError.shouldNotReachHere("JavaLangSubstituteFeature: Error registering class or method: ", e);
         }
     }
 }

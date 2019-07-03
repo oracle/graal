@@ -1,10 +1,10 @@
 suite = {
-    "mxversion": "5.210.2",
+    "mxversion": "5.223.0",
     "name": "tools",
     "defaultLicense" : "GPLv2-CPE",
 
     "groupId" : "org.graalvm.tools",
-    "version" : "1.0.0-rc15",
+    "version" : "19.2.0",
     "release" : False,
     "url" : "http://openjdk.java.net/projects/graal",
     "developer" : {
@@ -142,27 +142,27 @@ suite = {
             }
         },
         "VISUALVM_COMMON" : {
-            "urls" : ["https://lafo.ssw.uni-linz.ac.at/pub/graal-external-deps/visualvm-655.tar.gz"],
-            "sha1" : "5a5574f03b58465226166a638641a384b9f44445",
+            "urls" : ["https://lafo.ssw.uni-linz.ac.at/pub/graal-external-deps/visualvm/visualvm-683.tar.gz"],
+            "sha1" : "28b4ffc31ca729c93be77f6e66d9c5c67032c12f",
         },
         "VISUALVM_PLATFORM_SPECIFIC" : {
             "os_arch" : {
                 "linux" : {
                     "amd64" : {
-                        "urls" : ["https://lafo.ssw.uni-linz.ac.at/pub/graal-external-deps/visualvm-655-linux-amd64.tar.gz"],
-                        "sha1" : "64f07398bac9897e9b8123edeaf5cf9ff19517b5",
+                        "urls" : ["https://lafo.ssw.uni-linz.ac.at/pub/graal-external-deps/visualvm/visualvm-683-linux-amd64.tar.gz"],
+                        "sha1" : "9598ec2f792d42ff95a398e2d8af448bb6707449",
                     }
                 },
                 "darwin" : {
                     "amd64" : {
-                        "urls" : ["https://lafo.ssw.uni-linz.ac.at/pub/graal-external-deps/visualvm-655-macosx-x86_64.tar.gz"],
-                        "sha1" : "48da5fcf73bd85b257dbeb3ca033fd96e5ec2278",
+                        "urls" : ["https://lafo.ssw.uni-linz.ac.at/pub/graal-external-deps/visualvm/visualvm-683-macosx-x86_64.tar.gz"],
+                        "sha1" : "7428020503044bd6652eeb292aead587b0508984",
                     }
                 },
                 "windows" : {
                     "amd64" : {
-                        "urls" : ["https://lafo.ssw.uni-linz.ac.at/pub/graal-external-deps/visualvm-655-windows-amd64.tar.gz"],
-                        "sha1" : "ddaec648e701a88bb673ac3a1a96d2453d91eaee",
+                        "urls" : ["https://lafo.ssw.uni-linz.ac.at/pub/graal-external-deps/visualvm/visualvm-683-windows-amd64.tar.gz"],
+                        "sha1" : "f7c7c67a887002a208cff79a11088aa75c9defcc",
                     }
                 },
             }
@@ -171,6 +171,7 @@ suite = {
 
     "distributions": {
         "CHROMEINSPECTOR": {
+            "subDir": "src",
             # This distribution defines a module.
             "moduleName" : "com.oracle.truffle.tools.chromeinspector",
             "dependencies": ["com.oracle.truffle.tools.chromeinspector"],
@@ -184,6 +185,7 @@ suite = {
             "description" : "The bridge between truffle tools and the chrome inspector.",
         },
         "CHROMEINSPECTOR_TEST": {
+            "subDir": "src",
             "dependencies": ["com.oracle.truffle.tools.chromeinspector.test"],
             "distDependencies" : [
                 "truffle:TRUFFLE_API",
@@ -205,6 +207,7 @@ suite = {
             },
         },
         "TRUFFLE_PROFILER": {
+            "subDir": "src",
             # This distribution defines a module.
             "moduleName" : "com.oracle.truffle.tools.profiler",
             "dependencies": [
@@ -220,6 +223,7 @@ suite = {
             "description" : "The truffle profiler, supporting CPU sampling and tracing. Memory tracing support is experimental"
         },
         "TRUFFLE_PROFILER_TEST": {
+            "subDir": "src",
             "dependencies": [
                 "com.oracle.truffle.tools.profiler.test",
             ],

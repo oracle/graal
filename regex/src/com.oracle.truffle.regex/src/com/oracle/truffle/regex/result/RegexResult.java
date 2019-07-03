@@ -41,9 +41,8 @@ import com.oracle.truffle.api.library.ExportMessage;
 import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.api.profiles.ValueProfile;
 import com.oracle.truffle.regex.AbstractConstantKeysObject;
+import com.oracle.truffle.regex.RegexLanguageObject;
 import com.oracle.truffle.regex.RegexObject;
-import com.oracle.truffle.regex.runtime.RegexResultEndArrayObject;
-import com.oracle.truffle.regex.runtime.RegexResultStartArrayObject;
 import com.oracle.truffle.regex.runtime.nodes.ToIntNode;
 import com.oracle.truffle.regex.util.TruffleReadOnlyKeysArray;
 
@@ -52,20 +51,18 @@ import com.oracle.truffle.regex.util.TruffleReadOnlyKeysArray;
  * expression against a string. It can be obtained as the result of a {@link RegexObject}'s
  * {@code exec} method and has the following properties:
  * <ol>
- * <li>{@link Object} {@code input}: The input sequence this result was calculated from. If the
- * result is no match, this property is {@code null}.</li>
  * <li>{@code boolean isMatch}: {@code true} if a match was found, {@code false} otherwise.</li>
  * <li>{@code int groupCount}: number of capture groups present in the regular expression, including
- * group 0. If the result is no match, this property is {@code 0}.</li>
- * <li>{@link TruffleObject} {@code start}: array of positions where the beginning of the capture
- * group with the given number was found. If the result is no match, this property is an empty
- * array. Capture group number {@code 0} denotes the boundaries of the entire expression. If no
- * match was found for a particular capture group, the returned value at its respective index is
+ * group 0. If the result is no match, this property is undefined.</li>
+ * <li>{@link TruffleObject} {@code getStart(int groupNumber)}: returns the position where the
+ * beginning of the capture group with the given number was found. If the result is no match, the
+ * returned value is undefined. Capture group number {@code 0} denotes the boundaries of the entire
+ * expression. If no match was found for a particular capture group, the returned value is
  * {@code -1}.</li>
- * <li>{@link TruffleObject} {@code end}: array of positions where the end of the capture group with
- * the given number was found. If the result is no match, this property is an empty array. Capture
- * group number {@code 0} denotes the boundaries of the entire expression. If no match was found for
- * a particular capture group, the returned value at its respective index is {@code -1}.</li>
+ * <li>{@link TruffleObject} {@code end}: returns the position where the end of the capture group
+ * with the given number was found. If the result is no match, the returned value is undefined.
+ * Capture group number {@code 0} denotes the boundaries of the entire expression. If no match was
+ * found for a particular capture group, the returned value is {@code -1}.</li>
  * </ol>
  * </li>
  */
@@ -73,33 +70,10 @@ import com.oracle.truffle.regex.util.TruffleReadOnlyKeysArray;
 public abstract class RegexResult extends AbstractConstantKeysObject {
 
     static final String PROP_IS_MATCH = "isMatch";
-    static final String PROP_GROUP_COUNT = "groupCount";
-    static final String PROP_START = "start";
-    static final String PROP_END = "end";
     static final String PROP_GET_START = "getStart";
     static final String PROP_GET_END = "getEnd";
 
-    private static final TruffleReadOnlyKeysArray KEYS = new TruffleReadOnlyKeysArray(PROP_IS_MATCH, PROP_GROUP_COUNT, PROP_START, PROP_END, PROP_GET_START, PROP_GET_END);
-
-    private final int groupCount;
-
-    public RegexResult(int groupCount) {
-        this.groupCount = groupCount;
-    }
-
-    public final int getGroupCount() {
-        return groupCount;
-    }
-
-    public final RegexResultStartArrayObject getStartArrayObject() {
-        // this allocation should get virtualized and optimized away by graal
-        return new RegexResultStartArrayObject(this);
-    }
-
-    public final RegexResultEndArrayObject getEndArrayObject() {
-        // this allocation should get virtualized and optimized away by graal
-        return new RegexResultEndArrayObject(this);
-    }
+    private static final TruffleReadOnlyKeysArray KEYS = new TruffleReadOnlyKeysArray(PROP_IS_MATCH, PROP_GET_START, PROP_GET_END);
 
     @Override
     public TruffleReadOnlyKeysArray getKeys() {
@@ -111,12 +85,6 @@ public abstract class RegexResult extends AbstractConstantKeysObject {
         switch (symbol) {
             case PROP_IS_MATCH:
                 return this != NoMatchResult.getInstance();
-            case PROP_GROUP_COUNT:
-                return getGroupCount();
-            case PROP_START:
-                return getStartArrayObject();
-            case PROP_END:
-                return getEndArrayObject();
             case PROP_GET_START:
                 return new RegexResultGetStartMethod(this);
             case PROP_GET_END:
@@ -124,6 +92,62 @@ public abstract class RegexResult extends AbstractConstantKeysObject {
             default:
                 CompilerDirectives.transferToInterpreter();
                 throw UnknownIdentifierException.create(symbol);
+        }
+    }
+
+    @ExportLibrary(InteropLibrary.class)
+    public final class RegexResultGetStartMethod implements RegexLanguageObject {
+
+        private final RegexResult result;
+
+        public RegexResultGetStartMethod(RegexResult result) {
+            this.result = result;
+        }
+
+        @SuppressWarnings("static-method")
+        @ExportMessage
+        boolean isExecutable() {
+            return true;
+        }
+
+        @SuppressWarnings("static-method")
+        @ExportMessage
+        int execute(Object[] args,
+                        @Cached ToIntNode toIntNode,
+                        @Cached RegexResultGetStartNode getStartNode) throws ArityException, UnsupportedTypeException {
+            if (args.length != 1) {
+                CompilerDirectives.transferToInterpreter();
+                throw ArityException.create(1, args.length);
+            }
+            return getStartNode.execute(result, toIntNode.execute(args[0]));
+        }
+    }
+
+    @ExportLibrary(InteropLibrary.class)
+    public final class RegexResultGetEndMethod implements RegexLanguageObject {
+
+        private final RegexResult result;
+
+        public RegexResultGetEndMethod(RegexResult result) {
+            this.result = result;
+        }
+
+        @SuppressWarnings("static-method")
+        @ExportMessage
+        boolean isExecutable() {
+            return true;
+        }
+
+        @SuppressWarnings("static-method")
+        @ExportMessage
+        int execute(Object[] args,
+                        @Cached ToIntNode toIntNode,
+                        @Cached RegexResultGetEndNode getEndNode) throws ArityException, UnsupportedTypeException {
+            if (args.length != 1) {
+                CompilerDirectives.transferToInterpreter();
+                throw ArityException.create(1, args.length);
+            }
+            return getEndNode.execute(result, toIntNode.execute(args[1]));
         }
     }
 

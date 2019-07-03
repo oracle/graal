@@ -83,7 +83,8 @@ public final class SulongEngineOption {
     @Option(name = "llvm.enableLVI", category = OptionCategory.EXPERT, help = "Enable source-level inspection of local variables.") //
     public static final OptionKey<Boolean> ENABLE_LVI = new OptionKey<>(false);
 
-    @Option(name = "llvm.lazyParsing", category = OptionCategory.EXPERT, help = "Enable lazy parsing of LLVM bitcode files.") //
+    public static final String LAZY_PARSING_NAME = "llvm.lazyParsing";
+    @Option(name = LAZY_PARSING_NAME, category = OptionCategory.EXPERT, help = "Enable lazy parsing of LLVM bitcode files.") //
     public static final OptionKey<Boolean> LAZY_PARSING = new OptionKey<>(true);
 
     @Option(name = "llvm.llDebug", category = OptionCategory.EXPERT, help = "Enable IR-level debugging of LLVM bitcode files.") //
@@ -100,7 +101,7 @@ public final class SulongEngineOption {
 
     public static final String LIBRARIES_NAME = "llvm.libraries";
     @Option(name = LIBRARIES_NAME, category = OptionCategory.USER, stability = OptionStability.STABLE, //
-            help = "List of libraries (precompiled libraires *.dylib/*.so as well as bitcode libraries *.bc). " + //
+            help = "List of libraries (precompiled libraries *.dylib/*.so as well as bitcode libraries *.bc). " + //
                    "Files with a relative path will be looked up relative to llvm.libraryPath. Libraries are delimited by " + OPTION_ARRAY_SEPARATOR + " .") //
     public static final OptionKey<String> LIBRARIES = new OptionKey<>("");
     // @formatter:on

@@ -192,6 +192,11 @@ public abstract class Node implements Cloneable, Formattable, NodeInterface {
          * {@code true}.
          */
         boolean injectedStampIsNonNull() default false;
+
+        /**
+         * If {@code true} then this is lowered into a node that has side effects.
+         */
+        boolean hasSideEffect() default false;
     }
 
     /**
@@ -608,6 +613,7 @@ public abstract class Node implements Cloneable, Formattable, NodeInterface {
                 assert assertTrue(newSuccessor.predecessor == null, "unexpected non-null predecessor in new successor (%s): %s, this=%s", newSuccessor, newSuccessor.predecessor, this);
                 newSuccessor.predecessor = this;
             }
+            maybeNotifyInputChanged(this);
         }
     }
 

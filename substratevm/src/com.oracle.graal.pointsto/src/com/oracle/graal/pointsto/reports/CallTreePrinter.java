@@ -25,13 +25,14 @@
 package com.oracle.graal.pointsto.reports;
 
 import static com.oracle.graal.pointsto.reports.CallTreePrinter.SourceReference.UNKNOWN_SOURCE_REFERENCE;
-import static com.oracle.graal.pointsto.reports.ReportUtils.LAST_CHILD;
-import static com.oracle.graal.pointsto.reports.ReportUtils.EMPTY_INDENT;
 import static com.oracle.graal.pointsto.reports.ReportUtils.CHILD;
 import static com.oracle.graal.pointsto.reports.ReportUtils.CONNECTING_INDENT;
+import static com.oracle.graal.pointsto.reports.ReportUtils.EMPTY_INDENT;
+import static com.oracle.graal.pointsto.reports.ReportUtils.LAST_CHILD;
 import static com.oracle.graal.pointsto.reports.ReportUtils.invokeComparator;
 import static com.oracle.graal.pointsto.reports.ReportUtils.methodComparator;
 
+import java.io.File;
 import java.io.PrintWriter;
 import java.util.ArrayDeque;
 import java.util.ArrayList;
@@ -60,11 +61,11 @@ public final class CallTreePrinter {
         CallTreePrinter printer = new CallTreePrinter(bigbang);
         printer.buildCallTree();
 
-        ReportUtils.report("call tree", path + "/reports", "call_tree_" + reportName, "txt",
+        ReportUtils.report("call tree", path + File.separatorChar + "reports", "call_tree_" + reportName, "txt",
                         writer -> printer.printMethods(writer));
-        ReportUtils.report("list of used classes", path + "/reports", "used_classes_" + reportName, "txt",
+        ReportUtils.report("list of used classes", path + File.separatorChar + "reports", "used_classes_" + reportName, "txt",
                         writer -> printer.printClasses(writer, false));
-        ReportUtils.report("list of used packages", path + "/reports", "used_packages_" + reportName, "txt",
+        ReportUtils.report("list of used packages", path + File.separatorChar + "reports", "used_packages_" + reportName, "txt",
                         writer -> printer.printClasses(writer, true));
     }
 

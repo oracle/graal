@@ -39,9 +39,9 @@
 # SOFTWARE.
 #
 suite = {
-  "mxversion" : "5.210.2",
+  "mxversion" : "5.223.0",
   "name" : "sdk",
-  "version" : "1.0.0-rc15",
+  "version" : "19.2.0",
   "release" : False,
   "sourceinprojectwhitelist" : [],
   "url" : "https://github.com/oracle/graal",
@@ -65,7 +65,7 @@ suite = {
     "lafo" : {
       "snapshotsUrl" : "https://curio.ssw.jku.at/nexus/content/repositories/snapshots",
       "releasesUrl": "https://curio.ssw.jku.at/nexus/content/repositories/releases",
-      "licenses" : ["GPLv2-CPE", "UPL", "BSD-new"]
+      "licenses" : ["GPLv2-CPE", "UPL", "BSD-new", "MIT"]
     },
   },
   "snippetsPattern" : ".*(Snippets|doc-files).*",
@@ -98,7 +98,10 @@ suite = {
     "org.graalvm.polyglot" : {
       "subDir" : "src",
       "sourceDirs" : ["src"],
-      "dependencies" : ["org.graalvm.options"],
+      "dependencies" : [
+        "org.graalvm.options",
+        "org.graalvm.collections",
+      ],
       "uses" : ["org.graalvm.polyglot.impl.AbstractPolyglotImpl"],
       "exports" : [
         "<package-info>",  # exports all packages containing package-info.java

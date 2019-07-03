@@ -209,45 +209,20 @@ public class CompilationFinalBitSet implements Iterable<Integer> {
         }
 
         private void findNext() {
-            while (true) {
-                if ((curWord & 0xffff_ffffL) == 0) {
-                    curWord >>>= 32;
-                    bitIndex += 32;
-                }
-                if ((curWord & 0xffffL) == 0) {
-                    curWord >>>= 16;
-                    bitIndex += 16;
-                }
-                if ((curWord & 0xffL) == 0) {
-                    curWord >>>= 8;
-                    bitIndex += 8;
-                }
-                if ((curWord & 0xfL) == 0) {
-                    curWord >>>= 4;
-                    bitIndex += 4;
-                }
-                if ((curWord & 0x3L) == 0) {
-                    curWord >>>= 2;
-                    bitIndex += 2;
-                }
-                if ((curWord & 0x1L) == 0) {
-                    curWord >>>= 1;
-                    bitIndex += 1;
-                }
-                if ((curWord & 0x1L) == 1) {
-                    // Found the next bit
-                    return;
+            while (curWord == 0) {
+                wordIndex++;
+                bitIndex = 0;
+                if (hasNext()) {
+                    curWord = words[wordIndex];
                 } else {
-                    wordIndex++;
-                    bitIndex = 0;
-                    if (wordIndex < words.length) {
-                        curWord = words[wordIndex];
-                    } else {
-                        // Reached the end
-                        return;
-                    }
+                    return;
                 }
             }
+            assert hasNext();
+            assert curWord != 0;
+            int trailingZeros = Long.numberOfTrailingZeros(curWord);
+            curWord >>>= trailingZeros;
+            bitIndex += trailingZeros;
         }
 
         @Override

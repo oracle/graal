@@ -40,6 +40,8 @@
  */
 package org.graalvm.nativeimage.impl;
 
+import java.nio.file.Path;
+
 import org.graalvm.nativeimage.c.function.CEntryPointLiteral;
 
 public interface ProcessPropertiesSupport {
@@ -62,4 +64,6 @@ public interface ProcessPropertiesSupport {
     boolean isAlive(long processID);
 
     int waitForProcessExit(long processID);
+
+    void exec(Path executable, String[] args);
 }

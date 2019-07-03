@@ -128,7 +128,7 @@ public final class MemoryTracer implements Closeable {
      *
      * @param engine the engine to find debugger for
      * @return an instance of associated {@link MemoryTracer}
-     * @since 1.0
+     * @since 19.0
      */
     public static MemoryTracer find(Engine engine) {
         return MemoryTracerInstrument.getTracer(engine);
@@ -172,7 +172,7 @@ public final class MemoryTracer implements Closeable {
 
     /**
      * @return The roots of the trees representing the profile of the execution per thread.
-     * @since 1.0
+     * @since 19.0
      */
     public synchronized Map<Thread, Collection<ProfilerNode<Payload>>> getThreadToNodesMap() {
         Map<Thread, Collection<ProfilerNode<Payload>>> returnValue = new HashMap<>();

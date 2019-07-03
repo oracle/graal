@@ -28,8 +28,10 @@ import org.graalvm.compiler.truffle.runtime.GraalTruffleRuntime;
 import org.graalvm.compiler.truffle.runtime.OptimizedCallTarget;
 import org.graalvm.compiler.truffle.runtime.OptimizedDirectCallNode;
 import org.graalvm.compiler.truffle.runtime.OptimizedIndirectCallNode;
+import org.graalvm.compiler.truffle.runtime.PolyglotCompilerOptions;
 import org.graalvm.compiler.truffle.runtime.TruffleRuntimeOptions;
 import org.graalvm.compiler.truffle.runtime.SharedTruffleRuntimeOptions;
+import org.graalvm.polyglot.Context;
 import org.junit.Assert;
 import org.junit.Test;
 
@@ -202,13 +204,15 @@ public class IndirectCallSiteTest extends TestWithSynchronousCompiling {
      */
     @Test
     public void testIndirectCallNodeDoesNotDeoptOnTypeChangeWithInlining1() {
-        try (TruffleRuntimeOptions.TruffleRuntimeOptionsOverrideScope scope = TruffleRuntimeOptions.overrideOptions(SharedTruffleRuntimeOptions.TruffleFunctionInlining, true)) {
-            final int compilationThreshold = TruffleRuntimeOptions.getValue(SharedTruffleRuntimeOptions.TruffleCompilationThreshold);
-
+        Context context = Context.newBuilder().allowExperimentalOptions(true).option("engine.Inlining", "true").build();
+        context.enter();
+        try {
             final OptimizedCallTarget toInterpreterOnString = (OptimizedCallTarget) runtime.createCallTarget(new WritesToGlobalState());
             final OptimizedCallTarget directCall = (OptimizedCallTarget) runtime.createCallTarget(new DirectlyCallsTargetWithArguments(toInterpreterOnString, new Object[]{1}));
             final OptimizedCallTarget noOp = (OptimizedCallTarget) runtime.createCallTarget(new DummyTarget());
             final OptimizedCallTarget indirectCall = (OptimizedCallTarget) runtime.createCallTarget(new IndirectCallTargetFromArgument());
+
+            final int compilationThreshold = toInterpreterOnString.getOptionValue(PolyglotCompilerOptions.CompilationThreshold);
 
             for (int i = 0; i < compilationThreshold; i++) {
                 directCall.call();
@@ -243,6 +247,9 @@ public class IndirectCallSiteTest extends TestWithSynchronousCompiling {
             assertNotCompiled(toInterpreterOnString);
             assertNotDeoptimized(toInterpreterOnString);
             Assert.assertEquals("saveArgumentToGlobalState was not invalidated!", 1, toInterpreterOnString.getCompilationProfile().getInvalidationCount());
+        } finally {
+            context.leave();
+            context.close();
         }
     }
 }

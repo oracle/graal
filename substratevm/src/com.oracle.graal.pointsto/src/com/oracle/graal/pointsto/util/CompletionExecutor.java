@@ -124,7 +124,7 @@ public final class CompletionExecutor {
         /**
          * Gets a {@link DebugContext} the executor will use for this task.
          *
-         * A task can override this and return {@link DebugContext#DISABLED} to avoid the cost of
+         * A task can override this and return {@link DebugContext#disabled} to avoid the cost of
          * creating a {@link DebugContext} if one is not needed.
          */
         default DebugContext getDebug(OptionValues options, List<DebugHandlersFactory> factories) {
@@ -259,7 +259,7 @@ public final class CompletionExecutor {
 
     public void shutdown() {
         assert isSequential() || !executorService.hasQueuedSubmissions() : "There should be no queued submissions on shutdown.";
-        assert completedOperations.sum() == postedOperations.sum() : "Posted operations must match completed operations";
+        assert completedOperations.sum() == postedOperations.sum() : "Posted operations (" + postedOperations.sum() + ") must match completed (" + completedOperations.sum() + ") operations";
         setState(State.UNUSED);
     }
 

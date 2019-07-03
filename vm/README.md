@@ -1,11 +1,11 @@
 # VM suite
 
 The VM suite allows you to build custom GraalVM distributions, as well as installable components.
-It defines a base GraalVM distribution that contains the JVMCI-enabled JDK, the Graal SDK, Truffle, and the GraalVM component installer.
+It defines a base GraalVM distribution that contains the JVMCI-enabled JDK, the GraalVM SDK, Truffle, and the GraalVM component installer.
 More components are added by dynamically importing additional suites.
 This can be done either by:
 1. running `mx --dynamicimports <suite...> build`
-2. setting the `DEFAULT_DYNAMIC_IMPORTS` or `DYNAMIC_IMPORTS` environment variables before running `mx build` 
+2. setting the `DEFAULT_DYNAMIC_IMPORTS` or `DYNAMIC_IMPORTS` environment variables before running `mx build`
 3. running `mx --env <env file> build`
 
 After the compilation:
@@ -19,7 +19,7 @@ A common requirement is that the `JAVA_HOME` environment variable must point to 
 ### Example: build the base GraalVM CE image
 The base GraalVM CE image includes:
 - SubstrateVM (with the `native-image` tool)
-- Graal compiler & the Truffle-Graal accelerator (imported as a dependency of `substratevm`)
+- GraalVM compiler & the Truffle partial evaluator (imported as a dependency of `substratevm`)
 - The inspector, profiler, and VisualVM tools
 - Sulong
 - Graal.nodejs
@@ -93,7 +93,7 @@ And the following environment variables:
   FORCE_BASH_LAUNCHERS          Same as '--force-bash-launchers'
 ```
 
-Note that when the shared polyglot library is not built, Graal.nodejs can only work in JVM-mode (`node --jvm [args]`). 
+Note that when the shared polyglot library is not built, Graal.nodejs can only work in JVM-mode (`node --jvm [args]`).
 
 
 ### Example: avoid building the polyglot image and the polyglot shared library

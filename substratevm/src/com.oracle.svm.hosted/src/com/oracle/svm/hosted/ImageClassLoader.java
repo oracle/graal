@@ -30,6 +30,7 @@ import java.io.File;
 import java.io.IOException;
 import java.io.InputStream;
 import java.lang.annotation.Annotation;
+import java.lang.reflect.AnnotatedElement;
 import java.lang.reflect.Field;
 import java.lang.reflect.Method;
 import java.net.URI;
@@ -54,26 +55,26 @@ import java.util.Set;
 import java.util.TreeSet;
 import java.util.concurrent.ForkJoinPool;
 import java.util.concurrent.TimeUnit;
-import java.util.regex.Pattern;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
 import java.util.stream.StreamSupport;
 
 import org.graalvm.collections.EconomicSet;
+import org.graalvm.compiler.serviceprovider.JavaVersionUtil;
 import org.graalvm.compiler.word.Word;
 import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.Platforms;
 
-import com.oracle.svm.core.OS;
+import com.oracle.svm.core.util.ClasspathUtils;
 import com.oracle.svm.core.util.InterruptImageBuilding;
 import com.oracle.svm.core.util.VMError;
+import com.oracle.svm.util.ModuleSupport;
 
 public final class ImageClassLoader {
 
     private static final String CLASS_EXTENSION = ".class";
     private static final int CLASS_EXTENSION_LENGTH = CLASS_EXTENSION.length();
     private static final int CLASS_LOADING_TIMEOUT_IN_MINUTES = 10;
-    public static final String cpWildcardSubstitute = "$JavaCla$$pathWildcard$ubstitute$";
 
     static {
         /*
@@ -83,24 +84,25 @@ public final class ImageClassLoader {
         Word.ensureInitialized();
     }
 
-    private final Platform platform;
-    private final ClassLoader classLoader;
+    final Platform platform;
+    private final NativeImageClassLoader classLoader;
     private final String[] classpath;
-    private final EconomicSet<Class<?>> systemClasses = EconomicSet.create();
+    private final EconomicSet<Class<?>> applicationClasses = EconomicSet.create();
+    private final EconomicSet<Class<?>> hostedOnlyClasses = EconomicSet.create();
     private final EconomicSet<Method> systemMethods = EconomicSet.create();
     private final EconomicSet<Field> systemFields = EconomicSet.create();
 
-    private ImageClassLoader(Platform platform, String[] classpath, ClassLoader classLoader) {
+    private ImageClassLoader(Platform platform, String[] classpath, NativeImageClassLoader classLoader) {
         this.platform = platform;
         this.classpath = classpath;
         this.classLoader = classLoader;
     }
 
-    public static ImageClassLoader create(Platform platform, String[] classpathAll, ClassLoader classLoader) {
+    public static ImageClassLoader create(Platform platform, String[] classpathAll, NativeImageClassLoader classLoader) {
         ArrayList<String> classpathFiltered = new ArrayList<>(classpathAll.length);
         classpathFiltered.addAll(Arrays.asList(classpathAll));
 
-        /* If the Graal SDK is on the boot class path, and it contains annotated types. */
+        /* If the GraalVM SDK is on the boot class path, and it contains annotated types. */
         final String sunBootClassPath = System.getProperty("sun.boot.class.path");
         if (sunBootClassPath != null) {
             for (String s : sunBootClassPath.split(File.pathSeparator)) {
@@ -123,32 +125,16 @@ public final class ImageClassLoader {
         }
     }
 
-    public static Path stringToClasspath(String cp) {
-        String separators = Pattern.quote(File.separator);
-        if (OS.getCurrent().equals(OS.WINDOWS)) {
-            separators += "/"; /* on Windows also / is accepted as valid separator */
-        }
-        String[] components = cp.split("[" + separators + "]", Integer.MAX_VALUE);
-        for (int i = 0; i < components.length; i++) {
-            if (components[i].equals("*")) {
-                components[i] = cpWildcardSubstitute;
-            }
-        }
-        return Paths.get(String.join(File.separator, components));
-    }
-
-    public static String classpathToString(Path cp) {
-        String[] components = cp.toString().split(Pattern.quote(File.separator), Integer.MAX_VALUE);
-        for (int i = 0; i < components.length; i++) {
-            if (components[i].equals(cpWildcardSubstitute)) {
-                components[i] = "*";
-            }
-        }
-        return String.join(File.separator, components);
-    }
-
     private void initAllClasses() {
         final ForkJoinPool executor = new ForkJoinPool(Runtime.getRuntime().availableProcessors());
+
+        if (JavaVersionUtil.JAVA_SPEC > 8) {
+            for (String moduleResource : ModuleSupport.getJVMCIModuleResources()) {
+                if (moduleResource.endsWith(CLASS_EXTENSION)) {
+                    executor.execute(() -> handleClassFileName(moduleResource, '/'));
+                }
+            }
+        }
 
         Set<Path> uniquePaths = new TreeSet<>(Comparator.comparing(ImageClassLoader::toRealPath));
         uniquePaths.addAll(
@@ -161,8 +147,8 @@ public final class ImageClassLoader {
     }
 
     static Stream<Path> toClassPathEntries(String classPathEntry) {
-        Path entry = stringToClasspath(classPathEntry);
-        if (entry.endsWith(cpWildcardSubstitute)) {
+        Path entry = ClasspathUtils.stringToClasspath(classPathEntry);
+        if (entry.endsWith(ClasspathUtils.cpWildcardSubstitute)) {
             try {
                 return Files.list(entry.getParent()).filter(Files::isRegularFile);
             } catch (IOException e) {
@@ -188,8 +174,17 @@ public final class ImageClassLoader {
             if (Files.isRegularFile(path)) {
                 try {
                     URI jarURI = new URI("jar:" + path.toAbsolutePath().toUri());
-                    try (FileSystem jarFileSystem = FileSystems.newFileSystem(jarURI, Collections.emptyMap())) {
-                        initAllClasses(jarFileSystem.getPath("/"), Collections.emptySet(), executor);
+                    FileSystem probeJarFileSystem;
+                    try {
+                        probeJarFileSystem = FileSystems.newFileSystem(jarURI, Collections.emptyMap());
+                    } catch (UnsupportedOperationException e) {
+                        /* Silently ignore invalid jar-files on image-classpath */
+                        probeJarFileSystem = null;
+                    }
+                    if (probeJarFileSystem != null) {
+                        try (FileSystem jarFileSystem = probeJarFileSystem) {
+                            initAllClasses(jarFileSystem.getPath("/"), Collections.emptySet(), executor);
+                        }
                     }
                 } catch (ClosedByInterruptException ignored) {
                     throw new InterruptImageBuilding();
@@ -234,6 +229,19 @@ public final class ImageClassLoader {
         /* we ignore class loading errors due to incomplete paths that people often have */
     }
 
+    private void handleClassFileName(String unversionedClassFileName, char fileSystemSeparatorChar) {
+        String unversionedClassFileNameWithoutSuffix = unversionedClassFileName.substring(0, unversionedClassFileName.length() - CLASS_EXTENSION_LENGTH);
+        if (unversionedClassFileNameWithoutSuffix.equals("module-info")) {
+            return;
+        }
+        String className = unversionedClassFileNameWithoutSuffix.replace(fileSystemSeparatorChar, '.');
+        try {
+            handleClass(forName(className));
+        } catch (Throwable t) {
+            handleClassLoadingError(t);
+        }
+    }
+
     private void initAllClasses(final Path root, Set<Path> excludes, ForkJoinPool executor) {
         FileVisitor<Path> visitor = new SimpleFileVisitor<Path>() {
             private final char fileSystemSeparatorChar = root.getFileSystem().getSeparator().charAt(0);
@@ -251,24 +259,10 @@ public final class ImageClassLoader {
                 if (excludes.contains(file.getParent())) {
                     return FileVisitResult.SKIP_SIBLINGS;
                 }
-                executor.execute(() -> {
-                    String fileName = root.relativize(file).toString();
-                    if (fileName.endsWith(CLASS_EXTENSION)) {
-                        String unversionedClassName = unversionedFileName(fileName);
-                        String className = curtail(unversionedClassName, CLASS_EXTENSION_LENGTH).replace(fileSystemSeparatorChar, '.');
-                        try {
-                            Class<?> systemClass = forName(className);
-                            if (includedInPlatform(systemClass)) {
-                                synchronized (systemClasses) {
-                                    systemClasses.add(systemClass);
-                                }
-                                findSystemElements(systemClass);
-                            }
-                        } catch (Throwable t) {
-                            handleClassLoadingError(t);
-                        }
-                    }
-                });
+                String fileName = root.relativize(file).toString();
+                if (fileName.endsWith(CLASS_EXTENSION)) {
+                    executor.execute(() -> handleClassFileName(unversionedFileName(fileName), fileSystemSeparatorChar));
+                }
                 return FileVisitResult.CONTINUE;
             }
 
@@ -302,10 +296,6 @@ public final class ImageClassLoader {
                 return result;
             }
 
-            /** Remove the requested number of characters from the tail of the given string. */
-            private String curtail(String str, int tailLength) {
-                return str.substring(0, str.length() - tailLength);
-            }
         };
 
         try {
@@ -315,15 +305,50 @@ public final class ImageClassLoader {
         }
     }
 
-    private boolean includedInPlatform(Class<?> clazz) {
-        Class<?> cur = clazz;
+    private void handleClass(Class<?> clazz) {
+        boolean inPlatform = true;
+        boolean isHostedOnly = false;
+
+        AnnotatedElement cur = clazz.getPackage();
         do {
-            if (!NativeImageGenerator.includedIn(platform, cur.getAnnotation(Platforms.class))) {
-                return false;
+            Platforms platformsAnnotation = cur.getAnnotation(Platforms.class);
+            if (containsHostedOnly(platformsAnnotation)) {
+                isHostedOnly = true;
+            } else if (!NativeImageGenerator.includedIn(platform, platformsAnnotation)) {
+                inPlatform = false;
             }
-            cur = cur.getEnclosingClass();
+
+            if (cur instanceof Package) {
+                cur = clazz;
+            } else {
+                cur = ((Class<?>) cur).getEnclosingClass();
+            }
         } while (cur != null);
-        return true;
+
+        if (inPlatform) {
+            if (isHostedOnly) {
+                synchronized (hostedOnlyClasses) {
+                    hostedOnlyClasses.add(clazz);
+                }
+
+            } else {
+                synchronized (applicationClasses) {
+                    applicationClasses.add(clazz);
+                }
+                findSystemElements(clazz);
+            }
+        }
+    }
+
+    private static boolean containsHostedOnly(Platforms platformsAnnotation) {
+        if (platformsAnnotation != null) {
+            for (Class<? extends Platform> platformClass : platformsAnnotation.value()) {
+                if (platformClass == Platform.HOSTED_ONLY.class) {
+                    return true;
+                }
+            }
+        }
+        return false;
     }
 
     public URL findResourceByName(String resource) {
@@ -379,24 +404,38 @@ public final class ImageClassLoader {
         return Collections.unmodifiableList(Arrays.asList(classpath));
     }
 
-    public <T> List<Class<? extends T>> findSubclasses(Class<T> baseClass) {
+    public <T> List<Class<? extends T>> findSubclasses(Class<T> baseClass, boolean includeHostedOnly) {
         ArrayList<Class<? extends T>> result = new ArrayList<>();
-        for (Class<?> systemClass : systemClasses) {
-            if (baseClass.isAssignableFrom(systemClass)) {
-                result.add(systemClass.asSubclass(baseClass));
-            }
+        addSubclasses(applicationClasses, baseClass, result);
+        if (includeHostedOnly) {
+            addSubclasses(hostedOnlyClasses, baseClass, result);
         }
         return result;
     }
 
-    public List<Class<?>> findAnnotatedClasses(Class<? extends Annotation> annotationClass) {
+    private static <T> void addSubclasses(EconomicSet<Class<?>> classes, Class<T> baseClass, ArrayList<Class<? extends T>> result) {
+        for (Class<?> systemClass : classes) {
+            if (baseClass.isAssignableFrom(systemClass)) {
+                result.add(systemClass.asSubclass(baseClass));
+            }
+        }
+    }
+
+    public List<Class<?>> findAnnotatedClasses(Class<? extends Annotation> annotationClass, boolean includeHostedOnly) {
         ArrayList<Class<?>> result = new ArrayList<>();
-        for (Class<?> systemClass : systemClasses) {
+        addAnnotatedClasses(applicationClasses, annotationClass, result);
+        if (includeHostedOnly) {
+            addAnnotatedClasses(hostedOnlyClasses, annotationClass, result);
+        }
+        return result;
+    }
+
+    private static void addAnnotatedClasses(EconomicSet<Class<?>> classes, Class<? extends Annotation> annotationClass, ArrayList<Class<?>> result) {
+        for (Class<?> systemClass : classes) {
             if (systemClass.getAnnotation(annotationClass) != null) {
                 result.add(systemClass);
             }
         }
-        return result;
     }
 
     public List<Method> findAnnotatedMethods(Class<? extends Annotation> annotationClass) {
@@ -438,7 +477,7 @@ public final class ImageClassLoader {
 
     @SuppressWarnings("unchecked")
     public List<Class<? extends Annotation>> allAnnotations() {
-        return StreamSupport.stream(systemClasses.spliterator(), false)
+        return StreamSupport.stream(applicationClasses.spliterator(), false)
                         .filter(Class::isAnnotation)
                         .map(clazz -> (Class<? extends Annotation>) clazz)
                         .collect(Collectors.toList());
@@ -450,7 +489,7 @@ public final class ImageClassLoader {
      */
     <T extends Annotation> List<T> findAnnotations(Class<T> annotationClass) {
         List<T> result = new ArrayList<>();
-        for (Class<?> clazz : findAnnotatedClasses(annotationClass)) {
+        for (Class<?> clazz : findAnnotatedClasses(annotationClass, false)) {
             result.add(clazz.getAnnotation(annotationClass));
         }
         for (Method method : findAnnotatedMethods(annotationClass)) {
@@ -465,4 +504,5 @@ public final class ImageClassLoader {
     public ClassLoader getClassLoader() {
         return classLoader;
     }
+
 }

@@ -24,22 +24,8 @@
  */
 package com.oracle.truffle.regex.tregex.nodes;
 
-import com.oracle.truffle.api.frame.FrameDescriptor;
-import com.oracle.truffle.api.frame.FrameSlot;
-
 public final class TRegexDFAExecutorProperties {
 
-    private final FrameDescriptor frameDescriptor;
-    private final FrameSlot inputFS;
-    private final FrameSlot fromIndexFS;
-    private final FrameSlot indexFS;
-    private final FrameSlot maxIndexFS;
-    private final FrameSlot curMaxIndexFS;
-    private final FrameSlot successorIndexFS;
-    private final FrameSlot resultFS;
-    private final FrameSlot captureGroupResultFS;
-    private final FrameSlot lastTransitionFS;
-    private final FrameSlot cgDataFS;
     private final boolean forward;
     private final boolean searching;
     private final boolean trackCaptureGroups;
@@ -47,84 +33,19 @@ public final class TRegexDFAExecutorProperties {
     private final int numberOfCaptureGroups;
     private final int minResultLength;
 
-    public TRegexDFAExecutorProperties(FrameDescriptor frameDescriptor,
-                    FrameSlot inputFS,
-                    FrameSlot fromIndexFS,
-                    FrameSlot indexFS,
-                    FrameSlot maxIndexFS,
-                    FrameSlot curMaxIndexFS,
-                    FrameSlot successorIndexFS,
-                    FrameSlot resultFS,
-                    FrameSlot captureGroupResultFS,
-                    FrameSlot lastTransitionFS,
-                    FrameSlot cgDataFS,
+    public TRegexDFAExecutorProperties(
                     boolean forward,
                     boolean searching,
                     boolean trackCaptureGroups,
                     boolean regressionTestMode,
                     int numberOfCaptureGroups,
                     int minResultLength) {
-        this.frameDescriptor = frameDescriptor;
-        this.inputFS = inputFS;
-        this.fromIndexFS = fromIndexFS;
-        this.indexFS = indexFS;
-        this.maxIndexFS = maxIndexFS;
-        this.curMaxIndexFS = curMaxIndexFS;
-        this.lastTransitionFS = lastTransitionFS;
-        this.successorIndexFS = successorIndexFS;
-        this.resultFS = resultFS;
-        this.captureGroupResultFS = captureGroupResultFS;
-        this.cgDataFS = cgDataFS;
         this.forward = forward;
         this.searching = searching;
         this.trackCaptureGroups = trackCaptureGroups;
         this.regressionTestMode = regressionTestMode;
         this.numberOfCaptureGroups = numberOfCaptureGroups;
         this.minResultLength = minResultLength;
-    }
-
-    public FrameDescriptor getFrameDescriptor() {
-        return frameDescriptor;
-    }
-
-    public FrameSlot getInputFS() {
-        return inputFS;
-    }
-
-    public FrameSlot getFromIndexFS() {
-        return fromIndexFS;
-    }
-
-    public FrameSlot getIndexFS() {
-        return indexFS;
-    }
-
-    public FrameSlot getMaxIndexFS() {
-        return maxIndexFS;
-    }
-
-    public FrameSlot getCurMaxIndexFS() {
-        return curMaxIndexFS;
-    }
-
-    public FrameSlot getSuccessorIndexFS() {
-        return successorIndexFS;
-    }
-
-    public FrameSlot getResultFS() {
-        return resultFS;
-    }
-
-    public FrameSlot getCaptureGroupResultFS() {
-        return captureGroupResultFS;
-    }
-
-    public FrameSlot getLastTransitionFS() {
-        return lastTransitionFS;
-    }
-
-    public FrameSlot getCgDataFS() {
-        return cgDataFS;
     }
 
     public boolean isForward() {

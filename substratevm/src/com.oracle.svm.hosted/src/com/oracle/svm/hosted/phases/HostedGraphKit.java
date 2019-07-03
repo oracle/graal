@@ -95,7 +95,7 @@ public class HostedGraphKit extends SubstrateGraphKit {
     }
 
     public void emitEnsureInitializedCall(ResolvedJavaType type) {
-        if (SubstrateClassInitializationPlugin.needsRuntimeInitialization(type)) {
+        if (SubstrateClassInitializationPlugin.needsRuntimeInitialization(graph.method().getDeclaringClass(), type)) {
             ResolvedJavaMethod ensureInitialized = providers.getMetaAccess().lookupJavaMethod(dynamicHubEnsureInitialized);
 
             Constant dynamicHub = getConstantReflection().asJavaClass(type);

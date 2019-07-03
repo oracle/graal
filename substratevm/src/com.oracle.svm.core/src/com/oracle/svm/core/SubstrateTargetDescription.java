@@ -47,7 +47,7 @@ public class SubstrateTargetDescription extends TargetDescription {
      * @return All the flags that enable CPU instructions.
      */
     public static EnumSet<AMD64.Flag> allFlags() {
-        return EnumSet.of(AMD64.Flag.UseCountLeadingZerosInstruction, AMD64.Flag.UseCountLeadingZerosInstruction);
+        return EnumSet.of(AMD64.Flag.UseCountLeadingZerosInstruction, AMD64.Flag.UseCountTrailingZerosInstruction);
     }
 
     /**

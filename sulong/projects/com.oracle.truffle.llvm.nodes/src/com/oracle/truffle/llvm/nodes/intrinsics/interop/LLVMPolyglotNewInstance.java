@@ -40,7 +40,6 @@ import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.api.interop.ArityException;
 import com.oracle.truffle.api.interop.InteropLibrary;
-import com.oracle.truffle.api.interop.TruffleObject;
 import com.oracle.truffle.api.interop.UnsupportedMessageException;
 import com.oracle.truffle.api.interop.UnsupportedTypeException;
 import com.oracle.truffle.api.nodes.ExplodeLoop;
@@ -93,7 +92,7 @@ public abstract class LLVMPolyglotNewInstance extends LLVMIntrinsic {
                     @CachedContext(LLVMLanguage.class) ContextReference<LLVMContext> ctxRef,
                     @Cached("create()") LLVMGetStackNode getStack,
                     @Cached("createForeignToLLVM()") ForeignToLLVM toLLVM) {
-        TruffleObject foreign = asForeign.execute(value);
+        Object foreign = asForeign.execute(value);
 
         Object[] evaluatedArgs = new Object[args.length];
         for (int i = 0; i < args.length; i++) {

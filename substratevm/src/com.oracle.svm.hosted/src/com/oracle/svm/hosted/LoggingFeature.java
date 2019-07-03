@@ -28,9 +28,8 @@ import java.util.logging.LogManager;
 
 import org.graalvm.compiler.options.Option;
 import org.graalvm.compiler.options.OptionType;
-import org.graalvm.nativeimage.Feature;
-import org.graalvm.nativeimage.RuntimeClassInitialization;
-import org.graalvm.nativeimage.RuntimeReflection;
+import org.graalvm.nativeimage.hosted.Feature;
+import org.graalvm.nativeimage.hosted.RuntimeReflection;
 
 import com.oracle.svm.core.annotate.AutomaticFeature;
 import com.oracle.svm.core.option.HostedOptionKey;
@@ -41,6 +40,9 @@ import com.oracle.svm.hosted.FeatureImpl.DuringAnalysisAccessImpl;
 public class LoggingFeature implements Feature {
 
     public static class Options {
+        @Option(help = "Enable the feature that provides support for logging.")//
+        public static final HostedOptionKey<Boolean> EnableLoggingFeature = new HostedOptionKey<>(true);
+
         @Option(help = "When enabled, logging feature details are printed.", type = OptionType.Debug) //
         public static final HostedOptionKey<Boolean> TraceLoggingFeature = new HostedOptionKey<>(false);
     }
@@ -50,18 +52,14 @@ public class LoggingFeature implements Feature {
     private boolean reflectionConfigured = false;
 
     @Override
+    public boolean isInConfiguration(IsInConfigurationAccess access) {
+        return LoggingFeature.Options.EnableLoggingFeature.getValue();
+    }
+
+    @Override
     public void duringSetup(DuringSetupAccess access) {
         /* Ensure that the log manager is initialized and the initial configuration is read. */
         LogManager.getLogManager();
-
-        /*
-         * Rerunning the initialization of SimpleFormatter at run time is required so that
-         * SimpleFormatter.format is correctly set to a custom provided value instead of the
-         * LoggingSupport.DEFAULT_FORMAT default value.
-         */
-
-        trace("Registering " + java.util.logging.SimpleFormatter.class + " for runtime re-initialization.");
-        RuntimeClassInitialization.rerunClassInitialization(java.util.logging.SimpleFormatter.class);
     }
 
     @Override

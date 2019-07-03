@@ -40,7 +40,6 @@ import org.junit.Test;
 import com.oracle.truffle.api.TruffleFile;
 import com.oracle.truffle.sl.SLLanguage;
 import com.oracle.truffle.tools.chromeinspector.InspectorDebugger;
-import com.oracle.truffle.tools.chromeinspector.ScriptsHandler;
 
 public class SLInspectDebugTest {
 
@@ -145,7 +144,7 @@ public class SLInspectDebugTest {
                     "function fn() {\n" +
                     "  return 2;\n" +
                     "}\n";
-    private static final String SL_BUILTIN_URI = "truffle:8350e5a3e24c153df2275c9f80692773/SL builtin";
+    private static final String SL_BUILTIN_URI = "SL builtin";
 
     private InspectorTester tester;
 
@@ -160,7 +159,7 @@ public class SLInspectDebugTest {
     public void testInitialSuspendAndSource() throws Exception {
         tester = InspectorTester.start(true);
         Source source = Source.newBuilder("sl", CODE1, "SLTest.sl").build();
-        String slTestURI = ScriptsHandler.getNiceStringFromURI(source.getURI());
+        String slTestURI = InspectorTester.getStringURI(source.getURI());
         tester.sendMessage("{\"id\":1,\"method\":\"Runtime.enable\"}");
         assertEquals("{\"result\":{},\"id\":1}", tester.getMessages(true).trim());
         tester.sendMessage("{\"id\":2,\"method\":\"Debugger.enable\"}");
@@ -201,7 +200,7 @@ public class SLInspectDebugTest {
     public void testStepping() throws Exception {
         tester = InspectorTester.start(true);
         Source source = Source.newBuilder("sl", CODE1, "SLTest.sl").build();
-        String slTestURI = ScriptsHandler.getNiceStringFromURI(source.getURI());
+        String slTestURI = InspectorTester.getStringURI(source.getURI());
         tester.sendMessage("{\"id\":1,\"method\":\"Runtime.enable\"}");
         tester.sendMessage("{\"id\":2,\"method\":\"Debugger.enable\"}");
         tester.sendMessage("{\"id\":3,\"method\":\"Runtime.runIfWaitingForDebugger\"}");
@@ -292,7 +291,7 @@ public class SLInspectDebugTest {
         tester.sendMessage("{\"id\":1,\"method\":\"Runtime.enable\"}");
         tester.sendMessage("{\"id\":2,\"method\":\"Debugger.enable\"}");
         tester.sendMessage("{\"id\":3,\"method\":\"Runtime.runIfWaitingForDebugger\"}");
-        String slTestURI = ScriptsHandler.getNiceStringFromURI(source.getURI());
+        String slTestURI = InspectorTester.getStringURI(source.getURI());
         assertTrue(tester.compareReceivedMessages(
                         "{\"result\":{},\"id\":1}\n" +
                         "{\"result\":{},\"id\":2}\n" +
@@ -365,11 +364,11 @@ public class SLInspectDebugTest {
     public void testBreakpointDeactivation() throws Exception {
         tester = InspectorTester.start(true);
         Source source = Source.newBuilder("sl", CODE2, "SLTest.sl").build();
-        String slTestURI = ScriptsHandler.getNiceStringFromURI(source.getURI());
+        String slTestURI = InspectorTester.getStringURI(source.getURI());
         tester.sendMessage("{\"id\":1,\"method\":\"Runtime.enable\"}");
         tester.sendMessage("{\"id\":2,\"method\":\"Debugger.enable\"}");
         tester.sendMessage("{\"id\":3,\"method\":\"Runtime.runIfWaitingForDebugger\"}");
-        String srcURL = ScriptsHandler.getNiceStringFromURI(source.getURI());
+        String srcURL = InspectorTester.getStringURI(source.getURI());
         assertTrue(tester.compareReceivedMessages(
                         "{\"result\":{},\"id\":1}\n" +
                         "{\"result\":{},\"id\":2}\n" +
@@ -519,7 +518,7 @@ public class SLInspectDebugTest {
     public void testScopes() throws Exception {
         tester = InspectorTester.start(true);
         Source source = Source.newBuilder("sl", CODE1, "SLTest.sl").build();
-        String slTestURI = ScriptsHandler.getNiceStringFromURI(source.getURI());
+        String slTestURI = InspectorTester.getStringURI(source.getURI());
         tester.sendMessage("{\"id\":1,\"method\":\"Runtime.enable\"}");
         tester.sendMessage("{\"id\":2,\"method\":\"Debugger.enable\"}");
         tester.sendMessage("{\"id\":3,\"method\":\"Runtime.runIfWaitingForDebugger\"}");
@@ -596,7 +595,7 @@ public class SLInspectDebugTest {
     public void testNotSuspended() throws Exception {
         tester = InspectorTester.start(false);
         Source source = Source.newBuilder("sl", CODE1, "SLTest.sl").build();
-        String slTestURI = ScriptsHandler.getNiceStringFromURI(source.getURI());
+        String slTestURI = InspectorTester.getStringURI(source.getURI());
         tester.sendMessage("{\"id\":1,\"method\":\"Runtime.enable\"}");
         tester.sendMessage("{\"id\":2,\"method\":\"Debugger.enable\"}");
         tester.sendMessage("{\"id\":3,\"method\":\"Runtime.runIfWaitingForDebugger\"}");
@@ -654,8 +653,8 @@ public class SLInspectDebugTest {
                         "}\n";
         Source publicMain = Source.newBuilder("sl", mainFunction, "PublicMain.sl").internal(false).build();
         Source internMain = Source.newBuilder("sl", mainFunction, "InternMain.sl").internal(true).build();
-        String publicSourceURI = ScriptsHandler.getNiceStringFromURI(publicSource.getURI());
-        String publicMainURI = ScriptsHandler.getNiceStringFromURI(publicMain.getURI());
+        String publicSourceURI = InspectorTester.getStringURI(publicSource.getURI());
+        String publicMainURI = InspectorTester.getStringURI(publicMain.getURI());
         tester.sendMessage("{\"id\":1,\"method\":\"Runtime.enable\"}");
         tester.sendMessage("{\"id\":2,\"method\":\"Debugger.enable\"}");
         tester.sendMessage("{\"id\":3,\"method\":\"Runtime.runIfWaitingForDebugger\"}");
@@ -920,9 +919,9 @@ public class SLInspectDebugTest {
                         "  c = black(0);\n" +
                         "}\n";
         Source publicMain = Source.newBuilder("sl", mainFunction, "PublicMain.sl").internal(false).build();
-        String blackboxedSourceURI = ScriptsHandler.getNiceStringFromURI(blackboxedSource.getURI());
-        String publicSourceURI = ScriptsHandler.getNiceStringFromURI(publicSource.getURI());
-        String publicMainURI = ScriptsHandler.getNiceStringFromURI(publicMain.getURI());
+        String blackboxedSourceURI = InspectorTester.getStringURI(blackboxedSource.getURI());
+        String publicSourceURI = InspectorTester.getStringURI(publicSource.getURI());
+        String publicMainURI = InspectorTester.getStringURI(publicMain.getURI());
         tester.sendMessage("{\"id\":1,\"method\":\"Runtime.enable\"}");
         tester.sendMessage("{\"id\":2,\"method\":\"Debugger.enable\"}");
         tester.sendMessage("{\"id\":3,\"method\":\"Debugger.setBlackboxPatterns\",\"params\":{\"patterns\":[\"BlackboxedFunc.sl\"]}}");
@@ -1005,24 +1004,29 @@ public class SLInspectDebugTest {
         TruffleFile truffleFile = SLLanguage.getCurrentContext().getEnv().getTruffleFile(file.toPath().toString());
         com.oracle.truffle.api.source.Source source = com.oracle.truffle.api.source.Source.newBuilder("sl", truffleFile).build();
 
+        tester = InspectorTester.start(false);
+        InspectorDebugger debugger = (InspectorDebugger) tester.getDebugger();
+        debugger.enable();
         // Test name of a file
-        assertTrue(InspectorDebugger.sourceMatchesBlackboxPatterns(source, new Pattern[] {Pattern.compile("BlackboxTest.sl")}));
-        assertFalse(InspectorDebugger.sourceMatchesBlackboxPatterns(source, new Pattern[] {Pattern.compile("Test.sl")}));
+        assertTrue(debugger.sourceMatchesBlackboxPatterns(source, new Pattern[] {Pattern.compile("BlackboxTest.sl")}));
+        assertFalse(debugger.sourceMatchesBlackboxPatterns(source, new Pattern[] {Pattern.compile("Test.sl")}));
 
         // Test regular expression that contain a specific name
-        assertTrue(InspectorDebugger.sourceMatchesBlackboxPatterns(source, new Pattern[] {Pattern.compile("Test\\.sl$")}));
-        assertFalse(InspectorDebugger.sourceMatchesBlackboxPatterns(source, new Pattern[] {Pattern.compile("Fest\\.sl$")}));
+        assertTrue(debugger.sourceMatchesBlackboxPatterns(source, new Pattern[] {Pattern.compile("Test\\.sl$")}));
+        assertFalse(debugger.sourceMatchesBlackboxPatterns(source, new Pattern[] {Pattern.compile("Fest\\.sl$")}));
 
         // Test regular expression that contain certain types of files
-        assertTrue(InspectorDebugger.sourceMatchesBlackboxPatterns(source, new Pattern[] {Pattern.compile("\\.sl$")}));
-        assertFalse(InspectorDebugger.sourceMatchesBlackboxPatterns(source, new Pattern[] {Pattern.compile("\\.ssl$")}));
+        assertTrue(debugger.sourceMatchesBlackboxPatterns(source, new Pattern[] {Pattern.compile("\\.sl$")}));
+        assertFalse(debugger.sourceMatchesBlackboxPatterns(source, new Pattern[] {Pattern.compile("\\.ssl$")}));
 
         // Test entire folder that contains scripts you to blackbox
-        assertTrue(InspectorDebugger.sourceMatchesBlackboxPatterns(source, new Pattern[] {Pattern.compile("blackbox")}));
-        assertFalse(InspectorDebugger.sourceMatchesBlackboxPatterns(source, new Pattern[] {Pattern.compile("tmp")}));
+        assertTrue(debugger.sourceMatchesBlackboxPatterns(source, new Pattern[] {Pattern.compile("blackbox")}));
+        assertFalse(debugger.sourceMatchesBlackboxPatterns(source, new Pattern[] {Pattern.compile("tmp")}));
 
         // Test regular expression produced by Chrome Inspector's 'Blackbox Script' action.
-        assertTrue(InspectorDebugger.sourceMatchesBlackboxPatterns(source, new Pattern[] {Pattern.compile("^file://.*/BlackboxTest\\.sl$")}));
+        assertTrue(debugger.sourceMatchesBlackboxPatterns(source, new Pattern[] {Pattern.compile("^file://.*/BlackboxTest\\.sl$")}));
+        debugger.disable();
+        tester.finish();
 
         context.leave();
         context.close();
@@ -1032,11 +1036,11 @@ public class SLInspectDebugTest {
     public void testRestartFrame() throws Exception {
         tester = InspectorTester.start(false);
         Source source = Source.newBuilder("sl", CODE3, "SLTest.sl").build();
-        String slTestURI = ScriptsHandler.getNiceStringFromURI(source.getURI());
+        String slTestURI = InspectorTester.getStringURI(source.getURI());
         tester.sendMessage("{\"id\":1,\"method\":\"Runtime.enable\"}");
         tester.sendMessage("{\"id\":2,\"method\":\"Debugger.enable\"}");
         tester.sendMessage("{\"id\":3,\"method\":\"Runtime.runIfWaitingForDebugger\"}");
-        String srcURL = ScriptsHandler.getNiceStringFromURI(source.getURI());
+        String srcURL = InspectorTester.getStringURI(source.getURI());
         assertTrue(tester.compareReceivedMessages(
                         "{\"result\":{},\"id\":1}\n" +
                         "{\"result\":{},\"id\":2}\n" +
@@ -1164,7 +1168,7 @@ public class SLInspectDebugTest {
     public void testReturnValue() throws Exception {
         tester = InspectorTester.start(true);
         Source source = Source.newBuilder("sl", CODE_RET_VAL, "SLTest.sl").build();
-        String slTestURI = ScriptsHandler.getNiceStringFromURI(source.getURI());
+        String slTestURI = InspectorTester.getStringURI(source.getURI());
         tester.sendMessage("{\"id\":1,\"method\":\"Runtime.enable\"}");
         tester.sendMessage("{\"id\":2,\"method\":\"Debugger.enable\"}");
         tester.sendMessage("{\"id\":3,\"method\":\"Runtime.runIfWaitingForDebugger\"}");
@@ -1377,7 +1381,7 @@ public class SLInspectDebugTest {
         tester.sendMessage("{\"id\":1,\"method\":\"Runtime.enable\"}");
         tester.sendMessage("{\"id\":2,\"method\":\"Debugger.enable\"}");
         tester.sendMessage("{\"id\":3,\"method\":\"Runtime.runIfWaitingForDebugger\"}");
-        String srcURL = ScriptsHandler.getNiceStringFromURI(source.getURI());
+        String srcURL = InspectorTester.getStringURI(source.getURI());
         assertTrue(tester.compareReceivedMessages(
                         "{\"result\":{},\"id\":1}\n" +
                         "{\"result\":{},\"id\":2}\n" +
@@ -1458,7 +1462,7 @@ public class SLInspectDebugTest {
         tester.sendMessage("{\"id\":1,\"method\":\"Runtime.enable\"}");
         tester.sendMessage("{\"id\":2,\"method\":\"Debugger.enable\"}");
         tester.sendMessage("{\"id\":3,\"method\":\"Runtime.runIfWaitingForDebugger\"}");
-        String srcURL = ScriptsHandler.getNiceStringFromURI(source.getURI());
+        String srcURL = InspectorTester.getStringURI(source.getURI());
         assertTrue(tester.compareReceivedMessages(
                         "{\"result\":{},\"id\":1}\n" +
                         "{\"result\":{},\"id\":2}\n" +
@@ -1505,6 +1509,10 @@ public class SLInspectDebugTest {
         tester.sendMessage("{\"id\":6,\"method\":\"Debugger.getPossibleBreakpoints\",\"params\":{\"start\":{\"scriptId\":\"1\",\"lineNumber\":11,\"columnNumber\":0},\"restrictToFunction\":false}}");
         assertEquals("{\"result\":{\"locations\":[{\"scriptId\":\"1\",\"columnNumber\":2,\"lineNumber\":11},{\"scriptId\":\"1\",\"columnNumber\":13,\"lineNumber\":11},{\"scriptId\":\"1\",\"columnNumber\":24,\"lineNumber\":11}]},\"id\":6}", tester.getMessages(true).trim());
 
+        // Test location after file length:
+        tester.sendMessage("{\"id\":7,\"method\":\"Debugger.getPossibleBreakpoints\",\"params\":{\"start\":{\"scriptId\":\"1\",\"lineNumber\":14,\"columnNumber\":0},\"end\":{\"scriptId\":\"1\",\"lineNumber\":14,\"columnNumber\":0},\"restrictToFunction\":false}}");
+        assertEquals("{\"result\":{\"locations\":[{\"scriptId\":\"1\",\"columnNumber\":24,\"lineNumber\":11}]},\"id\":7}", tester.getMessages(true).trim());
+
         // Resume to finish:
         tester.sendMessage("{\"id\":20,\"method\":\"Debugger.resume\"}");
         assertTrue(tester.compareReceivedMessages(
@@ -1520,7 +1528,7 @@ public class SLInspectDebugTest {
         tester.sendMessage("{\"id\":1,\"method\":\"Runtime.enable\"}");
         tester.sendMessage("{\"id\":2,\"method\":\"Debugger.enable\"}");
         tester.sendMessage("{\"id\":3,\"method\":\"Runtime.runIfWaitingForDebugger\"}");
-        String srcURL = ScriptsHandler.getNiceStringFromURI(source.getURI());
+        String srcURL = InspectorTester.getStringURI(source.getURI());
         assertTrue(tester.compareReceivedMessages(
                         "{\"result\":{},\"id\":1}\n" +
                         "{\"result\":{},\"id\":2}\n" +
@@ -1564,11 +1572,11 @@ public class SLInspectDebugTest {
     public void testSetVariableValue() throws Exception {
         tester = InspectorTester.start(false);
         Source source = Source.newBuilder("sl", CODE_VARS, "SLVars.sl").build();
-        String slTestURI = ScriptsHandler.getNiceStringFromURI(source.getURI());
+        String slTestURI = InspectorTester.getStringURI(source.getURI());
         tester.sendMessage("{\"id\":1,\"method\":\"Runtime.enable\"}");
         tester.sendMessage("{\"id\":2,\"method\":\"Debugger.enable\"}");
         tester.sendMessage("{\"id\":3,\"method\":\"Runtime.runIfWaitingForDebugger\"}");
-        String srcURL = ScriptsHandler.getNiceStringFromURI(source.getURI());
+        String srcURL = InspectorTester.getStringURI(source.getURI());
         assertTrue(tester.compareReceivedMessages(
                         "{\"result\":{},\"id\":1}\n" +
                         "{\"result\":{},\"id\":2}\n" +

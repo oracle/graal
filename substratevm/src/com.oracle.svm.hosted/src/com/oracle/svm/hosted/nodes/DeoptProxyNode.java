@@ -38,11 +38,15 @@ import org.graalvm.compiler.nodes.NodeView;
 import org.graalvm.compiler.nodes.ParameterNode;
 import org.graalvm.compiler.nodes.ValueNode;
 import org.graalvm.compiler.nodes.calc.FloatingNode;
+import org.graalvm.compiler.nodes.spi.ArrayLengthProvider;
 import org.graalvm.compiler.nodes.spi.LIRLowerable;
 import org.graalvm.compiler.nodes.spi.LimitedValueProxy;
 import org.graalvm.compiler.nodes.spi.NodeLIRBuilderTool;
+import org.graalvm.compiler.nodes.util.GraphUtil;
 
 import com.oracle.svm.core.deopt.Deoptimizer;
+
+import jdk.vm.ci.meta.ConstantReflectionProvider;
 
 /**
  * Wraps locals and bytecode stack elements at deoptimization points. DeoptProxyNodes are inserted
@@ -54,7 +58,7 @@ import com.oracle.svm.core.deopt.Deoptimizer;
  * etc.)
  */
 @NodeInfo(cycles = NodeCycles.CYCLES_0, size = NodeSize.SIZE_0)
-public final class DeoptProxyNode extends FloatingNode implements LimitedValueProxy, ValueNumberable, LIRLowerable, Canonicalizable, IterableNodeType {
+public final class DeoptProxyNode extends FloatingNode implements LimitedValueProxy, ValueNumberable, LIRLowerable, Canonicalizable, IterableNodeType, ArrayLengthProvider {
     public static final NodeClass<DeoptProxyNode> TYPE = NodeClass.create(DeoptProxyNode.class);
 
     /**
@@ -118,5 +122,11 @@ public final class DeoptProxyNode extends FloatingNode implements LimitedValuePr
 
     public boolean hasProxyPoint() {
         return proxyPoint != null;
+    }
+
+    @Override
+    public ValueNode findLength(FindLengthMode mode, ConstantReflectionProvider constantReflection) {
+        ValueNode length = GraphUtil.arrayLength(value, mode, constantReflection);
+        return length != null && length.isConstant() ? length : null;
     }
 }

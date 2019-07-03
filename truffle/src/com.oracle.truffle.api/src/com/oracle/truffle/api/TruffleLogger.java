@@ -79,7 +79,7 @@ import org.graalvm.polyglot.Context;
  * The {@link TruffleLogger} instances are safe to be used on compiled code paths as well as from
  * multiple-threads.
  *
- * @since 1.0
+ * @since 19.0
  */
 public final class TruffleLogger {
 
@@ -118,7 +118,7 @@ public final class TruffleLogger {
      * @param id the unique id of language or instrument
      * @return a {@link TruffleLogger}
      * @throws NullPointerException if {@code id} is null
-     * @since 1.0
+     * @since 19.0
      */
     public static TruffleLogger getLogger(final String id) {
         Objects.requireNonNull(id, "LanguageId must be non null.");
@@ -133,7 +133,7 @@ public final class TruffleLogger {
      * @param forClass the {@link Class} to create a logger for
      * @return a {@link TruffleLogger}
      * @throws NullPointerException if {@code id} or {@code forClass} is null
-     * @since 1.0
+     * @since 19.0
      */
     public static TruffleLogger getLogger(final String id, final Class<?> forClass) {
         Objects.requireNonNull(forClass, "Class must be non null.");
@@ -149,7 +149,7 @@ public final class TruffleLogger {
      *            empty a root logger for language or instrument is returned
      * @return a {@link TruffleLogger}
      * @throws NullPointerException if {@code id} is null
-     * @since 1.0
+     * @since 19.0
      */
     public static TruffleLogger getLogger(final String id, final String loggerName) {
         return getLogger(id, loggerName, LoggerCache.getInstance());
@@ -176,7 +176,7 @@ public final class TruffleLogger {
      * {@link Handler} registered in the current {@link Context}.
      *
      * @param message the message to log
-     * @since 1.0
+     * @since 19.0
      */
     public void config(final String message) {
         log(Level.CONFIG, message);
@@ -190,7 +190,7 @@ public final class TruffleLogger {
      * {@link Handler} registered in the current {@link Context}.
      *
      * @param messageSupplier the {@link Supplier} called to produce the message to log
-     * @since 1.0
+     * @since 19.0
      */
     public void config(final Supplier<String> messageSupplier) {
         log(Level.CONFIG, messageSupplier);
@@ -205,7 +205,7 @@ public final class TruffleLogger {
      *
      * @param sourceClass the entered class
      * @param sourceMethod the entered method
-     * @since 1.0
+     * @since 19.0
      */
     public void entering(final String sourceClass, final String sourceMethod) {
         logp(Level.FINER, sourceClass, sourceMethod, "ENTRY");
@@ -221,7 +221,7 @@ public final class TruffleLogger {
      * @param sourceClass the entered class
      * @param sourceMethod the entered method
      * @param parameter the method parameter
-     * @since 1.0
+     * @since 19.0
      */
     public void entering(final String sourceClass, final String sourceMethod, final Object parameter) {
         logp(Level.FINER, sourceClass, sourceMethod, "ENTRY {0}", parameter);
@@ -237,7 +237,7 @@ public final class TruffleLogger {
      * @param sourceClass the entered class
      * @param sourceMethod the entered method
      * @param parameters the method parameters
-     * @since 1.0
+     * @since 19.0
      */
     public void entering(final String sourceClass, final String sourceMethod, final Object[] parameters) {
         String msg = "ENTRY";
@@ -263,7 +263,7 @@ public final class TruffleLogger {
      *
      * @param sourceClass the exiting class
      * @param sourceMethod the exiting method
-     * @since 1.0
+     * @since 19.0
      */
     public void exiting(final String sourceClass, final String sourceMethod) {
         logp(Level.FINER, sourceClass, sourceMethod, "RETURN");
@@ -279,7 +279,7 @@ public final class TruffleLogger {
      * @param sourceClass the exiting class
      * @param sourceMethod the exiting method
      * @param result the return value
-     * @since 1.0
+     * @since 19.0
      */
     public void exiting(final String sourceClass, final String sourceMethod, final Object result) {
         logp(Level.FINER, sourceClass, sourceMethod, "RETURN {0}", result);
@@ -292,7 +292,7 @@ public final class TruffleLogger {
      * {@link Handler} registered in the current {@link Context}.
      *
      * @param message the message to log
-     * @since 1.0
+     * @since 19.0
      */
     public void fine(final String message) {
         log(Level.FINE, message);
@@ -306,7 +306,7 @@ public final class TruffleLogger {
      * {@link Handler} registered in the current {@link Context}.
      *
      * @param messageSupplier the {@link Supplier} called to produce the message to log
-     * @since 1.0
+     * @since 19.0
      */
     public void fine(final Supplier<String> messageSupplier) {
         log(Level.FINE, messageSupplier);
@@ -319,7 +319,7 @@ public final class TruffleLogger {
      * {@link Handler} registered in the current {@link Context}.
      *
      * @param message the message to log
-     * @since 1.0
+     * @since 19.0
      */
     public void finer(final String message) {
         log(Level.FINER, message);
@@ -333,7 +333,7 @@ public final class TruffleLogger {
      * {@link Handler} registered in the current {@link Context}.
      *
      * @param messageSupplier the {@link Supplier} called to produce the message to log
-     * @since 1.0
+     * @since 19.0
      */
     public void finer(final Supplier<String> messageSupplier) {
         log(Level.FINER, messageSupplier);
@@ -346,7 +346,7 @@ public final class TruffleLogger {
      * {@link Handler} registered in the current {@link Context}.
      *
      * @param message the message to log
-     * @since 1.0
+     * @since 19.0
      */
     public void finest(final String message) {
         log(Level.FINEST, message);
@@ -360,7 +360,7 @@ public final class TruffleLogger {
      * {@link Handler} registered in the current {@link Context}.
      *
      * @param messageSupplier the {@link Supplier} called to produce the message to log
-     * @since 1.0
+     * @since 19.0
      */
     public void finest(final Supplier<String> messageSupplier) {
         log(Level.FINEST, messageSupplier);
@@ -373,7 +373,7 @@ public final class TruffleLogger {
      * {@link Handler} registered in the current {@link Context}.
      *
      * @param message the message to log
-     * @since 1.0
+     * @since 19.0
      */
     public void info(final String message) {
         log(Level.INFO, message);
@@ -387,7 +387,7 @@ public final class TruffleLogger {
      * {@link Handler} registered in the current {@link Context}.
      *
      * @param messageSupplier the {@link Supplier} called to produce the message to log
-     * @since 1.0
+     * @since 19.0
      */
     public void info(final Supplier<String> messageSupplier) {
         log(Level.INFO, messageSupplier);
@@ -400,7 +400,7 @@ public final class TruffleLogger {
      * {@link Handler} registered in the current {@link Context}.
      *
      * @param message the message to log
-     * @since 1.0
+     * @since 19.0
      */
     public void severe(final String message) {
         log(Level.SEVERE, message);
@@ -414,7 +414,7 @@ public final class TruffleLogger {
      * {@link Handler} registered in the current {@link Context}.
      *
      * @param messageSupplier the {@link Supplier} called to produce the message to log
-     * @since 1.0
+     * @since 19.0
      */
     public void severe(final Supplier<String> messageSupplier) {
         log(Level.SEVERE, messageSupplier);
@@ -430,7 +430,7 @@ public final class TruffleLogger {
      * @param sourceClass the class throwing an exception
      * @param sourceMethod the method throwing an exception
      * @param thrown the thrown exception
-     * @since 1.0
+     * @since 19.0
      */
     public <T extends Throwable> T throwing(final String sourceClass, final String sourceMethod, final T thrown) {
         logp(Level.FINER, sourceClass, sourceMethod, "THROW", thrown);
@@ -444,7 +444,7 @@ public final class TruffleLogger {
      * the {@link Handler} registered in the current {@link Context}.
      *
      * @param message the message to log
-     * @since 1.0
+     * @since 19.0
      */
     public void warning(final String message) {
         log(Level.WARNING, message);
@@ -458,7 +458,7 @@ public final class TruffleLogger {
      * the {@link Handler} registered in the current {@link Context}.
      *
      * @param messageSupplier the {@link Supplier} called to produce the message to log
-     * @since 1.0
+     * @since 19.0
      */
     public void warning(final Supplier<String> messageSupplier) {
         log(Level.WARNING, messageSupplier);
@@ -472,7 +472,7 @@ public final class TruffleLogger {
      *
      * @param level the required {@link Level}
      * @param message the message to log
-     * @since 1.0
+     * @since 19.0
      */
     public void log(final Level level, final String message) {
         if (!isLoggable(level)) {
@@ -490,7 +490,7 @@ public final class TruffleLogger {
      *
      * @param level the required {@link Level}
      * @param messageSupplier the {@link Supplier} called to produce the message to log
-     * @since 1.0
+     * @since 19.0
      */
     public void log(final Level level, final Supplier<String> messageSupplier) {
         if (!isLoggable(level)) {
@@ -508,7 +508,7 @@ public final class TruffleLogger {
      * @param level the required {@link Level}
      * @param message the message to log
      * @param parameter the log message parameter
-     * @since 1.0
+     * @since 19.0
      */
     public void log(final Level level, final String message, final Object parameter) {
         if (!isLoggable(level)) {
@@ -526,7 +526,7 @@ public final class TruffleLogger {
      * @param level the required {@link Level}
      * @param message the message to log
      * @param parameters the log message parameters
-     * @since 1.0
+     * @since 19.0
      */
     public void log(final Level level, final String message, final Object[] parameters) {
         if (!isLoggable(level)) {
@@ -544,7 +544,7 @@ public final class TruffleLogger {
      * @param level the required {@link Level}
      * @param message the message to log
      * @param thrown the exception to log
-     * @since 1.0
+     * @since 19.0
      */
     public void log(final Level level, final String message, final Throwable thrown) {
         if (!isLoggable(level)) {
@@ -563,7 +563,7 @@ public final class TruffleLogger {
      * @param level the required {@link Level}
      * @param thrown the exception to log
      * @param messageSupplier the {@link Supplier} called to produce the message to log
-     * @since 1.0
+     * @since 19.0
      */
     public void log(final Level level, final Throwable thrown, final Supplier<String> messageSupplier) {
         if (!isLoggable(level)) {
@@ -582,7 +582,7 @@ public final class TruffleLogger {
      * @param sourceClass the class issued the logging request
      * @param sourceMethod the method issued the logging request
      * @param message the message to log
-     * @since 1.0
+     * @since 19.0
      */
     public void logp(final Level level, final String sourceClass, final String sourceMethod, final String message) {
         if (!isLoggable(level)) {
@@ -602,7 +602,7 @@ public final class TruffleLogger {
      * @param sourceClass the class issued the logging request
      * @param sourceMethod the method issued the logging request
      * @param messageSupplier the {@link Supplier} called to produce the message to log
-     * @since 1.0
+     * @since 19.0
      */
     public void logp(final Level level, final String sourceClass, final String sourceMethod, final Supplier<String> messageSupplier) {
         if (!isLoggable(level)) {
@@ -622,7 +622,7 @@ public final class TruffleLogger {
      * @param sourceMethod the method issued the logging request
      * @param message the message to log
      * @param parameter the log message parameter
-     * @since 1.0
+     * @since 19.0
      */
     public void logp(final Level level, final String sourceClass, final String sourceMethod, final String message, final Object parameter) {
         if (!isLoggable(level)) {
@@ -642,7 +642,7 @@ public final class TruffleLogger {
      * @param sourceMethod the method issued the logging request
      * @param message the message to log
      * @param parameters the log message parameters
-     * @since 1.0
+     * @since 19.0
      */
     public void logp(final Level level, final String sourceClass, final String sourceMethod, final String message, Object[] parameters) {
         if (!isLoggable(level)) {
@@ -662,7 +662,7 @@ public final class TruffleLogger {
      * @param sourceMethod the method issued the logging request
      * @param message the message to log
      * @param thrown the exception to log
-     * @since 1.0
+     * @since 19.0
      */
     public void logp(final Level level, final String sourceClass, final String sourceMethod, final String message, final Throwable thrown) {
         if (!isLoggable(level)) {
@@ -683,7 +683,7 @@ public final class TruffleLogger {
      * @param sourceMethod the method issued the logging request
      * @param thrown the exception to log
      * @param messageSupplier the {@link Supplier} called to produce the message to log
-     * @since 1.0
+     * @since 19.0
      */
     public void logp(final Level level, final String sourceClass, final String sourceMethod, final Throwable thrown, final Supplier<String> messageSupplier) {
         if (!isLoggable(level)) {
@@ -696,7 +696,7 @@ public final class TruffleLogger {
      * Returns the name of the logger.
      *
      * @return the logger name
-     * @since 1.0
+     * @since 19.0
      */
     public String getName() {
         return name;
@@ -707,7 +707,7 @@ public final class TruffleLogger {
      *
      * @return the parent {@link TruffleLogger} or null when the {@link TruffleLogger} has no
      *         parent.
-     * @since 1.0
+     * @since 19.0
      */
     public TruffleLogger getParent() {
         return parent;
@@ -718,7 +718,7 @@ public final class TruffleLogger {
      *
      * @param level the required logging level
      * @return true if message is loggable by this logger
-     * @since 1.0
+     * @since 19.0
      */
     public boolean isLoggable(final Level level) {
         int value = getLevelNum();

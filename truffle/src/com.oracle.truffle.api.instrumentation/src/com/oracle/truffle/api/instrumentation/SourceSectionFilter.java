@@ -128,7 +128,7 @@ public final class SourceSectionFilter {
      *
      * @param node The node to check.
      * @return True of the filter includes the node, false otherwise.
-     * @since 1.0.0.
+     * @since 19.0.
      */
     public boolean includes(Node node) {
         if (!InstrumentationHandler.isInstrumentableNode(node, node.getSourceSection())) {
@@ -1498,11 +1498,17 @@ public final class SourceSectionFilter {
 
             @Override
             boolean isIncluded(Set<Class<?>> providedTags, Node instrumentedNode, SourceSection s) {
-                return true;
+                return s == null || !s.getSource().isInternal();
             }
 
             @Override
             boolean isRootIncluded(Set<Class<?>> providedTags, SourceSection rootSection, RootNode rootNode, int rootNodeBits) {
+                // assert that the RootNode is internal when it's Source is internal
+                assert rootNode == null ||
+                                rootSection == null ||
+                                !rootSection.getSource().isInternal() ||
+                                rootSection.getSource().isInternal() && rootNode.isInternal() : //
+                "The root's source is internal, but the root node is not. Root node = " + rootNode.getClass();
                 return rootNode == null || !rootNode.isInternal();
             }
 

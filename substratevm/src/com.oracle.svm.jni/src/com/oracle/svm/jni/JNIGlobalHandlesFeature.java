@@ -24,7 +24,7 @@
  */
 package com.oracle.svm.jni;
 
-import org.graalvm.nativeimage.Feature;
+import org.graalvm.nativeimage.hosted.Feature;
 
 /**
  * @see JNIGlobalHandles

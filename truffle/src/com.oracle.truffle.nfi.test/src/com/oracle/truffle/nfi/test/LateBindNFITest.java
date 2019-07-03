@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2017, 2018, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2017, 2019, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -52,6 +52,7 @@ import com.oracle.truffle.nfi.test.LateBindNFITestFactory.DoBindAndExecuteNodeGe
 import com.oracle.truffle.nfi.test.interop.BoxedPrimitive;
 import com.oracle.truffle.tck.TruffleRunner;
 import com.oracle.truffle.tck.TruffleRunner.Inject;
+import com.oracle.truffle.tck.TruffleRunner.Warmup;
 import static org.hamcrest.CoreMatchers.instanceOf;
 import static org.hamcrest.CoreMatchers.is;
 import org.junit.Assert;
@@ -108,8 +109,17 @@ public class LateBindNFITest extends NFITest {
         testLateBind(callTarget, "increment_SINT32", "(sint32):sint32");
     }
 
+    // make sure the signature can be cached
+    private static final BoxedPrimitive BOXED_SIGNATURE = new BoxedPrimitive("(sint32):sint32");
+
     @Test
     public void testLateBindBoxed(@Inject(BindAndExecuteNode.class) CallTarget callTarget) {
+        testLateBind(callTarget, "increment_SINT32", BOXED_SIGNATURE);
+    }
+
+    @Test
+    @Warmup(15) // to make sure the cache overflows before compiling, avoiding a deopt
+    public void testLateBindUncached(@Inject(BindAndExecuteNode.class) CallTarget callTarget) {
         testLateBind(callTarget, "increment_SINT32", new BoxedPrimitive("(sint32):sint32"));
     }
 }

@@ -27,21 +27,6 @@ package com.oracle.truffle.regex;
 import com.oracle.truffle.api.interop.TruffleObject;
 
 /**
- * {@link RegexCompiler} is an executable {@link TruffleObject} that compiles regular expressions
- * into {@link CompiledRegexObject}s or compatible {@link TruffleObject}s. It takes the following
- * arguments:
- * <ol>
- * <li>{@link String} {@code pattern}: the source of the regular expression to be compiled</li>
- * <li>{@link String} {@code flags} (optional): a textual representation of the flags to be passed
- * to the compiler (one letter per flag), see {@link RegexFlags} for the supported flags</li>
- * </ol>
- * Executing the {@link RegexCompiler} can also lead to the following exceptions:
- * <ul>
- * <li>{@link RegexSyntaxException}: if the input regular expression is malformed</li>
- * <li>{@link UnsupportedRegexException}: if the input regular expression cannot be compiled by this
- * compiler</li>
- * </ul>
- * <p>
  * {@link RegexCompiler}s are very similar to {@link RegexEngine}s. {@link RegexEngine}s produce
  * {@link RegexObject}s, which contain metadata about the compiled regular expression and lazy
  * access to a {@link CompiledRegexObject}s. When the {@link CompiledRegexObject} of a
@@ -52,14 +37,15 @@ import com.oracle.truffle.api.interop.TruffleObject;
  * they are easier to provide by third-party RegExp engines. {@link RegexEngine}s exist because they
  * provide features that are desired by users of {@link RegexLanguage} (e.g. lazy compilation).
  */
-public interface RegexCompiler extends RegexLanguageObject {
+public interface RegexCompiler {
 
     /**
      * Uses the compiler to try and compile the regular expression described in {@code source}.
      *
-     * @return a {@link CompiledRegexObject} or a compatible {@link TruffleObject}
+     * @return a {@link CompiledRegexObject} or a {@link TruffleObject} compatible to
+     *         {@link RegexObject}
      * @throws RegexSyntaxException if the engine discovers a syntax error in the regular expression
      * @throws UnsupportedRegexException if the regular expression is not supported by the engine
      */
-    TruffleObject compile(RegexSource source) throws RegexSyntaxException, UnsupportedRegexException;
+    Object compile(RegexSource source) throws RegexSyntaxException, UnsupportedRegexException;
 }

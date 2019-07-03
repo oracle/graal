@@ -47,8 +47,8 @@ import java.io.OutputStream;
 import java.net.URI;
 import java.net.URL;
 import java.nio.charset.Charset;
+import java.time.ZoneId;
 import java.util.Collection;
-import java.util.List;
 import java.util.Map;
 import java.util.Set;
 import java.util.concurrent.locks.Lock;
@@ -80,6 +80,7 @@ import com.oracle.truffle.api.TruffleOptions;
 import com.oracle.truffle.api.frame.Frame;
 import com.oracle.truffle.api.frame.FrameDescriptor;
 import com.oracle.truffle.api.frame.MaterializedFrame;
+import com.oracle.truffle.api.io.TruffleProcessBuilder;
 import com.oracle.truffle.api.nodes.ExecutableNode;
 import com.oracle.truffle.api.nodes.IndirectCallNode;
 import com.oracle.truffle.api.nodes.LanguageInfo;
@@ -88,6 +89,8 @@ import com.oracle.truffle.api.nodes.RootNode;
 import com.oracle.truffle.api.source.Source;
 import com.oracle.truffle.api.source.Source.SourceBuilder;
 import com.oracle.truffle.api.source.SourceSection;
+import java.util.List;
+import org.graalvm.polyglot.io.ProcessHandler;
 
 /**
  * Communication between TruffleLanguage API/SPI, and other services.
@@ -337,8 +340,6 @@ public abstract class Accessor {
 
         public abstract Object getCurrentOuterContext();
 
-        public abstract Env getLanguageEnv(Object languageContextVMObject, LanguageInfo otherLanguage);
-
         public abstract boolean isCharacterBasedSource(String language, String mimeType);
 
         public abstract Set<String> getValidMimeTypes(String language);
@@ -366,6 +367,27 @@ public abstract class Accessor {
         public abstract FileSystem getFileSystem(Object contextVMObject);
 
         public abstract Supplier<Map<String, Collection<? extends TruffleFile.FileTypeDetector>>> getFileTypeDetectorsSupplier(Object contextVMObject);
+
+        public abstract boolean isPolyglotAccessAllowed(Object vmObject);
+
+        public abstract TruffleFile getTruffleFile(String path);
+
+        public abstract TruffleFile getTruffleFile(URI uri);
+
+        public abstract boolean isCreateProcessAllowed(Object polylgotLanguageContext);
+
+        public abstract Map<String, String> getProcessEnvironment(Object polyglotLanguageContext);
+
+        public abstract Process createSubProcess(Object polyglotLanguageContext, List<String> cmd, String cwd, Map<String, String> environment, boolean redirectErrorStream,
+                        ProcessHandler.Redirect inputRedirect, ProcessHandler.Redirect outputRedirect, ProcessHandler.Redirect errorRedirect) throws IOException;
+
+        public abstract boolean hasDefaultProcessHandler(Object polyglotLanguageContext);
+
+        public abstract ProcessHandler.Redirect createRedirectToOutputStream(Object vmObject, OutputStream stream);
+
+        public abstract boolean isIOAllowed();
+
+        public abstract ZoneId getTimeZone(Object vmObject);
     }
 
     public abstract static class LanguageSupport {
@@ -416,8 +438,6 @@ public abstract class Accessor {
         public abstract InstrumentInfo createInstrument(Object vmObject, String id, String name, String version);
 
         public abstract Object getVMObject(InstrumentInfo info);
-
-        public abstract <S> S lookup(TruffleLanguage<?> languageEnsureInitialized, Class<S> type);
 
         public abstract boolean isContextInitialized(Env env);
 
@@ -475,6 +495,14 @@ public abstract class Accessor {
         public abstract TruffleFile getTruffleFile(String path, Object fileSystemContext);
 
         public abstract TruffleFile getTruffleFile(URI uri, Object fileSystemContext);
+
+        public abstract boolean isDefaultFileSystem(Object fileSystemContext);
+
+        public abstract TruffleFile getTruffleFile(String path, FileSystem fileSystem, Supplier<Map<String, Collection<? extends TruffleFile.FileTypeDetector>>> fileTypeDetectorsSupplier);
+
+        public abstract TruffleFile getTruffleFile(URI uri, FileSystem fileSystem, Supplier<Map<String, Collection<? extends TruffleFile.FileTypeDetector>>> fileTypeDetectorsSupplier);
+
+        public abstract SecurityException throwSecurityException(String message);
     }
 
     public abstract static class InstrumentSupport {
@@ -553,6 +581,10 @@ public abstract class Accessor {
         protected abstract boolean getMaterializeCalled(FrameDescriptor descriptor);
     }
 
+    public abstract static class IOSupport {
+        public abstract TruffleProcessBuilder createProcessBuilder(Object polylgotLanguageContext, FileSystem fileSystem, List<String> command);
+    }
+
     @CompilationFinal private static Accessor.LanguageSupport API;
     @CompilationFinal private static Accessor.EngineSupport SPI;
     private static Accessor.Nodes NODES;
@@ -561,6 +593,7 @@ public abstract class Accessor {
     private static Accessor.InteropSupport INTEROP;
     private static Accessor.Frames FRAMES;
     private static Accessor.SourceSupport SOURCE;
+    private static Accessor.IOSupport IO;
 
     static {
         TruffleLanguage<?> lng = new TruffleLanguage<Object>() {
@@ -584,6 +617,7 @@ public abstract class Accessor {
         conditionallyInitInterop();
         conditionallyInitInstrumentation();
         conditionallyInitSourceAccessor();
+        conditionallyInitIOAccessor();
         if (TruffleOptions.TraceASTJSON) {
             try {
                 Class.forName("com.oracle.truffle.api.utilities.JSONHelper", true, Accessor.class.getClassLoader());
@@ -645,6 +679,19 @@ public abstract class Accessor {
         }
     }
 
+    @SuppressWarnings("all")
+    private static void conditionallyInitIOAccessor() throws IllegalStateException {
+        try {
+            Class.forName(TruffleProcessBuilder.class.getName(), true, Accessor.class.getClassLoader());
+        } catch (ClassNotFoundException ex) {
+            boolean assertOn = false;
+            assert assertOn = true;
+            if (!assertOn) {
+                throw new IllegalStateException(ex);
+            }
+        }
+    }
+
     protected Accessor() {
         if (!this.getClass().getName().startsWith("com.oracle.truffle") && !this.getClass().getName().startsWith("com.oracle.truffle.tck")) {
             throw new IllegalStateException();
@@ -670,6 +717,11 @@ public abstract class Accessor {
                 throw new IllegalStateException();
             }
             FRAMES = this.framesSupport();
+        } else if (simpleName.endsWith("IO")) {
+            if (IO != null) {
+                throw new IllegalStateException();
+            }
+            IO = this.ioSupport();
         } else if (simpleName.endsWith("SourceAccessor")) {
             SOURCE = this.sourceSupport();
         } else if (simpleName.endsWith("DumpAccessor")) {
@@ -744,6 +796,10 @@ public abstract class Accessor {
         return FRAMES;
     }
 
+    protected Accessor.IOSupport ioSupport() {
+        return IO;
+    }
+
     /**
      * Don't call me. I am here only to let NetBeans debug any Truffle project.
      *
@@ -766,6 +822,18 @@ public abstract class Accessor {
 
         public abstract Object call(Node callNode, CallTarget target, Object... arguments);
 
+    }
+
+    public abstract static class CastUnsafe {
+
+        public abstract Object[] castArrayFixedLength(Object[] args, int length);
+
+        @SuppressWarnings({"unchecked"})
+        public abstract <T> T unsafeCast(Object value, Class<T> type, boolean condition, boolean nonNull, boolean exact);
+    }
+
+    protected CastUnsafe getCastUnsafe() {
+        return SUPPORT.getCastUnsafe();
     }
 
     protected CallInlined getCallInlined() {

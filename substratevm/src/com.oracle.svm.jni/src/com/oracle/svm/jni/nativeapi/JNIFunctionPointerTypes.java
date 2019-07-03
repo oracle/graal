@@ -123,14 +123,29 @@ public final class JNIFunctionPointerTypes {
         int invoke(JNIEnvironment env, JNIObjectHandle array);
     }
 
+    public interface NewObjectArrayFunctionPointer extends CFunctionPointer {
+        @InvokeCFunctionPointer
+        JNIObjectHandle invoke(JNIEnvironment env, int length, JNIObjectHandle elementClass, JNIObjectHandle initialElement);
+    }
+
     public interface GetObjectArrayElementFunctionPointer extends CFunctionPointer {
         @InvokeCFunctionPointer
         JNIObjectHandle invoke(JNIEnvironment env, JNIObjectHandle array, int index);
     }
 
+    public interface SetObjectArrayElementFunctionPointer extends CFunctionPointer {
+        @InvokeCFunctionPointer
+        void invoke(JNIEnvironment env, JNIObjectHandle array, int index, JNIObjectHandle value);
+    }
+
     public interface FromReflectedMethodFunctionPointer extends CFunctionPointer {
         @InvokeCFunctionPointer
         JNIMethodId invoke(JNIEnvironment env, JNIObjectHandle method);
+    }
+
+    public interface ToReflectedMethodFunctionPointer extends CFunctionPointer {
+        @InvokeCFunctionPointer
+        JNIObjectHandle invoke(JNIEnvironment env, JNIObjectHandle clazz, JNIMethodId method, boolean isStatic);
     }
 
     public interface DeleteGlobalRefFunctionPointer extends CFunctionPointer {
@@ -146,6 +161,31 @@ public final class JNIFunctionPointerTypes {
     public interface ThrowFunctionPointer extends CFunctionPointer {
         @InvokeCFunctionPointer
         int invoke(JNIEnvironment env, JNIObjectHandle throwable);
+    }
+
+    public interface ThrowNewFunctionPointer extends CFunctionPointer {
+        @InvokeCFunctionPointer
+        int invoke(JNIEnvironment env, JNIObjectHandle clazz, CCharPointer message);
+    }
+
+    public interface GetSuperclassFunctionPointer extends CFunctionPointer {
+        @InvokeCFunctionPointer
+        JNIObjectHandle invoke(JNIEnvironment env, JNIObjectHandle clazz);
+    }
+
+    public interface IsAssignableFromFunctionPointer extends CFunctionPointer {
+        @InvokeCFunctionPointer
+        boolean invoke(JNIEnvironment env, JNIObjectHandle clazz, JNIObjectHandle toClazz);
+    }
+
+    public interface FromReflectedFieldFunctionPointer extends CFunctionPointer {
+        @InvokeCFunctionPointer
+        JNIFieldId invoke(JNIEnvironment env, JNIObjectHandle field);
+    }
+
+    public interface ToReflectedFieldFunctionPointer extends CFunctionPointer {
+        @InvokeCFunctionPointer
+        JNIObjectHandle invoke(JNIEnvironment env, JNIObjectHandle clazz, JNIFieldId field, boolean isStatic);
     }
 
     private JNIFunctionPointerTypes() {

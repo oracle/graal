@@ -1,9 +1,22 @@
 suite = {
     "name": "vm",
-    "version" : "1.0.0-rc15",
+    "version" : "19.2.0",
+    "mxversion" : "5.223.0",
     "release" : False,
     "groupId" : "org.graalvm",
-    "mxversion": "5.210.2",
+
+    "url" : "http://www.graalvm.org/",
+    "developer" : {
+      "name" : "Truffle and Graal developers",
+      "email" : "graalvm-users@oss.oracle.com",
+      "organization" : "Graal",
+      "organizationUrl" : "http://www.graalvm.org/",
+    },
+    "scm" : {
+      "url" : "https://github.com/oracle/graal",
+      "read" : "https://github.com/oracle/graal.git",
+    "  write" : "git@github.com:oracle/graal.git",
+    },
     "defaultLicense" : "GPLv2-CPE",
     "imports": {
         "suites": [
@@ -19,7 +32,7 @@ suite = {
                 "name": "graal-nodejs",
                 "subdir": True,
                 "dynamic": True,
-                "version": "722a2c374e3629a8983e48433383f7feb45c647d",
+                "version": "4b3b0d5a38bd9e8524cf1429c710ec2dc210c9cb",
                 "urls" : [
                     {"url" : "https://github.com/graalvm/graaljs.git", "kind" : "git"},
                     {"url": "https://curio.ssw.jku.at/nexus/content/repositories/snapshots", "kind": "binary"},
@@ -29,7 +42,7 @@ suite = {
                 "name": "graal-js",
                 "subdir": True,
                 "dynamic": True,
-                "version": "722a2c374e3629a8983e48433383f7feb45c647d",
+                "version": "4b3b0d5a38bd9e8524cf1429c710ec2dc210c9cb",
                 "urls": [
                     {"url": "https://github.com/graalvm/graaljs.git", "kind" : "git"},
                     {"url": "https://curio.ssw.jku.at/nexus/content/repositories/snapshots", "kind": "binary"},
@@ -37,7 +50,7 @@ suite = {
             },
             {
                 "name": "truffleruby",
-                "version": "387fa10cdd935758750fedc116daa4b9ed7e733d",
+                "version": "64c1334a1f3b4391e51b5a126b14022b7529fab8",
                 "dynamic": True,
                 "urls": [
                     {"url": "https://github.com/oracle/truffleruby.git", "kind": "git"},
@@ -61,7 +74,7 @@ suite = {
             },
             {
                 "name": "fastr",
-                "version": "6dd17dc5c726cd2186fb47535077fbc378b81f35",
+                "version": "2e0e90e5baa8605dfd1a3a559b682746c60c9b41",
                 "dynamic": True,
                 "urls": [
                     {"url": "https://github.com/oracle/fastr.git", "kind": "git"},
@@ -70,7 +83,7 @@ suite = {
             },
             {
                 "name": "graalpython",
-                "version": "e283895ca27dc2a6e88d94cd394602207866e20e",
+                "version": "ca439ce3fb317c67dfdcc90b44c7569685400d63",
                 "dynamic": True,
                 "urls": [
                     {"url": "https://github.com/graalvm/graalpython.git", "kind": "git"},
@@ -113,10 +126,12 @@ suite = {
 
     "distributions": {
         "LOCATOR": {
+            "subDir": "src",
             "dependencies": ["com.oracle.graalvm.locator"],
             "distDependencies": [
                 "truffle:TRUFFLE_API",
             ],
+            "maven" : False,
         },
         "INSTALLER": {
             "subDir": "src",
@@ -143,10 +158,7 @@ suite = {
             "platformDependent": True,
             "description": "GraalVM Installer support distribution for the GraalVM",
             "layout": {
-                "./": [
-                    "dependency:vm:INSTALLER",
-                ],
-                "bin/": "file:mx.vm/gu",
+                "bin/": "file:mx.vm/<cmd:gu>",
                 "components/polyglot/.registry" : "string:",
             },
             "maven": False,
@@ -155,7 +167,7 @@ suite = {
             "native": True,
             "description": "VM support distribution for the GraalVM",
             "layout": {
-                "LICENSE": "file:LICENSE_GRAALVM_CE",
+                "LICENSE.txt": "file:LICENSE_GRAALVM_CE",
                 "3rd_party_licenses.txt": "file:3rd_party_licenses_graalvm_ce.txt",
             },
             "maven": False,

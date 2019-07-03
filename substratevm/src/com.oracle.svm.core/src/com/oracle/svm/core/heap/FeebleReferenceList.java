@@ -266,12 +266,14 @@ public final class FeebleReferenceList<T> {
      * way. Similarly, I could add asserts about the thread state on the way out, but there is not
      * much I can do if things go wrong.
      */
+    @NeverInline("Must not be inlined in a caller that has an exception handler: We only support InvokeNode and not InvokeWithExceptionNode between a CFunctionPrologueNode and CFunctionEpilogueNode")
     private static void awaitWithTransition() {
         CFunctionPrologueNode.cFunctionPrologue();
         awaitInNative();
         CFunctionEpilogueNode.cFunctionEpilogue();
     }
 
+    @NeverInline("Must not be inlined in a caller that has an exception handler: We only support InvokeNode and not InvokeWithExceptionNode between a CFunctionPrologueNode and CFunctionEpilogueNode")
     private static long awaitWithTransition(long waitNanos) {
         CFunctionPrologueNode.cFunctionPrologue();
         final long result = awaitInNative(waitNanos);

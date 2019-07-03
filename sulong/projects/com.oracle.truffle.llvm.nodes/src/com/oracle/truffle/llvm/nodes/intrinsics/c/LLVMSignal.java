@@ -201,6 +201,7 @@ public abstract class LLVMSignal extends LLVMExpressionNode {
                     return;
                 }
             } catch (InterruptedException e) {
+                Thread.currentThread().interrupt();
                 throw new AssertionError(e);
             }
             lock.lock();

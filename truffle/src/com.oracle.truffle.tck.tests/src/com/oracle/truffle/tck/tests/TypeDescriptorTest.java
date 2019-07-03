@@ -43,6 +43,11 @@ package com.oracle.truffle.tck.tests;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
+import java.util.function.Function;
+import org.graalvm.polyglot.Context;
+import org.graalvm.polyglot.Value;
+import org.graalvm.polyglot.proxy.ProxyArray;
+import org.graalvm.polyglot.proxy.ProxyObject;
 import org.graalvm.polyglot.tck.TypeDescriptor;
 import org.junit.Assert;
 import org.junit.Test;
@@ -605,5 +610,42 @@ public class TypeDescriptorTest {
         Assert.assertFalse(instantiable.isAssignable(executable));
         Assert.assertFalse(TypeDescriptor.EXECUTABLE_ANY.isAssignable(instantiable));
         Assert.assertFalse(TypeDescriptor.INSTANTIABLE_ANY.isAssignable(executable));
+    }
+
+    @Test
+    public void testForValue() {
+        try (Context ctx = Context.newBuilder().allowAllAccess(true).build()) {
+            Value v = ctx.asValue(1);
+            Assert.assertTrue(TypeDescriptor.NUMBER.isAssignable(TypeDescriptor.forValue(v)));
+            v = ctx.asValue(true);
+            Assert.assertTrue(TypeDescriptor.BOOLEAN.isAssignable(TypeDescriptor.forValue(v)));
+            v = ctx.asValue("a");
+            Assert.assertTrue(TypeDescriptor.STRING.isAssignable(TypeDescriptor.forValue(v)));
+            v = ctx.asValue(null);
+            Assert.assertTrue(TypeDescriptor.NULL.isAssignable(TypeDescriptor.forValue(v)));
+            v = ctx.asValue(ProxyObject.fromMap(Collections.singletonMap("key", "value")));
+            Assert.assertTrue(TypeDescriptor.OBJECT.isAssignable(TypeDescriptor.forValue(v)));
+            v = ctx.asValue(new Function<Object, Object>() {
+                @Override
+                public Object apply(Object t) {
+                    return null;
+                }
+            });
+            Assert.assertTrue(TypeDescriptor.EXECUTABLE.isAssignable(TypeDescriptor.forValue(v)));
+            v = ctx.asValue(Object.class);
+            Assert.assertTrue(TypeDescriptor.INSTANTIABLE.isAssignable(TypeDescriptor.forValue(v)));
+            v = ctx.asValue(new Object());
+            Assert.assertTrue(TypeDescriptor.HOST_OBJECT.isAssignable(TypeDescriptor.forValue(v)));
+            v = ctx.asValue(ProxyArray.fromArray(1));
+            Assert.assertTrue(TypeDescriptor.array(TypeDescriptor.NUMBER).isAssignable(TypeDescriptor.forValue(v)));
+            v = ctx.asValue(ProxyArray.fromArray(true));
+            Assert.assertTrue(TypeDescriptor.array(TypeDescriptor.BOOLEAN).isAssignable(TypeDescriptor.forValue(v)));
+            v = ctx.asValue(ProxyArray.fromArray(1, true, "value"));
+            Assert.assertTrue(TypeDescriptor.array(TypeDescriptor.union(TypeDescriptor.NUMBER, TypeDescriptor.BOOLEAN, TypeDescriptor.STRING)).isAssignable(TypeDescriptor.forValue(v)));
+            v = ctx.asValue(ProxyArray.fromArray());
+            Assert.assertTrue(TypeDescriptor.array(TypeDescriptor.intersection(TypeDescriptor.NULL, TypeDescriptor.BOOLEAN, TypeDescriptor.NUMBER, TypeDescriptor.STRING, TypeDescriptor.HOST_OBJECT,
+                            TypeDescriptor.NATIVE_POINTER, TypeDescriptor.OBJECT, TypeDescriptor.ARRAY, TypeDescriptor.EXECUTABLE, TypeDescriptor.INSTANTIABLE)).isAssignable(
+                                            TypeDescriptor.forValue(v)));
+        }
     }
 }

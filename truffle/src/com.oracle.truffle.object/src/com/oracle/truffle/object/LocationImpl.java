@@ -152,10 +152,6 @@ public abstract class LocationImpl extends Location {
         if (getClass() != obj.getClass()) {
             return false;
         }
-        Location other = (Location) obj;
-        if (isFinal() != other.isFinal()) {
-            return false;
-        }
         return true;
     }
 

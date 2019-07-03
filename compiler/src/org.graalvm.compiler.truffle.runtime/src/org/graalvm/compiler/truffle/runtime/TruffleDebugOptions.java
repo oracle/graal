@@ -70,7 +70,7 @@ final class TruffleDebugOptions {
         }
 
         static OptionType<PrintGraphTarget> getOptionType() {
-            return new OptionType<>(PrintGraphTarget.class.getSimpleName(), File, PrintGraphTarget::valueOf);
+            return new OptionType<>(PrintGraphTarget.class.getSimpleName(), PrintGraphTarget::valueOf);
         }
     }
 

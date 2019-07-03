@@ -40,12 +40,12 @@
  */
 /*
  @ApiInfo(
- group="Graal SDK"
+ group="GraalVM SDK"
  )
  */
 /**
  * This package provides parts of the Java / C interface that are related to C structures.
  *
- * @since 1.0
+ * @since 19.0
  */
 package org.graalvm.nativeimage.c.struct;

@@ -48,14 +48,12 @@ import org.junit.Test;
 import org.junit.runners.Parameterized.Parameters;
 
 import com.oracle.truffle.api.dsl.Cached;
-import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.library.ExportLibrary;
 import com.oracle.truffle.api.library.ExportMessage;
 import com.oracle.truffle.api.library.GenerateLibrary;
 import com.oracle.truffle.api.library.Library;
 import com.oracle.truffle.api.library.Message;
 import com.oracle.truffle.api.library.ReflectionLibrary;
-import com.oracle.truffle.api.nodes.Node;
 
 @SuppressWarnings("unused")
 public class ReflectionTest extends AbstractParametrizedLibraryTest {

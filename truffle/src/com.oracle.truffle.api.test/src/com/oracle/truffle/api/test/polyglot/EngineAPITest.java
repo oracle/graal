@@ -44,10 +44,11 @@ import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertNotNull;
 import static org.junit.Assert.assertNull;
-import static org.junit.Assert.assertTrue;
 import static org.junit.Assert.assertSame;
+import static org.junit.Assert.assertTrue;
 import static org.junit.Assert.fail;
 
+import java.lang.reflect.Method;
 import java.util.HashMap;
 import java.util.Map;
 import java.util.concurrent.Callable;
@@ -61,14 +62,11 @@ import org.graalvm.polyglot.Context;
 import org.graalvm.polyglot.Engine;
 import org.graalvm.polyglot.Language;
 import org.junit.Assert;
-import org.junit.Assume;
 import org.junit.Test;
 
 import com.oracle.truffle.api.Truffle;
 import com.oracle.truffle.api.nodes.RootNode;
 import com.oracle.truffle.api.test.option.OptionProcessorTest.OptionTestInstrument1;
-
-import java.lang.reflect.Method;
 
 public class EngineAPITest {
 
@@ -208,8 +206,6 @@ public class EngineAPITest {
 
     @Test
     public void testExperimentalOptionException() {
-        Assume.assumeTrue(Boolean.parseBoolean(System.getenv("GRAALVM_CHECK_EXPERIMENTAL_OPTIONS")));
-
         ValueAssert.assertFails(() -> Engine.newBuilder().option("optiontestinstr1.StringOption2", "Hello").build(), IllegalArgumentException.class, e -> {
             assertEquals("Option 'optiontestinstr1.StringOption2' is experimental and must be enabled with allowExperimentalOptions(). Do not use experimental options in production environments.",
                             e.getMessage());

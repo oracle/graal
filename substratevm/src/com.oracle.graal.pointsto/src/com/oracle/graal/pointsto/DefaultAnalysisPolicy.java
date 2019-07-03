@@ -213,8 +213,9 @@ public class DefaultAnalysisPolicy extends AnalysisPolicy {
         public Collection<MethodFlowsGraph> getCalleesFlows(BigBang bb) {
             // collect the flow graphs, one for each analysis method, since it is context
             // insensitive
+            Collection<AnalysisMethod> callees = getCallees();
             List<MethodFlowsGraph> methodFlowsGraphs = new ArrayList<>(callees.size());
-            for (AnalysisMethod method : callees.getElements()) {
+            for (AnalysisMethod method : callees) {
                 methodFlowsGraphs.add(method.getTypeFlow().getFlows(bb.contextPolicy().emptyContext()));
             }
             return methodFlowsGraphs;

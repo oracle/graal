@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, Oracle and/or its affiliates.
+ * Copyright (c) 2018, 2019, Oracle and/or its affiliates.
  *
  * All rights reserved.
  *
@@ -31,7 +31,11 @@ package com.oracle.truffle.llvm.runtime;
 
 import com.oracle.truffle.llvm.runtime.memory.LLVMSyscallOperationNode;
 
+import java.nio.file.Path;
+
 public abstract class SystemContextExtension implements ContextExtension {
+
+    public abstract Path getSulongLibrariesPath();
 
     public abstract String[] getSulongDefaultLibraries();
 

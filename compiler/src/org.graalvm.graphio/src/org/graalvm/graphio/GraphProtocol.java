@@ -28,6 +28,7 @@ import java.io.Closeable;
 import java.io.IOException;
 import java.net.URI;
 import java.net.URISyntaxException;
+import java.nio.Buffer;
 import java.nio.ByteBuffer;
 import java.nio.channels.WritableByteChannel;
 import java.nio.charset.Charset;
@@ -75,6 +76,9 @@ abstract class GraphProtocol<Graph, Node, NodeClass, Edges, Block, ResolvedJavaM
 
     private static final byte[] MAGIC_BYTES = {'B', 'I', 'G', 'V'};
 
+    private static final int MAJOR_VERSION = 6;
+    private static final int MINOR_VERSION = 1;
+
     private final ConstantPool constantPool;
     private final ByteBuffer buffer;
     private final WritableByteChannel channel;
@@ -83,8 +87,15 @@ abstract class GraphProtocol<Graph, Node, NodeClass, Edges, Block, ResolvedJavaM
     final int versionMinor;
     private boolean printing;
 
+    /**
+     * See {@code org.graalvm.compiler.serviceprovider.BufferUtil}.
+     */
+    private static Buffer asBaseBuffer(Buffer obj) {
+        return obj;
+    }
+
     GraphProtocol(WritableByteChannel channel, int major, int minor, boolean embedded) throws IOException {
-        if (major > 6 || (major == 6 && minor > 0)) {
+        if (major > MAJOR_VERSION || (major == MAJOR_VERSION && minor > MINOR_VERSION)) {
             throw new IllegalArgumentException("Unrecognized version " + major + "." + minor);
         }
         this.versionMajor = major;
@@ -325,7 +336,7 @@ abstract class GraphProtocol<Graph, Node, NodeClass, Edges, Block, ResolvedJavaM
     }
 
     private void flush() throws IOException {
-        buffer.flip();
+        asBaseBuffer(buffer).flip();
         /*
          * Try not to let interrupted threads abort the write. There's still a race here but an
          * interrupt that's been pending for a long time shouldn't stop this writing.
@@ -408,12 +419,12 @@ abstract class GraphProtocol<Graph, Node, NodeClass, Edges, Block, ResolvedJavaM
         while (b.position() < limit) {
             int toWrite = Math.min(limit - b.position(), buffer.capacity());
             ensureAvailable(toWrite);
-            b.limit(b.position() + toWrite);
+            asBaseBuffer(b).limit(b.position() + toWrite);
             try {
                 buffer.put(b);
                 written += toWrite;
             } finally {
-                b.limit(limit);
+                asBaseBuffer(b).limit(limit);
             }
         }
         return written;
@@ -427,7 +438,7 @@ abstract class GraphProtocol<Graph, Node, NodeClass, Edges, Block, ResolvedJavaM
             int sizeInBytes = b.length * 4;
             ensureAvailable(sizeInBytes);
             buffer.asIntBuffer().put(b);
-            buffer.position(buffer.position() + sizeInBytes);
+            asBaseBuffer(buffer).position(buffer.position() + sizeInBytes);
         }
     }
 
@@ -439,7 +450,7 @@ abstract class GraphProtocol<Graph, Node, NodeClass, Edges, Block, ResolvedJavaM
             int sizeInBytes = b.length * 8;
             ensureAvailable(sizeInBytes);
             buffer.asDoubleBuffer().put(b);
-            buffer.position(buffer.position() + sizeInBytes);
+            asBaseBuffer(buffer).position(buffer.position() + sizeInBytes);
         }
     }
 
@@ -634,7 +645,7 @@ abstract class GraphProtocol<Graph, Node, NodeClass, Edges, Block, ResolvedJavaM
         switch (type) {
             case POOL_FIELD: {
                 ResolvedJavaField field = (ResolvedJavaField) found[0];
-                Objects.nonNull(field);
+                Objects.requireNonNull(field);
                 writePoolObject(findFieldDeclaringClass(field));
                 writePoolObject(findFieldName(field));
                 writePoolObject(findFieldTypeName(field));
@@ -653,7 +664,7 @@ abstract class GraphProtocol<Graph, Node, NodeClass, Edges, Block, ResolvedJavaM
             }
             case POOL_NODE_SOURCE_POSITION: {
                 NodeSourcePosition pos = (NodeSourcePosition) found[0];
-                Objects.nonNull(pos);
+                Objects.requireNonNull(pos);
                 ResolvedJavaMethod method = findNodeSourcePositionMethod(pos);
                 writePoolObject(method);
                 final int bci = findNodeSourcePositionBCI(pos);
@@ -697,7 +708,7 @@ abstract class GraphProtocol<Graph, Node, NodeClass, Edges, Block, ResolvedJavaM
             }
             case POOL_NODE: {
                 Node node = (Node) found[0];
-                Objects.nonNull(node);
+                Objects.requireNonNull(node);
                 writeInt(findNodeId(node));
                 writePoolObject(classForNode(node));
                 break;
@@ -719,7 +730,7 @@ abstract class GraphProtocol<Graph, Node, NodeClass, Edges, Block, ResolvedJavaM
             }
             case POOL_CLASS: {
                 String typeName = (String) found[0];
-                Objects.nonNull(typeName);
+                Objects.requireNonNull(typeName);
                 writeString(typeName);
                 String[] enumValueNames = findEnumTypeValues(object);
                 if (enumValueNames != null) {
@@ -735,7 +746,7 @@ abstract class GraphProtocol<Graph, Node, NodeClass, Edges, Block, ResolvedJavaM
             }
             case POOL_METHOD: {
                 ResolvedJavaMethod method = (ResolvedJavaMethod) found[0];
-                Objects.nonNull(method);
+                Objects.requireNonNull(method);
                 writePoolObject(findMethodDeclaringClass(method));
                 writePoolObject(findMethodName(method));
                 final Signature methodSignature = findMethodSignature(method);

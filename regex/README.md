@@ -1,6 +1,6 @@
 # TRegex
 
-TRegex is an implementation of a subset of ECMAScript regular expressions that uses the Graal compiler and Truffle API to execute regular expressions in an efficient way.
+TRegex is an implementation of a subset of ECMAScript regular expressions that uses the GraalVM compiler and Truffle API to execute regular expressions in an efficient way.
 Its role is to provide support for Truffle languages that need to expose regular expression functionality.
 In its current iteration, TRegex provides an implementation of ECMAScript regular expressions (ECMAScript regular expressions are based on the widely popular Perl 5 regular expressions).
 A distinguishing feature of TRegex is that it compiles regular expressions into finite-state automata.
@@ -14,7 +14,7 @@ Unlike most regular expression engines which use backtracking, TRegex uses an au
 The regex is parsed and then translated into a nondeterministic finite-state automaton (NFA).
 A powerset construction is then used to expand the NFA into a deterministic finite-state automaton (DFA).
 The resulting DFA is then executed when matching against input strings.
-At that point, TRegex exploits the Graal compiler and Truffle to get efficient machine code when interpreting the DFA.
+At that point, TRegex exploits the GraalVM compiler and Truffle to get efficient machine code when interpreting the DFA.
 
 The benefit of using this approach is that finding out whether a match is found can be done during a single pass over the input string: whenever several alternative ways to match the remaining input are admissible, TRegex considers all of them simultaneously.
 This is in contrast to backtracking approaches which consider all possible alternatives separately, one after the other.

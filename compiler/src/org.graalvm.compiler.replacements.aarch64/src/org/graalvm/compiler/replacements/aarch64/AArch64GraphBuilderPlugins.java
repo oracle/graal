@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2015, 2018, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2015, 2019, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -31,9 +31,6 @@ import static org.graalvm.compiler.replacements.nodes.UnaryMathIntrinsicNode.Una
 import static org.graalvm.compiler.replacements.nodes.UnaryMathIntrinsicNode.UnaryOperation.LOG10;
 import static org.graalvm.compiler.replacements.nodes.UnaryMathIntrinsicNode.UnaryOperation.SIN;
 import static org.graalvm.compiler.replacements.nodes.UnaryMathIntrinsicNode.UnaryOperation.TAN;
-import static org.graalvm.compiler.serviceprovider.JavaVersionUtil.JAVA_SPECIFICATION_VERSION;
-import static org.graalvm.compiler.serviceprovider.JavaVersionUtil.Java11OrEarlier;
-import static org.graalvm.compiler.serviceprovider.JavaVersionUtil.Java8OrEarlier;
 
 import org.graalvm.compiler.bytecode.BytecodeProvider;
 import org.graalvm.compiler.lir.aarch64.AArch64ArithmeticLIRGeneratorTool.RoundingMode;
@@ -51,6 +48,7 @@ import org.graalvm.compiler.nodes.memory.address.OffsetAddressNode;
 import org.graalvm.compiler.replacements.nodes.BinaryMathIntrinsicNode;
 import org.graalvm.compiler.replacements.nodes.UnaryMathIntrinsicNode;
 import org.graalvm.compiler.replacements.nodes.UnaryMathIntrinsicNode.UnaryOperation;
+import org.graalvm.compiler.serviceprovider.JavaVersionUtil;
 import org.graalvm.word.LocationIdentity;
 
 import jdk.vm.ci.meta.JavaKind;
@@ -59,18 +57,26 @@ import sun.misc.Unsafe;
 
 public class AArch64GraphBuilderPlugins {
 
-    public static void register(Plugins plugins, BytecodeProvider bytecodeProvider, boolean explicitUnsafeNullChecks, boolean registerMathPlugins) {
+    public static void register(Plugins plugins, BytecodeProvider bytecodeProvider, boolean explicitUnsafeNullChecks,
+                    boolean registerMathPlugins) {
+        register(plugins, bytecodeProvider, explicitUnsafeNullChecks, registerMathPlugins, true);
+    }
+
+    public static void register(Plugins plugins, BytecodeProvider bytecodeProvider, boolean explicitUnsafeNullChecks,
+                    boolean registerMathPlugins, boolean emitJDK9StringSubstitutions) {
         InvocationPlugins invocationPlugins = plugins.getInvocationPlugins();
         invocationPlugins.defer(new Runnable() {
             @Override
             public void run() {
-                registerIntegerLongPlugins(invocationPlugins, AArch64IntegerSubstitutions.class, JavaKind.Int, bytecodeProvider);
-                registerIntegerLongPlugins(invocationPlugins, AArch64LongSubstitutions.class, JavaKind.Long, bytecodeProvider);
+                registerIntegerLongPlugins(invocationPlugins, JavaKind.Int, bytecodeProvider);
+                registerIntegerLongPlugins(invocationPlugins, JavaKind.Long, bytecodeProvider);
                 if (registerMathPlugins) {
                     registerMathPlugins(invocationPlugins);
                 }
-                registerStringLatin1Plugins(invocationPlugins, bytecodeProvider);
-                registerStringUTF16Plugins(invocationPlugins, bytecodeProvider);
+                if (emitJDK9StringSubstitutions) {
+                    registerStringLatin1Plugins(invocationPlugins, bytecodeProvider);
+                    registerStringUTF16Plugins(invocationPlugins, bytecodeProvider);
+                }
                 registerUnsafePlugins(invocationPlugins, bytecodeProvider);
                 // This is temporarily disabled until we implement correct emitting of the CAS
                 // instructions of the proper width.
@@ -80,7 +86,7 @@ public class AArch64GraphBuilderPlugins {
         });
     }
 
-    private static void registerIntegerLongPlugins(InvocationPlugins plugins, Class<?> substituteDeclaringClass, JavaKind kind, BytecodeProvider bytecodeProvider) {
+    private static void registerIntegerLongPlugins(InvocationPlugins plugins, JavaKind kind, BytecodeProvider bytecodeProvider) {
         Class<?> declaringClass = kind.toBoxedJavaClass();
         Class<?> type = kind.toJavaClass();
         Registration r = new Registration(plugins, declaringClass, bytecodeProvider);
@@ -108,7 +114,13 @@ public class AArch64GraphBuilderPlugins {
                 return true;
             }
         });
-        r.registerMethodSubstitution(substituteDeclaringClass, "bitCount", type);
+        r.register1("bitCount", type, new InvocationPlugin() {
+            @Override
+            public boolean apply(GraphBuilderContext b, ResolvedJavaMethod targetMethod, Receiver receiver, ValueNode value) {
+                b.push(JavaKind.Int, b.append(new AArch64BitCountNode(value).canonical(null)));
+                return true;
+            }
+        });
     }
 
     private static void registerMathPlugins(InvocationPlugins plugins) {
@@ -152,7 +164,7 @@ public class AArch64GraphBuilderPlugins {
     }
 
     private static void registerStringLatin1Plugins(InvocationPlugins plugins, BytecodeProvider replacementsBytecodeProvider) {
-        if (JAVA_SPECIFICATION_VERSION >= 9) {
+        if (JavaVersionUtil.JAVA_SPEC >= 9) {
             Registration r = new Registration(plugins, "java.lang.StringLatin1", replacementsBytecodeProvider);
             r.setAllowOverwrite(true);
             r.registerMethodSubstitution(AArch64StringLatin1Substitutions.class, "compareTo", byte[].class, byte[].class);
@@ -161,7 +173,7 @@ public class AArch64GraphBuilderPlugins {
     }
 
     private static void registerStringUTF16Plugins(InvocationPlugins plugins, BytecodeProvider replacementsBytecodeProvider) {
-        if (JAVA_SPECIFICATION_VERSION >= 9) {
+        if (JavaVersionUtil.JAVA_SPEC >= 9) {
             Registration r = new Registration(plugins, "java.lang.StringUTF16", replacementsBytecodeProvider);
             r.setAllowOverwrite(true);
             r.registerMethodSubstitution(AArch64StringUTF16Substitutions.class, "compareTo", byte[].class, byte[].class);
@@ -172,10 +184,10 @@ public class AArch64GraphBuilderPlugins {
     private static void registerUnsafePlugins(InvocationPlugins plugins, BytecodeProvider replacementsBytecodeProvider) {
         registerUnsafePlugins(new Registration(plugins, Unsafe.class),
                         new JavaKind[]{JavaKind.Int, JavaKind.Long, JavaKind.Object}, "Object");
-        if (!Java8OrEarlier) {
+        if (JavaVersionUtil.JAVA_SPEC > 8) {
             registerUnsafePlugins(new Registration(plugins, "jdk.internal.misc.Unsafe", replacementsBytecodeProvider),
                             new JavaKind[]{JavaKind.Int, JavaKind.Long, JavaKind.Object},
-                            Java11OrEarlier ? "Object" : "Reference");
+                            JavaVersionUtil.JAVA_SPEC <= 11 ? "Object" : "Reference");
         }
     }
 

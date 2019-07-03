@@ -24,8 +24,11 @@
  */
 package com.oracle.truffle.regex;
 
+import com.oracle.truffle.api.TruffleException;
+import com.oracle.truffle.api.nodes.Node;
+
 @SuppressWarnings("serial")
-public class UnsupportedRegexException extends RuntimeException {
+public class UnsupportedRegexException extends RuntimeException implements TruffleException {
 
     private String reason;
     private RegexSource regexSrc;
@@ -85,5 +88,15 @@ public class UnsupportedRegexException extends RuntimeException {
     @Override
     public final Throwable fillInStackTrace() {
         return this;
+    }
+
+    @Override
+    public boolean isSyntaxError() {
+        return true;
+    }
+
+    @Override
+    public Node getLocation() {
+        return null;
     }
 }

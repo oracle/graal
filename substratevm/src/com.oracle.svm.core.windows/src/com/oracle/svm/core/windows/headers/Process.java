@@ -28,10 +28,12 @@ import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.Platforms;
 import org.graalvm.nativeimage.c.CContext;
 import org.graalvm.nativeimage.c.constant.CConstant;
-import org.graalvm.nativeimage.c.function.CFunctionPointer;
 import org.graalvm.nativeimage.c.function.CFunction;
 import org.graalvm.nativeimage.c.function.CFunction.Transition;
+import org.graalvm.nativeimage.c.function.CFunctionPointer;
 import org.graalvm.nativeimage.c.struct.CStruct;
+import org.graalvm.nativeimage.c.type.CCharPointer;
+import org.graalvm.nativeimage.c.type.CCharPointerPointer;
 import org.graalvm.nativeimage.c.type.CIntPointer;
 import org.graalvm.word.PointerBase;
 import org.graalvm.word.WordBase;
@@ -44,6 +46,10 @@ import org.graalvm.word.WordBase;
 @CContext(WindowsDirectives.class)
 @Platforms(Platform.WINDOWS.class)
 public class Process {
+
+    /** Execute path with arguments argv. */
+    @CFunction
+    public static native int _execv(CCharPointer path, CCharPointerPointer argv);
 
     /**
      * Thread Creation

@@ -1,0 +1,17 @@
+org.graalvm.linux_amd64/1.0.1.0: GraalVM 1.0.1
+Component.linux_amd64/1.0.1.0/ruby: graalvm-ruby.zip
+Component.linux_amd64/1.0.1.0/ruby-Bundle-Name: TruffleRuby
+Component.linux_amd64/1.0.1.0/ruby-Bundle-Symbolic-Name: ruby
+Component.linux_amd64/1.0.1.0/ruby-Bundle-Version: 1.0.1.0
+Component.linux_amd64/1.0.1.0/ruby-Bundle-RequireCapability: org.graalvm; \
+    filter:="(&(graalvm_version=1.0.1.0)(os_name=linux)(os_arch=amd64))"
+
+
+# Python is intentionally just for version 1.0.1.0
+Component.linux_amd64/1.0.1.0/python: graalvm-python.zip
+Component.linux_amd64/1.0.1.0/python-Bundle-Name: TruffleRuby
+Component.linux_amd64/1.0.1.0/python-Bundle-Symbolic-Name: python
+Component.linux_amd64/1.0.1.0/python-Bundle-Version: 1.0.1.0
+Component.linux_amd64/1.0.1.0/python-Bundle-RequireCapability: org.graalvm; \
+    filter:="(&(graalvm_version=1.0.1.0)(os_name=linux)(os_arch=amd64))"
+

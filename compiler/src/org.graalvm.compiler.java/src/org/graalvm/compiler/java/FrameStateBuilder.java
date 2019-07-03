@@ -43,11 +43,11 @@ import java.util.function.Function;
 
 import org.graalvm.compiler.bytecode.Bytecode;
 import org.graalvm.compiler.bytecode.ResolvedJavaMethodBytecode;
-import org.graalvm.compiler.core.common.GraalOptions;
 import org.graalvm.compiler.core.common.PermanentBailoutException;
 import org.graalvm.compiler.core.common.type.StampFactory;
 import org.graalvm.compiler.core.common.type.StampPair;
 import org.graalvm.compiler.debug.DebugContext;
+import org.graalvm.compiler.debug.GraalError;
 import org.graalvm.compiler.graph.NodeSourcePosition;
 import org.graalvm.compiler.java.BciBlockMapping.BciBlock;
 import org.graalvm.compiler.nodeinfo.Verbosity;
@@ -145,7 +145,7 @@ public final class FrameStateBuilder implements SideEffectsState {
 
         this.monitorIds = EMPTY_MONITOR_ARRAY;
         this.graph = graph;
-        this.clearNonLiveLocals = GraalOptions.OptClearNonLiveLocals.getValue(graph.getOptions()) && !shouldRetainLocalVariables;
+        this.clearNonLiveLocals = !shouldRetainLocalVariables;
         this.canVerifyKind = true;
     }
 
@@ -274,8 +274,6 @@ public final class FrameStateBuilder implements SideEffectsState {
         clearNonLiveLocals = other.clearNonLiveLocals;
         monitorIds = other.monitorIds.length == 0 ? other.monitorIds : other.monitorIds.clone();
 
-        assert locals.length == code.getMaxLocals();
-        assert stack.length == Math.max(1, code.getMaxStackSize());
         assert lockedObjects.length == monitorIds.length;
     }
 
@@ -390,6 +388,10 @@ public final class FrameStateBuilder implements SideEffectsState {
         assert code.equals(other.code) && graph == other.graph && localsSize() == other.localsSize() : "Can only compare frame states of the same method";
         assert lockedObjects.length == monitorIds.length && other.lockedObjects.length == other.monitorIds.length : "mismatch between lockedObjects and monitorIds";
 
+        if (rethrowException != other.rethrowException) {
+            return false;
+        }
+
         if (stackSize() != other.stackSize()) {
             return false;
         }
@@ -413,7 +415,7 @@ public final class FrameStateBuilder implements SideEffectsState {
     }
 
     public void merge(AbstractMergeNode block, FrameStateBuilder other) {
-        assert isCompatibleWith(other);
+        GraalError.guarantee(isCompatibleWith(other), "stacks do not match on merge; bytecodes would not verify:%nexpect: %s%nactual: %s", block, other);
 
         for (int i = 0; i < localsSize(); i++) {
             locals[i] = merge(locals[i], other.locals[i], block);
@@ -738,6 +740,13 @@ public final class FrameStateBuilder implements SideEffectsState {
         }
         locals[i] = x;
         if (slotKind.needsTwoSlots()) {
+            if (i < locals.length - 2 && locals[i + 2] == TWO_SLOT_MARKER) {
+                /*
+                 * Writing a two-slot marker to an index previously occupied by a two-slot value:
+                 * clear the old marker of the second slot.
+                 */
+                locals[i + 2] = null;
+            }
             /* Writing a two-slot value: mark the second slot. */
             locals[i + 1] = TWO_SLOT_MARKER;
         } else if (i < locals.length - 1 && locals[i + 1] == TWO_SLOT_MARKER) {
@@ -779,7 +788,7 @@ public final class FrameStateBuilder implements SideEffectsState {
     public ValueNode pop(JavaKind slotKind) {
         if (slotKind.needsTwoSlots()) {
             ValueNode s = xpop();
-            assert s == TWO_SLOT_MARKER;
+            assert s == TWO_SLOT_MARKER : s;
         }
         ValueNode x = xpop();
         assert verifyKind(slotKind, x);
@@ -803,6 +812,12 @@ public final class FrameStateBuilder implements SideEffectsState {
         return result;
     }
 
+    public ValueNode peekObject() {
+        ValueNode x = xpeek();
+        assert verifyKind(JavaKind.Object, x);
+        return x;
+    }
+
     /**
      * Pop the specified number of slots off of this stack and return them as an array of
      * instructions.
@@ -817,7 +832,7 @@ public final class FrameStateBuilder implements SideEffectsState {
                 /* Ignore second slot of two-slot value. */
                 x = xpop();
             }
-            assert x != null && x != TWO_SLOT_MARKER;
+            assert x != null && x != TWO_SLOT_MARKER : x;
             result[i] = x;
         }
         return result;

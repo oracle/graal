@@ -32,7 +32,10 @@ package com.oracle.truffle.llvm.parser.model.functions;
 import com.oracle.truffle.api.source.Source;
 import com.oracle.truffle.llvm.parser.LLVMParserRuntime;
 import com.oracle.truffle.llvm.parser.listeners.Function;
+import com.oracle.truffle.llvm.parser.listeners.ParameterAttributes;
+import com.oracle.truffle.llvm.parser.listeners.Types;
 import com.oracle.truffle.llvm.parser.metadata.debuginfo.DebugInfoFunctionProcessor;
+import com.oracle.truffle.llvm.parser.model.IRScope;
 import com.oracle.truffle.llvm.parser.scanner.LLVMScanner;
 import com.oracle.truffle.llvm.parser.text.LLSourceBuilder;
 import com.oracle.truffle.llvm.runtime.options.SulongEngineOption;
@@ -40,21 +43,30 @@ import com.oracle.truffle.llvm.runtime.options.SulongEngineOption;
 public final class LazyFunctionParser {
 
     private final LLVMScanner.LazyScanner scanner;
-    private final Function parser;
+    public final IRScope scope;
+    private final Types types;
+    private final FunctionDefinition function;
+    private final int mode;
+    private final ParameterAttributes paramAttributes;
     private final LLSourceBuilder llSource;
 
     private boolean isParsed;
 
-    public LazyFunctionParser(LLVMScanner.LazyScanner scanner, Function parser, LLSourceBuilder llSource) {
+    public LazyFunctionParser(LLVMScanner.LazyScanner scanner, IRScope scope, Types types, FunctionDefinition function, int mode, ParameterAttributes paramAttributes, LLSourceBuilder llSource) {
         this.scanner = scanner;
-        this.parser = parser;
+        this.scope = scope;
+        this.types = types;
+        this.function = function;
+        this.mode = mode;
+        this.paramAttributes = paramAttributes;
         this.llSource = llSource;
         this.isParsed = false;
     }
 
     public void parse(DebugInfoFunctionProcessor diProcessor, Source bitcodeSource, LLVMParserRuntime runtime) {
         if (!isParsed) {
-            synchronized (parser.getScope()) {
+            synchronized (scope) {
+                Function parser = new Function(scope, types, function, mode, paramAttributes);
                 parser.setupScope();
                 scanner.scanBlock(parser);
                 diProcessor.process(parser.getFunction(), parser.getScope(), bitcodeSource, runtime.getContext());

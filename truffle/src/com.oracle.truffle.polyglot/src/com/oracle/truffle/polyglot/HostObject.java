@@ -41,9 +41,18 @@
 package com.oracle.truffle.polyglot;
 
 import java.lang.reflect.Array;
+import java.time.Duration;
+import java.time.Instant;
+import java.time.LocalDate;
+import java.time.LocalDateTime;
+import java.time.LocalTime;
+import java.time.ZoneId;
+import java.time.ZonedDateTime;
+import java.util.Date;
 import java.util.List;
 
 import com.oracle.truffle.api.CompilerDirectives;
+import com.oracle.truffle.api.CompilerDirectives.CompilationFinal;
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.dsl.Cached;
 import com.oracle.truffle.api.dsl.Cached.Shared;
@@ -60,6 +69,7 @@ import com.oracle.truffle.api.library.CachedLibrary;
 import com.oracle.truffle.api.library.ExportLibrary;
 import com.oracle.truffle.api.library.ExportMessage;
 import com.oracle.truffle.api.nodes.Node;
+import com.oracle.truffle.api.profiles.BranchProfile;
 import com.oracle.truffle.polyglot.PolyglotLanguageContext.ToGuestValueNode;
 
 @ExportLibrary(InteropLibrary.class)
@@ -68,6 +78,7 @@ final class HostObject implements TruffleObject {
 
     static final int LIMIT = 5;
 
+    private static final ZoneId UTC = ZoneId.of("UTC");
     static final HostObject NULL = new HostObject(null, null, false);
 
     final Object obj;
@@ -116,10 +127,6 @@ final class HostObject implements TruffleObject {
         }
     }
 
-    boolean isPrimitive() {
-        return PolyglotImpl.isGuestPrimitive(obj);
-    }
-
     static Object valueOf(Object value) {
         final HostObject obj = (HostObject) value;
         return obj.obj;
@@ -139,14 +146,6 @@ final class HostObject implements TruffleObject {
             return true;
         }
         return false;
-    }
-
-    private boolean isList() {
-        return obj instanceof List;
-    }
-
-    private boolean isArray() {
-        return obj != null && obj.getClass().isArray();
     }
 
     boolean isDefaultClass() {
@@ -184,13 +183,49 @@ final class HostObject implements TruffleObject {
 
     }
 
+    @ExportLibrary(InteropLibrary.class)
+    final class KeysArray implements TruffleObject {
+
+        @CompilationFinal(dimensions = 1) private final String[] keys;
+
+        KeysArray(String[] keys) {
+            this.keys = keys;
+        }
+
+        @SuppressWarnings("static-method")
+        @ExportMessage
+        boolean hasArrayElements() {
+            return true;
+        }
+
+        @ExportMessage
+        long getArraySize() {
+            return keys.length;
+        }
+
+        @ExportMessage
+        boolean isArrayElementReadable(long idx) {
+            return 0 <= idx && idx < keys.length;
+        }
+
+        @ExportMessage
+        String readArrayElement(long idx,
+                        @Cached BranchProfile exception) throws InvalidArrayIndexException {
+            if (!isArrayElementReadable(idx)) {
+                exception.enter();
+                throw InvalidArrayIndexException.create(idx);
+            }
+            return keys[(int) idx];
+        }
+    }
+
     @ExportMessage
     Object getMembers(boolean includeInternal) throws UnsupportedMessageException {
         if (isNull()) {
             throw UnsupportedMessageException.create();
         }
         String[] fields = HostInteropReflect.findUniquePublicMemberNames(getEngine(), getLookupClass(), isStaticClass(), isClass(), includeInternal);
-        return HostObject.forObject(fields, this.languageContext);
+        return new KeysArray(fields);
     }
 
     @ExportMessage
@@ -398,7 +433,7 @@ final class HostObject implements TruffleObject {
             Object obj = receiver.obj;
             Object javaValue;
             try {
-                javaValue = toHostNode.execute(value, obj.getClass().getComponentType(), null, receiver.languageContext);
+                javaValue = toHostNode.execute(value, obj.getClass().getComponentType(), null, receiver.languageContext, true);
             } catch (ClassCastException | NullPointerException e) {
                 CompilerDirectives.transferToInterpreter();
                 throw UnsupportedTypeException.create(new Object[]{value}, e.getMessage());
@@ -420,7 +455,7 @@ final class HostObject implements TruffleObject {
             }
             Object javaValue;
             try {
-                javaValue = toHostNode.execute(value, Object.class, null, receiver.languageContext);
+                javaValue = toHostNode.execute(value, Object.class, null, receiver.languageContext, true);
             } catch (ClassCastException | NullPointerException e) {
                 CompilerDirectives.transferToInterpreter();
                 throw UnsupportedTypeException.create(new Object[]{value}, e.getMessage());
@@ -658,7 +693,7 @@ final class HostObject implements TruffleObject {
     }
 
     @ExportMessage
-    protected boolean isNumber() {
+    boolean isNumber() {
         if (isNull()) {
             return false;
         }
@@ -807,6 +842,95 @@ final class HostObject implements TruffleObject {
         } else {
             throw UnsupportedMessageException.create();
         }
+    }
+
+    @ExportMessage
+    boolean isDate() {
+        return obj instanceof LocalDate || obj instanceof LocalDateTime || obj instanceof Instant || obj instanceof ZonedDateTime || obj instanceof Date;
+    }
+
+    @ExportMessage
+    @TruffleBoundary
+    LocalDate asDate() throws UnsupportedMessageException {
+        if (obj instanceof LocalDate) {
+            return ((LocalDate) obj);
+        } else if (obj instanceof LocalDateTime) {
+            return ((LocalDateTime) obj).toLocalDate();
+        } else if (obj instanceof Instant) {
+            return ((Instant) obj).atZone(UTC).toLocalDate();
+        } else if (obj instanceof ZonedDateTime) {
+            return ((ZonedDateTime) obj).toLocalDate();
+        } else if (obj instanceof Date) {
+            return ((Date) obj).toInstant().atZone(UTC).toLocalDate();
+        }
+        throw UnsupportedMessageException.create();
+    }
+
+    @ExportMessage
+    boolean isTime() {
+        return obj instanceof LocalTime || obj instanceof LocalDateTime || obj instanceof Instant || obj instanceof ZonedDateTime || obj instanceof Date;
+    }
+
+    @ExportMessage
+    @TruffleBoundary
+    LocalTime asTime() throws UnsupportedMessageException {
+        if (obj instanceof LocalTime) {
+            return ((LocalTime) obj);
+        } else if (obj instanceof LocalDateTime) {
+            return ((LocalDateTime) obj).toLocalTime();
+        } else if (obj instanceof ZonedDateTime) {
+            return ((ZonedDateTime) obj).toLocalTime();
+        } else if (obj instanceof Instant) {
+            return ((Instant) obj).atZone(UTC).toLocalTime();
+        } else if (obj instanceof Date) {
+            return ((Date) obj).toInstant().atZone(UTC).toLocalTime();
+        }
+        throw UnsupportedMessageException.create();
+    }
+
+    @ExportMessage
+    boolean isTimeZone() {
+        return obj instanceof ZoneId || obj instanceof Instant || obj instanceof ZonedDateTime || obj instanceof Date;
+    }
+
+    @ExportMessage
+    ZoneId asTimeZone() throws UnsupportedMessageException {
+        if (obj instanceof ZoneId) {
+            return (ZoneId) obj;
+        } else if (obj instanceof ZonedDateTime) {
+            return ((ZonedDateTime) obj).getZone();
+        } else if (obj instanceof Instant) {
+            return UTC;
+        } else if (obj instanceof Date) {
+            return UTC;
+        }
+        throw UnsupportedMessageException.create();
+    }
+
+    @ExportMessage
+    @TruffleBoundary
+    Instant asInstant() throws UnsupportedMessageException {
+        if (obj instanceof ZonedDateTime) {
+            return ((ZonedDateTime) obj).toInstant();
+        } else if (obj instanceof Instant) {
+            return (Instant) obj;
+        } else if (obj instanceof Date) {
+            return ((Date) obj).toInstant();
+        }
+        throw UnsupportedMessageException.create();
+    }
+
+    @ExportMessage
+    boolean isDuration() {
+        return obj instanceof Duration;
+    }
+
+    @ExportMessage
+    Duration asDuration() throws UnsupportedMessageException {
+        if (isDuration()) {
+            return (Duration) obj;
+        }
+        throw UnsupportedMessageException.create();
     }
 
     boolean isStaticClass() {
@@ -1147,7 +1271,7 @@ final class HostObject implements TruffleObject {
                         @Cached ToHostNode toHost) throws UnsupportedTypeException, UnknownIdentifierException {
             Object value;
             try {
-                value = toHost.execute(rawValue, cachedField.getType(), cachedField.getGenericType(), object.languageContext);
+                value = toHost.execute(rawValue, cachedField.getType(), cachedField.getGenericType(), object.languageContext, true);
             } catch (ClassCastException | NullPointerException e) {
                 CompilerDirectives.transferToInterpreter();
                 throw UnsupportedTypeException.create(new Object[]{rawValue}, e.getMessage());
@@ -1159,7 +1283,7 @@ final class HostObject implements TruffleObject {
         @TruffleBoundary
         static void doUncached(HostFieldDesc field, HostObject object, Object rawValue,
                         @Cached ToHostNode toHost) throws UnsupportedTypeException, UnknownIdentifierException {
-            Object val = toHost.execute(rawValue, field.getType(), field.getGenericType(), object.languageContext);
+            Object val = toHost.execute(rawValue, field.getType(), field.getGenericType(), object.languageContext, true);
             field.set(object.obj, val);
         }
     }
@@ -1171,9 +1295,9 @@ final class HostObject implements TruffleObject {
 
         @Specialization
         public boolean doDefault(HostObject receiver,
-                        @Cached(value = "receiver.getHostClassCache().isPublicAccess()", allowUncached = true) boolean publicAccess) {
-            assert receiver.getHostClassCache().isPublicAccess() == publicAccess;
-            return publicAccess && receiver.isList();
+                        @Cached(value = "receiver.getHostClassCache().isListAccess()", allowUncached = true) boolean isListAccess) {
+            assert receiver.getHostClassCache().isListAccess() == isListAccess;
+            return isListAccess && receiver.obj instanceof List;
         }
 
     }
@@ -1185,9 +1309,9 @@ final class HostObject implements TruffleObject {
 
         @Specialization
         public boolean doDefault(HostObject receiver,
-                        @Cached(value = "receiver.getHostClassCache().isPublicAccess()", allowUncached = true) boolean publicAccess) {
-            assert receiver.getHostClassCache().isPublicAccess() == publicAccess;
-            return publicAccess && receiver.obj != null && receiver.obj.getClass().isArray();
+                        @Cached(value = "receiver.getHostClassCache().isArrayAccess()", allowUncached = true) boolean isArrayAccess) {
+            assert receiver.getHostClassCache().isArrayAccess() == isArrayAccess;
+            return isArrayAccess && receiver.obj != null && receiver.obj.getClass().isArray();
         }
 
     }

@@ -54,7 +54,7 @@ public abstract class LLVMAMD64SyscallNode extends LLVMExpressionNode {
     protected static final int NUM_SYSCALLS = 332;
 
     protected LLVMSyscallOperationNode createNode(long rax) {
-        return lookupContextReference(LLVMLanguage.class).get().getContextExtension(SystemContextExtension.class).createSyscallNode(rax);
+        return LLVMLanguage.getLanguage().getContextExtension(SystemContextExtension.class).createSyscallNode(rax);
     }
 
     @Specialization(guards = "rax == cachedRax", limit = "NUM_SYSCALLS")

@@ -25,11 +25,11 @@
 package org.graalvm.compiler.hotspot.meta;
 
 import static org.graalvm.compiler.core.common.GraalOptions.GeneratePIC;
+import static org.graalvm.compiler.hotspot.HotSpotBackend.BASE64_ENCODE_BLOCK;
 import static org.graalvm.compiler.hotspot.HotSpotBackend.GHASH_PROCESS_BLOCKS;
 import static org.graalvm.compiler.hotspot.meta.HotSpotAOTProfilingPlugin.Options.TieredAOT;
 import static org.graalvm.compiler.hotspot.replacements.HotSpotReplacementsUtil.JAVA_THREAD_THREAD_OBJECT_LOCATION;
 import static org.graalvm.compiler.java.BytecodeParserOptions.InlineDuringParsing;
-import static org.graalvm.compiler.serviceprovider.JavaVersionUtil.Java8OrEarlier;
 
 import java.lang.invoke.ConstantCallSite;
 import java.lang.invoke.MutableCallSite;
@@ -100,6 +100,7 @@ import org.graalvm.compiler.replacements.ReplacementsImpl;
 import org.graalvm.compiler.replacements.StandardGraphBuilderPlugins;
 import org.graalvm.compiler.replacements.arraycopy.ArrayCopyNode;
 import org.graalvm.compiler.serviceprovider.GraalServices;
+import org.graalvm.compiler.serviceprovider.JavaVersionUtil;
 import org.graalvm.compiler.word.WordOperationPlugin;
 import org.graalvm.compiler.word.WordTypes;
 import org.graalvm.word.LocationIdentity;
@@ -123,9 +124,11 @@ public class HotSpotGraphBuilderPlugins {
      * @param constantReflection
      * @param snippetReflection
      * @param foreignCalls
+     * @param options
      */
     public static Plugins create(CompilerConfiguration compilerConfiguration, GraalHotSpotVMConfig config, HotSpotWordTypes wordTypes, MetaAccessProvider metaAccess,
-                    ConstantReflectionProvider constantReflection, SnippetReflectionProvider snippetReflection, ForeignCallsProvider foreignCalls, ReplacementsImpl replacements) {
+                    ConstantReflectionProvider constantReflection, SnippetReflectionProvider snippetReflection, ForeignCallsProvider foreignCalls, ReplacementsImpl replacements,
+                    OptionValues options) {
         InvocationPlugins invocationPlugins = new HotSpotInvocationPlugins(config, compilerConfiguration);
 
         Plugins plugins = new Plugins(invocationPlugins);
@@ -135,7 +138,6 @@ public class HotSpotGraphBuilderPlugins {
 
         plugins.appendTypePlugin(nodePlugin);
         plugins.appendNodePlugin(nodePlugin);
-        OptionValues options = replacements.getOptions();
         if (!GeneratePIC.getValue(options)) {
             plugins.appendNodePlugin(new MethodHandlePlugin(constantReflection.getMethodHandleAccess(), true));
         }
@@ -172,6 +174,7 @@ public class HotSpotGraphBuilderPlugins {
                 registerSHAPlugins(invocationPlugins, config, replacementBytecodeProvider);
                 registerGHASHPlugins(invocationPlugins, config, metaAccess, foreignCalls);
                 registerCounterModePlugins(invocationPlugins, config, replacementBytecodeProvider);
+                registerBase64Plugins(invocationPlugins, config, metaAccess, foreignCalls);
                 registerUnsafePlugins(invocationPlugins, replacementBytecodeProvider);
                 StandardGraphBuilderPlugins.registerInvocationPlugins(metaAccess, snippetReflection, invocationPlugins, replacementBytecodeProvider, true, false);
                 registerArrayPlugins(invocationPlugins, replacementBytecodeProvider);
@@ -275,7 +278,7 @@ public class HotSpotGraphBuilderPlugins {
 
     private static void registerUnsafePlugins(InvocationPlugins plugins, BytecodeProvider replacementBytecodeProvider) {
         Registration r;
-        if (Java8OrEarlier) {
+        if (JavaVersionUtil.JAVA_SPEC <= 8) {
             r = new Registration(plugins, Unsafe.class, replacementBytecodeProvider);
         } else {
             r = new Registration(plugins, "jdk.internal.misc.Unsafe", replacementBytecodeProvider);
@@ -400,7 +403,7 @@ public class HotSpotGraphBuilderPlugins {
     }
 
     private static void registerStringPlugins(InvocationPlugins plugins, BytecodeProvider bytecodeProvider) {
-        if (!Java8OrEarlier) {
+        if (JavaVersionUtil.JAVA_SPEC > 8) {
             final Registration utf16r = new Registration(plugins, "java.lang.StringUTF16", bytecodeProvider);
             utf16r.registerMethodSubstitution(StringUTF16Substitutions.class, "toBytes", char[].class, int.class, int.class);
             utf16r.registerMethodSubstitution(StringUTF16Substitutions.class, "getChars", byte[].class, int.class, int.class, char[].class, int.class);
@@ -434,7 +437,7 @@ public class HotSpotGraphBuilderPlugins {
     public static final String constantPoolClass;
 
     static {
-        if (Java8OrEarlier) {
+        if (JavaVersionUtil.JAVA_SPEC <= 8) {
             cbcEncryptName = "encrypt";
             cbcDecryptName = "decrypt";
             aesEncryptName = "encryptBlock";
@@ -473,7 +476,7 @@ public class HotSpotGraphBuilderPlugins {
         Registration r = new Registration(plugins, BigInteger.class, bytecodeProvider);
         if (config.useMultiplyToLenIntrinsic()) {
             assert config.multiplyToLen != 0L;
-            if (Java8OrEarlier) {
+            if (JavaVersionUtil.JAVA_SPEC <= 8) {
                 r.registerMethodSubstitution(BigIntegerSubstitutions.class, "multiplyToLen", "multiplyToLenStatic", int[].class, int.class, int[].class, int.class,
                                 int[].class);
             } else {
@@ -500,7 +503,7 @@ public class HotSpotGraphBuilderPlugins {
         boolean useSha256 = config.useSHA256Intrinsics();
         boolean useSha512 = config.useSHA512Intrinsics();
 
-        if (!Java8OrEarlier && (useSha1 || useSha256 || useSha512)) {
+        if (JavaVersionUtil.JAVA_SPEC > 8 && (useSha1 || useSha256 || useSha512)) {
             Registration r = new Registration(plugins, "sun.security.provider.DigestBase", bytecodeProvider);
             r.registerMethodSubstitution(DigestBaseSubstitutions.class, "implCompressMultiBlock0", Receiver.class, byte[].class, int.class, int.class);
         }
@@ -563,11 +566,43 @@ public class HotSpotGraphBuilderPlugins {
         }
     }
 
+    private static void registerBase64Plugins(InvocationPlugins plugins, GraalHotSpotVMConfig config, MetaAccessProvider metaAccess, ForeignCallsProvider foreignCalls) {
+        if (config.useBase64Intrinsics()) {
+            Registration r = new Registration(plugins, "java.util.Base64$Encoder");
+            r.register7("encodeBlock",
+                            Receiver.class,
+                            byte[].class,
+                            int.class,
+                            int.class,
+                            byte[].class,
+                            int.class,
+                            boolean.class,
+                            new InvocationPlugin() {
+                                @Override
+                                public boolean apply(GraphBuilderContext b,
+                                                ResolvedJavaMethod targetMethod,
+                                                Receiver receiver,
+                                                ValueNode src,
+                                                ValueNode sp,
+                                                ValueNode sl,
+                                                ValueNode dst,
+                                                ValueNode dp,
+                                                ValueNode isURL) {
+                                    int byteArrayBaseOffset = metaAccess.getArrayBaseOffset(JavaKind.Byte);
+                                    ComputeObjectAddressNode srcAddress = b.add(new ComputeObjectAddressNode(src, ConstantNode.forInt(byteArrayBaseOffset)));
+                                    ComputeObjectAddressNode dstAddress = b.add(new ComputeObjectAddressNode(dst, ConstantNode.forInt(byteArrayBaseOffset)));
+                                    b.add(new ForeignCallNode(foreignCalls, BASE64_ENCODE_BLOCK, srcAddress, sp, sl, dstAddress, dp, isURL));
+                                    return true;
+                                }
+                            });
+        }
+    }
+
     private static void registerCRC32Plugins(InvocationPlugins plugins, GraalHotSpotVMConfig config, BytecodeProvider bytecodeProvider) {
         if (config.useCRC32Intrinsics) {
             Registration r = new Registration(plugins, CRC32.class, bytecodeProvider);
             r.registerMethodSubstitution(CRC32Substitutions.class, "update", int.class, int.class);
-            if (Java8OrEarlier) {
+            if (JavaVersionUtil.JAVA_SPEC <= 8) {
                 r.registerMethodSubstitution(CRC32Substitutions.class, "updateBytes", int.class, byte[].class, int.class, int.class);
                 r.registerMethodSubstitution(CRC32Substitutions.class, "updateByteBuffer", int.class, long.class, int.class, int.class);
             } else {

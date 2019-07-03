@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, Oracle and/or its affiliates.
+ * Copyright (c) 2018, 2019, Oracle and/or its affiliates.
  *
  * All rights reserved.
  *
@@ -148,6 +148,17 @@ public abstract class LLVMDebugTestBase {
 
             } else if (!isPartialScope) {
                 throw new AssertionError(String.format("Unexpected scope member: %s", name));
+            }
+        }
+
+        // the receiver is somewhat special in that we always set it because of a limitation of the
+        // chrome inspector
+        final DebugValue receiver = scope.getReceiver();
+        if (receiver != null) {
+            final LLVMDebugValue expected = expectedLocals.get(receiver.getName());
+            if (expected != null) {
+                expected.check(receiver);
+                count++;
             }
         }
 

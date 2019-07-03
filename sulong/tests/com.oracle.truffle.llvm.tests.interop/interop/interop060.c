@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2017, 2018, Oracle and/or its affiliates.
+ * Copyright (c) 2017, 2019, Oracle and/or its affiliates.
  *
  * All rights reserved.
  *
@@ -47,6 +47,14 @@ int main() {
   
   if ((int) foreign->b != 1) {
     return 200 + (int) foreign->b;
+  }
+
+  if ((short) foreign->a != (short) 0) {
+    return 110 + (int) foreign->a;
+  }
+  
+  if ((short) foreign->b != (short) 1) {
+    return 220 + (int) foreign->b;
   }
   
   foreign->a = 101;

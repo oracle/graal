@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2017, 2018, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2017, 2019, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -42,7 +42,6 @@ package com.oracle.truffle.nfi;
 
 import com.oracle.truffle.api.CallTarget;
 import com.oracle.truffle.api.CompilerDirectives;
-import com.oracle.truffle.api.dsl.Cached;
 import com.oracle.truffle.api.dsl.Cached.Shared;
 import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.frame.VirtualFrame;
@@ -53,10 +52,7 @@ import com.oracle.truffle.api.nodes.DirectCallNode;
 import com.oracle.truffle.api.nodes.ExplodeLoop;
 import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.api.nodes.RootNode;
-import com.oracle.truffle.api.source.Source;
-import com.oracle.truffle.nfi.NFIRootNodeFactory.LoadLibraryNodeGen;
 import com.oracle.truffle.nfi.NFIRootNodeFactory.LookupAndBindNodeGen;
-import com.oracle.truffle.nfi.types.NativeSource;
 
 class NFIRootNode extends RootNode {
 
@@ -86,33 +82,12 @@ class NFIRootNode extends RootNode {
         }
     }
 
-    abstract static class LoadLibraryNode extends Node {
-
-        private final Source backendSource;
-
-        LoadLibraryNode(Source backendSource) {
-            this.backendSource = backendSource;
-        }
-
-        abstract Object execute();
-
-        @Specialization
-        Object doLoadLibrary(@Cached("parseSource()") DirectCallNode loadLibrary) {
-            return loadLibrary.call();
-        }
-
-        DirectCallNode parseSource() {
-            CallTarget backendTarget = lookupContextReference(NFILanguage.class).get().env.parse(backendSource);
-            return DirectCallNode.create(backendTarget);
-        }
-    }
-
-    @Child LoadLibraryNode loadLibrary;
+    @Child DirectCallNode loadLibrary;
     @Children LookupAndBindNode[] lookupAndBind;
 
-    NFIRootNode(NFILanguage language, Source backendSource, NativeSource source) {
+    NFIRootNode(NFILanguage language, CallTarget loadLibrary, NativeSource source) {
         super(language);
-        this.loadLibrary = LoadLibraryNodeGen.create(backendSource);
+        this.loadLibrary = DirectCallNode.create(loadLibrary);
         this.lookupAndBind = new LookupAndBindNode[source.preBoundSymbolsLength()];
 
         for (int i = 0; i < lookupAndBind.length; i++) {
@@ -128,7 +103,7 @@ class NFIRootNode extends RootNode {
     @Override
     @ExplodeLoop
     public Object execute(VirtualFrame frame) {
-        Object library = loadLibrary.execute();
+        Object library = loadLibrary.call();
         if (lookupAndBind.length == 0) {
             return library;
         } else {

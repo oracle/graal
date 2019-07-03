@@ -37,6 +37,7 @@ import java.util.function.Function;
 import org.graalvm.compiler.debug.DebugContext;
 import org.graalvm.compiler.debug.Indent;
 import org.graalvm.nativeimage.Platform;
+import org.graalvm.nativeimage.impl.InternalPlatform;
 
 import com.oracle.objectfile.ObjectFile;
 import com.oracle.svm.core.LinkerInvocation;
@@ -69,11 +70,27 @@ public abstract class NativeBootImageViaCC extends NativeBootImage {
         return kind;
     }
 
+    private static boolean removeUnusedSymbols() {
+        if (SubstrateOptions.RemoveUnusedSymbols.hasBeenSet()) {
+            return SubstrateOptions.RemoveUnusedSymbols.getValue();
+        }
+        return Platform.includedIn(InternalPlatform.PLATFORM_JNI.class);
+    }
+
     class BinutilsCCLinkerInvocation extends CCLinkerInvocation {
 
         BinutilsCCLinkerInvocation() {
             additionalPreOptions.add("-z");
             additionalPreOptions.add("noexecstack");
+
+            if (removeUnusedSymbols()) {
+                /* Perform garbage collection of unused input sections. */
+                additionalPreOptions.add("-Wl,--gc-sections");
+            }
+
+            if (SubstrateOptions.DeleteLocalSymbols.getValue()) {
+                additionalPreOptions.add("-Wl,-x");
+            }
         }
 
         @Override
@@ -102,6 +119,17 @@ public abstract class NativeBootImageViaCC extends NativeBootImage {
 
     class DarwinCCLinkerInvocation extends CCLinkerInvocation {
 
+        DarwinCCLinkerInvocation() {
+            if (removeUnusedSymbols()) {
+                /* Remove functions and data unreachable by entry points. */
+                additionalPreOptions.add("-Wl,-dead_strip");
+            }
+
+            if (SubstrateOptions.DeleteLocalSymbols.getValue()) {
+                additionalPreOptions.add("-Wl,-x");
+            }
+        }
+
         @Override
         protected void addOneSymbolAliasOption(List<String> cmd, Entry<ResolvedJavaMethod, String> ent) {
             cmd.add("-Wl,-alias,_" + NativeBootImage.globalSymbolNameForMethod(ent.getKey()) + ",_" + ent.getValue());
@@ -114,7 +142,7 @@ public abstract class NativeBootImageViaCC extends NativeBootImage {
                     throw UserError.abort(OS.getCurrent().name() + " does not support building static executable images.");
                 case SHARED_LIBRARY:
                     cmd.add("-shared");
-                    if (Platform.includedIn(Platform.DARWIN_AND_JNI.class)) {
+                    if (Platform.includedIn(InternalPlatform.DARWIN_AND_JNI.class)) {
                         cmd.add("-undefined");
                         cmd.add("dynamic_lookup");
                     }
@@ -162,9 +190,20 @@ public abstract class NativeBootImageViaCC extends NativeBootImage {
             // Add debugging info
             cmd.add("/Zi");
 
+            if (removeUnusedSymbols()) {
+                additionalPreOptions.add("/OPT:REF");
+            }
+
+            if (SubstrateOptions.DeleteLocalSymbols.getValue()) {
+                cmd.add("/PDBSTRIPPED");
+            }
+
             cmd.add("/Fe" + outputFile.toString());
 
             cmd.addAll(inputFilenames);
+            for (Path staticLibrary : nativeLibs.getStaticLibraries()) {
+                cmd.add(staticLibrary.toString());
+            }
 
             cmd.add("/link /INCREMENTAL:NO /NODEFAULTLIB:LIBCMT /NODEFAULTLIB:OLDNAMES");
 
@@ -223,6 +262,10 @@ public abstract class NativeBootImageViaCC extends NativeBootImage {
 
         for (String filename : codeCache.getCCInputFiles(tempDirectory, imageName)) {
             inv.addInputFile(filename);
+        }
+
+        for (Path staticLibraryPath : nativeLibs.getStaticLibraries()) {
+            inv.addInputFile(staticLibraryPath.toString());
         }
 
         addMainEntryPoint(inv);

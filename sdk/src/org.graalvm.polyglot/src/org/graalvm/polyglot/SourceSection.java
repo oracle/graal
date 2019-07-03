@@ -50,7 +50,7 @@ import org.graalvm.polyglot.impl.AbstractPolyglotImpl.AbstractSourceSectionImpl;
  * {@link #isAvailable() Unavailable} source sections are compared by identity. Source sections are
  * designed to be used as keys in hash maps.
  *
- * @since 1.0
+ * @since 19.0
  */
 public final class SourceSection {
 
@@ -70,7 +70,7 @@ public final class SourceSection {
      * Unavailable source sections return the same indices and lengths as empty source sections
      * starting at character index <code>0</code>.
      *
-     * @since 1.0
+     * @since 19.0
      */
     public boolean isAvailable() {
         return IMPL.isAvailable(impl);
@@ -82,7 +82,7 @@ public final class SourceSection {
      * valid line numbers, when <code>false</code>, {@link #getStartLine()} and
      * {@link #getEndLine()} return <code>1</code>.
      *
-     * @since 1.0
+     * @since 19.0
      */
     public boolean hasLines() {
         return IMPL.hasLines(impl);
@@ -95,7 +95,7 @@ public final class SourceSection {
      * <code>false</code>, {@link #getStartColumn()} and {@link #getEndColumn()} return
      * <code>1</code>.
      *
-     * @since 1.0
+     * @since 19.0
      */
     public boolean hasColumns() {
         return IMPL.hasColumns(impl);
@@ -108,7 +108,7 @@ public final class SourceSection {
      * <code>false</code>, {@link #getCharIndex()}, {@link #getCharEndIndex()} and
      * {@link #getCharLength()} return <code>0</code>.
      *
-     * @since 1.0
+     * @since 19.0
      */
     public boolean hasCharIndex() {
         return IMPL.hasCharIndex(impl);
@@ -118,7 +118,7 @@ public final class SourceSection {
      * Representation of the source program that contains this section.
      *
      * @return the source object.
-     * @since 1.0
+     * @since 19.0
      */
     public Source getSource() {
         return source;
@@ -131,7 +131,7 @@ public final class SourceSection {
      *
      * @return the starting line number.
      * @see #hasLines()
-     * @since 1.0
+     * @since 19.0
      */
     public int getStartLine() {
         return IMPL.getStartLine(impl);
@@ -144,7 +144,7 @@ public final class SourceSection {
      *
      * @return the starting column number.
      * @see #hasColumns()
-     * @since 1.0
+     * @since 19.0
      */
     public int getStartColumn() {
         return IMPL.getStartColumn(impl);
@@ -157,7 +157,7 @@ public final class SourceSection {
      *
      * @return the starting line number.
      * @see #hasLines()
-     * @since 1.0
+     * @since 19.0
      */
     public int getEndLine() {
         return IMPL.getEndLine(impl);
@@ -170,7 +170,7 @@ public final class SourceSection {
      *
      * @return the starting column number.
      * @see #hasColumns()
-     * @since 1.0
+     * @since 19.0
      */
     public int getEndColumn() {
         return IMPL.getEndColumn(impl);
@@ -184,7 +184,7 @@ public final class SourceSection {
      *
      * @return the starting character index.
      * @see #hasCharIndex()
-     * @since 1.0
+     * @since 19.0
      */
     public int getCharIndex() {
         return IMPL.getCharIndex(impl);
@@ -198,7 +198,7 @@ public final class SourceSection {
      *
      * @return the number of characters in the section.
      * @see #hasCharIndex()
-     * @since 1.0
+     * @since 19.0
      */
     public int getCharLength() {
         return IMPL.getCharLength(impl);
@@ -212,14 +212,14 @@ public final class SourceSection {
      *
      * @return the end position of the section.
      * @see #hasCharIndex()
-     * @since 1.0
+     * @since 19.0
      */
     public int getCharEndIndex() {
         return IMPL.getCharEndIndex(impl);
     }
 
     /**
-     * @since 1.0
+     * @since 19.0
      * @deprecated use {@link #getCharacters()} instead.
      */
     @Deprecated
@@ -232,7 +232,7 @@ public final class SourceSection {
      * of bounds or {@link #isAvailable() unavailable} source sections.
      *
      * @return the code as a string.
-     * @since 1.0
+     * @since 19.0
      */
     public CharSequence getCharacters() {
         return IMPL.getCode(impl);
@@ -243,20 +243,20 @@ public final class SourceSection {
      * debugging purposes only.
      *
      * @see #getCharacters()
-     * @since 1.0
+     * @since 19.0
      */
     @Override
     public String toString() {
         return IMPL.toString(impl);
     }
 
-    /** @since 1.0 or earlier */
+    /** @since 19.0 or earlier */
     @Override
     public int hashCode() {
         return IMPL.hashCode(impl);
     }
 
-    /** @since 1.0 or earlier */
+    /** @since 19.0 or earlier */
     @Override
     public boolean equals(Object obj) {
         if (this == obj) {

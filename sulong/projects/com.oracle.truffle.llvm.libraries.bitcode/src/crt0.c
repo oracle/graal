@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2017, 2018, Oracle and/or its affiliates.
+ * Copyright (c) 2017, 2019, Oracle and/or its affiliates.
  *
  * All rights reserved.
  *
@@ -31,6 +31,7 @@
 #include <string.h>
 #include <stdlib.h>
 #include <stdio.h>
+#include <locale.h>
 #include <polyglot.h>
 #ifdef __linux__
 #include <elf.h>
@@ -130,6 +131,9 @@ int _start(int type, char *application_path_java_byte_array) {
   // update the application path now that we know it
   char *application_path = __sulong_byte_array_to_native(application_path_java_byte_array);
   __sulong_update_application_path(application_path, argv, __auxv);
+
+  // setlocale(3): On startup of the main program, the portable "C" locale is selected as default.
+  setlocale(LC_ALL, "C");
 
   switch (type) {
   /* C/C++/... */

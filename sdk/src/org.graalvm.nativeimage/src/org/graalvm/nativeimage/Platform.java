@@ -40,6 +40,8 @@
  */
 package org.graalvm.nativeimage;
 
+import org.graalvm.nativeimage.impl.InternalPlatform;
+
 /**
  * Root of the interface hierarchy for architectures, OS, and supported combinations of them.
  * <p>
@@ -55,217 +57,9 @@ package org.graalvm.nativeimage;
  * This system makes the set of platform groups and leaf platforms extensible. Some standard
  * platforms are defined as inner classes.
  *
- * @since 1.0
+ * @since 19.0
  */
 public interface Platform {
-
-    /*
-     * The standard architectures that we support.
-     */
-
-    /**
-     * Supported architecture: x86 64-bit.
-     *
-     * @since 1.0
-     */
-    interface AMD64 extends Platform {
-    }
-
-    /**
-     * Supported architecture: ARMv8 64-bit.
-     *
-     * @since 1.0
-     */
-    interface AArch64 extends Platform {
-    }
-
-    /*
-     * The standard operating systems that we support.
-     */
-
-    /**
-     * Supported operating system: Linux.
-     *
-     * @since 1.0
-     */
-    interface LINUX extends Platform {
-    }
-
-    /**
-     * Supported operating system: Darwin (MacOS).
-     *
-     * @since 1.0
-     */
-    interface DARWIN extends Platform {
-    }
-
-    /**
-     * Supported operating system: Linux platform that uses JNI based native JDK libraries.
-     *
-     * @since 1.0
-     */
-    interface LINUX_JNI extends Platform {
-    }
-
-    /**
-     * Supported operating system: Darwin (MacOS) platform that uses JNI based native JDK libraries.
-     *
-     * @since 1.0
-     */
-    interface DARWIN_JNI extends Platform {
-    }
-
-    /**
-     * Temporary platform used to mark classes or methods that are used for LINUX and LINUX_JNI
-     * platforms.
-     *
-     * @since 1.0
-     */
-    interface LINUX_AND_JNI extends Platform {
-    }
-
-    /**
-     * Temporary platform used to mark classes or methods that are used for DARWIN (MacOS) and
-     * DARWIN_JNI platforms.
-     *
-     * @since 1.0
-     */
-    interface DARWIN_AND_JNI extends Platform {
-    }
-
-    /**
-     * Supported operating system: Windows.
-     *
-     * @since 1.0
-     */
-    interface WINDOWS extends Platform {
-    }
-
-    /*
-     * Standard leaf platforms, i.e., OS-architecture combinations that we support.
-     */
-
-    /**
-     * Supported leaf platform: Linux on x86 64-bit.
-     *
-     * @since 1.0
-     */
-    class LINUX_AMD64 implements LINUX, LINUX_AND_JNI, AMD64 {
-
-        /**
-         * Instantiates a marker instance of this platform.
-         *
-         * @since 1.0
-         */
-        public LINUX_AMD64() {
-        }
-    }
-
-    /**
-     * Supported leaf platform: Linux on AArch64 64-bit.
-     *
-     * @since 1.0
-     */
-    final class LINUX_AArch64 implements LINUX, LINUX_AND_JNI, AArch64 {
-
-        /**
-         * Instantiates a marker instance of this platform.
-         *
-         * @since 1.0
-         */
-        public LINUX_AArch64() {
-        }
-    }
-
-    /**
-     * Supported leaf platform: Darwin (MacOS) on x86 64-bit.
-     *
-     * @since 1.0
-     */
-    class DARWIN_AMD64 implements DARWIN, DARWIN_AND_JNI, AMD64 {
-
-        /**
-         * Instantiates a marker instance of this platform.
-         *
-         * @since 1.0
-         */
-        public DARWIN_AMD64() {
-        }
-    }
-
-    /**
-     * Temporary leaf platform that is used to mark classes or methods that are used for LINUX_JNI
-     * platforms.
-     *
-     * @since 1.0
-     */
-    class LINUX_JNI_AMD64 implements LINUX_JNI, LINUX_AND_JNI, AMD64 {
-
-        /**
-         * Instantiates a marker instance of this platform.
-         *
-         * @since 1.0
-         */
-        public LINUX_JNI_AMD64() {
-        }
-    }
-
-    /**
-     * Temporary leaf platform that is used to mark classes or methods that are used for DARWIN_JNI
-     * platforms.
-     *
-     * @since 1.0
-     */
-    class DARWIN_JNI_AMD64 implements DARWIN_JNI, DARWIN_AND_JNI, AMD64 {
-
-        /**
-         * Instantiates a marker instance of this platform.
-         *
-         * @since 1.0
-         */
-        public DARWIN_JNI_AMD64() {
-        }
-    }
-
-    /**
-     * Supported leaf platform: Windows on x86 64-bit.
-     *
-     * @since 1.0
-     */
-    class WINDOWS_AMD64 implements WINDOWS, AMD64 {
-
-        /**
-         * Instantiates a marker instance of this platform.
-         *
-         * @since 1.0
-         */
-        public WINDOWS_AMD64() {
-        }
-    }
-
-    /**
-     * Marker for elements (types, methods, or fields) that are only visible during native image
-     * generation and cannot be used at run time, regardless of the actual platform.
-     *
-     * @since 1.0
-     */
-    final class HOSTED_ONLY implements Platform {
-        private HOSTED_ONLY() {
-        }
-    }
-
-    /**
-     * Returns true if the current platform (the platform that the native image is built for) is
-     * included in the provided platform group.
-     * <p>
-     * The platformGroup must be a compile time constant, so that the call to this method can be
-     * replaced with the constant boolean result.
-     *
-     * @since 1.0
-     */
-    static boolean includedIn(Class<? extends Platform> platformGroup) {
-        return platformGroup.isInstance(ImageSingletons.lookup(Platform.class));
-    }
 
     /**
      * The system property name that specifies the fully qualified name of the {@link Platform}
@@ -273,7 +67,168 @@ public interface Platform {
      * class is inferred from the standard architectures and operating systems specified in this
      * file, i.e., in most cases it is not necessary to use this property.
      *
-     * @since 1.0
+     * @since 19.0
      */
     String PLATFORM_PROPERTY_NAME = "svm.platform";
+
+    /**
+     * Returns true if the current platform (the platform that the native image is built for) is
+     * included in the provided platform group.
+     * <p>
+     * The platformGroup must be a compile-time constant, so that the call to this method can be
+     * replaced with the constant boolean result.
+     *
+     * @since 19.0
+     */
+    static boolean includedIn(Class<? extends Platform> platformGroup) {
+        return platformGroup.isInstance(ImageSingletons.lookup(Platform.class));
+    }
+
+    /*
+     * The standard architectures that are supported.
+     */
+    /**
+     * Supported architecture: x86 64-bit.
+     *
+     * @since 19.0
+     */
+    interface AMD64 extends Platform {
+
+    }
+
+    /**
+     * Supported architecture: ARMv8 64-bit.
+     *
+     * @since 19.0
+     */
+    interface AArch64 extends Platform {
+
+    }
+
+    /*
+     * The standard operating systems that are supported.
+     */
+    /**
+     * Supported operating system: Linux.
+     *
+     * @since 19.0
+     */
+    interface LINUX extends Platform {
+
+    }
+
+    /**
+     * Supported operating system: Darwin (MacOS).
+     *
+     * @since 19.0
+     */
+    interface DARWIN extends Platform {
+
+    }
+
+    /**
+     * Supported operating system: Windows.
+     *
+     * @since 19.0
+     */
+    interface WINDOWS extends InternalPlatform.PLATFORM_JNI {
+    }
+
+    /*
+     * The standard leaf platforms, i.e., OS-architecture combinations that we support.
+     */
+    /**
+     * Supported leaf platform: Linux on x86 64-bit.
+     *
+     * @since 19.0
+     */
+    class LINUX_AMD64 implements LINUX, InternalPlatform.LINUX_AND_JNI, AMD64 {
+
+        /**
+         * Instantiates a marker instance of this platform.
+         *
+         * @since 19.0
+         */
+        public LINUX_AMD64() {
+        }
+
+    }
+
+    /**
+     * Supported leaf platform: Linux on AArch64 64-bit.
+     *
+     * @since 19.0
+     */
+    final class LINUX_AArch64 implements LINUX, InternalPlatform.LINUX_AND_JNI, AArch64 {
+
+        /**
+         * Instantiates a marker instance of this platform.
+         *
+         * @since 19.0
+         */
+        public LINUX_AArch64() {
+        }
+
+    }
+
+    /**
+     * Supported leaf platform: Darwin (MacOS) on x86 64-bit.
+     *
+     * @since 19.0
+     */
+    class DARWIN_AMD64 implements DARWIN, InternalPlatform.DARWIN_AND_JNI, AMD64 {
+
+        /**
+         * Instantiates a marker instance of this platform.
+         *
+         * @since 19.0
+         */
+        public DARWIN_AMD64() {
+        }
+    }
+
+    /**
+     * Supported leaf platform: Darwin (MacOS) on AArch 64-bit.
+     *
+     * @since 2.0
+     */
+    final class DARWIN_AArch64 implements DARWIN, InternalPlatform.DARWIN_AND_JNI, AArch64 {
+
+        /**
+         * Instantiates a marker instance of this platform.
+         *
+         * @since 2.0
+         */
+        public DARWIN_AArch64() {
+        }
+    }
+
+    /**
+     * Supported leaf platform: Windows on x86 64-bit.
+     *
+     * @since 19.0
+     */
+    class WINDOWS_AMD64 implements WINDOWS, AMD64 {
+
+        /**
+         * Instantiates a marker instance of this platform.
+         *
+         * @since 19.0
+         */
+        public WINDOWS_AMD64() {
+        }
+
+    }
+
+    /**
+     * Marker for elements (types, methods, or fields) that are only visible during native image
+     * generation and cannot be used at run time, regardless of the actual platform.
+     *
+     * @since 19.0
+     */
+    final class HOSTED_ONLY implements Platform {
+        private HOSTED_ONLY() {
+        }
+    }
+
 }

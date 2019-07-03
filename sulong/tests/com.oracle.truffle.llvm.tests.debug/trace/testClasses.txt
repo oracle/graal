@@ -34,18 +34,22 @@ BREAK 47 CONTINUE "SimpleClass"
         MEMBER int "long int" "_b" "28"
         MEMBER float64 "double" "_c" "302.4"
         MEMBER structured "SimpleClass*" "this"
-            MEMBER int "int" "a" "7"
-            MEMBER int "long int" "b" "28"
-            MEMBER float64 "double" "c" "302.4"
+            MEMBER structured "SimpleClass" "<target>"
+                MEMBER int "int" "a" "7"
+                MEMBER int "long int" "b" "28"
+                MEMBER float64 "double" "c" "302.4"
+            END_MEMBERS
         END_MEMBERS
 
 
 BREAK 64 CONTINUE "print"
     OPEN_SCOPE
         MEMBER structured "SimpleClass*" "this"
-            MEMBER int "int" "a" "7"
-            MEMBER int "long int" "b" "28"
-            MEMBER float64 "double" "c" "302.4"
+            MEMBER structured "SimpleClass" "<target>"
+                MEMBER int "int" "a" "7"
+                MEMBER int "long int" "b" "28"
+                MEMBER float64 "double" "c" "302.4"
+            END_MEMBERS
         END_MEMBERS
 
 
@@ -54,18 +58,22 @@ BREAK 52 CONTINUE "SimpleClass"
         MEMBER int "int" "_a" "7"
         MEMBER int "long int" "_b" "28"
         MEMBER structured "SimpleClass*" "this"
-            MEMBER int "int" "a" "7"
-            MEMBER int "long int" "b" "28"
-            MEMBER float64 "double" "c" "305.7"
+            MEMBER structured "SimpleClass" "<target>"
+                MEMBER int "int" "a" "7"
+                MEMBER int "long int" "b" "28"
+                MEMBER float64 "double" "c" "305.7"
+            END_MEMBERS
         END_MEMBERS
 
 
 BREAK 64 CONTINUE "print"
     OPEN_SCOPE
         MEMBER structured "SimpleClass*" "this"
-            MEMBER int "int" "a" "7"
-            MEMBER int "long int" "b" "28"
-            MEMBER float64 "double" "c" "305.7"
+            MEMBER structured "SimpleClass" "<target>"
+                MEMBER int "int" "a" "7"
+                MEMBER int "long int" "b" "28"
+                MEMBER float64 "double" "c" "305.7"
+            END_MEMBERS
         END_MEMBERS
 
 
@@ -75,26 +83,32 @@ BREAK 60 CONTINUE "SimpleClass"
         MEMBER int "long int" "_b" "32"
         MEMBER float64 "double" "_c" "172.8"
         MEMBER structured "SimpleClass*" "this"
-            MEMBER int "int" "a" "8"
-            MEMBER int "long int" "b" "32"
-            MEMBER float64 "double" "c" "345.6"
+            MEMBER structured "SimpleClass" "<target>"
+                MEMBER int "int" "a" "8"
+                MEMBER int "long int" "b" "32"
+                MEMBER float64 "double" "c" "345.6"
+            END_MEMBERS
         END_MEMBERS
 
 
 BREAK 64 CONTINUE "print"
     OPEN_SCOPE
         MEMBER structured "SimpleClass*" "this"
-            MEMBER int "int" "a" "8"
-            MEMBER int "long int" "b" "32"
-            MEMBER float64 "double" "c" "345.6"
+            MEMBER structured "SimpleClass" "<target>"
+                MEMBER int "int" "a" "8"
+                MEMBER int "long int" "b" "32"
+                MEMBER float64 "double" "c" "345.6"
+            END_MEMBERS
         END_MEMBERS
 
 
 BREAK 79 CONTINUE "Point"
     OPEN_SCOPE
         MEMBER structured "Point*" "this"
-            MEMBER int "int" "x" "1"
-            MEMBER int "int" "y" "1"
+            MEMBER structured "Point" "<target>"
+                MEMBER int "int" "x" "1"
+                MEMBER int "int" "y" "1"
+            END_MEMBERS
         END_MEMBERS
         MEMBER int "int" "_x" "1"
         MEMBER int "int" "_y" "1"
@@ -107,9 +121,11 @@ BREAK 108 CONTINUE "Shape"
             MEMBER int "int" "y" "1"
         END_MEMBERS
         MEMBER structured "Shape*" "this"
-            MEMBER structured "Point" "center"
-                MEMBER int "int" "x" "1"
-                MEMBER int "int" "y" "1"
+            MEMBER structured "Shape" "<target>"
+                MEMBER structured "Point" "center"
+                    MEMBER int "int" "x" "1"
+                    MEMBER int "int" "y" "1"
+                END_MEMBERS
             END_MEMBERS
         END_MEMBERS
 
@@ -121,11 +137,13 @@ BREAK 135 CONTINUE "Circle"
             MEMBER int "int" "y" "1"
         END_MEMBERS
         MEMBER structured "Circle*" "this"
-            MEMBER int "int" "radius" "3"
-            MEMBER structured "Shape" "super (Shape)"
-                MEMBER structured "Point" "center"
-                    MEMBER int "int" "x" "1"
-                    MEMBER int "int" "y" "1"
+            MEMBER structured "Circle" "<target>"
+                MEMBER int "int" "radius" "3"
+                MEMBER structured "Shape" "super (Shape)"
+                    MEMBER structured "Point" "center"
+                        MEMBER int "int" "x" "1"
+                        MEMBER int "int" "y" "1"
+                    END_MEMBERS
                 END_MEMBERS
             END_MEMBERS
         END_MEMBERS
@@ -135,8 +153,10 @@ BREAK 135 CONTINUE "Circle"
 BREAK 91 CONTINUE "getY"
     OPEN_SCOPE
         MEMBER structured "Point*" "this"
-            MEMBER int "int" "x" "1"
-            MEMBER int "int" "y" "1"
+            MEMBER structured "Point" "<target>"
+                MEMBER int "int" "x" "1"
+                MEMBER int "int" "y" "1"
+            END_MEMBERS
         END_MEMBERS
 
 
@@ -144,9 +164,11 @@ BREAK 114 CONTINUE "moveUp"
     OPEN_SCOPE
         MEMBER int "int" "offset" "10"
         MEMBER structured "Shape*" "this"
-            MEMBER structured "Point" "center"
-                MEMBER int "int" "x" "1"
-                MEMBER int "int" "y" "11"
+            MEMBER structured "Shape" "<target>"
+                MEMBER structured "Point" "center"
+                    MEMBER int "int" "x" "1"
+                    MEMBER int "int" "y" "11"
+                END_MEMBERS
             END_MEMBERS
         END_MEMBERS
         MEMBER int "int" "newY" "11"
@@ -155,8 +177,10 @@ BREAK 114 CONTINUE "moveUp"
 BREAK 79 CONTINUE "Point"
     OPEN_SCOPE
         MEMBER structured "Point*" "this"
-            MEMBER int "int" "x" "3"
-            MEMBER int "int" "y" "5"
+            MEMBER structured "Point" "<target>"
+                MEMBER int "int" "x" "3"
+                MEMBER int "int" "y" "5"
+            END_MEMBERS
         END_MEMBERS
         MEMBER int "int" "_x" "3"
         MEMBER int "int" "_y" "5"
@@ -169,9 +193,11 @@ BREAK 108 CONTINUE "Shape"
             MEMBER int "int" "y" "5"
         END_MEMBERS
         MEMBER structured "Shape*" "this"
-            MEMBER structured "Point" "center"
-                MEMBER int "int" "x" "3"
-                MEMBER int "int" "y" "5"
+            MEMBER structured "Shape" "<target>"
+                MEMBER structured "Point" "center"
+                    MEMBER int "int" "x" "3"
+                    MEMBER int "int" "y" "5"
+                END_MEMBERS
             END_MEMBERS
         END_MEMBERS
 
@@ -183,14 +209,16 @@ BREAK 151 CONTINUE "Rectangle"
             MEMBER int "int" "y" "5"
         END_MEMBERS
         MEMBER structured "Rectangle*" "this"
-            MEMBER int "int" "width" "5"
-            MEMBER structured "Shape" "super (Shape)"
-                MEMBER structured "Point" "center"
-                    MEMBER int "int" "x" "3"
-                    MEMBER int "int" "y" "5"
+            MEMBER structured "Rectangle" "<target>"
+                MEMBER int "int" "width" "5"
+                MEMBER structured "Shape" "super (Shape)"
+                    MEMBER structured "Point" "center"
+                        MEMBER int "int" "x" "3"
+                        MEMBER int "int" "y" "5"
+                    END_MEMBERS
                 END_MEMBERS
+                MEMBER int "int" "height" "5"
             END_MEMBERS
-            MEMBER int "int" "height" "5"
         END_MEMBERS
         MEMBER int "int" "_width" "5"
         MEMBER int "int" "_height" "5"
@@ -204,15 +232,17 @@ BREAK 160 CONTINUE "Square"
         END_MEMBERS
         MEMBER int "int" "length" "5"
         MEMBER structured "Square*" "this"
-            MEMBER structured "Rectangle" "super (Rectangle)"
-                MEMBER int "int" "width" "5"
-                MEMBER structured "Shape" "super (Shape)"
-                    MEMBER structured "Point" "center"
-                        MEMBER int "int" "x" "3"
-                        MEMBER int "int" "y" "5"
+            MEMBER structured "Square" "<target>"
+                MEMBER structured "Rectangle" "super (Rectangle)"
+                    MEMBER int "int" "width" "5"
+                    MEMBER structured "Shape" "super (Shape)"
+                        MEMBER structured "Point" "center"
+                            MEMBER int "int" "x" "3"
+                            MEMBER int "int" "y" "5"
+                        END_MEMBERS
                     END_MEMBERS
+                    MEMBER int "int" "height" "5"
                 END_MEMBERS
-                MEMBER int "int" "height" "5"
             END_MEMBERS
         END_MEMBERS
 
@@ -220,8 +250,10 @@ BREAK 160 CONTINUE "Square"
 BREAK 83 CONTINUE "getX"
     OPEN_SCOPE
         MEMBER structured "Point*" "this"
-            MEMBER int "int" "x" "3"
-            MEMBER int "int" "y" "5"
+            MEMBER structured "Point" "<target>"
+                MEMBER int "int" "x" "3"
+                MEMBER int "int" "y" "5"
+            END_MEMBERS
         END_MEMBERS
 
 
@@ -229,9 +261,11 @@ BREAK 120 CONTINUE "moveLeft"
     OPEN_SCOPE
         MEMBER int "int" "offset" "-3"
         MEMBER structured "Shape*" "this"
-            MEMBER structured "Point" "center"
-                MEMBER int "int" "x" "0"
-                MEMBER int "int" "y" "5"
+            MEMBER structured "Shape" "<target>"
+                MEMBER structured "Point" "center"
+                    MEMBER int "int" "x" "0"
+                    MEMBER int "int" "y" "5"
+                END_MEMBERS
             END_MEMBERS
         END_MEMBERS
         MEMBER int "int" "newX" "0"
@@ -240,8 +274,10 @@ BREAK 120 CONTINUE "moveLeft"
 BREAK 79 CONTINUE "Point"
     OPEN_SCOPE
         MEMBER structured "Point*" "this"
-            MEMBER int "int" "x" "4"
-            MEMBER int "int" "y" "2"
+            MEMBER structured "Point" "<target>"
+                MEMBER int "int" "x" "4"
+                MEMBER int "int" "y" "2"
+            END_MEMBERS
         END_MEMBERS
         MEMBER int "int" "_x" "4"
         MEMBER int "int" "_y" "2"
@@ -253,9 +289,11 @@ BREAK 60 CONTINUE "SimpleClass"
         MEMBER int "long int" "_b" "172"
         MEMBER float64 "double" "_c" "928.8"
         MEMBER structured "SimpleClass*" "this"
-            MEMBER int "int" "a" "43"
-            MEMBER int "long int" "b" "172"
-            MEMBER float64 "double" "c" "1857.6"
+            MEMBER structured "SimpleClass" "<target>"
+                MEMBER int "int" "a" "43"
+                MEMBER int "long int" "b" "172"
+                MEMBER float64 "double" "c" "1857.6"
+            END_MEMBERS
         END_MEMBERS
 
 
@@ -266,9 +304,11 @@ BREAK 108 CONTINUE "Shape"
             MEMBER int "int" "y" "2"
         END_MEMBERS
         MEMBER structured "Shape*" "this"
-            MEMBER structured "Point" "center"
-                MEMBER int "int" "x" "4"
-                MEMBER int "int" "y" "2"
+            MEMBER structured "Shape" "<target>"
+                MEMBER structured "Point" "center"
+                    MEMBER int "int" "x" "4"
+                    MEMBER int "int" "y" "2"
+                END_MEMBERS
             END_MEMBERS
         END_MEMBERS
 
@@ -280,14 +320,16 @@ BREAK 151 CONTINUE "Rectangle"
             MEMBER int "int" "y" "2"
         END_MEMBERS
         MEMBER structured "Rectangle*" "this"
-            MEMBER int "int" "width" "19"
-            MEMBER structured "Shape" "super (Shape)"
-                MEMBER structured "Point" "center"
-                    MEMBER int "int" "x" "4"
-                    MEMBER int "int" "y" "2"
+            MEMBER structured "Rectangle" "<target>"
+                MEMBER int "int" "width" "19"
+                MEMBER structured "Shape" "super (Shape)"
+                    MEMBER structured "Point" "center"
+                        MEMBER int "int" "x" "4"
+                        MEMBER int "int" "y" "2"
+                    END_MEMBERS
                 END_MEMBERS
+                MEMBER int "int" "height" "19"
             END_MEMBERS
-            MEMBER int "int" "height" "19"
         END_MEMBERS
         MEMBER int "int" "_width" "19"
         MEMBER int "int" "_height" "19"
@@ -301,15 +343,17 @@ BREAK 160 CONTINUE "Square"
         END_MEMBERS
         MEMBER int "int" "length" "19"
         MEMBER structured "Square*" "this"
-            MEMBER structured "Rectangle" "super (Rectangle)"
-                MEMBER int "int" "width" "19"
-                MEMBER structured "Shape" "super (Shape)"
-                    MEMBER structured "Point" "center"
-                        MEMBER int "int" "x" "4"
-                        MEMBER int "int" "y" "2"
+            MEMBER structured "Square" "<target>"
+                MEMBER structured "Rectangle" "super (Rectangle)"
+                    MEMBER int "int" "width" "19"
+                    MEMBER structured "Shape" "super (Shape)"
+                        MEMBER structured "Point" "center"
+                            MEMBER int "int" "x" "4"
+                            MEMBER int "int" "y" "2"
+                        END_MEMBERS
                     END_MEMBERS
+                    MEMBER int "int" "height" "19"
                 END_MEMBERS
-                MEMBER int "int" "height" "19"
             END_MEMBERS
         END_MEMBERS
 
@@ -323,22 +367,24 @@ BREAK 170 CONTINUE "SimpleSquare"
         END_MEMBERS
         MEMBER int "int" "length" "19"
         MEMBER structured "SimpleSquare*" "this"
-            MEMBER structured "Square" "super (Square)"
-                MEMBER structured "Rectangle" "super (Rectangle)"
-                    MEMBER int "int" "width" "19"
-                    MEMBER structured "Shape" "super (Shape)"
-                        MEMBER structured "Point" "center"
-                            MEMBER int "int" "x" "4"
-                            MEMBER int "int" "y" "2"
+            MEMBER structured "SimpleSquare" "<target>"
+                MEMBER structured "Square" "super (Square)"
+                    MEMBER structured "Rectangle" "super (Rectangle)"
+                        MEMBER int "int" "width" "19"
+                        MEMBER structured "Shape" "super (Shape)"
+                            MEMBER structured "Point" "center"
+                                MEMBER int "int" "x" "4"
+                                MEMBER int "int" "y" "2"
+                            END_MEMBERS
                         END_MEMBERS
+                        MEMBER int "int" "height" "19"
                     END_MEMBERS
-                    MEMBER int "int" "height" "19"
                 END_MEMBERS
-            END_MEMBERS
-            MEMBER structured "SimpleClass" "super (SimpleClass)"
-                MEMBER int "int" "a" "43"
-                MEMBER int "long int" "b" "172"
-                MEMBER float64 "double" "c" "1857.6"
+                MEMBER structured "SimpleClass" "super (SimpleClass)"
+                    MEMBER int "int" "a" "43"
+                    MEMBER int "long int" "b" "172"
+                    MEMBER float64 "double" "c" "1857.6"
+                END_MEMBERS
             END_MEMBERS
         END_MEMBERS
 
@@ -346,9 +392,11 @@ BREAK 170 CONTINUE "SimpleSquare"
 BREAK 64 CONTINUE "print"
     OPEN_SCOPE
         MEMBER structured "SimpleClass*" "this"
-            MEMBER int "int" "a" "43"
-            MEMBER int "long int" "b" "172"
-            MEMBER float64 "double" "c" "1857.6"
+            MEMBER structured "SimpleClass" "<target>"
+                MEMBER int "int" "a" "43"
+                MEMBER int "long int" "b" "172"
+                MEMBER float64 "double" "c" "1857.6"
+            END_MEMBERS
         END_MEMBERS
 
 

@@ -31,10 +31,10 @@ import java.util.Collections;
 import java.util.List;
 
 import org.graalvm.compiler.options.Option;
-import org.graalvm.nativeimage.Feature;
 import org.graalvm.nativeimage.ImageSingletons;
 import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.Platforms;
+import org.graalvm.nativeimage.hosted.Feature;
 
 import com.oracle.svm.core.annotate.AutomaticFeature;
 import com.oracle.svm.core.annotate.Delete;
@@ -138,7 +138,7 @@ final class Target_java_nio_file_spi_FileSystemProvider {
     }
 }
 
-@TargetClass(className = "jdk.internal.jrtfs.JrtFileSystemProvider", onlyWith = JDK9OrLater.class)
+@TargetClass(className = "jdk.internal.jrtfs.JrtFileSystemProvider", onlyWith = JDK11OrLater.class)
 @Delete
 final class Target_jdk_internal_jrtfs_JrtFileSystemProvider {
 }

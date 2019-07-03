@@ -1,12 +1,41 @@
-# Graal SDK Changelog
+# GraalVM SDK Changelog
 
-This changelog summarizes major changes between Graal SDK versions. The main focus is on APIs exported by Graal SDK.
+This changelog summarizes major changes between GraalVM SDK versions. The main focus is on APIs exported by GraalVM SDK.
+
+## Version 19.2.0
+* Added support for date, time, timezone and duration values in polyglot
+	* Added methods to identify polyglot date, time, timezone and duration values in `Value`. See `Value.isDate`, `Value.isTime`, `Value.isTimeZone`, `Value.isDuration`. 
+	* Polyglot languages now interpret the `java.time` host values of type `LocalDate`, `LocalTime`, `LocalDateTime`, `ZonedDateTime`, `Instant`, `ZoneId` and `Duration`. They are mapped to the appropriate guest language types.
+	* Added `ProxyDate`, `ProxyTime`, `ProxyTimeZone`, `ProxyInstant` and `ProxyDuration` to proxy date time and duration related guest values.
+* Added `Context.Builder.timeZone(ZoneId)` to configure the default timezone of polyglot contexts.
+
+## Version 19.1.0
+* Restricting guest languages from sub-process creation by [Context.Builder.allowCreateProcess](http://www.graalvm.org/sdk/javadoc/org/graalvm/polyglot/Context.Builder.html#allowCreateProcess-boolean-). Use `Context.newBuilder().allowCreateProcess(true)` to allow guest languages to create a new sub-process.
+* Added a possibility to control sub-process creation using a custom [ProcessHandler](http://www.graalvm.org/sdk/javadoc/org/graalvm/polyglot/io/ProcessHandler.html) implementation. Use `Context.newBuilder().processHandler(handler)` to install a custom `ProcessHandler`.
+* Restricting access to the host environment variables via [EnvironmentAccess](http://www.graalvm.org/sdk/javadoc/org/graalvm/polyglot/EnvironmentAccess.html) configurations. Use `EnvironmentAccess.INHERIT` to allow guest langauges to read process environment variables.
+* Deprecated `OptionValues#set`, [OptionValues](https://www.graalvm.org/sdk/javadoc/org/graalvm/options/OptionValues.html) should be read-only. If the value needs to be changed, it can be stored in the language or instrument and read from there.
+* Removed deprecated `OptionCategory.DEBUG` (use `OptionCategory.INTERNAL` instead).
+* The path separator can now be configured by [FileSystem](http://www.graalvm.org/sdk/javadoc/org/graalvm/polyglot/io/FileSystem.html#getPathSeparator--).
+
+## Version 19.0.0
+* `Value.as(Interface.class)` now requires interface classes to be annotated with `HostAccess.Implementable` in `EXPLICIT` host access mode. Added new APIs to configure implementable behavior in HostAccess.
+
+## Version 1.0.0 RC16
+* `--experimental-options` can now also be passed after polyglot options on the command line.
+* `--version` changed default message to `IMPLEMENTATION-NAME (ENGINE-NAME GRAALVM-VERSION)`
 
 ## Version 1.0.0 RC15
+* Renamed 'Graal SDK' to 'GraalVM SDK'
 * Added optional [FileSystem.getMimeType](http://www.graalvm.org/sdk/javadoc/org/graalvm/polyglot/io/FileSystem.html#getMimeType-java.nio.file.Path-) and [FileSystem.getEncoding](http://www.graalvm.org/sdk/javadoc/org/graalvm/polyglot/io/FileSystem.html#getEncoding-java.nio.file.Path-) methods. These methods can be used by `FileSystem` implementer to provide file MIME type and encoding.
 * Added a possibility to set an [encoding in Source builder](http://www.graalvm.org/sdk/javadoc/org/graalvm/polyglot/Source.Builder.html#encoding-java.nio.charset.Charset-)
-* Restricting access (**incompatible change**) to the host language via [HostAccess](http://www.graalvm.org/sdk/javadoc/org/graalvm/polyglot/HostAccess.html) configurations. Use `Context.newBuilder().allowHostAccess(HostAccess.ALL)` to get previous behavior. Configurations that use `allowAllAccess(true)` are not affected by this incompatible change.
+* (**incompatible change**) Restricting access to the host language via [HostAccess](http://www.graalvm.org/sdk/javadoc/org/graalvm/polyglot/HostAccess.html) configurations. Use `Context.newBuilder().allowHostAccess(HostAccess.ALL)` to get previous behavior. Configurations that use `allowAllAccess(true)` are not affected by this incompatible change.
 * Deprecated `Context.Builder.hostClassFilter` and added the new method `Context.Builder.allowHostClassLookup` as a replacement. The name was changed for clarity and now also accepts `null` to indicate that no host class lookup is allowed.
+* (**incompatible change**) Restricting polyglot access for guest languages via [PolyglotAccess](http://www.graalvm.org/sdk/javadoc/org/graalvm/polyglot/PolyglotAccess.html) configurations. Use `Context.newBuilder().allowPolyglotAccess(PolyglotAccess.ALL)` to get previous behavior. Configurations that use `allowAllAccess(true)` are not affected by this incompatible change.
+* Removed deprecated API class `ProxyPrimitive`.
+* Started adding several options under `--engine` like `--engine.TraceCompilation`, which can also be set on the `Engine`. These options will progressively replace the `-Dgraal.*Truffle*` properties. The list can be seen by passing `--help:expert` to any language launcher.
+* Experimental options now require `--experimental-options` on the command line to be passed to GraalVM language launchers, or [Context.Builder#allowExperimentalOptions](http://www.graalvm.org/sdk/javadoc/org/graalvm/polyglot/Context.Builder.html#allowExperimentalOptions-boolean-) and [Engine.Builder#allowExperimentalOptions](http://www.graalvm.org/sdk/javadoc/org/graalvm/polyglot/Engine.Builder.html#allowExperimentalOptions-boolean-) to be set in other scenarios.
+* Added new API for target type mappings using the new HostAccess API.
+* (**incompatible change**) Removed default lossy string coercions. Previous behavior can be restored using the following [snippets](https://github.com/oracle/graal/tree/master/truffle/src/com.oracle.truffle.api.test/src/com/oracle/truffle/api/test/examples/TargetMappings.java).
 
 ## Version 1.0.0 RC14
 * Added [Context.Builder#allowExperimentalOptions](http://www.graalvm.org/sdk/javadoc/org/graalvm/polyglot/Context.Builder.html#allowExperimentalOptions-boolean-) to control whether experimental options can be passed to a Context.
@@ -15,6 +44,9 @@ This changelog summarizes major changes between Graal SDK versions. The main foc
 * Restricting access (**incompatible change**) to host interop via [HostAccess](http://www.graalvm.org/sdk/javadoc/org/graalvm/polyglot/HostAccess.html) configurations. Use `Context.newBuilder().allowHostAccess(HostAccess.PUBLIC)` to get previous behavior.
 * Restricting access (**incompatible change**) to the host language via [HostAccess](http://www.graalvm.org/sdk/javadoc/org/graalvm/polyglot/HostAccessPolicy.html) configurations. Use `Context.newBuilder().allowHostAccess(HostAccess.ALL)` to get previous behavior. Configurations that use `allowAllAccess(true)` are not affected by this incompatible change.
 * Deprecated `Context.Builder.hostClassFilter` and added the new method `Context.Builder.allowHostClassLookup` as a replacement. The name was changed change for clarity and now also allows `null` values to indicate that no host class lookup is allowed.
+* Deprecated `defaultValue` of `OptionType`. Default value of `OptionKey` is sufficient.
+* `--vm.*` should now be used instead of `--native.*` or `--jvm.*` to pass VM options in GraalVM language launchers (the old style of option is still supported but deprecated and shows warnings on stderr). `--native` and `--jvm` should still be used to select the VM mode.
+* `--jvm.help` or `--native.help` are deprecated in favor of `--help:vm`.
 
 ## Version 1.0.0 RC13
 * [OptionCategory.DEBUG](https://www.graalvm.org/truffle/javadoc/org/graalvm/options/OptionCategory.html) has been renamed to `OptionCategory.INTERNAL` for clarity.

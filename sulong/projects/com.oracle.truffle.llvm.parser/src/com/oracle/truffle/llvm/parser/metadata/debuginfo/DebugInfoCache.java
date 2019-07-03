@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, Oracle and/or its affiliates.
+ * Copyright (c) 2018, 2019, Oracle and/or its affiliates.
  *
  * All rights reserved.
  *
@@ -65,8 +65,9 @@ final class DebugInfoCache {
     }
 
     LLVMSourceSymbol getSourceSymbol(MDBaseNode mdVariable, boolean isStatic) {
-        if (parsedVariables.containsKey(mdVariable)) {
-            return parsedVariables.get(mdVariable);
+        LLVMSourceSymbol lookup = parsedVariables.get(mdVariable);
+        if (lookup != null) {
+            return lookup;
         }
 
         LLVMSourceLocation location = scopeBuilder.buildLocation(mdVariable);

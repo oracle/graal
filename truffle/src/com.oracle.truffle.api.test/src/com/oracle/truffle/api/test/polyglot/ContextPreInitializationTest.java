@@ -1010,7 +1010,7 @@ public class ContextPreInitializationTest {
     }
 
     private static void resetSystemPropertiesOptions() {
-        System.clearProperty("polyglot.engine.PreinitializeContexts");
+        System.clearProperty("polyglot.image-build-time.PreinitializeContexts");
         System.clearProperty(SYS_OPTION1_KEY);
         System.clearProperty(SYS_OPTION2_KEY);
     }
@@ -1030,7 +1030,7 @@ public class ContextPreInitializationTest {
         }
         if (languagesOptionValue.length() > 0) {
             languagesOptionValue.replace(languagesOptionValue.length() - 1, languagesOptionValue.length(), "");
-            System.setProperty("polyglot.engine.PreinitializeContexts", languagesOptionValue.toString());
+            System.setProperty("polyglot.image-build-time.PreinitializeContexts", languagesOptionValue.toString());
         }
         final Method preInitMethod = holderClz.getDeclaredMethod("preInitializeEngine");
         preInitMethod.setAccessible(true);
@@ -1038,7 +1038,7 @@ public class ContextPreInitializationTest {
             preInitMethod.invoke(null);
         } finally {
             // PreinitializeContexts should only be set during pre-initialization, not at runtime
-            System.clearProperty("polyglot.engine.PreinitializeContexts");
+            System.clearProperty("polyglot.image-build-time.PreinitializeContexts");
         }
     }
 

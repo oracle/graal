@@ -36,7 +36,6 @@ import com.oracle.truffle.api.dsl.Fallback;
 import com.oracle.truffle.api.dsl.NodeChild;
 import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.interop.InteropLibrary;
-import com.oracle.truffle.api.interop.TruffleObject;
 import com.oracle.truffle.api.interop.UnsupportedMessageException;
 import com.oracle.truffle.api.library.CachedLibrary;
 import com.oracle.truffle.llvm.nodes.intrinsics.interop.LLVMReadStringNodeGen.ForeignReadStringNodeGen;
@@ -94,7 +93,7 @@ public abstract class LLVMReadStringNode extends LLVMNode {
         protected abstract String execute(LLVMManagedPointer foreign);
 
         @Specialization(limit = "3")
-        String doDefault(@SuppressWarnings("unused") LLVMManagedPointer object, TruffleObject foreign,
+        String doDefault(@SuppressWarnings("unused") LLVMManagedPointer object, Object foreign,
                         @CachedLibrary("foreign") InteropLibrary interop,
                         @Cached PointerReadStringNode read) {
             if (interop.isString(foreign)) {

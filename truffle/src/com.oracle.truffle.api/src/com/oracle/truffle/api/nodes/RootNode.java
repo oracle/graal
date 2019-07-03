@@ -45,6 +45,7 @@ import java.util.concurrent.locks.ReentrantLock;
 import com.oracle.truffle.api.CallTarget;
 import com.oracle.truffle.api.CompilerAsserts;
 import com.oracle.truffle.api.CompilerDirectives.CompilationFinal;
+import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.CompilerOptions;
 import com.oracle.truffle.api.RootCallTarget;
 import com.oracle.truffle.api.TruffleLanguage;
@@ -182,10 +183,24 @@ public abstract class RootNode extends ExecutableNode {
     }
 
     /**
-     * A description of the AST (expected to be a method or procedure name in most languages) that
-     * identifies the AST for the benefit of guest language programmers using tools; it might
-     * appear, for example in the context of a stack dump or trace and is not expected to be called
-     * often. Can be called on any thread and without a language context.
+     * Returns a qualified name of the AST that in the best case uniquely identifiers the method. If
+     * the qualified name is not specified by the root, then the {@link #getName() name} is used by
+     * default. A root node that represents a Java method could consist of the package name, the
+     * class name and the method name. E.g. <code>mypackage.MyClass.myMethod</code>
+     *
+     * @since 20.0.0 beta 1
+     */
+    public String getQualifiedName() {
+        return getName();
+    }
+
+    /**
+     * Returns a simple name of the AST (expected to be a method or procedure name in most
+     * languages) that identifies the AST for the benefit of guest language programmers using tools;
+     * it might appear, for example in the context of a stack dump or trace and is not expected to
+     * be called often. Can be called on any thread and without a language context. The name of a
+     * root node that represents a Java method could consist of the method name. E.g.
+     * <code>myMethod</code>
      * <p>
      * In some languages AST "compilation units" may have no intrinsic names. When no information is
      * available, language implementations might simply use the first few characters of the code,
@@ -214,6 +229,9 @@ public abstract class RootNode extends ExecutableNode {
      * This method is intended to be overwritten by guest languages, when the node's source is
      * internal, the implementation should respect that. Can be called on any thread and without a
      * language context.
+     * <p>
+     * This method may be invoked on compiled code paths. It is recommended to implement this method
+     * such that it returns a compilation final constant.
      *
      * @since 0.27
      */
@@ -221,11 +239,16 @@ public abstract class RootNode extends ExecutableNode {
         if (getLanguageInfo() == null) {
             return true;
         }
-        SourceSection sc = getSourceSection();
+        SourceSection sc = materializeSourceSection();
         if (sc != null) {
             return sc.getSource().isInternal();
         }
         return false;
+    }
+
+    @TruffleBoundary
+    private SourceSection materializeSourceSection() {
+        return getSourceSection();
     }
 
     /**
@@ -322,7 +345,7 @@ public abstract class RootNode extends ExecutableNode {
         return frameDescriptor;
     }
 
-    /** @since 1.0.0 */
+    /** @since 19.0 */
     protected final void setCallTarget(RootCallTarget callTarget) {
         this.callTarget = callTarget;
     }

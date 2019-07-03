@@ -25,9 +25,14 @@
 package org.graalvm.component.installer;
 
 import java.io.File;
+import java.io.IOException;
 import java.nio.file.Path;
 import java.nio.file.Paths;
+import java.nio.file.attribute.AclFileAttributeView;
+import java.nio.file.attribute.PosixFileAttributeView;
+import java.util.regex.Matcher;
 import java.util.regex.Pattern;
+import org.graalvm.component.installer.model.ComponentRegistry;
 
 /**
  *
@@ -43,6 +48,8 @@ public class SystemUtils {
      * Path component delimiter.
      */
     public static final String DELIMITER = "/"; // NOI18N
+
+    private static final String DOT = "."; // NOI18N
 
     private static final String DOTDOT = ".."; // NOI18N
 
@@ -88,6 +95,9 @@ public class SystemUtils {
     public static Path fileName(String s) {
         if ((s.indexOf(DELIMITER_CHAR) >= 0) ||
                         ((DELIMITER_CHAR != File.separatorChar) && (s.indexOf(File.separatorChar) >= 0))) {
+            throw new IllegalArgumentException(s);
+        }
+        if (DOT.equals(s) || DOTDOT.equals(s)) {
             throw new IllegalArgumentException(s);
         }
         return Paths.get(s);
@@ -153,6 +163,17 @@ public class SystemUtils {
         return Paths.get(s, comps);
     }
 
+    public static Path resolveRelative(Path baseDir, String p) {
+        if (baseDir == null) {
+            return null;
+        }
+        if (p == null) {
+            return null;
+        }
+        String[] comps = checkRelativePath(baseDir, p);
+        return baseDir.resolve(fromArray(comps));
+    }
+
     public static Path fromCommonRelative(Path base, String p) {
         if (p == null) {
             return null;
@@ -182,10 +203,13 @@ public class SystemUtils {
             throw new IllegalArgumentException("Absolute path");
         }
         String[] comps = p.split(SPLIT_DELIMITER);
-        int d = base == null ? 0 : base.getNameCount();
+        int d = base == null ? 0 : base.normalize().getNameCount() - 1;
+        int fromIndex = 0;
+        int toIndex = 0;
         for (String s : comps) {
             if (s.isEmpty()) {
-                throw new IllegalArgumentException("Empty path component");
+                fromIndex++;
+                continue;
             }
             if (DOTDOT.equals(s)) {
                 d--;
@@ -195,7 +219,94 @@ public class SystemUtils {
             } else {
                 d++;
             }
+            if (toIndex < fromIndex) {
+                comps[toIndex] = comps[fromIndex];
+            }
+            fromIndex++;
+            toIndex++;
         }
-        return comps;
+        if (fromIndex == toIndex) {
+            return comps;
+        } else {
+            // return without the empty parts
+            String[] newcomps = new String[toIndex];
+            System.arraycopy(comps, 0, newcomps, 0, toIndex);
+            return newcomps;
+        }
+    }
+
+    private static final Pattern OLD_VERSION_PATTERN = Pattern.compile("([0-9]+\\.[0-9]+(\\.[0-9]+)?(\\.[0-9]+)?)(-([a-z]+)([0-9]+)?)?");
+
+    /**
+     * Will transform some widely used formats to RPM-style. Currently it transforms:
+     * <ul>
+     * <li>1.0.1-dev[.x] => 1.0.1.0-0.dev[.x]
+     * <li>1.0.0 => 1.0.0.0
+     * </ul>
+     * 
+     * @param v
+     * @return normalized version
+     */
+    public static String normalizeOldVersions(String v) {
+        if (v == null) {
+            return null;
+        }
+        Matcher m = OLD_VERSION_PATTERN.matcher(v);
+        if (!m.matches()) {
+            return v;
+        }
+        String numbers = m.group(1);
+        String rel = m.group(5);
+        String relNo = m.group(6);
+
+        if (numbers.startsWith("0.")) {
+            return v;
+        }
+
+        if (rel == null) {
+            if (m.group(3) == null) {
+                return numbers + ".0";
+            } else {
+                return numbers;
+            }
+        } else {
+            if (m.group(3) == null) {
+                numbers = numbers + ".0";
+            }
+            return numbers + "-0." + rel + (relNo == null ? "" : "." + relNo);
+        }
+    }
+
+    public static Path getGraalVMJDKRoot(ComponentRegistry reg) {
+        if ("macos".equals(reg.getGraalCapabilities().get(CommonConstants.CAP_OS_NAME))) {
+            return Paths.get("Contents", "Home");
+        } else {
+            return Paths.get("");
+        }
+    }
+
+    /**
+     * Finds a file owner. On POSIX systems, returns owner of the file. On Windows (ACL fs view)
+     * returns the owner principal's name.
+     * 
+     * @param file the file to test
+     * @return owner name
+     */
+    public static String findFileOwner(Path file) throws IOException {
+        PosixFileAttributeView posix = file.getFileSystem().provider().getFileAttributeView(file, PosixFileAttributeView.class);
+        if (posix != null) {
+            return posix.getOwner().getName();
+        }
+        AclFileAttributeView acl = file.getFileSystem().provider().getFileAttributeView(file, AclFileAttributeView.class);
+        if (acl != null) {
+            return acl.getOwner().getName();
+        }
+        return null;
+    }
+
+    static boolean licenseTracking = false;
+
+    public static boolean isLicenseTrackingEnabled() {
+        return licenseTracking;
     }
 }

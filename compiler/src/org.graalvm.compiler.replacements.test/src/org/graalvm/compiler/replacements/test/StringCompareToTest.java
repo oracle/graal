@@ -83,7 +83,7 @@ public class StringCompareToTest extends StringSubstitutionTestBase {
         StructuredGraph graph = testGraph(testMethod.getName());
 
         // Check to see if the resulting graph contains the expected node
-        StructuredGraph replacement = getReplacements().getSubstitution(realMethod, -1, false, null);
+        StructuredGraph replacement = getReplacements().getSubstitution(realMethod, -1, false, null, graph.getOptions());
         if (replacement == null) {
             assertInGraph(graph, expectedNode);
         }
@@ -91,7 +91,7 @@ public class StringCompareToTest extends StringSubstitutionTestBase {
         OptionValues options;
         boolean needCheckNode = true;
 
-        if (JavaVersionUtil.Java8OrEarlier) {
+        if (JavaVersionUtil.JAVA_SPEC <= 8) {
             needCheckNode = false;
         } else {
             List<String> vmArgs = GraalServices.getInputArguments();

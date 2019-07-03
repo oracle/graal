@@ -43,13 +43,18 @@ package com.oracle.truffle.api.test.polyglot;
 import static com.oracle.truffle.api.test.polyglot.ValueAssert.assertValue;
 import static com.oracle.truffle.api.test.polyglot.ValueAssert.Trait.ARRAY_ELEMENTS;
 import static com.oracle.truffle.api.test.polyglot.ValueAssert.Trait.BOOLEAN;
+import static com.oracle.truffle.api.test.polyglot.ValueAssert.Trait.DATE;
 import static com.oracle.truffle.api.test.polyglot.ValueAssert.Trait.EXECUTABLE;
 import static com.oracle.truffle.api.test.polyglot.ValueAssert.Trait.HOST_OBJECT;
 import static com.oracle.truffle.api.test.polyglot.ValueAssert.Trait.INSTANTIABLE;
+import static com.oracle.truffle.api.test.polyglot.ValueAssert.Trait.DURATION;
 import static com.oracle.truffle.api.test.polyglot.ValueAssert.Trait.MEMBERS;
 import static com.oracle.truffle.api.test.polyglot.ValueAssert.Trait.NULL;
 import static com.oracle.truffle.api.test.polyglot.ValueAssert.Trait.NUMBER;
 import static com.oracle.truffle.api.test.polyglot.ValueAssert.Trait.STRING;
+import static com.oracle.truffle.api.test.polyglot.ValueAssert.Trait.TIME;
+import static com.oracle.truffle.api.test.polyglot.ValueAssert.Trait.PROXY_OBJECT;
+import static com.oracle.truffle.api.test.polyglot.ValueAssert.Trait.TIMEZONE;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertNotEquals;
@@ -64,6 +69,13 @@ import java.lang.reflect.Method;
 import java.lang.reflect.Proxy;
 import java.math.BigDecimal;
 import java.math.BigInteger;
+import java.time.Duration;
+import java.time.Instant;
+import java.time.LocalDate;
+import java.time.LocalDateTime;
+import java.time.LocalTime;
+import java.time.ZoneId;
+import java.time.ZonedDateTime;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collection;
@@ -78,10 +90,17 @@ import java.util.function.Function;
 import java.util.function.Supplier;
 
 import org.graalvm.polyglot.Context;
+import org.graalvm.polyglot.HostAccess;
+import org.graalvm.polyglot.HostAccess.Implementable;
 import org.graalvm.polyglot.TypeLiteral;
 import org.graalvm.polyglot.Value;
 import org.graalvm.polyglot.proxy.ProxyArray;
+import org.graalvm.polyglot.proxy.ProxyDate;
+import org.graalvm.polyglot.proxy.ProxyDuration;
+import org.graalvm.polyglot.proxy.ProxyTime;
+import org.graalvm.polyglot.proxy.ProxyTimeZone;
 import org.graalvm.polyglot.proxy.ProxyExecutable;
+import org.graalvm.polyglot.proxy.ProxyInstant;
 import org.graalvm.polyglot.proxy.ProxyInstantiable;
 import org.graalvm.polyglot.proxy.ProxyObject;
 import org.junit.After;
@@ -105,7 +124,6 @@ import com.oracle.truffle.api.library.ExportMessage;
 import com.oracle.truffle.api.nodes.RootNode;
 import com.oracle.truffle.api.test.CompileImmediatelyCheck;
 import com.oracle.truffle.api.test.polyglot.ValueAssert.Trait;
-import org.graalvm.polyglot.HostAccess;
 
 public class ValueAPITest {
 
@@ -152,6 +170,24 @@ public class ValueAPITest {
         }
     }
 
+    @Test
+    public void testDatesTimesZonesAndDuration() {
+        assertValue(context.asValue(LocalDate.now()), HOST_OBJECT, MEMBERS, DATE, EXECUTABLE);
+        assertValue(context.asValue(LocalTime.now()), HOST_OBJECT, MEMBERS, TIME, EXECUTABLE);
+        assertValue(context.asValue(LocalDateTime.now()), HOST_OBJECT, MEMBERS, DATE, TIME, EXECUTABLE);
+        assertValue(context.asValue(Instant.now()), HOST_OBJECT, MEMBERS, DATE, TIME, TIMEZONE, EXECUTABLE);
+        assertValue(context.asValue(ZonedDateTime.now()), HOST_OBJECT, MEMBERS, DATE, TIME, TIMEZONE);
+        assertValue(context.asValue(ZoneId.of("UTC")), HOST_OBJECT, MEMBERS, TIMEZONE);
+        assertValue(context.asValue(Date.from(Instant.now())), HOST_OBJECT, MEMBERS, DATE, TIME, TIMEZONE);
+        assertValue(context.asValue(Duration.ofMillis(100)), HOST_OBJECT, MEMBERS, DURATION);
+
+        assertValue(context.asValue(ProxyDate.from(LocalDate.now())), DATE, PROXY_OBJECT);
+        assertValue(context.asValue(ProxyTime.from(LocalTime.now())), TIME, PROXY_OBJECT);
+        assertValue(context.asValue(ProxyInstant.from(Instant.now())), DATE, TIME, TIMEZONE, PROXY_OBJECT);
+        assertValue(context.asValue(ProxyTimeZone.from(ZoneId.of("UTC"))), TIMEZONE, PROXY_OBJECT);
+        assertValue(context.asValue(ProxyDuration.from(Duration.ofMillis(100))), DURATION, PROXY_OBJECT);
+    }
+
     private static final Number[] NUMBERS = new Number[]{
                     (byte) 0, (byte) 1, Byte.MAX_VALUE, Byte.MIN_VALUE,
                     (short) 0, (short) 1, Short.MAX_VALUE, Short.MIN_VALUE,
@@ -191,7 +227,6 @@ public class ValueAPITest {
     private static final Object[] HOST_OBJECTS = new Object[]{
                     new ArrayList<>(),
                     new HashMap<>(),
-                    new Date(),
                     new EmptyObject(),
                     new PrivateObject(),
                     new FieldAccess(),
@@ -975,7 +1010,8 @@ public class ValueAPITest {
                         "Cannot convert 'false'(language: Java, type: java.lang.Boolean) to Java type 'java.lang.String' using Value.asString(): Invalid coercion. You can ensure that the value can be converted using Value.isString().");
         assertFails(() -> noString.as(char.class), ClassCastException.class,
                         "Cannot convert 'false'(language: Java, type: java.lang.Boolean) to Java type 'char': Invalid or lossy primitive coercion.");
-        assertEquals("false", noString.as(String.class));
+        assertFails(() -> noString.as(String.class), ClassCastException.class,
+                        "Cannot convert 'false'(language: Java, type: java.lang.Boolean) to Java type 'java.lang.String': Invalid or lossy primitive coercion.");
 
         Value noBoolean = context.asValue("foobar");
 
@@ -1073,9 +1109,9 @@ public class ValueAPITest {
         assertFails(() -> stringList.set(1, null), IndexOutOfBoundsException.class,
                         "Invalid index 1 for List<java.lang.String> '[asdf]'(language: Java, type: java.lang.String[]).");
 
-        ((List<Object>) stringList).set(0, 42);
+        ((List<Object>) stringList).set(0, "42");
         assertEquals("42", stringList.get(0));
-        ((List<Object>) stringList).set(0, context.asValue(42));
+        ((List<Object>) stringList).set(0, context.asValue("42"));
         assertEquals("42", stringList.get(0));
 
         // just to make sure this works
@@ -1161,7 +1197,8 @@ public class ValueAPITest {
                         "Illegal identifier type 'java.lang.Object' for Map<Object, Object> 'MemberErrorTest'(language: Java, type: com.oracle.truffle.api.test.polyglot.ValueAPITest$MemberErrorTest).");
 
         Map<String, String> stringMap = v.as(STRING_MAP);
-        assertEquals("43", stringMap.get("value"));
+        assertFails(() -> stringMap.get("value"), ClassCastException.class,
+                        "Cannot convert '43'(language: Java, type: java.lang.Integer) to Java type 'java.lang.String': Invalid or lossy primitive coercion.");
 
         assertFails(() -> map.put("value", ""), ClassCastException.class,
                         "Invalid value ''(language: Java, type: java.lang.String) for Map<Object, Object> 'MemberErrorTest'(language: Java, type: com.oracle.truffle.api.test.polyglot.ValueAPITest$MemberErrorTest) and identifier 'value'.");
@@ -1169,8 +1206,8 @@ public class ValueAPITest {
         assertFails(() -> map.put("finalValue", 42), IllegalArgumentException.class,
                         "Invalid or unmodifiable value for identifier 'finalValue' for Map<Object, Object> 'MemberErrorTest'(language: Java, type: com.oracle.truffle.api.test.polyglot.ValueAPITest$MemberErrorTest).");
 
-        assertFails(() -> map.put("finalValue", "42"), IllegalArgumentException.class,
-                        "Invalid or unmodifiable value for identifier 'finalValue' for Map<Object, Object> 'MemberErrorTest'(language: Java, type: com.oracle.truffle.api.test.polyglot.ValueAPITest$MemberErrorTest).");
+        assertFails(() -> map.put("finalValue", "42"), ClassCastException.class,
+                        "Invalid value '42'(language: Java, type: java.lang.String) for Map<Object, Object> 'MemberErrorTest'(language: Java, type: com.oracle.truffle.api.test.polyglot.ValueAPITest$MemberErrorTest) and identifier 'finalValue'.");
 
         assertFails(() -> map.put("finalValue", 4.2), ClassCastException.class,
                         "Invalid value '4.2'(language: Java, type: java.lang.Double) for Map<Object, Object> 'MemberErrorTest'(language: Java, type: com.oracle.truffle.api.test.polyglot.ValueAPITest$MemberErrorTest) and identifier 'finalValue'.");
@@ -1268,8 +1305,8 @@ public class ValueAPITest {
                         "Invalid argument count when executing 'testExecutable'(language: Java, type: " + className + ") with arguments []." +
                                         " Expected 1 argument(s) but got 0.");
 
-        assertTrue(v.execute(42).isString());
-        assertEquals("42", v.execute(42).asString());
+        assertTrue(v.execute("42").isString());
+        assertEquals("42", v.execute("42").asString());
 
         assertFails(() -> context.asValue("").execute(), UnsupportedOperationException.class,
                         "Unsupported operation Value.execute(Object...) for ''(language: Java, type: java.lang.String). You can ensure that the operation " +
@@ -1281,7 +1318,7 @@ public class ValueAPITest {
 
         assertEquals("", v.as(OtherInterface1.class).execute(""));
 
-        assertEquals("42", v.as(OtherInterface1.class).execute(42));
+        assertEquals("42", v.as(OtherInterface1.class).execute("42"));
 
         assertFails(() -> v.as(OtherInterface2.class).execute("", ""), IllegalArgumentException.class,
                         "Invalid argument count when executing 'testExecutable'(language: Java, " +
@@ -1292,9 +1329,12 @@ public class ValueAPITest {
 
         Value value = context.asValue(new AmbiguousType());
         assertFails(() -> value.getMember("f").execute(1, 2), IllegalArgumentException.class,
-                        "Invalid argument when executing 'com.oracle.truffle.api.test.polyglot.ValueAPITest$AmbiguousType.f'" +
-                                        "(language: Java, type: Bound Method) with arguments ['1'(language: Java, type: java.lang.Integer), " +
-                                        "'2'(language: Java, type: java.lang.Integer)].");
+                        "Invalid argument when executing 'com.oracle.truffle.api.test.polyglot.ValueAPITest$AmbiguousType." +
+                                        "f'(language: Java, type: Bound Method). Multiple applicable overloads found for method name f " +
+                                        "(candidates: [Method[public java.lang.String com.oracle.truffle.api.test.polyglot.ValueAPITest$AmbiguousType." +
+                                        "f(int,byte)], Method[public java.lang.String com.oracle.truffle.api.test.polyglot.ValueAPITest$AmbiguousType." +
+                                        "f(byte,int)]], arguments: [1 (Integer), 2 (Integer)]) Provided arguments: " +
+                                        "['1'(language: Java, type: java.lang.Integer), '2'(language: Java, type: java.lang.Integer)].");
     }
 
     public static class InvocableType {
@@ -1319,15 +1359,14 @@ public class ValueAPITest {
                         "Invalid member key '' for object 'com.oracle.truffle.api.test.polyglot.ValueAPITest.InvocableType'" +
                                         "(language: Java, type: com.oracle.truffle.api.test.polyglot.ValueAPITest$InvocableType).");
         assertFails(() -> value.invokeMember("f", 2), IllegalArgumentException.class,
-                        "Invalid argument count when executing 'com.oracle.truffle.api.test.polyglot.ValueAPITest.InvocableType'" +
+                        "Invalid argument count when invoking 'f' on 'com.oracle.truffle.api.test.polyglot.ValueAPITest.InvocableType'" +
                                         "(language: Java, type: com.oracle.truffle.api.test.polyglot.ValueAPITest$InvocableType) " +
                                         "with arguments ['2'(language: Java, type: java.lang.Integer)]. Expected 2 argument(s) but got 1.");
         assertFails(() -> value.invokeMember("f", "2", "128"), IllegalArgumentException.class,
-                        "Invalid argument when executing 'com.oracle.truffle.api.test.polyglot.ValueAPITest.InvocableType'" +
-                                        "(language: Java, type: com.oracle.truffle.api.test.polyglot.ValueAPITest$InvocableType) " +
-                                        "with arguments ['2'(language: Java, type: java.lang.String), '128'(language: Java, type: java.lang.String)].");
+                        "Invalid argument when invoking 'f' on 'com.oracle.truffle.api.test.polyglot.ValueAPITest." +
+                                        "InvocableType'(language: Java, type: com.oracle.truffle.api.test.polyglot.ValueAPITest$InvocableType). " +
+                                        "Provided arguments: ['2'(language: Java, type: java.lang.String), '128'(language: Java, type: java.lang.String)].");
         assertEquals("1", value.invokeMember("f", 2, 3).asString());
-        assertEquals("1", value.invokeMember("f", "2", "3").asString());
 
         Value primitiveValue = context.asValue(42);
         assertFails(() -> primitiveValue.invokeMember(""), UnsupportedOperationException.class,
@@ -1427,6 +1466,7 @@ public class ValueAPITest {
         ValueAssert.assertValue(v2);
     }
 
+    @Implementable
     public interface EmptyInterface {
 
         void foo();

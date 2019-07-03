@@ -223,7 +223,7 @@ import com.oracle.truffle.llvm.nodes.memory.store.LLVMI32StoreNodeGen;
 import com.oracle.truffle.llvm.nodes.memory.store.LLVMI64StoreNodeGen;
 import com.oracle.truffle.llvm.nodes.memory.store.LLVMI8StoreNodeGen;
 import com.oracle.truffle.llvm.nodes.memory.store.LLVMPointerStoreNodeGen;
-import com.oracle.truffle.llvm.nodes.others.LLVMUnsupportedInlineAssemblerNode;
+import com.oracle.truffle.llvm.nodes.others.LLVMUnsupportedInstructionNode;
 import com.oracle.truffle.llvm.nodes.vars.LLVMReadNodeFactory.LLVMAddressReadNodeGen;
 import com.oracle.truffle.llvm.nodes.vars.LLVMReadNodeFactory.LLVMI1ReadNodeGen;
 import com.oracle.truffle.llvm.nodes.vars.LLVMWriteNode.LLVMWritePointerNode;
@@ -232,7 +232,9 @@ import com.oracle.truffle.llvm.nodes.vars.LLVMWriteNodeFactory.LLVMWriteI1NodeGe
 import com.oracle.truffle.llvm.nodes.vars.LLVMWriteNodeFactory.LLVMWriteI64NodeGen;
 import com.oracle.truffle.llvm.nodes.vars.LLVMWriteNodeFactory.LLVMWritePointerNodeGen;
 import com.oracle.truffle.llvm.nodes.vars.StructLiteralNodeGen;
-import com.oracle.truffle.llvm.runtime.LLVMContext;
+import com.oracle.truffle.llvm.runtime.LLVMLanguage;
+import com.oracle.truffle.llvm.runtime.LLVMUnsupportedException;
+import com.oracle.truffle.llvm.runtime.LLVMUnsupportedException.UnsupportedReason;
 import com.oracle.truffle.llvm.runtime.NodeFactory;
 import com.oracle.truffle.llvm.runtime.debug.scope.LLVMSourceLocation;
 import com.oracle.truffle.llvm.runtime.memory.LLVMStack;
@@ -269,13 +271,13 @@ class AsmFactory {
 
     private String currentPrefix;
 
-    private final LLVMContext context;
+    private final LLVMLanguage language;
     private final NodeFactory nodeFactory;
     private final LLVMSourceLocation sourceLocation;
 
-    AsmFactory(LLVMContext context, LLVMSourceLocation sourceLocation, Type[] argTypes, String asmFlags, Type retType, Type[] retTypes, int[] retOffsets) {
-        this.context = context;
-        this.nodeFactory = context.getNodeFactory();
+    AsmFactory(LLVMLanguage language, LLVMSourceLocation sourceLocation, Type[] argTypes, String asmFlags, Type retType, Type[] retTypes, int[] retOffsets) {
+        this.language = language;
+        this.nodeFactory = language.getNodeFactory();
         this.sourceLocation = sourceLocation;
         this.argTypes = argTypes;
         this.asmFlags = asmFlags;
@@ -404,7 +406,7 @@ class AsmFactory {
 
     LLVMInlineAssemblyRootNode finishInline() {
         getArguments();
-        return new LLVMInlineAssemblyRootNode(context.getLanguage(), sourceLocation, frameDescriptor, statements.toArray(LLVMStatementNode.NO_STATEMENTS), arguments, result);
+        return new LLVMInlineAssemblyRootNode(language, sourceLocation, frameDescriptor, statements.toArray(LLVMStatementNode.NO_STATEMENTS), arguments, result);
     }
 
     void setPrefix(String prefix) {
@@ -416,7 +418,7 @@ class AsmFactory {
         if (id == 3) {
             statements.add(new LLVMDebugTrapNode(sourceLocation));
         } else {
-            statements.add(new LLVMUnsupportedInlineAssemblerNode(sourceLocation, "interrupt " + nr));
+            statements.add(LLVMUnsupportedInstructionNode.create(sourceLocation, LLVMUnsupportedException.UnsupportedReason.INLINE_ASSEMBLER, "interrupt " + nr));
         }
     }
 
@@ -438,7 +440,7 @@ class AsmFactory {
             case "clc":
             case "cli":
             case "cmc":
-                statements.add(new LLVMUnsupportedInlineAssemblerNode(sourceLocation, operation));
+                statements.add(LLVMUnsupportedInstructionNode.create(sourceLocation, UnsupportedReason.INLINE_ASSEMBLER, operation));
                 break;
             case "lahf": {
                 LLVMExpressionNode lahf = LLVMAMD64LahfNodeGen.create(getFlag(LLVMAMD64Flags.CF), getFlag(LLVMAMD64Flags.PF), getFlag(LLVMAMD64Flags.AF), getFlag(LLVMAMD64Flags.ZF),
@@ -471,7 +473,7 @@ class AsmFactory {
                 break;
             case "stc":
             case "sti":
-                statements.add(new LLVMUnsupportedInlineAssemblerNode(sourceLocation, operation));
+                statements.add(LLVMUnsupportedInstructionNode.create(sourceLocation, UnsupportedReason.INLINE_ASSEMBLER, operation));
                 break;
             case "nop":
             case "pause":
@@ -480,7 +482,7 @@ class AsmFactory {
                 // TODO: implement properly
                 break;
             case "mfence":
-            case "lfance":
+            case "lfence":
             case "sfence":
                 statements.add(LLVMFenceNodeGen.create());
                 break;
@@ -548,7 +550,7 @@ class AsmFactory {
                 break;
             }
             default:
-                statements.add(new LLVMUnsupportedInlineAssemblerNode(sourceLocation, operation));
+                statements.add(LLVMUnsupportedInstructionNode.create(sourceLocation, UnsupportedReason.INLINE_ASSEMBLER, operation));
                 return;
         }
     }
@@ -755,7 +757,7 @@ class AsmFactory {
                 }
                 break;
             default:
-                statements.add(new LLVMUnsupportedInlineAssemblerNode(sourceLocation, operation));
+                statements.add(LLVMUnsupportedInstructionNode.create(sourceLocation, UnsupportedReason.INLINE_ASSEMBLER, operation));
                 return;
         }
         if (dstType == null) {
@@ -941,7 +943,7 @@ class AsmFactory {
                 statements.add(LLVMAMD64PushqNodeGen.create(src));
                 return;
             default:
-                statements.add(new LLVMUnsupportedInlineAssemblerNode(sourceLocation, operation));
+                statements.add(LLVMUnsupportedInstructionNode.create(sourceLocation, UnsupportedReason.INLINE_ASSEMBLER, operation));
                 return;
         }
         statements.add(getOperandStore(dstType, dst, out));
@@ -1212,7 +1214,7 @@ class AsmFactory {
                 out = pmovmskb128;
                 break;
             default:
-                statements.add(new LLVMUnsupportedInlineAssemblerNode(sourceLocation, operation));
+                statements.add(LLVMUnsupportedInstructionNode.create(sourceLocation, UnsupportedReason.INLINE_ASSEMBLER, operation));
                 return;
         }
         statements.add(getOperandStore(dstType, dst, out));
@@ -1586,7 +1588,7 @@ class AsmFactory {
                 out = LLVMAMD64BsfqNodeGen.create(getFlagWrite(LLVMAMD64Flags.ZF), srcA, srcB);
                 break;
             default:
-                statements.add(new LLVMUnsupportedInlineAssemblerNode(sourceLocation, operation));
+                statements.add(LLVMUnsupportedInstructionNode.create(sourceLocation, UnsupportedReason.INLINE_ASSEMBLER, operation));
                 return;
         }
         statements.add(getOperandStore(dstType, dst, out));
@@ -1617,7 +1619,7 @@ class AsmFactory {
                                 getFlagWrite(LLVMAMD64Flags.SF), getFlagWrite(LLVMAMD64Flags.OF), res, srcA, srcB));
                 return;
             default:
-                statements.add(new LLVMUnsupportedInlineAssemblerNode(sourceLocation, operation));
+                statements.add(LLVMUnsupportedInstructionNode.create(sourceLocation, UnsupportedReason.INLINE_ASSEMBLER, operation));
                 return;
         }
     }
@@ -2034,17 +2036,21 @@ class AsmFactory {
             Argument info = argInfo.get(op.getIndex());
             if (info.isMemory()) {
                 LLVMExpressionNode address = info.getAddress();
-                switch (((PrimitiveType) type).getPrimitiveKind()) {
-                    case I8:
-                        return LLVMI8StoreNodeGen.create(address, from);
-                    case I16:
-                        return LLVMI16StoreNodeGen.create(address, from);
-                    case I32:
-                        return LLVMI32StoreNodeGen.create(address, from);
-                    case I64:
-                        return LLVMI64StoreNodeGen.create(address, from);
-                    default:
-                        throw unsupportedOperandType(type);
+                if (type instanceof PrimitiveType) {
+                    switch (((PrimitiveType) type).getPrimitiveKind()) {
+                        case I8:
+                            return LLVMI8StoreNodeGen.create(address, from);
+                        case I16:
+                            return LLVMI16StoreNodeGen.create(address, from);
+                        case I32:
+                            return LLVMI32StoreNodeGen.create(address, from);
+                        case I64:
+                            return LLVMI64StoreNodeGen.create(address, from);
+                        default:
+                            throw unsupportedOperandType(type);
+                    }
+                } else {
+                    throw unsupportedOperandType(type);
                 }
             } else if (info.isRegister()) {
                 FrameSlot frame = getRegisterSlot(info.getRegister());

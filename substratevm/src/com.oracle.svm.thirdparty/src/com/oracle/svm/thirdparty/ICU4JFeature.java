@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2017, 2018, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2017, 2019, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -27,21 +27,24 @@ package com.oracle.svm.thirdparty;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Set;
-import java.util.concurrent.ConcurrentHashMap;
 import java.util.function.BooleanSupplier;
 
-import org.graalvm.nativeimage.Feature;
+import org.graalvm.nativeimage.hosted.Feature;
 import org.graalvm.nativeimage.ImageSingletons;
-import org.graalvm.nativeimage.RuntimeReflection;
+import org.graalvm.nativeimage.hosted.RuntimeReflection;
+import org.graalvm.nativeimage.hosted.RuntimeClassInitialization;
 
 import com.oracle.svm.core.annotate.Alias;
 import com.oracle.svm.core.annotate.AutomaticFeature;
 import com.oracle.svm.core.annotate.InjectAccessors;
+import com.oracle.svm.core.annotate.NeverInline;
 import com.oracle.svm.core.annotate.RecomputeFieldValue;
 import com.oracle.svm.core.annotate.RecomputeFieldValue.Kind;
 import com.oracle.svm.core.annotate.Substitute;
 import com.oracle.svm.core.annotate.TargetClass;
 import com.oracle.svm.core.util.VMError;
+
+import com.oracle.svm.hosted.FeatureImpl.FeatureAccessImpl;
 
 /**
  * ICU4JFeature enables ICU4J library ({@link "http://site.icu-project.org/"} to be used in SVM.
@@ -72,6 +75,7 @@ public final class ICU4JFeature implements Feature {
     public void beforeAnalysis(BeforeAnalysisAccess access) {
         registerShimClass(access, "com.ibm.icu.text.NumberFormatServiceShim");
         registerShimClass(access, "com.ibm.icu.text.CollatorServiceShim");
+        registerShimClass(access, "com.ibm.icu.text.BreakIteratorFactory");
     }
 
     private static void registerShimClass(BeforeAnalysisAccess access, String shimClassName) {
@@ -83,21 +87,44 @@ public final class ICU4JFeature implements Feature {
         }
     }
 
-    static class Helper {
-        /** Dummy ClassLoader used only for resource loading. */
-        // Checkstyle: stop
-        static final ClassLoader DUMMY_LOADER = new ClassLoader(null) {
-        };
-        // CheckStyle: resume
+    @Override
+    public void duringSetup(DuringSetupAccess access) {
+
+        // we should fail the native-image build, if any ICU4J class instance
+        // made it to the build-time generated heap
+        RuntimeClassInitialization.initializeAtRunTime(getIcu4jClasses(access));
+
+        // ClassLoaderHelper is a utility class used in @TargetClass annotated substitutions bellow
+        RuntimeClassInitialization.initializeAtBuildTime(ClassLoaderHelper.class);
+        RuntimeClassInitialization.initializeAtBuildTime(ClassLoaderHelper.DummyClassLoader.class);
+    }
+
+    private static Class<?>[] getIcu4jClasses(FeatureAccess access) {
+        List<Class<?>> allClasses = ((FeatureAccessImpl) access).findSubclasses(Object.class);
+        return allClasses.stream().filter(clazz -> clazz.getName().startsWith("com.ibm.icu")).toArray(Class<?>[]::new);
     }
 }
+
+// Checkstyle: stop
+final class ClassLoaderHelper {
+
+    static final class DummyClassLoader extends ClassLoader {
+        DummyClassLoader(ClassLoader parent) {
+            super(parent);
+        }
+    }
+
+    /** Dummy ClassLoader used only for resource loading. */
+    static final ClassLoader DUMMY_LOADER = new DummyClassLoader(null);
+}
+// CheckStyle: resume
 
 @TargetClass(className = "com.ibm.icu.impl.ClassLoaderUtil", onlyWith = ICU4JFeature.IsEnabled.class)
 final class Target_com_ibm_icu_impl_ClassLoaderUtil {
     @Substitute
     // Checkstyle: stop
     public static ClassLoader getClassLoader() {
-        return ICU4JFeature.Helper.DUMMY_LOADER;
+        return ClassLoaderHelper.DUMMY_LOADER;
     }
     // Checkstyle: resume
 }
@@ -122,31 +149,52 @@ final class Target_com_ibm_icu_impl_ICUBinary {
                         ICU4J_DATA_PATH_ENV_VAR +
                         ", to contain path to your ICU4J icudt directory";
 
-        private static volatile List<?> instance;
+        // once fully populated, the data file list will be kept here
+        private static volatile List<?> instance = null;
+        // helper collection to which the list will be populated
+        private static List<?> populatingDataFiles = null;
 
+        private static final Object lock = new Object();
+
+        @NeverInline("So the lock does not get eliminated.")
         static List<?> get() {
 
             if (instance == null) {
                 // Checkstyle: allow synchronization
-                synchronized (IcuDataFilesAccessors.class) {
+                synchronized (lock) {
                     if (instance == null) {
-
-                        instance = new ArrayList<>();
+                        if (populatingDataFiles == null) {
+                            // the very first call, from "outside"
+                            populatingDataFiles = new ArrayList<>();
+                        } else {
+                            // second, re-entrant, call from the same thread
+                            // comes from the addDataFilesFromPath method invoked bellow
+                            return populatingDataFiles;
+                        }
 
                         String dataPath = System.getProperty(ICU4J_DATA_PATH_SYS_PROP);
                         if (dataPath == null || dataPath.isEmpty()) {
                             dataPath = System.getenv(ICU4J_DATA_PATH_ENV_VAR);
                         }
                         if (dataPath != null && !dataPath.isEmpty()) {
-                            addDataFilesFromPath(dataPath, instance);
+                            addDataFilesFromPath(dataPath, populatingDataFiles);
                         } else {
                             System.err.println(NO_DATA_PATH_ERR_MSG);
                         }
+                        instance = populatingDataFiles;
                     }
                 }
                 // Checkstyle: disallow synchronization
             }
             return instance;
+        }
+
+        /*
+         * Any attempt to write to the list should be handled as no-op. The list of ICU4J resource
+         * bundle files should be strictly defined by one of the above mentioned system property,
+         * ICU4J_DATA_PATH_SYS_PROP, or environment variable, ICU4J_DATA_PATH_ENV_VAR.
+         */
+        static void set(@SuppressWarnings("unused") List<?> bummer) {
         }
     }
 }
@@ -155,7 +203,7 @@ final class Target_com_ibm_icu_impl_ICUBinary {
 final class Target_com_ibm_icu_impl_ICUResourceBundle {
     @Alias @RecomputeFieldValue(kind = Kind.FromAlias, isFinal = true)
     // Checkstyle: stop
-    private static ClassLoader ICU_DATA_CLASS_LOADER = ICU4JFeature.Helper.DUMMY_LOADER;
+    private static ClassLoader ICU_DATA_CLASS_LOADER = ClassLoaderHelper.DUMMY_LOADER;
     // Checkstyle: resume
 
     @SuppressWarnings("unused")
@@ -174,23 +222,10 @@ final class Target_com_ibm_icu_impl_ICUResourceBundle_WholeBundle {
     // Checkstyle: resume
 }
 
-@TargetClass(className = "com.ibm.icu.impl.SoftCache", onlyWith = ICU4JFeature.IsEnabled.class)
-final class Target_com_ibm_icu_impl_SoftCache {
-    // Checkstyle: stop
-    @Alias @RecomputeFieldValue(kind = Kind.NewInstance, declClass = ConcurrentHashMap.class) private ConcurrentHashMap<?, ?> map;
-    // Checkstyle: resume
-}
-
 @TargetClass(className = "com.ibm.icu.impl.ICUResourceBundle$AvailEntry", onlyWith = ICU4JFeature.IsEnabled.class)
 final class Target_com_ibm_icu_impl_ICUResourceBundle_AvailEntry {
     @Alias @RecomputeFieldValue(kind = Kind.Reset)
     // Checkstyle: stop
     ClassLoader loader;
     // Checkstyle: resume
-}
-
-@TargetClass(className = "com.ibm.icu.util.TimeZone", onlyWith = ICU4JFeature.IsEnabled.class)
-final class Target_com_ibm_icu_util_TimeZone {
-    // clear default time zone to force reinitialization at run time
-    @Alias @RecomputeFieldValue(kind = Kind.Reset) private static Target_com_ibm_icu_util_TimeZone defaultZone;
 }

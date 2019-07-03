@@ -56,7 +56,7 @@ import org.junit.Before;
 import org.junit.Rule;
 import org.junit.Test;
 
-public class CatalogIterableTest extends CommandTestBase implements SoftwareChannel {
+public class CatalogIterableTest extends CommandTestBase {
     @Rule public final ProxyResource proxyResource = new ProxyResource();
 
     @Override
@@ -116,7 +116,6 @@ public class CatalogIterableTest extends CommandTestBase implements SoftwareChan
 
         assertEquals("ruby", meta.getId());
         assertNull(meta.getInfoPath());
-        assertNotNull(meta.getLicensePath());
         assertFalse(meta.getPaths().isEmpty());
         assertEquals("TruffleRuby 0.33-dev", meta.getName());
         assertEquals("0.33-dev", meta.getVersionString());
@@ -139,8 +138,9 @@ public class CatalogIterableTest extends CommandTestBase implements SoftwareChan
     }
 
     void addRemoteComponent(String relative, String u, boolean addParam) throws IOException {
+        storage.graalInfo.put(BundleConstants.GRAAL_VERSION, "0.33-dev");
         initRemoteComponent(relative, u, null, null);
-        storage.installed.add(info);
+        catalogStorage.installed.add(info);
         if (addParam) {
             components.add(param);
         }
@@ -150,7 +150,7 @@ public class CatalogIterableTest extends CommandTestBase implements SoftwareChan
     public void testReadComponentMetadataNoNetwork() throws Exception {
         addRemoteComponent("persist/data/truffleruby3.jar", "test://graalvm.io/download/truffleruby.zip", false);
         textParams.add("ruby");
-        CatalogIterable cit = new CatalogIterable(this, this, this);
+        CatalogIterable cit = new CatalogIterable(this, this, getRegistry(), this);
         assertTrue(cit.iterator().hasNext());
         for (ComponentParam p : cit) {
             URL remoteU = p.createMetaLoader().getComponentInfo().getRemoteURL();
@@ -165,7 +165,7 @@ public class CatalogIterableTest extends CommandTestBase implements SoftwareChan
         exception.expectMessage("REMOTE_UnknownComponentId");
         addRemoteComponent("persist/data/truffleruby3.jar", "test://graalvm.io/download/truffleruby.zip", false);
         textParams.add("r");
-        CatalogIterable cit = new CatalogIterable(this, this, this);
+        CatalogIterable cit = new CatalogIterable(this, this, getRegistry(), this);
         assertTrue(cit.iterator().hasNext());
         cit.iterator().next();
     }
@@ -181,7 +181,7 @@ public class CatalogIterableTest extends CommandTestBase implements SoftwareChan
         addRemoteComponent("persist/data/truffleruby3.jar", "test://graalvm.io/download/truffleruby.zip", false);
         File mistyped = folder.newFile("mistyped-component.jar");
         textParams.add(mistyped.getPath());
-        CatalogIterable cit = new CatalogIterable(this, this, this);
+        CatalogIterable cit = new CatalogIterable(this, this, getRegistry(), this);
         assertTrue(cit.iterator().hasNext());
         cit.iterator().next();
     }
@@ -247,6 +247,7 @@ public class CatalogIterableTest extends CommandTestBase implements SoftwareChan
 
     @Test
     public void testURLDoesNotExist() throws Exception {
+        storage.graalInfo.put(BundleConstants.GRAAL_VERSION, "0.33-dev");
         addRemoteComponent("persist/data/truffleruby3.jar", "test://graalvm.io/download/truffleruby.zip", false);
         textParams.add("ruby");
         Handler.bind(url.toString(), new URLConnection(url) {
@@ -282,7 +283,7 @@ public class CatalogIterableTest extends CommandTestBase implements SoftwareChan
             }
         });
 
-        CatalogIterable cit = new CatalogIterable(this, this, this);
+        CatalogIterable cit = new CatalogIterable(this, this, getRegistry(), this);
         ComponentParam rubyComp = cit.iterator().next();
 
         exception.expect(FailedOperationException.class);
@@ -292,22 +293,12 @@ public class CatalogIterableTest extends CommandTestBase implements SoftwareChan
     }
 
     @Override
-    public boolean setupLocation(String urlString) {
-        // OK
-        return true;
-    }
-
-    @Override
-    public void init(CommandInput input, Feedback output) {
-    }
-
-    @Override
-    public MetadataLoader createLocalFileLoader(Path localFile, boolean verify) throws IOException {
+    public MetadataLoader createLocalFileLoader(ComponentInfo ci, Path localFile, boolean verify) throws IOException {
         return new JarMetaLoader(new JarFile(localFile.toFile(), verify), this);
     }
 
     @Override
-    public FileDownloader configureDownloader(FileDownloader dn) {
+    public FileDownloader configureDownloader(ComponentInfo ci, FileDownloader dn) {
         return dn;
     }
 }

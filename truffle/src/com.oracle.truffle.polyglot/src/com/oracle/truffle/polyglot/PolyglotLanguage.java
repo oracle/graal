@@ -52,6 +52,7 @@ import org.graalvm.polyglot.Language;
 import org.graalvm.polyglot.impl.AbstractPolyglotImpl.AbstractLanguageImpl;
 
 import com.oracle.truffle.api.Assumption;
+import com.oracle.truffle.api.CompilerAsserts;
 import com.oracle.truffle.api.CompilerDirectives.CompilationFinal;
 import com.oracle.truffle.api.Truffle;
 import com.oracle.truffle.api.TruffleLanguage;
@@ -62,8 +63,6 @@ import com.oracle.truffle.api.nodes.LanguageInfo;
 import com.oracle.truffle.api.utilities.NeverValidAssumption;
 
 final class PolyglotLanguage extends AbstractLanguageImpl implements com.oracle.truffle.polyglot.PolyglotImpl.VMObject {
-
-    static final boolean CONSERVATIVE_REFERENCES = false;
 
     final PolyglotEngineImpl engine;
     final LanguageCache cache;
@@ -89,6 +88,8 @@ final class PolyglotLanguage extends AbstractLanguageImpl implements com.oracle.
     final Assumption singleInstance = Truffle.getRuntime().createAssumption("Single language instance per engine.");
     private boolean firstInstance = true;
 
+    @CompilationFinal volatile Class<?> contextClass;
+
     PolyglotLanguage(PolyglotEngineImpl engine, LanguageCache cache, int index, boolean host, RuntimeException initError) {
         super(engine.impl);
         this.engine = engine;
@@ -108,6 +109,17 @@ final class PolyglotLanguage extends AbstractLanguageImpl implements com.oracle.
         return PolyglotContextImpl.requireContext().contexts[index];
     }
 
+    void initializeContextClass(Object contextImpl) {
+        CompilerAsserts.neverPartOfCompilation();
+        Class<?> newClass = contextImpl == null ? Void.class : contextImpl.getClass();
+        Class<?> currentClass = contextClass;
+        if (currentClass == null) {
+            contextClass = newClass;
+        } else if (currentClass != newClass) {
+            throw new IllegalStateException(String.format("Unstable context class expected %s got %s.", newClass, currentClass));
+        }
+    }
+
     boolean dependsOn(PolyglotLanguage otherLanguage) {
         Set<String> dependentLanguages = cache.getDependentLanguages();
         if (dependentLanguages.contains(otherLanguage.getId())) {
@@ -115,7 +127,7 @@ final class PolyglotLanguage extends AbstractLanguageImpl implements com.oracle.
         }
         for (String dependentLanguage : dependentLanguages) {
             PolyglotLanguage dependentLanguageObj = engine.idToLanguage.get(dependentLanguage);
-            if (dependentLanguageObj != null && dependsOn(dependentLanguageObj)) {
+            if (dependentLanguageObj != null && dependentLanguageObj.dependsOn(otherLanguage)) {
                 return true;
             }
         }
@@ -149,6 +161,11 @@ final class PolyglotLanguage extends AbstractLanguageImpl implements com.oracle.
 
     private PolyglotLanguageInstance createInstance() {
         assert Thread.holdsLock(engine);
+        if (firstInstance) {
+            firstInstance = false;
+        } else if (singleInstance.isValid()) {
+            singleInstance.invalidate();
+        }
         PolyglotLanguageInstance instance = null;
         if (initLanguage != null) {
             // reuse init language
@@ -185,11 +202,6 @@ final class PolyglotLanguage extends AbstractLanguageImpl implements com.oracle.
     PolyglotLanguageInstance allocateInstance(OptionValuesImpl newOptions) {
         PolyglotLanguageInstance instance;
         synchronized (engine) {
-            if (firstInstance) {
-                firstInstance = false;
-            } else if (singleInstance.isValid()) {
-                singleInstance.invalidate();
-            }
             switch (cache.getPolicy()) {
                 case EXCLUSIVE:
                     instance = createInstance();

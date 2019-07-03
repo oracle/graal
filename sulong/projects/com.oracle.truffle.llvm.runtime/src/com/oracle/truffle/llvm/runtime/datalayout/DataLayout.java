@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2016, 2018, Oracle and/or its affiliates.
+ * Copyright (c) 2016, 2019, Oracle and/or its affiliates.
  *
  * All rights reserved.
  *
@@ -30,7 +30,7 @@
 package com.oracle.truffle.llvm.runtime.datalayout;
 
 import java.util.ArrayList;
-import java.util.Arrays;
+import java.util.IdentityHashMap;
 import java.util.List;
 
 import com.oracle.truffle.llvm.runtime.datalayout.DataLayoutParser.DataTypeSpecification;
@@ -52,6 +52,9 @@ public final class DataLayout {
 
     private final List<DataTypeSpecification> dataLayout;
 
+    private final IdentityHashMap<Type, Integer> sizeCache = new IdentityHashMap<>();
+    private final IdentityHashMap<Type, Integer> alignmentCache = new IdentityHashMap<>();
+
     public DataLayout() {
         this.dataLayout = new ArrayList<>();
     }
@@ -61,36 +64,32 @@ public final class DataLayout {
     }
 
     public int getSize(Type type) {
-        return Math.max(1, getBitAlignment(type) / Byte.SIZE);
+        Integer cachedSize = sizeCache.get(type);
+        if (cachedSize != null) {
+            return cachedSize;
+        }
+        int size = type.getBitSize();
+        int align = getBitAlignment(type);
+        if (size % align != 0) {
+            size += align - (size % align);
+        }
+        size = Math.max(1, size / Byte.SIZE);
+        sizeCache.put(type, size);
+        return size;
     }
 
     public int getBitAlignment(Type baseType) {
-        if (baseType instanceof VariableBitWidthType) {
-            /*
-             * Handling of integer datatypes when the exact match not found
-             * http://releases.llvm.org/3.9.0/docs/LangRef.html#data-layout
-             */
-            DataTypeSpecification integerLayout = dataLayout.stream().filter(d -> d.getType() == DataLayoutType.INTEGER_WIDTHS).findFirst().orElseThrow(IllegalStateException::new);
-            int minPossibleSize = Arrays.stream(integerLayout.getValues()).max().orElseThrow(IllegalStateException::new);
-            int size = baseType.getBitSize();
-            for (int value : integerLayout.getValues()) {
-                if (size < value && minPossibleSize > value) {
-                    minPossibleSize = value;
-                }
-            }
-            if (minPossibleSize >= size) {
-                return minPossibleSize;
-            } else {
-                // is that correct?
-                return ((size + 7) / 8) * 8;
-            }
-        } else {
-            DataTypeSpecification spec = getDataTypeSpecification(baseType);
-            if (spec == null) {
-                throw new IllegalStateException("No data specification found for " + baseType);
-            }
-            return spec.getAbiAlignment();
+        Integer cachedAlignment = alignmentCache.get(baseType);
+        if (cachedAlignment != null) {
+            return cachedAlignment;
         }
+        DataTypeSpecification spec = getDataTypeSpecification(baseType);
+        if (spec == null) {
+            throw new IllegalStateException("No data specification found for " + baseType);
+        }
+        int alignment = spec.getAbiAlignment();
+        alignmentCache.put(baseType, alignment);
+        return alignment;
     }
 
     public DataLayout merge(DataLayout other) {
@@ -142,6 +141,38 @@ public final class DataLayout {
                     return getDataTypeSpecification(DataLayoutType.FLOAT, 64);
                 case X86_FP80:
                     return getDataTypeSpecification(DataLayoutType.FLOAT, 80);
+            }
+        } else if (baseType instanceof VariableBitWidthType) {
+            int bits = baseType.getBitSize();
+
+            DataTypeSpecification largest = null;
+            DataTypeSpecification smallestLarger = null;
+            for (DataTypeSpecification spec : dataLayout) {
+                if (spec.getType() == DataLayoutType.INTEGER) {
+                    if (largest == null || largest.getSize() < spec.getSize()) {
+                        largest = spec;
+                    }
+                    if (spec.getSize() >= bits) {
+                        if (smallestLarger == null || smallestLarger.getSize() > spec.getSize()) {
+                            smallestLarger = spec;
+                        }
+                    }
+                }
+            }
+
+            // http://releases.llvm.org/3.9.0/docs/LangRef.html#data-layout
+            if (smallestLarger != null) {
+                /*
+                 * If no match is found, and the type sought is an integer type, then the smallest
+                 * integer type that is larger than the bitwidth of the sought type is used.
+                 */
+                return smallestLarger;
+            } else {
+                /*
+                 * If none of the specifications are larger than the bitwidth then the largest
+                 * integer type is used.
+                 */
+                return largest;
             }
         }
         return null;

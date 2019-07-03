@@ -24,9 +24,6 @@
  */
 package org.graalvm.compiler.lir.gen;
 
-import java.util.BitSet;
-import java.util.List;
-
 import org.graalvm.compiler.core.common.CompressEncoding;
 import org.graalvm.compiler.core.common.LIRKind;
 import org.graalvm.compiler.core.common.calc.Condition;
@@ -68,14 +65,22 @@ public interface LIRGeneratorTool extends DiagnosticLIRGeneratorTool, ValueKindF
     interface MoveFactory {
 
         /**
+         * Checks whether the loading of the supplied constant can be deferred until usage.
+         */
+        @SuppressWarnings("unused")
+        default boolean mayEmbedConstantLoad(Constant constant) {
+            return false;
+        }
+
+        /**
          * Checks whether the supplied constant can be used without loading it into a register for
          * most operations, i.e., for commonly used arithmetic, logical, and comparison operations.
          *
-         * @param c The constant to check.
+         * @param constant The constant to check.
          * @return True if the constant can be used directly, false if the constant needs to be in a
          *         register.
          */
-        boolean canInlineConstant(Constant c);
+        boolean canInlineConstant(Constant constant);
 
         /**
          * @param constant The constant that might be moved to a stack slot.
@@ -132,6 +137,10 @@ public interface LIRGeneratorTool extends DiagnosticLIRGeneratorTool, ValueKindF
     MoveFactory getSpillMoveFactory();
 
     BlockScope getBlockScope(AbstractBlockBase<?> block);
+
+    boolean canInlineConstant(Constant constant);
+
+    boolean mayEmbedConstantLoad(Constant constant);
 
     Value emitConstant(LIRKind kind, Constant constant);
 
@@ -274,7 +283,7 @@ public interface LIRGeneratorTool extends DiagnosticLIRGeneratorTool, ValueKindF
     }
 
     @SuppressWarnings("unused")
-    default Variable emitArrayIndexOf(JavaKind kind, boolean findTwoConsecutive, Value sourcePointer, Value sourceCount, Value... searchValues) {
+    default Variable emitArrayIndexOf(JavaKind arrayKind, JavaKind valueKind, boolean findTwoConsecutive, Value sourcePointer, Value sourceCount, Value fromIndex, Value... searchValues) {
         throw GraalError.unimplemented("String.indexOf substitution is not implemented on this architecture");
     }
 
@@ -324,8 +333,8 @@ public interface LIRGeneratorTool extends DiagnosticLIRGeneratorTool, ValueKindF
      */
     void emitSpeculationFence();
 
-    default VirtualStackSlot allocateStackSlots(int slots, BitSet objects, List<VirtualStackSlot> outObjectStackSlots) {
-        return getResult().getFrameMapBuilder().allocateStackSlots(slots, objects, outObjectStackSlots);
+    default VirtualStackSlot allocateStackSlots(int slots) {
+        return getResult().getFrameMapBuilder().allocateStackSlots(slots);
     }
 
     default Value emitReadCallerStackPointer(Stamp wordStamp) {
