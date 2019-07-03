@@ -26,7 +26,6 @@
 package com.oracle.svm.core.jdk;
 
 import org.graalvm.nativeimage.ImageSingletons;
-import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.Platforms;
 import org.graalvm.nativeimage.c.function.CLibrary;
 import org.graalvm.nativeimage.hosted.Feature;
@@ -40,7 +39,7 @@ import com.oracle.svm.core.jni.JNIRuntimeAccess;
 import com.oracle.svm.core.log.Log;
 import com.oracle.svm.core.util.VMError;
 
-@Platforms({InternalPlatform.LINUX_JNI.class, InternalPlatform.DARWIN_JNI.class, Platform.WINDOWS.class})
+@Platforms(InternalPlatform.PLATFORM_JNI.class)
 @CLibrary(value = JDKLibZipSubstitutions.CLibraryName, requireStatic = true)
 public class JDKLibZipSubstitutions {
     static final String CLibraryName = "zip";
@@ -70,7 +69,7 @@ public class JDKLibZipSubstitutions {
     }
 }
 
-@Platforms({InternalPlatform.LINUX_JNI.class, InternalPlatform.DARWIN_JNI.class, Platform.WINDOWS.class})
+@Platforms(InternalPlatform.PLATFORM_JNI.class)
 @AutomaticFeature
 class JDKLibZipFeature implements Feature {
     @Override
@@ -101,14 +100,4 @@ class JDKLibZipFeature implements Feature {
             VMError.shouldNotReachHere("LibZipFeature: Error in registering jni access:", e);
         }
     }
-}
-
-/**
- * Temporary workaround for DARWIN_JNI. Contrary to Linux, on Darwin libzip.a does currently NOT
- * contain the zlib object files it depends on. This requires that we link to the system-provided
- * zlib also for DARWIN_JNI. Once GR-16462 is implemented (and JDKs updated) this can be removed.
- */
-@Platforms({InternalPlatform.DARWIN_JNI.class})
-@CLibrary("z")
-class ZLib {
 }

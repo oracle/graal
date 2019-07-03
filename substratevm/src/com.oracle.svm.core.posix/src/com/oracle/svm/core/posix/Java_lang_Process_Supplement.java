@@ -45,6 +45,7 @@ import org.graalvm.word.UnsignedWord;
 import org.graalvm.word.WordFactory;
 
 import com.oracle.svm.core.LibCHelper;
+import com.oracle.svm.core.SubstrateUtil;
 import com.oracle.svm.core.annotate.Uninterruptible;
 import com.oracle.svm.core.headers.Errno;
 import com.oracle.svm.core.heap.NoAllocationVerifier;
@@ -179,12 +180,12 @@ public final class Java_lang_Process_Supplement {
                 actualEnvp = LibCHelper.getEnviron();
             }
 
-            if (LibC.strchr(file, '/').isNonNull()) {
+            if (SubstrateUtil.strchr(file, '/').isNonNull()) {
                 UnistdNoTransitions.execve(argv.read(0), argv, actualEnvp);
             } else {
                 // Scan PATH for the file to execute. We cannot use execvpe()
                 // because it is a GNU extension that is not universally available.
-                final int fileStrlen = (int) LibC.strlen(file).rawValue();
+                final int fileStrlen = (int) SubstrateUtil.strlen(file).rawValue();
                 int stickyErrno = 0;
 
                 final CCharPointerPointer saveptr = StackValue.get(CCharPointerPointer.class);
@@ -192,7 +193,7 @@ public final class Java_lang_Process_Supplement {
                 CCharPointer searchDir = LibC.strtok_r(searchPaths, searchPathSeparator, saveptr);
                 while (searchDir.isNonNull()) {
                     CCharPointer bufptr = WordFactory.pointer(buffer.rawValue());
-                    int len0 = (int) LibC.strlen(searchDir).rawValue();
+                    int len0 = (int) SubstrateUtil.strlen(searchDir).rawValue();
                     if (len0 + fileStrlen + 2 > buflen) {
                         Errno.set_errno(Errno.ENAMETOOLONG());
                         continue;
