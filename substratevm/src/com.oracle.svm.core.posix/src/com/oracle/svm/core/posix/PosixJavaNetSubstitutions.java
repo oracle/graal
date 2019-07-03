@@ -45,9 +45,12 @@ import java.net.SocketImpl;
 import java.net.SocketOptions;
 import java.net.SocketTimeoutException;
 import java.net.UnknownHostException;
+import java.util.Enumeration;
 import java.util.HashMap;
 import java.util.LinkedHashMap;
+import java.util.Objects;
 
+import com.oracle.svm.core.posix.headers.linux.LinuxIn;
 import org.graalvm.compiler.serviceprovider.JavaVersionUtil;
 import org.graalvm.nativeimage.ImageSingletons;
 import org.graalvm.nativeimage.PinnedObject;
@@ -297,6 +300,10 @@ final class Target_java_net_PlainDatagramSocketImpl {
 
     @Alias //
     int timeout;
+
+    @Alias //
+    @TargetElement(name = "fd") //
+    FileDescriptor fdAlias;
 
     /* Do not re-format commented out code: @formatter:off */
     //    183  /*
@@ -1684,6 +1691,40 @@ final class Target_java_net_PlainDatagramSocketImpl {
         }
     }
     // @formatter:on
+
+    /* Do not re-format commented out code: @formatter:off */
+    //  2201  /*
+    //  2202   * Class:     java_net_PlainDatagramSocketImpl
+    //  2203   * Method:    join
+    //  2204   * Signature: (Ljava/net/InetAddress;)V
+    //  2205   */
+    //  2206  JNIEXPORT void JNICALL
+    //  2207  Java_java_net_PlainDatagramSocketImpl_join(JNIEnv *env, jobject this,
+    //  2208                                             jobject iaObj, jobject niObj)
+    @Substitute
+    @SuppressWarnings({ "static-method", "unused" })
+    protected void join(InetAddress ia, NetworkInterface ni) throws IOException {
+        // 2210      mcast_join_leave(env, this, iaObj, niObj, JNI_TRUE);
+        Util_java_net_PlainDatagramSocketImpl.mcast_join_leave(this, ia, ni, true);
+    }
+    // @formatter:on
+
+    /* Do not re-format commented out code: @formatter:off */
+    //   2213  /*
+    //   2214   * Class:     java_net_PlainDatagramSocketImpl
+    //   2215   * Method:    leave
+    //   2216   * Signature: (Ljava/net/InetAddress;)V
+    //   2217   */
+    //   2218  JNIEXPORT void JNICALL
+    //   2219  Java_java_net_PlainDatagramSocketImpl_leave(JNIEnv *env, jobject this,
+    //   2220                                              jobject iaObj, jobject niObj)
+    @Substitute
+    @SuppressWarnings({ "static-method", "unused" })
+    protected void leave(InetAddress ia, NetworkInterface ni) throws IOException {
+        //  2222      mcast_join_leave(env, this, iaObj, niObj, JNI_FALSE);
+        Util_java_net_PlainDatagramSocketImpl.mcast_join_leave(this, ia, ni, false);
+    }
+    // @formatter:on
 }
 /* } Allow names with non-standard names: Checkstyle: resume */
 
@@ -2476,6 +2517,835 @@ class Util_java_net_PlainDatagramSocketImpl {
     static boolean not(int i) {
         return !(CTypeConversion.toBoolean(i));
     }
+
+    /* Do not re-format commented out code: @formatter:off */
+    static void mcast_join_leave_linux(Target_java_net_PlainDatagramSocketImpl self, InetAddress iaObj, NetworkInterface niObj, boolean join) throws IOException {
+        //  1901      jobject fdObj = (*env)->GetObjectField(env, this, pdsi_fdID);
+        final FileDescriptor fdObj = self.fdAlias;
+        //  1902      jint fd;
+        int fd;
+        //  1903      jint family;
+        int family;
+        //  1904      jint ipv6_join_leave;
+        boolean ipv6_join_leave;
+        //  1905
+        //  1906      if (IS_NULL(fdObj)) {
+        if (fdObj == null) {
+            //  1907          JNU_ThrowByName(env, JNU_JAVANETPKG "SocketException",
+            //  1908                          "Socket closed");
+            throw new SocketException("Socket closed");
+            //  1909          return;
+            // not reachable
+            //  1910      } else {
+        } else {
+            //  1911          fd = (*env)->GetIntField(env, fdObj, IO_fd_fdID);
+            fd = PosixUtils.getFD(fdObj);
+            //  1912      }
+        }
+        //  1913      if (IS_NULL(iaObj)) {
+        //  1914          JNU_ThrowNullPointerException(env, "iaObj");
+        //  1915          return;
+        //  1916      }
+        Objects.requireNonNull(iaObj, "iaObj");
+        //  1917
+        //  1918      /*
+        //  1919       * Determine if this is an IPv4 or IPv6 join/leave.
+        //  1920       */
+        //  1921      ipv6_join_leave = ipv6_available();
+        ipv6_join_leave = JavaNetNetUtil.ipv6_available();
+        //  1922
+        //  1923  #ifdef __linux__
+        //  1924      family = getInetAddress_family(env, iaObj);
+        //  1925      JNU_CHECK_EXCEPTION(env);
+        family = JavaNetNetUtil.getInetAddress_family(iaObj);
+        //  1926      if (family == java_net_InetAddress_IPv4) {
+        if (family == Target_java_net_InetAddress.IPv4) {
+            //  1927          ipv6_join_leave = JNI_FALSE;
+            ipv6_join_leave = false;
+            //  1928      }
+        }
+        //  1929  #endif
+        //  1930
+        //  1931      /*
+        //  1932       * For IPv4 join use IP_ADD_MEMBERSHIP/IP_DROP_MEMBERSHIP socket option
+        //  1933       *
+        //  1934       * On Linux if IPv4 or IPv6 use IP_ADD_MEMBERSHIP/IP_DROP_MEMBERSHIP
+        //  1935       */
+        //  1936      if (!ipv6_join_leave) {
+        if (! ipv6_join_leave) {
+            //  1937  #ifdef __linux__
+            //  1938          struct ip_mreqn mname;
+            LinuxIn.ip_mreqn mname = StackValue.get(LinuxIn.ip_mreqn.class);
+            //  1939  #else // elided
+            //  1941  #endif
+            //  1942          int mname_len;
+            int mname_len = 0;
+            //  1943
+            //  1944          /*
+            //  1945           * joinGroup(InetAddress, NetworkInterface) implementation :-
+            //  1946           *
+            //  1947           * Linux/IPv6:  use ip_mreqn structure populated with multicast
+            //  1948           *              address and interface index.
+            //  1949           *
+            //  1950           * IPv4:        use ip_mreq structure populated with multicast
+            //  1951           *              address and first address obtained from
+            //  1952           *              NetworkInterface
+            //  1953           */
+            //  1954          if (niObj != NULL) {
+            if (niObj != null) {
+                //  1955  #if defined(__linux__)
+                //  1956              if (ipv6_available()) {
+                if (JavaNetNetUtil.ipv6_available()) {
+                    //  1957                  static jfieldID ni_indexID;
+                    //  1958
+                    //  1959                  if (ni_indexID == NULL) {
+                    //  1960                      jclass c = (*env)->FindClass(env, "java/net/NetworkInterface");
+                    //  1961                      CHECK_NULL(c);
+                    //  1962                      ni_indexID = (*env)->GetFieldID(env, c, "index", "I");
+                    //  1963                      CHECK_NULL(ni_indexID);
+                    //  1964                  }
+                    //  1965
+                    //  1966                  mname.imr_multiaddr.s_addr = htonl(getInetAddress_addr(env, iaObj));
+                    mname.imr_multiaddr().set_s_addr(NetinetIn.htonl(JavaNetNetUtilMD.getInetAddress_addr(iaObj)));
+                    //  1967                  JNU_CHECK_EXCEPTION(env);
+                    //  1968                  mname.imr_address.s_addr = 0;
+                    mname.imr_address().set_s_addr(0);
+                    //  1969                  mname.imr_ifindex =  (*env)->GetIntField(env, niObj, ni_indexID);
+                    mname.set_imr_ifindex(niObj.getIndex());
+                    //  1970                  mname_len = sizeof(struct ip_mreqn);
+                    mname_len = SizeOf.get(LinuxIn.ip_mreqn.class);
+                    //  1971              } else
+                } else
+                    //  1972  #endif
+                    //  1973              {
+                {
+                    //  1974                  jobjectArray addrArray = (*env)->GetObjectField(env, niObj, ni_addrsID);
+                    final Enumeration<InetAddress> addresses = niObj.getInetAddresses();
+                    //  1975                  jobject addr;
+                    InetAddress addr;
+                    //  1976
+                    //  1977                  if ((*env)->GetArrayLength(env, addrArray) < 1) {
+                    if (! addresses.hasMoreElements()) {
+                        //  1978                      JNU_ThrowByName(env, JNU_JAVANETPKG "SocketException",
+                        //  1979                          "bad argument for IP_ADD_MEMBERSHIP: "
+                        //  1980                          "No IP addresses bound to interface");
+                        throw new SocketException("bad argument for IP_ADD_MEMBERSHIP: No IP address bound to interface");
+                        //  1981                      return;
+                        // not reached
+                        //  1982                  }
+                    }
+                    //  1983                  addr = (*env)->GetObjectArrayElement(env, addrArray, 0);
+                    addr = addresses.nextElement();
+                    //  1984
+                    //  1985                  mname.imr_multiaddr.s_addr = htonl(getInetAddress_addr(env, iaObj));
+                    //  1986                  JNU_CHECK_EXCEPTION(env);
+                    mname.imr_multiaddr().set_s_addr(NetinetIn.htonl(JavaNetNetUtilMD.getInetAddress_addr(iaObj)));
+                    //  1987  #ifdef __linux__
+                    //  1988                  mname.imr_address.s_addr = htonl(getInetAddress_addr(env, addr));
+                    //  1989                  JNU_CHECK_EXCEPTION(env);
+                    mname.imr_address().set_s_addr(NetinetIn.htonl(JavaNetNetUtilMD.getInetAddress_addr(addr)));
+                    //  1990                  mname.imr_ifindex = 0;
+                    mname.set_imr_ifindex(0);
+                    //  1991  #else /* elided */
+                    //  1994  #endif
+                    //  1995                  mname_len = sizeof(struct ip_mreq);
+                    mname_len = SizeOf.get(NetinetIn.ip_mreq.class);
+                    //  1996              }
+                }
+                //  1997          }
+            }
+            //  1998
+            //  1999
+            //  2000          /*
+            //  2001           * joinGroup(InetAddress) implementation :-
+            //  2002           *
+            //  2003           * Linux/IPv6:  use ip_mreqn structure populated with multicast
+            //  2004           *              address and interface index. index obtained
+            //  2005           *              from cached value or IPV6_MULTICAST_IF.
+            //  2006           *
+            //  2007           * IPv4:        use ip_mreq structure populated with multicast
+            //  2008           *              address and local address obtained from
+            //  2009           *              IP_MULTICAST_IF. On Linux IP_MULTICAST_IF
+            //  2010           *              returns different structure depending on
+            //  2011           *              kernel.
+            //  2012           */
+            //  2013
+            //  2014          if (niObj == NULL) {
+            if (niObj == null) {
+                //  2015
+                //  2016  #if defined(__linux__)
+                //  2017              if (ipv6_available()) {
+                if (JavaNetNetUtil.ipv6_available()) {
+                    //  2018
+                    //  2019                  int index;
+                    CIntPointer indexPtr = StackValue.get(CIntPointer.class);
+                    //  2020                  socklen_t len = sizeof(index);
+                    CIntPointer lenPtr = StackValue.get(CIntPointer.class);
+                    lenPtr.write(SizeOf.get(CIntPointer.class));
+                    //  2022                  if (getsockopt(fd, IPPROTO_IPV6, IPV6_MULTICAST_IF,
+                    //  2023                                 (char*)&index, &len) < 0) {
+                    if (Socket.getsockopt(fd, NetinetIn.IPPROTO_IPV6(), NetinetIn.IPV6_MULTICAST_IF(),
+                            indexPtr, lenPtr) < 0) {
+                        //  2024                      NET_ThrowCurrent(env, "getsockopt IPV6_MULTICAST_IF failed");
+                        throw new SocketException(PosixUtils.lastErrorString("getsockopt IPV6_MULTICAST_IF failed"));
+                        //  2025                      return;
+                        // not reached
+                        //  2026                  }
+                    }
+                    //  2027
+                    //  2028                  mname.imr_multiaddr.s_addr = htonl(getInetAddress_addr(env, iaObj));
+                    //  2029                  JNU_CHECK_EXCEPTION(env);
+                    mname.imr_multiaddr().set_s_addr(NetinetIn.htonl(JavaNetNetUtilMD.getInetAddress_addr(iaObj)));
+                    //  2030                  mname.imr_address.s_addr = 0 ;
+                    mname.imr_address().set_s_addr(0);
+                    //  2031                  mname.imr_ifindex = index;
+                    mname.set_imr_ifindex(indexPtr.read());
+                    //  2032                  mname_len = sizeof(struct ip_mreqn);
+                    mname_len = SizeOf.get(LinuxIn.ip_mreqn.class);
+                    //  2033              } else
+                } else
+                //  2034  #endif
+                //  2035              {
+                {
+                    //  2036                  struct in_addr in;
+                    //  2037                  struct in_addr *inP = &in;
+                    // no need to initialize; it's filled in by getsockopt
+                    NetinetIn.in_addr inP = StackValue.get(NetinetIn.in_addr.class);
+                    //  2038                  socklen_t len = sizeof(struct in_addr);
+                    CIntPointer lenPtr = StackValue.get(CIntPointer.class);
+                    lenPtr.write(SizeOf.get(NetinetIn.in_addr.class));
+                    //  2039
+                    //  2040                  if (getsockopt(fd, IPPROTO_IP, IP_MULTICAST_IF, (char *)inP, &len) < 0) {
+                    if (Socket.getsockopt(fd, NetinetIn.IPPROTO_IP(), NetinetIn.IP_MULTICAST_IF(), inP, lenPtr) < 0) {
+                        //  2041                      NET_ThrowCurrent(env, "getsockopt IP_MULTICAST_IF failed");
+                        throw new SocketException(PosixUtils.lastErrorString("getsockopt IP_MULTICAST_IF failed"));
+                        //  2042                      return;
+                        // not reached
+                        //  2043                  }
+                    }
+                    //  2044
+                    //  2045  #ifdef __linux__
+                    //  2046                  mname.imr_address.s_addr = in.s_addr;
+                    mname.imr_address().set_s_addr(inP.s_addr());
+                    //  2047                  mname.imr_ifindex = 0;
+                    mname.set_imr_ifindex(0);
+                    //  2048  #else /* elided */
+                    //  2050  #endif
+                    //  2051                  mname.imr_multiaddr.s_addr = htonl(getInetAddress_addr(env, iaObj));
+                    //  2052                  JNU_CHECK_EXCEPTION(env);
+                    mname.imr_multiaddr().set_s_addr(NetinetIn.htonl(JavaNetNetUtilMD.getInetAddress_addr(iaObj)));
+                    //  2053                  mname_len = sizeof(struct ip_mreq);
+                    mname_len = SizeOf.get(NetinetIn.ip_mreq.class);
+                    //  2054              }
+                }
+                //  2055          }
+            }
+            //  2056
+            //  2057
+            //  2058          /*
+            //  2059           * Join the multicast group.
+            //  2060           */
+            //  2061          if (setsockopt(fd, IPPROTO_IP, (join ? IP_ADD_MEMBERSHIP:IP_DROP_MEMBERSHIP),
+            //  2062                         (char *) &mname, mname_len) < 0) {
+            if (Socket.setsockopt(fd, NetinetIn.IPPROTO_IP(), join ? NetinetIn.IP_ADD_MEMBERSHIP() : NetinetIn.IP_DROP_MEMBERSHIP(),
+                    mname, mname_len) < 0) {
+                //  2063
+                //  2064              /*
+                //  2065               * If IP_ADD_MEMBERSHIP returns ENOPROTOOPT on Linux and we've got
+                //  2066               * IPv6 enabled then it's possible that the kernel has been fixed
+                //  2067               * so we switch to IPV6_ADD_MEMBERSHIP socket option.
+                //  2068               * As of 2.4.7 kernel IPV6_ADD_MEMBERSHIP can't handle IPv4-mapped
+                //  2069               * addresses so we have to use IP_ADD_MEMBERSHIP for IPv4 multicast
+                //  2070               * groups. However if the socket is an IPv6 socket then setsockopt
+                //  2071               * should return ENOPROTOOPT. We assume this will be fixed in Linux
+                //  2072               * at some stage.
+                //  2073               */
+                //  2074  #if defined(__linux__)
+                //  2075              if (errno == ENOPROTOOPT) {
+                if (Errno.errno() == Errno.ENOPROTOOPT()) {
+                    //  2076                  if (ipv6_available()) {
+                    if (JavaNetNetUtil.ipv6_available()) {
+                        //  2077                      ipv6_join_leave = JNI_TRUE;
+                        ipv6_join_leave = true;
+                        //  2078                      errno = 0;
+                        Errno.set_errno(0);
+                        //  2079                  } else  {
+                    } else {
+                        //  2080                      errno = ENOPROTOOPT;    /* errno can be changed by ipv6_available */
+                        Errno.set_errno(Errno.ENOPROTOOPT());
+                        //  2081                  }
+                    }
+                    //  2082              }
+                }
+                //  2083  #endif
+                //  2084              if (errno) {
+                if (Errno.errno() > 0) {
+                    //  2085                  if (join) {
+                    if (join) {
+                        //  2086                      NET_ThrowCurrent(env, "setsockopt IP_ADD_MEMBERSHIP failed");
+                        throw new SocketException(PosixUtils.lastErrorString("setsockopt IP_ADD_MEMBERSHIP failed"));
+                        //  2087                  } else {
+                    } else {
+                        //  2088                      if (errno == ENOENT)
+                        if (Errno.errno() == Errno.ENOENT()) {
+                            //  2089                          JNU_ThrowByName(env, JNU_JAVANETPKG "SocketException",
+                            //  2090                              "Not a member of the multicast group");
+                            throw new SocketException("Not a member of the multicast group");
+                            //  2091                      else
+                        } else {
+                            //  2092                          NET_ThrowCurrent(env, "setsockopt IP_DROP_MEMBERSHIP failed");
+                            throw new SocketException(PosixUtils.lastErrorString("setsockopt IP_DROP_MEMBERSHIP failed"));
+                            // no {} in original code if/else
+                        }
+                        //  2093                  }
+                    }
+                    //  2094                  return;
+                    // not reached
+                    //  2095              }
+                }
+                //  2096          }
+            }
+            //  2097
+            //  2098          /*
+            //  2099           * If we haven't switched to IPv6 socket option then we're done.
+            //  2100           */
+            //  2101          if (!ipv6_join_leave) {
+            if (! ipv6_join_leave) {
+                //  2102              return;
+                return;
+                //  2103          }
+            }
+            //  2104      }
+        }
+        //  2105
+        //  2106
+        //  2107      /*
+        //  2108       * IPv6 join. If it's an IPv4 multicast group then we use an IPv4-mapped
+        //  2109       * address.
+        //  2110       */
+        //  2111      {
+        {
+            //  2112          struct ipv6_mreq mname6;
+            NetinetIn.ipv6_mreq mname6 = StackValue.get(NetinetIn.ipv6_mreq.class);
+            //  2113          jbyteArray ipaddress;
+            //not used
+            //  2114          jbyte caddr[16];
+            CCharPointer caddr = StackValue.get(16, CCharPointer.class);
+            //  2115          jint family;
+            //int family; // we can't redefine a variable within a scope
+            //  2116          jint address;
+            int address;
+            //  2117          family = getInetAddress_family(env, iaObj) == java_net_InetAddress_IPv4 ?
+            //  2118              AF_INET : AF_INET6;
+            //  2119          JNU_CHECK_EXCEPTION(env);
+            family = JavaNetNetUtil.getInetAddress_family(iaObj) == Target_java_net_InetAddress.IPv4 ?
+                            Socket.AF_INET() : Socket.AF_INET6();
+            //  2120          if (family == AF_INET) { /* will convert to IPv4-mapped address */
+            if (family == Socket.AF_INET()) {
+                //  2121              memset((char *) caddr, 0, 16);
+                LibC.memset(caddr, WordFactory.signed(0), WordFactory.unsigned(16));
+                //  2122              address = getInetAddress_addr(env, iaObj);
+                //  2123              JNU_CHECK_EXCEPTION(env);
+                address = JavaNetNetUtilMD.getInetAddress_addr(iaObj);
+                //  2124              caddr[10] = 0xff;
+                caddr.write(10, (byte) 0xff);
+                //  2125              caddr[11] = 0xff;
+                caddr.write(11, (byte) 0xff);
+                //  2126
+                //  2127              caddr[12] = ((address >> 24) & 0xff);
+                caddr.write(12, (byte) (address >> 24 & 0xff));
+                //  2128              caddr[13] = ((address >> 16) & 0xff);
+                caddr.write(13, (byte) (address >> 16 & 0xff));
+                //  2129              caddr[14] = ((address >> 8) & 0xff);
+                caddr.write(14, (byte) (address >> 8 & 0xff));
+                //  2130              caddr[15] = (address & 0xff);
+                caddr.write(15, (byte) (address & 0xff));
+                //  2131          } else {
+            } else {
+                //  2132              getInet6Address_ipaddress(env, iaObj, (char*)caddr);
+                JavaNetNetUtil.getInet6Address_ipAddress((Inet6Address) iaObj, caddr);
+                //  2133          }
+            }
+            //  2134
+            //  2135          memcpy((void *)&(mname6.ipv6mr_multiaddr), caddr, sizeof(struct in6_addr));
+            LibC.memcpy(mname6.ipv6mr_multiaddr(), caddr, SizeOf.unsigned(NetinetIn.in6_addr.class));
+            //  2136          if (IS_NULL(niObj)) {
+            if (niObj == null) {
+                //  2137              int index;
+                CIntPointer indexPtr = StackValue.get(CIntPointer.class);
+                //  2138              socklen_t len = sizeof(index);
+                CIntPointer lenPtr = StackValue.get(CIntPointer.class);
+                lenPtr.write(SizeOf.get(CIntPointer.class));
+                //  2139
+                //  2140              if (getsockopt(fd, IPPROTO_IPV6, IPV6_MULTICAST_IF,
+                //  2141                             (char*)&index, &len) < 0) {
+                if (Socket.getsockopt(fd, NetinetIn.IPPROTO_IPV6(), NetinetIn.IPV6_MULTICAST_IF(),
+                        indexPtr, lenPtr) < 0) {
+                    //  2142                  NET_ThrowCurrent(env, "getsockopt IPV6_MULTICAST_IF failed");
+                    throw new SocketException(PosixUtils.lastErrorString("setsockopt IPV6_MULTICAST_IF failed"));
+                    //  2143                  return;
+                    // not reached
+                    //  2144              }
+                }
+                //  2145
+                //  2146  #ifdef __linux__
+                //  2147              /*
+                //  2148               * On 2.4.8+ if we join a group with the interface set to 0
+                //  2149               * then the kernel records the interface it decides. This causes
+                //  2150               * subsequent leave groups to fail as there is no match. Thus we
+                //  2151               * pick the interface if there is a matching route.
+                //  2152               */
+                //  2153              if (index == 0) {
+                if (indexPtr.read() == 0) {
+                    //  2154                  int rt_index = getDefaultIPv6Interface(&(mname6.ipv6mr_multiaddr));
+                    int rt_index = JavaNetNetUtilMD.getDefaultIPv6Interface(mname6.ipv6mr_multiaddr());
+                    //  2155                  if (rt_index > 0) {
+                    if (rt_index > 0) {
+                        //  2156                      index = rt_index;
+                        indexPtr.write(rt_index);
+                        //  2157                  }
+                    }
+                    //  2158              }
+                }
+                //  2159  #endif
+                //  2160  #ifdef MACOSX /* elided */
+                //  2164  #endif
+                //  2165              mname6.ipv6mr_interface = index;
+                mname6.set_ipv6mr_interface(indexPtr.read());
+                //  2166          } else {
+            } else {
+                //  2167              jint idx = (*env)->GetIntField(env, niObj, ni_indexID);
+                int idx = niObj.getIndex();
+                //  2168              mname6.ipv6mr_interface = idx;
+                mname6.set_ipv6mr_interface(idx);
+                //  2169          }
+            }
+            //  2170
+            //  2171  #if defined(_ALLBSD_SOURCE) /* elided */
+            //  2176  #else
+            //  2177  #define ADD_MEMBERSHIP          IPV6_ADD_MEMBERSHIP
+            //  2178  #define DRP_MEMBERSHIP          IPV6_DROP_MEMBERSHIP
+            //  2179  #define S_ADD_MEMBERSHIP        "IPV6_ADD_MEMBERSHIP"
+            //  2180  #define S_DRP_MEMBERSHIP        "IPV6_DROP_MEMBERSHIP"
+            //  2181  #endif
+            //  2182
+            //  2183          /* Join the multicast group */
+            //  2184          if (setsockopt(fd, IPPROTO_IPV6, (join ? ADD_MEMBERSHIP : DRP_MEMBERSHIP),
+            //  2185                         (char *) &mname6, sizeof (mname6)) < 0) {
+            if (Socket.setsockopt(fd, NetinetIn.IPPROTO_IPV6(), (join ? NetinetIn.IPV6_ADD_MEMBERSHIP() : NetinetIn.IPV6_DROP_MEMBERSHIP()),
+                    mname6, SizeOf.get(NetinetIn.ipv6_mreq.class)) < 0) {
+                //  2186
+                //  2187              if (join) {
+                if (join) {
+                    //  2188                  NET_ThrowCurrent(env, "setsockopt " S_ADD_MEMBERSHIP " failed");
+                    throw new SocketException(PosixUtils.lastErrorString("setsockopt IPV6_ADD_MEMBERSHIP failed"));
+                    //  2189              } else {
+                } else {
+                    //  2190                  if (errno == ENOENT) {
+                    if (Errno.errno() == Errno.ENOENT()) {
+                        //  2191                     JNU_ThrowByName(env, JNU_JAVANETPKG "SocketException",
+                        //  2192                          "Not a member of the multicast group");
+                        throw new SocketException("Not a member of the multicast group");
+                        //  2193                  } else {
+                    } else {
+                        //  2194                      NET_ThrowCurrent(env, "setsockopt " S_DRP_MEMBERSHIP " failed");
+                        throw new SocketException(PosixUtils.lastErrorString("setsockopt IPV6_DROP_MEMBERSHIP failed"));
+                        //  2195                  }
+                    }
+                    //  2196              }
+                }
+                //  2197          }
+            }
+            //  2198      }
+        }
+        //  2199  }
+    }
+    // @formatter:on
+
+    /* Do not re-format commented out code: @formatter:off */
+    static void mcast_join_leave_non_linux(Target_java_net_PlainDatagramSocketImpl self, InetAddress iaObj, NetworkInterface niObj, boolean join) throws IOException {
+        //  1901      jobject fdObj = (*env)->GetObjectField(env, this, pdsi_fdID);
+        final FileDescriptor fdObj = self.fdAlias;
+        //  1902      jint fd;
+        int fd;
+        //  1903      jint family;
+        int family;
+        //  1904      jint ipv6_join_leave;
+        boolean ipv6_join_leave;
+        //  1905
+        //  1906      if (IS_NULL(fdObj)) {
+        if (fdObj == null) {
+            //  1907          JNU_ThrowByName(env, JNU_JAVANETPKG "SocketException",
+            //  1908                          "Socket closed");
+            throw new SocketException("Socket closed");
+            //  1909          return;
+            // not reachable
+            //  1910      } else {
+        } else {
+            //  1911          fd = (*env)->GetIntField(env, fdObj, IO_fd_fdID);
+            fd = PosixUtils.getFD(fdObj);
+            //  1912      }
+        }
+        //  1913      if (IS_NULL(iaObj)) {
+        //  1914          JNU_ThrowNullPointerException(env, "iaObj");
+        //  1915          return;
+        //  1916      }
+        Objects.requireNonNull(iaObj, "iaObj");
+        //  1917
+        //  1918      /*
+        //  1919       * Determine if this is an IPv4 or IPv6 join/leave.
+        //  1920       */
+        //  1921      ipv6_join_leave = ipv6_available();
+        ipv6_join_leave = JavaNetNetUtil.ipv6_available();
+        //  1922
+        //  1923  #ifdef __linux__ /* elided */
+        //  1929  #endif
+        //  1930
+        //  1931      /*
+        //  1932       * For IPv4 join use IP_ADD_MEMBERSHIP/IP_DROP_MEMBERSHIP socket option
+        //  1933       *
+        //  1934       * On Linux if IPv4 or IPv6 use IP_ADD_MEMBERSHIP/IP_DROP_MEMBERSHIP
+        //  1935       */
+        //  1936      if (!ipv6_join_leave) {
+        if (! ipv6_join_leave) {
+            //  1937  #ifdef __linux__ /* elided */
+            //  1939  #else
+            //  1940          struct ip_mreq mname;
+            NetinetIn.ip_mreq mname = StackValue.get(NetinetIn.ip_mreq.class);
+            //  1941  #endif
+            //  1942          int mname_len;
+            int mname_len = 0;
+            //  1943
+            //  1944          /*
+            //  1945           * joinGroup(InetAddress, NetworkInterface) implementation :-
+            //  1946           *
+            //  1947           * Linux/IPv6:  use ip_mreqn structure populated with multicast
+            //  1948           *              address and interface index.
+            //  1949           *
+            //  1950           * IPv4:        use ip_mreq structure populated with multicast
+            //  1951           *              address and first address obtained from
+            //  1952           *              NetworkInterface
+            //  1953           */
+            //  1954          if (niObj != NULL) {
+            if (niObj != null) {
+                //  1955  #if defined(__linux__) /* elided */
+                //  1972  #endif
+                //  1973              {
+                {
+                    //  1974                  jobjectArray addrArray = (*env)->GetObjectField(env, niObj, ni_addrsID);
+                    final Enumeration<InetAddress> addresses = niObj.getInetAddresses();
+                    //  1975                  jobject addr;
+                    InetAddress addr;
+                    //  1976
+                    //  1977                  if ((*env)->GetArrayLength(env, addrArray) < 1) {
+                    if (! addresses.hasMoreElements()) {
+                        //  1978                      JNU_ThrowByName(env, JNU_JAVANETPKG "SocketException",
+                        //  1979                          "bad argument for IP_ADD_MEMBERSHIP: "
+                        //  1980                          "No IP addresses bound to interface");
+                        throw new SocketException("bad argument for IP_ADD_MEMBERSHIP: No IP address bound to interface");
+                        //  1981                      return;
+                        // not reached
+                        //  1982                  }
+                    }
+                    //  1983                  addr = (*env)->GetObjectArrayElement(env, addrArray, 0);
+                    addr = addresses.nextElement();
+                    //  1984
+                    //  1985                  mname.imr_multiaddr.s_addr = htonl(getInetAddress_addr(env, iaObj));
+                    //  1986                  JNU_CHECK_EXCEPTION(env);
+                    mname.imr_multiaddr().set_s_addr(NetinetIn.htonl(JavaNetNetUtilMD.getInetAddress_addr(iaObj)));
+                    //  1987  #ifdef __linux__ /* elided */
+                    //  1991  #else
+                    //  1992                  mname.imr_interface.s_addr = htonl(getInetAddress_addr(env, addr));
+                    //  1993                  JNU_CHECK_EXCEPTION(env);
+                    mname.imr_interface().set_s_addr(NetinetIn.htonl(JavaNetNetUtilMD.getInetAddress_addr(addr)));
+                    //  1994  #endif
+                    //  1995                  mname_len = sizeof(struct ip_mreq);
+                    mname_len = SizeOf.get(NetinetIn.ip_mreq.class);
+                    //  1996              }
+                }
+                //  1997          }
+            }
+            //  1998
+            //  1999
+            //  2000          /*
+            //  2001           * joinGroup(InetAddress) implementation :-
+            //  2002           *
+            //  2003           * Linux/IPv6:  use ip_mreqn structure populated with multicast
+            //  2004           *              address and interface index. index obtained
+            //  2005           *              from cached value or IPV6_MULTICAST_IF.
+            //  2006           *
+            //  2007           * IPv4:        use ip_mreq structure populated with multicast
+            //  2008           *              address and local address obtained from
+            //  2009           *              IP_MULTICAST_IF. On Linux IP_MULTICAST_IF
+            //  2010           *              returns different structure depending on
+            //  2011           *              kernel.
+            //  2012           */
+            //  2013
+            //  2014          if (niObj == NULL) {
+            if (niObj == null) {
+                //  2015
+                //  2016  #if defined(__linux__) /* elided */
+                //  2034  #endif
+                //  2035              {
+                {
+                    //  2036                  struct in_addr in;
+                    //  2037                  struct in_addr *inP = &in;
+                    // no need to initialize; it's filled in by getsockopt
+                    NetinetIn.in_addr inP = StackValue.get(NetinetIn.in_addr.class);
+                    //  2038                  socklen_t len = sizeof(struct in_addr);
+                    CIntPointer lenPtr = StackValue.get(CIntPointer.class);
+                    //  2039
+                    //  2040                  if (getsockopt(fd, IPPROTO_IP, IP_MULTICAST_IF, (char *)inP, &len) < 0) {
+                    if (Socket.getsockopt(fd, NetinetIn.IPPROTO_IP(), NetinetIn.IP_MULTICAST_IF(), inP, lenPtr) < 0) {
+                        //  2041                      NET_ThrowCurrent(env, "getsockopt IP_MULTICAST_IF failed");
+                        throw new SocketException(PosixUtils.lastErrorString("getsockopt IP_MULTICAST_IF failed"));
+                        //  2042                      return;
+                        // not reached
+                        //  2043                  }
+                    }
+                    //  2044
+                    //  2045  #ifdef __linux__ /* elided */
+                    //  2048  #else
+                    //  2049                  mname.imr_interface.s_addr = in.s_addr;
+                    mname.imr_interface().set_s_addr(inP.s_addr());
+                    //  2050  #endif
+                    //  2051                  mname.imr_multiaddr.s_addr = htonl(getInetAddress_addr(env, iaObj));
+                    //  2052                  JNU_CHECK_EXCEPTION(env);
+                    mname.imr_multiaddr().set_s_addr(NetinetIn.htonl(JavaNetNetUtilMD.getInetAddress_addr(iaObj)));
+                    //  2053                  mname_len = sizeof(struct ip_mreq);
+                    mname_len = SizeOf.get(NetinetIn.ip_mreq.class);
+                    //  2054              }
+                }
+                //  2055          }
+            }
+            //  2056
+            //  2057
+            //  2058          /*
+            //  2059           * Join the multicast group.
+            //  2060           */
+            //  2061          if (setsockopt(fd, IPPROTO_IP, (join ? IP_ADD_MEMBERSHIP:IP_DROP_MEMBERSHIP),
+            //  2062                         (char *) &mname, mname_len) < 0) {
+            if (Socket.setsockopt(fd, NetinetIn.IPPROTO_IP(), join ? NetinetIn.IP_ADD_MEMBERSHIP() : NetinetIn.IP_DROP_MEMBERSHIP(),
+                    mname, mname_len) < 0) {
+                //  2063
+                //  2064              /*
+                //  2065               * If IP_ADD_MEMBERSHIP returns ENOPROTOOPT on Linux and we've got
+                //  2066               * IPv6 enabled then it's possible that the kernel has been fixed
+                //  2067               * so we switch to IPV6_ADD_MEMBERSHIP socket option.
+                //  2068               * As of 2.4.7 kernel IPV6_ADD_MEMBERSHIP can't handle IPv4-mapped
+                //  2069               * addresses so we have to use IP_ADD_MEMBERSHIP for IPv4 multicast
+                //  2070               * groups. However if the socket is an IPv6 socket then setsockopt
+                //  2071               * should return ENOPROTOOPT. We assume this will be fixed in Linux
+                //  2072               * at some stage.
+                //  2073               */
+                //  2074  #if defined(__linux__) /* elided */
+                //  2083  #endif
+                //  2084              if (errno) {
+                if (Errno.errno() > 0) {
+                    //  2085                  if (join) {
+                    if (join) {
+                        //  2086                      NET_ThrowCurrent(env, "setsockopt IP_ADD_MEMBERSHIP failed");
+                        throw new SocketException(PosixUtils.lastErrorString("setsockopt IP_ADD_MEMBERSHIP failed"));
+                        //  2087                  } else {
+                    } else {
+                        //  2088                      if (errno == ENOENT)
+                        if (Errno.errno() == Errno.ENOENT()) {
+                            //  2089                          JNU_ThrowByName(env, JNU_JAVANETPKG "SocketException",
+                            //  2090                              "Not a member of the multicast group");
+                            throw new SocketException("Not a member of the multicast group");
+                            //  2091                      else
+                        } else {
+                            //  2092                          NET_ThrowCurrent(env, "setsockopt IP_DROP_MEMBERSHIP failed");
+                            throw new SocketException(PosixUtils.lastErrorString("setsockopt IP_DROP_MEMBERSHIP failed"));
+                            // no {} in original code if/else
+                        }
+                        //  2093                  }
+                    }
+                    //  2094                  return;
+                    // not reached
+                    //  2095              }
+                }
+                //  2096          }
+            }
+            //  2097
+            //  2098          /*
+            //  2099           * If we haven't switched to IPv6 socket option then we're done.
+            //  2100           */
+            //  2101          if (!ipv6_join_leave) {
+            if (! ipv6_join_leave) {
+                //  2102              return;
+                return;
+                //  2103          }
+            }
+            //  2104      }
+        }
+        //  2105
+        //  2106
+        //  2107      /*
+        //  2108       * IPv6 join. If it's an IPv4 multicast group then we use an IPv4-mapped
+        //  2109       * address.
+        //  2110       */
+        //  2111      {
+        {
+            //  2112          struct ipv6_mreq mname6;
+            NetinetIn.ipv6_mreq mname6 = StackValue.get(NetinetIn.ipv6_mreq.class);
+            //  2113          jbyteArray ipaddress;
+            //not used
+            //  2114          jbyte caddr[16];
+            CCharPointer caddr = StackValue.get(16, CCharPointer.class);
+            //  2115          jint family;
+            //int family; // we can't redefine a variable within a scope
+            //  2116          jint address;
+            int address;
+            //  2117          family = getInetAddress_family(env, iaObj) == java_net_InetAddress_IPv4 ?
+            //  2118              AF_INET : AF_INET6;
+            //  2119          JNU_CHECK_EXCEPTION(env);
+            family = JavaNetNetUtil.getInetAddress_family(iaObj) == Target_java_net_InetAddress.IPv4 ?
+                            Socket.AF_INET() : Socket.AF_INET6();
+            //  2120          if (family == AF_INET) { /* will convert to IPv4-mapped address */
+            if (family == Socket.AF_INET()) {
+                //  2121              memset((char *) caddr, 0, 16);
+                LibC.memset(caddr, WordFactory.signed(0), WordFactory.unsigned(16));
+                //  2122              address = getInetAddress_addr(env, iaObj);
+                //  2123              JNU_CHECK_EXCEPTION(env);
+                address = JavaNetNetUtilMD.getInetAddress_addr(iaObj);
+                //  2124              caddr[10] = 0xff;
+                caddr.write(10, (byte) 0xff);
+                //  2125              caddr[11] = 0xff;
+                caddr.write(11, (byte) 0xff);
+                //  2126
+                //  2127              caddr[12] = ((address >> 24) & 0xff);
+                caddr.write(12, (byte) (address >> 24 & 0xff));
+                //  2128              caddr[13] = ((address >> 16) & 0xff);
+                caddr.write(13, (byte) (address >> 16 & 0xff));
+                //  2129              caddr[14] = ((address >> 8) & 0xff);
+                caddr.write(14, (byte) (address >> 8 & 0xff));
+                //  2130              caddr[15] = (address & 0xff);
+                caddr.write(15, (byte) (address & 0xff));
+                //  2131          } else {
+            } else {
+                //  2132              getInet6Address_ipaddress(env, iaObj, (char*)caddr);
+                JavaNetNetUtil.getInet6Address_ipAddress((Inet6Address) iaObj, caddr);
+                //  2133          }
+            }
+            //  2134
+            //  2135          memcpy((void *)&(mname6.ipv6mr_multiaddr), caddr, sizeof(struct in6_addr));
+            LibC.memcpy(mname6.ipv6mr_multiaddr(), caddr, SizeOf.unsigned(NetinetIn.in6_addr.class));
+            //  2136          if (IS_NULL(niObj)) {
+            if (niObj == null) {
+                //  2137              int index;
+                CIntPointer indexPtr = StackValue.get(CIntPointer.class);
+                //  2138              socklen_t len = sizeof(index);
+                CIntPointer lenPtr = StackValue.get(CIntPointer.class);
+                lenPtr.write(SizeOf.get(CIntPointer.class));
+                //  2139
+                //  2140              if (getsockopt(fd, IPPROTO_IPV6, IPV6_MULTICAST_IF,
+                //  2141                             (char*)&index, &len) < 0) {
+                if (Socket.getsockopt(fd, NetinetIn.IPPROTO_IPV6(), NetinetIn.IPV6_MULTICAST_IF(),
+                        indexPtr, lenPtr) < 0) {
+                    //  2142                  NET_ThrowCurrent(env, "getsockopt IPV6_MULTICAST_IF failed");
+                    throw new SocketException(PosixUtils.lastErrorString("setsockopt IPV6_MULTICAST_IF failed"));
+                    //  2143                  return;
+                    // not reached
+                    //  2144              }
+                }
+                //  2145
+                //  2146  #ifdef __linux__ /* elided */
+                //  2159  #endif
+                //  2160  #ifdef MACOSX
+                if (IsDefined.MACOSX()) {
+                    //  2161              if (family == AF_INET6 && index == 0) {
+                    if (family == Socket.AF_INET6() && indexPtr.read() == 0) {
+                        //  2162                  index = getDefaultScopeID(env);
+                        indexPtr.write(Target_java_net_NetworkInterface.defaultIndex);
+                        //  2163              }
+                    }
+                    //  2164  #endif
+                }
+                //  2165              mname6.ipv6mr_interface = index;
+                mname6.set_ipv6mr_interface(indexPtr.read());
+                //  2166          } else {
+            } else {
+                //  2167              jint idx = (*env)->GetIntField(env, niObj, ni_indexID);
+                int idx = niObj.getIndex();
+                //  2168              mname6.ipv6mr_interface = idx;
+                mname6.set_ipv6mr_interface(idx);
+                //  2169          }
+            }
+            //  2170
+            //  2171  #if defined(_ALLBSD_SOURCE)
+            //  2172  #define ADD_MEMBERSHIP          IPV6_JOIN_GROUP
+            //  2173  #define DRP_MEMBERSHIP          IPV6_LEAVE_GROUP
+            //  2174  #define S_ADD_MEMBERSHIP        "IPV6_JOIN_GROUP"
+            //  2175  #define S_DRP_MEMBERSHIP        "IPV6_LEAVE_GROUP"
+            //  2176  #else /* elided */
+            //  2181  #endif
+            //  2182
+            //  2183          /* Join the multicast group */
+            //  2184          if (setsockopt(fd, IPPROTO_IPV6, (join ? ADD_MEMBERSHIP : DRP_MEMBERSHIP),
+            //  2185                         (char *) &mname6, sizeof (mname6)) < 0) {
+            if (Socket.setsockopt(fd, NetinetIn.IPPROTO_IPV6(), (join ? NetinetIn.IPV6_JOIN_GROUP() : NetinetIn.IPV6_LEAVE_GROUP()),
+                    mname6, SizeOf.get(NetinetIn.ipv6_mreq.class)) < 0) {
+                //  2186
+                //  2187              if (join) {
+                if (join) {
+                    //  2188                  NET_ThrowCurrent(env, "setsockopt " S_ADD_MEMBERSHIP " failed");
+                    throw new SocketException(PosixUtils.lastErrorString("setsockopt IPV6_JOIN_GROUP failed"));
+                    //  2189              } else {
+                } else {
+                    //  2190                  if (errno == ENOENT) {
+                    if (Errno.errno() == Errno.ENOENT()) {
+                        //  2191                     JNU_ThrowByName(env, JNU_JAVANETPKG "SocketException",
+                        //  2192                          "Not a member of the multicast group");
+                        throw new SocketException("Not a member of the multicast group");
+                        //  2193                  } else {
+                    } else {
+                        //  2194                      NET_ThrowCurrent(env, "setsockopt " S_DRP_MEMBERSHIP " failed");
+                        throw new SocketException(PosixUtils.lastErrorString("setsockopt IPV6_LEAVE_GROUP failed"));
+                        //  2195                  }
+                    }
+                    //  2196              }
+                }
+                //  2197          }
+            }
+            //  2198      }
+        }
+        //  2199  }
+    }
+    // @formatter:on
+
+    /* Do not re-format commented out code: @formatter:off */
+    //  1878  /*
+    //  1879   * mcast_join_leave: Join or leave a multicast group.
+    //  1880   *
+    //  1881   * For IPv4 sockets use IP_ADD_MEMBERSHIP/IP_DROP_MEMBERSHIP socket option
+    //  1882   * to join/leave multicast group.
+    //  1883   *
+    //  1884   * For IPv6 sockets use IPV6_ADD_MEMBERSHIP/IPV6_DROP_MEMBERSHIP socket option
+    //  1885   * to join/leave multicast group. If multicast group is an IPv4 address then
+    //  1886   * an IPv4-mapped address is used.
+    //  1887   *
+    //  1888   * On Linux with IPv6 if we wish to join/leave an IPv4 multicast group then
+    //  1889   * we must use the IPv4 socket options. This is because the IPv6 socket options
+    //  1890   * don't support IPv4-mapped addresses. This is true as per 2.2.19 and 2.4.7
+    //  1891   * kernel releases. In the future it's possible that IP_ADD_MEMBERSHIP
+    //  1892   * will be updated to return ENOPROTOOPT if uses with an IPv6 socket (Solaris
+    //  1893   * already does this). Thus to cater for this we first try with the IPv4
+    //  1894   * socket options and if they fail we use the IPv6 socket options. This
+    //  1895   * seems a reasonable failsafe solution.
+    //  1896   */
+    //  1897  static void mcast_join_leave(JNIEnv *env, jobject this,
+    //  1898                               jobject iaObj, jobject niObj,
+    //  1899                               jboolean join) {
+    static void mcast_join_leave(Target_java_net_PlainDatagramSocketImpl self, InetAddress iaObj, NetworkInterface niObj, boolean join) throws IOException {
+        // The Linux code path uses a different mreq structure, so for type safety we have to factor it out completely.
+        if (IsDefined.__linux__()) {
+            mcast_join_leave_linux(self, iaObj, niObj, join);
+        } else {
+            mcast_join_leave_non_linux(self, iaObj, niObj, join);
+        }
+    }
+    // @formatter:on
 }
 /* } Allow names with non-standard names: Checkstyle: resume */
 
