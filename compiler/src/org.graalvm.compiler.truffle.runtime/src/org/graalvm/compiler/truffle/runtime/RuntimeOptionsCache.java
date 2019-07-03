@@ -43,9 +43,9 @@ public class RuntimeOptionsCache {
     private final double splittingGrowthLimit;
     private final int splittingMaxNumberOfSplitNodes;
 
-    public RuntimeOptionsCache(OptionValues engineOptions) {
+    public RuntimeOptionsCache(OptionValues options) {
         // Splitting
-        splitting = TruffleRuntimeOptions.getValue(PolyglotCompilerOptions.Splitting) && TruffleRuntimeOptions.getValue(PolyglotCompilerOptions.Mode) != PolyglotCompilerOptions.EngineModeEnum.LATENCY;
+        splitting = options.get(PolyglotCompilerOptions.Splitting) && options.get(PolyglotCompilerOptions.Mode) != PolyglotCompilerOptions.EngineModeEnum.LATENCY;
         legacySplitting = TruffleRuntimeOptions.getValue(SharedTruffleRuntimeOptions.TruffleLegacySplitting);
         splittingAllowForcedSplits = TruffleRuntimeOptions.getValue(SharedTruffleRuntimeOptions.TruffleSplittingAllowForcedSplits);
         splittingDumpDecisions = TruffleRuntimeOptions.getValue(SharedTruffleRuntimeOptions.TruffleSplittingDumpDecisions);
