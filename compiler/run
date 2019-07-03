@@ -1,0 +1,1 @@
+mx vm -cp ~/tests -XX:+PrintCompilation -XX:+UnlockExperimentalVMOptions -XX:+EnableJVMCI -XX:+UseJVMCICompiler -XX:-TieredCompilation -XX:+UnlockDiagnosticVMOptions -XX:+PrintAssembly -Dgraal.PrintGraph=Network -Dgraal.Dump=\*:4 -ea Main8

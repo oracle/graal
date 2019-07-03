@@ -75,10 +75,48 @@ public final class VectorFloatStamp extends VectorPrimitiveStamp {
                     return a;
                 }
             },
+            new BinaryOp.Mul(true, true) {
+                @Override
+                public Constant foldConstant(Constant a, Constant b) {
+                    return null;
+                }
+
+                @Override
+                public Stamp foldStamp(Stamp a, Stamp b) {
+                    if (a.isEmpty()) {
+                        return a;
+                    }
+
+                    if (b.isEmpty()) {
+                        return b;
+                    }
+
+                    // Can only be unrestricted so return a
+                    return a;
+                }
+            },
             null,
             null,
-            null,
-            null,
+            new BinaryOp.Div(false, false) {
+                @Override
+                public Constant foldConstant(Constant a, Constant b) {
+                    return null;
+                }
+
+                @Override
+                public Stamp foldStamp(Stamp a, Stamp b) {
+                    if (a.isEmpty()) {
+                        return a;
+                    }
+
+                    if (b.isEmpty()) {
+                        return b;
+                    }
+
+                    // Can only be unrestricted so return a
+                    return a;
+                }
+            },
             null,
             null,
             null,
