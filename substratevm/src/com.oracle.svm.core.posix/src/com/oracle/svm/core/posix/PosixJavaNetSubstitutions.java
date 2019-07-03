@@ -4027,6 +4027,22 @@ final class Target_java_net_NetworkInterface {
         return obj;
     }
 
+    //   477  /*
+    //   478   * Class:     java_net_NetworkInterface
+    //   479   * Method:    isLoopback0
+    //   480   * Signature: (Ljava/lang/String;I)Z
+    //   481   */
+    //   482  JNIEXPORT jboolean JNICALL Java_java_net_NetworkInterface_isLoopback0(JNIEnv *env, jclass cls, jstring name, jint index) {
+    //   483      int ret = getFlags0(env, name);
+    //   484      return (ret & IFF_LOOPBACK) ? JNI_TRUE :  JNI_FALSE;
+    //   485  }
+    @Substitute
+    @SuppressWarnings({"unused"})
+    private static boolean isLoopback0(String name, int index) {
+        int ret = JavaNetNetworkInterface.getFlags0(name);
+        return ((ret & NetIf.IFF_LOOPBACK()) != 0) ? true : false;
+    }
+
     /*
      * Translated from jdk8u/jdk/src/solaris/native/java/net/NetworkInterface.c
      */
