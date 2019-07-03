@@ -36,125 +36,28 @@ public class LLVMPThreadThreadIntrinsics {
         LLVMStoreNode store = null;
 
         @Specialization
-        //+++ @CompilerDirectives.TruffleBoundary
         protected int doIntrinsic(VirtualFrame frame, Object thread, Object attr, Object startRoutine, Object arg, @CachedContext(LLVMLanguage.class) TruffleLanguage.ContextReference<LLVMContext> ctxRef) {
             // create store node
             if (store == null) {
                 CompilerDirectives.transferToInterpreterAndInvalidate();
                 store = ctxRef.get().getNodeFactory().createStoreNode(LLVMInteropType.ValueKind.I64);
             }
-
             // create thread for execution of function
-            Thread t = ctxRef.get().getEnv().createThread(new InitStartOfNewThread(startRoutine, arg, ctxRef));
+            Thread t = ctxRef.get().getEnv().createThread(new UtilStartThread.InitStartOfNewThread(startRoutine, arg, ctxRef));
             // store cur id in thread var
             store.executeWithTarget(thread, t.getId());
-
             // store thread with thread id in context
             UtilAccess.putLongThread(ctxRef.get().threadStorage, t.getId(), t);
             // start thread
             t.start();
-
+            // TODO: error handling
             return 0;
-        }
-    }
-
-    static class InitStartOfNewThread implements Runnable {
-        private Object startRoutine;
-        private Object arg;
-        private TruffleLanguage.ContextReference<LLVMContext> ctxRef;
-
-        public InitStartOfNewThread(Object startRoutine, Object arg, TruffleLanguage.ContextReference<LLVMContext> ctxRef) {
-            this.startRoutine = startRoutine;
-            this.arg = arg;
-            this.ctxRef = ctxRef;
-        }
-
-        @Override
-        public void run() {
-            if (ctxRef.get().pthreadCallTarget == null) {
-                ctxRef.get().pthreadCallTarget = Truffle.getRuntime().createCallTarget(new RunNewThreadNode(LLVMLanguage.getLanguage()));
-            }
-            // pthread_exit throws a control flow exception to stop the thread
-            try {
-                ctxRef.get().pthreadCallTarget.call(startRoutine, arg);
-            } catch (PThreadExitException e) {
-
-            }
-        }
-    }
-
-    static final class MyArgNode extends LLVMExpressionNode {
-        private final FrameSlot slot;
-
-        private MyArgNode(FrameSlot slot) {
-            this.slot = slot;
-        }
-
-        @Override
-        public Object executeGeneric(VirtualFrame frame) {
-            return frame.getValue(slot);
-        }
-    }
-
-
-
-    private static class RunNewThreadNode extends RootNode {
-        @Child
-        LLVMExpressionNode callNode = null;
-
-        @CompilerDirectives.CompilationFinal
-        FrameSlot functionSlot = null;
-
-        @CompilerDirectives.CompilationFinal
-        FrameSlot argSlot = null;
-
-        @CompilerDirectives.CompilationFinal
-        FrameSlot spSlot = null;
-
-        private LLVMLanguage language;
-
-        protected RunNewThreadNode(LLVMLanguage language) {
-            super(language);
-            this.language = language;
-        }
-
-        @Override
-        public Object execute(VirtualFrame frame) {
-            // LLVMStack stack = new LLVMStack(1000); // how big should it really be?
-            // LLVMStack.StackPointer sp = stack.newFrame();
-            LLVMStack.StackPointer sp = language.getContextReference().get().getThreadingStack().getStack().newFrame();
-            if (callNode == null) {
-                CompilerDirectives.transferToInterpreterAndInvalidate();
-                functionSlot = frame.getFrameDescriptor().findOrAddFrameSlot("function");
-                argSlot = frame.getFrameDescriptor().findOrAddFrameSlot("arg");
-                spSlot = frame.getFrameDescriptor().findOrAddFrameSlot("sp");
-
-                callNode = getCurrentContext(LLVMLanguage.class).getNodeFactory().createFunctionCall(
-                        new MyArgNode(functionSlot),
-                        new LLVMExpressionNode[] {
-                                new MyArgNode(spSlot), new MyArgNode(argSlot)
-                        },
-                        new FunctionType(PointerType.VOID, new Type[] {}, false),
-                        null
-                );
-            }
-            // copy arguments to frame
-            final Object[] arguments = frame.getArguments();
-            Object function = arguments[0];
-            Object arg = arguments[1];
-            frame.setObject(functionSlot, function);
-            frame.setObject(argSlot, arg);
-            frame.setObject(spSlot, sp);
-
-            callNode.executeGeneric(frame);
-            return null;
         }
     }
 
     @NodeChild(type = LLVMExpressionNode.class, value = "retval")
     public abstract static class LLVMPThreadExit extends LLVMBuiltin {
         @Specialization
-        //+++ @CompilerDirectives.TruffleBoundary
         protected int doIntrinsic(VirtualFrame frame, Object retval, @CachedContext(LLVMLanguage.class) TruffleLanguage.ContextReference<LLVMContext> ctxRef) {
             // save return value in context for join calls
             UtilAccess.putLongObj(ctxRef.get().retValStorage, Thread.currentThread().getId(), retval);
@@ -169,13 +72,11 @@ public class LLVMPThreadThreadIntrinsics {
         @Child LLVMStoreNode storeNode;
 
         @Specialization
-        //+++ @CompilerDirectives.TruffleBoundary
         protected int doIntrinsic(VirtualFrame frame, long th, Object threadReturn, @CachedContext(LLVMLanguage.class) TruffleLanguage.ContextReference<LLVMContext> ctxRef) {
             if (storeNode == null) {
                 CompilerDirectives.transferToInterpreterAndInvalidate();
                 storeNode = ctxRef.get().getNodeFactory().createStoreNode(LLVMInteropType.ValueKind.POINTER);
             }
-
             try {
                 // join thread
                 Thread thread = UtilAccess.getLongThread(ctxRef.get().threadStorage, th);
@@ -184,10 +85,8 @@ public class LLVMPThreadThreadIntrinsics {
                     return 5;
                 }
                 thread.join();
-
                 // get return value
                 Object retVal = UtilAccess.getLongObj(ctxRef.get().retValStorage, th);
-
                 // store return value at ptr
                 // TODO: checkstyle says cast to managed or native pointer
                 LLVMPointer thReturnPtr = (LLVMPointer) threadReturn;

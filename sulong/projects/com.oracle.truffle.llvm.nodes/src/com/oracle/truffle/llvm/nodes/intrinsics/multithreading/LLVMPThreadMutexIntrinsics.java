@@ -117,7 +117,6 @@ public class LLVMPThreadMutexIntrinsics {
     @NodeChild(type = LLVMExpressionNode.class, value = "mutex")
     public abstract static class LLVMPThreadMutexDestroy extends LLVMBuiltin {
         @Specialization
-        //+++ @CompilerDirectives.TruffleBoundary
         protected int doIntrinsic(VirtualFrame frame, Object mutex, @CachedContext(LLVMLanguage.class) TruffleLanguage.ContextReference<LLVMContext> ctxRef) {
             long mutexAddress = ((LLVMNativePointer) mutex).asNative();
             // TODO: what if sandbox mode and managed pointer?
@@ -133,7 +132,6 @@ public class LLVMPThreadMutexIntrinsics {
         LLVMLoadNode read = null;
 
         @Specialization
-        //+++ @CompilerDirectives.TruffleBoundary
         protected int doIntrinsic(VirtualFrame frame, Object mutex, Object attr, @CachedContext(LLVMLanguage.class) TruffleLanguage.ContextReference<LLVMContext> ctxRef) {
             if (read == null) {
                 CompilerDirectives.transferToInterpreterAndInvalidate();
@@ -165,7 +163,6 @@ public class LLVMPThreadMutexIntrinsics {
     @NodeChild(type = LLVMExpressionNode.class, value = "mutex")
     public abstract static class LLVMPThreadMutexLock extends LLVMBuiltin {
         @Specialization
-        //+++ @CompilerDirectives.TruffleBoundary
         protected int doIntrinsic(VirtualFrame frame, Object mutex, @CachedContext(LLVMLanguage.class) TruffleLanguage.ContextReference<LLVMContext> ctxRef) {
             long mutexAddress = ((LLVMNativePointer) mutex).asNative();
             // TODO: handle managed pointers too
@@ -186,7 +183,6 @@ public class LLVMPThreadMutexIntrinsics {
     @NodeChild(type = LLVMExpressionNode.class, value = "mutex")
     public abstract static class LLVMPThreadMutexTrylock extends LLVMBuiltin {
         @Specialization
-        //+++ @CompilerDirectives.TruffleBoundary
         protected int doIntrinsic(VirtualFrame frame, Object mutex, @CachedContext(LLVMLanguage.class) TruffleLanguage.ContextReference<LLVMContext> ctxRef) {
             long mutexAddress = ((LLVMNativePointer) mutex).asNative();
             Mutex mutexObj = (Mutex) UtilAccess.getObjObj(ctxRef.get().mutexStorage, mutexAddress);
@@ -206,7 +202,6 @@ public class LLVMPThreadMutexIntrinsics {
     @NodeChild(type = LLVMExpressionNode.class, value = "mutex")
     public abstract static class LLVMPThreadMutexUnlock extends LLVMBuiltin {
         @Specialization
-        //+++ @CompilerDirectives.TruffleBoundary
         protected int doIntrinsic(VirtualFrame frame, Object mutex, @CachedContext(LLVMLanguage.class) TruffleLanguage.ContextReference<LLVMContext> ctxRef) {
             long mutexAddress = ((LLVMNativePointer) mutex).asNative();
             Mutex mutexObj = (Mutex) UtilAccess.getObjObj(ctxRef.get().mutexStorage, mutexAddress);

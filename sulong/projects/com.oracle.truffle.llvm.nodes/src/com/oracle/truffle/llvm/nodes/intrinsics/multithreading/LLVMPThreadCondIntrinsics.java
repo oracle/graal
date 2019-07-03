@@ -1,6 +1,5 @@
 package com.oracle.truffle.llvm.nodes.intrinsics.multithreading;
 
-import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.TruffleLanguage;
 import com.oracle.truffle.api.dsl.CachedContext;
 import com.oracle.truffle.api.dsl.NodeChild;
@@ -64,7 +63,6 @@ public class LLVMPThreadCondIntrinsics {
     @NodeChild(type = LLVMExpressionNode.class, value = "cond")
     public abstract static class LLVMPThreadCondDestroy extends LLVMBuiltin {
         @Specialization
-        //+++ @CompilerDirectives.TruffleBoundary
         protected int doIntrinsic(VirtualFrame frame, Object cond, @CachedContext(LLVMLanguage.class) TruffleLanguage.ContextReference<LLVMContext> ctxRef) {
             long condAddress = ((LLVMNativePointer) cond).asNative();
             UtilAccess.removeObjObj(ctxRef.get().condStorage, condAddress);
@@ -72,12 +70,10 @@ public class LLVMPThreadCondIntrinsics {
         }
     }
 
-
     @NodeChild(type = LLVMExpressionNode.class, value = "cond")
     @NodeChild(type = LLVMExpressionNode.class, value = "attr")
     public abstract static class LLVMPThreadCondInit extends LLVMBuiltin {
         @Specialization
-        //+++ @CompilerDirectives.TruffleBoundary
         protected int doIntrinsic(VirtualFrame frame, Object cond, Object attr, @CachedContext(LLVMLanguage.class) TruffleLanguage.ContextReference<LLVMContext> ctxRef) {
             // we can use the address of the native pointer here, bc a cond
             // must only work when using the original variable, not a copy
