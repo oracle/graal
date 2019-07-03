@@ -25,7 +25,6 @@
 
 package org.graalvm.compiler.nodes.spi;
 
-import java.util.AbstractList;
 import java.util.ArrayList;
 import java.util.Comparator;
 import java.util.HashMap;
@@ -59,12 +58,12 @@ public interface SwitchFoldable extends NodeInterface {
 
     ValueNode switchValue();
 
-    boolean updateSwitchData(QuickQueryKeyData keyData, List<AbstractBeginNode> successors, double[] cumulative, List<AbstractBeginNode> duplicates);
+    boolean updateSwitchData(QuickQueryKeyData keyData, QuickQueryList<AbstractBeginNode> successors, double[] cumulative, List<AbstractBeginNode> duplicates);
 
     /**
      * adds the default branch to the successors, and returns the index at which it is.
      */
-    int addDefault(List<AbstractBeginNode> successors);
+    int addDefault(QuickQueryList<AbstractBeginNode> successors);
 
     boolean isInSwitch(ValueNode switchValue);
 
@@ -91,26 +90,22 @@ public interface SwitchFoldable extends NodeInterface {
         }
     }
 
-    final class QuickQueryList<T> extends AbstractList<T> {
+    final class QuickQueryList<T> {
         private final List<T> list = new ArrayList<>();
         private final HashMap<T, Integer> set = new HashMap<>();
 
-        @Override
         public int indexOf(Object begin) {
             return set.getOrDefault(begin, -1);
         }
 
-        @Override
         public boolean contains(Object o) {
             return set.containsKey(o);
         }
 
-        @Override
         public T get(int index) {
             return list.get(index);
         }
 
-        @Override
         public boolean add(T item) {
             assert !contains(item);
             set.put(item, list.size());
@@ -120,13 +115,10 @@ public interface SwitchFoldable extends NodeInterface {
         /**
          * Adds an object, known to be unique beforehand.
          */
-        @Override
-        public void add(int index, T item) {
-            assert index == -1;
+        public void addUnique(T item) {
             list.add(item);
         }
 
-        @Override
         public int size() {
             return list.size();
         }
@@ -163,7 +155,7 @@ public interface SwitchFoldable extends NodeInterface {
         return keyData.contains(key);
     }
 
-    static int duplicateIndex(AbstractBeginNode begin, List<AbstractBeginNode> successors) {
+    static int duplicateIndex(AbstractBeginNode begin, QuickQueryList<AbstractBeginNode> successors) {
         return successors.indexOf(begin);
     }
 
@@ -207,16 +199,26 @@ public interface SwitchFoldable extends NodeInterface {
         return null;
     }
 
+    static int countNonDeoptSuccessors(QuickQueryKeyData keyData) {
+        int result = 0;
+        for (KeyData key : keyData.list) {
+            if (key.keyProbability > 0.0d) {
+                result++;
+            }
+        }
+        return result;
+    }
+
     /**
      * Collapses a cascade of foldables (IfNode, FixedGuard and IntegerSwitch) into a single switch.
      */
     default boolean switchTransformationOptimization(SimplifierTool tool) {
-        if (switchValue() == null || (getParentSwitchNode(switchValue()) == null && getChildSwitchNode(switchValue()) == null)) {
+        ValueNode switchValue = switchValue();
+        if (switchValue == null || (getParentSwitchNode(switchValue) == null && getChildSwitchNode(switchValue) == null)) {
             // Don't bother trying if there is nothing to do.
             return false;
         }
         SwitchFoldable topMostSwitchNode = this;
-        ValueNode switchValue = switchValue();
         Stamp switchStamp = switchValue.stamp(NodeView.DEFAULT);
 
         // Abort if we do not have an int
@@ -236,7 +238,7 @@ public interface SwitchFoldable extends NodeInterface {
             iteratingNode = iteratingNode.getParentSwitchNode(switchValue);
         }
         QuickQueryKeyData keyData = new QuickQueryKeyData();
-        List<AbstractBeginNode> successors = new QuickQueryList<>();
+        QuickQueryList<AbstractBeginNode> successors = new QuickQueryList<>();
         List<AbstractBeginNode> unreachable = new ArrayList<>();
         double[] cumulative = {1.0d};
 
@@ -275,18 +277,18 @@ public interface SwitchFoldable extends NodeInterface {
         int[] keys = new int[newKeyCount];
         double[] keyProbabilities = new double[newKeyCount + 1];
         int[] keySuccessors = new int[newKeyCount + 1];
-        double uniform = 1 / (double) (newKeyCount + 1);
+        int nonDeoptSuccessorCount = countNonDeoptSuccessors(keyData) + (cumulative[0] > 0.0d ? 1 : 0);
+        double uniform = uninitializedProfiles && nonDeoptSuccessorCount > 0 ? 1 / (double) nonDeoptSuccessorCount : 1.0d;
         for (int i = 0; i < newKeyCount; i++) {
             SwitchFoldable.KeyData data = keyData.get(i);
             keys[i] = data.key;
-            keyProbabilities[i] = uninitializedProfiles ? uniform : data.keyProbability;
+            keyProbabilities[i] = uninitializedProfiles && data.keyProbability > 0.0d ? uniform : data.keyProbability;
             keySuccessors[i] = data.keySuccessor;
         }
 
         // Add default
-        keyProbabilities[newKeyCount] = uninitializedProfiles ? uniform : cumulative[0];
+        keyProbabilities[newKeyCount] = uninitializedProfiles && cumulative[0] > 0.0d ? uniform : cumulative[0];
         keySuccessors[newKeyCount] = lowestSwitchNode.addDefault(successors);
-        ;
 
         // Spin an adapter if the value is narrower than an int
         ValueNode adapter = null;
@@ -323,7 +325,7 @@ public interface SwitchFoldable extends NodeInterface {
 
         // Attach the branches to the switch.
         int pos = 0;
-        for (AbstractBeginNode begin : successors) {
+        for (AbstractBeginNode begin : successors.list) {
             if (!begin.isAlive()) {
                 graph.add(begin.next());
                 graph.add(begin);

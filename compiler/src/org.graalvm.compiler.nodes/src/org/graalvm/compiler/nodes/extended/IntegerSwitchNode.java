@@ -172,7 +172,7 @@ public final class IntegerSwitchNode extends SwitchNode implements LIRLowerable,
     }
 
     @Override
-    public boolean updateSwitchData(QuickQueryKeyData keyData, List<AbstractBeginNode> newSuccessors, double[] cumulative, List<AbstractBeginNode> duplicates) {
+    public boolean updateSwitchData(QuickQueryKeyData keyData, QuickQueryList<AbstractBeginNode> newSuccessors, double[] cumulative, List<AbstractBeginNode> duplicates) {
         for (int i = 0; i < keyCount(); i++) {
             int key = intKeyAt(i);
             if (SwitchFoldable.isDuplicateKey(key, keyData)) {
@@ -190,6 +190,7 @@ public final class IntegerSwitchNode extends SwitchNode implements LIRLowerable,
                 newSuccessors.add(keySuccessor(i));
             }
         }
+        cumulative[0] *= defaultProbability();
         return true;
     }
 
@@ -211,11 +212,11 @@ public final class IntegerSwitchNode extends SwitchNode implements LIRLowerable,
     }
 
     @Override
-    public int addDefault(List<AbstractBeginNode> newSuccessors) {
-        int index = successors.indexOf(defaultSuccessor());
+    public int addDefault(QuickQueryList<AbstractBeginNode> newSuccessors) {
+        int index = newSuccessors.indexOf(defaultSuccessor());
         if (index == -1) {
-            successors.add(defaultSuccessor());
-            return successors.size() - 1;
+            newSuccessors.add(defaultSuccessor());
+            return newSuccessors.size() - 1;
         }
         return index;
     }
