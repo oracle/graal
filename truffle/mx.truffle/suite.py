@@ -858,6 +858,7 @@ suite = {
       "description" : "A collection of tests that can certify language implementation to be compliant\nwith most recent requirements of the Truffle infrastructure and tooling.",
       "allowsJavadocWarnings": True,
       "testProject" : True,
+      "maven": True,
     },
 
     "TRUFFLE_TCK_INSTRUMENTATION" : {

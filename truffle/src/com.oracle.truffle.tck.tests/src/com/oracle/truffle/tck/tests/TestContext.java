@@ -69,6 +69,9 @@ import org.graalvm.polyglot.tck.TypeDescriptor;
 import org.graalvm.polyglot.tck.LanguageProvider;
 
 final class TestContext implements Closeable {
+    private static final Object contextCacheLock = new Object();
+    private static RefCountedReference<Context> contextCache;
+
     private Map<String, LanguageProvider> providers;
     private final Map<String, Collection<? extends Snippet>> valueConstructors;
     private final Map<String, Collection<? extends Snippet>> expressions;
@@ -124,18 +127,32 @@ final class TestContext implements Closeable {
         checkState(State.NEW, State.INITIALIZED);
         state = State.CLOSED;
         if (context != null) {
-            context.close();
+            synchronized (contextCacheLock) {
+                contextCache.close();
+                if (!contextCache.isValid()) {
+                    context.close();
+                    contextCache = null;
+                }
+            }
         }
     }
 
     Context getContext() {
         checkState(State.NEW, State.INITIALIZING, State.INITIALIZED);
         if (context == null) {
-            final Context.Builder builder = Context.newBuilder().allowAllAccess(true);
-            if (!printOutput) {
-                builder.out(NullOutputStream.INSTANCE).err(NullOutputStream.INSTANCE);
+            synchronized (contextCacheLock) {
+                if (contextCache != null) {
+                    this.context = contextCache.retain();
+                } else {
+                    final Context.Builder builder = Context.newBuilder().allowAllAccess(true);
+                    if (!printOutput) {
+                        builder.out(NullOutputStream.INSTANCE).err(NullOutputStream.INSTANCE);
+                    }
+                    this.context = builder.build();
+                    assert contextCache == null;
+                    contextCache = new RefCountedReference<>(context);
+                }
             }
-            this.context = builder.build();
             if (enableInlineVerifier) {
                 Instrument instrument = context.getEngine().getInstruments().get(InlineVerifier.ID);
                 this.inlineVerifier = instrument.lookup(InlineVerifier.class);
@@ -349,6 +366,40 @@ final class TestContext implements Closeable {
 
         @Override
         public void write(int b) throws IOException {
+        }
+    }
+
+    private static final class RefCountedReference<T> implements Closeable {
+
+        private T object;
+        private int refCount;
+
+        RefCountedReference(T object) {
+            this.object = object;
+            this.refCount = 1;
+        }
+
+        T retain() {
+            if (refCount == 0) {
+                throw new IllegalStateException("Released reference");
+            }
+            refCount++;
+            return object;
+        }
+
+        boolean isValid() {
+            return refCount > 0;
+        }
+
+        @Override
+        public void close() {
+            if (refCount == 0) {
+                throw new IllegalStateException("Released reference");
+            }
+            refCount--;
+            if (refCount == 0) {
+                object = null;
+            }
         }
     }
 }

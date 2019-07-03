@@ -53,6 +53,7 @@ import mx_gate
 import mx_native
 import mx_sdk
 import mx_unittest
+import tck
 from mx_gate import Task
 from mx_jackpot import jackpot
 from mx_javamodules import as_java_module, get_java_module_info
@@ -230,28 +231,7 @@ def _is_graalvm(jdk):
                     return True
     return False
 
-def _unittest_config_participant_tck(config):
-
-    def find_path_arg(vmArgs, prefix):
-        for index in reversed(range(len(vmArgs) - 1)):
-            if prefix in vmArgs[index]:
-                return index, vmArgs[index][len(prefix):]
-        return None, None
-
-    def create_filter(requiredResource):
-        def has_resource(dist):
-            if dist.isJARDistribution() and exists(dist.path):
-                with zipfile.ZipFile(dist.path, "r") as zf:
-                    try:
-                        zf.getinfo(requiredResource)
-                    except KeyError:
-                        return False
-                    else:
-                        return True
-            else:
-                return False
-        return has_resource
-
+def _collect_class_path_entries(cp_entries_filter, entries_collector, properties_collector):
     def import_visitor(suite, suite_import, predicate, collector, javaProperties, seenSuites, **extra_args):
         suite_collector(mx.suite(suite_import.name), predicate, collector, javaProperties, seenSuites)
 
@@ -272,13 +252,46 @@ def _unittest_config_participant_tck(config):
                         cpPath = distCpEntry.classpath_repr(resolve=True)
                     if cpPath:
                         collector[cpPath] = None
+    suite_collector(mx.primary_suite(), cp_entries_filter, entries_collector, properties_collector, set())
+
+def _collect_class_path_entries_by_resource(requiredResource, entries_collector, properties_collector):
+    def has_resource(dist):
+        if dist.isJARDistribution() and exists(dist.path):
+            with zipfile.ZipFile(dist.path, "r") as zf:
+                try:
+                    zf.getinfo(requiredResource)
+                except KeyError:
+                    return False
+                else:
+                    return True
+        else:
+            return False
+    _collect_class_path_entries(has_resource, entries_collector, properties_collector)
+
+def _collect_class_path_entries_by_name(distributionName, entries_collector, properties_collector):
+    cp_filter = lambda dist: dist.isJARDistribution() and  dist.name == distributionName and exists(dist.path)
+    _collect_class_path_entries(cp_filter, entries_collector, properties_collector)
+
+def _collect_languages(entries_collector, properties_collector):
+    _collect_class_path_entries_by_resource("META-INF/truffle/language", entries_collector, properties_collector)
+
+def _collect_tck_providers(entries_collector, properties_collector):
+    _collect_class_path_entries_by_resource("META-INF/services/org.graalvm.polyglot.tck.LanguageProvider", entries_collector, properties_collector)
+
+def _unittest_config_participant_tck(config):
+
+    def find_path_arg(vmArgs, prefix):
+        for index in reversed(range(len(vmArgs) - 1)):
+            if prefix in vmArgs[index]:
+                return index, vmArgs[index][len(prefix):]
+        return None, None
 
     javaPropertiesToAdd = OrderedDict()
     providers = OrderedDict()
-    suite_collector(mx.primary_suite(), create_filter("META-INF/services/org.graalvm.polyglot.tck.LanguageProvider"), providers, javaPropertiesToAdd, set())
+    _collect_tck_providers(providers, javaPropertiesToAdd)
     languages = OrderedDict()
-    suite_collector(mx.primary_suite(), create_filter("META-INF/truffle/language"), languages, javaPropertiesToAdd, set())
-    suite_collector(mx.primary_suite(), lambda dist: dist.isJARDistribution() and  dist.name == "TRUFFLE_TCK_INSTRUMENTATION" and exists(dist.path), languages, javaPropertiesToAdd, set())
+    _collect_languages(languages, javaPropertiesToAdd)
+    _collect_class_path_entries_by_name("TRUFFLE_TCK_INSTRUMENTATION", languages, javaPropertiesToAdd)
     vmArgs, mainClass, mainClassArgs = config
     cpIndex, cpValue = mx.find_classpath_arg(vmArgs)
     cpBuilder = OrderedDict()
@@ -289,8 +302,8 @@ def _unittest_config_participant_tck(config):
         cpBuilder[providerCpElement] = None
 
     if _is_graalvm(mx.get_jdk()):
-        common = OrderedDict()
-        suite_collector(mx.primary_suite(), lambda dist: dist.isJARDistribution() and dist.name == "TRUFFLE_TCK_COMMON" and exists(dist.path), common, javaPropertiesToAdd, set())
+        boot_cp = OrderedDict()
+        _collect_class_path_entries_by_name("TRUFFLE_TCK_COMMON", boot_cp, javaPropertiesToAdd)
         tpIndex, tpValue = find_path_arg(vmArgs, '-Dtruffle.class.path.append=')
         tpBuilder = OrderedDict()
         if tpValue:
@@ -303,7 +316,7 @@ def _unittest_config_participant_tck(config):
         if bpValue:
             for cpElement in bpValue.split(os.pathsep):
                 bpBuilder[cpElement] = None
-        for bootCpElement in common:
+        for bootCpElement in boot_cp:
             bpBuilder[bootCpElement] = None
             cpBuilder.pop(bootCpElement, None)
             tpBuilder.pop(bootCpElement, None)
@@ -445,6 +458,29 @@ def _execute_debugger_test(testFilter, logFile, testEvaluation=False, unitTestOp
     args = args + debugalot_options
     args = args + testFilter
     unittest(args)
+
+def execute_tck(graalvm_home, mode='default', language_filter=None, values_filter=None, tests_filter=None, vm_args=None):
+    """
+    Executes Truffle TCK with all TCK providers reachable from the primary suite and all languages installed in the given GraalVM.
+
+    :param graalvm_home: a path to GraalVM
+    :param mode: a name of TCK mode,
+        'default' - executes the test with default GraalVM configuration,
+        'compile' - compiles the tests before execution
+    :param language_filter: the language id, limits TCK tests to certain language
+    :param values_filter: an iterable of value constructors language ids, limits TCK values to certain language(s)
+    :param tests_filter: a substring of TCK test name or an iterable of substrings of TCK test names
+    :param vm_args: iterable containing additional Java VM args
+    """
+    cp = OrderedDict()
+    _collect_tck_providers(cp, dict())
+    truffle_cp = OrderedDict()
+    _collect_class_path_entries_by_name("TRUFFLE_TCK_INSTRUMENTATION", truffle_cp, dict())
+    _collect_class_path_entries_by_name("TRUFFLE_SL", truffle_cp, dict())
+    boot_cp = OrderedDict()
+    _collect_class_path_entries_by_name("TRUFFLE_TCK_COMMON", boot_cp, dict())
+    return tck.execute_tck(graalvm_home, mode=tck.Mode.for_name(mode), language_filter=language_filter, values_filter=values_filter,
+        tests_filter=tests_filter, cp=cp.keys(), truffle_cp=truffle_cp.keys(), boot_cp=boot_cp, vm_args=vm_args)
 
 
 def _tck(args):
