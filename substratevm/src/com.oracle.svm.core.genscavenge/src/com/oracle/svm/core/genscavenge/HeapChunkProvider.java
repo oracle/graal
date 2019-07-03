@@ -158,8 +158,9 @@ class HeapChunkProvider {
         final UnsignedWord heapChunkBytes = HeapImpl.getHeapImpl().getUsedChunkBytes();
         final UnsignedWord unusedChunkBytes = bytesInUnusedAlignedChunks.get();
         final UnsignedWord bytesInUse = heapChunkBytes.add(unusedChunkBytes);
-        /* If I am under the max heap free ratio, then I can keep this chunk. */
-        final boolean result = bytesInUse.multiply(100).unsignedDivide(maximumHeapSize).aboveThan(100 - HeapPolicy.getMaxHeapFreeRatio());
+        /* If remaining free is under the max heap free ratio, then I can keep this chunk. */
+        final UnsignedWord free = maximumHeapSize.subtract(bytesInUse);
+        final boolean result = free.belowThan(maximumHeapSize.unsignedDivide(100).multiply(HeapPolicy.getMaxHeapFreeRatio()));
         trace
                         .string("  maximumHeapSize: ").unsigned(maximumHeapSize)
                         .string("  heapChunkBytes: ").unsigned(heapChunkBytes)
