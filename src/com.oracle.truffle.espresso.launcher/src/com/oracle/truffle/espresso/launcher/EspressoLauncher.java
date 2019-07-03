@@ -106,7 +106,6 @@ public class EspressoLauncher extends AbstractLanguageLauncher {
                         polyglotOptions.remove("java.BootClasspathAppend");
                         polyglotOptions.put("java.BootClasspath", arg.substring("-Xbootclasspath:".length()));
                     } else if (arg.startsWith("-Xbootclasspath/a:")) {
-
                         polyglotOptions.put("java.BootClasspathAppend", appendPath(polyglotOptions.get("java.BootClasspathAppend"), arg.substring("-Xbootclasspath/a:".length())));
                     } else if (arg.startsWith("-Xbootclasspath/p:")) {
                         polyglotOptions.put("java.BootClasspathPrepend", prependPath(arg.substring("-Xbootclasspath/p:".length()), polyglotOptions.get("java.BootClasspathPrepend")));
@@ -125,6 +124,9 @@ public class EspressoLauncher extends AbstractLanguageLauncher {
                         }
 
                         switch (key) {
+                            case "espresso.library.path":
+                                polyglotOptions.put("java.EspressoLibraryPath", value);
+                                break;
                             case "java.library.path":
                                 polyglotOptions.put("java.JavaLibraryPath", value);
                                 break;
