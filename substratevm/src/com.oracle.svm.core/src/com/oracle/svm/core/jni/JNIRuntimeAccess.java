@@ -32,6 +32,7 @@ import java.lang.reflect.Field;
 import org.graalvm.nativeimage.ImageSingletons;
 import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.Platforms;
+import org.graalvm.nativeimage.impl.ReflectionRegistry;
 
 import com.oracle.svm.core.SubstrateOptions;
 import com.oracle.svm.core.option.SubstrateOptionsParser;
@@ -59,7 +60,7 @@ public final class JNIRuntimeAccess {
     }
 
     public static void register(boolean finalIsWritable, Field... fields) {
-        getSupport().register(finalIsWritable, fields);
+        getSupport().register(finalIsWritable, false, fields);
     }
 
     private static JNIRuntimeAccessibilitySupport getSupport() {
@@ -69,11 +70,6 @@ public final class JNIRuntimeAccess {
         return ImageSingletons.lookup(JNIRuntimeAccessibilitySupport.class);
     }
 
-    public interface JNIRuntimeAccessibilitySupport {
-        void register(Class<?>... classes);
-
-        void register(Executable... methods);
-
-        void register(boolean forceWritable, Field... fields);
+    public interface JNIRuntimeAccessibilitySupport extends ReflectionRegistry {
     }
 }

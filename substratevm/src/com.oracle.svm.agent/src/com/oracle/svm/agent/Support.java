@@ -136,6 +136,7 @@ public final class Support {
 
         public final JNIMethodId javaLangClassGetName;
         public final JNIMethodId javaLangClassForName3;
+        public final JNIMethodId javaLangReflectMemberGetName;
         public final JNIMethodId javaLangReflectMemberGetDeclaringClass;
         public final JNIMethodId javaUtilEnumerationHasMoreElements;
         public final JNIObjectHandle javaLangSecurityException;
@@ -145,6 +146,7 @@ public final class Support {
         public final JNIObjectHandle javaLangNoSuchFieldError;
         public final JNIObjectHandle javaLangNoSuchFieldException;
         public final JNIObjectHandle javaLangClassNotFoundException;
+        public final JNIObjectHandle javaLangRuntimeException;
 
         // HotSpot crashes when looking these up eagerly
         private JNIObjectHandle javaLangReflectField;
@@ -163,6 +165,7 @@ public final class Support {
             javaLangClassForName3 = getMethodId(env, javaLangClass, "forName", "(Ljava/lang/String;ZLjava/lang/ClassLoader;)Ljava/lang/Class;", true);
 
             JNIObjectHandle javaLangReflectMember = findClass(env, "java/lang/reflect/Member");
+            javaLangReflectMemberGetName = getMethodId(env, javaLangReflectMember, "getName", "()Ljava/lang/String;", false);
             javaLangReflectMemberGetDeclaringClass = getMethodId(env, javaLangReflectMember, "getDeclaringClass", "()Ljava/lang/Class;", false);
 
             JNIObjectHandle javaUtilEnumeration = findClass(env, "java/util/Enumeration");
@@ -175,6 +178,7 @@ public final class Support {
             javaLangNoSuchFieldError = newClassGlobalRef(env, "java/lang/NoSuchFieldError");
             javaLangNoSuchFieldException = newClassGlobalRef(env, "java/lang/NoSuchFieldException");
             javaLangClassNotFoundException = newClassGlobalRef(env, "java/lang/ClassNotFoundException");
+            javaLangRuntimeException = newClassGlobalRef(env, "java/lang/RuntimeException");
         }
 
         private static JNIObjectHandle findClass(JNIEnvironment env, String className) {
@@ -284,17 +288,17 @@ public final class Support {
     }
 
     public static JNIObjectHandle getCallerClass(int depth) {
+        return getMethodDeclaringClass(getCallerMethod(depth));
+    }
+
+    public static JNIMethodId getCallerMethod(int depth) {
         JvmtiFrameInfo frameInfo = StackValue.get(JvmtiFrameInfo.class);
         CIntPointer countPtr = StackValue.get(CIntPointer.class);
         JvmtiError result = jvmtiFunctions().GetStackTrace().invoke(jvmtiEnv(), nullHandle(), depth, 1, frameInfo, countPtr);
         if (result == JvmtiError.JVMTI_ERROR_NONE && countPtr.read() == 1) {
-            WordPointer declaringPtr = StackValue.get(WordPointer.class);
-            result = jvmtiFunctions().GetMethodDeclaringClass().invoke(jvmtiEnv(), frameInfo.getMethod(), declaringPtr);
-            if (result == JvmtiError.JVMTI_ERROR_NONE) {
-                return declaringPtr.read();
-            }
+            return frameInfo.getMethod();
         }
-        return nullHandle();
+        return nullPointer();
     }
 
     public static JNIObjectHandle getObjectArgument(int slot) {
