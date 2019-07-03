@@ -106,6 +106,12 @@ public final class OptionValuesImpl implements OptionValues {
         return values.containsKey(optionKey);
     }
 
+    @Override
+    @TruffleBoundary
+    public boolean hasSetOptions() {
+        return !values.isEmpty();
+    }
+
     private static Object maskNull(final Object value) {
         return value == null ? NULL : value;
     }
