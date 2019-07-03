@@ -134,8 +134,8 @@ public final class EspressoOptions {
                         }
                     });
 
-    @Option(help = "Sets the mode of the bytecode verifier." //
-                    , category = OptionCategory.EXPERT, stability = OptionStability.STABLE) //
+    @Option(help = "Sets the mode of the bytecode verifier.", //
+                    category = OptionCategory.EXPERT, stability = OptionStability.STABLE) //
     public static final OptionKey<VerifyMode> Verify = new OptionKey<>(VerifyMode.REMOTE, VERIFY_MODE_OPTION_TYPE);
 
     // Threads are enabled by default.

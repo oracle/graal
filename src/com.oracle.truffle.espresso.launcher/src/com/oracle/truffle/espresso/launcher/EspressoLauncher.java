@@ -25,10 +25,7 @@ package com.oracle.truffle.espresso.launcher;
 import java.io.File;
 import java.io.IOException;
 import java.nio.file.NoSuchFileException;
-import java.nio.file.Path;
-import java.nio.file.Paths;
 import java.util.ArrayList;
-import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
@@ -39,11 +36,8 @@ import org.graalvm.launcher.AbstractLanguageLauncher;
 import org.graalvm.options.OptionCategory;
 import org.graalvm.polyglot.Context;
 import org.graalvm.polyglot.Context.Builder;
-import org.graalvm.polyglot.Engine;
 import org.graalvm.polyglot.PolyglotException;
 import org.graalvm.polyglot.Source;
-
-import static sun.security.tools.PathList.appendPath;
 
 public class EspressoLauncher extends AbstractLanguageLauncher {
     public static void main(String[] args) {
@@ -315,7 +309,7 @@ public class EspressoLauncher extends AbstractLanguageLauncher {
         options.add("-help");
     }
 
-    private static String appendPanth(String paths, String toAppend) {
+    private static String appendPath(String paths, String toAppend) {
         if (paths != null && paths.length() != 0) {
             return toAppend != null && toAppend.length() != 0 ? paths + File.pathSeparator + toAppend : paths;
         } else {

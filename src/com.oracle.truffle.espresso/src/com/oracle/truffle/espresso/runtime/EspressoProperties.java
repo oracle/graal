@@ -76,6 +76,8 @@ public interface EspressoProperties {
         private List<Path> bootLibraryPath;
         private List<Path> extDirs;
 
+        // TODO(peterssen): These paths are Linux-specific. Refactor these hardcoded paths to work
+        // on differnt platforms/OSs.
         private final Path SYS_EXT_DIR = Paths.get("/usr/java/packages");
         private final Path EXTENSIONS_DIR = Paths.get("/lib/ext");
         private final List<Path> DEFAULT_LIBPATH = Arrays.asList(

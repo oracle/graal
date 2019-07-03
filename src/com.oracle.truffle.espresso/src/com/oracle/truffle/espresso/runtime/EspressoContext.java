@@ -218,9 +218,7 @@ public final class EspressoContext {
         // Finalizer is not public.
         initializeKnownClass(Type.java_lang_ref_Finalizer);
 
-        // Call System.initializeSystemClass
-        // meta.System_initializeSystemClass.invokeDirect(null);
-        meta.System.lookupDeclaredMethod(Name.initializeSystemClass, Signature._void).invokeDirect(null);
+        meta.System_initializeSystemClass.invokeDirect(null);
 
         // System exceptions.
         for (Symbol<Type> type : Arrays.asList(
