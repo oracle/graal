@@ -759,6 +759,9 @@ public final class IsomorphicPackingPhase extends BasePhase<LowTierContext> {
                     node.setNext(null);
                 }
                 for (WriteNode node : nodes) {
+                    if (node.predecessor() != null) {
+                      node.predecessor().replaceFirstSuccessor(node, null);
+                    }
                     node.safeDelete();
                 }
 
