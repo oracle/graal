@@ -741,7 +741,7 @@ public class GenerateUncachedTest {
     }
 
     @GenerateUncached
-    @NodeChild(type = BaseNode.class)
+    @NodeChild(value = "child", type = BaseNode.class)
     public abstract static class NodeChildTest1 extends Node {
 
         public abstract Object execute();
@@ -749,6 +749,8 @@ public class GenerateUncachedTest {
         public abstract Object execute(VirtualFrame frame);
 
         public abstract Object execute(Object... o);
+
+        public abstract BaseNode getChild();
 
         @Specialization(guards = "i == 0")
         String s0(int i) {
@@ -770,6 +772,13 @@ public class GenerateUncachedTest {
         } catch (AssertionError e) {
             assertEquals("This execute method cannot be used for uncached node versions as it requires child nodes to be present. " +
                             "Use an execute method that takes all arguments as parameters.", e.getMessage());
+        }
+        try {
+            NodeChildTest1NodeGen.getUncached().getChild();
+            fail();
+        } catch (AssertionError e) {
+            assertEquals("This getter method cannot be used for uncached node versions as it requires child nodes to be present.",
+                            e.getMessage());
         }
         try {
             NodeChildTest1NodeGen.getUncached().execute((VirtualFrame) null);
