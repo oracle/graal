@@ -72,5 +72,7 @@ public final class Utils {
         return Arrays.stream(paths.split(File.pathSeparator)).map(Paths::get).collect(Collectors.toList());
     }
 
-
+    public static String stringify(List<Path> paths) {
+        return paths.stream().map(Path::toString).collect(Collectors.joining(File.pathSeparator));
+    }
 }
