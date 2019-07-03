@@ -68,6 +68,7 @@ import java.util.function.Predicate;
 import java.util.logging.Handler;
 import java.util.logging.Level;
 
+import org.graalvm.collections.EconomicSet;
 import org.graalvm.collections.UnmodifiableEconomicSet;
 import org.graalvm.options.OptionDescriptor;
 import org.graalvm.options.OptionDescriptors;
@@ -640,6 +641,11 @@ public final class Engine implements AutoCloseable {
         @Override
         public UnmodifiableEconomicSet<String> getAccessibleLanguages(PolyglotAccess access, String language) {
             return access.getAccessibleLanguages(language);
+        }
+
+        @Override
+        public void validatePolyglotAccess(PolyglotAccess access, EconomicSet<String> languages) {
+            access.validate(languages);
         }
 
     }

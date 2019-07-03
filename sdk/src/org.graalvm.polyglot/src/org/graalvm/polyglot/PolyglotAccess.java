@@ -93,6 +93,43 @@ public final class PolyglotAccess {
         return newMap;
     }
 
+    void validate(EconomicSet<String> availableLanguages) {
+        if (access == null) {
+            return;
+        }
+
+        MapCursor<String, EconomicSet<String>> entries = access.getEntries();
+        while (entries.advance()) {
+            String invalidKey = null;
+            if (!availableLanguages.contains(entries.getKey())) {
+                invalidKey = entries.getKey();
+            }
+            if (invalidKey == null) {
+                for (String entry : entries.getValue()) {
+                    if (!availableLanguages.contains(entry)) {
+                        invalidKey = entry;
+                        break;
+                    }
+                }
+            }
+            if (invalidKey != null) {
+                throw new IllegalArgumentException(String.format("Language '%s' configured in polyglot access rule %s -> %s is not installed or available.",
+                                invalidKey, entries.getKey(), toStringSet(entries.getValue())));
+            }
+        }
+    }
+
+    static String toStringSet(EconomicSet<String> set) {
+        StringBuilder b = new StringBuilder();
+        String sep = "";
+        for (String entry : set) {
+            b.append(sep);
+            b.append(entry);
+            sep = ", ";
+        }
+        return b.toString();
+    }
+
     UnmodifiableEconomicSet<String> getAccessibleLanguages(String language) {
         if (allAccess) {
             return null;

@@ -460,6 +460,40 @@ public class ContextPolyglotAccessTest extends AbstractPolyglotTest {
 
     @Test
     public void testCustomPolyglotAccessErrors() {
+        PolyglotAccess.Builder builder = PolyglotAccess.newBuilder();
+
+        ValueAssert.assertFails(() -> builder.allowAccess(null, ""), NullPointerException.class);
+        ValueAssert.assertFails(() -> builder.allowAccess("", null), NullPointerException.class);
+        ValueAssert.assertFails(() -> builder.denyAccess(null, ""), NullPointerException.class);
+        ValueAssert.assertFails(() -> builder.denyAccess("", null), NullPointerException.class);
+        ValueAssert.assertFails(() -> builder.allowAccessBetween((String[]) null), NullPointerException.class);
+        ValueAssert.assertFails(() -> builder.denyAccessBetween((String[]) null), NullPointerException.class);
+        ValueAssert.assertFails(() -> builder.allowAccessBetween((String) null), NullPointerException.class);
+        ValueAssert.assertFails(() -> builder.denyAccessBetween((String) null), NullPointerException.class);
+
+        PolyglotAccess access = PolyglotAccess.newBuilder().allowAccess(NOT_EXISTING_LANGUAGE, LANGUAGE1).build();
+        Context.Builder cBuilder = Context.newBuilder().allowPolyglotAccess(access);
+        ValueAssert.assertFails(() -> cBuilder.build(), IllegalArgumentException.class);
+
+        access = PolyglotAccess.newBuilder().allowAccess(LANGUAGE1, LANGUAGE2).build();
+        Context.Builder cBuilder2 = Context.newBuilder(LANGUAGE2).allowPolyglotAccess(access);
+        ValueAssert.assertFails(() -> cBuilder2.build(), IllegalArgumentException.class,
+                        (e) -> assertEquals("Language '" + LANGUAGE1 + "' configured in polyglot access rule " + LANGUAGE1 + " -> " + LANGUAGE2 + " is not installed or available.", e.getMessage()));
+    }
+
+    @Test
+    public void testParsePublic() {
+        setupEnv();
+        context.initialize(LANGUAGE1);
+
+        Env language1 = Language1.getContext(Language1.class);
+
+        ValueAssert.assertFails(() -> language1.parsePublic(Source.newBuilder(INTERNAL, "", "").build()), IllegalStateException.class);
+        ValueAssert.assertFails(() -> language1.parseInternal(Source.newBuilder(INTERNAL, "", "").build()), IllegalArgumentException.class);
+
+        assertNotNull(language1.parseInternal(Source.newBuilder(INTERNAL, "", "").internal(true).build()));
+        assertNotNull(language1.parsePublic(Source.newBuilder(LANGUAGE1, "", "").build()));
+        assertNotNull(language1.parsePublic(Source.newBuilder(LANGUAGE2, "", "").build()));
     }
 
     private static void assertNoPolyglotAccess(Env env) {

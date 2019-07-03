@@ -456,24 +456,27 @@ final class PolyglotEngineImpl extends AbstractPolyglotImpl.AbstractEngineImpl i
             languages = this.idToInternalLanguageInfo;
         }
 
+        LanguageInfo foundLanguage = null;
         if (languageId != null) {
-            LanguageInfo language = languages.get(languageId);
-            if (language != null) {
-                return getLanguageImpl(language);
-            }
+            foundLanguage = languages.get(languageId);
         }
-        if (mimeType != null) {
+        if (mimeType != null && foundLanguage == null) {
             // we need to interpret mime types for compatibility.
-            LanguageInfo language = languages.get(mimeType);
-            if (language != null) {
-                return getLanguageImpl(language);
-            }
-            for (LanguageInfo searchLanguage : languages.values()) {
-                if (searchLanguage.getMimeTypes().contains(mimeType)) {
-                    return getLanguageImpl(searchLanguage);
+            foundLanguage = languages.get(mimeType);
+            if (foundLanguage == null) {
+                for (LanguageInfo searchLanguage : languages.values()) {
+                    if (searchLanguage.getMimeTypes().contains(mimeType)) {
+                        foundLanguage = searchLanguage;
+                        break;
+                    }
                 }
             }
         }
+
+        if (foundLanguage != null && (allowInternal || !foundLanguage.isInternal())) {
+            return (PolyglotLanguage) EngineAccessor.NODES.getEngineObject(foundLanguage);
+        }
+
         if (failIfNotFound) {
             if (languageId != null) {
                 Set<String> ids = new LinkedHashSet<>();
@@ -491,10 +494,6 @@ final class PolyglotEngineImpl extends AbstractPolyglotImpl.AbstractEngineImpl i
         } else {
             return null;
         }
-    }
-
-    private static PolyglotLanguage getLanguageImpl(LanguageInfo language) {
-        return (PolyglotLanguage) EngineAccessor.NODES.getEngineObject(language);
     }
 
     private Map<String, PolyglotInstrument> initializeInstruments(Map<String, InstrumentInfo> infos) {
@@ -1182,6 +1181,7 @@ final class PolyglotEngineImpl extends AbstractPolyglotImpl.AbstractEngineImpl i
         } else {
             allowedLanguages.addAll(Arrays.asList(onlyLanguages));
         }
+        getAPIAccess().validatePolyglotAccess(polyglotAccess, allowedLanguages);
         final FileSystem fs;
         if (!ALLOW_IO) {
             if (fileSystem == null) {

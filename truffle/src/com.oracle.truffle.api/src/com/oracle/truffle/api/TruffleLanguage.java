@@ -1819,8 +1819,8 @@ public abstract class TruffleLanguage<C> {
         }
 
         /**
-         * Parses the source of a public language and returns the parse result as
-         * {@link CallTarget}. The {@link Source#getLanguage() language id} is used to identify the
+         * Parses the source of a public language and returns the parse result as {@link CallTarget}
+         * . The {@link Source#getLanguage() language id} is used to identify the
          * {@link TruffleLanguage} to use to perform the
          * {@link #parse(com.oracle.truffle.api.TruffleLanguage.ParsingRequest)}. The names of
          * arguments are parameters for the resulting {#link CallTarget} that allow the
