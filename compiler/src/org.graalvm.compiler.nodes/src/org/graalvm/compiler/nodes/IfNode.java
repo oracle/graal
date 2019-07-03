@@ -459,27 +459,11 @@ public final class IfNode extends ControlSplitNode implements Simplifiable, LIRL
         return true;
     }
 
+    // SwitchFoldable implementation.
+
     @Override
     public Node getNextSwitchFoldableBranch() {
         return falseSuccessor();
-    }
-
-    @Override
-    public boolean updateSwitchData(QuickQueryKeyData keyData, QuickQueryList<AbstractBeginNode> successors, double[] cumulative, List<AbstractBeginNode> duplicates) {
-        long key = ((IntegerEqualsNode) condition()).getY().asJavaConstant().asInt();
-        if (SwitchFoldable.isDuplicateKey((int) key, keyData)) {
-            // Unreachable: will be manually killed.
-            if (!successors.contains(trueSuccessor())) {
-                duplicates.add(trueSuccessor());
-            }
-            return true;
-        }
-        double keyProbability = getTrueSuccessorProbability() * cumulative[0];
-        cumulative[0] *= 1.0d - getTrueSuccessorProbability();
-
-        keyData.add(new KeyData((int) key, keyProbability, successors.size()));
-        successors.add(trueSuccessor());
-        return true;
     }
 
     @Override
@@ -499,13 +483,8 @@ public final class IfNode extends ControlSplitNode implements Simplifiable, LIRL
     }
 
     @Override
-    public int addDefault(QuickQueryList<AbstractBeginNode> successors) {
-        int index = successors.indexOf(falseSuccessor());
-        if (index == -1) {
-            successors.add(falseSuccessor());
-            return successors.size() - 1;
-        }
-        return index;
+    public AbstractBeginNode getDefault() {
+        return falseSuccessor();
     }
 
     @Override
@@ -519,6 +498,29 @@ public final class IfNode extends ControlSplitNode implements Simplifiable, LIRL
     @Override
     public boolean isNonInitializedProfile() {
         return getTrueSuccessorProbability() == 0.5d;
+    }
+
+    @Override
+    public int intKeyAt(int i) {
+        assert i == 0;
+        return ((IntegerEqualsNode) condition()).getY().asJavaConstant().asInt();
+    }
+
+    @Override
+    public double keyProbability(int i) {
+        assert i == 0;
+        return getTrueSuccessorProbability();
+    }
+
+    @Override
+    public AbstractBeginNode keySuccessor(int i) {
+        assert i == 0;
+        return trueSuccessor();
+    }
+
+    @Override
+    public double defaultProbability() {
+        return 1.0d - getTrueSuccessorProbability();
     }
 
     /**

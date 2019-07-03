@@ -38,13 +38,11 @@ import org.graalvm.compiler.nodeinfo.NodeInfo;
 import org.graalvm.compiler.nodes.calc.IntegerEqualsNode;
 import org.graalvm.compiler.nodes.spi.Lowerable;
 import org.graalvm.compiler.nodes.spi.LoweringTool;
+import org.graalvm.compiler.nodes.spi.SwitchFoldable;
 
 import jdk.vm.ci.meta.DeoptimizationAction;
 import jdk.vm.ci.meta.DeoptimizationReason;
 import jdk.vm.ci.meta.SpeculationLog;
-import org.graalvm.compiler.nodes.spi.SwitchFoldable;
-
-import java.util.List;
 
 @NodeInfo(nameTemplate = "FixedGuard(!={p#negated}) {p#reason/s}", allowedUsageTypes = Guard, size = SIZE_2, cycles = CYCLES_2)
 public final class FixedGuardNode extends AbstractFixedGuardNode implements Lowerable, IterableNodeType, SwitchFoldable {
@@ -127,25 +125,6 @@ public final class FixedGuardNode extends AbstractFixedGuardNode implements Lowe
     }
 
     @Override
-    public boolean updateSwitchData(QuickQueryKeyData keyData, QuickQueryList<AbstractBeginNode> successors, double[] cumulative, List<AbstractBeginNode> duplicates) {
-        double keyProbability = 0.0d;
-        long key = ((IntegerEqualsNode) condition()).getY().asJavaConstant().asInt();
-        if (SwitchFoldable.isDuplicateKey((int) key, keyData)) {
-            // Unreachable.
-            return true;
-        }
-        keyData.add(new KeyData((int) key, keyProbability, successors.size()));
-        DeoptimizeNode deopt = new DeoptimizeNode(getAction(), getReason(), getSpeculation());
-        deopt.setNodeSourcePosition(getNodeSourcePosition());
-        AbstractBeginNode begin = new BeginNode();
-        // Link the two nodes, but do not add them to the graph yet, so we do not need to remove
-        // them on an abort.
-        begin.next = deopt;
-        successors.addUnique(begin);
-        return true;
-    }
-
-    @Override
     public boolean isInSwitch(ValueNode switchValue) {
         return hasNoUsages() && isNegated() && SwitchFoldable.maybeIsInSwitch(condition()) && SwitchFoldable.sameSwitchValue(condition(), switchValue);
     }
@@ -161,11 +140,10 @@ public final class FixedGuardNode extends AbstractFixedGuardNode implements Lowe
     }
 
     @Override
-    public int addDefault(QuickQueryList<AbstractBeginNode> successors) {
+    public AbstractBeginNode getDefault() {
         FixedNode defaultNode = next();
         setNext(null);
-        successors.add(BeginNode.begin(defaultNode));
-        return successors.size() - 1;
+        return BeginNode.begin(defaultNode);
     }
 
     @Override
@@ -179,5 +157,32 @@ public final class FixedGuardNode extends AbstractFixedGuardNode implements Lowe
     @Override
     public boolean isNonInitializedProfile() {
         return true;
+    }
+
+    @Override
+    public int intKeyAt(int i) {
+        assert i == 0;
+        return ((IntegerEqualsNode) condition()).getY().asJavaConstant().asInt();
+    }
+
+    @Override
+    public double keyProbability(int i) {
+        return 0;
+    }
+
+    @Override
+    public AbstractBeginNode keySuccessor(int i) {
+        DeoptimizeNode deopt = new DeoptimizeNode(getAction(), getReason(), getSpeculation());
+        deopt.setNodeSourcePosition(getNodeSourcePosition());
+        AbstractBeginNode begin = new BeginNode();
+        // Link the two nodes, but do not add them to the graph yet, so we do not need to remove
+        // them on an abort.
+        begin.next = deopt;
+        return begin;
+    }
+
+    @Override
+    public double defaultProbability() {
+        return 1.0d;
     }
 }

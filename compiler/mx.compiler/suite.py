@@ -1192,6 +1192,7 @@ suite = {
       "dependencies" : [
         "org.graalvm.compiler.api.replacements",
         "org.graalvm.compiler.lir",
+        "sdk:GRAAL_SDK",
       ],
       "checkstyle" : "org.graalvm.compiler.graph",
       "javaCompliance" : "8+",
