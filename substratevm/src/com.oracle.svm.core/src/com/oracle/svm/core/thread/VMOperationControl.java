@@ -84,7 +84,7 @@ import com.oracle.svm.core.util.VMError;
  * </ul>
  */
 public final class VMOperationControl {
-    private static VMOperationThread dedicatedVmOperationThread = null;
+    private static VMOperationThread dedicatedVMOperationThread = null;
 
     private final WorkQueues mainQueues;
     private final WorkQueues immediateQueues;
@@ -105,19 +105,30 @@ public final class VMOperationControl {
         assert UseDedicatedVMOperationThread.getValue();
         assert get().mainQueues.isEmpty();
 
-        dedicatedVmOperationThread = new VMOperationThread();
-        Thread thread = new Thread(dedicatedVmOperationThread, "VMOperationThread");
+        dedicatedVMOperationThread = new VMOperationThread();
+        Thread thread = new Thread(dedicatedVMOperationThread, "VMOperationThread");
         thread.setDaemon(true);
         thread.start();
-        dedicatedVmOperationThread.waitUntilStarted();
+        dedicatedVMOperationThread.waitUntilStarted();
     }
 
     public static void stopVMOperationThread() {
         assert UseDedicatedVMOperationThread.getValue();
+        // Fetch the Java thread before stopping the VM operation execution.
+        Thread javaThread = JavaThreads.fromVMThread(dedicatedVMOperationThread.isolateThread);
+        assert javaThread != null;
+
+        // Stop the VM operation execution in a VM operation.
         JavaVMOperation.enqueueBlockingNoSafepoint("Stop VMOperationThread", () -> {
-            dedicatedVmOperationThread.stop();
+            dedicatedVMOperationThread.stop();
         });
-        dedicatedVmOperationThread.waitUntilStopped();
+
+        // Wait until the VM operation thread exited (the heap must not be torn down too early).
+        try {
+            javaThread.join();
+        } catch (InterruptedException e) {
+            VMError.shouldNotReachHere("Can't be interrupted during shutdown", e);
+        }
         assert get().mainQueues.isEmpty();
     }
 
@@ -128,7 +139,7 @@ public final class VMOperationControl {
     @Uninterruptible(reason = "Called from uninterruptible code.")
     public static boolean isDedicatedVMOperationThread(IsolateThread thread) {
         if (UseDedicatedVMOperationThread.getValue()) {
-            return thread == dedicatedVmOperationThread.getIsolateThread();
+            return thread == dedicatedVMOperationThread.getIsolateThread();
         }
         return false;
     }
@@ -204,7 +215,7 @@ public final class VMOperationControl {
             } else if (UseDedicatedVMOperationThread.getValue()) {
                 // a thread queues an operation that the VM operation thread will execute
                 assert !isDedicatedVMOperationThread() : "the dedicated VM operation thread must execute and not queue VM operations";
-                assert dedicatedVmOperationThread.isRunning() : "must not queue VM operations before the VM operation thread is started or after it is shut down";
+                assert dedicatedVMOperationThread.isRunning() : "must not queue VM operations before the VM operation thread is started or after it is shut down";
                 VMThreads.THREAD_MUTEX.guaranteeNotOwner("could result in deadlocks otherwise");
                 mainQueues.enqueueAndWait(operation, data);
             } else {
@@ -296,12 +307,6 @@ public final class VMOperationControl {
 
         public void waitUntilStarted() {
             while (isolateThread.isNull()) {
-                Thread.yield();
-            }
-        }
-
-        public void waitUntilStopped() {
-            while (isolateThread.isNonNull()) {
                 Thread.yield();
             }
         }
