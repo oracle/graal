@@ -43,10 +43,12 @@ final class EngineData {
 
     int splitLimit;
     int splitCount;
+    final OptionValues engineOptions;
     final RuntimeOptionsCache options;
     final TruffleSplittingStrategy.SplitStatisticsReporter reporter;
 
     private EngineData(OptionValues engineOptions) {
+        this.engineOptions = engineOptions;
         this.options = new RuntimeOptionsCache(engineOptions);
         this.reporter = new TruffleSplittingStrategy.SplitStatisticsReporter(this);
     }

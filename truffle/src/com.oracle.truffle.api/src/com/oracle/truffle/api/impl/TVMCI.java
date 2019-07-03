@@ -227,18 +227,6 @@ public abstract class TVMCI {
     }
 
     /**
-     * Invoked when a call target is invoked to find out its option values.
-     * {@link OptionValues#getDescriptors()} must match the value returned by
-     * {@link #getCompilerOptionDescriptors()}.
-     *
-     * @since 0.27
-     */
-    protected OptionValues getCompilerOptionValues(RootNode rootNode) {
-        EngineSupport engine = TVMCIAccessor.engineAccess();
-        return engine != null ? engine.getCompilerOptionValues(rootNode) : null;
-    }
-
-    /**
      * Returns <code>true</code> if the java stack frame is a representing a guest language call.
      * Needs to return <code>true</code> only once per java stack frame per guest language call.
      *
@@ -286,6 +274,13 @@ public abstract class TVMCI {
 
     private static volatile Object fallbackEngineData;
 
+    /**
+     * Used to get an {@link org.graalvm.compiler.truffle.runtime.EngineData},
+     * which contains the option values for --engine options, and other per-Engine data.
+     * Called in the {@link org.graalvm.compiler.truffle.runtime.OptimizedCallTarget} constructor.
+     * <p>
+     * The resulting instance is cached in the Engine.
+     */
     @SuppressWarnings("unchecked")
     protected <T> T getOrCreateRuntimeData(RootNode rootNode, Function<OptionValues, T> constructor) {
         Objects.requireNonNull(rootNode);

@@ -83,11 +83,6 @@ final class GraalTVMCI extends TVMCI {
         return PolyglotCompilerOptions.getDescriptors();
     }
 
-    @Override
-    protected OptionValues getCompilerOptionValues(RootNode rootNode) {
-        return super.getCompilerOptionValues(rootNode);
-    }
-
     void onFirstExecution(OptimizedCallTarget callTarget) {
         super.onFirstExecution(callTarget.getRootNode());
     }

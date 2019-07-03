@@ -152,15 +152,6 @@ final class EngineAccessor extends Accessor {
         }
 
         @Override
-        public OptionValues getCompilerOptionValues(RootNode rootNode) {
-            Object vm = NODES.getSourceVM(rootNode);
-            if (vm instanceof PolyglotEngineImpl) {
-                return ((PolyglotEngineImpl) vm).engineOptionValues;
-            }
-            return null;
-        }
-
-        @Override
         public boolean isPolyglotEvalAllowed(Object polyglotLanguageContext) {
             PolyglotLanguageContext languageContext = ((PolyglotLanguageContext) polyglotLanguageContext);
             return languageContext.isPolyglotEvalAllowed(null);

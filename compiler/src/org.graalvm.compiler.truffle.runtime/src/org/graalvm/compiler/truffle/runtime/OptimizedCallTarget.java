@@ -366,11 +366,15 @@ public abstract class OptimizedCallTarget implements CompilableTruffleAST, RootC
     }
 
     public final OptionValues getOptionValues() {
-        return runtime().getTvmci().getCompilerOptionValues(rootNode);
+        return engineData.engineOptions;
+    }
+
+    public <T> T getOptionValue(OptionKey<T> key) {
+        return PolyglotCompilerOptions.getValue(getOptionValues(), key);
     }
 
     private OptimizedCompilationProfile createCompilationProfile() {
-        return OptimizedCompilationProfile.create(PolyglotCompilerOptions.getPolyglotValues(rootNode));
+        return OptimizedCompilationProfile.create(getOptionValues());
     }
 
     /**
@@ -744,10 +748,6 @@ public abstract class OptimizedCallTarget implements CompilableTruffleAST, RootC
             assert this.compilationTask != null;
             this.compilationTask = null;
         }
-    }
-
-    public <T> T getOptionValue(OptionKey<T> key) {
-        return PolyglotCompilerOptions.getValue(rootNode, key);
     }
 
     synchronized void addKnownCallNode(OptimizedDirectCallNode directCallNode) {
