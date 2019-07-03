@@ -31,6 +31,7 @@ import java.io.IOException;
 import java.util.ArrayList;
 import java.util.HashSet;
 import java.util.List;
+import java.util.Objects;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 import java.util.stream.Collectors;
@@ -225,7 +226,7 @@ public class LazyInitializationTest {
             return true;
         }
 
-        if (cls.equals(jvmciVersionCheck)) {
+        if (cls.equals(jvmciVersionCheck) || Objects.equals(cls.getEnclosingClass(), jvmciVersionCheck)) {
             // The Graal initialization needs to check the JVMCI version.
             return true;
         }
