@@ -29,14 +29,19 @@
  */
 package com.oracle.truffle.wasm.test.util.sexpr.nodes;
 
-public abstract class SExprLiteralNode<T> extends SExprNode {
-    protected T value;
+import com.oracle.truffle.wasm.test.util.sexpr.LiteralType;
 
-    public SExprLiteralNode(T value) {
+public class SExprLiteralNode extends SExprNode {
+    String value;
+    LiteralType type;
+
+    public SExprLiteralNode(String value, LiteralType type) {
         this.value = value;
+        this.type = type;
     }
 
-    public T value() {
+    @Override
+    public String toString() {
         return value;
     }
 }

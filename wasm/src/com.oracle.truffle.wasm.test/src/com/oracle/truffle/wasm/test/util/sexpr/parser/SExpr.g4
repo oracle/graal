@@ -30,14 +30,11 @@ grammar SExpr;
 @header {
 package com.oracle.truffle.wasm.test.util.sexpr.parser;
 
+import com.oracle.truffle.wasm.test.util.sexpr.LiteralType;
 import com.oracle.truffle.wasm.test.util.sexpr.nodes.SExprAtomNode;
-import com.oracle.truffle.wasm.test.util.sexpr.nodes.SExprFloatingLiteralNode;
-import com.oracle.truffle.wasm.test.util.sexpr.nodes.SExprIntegerLiteralNode;
 import com.oracle.truffle.wasm.test.util.sexpr.nodes.SExprListNode;
 import com.oracle.truffle.wasm.test.util.sexpr.nodes.SExprLiteralNode;
 import com.oracle.truffle.wasm.test.util.sexpr.nodes.SExprNode;
-import com.oracle.truffle.wasm.test.util.sexpr.nodes.SExprStringLiteralNode;
-import com.oracle.truffle.wasm.test.util.sexpr.nodes.SExprSymbolLiteralNode;
 }
 
 @parser::members {
@@ -76,10 +73,10 @@ list returns [List<SExprNode> result]
    ;
 
 atom returns [SExprLiteralNode result]
-   : STRING   { $result = new SExprStringLiteralNode($STRING.getText()); }
-   | SYMBOL   { $result = new SExprSymbolLiteralNode($SYMBOL.getText()); }
-   | INTEGER  { $result = new SExprIntegerLiteralNode(Integer.parseInt($INTEGER.getText())); }
-   | FLOATING { $result = new SExprFloatingLiteralNode(Double.parseDouble($FLOATING.getText())); }
+   : STRING   { $result = new SExprLiteralNode($STRING.getText(), LiteralType.STRING); }
+   | SYMBOL   { $result = new SExprLiteralNode($SYMBOL.getText(), LiteralType.SYMBOL); }
+   | INTEGER  { $result = new SExprLiteralNode($INTEGER.getText(), LiteralType.INTEGER); }
+   | FLOATING { $result = new SExprLiteralNode($FLOATING.getText(), LiteralType.FLOATING); }
    ;
 
 STRING
@@ -91,11 +88,20 @@ WHITESPACE
    ;
 
 INTEGER
-   : ('+' | '-')? (DIGIT)+
+   : SIGN NUMBER
+   | SIGN '0x' HEXNUMBER
    ;
 
 FLOATING
-   : ('+' | '-')? (DIGIT)+ ('.' (DIGIT)+)?
+   : SIGN FLOATING_BODY
+   ;
+
+FLOATING_BODY
+   : FLOAT
+   | HEXFLOAT
+   | 'inf'
+   | 'nan'
+   | 'nan:0x' HEXNUMBER
    ;
 
 SYMBOL
@@ -121,7 +127,54 @@ fragment SYMBOL_START
    | '_'
    ;
 
+fragment SIGN
+   : ('+' | '-')?
+   ;
+
 fragment DIGIT
    : ('0' .. '9')
    ;
 
+fragment HEXDIGIT
+   : DIGIT
+   | ('A' .. 'F')
+   | ('a' .. 'f')
+   ;
+
+fragment NUMBER
+   : DIGIT+
+   | DIGIT+ ('_') DIGIT+
+   ;
+
+fragment HEXNUMBER
+   : HEXDIGIT+
+   | HEXDIGIT+ ('_') HEXDIGIT+
+   ;
+
+fragment FRAC
+   : /* epsilon */
+   | DIGIT FRAC
+   | DIGIT '_' DIGIT FRAC
+   ;
+
+fragment HEXFRAC
+   : /* epsilon */
+   | HEXDIGIT HEXFRAC
+   | HEXDIGIT '_' HEXDIGIT HEXFRAC
+   ;
+
+fragment FLOAT
+   : NUMBER '.' FRAC
+   | NUMBER ('E' | 'e') SIGN NUMBER
+   | NUMBER '.' FRAC ('E' | 'e') SIGN NUMBER
+   ;
+
+fragment HEXFLOAT
+   : '0x' HEXNUMBER HEXFRAC
+   | '0x' HEXNUMBER ('P' | 'p') SIGN NUMBER
+   | '0x' HEXNUMBER '.' HEXFRAC ('P' | 'p') SIGN NUMBER
+   ;
+
+COMMENT
+   : ';;' ~[\r\n]* -> skip
+   ;

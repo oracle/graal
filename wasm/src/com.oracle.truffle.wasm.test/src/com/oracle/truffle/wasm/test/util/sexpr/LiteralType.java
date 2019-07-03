@@ -27,15 +27,11 @@
  * NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED
  * OF THE POSSIBILITY OF SUCH DAMAGE.
  */
-package com.oracle.truffle.wasm.test.util.sexpr.nodes;
+package com.oracle.truffle.wasm.test.util.sexpr;
 
-public class SExprStringLiteralNode extends SExprLiteralNode<String> {
-    public SExprStringLiteralNode(String value) {
-        super(value);
-    }
-
-    @Override
-    public String toString() {
-        return value;
-    }
+public enum LiteralType {
+    STRING,
+    SYMBOL,
+    INTEGER,
+    FLOATING,
 }

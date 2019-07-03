@@ -29,10 +29,10 @@
  */
 package com.oracle.truffle.wasm.test.util.sexpr.parser;
 
-import com.oracle.truffle.wasm.test.util.sexpr.nodes.SExprNode;
-
 import java.util.ArrayList;
 import java.util.List;
+
+import com.oracle.truffle.wasm.test.util.sexpr.nodes.SExprNode;
 
 public class SExprNodeFactory {
     private List<SExprNode> exprList;

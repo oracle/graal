@@ -2,14 +2,11 @@
 
 package com.oracle.truffle.wasm.test.util.sexpr.parser;
 
+import com.oracle.truffle.wasm.test.util.sexpr.LiteralType;
 import com.oracle.truffle.wasm.test.util.sexpr.nodes.SExprAtomNode;
-import com.oracle.truffle.wasm.test.util.sexpr.nodes.SExprFloatingLiteralNode;
-import com.oracle.truffle.wasm.test.util.sexpr.nodes.SExprIntegerLiteralNode;
 import com.oracle.truffle.wasm.test.util.sexpr.nodes.SExprListNode;
 import com.oracle.truffle.wasm.test.util.sexpr.nodes.SExprLiteralNode;
 import com.oracle.truffle.wasm.test.util.sexpr.nodes.SExprNode;
-import com.oracle.truffle.wasm.test.util.sexpr.nodes.SExprStringLiteralNode;
-import com.oracle.truffle.wasm.test.util.sexpr.nodes.SExprSymbolLiteralNode;
 
 import org.antlr.v4.runtime.atn.*;
 import org.antlr.v4.runtime.dfa.DFA;
@@ -28,7 +25,8 @@ public class SExprParser extends Parser {
 	protected static final PredictionContextCache _sharedContextCache =
 		new PredictionContextCache();
 	public static final int
-		STRING=1, WHITESPACE=2, INTEGER=3, FLOATING=4, SYMBOL=5, LPAREN=6, RPAREN=7;
+		STRING=1, WHITESPACE=2, INTEGER=3, FLOATING=4, FLOATING_BODY=5, SYMBOL=6, 
+		LPAREN=7, RPAREN=8, COMMENT=9;
 	public static final int
 		RULE_root = 0, RULE_sexpr = 1, RULE_list = 2, RULE_atom = 3;
 	private static String[] makeRuleNames() {
@@ -40,14 +38,14 @@ public class SExprParser extends Parser {
 
 	private static String[] makeLiteralNames() {
 		return new String[] {
-			null, null, null, null, null, null, "'('", "')'"
+			null, null, null, null, null, null, null, "'('", "')'"
 		};
 	}
 	private static final String[] _LITERAL_NAMES = makeLiteralNames();
 	private static String[] makeSymbolicNames() {
 		return new String[] {
-			null, "STRING", "WHITESPACE", "INTEGER", "FLOATING", "SYMBOL", "LPAREN", 
-			"RPAREN"
+			null, "STRING", "WHITESPACE", "INTEGER", "FLOATING", "FLOATING_BODY", 
+			"SYMBOL", "LPAREN", "RPAREN", "COMMENT"
 		};
 	}
 	private static final String[] _SYMBOLIC_NAMES = makeSymbolicNames();
@@ -313,7 +311,7 @@ public class SExprParser extends Parser {
 				{
 				setState(39);
 				((AtomContext)_localctx).STRING = match(STRING);
-				 ((AtomContext)_localctx).result =  new SExprStringLiteralNode(((AtomContext)_localctx).STRING.getText()); 
+				 ((AtomContext)_localctx).result =  new SExprLiteralNode(((AtomContext)_localctx).STRING.getText(), LiteralType.STRING); 
 				}
 				break;
 			case SYMBOL:
@@ -321,7 +319,7 @@ public class SExprParser extends Parser {
 				{
 				setState(41);
 				((AtomContext)_localctx).SYMBOL = match(SYMBOL);
-				 ((AtomContext)_localctx).result =  new SExprSymbolLiteralNode(((AtomContext)_localctx).SYMBOL.getText()); 
+				 ((AtomContext)_localctx).result =  new SExprLiteralNode(((AtomContext)_localctx).SYMBOL.getText(), LiteralType.SYMBOL); 
 				}
 				break;
 			case INTEGER:
@@ -329,7 +327,7 @@ public class SExprParser extends Parser {
 				{
 				setState(43);
 				((AtomContext)_localctx).INTEGER = match(INTEGER);
-				 ((AtomContext)_localctx).result =  new SExprIntegerLiteralNode(Integer.parseInt(((AtomContext)_localctx).INTEGER.getText())); 
+				 ((AtomContext)_localctx).result =  new SExprLiteralNode(((AtomContext)_localctx).INTEGER.getText(), LiteralType.INTEGER); 
 				}
 				break;
 			case FLOATING:
@@ -337,7 +335,7 @@ public class SExprParser extends Parser {
 				{
 				setState(45);
 				((AtomContext)_localctx).FLOATING = match(FLOATING);
-				 ((AtomContext)_localctx).result =  new SExprFloatingLiteralNode(Double.parseDouble(((AtomContext)_localctx).FLOATING.getText())); 
+				 ((AtomContext)_localctx).result =  new SExprLiteralNode(((AtomContext)_localctx).FLOATING.getText(), LiteralType.FLOATING); 
 				}
 				break;
 			default:
@@ -356,7 +354,7 @@ public class SExprParser extends Parser {
 	}
 
 	public static final String _serializedATN =
-		"\3\u608b\ua72a\u8133\ub9ed\u417c\u3be7\u7786\u5964\3\t\64\4\2\t\2\4\3"+
+		"\3\u608b\ua72a\u8133\ub9ed\u417c\u3be7\u7786\u5964\3\13\64\4\2\t\2\4\3"+
 		"\t\3\4\4\t\4\4\5\t\5\3\2\3\2\3\2\7\2\16\n\2\f\2\16\2\21\13\2\3\2\3\2\3"+
 		"\3\3\3\3\3\3\3\3\3\3\3\5\3\33\n\3\3\4\3\4\3\4\3\4\3\4\7\4\"\n\4\f\4\16"+
 		"\4%\13\4\3\4\3\4\3\4\3\5\3\5\3\5\3\5\3\5\3\5\3\5\3\5\5\5\62\n\5\3\5\2"+
@@ -365,9 +363,9 @@ public class SExprParser extends Parser {
 		"\17\r\3\2\2\2\17\20\3\2\2\2\20\22\3\2\2\2\21\17\3\2\2\2\22\23\7\2\2\3"+
 		"\23\3\3\2\2\2\24\25\5\b\5\2\25\26\b\3\1\2\26\33\3\2\2\2\27\30\5\6\4\2"+
 		"\30\31\b\3\1\2\31\33\3\2\2\2\32\24\3\2\2\2\32\27\3\2\2\2\33\5\3\2\2\2"+
-		"\34\35\7\b\2\2\35#\b\4\1\2\36\37\5\4\3\2\37 \b\4\1\2 \"\3\2\2\2!\36\3"+
-		"\2\2\2\"%\3\2\2\2#!\3\2\2\2#$\3\2\2\2$&\3\2\2\2%#\3\2\2\2&\'\7\t\2\2\'"+
-		"(\b\4\1\2(\7\3\2\2\2)*\7\3\2\2*\62\b\5\1\2+,\7\7\2\2,\62\b\5\1\2-.\7\5"+
+		"\34\35\7\t\2\2\35#\b\4\1\2\36\37\5\4\3\2\37 \b\4\1\2 \"\3\2\2\2!\36\3"+
+		"\2\2\2\"%\3\2\2\2#!\3\2\2\2#$\3\2\2\2$&\3\2\2\2%#\3\2\2\2&\'\7\n\2\2\'"+
+		"(\b\4\1\2(\7\3\2\2\2)*\7\3\2\2*\62\b\5\1\2+,\7\b\2\2,\62\b\5\1\2-.\7\5"+
 		"\2\2.\62\b\5\1\2/\60\7\6\2\2\60\62\b\5\1\2\61)\3\2\2\2\61+\3\2\2\2\61"+
 		"-\3\2\2\2\61/\3\2\2\2\62\t\3\2\2\2\6\17\32#\61";
 	public static final ATN _ATN =

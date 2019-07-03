@@ -27,15 +27,47 @@
  * NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED
  * OF THE POSSIBILITY OF SUCH DAMAGE.
  */
-package com.oracle.truffle.wasm.test.util.sexpr.nodes;
+package com.oracle.truffle.wasm.test.util.sexpr;
 
-public class SExprFloatingLiteralNode extends SExprLiteralNode<Double> {
-    public SExprFloatingLiteralNode(Double value) {
-        super(value);
+import java.io.IOException;
+import java.nio.charset.StandardCharsets;
+import java.nio.file.Files;
+import java.nio.file.Path;
+import java.nio.file.Paths;
+import java.util.Collection;
+import java.util.List;
+import java.util.stream.Collectors;
+import java.util.stream.Stream;
+
+import org.junit.Test;
+
+import com.oracle.truffle.wasm.test.WasmTestBase;
+import com.oracle.truffle.wasm.test.options.WasmTestOptions;
+import com.oracle.truffle.wasm.test.util.sexpr.nodes.SExprNode;
+import com.oracle.truffle.wasm.test.util.sexpr.parser.SExprParser;
+
+public class WasmSExprSuite extends WasmTestBase {
+    protected Path testDirectory() {
+        return Paths.get(WasmTestOptions.TEST_SOURCE_PATH, "spec");
     }
 
-    @Override
-    public String toString() {
-        return Double.toString(value);
+    protected Collection<Path> collectTestCases(Path path) throws IOException {
+        try (Stream<Path> walk = Files.list(path)) {
+            return walk.filter(isWastFile).collect(Collectors.toList());
+        }
+    }
+
+    @Test
+    public void test() throws IOException {
+        Collection<Path> testCases = collectTestCases(testDirectory());
+        for (Path testCasePath : testCases) {
+            String script = readFileToString(testCasePath, StandardCharsets.UTF_8);
+            List<SExprNode> exprs = SExprParser.parseSexpressions(script);
+            System.out.println(exprs.size());
+            for (SExprNode node : exprs) {
+                // TODO: Interpret S-expression node.
+                System.out.println(node);
+            }
+        }
     }
 }
