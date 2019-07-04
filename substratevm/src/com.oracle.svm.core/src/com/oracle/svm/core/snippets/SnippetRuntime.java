@@ -49,7 +49,9 @@ import com.oracle.svm.core.annotate.RestrictHeapAccess;
 import com.oracle.svm.core.annotate.Uninterruptible;
 import com.oracle.svm.core.code.CodeInfo;
 import com.oracle.svm.core.code.CodeInfoAccess;
+import com.oracle.svm.core.deopt.DeoptimizationSupport;
 import com.oracle.svm.core.deopt.DeoptimizedFrame;
+import com.oracle.svm.core.deopt.Deoptimizer;
 import com.oracle.svm.core.jdk.JDKUtils;
 import com.oracle.svm.core.log.Log;
 import com.oracle.svm.core.stack.JavaStackWalker;
@@ -206,24 +208,29 @@ public class SnippetRuntime {
      * can use them simultaneously. All state must be in separate VMThreadLocals.
      */
     public static class ExceptionStackFrameVisitor implements StackFrameVisitor {
-        @Uninterruptible(reason = "Set currentException atomically with regard to the safepoint mechanism", calleeMustBe = false)
+        @Uninterruptible(reason = "Deoptimization; set currentException atomically with regard to the safepoint mechanism")
         @RestrictHeapAccess(access = RestrictHeapAccess.Access.NO_ALLOCATION, reason = "Must not allocate when unwinding the stack.")
         @Override
-        public boolean visitFrame(Pointer sp, CodePointer ip, CodeInfo codeInfo, DeoptimizedFrame deoptFrame) {
-            CodePointer handlerIP;
-            if (deoptFrame != null) {
-                /* Deoptimization entry points always have an exception handler. */
-                deoptFrame.takeException();
-                handlerIP = ip;
+        public boolean visitFrame(Pointer sp, CodePointer ip, CodeInfo codeInfo, DeoptimizedFrame initialDeoptFrame) {
+            CodePointer handlerIP = WordFactory.nullPointer();
+            DeoptimizedFrame deoptFrame = initialDeoptFrame;
 
-            } else {
-                long handler = CodeInfoAccess.lookupExceptionOffset(codeInfo, CodeInfoAccess.relativeIP(codeInfo, ip));
+            if (deoptFrame == null) {
+                long handler = lookupExceptionOffset(codeInfo, ip);
                 if (handler == 0) {
                     /* No handler found in this frame, walk to caller frame. */
                     return true;
                 }
-
                 handlerIP = (CodePointer) ((UnsignedWord) ip).add(WordFactory.signed(handler));
+
+                // Frame could have been deoptimized during interruptible lookup above, check again
+                deoptFrame = Deoptimizer.checkDeoptimized(sp);
+            }
+
+            if (deoptFrame != null && DeoptimizationSupport.enabled()) {
+                /* Deoptimization entry points always have an exception handler. */
+                deoptTakeException(deoptFrame);
+                handlerIP = DeoptimizationSupport.getDeoptStubPointer();
             }
 
             Throwable exception = currentException.get();
@@ -237,6 +244,16 @@ public class SnippetRuntime {
              * unreachable.
              */
             return false;
+        }
+
+        @Uninterruptible(reason = "Wrap call to interruptible code.", calleeMustBe = false)
+        private static void deoptTakeException(DeoptimizedFrame deoptFrame) {
+            deoptFrame.takeException();
+        }
+
+        @Uninterruptible(reason = "Wrap call to interruptible code.", calleeMustBe = false)
+        private static long lookupExceptionOffset(CodeInfo codeInfo, CodePointer ip) {
+            return CodeInfoAccess.lookupExceptionOffset(codeInfo, CodeInfoAccess.relativeIP(codeInfo, ip));
         }
     }
 
