@@ -334,16 +334,16 @@ public interface SwitchFoldable extends NodeInterface {
                 totalProbabilities[0] += keyProbability;
                 keyData.add(data);
             }
-
-            int pos = duplicateIndex(keySuccessor, newSuccessors);
-            if (pos != -1) {
-                // Target is already known
-                data.keySuccessor = pos;
-            } else if (!isDefaultSuccessor(keySuccessor)) {
-                data.keySuccessor = newSuccessors.size();
-                if (keySuccessor.isUnregistered()) {
-                    newSuccessors.addUnique(keySuccessor);
-                } else {
+            if (keySuccessor.isUnregistered()) {
+                // Shortcut map check if uninitialized node.
+                newSuccessors.addUnique(keySuccessor);
+            } else {
+                int pos = duplicateIndex(keySuccessor, newSuccessors);
+                if (pos != -1) {
+                    // Target is already known
+                    data.keySuccessor = pos;
+                } else if (!isDefaultSuccessor(keySuccessor)) {
+                    data.keySuccessor = newSuccessors.size();
                     newSuccessors.add(keySuccessor);
                 }
             }
