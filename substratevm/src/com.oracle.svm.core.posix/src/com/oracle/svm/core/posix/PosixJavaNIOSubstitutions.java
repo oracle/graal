@@ -327,7 +327,7 @@ public final class PosixJavaNIOSubstitutions {
         throw PosixUtils.newIOExceptionWithLastError(msg);
     }
 
-    protected static int convertReturnVal(WordBase n, boolean reading) throws IOException {
+    public static int convertReturnVal(WordBase n, boolean reading) throws IOException {
         return convertReturnVal((int) n.rawValue(), reading);
     }
 
