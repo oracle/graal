@@ -106,6 +106,6 @@ install:
 script:
   - echo ${JAVA_HOME}
   - ${JAVA_HOME}/bin/java -version
-  - mx --primary-suite-path ${TRAVIS_BUILD_DIR}/${PRIMARY} --java-home=${JAVA_HOME} gate --strict-mode --tags ${GATE}
+  - mx -v --primary-suite-path ${TRAVIS_BUILD_DIR}/${PRIMARY} --java-home=${JAVA_HOME} gate --strict-mode --tags ${GATE}
 after_failure:
   - cat hs_err*
